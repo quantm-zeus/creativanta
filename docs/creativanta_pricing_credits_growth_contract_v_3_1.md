@@ -38,7 +38,7 @@ Pack này khóa:
 | Feature | Free | Starter | Pro | Business | Enterprise |
 |---|---|---|---|---|---|
 | **Connected accounts** | 2 | 5 | 15 | 50 | Unlimited |
-| **Workspace members** | 1 | 3 | 10 | 30 | Custom |
+| **Workspace members** | 1 | 2 | 5 | 20 | Custom |
 | **Operator modes** | 1 | 2 | All | All | All |
 | **AI credits/month** | 50 | 500 | 2,000 | 10,000 | Custom |
 | **AI video generation** | 3/mo | 30/mo | 150/mo | 500/mo | Custom |
@@ -332,7 +332,13 @@ Hệ thống cung cấp 4 core production modes: Quick Edit, Clip Factory, Multi
 | **Max duration (upload)** | 3min | 10min | 30min | 60min |
 | **Remix per day** | N/A | 3 | 10 | 20 |
 
-> **Daily vs Monthly**: Daily limit CÓ count vào monthly limit. Daily limit ngăn abuse spikes (ví dụ: mass-clone 20 videos/day). Monthly limit cap tổng usage per tier. Ví dụ: Pro tier = max 10 remixes/day VÀ max 20 remixes/month → user có thể dùng 10/day nhưng hết monthly quota sau 2 ngày.
+> **Daily vs Monthly Limit Interaction (Audit v5 — M9 clarified)**:
+> - Daily limits = **burst protection** (prevent mass-clone abuse spikes, e.g., 20 remixes/day).
+> - Monthly limits = **total allocation** per billing cycle.
+> - **Daily limit × 30 >> Monthly limit is intentional**. This is an anti-abuse pattern, not a bug.
+> - Example: Pro tier = max 10 remixes/day AND max 20 remixes/month → user CAN do 10/day but monthly quota exhausted after 2 days. This is correct — it prevents someone from consuming their entire monthly allocation in a single abuse burst while allowing normal daily usage within reason.
+> - Credit system enforces: `current_daily_count < daily_limit AND current_monthly_count < monthly_limit`. Both must pass.
+> - Tier upgrade immediately updates both daily and monthly limits.
 
 ### 4.7 AI Editing Workflow
 1. User upload video (max file size per tier: Free 100MB, Starter 500MB, Pro 2GB, Business 5GB)
@@ -597,17 +603,21 @@ viewer asks "how?" → user shares referral → new user → repeat
 
 ## 8. Permission & RBAC Contract
 
-### 8.1 Role Hierarchy
+> **Canonical Source**: Product Freeze §46A.4 / Pack 02 §S07. This section aligns to the frozen 7-role hierarchy.
+
+### 8.1 Role Hierarchy (Aligned to Freeze §46A.4)
 
 | Role | Scope | Key Permissions |
 |---|---|---|
-| **Owner** | Workspace | Full access, billing, delete workspace |
-| **Admin** | Workspace | Manage members, settings, integrations (no billing) |
-| **Manager** | Team scope | Approve content, manage queue, view reports |
-| **Editor** | Content scope | Create/edit content, scripts, assets, publish |
-| **Viewer** | Read-only | View dashboards, reports, content (no edit) |
-| **Finance** | Finance scope | View/manage financial data, reconciliation |
-| **External** | Limited scope | Brand/client access, view specific campaigns |
+| **Owner** | Workspace | Full access, billing, danger zone, workspace deletion |
+| **Admin** | Workspace | All features except billing management + workspace deletion |
+| **Manager** | Workspace | Team oversight, finance/revenue access, inbox moderation, commerce management, approve content |
+| **Editor** | Workspace | Create/edit/publish content, workflows, view analytics, commerce (operational) |
+| **Contributor** | Workspace | Create/edit content drafts only — cannot publish, approve, or access finance |
+| **Viewer** | Workspace | Read-only access to all non-sensitive data |
+| **External Collaborator** | Limited | Brand/agency external collaborator, scoped per invitation, limited to assigned content |
+
+> **Reconciliation Note**: Previous version used Finance as a separate role. Per Freeze §46A.4, Finance permissions are merged into **Manager** (operational oversight role covering finance visibility, inbox moderation, commerce management, and content approval). **Contributor** is added as a step below Editor for team members who can draft but not publish. See Pack 02 §S07 for full permission matrix.
 
 ### 8.2 Permission Groups
 

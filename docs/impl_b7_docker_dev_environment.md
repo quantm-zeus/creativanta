@@ -37,7 +37,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: pgvector/pgvector:pg17
+    image: timescale/timescaledb-ha:pg17
     container_name: creativanta-db
     ports:
       - "5432:5432"
@@ -139,11 +139,9 @@ volumes:
 -- infra/init-extensions.sql
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-CREATE EXTENSION IF NOT EXISTS "vector";        -- pgvector
+CREATE EXTENSION IF NOT EXISTS "vector";        -- pgvector (included in timescaledb-ha image)
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";       -- trigram search
-
--- TimescaleDB (use timescale/timescaledb image if needed)
--- CREATE EXTENSION IF NOT EXISTS "timescaledb";
+CREATE EXTENSION IF NOT EXISTS "timescaledb";   -- time-series hypertables (Audit v5 — M8: was commented out)
 
 -- Create Activepieces database
 CREATE DATABASE activepieces_dev;

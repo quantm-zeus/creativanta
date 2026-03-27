@@ -248,3 +248,9 @@ pub trait PlatformConnector: Send + Sync {
 | Product catalog | ✅ Shop | ✅ | ✅ | — | ⚠️ Shopping | ⚠️ Commerce |
 
 This matrix feeds directly into `capability_snapshots` table and M22 Policy Center.
+
+---
+
+## 10. Implementation Note (Audit v6 — L7)
+
+> This spec provides the connector structure, capability states, sync frequencies, and Rust trait interface. **Detailed per-platform API endpoint mappings, rate limit backoff algorithms, error code mapping, and OAuth flow specifics** will be maintained in code-level documentation within each connector module: `/api/src/connectors/{platform}/README.md`. Implementers should reference each platform's official API documentation alongside this spec.

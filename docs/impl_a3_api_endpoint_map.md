@@ -242,7 +242,121 @@ Rate limit: 100 req/min per API key. OAuth2 for third-party apps (P2).
 | `SystemConfigService/PublishAnnouncement` | Super/Ops | System announcement |
 | `SystemConfigService/ToggleMaintenance` | Super/Tech | Maintenance mode |
 | `SystemConfigService/GetDashboard` | All | Admin dashboard |
+| `FeeScheduleService/List` | Super/Finance | List fee schedules |
+| `FeeScheduleService/Create` | Super/Finance | Add fee schedule |
+| `FeeScheduleService/Update` | Super/Finance | Update fee schedule |
+| `FeeScheduleService/Verify` | Super/Finance | Mark fee as verified |
 
 ---
 
-**Total: ~270 RPCs + 6 webhook endpoints + 6 public API endpoints + 24 admin-only RPCs**
+## 7. AI Production Extended RPCs (Audit v5 — H3: Pack 02 §3.4)
+
+> **Ref**: Pack 02 §3.4 domain objects, Pack 04 §9.6-9.16.
+
+### 7.1 Video Edit Job Service
+
+| RPC | Auth | Description |
+|---|---|---|
+| `VideoEditJobService/Create` | Editor+ | Start new production job (any mode) |
+| `VideoEditJobService/Get` | Contributor+ | Get job status + metadata |
+| `VideoEditJobService/List` | Contributor+ | List jobs (filter by mode, status) |
+| `VideoEditJobService/Cancel` | Editor+ | Cancel processing job |
+| `VideoEditJobService/Retry` | Editor+ | Retry failed job |
+
+### 7.2 Remix Service
+
+| RPC | Auth | Description |
+|---|---|---|
+| `RemixService/Analyze` | Editor+ | Start remix analysis (Phase 1) |
+| `RemixService/GetBlueprint` | Editor+ | Get remix blueprint + Creative DNA |
+| `RemixService/Generate` | Editor+ | Start remix generation (Phase 2) |
+| `RemixService/Regenerate` | Editor+ | Regenerate with adjustments |
+
+### 7.3 Clip Factory Service
+
+| RPC | Auth | Description |
+|---|---|---|
+| `ClipFactoryService/Analyze` | Editor+ | Analyze video for clips |
+| `ClipFactoryService/GetCollection` | Editor+ | Get clip proposals |
+| `ClipFactoryService/ProcessClips` | Editor+ | Process selected clips |
+
+### 7.4 Product Showcase Service
+
+| RPC | Auth | Description |
+|---|---|---|
+| `ProductShowcaseService/Create` | Editor+ | Single product showcase |
+| `ProductShowcaseService/CreateBatch` | Editor+ | Batch processing |
+| `ProductShowcaseService/Get` | Contributor+ | Get job status |
+| `ProductShowcaseService/List` | Contributor+ | List showcase jobs |
+
+### 7.5 Link-to-Video Service
+
+| RPC | Auth | Description |
+|---|---|---|
+| `LinkToVideoService/Scrape` | Editor+ | Scrape product URL |
+| `LinkToVideoService/Generate` | Editor+ | Generate video from scraped data |
+| `LinkToVideoService/Get` | Contributor+ | Get job status |
+
+### 7.6 Translation Service
+
+| RPC | Auth | Description |
+|---|---|---|
+| `TranslationService/Create` | Editor+ | Start translation job |
+| `TranslationService/Get` | Contributor+ | Get job + per-language status |
+| `TranslationService/List` | Contributor+ | List translation jobs |
+
+### 7.7 Style Pack Service
+
+| RPC | Auth | Description |
+|---|---|---|
+| `StylePackService/Extract` | Editor+ | Analyze video + extract style |
+| `StylePackService/Get` | Contributor+ | Get style pack details |
+| `StylePackService/List` | Contributor+ | List style packs |
+| `StylePackService/Apply` | Editor+ | Apply style to job |
+| `StylePackService/Delete` | Manager+ | Delete style pack |
+
+### 7.8 AB Test Service
+
+| RPC | Auth | Description |
+|---|---|---|
+| `ABTestService/Create` | Editor+ | Start AB test experiment |
+| `ABTestService/Get` | Contributor+ | Get experiment details |
+| `ABTestService/List` | Contributor+ | List experiments |
+| `ABTestService/DeclareWinner` | Editor+ | Manually declare winner |
+| `ABTestService/Cancel` | Editor+ | Cancel running experiment |
+
+### 7.9 Repurpose Service
+
+| RPC | Auth | Description |
+|---|---|---|
+| `RepurposeService/Create` | Editor+ | Start 1→50 repurpose pipeline |
+| `RepurposeService/Get` | Contributor+ | Get repurpose status |
+| `RepurposeService/List` | Contributor+ | List repurpose jobs |
+
+---
+
+## 8. Gamification RPCs (Audit v5 — H3: PRD §37.3)
+
+| RPC | Auth | Description |
+|---|---|---|
+| `GamificationService/GetProgress` | Contributor+ | Get workspace progress (level, XP, streak) |
+| `GamificationService/ListAchievements` | Contributor+ | List all achievements + unlock status |
+| `GamificationService/ListChallenges` | Contributor+ | List active weekly challenges |
+| `GamificationService/GetChallengeProgress` | Contributor+ | Get progress for specific challenge |
+| `GamificationService/ShareAchievement` | Contributor+ | Share achievement to social |
+
+---
+
+## 9. Platform Health RPCs (Audit v5 — H3: M22)
+
+| RPC | Auth | Description |
+|---|---|---|
+| `PlatformHealthService/GetScores` | Viewer+ | Get health scores for all connected platforms |
+| `PlatformHealthService/GetHistory` | Manager+ | Get health score history |
+| `LinkHealthService/GetReport` | Editor+ | Get affiliate link health report |
+| `LinkHealthService/CheckNow` | Editor+ | Trigger immediate health check |
+| `LinkHealthService/BulkCheck` | Manager+ | Bulk check all affiliate links |
+
+---
+
+**Total: ~310 RPCs + 6 webhook endpoints + 6 public API endpoints + 28 admin-only RPCs (incl. fee schedule management) + ~40 extended production/gamification/health RPCs (Audit v5)**

@@ -970,33 +970,37 @@ User tạo content → Creativanta watermark (Free) → viewer hỏi tool → re
 
 ---
 
-## 33. Launch Readiness Definition
+## Appendix A — PRD Closure & Governance
+
+> Các section A.1–A.6 dưới đây là thông tin governance/meta-level của PRD. Đây **không phải** feature specs. Cross-references trong downstream documents tới §33-§38 luôn chỉ về Strategic Feature Specifications ở phần sau.
+
+### A.1 Launch Readiness Definition
 
 Creativanta chỉ sẵn sàng khi đạt đủ 7 mức completeness:
 
-### 33.1 Domain Completeness
+#### A.1.1 Domain Completeness
 Tất cả domain chính usable trên web và mobile.
 
-### 33.2 Truth Completeness
+#### A.1.2 Truth Completeness
 Evidence, source class, confidence, reconciliation hoạt động ở các luồng trọng yếu.
 
-### 33.3 Execution Completeness
+#### A.1.3 Execution Completeness
 Capability matrix, fallback, diagnostics, logs, workflow trust layer sẵn sàng.
 
-### 33.4 Commercial Completeness
+#### A.1.4 Commercial Completeness
 Bundles, billing, metering, offers, ledger, key monetization surfaces usable.
 
-### 33.5 Operational Completeness
+#### A.1.5 Operational Completeness
 Admin, support, diagnostics, policy center, connector health, agent/workflow logs usable.
 
-### 33.6 Legal & Compliance Completeness (NEW)
+#### A.1.6 Legal & Compliance Completeness
 - ToS, Privacy Policy, Cookie Policy, AUP deployed
 - Consent management system active
 - Platform policy compliance engine active
 - DMCA process operational
 - Age verification gate active
 
-### 33.7 Pricing & Business Completeness (NEW)
+#### A.1.7 Pricing & Business Completeness
 - Subscription tiers live with feature gating
 - AI credit system operational with budget controls
 - Payment processing active
@@ -1005,15 +1009,15 @@ Admin, support, diagnostics, policy center, connector health, agent/workflow log
 
 ---
 
-## 34. Key Risks và Mitigations
+### A.2 Key Risks và Mitigations
 
-### 34.1 Platform policy changes
+#### A.2.1 Platform policy changes
 - capability registry
 - feature flags
 - policy notes
 - fallback paths
 
-### 34.2 Product complexity overwhelm
+#### A.2.2 Product complexity overwhelm
 - operator modes
 - recipe-first UX
 - Daily Decision Engine
@@ -1021,20 +1025,20 @@ Admin, support, diagnostics, policy center, connector health, agent/workflow log
 - progressive disclosure
 - repair-first onboarding
 
-### 34.3 Low trust in metrics
+#### A.2.3 Low trust in metrics
 - Evidence Graph
 - Confidence System
 - Reconciliation Queue
 - Proof Bundles
 - visible source class taxonomy
 
-### 34.4 AI output inconsistency
+#### A.2.4 AI output inconsistency
 - Continuity OS
 - approved references
 - drift flags
 - lineage tracking
 
-### 34.5 Too many moving parts operationally
+#### A.2.5 Too many moving parts operationally
 - admin tooling
 - diagnostics-first design
 - workflow logs
@@ -1042,7 +1046,7 @@ Admin, support, diagnostics, policy center, connector health, agent/workflow log
 
 ---
 
-## 35. What Is Frozen in This PRD
+### A.3 What Is Frozen in This PRD
 
 Các nội dung sau được xem là đã freeze ở cấp PRD:
 - full-scope domain definition
@@ -1062,7 +1066,7 @@ Các nội dung sau được xem là đã freeze ở cấp PRD:
 
 ---
 
-## 36. What Moves to Product Freeze / Build Contract
+### A.4 What Moves to Product Freeze / Build Contract
 
 Các nội dung sau **không còn được đổi nghĩa**, nhưng sẽ được chi tiết hóa ở v3.1 Product Freeze:
 - field-level object contracts
@@ -1076,7 +1080,7 @@ Các nội dung sau **không còn được đổi nghĩa**, nhưng sẽ được
 
 ---
 
-## 37. Architecture Decisions Locked for Downstream Documents
+### A.5 Architecture Decisions Locked for Downstream Documents
 
 Downstream documents phải bám theo các quyết định sau:
 1. canonical object schema follows One Graph
@@ -1095,7 +1099,7 @@ Downstream documents phải bám theo các quyết định sau:
 
 ---
 
-## 38. Final Product Definition
+### A.6 Final Product Definition
 
 Creativanta là một full-scope web + mobile operating system cho creator commerce, được định nghĩa bởi các điều kiện sau:
 
@@ -1161,7 +1165,7 @@ Giải quyết gap GMV vs actual profit (15-40% chênh lệch). User phải th�
 - Regional fee variations (Vietnam, Thailand, Philippines)
 
 ### 33.6 Mapping
-- Module: M09 (Profit Surface), M16 (Commerce), M22 (Reporting)
+- Module: M19 (Operating Ledger / Profit Graph / Proof Center), M13 (Product Hub / Order Truth), M23 (Reporting / Admin)
 - Objects: extended from Pack 06 (Commerce/Finance)
 - Backend: Profit Calculation Service → reads Order, Settlement, Billing Event objects
 

@@ -170,6 +170,16 @@ App phải hỗ trợ 6 mode chính:
 - **Agency / MCN Mode**
 - **Brand Collaboration Mode**
 
+> **Naming reconciliation (Audit v5 — M3)**: The display names above map to these DB canonical enum values in `workspaces.active_operator_mode`:
+> | Display Name | DB Enum Value |
+> |---|---|
+> | Creator Mode | `creator` |
+> | Seller Mode | `seller` |
+> | Affiliate Operator Mode | `affiliate_operator` |
+> | Live Operator Mode | `live_operator` |
+> | Agency / MCN Mode | `agency_mcn` |
+> | Brand Collaboration Mode | `brand_collaboration` |
+
 ### 8.3 Operator Mode Contract
 
 Mỗi mode bắt buộc phải định nghĩa rõ:

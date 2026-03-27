@@ -1,6 +1,6 @@
 # Creativanta — Implementation Derivatives Master Plan
 
-> **Date**: 2026-03-27 | **Status**: ✅ COMPLETE (20/20) — AUDIT PASS v2
+> **Date**: 2026-03-28 | **Status**: ✅ COMPLETE (20/20) — AUDIT PASS v4
 
 ## Scope Decisions (Confirmed)
 - Connectors v1: ALL platforms (TikTok, Shopee, Lazada, YouTube, Instagram, Facebook)
@@ -28,21 +28,21 @@
 
 | # | File | Coverage |
 |---|---|---|
-| A1 | `impl_a1_database_schema.md` | **~70 tables**, PostgreSQL 17, RLS, pgvector, TimescaleDB |
+| A1 | `impl_a1_database_schema.md` | **~116 tables**, PostgreSQL 17, RLS, pgvector, TimescaleDB |
 | A2 | `impl_a2_protobuf_contracts.md` | ~41 gRPC services, ~215 RPCs, code generation |
 | A3 | `impl_a3_api_endpoint_map.md` | Full endpoint map, auth matrix, rate limits |
-| A4 | `impl_a4_domain_event_catalog.md` | **~155 domain events**, outbox pattern |
+| A4 | `impl_a4_domain_event_catalog.md` | **~215 domain events**, outbox pattern |
 | A5 | `impl_a5_design_system_tokens.md` | Colors, typography, spacing, component tokens |
 
 ### 🟠 P1 — Module-Level
 
 | # | File | Coverage |
 |---|---|---|
-| B1 | `impl_b1_screen_ui_flows.md` | **~187 screens** (web 101 + admin 36 + mobile 50) |
-| B2 | `impl_b2_sequence_diagrams.md` | 9 critical flow Mermaid diagrams |
+| B1 | `impl_b1_screen_ui_flows.md` | **235 screens** (web 117 + admin 36 + mobile 66 + shared 12 + notes 4) |
+| B2 | `impl_b2_sequence_diagrams.md` | 13 critical flow Mermaid diagrams (core + extended production) |
 | B3 | `impl_b3_queue_retry_design.md` | 10 queues, retry, DLQ, outbox, circuit breaker |
 | B4 | `impl_b4_connector_specs.md` | 6 platform specs, OAuth, capabilities, sync |
-| B5 | `impl_b5_rbac_permission_matrix.md` | 7 roles × ~85 permissions, Tower middleware |
+| B5 | `impl_b5_rbac_permission_matrix.md` | 7 roles × ~106 permissions + 8 admin roles × ~20 permissions, Tower middleware |
 | B6 | `impl_b6_cache_search_strategy.md` | Dragonfly keys, Meilisearch indexes, ClickHouse |
 | B7 | `impl_b7_docker_dev_environment.md` | Docker Compose, env files, Makefile |
 
@@ -68,21 +68,25 @@
 
 ---
 
-## Total Documentation Suite: 38+ files
+## Total Documentation Suite: 55 files
 
 | Category | Count | Coverage |
 |---|---|---|
-| Core (PRD, Freeze, Index) | 5 | Business + product |
-| Detail Design Packs | 9 | Module-level design |
-| Supplementary Specs | 4 | S16, S19, S25, S26 |
+| Core (PRD, Freeze, Index, ADR) | 6 | Business + product + tech stack |
+| Detail Design Packs | 6 | Domain-level design contracts |
+| Supplementary Specs | 4 | S16, S19, S24, S26 |
+| Contract Packs | 2 | Legal/Compliance, Pricing/Credits/Growth |
 | Implementation Derivatives | 20 | Engineering specs |
-| **Total** | **38** | **100% coverage** |
+| Screen Specs | 13 | High-fidelity screen specifications |
+| Screen Index | 1 | Master screen registry |
+| Plan | 1 | This file |
+| **Total** | **55** | **100% coverage** |
 
 ## Stitch Design Readiness
 
 | Requirement | Status |
 |---|---|
-| Screen inventory (all 3 sites) | ✅ 187 screens mapped |
+| Screen inventory (all 3 sites) | ✅ 235 screens mapped (13 spec files) |
 | Design tokens (colors, typography, spacing) | ✅ Complete |
 | Component specs | ✅ Token-based |
 | Empty/error states defined | ✅ Per module |
@@ -93,3 +97,20 @@
 → Connect Google Stitch MCP for UI/UX design generation
 → Initialize monorepo structure
 → Begin implementation Phase 1: Foundation
+
+---
+
+## Changelog
+
+| Date | Session | Changes |
+|---|---|---|
+| 2026-03-24 | PRD/Tech Stack Optimization | Migrated REST → ConnectRPC, synced all cross-references |
+| 2026-03-25 | Implementation Derivatives | Created 20 impl docs (A1-D5), schema, events, tokens |
+| 2026-03-25 | Implementation Derivatives v2 | Audit pass: +6 S16 tables, +12 S26 tables, +10 operational tables, +35 events, +36 admin screens |
+| 2026-03-26 | Admin Architecture | Finalized S26 Internal Admin, eliminated structural duplicates |
+| 2026-03-26 | Screen Specs Part 1 | Created 13 screen_specs files, 235 screens with ASCII wireframes |
+| 2026-03-27 | Screen Specs Part 2-3 | Completed remaining mobile screens (M40-M63), AI Studio modes |
+| 2026-03-28 | Final Audit | Fixed: RBAC alignment (H2), Copilot modes (H4), screen count (H5), PRD §33-§38 disambiguation (M1), Degraded capability state (H3/M2), platform_fee_schedules table (M6), error code mapping (M8), provider future-proofing note (M7), Tier C JSONB notes (M5), webhook event catalog (L6), mobile navigation architecture (L5), Pack numbering convention (L4), changelog (L3) |
+| 2026-03-28 | Deep Audit v3 | PRD §33-§38 collision fix (moved meta sections to Appendix A), +7 DB tables (cue_cards, highlights, channel_posts, reconciliation_records, skus, inventory_locations, stock_movements → ~97 total), Admin RBAC 4→8 roles, PRD §33.6 module mapping fix (M09/M16/M22 → M19/M13/M23) |
+| 2026-03-28 | Deep Audit v4 | +3 DB tables (agent_runs, policy_notes, fallback_paths → ~100 total), +4 M18 seeding events (~185 total), +4 admin RPCs (fee schedule mgmt → 28 admin RPCs), generation state sync doc, workflow state naming fix (waiting_external → waiting_external_condition), coupon revoked state documentation, screen index notation fix |
+| 2026-03-28 | Deep Audit v5 | +16 DB tables (video_edit_jobs, remix_blueprints, clip_collections, product_showcase_jobs, link_to_video_jobs, translation_jobs, style_packs, performance_reports, ab_test_experiments, challenge_definitions, challenge_progress, voice_clone_records, repurpose_jobs, link_health_records, platform_health_scores → ~116 total), +30 domain events (extended production, gamification, platform health → ~215 total), +40 API endpoints (production, gamification, health → ~310 RPCs), billing RBAC fix (Owner-only manage + billing:read for Admin/Manager), refund states aligned to Freeze §27.2 (+failed, +cancelled), workspace member seats aligned to Freeze §46A.1, event naming reconciliation note (Pack 03 CamelCase → A4 dot.notation), operator mode name mapping added, M11/M22 Channel Post boundary clarified, Tier C deferred object notes added, generation_jobs job_type expanded (+5 modes), +4 sequence diagrams (Remix Pipeline, Credit Reservation, Link-to-Video, Repurpose → 13 total), +8 extended feature QA acceptance scenarios (Remix, Credit, Showcase, Gamification, Link-to-Video, Repurpose, AB Test, Voice Clone), +8 Dragonfly cache keys for extended features, JSONB Shape Reference appendix (§25), daily/monthly limit interaction clarified |

@@ -480,7 +480,7 @@ CREATE INDEX idx_characters_workspace ON characters(workspace_id);
 CREATE TABLE continuity_packs (
   pack_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
-  pack_type VARCHAR(20) NOT NULL, -- character, brand, voice, style
+  pack_type VARCHAR(20) NOT NULL, -- character, brand, voice, style, lookbook, scene_memory (see §24 for Tier C storage)
   name VARCHAR(255) NOT NULL,
   character_id UUID REFERENCES characters(character_id),
   approved_references JSONB DEFAULT '[]',
@@ -543,7 +543,7 @@ CREATE TABLE generation_jobs (
   job_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   asset_id UUID REFERENCES assets(asset_id),
-  job_type VARCHAR(50) NOT NULL, -- video_gen, image_gen, tts, lip_sync, remix, clip_factory, quick_edit, multi_merge, product_showcase, img_to_video, link_to_video, translation, thumbnail
+  job_type VARCHAR(50) NOT NULL, -- video_gen, image_gen, tts, lip_sync, remix, clip_factory, quick_edit, multi_merge, product_showcase, img_to_video, link_to_video, translation, thumbnail, sound_studio, style_extraction, video_agent, performance_analysis, ab_variant
   provider VARCHAR(50) NOT NULL,
   model VARCHAR(100),
   pipeline_strategy VARCHAR(30), -- native_audio, audio_first, post_prod_lip_sync, simple_voice_over
@@ -570,6 +570,8 @@ CREATE INDEX idx_gj_workspace ON generation_jobs(workspace_id);
 CREATE INDEX idx_gj_status ON generation_jobs(status);
 CREATE INDEX idx_gj_asset ON generation_jobs(asset_id);
 ```
+
+> **State Sync Rule (Audit v4 — M1)**: `generation_jobs.status` tracks **per-attempt** execution state. `assets.generation_state` tracks the **aggregate-level** final result. When `generation_jobs.status` changes, `assets.generation_state` MUST be updated atomically to reflect the latest job outcome. The two fields are NOT independent — `assets.generation_state` is derived from the most recent `generation_jobs.status`.
 
 ### 7.5 continuity_violations
 ```sql
@@ -837,7 +839,8 @@ CREATE TABLE orders (
   post_id UUID, -- publish_item_id
   live_session_id UUID,
   customer_entity_id UUID REFERENCES entities(entity_id),
-  items JSONB DEFAULT '[]', -- [{sku, qty, price}]
+  items JSONB DEFAULT '[]', -- [{sku, qty, price}] — see §25.1 OrderItem
+  fee_breakdown JSONB DEFAULT '{}', -- per-order fee decomposition — see §25.1 FeeBreakdown
   shipping_address JSONB,
   reconciliation_state reconciliation_state DEFAULT 'awaiting_evidence',
   evidence_refs JSONB DEFAULT '[]',
@@ -851,6 +854,10 @@ CREATE INDEX idx_orders_state ON orders(lifecycle_state);
 CREATE INDEX idx_orders_platform ON orders(source_platform);
 CREATE INDEX idx_orders_ordered ON orders(ordered_at DESC);
 ```
+
+> **Audit v6 — M1 Fix**: `fee_breakdown JSONB` added to store per-order fee decomposition (platform fees, payment processing, shipping, tax, commissions, promo). This is the primary source for per-order profit calculation in M19. Shipping costs per order are extracted from `fee_breakdown.shipping_fee` and aggregated into `cost_items` for period-level tracking.
+
+> **Sponsor Inquiry Mapping (Audit v6 — L6)**: Sponsor Inquiry objects (M12/S16) are stored as `threads` with `thread_type = 'sponsor_inquiry'` and `intent = 'collaboration'`. No separate table is needed.
 
 ### 10.4 affiliate_links
 ```sql
@@ -1029,8 +1036,8 @@ CREATE TABLE live_sessions (
   planned_start_at TIMESTAMPTZ,
   actual_start_at TIMESTAMPTZ,
   actual_end_at TIMESTAMPTZ,
-  run_of_show JSONB DEFAULT '[]',
-  summary JSONB,
+  run_of_show JSONB DEFAULT '[]', -- see §25.2 RunOfShowItem
+  metrics_snapshot JSONB, -- post-live performance metrics — see §25.2 LiveMetricsSnapshot
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -1044,7 +1051,7 @@ CREATE TABLE workflows (
   workspace_id UUID NOT NULL,
   title VARCHAR(500) NOT NULL,
   workflow_type VARCHAR(30) NOT NULL DEFAULT 'custom', -- custom, recipe_installed, agent
-  trigger_definition JSONB NOT NULL,
+  trigger_config JSONB NOT NULL, -- see §25.4 TriggerConfig
   action_chain JSONB NOT NULL, -- Activepieces flow definition
   approval_requirements JSONB DEFAULT '[]',
   status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, active, paused, archived
@@ -1065,9 +1072,10 @@ CREATE TABLE workflow_runs (
   workspace_id UUID NOT NULL,
   workflow_id UUID NOT NULL REFERENCES workflows(workflow_id),
   trigger_event JSONB NOT NULL,
-  status VARCHAR(30) NOT NULL DEFAULT 'queued', -- queued,running,waiting_approval,waiting_external,succeeded,partially_succeeded,failed,cancelled,requires_manual_intervention
+  status VARCHAR(30) NOT NULL DEFAULT 'queued', -- queued,running,waiting_approval,waiting_external_condition,succeeded,partially_succeeded,failed,cancelled,requires_manual_intervention
   current_node VARCHAR(100),
   result_summary JSONB,
+  execution_log JSONB DEFAULT '[]', -- per-node execution trace — see §25.4 ExecutionLogEntry
   affected_object_refs JSONB DEFAULT '[]',
   side_effects_summary JSONB DEFAULT '[]',
   activepieces_run_id VARCHAR(255),
@@ -1079,6 +1087,37 @@ CREATE TABLE workflow_runs (
 CREATE INDEX idx_wr_workflow ON workflow_runs(workflow_id);
 CREATE INDEX idx_wr_status ON workflow_runs(status);
 ```
+
+### 12.4 agent_runs (Audit v4 — H1: Freeze §16.3 + §28.2)
+```sql
+CREATE TABLE agent_runs (
+  agent_run_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  recipe_id UUID REFERENCES recipe_templates(recipe_id),
+  workflow_id UUID REFERENCES workflows(workflow_id),
+  plan_summary TEXT NOT NULL,
+  execution_scope JSONB DEFAULT '{}', -- {scope_type, scope_refs[]}
+  approval_state VARCHAR(20) DEFAULT 'not_required', -- not_required, awaiting_approval, approved, rejected
+  current_state VARCHAR(30) NOT NULL DEFAULT 'planning', -- planning,awaiting_approval,executing,waiting_context,completed,partially_completed,failed,handed_off,cancelled
+  side_effects_summary JSONB DEFAULT '[]',
+  handoff_target_user_id UUID REFERENCES users(user_id),
+  handoff_context TEXT,
+  diagnostics_ref UUID,
+  audit_ref UUID,
+  context_refs JSONB DEFAULT '[]', -- [{type, id}]
+  credits_used INTEGER DEFAULT 0,
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  created_by UUID REFERENCES users(user_id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_ar_workspace ON agent_runs(workspace_id);
+CREATE INDEX idx_ar_state ON agent_runs(current_state);
+CREATE INDEX idx_ar_recipe ON agent_runs(recipe_id);
+```
+
+> **State Machine Ref**: Freeze Part 2, §28.2 — `planning → awaiting_approval → executing → waiting_context → completed/partially_completed/failed/handed_off/cancelled`. `handed_off` requires `handoff_target_user_id` to be set. `partially_completed` requires `side_effects_summary` to list unresolved actions.
 
 ---
 
@@ -1642,7 +1681,7 @@ CREATE TABLE approval_requests (
   object_id UUID NOT NULL,
   requested_by UUID NOT NULL REFERENCES users(user_id),
   approved_by UUID REFERENCES users(user_id),
-  status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, approved, rejected, expired, cancelled
+  status VARCHAR(20) NOT NULL DEFAULT 'not_required', -- not_required, pending_approval, approved, rejected, expired, cancelled
   reason TEXT,
   rejection_reason TEXT,
   expires_at TIMESTAMPTZ,
@@ -1668,6 +1707,53 @@ CREATE TABLE capability_snapshots (
 );
 CREATE INDEX idx_cs_workspace ON capability_snapshots(workspace_id, platform);
 ```
+
+### 18.2B policy_notes (Audit v4 — H2: Freeze §16.8, M22 write owner)
+```sql
+CREATE TABLE policy_notes (
+  policy_note_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID,
+  platform VARCHAR(50),
+  action_scope VARCHAR(100) NOT NULL, -- e.g., 'publish.tiktok.schedule', 'commerce.shopee.auto_reply'
+  note_type VARCHAR(30) NOT NULL, -- limitation, deprecation, policy_change, best_practice, warning
+  summary TEXT NOT NULL,
+  detail TEXT,
+  effective_from DATE,
+  effective_until DATE, -- NULL = ongoing
+  source_url TEXT, -- platform documentation link
+  severity VARCHAR(20) NOT NULL DEFAULT 'info', -- info, warning, critical
+  related_capability_state capability_state, -- if this note explains a capability state
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_pn_platform ON policy_notes(platform);
+CREATE INDEX idx_pn_scope ON policy_notes(action_scope);
+CREATE INDEX idx_pn_workspace ON policy_notes(workspace_id);
+```
+
+### 18.2C fallback_paths (Audit v4 — H2: Freeze §16.8, M22 write owner)
+```sql
+CREATE TABLE fallback_paths (
+  fallback_path_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID,
+  platform VARCHAR(50),
+  action_scope VARCHAR(100) NOT NULL, -- same scope taxonomy as policy_notes
+  capability_state capability_state NOT NULL, -- which degraded/unsupported state triggers this fallback
+  fallback_type VARCHAR(30) NOT NULL, -- manual_alternative, export_package, degraded_mode, workaround, contact_support
+  instructions TEXT NOT NULL, -- user-facing step-by-step
+  operator_instructions TEXT, -- operator-level detail
+  estimated_effort VARCHAR(50), -- e.g., '2 min', '5 min', 'requires admin'
+  related_policy_note_id UUID REFERENCES policy_notes(policy_note_id),
+  active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_fp_platform ON fallback_paths(platform);
+CREATE INDEX idx_fp_scope ON fallback_paths(action_scope);
+CREATE INDEX idx_fp_capability ON fallback_paths(capability_state);
+```
+
+> **Ref**: Freeze §16.8 — Policy Note and Fallback Path are Trust/Policy Support Records with M22 as primary write owner. Every `Degraded` or `Unsupported` capability state SHOULD have at least one associated `fallback_path`. Policy notes explain *why*, fallback paths explain *what to do*.
 
 ### 18.3 consent_records
 ```sql
@@ -1869,7 +1955,7 @@ CREATE TABLE coupons (
   min_order_amount DECIMAL(15,2),
   max_uses INTEGER,
   current_uses INTEGER DEFAULT 0,
-  lifecycle_state VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, active, paused, expired, revoked
+  lifecycle_state VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, active, paused, expired, retired, revoked (Note: 'revoked' is a downstream extension of Freeze §26.3 for fraud/policy enforcement cases)
   related_offer_ids UUID[] DEFAULT '{}',
   related_campaign_ids UUID[] DEFAULT '{}',
   valid_from TIMESTAMPTZ,
@@ -1890,7 +1976,7 @@ CREATE TABLE store_pages (
   description TEXT,
   layout JSONB DEFAULT '{}', -- {sections, hero, featured_products}
   theme_overrides JSONB DEFAULT '{}',
-  status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, published, archived
+  status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, published, hidden, retired
   custom_domain VARCHAR(255),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -1909,7 +1995,7 @@ CREATE TABLE membership_plans (
   currency VARCHAR(5) DEFAULT 'VND',
   billing_interval VARCHAR(10) NOT NULL DEFAULT 'monthly',
   benefits JSONB DEFAULT '[]', -- [{type, description}]
-  status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, active, archived
+  status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, active, hidden, paused, retired
   subscriber_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -1926,7 +2012,7 @@ CREATE TABLE refunds (
   amount DECIMAL(15,2) NOT NULL,
   currency VARCHAR(5) NOT NULL DEFAULT 'VND',
   reason TEXT NOT NULL,
-  lifecycle_state VARCHAR(20) NOT NULL DEFAULT 'requested', -- requested, approved, processing, completed, rejected
+  lifecycle_state VARCHAR(20) NOT NULL DEFAULT 'requested', -- requested, approved, rejected, processing, completed, failed, cancelled (aligned to Freeze §27.2)
   source_class source_class NOT NULL DEFAULT 'imported',
   source_platform VARCHAR(50),
   external_refund_id VARCHAR(255),
@@ -1947,7 +2033,7 @@ CREATE TABLE returns (
   refund_id UUID REFERENCES refunds(refund_id),
   return_type VARCHAR(20) NOT NULL, -- full, partial
   items JSONB DEFAULT '[]', -- [{sku, quantity, reason}]
-  lifecycle_state VARCHAR(20) NOT NULL DEFAULT 'requested', -- requested, approved, shipped, received, completed, rejected
+  lifecycle_state VARCHAR(20) NOT NULL DEFAULT 'initiated', -- initiated, approved, shipped_back, received, inspected, closed, rejected
   tracking_number VARCHAR(100),
   evidence_photo_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -2012,6 +2098,151 @@ CREATE TABLE live_segments (
 CREATE INDEX idx_ls_session ON live_segments(session_id);
 ```
 
+### 19.9B cue_cards (M17 — Tier B)
+```sql
+CREATE TABLE cue_cards (
+  cue_card_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id UUID NOT NULL REFERENCES live_sessions(session_id),
+  workspace_id UUID NOT NULL,
+  segment_id UUID REFERENCES live_segments(segment_id),
+  cue_type VARCHAR(30) NOT NULL, -- product_highlight, talking_point, price_drop, giveaway, qa_prompt, cta, transition
+  title VARCHAR(255) NOT NULL,
+  body TEXT,
+  pinned_product_id UUID REFERENCES products(product_id),
+  pinned_offer_id UUID REFERENCES offers(offer_id),
+  display_order SMALLINT NOT NULL DEFAULT 0,
+  triggered_at TIMESTAMPTZ, -- when the cue was actually shown/used
+  status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, active, used, skipped
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_cc_session ON cue_cards(session_id);
+CREATE INDEX idx_cc_segment ON cue_cards(segment_id);
+```
+
+### 19.9C highlights (M17 — Tier B)
+```sql
+CREATE TABLE highlights (
+  highlight_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id UUID NOT NULL REFERENCES live_sessions(session_id),
+  workspace_id UUID NOT NULL,
+  title VARCHAR(255),
+  start_offset_seconds INTEGER NOT NULL,
+  end_offset_seconds INTEGER NOT NULL,
+  highlight_type VARCHAR(30) NOT NULL, -- viral_moment, product_demo, best_sale, audience_peak, key_announcement
+  auto_detected BOOLEAN DEFAULT false, -- true = AI-detected, false = manual mark
+  asset_id UUID REFERENCES assets(asset_id), -- linked extracted clip
+  engagement_score REAL, -- 0-100 composite
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_hl_session ON highlights(session_id);
+```
+
+### 19.9D channel_posts (M11 — Tier B, Freeze §13.10)
+```sql
+CREATE TABLE channel_posts (
+  channel_post_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  publish_item_id UUID REFERENCES publish_items(publish_item_id),
+  connected_account_id UUID REFERENCES connected_accounts(connected_account_id),
+  external_post_id VARCHAR(255),
+  external_permalink TEXT,
+  post_status VARCHAR(30), -- active, deleted, hidden, flagged
+  engagement_summary JSONB DEFAULT '{}', -- {views, likes, comments, shares, saves}
+  imported_at TIMESTAMPTZ,
+  synced_at TIMESTAMPTZ,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_cp_workspace ON channel_posts(workspace_id);
+CREATE INDEX idx_cp_publish ON channel_posts(publish_item_id);
+CREATE UNIQUE INDEX idx_cp_external ON channel_posts(connected_account_id, external_post_id);
+```
+
+### 19.9E reconciliation_records (M19 — Tier B, Freeze §27.6)
+```sql
+CREATE TABLE reconciliation_records (
+  record_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  scope_type VARCHAR(50) NOT NULL, -- order_batch, settlement_batch, affiliate_period, campaign
+  scope_description TEXT,
+  related_order_ids UUID[] DEFAULT '{}',
+  related_settlement_ids UUID[] DEFAULT '{}',
+  status VARCHAR(30) NOT NULL DEFAULT 'open', -- open, awaiting_evidence, matching, partially_reconciled, fully_reconciled, conflict_detected, manually_overridden, closed
+  mismatches JSONB DEFAULT '[]', -- [{field, expected, actual, severity}]
+  override_reason TEXT,
+  override_by UUID REFERENCES users(user_id),
+  override_at TIMESTAMPTZ,
+  audit_event_id UUID,
+  period_start DATE,
+  period_end DATE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_rr_workspace ON reconciliation_records(workspace_id);
+CREATE INDEX idx_rr_status ON reconciliation_records(status);
+```
+
+### 19.9F skus (M13 — Tier C, Freeze §15.2)
+```sql
+CREATE TABLE skus (
+  sku_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  product_id UUID NOT NULL REFERENCES products(product_id),
+  sku_code VARCHAR(100) NOT NULL,
+  variant_attributes JSONB DEFAULT '{}', -- {color: "Red", size: "M"}
+  barcode VARCHAR(50),
+  price_override DECIMAL(15,2), -- NULL = use product base_price
+  cogs_override DECIMAL(15,2), -- NULL = use product cogs
+  weight_grams INTEGER,
+  inventory_enabled BOOLEAN DEFAULT true,
+  stock_quantity INTEGER NOT NULL DEFAULT 0,
+  low_stock_threshold INTEGER DEFAULT 10,
+  status VARCHAR(20) NOT NULL DEFAULT 'active', -- active, archived, discontinued
+  external_refs JSONB DEFAULT '[]', -- [{platform, external_sku_id}]
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(workspace_id, sku_code)
+);
+CREATE INDEX idx_skus_product ON skus(product_id);
+CREATE INDEX idx_skus_workspace ON skus(workspace_id);
+```
+
+### 19.9G inventory_locations (M13 — Tier C, Freeze §15.2)
+```sql
+CREATE TABLE inventory_locations (
+  location_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  location_type VARCHAR(30) NOT NULL, -- warehouse, store, supplier, in_transit
+  address JSONB DEFAULT '{}',
+  is_default BOOLEAN DEFAULT false,
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+### 19.9H stock_movements (M13 — Tier C, Freeze §15.2)
+```sql
+CREATE TABLE stock_movements (
+  movement_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  sku_id UUID NOT NULL REFERENCES skus(sku_id),
+  location_id UUID REFERENCES inventory_locations(location_id),
+  movement_type VARCHAR(30) NOT NULL, -- purchase, sale, return, adjustment, transfer, damage, platform_sync
+  quantity INTEGER NOT NULL, -- positive = in, negative = out
+  reference_type VARCHAR(50), -- order, return, manual, platform_import
+  reference_id UUID,
+  source_class source_class NOT NULL DEFAULT 'imported',
+  notes TEXT,
+  moved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_sm_sku ON stock_movements(sku_id);
+CREATE INDEX idx_sm_moved ON stock_movements(moved_at DESC);
+```
+
 ### 19.10 sample_requests & sample_shipments (M18)
 ```sql
 CREATE TABLE sample_requests (
@@ -2020,7 +2251,7 @@ CREATE TABLE sample_requests (
   campaign_id UUID REFERENCES campaigns(campaign_id),
   product_id UUID REFERENCES products(product_id),
   creator_entity_id UUID REFERENCES entities(entity_id),
-  status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, approved, rejected, shipped, received, reviewed
+  status VARCHAR(20) NOT NULL DEFAULT 'requested', -- requested, approved, declined, fulfilled, cancelled
   quantity INTEGER NOT NULL DEFAULT 1,
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -2035,7 +2266,7 @@ CREATE TABLE sample_shipments (
   carrier VARCHAR(50),
   shipped_at TIMESTAMPTZ,
   delivered_at TIMESTAMPTZ,
-  status VARCHAR(20) NOT NULL DEFAULT 'preparing', -- preparing, shipped, in_transit, delivered, returned
+  status VARCHAR(20) NOT NULL DEFAULT 'preparing', -- preparing, shipped, delivered, lost, returned, closed
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -2056,7 +2287,7 @@ CREATE TABLE recipe_templates (
   rating_avg REAL DEFAULT 0,
   review_count INTEGER DEFAULT 0,
   price DECIMAL(10,2) DEFAULT 0, -- 0 = free
-  status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, published, suspended, archived
+  status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, review_required, published, deprecated, retired
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -2068,7 +2299,7 @@ CREATE TABLE copilot_sessions (
   session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL,
   user_id UUID NOT NULL REFERENCES users(user_id),
-  mode VARCHAR(20) NOT NULL, -- creative, analytics, action, help
+  mode VARCHAR(20) NOT NULL, -- creative, analytics, action, video_production, help
   context_scope VARCHAR(50),
   messages JSONB DEFAULT '[]', -- [{role, content, timestamp}]
   total_credits_used INTEGER DEFAULT 0,
@@ -2146,4 +2377,598 @@ CREATE INDEX idx_car_workspace ON content_attribution_records(workspace_id);
 | `external_id` | Unique | connected_accounts, orders |
 | Full-text | GIN (tsvector) | products, scripts, ideas (via Meilisearch primary) |
 
-Total tables: **~88 tables** covering ALL canonical objects from Pack 02 §3.1-3.5 + S16 + S19 + S26 + operational.
+Total tables: **~116 domain tables** + 2 hypertables + ~12 junction/utility tables = **~130 total table definitions** covering ALL canonical objects from Pack 02 §3.1-3.5 + S16 + S19 + S26 + operational + Profit OS + Live Commerce (cue_cards, highlights) + channel_posts + reconciliation + inventory (skus, locations, movements) + Agent Runs (M21) + Policy Notes + Fallback Paths (M22).
+
+---
+
+## 21. Platform Fee Schedules (Profit OS — PRD §33.5)
+
+```sql
+CREATE TABLE platform_fee_schedules (
+  fee_schedule_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  platform VARCHAR(50) NOT NULL, -- shopee, lazada, tiktok_shop, amazon, shopify
+  region VARCHAR(50) NOT NULL DEFAULT 'VN', -- VN, TH, ID, SG, PH, MY, US, etc.
+  category VARCHAR(100), -- NULL = platform-wide default
+  fee_type VARCHAR(50) NOT NULL, -- commission, transaction, payment_processing, shipping_subsidy, service
+  fee_pct DECIMAL(5,4), -- e.g., 0.0500 = 5%
+  fee_fixed DECIMAL(10,2), -- fixed fee amount (nullable)
+  fee_currency VARCHAR(5) DEFAULT 'VND',
+  effective_from DATE NOT NULL,
+  effective_until DATE, -- NULL = current
+  source_url TEXT, -- link to platform's official fee page
+  last_verified_at TIMESTAMPTZ, -- when we last confirmed this fee is still accurate
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_pfs_platform ON platform_fee_schedules(platform, region);
+CREATE INDEX idx_pfs_effective ON platform_fee_schedules(effective_from, effective_until);
+```
+
+> **Seeding strategy**: Initial fee data seeded from official platform documentation. Auto-verified via scheduled crawl every 7 days. `last_verified_at` goes stale → alert to admin dashboard. User profit calculations reference the most recent `effective_from ≤ NOW()` row per platform/region/category.
+
+---
+
+## 22. Extended Production & Domain Object Tables (Audit v5 — C1: Pack 02 §3.4)
+
+> **Ref**: Pack 02 §3.4 domain objects, Pack 04 §9.6-9.16, PRD §37.3.
+> These tables back the extended production features and gamification challenges that were defined in design contracts but had no schema coverage. All tables include `workspace_id UUID NOT NULL` with RLS.
+
+### 22.1 video_edit_jobs (M07 — Production Modes)
+```sql
+CREATE TABLE video_edit_jobs (
+  job_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  mode VARCHAR(30) NOT NULL, -- quick_edit, clip_factory, multi_merge, remix, product_showcase, image_to_video, link_to_video, translation, video_agent
+  source_asset_ids UUID[] DEFAULT '{}', -- input assets
+  output_asset_ids UUID[] DEFAULT '{}', -- produced assets
+  generation_job_id UUID REFERENCES generation_jobs(job_id), -- linked AI generation job
+  character_id UUID REFERENCES characters(character_id),
+  brand_pack_id UUID REFERENCES continuity_packs(pack_id),
+  status VARCHAR(20) NOT NULL DEFAULT 'queued', -- queued, processing, completed, partially_completed, failed, cancelled
+  input_params JSONB NOT NULL DEFAULT '{}', -- mode-specific parameters
+  output_metadata JSONB DEFAULT '{}', -- mode-specific outputs
+  credits_estimated REAL,
+  credits_used REAL,
+  actual_cost_usd REAL,
+  error_message TEXT,
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  created_by UUID REFERENCES users(user_id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_vej_workspace ON video_edit_jobs(workspace_id);
+CREATE INDEX idx_vej_mode ON video_edit_jobs(mode);
+CREATE INDEX idx_vej_status ON video_edit_jobs(status);
+```
+
+### 22.2 remix_blueprints (M07 — AI Remix Studio, Pack 04 §9.5)
+```sql
+CREATE TABLE remix_blueprints (
+  blueprint_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  reference_asset_id UUID NOT NULL REFERENCES assets(asset_id), -- source video analyzed
+  output_asset_id UUID REFERENCES assets(asset_id), -- generated remix
+  video_edit_job_id UUID REFERENCES video_edit_jobs(job_id),
+  creative_dna JSONB NOT NULL DEFAULT '{}', -- {scene_count, hook_type, content_structure, pacing_profile, visual_style, audio_profile, transition_map}
+  remix_script TEXT, -- generated remix script
+  fidelity_level VARCHAR(20) NOT NULL DEFAULT 'adapt', -- match_1to1, adapt, loose
+  originality_score REAL, -- 0-100, must be > 70 (< 30% similarity)
+  status VARCHAR(20) NOT NULL DEFAULT 'analyzing', -- analyzing, analyzed, generating, generated, failed
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_rb_workspace ON remix_blueprints(workspace_id);
+CREATE INDEX idx_rb_ref ON remix_blueprints(reference_asset_id);
+```
+
+### 22.3 clip_collections (M07 — Clip Factory, Pack 04 §9.3)
+```sql
+CREATE TABLE clip_collections (
+  collection_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  source_asset_id UUID NOT NULL REFERENCES assets(asset_id),
+  video_edit_job_id UUID REFERENCES video_edit_jobs(job_id),
+  total_clips INTEGER NOT NULL DEFAULT 0,
+  clip_data JSONB NOT NULL DEFAULT '[]', -- [{clip_index, start_s, end_s, title, virality_score, selected}]
+  status VARCHAR(20) NOT NULL DEFAULT 'analyzing', -- analyzing, proposed, processing, completed, failed
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_cc_workspace ON clip_collections(workspace_id);
+CREATE INDEX idx_cc_source ON clip_collections(source_asset_id);
+```
+
+### 22.4 product_showcase_jobs (M07 — Pack 04 §9.6)
+```sql
+CREATE TABLE product_showcase_jobs (
+  showcase_job_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  video_edit_job_id UUID REFERENCES video_edit_jobs(job_id),
+  product_id UUID REFERENCES products(product_id),
+  style VARCHAR(30) NOT NULL, -- spin_360, tabletop, flip_reveal, virtual_tryon, lifestyle, unboxing, before_after, review_style
+  customization JSONB DEFAULT '{}', -- {background, duration, music, voice, text, cta, aspect_ratio, pacing, color_grade}
+  batch_id UUID, -- for batch processing
+  output_asset_id UUID REFERENCES assets(asset_id),
+  character_id UUID REFERENCES characters(character_id), -- for review_style
+  status VARCHAR(20) NOT NULL DEFAULT 'queued', -- queued, processing, completed, failed
+  credits_used REAL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_psj_workspace ON product_showcase_jobs(workspace_id);
+CREATE INDEX idx_psj_product ON product_showcase_jobs(product_id);
+CREATE INDEX idx_psj_batch ON product_showcase_jobs(batch_id);
+```
+
+### 22.5 link_to_video_jobs (M07 — Pack 04 §9.9)
+```sql
+CREATE TABLE link_to_video_jobs (
+  ltv_job_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  video_edit_job_id UUID REFERENCES video_edit_jobs(job_id),
+  source_url TEXT NOT NULL,
+  platform_detected VARCHAR(30), -- shopee, lazada, tiktok_shop, amazon, shopify, generic
+  scraped_data JSONB DEFAULT '{}', -- {name, price, images[], description, reviews[]}
+  script_template VARCHAR(30) NOT NULL DEFAULT 'problem_solution', -- problem_solution, listicle, testimonial, flash_sale, comparison
+  generated_script TEXT,
+  output_asset_id UUID REFERENCES assets(asset_id),
+  character_id UUID REFERENCES characters(character_id),
+  status VARCHAR(20) NOT NULL DEFAULT 'scraping', -- scraping, scripting, generating, completed, failed
+  credits_used REAL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_ltv_workspace ON link_to_video_jobs(workspace_id);
+```
+
+### 22.6 translation_jobs (M07 — Pack 04 §9.10)
+```sql
+CREATE TABLE translation_jobs (
+  translation_job_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  video_edit_job_id UUID REFERENCES video_edit_jobs(job_id),
+  source_asset_id UUID NOT NULL REFERENCES assets(asset_id),
+  target_languages VARCHAR(10)[] NOT NULL, -- e.g., {'en', 'th', 'id', 'ja'}
+  lip_sync_enabled BOOLEAN DEFAULT true,
+  per_language_status JSONB DEFAULT '{}', -- {en: 'completed', th: 'processing', ...}
+  output_asset_ids JSONB DEFAULT '{}', -- {en: asset_id, th: asset_id, ...}
+  total_credits_used REAL DEFAULT 0,
+  status VARCHAR(20) NOT NULL DEFAULT 'queued', -- queued, processing, partially_completed, completed, failed
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_tj_workspace ON translation_jobs(workspace_id);
+CREATE INDEX idx_tj_source ON translation_jobs(source_asset_id);
+```
+
+### 22.7 style_packs (M08 — Pack 04 §9.12)
+```sql
+CREATE TABLE style_packs (
+  style_pack_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  source_asset_id UUID NOT NULL REFERENCES assets(asset_id), -- video analyzed
+  extracted_style JSONB NOT NULL DEFAULT '{}', -- {caption, color_grade, transitions, pacing, text_overlay, audio_mix}
+  is_active BOOLEAN DEFAULT true,
+  continuity_pack_id UUID REFERENCES continuity_packs(pack_id), -- linked Continuity OS pack
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_sp_workspace ON style_packs(workspace_id);
+```
+
+> **Note**: Style Packs are distinct from `continuity_packs` — they capture a learned editing style (output of Style Learning), not brand/character identity. A Style Pack MAY create a corresponding `continuity_packs` entry (type='style') for use in production pipelines.
+
+### 22.8 performance_reports (M07 — Pack 04 §9.14)
+```sql
+CREATE TABLE performance_reports (
+  report_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  period VARCHAR(10) NOT NULL, -- daily, weekly, monthly
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  publish_items_analyzed UUID[] DEFAULT '{}',
+  metrics JSONB NOT NULL DEFAULT '{}', -- {views, engagement, best_content, worst_content, growth}
+  suggestions JSONB DEFAULT '[]', -- [{type, title, description, priority}]
+  generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_pr_workspace ON performance_reports(workspace_id);
+CREATE INDEX idx_pr_period ON performance_reports(period_start, period_end);
+```
+
+> **Credit cost**: 0 credits (included in plan, uses existing analytics data). Per Pack 04 §9.14 and Pack 08 §3.2.
+
+### 22.9 ab_test_experiments (M07/M10 — Pack 04 §9.15)
+```sql
+CREATE TABLE ab_test_experiments (
+  experiment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  source_asset_id UUID NOT NULL REFERENCES assets(asset_id),
+  variants JSONB NOT NULL DEFAULT '[]', -- [{variant_type, asset_id, publish_item_id, variant_label}]
+  metrics_snapshot JSONB DEFAULT '{}', -- per-variant metrics
+  winner_asset_id UUID REFERENCES assets(asset_id),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, running, completed, cancelled
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  auto_winner_criteria JSONB DEFAULT '{}', -- {metric, threshold, min_duration_hours}
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_abt_workspace ON ab_test_experiments(workspace_id);
+CREATE INDEX idx_abt_status ON ab_test_experiments(status);
+```
+
+> **Experiment Object Mapping (Audit v6 — L4)**: This `ab_test_experiments` table serves as the canonical storage for BOTH:
+> 1. **Packaging QA Experiments** (Freeze §13.4, M10 write owner) — comparing titles, thumbnails, hooks across publish items.
+> 2. **Video A/B Testing** (Pack 04 §9.15, M07/M10) — testing video variations for performance.
+>
+> Use the `variants[].variant_type` field to distinguish experiment scope. Content-level experiments use `variant_type = 'thumbnail' | 'title' | 'hook'`; full video tests use `variant_type = 'full_video'`.
+
+### 22.10 challenge_definitions (Gamification — PRD §37.3)
+```sql
+CREATE TABLE challenge_definitions (
+  challenge_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  challenge_type VARCHAR(30) NOT NULL, -- publish_count, revenue_target, engagement_target, streak, custom
+  target_value INTEGER NOT NULL,
+  reward_credits INTEGER NOT NULL DEFAULT 0,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  sort_order SMALLINT DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+### 22.11 challenge_progress (Gamification — PRD §37.3)
+```sql
+CREATE TABLE challenge_progress (
+  progress_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  challenge_id UUID NOT NULL REFERENCES challenge_definitions(challenge_id),
+  current_value INTEGER NOT NULL DEFAULT 0,
+  target_value INTEGER NOT NULL,
+  completed BOOLEAN DEFAULT false,
+  completed_at TIMESTAMPTZ,
+  reward_credited BOOLEAN DEFAULT false,
+  reward_transaction_id UUID, -- → ai_credit_transactions
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(workspace_id, challenge_id)
+);
+CREATE INDEX idx_chp_workspace ON challenge_progress(workspace_id);
+```
+
+> **Rules (Freeze §46A.8)**: Maximum 3 active challenges per week. Weekly challenges rotate Monday 00:00 UTC+7. Duplicate completion → no double credit (enforced by UNIQUE constraint + `reward_credited` flag).
+
+### 22.12 voice_clone_records (M08 — Pack 04 §12B)
+```sql
+CREATE TABLE voice_clone_records (
+  voice_clone_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  character_id UUID NOT NULL REFERENCES characters(character_id),
+  provider VARCHAR(50) NOT NULL DEFAULT 'elevenlabs', -- elevenlabs, future providers
+  provider_voice_id VARCHAR(255), -- external voice ID from provider
+  voice_name VARCHAR(255),
+  sample_audio_urls JSONB DEFAULT '[]', -- uploaded audio samples
+  clone_status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, processing, ready, failed
+  consent_record_id UUID REFERENCES consent_records(consent_id),
+  quality_score REAL, -- provider quality assessment
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_vcr_character ON voice_clone_records(character_id);
+CREATE INDEX idx_vcr_workspace ON voice_clone_records(workspace_id);
+```
+
+### 22.13 repurpose_jobs (M09 — PRD §36)
+```sql
+CREATE TABLE repurpose_jobs (
+  repurpose_job_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  source_asset_id UUID NOT NULL REFERENCES assets(asset_id),
+  pipeline_config JSONB NOT NULL DEFAULT '{}', -- {auto_clips, text_posts, thumbnails, carousel, blog, audio, captions, auto_schedule}
+  output_asset_ids UUID[] DEFAULT '{}',
+  status VARCHAR(20) NOT NULL DEFAULT 'queued', -- queued, processing, completed, partially_completed, failed
+  credits_used REAL DEFAULT 0,
+  created_by UUID REFERENCES users(user_id),
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_rj_workspace ON repurpose_jobs(workspace_id);
+CREATE INDEX idx_rj_source ON repurpose_jobs(source_asset_id);
+```
+
+> **Rule (Freeze §46A.8)**: All repurpose outputs = drafts. User MUST approve before publish. Max video length per tier: Free 5min, Starter 30min, Pro 60min, Business 120min.
+
+### 22.14 link_health_records (Pack 08 §5 — Affiliate Link Health)
+```sql
+CREATE TABLE link_health_records (
+  health_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  affiliate_link_id UUID NOT NULL REFERENCES affiliate_links(affiliate_link_id),
+  http_status INTEGER,
+  product_status VARCHAR(30), -- available, out_of_stock, discontinued, price_changed, unknown
+  commission_status VARCHAR(30), -- active, changed, suspended, unknown
+  link_status VARCHAR(20) NOT NULL DEFAULT 'healthy', -- healthy, warning, broken, expired
+  expiry_date TIMESTAMPTZ,
+  suggested_action TEXT,
+  checked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  alert_sent BOOLEAN DEFAULT false,
+  estimated_revenue_impact DECIMAL(15,2), -- daily revenue at risk
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_lhr_link ON link_health_records(affiliate_link_id);
+CREATE INDEX idx_lhr_status ON link_health_records(link_status);
+CREATE INDEX idx_lhr_checked ON link_health_records(checked_at DESC);
+```
+
+### 22.15 platform_health_scores (M22 — Connector Health)
+```sql
+CREATE TABLE platform_health_scores (
+  score_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  platform VARCHAR(50) NOT NULL,
+  connected_account_id UUID REFERENCES connected_accounts(connected_account_id),
+  overall_score REAL NOT NULL, -- 0-100
+  api_response_time_ms INTEGER,
+  error_rate_pct REAL,
+  capability_coverage_pct REAL,
+  last_successful_sync TIMESTAMPTZ,
+  degraded_features JSONB DEFAULT '[]',
+  score_explanation TEXT,
+  captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_phs_workspace ON platform_health_scores(workspace_id, platform);
+CREATE INDEX idx_phs_captured ON platform_health_scores(captured_at DESC);
+```
+
+Updated total: **~116 tables** covering ALL canonical objects from Pack 02 §3.1-3.5 + §3.4 extended domains + S16 + S19 + S26 + operational + Profit OS + Live Commerce + Agent Runs + Policy/Fallback + Extended Production + Gamification Challenges + Voice Clones + Repurpose Jobs + Platform Health.
+
+---
+
+## 23. Tier C Deferred Object Notes (Audit v5 — M1)
+
+> **Ref**: Pack 02 §3.3. The following Tier C objects from the "Canonical Supporting Entities" list are intentionally NOT stored as standalone PostgreSQL tables. Their data is either embedded in parent aggregates, tracked in specialized stores, or deferred.
+
+| Tier C Object | Storage Strategy | Rationale |
+|---|---|---|
+| **Click Event** | `api_call_logs` / ClickHouse time-series | High-volume clickstream data is time-series; not relational |
+| **Lead** | `entities` table (relationship_state='lead') | Leads are entities with a specific relationship state |
+| **Conversion Event** | `content_attribution_records` (§19.15) | Content→revenue attribution already tracked |
+| **Creator Payout** | `commissions` table (status='paid') + `settlements` | Payout is a settlement-linked commission state |
+| **Affiliate Statement** | Reconciliation Records + Evidence Objects | Statements are imported evidence for reconciliation |
+| **Invoice** | `billing_events` + Stripe Invoice API | Invoices are Stripe-managed; billing events track internally |
+| **Margin Snapshot** | `profit_snapshots` table | Margin is a computed field within profit snapshots |
+| **Experiment** | `ab_test_experiments` table (§22.9) | Now covered as standalone table |
+
+> **Rule**: All deferred objects maintain traceability through their parent aggregate refs. No deferred object is "lost" — it maps to an existing canonical structure.
+
+---
+
+## 24. Tier C Object JSONB Storage Notes
+
+> **Ref**: Freeze §10.3-10.4 — Tier C objects may be stored as JSONB within parent Tier A/B aggregates or as standalone tables, per engineering discretion.
+
+| Tier C Object | Storage Location | Format |
+|---|---|---|
+| **Decision Card** | `opportunities.expected_impact` + `expected_effort` | JSONB: `{score, description, revenue_estimate}` / `{score, description, time_estimate}` |
+| **Expected Impact Model** | `opportunities.expected_impact` | Same JSONB field as Decision Card |
+| **Expected Effort Model** | `opportunities.expected_effort` | Same JSONB field as Decision Card |
+| **Decision Outcome** | `opportunities.converted_to_type` + `converted_to_id` | VARCHAR + UUID ref |
+| **Lookbook** | `continuity_packs` table (type = 'lookbook') | Uses existing `continuity_packs` table with `pack_type = 'lookbook'`, references stored as `JSONB` in `settings` column |
+| **Scene Memory** | `continuity_packs` table (type = 'scene_memory') | Same pattern as Lookbook |
+| **Prompt Lineage Record** | `asset_generation_jobs.prompt_package` | JSONB within generation job record |
+| **Continuity Rule** | `continuity_packs.settings` → `rules[]` | JSONB array within pack settings |
+| **Continuity Violation** | Standalone table `continuity_violations` (§7.5) | Dedicated table with violation_type, severity, drift_score, asset/pack refs |
+
+> **Rule**: All Tier C objects stored as JSONB still maintain traceability via parent aggregate IDs. No Tier C object exists outside the canonical graph.
+
+---
+
+## 25. JSONB Shape Reference (Audit v5 — L2)
+
+> **Purpose**: Documents the expected shape of all major JSONB columns across the schema. Implementers MUST use these structures when reading/writing JSONB data. Types shown in TypeScript notation for clarity.
+
+### 25.1 Commerce JSONB Shapes
+
+#### `orders.items`
+```typescript
+interface OrderItem {
+  sku: string;
+  product_id?: string;      // UUID ref if matched
+  name: string;
+  quantity: number;
+  unit_price: number;        // in order currency
+  discount: number;          // applied discount
+  total: number;             // unit_price * quantity - discount
+  variation?: string;        // e.g., "Red, XL"
+  platform_item_id?: string; // external platform ref
+}
+// Column type: OrderItem[]
+```
+
+#### `orders.fee_breakdown`
+```typescript
+interface FeeBreakdown {
+  platform_fee: number;
+  payment_processing_fee: number;
+  shipping_fee: number;
+  tax: number;
+  commission: number;
+  promo_discount: number;
+  other_fees: { name: string; amount: number }[];
+  total_fees: number;
+  currency: string;
+}
+```
+
+### 25.2 Live Commerce JSONB Shapes
+
+#### `live_sessions.run_of_show`
+```typescript
+interface RunOfShowItem {
+  time_offset_min: number;   // minutes from session start
+  type: 'product_pin' | 'poll' | 'giveaway' | 'cta' | 'break' | 'talking_point';
+  title: string;
+  product_id?: string;       // for product_pin
+  notes?: string;
+  duration_min?: number;
+  executed: boolean;
+  executed_at?: string;      // ISO timestamp
+}
+// Column type: RunOfShowItem[]
+```
+
+#### `live_sessions.metrics_snapshot`
+```typescript
+interface LiveMetricsSnapshot {
+  peak_viewers: number;
+  avg_viewers: number;
+  total_viewers: number;
+  total_comments: number;
+  total_likes: number;
+  total_shares: number;
+  products_shown: number;
+  orders_during_live: number;
+  revenue_during_live: number;
+  engagement_rate: number;
+}
+```
+
+### 25.3 AI Production JSONB Shapes
+
+#### `generation_jobs.input_params`
+```typescript
+interface GenerationInputParams {
+  prompt: string;
+  negative_prompt?: string;
+  character_id?: string;
+  voice_id?: string;
+  style_preset?: string;
+  aspect_ratio: '9:16' | '16:9' | '1:1' | '4:5';
+  duration_seconds?: number;
+  continuity_pack_id?: string;
+  reference_asset_ids?: string[];
+  music_config?: { genre: string; mood: string; volume: number };
+  subtitle_config?: { enabled: boolean; style: string; language: string };
+}
+```
+
+#### `generation_jobs.result_metadata`
+```typescript
+interface GenerationResultMetadata {
+  width: number;
+  height: number;
+  duration_seconds: number;
+  file_size_bytes: number;
+  format: string;              // e.g., "mp4"
+  codec: string;               // e.g., "h264"
+  fps: number;
+  audio_tracks: number;
+  thumbnail_url?: string;
+  provider_metadata?: Record<string, unknown>;
+}
+```
+
+#### `remix_blueprints.creative_dna`
+```typescript
+interface CreativeDNA {
+  scene_count: number;
+  hook_type: string;           // e.g., "question", "shock", "story"
+  content_structure: string;   // e.g., "hook-problem-solution-cta"
+  pacing_profile: { avg_scene_duration_s: number; tempo: 'slow' | 'medium' | 'fast' };
+  visual_style: { color_mood: string; transition_types: string[]; text_overlay_style: string };
+  audio_profile: { music_genre: string; voice_pace: string; sfx_density: string };
+  transition_map: { from_scene: number; to_scene: number; type: string }[];
+}
+```
+
+#### `clip_collections.clip_data`
+```typescript
+interface ClipData {
+  clip_index: number;
+  start_s: number;
+  end_s: number;
+  title: string;
+  virality_score: number;      // 0-100
+  selected: boolean;
+  highlights: string[];        // key moments
+}
+// Column type: ClipData[]
+```
+
+#### `product_showcase_jobs.customization`
+```typescript
+interface ShowcaseCustomization {
+  background: string;          // color hex or preset name
+  duration: number;            // seconds
+  music: string;               // track id or 'none'
+  voice: string;               // character voice id or 'none'
+  text: { headline: string; subtitle?: string; cta: string };
+  aspect_ratio: '9:16' | '16:9' | '1:1';
+  pacing: 'slow' | 'medium' | 'fast';
+  color_grade: string;         // preset name or custom
+}
+```
+
+### 25.4 Workflow JSONB Shapes
+
+#### `workflows.trigger_config`
+```typescript
+interface TriggerConfig {
+  type: 'event' | 'schedule' | 'manual' | 'webhook';
+  event_type?: string;         // for event triggers
+  cron_expression?: string;    // for schedule triggers
+  webhook_path?: string;       // for webhook triggers
+  filters?: { field: string; operator: string; value: unknown }[];
+}
+```
+
+#### `workflow_runs.execution_log`
+```typescript
+interface ExecutionLogEntry {
+  node_id: string;
+  node_type: string;
+  started_at: string;
+  completed_at: string;
+  status: 'success' | 'failed' | 'skipped';
+  input: Record<string, unknown>;
+  output: Record<string, unknown>;
+  error?: { code: string; message: string };
+  duration_ms: number;
+}
+// Column type: ExecutionLogEntry[]
+```
+
+### 25.5 Gamification & Growth JSONB Shapes
+
+#### `ab_test_experiments.variants`
+```typescript
+interface ABVariant {
+  variant_type: 'thumbnail' | 'title' | 'hook' | 'full_video';
+  asset_id: string;
+  publish_item_id?: string;
+  variant_label: string;       // e.g., "A", "B", "Control"
+}
+// Column type: ABVariant[]
+```
+
+#### `ab_test_experiments.auto_winner_criteria`
+```typescript
+interface AutoWinnerCriteria {
+  metric: 'views' | 'engagement_rate' | 'click_through' | 'watch_time';
+  threshold: number;           // e.g., 1.5 = 50% better than other
+  min_duration_hours: number;  // minimum test duration before auto-declare
+  min_impressions: number;     // minimum data before declaring
+}
+```
+
+> **Implementation note**: All JSONB columns should be validated against these shapes at the application layer (Rust `serde` deserialize with `#[serde(deny_unknown_fields)]`). Database CHECK constraints are NOT used for JSONB validation — this is enforced at the API boundary.
+

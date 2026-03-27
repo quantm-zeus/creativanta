@@ -70,6 +70,9 @@ Mọi event bắt buộc có:
 - AssetRejected
 
 ### 3.1B Video Production (M07 — Production Modes)
+
+> **Naming reconciliation (Audit v5 — M2)**: Event names below use CamelCase for readability. Implementation MUST map these to the canonical `{domain}.{entity}.{action}` pattern defined in `impl_a4_domain_event_catalog.md` §15B. Example: `VideoEditJobCreated` → `production.video_edit_job.created`.
+
 - VideoEditJobCreated
 - VideoEditJobStarted
 - VideoEditJobCompleted

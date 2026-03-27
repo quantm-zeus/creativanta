@@ -45,6 +45,8 @@ Provider có thể là:
 
 Provider specifics không được rò lên canonical object model.
 
+> **⚡ Future-Proofing Note**: Provider versions listed above (Veo 3.1, Kling 3.0, Runway Gen-4, Flux 2, ElevenLabs, etc.) are current as of document date. The multi-provider adapter pattern (ADR-003, ADR-010) allows version upgrades and new provider additions without contract changes. When a new model version releases, only the provider routing config and cost tables need updating — no changes to canonical objects, state machines, or upstream contracts.
+
 ### 2.3 Video Production Pipeline — Smart Pipeline Router
 
 System tự động chọn pipeline tối ưu dựa trên character type, voice settings, và content type:

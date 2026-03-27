@@ -326,4 +326,221 @@ sequenceDiagram
     end
 ```
 
-These 9 diagrams cover the most critical flows. Additional flows (Live Commerce, Seeding Pipeline, Referral, Dunning, Content Repurpose) follow similar patterns documented in the upstream packs.
+These 9 diagrams cover the core critical flows.
+
+---
+
+## 10. AI Remix Pipeline (3-Phase — Audit v5 M5)
+
+> **Ref**: Pack 04 §9.5, AI Remix Studio contract
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant API as Rust API
+    participant Credits as Credit System
+    participant Remix as Remix Engine
+    participant AI as Gemini AI
+    participant Storage as R2 Storage
+    participant Compliance as Originality Checker
+
+    Note over User,Compliance: Phase 1 — Analysis (1 credit)
+    User->>API: analyze_reference(video_url)
+    API->>Credits: reserve(1 credit)
+    Credits-->>API: reservation_id
+    API->>Remix: extract_creative_dna(video)
+    Remix->>AI: analyze(scenes, hooks, pacing, structure)
+    AI-->>Remix: creative_dna_json
+    Remix->>Remix: create remix_blueprint
+    Remix-->>User: blueprint + Creative DNA card
+
+    Note over User,Compliance: Phase 2 — Generation (5-15 credits)
+    User->>API: generate_remix(blueprint_id, fidelity, character)
+    API->>Credits: reserve(estimated_cost)
+    Credits-->>API: reservation_id
+    API->>Remix: build_remix_script(blueprint, fidelity_level)
+    Remix->>AI: generate_script(creative_dna, user_character)
+    AI-->>Remix: remix_script
+    Remix->>AI: generate_video(remix_script, character, voice)
+    AI-->>Remix: video_output
+
+    Note over User,Compliance: Phase 3 — Originality Check
+    Remix->>Compliance: check_originality(reference, output)
+    Compliance->>Compliance: script_similarity_check (<30%)
+    Compliance->>Compliance: visual_similarity_check
+    Compliance->>Compliance: audio_similarity_check (expect 0%)
+
+    alt Originality Passed (score > 70%)
+        Compliance-->>Remix: passed(score=85)
+        Remix->>Storage: upload(output)
+        Remix->>Credits: commit(actual_cost)
+        Remix-->>User: remix_ready(asset_id, originality_score)
+    else Originality Failed (score < 70%)
+        Compliance-->>Remix: failed(score=45, details)
+        Remix->>Credits: release_reservation
+        Remix-->>User: remix_blocked(reason, suggestions)
+    end
+```
+
+---
+
+## 11. Credit Reservation (Escrow) Flow (Audit v5 M5)
+
+> **Ref**: Pack 08 §3.4, Freeze §46A.5 — Credit reservation prevents overspend during async AI operations.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Service as Domain Service
+    participant Credits as Credit System
+    participant Cache as Dragonfly
+    participant DB as PostgreSQL
+    participant AI as AI Provider
+    participant DLQ as Dead Letter Queue
+
+    User->>Service: request_ai_action(type, params)
+    Service->>Credits: estimate_cost(type, params)
+    Credits-->>Service: estimated=8 credits
+
+    Service->>Credits: reserve(workspace_id, 8, ttl=30min)
+    Credits->>Cache: DECRBY credits:balance:{ws} 8
+    Credits->>Cache: SET credits:reservation:{res_id} 8 EX 1800
+    Credits->>DB: INSERT ai_credit_transaction(type=reserved)
+    Credits-->>Service: reservation_id
+
+    Service->>AI: execute_action(params)
+
+    alt Success
+        AI-->>Service: result(actual_cost=6)
+        Service->>Credits: commit(reservation_id, actual=6)
+        Credits->>Cache: INCRBY credits:balance:{ws} 2
+        Credits->>Cache: DEL credits:reservation:{res_id}
+        Credits->>DB: UPDATE transaction(type=committed, amount=6)
+        Credits->>DB: INSERT transaction(type=refund_partial, amount=2)
+        Service-->>User: action_completed(result)
+    else Failure (AI error)
+        AI-->>Service: error(provider_error)
+        Service->>Credits: release(reservation_id)
+        Credits->>Cache: INCRBY credits:balance:{ws} 8
+        Credits->>Cache: DEL credits:reservation:{res_id}
+        Credits->>DB: UPDATE transaction(type=released)
+        Service-->>User: action_failed(error, credits_restored)
+    else Timeout (reservation expires)
+        Note over Cache: TTL expires after 30min
+        Cache-->>Credits: key expired event
+        Credits->>DB: UPDATE transaction(type=timeout_released)
+        Credits->>Cache: INCRBY credits:balance:{ws} 8
+        Credits->>DLQ: enqueue(orphaned_reservation)
+    end
+```
+
+---
+
+## 12. Link-to-Video Pipeline (Audit v5 M5)
+
+> **Ref**: Pack 04 §9.9 — Scrape product URL → Generate sales script → Create video
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant API as Rust API
+    participant Scraper as Product Scraper
+    participant AI as Gemini AI
+    participant VideoGen as Video Generator
+    participant Credits as Credit System
+    participant Storage as R2 Storage
+
+    User->>API: create_link_to_video(url, template, character)
+    API->>API: detect_platform(url)
+    API->>Credits: reserve(estimated_credits)
+
+    Note over API,Scraper: Phase 1 — Scrape
+    API->>Scraper: scrape_product(url, platform)
+    Scraper->>Scraper: extract(name, price, images, description, reviews)
+
+    alt Scrape Success
+        Scraper-->>API: scraped_data
+    else Scrape Failed (anti-bot, 404)
+        Scraper-->>API: scrape_failed
+        API->>Credits: release_reservation
+        API-->>User: scrape_error(manual_input_option)
+        User->>API: submit_manual_data(name, price, images)
+    end
+
+    Note over API,AI: Phase 2 — Script Generation
+    API->>AI: generate_script(scraped_data, template_style)
+    Note right of AI: template: problem_solution,<br/>listicle, testimonial,<br/>flash_sale, comparison
+    AI-->>API: sales_script
+    API-->>User: preview_script(editable)
+    User->>API: approve_script(optional_edits)
+
+    Note over API,Storage: Phase 3 — Video Generation
+    API->>VideoGen: generate(script, character, voice, images)
+    VideoGen->>VideoGen: compose scenes with product images
+    VideoGen->>Storage: upload(video)
+    Storage-->>VideoGen: video_url
+    VideoGen-->>API: generation_completed
+    API->>Credits: commit(actual_cost)
+    API-->>User: video_ready(asset_id, preview_url)
+```
+
+---
+
+## 13. Content Repurpose Pipeline (1 → 50+) (Audit v5 M5)
+
+> **Ref**: PRD §36, Pack 04 §9.13 — One video generates 50+ content pieces across formats.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant API as Rust API
+    participant Repurpose as Repurpose Engine
+    participant AI as Gemini AI
+    participant ClipEngine as Clip Factory
+    participant Credits as Credit System
+    participant Storage as R2 Storage
+
+    User->>API: create_repurpose_job(asset_id, pipeline_config)
+    API->>Credits: reserve(estimated_credits)
+    API->>Repurpose: start_pipeline(asset, config)
+
+    par Auto-Clips (3-5 clips)
+        Repurpose->>ClipEngine: analyze_and_clip(video)
+        ClipEngine-->>Repurpose: clip_collection[]
+    and Text Posts (5-10 posts)
+        Repurpose->>AI: extract_quotes_and_insights(transcript)
+        AI-->>Repurpose: text_posts[]
+    and Thumbnails (3-5 variants)
+        Repurpose->>AI: generate_thumbnails(key_frames)
+        AI-->>Repurpose: thumbnail_urls[]
+    and Carousel (1-2 sets)
+        Repurpose->>AI: create_carousel(key_points, images)
+        AI-->>Repurpose: carousel_slides[]
+    and Blog Post (1)
+        Repurpose->>AI: transcript_to_blog(transcript, seo_keywords)
+        AI-->>Repurpose: blog_html
+    and Audio Podcast (1)
+        Repurpose->>AI: extract_audio(video)
+        AI-->>Repurpose: audio_url
+    and Captions/Subtitles (SRT)
+        Repurpose->>AI: generate_captions(video)
+        AI-->>Repurpose: srt_file
+    end
+
+    Repurpose->>Storage: upload_all(outputs[])
+    Repurpose->>Credits: commit(actual_credits)
+
+    alt Auto-Schedule Enabled
+        Repurpose->>Repurpose: create_publish_items(draft, schedule)
+        Repurpose-->>User: repurpose_complete(50+ items, schedule_preview)
+    else Manual Review
+        Repurpose-->>User: repurpose_complete(50+ items, all_drafts)
+    end
+
+    Note over User: All outputs are DRAFTS<br/>User MUST approve before publish
+```
+
+---
+
+These 13 diagrams cover all critical and extended flows. The complete set provides implementation-ready sequence guidance for core system operations, AI production pipelines, commerce lifecycle, and credit management.
+

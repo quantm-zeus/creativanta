@@ -33,6 +33,14 @@
 | `subscription:{workspace_id}` | 30m | On tier change | Full subscription details |
 | `feature_flags:{flag_prefix}` | 5m | On toggle | Feature flag state |
 | `support:sla:{workspace_id}` | 5m | On tier change | SLA thresholds per plan |
+| `credits:reservation:{reservation_id}` | 30m | On commit/release | Credit reservation lock (Audit v5 — L6) |
+| `remix:originality:{blueprint_id}` | 1h | On re-check | Cached originality check result |
+| `ltv:scraped:{url_hash}` | 24h | Manual invalidation | Link-to-Video scraped product data cache |
+| `challenge:progress:{workspace_id}` | 5m | On progress update | Active challenge progress snapshot |
+| `production:job_status:{job_id}` | 30s | On status change | Real-time job status for UI polling |
+| `style:pack:{style_pack_id}` | 30m | On update | Style pack extracted settings |
+| `health:platform:{workspace_id}:{platform}` | 10m | On health check | Platform health score cache |
+| `ab_test:metrics:{experiment_id}` | 5m | On metrics update | AB test variant metrics snapshot |
 
 ### 1.3 Cache Invalidation Patterns
 

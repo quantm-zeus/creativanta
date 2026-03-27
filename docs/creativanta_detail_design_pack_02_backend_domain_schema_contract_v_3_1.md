@@ -524,6 +524,35 @@ Projection phải carry đủ:
 - Sort: `sort_by` + `sort_order` (asc/desc)
 - Filter: field-specific query params
 
+### 16.4 Error Code → User Message Mapping
+
+> **Cross-ref**: Pack 01 §9C (Error UX & Copy/Tone Contract). This table bridges backend error codes to user-facing error categories.
+
+| HTTP Code | Backend `error.code` | FE Error Category (Pack 01 §9C) | User-Facing Template |
+|---|---|---|---|
+| 400 | `validation.missing_field` | Validation | "Vui lòng điền {field_label}." |
+| 400 | `validation.invalid_format` | Validation | "{field_label} chưa đúng định dạng. {hint}." |
+| 401 | `auth.token_expired` | Permission / Auth | "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại." |
+| 401 | `auth.invalid_credentials` | Permission / Auth | "Email hoặc mật khẩu chưa đúng." |
+| 403 | `permission.insufficient` | Permission / Auth | "Bạn cần quyền {permission} để thực hiện. Liên hệ admin workspace." |
+| 403 | `feature.tier_restricted` | Capability / Platform | "Tính năng này cần gói {required_tier}. [Nâng cấp]" |
+| 403 | `credits.insufficient` | Financial / Proof | "Không đủ credits ({needed} credits). [Mua thêm]" |
+| 404 | `resource.not_found` | Validation | "{object_type} không tồn tại hoặc đã bị xóa." |
+| 409 | `state.transition_invalid` | Workflow / Agent | "Không thể {action} vì {object} đang ở trạng thái {current_state}." |
+| 409 | `conflict.duplicate` | Validation | "{object_type} đã tồn tại. Kiểm tra lại hoặc chọn tên khác." |
+| 422 | `business.rule_violation` | Workflow / Agent | "{explanation}. {suggested_fix}." |
+| 422 | `capability.unsupported` | Capability / Platform | "{platform} chưa hỗ trợ {action}. {fallback_suggestion}." |
+| 429 | `rate.limited` | Network / Connection | "Quá nhiều yêu cầu. Vui lòng thử lại sau {retry_after}s." |
+| 500 | `server.internal_error` | AI Generation *(or generic)* | "Có lỗi hệ thống. Vui lòng thử lại. Nếu lỗi tiếp tục, liên hệ hỗ trợ." |
+| 503 | `service.maintenance` | Network / Connection | "Hệ thống đang bảo trì. Dự kiến hoàn tất lúc {estimated_end}." |
+
+**Rules:**
+- Backend MUST populate `error.code` (snake_case) + `error.message` (human-readable Vietnamese) + `error.field` (if applicable)
+- FE MUST use `error.code` to select the appropriate error template and category (Pack 01 §9C.3)
+- FE MUST NOT expose `error.code` values directly to users — translate to action-oriented Vietnamese messages
+- `error.details` may contain structured data for FE to interpolate into templates (e.g., `{field_label}`, `{required_tier}`)
+- All 500 errors logged with `trace_id` for debugging; trace_id shown to user as "Mã lỗi: {trace_id}" for support reference
+
 ## 17. Commerce Edge Cases Contract
 
 ### 17.1 Inventory Overselling Prevention

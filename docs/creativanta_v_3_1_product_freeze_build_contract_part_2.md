@@ -1127,7 +1127,7 @@ Canonical capability states (UPDATED):
 - Platform fee database: auto-updated, per-category, per-region
 
 #### Copilot (§34) — FROZEN
-- 4 modes: Creative, Analytics, Action, Help
+- 5 modes: Creative, Analytics, Action, Video Production, Help
 - Entry points: floating chat, command bar (Cmd+K), voice (mobile), Morning Brief inline
 - Credit rules: analytics/help = 0 credits; generation = standard credit cost; cost shown BEFORE action
 - Daily query limits: Free 20, Starter 100, Pro unlimited, Business unlimited

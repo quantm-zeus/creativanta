@@ -3,6 +3,8 @@
 > **Upstream**: Pack 03 (Event/Workflow), Product Freeze v3.1
 > **Pattern**: `{domain}.{entity}.{action}` — past tense, immutable facts
 
+> **Implementation Rule (Audit v6 — L8)**: All event names in Rust code MUST use the `domain.entity.action` dot-notation (e.g., `content.script.approved`). Pack 03 documentation may reference CamelCase names (e.g., `ScriptApproved`) — these are the same events using documentation-style naming. The Rust `event_type: String` field uses dot-notation exclusively.
+
 ---
 
 ## 1. Event Envelope
@@ -278,10 +280,74 @@ struct EventMetadata {
 | `commission.paid` | M16 | M19, Notification | `{commission_id, payout_ref}` |
 | `store.page_published` | M15 | Analytics | `{store_page_id, slug}` |
 | `live_segment.created` | M17 | M19 | `{segment_id, session_id, type}` |
+| `sample_request.created` | M18 | M20, Notification | `{request_id, campaign_id, product_id, creator_entity_id}` |
+| `sample_request.approved` | M18 | M20, Notification | `{request_id, approved_by}` |
+| `sample_request.declined` | M18 | Notification | `{request_id, reason}` |
+| `creator_assignment.created` | M18 | M20, Notification | `{assignment_id, campaign_id, creator_entity_id}` |
 | `sample.shipped` | M18 | Notification | `{shipment_id, request_id, tracking}` |
 | `sample.delivered` | M18 | Notification | `{shipment_id}` |
 | `copilot.session_started` | §34 | Usage tracking | `{session_id, mode}` |
 | `copilot.session_ended` | §34 | Credits | `{session_id, credits_used}` |
+
+## 15B. Extended Production Events (Audit v5 — H1: Pack 03 §3.1B-C)
+
+> **Ref**: Pack 03 §3.1B-C, Pack 04 §9.6-9.16, Pack 02 §3.4.
+> **Naming reconciliation**: Pack 03 uses CamelCase display names (e.g., `VideoEditJobCreated`). Implementation MUST use the canonical `{domain}.{entity}.{action}` pattern below.
+
+| Event | Owner | Consumer | Payload Key Fields |
+|---|---|---|---|
+| `production.video_edit_job.created` | M07 | Queue, Credits | `{job_id, mode, workspace_id, estimated_credits}` |
+| `production.video_edit_job.started` | M07 | UI, Credits | `{job_id, mode}` |
+| `production.video_edit_job.completed` | M07 | UI, Credits, Profit OS | `{job_id, mode, credits_used, output_asset_ids}` |
+| `production.video_edit_job.failed` | M07 | UI, Credits (refund), Diagnostics | `{job_id, mode, error_code, error_message}` |
+| `production.quick_edit.applied` | M07 | UI | `{job_id, edits_applied[], asset_id}` |
+| `production.clip_factory.analyzed` | M07 | UI | `{collection_id, total_clips, source_asset_id}` |
+| `production.clip_factory.clips_proposed` | M07 | UI | `{collection_id, clip_data[]}` |
+| `production.virality_score.calculated` | M07 | UI, Analytics | `{asset_id, score, breakdown}` |
+| `production.multi_merge.assembled` | M07 | UI | `{job_id, output_asset_id, source_count}` |
+| `production.remix.analysis_started` | M07 | UI | `{blueprint_id, reference_asset_id}` |
+| `production.remix.creative_dna_extracted` | M07 | UI | `{blueprint_id, creative_dna}` |
+| `production.remix.generation_completed` | M07 | UI, Credits | `{blueprint_id, output_asset_id, originality_score}` |
+| `production.remix.originality_checked` | M07 | UI, Compliance | `{blueprint_id, score, passed}` |
+| `production.product_showcase.created` | M07 | Queue | `{showcase_job_id, product_id, style}` |
+| `production.product_showcase.completed` | M07 | UI, Credits | `{showcase_job_id, output_asset_id, credits_used}` |
+| `production.product_showcase.batch_queued` | M07 | Queue | `{batch_id, product_ids[], style}` |
+| `production.image_to_video.generated` | M07 | UI, Credits | `{job_id, output_asset_id}` |
+| `production.thumbnail.generated` | M07 | UI | `{job_id, output_urls[]}` |
+| `production.thumbnail.ab_test_started` | M07/M10 | Analytics | `{experiment_id, variant_count}` |
+| `production.link_to_video.scraped` | M07 | UI | `{ltv_job_id, scraped_data}` |
+| `production.link_to_video.generated` | M07 | UI, Credits | `{ltv_job_id, output_asset_id, credits_used}` |
+| `production.translation.started` | M07 | Queue | `{translation_job_id, source_asset_id, target_languages[]}` |
+| `production.translation.language_completed` | M07 | UI | `{translation_job_id, language, output_asset_id}` |
+| `production.translation.completed` | M07 | UI, Credits | `{translation_job_id, total_credits_used}` |
+| `production.sound_studio.track_generated` | M07 | UI, Credits | `{job_id, track_type, duration_s}` |
+| `production.style_pack.extracted` | M08 | UI | `{style_pack_id, source_asset_id}` |
+| `production.style_pack.applied` | M08 | UI | `{style_pack_id, target_job_id}` |
+| `production.video_agent.pipeline_started` | M07 | UI, Queue | `{job_id, pipeline_steps[]}` |
+| `production.video_agent.pipeline_completed` | M07 | UI, Credits | `{job_id, output_asset_ids[], total_credits}` |
+| `production.performance_report.generated` | M07 | UI | `{report_id, period, workspace_id}` |
+| `production.ab_test.started` | M10 | Analytics | `{experiment_id, source_asset_id, variant_count}` |
+| `production.ab_test.winner_determined` | M10 | UI, Analytics | `{experiment_id, winner_asset_id}` |
+| `production.repurpose.started` | M09 | Queue | `{repurpose_job_id, source_asset_id, pipeline_config}` |
+| `production.repurpose.completed` | M09 | UI, Credits | `{repurpose_job_id, output_asset_ids[]}` |
+
+## 15C. Gamification Challenge Events (Audit v5 — H1)
+
+| Event | Owner | Consumer | Payload Key Fields |
+|---|---|---|---|
+| `gamification.challenge.started` | Growth | UI | `{challenge_id, start_date, end_date}` |
+| `gamification.challenge.progress_updated` | Growth | UI | `{progress_id, challenge_id, current_value, target_value}` |
+| `gamification.challenge.completed` | Growth | UI, Credits | `{progress_id, challenge_id, reward_credits}` |
+| `gamification.voice_clone.created` | M08 | UI | `{voice_clone_id, character_id, status}` |
+| `gamification.voice_clone.ready` | M08 | UI | `{voice_clone_id, character_id}` |
+
+## 15D. Platform Health Events (Audit v5 — H1)
+
+| Event | Owner | Consumer | Payload Key Fields |
+|---|---|---|---|
+| `connector.health_score.captured` | M22 | UI, Admin | `{score_id, platform, overall_score, degraded_features[]}` |
+| `affiliate.link_health.checked` | M16 | UI, Notification | `{health_id, link_status, estimated_revenue_impact}` |
+| `affiliate.link_health.broken` | M16 | Notification (Critical) | `{health_id, affiliate_link_id, suggested_action}` |
 
 ---
 
@@ -294,4 +360,41 @@ struct EventMetadata {
 | **Durable** | PostgreSQL + outbox pattern | Critical business events |
 | **NATS** | Pub/sub | High-throughput analytics events |
 
-**Total: ~180 event types** covering all 23 modules + S16/S19/S26 + commerce lifecycles + operational events.
+**Total: ~215 event types** covering all 23 modules + S16/S19/S26 + commerce lifecycles + operational events + M18 seeding lifecycle + extended production (M07 Pack 04 §9.6-9.16) + gamification challenges + platform health.
+
+---
+
+## 21. Webhook-Eligible Events (S24 Public API)
+
+> **Ref**: S24 (Public API). Events tagged below are available for external webhook delivery to third-party consumers via the Public API.
+
+### 21.1 Webhook Event Selection Criteria
+- Event must represent a **completed business action** (not intermediate states)
+- Event must **not** leak internal implementation details (e.g., provider route, internal actor IDs)
+- Event payload must be **workspace-scoped** (no cross-tenant data)
+- Events are delivered via HTTP POST with HMAC-SHA256 signature verification
+
+### 21.2 Webhook-Eligible Events
+
+| Event Type | Webhook Name | Payload (external) |
+|---|---|---|
+| `publish.succeeded` | `content.published` | `{publish_item_id, platform, external_url, published_at}` |
+| `publish.failed` | `content.publish_failed` | `{publish_item_id, platform, error_category}` |
+| `order.imported` | `order.created` | `{order_id, platform, total_amount, currency}` |
+| `order.state_changed` | `order.updated` | `{order_id, status, updated_at}` |
+| `refund.completed` | `refund.completed` | `{refund_id, order_id, amount, currency}` |
+| `thread.created` | `engagement.thread_created` | `{thread_id, type, intent, platform}` |
+| `asset.generation_completed` | `asset.ready` | `{asset_id, type, duration_secs}` |
+| `workflow_run.completed` | `workflow.completed` | `{run_id, workflow_id, status}` |
+| `subscription.changed` | `billing.plan_changed` | `{workspace_id, from_tier, to_tier}` |
+| `credits.exhausted` | `billing.credits_exhausted` | `{workspace_id}` |
+| `brand_deal.status_changed` | `brand_deal.updated` | `{deal_id, status, value}` |
+| `live.session_ended` | `live.ended` | `{session_id, duration_mins, summary}` |
+| `achievement.unlocked` | `gamification.achievement` | `{workspace_id, achievement_code}` |
+
+### 21.3 Webhook Configuration
+- Workspace Settings → API → Webhooks
+- Per-workspace, per-event-type subscription
+- Retry policy: 3 retries with exponential backoff (1s, 10s, 60s)
+- Failed delivery after 3 retries → logged, user notified, webhook suspended after 100 consecutive failures
+- Webhook secret rotation: available via Settings

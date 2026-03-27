@@ -661,3 +661,22 @@
 | Filter | Tap tab | — | List filtered by status |
 | Pull-to-refresh | Pull down | `TaskService/List` | Tasks refreshed |
 
+---
+
+## Empty States (Workflow, Live & Seeding Module)
+
+| Screen | Empty State | CTA |
+|---|---|---|
+| §78 Workflow List | "⚡ Tự động hóa quy trình đầu tiên. Workflow giúp tiết kiệm thời gian." | [+ Tạo workflow] [📋 Xem templates] |
+| §80 Run History | "📊 Chưa có lần chạy nào. Activate workflow để bắt đầu." | [▶ Activate] |
+| §81 Recipe Templates | "📋 Không tìm thấy template phù hợp." | [🔍 Thử tìm kiếm khác] |
+| §82 Approval Queue | "✅ Không có gì cần duyệt. Good job!" | — |
+| §83 Task Queue | "📋 Không có task nào. Tạo task thủ công hoặc thiết lập workflow tự động." | [+ Tạo task] |
+| §84 Agent Runs | "🤖 Chưa có agent nào hoạt động." | — |
+| §85 Live Planner | "🔴 Lên kế hoạch phiên live selling đầu tiên." | [+ Tạo phiên live] |
+| §89 Sample Requests | "🌱 Quản lý mẫu sản phẩm gửi cho reviewer." | [+ Tạo yêu cầu mẫu] |
+| §91 Seeding Campaigns | "🌱 Tạo campaign seeding đầu tiên để tăng reach." | [+ Tạo campaign] |
+| M8 Workflow Monitor | "⚙️ Không có workflow nào đang chạy." | [+ Tạo workflow mới] |
+| M35 Approval Queue | "✅ Tuyệt vời! Không còn gì cần duyệt." | — |
+| M37 Task Queue | "📋 Danh sách trống. Không có task nào." | — |
+

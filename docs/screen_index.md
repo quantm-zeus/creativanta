@@ -1,6 +1,6 @@
 # Screen Index — All Screens Master Registry
 
-> **Total: 235 screens** (124 web + 66 mobile + 36 admin + 12 shared)
+> **Total: 235 screens** (117 web + 66 mobile + 36 admin + 12 shared + 4 notes)
 > Generated from screen_specs_01 through screen_specs_13
 
 ---
@@ -21,10 +21,11 @@
 | Settings/Diagnostics | screen_specs_10 | 12 | 5 | — | 17 |
 | Creator Pro/Support | screen_specs_11 | 11 | 5 | — | 16 |
 | Admin Site | screen_specs_12 | — | — | 36 | 36 |
-| Mobile/Shared | screen_specs_13 | — | 11 | — | 11+12 |
+| Mobile (extras) | screen_specs_13 | — | 11 | — | 11 |
+| Shared Components | screen_specs_13 | — | — | — | 12 |
 | **Total** | | **117** | **66** | **36** | **235** |
 
-> Note: 7 web screens (#96-99 in specs_10, #100-104 in specs_11) overlap with screens from those modules as they were added to fill gaps. The unique total accounting removes duplicates.
+> **Canonical Count**: 235 unique screens after deduplication. Some screens in specs_10 and specs_11 were added to fill cross-module gaps — the total above reflects unique screens only, with no duplicates.
 
 ---
 

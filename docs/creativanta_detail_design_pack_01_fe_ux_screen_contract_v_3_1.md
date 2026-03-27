@@ -383,7 +383,7 @@ Mọi object detail phải mở được tới object liên quan, không dùng d
 User-facing badges canonical:
 - Source: Official / Imported / Inferred / Estimated / Unreconciled
 - Confidence: High / Medium-High / Medium / Low-Medium / Low
-- Capability: Native / Read-only / Manual / Unsupported
+- Capability: Native / Read-only / Manual / Degraded / Unsupported
 - Diagnostics: healthy / warning / degraded / blocked
 
 ### 7.2 Why Panels
@@ -698,6 +698,84 @@ Mobile phải support:
 - large thumb targets
 - max 2-step critical actions cho urgent flows
 
+### 10.3 Mobile Navigation Architecture
+
+#### 10.3.1 Bottom Tab Bar (5 tabs)
+
+```
+┌─────────────────────────────────────────────────┐
+│  🏠 Home  │  📋 Tasks  │  ➕  │  💬 Inbox  │  👤 Me  │
+└─────────────────────────────────────────────────┘
+```
+
+| Tab | Primary Screen | Key Sub-Screens |
+|---|---|---|
+| **🏠 Home** | Home / Morning Brief | Notifications, Search, Quick Actions |
+| **📋 Tasks** | Task Queue + Approvals | Publish Queue, Workflow Runs, Follow-ups |
+| **➕ (Create)** | Quick Create Modal | New Idea, New Script, AI Studio, Quick Publish, Start Live |
+| **💬 Inbox** | Unified Thread List | Thread Detail, Reply, Assign, Triage |
+| **👤 Me** | Profile / Settings | Workspace Switcher, Connected Accounts, Credits, Referral |
+
+#### 10.3.2 Screen Hierarchy (per tab)
+
+```
+🏠 Home
+├── Morning Brief (default)
+├── Notifications Center
+├── Global Search (full-screen overlay)
+├── Diagnostics Overview
+└── Object Detail → (any Tier A object page)
+
+📋 Tasks
+├── Task Queue (default)
+├── Approval Queue
+├── Publish Queue / Jobs
+├── Workflow Run List
+│   └── Workflow Run Detail
+└── Follow-up Tasks
+
+➕ Create (modal / bottom sheet)
+├── New Idea → Idea Editor
+├── New Script → Script Editor
+├── AI Studio → Mode Selector
+│   ├── Quick Edit
+│   ├── Clip Factory
+│   ├── Multi-Merge
+│   ├── AI Remix Studio
+│   └── Product Showcase (+ other extended modes)
+├── Quick Publish
+└── Start Live Session → Live War Room
+
+💬 Inbox
+├── Thread List (unified, filterable)
+├── Thread Detail
+│   ├── Reply composer
+│   ├── Assign drawer
+│   └── Related objects drawer
+└── Sponsor Inquiry Detail
+
+👤 Me
+├── Profile / Account
+├── Workspace Switcher
+├── Connected Accounts
+├── Credit Balance & Usage
+├── Referral Center
+├── Gamification (Level, Streak, Achievements)
+├── Settings
+│   ├── Notification Preferences
+│   ├── Language
+│   ├── Privacy & Consent
+│   └── Data Export / Delete
+└── Help / Support
+```
+
+#### 10.3.3 Navigation Rules
+- Bottom tab bar: persistent across all screens (hidden during full-screen flows like AI generation, Live War Room)
+- Back button: system back, not custom (platform-native behavior)
+- Deep linking: all critical objects + notification targets must be deep-linkable
+- Tab memory: switching tabs preserves scroll position and state
+- Create button (center, elevated): always visible, opens action sheet / bottom sheet with context-aware options
+- Swipe-to-go-back: enabled for all detail screens (iOS default, Android material edge gesture)
 ## 11. Component Contract
 
 ### 11.1 Canonical Components

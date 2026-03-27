@@ -29,7 +29,8 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 | `workspace:members:invite` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `workspace:members:remove` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `workspace:roles:assign` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `workspace:billing:manage` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `workspace:billing:manage` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `workspace:billing:read` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `workspace:delete` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `account:connect` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `account:disconnect` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -183,6 +184,7 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 | `copilot:use_creative` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | `copilot:use_analytics` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `copilot:use_action` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `copilot:use_video_production` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `copilot:use_help` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `credits:view_balance` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | `credits:top_up` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -193,34 +195,45 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 
 > **Important**: Internal admin RBAC is completely isolated from workspace RBAC. Uses separate auth, separate JWT, VPN-only access.
 
-### 3.1 Admin Roles (4)
+### 3.1 Admin Roles (8)
 
 | Role | Scope | Description |
 |---|---|---|
 | **Super Admin** | Platform | Full access to all admin functions + destructive actions |
 | **Operations Admin** | Platform | User/workspace management, billing, support queue |
+| **Finance Admin** | Platform | Billing, credits, refunds, revenue analytics, fee schedules |
 | **Content Admin** | Platform | Moderation, content review, fraud investigation |
+| **Support Admin** | Platform | Support ticket management, user communication, escalation |
 | **Tech Admin** | Platform | System health, incidents, feature flags, queues |
+| **Analyst** | Platform | Read-only analytics, reporting, dashboards (no write) |
+| **Auditor** | Platform | Read-only audit logs, compliance checks, export (no write) |
 
 ### 3.2 Admin Permission Matrix
 
-| Permission | Super | Ops | Content | Tech |
-|---|---|---|---|---|
-| `admin:user:suspend` | ✅ | ✅ | ❌ | ❌ |
-| `admin:user:delete` | ✅ | ❌ | ❌ | ❌ |
-| `admin:credits:adjust` | ✅ | ✅ | ❌ | ❌ |
-| `admin:plan:override` | ✅ | ✅ | ❌ | ❌ |
-| `admin:refund:issue` | ✅ | ✅ | ❌ | ❌ |
-| `admin:impersonate` | ✅ | ✅ | ❌ | ❌ |
-| `admin:moderation:manage` | ✅ | ❌ | ✅ | ❌ |
-| `admin:fraud:investigate` | ✅ | ❌ | ✅ | ❌ |
-| `admin:support:manage` | ✅ | ✅ | ❌ | ❌ |
-| `admin:incident:manage` | ✅ | ❌ | ❌ | ✅ |
-| `admin:feature_flag:toggle` | ✅ | ❌ | ❌ | ✅ |
-| `admin:announcement:publish` | ✅ | ✅ | ❌ | ❌ |
-| `admin:maintenance:toggle` | ✅ | ❌ | ❌ | ✅ |
-| `admin:queue:manage` | ✅ | ❌ | ❌ | ✅ |
-| `admin:audit_log:read` | ✅ | ✅ | ✅ | ✅ |
+| Permission | Super | Ops | Finance | Content | Support | Tech | Analyst | Auditor |
+|---|---|---|---|---|---|---|---|---|
+| `admin:user:suspend` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `admin:user:delete` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `admin:credits:adjust` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `admin:plan:override` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `admin:refund:issue` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `admin:impersonate` | ✅ | ✅ | ❌ | ❌ | ⚠️ | ❌ | ❌ | ❌ |
+| `admin:moderation:manage` | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `admin:fraud:investigate` | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `admin:support:manage` | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `admin:incident:manage` | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `admin:feature_flag:toggle` | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `admin:announcement:publish` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `admin:maintenance:toggle` | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `admin:queue:manage` | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `admin:audit_log:read` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | ✅ | ✅ |
+| `admin:analytics:read` | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| `admin:billing:read` | ✅ | ✅ | ✅ | ❌ | ⚠️ | ❌ | ✅ | ✅ |
+| `admin:fee_schedule:manage` | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `admin:report:export` | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| `admin:compliance:read` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+
+> **Constraints**: Analyst and Auditor are read-only roles. Support Admin impersonation is read-only mode only (no OTP override). ⚠️ = scoped access (e.g., Support Admin sees billing status but not amounts).
 
 ---
 
@@ -280,5 +293,7 @@ pub async fn check_permission(
 }
 ```
 
-**Workspace RBAC**: ~105 permission keys × 7 roles = full matrix.
-**Admin RBAC**: ~15 permission keys × 4 admin roles = full admin matrix.
+**Workspace RBAC**: ~106 permission keys × 7 roles = full matrix.
+**Admin RBAC**: ~20 permission keys × 8 admin roles = full admin matrix.
+
+> **Audit v5 — C2 Fix**: `workspace:billing:manage` is Owner-only (non-delegatable, aligned to Freeze §46A.4 and Pack 02 §S07.2). `workspace:billing:read` added for Admin and Manager view access. Previous versions had a conflict where B5 allowed Admin billing manage but Pack 02 §S07.2 restricted it to Owner.

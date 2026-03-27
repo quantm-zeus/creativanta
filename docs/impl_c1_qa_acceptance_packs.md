@@ -135,3 +135,77 @@ Every module must pass 5 acceptance paths:
 | i18n | Manual | All strings translated, no hardcoded text |
 | Security | OWASP ZAP, cargo audit | No critical/high findings |
 | Admin site security | Manual | VPN-only, MFA required, audit trail |
+
+---
+
+## 5. Extended Feature Acceptance Scenarios (Audit v5 — M6)
+
+> **Ref**: Pack 04 §9.5-9.16, Pack 08 §3.4, PRD §37.3, Freeze §46A.8
+
+### AI Remix Studio (Pack 04 §9.5)
+| Test | Input | Expected Output | Verification |
+|---|---|---|---|
+| Originality pass | Reference video → remix with originality score 85% | Remix generated, asset created | `originality_score > 70` |
+| Originality fail (blocked) | Reference video → remix with similarity 60% | Remix BLOCKED, credits NOT deducted | Error returned with suggestions |
+| Script 0% copy | Deep copy of transcript | Generation blocked at Phase 2 | `transcript_similarity = 0%` enforced |
+| Rate limit (anti-abuse) | 21st remix in same day | Request rejected | `429 Too Many Requests` |
+| Mass-cloning flag | >50 remixes/week from unique sources | Auto-flag for review | Admin moderation case created |
+
+### Credit Reservation (Pack 08 §3.4)
+| Test | Input | Expected Output | Verification |
+|---|---|---|---|
+| Reserve → commit (normal) | 8 credits reserved, 6 actually used | 6 deducted, 2 returned | `balance = initial - 6` |
+| Reserve → release (AI failure) | 8 credits reserved, AI fails | All 8 restored | `balance = initial` |
+| Reserve → timeout (orphaned) | 8 reserved, no commit within 30min | All 8 restored via TTL expiry | DLQ entry created |
+| Insufficient balance (hard block) | Request 10 credits with 5 balance | Request rejected immediately | `credits_exhausted` error |
+| Concurrent reservations | 2 simultaneous requests, enough for 1 | First succeeds, second blocked | No negative balance possible |
+
+### Product Showcase Batch (Pack 04 §9.6)
+| Test | Input | Expected Output | Verification |
+|---|---|---|---|
+| Full batch success | 5 products, spin_360 style | 5 videos generated | All `showcase_job.status = completed` |
+| Partial batch failure | 5 products, 2 missing images | 3 succeed, 2 fail | `partially_completed`, credits for 3 only |
+| Empty product images | Product with no images uploaded | Job fails gracefully | Error: "Product requires images" |
+| Character + product | Product with review_style + character | Video with AI presenter | Character referenced in output |
+
+### Gamification Challenges (PRD §37.3)
+| Test | Input | Expected Output | Verification |
+|---|---|---|---|
+| Challenge completion | User reaches target_value | `completed = true`, credits awarded | `reward_credited = true` |
+| Duplicate completion attempt | Same challenge completed twice | Second attempt → no double credit | UNIQUE constraint prevents |
+| Weekly rotation | Monday 00:00 UTC+7 | Old challenges archived, new ones active | `challenge_definitions.is_active` toggled |
+| Max 3 active challenges | Admin creates 4th concurrent challenge | 4th challenge queued for next week | Validation error or auto-schedule |
+| Streak reset | User misses a day | Streak counter resets to 0 | `creator_progress.streak_count = 0` |
+
+### Link-to-Video Scraping (Pack 04 §9.9)
+| Test | Input | Expected Output | Verification |
+|---|---|---|---|
+| Shopee URL → video | Valid Shopee product URL | Product data scraped, video generated | `platform_detected = 'shopee'` |
+| Anti-bot blocked URL | URL returns 403 | Scrape fails → manual input fallback | UI shows manual data form |
+| Invalid URL | Non-product URL (e.g., blog post) | Scrape returns insufficient data | Error: "Could not detect product" |
+| Price change after scrape | Price changes between scrape and publish | Disclaimer added: "Price at time of creation" | Disclaimer visible in output |
+
+### Content Repurpose Pipeline (PRD §36)
+| Test | Input | Expected Output | Verification |
+|---|---|---|---|
+| Full pipeline (all enabled) | 10-min video, all outputs enabled | 50+ content pieces (clips, posts, thumbnails, blog, audio, captions) | All output types present |
+| Free tier video limit | 6-min video on Free tier (max 5min) | Rejected | Error: "Video exceeds tier limit" |
+| All outputs are drafts | Pipeline completes | All publish_items have `status = draft` | No auto-publish |
+| Partial pipeline (clips only) | Config: only auto_clips enabled | Only clips generated | Other output types empty |
+
+### AB Testing Engine (Pack 04 §9.15)
+| Test | Input | Expected Output | Verification |
+|---|---|---|---|
+| 2-variant test start | Source asset → 2 variants published | Experiment running, metrics tracked | `status = running` |
+| Auto-winner detection | Variant A gets 3x engagement after 48h | Winner auto-declared | `winner_asset_id` set |
+| Manual winner override | User manually picks winner | Winner updated | `status = completed` |
+| Experiment cancelled | User cancels running test | Test stopped, no winner | `status = cancelled` |
+
+### Voice Cloning (Pack 04 §12B)
+| Test | Input | Expected Output | Verification |
+|---|---|---|---|
+| Clone with consent | Audio samples + consent checkbox | Voice clone requested from provider | `consent_record_id` linked |
+| Clone without consent | Audio samples, no consent | Request blocked | Error: "Voice cloning requires consent" |
+| Clone quality check | Provider returns quality_score < threshold | Warning shown to user | Quality score visible |
+| Clone in generation | Clone voice used in video generation | Video uses cloned voice | `character.voice_clone_id` referenced |
+

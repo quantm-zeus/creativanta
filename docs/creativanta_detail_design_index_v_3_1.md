@@ -15,6 +15,8 @@ Mỗi pack phải:
 
 ## 2. Bộ pack
 
+> **📋 Pack Numbering Convention**: Packs 01-06 are the core **Detail Design Packs** (domain-level implementation contracts). Packs 07-08 are **Supplementary Contract Packs** (Legal/Compliance and Pricing/Credits/Growth). When downstream documents reference "Pack 07" or "Pack 08", these refer to the supplementary packs, NOT additional numbered detail design packs. All packs are filed as separate `.md` documents in the `/docs` directory.
+
 ### Pack 01 — FE UX / Screen Contract
 Phạm vi:
 - navigation
@@ -241,7 +243,7 @@ Phạm vi:
 | # | File | Content | Pack |
 |---|---|---|---|
 | 1 | `creativanta_prd_v_3_1_revised_part_1.md` | PRD Part 1: Product Definition, Vision, Goals, Target Users, Modules M01-M13 | Core |
-| 2 | `creativanta_prd_v_3_1_revised_part_2.md` | PRD Part 2: Modules M14-M23, Strategic Features §33-38, Cross-cutting §29-32 | Core |
+| 2 | `creativanta_prd_v_3_1_revised_part_2.md` | PRD Part 2: Modules M14-M23, Strategic Features §33-38, Cross-cutting §29-32, Appendix A (PRD Closure) | Core |
 | 3 | `creativanta_v_3_1_product_freeze_build_contract_part_1.md` | Product Freeze Part 1: Domain objects, state machines, capability matrix | Core |
 | 4 | `creativanta_v_3_1_product_freeze_build_contract_part_2.md` | Product Freeze Part 2: Commerce/Finance objects, trust model, deployment | Core |
 | 5 | `creativanta_detail_design_index_v_3_1.md` | This file — index + canonical rules + cross-reference table | Index |

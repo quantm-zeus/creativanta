@@ -285,8 +285,11 @@ echo "✅ Proto generation complete for Rust, TypeScript, Dart"
 | Connector | 1 | ~8 |
 | Creator Pro (S16) | 4 | ~20 |
 | Internal Admin (S26) | 7 | ~35 |
-| **TOTAL** | **~52 services** | **~270 RPCs** |
+| Extended Production (M07) | — (in Content) | ~40 |
+| Platform Health (M22) | — (in Admin) | ~8 |
+| **TOTAL** | **~52 services** | **~310 RPCs** |
 
 > **Note**: Internal Admin protos are NOT exposed via public ConnectRPC gateway. They use a separate admin-only gRPC endpoint protected by VPN + admin MFA.
+> **Audit v7 — I-7 fix**: Total updated from ~270 to ~310 to include Extended Production RPCs (Pack 04 §9.6-9.16) and Platform Health RPCs (M22) added in Audit v5. A3 (API Endpoint Map) is the authoritative count source.
 
 Actual `.proto` files will be created during implementation Phase 1 (foundation setup).

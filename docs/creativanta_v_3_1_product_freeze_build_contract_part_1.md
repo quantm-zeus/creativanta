@@ -219,6 +219,7 @@ Canonical confidence bands:
 - Native
 - Read-only
 - Manual
+- Degraded *(added per §46A.6 — partial functionality due to platform/policy change)*
 - Unsupported
 
 ### 8.5 Reconciliation States
@@ -871,6 +872,8 @@ Bắt buộc có:
 
 Primary write owner:
 - M11 post-sync boundary
+
+> **Boundary clarification (Audit v5 — M4)**: M11 owns Channel Post canonical write. M22 provides the connector/sync mechanism (API calls to platform). Data flows: Platform API → M22 connector → M11 post-sync boundary → Channel Post creation. M11 is the write owner; M22 is the data transport. This prevents M22 from becoming a shadow truth source.
 
 Read owners:
 - M01, M11, M12, M17, M19, M23

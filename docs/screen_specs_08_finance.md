@@ -456,3 +456,18 @@
 | Scan receipt | "Quét hóa đơn" | Camera → OCR | Auto-fill form fields |
 | Edit recent | Tap recent cost | — | Form pre-filled for editing |
 
+---
+
+## Empty States (Finance Module)
+
+| Screen | Empty State | CTA |
+|---|---|---|
+| §70 Profit Dashboard | "💰 Dữ liệu tài chính sẽ hiển thị khi có đơn hàng đầu tiên. Kết nối cửa hàng để bắt đầu." | [🔗 Kết nối cửa hàng] |
+| §71 Revenue Details | "💰 Chưa có doanh thu. Kết nối platform bán hàng." | [🔗 Kết nối] |
+| §72 Cost Manager | "📉 Chưa ghi nhận chi phí nào. Thêm chi phí đầu tiên hoặc kết nối track tự động." | [+ Thêm chi phí] |
+| §73 Reconciliation | "🔍 Chưa có giao dịch cần đối soát." | — |
+| §74 Proof Browser | "📋 Proof bundle sẽ tự tạo khi dữ liệu tài chính đủ." | — |
+| §75 Settlement Tracker | "💳 Chưa có settlement. Dữ liệu sẽ đồng bộ từ platform bán hàng." | — |
+| §76 Financial Reports | "📊 Cần ít nhất 7 ngày dữ liệu để tạo báo cáo." | — |
+| §77 AI Credit Usage | "🪙 Credits sẽ hiển thị khi bạn bắt đầu tạo nội dung AI." | [🎬 Tạo nội dung AI đầu tiên] |
+

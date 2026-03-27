@@ -1098,3 +1098,22 @@
 | Preview | "Preview" | — | New tab with live preview |
 | Publish | "Publish" | `StoreService/Publish` | Store page live |
 | Save draft | Auto-save every 30s | `StoreService/SaveDraft` | Draft saved |
+
+---
+
+## Empty States (Commerce Module)
+
+| Screen | Empty State | CTA |
+|---|---|---|
+| §55 Product List | "🛍 Chưa có sản phẩm nào." | [+ Tạo thủ công] [📥 Import từ TikTok Shop / Shopee] |
+| §57 Offer List | "🏷 Tạo ưu đãi đầu tiên để tăng doanh số." | [+ Tạo offer] |
+| §59 Campaign Manager | "📊 Tạo campaign đầu tiên để theo dõi hiệu quả marketing." | [+ Tạo campaign] |
+| §61 Order Management | "📦 Đơn hàng sẽ hiển thị khi bạn kết nối TikTok Shop/Shopee." | [🔗 Kết nối cửa hàng] |
+| §63 Coupon Manager | "🎟 Tạo mã giảm giá để tăng chuyển đổi." | [+ Tạo mã mới] |
+| §64 Affiliate Links | "🔗 Tạo affiliate link đầu tiên để theo dõi commission." | [+ Tạo link] |
+| §65 Membership Plans | "🎖 Xây dựng cộng đồng trả phí với các gói thành viên." | [+ Tạo gói mới] |
+| §66 Store Pages | "🏪 Tạo trang bán hàng với visual editor." | [+ Tạo store page] |
+| §67 Refund Management | "✅ Không có yêu cầu hoàn tiền nào đang chờ xử lý." | — |
+| §68 Sample Requests | "📦 Quản lý mẫu sản phẩm gửi cho reviewer/influencer." | [+ Tạo yêu cầu mẫu] |
+| M30 Mobile Products | "🛍 Thêm sản phẩm đầu tiên." | [+ Thêm sản phẩm] |
+| M31 Mobile Orders | "📦 Kết nối cửa hàng để đồng bộ đơn hàng." | [🔗 Kết nối] |
