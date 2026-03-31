@@ -1,1 +1,17 @@
 .DS_Store
+
+# AI Agent config (personal, not committed)
+CLAUDE.local.md
+.antigravity/
+.antigravity/cache/
+.antigravity/conversations/
+.antigravity/brain/
+
+# Commit these (team config)
+# AGENTS.md
+# CLAUDE.md
+# GEMINI.md
+# .claude/rules/
+# .claude/settings.json
+# .agent/rules/
+# .agent/skills/
