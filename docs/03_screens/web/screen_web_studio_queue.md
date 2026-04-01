@@ -4,7 +4,7 @@
 > **Module**: M07 — AI Studio
 > **Route**: `/studio/queue`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: Pack 04 §6, Product Freeze §15, A1 Schema (generation_jobs, assets, credit_ledger), B5 RBAC §2.4
+> **Upstream**: Pack 04 §6, Product Freeze §15, A1 Schema (generation_jobs, assets, credit_transactions), B5 RBAC §2.4
 
 ---
 
@@ -52,7 +52,7 @@ The Generation Queue is the real-time monitoring hub for all AI generation jobs 
 
 ### Postconditions
 - Cancel/Retry actions persisted to `generation_jobs` table
-- Credit refunds processed for cancelled jobs via `credit_ledger`
+- Credit refunds processed for cancelled jobs via `credit_transactions`
 - Analytics events dispatched for all user interactions
 - Desktop notifications triggered on job completion (if permission granted)
 
@@ -206,10 +206,10 @@ GenerationQueuePage
 | Stage label | `generation_jobs.current_stage` | Via SSE | Text ("Generating visuals Scene 4/5") | Real-time |
 | ETA | `generation_jobs.estimated_remaining_ms` | Via SSE | "~1 min" / "~30 giây" | Real-time |
 | Credit cost | `generation_jobs.credit_cost` | `QueueService/List*` | Integer "50 credits" | Static per job |
-| Credit refund status | `credit_ledger WHERE ref=job_id AND type='refund'` | `QueueService/ListFailed` | "✅ Refunded" / "⏳ Processing" | 30s TTL |
+| Credit refund status | `credit_transactions WHERE ref=job_id AND type='refund'` | `QueueService/ListFailed` | "✅ Refunded" / "⏳ Processing" | 30s TTL |
 | Output metadata | `assets WHERE generation_job_id=job_id` | `QueueService/ListCompleted` | "720p · 45s · 14.2MB" | Static |
 | Summary counts | Aggregated from above | `QueueService/GetSummary` | Integers | 30s TTL |
-| Credits balance | `credit_ledger.balance` | `CreditService/GetBalance` | "320/1000" | Real-time SSE |
+| Credits balance | `credit_transactions.balance` | `CreditService/GetBalance` | "320/1000" | Real-time SSE |
 
 ---
 

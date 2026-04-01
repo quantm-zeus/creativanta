@@ -3,10 +3,9 @@ layer: features
 module: M21
 canonical: true
 domain: automation
-status: DRAFT
+status: READY
 last_updated: 2026-03-30
-blockers:
-  - API-M-001
+blockers: []  # API-M-001 resolved 2026-04-02 — RecipeService §2.8.2 (8 RPCs)
 ---
 
 # Feature: Recipe & Agent Center (M21)
@@ -202,5 +201,5 @@ Object: agent_run | DB column: `agent_runs.status`
 
 ## Open Questions / Blockers
 
-> **⚠️ BLOCKER: API-M-001** — `04_contracts/api_endpoint_map.md` §2.8 lists Recipe/Agent with only ~8 high-level RPCs but lacks per-endpoint detail. Full `RecipeService` and `AgentService` RPC tables needed before implementation.
-> See: [OPEN_BLOCKERS.md#API-M-001](../00_index/OPEN_BLOCKERS.md)
+> ✅ **RESOLVED: API-M-001** (2026-04-02) — `RecipeService` now fully defined in `api_endpoint_map.md` §2.8.2 with 8 RPCs: Install, Uninstall, List, Get, Run, GetRunStatus, ListRuns, Configure. Each RPC has Method, Auth, Rate Limit, Description.
+> Remaining gap: API-M-002 (JSON request/response examples not yet added).

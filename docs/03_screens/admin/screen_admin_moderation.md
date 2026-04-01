@@ -1,6 +1,6 @@
 # Screen: Admin — Content Moderation Queue
 
-> **Screen ID**: A09
+> **Screen ID**: A015
 > **Module**: Admin — Trust & Safety
 > **Route**: `/admin/moderation`
 > **Platform**: Admin Web (SvelteKit) — VPN-only

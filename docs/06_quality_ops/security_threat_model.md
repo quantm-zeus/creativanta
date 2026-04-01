@@ -26,6 +26,60 @@ last_verified: 2026-03-30
 
 ---
 
+## 1B. OAuth Token Security Contract
+
+> Source: Pricing/Credits/Growth Contract §9A
+
+### Storage Rules (MANDATORY)
+- All OAuth tokens encrypted at rest: **AES-256-GCM** with workspace-scoped encryption key
+- Tokens stored in `connected_accounts.access_token_encrypted` / `refresh_token_encrypted` columns
+- Tokens are **NEVER**:
+  - Stored in plaintext anywhere
+  - Logged in application logs, error traces, or audit events
+  - Returned in API responses (only `token_status: valid/expired/revoked`)
+  - Included in data export (GDPR export excludes token columns)
+
+### Token Lifecycle
+
+| State | Trigger | Action |
+|---|---|---|
+| `valid` | Initial OAuth grant | Store encrypted, set expiry |
+| `refreshing` | Access token expired | Background refresh using refresh token |
+| `valid` | Refresh succeeds | Update encrypted tokens, reset expiry |
+| `retry_1..3` | Refresh fails | Retry with exponential backoff (1s, 5s, 30s) |
+| `disconnected` | 3x refresh failures | Mark `connection_status = 'disconnected'`, notify user |
+| `revoked` | User disconnects or platform revokes | Delete tokens, update `connection_status = 'disconnected'`, notify user |
+
+### Scope Management
+- Each connection stores granted scopes in `connected_accounts.scopes` (JSONB array)
+- Scope comparison on reconnect: if fewer scopes granted than required → warn user
+- Scope audit: monthly automated check that stored scopes match platform requirements
+- Principle of least privilege: request only scopes needed for enabled features
+
+### PKCE Mandate
+- All OAuth 2.0 flows MUST use **PKCE (Proof Key for Code Exchange)**
+- Grant type: **Authorization Code with PKCE** (no implicit grant)
+- Code verifier: 128-character random string, SHA-256 challenge method
+- State parameter: CSRF-resistant, workspace-scoped, 10-minute expiry
+
+### Token Refresh Architecture
+```
+Token Expiry Check (background worker, every 5 min):
+1. SELECT accounts WHERE access_token_expiry < NOW() + INTERVAL '10 minutes'
+2. For each: attempt refresh using encrypted refresh_token
+3. Success → update encrypted tokens + expiry
+4. Failure → increment retry_count
+5. 3x failure → set connection_status = 'disconnected'
+6. Notify user: "Connection may be broken — please reconnect."
+```
+
+### Stale Token Detection
+- If `last_successful_api_call` > 72 hours → mark connection as `stale`
+- Stale connections shown with warning badge in M22 Capability Matrix
+- Automatic health check: attempt lightweight API call (e.g., get profile) to verify
+
+---
+
 ## 2. OWASP Top 10 (2025) Coverage
 
 | # | Vulnerability | Risk | Mitigation |

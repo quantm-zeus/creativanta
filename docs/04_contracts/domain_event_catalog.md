@@ -5,6 +5,8 @@ source_file: impl_a4_domain_event_catalog.md
 last_verified: 2026-03-30
 known_issues:
   - EVT-H-001
+resolved_issues:
+  - EVT-M-001  # connector.degraded + connector.recovered added §15D (2026-04-02)
 do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 ---
 
@@ -27,7 +29,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | §13-14 Morning Brief & Gamification | morning_brief.generated, achievement.unlocked, xp.earned, level.up |
 | §15 Creator Pro (S16) | link_in_bio.page_created, media_kit.generated, brand_deal.status_changed, etc. |
 | §15B Extended Production | production.video_edit_job.*, production.remix.*, production.clip_factory.*, etc. (~35 events) |
-| §15C-D Gamification & Health | gamification.challenge.*, connector.health_score.*, affiliate.link_health.* |
+| §15C-D Gamification & Health | gamification.challenge.*, connector.health_score.*, connector.degraded, connector.recovered, affiliate.link_health.* |
 | §16-18 Admin, Support, Operational | admin.user_suspended, moderation.case_created, file.uploaded, consent.granted, etc. |
 | §19 Commerce Life-Cycle | refund.*, return.*, chargeback.*, coupon.*, membership.*, commission.*, etc. |
 | §20 Event Transport | Tokio mpsc, Redis Streams, PostgreSQL outbox, NATS |
@@ -381,6 +383,8 @@ struct EventMetadata {
 | Event | Owner | Consumer | Payload Key Fields |
 |---|---|---|---|
 | `connector.health_score.captured` | M22 | UI, Admin | `{score_id, platform, overall_score, degraded_features[]}` |
+| `connector.degraded` | M22 | M11, M01, Notification, Diagnostics | `{platform, degraded_features[], overall_score, reason, detected_at}` |
+| `connector.recovered` | M22 | M11, M01, Notification | `{platform, recovered_features[], overall_score, downtime_minutes, recovered_at}` |
 | `affiliate.link_health.checked` | M16 | UI, Notification | `{health_id, link_status, estimated_revenue_impact}` |
 | `affiliate.link_health.broken` | M16 | Notification (Critical) | `{health_id, affiliate_link_id, suggested_action}` |
 
@@ -395,7 +399,7 @@ struct EventMetadata {
 | **Durable** | PostgreSQL + outbox pattern | Critical business events |
 | **NATS** | Pub/sub | High-throughput analytics events |
 
-**Total: ~215 event types** covering all 23 modules + S16/S19/S26 + commerce lifecycles + operational events + M18 seeding lifecycle + extended production (M07 Pack 04 §9.6-9.16) + gamification challenges + platform health.
+**Total: ~217 event types** covering all 23 modules + S16/S19/S26 + commerce lifecycles + operational events + M18 seeding lifecycle + extended production (M07 Pack 04 §9.6-9.16) + gamification challenges + platform health (including connector.degraded/recovered — EVT-M-001 resolved 2026-04-02).
 
 ---
 

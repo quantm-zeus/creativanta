@@ -3,7 +3,7 @@ layer: features
 module: M07
 canonical: true
 domain: production
-status: DRAFT
+status: READY
 last_updated: 2026-03-30
 ---
 

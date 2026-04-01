@@ -81,6 +81,63 @@ Mọi event bắt buộc có:
 
 > **Naming reconciliation (Audit v5 — M2)**: Event names below use CamelCase for readability. Implementation MUST map these to the canonical `{domain}.{entity}.{action}` pattern defined in `impl_a4_domain_event_catalog.md` §15B. Example: `VideoEditJobCreated` → `production.video_edit_job.created`.
 
+#### CamelCase → Canonical dot.notation Mapping Table
+
+> **EVT-H-001 Resolution**: This table provides the authoritative mapping between Pack 03's CamelCase display names and the canonical dot.notation event_type strings used in Rust code. The `event_type: String` field in `DomainEvent` MUST use the dot.notation column exclusively.
+
+| CamelCase (Pack 03 Display) | Canonical dot.notation (Code) | Section |
+|---|---|---|
+| TrendDetected | `trend.signal_detected` | §3.1 |
+| TrendUpdated | `trend.created` | §3.1 |
+| OpportunityCreated | `opportunity.created` | §3.1 |
+| OpportunityPrioritized | `opportunity.state_changed` | §3.1 |
+| OpportunityAssigned | `opportunity.state_changed` | §3.1 |
+| OpportunityConverted | `opportunity.converted` | §3.1 |
+| IdeaCreated | `idea.created` | §3.1 |
+| ScriptDrafted | `script.created` | §3.1 |
+| ScriptSubmittedForApproval | `script.submitted_for_approval` | §3.1 |
+| ScriptApproved | `script.approved` | §3.1 |
+| ScriptRejected | `script.rejected` | §3.1 |
+| AssetBriefCreated | `content.asset_brief.created` | §3.1 |
+| AssetGenerationRequested | `asset.generation_started` | §3.1 |
+| AssetGenerated | `asset.generation_completed` | §3.1 |
+| AssetGenerationFailed | `asset.generation_failed` | §3.1 |
+| AssetApproved | `asset.approved` | §3.1 |
+| AssetRejected | `content.asset.rejected` | §3.1 |
+| VideoEditJobCreated | `production.video_edit_job.created` | §3.1B |
+| VideoEditJobStarted | `production.video_edit_job.started` | §3.1B |
+| VideoEditJobCompleted | `production.video_edit_job.completed` | §3.1B |
+| VideoEditJobFailed | `production.video_edit_job.failed` | §3.1B |
+| QuickEditApplied | `production.quick_edit.applied` | §3.1B |
+| ClipFactoryAnalyzed | `production.clip_factory.analyzed` | §3.1B |
+| ClipFactoryClipsProposed | `production.clip_factory.clips_proposed` | §3.1B |
+| ViralityScoreCalculated | `production.virality_score.calculated` | §3.1B |
+| MultiMergeAssembled | `production.multi_merge.assembled` | §3.1B |
+| RemixAnalysisStarted | `production.remix.analysis_started` | §3.1B |
+| CreativeDnaExtracted | `production.remix.creative_dna_extracted` | §3.1B |
+| RemixGenerationCompleted | `production.remix.generation_completed` | §3.1B |
+| RemixOriginalityChecked | `production.remix.originality_checked` | §3.1B |
+| PublishJobCreated | `publish.queued` | §3.2 |
+| PublishExecutionSucceeded | `publish.succeeded` | §3.2 |
+| PublishExecutionFailed | `publish.failed` | §3.2 |
+| ConnectorDegraded | `connector.degraded` | §3.2 |
+| ConnectorRecovered | `connector.recovered` | §3.2 |
+| ThreadCreated | `thread.created` | §3.3 |
+| OrderImported | `order.imported` | §3.3 |
+| OrderStateUpdated | `order.state_changed` | §3.3 |
+| RefundRequested | `refund.requested` | §3.3 |
+| RefundCompleted | `refund.completed` | §3.3 |
+| WorkflowRunStarted | `workflow_run.started` | §3.4 |
+| WorkflowRunCompleted | `workflow_run.completed` | §3.4 |
+| WorkflowRunFailed | `workflow_run.failed` | §3.4 |
+| AgentRunCompleted | `agent_run.completed` | §3.4 |
+| RecipeTemplatePublished | `recipe.installed` | §3.4 |
+| ProofBundleAssembled | `proof_bundle.assembled` | §3.5 |
+| LiveSessionStarted | `live.session_started` | §3.5 |
+| LiveSessionEnded | `live.session_ended` | §3.5 |
+| SampleRequestCreated | `sample_request.created` | §3.5 |
+| SampleShipmentShipped | `sample.shipped` | §3.5 |
+
 - VideoEditJobCreated
 - VideoEditJobStarted
 - VideoEditJobCompleted
@@ -96,6 +153,36 @@ Mọi event bắt buộc có:
 - RemixOriginalityChecked
 
 ### 3.1C Extended Production (M07 — Pack 04 §9.6-9.16)
+
+#### CamelCase → Canonical dot.notation Mapping Table (§3.1C)
+
+| CamelCase (Pack 04 Display) | Canonical dot.notation (Code) |
+|---|---|
+| ProductShowcaseJobCreated | `production.product_showcase.created` |
+| ProductShowcaseJobCompleted | `production.product_showcase.completed` |
+| ProductShowcaseBatchQueued | `production.product_showcase.batch_queued` |
+| ImageToVideoGenerated | `production.image_to_video.completed` |
+| ThumbnailGenerated | `production.thumbnail.generated` |
+| ThumbnailABTestStarted | `production.thumbnail.ab_test_started` |
+| LinkToVideoScraped | `production.link_to_video.scraped` |
+| LinkToVideoGenerated | `production.link_to_video.completed` |
+| TranslationJobStarted | `production.translation.started` |
+| TranslationLanguageCompleted | `production.translation.language_completed` |
+| TranslationJobCompleted | `production.translation.completed` |
+| SoundStudioTrackGenerated | `production.sound_studio.track_generated` |
+| StylePackExtracted | `production.style_pack.extracted` |
+| StylePackApplied | `production.style_pack.applied` |
+| VideoAgentPipelineStarted | `production.video_agent.pipeline_started` |
+| VideoAgentPipelineCompleted | `production.video_agent.pipeline_completed` |
+| PerformanceReportGenerated | `production.performance_report.generated` |
+| ABTestExperimentStarted | `production.ab_test.experiment_started` |
+| ABTestWinnerDetermined | `production.ab_test.winner_determined` |
+| CreatorXPEarned | `gamification.xp.earned` |
+| CreatorLevelUp | `gamification.level.up` |
+| CreatorStreakUpdated | `gamification.streak.updated` |
+| CreatorAchievementUnlocked | `gamification.achievement.unlocked` |
+| CreatorQuestCompleted | `gamification.quest.completed` |
+
 - ProductShowcaseJobCreated
 - ProductShowcaseJobCompleted
 - ProductShowcaseBatchQueued

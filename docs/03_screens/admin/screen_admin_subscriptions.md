@@ -1,6 +1,6 @@
 # Screen: Admin — Subscription & Billing Management
 
-> **Screen ID**: A09
+> **Screen ID**: A021
 > **Module**: Admin — Revenue
 > **Route**: `/admin/subscriptions`
 > **Platform**: Web (SvelteKit) — VPN-only

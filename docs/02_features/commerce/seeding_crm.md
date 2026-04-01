@@ -3,10 +3,9 @@ layer: features
 module: M18
 canonical: true
 domain: commerce
-status: DRAFT
+status: READY
 last_updated: 2026-03-30
-blockers:
-  - API-M-001
+blockers: []  # API-M-001 resolved 2026-04-02 — SeedingService §2.8.4 (9 RPCs)
 ---
 
 # Feature: Seeding / Sample CRM (M18)
@@ -184,5 +183,5 @@ see [04_contracts/domain_event_catalog.md#19](../04_contracts/domain_event_catal
 
 ## Open Questions / Blockers
 
-> **⚠️ BLOCKER: API-M-001** — `04_contracts/api_endpoint_map.md` §2.8 lists Seeding with only ~8 high-level RPCs but lacks per-endpoint detail (request/response shapes, auth requirements, rate limits). Full `SeedingService` RPC table with endpoint specifications needed before implementation.
-> See: [OPEN_BLOCKERS.md#API-M-001](../00_index/OPEN_BLOCKERS.md)
+> ✅ **RESOLVED: API-M-001** (2026-04-02) — `SeedingService` now fully defined in `api_endpoint_map.md` §2.8.4 with 9 RPCs: CreateSample, Get, List, Approve, Ship, TrackDelivery, GetReport, CreateCampaign, ListCampaigns. Each RPC has Method, Auth, Rate Limit, Description.
+> Remaining gap: API-M-002 (JSON request/response examples not yet added).

@@ -10,7 +10,7 @@ last_updated: 2026-03-30
 > ⚠️ HUMAN REVIEW REQUIRED
 > File này được tổng hợp bởi AI từ legal docs.
 > PHẢI được review bởi người có thẩm quyền trước khi implement.
-> Reviewer: [NEEDS INPUT] | Review date: [NEEDS INPUT]
+> Reviewer: **Pending — Product Owner / Legal Counsel** (required before Phase 0 launch) | Review date: **Pre-launch mandatory** | Status: ⚠️ AWAITING HUMAN REVIEW
 
 ---
 

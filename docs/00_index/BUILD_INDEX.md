@@ -38,6 +38,10 @@ Creativanta is a **Proofed Trend-to-Profit Operating System** for creator commer
 | M22 | Capability Matrix | platform | 02_features/platform/capability_matrix.md | P3E |
 | M23 | Reporting / Admin / Billing | platform | 02_features/platform/reporting_admin_billing.md | P3E |
 | auth | Auth & Session (cross-cutting) | platform | 02_features/platform/auth.md | P3E |
+| — | **Supplementary Specs** | — | — | — |
+| copilot | Copilot (AI Operations Assistant) | platform | 02_features/platform/copilot.md | P3E |
+| referral | Referral & Growth Engine | platform | 02_features/platform/referral_growth.md | P3E |
+| help | Help Center, Changelog & Beta | platform | 02_features/platform/help_center.md | P3E |
 
 ## 3. Cross-Domain Dependency Graph
 

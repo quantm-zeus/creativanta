@@ -4,7 +4,7 @@
 > **Module**: M01 — Home & Decision (AI Assistant)
 > **Route**: `/copilot` (mobile app)
 > **Platform**: Mobile (Flutter)
-> **Upstream**: Product Freeze §34 (Copilot Tiers), A1 Schema (copilot_sessions, copilot_messages), B5 RBAC §2.14
+> **Upstream**: Product Freeze §34 (Copilot Tiers), A1 Schema (copilot_sessions §19.12 — messages as JSONB), B5 RBAC §2.14
 
 ---
 ## 1. Purpose & Context
@@ -51,7 +51,7 @@ The Mobile Copilot is a context-aware AI assistant accessible from any screen vi
 
 ### Postconditions
 - Copilot session logged in `copilot_sessions` table
-- Each message pair (user + AI) logged in `copilot_messages`
+- Each message pair (user + AI) logged in `copilot_sessions.messages` JSONB array
 - AI credit consumed per generative response (creative/analytics/action tiers per §34)
 - Any action executed via copilot is audited same as manual action
 
@@ -180,8 +180,8 @@ MobileCopilotPage
 |---|---|---|---|---|
 | User name | `users.display_name` | Pre-loaded (session) | First name | Session |
 | Context screen | Navigation state | Client-side | Badge label | — |
-| Chat history | `copilot_sessions` + `copilot_messages` | `CopilotService/GetSession` | Paginated messages (last 50) | 5m |
-| AI credits | `credit_ledger.balance` | `CreditService/GetBalance` | "10/100" | Real-time |
+| Chat history | `copilot_sessions.messages` (JSONB) | `CopilotService/GetSession` | Paginated messages (last 50) | 5m |
+| AI credits | `ai_credit_transactions` balance | `CreditService/GetBalance` | "10/100" | Real-time |
 | Credit cost per response | AI response metadata | Included in response | "2 credits" | — |
 | Trend data (in responses) | `trends` | AI context injection | Formatted inline | — |
 | Order data (in responses) | `orders` aggregation | AI context injection | Formatted inline | — |

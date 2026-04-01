@@ -3,7 +3,7 @@ layer: features
 module: M08
 canonical: true
 domain: content
-status: DRAFT
+status: READY
 last_updated: 2026-03-30
 ---
 

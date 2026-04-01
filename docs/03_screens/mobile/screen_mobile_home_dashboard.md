@@ -4,7 +4,7 @@
 > **Module**: M01 — Home & Decision Engine
 > **Route**: `/` (mobile app — default tab)
 > **Platform**: Mobile (Flutter)
-> **Upstream**: Pack 01 §4, Product Freeze §8/§9, A1 Schema (dashboards, alerts, publish_jobs, content_performance, orders, credit_ledger, threads, trends), B5 RBAC §2.7
+> **Upstream**: Pack 01 §4, Product Freeze §8/§9, A1 Schema (dashboards, alerts, publish_jobs, content_performance, orders, credit_transactions, threads, trends), B5 RBAC §2.7
 
 ---
 ## 1. Purpose & Context
@@ -203,7 +203,7 @@ MobileHomePage
 | Views (today) | `SUM(content_performance.views)` | same | "45.2K" (compact) | 5m |
 | Unread threads | `COUNT(threads WHERE unread=true)` | same | "23" with high-priority indicator | 2m |
 | Engagement rate | `SUM(engagements)/SUM(views)×100` | same | "8.2%" with trend | 5m |
-| AI credits | `credit_ledger.balance / plan.credits_total` | same | "12/100" with remaining count | 5m |
+| AI credits | `credit_transactions.balance / plan.credits_total` | same | "12/100" with remaining count | 5m |
 | Trending topics | `trends` top 3 by AI relevance score | `TrendService/GetTop(3)` | Title + score + platform badge | 30m |
 | Content pipeline | `COUNT(content) GROUP BY status/stage` | same | Stage chip with count | 5m |
 | Upcoming schedule | `publish_jobs WHERE scheduled >= now ORDER BY scheduled LIMIT 5` | same | Time + title + platform | 5m |

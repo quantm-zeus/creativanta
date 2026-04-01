@@ -3,7 +3,7 @@ layer: features
 module: M13
 canonical: true
 domain: commerce
-status: DRAFT
+status: READY
 last_updated: 2026-03-30
 ---
 
@@ -52,6 +52,10 @@ M13 exists as the **canonical commerce catalog and order truth layer** — the s
 2. **RULE-M13-002**: Every order MUST have `source_class` (official, imported, inferred, estimated, unreconciled) AND `lifecycle_state`. Order source class follows PRD §15.1 taxonomy — no ad-hoc labels. The source class determines how the order feeds into M19 profit calculations (PRD §23.13 AC, Pack 06 §3.1).
 3. **RULE-M13-003**: Order lifecycle state machine MUST follow canonical transitions: `created → confirmed → fulfilled → completed`. Terminal states: `completed`, `cancelled`, `refunded`, `partially_refunded`, `returned`. No state skipping — an order cannot jump from `created` to `completed` without passing through `confirmed` and `fulfilled` (DB schema §10.3).
 4. **RULE-M13-004**: Inventory truth MUST NOT be separated from stock movement logic. Stock movements are the source of truth for inventory quantities. Every stock change (sale, return, adjustment, transfer) creates a Stock Movement record. Current stock is DERIVED from movement ledger, not stored as a mutable counter that can desync (PRD §23.13 AC).
+   - **Query-time implementation**: A `current_stock` counter on `inventory_locations` is maintained as a **materialized view/trigger** — updated atomically on each stock_movement INSERT via PostgreSQL trigger (`AFTER INSERT ON stock_movements → UPDATE inventory_locations SET current_stock = current_stock + delta`). This counter is for UI display speed only.
+   - **Reconciliation**: A scheduled job (daily 04:00 UTC) runs `SELECT SUM(delta) FROM stock_movements WHERE product_id = X AND location_id = Y` and compares to `current_stock`. Mismatches trigger `inventory.discrepancy_detected` event → appears in EC-M13-005.
+   - **Cache**: `current_stock` values cached in Dragonfly (TTL: 60s, invalidated on stock_movement event). Screen specs showing real-time stock use this cache.
+   - **Source of truth hierarchy**: stock_movements table (authoritative) > current_stock counter (derived, fast) > Dragonfly cache (display, fast)
 5. **RULE-M13-005**: Product-to-content mapping tracks which products appear in which content pieces (scripts, assets, publish items). This mapping enables revenue attribution: when an order arrives, the system can trace Product → Content → Offer → Campaign to calculate content ROI (PRD §12.3, S16 §5).
 6. **RULE-M13-006**: Refund and return are separate objects. Refund = money reversal truth. Return = logistics/quantity reversal. They may coexist on the same order but have independent lifecycles. A return without refund and a refund without return are both valid states (Pack 06 §3.2).
 7. **RULE-M13-007**: Order fee breakdown (`fee_breakdown JSONB`) is the primary source for per-order profit calculation in M19. Fields: platform_fee, payment_processing_fee, shipping_fee, tax, commission, promo_discount. This decomposition MUST be populated at ingestion time when platform provides the data (DB schema §10.3, Audit v6 note).

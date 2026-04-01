@@ -3,7 +3,7 @@ layer: features
 module: M23
 canonical: true
 domain: platform
-status: DRAFT
+status: READY
 last_updated: 2026-03-30
 ---
 
@@ -89,10 +89,18 @@ Self-service workspace administration for creators and sellers: manage connected
 | trial | free | Trial expires without subscription | Downgrade to free tier |
 | active | active | Plan change | Upgrade/downgrade at period boundary |
 | active | grace_period | Payment fails | Dunning flow active (30 days) |
+| active | paused | Owner pauses subscription | Business+ tier only, max 90 days |
 | grace_period | active | Payment succeeds | Card updated or retry succeeds |
 | grace_period | free | 30 days expired | Auto-downgrade, data archived |
+| paused | active | Owner resumes OR max 90 days reached | Auto-resume with 7-day advance notification |
 | active | cancelled | Owner cancels | Access until period end |
 | cancelled | free | Period ends | Downgrade to free tier |
+
+> **Pause Rules (Business+ only)**:
+> - Maximum pause duration: 90 days
+> - During pause: data preserved, no billing, workspace read-only (view/export only, no create/publish/generate)
+> - 7-day advance notification before auto-resume: in-app + email
+> - Free/Starter/Pro tiers: pause NOT available — cancel instead
 
 ---
 
@@ -293,6 +301,90 @@ Support Admins in the internal admin site can:
 
 5. **Given** a workspace on the Pro plan submits a support ticket, **when** the ticket is routed, **then** first response SLA MUST be 8 hours, the user MUST have access to priority chat, and the ticket MUST show the correct SLA countdown in both user-facing (Part A) and admin-facing (Part B) interfaces.
 
+## Edge Cases
+
+### EC-M23-001: Payment Method Removal During Active Subscription
+- Condition: Owner removes their last payment method while on an active paid plan
+- Expected behavior: System blocks removal: "Cannot remove last payment method while on a paid plan. [Add new method first] or [Cancel subscription]." If API gateway fails to enforce, billing webhook catches at next renewal → enters grace_period with dunning flow.
+- Reference: RULE-M23-A01
+
+### EC-M23-002: Workspace Owner Account Deletion
+- Condition: Workspace Owner requests GDPR account deletion while workspace has 5 other active members
+- Expected behavior: System requires ownership transfer before deletion: "You are the owner of workspace [X] with 5 members. [Transfer ownership] before proceeding." If Owner refuses: workspace enters 30-day quarantine → notify members → auto-delete if no new owner claims.
+- Reference: RULE-M23-A02, S26 §12.2
+
+### EC-M23-003: Concurrent Impersonation Attempt
+- Condition: Two Support Admins try to impersonate the same user simultaneously
+- Expected behavior: System blocks second impersonation: "User [X] is already being viewed by [Agent Y]. Only one impersonation session per user is allowed." First session continues until 30-min timeout or explicit end.
+- Reference: RULE-M23-B03, S26 §4.3
+
+### EC-M23-004: Admin Override Frequency Alert
+- Condition: Finance Admin performs 15 credit adjustment overrides in a single day
+- Expected behavior: At override #11, system triggers: "Override 'credit_adjustment' used 11 times today (threshold: 10). [View all] [Continue anyway]." Notification sent to Super Admin. If override count exceeds 50/day, system requires Super Admin approval for each additional override.
+- Reference: RULE-M23-B02
+
+### EC-M23-005: Audit Log Integrity Verification Failure
+- Condition: System detects gap in audit log sequence (missing sequence numbers)
+- Expected behavior: Immediate Sev1 security alert to Super Admin + Technical Admin. System enters read-only mode for affected audit scope. Forensic investigation triggered. No audit data may be purged or modified during investigation. Incident created automatically in S26 §18.
+- Reference: RULE-M23-B01, S26 §12.1
+
+### EC-M23-006: SLA Timer During Planned Maintenance
+- Condition: Support ticket submitted during announced maintenance window
+- Expected behavior: SLA timer pauses during the maintenance window. Ticket shows: "⏸️ SLA paused — maintenance window active. Timer resumes at [time]." User notified of expected delay. Maintenance windows defined in S26 §18.3 status page.
+- Reference: SLA table, S26 §18.3
+
 ## Open Questions / Blockers
 
 - [NONE] — Admin endpoints defined in API map §6 (28 RPCs). Workspace admin in §2.8 (~15 RPCs).
+
+---
+
+## Appendix A: Subscription Pause Acceptance Scenario
+
+```gherkin
+Feature: Subscription Pause (Business+ Only)
+  Scenario: Business user pauses subscription
+    Given a Business tier workspace Owner
+    When they select "Pause Subscription" from billing settings
+    Then system confirms: "Your workspace will be read-only for up to 90 days. No billing during pause."
+    When confirmed
+    Then subscription status transitions to "paused"
+    And workspace becomes read-only (view/export only, no create/publish/generate)
+    And billing is stopped immediately
+    And a notification is scheduled for Day 83 (7 days before auto-resume)
+
+  Scenario: Auto-resume after 90 days
+    Given a paused workspace at Day 83
+    When the system sends 7-day advance notification
+    Then Owner receives in-app + email: "Your subscription resumes in 7 days. [Resume now] [Cancel subscription]"
+    When Day 90 is reached without action
+    Then subscription auto-resumes to "active"
+    And billing resumes at the original plan rate
+
+  Scenario: Free user attempts to pause
+    Given a Free tier workspace
+    When Owner looks for pause option
+    Then pause option is NOT shown (Free/Starter/Pro tiers: cancel instead)
+```
+
+## Appendix B: Bug Report Auto-Capture Fields
+
+> Source: Legacy S19 §6 — Auto-capture data for bug reports
+
+When a user submits a bug report, the system MUST auto-capture and attach the following diagnostic data:
+
+| Field | Source | Purpose |
+|---|---|---|
+| Last 20 console errors | Browser/App logger | Frontend error trace |
+| Network request failures (last 5 min) | Network interceptor | API failure correlation |
+| User's operator mode | `workspaces.default_operator_mode` | Context for UX issues |
+| User's plan tier | `workspace_members` → `workspaces.tier` | Tier-specific behavior |
+| Browser/App version | User-Agent header | Compatibility check |
+| Screen dimensions | `window.innerWidth × innerHeight` | Responsive layout issues |
+| Active feature flags | Feature flag service | Feature-specific bugs |
+| Current page/route | Router state | Navigation context |
+| Recent user actions (last 10) | Activity logger | Reproduction steps |
+| Workspace locale | `workspaces.timezone`, `language` | Localization issues |
+
+> All auto-capture data is included in the bug report payload. No PII (passwords, tokens, financial data) is captured. User is informed: "Diagnostic data will be attached to help resolve this issue faster."
+

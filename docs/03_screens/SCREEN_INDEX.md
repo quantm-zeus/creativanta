@@ -18,14 +18,15 @@ last_updated: 2026-03-31
 
 # Creativanta — Screen Inventory (Canonical)
 
-> **Total**: 233 screen files (129 Web + 61 Mobile + 31 Admin + 12 Shared)
+> **Total**: 237 screen files (132 Web + 62 Mobile + 32 Admin + 12 Shared)
+> **Note**: Counts verified against filesystem 2026-04-01
 > **Updated**: 2026-03-31 (v7 — Consolidated to docs/03_screens/)
 > **Status**: ⚠️ 98% COMPLETE — 5 lower-priority admin screens remaining
 > **Migrated from**: `docs/screens/SCREEN_INDEX.md` (base) + `docs/screen_index.md` (supplementary)
 
 ---
 
-## Web Screens (128 files)
+## Web Screens (132 files)
 
 ### M01 — Home & Navigation
 | ID | File | Screen |
@@ -350,7 +351,7 @@ last_updated: 2026-03-31
 
 ---
 
-## Admin Screens (31 files)
+## Admin Screens (32 files)
 
 ### Core
 | ID | File | Screen |
@@ -433,11 +434,11 @@ last_updated: 2026-03-31
 
 | Platform | Count | Status |
 |---|---|---|
-| Web | 129 (+1: Capability Matrix) | ✅ Complete |
-| Mobile | 61 | ✅ Complete (duplicate removed) |
-| Admin | 31 (+4: Fraud, GDPR, Config, Incidents, Admin Mgmt) | ⚠️ 5 still missing vs full S26 spec |
+| Web | 132 | ✅ Complete |
+| Mobile | 62 | ✅ Complete |
+| Admin | 32 | ⚠️ 5 still missing vs full S26 spec |
 | Shared | 12 | ✅ Complete |
-| **TOTAL** | **233** | **⚠️ 98% — remaining admin gaps noted** |
+| **TOTAL** | **237** | **⚠️ 98% — remaining admin gaps noted** |
 
 ### Still Missing vs Full S26 Spec
 | Screen | S26 Section | Priority |

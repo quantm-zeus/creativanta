@@ -3,10 +3,9 @@ layer: features
 module: M17
 canonical: true
 domain: commerce
-status: DRAFT
+status: READY
 last_updated: 2026-03-30
-blockers:
-  - API-M-001
+blockers: []  # API-M-001 resolved 2026-04-02 — LiveCommerceService §2.8.3 (11 RPCs)
 ---
 
 # Feature: Live Commerce War Room (M17)
@@ -166,5 +165,5 @@ see [04_contracts/database_schema.md#12.1](../04_contracts/database_schema.md)
 
 ## Open Questions / Blockers
 
-> **⚠️ BLOCKER: API-M-001** — `04_contracts/api_endpoint_map.md` §2.8 lists Live Commerce with only ~10 high-level RPCs but lacks per-endpoint detail (request/response shapes, auth requirements, rate limits). Full `LiveCommerceService` RPC table with endpoint specifications needed before implementation.
-> See: [OPEN_BLOCKERS.md#API-M-001](../00_index/OPEN_BLOCKERS.md)
+> ✅ **RESOLVED: API-M-001** (2026-04-02) — `LiveCommerceService` now fully defined in `api_endpoint_map.md` §2.8.3 with 11 RPCs: CreateSession, Get, List, StartSession, EndSession, AddCue, RemoveCue, HighlightProduct, GetAnalytics, UpdateRunOfShow, CreateHighlight. Each RPC has Method, Auth, Rate Limit, Description.
+> Remaining gap: API-M-002 (JSON request/response examples not yet added).

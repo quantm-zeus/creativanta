@@ -3,7 +3,7 @@ layer: features
 module: M15
 canonical: true
 domain: commerce
-status: DRAFT
+status: READY
 last_updated: 2026-03-30
 ---
 

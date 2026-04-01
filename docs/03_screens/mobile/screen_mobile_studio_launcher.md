@@ -4,7 +4,7 @@
 > **Module**: M07 — AI Video Studio
 > **Route**: `/studio` (bottom tab: 🎬)
 > **Platform**: Mobile (Flutter)
-> **Upstream**: Pack 01 §4, Product Freeze §14-17, A1 Schema (studio_jobs, studio_assets, credit_ledger), B5 RBAC §2.7
+> **Upstream**: Pack 01 §4, Product Freeze §14-17, A1 Schema (studio_jobs, studio_assets, credit_transactions), B5 RBAC §2.7
 
 ---
 ## 1. Purpose & Context
@@ -187,7 +187,7 @@ MobileStudioLauncherPage
 | Job progress | WebSocket per job | `ws://studio_jobs/{id}/progress` | Percentage + ETA | Real-time |
 | Mode list | Static config (8 modes) + dynamic pricing | `StudioService/GetModes()` | 2-column grid | 1h |
 | Credit cost per mode | `studio_modes.credit_cost` | Included in modes | "2-5 credits" | 1h |
-| Credit balance | `credit_ledger.balance` | `CreditService/GetBalance()` | "88/100" | 2m |
+| Credit balance | `credit_transactions.balance` | `CreditService/GetBalance()` | "88/100" | 2m |
 | Recent assets | `studio_assets ORDER BY created_at DESC LIMIT 10` | `StudioService/GetRecentAssets(10)` | Thumbnail scroll | 5m |
 | Asset count | `COUNT(studio_assets)` | Included in recent | "(24 assets)" | 5m |
 | Monthly usage | `SUM(credit_transactions WHERE month=current)` | `CreditService/GetMonthlyUsage()` | "12 credits used" | 5m |

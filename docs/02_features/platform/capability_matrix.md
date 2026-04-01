@@ -3,7 +3,7 @@ layer: features
 module: M22
 canonical: true
 domain: platform
-status: DRAFT
+status: READY
 last_updated: 2026-03-30
 ---
 
@@ -162,3 +162,43 @@ M22 exists as the **platform capability truth layer** — maintaining a real-tim
 ## Open Questions / Blockers
 
 - [NONE] — No critical blockers specific to M22. Platform health RPCs defined in API map §9 (~5 RPCs).
+
+---
+
+## Platform Health Score — Proactive Coaching (PRD §36B)
+
+> Source: PRD §36B, Pricing §11 line 869
+
+Beyond passive monitoring, the Platform Health Score MUST proactively surface actionable improvement suggestions:
+
+### Health Score Impact Rules
+
+| Metric Drop | Alert Content | CTA |
+|---|---|---|
+| Shop response rate < 90% | "Cần trả lời 3 tin nhắn để tăng lên >90%" | [Mở Inbox] |
+| Listing quality < 80% | "Sản phẩm A thiếu mô tả chi tiết" | [Sửa sản phẩm] |
+| Order fulfillment delay | "5 đơn hàng chưa xử lý > 24h" | [Xem đơn hàng] |
+| Engagement rate drop > 20% | "Tương tác giảm 25% tuần này" | [Xem phân tích] |
+| Connector auth expiring | "Kết nối TikTok hết hạn trong 3 ngày" | [Gia hạn] |
+
+### Acceptance Scenario
+
+```gherkin
+Feature: Platform Health Score Proactive Coaching
+  Scenario: Shop response rate drop triggers coaching
+    Given a seller's TikTok Shop response rate drops to 88%
+    When the health score component detects response_rate < 90%
+    Then a Home decision card appears: "Cần trả lời 3 tin nhắn để tăng lên >90%"
+    And the primary CTA links to the Unified Inbox filtered to unanswered messages
+    And the health score breakdown shows response_rate as "degraded"
+
+  Scenario: Overall platform health critical
+    Given a platform's health score drops below 50
+    When the system calculates the composite score
+    Then `connector.health_score.captured` event fires (with `overall_score < 50` and `degraded_features[]`)
+    And operator receives urgent notification
+    And the dashboard shows specific actionable steps to improve each component
+```
+
+> **Schema Cross-reference (GAP-M007 verification)**: Achievement-related schemas are: `achievement_definitions` + `achievement_records` (§14.2), `creator_progress` (§14.1, includes streak columns), `challenge_definitions` + `challenge_progress` (§22.10-22.11). See [database_schema.md](../04_contracts/database_schema.md). The gamification feature spec at `02_features/platform/gamification.md` references these schemas by table name — full field definitions are canonical in the DB schema contract only.
+

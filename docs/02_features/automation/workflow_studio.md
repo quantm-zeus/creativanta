@@ -3,10 +3,9 @@ layer: features
 module: M20
 canonical: true
 domain: automation
-status: DRAFT
+status: READY
 last_updated: 2026-03-30
-blockers:
-  - API-M-001
+blockers: []  # API-M-001 resolved 2026-04-02 — WorkflowService §2.8.1 (13 RPCs)
 ---
 
 # Feature: Workflow Studio (M20)
@@ -193,5 +192,5 @@ Object: workflow_run | DB column: `workflow_runs.status`
 
 ## Open Questions / Blockers
 
-> **⚠️ BLOCKER: API-M-001** — `04_contracts/api_endpoint_map.md` §2.8 lists Workflow with only ~12 high-level RPCs but lacks per-endpoint detail (request/response shapes, auth requirements, rate limits). Full `WorkflowService` RPC table with endpoint specifications needed before implementation.
-> See: [OPEN_BLOCKERS.md#API-M-001](../00_index/OPEN_BLOCKERS.md)
+> ✅ **RESOLVED: API-M-001** (2026-04-02) — `WorkflowService` now fully defined in `api_endpoint_map.md` §2.8.1 with 13 RPCs: Create, Get, List, Update, Activate, Deactivate, Run, InspectRun, GetRunLogs, ListRuns, Clone, Export, Import. Each RPC has Method, Auth, Rate Limit, Description.
+> Remaining gap: API-M-002 (JSON request/response examples not yet added).

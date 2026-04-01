@@ -3,7 +3,7 @@ layer: features
 module: M11
 canonical: true
 domain: publish
-status: DRAFT
+status: READY
 last_updated: 2026-03-30
 ---
 

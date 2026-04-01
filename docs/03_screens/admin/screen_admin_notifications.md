@@ -1,6 +1,6 @@
 # Screen: Admin — Notification Broadcast
 
-> **Screen ID**: A020
+> **Screen ID**: A027
 > **Module**: S26 — Internal Admin & Operations
 > **Route**: `/admin/notifications`
 > **Platform**: Admin Web (SvelteKit) — VPN-only access

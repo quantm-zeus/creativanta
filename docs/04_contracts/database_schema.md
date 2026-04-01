@@ -2,12 +2,13 @@
 layer: contracts
 canonical: true
 source_file: impl_a1_database_schema.md
-last_verified: 2026-03-30
-known_issues:
-  - DB-C-001
-  - DB-C-002
-  - DB-H-001
-  - DB-H-003
+last_verified: 2026-04-02
+resolved_issues:
+  - DB-C-001  # RLS FORCE added to 106 tables (2026-04-02)
+  - DB-C-002  # RLS ENABLE added to 106 tables (2026-04-02)
+  - DB-H-001  # REAL→NUMERIC(18,6) for all financial fields (previous session)
+  - DB-H-003  # deleted_at added to 51 entity tables (2026-04-02)
+  - DB-H-004  # 23 CHECK constraints added for lifecycle fields (2026-04-02)
 do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 ---
 
@@ -28,7 +29,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | §11 Finance & Proof (M19) | profit_snapshots, settlements, cost_items, reconciliation_records, evidence_items, proof_bundles |
 | §12 Workflow & Operations (M17-M21) | live_sessions, cue_cards, sample_requests, sample_shipments, workflows, workflow_runs, agent_runs, recipes |
 | §13 Billing, Admin, Diagnostics (M23) | credit_transactions, subscription_events, notification_records, feature_flags, audit_events, diagnostics_records |
-| §14 Gamification (§37.3) | achievements, achievement_progress, streaks, challenges, challenge_progress |
+| §14 Gamification (§37.3) | creator_progress, achievement_definitions, achievement_records, challenge_definitions (§22.10), challenge_progress (§22.11) |
 | §15 TimescaleDB Hypertables | content_metrics, engagement_metrics, commerce_metrics |
 | §16 Creator Pro Tools (S16) | link_in_bio_pages, link_in_bio_items, media_kits, rate_cards, brand_deals |
 | §17 Internal Admin (S26) | internal_admins, admin_sessions, moderation_cases, fraud_cases, support_tickets, incidents, system_announcements |
@@ -49,11 +50,14 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 ## 1. Multi-Tenant Strategy
 
 ```sql
--- Every tenant-scoped table includes workspace_id with RLS
+-- Every tenant-scoped table MUST include BOTH statements:
 ALTER TABLE <table> ENABLE ROW LEVEL SECURITY;
+ALTER TABLE <table> FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON <table>
   USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
+
+> **⚠️ RLS ENFORCEMENT RULE**: Every `CREATE TABLE` block for a tenant-scoped table (any table with `workspace_id`) MUST be followed by `ALTER TABLE <t> ENABLE ROW LEVEL SECURITY;` + `ALTER TABLE <t> FORCE ROW LEVEL SECURITY;`. Without FORCE, the table owner role bypasses RLS silently. See OPEN_BLOCKERS.md DB-C-001 / DB-C-002.
 
 All tables below include `workspace_id UUID NOT NULL` unless marked `[GLOBAL]`.
 
@@ -69,6 +73,8 @@ All tables below include `workspace_id UUID NOT NULL` unless marked `[GLOBAL]`.
 | Timestamps | `created_at`, `updated_at`, `deleted_at` (soft delete) |
 | Enums | PostgreSQL ENUM types, snake_case values |
 | Indexes | `idx_<table>_<columns>` |
+| Money/Credits | `NUMERIC(18,6)` — NEVER use REAL or FLOAT for financial amounts, credit balances, costs, or commissions. See DB-H-001. |
+| Scores (0-100) | `REAL` acceptable for non-financial scores (relevance, quality, drift). Always comment `-- 0-100 non-financial score`. |
 
 ---
 
@@ -115,6 +121,10 @@ CREATE TABLE workspaces (
 );
 CREATE INDEX idx_workspaces_owner ON workspaces(owner_user_id);
 CREATE INDEX idx_workspaces_slug ON workspaces(slug);
+ALTER TABLE workspaces ENABLE ROW LEVEL SECURITY;
+ALTER TABLE workspaces FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON workspaces
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 4.2 users [GLOBAL]
@@ -152,6 +162,10 @@ CREATE TABLE workspace_members (
 );
 CREATE INDEX idx_wm_workspace ON workspace_members(workspace_id);
 CREATE INDEX idx_wm_user ON workspace_members(user_id);
+ALTER TABLE workspace_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE workspace_members FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON workspace_members
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 4.4 brand_profiles
@@ -168,7 +182,12 @@ CREATE TABLE brand_profiles (
   target_audience TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
+ALTER TABLE brand_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE brand_profiles FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON brand_profiles
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 4.5 connected_accounts
@@ -191,10 +210,15 @@ CREATE TABLE connected_accounts (
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_ca_workspace ON connected_accounts(workspace_id);
 CREATE INDEX idx_ca_provider ON connected_accounts(provider);
 CREATE UNIQUE INDEX idx_ca_workspace_provider_ext ON connected_accounts(workspace_id, provider, external_account_id);
+ALTER TABLE connected_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE connected_accounts FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON connected_accounts
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 4.6 regions & currencies [GLOBAL]
@@ -207,6 +231,7 @@ CREATE TABLE regions (
   date_format VARCHAR(20) DEFAULT 'DD/MM/YYYY',
   number_format JSONB DEFAULT '{"decimal":".","thousands":","}'
 );
+
 
 CREATE TABLE currencies (
   currency_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -239,11 +264,18 @@ CREATE TABLE signals (
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_signals_workspace ON signals(workspace_id);
 CREATE INDEX idx_signals_type ON signals(signal_type);
 CREATE INDEX idx_signals_state ON signals(lifecycle_state);
 CREATE INDEX idx_signals_collected ON signals(collected_at DESC);
+ALTER TABLE signals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE signals FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON signals
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE signals ADD CONSTRAINT chk_signals_lifecycle_state
+  CHECK (lifecycle_state IN ('detected', 'processed', 'merged', 'expired', 'discarded'));
 ```
 
 ### 5.2 trends
@@ -257,20 +289,25 @@ CREATE TABLE trends (
   relevance_description TEXT,
   source_class source_class NOT NULL DEFAULT 'inferred',
   confidence confidence_band NOT NULL DEFAULT 'medium',
-  strength_score REAL, -- 0-100
-  freshness_score REAL,
-  saturation_score REAL,
-  velocity_score REAL,
+  strength_score REAL, -- 0-100 non-financial score
+  freshness_score REAL, -- 0-100 non-financial score
+  saturation_score REAL, -- 0-100 non-financial score
+  velocity_score REAL, -- 0-100 non-financial score
   freshness_at TIMESTAMPTZ,
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_trends_workspace ON trends(workspace_id);
 CREATE INDEX idx_trends_strength ON trends(strength_score DESC);
 -- pgvector for semantic search
 ALTER TABLE trends ADD COLUMN embedding vector(768);
 CREATE INDEX idx_trends_embedding ON trends USING ivfflat (embedding vector_cosine_ops);
+ALTER TABLE trends ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trends FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON trends
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 5.3 trend_signals (junction)
@@ -302,10 +339,17 @@ CREATE TABLE opportunities (
   converted_to_id UUID,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_opp_workspace ON opportunities(workspace_id);
 CREATE INDEX idx_opp_state ON opportunities(priority_state);
 CREATE INDEX idx_opp_owner ON opportunities(owner_user_id);
+ALTER TABLE opportunities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE opportunities FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON opportunities
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE opportunities ADD CONSTRAINT chk_opportunities_priority_state
+  CHECK (priority_state IN ('draft', 'open', 'prioritized', 'assigned', 'in_progress', 'converted', 'parked', 'closed_won', 'closed_lost'));
 ```
 
 ### 5.5 opportunity_sources (polymorphic junction)
@@ -332,6 +376,10 @@ CREATE TABLE competitor_entities (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE competitor_entities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE competitor_entities FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON competitor_entities
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 5.7 benchmark_snapshots
@@ -349,6 +397,10 @@ CREATE TABLE benchmark_snapshots (
   captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE benchmark_snapshots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE benchmark_snapshots FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON benchmark_snapshots
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 5.8 watchlists
@@ -364,6 +416,10 @@ CREATE TABLE watchlists (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE watchlists ENABLE ROW LEVEL SECURITY;
+ALTER TABLE watchlists FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON watchlists
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ---
@@ -382,16 +438,21 @@ CREATE TABLE ideas (
   suggested_format VARCHAR(50),
   suggested_direction TEXT,
   status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft,candidate,selected,converted,archived
-  idea_score REAL,
+  idea_score REAL, -- 0-100 non-financial score
   converted_to_type VARCHAR(50), -- script, campaign
   converted_to_id UUID,
   created_by UUID REFERENCES users(user_id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_ideas_workspace ON ideas(workspace_id);
 CREATE INDEX idx_ideas_status ON ideas(status);
 ALTER TABLE ideas ADD COLUMN embedding vector(768);
+ALTER TABLE ideas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ideas FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON ideas
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 6.2 idea_sources (polymorphic)
@@ -412,11 +473,16 @@ CREATE TABLE hooks (
   idea_id UUID REFERENCES ideas(idea_id),
   hook_text TEXT NOT NULL,
   hook_type VARCHAR(50), -- question, shock, story, pov, listicle, contrast
-  effectiveness_score REAL,
+  effectiveness_score REAL, -- 0-100 non-financial score
   usage_count INTEGER DEFAULT 0,
   source VARCHAR(50) DEFAULT 'manual', -- manual, ai_generated, library
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
+ALTER TABLE hooks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE hooks FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON hooks
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 6.4 scripts
@@ -440,10 +506,19 @@ CREATE TABLE scripts (
   approved_by UUID REFERENCES users(user_id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_scripts_workspace ON scripts(workspace_id);
 CREATE INDEX idx_scripts_lifecycle ON scripts(lifecycle_state);
 CREATE INDEX idx_scripts_approval ON scripts(approval_state);
+ALTER TABLE scripts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE scripts FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON scripts
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE scripts ADD CONSTRAINT chk_scripts_lifecycle_state
+  CHECK (lifecycle_state IN ('draft', 'in_review', 'approved', 'revision_required', 'ready_for_production', 'archived'));
+ALTER TABLE scripts ADD CONSTRAINT chk_scripts_approval_state
+  CHECK (approval_state IN ('not_submitted', 'pending_approval', 'approved', 'rejected'));
 ```
 
 ### 6.5 asset_briefs
@@ -462,7 +537,12 @@ CREATE TABLE asset_briefs (
   status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, ready, locked, superseded
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
+ALTER TABLE asset_briefs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE asset_briefs FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON asset_briefs
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 6.6 scenes & shot_lists
@@ -479,6 +559,11 @@ CREATE TABLE scenes (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE scenes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE scenes FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON scenes
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+
 CREATE TABLE shot_lists (
   shot_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   scene_id UUID NOT NULL REFERENCES scenes(scene_id),
@@ -489,6 +574,10 @@ CREATE TABLE shot_lists (
   duration_seconds INTEGER,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE shot_lists ENABLE ROW LEVEL SECURITY;
+ALTER TABLE shot_lists FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON shot_lists
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ---
@@ -512,8 +601,13 @@ CREATE TABLE characters (
   status VARCHAR(20) NOT NULL DEFAULT 'active',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_characters_workspace ON characters(workspace_id);
+ALTER TABLE characters ENABLE ROW LEVEL SECURITY;
+ALTER TABLE characters FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON characters
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 7.2 character_packs / brand_packs / voice_packs
@@ -531,9 +625,14 @@ CREATE TABLE continuity_packs (
   status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, active, deprecated, retired
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_cp_workspace ON continuity_packs(workspace_id);
 CREATE INDEX idx_cp_type ON continuity_packs(pack_type);
+ALTER TABLE continuity_packs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE continuity_packs FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON continuity_packs
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 7.3 assets
@@ -550,7 +649,7 @@ CREATE TABLE assets (
   source_model VARCHAR(100),
   file_url TEXT,
   file_size_bytes BIGINT,
-  duration_seconds REAL,
+  duration_seconds NUMERIC(12,2), -- duration, not financial but needs precision for video timecodes
   resolution VARCHAR(20),
   aspect_ratio VARCHAR(10),
   mime_type VARCHAR(100),
@@ -558,8 +657,8 @@ CREATE TABLE assets (
   quality_state VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft,review_required,approved,rejected,promoted_canonical
   lineage_refs JSONB DEFAULT '[]', -- [{type, id, prompt}]
   continuity_pack_ids UUID[] DEFAULT '{}',
-  generation_cost_credits REAL,
-  generation_cost_usd REAL,
+  generation_cost_credits NUMERIC(18,6), -- DB-H-001: financial precision
+  generation_cost_usd NUMERIC(18,6), -- DB-H-001: financial precision
   generation_prompt TEXT,
   generation_params JSONB DEFAULT '{}',
   error_message TEXT,
@@ -569,6 +668,7 @@ CREATE TABLE assets (
   created_by UUID REFERENCES users(user_id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_assets_workspace ON assets(workspace_id);
 CREATE INDEX idx_assets_type ON assets(asset_type);
@@ -576,6 +676,14 @@ CREATE INDEX idx_assets_gen_state ON assets(generation_state);
 CREATE INDEX idx_assets_quality ON assets(quality_state);
 CREATE INDEX idx_assets_parent ON assets(parent_asset_id);
 CREATE INDEX idx_assets_script ON assets(script_id);
+ALTER TABLE assets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assets FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON assets
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE assets ADD CONSTRAINT chk_assets_generation_state
+  CHECK (generation_state IN ('queued', 'generating', 'generated', 'failed', 'cancelled'));
+ALTER TABLE assets ADD CONSTRAINT chk_assets_quality_state
+  CHECK (quality_state IN ('draft', 'review_required', 'approved', 'rejected', 'promoted_canonical'));
 ```
 
 ### 7.4 generation_jobs
@@ -592,9 +700,9 @@ CREATE TABLE generation_jobs (
   status VARCHAR(20) NOT NULL DEFAULT 'queued', -- queued,processing,completed,failed,cancelled
   progress_pct SMALLINT DEFAULT 0,
   current_step VARCHAR(100),
-  estimated_credits REAL,
-  actual_credits REAL,
-  actual_cost_usd REAL,
+  estimated_credits NUMERIC(18,6), -- DB-H-001: financial precision
+  actual_credits NUMERIC(18,6), -- DB-H-001: financial precision
+  actual_cost_usd NUMERIC(18,6), -- DB-H-001: financial precision
   provider_job_id VARCHAR(255),
   result_url TEXT,
   result_metadata JSONB,
@@ -610,6 +718,12 @@ CREATE TABLE generation_jobs (
 CREATE INDEX idx_gj_workspace ON generation_jobs(workspace_id);
 CREATE INDEX idx_gj_status ON generation_jobs(status);
 CREATE INDEX idx_gj_asset ON generation_jobs(asset_id);
+ALTER TABLE generation_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE generation_jobs FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON generation_jobs
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE generation_jobs ADD CONSTRAINT chk_generation_jobs_status
+  CHECK (status IN ('queued', 'processing', 'completed', 'failed', 'cancelled'));
 ```
 
 > **State Sync Rule (Audit v4 — M1)**: `generation_jobs.status` tracks **per-attempt** execution state. `assets.generation_state` tracks the **aggregate-level** final result. When `generation_jobs.status` changes, `assets.generation_state` MUST be updated atomically to reflect the latest job outcome. The two fields are NOT independent — `assets.generation_state` is derived from the most recent `generation_jobs.status`.
@@ -624,11 +738,16 @@ CREATE TABLE continuity_violations (
   violation_type VARCHAR(50) NOT NULL, -- visual_drift, voice_drift, brand_drift, style_drift
   severity VARCHAR(20) NOT NULL, -- low, medium, high, critical
   description TEXT,
-  drift_score REAL,
+  drift_score REAL, -- 0-100 non-financial score
   resolved BOOLEAN DEFAULT false,
   resolved_by UUID REFERENCES users(user_id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
+ALTER TABLE continuity_violations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE continuity_violations FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON continuity_violations
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ---
@@ -654,18 +773,25 @@ CREATE TABLE publish_items (
   diagnostics_state VARCHAR(20) DEFAULT 'healthy', -- healthy,warning,degraded,blocked
   linked_offer_ids UUID[] DEFAULT '{}',
   linked_campaign_ids UUID[] DEFAULT '{}',
-  packaging_score REAL,
+  packaging_score REAL, -- 0-100 non-financial score
   compliance_scan_result VARCHAR(20), -- pass,pass_with_warnings,review_required,blocked
   compliance_details JSONB,
   metadata JSONB DEFAULT '{}',
   created_by UUID REFERENCES users(user_id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_pi_workspace ON publish_items(workspace_id);
 CREATE INDEX idx_pi_state ON publish_items(lifecycle_state);
 CREATE INDEX idx_pi_schedule ON publish_items(schedule_at);
 CREATE INDEX idx_pi_platform ON publish_items(target_platform);
+ALTER TABLE publish_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE publish_items FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON publish_items
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE publish_items ADD CONSTRAINT chk_publish_items_lifecycle_state
+  CHECK (lifecycle_state IN ('draft', 'queued', 'scheduled', 'ready_to_execute', 'executing', 'published', 'partially_published', 'failed', 'cancelled', 'requires_manual_fallback'));
 ```
 
 ### 8.2 publish_jobs
@@ -683,9 +809,16 @@ CREATE TABLE publish_jobs (
   approval_request_id UUID,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_pj_item ON publish_jobs(publish_item_id);
 CREATE INDEX idx_pj_state ON publish_jobs(lifecycle_state);
+ALTER TABLE publish_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE publish_jobs FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON publish_jobs
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE publish_jobs ADD CONSTRAINT chk_publish_jobs_lifecycle_state
+  CHECK (lifecycle_state IN ('created', 'queued', 'dispatched', 'executing', 'partially_succeeded', 'succeeded', 'failed', 'cancelled', 'requires_manual_fallback'));
 ```
 
 ### 8.3 publish_logs (immutable)
@@ -713,6 +846,10 @@ CREATE TABLE publish_logs (
 );
 CREATE INDEX idx_pl_item ON publish_logs(publish_item_id);
 CREATE INDEX idx_pl_time ON publish_logs(attempted_at DESC);
+ALTER TABLE publish_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE publish_logs FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON publish_logs
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ---
@@ -732,8 +869,13 @@ CREATE TABLE entities (
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_entities_workspace ON entities(workspace_id);
+ALTER TABLE entities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE entities FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON entities
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 9.2 threads
@@ -756,12 +898,19 @@ CREATE TABLE threads (
   message_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_threads_workspace ON threads(workspace_id);
 CREATE INDEX idx_threads_status ON threads(status);
 CREATE INDEX idx_threads_priority ON threads(priority);
 CREATE INDEX idx_threads_owner ON threads(owner_user_id);
 CREATE INDEX idx_threads_sla ON threads(sla_due_at);
+ALTER TABLE threads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE threads FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON threads
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE threads ADD CONSTRAINT chk_threads_status
+  CHECK (status IN ('new', 'triaged', 'active', 'waiting_on_user', 'waiting_on_team', 'converted_to_task', 'resolved', 'archived'));
 ```
 
 ### 9.3 messages
@@ -784,6 +933,10 @@ CREATE TABLE messages (
 );
 CREATE INDEX idx_messages_thread ON messages(thread_id);
 CREATE INDEX idx_messages_created ON messages(created_at);
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messages FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON messages
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 9.4 follow_up_tasks
@@ -803,10 +956,15 @@ CREATE TABLE follow_up_tasks (
   outcome_summary TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_ft_workspace ON follow_up_tasks(workspace_id);
 CREATE INDEX idx_ft_assigned ON follow_up_tasks(assigned_user_id);
 CREATE INDEX idx_ft_status ON follow_up_tasks(status);
+ALTER TABLE follow_up_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE follow_up_tasks FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON follow_up_tasks
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ---
@@ -832,9 +990,44 @@ CREATE TABLE products (
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_products_workspace ON products(workspace_id);
 CREATE INDEX idx_products_status ON products(catalog_status);
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE products FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON products
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+```
+
+### 10.1B product_skus (Audit v6 — schema gap)
+```sql
+CREATE TABLE product_skus (
+  sku_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  product_id UUID NOT NULL REFERENCES products(product_id) ON DELETE CASCADE,
+  sku_code VARCHAR(100) NOT NULL,
+  variant_attributes JSONB NOT NULL DEFAULT '{}', -- {"size": "M", "color": "red"}
+  price_override NUMERIC(18,6), -- NULL = use product.base_price
+  cogs_override NUMERIC(18,6), -- NULL = use product.cogs
+  currency VARCHAR(5) DEFAULT 'VND',
+  stock_quantity INTEGER DEFAULT 0,
+  stock_reserved INTEGER DEFAULT 0,
+  low_stock_threshold INTEGER DEFAULT 5,
+  barcode VARCHAR(100),
+  weight_grams INTEGER,
+  is_active BOOLEAN DEFAULT true,
+  external_refs JSONB DEFAULT '[]', -- [{platform, external_sku_id}]
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
+);
+CREATE UNIQUE INDEX idx_product_skus_code ON product_skus(workspace_id, product_id, sku_code);
+CREATE INDEX idx_product_skus_product ON product_skus(product_id);
+ALTER TABLE product_skus ENABLE ROW LEVEL SECURITY;
+ALTER TABLE product_skus FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON product_skus
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 10.2 offers
@@ -857,10 +1050,17 @@ CREATE TABLE offers (
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_offers_workspace ON offers(workspace_id);
 CREATE INDEX idx_offers_state ON offers(lifecycle_state);
 CREATE INDEX idx_offers_product ON offers(product_id);
+ALTER TABLE offers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE offers FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON offers
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE offers ADD CONSTRAINT chk_offers_lifecycle_state
+  CHECK (lifecycle_state IN ('draft', 'review_required', 'active', 'paused', 'expired', 'retired'));
 ```
 
 ### 10.3 orders
@@ -889,11 +1089,18 @@ CREATE TABLE orders (
   ordered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_orders_workspace ON orders(workspace_id);
 CREATE INDEX idx_orders_state ON orders(lifecycle_state);
 CREATE INDEX idx_orders_platform ON orders(source_platform);
 CREATE INDEX idx_orders_ordered ON orders(ordered_at DESC);
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON orders
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE orders ADD CONSTRAINT chk_orders_lifecycle_state
+  CHECK (lifecycle_state IN ('created', 'confirmed', 'fulfilled', 'completed', 'refunded', 'partially_refunded', 'returned', 'cancelled'));
 ```
 
 > **Audit v6 — M1 Fix**: `fee_breakdown JSONB` added to store per-order fee decomposition (platform fees, payment processing, shipping, tax, commissions, promo). This is the primary source for per-order profit calculation in M19. Shipping costs per order are extracted from `fee_breakdown.shipping_fee` and aggregated into `cost_items` for period-level tracking.
@@ -922,9 +1129,14 @@ CREATE TABLE affiliate_links (
   expires_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_al_workspace ON affiliate_links(workspace_id);
 CREATE INDEX idx_al_state ON affiliate_links(lifecycle_state);
+ALTER TABLE affiliate_links ENABLE ROW LEVEL SECURITY;
+ALTER TABLE affiliate_links FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON affiliate_links
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 10.5 campaigns
@@ -945,7 +1157,14 @@ CREATE TABLE campaigns (
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
+ALTER TABLE campaigns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE campaigns FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON campaigns
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE campaigns ADD CONSTRAINT chk_campaigns_status
+  CHECK (status IN ('planned', 'ready', 'live', 'paused', 'completed', 'cancelled'));
 ```
 
 ---
@@ -970,7 +1189,12 @@ CREATE TABLE settlements (
   effective_date DATE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
+ALTER TABLE settlements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE settlements FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON settlements
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 11.2 cost_items
@@ -990,10 +1214,15 @@ CREATE TABLE cost_items (
   effective_date DATE NOT NULL DEFAULT CURRENT_DATE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_ci_workspace ON cost_items(workspace_id);
 CREATE INDEX idx_ci_type ON cost_items(cost_type);
 CREATE INDEX idx_ci_date ON cost_items(effective_date);
+ALTER TABLE cost_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cost_items FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON cost_items
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 11.3 profit_snapshots (materialized/cached)
@@ -1025,6 +1254,10 @@ CREATE TABLE profit_snapshots (
 CREATE INDEX idx_ps_workspace ON profit_snapshots(workspace_id);
 CREATE INDEX idx_ps_scope ON profit_snapshots(scope_type, scope_id);
 CREATE INDEX idx_ps_period ON profit_snapshots(period_start, period_end);
+ALTER TABLE profit_snapshots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profit_snapshots FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON profit_snapshots
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 11.4 evidence_objects
@@ -1041,7 +1274,12 @@ CREATE TABLE evidence_objects (
   verification_status verification_status NOT NULL DEFAULT 'pending',
   related_object_refs JSONB DEFAULT '[]', -- [{type, id}]
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
+ALTER TABLE evidence_objects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE evidence_objects FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON evidence_objects
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 11.5 proof_bundles
@@ -1058,7 +1296,12 @@ CREATE TABLE proof_bundles (
   unresolved_gaps TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
+ALTER TABLE proof_bundles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE proof_bundles FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON proof_bundles
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ---
@@ -1082,7 +1325,14 @@ CREATE TABLE live_sessions (
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
+ALTER TABLE live_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE live_sessions FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON live_sessions
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE live_sessions ADD CONSTRAINT chk_live_sessions_status
+  CHECK (status IN ('planned', 'ready', 'live', 'paused', 'ended', 'post_live_processing', 'closed'));
 ```
 
 ### 12.2 workflows
@@ -1103,7 +1353,14 @@ CREATE TABLE workflows (
   created_by UUID REFERENCES users(user_id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
+ALTER TABLE workflows ENABLE ROW LEVEL SECURITY;
+ALTER TABLE workflows FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON workflows
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE workflows ADD CONSTRAINT chk_workflows_status
+  CHECK (status IN ('draft', 'active', 'paused', 'archived'));
 ```
 
 ### 12.3 workflow_runs
@@ -1124,9 +1381,16 @@ CREATE TABLE workflow_runs (
   completed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_wr_workflow ON workflow_runs(workflow_id);
 CREATE INDEX idx_wr_status ON workflow_runs(status);
+ALTER TABLE workflow_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE workflow_runs FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON workflow_runs
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE workflow_runs ADD CONSTRAINT chk_workflow_runs_status
+  CHECK (status IN ('queued', 'running', 'waiting_approval', 'waiting_external_condition', 'succeeded', 'partially_succeeded', 'failed', 'cancelled', 'requires_manual_intervention'));
 ```
 
 ### 12.4 agent_runs (Audit v4 — H1: Freeze §16.3 + §28.2)
@@ -1152,10 +1416,17 @@ CREATE TABLE agent_runs (
   created_by UUID REFERENCES users(user_id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_ar_workspace ON agent_runs(workspace_id);
 CREATE INDEX idx_ar_state ON agent_runs(current_state);
 CREATE INDEX idx_ar_recipe ON agent_runs(recipe_id);
+ALTER TABLE agent_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_runs FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON agent_runs
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE agent_runs ADD CONSTRAINT chk_agent_runs_current_state
+  CHECK (current_state IN ('planning', 'awaiting_approval', 'executing', 'waiting_context', 'completed', 'partially_completed', 'failed', 'handed_off', 'cancelled'));
 ```
 
 > **State Machine Ref**: Freeze Part 2, §28.2 — `planning → awaiting_approval → executing → waiting_context → completed/partially_completed/failed/handed_off/cancelled`. `handed_off` requires `handoff_target_user_id` to be set. `partially_completed` requires `side_effects_summary` to list unresolved actions.
@@ -1181,6 +1452,10 @@ CREATE TABLE billing_events (
 );
 CREATE INDEX idx_be_workspace ON billing_events(workspace_id);
 CREATE INDEX idx_be_created ON billing_events(created_at DESC);
+ALTER TABLE billing_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE billing_events FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON billing_events
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 13.2 ai_credit_transactions
@@ -1198,6 +1473,10 @@ CREATE TABLE ai_credit_transactions (
 );
 CREATE INDEX idx_act_workspace ON ai_credit_transactions(workspace_id);
 CREATE INDEX idx_act_created ON ai_credit_transactions(created_at DESC);
+ALTER TABLE ai_credit_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_credit_transactions FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON ai_credit_transactions
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 13.3 audit_events (immutable log)
@@ -1221,6 +1500,10 @@ CREATE INDEX idx_ae_resource ON audit_events(resource_type, resource_id);
 CREATE INDEX idx_ae_created ON audit_events(created_at DESC);
 -- Partition by month for performance
 -- CREATE TABLE audit_events_2026_03 PARTITION OF audit_events FOR VALUES FROM ('2026-03-01') TO ('2026-04-01');
+ALTER TABLE audit_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_events FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON audit_events
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 13.4 diagnostics_records
@@ -1246,6 +1529,10 @@ CREATE TABLE diagnostics_records (
 CREATE INDEX idx_dr_workspace ON diagnostics_records(workspace_id);
 CREATE INDEX idx_dr_severity ON diagnostics_records(severity);
 CREATE INDEX idx_dr_status ON diagnostics_records(status);
+ALTER TABLE diagnostics_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE diagnostics_records FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON diagnostics_records
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 13.5 notifications
@@ -1268,6 +1555,10 @@ CREATE TABLE notifications (
 );
 CREATE INDEX idx_notif_user ON notifications(user_id, read_at);
 CREATE INDEX idx_notif_created ON notifications(created_at DESC);
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON notifications
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ---
@@ -1284,11 +1575,15 @@ CREATE TABLE creator_progress (
   xp_to_next_level INTEGER NOT NULL DEFAULT 100,
   streak_days INTEGER NOT NULL DEFAULT 0,
   streak_last_activity_date DATE,
-  creator_score REAL DEFAULT 0,
+  creator_score REAL DEFAULT 0, -- 0-100 non-financial score
   total_achievements INTEGER DEFAULT 0,
   season_id VARCHAR(50),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE creator_progress ENABLE ROW LEVEL SECURITY;
+ALTER TABLE creator_progress FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON creator_progress
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 14.2 achievements
@@ -1306,6 +1601,7 @@ CREATE TABLE achievement_definitions (
   active BOOLEAN DEFAULT true
 );
 
+
 CREATE TABLE achievement_records (
   record_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL,
@@ -1314,7 +1610,17 @@ CREATE TABLE achievement_records (
   credits_awarded INTEGER NOT NULL DEFAULT 0,
   UNIQUE(workspace_id, achievement_id)
 );
+ALTER TABLE achievement_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE achievement_records FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON achievement_records
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
+
+> **Note**: Additional Gamification tables are defined in **§22.10 `challenge_definitions`** and **§22.11 `challenge_progress`** (Extended Production section). These tables complete the Gamification schema:
+> - `challenge_definitions` — Quest/challenge configs with reward_type, xp_reward, criteria JSONB
+> - `challenge_progress` — Per-workspace challenge tracking with progress_value and completion
+>
+> Total Gamification schema: **5 tables** (creator_progress, achievement_definitions, achievement_records, challenge_definitions, challenge_progress)
 
 ---
 
@@ -1327,9 +1633,13 @@ CREATE TABLE platform_health_metrics (
   workspace_id UUID NOT NULL,
   platform VARCHAR(50) NOT NULL,
   metric_name VARCHAR(100) NOT NULL,
-  metric_value REAL NOT NULL,
+  metric_value REAL NOT NULL, -- non-financial health metric
   metadata JSONB DEFAULT '{}'
 );
+ALTER TABLE platform_health_metrics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE platform_health_metrics FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON platform_health_metrics
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 SELECT create_hypertable('platform_health_metrics', 'time');
 
 -- API call logs (for cost tracking)
@@ -1345,6 +1655,10 @@ CREATE TABLE api_call_logs (
   latency_ms INTEGER,
   status VARCHAR(20) NOT NULL
 );
+ALTER TABLE api_call_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE api_call_logs FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON api_call_logs
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 SELECT create_hypertable('api_call_logs', 'time');
 ```
 
@@ -1370,9 +1684,14 @@ CREATE TABLE link_in_bio_pages (
   status VARCHAR(20) NOT NULL DEFAULT 'active', -- active, suspended, archived
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE UNIQUE INDEX idx_lib_slug ON link_in_bio_pages(slug);
 CREATE INDEX idx_lib_workspace ON link_in_bio_pages(workspace_id);
+ALTER TABLE link_in_bio_pages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE link_in_bio_pages FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON link_in_bio_pages
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 16.2 link_items
@@ -1392,6 +1711,10 @@ CREATE TABLE link_items (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_li_page ON link_items(page_id);
+ALTER TABLE link_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE link_items FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON link_items
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 16.3 media_kits
@@ -1404,10 +1727,15 @@ CREATE TABLE media_kits (
   brand_profile_id UUID REFERENCES brand_profiles(brand_profile_id),
   share_url TEXT,
   last_generated_at TIMESTAMPTZ,
-  generation_credits_used REAL DEFAULT 0,
+  generation_credits_used NUMERIC(18,6) DEFAULT 0, -- DB-H-001: financial precision
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
+ALTER TABLE media_kits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE media_kits FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON media_kits
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 16.4 rate_cards & rate_card_items
@@ -1420,7 +1748,13 @@ CREATE TABLE rate_cards (
   ai_suggested_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
+
+ALTER TABLE rate_cards ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rate_cards FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON rate_cards
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 
 CREATE TABLE rate_card_items (
   item_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1452,9 +1786,14 @@ CREATE TABLE brand_deals (
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_bd_workspace ON brand_deals(workspace_id);
 CREATE INDEX idx_bd_status ON brand_deals(status);
+ALTER TABLE brand_deals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE brand_deals FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON brand_deals
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ---
@@ -1634,6 +1973,10 @@ CREATE INDEX idx_st_status ON support_tickets(status);
 CREATE INDEX idx_st_assigned ON support_tickets(assigned_admin_id);
 CREATE INDEX idx_st_user ON support_tickets(user_id);
 CREATE INDEX idx_st_sla ON support_tickets(sla_response_due_at);
+ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_tickets FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON support_tickets
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 17.9 support_ticket_messages
@@ -1670,6 +2013,7 @@ CREATE TABLE incidents (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
 
 CREATE TABLE post_mortems (
   post_mortem_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1708,6 +2052,26 @@ CREATE INDEX idx_sa_status ON system_alerts(status);
 CREATE INDEX idx_sa_severity ON system_alerts(severity);
 ```
 
+### 17.12 admin_sessions [GLOBAL] (Audit v6 — schema gap)
+```sql
+CREATE TABLE admin_sessions (
+  session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_id UUID NOT NULL REFERENCES internal_admins(admin_id),
+  ip_address INET NOT NULL,
+  user_agent TEXT,
+  vpn_verified BOOLEAN NOT NULL DEFAULT false,
+  mfa_verified BOOLEAN NOT NULL DEFAULT false,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_activity_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expired_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ,
+  revoked_reason VARCHAR(200),
+  session_token_hash VARCHAR(128) NOT NULL
+);
+CREATE INDEX idx_admin_sessions_admin ON admin_sessions(admin_id);
+CREATE INDEX idx_admin_sessions_active ON admin_sessions(expired_at) WHERE expired_at IS NULL;
+```
+
 ---
 
 ## 18. Context: Operational Tables
@@ -1732,6 +2096,10 @@ CREATE TABLE approval_requests (
 CREATE INDEX idx_ar_workspace ON approval_requests(workspace_id);
 CREATE INDEX idx_ar_status ON approval_requests(status);
 CREATE INDEX idx_ar_object ON approval_requests(object_type, object_id);
+ALTER TABLE approval_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE approval_requests FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON approval_requests
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 18.2 capability_snapshots
@@ -1747,6 +2115,10 @@ CREATE TABLE capability_snapshots (
   notes TEXT
 );
 CREATE INDEX idx_cs_workspace ON capability_snapshots(workspace_id, platform);
+ALTER TABLE capability_snapshots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE capability_snapshots FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON capability_snapshots
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 18.2B policy_notes (Audit v4 — H2: Freeze §16.8, M22 write owner)
@@ -1770,6 +2142,10 @@ CREATE TABLE policy_notes (
 CREATE INDEX idx_pn_platform ON policy_notes(platform);
 CREATE INDEX idx_pn_scope ON policy_notes(action_scope);
 CREATE INDEX idx_pn_workspace ON policy_notes(workspace_id);
+ALTER TABLE policy_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE policy_notes FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON policy_notes
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 18.2C fallback_paths (Audit v4 — H2: Freeze §16.8, M22 write owner)
@@ -1792,6 +2168,10 @@ CREATE TABLE fallback_paths (
 CREATE INDEX idx_fp_platform ON fallback_paths(platform);
 CREATE INDEX idx_fp_scope ON fallback_paths(action_scope);
 CREATE INDEX idx_fp_capability ON fallback_paths(capability_state);
+ALTER TABLE fallback_paths ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fallback_paths FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON fallback_paths
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 > **Ref**: Freeze §16.8 — Policy Note and Fallback Path are Trust/Policy Support Records with M22 as primary write owner. Every `Degraded` or `Unsupported` capability state SHOULD have at least one associated `fallback_path`. Policy notes explain *why*, fallback paths explain *what to do*.
@@ -1813,6 +2193,10 @@ CREATE TABLE consent_records (
 );
 CREATE INDEX idx_cr_user ON consent_records(user_id);
 CREATE INDEX idx_cr_type ON consent_records(consent_type);
+ALTER TABLE consent_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE consent_records FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON consent_records
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 18.4 api_keys
@@ -1836,6 +2220,10 @@ CREATE TABLE api_keys (
 );
 CREATE INDEX idx_ak_workspace ON api_keys(workspace_id);
 CREATE INDEX idx_ak_hash ON api_keys(key_hash);
+ALTER TABLE api_keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE api_keys FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON api_keys
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 18.5 tags (generic polymorphic tagging)
@@ -1847,6 +2235,11 @@ CREATE TABLE tags (
   color VARCHAR(7), -- hex color
   UNIQUE(workspace_id, name)
 );
+
+ALTER TABLE tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tags FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON tags
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 
 CREATE TABLE taggables (
   tag_id UUID NOT NULL REFERENCES tags(tag_id),
@@ -1893,6 +2286,10 @@ CREATE TABLE file_uploads (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_fu_workspace ON file_uploads(workspace_id);
+ALTER TABLE file_uploads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE file_uploads FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON file_uploads
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 18.8 export_jobs
@@ -1915,6 +2312,10 @@ CREATE TABLE export_jobs (
 );
 CREATE INDEX idx_ej_workspace ON export_jobs(workspace_id);
 CREATE INDEX idx_ej_status ON export_jobs(status);
+ALTER TABLE export_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE export_jobs FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON export_jobs
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 18.9 user_preferences
@@ -1937,6 +2338,10 @@ CREATE TABLE user_preferences (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(user_id, workspace_id)
 );
+ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_preferences FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON user_preferences
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 18.10 scheduled_job_configs [GLOBAL]
@@ -1983,6 +2388,71 @@ CREATE TABLE subscriptions (
 );
 CREATE INDEX idx_sub_workspace ON subscriptions(workspace_id);
 CREATE INDEX idx_sub_status ON subscriptions(status);
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscriptions FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON subscriptions
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+```
+
+### 19.1B invoices (Audit v6 — schema gap)
+```sql
+CREATE TABLE invoices (
+  invoice_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  subscription_id UUID REFERENCES subscriptions(subscription_id),
+  stripe_invoice_id VARCHAR(255),
+  invoice_number VARCHAR(50) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, open, paid, void, uncollectible
+  amount_due NUMERIC(18,6) NOT NULL,
+  amount_paid NUMERIC(18,6) NOT NULL DEFAULT 0,
+  currency VARCHAR(5) DEFAULT 'VND',
+  billing_period_start DATE,
+  billing_period_end DATE,
+  line_items JSONB NOT NULL DEFAULT '[]', -- [{description, quantity, unit_price, total}]
+  payment_method_id UUID,
+  paid_at TIMESTAMPTZ,
+  due_date DATE,
+  hosted_invoice_url TEXT, -- Stripe-hosted invoice page
+  pdf_url TEXT,
+  dunning_attempt INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_inv_workspace ON invoices(workspace_id);
+CREATE INDEX idx_inv_status ON invoices(status);
+CREATE INDEX idx_inv_period ON invoices(billing_period_start, billing_period_end);
+ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invoices FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON invoices
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE invoices ADD CONSTRAINT chk_invoices_status
+  CHECK (status IN ('draft', 'open', 'paid', 'void', 'uncollectible'));
+```
+
+### 19.1C payment_methods (Audit v6 — schema gap)
+```sql
+CREATE TABLE payment_methods (
+  payment_method_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  stripe_payment_method_id VARCHAR(255),
+  method_type VARCHAR(20) NOT NULL, -- card, bank_transfer, momo, zalopay, vnpay, paypal
+  brand VARCHAR(20), -- visa, mastercard, jcb, etc.
+  last4 VARCHAR(4),
+  exp_month SMALLINT,
+  exp_year SMALLINT,
+  is_default BOOLEAN DEFAULT false,
+  billing_name VARCHAR(255),
+  billing_email VARCHAR(255),
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
+);
+CREATE INDEX idx_pm_workspace ON payment_methods(workspace_id);
+ALTER TABLE payment_methods ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payment_methods FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON payment_methods
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 19.2 coupons
@@ -2004,7 +2474,14 @@ CREATE TABLE coupons (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(workspace_id, code)
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
+ALTER TABLE coupons ENABLE ROW LEVEL SECURITY;
+ALTER TABLE coupons FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON coupons
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE coupons ADD CONSTRAINT chk_coupons_lifecycle_state
+  CHECK (lifecycle_state IN ('draft', 'active', 'paused', 'expired', 'retired', 'revoked'));
 ```
 
 ### 19.3 store_pages
@@ -2022,7 +2499,12 @@ CREATE TABLE store_pages (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(workspace_id, slug)
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
+ALTER TABLE store_pages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE store_pages FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON store_pages
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 19.4 membership_plans
@@ -2040,7 +2522,12 @@ CREATE TABLE membership_plans (
   subscriber_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
+ALTER TABLE membership_plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE membership_plans FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON membership_plans
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 19.5 refunds
@@ -2061,8 +2548,15 @@ CREATE TABLE refunds (
   evidence_refs JSONB DEFAULT '[]',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_refunds_order ON refunds(order_id);
+ALTER TABLE refunds ENABLE ROW LEVEL SECURITY;
+ALTER TABLE refunds FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON refunds
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE refunds ADD CONSTRAINT chk_refunds_lifecycle_state
+  CHECK (lifecycle_state IN ('requested', 'approved', 'rejected', 'processing', 'completed', 'failed', 'cancelled'));
 ```
 
 ### 19.6 returns
@@ -2079,8 +2573,15 @@ CREATE TABLE returns (
   evidence_photo_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_returns_order ON returns(order_id);
+ALTER TABLE returns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE returns FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON returns
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE returns ADD CONSTRAINT chk_returns_lifecycle_state
+  CHECK (lifecycle_state IN ('initiated', 'approved', 'shipped_back', 'received', 'inspected', 'closed', 'rejected'));
 ```
 
 ### 19.7 bundles & bundle_items
@@ -2094,7 +2595,13 @@ CREATE TABLE bundles (
   discount_pct DECIMAL(5,2),
   status VARCHAR(20) NOT NULL DEFAULT 'draft',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
+
+ALTER TABLE bundles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bundles FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON bundles
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 
 CREATE TABLE bundle_items (
   bundle_id UUID NOT NULL REFERENCES bundles(bundle_id),
@@ -2120,6 +2627,10 @@ CREATE TABLE price_rules (
   valid_until TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE price_rules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE price_rules FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON price_rules
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 19.9 live_segments
@@ -2137,6 +2648,10 @@ CREATE TABLE live_segments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_ls_session ON live_segments(session_id);
+ALTER TABLE live_segments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE live_segments FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON live_segments
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 19.9B cue_cards (M17 — Tier B)
@@ -2158,6 +2673,10 @@ CREATE TABLE cue_cards (
 );
 CREATE INDEX idx_cc_session ON cue_cards(session_id);
 CREATE INDEX idx_cc_segment ON cue_cards(segment_id);
+ALTER TABLE cue_cards ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cue_cards FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON cue_cards
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 19.9C highlights (M17 — Tier B)
@@ -2172,11 +2691,15 @@ CREATE TABLE highlights (
   highlight_type VARCHAR(30) NOT NULL, -- viral_moment, product_demo, best_sale, audience_peak, key_announcement
   auto_detected BOOLEAN DEFAULT false, -- true = AI-detected, false = manual mark
   asset_id UUID REFERENCES assets(asset_id), -- linked extracted clip
-  engagement_score REAL, -- 0-100 composite
+  engagement_score REAL, -- 0-100 non-financial composite score
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_hl_session ON highlights(session_id);
+ALTER TABLE highlights ENABLE ROW LEVEL SECURITY;
+ALTER TABLE highlights FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON highlights
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 19.9D channel_posts (M11 — Tier B, Freeze §13.10)
@@ -2199,6 +2722,10 @@ CREATE TABLE channel_posts (
 CREATE INDEX idx_cp_workspace ON channel_posts(workspace_id);
 CREATE INDEX idx_cp_publish ON channel_posts(publish_item_id);
 CREATE UNIQUE INDEX idx_cp_external ON channel_posts(connected_account_id, external_post_id);
+ALTER TABLE channel_posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE channel_posts FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON channel_posts
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 19.9E reconciliation_records (M19 — Tier B, Freeze §27.6)
@@ -2223,6 +2750,10 @@ CREATE TABLE reconciliation_records (
 );
 CREATE INDEX idx_rr_workspace ON reconciliation_records(workspace_id);
 CREATE INDEX idx_rr_status ON reconciliation_records(status);
+ALTER TABLE reconciliation_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reconciliation_records FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON reconciliation_records
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 19.9F skus (M13 — Tier C, Freeze §15.2)
@@ -2248,6 +2779,10 @@ CREATE TABLE skus (
 );
 CREATE INDEX idx_skus_product ON skus(product_id);
 CREATE INDEX idx_skus_workspace ON skus(workspace_id);
+ALTER TABLE skus ENABLE ROW LEVEL SECURITY;
+ALTER TABLE skus FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON skus
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 19.9G inventory_locations (M13 — Tier C, Freeze §15.2)
@@ -2262,6 +2797,10 @@ CREATE TABLE inventory_locations (
   status VARCHAR(20) NOT NULL DEFAULT 'active',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE inventory_locations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inventory_locations FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON inventory_locations
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 19.9H stock_movements (M13 — Tier C, Freeze §15.2)
@@ -2282,6 +2821,10 @@ CREATE TABLE stock_movements (
 );
 CREATE INDEX idx_sm_sku ON stock_movements(sku_id);
 CREATE INDEX idx_sm_moved ON stock_movements(moved_at DESC);
+ALTER TABLE stock_movements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stock_movements FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON stock_movements
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 19.10 sample_requests & sample_shipments (M18)
@@ -2297,7 +2840,15 @@ CREATE TABLE sample_requests (
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
+
+ALTER TABLE sample_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sample_requests FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON sample_requests
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE sample_requests ADD CONSTRAINT chk_sample_requests_status
+  CHECK (status IN ('requested', 'approved', 'declined', 'fulfilled', 'cancelled'));
 
 CREATE TABLE sample_shipments (
   shipment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -2311,6 +2862,12 @@ CREATE TABLE sample_shipments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE sample_shipments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sample_shipments FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON sample_shipments
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE sample_shipments ADD CONSTRAINT chk_sample_shipments_status
+  CHECK (status IN ('preparing', 'shipped', 'delivered', 'lost', 'returned', 'closed'));
 ```
 
 ### 19.11 recipe_templates
@@ -2325,13 +2882,17 @@ CREATE TABLE recipe_templates (
   parameters JSONB DEFAULT '[]', -- [{name, type, default, required}]
   required_capabilities JSONB DEFAULT '[]',
   install_count INTEGER DEFAULT 0,
-  rating_avg REAL DEFAULT 0,
+  rating_avg REAL DEFAULT 0, -- 0-5 non-financial rating
   review_count INTEGER DEFAULT 0,
   price DECIMAL(10,2) DEFAULT 0, -- 0 = free
   status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, review_required, published, deprecated, retired
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE recipe_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recipe_templates FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON recipe_templates
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 19.12 copilot_sessions
@@ -2349,6 +2910,10 @@ CREATE TABLE copilot_sessions (
 );
 CREATE INDEX idx_cs_workspace ON copilot_sessions(workspace_id);
 CREATE INDEX idx_cs_user ON copilot_sessions(user_id);
+ALTER TABLE copilot_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE copilot_sessions FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON copilot_sessions
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 19.13 commissions
@@ -2367,6 +2932,10 @@ CREATE TABLE commissions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_comm_workspace ON commissions(workspace_id);
+ALTER TABLE commissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE commissions FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON commissions
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 19.14 chargebacks
@@ -2387,6 +2956,10 @@ CREATE TABLE chargebacks (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_cb_order ON chargebacks(order_id);
+ALTER TABLE chargebacks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chargebacks FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON chargebacks
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 19.15 content_attribution_records (Profit OS)
@@ -2403,6 +2976,10 @@ CREATE TABLE content_attribution_records (
 );
 CREATE INDEX idx_car_publish ON content_attribution_records(publish_item_id);
 CREATE INDEX idx_car_workspace ON content_attribution_records(workspace_id);
+ALTER TABLE content_attribution_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE content_attribution_records FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON content_attribution_records
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ---
@@ -2469,19 +3046,26 @@ CREATE TABLE video_edit_jobs (
   status VARCHAR(20) NOT NULL DEFAULT 'queued', -- queued, processing, completed, partially_completed, failed, cancelled
   input_params JSONB NOT NULL DEFAULT '{}', -- mode-specific parameters
   output_metadata JSONB DEFAULT '{}', -- mode-specific outputs
-  credits_estimated REAL,
-  credits_used REAL,
-  actual_cost_usd REAL,
+  credits_estimated NUMERIC(18,6), -- DB-H-001: financial precision
+  credits_used NUMERIC(18,6), -- DB-H-001: financial precision
+  actual_cost_usd NUMERIC(18,6), -- DB-H-001: financial precision
   error_message TEXT,
   started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
   created_by UUID REFERENCES users(user_id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_vej_workspace ON video_edit_jobs(workspace_id);
 CREATE INDEX idx_vej_mode ON video_edit_jobs(mode);
 CREATE INDEX idx_vej_status ON video_edit_jobs(status);
+ALTER TABLE video_edit_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE video_edit_jobs FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON video_edit_jobs
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE video_edit_jobs ADD CONSTRAINT chk_video_edit_jobs_status
+  CHECK (status IN ('queued', 'processing', 'completed', 'partially_completed', 'failed', 'cancelled'));
 ```
 
 ### 22.2 remix_blueprints (M07 — AI Remix Studio, Pack 04 §9.5)
@@ -2495,13 +3079,18 @@ CREATE TABLE remix_blueprints (
   creative_dna JSONB NOT NULL DEFAULT '{}', -- {scene_count, hook_type, content_structure, pacing_profile, visual_style, audio_profile, transition_map}
   remix_script TEXT, -- generated remix script
   fidelity_level VARCHAR(20) NOT NULL DEFAULT 'adapt', -- match_1to1, adapt, loose
-  originality_score REAL, -- 0-100, must be > 70 (< 30% similarity)
+  originality_score REAL, -- 0-100 non-financial score, must be > 70 (< 30% similarity)
   status VARCHAR(20) NOT NULL DEFAULT 'analyzing', -- analyzing, analyzed, generating, generated, failed
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_rb_workspace ON remix_blueprints(workspace_id);
 CREATE INDEX idx_rb_ref ON remix_blueprints(reference_asset_id);
+ALTER TABLE remix_blueprints ENABLE ROW LEVEL SECURITY;
+ALTER TABLE remix_blueprints FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON remix_blueprints
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 22.3 clip_collections (M07 — Clip Factory, Pack 04 §9.3)
@@ -2516,9 +3105,14 @@ CREATE TABLE clip_collections (
   status VARCHAR(20) NOT NULL DEFAULT 'analyzing', -- analyzing, proposed, processing, completed, failed
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_cc_workspace ON clip_collections(workspace_id);
 CREATE INDEX idx_cc_source ON clip_collections(source_asset_id);
+ALTER TABLE clip_collections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clip_collections FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON clip_collections
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 22.4 product_showcase_jobs (M07 — Pack 04 §9.6)
@@ -2534,13 +3128,18 @@ CREATE TABLE product_showcase_jobs (
   output_asset_id UUID REFERENCES assets(asset_id),
   character_id UUID REFERENCES characters(character_id), -- for review_style
   status VARCHAR(20) NOT NULL DEFAULT 'queued', -- queued, processing, completed, failed
-  credits_used REAL,
+  credits_used NUMERIC(18,6), -- DB-H-001: financial precision
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_psj_workspace ON product_showcase_jobs(workspace_id);
 CREATE INDEX idx_psj_product ON product_showcase_jobs(product_id);
 CREATE INDEX idx_psj_batch ON product_showcase_jobs(batch_id);
+ALTER TABLE product_showcase_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE product_showcase_jobs FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON product_showcase_jobs
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 22.5 link_to_video_jobs (M07 — Pack 04 §9.9)
@@ -2557,11 +3156,16 @@ CREATE TABLE link_to_video_jobs (
   output_asset_id UUID REFERENCES assets(asset_id),
   character_id UUID REFERENCES characters(character_id),
   status VARCHAR(20) NOT NULL DEFAULT 'scraping', -- scraping, scripting, generating, completed, failed
-  credits_used REAL,
+  credits_used NUMERIC(18,6), -- DB-H-001: financial precision
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_ltv_workspace ON link_to_video_jobs(workspace_id);
+ALTER TABLE link_to_video_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE link_to_video_jobs FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON link_to_video_jobs
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 22.6 translation_jobs (M07 — Pack 04 §9.10)
@@ -2575,13 +3179,18 @@ CREATE TABLE translation_jobs (
   lip_sync_enabled BOOLEAN DEFAULT true,
   per_language_status JSONB DEFAULT '{}', -- {en: 'completed', th: 'processing', ...}
   output_asset_ids JSONB DEFAULT '{}', -- {en: asset_id, th: asset_id, ...}
-  total_credits_used REAL DEFAULT 0,
+  total_credits_used NUMERIC(18,6) DEFAULT 0, -- DB-H-001: financial precision
   status VARCHAR(20) NOT NULL DEFAULT 'queued', -- queued, processing, partially_completed, completed, failed
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_tj_workspace ON translation_jobs(workspace_id);
 CREATE INDEX idx_tj_source ON translation_jobs(source_asset_id);
+ALTER TABLE translation_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE translation_jobs FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON translation_jobs
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 22.7 style_packs (M08 — Pack 04 §9.12)
@@ -2596,8 +3205,13 @@ CREATE TABLE style_packs (
   continuity_pack_id UUID REFERENCES continuity_packs(pack_id), -- linked Continuity OS pack
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_sp_workspace ON style_packs(workspace_id);
+ALTER TABLE style_packs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE style_packs FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON style_packs
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 > **Note**: Style Packs are distinct from `continuity_packs` — they capture a learned editing style (output of Style Learning), not brand/character identity. A Style Pack MAY create a corresponding `continuity_packs` entry (type='style') for use in production pipelines.
@@ -2618,6 +3232,10 @@ CREATE TABLE performance_reports (
 );
 CREATE INDEX idx_pr_workspace ON performance_reports(workspace_id);
 CREATE INDEX idx_pr_period ON performance_reports(period_start, period_end);
+ALTER TABLE performance_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE performance_reports FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON performance_reports
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 > **Credit cost**: 0 credits (included in plan, uses existing analytics data). Per Pack 04 §9.14 and Pack 08 §3.2.
@@ -2637,9 +3255,14 @@ CREATE TABLE ab_test_experiments (
   auto_winner_criteria JSONB DEFAULT '{}', -- {metric, threshold, min_duration_hours}
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_abt_workspace ON ab_test_experiments(workspace_id);
 CREATE INDEX idx_abt_status ON ab_test_experiments(status);
+ALTER TABLE ab_test_experiments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ab_test_experiments FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON ab_test_experiments
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 > **Experiment Object Mapping (Audit v6 — L4)**: This `ab_test_experiments` table serves as the canonical storage for BOTH:
@@ -2682,6 +3305,10 @@ CREATE TABLE challenge_progress (
   UNIQUE(workspace_id, challenge_id)
 );
 CREATE INDEX idx_chp_workspace ON challenge_progress(workspace_id);
+ALTER TABLE challenge_progress ENABLE ROW LEVEL SECURITY;
+ALTER TABLE challenge_progress FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON challenge_progress
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 > **Rules (Freeze §46A.8)**: Maximum 3 active challenges per week. Weekly challenges rotate Monday 00:00 UTC+7. Duplicate completion → no double credit (enforced by UNIQUE constraint + `reward_credited` flag).
@@ -2698,12 +3325,16 @@ CREATE TABLE voice_clone_records (
   sample_audio_urls JSONB DEFAULT '[]', -- uploaded audio samples
   clone_status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, processing, ready, failed
   consent_record_id UUID REFERENCES consent_records(consent_id),
-  quality_score REAL, -- provider quality assessment
+  quality_score REAL, -- 0-100 non-financial provider quality assessment
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_vcr_character ON voice_clone_records(character_id);
 CREATE INDEX idx_vcr_workspace ON voice_clone_records(workspace_id);
+ALTER TABLE voice_clone_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE voice_clone_records FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON voice_clone_records
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 22.13 repurpose_jobs (M09 — PRD §36)
@@ -2715,15 +3346,20 @@ CREATE TABLE repurpose_jobs (
   pipeline_config JSONB NOT NULL DEFAULT '{}', -- {auto_clips, text_posts, thumbnails, carousel, blog, audio, captions, auto_schedule}
   output_asset_ids UUID[] DEFAULT '{}',
   status VARCHAR(20) NOT NULL DEFAULT 'queued', -- queued, processing, completed, partially_completed, failed
-  credits_used REAL DEFAULT 0,
+  credits_used NUMERIC(18,6) DEFAULT 0, -- DB-H-001: financial precision
   created_by UUID REFERENCES users(user_id),
   started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_rj_workspace ON repurpose_jobs(workspace_id);
 CREATE INDEX idx_rj_source ON repurpose_jobs(source_asset_id);
+ALTER TABLE repurpose_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE repurpose_jobs FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON repurpose_jobs
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 > **Rule (Freeze §46A.8)**: All repurpose outputs = drafts. User MUST approve before publish. Max video length per tier: Free 5min, Starter 30min, Pro 60min, Business 120min.
@@ -2748,6 +3384,10 @@ CREATE TABLE link_health_records (
 CREATE INDEX idx_lhr_link ON link_health_records(affiliate_link_id);
 CREATE INDEX idx_lhr_status ON link_health_records(link_status);
 CREATE INDEX idx_lhr_checked ON link_health_records(checked_at DESC);
+ALTER TABLE link_health_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE link_health_records FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON link_health_records
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 22.15 platform_health_scores (M22 — Connector Health)
@@ -2757,10 +3397,10 @@ CREATE TABLE platform_health_scores (
   workspace_id UUID NOT NULL,
   platform VARCHAR(50) NOT NULL,
   connected_account_id UUID REFERENCES connected_accounts(connected_account_id),
-  overall_score REAL NOT NULL, -- 0-100
+  overall_score REAL NOT NULL, -- 0-100 non-financial health score
   api_response_time_ms INTEGER,
-  error_rate_pct REAL,
-  capability_coverage_pct REAL,
+  error_rate_pct REAL, -- 0-100 non-financial percentage
+  capability_coverage_pct REAL, -- 0-100 non-financial percentage
   last_successful_sync TIMESTAMPTZ,
   degraded_features JSONB DEFAULT '[]',
   score_explanation TEXT,
@@ -2768,9 +3408,59 @@ CREATE TABLE platform_health_scores (
 );
 CREATE INDEX idx_phs_workspace ON platform_health_scores(workspace_id, platform);
 CREATE INDEX idx_phs_captured ON platform_health_scores(captured_at DESC);
+ALTER TABLE platform_health_scores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE platform_health_scores FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON platform_health_scores
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
-Updated total: **~116 tables** covering ALL canonical objects from Pack 02 §3.1-3.5 + §3.4 extended domains + S16 + S19 + S26 + operational + Profit OS + Live Commerce + Agent Runs + Policy/Fallback + Extended Production + Gamification Challenges + Voice Clones + Repurpose Jobs + Platform Health.
+### 22.14 home_dashboard_config (M22 — Audit v6)
+```sql
+CREATE TABLE home_dashboard_config (
+  config_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL UNIQUE REFERENCES workspaces(workspace_id),
+  operator_mode VARCHAR(30) NOT NULL DEFAULT 'creator', -- creator, seller, affiliate_operator, live_operator, agency_mcn, brand_collaboration
+  card_order_override JSONB, -- NULL = use default per mode. [{card_family, position, hidden}]
+  snoozed_cards JSONB DEFAULT '[]', -- [{card_id, snoozed_until}]
+  dismissed_cards UUID[] DEFAULT '{}', -- permanently dismissed card IDs
+  morning_brief_enabled BOOLEAN DEFAULT true,
+  morning_brief_channels JSONB DEFAULT '["push", "email"]', -- ["push", "email", "in_app"]
+  morning_brief_time TIME DEFAULT '07:00', -- local time
+  onboarding_completed BOOLEAN DEFAULT false,
+  onboarding_progress JSONB DEFAULT '{"step": 0, "completed_steps": []}',
+  beginner_tips_dismissed BOOLEAN DEFAULT false,
+  last_home_visit_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE home_dashboard_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE home_dashboard_config FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON home_dashboard_config
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+```
+
+### 22.15 monetization_offer_views (M14 — Audit v6)
+```sql
+CREATE TABLE monetization_offer_views (
+  view_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  offer_id UUID NOT NULL REFERENCES offers(offer_id),
+  channel VARCHAR(30) NOT NULL, -- link_in_bio, social_post, email, direct, qr_code
+  viewer_ip_hash VARCHAR(64), -- SHA-256 hash for dedup, no PII stored
+  referrer_url TEXT,
+  converted BOOLEAN DEFAULT false,
+  conversion_order_id UUID,
+  viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_mov_offer ON monetization_offer_views(offer_id, viewed_at DESC);
+CREATE INDEX idx_mov_workspace ON monetization_offer_views(workspace_id, viewed_at DESC);
+ALTER TABLE monetization_offer_views ENABLE ROW LEVEL SECURITY;
+ALTER TABLE monetization_offer_views FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON monetization_offer_views
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+```
+
+Updated total: **~122 tables** covering ALL canonical objects from Pack 02 §3.1-3.5 + §3.4 extended domains + S16 + S19 + S26 + operational + Profit OS + Live Commerce + Agent Runs + Policy/Fallback + Extended Production + Gamification Challenges + Voice Clones + Repurpose Jobs + Platform Health + **Audit v6: product_skus, admin_sessions, invoices, payment_methods, home_dashboard_config, monetization_offer_views** (2026-04-02).
 
 ---
 

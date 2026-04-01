@@ -330,3 +330,5 @@ pub async fn check_permission(
 **Admin RBAC**: ~20 permission keys × 8 admin roles = full admin matrix.
 
 > **Audit v5 — C2 Fix**: `workspace:billing:manage` is Owner-only (non-delegatable, aligned to Freeze §46A.4 and Pack 02 §S07.2). `workspace:billing:read` added for Admin and Manager view access. Previous versions had a conflict where B5 allowed Admin billing manage but Pack 02 §S07.2 restricted it to Owner.
+
+> **Reconciliation: Finance Role → Manager Merge** (Legacy Pricing §8): The original pricing contract defined a separate "Finance" workspace role with permissions for `settlement:import`, `reconciliation:manage`, and `profit:detailed_read`. Per Freeze §46A.4 reconciliation, this role was merged into "Manager" with these specific permissions elevated to Admin-only scope. See §2.8 Finance & Proof — `settlement:import` and `reconciliation:manage/override` require Admin+. This merge is intentional and canonical.

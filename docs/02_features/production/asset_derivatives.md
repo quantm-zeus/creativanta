@@ -3,7 +3,7 @@ layer: features
 module: M09
 canonical: true
 domain: production
-status: DRAFT
+status: READY
 last_updated: 2026-03-30
 ---
 
@@ -64,6 +64,25 @@ M09 exists as the **derivative lifecycle manager** — the organizational layer 
 5. **Batch operations**: select 100+ derivatives → bulk tag / archive / queue publish
 6. **Route to M10/M11**: user selects derivatives → marks as "Ready for Packaging" → enters M10 QA flow → M11 publish
 
+## State Machine
+
+### Derivative Readiness Lifecycle
+
+| From | To | Trigger | Condition |
+|---|---|---|---|
+| — | ingested | M07 production event received | `clip.extracted`, `remix.completed`, or `asset.generation_completed` with `derivative_type` |
+| ingested | organized | User tags/folders derivative | Manual organization action |
+| ingested / organized | ready_for_packaging | User marks "Ready" | User routes derivative to M10 QA flow |
+| ready_for_packaging | packaging | M10 QA panel opens | Derivative enters packaging score evaluation |
+| packaging | packaged | QA checks pass | Packaging score ≥ threshold |
+| packaged | queued_for_publish | User adds to M11 queue | `PublishService/Schedule` called |
+| any (except archived) | archived | User or batch archives | Soft delete with `deleted_at`, reversible |
+| archived | ingested | User restores | Unarchive action |
+
+> Notes:
+> - Derivatives without `parent_asset_id` (lineage) are blocked from `ready_for_packaging` → `packaging` transition (RULE-M09-001).
+> - Batch operations may move collections of derivatives through states simultaneously, with partial failure handling (RULE-M09-002).
+
 ## Edge Cases
 
 ### EC-M09-001: Derivative Source Asset Deleted
@@ -120,3 +139,52 @@ M09 exists as the **derivative lifecycle manager** — the organizational layer 
 ## Open Questions / Blockers
 
 - [NONE] — No critical blockers specific to M09 in OPEN_BLOCKERS.md.
+
+---
+
+## Content Repurpose Pipeline (PRD §35)
+
+> This section describes the end-to-end batch repurpose flow that spans M07 (production) → M09 (management) → M10 (packaging) → M11 (publish).
+
+### Batch Repurpose Flow
+
+1. User uploads long-form content (video, podcast, article)
+2. System analyzes content → proposes derivative plan:
+   - N short clips (via M07 Clip Factory)
+   - Text posts (script excerpts adapted per platform)
+   - Thumbnails (via M07 Thumbnail Studio)
+3. User reviews proposed plan with estimated credit cost
+4. User confirms → system generates all derivatives as **DRAFTS**
+5. `asset.generation_completed` events fire → M09 auto-registers all derivatives
+6. User reviews derivatives in M09 batch review interface
+7. User approves/edits selected derivatives → marks "Ready for Packaging"
+8. Approved derivatives enter M10 QA → M11 batch publish scheduling
+
+### Tier Limits for Repurpose
+
+| Tier | Max Source Duration | Max Derivatives Per Batch |
+|---|---|---|
+| Free | 5 minutes | 3 clips + 1 text + 1 thumbnail |
+| Starter | 15 minutes | 10 clips + 3 text + 3 thumbnails |
+| Pro | 60 minutes | 20 clips + 10 text + 5 thumbnails |
+| Business | 120 minutes | 50 clips + 20 text + 10 thumbnails |
+
+### Acceptance Scenario
+
+```gherkin
+Feature: Content Repurpose Pipeline
+  Scenario: Batch repurpose from long video
+    Given a Pro user uploads a 10-minute video
+    When the system analyzes the video
+    Then a repurpose plan is proposed: "5 clips + 3 text posts + 2 thumbnails"
+    And estimated credit cost is shown: "45 credits"
+    When user confirms the plan
+    Then all derivatives are generated as DRAFTS
+    And each derivative appears in M09 library with lineage to source
+    And user can batch-approve selected derivatives for M10/M11
+
+  Scenario: Free tier repurpose limit
+    Given a Free user attempts to repurpose a 30-minute video
+    When the system checks tier limits
+    Then repurpose is blocked: "Free tier supports videos up to 5 minutes. [Upgrade] to process longer content."
+```

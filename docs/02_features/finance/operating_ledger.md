@@ -3,7 +3,7 @@ layer: features
 module: M19
 canonical: true
 domain: finance
-status: DRAFT
+status: READY
 last_updated: 2026-03-30
 ---
 
@@ -86,6 +86,11 @@ M19 exists as the **financial truth and proof layer** — the operating ledger t
    - Per scope: workspace, product, platform, campaign, content, period
    - Each snapshot carries `source_class_mix`, `confidence`, `freshness_at`
    - `profit.snapshot_updated` event emitted
+   - **Computation triggers** (multi-strategy):
+     - **Event-driven (primary)**: On `order.state_changed`, `settlement.reconciled`, `cost.recorded`, `refund.completed` → affected scope snapshots recompute within 30s
+     - **Cron (catch-all)**: Full recomputation every **15 minutes** for active workspaces (those with >0 orders in last 30 days). Inactive workspaces recompute daily at 03:00 UTC.
+     - **On-demand**: User clicks "Refresh" on profit dashboard → forces immediate recomputation for that workspace scope (rate limit: 1 per 60s per workspace)
+   - **Staleness threshold**: Money cards MUST show `freshness_at` timestamp. If `NOW() - freshness_at > 30 minutes`, card shows ⚠️ "Data may be stale — refreshing…" and triggers on-demand recomputation
 6. **Anomaly detection**: System monitors for unusual patterns
    - Revenue drop > threshold → `profit.anomaly_detected` event
    - Cost spike → alert

@@ -168,7 +168,7 @@ HomePage
 | Views | `ClickHouse: content_performance` | `AnalyticsService/GetDashboard` | Compact format (45.2K) | 5m TTL |
 | Unread | `threads WHERE unread = true` | `ThreadService/GetUnreadCount` | Integer | Real-time SSE |
 | Engagement Rate | Computed (interactions/views) | `AnalyticsService/GetDashboard` | Percentage "8.2%" | 5m TTL |
-| AI Credits | `credit_ledger` balance | `CreditService/GetBalance` | "12/100" (used/total) | Real-time |
+| AI Credits | `credit_transactions` balance | `CreditService/GetBalance` | "12/100" (used/total) | Real-time |
 | Trending Topics | `trends` top by score | `TrendService/ListTop(limit=3)` | Title + score badge | 10m TTL |
 | Pipeline Counts | `ideas`, `scripts`, `assets` | `DashboardService/GetPipeline` | Count per stage | 5m TTL |
 | Schedule | `publish_jobs` upcoming | `PublishService/ListUpcoming(limit=5)` | Time + title + platform icon | 5m TTL |

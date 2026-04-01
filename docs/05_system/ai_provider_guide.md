@@ -226,3 +226,33 @@ VALUES (NOW(), $1, $2, $3, $4, $5, $6, $7, $8, $9);
 ```
 
 Dashboard query: daily/weekly/monthly cost per workspace per provider.
+
+---
+
+## 9. Internal Cost Management & Margin Monitoring
+
+> Source: Pricing/Credits Contract §3.7
+
+### 9.1 AI Cost Tracking (Internal P&L)
+- Every AI operation MUST track `actual_cost_usd` (real provider cost) alongside `credits_used` (user-charged)
+- Monthly P&L dashboard (admin-only): credit revenue vs actual AI costs per operation type
+- **Margin alert**: if margin < 30% on any operation type → trigger `system.alert_triggered` event → Finance Admin notified
+- Per-workspace cost tracking: identify high-cost workspaces for optimization
+
+### 9.2 Model Routing Optimization
+- Route requests to cost-effective model first → fallback to premium model only if needed
+- **Semantic cache**: cache LLM responses for similar prompts (embedding similarity > 0.95) → reduce API calls by ~20-30%
+- **Batch processing**: group small requests when possible (e.g., batch caption generation)
+- **Provider diversification**: never depend on single AI provider — circuit breaker ensures auto-failover
+- **Token budgeting**: set max_tokens per task type to prevent runaway costs
+
+### 9.3 Margin Health Dashboard (Internal Admin)
+
+| Metric | Threshold | Alert |
+|---|---|---|
+| Per-operation margin | < 30% | Finance Admin notification |
+| Monthly total AI cost | > 80% of credit revenue | P1 alert to Finance + Ops |
+| Provider cost spike | > 50% increase week-over-week | Tech Admin notification |
+| Cache hit rate | < 20% | Optimization review trigger |
+| Average tokens/request | > 2x expected for task type | Model routing review |
+

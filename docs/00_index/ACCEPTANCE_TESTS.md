@@ -601,7 +601,14 @@ Source: PRD §23.14 — "monetization surfaces không được đứng riêng kh
     And revenue figures show source class và confidence badge
 
 ### AC-M14-003: Monetization experiment results link to proof
-[NEEDS INPUT: PRD §23.14 chỉ có 2 AC bullets. Cần thêm AC cho monetization experiments — "monetization experiments kết quả phải link về proof layer" hoặc AC khác từ sản phẩm.]
+Source: PRD §23.14 — "monetization experiments kết quả phải link về proof layer"
+
+    Given a monetization experiment (A/B offer test, channel attribution test, pricing experiment) has completed
+    When user views the experiment results dashboard
+    Then each result metric (conversion rate, revenue delta, channel attribution) displays source class badge (Official / Estimated / Inferred)
+    And revenue impact figures link directly to M19 Operating Ledger entries via proof drill-down
+    And if experiment uses estimated/inferred data, confidence badge shows appropriately (medium/low)
+    And experiment conclusion MUST NOT present estimated uplift as Official truth without explicit label
 
 ---
 

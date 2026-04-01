@@ -3,7 +3,7 @@ layer: features
 module: auth
 canonical: true
 domain: platform
-status: DRAFT
+status: READY
 last_updated: 2026-03-30
 cross_cutting: true
 ---

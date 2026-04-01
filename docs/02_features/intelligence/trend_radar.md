@@ -3,7 +3,7 @@ layer: features
 module: M02
 canonical: true
 domain: intelligence
-status: DRAFT
+status: READY
 last_updated: 2026-03-30
 ---
 

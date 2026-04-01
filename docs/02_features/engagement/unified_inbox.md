@@ -3,7 +3,7 @@ layer: features
 module: M12
 canonical: true
 domain: engagement
-status: DRAFT
+status: READY
 last_updated: 2026-03-30
 ---
 

@@ -1,6 +1,6 @@
 # Screen: Admin — Abuse Reports & Trust Safety
 
-> **Screen ID**: A019
+> **Screen ID**: A017
 > **Module**: S26 — Internal Admin & Operations (Trust & Safety)
 > **Route**: `/admin/abuse`
 > **Platform**: Admin Web (SvelteKit) — VPN-only access

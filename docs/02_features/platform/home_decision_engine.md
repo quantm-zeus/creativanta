@@ -3,8 +3,8 @@ layer: features
 module: M01
 canonical: true
 domain: platform
-status: DRAFT
-last_updated: 2026-03-30
+status: READY
+last_updated: 2026-04-02
 ---
 
 # Feature: Home / Daily Decision Engine (M01)
@@ -166,3 +166,46 @@ see [04_contracts/domain_event_catalog.md#13](../04_contracts/domain_event_catal
 ## Open Questions / Blockers
 
 - **SCR-M-001** (OPEN_BLOCKERS.md): Screen specs in `docs/screens/` not yet migrated to `docs/03_screens/` — cross-links to screen docs may use old paths until resolved.
+
+---
+
+## Contextual Learning System (PRD §36A, §27)
+
+> Home is the primary entry point for the Contextual Learning System — a progressive disclosure mechanism that reduces cognitive load for beginners while staying invisible to experienced users.
+
+### Learning Layers
+
+| Layer | Trigger | Content | Mode |
+|---|---|---|---|
+| **First-use tooltips** | User encounters feature for 1st time | Brief explanation + "Learn more" link | All modes |
+| **Module-scoped help overlay** | User clicks "?" icon on any module | Module-specific guide, top 3 actions, related articles | All modes |
+| **Progressive feature reveal** | User completes key milestones | Unlock next level features with celebration | Beginner |
+| **Operator mode learning path** | User selects operator mode | Mode-specific recommended feature sequence | Beginner |
+| **Contextual AI tips** | System detects user stuck (>60s inactivity on a form) | "Bạn cần trợ giúp? [Xem hướng dẫn] [Hỏi Copilot]" | Beginner |
+
+### Beginner Mode UX Rules (PRD §27)
+- **No "learn module" prerequisite**: user never forced to complete training before accessing features
+- **Task-first navigation**: prioritize flow by task/loop, not by internal taxonomy
+- **Concrete CTAs**: use "Tạo video bán hàng" not abstract "Create asset"
+- **4 mandatory state types**: empty states, partial setup states, broken states, repair states — all with contextual help
+- **Recipe-first entry**: allow user to start from recipe, object, or suggested action — no command-heavy UX
+
+### Learning Path Per Operator Mode
+
+| Mode | Recommended Sequence | Prize |
+|---|---|---|
+| Creator | Connect → Idea → Script → Video → Publish → Track | "Debut Creator" badge + 20 credits |
+| Seller | Connect Shop → List Product → Create Video Ad → Publish → Track Sales | "First Sale" badge + 20 credits |
+| Affiliate | Connect → Browse Offers → Generate Link → Share → Track Revenue | "Link Legend" badge + 20 credits |
+
+### Implementation Notes
+- Contextual tips stored as content items (managed by ops via internal admin)
+- Tips suppressible: user can dismiss permanently via "Don't show again"
+- Tips language follows workspace language setting
+- Analytics: track tip dismissal rate, Copilot handoff rate, feature activation rate after tip exposure
+
+### Cross-references
+- **Help Center**: `02_features/platform/help_center.md` (article links from tooltips)
+- **Copilot**: `02_features/platform/copilot.md` (handoff from contextual tips)
+- **Gamification**: `02_features/platform/gamification.md` (achievement badges for learning path completion)
+

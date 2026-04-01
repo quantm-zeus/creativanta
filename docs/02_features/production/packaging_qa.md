@@ -3,7 +3,7 @@ layer: features
 module: M10
 canonical: true
 domain: production
-status: DRAFT
+status: READY
 last_updated: 2026-03-30
 ---
 
@@ -87,6 +87,35 @@ M10 exists as the **pre-publish quality gate** that scores, validates, and optim
 - Trigger: User selects a saved upload preset (e.g., "TikTok Daily Post" preset)
 - Steps: Preset auto-fills: target platform, format, hashtag template, disclosure template, CTA template. QA panel re-scores with preset values applied.
 - Result: Faster publish setup, consistency across recurring publishing patterns
+
+## State Machine
+
+### Packaging QA Lifecycle
+
+| From | To | Trigger | Condition |
+|---|---|---|---|
+| — | scoring | User enters publish flow | `PackagingService/Score` auto-called |
+| scoring | pass | All components ≥ 50, compliance = pass | No blockers found |
+| scoring | pass_with_warnings | Score ≥ 50 but compliance = pass_with_warnings | Optional fixes suggested |
+| scoring | review_required | Compliance = review_required | Trust-critical check needs Manager+ review |
+| scoring | blocked | Compliance = blocked OR score = 0 | Cannot proceed without resolution |
+| pass / pass_with_warnings | ready_to_publish | User confirms | Content enters M11 publish queue |
+| review_required | overridden | Manager+ provides override reason (≥10 chars) | Override logged to audit trail |
+| overridden | ready_to_publish | Override confirmed | Content enters M11 with override flag |
+| blocked | scoring | User applies fixes | Re-score triggered after fix applied |
+| blocked | overridden | Manager+ overrides (if not score=0) | Score=0 blocks cannot be overridden |
+
+### A/B Experiment Lifecycle
+
+| From | To | Trigger | Condition |
+|---|---|---|---|
+| — | design | User clicks "Create A/B Test" | Experiment setup begins |
+| design | active | Experiment launched | All variants scheduled via M11 |
+| active | monitoring | Variants published | Monitoring period begins (24-72h) |
+| monitoring | complete | Monitoring period ends | Auto-winner selected based on success metric |
+| monitoring | inconclusive | No statistically significant winner | User prompted to extend monitoring or pick manually |
+| complete | scaled | User scales winner | Winner variant pushed to more platforms |
+| any | cancelled | User cancels | All variant schedules cancelled |
 
 ## Edge Cases
 

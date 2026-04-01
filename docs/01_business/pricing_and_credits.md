@@ -96,6 +96,12 @@ last_updated: 2026-03-30
 | Business | Monthly | Rollover tối đa 20% unused sang tháng sau |
 | Enterprise | Monthly | Custom rollover policy |
 
+> **CANONICAL CLARIFICATION — Purchased Credit Packs vs Subscription Credits**:
+> - **Subscription credits** (monthly allocation) follow the rollover rules above — unused credits expire or roll over per tier policy.
+> - **Purchased credit packs** (one-time buy) **NEVER expire** and are **NOT subject to rollover limits**. They remain in the workspace balance indefinitely until consumed.
+> - **Consumption order**: Subscription credits are consumed **first** (FIFO within billing cycle), then purchased pack credits. This ensures purchased credits serve as a reserve buffer.
+> - **Display**: Workspace credit balance MUST show breakdown: `{subscription_remaining} + {purchased_remaining} = {total_available}`.
+
 ### 2.3 Credit Reservation (Escrow) Flow
 1. User confirm AI action → System tạo reservation (status: pending) → balance giảm
 2. **SUCCESS**: reservation confirmed, adjusted to actual cost (có thể < estimated)

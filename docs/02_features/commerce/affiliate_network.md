@@ -3,7 +3,7 @@ layer: features
 module: M16
 canonical: true
 domain: commerce
-status: DRAFT
+status: READY
 last_updated: 2026-03-30
 ---
 
@@ -109,6 +109,95 @@ M16 exists as the **affiliate operations and creator professionalization layer**
 - Trigger: URL destination flagged by Google Safe Browsing
 - Steps: Link flagged → creator warned → 48h to fix/remove → if no action, link auto-removed. If shared domain reputation threatened, ops alerted for emergency suspension of violating pages.
 - Result: Shared domain reputation protected; legitimate creators unaffected
+
+## State Machine
+
+### Affiliate Link Lifecycle
+
+| From | To | Trigger | Condition |
+|---|---|---|---|
+| — | active | Link created | `AffiliateService/CreateLink` (Editor+) |
+| active | paused | Operator pauses | Manual pause or stock-out auto-pause |
+| paused | active | Operator resumes | `AffiliateService/Resume` |
+| active | broken | Health check fails | Redirect broken / product unavailable → `affiliate.link_health.broken` |
+| broken | active | Operator fixes destination | Link destination updated and health check passes |
+| active | expired | TTL reached or campaign ends | System auto-expires based on `expiry_date` |
+| any (except deleted) | deleted | Operator deletes | Soft delete with `deleted_at` |
+
+### Reconciliation Lifecycle
+
+| From | To | Trigger | Condition |
+|---|---|---|---|
+| — | open | Statement imported | `ReconciliationService/Import` |
+| open | matching | System starts auto-match | Background job matches line items to tracked conversions |
+| matching | partially_reconciled | Some matches found | ≥1 match but unmatched items remain |
+| matching | fully_reconciled | All matches found | 100% line items matched to tracked conversions |
+| matching | conflict_detected | Contradictory matches | Same order attributed to multiple sources → human review required |
+| partially_reconciled | fully_reconciled | Human resolves remaining | All unmatched items manually resolved |
+| conflict_detected | fully_reconciled | Human resolves conflict | Override decision with reason + audit trail |
+
+### Brand Deal Lifecycle (S16 v1)
+
+| From | To | Trigger | Condition |
+|---|---|---|---|
+| — | negotiating | Creator logs deal | Manual entry |
+| negotiating | agreed | Terms confirmed | Creator marks as agreed |
+| agreed | in_progress | Work begins | Creator starts deliverables |
+| in_progress | delivered | All deliverables submitted | Creator marks complete |
+| delivered | paid | Payment received | Creator confirms payment |
+| paid | completed | Deal closed | Final status — archived |
+
+## Affiliate Link Health Monitor
+
+> Source: Pricing/Credits Contract §5 — Affiliate Link Health Monitor Contract
+
+### Purpose
+
+Automatically detect broken, expired, or degraded affiliate links — preventing silent revenue loss. Every broken link is assessed for revenue impact and prioritized for operator action.
+
+### Health Check Types
+
+| Check Type | Frequency | Action on Failure |
+|---|---|---|
+| **HTTP status check** | Every 6 hours | Flag dead link + notify operator |
+| **Product availability** | Every 12 hours | Flag out-of-stock + suggest alternative product |
+| **Price change detection** | Every 12 hours | Notify if price changed significantly (>10%) |
+| **Commission rate change** | Daily | Alert if commission decreased |
+| **Link expiry** | Daily | Alert 7 days before expiry |
+| **Redirect chain check** | Weekly | Flag excessive redirects (>3 hops) |
+| **Platform account status** | Daily | Check if affiliate account still active |
+
+### Link Health Object
+
+```
+LinkHealth:
+  link_health_id: UUID
+  affiliate_link_ref: FK → affiliate_links
+  last_checked_at: timestamp
+  http_status: integer
+  product_status: enum(available, out_of_stock, discontinued, price_changed, unknown)
+  commission_status: enum(active, changed, suspended, unknown)
+  link_status: enum(healthy, warning, broken, expired)
+  expiry_date: date (nullable)
+  suggested_action: text
+  revenue_impact_30d: NUMERIC(14,2) — estimated 30-day revenue impact of this link being broken
+  alert_sent: boolean
+```
+
+### Revenue Impact Assessment
+- Each broken link's revenue impact estimated from last 30 days of historical performance
+- Sort broken links by revenue impact (fix high-impact first)
+- Monthly "lost revenue" report from broken/expired links
+- Dashboard widget: "X links need attention — est. Y₫ revenue at risk"
+
+### FE/UX for Link Health
+- Affiliate link list displays health status badge (✅ healthy / ⚠️ warning / ❌ broken)
+- Dashboard widget: "[N] links need attention"
+- Click-to-fix: suggest replacement links, update expired links
+- Bulk health check action (manual trigger)
+- Critical notifications for high revenue-impact broken links
+
+---
 
 ## Edge Cases
 
