@@ -237,10 +237,10 @@ ImageToVideoPage
 
 | Screen | Relationship |
 |---|---|
-| [W024] AI Studio Launcher | Parent |
-| [W034] Thumbnail Generator | Image source |
-| [W036] AI Music Mode | Music generation |
-| [W038] Studio Queue | Job tracking |
+| [W021] Studio Launcher | Parent |
+| [W026] Thumbnail Generator | Image source |
+| [W028] Sound Manager | Music generation |
+| [W030] Studio Queue | Job tracking |
 
 ---
 

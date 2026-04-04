@@ -1,7 +1,7 @@
 # Screen: Web — Support Center
 
-> **Screen ID**: W113
-> **Module**: M25 — Support & Help
+> **Screen ID**: W097
+> **Module**: S19 — Help Center
 > **Route**: `/support`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: A1 Schema (support_tickets, kb_articles, ticket_messages), B5 RBAC §2.7
@@ -250,10 +250,9 @@ SupportCenterPage
 
 | Screen | Relationship |
 |---|---|
-| [W114] Article Viewer | Knowledge base article detail |
-| [W115] Ticket Creation | Create new support ticket |
-| [W116] Ticket Detail | Ticket conversation thread |
-| [M042] Mobile Support | Mobile equivalent |
+| [W098] Help Article Viewer | Knowledge base article detail |
+| [W099] Ticket Create | Create new support ticket |
+| [M049] Mobile Support | Mobile equivalent |
 
 ---
 

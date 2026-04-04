@@ -1,6 +1,6 @@
 # Screen: Web — Trend Radar
 
-> **Screen ID**: W009
+> **Screen ID**: W038
 > **Module**: M02 — Trend Radar
 > **Route**: `/intelligence/trends`
 > **Platform**: Web (SvelteKit)
@@ -517,13 +517,13 @@ onMount(() => {
 
 | Screen | Relationship |
 |---|---|
-| [W010] Trend Detail | Full trend analysis + related content |
-| [W011] Watchlist Manager | Manage watchlists |
-| [W012] Opportunity Board | Opportunity scoring from trends |
-| [W017] Idea Board | Ideas created from trends land here |
+| [W039] Trend Detail | Full trend analysis + related content |
+| [W042] Watchlist | Manage watchlists |
+| [W043] Opportunity Board | Opportunity scoring from trends |
+| [W012] Idea Board | Ideas created from trends land here |
 | [W001] Home Dashboard | AI Pulse links to trending topics |
-| [W003] Morning Brief | Daily trend summary |
-| [M014] Mobile Trend List | Mobile equivalent |
+| [W009] Morning Brief | Daily trend summary |
+| [M017] Mobile Trend List | Mobile equivalent |
 | [S009] Trust Badge | Source/confidence badges |
 
 ---
@@ -532,5 +532,5 @@ onMount(() => {
 
 | Date | Version | Change | Author |
 |---|---|---|---|
-| 2026-03-29 | 2.0 | **Full Tier A rewrite**: Upgraded from 309-line Tier B with generic boilerplate to 540+ line full spec. Added: quick summary bar with platform breakdown, detailed filter bar with active chips, watchlist inline dropdown, AI insight bar, score/source/confidence color mapping, sparkline SVG component spec, real-time SSE for new trends/score updates, TIER_BLOCKED state for free users, 12 analytics events, per-platform brand color tokens, list view table layout, search with Meilisearch fallback. Removed all generic boilerplate. Standardized Screen ID from W09 to W009. | System |
+| 2026-03-29 | 2.0 | **Full Tier A rewrite**: Upgraded from 309-line Tier B with generic boilerplate to 540+ line full spec. Added: quick summary bar with platform breakdown, detailed filter bar with active chips, watchlist inline dropdown, AI insight bar, score/source/confidence color mapping, sparkline SVG component spec, real-time SSE for new trends/score updates, TIER_BLOCKED state for free users, 12 analytics events, per-platform brand color tokens, list view table layout, search with Meilisearch fallback. Removed all generic boilerplate. Standardized Screen ID from W09 to W038. | System |
 | 2026-03-27 | 1.0 | Initial specification (Tier B) | System |

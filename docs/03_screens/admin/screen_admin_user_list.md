@@ -1,6 +1,6 @@
 # Screen: Admin — User Management
 
-> **Screen ID**: A03
+> **Screen ID**: A002
 > **Module**: Admin — User Management
 > **Route**: `/admin/users`
 > **Platform**: Web (SvelteKit) — VPN-only
@@ -79,20 +79,20 @@ AdminUserListPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | View detail | "→ Detail" | — | → `/admin/users/[id]` | `admin:users` |
-| 2 | Search | Search input | Meilisearch | Results filter | `admin:users` |
-| 3 | Suspend | "⚠️ Suspend" → reason → confirm | `AdminUserService/Suspend(id, reason)` | Status → Suspended | `admin:users` |
-| 4 | Reactivate | "🟢 Reactivate" | `AdminUserService/Reactivate(id)` | Status → Active | `admin:users` |
-| 5 | Reset password | "🔑 Reset" → confirm | `AdminUserService/ResetPassword(id)` | Email sent | `admin:users` |
-| 6 | Send email | "📧 Email" → compose modal | `AdminEmailService/Send(to, subject, body)` | Email sent | `admin:users` |
-| 7 | Invite | "+ Invite" → email input | `AdminUserService/Invite(email)` | Invitation sent | `admin:users` |
+| 1 | View detail | "→ Detail" | — | → `/admin/users/[id]` | `admin:user:read` |
+| 2 | Search | Search input | Meilisearch | Results filter | `admin:user:read` |
+| 3 | Suspend | "⚠️ Suspend" → reason → confirm | `AdminUserService/Suspend(id, reason)` | Status → Suspended | `admin:user:suspend` |
+| 4 | Reactivate | "🟢 Reactivate" | `AdminUserService/Reactivate(id)` | Status → Active | `admin:user:suspend` |
+| 5 | Reset password | "🔑 Reset" → confirm | `AdminUserService/ResetPassword(id)` | Email sent | `admin:user:suspend` |
+| 6 | Send email | "📧 Email" → compose modal | `AdminEmailService/Send(to, subject, body)` | Email sent | `admin:user:read` |
+| 7 | Invite | "+ Invite" → email input | `AdminUserService/Invite(email)` | Invitation sent | `admin:user:read` |
 
 ---
 
 ## 6-20. Standard Sections
 
 ### Admin Role Requirements
-- Only `admin:users` permission (Super Admin, Admin roles)
+- Only `admin:user:read` + `admin:user:suspend` permissions (Super Admin, Ops Admin roles)
 - All actions logged to admin audit
 
 ### States
@@ -110,8 +110,8 @@ AdminUserListPage
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [A04] User Detail | Individual user view |
-| [A01] Admin Dashboard | Parent |
+| [A003] User Detail | Individual user view |
+| [A001] Admin Dashboard | Parent |
 
 ### Revision History
 | Date | Version | Change |

@@ -39,7 +39,7 @@ Deep technical diagnostics for a publish item — API call logs, platform capabi
 
 ### Preconditions
 - Publish item exists (any status: published, failed, partially_published)
-- User has `publish:manage` or `publish:read` permission
+- User has `publish:execute` or `publish:read` permission
 
 ### Postconditions
 - Retry creates new publish attempt entry in logs
@@ -171,12 +171,12 @@ PublishDiagnosticsPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Retry now | "🔄 Retry now" | `PublishService/Retry(item_id, platform)` | New publish attempt, spinner | `publish:manage` |
-| 2 | Schedule retry | "⏰ Schedule" → time | `PublishService/ScheduleRetry(item_id, platform, time)` | Scheduled, toast | `publish:manage` |
+| 1 | Retry now | "🔄 Retry now" | `PublishService/Retry(item_id, platform)` | New publish attempt, spinner | `publish:execute` |
+| 2 | Schedule retry | "⏰ Schedule" → time | `PublishService/ScheduleRetry(item_id, platform, time)` | Scheduled, toast | `publish:execute` |
 | 3 | Copy error | "📋 Copy error" | — (clipboard) | Formatted error text for support | Any |
-| 4 | Copy full log | "📋 Copy full log" | — (clipboard) | Full API log copied | `publish:manage` |
-| 5 | Export log | "📥 Export" | — | JSON log file download | `publish:manage` |
-| 6 | Go to connector | "→ Connector Settings" | — | → W117 Connected Accounts | `settings:manage` |
+| 4 | Copy full log | "📋 Copy full log" | — (clipboard) | Full API log copied | `publish:execute` |
+| 5 | Export log | "📥 Export" | — | JSON log file download | `publish:execute` |
+| 6 | Go to connector | "→ Connector Settings" | — | → W117 Connected Accounts | `workspace:settings:manage` |
 
 ---
 ## 7. States
@@ -303,10 +303,10 @@ PublishDiagnosticsPage
 
 | Screen | Relationship |
 |---|---|
-| [W045] Publish Item Detail | Parent: publish overview |
-| [W044] Publish Queue | Failed items queue |
+| [W057] Publish Item Detail | Parent: publish overview |
+| [W053] Publish Queue | Failed items queue |
 | [W117] Connected Accounts | Fix connector issues |
-| [W119] Diagnostics Center | System-wide diagnostics |
+| [W125] Diagnostics Center | System-wide diagnostics |
 
 ---
 

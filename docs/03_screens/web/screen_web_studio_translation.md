@@ -1,6 +1,6 @@
 # Screen: Web — Translation Studio
 
-> **Screen ID**: W37
+> **Screen ID**: W033
 > **Module**: M07 — AI Studio
 > **Route**: `/studio/translate`
 > **Platform**: Web (SvelteKit)
@@ -222,9 +222,9 @@ Formula: `total = languages × (base + lip_sync + cultural) × (1 - discount)`
 
 | Screen | Relationship |
 |---|---|
-| [W024] AI Studio Launcher | Parent |
-| [W038] Studio Queue | Job tracking |
-| [W039] Asset Library | Output storage |
+| [W021] Studio Launcher | Parent |
+| [W030] Studio Queue | Job tracking |
+| [W029] Asset Library | Output storage |
 
 ---
 

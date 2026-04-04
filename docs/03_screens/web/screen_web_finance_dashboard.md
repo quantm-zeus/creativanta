@@ -1,6 +1,6 @@
 # Screen: Web — Finance: Profit Dashboard
 
-> **Screen ID**: W081
+> **Screen ID**: W080
 > **Module**: M19 — Operating Ledger
 > **Route**: `/finance`
 > **Platform**: Web (SvelteKit)
@@ -220,7 +220,7 @@ ProfitDashboardPage
 - **KPI animation**: Svelte `tweened` stores for counter animation
 - **Trust badges**: S009 component (`<TrustBadge source={sourceClass} />`)
 - **No localStorage**: Financial data never cached client-side (privacy)
-- **Export**: PDF via `pdf-lib`, CSV via server-side `FinanceService/ExportReport`
+- **Export**: PDF via `pdf-lib`, CSV via server-side `ProfitService/GetSummary`
 
 ---
 
@@ -261,7 +261,7 @@ ProfitDashboardPage
 | [W085] Proof Browser | Evidence chain |
 | [W086] Settlements | Payment tracking |
 | [W087] Financial Reports | Report generation |
-| [M034] Mobile Finance | Mobile equivalent |
+| [M040] Mobile Finance Overview | Mobile equivalent |
 
 ---
 

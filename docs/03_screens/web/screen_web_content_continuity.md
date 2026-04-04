@@ -1,7 +1,7 @@
 # Screen: Web — Continuity Packs
 
-> **Screen ID**: W027
-> **Module**: M06 — Content Creation
+> **Screen ID**: W019
+> **Module**: M08 — Continuity OS
 > **Route**: `/continuity`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §14, A1 Schema (character_packs, brand_packs, voice_packs, voice_samples), B5 RBAC §2.6
@@ -46,7 +46,7 @@ Continuity Packs is the "character bible" for AI-generated content — a managem
 
 ### Preconditions
 - User authenticated with valid session
-- User has `content:read` permission
+- User has `idea:read` permission
 - Workspace exists (character packs are per-workspace)
 
 ### Postconditions
@@ -256,18 +256,18 @@ ContinuityPacksPage
 
 | # | Action | Trigger | API Call | System Response | Permission |
 |---|---|---|---|---|---|
-| 1 | Create character | "+ Tạo mới" → "Character" | — | Navigate to full-page create form | `content:create` |
-| 2 | Edit character | "✏ Edit" on card | `ContinuityService/Get(id)` | Navigate to edit form with data | `content:update` |
-| 3 | Duplicate character | "📋 Dup" | `ContinuityService/Clone(id)` | Toast: "Đã tạo bản sao: Mila (copy)". New card appears. | `content:create` |
+| 1 | Create character | "+ Tạo mới" → "Character" | — | Navigate to full-page create form | `idea:create` |
+| 2 | Edit character | "✏ Edit" on card | `ContinuityService/Get(id)` | Navigate to edit form with data | `script:edit` |
+| 3 | Duplicate character | "📋 Dup" | `ContinuityService/Clone(id)` | Toast: "Đã tạo bản sao: Mila (copy)". New card appears. | `idea:create` |
 | 4 | Use in Studio | "→ Use in Studio" | — | Navigate → `/studio?character_id=[id]` | `asset:generate` |
-| 5 | Set as default | ⋮ → "⭐ Set as default" | `WorkspaceService/SetDefaultCharacter(id)` | Previous default loses ⭐, new one gets ⭐. Toast: "Đã đặt làm mặc định." | `content:update` |
-| 6 | Delete character | ⋮ → "🗑 Delete" → confirm with usage warning | `ContinuityService/Delete(id)` | Card removed. Toast: "Đã xóa character." | `content:delete` |
-| 7 | Upload avatar | Upload button in form | `UploadService/Upload(file)` | Avatar preview updates | `content:update` |
-| 8 | AI generate avatar | "🤖 AI Generate" → style selection | `CopilotService/GenerateAvatar(description, style)` | 4 avatar options → select one. Costs 5 credits. | `content:update` + credits |
-| 9 | Upload voice sample | "📎 Upload" in voice tab | `VoiceService/UploadSample(file)` → ElevenLabs clone | Upload → processing (30s-2min) → clone ready | `content:update` |
-| 10 | Test voice | "▶ Test" → plays sample | `VoiceService/TestVoice(voice_id, text)` | Audio plays: test sentence in cloned voice | `content:read` |
-| 11 | Save character | "💾 Lưu" submit form | `ContinuityService/Create(data)` or `Update(id, data)` | Character saved → navigate back to list | `content:create` or `content:update` |
-| 12 | Switch tab | Click tab | Client-side | Tab content changes | `content:read` |
+| 5 | Set as default | ⋮ → "⭐ Set as default" | `WorkspaceService/SetDefaultCharacter(id)` | Previous default loses ⭐, new one gets ⭐. Toast: "Đã đặt làm mặc định." | `script:edit` |
+| 6 | Delete character | ⋮ → "🗑 Delete" → confirm with usage warning | `ContinuityService/Delete(id)` | Card removed. Toast: "Đã xóa character." | `script:delete` |
+| 7 | Upload avatar | Upload button in form | `UploadService/Upload(file)` | Avatar preview updates | `script:edit` |
+| 8 | AI generate avatar | "🤖 AI Generate" → style selection | `CopilotService/GenerateAvatar(description, style)` | 4 avatar options → select one. Costs 5 credits. | `script:edit` + credits |
+| 9 | Upload voice sample | "📎 Upload" in voice tab | `VoiceService/UploadSample(file)` → ElevenLabs clone | Upload → processing (30s-2min) → clone ready | `script:edit` |
+| 10 | Test voice | "▶ Test" → plays sample | `VoiceService/TestVoice(voice_id, text)` | Audio plays: test sentence in cloned voice | `idea:read` |
+| 11 | Save character | "💾 Lưu" submit form | `ContinuityService/Create(data)` or `Update(id, data)` | Character saved → navigate back to list | `idea:create` or `script:edit` |
+| 12 | Switch tab | Click tab | Client-side | Tab content changes | `idea:read` |
 
 ---
 
@@ -505,10 +505,10 @@ const avatars = await copilotService.generateAvatar({
 
 | Screen | Relationship |
 |---|---|
-| [W024] AI Studio | Consumer: uses characters for content generation |
-| [W028] Derivative Manager | Consumer: uses characters for derivative creation |
-| [W095] AI Settings | Settings: AI model preferences that affect character output |
-| [M027] Mobile Continuity | Mobile equivalent |
+| [W021] Studio Launcher | Consumer: uses characters for content generation |
+| [W018] Derivative Manager | Consumer: uses characters for derivative creation |
+| [W123] AI Preferences | Settings: AI model preferences that affect character output |
+| [M001] Mobile Home Dashboard | Mobile equivalent (continuity via dashboard) |
 
 ---
 
@@ -516,5 +516,5 @@ const avatars = await copilotService.generateAvatar({
 
 | Date | Version | Change | Author |
 |---|---|---|---|
-| 2026-03-29 | 2.0 | **Full Tier A rewrite**: Upgraded from 163-line Tier C with generic boilerplate to 470+ line full spec. Added: complete component hierarchy for both list and create/edit views, character personality model (tone, formality, catchphrases, backstory), visual style system (art style, appearance, outfit, background), ElevenLabs voice cloning integration with upload/processing/test flow, brand pack color/font/logo management, 7-role RBAC with credit checks, 12 analytics events, voice processing states. Removed all generic boilerplate. Standardized Screen ID from W27 to W027. | System |
+| 2026-03-29 | 2.0 | **Full Tier A rewrite**: Upgraded from 163-line Tier C with generic boilerplate to 470+ line full spec. Added: complete component hierarchy for both list and create/edit views, character personality model (tone, formality, catchphrases, backstory), visual style system (art style, appearance, outfit, background), ElevenLabs voice cloning integration with upload/processing/test flow, brand pack color/font/logo management, 7-role RBAC with credit checks, 12 analytics events, voice processing states. Removed all generic boilerplate. Standardized Screen ID from W27 to W019. | System |
 | 2026-03-28 | 1.0 | Initial specification (Tier C) | System |

@@ -25,12 +25,12 @@ Before implementing, generating code, or modifying any file, read:
 2. NEVER invent field names — check docs/04_contracts/database_schema.md
 3. NEVER invent event names — check docs/04_contracts/domain_event_catalog.md
 4. NEVER work around a CRITICAL blocker in docs/00_index/OPEN_BLOCKERS.md silently
-5. NEVER treat docs/90_archive/ as canonical source — read-only history
+5. NEVER treat docs/09_archive/ as canonical source — read-only history
 6. NEVER duplicate content between layers — use cross-links only
 7. NEVER use REAL or FLOAT for money/credit fields — see DB-H-001 in OPEN_BLOCKERS.md
 8. NEVER skip RBAC checks — every action needs docs/04_contracts/rbac_permission_matrix.md
 9. WHEN PRD and design pack conflict — PRD §23 wins. Write [CONFLICT] note, ask human
-10. NEVER modify archived files in docs/90_archive/
+10. NEVER modify archived files in docs/09_archive/
 
 ## Source conflict resolution
 
@@ -48,7 +48,7 @@ Before implementing, generating code, or modifying any file, read:
     ├── 04_contracts/   ← DB / API / event / permission contracts
     ├── 05_system/      ← Runtime / queue / AI behavior
     ├── 06_quality_ops/ ← QA / security / perf / migration
-    ├── 90_archive/     ← History — NOT canonical
+    ├── 09_archive/     ← History — NOT canonical
     └── _templates/     ← Standard templates for new docs
 
 ## Common task reading paths

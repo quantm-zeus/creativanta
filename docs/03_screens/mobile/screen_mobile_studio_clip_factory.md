@@ -1,6 +1,6 @@
 # Screen: Mobile — Clip Factory
 
-> **Screen ID**: M53
+> **Screen ID**: M015
 > **Module**: M07 — AI Studio
 > **Route**: `/studio/clip-factory` (mobile)
 > **Platform**: Mobile (Flutter)

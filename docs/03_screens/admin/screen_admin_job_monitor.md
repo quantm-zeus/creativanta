@@ -1,6 +1,6 @@
 # Screen: Admin — Background Job Monitor
 
-> **Screen ID**: A016
+> **Screen ID**: A008
 > **Module**: S26 — Internal Admin & Operations
 > **Route**: `/admin/jobs`
 > **Platform**: Admin Web (SvelteKit) — VPN-only access
@@ -347,7 +347,7 @@ Job Monitor (/admin/jobs)
 
 | Screen | Relationship |
 |---|---|
-| [A024] System Health | Infrastructure overview |
+| [A006] System Health | Infrastructure overview |
 | [A011] AI Operations | AI-specific job monitoring |
 | [A001] Admin Dashboard | Summary metrics |
 

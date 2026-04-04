@@ -1,6 +1,6 @@
 # Screen: Web — Tax Report Export
 
-> **Screen ID**: W092
+> **Screen ID**: W096
 > **Module**: S16 — Creator Pro Tools
 > **Route**: `/creator-pro/tax-export`
 > **Platform**: Web (SvelteKit)
@@ -184,7 +184,7 @@ Export income reports for tax filing — monthly/quarterly/yearly with income & 
 | Screen | Relationship |
 |---|---|
 | [W088] Creator Pro | Parent |
-| [W081] Finance Dashboard | Workspace-level finance |
+| [W080] Finance Dashboard | Workspace-level finance |
 | [W084] Reconciliation | Fix trust gaps |
 
 ---

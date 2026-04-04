@@ -1,7 +1,7 @@
 # Screen: Web — Contact List
 
-> **Screen ID**: W51
-> **Module**: M09 — Engagement (CRM Lite)
+> **Screen ID**: W048
+> **Module**: M12 — Unified Inbox & Engagement
 > **Route**: `/contacts`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §20, A1 Schema (entities, threads, orders)
@@ -87,12 +87,12 @@ ContactListPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | View profile | "→ Profile" | — | → `/contacts/[id]` | `contact:read` |
-| 2 | Message | "💬 Message" | — | → `/inbox?entity=[id]` | `inbox:read` |
-| 3 | Tag | "🏷 Tag" → tag input | `EntityService/AddTag` | Tag added | `contact:manage` |
-| 4 | Search | Search input | Meilisearch | Results filter | `contact:read` |
-| 5 | Segment | Segment chip | Refetch | List filters | `contact:read` |
-| 6 | Sort | Sort dropdown | Refetch | List reorders | `contact:read` |
+| 1 | View profile | "→ Profile" | — | → `/contacts/[id]` | `thread:read` |
+| 2 | Message | "💬 Message" | — | → `/inbox?entity=[id]` | `thread:read` |
+| 3 | Tag | "🏷 Tag" → tag input | `EntityService/AddTag` | Tag added | `thread:triage` |
+| 4 | Search | Search input | Meilisearch | Results filter | `thread:read` |
+| 5 | Segment | Segment chip | Refetch | List filters | `thread:read` |
+| 6 | Sort | Sort dropdown | Refetch | List reorders | `thread:read` |
 
 ---
 
@@ -239,10 +239,10 @@ ContactListPage
 
 | Screen | Relationship |
 |---|---|
-| [W052] Contact Detail | Profile view |
-| [W049] Unified Inbox | Message integration |
-| [W061] Order List | Purchase history source |
-| [M010] Mobile Contacts | Mobile equivalent |
+| [W049] Contact Detail | Profile view |
+| [W046] Unified Inbox | Message integration |
+| [W062] Order List | Purchase history source |
+| [M021] Mobile Contacts | Mobile equivalent |
 
 ---
 

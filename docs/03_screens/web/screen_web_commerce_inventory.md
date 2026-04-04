@@ -1,3 +1,5 @@
+> **Screen ID**: W075a
+
 # Screen: Web — Inventory & Stock Management
 
 > **Screen ID**: W-COMM-15
@@ -42,7 +44,7 @@ Centralized inventory management view for tracking stock levels across multiple 
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `inventory:read` permission
+- User has `product:read` permission
 - At least 1 product exists in workspace
 - Optional: Connected commerce platform for sync data
 
@@ -167,17 +169,17 @@ InventoryPage
 
 | # | Action | Trigger | API Call | Mutation | UI Result | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Search product | Type in search input (debounced 300ms) | `InventoryService/ListStock(query)` | — | Filter table results | `inventory:read` |
-| 2 | Filter by status | Select from StatusFilter | `InventoryService/ListStock(status)` | — | Table filters | `inventory:read` |
-| 3 | Sort column | Click column header | Client-side sort | — | Re-order rows | `inventory:read` |
-| 4 | Manual stock-in | Click "📥 Nhập hàng" | — | — | Open StockInDrawer | `inventory:write` |
-| 5 | Confirm stock-in | Submit StockInDrawer form | `InventoryService/CreateStockMovement` | `stock += amount` | Toast "Đã cập nhật tồn kho", refresh table | `inventory:write` |
-| 6 | Bulk stock-in | Select items → "📥 Nhập hàng" | `InventoryService/BulkStockIn` | Multiple stock updates | Toast "Đã cập nhật {n} sản phẩm" | `inventory:write` |
-| 7 | Export Excel | Click "📊 Xuất Excel" | `InventoryService/Export(format=xlsx)` | — | Download file | `inventory:read` |
+| 1 | Search product | Type in search input (debounced 300ms) | `InventoryService/ListStock(query)` | — | Filter table results | `product:read` |
+| 2 | Filter by status | Select from StatusFilter | `InventoryService/ListStock(status)` | — | Table filters | `product:read` |
+| 3 | Sort column | Click column header | Client-side sort | — | Re-order rows | `product:read` |
+| 4 | Manual stock-in | Click "📥 Nhập hàng" | — | — | Open StockInDrawer | `product:manage` |
+| 5 | Confirm stock-in | Submit StockInDrawer form | `InventoryService/CreateStockMovement` | `stock += amount` | Toast "Đã cập nhật tồn kho", refresh table | `product:manage` |
+| 6 | Bulk stock-in | Select items → "📥 Nhập hàng" | `InventoryService/BulkStockIn` | Multiple stock updates | Toast "Đã cập nhật {n} sản phẩm" | `product:manage` |
+| 7 | Export Excel | Click "📊 Xuất Excel" | `InventoryService/Export(format=xlsx)` | — | Download file | `product:read` |
 | 8 | View product detail | Click product name | — | — | Navigate → `/commerce/products/[id]` | `product:read` |
-| 9 | Sync now | Click refresh on SyncStatusCard | `ConnectorService/TriggerSync(inventory)` | — | Spinner → "Đang đồng bộ..." → updated data | `inventory:write` |
-| 10 | Set alert threshold | Click "⚙️ Cài đặt" → threshold form | `InventoryService/UpdateThresholds` | `low_stock_threshold = value` | Toast "Đã cập nhật ngưỡng cảnh báo" | `inventory:write` |
-| 11 | View movement history | Click "→ Xem toàn bộ lịch sử" | — | — | Expand/navigate to full log | `inventory:read` |
+| 9 | Sync now | Click refresh on SyncStatusCard | `ConnectorService/TriggerSync(inventory)` | — | Spinner → "Đang đồng bộ..." → updated data | `product:manage` |
+| 10 | Set alert threshold | Click "⚙️ Cài đặt" → threshold form | `InventoryService/UpdateThresholds` | `low_stock_threshold = value` | Toast "Đã cập nhật ngưỡng cảnh báo" | `product:manage` |
+| 11 | View movement history | Click "→ Xem toàn bộ lịch sử" | — | — | Expand/navigate to full log | `product:read` |
 
 ---
 
@@ -387,9 +389,9 @@ Client-side:
 |---|---|
 | [W060] Product List | Parent — products with stock data |
 | [W061] Product Detail | Detail — stock tab per product |
-| [W061] Order List | Linked — orders deduct stock |
+| [W062] Order List | Linked — orders deduct stock |
 | [W073] Refund Management | Refund can restore stock |
-| [W071] Samples | Sample shipments deduct stock |
+| [W074] Sample Requests | Sample shipments deduct stock |
 | [M028] Mobile Products | Mobile equivalent (compact stock view) |
 | [S009] Trust Badge | Source class on stock data (Official vs Manual) |
 

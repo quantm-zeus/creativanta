@@ -179,7 +179,7 @@ CommandPalette (modal overlay)
 | 4 | Select result | Enter key or click | — | — | Navigate to item or execute action | Based on result type |
 | 5 | Navigate to page | Select navigation item | — | — | Route change + palette closes | Any |
 | 6 | Execute action | Select action item | — | — | Action executed + palette closes | Based on action |
-| 7 | Create from query | Select "Tạo script về '{query}'" | — | — | Navigate to create screen with pre-filled title | `content:create` |
+| 7 | Create from query | Select "Tạo script về '{query}'" | — | — | Navigate to create screen with pre-filled title | `idea:create` |
 | 8 | Ask Copilot | Select "🤖 Hỏi Copilot" | — | — | Open Copilot sidebar with query | Any |
 | 9 | Deep search | Select "Tìm sâu hơn" | — | — | Navigate to full search page | Any |
 | 10 | Close palette | Escape / click backdrop | — | — | Modal closes, return to previous state | Any |
@@ -340,7 +340,7 @@ N/A — Command palette fetches fresh on each open. No persistent connection.
 |---|---|
 | [W004] Web Global Search | Full search page (deep search link) |
 | [M005] Mobile Search | Mobile equivalent (full-screen overlay) |
-| [S005] Navigation | Shared navigation patterns |
+| [S002] Navigation | Shared navigation patterns |
 
 ---
 

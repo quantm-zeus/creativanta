@@ -58,13 +58,13 @@ M03 exists to **transform market/competitor research into actionable operating i
 
 1. **User adds competitor**: calls `CompetitorService/List` to view existing, then adds new competitor entity with name, platform, handle, category
    - Writes to `competitor_entities` table
-   - see [04_contracts/database_schema.md#5.6](../04_contracts/database_schema.md)
-   - see [04_contracts/api_endpoint_map.md#2.2](../04_contracts/api_endpoint_map.md)
+   - see [04_contracts/database_schema.md#5.6](../../04_contracts/database_schema.md)
+   - see [04_contracts/api_endpoint_map.md#2.2](../../04_contracts/api_endpoint_map.md)
 2. **User requests benchmark analysis**: calls `CompetitorService/AnalyzeBenchmark` (Editor+)
    - System collects publicly available data points from connected platforms
    - AI generates benchmark snapshot with metrics: content frequency, engagement rate, format distribution, pricing range, offer types
 3. **Benchmark snapshot stored**: writes to `benchmark_snapshots` table with `source_class`, `confidence`, metrics JSONB
-   - see [04_contracts/database_schema.md#5.7](../04_contracts/database_schema.md)
+   - see [04_contracts/database_schema.md#5.7](../../04_contracts/database_schema.md)
 4. **User reviews insights**: views benchmark comparison, pricing gaps, format coverage gaps
    - Every AI-generated insight carries `source_class = 'inferred'` badge
    - "Why" drawer available on every metric
@@ -125,10 +125,10 @@ Competitor entities have soft lifecycle managed implicitly:
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §5.6 (competitor_entities), §5.7 (benchmark_snapshots) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.2 (CompetitorService: List, AnalyzeBenchmark) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §3 (intelligence events — M03 shares trend context with M02) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.2 (competitor:manage — Editor+; opportunity:create — Contributor+) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §5.6 (competitor_entities), §5.7 (benchmark_snapshots) |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.2 (CompetitorService: List, AnalyzeBenchmark) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §3 (intelligence events — M03 shares trend context with M02) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.2 (competitor:manage — Editor+; opportunity:create — Contributor+) |
 
 ## Related Screens
 

@@ -1,6 +1,6 @@
 # Screen: Web — Seeding Campaign Dashboard
 
-> **Screen ID**: W098
+> **Screen ID**: W113
 > **Module**: M18 — Seeding / Sample CRM
 > **Route**: `/seeding/campaigns`
 > **Platform**: Web (SvelteKit)
@@ -39,7 +39,7 @@ Campaign-level view of seeding effectiveness — products seeded to creators, co
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `seeding:manage` permission (Owner, Admin, Manager)
+- User has `sample:manage` permission (Owner, Admin, Manager)
 - At least one product exists (seeding needs products to send)
 
 ### Postconditions
@@ -171,14 +171,14 @@ SeedingCampaignsPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Create campaign | "+ Tạo" → modal | `SeedingService/CreateCampaign` | New draft campaign | `seeding:manage` |
-| 2 | View dashboard | "📊 Dashboard" | — | → `/seeding/campaigns/[id]` | `seeding:manage` |
-| 3 | Launch | "🚀 Launch" → confirm | `SeedingService/Launch(id)` | Status → Running, assignments activated | `seeding:manage` |
-| 4 | View content | "🎥 Content gallery" | — | Gallery of all content from seeded creators | `seeding:manage` |
-| 5 | View creators | "👥 Creators" | — | → Creator assignment view | `seeding:manage` |
-| 6 | Duplicate | "📋 Duplicate" | `SeedingService/Duplicate(id)` | New draft pre-filled from source | `seeding:manage` |
-| 7 | Edit | "✏️" | — | → Edit modal/page | `seeding:manage` |
-| 8 | Final report | "📊 Final Report" | — | → Report export (PDF) | `seeding:manage` |
+| 1 | Create campaign | "+ Tạo" → modal | `SeedingService/CreateCampaign` | New draft campaign | `sample:manage` |
+| 2 | View dashboard | "📊 Dashboard" | — | → `/seeding/campaigns/[id]` | `sample:manage` |
+| 3 | Launch | "🚀 Launch" → confirm | `SeedingService/Launch(id)` | Status → Running, assignments activated | `sample:manage` |
+| 4 | View content | "🎥 Content gallery" | — | Gallery of all content from seeded creators | `sample:manage` |
+| 5 | View creators | "👥 Creators" | — | → Creator assignment view | `sample:manage` |
+| 6 | Duplicate | "📋 Duplicate" | `SeedingService/Duplicate(id)` | New draft pre-filled from source | `sample:manage` |
+| 7 | Edit | "✏️" | — | → Edit modal/page | `sample:manage` |
+| 8 | Final report | "📊 Final Report" | — | → Report export (PDF) | `sample:manage` |
 
 ---
 
@@ -297,8 +297,8 @@ SeedingCampaignsPage
 
 | Screen | Relationship |
 |---|---|
-| [W099] Sample Requests | Individual sample request management |
-| [W100] Creator Assignments | Creator assignment flow |
+| [W111] Sample Requests | Individual sample request management |
+| [W112] Creator Assignments | Creator assignment flow |
 | [W060] Product List | Products selected for seeding |
 | [M056] Mobile Seeding | Mobile equivalent |
 

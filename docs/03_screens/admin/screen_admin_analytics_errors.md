@@ -1,6 +1,6 @@
 # Screen: Admin — Error Analytics
 
-> **Screen ID**: A21
+> **Screen ID**: A025
 > **Module**: Admin — Analytics
 > **Route**: `/admin/analytics/errors`
 > **Platform**: Admin Web (SvelteKit) — VPN-only
@@ -51,7 +51,7 @@ Admin error analytics — error frequency charts, top errors, affected workspace
 | ERROR | API failed | Error with retry |
 
 ## 9. Permission Matrix
-Admin: `admin:analytics` role required. Read-only for `admin:viewer`.
+Admin: `admin:analytics:read` role required. Read-only for Analyst/Auditor roles (per RBAC §3.2).
 
 ---
 
@@ -93,8 +93,8 @@ ErrorAnalyticsPage
 ## 19. Related Screens
 | Screen | Relationship |
 |---|---|
-| [A20] System Health | System overview |
-| [A11] Audit Log | Operation log |
+| [A006] System Health | System overview |
+| [A010] Audit Log | Operation log |
 ---
 ## Error Handling
 

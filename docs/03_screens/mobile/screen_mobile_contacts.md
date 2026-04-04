@@ -1,6 +1,6 @@
 # Screen: Mobile — Contact List
 
-> **Screen ID**: M048
+> **Screen ID**: M021
 > **Module**: M13 — Engagement & CRM
 > **Route**: `/contacts` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -47,7 +47,7 @@ Mobile CRM — unified contact list merged from all connected platforms with VIP
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `contact:read` permission (Contributor+)
+- User has `thread:read` permission (Contributor+)
 - At least one connected platform (contacts auto-created from engagement)
 - Contacts populated from platform interactions, orders, or manual entry
 
@@ -161,16 +161,16 @@ ContactListPage
 
 | # | Action | Trigger | Type | API Call | System Response | Permission |
 |---|---|---|---|---|---|---|
-| 1 | View contact | Tap row | Navigate | — | Push → Contact Detail (M049) | `contact:read` |
-| 2 | Call contact | Swipe left → "📞 Call" | External | Launch phone dialer with `contacts.phone` | Opens phone app | `contact:read` |
-| 3 | Message contact | Swipe left → "💬 Message" | Navigate | — | Push → Thread Detail (M008) filtered by contact | `engagement:reply` |
-| 4 | Search | Tap "🔍" → type query | Filter | `ContactService/Search(query)` | Results filter in real-time (debounced 300ms) | `contact:read` |
-| 5 | Filter by segment | Tap chip | Filter | `ContactService/List(segment=...)` | List filters. Active chip highlighted. | `contact:read` |
-| 6 | Filter by tag | "🏷 Tagged" chip → tag drawer | Filter | `ContactService/List(tag=...)` | List shows tagged contacts only | `contact:read` |
-| 7 | Pull refresh | Pull-down | Refresh | Refetch list | Data updates. Haptic light. | `contact:read` |
+| 1 | View contact | Tap row | Navigate | — | Push → Contact Detail (M049) | `thread:read` |
+| 2 | Call contact | Swipe left → "📞 Call" | External | Launch phone dialer with `contacts.phone` | Opens phone app | `thread:read` |
+| 3 | Message contact | Swipe left → "💬 Message" | Navigate | — | Push → Thread Detail (M008) filtered by contact | `thread:reply` |
+| 4 | Search | Tap "🔍" → type query | Filter | `ContactService/Search(query)` | Results filter in real-time (debounced 300ms) | `thread:read` |
+| 5 | Filter by segment | Tap chip | Filter | `ContactService/List(segment=...)` | List filters. Active chip highlighted. | `thread:read` |
+| 6 | Filter by tag | "🏷 Tagged" chip → tag drawer | Filter | `ContactService/List(tag=...)` | List shows tagged contacts only | `thread:read` |
+| 7 | Pull refresh | Pull-down | Refresh | Refetch list | Data updates. Haptic light. | `thread:read` |
 | 8 | Scroll to letter | Tap letter on side index | Scroll | Client-side | List scrolls to matching section | — |
-| 9 | Toggle VIP | Long press → "⭐ Toggle VIP" | Action | `ContactService/UpdateVIP(id, is_vip)` | Star appears/disappears. Haptic light. Toast "Đã đánh dấu VIP" | `contact:update` |
-| 10 | Export contacts | ⋮ → "📥 Export" | Action | `ContactService/Export(filter)` | Toast "Đang xuất..." → push notification when ready | `contact:export` |
+| 9 | Toggle VIP | Long press → "⭐ Toggle VIP" | Action | `ContactService/UpdateVIP(id, is_vip)` | Star appears/disappears. Haptic light. Toast "Đã đánh dấu VIP" | `thread:triage` |
+| 10 | Export contacts | ⋮ → "📥 Export" | Action | `ContactService/Export(filter)` | Toast "Đang xuất..." → push notification when ready | `report:export` |
 
 ---
 
@@ -396,10 +396,10 @@ onFilter(segment):
 
 | Screen | Relationship |
 |---|---|
-| [W050] Web Contacts | Web equivalent (table view with bulk actions) |
-| [M049] Mobile Contact Detail | Detail view for single contact |
-| [M007] Mobile Inbox | Thread context via "View contact" |
-| [M008] Mobile Thread Detail | Message action destination |
+| [W048] Web Contacts | Web equivalent (table view with bulk actions) |
+| [M022] Mobile Contact Detail | Detail view for single contact |
+| [M019] Mobile Inbox | Thread context via "View contact" |
+| [M020] Mobile Thread Detail | Message action destination |
 
 ---
 

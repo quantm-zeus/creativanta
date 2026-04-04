@@ -1,6 +1,6 @@
 # Screen: Mobile — Morning Brief
 
-> **Screen ID**: M002c
+> **Screen ID**: M003
 > **Module**: M01 — Home & Decision
 > **Route**: `/morning-brief` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -44,7 +44,7 @@ AI-generated daily briefing — a single-scroll page with collapsible card secti
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `dashboard:read` permission (all roles except External)
+- User has `report:read` permission (all roles except External)
 - At least 1 day of workspace activity for meaningful brief
 - AI brief generated (computed at 5:30 AM daily, cached)
 
@@ -170,13 +170,13 @@ MorningBriefPage
 | # | Action | Trigger | Type | API Call | System Response | Permission |
 |---|---|---|---|---|---|---|
 | 1 | Toggle section | Tap section header | UI | — | Section expands/collapses with animation | Any |
-| 2 | Navigate to P&L | "Xem P&L →" CTA | Navigate | — | Push → Finance P&L (M050) | `finance:read` |
+| 2 | Navigate to P&L | "Xem P&L →" CTA | Navigate | — | Push → Finance P&L (M050) | `profit:read` |
 | 3 | Create idea from trend | "💡 Tạo ý tưởng →" | Navigate | `IdeaService/CreateFromTrend(trend_id)` | Idea created → push to Idea Board (M017) | `idea:create` |
 | 4 | View more trends | "Xem thêm xu hướng →" | Navigate | — | Push → Trend List (M014) | `trend:read` |
 | 5 | Navigate to action item | Tap action row CTA | Navigate | — | Push → respective module screen | Varies |
-| 6 | Email brief | Tap "📧" | Action | `BriefService/EmailBrief(date, email)` | Bottom sheet: "Gửi đến email?" → Toast "📧 Đã gửi!" | `dashboard:read` |
-| 7 | Pull refresh | Pull-down | Refresh | `BriefService/RegenerateBrief(date)` | Brief re-generated with latest data. 2-3s delay. | `dashboard:read` |
-| 8 | View brief settings | ⋮ → "Cài đặt" | Navigate | — | Push → Brief settings (push time, sections, recipients) | `dashboard:read` |
+| 6 | Email brief | Tap "📧" | Action | `BriefService/EmailBrief(date, email)` | Bottom sheet: "Gửi đến email?" → Toast "📧 Đã gửi!" | `report:read` |
+| 7 | Pull refresh | Pull-down | Refresh | `BriefService/RegenerateBrief(date)` | Brief re-generated with latest data. 2-3s delay. | `report:read` |
+| 8 | View brief settings | ⋮ → "Cài đặt" | Navigate | — | Push → Brief settings (push time, sections, recipients) | `report:read` |
 
 ---
 
@@ -339,10 +339,10 @@ Morning Brief (/morning-brief)
 
 | Screen | Relationship |
 |---|---|
-| [W002] Web Morning Brief | Web equivalent (side panel) |
+| [W009] Web Morning Brief | Web equivalent (side panel) |
 | [M001] Mobile Home Dashboard | Entry point via brief widget |
-| [M050] Mobile Finance P&L | P&L CTA destination |
-| [M014] Mobile Trend List | Trends CTA destination |
+| [M041] Mobile Finance Summary | P&L CTA destination |
+| [M017] Mobile Trend List | Trends CTA destination |
 
 ---
 

@@ -1,6 +1,6 @@
 # Shared: Confirmation Dialogs
 
-> **Screen ID**: S04
+> **Screen ID**: S007
 > **Module**: Shared — UI Patterns
 > **Platform**: All (Web + Mobile)
 

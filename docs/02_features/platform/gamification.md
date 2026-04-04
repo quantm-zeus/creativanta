@@ -1,6 +1,7 @@
 ---
 layer: features
 module: gamification
+domain: platform
 status: READY
 created: 2026-04-01
 canonical: true
@@ -129,5 +130,5 @@ Feature: Streak System
 
 - **DB**: `04_contracts/database_schema.md` §14 Gamification
 - **API**: `04_contracts/api_endpoint_map.md` §8 + §30
-- **Events**: `04_contracts/domain_event_catalog.md` (gamification.achievement.unlocked, gamification.streak.milestone)
+- **Events**: `04_contracts/domain_event_catalog.md` §14 (`achievement.unlocked`, `streak.broken`), §15C (`gamification.challenge.*`). [NOTE: Feature doc RULE-GAM-008 expects a `gamification.achievement.unlocked` namespaced event — catalog §14 uses `achievement.unlocked`. Implementation should reconcile namespace. No `streak.milestone` event exists in catalog; nearest is `streak.broken`.]
 - **Credits**: `02_features/platform/reporting_admin_billing.md` (credit grant integration)

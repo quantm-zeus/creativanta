@@ -159,11 +159,11 @@ M15 doesn't own offer lifecycle (M14 does) but M15 enforces display rules:
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §10 (products, offers — referenced by M15), plus store_pages and memberships in operational context |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.6 (StoreService, MembershipService — within Commerce ~30 RPCs) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §8 (offer.activated, offer.expired → M15 display update), §19 (store.page_published, membership.subscribed, membership.cancelled) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.6 (store — Editor+; membership — Manager+) |
-| Pack 06 | [Pack 06 — Commerce Contract](../creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md) | §2.3 (Offer/Product-less), §2.4 (Monetization Support — bundles, memberships) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §10 (products, offers — referenced by M15), plus store_pages and memberships in operational context |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.6 (StoreService, MembershipService — within Commerce ~30 RPCs) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §8 (offer.activated, offer.expired → M15 display update), §19 (store.page_published, membership.subscribed, membership.cancelled) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.7 (store — Editor+; membership — Manager+) |
+| Pack 06 | Pack 06 — Commerce Contract <!-- Legacy ref: creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §2.3 (Offer/Product-less), §2.4 (Monetization Support — bundles, memberships) |
 
 ## Related Screens
 

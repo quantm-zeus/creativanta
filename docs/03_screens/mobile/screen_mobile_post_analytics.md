@@ -1,6 +1,6 @@
 # Screen: Mobile — Post Analytics Detail
 
-> **Screen ID**: M022
+> **Screen ID**: M037
 > **Module**: M23 — Analytics
 > **Route**: `/analytics/post/[id]` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -112,8 +112,8 @@ PostAnalyticsDetailScreen
 
 | Screen | Relationship |
 |---|---|
-| [W075] Web Post Analytics | Web equivalent |
-| [M021] Analytics Dashboard | Parent |
+| [W078] Web Post Detail Analytics | Web equivalent |
+| [M035] Analytics | Parent |
 ---
 ## Error Handling
 

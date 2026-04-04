@@ -1,6 +1,6 @@
 # Screen: Web — Link-to-Video Mode
 
-> **Screen ID**: W36
+> **Screen ID**: W036
 > **Module**: M07 — AI Studio
 > **Route**: `/studio/link-to-video`
 > **Platform**: Web (SvelteKit)
@@ -200,9 +200,9 @@ LinkToVideoPage
 
 | Screen | Relationship |
 |---|---|
-| [W024] AI Studio Launcher | Parent |
-| [W038] Studio Queue | Job tracking |
-| [W039] Asset Library | Output storage |
+| [W021] Studio Launcher | Parent |
+| [W030] Studio Queue | Job tracking |
+| [W029] Asset Library | Output storage |
 
 ---
 

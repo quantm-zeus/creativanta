@@ -15,7 +15,7 @@ created: 2026-04-01
 
 | Platform | Tech | Screen Count | Audience |
 |---|---|---|---|
-| **Web** (SvelteKit) | SvelteKit 2 + Svelte 5 | 132 screens | Primary workspace for creators/operators |
+| **Web** (SvelteKit) | SvelteKit 2 + Svelte 5 | 133 screens | Primary workspace for creators/operators |
 | **Mobile** (Flutter) | Flutter 3.41 + Impeller | 61 screens | On-the-go management + consumption |
 | **Admin** (SvelteKit) | SvelteKit (separate app) | 32 screens | Internal operations team only |
 | **Shared** | Component library | 12 shared specs | Cross-platform components |
@@ -39,16 +39,16 @@ created: 2026-04-01
 | **M04 Opportunity Board** | 🟢 Full | 🟡 Partial | ⚪ N/A | Mobile: browse only, convert on web |
 | **M05 Idea Engine** | 🟢 Full | 🟢 Full | ⚪ N/A | Mobile: quick capture + swipe UI |
 | **M06 Script Lab** | 🟢 Full | 🟡 Partial | ⚪ N/A | Mobile: review + comment, no Tiptap editor |
-| **M07 Continuity OS** | 🟢 Full | 🟡 Partial | ⚪ N/A | Mobile: browse packs, no deep editing |
-| **M08 AI Video Studio** | 🟢 Full | 🟡 Partial | ⚪ N/A | Mobile: trigger + monitor, no timeline editor |
+| **M07 AI Video Studio** | 🟢 Full | 🟡 Partial | ⚪ N/A | Mobile: trigger + monitor, no timeline editor |
+| **M08 Continuity OS** | 🟢 Full | 🟡 Partial | ⚪ N/A | Mobile: browse packs, no deep editing |
 | **M09 Derivatives** | 🟢 Full | 🔴 None | ⚪ N/A | Desktop-only workflow |
 | **M10 Packaging QA** | 🟢 Full | 🟡 Partial | ⚪ N/A | Mobile: approve/reject only |
 | **M11 Publish Hub** | 🟢 Full | 🟢 Full | ⚪ N/A | Mobile: quick publish + schedule |
 | **M12 Unified Inbox** | 🟢 Full | 🟢 Full | ⚪ N/A | Mobile: full chat + suggested replies |
 | **M13 Product Hub** | 🟢 Full | 🟡 Partial | ⚪ N/A | Mobile: browse + quick edit, no bulk ops |
-| **M14 Affiliate** | 🟢 Full | 🟡 Partial | ⚪ N/A | Mobile: view links + earnings |
+| **M14 Monetization OS** | 🟢 Full | 🟡 Partial | ⚪ N/A | Mobile: view memberships, no creation |
 | **M15 Store** | 🟢 Full | 🔴 None | ⚪ N/A | Store editor is desktop-only |
-| **M16 Monetization** | 🟢 Full | 🟡 Partial | ⚪ N/A | Mobile: view memberships, no creation |
+| **M16 Affiliate Network** | 🟢 Full | 🟡 Partial | ⚪ N/A | Mobile: view links + earnings |
 | **M17 Live War Room** | 🟢 Full | 🟡 Partial | ⚪ N/A | Mobile: monitor KPIs, no cue card editing |
 | **M18 Seeding CRM** | 🟢 Full | 🟡 Partial | ⚪ N/A | Mobile: approve/track shipments |
 | **M19 Finance Ledger** | 🟢 Full | 🟡 Partial | ⚪ N/A | Mobile: summary + profit alerts |

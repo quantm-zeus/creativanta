@@ -1,7 +1,7 @@
 # Screen: Web — Live War Room
 
-> **Screen ID**: W87
-> **Module**: M20 — Live Commerce
+> **Screen ID**: W109
+> **Module**: M17 — Live Commerce War Room
 > **Route**: `/live/[id]/war-room`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 05, A1 Schema (live_sessions, cue_cards, highlights)
@@ -65,12 +65,12 @@ LiveWarRoomPage
 
 | # | Action | Trigger | API | Result |
 |---|---|---|---|---|
-| 1 | Next product | "▼ Next product" | `LiveService/NextProduct` | Queue advances |
-| 2 | Flash sale | "🔥 Flash Sale" → confirm | `LiveService/TriggerFlashSale` | Price drops |
-| 3 | Highlight | "📌 Highlight" | `LiveService/CreateHighlight` | Moment bookmarked |
-| 4 | Show coupon | "🏷 Show coupon" | `LiveService/ShowCoupon` | Code displayed |
-| 5 | Quick reply | Type + enter | `LiveService/Reply` | Reply posted |
-| 6 | End session | "End" → confirm | `LiveService/EndSession` | → Post-Live |
+| 1 | Next product | "▼ Next product" | `LiveCommerceService/HighlightProduct` | Queue advances |
+| 2 | Flash sale | "🔥 Flash Sale" → confirm | `LiveCommerceService/AddCue` | Price drops |
+| 3 | Highlight | "📌 Highlight" | `LiveCommerceService/CreateHighlight` | Moment bookmarked |
+| 4 | Show coupon | "🏷 Show coupon" | `LiveCommerceService/AddCue` | Code displayed |
+| 5 | Quick reply | Type + enter | `LiveCommerceService/AddCue` | Reply posted |
+| 6 | End session | "End" → confirm | `LiveCommerceService/EndSession` | → Post-Live |
 
 ### Technical Notes
 - Route: `src/routes/(app)/live/[id]/war-room/+page.svelte`
@@ -144,7 +144,7 @@ LiveWarRoomPage
 - **Full-screen**: No AppShell sidebar — uses `data-sveltekit-prefetch` for fast load
 - **Chat**: WebSocket connection to `wss://live.api/chat/{session_id}` with AI intent classification
 - **Stats**: SSE from `LiveService/StreamStats(session_id)` → updates every 2s
-- **Quick actions**: `LiveService/TriggerFlashSale`, `CreateHighlight`, `ShowCoupon` — all optimistic UI
+- **Quick actions**: `LiveCommerceService/AddCue`, `CreateHighlight`, `ShowCoupon` — all optimistic UI
 - **Product queue**: `LiveService/NextProduct(session_id)` → auto-advances cue card
 - **End session**: `LiveService/EndSession(session_id)` → redirect to Post-Live Summary
 - **Alerts**: Real-time stock monitoring, AI chat suggestions pushed via SSE

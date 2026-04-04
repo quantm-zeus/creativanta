@@ -1,7 +1,7 @@
 # Screen: Web — Support Ticket Create
 
-> **Screen ID**: W114
-> **Module**: M25 — Support Center
+> **Screen ID**: W099
+> **Module**: S19 — Help Center
 > **Route**: `/support/new`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: A1 Schema (support_tickets, kb_articles), B5 RBAC §2.9
@@ -188,8 +188,8 @@ User-facing form to submit support tickets with AI self-help pre-check, category
 
 | Screen | Relationship |
 |---|---|
-| [W113] Support Center | Parent |
-| [W115] Help Article | KB article viewer |
+| [W097] Support Center | Parent |
+| [W098] Help Article | KB article viewer |
 
 ---
 

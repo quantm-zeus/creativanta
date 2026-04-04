@@ -110,7 +110,7 @@ Self-service workspace administration for creators and sellers: manage connected
 
 **Completely separate application** for Creativanta's internal operations team. Not accessible from public internet. Different authentication system. Different RBAC hierarchy. Manages the platform, not a workspace.
 
-> **Full specification**: [S26 — Internal Admin & Operations Site](../creativanta_supplementary_s26_internal_admin_operations_v_3_1.md)
+> **Full specification**: S26 — Internal Admin & Operations Site <!-- Legacy ref: creativanta_supplementary_s26_internal_admin_operations_v_3_1.md — superseded by current feature docs + contract layer -->
 
 ## Architecture (Part B)
 
@@ -139,7 +139,7 @@ Self-service workspace administration for creators and sellers: manage connected
 | **Analyst** | L2 | Read-only dashboard access, reports |
 | **Auditor** | L2 | Audit logs, compliance reports, security events |
 
-See: [S26 §2.3](../creativanta_supplementary_s26_internal_admin_operations_v_3_1.md) for full permission matrix.
+See: S26 §2.3 <!-- Legacy ref: creativanta_supplementary_s26_internal_admin_operations_v_3_1.md — superseded by current feature docs + contract layer --> for full permission matrix.
 
 ## Admin Consoles (Part B)
 
@@ -200,7 +200,7 @@ See: [S26 §2.3](../creativanta_supplementary_s26_internal_admin_operations_v_3_
 
 Customer support bridges both surfaces: users interact through the main app (Part A), while support agents manage tickets through the internal admin site (Part B). The support system uses AI-first triage and tiered SLA per plan.
 
-> **Full legal context**: [01_business/legal_compliance.md#customer-support](../01_business/legal_compliance.md)
+> **Full legal context**: [01_business/legal_compliance.md#customer-support](../../01_business/legal_compliance.md)
 
 ## Support Ticket Lifecycle
 
@@ -257,16 +257,16 @@ Support Admins in the internal admin site can:
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §14 (workspace settings, team members, billing), §12 (diagnostics_records) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.8 (Admin/Billing — ~15 RPCs), §6 (Internal Admin — 28 RPCs) |
-| Admin Internal | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §6 (AdminAuthService, UserMgmtService, ModerationService, FraudService, SupportAdminService, IncidentService, SystemConfigService, FeeScheduleService) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §14 (admin.override_applied, audit.event_captured, diagnostics.opened, diagnostics.resolved) |
-| RBAC — workspace | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §5 (workspace admin roles: Owner, Admin, Manager) |
-| RBAC — internal | [S26 §2.3](../creativanta_supplementary_s26_internal_admin_operations_v_3_1.md) | Internal admin permission matrix |
-| S26 | [S26 — Internal Admin](../creativanta_supplementary_s26_internal_admin_operations_v_3_1.md) | Full internal admin site spec |
-| S19 | [S19 — Customer Support](../creativanta_supplementary_s19_customer_support_v_3_1.md) | Support channels, SLA, AI chatbot, escalation |
-| S24 | [S24 — Public API](../creativanta_supplementary_s24_public_api_v_3_1.md) | API key management, webhook monitoring |
-| Pack 06 | [Pack 06 — Admin Override](../creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md) | §10 (Override Contract), §8 (Reporting) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §4 (workspaces, workspace_members — settings/team), §13 (ai_credit_transactions, subscription_events, diagnostics_records — billing/admin) |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.8 (Admin/Billing — ~15 RPCs), §6 (Internal Admin — 28 RPCs) |
+| Admin Internal | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §6 (AdminAuthService, UserMgmtService, ModerationService, FraudService, SupportAdminService, IncidentService, SystemConfigService, FeeScheduleService) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §12 (`diagnostics.record_created`, `credits.deducted`, `subscription.changed`), §16 (`admin.user_suspended`, `admin.credits_adjusted`, `admin.plan_overridden`, `admin.refund_issued`), §17 (`support.ticket_created`). [NOTE: `admin.override_applied`, `audit.event_captured`, `diagnostics.opened`, `diagnostics.resolved` are not in catalog — may need to be added during implementation.] |
+| RBAC — workspace | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.1 (workspace admin roles: Owner, Admin, Manager), §2.10 (diagnostics, audit_log) |
+| RBAC — internal | S26 §2.3 <!-- Legacy ref: creativanta_supplementary_s26_internal_admin_operations_v_3_1.md — superseded by current feature docs + contract layer --> | Internal admin permission matrix |
+| S26 | S26 — Internal Admin <!-- Legacy ref: creativanta_supplementary_s26_internal_admin_operations_v_3_1.md — superseded by current feature docs + contract layer --> | Full internal admin site spec |
+| S19 | S19 — Customer Support <!-- Legacy ref: creativanta_supplementary_s19_customer_support_v_3_1.md — superseded by current feature docs + contract layer --> | Support channels, SLA, AI chatbot, escalation |
+| S24 | S24 — Public API <!-- Legacy ref: creativanta_supplementary_s24_public_api_v_3_1.md — superseded by current feature docs + contract layer --> | API key management, webhook monitoring |
+| Pack 06 | Pack 06 — Admin Override <!-- Legacy ref: creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §10 (Override Contract), §8 (Reporting) |
 | Pack 08 | Pricing & Credits | Used by billing/credit management |
 
 ## Related Screens

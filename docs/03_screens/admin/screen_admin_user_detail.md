@@ -238,7 +238,7 @@ AdminUserDetailPage
 | 4 | Override plan | "⬆ Override plan" → modal | Action | `AdminService/OverridePlan(user_id, plan, duration, reason)` | Modal → toast "Plan đã override" | `admin:plan:override` |
 | 5 | Suspend user | "⏸ Suspend" → confirm | Destructive | `AdminService/SuspendUser(id, reason)` | Confirmation + reason → status 🔴 → user logged out | `admin:user:suspend` |
 | 6 | Unsuspend | "▶ Unsuspend" → confirm | Action | `AdminService/UnsuspendUser(id, reason)` | Status 🟢 → toast | `admin:user:suspend` |
-| 7 | Impersonate | "👤 Impersonate" → OTP → session | Sensitive | `AdminService/Impersonate(user_id, otp)` | OTP modal → new browser tab opens as user (read-only by default) → red banner "IMPERSONATING" | `admin:user:impersonate` (Super + Ops only) |
+| 7 | Impersonate | "👤 Impersonate" → OTP → session | Sensitive | `AdminService/Impersonate(user_id, otp)` | OTP modal → new browser tab opens as user (read-only by default) → red banner "IMPERSONATING" | `admin:impersonate` (Super + Ops only) |
 | 8 | Delete account | "🗑 Delete" → triple confirm | Destructive | `AdminService/DeleteUser(id, reason)` | Type email + "DELETE" + reason → permanently deleted | `admin:user:delete` (Super Admin ONLY) |
 | 9 | Force logout | Security tab: "🔒 Force logout all" | Action | `AdminService/ForceLogout(user_id)` | All sessions terminated | `admin:user:suspend` |
 | 10 | Reset password | Security tab: "🔑 Reset password" | Action | `AdminService/ResetPassword(user_id)` | Password reset email sent to user | `admin:user:suspend` |

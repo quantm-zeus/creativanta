@@ -1,6 +1,6 @@
 # Screen: Web — Unified Inbox
 
-> **Screen ID**: W049
+> **Screen ID**: W046
 > **Module**: M12 — Unified Inbox & Engagement
 > **Route**: `/inbox`
 > **Platform**: Web (SvelteKit)
@@ -51,7 +51,7 @@ The Unified Inbox aggregates comments, DMs, and mentions from all connected plat
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `inbox:read` permission (Editor+ roles)
+- User has `thread:read` permission (Editor+ roles)
 - At least one platform connected with messaging/comment access
 - Thread sync running (SSE connection active or polling as fallback)
 
@@ -239,28 +239,28 @@ UnifiedInboxPage
 
 | # | Action | Trigger | Type | API Call | System Response | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Select thread | Click thread in list | Select | `ThreadService/MarkRead(id)` | Detail panel loads. Thread marked read (optimistic). | `inbox:read` |
-| 2 | Send AI reply | "✅ Gửi gợi ý" | Primary CTA | `ConnectorService/ReplyComment(thread_id, text)` | Reply posted to platform. Toast "✅ Đã gửi." Thread status → Replied. | `inbox:reply` |
-| 3 | Edit & send | "✏️ Sửa & gửi" | Edit + Send | (inline edit → then ConnectorService) | AI text becomes editable. User modifies → send. | `inbox:reply` |
+| 1 | Select thread | Click thread in list | Select | `ThreadService/MarkRead(id)` | Detail panel loads. Thread marked read (optimistic). | `thread:read` |
+| 2 | Send AI reply | "✅ Gửi gợi ý" | Primary CTA | `ConnectorService/ReplyComment(thread_id, text)` | Reply posted to platform. Toast "✅ Đã gửi." Thread status → Replied. | `thread:reply` |
+| 3 | Edit & send | "✏️ Sửa & gửi" | Edit + Send | (inline edit → then ConnectorService) | AI text becomes editable. User modifies → send. | `thread:reply` |
 | 4 | Regenerate reply | "🔄 Gợi ý khác" | AI | `CopilotService/Query(mode=reply, regenerate=true)` | New suggestion replaces current one (typing animation). | `copilot:use_help` |
-| 5 | Mark not relevant | "👎 Không phù hợp" | Feedback | `CopilotService/Feedback(negative)` | Card hides. Manual reply input highlighted. Feedback logged for AI improvement. | `inbox:reply` |
-| 6 | Send manual reply | Type + "💬" send | Reply | `ConnectorService/ReplyComment(thread_id, text)` | Reply posted. Thread status → Replied. | `inbox:reply` |
-| 7 | Attach file | "📎" → file picker | Attach | File upload → included in reply | File preview appears in reply input. | `inbox:reply` |
-| 8 | Use template | Template button → picker | Insert | — | Template text inserted into reply input. | `inbox:reply` |
-| 9 | Resolve thread | "✅ Resolve" | Status | `ThreadService/Update(id, status=resolved)` | Thread moves to resolved. Fades in list if filtered to unread. | `inbox:manage` |
-| 10 | Create follow-up | "📌 Follow-up task" | Create | `FollowUpTaskService/Create(thread_id, entity_id)` | Dialog for task description → Task created. Toast "📌 Task tạo xong." | `inbox:manage` |
-| 11 | Tag thread | "🏷 Tag" → picker | Update | `ThreadService/AddTag(id, tag)` | Tag chip appears on thread item. | `inbox:manage` |
-| 12 | Assign thread | "👤 Assign" → member picker | Assign | `ThreadService/Update(id, assigned_to)` | Assignment badge shows on thread. | `inbox:manage` |
-| 13 | Mute thread | "🔇 Mute" | Status | `ThreadService/Update(id, muted=true)` | Thread hidden from default list (visible with "Muted" filter). | `inbox:manage` |
-| 14 | Mark spam | "🚫 Mark spam" | Status | `ThreadService/Update(id, is_spam=true)` | Thread hidden. Feedback sent to AI for future auto-classification. | `inbox:manage` |
-| 15 | Snooze thread | "⏰ Snooze" → duration | Schedule | `ThreadService/Snooze(id, wake_at)` | Thread hidden until wake_at. Reappears as unread. | `inbox:manage` |
-| 16 | Filter | Change any filter | Filter | `ThreadService/List(filters)` | Thread list updates. Active filter badge shown. | `inbox:read` |
-| 17 | Search | Type in search (debounced) | Search | Meilisearch query | Thread list filters by keyword. | `inbox:read` |
-| 18 | Enter triage mode | "⚡ Triage" | Navigate | — | → `/inbox/triage` (rapid processing UI) | `inbox:manage` |
-| 19 | View entity profile | "👤 Profile" | Navigate | — | → `/contacts/[entity_id]` | `contact:read` |
+| 5 | Mark not relevant | "👎 Không phù hợp" | Feedback | `CopilotService/Feedback(negative)` | Card hides. Manual reply input highlighted. Feedback logged for AI improvement. | `thread:reply` |
+| 6 | Send manual reply | Type + "💬" send | Reply | `ConnectorService/ReplyComment(thread_id, text)` | Reply posted. Thread status → Replied. | `thread:reply` |
+| 7 | Attach file | "📎" → file picker | Attach | File upload → included in reply | File preview appears in reply input. | `thread:reply` |
+| 8 | Use template | Template button → picker | Insert | — | Template text inserted into reply input. | `thread:reply` |
+| 9 | Resolve thread | "✅ Resolve" | Status | `ThreadService/Update(id, status=resolved)` | Thread moves to resolved. Fades in list if filtered to unread. | `thread:triage` |
+| 10 | Create follow-up | "📌 Follow-up task" | Create | `FollowUpTaskService/Create(thread_id, entity_id)` | Dialog for task description → Task created. Toast "📌 Task tạo xong." | `thread:triage` |
+| 11 | Tag thread | "🏷 Tag" → picker | Update | `ThreadService/AddTag(id, tag)` | Tag chip appears on thread item. | `thread:triage` |
+| 12 | Assign thread | "👤 Assign" → member picker | Assign | `ThreadService/Update(id, assigned_to)` | Assignment badge shows on thread. | `thread:triage` |
+| 13 | Mute thread | "🔇 Mute" | Status | `ThreadService/Update(id, muted=true)` | Thread hidden from default list (visible with "Muted" filter). | `thread:triage` |
+| 14 | Mark spam | "🚫 Mark spam" | Status | `ThreadService/Update(id, is_spam=true)` | Thread hidden. Feedback sent to AI for future auto-classification. | `thread:triage` |
+| 15 | Snooze thread | "⏰ Snooze" → duration | Schedule | `ThreadService/Snooze(id, wake_at)` | Thread hidden until wake_at. Reappears as unread. | `thread:triage` |
+| 16 | Filter | Change any filter | Filter | `ThreadService/List(filters)` | Thread list updates. Active filter badge shown. | `thread:read` |
+| 17 | Search | Type in search (debounced) | Search | Meilisearch query | Thread list filters by keyword. | `thread:read` |
+| 18 | Enter triage mode | "⚡ Triage" | Navigate | — | → `/inbox/triage` (rapid processing UI) | `thread:triage` |
+| 19 | View entity profile | "👤 Profile" | Navigate | — | → `/contacts/[entity_id]` | `thread:read` |
 | 20 | View entity orders | "📦 Orders" | Navigate | — | → `/orders?entity=[entity_id]` | `order:read` |
-| 21 | Keyboard nav | ↑↓ arrows | Select | — | Navigate thread list. J/K also work (Vim-style). | `inbox:read` |
-| 22 | Keyboard reply | R key | Focus | — | Focus jumps to reply input. | `inbox:reply` |
+| 21 | Keyboard nav | ↑↓ arrows | Select | — | Navigate thread list. J/K also work (Vim-style). | `thread:read` |
+| 22 | Keyboard reply | R key | Focus | — | Focus jumps to reply input. | `thread:reply` |
 
 ---
 ## 7. Validation Rules
@@ -464,10 +464,10 @@ Unified Inbox (/inbox)
 
 | Screen | Relationship |
 |---|---|
-| [W050] Thread Detail | Full-page thread view (deep link) |
-| [W051] Contact List | Entity management / CRM |
-| [W054] Bulk Triage | Rapid processing mode |
-| [M004] Mobile Inbox | Mobile equivalent |
+| [W047] Thread Detail | Full-page thread view (deep link) |
+| [W048] Contact List | Entity management / CRM |
+| [W050] Bulk Triage | Rapid processing mode |
+| [M019] Mobile Inbox | Mobile equivalent |
 | [W001] Home Dashboard | Unread count widget |
 ---
 ## Error Handling

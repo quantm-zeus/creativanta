@@ -1,7 +1,7 @@
 # Screen: Web — Credit Purchase
 
-> **Screen ID**: W123
-> **Module**: M26 — Settings (Credits)
+> **Screen ID**: W128
+> **Module**: M23 — Settings
 > **Route**: `/settings/credits/purchase`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: A1 Schema (credit_packages, credit_purchases, payment_methods), B5 RBAC §2.9
@@ -159,7 +159,7 @@ Buy additional AI credits — credit packs with tiered pricing (bulk discounts),
 ## 13. SvelteKit Implementation Notes
 
 - **Route**: `src/routes/(app)/settings/credits/purchase/+page.svelte`
-- **Server load**: `+page.server.ts` → `CreditService/GetBalance` + `CreditService/ListPackages` + `CreditService/GetAutoRefillConfig` + `BillingService/ListCreditPurchases(limit:3)`
+- **Server load**: `+page.server.ts` → `AdminBillingService/GetCreditBalance` + `AdminBillingService/PurchaseCredits` + `AdminBillingService/GetBillingSummary` + `BillingService/ListCreditPurchases(limit:3)`
 - **Buy flow**: Click "Mua" → server creates Stripe Checkout Session → redirect → return with `?checkout=success&session_id=xxx`
 - **Post-checkout**: Poll `CreditService/GetCheckoutStatus(session_id)` every 2s for 30s
 - **Auto-refill**: `CreditService/UpdateAutoRefill(config)` → background job checks balance hourly
@@ -200,9 +200,9 @@ Buy additional AI credits — credit packs with tiered pricing (bulk discounts),
 
 | Screen | Relationship |
 |---|---|
-| [W124] Credit Usage | Usage tracking |
-| [W125] AI Settings | Credit limits |
-| [W093] Billing | Payment methods |
+| [W121] Credit Usage Detail | Usage tracking |
+| [W123] AI Preferences | Credit limits |
+| [W119] Billing & Plans | Payment methods |
 
 ---
 

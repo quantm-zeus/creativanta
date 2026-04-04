@@ -1,7 +1,7 @@
 # Screen: Web — Opportunity Board
 
-> **Screen ID**: W14
-> **Module**: M02 — Opportunity Engine
+> **Screen ID**: W043
+> **Module**: M04 — Opportunity Board
 > **Route**: `/intelligence/opportunities`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §10/§11, A1 Schema (opportunities)
@@ -229,11 +229,11 @@ OpportunityBoardPage
 
 | Screen | Relationship |
 |---|---|
-| [W015] Opportunity Detail | Full detail view |
-| [W009] Trend Radar | Evidence source |
-| [W012] Competitor Registry | Evidence source |
-| [W016] Opportunity Convert | Conversion wizard |
-| [M016] Mobile Opportunity Board | Mobile equivalent |
+| [W044] Opportunity Detail | Full detail view |
+| [W038] Trend Radar | Evidence source |
+| [W040] Competitor Registry | Evidence source |
+| [W045] Opportunity Convert | Conversion wizard |
+| [M017] Mobile Trend List | Mobile equivalent (opportunities via trends) |
 
 ---
 

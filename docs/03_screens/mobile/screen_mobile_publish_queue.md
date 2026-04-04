@@ -1,7 +1,7 @@
 # Screen: Mobile — Publish Queue
 
-> **Screen ID**: M046
-> **Module**: M08 — Publish & Schedule
+> **Screen ID**: M024
+> **Module**: M11 — Publish Hub
 > **Route**: `/publish` (mobile)
 > **Platform**: Mobile (Flutter)
 > **Upstream**: Pack 01 §4, Product Freeze §10-12, A1 Schema (scheduled_posts, content_items, connected_accounts), B5 RBAC §2.7
@@ -171,17 +171,17 @@ PublishQueuePage
 | # | Action | Trigger | Type | API Call | System Response | Permission |
 |---|---|---|---|---|---|---|
 | 1 | Publish now | "📤 Publish now" button | Primary CTA | `PublishService/PublishNow(post_id)` | Confirmation dialog → spinner → "✅ Đã đăng!" toast. Card moves to Published tab. | `publish:create` |
-| 2 | Edit post | "✏ Edit" button | Navigate | — | Push → Content Editor with post loaded | `publish:edit` |
-| 3 | Reschedule | "📅 Reschedule" button | Picker | `PublishService/Reschedule(post_id, new_time)` | Date/time picker → card updates position in queue | `publish:edit` |
-| 4 | Upload missing media | "📎 Upload video" | Action | Upload flow → `ContentService/AttachMedia(post_id, file)` | File picker → upload progress → status changes to Ready | `publish:edit` |
-| 5 | Complete draft | "✏ Complete draft" | Navigate | — | Push → Editor with missing field highlighted | `publish:edit` |
+| 2 | Edit post | "✏ Edit" button | Navigate | — | Push → Content Editor with post loaded | `publish:schedule` |
+| 3 | Reschedule | "📅 Reschedule" button | Picker | `PublishService/Reschedule(post_id, new_time)` | Date/time picker → card updates position in queue | `publish:schedule` |
+| 4 | Upload missing media | "📎 Upload video" | Action | Upload flow → `ContentService/AttachMedia(post_id, file)` | File picker → upload progress → status changes to Ready | `publish:schedule` |
+| 5 | Complete draft | "✏ Complete draft" | Navigate | — | Push → Editor with missing field highlighted | `publish:schedule` |
 | 6 | Retry failed publish | "Thử lại" on failed | Action | `PublishService/Retry(post_id)` | Spinner → success or show error detail | `publish:create` |
-| 7 | Delete scheduled | ⋮ → "Xóa" | Destructive | `PublishService/Delete(post_id)` | Confirmation "Xóa bài này?" → card removed with animation | `publish:delete` |
+| 7 | Delete scheduled | ⋮ → "Xóa" | Destructive | `PublishService/Delete(post_id)` | Confirmation "Xóa bài này?" → card removed with animation | `publish:cancel` |
 | 8 | Duplicate post | ⋮ → "Nhân bản" | Action | `PublishService/Duplicate(post_id)` | New draft created → toast "Đã nhân bản" | `publish:create` |
 | 9 | Switch tab | Tap tab | Filter | `PublishService/List{tab}(cursor)` | List updates to show selected tab content | `publish:read` |
 | 10 | Pull refresh | Pull-down | Refresh | Refetch current tab | Data refreshes. Haptic light. | `publish:read` |
 | 11 | Open calendar | Tap "📅" | Navigate | — | Push → Calendar view (M045) | `publish:read` |
-| 12 | Swipe delete | Swipe left (queued tab) | Destructive | Confirmation → `PublishService/Delete(post_id)` | Haptic medium → confirmation → card removed | `publish:delete` |
+| 12 | Swipe delete | Swipe left (queued tab) | Destructive | Confirmation → `PublishService/Delete(post_id)` | Haptic medium → confirmation → card removed | `publish:cancel` |
 
 ---
 
@@ -414,9 +414,9 @@ Publish Queue (/publish)
 
 | Screen | Relationship |
 |---|---|
-| [W043] Web Publish Queue | Web equivalent (full table + bulk actions + drag-to-reorder) |
-| [M045] Mobile Calendar | Calendar view of schedule |
-| [M006] Mobile Quick Publish | Quick publish flow |
+| [W053] Web Publish Queue | Web equivalent (full table + bulk actions + drag-to-reorder) |
+| [M025] Mobile Calendar | Calendar view of schedule |
+| [M023] Mobile Quick Publish | Quick publish flow |
 | [M001] Mobile Home Dashboard | Pipeline → Scheduled count |
 
 ---

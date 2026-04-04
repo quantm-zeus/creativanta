@@ -1,6 +1,6 @@
 # Screen: Admin — Platform Integration Monitor
 
-> **Screen ID**: A08
+> **Screen ID**: A007
 > **Module**: Admin — Operations
 > **Route**: `/admin/platforms`
 > **Platform**: Admin Web (SvelteKit) — VPN-only
@@ -99,8 +99,8 @@ PlatformIntegrationMonitorPage
 ## 19. Related Screens
 | Screen | Relationship |
 |---|---|
-| [A20] System Health | System overview |
-| [A11] Audit Log | Operations log |
+| [A006] System Health | System overview |
+| [A010] Audit Log | Operations log |
 ---
 ## Error Handling
 

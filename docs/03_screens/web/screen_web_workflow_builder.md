@@ -1,7 +1,7 @@
 # Screen: Web — Workflow Builder
 
-> **Screen ID**: W79
-> **Module**: M18 — Workflow & Automation
+> **Screen ID**: W101
+> **Module**: M20 — Workflow Studio
 > **Route**: `/workflows/[id]` or `/workflows/new`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 05, Product Freeze §28, A1 Schema (workflows)

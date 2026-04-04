@@ -18,15 +18,15 @@ last_updated: 2026-03-31
 
 # Creativanta — Screen Inventory (Canonical)
 
-> **Total**: 237 screen files (132 Web + 62 Mobile + 32 Admin + 12 Shared)
+> **Total**: 238 screen files (133 Web + 61 Mobile + 32 Admin + 12 Shared)
 > **Note**: Counts verified against filesystem 2026-04-01
 > **Updated**: 2026-03-31 (v7 — Consolidated to docs/03_screens/)
-> **Status**: ⚠️ 98% COMPLETE — 5 lower-priority admin screens remaining
+> **Status**: Inventory verified. Coverage gaps noted below (§Still Missing vs Full S26 Spec).
 > **Migrated from**: `docs/screens/SCREEN_INDEX.md` (base) + `docs/screen_index.md` (supplementary)
 
 ---
 
-## Web Screens (132 files)
+## Web Screens (133 files)
 
 ### M01 — Home & Navigation
 | ID | File | Screen |
@@ -136,6 +136,11 @@ last_updated: 2026-03-31
 | W074 | `screen_web_commerce_samples.md` | Sample Requests |
 | W075a | `screen_web_commerce_inventory.md` | Inventory Management |
 
+### M14 — Monetization OS
+| ID | File | Screen |
+|---|---|---|
+| W075b | `screen_web_monetization_os.md` | Monetization OS Dashboard (M14) |
+
 ### Analytics
 | ID | File | Screen |
 |---|---|---|
@@ -226,7 +231,7 @@ last_updated: 2026-03-31
 
 ---
 
-## Mobile Screens (62 files)
+## Mobile Screens (61 files)
 
 ### M01 — Home
 | ID | File | Screen |
@@ -434,11 +439,11 @@ last_updated: 2026-03-31
 
 | Platform | Count | Status |
 |---|---|---|
-| Web | 132 | ✅ Complete |
-| Mobile | 62 | ✅ Complete |
-| Admin | 32 | ⚠️ 5 still missing vs full S26 spec |
+| Web | 133 | ✅ Complete (includes `screen_web_monetization_os.md` added 2026-04-02) |
+| Mobile | 61 | ✅ Complete (M012 ID intentionally skipped — no gap) |
+| Admin | 32 | ⚠️ 5 listed below not yet created vs full S26 spec |
 | Shared | 12 | ✅ Complete |
-| **TOTAL** | **237** | **⚠️ 98% — remaining admin gaps noted** |
+| **TOTAL** | **238** | **Coverage gaps: 5 lower-priority admin screens noted below** |
 
 ### Still Missing vs Full S26 Spec
 | Screen | S26 Section | Priority |
@@ -528,9 +533,14 @@ Creator Pro → Media Kit → Share with brand → Brand Deal → Deliverables �
 2. Trust Badge source classes need alignment with PRD canonical taxonomy
 3. ~~Admin dashboard RBAC~~ — **RESOLVED** (aligned to S26 8-role spec)
 4. ~~9 admin screens from root `screen_index.md` not yet created~~ — **PARTIALLY RESOLVED** (5 critical screens created, 5 remaining are lower priority or covered by existing screens)
-5. Screen ID format inconsistent across files (W001 vs W01 vs W-AUTH-02)
+5. **Screen ID Policy (DEC-008 + 2026-04-04 clarification)**:
+   - IDs follow the `{Platform}{Number}` pattern: `W###` (Web), `M###` (Mobile), `A###` (Admin), `S###` (Shared).
+   - **Letter suffixes** (e.g., `W012a`, `W075a`, `W075b`) are allowed for screens inserted between existing numbered IDs to avoid cascading renumbering. These are intentional insertion IDs, not errors.
+   - Mixed legacy formats (W-AUTH-02 etc.) are accepted per DEC-008 for existing docs. New screens should use `{Platform}{Number}` or `{Platform}{Number}{letter}`.
+   - Cross-reference should use **path + title + module**, not ID format alone.
+   - **Metadata formats**: Two styles exist: (a) inline blockquote (`> **Screen ID**: W001`) used by most screens, and (b) YAML frontmatter (`screen_id: W075b`) used by `screen_web_monetization_os.md`. Both are valid.
 6. ~124 Tier C files need upgrade to full 20-point structure
-7. ~~Module attribution: `screen_mobile_content_idea_board.md` incorrectly references M04~~ — needs verification
+7. ~~Module attribution: `screen_mobile_content_idea_board.md` incorrectly references M04~~ — **RESOLVED** (verified 2026-04-03: file correctly references M05 — Idea Engine per BUILD_INDEX)
 8. ~~Admin Dashboard duplicate sections~~ — **RESOLVED** (template placeholders removed, proper section numbering applied)
 9. **NEW**: Web Capability Matrix (M22) screen created — `screen_web_capability_matrix.md`
 10. **NEW**: 4 critical admin screens created (Fraud, GDPR, System Config, Incidents, Admin Management)
@@ -539,15 +549,14 @@ Creator Pro → Media Kit → Share with brand → Brand Deal → Deliverables �
 
 ## Merge Notes
 
-> [!NOTE]
-> **Merge source reconciliation** (2026-03-31):
-> - **Base**: `docs/screens/SCREEN_INDEX.md` (v6, 233 file-level entries with IDs)
+> **Merge history** (2026-03-31, for archival reference only — current authoritative count is in the header above):
+> - **Base**: `docs/screens/SCREEN_INDEX.md` (v6, 233 file-level entries at that time)
 > - **Supplementary**: `docs/screen_index.md` (235 route-level entries from spec files)
 >
 > **Content merged from supplementary**:
 > - Cross-Screen Navigation Map (§ Primary Flows + Global Access)
 > - Route information (available in supplementary but not base)
 >
-> **Count discrepancy**: Base counts 233 files; supplementary counts 235 routes — due to different deduplication approaches. Base file count (233) is authoritative as it maps to actual `.md` files.
+> **Historical count note**: Base counted 233 files; supplementary counted 235 routes — due to different deduplication approaches. Current authoritative count is in the header (238 as of 2026-04-02).
 >
 > **No conflicts detected** — content was complementary, not contradictory.

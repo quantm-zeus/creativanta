@@ -1,6 +1,6 @@
 # Screen: Mobile — Performance Coach
 
-> **Screen ID**: M041b
+> **Screen ID**: M039
 > **Module**: M23 — Analytics
 > **Route**: `/analytics/coach` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -109,8 +109,8 @@ PerformanceCoachScreen
 
 | Screen | Relationship |
 |---|---|
-| [W076] Web Performance Coach | Web equivalent |
-| [M021] Analytics | Parent |
+| [W077] Web Performance Metrics | Web equivalent |
+| [M035] Analytics | Parent |
 ---
 ## Error Handling
 

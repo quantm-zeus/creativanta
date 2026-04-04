@@ -1,6 +1,6 @@
 # Screen: Web — Seeding Creator Assignment
 
-> **Screen ID**: W100
+> **Screen ID**: W112
 > **Module**: M18 — Seeding / Sample CRM
 > **Route**: `/seeding/assignments`
 > **Platform**: Web (SvelteKit)
@@ -159,13 +159,13 @@ Status transitions:
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Assign product | "+ Assign" → modal | `SeedingService/CreateAssignment` | New row in Assigned status | `seeding:manage` |
-| 2 | Mark shipped | "📦 Ship" → tracking modal | `SeedingService/MarkShipped(tracking_number)` | Status → Shipped, creator notified | `seeding:manage` |
-| 3 | Confirm received | Manual or auto | `SeedingService/MarkReceived` | Status → Received | `seeding:manage` |
-| 4 | Link content | "📊 View" → link content | `SeedingService/LinkContent(content_id)` | Status → Published, content attributed | `seeding:manage` |
-| 5 | Send reminder | "⚠️ Follow up" | `SeedingService/SendReminder` | Email/notification sent to creator | `seeding:manage` |
-| 6 | Message creator | "💬" | — | Open messaging/email | `seeding:manage` |
-| 7 | Remove assignment | ⋮ → "Remove" → confirm | `SeedingService/RemoveAssignment` | Assignment deleted | `seeding:manage` |
+| 1 | Assign product | "+ Assign" → modal | `SeedingService/CreateAssignment` | New row in Assigned status | `sample:manage` |
+| 2 | Mark shipped | "📦 Ship" → tracking modal | `SeedingService/MarkShipped(tracking_number)` | Status → Shipped, creator notified | `sample:manage` |
+| 3 | Confirm received | Manual or auto | `SeedingService/MarkReceived` | Status → Received | `sample:manage` |
+| 4 | Link content | "📊 View" → link content | `SeedingService/LinkContent(content_id)` | Status → Published, content attributed | `sample:manage` |
+| 5 | Send reminder | "⚠️ Follow up" | `SeedingService/SendReminder` | Email/notification sent to creator | `sample:manage` |
+| 6 | Message creator | "💬" | — | Open messaging/email | `sample:manage` |
+| 7 | Remove assignment | ⋮ → "Remove" → confirm | `SeedingService/RemoveAssignment` | Assignment deleted | `sample:manage` |
 
 ---
 ## 7. States
@@ -282,8 +282,8 @@ Status transitions:
 
 | Screen | Relationship |
 |---|---|
-| [W098] Seeding Campaigns | Parent campaign view |
-| [W099] Sample Requests | Sample shipment management |
+| [W113] Seeding Campaigns | Parent campaign view |
+| [W111] Sample Requests | Sample shipment management |
 | [W061] Product Detail | Product being seeded |
 | [M056] Mobile Seeding | Mobile equivalent |
 

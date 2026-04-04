@@ -1,6 +1,6 @@
 # Screen: Admin — Feature Flag Manager
 
-> **Screen ID**: A06
+> **Screen ID**: A009
 > **Module**: Admin — Config
 > **Route**: `/admin/feature-flags`
 > **Platform**: Web (SvelteKit) — VPN-only
@@ -59,10 +59,10 @@ Manage feature flags — enable/disable features per user segment, rollout perce
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Create | Form | `FeatureFlagService/Create` | New flag | `admin:config` |
-| 2 | Toggle | Switch | `FeatureFlagService/Toggle` | Flag on/off | `admin:config` |
-| 3 | Edit rollout | Slider | `FeatureFlagService/Update` | Rollout % changed | `admin:config` |
-| 4 | Archive | "🗑" | `FeatureFlagService/Archive` | Flag archived | `admin:config` |
+| 1 | Create | Form | `FeatureFlagService/Create` | New flag | `admin:feature_flag:toggle` |
+| 2 | Toggle | Switch | `FeatureFlagService/Toggle` | Flag on/off | `admin:feature_flag:toggle` |
+| 3 | Edit rollout | Slider | `FeatureFlagService/Update` | Rollout % changed | `admin:feature_flag:toggle` |
+| 4 | Archive | "🗑" | `FeatureFlagService/Archive` | Flag archived | `admin:feature_flag:toggle` |
 
 ### Technical Notes
 - Route: `src/routes/(admin)/feature-flags/+page.svelte`

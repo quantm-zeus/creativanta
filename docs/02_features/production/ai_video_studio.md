@@ -69,7 +69,7 @@ The system auto-selects the optimal pipeline based on character type, voice sett
 | **3. Post-Prod Lip-Sync** | Script → [Video gen ∥ TTS gen] → SyncLabs lip-sync → ffmpeg mix | Dubbing / multi-language | SyncLabs / Wav2Lip |
 | **4. Simple Voice-Over** | Video gen → TTS → ffmpeg overlay | B-roll / product showcase (no talking head) | N/A |
 
-Reference: [Pack 04 §2.3](../creativanta_detail_design_pack_04_ai_media_continuity_contract_v_3_1.md)
+Reference: Pack 04 §2.3 <!-- Legacy ref: creativanta_detail_design_pack_04_ai_media_continuity_contract_v_3_1.md — superseded by current feature docs + contract layer -->
 
 ---
 
@@ -182,11 +182,11 @@ Side-by-side preview (original vs remix), per-scene editing, compliance scan, Vi
 - Integration: Trend Engine ("hot in Thailand → translate to Thai?") + Publish Hub auto-schedule
 - Credits: 15-40 per language version
 
-### EF-06: AI Sound Studio ⚠️ [BLOCKED: API-H-002]
+### EF-06: AI Sound Studio ✅ [RESOLVED: API-H-002]
 - AI Music Generator (mood → copyright-free BGM), beat-drop sync, speech-to-song
 - AI Sound Effects (scene description → contextual SFX), multi-lang voice clone
 - Podcast → short clips conversion
-- **Blocker**: `SoundStudioService` has no proto/endpoint definition (OPEN_BLOCKERS API-H-002)
+- **Previously blocked**: `SoundStudioService` now defined — see `api_endpoint_map.md` §2.8.10 (6 RPCs). Resolved 2026-04-02.
 - Credits: 3-25 per operation
 
 ### EF-07: AI Style Learning & Transfer
@@ -201,11 +201,11 @@ Side-by-side preview (original vs remix), per-scene editing, compliance scan, Vi
 - Context-aware: reads Brand Pack, Character Pack, Trend Engine data, past performance
 - Credits: 30-80 per video
 
-### EF-09: AI Performance Coach ⚠️ [BLOCKED: API-C-001]
+### EF-09: AI Performance Coach ✅ [RESOLVED: API-C-001]
 - Post-publish analysis (24h): hook effectiveness, retention rate, engagement comparison
 - Weekly report card: best/worst content, format analysis, improvement suggestions
 - Proactive coaching: format recommendations, trending sound suggestions, competitor benchmarks
-- **Blocker**: `PerformanceCoachService` has no proto/endpoint definition (OPEN_BLOCKERS API-C-001)
+- **Previously blocked**: `PerformanceCoachService` now defined — see `api_endpoint_map.md` §2.8.8 (5 RPCs). Resolved 2026-04-02.
 - Credits: 0 (included in plan)
 
 ### EF-10: Video A/B Testing Engine
@@ -225,7 +225,7 @@ Side-by-side preview (original vs remix), per-scene editing, compliance scan, Vi
 ## State Machine
 
 Object: generation_job | DB column: `generation_jobs.status`
-see [04_contracts/database_schema.md#7.4](../04_contracts/database_schema.md)
+see [04_contracts/database_schema.md#7.4](../../04_contracts/database_schema.md)
 
 | From | To | Trigger | Condition |
 |---|---|---|---|
@@ -267,12 +267,12 @@ see [04_contracts/database_schema.md#7.4](../04_contracts/database_schema.md)
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §7.3 (assets), §7.4 (generation_jobs), §7.5 (continuity_violations) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.3 (AssetService: Generate, GetStatus, List, Approve, PromoteCanonical) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §5 (asset.generation_started/completed/failed, asset.approved, clip.extracted, remix.completed) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.3 (asset:generate — Editor+; asset:approve — Manager+) |
-| Pack 04 | [Design Pack 04](../creativanta_detail_design_pack_04_ai_media_continuity_contract_v_3_1.md) | §2-11 (Pipeline, Modes, Cost, Diagnostics) |
-| Provider Guide | [05_system/ai_provider_guide.md](../05_system/ai_provider_guide.md) | §1-8 (Providers, routing, credits, errors) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §7.3 (assets), §7.4 (generation_jobs), §7.5 (continuity_violations) |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.3 (AssetService: Generate, GetStatus, List, Approve, PromoteCanonical) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §5 (asset.generation_started/completed/failed, asset.approved, clip.extracted, remix.completed) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.4 (asset:generate — Editor+; asset:approve — Manager+) |
+| Pack 04 | Design Pack 04 <!-- Legacy ref: creativanta_detail_design_pack_04_ai_media_continuity_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §2-11 (Pipeline, Modes, Cost, Diagnostics) |
+| Provider Guide | [05_system/ai_provider_guide.md](../../05_system/ai_provider_guide.md) | §1-8 (Providers, routing, credits, errors) |
 
 ## Related Screens
 
@@ -298,14 +298,16 @@ see [04_contracts/database_schema.md#7.4](../04_contracts/database_schema.md)
 
 5. **Given** a completed generation job, **when** the asset passes post-production mix, **then** the asset MUST have: audio normalized to -14 LUFS, correct aspect ratio, subtitle overlay (if enabled), and full lineage in `lineage_refs` JSONB.
 
-## Blockers
+## Blockers (All Resolved)
 
-| Blocker ID | Severity | Impact on M07 | Workaround |
-|---|---|---|---|
-| **API-C-001** | CRITICAL | Performance Coach (EF-09) has no `PerformanceCoachService` proto definition — cannot implement | Feature flagged OFF until service defined. Post-publish analytics available via M02/M03 Trend Engine dashboards as interim alternative. |
-| **API-H-001** | HIGH | Voice clone (M08 dependency) has no `VoiceCloneService` definition — Audio-First pipeline partially blocked | Allow character creation without voice clone (M08 workaround). Native Audio pipeline unaffected. |
-| **API-H-002** | HIGH | AI Sound Studio (EF-06) has no `SoundStudioService` proto definition — music/SFX generation blocked | Use royalty-free library integration as interim alternative. Beat-sync features use Librosa locally (not provider-dependent). |
+> All M07 blockers resolved as of 2026-04-02. See `00_index/OPEN_BLOCKERS.md` for resolution details.
+
+| Blocker ID | Severity | Impact on M07 | Status | Resolution |
+|---|---|---|---|---|
+| **API-C-001** | CRITICAL | Performance Coach (EF-09) lacked `PerformanceCoachService` proto definition | ✅ RESOLVED (2026-04-02) | `PerformanceCoachService` defined in `api_endpoint_map.md` §2.8.8 (5 RPCs) |
+| **API-H-001** | HIGH | Voice clone (M08 dependency) lacked `VoiceCloneService` definition | ✅ RESOLVED (2026-04-02) | `VoiceCloneService` defined in `api_endpoint_map.md` §2.8.9 (6 RPCs) |
+| **API-H-002** | HIGH | AI Sound Studio (EF-06) lacked `SoundStudioService` proto definition | ✅ RESOLVED (2026-04-02) | `SoundStudioService` defined in `api_endpoint_map.md` §2.8.10 (6 RPCs) |
 
 ## Open Questions
 
-- Voice clone event namespace: PRD uses `gamification.voice_clone.*` but logical namespace is `production.voice_clone.*` or `continuity.voice_clone.*` — needs reconciliation per EVT-H-001 blocker.
+- Voice clone event namespace: PRD uses `gamification.voice_clone.*` but logical namespace is `production.voice_clone.*` or `continuity.voice_clone.*`. EVT-H-001 (event naming convention) has been resolved with CamelCase→dot.notation mapping tables in `runtime_workflow.md` §3.1B/§3.1C, but the specific namespace assignment for voice clone events still needs confirmation in `domain_event_catalog.md`.

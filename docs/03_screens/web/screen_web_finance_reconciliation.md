@@ -187,11 +187,11 @@ ReconciliationCenterPage
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
 | 1 | Review matches | "🔍 Review" | — | ReviewDrawer opens with order-level detail | `profit:read` |
-| 2 | Approve matched | "✅ Approve" → confirm | `ReconciliationService/ApproveMatched(batch_id)` | Matched items → reconciled, feed proof chain | `profit:manage` |
-| 3 | One-click approve | "✅ One-click" | `ReconciliationService/ApproveAll(batch_id)` | Entire batch reconciled (100% match only) | `profit:manage` |
-| 4 | Resolve conflict | "🔧 Resolve" → drawer | `ReconciliationService/Resolve(item_id, resolution)` | Conflict resolved with explanation | `profit:manage` |
-| 5 | Assign to team | "👤 Assign" | `ReconciliationService/Assign(item_id, user_id)` | Team member notified | `profit:manage` |
-| 6 | Flag to platform | "📋 Flag" | `ReconciliationService/FlagDispute(item_id)` | Dispute record created | `profit:manage` |
+| 2 | Approve matched | "✅ Approve" → confirm | `ReconciliationService/ApproveMatched(batch_id)` | Matched items → reconciled, feed proof chain | `profit:detailed_read` |
+| 3 | One-click approve | "✅ One-click" | `ReconciliationService/ApproveAll(batch_id)` | Entire batch reconciled (100% match only) | `profit:detailed_read` |
+| 4 | Resolve conflict | "🔧 Resolve" → drawer | `ReconciliationService/Resolve(item_id, resolution)` | Conflict resolved with explanation | `profit:detailed_read` |
+| 5 | Assign to team | "👤 Assign" | `ReconciliationService/Assign(item_id, user_id)` | Team member notified | `profit:detailed_read` |
+| 6 | Flag to platform | "📋 Flag" | `ReconciliationService/FlagDispute(item_id)` | Dispute record created | `profit:detailed_read` |
 | 7 | Change period | Period selector | Refetch | Data for selected month | `profit:read` |
 | 8 | Switch tab | Tab click | Client-side filter | List filters | `profit:read` |
 
@@ -305,7 +305,7 @@ Unmatched reasons:
 - **Server load**: `+page.server.ts` → `ReconciliationService/GetBatches(period)` from PostgreSQL
 - **Approve**: SvelteKit form action with progressive enhancement; optimistic UI → revert on error
 - **One-click approve**: Only enabled when `match_rate === 100%`
-- **Resolve drawer**: Svelte `fly` transition, `use:inert` on background
+- **Resolve drawer**: Svelte `fly` transition, `copilot:use_help` on background
 - **SSE**: Settlement processing status via `ReconciliationService/stream`
 - **Audit trail**: All actions (approve, resolve, flag) logged with `user_id`, `timestamp`, `reason`
 - **No localStorage**: Financial data never cached client-side

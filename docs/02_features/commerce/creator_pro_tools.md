@@ -1,6 +1,7 @@
 ---
 layer: features
 module: S16
+domain: commerce
 status: READY
 created: 2026-04-01
 last_updated: 2026-04-02
@@ -324,7 +325,7 @@ Feature: Custom Domain
     And domain remains unverified with retry option
 ```
 
-> **Schema Cross-reference (GAP-M001 verification)**: Full field-level definitions for `link_in_bio_pages`, `link_in_bio_items`, `media_kits`, `rate_cards`, and `brand_deals` are in [database_schema.md §16](../04_contracts/database_schema.md). Revenue tracking uses `profit_snapshots` and `cost_items` in §11. This feature spec does NOT inline schemas to avoid duplication — the canonical source is always the DB schema contract.
+> **Schema Cross-reference (GAP-M001 verification)**: Full field-level definitions for `link_in_bio_pages`, `link_in_bio_items`, `media_kits`, `rate_cards`, and `brand_deals` are in [database_schema.md §16](../../04_contracts/database_schema.md). Revenue tracking uses `profit_snapshots` and `cost_items` in §11. This feature spec does NOT inline schemas to avoid duplication — the canonical source is always the DB schema contract.
 
 ## 11. Cross-references
 

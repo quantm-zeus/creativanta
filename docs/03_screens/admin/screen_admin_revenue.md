@@ -1,6 +1,6 @@
 # Screen: Admin — Platform Revenue Dashboard
 
-> **Screen ID**: A015
+> **Screen ID**: A022
 > **Module**: S26 — Internal Admin & Operations
 > **Route**: `/admin/revenue`
 > **Platform**: Admin Web (SvelteKit) — VPN-only access
@@ -316,9 +316,9 @@ Revenue (/admin/revenue)
 
 | Screen | Relationship |
 |---|---|
-| [A017] Business Analytics | Business-level metrics |
-| [A005] Subscription Management | Subscription operations |
-| [A012] AI Credits & Billing | Credit management |
+| [A024] Business Analytics | Business-level metrics |
+| [A021] Subscriptions | Subscription operations |
+| [A014] AI Credits | Credit management |
 | [A001] Admin Dashboard | Summary hub |
 
 ---

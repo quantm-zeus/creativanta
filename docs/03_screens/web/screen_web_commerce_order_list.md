@@ -1,6 +1,6 @@
 # Screen: Web — Order Management
 
-> **Screen ID**: W061
+> **Screen ID**: W062
 > **Module**: M13 — Product Hub / Inventory / Order
 > **Route**: `/orders`
 > **Platform**: Web (SvelteKit)
@@ -222,7 +222,7 @@ OrderManagementPage
 | # | Action | Trigger | Type | API Call | System Response | Permission |
 |---|---|---|---|---|---|---|
 | 1 | View order detail | Click row or "→" button | Navigate | — | → `/orders/[id]` (W062) | `order:read` |
-| 2 | Contact buyer | Click "💬" | Navigate | — | → `/inbox?entity_type=buyer&entity_id=[buyer_id]` | `inbox:read` |
+| 2 | Contact buyer | Click "💬" | Navigate | — | → `/inbox?entity_type=buyer&entity_id=[buyer_id]` | `thread:read` |
 | 3 | Confirm order | Row menu "Confirm" | Action | `OrderService/UpdateStatus(id, 'confirmed')` | Status badge updates. Toast "✅ Đã xác nhận." | `order:manage` |
 | 4 | Mark shipped | Row menu "Mark shipped" | Action | Modal: enter tracking number → `OrderService/UpdateStatus(id, 'shipping', tracking)` | Status badge updates. Toast "🚚 Đã đánh dấu giao." | `order:manage` |
 | 5 | Initiate refund | Row menu "Initiate refund" | Navigate | — | → `/orders/[id]/refund` (W067) | `order:manage` |
@@ -470,8 +470,8 @@ Order List (/orders)
 | [W063] Order Detail | Full detail for single order |
 | [W073] Refund Management | Refund processing from order |
 | [W060] Product List | Products linked in orders |
-| [W-COMM-15] Inventory | Stock impact from orders |
-| [M024] Mobile Order List | Mobile equivalent |
+| [W075a] Inventory Management | Stock impact from orders |
+| [M027] Mobile Orders | Mobile equivalent |
 | [W001] Home Dashboard | Entry via order KPI/alert |
 | [S009] Trust Badge | Source class on order data |
 | [S007] Confirmations | Bulk action confirmations |

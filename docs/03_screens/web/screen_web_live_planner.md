@@ -41,7 +41,7 @@ Plan and manage live selling sessions — view upcoming, active, and past sessio
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `live_session:manage` permission (Owner, Admin, Manager)
+- User has `live:manage` permission (Owner, Admin, Manager)
 - At least one platform connector supports live (TikTok Live, Shopee Live)
 
 ### Postconditions
@@ -177,13 +177,13 @@ LivePlannerPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Create session | "+ Tạo phiên live" | — | → Create session modal/page | `live_session:manage` |
-| 2 | Prepare | "📋 Chuẩn bị" | — | → W108 Live Setup | `live_session:manage` |
-| 3 | Enter War Room | "→ War Room" | `LiveService/StartSession` (if starting) | → W109 War Room | `live_session:manage` |
-| 4 | Edit session | "✏️" | — | → Edit modal with pre-filled data | `live_session:manage` |
-| 5 | Duplicate | "📋 Duplicate" | `LiveService/DuplicateSession` | New draft session pre-filled | `live_session:manage` |
-| 6 | View post-live | "📊 Post-Live Summary" | — | → W110 Post-Live Summary | `live_session:manage` |
-| 7 | Delete session | ⋮ → "Xóa" → confirm | `LiveService/DeleteSession` | Confirmation → removed | `live_session:manage` |
+| 1 | Create session | "+ Tạo phiên live" | — | → Create session modal/page | `live:manage` |
+| 2 | Prepare | "📋 Chuẩn bị" | — | → W108 Live Setup | `live:manage` |
+| 3 | Enter War Room | "→ War Room" | `LiveCommerceService/StartSession` (if starting) | → W109 War Room | `live:manage` |
+| 4 | Edit session | "✏️" | — | → Edit modal with pre-filled data | `live:manage` |
+| 5 | Duplicate | "📋 Duplicate" | `LiveCommerceService/CreateSession` | New draft session pre-filled | `live:manage` |
+| 6 | View post-live | "📊 Post-Live Summary" | — | → W110 Post-Live Summary | `live:manage` |
+| 7 | Delete session | ⋮ → "Xóa" → confirm | `LiveCommerceService/EndSession` | Confirmation → removed | `live:manage` |
 
 ---
 
@@ -283,7 +283,7 @@ LivePlannerPage
 ## 14. SvelteKit Implementation Notes
 
 - **Route**: `src/routes/(app)/live/+page.svelte`
-- **Server load**: `+page.server.ts` → `LiveService/ListSessions(workspace_id)` + `LiveService/GetLiveStats`
+- **Server load**: `+page.server.ts` → `LiveService/ListSessions(workspace_id)` + `LiveCommerceService/GetAnalytics`
 - **Active session**: SSE for real-time viewer/order updates → auto-refreshes every 5s
 - **Countdown**: Client-side computed from `scheduled_at - now()`, updates every second
 - **Create modal**: `LiveService/CreateSession(data)` → adds to calendar

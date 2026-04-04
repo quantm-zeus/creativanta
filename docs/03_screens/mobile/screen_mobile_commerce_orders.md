@@ -1,6 +1,6 @@
 # Screen: Mobile — Commerce Order List
 
-> **Screen ID**: M024
+> **Screen ID**: M027
 > **Module**: M13 — Product Hub / Order Management
 > **Route**: `/orders` (mobile app)
 > **Platform**: Mobile (Flutter)
@@ -171,8 +171,8 @@ MobileOrderListPage
 | # | Action | Trigger | Type | API Call | System Response | Permission |
 |---|---|---|---|---|---|---|
 | 1 | View order detail | Tap order card | Navigate | — | Push → M025 Order Detail | `order:read` |
-| 2 | Call buyer | Swipe right on order card | Quick action | Opens phone dialer | `tel:{buyer_phone}` | `order:contact_buyer` |
-| 3 | Message buyer | Swipe left on order card | Quick action | Opens platform chat or SMS | Redirect to platform app or SMS | `order:contact_buyer` |
+| 2 | Call buyer | Swipe right on order card | Quick action | Opens phone dialer | `tel:{buyer_phone}` | `order:manage` |
+| 3 | Message buyer | Swipe left on order card | Quick action | Opens platform chat or SMS | Redirect to platform app or SMS | `order:manage` |
 | 4 | Filter by status | Tap status chip | Filter | Refetch with status | List filters, chip highlights | `order:read` |
 | 5 | Search | Tap 🔍 → type | Search | `OrderService/Search(query)` | Search overlay with results | `order:read` |
 | 6 | Advanced filter | Tap "Filter ▾" | Filter | Refetch | Bottom sheet → applied | `order:read` |
@@ -408,8 +408,8 @@ Mobile Order List (/orders)
 | Screen | Relationship |
 |---|---|
 | [W062] Web Order List | Web equivalent (full table with bulk actions) |
-| [M025] Mobile Order Detail | Drill-down from tap |
-| [M026] Mobile Products | Product catalog |
+| [W063] Web Order Detail | Drill-down from tap (web) |
+| [M028] Mobile Products | Product catalog |
 | [M001] Mobile Home Dashboard | Pending orders widget |
 | [S009] Trust Badge | Source class badge on orders |
 

@@ -1,6 +1,6 @@
 # Screen: Web — Global Search
 
-> **Screen ID**: W04
+> **Screen ID**: W004
 > **Module**: M01 — Home & Decision
 > **Route**: `/search` (also: Cmd+K overlay)
 > **Platform**: Web (SvelteKit)

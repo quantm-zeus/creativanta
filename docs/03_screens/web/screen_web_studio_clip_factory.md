@@ -1,6 +1,6 @@
 # Screen: Web — Clip Factory
 
-> **Screen ID**: W26
+> **Screen ID**: W023
 > **Module**: M07 — AI Studio
 > **Route**: `/studio/clip-factory`
 > **Platform**: Web (SvelteKit)
@@ -208,9 +208,9 @@ ClipFactoryPage
 
 | Screen | Relationship |
 |---|---|
-| [W024] AI Studio Launcher | Parent |
-| [W025] Quick Edit | Edit individual clip |
-| [M53] Mobile Clip Factory | Mobile equivalent |
+| [W021] Studio Launcher | Parent |
+| [W022] Quick Edit | Edit individual clip |
+| [M015] Mobile Clip Factory | Mobile equivalent |
 
 ---
 

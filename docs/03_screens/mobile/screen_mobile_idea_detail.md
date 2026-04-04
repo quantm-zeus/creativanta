@@ -1,6 +1,6 @@
 # Screen: Mobile — Idea Detail
 
-> **Screen ID**: M005b
+> **Screen ID**: M009
 > **Module**: M05 — Content Pipeline
 > **Route**: `/ideas/[id]` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -93,9 +93,9 @@ IdeaDetailScreen
 ## 19. Related Screens
 | Screen | Relationship |
 |---|---|
-| [W011] Web Idea Detail | Web equivalent |
-| [M005] Idea Board | Parent |
-| [M013] Scripts | Next step |
+| [W013] Web Idea Detail | Web equivalent |
+| [M008] Idea Board | Parent |
+| [M010] Script List | Next step |
 ---
 ## Error Handling
 

@@ -1,6 +1,6 @@
 # Screen: Web — Style Learning
 
-> **Screen ID**: W33
+> **Screen ID**: W032
 > **Module**: M07 — AI Studio
 > **Route**: `/studio/style-learning`
 > **Platform**: Web (SvelteKit)
@@ -191,8 +191,8 @@ StyleLearningPage
 
 | Screen | Relationship |
 |---|---|
-| [W024] AI Studio Launcher | Parent |
-| [W028] AI Remix | Uses style packs |
+| [W021] Studio Launcher | Parent |
+| [W025] AI Remix | Uses style packs |
 | [W031] Video Agent | Uses style packs |
 
 ---

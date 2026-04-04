@@ -1,6 +1,6 @@
 # Screen: Web — Workflow List
 
-> **Screen ID**: W101
+> **Screen ID**: W100
 > **Module**: M20 — Workflow Studio
 > **Route**: `/workflows`
 > **Platform**: Web (SvelteKit)
@@ -158,14 +158,14 @@ WorkflowListPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Create workflow | "+ Tạo" | — | → Visual Builder (W102) | `workflow:manage` |
+| 1 | Create workflow | "+ Tạo" | — | → Visual Builder (W102) | `workflow:edit` |
 | 2 | View templates | "📋 Templates" | — | → Template Gallery | `workflow:read` |
-| 3 | Edit/Fix | "→ Edit" / "→ Fix" | — | → Builder with loaded workflow | `workflow:manage` |
+| 3 | Edit/Fix | "→ Edit" / "→ Fix" | — | → Builder with loaded workflow | `workflow:edit` |
 | 4 | View runs | "📊 Runs" | — | → Run History (W103) | `workflow:read` |
-| 5 | Disable | "⏸" → confirm | `WorkflowService/Disable(id)` | Workflow paused, toast | `workflow:manage` |
-| 6 | Enable | "▶ Enable" | `WorkflowService/Enable(id)` | Workflow activated | `workflow:manage` |
-| 7 | Duplicate | "📋 Duplicate" | `WorkflowService/Clone(id)` | New draft workflow | `workflow:manage` |
-| 8 | Delete | ⋮ → "Delete" → confirm | `WorkflowService/Delete(id)` | Soft-delete (30d recovery) | `workflow:manage` |
+| 5 | Disable | "⏸" → confirm | `WorkflowService/Disable(id)` | Workflow paused, toast | `workflow:edit` |
+| 6 | Enable | "▶ Enable" | `WorkflowService/Enable(id)` | Workflow activated | `workflow:edit` |
+| 7 | Duplicate | "📋 Duplicate" | `WorkflowService/Clone(id)` | New draft workflow | `workflow:edit` |
+| 8 | Delete | ⋮ → "Delete" → confirm | `WorkflowService/Delete(id)` | Soft-delete (30d recovery) | `workflow:edit` |
 | 9 | Search | Search input | Client-side filter | Filtered list | `workflow:read` |
 
 ---
@@ -285,12 +285,12 @@ WorkflowListPage
 
 | Screen | Relationship |
 |---|---|
-| [W102] Visual Workflow Builder | Create/edit workflows |
-| [W103] Run History | Workflow execution history |
-| [W104] Workflow Approvals | Approval step management |
-| [W105] Workflow Tasks | Task step management |
-| [W106] Template Gallery | Pre-built workflow templates |
-| [W107] Workflow Agents | AI agent configuration |
+| [W101] Workflow Builder | Create/edit workflows |
+| [W102] Run History | Workflow execution history |
+| [W104] Approval Queue | Approval step management |
+| [W105] Task Queue | Task step management |
+| [W103] Recipe Templates | Pre-built workflow templates |
+| [W106] AI Agent Runs | AI agent configuration |
 
 ---
 

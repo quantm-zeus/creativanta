@@ -1,6 +1,6 @@
 # Screen: Mobile — Analytics Overview
 
-> **Screen ID**: M011
+> **Screen ID**: M036
 > **Module**: M17 — Analytics & Reporting
 > **Route**: `/analytics` (bottom tab: 📊)
 > **Platform**: Mobile (Flutter)
@@ -48,7 +48,7 @@ Mobile Analytics is the quick-check performance dashboard — designed for the "
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `analytics:read` permission (Editor+ roles)
+- User has `report:read` permission (Editor+ roles)
 - At least one platform connected (otherwise NO_DATA state)
 - Analytics materialized views are up-to-date (max 2h lag from ClickHouse)
 
@@ -215,17 +215,17 @@ MobileAnalyticsPage
 
 | # | Action | Trigger | Type | API Call | System Response | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Change period | Period dropdown | Filter | Refetch with new period | All sections animate to new data | `analytics:read` |
-| 2 | Expand metric | Tap metric card | Expand | — | Bottom sheet: daily breakdown by platform | `analytics:read` |
-| 3 | Tap chart point | Tap on trend chart | Detail | — | Tooltip: date, value, platform breakdown for that day | `analytics:read` |
-| 4 | Pinch zoom chart | Pinch gesture on chart | Zoom | — | Chart zooms into date range | `analytics:read` |
-| 5 | View platform detail | Tap platform row | Navigate | — | Push → M012 Platform Detail | `analytics:read` |
-| 6 | View content detail | Tap content row | Navigate | — | Push → Content Analytics | `analytics:read` |
-| 7 | View AI insights | Tap "🤖 Xem chi tiết →" | Navigate | — | Push → Copilot with analytics context injected | `analytics:read` |
-| 8 | Share report | "📤 Share" | Share | — | Capture dashboard screenshot → system share sheet | `analytics:read` |
-| 9 | Share weekly | "📤 Share tuần này" in weekly card | Share | — | Formatted weekly summary → share sheet | `analytics:read` |
-| 10 | Compare weeks | "📊 So sánh vs tuần trước" | Expand | — | Side-by-side comparison bottom sheet | `analytics:read` |
-| 11 | Pull refresh | Pull-down gesture | Refresh | Refetch all | Data updates with haptic light | `analytics:read` |
+| 1 | Change period | Period dropdown | Filter | Refetch with new period | All sections animate to new data | `report:read` |
+| 2 | Expand metric | Tap metric card | Expand | — | Bottom sheet: daily breakdown by platform | `report:read` |
+| 3 | Tap chart point | Tap on trend chart | Detail | — | Tooltip: date, value, platform breakdown for that day | `report:read` |
+| 4 | Pinch zoom chart | Pinch gesture on chart | Zoom | — | Chart zooms into date range | `report:read` |
+| 5 | View platform detail | Tap platform row | Navigate | — | Push → M012 Platform Detail | `report:read` |
+| 6 | View content detail | Tap content row | Navigate | — | Push → Content Analytics | `report:read` |
+| 7 | View AI insights | Tap "🤖 Xem chi tiết →" | Navigate | — | Push → Copilot with analytics context injected | `report:read` |
+| 8 | Share report | "📤 Share" | Share | — | Capture dashboard screenshot → system share sheet | `report:read` |
+| 9 | Share weekly | "📤 Share tuần này" in weekly card | Share | — | Formatted weekly summary → share sheet | `report:read` |
+| 10 | Compare weeks | "📊 So sánh vs tuần trước" | Expand | — | Side-by-side comparison bottom sheet | `report:read` |
+| 11 | Pull refresh | Pull-down gesture | Refresh | Refetch all | Data updates with haptic light | `report:read` |
 
 ---
 ## 7. States
@@ -457,10 +457,10 @@ Mobile Analytics (/analytics)
 
 | Screen | Relationship |
 |---|---|
-| [W109] Web Analytics Overview | Web equivalent (full table + advanced charts) |
-| [M012] Platform Detail | Platform-specific analytics drill-down |
-| [M013] Content Analytics | Content-specific metrics |
-| [M034] Mobile Profit Summary | Revenue deep-dive |
+| [W075] Web Analytics Overview | Web equivalent (full table + advanced charts) |
+| [W076] Analytics Detail | Platform-specific analytics drill-down (web) |
+| [M037] Post Analytics | Content-specific metrics |
+| [M041] Mobile Finance Summary | Revenue deep-dive |
 | [M060] Mobile Copilot | AI insights context |
 | [M001] Mobile Home Dashboard | KPI cards link here |
 

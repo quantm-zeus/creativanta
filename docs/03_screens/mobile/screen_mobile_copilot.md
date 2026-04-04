@@ -180,8 +180,8 @@ MobileCopilotPage
 |---|---|---|---|---|
 | User name | `users.display_name` | Pre-loaded (session) | First name | Session |
 | Context screen | Navigation state | Client-side | Badge label | — |
-| Chat history | `copilot_sessions.messages` (JSONB) | `CopilotService/GetSession` | Paginated messages (last 50) | 5m |
-| AI credits | `ai_credit_transactions` balance | `CreditService/GetBalance` | "10/100" | Real-time |
+| Chat history | `copilot_sessions.messages` (JSONB) | `CopilotService/GetHistory` | Paginated messages (last 50) | 5m |
+| AI credits | `ai_credit_transactions` balance | `AdminBillingService/GetCreditBalance` | "10/100" | Real-time |
 | Credit cost per response | AI response metadata | Included in response | "2 credits" | — |
 | Trend data (in responses) | `trends` | AI context injection | Formatted inline | — |
 | Order data (in responses) | `orders` aggregation | AI context injection | Formatted inline | — |
@@ -467,7 +467,7 @@ CopilotContext(
 |---|---|
 | [W008] Web Copilot Dialog | Web equivalent |
 | [M001] Mobile Home Dashboard | Primary entry point via quick action |
-| [M010] Mobile Script Editor | Destination from "Tạo script" CTA |
+| [M011] Mobile Script Editor | Destination from "Tạo script" CTA |
 | [M008] Mobile Idea Board | Destination from "Lưu ý tưởng" CTA |
 | [M061] Mobile Billing | Destination from credit top-up |
 | [S008] Command Palette | Web equivalent of quick actions |

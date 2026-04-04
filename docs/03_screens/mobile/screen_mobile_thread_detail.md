@@ -1,6 +1,6 @@
 # Screen: Mobile — Thread Detail
 
-> **Screen ID**: M008
+> **Screen ID**: M020
 > **Module**: M13 — Engagement & CRM
 > **Route**: `/inbox/[threadId]` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -47,7 +47,7 @@ Single conversation thread on mobile — the full message history with a contact
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `engagement:read` permission
+- User has `thread:read` permission
 - Thread exists and user has access (own workspace)
 - Platform with valid token for sending replies
 
@@ -178,17 +178,17 @@ ThreadDetailPage
 
 | # | Action | Trigger | Type | API Call | System Response | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Send reply | Tap "📤" with text | Primary | `ThreadService/Reply(threadId, text, platform)` | Message appears as outgoing. Status: "Sending..." → "✓ Sent". Haptic success. | `engagement:reply` |
-| 2 | Send AI draft | "📤 Gửi" on AI draft | Primary | `ThreadService/Reply(threadId, ai_draft_text)` | Draft becomes sent message. AI usage logged. | `engagement:reply` |
-| 3 | Edit AI draft | "✏ Sửa" on AI draft | Edit | — | Draft text copies to input bar for editing. Draft dismissed. | `engagement:reply` |
+| 1 | Send reply | Tap "📤" with text | Primary | `ThreadService/Reply(threadId, text, platform)` | Message appears as outgoing. Status: "Sending..." → "✓ Sent". Haptic success. | `thread:reply` |
+| 2 | Send AI draft | "📤 Gửi" on AI draft | Primary | `ThreadService/Reply(threadId, ai_draft_text)` | Draft becomes sent message. AI usage logged. | `thread:reply` |
+| 3 | Edit AI draft | "✏ Sửa" on AI draft | Edit | — | Draft text copies to input bar for editing. Draft dismissed. | `thread:reply` |
 | 4 | Discard AI draft | "🗑 Bỏ qua" | Dismiss | `CopilotService/DismissReply(threadId)` | Draft fades out. Not shown again for this thread round. | Any |
-| 5 | Use quick suggestion | Tap suggestion chip | Fill | — | Suggestion text fills input bar (editable before sending) | `engagement:reply` |
-| 6 | Send photo | "📸" → select/capture → send | Attach | Upload → `ThreadService/Reply(threadId, text, media_url)` | Photo appears in chat. Upload progress shown. | `engagement:reply` |
-| 7 | Attach product link | "📎" → product picker | Attach | `ThreadService/Reply(threadId, product_link)` | Product card appears in chat | `engagement:reply` |
-| 8 | View contact profile | Tap "👤" | Navigate | — | Push → Contact Detail (M049) | `contact:read` |
-| 9 | Call contact | Tap "📱 Call" | External | Launch phone dialer | Opens phone app | `contact:read` |
+| 5 | Use quick suggestion | Tap suggestion chip | Fill | — | Suggestion text fills input bar (editable before sending) | `thread:reply` |
+| 6 | Send photo | "📸" → select/capture → send | Attach | Upload → `ThreadService/Reply(threadId, text, media_url)` | Photo appears in chat. Upload progress shown. | `thread:reply` |
+| 7 | Attach product link | "📎" → product picker | Attach | `ThreadService/Reply(threadId, product_link)` | Product card appears in chat | `thread:reply` |
+| 8 | View contact profile | Tap "👤" | Navigate | — | Push → Contact Detail (M049) | `thread:read` |
+| 9 | Call contact | Tap "📱 Call" | External | Launch phone dialer | Opens phone app | `thread:read` |
 | 10 | View order | Tap "📦 #ORD-1234" in context bar | Navigate | — | Push → Order Detail | `order:read` |
-| 11 | Scroll to older messages | Scroll up past loaded messages | Paginate | `ThreadService/GetMessages(cursor=prev)` | Older messages load above | `engagement:read` |
+| 11 | Scroll to older messages | Scroll up past loaded messages | Paginate | `ThreadService/GetMessages(cursor=prev)` | Older messages load above | `thread:read` |
 | 12 | Copy message text | Long press message → "📋 Copy" | Clipboard | Client-side | Toast "Đã sao chép" + haptic light | Any |
 
 ---
@@ -427,10 +427,10 @@ Thread Detail (/inbox/[threadId])
 
 | Screen | Relationship |
 |---|---|
-| [W051] Web Thread Detail | Web equivalent (side panel in inbox) |
-| [M007] Mobile Inbox | Parent (thread list) |
-| [M049] Mobile Contact Detail | Contact context (via 👤 tap) |
-| [M008] Mobile Thread Detail | Self |
+| [W047] Web Thread Detail | Web equivalent (side panel in inbox) |
+| [M019] Mobile Inbox | Parent (thread list) |
+| [M022] Mobile Contact Detail | Contact context (via 👤 tap) |
+| [M020] Mobile Thread Detail | Self |
 
 ---
 

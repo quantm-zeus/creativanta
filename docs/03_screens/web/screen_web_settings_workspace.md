@@ -1,7 +1,7 @@
 # Screen: Web — Settings: Workspace
 
-> **Screen ID**: W120
-> **Module**: M26 — Settings
+> **Screen ID**: W114
+> **Module**: M23 — Settings
 > **Route**: `/settings/workspace`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: PRD §34, A1 Schema (workspaces, connected_accounts), B5 RBAC §2.9
@@ -37,7 +37,7 @@ Workspace general settings — name, logo, timezone, language, default currency,
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `settings:manage` permission (Owner, Admin)
+- User has `workspace:settings:manage` permission (Owner, Admin)
 - Workspace exists and is active
 
 ### Postconditions
@@ -214,7 +214,7 @@ WorkspaceSettingsPage
 
 - **Route**: `src/routes/(app)/settings/workspace/+page.svelte`
 - **Server load**: `+page.server.ts` → `WorkspaceService/Get(id)` + `ConnectorService/ListConnected(workspace_id)`
-- **Form**: Standard `<form>` with `use:enhance` for progressive enhancement
+- **Form**: Standard `<form>` with `copilot:use_creative` for progressive enhancement
 - **Logo upload**: `FormData` with `fetch()` → `WorkspaceService/UploadLogo(file)` → returns CDN URL
 - **Timezone selector**: Searchable dropdown with `Intl.supportedValuesOf('timeZone')` grouped by region
 - **Validation**: Client-side + server-side (revalidate on submit)
@@ -254,9 +254,9 @@ WorkspaceSettingsPage
 | Screen | Relationship |
 |---|---|
 | [W117] Connected Accounts | Platform connection management |
-| [W121] Workspace Members | Team management |
-| [W093] Billing & Subscription | Plan and payment |
-| [W126] Notification Settings | Notification preferences |
+| [W115] Member Management | Team management |
+| [W119] Billing & Plans | Plan and payment |
+| [W122] Notification Preferences | Notification preferences |
 
 ---
 

@@ -1,6 +1,6 @@
 # Screen: Web — Benchmark View
 
-> **Screen ID**: W13
+> **Screen ID**: W041
 > **Module**: M03 — Competitive Intelligence
 > **Route**: `/intelligence/benchmarks`
 > **Platform**: Web (SvelteKit)
@@ -121,10 +121,10 @@ BenchmarkPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Select competitors | Dropdown | Refetch | Table + charts update | `benchmark:read` |
-| 2 | Change period | Period selector | Refetch | All data refreshes | `benchmark:read` |
-| 3 | Change trend metric | Metric selector on trend chart | Refetch | Chart updates | `benchmark:read` |
-| 4 | Regenerate AI insight | Refresh on AI card | `CopilotService/Query` | New analysis | `copilot:use_deep` |
+| 1 | Select competitors | Dropdown | Refetch | Table + charts update | `competitor:manage` |
+| 2 | Change period | Period selector | Refetch | All data refreshes | `competitor:manage` |
+| 3 | Change trend metric | Metric selector on trend chart | Refetch | Chart updates | `competitor:manage` |
+| 4 | Regenerate AI insight | Refresh on AI card | `CopilotService/Query` | New analysis | `copilot:use_analytics` |
 | 5 | Export report | ⋮ → "Export PDF" | Client-side | PDF download | `report:read` |
 
 ---
@@ -233,9 +233,9 @@ BenchmarkPage
 
 | Screen | Relationship |
 |---|---|
-| [W012] Competitor Registry | Manage which competitors to benchmark |
-| [W010] Trend Detail | Trend data feeds benchmark context |
-| [W109] Analytics Overview | User's own detailed analytics |
+| [W040] Competitor Registry | Manage which competitors to benchmark |
+| [W039] Trend Detail | Trend data feeds benchmark context |
+| [W075] Analytics Overview | User's own detailed analytics |
 
 ---
 

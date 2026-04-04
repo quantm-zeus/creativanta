@@ -1,6 +1,6 @@
 # Screen: Admin — System Health
 
-> **Screen ID**: A20
+> **Screen ID**: A006
 > **Module**: Admin — Operations
 > **Route**: `/admin/health`
 > **Platform**: Admin Web (SvelteKit) — VPN-only
@@ -94,9 +94,9 @@ SystemHealthPage
 ## 19. Related Screens
 | Screen | Relationship |
 |---|---|
-| [A16] Job Monitor | Background jobs |
-| [A08] Platform Monitor | Platform integrations |
-| [A21] Error Analytics | Error analysis |
+| [A008] Job Monitor | Background jobs |
+| [A007] Platform Monitor | Platform integrations |
+| [A025] Error Analytics | Error analysis |
 ---
 ## Error Handling
 

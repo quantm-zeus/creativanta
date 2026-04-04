@@ -163,15 +163,15 @@ LiveSetupPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Reorder products | Drag & drop | `LiveService/ReorderProducts` | Position updated | `live_session:manage` |
-| 2 | Add product | "+ Thêm" → catalog picker | `LiveService/AddProduct` | Product added to lineup | `live_session:manage` |
-| 3 | Edit talking points | Click text | — (inline edit) | Auto-save | `live_session:manage` |
-| 4 | Add cue card | "+ Thêm cue card" | — | New empty cue card at end | `live_session:manage` |
-| 5 | AI generate cue cards | "🤖 AI generate" | `AIService/GenerateLiveCueCards` | Cue cards populated from product info | `live_session:manage` |
-| 6 | Add offer | "+ Thêm offer" → modal | `LiveService/AddOffer` | Offer configured | `live_session:manage` |
-| 7 | Toggle checklist | Click checkbox | Client-side | Item checked/unchecked, readiness updates | `live_session:manage` |
-| 8 | Start live | "✅ Bắt đầu" → confirm | `LiveService/StartSession` | Session → "live", redirect to War Room | `live_session:manage` |
-| 9 | Save | "💾 Lưu" | `LiveService/SaveSetup` | All changes persisted, toast | `live_session:manage` |
+| 1 | Reorder products | Drag & drop | `LiveCommerceService/UpdateRunOfShow` | Position updated | `live:manage` |
+| 2 | Add product | "+ Thêm" → catalog picker | `LiveCommerceService/HighlightProduct` | Product added to lineup | `live:manage` |
+| 3 | Edit talking points | Click text | — (inline edit) | Auto-save | `live:manage` |
+| 4 | Add cue card | "+ Thêm cue card" | — | New empty cue card at end | `live:manage` |
+| 5 | AI generate cue cards | "🤖 AI generate" | `AIService/GenerateLiveCueCards` | Cue cards populated from product info | `live:manage` |
+| 6 | Add offer | "+ Thêm offer" → modal | `LiveCommerceService/HighlightProduct` | Offer configured | `live:manage` |
+| 7 | Toggle checklist | Click checkbox | Client-side | Item checked/unchecked, readiness updates | `live:manage` |
+| 8 | Start live | "✅ Bắt đầu" → confirm | `LiveCommerceService/StartSession` | Session → "live", redirect to War Room | `live:manage` |
+| 9 | Save | "💾 Lưu" | `LiveCommerceService/CreateSession` | All changes persisted, toast | `live:manage` |
 
 ---
 
@@ -286,7 +286,7 @@ LiveSetupPage
 | [W107] Live Planner | Session list |
 | [W109] Live War Room | Next step after setup |
 | [W060] Product List | Product catalog |
-| [M055] Mobile Live Setup | Mobile equivalent |
+| [M055] Mobile Live War Room | Mobile equivalent |
 
 ---
 

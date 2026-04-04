@@ -1,6 +1,6 @@
 # Screen: Web — Settings Page
 
-> **Screen ID**: W08
+> **Screen ID**: W007
 > **Module**: M01 — Home & Decision / M23 Settings
 > **Route**: `/settings`
 > **Platform**: Web (SvelteKit)
@@ -95,9 +95,9 @@ General Settings is the default view. Each sub-section has its own data and acti
 
 | # | Action | Trigger | Result | Permission |
 |---|---|---|---|---|
-| 1 | Navigate to section | Click sidebar item | Content area updates | `settings:read` |
-| 2 | Save settings | "💾 Lưu" on any section | Update API call | `settings:update` |
-| 3 | Delete workspace | "🗑 Xóa workspace" → multi-step confirm | Workspace deleted | `settings:danger` |
+| 1 | Navigate to section | Click sidebar item | Content area updates | `workspace:billing:read` |
+| 2 | Save settings | "💾 Lưu" on any section | Update API call | `workspace:settings:manage` |
+| 3 | Delete workspace | "🗑 Xóa workspace" → multi-step confirm | Workspace deleted | `workspace:delete` |
 
 ---
 
@@ -128,8 +128,8 @@ General Settings is the default view. Each sub-section has its own data and acti
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [W89-W100] Individual settings pages | Children |
-| [M07-M10] Mobile settings | Mobile equivalents |
+| [W114-W130] Individual settings pages | Children |
+| [M057] Mobile Settings | Mobile equivalent |
 
 ### Revision History
 | Date | Version | Change |

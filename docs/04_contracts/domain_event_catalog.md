@@ -1,7 +1,7 @@
 ---
 layer: contracts
 canonical: true
-source_file: impl_a4_domain_event_catalog.md
+source_file: domain_event_catalog.md  # was impl_a4_domain_event_catalog.md (legacy name)
 last_verified: 2026-03-30
 known_issues:
   - EVT-H-001
@@ -78,6 +78,11 @@ struct EventMetadata {
 | `workspace.created` | M23 | All | `{workspace_id, owner_id, tier}` |
 | `workspace.tier_changed` | M23 | Billing, Limits | `{old_tier, new_tier}` |
 | `workspace.suspended` | M23 | All | `{reason}` |
+| `workspace.frozen` | M23 | All, Notification | `{workspace_id, frozen_by, reason}` |
+| `workspace.member_invited` | M23 | Notification, Audit | `{workspace_id, invitee_email, invited_by, role}` |
+| `user.registered` | Identity/Auth | Onboarding, Notification, Analytics | `{user_id, email, registration_method}` |
+| `user.account_frozen` | Identity | Notification | `{user_id, reason, frozen_at}` |
+| `auth.suspicious_login` | Auth/Security | Notification, Security | `{user_id, ip_address, device_fingerprint, risk_score, location}` |
 | `account.connected` | M22 | M11, M12, M02 | `{provider, account_id, scopes}` |
 | `account.disconnected` | M22 | M11, M12 | `{provider, account_id, reason}` |
 | `account.token_expired` | M22 | Diagnostics | `{provider, account_id}` |
@@ -101,6 +106,7 @@ struct EventMetadata {
 | Event Type | Emitter | Key Consumers | Payload |
 |---|---|---|---|
 | `idea.created` | M05 | M01 | `{idea_id, source_type}` |
+| `idea.scored` | M05 | Idea Board UI (real-time) | `{idea_id, score, scoring_criteria, scored_by}` |
 | `idea.converted` | M05 | M06 | `{idea_id, to_type, to_id}` |
 | `script.created` | M06 | M01 | `{script_id}` |
 | `script.submitted_for_approval` | M06 | Notification, M20 | `{script_id, approver_id}` |
@@ -144,6 +150,7 @@ struct EventMetadata {
 | `thread.created` | M12 | M01, Notification | `{thread_id, type, intent, priority}` |
 | `thread.intent_classified` | M12 | M20 | `{thread_id, intent, confidence}` |
 | `thread.assigned` | M12 | Notification | `{thread_id, assigned_to}` |
+| `thread.priority_changed` | M12 | Notification, M20 | `{thread_id, old_priority, new_priority, changed_by}` |
 | `thread.resolved` | M12 | M01 | `{thread_id}` |
 | `thread.sla_approaching` | M12 | Notification | `{thread_id, sla_due_at}` |
 | `thread.sla_breached` | M12 | M01, Notification | `{thread_id}` |
@@ -167,6 +174,10 @@ struct EventMetadata {
 | `affiliate_link.created` | M16 | M14 | `{link_id, product_id}` |
 | `affiliate_link.health_degraded` | M16 | Diagnostics | `{link_id, status}` |
 | `conversion.attributed` | M16 | M19 | `{order_id, link_id, commission}` |
+| `affiliate.commission.earned` | M16 | M19, Notification | `{commission_id, affiliate_link_id, order_id, amount, currency}` |
+| `affiliate.commission.confirmed` | M16 | M19, Notification | `{commission_id, amount, hold_period_days}` |
+| `affiliate.commission.clawed_back` | M16 | M19, Notification | `{commission_id, clawback_reason, refund_amount}` |
+| `affiliate.commission.paid_out` | M16 | M19 | `{commission_id, payout_id, amount}` |
 
 ## 9. Live Commerce Events (M17)
 
@@ -225,6 +236,7 @@ struct EventMetadata {
 |---|---|---|---|
 | `morning_brief.generated` | Cron/M01 | Push, Email | `{workspace_id, brief_id, sections}` |
 | `morning_brief.delivered` | Push/Email | Analytics | `{workspace_id, channel, delivered_at}` |
+| `report.weekly_generated` | Cron/M01 | Email | `{workspace_id, report_id, week_number, sections}` |
 
 ## 14. Gamification Events (§37.3)
 
@@ -390,6 +402,58 @@ struct EventMetadata {
 
 ---
 
+## 16. Notification-Required Events
+
+> Events required by `notification_trigger_matrix.md` that were not previously catalogued. Added 2026-04-06.
+
+### 16.1 Identity & Admin
+
+| Event | Owner | Consumer | Payload Key Fields |
+|---|---|---|---|
+| `user.created` | Auth | M01, Notification, Analytics | `{user_id, email, signup_method, created_at}` |
+| `user.suspended` | Admin | Notification, Auth | `{user_id, reason, suspended_by, suspended_at}` |
+| `moderation.content_flagged` | Admin/AI | Notification, Admin | `{content_id, content_type, flag_reason, confidence}` |
+
+### 16.2 Billing & Subscription
+
+| Event | Owner | Consumer | Payload Key Fields |
+|---|---|---|---|
+| `payment.failed` | Billing | Notification, Admin | `{workspace_id, amount, currency, failure_reason, retry_count}` |
+| `payment.succeeded` | Billing | Notification | `{workspace_id, amount, currency, invoice_id}` |
+| `payment.retry_scheduled` | Billing | Notification | `{workspace_id, retry_at, retry_count}` |
+| `credit.exhausted` | Billing | Notification, M01 | `{workspace_id, tier, last_operation}` |
+| `credit.low` | Billing | Notification | `{workspace_id, remaining_credits, threshold_pct}` |
+| `subscription.renewal_approaching` | Billing | Notification | `{workspace_id, tier, renewal_date, days_until}` |
+
+### 16.3 Content & Production
+
+| Event | Owner | Consumer | Payload Key Fields |
+|---|---|---|---|
+| `approval.pending` | M10 | Notification, M11 | `{item_id, item_type, submitted_by, approver_ids[]}` |
+| `rate_card.suggestion_ready` | S16 | Notification | `{workspace_id, suggestion_id, suggested_rate}` |
+
+### 16.4 Engagement & Automation
+
+| Event | Owner | Consumer | Payload Key Fields |
+|---|---|---|---|
+| `sla.breached` | M12 | Notification, Admin | `{thread_id, sla_type, breach_minutes, priority}` |
+| `workflow.approval_required` | M20 | Notification | `{run_id, workflow_id, step_name, approver_ids[]}` |
+
+### 16.5 Publish
+
+| Event | Owner | Consumer | Payload Key Fields |
+|---|---|---|---|
+| `publish_item.failed` | M11 | Notification, M01 | `{publish_item_id, platform, error_category, error_message}` |
+| `publish_item.succeeded` | M11 | Notification, M01, Analytics | `{publish_item_id, platform, external_url, published_at}` |
+
+### 16.6 Intelligence
+
+| Event | Owner | Consumer | Payload Key Fields |
+|---|---|---|---|
+| `signal.detected` | M02 | Notification, M04 | `{signal_id, signal_type, platform, confidence, trend_id}` |
+
+---
+
 ## 20. Event Transport
 
 | Channel | Tech | Use |
@@ -399,7 +463,7 @@ struct EventMetadata {
 | **Durable** | PostgreSQL + outbox pattern | Critical business events |
 | **NATS** | Pub/sub | High-throughput analytics events |
 
-**Total: ~217 event types** covering all 23 modules + S16/S19/S26 + commerce lifecycles + operational events + M18 seeding lifecycle + extended production (M07 Pack 04 §9.6-9.16) + gamification challenges + platform health (including connector.degraded/recovered — EVT-M-001 resolved 2026-04-02).
+**Total: ~250 event types** covering all 23 modules + S16/S19/S26 + commerce lifecycles + operational events + M18 seeding lifecycle + extended production (M07 Pack 04 §9.6-9.16) + gamification challenges + platform health (connector.degraded/recovered) + identity freeze events + billing/payment events + notification-required events (§16) + affiliate commission events (§8).
 
 ---
 

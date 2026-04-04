@@ -1,7 +1,7 @@
 # Screen: Web — Settings: Team & Roles
 
-> **Screen ID**: W92
-> **Module**: M19 — Settings
+> **Screen ID**: W116
+> **Module**: M23 — Settings
 > **Route**: `/settings/team`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, impl_b5_rbac_permission_matrix, A1 Schema (workspace_members, roles)
@@ -67,11 +67,11 @@ TeamSettingsPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Invite | "Mời" button | `WorkspaceService/InviteMember(email, role)` | Invitation sent | `team:invite` |
-| 2 | Change role | Role dropdown | `WorkspaceService/UpdateMemberRole` | Role updated | `team:manage` |
-| 3 | Remove | "✕ Remove" → confirm | `WorkspaceService/RemoveMember` | Member removed | `team:manage` |
-| 4 | Resend invite | "🔄 Resend" | `WorkspaceService/ResendInvite` | Email resent | `team:invite` |
-| 5 | Cancel invite | "✕ Cancel" | `WorkspaceService/CancelInvite` | Invite cancelled | `team:invite` |
+| 1 | Invite | "Mời" button | `WorkspaceService/InviteMember(email, role)` | Invitation sent | `workspace:members:invite` |
+| 2 | Change role | Role dropdown | `WorkspaceService/UpdateMemberRole` | Role updated | `workspace:roles:assign` |
+| 3 | Remove | "✕ Remove" → confirm | `WorkspaceService/RemoveMember` | Member removed | `workspace:members:remove` |
+| 4 | Resend invite | "🔄 Resend" | `WorkspaceService/ResendInvite` | Email resent | `workspace:members:invite` |
+| 5 | Cancel invite | "✕ Cancel" | `WorkspaceService/CancelInvite` | Invite cancelled | `workspace:members:invite` |
 
 ### Role Hierarchy
 | Role | Capabilities |
@@ -200,9 +200,9 @@ TeamSettingsPage
 
 | Screen | Relationship |
 |---|---|
-| [W008] Settings Hub | Parent navigation |
-| [W121] Workspace Members | Detailed member management |
-| [A003] Admin User Management | Platform-level user admin |
+| [W007] Settings Hub | Parent navigation |
+| [W115] Member Management | Detailed member management |
+| [A003] Admin User Detail | Platform-level user admin |
 
 ---
 

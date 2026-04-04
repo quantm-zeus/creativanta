@@ -240,10 +240,10 @@ ApprovalQueuePage
 
 | Screen | Relationship |
 |---|---|
-| [W101] Workflow List | Workflows with approval steps |
-| [W102] Workflow Builder | Configure approval gates |
+| [W100] Workflow List | Workflows with approval steps |
+| [W101] Workflow Builder | Configure approval gates |
 | [W105] Task Queue | Task management |
-| [M040] Mobile Approval | Mobile equivalent |
+| [M051] Mobile Approval Queue | Mobile equivalent |
 
 ---
 

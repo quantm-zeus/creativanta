@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-04-02
+last_updated: 2026-04-06
 ---
 
 # Open Blockers
@@ -177,6 +177,19 @@ last_updated: 2026-04-02
 - Owner: Screen Doc Lead
 
 
+## ~~API-C-002~~: ✅ RESOLVED — Screen→API RPC gap fully closed
+
+- Layer: API / Screens
+- Severity: ~~**HIGH**~~ → **RESOLVED**
+- Status: **✅ RESOLVED** (2026-04-06)
+- Resolution: All ~820 screen-referenced RPCs (across 132 services) were promoted to canonical status in `api_endpoint_map.md` §10-§20 with method, auth level, rate limit, and description. The canonical API map now contains **~1,160 concrete RPC definitions** covering **100% of screen-referenced RPC patterns** (907/907 unique RPCs).
+- Verified: Python gap analysis script confirms 0 remaining missing RPCs.
+- `screen_api_reconciliation.md` status updated from WORKING_ANALYSIS → RESOLVED.
+- `CROSS_LAYER_MATRIX.md` updated to reflect full-contract alignment.
+- Cross-ref: `api_endpoint_map.md` §10-§20, `screen_api_reconciliation.md` (RESOLVED), CROSS_LAYER_MATRIX.md
+- Owner: Product + API Lead
+
+
 ---
 
 ## Resolved Blockers
@@ -186,7 +199,7 @@ last_updated: 2026-04-02
 ### SCR-M-001: Screen specs migrated to docs/03_screens/ ✅
 
 - Original: Screen specs in flat `docs/screens/` not mapped to `docs/03_screens/`
-- Resolution: All 237 screen files now consolidated in `docs/03_screens/` with proper subdirectory structure (web/, mobile/, admin/, shared/).
+- Resolution: All 238 screen files now consolidated in `docs/03_screens/` with proper subdirectory structure (web/, mobile/, admin/, shared/).
 - Resolved: 2026-03-31
 - Verified: filesystem audit + SCREEN_INDEX.md update
 

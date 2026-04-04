@@ -134,7 +134,7 @@ M12 exists as the **semantic operating inbox** — it ingests all interactions i
 ## State Machine
 
 Object: thread | DB column: `threads.status`
-see [04_contracts/database_schema.md#9.2](../04_contracts/database_schema.md)
+see [04_contracts/database_schema.md#9.2](../../04_contracts/database_schema.md)
 
 | From | To | Trigger | Condition |
 |---|---|---|---|
@@ -158,11 +158,11 @@ see [04_contracts/database_schema.md#9.2](../04_contracts/database_schema.md)
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §9 (entities, threads, messages, follow_up_tasks) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.5 (ThreadService, EntityService, SuggestionService, FollowUpService — ~18 RPCs) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §7 (thread.created, thread.intent_classified, thread.assigned, thread.resolved, thread.sla_*, message.received, sponsor_inquiry.detected, follow_up_task.created) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.5 (thread:triage — Editor+; thread:assign — Manager+; thread:reply — Contributor+; entity:merge — Manager+) |
-| Pack 05 | [Pack 05 — Inbox Contract](../creativanta_detail_design_pack_05_connector_capability_publish_inbox_contract_v_3_1.md) | §6 (Ingestion), §7 (Reply/Moderation), §6.5 (Throttle), §7.4 (Reply-As), §7.5 (Ghost), §7.6 (Loop detection) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §9 (entities, threads, messages, follow_up_tasks) |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.5 (ThreadService, EntityService, SuggestionService, FollowUpService — ~18 RPCs) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §7 (thread.created, thread.intent_classified, thread.assigned, thread.resolved, thread.sla_*, message.received, sponsor_inquiry.detected, follow_up_task.created) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.6 (thread:triage — Editor+; thread:assign — Manager+; thread:reply — Contributor+; entity:merge — Manager+) |
+| Pack 05 | Pack 05 — Inbox Contract <!-- Legacy ref: creativanta_detail_design_pack_05_connector_capability_publish_inbox_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §6 (Ingestion), §7 (Reply/Moderation), §6.5 (Throttle), §7.4 (Reply-As), §7.5 (Ghost), §7.6 (Loop detection) |
 | Real-time | PRD Part 2, §32B.1 | WebSocket / SSE, ≤ 2s message arrival |
 
 ## Related Screens

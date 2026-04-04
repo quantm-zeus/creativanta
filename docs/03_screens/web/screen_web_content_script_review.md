@@ -1,7 +1,7 @@
 # Screen: Web — Script Approval Review
 
-> **Screen ID**: W22
-> **Module**: M04 — Content Creation (Scripts)
+> **Screen ID**: W017
+> **Module**: M06 — Script Lab
 > **Route**: `/scripts/[id]/review`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §13, A1 Schema (scripts, script_reviews, review_comments)
@@ -267,9 +267,9 @@ ScriptReviewPage
 
 | Screen | Relationship |
 |---|---|
-| [W021] Script Editor | Source script |
-| [W020] Script List | Parent list |
-| [M019] Mobile Script List | Mobile equivalent (no split view) |
+| [W016] Script Editor | Source script |
+| [W015] Script List | Parent list |
+| [M010] Mobile Script List | Mobile equivalent (no split view) |
 | [S007] Confirmations | Reject confirmation |
 
 ---

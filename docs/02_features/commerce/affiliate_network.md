@@ -220,13 +220,13 @@ LinkHealth:
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §10.4 (affiliate_links), §10.5 (campaigns), §16 (Creator Pro: link_in_bio_pages, media_kits, rate_cards, brand_deals) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.6 (AffiliateService, CampaignService — ~10 RPCs), §5 (S16: LinkInBioService, MediaKitService, RateCardService, BrandDealService — ~13 RPCs) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §8 (affiliate_link.created, conversion.attributed), §15 (S16 events), §15D (affiliate.link_health.*), §19 (commission.calculated, commission.paid, creator_assignment.created) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.6 (affiliate — Editor+; campaign — Editor+), §5 (S16 Creator Pro — varying by feature) |
-| Pack 06 | [Pack 06 — Commerce Contract](../creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md) | §2.4 (Monetization Support), §4.2 (Payout/Statement), §6 (Reconciliation) |
-| S16 Spec | [S16 — Creator Pro Tools](../creativanta_supplementary_s16_creator_pro_tools_v_3_1.md) | §2-7 (Link-in-Bio, Media Kit, Rate Card, Brand Deals, Revenue Tracker, Tax Export) |
-| Link Health | [Pack 05 — S14](../creativanta_detail_design_pack_05_connector_capability_publish_inbox_contract_v_3_1.md) | §S14.4 (Redirect Chain Analysis) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §10.4 (affiliate_links), §10.5 (campaigns), §16 (Creator Pro: link_in_bio_pages, media_kits, rate_cards, brand_deals) |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.6 (AffiliateService, CampaignService — ~10 RPCs), §5 (S16: LinkInBioService, MediaKitService, RateCardService, BrandDealService — ~13 RPCs) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §8 (affiliate_link.created, conversion.attributed), §15 (S16 events), §15D (affiliate.link_health.*), §19 (commission.calculated, commission.paid, creator_assignment.created) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.7 (affiliate — Editor+; campaign — Editor+), §2.13 (S16 Creator Pro — varying by feature) |
+| Pack 06 | Pack 06 — Commerce Contract <!-- Legacy ref: creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §2.4 (Monetization Support), §4.2 (Payout/Statement), §6 (Reconciliation) |
+| S16 Spec | S16 — Creator Pro Tools <!-- Legacy ref: creativanta_supplementary_s16_creator_pro_tools_v_3_1.md — superseded by current feature docs + contract layer --> | §2-7 (Link-in-Bio, Media Kit, Rate Card, Brand Deals, Revenue Tracker, Tax Export) |
+| Link Health | Pack 05 — S14 <!-- Legacy ref: creativanta_detail_design_pack_05_connector_capability_publish_inbox_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §S14.4 (Redirect Chain Analysis) |
 
 ## Related Screens
 

@@ -1,6 +1,6 @@
 # Shared: Navigation Patterns
 
-> **Screen ID**: S05
+> **Screen ID**: S002
 > **Module**: Shared — UI Patterns
 > **Platform**: All (Web + Mobile)
 

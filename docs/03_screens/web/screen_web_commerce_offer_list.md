@@ -1,6 +1,6 @@
 # Screen: Web — Offer & Coupon Manager
 
-> **Screen ID**: W057
+> **Screen ID**: W066
 > **Module**: M14 — Monetization & Offers
 > **Route**: `/offers`
 > **Platform**: Web (SvelteKit)
@@ -451,7 +451,7 @@ Offer List (/offers)
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [W058] Offer Detail / Create | Child — create/edit individual offers |
+| [W067] Offer Detail / Create | Child — create/edit individual offers |
 | [W065] Campaign Detail | Linked — offers associated with campaigns |
 | [W061] Product Detail | Linked — offers applicable to products |
 | [W068] Coupon Manager | Sibling — detailed coupon management |

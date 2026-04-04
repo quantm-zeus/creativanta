@@ -1,6 +1,6 @@
 # Screen: Web — Competitor Registry
 
-> **Screen ID**: W12
+> **Screen ID**: W040
 > **Module**: M03 — Competitive Intelligence
 > **Route**: `/intelligence/competitors`
 > **Platform**: Web (SvelteKit)
@@ -125,8 +125,8 @@ CompetitorRegistryPage
 |---|---|---|---|---|---|
 | 1 | Add competitor | Modal form → submit | `CompetitorService/Add(platform, handle)` | New card + AI scores | `competitor:manage` |
 | 2 | Remove | "❌ Gỡ" → confirm | `CompetitorService/Remove(id)` | Card fades out | `competitor:manage` |
-| 3 | View profile | "📈 Profile" | — | → `/intelligence/competitors/[id]` | `competitor:read` |
-| 4 | Benchmark | "📊 Benchmark" | — | → `/intelligence/benchmarks?vs=[id]` | `benchmark:read` |
+| 3 | View profile | "📈 Profile" | — | → `/intelligence/competitors/[id]` | `competitor:manage` |
+| 4 | Benchmark | "📊 Benchmark" | — | → `/intelligence/benchmarks?vs=[id]` | `competitor:manage` |
 | 5 | Set alerts | "🔔 Alert settings" | Modal: threshold config | Notification rules saved | `competitor:manage` |
 | 6 | Accept suggestion | "➕ Thêm" on suggestion | `CompetitorService/Add` | Card moves to main list | `competitor:manage` |
 | 7 | Dismiss suggestion | "❌ Bỏ qua" | `CompetitorService/DismissSuggestion` | Card fades | `competitor:manage` |
@@ -236,9 +236,9 @@ CompetitorRegistryPage
 
 | Screen | Relationship |
 |---|---|
-| [W013] Benchmark View | Comparative analysis |
-| [W010] Trend Detail | May link to competitor examples |
-| [M017] Mobile Competitor | Mobile equivalent |
+| [W041] Benchmark View | Comparative analysis |
+| [W039] Trend Detail | May link to competitor examples |
+| [M018] Mobile Competitors | Mobile equivalent |
 
 ---
 

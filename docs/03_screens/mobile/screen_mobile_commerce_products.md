@@ -1,6 +1,6 @@
 # Screen: Mobile — Commerce Product List
 
-> **Screen ID**: M026
+> **Screen ID**: M028
 > **Module**: M14 — Commerce
 > **Route**: `/products` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -387,8 +387,8 @@ class ProductListState {
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [M027] Mobile Product Detail | Child — tap card to view detail |
-| [M024] Mobile Orders | Linked — order items reference products |
+| [W061] Web Product Detail | Child — tap card to view detail (web) |
+| [M027] Mobile Orders | Linked — order items reference products |
 | [W060] Web Product List | Web equivalent (full CRUD) |
 | [W061] Web Product Detail | Web full edit (mobile redirects for complex ops) |
 

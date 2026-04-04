@@ -1,6 +1,6 @@
 # Screen: Web — Recipe Templates
 
-> **Screen ID**: W106
+> **Screen ID**: W103
 > **Module**: M20 — Workflow Studio (Templates)
 > **Route**: `/workflows/templates`
 > **Platform**: Web (SvelteKit)
@@ -218,8 +218,8 @@ RecipeTemplatesPage
 
 | Screen | Relationship |
 |---|---|
-| [W101] Workflow List | Parent |
-| [W102] Workflow Builder | Destination after "Use template" |
+| [W100] Workflow List | Parent |
+| [W101] Workflow Builder | Destination after "Use template" |
 
 ---
 

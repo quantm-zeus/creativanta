@@ -10,7 +10,7 @@ last_updated: 2026-03-30
 
 Creativanta is a **Proofed Trend-to-Profit Operating System** for creator commerce. It unifies 23 modules spanning intelligence, content, production, publishing, engagement, commerce, finance, and automation into a single operating graph — enabling creators and operators to turn signals into profit with proof, trust, and systematic workflows across web and mobile.
 
-## 2. Domain Map — 24 Entries (23 Modules + Auth)
+## 2. Domain Map — 31 Entries (23 Modules + Auth + 7 Supplementary/Spec)
 
 | Module | Name | Domain | Feature Doc (target) | Build Phase |
 |--------|------|--------|----------------------|-------------|
@@ -42,6 +42,10 @@ Creativanta is a **Proofed Trend-to-Profit Operating System** for creator commer
 | copilot | Copilot (AI Operations Assistant) | platform | 02_features/platform/copilot.md | P3E |
 | referral | Referral & Growth Engine | platform | 02_features/platform/referral_growth.md | P3E |
 | help | Help Center, Changelog & Beta | platform | 02_features/platform/help_center.md | P3E |
+| gamification | Creator Gamification System | platform | 02_features/platform/gamification.md | P3E |
+| S16 | Creator Pro Tools | commerce | 02_features/commerce/creator_pro_tools.md | P3E |
+| S24 | Public API & Webhooks | platform | 02_features/platform/public_api.md | P3E |
+| S26 | Internal Admin Panel | platform | 02_features/platform/internal_admin.md | P3E |
 
 ## 3. Cross-Domain Dependency Graph
 
@@ -109,12 +113,12 @@ M20/M21 (Workflow/Recipe):
 2. NEVER invent field names — check `04_contracts/database_schema.md`
 3. NEVER invent event names — check `04_contracts/domain_event_catalog.md`
 4. NEVER work around a CRITICAL blocker in `00_index/OPEN_BLOCKERS.md` silently
-5. NEVER treat `docs/90_archive/` as canonical source — read-only history
+5. NEVER treat `docs/09_archive/` as canonical source — read-only history
 6. NEVER duplicate content between layers — use cross-links only
 7. NEVER use REAL or FLOAT for money/credit fields — see DB-H-001
 8. NEVER skip RBAC checks — every action needs `04_contracts/rbac_permission_matrix.md`
 9. WHEN PRD and design pack conflict — PRD §23 wins. Write `[CONFLICT]` note, ask human
-10. NEVER modify archived files in `docs/90_archive/`
+10. NEVER modify archived files in `docs/09_archive/`
 11. NEVER create DB tables without `ENABLE ROW LEVEL SECURITY` + `FORCE ROW LEVEL SECURITY` — see DB-C-001
 12. NEVER create shadow objects that bypass canonical One Graph — see PRD §12
 13. NEVER collapse operator modes into fewer than 6 — all 6 are canonical (PRD §8.2)

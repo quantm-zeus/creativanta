@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-04-02
+last_updated: 2026-04-06
 ---
 
 # Canonical Sources — Single Source of Truth Registry
@@ -10,11 +10,13 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 
 ## Agent Configuration
 
+> **Note**: Agent configuration files are at **repository root**, external to the `docs/` package. They are not included in docs-only distributions.
+
 | Topic | Canonical File | Notes |
 |-------|---------------|-------|
-| Shared agent rules | `AGENTS.md` (root) | Read first — cross-tool |
-| Claude Code-specific | `CLAUDE.md` (root) | Thin wrapper, imports @AGENTS.md |
-| Antigravity-specific | `GEMINI.md` (root) | Overrides AGENTS.md in Antigravity |
+| Shared agent rules | `AGENTS.md` (repo root, external to docs/) | Read first — cross-tool |
+| Claude Code-specific | `CLAUDE.md` (repo root, external to docs/) | Thin wrapper, imports @AGENTS.md |
+| Antigravity-specific | `GEMINI.md` (repo root, external to docs/) | Overrides AGENTS.md in Antigravity |
 
 ## Business & Product
 
@@ -25,7 +27,7 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 | Business rules & invariants | 01_business/business_rules.md | Cross-module contracts (PRD §25) |
 | Glossary | 01_business/glossary.md | Canonical naming, One Graph taxonomy |
 | Pricing, tiers, credits | 01_business/pricing_and_credits.md | 5 tiers, add-ons, credit system |
-| Legal & compliance | 01_business/legal_compliance.md | ⚠️ Human review required |
+| Legal & compliance | 01_business/legal_compliance.md | `engineering-approved`, `launch-gated pending legal sign-off` (DEC-001) |
 
 ## Feature Behavior
 
@@ -40,15 +42,16 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 
 | Topic | Canonical File | Notes |
 |-------|---------------|-------|
-| DB schema | 04_contracts/database_schema.md | ~122 tables. RLS (106+), deleted_at (51+), CHECK (23+). +6 v6 tables. All blockers RESOLVED. |
-| API endpoints | 04_contracts/api_endpoint_map.md | ~473 concrete RPCs across all domains. All API blockers RESOLVED. |
-| Protobuf / gRPC | 04_contracts/protobuf_contracts.md | ~41 services, codegen for 3 platforms |
-| Domain events | 04_contracts/domain_event_catalog.md | ~217 events. EVT-H-001 fully resolved (74-row mapping table) |
+| DB schema | 04_contracts/database_schema.md | ~135 CREATE TABLE blocks. RLS (106+), deleted_at (51+), CHECK (23+). All blockers RESOLVED. ✅ 51 DDL comma issues fixed (49 original + 2 additional in `coupons`/`store_pages` Round 5 2026-04-04). |
+| API endpoints | 04_contracts/api_endpoint_map.md | **~1,160 canonical RPC definitions** (§2-§20) + ~14 REST endpoints + 6 webhook endpoints. ✅ All API blockers RESOLVED. §10-§20 contain screen-derived RPCs promoted to canonical status (2026-04-06). 100% screen-to-API coverage achieved (907/907). |
+| Protobuf / gRPC | 04_contracts/protobuf_contracts.md | Overview doc only (~52 services, ~310 RPCs). ⚠️ Actual `.proto` files do NOT exist yet — planned for implementation Phase 1. |
+| Domain events | 04_contracts/domain_event_catalog.md | ~230 canonical event types (Round 5 2026-04-04). All notification matrix events now have verbatim canonical entries. EVT-H-001 fully resolved (74-row mapping table). |
 | API JSON examples | 04_contracts/api_examples.md | 24 request/response examples, companion to api_endpoint_map.md |
-| RBAC permissions | 04_contracts/rbac_permission_matrix.md | 7 roles × ~106 perms + 8 admin roles |
+| RBAC permissions | 04_contracts/rbac_permission_matrix.md | 7 roles × ~114 perms + 8 admin roles (~23 perms). Round 5 (2026-04-04): Added `affiliate:read`, `competitor:read`, `evidence:read`, `membership:read/manage`, `admin:user:read`, `admin:workspace:read`, `admin:commerce:read`. Note: `permission_alias_policy.md` was demoted to non-canonical (HISTORICAL_REFERENCE) — screen docs now use RBAC tokens directly. |
 | Connector specs | 04_contracts/connector_specs.md | 6 platforms: TikTok, Shopee, Lazada, YouTube, Instagram, Facebook |
 | Error catalog | 04_contracts/error_catalog.md | **READY**. 30+ error codes, gRPC↔HTTP mapping, retry policy, bilingual messages |
-| Screen↔API reconciliation | 04_contracts/screen_api_reconciliation.md | ⚠️ WORKING ANALYSIS (not canonical). Shows gap between screen API refs (~909) and concrete RPC definitions (~181) |
+| Screen↔API reconciliation | 04_contracts/screen_api_reconciliation.md | ✅ RESOLVED (2026-04-06). Traceability record showing which screens reference which RPCs. All 907 screen-referenced RPCs now have canonical definitions in `api_endpoint_map.md` §2-§20. No longer a gap-tracking document. |
+| Permission alias policy | 09_archive/permission_alias_policy.md | **NOT CANONICAL** (demoted 2026-04-04, moved to `09_archive/`). Historical reference only. Contains semantically unsafe alias mappings (read→manage, delete→create). Screen docs have been directly canonicalized to use RBAC tokens. Do NOT use for implementation. |
 
 ## System Layer
 
@@ -76,6 +79,7 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 | Moderation rules | 06_quality_ops/moderation_rules_engine.md | Pipeline, EU AI Act |
 | i18n guide | 06_quality_ops/i18n_guide.md | Paraglide + Flutter intl |
 | Activepieces integration | 06_quality_ops/activepieces_integration.md | 9 pieces, 8 recipes, tiers |
+| Notification trigger matrix | 06_quality_ops/notification_trigger_matrix.md | Maps domain events → notification templates. All 35 canonical events verified verbatim in `domain_event_catalog.md` (Round 5 2026-04-04). |
 
 ## Screens & Index
 
@@ -87,8 +91,8 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 
 | Topic | Canonical File | Notes |
 |-------|---------------|-------|
-| Docs audit findings | 00_index/OPEN_BLOCKERS.md | **All RESOLVED** (15+). Zero OPEN blockers. Updated 2026-04-02 |
+| Docs audit findings | 00_index/OPEN_BLOCKERS.md | 20 tracked entries: 19 RESOLVED, 1 PARTIALLY RESOLVED (PRD-H-001). Zero OPEN/CRITICAL blockers in tracked set. Downstream integrity gaps tracked in CROSS_LAYER_MATRIX.md §Known Integrity Gaps. |
 | Build phases | 00_index/IMPLEMENTATION_ORDER.md | 9 phases, dependencies |
 | Architecture decisions | 00_index/DECISION_LOG.md | ≥12 ADRs |
 | Acceptance tests | 00_index/ACCEPTANCE_TESTS.md | Created in Phase 1B |
-| Cross-layer matrix | 00_index/CROSS_LAYER_MATRIX.md | **28/28 Aligned**, 0 Partial, 0 Blocked — 100% (FINAL 2026-04-02) |
+| Cross-layer matrix | 00_index/CROSS_LAYER_MATRIX.md | **28 doc-spec aligned** (feature doc ↔ schema ↔ screens ↔ API service name). ✅ Full-contract alignment achieved: ~1,160 canonical RPCs covering 100% of screen references (907/907). See `screen_api_reconciliation.md` (RESOLVED). Caveat: `ci_cd_pipeline.md` remains SCAFFOLD; legal is launch-gated. |

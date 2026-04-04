@@ -1,3 +1,5 @@
+> **Screen ID**: S012
+
 # Shared Component: Onboarding Tooltip Sequence
 
 > **Component ID**: S12

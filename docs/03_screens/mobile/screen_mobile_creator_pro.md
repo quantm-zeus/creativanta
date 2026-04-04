@@ -1,6 +1,6 @@
 # Screen: Mobile — Creator Pro Dashboard
 
-> **Screen ID**: M050
+> **Screen ID**: M045
 > **Module**: S16 — Creator Pro Tools
 > **Route**: `/creator-pro` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -98,8 +98,8 @@ CreatorProDashboardScreen
 | Screen | Relationship |
 |---|---|
 | [W088] Web Creator Pro | Web equivalent |
-| [M051] Media Kit | Media kit |
-| [M053] Brand Deals | Deal pipeline |
+| [M048] Media Kit Preview | Media kit |
+| [M046] Brand Deals | Deal pipeline |
 ---
 ## Error Handling
 

@@ -1,6 +1,6 @@
 # Screen: Web — Store Pages & Editor
 
-> **Screen ID**: W066
+> **Screen ID**: W072
 > **Module**: M14 — Monetization & Storefront
 > **Route**: `/store` (list) or `/store/[id]/edit` (editor)
 > **Platform**: Web (SvelteKit)
@@ -49,7 +49,7 @@ Store Pages is the no-code micro-storefront builder — creators build product l
 
 ### Preconditions
 - User authenticated with valid workspace session
-- User has `store:read` permission (Editor+ for editing)
+- User has `store:manage` permission (Editor+ for editing)
 - At least 1 product exists for product section inclusion
 
 ### Postconditions
@@ -228,7 +228,7 @@ StorePages (two views)
 |---|---|---|---|---|---|---|
 | 1 | Create page | "+ Tạo page mới" | `StoreService/CreatePage(data)` | New `store_pages` (draft) | Navigate → `/store/[new_id]/edit` | `store:manage` |
 | 2 | Open editor | "✏ Editor" | — | — | Navigate → `/store/[id]/edit` | `store:manage` |
-| 3 | Preview page | "👁 Preview" | — | — | Open public URL in new tab | `store:read` |
+| 3 | Preview page | "👁 Preview" | — | — | Open public URL in new tab | `store:manage` |
 | 4 | Publish page | "🚀 Publish" | `StoreService/Publish(id)` | `status = 'published'`, deploy to CDN | Confirmation → Toast "✅ Store page live!" + copy URL | `store:manage` |
 | 5 | Unpublish | "⋮" → "Gỡ xuống" | `StoreService/Unpublish(id)` | `status = 'draft'`, CDN removed | Badge → 📋. Toast "Page đã gỡ xuống" | `store:manage` |
 | 6 | Auto-save | Every 5s if dirty | `StoreService/UpdatePage(id, sections)` | Sections updated | "💾 Saved" indicator animates | `store:manage` |
@@ -240,7 +240,7 @@ StorePages (two views)
 | 12 | Upload image | Image upload in section | `UploadService/Upload(file)` | `asset_url` stored | Image appears in section and preview | `store:manage` |
 | 13 | Select products | Product selector in Product section | Client-side | — | Selected products appear in preview grid | `store:manage` |
 | 14 | Share URL | "📤 Share" | — (clipboard) | — | Toast "📋 Đã copy link store" | Any |
-| 15 | View analytics | "📊 Analytics" | — | — | Navigate → `/store/[id]/analytics` | `store:read` |
+| 15 | View analytics | "📊 Analytics" | — | — | Navigate → `/store/[id]/analytics` | `store:manage` |
 | 16 | Duplicate page | "📋 Duplicate" | `StoreService/DuplicatePage(id)` | New draft page | Toast "📋 Page đã nhân bản" → new card | `store:manage` |
 | 17 | Delete page | "🗑 Delete" → confirm | `StoreService/DeletePage(id)` | Soft delete | Confirmation → card removed | `store:manage` |
 | 18 | Toggle preview device | "[🖥] [📱]" toggle | Client-side iframe resize | — | Preview switches between desktop/mobile viewport | `store:manage` |
@@ -473,9 +473,9 @@ store_sections:
 | Screen | Relationship |
 |---|---|
 | [W061] Product Detail | Products selected in store sections |
-| [W070] Link-in-Bio | Store pages as link-in-bio items |
-| [W058] Offer Detail | Offers can be displayed on store pages |
-| [M052] Mobile Store | Mobile equivalent (view only) |
+| [W070] Affiliate Manager | Store pages as link-in-bio items |
+| [W067] Offer Detail | Offers can be displayed on store pages |
+| [M026] Mobile Commerce Dashboard | Mobile equivalent (view only) |
 
 ### Revision History
 | Date | Version | Change | Author |

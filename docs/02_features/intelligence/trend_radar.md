@@ -61,10 +61,10 @@ The Trend Fusion Radar transforms raw signals into scored trends with velocity, 
 
 1. **Signal Ingestion**: System collects raw signals from connected platform APIs, Google Trends, and manual input
    - Writes to `signals` table with `signal_type`, `source_system`, `raw_payload`
-   - see [04_contracts/database_schema.md#5.1](../04_contracts/database_schema.md)
+   - see [04_contracts/database_schema.md#5.1](../../04_contracts/database_schema.md)
 2. **Normalization**: System normalizes signal payload into `normalized_summary`, assigns `freshness_hours` and initial `confidence`
    - emits `trend.signal_detected`
-   - see [04_contracts/domain_event_catalog.md#3](../04_contracts/domain_event_catalog.md)
+   - see [04_contracts/domain_event_catalog.md#3](../../04_contracts/domain_event_catalog.md)
 3. **Clustering**: System clusters related signals into Trends or attaches to existing Trends
    - Writes/updates `trends` table, creates `trend_signals` junction entries
    - Computes `velocity_score`, `freshness_score`, `saturation_score`, `strength_score`
@@ -72,7 +72,7 @@ The Trend Fusion Radar transforms raw signals into scored trends with velocity, 
    - emits `trend.created` (consumers: M01, M04, M05)
    - emits `trend.spike_detected` if velocity crosses spike threshold (consumers: M01, Notification)
 5. **User browses Trend list**: calls `TrendService/List` → paginated, sorted by strength
-   - see [04_contracts/api_endpoint_map.md#2.2](../04_contracts/api_endpoint_map.md)
+   - see [04_contracts/api_endpoint_map.md#2.2](../../04_contracts/api_endpoint_map.md)
 6. **User saves to watchlist**: calls `TrendService/ManageWatchlist` (Editor+)
 7. **User converts trend to opportunity**: navigates to M04 conversion flow, passes trend as source reference
    - Future opportunity links back via `opportunity_sources` junction
@@ -123,7 +123,7 @@ The Trend Fusion Radar transforms raw signals into scored trends with velocity, 
 ## State Machine
 
 Object: signal | DB enum: `signals.lifecycle_state`
-see [04_contracts/database_schema.md#5.1](../04_contracts/database_schema.md)
+see [04_contracts/database_schema.md#5.1](../../04_contracts/database_schema.md)
 
 | From | To | Trigger | Condition |
 |---|---|---|---|
@@ -137,10 +137,10 @@ see [04_contracts/database_schema.md#5.1](../04_contracts/database_schema.md)
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §5 (signals, trends, trend_signals, watchlists) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.2 (TrendService: List, Get, Search, ManageWatchlist) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §3 (trend.signal_detected, trend.created, trend.spike_detected, trend.expired) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.2 (trend:read — all members; trend:watchlist:manage — Editor+) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §5 (signals, trends, trend_signals, watchlists) |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.2 (TrendService: List, Get, Search, ManageWatchlist) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §3 (trend.signal_detected, trend.created, trend.spike_detected, trend.expired) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.2 (trend:read — all members; trend:watchlist:manage — Editor+) |
 
 ## Related Screens
 
@@ -165,4 +165,4 @@ see [04_contracts/database_schema.md#5.1](../04_contracts/database_schema.md)
 
 ## Open Questions / Blockers
 
-- [NONE] — No critical blockers specific to M02 in OPEN_BLOCKERS.md. However, EVT-H-001 (event naming inconsistency) may require attention when implementing event consumers.
+- [NONE] — No critical blockers specific to M02 in OPEN_BLOCKERS.md. Note: EVT-H-001 (event naming inconsistency) was resolved 2026-04-02 with 74-row CamelCase→dot.notation mapping in `runtime_workflow.md` §3.1B-C.

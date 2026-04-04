@@ -192,12 +192,12 @@ WorkflowMonitorScreen
 |---|---|---|---|---|---|---|
 | 1 | Filter by status | Tap filter chip | `WorkflowService/ListRuns(status)` | — | List filters | `workflow:read` |
 | 2 | View run detail | Tap card (running/completed) | — | — | Navigate to Run Detail screen | `workflow:read` |
-| 3 | Retry failed run | Tap "🔄 Retry" on failed card | `WorkflowService/RetryRun(id)` | New run instance created | Toast "Retrying..." → card moves to Running | `workflow:execute` |
-| 4 | Provide input | Tap "📝 Provide Input" on paused card | — | — | Open HumanInputBottomSheet | `workflow:execute` |
-| 5 | Submit input | Submit form in bottom sheet | `WorkflowService/ProvideInput(id, data)` | Run resumes | Toast "✅ Workflow resumed" → card moves to Running | `workflow:execute` |
-| 6 | Skip step | Tap "⏭ Skip Step" on paused card | `WorkflowService/SkipStep(id)` | Step skipped, run continues | Toast "Step skipped" → card updates | `workflow:execute` |
-| 7 | Cancel run | Tap "🗑 Cancel" on paused/running | Confirm → `WorkflowService/CancelRun(id)` | `status = cancelled` | Card removed + toast | `workflow:execute` |
-| 8 | Dismiss failed | Tap "🗑 Dismiss" on failed card | `WorkflowService/DismissRun(id)` | `status = dismissed` | Card fades out | `workflow:execute` |
+| 3 | Retry failed run | Tap "🔄 Retry" on failed card | `WorkflowService/RetryRun(id)` | New run instance created | Toast "Retrying..." → card moves to Running | `workflow:activate` |
+| 4 | Provide input | Tap "📝 Provide Input" on paused card | — | — | Open HumanInputBottomSheet | `workflow:activate` |
+| 5 | Submit input | Submit form in bottom sheet | `WorkflowService/ProvideInput(id, data)` | Run resumes | Toast "✅ Workflow resumed" → card moves to Running | `workflow:activate` |
+| 6 | Skip step | Tap "⏭ Skip Step" on paused card | `WorkflowService/SkipStep(id)` | Step skipped, run continues | Toast "Step skipped" → card updates | `workflow:activate` |
+| 7 | Cancel run | Tap "🗑 Cancel" on paused/running | Confirm → `WorkflowService/CancelRun(id)` | `status = cancelled` | Card removed + toast | `workflow:activate` |
+| 8 | Dismiss failed | Tap "🗑 Dismiss" on failed card | `WorkflowService/DismissRun(id)` | `status = dismissed` | Card fades out | `workflow:activate` |
 | 9 | View log | Tap "👁 View Log" on failed card | — | — | Navigate to Run Detail with logs tab | `workflow:read` |
 | 10 | Pull to refresh | Pull down gesture | `WorkflowService/ListRuns` + `GetRunStats` | — | Everything refreshes | `workflow:read` |
 
@@ -351,10 +351,10 @@ Workflow Runs (/m/workflows/runs)
 
 | Screen | Relationship |
 |---|---|
-| [W103] Web Workflow Runs | Web equivalent (table view with full details) |
+| [W102] Web Run History | Web equivalent (table view with full details) |
 | [M051] Approval Queue | Sibling — some approvals come from workflows |
-| [M053] Workflow Recipes | Sibling — template selection |
-| [W102] Workflow Builder | Parent — where workflows are designed |
+| [M054] Recipe Library | Sibling — template selection |
+| [W101] Workflow Builder | Parent — where workflows are designed |
 
 ---
 

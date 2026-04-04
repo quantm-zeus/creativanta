@@ -1,6 +1,6 @@
 # Shared: Loading States
 
-> **Screen ID**: S01
+> **Screen ID**: S004
 > **Module**: Shared — UI States
 > **Platform**: All (Web + Mobile)
 > **Upstream**: Design Tokens (D1)

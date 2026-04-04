@@ -51,7 +51,7 @@ The Campaign Detail screen is a real-time performance dashboard for a specific m
 
 ### Preconditions
 - User authenticated with valid workspace session
-- User has `campaign:read` permission (Contributor+ for viewing)
+- User has `campaign:manage` permission (Contributor+ for viewing)
 - Campaign `campaign_id` exists and belongs to current workspace
 - At least some UTM-tagged events exist for attribution data
 
@@ -245,21 +245,21 @@ CampaignDetailPage
 
 | # | Action | Trigger | API Call | Mutation | UI Result | Permission |
 |---|---|---|---|---|---|---|
-| 1 | View campaign | Page load | `CampaignService/Get + GetMetrics + GetFunnel` | — | Full dashboard renders | `campaign:read` |
+| 1 | View campaign | Page load | `CampaignService/Get + GetMetrics + GetFunnel` | — | Full dashboard renders | `campaign:manage` |
 | 2 | Edit campaign | Click "✏ Sửa" | — | — | Navigate → `/campaigns/[id]/edit` | `campaign:manage` |
 | 3 | Pause campaign | "⋮" → "Tạm dừng" | `CampaignService/Pause(id)` | `campaigns.status = 'paused'` | Status badge → ⏸. Toast "Campaign đã tạm dừng" | `campaign:manage` |
 | 4 | Resume campaign | "⋮" → "Tiếp tục" (paused) | `CampaignService/Resume(id)` | `campaigns.status = 'running'` | Status badge → 🟢. Toast "Campaign đang chạy" | `campaign:manage` |
 | 5 | End campaign | "⋮" → "Kết thúc" → confirm | `CampaignService/End(id)` | `campaigns.status = 'ended'`, `ended_at = now` | Confirmation → Status → ⏹. All offers paused. | `campaign:manage` |
 | 6 | Duplicate | "⋮" → "Nhân bản" | `CampaignService/Duplicate(id)` | New draft campaign | Toast → navigate to new campaign | `campaign:manage` |
 | 7 | Delete | "⋮" → "Xóa" → confirm | `CampaignService/Delete(id)` | Soft delete | Confirmation → redirect to `/campaigns` | `campaign:manage` |
-| 8 | Switch tab | Click tab | Client-side tab switch (data lazy-loaded) | — | Tab content updates, URL: `?tab=content` | `campaign:read` |
-| 9 | Sort content table | Click column header | Client-side sort | — | Table rows re-order | `campaign:read` |
+| 8 | Switch tab | Click tab | Client-side tab switch (data lazy-loaded) | — | Tab content updates, URL: `?tab=content` | `campaign:manage` |
+| 9 | Sort content table | Click column header | Client-side sort | — | Table rows re-order | `campaign:manage` |
 | 10 | Link content | "+ Gắn thêm nội dung" | `CampaignService/LinkContent(campaign_id, content_ids[])` | New `campaign_content` rows | Modal → content selector → linked items appear in table | `campaign:manage` |
 | 11 | Unlink content | "⋮" → "Bỏ liên kết" on content row | `CampaignService/UnlinkContent(campaign_id, content_id)` | Delete `campaign_content` row | Row removed with animation | `campaign:manage` |
 | 12 | Link offer | "+ Gắn offer" | `CampaignService/LinkOffer(campaign_id, offer_id)` | New `campaign_offers` row | Modal → offer selector → card appears | `campaign:manage` |
 | 13 | Add cost | "+ Thêm chi phí" | `CampaignService/AddCost(campaign_id, data)` | New `campaign_costs` row | Modal with form → row added. ROAS recalculated. | `campaign:manage` |
-| 14 | Export PDF | "📤 Export" → PDF | `CampaignService/ExportReport(campaign_id, 'pdf')` | — | PDF download: campaign report with charts | `campaign:read` |
-| 15 | Export CSV | "📤 Export" → CSV | `CampaignService/ExportReport(campaign_id, 'csv')` | — | CSV download: raw data tables | `campaign:read` |
+| 14 | Export PDF | "📤 Export" → PDF | `CampaignService/ExportReport(campaign_id, 'pdf')` | — | PDF download: campaign report with charts | `campaign:manage` |
+| 15 | Export CSV | "📤 Export" → CSV | `CampaignService/ExportReport(campaign_id, 'csv')` | — | CSV download: raw data tables | `campaign:manage` |
 
 ---
 
@@ -514,11 +514,11 @@ Campaign Detail (/campaigns/[id])
 | Screen | Relationship |
 |---|---|
 | [W064] Campaign List | Parent — navigates here on row click |
-| [W058] Offer Detail | Linked — offers associated with campaigns |
-| [W049] Publish Item Detail | Linked — content performance drill-down |
+| [W067] Offer Detail | Linked — offers associated with campaigns |
+| [W057] Publish Item Detail | Linked — content performance drill-down |
 | [W082] Revenue Detail | Linked — revenue attributed to campaigns |
-| [W072] Cost Manager | Sibling — cost entries flow into campaign costs |
-| [M025] Mobile Campaign Detail | Mobile equivalent |
+| [W083] Cost Detail | Sibling — cost entries flow into campaign costs |
+| [M031] Mobile Campaigns | Mobile equivalent |
 
 ### Revision History
 | Date | Version | Change | Author |

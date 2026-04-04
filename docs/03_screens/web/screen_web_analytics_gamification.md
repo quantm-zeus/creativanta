@@ -1,6 +1,6 @@
 # Screen: Web — Gamification Dashboard
 
-> **Screen ID**: W077
+> **Screen ID**: W079
 > **Module**: M23 — Analytics (Gamification)
 > **Route**: `/gamification`
 > **Platform**: Web (SvelteKit)
@@ -288,9 +288,9 @@ GamificationDashboardPage
 
 | Screen | Relationship |
 |---|---|
-| [W076] Performance Coach | Weekly report card |
-| [W109] Analytics Overview | Performance data feeding XP |
-| [M047] Mobile Gamification | Mobile equivalent |
+| [W077] Performance Metrics | Weekly report card |
+| [W075] Analytics Overview | Performance data feeding XP |
+| [M038] Mobile Gamification | Mobile equivalent |
 
 ---
 

@@ -219,9 +219,9 @@ MobileHomePage
 | 2 | View alert detail | Tap alert card CTA | Navigate | — | → relevant screen (Orders/Inbox/Publish/etc.) | Varies |
 | 3 | Dismiss alert | Swipe alert card | Dismiss | `AlertService/Dismiss(id)` | Card slides away. Haptic medium. Next alert shown. | Any |
 | 4 | Tap KPI | Tap any KPI card | Navigate | — | → respective analytics detail screen | `report:read` |
-| 5 | Tap revenue KPI | Tap 💰 card | Navigate | — | → Mobile Profit Summary (M034) | `finance:read` |
+| 5 | Tap revenue KPI | Tap 💰 card | Navigate | — | → Mobile Profit Summary (M034) | `profit:read` |
 | 6 | Tap orders KPI | Tap 📦 card | Navigate | — | → Mobile Order List (M024) | `order:read` |
-| 7 | Tap unread KPI | Tap 💬 card | Navigate | — | → Mobile Inbox (M004) | `inbox:read` |
+| 7 | Tap unread KPI | Tap 💬 card | Navigate | — | → Mobile Inbox (M004) | `thread:read` |
 | 8 | View trends | Tap "Xem tất cả →" on AI Pulse | Navigate | — | → Trend List (M014) | `trend:read` |
 | 9 | Create idea from trend | Tap "🤖 Tạo ý tưởng từ trend →" | Navigate | — | → Copilot with trend context (M060) | `idea:create` |
 | 10 | Tap pipeline stage | Tap pipeline chip | Navigate | — | → respective list (Ideas/Scripts/Studio/Publish...) | Varies |
@@ -522,13 +522,13 @@ Mobile Home (/)
 |---|---|
 | [W001] Web Home Dashboard | Web equivalent (3-column grid layout) |
 | [M002] Mobile Notifications | Notification list (🔔 bell) |
-| [M004] Mobile Inbox | Bottom nav → Inbox |
+| [M019] Mobile Inbox | Bottom nav → Inbox |
 | [M008] Mobile Idea Board | Pipeline → Ideas |
-| [M011] Mobile Analytics | Bottom nav → Analytics / KPI tap |
-| [M014] Mobile Trend List | AI Pulse → trends |
-| [M021] Mobile Studio | Bottom nav → Studio |
-| [M024] Mobile Order List | Order KPI → orders |
-| [M034] Mobile Profit Summary | Revenue KPI → finance |
+| [M035] Mobile Analytics | Bottom nav → Analytics / KPI tap |
+| [M017] Mobile Trend List | AI Pulse → trends |
+| [M013] Mobile Studio Launcher | Bottom nav → Studio |
+| [M027] Mobile Orders | Order KPI → orders |
+| [M041] Mobile Finance Summary | Revenue KPI → finance |
 | [M060] Mobile Copilot | Quick Action → Copilot |
 
 ---

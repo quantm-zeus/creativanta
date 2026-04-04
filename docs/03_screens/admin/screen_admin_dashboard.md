@@ -190,10 +190,10 @@ AdminDashboardPage
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
 | 1 | Navigate to section | Click nav item | — | → respective admin page | Role-dependent |
-| 2 | View system health detail | "→ System Health Detail" | — | → A006 | `admin:system_health` |
+| 2 | View system health detail | "→ System Health Detail" | — | → A006 | `admin:analytics:read` |
 | 3 | View audit log | "→ Full audit log" | — | → A010 | `admin:audit_log:read` |
 | 4 | View support queue | "→ Support queue" | — | → A026 | `admin:support:manage` |
-| 5 | View AI operations | "→ AI Operations" | — | → A011 | `admin:ai_ops` |
+| 5 | View AI operations | "→ AI Operations" | — | → A011 | `admin:analytics:read` |
 | 6 | View revenue | "→ Revenue dashboard" | — | → A022 | `admin:analytics:read` |
 | 7 | Dismiss alert | Click ✕ on alert | `AdminAlertService/Dismiss` | Alert hidden, action logged | Any admin role |
 | 8 | Change KPI period | Period selector | `AdminService/GetDashboard(period)` | KPIs update | `admin:analytics:read` |

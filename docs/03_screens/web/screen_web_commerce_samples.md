@@ -1,6 +1,6 @@
 # Screen: Web — Sample Requests
 
-> **Screen ID**: W068
+> **Screen ID**: W074
 > **Module**: M14 — Commerce (overlaps M15 Seeding)
 > **Route**: `/samples`
 > **Platform**: Web (SvelteKit)
@@ -470,11 +470,11 @@ On approve:
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [W099] Seeding Request Manager | Seeding-side view (creator relationship focus) |
+| [W111] Seeding Requests | Seeding-side view (creator relationship focus) |
 | [W061] Product Detail | Product catalog + stock levels |
-| [W075] Content Analytics | Review performance measurement |
+| [W075] Analytics Overview | Review performance measurement |
 | [W065] Campaign Detail | Samples linked to campaigns |
-| [M055] Mobile Samples | Mobile equivalent |
+| [M034] Mobile Samples | Mobile equivalent |
 
 ### Revision History
 | Date | Version | Change | Author |

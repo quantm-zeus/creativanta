@@ -1,7 +1,7 @@
 # Screen: Mobile — Diagnostics
 
-> **Screen ID**: M039
-> **Module**: M26 — Settings
+> **Screen ID**: M059
+> **Module**: M23 — Settings
 > **Route**: `/settings/diagnostics` (mobile)
 > **Platform**: Mobile (Flutter)
 > **Upstream**: A1 Schema (diagnostics_records, service_health), B5 RBAC §2.9
@@ -116,8 +116,8 @@ DiagnosticsScreen
 
 | Screen | Relationship |
 |---|---|
-| [W128] Web Diagnostics | Web equivalent (full) |
-| [M038] Settings | Parent |
+| [W125] Web Diagnostics Center | Web equivalent (full) |
+| [M057] Settings | Parent |
 ---
 ## Error Handling
 

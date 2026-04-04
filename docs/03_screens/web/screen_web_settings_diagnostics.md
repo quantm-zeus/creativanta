@@ -1,7 +1,7 @@
 # Screen: Web — Diagnostics Center
 
-> **Screen ID**: W128
-> **Module**: M26 — Settings (System Health)
+> **Screen ID**: W125
+> **Module**: M23 — Settings
 > **Route**: `/settings/diagnostics`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 10, A1 Schema (diagnostics_records, service_health), B5 RBAC §2.9
@@ -200,8 +200,8 @@ Only Owner and Admin can access Diagnostics.
 | Screen | Relationship |
 |---|---|
 | [W117] Connectors | Platform connections |
-| [W118] Connector Detail | Per-platform settings |
-| [M043] Mobile Diagnostics | Mobile equivalent |
+| [W127] Connected Account Detail | Per-platform settings |
+| [M059] Mobile Diagnostics | Mobile equivalent |
 
 ---
 

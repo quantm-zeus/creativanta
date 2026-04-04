@@ -63,7 +63,7 @@ M06 exists to be the **structured authoring and approval gateway** between ideat
    - writes to `scripts` table with `idea_id`, `title`, `format_type`, `body` (structured scenes)
    - `lifecycle_state = 'draft'`, `approval_state = 'not_submitted'`
    - emits `script.created`
-   - see [04_contracts/api_endpoint_map.md#2.3](../04_contracts/api_endpoint_map.md)
+   - see [04_contracts/api_endpoint_map.md#2.3](../../04_contracts/api_endpoint_map.md)
 2. **User authors scenes**: populates `body` JSONB with scene array `[{scene_id, content, notes, duration_target}]`
    - Adds CTA blocks and disclosure blocks
    - Attaches continuity refs (Character Pack, Brand Pack)
@@ -128,7 +128,7 @@ M06 exists to be the **structured authoring and approval gateway** between ideat
 ## State Machine
 
 Object: script | DB columns: `scripts.lifecycle_state` + `scripts.approval_state`
-see [04_contracts/database_schema.md#6.4](../04_contracts/database_schema.md)
+see [04_contracts/database_schema.md#6.4](../../04_contracts/database_schema.md)
 
 ### Lifecycle State Machine
 
@@ -157,10 +157,10 @@ see [04_contracts/database_schema.md#6.4](../04_contracts/database_schema.md)
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §6.4 (scripts), §6.5 (asset_briefs), §6.6 (scenes, shot_lists) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.3 (ScriptService: Create, Get, Update, SubmitApproval, Approve, Reject) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §4 (script.created, script.submitted_for_approval, script.approved, script.rejected, script.ready_for_production) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.3 (script:create — Contributor+; script:submit — Editor+; script:approve/reject — Manager+) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §6.4 (scripts), §6.5 (asset_briefs), §6.6 (scenes, shot_lists) |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.3 (ScriptService: Create, Get, Update, SubmitApproval, Approve, Reject) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §4 (script.created, script.submitted_for_approval, script.approved, script.rejected, script.ready_for_production) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.3 (script:create — Contributor+; script:submit — Editor+; script:approve/reject — Manager+) |
 
 ## Related Screens
 

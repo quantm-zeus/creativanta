@@ -1,6 +1,6 @@
 # Screen: Mobile — Finance Overview
 
-> **Screen ID**: M034b
+> **Screen ID**: M040
 > **Module**: M19 — Finance
 > **Route**: `/finance` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -98,9 +98,9 @@ FinanceOverviewScreen
 ## 19. Related Screens
 | Screen | Relationship |
 |---|---|
-| [W081] Web Finance Dashboard | Web equivalent |
-| [M034] Revenue | Revenue detail |
-| [M035] Finance Summary | Detailed view |
+| [W080] Web Finance Dashboard | Web equivalent |
+| [M042] Revenue Detail | Revenue detail |
+| [M041] Finance Summary | Detailed view |
 ---
 ## Error Handling
 

@@ -209,7 +209,7 @@ GenerationQueuePage
 | Credit refund status | `credit_transactions WHERE ref=job_id AND type='refund'` | `QueueService/ListFailed` | "✅ Refunded" / "⏳ Processing" | 30s TTL |
 | Output metadata | `assets WHERE generation_job_id=job_id` | `QueueService/ListCompleted` | "720p · 45s · 14.2MB" | Static |
 | Summary counts | Aggregated from above | `QueueService/GetSummary` | Integers | 30s TTL |
-| Credits balance | `credit_transactions.balance` | `CreditService/GetBalance` | "320/1000" | Real-time SSE |
+| Credits balance | `credit_transactions.balance` | `AdminBillingService/GetCreditBalance` | "320/1000" | Real-time SSE |
 
 ---
 
@@ -497,7 +497,7 @@ Generation Queue (/studio/queue)
 
 | Screen | Relationship |
 |---|---|
-| [W021] AI Studio Launcher | Parent navigation |
+| [W021] Studio Launcher | Parent navigation |
 | [W022] Quick Edit | Source of generation jobs |
 | [W023] Clip Factory | Source of generation jobs |
 | [W024] Product Showcase | Source of generation jobs |
@@ -506,7 +506,7 @@ Generation Queue (/studio/queue)
 | [W028] Sound Manager | Source of generation jobs |
 | [W031] Full Video Agent | Source of generation jobs (highest credit cost) |
 | [W056] Packaging QA | Downstream: "Send to Publish" |
-| [M022] Mobile Generation Queue | Mobile equivalent |
+| [M013] Mobile Studio Launcher | Mobile equivalent (includes queue tab) |
 
 ---
 

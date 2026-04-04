@@ -168,12 +168,12 @@ Object: agent_run | DB column: `agent_runs.status`
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §13 (recipe_templates, agent_runs, agent_run_steps) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.8 (Recipe/Agent — ~8 RPCs: Install, Run, Inspect) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §11 (recipe.installed, agent_run.planned, agent_run.completed, agent_run.failed, agent_run.handed_off) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.8 (recipe — Editor+ for install; agent — Editor+ for run, Manager+ for approval) |
-| Pack 03 | [Pack 03 — Agent Runtime Contract](../creativanta_detail_design_pack_03_event_workflow_agent_runtime_contract_v_3_1.md) | §5 (Agent Runtime), §9 (Recipe Contract), §10 (Audit) |
-| Pack 06 S22 | [Pack 06 — Recipe Governance](../creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md) | §S22 (Marketplace governance, revenue share, DMCA) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §19.11 (recipe_templates), §12 (agent_runs). [NOTE: `agent_run_steps` is not defined as a table in the schema — may need to be added during implementation or stored as JSONB within `agent_runs`.] |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.8 (Recipe/Agent — ~8 RPCs: Install, Run, Inspect) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §11 (recipe.installed, agent_run.started, agent_run.completed, agent_run.handed_off). [NOTE: `agent_run.planned` and `agent_run.failed` are not in catalog — implementation may surface these as new events if needed.] |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.9 (recipe — Editor+ for install; agent — Editor+ for run, Manager+ for approval) |
+| Pack 03 | Pack 03 — Agent Runtime Contract <!-- Legacy ref: creativanta_detail_design_pack_03_event_workflow_agent_runtime_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §5 (Agent Runtime), §9 (Recipe Contract), §10 (Audit) |
+| Pack 06 S22 | Pack 06 — Recipe Governance <!-- Legacy ref: creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §S22 (Marketplace governance, revenue share, DMCA) |
 
 ## Related Screens
 
@@ -202,4 +202,4 @@ Object: agent_run | DB column: `agent_runs.status`
 ## Open Questions / Blockers
 
 > ✅ **RESOLVED: API-M-001** (2026-04-02) — `RecipeService` now fully defined in `api_endpoint_map.md` §2.8.2 with 8 RPCs: Install, Uninstall, List, Get, Run, GetRunStatus, ListRuns, Configure. Each RPC has Method, Auth, Rate Limit, Description.
-> Remaining gap: API-M-002 (JSON request/response examples not yet added).
+> ✅ **RESOLVED: API-M-002** (2026-04-02) — JSON examples created in `api_examples.md` (24 examples total). Note: RecipeService does not yet have dedicated JSON examples (Workflow examples in A.14-A.15 cover the parent domain). RecipeService-specific examples can be added during implementation.

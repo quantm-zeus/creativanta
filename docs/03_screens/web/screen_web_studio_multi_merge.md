@@ -1,6 +1,6 @@
 # Screen: Web — Multi-Merge Mode
 
-> **Screen ID**: W27
+> **Screen ID**: W034
 > **Module**: M07 — AI Studio
 > **Route**: `/studio/multi-merge`
 > **Platform**: Web (SvelteKit)
@@ -201,9 +201,9 @@ MultiMergePage
 
 | Screen | Relationship |
 |---|---|
-| [W024] AI Studio Launcher | Parent |
-| [W038] Studio Queue | After creation |
-| [M54] Mobile Multi-Merge | Mobile equivalent |
+| [W021] Studio Launcher | Parent |
+| [W030] Studio Queue | After creation |
+| [M013] Mobile Studio Launcher | Mobile equivalent (multi-merge via studio) |
 
 ---
 

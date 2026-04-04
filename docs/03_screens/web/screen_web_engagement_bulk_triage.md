@@ -1,7 +1,7 @@
 # Screen: Web — Bulk Triage
 
-> **Screen ID**: W54
-> **Module**: M09 — Engagement
+> **Screen ID**: W050
+> **Module**: M12 — Unified Inbox & Engagement
 > **Route**: `/inbox/triage`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §20, A1 Schema (threads, messages, intents)
@@ -94,7 +94,7 @@ BulkTriagePage
 | 2 | Skip | Swipe left or "⏭ Skip" | `ThreadService/MarkRead` | Card exits left, next card |
 | 3 | Edit & send | "✏️ Edit" → edit → send | Edit then reply API | Card exits, next card |
 | 4 | Assign | "👤 Assign" → picker → confirm | `ThreadService/Assign` | Assigned, next card |
-| 5 | Follow-up | "📌 Follow-up" | `FollowUpTaskService/Create` | Task created, next card |
+| 5 | Follow-up | "📌 Follow-up" | `FollowUpService/Create` | Task created, next card |
 | 6 | Mute | "🔇 Mute" | `ThreadService/Mute` | Muted, next card |
 | 7 | Exit | "✕ Exit" | — | → `/inbox` | 
 
@@ -230,10 +230,10 @@ BulkTriagePage
 
 | Screen | Relationship |
 |---|---|
-| [W049] Unified Inbox | Parent — triage mode access |
-| [W050] Thread Detail | Full thread view |
-| [W053] Follow-up Tasks | Tasks from triage |
-| [M007] Mobile Inbox | Mobile triage (limited) |
+| [W046] Unified Inbox | Parent — triage mode access |
+| [W047] Thread Detail | Full thread view |
+| [W051] Follow-up Tasks | Tasks from triage |
+| [M019] Mobile Inbox | Mobile triage (limited) |
 
 ---
 

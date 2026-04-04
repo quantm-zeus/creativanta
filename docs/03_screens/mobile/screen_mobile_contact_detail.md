@@ -1,6 +1,6 @@
 # Screen: Mobile — Contact Detail
 
-> **Screen ID**: M049
+> **Screen ID**: M022
 > **Module**: M13 — Engagement & CRM
 > **Route**: `/contacts/[id]` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -94,9 +94,9 @@ ContactDetailScreen
 ## 19. Related Screens
 | Screen | Relationship |
 |---|---|
-| [W051] Web Contact Detail | Web equivalent |
-| [M048] Contact List | Parent |
-| [M008] Thread Detail | Conversations |
+| [W049] Web Contact Detail | Web equivalent |
+| [M021] Contact List | Parent |
+| [M020] Thread Detail | Conversations |
 ---
 ## Error Handling
 

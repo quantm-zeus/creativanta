@@ -1,6 +1,6 @@
 # Screen: Web — A/B Testing Engine
 
-> **Screen ID**: W32
+> **Screen ID**: W027
 > **Module**: M07 — AI Studio
 > **Route**: `/studio/ab-test`
 > **Platform**: Web (SvelteKit)
@@ -204,9 +204,9 @@ ABTestingPage
 
 | Screen | Relationship |
 |---|---|
-| [W024] AI Studio Launcher | Parent |
-| [W109] Analytics | Test results deep-dive |
-| [W038] Studio Queue | Variant generation tracking |
+| [W021] Studio Launcher | Parent |
+| [W075] Analytics Overview | Test results deep-dive |
+| [W030] Studio Queue | Variant generation tracking |
 
 ---
 

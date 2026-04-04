@@ -1,7 +1,7 @@
 # Screen: Web — Publish Composer
 
-> **Screen ID**: W048
-> **Module**: M08 — Publish
+> **Screen ID**: W052
+> **Module**: M11 — Publish Hub
 > **Route**: `/publish/compose`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §18-19, A1 Schema (publish_items, assets, connectors), B5 RBAC §2.7
@@ -250,7 +250,7 @@ PublishComposerPage
 | 9 | Select "Đăng ngay" | Radio button | Client-side | Schedule UI hidden | `publish:create` |
 | 10 | Select "Lên lịch" | Radio button → date/time picker | Client-side | Date/time pickers appear. AI suggestion shown. | `publish:create` |
 | 11 | Accept AI time | Click AI suggestion | Client-side | Time picker auto-fills with suggested time | `publish:create` |
-| 12 | Tag product | "🛍️ Tag sản phẩm" → modal | `ProductService/List` | Product picker → select → product linked | `publish:create` + `commerce:read` |
+| 12 | Tag product | "🛍️ Tag sản phẩm" → modal | `ProductService/List` | Product picker → select → product linked | `publish:create` + `product:read` |
 | 13 | QA check | "📋 QA Check" | — | Navigate to Packaging QA (W056) with current compose state | `publish:create` |
 | 14 | Publish now | "📤 Đăng" (when "Đăng ngay") → confirm | `PublishService/Execute(data)` | Publish item created → navigate to Queue | `publish:execute` |
 | 15 | Schedule publish | "📤 Lên lịch" (when scheduled) → confirm | `PublishService/Schedule(data, datetime)` | Scheduled item created → navigate to Calendar | `publish:execute` |
@@ -508,11 +508,11 @@ function onFormChange() {
 | Screen | Relationship |
 |---|---|
 | [W056] Packaging QA | Pre-publish QA check |
-| [W043] Publish Queue | Destination after instant publish |
-| [W046] Schedule Calendar | Destination after scheduled publish |
-| [W030] Generation Queue | Upstream: completed AI assets |
-| [W007] Quick Action FAB | Entry: "📤 Đăng bài nhanh" |
-| [M006] Mobile Quick Publish | Mobile equivalent |
+| [W053] Publish Queue | Destination after instant publish |
+| [W054] Publish Calendar | Destination after scheduled publish |
+| [W030] Studio Queue | Upstream: completed AI assets |
+| [W005] Quick Actions | Entry: "📤 Đăng bài nhanh" |
+| [M023] Mobile Quick Publish | Mobile equivalent |
 
 ---
 
@@ -520,5 +520,5 @@ function onFormChange() {
 
 | Date | Version | Change | Author |
 |---|---|---|---|
-| 2026-03-29 | 2.0 | **Full Tier A rewrite**: Upgraded from 192-line Tier C with generic boilerplate to 470+ line full spec. Added: complete split-screen compose/preview hierarchy, per-platform caption overrides, AI caption/hashtag generation with credit check, real-time preview validation, auto-save draft system, AI best posting time, media upload with progress, format validation per platform, 10 analytics events. Removed all generic boilerplate. Standardized Screen ID from W47 to W048. | System |
+| 2026-03-29 | 2.0 | **Full Tier A rewrite**: Upgraded from 192-line Tier C with generic boilerplate to 470+ line full spec. Added: complete split-screen compose/preview hierarchy, per-platform caption overrides, AI caption/hashtag generation with credit check, real-time preview validation, auto-save draft system, AI best posting time, media upload with progress, format validation per platform, 10 analytics events. Removed all generic boilerplate. Standardized Screen ID from W47 to W052. | System |
 | 2026-03-28 | 1.0 | Initial specification (Tier C) | System |

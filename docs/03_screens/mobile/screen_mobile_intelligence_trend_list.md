@@ -1,6 +1,6 @@
 # Screen: Mobile — Trend List
 
-> **Screen ID**: M14
+> **Screen ID**: M017
 > **Module**: M02 — Trend Radar
 > **Route**: `/trends` (mobile app)
 > **Platform**: Mobile (Flutter)
@@ -88,7 +88,7 @@ Same API as [W09] Web Trend Radar with mobile-optimized payload.
 |---|---|---|---|---|
 | 1 | Open detail | Tap card | — | Push → M15 Trend Detail |
 | 2 | Create idea | "💡 Tạo ý tưởng" | `IdeaService/Create(from_trend_id)` | Toast + navigate |
-| 3 | Save to watchlist | "📌 Lưu" or swipe right | `WatchlistService/AddItem` | Haptic + pin fills |
+| 3 | Save to watchlist | "📌 Lưu" or swipe right | `TrendService/ManageWatchlist` | Haptic + pin fills |
 | 4 | Filter platform | Tap chip | Refetch | List filters |
 | 5 | Pull refresh | Gesture | Refetch | List updates |
 
@@ -119,9 +119,9 @@ Same API as [W09] Web Trend Radar with mobile-optimized payload.
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [W09] Web Trend Radar | Web equivalent |
-| [M15] Mobile Trend Detail | Detail after tap |
-| [M01] Mobile Home | AI Pulse links here |
+| [W038] Web Trend Radar | Web equivalent |
+| [W039] Trend Detail | Detail after tap (web) |
+| [M001] Mobile Home | AI Pulse links here |
 
 ### Revision History
 | Date | Version | Change |

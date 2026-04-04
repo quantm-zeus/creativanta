@@ -1,6 +1,6 @@
 # Screen: Web — Affiliate Manager
 
-> **Screen ID**: W063
+> **Screen ID**: W070
 > **Module**: M14 — Monetization & Affiliates
 > **Route**: `/affiliate`
 > **Platform**: Web (SvelteKit)
@@ -51,7 +51,7 @@ The Affiliate Manager is the command center for all affiliate/referral links. It
 
 ### Preconditions
 - User authenticated with valid workspace session
-- User has `affiliate:read` permission (Manager+ for financial data)
+- User has `affiliate:manage` permission (Manager+ for financial data)
 - At least one product exists in catalog (for link creation)
 - Affiliate tracking service active (redirect service)
 
@@ -201,18 +201,18 @@ AffiliateManagerPage
 |---|---|---|---|---|---|---|
 | 1 | Create affiliate link | "+ Tạo link mới" → modal submit | `AffiliateService/Create(data)` | New `affiliate_links` row + `short_url` generated | Modal closes → new card appears at top → Toast "✅ Link đã tạo" | `affiliate:manage` |
 | 2 | Copy link URL | Click "📋 Copy" | — (clipboard) | — | Toast "📋 Đã copy link" | Any |
-| 3 | View detail | Click "→ Chi tiết" | — | — | Navigate → `/affiliate/[id]` | `affiliate:read` |
-| 4 | View analytics | Click "📊 Analytics" | — | — | Navigate → `/affiliate/[id]/analytics` | `affiliate:read` |
+| 3 | View detail | Click "→ Chi tiết" | — | — | Navigate → `/affiliate/[id]` | `affiliate:manage` |
+| 4 | View analytics | Click "📊 Analytics" | — | — | Navigate → `/affiliate/[id]/analytics` | `affiliate:manage` |
 | 5 | Edit link | Click "✏ Edit" | — | — | Navigate → `/affiliate/[id]/edit` or inline modal | `affiliate:manage` |
 | 6 | Pause link | Click "⏸ Tạm dừng" | `AffiliateService/Pause(id)` | `status = 'paused'` | Optimistic: badge → ⏸, card moves tab. Toast "⏸ Link đã tạm dừng" | `affiliate:manage` |
 | 7 | Resume link | Click "▶ Tiếp tục" (on paused) | `AffiliateService/Resume(id)` | `status = 'active'` | Optimistic: badge → 🟢. Toast "▶ Link hoạt động" | `affiliate:manage` |
 | 8 | Delete link | "⋮" → "Xóa" → confirm | `AffiliateService/Delete(id)` | Soft delete | Card removed. Toast "Đã xóa link" | `affiliate:manage` |
-| 9 | Change period | Period selector | Refetch all with new period | — | KPIs + link metrics update | `affiliate:read` |
-| 10 | Switch tab | Click tab | `AffiliateService/List(status=tab)` | — | List filters. URL: `?tab=active` | `affiliate:read` |
-| 11 | Search | Type in search | `AffiliateService/List(query=...)` | — | Debounced 300ms filter | `affiliate:read` |
-| 12 | Sort | Select sort option | `AffiliateService/List(sort=...)` | — | List re-sorts | `affiliate:read` |
-| 13 | Export report | "📤 Export" | `AffiliateService/ExportReport(period, format)` | — | CSV/PDF download | `affiliate:read` |
-| 14 | View source content | Click content chip | — | — | Navigate → `/publish/items/[content_id]` | `content:read` |
+| 9 | Change period | Period selector | Refetch all with new period | — | KPIs + link metrics update | `affiliate:manage` |
+| 10 | Switch tab | Click tab | `AffiliateService/List(status=tab)` | — | List filters. URL: `?tab=active` | `affiliate:manage` |
+| 11 | Search | Type in search | `AffiliateService/List(query=...)` | — | Debounced 300ms filter | `affiliate:manage` |
+| 12 | Sort | Select sort option | `AffiliateService/List(sort=...)` | — | List re-sorts | `affiliate:manage` |
+| 13 | Export report | "📤 Export" | `AffiliateService/ExportReport(period, format)` | — | CSV/PDF download | `affiliate:manage` |
+| 14 | View source content | Click content chip | — | — | Navigate → `/publish/items/[content_id]` | `idea:read` |
 
 ---
 
@@ -262,7 +262,7 @@ AffiliateManagerPage
 ### Visibility Rules
 - **Editor**: Can view links and copy URLs but commission column hidden. No action buttons.
 - **Contributor/Viewer/External**: Sidebar item hidden. Direct URL → permission denied.
-- Financial data (commission, revenue) requires `finance:read` in addition to `affiliate:read`.
+- Financial data (commission, revenue) requires `profit:read` in addition to `affiliate:manage`.
 
 ---
 
@@ -432,12 +432,12 @@ Affiliate Manager (/affiliate)
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [W058] Offer Detail | Linked — offers can generate affiliate links |
+| [W067] Offer Detail | Linked — offers can generate affiliate links |
 | [W061] Product Detail | Linked — product selection for link creation |
 | [W065] Campaign Detail | Linked — affiliate commission in campaign costs |
 | [W082] Revenue Detail | Linked — affiliate revenue attribution |
 | [W088] Creator Pro | Linked — affiliate as revenue stream for creators |
-| [M045] Mobile Affiliate | Mobile equivalent |
+| [M032] Mobile Affiliates | Mobile equivalent |
 
 ### Revision History
 | Date | Version | Change | Author |

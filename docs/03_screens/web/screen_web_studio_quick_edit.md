@@ -1,6 +1,6 @@
 # Screen: Web — Quick Edit Mode
 
-> **Screen ID**: W025
+> **Screen ID**: W022
 > **Module**: M07 — AI Studio
 > **Route**: `/studio/quick-edit`
 > **Platform**: Web (SvelteKit)
@@ -627,11 +627,11 @@ function calculateCredits(editState) {
 
 | Screen | Relationship |
 |---|---|
-| [W024] AI Studio Launcher | Parent: entry point |
-| [W026] Clip Factory | Upstream: clips sent to Quick Edit for polish |
-| [W030] Generation Queue | Downstream: job processing after apply |
-| [W048] Publish Composer | Downstream: publish completed asset |
-| [M052] Mobile Quick Edit | Mobile equivalent |
+| [W021] Studio Launcher | Parent: entry point |
+| [W023] Clip Factory | Upstream: clips sent to Quick Edit for polish |
+| [W030] Studio Queue | Downstream: job processing after apply |
+| [W052] Publish Composer | Downstream: publish completed asset |
+| [M014] Mobile Quick Edit | Mobile equivalent |
 
 ---
 
@@ -639,5 +639,5 @@ function calculateCredits(editState) {
 
 | Date | Version | Change | Author |
 |---|---|---|---|
-| 2026-03-29 | 2.0 | **Full Tier A rewrite**: Upgraded from 291-line Tier B/C with generic boilerplate to 530+ line full spec. Added: 3-step progressive UI (Upload → Analyzing → Editing Canvas), complete transcript panel with word-level interaction, AI detection summary with hook quality scoring, 9 edit plan options with credit cost breakdown, client-side preview architecture, SSE streaming for transcription progress, undo/redo stack specification, Svelte store edit state management, transcript-video sync algorithm, duration-based processing estimates, Vietnamese filler word list, 13 analytics events. Removed all generic boilerplate. Standardized Screen ID from W25 to W025. | System |
+| 2026-03-29 | 2.0 | **Full Tier A rewrite**: Upgraded from 291-line Tier B/C with generic boilerplate to 530+ line full spec. Added: 3-step progressive UI (Upload → Analyzing → Editing Canvas), complete transcript panel with word-level interaction, AI detection summary with hook quality scoring, 9 edit plan options with credit cost breakdown, client-side preview architecture, SSE streaming for transcription progress, undo/redo stack specification, Svelte store edit state management, transcript-video sync algorithm, duration-based processing estimates, Vietnamese filler word list, 13 analytics events. Removed all generic boilerplate. Standardized Screen ID from W25 to W022. | System |
 | 2026-03-28 | 1.0 | Initial specification (Tier B) | System |

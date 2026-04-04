@@ -1,6 +1,6 @@
 # Screen: Admin — Audit Log
 
-> **Screen ID**: A11
+> **Screen ID**: A010
 > **Module**: Admin — Security
 > **Route**: `/admin/audit-log`
 > **Platform**: Web (SvelteKit) — VPN-only
@@ -66,10 +66,10 @@ AuditLogPage
 
 | # | Action | Trigger | Result | Permission |
 |---|---|---|---|---|
-| 1 | Search | Search input | Full-text search across logs | `admin:audit` |
-| 2 | Filter | Dropdown selections | List filters | `admin:audit` |
-| 3 | View details | "→ Details" | Expanded view with full payload | `admin:audit` |
-| 4 | Export | Export buttons | CSV/PDF download | `admin:audit` |
+| 1 | Search | Search input | Full-text search across logs | `admin:audit_log:read` |
+| 2 | Filter | Dropdown selections | List filters | `admin:audit_log:read` |
+| 3 | View details | "→ Details" | Expanded view with full payload | `admin:audit_log:read` |
+| 4 | Export | Export buttons | CSV/PDF download | `admin:report:export` |
 
 ### Severity Levels
 | Level | Icon | Examples |

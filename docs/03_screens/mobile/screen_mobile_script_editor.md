@@ -1,6 +1,6 @@
 # Screen: Mobile — Script Editor
 
-> **Screen ID**: M014
+> **Screen ID**: M011
 > **Module**: M06 — Script Lab
 > **Route**: `/scripts/[id]` (mobile app)
 > **Platform**: Mobile (Flutter)
@@ -44,7 +44,7 @@ The Mobile Script Editor allows creators to view, edit, and approve scripts on-t
 ### Preconditions
 - User has `script:read` permission (all members except External)
 - Script exists and belongs to user's workspace
-- If editing: user has `script:update` permission
+- If editing: user has `script:edit` permission
 
 ### Postconditions
 - Auto-save persists all edits (last-write-wins with conflict detection)
@@ -169,15 +169,15 @@ MobileScriptEditorPage
 
 | # | Action | Trigger | Type | API Call | System Response | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Edit section text | Tap section → keyboard opens | Edit | Auto-save 2s after last keystroke `ScriptService/Update` | "💾 Saved" indicator | `script:update` |
+| 1 | Edit section text | Tap section → keyboard opens | Edit | Auto-save 2s after last keystroke `ScriptService/Update` | "💾 Saved" indicator | `script:edit` |
 | 2 | Regenerate section | "🤖 Regenerate" | AI action | `CopilotService/RegenerateSection(section_id)` | Section shimmers → new text appears. Haptic medium. | `copilot:use_creative` |
 | 3 | Read aloud | "🔊" | TTS | Client-side TTS (on-device) | Audio plays, words highlighted in editor | Any |
-| 4 | Voice input | "🎤" → speak | Input | On-device STT → text into editor | Transcribed text replaces section content | `script:update` |
+| 4 | Voice input | "🎤" → speak | Input | On-device STT → text into editor | Transcribed text replaces section content | `script:edit` |
 | 5 | Start timer | "▶ Start" | Timer | — | Timer counts up, per-section timing logged | Any |
-| 6 | Send for review | "📤 Gửi review" | Status | `ScriptService/Update(status=in_review)` | Toast "Script đã gửi review". Notification to reviewers. | `script:submit_review` |
+| 6 | Send for review | "📤 Gửi review" | Status | `ScriptService/Update(status=in_review)` | Toast "Script đã gửi review". Notification to reviewers. | `script:edit` |
 | 7 | Approve | "✅ Approve" | Status | `ScriptService/Update(status=approved)` | Toast "Script đã duyệt ✅". Haptic success. | `script:approve` (Manager+) |
 | 8 | Go to production | "🎬 → Production" | Navigate | — | → AI Studio mode picker with script context | `asset:generate` |
-| 9 | Edit title | Long-press title → edit mode | Edit | `ScriptService/Update(title)` | Title updates, auto-save | `script:update` |
+| 9 | Edit title | Long-press title → edit mode | Edit | `ScriptService/Update(title)` | Title updates, auto-save | `script:edit` |
 | 10 | Duplicate | ⋮ → "Duplicate" | Create | `ScriptService/Duplicate(id)` | Toast "Script đã nhân bản" → new script created | `script:create` |
 | 11 | Delete | ⋮ → "Xóa" → confirm | Destructive | `ScriptService/Delete(id)` | Confirmation dialog (S007) → navigate ← Scripts | `script:delete` |
 | 12 | Export | ⋮ → "Xuất file" | Export | Client-side | Share sheet with TXT content | `script:read` |
@@ -336,11 +336,11 @@ onRegenerate(section_id):
 
 | Screen | Relationship |
 |---|---|
-| [W021] Web Script Editor | Web equivalent (richer, split-panel with AI chat) |
-| [M013] Script List | Parent list |
+| [W016] Web Script Editor | Web equivalent (richer, split-panel with AI chat) |
+| [M010] Script List | Parent list |
 | [M008] Mobile Idea Board | Upstream idea source |
 | [M060] Mobile Copilot | AI context for script creation |
-| [M021] Mobile Studio | Downstream production |
+| [M013] Mobile Studio Launcher | Downstream production |
 ---
 ## Error Handling
 

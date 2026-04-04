@@ -1,7 +1,7 @@
 # Screen: Mobile — Live War Room
 
 > **Screen ID**: M055
-> **Module**: M09 — Live Stream
+> **Module**: M17 — Live Commerce War Room
 > **Route**: `/live/[streamId]` (mobile)
 > **Platform**: Mobile (Flutter)
 > **Upstream**: A1 Schema (live_streams, live_metrics), B5 RBAC §2.7
@@ -98,7 +98,7 @@ LiveWarRoomScreen
 ## 19. Related Screens
 | Screen | Relationship |
 |---|---|
-| [W055] Web Live War Room | Web equivalent |
+| [W109] Web Live War Room | Web equivalent |
 ---
 ## Error Handling
 

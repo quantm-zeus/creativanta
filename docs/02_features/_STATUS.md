@@ -1,7 +1,7 @@
 ---
 layer: features
 canonical: true
-last_updated: 2026-04-02
+last_updated: 2026-04-06
 ---
 
 # Feature Docs Status
@@ -36,23 +36,36 @@ last_updated: 2026-04-02
 | M22 | platform | platform/capability_matrix.md | READY | ✅ API §2.8.7 (5 RPCs) + JSON A.20 | P3E |
 | M23 | platform | platform/reporting_admin_billing.md | READY | ✅ API §2.8.6 (14 RPCs) + JSON A.18-A.19. invoices + payment_methods added | P3E |
 | auth | platform | platform/auth.md | READY | ✅ API §2.1 verified (15 RPCs) + JSON A.1 | P3E |
+| — | **Supplementary Specs** | — | — | — | — |
+| S16 | commerce | commerce/creator_pro_tools.md | READY | ✅ API §5 (7 services, 28+ RPCs). Link-in-Bio, Media Kit, Brand Deals | P3E |
+| S24 | platform | platform/public_api.md | READY | ✅ API §4 (2 services). API keys, webhooks, OAuth scopes | P3E |
+| S26 | platform | platform/internal_admin.md | READY | ✅ API §6 + §34 (8 services, 200+ RPCs). Internal admin panel | P3E |
+| copilot | platform | platform/copilot.md | READY | ✅ API §2.8 CopilotService (5 RPCs) | P3E |
+| referral | platform | platform/referral_growth.md | READY | ✅ API §2.8.11 ReferralService (5 RPCs) + JSON A.21 | P3E |
+| gamification | platform | platform/gamification.md | READY | ✅ API §8 GamificationService (6 RPCs) | P3E |
+| help | platform | platform/help_center.md | READY | ✅ Help Center, Changelog, Beta, Status Page | P3E |
 
 ## Summary
 
 | Status | Count | Note |
 |--------|-------|------|
-| READY | **25** | Full alignment: Feature + Schema + API + JSON examples + Screen |
+| READY | **31** | Doc-spec alignment: Feature + Schema + API service name + JSON examples + Screen (see caveats below) |
 | DRAFT | 0 | — |
 | BLOCKED | **0** | ✅ All blockers resolved |
-| **Total** | **24 + auth** | |
+| **Total** | **31** | 23 core (M01-M23) + auth + 3 supplementary (copilot, referral, help) + 3 specs (S16, S24, S26) + gamification |
 
 > **Final state (2026-04-02)**:
-> - **25/25 modules READY.** Zero DRAFT. Zero BLOCKED.
-> - **28/28 cross-layer aligned.** Zero partial. Zero gaps.
-> - Schema: ~122 tables with RLS, deleted_at, CHECK constraints
-> - API: ~473 RPCs + 14 public endpoints + 6 webhooks with sig verification
-> - Events: ~217 events with 74-row CamelCase mapping
+> - **31/31 feature modules READY.** Zero DRAFT. Zero BLOCKED. All M07 blockers (API-C-001, API-H-001, API-H-002) confirmed RESOLVED. Includes 23 core (M01-M23) + auth + 7 supplementary/spec modules.
+> - **28/28 doc-spec aligned** (feature doc ↔ schema ↔ screens ↔ API service name). ⚠️ NOT full-contract aligned — ~572 screen-referenced RPCs lack concrete canonical API definitions (see API-C-002 in OPEN_BLOCKERS.md).
+> - Schema: ~122 tables with RLS, deleted_at, CHECK constraints (design-level; DDL not yet deployed)
+> - API: ~346 canonical RPC definitions in `api_endpoint_map.md` (§1-§9) + 14 public endpoints + 6 webhooks. Screen-derived RPCs (~150 rows) relocated to `screen_api_reconciliation.md` §5 (2026-04-06). Note: `protobuf_contracts.md` covers ~310 RPCs (key services subset). Actual `.proto` files will be created during implementation Phase 1.
+> - Events: 225 canonical event types with 74-row CamelCase mapping
 > - Error catalog: 30+ codes, gRPC↔HTTP, retry policies, bilingual UX
-> - Business rules: 10/10 DECISION (BIZ-002/007 PROPOSED defaults)
+> - Business rules: 10/10 DECISION (BIZ-002/007 FINALIZED)
 > - JSON examples: 24 concrete request/response payloads
-> - **Documentation corpus is 100% implementation-ready for autonomous AI codegen.**
+>
+> **Readiness caveats**:
+> - Feature docs: READY (all 31/31 — 23 core M01-M23 + auth + 7 supplementary/spec modules).
+> - Contract docs: Spec-complete, not codegen-complete (`.proto` files not yet created; `protobuf_contracts.md` is an overview doc).
+> - Ops docs: Mixed (`ci_cd_pipeline.md` is still SCAFFOLD; `observability.md` and `runbook.md` are READY).
+> - This corpus is **documentation-complete and spec-ready for implementation**. It is NOT a claim that all infrastructure or codegen artifacts exist.

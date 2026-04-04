@@ -1,6 +1,6 @@
 # Screen: Admin — Usage Analytics
 
-> **Screen ID**: A22
+> **Screen ID**: A023
 > **Module**: Admin — Analytics
 > **Route**: `/admin/analytics/usage`
 > **Platform**: Admin Web (SvelteKit) — VPN-only
@@ -91,8 +91,8 @@ UsageAnalyticsPage
 ## 19. Related Screens
 | Screen | Relationship |
 |---|---|
-| [A23] Business Analytics | Revenue metrics |
-| [A05] Workspace Detail | Per-workspace drill-down |
+| [A024] Business Analytics | Revenue metrics |
+| [A005] Workspace Detail | Per-workspace drill-down |
 ---
 ## Error Handling
 

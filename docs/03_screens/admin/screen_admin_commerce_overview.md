@@ -196,9 +196,9 @@ AdminCommerceOverviewPage
 | Screen | Relationship |
 |---|---|
 | [A001] Admin Dashboard | Parent |
-| [A019] Fee Configuration | Commerce fee settings |
-| [A020] Dispute Management | Commerce disputes |
-| [A021] Workspace Detail | Per-workspace detail |
+| [A020] Fee Management | Commerce fee settings |
+| [A019] Commerce Disputes | Commerce disputes |
+| [A005] Workspace Detail | Per-workspace detail |
 ---
 ## Error Handling
 

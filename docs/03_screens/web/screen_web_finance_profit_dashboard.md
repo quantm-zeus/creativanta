@@ -1,6 +1,6 @@
 # Screen: Web — Profit Dashboard
 
-> **Screen ID**: W070
+> **Screen ID**: W081
 > **Module**: M19 — Operating Ledger / Profit Graph / Proof
 > **Route**: `/finance`
 > **Platform**: Web (SvelteKit)
@@ -48,7 +48,7 @@ The Profit Dashboard is the financial cockpit of Creativanta — showing real ne
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `finance:read` permission (Owner, Admin, Manager only — financial data is sensitive)
+- User has `profit:read` permission (Owner, Admin, Manager only — financial data is sensitive)
 - At least one revenue source connected or manual revenue entry exists
 - Financial data aggregation pipeline has run (ClickHouse materialized views)
 
@@ -233,19 +233,19 @@ ProfitDashboardPage
 
 | # | Action | Trigger | Type | API Call | System Response | Navigation | Permission |
 |---|---|---|---|---|---|---|---|
-| 1 | Change period | Period selector dropdown | Filter | Refetch all data | Dashboard updates with animation | — | `finance:read` |
-| 2 | Export PDF | "📤 Export" → "PDF" | Export | `FinanceService/ExportReport(period, 'pdf')` | PDF download | — | `finance:read` |
-| 3 | Export CSV | "📤 Export" → "CSV" | Export | `FinanceService/ExportReport(period, 'csv')` | CSV download | — | `finance:read` |
-| 4 | View revenue detail | Click revenue card "Detail →" | Navigate | — | — | → `/finance/revenue` | `finance:read` |
-| 5 | View revenue segment | Click donut segment | Navigate | — | — | → `/finance/revenue?platform=[id]` | `finance:read` |
-| 6 | View product detail | Click bar in product chart | Navigate | — | — | → `/products/[id]` | `finance:read` |
-| 7 | View cost detail | Click cost category row | Navigate | — | — | → `/finance/costs?category=[cat]` | `finance:read` |
-| 8 | Add new cost | "+ Thêm chi phí mới" | Create | — | Modal: cost entry form | — | `finance:manage` |
-| 9 | View proof bundle | Click proof badge | Navigate | — | — | → `/finance/proof/[id]` | `finance:proof` |
-| 10 | Upload settlement | "📋 Upload settlement file" | Upload | `SettlementService/Upload(file)` | Upload modal → processing → reconciliation | — | `finance:manage` |
-| 11 | View reconciliation | "Chi tiết reconciliation →" | Navigate | — | — | → `/finance/reconciliation` | `finance:reconcile` |
-| 12 | Export for tax | "📤 Export for tax →" | Export | `FinanceService/ExportTaxReport(quarter)` | Formatted tax export download | — | `finance:read` |
-| 13 | Toggle tax section | Click tax section header | Toggle | — | Section expands/collapses | — | `finance:read` |
+| 1 | Change period | Period selector dropdown | Filter | Refetch all data | Dashboard updates with animation | — | `profit:read` |
+| 2 | Export PDF | "📤 Export" → "PDF" | Export | `FinanceService/ExportReport(period, 'pdf')` | PDF download | — | `profit:read` |
+| 3 | Export CSV | "📤 Export" → "CSV" | Export | `FinanceService/ExportReport(period, 'csv')` | CSV download | — | `profit:read` |
+| 4 | View revenue detail | Click revenue card "Detail →" | Navigate | — | — | → `/finance/revenue` | `profit:read` |
+| 5 | View revenue segment | Click donut segment | Navigate | — | — | → `/finance/revenue?platform=[id]` | `profit:read` |
+| 6 | View product detail | Click bar in product chart | Navigate | — | — | → `/products/[id]` | `profit:read` |
+| 7 | View cost detail | Click cost category row | Navigate | — | — | → `/finance/costs?category=[cat]` | `profit:read` |
+| 8 | Add new cost | "+ Thêm chi phí mới" | Create | — | Modal: cost entry form | — | `reconciliation:manage` |
+| 9 | View proof bundle | Click proof badge | Navigate | — | — | → `/finance/proof/[id]` | `proof_bundle:read` |
+| 10 | Upload settlement | "📋 Upload settlement file" | Upload | `SettlementService/Upload(file)` | Upload modal → processing → reconciliation | — | `reconciliation:manage` |
+| 11 | View reconciliation | "Chi tiết reconciliation →" | Navigate | — | — | → `/finance/reconciliation` | `reconciliation:manage` |
+| 12 | Export for tax | "📤 Export for tax →" | Export | `FinanceService/ExportTaxReport(quarter)` | Formatted tax export download | — | `profit:read` |
+| 13 | Toggle tax section | Click tax section header | Toggle | — | Section expands/collapses | — | `profit:read` |
 
 ---
 ## 7. Validation Rules
@@ -398,7 +398,7 @@ ProfitDashboardPage
 - **Server load**: `+page.server.ts` → fetch summary + breakdown data
 - **Charts**: `layerchart` library (SvelteKit-optimized, SSR-friendly)
 - **Export PDF**: Client-side `pdf-lib` with chart screenshots via `html2canvas`
-- **Export CSV**: Server-side generation via `FinanceService/ExportReport`
+- **Export CSV**: Server-side generation via `ProfitService/GetSummary`
 - **Financial data**: Read-only from external platforms. Manual entries only for costs.
 - **Privacy**: No `localStorage` caching of financial data. Data cleared on logout.
 
@@ -435,7 +435,7 @@ Every financial number has a `source_class` (S009) from the canonical taxonomy:
 | [W085] Proof Browser | Evidence audit trail |
 | [W086] Settlements | Payment tracking |
 | [W087] Financial Reports | Report generation |
-| [M034] Mobile Profit Summary | Mobile equivalent |
+| [M041] Mobile Finance Summary | Mobile equivalent |
 | [S009] Trust Badge | Source class taxonomy |
 
 ---

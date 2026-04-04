@@ -1,7 +1,7 @@
 # Screen: Web — Idea Board
 
-> **Screen ID**: W017
-> **Module**: M04 — Content Creation (Ideas)
+> **Screen ID**: W012
+> **Module**: M05 — Idea Engine
 > **Route**: `/ideas`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §12/§13, A1 Schema (ideas, idea_scores, idea_tags), B5 RBAC §2.4
@@ -253,23 +253,23 @@ IdeaBoardPage
 
 | # | Action | Trigger | API Call | System Response | Permission |
 |---|---|---|---|---|---|
-| 1 | Drag to new stage | Drag card to column | `IdeaService/UpdateStatus(id, new_status)` | Card animates to new column. Counter updates. Optimistic. | `idea:update` |
-| 2 | Reorder within column | Drag card within same column | `IdeaService/Reorder(id, new_position)` | Card moves vertically. Optimistic. | `idea:update` |
+| 1 | Drag to new stage | Drag card to column | `IdeaService/UpdateStatus(id, new_status)` | Card animates to new column. Counter updates. Optimistic. | `idea:create` |
+| 2 | Reorder within column | Drag card within same column | `IdeaService/Reorder(id, new_position)` | Card moves vertically. Optimistic. | `idea:create` |
 | 3 | Create idea (quick add) | "+ Thêm" → modal → submit | `IdeaService/Create(data)` | Card appears in Inbox with slide-in animation. AI scoring starts (async). Toast: "✅ Ý tưởng đã tạo!" | `idea:create` |
 | 4 | Create & add more | "Tạo & thêm tiếp" in modal | Same | Card created + form resets for next entry | `idea:create` |
-| 5 | AI generate ideas | "🤖 AI Generate" | — | Navigate → `/ideas/generate` | `idea:generate` + credits |
+| 5 | AI generate ideas | "🤖 AI Generate" | — | Navigate → `/ideas/generate` | `idea:create` + credits |
 | 6 | View idea detail | Click card title or "👁 Xem chi tiết" | — | Navigate → `/ideas/[id]` | `idea:read` |
 | 7 | Write script from idea | "📝 Viết script" on card | — | Navigate → `/scripts/new?idea_id=[id]`. Idea status → "In Script". | `script:create` |
-| 8 | Re-score idea | "⭐ Re-score" in overflow | `IdeaService/ResScore(id)` | Score badge shows spinner → updates with new score | `idea:update` + credits |
-| 9 | Edit tags | "🏷 Sửa tags" → inline editor | `IdeaService/UpdateTags(id, tags[])` | Tag chips updated | `idea:update` |
-| 10 | Change platform | "📱 Đổi platform" → selector | `IdeaService/Update(id, { platform })` | Platform icon changes | `idea:update` |
+| 8 | Re-score idea | "⭐ Re-score" in overflow | `IdeaService/ResScore(id)` | Score badge shows spinner → updates with new score | `idea:create` + credits |
+| 9 | Edit tags | "🏷 Sửa tags" → inline editor | `IdeaService/UpdateTags(id, tags[])` | Tag chips updated | `idea:create` |
+| 10 | Change platform | "📱 Đổi platform" → selector | `IdeaService/Update(id, { platform })` | Platform icon changes | `idea:create` |
 | 11 | Duplicate idea | "📋 Duplicate" | `IdeaService/Clone(id)` | Copy appears in Inbox: "{title} (copy)". Toast: "Đã tạo bản sao." | `idea:create` |
-| 12 | Delete idea | "🗑 Xóa" → confirm modal | `IdeaService/Delete(id)` | Card fades out. Counter decrements. Toast: "Đã xóa." Undo: "[↩ Hoàn tác]" | `idea:delete` |
+| 12 | Delete idea | "🗑 Xóa" → confirm modal | `IdeaService/Delete(id)` | Card fades out. Counter decrements. Toast: "Đã xóa." Undo: "[↩ Hoàn tác]" | `idea:create` |
 | 13 | Filter ideas | Change any filter | Refetch with params | Board/list updates. URL params updated. Active filter chips shown. | `idea:read` |
 | 14 | Search | Type in search box (300ms debounce) | `IdeaService/Search(query)` or client-side | Cards filtered. Non-matching cards hidden or dimmed. | `idea:read` |
 | 15 | Toggle view | Board ↔ List | Client-side | Layout switches with transition. Preference saved to `localStorage`. | `idea:read` |
-| 16 | Bulk move (list view) | Select checkboxes → "Move to ▾" → select stage | `IdeaService/BulkUpdateStatus(ids[], status)` | Rows update with status badge change | `idea:update` |
-| 17 | Bulk delete (list view) | Select checkboxes → "Delete" → confirm | `IdeaService/BulkDelete(ids[])` | Rows removed with animation | `idea:delete` |
+| 16 | Bulk move (list view) | Select checkboxes → "Move to ▾" → select stage | `IdeaService/BulkUpdateStatus(ids[], status)` | Rows update with status badge change | `idea:create` |
+| 17 | Bulk delete (list view) | Select checkboxes → "Delete" → confirm | `IdeaService/BulkDelete(ids[])` | Rows removed with animation | `idea:create` |
 | 18 | Sort (list view) | Click table header | Client-side sort or refetch | Rows re-order. Sort indicator on header. | `idea:read` |
 
 ---
@@ -536,12 +536,12 @@ Idea Board (/ideas)
 
 | Screen | Relationship |
 |---|---|
-| [W018] AI Idea Generator | Creates ideas in batch → appear in Inbox |
-| [W019] Idea Detail | Full idea view and edit |
-| [W020] Script List | Downstream: ideas that became scripts |
-| [W060] Trend Radar | Upstream: trends converted to ideas |
-| [W062] Opportunity Board | Upstream: opportunities converted to ideas |
-| [M017] Mobile Idea Board | Mobile equivalent |
+| [W014] AI Idea Generator | Creates ideas in batch → appear in Inbox |
+| [W013] Idea Detail | Full idea view and edit |
+| [W015] Script List | Downstream: ideas that became scripts |
+| [W038] Trend Radar | Upstream: trends converted to ideas |
+| [W043] Opportunity Board | Upstream: opportunities converted to ideas |
+| [M008] Mobile Idea Board | Mobile equivalent |
 
 ---
 
@@ -549,5 +549,5 @@ Idea Board (/ideas)
 
 | Date | Version | Change | Author |
 |---|---|---|---|
-| 2026-03-29 | 2.0 | **Full Tier A rewrite**: Upgraded from 284-line Tier B/C with generic boilerplate to 530+ line full spec. Added: complete dual-view hierarchy (Board + List with bulk actions), Done column with published outcomes, drag-and-drop state machine, AI pipeline health advisor, Quick Add modal with "create & add more", collaborative real-time via SSE (multi-user drag), score color mapping, per-column color tints, stage transition validation rules, keyboard shortcuts (N for new, / for search), 13 analytics events. Removed all generic boilerplate. Standardized Screen ID from W17 to W017. | System |
+| 2026-03-29 | 2.0 | **Full Tier A rewrite**: Upgraded from 284-line Tier B/C with generic boilerplate to 530+ line full spec. Added: complete dual-view hierarchy (Board + List with bulk actions), Done column with published outcomes, drag-and-drop state machine, AI pipeline health advisor, Quick Add modal with "create & add more", collaborative real-time via SSE (multi-user drag), score color mapping, per-column color tints, stage transition validation rules, keyboard shortcuts (N for new, / for search), 13 analytics events. Removed all generic boilerplate. Standardized Screen ID from W17 to W012. | System |
 | 2026-03-27 | 1.0 | Initial specification (Tier B) | System |

@@ -260,7 +260,7 @@ CreatorProDashboardPage
 | [W090] Sponsor Inquiries | Manage brand inquiries |
 | [W093] Rate Card Builder | Pricing management |
 | [W094] Revenue per Content | Content revenue tracking |
-| [M046] Mobile Creator Pro | Mobile equivalent |
+| [M045] Mobile Creator Pro | Mobile equivalent |
 
 ---
 

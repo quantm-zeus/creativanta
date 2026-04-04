@@ -1,7 +1,7 @@
 # Screen: Web — Settings: Billing & Plan
 
-> **Screen ID**: W093
-> **Module**: M19 — Settings
+> **Screen ID**: W119
+> **Module**: M23 — Settings
 > **Route**: `/settings/billing`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Product Freeze §27, A1 Schema (subscriptions, subscription_plans, payment_methods, invoices, ai_credit_transactions), B5 RBAC §2.19
@@ -48,7 +48,7 @@ The Billing & Plan screen is the financial command center for workspace subscrip
 
 ### Preconditions
 - User authenticated with valid session
-- User has `billing:manage` permission (Owner role only for plan changes; Admin can view)
+- User has `workspace:billing:manage` permission (Owner role only for plan changes; Admin can view)
 - Workspace has a subscription record (created during onboarding)
 - Stripe customer ID linked to workspace
 
@@ -240,18 +240,18 @@ SettingsBillingPage
 
 | # | Action | Trigger | API Call | System Response | Permission |
 |---|---|---|---|---|---|
-| 1 | View usage details | "📊 Chi tiết" | `UsageService/GetBreakdown` | Drawer slides in with credit/storage breakdown | `billing:read` |
-| 2 | Open plan comparison | "⬆ Nâng cấp gói" | `BillingService/ListPlans` | Modal with plan comparison grid | `billing:manage` |
-| 3 | Select plan (upgrade) | Click "Chọn gói này" in modal | Redirect → Stripe Checkout | External: Stripe checkout → return on success | `billing:manage` |
-| 4 | Downgrade plan | Select lower plan in modal → confirm | `BillingService/ChangePlan(plan_id)` | Plan changes at end of current period | `billing:manage` |
-| 5 | Buy credits | Click "Mua" on credit tier | Redirect → Stripe Checkout | External: Stripe checkout → credits added on success webhook | `billing:manage` |
-| 6 | Change payment method | "✏ Thay đổi thẻ" | Redirect → Stripe Customer Portal | External: update card → return | `billing:manage` |
-| 7 | Add backup method | "+ Thêm phương thức" | Redirect → Stripe Customer Portal | External: add card → return | `billing:manage` |
-| 8 | Download invoice | Click "📄" on invoice row | Direct URL → Stripe-hosted PDF | PDF opens in new tab | `billing:read` |
-| 9 | Cancel subscription | "⏸ Hủy" → reason → confirm | `BillingService/Cancel(workspace_id, reason)` | Cancellation scheduled at period end. Toast: "Gói sẽ hết hiệu lực ngày 15/04" | `billing:manage` |
-| 10 | Accept retention offer | "Giảm 50%" in cancellation modal | `BillingService/ApplyRetentionDiscount(workspace_id)` | Discount applied. Modal closes. Toast: "Đã áp dụng ưu đãi! Giảm 50% cho 2 tháng." | `billing:manage` |
-| 11 | Update failed payment | "💳 Cập nhật thẻ ngay" | Redirect → Stripe Customer Portal | Card updated → payment retried automatically | `billing:manage` |
-| 12 | Load more invoices | "Tải thêm ↓" on billing history | `BillingService/ListInvoices(page+1)` | More rows appended | `billing:read` |
+| 1 | View usage details | "📊 Chi tiết" | `UsageService/GetBreakdown` | Drawer slides in with credit/storage breakdown | `workspace:billing:read` |
+| 2 | Open plan comparison | "⬆ Nâng cấp gói" | `BillingService/ListPlans` | Modal with plan comparison grid | `workspace:billing:manage` |
+| 3 | Select plan (upgrade) | Click "Chọn gói này" in modal | Redirect → Stripe Checkout | External: Stripe checkout → return on success | `workspace:billing:manage` |
+| 4 | Downgrade plan | Select lower plan in modal → confirm | `BillingService/ChangePlan(plan_id)` | Plan changes at end of current period | `workspace:billing:manage` |
+| 5 | Buy credits | Click "Mua" on credit tier | Redirect → Stripe Checkout | External: Stripe checkout → credits added on success webhook | `workspace:billing:manage` |
+| 6 | Change payment method | "✏ Thay đổi thẻ" | Redirect → Stripe Customer Portal | External: update card → return | `workspace:billing:manage` |
+| 7 | Add backup method | "+ Thêm phương thức" | Redirect → Stripe Customer Portal | External: add card → return | `workspace:billing:manage` |
+| 8 | Download invoice | Click "📄" on invoice row | Direct URL → Stripe-hosted PDF | PDF opens in new tab | `workspace:billing:read` |
+| 9 | Cancel subscription | "⏸ Hủy" → reason → confirm | `BillingService/Cancel(workspace_id, reason)` | Cancellation scheduled at period end. Toast: "Gói sẽ hết hiệu lực ngày 15/04" | `workspace:billing:manage` |
+| 10 | Accept retention offer | "Giảm 50%" in cancellation modal | `BillingService/ApplyRetentionDiscount(workspace_id)` | Discount applied. Modal closes. Toast: "Đã áp dụng ưu đãi! Giảm 50% cho 2 tháng." | `workspace:billing:manage` |
+| 11 | Update failed payment | "💳 Cập nhật thẻ ngay" | Redirect → Stripe Customer Portal | Card updated → payment retried automatically | `workspace:billing:manage` |
+| 12 | Load more invoices | "Tải thêm ↓" on billing history | `BillingService/ListInvoices(page+1)` | More rows appended | `workspace:billing:read` |
 
 ---
 
@@ -489,10 +489,10 @@ Settings Billing (/settings/billing)
 
 | Screen | Relationship |
 |---|---|
-| [W008] Settings Hub | Parent navigation |
-| [W094] Settings Usage Details | Detailed credit/storage breakdown |
-| [A009] Admin Subscriptions | Admin-side subscription management |
-| [M093] Mobile Billing | Mobile equivalent |
+| [W007] Settings Hub | Parent navigation |
+| [W121] Credit Usage Detail | Detailed credit/storage breakdown |
+| [A021] Admin Subscriptions | Admin-side subscription management |
+| [M057] Mobile Settings | Mobile equivalent (billing section) |
 
 ---
 
@@ -500,5 +500,5 @@ Settings Billing (/settings/billing)
 
 | Date | Version | Change | Author |
 |---|---|---|---|
-| 2026-03-29 | 2.0 | **Full Tier A rewrite**: Upgraded from 163-line Tier C with generic boilerplate to 500+ line full spec. Added: plan comparison matrix (Free/Starter/Pro/Enterprise), credit purchase tiers with discount logic, Stripe integration flow (Checkout Session, Customer Portal, Webhooks), cancellation flow with retention offer, payment failure recovery, downgrade validation rules, 13 analytics events, Owner-only permission enforcement. Removed all generic boilerplate. Standardized Screen ID from W93 to W093. | System |
+| 2026-03-29 | 2.0 | **Full Tier A rewrite**: Upgraded from 163-line Tier C with generic boilerplate to 500+ line full spec. Added: plan comparison matrix (Free/Starter/Pro/Enterprise), credit purchase tiers with discount logic, Stripe integration flow (Checkout Session, Customer Portal, Webhooks), cancellation flow with retention offer, payment failure recovery, downgrade validation rules, 13 analytics events, Owner-only permission enforcement. Removed all generic boilerplate. Standardized Screen ID from W93 to W119. | System |
 | 2026-03-28 | 1.0 | Initial specification (Tier C) | System |

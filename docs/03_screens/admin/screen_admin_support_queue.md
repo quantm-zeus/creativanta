@@ -1,6 +1,6 @@
 # Screen: Admin — Support Queue
 
-> **Screen ID**: A13
+> **Screen ID**: A026
 > **Module**: Admin — Support
 > **Route**: `/admin/support`
 > **Platform**: Web (SvelteKit) — VPN-only
@@ -72,11 +72,11 @@ AdminSupportQueuePage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Open ticket | "→ Open" | — | → `/admin/support/[id]` | `admin:support` |
-| 2 | Assign to me | "👤 Assign to me" | `SupportService/Assign(id, me)` | Assigned | `admin:support` |
-| 3 | Escalate | "⬆ Escalate" | `SupportService/Escalate(id)` | Priority raised, notification | `admin:support` |
-| 4 | Reply | "💬 Reply" | — | → `/admin/support/[id]#reply` | `admin:support` |
-| 5 | Close | In detail → "Close" | `SupportService/Close(id, resolution)` | Ticket closed | `admin:support` |
+| 1 | Open ticket | "→ Open" | — | → `/admin/support/[id]` | `admin:support:manage` |
+| 2 | Assign to me | "👤 Assign to me" | `SupportService/Assign(id, me)` | Assigned | `admin:support:manage` |
+| 3 | Escalate | "⬆ Escalate" | `SupportService/Escalate(id)` | Priority raised, notification | `admin:support:manage` |
+| 4 | Reply | "💬 Reply" | — | → `/admin/support/[id]#reply` | `admin:support:manage` |
+| 5 | Close | In detail → "Close" | `SupportService/Close(id, resolution)` | Ticket closed | `admin:support:manage` |
 
 ---
 
@@ -106,8 +106,8 @@ AdminSupportQueuePage
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [A14] Ticket Detail | Full ticket conversation |
-| [A01] Admin Dashboard | Summary shown |
+| [A026] Support Queue | Full ticket conversation (self-referential) |
+| [A001] Admin Dashboard | Summary shown |
 
 ### Revision History
 | Date | Version | Change |

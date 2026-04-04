@@ -1,6 +1,6 @@
 # Screen: Mobile — Analytics Dashboard
 
-> **Screen ID**: M021
+> **Screen ID**: M035
 > **Module**: M23 — Analytics
 > **Route**: `/analytics` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -91,9 +91,9 @@ AnalyticsDashboardScreen
 ## 19. Related Screens
 | Screen | Relationship |
 |---|---|
-| [W074] Web Analytics | Web equivalent |
-| [M022] Post Analytics | Per-post detail |
-| [M042] Gamification | XP/streaks |
+| [W075] Web Analytics Overview | Web equivalent |
+| [M037] Post Analytics | Per-post detail |
+| [M038] Gamification | XP/streaks |
 ---
 ## Error Handling
 

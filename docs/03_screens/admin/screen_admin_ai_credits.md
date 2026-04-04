@@ -1,6 +1,6 @@
 # Screen: Admin — AI Credit Management
 
-> **Screen ID**: A012
+> **Screen ID**: A014
 > **Module**: S26 — Internal Admin & Operations
 > **Route**: `/admin/ai/credits`
 > **Platform**: Admin Web (SvelteKit) — VPN-only access
@@ -258,8 +258,8 @@ AI Credits (/admin/ai/credits)
 ## 19. Related Screens
 | Screen | Relationship |
 |---|---|
-| [A010] AI Provider Management | Provider cost tracking |
-| [A011] AI Configuration | Model settings |
+| [A012] AI Providers | Provider cost tracking |
+| [A013] AI Config | Model settings |
 | [A001] Admin Dashboard | Summary metrics |
 
 ---

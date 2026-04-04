@@ -1,6 +1,6 @@
 # Shared: Error States
 
-> **Screen ID**: S03
+> **Screen ID**: S006
 > **Module**: Shared — UI States
 > **Platform**: All (Web + Mobile)
 > **Upstream**: Design Tokens (D1)

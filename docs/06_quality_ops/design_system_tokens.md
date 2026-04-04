@@ -291,7 +291,7 @@ final creativantaTheme = ThemeData(
 
 ## Cross-references
 
-- **Screens**: All 237 screen docs have `Design Tokens Reference` section (235/237 coverage)
+- **Screens**: All 238 screen docs checked for `Design Tokens Reference` section (235/238 coverage)
 - **Accessibility**: WCAG 2.1 AA contrast ratios met for all text/bg combinations
 - **Figma**: Token names align with Figma variables naming convention
 - **i18n**: Spacing tokens accommodate Vietnamese text (longer than English)

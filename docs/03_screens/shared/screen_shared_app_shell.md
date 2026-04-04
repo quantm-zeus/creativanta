@@ -1,3 +1,5 @@
+> **Screen ID**: S001
+
 # Shared Component: App Shell
 
 > **Component ID**: S01
@@ -141,10 +143,10 @@ AppShell
 ## 8. Permission-Based Nav
 
 Items hidden based on RBAC:
-- Finance: hidden unless `finance:read`
+- Finance: hidden unless `profit:read`
 - AI Studio: hidden unless `asset:generate`
 - Commerce: hidden unless `product:read`
-- Settings: hidden unless `settings:read`
+- Settings: hidden unless `workspace:billing:read`
 
 ### Revision History
 | Date | Version | Change |

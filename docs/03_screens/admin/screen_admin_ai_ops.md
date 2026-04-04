@@ -1,6 +1,6 @@
 # Screen: Admin — AI Operations
 
-> **Screen ID**: A07
+> **Screen ID**: A011
 > **Module**: Admin — AI Ops
 > **Route**: `/admin/ai-ops`
 > **Platform**: Web (SvelteKit) — VPN-only
@@ -72,11 +72,11 @@ AIOperationsPage
 
 | # | Action | Trigger | Result | Permission |
 |---|---|---|---|---|
-| 1 | View provider detail | Click provider row | → `/admin/ai-ops/[provider]` | `admin:ai` |
-| 2 | Disable provider | Toggle off | Provider disabled, fallback activates | `admin:ai` |
-| 3 | Set fallback | Dropdown change | Fallback updated | `admin:ai` |
-| 4 | Set cost alert | "🔔 Cost alerts" | Threshold config modal | `admin:ai` |
-| 5 | Save config | "💾 Save" | Config persisted | `admin:ai` |
+| 1 | View provider detail | Click provider row | → `/admin/ai-ops/[provider]` | `admin:analytics:read` |
+| 2 | Disable provider | Toggle off | Provider disabled, fallback activates | `admin:queue:manage` |
+| 3 | Set fallback | Dropdown change | Fallback updated | `admin:queue:manage` |
+| 4 | Set cost alert | "🔔 Cost alerts" | Threshold config modal | `admin:analytics:read` |
+| 5 | Save config | "💾 Save" | Config persisted | `admin:queue:manage` |
 
 ### Technical Notes
 - Route: `src/routes/admin/ai-ops/+page.svelte`

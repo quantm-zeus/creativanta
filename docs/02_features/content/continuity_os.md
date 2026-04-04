@@ -71,7 +71,7 @@ Every AI generation request (M07) MUST resolve continuity packs before producing
    - calls `CharacterService/List` (Member)
    - Grid view: character cards with avatar, name, type badge, usage count
    - Quota indicator: "2/5 characters used"
-   - see [04_contracts/api_endpoint_map.md#2.3](../04_contracts/api_endpoint_map.md)
+   - see [04_contracts/api_endpoint_map.md#2.3](../../04_contracts/api_endpoint_map.md)
 2. **User starts Character Creation Wizard**: clicks "➕ Create New Character"
    - **Step 1 — Choose Type**: digital_twin (Pro+), ai_generated (all), stock (all)
      - Locked types show tier badge: "🔒 Upgrade to Pro"
@@ -87,7 +87,7 @@ Every AI generation request (M07) MUST resolve continuity packs before producing
    - calls `CharacterService/Create` (Editor+)
    - writes to `characters` table, auto-creates `continuity_packs` row (Character Pack)
    - emits `character.created`
-   - see [04_contracts/domain_event_catalog.md#5](../04_contracts/domain_event_catalog.md)
+   - see [04_contracts/domain_event_catalog.md#5](../../04_contracts/domain_event_catalog.md)
 3. **Digital Twin Consent** (if type = digital_twin, runs between Step 1 and Step 2):
    - (a) Upload source footage (30s-5min)
    - (b) Record consent video (in-app): standardized declaration text
@@ -145,14 +145,14 @@ Every AI generation request (M07) MUST resolve continuity packs before producing
 ### EC-M08-004: Voice Clone Provider Unavailable
 - Condition: ElevenLabs API is down during voice clone creation
 - Expected behavior: Character creation wizard allows proceeding without voice clone — voice section shows "Voice clone temporarily unavailable. [Skip] or [Retry later]." Character saved as `voice_type = 'none'` or `'ai_preset'`. Voice clone can be attached later via character edit.
-- Reference: Pack 04 §2.2 (provider failover), API-H-001 blocker
+- Reference: Pack 04 §2.2 (provider failover), `api_endpoint_map.md` §2.8.9 VoiceCloneService (API-H-001 resolved 2026-04-02)
 
 ## State Machine
 
 ### Character Lifecycle
 
 Object: character | DB column: `characters.status`
-see [04_contracts/database_schema.md#7.1](../04_contracts/database_schema.md)
+see [04_contracts/database_schema.md#7.1](../../04_contracts/database_schema.md)
 
 | From | To | Trigger | Condition |
 |---|---|---|---|
@@ -167,7 +167,7 @@ see [04_contracts/database_schema.md#7.1](../04_contracts/database_schema.md)
 ### Continuity Pack Lifecycle
 
 Object: continuity_pack | DB column: `continuity_packs.status`
-see [04_contracts/database_schema.md#7.2](../04_contracts/database_schema.md)
+see [04_contracts/database_schema.md#7.2](../../04_contracts/database_schema.md)
 
 | From | To | Trigger | Condition |
 |---|---|---|---|
@@ -180,11 +180,11 @@ see [04_contracts/database_schema.md#7.2](../04_contracts/database_schema.md)
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §7.1 (characters), §7.2 (continuity_packs), §7.3 (assets — drift fields) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.3 (CharacterService: Create, List, Update; ContinuityService: GetPack, UpdatePack) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §5 (character.created, continuity.violation_detected, continuity.pack_updated) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.3 (character:create — Editor+; pack:update — Manager+) |
-| Pack 04 | [Design Pack 04 — AI/Media/Continuity](../creativanta_detail_design_pack_04_ai_media_continuity_contract_v_3_1.md) | §5 (Continuity Contract), §12A (Character UX), §12B (Character Business Logic) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §7.1 (characters), §7.2 (continuity_packs), §7.3 (assets — drift fields) |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.3 (CharacterService: Create, List, Update; ContinuityService: GetPack, UpdatePack) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §5 (character.created, continuity.violation_detected, continuity.pack_updated) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.4 (character:create — Editor+; pack:update — Manager+) |
+| Pack 04 | Design Pack 04 — AI/Media/Continuity <!-- Legacy ref: creativanta_detail_design_pack_04_ai_media_continuity_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §5 (Continuity Contract), §12A (Character UX), §12B (Character Business Logic) |
 
 ## Related Screens
 
@@ -211,4 +211,5 @@ see [04_contracts/database_schema.md#7.2](../04_contracts/database_schema.md)
 
 ## Open Questions / Blockers
 
-- **API-H-001** (OPEN_BLOCKERS.md): `VoiceCloneService` has no protobuf service definition. Voice clone creation is blocked until this service is defined. Related events use inconsistent namespace (`gamification.voice_clone.*` should be `production.voice_clone.*` or `continuity.voice_clone.*`). Impact: Voice clone feature in the Character Builder Step 2 cannot be fully implemented. Workaround: allow character creation without voice clone; attach voice later when service is defined.
+> ✅ **RESOLVED: API-H-001** (2026-04-02) — `VoiceCloneService` now fully defined in `api_endpoint_map.md` §2.8.9 with 6 RPCs: Create, Get, List, Delete, GenerateVoiceover, GetConsentStatus. JSON example in `api_examples.md` A.22. Voice clone feature in Character Builder Step 2 is now implementable.
+> Event naming convention resolved via EVT-H-001 (dot.notation canonical; 74-row mapping table in `runtime_workflow.md`).

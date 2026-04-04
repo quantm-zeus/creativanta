@@ -1,6 +1,6 @@
 # Screen: Web — Settings: Workspace Members
 
-> **Screen ID**: W121
+> **Screen ID**: W115
 > **Module**: M23 — Workspace Administration
 > **Route**: `/settings/workspace/members`
 > **Platform**: Web (SvelteKit)
@@ -34,7 +34,7 @@ Manage workspace members — invite by email, assign canonical roles (Owner, Adm
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `settings:manage` permission (Owner, Admin)
+- User has `workspace:settings:manage` permission (Owner, Admin)
 - Workspace exists and is active
 
 ### Postconditions
@@ -328,10 +328,10 @@ Only Owner and Admin can manage members:
 
 | Screen | Relationship |
 |---|---|
-| [W120] Workspace Settings | Parent settings page |
-| [W093] Billing & Subscription | Seat limits from plan |
-| [W126] Notification Settings | Per-member notification preferences |
-| [A007] Admin User Management | Platform-level user management |
+| [W114] Workspace Settings | Parent settings page |
+| [W119] Billing & Plans | Seat limits from plan |
+| [W122] Notification Preferences | Per-member notification preferences |
+| [A002] Admin User List | Platform-level user management |
 
 ---
 

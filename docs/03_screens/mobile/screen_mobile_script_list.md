@@ -1,6 +1,6 @@
 # Screen: Mobile — Script List
 
-> **Screen ID**: M013
+> **Screen ID**: M010
 > **Module**: M05 — Content Pipeline
 > **Route**: `/scripts` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -102,8 +102,8 @@ ScriptListScreen
 
 | Screen | Relationship |
 |---|---|
-| [W020] Web Script List | Web equivalent |
-| [M014] Script Editor | Editor |
+| [W015] Web Script List | Web equivalent |
+| [M011] Script Editor | Editor |
 ---
 ## Error Handling
 

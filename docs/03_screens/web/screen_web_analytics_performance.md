@@ -1,6 +1,6 @@
 # Screen: Web — Performance Coach
 
-> **Screen ID**: W076
+> **Screen ID**: W077
 > **Module**: M23 — Analytics & Reporting
 > **Route**: `/performance`
 > **Platform**: Web (SvelteKit)
@@ -323,10 +323,10 @@ Score = weighted average of:
 
 | Screen | Relationship |
 |---|---|
-| [W109] Analytics Overview | Full analytics data |
-| [W075] Post Analytics Detail | Per-content deep analytics |
-| [W077] Gamification | Achievement system |
-| [M047] Mobile Performance Coach | Mobile equivalent |
+| [W075] Analytics Overview | Full analytics data |
+| [W078] Post Detail Analytics | Per-content deep analytics |
+| [W079] Gamification | Achievement system |
+| [M039] Mobile Performance Coach | Mobile equivalent |
 
 ---
 

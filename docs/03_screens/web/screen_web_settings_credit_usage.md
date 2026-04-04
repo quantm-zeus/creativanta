@@ -1,7 +1,7 @@
 # Screen: Web — AI Credit Usage
 
-> **Screen ID**: W124
-> **Module**: M26 — Settings (Credits)
+> **Screen ID**: W121
+> **Module**: M23 — Settings
 > **Route**: `/settings/credits/usage`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: A1 Schema (credit_transactions, credit_balances), B5 RBAC §2.9
@@ -135,7 +135,7 @@ Track AI credit consumption — balance with depletion forecast, daily usage cha
 ## 12. SvelteKit Implementation Notes
 
 - **Route**: `src/routes/(app)/settings/credits/usage/+page.svelte`
-- **Server load**: `+page.server.ts` → `CreditService/GetBalance` + `CreditService/GetUsageStats(period)` + `CreditService/ListTransactions(page, filters)`
+- **Server load**: `+page.server.ts` → `AdminBillingService/GetCreditBalance` + `CreditService/GetUsageStats(period)` + `CreditService/ListTransactions(page, filters)`
 - **Chart**: Chart.js stacked bar chart, rendered client-side with SSR data
 - **Depletion**: `balance / avg_daily_usage` computed server-side, cached 5m
 - **Filters**: URL search params (`?mode=remix&status=ok&page=2`) for shareable state
@@ -176,9 +176,9 @@ Track AI credit consumption — balance with depletion forecast, daily usage cha
 
 | Screen | Relationship |
 |---|---|
-| [W123] Credit Purchase | Buy more credits |
-| [W125] AI Settings | AI model preferences |
-| [W030] AI Studio | Where credits are consumed |
+| [W128] Credit Purchase | Buy more credits |
+| [W123] AI Preferences | AI model preferences |
+| [W021] Studio Launcher | Where credits are consumed |
 
 ---
 

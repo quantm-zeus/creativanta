@@ -90,8 +90,8 @@ ContentModerationQueuePage
 ## 19. Related Screens
 | Screen | Relationship |
 |---|---|
-| [A10] Moderation Rules | Rule configuration |
-| [A25] Abuse Reports | User reports |
+| [A016] Moderation Rules | Rule configuration |
+| [A017] Abuse Reports | User reports |
 ---
 ## Error Handling
 

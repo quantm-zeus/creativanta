@@ -1,6 +1,6 @@
 # Screen: Web — Post Analytics Detail
 
-> **Screen ID**: W075
+> **Screen ID**: W078
 > **Module**: M23 — Analytics & Reporting
 > **Route**: `/analytics/post/[id]`
 > **Platform**: Web (SvelteKit)
@@ -272,11 +272,11 @@ PostAnalyticsDetailPage
 
 | Screen | Relationship |
 |---|---|
-| [W109] Analytics Overview | Parent dashboard |
-| [W110] Analytics Detail | Platform-level analytics |
-| [W076] Performance Coach | Weekly coaching |
-| [W028] Derivative Manager | Content repurposing |
-| [M047] Mobile Post Analytics | Mobile equivalent |
+| [W075] Analytics Overview | Parent dashboard |
+| [W076] Analytics Detail | Platform-level analytics |
+| [W077] Performance Metrics | Weekly coaching |
+| [W018] Derivative Manager | Content repurposing |
+| [M037] Mobile Post Analytics | Mobile equivalent |
 
 ---
 

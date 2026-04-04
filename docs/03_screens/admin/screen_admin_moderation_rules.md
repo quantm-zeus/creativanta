@@ -1,6 +1,6 @@
 # Screen: Admin — Moderation Rules
 
-> **Screen ID**: A10
+> **Screen ID**: A016
 > **Module**: Admin — Trust & Safety
 > **Route**: `/admin/moderation/rules`
 > **Platform**: Admin Web (SvelteKit) — VPN-only
@@ -96,7 +96,7 @@ ModerationRulesPage
 ## 19. Related Screens
 | Screen | Relationship |
 |---|---|
-| [A09] Moderation Queue | Uses these rules |
+| [A015] Content Moderation | Uses these rules |
 ---
 ## Error Handling
 

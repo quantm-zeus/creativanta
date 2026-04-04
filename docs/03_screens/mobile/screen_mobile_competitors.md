@@ -1,6 +1,6 @@
 # Screen: Mobile — Competitor Tracking
 
-> **Screen ID**: M041
+> **Screen ID**: M018
 > **Module**: M23 — Analytics
 > **Route**: `/analytics/competitors` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -103,8 +103,8 @@ CompetitorTrackingScreen
 
 | Screen | Relationship |
 |---|---|
-| [W076] Web Competitors | Web equivalent |
-| [M021] Analytics | Parent |
+| [W040] Web Competitor Registry | Web equivalent |
+| [M035] Analytics | Parent |
 ---
 ## Error Handling
 

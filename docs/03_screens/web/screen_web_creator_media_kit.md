@@ -202,8 +202,8 @@ Build and share a professional media kit — auto-synced statistics from connect
 |---|---|
 | [W088] Creator Pro Dashboard | Parent |
 | [W093] Rate Card Builder | Detailed rate card |
-| [W091] Brand Deals | Deal pipeline |
-| [M051] Mobile Media Kit | Mobile preview |
+| [W095] Brand Deal Manager | Deal pipeline |
+| [M048] Mobile Media Kit Preview | Mobile preview |
 
 ---
 

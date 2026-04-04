@@ -1,6 +1,6 @@
 # Screen: Web — Trend Detail
 
-> **Screen ID**: W10
+> **Screen ID**: W039
 > **Module**: M02 — Trend Radar
 > **Route**: `/intelligence/trends/[id]`
 > **Platform**: Web (SvelteKit)
@@ -160,11 +160,11 @@ TrendDetailPage
 | 1 | Create idea | "💡 Tạo ý tưởng" | `IdeaService/Create(from_trend_id)` | Navigate → `/ideas/[new_id]` | `idea:create` |
 | 2 | Write script | "📝 Viết script" | — | Navigate → `/scripts/new?trend_id=[id]` | `script:create` |
 | 3 | Remix top video | "🔄 Remix" on video card | — | Navigate → `/studio/remix?url=...` | `asset:generate` |
-| 4 | Save to watchlist | "📌 Thêm watchlist" | `WatchlistService/AddItem` | Toast + pin fills | `trend:watchlist:manage` |
+| 4 | Save to watchlist | "📌 Thêm watchlist" | `TrendService/ManageWatchlist` | Toast + pin fills | `trend:watchlist:manage` |
 | 5 | Share with team | "📤 Chia sẻ" | `NotificationService/Send(team)` | Toast "Đã chia sẻ" | Any |
 | 6 | Save reference video | "📥 Save ref" on video | `ReferenceService/Save(url)` | Toast "Đã lưu" | `idea:create` |
 | 7 | Change chart period | Toggle 7d/14d/30d | `TrendService/GetTimeSeries(id, period)` | Chart re-renders | `trend:read` |
-| 8 | Regenerate analysis | Refresh icon on AI card | `CopilotService/Query` | Analysis text updates | `copilot:use_deep` |
+| 8 | Regenerate analysis | Refresh icon on AI card | `CopilotService/Query` | Analysis text updates | `copilot:use_analytics` |
 | 9 | Navigate related | Click related trend | — | Navigate → `/intelligence/trends/[related_id]` | `trend:read` |
 | 10 | Back to list | "← Xu hướng" | — | Navigate → `/intelligence/trends` | `trend:read` |
 
@@ -305,10 +305,10 @@ N/A — Read-only display.
 
 | Screen | Relationship |
 |---|---|
-| [W009] Trend Radar | Parent list |
-| [W011] Watchlist Manager | Save target |
-| [W017] Idea Board | Target after idea creation |
-| [M015] Mobile Trend Detail | Mobile equivalent |
+| [W038] Trend Radar | Parent list |
+| [W042] Watchlist | Save target |
+| [W012] Idea Board | Target after idea creation |
+| [M017] Mobile Trend List | Mobile equivalent |
 
 ---
 

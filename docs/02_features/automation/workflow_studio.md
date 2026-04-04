@@ -159,12 +159,12 @@ Object: workflow_run | DB column: `workflow_runs.status`
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §13 (workflows, workflow_runs, workflow_run_steps) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.8 (Workflow — ~12 RPCs: CRUD, Activate, Run, Inspect) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §11 (workflow.created, workflow.published, workflow_run.started, workflow_run.completed, workflow_run.failed, workflow_run.waiting_approval) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.8 (workflow — Editor+ for creation, Manager+ for activation) |
-| Pack 03 | [Pack 03 — Workflow Runtime Contract](../creativanta_detail_design_pack_03_event_workflow_agent_runtime_contract_v_3_1.md) | §4 (Runtime), §5 (Agent), §6 (Approval), §7 (Retry/Dead-Letter), §8 (Diagnostics), §10 (Audit) |
-| Capability | [02_features/platform/capability_matrix.md](../02_features/platform/capability_matrix.md) | M22 provides capability data for RULE-M20-002 |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §12 (workflows, workflow_runs). [NOTE: `workflow_run_steps` is not defined as a table in the schema — may need to be added during implementation or stored as JSONB within `workflow_runs`.] |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.8 (Workflow — ~12 RPCs: CRUD, Activate, Run, Inspect) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §11 (workflow.activated, workflow_run.started, workflow_run.completed, workflow_run.failed, workflow_run.approval_required). [NOTE: `workflow.created` and `workflow.published` are not in catalog — implementation may need these as new events or use `workflow.activated` for publish.] |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.9 (workflow — Editor+ for creation, Manager+ for activation) |
+| Pack 03 | Pack 03 — Workflow Runtime Contract <!-- Legacy ref: creativanta_detail_design_pack_03_event_workflow_agent_runtime_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §4 (Runtime), §5 (Agent), §6 (Approval), §7 (Retry/Dead-Letter), §8 (Diagnostics), §10 (Audit) |
+| Capability | [02_features/platform/capability_matrix.md](../platform/capability_matrix.md) | M22 provides capability data for RULE-M20-002 |
 
 ## Related Screens
 
@@ -193,4 +193,4 @@ Object: workflow_run | DB column: `workflow_runs.status`
 ## Open Questions / Blockers
 
 > ✅ **RESOLVED: API-M-001** (2026-04-02) — `WorkflowService` now fully defined in `api_endpoint_map.md` §2.8.1 with 13 RPCs: Create, Get, List, Update, Activate, Deactivate, Run, InspectRun, GetRunLogs, ListRuns, Clone, Export, Import. Each RPC has Method, Auth, Rate Limit, Description.
-> Remaining gap: API-M-002 (JSON request/response examples not yet added).
+> ✅ **RESOLVED: API-M-002** (2026-04-02) — JSON request/response examples added in `api_examples.md` A.14 (WorkflowService/Create) and A.15 (WorkflowService/Run).

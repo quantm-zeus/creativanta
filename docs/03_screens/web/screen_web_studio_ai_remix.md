@@ -1,6 +1,6 @@
 # Screen: Web — AI Remix Studio
 
-> **Screen ID**: W28
+> **Screen ID**: W025
 > **Module**: M07 — AI Studio
 > **Route**: `/studio/remix`
 > **Platform**: Web (SvelteKit)
@@ -166,9 +166,9 @@ AIRemixStudioPage
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [W24] AI Studio Launcher | Parent |
-| [W09] Trend Radar | Reference source |
-| [M55] Mobile AI Remix | Mobile equivalent |
+| [W021] Studio Launcher | Parent |
+| [W038] Trend Radar | Reference source |
+| [M016] Mobile AI Remix | Mobile equivalent |
 
 ### Revision History
 | Date | Version | Change |

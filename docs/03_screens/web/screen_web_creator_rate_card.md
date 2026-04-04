@@ -302,7 +302,7 @@ RateCardBuilderPage
 | [W089] Media Kit Editor | Rate card embeds into media kit |
 | [W090] Sponsor Inquiries | Rate comparison against incoming offers |
 | [W088] Creator Pro Dashboard | Parent |
-| [M049] Mobile Rate Card | Mobile equivalent |
+| [M045] Mobile Creator Pro | Mobile equivalent (rate card section) |
 
 ---
 

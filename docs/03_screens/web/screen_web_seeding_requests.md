@@ -1,7 +1,7 @@
 # Screen: Web — Seeding Request Manager
 
-> **Screen ID**: W099
-> **Module**: M15 — Seeding Operations
+> **Screen ID**: W111
+> **Module**: M18 — Seeding / Sample CRM
 > **Route**: `/seeding/requests`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 05, PRD §23.15, A1 Schema (sample_requests, seeding_creators, shipments), B5 RBAC §2.7
@@ -232,10 +232,10 @@ SeedingRequestManagerPage
 
 | Screen | Relationship |
 |---|---|
-| [W098] Seeding Campaigns | Parent campaign management |
-| [W100] Seeding Assignments | Creator assignment tracking |
+| [W113] Seeding Campaigns | Parent campaign management |
+| [W112] Seeding Assignments | Creator assignment tracking |
 | [W060] Product List | Product catalog |
-| [W075] Content Analytics | Review performance |
+| [W075] Analytics Overview | Review performance |
 
 ---
 

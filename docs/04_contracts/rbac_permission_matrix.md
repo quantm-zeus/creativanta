@@ -75,6 +75,7 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 | `trend:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `trend:watchlist:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `competitor:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `competitor:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `opportunity:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `opportunity:create` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | `opportunity:assign` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
@@ -140,7 +141,10 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 | `order:manage` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `campaign:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `affiliate:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `affiliate:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `store:manage` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `membership:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `membership:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ### 2.8 Finance & Proof (M19)
 
@@ -153,6 +157,7 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 | `reconciliation:manage` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `reconciliation:override` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `evidence:submit` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `evidence:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | `proof_bundle:read` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ### 2.9 Workflow & Agent (M20-M21)
@@ -265,6 +270,9 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 | `admin:fee_schedule:manage` | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `admin:report:export` | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
 | `admin:compliance:read` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| `admin:user:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `admin:workspace:read` | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| `admin:commerce:read` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
 
 > **Constraints**: Analyst and Auditor are read-only roles. Support Admin impersonation is read-only mode only (no OTP override). ⚠️ = scoped access (e.g., Support Admin sees billing status but not amounts).
 
@@ -326,8 +334,8 @@ pub async fn check_permission(
 }
 ```
 
-**Workspace RBAC**: ~106 permission keys × 7 roles = full matrix.
-**Admin RBAC**: ~20 permission keys × 8 admin roles = full admin matrix.
+**Workspace RBAC**: ~114 permission keys × 7 roles = full matrix.
+**Admin RBAC**: ~23 permission keys × 8 admin roles = full admin matrix.
 
 > **Audit v5 — C2 Fix**: `workspace:billing:manage` is Owner-only (non-delegatable, aligned to Freeze §46A.4 and Pack 02 §S07.2). `workspace:billing:read` added for Admin and Manager view access. Previous versions had a conflict where B5 allowed Admin billing manage but Pack 02 §S07.2 restricted it to Owner.
 

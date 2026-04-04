@@ -61,8 +61,8 @@ M05 exists to **transform raw signals — trends, product data, comment sentimen
    - writes to `ideas` table with `title`, `description`, `audience_intent`, `creator_intent`, `suggested_format`
    - writes to `idea_sources` junction with source reference(s)
    - emits `idea.created`
-   - see [04_contracts/api_endpoint_map.md#2.3](../04_contracts/api_endpoint_map.md)
-   - see [04_contracts/domain_event_catalog.md#4](../04_contracts/domain_event_catalog.md)
+   - see [04_contracts/api_endpoint_map.md#2.3](../../04_contracts/api_endpoint_map.md)
+   - see [04_contracts/domain_event_catalog.md#4](../../04_contracts/domain_event_catalog.md)
 2. **AI enrichment** (optional): calls `IdeaService/Generate` (Editor+)
    - System generates hook suggestions, angle suggestions, format recommendations
    - Hook suggestions written to `hooks` table linked to `idea_id`
@@ -125,7 +125,7 @@ M05 exists to **transform raw signals — trends, product data, comment sentimen
 ## State Machine
 
 Object: idea | DB column: `ideas.status`
-see [04_contracts/database_schema.md#6.1](../04_contracts/database_schema.md)
+see [04_contracts/database_schema.md#6.1](../../04_contracts/database_schema.md)
 
 | From | To | Trigger | Condition |
 |---|---|---|---|
@@ -140,10 +140,10 @@ see [04_contracts/database_schema.md#6.1](../04_contracts/database_schema.md)
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §6.1 (ideas), §6.2 (idea_sources), §6.3 (hooks) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.3 (IdeaService: Create, List, Generate, Convert) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §4 (idea.created, idea.converted) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.3 (idea:create — Contributor+; idea:generate — Editor+; idea:convert — Editor+) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §6.1 (ideas), §6.2 (idea_sources), §6.3 (hooks) |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.3 (IdeaService: Create, List, Generate, Convert) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §4 (idea.created, idea.converted) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.3 (idea:create — Contributor+; idea:generate — Editor+; idea:convert — Editor+) |
 
 ## Related Screens
 

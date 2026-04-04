@@ -458,7 +458,7 @@ Client-side:
 | Screen | Relationship |
 |---|---|
 | [W070] Affiliate Manager | Advanced affiliate management (creators, statements) |
-| [W060] Product Detail | Product referenced in link |
+| [W061] Product Detail | Product referenced in link |
 | [W065] Campaign Detail | Campaign context for link |
 | [W125] Diagnostics Center | Link health deep-dive |
 | [M032] Mobile Affiliates | Mobile equivalent |

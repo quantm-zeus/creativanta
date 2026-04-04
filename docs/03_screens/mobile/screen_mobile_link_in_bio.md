@@ -1,6 +1,6 @@
 # Screen: Mobile — Link-in-Bio
 
-> **Screen ID**: M052
+> **Screen ID**: M047
 > **Module**: M14 — Link-in-Bio
 > **Route**: `/link-in-bio` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -93,7 +93,7 @@ LinkinBioScreen
 ## 19. Related Screens
 | Screen | Relationship |
 |---|---|
-| [W070] Web Link-in-Bio | Web equivalent |
+| [W092] Web Link-in-Bio Builder | Web equivalent |
 ---
 ## Error Handling
 

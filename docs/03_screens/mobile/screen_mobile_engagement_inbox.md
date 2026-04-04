@@ -1,6 +1,6 @@
 # Screen: Mobile — Unified Inbox
 
-> **Screen ID**: M004
+> **Screen ID**: M019
 > **Module**: M12 — Unified Inbox & Engagement
 > **Route**: `/inbox` (bottom tab: 💬)
 > **Platform**: Mobile (Flutter)
@@ -47,7 +47,7 @@ Mobile Unified Inbox — the highest-frequency mobile screen after the home dash
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `inbox:read` permission
+- User has `thread:read` permission
 - At least one platform connected with messaging/comment access
 - Push notification permissions granted (for real-time delivery)
 
@@ -216,20 +216,20 @@ MobileInboxPage
 
 | # | Action | Trigger | Type | API Call | System Response | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Open thread | Tap thread row | Navigate | `ThreadService/MarkRead(id)` | Push detail page. Mark read. Badge decrements. | `inbox:read` |
-| 2 | Swipe quick reply | Swipe left on row | Drawer | Pre-filled AI reply bottom sheet | AI reply shown. One-tap send. Haptic medium. | `inbox:reply` |
-| 3 | Swipe follow-up | Swipe right on row | Action | `FollowUpTaskService/Create(thread_id)` | Task created. Haptic success. Toast "📌 Task tạo." | `inbox:manage` |
-| 4 | Send AI reply | "✅ Gửi" in detail | Primary CTA | `ConnectorService/Reply(thread, text)` | Reply posted. Toast "✅ Đã gửi." Pop back optional. | `inbox:reply` |
-| 5 | Edit & send | "✏️ Sửa & gửi" | Edit → Send | (edit inline → send) | Text becomes editable. User modifies → tap send. | `inbox:reply` |
+| 1 | Open thread | Tap thread row | Navigate | `ThreadService/MarkRead(id)` | Push detail page. Mark read. Badge decrements. | `thread:read` |
+| 2 | Swipe quick reply | Swipe left on row | Drawer | Pre-filled AI reply bottom sheet | AI reply shown. One-tap send. Haptic medium. | `thread:reply` |
+| 3 | Swipe follow-up | Swipe right on row | Action | `FollowUpTaskService/Create(thread_id)` | Task created. Haptic success. Toast "📌 Task tạo." | `thread:triage` |
+| 4 | Send AI reply | "✅ Gửi" in detail | Primary CTA | `ConnectorService/Reply(thread, text)` | Reply posted. Toast "✅ Đã gửi." Pop back optional. | `thread:reply` |
+| 5 | Edit & send | "✏️ Sửa & gửi" | Edit → Send | (edit inline → send) | Text becomes editable. User modifies → tap send. | `thread:reply` |
 | 6 | Regenerate AI | "🔄 Khác" | AI | `CopilotService/Query(regenerate)` | New suggestion replaces. Typing animation. | `copilot:use_help` |
-| 7 | Manual reply | Type + "💬" send | Reply | `ConnectorService/Reply(thread, text)` | Reply sent. Bubble appears in conversation. | `inbox:reply` |
-| 8 | Filter by intent | Tap filter chip | Filter | `ThreadService/ListMobile(intent=...)` | List updates. Badge per filter. | `inbox:read` |
-| 9 | Pull refresh | Pull-down | Refresh | Refetch thread list | List updates. Haptic light. | `inbox:read` |
-| 10 | Search | Tap 🔍 → type | Search | Meilisearch query | Results in list. | `inbox:read` |
-| 11 | Resolve thread | Detail → ⋮ → "✅ Resolve" | Status | `ThreadService/Update(resolved)` | Pop back. Thread shows ✓ in list. | `inbox:manage` |
-| 12 | View profile | "👤 Profile" in detail | Navigate | — | Push → Contact Detail | `contact:read` |
+| 7 | Manual reply | Type + "💬" send | Reply | `ConnectorService/Reply(thread, text)` | Reply sent. Bubble appears in conversation. | `thread:reply` |
+| 8 | Filter by intent | Tap filter chip | Filter | `ThreadService/ListMobile(intent=...)` | List updates. Badge per filter. | `thread:read` |
+| 9 | Pull refresh | Pull-down | Refresh | Refetch thread list | List updates. Haptic light. | `thread:read` |
+| 10 | Search | Tap 🔍 → type | Search | Meilisearch query | Results in list. | `thread:read` |
+| 11 | Resolve thread | Detail → ⋮ → "✅ Resolve" | Status | `ThreadService/Update(resolved)` | Pop back. Thread shows ✓ in list. | `thread:triage` |
+| 12 | View profile | "👤 Profile" in detail | Navigate | — | Push → Contact Detail | `thread:read` |
 | 13 | View orders | "📦 Orders" in detail | Navigate | — | Push → Order list filtered | `order:read` |
-| 14 | Tag thread | "🏷 Tag" in detail | Update | `ThreadService/AddTag` | Tag chip added. | `inbox:manage` |
+| 14 | Tag thread | "🏷 Tag" in detail | Update | `ThreadService/AddTag` | Tag chip added. | `thread:triage` |
 
 ---
 ## 7. Validation Rules
@@ -504,9 +504,9 @@ Mobile Inbox (/inbox — bottom tab 💬)
 
 | Screen | Relationship |
 |---|---|
-| [W049] Web Unified Inbox | Web equivalent (split-pane, keyboard shortcuts) |
-| [M005] Mobile Thread Detail | Full thread view (alternative route) |
-| [M029] Mobile Follow-up Tasks | Task list from inbox follow-ups |
+| [W046] Web Unified Inbox | Web equivalent (split-pane, keyboard shortcuts) |
+| [M020] Mobile Thread Detail | Full thread view (alternative route) |
+| [M052] Mobile Task Queue | Task list from inbox follow-ups |
 | [M001] Mobile Home Dashboard | Unread KPI + 💬 bottom tab |
 
 ---

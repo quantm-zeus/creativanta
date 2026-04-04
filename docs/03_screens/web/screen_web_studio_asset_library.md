@@ -1,6 +1,6 @@
 # Screen: Web — Asset Library
 
-> **Screen ID**: W39
+> **Screen ID**: W029
 > **Module**: M07 — AI Studio
 > **Route**: `/studio/library`
 > **Platform**: Web (SvelteKit)
@@ -194,8 +194,8 @@ AssetLibraryPage
 
 | Screen | Relationship |
 |---|---|
-| [W024] AI Studio Launcher | Parent |
-| [W038] Studio Queue | Processing assets |
+| [W021] Studio Launcher | Parent |
+| [W030] Studio Queue | Processing assets |
 | All studio modes | Asset source |
 
 ---

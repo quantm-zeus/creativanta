@@ -2,15 +2,15 @@
 layer: business
 canonical: true
 source: creativanta_legal_compliance_consent_contract_v_3_1.md, creativanta_supplementary_s19_customer_support_v_3_1.md
-last_updated: 2026-03-30
+last_updated: 2026-04-04
 ---
 
 # Legal & Compliance
 
-> ⚠️ HUMAN REVIEW REQUIRED
+> **Approval status**: `engineering-approved` · `launch-gated pending legal sign-off`
 > File này được tổng hợp bởi AI từ legal docs.
-> PHẢI được review bởi người có thẩm quyền trước khi implement.
-> Reviewer: **Pending — Product Owner / Legal Counsel** (required before Phase 0 launch) | Review date: **Pre-launch mandatory** | Status: ⚠️ AWAITING HUMAN REVIEW
+> Approving role: **Legal/Privacy Counsel** · Secondary approver: **Product Owner** · Supporting reviewers: **Security Lead, Trust & Safety Lead**
+> Review gating: Required before Phase 0 public launch. Engineering implementation may proceed under these approved defaults.
 
 ---
 
@@ -22,14 +22,14 @@ Các yêu cầu compliance ảnh hưởng **trực tiếp** đến implementatio
 |---|---|---|
 | **Cookie consent banner** | Phải hiện ngay lần đầu truy cập, trước mọi tracking (trừ strictly necessary) | P0 — Launch blocker |
 | **ToS + Privacy Policy acceptance** | Click-wrap bắt buộc trước khi sử dụng | P0 — Launch blocker |
-| **AI content labeling** | "AI-assisted" badge mandatory trên mọi AI output trong UI | P0 — EU AI Act (Aug 2026) |
+| **AI content labeling** | Internal UI: "AI-assisted" badge on material AI outputs. Export/publish: platform-required altered/synthetic/AI-generated disclosure for realistic or materially AI-generated media | P0 — EU AI Act (Aug 2026) |
 | **C2PA metadata** | Machine-readable AI content tagging embedded in exports | P1 — EU AI Act |
-| **DMCA process** | Takedown trong 48 giờ, 3-strike policy | P0 — Legal |
-| **Age verification** | Minimum 18 tuổi, self-declaration + payment verification | P0 — Launch blocker |
+| **DMCA process** | Acknowledge receipt within 24h. Takedown for valid notice within 48h (internal SLA, not statutory). Counter-notice → 10-14 business day restore. 3-strike policy (warning → restriction → suspension review within rolling 12 months) | P0 — Legal |
+| **Age verification** | Minimum 18+. Baseline: self-declaration at onboarding. Stronger gate (verified payment method) required before monetization/payout/Creator Store checkout/Digital Twin/Voice Clone. No AI likeness use of minors | P0 — Launch blocker |
 | **Data export** | Within 72 hours, JSON + CSV format | P1 — GDPR/PDPA |
 | **Account deletion** | 14-day grace → complete within 30 days | P1 — GDPR/PDPA |
 | **Pre-publish compliance scan** | Check music copyright, hashtag limits, disclosure, banned keywords | P0 — Platform compliance |
-| **Financial data disclaimer** | Source class + confidence badge on all financial surfaces | P0 — Liability protection |
+| **Financial data disclaimer** | Source Class (`Official` \| `Imported` \| `Inferred` \| `Estimated` \| `Unreconciled`) + Confidence (`High` \| `Medium` \| `Low`) + freshness timestamp on all financial surfaces. Full disclaimer text in §6.3 | P0 — Liability protection |
 
 ---
 
@@ -151,13 +151,41 @@ Các yêu cầu compliance ảnh hưởng **trực tiếp** đến implementatio
 | Financial insights AI | Limited | "Not financial advice" disclaimer + human review flag |
 | Inbox auto-reply | Limited | User notification that AI is responding |
 
-### 6.2 AI Content Labeling
-- **Visible indicator**: "AI-assisted" badge trên mọi AI output trong Creativanta UI
-- **Machine-readable**: C2PA standard tagging trong exported images/videos
-- **Dual-layer**: visible label cho humans + metadata cho machines
-- **Exemption**: content với substantial human editorial review có thể skip visible label (human oversight must be documented)
+### 6.2 AI Content Labeling (DEC-002)
 
-### 6.3 Pre-Publish Compliance Scan (M10)
+**Internal product/UI label:**
+- `AI-assisted` badge on user-facing outputs inside Creativanta when there is material AI generation or material AI transformation
+- Do not require the badge on purely internal drafts that are not user-facing
+
+**Export / platform disclosure rule:**
+- Use the platform-required altered/synthetic/AI-generated disclosure when content is realistic or materially AI-generated/manipulated
+- For realistic media and high-risk synthetic media flows, require stricter disclosure wording in export/publish contexts
+
+**Machine-readable layer:**
+- C2PA standard tagging in exported images/videos
+- Dual-layer: visible label for humans + metadata for machines
+
+**Exemption:** Content with substantial human editorial review may skip visible label (human oversight must be documented)
+
+### 6.3 Financial Disclaimer & Trust Badge (DEC-005)
+
+**Canonical disclaimer text** (display on all financial surfaces):
+
+> Financial insights in Creativanta are informational only and are not financial, tax, or legal advice. Figures may include imported, inferred, estimated, or unreconciled data. Always verify against platform statements, payment processors, and your accountant or advisor before making business decisions.
+
+**Source Class taxonomy:**
+- `Official` — authoritative platform/processor data
+- `Imported` — pulled from connected accounts
+- `Inferred` — calculated from available signals
+- `Estimated` — projected or approximated
+- `Unreconciled` — not yet matched/verified
+
+**Confidence rules:**
+- `High` — only for official/imported authoritative data that is reconciled
+- `Estimated` or `Unreconciled` data must not display `High` confidence
+- Freshness timestamp required on all financial surfaces
+
+### 6.4 Pre-Publish Compliance Scan (M10)
 
 | Check | Platforms | Action |
 |---|---|---|
@@ -171,7 +199,7 @@ Các yêu cầu compliance ảnh hưởng **trực tiếp** đến implementatio
 
 Scan results: `pass` | `pass_with_warnings` | `review_required` | `blocked`
 
-### 6.4 Acceptable Use Policy (AUP) Enforcement
+### 6.5 Acceptable Use Policy (AUP) Enforcement
 
 | Violation Level | Action |
 |---|---|

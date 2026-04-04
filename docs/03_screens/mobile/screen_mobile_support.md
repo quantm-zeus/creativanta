@@ -1,7 +1,7 @@
 # Screen: Mobile — Support Center
 
-> **Screen ID**: M062
-> **Module**: M25 — Support
+> **Screen ID**: M049
+> **Module**: S19 — Help Center
 > **Route**: `/support` (mobile)
 > **Platform**: Mobile (Flutter)
 > **Upstream**: A1 Schema (tickets, kb_articles)
@@ -94,8 +94,8 @@ SupportCenterScreen
 ## 19. Related Screens
 | Screen | Relationship |
 |---|---|
-| [W113] Web Support Center | Web equivalent |
-| [W115] Article Viewer | Article detail |
+| [W097] Web Support Center | Web equivalent |
+| [W098] Article Viewer | Article detail |
 ---
 ## Error Handling
 

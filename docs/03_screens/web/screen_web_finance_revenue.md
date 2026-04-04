@@ -41,7 +41,7 @@ Revenue breakdown by source, platform, product, and content — with period comp
 
 ### Preconditions
 - User has `profit:read` permission (Owner, Admin)
-- Or `revenue:read` for Manager role (revenue only, no profit)
+- Or `profit:read` for Manager role (revenue only, no profit)
 - At least one order or billing event exists
 
 ### Postconditions
@@ -167,15 +167,15 @@ RevenueDetailPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Change period | Period selector | `RevenueService/GetRevenue(period)` | All data + chart update | `revenue:read` |
-| 2 | Switch tab | Click tab | Client-side (data pre-fetched) | Table switches | `revenue:read` |
-| 3 | Sort column | Click column header | Client-side sort | Table re-sorts | `revenue:read` |
-| 4 | Drill into platform | Click platform row | — | Filter to that platform | `revenue:read` |
+| 1 | Change period | Period selector | `RevenueService/GetRevenue(period)` | All data + chart update | `profit:read` |
+| 2 | Switch tab | Click tab | Client-side (data pre-fetched) | Table switches | `profit:read` |
+| 3 | Sort column | Click column header | Client-side sort | Table re-sorts | `profit:read` |
+| 4 | Drill into platform | Click platform row | — | Filter to that platform | `profit:read` |
 | 5 | View product | Click product name | — | → `/products/[id]` | `product:read` |
 | 6 | View content | Click content name | — | → Content detail page | `report:read` |
-| 7 | Export CSV | "📤 Export CSV" | Client-side CSV gen | CSV download | `revenue:read` |
-| 8 | Export PDF | "📄 Export PDF" | Server-side PDF gen | PDF download | `revenue:read` |
-| 9 | Custom period | "Custom" → date range picker | Refetch | Data for custom range | `revenue:read` |
+| 7 | Export CSV | "📤 Export CSV" | Client-side CSV gen | CSV download | `profit:read` |
+| 8 | Export PDF | "📄 Export PDF" | Server-side PDF gen | PDF download | `profit:read` |
+| 9 | Custom period | "Custom" → date range picker | Refetch | Data for custom range | `profit:read` |
 
 ---
 ## 7. States

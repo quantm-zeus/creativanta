@@ -1,7 +1,7 @@
 # Screen: Web — AI Idea Generator
 
-> **Screen ID**: W18
-> **Module**: M04 — Content Creation (Ideas)
+> **Screen ID**: W014
+> **Module**: M05 — Idea Engine
 > **Route**: `/ideas/generate`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §12, A1 Schema (ideas, idea_scores), CopilotService
@@ -154,12 +154,12 @@ AIIdeaGeneratorPage
 
 | # | Action | Trigger | API Call | UI Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Generate | "🤖 Tạo ý tưởng" | `CopilotService/GenerateIdeas(prompt, options)` | Progress → results | `idea:generate` |
+| 1 | Generate | "🤖 Tạo ý tưởng" | `CopilotService/GenerateIdeas(prompt, options)` | Progress → results | `idea:create` |
 | 2 | Toggle selection | Click checkbox | — (client) | Check/uncheck | — |
 | 3 | Select all | "☑ Select all" | — (client) | All checked | — |
 | 4 | Edit title | "✏️ Sửa" → inline edit → Enter | — (client) | Title updates | — |
 | 5 | Edit tags | "🏷 Sửa" → tag editor → save | — (client) | Tags update | — |
-| 6 | Regenerate | "🔄 Tạo lại" | Same API, new request | New results replace old | `idea:generate` |
+| 6 | Regenerate | "🔄 Tạo lại" | Same API, new request | New results replace old | `idea:create` |
 | 7 | Save selected | "💾 Lưu" | `IdeaService/BulkCreate(selected_ideas)` | Navigate to /ideas with toast | `idea:create` |
 | 8 | Discard | "❌ Hủy" → confirm | — | Navigate to /ideas | — |
 
@@ -214,7 +214,7 @@ Special:
 ## 8-20. Standard Sections
 
 ### Permission Matrix
-- `idea:generate`: Owner, Admin, Manager, Editor (uses AI credits)
+- `idea:create`: Owner, Admin, Manager, Editor (uses AI credits)
 - `idea:create`: Required to save results
 - Contributors: limited by credit allocation
 
@@ -241,16 +241,16 @@ Special:
 
 ### Technical Notes
 - Route: `src/routes/(app)/ideas/generate/+page.svelte`
-- AI call: streaming RPC via `CopilotService/GenerateIdeas`
+- AI call: streaming RPC via `CopilotService/GetSuggestions`
 - Results stored client-side until saved (not persisted to DB until "Lưu")
 - Credit deduction happens at generation start (pre-debit)
 
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [W17] Idea Board | Parent and save target |
-| [W19] Idea Detail | After saving, cards link here |
-| [W06] Copilot Dialog | Alternative generation path |
+| [W012] Idea Board | Parent and save target |
+| [W013] Idea Detail | After saving, cards link here |
+| [W008] Copilot Dialog | Alternative generation path |
 
 ### Revision History
 | Date | Version | Change |

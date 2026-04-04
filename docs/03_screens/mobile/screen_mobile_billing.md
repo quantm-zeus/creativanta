@@ -165,7 +165,7 @@ BillingScreen
 | Price | `subscriptions.amount` | same | `Intl.NumberFormat('vi-VN')` + "đ / tháng" | 10m TTL |
 | Status | `subscriptions.status` | same | 🟢/🟡/🔴 + Vietnamese label | 10m TTL |
 | Renewal date | `subscriptions.next_billing_date` | same | DD/MM/YYYY | 10m TTL |
-| Credit usage | `credit_transactions.balance` | `CreditService/GetBalance` | "320/500 (64%)" + progress bar | 5m TTL |
+| Credit usage | `credit_transactions.balance` | `AdminBillingService/GetCreditBalance` | "320/500 (64%)" + progress bar | 5m TTL |
 | Storage | `workspace_storage.used_bytes` | `WorkspaceService/GetUsage` | "{n}/{max} GB" + progress bar | 15m TTL |
 | Connected accounts | `connected_accounts` count | `ConnectorService/CountActive` | "{n}/{max} tài khoản" | 10m TTL |
 | Payment method | `payment_methods` | `BillingService/GetPaymentMethods` | Card type icon + "****{last4}" | 30m TTL |
@@ -341,7 +341,7 @@ Billing (/m/settings/billing)
 
 | Screen | Relationship |
 |---|---|
-| [W119] Web Billing | Web equivalent (more detailed) |
+| [W119] Web Billing & Plans | Web equivalent (more detailed) |
 | [W120] Web AI Credits | Web credit management |
 | [W128] Web Credit Purchase | Web credit purchase flow |
 | [M057] Mobile Settings | Parent screen |

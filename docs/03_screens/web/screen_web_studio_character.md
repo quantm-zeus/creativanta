@@ -1,7 +1,7 @@
 # Screen: Web — Character Builder & Library
 
-> **Screen ID**: W25-26
-> **Module**: M04 — AI Studio
+> **Screen ID**: W037
+> **Module**: M08 — Continuity OS
 > **Route**: `/studio/characters`
 > **Platform**: Web (SvelteKit)
 
@@ -218,9 +218,9 @@ CharacterBuilderPage (Route: /studio/characters/new | /studio/characters/[id]/ed
 
 | Screen | Relationship |
 |---|---|
-| [W024] AI Studio Launcher | Parent |
-| [W030] Video Agent | Uses characters |
-| [W039] Asset Library | Character output |
+| [W021] Studio Launcher | Parent |
+| [W031] Video Agent | Uses characters |
+| [W029] Asset Library | Character output |
 
 ---
 

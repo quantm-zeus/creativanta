@@ -62,7 +62,7 @@ M10 exists as the **pre-publish quality gate** that scores, validates, and optim
 1. **User enters publish flow**: content selected → QA panel appears automatically
    - calls `PackagingService/Score` (Editor+)
    - System computes packaging score from component analysis
-   - see [04_contracts/api_endpoint_map.md#2.4](../04_contracts/api_endpoint_map.md)
+   - see [04_contracts/api_endpoint_map.md#2.4](../../04_contracts/api_endpoint_map.md)
 2. **QA panel display**: shows overall score + per-component breakdown + readiness checklist
    - 🟢 Pass items shown green
    - 🟡 Warning items shown yellow with suggested fix
@@ -143,12 +143,12 @@ M10 exists as the **pre-publish quality gate** that scores, validates, and optim
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §8.1 (publish_items — packaging_score, compliance_scan_result, compliance_details) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.4 (PackagingService: Score, ScanCompliance) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §6 (publish.packaging_scored, publish.compliance_scanned) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.4 (packaging:score — Editor+; packaging:override — Manager+) |
-| Pack 05 | [Pack 05 — Publish Contract](../creativanta_detail_design_pack_05_connector_capability_publish_inbox_contract_v_3_1.md) | §4 (Publish inputs), §5 (Publish logs) |
-| Shadowban | [Pack 05 — S14](../creativanta_detail_design_pack_05_connector_capability_publish_inbox_contract_v_3_1.md) | §S14.1 (Shadowban Risk Score), §S14.2 (Pre-Publish Content Scan) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §8.1 (publish_items — packaging_score, compliance_scan_result, compliance_details) |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.4 (PackagingService: Score, ScanCompliance) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §6 (publish.packaging_scored, publish.compliance_scanned) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.5 (packaging:score — Editor+; packaging:override — Manager+) |
+| Pack 05 | Pack 05 — Publish Contract <!-- Legacy ref: creativanta_detail_design_pack_05_connector_capability_publish_inbox_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §4 (Publish inputs), §5 (Publish logs) |
+| Shadowban | Pack 05 — S14 <!-- Legacy ref: creativanta_detail_design_pack_05_connector_capability_publish_inbox_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §S14.1 (Shadowban Risk Score), §S14.2 (Pre-Publish Content Scan) |
 
 ## Related Screens
 

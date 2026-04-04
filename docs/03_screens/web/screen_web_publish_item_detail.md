@@ -1,7 +1,7 @@
 # Screen: Web — Publish Item Detail
 
-> **Screen ID**: W045
-> **Module**: M08 — Publish & Schedule
+> **Screen ID**: W057
+> **Module**: M11 — Publish Hub
 > **Route**: `/publish/[id]`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Product Freeze §16, A1 Schema (publish_items, publish_logs, published_posts, engagement_snapshots), B5 RBAC §2.7
@@ -215,15 +215,15 @@ PublishItemDetailPage
 | # | Action | Trigger | API Call | System Response | Permission |
 |---|---|---|---|---|---|
 | 1 | View on platform | Click "→ View on TikTok" | — | Opens platform URL in new tab | `publish:read` |
-| 2 | View full analytics | Click "📊 Full analytics →" | — | Navigate → `/analytics/posts/[post_id]` | `analytics:read` |
-| 3 | View comments | Click "💬 Comments (89)" | — | Navigate → Thread Detail | `engagement:read` |
-| 4 | Create derivative | Click "🔄 Create derivative" | — | Navigate → `/content/derivatives/new?source=[id]` | `content:create` |
+| 2 | View full analytics | Click "📊 Full analytics →" | — | Navigate → `/analytics/posts/[post_id]` | `report:read` |
+| 3 | View comments | Click "💬 Comments (89)" | — | Navigate → Thread Detail | `thread:read` |
+| 4 | Create derivative | Click "🔄 Create derivative" | — | Navigate → `/content/derivatives/new?source=[id]` | `idea:create` |
 | 5 | Retry failed platform | Click "🔄 Retry" on failed platform card | `PublishService/Retry(publish_item_id, platform)` | Re-queues for specific platform, new log entries appear | `publish:create` |
 | 6 | View diagnostics | Click "🔧 Diagnostics" | — | Navigate → `/publish/[id]/diagnostics` | `publish:read` |
-| 7 | Hold scheduled post | Click "⏸ Hold" on scheduled platform | `PublishService/HoldSchedule(publish_item_id, platform)` | Schedule paused, badge changes to "⏸ On Hold" | `publish:update` |
-| 8 | Edit scheduled metadata | Click "✏ Edit metadata" | — | Inline edit mode for title/caption/hashtags (scheduled platforms only) | `publish:update` |
+| 7 | Hold scheduled post | Click "⏸ Hold" on scheduled platform | `PublishService/HoldSchedule(publish_item_id, platform)` | Schedule paused, badge changes to "⏸ On Hold" | `publish:schedule` |
+| 8 | Edit scheduled metadata | Click "✏ Edit metadata" | — | Inline edit mode for title/caption/hashtags (scheduled platforms only) | `publish:schedule` |
 | 9 | Copy share link | ⋮ menu → "📋 Copy share link" | Client-side clipboard | Toast: "Đã sao chép link" | `publish:read` |
-| 10 | Delete publish item | ⋮ menu → "🗑 Delete" → confirm | `PublishService/Delete(id)` | Soft delete → navigate back to queue | `publish:delete` |
+| 10 | Delete publish item | ⋮ menu → "🗑 Delete" → confirm | `PublishService/Delete(id)` | Soft delete → navigate back to queue | `publish:cancel` |
 | 11 | Re-publish to new platform | ⋮ menu → "📤 Re-publish" | — | Navigate → Publish Composer with pre-filled data + new platform selector | `publish:create` |
 | 12 | Navigate to lineage | Click idea/script/trend/asset link | — | Navigate to respective detail screen | Respective `*:read` |
 
@@ -446,15 +446,15 @@ Publish Item Detail (/publish/[id])
 
 | Screen | Relationship |
 |---|---|
-| [W043] Publish Queue | Parent list view |
-| [W044] Channel Posts | Alternative entry: published content list |
-| [W047b] Publish Diagnostics | Platform diagnostics for failed publishes |
-| [W075] Post Analytics Detail | Deep analytics for published content |
-| [W028] Derivative Manager | Create derivatives from published content |
-| [W019] Idea Detail | Content lineage: origin idea |
-| [W020] Script Detail | Content lineage: source script |
-| [W027] Trend Detail | Content lineage: inspiring trend |
-| [M045] Mobile Publish Detail | Mobile equivalent |
+| [W053] Publish Queue | Parent list view |
+| [W059] Channel Posts | Alternative entry: published content list |
+| [W058] Publish Diagnostics | Platform diagnostics for failed publishes |
+| [W078] Post Detail Analytics | Deep analytics for published content |
+| [W018] Derivative Manager | Create derivatives from published content |
+| [W013] Idea Detail | Content lineage: origin idea |
+| [W016] Script Editor | Content lineage: source script |
+| [W039] Trend Detail | Content lineage: inspiring trend |
+| [M023] Mobile Quick Publish | Mobile equivalent |
 
 ---
 

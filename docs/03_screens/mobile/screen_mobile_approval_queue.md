@@ -43,7 +43,7 @@ Mobile-optimized approval queue for reviewing and acting on pending approvals �
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `approval:review` permission
+- User has `publish:approve` permission
 - User is assigned as approver for pending items
 - Pending approval items exist
 
@@ -200,15 +200,15 @@ ApprovalQueueScreen
 
 | # | Action | Trigger | API Call | Mutation | UI Result | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Approve item | Swipe right (+haptic) | `ApprovalService/Approve(id)` | `status = approved` | Card slides off + ✅ toast + count decreases | `approval:approve` |
-| 2 | Reject item | Swipe left → select reason → confirm | `ApprovalService/Reject(id, reason)` | `status = rejected` | Card slides off + ❌ toast + count decreases | `approval:reject` |
-| 3 | Preview item | Tap card center (👁 Xem) | — | — | Navigate to item detail preview | `approval:review` |
-| 4 | Batch approve all | Tap "Batch ✅ All" → confirm | `ApprovalService/BatchApprove(ids[])` | All `status = approved` | Confirmation dialog → all cards cleared → 🎉 Empty state | `approval:approve` |
-| 5 | Filter by type | Tap segment chip | `ApprovalService/ListPending(type_filter)` | — | List filters | `approval:review` |
-| 6 | Filter advanced | Tap Filter button | — | — | Filter bottom sheet (by urgency, requester, date) | `approval:review` |
-| 7 | Pull to refresh | Pull down gesture | `ApprovalService/ListPending` | — | List refreshes + summary updates | `approval:review` |
-| 8 | Undo approve | Tap "Hoàn tác" in toast (3s window) | `ApprovalService/UndoApprove(id)` | `status = pending` | Card reappears at original position | `approval:approve` |
-| 9 | Undo reject | Tap "Hoàn tác" in toast (3s window) | `ApprovalService/UndoReject(id)` | `status = pending` | Card reappears | `approval:reject` |
+| 1 | Approve item | Swipe right (+haptic) | `ApprovalService/Approve(id)` | `status = approved` | Card slides off + ✅ toast + count decreases | `publish:approve` |
+| 2 | Reject item | Swipe left → select reason → confirm | `ApprovalService/Reject(id, reason)` | `status = rejected` | Card slides off + ❌ toast + count decreases | `publish:approve` |
+| 3 | Preview item | Tap card center (👁 Xem) | — | — | Navigate to item detail preview | `publish:approve` |
+| 4 | Batch approve all | Tap "Batch ✅ All" → confirm | `ApprovalService/BatchApprove(ids[])` | All `status = approved` | Confirmation dialog → all cards cleared → 🎉 Empty state | `publish:approve` |
+| 5 | Filter by type | Tap segment chip | `ApprovalService/ListPending(type_filter)` | — | List filters | `publish:approve` |
+| 6 | Filter advanced | Tap Filter button | — | — | Filter bottom sheet (by urgency, requester, date) | `publish:approve` |
+| 7 | Pull to refresh | Pull down gesture | `ApprovalService/ListPending` | — | List refreshes + summary updates | `publish:approve` |
+| 8 | Undo approve | Tap "Hoàn tác" in toast (3s window) | `ApprovalService/UndoApprove(id)` | `status = pending` | Card reappears at original position | `publish:approve` |
+| 9 | Undo reject | Tap "Hoàn tác" in toast (3s window) | `ApprovalService/UndoReject(id)` | `status = pending` | Card reappears | `publish:approve` |
 
 ---
 

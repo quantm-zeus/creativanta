@@ -1,7 +1,7 @@
 # Screen: Web — Link-in-Bio Builder
 
-> **Screen ID**: W108
-> **Module**: M16 — Creator Pro
+> **Screen ID**: W092
+> **Module**: S16 — Creator Pro Tools
 > **Route**: `/creator-pro/link-in-bio`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 05, A1 Schema (link_in_bio_pages, link_in_bio_links)
@@ -171,7 +171,7 @@ Build a personal landing page at `creativanta.link/{username}` with drag-reorder
 | Screen | Relationship |
 |---|---|
 | [W088] Creator Pro Dashboard | Parent |
-| [M049] Mobile Link-in-Bio | Mobile equivalent |
+| [M047] Mobile Link-in-Bio | Mobile equivalent |
 
 ---
 

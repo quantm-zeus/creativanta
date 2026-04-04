@@ -1,7 +1,7 @@
 # Screen: Web — AI Studio Launcher
 
-> **Screen ID**: W24
-> **Module**: M06 — AI Studio
+> **Screen ID**: W021
+> **Module**: M07 — AI Video Studio
 > **Route**: `/studio`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §14-§17, A1 Schema (generation_jobs, assets)
@@ -135,7 +135,7 @@ AIStudioLauncherPage
 |---|---|---|
 | Active jobs | `generation_jobs WHERE status=processing` | `GenerationService/ListActive` |
 | Recent generations | `assets ORDER BY created_at DESC LIMIT 10` | `AssetService/ListRecent(10)` |
-| Credit balance | `credit_transactions` | `CreditService/GetBalance` |
+| Credit balance | `credit_transactions` | `AdminBillingService/GetCreditBalance` |
 | Mode cards | Static config | Client-side |
 
 | # | Action | Trigger | API | Result | Permission |
@@ -177,9 +177,9 @@ AIStudioLauncherPage
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [W25-W38] Individual AI modes | Children |
-| [W39] Generation History | History view |
-| [M21] Mobile Studio Launcher | Mobile equivalent |
+| [W022-W037] Individual AI modes | Children |
+| [W030] Studio Queue | Queue and history view |
+| [M013] Mobile Studio Launcher | Mobile equivalent |
 
 ### Revision History
 | Date | Version | Change |
@@ -245,7 +245,7 @@ AIStudioLauncherPage
 - **Mode cards**: Static client-side config array — no API call
 - **Active jobs**: SSE from `GenerationService/StreamActiveJobs` or polling every 10s
 - **Recent**: `AssetService/ListRecent(10)` with 5m cache
-- **Credits**: `CreditService/GetBalance` — refreshes on page focus
+- **Credits**: `AdminBillingService/GetCreditBalance` — refreshes on page focus
 - **Insufficient credits**: Overlay on card with "Hết credit" + link to top-up
 
 ---

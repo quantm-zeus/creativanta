@@ -1,6 +1,6 @@
 # Screen: Web — Product Showcase Mode
 
-> **Screen ID**: W29
+> **Screen ID**: W024
 > **Module**: M07 — AI Studio
 > **Route**: `/studio/product-showcase`
 > **Platform**: Web (SvelteKit)
@@ -195,10 +195,10 @@ ProductShowcasePage
 
 | Screen | Relationship |
 |---|---|
-| [W024] AI Studio Launcher | Parent |
-| [W056] Product Detail | Product source |
-| [W038] Studio Queue | Job tracking |
-| [W039] Asset Library | Output storage |
+| [W021] Studio Launcher | Parent |
+| [W061] Product Detail | Product source |
+| [W030] Studio Queue | Job tracking |
+| [W029] Asset Library | Output storage |
 
 ---
 

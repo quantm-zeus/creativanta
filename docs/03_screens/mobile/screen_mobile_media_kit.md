@@ -1,6 +1,6 @@
 # Screen: Mobile — Media Kit
 
-> **Screen ID**: M051
+> **Screen ID**: M048
 > **Module**: S16 — Creator Pro Tools
 > **Route**: `/creator-pro/media-kit` (mobile)
 > **Platform**: Mobile (Flutter)

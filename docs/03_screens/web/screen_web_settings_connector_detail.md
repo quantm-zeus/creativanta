@@ -1,7 +1,7 @@
 # Screen: Web — Connected Account Detail
 
-> **Screen ID**: W118
-> **Module**: M26 — Settings (Connections)
+> **Screen ID**: W127
+> **Module**: M23 — Settings
 > **Route**: `/settings/connections/[id]`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: PRD §M22, A1 Schema (connected_accounts, sync_logs, oauth_tokens), B5 RBAC §2.9
@@ -187,7 +187,7 @@ Deep settings for a connected platform account — sync frequency per data type,
 | Screen | Relationship |
 |---|---|
 | [W117] Connectors | Parent: platform list |
-| [W119] Diagnostics Center | System health |
+| [W125] Diagnostics Center | System health |
 | [W058] Publish Diagnostics | Publish error logs |
 
 ---

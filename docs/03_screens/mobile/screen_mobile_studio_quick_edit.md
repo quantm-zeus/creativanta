@@ -1,6 +1,6 @@
 # Screen: Mobile — Quick Edit
 
-> **Screen ID**: M52
+> **Screen ID**: M014
 > **Module**: M07 — AI Studio
 > **Route**: `/studio/quick-edit` (mobile)
 > **Platform**: Mobile (Flutter)

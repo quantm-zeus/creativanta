@@ -1,7 +1,7 @@
 # Screen: Web — Channel Posts
 
-> **Screen ID**: W044
-> **Module**: M08 — Publish & Schedule
+> **Screen ID**: W059
+> **Module**: M11 — Publish Hub
 > **Route**: `/publish/posts`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Product Freeze §16, A1 Schema (published_posts, engagement_snapshots, publish_items, assets), B5 RBAC §2.7
@@ -188,9 +188,9 @@ ChannelPostsPage
 | # | Action | Trigger | API Call | System Response | Permission |
 |---|---|---|---|---|---|
 | 1 | View post detail | Click row or "→ Detail" | — | Navigate → `/publish/[id]` | `publish:read` |
-| 2 | View analytics | Click "📊 Analytics" | — | Navigate → `/analytics/posts/[post_id]` | `analytics:read` |
-| 3 | View comments | Click "💬 {count}" | — | Navigate → `/engagement/threads/[thread_id]` | `engagement:read` |
-| 4 | Create derivative | Click "🔄 Derivative" | — | Navigate → `/content/derivatives/new?source=[publish_item_id]` | `content:create` |
+| 2 | View analytics | Click "📊 Analytics" | — | Navigate → `/analytics/posts/[post_id]` | `report:read` |
+| 3 | View comments | Click "💬 {count}" | — | Navigate → `/engagement/threads/[thread_id]` | `thread:read` |
+| 4 | Create derivative | Click "🔄 Derivative" | — | Navigate → `/content/derivatives/new?source=[publish_item_id]` | `idea:create` |
 | 5 | Filter by platform | Change platform dropdown | Client-side + refetch `ListPosts(filter)` | List updates with filtered posts | `publish:read` |
 | 6 | Filter by period | Change period dropdown | Refetch `ListPosts(filter)` + `GetChannelsSummary(period)` | List + summary update | `publish:read` |
 | 7 | Sort posts | Change sort dropdown | Client-side (if all loaded) or refetch | List re-ordered | `publish:read` |
@@ -417,12 +417,12 @@ IntersectionObserver on sentinel element 300px from bottom
 
 | Screen | Relationship |
 |---|---|
-| [W043] Publish Queue | Parent: scheduled/draft content (before publish) |
-| [W045] Publish Item Detail | Child: detailed view of single publish item |
-| [W075] Post Analytics Detail | Deep analytics for individual post |
-| [W028] Derivative Manager | Create derivative from high-performing content |
-| [W052] Engagement Thread Detail | Comment management for published post |
-| [M044] Mobile Channel Posts | Mobile equivalent |
+| [W053] Publish Queue | Parent: scheduled/draft content (before publish) |
+| [W057] Publish Item Detail | Child: detailed view of single publish item |
+| [W078] Post Detail Analytics | Deep analytics for individual post |
+| [W018] Derivative Manager | Create derivative from high-performing content |
+| [W047] Thread Detail | Comment management for published post |
+| [M024] Mobile Publish Queue | Mobile equivalent (includes published items) |
 
 ---
 

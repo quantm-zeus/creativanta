@@ -1,6 +1,6 @@
 # Shared: Empty States
 
-> **Screen ID**: S02
+> **Screen ID**: S005
 > **Module**: Shared — UI States
 > **Platform**: All (Web + Mobile)
 > **Upstream**: Design Tokens (D1)

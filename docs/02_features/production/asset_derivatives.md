@@ -109,10 +109,10 @@ M09 exists as the **derivative lifecycle manager** — the organizational layer 
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §7.3 (assets — parent_asset_id, derivative_type) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.3 (DerivativeService: List, BatchTag, GetLineage) |
-| Events consumed | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §5 (clip.extracted, remix.completed, asset.generation_completed) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.3 (derivative:list — Member; derivative:batch_tag — Editor+) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §7.3 (assets — parent_asset_id, derivative_type) |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.3 (DerivativeService: List, BatchTag, GetLineage) |
+| Events consumed | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §5 (clip.extracted, remix.completed, asset.generation_completed) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.4 (derivative:list — Member; derivative:batch_tag — Editor+) |
 
 ## Related Screens
 

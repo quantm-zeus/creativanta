@@ -1,6 +1,6 @@
 # Screen: Mobile — Sample Product Tracker
 
-> **Screen ID**: M033
+> **Screen ID**: M034
 > **Module**: M14 — Monetization OS (Samples & Seeding)
 > **Route**: `/commerce/samples` (mobile app)
 > **Platform**: Mobile (Flutter)
@@ -200,7 +200,7 @@ MobileSampleTrackerPage
 | 2 | Update status | "📋 Update" → bottom sheet | Update | `SampleService/UpdateStatus(id, status, metadata)` | Toast "✅ Đã cập nhật" + card badge changes | `sample:manage` |
 | 3 | Contact influencer | "📱 Contact" / "📱 Nhắc nhở" | Navigate | — | Opens platform DM or SMS | `sample:manage` |
 | 4 | Track shipment | "📦 Track" | Navigate | Opens carrier tracking URL | External browser/in-app browser | `sample:read` |
-| 5 | View content | "📊 View content" (reviewed) | Navigate | — | Push → Content detail with attribution data | `content:read` |
+| 5 | View content | "📊 View content" (reviewed) | Navigate | — | Push → Content detail with attribution data | `idea:read` |
 | 6 | Cancel sample | "📋 Cancel" (overdue) → confirm | Update | `SampleService/Cancel(id, reason)` | Confirmation dialog → card removed | `sample:manage` |
 | 7 | Extend deadline | "🔄 Extend" (overdue) → picker | Update | `SampleService/ExtendDeadline(id, new_deadline)` | Toast "🔄 Đã gia hạn" + deadline updates | `sample:manage` |
 | 8 | Filter by status | Tap status chip | Filter | Refetch with status | List filters, chip highlights | `sample:read` |
@@ -492,9 +492,9 @@ Mobile Sample Tracker (/commerce/samples)
 
 | Screen | Relationship |
 |---|---|
-| [W071] Web Samples Manager | Web equivalent (full pipeline with ROI dashboard) |
-| [M026] Mobile Products | Product referenced in sample |
-| [M030] Mobile Commerce Dashboard | Sample stats in quick nav |
+| [W074] Web Sample Requests | Web equivalent (full pipeline with ROI dashboard) |
+| [M028] Mobile Products | Product referenced in sample |
+| [M026] Mobile Commerce Dashboard | Sample stats in quick nav |
 | [W081] Profit Dashboard | Sample cost attribution |
 | [S009] Trust Badge | Source class for attribution |
 

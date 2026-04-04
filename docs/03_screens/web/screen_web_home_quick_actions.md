@@ -1,6 +1,6 @@
 # Screen: Web — Quick Action Menu
 
-> **Screen ID**: W007
+> **Screen ID**: W005
 > **Module**: M01 — Home & Decision
 > **Route**: N/A (global overlay component)
 > **Platform**: Web (SvelteKit)
@@ -146,11 +146,11 @@ QuickActionFAB (global component, mounted in +layout.svelte)
 |---|---|---|---|---|---|---|
 | 1 | Create idea | "Tạo ý tưởng mới" | 💡 | `/ideas/new` | `idea:create` | `⌘1` |
 | 2 | Write script | "Viết script" | 📝 | `/scripts/new` | `script:create` | `⌘2` |
-| 3 | AI generate idea | "AI tạo ý tưởng" | 🤖 | `/ideas/generate` | `idea:generate` | `⌘3` |
+| 3 | AI generate idea | "AI tạo ý tưởng" | 🤖 | `/ideas/generate` | `idea:create` | `⌘3` |
 | 4 | AI Studio | "AI Studio" | 🎬 | `/studio` | `asset:generate` | `⌘4` |
 | 5 | Quick publish | "Đăng bài nhanh" | 📤 | `/publish/compose` | `publish:create` | `⌘5` |
-| 6 | Add product | "Thêm sản phẩm" | 🛍️ | `/products/new` | `product:create` | `⌘6` |
-| 7 | New message | "Tin nhắn mới" | 📨 | `/inbox/compose` | `inbox:reply` | `⌘7` |
+| 6 | Add product | "Thêm sản phẩm" | 🛍️ | `/products/new` | `product:manage` | `⌘6` |
+| 7 | New message | "Tin nhắn mới" | 📨 | `/inbox/compose` | `thread:reply` | `⌘7` |
 
 ---
 
@@ -160,7 +160,7 @@ QuickActionFAB (global component, mounted in +layout.svelte)
 |---|---|---|---|---|
 | Action visibility | User permissions (from auth context) | `AuthStore.permissions` (client-side store) | Show/hide per action | Session |
 | Action list | Static configuration (hardcoded registry) | None (client-side) | Ordered list | Static |
-| Credit indicator (optional) | `CreditService/GetBalance` | Pre-fetched in layout | Small badge on AI actions if credits low: "🪙 120" | 5m TTL |
+| Credit indicator (optional) | `AdminBillingService/GetCreditBalance` | Pre-fetched in layout | Small badge on AI actions if credits low: "🪙 120" | 5m TTL |
 
 ### Permission-Based Visibility
 | Role | Visible Actions |
@@ -410,11 +410,11 @@ const excludedRoutes = [
 | Screen | Relationship |
 |---|---|
 | [W001] Home Dashboard | Most common source page for FAB use |
-| [W010] Idea Board | Destination: "💡 Tạo ý tưởng mới" |
-| [W020] Script Editor | Destination: "📝 Viết script" |
-| [W024] AI Studio | Destination: "🎬 AI Studio" |
-| [W048] Publish Composer | Destination: "📤 Đăng bài nhanh" |
-| [M007] Mobile Quick Action | Mobile equivalent (bottom sheet variant) |
+| [W012] Idea Board | Destination: "💡 Tạo ý tưởng mới" |
+| [W016] Script Editor | Destination: "📝 Viết script" |
+| [W021] Studio Launcher | Destination: "🎬 AI Studio" |
+| [W052] Publish Composer | Destination: "📤 Đăng bài nhanh" |
+| [M001] Mobile Home Dashboard | Mobile equivalent (quick actions on home) |
 
 ---
 
@@ -422,5 +422,5 @@ const excludedRoutes = [
 
 | Date | Version | Change | Author |
 |---|---|---|---|
-| 2026-03-29 | 2.0 | **Full Tier A rewrite**: Upgraded from 161-line Tier C with generic boilerplate to 380+ line full spec. Added: action registry table with permissions and keyboard shortcuts, per-role visibility matrix, spring animation specification, mobile bottom sheet variant, keyboard shortcut handling (Cmd+N, 1-7, Escape), excluded routes specification, Svelte implementation pattern, z-index layering, reduced-motion support. Removed all generic boilerplate. Standardized Screen ID from W07 to W007. | System |
+| 2026-03-29 | 2.0 | **Full Tier A rewrite**: Upgraded from 161-line Tier C with generic boilerplate to 380+ line full spec. Added: action registry table with permissions and keyboard shortcuts, per-role visibility matrix, spring animation specification, mobile bottom sheet variant, keyboard shortcut handling (Cmd+N, 1-7, Escape), excluded routes specification, Svelte implementation pattern, z-index layering, reduced-motion support. Removed all generic boilerplate. Standardized Screen ID from W07 to W005. | System |
 | 2026-03-28 | 1.0 | Initial specification (Tier C) | System |

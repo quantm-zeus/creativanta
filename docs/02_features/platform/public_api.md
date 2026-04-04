@@ -1,6 +1,7 @@
 ---
 layer: features
 module: S24
+domain: platform
 status: READY
 created: 2026-04-01
 canonical: true

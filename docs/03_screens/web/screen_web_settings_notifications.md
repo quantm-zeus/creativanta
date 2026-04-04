@@ -1,7 +1,7 @@
 # Screen: Web — Settings: Notifications
 
-> **Screen ID**: W126
-> **Module**: M26 — Settings
+> **Screen ID**: W122
+> **Module**: M23 — Settings
 > **Route**: `/settings/notifications`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: PRD §27 Settings, A1 Schema (notification_preferences, notification_channels), B5 RBAC §2.9
@@ -255,8 +255,8 @@ NotificationSettingsPage
 
 | Screen | Relationship |
 |---|---|
-| [W120] Workspace Settings | Timezone for quiet hours |
-| [M043] Mobile Notifications | Mobile equivalent |
+| [W114] Workspace Settings | Timezone for quiet hours |
+| [M002] Mobile Notification List | Mobile equivalent |
 
 ---
 

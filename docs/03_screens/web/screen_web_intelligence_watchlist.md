@@ -1,6 +1,6 @@
 # Screen: Web — Watchlist Manager
 
-> **Screen ID**: W11
+> **Screen ID**: W042
 > **Module**: M02 — Trend Radar
 > **Route**: `/intelligence/watchlist`
 > **Platform**: Web (SvelteKit)
@@ -100,7 +100,7 @@ WatchlistPage
 
 | UI Element | Data Source | API | Display Format |
 |---|---|---|---|
-| Watchlist name | `watchlists.name` | `WatchlistService/List` | Tab label |
+| Watchlist name | `watchlists.name` | `TrendService/ManageWatchlist` | Tab label |
 | Trend title | `trends.title` via `watchlist_items` | `WatchlistService/GetItems(id)` | Row title |
 | Score | `trends.strength_score` | same | Badge with color |
 | Score delta | Computed (current - 7d ago) | same | ↑+12 green or ↓-20 red |
@@ -113,13 +113,13 @@ WatchlistPage
 
 | # | Action | Trigger | API | UI Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Create watchlist | "Tạo mới" → form | `WatchlistService/Create` | New tab appears | `trend:watchlist:manage` |
+| 1 | Create watchlist | "Tạo mới" → form | `TrendService/ManageWatchlist` | New tab appears | `trend:watchlist:manage` |
 | 2 | Create idea | "Tạo ý tưởng" | `IdeaService/Create(from_trend_id)` | Navigate → idea | `idea:create` |
 | 3 | View detail | "Chi tiết" | — | Navigate → trend detail | `trend:read` |
-| 4 | Mute notifications | "Tắt thông báo" | `WatchlistService/MuteItem` | Icon toggles | `trend:watchlist:manage` |
-| 5 | Remove from watchlist | "❌ Xóa" → confirm | `WatchlistService/RemoveItem` | Row fades out | `trend:watchlist:manage` |
-| 6 | Delete watchlist | Tab ⋮ → "Xóa" → confirm | `WatchlistService/Delete` | Tab removed | `trend:watchlist:manage` |
-| 7 | Edit watchlist | Tab ⋮ → "Sửa" | `WatchlistService/Update` | Name updates | `trend:watchlist:manage` |
+| 4 | Mute notifications | "Tắt thông báo" | `TrendService/ManageWatchlist` | Icon toggles | `trend:watchlist:manage` |
+| 5 | Remove from watchlist | "❌ Xóa" → confirm | `TrendService/ManageWatchlist` | Row fades out | `trend:watchlist:manage` |
+| 6 | Delete watchlist | Tab ⋮ → "Xóa" → confirm | `TrendService/ManageWatchlist` | Tab removed | `trend:watchlist:manage` |
+| 7 | Edit watchlist | Tab ⋮ → "Sửa" | `TrendService/ManageWatchlist` | Name updates | `trend:watchlist:manage` |
 | 8 | Switch tab | Click tab | Refetch items | List updates | `trend:read` |
 
 ---
@@ -211,7 +211,7 @@ WatchlistPage
 ## 13. SvelteKit Implementation Notes
 
 - **Route**: `src/routes/(app)/intelligence/watchlist/+page.svelte`
-- **Server load**: `+page.server.ts` → `WatchlistService/List` + `WatchlistService/GetItems(active_list)`
+- **Server load**: `+page.server.ts` → `TrendService/ManageWatchlist` + `WatchlistService/GetItems(active_list)`
 - **Active tab**: URL param `?list={watchlist_slug}` — shareable, persistent
 - **Sparklines**: Pre-computed in API response (7-day snapshots)
 - **Create modal**: `WatchlistService/Create({ name, alert_threshold })` → optimistic tab add
@@ -249,9 +249,9 @@ WatchlistPage
 
 | Screen | Relationship |
 |---|---|
-| [W009] Trend Radar | Source for adding items |
-| [W010] Trend Detail | Target after clicking item |
-| [M018] Mobile Watchlist | Mobile equivalent |
+| [W038] Trend Radar | Source for adding items |
+| [W039] Trend Detail | Target after clicking item |
+| [M018] Mobile Competitors | Mobile equivalent |
 
 ---
 

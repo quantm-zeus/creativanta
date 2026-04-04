@@ -1,6 +1,6 @@
 # Screen: Web — Analytics Overview
 
-> **Screen ID**: W109
+> **Screen ID**: W075
 > **Module**: M17 — Analytics & Reporting
 > **Route**: `/analytics`
 > **Platform**: Web (SvelteKit)
@@ -115,7 +115,7 @@ AnalyticsOverviewPage
 | 2 | Filter platform | Platform dropdown | Refetch | Filtered view | `report:read` |
 | 3 | View content detail | Click content in top list | — | → `/analytics/content/[id]` | `report:read` |
 | 4 | Switch tab | Click tab | — | Tab content loads | `report:read` |
-| 5 | Regenerate insights | Refresh on AI card | `CopilotService/Query` | New insights | `copilot:use_deep` |
+| 5 | Regenerate insights | Refresh on AI card | `CopilotService/Query` | New insights | `copilot:use_analytics` |
 | 6 | Export | ⋮ → "Export PDF" | Client-side | Report PDF | `report:read` |
 
 ---
@@ -228,11 +228,11 @@ AnalyticsOverviewPage
 
 | Screen | Relationship |
 |---|---|
-| [W110] Analytics Detail | Per-platform drill-down |
-| [W075] Post Analytics Detail | Per-post deep-dive |
-| [W076] Performance Coach | AI coaching |
-| [W077] Gamification | Engagement mechanics |
-| [M011] Mobile Analytics | Mobile equivalent |
+| [W076] Analytics Detail | Per-platform drill-down |
+| [W078] Post Detail Analytics | Per-post deep-dive |
+| [W077] Performance Metrics | AI coaching |
+| [W079] Gamification | Engagement mechanics |
+| [M035] Mobile Analytics | Mobile equivalent |
 
 ---
 

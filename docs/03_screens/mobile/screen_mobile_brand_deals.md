@@ -1,6 +1,6 @@
 # Screen: Mobile — Brand Deals Pipeline
 
-> **Screen ID**: M053
+> **Screen ID**: M046
 > **Module**: S16 — Creator Pro Tools
 > **Route**: `/creator-pro/deals` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -93,8 +93,8 @@ BrandDealsPipelineScreen
 ## 19. Related Screens
 | Screen | Relationship |
 |---|---|
-| [W091] Web Brand Deals | Web equivalent |
-| [M051] Media Kit | Para sharing |
+| [W095] Web Brand Deal Manager | Web equivalent |
+| [M048] Media Kit Preview | Para sharing |
 ---
 ## Error Handling
 

@@ -1,6 +1,6 @@
 # Screen: Admin — Business Analytics Dashboard
 
-> **Screen ID**: A017
+> **Screen ID**: A024
 > **Module**: S26 — Internal Admin & Operations
 > **Route**: `/admin/analytics/business`
 > **Platform**: Admin Web (SvelteKit) — VPN-only access
@@ -337,10 +337,10 @@ Business Analytics (/admin/analytics/business)
 
 | Screen | Relationship |
 |---|---|
-| [A015] Platform Revenue | Financial detail |
-| [A018] Usage Analytics | Usage-focused view |
+| [A022] Revenue Dashboard | Financial detail |
+| [A023] Usage Analytics | Usage-focused view |
 | [A001] Admin Dashboard | Summary hub |
-| [A005] Subscription Management | Subscription operations |
+| [A021] Subscriptions | Subscription operations |
 
 ---
 

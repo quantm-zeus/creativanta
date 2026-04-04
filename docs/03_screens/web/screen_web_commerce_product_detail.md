@@ -1,6 +1,6 @@
 # Screen: Web — Product Detail
 
-> **Screen ID**: W056
+> **Screen ID**: W061
 > **Module**: M13 — Commerce (Products)
 > **Route**: `/products/[id]`
 > **Platform**: Web (SvelteKit)
@@ -300,23 +300,23 @@ ProductDetailPage
 
 | # | Action | Trigger | API Call | System Response | Permission |
 |---|---|---|---|---|---|
-| 1 | Edit product | "✏️ Edit" | — | Navigate → `/products/[id]/edit` | `product:update` |
+| 1 | Edit product | "✏️ Edit" | — | Navigate → `/products/[id]/edit` | `product:manage` |
 | 2 | Create content | "📤 Tạo nội dung" | — | Navigate → `/ideas/new?product_id=[id]` (idea pre-filled with product context) | `idea:create` |
-| 3 | Create offer | "🏷 Tạo offer" | — | Navigate → `/offers/new?product_id=[id]` | `offer:create` |
+| 3 | Create offer | "🏷 Tạo offer" | — | Navigate → `/offers/new?product_id=[id]` | `offer:manage` |
 | 4 | Create affiliate link | "🔗 Tạo affiliate link" | — | Navigate → `/commerce/affiliates?create=true&product_id=[id]` | `affiliate:manage` |
-| 5 | Force sync | "🔄 Force sync" on platform row | `ConnectorService/SyncProduct(id)` | Spinner → data refreshes. Toast "✅ Đã đồng bộ." | `product:update` |
-| 6 | Force sync all | "🔄 Force sync all" | `ConnectorService/SyncProduct(id, all_platforms)` | All platforms sync. Toast "✅ Đã đồng bộ tất cả." | `product:update` |
+| 5 | Force sync | "🔄 Force sync" on platform row | `ConnectorService/SyncProduct(id)` | Spinner → data refreshes. Toast "✅ Đã đồng bộ." | `product:manage` |
+| 6 | Force sync all | "🔄 Force sync all" | `ConnectorService/SyncProduct(id, all_platforms)` | All platforms sync. Toast "✅ Đã đồng bộ tất cả." | `product:manage` |
 | 7 | View full analytics | "📊 Full analytics" | — | Navigate → `/analytics/products/[id]` | `report:read` |
-| 8 | Link content | "+ Link nội dung khác" → picker | `ProductService/LinkContent(product_id, content_id)` | Content appears in Attribution card | `product:update` |
-| 9 | Edit stock | "✏ Edit stock" | → inline edit or modal | `ProductService/UpdateStock(variant_id, quantity)` | `product:update` |
-| 10 | Set stock alert | "🔔 Set low stock alert" | `ProductService/SetAlertThreshold(id, threshold)` | Alert saved. Toast "🔔 Sẽ thông báo khi dưới {n}." | `product:update` |
-| 11 | Archive product | "🗑 Archive" → confirm | `ProductService/Archive(id)` | Product moved to archive. Navigate → `/products`. Toast "Đã lưu trữ." | `product:delete` |
+| 8 | Link content | "+ Link nội dung khác" → picker | `ProductService/LinkContent(product_id, content_id)` | Content appears in Attribution card | `product:manage` |
+| 9 | Edit stock | "✏ Edit stock" | → inline edit or modal | `ProductService/UpdateStock(variant_id, quantity)` | `product:manage` |
+| 10 | Set stock alert | "🔔 Set low stock alert" | `ProductService/SetAlertThreshold(id, threshold)` | Alert saved. Toast "🔔 Sẽ thông báo khi dưới {n}." | `product:manage` |
+| 11 | Archive product | "🗑 Archive" → confirm | `ProductService/Archive(id)` | Product moved to archive. Navigate → `/products`. Toast "Đã lưu trữ." | `product:manage` |
 | 12 | Change chart period | Click period tab (7d/30d/90d) | `ProductService/GetSalesChart(id, period)` | Chart re-renders with new data | `product:read` |
 | 13 | Change stats period | Click period tab on Sales Summary | `ProductService/GetSalesStats(id, period)` | Stats update with deltas | `product:read` |
 | 14 | View review details | Click "Xem tất cả (156)" | `ProductService/GetReviews(id, { page:1 })` | Navigate → reviews drawer/modal with all reviews | `product:read` |
 | 15 | Copy product link | "📋 Copy product link" | — (clipboard) | External product URL copied. Toast "Đã copy link sản phẩm." | `product:read` |
 | 16 | Export brief | "📎 Xuất product brief" | Client-side PDF generation | PDF download with product summary + sales data | `product:read` |
-| 17 | View content | Click attribution item | — | Navigate → content detail page | `content:read` |
+| 17 | View content | Click attribution item | — | Navigate → content detail page | `idea:read` |
 | 18 | Explain profit | "? Giải thích cách tính" | — | Drawer opens with formula explanation + source class legend | `product:read` |
 
 ---
@@ -581,7 +581,7 @@ Product Detail (/products/[id])
 | [W069] Affiliate Links | Affiliate links for this product |
 | [W081] Profit Dashboard | Aggregated profit data |
 | [W084] Reconciliation | Revenue reconciliation |
-| [M030] Mobile Product Detail | Mobile equivalent |
+| [M028] Mobile Products | Mobile equivalent |
 | [S009] Trust Badge | Source class display |
 
 ---
@@ -590,5 +590,5 @@ Product Detail (/products/[id])
 
 | Date | Version | Change | Author |
 |---|---|---|---|
-| 2026-03-29 | 2.0 | **Full Tier A rewrite**: Upgraded from 198-line Tier C with generic boilerplate to 530+ line full spec. Added: complete split-view layout with main/side, image gallery, variant inventory management, 30-day sales chart with period selector, customer reviews with rating distribution, content attribution with contribution percentages, full profit breakdown with S009 source class integration, platform sync per-product, 18 user actions, 9 states including low stock/out of stock/deleted-on-platform, role-based data visibility (Editor/Manager profit restrictions), 11 analytics events, real-time stock updates via SSE. Removed all generic boilerplate. Standardized Screen ID from W56 to W056. | System |
+| 2026-03-29 | 2.0 | **Full Tier A rewrite**: Upgraded from 198-line Tier C with generic boilerplate to 530+ line full spec. Added: complete split-view layout with main/side, image gallery, variant inventory management, 30-day sales chart with period selector, customer reviews with rating distribution, content attribution with contribution percentages, full profit breakdown with S009 source class integration, platform sync per-product, 18 user actions, 9 states including low stock/out of stock/deleted-on-platform, role-based data visibility (Editor/Manager profit restrictions), 11 analytics events, real-time stock updates via SSE. Removed all generic boilerplate. Standardized Screen ID from W56 to W061. | System |
 | 2026-03-28 | 1.0 | Initial specification (Tier C) | System |

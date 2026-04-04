@@ -1,6 +1,6 @@
 # Screen: Web — Workspace Selector
 
-> **Screen ID**: W02
+> **Screen ID**: W002
 > **Module**: M01 — Home & Decision
 > **Route**: `/workspaces`
 > **Platform**: Web (SvelteKit)
@@ -205,7 +205,7 @@ Workspace Selector (/workspaces)
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [W01] Home Dashboard | Target after workspace selection |
+| [W001] Home Dashboard | Target after workspace selection |
 | Auth/Login | Entry point |
 
 ### Revision History

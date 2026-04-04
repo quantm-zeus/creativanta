@@ -1,7 +1,7 @@
 # Screen: Mobile — Publish Calendar
 
-> **Screen ID**: M045
-> **Module**: M08 — Publish & Schedule
+> **Screen ID**: M025
+> **Module**: M11 — Publish Hub
 > **Route**: `/calendar` (mobile)
 > **Platform**: Mobile (Flutter)
 > **Upstream**: A1 Schema (scheduled_posts, content_items), B5 RBAC §2.7
@@ -97,7 +97,7 @@ PublishCalendarPage
 | 3 | Toggle view | "Week ▾"/"Month ▾" | Client-side | `publish:read` |
 | 4 | Navigate week | Tap ←/→ | `GetCalendar(new_range)` | `publish:read` |
 | 5 | Publish now | "📤" on today's post | `PublishService/PublishNow` | `publish:create` |
-| 6 | Reschedule | "📅 Đổi lịch" | `PublishService/Reschedule` | `publish:edit` |
+| 6 | Reschedule | "📅 Đổi lịch" | `PublishService/Reschedule` | `publish:schedule` |
 | 7 | Open queue | "📋" | — → M046 | `publish:read` |
 | 8 | Pull refresh | Pull-down | Refetch range | `publish:read` |
 
@@ -208,9 +208,9 @@ PublishCalendarPage
 
 | Screen | Relationship |
 |---|---|
-| [W046] Web Calendar | Web equivalent |
-| [M046] Publish Queue | List complement |
-| [M006] Quick Publish | Create from empty slot |
+| [W054] Web Publish Calendar | Web equivalent |
+| [M024] Publish Queue | List complement |
+| [M023] Quick Publish | Create from empty slot |
 
 ---
 ## 18. Revision History

@@ -63,21 +63,21 @@ Home dynamically compiles the highest-impact actions across all domains (intelli
 
 1. User opens Home — system reads `workspaces.default_operator_mode`
    - calls `WorkspaceService/Get`
-   - see [04_contracts/api_endpoint_map.md#2.1](../04_contracts/api_endpoint_map.md)
+   - see [04_contracts/api_endpoint_map.md#2.1](../../04_contracts/api_endpoint_map.md)
 2. System assembles Home projection from multiple domain sources:
    - Trend/Opportunity data (M02, M04) → "Top Opportunities" cards
    - Thread SLA/urgency (M12) → "Urgent Threads" cards
    - Approval queue (M20, M11) → "Pending Approvals" cards
    - Profit anomaly (M19) → "Profit Anomalies" cards
    - Connector health (M22) → "Diagnostics Issues" cards
-   - see [04_contracts/domain_event_catalog.md#3](../04_contracts/domain_event_catalog.md) (intelligence events feeding Home)
+   - see [04_contracts/domain_event_catalog.md#3](../../04_contracts/domain_event_catalog.md) (intelligence events feeding Home)
 3. System reorders cards by operator mode priority matrix
 4. User taps a card CTA → navigates to the relevant object detail page
    - e.g., Opportunity detail, Thread detail, Approval detail, Profit drill-down
 5. User may dismiss/snooze/assign cards — emits UI action, persists in Home projection state
 6. Morning Brief generation (cron) compiles top 3-5 items into brief
    - emits `morning_brief.generated`
-   - see [04_contracts/domain_event_catalog.md#13](../04_contracts/domain_event_catalog.md)
+   - see [04_contracts/domain_event_catalog.md#13](../../04_contracts/domain_event_catalog.md)
 
 ## Alternate Flows
 
@@ -125,7 +125,7 @@ Home dynamically compiles the highest-impact actions across all domains (intelli
 Home does not manage a first-class state machine itself — it is a **projection surface**. However, the Morning Brief has a simple lifecycle:
 
 Object: morning_brief | Not a DB entity — ephemeral projection
-see [04_contracts/domain_event_catalog.md#13](../04_contracts/domain_event_catalog.md)
+see [04_contracts/domain_event_catalog.md#13](../../04_contracts/domain_event_catalog.md)
 
 | From | To | Trigger | Condition |
 |---|---|---|---|
@@ -137,10 +137,10 @@ see [04_contracts/domain_event_catalog.md#13](../04_contracts/domain_event_catal
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §4 (workspaces), §5 (intelligence), §11 (profit_snapshots), §13 (diagnostics_records) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.1 (WorkspaceService), §2.2 (Intelligence RPCs), §2.8 (Copilot) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §3 (intelligence → M01), §7 (thread SLA → M01), §10 (profit anomaly → M01), §12 (capability/credits → M01), §13 (morning_brief) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.1 (workspace read), §2.2 (trend/opportunity read), §2.10 (diagnostics read) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §4 (workspaces), §5 (intelligence), §11 (profit_snapshots), §13 (diagnostics_records) |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.1 (WorkspaceService), §2.2 (Intelligence RPCs), §2.8 (Copilot) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §3 (intelligence → M01), §7 (thread SLA → M01), §10 (profit anomaly → M01), §12 (capability/credits → M01), §13 (morning_brief) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.1 (workspace read), §2.2 (trend/opportunity read), §2.10 (diagnostics read) |
 
 ## Related Screens
 
@@ -165,7 +165,7 @@ see [04_contracts/domain_event_catalog.md#13](../04_contracts/domain_event_catal
 
 ## Open Questions / Blockers
 
-- **SCR-M-001** (OPEN_BLOCKERS.md): Screen specs in `docs/screens/` not yet migrated to `docs/03_screens/` — cross-links to screen docs may use old paths until resolved.
+> ✅ **RESOLVED: SCR-M-001** (2026-03-31) — All screen specs consolidated in `docs/03_screens/` (238 files across web/mobile/admin/shared). Cross-links now use canonical `03_screens/` paths.
 
 ---
 

@@ -1,6 +1,6 @@
 # Screen: Mobile — Quick Publish
 
-> **Screen ID**: M006
+> **Screen ID**: M023
 > **Module**: M11 — Publish Hub
 > **Route**: `/publish/quick` (modal push navigation)
 > **Platform**: Mobile (Flutter)
@@ -444,10 +444,10 @@ Quick Publish (/publish/quick)
 
 | Screen | Relationship |
 |---|---|
-| [W043] Web Publish Queue | Web equivalent (more complex, multi-item) |
-| [W044] Web Package & Upload | Web packaging flow |
+| [W053] Web Publish Queue | Web equivalent (more complex, multi-item) |
+| [W056] Web Packaging QA | Web packaging flow |
 | [M001] Mobile Home Dashboard | Entry via quick action |
-| [M021] Mobile Studio | Entry via completed asset |
+| [M013] Mobile Studio Launcher | Entry via completed asset |
 | [M025] Mobile Calendar | Schedule view destination |
 ---
 ## Error Handling

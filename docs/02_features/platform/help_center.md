@@ -1,6 +1,6 @@
 ---
 layer: features
-module: support
+module: help
 canonical: true
 domain: platform
 status: READY

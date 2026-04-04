@@ -1,6 +1,6 @@
 ---
 layer: features
-module: referral_growth
+module: referral
 canonical: true
 domain: platform
 status: READY
@@ -171,7 +171,7 @@ Referral & Growth Engine drives organic acquisition through a **double-sided ref
 
 ## 9. API Surface
 
-> See `04_contracts/api_endpoint_map.md` §2.8 (Admin/Billing M23) — [BLOCKER: API-M-002] ReferralService + PromotionalService not yet explicitly listed. Grouped under M23 ~15 RPCs.
+> ✅ **RESOLVED: API-M-002b** (2026-04-02) — `ReferralService` now fully defined in `api_endpoint_map.md` §2.8.11 with 5 RPCs: GetMyReferralCode, GetReferralStats, ListReferrals, ClaimReward, ValidateCode. `PromotionalService` defined at §2.8.12.
 
 | Service | Key RPCs |
 |---------|----------|

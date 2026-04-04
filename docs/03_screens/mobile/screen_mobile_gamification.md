@@ -1,6 +1,6 @@
 # Screen: Mobile — Gamification
 
-> **Screen ID**: M042
+> **Screen ID**: M038
 > **Module**: M23 — Analytics (Gamification)
 > **Route**: `/gamification` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -115,8 +115,8 @@ GamificationScreen
 
 | Screen | Relationship |
 |---|---|
-| [W077] Web Gamification | Web equivalent |
-| [M021] Analytics | Parent |
+| [W079] Web Gamification | Web equivalent |
+| [M035] Analytics | Parent |
 ---
 ## Error Handling
 

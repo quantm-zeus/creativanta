@@ -1,6 +1,6 @@
 # Screen: Mobile — Notification List
 
-> **Screen ID**: M03
+> **Screen ID**: M002
 > **Module**: M01 — Home (Global)
 > **Route**: `/notifications` (mobile app)
 > **Platform**: Mobile (Flutter)
@@ -86,7 +86,7 @@ MobileNotificationListPage
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [W03] Web Notification Center | Web equivalent |
+| [W003] Web Notification Center | Web equivalent |
 | All screens | Notifications link to source entities |
 
 ### Revision History

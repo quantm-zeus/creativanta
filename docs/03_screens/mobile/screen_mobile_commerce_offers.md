@@ -324,9 +324,9 @@ Mobile Offers (/commerce/offers)
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [W057] Web Offer List | Web equivalent (full management) |
-| [W058] Web Offer Detail | Full create/edit on web |
-| [M030] Mobile Coupons | Sibling — coupons linked to offers |
+| [W066] Web Offer List | Web equivalent (full management) |
+| [W067] Web Offer Detail | Full create/edit on web |
+| [M033] Mobile Coupons | Sibling — coupons linked to offers |
 
 ### Revision History
 | Date | Version | Change | Author |

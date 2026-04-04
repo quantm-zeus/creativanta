@@ -561,7 +561,7 @@ creativanta/
 │   ├── pulumi/                # Cloud infrastructure
 │   └── migrations/            # Database migrations (SeaORM)
 │
-└── tooling/
+└── tooling/                   # ⚠️ PLANNED — scripts to be created during implementation Phase 1
     ├── proto-gen.sh           # Generate code from .proto for all platforms
     ├── pieces-sync.sh         # Sync custom pieces + recipes to Activepieces
     └── scripts/

@@ -132,7 +132,7 @@ M13 exists as the **canonical commerce catalog and order truth layer** — the s
 ### Order Lifecycle
 
 Object: order | DB column: `orders.lifecycle_state`
-see [04_contracts/database_schema.md#10.3](../04_contracts/database_schema.md)
+see [04_contracts/database_schema.md#10.3](../../04_contracts/database_schema.md)
 
 | From | To | Trigger | Condition |
 |---|---|---|---|
@@ -159,12 +159,12 @@ see [04_contracts/database_schema.md#10.3](../04_contracts/database_schema.md)
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §10 (products, offers, orders, affiliate_links, campaigns) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.6 (ProductService, OfferService, OrderService — ~30 RPCs Commerce) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §8 (product.created, order.imported, order.state_changed, order.refund_initiated), §19 (refund.*, return.*) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.6 (product — Editor+; order — Editor+) |
-| Pack 06 | [Pack 06 — Commerce Contract](../creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md) | §2 (Commerce Contract), §3 (Order/Refund/Settlement) |
-| Webhooks | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §3 (TikTok, Shopee, Lazada order events) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §10 (products, offers, orders, affiliate_links, campaigns) |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.6 (ProductService, OfferService, OrderService — ~30 RPCs Commerce) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §8 (product.created, order.imported, order.state_changed, order.refund_initiated), §19 (refund.*, return.*) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.7 (product — Editor+; order — Editor+) |
+| Pack 06 | Pack 06 — Commerce Contract <!-- Legacy ref: creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §2 (Commerce Contract), §3 (Order/Refund/Settlement) |
+| Webhooks | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §3 (TikTok, Shopee, Lazada order events) |
 
 ## Related Screens
 
@@ -193,4 +193,4 @@ see [04_contracts/database_schema.md#10.3](../04_contracts/database_schema.md)
 ## Open Questions / Blockers
 
 - [NONE] — No critical blockers specific to M13 in OPEN_BLOCKERS.md. Commerce endpoints defined in API map §2.6 (~30 RPCs).
-- [NOTE] DB-H-001: Money fields in orders/settlements use `DECIMAL(15,2)` in current schema, which is correct. But related `cost_items` and `profit_snapshots` should be verified — see OPEN_BLOCKERS.md DB-H-001 for cross-module REAL type concern.
+- [NOTE] DB-H-001 (RESOLVED): All money/credit fields use `NUMERIC(18,6)` — never REAL or FLOAT. Verified resolved in schema.

@@ -1,6 +1,6 @@
 # Screen: Mobile — Refund Management
 
-> **Screen ID**: M031
+> **Screen ID**: M030
 > **Module**: M13 — Product Hub / Order Truth
 > **Route**: `/commerce/refunds` (mobile app)
 > **Platform**: Mobile (Flutter)
@@ -208,7 +208,7 @@ MobileRefundListPage
 | 3 | Approve refund | Swipe right → bottom sheet → confirm | Decision | `RefundService/Approve(id, type, amount, reason)` | Toast "✅ Đã duyệt hoàn tiền {amount}" + card moves to Approved | `order:manage` |
 | 4 | Reject refund | Swipe left → bottom sheet → confirm | Decision | `RefundService/Reject(id, reason_category, notes)` | Toast "❌ Đã từ chối hoàn tiền" + card moves to Rejected | `order:manage` |
 | 5 | View order detail | Tap order reference link | Navigate | — | Push → M025 Order Detail | `order:read` |
-| 6 | Contact buyer | Tap buyer name | Navigate | — | Opens platform chat or SMS | `order:contact_buyer` |
+| 6 | Contact buyer | Tap buyer name | Navigate | — | Opens platform chat or SMS | `order:manage` |
 | 7 | Filter by status | Tap status chip | Filter | Refetch with status | List filters, chip highlights | `order:manage` |
 | 8 | Advanced filter | Tap "Filter ▾" | Filter | Refetch | Bottom sheet → applied | `order:manage` |
 | 9 | Pull refresh | Pull gesture | Refresh | Refetch current view | List + summary update. Haptic light. | `order:manage` |
@@ -490,9 +490,9 @@ Mobile Refund List (/commerce/refunds)
 | Screen | Relationship |
 |---|---|
 | [W073] Web Refund Management | Web equivalent (full pipeline with review drawer) |
-| [M025] Mobile Order Detail | Order context for refund |
-| [M026] Mobile Products | Product referenced in refund |
-| [M030] Mobile Commerce Dashboard | Pending refund count in actions |
+| [M027] Mobile Orders | Order context for refund |
+| [M028] Mobile Products | Product referenced in refund |
+| [M026] Mobile Commerce Dashboard | Pending refund count in actions |
 | [W081] Profit Dashboard | Revenue impact of refunds |
 | [S009] Trust Badge | Source class badge on refund data |
 

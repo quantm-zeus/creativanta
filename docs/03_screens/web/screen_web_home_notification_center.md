@@ -1,6 +1,6 @@
 # Screen: Web — Notification Center
 
-> **Screen ID**: W03
+> **Screen ID**: W003
 > **Module**: M01 — Home & Decision
 > **Route**: `/notifications` (also: bell dropdown in topbar)
 > **Platform**: Web (SvelteKit)
@@ -201,9 +201,9 @@ Notification Center (/notifications)
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [W01] Home Dashboard | Contains bell icon trigger |
-| [W81] Notification Settings | Configure preferences |
-| [M02] Mobile Notifications | Mobile equivalent |
+| [W001] Home Dashboard | Contains bell icon trigger |
+| [W122] Notification Preferences | Configure preferences |
+| [M002] Mobile Notifications | Mobile equivalent |
 
 ### Revision History
 | Date | Version | Change |

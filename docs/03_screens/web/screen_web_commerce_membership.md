@@ -1,6 +1,6 @@
 # Screen: Web — Membership Plans
 
-> **Screen ID**: W069
+> **Screen ID**: W071
 > **Module**: M14 — Monetization & Memberships
 > **Route**: `/memberships`
 > **Platform**: Web (SvelteKit)
@@ -446,8 +446,8 @@ Stripe webhook → /api/webhooks/stripe:
 | [W061] Product Detail | Products can have membership-only pricing |
 | [W082] Revenue Detail | Membership revenue in financial reports |
 | [W088] Creator Pro | Membership as revenue stream |
-| [W098] Settings Billing | Payment provider configuration |
-| [M052] Mobile Membership | Mobile equivalent |
+| [W119] Billing & Plans | Payment provider configuration |
+| [M026] Mobile Commerce Dashboard | Mobile equivalent (membership section) |
 
 ### Revision History
 | Date | Version | Change | Author |

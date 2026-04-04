@@ -367,8 +367,8 @@ Notifications (/admin/notifications)
 | Screen | Relationship |
 |---|---|
 | [A001] Admin Dashboard | Home — overview |
-| [A024] System Health | Source — maintenance alerts |
-| [A025] Incident Management | Source — incident notifications |
+| [A006] System Health | Source — maintenance alerts |
+| [A031] Incident Manager | Source — incident notifications |
 
 ---
 

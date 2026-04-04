@@ -67,10 +67,10 @@ SubscriptionManagementPage
 
 | # | Action | Trigger | Result | Permission |
 |---|---|---|---|---|
-| 1 | Edit plan | "Edit" on plan | Plan config modal | `admin:billing` |
-| 2 | Retry payment | "🔄 Retry" | Payment retried | `admin:billing` |
-| 3 | Grant grace period | "⏸ Grace" | Account extended | `admin:billing` |
-| 4 | Notify user | "📧 Notify" | Email sent | `admin:billing` |
+| 1 | Edit plan | "Edit" on plan | Plan config modal | `admin:plan:override` |
+| 2 | Retry payment | "🔄 Retry" | Payment retried | `admin:billing:read` |
+| 3 | Grant grace period | "⏸ Grace" | Account extended | `admin:plan:override` |
+| 4 | Notify user | "📧 Notify" | Email sent | `admin:billing:read` |
 
 ### Technical Notes
 - Route: `src/routes/admin/subscriptions/+page.svelte`

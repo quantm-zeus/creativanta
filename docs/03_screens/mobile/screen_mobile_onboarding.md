@@ -1,6 +1,6 @@
 # Screen: Mobile — Onboarding Flow
 
-> **Screen ID**: M054
+> **Screen ID**: M007
 > **Module**: M01 — Home (First Run)
 > **Route**: `/onboarding` (mobile)
 > **Platform**: Mobile (Flutter)

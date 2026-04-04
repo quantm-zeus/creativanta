@@ -2,6 +2,7 @@
 layer: quality_ops
 canonical: true
 source_file: impl_c2_security_threat_model.md
+status: READY
 last_verified: 2026-03-30
 ---
 

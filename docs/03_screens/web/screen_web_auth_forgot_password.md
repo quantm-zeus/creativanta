@@ -1,6 +1,6 @@
 # Screen: Web — Forgot Password
 
-> **Screen ID**: W-AUTH-03
+> **Screen ID**: W012a
 > **Module**: Auth
 > **Route**: `/auth/forgot-password`
 > **Platform**: Web (SvelteKit)
@@ -287,7 +287,7 @@ N/A — Static form page.
 |---|---|
 | [W010] Login | Parent — links here |
 | [W011] Register | Sibling auth screen |
-| [W-AUTH-04] Reset Password | Next step — opened from email link |
+| [W010] Login | Next step — returns to login after reset via email link |
 
 ---
 

@@ -1,6 +1,6 @@
 # Screen: Web — Derivative Manager
 
-> **Screen ID**: W028
+> **Screen ID**: W018
 > **Module**: M09 — Asset Derivative Manager
 > **Route**: `/derivatives`
 > **Platform**: Web (SvelteKit)
@@ -41,7 +41,7 @@ Manage content derivatives — repurposed/remixed versions of original content f
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `content:read` permission
+- User has `idea:read` permission
 - At least one published or draft content exists
 
 ### Postconditions
@@ -151,12 +151,12 @@ DerivativeManagerPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Create derivative | "+ Tạo" → modal | `DerivativeService/Create` | Processing → derivative generated | `content:create` |
-| 2 | AI suggest | "🤖 AI suggest" | `AIService/SuggestDerivatives(source_id)` | List of recommended derivatives | `content:create` |
-| 3 | Edit | "✏️" | — | → platform-specific editor | `content:edit` |
-| 4 | Publish | "📤" | — | → Publish Composer (W041) | `publish:manage` |
+| 1 | Create derivative | "+ Tạo" → modal | `DerivativeService/Create` | Processing → derivative generated | `idea:create` |
+| 2 | AI suggest | "🤖 AI suggest" | `AIService/SuggestDerivatives(source_id)` | List of recommended derivatives | `idea:create` |
+| 3 | Edit | "✏️" | — | → platform-specific editor | `script:edit` |
+| 4 | Publish | "📤" | — | → Publish Composer (W041) | `publish:execute` |
 | 5 | View stats | "📊" | — | → Content Analytics (W075) | `report:read` |
-| 6 | Delete | ⋮ → "Delete" → confirm | `DerivativeService/Delete` | Derivative removed (source unaffected) | `content:delete` |
+| 6 | Delete | ⋮ → "Delete" → confirm | `DerivativeService/Delete` | Derivative removed (source unaffected) | `script:delete` |
 | 7 | Toggle view | Tree/List toggle | Client-side | View switches | Any |
 
 ---
@@ -305,11 +305,11 @@ Client-side:
 
 | Screen | Relationship |
 |---|---|
-| [W027] Continuity OS | Brand consistency for derivatives |
-| [W041] Publish Composer | Publish derivatives |
-| [W075] Content Analytics | Performance comparison |
-| [W030] AI Studio | AI-powered derivative creation |
-| [W025] Quick Edit | Edit video derivatives |
+| [W019] Content Continuity | Brand consistency for derivatives |
+| [W052] Publish Composer | Publish derivatives |
+| [W075] Analytics Overview | Performance comparison |
+| [W021] Studio Launcher | AI-powered derivative creation |
+| [W022] Quick Edit | Edit video derivatives |
 | [S011] Upsell Banner | Credit/tier limit upsell |
 
 ---

@@ -1,7 +1,7 @@
 # Screen: Web — Follow-up Tasks
 
-> **Screen ID**: W53
-> **Module**: M09 — Engagement
+> **Screen ID**: W051
+> **Module**: M12 — Unified Inbox & Engagement
 > **Route**: `/inbox/tasks`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, A1 Schema (followup_tasks, threads)
@@ -87,11 +87,11 @@ FollowUpTasksPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Mark done | "✅ Done" | `FollowUpTaskService/Complete(id)` | Task moves to completed | `inbox:manage` |
-| 2 | Reschedule | "📅 Gia hạn" → date picker | `FollowUpTaskService/Reschedule(id, date)` | Due date updates | `inbox:manage` |
-| 3 | View thread | "→ Thread" | — | Navigate to thread | `inbox:read` |
-| 4 | Create | "+ Tạo task mới" → modal | `FollowUpTaskService/Create` | New task appears | `inbox:manage` |
-| 5 | Filter | Filter dropdown | Client-side / Refetch | List filters | `inbox:read` |
+| 1 | Mark done | "✅ Done" | `FollowUpTaskService/Complete(id)` | Task moves to completed | `thread:triage` |
+| 2 | Reschedule | "📅 Gia hạn" → date picker | `FollowUpTaskService/Reschedule(id, date)` | Due date updates | `thread:triage` |
+| 3 | View thread | "→ Thread" | — | Navigate to thread | `thread:read` |
+| 4 | Create | "+ Tạo task mới" → modal | `FollowUpService/Create` | New task appears | `thread:triage` |
+| 5 | Filter | Filter dropdown | Client-side / Refetch | List filters | `thread:read` |
 
 ---
 
@@ -222,9 +222,9 @@ FollowUpTasksPage
 
 | Screen | Relationship |
 |---|---|
-| [W049] Unified Inbox | Source of tasks |
-| [W050] Thread Detail | Linked thread |
-| [M029] Mobile Follow-up Tasks | Mobile equivalent |
+| [W046] Unified Inbox | Source of tasks |
+| [W047] Thread Detail | Linked thread |
+| [M052] Mobile Task Queue | Mobile equivalent |
 
 ---
 

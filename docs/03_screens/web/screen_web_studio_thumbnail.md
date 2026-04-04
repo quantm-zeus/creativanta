@@ -1,6 +1,6 @@
 # Screen: Web — Thumbnail Studio
 
-> **Screen ID**: W34
+> **Screen ID**: W026
 > **Module**: M07 — AI Studio
 > **Route**: `/studio/thumbnail`
 > **Platform**: Web (SvelteKit)
@@ -211,9 +211,9 @@ Score display: 🟢 > 70% (high), 🟡 40-70% (medium), 🔴 < 40% (low)
 
 | Screen | Relationship |
 |---|---|
-| [W024] AI Studio Launcher | Parent |
-| [W032] A/B Testing | Thumbnail variants for testing |
-| [W039] Asset Library | Output |
+| [W021] Studio Launcher | Parent |
+| [W027] A/B Testing | Thumbnail variants for testing |
+| [W029] Asset Library | Output |
 
 ---
 

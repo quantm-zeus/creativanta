@@ -1,6 +1,6 @@
 # Screen: Web — Brand Deal Manager
 
-> **Screen ID**: W091
+> **Screen ID**: W095
 > **Module**: S16 — Creator Pro Tools
 > **Route**: `/creator-pro/deals`
 > **Platform**: Web (SvelteKit)
@@ -263,7 +263,7 @@ BrandDealManagerPage
 | [W088] Creator Pro Dashboard | Parent |
 | [W090] Sponsor Inquiries | Inquiry → Deal conversion |
 | [W093] Rate Card Builder | Rate comparison |
-| [M050] Mobile Deals | Mobile equivalent |
+| [M046] Mobile Brand Deals | Mobile equivalent |
 
 ---
 

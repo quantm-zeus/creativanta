@@ -338,9 +338,9 @@ N/A — Glossary content is updated by content team and cached for 24h.
 
 | Screen | Relationship |
 |---|---|
-| [S005] Navigation | Same UX layer — shared platform UI |
+| [S002] Navigation | Same UX layer — shared platform UI |
 | [W004] Global Search | Search can find glossary terms |
-| [M060] Mobile Onboarding | Onboarding references glossary |
+| [M007] Mobile Onboarding | Onboarding references glossary |
 
 ---
 

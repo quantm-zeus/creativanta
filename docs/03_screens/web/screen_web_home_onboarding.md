@@ -1,6 +1,6 @@
 # Screen: Web — Onboarding Setup
 
-> **Screen ID**: W05
+> **Screen ID**: W006
 > **Module**: M01 — Home & Decision
 > **Route**: `/onboarding`
 > **Platform**: Web (SvelteKit)
@@ -178,8 +178,8 @@ OnboardingPage
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [W01] Home Dashboard | Target after completion |
-| [W92] Settings Connectors | Platform management (post-onboarding) |
+| [W001] Home Dashboard | Target after completion |
+| [W117] Settings Connectors | Platform management (post-onboarding) |
 
 ### Revision History
 | Date | Version | Change |

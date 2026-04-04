@@ -1,7 +1,7 @@
 # Screen: Web — Content Calendar (Full View)
 
-> **Screen ID**: W46
-> **Module**: M08 — Publish
+> **Screen ID**: W055
+> **Module**: M11 — Publish Hub
 > **Route**: `/publish/calendar/full`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §19, A1 Schema (publish_items)
@@ -214,9 +214,9 @@ ContentCalendarPage
 
 | Screen | Relationship |
 |---|---|
-| [W046] Schedule Calendar | Compact sibling |
-| [W044] Publish Queue | List view sibling |
-| [W048] Publish Composer | Create from slot |
+| [W054] Publish Calendar | Compact sibling |
+| [W053] Publish Queue | List view sibling |
+| [W052] Publish Composer | Create from slot |
 
 ---
 

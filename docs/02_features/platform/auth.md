@@ -148,12 +148,12 @@ Auth exists as the **cross-cutting identity layer** — managing user registrati
 
 | Topic | File | Section |
 |---|---|---|
-| API — webhooks | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §3 (POST /webhooks/clerk — user/org lifecycle events) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §1 (workspace role hierarchy, role assignment rules) |
-| DB | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §1 (users table — clerk_user_id, workspace_memberships) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §1 (user.created, user.updated, session.created, session.ended) |
+| API — webhooks | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §3 (POST /webhooks/clerk — user/org lifecycle events) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §1 (workspace role hierarchy, role assignment rules) |
+| DB | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §4.2 (users — `clerk_id`), §4.3 (workspace_members) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §2 (workspace.created, account.connected). [NOTE: `user.created`, `user.updated`, `session.created`, `session.ended` are Clerk webhook events (see RULE-AUTH-008), not Creativanta domain events — they are processed via `POST /webhooks/clerk`, not emitted to the domain event bus.] |
 | Pack 02 | Security/Auth contract | §14 (session management, MFA, brute force) |
-| S26 | [Internal Admin Auth](../creativanta_supplementary_s26_internal_admin_operations_v_3_1.md) | §2.4 (separate auth for internal admins — NOT Clerk) |
+| S26 | Internal Admin Auth <!-- Legacy ref: creativanta_supplementary_s26_internal_admin_operations_v_3_1.md — superseded by current feature docs + contract layer --> | §2.4 (separate auth for internal admins — NOT Clerk) |
 | Pack 03 | Email contract | §11B (account-related transactional emails) |
 
 ## Related Screens

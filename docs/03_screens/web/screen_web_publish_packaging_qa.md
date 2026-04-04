@@ -1,7 +1,7 @@
 # Screen: Web — Packaging QA
 
 > **Screen ID**: W056
-> **Module**: M08 — Publish & Packaging
+> **Module**: M10 — Packaging QA
 > **Route**: `/packaging/[asset_id]`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §18, A1 Schema (publish_items, packaging_qa_results, assets), B5 RBAC §2.7
@@ -48,7 +48,7 @@ Packaging QA is the automated pre-publish quality gate: before content goes live
 ### Preconditions
 - User authenticated with valid session
 - Asset with given `asset_id` exists and belongs to user's workspace
-- User has `publish:create` or `publish:update` permission
+- User has `publish:create` or `publish:schedule` permission
 - At least one platform connector is configured
 - Asset has been fully generated (not in-progress)
 
@@ -222,14 +222,14 @@ PackagingQAPage
 | # | Action | Trigger | API Call | System Response | Permission |
 |---|---|---|---|---|---|
 | 1 | Run QA checks | Page load (auto) | `PackagingService/RunQA(asset_id, platforms[])` | Checks execute sequentially with progress animation | `publish:read` |
-| 2 | Edit caption | "✏ Edit" → type → "Save" | `PublishService/UpdateDraft(caption)` | Caption saved + affected checks re-run automatically | `publish:update` |
-| 3 | Tag product | "+ Tag product" → picker → select | `PublishService/TagProduct(asset_id, product_id)` | Product tagged → "No product tag" check passes | `publish:update` + `commerce:read` |
-| 4 | Remove product tag | Click ✕ on tagged product | `PublishService/UntagProduct(asset_id)` | Product removed → check reverts to 🔴 | `publish:update` |
+| 2 | Edit caption | "✏ Edit" → type → "Save" | `PublishService/UpdateDraft(caption)` | Caption saved + affected checks re-run automatically | `publish:schedule` |
+| 3 | Tag product | "+ Tag product" → picker → select | `PublishService/TagProduct(asset_id, product_id)` | Product tagged → "No product tag" check passes | `publish:schedule` + `product:read` |
+| 4 | Remove product tag | Click ✕ on tagged product | `PublishService/UntagProduct(asset_id)` | Product removed → check reverts to 🔴 | `publish:schedule` |
 | 5 | Publish anyway | "✅ Publish anyway" → acknowledge warnings modal → confirm | `PublishService/Execute(asset_id, acknowledge_warnings=true)` | `publish_item` created → navigate to Queue (W043) | `publish:execute` |
 | 6 | Publish (all passed) | "✅ Publish" (no warnings) | `PublishService/Execute(asset_id)` | `publish_item` created → navigate to Queue (W043) | `publish:execute` |
 | 7 | Fix & re-check | "🔄 Fix & re-check" | `PackagingService/RunQA(asset_id, platforms[])` | All checks re-run with updated data | `publish:read` |
 | 8 | Auto-crop for platform | "Auto-crop available" on platform | `AssetService/AutoCrop(asset_id, target_aspect)` | New asset variant created → platform check passes | `asset:generate` |
-| 9 | Shorten caption | "✏ Shorten caption" (AI suggestion) | `CopilotService/ShortenCaption(caption, max_length)` | AI-suggested shorter caption → user approves or edits | `publish:update` |
+| 9 | Shorten caption | "✏ Shorten caption" (AI suggestion) | `CopilotService/ShortenCaption(caption, max_length)` | AI-suggested shorter caption → user approves or edits | `publish:schedule` |
 | 10 | Go back | "← Back" | — | Navigate to previous screen | Any |
 
 ---
@@ -465,11 +465,11 @@ onMount:
 
 | Screen | Relationship |
 |---|---|
-| [W030] Generation Queue | Upstream: asset source |
-| [W043] Publish Queue | Downstream: after QA pass |
-| [W048] Publish Composer | Alternative entry: manual compose |
-| [W020] Script Review | Alternative entry: approved script assets |
-| [M056] Mobile Packaging QA | Mobile equivalent |
+| [W030] Studio Queue | Upstream: asset source |
+| [W053] Publish Queue | Downstream: after QA pass |
+| [W052] Publish Composer | Alternative entry: manual compose |
+| [W017] Script Review | Alternative entry: approved script assets |
+| [M023] Mobile Quick Publish | Mobile equivalent (packaging inline) |
 
 ---
 

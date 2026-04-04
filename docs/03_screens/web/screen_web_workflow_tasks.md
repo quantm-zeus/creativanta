@@ -194,8 +194,8 @@ All tasks — workflow-generated, manual, and follow-ups. Kanban or list view wi
 | Screen | Relationship |
 |---|---|
 | [W104] Approval Queue | Approval-type tasks |
-| [W101] Workflow List | Task source (workflows) |
-| [M042] Mobile Tasks | Mobile equivalent |
+| [W100] Workflow List | Task source (workflows) |
+| [M052] Mobile Task Queue | Mobile equivalent |
 
 ---
 

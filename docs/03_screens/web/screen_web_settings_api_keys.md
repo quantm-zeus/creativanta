@@ -1,7 +1,7 @@
 # Screen: Web — Settings: API Keys
 
-> **Screen ID**: W127
-> **Module**: M26 — Settings (Developer)
+> **Screen ID**: W124
+> **Module**: M23 — Settings
 > **Route**: `/settings/api`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 10, A1 Schema (api_keys, api_key_scopes, api_usage_logs), B5 RBAC §2.9
@@ -120,12 +120,12 @@ APIKeysPage
 
 | Scope | Description | Risk Level |
 |---|---|---|
-| `read:content` | Read content items, drafts, derivatives | Low |
-| `write:content` | Create, edit, delete content | Medium |
-| `read:analytics` | Read analytics, reports | Low |
-| `read:orders` | Read commerce orders | Medium |
-| `write:publish` | Publish content to platforms | High |
-| `read:finance` | Read financial data | High |
+| `script:read` | Read content items, drafts, derivatives | Low |
+| `script:edit` | Create, edit, delete content | Medium |
+| `report:read` | Read analytics, reports | Low |
+| `order:read` | Read commerce orders | Medium |
+| `publish:execute` | Publish content to platforms | High |
+| `profit:read` | Read financial data | High |
 | `admin` | Full workspace admin access | Critical |
 
 ---
@@ -134,12 +134,12 @@ APIKeysPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Create key | "+ Create" → modal | `APIKeyService/Create` | Key shown once (must copy) | `settings:manage` |
-| 2 | Reveal key | "👁 Reveal" | Client-side | Key unmasked for 30s | `settings:manage` |
-| 3 | Copy key | "📋" | Clipboard | Toast "Copied" | `settings:manage` |
-| 4 | Edit scopes | "✏ Edit" → modal | `APIKeyService/UpdateScopes` | Scopes updated, existing sessions affected | `settings:manage` |
-| 5 | Rotate | "🔄 Rotate" → confirm | `APIKeyService/Rotate` | New key generated, old key valid for 24h then revoked | `settings:manage` |
-| 6 | Revoke | "🗑 Revoke" → confirm | `APIKeyService/Revoke` | Key immediately invalidated | `settings:manage` |
+| 1 | Create key | "+ Create" → modal | `APIKeyService/Create` | Key shown once (must copy) | `workspace:settings:manage` |
+| 2 | Reveal key | "👁 Reveal" | Client-side | Key unmasked for 30s | `workspace:settings:manage` |
+| 3 | Copy key | "📋" | Clipboard | Toast "Copied" | `workspace:settings:manage` |
+| 4 | Edit scopes | "✏ Edit" → modal | `APIKeyService/UpdateScopes` | Scopes updated, existing sessions affected | `workspace:settings:manage` |
+| 5 | Rotate | "🔄 Rotate" → confirm | `APIKeyService/Rotate` | New key generated, old key valid for 24h then revoked | `workspace:settings:manage` |
+| 6 | Revoke | "🗑 Revoke" → confirm | `APIKeyService/Revoke` | Key immediately invalidated | `workspace:settings:manage` |
 
 ---
 
@@ -240,7 +240,7 @@ Only Owner and Admin can manage API keys.
 ## 15. Localization Notes
 
 - Key naming: User-defined (freeform, English expected)
-- Scopes: English (`read:content`, `write:publish`)
+- Scopes: English (`script:read`, `publish:execute`)
 - Usage: "145 requests hôm nay", "10.000/ngày"
 - Security: Vietnamese ("Không chia sẻ key công khai")
 - Timestamps: "Tạo: 15/3/2026", "Lần cuối: 2h trước"
@@ -268,7 +268,7 @@ Only Owner and Admin can manage API keys.
 
 | Screen | Relationship |
 |---|---|
-| [W120] Workspace Settings | Parent settings |
+| [W114] Workspace Settings | Parent settings |
 | External: API Docs | Documentation |
 | External: API Playground | Interactive testing |
 

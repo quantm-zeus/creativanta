@@ -40,7 +40,7 @@ Cost breakdown by category — platform fees, AI credits, advertising, shipping,
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `profit:read` or `cost:read` permission (Owner, Admin, Manager)
+- User has `profit:read` or `profit:read` permission (Owner, Admin, Manager)
 
 ### Postconditions
 - Custom cost entries are saved to `cost_entries` table
@@ -178,14 +178,14 @@ CostDetailPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Add custom cost | "+ Thêm" → modal | `CostService/CreateEntry` | New row in custom costs table, toast | `cost:manage` |
-| 2 | Edit custom cost | "✏" on row | `CostService/UpdateEntry` | Updated in table | `cost:manage` |
-| 3 | Delete custom cost | "🗑" → confirm | `CostService/DeleteEntry` | Removed, profit recalculated | `cost:manage` |
-| 4 | Expand category | Click category row | — (client-side) | Sub-categories expand | `cost:read` |
-| 5 | Change period | Period selector | Refetch | All data updates | `cost:read` |
-| 6 | Export CSV | "📤 Export" | Client-side | CSV download | `cost:read` |
-| 7 | Export Tax Report | "📄 Tax Report" | Server-side PDF | PDF with receipts | `cost:read` |
-| 8 | Follow hint | Click hint action link | — | Navigate to suggested screen | `cost:read` |
+| 1 | Add custom cost | "+ Thêm" → modal | `CostService/Create` | New row in custom costs table, toast | `cost:manage` |
+| 2 | Edit custom cost | "✏" on row | `CostService/Update` | Updated in table | `cost:manage` |
+| 3 | Delete custom cost | "🗑" → confirm | `CostService/Delete` | Removed, profit recalculated | `cost:manage` |
+| 4 | Expand category | Click category row | — (client-side) | Sub-categories expand | `profit:read` |
+| 5 | Change period | Period selector | Refetch | All data updates | `profit:read` |
+| 6 | Export CSV | "📤 Export" | Client-side | CSV download | `profit:read` |
+| 7 | Export Tax Report | "📄 Tax Report" | Server-side PDF | PDF with receipts | `profit:read` |
+| 8 | Follow hint | Click hint action link | — | Navigate to suggested screen | `profit:read` |
 | 9 | Upload receipt | In add/edit modal | File upload | Receipt attached to cost entry | `cost:manage` |
 
 ---

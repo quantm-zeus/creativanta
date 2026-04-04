@@ -26,14 +26,14 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | §8 Publish (M10-M11) | publish_items, publish_jobs, publish_logs |
 | §9 Engagement (M12) | entities, threads, messages, follow_up_tasks |
 | §10 Commerce (M13-M16) | products, offers, skus, orders, order_items, campaigns, affiliate_links, coupons, store_pages, membership_plans |
-| §11 Finance & Proof (M19) | profit_snapshots, settlements, cost_items, reconciliation_records, evidence_items, proof_bundles |
+| §11 Finance & Proof (M19) | profit_snapshots, settlements, cost_items, reconciliation_records, evidence_objects, proof_bundles |
 | §12 Workflow & Operations (M17-M21) | live_sessions, cue_cards, sample_requests, sample_shipments, workflows, workflow_runs, agent_runs, recipes |
-| §13 Billing, Admin, Diagnostics (M23) | credit_transactions, subscription_events, notification_records, feature_flags, audit_events, diagnostics_records |
+| §13 Billing, Admin, Diagnostics (M23) | ai_credit_transactions, subscription_events, notification_records, feature_flags, audit_events, diagnostics_records |
 | §14 Gamification (§37.3) | creator_progress, achievement_definitions, achievement_records, challenge_definitions (§22.10), challenge_progress (§22.11) |
 | §15 TimescaleDB Hypertables | content_metrics, engagement_metrics, commerce_metrics |
 | §16 Creator Pro Tools (S16) | link_in_bio_pages, link_in_bio_items, media_kits, rate_cards, brand_deals |
 | §17 Internal Admin (S26) | internal_admins, admin_sessions, moderation_cases, fraud_cases, support_tickets, incidents, system_announcements |
-| §18 Operational Tables | file_uploads, api_keys, consent_records, referrals, export_jobs |
+| §18 Operational Tables | file_uploads, api_keys, consent_records, referral_records, export_jobs |
 | §19 Missing Canonical Objects | video_edit_jobs, remix_blueprints, clip_collections, product_showcases, link_to_video_jobs, translation_jobs, style_packs, ab_test_experiments, repurpose_jobs |
 | §20 Indexes Strategy | Index naming and strategy |
 | §21 Platform Fee Schedules | fee_schedules |
@@ -181,7 +181,7 @@ CREATE TABLE brand_profiles (
   industry VARCHAR(100),
   target_audience TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 ALTER TABLE brand_profiles ENABLE ROW LEVEL SECURITY;
@@ -209,7 +209,7 @@ CREATE TABLE connected_accounts (
   capability_summary JSONB DEFAULT '{}',
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_ca_workspace ON connected_accounts(workspace_id);
@@ -263,7 +263,7 @@ CREATE TABLE signals (
   related_trend_ids UUID[] DEFAULT '{}',
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_signals_workspace ON signals(workspace_id);
@@ -296,7 +296,7 @@ CREATE TABLE trends (
   freshness_at TIMESTAMPTZ,
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_trends_workspace ON trends(workspace_id);
@@ -338,7 +338,7 @@ CREATE TABLE opportunities (
   converted_to_type VARCHAR(50), -- idea, script, campaign, live_plan
   converted_to_id UUID,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_opp_workspace ON opportunities(workspace_id);
@@ -443,7 +443,7 @@ CREATE TABLE ideas (
   converted_to_id UUID,
   created_by UUID REFERENCES users(user_id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_ideas_workspace ON ideas(workspace_id);
@@ -476,7 +476,7 @@ CREATE TABLE hooks (
   effectiveness_score REAL, -- 0-100 non-financial score
   usage_count INTEGER DEFAULT 0,
   source VARCHAR(50) DEFAULT 'manual', -- manual, ai_generated, library
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 ALTER TABLE hooks ENABLE ROW LEVEL SECURITY;
@@ -505,7 +505,7 @@ CREATE TABLE scripts (
   created_by UUID REFERENCES users(user_id),
   approved_by UUID REFERENCES users(user_id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_scripts_workspace ON scripts(workspace_id);
@@ -536,7 +536,7 @@ CREATE TABLE asset_briefs (
   production_instructions TEXT,
   status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, ready, locked, superseded
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 ALTER TABLE asset_briefs ENABLE ROW LEVEL SECURITY;
@@ -600,7 +600,7 @@ CREATE TABLE characters (
   is_default BOOLEAN DEFAULT false,
   status VARCHAR(20) NOT NULL DEFAULT 'active',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_characters_workspace ON characters(workspace_id);
@@ -624,7 +624,7 @@ CREATE TABLE continuity_packs (
   version INTEGER NOT NULL DEFAULT 1,
   status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, active, deprecated, retired
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_cp_workspace ON continuity_packs(workspace_id);
@@ -667,7 +667,7 @@ CREATE TABLE assets (
   metadata JSONB DEFAULT '{}',
   created_by UUID REFERENCES users(user_id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_assets_workspace ON assets(workspace_id);
@@ -741,7 +741,7 @@ CREATE TABLE continuity_violations (
   drift_score REAL, -- 0-100 non-financial score
   resolved BOOLEAN DEFAULT false,
   resolved_by UUID REFERENCES users(user_id),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 ALTER TABLE continuity_violations ENABLE ROW LEVEL SECURITY;
@@ -779,7 +779,7 @@ CREATE TABLE publish_items (
   metadata JSONB DEFAULT '{}',
   created_by UUID REFERENCES users(user_id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_pi_workspace ON publish_items(workspace_id);
@@ -808,7 +808,7 @@ CREATE TABLE publish_jobs (
   last_execution_summary JSONB,
   approval_request_id UUID,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_pj_item ON publish_jobs(publish_item_id);
@@ -868,7 +868,7 @@ CREATE TABLE entities (
   tags JSONB DEFAULT '[]',
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_entities_workspace ON entities(workspace_id);
@@ -897,7 +897,7 @@ CREATE TABLE threads (
   last_activity_at TIMESTAMPTZ DEFAULT NOW(),
   message_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_threads_workspace ON threads(workspace_id);
@@ -955,7 +955,7 @@ CREATE TABLE follow_up_tasks (
   status VARCHAR(20) NOT NULL DEFAULT 'open', -- open,in_progress,blocked,completed,cancelled
   outcome_summary TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_ft_workspace ON follow_up_tasks(workspace_id);
@@ -989,7 +989,7 @@ CREATE TABLE products (
   images JSONB DEFAULT '[]',
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_products_workspace ON products(workspace_id);
@@ -1049,7 +1049,7 @@ CREATE TABLE offers (
   campaign_ids UUID[] DEFAULT '{}',
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_offers_workspace ON offers(workspace_id);
@@ -1088,7 +1088,7 @@ CREATE TABLE orders (
   metadata JSONB DEFAULT '{}',
   ordered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_orders_workspace ON orders(workspace_id);
@@ -1128,7 +1128,7 @@ CREATE TABLE affiliate_links (
   revenue_attributed DECIMAL(15,2) DEFAULT 0,
   expires_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_al_workspace ON affiliate_links(workspace_id);
@@ -1136,6 +1136,36 @@ CREATE INDEX idx_al_state ON affiliate_links(lifecycle_state);
 ALTER TABLE affiliate_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE affiliate_links FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON affiliate_links
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+```
+
+### 10.4B affiliate_commissions
+```sql
+CREATE TABLE affiliate_commissions (
+  commission_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  affiliate_link_id UUID NOT NULL REFERENCES affiliate_links(affiliate_link_id),
+  order_id UUID NOT NULL REFERENCES orders(order_id),
+  commission_amount DECIMAL(15,2) NOT NULL,
+  currency VARCHAR(5) NOT NULL DEFAULT 'VND',
+  status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, confirmed, clawed_back, paid_out
+  hold_until TIMESTAMPTZ NOT NULL, -- 15 days after order delivery (per BIZ-012)
+  clawback_reason VARCHAR(50), -- refund, partial_refund, fraud
+  clawback_amount DECIMAL(15,2),
+  payout_id UUID, -- references payout batch when paid
+  confirmed_at TIMESTAMPTZ,
+  clawed_back_at TIMESTAMPTZ,
+  paid_out_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_acom_workspace ON affiliate_commissions(workspace_id);
+CREATE INDEX idx_acom_link ON affiliate_commissions(affiliate_link_id);
+CREATE INDEX idx_acom_status ON affiliate_commissions(status);
+CREATE INDEX idx_acom_hold ON affiliate_commissions(hold_until) WHERE status = 'pending';
+ALTER TABLE affiliate_commissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE affiliate_commissions FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON affiliate_commissions
   USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
@@ -1156,7 +1186,7 @@ CREATE TABLE campaigns (
   related_offer_ids UUID[] DEFAULT '{}',
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 ALTER TABLE campaigns ENABLE ROW LEVEL SECURITY;
@@ -1188,7 +1218,7 @@ CREATE TABLE settlements (
   related_order_ids UUID[] DEFAULT '{}',
   effective_date DATE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 ALTER TABLE settlements ENABLE ROW LEVEL SECURITY;
@@ -1213,7 +1243,7 @@ CREATE TABLE cost_items (
   cost_state VARCHAR(20) NOT NULL DEFAULT 'recorded', -- recorded,pending_evidence,reconciled,estimated,superseded
   effective_date DATE NOT NULL DEFAULT CURRENT_DATE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_ci_workspace ON cost_items(workspace_id);
@@ -1273,7 +1303,7 @@ CREATE TABLE evidence_objects (
   collected_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   verification_status verification_status NOT NULL DEFAULT 'pending',
   related_object_refs JSONB DEFAULT '[]', -- [{type, id}]
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 ALTER TABLE evidence_objects ENABLE ROW LEVEL SECURITY;
@@ -1295,7 +1325,7 @@ CREATE TABLE proof_bundles (
   coverage_summary TEXT,
   unresolved_gaps TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 ALTER TABLE proof_bundles ENABLE ROW LEVEL SECURITY;
@@ -1324,7 +1354,7 @@ CREATE TABLE live_sessions (
   metrics_snapshot JSONB, -- post-live performance metrics — see §25.2 LiveMetricsSnapshot
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 ALTER TABLE live_sessions ENABLE ROW LEVEL SECURITY;
@@ -1352,7 +1382,7 @@ CREATE TABLE workflows (
   run_count INTEGER DEFAULT 0,
   created_by UUID REFERENCES users(user_id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 ALTER TABLE workflows ENABLE ROW LEVEL SECURITY;
@@ -1380,7 +1410,7 @@ CREATE TABLE workflow_runs (
   started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_wr_workflow ON workflow_runs(workflow_id);
@@ -1415,7 +1445,7 @@ CREATE TABLE agent_runs (
   completed_at TIMESTAMPTZ,
   created_by UUID REFERENCES users(user_id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_ar_workspace ON agent_runs(workspace_id);
@@ -1463,11 +1493,13 @@ CREATE POLICY tenant_isolation ON billing_events
 CREATE TABLE ai_credit_transactions (
   transaction_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL,
-  transaction_type VARCHAR(30) NOT NULL, -- deduction, monthly_allocation, top_up, promotional, achievement_reward, referral_bonus
+  transaction_type VARCHAR(30) NOT NULL, -- deduction, monthly_allocation, top_up, promotional, achievement_reward, referral_bonus, overage_charge, refund_system_failure, refund_no_output, refund_partial_output, refund_quality_dispute
   credits INTEGER NOT NULL, -- positive = add, negative = deduct
   balance_after INTEGER NOT NULL,
   operation_type VARCHAR(50), -- text_gen, image_gen, video_gen, analysis, agent_exec
   generation_job_id UUID,
+  estimated_cost INTEGER, -- estimated credits at reservation time (per BIZ-001)
+  actual_cost INTEGER, -- actual credits consumed after completion (per BIZ-001)
   description TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -1683,7 +1715,7 @@ CREATE TABLE link_in_bio_pages (
   total_views INTEGER DEFAULT 0,
   status VARCHAR(20) NOT NULL DEFAULT 'active', -- active, suspended, archived
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE UNIQUE INDEX idx_lib_slug ON link_in_bio_pages(slug);
@@ -1729,7 +1761,7 @@ CREATE TABLE media_kits (
   last_generated_at TIMESTAMPTZ,
   generation_credits_used NUMERIC(18,6) DEFAULT 0, -- DB-H-001: financial precision
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 ALTER TABLE media_kits ENABLE ROW LEVEL SECURITY;
@@ -1747,7 +1779,7 @@ CREATE TABLE rate_cards (
   custom_note TEXT,
   ai_suggested_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 
@@ -1785,7 +1817,7 @@ CREATE TABLE brand_deals (
   deliverables TEXT,
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_bd_workspace ON brand_deals(workspace_id);
@@ -2473,8 +2505,8 @@ CREATE TABLE coupons (
   valid_until TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(workspace_id, code)
-  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
+  UNIQUE(workspace_id, code),
+  deleted_at TIMESTAMPTZ -- soft delete (DB-H-003)
 );
 ALTER TABLE coupons ENABLE ROW LEVEL SECURITY;
 ALTER TABLE coupons FORCE ROW LEVEL SECURITY;
@@ -2498,8 +2530,8 @@ CREATE TABLE store_pages (
   custom_domain VARCHAR(255),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(workspace_id, slug)
-  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
+  UNIQUE(workspace_id, slug),
+  deleted_at TIMESTAMPTZ -- soft delete (DB-H-003)
 );
 ALTER TABLE store_pages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE store_pages FORCE ROW LEVEL SECURITY;
@@ -2521,7 +2553,7 @@ CREATE TABLE membership_plans (
   status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, active, hidden, paused, retired
   subscriber_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 ALTER TABLE membership_plans ENABLE ROW LEVEL SECURITY;
@@ -2547,7 +2579,7 @@ CREATE TABLE refunds (
   settlement_id UUID REFERENCES settlements(settlement_id),
   evidence_refs JSONB DEFAULT '[]',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_refunds_order ON refunds(order_id);
@@ -2572,7 +2604,7 @@ CREATE TABLE returns (
   tracking_number VARCHAR(100),
   evidence_photo_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_returns_order ON returns(order_id);
@@ -2594,7 +2626,7 @@ CREATE TABLE bundles (
   bundle_price DECIMAL(15,2),
   discount_pct DECIMAL(5,2),
   status VARCHAR(20) NOT NULL DEFAULT 'draft',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 
@@ -2839,7 +2871,7 @@ CREATE TABLE sample_requests (
   quantity INTEGER NOT NULL DEFAULT 1,
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 
@@ -3054,7 +3086,7 @@ CREATE TABLE video_edit_jobs (
   completed_at TIMESTAMPTZ,
   created_by UUID REFERENCES users(user_id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_vej_workspace ON video_edit_jobs(workspace_id);
@@ -3082,7 +3114,7 @@ CREATE TABLE remix_blueprints (
   originality_score REAL, -- 0-100 non-financial score, must be > 70 (< 30% similarity)
   status VARCHAR(20) NOT NULL DEFAULT 'analyzing', -- analyzing, analyzed, generating, generated, failed
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_rb_workspace ON remix_blueprints(workspace_id);
@@ -3104,7 +3136,7 @@ CREATE TABLE clip_collections (
   clip_data JSONB NOT NULL DEFAULT '[]', -- [{clip_index, start_s, end_s, title, virality_score, selected}]
   status VARCHAR(20) NOT NULL DEFAULT 'analyzing', -- analyzing, proposed, processing, completed, failed
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_cc_workspace ON clip_collections(workspace_id);
@@ -3130,7 +3162,7 @@ CREATE TABLE product_showcase_jobs (
   status VARCHAR(20) NOT NULL DEFAULT 'queued', -- queued, processing, completed, failed
   credits_used NUMERIC(18,6), -- DB-H-001: financial precision
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_psj_workspace ON product_showcase_jobs(workspace_id);
@@ -3158,7 +3190,7 @@ CREATE TABLE link_to_video_jobs (
   status VARCHAR(20) NOT NULL DEFAULT 'scraping', -- scraping, scripting, generating, completed, failed
   credits_used NUMERIC(18,6), -- DB-H-001: financial precision
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_ltv_workspace ON link_to_video_jobs(workspace_id);
@@ -3182,7 +3214,7 @@ CREATE TABLE translation_jobs (
   total_credits_used NUMERIC(18,6) DEFAULT 0, -- DB-H-001: financial precision
   status VARCHAR(20) NOT NULL DEFAULT 'queued', -- queued, processing, partially_completed, completed, failed
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_tj_workspace ON translation_jobs(workspace_id);
@@ -3204,7 +3236,7 @@ CREATE TABLE style_packs (
   is_active BOOLEAN DEFAULT true,
   continuity_pack_id UUID REFERENCES continuity_packs(pack_id), -- linked Continuity OS pack
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_sp_workspace ON style_packs(workspace_id);
@@ -3254,7 +3286,7 @@ CREATE TABLE ab_test_experiments (
   completed_at TIMESTAMPTZ,
   auto_winner_criteria JSONB DEFAULT '{}', -- {metric, threshold, min_duration_hours}
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_abt_workspace ON ab_test_experiments(workspace_id);
@@ -3351,7 +3383,7 @@ CREATE TABLE repurpose_jobs (
   started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_rj_workspace ON repurpose_jobs(workspace_id);

@@ -1,12 +1,9 @@
 ---
 layer: contracts
 canonical: true
-source_file: impl_a2_protobuf_contracts.md
-last_verified: 2026-03-30
-known_issues:
-  - API-C-001
-  - API-H-001
-  - API-H-002
+source_file: protobuf_contracts.md  # was impl_a2_protobuf_contracts.md (legacy name)
+last_verified: 2026-04-03
+known_issues: []  # API-C-001, API-H-001, API-H-002 all RESOLVED 2026-04-02
 do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 ---
 
@@ -18,7 +15,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | §2 Common Types | UUID, Money, Timestamp, Pagination, SourceClass, ConfidenceBand, OperatorMode |
 | §3 Key Service Definitions | WorkspaceService, IdeaService, ScriptService, AssetService, PublishService, CopilotService, ProfitService |
 | §4 Code Generation | proto-gen.sh script for Rust, TypeScript, Dart |
-| §5 Service Count Summary | ~52 services, ~310 RPCs total |
+| §5 Service Count Summary | ~52 services, ~310 RPCs (this doc covers key services only; full count is ~346 canonical RPC definitions in `api_endpoint_map.md`; screen-derived RPCs relocated to `screen_api_reconciliation.md` §5) |
 
 # A2 — Protobuf Contract Definitions (Overview & Key Services)
 

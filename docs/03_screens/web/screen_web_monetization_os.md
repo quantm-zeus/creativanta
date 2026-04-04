@@ -3,14 +3,14 @@ layer: screens
 module: M14
 canonical: true
 platform: web
-screen_id: SCR-W-M14-001
+screen_id: W075b
 last_updated: 2026-04-02
 ---
 
 # Screen: Monetization OS (Web) — M14
 
 ## Screen ID
-`SCR-W-M14-001`
+`W075b`
 
 ## Purpose
 Central monetization management surface for offers, coupons, campaigns, and conversion tracking. Aggregates offers from multiple channels (Creator Store, Social, Affiliate, Link-in-Bio) into a unified view with ROI metrics.
@@ -80,9 +80,9 @@ Uses `offers.lifecycle_state` — see `02_features/commerce/monetization_os.md` 
 | Action | Required Permission |
 |---|---|
 | View offers | `offer:read` (Member+) |
-| Create/edit offer | `offer:write` (Editor+) |
-| Create coupon | `coupon:manage` (Manager+) |
-| View analytics | `analytics:read` (Member+) |
+| Create/edit offer | `offer:manage` (Editor+) |
+| Create coupon | `offer:manage` (Manager+) |
+| View analytics | `report:read` (Member+) |
 
 ## Cross-references
 - Feature: `02_features/commerce/monetization_os.md`

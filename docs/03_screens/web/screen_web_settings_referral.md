@@ -1,7 +1,7 @@
 # Screen: Web — Settings: Referral Center
 
-> **Screen ID**: W129
-> **Module**: M26 — Settings (Growth)
+> **Screen ID**: W126
+> **Module**: M23 — Settings
 > **Route**: `/settings/referral`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 10, A1 Schema (referrals, referral_rewards), B5 RBAC §2.9
@@ -173,8 +173,8 @@ Referral program dashboard — personal referral link with multi-channel sharing
 
 | Screen | Relationship |
 |---|---|
-| [W093] Billing | Subscription info |
-| [M061] Mobile Referral | Mobile equivalent |
+| [W119] Billing & Plans | Subscription info |
+| [M062] Mobile Referral | Mobile equivalent |
 
 ---
 

@@ -200,7 +200,7 @@ TaskQueueScreen
 | 3 | View task detail | Tap card | `TaskService/GetTaskDetail(id)` | — | Open TaskDetailBottomSheet | Any assigned |
 | 4 | Complete subtask | Tap subtask checkbox | `TaskService/UpdateSubtask(id, subtask_id)` | Subtask status toggles | Checkbox animates + progress updates | Task owner/assignee |
 | 5 | Add comment | Submit comment in detail | `TaskService/AddComment(id, text)` | Comment created | Comment appears in list | Any assigned |
-| 6 | Create task | Open + submit create form | `TaskService/CreateTask(payload)` | Task created | Toast "Task created" + card appears in list | `task:create` |
+| 6 | Create task | Open + submit create form | `TaskService/CreateTask(payload)` | Task created | Toast "Task created" + card appears in list | `follow_up:manage` |
 | 7 | Reassign task | Tap "Reassign" → pick user | `TaskService/Reassign(id, user_id)` | `tasks.assignee_id = new_user` | Card updates assignee | Manager+ |
 | 8 | Delete task | Tap "Delete" → confirm | `TaskService/Delete(id)` | Task soft-deleted | Card removed | Task creator/Manager+ |
 | 9 | Filter | Select filter options | `TaskService/ListTasks(filters)` | — | List filters | Any |

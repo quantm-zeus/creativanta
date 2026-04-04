@@ -154,7 +154,7 @@ CapabilityMatrixPage
 | Token status | `oauth_tokens` expiry | `ConnectorService/GetTokenStatus` | ✅ Valid / ⚠️ Xd / ⚫ Not connected | 15m TTL |
 | Tier gates | `subscription_tier` + feature flag registry | `TierService/GetFeatureGates(tierId)` | ✅/🔒 per feature | 30m TTL |
 | AI providers | `ai_provider_health` from monitoring | `AIService/GetProviderStatus` | Status per provider + rate limit % | 2m TTL |
-| Credits | `credit_transactions` balance | `CreditService/GetBalance` | "1,456 / 2,000" | Real-time |
+| Credits | `credit_transactions` balance | `AdminBillingService/GetCreditBalance` | "1,456 / 2,000" | Real-time |
 | Recent issues | `platform_incidents` last 48h | `CapabilityService/GetRecentIssues` | Timeline | 5m TTL |
 
 ---
@@ -342,8 +342,8 @@ Capability Matrix (/settings/capabilities)
 | [W117] Platform Connectors | Manage connections |
 | [W119] Billing & Plans | Upgrade for locked features |
 | [W120] AI Credits | Credit balance detail |
-| [S005] Error States | Degraded state patterns |
-| [M050] Mobile Capability Status | Mobile equivalent |
+| [S006] Error States | Degraded state patterns |
+| [M057] Mobile Settings | Mobile equivalent (capability in settings) |
 
 ---
 

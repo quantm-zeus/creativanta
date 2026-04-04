@@ -39,7 +39,7 @@ Create and manage discount coupons across platforms with usage tracking, revenue
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `offer:create` permission (Owner, Admin, Manager, Editor)
+- User has `offer:manage` permission (Owner, Admin, Manager, Editor)
 - At least one product exists (coupons apply to products)
 
 ### Postconditions
@@ -175,13 +175,13 @@ CouponManagerPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Create coupon | "+ Tạo mã mới" → modal | `CouponService/Create` | New coupon in list, toast "Đã tạo mã {code}" | `offer:create` |
-| 2 | Edit coupon | "✏ Edit" → modal (pre-filled) | `CouponService/Update` | Coupon updated, toast | `offer:update` |
+| 1 | Create coupon | "+ Tạo mã mới" → modal | `CouponService/Create` | New coupon in list, toast "Đã tạo mã {code}" | `offer:manage` |
+| 2 | Edit coupon | "✏ Edit" → modal (pre-filled) | `CouponService/Update` | Coupon updated, toast | `offer:manage` |
 | 3 | Copy code | "📋 Copy" | — (clipboard) | Toast "Đã sao chép mã SUMMER20" | Any |
 | 4 | Share | "🔗 Share" | — | Popup: copy link + generate QR + share to social | `offer:read` |
-| 5 | Pause | "⏸ Pause" → confirm | `CouponService/Pause` | "Mã sẽ không thể sử dụng khi bị tạm dừng." → paused | `offer:update` |
-| 6 | Resume | "▶ Resume" | `CouponService/Resume` | Coupon reactivated | `offer:update` |
-| 7 | Delete | "🗑 Delete" → confirm | `CouponService/Delete` | Confirmation (S007) → removed | `offer:delete` |
+| 5 | Pause | "⏸ Pause" → confirm | `CouponService/Pause` | "Mã sẽ không thể sử dụng khi bị tạm dừng." → paused | `offer:manage` |
+| 6 | Resume | "▶ Resume" | `CouponService/Resume` | Coupon reactivated | `offer:manage` |
+| 7 | Delete | "🗑 Delete" → confirm | `CouponService/Delete` | Confirmation (S007) → removed | `offer:manage` |
 | 8 | View stats | "📊 Stats" | — | → Analytics view for coupons | `report:read` |
 
 ---

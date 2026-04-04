@@ -1,7 +1,7 @@
 # Screen: Web — Settings: Brand Voice & Identity
 
-> **Screen ID**: W91
-> **Module**: M19 — Settings
+> **Screen ID**: W118
+> **Module**: M23 — Settings
 > **Route**: `/settings/brand`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Product Freeze §27, A1 Schema (brand_packs)
@@ -101,7 +101,7 @@ BrandSettingsPage
 ### Technical Notes
 - Route: `src/routes/(app)/settings/brand/+page.svelte`
 - Brand pack: JSON config used across all AI features
-- Permission: `settings:write`
+- Permission: `workspace:settings:manage`
 
 ### Related Screens: [W08] Settings Hub (parent), all Copilot/Studio modes (consumers)
 
@@ -218,9 +218,9 @@ BrandSettingsPage
 
 | Screen | Relationship |
 |---|---|
-| [W008] Settings Hub | Parent navigation |
-| [W125] AI Preferences | AI feature consumers of brand pack |
-| [W030] AI Studio | Content generation using brand voice |
+| [W007] Settings Hub | Parent navigation |
+| [W123] AI Preferences | AI feature consumers of brand pack |
+| [W021] Studio Launcher | Content generation using brand voice |
 
 ---
 

@@ -1,6 +1,6 @@
 # Screen: Mobile — AI Remix
 
-> **Screen ID**: M55
+> **Screen ID**: M016
 > **Module**: M07 — AI Studio
 > **Route**: `/studio/remix` (mobile)
 > **Platform**: Mobile (Flutter)

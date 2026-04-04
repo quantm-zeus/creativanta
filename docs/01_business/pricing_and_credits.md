@@ -214,7 +214,11 @@ Rules:
 
 ### 5.4 Cancellation
 - Cancel anytime, access until end of billing cycle
-- Data retained 30 days, permanently deleted 90 days after subscription end
+- Day 0–30 after expiry: read-only mode (view/export/delete, no create/generate/publish)
+- Day 30–90: soft delete (`deleted_at` set, data inaccessible, reactivation via support)
+- Day 90+: permanent hard delete of all workspace data
+- Full data export available at any point before hard delete (GDPR Article 20)
+- See `business_rules.md` BIZ-010, BIZ-014 for detailed lifecycle
 
 ### 5.5 Payment Methods
 - Credit/debit card (Stripe)
@@ -230,12 +234,12 @@ Day 3:  3rd retry → email
 Day 5:  4th retry → email + in-app + push
 Day 7:  GRACE PERIOD starts → read-only mode
 Day 10: 5th retry → final email
-Day 14: Grace ends → downgrade to Free
-Day 44: Data deletion warning
-Day 60: Data permanently deleted
+Day 14: Grace ends → downgrade to Free tier
 ```
 
 Grace period (Day 7–14): user can view/export data + update payment, but NOT create/generate/publish.
+
+> **Note**: Dunning results in **downgrade to Free tier** (not data deletion). The workspace persists on Free tier with all data preserved. Data deletion only occurs per the cancellation lifecycle (BIZ-010/014: read-only Day 0-30, soft delete Day 30-90, hard delete Day 90+). If a user cancels after dunning downgrade, the cancellation timeline starts from the cancellation date.
 
 ### 5.7 Credit Purchase Options
 

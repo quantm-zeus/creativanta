@@ -1,7 +1,7 @@
 # Screen: Web — Settings: AI Preferences
 
-> **Screen ID**: W125
-> **Module**: M26 — Settings
+> **Screen ID**: W123
+> **Module**: M23 — Settings
 > **Route**: `/settings/ai`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: PRD §27, A1 Schema (ai_preferences, ai_models), B5 RBAC §2.9
@@ -215,7 +215,7 @@ AIPreferencesPage
 
 - **Route**: `src/routes/(app)/settings/ai/+page.svelte`
 - **Server load**: `+page.server.ts` → `AIPreferenceService/Get(workspace_id)` + `ModelService/ListAvailable`
-- **Form**: `use:enhance` with progressive enhancement
+- **Form**: `copilot:use_creative` with progressive enhancement
 - **Model availability**: Server filters deprecated models, shows migration notice
 - **Voice preview**: Client-side `<audio>` with lazy-loaded sample URL from TTS service
 - **Save**: Single "Lưu thay đổi" — all sections saved together
@@ -254,9 +254,9 @@ AIPreferencesPage
 
 | Screen | Relationship |
 |---|---|
-| [W123] Credit Purchase | Buy more credits |
-| [W030] AI Studio | Where AI features are used |
-| [W120] Workspace Settings | General settings |
+| [W128] Credit Purchase | Buy more credits |
+| [W021] Studio Launcher | Where AI features are used |
+| [W114] Workspace Settings | General settings |
 
 ---
 

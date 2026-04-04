@@ -1,6 +1,6 @@
 # Screen: Mobile — Quick Capture
 
-> **Screen ID**: M004
+> **Screen ID**: M006
 > **Module**: M05 — Content Pipeline
 > **Route**: `/capture` (mobile overlay)
 > **Platform**: Mobile (Flutter)
@@ -228,9 +228,9 @@ QuickCapturePage (modal overlay, not full page)
 
 | Screen | Relationship |
 |---|---|
-| [M017] Idea Board | Destination for saved ideas |
+| [M008] Idea Board | Destination for saved ideas |
 | [M001] Home Dashboard | Entry via widget shortcut |
-| [W010] Web Idea Board | Web equivalent (inline create) |
+| [W012] Web Idea Board | Web equivalent (inline create) |
 
 ---
 ## 17. Revision History

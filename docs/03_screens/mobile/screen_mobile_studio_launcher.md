@@ -1,6 +1,6 @@
 # Screen: Mobile — Studio Launcher
 
-> **Screen ID**: M021
+> **Screen ID**: M013
 > **Module**: M07 — AI Video Studio
 > **Route**: `/studio` (bottom tab: 🎬)
 > **Platform**: Mobile (Flutter)
@@ -47,7 +47,7 @@ Mobile Studio is the AI generation hub on mobile — a launcher interface for al
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `studio:read` permission (Editor+ roles)
+- User has `asset:read` permission (Editor+ roles)
 - Active workspace selected
 - Credit balance fetched (may be 0 — still show modes but gate on launch)
 
@@ -197,17 +197,17 @@ MobileStudioLauncherPage
 
 | # | Action | Trigger | Type | API Call | System Response | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Launch mode | Tap mode card | Navigate | — | Push → mode-specific page (M022-M028) | `studio:use` |
-| 2 | View job detail | Tap "→ Xem chi tiết" on active job | Navigate | — | Push → Job Detail page | `studio:read` |
-| 3 | Preview completed | Tap "👁 Xem" on completed job | Navigate | — | Push → Asset Preview (fullscreen) | `studio:read` |
+| 1 | Launch mode | Tap mode card | Navigate | — | Push → mode-specific page (M022-M028) | `asset:generate` |
+| 2 | View job detail | Tap "→ Xem chi tiết" on active job | Navigate | — | Push → Job Detail page | `asset:read` |
+| 3 | Preview completed | Tap "👁 Xem" on completed job | Navigate | — | Push → Asset Preview (fullscreen) | `asset:read` |
 | 4 | Publish asset | Tap "📤 Publish" on completed | Navigate | — | Push → Quick Publish (M006) with asset pre-loaded | `publish:create` |
-| 5 | Save to gallery | Tap "💾 Lưu" on completed | Action | Device gallery save | Haptic medium + toast "Đã lưu vào thư viện" | `studio:read` |
-| 6 | Retry failed job | Tap "🔄 Thử lại" on failed | Action | `StudioService/Retry(job_id)` | Job re-queued. Card updates to QUEUED status. | `studio:use` |
-| 7 | View recent asset | Tap thumbnail in recent | Navigate | — | Push → Asset Preview | `studio:read` |
-| 8 | View all assets | Tap "→ Xem tất cả" | Navigate | — | Push → Asset Gallery (full list, filterable) | `studio:read` |
+| 5 | Save to gallery | Tap "💾 Lưu" on completed | Action | Device gallery save | Haptic medium + toast "Đã lưu vào thư viện" | `asset:read` |
+| 6 | Retry failed job | Tap "🔄 Thử lại" on failed | Action | `StudioService/Retry(job_id)` | Job re-queued. Card updates to QUEUED status. | `asset:generate` |
+| 7 | View recent asset | Tap thumbnail in recent | Navigate | — | Push → Asset Preview | `asset:read` |
+| 8 | View all assets | Tap "→ Xem tất cả" | Navigate | — | Push → Asset Gallery (full list, filterable) | `asset:read` |
 | 9 | Buy credits | Tap "🛒 Mua thêm" or credit badge | Navigate | — | Push → Credit Purchase page | `credits:top_up` |
-| 10 | Pull refresh | Pull-down gesture | Refresh | Refetch all | All sections update. Haptic light. | `studio:read` |
-| 11 | Cancel job | Long press active job → "Cancel" | Destructive | `StudioService/Cancel(job_id)` | Confirmation dialog → toast "Job đã hủy" | `studio:use` |
+| 10 | Pull refresh | Pull-down gesture | Refresh | Refetch all | All sections update. Haptic light. | `asset:read` |
+| 11 | Cancel job | Long press active job → "Cancel" | Destructive | `StudioService/Cancel(job_id)` | Confirmation dialog → toast "Job đã hủy" | `asset:generate` |
 
 ---
 ## 7. Validation Rules
@@ -451,9 +451,9 @@ Mobile Studio (/studio)
 
 | Screen | Relationship |
 |---|---|
-| [W024] Web Studio Launcher | Web equivalent (full mode catalog + job monitoring) |
-| [M022-M029] Mobile Mode Pages | Mode-specific generation pages |
-| [M006] Mobile Quick Publish | Publish generated assets |
+| [W021] Web Studio Launcher | Web equivalent (full mode catalog + job monitoring) |
+| [M014-M016] Mobile Studio Modes | Quick Edit, Clip Factory, AI Remix |
+| [M023] Mobile Quick Publish | Publish generated assets |
 | [M001] Mobile Home Dashboard | Links here via bottom nav + quick action |
 
 ---

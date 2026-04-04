@@ -1,7 +1,7 @@
 # Screen: Web — Opportunity Convert
 
-> **Screen ID**: W16
-> **Module**: M02 — Opportunity Engine
+> **Screen ID**: W045
+> **Module**: M04 — Opportunity Board
 > **Route**: `/intelligence/opportunities/[id]/convert`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, A1 Schema (opportunities, ideas, scripts)
@@ -209,9 +209,9 @@ OpportunityConvertPage
 
 | Screen | Relationship |
 |---|---|
-| [W015] Opportunity Detail | Parent |
-| [W017] Idea Board | Target for single/batch ideas |
-| [W021] Script Editor | Target for direct script |
+| [W044] Opportunity Detail | Parent |
+| [W012] Idea Board | Target for single/batch ideas |
+| [W016] Script Editor | Target for direct script |
 
 ---
 

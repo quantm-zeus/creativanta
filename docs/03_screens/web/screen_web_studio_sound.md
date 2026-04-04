@@ -1,6 +1,6 @@
 # Screen: Web — Sound Studio
 
-> **Screen ID**: W30
+> **Screen ID**: W028
 > **Module**: M07 — AI Studio
 > **Route**: `/studio/sound`
 > **Platform**: Web (SvelteKit)
@@ -217,9 +217,9 @@ SoundStudioPage
 
 | Screen | Relationship |
 |---|---|
-| [W024] AI Studio Launcher | Parent |
-| [W025] Quick Edit | Audio integration |
-| [M56] Mobile Sound Studio | Mobile equivalent |
+| [W021] Studio Launcher | Parent |
+| [W022] Quick Edit | Audio integration |
+| [M013] Mobile Studio Launcher | Mobile equivalent (sound via studio) |
 
 ---
 

@@ -1,6 +1,6 @@
 # Screen: Mobile — Commerce Dashboard
 
-> **Screen ID**: M030
+> **Screen ID**: M026
 > **Module**: M13 — Product Hub / Commerce
 > **Route**: `/commerce` (mobile — via sidebar or quick action)
 > **Platform**: Mobile (Flutter)
@@ -190,12 +190,12 @@ CommerceDashboardPage
 |---|---|---|---|---|---|---|
 | 1 | View order detail | Tap order row | — | — | Push → Order Detail | `order:read` |
 | 2 | View all orders | Tap "Xem tất cả đơn hàng" | — | — | Push → Order List | `order:read` |
-| 3 | Confirm order | Tap pending action → "Xử lý" | `OrderService/Confirm(id)` | `order.status = confirmed` | Toast "✅ Đã xác nhận" + row updates | `order:write` |
+| 3 | Confirm order | Tap pending action → "Xử lý" | `OrderService/Confirm(id)` | `order.status = confirmed` | Toast "✅ Đã xác nhận" + row updates | `order:manage` |
 | 4 | View product detail | Tap product row | — | — | Push → Product Detail | `product:read` |
 | 5 | View all products | Tap "Sản phẩm" quick nav | — | — | Push → Product List | `product:read` |
-| 6 | View low stock product | Tap stock alert row | — | — | Push → Product Detail → Inventory tab | `inventory:read` |
+| 6 | View low stock product | Tap stock alert row | — | — | Push → Product Detail → Inventory tab | `product:read` |
 | 7 | View offers | Tap "Khuyến mãi" quick nav | — | — | Push → Offer List | `offer:read` |
-| 8 | View inventory | Tap "Tồn kho" quick nav | — | — | Push → Inventory screen | `inventory:read` |
+| 8 | View inventory | Tap "Tồn kho" quick nav | — | — | Push → Inventory screen | `product:read` |
 | 9 | Change period | Period dropdown | Refetch with new period | — | KPIs + top products update | `order:read` |
 | 10 | Pull to refresh | Pull-down gesture | Refetch all | — | All sections refresh. Haptic light. | `order:read` |
 | 11 | Respond to dispute | Tap dispute action | — | — | Push → Dispute Detail | `order:manage` |
@@ -395,12 +395,12 @@ Commerce Dashboard (/commerce)
 
 | Screen | Relationship |
 |---|---|
-| [W055] Web Commerce Dashboard | Web equivalent (full grid + charts) |
-| [M031] Mobile Order List | Full order list |
-| [M032] Mobile Product List | Full product catalog |
-| [M033] Mobile Offer List | Active promotions |
+| [W060] Web Product List | Web equivalent (full grid + charts) |
+| [M027] Mobile Orders | Full order list |
+| [M028] Mobile Products | Full product catalog |
+| [M029] Mobile Offers | Active promotions |
 | [M001] Mobile Home Dashboard | Order KPI links here |
-| [W-COMM-15] Web Inventory | Web inventory management |
+| [W075a] Web Inventory Management | Web inventory management |
 
 ---
 

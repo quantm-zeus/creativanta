@@ -1,7 +1,7 @@
 # Screen: Web — Script List
 
-> **Screen ID**: W020
-> **Module**: M04 — Content Creation (Scripts)
+> **Screen ID**: W015
+> **Module**: M06 — Script Lab
 > **Route**: `/scripts`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §13, A1 Schema (scripts, script_sections, script_reviews), B5 RBAC §2.7
@@ -174,7 +174,7 @@ ScriptListPage
 |---|---|---|---|---|---|---|---|
 | 1 | Create script | "+ Tạo mới" | Primary CTA | — | — | → `/scripts/new` | `script:create` |
 | 2 | Open script | Click row or "→ Mở" | Navigation | — | — | → `/scripts/[id]` | `script:read` |
-| 3 | Submit for review | "📤 Gửi review" | Status change | `ScriptService/Update(id, status=in_review)` | Badge → "👁 In Review" + toast "Đã gửi review" + notification to reviewers | — | `script:submit_review` |
+| 3 | Submit for review | "📤 Gửi review" | Status change | `ScriptService/Update(id, status=in_review)` | Badge → "👁 In Review" + toast "Đã gửi review" + notification to reviewers | — | `script:edit` |
 | 4 | Approve | "✅ Approve" | Status change | `ScriptService/Approve(id)` | Badge → "✅ Approved" + toast "Đã duyệt" + notification to author | — | `script:approve` |
 | 5 | Reject | "❌ Reject" → reason dialog | Status change | `ScriptService/Reject(id, reason)` | Badge → "✍ Draft" + toast "Đã trả lại" + notification with reason | — | `script:approve` |
 | 6 | Go to asset brief | "📋 Asset brief" | Navigation | — | — | → `/scripts/[id]/brief` | `script:read` |
@@ -389,12 +389,12 @@ Client-side:
 
 | Screen | Relationship |
 |---|---|
-| [W021] Script Editor | Edit individual script |
-| [W022] Script Review | Review workflow detail |
-| [W023] Asset Brief | Production brief from script |
+| [W016] Script Editor | Edit individual script |
+| [W017] Script Review | Review workflow detail |
+| [W020] Asset Brief | Production brief from script |
 | [W012] Idea Board | Upstream ideas → scripts |
-| [W030] AI Studio Launcher | AI production from script |
-| [M019] Mobile Script List | Mobile equivalent |
+| [W021] Studio Launcher | AI production from script |
+| [M010] Mobile Script List | Mobile equivalent |
 | [S007] Confirmations | Reject confirmation |
 
 ---

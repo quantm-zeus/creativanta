@@ -1,6 +1,6 @@
 # Screen: Admin — Workspace Detail
 
-> **Screen ID**: A05
+> **Screen ID**: A005
 > **Module**: Admin — Workspace Management
 > **Route**: `/admin/workspaces/[id]`
 > **Platform**: Admin Web (SvelteKit) — VPN-only
@@ -94,8 +94,8 @@ WorkspaceDetailPage
 ## 19. Related Screens
 | Screen | Relationship |
 |---|---|
-| [A04] Workspace List | Parent |
-| [A03] User Detail | Owner profile |
+| [A004] Workspace List | Parent |
+| [A003] User Detail | Owner profile |
 ---
 ## Error Handling
 

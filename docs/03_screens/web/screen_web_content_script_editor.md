@@ -1,6 +1,6 @@
 # Screen: Web — Script Editor
 
-> **Screen ID**: W021
+> **Screen ID**: W016
 > **Module**: M06 — Script Lab
 > **Route**: `/scripts/[id]`
 > **Platform**: Web (SvelteKit)
@@ -49,7 +49,7 @@ The Script Editor is the primary content writing workspace — a structured, AI-
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `script:read` permission for view, `script:update` for edit
+- User has `script:read` permission for view, `script:edit` for edit
 - Script exists with valid `script_id`
 - Active workspace selected
 
@@ -231,26 +231,26 @@ ScriptEditorPage
 
 | # | Action | Trigger | Type | API Call | System Response | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Edit section text | Type in editor | Edit | Auto-save (2s debounce) → `ScriptService/UpdateSection` | "💾 Saved ✓" flash. Word count updates live. Platform checks update. | `script:update` |
+| 1 | Edit section text | Type in editor | Edit | Auto-save (2s debounce) → `ScriptService/UpdateSection` | "💾 Saved ✓" flash. Word count updates live. Platform checks update. | `script:edit` |
 | 2 | AI suggest (section) | "🤖 AI Suggest" per section | AI | `CopilotService/Query(mode=script_{section_type}, context)` | Suggestions appear in AI chat tab. Insert buttons available. | `copilot:use_help` |
 | 3 | AI chat | Type + send in chat panel | AI | `CopilotService/Chat(context=script_sections)` | AI response streams in chat. Insert buttons for code snippets. | `copilot:use_help` |
-| 4 | Insert AI text | "📥 Insert #N" | Insert | Client-side | Text inserted at cursor position in active section. Highlighted briefly. | `script:update` |
+| 4 | Insert AI text | "📥 Insert #N" | Insert | Client-side | Text inserted at cursor position in active section. Highlighted briefly. | `script:edit` |
 | 5 | AI shorten body | "🤖 AI Shorten" | AI | `CopilotService/Query(mode=shorten, text)` | Shortened version appears in chat. Insert to replace. | `copilot:use_help` |
 | 6 | Brand voice check | Section blur (auto) or manual | AI | `CopilotService/CheckBrandVoice(sections)` | Per-section + overall score badge. Suggestions if mismatch. | `copilot:use_help` |
-| 7 | Send for review | "📤 Gửi review" | Status | `ScriptService/SubmitReview(id, reviewer_ids)` | Reviewer picker dialog → Status → "In Review". Notification sent. Editor becomes read-only for non-reviewers. | `script:submit_review` |
-| 8 | Add review comment | Click text → add comment | Comment | `ScriptService/AddComment(section_id, text_range, comment)` | Comment appears inline with highlighted text reference. | `script:review` |
-| 9 | Resolve comment | "✅ Resolved" on comment | Status | `ScriptService/ResolveComment(comment_id)` | Comment fades. Counter updates. | `script:update` |
+| 7 | Send for review | "📤 Gửi review" | Status | `ScriptService/SubmitReview(id, reviewer_ids)` | Reviewer picker dialog → Status → "In Review". Notification sent. Editor becomes read-only for non-reviewers. | `script:edit` |
+| 8 | Add review comment | Click text → add comment | Comment | `ScriptService/AddComment(section_id, text_range, comment)` | Comment appears inline with highlighted text reference. | `script:approve` |
+| 9 | Resolve comment | "✅ Resolved" on comment | Status | `ScriptService/ResolveComment(comment_id)` | Comment fades. Counter updates. | `script:edit` |
 | 10 | Approve script | "✅ Approve" (reviewer) | Status | `ScriptService/Approve(id)` | Status → "Approved". Green banner. Author notified. | `script:approve` |
-| 11 | Request changes | "🔄 Cần sửa" (reviewer) | Status | `ScriptService/RequestChanges(id, comments)` | Status → "Changes Requested". Author notified. Editor re-enabled. | `script:review` |
-| 12 | Add section | "+ Add section" → type picker | Create | `ScriptService/AddSection(type, position)` | Section type picker: [🎣 Hook] [📖 Body] [🎯 CTA] [🎬 Visual] [📊 Data] [📝 Custom] | `script:update` |
-| 13 | Reorder sections | Drag section handle | Reorder | `ScriptService/ReorderSections(positions)` | Sections reorder with smooth animation. | `script:update` |
-| 14 | Delete section | Section menu → "Xóa" → confirm | Delete | `ScriptService/DeleteSection(section_id)` | Section removes. Undo toast (5s). | `script:update` |
-| 15 | Force save | Cmd+S keyboard shortcut | Save | `ScriptService/Update` + create version | "💾 Saved ✓" + new version snapshot | `script:update` |
-| 16 | Create asset brief | "📋 Asset brief" | Navigate | — | → `/scripts/[id]/brief` (W023) | `script:update` |
+| 11 | Request changes | "🔄 Cần sửa" (reviewer) | Status | `ScriptService/RequestChanges(id, comments)` | Status → "Changes Requested". Author notified. Editor re-enabled. | `script:approve` |
+| 12 | Add section | "+ Add section" → type picker | Create | `ScriptService/AddSection(type, position)` | Section type picker: [🎣 Hook] [📖 Body] [🎯 CTA] [🎬 Visual] [📊 Data] [📝 Custom] | `script:edit` |
+| 13 | Reorder sections | Drag section handle | Reorder | `ScriptService/ReorderSections(positions)` | Sections reorder with smooth animation. | `script:edit` |
+| 14 | Delete section | Section menu → "Xóa" → confirm | Delete | `ScriptService/DeleteSection(section_id)` | Section removes. Undo toast (5s). | `script:edit` |
+| 15 | Force save | Cmd+S keyboard shortcut | Save | `ScriptService/Update` + create version | "💾 Saved ✓" + new version snapshot | `script:edit` |
+| 16 | Create asset brief | "📋 Asset brief" | Navigate | — | → `/scripts/[id]/brief` (W023) | `script:edit` |
 | 17 | Preview | "👁 Preview" | View | — | Modal: formatted script with reading mode, estimated timing marks | `script:read` |
 | 18 | View old version | Click version in history | View | `ScriptService/GetVersion(version_id)` | Read-only view in modal — side-by-side diff option | `script:read` |
-| 19 | Restore version | Version menu → "Restore" → confirm | Restore | `ScriptService/RestoreVersion(version_id)` | Content reverts. New version snapshot created. Toast "Đã khôi phục v{n}." | `script:update` |
-| 20 | Change status | Status dropdown | Status | `ScriptService/Update(status)` | Badge updates. Permissions may change (in_review → read-only for non-reviewer). | `script:update` |
+| 19 | Restore version | Version menu → "Restore" → confirm | Restore | `ScriptService/RestoreVersion(version_id)` | Content reverts. New version snapshot created. Toast "Đã khôi phục v{n}." | `script:edit` |
+| 20 | Change status | Status dropdown | Status | `ScriptService/Update(status)` | Badge updates. Permissions may change (in_review → read-only for non-reviewer). | `script:edit` |
 | 21 | Duplicate script | "⋮ → Duplicate" | Create | `ScriptService/Duplicate(id)` | New script created. Navigate to new script. Toast "Đã tạo bản sao." | `script:create` |
 | 22 | Export | "⋮ → Export" → format picker | Export | Client-side generation | PDF/TXT/Google Docs download | `script:read` |
 | 23 | Delete | "⋮ → Delete" → type "DELETE" | Destructive | `ScriptService/Delete(id)` | Navigate → /scripts. Toast "Đã xóa." | `script:delete` |
@@ -314,7 +314,7 @@ ScriptEditorPage
 | Data | Method | Frequency |
 |---|---|---|
 | Auto-save sync | Optimistic → server confirm | Every 2s (debounced) |
-| AI chat streaming | SSE from `CopilotService/Chat` | Real-time per character |
+| AI chat streaming | SSE from `CopilotService/Query` | Real-time per character |
 | Brand voice check | On section blur | On-demand (debounced 1s) |
 | Review comments | SSE `/events/script/{id}/reviews` | Real-time — new comment appears inline |
 | Review status change | SSE | Real-time — banner updates |
@@ -404,7 +404,7 @@ ScriptEditorPage
 - **Server load**: `+page.server.ts` → `ScriptService/Get(id)` with sections
 - **Editor**: ProseMirror with custom schema for script sections
 - **Auto-save**: Svelte writable store with `debounce(2000)` → RPC `UpdateSection`
-- **AI**: `CopilotService/Chat` with SSE streaming into side panel
+- **AI**: `CopilotService/Query` with SSE streaming into side panel
 - **Split view**: Resizable via CSS `resize` or `svelte-split-pane`
 - **Rich text toolbar**: Context-sensitive (changes per section type)
 
@@ -442,11 +442,11 @@ Script Editor (/scripts/[id])
 
 | Screen | Relationship |
 |---|---|
-| [W020] Script List | Parent list screen |
-| [W022] Script Review | Review workflow (inline in editor or separate) |
-| [W023] Asset Brief | Visual/production notes linked to script |
-| [W017] Idea Board | Upstream — ideas feed into scripts |
-| [M020] Mobile Script Editor | Mobile equivalent |
+| [W015] Script List | Parent list screen |
+| [W017] Script Review | Review workflow (inline in editor or separate) |
+| [W020] Asset Brief | Visual/production notes linked to script |
+| [W012] Idea Board | Upstream — ideas feed into scripts |
+| [M011] Mobile Script Editor | Mobile equivalent |
 ---
 ## Error Handling
 

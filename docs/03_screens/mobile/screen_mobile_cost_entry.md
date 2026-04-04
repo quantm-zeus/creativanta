@@ -43,7 +43,7 @@ Mobile-optimized cost entry form for logging expenses on the go — supports rec
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `finance:write` permission
+- User has `cost:manage` permission
 - At least 1 product or category exists (for cost allocation)
 
 ### Postconditions
@@ -182,16 +182,16 @@ CostEntryScreen
 
 | # | Action | Trigger | API Call | Mutation | UI Result | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Scan receipt | Tap "📸 Chụp" | Camera → `AIService/ScanReceipt` | — | Camera opens → AI processes → auto-fills fields | `finance:write` |
-| 2 | Pick from gallery | Tap "📂 Chọn" | Gallery → `AIService/ScanReceipt` | — | Gallery opens → AI processes → auto-fills | `finance:write` |
-| 3 | Select category | Tap category chip | — (local) | — | Chip highlighted, source class auto-suggest | `finance:write` |
-| 4 | Enter amount | Type in amount field | — (local) | — | Live VND formatting (250.000) | `finance:write` |
-| 5 | Select date | Tap date field | — (local) | — | Native date picker opens | `finance:write` |
-| 6 | Link product | Search + select product | `ProductService/Search` | — | Product chip appears below search | `finance:write` |
-| 7 | Add attachment | Tap "+ Thêm ảnh" | Camera/Gallery | — | Thumbnail added (max 3) | `finance:write` |
-| 8 | Set source class | Select from dropdown | — (local) | — | Badge changes color + help text updates | `finance:write` |
-| 9 | Toggle recurring | Tap recurring radio | — (local) | — | Show/hide recurring options | `finance:write` |
-| 10 | Save cost | Tap "💾 Lưu chi phí" | `CostService/CreateCostItem(payload)` | `cost_items` insert + profit recalc trigger | Toast "✅ Đã lưu chi phí {amount}" → navigate back | `finance:write` |
+| 1 | Scan receipt | Tap "📸 Chụp" | Camera → `AIService/ScanReceipt` | — | Camera opens → AI processes → auto-fills fields | `cost:manage` |
+| 2 | Pick from gallery | Tap "📂 Chọn" | Gallery → `AIService/ScanReceipt` | — | Gallery opens → AI processes → auto-fills | `cost:manage` |
+| 3 | Select category | Tap category chip | — (local) | — | Chip highlighted, source class auto-suggest | `cost:manage` |
+| 4 | Enter amount | Type in amount field | — (local) | — | Live VND formatting (250.000) | `cost:manage` |
+| 5 | Select date | Tap date field | — (local) | — | Native date picker opens | `cost:manage` |
+| 6 | Link product | Search + select product | `ProductService/Search` | — | Product chip appears below search | `cost:manage` |
+| 7 | Add attachment | Tap "+ Thêm ảnh" | Camera/Gallery | — | Thumbnail added (max 3) | `cost:manage` |
+| 8 | Set source class | Select from dropdown | — (local) | — | Badge changes color + help text updates | `cost:manage` |
+| 9 | Toggle recurring | Tap recurring radio | — (local) | — | Show/hide recurring options | `cost:manage` |
+| 10 | Save cost | Tap "💾 Lưu chi phí" | `CostService/CreateCostItem(payload)` | `cost_items` insert + profit recalc trigger | Toast "✅ Đã lưu chi phí {amount}" → navigate back | `cost:manage` |
 | 11 | Discard | Tap back (with dirty form) | — | — | Confirmation: "Bạn có chắc muốn hủy? Dữ liệu sẽ mất." | Any |
 
 ---

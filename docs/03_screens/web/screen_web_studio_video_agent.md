@@ -1,6 +1,6 @@
 # Screen: Web — AI Video Agent
 
-> **Screen ID**: W31
+> **Screen ID**: W031
 > **Module**: M07 — AI Studio
 > **Route**: `/studio/agent`
 > **Platform**: Web (SvelteKit)
@@ -212,10 +212,10 @@ VideoAgentPage
 
 | Screen | Relationship |
 |---|---|
-| [W024] AI Studio Launcher | Parent |
-| [W025] Quick Edit | Post-generation editing |
-| [W044] Publish Queue | Publish target |
-| [W038] Studio Queue | Job tracking |
+| [W021] Studio Launcher | Parent |
+| [W022] Quick Edit | Post-generation editing |
+| [W053] Publish Queue | Publish target |
+| [W030] Studio Queue | Job tracking |
 
 ---
 

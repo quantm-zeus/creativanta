@@ -1,7 +1,7 @@
 # Screen: Web — Contact Detail
 
-> **Screen ID**: W52
-> **Module**: M09 — Engagement (CRM Lite)
+> **Screen ID**: W049
+> **Module**: M12 — Unified Inbox & Engagement
 > **Route**: `/contacts/[id]`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §20, A1 Schema (entities, threads, orders)
@@ -97,11 +97,11 @@ ContactDetailPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Send message | "💬 Gửi tin nhắn" | — | → `/inbox?entity=[id]` | `inbox:reply` |
-| 2 | Add tag | "🏷 Gắn tag" | `EntityService/AddTag` | Tag added | `contact:manage` |
-| 3 | Add note | "📝 Ghi chú" | `EntityService/AddNote` | Note saved | `contact:manage` |
+| 1 | Send message | "💬 Gửi tin nhắn" | — | → `/inbox?entity=[id]` | `thread:reply` |
+| 2 | Add tag | "🏷 Gắn tag" | `EntityService/AddTag` | Tag added | `thread:triage` |
+| 3 | Add note | "📝 Ghi chú" | `EntityService/AddNote` | Note saved | `thread:triage` |
 | 4 | View order | Click order in timeline | — | → `/orders/[order_id]` | `order:read` |
-| 5 | View thread | Click interaction | — | → `/inbox/[thread_id]` | `inbox:read` |
+| 5 | View thread | Click interaction | — | → `/inbox/[thread_id]` | `thread:read` |
 
 ---
 
@@ -218,10 +218,10 @@ ContactDetailPage
 
 | Screen | Relationship |
 |---|---|
-| [W051] Contact List | Parent list |
-| [W049] Unified Inbox | Message integration |
+| [W048] Contact List | Parent list |
+| [W046] Unified Inbox | Message integration |
 | [W063] Order Detail | Purchase detail |
-| [M011] Mobile Contact Detail | Mobile equivalent |
+| [M022] Mobile Contact Detail | Mobile equivalent |
 
 ---
 

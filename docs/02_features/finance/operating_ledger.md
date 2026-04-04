@@ -160,11 +160,11 @@ Object: order / settlement | DB column: `orders.reconciliation_state`, `settleme
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §11 (settlements, cost_items, profit_snapshots, evidence_objects, proof_bundles), §10.3 (orders.fee_breakdown, orders.reconciliation_state) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.7 (SettlementService, CostService, ProfitService, ReconciliationService, EvidenceService, ProofService — ~20 RPCs) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §10 (settlement.imported, settlement.reconciled, cost.recorded, profit.snapshot_updated, profit.anomaly_detected, evidence.submitted, proof_bundle.assembled, reconciliation.conflict_detected) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.7 (finance — Editor+ for viewing, Manager+ for reconciliation, Admin+ for override) |
-| Pack 06 | [Pack 06 — Finance/Proof Contract](../creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md) | §5 (Profit OS), §6 (Reconciliation), §7 (Proof Layer), §11 (FE/UX — money cards) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §11 (settlements, cost_items, profit_snapshots, evidence_objects, proof_bundles), §10.3 (orders.fee_breakdown, orders.reconciliation_state) |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.7 (SettlementService, CostService, ProfitService, ReconciliationService, EvidenceService, ProofService — ~20 RPCs) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §10 (settlement.imported, settlement.reconciled, cost.recorded, profit.snapshot_updated, profit.anomaly_detected, evidence.submitted, proof_bundle.assembled, reconciliation.conflict_detected) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.8 (finance — Editor+ for viewing, Manager+ for reconciliation, Admin+ for override) |
+| Pack 06 | Pack 06 — Finance/Proof Contract <!-- Legacy ref: creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §5 (Profit OS), §6 (Reconciliation), §7 (Proof Layer), §11 (FE/UX — money cards) |
 | Source class | PRD Part 1, §15.1 | official, imported, inferred, estimated, unreconciled |
 
 ## Related Screens
@@ -195,4 +195,4 @@ Object: order / settlement | DB column: `orders.reconciliation_state`, `settleme
 ## Open Questions / Blockers
 
 - [NONE] — No critical blockers specific to M19 in OPEN_BLOCKERS.md. Finance endpoints defined in API map §2.7 (~20 RPCs).
-- [NOTE] DB-H-001: Verify all money fields use `DECIMAL(15,2)` not `REAL/FLOAT` — see OPEN_BLOCKERS.md DB-H-001.
+- [NOTE] DB-H-001 (RESOLVED): All money/credit fields use `NUMERIC(18,6)` — never REAL or FLOAT. Verified resolved in schema.

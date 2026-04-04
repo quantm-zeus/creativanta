@@ -1,6 +1,6 @@
 # Screen: Mobile — Commerce Affiliates
 
-> **Screen ID**: M027
+> **Screen ID**: M032
 > **Module**: M14 — Monetization & Affiliates
 > **Route**: `/commerce/affiliates` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -45,7 +45,7 @@ Mobile affiliate link manager — quick-access to copy/share affiliate links, mo
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User authenticated, `affiliate:read` permission
+- User authenticated, `affiliate:manage` permission
 
 ### Postconditions
 - Copy/share actions logged for analytics
@@ -166,11 +166,11 @@ CommerceAffiliatesScreen (ConsumerStatefulWidget)
 
 | # | Action | Trigger | API Call | Mutation | UI Result | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Copy link | Tap "📋 Copy" | — (clipboard) | — | Haptic + Snackbar "📋 Đã copy link" | `affiliate:read` |
-| 2 | Share link | Tap "📤 Share" | — (native share) | — | Share sheet with link + product info | `affiliate:read` |
-| 3 | View detail | Tap card body | — | — | Navigate → Affiliate Detail (mobile) | `affiliate:read` |
-| 4 | Filter by platform | Tap chip | Client-side filter | — | List filters | `affiliate:read` |
-| 5 | Refresh | Pull down | Refetch | Cache invalidated | Updated | `affiliate:read` |
+| 1 | Copy link | Tap "📋 Copy" | — (clipboard) | — | Haptic + Snackbar "📋 Đã copy link" | `affiliate:manage` |
+| 2 | Share link | Tap "📤 Share" | — (native share) | — | Share sheet with link + product info | `affiliate:manage` |
+| 3 | View detail | Tap card body | — | — | Navigate → Affiliate Detail (mobile) | `affiliate:manage` |
+| 4 | Filter by platform | Tap chip | Client-side filter | — | List filters | `affiliate:manage` |
+| 5 | Refresh | Pull down | Refetch | Cache invalidated | Updated | `affiliate:manage` |
 | 6 | Create (redirect) | Tap "+ Tạo link" | — | — | Open web link or bottom sheet with instructions | `affiliate:manage` |
 
 ### Share Message Template
@@ -343,9 +343,9 @@ Mobile Affiliates (/commerce/affiliates)
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [W063] Web Affiliate Manager | Web equivalent (full management) |
+| [W070] Web Affiliate Manager | Web equivalent (full management) |
 | [M029] Mobile Offers | Offers can generate affiliate links |
-| [W058] Web Offer Detail | Affiliate links linked to offers |
+| [W067] Web Offer Detail | Affiliate links linked to offers |
 | [W088] Creator Pro | Affiliate as revenue stream |
 
 ### Revision History

@@ -353,7 +353,7 @@ Abuse Reports (/admin/abuse)
 
 | Screen | Relationship |
 |---|---|
-| [A009] Moderation Queue | Sibling — content moderation |
+| [A015] Content Moderation | Sibling — content moderation |
 | [A003] User Detail | Drill-down — accused user |
 | [A001] Admin Dashboard | Summary metrics |
 

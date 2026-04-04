@@ -407,7 +407,7 @@ Client-side:
 | [W012] Idea Board | Content creation from product context |
 | [W117] Platform Connectors | Connect platforms for product sync |
 | [M028] Mobile Products | Mobile equivalent |
-| [W-COMM-15] Inventory | Stock management for products |
+| [W075a] Inventory Management | Stock management for products |
 | [S009] Trust Badge | Source class badge on product data |
 | [S005] Empty States | Empty state component |
 | [S007] Confirmations | Delete/archive confirmation |

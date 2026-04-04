@@ -1,7 +1,7 @@
 # Screen: Mobile — Seeding Requests
 
-> **Screen ID**: M044
-> **Module**: M15 — Seeding
+> **Screen ID**: M056
+> **Module**: M18 — Seeding / Sample CRM
 > **Route**: `/seeding` (mobile)
 > **Platform**: Mobile (Flutter)
 > **Upstream**: A1 Schema (sample_requests, shipments), B5 RBAC §2.7
@@ -107,8 +107,8 @@ SeedingRequestsScreen
 
 | Screen | Relationship |
 |---|---|
-| [W099] Web Seeding | Web equivalent |
-| [M026] Products | Product catalog |
+| [W111] Web Seeding Requests | Web equivalent |
+| [M028] Products | Product catalog |
 ---
 ## Error Handling
 

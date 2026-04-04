@@ -146,8 +146,8 @@ SettlementTrackerPage
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
 | 1 | View orders | "🔍" | — | OrdersDrawer opens | `profit:read` |
-| 2 | Resolve mismatch | "🔧 Resolve" | — | → Reconciliation Center (W084) | `profit:manage` |
-| 3 | Flag dispute | "📎 Flag" | `ReconciliationService/FlagDispute(settlement_id)` | Dispute created, status → Disputed | `profit:manage` |
+| 2 | Resolve mismatch | "🔧 Resolve" | — | → Reconciliation Center (W084) | `profit:detailed_read` |
+| 3 | Flag dispute | "📎 Flag" | `ReconciliationService/FlagDispute(settlement_id)` | Dispute created, status → Disputed | `profit:detailed_read` |
 | 4 | View proof | "📋 Proof" | — | → Proof Browser (W085) with settlement | `profit:read` |
 | 5 | Export | "📥 Export" | Client-side CSV | Settlement data download | `profit:read` |
 | 6 | Filter/sort | Filter controls | Refetch | List updates | `profit:read` |

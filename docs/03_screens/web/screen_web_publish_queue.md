@@ -1,7 +1,7 @@
 # Screen: Web — Publish Queue
 
-> **Screen ID**: W44
-> **Module**: M08 — Publish & Packaging
+> **Screen ID**: W053
+> **Module**: M11 — Publish Hub
 > **Route**: `/publish`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §18-19, A1 Schema (publish_jobs, publish_items, publish_logs)
@@ -103,10 +103,10 @@ PublishQueuePage
 |---|---|---|---|---|---|
 | 1 | Create new | "+ Tạo bài mới" | — | → Content picker → Packaging QA | `publish:create` |
 | 2 | Preview | "👁 Preview" | — | Modal: player + metadata | `publish:read` |
-| 3 | Edit | "✏️ Edit" | — | → `/packaging/[id]` | `publish:update` |
+| 3 | Edit | "✏️ Edit" | — | → `/packaging/[id]` | `publish:schedule` |
 | 4 | Publish now | "📤 Đăng ngay" | `PublishService/Execute(id)` | Status → Publishing | `publish:execute` |
-| 5 | Pause | "⏸ Tạm hoãn" | `PublishService/Pause(id)` | Status → Paused | `publish:update` |
-| 6 | Cancel | "❌ Hủy" → confirm | `PublishService/Cancel(id)` | Item removed | `publish:delete` |
+| 5 | Pause | "⏸ Tạm hoãn" | `PublishService/Pause(id)` | Status → Paused | `publish:schedule` |
+| 6 | Cancel | "❌ Hủy" → confirm | `PublishService/Cancel(id)` | Item removed | `publish:cancel` |
 | 7 | Retry | "🔄 Thử lại" | `PublishService/Retry(id)` | Re-enters queue | `publish:execute` |
 | 8 | Export | "📥 Export" | Direct download | File + metadata | `publish:read` |
 | 9 | Diagnostics | "📊 Diagnostics" | — | → `/publish/[id]/diagnostics` | `publish:read` |
@@ -126,7 +126,7 @@ PublishQueuePage
 
 ### Permission Matrix
 - `publish:execute` (Owner, Admin, Manager) for immediate publish
-- `publish:update` (+ Editor) for edit/pause
+- `publish:schedule` (+ Editor) for edit/pause
 - `publish:read` (all) for viewing
 
 ### Real-time
@@ -147,11 +147,11 @@ PublishQueuePage
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [W43] Packaging QA | Pre-publish quality check |
-| [W45] Schedule Calendar | Calendar view |
-| [W46] Publish Item Detail | Full detail |
-| [W47] Diagnostics | Error investigation |
-| [M06] Mobile Quick Publish | Mobile equivalent |
+| [W056] Packaging QA | Pre-publish quality check |
+| [W054] Schedule Calendar | Calendar view |
+| [W057] Publish Item Detail | Full detail |
+| [W058] Publish Diagnostics | Error investigation |
+| [M023] Mobile Quick Publish | Mobile equivalent |
 
 ### Revision History
 | Date | Version | Change |
@@ -268,10 +268,10 @@ PublishQueuePage
 | Screen | Relationship |
 |---|---|
 | [W056] Packaging QA | Pre-publish quality check |
-| [W046] Schedule Calendar | Calendar view |
-| [W045] Publish Item Detail | Full detail |
-| [W058] Diagnostics | Error investigation |
-| [M006] Mobile Quick Publish | Mobile equivalent |
+| [W054] Schedule Calendar | Calendar view |
+| [W057] Publish Item Detail | Full detail |
+| [W058] Publish Diagnostics | Error investigation |
+| [M023] Mobile Quick Publish | Mobile equivalent |
 
 ---
 

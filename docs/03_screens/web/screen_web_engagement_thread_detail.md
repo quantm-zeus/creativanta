@@ -1,7 +1,7 @@
 # Screen: Web — Thread Detail
 
-> **Screen ID**: W50
-> **Module**: M09 — Engagement
+> **Screen ID**: W047
+> **Module**: M12 — Unified Inbox & Engagement
 > **Route**: `/inbox/[id]`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §20, A1 Schema (threads, messages, intents, suggested_replies)
@@ -206,10 +206,10 @@ Same data model as [W49] Unified Inbox but focused on single thread. Actions inc
 
 | Screen | Relationship |
 |---|---|
-| [W049] Unified Inbox | Parent (alternative split-pane view) |
-| [W052] Contact Detail | Entity profile |
-| [W053] Follow-up Tasks | Task from thread |
-| [M005] Mobile Thread Detail | Mobile equivalent |
+| [W046] Unified Inbox | Parent (alternative split-pane view) |
+| [W049] Contact Detail | Entity profile |
+| [W051] Follow-up Tasks | Task from thread |
+| [M020] Mobile Thread Detail | Mobile equivalent |
 
 ---
 

@@ -1,7 +1,7 @@
 # Screen: Web — Settings: Credit Purchase
 
-> **Screen ID**: W123
-> **Module**: M26 — Settings (Credits & Billing)
+> **Screen ID**: W120
+> **Module**: M23 — Settings
 > **Route**: `/settings/credits/purchase`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 10, A1 Schema (credit_transactions, credit_balances, subscriptions), B5 RBAC §2.9
@@ -40,7 +40,7 @@ Buy additional AI credits — credit packs with volume discounts, auto-refill co
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `billing:manage` permission (Owner, Admin)
+- User has `workspace:billing:manage` permission (Owner, Admin)
 
 ### Postconditions
 - Purchase adds credits to workspace balance immediately
@@ -136,11 +136,11 @@ CreditPurchasePage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Buy pack | "Mua" → Stripe popup | `CreditService/Purchase(pack_id)` | Stripe checkout → credits added | `billing:manage` |
-| 2 | Toggle auto-refill | ON/OFF toggle | `CreditService/UpdateAutoRefill` | Auto-refill enabled/disabled | `billing:manage` |
-| 3 | Change threshold | Threshold dropdown | `CreditService/UpdateAutoRefill` | Updated | `billing:manage` |
-| 4 | View full history | "📊 View full" | — | → Credit Usage Detail (W124) | `billing:read` |
-| 5 | Change payment | "Change →" | — | → Billing settings | `billing:manage` |
+| 1 | Buy pack | "Mua" → Stripe popup | `CreditService/Purchase(pack_id)` | Stripe checkout → credits added | `workspace:billing:manage` |
+| 2 | Toggle auto-refill | ON/OFF toggle | `AdminBillingService/ChangePlan` | Auto-refill enabled/disabled | `workspace:billing:manage` |
+| 3 | Change threshold | Threshold dropdown | `AdminBillingService/ChangePlan` | Updated | `workspace:billing:manage` |
+| 4 | View full history | "📊 View full" | — | → Credit Usage Detail (W124) | `workspace:billing:read` |
+| 5 | Change payment | "Change →" | — | → Billing settings | `workspace:billing:manage` |
 
 ---
 
@@ -223,7 +223,7 @@ CreditPurchasePage
 ## 12. SvelteKit Implementation Notes
 
 - **Route**: `src/routes/(app)/settings/credits/purchase/+page.svelte`
-- **Server load**: `+page.server.ts` → `CreditService/GetBalance` + `CreditService/ListPackages` + `CreditService/GetAutoRefillConfig` + `CreditService/ListRecentUsage(limit:5)`
+- **Server load**: `+page.server.ts` → `AdminBillingService/GetCreditBalance` + `AdminBillingService/PurchaseCredits` + `AdminBillingService/GetBillingSummary` + `CreditService/ListRecentUsage(limit:5)`
 - **Buy flow**: Server creates Stripe Checkout Session → redirect to Stripe → return to `/settings/credits/purchase?checkout=success`
 - **Auto-refill**: `CreditService/UpdateAutoRefill(config)` → background worker checks balance hourly
 - **Depletion**: `balance / avg_burn_rate` server-side, refreshed every 5m
@@ -263,10 +263,10 @@ CreditPurchasePage
 
 | Screen | Relationship |
 |---|---|
-| [W124] Credit Usage Detail | Full usage history |
-| [W093] Billing & Subscription | Payment methods |
-| [W125] AI Settings | AI model preferences |
-| [W030] AI Studio | Where credits are consumed |
+| [W121] Credit Usage Detail | Full usage history |
+| [W119] Billing & Plans | Payment methods |
+| [W123] AI Preferences | AI model preferences |
+| [W021] Studio Launcher | Where credits are consumed |
 
 ---
 

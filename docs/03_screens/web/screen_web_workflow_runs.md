@@ -1,6 +1,6 @@
 # Screen: Web — Workflow Run History
 
-> **Screen ID**: W103
+> **Screen ID**: W102
 > **Module**: M20 — Workflow Studio
 > **Route**: `/workflows/[id]/runs`
 > **Platform**: Web (SvelteKit)
@@ -238,15 +238,15 @@ WorkflowRunHistoryPage
 |---|---|---|---|---|---|---|---|
 | 1 | Expand run | Click "→ View details" | Toggle | `WorkflowService/GetRunDetail(run_id)` (lazy) | Step details expand with animation | — | `workflow:read` |
 | 2 | Collapse run | Click "▴ Hide details" | Toggle | — | Step details collapse | — | `workflow:read` |
-| 3 | Retry failed run | "🔄 Retry" → confirm | Action | `WorkflowService/RetryRun(run_id)` | Confirmation dialog → toast "Run đã re-queue" → new run appears at top | — | `workflow:manage` |
-| 4 | Debug failed run | "🐛 Debug" | Navigate | — | → W102 Builder with debug mode, breakpoints at failed step | → W102 | `workflow:manage` |
-| 5 | Edit step | "📝 Edit step" | Navigate | — | → W102 Builder focused on the specific failed step | → W102 | `workflow:manage` |
+| 3 | Retry failed run | "🔄 Retry" → confirm | Action | `WorkflowService/RetryRun(run_id)` | Confirmation dialog → toast "Run đã re-queue" → new run appears at top | — | `workflow:edit` |
+| 4 | Debug failed run | "🐛 Debug" | Navigate | — | → W102 Builder with debug mode, breakpoints at failed step | → W102 | `workflow:edit` |
+| 5 | Edit step | "📝 Edit step" | Navigate | — | → W102 Builder focused on the specific failed step | → W102 | `workflow:edit` |
 | 6 | View trigger source | Click trigger link | Navigate | — | → Source entity (comment, order, etc.) | → entity page | `workflow:read` |
 | 7 | Copy step data | Click copy on JSON | Action | — (clipboard) | Toast "Đã copy dữ liệu" | — | `workflow:read` |
 | 8 | Filter runs | Change status/period/trigger filter | Filter | Refetch with filters | Run list updates | — | `workflow:read` |
 | 9 | Search | Type in search input | Search | Debounced 300ms query | Filtered results | — | `workflow:read` |
 | 10 | Export history | "📤 Export" | Export | `WorkflowService/ExportRuns(workflow_id, filters)` | CSV download | — | `workflow:read` |
-| 11 | Cancel live run | "Cancel" on live banner | Destructive | `WorkflowService/CancelRun(run_id)` | Confirmation → run cancelled → status ❌ | — | `workflow:manage` |
+| 11 | Cancel live run | "Cancel" on live banner | Destructive | `WorkflowService/CancelRun(run_id)` | Confirmation → run cancelled → status ❌ | — | `workflow:edit` |
 | 12 | Change page | Click page number | Paginate | Refetch with offset | Run list updates | — | `workflow:read` |
 
 ---
@@ -397,10 +397,10 @@ Client-side:
 
 | Screen | Relationship |
 |---|---|
-| [W101] Workflow List | Parent list of all workflows |
-| [W102] Workflow Builder | Edit/debug workflow (linked from Debug/Edit step) |
-| [W104] Workflow Approvals | If run paused for human approval |
-| [M045] Mobile Workflow Runs | Mobile equivalent |
+| [W100] Workflow List | Parent list of all workflows |
+| [W101] Workflow Builder | Edit/debug workflow (linked from Debug/Edit step) |
+| [W104] Approval Queue | If run paused for human approval |
+| [M050] Mobile Workflow Monitor | Mobile equivalent |
 ---
 ## Error Handling
 

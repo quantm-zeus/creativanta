@@ -1,7 +1,7 @@
 # Screen: Web — Schedule Calendar
 
-> **Screen ID**: W046
-> **Module**: M08 — Publish & Packaging
+> **Screen ID**: W054
+> **Module**: M11 — Publish Hub
 > **Route**: `/publish/calendar`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §18-19, A1 Schema (publish_items, published_posts, connectors), B5 RBAC §2.7
@@ -209,14 +209,14 @@ ScheduleCalendarPage
 |---|---|---|---|---|---|
 | 1 | View event detail | Click event block | — | EventPopover appears (or navigate to detail on double-click) | `publish:read` |
 | 2 | Navigate to detail | Click "View detail" in popover or double-click event | — | Navigate → `/publish/[id]` | `publish:read` |
-| 3 | Drag to reschedule | Drag event to new time slot | `PublishService/Reschedule(id, new_datetime)` | Event moves. Toast: "Đã chuyển sang {new_time}." Undo available: "[↩ Hoàn tác]" | `publish:update` |
+| 3 | Drag to reschedule | Drag event to new time slot | `PublishService/Reschedule(id, new_datetime)` | Event moves. Toast: "Đã chuyển sang {new_time}." Undo available: "[↩ Hoàn tác]" | `publish:schedule` |
 | 4 | Create from empty slot | Click empty time slot | — | Navigate → `/publish/compose?date=YYYY-MM-DD&time=HH:mm` | `publish:create` |
 | 5 | Create new | "+" button | — | Navigate → `/publish/compose` | `publish:create` |
 | 6 | Navigate week/month | ◀ ▶ buttons | Refetch `PublishService/ListByDateRange(new_range)` | Calendar updates with transition animation | `publish:read` |
 | 7 | Toggle week/month | View toggle | Client-side | View switches. URL updates. | `publish:read` |
 | 8 | Filter by platform | Platform dropdown | Client-side filter + refresh | Events filtered. Non-matching events dimmed or hidden. | `publish:read` |
-| 9 | Cancel scheduled post | Popover "Cancel" → confirm | `PublishService/Cancel(id)` | Event removed from calendar. Toast: "Đã hủy lịch đăng." | `publish:update` |
-| 10 | Reschedule from popover | Popover "Reschedule" → time picker | `PublishService/Reschedule(id, datetime)` | Event moves to new position | `publish:update` |
+| 9 | Cancel scheduled post | Popover "Cancel" → confirm | `PublishService/Cancel(id)` | Event removed from calendar. Toast: "Đã hủy lịch đăng." | `publish:schedule` |
+| 10 | Reschedule from popover | Popover "Reschedule" → time picker | `PublishService/Reschedule(id, datetime)` | Event moves to new position | `publish:schedule` |
 
 ---
 
@@ -462,9 +462,9 @@ function handleDrop(event, targetDate, targetTime) {
 
 | Screen | Relationship |
 |---|---|
-| [W043] Publish Queue | Sibling: list view of same data |
-| [W045] Publish Item Detail | Child: event detail |
-| [W048] Publish Composer | Upstream: create/schedule content |
+| [W053] Publish Queue | Sibling: list view of same data |
+| [W057] Publish Item Detail | Child: event detail |
+| [W052] Publish Composer | Upstream: create/schedule content |
 | [W056] Packaging QA | Pre-publish check |
 | [M025] Mobile Calendar | Mobile equivalent |
 
@@ -474,5 +474,5 @@ function handleDrop(event, targetDate, targetTime) {
 
 | Date | Version | Change | Author |
 |---|---|---|---|
-| 2026-03-29 | 2.0 | **Full Tier A rewrite**: Upgraded from 189-line Tier C with generic boilerplate to 440+ line full spec. Added: complete component hierarchy with week/month dual views, ASCII wireframes for both views, drag-and-drop state machine with keyboard alternative, AI best-time overlay, gap analysis with AI advice, event popover with quick actions, platform color-coded events, 9 analytics events, 7-role RBAC, responsive 3-day tablet view. Removed all generic boilerplate. Standardized Screen ID from W45 to W046. | System |
+| 2026-03-29 | 2.0 | **Full Tier A rewrite**: Upgraded from 189-line Tier C with generic boilerplate to 440+ line full spec. Added: complete component hierarchy with week/month dual views, ASCII wireframes for both views, drag-and-drop state machine with keyboard alternative, AI best-time overlay, gap analysis with AI advice, event popover with quick actions, platform color-coded events, 9 analytics events, 7-role RBAC, responsive 3-day tablet view. Removed all generic boilerplate. Standardized Screen ID from W45 to W054. | System |
 | 2026-03-27 | 1.0 | Initial specification (Tier C) | System |

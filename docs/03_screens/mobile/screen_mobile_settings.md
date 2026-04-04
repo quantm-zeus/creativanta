@@ -1,7 +1,7 @@
 # Screen: Mobile — Settings
 
-> **Screen ID**: M40
-> **Module**: M19 — Settings (Mobile)
+> **Screen ID**: M057
+> **Module**: M23 — Settings
 > **Route**: `/settings` (mobile)
 > **Platform**: Mobile (Flutter)
 > **Upstream**: Product Freeze §27

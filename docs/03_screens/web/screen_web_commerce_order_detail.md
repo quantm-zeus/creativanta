@@ -405,13 +405,13 @@ Client-side:
 
 | Screen | Relationship |
 |---|---|
-| [W061] Order List | Parent list |
-| [W060] Product Detail | Product from order items |
+| [W062] Order List | Parent list |
+| [W061] Product Detail | Product from order items |
 | [W073] Refund Management | Refund processing |
 | [W046] Unified Inbox | Buyer communication |
 | [W081] Profit Dashboard | Profit aggregation |
 | [W084] Reconciliation | Reconcile order revenue |
-| [M025] Mobile Order Detail | Mobile equivalent |
+| [M027] Mobile Orders | Mobile equivalent |
 | [S009] Trust Badge | Source class display on financial data |
 | [S007] Confirmations | Refund confirmation |
 

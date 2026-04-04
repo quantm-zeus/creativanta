@@ -1,6 +1,6 @@
 # Screen: Web — Analytics Detail Report
 
-> **Screen ID**: W110
+> **Screen ID**: W076
 > **Module**: M17 — Analytics
 > **Route**: `/analytics/[platform]`
 > **Platform**: Web (SvelteKit)
@@ -50,7 +50,7 @@ The Analytics Detail Report provides deep per-platform analytics with engagement
 
 ### Preconditions
 - User authenticated with valid session
-- User has `analytics:read` permission
+- User has `report:read` permission
 - Platform connector configured and active for requested platform
 - At least 7 days of analytics data synced (otherwise: insufficient data state)
 
@@ -275,16 +275,16 @@ AnalyticsDetailPage
 
 | # | Action | Trigger | API Call | System Response | Permission |
 |---|---|---|---|---|---|
-| 1 | Change period | Period dropdown | Refetch all sections with new period | Dashboard updates with loading transition | `analytics:read` |
-| 2 | View post detail | Click post in ranking | — | Navigate → `/analytics/posts/[post_id]` | `analytics:read` |
+| 1 | Change period | Period dropdown | Refetch all sections with new period | Dashboard updates with loading transition | `report:read` |
+| 2 | View post detail | Click post in ranking | — | Navigate → `/analytics/posts/[post_id]` | `report:read` |
 | 3 | Show all posts | Click "Show all posts →" | — | Navigate → `/publish/posts?platform={platform}&sort=views` | `publish:read` |
-| 4 | Switch growth metric | Click metric tab on chart | Client-side (chart re-renders) | Chart switches data series | `analytics:read` |
-| 5 | Sort top content | Change sort dropdown | Refetch or client-side re-sort | Table re-ordered | `analytics:read` |
-| 6 | Export CSV | "📤 Export CSV" | `AnalyticsService/ExportCSV(platform, period)` | CSV file downloads | `analytics:export` |
-| 7 | Export PDF | "📄 Export PDF" | `AnalyticsService/ExportPDF(platform, period)` | PDF file downloads | `analytics:export` |
-| 8 | Compare periods | "📅 Compare" → date picker | Refetch with comparison period | Side-by-side or overlay mode | `analytics:read` |
+| 4 | Switch growth metric | Click metric tab on chart | Client-side (chart re-renders) | Chart switches data series | `report:read` |
+| 5 | Sort top content | Change sort dropdown | Refetch or client-side re-sort | Table re-ordered | `report:read` |
+| 6 | Export CSV | "📤 Export CSV" | `AnalyticsService/ExportCSV(platform, period)` | CSV file downloads | `report:export` |
+| 7 | Export PDF | "📄 Export PDF" | `AnalyticsService/ExportPDF(platform, period)` | PDF file downloads | `report:export` |
+| 8 | Compare periods | "📅 Compare" → date picker | Refetch with comparison period | Side-by-side or overlay mode | `report:read` |
 | 9 | Act on AI insight | Click CTA on AI insight card | — | Navigate to relevant screen | Varies |
-| 10 | View full AI analysis | "Xem phân tích AI đầy đủ →" | — | Navigate → `/analytics/ai-insights` | `analytics:read` |
+| 10 | View full AI analysis | "Xem phân tích AI đầy đủ →" | — | Navigate → `/analytics/ai-insights` | `report:read` |
 
 ---
 
@@ -504,11 +504,11 @@ Analytics data is inherently delayed (platform APIs sync every 15-60 min). Real-
 
 | Screen | Relationship |
 |---|---|
-| [W109] Analytics Overview | Parent: all-platform summary |
-| [W075] Post Analytics Detail | Child: individual post deep-dive |
-| [W044] Channel Posts | Sibling: content list with metrics |
-| [W046] Schedule Calendar | Related: AI best time → calendar integration |
-| [M011] Mobile Analytics | Mobile equivalent |
+| [W075] Analytics Overview | Parent: all-platform summary |
+| [W078] Post Detail Analytics | Child: individual post deep-dive |
+| [W059] Channel Posts | Sibling: content list with metrics |
+| [W054] Publish Calendar | Related: AI best time → calendar integration |
+| [M035] Mobile Analytics | Mobile equivalent |
 
 ---
 

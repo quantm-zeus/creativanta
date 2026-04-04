@@ -1,6 +1,6 @@
 # Screen: Web — Copilot Dialog
 
-> **Screen ID**: W06
+> **Screen ID**: W008
 > **Module**: M01 — Home & Decision (AI Copilot)
 > **Route**: Overlay/Sidebar (global, accessible from any page)
 > **Platform**: Web (SvelteKit)
@@ -104,9 +104,9 @@ CopilotSidebar (global overlay component)
 |---|---|---|
 | Conversation | Client-side state (session) | N/A |
 | Context | Current route + page data | Client-side |
-| AI responses | `CopilotService/Chat` | Streaming RPC |
+| AI responses | `CopilotService/Query` | Streaming RPC |
 | Quick suggestions | `CopilotService/GetSuggestions(context)` | Pre-computed |
-| Credits | `CreditService/GetBalance` | Cached |
+| Credits | `AdminBillingService/GetCreditBalance` | Cached |
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
@@ -151,8 +151,8 @@ CopilotSidebar (global overlay component)
 
 ### Permission Matrix
 - `copilot:use_help` (all roles except Viewer): basic help mode
-- `copilot:use_deep` (Owner, Admin, Manager): deep analysis mode
-- `copilot:use_create` (Owner, Admin, Manager, Editor): content creation mode
+- `copilot:use_analytics` (Owner, Admin, Manager): deep analysis mode
+- `copilot:use_creative` (Owner, Admin, Manager, Editor): content creation mode
 
 ### Performance
 - Sidebar open: < 200ms animation

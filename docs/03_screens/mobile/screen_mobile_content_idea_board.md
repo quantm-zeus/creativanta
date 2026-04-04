@@ -1,6 +1,6 @@
 # Screen: Mobile — Idea Board
 
-> **Screen ID**: M017
+> **Screen ID**: M008
 > **Module**: M05 — Idea Engine
 > **Route**: `/ideas` (bottom tab: 💡)
 > **Platform**: Mobile (Flutter)
@@ -198,15 +198,15 @@ MobileIdeaBoardPage
 | 1 | Open idea detail | Tap card | Navigate | — | Push → M018 Idea Detail | `idea:read` |
 | 2 | Quick add | Tap FAB → Fill bottom sheet → "Tạo" | Create | `IdeaService/Create(title, desc, platform, tags)` | Bottom sheet closes. Card appears in list (Inbox, position 0). Haptic success. | `idea:create` |
 | 3 | AI score on create | "🤖 AI đánh giá ngay" in bottom sheet | AI | `CopilotService/ScoreIdea(title, desc)` | Score badge appears on bottom sheet before creation. | `copilot:use_help` |
-| 4 | Swipe advance | Swipe right on card → threshold reveal | Status | `IdeaService/Update(id, status=next_status)` | Card animates to updated status. Haptic medium. Toast "→ {new_status}". Chip counts update. | `idea:update` |
-| 5 | Swipe to script | Swipe left on card → threshold reveal (blue) | Navigate | `IdeaService/Update(id, status='in_script')` | Status updated. Push → M020 Script Editor with idea_id pre-linked. | `idea:update` + `script:create` |
+| 4 | Swipe advance | Swipe right on card → threshold reveal | Status | `IdeaService/Update(id, status=next_status)` | Card animates to updated status. Haptic medium. Toast "→ {new_status}". Chip counts update. | `idea:create` |
+| 5 | Swipe to script | Swipe left on card → threshold reveal (blue) | Navigate | `IdeaService/Update(id, status='in_script')` | Status updated. Push → M020 Script Editor with idea_id pre-linked. | `idea:create` + `script:create` |
 | 6 | Filter by status | Tap status chip | Filter | `IdeaService/ListMobile(status=...)` | List shows only matching status. Active chip highlighted. | `idea:read` |
 | 7 | Sort ideas | Tap sort button → picker | Sort | `IdeaService/ListMobile(sort=...)` | List reorders. | `idea:read` |
 | 8 | Filter by platform/source | Filter button → filter drawer | Filter | `IdeaService/ListMobile(filters)` | List filters. Active filter badge on button. | `idea:read` |
 | 9 | Pull refresh | Pull-down gesture | Refresh | Refetch list | List updates. Haptic light. | `idea:read` |
-| 10 | AI generate ideas | "🤖 AI Gen" in app bar or pipeline banner | Navigate | — | Push → M019 AI Idea Generator page | `idea:generate` |
-| 11 | Long press context menu | Long press card | Menu | — | Bottom sheet: [Edit tags, Change platform, Delete, Share] | `idea:update` |
-| 12 | Delete idea | Long press → "🗑 Xóa" → confirm | Destructive | `IdeaService/Delete(id)` | Confirmation dialog → card fades out. Toast "Đã xóa." | `idea:delete` |
+| 10 | AI generate ideas | "🤖 AI Gen" in app bar or pipeline banner | Navigate | — | Push → M019 AI Idea Generator page | `idea:create` |
+| 11 | Long press context menu | Long press card | Menu | — | Bottom sheet: [Edit tags, Change platform, Delete, Share] | `idea:create` |
+| 12 | Delete idea | Long press → "🗑 Xóa" → confirm | Destructive | `IdeaService/Delete(id)` | Confirmation dialog → card fades out. Toast "Đã xóa." | `idea:create` |
 | 13 | Infinite scroll | Scroll to bottom | Paginate | `IdeaService/ListMobile(cursor=next)` | More cards loaded. | `idea:read` |
 
 ---
@@ -453,10 +453,10 @@ Mobile Idea Board (/ideas — bottom tab 💡)
 
 | Screen | Relationship |
 |---|---|
-| [W017] Web Idea Board | Web equivalent (Kanban board) |
-| [M018] Mobile Idea Detail | Detail view for single idea |
-| [M019] Mobile AI Idea Generator | AI idea generation |
-| [M020] Mobile Script Editor | Downstream — write script from idea |
+| [W012] Web Idea Board | Web equivalent (Kanban board) |
+| [M009] Mobile Idea Detail | Detail view for single idea |
+| [M060] Mobile Copilot | AI idea generation |
+| [M011] Mobile Script Editor | Downstream — write script from idea |
 | [M001] Mobile Home Dashboard | Pipeline KPI + 💡 bottom tab |
 
 ---

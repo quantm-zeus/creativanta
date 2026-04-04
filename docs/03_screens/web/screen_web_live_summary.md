@@ -42,7 +42,7 @@ Post-session analytics with AI-generated improvement suggestions — session KPI
 ### Preconditions
 - Live session completed (status: "completed")
 - Analytics job has finished processing (usually 5-15 min post-session)
-- User has `live_session:manage` permission
+- User has `live:manage` permission
 
 ### Postconditions
 - Export creates shareable PDF report
@@ -299,7 +299,7 @@ PostLiveSummaryPage
 | [W107] Live Planner | Session list |
 | [W109] Live War Room | Real-time control center (previous step) |
 | [W108] Live Setup | Session preparation |
-| [M058] Mobile Post-Live | Mobile equivalent |
+| [M055] Mobile Live War Room | Mobile equivalent |
 
 ---
 

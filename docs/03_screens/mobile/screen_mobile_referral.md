@@ -1,6 +1,6 @@
 # Screen: Mobile — Referral Center
 
-> **Screen ID**: M058
+> **Screen ID**: M062
 > **Module**: M23 — Settings / Growth
 > **Route**: `/m/settings/referral`
 > **Platform**: Mobile (Flutter)
@@ -169,8 +169,8 @@ ReferralScreen
 
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Referral link | `users.referral_code` | `ReferralService/GetReferralLink` | "creativanta.vn/r/{CODE}" | Session |
-| Clicks | `referral_events WHERE type=click` count | `ReferralService/GetStats` | Integer | 15m TTL |
+| Referral link | `users.referral_code` | `ReferralService/GetMyReferralCode` | "creativanta.vn/r/{CODE}" | Session |
+| Clicks | `referral_events WHERE type=click` count | `ReferralService/GetReferralStats` | Integer | 15m TTL |
 | Signups | `referrals WHERE status=signed_up` count | same | "12 (27%)" | 15m TTL |
 | Paid | `referrals WHERE status=converted` count | same | "3 (25%)" | 15m TTL |
 | Credits earned | `credit_transactions WHERE source=referral` sum | same | "225 credits" | 15m TTL |
@@ -190,7 +190,7 @@ ReferralScreen
 | 4 | Share via system | Tap "📤 Chia sẻ khác" | System share sheet | — | System share sheet opens | Any |
 | 5 | Remind friend | Tap "Nhắc nhở" on pending referral | `ReferralService/SendReminder(referral_id)` | Reminder notification sent | Toast "Đã gửi nhắc nhở cho {name}" | Any |
 | 6 | View all referrals | Tap "→ Xem tất cả" | — | — | Navigate to full referral history | Any |
-| 7 | Pull to refresh | Pull down gesture | `ReferralService/GetStats` | — | All sections refresh | Any |
+| 7 | Pull to refresh | Pull down gesture | `ReferralService/GetReferralStats` | — | All sections refresh | Any |
 | 8 | Check credit balance | Tap credits section | — | — | Navigate to billing/credits | Any |
 
 ---
@@ -341,7 +341,7 @@ Referral (/m/settings/referral)
 
 | Screen | Relationship |
 |---|---|
-| [W129] Web Referral | Web equivalent (more detailed stats) |
+| [W126] Web Referral Program | Web equivalent (more detailed stats) |
 | [M061] Billing | Credit balance display |
 | [M057] Settings | Parent screen |
 | [S011] Upsell Banner | Referral mention in upsell context |

@@ -287,7 +287,7 @@ GDPR Tools (/admin/compliance/gdpr)
 | [A001] Admin Dashboard | Parent |
 | [A003] User Detail | View user of a data request |
 | [A010] Audit Log | Compliance action audit trail |
-| [A033] Security Dashboard | Security-related compliance |
+| [A028] Fraud Dashboard | Security-related compliance |
 
 ---
 

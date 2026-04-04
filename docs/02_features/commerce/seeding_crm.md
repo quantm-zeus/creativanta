@@ -126,7 +126,7 @@ M18 exists as the **seeding operations and sample lifecycle manager** — tracki
 ### Sample Request Lifecycle
 
 Object: sample_request | Stored as workflow-scoped records
-see [04_contracts/domain_event_catalog.md#19](../04_contracts/domain_event_catalog.md)
+see [04_contracts/domain_event_catalog.md#19](../../04_contracts/domain_event_catalog.md)
 
 | From | To | Trigger | Condition |
 |---|---|---|---|
@@ -150,11 +150,11 @@ see [04_contracts/domain_event_catalog.md#19](../04_contracts/domain_event_catal
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §12 (Operations context), §9 (follow_up_tasks, entities) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.8 (Seeding — ~8 RPCs: Sample CRUD, Shipment) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §19 (sample_request.created, sample_request.approved, sample_request.declined, creator_assignment.created, sample.shipped, sample.delivered) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.8 (seeding — Editor+ for operations, Manager+ for approval) |
-| Pack 06 | [Pack 06 — Commerce Contract](../creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md) | §4.1 (Cost Item Types — seeding/sample cost), §4.2 (Payout/Statement Support) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §12 (Operations context), §9 (follow_up_tasks, entities) |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.8 (Seeding — ~8 RPCs: Sample CRUD, Shipment) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §19 (sample_request.created, sample_request.approved, sample_request.declined, creator_assignment.created, sample.shipped, sample.delivered) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.12 (seeding — Editor+ for operations, Manager+ for approval) |
+| Pack 06 | Pack 06 — Commerce Contract <!-- Legacy ref: creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §4.1 (Cost Item Types — seeding/sample cost), §4.2 (Payout/Statement Support) |
 | Source class | PRD Part 1, §15.1 | official, imported, inferred, estimated, unreconciled |
 
 ## Related Screens
@@ -184,4 +184,4 @@ see [04_contracts/domain_event_catalog.md#19](../04_contracts/domain_event_catal
 ## Open Questions / Blockers
 
 > ✅ **RESOLVED: API-M-001** (2026-04-02) — `SeedingService` now fully defined in `api_endpoint_map.md` §2.8.4 with 9 RPCs: CreateSample, Get, List, Approve, Ship, TrackDelivery, GetReport, CreateCampaign, ListCampaigns. Each RPC has Method, Auth, Rate Limit, Description.
-> Remaining gap: API-M-002 (JSON request/response examples not yet added).
+> ✅ **RESOLVED: API-M-002** (2026-04-02) — JSON request/response example in `api_examples.md` A.17 (SeedingService/CreateSample).

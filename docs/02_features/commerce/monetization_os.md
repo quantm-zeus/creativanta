@@ -118,7 +118,7 @@ M14 exists as the **monetization coordination layer** — the module that manage
 ### Offer Lifecycle
 
 Object: offer | DB column: `offers.lifecycle_state`
-see [04_contracts/database_schema.md#10.2](../04_contracts/database_schema.md)
+see [04_contracts/database_schema.md#10.2](../../04_contracts/database_schema.md)
 
 | From | To | Trigger | Condition |
 |---|---|---|---|
@@ -151,11 +151,11 @@ Object: campaign | DB column: `campaigns.status`
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §10.2 (offers), §10.5 (campaigns), plus coupon/monetization support in §19 operational context |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.6 (OfferService, CampaignService — ~11 RPCs) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §8 (offer.activated, offer.expired, campaign.started, campaign.completed), §19 (coupon.activated, coupon.used, coupon.expired, commission.calculated) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.6 (offer — Editor+; campaign — Editor+) |
-| Pack 06 | [Pack 06 — Commerce Contract](../creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md) | §2.3 (Offer), §2.4 (Monetization Support Objects), §2.5 (Campaign) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §10.2 (offers), §10.5 (campaigns), plus coupon/monetization support in §19 operational context |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.6 (OfferService, CampaignService — ~11 RPCs) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §8 (offer.activated, offer.expired, campaign.started, campaign.completed), §19 (coupon.activated, coupon.used, coupon.expired, commission.calculated) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.7 (offer — Editor+; campaign — Editor+) |
+| Pack 06 | Pack 06 — Commerce Contract <!-- Legacy ref: creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §2.3 (Offer), §2.4 (Monetization Support Objects), §2.5 (Campaign) |
 
 ## Related Screens
 

@@ -1,6 +1,6 @@
 # Screen: Web — Home Dashboard
 
-> **Screen ID**: W01
+> **Screen ID**: W001
 > **Module**: M01 — Home & Decision
 > **Route**: `/`
 > **Platform**: Web (SvelteKit)
@@ -168,7 +168,7 @@ HomePage
 | Views | `ClickHouse: content_performance` | `AnalyticsService/GetDashboard` | Compact format (45.2K) | 5m TTL |
 | Unread | `threads WHERE unread = true` | `ThreadService/GetUnreadCount` | Integer | Real-time SSE |
 | Engagement Rate | Computed (interactions/views) | `AnalyticsService/GetDashboard` | Percentage "8.2%" | 5m TTL |
-| AI Credits | `credit_transactions` balance | `CreditService/GetBalance` | "12/100" (used/total) | Real-time |
+| AI Credits | `credit_transactions` balance | `AdminBillingService/GetCreditBalance` | "12/100" (used/total) | Real-time |
 | Trending Topics | `trends` top by score | `TrendService/ListTop(limit=3)` | Title + score badge | 10m TTL |
 | Pipeline Counts | `ideas`, `scripts`, `assets` | `DashboardService/GetPipeline` | Count per stage | 5m TTL |
 | Schedule | `publish_jobs` upcoming | `PublishService/ListUpcoming(limit=5)` | Time + title + platform icon | 5m TTL |
@@ -449,12 +449,12 @@ Home Dashboard (/)
 
 | Screen | Relationship |
 |---|---|
-| [W02] Workspace Selector | Parent (selects which workspace to show) |
-| [M01] Mobile Home | Mobile equivalent of this screen |
-| [W06] Copilot Dialog | Opens from Quick Action |
-| [W09] Intelligence/Trends | Linked from AI Pulse |
-| [W43] Publish Queue | Linked from Schedule widget |
-| [W55] Order List | Linked from Order alerts |
+| [W002] Workspace Selector | Parent (selects which workspace to show) |
+| [M001] Mobile Home | Mobile equivalent of this screen |
+| [W008] Copilot Dialog | Opens from Quick Action |
+| [W038] Trend Radar | Linked from AI Pulse |
+| [W053] Publish Queue | Linked from Schedule widget |
+| [W062] Order List | Linked from Order alerts |
 
 ---
 

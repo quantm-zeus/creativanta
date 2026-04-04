@@ -45,7 +45,7 @@ M22 exists as the **platform capability truth layer** — maintaining a real-tim
 ## Business Rules
 
 1. **RULE-M22-001 (CRITICAL)**: **Every unsupported or degraded action MUST open a user-facing explanation.** When an operator encounters an unsupported action, the UI MUST NOT show a generic "unavailable" error. Instead, it MUST show: (a) what action is unavailable, (b) why (platform limitation, API change, degradation), (c) when it was last available (if applicable), (d) fallback path if one exists. Policy notes are the mechanism for this explanation (PRD §23.22 AC, Pack 05 §capability).
-2. **RULE-M22-002**: Capability states: `supported` (fully functional), `degraded` (partially working, may fail), `unsupported` (not available on this platform), `unknown` (status cannot be determined — treated as `degraded` for safety). State transitions emit events: `connector.degraded`, `connector.recovered`, `capability.snapshot_captured` (Domain events §6).
+2. **RULE-M22-002**: Capability states: `supported` (fully functional), `degraded` (partially working, may fail), `unsupported` (not available on this platform), `unknown` (status cannot be determined — treated as `degraded` for safety). State transitions emit events: `connector.degraded`, `connector.recovered` (catalog §15D), `capability.state_changed` (catalog §12), `connector.health_score.captured` (catalog §15D).
 3. **RULE-M22-003**: Platform health score (0–100) composites: API availability (40%), error rate (25%), latency (20%), rate limit remaining (15%). Score thresholds: ≥80 = healthy, 50–79 = degraded, <50 = critical. Score calculated per connected account, not globally (Pack 05, API map §9).
 4. **RULE-M22-004**: Fallback paths MUST be accessible from action context. When a primary action is unavailable, the system MUST suggest alternatives. Example: "TikTok direct publish unavailable → Manual upload fallback: download video + upload manually. [Download video] [View platform status]" — fallback paths are defined per action and configurable per workspace (PRD §23.22 AC).
 5. **RULE-M22-005**: Capability snapshots are captured periodically (default: 30s polling for health, 5-minute full capability refresh) AND on-demand when modules query before action execution. Stale snapshots (>10 min old) trigger a forced refresh before returning capability status to the consumer (API map §9, Pack 03 §11A.2).
@@ -57,7 +57,7 @@ M22 exists as the **platform capability truth layer** — maintaining a real-tim
    - Per-platform API health: connectivity, error rates, latency
    - Per-connected-account checks: OAuth token validity, rate limit status
    - Results compute health score (RULE-M22-003)
-   - `capability.snapshot_captured` event emitted periodically
+   - `connector.health_score.captured` event emitted periodically (catalog §15D)
 2. **Status change detection**: System detects capability changes
    - Platform goes from healthy → degraded: `connector.degraded` event
    - Platform recovers: `connector.recovered` event
@@ -130,10 +130,10 @@ M22 exists as the **platform capability truth layer** — maintaining a real-tim
 
 | Topic | File | Section |
 |---|---|---|
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §9 (PlatformHealthService/GetScores, GetHistory; LinkHealthService — 5 RPCs), §2.8 (Capability — ~5 RPCs) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §6 (capability.snapshot_captured, connector.degraded, connector.recovered) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.8 (capability — Viewer+ for read, Manager+ for configuration) |
-| Connector Specs | [04_contracts/connector_specs.md](../04_contracts/connector_specs.md) | per-platform capability definitions |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §9 (PlatformHealthService/GetScores, GetHistory; LinkHealthService — 5 RPCs), §2.8 (Capability — ~5 RPCs) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §12 (`capability.state_changed`), §15D (`connector.health_score.captured`, `connector.degraded`, `connector.recovered`) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.10 (capability — Viewer+ for read, Manager+ for configuration) |
+| Connector Specs | [04_contracts/connector_specs.md](../../04_contracts/connector_specs.md) | per-platform capability definitions |
 | Real-time | Pack 03 §11A | Connector health uses polling (30s interval) |
 | Consumers | M11, M20, M07, M12 | All query M22 before platform-dependent actions |
 
@@ -200,5 +200,5 @@ Feature: Platform Health Score Proactive Coaching
     And the dashboard shows specific actionable steps to improve each component
 ```
 
-> **Schema Cross-reference (GAP-M007 verification)**: Achievement-related schemas are: `achievement_definitions` + `achievement_records` (§14.2), `creator_progress` (§14.1, includes streak columns), `challenge_definitions` + `challenge_progress` (§22.10-22.11). See [database_schema.md](../04_contracts/database_schema.md). The gamification feature spec at `02_features/platform/gamification.md` references these schemas by table name — full field definitions are canonical in the DB schema contract only.
+> **Schema Cross-reference (GAP-M007 verification)**: Achievement-related schemas are: `achievement_definitions` + `achievement_records` (§14.2), `creator_progress` (§14.1, includes streak columns), `challenge_definitions` + `challenge_progress` (§22.10-22.11). See [database_schema.md](../../04_contracts/database_schema.md). The gamification feature spec at `02_features/platform/gamification.md` references these schemas by table name — full field definitions are canonical in the DB schema contract only.
 

@@ -389,11 +389,11 @@ Client-side:
 
 | Screen | Relationship |
 |---|---|
-| [W061] Order List | Orders that can be refunded |
+| [W062] Order List | Orders that can be refunded |
 | [W063] Order Detail | Specific order context |
 | [W081] Profit Dashboard | Revenue impact of refunds |
 | [W046] Unified Inbox | Buyer communication |
-| [M031] Mobile Refunds | Mobile equivalent |
+| [M030] Mobile Refunds | Mobile equivalent |
 | [A019] Admin Disputes | Admin escalation for disputes |
 | [S009] Trust Badge | Source class on refund data |
 | [S007] Confirmations | Approve/reject confirmation |

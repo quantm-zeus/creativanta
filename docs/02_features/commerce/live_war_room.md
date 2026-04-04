@@ -117,7 +117,7 @@ M17 exists as the **real-time live commerce orchestrator** — managing the full
 ## State Machine
 
 Object: live_session | DB column: `live_sessions.status`
-see [04_contracts/database_schema.md#12.1](../04_contracts/database_schema.md)
+see [04_contracts/database_schema.md#12.1](../../04_contracts/database_schema.md)
 
 | From | To | Trigger | Condition |
 |---|---|---|---|
@@ -134,10 +134,10 @@ see [04_contracts/database_schema.md#12.1](../04_contracts/database_schema.md)
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §12.1 (live_sessions), §25.2 (RunOfShowItem, LiveMetricsSnapshot JSONB shapes) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.8 (Live — ~10 RPCs: Session, Cue, Highlight) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §9 (live.session_started, live.session_ended, live.highlight_marked, live.offer_pinned, live.cue_triggered), §19 (live_segment.created) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.8 (live — Editor+ for operations, Manager+ for session management) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §12.1 (live_sessions), §25.2 (RunOfShowItem, LiveMetricsSnapshot JSONB shapes) |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.8 (Live — ~10 RPCs: Session, Cue, Highlight) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §9 (live.session_started, live.session_ended, live.highlight_marked, live.offer_pinned, live.cue_triggered), §19 (live_segment.created) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.11 (live — Editor+ for operations, Manager+ for session management) |
 | Real-time | PRD Part 2, §32B.1 | WebSocket, ≤500ms latency |
 | Rendering | PRD Part 2, §32.2 | CSR + WebSocket (war room is real-time priority) |
 
@@ -166,4 +166,4 @@ see [04_contracts/database_schema.md#12.1](../04_contracts/database_schema.md)
 ## Open Questions / Blockers
 
 > ✅ **RESOLVED: API-M-001** (2026-04-02) — `LiveCommerceService` now fully defined in `api_endpoint_map.md` §2.8.3 with 11 RPCs: CreateSession, Get, List, StartSession, EndSession, AddCue, RemoveCue, HighlightProduct, GetAnalytics, UpdateRunOfShow, CreateHighlight. Each RPC has Method, Auth, Rate Limit, Description.
-> Remaining gap: API-M-002 (JSON request/response examples not yet added).
+> ✅ **RESOLVED: API-M-002** (2026-04-02) — JSON request/response example in `api_examples.md` A.16 (LiveCommerceService/CreateSession).

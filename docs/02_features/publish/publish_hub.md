@@ -122,7 +122,7 @@ M11 exists as the **multi-platform publish orchestrator** — the execution engi
 ## State Machine
 
 Object: publish_item | DB column: `publish_items.lifecycle_state`
-see [04_contracts/database_schema.md#8.1](../04_contracts/database_schema.md)
+see [04_contracts/database_schema.md#8.1](../../04_contracts/database_schema.md)
 
 | From | To | Trigger | Condition |
 |---|---|---|---|
@@ -144,12 +144,12 @@ see [04_contracts/database_schema.md#8.1](../04_contracts/database_schema.md)
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §8.1 (publish_items), §8.2 (publish_jobs), §8.3 (publish_logs — immutable) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.4 (PublishService: CreateItem, Schedule, Execute, Retry, Cancel, ListQueue, GetLogs, GetDiagnostics) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §6 (publish.queued, publish.scheduled, publish.executing, publish.succeeded, publish.failed, publish.requires_manual_fallback, channel_post.synced) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.4 (publish:schedule — Editor+; publish:execute — Manager+; publish:cancel — Manager+) |
-| Pack 05 | [Pack 05 — Publish Contract](../creativanta_detail_design_pack_05_connector_capability_publish_inbox_contract_v_3_1.md) | §4-5 (Publish I/O, logs, batch), §8 (Diagnostics) |
-| Connector | [Pack 05 — Connector](../creativanta_detail_design_pack_05_connector_capability_publish_inbox_contract_v_3_1.md) | §2 (Connector lifecycle), §3 (Capability registry) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §8.1 (publish_items), §8.2 (publish_jobs), §8.3 (publish_logs — immutable) |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.4 (PublishService: CreateItem, Schedule, Execute, Retry, Cancel, ListQueue, GetLogs, GetDiagnostics) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §6 (publish.queued, publish.scheduled, publish.executing, publish.succeeded, publish.failed, publish.requires_manual_fallback, channel_post.synced) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.5 (publish:schedule — Editor+; publish:execute — Manager+; publish:cancel — Manager+) |
+| Pack 05 | Pack 05 — Publish Contract <!-- Legacy ref: creativanta_detail_design_pack_05_connector_capability_publish_inbox_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §4-5 (Publish I/O, logs, batch), §8 (Diagnostics) |
+| Connector | Pack 05 — Connector <!-- Legacy ref: creativanta_detail_design_pack_05_connector_capability_publish_inbox_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §2 (Connector lifecycle), §3 (Capability registry) |
 
 ## Related Screens
 

@@ -64,8 +64,8 @@ M04 exists to be the bridge between intelligence (M02/M03) and execution (M05/M0
    - writes to `opportunities` table with `opportunity_type`, `title`, `summary`, `expected_impact`, `expected_effort`
    - writes to `opportunity_sources` junction with source refs
    - emits `opportunity.created`
-   - see [04_contracts/api_endpoint_map.md#2.2](../04_contracts/api_endpoint_map.md)
-   - see [04_contracts/domain_event_catalog.md#3](../04_contracts/domain_event_catalog.md)
+   - see [04_contracts/api_endpoint_map.md#2.2](../../04_contracts/api_endpoint_map.md)
+   - see [04_contracts/domain_event_catalog.md#3](../../04_contracts/domain_event_catalog.md)
 2. **User browses Opportunity Board**: calls `OpportunityService/List` → board view with state columns
    - Filterable by: `opportunity_type`, `priority_state`, `owner_user_id`, `confidence`
 3. **User scores/prioritizes**: sets `expected_impact` and `expected_effort` scores with descriptions
@@ -127,7 +127,7 @@ M04 exists to be the bridge between intelligence (M02/M03) and execution (M05/M0
 ## State Machine
 
 Object: opportunity | DB enum: `opportunities.priority_state`
-see [04_contracts/database_schema.md#5.4](../04_contracts/database_schema.md)
+see [04_contracts/database_schema.md#5.4](../../04_contracts/database_schema.md)
 
 | From | To | Trigger | Condition |
 |---|---|---|---|
@@ -146,10 +146,10 @@ see [04_contracts/database_schema.md#5.4](../04_contracts/database_schema.md)
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../04_contracts/database_schema.md) | §5.4 (opportunities), §5.5 (opportunity_sources) |
-| API | [04_contracts/api_endpoint_map.md](../04_contracts/api_endpoint_map.md) | §2.2 (OpportunityService: List, Create, UpdateState, Assign, Convert, Get) |
-| Events | [04_contracts/domain_event_catalog.md](../04_contracts/domain_event_catalog.md) | §3 (opportunity.created, opportunity.converted, opportunity.state_changed) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../04_contracts/rbac_permission_matrix.md) | §2.2 (opportunity:read — Member; create — Contributor+; assign — Manager+; convert — Editor+) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §5.4 (opportunities), §5.5 (opportunity_sources) |
+| API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.2 (OpportunityService: List, Create, UpdateState, Assign, Convert, Get) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §3 (opportunity.created, opportunity.converted, opportunity.state_changed) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.2 (opportunity:read — Member; create — Contributor+; assign — Manager+; convert — Editor+) |
 
 ## Related Screens
 

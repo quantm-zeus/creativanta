@@ -1,6 +1,6 @@
 # Screen: Admin — AI Provider Management
 
-> **Screen ID**: A12
+> **Screen ID**: A012
 > **Module**: Admin — AI Operations
 > **Route**: `/admin/ai/providers`
 > **Platform**: Admin Web (SvelteKit) — VPN-only
@@ -91,8 +91,8 @@ AIProviderManagementPage
 ## 19. Related Screens
 | Screen | Relationship |
 |---|---|
-| [A13] AI Config | Model configuration |
-| [A14] AI Credits | Credit management |
+| [A013] AI Config | Model configuration |
+| [A014] AI Credits | Credit management |
 ---
 ## Error Handling
 

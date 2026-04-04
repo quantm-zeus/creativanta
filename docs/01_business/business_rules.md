@@ -62,7 +62,7 @@ Các contract sau là **bất khả vi phạm** — vi phạm bất kỳ rule n�
 | # | Object Name | Feature Doc Path | Status |
 |---|---|---|---|
 | 1 | Opportunity | `02_features/intelligence/opportunity_board.md` | ✅ DEFINED (§SM: priority_state — 10 transitions) |
-| 2 | Script | `02_features/creation/script_lab.md` | ✅ DEFINED (§SM: lifecycle_state + approval_state — dual machine) |
+| 2 | Script | `02_features/content/script_lab.md` | ✅ DEFINED (§SM: lifecycle_state + approval_state — dual machine) |
 | 3 | Asset | `02_features/production/ai_video_studio.md` | ✅ DEFINED (§SM: generation_state + quality_state — dual machine) |
 | 4 | Publish Job | `02_features/publish/publish_hub.md` | ✅ DEFINED (§SM: lifecycle_state — 9 transitions) |
 | 5 | Publish Item | `02_features/publish/publish_hub.md` | ✅ DEFINED (§SM: lifecycle_state — 10 states) |
@@ -101,10 +101,10 @@ Source: PRD §30.4
 | Tier | Credit Exhaustion Behavior |
 |---|---|
 | **Free** | Hard block — không cho phép overage |
-| **Starter** | Hard block — có thể mua credit packs bổ sung |
-| **Pro** | Soft warning at 90% → hard block at 100% — có thể mua credit packs hoặc auto-buy |
-| **Business** | Soft warning at 80% → email at 100% → allow 10% overage buffer → hard block at 110% |
-| **Enterprise** | Custom budget alerts, no hard block, invoiced monthly |
+| **Starter** | Hard block at limit — có thể mua credit packs bổ sung |
+| **Pro** | Hard block at limit — có thể mua credit packs hoặc auto-buy |
+| **Business** | Warning at 80% → stronger warning at 95% → warning + email at 100% → allow usage to 110% **only if** valid payment method on file AND overage terms accepted; otherwise hard block at 100% → auto-charge overage on next invoice cycle → hard block at 110% |
+| **Enterprise** | Custom budget alerts per contract, invoiced monthly |
 
 ### 3.4 Operator Mode & Tier
 - Operator mode availability follows tier allocation
@@ -200,16 +200,19 @@ Source: PRD §27
 - Overage protection: If actual > estimated + 10%, system absorbs the difference (logged as `credit_resolution_overage` metric).
 - Cross-ref: `pricing_and_credits.md` §3.1, `database_schema.md` §13.2 `ai_credit_transactions.estimated_cost / actual_cost`
 
-**BIZ-002: Business tier overage billing** — `DECISION` [PROPOSED — default until Product Owner overrides]
+**BIZ-002: Business tier overage billing** — `DECISION` [FINALIZED]
 - Problem: Business tier allows 10% overage buffer (§3.3) but billing mechanism for overage credits undefined.
-- Decision: **Option A — Auto-charge overage at standard credit pack rate** ($0.030/credit) at end of billing cycle.
-  - At 100% usage: system sends warning notification (push + email)
-  - At 110% usage: hard-block all AI generation. No silent overage beyond 110%.
-  - Overage invoice generated as Stripe `invoice_item` on next billing cycle
+- Decision: **Auto-charge overage at standard credit pack rate** ($0.030/credit) at end of billing cycle.
+  - Warning at 80% usage (in-app notification)
+  - Stronger warning at 95% usage (in-app notification)
+  - Warning + email at 100% usage
+  - Allow usage up to 110% **only if**: valid payment method on file AND overage terms accepted
+  - Otherwise hard-block at 100% (no buffer without both conditions)
+  - Auto-charge overage on next invoice cycle only when both conditions above are met
+  - Hard-block at 110% (absolute cap)
   - Overage credits tracked in `credit_transactions.transaction_type = 'overage_charge'`
   - Invoice line item: "AI Credit Overage — {N} credits × $0.030"
   - Enterprise tier: custom overage terms per contract (no auto-charge)
-- Fallback: If Product Owner selects Option C instead, change hard-block to 100% (no buffer). Update `pricing_and_credits.md` §3.3.
 - Cross-ref: `pricing_and_credits.md` §3.3, `database_schema.md` §19.1B invoices, `api_endpoint_map.md` §2.8.6 AdminBillingService
 
 **BIZ-003: Coupon stacking** — `DECISION`
@@ -234,26 +237,28 @@ Source: PRD §27
 
 **BIZ-006: Referral program mechanics** — `DECISION`
 - Problem: Referral reward mechanics not consolidated.
-- Decision: Existing referral feature doc (`02_features/growth/referral_growth.md`) is canonical. Summary:
+- Decision: Existing referral feature doc (`02_features/platform/referral_growth.md`) is canonical. Summary:
   - Referrer earns 100 AI credits when referee completes first paid subscription.
   - Referee gets 14-day Pro trial extension (stacks with standard trial).
   - Max 50 referral rewards per workspace per calendar year.
   - Anti-abuse: Same IP/device/payment method → auto-flagged, manual review required.
 - Cross-ref: `api_endpoint_map.md` §2.8.11 ReferralService, `domain_event_catalog.md` §18 `referral.qualified`
 
-**BIZ-007: Tax calculation** — `DECISION` [PROPOSED — default until Legal/Finance overrides]
+**BIZ-007: Tax calculation** — `DECISION` [FINALIZED]
 - Problem: Tax jurisdiction rules undefined.
-- Decision: **Phase 0 (MVP): Option C — Tax disclaimer, creator responsible.**
+- Decision: **Phase 0 (MVP): Tax disclaimer, creator responsible.**
+  - No native tax engine in Phase 0 / MVP
   - Platform displays: "Thuế được tính bởi sàn thương mại. Đối với Creator Store, người bán chịu trách nhiệm kê khai thuế."
-  - Orders imported from platforms (Shopee, TikTok Shop): tax field preserved as-is from platform data
-  - Creator Store direct sales: `orders.tax_amount = 0`, `orders.tax_note = 'creator_responsible'`
+  - Orders imported from platforms (Shopee, TikTok Shop): preserve imported marketplace/platform tax data as-is
+  - Creator Store direct sales: `orders.tax_amount = 0` (default), `orders.tax_note = 'creator_responsible'` — do not calculate tax natively; make creator responsibility explicit through disclaimers/settings/export
   - Invoice displays: subtotal + platform fees — no tax line item from Creativanta
   - Tax-related fields in `orders` table: `tax_amount NUMERIC(18,6) DEFAULT 0`, `tax_jurisdiction VARCHAR(10)`, `tax_note VARCHAR(100)`
+  - Collect basic settings: `tax_registration_id`, `tax_jurisdiction_default`
+  - Provide exportable raw data for downstream accounting/tax handling
 - **Phase 2 (post-PMF)**: Integrate TaxJar/Avalara when Creator Store (M15) reaches PMF
   - Tax API called at checkout for direct sales only
   - Platform marketplace orders continue using platform-provided tax data
   - Tax settings added to workspace settings: `tax_registration_id`, `tax_jurisdiction_default`
-- Fallback: If Legal selects Option A (zero tax calc forever), remove Phase 2 migration plan. No code changes needed for Phase 0.
 - Cross-ref: `database_schema.md` §10 `orders`, `creator_store.md` §Checkout Flow
 
 **BIZ-008: Currency conversion** — `DECISION`
@@ -283,4 +288,53 @@ Source: PRD §27
   - **Phase 3 (Day 90+): Hard delete**. All workspace data permanently purged including: assets, generation jobs, connected accounts, financial records, audit logs. Cross-tenant references nullified.
   - GDPR right to deletion: Honored within 30 days of request (skip to Phase 3).
 - Cross-ref: `database_schema.md` §1 `workspaces.deleted_at`, `pricing_and_credits.md` §5.4 Cancellation
+
+**BIZ-011: AI credit refund on generation failure/partial output** — `DECISION`
+- Problem: What happens to credits when AI generation fails, produces partial output, or user disputes quality?
+- Decision: 3-tier refund policy based on failure type:
+  - **Full refund (automatic)**: System-side failure (provider error, timeout, infrastructure crash). Credits returned immediately via credit escrow release. `credit_transactions.transaction_type = 'refund_system_failure'`.
+  - **Full refund (automatic)**: Generation produces no usable output (empty result, corrupt file, 0-second video). Detected by output validator. `transaction_type = 'refund_no_output'`.
+  - **Partial refund (automatic)**: Generation produces partial output (e.g., 15s video instead of requested 60s). Refund = `estimated_cost × (1 - actual_duration/requested_duration)`. Minimum refund: 20% of estimated cost. `transaction_type = 'refund_partial_output'`.
+  - **No automatic refund**: Generation completes successfully but user dislikes quality. User may file quality dispute via support ticket. Support can issue discretionary credit grant (max 1 per workspace per 24h, max 50 credits per grant). `transaction_type = 'refund_quality_dispute'`.
+  - **Anti-abuse**: Max 10 automatic refunds per workspace per day. Beyond threshold → manual review queue + temporary throttle on that workspace's AI generation.
+- Cross-ref: `pricing_and_credits.md` §2.3 Credit Reservation Flow, `database_schema.md` §13.2 `ai_credit_transactions`
+
+**BIZ-012: Affiliate commission clawback** — `DECISION`
+- Problem: What happens to affiliate commissions when the referred order is returned/refunded?
+- Decision: Commission clawback rules:
+  - **Return window**: 15 days from order delivery. If buyer returns product within window, commission is clawed back in full.
+  - **Partial refund**: Commission reduced proportionally to refund amount. Formula: `clawback = original_commission × (refund_amount / order_total)`.
+  - **Post-window returns** (day 16+): No clawback — commission is finalized and locked.
+  - **Commission hold period**: All commissions are held in `pending` status for 15 days after order delivery (matching return window). After hold period, status transitions to `confirmed` and becomes eligible for payout.
+  - **Payout threshold**: Minimum 100,000 VND (or equivalent in workspace currency) accumulated confirmed commission before payout is triggered.
+  - **Fraud clawback**: If order is flagged as fraud (by platform or admin), commission is clawed back regardless of timing. `affiliate_commissions.status = 'clawed_back'`, `clawback_reason = 'fraud'`.
+  - **Dispute**: Creator can dispute clawback within 7 days via support ticket. Dispute outcome logged in audit trail.
+- Cross-ref: `database_schema.md` §8 `affiliate_commissions`, `domain_event_catalog.md` §8 (`affiliate.commission.earned`, `affiliate.commission.confirmed`, `affiliate.commission.clawed_back`, `affiliate.commission.paid_out`), `api_endpoint_map.md` §20.4 AffiliateService
+
+**BIZ-013: Plan downgrade data retention** — `DECISION`
+- Problem: What happens to data and resources when a user downgrades to a lower tier?
+- Decision: Data preservation with feature restriction:
+  - **Effective date**: Downgrade takes effect at start of next billing cycle (not immediately).
+  - **7-day adjustment period**: After downgrade notification, user has 7 days to reduce usage to new tier limits before enforcement begins.
+  - **Connected accounts**: Accounts beyond new limit are **disconnected but credentials retained** for 30 days. User can choose which to keep within new limit. If no choice within 7 days, system retains most-recently-active accounts.
+  - **AI credits**: Unused subscription credits do NOT carry over to new tier. Purchased credit packs are preserved (they never expire per BIZ §2.2). Credit balance is reset to new tier allocation at cycle start.
+  - **Workflows/automations**: Beyond-limit workflows are **paused** (not deleted). User can re-enable within new limit. Excess workflows show "paused — upgrade to re-enable" status.
+  - **Content/assets**: All content, scripts, ideas, assets are **preserved** (read-only access for beyond-limit items). No deletion on downgrade.
+  - **Characters/voices**: Beyond-limit character slots and voice clones are **frozen** (cannot generate new content with them, but existing generated content is preserved). User can choose which to keep active within new limit.
+  - **Storage**: If over new storage limit, no new uploads allowed. Existing files preserved. 30-day grace to delete/export excess.
+  - **Team members**: Beyond-limit members retain read-only access for 7 days, then are removed from workspace (notified via email). Workspace data they created is preserved.
+- Cross-ref: `pricing_and_credits.md` §5.2 Plan Changes, `auth.md` §Plan Changes
+
+**BIZ-014: Cancellation and data lifecycle** — `DECISION`
+- Problem: Detailed cancellation flow and data lifecycle not fully specified beyond §5.4.
+- Decision: Cancellation lifecycle:
+  - **Cancellation request**: User can cancel anytime from Billing settings. No cancellation fee.
+  - **Retention offer**: On cancellation, system offers one retention option (e.g., 30% discount for 3 months or temporary downgrade to Starter). Max 1 retention offer per subscription lifetime. If accepted, cancel is aborted.
+  - **Active until cycle end**: After confirmed cancellation, full access continues until end of current billing cycle. Banner shows: "Your plan expires on {date}. Renew anytime before then."
+  - **Read-only period (Day 0–30 after expiry)**: Workspace enters read-only mode (BIZ-010 Phase 1). User can view, export, and delete data. Cannot create, generate, or publish. Connected accounts disconnected (credentials retained).
+  - **Soft delete (Day 30–90)**: `deleted_at` set (BIZ-010 Phase 2). Data retained in database but inaccessible via UI/API. Reactivation possible via support ticket + payment.
+  - **Hard delete (Day 90+)**: Permanent deletion of all workspace data (BIZ-010 Phase 3). Export reminder emails sent at Day 0, Day 14, Day 25, Day 60.
+  - **Annual plan early cancellation**: No partial refund. Access continues until annual cycle end.
+  - **Data export**: User can request full data export (GDPR Article 20) at any point before hard delete. Export includes: content, assets, analytics, financial records, contact data. Format: ZIP containing JSON + media files. Processing: up to 72 hours. Download link valid for 7 days.
+- Cross-ref: `pricing_and_credits.md` §5.4 Cancellation, BIZ-010 Workspace Deletion Quarantine
 

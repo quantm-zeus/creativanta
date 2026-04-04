@@ -1,7 +1,7 @@
 # Screen: Web — Help Article Viewer
 
-> **Screen ID**: W115
-> **Module**: M25 — Support Center
+> **Screen ID**: W098
+> **Module**: S19 — Help Center
 > **Route**: `/support/articles/[slug]`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: A1 Schema (kb_articles, article_ratings), B5 RBAC §2.9
@@ -179,8 +179,8 @@ Individual help article with table-of-contents sidebar, related articles, breadc
 
 | Screen | Relationship |
 |---|---|
-| [W113] Support Center | Parent |
-| [W114] Ticket Create | Escalation |
+| [W097] Support Center | Parent |
+| [W099] Ticket Create | Escalation |
 
 ---
 

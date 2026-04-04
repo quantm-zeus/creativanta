@@ -1,6 +1,6 @@
 # Screen: Mobile — Commerce Campaigns
 
-> **Screen ID**: M032
+> **Screen ID**: M031
 > **Module**: M14 — Monetization & Campaigns
 > **Route**: `/commerce/campaigns` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -44,7 +44,7 @@ Mobile campaign monitoring — at-a-glance campaign status, budget usage, ROAS m
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User authenticated, `campaign:read` permission
+- User authenticated, `campaign:manage` permission
 
 ### Postconditions
 - Status changes persisted, analytics dispatched
@@ -158,10 +158,10 @@ CommerceCampaignsScreen (ConsumerStatefulWidget)
 |---|---|---|---|---|---|---|
 | 1 | Pause | Tap "⏸" → confirm | `CampaignService/Pause(id)` | `status='paused'` | Confirm → badge → ⏸. Haptic + snackbar. | `campaign:manage` |
 | 2 | Resume | Tap "▶" | `CampaignService/Resume(id)` | `status='running'` | Badge → 🟢. | `campaign:manage` |
-| 3 | View detail | Tap "📊" or card | — | — | Navigate → Campaign Detail (mobile) | `campaign:read` |
+| 3 | View detail | Tap "📊" or card | — | — | Navigate → Campaign Detail (mobile) | `campaign:manage` |
 | 4 | Duplicate | Tap "🔄 Nhân bản" | `CampaignService/Duplicate(id)` | New draft | Snackbar + web redirect | `campaign:manage` |
-| 5 | Filter | Tap chip | Client-side | — | List filters | `campaign:read` |
-| 6 | Refresh | Pull down | Refetch | Cache invalidated | Updated | `campaign:read` |
+| 5 | Filter | Tap chip | Client-side | — | List filters | `campaign:manage` |
+| 6 | Refresh | Pull down | Refetch | Cache invalidated | Updated | `campaign:manage` |
 
 ---
 

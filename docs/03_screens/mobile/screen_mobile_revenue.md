@@ -1,6 +1,6 @@
 # Screen: Mobile — Revenue Tracking
 
-> **Screen ID**: M034
+> **Screen ID**: M042
 > **Module**: M19 — Finance
 > **Route**: `/finance/revenue` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -106,7 +106,7 @@ RevenueTrackingScreen
 | Screen | Relationship |
 |---|---|
 | [W082] Web Revenue | Web equivalent |
-| [M035] Finance Summary | Parent |
+| [M041] Finance Summary | Parent |
 ---
 ## Error Handling
 

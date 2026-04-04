@@ -38,7 +38,7 @@ Manage all platform connections — social media (TikTok, Instagram, YouTube, Fa
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `settings:manage` permission (Owner, Admin)
+- User has `workspace:settings:manage` permission (Owner, Admin)
 
 ### Postconditions
 - New connection creates `connected_account` record + triggers initial sync
@@ -160,12 +160,12 @@ ConnectedAccountsPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Connect platform | "Kết nối →" | OAuth popup → callback | New connected_account, initial sync triggered, toast "Đã kết nối {platform}!" | `settings:manage` |
-| 2 | Force sync | "🔄 Force sync" | `ConnectorService/ForceSync(platform)` | Sync starts, progress indicator | `settings:manage` |
-| 3 | View detail | "⚙️ Chi tiết" | — | → `/settings/connections/[platform]` | `settings:manage` |
-| 4 | Disconnect | "🔌 Ngắt kết nối" → confirm | `ConnectorService/Disconnect(platform)` | Confirmation: "Ngắt kết nối sẽ dừng đồng bộ dữ liệu. Dữ liệu hiện tại vẫn được giữ. Tiếp tục?" → disconnected | `settings:manage` |
-| 5 | Check diagnostics | "🔧 Kiểm tra" | — | → Diagnostics for this connector | `settings:manage` |
-| 6 | Reconnect (expired) | "🔄 Kết nối lại" (on expired tokens) | OAuth popup | Token refreshed | `settings:manage` |
+| 1 | Connect platform | "Kết nối →" | OAuth popup → callback | New connected_account, initial sync triggered, toast "Đã kết nối {platform}!" | `workspace:settings:manage` |
+| 2 | Force sync | "🔄 Force sync" | `ConnectorService/ForceSync(platform)` | Sync starts, progress indicator | `workspace:settings:manage` |
+| 3 | View detail | "⚙️ Chi tiết" | — | → `/settings/connections/[platform]` | `workspace:settings:manage` |
+| 4 | Disconnect | "🔌 Ngắt kết nối" → confirm | `ConnectorService/Disconnect(platform)` | Confirmation: "Ngắt kết nối sẽ dừng đồng bộ dữ liệu. Dữ liệu hiện tại vẫn được giữ. Tiếp tục?" → disconnected | `workspace:settings:manage` |
+| 5 | Check diagnostics | "🔧 Kiểm tra" | — | → Diagnostics for this connector | `workspace:settings:manage` |
+| 6 | Reconnect (expired) | "🔄 Kết nối lại" (on expired tokens) | OAuth popup | Token refreshed | `workspace:settings:manage` |
 
 ---
 ## 7. States
@@ -313,11 +313,11 @@ Per PRD M22, platform capabilities have 4 states:
 
 | Screen | Relationship |
 |---|---|
-| [W118] Connector Detail | Per-platform detail with sync history |
-| [W119] Diagnostics Center | Technical diagnostics |
-| [W048] Publish Composer | Publishing requires active connectors |
+| [W127] Connected Account Detail | Per-platform detail with sync history |
+| [W125] Diagnostics Center | Technical diagnostics |
+| [W052] Publish Composer | Publishing requires active connectors |
 | [W060] Product List | Product sync from commerce platforms |
-| [M056] Mobile Connections | Mobile equivalent |
+| [M058] Mobile Connections | Mobile equivalent |
 
 ---
 

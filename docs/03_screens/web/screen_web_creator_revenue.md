@@ -315,7 +315,7 @@ RevenuePerContentPage
 | [W088] Creator Pro Dashboard | Parent |
 | [W082] Revenue Detail | Overall revenue data |
 | [W060] Product List | Products driving revenue |
-| [M048] Mobile Revenue per Content | Mobile equivalent |
+| [M045] Mobile Creator Pro | Mobile equivalent (revenue tracking section) |
 
 ---
 

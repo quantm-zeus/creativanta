@@ -1,6 +1,6 @@
 # Screen: Mobile — Workspace Switch
 
-> **Screen ID**: M02
+> **Screen ID**: M004
 > **Module**: M01 — Home (Global)
 > **Route**: Modal overlay
 > **Platform**: Mobile (Flutter)
@@ -88,8 +88,8 @@ WorkspaceSwitchSheet
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [W02] Web Workspace Selector | Web equivalent |
-| [M01] Mobile Home | Returns to home after switch |
+| [W002] Web Workspace Selector | Web equivalent |
+| [M001] Mobile Home | Returns to home after switch |
 
 ### Revision History
 | Date | Version | Change |

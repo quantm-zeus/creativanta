@@ -1,7 +1,7 @@
 # Screen: Web — Asset Brief Editor
 
-> **Screen ID**: W23
-> **Module**: M04 — Content Creation (Scripts → Production)
+> **Screen ID**: W020
+> **Module**: M06 — Script Lab
 > **Route**: `/scripts/[id]/brief`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §14, A1 Schema (asset_briefs, brief_shots)
@@ -118,11 +118,11 @@ AssetBriefEditorPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Auto-save | 2s after edit | `BriefService/Update` | "💾 Saved" | `script:update` |
-| 2 | Add shot | "+ Add shot" | `BriefService/AddShot` | New shot card | `script:update` |
-| 3 | Reorder shots | Drag shot | `BriefService/ReorderShots` | Shots reorder | `script:update` |
-| 4 | Delete shot | Shot ⋮ → "Xóa" | `BriefService/DeleteShot` | Shot removed | `script:update` |
-| 5 | Upload reference | Drop or click | File upload → S3 | Image added | `script:update` |
+| 1 | Auto-save | 2s after edit | `BriefService/Update` | "💾 Saved" | `script:edit` |
+| 2 | Add shot | "+ Add shot" | `BriefService/AddShot` | New shot card | `script:edit` |
+| 3 | Reorder shots | Drag shot | `BriefService/ReorderShots` | Shots reorder | `script:edit` |
+| 4 | Delete shot | Shot ⋮ → "Xóa" | `BriefService/DeleteShot` | Shot removed | `script:edit` |
+| 5 | Upload reference | Drop or click | File upload → S3 | Image added | `script:edit` |
 | 6 | Produce with AI | "🎬 Sản xuất" | — | → `/studio/video?brief_id=[id]` | `asset:generate` |
 | 7 | Export PDF | "📤 Export" | Client-side | PDF download | `script:read` |
 | 8 | Copy brief | "📋 Copy" | — | Clipboard (formatted text) | `script:read` |
@@ -133,15 +133,15 @@ AssetBriefEditorPage
 
 | # | Action | Trigger | Type | API Call | Result | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Auto-save | 2s after any edit | Auto | `BriefService/Update` debounced | "💾 Saved ✓" | `script:update` |
-| 2 | Add shot | "+ Thêm shot" | Create | `BriefService/AddShot` | New shot card appends | `script:update` |
-| 3 | Reorder shots | Drag shot | Reorder | `BriefService/ReorderShots(order[])` | Shots reorder with animation | `script:update` |
-| 4 | Delete shot | ⋮ → "Xóa" → confirm | Delete | `BriefService/DeleteShot(id)` | Shot removed | `script:update` |
-| 5 | Upload reference | Drop/click image | Upload | `FileService/Upload(presigned_url)` | Thumbnail appears | `script:update` |
+| 1 | Auto-save | 2s after any edit | Auto | `BriefService/Update` debounced | "💾 Saved ✓" | `script:edit` |
+| 2 | Add shot | "+ Thêm shot" | Create | `BriefService/AddShot` | New shot card appends | `script:edit` |
+| 3 | Reorder shots | Drag shot | Reorder | `BriefService/ReorderShots(order[])` | Shots reorder with animation | `script:edit` |
+| 4 | Delete shot | ⋮ → "Xóa" → confirm | Delete | `BriefService/DeleteShot(id)` | Shot removed | `script:edit` |
+| 5 | Upload reference | Drop/click image | Upload | `FileService/Upload(presigned_url)` | Thumbnail appears | `script:edit` |
 | 6 | Produce with AI | "🎬 Sản xuất" | Navigate | — | → `/studio/video?brief_id=[id]` | `asset:generate` |
 | 7 | Export PDF | "📤 Export" | Export | Client-side `pdf-lib` | PDF downloads | `script:read` |
 | 8 | Copy brief | "📋 Copy" | Clipboard | — | Structured text → clipboard | `script:read` |
-| 9 | Edit AI prompt | Edit auto-generated text | Auto-save | `BriefService/UpdateShot(shot_id, { ai_prompt })` | Prompt marked "Manual" | `script:update` |
+| 9 | Edit AI prompt | Edit auto-generated text | Auto-save | `BriefService/UpdateShot(shot_id, { ai_prompt })` | Prompt marked "Manual" | `script:edit` |
 
 ---
 
@@ -282,11 +282,11 @@ AssetBriefEditorPage
 
 | Screen | Relationship |
 |---|---|
-| [W021] Script Editor | Parent script |
-| [W030] AI Studio Launcher | AI production target |
-| [W025] AI Video Editor | Alternative production |
-| [W020] Script List | Parent list |
-| [W027] Continuity OS | Brand consistency |
+| [W016] Script Editor | Parent script |
+| [W021] Studio Launcher | AI production target |
+| [W022] Quick Edit | Alternative production |
+| [W015] Script List | Parent list |
+| [W019] Content Continuity | Brand consistency |
 
 ---
 

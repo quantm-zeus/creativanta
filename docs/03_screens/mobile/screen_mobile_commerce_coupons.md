@@ -1,6 +1,6 @@
 # Screen: Mobile — Commerce Coupons
 
-> **Screen ID**: M030
+> **Screen ID**: M033
 > **Module**: M14 — Monetization & Offers
 > **Route**: `/commerce/coupons` (mobile)
 > **Platform**: Mobile (Flutter)
@@ -46,7 +46,7 @@ Mobile coupon management — view, create, copy, and share discount codes on the
 
 ### Preconditions
 - User authenticated with valid session
-- User has `coupon:read` permission
+- User has `offer:read` permission
 
 ### Postconditions
 - Coupon status changes persisted
@@ -165,12 +165,12 @@ CommerceCouponsScreen (StatefulWidget)
 |---|---|---|---|---|---|---|
 | 1 | Copy code | Tap "📋 Copy" | — (clipboard) | — | Haptic + Snackbar "📋 Đã copy SUMMER30" | Any |
 | 2 | Share code | Tap "📤 Share" | — (native share sheet) | — | Share sheet opens with formatted message | Any |
-| 3 | Stop coupon | Tap "⏹ Stop" → confirm | `CouponService/Deactivate(id)` | `status = 'expired'` | Confirm dialog → card updates to expired. Haptic. | `coupon:manage` |
-| 4 | Recreate coupon | Tap "🔄 Tạo lại" | `CouponService/Create(clone_data)` | New coupon (active) | Bottom sheet pre-filled → create → new card appears | `coupon:manage` |
-| 5 | Quick create | Tap "+ Tạo coupon" | `CouponService/Create(data)` | New coupon | Bottom sheet → fill → create → card appears at top | `coupon:manage` |
-| 6 | Filter by status | Tap chip | Client-side filter | — | List filters with animation | `coupon:read` |
-| 7 | Pull-to-refresh | Pull down | `CouponService/List()` (fresh) | Cache invalidated | Updated list | `coupon:read` |
-| 8 | View detail | Tap card body (not buttons) | — | — | Navigate → Coupon Detail (read-only) | `coupon:read` |
+| 3 | Stop coupon | Tap "⏹ Stop" → confirm | `CouponService/Deactivate(id)` | `status = 'expired'` | Confirm dialog → card updates to expired. Haptic. | `offer:manage` |
+| 4 | Recreate coupon | Tap "🔄 Tạo lại" | `CouponService/Create(clone_data)` | New coupon (active) | Bottom sheet pre-filled → create → new card appears | `offer:manage` |
+| 5 | Quick create | Tap "+ Tạo coupon" | `CouponService/Create(data)` | New coupon | Bottom sheet → fill → create → card appears at top | `offer:manage` |
+| 6 | Filter by status | Tap chip | Client-side filter | — | List filters with animation | `offer:read` |
+| 7 | Pull-to-refresh | Pull down | `CouponService/List()` (fresh) | Cache invalidated | Updated list | `offer:read` |
+| 8 | View detail | Tap card body (not buttons) | — | — | Navigate → Coupon Detail (read-only) | `offer:read` |
 
 ### Share Message Template
 ```
@@ -358,7 +358,7 @@ Mobile Coupons (/commerce/coupons)
 |---|---|
 | [W068] Web Coupon Manager | Web equivalent (full management) |
 | [M029] Mobile Offers | Sibling — offers can have coupons |
-| [W058] Web Offer Detail | Coupons linked to offers |
+| [W067] Web Offer Detail | Coupons linked to offers |
 
 ### Revision History
 | Date | Version | Change | Author |

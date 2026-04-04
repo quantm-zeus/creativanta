@@ -1,7 +1,7 @@
 # Screen: Web — Idea Detail
 
-> **Screen ID**: W19
-> **Module**: M04 — Content Creation (Ideas)
+> **Screen ID**: W013
+> **Module**: M05 — Idea Engine
 > **Route**: `/ideas/[id]`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §12/§13, A1 Schema (ideas, idea_scores, idea_tags, idea_references)
@@ -135,17 +135,17 @@ IdeaDetailPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Edit title | Click title → inline edit | `IdeaService/Update(title)` | Auto-save | `idea:update` |
-| 2 | Edit description | Type in rich text editor | `IdeaService/Update(description)` | Auto-save (2s debounce) | `idea:update` |
+| 1 | Edit title | Click title → inline edit | `IdeaService/Update(title)` | Auto-save | `idea:create` |
+| 2 | Edit description | Type in rich text editor | `IdeaService/Update(description)` | Auto-save (2s debounce) | `idea:create` |
 | 3 | Write script | "📝 Viết script" | — | → `/scripts/new?idea_id=[id]` | `script:create` |
-| 4 | Rescore | "🔄 Rescore" | `IdeaService/Rescore(id)` | Score updates + animation | `idea:update` |
-| 5 | Change status | Status dropdown | `IdeaService/Update(status)` | Badge updates | `idea:update` |
-| 6 | Add tag | "+ Add tag" | `IdeaService/AddTag(tag)` | Tag chip added | `idea:update` |
-| 7 | Remove tag | Click ✕ on tag | `IdeaService/RemoveTag(tag)` | Tag removed | `idea:update` |
-| 8 | Add reference | "+ Add reference" | Modal → upload/URL/note | `IdeaService/AddReference` | `idea:update` |
+| 4 | Rescore | "🔄 Rescore" | `IdeaService/Rescore(id)` | Score updates + animation | `idea:create` |
+| 5 | Change status | Status dropdown | `IdeaService/Update(status)` | Badge updates | `idea:create` |
+| 6 | Add tag | "+ Add tag" | `IdeaService/AddTag(tag)` | Tag chip added | `idea:create` |
+| 7 | Remove tag | Click ✕ on tag | `IdeaService/RemoveTag(tag)` | Tag removed | `idea:create` |
+| 8 | Add reference | "+ Add reference" | Modal → upload/URL/note | `IdeaService/AddReference` | `idea:create` |
 | 9 | View source | "→ Xem trend gốc" | — | Navigate to source page | `trend:read` |
 | 10 | Open script | Click linked script | — | → `/scripts/[script_id]` | `script:read` |
-| 11 | Delete | "🗑 Xóa" → confirm | `IdeaService/Delete(id)` | → `/ideas` | `idea:delete` |
+| 11 | Delete | "🗑 Xóa" → confirm | `IdeaService/Delete(id)` | → `/ideas` | `idea:create` |
 | 12 | Regenerate AI | Refresh on AI card | `CopilotService/Query(mode=idea_analysis)` | Analysis updates | `copilot:use_help` |
 
 ---
@@ -304,11 +304,11 @@ IdeaDetailPage
 
 | Screen | Relationship |
 |---|---|
-| [W017] Idea Board | Parent list |
-| [W018] AI Idea Generator | Source if AI-generated |
-| [W021] Script Editor | Downstream conversion |
-| [M018] Mobile Idea Detail | Mobile equivalent |
-| [W080] Trend Detail | Source trend |
+| [W012] Idea Board | Parent list |
+| [W014] AI Idea Generator | Source if AI-generated |
+| [W016] Script Editor | Downstream conversion |
+| [M009] Mobile Idea Detail | Mobile equivalent |
+| [W039] Trend Detail | Source trend |
 
 ---
 

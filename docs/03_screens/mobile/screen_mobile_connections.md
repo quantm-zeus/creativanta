@@ -1,7 +1,7 @@
 # Screen: Mobile — Connected Accounts
 
-> **Screen ID**: M043
-> **Module**: M26 — Settings
+> **Screen ID**: M058
+> **Module**: M23 — Settings
 > **Route**: `/settings/connections` (mobile)
 > **Platform**: Mobile (Flutter)
 > **Upstream**: A1 Schema (connected_accounts), B5 RBAC §2.9
@@ -106,8 +106,8 @@ ConnectedAccountsScreen
 | Screen | Relationship |
 |---|---|
 | [W117] Connectors | Web equivalent |
-| [W118] Connector Detail | Web detail view |
-| [M038] Mobile Settings | Parent |
+| [W127] Connected Account Detail | Web detail view |
+| [M057] Mobile Settings | Parent |
 ---
 ## Error Handling
 
