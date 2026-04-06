@@ -4,6 +4,7 @@ module: S26
 domain: platform
 status: READY
 created: 2026-04-01
+last_updated: 2026-04-06
 canonical: true
 upstream: PRD v3.1 §26
 ---
@@ -11,8 +12,8 @@ upstream: PRD v3.1 §26
 # S26 — Internal Admin Panel
 
 > **Upstream**: PRD §26, Design Pack 11 (Admin)
-> **DB tables**: `internal_admins`, `admin_sessions`, `moderation_cases`, `fraud_cases`, `support_tickets`, `incidents`, `system_announcements` (12 tables)
-> **Screens**: 32 admin screens
+> **DB tables**: `internal_admins`, `admin_sessions`, `moderation_cases`, `fraud_cases`, `support_tickets`, `support_ticket_messages`, `kb_categories`, `kb_articles`, `kb_article_versions`, `article_ratings`, `incidents`, `system_announcements`, `background_jobs`, `job_schedules`, `dead_letter_queue`, `broadcasts`, `broadcast_targets`, `notification_events`
+> **Screens**: 37 admin screens
 
 ---
 
@@ -131,6 +132,10 @@ Internal Admin Panel provides the operations team with tools to manage users, wo
 | `AdminComplianceService` | ListRequests, GetUserConsents, ApproveDeletion |
 | `AdminRevenueService` | GetSummary, ListTransactions, RetryPayment |
 | `AdminConfigService` | GetPricing, UpdateTier, UpdateRateLimit |
+| `AdminBroadcastService` | Send, Schedule, PreviewEmail, ListHistory |
+| `AdminJobService` | ListJobs, StreamLogs, ListDLQ, RetryDLQItem |
+| `KBAdminService` | ListArticles, CreateArticle, PublishArticle, GetVersionHistory |
+| `ConnectorService` | GetDebugLog, ListWebhookDeliveries, ReplayWebhookDelivery, TestConnection |
 
 ## 7. Acceptance Criteria
 
@@ -159,4 +164,4 @@ Feature: Impersonation
 - **API**: `04_contracts/api_endpoint_map.md` §6 + §34
 - **RBAC**: `04_contracts/rbac_permission_matrix.md` (8 admin roles)
 - **Security**: `06_quality_ops/security_threat_model.md` (insider threat model)
-- **Screens**: `03_screens/admin/screen_admin_*.md` (32 files)
+- **Screens**: `03_screens/admin/screen_admin_*.md` (37 files)

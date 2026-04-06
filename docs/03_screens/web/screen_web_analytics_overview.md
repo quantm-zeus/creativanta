@@ -103,7 +103,7 @@ AnalyticsOverviewPage
 | Total views | `ClickHouse: SUM(views)` | `AnalyticsService/GetOverview(period, platform)` |
 | Engagement | `ClickHouse: AVG(engagement_rate)` | same |
 | Followers | `connector_snapshots.followers` (latest) | same |
-| Revenue | `revenue_entries SUM` | same |
+| Revenue | `profit_snapshots.gross_revenue` | same |
 | Trend data | `ClickHouse: daily aggregation` | `AnalyticsService/GetTimeSeries(metric, period)` |
 | Top content | `content_performance ORDER BY views DESC LIMIT 10` | same |
 | AI insights | `CopilotService/Query(mode=analytics_insight)` | On-demand |

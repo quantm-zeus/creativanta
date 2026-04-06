@@ -2,7 +2,7 @@
 layer: contracts
 canonical: true
 source_file: impl_a1_database_schema.md
-last_verified: 2026-04-02
+last_verified: 2026-04-06
 resolved_issues:
   - DB-C-001  # RLS FORCE added to 106 tables (2026-04-02)
   - DB-C-002  # RLS ENABLE added to 106 tables (2026-04-02)
@@ -28,12 +28,12 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | §10 Commerce (M13-M16) | products, offers, skus, orders, order_items, campaigns, affiliate_links, coupons, store_pages, membership_plans |
 | §11 Finance & Proof (M19) | profit_snapshots, settlements, cost_items, reconciliation_records, evidence_objects, proof_bundles |
 | §12 Workflow & Operations (M17-M21) | live_sessions, cue_cards, sample_requests, sample_shipments, workflows, workflow_runs, agent_runs, recipes |
-| §13 Billing, Admin, Diagnostics (M23) | ai_credit_transactions, subscription_events, notification_records, feature_flags, audit_events, diagnostics_records |
+| §13 Billing, Admin, Diagnostics (M23) | ai_credit_transactions, subscription_events, notifications, feature_flags, audit_events, diagnostics_records |
 | §14 Gamification (§37.3) | creator_progress, achievement_definitions, achievement_records, challenge_definitions (§22.10), challenge_progress (§22.11) |
 | §15 TimescaleDB Hypertables | content_metrics, engagement_metrics, commerce_metrics |
 | §16 Creator Pro Tools (S16) | link_in_bio_pages, link_in_bio_items, media_kits, rate_cards, brand_deals |
-| §17 Internal Admin (S26) | internal_admins, admin_sessions, moderation_cases, fraud_cases, support_tickets, incidents, system_announcements |
-| §18 Operational Tables | file_uploads, api_keys, consent_records, referral_records, export_jobs |
+| §17 Internal Admin (S26) | internal_admins, admin_sessions, moderation_cases, fraud_cases, support_tickets, kb_categories, kb_articles, article_ratings, incidents, system_announcements |
+| §18 Operational Tables | background_jobs, job_schedules, job_metrics, dead_letter_queue, event_outbox, file_uploads, api_keys, broadcasts, notification_events, consent_records, referral_records, export_jobs |
 | §19 Missing Canonical Objects | video_edit_jobs, remix_blueprints, clip_collections, product_showcases, link_to_video_jobs, translation_jobs, style_packs, ab_test_experiments, repurpose_jobs |
 | §20 Indexes Strategy | Index naming and strategy |
 | §21 Platform Fee Schedules | fee_schedules |
@@ -69,6 +69,7 @@ All tables below include `workspace_id UUID NOT NULL` unless marked `[GLOBAL]`.
 |---|---|
 | Tables | `snake_case`, plural | `signals`, `publish_items` |
 | PKs | `<entity>_id UUID DEFAULT gen_random_uuid()` |
+| UUID policy | External/application-generated IDs MUST use UUID v7. `gen_random_uuid()` remains the DB fallback for seeds, backfills, and internal records when the application does not pre-supply the ID. |
 | FKs | `<referenced_entity>_id` |
 | Timestamps | `created_at`, `updated_at`, `deleted_at` (soft delete) |
 | Enums | PostgreSQL ENUM types, snake_case values |
@@ -1214,7 +1215,8 @@ CREATE TABLE settlements (
   fees JSONB DEFAULT '{}', -- {platform_fee, transaction_fee, service_fee}
   deductions JSONB DEFAULT '{}',
   currency VARCHAR(5) NOT NULL DEFAULT 'VND',
-  settlement_state VARCHAR(20) NOT NULL DEFAULT 'imported', -- imported,pending_reconciliation,reconciled,partially_reconciled,disputed
+  settlement_state VARCHAR(30) NOT NULL DEFAULT 'imported', -- ingestion lifecycle only: imported, normalized, ready_for_matching, archived
+  reconciliation_state reconciliation_state NOT NULL DEFAULT 'imported_only', -- canonical financial truth state
   related_order_ids UUID[] DEFAULT '{}',
   effective_date DATE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -1225,6 +1227,8 @@ ALTER TABLE settlements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settlements FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON settlements
   USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE settlements ADD CONSTRAINT chk_settlements_state
+  CHECK (settlement_state IN ('imported', 'normalized', 'ready_for_matching', 'archived'));
 ```
 
 ### 11.2 cost_items
@@ -1375,7 +1379,7 @@ CREATE TABLE workflows (
   trigger_config JSONB NOT NULL, -- see §25.4 TriggerConfig
   action_chain JSONB NOT NULL, -- Activepieces flow definition
   approval_requirements JSONB DEFAULT '[]',
-  status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, active, paused, archived
+  status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, active, paused, error, archived
   version INTEGER NOT NULL DEFAULT 1,
   activepieces_flow_id VARCHAR(255),
   tier_limit_check BOOLEAN DEFAULT true,
@@ -1390,7 +1394,7 @@ ALTER TABLE workflows FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON workflows
   USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ALTER TABLE workflows ADD CONSTRAINT chk_workflows_status
-  CHECK (status IN ('draft', 'active', 'paused', 'archived'));
+  CHECK (status IN ('draft', 'active', 'paused', 'error', 'archived'));
 ```
 
 ### 12.3 workflow_runs
@@ -1460,6 +1464,96 @@ ALTER TABLE agent_runs ADD CONSTRAINT chk_agent_runs_current_state
 ```
 
 > **State Machine Ref**: Freeze Part 2, §28.2 — `planning → awaiting_approval → executing → waiting_context → completed/partially_completed/failed/handed_off/cancelled`. `handed_off` requires `handoff_target_user_id` to be set. `partially_completed` requires `side_effects_summary` to list unresolved actions.
+
+### 12.3A workflow_run_steps
+```sql
+CREATE TABLE workflow_run_steps (
+  step_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  run_id UUID NOT NULL REFERENCES workflow_runs(run_id),
+  node_id VARCHAR(100) NOT NULL,
+  node_type VARCHAR(30) NOT NULL, -- trigger, condition, transform, action, approval, wait, fallback, diagnostics, handoff, terminal
+  step_order SMALLINT NOT NULL,
+  status VARCHAR(30) NOT NULL DEFAULT 'queued', -- queued, running, waiting_approval, waiting_external_condition, succeeded, skipped, failed, cancelled
+  input_snapshot JSONB DEFAULT '{}',
+  output_snapshot JSONB DEFAULT '{}',
+  diagnostics_ref UUID,
+  side_effect_refs JSONB DEFAULT '[]',
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ -- soft delete (DB-H-003)
+);
+CREATE INDEX idx_wrs_run ON workflow_run_steps(run_id);
+CREATE INDEX idx_wrs_workspace ON workflow_run_steps(workspace_id);
+CREATE INDEX idx_wrs_status ON workflow_run_steps(status);
+ALTER TABLE workflow_run_steps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE workflow_run_steps FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON workflow_run_steps
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE workflow_run_steps ADD CONSTRAINT chk_workflow_run_steps_status
+  CHECK (status IN ('queued', 'running', 'waiting_approval', 'waiting_external_condition', 'succeeded', 'skipped', 'failed', 'cancelled'));
+```
+
+### 12.4A agent_run_steps
+```sql
+CREATE TABLE agent_run_steps (
+  agent_step_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  agent_run_id UUID NOT NULL REFERENCES agent_runs(agent_run_id),
+  step_order SMALLINT NOT NULL,
+  phase VARCHAR(30) NOT NULL, -- planning, awaiting_approval, executing, waiting_context, completed
+  title VARCHAR(255) NOT NULL,
+  status VARCHAR(30) NOT NULL DEFAULT 'planning', -- planning, awaiting_approval, executing, waiting_context, completed, failed, skipped, cancelled
+  expected_outcome TEXT,
+  observed_outcome TEXT,
+  input_context JSONB DEFAULT '{}',
+  output_context JSONB DEFAULT '{}',
+  diagnostics_ref UUID,
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ -- soft delete (DB-H-003)
+);
+CREATE INDEX idx_ars_run ON agent_run_steps(agent_run_id);
+CREATE INDEX idx_ars_workspace ON agent_run_steps(workspace_id);
+CREATE INDEX idx_ars_status ON agent_run_steps(status);
+ALTER TABLE agent_run_steps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_run_steps FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON agent_run_steps
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE agent_run_steps ADD CONSTRAINT chk_agent_run_steps_status
+  CHECK (status IN ('planning', 'awaiting_approval', 'executing', 'waiting_context', 'completed', 'failed', 'skipped', 'cancelled'));
+```
+
+### 12.4B agent_outputs
+```sql
+CREATE TABLE agent_outputs (
+  output_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  agent_run_id UUID NOT NULL REFERENCES agent_runs(agent_run_id),
+  output_type VARCHAR(50) NOT NULL, -- text, asset, dataset, workflow_patch, recommendation, report
+  title VARCHAR(255) NOT NULL,
+  summary TEXT,
+  object_refs JSONB DEFAULT '[]', -- [{type, id}]
+  downloadable_refs JSONB DEFAULT '[]', -- [{label, url}]
+  preview_payload JSONB DEFAULT '{}',
+  approval_state VARCHAR(20) NOT NULL DEFAULT 'not_required', -- not_required, pending_approval, approved, rejected
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ -- soft delete (DB-H-003)
+);
+CREATE INDEX idx_ao_run ON agent_outputs(agent_run_id);
+CREATE INDEX idx_ao_workspace ON agent_outputs(workspace_id);
+ALTER TABLE agent_outputs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_outputs FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON agent_outputs
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE agent_outputs ADD CONSTRAINT chk_agent_outputs_approval_state
+  CHECK (approval_state IN ('not_required', 'pending_approval', 'approved', 'rejected'));
+```
 
 ---
 
@@ -2026,6 +2120,95 @@ CREATE TABLE support_ticket_messages (
 CREATE INDEX idx_stm_ticket ON support_ticket_messages(ticket_id);
 ```
 
+### 17.9A kb_categories [GLOBAL]
+```sql
+CREATE TABLE kb_categories (
+  category_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug VARCHAR(100) UNIQUE NOT NULL,
+  display_name VARCHAR(255) NOT NULL,
+  description TEXT,
+  icon_key VARCHAR(50),
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_by UUID REFERENCES internal_admins(admin_id),
+  updated_by UUID REFERENCES internal_admins(admin_id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_kbc_active ON kb_categories(is_active, sort_order);
+```
+
+### 17.9B kb_articles [GLOBAL]
+```sql
+CREATE TABLE kb_articles (
+  article_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  category_id UUID REFERENCES kb_categories(category_id),
+  slug VARCHAR(160) UNIQUE NOT NULL,
+  locale VARCHAR(10) NOT NULL DEFAULT 'vi-VN',
+  title VARCHAR(255) NOT NULL,
+  summary TEXT,
+  body_markdown TEXT NOT NULL,
+  search_document TEXT,
+  status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, review, published, archived
+  article_type VARCHAR(30) NOT NULL DEFAULT 'how_to', -- getting_started, how_to, faq, troubleshooting, api_reference, changelog
+  target_modules JSONB NOT NULL DEFAULT '[]', -- ["M07","M23"]
+  target_operator_modes JSONB NOT NULL DEFAULT '[]',
+  target_tiers JSONB NOT NULL DEFAULT '[]',
+  tags JSONB NOT NULL DEFAULT '[]',
+  related_article_ids JSONB NOT NULL DEFAULT '[]',
+  estimated_read_minutes SMALLINT,
+  helpful_votes INTEGER NOT NULL DEFAULT 0,
+  unhelpful_votes INTEGER NOT NULL DEFAULT 0,
+  view_count INTEGER NOT NULL DEFAULT 0,
+  last_reviewed_at TIMESTAMPTZ,
+  published_at TIMESTAMPTZ,
+  archived_at TIMESTAMPTZ,
+  created_by UUID REFERENCES internal_admins(admin_id),
+  updated_by UUID REFERENCES internal_admins(admin_id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_kba_category ON kb_articles(category_id, status);
+CREATE INDEX idx_kba_slug_locale ON kb_articles(slug, locale);
+CREATE INDEX idx_kba_review ON kb_articles(last_reviewed_at);
+ALTER TABLE kb_articles ADD CONSTRAINT chk_kb_articles_status
+  CHECK (status IN ('draft', 'review', 'published', 'archived'));
+ALTER TABLE kb_articles ADD CONSTRAINT chk_kb_articles_type
+  CHECK (article_type IN ('getting_started', 'how_to', 'faq', 'troubleshooting', 'api_reference', 'changelog'));
+```
+
+### 17.9C kb_article_versions [GLOBAL]
+```sql
+CREATE TABLE kb_article_versions (
+  article_version_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  article_id UUID NOT NULL REFERENCES kb_articles(article_id),
+  version_number INTEGER NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  summary TEXT,
+  body_markdown TEXT NOT NULL,
+  change_note TEXT,
+  edited_by UUID REFERENCES internal_admins(admin_id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(article_id, version_number)
+);
+CREATE INDEX idx_kbav_article ON kb_article_versions(article_id, version_number DESC);
+```
+
+### 17.9D article_ratings [GLOBAL]
+```sql
+CREATE TABLE article_ratings (
+  rating_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  article_id UUID NOT NULL REFERENCES kb_articles(article_id),
+  user_id UUID NOT NULL REFERENCES users(user_id),
+  helpful BOOLEAN NOT NULL,
+  feedback_text TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(article_id, user_id)
+);
+CREATE INDEX idx_ar_article ON article_ratings(article_id, created_at DESC);
+CREATE INDEX idx_ar_helpful ON article_ratings(article_id, helpful);
+```
+
 ### 17.10 incidents & post_mortems [GLOBAL]
 ```sql
 CREATE TABLE incidents (
@@ -2256,6 +2439,278 @@ ALTER TABLE api_keys ENABLE ROW LEVEL SECURITY;
 ALTER TABLE api_keys FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON api_keys
   USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+```
+
+### 18.4A api_usage_daily
+```sql
+CREATE TABLE api_usage_daily (
+  usage_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  api_key_id UUID NOT NULL REFERENCES api_keys(api_key_id),
+  usage_date DATE NOT NULL,
+  read_requests INTEGER NOT NULL DEFAULT 0,
+  write_requests INTEGER NOT NULL DEFAULT 0,
+  error_4xx_count INTEGER NOT NULL DEFAULT 0,
+  error_5xx_count INTEGER NOT NULL DEFAULT 0,
+  outbound_webhook_deliveries INTEGER NOT NULL DEFAULT 0,
+  billable_ai_credits NUMERIC(18,6) NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(api_key_id, usage_date)
+);
+CREATE INDEX idx_aud_workspace ON api_usage_daily(workspace_id);
+CREATE INDEX idx_aud_key_date ON api_usage_daily(api_key_id, usage_date DESC);
+ALTER TABLE api_usage_daily ENABLE ROW LEVEL SECURITY;
+ALTER TABLE api_usage_daily FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON api_usage_daily
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+```
+
+### 18.4B api_webhook_subscriptions
+```sql
+CREATE TABLE api_webhook_subscriptions (
+  webhook_subscription_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  api_key_id UUID REFERENCES api_keys(api_key_id),
+  target_url TEXT NOT NULL,
+  event_types JSONB NOT NULL DEFAULT '[]',
+  signing_secret_hash VARCHAR(128) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'active', -- active, suspended, revoked
+  consecutive_failure_count INTEGER NOT NULL DEFAULT 0,
+  last_delivery_at TIMESTAMPTZ,
+  last_error TEXT,
+  created_by UUID NOT NULL REFERENCES users(user_id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ -- soft delete (DB-H-003)
+);
+CREATE INDEX idx_aws_workspace ON api_webhook_subscriptions(workspace_id);
+CREATE INDEX idx_aws_status ON api_webhook_subscriptions(status);
+ALTER TABLE api_webhook_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE api_webhook_subscriptions FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON api_webhook_subscriptions
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE api_webhook_subscriptions ADD CONSTRAINT chk_api_webhook_subscriptions_status
+  CHECK (status IN ('active', 'suspended', 'revoked'));
+```
+
+### 18.4C webhook_events
+```sql
+CREATE TABLE webhook_events (
+  webhook_event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  provider VARCHAR(50) NOT NULL, -- stripe, tiktok, shopee, lazada, youtube, instagram, facebook, public_api
+  direction VARCHAR(20) NOT NULL, -- inbound, outbound
+  external_event_id VARCHAR(255),
+  idempotency_key VARCHAR(255) NOT NULL,
+  webhook_subscription_id UUID REFERENCES api_webhook_subscriptions(webhook_subscription_id),
+  payload JSONB NOT NULL,
+  processing_status VARCHAR(30) NOT NULL DEFAULT 'received', -- received, acknowledged, processed, failed, dead_lettered
+  retry_count INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT,
+  received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  processed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX idx_we_idempotency ON webhook_events(provider, idempotency_key);
+CREATE INDEX idx_we_workspace ON webhook_events(workspace_id);
+CREATE INDEX idx_we_status ON webhook_events(processing_status);
+ALTER TABLE webhook_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE webhook_events FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON webhook_events
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE webhook_events ADD CONSTRAINT chk_webhook_events_direction
+  CHECK (direction IN ('inbound', 'outbound'));
+ALTER TABLE webhook_events ADD CONSTRAINT chk_webhook_events_processing_status
+  CHECK (processing_status IN ('received', 'acknowledged', 'processed', 'failed', 'dead_lettered'));
+```
+
+### 18.4D background_jobs [GLOBAL]
+```sql
+CREATE TABLE background_jobs (
+  job_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(workspace_id),
+  queue_name VARCHAR(100) NOT NULL,
+  job_type VARCHAR(100) NOT NULL,
+  status VARCHAR(30) NOT NULL DEFAULT 'queued', -- queued, running, paused, succeeded, failed, cancelled, dead_lettered
+  priority VARCHAR(10) NOT NULL DEFAULT 'normal', -- urgent, high, normal, low
+  progress_percentage REAL NOT NULL DEFAULT 0, -- 0-100 non-financial progress
+  step_name VARCHAR(255),
+  provider VARCHAR(50),
+  payload JSONB NOT NULL DEFAULT '{}',
+  result_summary JSONB NOT NULL DEFAULT '{}',
+  error_class VARCHAR(50),
+  error_message TEXT,
+  attempt_count INTEGER NOT NULL DEFAULT 0,
+  max_attempts INTEGER NOT NULL DEFAULT 3,
+  requested_by UUID,
+  scheduled_at TIMESTAMPTZ,
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  last_heartbeat_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_bgj_queue_status ON background_jobs(queue_name, status, created_at DESC);
+CREATE INDEX idx_bgj_workspace ON background_jobs(workspace_id, created_at DESC);
+ALTER TABLE background_jobs ADD CONSTRAINT chk_background_jobs_status
+  CHECK (status IN ('queued', 'running', 'paused', 'succeeded', 'failed', 'cancelled', 'dead_lettered'));
+ALTER TABLE background_jobs ADD CONSTRAINT chk_background_jobs_priority
+  CHECK (priority IN ('urgent', 'high', 'normal', 'low'));
+```
+
+### 18.4E job_schedules [GLOBAL]
+```sql
+CREATE TABLE job_schedules (
+  job_schedule_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  queue_name VARCHAR(100) NOT NULL,
+  job_type VARCHAR(100) NOT NULL,
+  cron_expression VARCHAR(120) NOT NULL,
+  timezone VARCHAR(60) NOT NULL DEFAULT 'Asia/Ho_Chi_Minh',
+  payload_template JSONB NOT NULL DEFAULT '{}',
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  last_run_at TIMESTAMPTZ,
+  next_run_at TIMESTAMPTZ,
+  created_by UUID REFERENCES internal_admins(admin_id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_js_active_next ON job_schedules(is_active, next_run_at);
+```
+
+### 18.4F job_metrics [GLOBAL]
+```sql
+CREATE TABLE job_metrics (
+  metric_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  queue_name VARCHAR(100) NOT NULL,
+  bucket_start TIMESTAMPTZ NOT NULL,
+  running_count INTEGER NOT NULL DEFAULT 0,
+  queued_count INTEGER NOT NULL DEFAULT 0,
+  failed_count INTEGER NOT NULL DEFAULT 0,
+  dead_letter_count INTEGER NOT NULL DEFAULT 0,
+  avg_processing_ms INTEGER,
+  p95_processing_ms INTEGER,
+  queue_lag_ms INTEGER,
+  active_workers INTEGER,
+  memory_pct REAL, -- 0-100 non-financial usage
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(queue_name, bucket_start)
+);
+CREATE INDEX idx_jm_queue_bucket ON job_metrics(queue_name, bucket_start DESC);
+```
+
+### 18.4G dead_letter_queue [GLOBAL]
+```sql
+CREATE TABLE dead_letter_queue (
+  dlq_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  queue_name VARCHAR(100) NOT NULL,
+  original_message_id VARCHAR(255) NOT NULL,
+  payload JSONB NOT NULL,
+  error_class VARCHAR(50) NOT NULL,
+  error_message TEXT,
+  last_error_at TIMESTAMPTZ NOT NULL,
+  attempt_count INTEGER NOT NULL,
+  retry_history JSONB DEFAULT '[]',
+  workspace_id UUID REFERENCES workspaces(workspace_id),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, retrying, resolved, discarded
+  resolved_at TIMESTAMPTZ,
+  resolved_by UUID REFERENCES internal_admins(admin_id),
+  resolution_notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_dlq_queue ON dead_letter_queue(queue_name, status);
+CREATE INDEX idx_dlq_workspace ON dead_letter_queue(workspace_id);
+ALTER TABLE dead_letter_queue ADD CONSTRAINT chk_dead_letter_queue_status
+  CHECK (status IN ('pending', 'retrying', 'resolved', 'discarded'));
+```
+
+### 18.4H event_outbox [GLOBAL]
+```sql
+CREATE TABLE event_outbox (
+  outbox_id BIGSERIAL PRIMARY KEY,
+  event_type VARCHAR(200) NOT NULL,
+  aggregate_type VARCHAR(100) NOT NULL,
+  aggregate_id UUID NOT NULL,
+  workspace_id UUID REFERENCES workspaces(workspace_id),
+  payload JSONB NOT NULL,
+  metadata JSONB DEFAULT '{}',
+  published BOOLEAN NOT NULL DEFAULT false,
+  published_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_outbox_unpublished ON event_outbox(published, created_at)
+  WHERE published = false;
+```
+
+### 18.4I broadcasts [GLOBAL]
+```sql
+CREATE TABLE broadcasts (
+  broadcast_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  broadcast_type VARCHAR(30) NOT NULL DEFAULT 'announcement', -- announcement, maintenance, feature, security
+  status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, scheduled, sending, sent, cancelled, failed
+  title VARCHAR(255) NOT NULL,
+  body_markdown TEXT NOT NULL,
+  channels JSONB NOT NULL DEFAULT '[]', -- ["in_app","email","push"]
+  audience_filter JSONB NOT NULL DEFAULT '{}',
+  cta_label VARCHAR(120),
+  cta_url TEXT,
+  timezone VARCHAR(60) NOT NULL DEFAULT 'Asia/Ho_Chi_Minh',
+  scheduled_at TIMESTAMPTZ,
+  sent_at TIMESTAMPTZ,
+  total_targets INTEGER NOT NULL DEFAULT 0,
+  delivered_count INTEGER NOT NULL DEFAULT 0,
+  read_count INTEGER NOT NULL DEFAULT 0,
+  click_count INTEGER NOT NULL DEFAULT 0,
+  created_by UUID REFERENCES internal_admins(admin_id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_brd_status_schedule ON broadcasts(status, scheduled_at);
+ALTER TABLE broadcasts ADD CONSTRAINT chk_broadcasts_type
+  CHECK (broadcast_type IN ('announcement', 'maintenance', 'feature', 'security'));
+ALTER TABLE broadcasts ADD CONSTRAINT chk_broadcasts_status
+  CHECK (status IN ('draft', 'scheduled', 'sending', 'sent', 'cancelled', 'failed'));
+```
+
+### 18.4J broadcast_targets [GLOBAL]
+```sql
+CREATE TABLE broadcast_targets (
+  broadcast_target_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  broadcast_id UUID NOT NULL REFERENCES broadcasts(broadcast_id),
+  user_id UUID REFERENCES users(user_id),
+  workspace_id UUID REFERENCES workspaces(workspace_id),
+  delivery_channels JSONB NOT NULL DEFAULT '[]',
+  delivery_status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, queued, delivered, failed, read, clicked
+  last_delivery_at TIMESTAMPTZ,
+  last_error TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_brt_broadcast_status ON broadcast_targets(broadcast_id, delivery_status);
+ALTER TABLE broadcast_targets ADD CONSTRAINT chk_broadcast_targets_status
+  CHECK (delivery_status IN ('pending', 'queued', 'delivered', 'failed', 'read', 'clicked'));
+```
+
+### 18.4K notification_events [GLOBAL]
+```sql
+CREATE TABLE notification_events (
+  notification_event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  broadcast_id UUID REFERENCES broadcasts(broadcast_id),
+  notification_id UUID REFERENCES notifications(notification_id),
+  workspace_id UUID REFERENCES workspaces(workspace_id),
+  user_id UUID REFERENCES users(user_id),
+  channel VARCHAR(20) NOT NULL, -- in_app, email, push, sms
+  event_type VARCHAR(20) NOT NULL, -- queued, sent, delivered, opened, clicked, failed
+  metadata JSONB NOT NULL DEFAULT '{}',
+  event_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_ne_broadcast ON notification_events(broadcast_id, event_type, event_at DESC);
+CREATE INDEX idx_ne_user ON notification_events(user_id, event_at DESC);
+ALTER TABLE notification_events ADD CONSTRAINT chk_notification_events_channel
+  CHECK (channel IN ('in_app', 'email', 'push', 'sms'));
+ALTER TABLE notification_events ADD CONSTRAINT chk_notification_events_type
+  CHECK (event_type IN ('queued', 'sent', 'delivered', 'opened', 'clicked', 'failed'));
 ```
 
 ### 18.5 tags (generic polymorphic tagging)
@@ -2769,7 +3224,7 @@ CREATE TABLE reconciliation_records (
   scope_description TEXT,
   related_order_ids UUID[] DEFAULT '{}',
   related_settlement_ids UUID[] DEFAULT '{}',
-  status VARCHAR(30) NOT NULL DEFAULT 'open', -- open, awaiting_evidence, matching, partially_reconciled, fully_reconciled, conflict_detected, manually_overridden, closed
+  reconciliation_state reconciliation_state NOT NULL DEFAULT 'awaiting_evidence',
   mismatches JSONB DEFAULT '[]', -- [{field, expected, actual, severity}]
   override_reason TEXT,
   override_by UUID REFERENCES users(user_id),
@@ -2781,7 +3236,7 @@ CREATE TABLE reconciliation_records (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_rr_workspace ON reconciliation_records(workspace_id);
-CREATE INDEX idx_rr_status ON reconciliation_records(status);
+CREATE INDEX idx_rr_state ON reconciliation_records(reconciliation_state);
 ALTER TABLE reconciliation_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reconciliation_records FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON reconciliation_records
@@ -3734,4 +4189,3 @@ interface AutoWinnerCriteria {
 ```
 
 > **Implementation note**: All JSONB columns should be validated against these shapes at the application layer (Rust `serde` deserialize with `#[serde(deny_unknown_fields)]`). Database CHECK constraints are NOT used for JSONB validation — this is enforced at the API boundary.
-

@@ -4,7 +4,7 @@ module: M20
 canonical: true
 domain: automation
 status: READY
-last_updated: 2026-03-30
+last_updated: 2026-04-06
 blockers: []  # API-M-001 resolved 2026-04-02 — WorkflowService §2.8.1 (13 RPCs)
 ---
 
@@ -21,7 +21,7 @@ M20 exists as the **visual workflow automation engine** — allowing operators t
 ### Covers (M20 owns workflow orchestration)
 - Visual workflow builder: trigger → conditions → actions → approval gates → terminal nodes
 - Workflow lifecycle: DRAFT → ACTIVE → PAUSED → ERROR → ARCHIVED
-- Workflow run lifecycle: queued → started → executing → waiting_approval → completed / failed / handed_off
+- Workflow run lifecycle: queued → running → waiting_approval / waiting_external_condition → succeeded / partially_succeeded / failed / cancelled / requires_manual_intervention
 - Trigger types: event-based, schedule-based, manual, webhook-triggered
 - Node types: trigger, condition, transform, action, approval, wait, fallback, diagnostics, handoff, terminal
 - Capability-aware execution: check platform capabilities BEFORE action execution
@@ -51,7 +51,7 @@ M20 exists as the **visual workflow automation engine** — allowing operators t
 
 1. **RULE-M20-001**: Workflow lifecycle state machine: `draft → active → paused → error → archived`. Only `active` workflows can be triggered. `error` state entered when workflow has persistent runtime failures (≥3 consecutive failures) — requires operator intervention. `archived` is terminal (Pack 03 §4, PRD §23.20 AC).
 2. **RULE-M20-002 (CRITICAL)**: **Capability check MANDATORY before every action.** Before executing any workflow action that touches an external platform (publish, sync, DM, etc.), the runtime MUST query M22 for current platform capability status. If capability is `unsupported` or `degraded`, the action MUST NOT execute silently — it MUST take the fallback path (if defined) or halt with a user-facing explanation (Pack 03 §5.2, PRD §23.20 AC).
-3. **RULE-M20-003**: **Failures MUST have user-facing explanations.** Every workflow run that enters `failed` or `handed_off` state MUST produce a diagnostics record containing: failure type, affected node/action, user-facing explanation (in user's language), operator explanation, recommended next step, and fallback if available (Pack 03 §8).
+3. **RULE-M20-003**: **Failures MUST have user-facing explanations.** Every workflow run that enters `failed` or `requires_manual_intervention` state MUST produce a diagnostics record containing: failure type, affected node/action, user-facing explanation (in user's language), operator explanation, recommended next step, and fallback if available (Pack 03 §8).
 4. **RULE-M20-004**: Approval gates are configurable per workflow. Actions defined in Pack 03 §6.1 requiring approval: external publish, price/offer activation, destructive archive/retire, reconciliation override, payout-affecting actions, force-complete/cancel. Approval requests have `expires_at` — expired approvals auto-deny and emit diagnostic (Pack 03 §6).
 5. **RULE-M20-005**: Every workflow run action that produces side effects MUST be logged in the action log audit trail. Logged fields: actor (system/user), action, affected objects, old/new state summary, reason, timestamp, correlation_id. Runs without side effects (dry runs, condition-only) still log execution path (Pack 03 §10).
 6. **RULE-M20-006**: Dead-letter handling: when a workflow run fails after all retries, it enters the dead-letter queue. Dead-letter items MUST retain: original context, failure summary, retry history, suggested repair path, canonical object refs. Operators can: retry single, retry batch, repair and retry, or purge with reason (Pack 03 §7).
@@ -65,28 +65,31 @@ M20 exists as the **visual workflow automation engine** — allowing operators t
    - Define actions: module actions (publish, create task, send DM, update status, etc.)
    - Configure approval gates for sensitive actions
    - Define fallback paths for failure scenarios
-   - `workflow.created` event, `lifecycle_state = 'draft'`
+   - `workflow.created` event, `status = 'draft'`
 2. **Testing with dry run**: Operator tests workflow
    - Trigger dry run with sample data
    - System simulates execution path, shows preview report
    - No side effects produced
 3. **Activation**: Manager activates workflow
    - Capability checks evaluated: all required capabilities available?
-   - `lifecycle_state = 'active'`, `workflow.published` event emitted
+   - `status = 'active'`, `workflow.activated` event emitted
    - Workflow registered with trigger listener
 4. **Trigger fires**: Event/schedule/manual triggers workflow run
-   - `workflow_run.queued` → `workflow_run.started` events
+   - New run persisted with `status = 'queued'`
+   - Worker picks up the run → `workflow_run.started` event emitted and run moves to `running`
    - Trigger context captured (event data, schedule context, manual params)
 5. **Runtime execution**: Nodes execute sequentially
    - Condition nodes evaluate → route to matching path
    - **Before each action node**: capability check (M22), permission check (RBAC)
-   - Action executes → side effect logged → next node
-   - If approval gate: workflow run enters `waiting_approval` state → approver notified
-   - Approved → continue. Rejected/expired → fallback path or fail
+   - Action executes → side effect logged → `workflow_run_steps` updated → next node
+   - If approval gate: workflow run enters `waiting_approval` state → `workflow_run.approval_required` event emitted
+   - If wait node depends on external condition: run enters `waiting_external_condition`
+   - Approved / condition satisfied → continue in `running`. Rejected/expired → fallback path or fail
 6. **Completion or failure**: Run terminates
-   - Success: `workflow_run.completed` event, results logged
+   - Success without unresolved actions: `status = 'succeeded'` + `workflow_run.completed`
+   - Success with unresolved compensations/fallback outcomes: `status = 'partially_succeeded'` + `workflow_run.partially_completed`
    - Failure: diagnostics record created, `workflow_run.failed` event
-   - If manual intervention needed: `workflow_run.handed_off` → operator picks up
+   - If manual intervention needed: `status = 'requires_manual_intervention'` + `workflow_run.manual_intervention_required`
 
 ## Alternate Flows
 
@@ -97,7 +100,7 @@ M20 exists as the **visual workflow automation engine** — allowing operators t
 
 ### A2: Approval Gate Expired
 - Trigger: Approval request not responded within `expires_at`
-- Steps: Auto-deny with reason "Approval timed out" → fallback path if defined → `approval.expired` event + diagnostics record → run continues on reject path or fails
+- Steps: Auto-deny with reason "Approval timed out" → fallback path if defined → diagnostics record created → run continues on reject path, moves to `failed`, or enters `requires_manual_intervention`
 - Result: Workflow doesn't hang indefinitely on unanswered approvals
 
 ### A3: Workflow Version Update
@@ -114,7 +117,7 @@ M20 exists as the **visual workflow automation engine** — allowing operators t
 
 ### EC-M20-002: Action Fails After Partial Side Effects
 - Condition: Multi-action node completes action A but fails on action B
-- Expected behavior: Run enters `failed` with diagnostics showing: "Completed: [Action A] ✓, Failed: [Action B] ✗ — [reason]." Partial side effects logged. Compensating action suggested if defined. Operator can choose: retry action B (idempotent), rollback action A (if compensating defined), or mark as handed_off for manual resolution.
+- Expected behavior: Run enters `partially_succeeded` if fallback or compensating action leaves the graph in a safe but incomplete state; otherwise it enters `failed`. Diagnostics show: "Completed: [Action A] ✓, Failed: [Action B] ✗ — [reason]." Partial side effects are logged in `workflow_run_steps`. Operator can choose: retry action B (idempotent), rollback action A (if compensating defined), or move the run to `requires_manual_intervention`.
 - Reference: RULE-M20-003, RULE-M20-006
 
 ### EC-M20-003: No Triggers Match for Active Workflow
@@ -126,7 +129,7 @@ M20 exists as the **visual workflow automation engine** — allowing operators t
 
 ### Workflow Lifecycle
 
-Object: workflow | DB column: `workflows.lifecycle_state`
+Object: workflow | DB column: `workflows.status`
 
 | From | To | Trigger | Condition |
 |---|---|---|---|
@@ -145,23 +148,27 @@ Object: workflow_run | DB column: `workflow_runs.status`
 | From | To | Trigger | Condition |
 |---|---|---|---|
 | — | queued | Trigger fires | Workflow active, trigger matches |
-| queued | started | Runtime picks up run | Worker available |
-| started | executing | Nodes begin processing | First node evaluated |
-| executing | waiting_approval | Approval gate reached | Approval node in path |
-| waiting_approval | executing | Approval granted | Approver approves |
-| waiting_approval | failed | Approval denied/expired | Rejected or timed out (no fallback) |
-| executing | completed | All nodes succeed | Terminal node reached |
-| executing | failed | Node fails (no retry/fallback) | Diagnostics record created |
-| executing | handed_off | Manual intervention needed | System can't auto-resolve |
+| queued | running | Runtime picks up run | Worker available |
+| running | waiting_approval | Approval gate reached | Approval node in path |
+| waiting_approval | running | Approval granted | Approver approves |
+| waiting_approval | failed | Approval denied/expired | Rejected or timed out with no safe fallback |
+| running | waiting_external_condition | Wait node reached | External signal / timeout awaited |
+| waiting_external_condition | running | External condition satisfied | Resume token/event received |
+| running | succeeded | All nodes succeed | Terminal node reached with no unresolved actions |
+| running | partially_succeeded | Run completes with safe unresolved actions | Fallback path finished with follow-up needed |
+| running | failed | Node fails with no recovery path | Diagnostics record created |
+| running | requires_manual_intervention | Runtime cannot auto-resolve safely | Human action required |
+| running | cancelled | Operator cancels run | Cancellation confirmed |
 | failed | queued | Operator retries | Manual retry from dead-letter |
+| requires_manual_intervention | queued | Operator repairs and retries | Repair data captured |
 
 ## Related Contracts
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §12 (workflows, workflow_runs). [NOTE: `workflow_run_steps` is not defined as a table in the schema — may need to be added during implementation or stored as JSONB within `workflow_runs`.] |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §12 (workflows, workflow_runs, workflow_run_steps) |
 | API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.8 (Workflow — ~12 RPCs: CRUD, Activate, Run, Inspect) |
-| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §11 (workflow.activated, workflow_run.started, workflow_run.completed, workflow_run.failed, workflow_run.approval_required). [NOTE: `workflow.created` and `workflow.published` are not in catalog — implementation may need these as new events or use `workflow.activated` for publish.] |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §11 (`workflow.created`, `workflow.activated`, `workflow_run.started`, `workflow_run.completed`, `workflow_run.partially_completed`, `workflow_run.failed`, `workflow_run.approval_required`, `workflow_run.manual_intervention_required`) |
 | RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.9 (workflow — Editor+ for creation, Manager+ for activation) |
 | Pack 03 | Pack 03 — Workflow Runtime Contract <!-- Legacy ref: creativanta_detail_design_pack_03_event_workflow_agent_runtime_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §4 (Runtime), §5 (Agent), §6 (Approval), §7 (Retry/Dead-Letter), §8 (Diagnostics), §10 (Audit) |
 | Capability | [02_features/platform/capability_matrix.md](../platform/capability_matrix.md) | M22 provides capability data for RULE-M20-002 |

@@ -11,7 +11,7 @@ upstream: PRD v3.1 §24
 # S24 — Public API & Developer Platform
 
 > **Upstream**: PRD §24, Pack 09 (Platform)
-> **DB tables**: `api_keys`, `consent_records`
+> **DB tables**: `api_keys`, `api_usage_daily`, `api_webhook_subscriptions`, `webhook_events`, `consent_records`
 > **Screens**: 2 (API key management, usage dashboard)
 
 ---
@@ -42,12 +42,12 @@ Public API allows third-party developers and advanced users to programmatically 
 
 | Rule | Description |
 |------|-------------|
-| RULE-S24-001 | API keys are workspace-scoped, max 10 per workspace |
-| RULE-S24-002 | Rate limits tied to tier: Starter=100/min, Professional=500/min, Business=2000/min. [RECONCILIATION: Legacy S24 §4.1 had lower limits (30/60/120/300). Current values are canonical per v3.1 review — higher limits reflect API-first strategy.] |
-| RULE-S24-003 | API keys support scoped permissions (read-only, read-write, admin) |
+| RULE-S24-001 | API keys are workspace-scoped. Tier caps live in `01_business/pricing_and_credits.md`: Starter=3, Pro=10, Business=25, Enterprise=custom |
+| RULE-S24-002 | Per-key rate limits are fixed across tiers: **100 req/min read**, **30 req/min write**. Secondary IP limit: **1000 req/min**. Tier differences are enforced through access mode + monthly quota, not different per-minute limits |
+| RULE-S24-003 | API access mode is tier-gated: Starter=`read-only`, Pro=`read/write`, Business=`full`, Enterprise=`custom`. API keys support scoped permissions within that tier envelope |
 | RULE-S24-004 | Key rotation required every 90 days (warning at 75 days) |
-| RULE-S24-005 | Usage metered and counted against credit balance |
-| RULE-S24-006 | Webhook delivery uses exponential backoff (max 5 retries) |
+| RULE-S24-005 | Usage is metered into `api_usage_daily`. Standard REST calls consume API request quota, **not AI credits**. If an API-triggered action invokes AI generation, the normal AI credit rules still apply and are recorded in `billable_ai_credits` |
+| RULE-S24-006 | Webhook delivery uses exponential backoff with **3 retries** (1s / 10s / 60s). After 100 consecutive failures the webhook subscription is auto-suspended |
 
 ## 3. Key Flows
 
@@ -64,6 +64,7 @@ Public API allows third-party developers and advanced users to programmatically 
 2. Response headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
 3. Exceeded → HTTP 429 with `Retry-After` header
 4. Burst allowance: 2x limit for 10-second windows
+5. Monthly quota enforced by tier: Starter 10k, Pro 100k, Business 1M, Enterprise custom
 
 ## 4. State Machine — API Key
 
@@ -87,7 +88,7 @@ Public API allows third-party developers and advanced users to programmatically 
 
 ### EC-S24-003: API credit deduction for failed requests
 - Condition: API call fails due to server error (5xx)
-- Expected behavior: Credits NOT deducted for 5xx errors. Credits deducted for 4xx (client error) except 429 (rate limit). Metering records include `billed: true/false` flag.
+- Expected behavior: Standard API request quota is counted once the request passes authentication and routing. **Billable AI credits** are NOT deducted for 5xx errors. If the request triggers an AI operation and fails before provider execution, `billable_ai_credits = 0`. Metering records include `billable_ai_credits` and `request_counted: true/false`.
 
 ## 5. API Surface
 
@@ -142,7 +143,7 @@ Public API allows third-party developers and advanced users to programmatically 
 ```gherkin
 Feature: API Key Management
   Scenario: Create and use API key
-    Given a workspace on Professional tier
+    Given a workspace on Pro tier
     When developer creates key with read-only scope
     Then key is displayed once
     And subsequent API calls with this key return data within scope
@@ -177,7 +178,7 @@ Feature: Rate Limiting
 
 ## 8. Cross-references
 
-- **DB**: `04_contracts/database_schema.md` §18 (api_keys, consent_records)
+- **DB**: `04_contracts/database_schema.md` §18 (`api_keys`, `api_usage_daily`, `api_webhook_subscriptions`, `webhook_events`, `consent_records`)
 - **API**: `04_contracts/api_endpoint_map.md` §4
 - **Security**: `06_quality_ops/security_threat_model.md` (API abuse prevention)
 - **Webhooks**: `04_contracts/domain_event_catalog.md` §21 (13 webhook-eligible events)

@@ -41,6 +41,9 @@ last_updated: 2026-03-30
 | **Agent runs/month** | 0 | 10 | 50 | 200 | Custom |
 | **Report exports** | 0 | 5 | Unlimited | Unlimited | Unlimited |
 | **API access** | No | Read only | Read/Write | Full | Custom |
+| **API keys** | 0 | 3 | 10 | 25 | Custom |
+| **API webhook subscriptions** | 0 | 5 | 20 | 100 | Custom |
+| **API requests / month** | 0 | 10,000 | 100,000 | 1,000,000 | Custom |
 | **Affiliate link tracking** | 10 | 100 | 500 | 5,000 | Unlimited |
 | **Storage** | 1 GB | 10 GB | 50 GB | 200 GB | Custom |
 | **Priority support** | No | Email | Chat | Dedicated | Dedicated + SLA |

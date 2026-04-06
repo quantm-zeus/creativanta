@@ -4,7 +4,7 @@
 > **Module**: M19 — Operating Ledger
 > **Route**: `/finance`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: PRD §25, A1 Schema (financial_snapshots, revenue_entries, cost_entries), S009 Trust Badge, B5 RBAC §2.8
+> **Upstream**: PRD §25, A1 Schema (`profit_snapshots`, `orders`, `cost_items`), S009 Trust Badge, B5 RBAC §2.8
 
 ---
 
@@ -215,7 +215,7 @@ ProfitDashboardPage
 ## 12. SvelteKit Implementation Notes
 
 - **Route**: `src/routes/(app)/finance/+page.svelte`
-- **Server load**: `+page.server.ts` → `FinanceService/GetProfitSummary(period)` aggregated from ClickHouse
+- **Server load**: `+page.server.ts` → `ProfitService/GetSummary(period)` aggregated from ClickHouse
 - **Charts**: `layerchart` — dual-axis area chart for revenue vs cost
 - **KPI animation**: Svelte `tweened` stores for counter animation
 - **Trust badges**: S009 component (`<TrustBadge source={sourceClass} />`)

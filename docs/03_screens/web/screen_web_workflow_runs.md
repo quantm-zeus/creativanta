@@ -4,7 +4,7 @@
 > **Module**: M20 — Workflow Studio
 > **Route**: `/workflows/[id]/runs`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: Pack 05, PRD §28, A1 Schema (workflow_runs, workflow_steps, workflow_step_outputs), B5 RBAC §2.7
+> **Upstream**: Pack 05, PRD §28, A1 Schema (`workflow_runs`, `workflow_run_steps`, `ai_credit_transactions`), A3 API (`WorkflowService/ListRuns`, `WorkflowService/GetRunStats`, `WorkflowService/GetRunDetail`), B5 RBAC §2.7
 
 ---
 ## 1. Purpose & Context
@@ -225,9 +225,9 @@ WorkflowRunHistoryPage
 |---|---|---|---|---|
 | Run list | `workflow_runs` | `WorkflowService/ListRuns(workflow_id, filters)` | Paginated rows | 30s |
 | Run summary stats | Aggregated from runs | `WorkflowService/GetRunStats(workflow_id, period)` | Metric cards | 5m |
-| Step details | `workflow_steps` + `workflow_step_outputs` | `WorkflowService/GetRunDetail(run_id)` | Expandable JSON | On-demand |
+| Step details | `workflow_run_steps` + step output metadata returned by `WorkflowService/GetRunDetail` | `WorkflowService/GetRunDetail(run_id)` | Expandable JSON | On-demand |
 | Trend chart | Aggregated daily run counts | Included in stats response | Sparkline bars | 5m |
-| Credits used | `credit_transactions WHERE ref_type='workflow_run'` | Included in run data | Integer | 30s |
+| Credits used | `ai_credit_transactions WHERE ref_type='workflow_run'` | Included in run data | Integer | 30s |
 | Trigger source | Polymorphic: `comments`/`orders`/etc. | Included in run data | Link to entity | 30s |
 | Live run progress | WebSocket `/ws/workflow_runs/{run_id}` | Real-time stream | Animated progress | Real-time |
 

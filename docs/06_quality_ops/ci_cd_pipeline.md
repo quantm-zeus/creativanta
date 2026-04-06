@@ -2,13 +2,15 @@
 layer: quality_ops
 canonical: true
 created: 2026-03-31
-status: SCAFFOLD
+last_updated: 2026-04-06
+status: READY_SPEC
 ---
 
 # CI/CD Pipeline — Creativanta
 
 > **Stack**: GitHub Actions + Docker Compose + Contabo VPS
 > **Ref**: ADR-006 (Self-hosted), `05_system/tech_stack_adr.md`
+> **Status meaning**: This document is the canonical CI/CD specification. Workflow YAML and helper scripts are generated/implemented from this spec during code scaffolding; they are not a prerequisite for starting application development.
 
 ---
 
@@ -25,7 +27,7 @@ PR Created → Lint → Test → Proto-Gen → Build → Deploy (staging/prod)
 | **Lint** | Every push & PR | ubuntu-latest | 5 min | ✅ |
 | **Test (Unit)** | Every push & PR | ubuntu-latest | 10 min | ✅ |
 | **Test (Integration)** | PR to `main` | self-hosted (Contabo) | 15 min | ✅ |
-| **Proto-Gen** | Changes to `/protos/**` | ubuntu-latest | 3 min | ✅ |
+| **Proto-Gen** | Every push & PR | ubuntu-latest | 3 min | ✅ |
 | **Build (Docker)** | Merge to `main` | self-hosted | 10 min | ✅ |
 | **Deploy (Staging)** | Auto after build | self-hosted | 5 min | ❌ (auto) |
 | **Deploy (Production)** | Manual approval | self-hosted | 5 min | ✅ (manual gate) |
@@ -85,8 +87,8 @@ jobs:
         run: cd web && pnpm exec playwright test
 
   proto-gen:
-    if: contains(github.event.paths, 'protos/')
     runs-on: ubuntu-latest
+    needs: test-unit
     steps:
       - name: Generate Rust, TypeScript, Dart from .proto
         run: ./scripts/proto-gen.sh

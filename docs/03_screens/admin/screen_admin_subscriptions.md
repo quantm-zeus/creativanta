@@ -1,10 +1,10 @@
 # Screen: Admin — Subscription & Billing Management
 
 > **Screen ID**: A021
-> **Module**: Admin — Revenue
+> **Module**: S26 — Billing & Revenue Operations
 > **Route**: `/admin/subscriptions`
 > **Platform**: Web (SvelteKit) — VPN-only
-> **Upstream**: Admin Spec, A1 Schema (subscriptions, subscription_plans)
+> **Upstream**: A1 Schema (`workspaces`, `subscription_events`, `invoices`, `payment_methods`), A3 API (`AdminBillingService/GetBillingSummary`, `AdminAnalyticsService/GetMRRTrend`, `AdminService/OverridePlan`, `AdminConfigService/GetPricing`), B5 RBAC §3
 
 ---
 
@@ -74,14 +74,16 @@ SubscriptionManagementPage
 
 ### Technical Notes
 - Route: `src/routes/admin/subscriptions/+page.svelte`
-- MRR: calculated from active subscriptions
-- Churn: % of users who cancelled vs active
+- MRR is derived from `subscription_events` + invoice state, not a standalone `subscriptions` table
+- Plan configuration comes from `AdminConfigService/GetPricing`
+- Manual plan change flows route to A037 Subscription Override
 
-### Related Screens: [A01] Admin Dashboard, [A03] User Management
+### Related Screens: [A001] Admin Dashboard, [A004] Workspace List, [A037] Subscription Override
 
 ### Revision History
 | Date | Version | Change |
 |---|---|---|
+| 2026-04-06 | 2.0 | Canonicalized schema/API bindings, removed generic data-binding placeholders, and linked write-path overrides to A037. |
 | 2026-03-28 | 1.0 | Initial specification |
 
 ---
@@ -97,16 +99,23 @@ SubscriptionManagementPage
 ---
 
 ## 4. Component Hierarchy
-```
+```text
 SubscriptionBillingManagementPage
-├── AdminShell (shared)
-├── PageHeader (Title + Breadcrumb + Actions)
-├── ContentArea
-│   ├── SummaryCards
-│   ├── PrimaryContent
-│   │   └── [Items per wireframe]
-│   └── SecondaryContent
-└── PageFooter
+├── AdminShell
+├── PageHeader
+│   ├── PeriodFilter
+│   └── ExportButton
+├── KPIBar
+│   ├── MRRCard
+│   ├── SubscriberCard
+│   ├── ChurnCard
+│   └── ARPUCard
+├── TabContainer
+│   ├── OverviewTab
+│   ├── PlansTab
+│   ├── IssuesTab
+│   └── ConfigTab
+└── OverrideShortcutPanel
 ```
 
 ---
@@ -114,10 +123,11 @@ SubscriptionBillingManagementPage
 ## 5. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Primary data | Backend table | `Service/Get` | Formatted display | 15m TTL |
-| List items | Backend query | `Service/List(page)` | Card/row list | Based on criticality |
-| Summary stats | Aggregation | `Service/GetStats` | Count/percentage | 5m TTL |
-| User-facing text | i18n keys | — | Vietnamese | Static |
+| Billing summary | `workspaces`, `subscription_events`, `invoices` | `AdminBillingService/GetBillingSummary` | KPI cards + issue counts | No cache |
+| MRR trend | `subscription_events` aggregation | `AdminAnalyticsService/GetMRRTrend` | Time-series chart | 5m TTL |
+| Plan distribution | `workspaces.subscription_tier` | `AdminBillingService/GetBillingSummary` | Plan cards + counts | 5m TTL |
+| Billing issues | Failed invoices + expiring grace periods | `AdminBillingService/GetBillingSummary` | Priority row list | No cache |
+| Pricing config | Tier configuration registry | `AdminConfigService/GetPricing` | Editable plan config | 30m TTL |
 
 ---
 ## Error Handling

@@ -4,7 +4,7 @@
 > **Module**: M20 — Workflow Studio
 > **Route**: `/m/workflows/runs`
 > **Platform**: Mobile (Flutter)
-> **Upstream**: Pack 03 §Workflow/Agent, A1 Schema (workflow_runs, workflow_steps, agent_executions), B5 RBAC §2.7
+> **Upstream**: Pack 03 §Workflow/Agent, A1 Schema (`workflow_runs`, `workflow_run_steps`, `agent_runs`), A3 API (`WorkflowService/ListRuns`, `WorkflowService/GetRunStats`, `WorkflowService/GetRunDetail`), B5 RBAC §2.7
 
 ---
 
@@ -177,12 +177,12 @@ WorkflowMonitorScreen
 |---|---|---|---|---|
 | Summary counts | `workflow_runs` aggregation | `WorkflowService/GetRunStats` | Integer per status | Real-time (SSE) |
 | Run list | `workflow_runs` | `WorkflowService/ListRuns(status, page)` | Card list by recency | Real-time (SSE) |
-| Step progress | `workflow_steps[current]` | included in run data | "Step {n}/{total} · '{step_name}'" | Real-time |
+| Step progress | `workflow_run_steps[current]` | Included in run detail / live progress payload | "Step {n}/{total} · '{step_name}'" | Real-time |
 | Progress percentage | `workflow_runs.progress` | SSE push | Animated progress bar | Real-time |
 | Credit usage | `workflow_runs.credits_used` | included | Integer + estimated remaining | Real-time |
 | Error message | `workflow_runs.error` | included | Truncated to 2 lines | No cache |
 | Duration | `workflow_runs.started_at` → now/completed_at | Client-computed | "5m 30s" / "2h 15m" | Client |
-| Results summary | `workflow_runs.outputs` | included | "3 ideas generated, 1 script started" | No cache |
+| Results summary | `workflow_runs.result_summary` | included | "3 ideas generated, 1 script started" | No cache |
 
 ---
 

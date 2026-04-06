@@ -291,7 +291,7 @@ final creativantaTheme = ThemeData(
 
 ## Cross-references
 
-- **Screens**: All 238 screen docs checked for `Design Tokens Reference` section (235/238 coverage)
+- **Screens**: Canonical screen inventory is 243 files (`SCREEN_INDEX.md`). Component-level token notes appear where needed; cross-screen token usage is governed by `03_screens/SCREEN_IMPLEMENTATION_PROTOCOL.md`.
 - **Accessibility**: WCAG 2.1 AA contrast ratios met for all text/bg combinations
 - **Figma**: Token names align with Figma variables naming convention
 - **i18n**: Spacing tokens accommodate Vietnamese text (longer than English)

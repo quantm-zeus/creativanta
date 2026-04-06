@@ -1,10 +1,10 @@
 # Screen: Mobile — Agent Runs
 
 > **Screen ID**: M053
-> **Module**: M20 — Workflow
+> **Module**: M21 — Recipe & Agent Center
 > **Route**: `/agents` (mobile)
 > **Platform**: Mobile (Flutter)
-> **Upstream**: A1 Schema (agent_runs, agent_outputs), B5 RBAC §2.7
+> **Upstream**: A1 Schema (`agent_runs`, `agent_run_steps`, `agent_outputs`), B5 RBAC §2.7
 
 ---
 
@@ -76,12 +76,20 @@ Monitor AI agent executions on mobile — running/paused/completed/failed cards 
 AgentRunsScreen
 ├── AppBar
 │   ├── BackButton
-│   └── Title + ActionButtons
+│   ├── Title ("Agent Runs")
+│   └── FilterChipsButton
 ├── ContentArea (scrollable, pull-to-refresh)
-│   ├── SummarySection
-│   ├── PrimaryContent
-│   │   └── [Items per wireframe]
-│   └── SecondaryContent
+│   ├── StatusChips (All / Running / Done / Failed)
+│   ├── RunList
+│   │   └── AgentRunCard[]
+│   │       ├── AgentName + StatusBadge
+│   │       ├── TaskSummary
+│   │       ├── StepProgress
+│   │       ├── CreditsUsed
+│   │       ├── OutputPreviewChips (done only)
+│   │       └── ActionRow (view outputs / retry / cancel)
+│   ├── EmptyState
+│   └── ErrorBanner (conditional)
 └── BottomNavBar (shared)
 ```
 
@@ -90,9 +98,10 @@ AgentRunsScreen
 ## 5. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Primary data | Backend table | `Service/Get` | Formatted display | 15m TTL |
-| List items | Backend query | `Service/List(page)` | Card/row list | Based on criticality |
-| Summary stats | Aggregation | `Service/GetStats` | Count/percentage | 5m TTL |
+| Agent runs | `agent_runs` filtered by `current_state` | `AgentService/ListRuns` | Card list grouped by status chip | 15s stale max |
+| Step progress | Latest `agent_run_steps` summary included in run payload | `AgentService/StreamRun` for live runs | "Step 3/5 · Rendering video..." | Live / no cache |
+| Outputs | `agent_outputs` count + preview metadata | Included in run summary or streamed detail | Chips like "3 outputs" / preview thumbnails | No cache |
+| Credits used | `agent_runs.credits_used` | `AgentService/ListRuns` | Integer badge ("12 credits") | No cache |
 | User-facing text | i18n keys | — | Vietnamese | Static |
 
 

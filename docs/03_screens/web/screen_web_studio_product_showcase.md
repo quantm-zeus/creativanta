@@ -74,7 +74,7 @@ ProductShowcasePage
 | # | Action | Trigger | API | Credits | Result |
 |---|---|---|---|---|---|
 | 1 | Select product | Dropdown | `ProductService/Get(id)` | 0 | Product loaded |
-| 2 | Upload images | File picker | Upload to R2 | 0 | Images available |
+| 2 | Upload images | File picker | `UploadService/Upload` (R2-backed storage) | 0 | Images available |
 | 3 | Select style | Click style card | — (client) | 0 | Style selected |
 | 4 | Preview | ▶ Preview | Client mock | 0 | Preview modal |
 | 5 | Generate | 🚀 | `AssetService/Generate(type=product_showcase)` | ~15 | → Queue |
@@ -162,7 +162,7 @@ ProductShowcasePage
 - **Product integration**: `ProductService/Get(id)` → images, description, price
 - **Auto-script**: `AIService/GenerateScript(product, style)` → editable text
 - **Generate**: `AssetService/Generate(type=product_showcase)` → SSE
-- **Image upload**: R2 for custom images (not in catalog)
+- **Image upload**: `UploadService/Upload` for custom images, backed by Cloudflare R2 per ADR storage layer
 
 ---
 

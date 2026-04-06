@@ -4,7 +4,7 @@ module: M21
 canonical: true
 domain: automation
 status: READY
-last_updated: 2026-03-30
+last_updated: 2026-04-06
 blockers: []  # API-M-001 resolved 2026-04-02 — RecipeService §2.8.2 (8 RPCs)
 ---
 
@@ -23,7 +23,7 @@ M21 exists as the **recipe marketplace and agent runtime center** — managing r
 - Recipe installation: install recipe → creates canonical workflow (M20) with user configuration
 - Recipe lifecycle: published → installed → customized → updated → deprecated
 - Agent runtime: AI agents that plan and execute multi-step actions
-- Agent lifecycle: planned → awaiting_approval → executing → observing → handed_off → completed / failed
+- Agent lifecycle: planning → awaiting_approval → executing → waiting_context → completed / partially_completed / failed / handed_off / cancelled
 - Agent safety: permission checks, capability checks, approval gates for agent actions
 - Agent memory: temporary agent context that does NOT override canonical truth
 - Recipe governance: submission review, revenue share (70/30), DMCA/takedown (S22)
@@ -49,7 +49,7 @@ M21 exists as the **recipe marketplace and agent runtime center** — managing r
 1. **RULE-M21-001**: **Installed recipes MUST map to canonical workflow objects.** When a recipe is installed, it creates a standard M20 workflow with the recipe's trigger, conditions, and actions. The installed workflow is fully editable by the user — it is NOT a black box. Recipe updates can be applied (user chooses: auto-update or pin to version), but the underlying workflow remains a standard M20 object (Pack 03 §9, PRD §23.21 AC).
 2. **RULE-M21-002 (CRITICAL)**: **Recipes and agents MUST NOT break auditability.** Every action executed by a recipe-installed workflow or by an agent MUST produce the same audit trail as manually-triggered actions. Agent actions require: permission check, capability check (M22), audit requirement check, policy check, and optional approval gate. No "agent shortcut" that bypasses these checks (Pack 03 §5.2, §10).
 3. **RULE-M21-003**: Agent memory is **temporary and non-canonical**. Agent planning context, intermediate observations, and working memory do NOT override the canonical graph. For any agent observation to become truth, it MUST be written through the appropriate aggregate owner via a standard action (emit event + write). Agent memory is session-scoped and discarded after run completion (Pack 03 §5.3).
-4. **RULE-M21-004**: Agent lifecycle: `planned → awaiting_approval (if required) → executing → observing → handed_off / completed / failed`. Agent plans MUST be reviewable before execution for actions above a configurable risk threshold. High-risk actions (publish, price change, external communication) require explicit approval (Pack 03 §5.1, §6.1).
+4. **RULE-M21-004**: Agent lifecycle: `planning → awaiting_approval (if required) → executing → waiting_context → completed / partially_completed / failed / handed_off / cancelled`. Agent plans MUST be reviewable before execution for actions above a configurable risk threshold. High-risk actions (publish, price change, external communication) require explicit approval (Pack 03 §5.1, §6.1).
 5. **RULE-M21-005**: Recipe installation requirements: workspace eligibility check (plan tier supports recipe's required features), capability availability (platform connectors required by recipe exist), dependency conflicts (recipe doesn't conflict with existing workflows), required permissions (user has permissions for recipe's actions) (Pack 03 §9.2).
 6. **RULE-M21-006**: Recipe marketplace governance follows S22: 70/30 revenue share (creator/platform), 3-business-day review SLA, DMCA takedown within 48h, 3-strike policy, version updates with breaking change flags, 7-day refund window (Pack 06 §S22).
 
@@ -81,21 +81,23 @@ M21 exists as the **recipe marketplace and agent runtime center** — managing r
 2. **Planning**: Agent creates action plan
    - Plan: list of steps with target modules, expected side effects, permission requirements
    - Plan visible to operator for review
-   - `agent_run.planned` event
+   - `agent_run.started` emitted with `current_state = 'planning'`
 3. **Approval (if required)**: Manager reviews plan
    - High-risk actions highlighted
    - Manager approves, modifies, or rejects plan
-   - `agent_run.awaiting_approval` → `agent_run.approved` or `agent_run.rejected`
+   - Run enters `awaiting_approval`; `agent_run.approval_required` emitted
 4. **Execution**: Agent executes approved plan step by step
    - Each action: permission check → capability check → execute → log → observe
    - `agent_run.executing` state
    - Side effects logged with full audit trail (same as manual actions)
 5. **Observation**: Agent reviews action outcomes
    - Compare expected vs actual results
-   - Agent memory updated (non-canonical, session-scoped)
-   - If unexpected result: agent may re-plan or hand off
+   - Agent memory updated (non-canonical, session-scoped) and persisted in `agent_run_steps` only
+   - If additional human or external context is required: run moves to `waiting_context`
+   - If unexpected result can be handled automatically: run returns to `executing`
 6. **Completion or handoff**: Agent finishes
    - Success: `agent_run.completed`, results summary presented
+   - Safe but incomplete result: `agent_run.partially_completed`, unresolved actions surfaced
    - Needs human: `agent_run.handed_off`, context preserved for operator
    - Failure: `agent_run.failed`, diagnostics record created
 
@@ -137,21 +139,24 @@ M21 exists as the **recipe marketplace and agent runtime center** — managing r
 
 ### Agent Run Lifecycle
 
-Object: agent_run | DB column: `agent_runs.status`
+Object: agent_run | DB column: `agent_runs.current_state`
 
 | From | To | Trigger | Condition |
 |---|---|---|---|
-| — | planned | Agent creates plan | Task + plan generated |
-| planned | awaiting_approval | Plan requires approval | High-risk actions in plan |
-| planned | executing | Plan auto-approved | No high-risk actions OR Manager pre-approved |
+| — | planning | Agent creates plan | Task + initial plan generated |
+| planning | awaiting_approval | Plan requires approval | High-risk actions in plan |
+| planning | executing | Plan auto-approved | No high-risk actions OR Manager pre-approved |
 | awaiting_approval | executing | Manager approves | Approval granted |
 | awaiting_approval | failed | Manager rejects | With rejection reason |
-| executing | observing | Action completes | Agent evaluates result |
-| observing | executing | Next action begins | More steps in plan |
-| observing | handed_off | Agent can't auto-resolve | Human intervention needed |
+| executing | waiting_context | More information needed | Human choice / external context required |
+| waiting_context | executing | Context supplied | Resume token or operator input received |
+| waiting_context | handed_off | Agent can't auto-resolve | Human intervention needed |
 | executing | completed | All actions succeed | Plan fully executed |
+| executing | partially_completed | Safe but incomplete finish | Output produced with unresolved actions |
 | executing | failed | Action fails (no recovery) | Diagnostics record created |
 | handed_off | completed | Operator resolves | Manual completion after handoff |
+| planning | cancelled | Operator cancels before execution | Cancellation confirmed |
+| executing | cancelled | Operator cancels run | Cancellation confirmed |
 
 ### Recipe Installation State
 
@@ -168,9 +173,9 @@ Object: agent_run | DB column: `agent_runs.status`
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §19.11 (recipe_templates), §12 (agent_runs). [NOTE: `agent_run_steps` is not defined as a table in the schema — may need to be added during implementation or stored as JSONB within `agent_runs`.] |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §19.11 (recipe_templates), §12 (`agent_runs`, `agent_run_steps`, `agent_outputs`) |
 | API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.8 (Recipe/Agent — ~8 RPCs: Install, Run, Inspect) |
-| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §11 (recipe.installed, agent_run.started, agent_run.completed, agent_run.handed_off). [NOTE: `agent_run.planned` and `agent_run.failed` are not in catalog — implementation may surface these as new events if needed.] |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §11 (`recipe.installed`, `agent_run.started`, `agent_run.approval_required`, `agent_run.waiting_context`, `agent_run.completed`, `agent_run.partially_completed`, `agent_run.failed`, `agent_run.handed_off`, `agent_run.cancelled`) |
 | RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.9 (recipe — Editor+ for install; agent — Editor+ for run, Manager+ for approval) |
 | Pack 03 | Pack 03 — Agent Runtime Contract <!-- Legacy ref: creativanta_detail_design_pack_03_event_workflow_agent_runtime_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §5 (Agent Runtime), §9 (Recipe Contract), §10 (Audit) |
 | Pack 06 S22 | Pack 06 — Recipe Governance <!-- Legacy ref: creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §S22 (Marketplace governance, revenue share, DMCA) |

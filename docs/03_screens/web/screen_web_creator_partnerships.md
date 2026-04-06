@@ -4,7 +4,7 @@
 > **Module**: S16 — Creator Pro Tools
 > **Route**: `/creator-pro/partnerships`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: S16 Creator Pro Spec, Pack 06, A1 Schema (brand_deals, brand_deal_deliverables)
+> **Upstream**: S16 Creator Pro Spec, A1 Schema (`brand_deals`), A3 API (`BrandDealService/ListPartnerships`, `BrandDealService/UpdateDeliverable`, `BrandDealService/UpdatePayment`, `ProofService/UploadEvidence`)
 
 ---
 
@@ -161,15 +161,15 @@ PartnershipManagerPage
 | Field | Source | Format | Fallback |
 |---|---|---|---|
 | Brand name | `brand_deals.brand_name` | String | "Unnamed Brand" |
-| Campaign title | `brand_deals.title` | String, max 60 chars | "Untitled Partnership" |
-| Value | `brand_deals.value_amount` | VND format: "5.000.000đ" or "5M" | "Chưa xác định" |
-| Period | `brand_deals.start_date` + `brand_deals.end_date` | "1/4 – 30/4/2026" | "—" |
-| Deliverable title | `brand_deal_deliverables.title` | String | — |
-| Deliverable platform | `brand_deal_deliverables.platform` | Platform icon | — |
-| Due date | `brand_deal_deliverables.due_date` | Relative or absolute date | "Chưa đặt deadline" |
-| Deliverable status | `brand_deal_deliverables.status` | Checkbox + status text | "pending" |
-| Payment status | `brand_deals.payment_status` | Badge | "pending" |
-| Expected payment date | `brand_deals.expected_payment_at` | "15/4/2026" | "—" |
+| Campaign title | `BrandDealService/ListPartnerships` response title field | String, max 60 chars | "Untitled Partnership" |
+| Value | `brand_deals.value` | VND format: "5.000.000đ" or "5M" | "Chưa xác định" |
+| Period | `BrandDealService/ListPartnerships` response period projection | "1/4 – 30/4/2026" | "—" |
+| Deliverable title | `BrandDealService/ListPartnerships` response `deliverables[]` projection | String | — |
+| Deliverable platform | `BrandDealService/ListPartnerships` response `deliverables[]` projection | Platform icon | — |
+| Due date | `BrandDealService/ListPartnerships` response `deliverables[]` projection | Relative or absolute date | "Chưa đặt deadline" |
+| Deliverable status | `BrandDealService/ListPartnerships` response `deliverables[]` projection | Checkbox + status text | "pending" |
+| Payment status | `BrandDealService/ListPartnerships` response payment projection | Badge | "pending" |
+| Expected payment date | `BrandDealService/ListPartnerships` response payment projection | "15/4/2026" | "—" |
 | Performance | `content_performance` linked | Views + engagement | "Chưa có dữ liệu" |
 
 ---

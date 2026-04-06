@@ -168,9 +168,9 @@ Items hidden based on RBAC:
 ## 5. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Primary data | Backend table | `Service/Get` | Formatted display | 15m TTL |
-| List items | Backend query | `Service/List(page)` | Card/row list | Based on criticality |
-| Summary stats | Aggregation | `Service/GetStats` | Count/percentage | 5m TTL |
+| Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |
+| List items | Parent screen list/query contract(s) | Resolve via API endpoint map before implementation | Card or row layout per wireframe | Per endpoint policy |
+| Summary stats | Parent screen aggregates/projections | Resolve via feature rules + API contracts | Count / KPI / chip formatting per screen | Short-lived cache only if contract allows |
 | User-facing text | i18n keys | — | Vietnamese | Static |
 
 ---

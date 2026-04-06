@@ -165,7 +165,7 @@ see [04_contracts/domain_event_catalog.md#13](../../04_contracts/domain_event_ca
 
 ## Open Questions / Blockers
 
-> ✅ **RESOLVED: SCR-M-001** (2026-03-31) — All screen specs consolidated in `docs/03_screens/` (238 files across web/mobile/admin/shared). Cross-links now use canonical `03_screens/` paths.
+> ✅ **RESOLVED: SCR-M-001** (2026-03-31) — All screen specs consolidated in `docs/03_screens/` (current canonical inventory: 243 files across web/mobile/admin/shared after 2026-04-06 S26 completion). Cross-links now use canonical `03_screens/` paths.
 
 ---
 
@@ -208,4 +208,3 @@ see [04_contracts/domain_event_catalog.md#13](../../04_contracts/domain_event_ca
 - **Help Center**: `02_features/platform/help_center.md` (article links from tooltips)
 - **Copilot**: `02_features/platform/copilot.md` (handoff from contextual tips)
 - **Gamification**: `02_features/platform/gamification.md` (achievement badges for learning path completion)
-

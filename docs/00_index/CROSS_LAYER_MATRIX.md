@@ -12,7 +12,7 @@ status: FINAL_MATRIX
 >
 > **✅ FULL-CONTRACT ALIGNMENT ACHIEVED** (2026-04-06): This matrix reflects full documentation-spec-contract alignment. The canonical API map defines **~1,160 concrete RPCs** across §2-§20, covering **100% of screen-referenced RPC patterns** (907/907). The previous ~572-RPC gap is fully closed.
 >
-> **Status**: Full-contract alignment verified. API: ~1,160 RPC definitions + ~14 REST endpoints + 6 webhook endpoints (per `api_endpoint_map.md` §2-§20) with 24 JSON examples. DB hardened (RLS 106+, deleted_at 51+, CHECK 23+, ~122 tables). Events: ~230 canonical event types with 74-row mapping table. Business rules: 10/10 DECISION (BIZ-002/007 FINALIZED). All phantom screen refs fixed. All feature frontmatters upgraded to READY. Legal/compliance: engineering-approved, launch-gated pending legal sign-off. Ops: `ci_cd_pipeline.md` remains SCAFFOLD.
+> **Status**: Full-contract alignment verified. API: ~1,160 RPC definitions + ~14 REST endpoints + 6 webhook endpoints (per `api_endpoint_map.md` §2-§20) with 24 JSON examples. DB hardened and extended for automation persistence, KB content, broadcast delivery, and operational queues. Events: ~230 canonical event types with 74-row mapping table. Business rules: 10/10 DECISION (BIZ-002/007 FINALIZED). Screen implementation now governed by `03_screens/SCREEN_IMPLEMENTATION_PROTOCOL.md` so legacy aliases cannot override canonical contracts. Legal/compliance: engineering-approved, launch-gated pending legal sign-off.
 > **Methodology**: Feature Doc ✅/❌, Schema table coverage (verified/total), Screen file count, API service mapping + JSON examples in api_examples.md, Overall status.
 
 | Module | Feature Doc | Schema Tables | Screens | API Services | Overall |
@@ -44,9 +44,9 @@ status: FINAL_MATRIX
 | M23 Billing | ✅ | ✅ 3/3 | ✅ 2 | ✅ Defined (§2.8.6: 14 RPCs + JSON A.18-A.19) | ✅ Aligned |
 | S16 Creator Pro | ✅ | ✅ 4/4 | ✅ 2 | ✅ Defined (§5: 13 RPCs) | ✅ Aligned |
 | S24 Public API | ✅ | ✅ 1/1 | ✅ 1 | ✅ Defined (§4: 14 endpoints + webhook detail) | ✅ Aligned |
-| S26 Admin | ✅ | ✅ 2/2 | ✅ 32 | ✅ Defined (§6: 28 RPCs) | ✅ Aligned |
+| S26 Admin | ✅ | ✅ 2/2 | ✅ 37 | ✅ Defined (§6 + §18 + §19.5A) | ✅ Aligned |
 
-**Summary**: **28 doc-spec aligned** (feature doc ↔ schema ↔ screens ↔ API service name), 0 partial, 0 blocked. ✅ Full-contract alignment achieved — all 907 screen-referenced RPCs have canonical API definitions in `api_endpoint_map.md` §2-§20. Legal/compliance is engineering-approved but launch-gated pending legal sign-off. Ops CI/CD is SCAFFOLD (not production-ready).
+**Summary**: **28 doc-spec aligned** (feature doc ↔ schema ↔ screens ↔ API service name), 0 partial, 0 blocked. ✅ Full-contract alignment achieved — all 907 screen-referenced RPCs have canonical API definitions in `api_endpoint_map.md` §2-§20. Legal/compliance is engineering-approved but launch-gated pending legal sign-off. CI/CD is documented as a READY spec and generated during scaffolding.
 
 > **Scope note**: 28/28 covers all core modules (M01-M23 + auth) and spec modules (S16, S24, S26, Gamification). Three supplementary feature docs — **copilot**, **referral_growth**, **help_center** — are tracked in `_STATUS.md` (31/31 READY) but not included in this cross-layer matrix. Their API and schema coverage is verified within their respective feature docs.
 
@@ -61,12 +61,12 @@ status: FINAL_MATRIX
 >
 > **Caveats**:
 > - This matrix reflects **documentation-level alignment** (feature docs ↔ schema ↔ screens ↔ API definitions).
-> - It does NOT assert that `.proto` files, DDL migrations, or infrastructure artifacts exist. See `protobuf_contracts.md` L314: "Actual `.proto` files will be created during implementation Phase 1."
-> - Ops docs have mixed readiness: `ci_cd_pipeline.md` is SCAFFOLD; `observability.md` and `runbook.md` are READY.
+> - It does NOT assert that generated code artifacts already exist. `/protos/` are generated from the canonical API map during implementation Phase 1 per ADR-005.
+> - Ops artifacts are spec-ready; executable seed SQL now exists in `06_quality_ops/seed_data.sql`.
 
 ---
 
-## Known Integrity Gaps (Validated 2026-04-04)
+## Known Integrity Gaps (Validated 2026-04-06)
 
 > These items are **verified from validation scripts**, not hand-edited. They represent downstream integrity issues that exist independently of the doc-spec alignment above.
 
@@ -78,7 +78,7 @@ status: FINAL_MATRIX
 | Notification ↔ Events | 0 events missing from catalog | ✅ RESOLVED | Round 5 (2026-04-04): All 5 previously-missing events added to `domain_event_catalog.md`: `user.registered`, `workspace.member_invited`, `auth.suspicious_login`, `thread.priority_changed`, `idea.scored`. Notification matrix is now fully canonical. |
 | Screen permissions ↔ RBAC | All screens use canonical tokens | ✅ RESOLVED | Round 5 (2026-04-04): Workspace-facing screens fixed (`team:invite` → `workspace:members:invite`). Round 6 (2026-04-05): All 10 admin screen shorthand tokens canonicalized (`admin:billing` → `admin:billing:read`/`admin:plan:override`, `admin:config` → `admin:feature_flag:toggle`, `admin:users` → `admin:user:read`/`admin:user:suspend`, `admin:ai` → `admin:analytics:read`/`admin:queue:manage`, `admin:audit` → `admin:audit_log:read`, `admin:support` → `admin:support:manage`, `admin:system_health`/`admin:ai_ops` → `admin:analytics:read`, `admin:analytics` → `admin:analytics:read`, `admin:viewer` → Analyst/Auditor role reference). `permission_alias_policy.md` moved to `09_archive/`. |
 | RBAC ↔ Screens | 71 canonical permissions not referenced in screens | ℹ️ KNOWN | Intentional: not all RBAC permissions surface in screen UI (e.g., admin-only, system-level) |
-| Screen IDs ↔ SCREEN_INDEX | 0 mismatches | ✅ RESOLVED | Was 176; all 238 screen files aligned to canonical SCREEN_INDEX.md 2026-04-04 |
+| Screen IDs ↔ SCREEN_INDEX | 0 mismatches | ✅ RESOLVED | Was 176; all 243 screen files aligned to canonical SCREEN_INDEX.md 2026-04-06 |
 | Screen ↔ API RPCs | 907/907 screen RPCs have canonical API definitions | ✅ RESOLVED | All screen-referenced RPCs promoted to canonical status in `api_endpoint_map.md` §10-§20 (2026-04-06). ~1,160 total canonical RPCs. `screen_api_reconciliation.md` status: RESOLVED. |
-| UUID policy | Mixed v4/v7 usage | ⚠️ OPEN | Awaiting product decision: standardize on v7 (time-sortable) or keep v4. No implementation impact until decided. |
+| UUID policy | Application-generated IDs use v7; DB defaults remain fallback v4-style random UUIDs | ✅ RESOLVED | See ADR-015 + database schema naming conventions |
 | Protobuf | Overview doc only; no actual `.proto` files | ℹ️ KNOWN | Planned for implementation Phase 1 |

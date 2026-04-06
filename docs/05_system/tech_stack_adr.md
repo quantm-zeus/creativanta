@@ -576,7 +576,7 @@ creativanta/
 **Decision**: Single repo with 3 languages sharing Protobuf contracts
 **Trade-off**: Complexity vs consistency
 **Mitigation**: 
-- `.proto` files = single source of truth for all API contracts
+- Canonical API authoring source during docs phase = `api_endpoint_map.md` + `api_examples.md`; `.proto` transport contracts are generated from that source at implementation kickoff
 - `proto-gen.sh` generates Dart, Rust, TypeScript in one command
 - CI validates all generated code is up-to-date
 

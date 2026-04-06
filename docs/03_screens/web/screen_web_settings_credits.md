@@ -4,7 +4,7 @@
 > **Module**: M23 — Settings
 > **Route**: `/settings/credits/purchase`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: Pack 10, A1 Schema (credit_transactions, credit_balances, subscriptions), B5 RBAC §2.9
+> **Upstream**: M23 Part A, A1 Schema (`ai_credit_transactions`, `workspaces`, `subscriptions`), A3 API (`CreditService/GetBalance`, `CreditService/GetMonthlyUsage`, `BillingService/ListCreditPackages`, `BillingService/ListCreditPurchases`), B5 RBAC §2.9
 
 ---
 

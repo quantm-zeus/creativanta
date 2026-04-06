@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-03-30
+last_updated: 2026-04-06
 ---
 
 # Build Index — Creativanta System Map
@@ -92,12 +92,12 @@ M20/M21 (Workflow/Recipe):
 
 | Task | Files to read, in order |
 |------|------------------------|
-| Implement auth | 02_features/platform/auth.md → 04_contracts/api_endpoint_map.md#identity → 04_contracts/rbac_permission_matrix.md → 03_screens/web/screen_web_auth_*.md |
+| Implement auth | 02_features/platform/auth.md → 04_contracts/api_endpoint_map.md#identity → 04_contracts/rbac_permission_matrix.md → 03_screens/SCREEN_IMPLEMENTATION_PROTOCOL.md → 03_screens/web/screen_web_auth_*.md |
 | Build order lifecycle | 02_features/commerce/product_hub.md → 04_contracts/database_schema.md#orders → 04_contracts/domain_event_catalog.md#commerce → 05_system/queue_retry_design.md |
 | AI video generation | 02_features/production/ai_video_studio.md → 05_system/ai_provider_guide.md → 04_contracts/database_schema.md#generation_jobs → 04_contracts/protobuf_contracts.md |
 | Add platform connector | 04_contracts/connector_specs.md → 05_system/sequence_diagrams.md#connector-sync → 04_contracts/api_endpoint_map.md#connectors → 06_quality_ops/qa_acceptance_packs.md |
-| Debug publish failure | 02_features/publish/publish_hub.md → 04_contracts/api_endpoint_map.md#publish → 05_system/sequence_diagrams.md#publish-flow → 03_screens/web/screen_web_publish_diagnostics.md |
-| Build workflow | 02_features/automation/workflow_studio.md → 05_system/runtime_workflow.md → 05_system/queue_retry_design.md → 04_contracts/domain_event_catalog.md#workflow |
+| Debug publish failure | 02_features/publish/publish_hub.md → 04_contracts/api_endpoint_map.md#publish → 05_system/sequence_diagrams.md#publish-flow → 03_screens/SCREEN_IMPLEMENTATION_PROTOCOL.md → 03_screens/web/screen_web_publish_diagnostics.md |
+| Build workflow | 02_features/automation/workflow_studio.md → 05_system/runtime_workflow.md → 05_system/queue_retry_design.md → 04_contracts/domain_event_catalog.md#workflow → 03_screens/SCREEN_IMPLEMENTATION_PROTOCOL.md |
 | Implement billing | 01_business/pricing_and_credits.md → 02_features/platform/reporting_admin_billing.md → 04_contracts/database_schema.md#billing → 04_contracts/api_endpoint_map.md#admin |
 | Build profit / reconciliation | 02_features/finance/operating_ledger.md → 04_contracts/database_schema.md#finance → 04_contracts/domain_event_catalog.md#finance → 05_system/sequence_diagrams.md |
 | Setup dev environment | 06_quality_ops/docker_dev_environment.md → 05_system/tech_stack_adr.md → 04_contracts/database_schema.md |

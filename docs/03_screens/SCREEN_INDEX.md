@@ -1,7 +1,7 @@
 ---
 layer: screens
 canonical: true
-last_updated: 2026-03-31
+last_updated: 2026-04-06
 ---
 
 > ## AI Reading Rule
@@ -12,16 +12,17 @@ last_updated: 2026-03-31
 > Thứ tự đúng:
 > 1. docs/02_features/<domain>/<feature>.md — business logic + AC
 > 2. docs/04_contracts/ — field names, event names, permissions
-> 3. docs/03_screens/<platform>/<screen>.md — UI layout + states
+> 3. docs/03_screens/SCREEN_IMPLEMENTATION_PROTOCOL.md — alias + placeholder resolution rules
+> 4. docs/03_screens/<platform>/<screen>.md — UI layout + states
 >
 > Nếu screen doc và feature doc mâu thuẫn — feature doc wins.
 
 # Creativanta — Screen Inventory (Canonical)
 
-> **Total**: 238 screen files (133 Web + 61 Mobile + 32 Admin + 12 Shared)
-> **Note**: Counts verified against filesystem 2026-04-01
-> **Updated**: 2026-03-31 (v7 — Consolidated to docs/03_screens/)
-> **Status**: Inventory verified. Coverage gaps noted below (§Still Missing vs Full S26 Spec).
+> **Total**: 243 screen files (133 Web + 61 Mobile + 37 Admin + 12 Shared)
+> **Note**: Counts verified against filesystem 2026-04-06
+> **Updated**: 2026-04-06 (v8 — Admin coverage completed + screen implementation protocol added)
+> **Status**: Inventory verified. Admin coverage complete. Legacy screen aliases are governed by `SCREEN_IMPLEMENTATION_PROTOCOL.md`.
 > **Migrated from**: `docs/screens/SCREEN_INDEX.md` (base) + `docs/screen_index.md` (supplementary)
 
 ---
@@ -413,6 +414,11 @@ last_updated: 2026-03-31
 | A030 | `screen_admin_system_config.md` | System Configuration (S26 §11) |
 | A031 | `screen_admin_incident_manager.md` | Incident Manager (S26 §9) |
 | A032 | `screen_admin_admin_management.md` | Admin Team Management (S26 §2) |
+| A033 | `screen_admin_connector_debug.md` | Connector Debug |
+| A034 | `screen_admin_knowledge_base_editor.md` | Knowledge Base Editor |
+| A035 | `screen_admin_email_campaign_manager.md` | Email Campaign Manager |
+| A036 | `screen_admin_dlq_inspector.md` | DLQ Inspector |
+| A037 | `screen_admin_subscription_override.md` | Subscription Override |
 
 ---
 
@@ -441,18 +447,9 @@ last_updated: 2026-03-31
 |---|---|---|
 | Web | 133 | ✅ Complete (includes `screen_web_monetization_os.md` added 2026-04-02) |
 | Mobile | 61 | ✅ Complete (M012 ID intentionally skipped — no gap) |
-| Admin | 32 | ⚠️ 5 listed below not yet created vs full S26 spec |
+| Admin | 37 | ✅ Complete |
 | Shared | 12 | ✅ Complete |
-| **TOTAL** | **238** | **Coverage gaps: 5 lower-priority admin screens noted below** |
-
-### Still Missing vs Full S26 Spec
-| Screen | S26 Section | Priority |
-|---|---|---|
-| Connector Debug | §16.2 | P2 |
-| Knowledge Base Editor | §8 (Support) | P2 |
-| Email Campaign Manager | §13 | P2 |
-| DLQ Inspector (standalone) | §15.2 | P3 — covered in Job Monitor |
-| Subscription Override | §6.2 | P3 — covered in Subscriptions |
+| **TOTAL** | **243** | **Coverage complete; see protocol for legacy shorthand resolution rules** |
 
 ---
 
@@ -477,7 +474,7 @@ last_updated: 2026-03-31
 | M17 Live | 4 | 1 | — | Planner, war room, summary |
 | M18 Seeding | 3 | 1 | — | Requests, assignments, campaigns |
 | M23 Settings | 15 | 6 | — | Full config, connectors, credits |
-| Platform Ops | — | — | 5 | System health, jobs, flags |
+| Platform Ops | — | — | 10 | System health, jobs, flags, connector debug, DLQ, campaigns |
 | Content Mod | — | — | 3 | Moderation + abuse |
 | Security/Compliance | — | — | **4** | **NEW: Fraud, GDPR, Incidents, Admin Mgmt** |
 | System Config | — | — | **1** | **NEW: System Configuration** |
@@ -526,20 +523,20 @@ Creator Pro → Media Kit → Share with brand → Brand Deal → Deliverables �
 
 > [!IMPORTANT]
 > **Files are categorized by quality tier.** Tier A = full spec (15+ sections). Tier B = adequate (8+ sections). Tier C = sparse (<8 sections, needs upgrade).
-> As of v5 audit, ~55% of files are Tier C. Systematic upgrades in progress.
+> Legacy Tier C shorthand is no longer a blocking implementation risk because contract/schema derivation is governed by `SCREEN_IMPLEMENTATION_PROTOCOL.md`. Do not implement placeholder table/RPC names literally.
 
 ### Known Issues (tracked)
 1. ~~`screen_mobile_idea_board.md` duplicate~~ — **RESOLVED** (deleted 2026-03-28)
 2. Trust Badge source classes need alignment with PRD canonical taxonomy
 3. ~~Admin dashboard RBAC~~ — **RESOLVED** (aligned to S26 8-role spec)
-4. ~~9 admin screens from root `screen_index.md` not yet created~~ — **PARTIALLY RESOLVED** (5 critical screens created, 5 remaining are lower priority or covered by existing screens)
+4. ~~9 admin screens from root `screen_index.md` not yet created~~ — **RESOLVED** (standalone screens A033-A037 created on 2026-04-06)
 5. **Screen ID Policy (DEC-008 + 2026-04-04 clarification)**:
    - IDs follow the `{Platform}{Number}` pattern: `W###` (Web), `M###` (Mobile), `A###` (Admin), `S###` (Shared).
    - **Letter suffixes** (e.g., `W012a`, `W075a`, `W075b`) are allowed for screens inserted between existing numbered IDs to avoid cascading renumbering. These are intentional insertion IDs, not errors.
    - Mixed legacy formats (W-AUTH-02 etc.) are accepted per DEC-008 for existing docs. New screens should use `{Platform}{Number}` or `{Platform}{Number}{letter}`.
    - Cross-reference should use **path + title + module**, not ID format alone.
    - **Metadata formats**: Two styles exist: (a) inline blockquote (`> **Screen ID**: W001`) used by most screens, and (b) YAML frontmatter (`screen_id: W075b`) used by `screen_web_monetization_os.md`. Both are valid.
-6. ~124 Tier C files need upgrade to full 20-point structure
+6. Tier upgrades continue, but implementation must follow `SCREEN_IMPLEMENTATION_PROTOCOL.md` rather than relying on legacy aliases in older files
 7. ~~Module attribution: `screen_mobile_content_idea_board.md` incorrectly references M04~~ — **RESOLVED** (verified 2026-04-03: file correctly references M05 — Idea Engine per BUILD_INDEX)
 8. ~~Admin Dashboard duplicate sections~~ — **RESOLVED** (template placeholders removed, proper section numbering applied)
 9. **NEW**: Web Capability Matrix (M22) screen created — `screen_web_capability_matrix.md`
@@ -557,6 +554,6 @@ Creator Pro → Media Kit → Share with brand → Brand Deal → Deliverables �
 > - Cross-Screen Navigation Map (§ Primary Flows + Global Access)
 > - Route information (available in supplementary but not base)
 >
-> **Historical count note**: Base counted 233 files; supplementary counted 235 routes — due to different deduplication approaches. Current authoritative count is in the header (238 as of 2026-04-02).
+> **Historical count note**: Base counted 233 files; supplementary counted 235 routes — due to different deduplication approaches. Current authoritative count is in the header (243 as of 2026-04-06).
 >
 > **No conflicts detected** — content was complementary, not contradictory.

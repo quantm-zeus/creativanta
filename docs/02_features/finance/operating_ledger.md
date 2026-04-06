@@ -4,7 +4,7 @@ module: M19
 canonical: true
 domain: finance
 status: READY
-last_updated: 2026-03-30
+last_updated: 2026-04-06
 ---
 
 # Feature: Operating Ledger & Proof System (M19)
@@ -44,8 +44,8 @@ M19 exists as the **financial truth and proof layer** — the operating ledger t
 | Actor | Role | Primary Actions |
 |---|---|---|
 | Finance Operator | Editor+ | Review profit, drill into costs, submit evidence, trigger reconciliation |
-| Manager | Manager+ | Queue reconciliation, override reconciliation conflicts, assemble proof bundles |
-| Admin | Admin+ | Force-reconcile, export financial reports, configure anomaly thresholds |
+| Manager | Manager+ | Review profit, export reports, assemble proof bundles |
+| Admin | Admin+ | Queue reconciliation, force-reconcile, override reconciliation conflicts, configure anomaly thresholds |
 | System (Reconciliation) | System | Match settlements to orders, detect conflicts, update reconciliation states |
 | System (Snapshot) | System | Compute profit snapshots, detect anomalies, refresh materialized views |
 | System (Cost Tracker) | System | Record cost_items from generation_jobs (AI credits), commissions, shipping |
@@ -58,7 +58,7 @@ M19 exists as the **financial truth and proof layer** — the operating ledger t
 4. **RULE-M19-004**: Profit formula: `Net Profit = Gross Revenue − Platform Fees − Shipping − COGS − AI Credits − Affiliate Commissions − Ads Spend − Seeding Costs − Refund Deductions − Other Costs`. Each line item carries its own `source_class` and `confidence`. The formula result inherits the LOWEST confidence from any contributing line item (Pack 06 §5, DB schema §11.3).
 5. **RULE-M19-005**: Evidence objects are **immutable** — once created, they cannot be edited or deleted. Each evidence object has a `content_hash` (SHA-512) for integrity verification. Evidence supports: screenshots, API responses, receipts, reports, platform data exports (DB schema §11.4).
 6. **RULE-M19-006**: Proof bundles assemble multiple evidence objects into a coherent claim. Every proof bundle MUST document: claim scope, claim summary, supporting evidence IDs, confidence band, coverage summary, and unresolved gaps. Gaps are explicitly listed — a proof bundle with unresolved gaps is still valid but with reduced confidence (DB schema §11.5, Pack 06 §7.2).
-7. **RULE-M19-007**: Reconciliation state machine: `awaiting_evidence → pending_reconciliation → reconciled / partially_reconciled / disputed`. Override requires Manager+ with reason + audit trail. Conflicts cannot be auto-resolved; they require human decision (Pack 06 §6, DB schema §11.1).
+7. **RULE-M19-007**: Canonical reconciliation truth uses the shared enum `reconciliation_state`: `awaiting_evidence`, `imported_only`, `inferred_pending_confirmation`, `partially_reconciled`, `fully_reconciled`, `conflict_detected`, `manually_overridden`. `settlements.settlement_state` is a separate ingestion lifecycle (`imported → normalized → ready_for_matching → archived`) and MUST NOT be confused with reconciliation truth. Override requires Manager+ with reason + audit trail. Conflicts cannot be auto-resolved; they require human decision (Pack 06 §6, DB schema §11.1).
 8. **RULE-M19-008**: Money cards (UI) MUST show: (a) the monetary value, (b) source class badge (colored icon), (c) confidence indicator (high/medium/low), (d) data freshness timestamp, (e) drilldown CTA to underlying objects/evidence. Frontend MUST NOT perform ad-hoc financial calculations — it MUST consume pre-computed values from profit_snapshots and derived views (Pack 06 §11).
 
 ## Main Flow
@@ -75,12 +75,16 @@ M19 exists as the **financial truth and proof layer** — the operating ledger t
    - Other: manual entry with evidence requirement
 3. **Settlement import**: Platform settlements ingested
    - Settlement data imported (Shopee weekly payout, TikTok settlement, etc.)
+   - `settlement_state = 'imported'`, `reconciliation_state = 'imported_only'`
    - `settlement.imported` event emitted
 4. **Reconciliation**: System matches settlements to orders
    - Automatic matching by external_order_id, amount, date
-   - Matched → `reconciliation_state = 'reconciled'`
+   - Candidate match found but human confirmation still needed → `inferred_pending_confirmation`
+   - Fully matched and confirmed → `fully_reconciled`
    - Partially matched → `partially_reconciled`
-   - Unmatched items → enter unreconciled bucket
+   - Mismatch detected → `conflict_detected`
+   - Manager override with reason → `manually_overridden`
+   - Unmatched imported items remain `imported_only`; evidence-gated items remain `awaiting_evidence`
    - `settlement.reconciled` or `reconciliation.conflict_detected` events emitted
 5. **Profit snapshot computation**: System computes materialized profit views
    - Per scope: workspace, product, platform, campaign, content, period
@@ -127,7 +131,7 @@ M19 exists as the **financial truth and proof layer** — the operating ledger t
 
 ### EC-M19-002: Settlement Import with No Matching Orders
 - Condition: Platform settlement contains orders not in the system
-- Expected behavior: Unmatched settlement items enter unreconciled bucket with `reconciliation_state = 'awaiting_evidence'`. System suggests: "Import missing orders from [Platform]" CTA. Unreconciled amount visible on dashboard. Revenue from these items shows as `source_class = 'unreconciled'` until matched.
+- Expected behavior: Unmatched settlement items enter unreconciled bucket with `reconciliation_state = 'imported_only'`. System suggests: "Import missing orders from [Platform]" CTA. Unreconciled amount visible on dashboard. Revenue from these items shows as `source_class = 'unreconciled'` until matched.
 - Reference: RULE-M19-003, RULE-M19-007
 
 ### EC-M19-003: Refund Impact on Profit Snapshot
@@ -144,26 +148,29 @@ M19 exists as the **financial truth and proof layer** — the operating ledger t
 
 ### Reconciliation State
 
-Object: order / settlement | DB column: `orders.reconciliation_state`, `settlements.settlement_state`
+Object: order / settlement / reconciliation_record | DB column: `orders.reconciliation_state`, `settlements.reconciliation_state`, `reconciliation_records.reconciliation_state`
 
 | From | To | Trigger | Condition |
 |---|---|---|---|
-| — | awaiting_evidence | Object created without match | Default initial state |
-| awaiting_evidence | pending_reconciliation | Settlement or matching data available | Match candidate identified |
-| pending_reconciliation | reconciled | System confirms match | Amount, ID, date match within threshold |
-| pending_reconciliation | partially_reconciled | Partial match | Some data matches, some discrepancies |
-| pending_reconciliation | disputed | Conflict detected | Amount mismatch exceeds threshold |
-| disputed | reconciled | Manager overrides with reason | Manual resolution + audit trail |
-| partially_reconciled | reconciled | Missing data provided | Gaps filled |
+| — | imported_only | Settlement imported | Imported payout exists but no canonical match confirmed yet |
+| — | awaiting_evidence | Manual or inferred record created | Supporting evidence still missing |
+| imported_only | inferred_pending_confirmation | Candidate match found | Auto-match confidence passes threshold but requires confirmation |
+| awaiting_evidence | inferred_pending_confirmation | Evidence uploaded and candidate match found | Manual/derived record becomes matchable |
+| inferred_pending_confirmation | fully_reconciled | Match confirmed | Amount, identity, and timing all validated |
+| inferred_pending_confirmation | partially_reconciled | Partial match accepted | Some evidence is still unresolved |
+| inferred_pending_confirmation | conflict_detected | Conflict detected | Amount mismatch or duplicate claim |
+| partially_reconciled | fully_reconciled | Missing evidence provided | Gaps filled |
+| conflict_detected | manually_overridden | Manager overrides with reason | Exception accepted and audit recorded |
+| fully_reconciled | conflict_detected | Later discrepancy discovered | Re-opened due to reversal/refund/data correction |
 
 ## Related Contracts
 
 | Topic | File | Section |
 |---|---|---|
-| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §11 (settlements, cost_items, profit_snapshots, evidence_objects, proof_bundles), §10.3 (orders.fee_breakdown, orders.reconciliation_state) |
+| DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §11 (settlements, cost_items, profit_snapshots, evidence_objects, proof_bundles), §10.3 (`orders.reconciliation_state`), §19.9E (`reconciliation_records.reconciliation_state`) |
 | API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.7 (SettlementService, CostService, ProfitService, ReconciliationService, EvidenceService, ProofService — ~20 RPCs) |
 | Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §10 (settlement.imported, settlement.reconciled, cost.recorded, profit.snapshot_updated, profit.anomaly_detected, evidence.submitted, proof_bundle.assembled, reconciliation.conflict_detected) |
-| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.8 (finance — Editor+ for viewing, Manager+ for reconciliation, Admin+ for override) |
+| RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.8 (finance — Manager+ for profit views, Admin+ for reconciliation manage/override, Editor+ for evidence submission) |
 | Pack 06 | Pack 06 — Finance/Proof Contract <!-- Legacy ref: creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §5 (Profit OS), §6 (Reconciliation), §7 (Proof Layer), §11 (FE/UX — money cards) |
 | Source class | PRD Part 1, §15.1 | official, imported, inferred, estimated, unreconciled |
 
@@ -184,7 +191,7 @@ Object: order / settlement | DB column: `orders.reconciliation_state`, `settleme
 
 1. **Given** a profit dashboard is displayed, **when** the profit snapshot includes a mix of official (70%) and estimated (30%) data, **then** the money card MUST show: the profit value, a "medium confidence" badge, a caveat "Includes estimated values (30%)," source class breakdown on drilldown — the card MUST NOT present the value as official truth.
 
-2. **Given** a settlement is imported from Shopee, **when** 5 out of 20 settlement line items have no matching orders in the system, **then** those 5 items MUST appear in the unreconciled bucket with `reconciliation_state = 'awaiting_evidence'` — the unreconciled bucket MUST be visible on the profit dashboard, not hidden or collapsed.
+2. **Given** a settlement is imported from Shopee, **when** 5 out of 20 settlement line items have no matching orders in the system, **then** those 5 items MUST appear in the unreconciled bucket with `reconciliation_state = 'imported_only'` — the unreconciled bucket MUST be visible on the profit dashboard, not hidden or collapsed.
 
 3. **Given** a `commission.calculated` event fires from M16, **when** M19 processes it, **then** a `cost_item` MUST be created with `cost_type = 'commission'`, linked to the order/campaign scope — the commission MUST appear as a line item in the profit formula deductions.
 

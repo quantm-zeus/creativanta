@@ -4,7 +4,7 @@
 > **Module**: M23 — Settings
 > **Route**: `/settings/diagnostics`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: Pack 10, A1 Schema (diagnostics_records, service_health), B5 RBAC §2.9
+> **Upstream**: M23 Part A, A1 Schema (`diagnostics_records`, `platform_health_metrics`, `system_alerts`), A3 API (`DiagnosticsService`, `PlatformHealthService`), B5 RBAC §2.9
 
 ---
 

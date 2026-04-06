@@ -384,7 +384,8 @@ last_updated: 2026-04-02
   },
   "net_profit": "11520000.000000",
   "currency": "VND",
-  "source_class": "reconciled",
+  "source_class": "official",
+  "reconciliation_state": "fully_reconciled",
   "computed_at": "2026-04-02T16:00:00Z",
   "unreconciled_count": 3
 }
@@ -405,7 +406,7 @@ last_updated: 2026-04-02
 // Response (200 OK)
 {
   "id": "019086d1-6666-7000-8000-000000000001",
-  "reconciliation_state": "reconciled",
+  "reconciliation_state": "fully_reconciled",
   "matched_amount": "350000.000000",
   "variance": "0.000000",
   "reconciled_at": "2026-04-02T16:05:00Z",
@@ -467,9 +468,9 @@ last_updated: 2026-04-02
 {
   "run_id": "019086e1-9999-7000-8000-000000000001",
   "workflow_id": "019086e0-8888-7000-8000-000000000001",
-  "status": "started",
-  "current_node": "n1",
-  "started_at": "2026-04-02T16:15:00Z",
+  "status": "queued",
+  "current_node": null,
+  "created_at": "2026-04-02T16:15:00Z",
   "sse_url": "/api/v1/workflow-runs/019086e1-9999/stream"
 }
 ```

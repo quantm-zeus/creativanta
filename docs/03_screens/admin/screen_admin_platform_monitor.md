@@ -1,10 +1,10 @@
 # Screen: Admin — Platform Integration Monitor
 
 > **Screen ID**: A007
-> **Module**: Admin — Operations
+> **Module**: S26 — Platform Operations
 > **Route**: `/admin/platforms`
 > **Platform**: Admin Web (SvelteKit) — VPN-only
-> **Upstream**: A1 Schema (platform_connections), B5 RBAC §3
+> **Upstream**: A1 Schema (`connected_accounts`, `platform_health_scores`, `webhook_events`, `background_jobs`), A3 API (`ConnectorService/GetAllStatus`, `ConnectorService/GetSyncStatus`, `ConnectorService/GetTokenStatus`, `ConnectorService/GetDebugLog`, `ConnectorService/ListWebhookDeliveries`), B5 RBAC §3
 
 ---
 
@@ -72,16 +72,15 @@ Monitor all platform integrations — TikTok, Instagram, Shopee, YouTube, Facebo
 ---
 
 ## 4. Component Hierarchy
-```
+```text
 PlatformIntegrationMonitorPage
-├── AdminShell (shared)
-├── PageHeader (Title + Breadcrumb + Actions)
-├── ContentArea
-│   ├── SummaryCards
-│   ├── PrimaryContent
-│   │   └── [Items per wireframe]
-│   └── SecondaryContent
-└── PageFooter
+├── AdminShell
+├── PageHeader
+├── ProviderGrid
+│   └── ProviderHealthCard[]
+├── RecentErrorsPanel
+├── TokenExpiryPanel
+└── DebugShortcutBar
 ```
 
 ---
@@ -89,10 +88,10 @@ PlatformIntegrationMonitorPage
 ## 5. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Primary data | Backend table | `Service/Get` | Formatted display | 15m TTL |
-| List items | Backend query | `Service/List(page)` | Card/row list | Based on criticality |
-| Summary stats | Aggregation | `Service/GetStats` | Count/percentage | 5m TTL |
-| User-facing text | i18n keys | — | Vietnamese | Static |
+| Provider cards | `connected_accounts`, `platform_health_scores` | `ConnectorService/GetAllStatus` | Health cards | 30s TTL |
+| Sync errors | `background_jobs` filtered by provider queue | `ConnectorService/GetDebugLog` | Recent error rows | No cache |
+| Webhook failures | `webhook_events` | `ConnectorService/ListWebhookDeliveries` | Delivery table | No cache |
+| Token expiry | Auth metadata per account | `ConnectorService/GetTokenStatus` | Warning list | 1m TTL |
 
 
 ---
@@ -100,6 +99,7 @@ PlatformIntegrationMonitorPage
 | Screen | Relationship |
 |---|---|
 | [A006] System Health | System overview |
+| [A033] Connector Debug | Deep-dive provider diagnostics |
 | [A010] Audit Log | Operations log |
 ---
 ## Error Handling
@@ -157,5 +157,6 @@ PlatformIntegrationMonitorPage
 
 | Date | Version | Change | Author |
 |---|---|---|---|
+| 2026-04-06 | 2.0 | Canonicalized provider monitor to actual connector health, webhook, and job contracts; added debug-screen handoff path A033. | System |
 | 2026-03-28 | Patch | Removed duplicate template sections. Replaced with screen-specific Error Handling, Accessibility, Loading, Localization, Design Tokens. | System |
 | 2026-03-28 | 1.0 | Initial specification | System |

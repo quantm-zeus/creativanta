@@ -2,6 +2,7 @@
 layer: quality_ops
 canonical: true
 created: 2026-04-01
+last_updated: 2026-04-06
 ---
 
 # Seed Data & Development Fixtures
@@ -59,7 +60,7 @@ VALUES
 -- locale/timezone not in canonical schema (stored in settings JSONB)
 INSERT INTO workspaces (workspace_id, owner_user_id, display_name, slug, subscription_tier, created_at)
 VALUES
-  ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111101', 'Demo Creator Studio', 'demo-studio', 'professional', NOW()),
+  ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111101', 'Demo Creator Studio', 'demo-studio', 'pro', NOW()),
   ('22222222-2222-2222-2222-222222222202', '11111111-1111-1111-1111-111111111101', 'Free Tier Test', 'free-test', 'starter', NOW()),
   ('22222222-2222-2222-2222-222222222203', '11111111-1111-1111-1111-111111111105', 'Business Agency', 'biz-agency', 'business', NOW());
 ```
@@ -122,14 +123,10 @@ VALUES
 
 ## 8. Execution Script
 
-> **Note**: `seed_data.sql` is a **planned implementation artifact** — it will be generated from the SQL snippets in this document during implementation Phase 1. The SQL blocks above (§2-§7) serve as the canonical seed data specification. Until `seed_data.sql` is created, developers should execute the SQL snippets from this document directly.
+> **Note**: `seed_data.sql` now exists as the executable companion to this document. This markdown file remains the canonical explanation of seed intent, ordering, and environment policy; `seed_data.sql` is the canonical runnable fixture.
 
 ```bash
 #!/bin/bash
-# PSEUDO-CODE — seed_data.sql does NOT exist yet.
-# This script will work after seed_data.sql is generated from §2-§7 above
-# during implementation Phase 1.
-#
 # Run from project root
 # Usage: ./scripts/seed.sh [environment]
 
@@ -145,10 +142,7 @@ else
 fi
 
 echo "Seeding $ENV database..."
-# TODO: Generate seed_data.sql from §2-§7 SQL blocks during Phase 1
-# psql "$DB_URL" -f docs/06_quality_ops/seed_data.sql
-echo "ERROR: seed_data.sql not yet generated. Run SQL blocks from seed_data.md §2-§7 manually."
-echo "Example: psql \"\$DB_URL\" -c \"<paste SQL from §2>\""
+psql "$DB_URL" -f docs/06_quality_ops/seed_data.sql
 ```
 
 ## 9. Environment-Specific Behavior
@@ -165,3 +159,4 @@ echo "Example: psql \"\$DB_URL\" -c \"<paste SQL from §2>\""
 - **Docker**: `06_quality_ops/docker_dev_environment.md` (DB initialization)
 - **Schema**: `04_contracts/database_schema.md` (table definitions)
 - **Business rules**: `01_business/business_rules.md` (status values, credit rules)
+- **Executable fixture**: `06_quality_ops/seed_data.sql`

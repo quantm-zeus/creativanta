@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-03-30
+last_updated: 2026-04-06
 ---
 
 # Implementation Order — Build Phases & Dependencies
@@ -10,7 +10,7 @@ last_updated: 2026-03-30
 
 - Each phase unlocks the next; do not skip phases.
 - Canonical objects (One Graph) must exist before modules that consume them.
-- Cross-cutting concerns (auth, RLS, protobuf codegen) are Phase 0 hard blockers.
+- Cross-cutting concerns (auth, RLS, canonical contract scaffolding) are Phase 0 hard blockers.
 - Modules within the same phase can run in parallel unless noted.
 
 ## 2. Build Phases
@@ -20,11 +20,11 @@ last_updated: 2026-03-30
 | Component | Contract Source | Blocker |
 |-----------|----------------|---------|
 | Auth & Workspace (Clerk + JWT + RBAC) | 04_contracts/database_schema.md#workspace | None |
-| DB schema bootstrap | 04_contracts/database_schema.md | **DB-C-001 MUST fix first** |
-| Protobuf codegen (Dart + Rust + TS) | 04_contracts/protobuf_contracts.md | None |
+| DB schema bootstrap | 04_contracts/database_schema.md | None — DB-C-001/002 resolved |
+| Contract scaffolding (`api_endpoint_map` → `/protos/`) | 04_contracts/api_endpoint_map.md + 04_contracts/protobuf_contracts.md | None — generate `/protos/` at implementation kickoff |
 | Design system tokens | 05_system/tech_stack_adr.md#design | None |
 | Dev environment (Docker Compose) | 06_quality_ops/docker_dev_environment.md | None |
-| RLS policies for all tables | 04_contracts/database_schema.md | DB-C-001, DB-C-002 |
+| RLS policies for all tables | 04_contracts/database_schema.md | None — DB-C-001/002 resolved |
 
 ### Phase 1 — Core Intelligence: M02, M03, M04
 
@@ -99,7 +99,7 @@ M17 and M18 can start after M13, parallel with M14–M16.
 ## 3. Parallel Opportunities Summary
 
 ```
-Phase 0: Sequential (foundation)
+Phase 0: Sequential (foundation + contract scaffolding)
 Phase 1: M02 ∥ M03 (M04 waits for M02 partial)
 Phase 2: (M05 → M06) ∥ M08
 Phase 3: M07 → (M09 ∥ M10)

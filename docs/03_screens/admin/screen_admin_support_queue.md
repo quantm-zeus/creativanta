@@ -1,10 +1,10 @@
 # Screen: Admin — Support Queue
 
 > **Screen ID**: A026
-> **Module**: Admin — Support
+> **Module**: S26 — Support Operations
 > **Route**: `/admin/support`
 > **Platform**: Web (SvelteKit) — VPN-only
-> **Upstream**: Admin Spec, A1 Schema (support_tickets)
+> **Upstream**: A1 Schema (`support_tickets`, `support_ticket_messages`, `kb_articles`), A3 API (`SupportService/GetMyTickets`, `SupportService/GetTicket`, `SupportService/ListMessages`, `SupportService/Assign`, `SupportService/Escalate`, `SupportService/Reply`, `SupportService/Close`, `KBService/Search`), B5 RBAC §3
 
 ---
 
@@ -102,16 +102,18 @@ AdminSupportQueuePage
 - SLA timer: real-time countdown
 - Auto-sort: critical first, then by SLA urgency
 - Notifications: push to admin when SLA at risk
+- Related-article suggestions come from `kb_articles` for repeated issue clusters
 
 ### Related Screens
 | Screen | Relationship |
 |---|---|
-| [A026] Support Queue | Full ticket conversation (self-referential) |
+| [A034] Knowledge Base Editor | Create/refresh article from repeated issue clusters |
 | [A001] Admin Dashboard | Summary shown |
 
 ### Revision History
 | Date | Version | Change |
 |---|---|---|
+| 2026-04-06 | 2.0 | Rebound queue screen to canonical support + KB contracts, removed generic data-binding placeholders and self-referential related-screen note. |
 | 2026-03-28 | 1.0 | Initial specification |
 
 ---
@@ -129,10 +131,11 @@ AdminSupportQueuePage
 ## 5. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Primary data | Backend table | `Service/Get` | Formatted display | 15m TTL |
-| List items | Backend query | `Service/List(page)` | Card/row list | Based on criticality |
-| Summary stats | Aggregation | `Service/GetStats` | Count/percentage | 5m TTL |
-| User-facing text | i18n keys | — | Vietnamese | Static |
+| Ticket queue | `support_tickets` | `SupportService/GetMyTickets` (admin-scoped filter) | Priority-sorted ticket rows | No cache |
+| Ticket detail preview | `support_tickets` | `SupportService/GetTicket` | Drawer summary with SLA | No cache |
+| Conversation preview | `support_ticket_messages` | `SupportService/ListMessages` | Latest reply snippet | No cache |
+| SLA summary | `support_tickets` aggregation | same queue response | Breaching / at-risk counters | 30s TTL |
+| KB suggestions | `kb_articles` | `KBService/Search` | Related article chips | 5m TTL |
 
 ---
 ## Error Handling

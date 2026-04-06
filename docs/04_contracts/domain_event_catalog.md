@@ -206,14 +206,25 @@ struct EventMetadata {
 
 | Event Type | Emitter | Key Consumers | Payload |
 |---|---|---|---|
+| `workflow.created` | M20 | Audit | `{workflow_id, version}` |
 | `workflow.activated` | M20 | M23 | `{workflow_id}` |
+| `workflow.paused` | M20 | M23, Audit | `{workflow_id, reason}` |
+| `workflow.archived` | M20 | Audit | `{workflow_id}` |
 | `workflow_run.started` | M20 | M01, Audit | `{run_id, workflow_id, trigger}` |
 | `workflow_run.completed` | M20 | M01, Audit | `{run_id, status, side_effects}` |
+| `workflow_run.partially_completed` | M20 | M01, Audit, Notification | `{run_id, unresolved_actions[]}` |
 | `workflow_run.failed` | M20 | Diagnostics, Notification | `{run_id, error}` |
+| `workflow_run.cancelled` | M20 | Audit | `{run_id, cancelled_by}` |
+| `workflow_run.manual_intervention_required` | M20 | Notification, Audit | `{run_id, current_node, reason}` |
 | `workflow_run.approval_required` | M20 | Notification | `{run_id, action, approver}` |
-| `agent_run.started` | M21 | Audit | `{run_id, plan_summary}` |
+| `agent_run.started` | M21 | Audit | `{run_id, current_state, plan_summary}` |
+| `agent_run.approval_required` | M21 | Notification | `{run_id, risk_actions[], approver_ids[]}` |
+| `agent_run.waiting_context` | M21 | Notification | `{run_id, requested_context_type, prompt}` |
 | `agent_run.completed` | M21 | Audit | `{run_id, side_effects}` |
+| `agent_run.partially_completed` | M21 | Audit, Notification | `{run_id, unresolved_actions[]}` |
+| `agent_run.failed` | M21 | Diagnostics, Notification | `{run_id, error}` |
 | `agent_run.handed_off` | M21 | Notification | `{run_id, handoff_to}` |
+| `agent_run.cancelled` | M21 | Audit | `{run_id, cancelled_by}` |
 | `recipe.installed` | M21 | M20 | `{recipe_id, workflow_id}` |
 
 ## 12. System & Admin Events (M22, M23)
@@ -228,6 +239,8 @@ struct EventMetadata {
 | `subscription.payment_failed` | M23 | Dunning | `{workspace_id, attempt}` |
 | `subscription.changed` | M23 | Limits | `{workspace_id, from_tier, to_tier}` |
 | `diagnostics.record_created` | M23 | M01, Notification | `{diagnostics_id, severity}` |
+| `diagnostics.opened` | M23 | Audit, Analytics | `{workspace_id, actor_user_id, surface}` |
+| `diagnostics.resolved` | M23 | M01, Notification, Audit | `{diagnostics_id, resolved_by, resolution_type}` |
 | `referral.qualified` | M23 | Credits, Notification | `{referrer_id, referee_id}` |
 
 ## 13. Morning Brief Event (§35)
@@ -268,6 +281,7 @@ struct EventMetadata {
 | `admin.credits_adjusted` | S26 | Credits, Audit | `{workspace_id, amount, reason, admin_id}` |
 | `admin.plan_overridden` | S26 | Billing | `{workspace_id, from_tier, to_tier, reason}` |
 | `admin.refund_issued` | S26 | Billing, Audit | `{workspace_id, amount, reason}` |
+| `admin.override_applied` | S26 | Audit, Billing, Finance, Workflow | `{override_id, domain, object_ref, old_state, new_state, admin_id, reason}` |
 | `admin.impersonation_started` | S26 | Audit, Security | `{admin_id, target_user_id, mode}` |
 | `admin.impersonation_ended` | S26 | Audit | `{session_id, duration_seconds}` |
 | `moderation.case_created` | S26 | Content Admin | `{case_id, type, severity, object_ref}` |
@@ -295,6 +309,7 @@ struct EventMetadata {
 
 | Event Type | Emitter | Key Consumers | Payload |
 |---|---|---|---|
+| `audit.event_captured` | Platform | Audit, Forensics | `{audit_event_id, actor_id, action, object_ref, source_ip}` |
 | `file.uploaded` | System | Virus Scanner | `{upload_id, purpose, size_bytes, mime_type}` |
 | `file.virus_detected` | Scanner | Security Alert | `{upload_id, threat_name}` |
 | `export.completed` | System | Notification | `{export_id, type, file_url}` |
@@ -437,7 +452,7 @@ struct EventMetadata {
 | Event | Owner | Consumer | Payload Key Fields |
 |---|---|---|---|
 | `sla.breached` | M12 | Notification, Admin | `{thread_id, sla_type, breach_minutes, priority}` |
-| `workflow.approval_required` | M20 | Notification | `{run_id, workflow_id, step_name, approver_ids[]}` |
+| `workflow_run.approval_required` | M20 | Notification | `{run_id, workflow_id, step_name, approver_ids[]}` |
 
 ### 16.5 Publish
 

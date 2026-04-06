@@ -1,10 +1,10 @@
 # Screen: Admin — System Health
 
 > **Screen ID**: A006
-> **Module**: Admin — Operations
+> **Module**: S26 — Core Operations
 > **Route**: `/admin/health`
 > **Platform**: Admin Web (SvelteKit) — VPN-only
-> **Upstream**: A1 Schema (service_health), B5 RBAC §3
+> **Upstream**: A1 Schema (`diagnostics_records`, `platform_health_metrics`, `system_alerts`, `background_jobs`), A3 API (`AdminService/GetSystemHealth`, `AdminAlertService/GetActive`, `AdminJobService/GetQueueStats`), B5 RBAC §3
 
 ---
 
@@ -67,16 +67,14 @@ Real-time system health dashboard — all services status, resource usage, alert
 ---
 
 ## 4. Component Hierarchy
-```
+```text
 SystemHealthPage
-├── AdminShell (shared)
-├── PageHeader (Title + Breadcrumb + Actions)
-├── ContentArea
-│   ├── SummaryCards
-│   ├── PrimaryContent
-│   │   └── [Items per wireframe]
-│   └── SecondaryContent
-└── PageFooter
+├── AdminShell
+├── PageHeader
+├── ServiceGrid
+├── ResourcePanel
+├── ActiveAlertsPanel
+└── UptimeSummary
 ```
 
 ---
@@ -84,10 +82,10 @@ SystemHealthPage
 ## 5. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Primary data | Backend table | `Service/Get` | Formatted display | 15m TTL |
-| List items | Backend query | `Service/List(page)` | Card/row list | Based on criticality |
-| Summary stats | Aggregation | `Service/GetStats` | Count/percentage | 5m TTL |
-| User-facing text | i18n keys | — | Vietnamese | Static |
+| Service grid | `platform_health_metrics`, `diagnostics_records` | `AdminService/GetSystemHealth` | Latency/uptime/error tiles | 30s TTL |
+| Active alerts | `system_alerts` | `AdminAlertService/GetActive` | Severity rows | No cache |
+| Queue pressure | `background_jobs` aggregation | `AdminJobService/GetQueueStats` | Queue lag + workers | 30s TTL |
+| Resource usage | Infra health projection | `AdminService/GetSystemHealth` | CPU/RAM/Disk bars | 30s TTL |
 
 
 ---
@@ -153,5 +151,6 @@ SystemHealthPage
 
 | Date | Version | Change | Author |
 |---|---|---|---|
+| 2026-04-06 | 2.0 | Rebound system-health screen to canonical diagnostics, alert, and queue contracts; removed generic service-health placeholder references. | System |
 | 2026-03-28 | Patch | Removed duplicate template sections. Replaced with screen-specific Error Handling, Accessibility, Loading, Localization, Design Tokens. | System |
 | 2026-03-28 | 1.0 | Initial specification | System |

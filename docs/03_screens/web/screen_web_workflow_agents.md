@@ -1,10 +1,10 @@
 # Screen: Web — AI Agent Runs
 
 > **Screen ID**: W106
-> **Module**: M20 — Workflow Studio (Agents)
+> **Module**: M21 — Recipe & Agent Center
 > **Route**: `/agents`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: PRD §28, A1 Schema (agent_runs, agent_steps, agent_outputs), B5 RBAC §2.7
+> **Upstream**: PRD §28, A1 Schema (`agent_runs`, `agent_run_steps`, `agent_outputs`), B5 RBAC §2.7
 
 ---
 

@@ -52,8 +52,8 @@ last_updated: 2026-03-30
 - Date: 2026-03-25
 - Status: Accepted
 - Context: 3 platforms consuming same API — contract drift is inevitable with manual OpenAPI/Swagger.
-- Decision: `.proto` files in `/protos/` directory generate Dart (grpc-dart), Rust (tonic-build + prost), TypeScript (Connect-ES 2.0)
-- Consequences: One `proto-gen.sh` generates all code. CI validates generated code is current.
+- Decision: Transport contracts are protobuf-first at runtime, but during the docs phase the canonical authoring source is `04_contracts/api_endpoint_map.md` + `04_contracts/api_examples.md`. `.proto` files in `/protos/` are generated from that canonical contract set at implementation kickoff, then become the transport/codegen source for Dart (grpc-dart), Rust (tonic-build + prost), and TypeScript (Connect-ES 2.0).
+- Consequences: One contract authoring surface exists before codegen. Implementation Phase 1 begins by generating `/protos/` from the canonical API map, after which `proto-gen.sh` becomes the source for generated client/server bindings. CI validates generated code is current once `/protos/` exists.
 - Must not reverse because: Any alternative requires manual sync across 3 codegen targets
 
 ## ADR-006: Self-hosted on Contabo VPS
@@ -136,3 +136,12 @@ last_updated: 2026-03-30
 - Decision: Apache ECharts via echarts-svelte wrapper
 - Consequences: Canvas + SVG rendering, built-in i18n (Vietnamese), 3.5M npm downloads/week. SSR-compatible.
 - Must not reverse because: No Svelte-native alternative has equivalent financial chart support
+
+## ADR-015: UUID v7 for Application-Generated IDs, DB UUID v4 Fallback
+
+- Date: 2026-04-06
+- Status: Accepted
+- Context: Docs referenced both UUID v7 examples and `gen_random_uuid()` DB defaults, leaving ID policy ambiguous.
+- Decision: Application-generated external/public IDs MUST use UUID v7. Database defaults may continue using `gen_random_uuid()` as a fallback for seeds, backfills, and internal records when the application layer does not pre-supply an ID.
+- Consequences: Sortable IDs for APIs and event streams without blocking local seeding or migration ergonomics. Schema docs must state the dual rule explicitly.
+- Must not reverse because: Time-sortable IDs materially simplify pagination, event ordering, and debugging across web/mobile/admin surfaces

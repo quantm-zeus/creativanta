@@ -4,7 +4,7 @@
 > **Module**: M23 — Settings
 > **Route**: `/settings/billing`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: Product Freeze §27, A1 Schema (subscriptions, subscription_plans, payment_methods, invoices, ai_credit_transactions), B5 RBAC §2.19
+> **Upstream**: M23 Part A, A1 Schema (`workspaces`, `subscriptions`, `invoices`, `payment_methods`, `ai_credit_transactions`, `billing_events`, `workspace_members`, `connected_accounts`), A3 API (`BillingService`, `CreditService`, `UsageService`, `WorkspaceService`, `ConnectorService`), B5 RBAC §2.19
 
 ---
 
@@ -209,18 +209,18 @@ SettingsBillingPage
 
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Current plan name | `subscriptions.plan_id → subscription_plans.name` | `BillingService/GetSubscription(workspace_id)` | Badge + name ("💎 Pro Plan") | 5m TTL |
-| Plan price | `subscription_plans.price_monthly` | Same | "499.000 VND/tháng" (VND compact) | 5m TTL |
+| Current plan name | `subscriptions.plan_tier` | `BillingService/GetCurrentPlan(workspace_id)` | Badge + localized display name ("💎 Pro Plan") | 5m TTL |
+| Plan price | `BillingService/GetCurrentPlan` response for current `plan_tier` | `BillingService/GetCurrentPlan(workspace_id)` | "499.000 VND/tháng" (VND compact) | 5m TTL |
 | Next billing | `subscriptions.current_period_end` | Same | "15/04/2026" (DD/MM/YYYY) | 5m TTL |
 | Auto-renew status | `subscriptions.auto_renew` | Same | "✅ ON" / "⏸ OFF" | 5m TTL |
 | Credit balance | `ai_credit_transactions` aggregated | `CreditService/GetBalance(workspace_id)` | "320 / 1.000 còn lại" + progress bar | 1m TTL |
 | Credit reset date | `subscriptions.current_period_end` | Same | "Resets: 15/04" | 5m TTL |
-| Storage used | `workspace_usage.storage_bytes` | `UsageService/GetStorageUsage` | "4.2 GB / 10 GB" + progress bar | 5m TTL |
+| Storage used | `UsageService/GetStorageUsage` response | `UsageService/GetStorageUsage` | "4.2 GB / 10 GB" + progress bar | 5m TTL |
 | Member count | `workspace_members.count` | `WorkspaceService/GetMemberCount` | "3 / 5 seats" | 5m TTL |
-| Channel count | `connectors.count WHERE active=true` | `ConnectorService/CountActive` | "3 / 5 connected" | 5m TTL |
-| Credit tiers | `credit_packages` config table | `BillingService/ListCreditPackages` | Price cards with discounts | 1h TTL |
+| Channel count | `connected_accounts` count where active = true | `ConnectorService/CountActive` | "3 / 5 connected" | 5m TTL |
+| Credit tiers | `BillingService/ListCreditPackages` response | `BillingService/ListCreditPackages` | Price cards with discounts | 1h TTL |
 | Payment method | Stripe Customer → PaymentMethods | `BillingService/GetPaymentMethods` | Card type + last 4 + expiry | 5m TTL |
-| Payment alert | `subscriptions.payment_status` | `BillingService/GetSubscription` | Alert banner if status = "past_due" | Real-time |
+| Payment alert | `subscriptions.status` | `BillingService/GetSubscription` | Alert banner if status = `past_due` | Real-time |
 | Billing history | Stripe invoices | `BillingService/ListInvoices(page)` | Invoice table rows | 15m TTL |
 
 ### Plan Comparison Matrix

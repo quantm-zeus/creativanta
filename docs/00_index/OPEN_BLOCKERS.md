@@ -199,7 +199,7 @@ last_updated: 2026-04-06
 ### SCR-M-001: Screen specs migrated to docs/03_screens/ ✅
 
 - Original: Screen specs in flat `docs/screens/` not mapped to `docs/03_screens/`
-- Resolution: All 238 screen files now consolidated in `docs/03_screens/` with proper subdirectory structure (web/, mobile/, admin/, shared/).
+- Resolution: All screen files now consolidated in `docs/03_screens/` with proper subdirectory structure (web/, mobile/, admin/, shared/). Current canonical count: 243 files after S26 completion on 2026-04-06.
 - Resolved: 2026-03-31
 - Verified: filesystem audit + SCREEN_INDEX.md update
 

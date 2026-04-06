@@ -42,9 +42,9 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 
 | Topic | Canonical File | Notes |
 |-------|---------------|-------|
-| DB schema | 04_contracts/database_schema.md | ~135 CREATE TABLE blocks. RLS (106+), deleted_at (51+), CHECK (23+). All blockers RESOLVED. ✅ 51 DDL comma issues fixed (49 original + 2 additional in `coupons`/`store_pages` Round 5 2026-04-04). |
+| DB schema | 04_contracts/database_schema.md | Canonical table/enum/index contract. Includes workflow/agent step tables, KB tables, admin broadcast/job ops tables, public API usage tables. |
 | API endpoints | 04_contracts/api_endpoint_map.md | **~1,160 canonical RPC definitions** (§2-§20) + ~14 REST endpoints + 6 webhook endpoints. ✅ All API blockers RESOLVED. §10-§20 contain screen-derived RPCs promoted to canonical status (2026-04-06). 100% screen-to-API coverage achieved (907/907). |
-| Protobuf / gRPC | 04_contracts/protobuf_contracts.md | Overview doc only (~52 services, ~310 RPCs). ⚠️ Actual `.proto` files do NOT exist yet — planned for implementation Phase 1. |
+| Protobuf / gRPC | 04_contracts/protobuf_contracts.md | Transport/codegen overview. During docs phase, protobuf is generated from the canonical API authoring set (`api_endpoint_map.md` + `api_examples.md`) at implementation kickoff. |
 | Domain events | 04_contracts/domain_event_catalog.md | ~230 canonical event types (Round 5 2026-04-04). All notification matrix events now have verbatim canonical entries. EVT-H-001 fully resolved (74-row mapping table). |
 | API JSON examples | 04_contracts/api_examples.md | 24 request/response examples, companion to api_endpoint_map.md |
 | RBAC permissions | 04_contracts/rbac_permission_matrix.md | 7 roles × ~114 perms + 8 admin roles (~23 perms). Round 5 (2026-04-04): Added `affiliate:read`, `competitor:read`, `evidence:read`, `membership:read/manage`, `admin:user:read`, `admin:workspace:read`, `admin:commerce:read`. Note: `permission_alias_policy.md` was demoted to non-canonical (HISTORICAL_REFERENCE) — screen docs now use RBAC tokens directly. |
@@ -74,6 +74,8 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 | Performance benchmarks | 06_quality_ops/performance_benchmarks.md | SLA targets, k6 scenarios |
 | Data migration | 06_quality_ops/data_migration_strategy.md | Import sources, CSV, sync |
 | Dev environment | 06_quality_ops/docker_dev_environment.md | Docker Compose + env |
+| Seed fixtures spec | 06_quality_ops/seed_data.md | Fixture design, seed order, environment policy |
+| Executable seed SQL | 06_quality_ops/seed_data.sql | Canonical seed script for local/test bootstrap |
 | Notification templates | 06_quality_ops/notification_templates.md | 13 email, 8 push, in-app |
 | Analytics taxonomy | 06_quality_ops/analytics_event_taxonomy.md | PostHog events, funnels |
 | Moderation rules | 06_quality_ops/moderation_rules_engine.md | Pipeline, EU AI Act |
@@ -86,6 +88,7 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 | Topic | Canonical File | Notes |
 |-------|---------------|-------|
 | Screen index | 03_screens/SCREEN_INDEX.md | Do NOT use old docs/screen_index.md |
+| Screen implementation protocol | 03_screens/SCREEN_IMPLEMENTATION_PROTOCOL.md | Canonical rules for resolving legacy screen aliases and placeholders via feature/contract layers |
 
 ## Meta
 
@@ -95,4 +98,5 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 | Build phases | 00_index/IMPLEMENTATION_ORDER.md | 9 phases, dependencies |
 | Architecture decisions | 00_index/DECISION_LOG.md | ≥12 ADRs |
 | Acceptance tests | 00_index/ACCEPTANCE_TESTS.md | Created in Phase 1B |
-| Cross-layer matrix | 00_index/CROSS_LAYER_MATRIX.md | **28 doc-spec aligned** (feature doc ↔ schema ↔ screens ↔ API service name). ✅ Full-contract alignment achieved: ~1,160 canonical RPCs covering 100% of screen references (907/907). See `screen_api_reconciliation.md` (RESOLVED). Caveat: `ci_cd_pipeline.md` remains SCAFFOLD; legal is launch-gated. |
+| Requirements traceability | 00_index/REQUIREMENTS_TRACEABILITY_MATRIX.md | Module-to-business/feature/contract/runtime/quality traceability backbone |
+| Cross-layer matrix | 00_index/CROSS_LAYER_MATRIX.md | **28 doc-spec aligned** (feature doc ↔ schema ↔ screens ↔ API service name). ✅ Full-contract alignment achieved: ~1,160 canonical RPCs covering 100% of screen references (907/907). See `screen_api_reconciliation.md` (RESOLVED). CI/CD is spec-ready; generated artifacts follow during scaffolding. |

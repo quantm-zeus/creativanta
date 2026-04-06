@@ -2,7 +2,7 @@
 layer: contracts
 canonical: true
 source_file: protobuf_contracts.md  # was impl_a2_protobuf_contracts.md (legacy name)
-last_verified: 2026-04-03
+last_verified: 2026-04-06
 known_issues: []  # API-C-001, API-H-001, API-H-002 all RESOLVED 2026-04-02
 do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 ---
@@ -19,9 +19,9 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 
 # A2 — Protobuf Contract Definitions (Overview & Key Services)
 
-> **Upstream**: Tech Stack ADR v3 (ADR-002), Product Freeze
+> **Upstream**: Tech Stack ADR v3 (ADR-002, ADR-005), Product Freeze
 > **Protocol**: gRPC (mobile↔API) + ConnectRPC (web↔API) + REST (webhooks only)
-> **Location**: `/protos/` — single source of truth, generates Dart + Rust + TypeScript
+> **Location**: `/protos/` — generated in implementation Phase 1 from the canonical contract authoring set (`api_endpoint_map.md` + `api_examples.md`), then used as the transport/codegen source for Dart + Rust + TypeScript
 
 ---
 

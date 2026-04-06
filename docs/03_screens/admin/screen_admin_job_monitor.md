@@ -4,7 +4,7 @@
 > **Module**: S26 — Internal Admin & Operations
 > **Route**: `/admin/jobs`
 > **Platform**: Admin Web (SvelteKit) — VPN-only access
-> **Upstream**: S26 §Operations, A1 Schema (background_jobs, job_queues, job_schedules), B5 RBAC §3
+> **Upstream**: S26 §Operations, A1 Schema (`background_jobs`, `job_schedules`, `job_metrics`, `dead_letter_queue`), A3 API (`AdminJobService/*`), B5 RBAC §3
 
 ---
 

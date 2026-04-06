@@ -5,6 +5,7 @@ canonical: true
 domain: platform
 status: READY
 created: 2026-04-02
+last_updated: 2026-04-06
 upstream: S19 §4, §8, §9
 ---
 
@@ -202,6 +203,8 @@ Feature: Public Status Page
 ## 7. Cross-references
 
 - **Support SLA**: `01_business/legal_compliance.md §7`
+- **DB**: `04_contracts/database_schema.md` §17.8-§17.9D (`support_tickets`, `support_ticket_messages`, `kb_categories`, `kb_articles`, `kb_article_versions`, `article_ratings`)
+- **API**: `04_contracts/api_endpoint_map.md` §19.4-§19.5A (`SupportService`, `KBService`, `KBAdminService`)
 - **Internal Admin**: `02_features/platform/internal_admin.md` (ops manages status page)
 - **Runbook**: `06_quality_ops/runbook.md` (incident procedures)
 - **DR/Failover**: `06_quality_ops/runbook.md §9` (disaster recovery, backup, failover architecture)

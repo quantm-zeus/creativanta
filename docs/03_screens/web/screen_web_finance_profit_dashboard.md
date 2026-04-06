@@ -4,7 +4,7 @@
 > **Module**: M19 — Operating Ledger / Profit Graph / Proof
 > **Route**: `/finance`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: Pack 01 §4, Product Freeze §25-27, A1 Schema (revenue_entries, cost_entries, settlements, proof_bundles, reconciliation_states), B5 RBAC §2.7
+> **Upstream**: Pack 01 §4, Product Freeze §25-27, A1 Schema (`profit_snapshots`, `cost_items`, `settlements`, `proof_bundles`, `reconciliation_state`), B5 RBAC §2.7
 
 ---
 ## 1. Purpose & Context
@@ -212,17 +212,17 @@ ProfitDashboardPage
 
 | Element | Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Revenue total | `SUM(revenue_entries.amount) WHERE period` | `FinanceService/GetProfitSummary(period)` | VND formatted ("45.2M VND") | 15m |
-| Costs total | `SUM(cost_entries.amount) WHERE period` | same | VND formatted | 15m |
+| Revenue total | `profit_snapshots.gross_revenue WHERE scope_type='period'` | `ProfitService/GetSummary(period)` | VND formatted ("45.2M VND") | 15m |
+| Costs total | `profit_snapshots.(platform_fees + shipping_costs + affiliate_commissions + refund_deductions + cogs + ads_spend + ai_credit_costs + other_costs)` | same | VND formatted | 15m |
 | Net profit | Revenue - Costs | Computed client-side | VND formatted | — |
 | Margin | Net Profit / Revenue × 100 | Computed | Percentage ("71.7%") | — |
 | ROI | Net Profit / Costs × 100 | Computed | Percentage ("253%") | — |
-| Revenue by platform | `revenue_entries GROUP BY platform` | `FinanceService/GetRevenueByPlatform(period)` | Donut chart + legend | 15m |
-| Revenue by product | `revenue_entries GROUP BY product_id` | `FinanceService/GetRevenueByProduct(period)` | Bar chart | 15m |
-| Cost breakdown | `cost_entries GROUP BY category` | `FinanceService/GetCostBreakdown(period)` | Table rows | 15m |
+| Revenue by platform | `profit_snapshots WHERE scope_type='platform'` | `ProfitService/GetRevenueByPlatform(period)` | Donut chart + legend | 15m |
+| Revenue by product | `profit_snapshots WHERE scope_type='product'` | `ProfitService/GetRevenueByProduct(period)` | Bar chart | 15m |
+| Cost breakdown | `cost_items GROUP BY cost_type` | `ProfitService/GetCostBreakdown(period)` | Table rows | 15m |
 | Proof status | `proof_bundles.status` per cost category | Included in cost data | Trust badge (S009) | 15m |
-| Reconciliation | `settlements` + `revenue_entries` matching | `ReconciliationService/GetStatus(period)` | Status table | 15m |
-| Monthly trend | 6-month aggregation | `FinanceService/GetTrend(6_months)` | Multi-line chart | 30m |
+| Reconciliation | `settlements.reconciliation_state` + `reconciliation_records` | `ReconciliationService/GetStatus(period)` | Status table | 15m |
+| Monthly trend | 6-month aggregation | `ProfitService/GetTrend(6_months)` | Multi-line chart | 30m |
 | Orders count | `COUNT(orders) WHERE period` | Included in summary | Integer | 15m |
 | Avg order value | Revenue / Orders | Computed | VND formatted | — |
 | Source completeness | Count of platforms with verified data | Computed | "5/5 🟢" | 15m |
@@ -234,8 +234,8 @@ ProfitDashboardPage
 | # | Action | Trigger | Type | API Call | System Response | Navigation | Permission |
 |---|---|---|---|---|---|---|---|
 | 1 | Change period | Period selector dropdown | Filter | Refetch all data | Dashboard updates with animation | — | `profit:read` |
-| 2 | Export PDF | "📤 Export" → "PDF" | Export | `FinanceService/ExportReport(period, 'pdf')` | PDF download | — | `profit:read` |
-| 3 | Export CSV | "📤 Export" → "CSV" | Export | `FinanceService/ExportReport(period, 'csv')` | CSV download | — | `profit:read` |
+| 2 | Export PDF | "📤 Export" → "PDF" | Export | `ProfitService/ExportReport(period, 'pdf')` | PDF download | — | `profit:read` |
+| 3 | Export CSV | "📤 Export" → "CSV" | Export | `ProfitService/ExportReport(period, 'csv')` | CSV download | — | `profit:read` |
 | 4 | View revenue detail | Click revenue card "Detail →" | Navigate | — | — | → `/finance/revenue` | `profit:read` |
 | 5 | View revenue segment | Click donut segment | Navigate | — | — | → `/finance/revenue?platform=[id]` | `profit:read` |
 | 6 | View product detail | Click bar in product chart | Navigate | — | — | → `/products/[id]` | `profit:read` |
@@ -244,7 +244,7 @@ ProfitDashboardPage
 | 9 | View proof bundle | Click proof badge | Navigate | — | — | → `/finance/proof/[id]` | `proof_bundle:read` |
 | 10 | Upload settlement | "📋 Upload settlement file" | Upload | `SettlementService/Upload(file)` | Upload modal → processing → reconciliation | — | `reconciliation:manage` |
 | 11 | View reconciliation | "Chi tiết reconciliation →" | Navigate | — | — | → `/finance/reconciliation` | `reconciliation:manage` |
-| 12 | Export for tax | "📤 Export for tax →" | Export | `FinanceService/ExportTaxReport(quarter)` | Formatted tax export download | — | `profit:read` |
+| 12 | Export for tax | "📤 Export for tax →" | Export | `ProfitService/ExportTaxReport(quarter)` | Formatted tax export download | — | `profit:read` |
 | 13 | Toggle tax section | Click tax section header | Toggle | — | Section expands/collapses | — | `profit:read` |
 
 ---

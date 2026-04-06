@@ -4,7 +4,7 @@
 > **Module**: M23 — Settings
 > **Route**: `/settings/credits/purchase`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: A1 Schema (credit_packages, credit_purchases, payment_methods), B5 RBAC §2.9
+> **Upstream**: M23 Part A, A1 Schema (`ai_credit_transactions`, `payment_methods`, `billing_events`), A3 API (`AdminBillingService/PurchaseCredits`, `BillingService/ListCreditPurchases`, `CreditService/GetCheckoutStatus`, `CreditService/UpdateAutoRefill`), B5 RBAC §2.9
 
 ---
 

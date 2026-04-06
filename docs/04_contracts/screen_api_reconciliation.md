@@ -22,7 +22,7 @@ status: RESOLVED
 | Screen refs matching API map | **907 / 907** | **100% coverage** — all screen RPCs have canonical definitions |
 | Screen refs with no API map entry | **0** | Previously ~572; fully closed |
 | Gap: screen refs without concrete RPC definition | **0** | ✅ Fully resolved |
-| Affected screen files | **0 / 238** | No screens reference undefined RPCs |
+| Affected screen files | **0 / 243** | No screens reference undefined RPCs |
 | Services in screens | **~133** | All services now have canonical RPC definitions |
 | Services with full RPC-level definitions | **~133** | All 133 services fully defined |
 
@@ -1578,4 +1578,3 @@ status: RESOLVED
 | `WorkspaceService/UpdateMemberRole` | Editor+ | Update Member Role (screen-derived) |
 | `WorkspaceService/UpdatePreferences` | Editor+ | Update Preferences (screen-derived) |
 | `WorkspaceService/UpdateProfile` | Editor+ | Update Profile (screen-derived) |
-

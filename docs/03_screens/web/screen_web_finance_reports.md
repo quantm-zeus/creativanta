@@ -4,7 +4,7 @@
 > **Module**: M19 — Operating Ledger (Reports)
 > **Route**: `/profit/reports`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: PRD §33.5 Reporting, A1 Schema (financial_snapshots, orders, cost_entries), B5 RBAC §2.8
+> **Upstream**: PRD §33.5 Reporting, A1 Schema (`profit_snapshots`, `orders`, `cost_items`), B5 RBAC §2.8
 
 ---
 
@@ -245,12 +245,12 @@ FinancialReportsPage
 ## 13. SvelteKit Implementation Notes
 
 - **Route**: `src/routes/(app)/finance/reports/+page.svelte`
-- **Server load**: `+page.server.ts` → `FinanceService/GetReportTemplates()` + `FinanceService/GetSavedReports()`
-- **Report generation**: `FinanceService/GenerateReport(config)` → streaming response
+- **Server load**: `+page.server.ts` → `ProfitService/GetReportTemplates()` + `ProfitService/GetSavedReports()`
+- **Report generation**: `ProfitService/GenerateReport(config)` → streaming response
 - **P&L table**: `<CollapsibleTable>` component with hierarchical rows
 - **Export CSV**: Client-side via `papaparse`
 - **Export PDF**: Server-side `pdf-lib` with trust annotations
-- **Google Sheets**: `FinanceService/ExportToSheets(report_id)` → Google Sheets API
+- **Google Sheets**: `ProfitService/ExportToSheets(report_id)` → Google Sheets API
 - **Saved reports**: Cached 24h, auto-purged after 90d
 - **Trust annotations**: Every line item shows S009 source class badge
 

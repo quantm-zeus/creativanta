@@ -260,7 +260,7 @@ Support Admins in the internal admin site can:
 | DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §4 (workspaces, workspace_members — settings/team), §13 (ai_credit_transactions, subscription_events, diagnostics_records — billing/admin) |
 | API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.8 (Admin/Billing — ~15 RPCs), §6 (Internal Admin — 28 RPCs) |
 | Admin Internal | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §6 (AdminAuthService, UserMgmtService, ModerationService, FraudService, SupportAdminService, IncidentService, SystemConfigService, FeeScheduleService) |
-| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §12 (`diagnostics.record_created`, `credits.deducted`, `subscription.changed`), §16 (`admin.user_suspended`, `admin.credits_adjusted`, `admin.plan_overridden`, `admin.refund_issued`), §17 (`support.ticket_created`). [NOTE: `admin.override_applied`, `audit.event_captured`, `diagnostics.opened`, `diagnostics.resolved` are not in catalog — may need to be added during implementation.] |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §12 (`diagnostics.record_created`, `diagnostics.opened`, `diagnostics.resolved`, `credits.deducted`, `subscription.changed`), §16 (`admin.user_suspended`, `admin.credits_adjusted`, `admin.plan_overridden`, `admin.override_applied`, `admin.refund_issued`), §17 (`support.ticket_created`), §18 (`audit.event_captured`) |
 | RBAC — workspace | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.1 (workspace admin roles: Owner, Admin, Manager), §2.10 (diagnostics, audit_log) |
 | RBAC — internal | S26 §2.3 <!-- Legacy ref: creativanta_supplementary_s26_internal_admin_operations_v_3_1.md — superseded by current feature docs + contract layer --> | Internal admin permission matrix |
 | S26 | S26 — Internal Admin <!-- Legacy ref: creativanta_supplementary_s26_internal_admin_operations_v_3_1.md — superseded by current feature docs + contract layer --> | Full internal admin site spec |
@@ -387,4 +387,3 @@ When a user submits a bug report, the system MUST auto-capture and attach the fo
 | Workspace locale | `workspaces.timezone`, `language` | Localization issues |
 
 > All auto-capture data is included in the bug report payload. No PII (passwords, tokens, financial data) is captured. User is informed: "Diagnostic data will be attached to help resolve this issue faster."
-

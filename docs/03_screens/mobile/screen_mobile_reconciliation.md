@@ -48,12 +48,12 @@ Mobile-optimized reconciliation interface using swipe-to-match interaction. Matc
 - Connected commerce platform(s) for import data
 
 ### Postconditions
-- Reconciliation record updated: `status = fully_reconciled` / `partially_reconciled`
-- Source class upgraded: Imported → Official, Estimated → Confirmed
+- Reconciliation record updated: `reconciliation_state = fully_reconciled` / `partially_reconciled` / `manually_overridden`
+- Source class re-evaluated according to canonical proof rules; matched records surface as higher-trust data
 - Profit snapshots recalculated with improved accuracy
 - Trust score updated
 - Evidence object created linking match
-- Audit event: `finance.reconciled`
+- Audit event: `settlement.reconciled`
 
 ---
 
@@ -187,7 +187,7 @@ ReconciliationScreen
 |---|---|---|---|---|
 | Trust score (before) | `workspace.trust_score` | `TrustService/GetScore` | "82%" + progress bar | 5m TTL |
 | Trust score (after) | Projected from pending items | same | "89%" + projected bar | Computed |
-| Pending items | `reconciliation_records WHERE status IN (awaiting, imported_only, inferred)` | `ReconciliationService/ListRecords` | Card list | No cache |
+| Pending items | `reconciliation_records WHERE reconciliation_state IN ('awaiting_evidence', 'imported_only', 'inferred_pending_confirmation', 'conflict_detected')` | `ReconciliationService/ListRecords` | Card list | No cache |
 | Match suggestions | AI-matched records | `ReconciliationService/GetSuggestions(id)` | Match card with confidence | No cache |
 | Amount | `reconciliation_records.amount` | same | VND formatted (12.000.000đ) | No cache |
 | Confidence | Match confidence score | same | Percentage + color bar | No cache |
@@ -199,13 +199,13 @@ ReconciliationScreen
 
 | # | Action | Trigger | API Call | Mutation | UI Result | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Accept match | Swipe right on card (+haptic) | `ReconciliationService/Confirm(id, match_id)` | `status = fully_reconciled`, source class → Official | Card slides off + trust score animates up + count decreases | `reconciliation:manage` |
+| 1 | Accept match | Swipe right on card (+haptic) | `ReconciliationService/Confirm(id, match_id)` | `reconciliation_state = fully_reconciled` | Card slides off + trust score animates up + count decreases | `reconciliation:manage` |
 | 2 | Reject match | Swipe left on card | `ReconciliationService/RejectMatch(id, match_id)` | Match removed from suggestions | Card stays, "Searching for alternative..." or manual entry prompt | `reconciliation:manage` |
 | 3 | View detail | Tap "👁 Chi tiết" | — | — | Open ReconciliationDetailBottomSheet | `profit:read` |
 | 4 | Manual match | Tap "📝 Nhập thủ công" | — | — | Open ManualMatchBottomSheet | `reconciliation:manage` |
-| 5 | Confirm manual match | Submit manual match form | `ReconciliationService/ManualMatch(id, data)` | `status = fully_reconciled` | Card removed + toast | `reconciliation:manage` |
+| 5 | Confirm manual match | Submit manual match form | `ReconciliationService/ManualMatch(id, data)` | `reconciliation_state = manually_overridden` or `fully_reconciled` | Card removed + toast | `reconciliation:manage` |
 | 6 | Scan bank statement | Tap "📸 Scan" | Camera → `AIService/ScanBankStatement` | — | AI extracts amount/date → auto-fills manual match | `reconciliation:manage` |
-| 7 | Accept with discrepancy | Confirm in discrepancy sheet | `ReconciliationService/ConfirmWithDiscrepancy(id, reason)` | `status = partially_reconciled` | Card removed + toast with warning | `reconciliation:manage` |
+| 7 | Accept with discrepancy | Confirm in discrepancy sheet | `ReconciliationService/ConfirmWithDiscrepancy(id, reason)` | `reconciliation_state = partially_reconciled` | Card removed + toast with warning | `reconciliation:manage` |
 | 8 | Skip item | Tap "⏭ Bỏ qua" | `ReconciliationService/Skip(id)` | Item moves to skipped (temporary) | Card fades + toast "Đã bỏ qua. Sẽ hiện lại sau 7 ngày." | `reconciliation:manage` |
 | 9 | Adjust entry | Tap "📝 Điều chỉnh" on partial match | — | — | Open amount adjustment input | `reconciliation:manage` |
 | 10 | Pull to refresh | Pull down gesture | `ReconciliationService/ListRecords` | — | List refreshes + trust score updates | `reconciliation:manage` |
@@ -246,9 +246,9 @@ ReconciliationScreen
 | Action | Owner | Admin | Manager | Editor | Contributor | Viewer | External |
 |---|---|---|---|---|---|---|---|
 | View reconciliation | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Accept/reject match | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Manual match | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Skip item | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Accept/reject match | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Manual match | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Skip item | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Adjust amounts | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ---

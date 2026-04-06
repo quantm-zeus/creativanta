@@ -527,7 +527,7 @@ Each webhook: signature verification → event parsing → idempotency check (`w
 | `/api/v1/webhooks` | GET | API Key | 30/min | List registered webhooks. Response: array of webhook configs |
 | `/api/v1/webhooks/{id}` | DELETE | API Key | 10/min | Delete webhook registration. Response: 204 |
 
-Rate limit: 100 req/min (read), 30 req/min (write) per API key. IP-based secondary limit: 1000/min. OAuth2 for third-party apps (Phase 2).
+Rate limit: 100 req/min (read), 30 req/min (write) per API key. IP-based secondary limit: 1000/min. Tier differences are enforced by access mode + monthly quota (`Starter` read-only 10k/mo, `Pro` 100k/mo, `Business` 1M/mo, `Enterprise` custom), not by different per-minute limits. OAuth2 for third-party apps (Phase 2).
 
 ---
 
@@ -743,6 +743,10 @@ Rate limit: 100 req/min (read), 30 req/min (write) per API key. IP-based seconda
 | `ConnectorService/GetAllStatus` | POST | Member | 30/min | Get status of all connectors |
 | `ConnectorService/GetSyncStatus` | POST | Member | 60/min | Get sync status for connector |
 | `ConnectorService/GetTokenStatus` | POST | Member | 30/min | Check OAuth token health |
+| `ConnectorService/GetDebugLog` | POST | Admin+ | 30/min | Get connector debug timeline + last errors |
+| `ConnectorService/ListWebhookDeliveries` | POST | Admin+ | 30/min | List webhook deliveries for connector/account |
+| `ConnectorService/ReplayWebhookDelivery` | POST | Admin+ | 5/min | Replay last inbound webhook delivery |
+| `ConnectorService/TestConnection` | POST | Manager+ | 10/min | Execute non-mutating connector connectivity check |
 | `ConnectorService/RefreshToken` | POST | Manager+ | 5/min | Force OAuth token refresh |
 | `ConnectorService/ForceSync` | POST | Manager+ | 5/min | Force immediate sync |
 | `ConnectorService/TriggerSync` | POST | Manager+ | 5/min | Trigger platform data sync |
@@ -1979,6 +1983,10 @@ Rate limit: 100 req/min (read), 30 req/min (write) per API key. IP-based seconda
 | `AdminJobService/KillJob` | POST | Super/Tech | 5/min | Kill job |
 | `AdminJobService/RetryJob` | POST | Super/Tech | 10/min | Retry failed job |
 | `AdminJobService/RetryAllFailed` | POST | Super/Tech | 2/min | Retry all failed |
+| `AdminJobService/ListDLQ` | POST | Super/Tech | 30/min | List dead-letter queue items |
+| `AdminJobService/GetDLQItem` | POST | Super/Tech | 60/min | Get DLQ item detail + retry history |
+| `AdminJobService/RetryDLQItem` | POST | Super/Tech | 10/min | Retry a dead-lettered job |
+| `AdminJobService/PurgeDLQItem` | POST | Super/Tech | 5/min | Discard a DLQ item after review |
 | `AdminJobService/ClearCompleted` | POST | Super/Tech | 5/min | Clear completed jobs |
 | `AdminJobService/StreamLogs` | POST | Super/Tech | 10/min | Stream job logs |
 
@@ -2048,19 +2056,39 @@ Rate limit: 100 req/min (read), 30 req/min (write) per API key. IP-based seconda
 |---|---|---|---|---|
 | `SupportService/CreateTicket` | POST | Contributor+ | 10/min | Create support ticket |
 | `SupportService/GetMyTickets` | POST | Contributor+ | 60/min | Get my support tickets |
+| `SupportService/GetTicket` | POST | Contributor+ | 60/min | Get ticket detail for owner/admin |
+| `SupportService/ListMessages` | POST | Contributor+ | 60/min | List ticket conversation messages |
+| `SupportService/Reply` | POST | Contributor+ | 20/min | Reply to ticket conversation |
 | `SupportService/Assign` | POST | Manager+ | 10/min | Assign ticket |
 | `SupportService/Escalate` | POST | Manager+ | 10/min | Escalate ticket |
+| `SupportService/Close` | POST | Manager+ | 10/min | Close ticket with resolution summary |
 | `SupportService/UploadAttachment` | POST | Contributor+ | 20/min | Upload attachment |
 
 ### 19.5 KBService
 
 | RPC | Method | Auth | Rate Limit | Description |
 |---|---|---|---|---|
+| `KBService/Search` | POST | Member | 60/min | Full-text search KB articles |
 | `KBService/GetCategories` | POST | Member | 60/min | Get KB categories |
 | `KBService/GetCategoryCounts` | POST | Member | 60/min | Get article counts |
 | `KBService/GetPopularArticles` | POST | Member | 60/min | Get popular articles |
+| `KBService/ListRecent` | POST | Member | 60/min | Get recently viewed or recently updated articles |
 | `KBService/GetArticle` | POST | Member | 120/min | Get article detail |
+| `KBService/GetRelated` | POST | Member | 60/min | Get related KB articles |
 | `KBService/RateArticle` | POST | Member | 30/min | Rate article |
+
+### 19.5A KBAdminService
+
+| RPC | Method | Auth | Rate Limit | Description |
+|---|---|---|---|---|
+| `KBAdminService/ListArticles` | POST | Super/Support | 30/min | List KB articles including drafts |
+| `KBAdminService/GetArticle` | POST | Super/Support | 60/min | Get editable KB article detail |
+| `KBAdminService/CreateArticle` | POST | Super/Support | 10/min | Create KB article draft |
+| `KBAdminService/UpdateArticle` | POST | Super/Support | 10/min | Update KB article draft |
+| `KBAdminService/PublishArticle` | POST | Super/Support | 5/min | Publish KB article |
+| `KBAdminService/ArchiveArticle` | POST | Super/Support | 5/min | Archive KB article |
+| `KBAdminService/ListStaleArticles` | POST | Super/Support | 30/min | List articles needing 90-day review |
+| `KBAdminService/GetVersionHistory` | POST | Super/Support | 30/min | Get article version history |
 
 ### 19.6 FileService
 
@@ -2256,5 +2284,3 @@ Rate limit: 100 req/min (read), 30 req/min (write) per API key. IP-based seconda
 > **Note**: This document is the canonical API contract for Creativanta. All screen-referenced RPCs have been promoted to canonical status with method, auth, rate limit, and description. The `screen_api_reconciliation.md` document should be updated to reflect this closure.
 
 > **JSON Examples**: See companion file [`api_examples.md`](./api_examples.md) for 24 concrete request/response payloads covering Auth, Trends, Scripts, Generation, Publish, Threads, Products, Orders, Offers, Coupons, Profit, Reconciliation, Workflows, LiveCommerce, Seeding, Credits, Admin, Capability, Referral, VoiceClone, Error responses, and Pagination conventions.
-
-

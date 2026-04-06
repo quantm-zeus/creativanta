@@ -54,11 +54,11 @@ last_updated: 2026-04-06
 | BLOCKED | **0** | ✅ All blockers resolved |
 | **Total** | **31** | 23 core (M01-M23) + auth + 3 supplementary (copilot, referral, help) + 3 specs (S16, S24, S26) + gamification |
 
-> **Final state (2026-04-02)**:
+> **Final state (2026-04-06)**:
 > - **31/31 feature modules READY.** Zero DRAFT. Zero BLOCKED. All M07 blockers (API-C-001, API-H-001, API-H-002) confirmed RESOLVED. Includes 23 core (M01-M23) + auth + 7 supplementary/spec modules.
-> - **28/28 doc-spec aligned** (feature doc ↔ schema ↔ screens ↔ API service name). ⚠️ NOT full-contract aligned — ~572 screen-referenced RPCs lack concrete canonical API definitions (see API-C-002 in OPEN_BLOCKERS.md).
-> - Schema: ~122 tables with RLS, deleted_at, CHECK constraints (design-level; DDL not yet deployed)
-> - API: ~346 canonical RPC definitions in `api_endpoint_map.md` (§1-§9) + 14 public endpoints + 6 webhooks. Screen-derived RPCs (~150 rows) relocated to `screen_api_reconciliation.md` §5 (2026-04-06). Note: `protobuf_contracts.md` covers ~310 RPCs (key services subset). Actual `.proto` files will be created during implementation Phase 1.
+> - **28/28 doc-spec aligned** (feature doc ↔ schema ↔ screens ↔ API service name) and **full-contract aligned** for screen-referenced API usage. All previously missing screen RPCs were promoted to canonical definitions in `api_endpoint_map.md`.
+> - Schema: canonicalized for workflow/agent step persistence, public API usage/webhooks, KB content, admin broadcasts, and operational queue tables.
+> - API: canonical map remains the authoring source during docs phase; `/protos/` are generated from `api_endpoint_map.md` + `api_examples.md` during implementation Phase 1 per ADR-005.
 > - Events: 225 canonical event types with 74-row CamelCase mapping
 > - Error catalog: 30+ codes, gRPC↔HTTP, retry policies, bilingual UX
 > - Business rules: 10/10 DECISION (BIZ-002/007 FINALIZED)
@@ -66,6 +66,7 @@ last_updated: 2026-04-06
 >
 > **Readiness caveats**:
 > - Feature docs: READY (all 31/31 — 23 core M01-M23 + auth + 7 supplementary/spec modules).
-> - Contract docs: Spec-complete, not codegen-complete (`.proto` files not yet created; `protobuf_contracts.md` is an overview doc).
-> - Ops docs: Mixed (`ci_cd_pipeline.md` is still SCAFFOLD; `observability.md` and `runbook.md` are READY).
-> - This corpus is **documentation-complete and spec-ready for implementation**. It is NOT a claim that all infrastructure or codegen artifacts exist.
+> - Screen docs: use `03_screens/SCREEN_IMPLEMENTATION_PROTOCOL.md` whenever a legacy screen contains conceptual aliases or placeholder data-binding rows.
+> - Contract docs: spec-complete; generated transport artifacts remain Phase 1 derivatives.
+> - Ops docs: executable seed SQL now exists; CI/CD remains a canonical spec until code scaffolding is generated.
+> - This corpus is **documentation-complete and implementation-ready** at the spec layer. Generated code/infrastructure artifacts still follow during implementation.

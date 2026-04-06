@@ -4,7 +4,7 @@
 > **Module**: M19 — Operating Ledger (Costs)
 > **Route**: `/finance/costs`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: Pack 06 §Finance, PRD §33 Profit OS, A1 Schema (cost_entries, billing_events), B5 RBAC §2.8
+> **Upstream**: Pack 06 §Finance, PRD §33 Profit OS, A1 Schema (`cost_items`, `billing_events`, `evidence_objects`), B5 RBAC §2.8
 
 ---
 
@@ -43,7 +43,7 @@ Cost breakdown by category — platform fees, AI credits, advertising, shipping,
 - User has `profit:read` or `profit:read` permission (Owner, Admin, Manager)
 
 ### Postconditions
-- Custom cost entries are saved to `cost_entries` table
+- Custom cost entries are saved to `cost_items` with `cost_type = 'other'`
 - All cost changes update Profit Dashboard (W081) in real-time
 
 ---
@@ -168,7 +168,7 @@ CostDetailPage
 | AI credits | `SUM(ai_usage.cost)` | VND | Official |
 | Shipping | `SUM(orders.shipping_fee WHERE paid_by=seller)` | VND | Official |
 | COGS | `SUM(products.cogs × order_items.quantity)` | VND | Imported |
-| Custom costs | `cost_entries WHERE type=custom` | VND | Imported |
+| Custom costs | `cost_items WHERE cost_type='other'` | VND | Imported |
 | Cost/Revenue ratio | Computed: total costs / total revenue × 100 | "36.7%" | Computed |
 | Optimization hints | AI-generated based on trend analysis | Text + action | AI |
 
@@ -236,7 +236,7 @@ CostDetailPage
 | AI Credits | `ai_usage` table | ✅ Auto | Creativanta AI usage costs |
 | Shipping | `orders` table | ✅ Auto | Seller-paid shipping costs |
 | COGS | `products.cogs` × `order_items.quantity` | ⚠️ Semi | Cost of goods sold — requires user input |
-| Custom | `cost_entries` table | ❌ Manual | Studio rent, equipment, freelancers, etc. |
+| Custom | `cost_items` table | ❌ Manual | Studio rent, equipment, freelancers, etc. |
 
 ---
 ## 11. Edge Cases
@@ -310,7 +310,7 @@ CostDetailPage
 - **Category tree**: Expandable rows with Svelte `slide` transition
 - **Add/Edit modal**: SvelteKit form action with progressive enhancement
 - **Optimistic UI**: Custom cost add shows immediately, revert on server error
-- **Receipt upload**: Direct S3 presigned URL upload, link stored in `cost_entries.receipt_url`
+- **Receipt upload**: Direct S3 presigned URL upload, link stored in `evidence_objects.file_url` and linked from `cost_items.evidence_id`
 - **AI hints**: `CopilotService/GetCostOptimization(period)` — lazy loaded
 - **COGS warning**: Persistent if `products WHERE cogs IS NULL` count > 0
 

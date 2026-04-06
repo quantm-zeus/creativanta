@@ -4,7 +4,7 @@
 > **Module**: M23 — Settings
 > **Route**: `/settings/credits/usage`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: A1 Schema (credit_transactions, credit_balances), B5 RBAC §2.9
+> **Upstream**: M23 Part A, A1 Schema (`ai_credit_transactions`, `workspaces`), A3 API (`CreditService/GetBalance`, `CreditService/GetMonthlyUsage`, `UsageService/GetBreakdown`), B5 RBAC §2.9
 
 ---
 
