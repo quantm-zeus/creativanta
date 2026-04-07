@@ -8,6 +8,7 @@ last_verified: 2026-03-30
 # D3 — Analytics Event Taxonomy (PostHog)
 
 > **Upstream**: Pack 01, Tech Stack ADR v3
+> Coverage note: this is the seed taxonomy, not full module coverage. Additional canonical events still need to be added for many modules before production analytics is implementation-complete.
 
 ---
 

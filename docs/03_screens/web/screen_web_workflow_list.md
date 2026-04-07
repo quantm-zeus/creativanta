@@ -4,7 +4,7 @@
 > **Module**: M20 — Workflow Studio
 > **Route**: `/workflows`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: Pack 05, PRD §28 Workflow Studio, A1 Schema (workflows, workflow_runs, workflow_templates), B5 RBAC §2.7
+> **Upstream**: M20 Workflow Studio, A1 Schema (`workflows`, `workflow_runs`, `recipe_templates`), B5 RBAC §2.9
 
 ---
 ## 1. Purpose & Context
@@ -30,21 +30,21 @@ List all automation workflows with status, trigger type, run history, and error 
 - Copilot: "Tạo workflow mới cho auto-reply"
 
 ### Exit Points
-- "+ Tạo workflow" → Visual Workflow Builder (W102)
-- "📋 Templates" → Template Gallery (W106)
+- "+ Tạo workflow" → Visual Workflow Builder (W101)
+- "📋 Templates" → Template Gallery (W103)
 - "→ Edit" → Visual Workflow Builder with selected workflow
-- "📊 Runs" → Run History (W103)
+- "📊 Runs" → Run History (W102)
 
 ---
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `workflow:read` permission (Owner, Admin, Manager)
+- User has `workflow:read` permission (Owner, Admin, Manager, Editor, Contributor, Viewer)
 
 ### Postconditions
 - Disabled workflows stop triggering
 - Duplicated workflows created in "draft" status
-- Deleted workflows are soft-deleted (recoverable for 30 days)
+- Exported workflows produce portable definitions for reuse/import
 
 ---
 ## 3. Screen Layout
@@ -135,7 +135,7 @@ WorkflowListPage
 │           ├── RunHistoryButton ("📊 Runs")
 │           ├── DisableButton ("⏸ Disable") / EnableButton ("▶ Enable")
 │           ├── DuplicateButton ("📋 Duplicate")
-│           └── MoreMenu (⋮ → Delete, Export, Share)
+│           └── MoreMenu (⋮ → Export)
 ├── Pagination
 ```
 
@@ -158,14 +158,14 @@ WorkflowListPage
 
 | # | Action | Trigger | API | Result | Permission |
 |---|---|---|---|---|---|
-| 1 | Create workflow | "+ Tạo" | — | → Visual Builder (W102) | `workflow:edit` |
+| 1 | Create workflow | "+ Tạo" | — | → Visual Builder (W101) | `workflow:create` |
 | 2 | View templates | "📋 Templates" | — | → Template Gallery | `workflow:read` |
 | 3 | Edit/Fix | "→ Edit" / "→ Fix" | — | → Builder with loaded workflow | `workflow:edit` |
-| 4 | View runs | "📊 Runs" | — | → Run History (W103) | `workflow:read` |
-| 5 | Disable | "⏸" → confirm | `WorkflowService/Disable(id)` | Workflow paused, toast | `workflow:edit` |
-| 6 | Enable | "▶ Enable" | `WorkflowService/Enable(id)` | Workflow activated | `workflow:edit` |
+| 4 | View runs | "📊 Runs" | — | → Run History (W102) | `workflow:read` |
+| 5 | Disable | "⏸" → confirm | `WorkflowService/Deactivate(id)` | Workflow paused, toast | `workflow:activate` |
+| 6 | Enable | "▶ Enable" | `WorkflowService/Activate(id)` | Workflow activated | `workflow:activate` |
 | 7 | Duplicate | "📋 Duplicate" | `WorkflowService/Clone(id)` | New draft workflow | `workflow:edit` |
-| 8 | Delete | ⋮ → "Delete" → confirm | `WorkflowService/Delete(id)` | Soft-delete (30d recovery) | `workflow:edit` |
+| 8 | Export | ⋮ → "Export" | `WorkflowService/Export(id)` | Download/shareable workflow definition | `workflow:activate` |
 | 9 | Search | Search input | Client-side filter | Filtered list | `workflow:read` |
 
 ---
@@ -185,12 +185,12 @@ WorkflowListPage
 
 | Feature | Owner | Admin | Manager | Editor | Contributor | Viewer |
 |---|---|---|---|---|---|---|
-| View workflows | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Create workflow | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Edit workflow | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| View workflows | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Create workflow | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Edit workflow | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Disable/enable | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Delete workflow | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| View run history | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Export workflow | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| View run history | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -201,7 +201,7 @@ WorkflowListPage
 | Network offline | No connectivity | Banner: "📡 Ngoại tuyến" + cached workflows | Retry online |
 | Enable fail | API error | Toast: "Không kích hoạt được. [Thử lại]" | Retry |
 | Disable fail | API error | Toast: "Không tắt được workflow. [Thử lại]" | Retry |
-| Delete fail | API error | Toast: "Không xóa được. [Thử lại]" | Retry |
+| Export fail | API error | Toast: "Không xuất được workflow. [Thử lại]" | Retry |
 | Duplicate fail | API error | Toast: "Không nhân bản được. [Thử lại]" | Retry |
 
 ---
@@ -240,7 +240,7 @@ WorkflowListPage
 | `workflow.disabled` | "⏸ Disable" | `workflow_id` |
 | `workflow.enabled` | "▶ Enable" | `workflow_id` |
 | `workflow.duplicated` | "📋 Duplicate" | `workflow_id` |
-| `workflow.deleted` | "Delete" confirmed | `workflow_id` |
+| `workflow.exported` | "Export" | `workflow_id` |
 | `workflow.tab_switched` | Tab change | `tab` |
 
 ---
@@ -248,11 +248,11 @@ WorkflowListPage
 ## 13. SvelteKit Implementation Notes
 
 - **Route**: `src/routes/(app)/workflows/+page.svelte`
-- **Server load**: `+page.server.ts` → `WorkflowService/ListWorkflows(workspace_id)` + `GetWorkflowStats(7d)`
+- **Server load**: `+page.server.ts` → `WorkflowService/List(workspace_id)` + stats projection
 - **Run stats**: Computed per-workflow from `workflow_runs` table (7d window)
 - **Error detection**: Server flags workflows with >3 consecutive failures
-- **Disable**: `WorkflowService/Disable(id)` — stops trigger listener
-- **Soft-delete**: Sets `deleted_at`, recoverable for 30 days
+- **Disable**: `WorkflowService/Deactivate(id)` — stops trigger listener
+- **Export**: `WorkflowService/Export(id)` — produces a shareable/importable workflow definition
 - **Time saved**: Estimated from `avg_manual_time × run_count`
 
 ---
@@ -261,7 +261,7 @@ WorkflowListPage
 
 - Status: "🟢 Đang hoạt động", "📋 Nháp", "⏸ Đã tắt", "🔴 Lỗi"
 - Stats: "lần chạy", "hành động", "thời gian tiết kiệm"
-- Actions: "Chỉnh sửa", "Tắt", "Nhân bản", "Xóa"
+- Actions: "Chỉnh sửa", "Tắt", "Nhân bản", "Xuất"
 - Tone: Operational, automation-focused
 
 ---
@@ -298,5 +298,5 @@ WorkflowListPage
 
 | Date | Version | Change | Author |
 |---|---|---|---|
-| 2026-03-30 | 2.0 | **Tier A upgrade**: 5 errors (enable, delete), card/summary a11y, 8 analytics, SvelteKit impl (run stats, soft-delete, time saved), localization, 8 design tokens (wf-status). | System |
+| 2026-03-30 | 2.0 | **Tier A upgrade**: 5 errors (enable, export), card/summary a11y, 8 analytics, SvelteKit impl (run stats, export, time saved), localization, 8 design tokens (wf-status). | System |
 | 2026-03-28 | 1.0 | Initial specification | System |

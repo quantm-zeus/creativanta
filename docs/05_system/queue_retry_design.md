@@ -31,7 +31,7 @@ purpose: Queue architecture, retry strategies, DLQ, outbox pattern, circuit brea
 │  │ generation_jobs (M07)         │             │
 │  │ sync_jobs       (M12,M13)     │             │
 │  │ notification    (Push/Email)  │             │
-│  │ analytics       (PostHog)     │             │
+│  │ analytics_events (PostHog)    │             │
 │  │ ai_pipeline     (LLM/Media)  │             │
 │  │ workflow_trigger (M20/M21)   │             │
 │  │ cron_scheduler  (Morning...)  │             │
@@ -133,6 +133,7 @@ CREATE INDEX idx_dlq_workspace ON dead_letter_queue(workspace_id);
 CREATE TABLE event_outbox (
   outbox_id BIGSERIAL PRIMARY KEY,
   event_type VARCHAR(200) NOT NULL,
+  target_stream VARCHAR(100) NOT NULL,
   aggregate_type VARCHAR(100) NOT NULL,
   aggregate_id UUID NOT NULL,
   workspace_id UUID,
@@ -154,12 +155,17 @@ async fn poll_outbox(pool: &PgPool, redis: &RedisClient) {
         .fetch_all(pool).await?;
     
     for event in events {
-        redis.xadd(&event.target_stream(), &event.payload()).await?;
+        redis.xadd(&event.target_stream, &event.payload()).await?;
         sqlx::query("UPDATE event_outbox SET published = true, published_at = NOW() WHERE outbox_id = $1")
             .bind(event.outbox_id).execute(pool).await?;
     }
 }
 ```
+
+Outbox routing rule:
+- Producers MUST persist the exact Redis Stream name into `event_outbox.target_stream` at write time.
+- `target_stream` MUST match one of the canonical queue names in §2 (`publish_jobs`, `generation_jobs`, `sync_jobs`, `notification_push`, `notification_email`, `analytics_events`, `ai_pipeline`, `workflow_trigger`, `settlement_import`, `trend_crawl`).
+- Pollers MUST publish to the stored stream name directly; they MUST NOT derive queue choice from `event_type` ad hoc at publish time.
 
 ---
 
@@ -193,7 +199,7 @@ pub struct CircuitBreaker {
 | Morning Brief | `0 30 6 * * *` (6:30 AM) | notification | Generate + deliver briefs |
 | Platform Fee Sync | `0 0 2 * * *` (2:00 AM) | sync_jobs | Crawl fee databases |
 | Health Score | `0 0 * * * *` (hourly) | sync_jobs | Poll platform APIs |
-| Stale Data Check | `0 */15 * * * *` (15min) | analytics | Check sync freshness |
+| Stale Data Check | `0 */15 * * * *` (15min) | analytics_events | Check sync freshness |
 | Achievement Check | Event-driven | workflow_trigger | On content/commerce events |
 | Credit Reset | `0 0 0 1 * *` (1st of month) | settlement_import | Monthly credit allocation |
 | DLQ Cleanup | `0 0 3 * * *` (3:00 AM) | — | Auto-discard old DLQ items |

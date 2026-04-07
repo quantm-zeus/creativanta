@@ -18,12 +18,12 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | Section | Content |
 |---|---|
 | §1 Endpoint Naming Convention | ConnectRPC, gRPC, REST patterns |
-| §2.1 Identity & Workspace | ~15 RPCs: Auth, Workspace, Connector, User services |
+| §2.1 Identity & Workspace | ~16 RPCs: Auth, Workspace, Connector, User services |
 | §2.2 Intelligence | ~12 RPCs: Trend, Competitor, Opportunity services |
 | §2.3 Content | ~25 RPCs: Idea, Script, Asset, Character, Continuity, Derivative services |
 | §2.4 Publish | ~15 RPCs: Packaging, Publish, Approval services |
 | §2.5 Engagement | ~18 RPCs: Thread, Entity, Suggestion, FollowUp services |
-| §2.6 Commerce | 42 RPCs: Product (8), Offer (9), Order (5), Campaign (7), Affiliate (6), Store (5), Coupon (6) |
+| §2.6 Commerce | 43 RPCs: Product (8), Offer (9), Order (5), Campaign (7), Affiliate (6), Store (5), Coupon (7) |
 | §2.7 Finance | 26 RPCs: Profit (5), Settlement (3), Cost (4), Reconciliation (5), Evidence (3), Proof (3), Refund (3) |
 | §2.8 Other Domains | 87 RPCs: Workflow (13), Recipe (8), LiveCommerce (11), Seeding (9), Copilot (5), AdminBilling (14), Capability (5), PerformanceCoach (5), VoiceClone (6), SoundStudio (6), Referral (5), Promotional (3), Notification (5) |
 | §3 Webhook Endpoints | Clerk, Stripe, TikTok, Shopee, Lazada, Activepieces |
@@ -55,10 +55,11 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 
 ## 2. Service Endpoint Map by Domain
 
-### 2.1 Identity & Workspace (~15 RPCs)
+### 2.1 Identity & Workspace (~16 RPCs)
 
 | RPC | Method | Auth | Rate Limit |
 |---|---|---|---|
+| `AuthService/Login` | POST | Public | 20/min/IP |
 | `AuthService/ValidateSession` | POST | JWT | 100/min |
 | `WorkspaceService/Create` | POST | Owner | 5/min |
 | `WorkspaceService/Get` | POST | Member | 120/min |
@@ -246,6 +247,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | `CouponService/Create` | POST | Manager+ | 20/min | Create coupon code |
 | `CouponService/Get` | POST | Editor+ | 60/min | Get coupon detail |
 | `CouponService/List` | POST | Editor+ | 60/min | List coupons |
+| `CouponService/ValidateCoupon` | POST | Member | 60/min | Validate coupon against order context |
 | `CouponService/Update` | POST | Manager+ | 20/min | Update coupon |
 | `CouponService/Activate` | POST | Manager+ | 20/min | Activate coupon |
 | `CouponService/Revoke` | POST | Admin+ | 10/min | Revoke coupon |
@@ -337,7 +339,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 
 | RPC | Method | Auth | Rate Limit | Description |
 |---|---|---|---|---|
-| `RecipeService/Install` | POST | Manager+ | 10/min | Install recipe from marketplace |
+| `RecipeService/Install` | POST | Editor+ | 10/min | Install recipe from marketplace |
 | `RecipeService/Uninstall` | POST | Manager+ | 10/min | Uninstall recipe |
 | `RecipeService/List` | POST | Member | 60/min | List available/installed recipes |
 | `RecipeService/Get` | POST | Member | 60/min | Get recipe detail + parameters |
@@ -1414,6 +1416,8 @@ Rate limit: 100 req/min (read), 30 req/min (write) per API key. IP-based seconda
 
 ### 15.6 GenerationService
 
+> `GenerationService` is an active-job projection surface only. Canonical create/status asset lifecycle RPCs remain under `AssetService` (`Generate`, `GetStatus`, `List`, etc.). Do not use `GenerationService` as the write-path service name for new generation clients.
+
 | RPC | Method | Auth | Rate Limit | Description |
 |---|---|---|---|---|
 | `GenerationService/ListActive` | POST | Member | 60/min | List active generation jobs |
@@ -1587,14 +1591,11 @@ Rate limit: 100 req/min (read), 30 req/min (write) per API key. IP-based seconda
 
 ### 17.5 WorkflowService (Extended)
 
+> Core lifecycle RPCs remain canonical in §2.8.1 (`Create`, `Get`, `List`, `Update`, `Activate`, `Deactivate`, `Run`, `InspectRun`, `GetRunLogs`, `ListRuns`, `Clone`, `Export`, `Import`). This section lists only additional workflow-runtime RPCs beyond that core set.
+
 | RPC | Method | Auth | Rate Limit | Description |
 |---|---|---|---|---|
-| `WorkflowService/Delete` | POST | Manager+ | 5/min | Delete workflow |
-| `WorkflowService/Enable` | POST | Manager+ | 10/min | Enable workflow |
-| `WorkflowService/Disable` | POST | Manager+ | 10/min | Disable workflow |
 | `WorkflowService/Test` | POST | Editor+ | 10/min | Test workflow execution |
-| `WorkflowService/ListWorkflows` | POST | Member | 60/min | List workflows (alias) |
-| `WorkflowService/GetRunDetail` | POST | Member | 60/min | Get run detail |
 | `WorkflowService/GetRunStats` | POST | Member | 30/min | Get run statistics |
 | `WorkflowService/CancelRun` | POST | Editor+ | 10/min | Cancel running workflow |
 | `WorkflowService/RetryRun` | POST | Editor+ | 10/min | Retry failed run |

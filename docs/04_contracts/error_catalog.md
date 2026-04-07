@@ -11,6 +11,8 @@ status: READY
 > Canonical registry of application error codes, HTTP/gRPC status mapping, user messages, and retryability.
 > Referenced from: `protobuf_contracts.md` (errors.proto), screen docs (error states), API endpoint map.
 
+> Coverage note: the catalog below is canonical for the domains it defines today, but it is not yet exhaustive. Missing canonical sections still need explicit expansion for CONTENT, ENGAGEMENT, FINANCE, LIVE, SEEDING, CREATOR_PRO, and broader ADMIN coverage. Implementers MUST NOT invent domain prefixes or code ranges ad hoc.
+
 ## Error Code Convention
 
 ```

@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-04-06
+last_updated: 2026-04-07
 ---
 
 # Implementation Order — Build Phases & Dependencies
@@ -48,7 +48,7 @@ M05 + M06 can run in parallel with M08.
 
 | Module | Dependencies | Blockers |
 |--------|-------------|----------|
-| M07 AI Video Studio | Phase 2 (M06, M08) | **API-C-001**, API-H-001, API-H-002 |
+| M07 AI Video Studio | Phase 2 (M06, M08) | No phase-specific blocker after service-name remediation; still depends on unresolved global blockers such as `PROTO-C-001` |
 | M09 Asset Derivative Manager | M07 partial | Needs generated assets |
 | M10 Packaging QA | M06, M07 partial | Needs scripts + assets |
 
@@ -85,8 +85,8 @@ M17 and M18 can start after M13, parallel with M14–M16.
 
 | Module | Dependencies | Notes |
 |--------|-------------|-------|
-| M20 Workflow Studio | Phase 0-6 canonical objects | Activepieces integration; needs all canonical objects available |
-| M21 Recipe / Agent Center | M20 | Recipes are workflow templates |
+| M20 Workflow Studio | Phase 0-6 canonical objects | Activepieces integration; editor/activation permission split is now canonical, but screen cleanup remains |
+| M21 Recipe / Agent Center | M20 | Recipes are workflow templates; still depends on unresolved global blockers such as `.proto` generation |
 
 ### Phase 8 — Platform & Admin: M01, M22, M23
 

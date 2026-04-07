@@ -1,12 +1,92 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-04-06
+last_updated: 2026-04-07
 ---
 
 # Open Blockers
 
 > This is the **most critical file** after BUILD_INDEX.md. Every AI agent and developer MUST read this before starting implementation work.
+
+---
+
+## Current Open Blockers (Validated 2026-04-07)
+
+> Historical resolved entries remain below. The items in this section are still OPEN or PARTIAL and must not be silently worked around.
+
+## PROTO-C-001: No committed `.proto` files or generated transport artifacts
+
+- Layer: Contracts / Build
+- Severity: **CRITICAL**
+- Status: **OPEN**
+- Impact: `protobuf_contracts.md` is still an overview only. Typed client/server code generation cannot start from committed `.proto` files because none exist in the repo.
+- Evidence: repository search for `*.proto` returned 0 files on 2026-04-07.
+- Owner: API Lead
+
+## BIZ-C-001: Subscription tier prices and add-on prices are not approved
+
+- Layer: Business
+- Severity: **CRITICAL**
+- Status: **OPEN**
+- Impact: `pricing_and_credits.md` defines limits and credit-pack prices, but not the recurring subscription prices or add-on SKU prices. Billing/paywall implementation cannot be finalized without human confirmation.
+- Owner: Product + Finance
+
+## SCR-H-003: Screen corpus still contains widespread template contamination and stale admin role aliases
+
+- Layer: Screens
+- Severity: **HIGH**
+- Status: **OPEN**
+- Impact: screen inventory still shows ~140 files with unresolved template markers / generic data-binding placeholders. Several admin screens also still use non-canonical role labels (`Ops Admin`, `AI Admin`, `Trust Safety`, `Read Only`, etc.) instead of the canonical 8-role admin matrix.
+- Owner: Screen Doc Lead
+
+## LEG-H-001: Launch remains gated on legal sign-off
+
+- Layer: Business / Compliance
+- Severity: **HIGH**
+- Status: **OPEN**
+- Impact: `legal_compliance.md` is engineering-approved but explicitly launch-gated pending legal sign-off. This is not a coding blocker for all modules, but it remains a release blocker.
+- Owner: Legal + Product
+
+## MOD-H-001: Moderation scoring thresholds are not canonicalized
+
+- Layer: Quality / Ops
+- Severity: **HIGH**
+- Status: **OPEN**
+- Impact: moderation flow exists, but numeric allow/review/block thresholds are still missing from canonical docs. Admin moderation tooling and automated moderation rules cannot be finalized safely.
+- Owner: Trust & Safety
+
+## BIZ-M-001: Operator mode contract is partial
+
+- Layer: Business
+- Severity: **MEDIUM**
+- Status: **OPEN**
+- Impact: `user_segments_and_modes.md` requires 8 fields per mode, but only 3 are currently defined. Home/dashboard personalization and mode-specific UX prioritization remain under-specified.
+- Owner: Product
+
+## ERR-M-002: Error catalog coverage is incomplete
+
+- Layer: Contracts
+- Severity: **MEDIUM**
+- Status: **OPEN**
+- Impact: canonical error coverage exists for AUTH, BILLING, AI, COMMERCE, PUBLISH, WORKFLOW, and SYSTEM only. CONTENT, ENGAGEMENT, FINANCE, LIVE, SEEDING, CREATOR_PRO, and broader ADMIN coverage remain undefined.
+- Owner: API Lead
+
+## ANA-M-001: Analytics taxonomy is still a seed set, not full module coverage
+
+- Layer: Quality / Ops
+- Severity: **MEDIUM**
+- Status: **OPEN**
+- Impact: current analytics taxonomy is too sparse for full product analytics instrumentation across 23 modules.
+- Owner: Product Analytics
+
+## OPS-M-002: CI/CD documentation references missing scripts and omits ClickHouse deployment
+
+- Layer: Quality / Ops
+- Severity: **MEDIUM**
+- Status: **OPEN**
+- Impact: `ci_cd_pipeline.md` references `./tooling/proto-gen.sh`, `./scripts/deploy.sh`, and `./scripts/smoke-test.sh`, but none of those files are committed in the repo as of 2026-04-07. The same pipeline doc also does not define how ClickHouse DDL is deployed, despite ClickHouse remaining part of the canonical runtime stack.
+- Evidence: repository checks on 2026-04-07 found all 3 script paths missing; `ci_cd_pipeline.md` contains no ClickHouse deployment step.
+- Owner: DevOps / Platform
 
 ---
 
@@ -182,10 +262,10 @@ last_updated: 2026-04-06
 - Layer: API / Screens
 - Severity: ~~**HIGH**~~ → **RESOLVED**
 - Status: **✅ RESOLVED** (2026-04-06)
-- Resolution: All ~820 screen-referenced RPCs (across 132 services) were promoted to canonical status in `api_endpoint_map.md` §10-§20 with method, auth level, rate limit, and description. The canonical API map now contains **~1,160 concrete RPC definitions** covering **100% of screen-referenced RPC patterns** (907/907 unique RPCs).
+- Resolution: API inventory work promoted a large screen-referenced RPC set into `api_endpoint_map.md` §10-§20 with method, auth level, rate limit, and description.
 - Verified: Python gap analysis script confirms 0 remaining missing RPCs.
 - `screen_api_reconciliation.md` status updated from WORKING_ANALYSIS → RESOLVED.
-- `CROSS_LAYER_MATRIX.md` updated to reflect full-contract alignment.
+- Caveat (2026-04-07): do NOT treat this as proof that all screen docs are implementation-clean. Canonical API coverage and screen semantic quality are separate concerns; screen contamination remains tracked as `SCR-H-003`.
 - Cross-ref: `api_endpoint_map.md` §10-§20, `screen_api_reconciliation.md` (RESOLVED), CROSS_LAYER_MATRIX.md
 - Owner: Product + API Lead
 

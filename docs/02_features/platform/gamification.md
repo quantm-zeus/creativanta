@@ -49,7 +49,7 @@ Gamification drives user engagement and retention through **Achievements** (mile
 | RULE-GAM-005 | Challenges are time-bound (1-30 days), created by admin |
 | RULE-GAM-006 | Challenge participation is opt-in, progress tracked per-user |
 | RULE-GAM-007 | Credit rewards auto-deposited via `CreditService/Grant` on completion |
-| RULE-GAM-008 | Achievement unlock triggers `gamification.achievement.unlocked` event |
+| RULE-GAM-008 | Achievement unlock triggers canonical `achievement.unlocked` event |
 
 ## 3. Key Flows
 
@@ -130,5 +130,5 @@ Feature: Streak System
 
 - **DB**: `04_contracts/database_schema.md` §14 Gamification
 - **API**: `04_contracts/api_endpoint_map.md` §8 + §30
-- **Events**: `04_contracts/domain_event_catalog.md` §14 (`achievement.unlocked`, `streak.broken`), §15C (`gamification.challenge.*`). [NOTE: Feature doc RULE-GAM-008 expects a `gamification.achievement.unlocked` namespaced event — catalog §14 uses `achievement.unlocked`. Implementation should reconcile namespace. No `streak.milestone` event exists in catalog; nearest is `streak.broken`.]
+- **Events**: `04_contracts/domain_event_catalog.md` §14 (`achievement.unlocked`, `streak.broken`), §15C (`gamification.challenge.*`). Canonical unlock event name is `achievement.unlocked`. No canonical `streak.milestone` event exists yet; implementers MUST NOT invent one without contract update.
 - **Credits**: `02_features/platform/reporting_admin_billing.md` (credit grant integration)

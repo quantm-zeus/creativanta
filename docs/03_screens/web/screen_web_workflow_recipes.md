@@ -1,10 +1,10 @@
 # Screen: Web — Recipe Templates
 
 > **Screen ID**: W103
-> **Module**: M20 — Workflow Studio (Templates)
+> **Module**: M21 — Recipe / Agent Center
 > **Route**: `/workflows/templates`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: Pack 05, PRD §28, A1 Schema (workflow_templates), B5 RBAC §2.7
+> **Upstream**: M21 Recipe & Agent Center, A1 Schema (`recipe_templates`), B5 RBAC §2.9, API §17.7 (`TemplateService`)
 
 ---
 
@@ -24,12 +24,12 @@ Pre-built workflow templates — one-click deploy common automation recipes for 
 - Enable community-driven template ratings
 
 ### Entry Points
-- Workflow List (W101): "📋 Templates" button
+- Workflow List (W100): "📋 Templates" button
 - Sidebar: Workflows → "📋 Templates"
 - Copilot: "Suggest workflows for engagement"
 
 ### Exit Points
-- "📥 Use template" → Workflow Builder (W102) with template pre-loaded
+- "📥 Use template" → Workflow Builder (W101) with installed workflow pre-loaded
 - "▶ Preview" → Read-only workflow canvas modal
 
 ---
@@ -183,9 +183,9 @@ RecipeTemplatesPage
 ## 10. SvelteKit Implementation Notes
 
 - **Route**: `src/routes/(app)/workflows/templates/+page.svelte`
-- **Server load**: `+page.server.ts` → `TemplateService/ListTemplates(category?)` + `GetPopular`
-- **Search**: Client-side Meilisearch → `workflow_templates` index
-- **Deploy**: `TemplateService/Deploy(template_id, workspace_id)` → creates workflow in draft → redirect to builder
+- **Server load**: `+page.server.ts` → `TemplateService/ListTemplates(category?)` + `TemplateService/GetFeatured()`
+- **Search**: Client-side Meilisearch → `recipes` index
+- **Deploy**: `TemplateService/Deploy(template_id)` → creates canonical M20 workflow in draft → redirect to builder
 - **Preview**: Modal with read-only SvelteFlow canvas rendering template nodes
 - **Platform check**: Before deploy, verify required connectors via `ConnectorService/CheckRequirements`
 

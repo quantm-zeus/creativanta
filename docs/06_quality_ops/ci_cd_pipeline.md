@@ -91,7 +91,7 @@ jobs:
     needs: test-unit
     steps:
       - name: Generate Rust, TypeScript, Dart from .proto
-        run: ./scripts/proto-gen.sh
+        run: ./tooling/proto-gen.sh
       - name: Verify no drift
         run: git diff --exit-code -- **/generated/
 
@@ -159,13 +159,13 @@ develop → staging (auto) → production (manual approval + 1 reviewer)
 
 | Secret | Storage | Rotation |
 |---|---|---|
-| Database passwords | GitHub Secrets + Contabo env files | 90 days |
-| Stripe API keys | GitHub Secrets | On compromise |
-| AI provider keys | GitHub Secrets | 90 days |
-| JWT signing key | Generated at deploy | 30 days |
+| Database passwords | Infisical (runtime) + GitHub Secrets (bootstrap only) | 90 days |
+| Stripe API keys | Infisical (runtime) + GitHub Secrets (bootstrap only) | On compromise |
+| AI provider keys | Infisical (runtime) + GitHub Secrets (bootstrap only) | 90 days |
+| JWT signing key | Clerk-managed or Infisical-managed runtime secret | 30 days |
 | Proto/deploy keys | GitHub Deploy Keys | Annual |
 
-> **Rule**: NEVER commit secrets to git. Use `docker secret` or env file injection.
+> **Rule**: NEVER commit secrets to git. Runtime application secrets live in Infisical for staging/production. GitHub Secrets are limited to CI/bootstrap/deploy credentials and MUST NOT be treated as the long-term runtime source of truth.
 
 ---
 

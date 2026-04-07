@@ -129,6 +129,8 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 | `thread:assign` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `follow_up:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 
+> Capability rule: RBAC grants authorization only. Actual reply execution still depends on connector capability state in `connector_specs.md`; platforms such as Instagram DM and TikTok DM can remain read-only/manual even when `thread:reply` is granted.
+
 ### 2.7 Commerce (M13-M16)
 
 | Permission | Owner | Admin | Manager | Editor | Contributor | Viewer | External |
@@ -165,12 +167,12 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 | Permission | Owner | Admin | Manager | Editor | Contributor | Viewer | External |
 |---|---|---|---|---|---|---|---|
 | `workflow:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `workflow:create` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `workflow:edit` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `workflow:create` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `workflow:edit` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `workflow:activate` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `workflow_run:approve` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| `recipe:install` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `agent:execute` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `recipe:install` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `agent:execute` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `agent:approve` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ### 2.10 Admin & System (M22-M23)

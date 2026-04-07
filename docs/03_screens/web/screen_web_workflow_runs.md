@@ -4,7 +4,7 @@
 > **Module**: M20 — Workflow Studio
 > **Route**: `/workflows/[id]/runs`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: Pack 05, PRD §28, A1 Schema (`workflow_runs`, `workflow_run_steps`, `ai_credit_transactions`), A3 API (`WorkflowService/ListRuns`, `WorkflowService/GetRunStats`, `WorkflowService/GetRunDetail`), B5 RBAC §2.7
+> **Upstream**: M20 Workflow Studio, A1 Schema (`workflow_runs`, `workflow_run_steps`, `ai_credit_transactions`), API (`WorkflowService/ListRuns`, `WorkflowService/GetRunStats`, `WorkflowService/GetRunDetail`), B5 RBAC §2.9
 
 ---
 ## 1. Purpose & Context
@@ -31,15 +31,15 @@ The Workflow Run History shows all execution records for a specific workflow —
 - Performance tuning: Identifying slow steps for optimization
 
 ### Entry Points
-- Workflow List (W101): "📊 Runs" button on workflow card
-- Workflow Builder (W102): "📊 Run History" tab in header
+- Workflow List (W100): "📊 Runs" button on workflow card
+- Workflow Builder (W101): "📊 Run History" tab in header
 - Notification: "❌ Workflow 'Auto-respond' failed — view run" → deep link to specific run
 - Email digest: "3 workflows failed yesterday" → filtered view
 
 ### Exit Points
 - "🔄 Retry" → Re-queues failed run → stays on page, new run appears
-- "← Workflow" → Workflow Builder (W102)
-- "← Workflows" → Workflow List (W101)
+- "← Workflow" → Workflow Builder (W101)
+- "← Workflows" → Workflow List (W100)
 - "📝 Edit step" → Workflow Builder focused on failed step
 - "🔗 View trigger" → Source entity (comment, order, etc.)
 
@@ -47,7 +47,7 @@ The Workflow Run History shows all execution records for a specific workflow —
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `workflow:read` permission (Editor+ roles)
+- User has `workflow:read` permission (Owner, Admin, Manager, Editor, Contributor, Viewer)
 - Workflow exists and belongs to user's workspace
 - Workflow has been triggered at least once (otherwise EMPTY state)
 
@@ -64,7 +64,7 @@ The Workflow Run History shows all execution records for a specific workflow —
 |---|---|
 | Desktop (≥1280px) | App Shell + full run list with expanded step details |
 | Tablet (768-1279px) | App Shell (collapsed) + run list, step details in slide-over |
-| Mobile (≤767px) | Redirect to M045 Mobile Workflow Runs |
+| Mobile (≤767px) | Redirect to M050 Mobile Workflow Runs |
 
 ### ASCII Wireframe
 ```
@@ -153,7 +153,7 @@ The Workflow Run History shows all execution records for a specific workflow —
 WorkflowRunHistoryPage
 ├── AppShell (shared)
 ├── PageHeader
-│   ├── BackLink ("← Workflow" → W102)
+│   ├── BackLink ("← Workflow" → W101)
 │   ├── PageTitle ("📊 Run History: {workflow_name}")
 │   ├── ExportButton ("📤 Export CSV")
 │   └── SettingsLink ("⚙" → workflow settings)
@@ -239,8 +239,8 @@ WorkflowRunHistoryPage
 | 1 | Expand run | Click "→ View details" | Toggle | `WorkflowService/GetRunDetail(run_id)` (lazy) | Step details expand with animation | — | `workflow:read` |
 | 2 | Collapse run | Click "▴ Hide details" | Toggle | — | Step details collapse | — | `workflow:read` |
 | 3 | Retry failed run | "🔄 Retry" → confirm | Action | `WorkflowService/RetryRun(run_id)` | Confirmation dialog → toast "Run đã re-queue" → new run appears at top | — | `workflow:edit` |
-| 4 | Debug failed run | "🐛 Debug" | Navigate | — | → W102 Builder with debug mode, breakpoints at failed step | → W102 | `workflow:edit` |
-| 5 | Edit step | "📝 Edit step" | Navigate | — | → W102 Builder focused on the specific failed step | → W102 | `workflow:edit` |
+| 4 | Debug failed run | "🐛 Debug" | Navigate | — | → W101 Builder with debug mode, breakpoints at failed step | → W101 | `workflow:edit` |
+| 5 | Edit step | "📝 Edit step" | Navigate | — | → W101 Builder focused on the specific failed step | → W101 | `workflow:edit` |
 | 6 | View trigger source | Click trigger link | Navigate | — | → Source entity (comment, order, etc.) | → entity page | `workflow:read` |
 | 7 | Copy step data | Click copy on JSON | Action | — (clipboard) | Toast "Đã copy dữ liệu" | — | `workflow:read` |
 | 8 | Filter runs | Change status/period/trigger filter | Filter | Refetch with filters | Run list updates | — | `workflow:read` |
@@ -283,19 +283,19 @@ WorkflowRunHistoryPage
 
 | Feature | Owner | Admin | Manager | Editor | Contributor | Viewer | External |
 |---|---|---|---|---|---|---|---|
-| View run history | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
-| Expand step details | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
-| Copy step data | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
-| Retry failed run | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Debug mode | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Edit step | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Cancel live run | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Export | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| View run history | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Expand step details | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Copy step data | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Retry failed run | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Debug mode | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Edit step | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Cancel live run | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Export | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 
 ### Visibility Rules
-- **Viewer**: Can see run history and step details (read-only debugging). No action buttons except "View details".
-- **Editor**: Can view and export but not retry, debug, or cancel.
-- **Contributor/External**: No access to workflow screens.
+- **Viewer/Contributor**: Can see run history, expand step details, copy/export data, and inspect trigger links in read-only mode.
+- **Editor**: Can use all `workflow:edit` actions on this screen, including retry, debug, edit step, and cancel live runs.
+- **External**: No access to workflow screens.
 
 ---
 ## 10. Real-time Updates

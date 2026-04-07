@@ -40,7 +40,7 @@ last_updated: 2026-04-02
 }
 ```
 
-## A.2 Intelligence — TrendService/ListTrends
+## A.2 Intelligence — TrendService/List
 
 ```json
 // Request
@@ -69,8 +69,12 @@ last_updated: 2026-04-02
       "expires_at": "2026-04-10T10:00:00Z"
     }
   ],
-  "next_page_token": "eyJwYWdl...",
-  "total_count": 47
+  "pagination": {
+    "next_page_token": "eyJwYWdl...",
+    "prev_page_token": "",
+    "total_count": 47,
+    "has_more": true
+  }
 }
 ```
 
@@ -102,7 +106,7 @@ last_updated: 2026-04-02
 }
 ```
 
-## A.4 Production — GenerationService/StartGeneration
+## A.4 Production — AssetService/Generate
 
 ```json
 // Request
@@ -132,7 +136,7 @@ last_updated: 2026-04-02
 }
 ```
 
-## A.5 Production — GenerationService/GetStatus (SSE stream)
+## A.5 Production — AssetService/GetStatus (SSE stream)
 
 ```json
 // SSE Event: progress

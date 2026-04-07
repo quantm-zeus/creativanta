@@ -60,7 +60,7 @@ Mọi event bắt buộc có:
 
 ### 3.1 Decision / Creation
 - TrendDetected
-- TrendUpdated
+- TrendCreated
 - OpportunityCreated
 - OpportunityPrioritized
 - OpportunityAssigned
@@ -88,7 +88,7 @@ Mọi event bắt buộc có:
 | CamelCase (Pack 03 Display) | Canonical dot.notation (Code) | Section |
 |---|---|---|
 | TrendDetected | `trend.signal_detected` | §3.1 |
-| TrendUpdated | `trend.created` | §3.1 |
+| TrendCreated | `trend.created` | §3.1 |
 | OpportunityCreated | `opportunity.created` | §3.1 |
 | OpportunityPrioritized | `opportunity.state_changed` | §3.1 |
 | OpportunityAssigned | `opportunity.state_changed` | §3.1 |
@@ -180,7 +180,7 @@ Mọi event bắt buộc có:
 | CreatorXPEarned | `gamification.xp.earned` |
 | CreatorLevelUp | `gamification.level.up` |
 | CreatorStreakUpdated | `gamification.streak.updated` |
-| CreatorAchievementUnlocked | `gamification.achievement.unlocked` |
+| CreatorAchievementUnlocked | `achievement.unlocked` |
 | CreatorQuestCompleted | `gamification.quest.completed` |
 
 - ProductShowcaseJobCreated
@@ -649,4 +649,3 @@ Runtime/event backbone bắt buộc cover tối thiểu các scenario sau:
 - Always include: [actor] [action] [object] format
 - Example: "Shopee · Đơn hàng mới #1234 · 150.000đ · [Xem đơn]"
 - Vietnamese primary, English secondary (per user language setting)
-

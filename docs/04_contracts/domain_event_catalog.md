@@ -32,7 +32,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | §15C-D Gamification & Health | gamification.challenge.*, connector.health_score.*, connector.degraded, connector.recovered, affiliate.link_health.* |
 | §16-18 Admin, Support, Operational | admin.user_suspended, moderation.case_created, file.uploaded, consent.granted, etc. |
 | §19 Commerce Life-Cycle | refund.*, return.*, chargeback.*, coupon.*, membership.*, commission.*, etc. |
-| §20 Event Transport | Tokio mpsc, Redis Streams, PostgreSQL outbox, NATS |
+| §20 Event Transport | Tokio mpsc, Redis Streams, PostgreSQL outbox |
 | §21 Webhook-Eligible Events | 13 events eligible for S24 Public API webhooks |
 
 # A4 — Domain Event Catalog
@@ -476,8 +476,6 @@ struct EventMetadata {
 | **In-process** | Tokio mpsc channels | Same-service domain events |
 | **Cross-service** | Redis Streams (Dragonfly) | Real-time event distribution |
 | **Durable** | PostgreSQL + outbox pattern | Critical business events |
-| **NATS** | Pub/sub | High-throughput analytics events |
-
 **Total: ~250 event types** covering all 23 modules + S16/S19/S26 + commerce lifecycles + operational events + M18 seeding lifecycle + extended production (M07 Pack 04 §9.6-9.16) + gamification challenges + platform health (connector.degraded/recovered) + identity freeze events + billing/payment events + notification-required events (§16) + affiliate commission events (§8).
 
 ---

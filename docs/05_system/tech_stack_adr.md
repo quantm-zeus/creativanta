@@ -192,7 +192,7 @@ purpose: Architecture decisions, full tech stack, monorepo structure, performanc
 | **Vector DB** | **pgvector** (in PostgreSQL) | latest | No extra infra, AI embeddings for Trend/Copilot |
 | **Analytics OLAP** | **ClickHouse** | latest | Profit OS: 100x faster aggregations, columnar |
 | **Cache** | **Dragonfly** (Redis-compatible) | latest | 25x faster than Redis, multi-threaded, drop-in compatible |
-| **Message Queue** | **Redis Streams** (via Dragonfly) + NATS | latest | Low-latency job queue, NATS for durable pub/sub |
+| **Message Queue** | **Redis Streams** (via Dragonfly) | latest | Low-latency job queue with explicit stream routing via PostgreSQL outbox |
 | **Time-series** | **TimescaleDB** (PG extension) | latest | Platform health scores, performance metrics over time |
 | **Real-time sync** | **PostgreSQL LISTEN/NOTIFY** + custom | — | Change notification for real-time dashboards |
 
@@ -412,7 +412,7 @@ Request → Router → Primary Provider
 | **Error Tracking** | **Sentry** (Rust + Flutter + SvelteKit SDKs) | Cross-platform error tracking |
 | **APM / Monitoring** | **Grafana** + **Prometheus** | Infrastructure metrics, custom dashboards |
 | **Distributed Tracing** | **Jaeger** (via OpenTelemetry) | End-to-end request tracing across services |
-| **Logging** | **Axiom** | Serverless log aggregation, fast search |
+| **Logging** | **Grafana Loki** | Self-hosted structured log aggregation from `tracing` JSON stdout |
 | **Uptime** | **BetterUptime** | Status page, incident SLA compliance |
 
 | **Web + API Hosting** | **Contabo VPS** (self-hosted) | €40/mo VPS, full control, Docker Compose, SvelteKit adapter-node, Rust binary |
@@ -422,7 +422,7 @@ Request → Router → Primary Provider
 | **Storage** | **Cloudflare R2** | S3-compatible, zero egress fees |
 | **CI/CD** | **GitHub Actions** | Rust build caching, Flutter build, SvelteKit build + deploy to VPS |
 | **IaC** | **Docker Compose** + **Pulumi** (optional) | Simple VPS management, Docker Compose for all services |
-| **Secrets** | **Infisical** or **dotenv** on VPS | Secret management |
+| **Secrets** | **Infisical** (staging/prod) + **dotenv** (local dev only) | Secret management |
 | **Container** | **Docker** + multi-stage Rust builds | Minimal images (~20MB Rust binary) |
 
 ### 🧪 Layer 11: Testing

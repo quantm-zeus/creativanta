@@ -15,6 +15,8 @@ last_updated: 2026-03-30
 
 ### 1.1 Tier Positioning
 
+> `HUMAN_CONFIRMATION_REQUIRED`: recurring subscription prices for Free/Starter/Pro/Business/Enterprise are not yet approved in the canonical business docs. This file defines limits, gating, and credit economics, but not the monthly/annual price points.
+
 | Tier | Target | Positioning |
 |---|---|---|
 | **Free** | Explorer / evaluator | Try before buy, limited scope |
@@ -197,6 +199,8 @@ Rules:
 | **Workflow / Agent Pro** | Unlimited workflows, priority agent execution |
 | **Extra AI Credit Packs** | Pay-as-you-go top-ups |
 
+> `HUMAN_CONFIRMATION_REQUIRED`: add-on prices are not yet approved in canonical business docs. Do not invent SKU prices during implementation.
+
 ---
 
 ## 5. Billing Rules
@@ -272,5 +276,7 @@ Grace period (Day 7–14): user can view/export data + update payment, but NOT c
 - Tier gates checked **TRƯỚC** role/permission gates
 - Over-limit → inline upsell card, **KHÔNG** force redirect
 - Hard block: Free/Starter khi hết credits
-- Soft warning: Pro (90%), Business (80%)
+- Soft warning: Pro (80%), Business (80%)
 - Operator mode availability follows tier — **không pricing riêng per mode**
+
+> Clarification: "auto-buy" for Pro refers to optional auto-refill of purchased credit packs after the workspace enables auto-refill. It does NOT grant Business-style invoice overage billing beyond the subscription allocation.

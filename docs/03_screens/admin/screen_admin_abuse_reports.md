@@ -4,7 +4,7 @@
 > **Module**: S26 — Internal Admin & Operations (Trust & Safety)
 > **Route**: `/admin/abuse`
 > **Platform**: Admin Web (SvelteKit) — VPN-only access
-> **Upstream**: S26 §Trust/Safety, A1 Schema (abuse_reports, content_violations, user_actions), B5 RBAC §3
+> **Upstream**: S26 §3.2 Content Moderation, A1 Schema (`moderation_cases`), A3 API endpoint map §18.4 (`AdminAbuseService/*`), B5 RBAC §3.2 (`admin:moderation:manage`)
 
 ---
 
@@ -23,7 +23,7 @@ Centralized abuse report review and action queue. Handles content violations (sp
 
 ### When to Use
 - Reviewing new abuse reports
-- Actioning AI-flagged content that scored above threshold
+- Actioning AI-flagged content surfaced by automated checks
 - Processing escalated reports from moderation queue
 - Investigating repeat offenders
 - Handling legal/DMCA takedown requests
@@ -44,17 +44,17 @@ Centralized abuse report review and action queue. Handles content violations (sp
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- Admin user with `trust_safety` or `super_admin` role
+- Admin user with `admin:moderation:manage` permission
+- Effective roles: Super Admin or Content Admin
 - VPN connection active
 - Abuse reports exist in queue
 
 ### Postconditions
-- Report status updated (resolved/escalated/dismissed)
-- Content action applied (removed/hidden/warned)
-- User action applied (warned/suspended/banned) if warranted
-- Audit trail: `admin.abuse.actioned`
-- Reporter notified of resolution
-- Repeat offender flag updated
+- Abuse-report projection updated from canonical moderation state
+- Underlying `moderation_cases` record actioned, dismissed, or escalated
+- Content/user action applied if warranted
+- Internal audit log recorded
+- Reporter notification can be scheduled by the owning admin service
 
 ---
 
@@ -183,11 +183,11 @@ AbuseReportsPage
 
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Summary stats | `abuse_reports` aggregation | `AdminAbuseService/GetStats` | Count cards + SLA bar | 1m TTL (real-time-ish) |
-| Report list | `abuse_reports` | `AdminAbuseService/ListReports(tab, filters)` | Card list sorted by priority + time | No cache |
-| AI classification | `abuse_reports.ai_classification` | included | Confidence bar + flag chips | No cache |
-| Evidence | `abuse_reports.evidence[]` | `AdminAbuseService/GetEvidence(id)` | Thumbnail gallery | No cache |
-| User history | `user_actions` + `abuse_reports` | `AdminAbuseService/GetUserHistory(user_id)` | Timeline in drawer | No cache |
+| Summary stats | `moderation_cases` abuse-report projection | `AdminAbuseService/GetStats` | Count cards + SLA bar | 1m TTL (real-time-ish) |
+| Report list | `moderation_cases` abuse-report projection | `AdminAbuseService/ListReports(tab, filters)` | Card list sorted by priority + time | No cache |
+| AI classification | `moderation_cases.evidence` projection | included | Confidence bar + flag chips | No cache |
+| Evidence | `moderation_cases.evidence` | `AdminAbuseService/GetEvidence(id)` | Thumbnail gallery | No cache |
+| User history | `moderation_cases` + audit projection | `AdminAbuseService/GetUserHistory(user_id)` | Timeline in drawer | No cache |
 | SLA compliance | Computed from resolution times | `AdminAbuseService/GetSLACompliance` | Percentage + bar | 5m TTL |
 
 ---
@@ -196,15 +196,15 @@ AbuseReportsPage
 
 | # | Action | Trigger | API Call | Mutation | UI Result | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Remove content | Click "🗑 Remove" | `AdminAbuseService/RemoveContent(report_id)` | Content hidden + report resolved | Toast "Content removed" + card moves to Resolved | `trust_safety` |
-| 2 | Warn user | Click "⚠️ Warn" | `AdminAbuseService/WarnUser(report_id)` | Warning issued + report resolved | Toast "Warning sent" + card resolved | `trust_safety` |
-| 3 | Suspend user | Click "⏸ Suspend" → pick duration | `AdminAbuseService/SuspendUser(report_id, days)` | User suspended + content removed | Confirmation → "User suspended {n} days" | `trust_safety` |
-| 4 | Permanent ban | Click "🚫 Ban" → confirm | `AdminAbuseService/BanUser(report_id)` | User banned, content removed, workspace frozen | Double confirm ("Type BAN to confirm") → "User banned" | `super_admin` |
-| 5 | Escalate to legal | Click "📧 Escalate" | `AdminAbuseService/Escalate(report_id, note)` | Report escalated, legal team notified | Toast "Escalated to legal team" | `trust_safety` |
-| 6 | Dismiss report | Click "❌ Dismiss" | `AdminAbuseService/Dismiss(report_id, reason)` | Report dismissed, no action | Reason required → "Report dismissed" | `trust_safety` |
-| 7 | Bulk remove | Select multiple → "🗑 Bulk Remove" | `AdminAbuseService/BulkAction(ids, 'remove')` | Multiple reports actioned | Progress → "Removed {n} items" | `trust_safety` |
-| 8 | Open full review | Click "🔍 Full Review" | `AdminAbuseService/GetFullReport(id)` | — | Open FullReviewDrawer | `trust_safety` |
-| 9 | Submit full review action | Submit action form in drawer | `AdminAbuseService/ActionReport(id, action, note)` | Report actioned with detailed audit | Drawer closes + card updates | `trust_safety` |
+| 1 | Remove content | Click "🗑 Remove" | `AdminAbuseService/RemoveContent(report_id)` | Content hidden + report resolved | Toast "Content removed" + card moves to Resolved | `admin:moderation:manage` |
+| 2 | Warn user | Click "⚠️ Warn" | `AdminAbuseService/WarnUser(report_id)` | Warning issued + report resolved | Toast "Warning sent" + card resolved | `admin:moderation:manage` |
+| 3 | Suspend user | Click "⏸ Suspend" → pick duration | `AdminAbuseService/SuspendUser(report_id, days)` | User suspended + content removed | Confirmation → "User suspended {n} days" | `admin:moderation:manage` |
+| 4 | Permanent ban | Click "🚫 Ban" → confirm | `AdminAbuseService/BanUser(report_id)` | User banned, content removed, workspace frozen | Double confirm ("Type BAN to confirm") → "User banned" | `admin:moderation:manage` |
+| 5 | Escalate to legal | Click "📧 Escalate" | `AdminAbuseService/Escalate(report_id, note)` | Report escalated, legal team notified | Toast "Escalated to legal team" | `admin:moderation:manage` |
+| 6 | Dismiss report | Click "❌ Dismiss" | `AdminAbuseService/Dismiss(report_id, reason)` | Report dismissed, no action | Reason required → "Report dismissed" | `admin:moderation:manage` |
+| 7 | Bulk remove | Select multiple → "🗑 Bulk Remove" | `AdminAbuseService/BulkAction(ids, 'remove')` | Multiple reports actioned | Progress → "Removed {n} items" | `admin:moderation:manage` |
+| 8 | Open full review | Click "🔍 Full Review" | `AdminAbuseService/GetFullReport(id)` | — | Open FullReviewDrawer | `admin:moderation:manage` |
+| 9 | Submit full review action | Submit action form in drawer | `AdminAbuseService/ActionReport(id, action, note)` | Report actioned with detailed audit | Drawer closes + card updates | `admin:moderation:manage` |
 | 10 | View accused user | Click user link | — | — | Navigate to `/admin/users/[id]` | Any admin |
 
 ---
@@ -237,16 +237,16 @@ AbuseReportsPage
 
 ## 9. Permission Matrix
 
-| Action | Super Admin | Ops Admin | Trust Safety | Support Admin | Read Only |
-|---|---|---|---|---|---|
-| View reports | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Remove content | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Warn user | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Suspend user | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Permanent ban | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Escalate | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Dismiss | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Bulk actions | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Action | Super Admin | Operations | Finance | Content | Support | Tech | Analyst | Auditor |
+|---|---|---|---|---|---|---|---|---|
+| View reports | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Remove content | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Warn user | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Suspend user | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Permanent ban | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Escalate | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Dismiss | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Bulk actions | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ---
 

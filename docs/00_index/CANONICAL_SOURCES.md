@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-04-06
+last_updated: 2026-04-07
 ---
 
 # Canonical Sources — Single Source of Truth Registry
@@ -43,14 +43,14 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 | Topic | Canonical File | Notes |
 |-------|---------------|-------|
 | DB schema | 04_contracts/database_schema.md | Canonical table/enum/index contract. Includes workflow/agent step tables, KB tables, admin broadcast/job ops tables, public API usage tables. |
-| API endpoints | 04_contracts/api_endpoint_map.md | **~1,160 canonical RPC definitions** (§2-§20) + ~14 REST endpoints + 6 webhook endpoints. ✅ All API blockers RESOLVED. §10-§20 contain screen-derived RPCs promoted to canonical status (2026-04-06). 100% screen-to-API coverage achieved (907/907). |
-| Protobuf / gRPC | 04_contracts/protobuf_contracts.md | Transport/codegen overview. During docs phase, protobuf is generated from the canonical API authoring set (`api_endpoint_map.md` + `api_examples.md`) at implementation kickoff. |
+| API endpoints | 04_contracts/api_endpoint_map.md | Canonical RPC inventory and REST/webhook surface. Coverage is broad, but downstream screen cleanliness and implementation readiness still require OPEN_BLOCKERS review. |
+| Protobuf / gRPC | 04_contracts/protobuf_contracts.md | Transport/codegen overview only. No committed `.proto` files exist yet; see `OPEN_BLOCKERS.md` (`PROTO-C-001`). |
 | Domain events | 04_contracts/domain_event_catalog.md | ~230 canonical event types (Round 5 2026-04-04). All notification matrix events now have verbatim canonical entries. EVT-H-001 fully resolved (74-row mapping table). |
 | API JSON examples | 04_contracts/api_examples.md | 24 request/response examples, companion to api_endpoint_map.md |
 | RBAC permissions | 04_contracts/rbac_permission_matrix.md | 7 roles × ~114 perms + 8 admin roles (~23 perms). Round 5 (2026-04-04): Added `affiliate:read`, `competitor:read`, `evidence:read`, `membership:read/manage`, `admin:user:read`, `admin:workspace:read`, `admin:commerce:read`. Note: `permission_alias_policy.md` was demoted to non-canonical (HISTORICAL_REFERENCE) — screen docs now use RBAC tokens directly. |
 | Connector specs | 04_contracts/connector_specs.md | 6 platforms: TikTok, Shopee, Lazada, YouTube, Instagram, Facebook |
-| Error catalog | 04_contracts/error_catalog.md | **READY**. 30+ error codes, gRPC↔HTTP mapping, retry policy, bilingual messages |
-| Screen↔API reconciliation | 04_contracts/screen_api_reconciliation.md | ✅ RESOLVED (2026-04-06). Traceability record showing which screens reference which RPCs. All 907 screen-referenced RPCs now have canonical definitions in `api_endpoint_map.md` §2-§20. No longer a gap-tracking document. |
+| Error catalog | 04_contracts/error_catalog.md | Canonical for currently defined domains, but still incomplete. Check coverage note inside the file before assuming a domain has approved error codes. |
+| Screen↔API reconciliation | 04_contracts/screen_api_reconciliation.md | Historical API coverage traceability. Useful for inventory, but not proof that every screen doc is semantically implementation-clean. |
 | Permission alias policy | 09_archive/permission_alias_policy.md | **NOT CANONICAL** (demoted 2026-04-04, moved to `09_archive/`). Historical reference only. Contains semantically unsafe alias mappings (read→manage, delete→create). Screen docs have been directly canonicalized to use RBAC tokens. Do NOT use for implementation. |
 
 ## System Layer
@@ -94,9 +94,9 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 
 | Topic | Canonical File | Notes |
 |-------|---------------|-------|
-| Docs audit findings | 00_index/OPEN_BLOCKERS.md | 20 tracked entries: 19 RESOLVED, 1 PARTIALLY RESOLVED (PRD-H-001). Zero OPEN/CRITICAL blockers in tracked set. Downstream integrity gaps tracked in CROSS_LAYER_MATRIX.md §Known Integrity Gaps. |
+| Docs audit findings | 00_index/OPEN_BLOCKERS.md | Current source of truth for OPEN, PARTIAL, and RESOLVED blockers. Read this file before implementation; do not rely on older summary counts. |
 | Build phases | 00_index/IMPLEMENTATION_ORDER.md | 9 phases, dependencies |
 | Architecture decisions | 00_index/DECISION_LOG.md | ≥12 ADRs |
 | Acceptance tests | 00_index/ACCEPTANCE_TESTS.md | Created in Phase 1B |
 | Requirements traceability | 00_index/REQUIREMENTS_TRACEABILITY_MATRIX.md | Module-to-business/feature/contract/runtime/quality traceability backbone |
-| Cross-layer matrix | 00_index/CROSS_LAYER_MATRIX.md | **28 doc-spec aligned** (feature doc ↔ schema ↔ screens ↔ API service name). ✅ Full-contract alignment achieved: ~1,160 canonical RPCs covering 100% of screen references (907/907). See `screen_api_reconciliation.md` (RESOLVED). CI/CD is spec-ready; generated artifacts follow during scaffolding. |
+| Cross-layer matrix | 00_index/CROSS_LAYER_MATRIX.md | Module mapping and integrity snapshot. It is not a blanket claim that the corpus is contradiction-free or fully implementation-ready. |

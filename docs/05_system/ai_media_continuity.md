@@ -899,6 +899,7 @@ Views, watch time, engagement rate, saves, shares, conversions (if commerce link
 
 #### 9.16.3 Schema
 - Links to: Pack 02 Achievement Context objects (Achievement Definition, User Achievement Record)
+- Streak rewards follow the canonical gamification contract: 7-day = 10 credits, 30-day = 50 credits, 90-day = 200 credits
 - XP calculation: event-driven (video.published → +5 XP, clip.viral.10k → +20 XP)
 - Level thresholds: L1=0, L5=100, L10=500, L20=2000, L50=25000
 
@@ -1277,4 +1278,3 @@ AI/media/continuity pack bắt buộc cover tối thiểu các scenario sau:
 | Duplicate detection | Content-based hashing → warn on duplicate upload |
 | Usage tracking | Show where each asset was used (which content, which platform) |
 | Expiry warning | Flag time-sensitive assets (e.g., seasonal, promotional) |
-

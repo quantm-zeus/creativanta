@@ -4,7 +4,7 @@
 > **Module**: M21 — Workflow Marketplace / Recipe Economy / Agent Center
 > **Route**: `/m/workflows/templates`
 > **Platform**: Mobile (Flutter)
-> **Upstream**: Pack 03 §Workflow/Agent, A1 Schema (workflow_templates, template_ratings), B5 RBAC §2.7
+> **Upstream**: M21 Recipe & Agent Center, A1 Schema (`recipe_templates`), B5 RBAC §2.9, API §17.7 (`TemplateService`)
 
 ---
 
@@ -182,15 +182,15 @@ RecipesScreen
 
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Featured templates | `workflow_templates WHERE featured=true` | `TemplateService/GetFeatured` | Carousel banner cards | 1h TTL |
-| Template list | `workflow_templates` | `TemplateService/ListTemplates(category, page)` | Card list | 15m TTL |
-| Usage count | `workflow_templates.usage_count` | included | "1,234 lượt dùng" | 15m TTL |
-| Star rating | `template_ratings` avg | included | "⭐ 4.8/5" | 15m TTL |
-| Credit cost | `workflow_templates.estimated_credits` | included | "~5 cr/lần" | Static |
-| Step count | `workflow_template_steps` count | included | "📋 4 bước" | Static |
-| Setup time | `workflow_templates.setup_minutes` | included | "⏱ < 2 phút" | Static |
-| Price tier | `workflow_templates.plan_required` | included | Badge: 🟢/⭐/💎 | Static |
-| Reviews | `template_ratings` | `TemplateService/GetReviews(id)` | Star + text | 30m TTL |
+| Featured templates | `TemplateService/GetFeatured` response projection over published `recipe_templates` | `TemplateService/GetFeatured` | Carousel banner cards | 1h TTL |
+| Template list | Published `recipe_templates` + template metadata projection | `TemplateService/ListTemplates(category, page)` | Card list | 15m TTL |
+| Usage count | `recipe_templates.install_count` | included | "1,234 lượt dùng" | 15m TTL |
+| Star rating | `recipe_templates.rating_avg` + `review_count` | included | "⭐ 4.8/5" | 15m TTL |
+| Credit cost | `TemplateService/GetTemplate(id)` response projection (execution estimate) | included | "~5 cr/lần" | Static |
+| Step count | `TemplateService/GetTemplate(id)` response projection (template definition summary) | included | "📋 4 bước" | Static |
+| Setup time | `TemplateService/GetTemplate(id)` response projection (setup estimate) | included | "⏱ < 2 phút" | Static |
+| Price / eligibility badge | `recipe_templates.price` + install-eligibility projection from required capabilities | included | `🟢 Miễn phí` or upsell badge | Static |
+| Reviews | `TemplateService/GetReviews(id)` review projection | `TemplateService/GetReviews(id)` | Star + text | 30m TTL |
 
 ---
 
@@ -202,7 +202,7 @@ RecipesScreen
 | 2 | Search templates | Type in search overlay | `TemplateService/SearchTemplates(q)` | — | Search results replace list | Any |
 | 3 | View detail | Tap "👁 Xem chi tiết" | `TemplateService/GetTemplate(id)` | — | Open TemplateDetailBottomSheet | Any |
 | 4 | Use template | Tap "📥 Dùng template" | — | — | Open DeployConfirmDialog | `workflow:create` |
-| 5 | Deploy as active | Confirm deploy (active mode) | `TemplateService/Deploy(id, active=true)` | Create workflow from template, activate | Toast "✅ Workflow đã kích hoạt!" → navigate to runs | `workflow:create` |
+| 5 | Deploy as active | Confirm deploy (active mode) | `TemplateService/Deploy(id, active=true)` | Create workflow from template, activate | Toast "✅ Workflow đã kích hoạt!" → navigate to runs | `workflow:create` + `workflow:activate` |
 | 6 | Deploy as draft | Confirm deploy (draft mode) | `TemplateService/Deploy(id, active=false)` | Create workflow from template, draft | Toast "📝 Đã lưu nháp" → navigate to editor | `workflow:create` |
 | 7 | Rate template | Tap star rating in detail sheet | — | — | Open RatingBottomSheet | Any (who deployed) |
 | 8 | Share template | Tap share in detail sheet | — | — | System share sheet with deep link | Any |
@@ -244,7 +244,8 @@ RecipesScreen
 |---|---|---|---|---|---|---|---|
 | Browse templates | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | View details | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Deploy template | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Deploy template as draft | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Deploy template as active | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Rate template | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ---
@@ -370,4 +371,4 @@ N/A — Template catalog is read-only, cached with 15m TTL. Feature banner refre
 
 | Date | Version | Change | Author |
 |---|---|---|---|
-| 2026-03-28 | 3.0 | Full 20-point upgrade from 62-line Tier C. Added featured banner carousel, template detail bottom sheet with step pipeline visualization, deploy confirm dialog with mode selector, connection/credit/plan pre-checks, review section, 11 states, beginner-friendly UX. Fixed Screen ID (M060→M053), module (M20→M21). | System |
+| 2026-03-28 | 3.0 | Full 20-point upgrade from 62-line Tier C. Added featured banner carousel, template detail bottom sheet with step pipeline visualization, deploy confirm dialog with mode selector, connection/credit/plan pre-checks, review section, 11 states, beginner-friendly UX. Fixed Screen ID (M060→M054), module (M20→M21). | System |

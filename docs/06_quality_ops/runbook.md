@@ -8,7 +8,7 @@ status: READY
 # Runbook — Incident Response & Operations
 
 > **Infra**: Single Contabo VPS (10 vCPU, 32GB RAM, 400GB SSD)
-> **Stack**: Docker Compose, PostgreSQL 17, Dragonfly, NATS, ClickHouse
+> **Stack**: Docker Compose, PostgreSQL 17, Dragonfly, ClickHouse
 
 ---
 
@@ -28,12 +28,11 @@ status: READY
 | Service | Endpoint | Expected | Check Interval |
 |---|---|---|---|
 | API (Axum) | `/health` | `200 OK` + `{"status": "healthy"}` | 30s |
-| API (deep) | `/health/ready` | `200` + DB + Redis + NATS connected | 60s |
+| API (deep) | `/health/ready` | `200` + DB + Redis connected | 60s |
 | Web (SvelteKit) | `/` | `200` | 60s |
 | PostgreSQL | Port 5432 | `pg_isready` returns 0 | 30s |
 | Dragonfly | Port 6379 | `PING` → `PONG` | 30s |
 | ClickHouse | Port 8123 | `/ping` → `Ok.` | 60s |
-| NATS | Port 8222 | `/healthz` → `200` | 30s |
 
 ---
 
@@ -348,5 +347,4 @@ Backup: Vietnam / Japan (future scaling)
 - **Incident management**: `02_features/platform/internal_admin.md` §3.4
 - **Security**: `06_quality_ops/security_threat_model.md`
 - **Status page**: `02_features/platform/help_center.md` §5
-
 

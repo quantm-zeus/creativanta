@@ -2,16 +2,15 @@
 layer: contracts
 canonical: false
 created: 2026-04-01
-updated: 2026-04-06
-status: RESOLVED
+updated: 2026-04-07
+status: HISTORICAL_TRACEABILITY
 ---
 
 # Screen→API Reconciliation Matrix
 
-> **Status**: ✅ RESOLVED (2026-04-06) — All 907 screen-referenced RPCs are now canonically defined in `api_endpoint_map.md` §2-§20.
-> **Previous Status**: WORKING ANALYSIS with ~572 missing RPCs.
-> **Resolution**: All screen-derived RPCs were dispositioned as **(1) promote to canonical API map** and added to `api_endpoint_map.md` §10-§20.
-> This file is retained as a **traceability record** showing which screens reference which RPCs. It is no longer a gap-tracking document.
+> **Status**: Historical traceability record only.
+> This file may still contain legacy screen RPC references captured during reconciliation work. It is **not** the canonical API source and it is **not** proof that every screen doc is implementation-clean.
+> Canonical API truth lives in `api_endpoint_map.md`; current readiness/blockers live in `00_index/OPEN_BLOCKERS.md`.
 
 ## Summary
 

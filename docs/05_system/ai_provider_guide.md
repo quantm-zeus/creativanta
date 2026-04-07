@@ -201,6 +201,15 @@ pub trait LlmProvider: Send + Sync {
 // ~100-150 lines per provider adapter
 ```
 
+```rust
+pub struct StreamChunk {
+    pub delta_text: String,
+    pub is_final: bool,
+    pub finish_reason: Option<String>,
+    pub usage: Option<TokenUsage>,
+}
+```
+
 ---
 
 ## 7. Error Handling
@@ -255,4 +264,3 @@ Dashboard query: daily/weekly/monthly cost per workspace per provider.
 | Provider cost spike | > 50% increase week-over-week | Tech Admin notification |
 | Cache hit rate | < 20% | Optimization review trigger |
 | Average tokens/request | > 2x expected for task type | Model routing review |
-

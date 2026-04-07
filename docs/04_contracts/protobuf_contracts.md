@@ -15,13 +15,13 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | §2 Common Types | UUID, Money, Timestamp, Pagination, SourceClass, ConfidenceBand, OperatorMode |
 | §3 Key Service Definitions | WorkspaceService, IdeaService, ScriptService, AssetService, PublishService, CopilotService, ProfitService |
 | §4 Code Generation | proto-gen.sh script for Rust, TypeScript, Dart |
-| §5 Service Count Summary | ~52 services, ~310 RPCs (this doc covers key services only; full count is ~346 canonical RPC definitions in `api_endpoint_map.md`; screen-derived RPCs relocated to `screen_api_reconciliation.md` §5) |
+| §5 Service Count Summary | Overview only. `api_endpoint_map.md` is the authoritative RPC inventory; actual `.proto` files are not committed yet. |
 
 # A2 — Protobuf Contract Definitions (Overview & Key Services)
 
 > **Upstream**: Tech Stack ADR v3 (ADR-002, ADR-005), Product Freeze
 > **Protocol**: gRPC (mobile↔API) + ConnectRPC (web↔API) + REST (webhooks only)
-> **Location**: `/protos/` — generated in implementation Phase 1 from the canonical contract authoring set (`api_endpoint_map.md` + `api_examples.md`), then used as the transport/codegen source for Dart + Rust + TypeScript
+> **Location**: `/protos/` — planned for implementation Phase 1. No actual `.proto` files are committed in the repository yet; this document is the transport/codegen overview derived from the canonical authoring set (`api_endpoint_map.md` + `api_examples.md`).
 
 ---
 
@@ -306,9 +306,9 @@ echo "✅ Proto generation complete for Rust, TypeScript, Dart"
 | Internal Admin (S26) | 7 | ~35 |
 | Extended Production (M07) | — (in Content) | ~40 |
 | Platform Health (M22) | — (in Admin) | ~8 |
-| **TOTAL** | **~52 services** | **~310 RPCs** |
+| **TOTAL** | **Implementation-generated** | **See `api_endpoint_map.md` for the authoritative current RPC inventory** |
 
 > **Note**: Internal Admin protos are NOT exposed via public ConnectRPC gateway. They use a separate admin-only gRPC endpoint protected by VPN + admin MFA.
-> **Audit v7 — I-7 fix**: Total updated from ~270 to ~310 to include Extended Production RPCs (Pack 04 §9.6-9.16) and Platform Health RPCs (M22) added in Audit v5. A3 (API Endpoint Map) is the authoritative count source.
+> **Truthfulness rule**: This section is illustrative only. Until `.proto` files are generated, implementers MUST treat `api_endpoint_map.md` as the authoritative RPC count and `api_examples.md` as the authoritative payload companion.
 
 Actual `.proto` files will be created during implementation Phase 1 (foundation setup).

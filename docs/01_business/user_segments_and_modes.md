@@ -107,6 +107,8 @@ Mỗi mode **bắt buộc** phải định nghĩa rõ 8 fields sau:
 
 > Nếu thiếu bất kỳ field nào, mode chưa đầy đủ.
 
+> `HUMAN_CONFIRMATION_REQUIRED`: Section 2 currently defines only 3 of the required 8 fields for each operator mode (`Dashboard priorities`, `Primary Objects`, `Mobile-critical loops`). The remaining canonical fields still need approval and propagation: `Default navigation emphasis`, `Daily Brief logic`, `Terminology emphasis`, `Recommended recipes`, and `Alert priorities`.
+
 ---
 
 ## 4. Tier Capacity Table

@@ -38,8 +38,8 @@ status: READY
 | `postgres_replication_lag_seconds` | Gauge | pg_exporter | > 30s |
 | `dragonfly_memory_usage_bytes` | Gauge | Redis exporter | > 80% maxmemory |
 | `dragonfly_connected_clients` | Gauge | Redis exporter | > 500 |
-| `nats_msgs_in_rate` | Gauge | NATS exporter | — (baseline) |
-| `nats_consumer_pending` | Gauge | NATS exporter | > 10000 |
+| `redis_stream_pending` | Gauge | Redis exporter / app metrics | > 10000 |
+| `redis_stream_publish_rate` | Gauge | App metrics | — (baseline) |
 
 ### 2.2 Application Metrics (custom)
 
@@ -100,7 +100,7 @@ Client (web/mobile)
       → Service layer (child span)
         → DB query (child span, query text)
         → Redis call (child span)
-        → NATS publish (propagate context in headers)
+        → Redis Stream publish (propagate trace context in payload metadata)
           → Worker (continue trace)
             → External API call (child span)
 ```
@@ -336,4 +336,3 @@ loki:
 - **Docker**: `06_quality_ops/docker_dev_environment.md` (service definitions)
 - **Runbook**: `06_quality_ops/runbook.md` (incident response)
 - **Analytics**: `06_quality_ops/analytics_event_taxonomy.md` (PostHog events)
-

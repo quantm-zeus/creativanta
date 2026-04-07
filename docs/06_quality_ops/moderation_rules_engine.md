@@ -13,6 +13,8 @@ last_verified: 2026-03-30
 
 ## 1. Moderation Pipeline
 
+> `HUMAN_CONFIRMATION_REQUIRED`: this document defines moderation flow and escalation timing, but it does not yet canonicalize numeric scoring thresholds for allow/review/block decisions. Screens may show draft thresholds; those values are not source-of-truth until promoted here or into another higher-precedence contract doc.
+
 ```
 Content Submit → Pre-screen (automated) → Score → Decision
                       ↓
