@@ -2,7 +2,7 @@
 layer: business
 canonical: true
 source: creativanta_prd_v_3_1_revised_part_1.md (§8, §20)
-last_updated: 2026-03-30
+last_updated: 2026-04-07
 ---
 
 # User Segments & Operator Modes
@@ -55,36 +55,66 @@ App phải hỗ trợ 6 mode chính. Mỗi mode thay đổi **UX emphasis**, kh�
 ### Creator Mode
 - **DB enum**: `creator`
 - **Dashboard priorities**: ideas, scripts, assets, publish, comments, earnings snapshot
+- **Default navigation emphasis**: Home, Ideas, Scripts, Studio, Publish, Inbox
+- **Daily Brief logic**: trend/opportunity first, then pending scripts/assets, then ready-to-publish items, urgent comments, and earnings snapshot
+- **Terminology emphasis**: ideas, scripts, assets, publish, earnings
+- **Recommended recipes**: trend-to-idea, script approval reminder, publish fallback, weekly performance digest
+- **Alert priorities**: publish failures, pending approvals, connector issues, credit depletion, top-performer spikes
 - **Primary Objects**: Idea, Script, Asset, Publish Item, Thread, Offer
 - **Mobile-critical loops**: review script, approve asset, quick publish, quick reply
 
 ### Seller Mode
 - **DB enum**: `seller`
 - **Dashboard priorities**: products, offers, inventory, inbox, profit, anomalies
+- **Default navigation emphasis**: Home, Products, Orders, Offers, Inbox, Finance
+- **Daily Brief logic**: order exceptions first, then low-stock alerts, profit anomalies, urgent buyer threads, and today's revenue snapshot
+- **Terminology emphasis**: orders, products, offers, inventory, profit
+- **Recommended recipes**: low-stock alert, post-purchase reply, refund triage, daily profit digest
+- **Alert priorities**: new orders/refunds, stockouts, profit anomalies, payment failures, connector degradation
 - **Primary Objects**: Product, SKU, Offer, Order, Thread, Profit Snapshot
 - **Mobile-critical loops**: quick offer edit, thread triage, stock alert action, profit anomaly follow-up
 
 ### Affiliate Operator Mode
 - **DB enum**: `affiliate_operator`
 - **Dashboard priorities**: opportunities, products, packaging, links/coupons, attributed revenue/profit
+- **Default navigation emphasis**: Home, Opportunities, Offers, Campaigns, Inbox, Finance
+- **Daily Brief logic**: high-fit opportunities first, then link/coupon health, attributed revenue deltas, expiring offers, and reply-to-conversion actions
+- **Terminology emphasis**: opportunities, offers, links, coupons, attributed revenue
+- **Recommended recipes**: coupon expiry alert, high-fit product alert, reply-to-conversion, attribution digest
+- **Alert priorities**: broken links/coupons, offer expiry, attribution drop, policy warnings, credit depletion
 - **Primary Objects**: Opportunity, Product, Offer, Affiliate Link, Campaign, Profit Snapshot
 - **Mobile-critical loops**: quick idea capture, coupon/link share, reply-to-conversion flows
 
 ### Live Operator Mode
 - **DB enum**: `live_operator`
 - **Dashboard priorities**: live war room, cue, offer pinning, comment triage, highlights, post-live summary
+- **Default navigation emphasis**: Home, Live, Inbox, Offers, Highlights, Analytics
+- **Daily Brief logic**: live readiness first, then cue gaps, comment surges, offer pinning checks, and post-live follow-up summary
+- **Terminology emphasis**: live session, cue, highlight, offer pin, reply
+- **Recommended recipes**: live countdown, comment surge triage, highlight clipping, post-live follow-up
+- **Alert priorities**: live-start risk, comment backlog surge, cue/offers not ready, stream health, moderator escalation
 - **Primary Objects**: Live Session, Cue Card, Thread, Offer, Highlight
 - **Mobile-critical loops**: live monitoring, quick cue, highlight mark, urgent reply
 
 ### Agency / MCN Mode
 - **DB enum**: `agency_mcn`
 - **Dashboard priorities**: workspace switching, approvals, creator scorecards, reports, templates
+- **Default navigation emphasis**: Home, Workspaces, Approvals, Reports, Workflows, Diagnostics
+- **Daily Brief logic**: approval queue first, then cross-workspace diagnostics, creator scorecards, at-risk deliverables, and report deadlines
+- **Terminology emphasis**: workspaces, approvals, scorecards, templates, delivery
+- **Recommended recipes**: approval routing, client report digest, diagnostics escalation, creator handoff
+- **Alert priorities**: approval SLA breaches, cross-workspace failures, creator performance drops, client deadline risk, connector outages
 - **Primary Objects**: Workspace, Approval Request, Script, Asset, Report, Workflow
 - **Mobile-critical loops**: approvals, urgent diagnostics, summary review
 
 ### Brand Collaboration Mode
 - **DB enum**: `brand_collaboration`
 - **Dashboard priorities**: sponsor inquiries, deliverables, campaign proof, invoice/payout tracking, performance evidence
+- **Default navigation emphasis**: Home, Inquiries, Campaigns, Proof, Payouts, Reports
+- **Daily Brief logic**: sponsor inquiries first, then deliverable deadlines, proof bundle gaps, invoice/payout exceptions, and campaign evidence status
+- **Terminology emphasis**: sponsor inquiry, deliverable, proof bundle, payout, invoice
+- **Recommended recipes**: sponsor inquiry intake, deliverable reminder, proof bundle chaser, payout follow-up
+- **Alert priorities**: sponsor deadline risk, missing proof, payment/payout delay, campaign underdelivery, partner replies overdue
 - **Primary Objects**: Sponsor Inquiry, Campaign, Publish Item, Proof Bundle, Invoice, Creator Payout
 - **Mobile-critical loops**: approve deliverable, inspect proof, status update, sponsor follow-up
 
@@ -107,7 +137,7 @@ Mỗi mode **bắt buộc** phải định nghĩa rõ 8 fields sau:
 
 > Nếu thiếu bất kỳ field nào, mode chưa đầy đủ.
 
-> `HUMAN_CONFIRMATION_REQUIRED`: Section 2 currently defines only 3 of the required 8 fields for each operator mode (`Dashboard priorities`, `Primary Objects`, `Mobile-critical loops`). The remaining canonical fields still need approval and propagation: `Default navigation emphasis`, `Daily Brief logic`, `Terminology emphasis`, `Recommended recipes`, and `Alert priorities`.
+> **Status (2026-04-07)**: All 6 canonical operator modes now define the full 8-field contract. Home, Morning Brief, help/onboarding, and mode-aware navigation MUST use this table as the priority source.
 
 ---
 

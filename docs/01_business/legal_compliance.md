@@ -2,7 +2,7 @@
 layer: business
 canonical: true
 source: creativanta_legal_compliance_consent_contract_v_3_1.md, creativanta_supplementary_s19_customer_support_v_3_1.md
-last_updated: 2026-04-04
+last_updated: 2026-04-07
 ---
 
 # Legal & Compliance
@@ -11,6 +11,7 @@ last_updated: 2026-04-04
 > File này được tổng hợp bởi AI từ legal docs.
 > Approving role: **Legal/Privacy Counsel** · Secondary approver: **Product Owner** · Supporting reviewers: **Security Lead, Trust & Safety Lead**
 > Review gating: Required before Phase 0 public launch. Engineering implementation may proceed under these approved defaults.
+> **Sign-off status (2026-04-07)**: legal approval has **not** been recorded in the docs corpus. This file defines the approval gate and evidence checklist, but it does not claim that the final sign-off is complete.
 
 ---
 
@@ -273,6 +274,18 @@ Open → In Progress → Awaiting Response → Resolved → Closed
 
 ## 8. Implementation Checklist
 
+### 8.1 Launch Sign-off Completion Criteria
+
+Legal sign-off is complete only when **all** of the following are true:
+
+1. Legal/Privacy Counsel approves the current version of this file and the linked evidence pack.
+2. Product Owner countersigns the launch scope and confirms there are no unresolved P0 legal/compliance gaps.
+3. Security Lead and Trust & Safety Lead record supporting reviews with no unresolved launch-blocking findings.
+4. Every checklist item in §8.2 is marked complete with linked evidence.
+5. The release record includes links to the live public legal documents, consent-flow verification, AI labeling/C2PA verification, DMCA/AUP operating readiness, data export/deletion verification, and support/diagnostics readiness.
+
+### 8.2 Implementation Checklist
+
 Verify trước ship — mỗi item phải pass:
 
 - [ ] Cookie consent banner hiển thị ngay lần đầu truy cập
@@ -296,6 +309,18 @@ Verify trước ship — mỗi item phải pass:
 - [ ] AI data usage consent toggle in Settings (default OFF)
 - [ ] Support ticket system operational with SLA per tier
 - [ ] Diagnostics hierarchy: user-facing → operator → engineering → audit
+
+### 8.3 Required Evidence Pack
+
+Attach these artifacts to the release record before Legal/Privacy Counsel signs off:
+
+- Staging or production screenshots/video of cookie consent, ToS/Privacy acceptance, AI data usage toggle, and Digital Twin consent flows
+- Test evidence showing no analytics/marketing tracking before consent
+- Links to live footer-accessible legal documents (ToS, Privacy, Cookie, AUP, DMCA, AI Disclaimer)
+- Verification sample proving visible AI labeling and machine-readable C2PA tagging on exported media
+- Runbook or ticket workflow reference for DMCA intake/takedown and AUP enforcement
+- Test evidence for data export, account deletion, token revocation, and cache-clear behavior
+- Support and diagnostics readiness proof covering ticketing, SLA routing, and the 4-level diagnostics hierarchy
 
 > Cross-ref: Platform-specific compliance detail: `04_contracts/connector_specs.md`
 > Cross-ref: Security threat model: `06_quality_ops/security_threat_model.md`

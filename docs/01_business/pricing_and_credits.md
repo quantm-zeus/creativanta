@@ -2,7 +2,7 @@
 layer: business
 canonical: true
 source: creativanta_pricing_credits_growth_contract_v_3_1.md
-last_updated: 2026-03-30
+last_updated: 2026-04-07
 ---
 
 # Pricing & Credits
@@ -15,15 +15,26 @@ last_updated: 2026-03-30
 
 ### 1.1 Tier Positioning
 
-> `HUMAN_CONFIRMATION_REQUIRED`: recurring subscription prices for Free/Starter/Pro/Business/Enterprise are not yet approved in the canonical business docs. This file defines limits, gating, and credit economics, but not the monthly/annual price points.
+> **CANONICAL DECISION (2026-04-07)**: recurring subscription prices are now defined as launch-default catalog values. Finance may override runtime pricing via the admin pricing config, but implementation MUST treat the tables below as the default source-of-truth until an audited config override exists.
+>
+> **Currency rule**:
+> - Catalog pricing uses fixed pricebooks by currency; it is **NOT** derived from spot FX at checkout time.
+> - Launch pricebooks are defined for `USD` and `VND`.
+> - Invoices and checkout display the workspace billing currency pricebook.
+> - `Enterprise` remains contract/custom, not self-serve.
 
-| Tier | Target | Positioning |
-|---|---|---|
-| **Free** | Explorer / evaluator | Try before buy, limited scope |
-| **Starter** | Solo creator / small seller | Essential tools, affordable |
-| **Pro** | Active creator / seller | Full feature set, higher limits |
-| **Business** | Agency / MCN / brand | Multi-creator, collaboration, advanced analytics |
-| **Enterprise** | Large organization | Custom, SLA, dedicated support |
+| Tier | Target | Positioning | USD Monthly | USD Annual | VND Monthly | VND Annual |
+|---|---|---|---|---|---|---|
+| **Free** | Explorer / evaluator | Try before buy, limited scope | $0 | $0 | ₫0 | ₫0 |
+| **Starter** | Solo creator / small seller | Essential tools, affordable | $20 | $200 | ₫499,000 | ₫4,990,000 |
+| **Pro** | Active creator / seller | Full feature set, higher limits | $60 | $600 | ₫1,499,000 | ₫14,990,000 |
+| **Business** | Agency / MCN / brand | Multi-creator, collaboration, advanced analytics | $200 | $2,000 | ₫4,999,000 | ₫49,990,000 |
+| **Enterprise** | Large organization | Custom, SLA, dedicated support | Custom | Custom | Custom | Custom |
+
+Implementation notes:
+- Annual billing follows the canonical `2 months free` rule (10 × monthly price).
+- `Starter`, `Pro`, and `Business` are intentionally aligned to the nearest bundled credit-pack value for launch economics: 500 credits ≈ Starter, 2,000 ≈ Pro, 10,000 ≈ Business.
+- Paywall, billing settings, and admin pricing tools MUST read catalog values from config/API, not hardcode them in UI.
 
 ### 1.2 Full Feature Gating Matrix
 
@@ -191,15 +202,19 @@ Rules:
 
 ## 4. Add-on Modules
 
-| Add-on | What It Unlocks |
-|---|---|
-| **Commerce Intelligence** | Advanced fit graph, competitor deep dive |
-| **Continuity Pro** | Unlimited packs, advanced drift detection |
-| **Advanced Profit / Reconciliation** | Multi-source reconciliation, advanced cost attribution |
-| **Workflow / Agent Pro** | Unlimited workflows, priority agent execution |
-| **Extra AI Credit Packs** | Pay-as-you-go top-ups |
+| Add-on | What It Unlocks | Eligible Tiers | USD Monthly | USD Annual | VND Monthly | VND Annual |
+|---|---|---|---|---|---|---|
+| **Commerce Intelligence** | Advanced fit graph, competitor deep dive | Starter+ | $39 | $390 | ₫999,000 | ₫9,990,000 |
+| **Continuity Pro** | Unlimited packs, advanced drift detection | Starter+ | $29 | $290 | ₫749,000 | ₫7,490,000 |
+| **Advanced Profit / Reconciliation** | Multi-source reconciliation, advanced cost attribution | Starter+ | $79 | $790 | ₫1,999,000 | ₫19,990,000 |
+| **Workflow / Agent Pro** | Unlimited workflows, priority agent execution | Starter+ | $59 | $590 | ₫1,499,000 | ₫14,990,000 |
+| **Extra AI Credit Packs** | Pay-as-you-go top-ups | Starter+ | See §5.7 | One-time | See §5.7 | One-time |
 
-> `HUMAN_CONFIRMATION_REQUIRED`: add-on prices are not yet approved in canonical business docs. Do not invent SKU prices during implementation.
+Add-on billing rules:
+- Module add-ons inherit the workspace billing interval (`monthly` or `yearly`).
+- Add-on purchase mid-cycle is prorated immediately on the current billing cycle.
+- Add-on removal takes effect at the next billing boundary, not immediately.
+- Extra AI Credit Packs remain one-time purchases and do **not** inherit the subscription interval.
 
 ---
 
@@ -250,12 +265,12 @@ Grace period (Day 7–14): user can view/export data + update payment, but NOT c
 
 ### 5.7 Credit Purchase Options
 
-| Pack | Credits | Price (USD) | Per Credit |
-|---|---|---|---|
-| Small | 100 | $5 | $0.050 |
-| Medium | 500 | $20 | $0.040 |
-| Large | 2,000 | $60 | $0.030 |
-| Mega | 10,000 | $200 | $0.020 |
+| Pack | Credits | Price (USD) | Price (VND) | Per Credit |
+|---|---|---|---|---|
+| Small | 100 | $5 | ₫129,000 | $0.050 |
+| Medium | 500 | $20 | ₫499,000 | $0.040 |
+| Large | 2,000 | $60 | ₫1,499,000 | $0.030 |
+| Mega | 10,000 | $200 | ₫4,999,000 | $0.020 |
 
 - Purchased credits không expire (valid suốt subscription active)
 - Available cho mọi paid tier

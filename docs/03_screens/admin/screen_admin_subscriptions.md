@@ -25,9 +25,9 @@ Manage subscription plans, view MRR trends, handle billing issues, and monitor u
 │ 💳 Subscriptions & Billing                   [Period: 30d ▾]       │
 ├──────────────────────────────────────────────────────────────────────┤
 │ ┌─ MRR KPIs ─────────────────────────────────────────────────────┐  │
-│ │ 💰 MRR: 125.5M VND (+8.2%)  Subscribers: 234                  │  │
+│ │ 💰 MRR: 244.3M VND (+8.2%)  Subscribers: 234                  │  │
 │ │ 📈 New: 45  🔄 Renewed: 180  ❌ Churned: 9 (3.8%)             │  │
-│ │ 💎 ARPU: 536K VND  LTV: 6.4M VND                             │  │
+│ │ 💎 ARPU: 1.04M VND  LTV: 12.5M VND                           │  │
 │ └────────────────────────────────────────────────────────────────┘  │
 │                                                                      │
 │ Tabs: [📊 Overview] [📋 Plans] [⚠️ Issues (3)] [🔧 Config]       │
@@ -35,9 +35,9 @@ Manage subscription plans, view MRR trends, handle billing issues, and monitor u
 │ ── Plans Tab ──                                                      │
 │ ┌─ Plan Row ─────────────────────────────────────────────────────┐  │
 │ │ 🆓 Free     │ Users: 1,234 │ MRR: 0        │ [Edit]          │  │
-│ │ ⭐ Starter  │ Users: 145   │ MRR: 43.5M    │ [Edit]          │  │
-│ │ 💎 Pro      │ Users: 78    │ MRR: 62.4M    │ [Edit]          │  │
-│ │ 🏢 Business │ Users: 11    │ MRR: 19.6M    │ [Edit]          │  │
+│ │ ⭐ Starter  │ Users: 145   │ MRR: 72.4M    │ [Edit]          │  │
+│ │ 💎 Pro      │ Users: 78    │ MRR: 116.9M   │ [Edit]          │  │
+│ │ 🏢 Business │ Users: 11    │ MRR: 55.0M    │ [Edit]          │  │
 │ └────────────────────────────────────────────────────────────────┘  │
 │                                                                      │
 │ ── Issues Tab ──                                                     │

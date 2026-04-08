@@ -77,27 +77,27 @@ The Billing & Plan screen is the financial command center for workspace subscrip
 │                                                                      │
 │ ┌─ Current Plan ────────────────────────────────────────────────────┐│
 │ │ 💎 Pro Plan                                                        ││
-│ │ 499.000 VND/tháng                                                  ││
+│ │ 1.499.000 VND/tháng                                                ││
 │ │ ─────────────────────────────────────────────────────────          ││
 │ │ Next billing: 15/04/2026 · Auto-renew: ✅ ON                       ││
 │ │                                                                     ││
-│ │ Credits:  [████████░░░░░░] 320 / 1.000 còn lại                     ││
+│ │ Credits:  [████████░░░░░░] 320 / 2.000 còn lại                     ││
 │ │           Resets: 15/04 · ~10 ngày nữa                             ││
-│ │ Storage:  [█████░░░░░░░░░] 4.2 GB / 10 GB                         ││
+│ │ Storage:  [██░░░░░░░░░░░░] 4.2 GB / 50 GB                         ││
 │ │ Members:  3 / 5 seats                                               ││
-│ │ Channels: 3 / 5 connected                                          ││
+│ │ Channels: 3 / 15 connected                                         ││
 │ │                                                                     ││
 │ │ [📊 Chi tiết sử dụng] [⬆ Nâng cấp gói] [⏸ Hủy gói đăng ký]     ││
 │ └─────────────────────────────────────────────────────────────────── ┘│
 │                                                                      │
 │ ┌─ Mua thêm Credits ───────────────────────────────────────────────┐│
-│ │ ┌──────────┐ ┌──────────────┐ ┌───────────────┐                  ││
-│ │ │ 🪙 100   │ │ 🪙 500       │ │ 🪙 1.000      │                  ││
-│ │ │ credits  │ │ credits      │ │ credits       │                  ││
-│ │ │ 99.000đ  │ │ 399.000đ     │ │ 699.000đ      │                  ││
-│ │ │          │ │ 🏷 Giảm 20%  │ │ 🏷 Giảm 30%   │                  ││
-│ │ │ [Mua]    │ │ [Mua]        │ │ [Mua] ⭐      │                  ││
-│ │ └──────────┘ └──────────────┘ └───────────────┘                  ││
+│ │ ┌──────────┐ ┌──────────────┐ ┌───────────────┐ ┌──────────────┐ ││
+│ │ │ 🪙 100   │ │ 🪙 500       │ │ 🪙 2.000      │ │ 🪙 10.000    │ ││
+│ │ │ credits  │ │ credits      │ │ credits       │ │ credits      │ ││
+│ │ │ 129.000đ │ │ 499.000đ     │ │ 1.499.000đ    │ │ 4.999.000đ   │ ││
+│ │ │          │ │ phổ biến      │ │ best value ⭐ │ │ scale pack    │ ││
+│ │ │ [Mua]    │ │ [Mua]        │ │ [Mua]         │ │ [Mua]         │ ││
+│ │ └──────────┘ └──────────────┘ └───────────────┘ └──────────────┘ ││
 │ │ Credits mua thêm không reset, dùng đến khi hết.                  ││
 │ └─────────────────────────────────────────────────────────────────── ┘│
 │                                                                      │
@@ -117,10 +117,10 @@ The Billing & Plan screen is the financial command center for workspace subscrip
 │ ┌─ Lịch sử thanh toán ────────────────────────────────────────────┐│
 │ │ Date          Description        Amount        Status  Invoice  ││
 │ │ ──────────────────────────────────────────────────────────────── ││
-│ │ 15/03/2026   Pro Plan (monthly)  499.000đ      ✅ Paid [📄]    ││
-│ │ 01/03/2026   AI Credits (500)    399.000đ      ✅ Paid [📄]    ││
-│ │ 15/02/2026   Pro Plan (monthly)  499.000đ      ✅ Paid [📄]    ││
-│ │ 15/01/2026   Pro Plan (monthly)  499.000đ      ✅ Paid [📄]    ││
+│ │ 15/03/2026   Pro Plan (monthly)  1.499.000đ    ✅ Paid [📄]    ││
+│ │ 01/03/2026   AI Credits (500)    499.000đ      ✅ Paid [📄]    ││
+│ │ 15/02/2026   Pro Plan (monthly)  1.499.000đ    ✅ Paid [📄]    ││
+│ │ 15/01/2026   Pro Plan (monthly)  1.499.000đ    ✅ Paid [📄]    ││
 │ │ ──────────────────────────────────────────────────────────────── ││
 │ │ [Tải thêm ↓]                                                    ││
 │ └─────────────────────────────────────────────────────────────────── ┘│
@@ -142,24 +142,23 @@ SettingsBillingPage
 │   └── Title ("💳 Thanh toán & Gói dịch vụ")
 ├── CurrentPlanCard
 │   ├── PlanBadge (💎 Pro / 🥈 Starter / 🆓 Free)
-│   ├── PriceLine ("499.000 VND/tháng")
+│   ├── PriceLine ("1.499.000 VND/tháng")
 │   ├── BillingCycle ("Next billing: 15/04/2026 · Auto-renew: ✅ ON")
 │   ├── UsageMetrics
-│   │   ├── CreditsBar (progress bar + "320 / 1.000 còn lại" + reset date)
-│   │   ├── StorageBar (progress bar + "4.2 GB / 10 GB")
+│   │   ├── CreditsBar (progress bar + "320 / 2.000 còn lại" + reset date)
+│   │   ├── StorageBar (progress bar + "4.2 GB / 50 GB")
 │   │   ├── MembersCount ("3 / 5 seats")
-│   │   └── ChannelsCount ("3 / 5 connected")
+│   │   └── ChannelsCount ("3 / 15 connected")
 │   └── ActionBar
 │       ├── UsageDetailButton ("📊 Chi tiết sử dụng") → modal/drawer
 │       ├── UpgradeButton ("⬆ Nâng cấp gói") → PlanComparisonModal
 │       └── CancelButton ("⏸ Hủy gói đăng ký") → CancellationFlow
 ├── CreditPurchaseSection
 │   ├── SectionHeader ("Mua thêm Credits")
-│   ├── CreditTierCard[] (3 tiers in grid)
-│   │   ├── CreditAmount (100 / 500 / 1,000)
-│   │   ├── Price ("99.000đ" etc.)
-│   │   ├── DiscountBadge ("🏷 Giảm 20%" — conditionally shown)
-│   │   ├── PopularBadge (⭐ on best-value tier)
+│   ├── CreditTierCard[] (4 tiers in grid)
+│   │   ├── CreditAmount (100 / 500 / 2,000 / 10,000)
+│   │   ├── Price ("129.000đ" etc.)
+│   │   ├── ValueBadge ("phổ biến" / "best value" / "scale pack")
 │   │   └── BuyButton ("Mua") → Stripe Checkout
 │   └── Note ("Credits mua thêm không reset, dùng đến khi hết.")
 ├── PaymentMethodSection
@@ -182,12 +181,12 @@ SettingsBillingPage
 │   │   └── InvoiceRow[]
 │   │       ├── Date ("15/03/2026")
 │   │       ├── Description ("Pro Plan (monthly)")
-│   │       ├── Amount ("499.000đ")
+│   │       ├── Amount ("1.499.000đ")
 │   │       ├── StatusBadge ("✅ Paid" / "❌ Failed" / "⏳ Pending")
 │   │       └── DownloadButton ("📄" → Stripe invoice PDF)
 │   └── LoadMoreButton ("Tải thêm ↓")
 ├── PlanComparisonModal (when "⬆ Nâng cấp" clicked)
-│   ├── PlanColumn[] (Free / Starter / Pro / Enterprise)
+│   ├── PlanColumn[] (Free / Starter / Pro / Business / Enterprise)
 │   │   ├── PlanName + Price
 │   │   ├── FeatureList (credits, storage, members, channels, AI features)
 │   │   └── SelectButton ("Chọn gói này" → Stripe Checkout)
@@ -210,29 +209,29 @@ SettingsBillingPage
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Current plan name | `subscriptions.plan_tier` | `BillingService/GetCurrentPlan(workspace_id)` | Badge + localized display name ("💎 Pro Plan") | 5m TTL |
-| Plan price | `BillingService/GetCurrentPlan` response for current `plan_tier` | `BillingService/GetCurrentPlan(workspace_id)` | "499.000 VND/tháng" (VND compact) | 5m TTL |
+| Plan price | `BillingService/GetCurrentPlan` response for current `plan_tier` | `BillingService/GetCurrentPlan(workspace_id)` | "1.499.000 VND/tháng" (VND compact example for Pro) | 5m TTL |
 | Next billing | `subscriptions.current_period_end` | Same | "15/04/2026" (DD/MM/YYYY) | 5m TTL |
 | Auto-renew status | `subscriptions.auto_renew` | Same | "✅ ON" / "⏸ OFF" | 5m TTL |
-| Credit balance | `ai_credit_transactions` aggregated | `CreditService/GetBalance(workspace_id)` | "320 / 1.000 còn lại" + progress bar | 1m TTL |
+| Credit balance | `ai_credit_transactions` aggregated | `CreditService/GetBalance(workspace_id)` | "320 / 2.000 còn lại" + progress bar | 1m TTL |
 | Credit reset date | `subscriptions.current_period_end` | Same | "Resets: 15/04" | 5m TTL |
-| Storage used | `UsageService/GetStorageUsage` response | `UsageService/GetStorageUsage` | "4.2 GB / 10 GB" + progress bar | 5m TTL |
+| Storage used | `UsageService/GetStorageUsage` response | `UsageService/GetStorageUsage` | "4.2 GB / 50 GB" + progress bar | 5m TTL |
 | Member count | `workspace_members.count` | `WorkspaceService/GetMemberCount` | "3 / 5 seats" | 5m TTL |
-| Channel count | `connected_accounts` count where active = true | `ConnectorService/CountActive` | "3 / 5 connected" | 5m TTL |
-| Credit tiers | `BillingService/ListCreditPackages` response | `BillingService/ListCreditPackages` | Price cards with discounts | 1h TTL |
+| Channel count | `connected_accounts` count where active = true | `ConnectorService/CountActive` | "3 / 15 connected" | 5m TTL |
+| Credit tiers | `BillingService/ListCreditPackages` response | `BillingService/ListCreditPackages` | Price cards with value badges | 1h TTL |
 | Payment method | Stripe Customer → PaymentMethods | `BillingService/GetPaymentMethods` | Card type + last 4 + expiry | 5m TTL |
 | Payment alert | `subscriptions.status` | `BillingService/GetSubscription` | Alert banner if status = `past_due` | Real-time |
 | Billing history | Stripe invoices | `BillingService/ListInvoices(page)` | Invoice table rows | 15m TTL |
 
 ### Plan Comparison Matrix
-| Feature | Free (0đ) | Starter (199K) | Pro (499K) | Enterprise (Custom) |
-|---|---|---|---|---|
-| AI Credits/month | 50 | 300 | 1,000 | Unlimited |
-| Storage | 1 GB | 5 GB | 10 GB | 50 GB |
-| Team members | 1 | 3 | 5 | Unlimited |
-| Connected channels | 2 | 3 | 5 | Unlimited |
-| AI Studio access | ❌ | Basic | Full | Full + Priority |
-| Trend Intelligence | ❌ | ❌ | ✅ | ✅ + Custom |
-| Priority support | ❌ | ❌ | ✅ | ✅ + Dedicated |
+| Feature | Free (0đ) | Starter (499K) | Pro (1.499M) | Business (4.999M) | Enterprise (Custom) |
+|---|---|---|---|---|---|
+| AI Credits/month | 50 | 500 | 2,000 | 10,000 | Custom |
+| Storage | 1 GB | 10 GB | 50 GB | 200 GB | Custom |
+| Team members | 1 | 2 | 5 | 20 | Custom |
+| Connected channels | 2 | 5 | 15 | 50 | Unlimited |
+| AI Studio access | Limited | Standard | Full | Full + higher limits | Custom |
+| Trend Intelligence | Basic | Standard | Advanced | Full | Custom |
+| Priority support | ❌ | Email | Chat | Dedicated | Dedicated + SLA |
 
 ---
 

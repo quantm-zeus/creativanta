@@ -23,14 +23,6 @@ last_updated: 2026-04-07
 - Evidence: repository search for `*.proto` returned 0 files on 2026-04-07.
 - Owner: API Lead
 
-## BIZ-C-001: Subscription tier prices and add-on prices are not approved
-
-- Layer: Business
-- Severity: **CRITICAL**
-- Status: **OPEN**
-- Impact: `pricing_and_credits.md` defines limits and credit-pack prices, but not the recurring subscription prices or add-on SKU prices. Billing/paywall implementation cannot be finalized without human confirmation.
-- Owner: Product + Finance
-
 ## SCR-H-003: Screen corpus still contains widespread template contamination and stale admin role aliases
 
 - Layer: Screens
@@ -44,24 +36,8 @@ last_updated: 2026-04-07
 - Layer: Business / Compliance
 - Severity: **HIGH**
 - Status: **OPEN**
-- Impact: `legal_compliance.md` is engineering-approved but explicitly launch-gated pending legal sign-off. This is not a coding blocker for all modules, but it remains a release blocker.
+- Impact: `legal_compliance.md` is engineering-approved but explicitly launch-gated pending legal sign-off. The remaining approval criteria are now explicit in `legal_compliance.md` §8.1-§8.3, but the human approval itself is still outstanding.
 - Owner: Legal + Product
-
-## MOD-H-001: Moderation scoring thresholds are not canonicalized
-
-- Layer: Quality / Ops
-- Severity: **HIGH**
-- Status: **OPEN**
-- Impact: moderation flow exists, but numeric allow/review/block thresholds are still missing from canonical docs. Admin moderation tooling and automated moderation rules cannot be finalized safely.
-- Owner: Trust & Safety
-
-## BIZ-M-001: Operator mode contract is partial
-
-- Layer: Business
-- Severity: **MEDIUM**
-- Status: **OPEN**
-- Impact: `user_segments_and_modes.md` requires 8 fields per mode, but only 3 are currently defined. Home/dashboard personalization and mode-specific UX prioritization remain under-specified.
-- Owner: Product
 
 ## ERR-M-002: Error catalog coverage is incomplete
 
@@ -99,6 +75,33 @@ last_updated: 2026-04-07
 - Resolution: Added `ALTER TABLE <t> ENABLE ROW LEVEL SECURITY;` + `ALTER TABLE <t> FORCE ROW LEVEL SECURITY;` + `CREATE POLICY tenant_isolation` to **106 tenant-scoped tables** in `database_schema.md`. Global tables (users, regions, currencies, internal_admins) and junction tables (trend_signals, etc.) correctly excluded.
 - Verified: `grep -c 'FORCE ROW LEVEL SECURITY' database_schema.md` = 106
 - Owner: Backend Lead
+
+## BIZ-C-001: Subscription tier prices and add-on prices are not approved
+
+- Layer: Business
+- Severity: **CRITICAL**
+- Status: **RESOLVED** (2026-04-07)
+- Impact: `pricing_and_credits.md` previously defined limits and credit-pack prices but not recurring subscription prices or add-on SKU prices.
+- Resolution: Canonicalized launch-default USD and VND pricebooks for Free/Starter/Pro/Business, annual prices, and 4 add-on SKU prices in `pricing_and_credits.md`. Billing docs now explicitly treat catalog values as config-driven defaults, not hardcoded UI constants.
+- Owner: Product + Finance
+
+## MOD-H-001: Moderation scoring thresholds are not canonicalized
+
+- Layer: Quality / Ops
+- Severity: **HIGH**
+- Status: **RESOLVED** (2026-04-07)
+- Impact: moderation flow existed, but numeric allow/review/block thresholds were missing from canonical docs.
+- Resolution: `moderation_rules_engine.md` now defines normalized 0-100 allow/review/block bands, category-specific overrides, hard-block categories, and escalation timing aligned to S26. The admin moderation rules screen now reflects the canonical policy instead of draft thresholds.
+- Owner: Trust & Safety
+
+## BIZ-M-001: Operator mode contract is partial
+
+- Layer: Business
+- Severity: **MEDIUM**
+- Status: **RESOLVED** (2026-04-07)
+- Impact: `user_segments_and_modes.md` previously required 8 fields per mode but only defined 3, leaving mode-aware Home and Brief behavior under-specified.
+- Resolution: All 6 operator modes now define the full 8-field contract, including navigation emphasis, Daily Brief logic, terminology, recommended recipes, and alert priorities.
+- Owner: Product
 
 ## DB-C-002: ENABLE ROW LEVEL SECURITY is template-only, not applied per-table
 

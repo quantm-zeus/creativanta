@@ -2,7 +2,7 @@
 layer: business
 canonical: true
 source: creativanta_prd_v_3_1_revised_part_2.md (§24–§30), creativanta_prd_v_3_1_revised_part_1.md (§28)
-last_updated: 2026-04-02
+last_updated: 2026-04-07
 ---
 
 # Business Rules
@@ -255,7 +255,12 @@ Source: PRD §27
   - Tax-related fields in `orders` table: `tax_amount NUMERIC(18,6) DEFAULT 0`, `tax_jurisdiction VARCHAR(10)`, `tax_note VARCHAR(100)`
   - Collect basic settings: `tax_registration_id`, `tax_jurisdiction_default`
   - Provide exportable raw data for downstream accounting/tax handling
-- **Phase 2 (post-PMF)**: Integrate TaxJar/Avalara when Creator Store (M15) reaches PMF
+- **Phase 2 (measurable PMF trigger)**: Integrate TaxJar/Avalara when Creator Store (M15) hits the following monthly-reviewed trigger on a rolling 90-day window:
+  1. **PMF score**: at least **40%** of surveyed active Creator Store sellers answer "very disappointed" to the Sean Ellis loss-of-product question; minimum sample size **30** responses.
+  2. **Retention**: paying Creator Store workspaces maintain at least **80% gross 90-day retention**.
+  3. **Direct-sale scale**: Creator Store records at least **500 completed paid orders** across at least **25 paying workspaces**.
+  4. **Tax complexity signal**: either **5+ workspaces** sold into **3+ tax jurisdictions** during the same 90-day window, or **1+ workspace** reaches **85%** of a monitored economic-nexus threshold.
+  5. **Execution rule**: once all 4 conditions above are true, Product + Finance + Platform MUST open the native tax-engine workstream in the next planning cycle; the `creator_responsible` disclaimer remains active until tax calculation is actually shipped.
   - Tax API called at checkout for direct sales only
   - Platform marketplace orders continue using platform-provided tax data
   - Tax settings added to workspace settings: `tax_registration_id`, `tax_jurisdiction_default`
@@ -337,4 +342,3 @@ Source: PRD §27
   - **Annual plan early cancellation**: No partial refund. Access continues until annual cycle end.
   - **Data export**: User can request full data export (GDPR Article 20) at any point before hard delete. Export includes: content, assets, analytics, financial records, contact data. Format: ZIP containing JSON + media files. Processing: up to 72 hours. Download link valid for 7 days.
 - Cross-ref: `pricing_and_credits.md` §5.4 Cancellation, BIZ-010 Workspace Deletion Quarantine
-

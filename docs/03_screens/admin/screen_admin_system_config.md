@@ -64,9 +64,10 @@ The System Configuration screen is the central control panel for all platform-wi
 │ ─── Tab: Pricing ────────────────────────────────────────────────── │
 │ ┌─ Subscription Tiers ────────────────────────────────────────┐     │
 │ │ Free    │ ₫0/mo     │ 50 credits  │ 2 accounts │ [Edit]    │     │
-│ │ Starter │ ₫199K/mo  │ 500 credits │ 5 accounts │ [Edit]    │     │
-│ │ Pro     │ ₫499K/mo  │ 2K credits  │ 15 accounts│ [Edit]    │     │
-│ │ Business│ ₫1.99M/mo │ 10K credits │ 50 accounts│ [Edit]    │     │
+│ │ Starter │ ₫499K/mo  │ 500 credits │ 5 accounts │ [Edit]    │     │
+│ │ Pro     │ ₫1.499M/mo│ 2K credits  │ 15 accounts│ [Edit]    │     │
+│ │ Business│ ₫4.999M/mo│ 10K credits │ 50 accounts│ [Edit]    │     │
+│ │ Enterpr.│ custom    │ custom      │ custom     │ [Edit]    │     │
 │ └────────────────────────────────────────────────────────────────┘   │
 │                                                                      │
 │ ─── Tab: AI Credits ─────────────────────────────────────────────── │

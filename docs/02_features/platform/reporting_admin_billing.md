@@ -4,7 +4,7 @@ module: M23
 canonical: true
 domain: platform
 status: READY
-last_updated: 2026-03-30
+last_updated: 2026-04-07
 ---
 
 # Feature: Reporting, Admin & Billing (M23)
@@ -51,6 +51,7 @@ Self-service workspace administration for creators and sellers: manage connected
 3. **RULE-M23-A03**: Connected account management: connect requires Editor+ (OAuth dance + capability check). Disconnect requires Admin+ (destructive — breaks dependent workflows). Force-reconnect available when token expires (connector_specs §connection).
 4. **RULE-M23-A04**: Workspace diagnostics show user-facing error summaries for recent issues (publish failures, sync errors, AI generation failures). Each diagnostic links to the affected object and provides recommended actions — NOT raw error logs (Pack 03 §8).
 5. **RULE-M23-A05**: Credit balance and usage dashboard shows: current balance, usage this period, usage by feature category (AI text, AI video, AI image, AI analysis), burn rate, estimated depletion date. Top-up CTA visible when balance < 20% of monthly allocation (PRD §21, Pack 08).
+6. **RULE-M23-A06**: Billing surfaces MUST render plan and add-on prices from the canonical pricing registry (`pricing_and_credits.md` + pricing config), not hardcoded screen values. Extra AI credit packs are one-time purchases; module add-ons follow the workspace billing interval.
 
 ## Main Flow (Part A)
 
@@ -64,7 +65,7 @@ Self-service workspace administration for creators and sellers: manage connected
 3. **Billing management**: Owner manages subscription
    - View current plan, upcoming renewal, payment method
    - Upgrade/downgrade: immediate (upgrade) or at-period-end (downgrade)
-   - Add-ons: purchase additional credits, extra storage, additional connected accounts
+   - Add-ons: purchase module add-ons (`Commerce Intelligence`, `Continuity Pro`, `Advanced Profit / Reconciliation`, `Workflow / Agent Pro`) and extra AI credit packs
    - Invoice download: PDF per billing period
 4. **Connected accounts**: Editor+ manages platform connections
    - Connect: OAuth flow → capability check → M22 registers connector

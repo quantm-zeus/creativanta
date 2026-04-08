@@ -10,6 +10,7 @@
 
 ## 1. Purpose & Context
 Configure content moderation rules — keyword lists, AI detection thresholds, auto-actions on violations, and escalation policies.
+Launch-default thresholds follow `06_quality_ops/moderation_rules_engine.md`; this screen edits runtime policy within that canonical envelope and must audit every threshold change.
 ### Entry Points - Moderation (A09): "⚙️ Rules" button
 ### Exit Points - Self-contained
 
@@ -24,25 +25,25 @@ Configure content moderation rules — keyword lists, AI detection thresholds, a
 │ ┌─ Rule Card ───────────────────────────────────────────────────┐   │
 │ │ #1 "No follower sales" · [🟢 Active]                          │   │
 │ │ Type: Keyword + AI · Keywords: "buy followers", "get fans"    │   │
-│ │ AI threshold: 85% · Auto-action: Flag for review              │   │
+│ │ Risk threshold: 50 · Auto-action: Hide + queue for review     │   │
 │ │ Triggered: 45 times (30d) · False positive rate: 3%           │   │
 │ │ [✏ Edit] [⏸ Disable]                                         │   │
 │ └────────────────────────────────────────────────────────────────┘   │
 │ ┌─ Rule Card ───────────────────────────────────────────────────┐   │
 │ │ #2 "Adult content" · [🟢 Active]                               │   │
-│ │ Type: AI image classification · Threshold: 90%                │   │
+│ │ Type: AI image classification · Threshold: 60                 │   │
 │ │ Auto-action: Auto-remove + warn user                          │   │
 │ │ Triggered: 12 times (30d) · FP rate: 1%                      │   │
 │ │ [✏ Edit] [⏸ Disable]                                         │   │
 │ └────────────────────────────────────────────────────────────────┘   │
 │ ┌─ Rule Card ───────────────────────────────────────────────────┐   │
-│ │ #3 "Scam/fraud patterns" · [🟢 Active]                       │   │
-│ │ Type: AI behavior analysis · Threshold: 80%                   │   │
-│ │ Auto-action: Auto-suspend + notify admin                      │   │
+│ │ #3 "Scam/phishing patterns" · [🟢 Active]                     │   │
+│ │ Type: AI behavior analysis · Threshold: 50                    │   │
+│ │ Auto-action: Auto-block + notify admin                        │   │
 │ │ Triggered: 5 times (30d) · FP rate: 5%                       │   │
 │ └────────────────────────────────────────────────────────────────┘   │
 │ ┌─ Escalation Policy ──────────────────────────────────────────┐    │
-│ │ 1st violation: Warn · 2nd: Temp suspend (24h) · 3rd: Ban    │    │
+│ │ Critical: auto-block + review <4h · High: <24h · Medium: <72h│    │
 │ │ [✏ Edit policy]                                               │    │
 │ └────────────────────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────────────────┘
