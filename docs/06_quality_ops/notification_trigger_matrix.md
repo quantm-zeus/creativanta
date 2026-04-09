@@ -40,11 +40,11 @@ created: 2026-04-01
 | `content.media_kit.generated` | `media_kit.generated` | `media_kit_ready` | In-App | LOW | Creator |
 | `content.rate_card.suggestion_ready` | `rate_card.ai_suggested` | `rate_card_suggested` | In-App | LOW | Creator |
 | `admin.moderation.content_flagged` | `moderation.case_created` | `admin_moderation_alert` | Email | HIGH | Content Admin |
-| `admin.fraud.case_detected` | `fraud.case_detected` | `admin_fraud_alert` | Email | HIGH | Ops Admin |
+| `admin.fraud.case_detected` | `fraud.case_detected` | `admin_fraud_alert` | Email | HIGH | Content Admin |
 | `admin.user.suspended` | `admin.user_suspended` | `admin_user_suspension` | Email | HIGH | Suspended user |
 | `admin.impersonation.started` | `admin.impersonation_started` | `admin_impersonation_notify` | Email | NORMAL | Target user |
 | `admin.incident.detected` | `incident.detected` | `admin_incident_alert` | Email | HIGH | Tech Admin |
-| `admin.support.sla_breached` | `support.sla_breached` | `admin_sla_breach` | Email | HIGH | Ops Admin |
+| `admin.support.sla_breached` | `support.sla_breached` | `admin_sla_breach` | Email | HIGH | Support Admin |
 | `identity.user.account_frozen` | `user.account_frozen` | `account_frozen` | Email | HIGH | User |
 | `identity.workspace.frozen` | `workspace.frozen` | `workspace_freeze` | Email + Push | HIGH | All members |
 | `system.export.completed` | `export.completed` | `export_ready` | Email + In-App | NORMAL | Requester |

@@ -4,7 +4,7 @@
 > **Module**: M14 — Monetization OS (Campaigns)
 > **Route**: `/campaigns`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: Pack 06 §Commerce, Product Freeze §23, A1 Schema (campaigns, campaign_products, campaign_content, campaign_offers), B5 RBAC §2.7
+> **Upstream**: Pack 06 §Commerce, Product Freeze §23, campaigns schema + CampaignService projections, B5 RBAC §2.7
 
 ---
 
@@ -57,14 +57,14 @@ Marketing campaign manager — the umbrella entity that groups products, offers,
 │ 📊 Campaigns (8)                    [+ Tạo campaign] [📤 Export]   │
 ├──────────────────────────────────────────────────────────────────────┤
 │ ┌─ Summary Bar ─────────────────────────────────────────────────┐   │
-│ │ 🟢 3 running · ⏳ 2 scheduled · ⏸ 1 paused · ✅ 2 completed │   │
+│ │ 🟢 3 live · 📝 2 ready · ⏸ 1 paused · ✅ 2 completed      │   │
 │ │ Total spend: 28M VND · Total revenue: 203M VND · Avg ROAS: 7.2x│  │
 │ └────────────────────────────────────────────────────────────────┘   │
 │                                                                      │
 │ Filter: [Status ▾] [Platform ▾] [Period ▾] Sort: [ROAS cao nhất ▾] │
 │                                                                      │
 │ ┌─ Campaign Card ────────────────────────────────────────────────┐  │
-│ │ 📊 "Spring Sale 2026"                           [🟢 Running]  │  │
+│ │ 📊 "Spring Sale 2026"                              [🟢 Live] │  │
 │ │ Period: 15/3 - 30/3 · Day 13 of 16                             │  │
 │ │ Budget: 10M VND · Spent: 6.2M (62%) [████████░░░░]            │  │
 │ │                                                                  │  │
@@ -103,12 +103,12 @@ CampaignListPage
 │   ├── CreateButton ("+ Tạo campaign", primary CTA)
 │   └── ExportButton ("📤 Export")
 ├── SummaryBar
-│   ├── StatusCounts (running, scheduled, paused, completed)
+│   ├── StatusCounts (live, ready, paused, completed)
 │   ├── TotalSpend
 │   ├── TotalRevenue
 │   └── AvgROAS
 ├── FilterBar
-│   ├── StatusFilter (Running, Scheduled, Paused, Completed, All)
+│   ├── StatusFilter (Planned, Ready, Live, Paused, Completed, All)
 │   ├── PlatformFilter
 │   ├── PeriodFilter
 │   └── SortSelector (ROAS, Revenue, Recent, Budget)
@@ -158,15 +158,15 @@ CampaignListPage
 
 | Field | Source | Format | Source Class |
 |---|---|---|---|
-| Campaign name | `campaigns.name` | String | — |
+| Campaign name | `campaigns.title` | String | — |
 | Status | `campaigns.status` | Color badge | — |
 | Period | `campaigns.start_date` + `end_date` | "15/3 – 30/3" + day count | — |
-| Budget | `campaigns.budget_amount` | VND "10M" | Imported |
-| Spent | `campaigns.spent_amount` (aggregated) | VND "6.2M" + % | Official (if ad API) / Imported |
-| Products | `campaign_products` count | "5" | — |
-| Offers | `campaign_offers` count | "3" | — |
-| Content | `campaign_content` count | "12 posts" | — |
-| Views | `content_performance` sum for campaign content | "234K" | Official |
+| Budget | `campaigns.budget` | VND "10M" | Imported |
+| Spent | `cost_items.amount` aggregated for `related_scope_type = 'campaign'` | VND "6.2M" + % | Official / Imported |
+| Products | `array_length(campaigns.related_product_ids)` or service projection | "5" | — |
+| Offers | `array_length(campaigns.related_offer_ids)` or `CampaignService/GetLinkedOffers` | "3" | — |
+| Content | `CampaignService/GetLinkedContent` projection count | "12 posts" | — |
+| Views | Campaign metrics / linked-content projection | "234K" | Official |
 | Orders | `orders` attributed to campaign | "234" | Official / Inferred |
 | Revenue | `orders.total_amount` sum | VND "45M" | Official |
 | ROAS | Computed: revenue / spent | "7.2x" | Computed |
@@ -182,10 +182,10 @@ CampaignListPage
 | 1 | Create campaign | "+ Tạo" → modal/page | `CampaignService/Create` | New campaign card appears | `campaign:manage` |
 | 2 | View dashboard | "📊 Dashboard" | — | → `/campaigns/[id]` | `campaign:manage` |
 | 3 | Edit | "✏ Edit" | — | Edit modal or → `/campaigns/[id]/edit` | `campaign:manage` |
-| 4 | Pause | "⏸ Pause" → confirm | `CampaignService/Update(status=paused)` | Confirmation: "Tạm dừng sẽ vô hiệu hóa tất cả offer liên quan. Tiếp tục?" → offers deactivated | `campaign:manage` |
-| 5 | Resume | "▶ Resume" | `CampaignService/Update(status=running)` | Offers reactivated, campaign resumes | `campaign:manage` |
+| 4 | Pause | "⏸ Pause" → confirm | `CampaignService/Pause(id)` | Confirmation: "Tạm dừng sẽ vô hiệu hóa tất cả offer liên quan. Tiếp tục?" → offers deactivated | `campaign:manage` |
+| 5 | Resume | "▶ Resume" | `CampaignService/Resume(id)` | Offers reactivated, campaign returns to `live` | `campaign:manage` |
 | 6 | Duplicate | "📋 Duplicate" | `CampaignService/Duplicate` | New draft campaign pre-filled from source | `campaign:manage` |
-| 7 | Export | "📤 Export" | Client-side CSV/PDF | Campaign performance report download | `report:export` |
+| 7 | Export | "📤 Export" | `CampaignService/ExportReport(format)` | Campaign performance report download | `report:export` |
 | 8 | Filter/Sort | Filter/sort controls | Refetch | List updates | `campaign:manage` |
 
 ---
@@ -339,15 +339,15 @@ Client-side:
 - Date range: "15/3 – 30/3"
 - Day counter: "Ngày 13 trên 16"
 - Budget: "10M VND · Đã dùng: 6.2M (62%)"
-- Status: "Đang chạy", "Đã lên lịch", "Tạm dừng", "Hoàn thành"
+- Status: "Đã lên kế hoạch", "Sẵn sàng", "Đang chạy", "Tạm dừng", "Hoàn thành"
 
 ---
 ## 18. Design Tokens Reference
 
 | Token | Usage |
 |---|---|
-| `--color-campaign-running` | Running status badge (🟢 green) |
-| `--color-campaign-scheduled` | Scheduled status badge (⏳ blue) |
+| `--color-campaign-running` | Live status badge (🟢 green) |
+| `--color-campaign-scheduled` | Ready / planned status badge (⏳ blue) |
 | `--color-campaign-paused` | Paused status badge (⏸ gray) |
 | `--color-campaign-completed` | Completed status badge (✅ teal) |
 | `--color-budget-safe` | Budget < 80% used (green progress) |

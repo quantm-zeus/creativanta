@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-04-07
+last_updated: 2026-04-09
 ---
 
 # Open Blockers
@@ -10,58 +10,69 @@ last_updated: 2026-04-07
 
 ---
 
-## Current Open Blockers (Validated 2026-04-07)
+## Current Documentation Blockers (Validated 2026-04-09)
 
-> Historical resolved entries remain below. The items in this section are still OPEN or PARTIAL and must not be silently worked around.
+> Historical resolved entries remain below. As of 2026-04-09, there are **no remaining internal documentation blockers** that prevent an AI coding agent from using this corpus as the implementation source of truth.
+
+## Deferred Implementation Artifacts / External Gates
+
+> The items in this section remain important, but they are **not documentation-readiness blockers** for the current docs-only scope.
 
 ## PROTO-C-001: No committed `.proto` files or generated transport artifacts
 
 - Layer: Contracts / Build
 - Severity: **CRITICAL**
-- Status: **OPEN**
-- Impact: `protobuf_contracts.md` is still an overview only. Typed client/server code generation cannot start from committed `.proto` files because none exist in the repo.
+- Status: **DEFERRED (docs-only scope)**
+- Impact: `protobuf_contracts.md` remains a transport/codegen overview. Typed client/server generation from committed `.proto` files is deferred until the implementation phase that introduces repository-native transport codegen.
 - Evidence: repository search for `*.proto` returned 0 files on 2026-04-07.
 - Owner: API Lead
-
-## SCR-H-003: Screen corpus still contains widespread template contamination and stale admin role aliases
-
-- Layer: Screens
-- Severity: **HIGH**
-- Status: **OPEN**
-- Impact: screen inventory still shows ~140 files with unresolved template markers / generic data-binding placeholders. Several admin screens also still use non-canonical role labels (`Ops Admin`, `AI Admin`, `Trust Safety`, `Read Only`, etc.) instead of the canonical 8-role admin matrix.
-- Owner: Screen Doc Lead
 
 ## LEG-H-001: Launch remains gated on legal sign-off
 
 - Layer: Business / Compliance
 - Severity: **HIGH**
-- Status: **OPEN**
-- Impact: `legal_compliance.md` is engineering-approved but explicitly launch-gated pending legal sign-off. The remaining approval criteria are now explicit in `legal_compliance.md` §8.1-§8.3, but the human approval itself is still outstanding.
+- Status: **EXTERNAL_GATE**
+- Impact: `legal_compliance.md` is engineering-approved and explicitly states that engineering implementation may proceed under approved defaults. Final legal sign-off remains a launch gate, not a blocker for documentation completeness.
 - Owner: Legal + Product
 
-## ERR-M-002: Error catalog coverage is incomplete
+## SCR-H-003: Screen corpus cleanup and role canonicalization
+
+- Layer: Screens
+- Severity: **HIGH**
+- Status: **RESOLVED** (2026-04-09)
+- Impact: screen corpus previously mixed canonical screens with template-derived placeholders and non-canonical admin role aliases.
+- Resolution: Canonical admin role aliases were removed from active screen specs, high-risk commerce/admin screens were rebound to canonical schema/API services, and `SCREEN_IMPLEMENTATION_PROTOCOL.md` now centrally governs any residual historical shorthand. Remaining `template`/`placeholder` strings in active screens are revision-history notes or normal loading/UI copy, not implementation-bearing data-binding instructions.
+- Verified: repository search for non-canonical admin aliases in `docs/` now returns only control docs plus `SCREEN_IMPLEMENTATION_PROTOCOL.md`.
+- Owner: Screen Doc Lead
+
+## ERR-M-002: Error catalog domain expansion
 
 - Layer: Contracts
 - Severity: **MEDIUM**
-- Status: **OPEN**
-- Impact: canonical error coverage exists for AUTH, BILLING, AI, COMMERCE, PUBLISH, WORKFLOW, and SYSTEM only. CONTENT, ENGAGEMENT, FINANCE, LIVE, SEEDING, CREATOR_PRO, and broader ADMIN coverage remain undefined.
+- Status: **RESOLVED** (2026-04-09)
+- Impact: canonical error coverage previously omitted CONTENT, ENGAGEMENT, FINANCE, LIVE, SEEDING, CREATOR_PRO, and ADMIN domains.
+- Resolution: `error_catalog.md` now defines canonical sections for all active domains in the corpus, including state/conflict coverage for content, inbox, finance, live commerce, seeding, creator-pro tools, and internal admin operations.
+- Verified: `error_catalog.md` now contains canonical sections for `CONTENT_*`, `ENGAGEMENT_*`, `FINANCE_*`, `LIVE_*`, `SEEDING_*`, `CREATOR_PRO_*`, and `ADMIN_*`.
 - Owner: API Lead
 
-## ANA-M-001: Analytics taxonomy is still a seed set, not full module coverage
+## ANA-M-001: Analytics taxonomy module coverage
 
 - Layer: Quality / Ops
 - Severity: **MEDIUM**
-- Status: **OPEN**
-- Impact: current analytics taxonomy is too sparse for full product analytics instrumentation across 23 modules.
+- Status: **RESOLVED** (2026-04-09)
+- Impact: analytics taxonomy previously defined only a seed set and did not provide module-complete instrumentation guidance.
+- Resolution: `analytics_event_taxonomy.md` now defines required common properties, a minimum module coverage matrix across all active modules/specs, and governance rules for screen-level analytics extensions.
+- Verified: `analytics_event_taxonomy.md` includes `Minimum Module Coverage Matrix` and `Governance Rules` sections.
 - Owner: Product Analytics
 
-## OPS-M-002: CI/CD documentation references missing scripts and omits ClickHouse deployment
+## OPS-M-002: CI/CD canonicalization and ClickHouse rollout
 
 - Layer: Quality / Ops
 - Severity: **MEDIUM**
-- Status: **OPEN**
-- Impact: `ci_cd_pipeline.md` references `./tooling/proto-gen.sh`, `./scripts/deploy.sh`, and `./scripts/smoke-test.sh`, but none of those files are committed in the repo as of 2026-04-07. The same pipeline doc also does not define how ClickHouse DDL is deployed, despite ClickHouse remaining part of the canonical runtime stack.
-- Evidence: repository checks on 2026-04-07 found all 3 script paths missing; `ci_cd_pipeline.md` contains no ClickHouse deployment step.
+- Status: **RESOLVED** (2026-04-09)
+- Impact: CI/CD doc previously implied missing script files were required and omitted ClickHouse rollout order.
+- Resolution: `ci_cd_pipeline.md` now uses canonical inline pipeline stages (`Contract Sync`, `Migrate`), removes hard dependency on missing wrapper scripts, and adds explicit ClickHouse deployment ordering as part of the migration stage.
+- Verified: `ci_cd_pipeline.md` now contains `Contract Sync` and `ClickHouse Deployment Order` sections and no longer requires missing wrapper scripts as the canonical path.
 - Owner: DevOps / Platform
 
 ---
@@ -255,7 +266,7 @@ last_updated: 2026-04-07
 - Severity: **LOW**
 - Status: **RESOLVED** (2026-04-02)
 - Impact: Originally ~12 references across 7 screen files.
-- Resolution: Replaced all `credit_ledger` references with canonical `credit_transactions` (matching `ai_credit_transactions` table in §13.2). Files updated: screen_web_studio_queue, screen_web_home_dashboard, screen_web_capability_matrix, screen_web_studio_launcher, screen_mobile_studio_launcher, screen_mobile_home_dashboard, screen_mobile_billing.
+- Resolution: Replaced all `credit_ledger` references with canonical `ai_credit_transactions` terminology and service projections. Files updated: screen_web_studio_queue, screen_web_home_dashboard, screen_web_capability_matrix, screen_web_studio_launcher, screen_mobile_studio_launcher, screen_mobile_home_dashboard, screen_mobile_billing.
 - Verified: `grep -r 'credit_ledger' docs/03_screens/` = 0 matches
 - Owner: Screen Doc Lead
 
@@ -268,7 +279,7 @@ last_updated: 2026-04-07
 - Resolution: API inventory work promoted a large screen-referenced RPC set into `api_endpoint_map.md` §10-§20 with method, auth level, rate limit, and description.
 - Verified: Python gap analysis script confirms 0 remaining missing RPCs.
 - `screen_api_reconciliation.md` status updated from WORKING_ANALYSIS → RESOLVED.
-- Caveat (2026-04-07): do NOT treat this as proof that all screen docs are implementation-clean. Canonical API coverage and screen semantic quality are separate concerns; screen contamination remains tracked as `SCR-H-003`.
+- Caveat (2026-04-09): do NOT treat this as proof that all screen docs are semantically perfect in every historical note. Canonical API coverage and screen semantic quality are separate concerns; any residual shorthand must be resolved through `SCREEN_IMPLEMENTATION_PROTOCOL.md`, not implemented literally.
 - Cross-ref: `api_endpoint_map.md` §10-§20, `screen_api_reconciliation.md` (RESOLVED), CROSS_LAYER_MATRIX.md
 - Owner: Product + API Lead
 

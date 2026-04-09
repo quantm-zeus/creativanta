@@ -181,7 +181,7 @@ MobileCopilotPage
 | User name | `users.display_name` | Pre-loaded (session) | First name | Session |
 | Context screen | Navigation state | Client-side | Badge label | — |
 | Chat history | `copilot_sessions.messages` (JSONB) | `CopilotService/GetHistory` | Paginated messages (last 50) | 5m |
-| AI credits | `ai_credit_transactions` balance | `AdminBillingService/GetCreditBalance` | "10/100" | Real-time |
+| AI credits | `ai_credit_transactions` balance projection | `CreditService/GetBalance` | "10/100" | Real-time |
 | Credit cost per response | AI response metadata | Included in response | "2 credits" | — |
 | Trend data (in responses) | `trends` | AI context injection | Formatted inline | — |
 | Order data (in responses) | `orders` aggregation | AI context injection | Formatted inline | — |

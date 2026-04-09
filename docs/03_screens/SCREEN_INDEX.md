@@ -176,7 +176,7 @@ last_updated: 2026-04-06
 | W095 | `screen_web_creator_brand_deals.md` | Brand Deal Manager |
 | W096 | `screen_web_creator_tax_export.md` | Tax Report Export |
 
-### S19 — Support
+### help / S19 — Support
 | ID | File | Screen |
 |---|---|---|
 | W097 | `screen_web_support_center.md` | Support Center |
@@ -321,7 +321,7 @@ last_updated: 2026-04-06
 | M047 | `screen_mobile_link_in_bio.md` | Link-in-Bio |
 | M048 | `screen_mobile_media_kit.md` | Media Kit Preview |
 
-### S19 — Support
+### help / S19 — Support
 | ID | File | Screen |
 |---|---|---|
 | M049 | `screen_mobile_support.md` | Support |
@@ -357,7 +357,7 @@ last_updated: 2026-04-06
 
 ---
 
-## Admin Screens (32 files)
+## Admin Screens (37 files)
 
 ### Core
 | ID | File | Screen |
@@ -469,7 +469,7 @@ last_updated: 2026-04-06
 | M19 Finance | 8 | 5 | 2 | Profit, reconciliation, reports |
 | M22 Capability | **1** | — | — | **NEW: Capability Matrix** |
 | S16 Creator Pro | 9 | 4 | — | Media kit, deals, tax |
-| S19 Support | 3 | 1 | 1 | Help center + tickets |
+| help / S19 Support | 3 | 1 | 1 | Help center + tickets |
 | M20-M21 Workflow | 7 | 5 | — | Builder, recipes, agents |
 | M17 Live | 4 | 1 | — | Planner, war room, summary |
 | M18 Seeding | 3 | 1 | — | Requests, assignments, campaigns |

@@ -45,7 +45,7 @@ Platform-wide notification broadcast system for internal admins to send announce
 ### Preconditions
 - Admin user authenticated via internal auth
 - VPN connection active
-- Role: `comms_admin`, `ops_admin`, or `super_admin`
+- Role: `ops_admin` or `super_admin`
 
 ### Postconditions
 - Broadcast record created in `broadcasts` table
@@ -199,18 +199,18 @@ NotificationBroadcastPage
 
 | # | Action | Trigger | API Call | Mutation | UI Result | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Select broadcast type | Click type chip | — (local) | — | Title template pre-fills, channel defaults adjust | `comms_admin` |
-| 2 | Configure audience | Change audience filters | `AdminBroadcastService/EstimateReach` | — | Reach estimate updates live | `comms_admin` |
-| 3 | Preview in-app | Click "👁 Preview" | — (local) | — | Modal showing in-app notification rendering | `comms_admin` |
-| 4 | Preview email | Click "📱 Preview" | `AdminBroadcastService/PreviewEmail(content)` | — | Modal showing email rendering | `comms_admin` |
-| 5 | Send test | Click "📤 Send test" | `AdminBroadcastService/SendTest(admin_id)` | Test notification to current admin | Toast "Test sent. Check your notifications." | `comms_admin` |
-| 6 | Send immediately | Click "Send" (immediate mode) | `AdminBroadcastService/Send(payload)` | Broadcast record + job queue | Confirmation dialog → Progress: "Sending to {n}..." → "✅ Sent" | `comms_admin` |
-| 7 | Schedule broadcast | Click "Schedule" (scheduled mode) | `AdminBroadcastService/Schedule(payload)` | Broadcast record (status=scheduled) | Toast "Scheduled for {datetime}" | `comms_admin` |
-| 8 | View broadcast detail | Click row in history | — | — | Navigate to broadcast detail or open drawer | `comms_admin` |
-| 9 | Duplicate broadcast | Click "Duplicate" in row menu | — | — | Compose tab pre-fills with broadcast content | `comms_admin` |
-| 10 | Cancel scheduled | Click "Cancel" on scheduled card | `AdminBroadcastService/Cancel(id)` | `broadcasts.status = cancelled` | Card removed, toast "Cancelled" | `comms_admin` |
-| 11 | Send scheduled now | Click "Send Now" | `AdminBroadcastService/SendNow(id)` | Updates schedule, sends immediately | Confirmation → send progress | `comms_admin` |
-| 12 | Use template | Click template from Templates panel | — | — | Compose pre-fills from template | `comms_admin` |
+| 1 | Select broadcast type | Click type chip | — (local) | — | Title template pre-fills, channel defaults adjust | `ops_admin` |
+| 2 | Configure audience | Change audience filters | `AdminBroadcastService/EstimateReach` | — | Reach estimate updates live | `ops_admin` |
+| 3 | Preview in-app | Click "👁 Preview" | — (local) | — | Modal showing in-app notification rendering | `ops_admin` |
+| 4 | Preview email | Click "📱 Preview" | `AdminBroadcastService/PreviewEmail(content)` | — | Modal showing email rendering | `ops_admin` |
+| 5 | Send test | Click "📤 Send test" | `AdminBroadcastService/SendTest(admin_id)` | Test notification to current admin | Toast "Test sent. Check your notifications." | `ops_admin` |
+| 6 | Send immediately | Click "Send" (immediate mode) | `AdminBroadcastService/Send(payload)` | Broadcast record + job queue | Confirmation dialog → Progress: "Sending to {n}..." → "✅ Sent" | `ops_admin` |
+| 7 | Schedule broadcast | Click "Schedule" (scheduled mode) | `AdminBroadcastService/Schedule(payload)` | Broadcast record (status=scheduled) | Toast "Scheduled for {datetime}" | `ops_admin` |
+| 8 | View broadcast detail | Click row in history | — | — | Navigate to broadcast detail or open drawer | `ops_admin` |
+| 9 | Duplicate broadcast | Click "Duplicate" in row menu | — | — | Compose tab pre-fills with broadcast content | `ops_admin` |
+| 10 | Cancel scheduled | Click "Cancel" on scheduled card | `AdminBroadcastService/Cancel(id)` | `broadcasts.status = cancelled` | Card removed, toast "Cancelled" | `ops_admin` |
+| 11 | Send scheduled now | Click "Send Now" | `AdminBroadcastService/SendNow(id)` | Updates schedule, sends immediately | Confirmation → send progress | `ops_admin` |
+| 12 | Use template | Click template from Templates panel | — | — | Compose pre-fills from template | `ops_admin` |
 
 ---
 
@@ -252,14 +252,14 @@ NotificationBroadcastPage
 
 ## 9. Permission Matrix
 
-| Action | Super Admin | Ops Admin | Comms Admin | Support Admin | Read Only |
+| Action | Super Admin | Operations Admin | Finance Admin | Support Admin | Analyst |
 |---|---|---|---|---|---|
-| View history | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Compose & send | ✅ | ✅ | ✅ | ❌ | ❌ |
+| View history | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Compose & send | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Send SMS | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Delete broadcast | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Manage templates | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Cancel scheduled | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Manage templates | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Cancel scheduled | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ---
 

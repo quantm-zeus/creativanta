@@ -4,7 +4,7 @@
 > **Module**: M14 — Monetization & Campaigns
 > **Route**: `/commerce/campaigns` (mobile)
 > **Platform**: Mobile (Flutter)
-> **Upstream**: Pack 06 §8, A1 Schema (campaigns, campaign_content, campaign_costs, orders, utm_events), B5 RBAC §2.7
+> **Upstream**: Pack 06 §8, campaigns schema + CampaignService projections, B5 RBAC §2.7
 
 ---
 
@@ -143,12 +143,12 @@ CommerceCampaignsScreen (ConsumerStatefulWidget)
 
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Campaign list | `campaigns` + metrics | `CampaignService/List(workspace_id, status)` | Cards | 5m, Hive |
+| Campaign list | `campaigns` + metrics projection | `CampaignService/List(workspace_id, status)` | Cards | 5m, Hive |
 | Summary | Aggregation across active | Included in list header | Compact | 5m |
-| Budget | `SUM(campaign_costs) / campaigns.budget` | Aggregated | "2M/3M (67%)" with progress | 5m |
+| Budget | `SUM(cost_items.amount WHERE related_scope_type='campaign') / campaigns.budget` | Aggregated | "2M/3M (67%)" with progress | 5m |
 | ROAS | `revenue / costs` | Computed | Decimal + "×" | 5m |
 | Orders | `COUNT(orders WHERE utm_campaign)` | Aggregated | Integer + daily delta | 5m |
-| Date info | `starts_at`, `ends_at` | — | "dd/MM — dd/MM · Ngày N/M" | — |
+| Date info | `campaigns.start_date`, `campaigns.end_date` | — | "dd/MM — dd/MM · Ngày N/M" | — |
 
 ---
 
@@ -157,7 +157,7 @@ CommerceCampaignsScreen (ConsumerStatefulWidget)
 | # | Action | Trigger | API Call | Mutation | UI Result | Permission |
 |---|---|---|---|---|---|---|
 | 1 | Pause | Tap "⏸" → confirm | `CampaignService/Pause(id)` | `status='paused'` | Confirm → badge → ⏸. Haptic + snackbar. | `campaign:manage` |
-| 2 | Resume | Tap "▶" | `CampaignService/Resume(id)` | `status='running'` | Badge → 🟢. | `campaign:manage` |
+| 2 | Resume | Tap "▶" | `CampaignService/Resume(id)` | `status='live'` | Badge → 🟢. | `campaign:manage` |
 | 3 | View detail | Tap "📊" or card | — | — | Navigate → Campaign Detail (mobile) | `campaign:manage` |
 | 4 | Duplicate | Tap "🔄 Nhân bản" | `CampaignService/Duplicate(id)` | New draft | Snackbar + web redirect | `campaign:manage` |
 | 5 | Filter | Tap chip | Client-side | — | List filters | `campaign:manage` |

@@ -43,7 +43,7 @@ Executive-level business analytics dashboard showing key SaaS metrics — MRR, A
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- Admin with `analytics_admin` or `super_admin` role
+- Admin with `finance_admin` or `super_admin` role
 - VPN connection active
 - Sufficient historical data (>30 days) for trend charts
 
@@ -190,13 +190,13 @@ BusinessAnalyticsPage
 
 | # | Action | Trigger | API Call | Mutation | UI Result | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Change period | Select period dropdown | `AdminAnalyticsService/GetBusinessMetrics(period)` | — | All metrics + charts reload | `analytics_admin` |
-| 2 | Toggle comparison | Click "Compare" | `AdminAnalyticsService/GetComparison(period, prev_period)` | — | Delta values shown alongside current | `analytics_admin` |
-| 3 | Export CSV | Click "📥 CSV" | `AdminAnalyticsService/Export(format=csv, period)` | — | CSV download | `analytics_admin` |
-| 4 | Export PDF | Click PDF option | `AdminAnalyticsService/Export(format=pdf)` | — | PDF download | `analytics_admin` |
-| 5 | Drill into plan | Click plan in distribution chart | — | — | Navigate to Plan Detail page | `analytics_admin` |
-| 6 | Drill into cohort | Click cohort row | — | — | Navigate to Cohort Detail page | `analytics_admin` |
-| 7 | Investigate drop-off | Click "Investigate →" on funnel | — | — | Navigate to funnel detail with step analysis | `analytics_admin` |
+| 1 | Change period | Select period dropdown | `AdminAnalyticsService/GetBusinessMetrics(period)` | — | All metrics + charts reload | `finance_admin` |
+| 2 | Toggle comparison | Click "Compare" | `AdminAnalyticsService/GetComparison(period, prev_period)` | — | Delta values shown alongside current | `finance_admin` |
+| 3 | Export CSV | Click "📥 CSV" | `AdminAnalyticsService/Export(format=csv, period)` | — | CSV download | `finance_admin` |
+| 4 | Export PDF | Click PDF option | `AdminAnalyticsService/Export(format=pdf)` | — | PDF download | `finance_admin` |
+| 5 | Drill into plan | Click plan in distribution chart | — | — | Navigate to Plan Detail page | `finance_admin` |
+| 6 | Drill into cohort | Click cohort row | — | — | Navigate to Cohort Detail page | `finance_admin` |
+| 7 | Investigate drop-off | Click "Investigate →" on funnel | — | — | Navigate to funnel detail with step analysis | `finance_admin` |
 | 8 | Hover chart element | Mouse hover on chart | — | — | Tooltip with exact values | Any |
 
 ---
@@ -224,12 +224,12 @@ N/A — This is a read-only analytics dashboard. No user input required.
 
 ## 9. Permission Matrix
 
-| Action | Super Admin | Ops Admin | Analytics Admin | Support Admin | Read Only |
+| Action | Super Admin | Finance Admin | Operations Admin | Support Admin | Analyst |
 |---|---|---|---|---|---|
-| View dashboard | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Export data | ✅ | ❌ | ✅ | ❌ | ❌ |
-| View financial details | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Drill into cohorts | ✅ | ✅ | ✅ | ❌ | ✅ |
+| View dashboard | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Export data | ✅ | ✅ | ❌ | ❌ | ❌ |
+| View financial details | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Drill into cohorts | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ---
 

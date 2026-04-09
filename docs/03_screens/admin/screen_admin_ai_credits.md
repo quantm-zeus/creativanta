@@ -4,7 +4,7 @@
 > **Module**: S26 — Internal Admin & Operations
 > **Route**: `/admin/ai/credits`
 > **Platform**: Admin Web (SvelteKit) — VPN-only access
-> **Upstream**: S26 §AI Operations, A1 Schema (credit_pools, credit_transactions, credit_allocations), B5 RBAC §3
+> **Upstream**: S26 §AI Operations, AdminCreditService projections + `ai_credit_transactions`, B5 RBAC §3
 
 ---
 
@@ -12,7 +12,7 @@
 Manage platform-wide AI credit pools — grant/revoke credits, view consumption patterns, set per-plan allocations, track cost vs. revenue margins, and configure credit pricing.
 
 ### User Story
-> As an AI ops admin, I want to manage credit allocations per plan, track consumption margins, and grant/revoke credits so the AI economy stays profitable and users are fairly served.
+> As a finance admin, I want to manage credit allocations per plan, track consumption margins, and grant/revoke credits so the AI economy stays profitable and users are fairly served.
 
 ### Business Goal
 - Maintain positive AI credit margin (target: >60%)
@@ -33,7 +33,7 @@ Manage platform-wide AI credit pools — grant/revoke credits, view consumption 
 
 ## 2. Preconditions / Postconditions
 ### Preconditions
-- Admin with `ai_admin` or `super_admin` role
+- Admin with `finance_admin` or `super_admin` role
 ### Postconditions
 - Credit transactions logged with audit trail
 - Plan allocations updated if changed
@@ -114,10 +114,10 @@ AICreditManagementPage
 ## 5. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Pool status | `credit_pools` | `AdminCreditService/GetPoolStatus` | Count + percentage bar | 5m TTL |
-| Plan allocations | `credit_allocations` | `AdminCreditService/GetPlanAllocations` | Table rows | 15m TTL |
-| Consumption trend | `credit_transactions` agg | `AdminCreditService/GetConsumptionTrend(30d)` | Stacked area chart | 1h TTL |
-| Recent transactions | `credit_transactions` | `AdminCreditService/ListTransactions(page)` | List rows | No cache |
+| Pool status | Credit-pool operational projection | `AdminCreditService/GetPoolStatus` | Count + percentage bar | 5m TTL |
+| Plan allocations | Plan-allocation projection | `AdminCreditService/GetPlanAllocations` | Table rows | 15m TTL |
+| Consumption trend | `ai_credit_transactions` aggregation | `AdminCreditService/GetConsumptionTrend(30d)` | Stacked area chart | 1h TTL |
+| Recent transactions | `ai_credit_transactions` | `AdminCreditService/ListTransactions(page)` | List rows | No cache |
 | Margin | computed (cost vs revenue) | included in pool | Percentage + indicator | 5m TTL |
 
 ---
@@ -125,12 +125,12 @@ AICreditManagementPage
 ## 6. Actions Table
 | # | Action | Trigger | API Call | Mutation | UI Result | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Grant credits | Submit grant dialog | `AdminCreditService/Grant(ws, amount, reason)` | `credit_transactions` insert | Toast "Granted {n} credits" | `ai_admin` |
-| 2 | Revoke credits | Submit revoke action | `AdminCreditService/Revoke(ws, amount, reason)` | `credit_transactions` insert | Toast "Revoked {n} credits" | `super_admin` |
-| 3 | Bulk grant | Submit bulk dialog | `AdminCreditService/BulkGrant(filter, amount)` | Multiple inserts | Progress → "Granted to {n} workspaces" | `ai_admin` |
-| 4 | Edit allocations | Save allocation changes | `AdminCreditService/UpdateAllocations(plans)` | `credit_allocations` update | Toast "Allocations updated" | `ai_admin` |
-| 5 | Export | Click export | `AdminCreditService/Export(format)` | — | CSV download | `ai_admin` |
-| 6 | View workspace | Click workspace link | — | — | Navigate to workspace detail | Any admin |
+| 1 | Grant credits | Submit grant dialog | `AdminCreditService/Grant(ws, amount, reason)` | `ai_credit_transactions` insert | Toast "Granted {n} credits" | `finance_admin` |
+| 2 | Revoke credits | Submit revoke action | `AdminCreditService/Revoke(ws, amount, reason)` | `ai_credit_transactions` insert | Toast "Revoked {n} credits" | `finance_admin` |
+| 3 | Bulk grant | Submit bulk dialog | `AdminCreditService/BulkGrant(filter, amount)` | Multiple inserts | Progress → "Granted to {n} workspaces" | `finance_admin` |
+| 4 | Edit allocations | Save allocation changes | `AdminCreditService/UpdateAllocations(plans)` | Allocation projection updated | Toast "Allocations updated" | `finance_admin` |
+| 5 | Export | Click export | `AdminCreditService/Export(format)` | — | CSV download | `finance_admin` |
+| 6 | View workspace | Click workspace link | — | — | Navigate to workspace detail | `finance_admin` |
 
 ---
 
@@ -158,14 +158,14 @@ AICreditManagementPage
 ---
 
 ## 9. Permission Matrix
-| Action | Super Admin | AI Admin | Ops Admin | Support Admin | Read Only |
+| Action | Super Admin | Finance Admin | Operations Admin | Support Admin | Analyst |
 |---|---|---|---|---|---|
-| View pool/allocations | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Grant credits | ✅ | ✅ | ❌ | ✅ (≤100) | ❌ |
-| Revoke credits | ✅ | ❌ | ❌ | ❌ | ❌ |
+| View pool/allocations | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Grant credits | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Revoke credits | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Edit allocations | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Bulk grant | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Export | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Export | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ---
 

@@ -13,7 +13,7 @@
 Real-time monitoring dashboard for all background jobs across the platform — platform sync jobs, AI processing tasks, scheduled exports, report generation, data migrations, and maintenance tasks. Provides visibility into queue health, processing times, and failure rates with retry/kill capabilities.
 
 ### User Story
-> As an ops admin, I want to monitor all background job queues in real-time so I can detect processing bottlenecks and failed jobs before they impact users.
+> As a tech admin, I want to monitor all background job queues in real-time so I can detect processing bottlenecks and failed jobs before they impact users.
 
 ### Business Goal
 - Operational visibility into async processing health
@@ -45,7 +45,7 @@ Real-time monitoring dashboard for all background jobs across the platform — p
 ### Preconditions
 - Admin user authenticated via internal auth
 - VPN connection active
-- Role: `ops_admin` or `super_admin`
+- Role: `tech_admin` or `super_admin`
 
 ### Postconditions
 - Job status changes reflected in real-time
@@ -192,13 +192,13 @@ JobMonitorPage
 | 1 | Toggle auto-refresh | Click refresh toggle | — (client) | — | Polling starts/stops, indicator changes | Any admin |
 | 2 | Filter by type | Select type filter | `AdminJobService/ListJobs(type)` | — | Table filters | Any admin |
 | 3 | Search job | Type job ID | `AdminJobService/GetJob(id)` | — | Table shows matching job | Any admin |
-| 4 | Pause job | Click ⏸ on running job | `AdminJobService/PauseJob(id)` | `job.status = paused` | Status changes to ⏸, row updates | `ops_admin` |
-| 5 | Kill job | Click 🗑 on running job | Confirm → `AdminJobService/KillJob(id)` | `job.status = cancelled` | Confirmation dialog → row updates | `ops_admin` |
-| 6 | Retry failed job | Click 🔄 on failed job | `AdminJobService/RetryJob(id)` | New job instance, old marked `retried` | Toast "Retrying..." → job moves to Queued | `ops_admin` |
-| 7 | Retry all failed | Click "Retry All Failed" | `AdminJobService/RetryAllFailed(filters)` | Multiple retries | Progress toast → all failed move to Queued | `ops_admin` |
+| 4 | Pause job | Click ⏸ on running job | `AdminJobService/PauseJob(id)` | `job.status = paused` | Status changes to ⏸, row updates | `tech_admin` |
+| 5 | Kill job | Click 🗑 on running job | Confirm → `AdminJobService/KillJob(id)` | `job.status = cancelled` | Confirmation dialog → row updates | `tech_admin` |
+| 6 | Retry failed job | Click 🔄 on failed job | `AdminJobService/RetryJob(id)` | New job instance, old marked `retried` | Toast "Retrying..." → job moves to Queued | `tech_admin` |
+| 7 | Retry all failed | Click "Retry All Failed" | `AdminJobService/RetryAllFailed(filters)` | Multiple retries | Progress toast → all failed move to Queued | `tech_admin` |
 | 8 | View logs | Click 👁 | — | — | Open LogDrawer with real-time log stream | Any admin |
 | 9 | View workspace | Click workspace ID | — | — | Navigate to `/admin/workspaces/[id]` | Any admin |
-| 10 | Clear completed | Click "Clear Completed" | `AdminJobService/ClearCompleted(older_than)` | Completed jobs archived | Completed rows removed from view | `ops_admin` |
+| 10 | Clear completed | Click "Clear Completed" | `AdminJobService/ClearCompleted(older_than)` | Completed jobs archived | Completed rows removed from view | `tech_admin` |
 | 11 | Switch tab | Click tab | `AdminJobService/ListJobs(status)` | — | Table shows filtered status | Any admin |
 
 ---
@@ -230,13 +230,13 @@ JobMonitorPage
 
 ## 9. Permission Matrix
 
-| Action | Super Admin | Ops Admin | AI Admin | Support Admin | Read Only |
+| Action | Super Admin | Tech Admin | Finance Admin | Support Admin | Analyst |
 |---|---|---|---|---|---|
-| View all jobs | ✅ | ✅ | ✅ (AI jobs only) | ✅ | ✅ |
+| View all jobs | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Pause/resume job | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Kill job | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Retry job | ✅ | ✅ | ✅ (AI jobs only) | ❌ | ❌ |
-| View logs | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Retry job | ✅ | ✅ | ❌ | ❌ | ❌ |
+| View logs | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Clear completed | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Change worker count | ✅ | ❌ | ❌ | ❌ | ❌ |
 

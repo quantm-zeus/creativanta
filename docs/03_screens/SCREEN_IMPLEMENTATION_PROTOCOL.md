@@ -1,7 +1,7 @@
 ---
 layer: screens
 canonical: true
-last_updated: 2026-04-06
+last_updated: 2026-04-09
 ---
 
 # Screen Implementation Protocol
@@ -68,6 +68,8 @@ Common examples:
 - `tickets` → use `support_tickets`
 - `ticket_messages` → use `support_ticket_messages`
 - `credit_transactions` → use `ai_credit_transactions`
+- `credit_pools` → use the operational credit-pool projection returned by `AdminCreditService/GetPoolStatus`
+- `credit_allocations` → use the plan-allocation projection returned by `AdminCreditService/GetPlanAllocations`
 - `credit_balances` → use `CreditService/GetBalance` or `workspaces.ai_credits_remaining`
 - `credit_purchases` → use `BillingService/ListCreditPurchases` plus `billing_events` / `ai_credit_transactions`
 - `subscription_plans` → use `subscriptions.plan_tier` plus `BillingService/GetCurrentPlan` / `BillingService/ListPlans`
@@ -79,12 +81,27 @@ Common examples:
 - `publish_jobs` → use `publish_items` plus `publish_logs`
 - `studio_jobs` → use `generation_jobs`, `video_edit_jobs`, `repurpose_jobs`, or the job-specific production table named in contracts
 - `studio_assets` → use `assets`
+- `coupon_usage` → use `coupons.current_uses`, `coupons.max_uses`, or coupon redemption projections returned by `CouponService`
+- `offer_products` → use `offers.product_id` or `offers.product_less_declaration`
+- `campaign_products` → use `campaigns.related_product_ids` or the campaign-product projection returned by `CampaignService`
+- `campaign_offers` → use `campaigns.related_offer_ids` or `CampaignService/GetLinkedOffers`
+- `campaign_content` → use `CampaignService/GetLinkedContent`; do not invent a relational table if none is canonically defined
+- `campaign_costs` → use `cost_items` with `related_scope_type = 'campaign'` and `related_scope_id = campaign_id`, exposed via `CampaignService/GetCosts`
 - `workflow_steps` / `workflow_step_outputs` → use `workflow_run_steps`
 - `agent_executions` → use `agent_runs`
 - `agent_steps` → use `agent_run_steps`
 - `brand_deal_deliverables` → use the deliverables projection returned by `BrandDealService/ListPartnerships`; the canonical root object remains `brand_deals`
 - `published_posts` → use canonical publish/channel-post objects exposed by API contracts
 - `service_health` → use `diagnostics_records`, `platform_health_metrics`, `system_alerts`, or the service-level health projection defined by API/system docs
+- `ai_providers` / `ai_routing` → use `AdminAIService` projections; do not infer standalone admin tables unless the schema defines them
+
+Legacy role labels follow the same rule:
+- `Ops Admin` → use canonical `ops_admin`
+- `Comms Admin` → use canonical `ops_admin`
+- `Analytics Admin` → resolve to the service-authorized canonical roles; for finance-heavy business analytics screens this is typically `super_admin` / `finance_admin`
+- `AI Admin` → resolve by service auth: `tech_admin` for `AdminAIService`, `finance_admin` for `AdminCreditService`
+- `Read Only` → resolve to `analyst` or `auditor` based on the screen's read scope
+- `Trust Safety` / `ContentMod` → use canonical `content_admin`
 
 If an alias is not covered above, resolve it via feature intent + API contract, not by inventing a new table.
 

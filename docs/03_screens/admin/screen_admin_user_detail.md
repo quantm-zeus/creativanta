@@ -4,7 +4,7 @@
 > **Module**: Admin — User Management (S26)
 > **Route**: `/admin/users/[id]`
 > **Platform**: Admin Web (SvelteKit) — VPN-only access
-> **Upstream**: Product Freeze §27, A1 Schema (users, user_sessions, workspaces, credit_transactions, content), B5 RBAC §3 (Admin 8-role)
+> **Upstream**: Product Freeze §27, A1 Schema (users, user_sessions, workspaces, `ai_credit_transactions`, content), B5 RBAC §3 (Admin 8-role)
 
 ---
 ## 1. Purpose & Context
@@ -221,7 +221,7 @@ AdminUserDetailPage
 | Profile | `users` table | `AdminService/GetUser(id)` | 5m |
 | Workspaces | `workspace_members` + `workspaces` | `AdminService/GetUserWorkspaces(id)` | 5m |
 | Activity | `user_activity_log` | `AdminService/GetUserActivity(id, filters)` | 2m |
-| Credits | `credit_transactions` + balance | `AdminService/GetUserCredits(id)` | 2m |
+| Credits | `ai_credit_transactions` + balance projection | `AdminService/GetUserCredits(id)` | 2m |
 | Content | `ideas` + `scripts` + `assets` + `publish_items` | `AdminService/GetUserContentStats(id)` | 5m |
 | Security | `user_sessions` + `login_history` | `AdminService/GetUserSecurity(id)` | 2m |
 | Tickets | `support_tickets WHERE user_id` | `AdminService/GetRelatedTickets(id)` | 5m |
@@ -234,7 +234,7 @@ AdminUserDetailPage
 |---|---|---|---|---|---|---|
 | 1 | View workspace | Click workspace name | Navigate | — | → A005 Workspace Detail | `admin:workspace:read` |
 | 2 | Email user | "📧 Email user" | Action | `mailto:{user.email}` | Opens mail client | Any admin |
-| 3 | Grant credits | "💰 Grant" → modal | Action | `AdminService/GrantCredits(user_id, amount, reason)` | Modal: amount + reason → toast "Đã cấp {amount} credits" | `admin:credits:adjust` |
+| 3 | Grant credits | "💰 Grant" → modal | Action | `AdminService/GrantCredits(user_id, amount, reason)` | Modal: amount + reason → toast "Đã cấp {amount} credits" | `admin:credits:adjust` (Super, Finance) |
 | 4 | Override plan | "⬆ Override plan" → modal | Action | `AdminService/OverridePlan(user_id, plan, duration, reason)` | Modal → toast "Plan đã override" | `admin:plan:override` |
 | 5 | Suspend user | "⏸ Suspend" → confirm | Destructive | `AdminService/SuspendUser(id, reason)` | Confirmation + reason → status 🔴 → user logged out | `admin:user:suspend` |
 | 6 | Unsuspend | "▶ Unsuspend" → confirm | Action | `AdminService/UnsuspendUser(id, reason)` | Status 🟢 → toast | `admin:user:suspend` |
@@ -295,7 +295,7 @@ AdminUserDetailPage
 | View user profile | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
 | View financial data | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | View security/sessions | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ |
-| Grant credits | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Grant credits | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Override plan | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Suspend/unsuspend | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Impersonate | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |

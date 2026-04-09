@@ -1,4 +1,4 @@
-# Screen: Admin — Abuse Reports & Trust Safety
+# Screen: Admin — Abuse Reports
 
 > **Screen ID**: A017
 > **Module**: S26 — Internal Admin & Operations (Trust & Safety)
@@ -13,7 +13,7 @@
 Centralized abuse report review and action queue. Handles content violations (spam, scam, misinformation, harassment), user complaints, and AI-flagged content. Features auto-classification with confidence scores, evidence collection, escalation paths, and bulk moderation actions.
 
 ### User Story
-> As a Trust & Safety admin, I want to review reported content with AI-assisted classification so I can take appropriate action quickly and consistently.
+> As a content admin, I want to review reported content with AI-assisted classification so I can take appropriate action quickly and consistently.
 
 ### Business Goal
 - Maintain platform integrity and user trust

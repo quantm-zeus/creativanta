@@ -4,7 +4,7 @@
 > **Module**: M14 — Monetization & Campaigns
 > **Route**: `/campaigns/[id]`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: Pack 06 §7-8 (Commerce/Campaigns), A1 Schema (campaigns, campaign_content, campaign_offers, campaign_costs, orders, utm_events), B5 RBAC §2.7
+> **Upstream**: Pack 06 §7-8 (Commerce/Campaigns), campaigns schema + CampaignService projections, B5 RBAC §2.7
 
 ---
 
@@ -34,13 +34,13 @@ The Campaign Detail screen is a real-time performance dashboard for a specific m
 ### Entry Points
 - Campaign List (W064): Click campaign row
 - Home Dashboard (W001): Active campaign widget
-- Offer Detail (W058): "Xem campaign gắn" link
+- Offer Detail (W067): "Xem campaign gắn" link
 - AI Copilot: "Campaign Spring Sale đang chạy thế nào?"
 - Notification: "📊 Campaign 'Spring Sale' đã đạt 100 đơn!"
 
 ### Exit Points
 - Click content item → Publish Item Detail (W049)
-- Click offer → Offer Detail (W058)
+- Click offer → Offer Detail (W067)
 - Click "Chỉnh sửa" → Campaign Edit (W065/edit)
 - "📤 Export báo cáo" → PDF/CSV download
 - Back → Campaign List (W064)
@@ -51,7 +51,7 @@ The Campaign Detail screen is a real-time performance dashboard for a specific m
 
 ### Preconditions
 - User authenticated with valid workspace session
-- User has `campaign:manage` permission (Contributor+ for viewing)
+- User has `campaign:manage` permission (Owner/Admin/Manager/Editor)
 - Campaign `campaign_id` exists and belongs to current workspace
 - At least some UTM-tagged events exist for attribution data
 
@@ -74,7 +74,7 @@ The Campaign Detail screen is a real-time performance dashboard for a specific m
 ### ASCII Wireframe
 ```
 ┌─ App Shell ──────────────────────────────────────────────────────────┐
-│ ← Campaigns   "Spring Sale 2026"    [🟢 Running] [✏ Sửa] [⋮]      │
+│ ← Campaigns   "Spring Sale 2026"       [🟢 Live] [✏ Sửa] [⋮]      │
 ├──────────────────────────────────────────────────────────────────────┤
 │ 📅 25/03 — 31/03/2026 · Ngày 5/7 · Budget: 2M/5M (40%)            │
 ├──────────────────────────────────────────────────────────────────────┤
@@ -151,7 +151,7 @@ CampaignDetailPage
 ├── PageHeader
 │   ├── BackLink ("← Campaigns" → /campaigns)
 │   ├── CampaignName ("Spring Sale 2026")
-│   ├── StatusBadge (🟢 Running / ⏸ Paused / ⏹ Ended / ⏳ Scheduled)
+│   ├── StatusBadge (🟢 Live / ⏸ Paused / ✅ Completed / 📝 Ready)
 │   ├── EditButton ("✏ Sửa" → edit mode)
 │   └── OverflowMenu ("⋮" → Duplicate, End campaign, Delete)
 ├── CampaignMetaBar
@@ -225,19 +225,19 @@ CampaignDetailPage
 
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Campaign metadata | `campaigns` table | `CampaignService/Get(campaign_id)` | Name, dates, status, budget | No cache (fresh) |
-| Revenue total | ClickHouse: `SUM(orders.total) WHERE utm_campaign` | `CampaignService/GetMetrics(campaign_id)` | Compact VND ("45M VND") | 5m |
-| Orders count | ClickHouse: `COUNT(orders) WHERE utm_campaign` | Same above | Integer ("234") | 5m |
+| Campaign metadata | `campaigns` table | `CampaignService/Get(campaign_id)` | Title, dates, status, budget | No cache (fresh) |
+| Revenue total | Campaign metrics projection | `CampaignService/GetMetrics(campaign_id)` | Compact VND ("45M VND") | 5m |
+| Orders count | Campaign metrics projection | Same above | Integer ("234") | 5m |
 | ROAS | Revenue / Total costs | Computed client-side | Decimal + "x" ("7.2x") | — |
 | Conversion rate | Orders / Clicks × 100 | Computed from funnel data | Percentage ("3.4%") | — |
-| Budget usage | `SUM(campaign_costs.amount) / campaigns.budget` | Included in metadata | Percentage + progress bar | 5m |
-| Revenue over time | ClickHouse: daily aggregation | `CampaignService/GetRevenueTimeline(campaign_id, granularity='day')` | Line chart data points | 15m |
-| Platform breakdown | ClickHouse: `GROUP BY utm_source` | `CampaignService/GetPlatformBreakdown(campaign_id)` | Bar chart | 15m |
-| Top products | ClickHouse: `GROUP BY product_id ORDER BY revenue DESC LIMIT 10` | `CampaignService/GetTopProducts(campaign_id)` | Bar chart | 15m |
-| Funnel stages | ClickHouse: `utm_events` aggregation per stage | `CampaignService/GetFunnel(campaign_id)` | Funnel visualization | 15m |
-| Linked content | `campaign_content` join `publish_items` | `CampaignService/GetLinkedContent(campaign_id)` | Table rows | 5m |
-| Linked offers | `campaign_offers` join `offers` + redemption stats | `CampaignService/GetLinkedOffers(campaign_id)` | Offer cards | 5m |
-| Cost items | `campaign_costs` table | `CampaignService/GetCosts(campaign_id)` | Table rows (VND) | 5m |
+| Budget usage | `SUM(cost_items.amount) / campaigns.budget` for campaign-scoped costs | Included in metadata | Percentage + progress bar | 5m |
+| Revenue over time | Revenue timeline projection | `CampaignService/GetRevenueTimeline(campaign_id, granularity='day')` | Line chart data points | 15m |
+| Platform breakdown | Platform-breakdown projection | `CampaignService/GetPlatformBreakdown(campaign_id)` | Bar chart | 15m |
+| Top products | Top-products projection | `CampaignService/GetTopProducts(campaign_id)` | Bar chart | 15m |
+| Funnel stages | Funnel projection | `CampaignService/GetFunnel(campaign_id)` | Funnel visualization | 15m |
+| Linked content | Campaign-linked content projection | `CampaignService/GetLinkedContent(campaign_id)` | Table rows | 5m |
+| Linked offers | Campaign-linked offer projection + redemption stats | `CampaignService/GetLinkedOffers(campaign_id)` | Offer cards | 5m |
+| Cost items | `cost_items` scoped to the campaign | `CampaignService/GetCosts(campaign_id)` | Table rows (VND) | 5m |
 
 ---
 
@@ -248,16 +248,16 @@ CampaignDetailPage
 | 1 | View campaign | Page load | `CampaignService/Get + GetMetrics + GetFunnel` | — | Full dashboard renders | `campaign:manage` |
 | 2 | Edit campaign | Click "✏ Sửa" | — | — | Navigate → `/campaigns/[id]/edit` | `campaign:manage` |
 | 3 | Pause campaign | "⋮" → "Tạm dừng" | `CampaignService/Pause(id)` | `campaigns.status = 'paused'` | Status badge → ⏸. Toast "Campaign đã tạm dừng" | `campaign:manage` |
-| 4 | Resume campaign | "⋮" → "Tiếp tục" (paused) | `CampaignService/Resume(id)` | `campaigns.status = 'running'` | Status badge → 🟢. Toast "Campaign đang chạy" | `campaign:manage` |
-| 5 | End campaign | "⋮" → "Kết thúc" → confirm | `CampaignService/End(id)` | `campaigns.status = 'ended'`, `ended_at = now` | Confirmation → Status → ⏹. All offers paused. | `campaign:manage` |
+| 4 | Resume campaign | "⋮" → "Tiếp tục" (paused) | `CampaignService/Resume(id)` | `campaigns.status = 'live'` | Status badge → 🟢. Toast "Campaign đang chạy" | `campaign:manage` |
+| 5 | End campaign | "⋮" → "Kết thúc" → confirm | `CampaignService/End(id)` | `campaigns.status = 'completed'` | Confirmation → Status → ✅. All offers paused. | `campaign:manage` |
 | 6 | Duplicate | "⋮" → "Nhân bản" | `CampaignService/Duplicate(id)` | New draft campaign | Toast → navigate to new campaign | `campaign:manage` |
 | 7 | Delete | "⋮" → "Xóa" → confirm | `CampaignService/Delete(id)` | Soft delete | Confirmation → redirect to `/campaigns` | `campaign:manage` |
 | 8 | Switch tab | Click tab | Client-side tab switch (data lazy-loaded) | — | Tab content updates, URL: `?tab=content` | `campaign:manage` |
 | 9 | Sort content table | Click column header | Client-side sort | — | Table rows re-order | `campaign:manage` |
-| 10 | Link content | "+ Gắn thêm nội dung" | `CampaignService/LinkContent(campaign_id, content_ids[])` | New `campaign_content` rows | Modal → content selector → linked items appear in table | `campaign:manage` |
-| 11 | Unlink content | "⋮" → "Bỏ liên kết" on content row | `CampaignService/UnlinkContent(campaign_id, content_id)` | Delete `campaign_content` row | Row removed with animation | `campaign:manage` |
-| 12 | Link offer | "+ Gắn offer" | `CampaignService/LinkOffer(campaign_id, offer_id)` | New `campaign_offers` row | Modal → offer selector → card appears | `campaign:manage` |
-| 13 | Add cost | "+ Thêm chi phí" | `CampaignService/AddCost(campaign_id, data)` | New `campaign_costs` row | Modal with form → row added. ROAS recalculated. | `campaign:manage` |
+| 10 | Link content | "+ Gắn thêm nội dung" | `CampaignService/LinkContent(campaign_id, content_ids[])` | Campaign-linked content projection refreshed | Modal → content selector → linked items appear in table | `campaign:manage` |
+| 11 | Unlink content | "⋮" → "Bỏ liên kết" on content row | `CampaignService/UnlinkContent(campaign_id, content_id)` | Campaign-linked content projection refreshed | Row removed with animation | `campaign:manage` |
+| 12 | Link offer | "+ Gắn offer" | `CampaignService/LinkOffer(campaign_id, offer_id)` | `campaigns.related_offer_ids` updated + linked-offer projection refreshed | Modal → offer selector → card appears | `campaign:manage` |
+| 13 | Add cost | "+ Thêm chi phí" | `CampaignService/AddCost(campaign_id, data)` | `cost_items` insert scoped to campaign | Modal with form → row added. ROAS recalculated. | `campaign:manage` |
 | 14 | Export PDF | "📤 Export" → PDF | `CampaignService/ExportReport(campaign_id, 'pdf')` | — | PDF download: campaign report with charts | `campaign:manage` |
 | 15 | Export CSV | "📤 Export" → CSV | `CampaignService/ExportReport(campaign_id, 'csv')` | — | CSV download: raw data tables | `campaign:manage` |
 
@@ -289,10 +289,12 @@ CampaignDetailPage
 |---|---|---|---|
 | LOADING | Initial page load | Metrics shimmer + tab skeletons | Wait |
 | LOADED | All data received | Full dashboard with animated counters | Interact |
-| RUNNING | Campaign active, within date range | 🟢 badge, metrics updating, all actions available | Monitor/edit |
-| SCHEDULED | Start date in future | ⏳ badge, metrics show "Chưa bắt đầu". Content/offers can be linked. | Prepare content |
+| PLANNED | `campaigns.status = 'planned'` | 📝 badge, setup in progress | Prepare structure |
+| READY | `campaigns.status = 'ready'` | ⏳ badge, metrics show "Chưa bắt đầu". Content/offers can be linked. | Prepare launch |
+| LIVE | `campaigns.status = 'live'` | 🟢 badge, metrics updating, all actions available | Monitor/edit |
 | PAUSED | Manually paused | ⏸ badge, metrics frozen at pause time. "Tiếp tục" action available. | Resume or end |
-| ENDED | Campaign concluded | ⏹ badge, metrics final, "Nhân bản" prominent. Cost tab editable. | Review/export |
+| COMPLETED | Campaign concluded | ✅ badge, metrics final, "Nhân bản" prominent. Cost tab editable. | Review/export |
+| CANCELLED | Campaign cancelled before completion | 🚫 badge, metrics frozen, mutation actions hidden | Review/export |
 | NO_DATA | Campaign running but no UTM events yet | Metrics show "0", funnel empty. Message: "Dữ liệu sẽ xuất hiện khi có lượt xem đầu tiên." | Wait for traffic |
 | NO_CONTENT | Content tab empty | "Chưa có nội dung liên kết. [+ Gắn nội dung]" | Link content |
 | NO_OFFERS | Offers tab empty | "Chưa có offer liên kết. [+ Gắn offer]" | Link offer |
@@ -307,19 +309,19 @@ CampaignDetailPage
 
 | Feature | Owner | Admin | Manager | Editor | Contributor | Viewer | External |
 |---|---|---|---|---|---|---|---|
-| View campaign detail | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| View funnel/analytics | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| View campaign detail | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| View funnel/analytics | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Edit campaign | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Pause/Resume/End | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Link/unlink content | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Link/unlink offers | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Add costs | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Delete campaign | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Export report | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Export report | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ### Visibility Rules
 - **Editor**: Can view all tabs and link content. Cannot manage campaign lifecycle or costs.
-- **Contributor**: Read-only access to all data. Can export reports but cannot modify.
+- **Contributor**: No access on this screen; campaign detail remains limited to `campaign:manage` roles per canonical RBAC.
 - **Viewer/External**: No access. Sidebar item hidden.
 
 ---
@@ -331,7 +333,7 @@ Campaign Detail (/campaigns/[id])
 ├── ← /campaigns                          (Back button)
 ├── → /campaigns/[id]/edit                 (Edit button)
 ├── → /publish/items/[content_id]          (Click content row → W049)
-├── → /offers/[offer_id]                   (Click offer card → W058)
+├── → /offers/[offer_id]                   (Click offer card → W067)
 ├── → /campaigns                           (After delete → redirect)
 ├── → /campaigns/[new_id]                  (After duplicate → new campaign)
 │

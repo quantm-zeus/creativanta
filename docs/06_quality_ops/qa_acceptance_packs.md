@@ -97,7 +97,7 @@ Every module must pass 5 acceptance paths:
 - Broken: Rate card AI fails → fallback to manual entry
 - Audit: Deal status changes, media kit generation credited
 
-### S19 Customer Support
+### help / S19 Customer Support
 - Happy: Bug report → ticket → AI classify → agent assign → resolve → survey
 - Degraded: AI chatbot confidence low → escalate to human
 - Missing: No tickets → help center suggests articles
@@ -125,7 +125,7 @@ Every module must pass 5 acceptance paths:
 | Credit lifecycle | M23→M07 | Credit deduction → warning → block |
 | Refund flow | M13→M19→M23 | Order → refund → settlement → profit recalc |
 | Admin moderation | S26→M07→D2 | Content flagged → admin reviews → action → notify |
-| Support escalation | S19→S26→D2 | Ticket → SLA breach → admin alert → resolve |
+| Support escalation | help→S26→D2 | Ticket → SLA breach → admin alert → resolve |
 | Creator Pro loop | S16→M19→M23 | Brand deal → revenue → profit attribution |
 | Admin impersonation | S26→M01 | Login → impersonate → see user view → end |
 | Subscription lifecycle | M23→Stripe | Trial → payment → renew/cancel → downgrade |
@@ -138,6 +138,7 @@ Every module must pass 5 acceptance paths:
 |---|---|---|
 | Load test | k6 | See C3 targets |
 | Accessibility | axe-core, Lighthouse | WCAG 2.1 AA |
+| Accessibility implementation contract | Manual + shared-spec review | Must follow `06_quality_ops/accessibility_spec.md` and shared screen specs |
 | Mobile responsiveness | BrowserStack | iOS Safari, Android Chrome |
 | i18n | Manual | All strings translated, no hardcoded text |
 | Security | OWASP ZAP, cargo audit | No critical/high findings |
@@ -215,4 +216,3 @@ Every module must pass 5 acceptance paths:
 | Clone without consent | Audio samples, no consent | Request blocked | Error: "Voice cloning requires consent" |
 | Clone quality check | Provider returns quality_score < threshold | Warning shown to user | Quality score visible |
 | Clone in generation | Clone voice used in video generation | Video uses cloned voice | `character.voice_clone_id` referenced |
-

@@ -1,10 +1,10 @@
 # Screen: Admin — Global Commerce Stats
 
 > **Screen ID**: A018
-> **Module**: Admin — Commerce Oversight
+> **Module**: S26 — Internal Admin & Operations
 > **Route**: `/admin/commerce`
 > **Platform**: Admin Web (SvelteKit, VPN-only)
-> **Upstream**: Pack 12, A1 Schema (orders, commerce_fees, workspaces), B5 RBAC §3 (8 Admin roles)
+> **Upstream**: S26 commerce oversight, A1 Schema (`orders`, `platform_fee_schedules`, `workspaces`) + commerce analytics projections, B5 RBAC §3 (8 Admin roles)
 
 ---
 
@@ -160,13 +160,13 @@ AdminCommerceOverviewPage
 
 ## 7. Permissions (Admin RBAC — 8 roles)
 
-| Feature | Super Admin | Ops Admin | Finance Admin | Support Admin | Others |
+| Feature | Super Admin | Operations Admin | Finance Admin | Analyst | Others |
 |---|---|---|---|---|---|
-| View commerce overview | ✅ | ✅ | ✅ | ✅ (limited) | ❌ |
+| View commerce overview | ✅ | ✅ | ✅ | ✅ | ❌ |
 | View workspace GMV | ✅ | ✅ | ✅ | ❌ | ❌ |
 | View fee details | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Export reports | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Contact workspace owners | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Export reports | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Contact workspace owners | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -182,12 +182,13 @@ AdminCommerceOverviewPage
 
 ---
 ## 5. Data Binding & Display Format
-| UI Element | Data Source | API | Display Format | Cache |
+| UI Element | Data Source | API / Projection | Display Format | Cache |
 |---|---|---|---|---|
-| Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |
-| List items | Parent screen list/query contract(s) | Resolve via API endpoint map before implementation | Card or row layout per wireframe | Per endpoint policy |
-| Summary stats | Parent screen aggregates/projections | Resolve via feature rules + API contracts | Count / KPI / chip formatting per screen | Short-lived cache only if contract allows |
-| User-facing text | i18n keys | — | Vietnamese | Static |
+| KPI row | Commerce overview projection derived from `orders` + fee schedules | Admin commerce overview projection | GMV / orders / refund / AOV / active workspaces / fees | 5m TTL |
+| GMV trend | Daily commerce metrics projection | Admin commerce trend projection | Area chart by platform | 15m TTL |
+| Platform breakdown | Platform commerce aggregation | Admin commerce breakdown projection | Table rows with totals | 15m TTL |
+| Top workspaces | Workspace-ranked commerce projection | Admin commerce ranking projection | Ranked table | 5m TTL |
+| Alerts | Diagnostics / threshold evaluation projection | Admin commerce alerts projection | Alert cards with severity | 1m TTL |
 
 
 ---
@@ -226,7 +227,7 @@ AdminCommerceOverviewPage
 | Stage | Duration | Visual |
 |---|---|---|
 | Screen mount | 0ms | App bar + shimmer placeholders |
-| Primary data | 200-500ms | Content populates progressively |
+| Commerce overview data | 200-500ms | Content populates progressively |
 | User action | <1s | Inline spinner → result feedback |
 
 ---

@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-04-07
+last_updated: 2026-04-09
 ---
 
 # Implementation Order — Build Phases & Dependencies
@@ -11,6 +11,7 @@ last_updated: 2026-04-07
 - Each phase unlocks the next; do not skip phases.
 - Canonical objects (One Graph) must exist before modules that consume them.
 - Cross-cutting concerns (auth, RLS, canonical contract scaffolding) are Phase 0 hard blockers.
+- Generated transport artifacts are derivative implementation outputs, not docs-phase prerequisites.
 - Modules within the same phase can run in parallel unless noted.
 
 ## 2. Build Phases
@@ -21,7 +22,7 @@ last_updated: 2026-04-07
 |-----------|----------------|---------|
 | Auth & Workspace (Clerk + JWT + RBAC) | 04_contracts/database_schema.md#workspace | None |
 | DB schema bootstrap | 04_contracts/database_schema.md | None — DB-C-001/002 resolved |
-| Contract scaffolding (`api_endpoint_map` → `/protos/`) | 04_contracts/api_endpoint_map.md + 04_contracts/protobuf_contracts.md | None — generate `/protos/` at implementation kickoff |
+| Contract scaffolding (`api_endpoint_map` + `api_examples` as transport authoring source) | 04_contracts/api_endpoint_map.md + 04_contracts/protobuf_contracts.md + 04_contracts/api_examples.md | None for docs readiness — generate and commit `/protos/` later when typed codegen/client generation begins |
 | Design system tokens | 05_system/tech_stack_adr.md#design | None |
 | Dev environment (Docker Compose) | 06_quality_ops/docker_dev_environment.md | None |
 | RLS policies for all tables | 04_contracts/database_schema.md | None — DB-C-001/002 resolved |
@@ -48,7 +49,7 @@ M05 + M06 can run in parallel with M08.
 
 | Module | Dependencies | Blockers |
 |--------|-------------|----------|
-| M07 AI Video Studio | Phase 2 (M06, M08) | No phase-specific blocker after service-name remediation; still depends on unresolved global blockers such as `PROTO-C-001` |
+| M07 AI Video Studio | Phase 2 (M06, M08) | No phase-specific doc blocker |
 | M09 Asset Derivative Manager | M07 partial | Needs generated assets |
 | M10 Packaging QA | M06, M07 partial | Needs scripts + assets |
 
@@ -85,8 +86,8 @@ M17 and M18 can start after M13, parallel with M14–M16.
 
 | Module | Dependencies | Notes |
 |--------|-------------|-------|
-| M20 Workflow Studio | Phase 0-6 canonical objects | Activepieces integration; editor/activation permission split is now canonical, but screen cleanup remains |
-| M21 Recipe / Agent Center | M20 | Recipes are workflow templates; still depends on unresolved global blockers such as `.proto` generation |
+| M20 Workflow Studio | Phase 0-6 canonical objects | Activepieces integration; editor/activation permission split is canonical |
+| M21 Recipe / Agent Center | M20 | Recipes are workflow templates built on the same canonical workflow contracts |
 
 ### Phase 8 — Platform & Admin: M01, M22, M23
 

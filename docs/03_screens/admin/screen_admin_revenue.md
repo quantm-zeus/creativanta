@@ -4,7 +4,7 @@
 > **Module**: S26 — Internal Admin & Operations
 > **Route**: `/admin/revenue`
 > **Platform**: Admin Web (SvelteKit) — VPN-only access
-> **Upstream**: S26 §Finance, A1 Schema (payment_events, subscription_events, credit_transactions, commission_events), B5 RBAC §3
+> **Upstream**: S26 §Finance, A1 Schema (`billing_events`, `subscription_events`, `ai_credit_transactions`, commission revenue projections), B5 RBAC §3
 
 ---
 
@@ -159,7 +159,7 @@ PlatformRevenuePage
 
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Total revenue | `payment_events` + `credit_transactions` + `commission_events` sum | `AdminRevenueService/GetSummary(month)` | VND millions with MoM (145.7M ↑8.2%) | 15m TTL |
+| Total revenue | Billing + subscription + AI-credit revenue projection | `AdminRevenueService/GetSummary(month)` | VND millions with MoM (145.7M ↑8.2%) | 15m TTL |
 | MRR | `subscription_events` monthly | same | VND millions | 15m TTL |
 | Revenue trend | `revenue_snapshots` (6 months) | `AdminRevenueService/GetTrend(6mo)` | Stacked area chart | 1h TTL |
 | Forecast | ML or linear regression from trend | same | Dashed line + label | 1h TTL |
@@ -205,9 +205,9 @@ N/A — Read-only dashboard.
 
 ## 9. Permission Matrix
 
-| Action | Super Admin | Finance Admin | Ops Admin | Support Admin | Read Only |
+| Action | Super Admin | Finance Admin | Operations Admin | Support Admin | Analyst |
 |---|---|---|---|---|---|
-| View revenue | ✅ | ✅ | ✅ | ❌ | ✅ |
+| View revenue | ✅ | ✅ | ❌ | ❌ | ❌ |
 | View transactions | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Export data | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Retry payments | ✅ | ✅ | ❌ | ❌ | ❌ |

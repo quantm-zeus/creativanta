@@ -4,7 +4,7 @@
 > **Module**: M23 — Settings / Growth
 > **Route**: `/m/settings/referral`
 > **Platform**: Mobile (Flutter)
-> **Upstream**: Pack 08 §Growth/Referral, A1 Schema (referrals, referral_tiers, credit_transactions), B5 RBAC §2.9
+> **Upstream**: Pack 08 §Growth/Referral, referral projections + `ai_credit_transactions`, B5 RBAC §2.9
 
 ---
 
@@ -173,7 +173,7 @@ ReferralScreen
 | Clicks | `referral_events WHERE type=click` count | `ReferralService/GetReferralStats` | Integer | 15m TTL |
 | Signups | `referrals WHERE status=signed_up` count | same | "12 (27%)" | 15m TTL |
 | Paid | `referrals WHERE status=converted` count | same | "3 (25%)" | 15m TTL |
-| Credits earned | `credit_transactions WHERE source=referral` sum | same | "225 credits" | 15m TTL |
+| Credits earned | `ai_credit_transactions WHERE transaction_type='referral_bonus'` sum | same | "225 credits" | 15m TTL |
 | Current tier | `users.referral_tier` | same | Badge icon + label | Session |
 | Tier progress | Computed from referral count / tier threshold | same | Progress bar + "{n}/{max}" | Session |
 | History | `referrals` list | `ReferralService/ListReferrals(page)` | Grouped card list | 15m TTL |

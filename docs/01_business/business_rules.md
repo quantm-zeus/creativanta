@@ -210,7 +210,7 @@ Source: PRD §27
   - Otherwise hard-block at 100% (no buffer without both conditions)
   - Auto-charge overage on next invoice cycle only when both conditions above are met
   - Hard-block at 110% (absolute cap)
-  - Overage credits tracked in `credit_transactions.transaction_type = 'overage_charge'`
+  - Overage credits tracked in `ai_credit_transactions.transaction_type = 'overage_charge'`
   - Invoice line item: "AI Credit Overage — {N} credits × $0.030"
   - Enterprise tier: custom overage terms per contract (no auto-charge)
 - Cross-ref: `pricing_and_credits.md` §3.3, `database_schema.md` §19.1B invoices, `api_endpoint_map.md` §2.8.6 AdminBillingService
@@ -297,7 +297,7 @@ Source: PRD §27
 **BIZ-011: AI credit refund on generation failure/partial output** — `DECISION`
 - Problem: What happens to credits when AI generation fails, produces partial output, or user disputes quality?
 - Decision: 3-tier refund policy based on failure type:
-  - **Full refund (automatic)**: System-side failure (provider error, timeout, infrastructure crash). Credits returned immediately via credit escrow release. `credit_transactions.transaction_type = 'refund_system_failure'`.
+  - **Full refund (automatic)**: System-side failure (provider error, timeout, infrastructure crash). Credits returned immediately via credit escrow release. `ai_credit_transactions.transaction_type = 'refund_system_failure'`.
   - **Full refund (automatic)**: Generation produces no usable output (empty result, corrupt file, 0-second video). Detected by output validator. `transaction_type = 'refund_no_output'`.
   - **Partial refund (automatic)**: Generation produces partial output (e.g., 15s video instead of requested 60s). Refund = `estimated_cost × (1 - actual_duration/requested_duration)`. Minimum refund: 20% of estimated cost. `transaction_type = 'refund_partial_output'`.
   - **No automatic refund**: Generation completes successfully but user dislikes quality. User may file quality dispute via support ticket. Support can issue discretionary credit grant (max 1 per workspace per 24h, max 50 credits per grant). `transaction_type = 'refund_quality_dispute'`.

@@ -92,7 +92,7 @@ AdminUserListPage
 ## 6-20. Standard Sections
 
 ### Admin Role Requirements
-- Only `admin:user:read` + `admin:user:suspend` permissions (Super Admin, Ops Admin roles)
+- Only `admin:user:read` + `admin:user:suspend` permissions (Super Admin, Operations Admin roles)
 - All actions logged to admin audit
 
 ### States

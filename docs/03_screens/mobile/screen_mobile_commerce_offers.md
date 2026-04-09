@@ -4,13 +4,13 @@
 > **Module**: M14 — Monetization & Offers
 > **Route**: `/commerce/offers` (mobile)
 > **Platform**: Mobile (Flutter)
-> **Upstream**: Pack 06 §7, A1 Schema (offers, coupons, coupon_usage, offer_products), B5 RBAC §2.7
+> **Upstream**: Pack 06 §7, offers schema + OfferService projections, B5 RBAC §2.7
 
 ---
 
 ## 1. Purpose & Context
 
-Mobile offer management — monitor flash sales, bundle deals, and seasonal promotions. Focused on real-time monitoring with quick status toggle (pause/resume). Full offer creation and editing defers to web (W057/W058). Push notifications alert when offers are expiring or reaching usage limits.
+Mobile offer management — monitor flash sales, bundle deals, and seasonal promotions. Focused on real-time monitoring with quick status toggle (pause/resume). Full offer creation and editing defers to web ([W066] list / [W067] detail). Push notifications alert when offers are expiring or nearing redemption limits.
 
 ### User Goals
 - Monitor active offer status and performance on-the-go
@@ -62,7 +62,7 @@ Mobile offer management — monitor flash sales, bundle deals, and seasonal prom
 │ ┌─ Summary Bar ──────────────────────────────────────────────────┐  │
 │ │ 🟢 Active: 3 · Revenue (30d): +2.8M VND · Avg CVR: 11.2%     │  │
 │ └──────────────────────────────────────────────────────────────────┘  │
-│ Chips: [Tất cả] [🟢 Active (3)] [⏳ Scheduled (2)] [⏹ Ended (8)]  │
+│ Chips: [Tất cả] [🟢 Active (3)] [⏸ Paused (2)] [⏹ Ended (8)]      │
 ├──────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │ ┌─ Offer Card ────────────────────────────────────────────────────┐ │
@@ -79,12 +79,12 @@ Mobile offer management — monitor flash sales, bundle deals, and seasonal prom
 │ └──────────────────────────────────────────────────────────────────┘ │
 │                                                                      │
 │ ┌─ Offer Card ────────────────────────────────────────────────────┐ │
-│ │ 🏷 "Bundle 2+1"                               [⏳ Scheduled]   │ │
+│ │ 🏷 "Bundle 2+1"                               [⏸ Paused]      │ │
 │ │ Mua 2 tặng 1 · 3 sản phẩm                                    │ │
 │ │                                                                  │ │
-│ │ Starts: 01/04 (Còn 3 ngày) · Auto-activate                    │ │
+│ │ Đã tạm dừng thủ công · Có thể tiếp tục trên mobile hoặc web   │ │
 │ │                                                                  │ │
-│ │ [📊 Chi tiết]                                                  │ │
+│ │ [▶ Tiếp tục] [📊 Chi tiết]                                     │ │
 │ └──────────────────────────────────────────────────────────────────┘ │
 │                                                                      │
 │ ┌─ Offer Card (ended) ───────────────────────────────────────────┐ │
@@ -116,7 +116,7 @@ CommerceOffersScreen (ConsumerStatefulWidget)
 ├── StatusChipBar (horizontal scroll)
 │   ├── FilterChip("Tất cả")
 │   ├── FilterChip("🟢 Active" + count)
-│   ├── FilterChip("⏳ Scheduled" + count)
+│   ├── FilterChip("⏸ Paused" + count)
 │   └── FilterChip("⏹ Ended" + count)
 ├── OfferList (SliverList)
 │   └── OfferCard[] (repeating)
@@ -148,9 +148,9 @@ CommerceOffersScreen (ConsumerStatefulWidget)
 
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Offer list | `offers` + stats | `OfferService/List(workspace_id, status)` | Cards | 5m, offline Hive |
-| Summary | ClickHouse aggregation | Included in list header | Compact metrics | 5m |
-| Usage progress | `COUNT(coupon_usage) / offers.usage_limit` | Aggregated | Progress bar + text | 5m |
+| Offer list | `offers` + performance projection | `OfferService/List(workspace_id, lifecycle_state)` | Cards | 5m, offline Hive |
+| Summary | Offer metrics projection | Included in list header | Compact metrics | 5m |
+| Usage progress | Offer redemption projection (`redemption_count` / `redemption_limit_total` or equivalent linked-coupon capacity) | Included in list or detail projection | Progress bar + text | 5m |
 | Revenue impact | `SUM(orders.total WHERE offer_id)` | Aggregated | VND compact | 5m |
 | Countdown | `offers.ends_at - now()` | Computed client-side | "Còn 2 ngày" / "Còn 3 giờ" | — |
 
@@ -160,9 +160,9 @@ CommerceOffersScreen (ConsumerStatefulWidget)
 
 | # | Action | Trigger | API Call | Mutation | UI Result | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Pause offer | Tap "⏸ Tạm dừng" → confirm | `OfferService/Pause(id)` | `status = 'paused'` | Confirm dialog → badge → ⏸. Haptic + snackbar. | `offer:manage` |
-| 2 | Resume offer | Tap "▶ Tiếp tục" | `OfferService/Resume(id)` | `status = 'active'` | Badge → 🟢. Haptic + snackbar. | `offer:manage` |
-| 3 | View detail | Tap "📊 Chi tiết" or card | — | — | Navigate → Offer Detail (M029-detail) | `offer:read` |
+| 1 | Pause offer | Tap "⏸ Tạm dừng" → confirm | `OfferService/Pause(id)` | `lifecycle_state = 'paused'` | Confirm dialog → badge → ⏸. Haptic + snackbar. | `offer:manage` |
+| 2 | Resume offer | Tap "▶ Tiếp tục" | `OfferService/Resume(id)` | `lifecycle_state = 'active'` | Badge → 🟢. Haptic + snackbar. | `offer:manage` |
+| 3 | View detail | Tap "📊 Chi tiết" or card | — | — | Navigate → mobile read-only detail (`/commerce/offers/[id]`) with web edit CTA to [W067] | `offer:read` |
 | 4 | Duplicate | Tap "🔄 Nhân bản" | `OfferService/Duplicate(id)` | New draft | Snackbar "Đã nhân bản → Draft. [Chỉnh sửa trên web →]" | `offer:manage` |
 | 5 | View results | Tap "📊 Xem kết quả" | — | — | Navigate → Offer Results (ended summary) | `offer:read` |
 | 6 | Filter | Tap chip | Client-side filter | — | List filters with animation | `offer:read` |
@@ -187,7 +187,7 @@ CommerceOffersScreen (ConsumerStatefulWidget)
 | LOADED | Data available | Summary bar + offer cards | Interact |
 | EMPTY | No offers | "Chưa có offer. [Tạo trên web →]" | Navigate to web |
 | EXPIRING_SOON | Offer ends < 24h | Orange countdown badge: "⏰ Kết thúc trong {time}" | Monitor or extend (web) |
-| NEARLY_EXHAUSTED | Usage > 90% | Orange progress bar + "⚠️ Sắp hết lượt" | Increase limit (web) |
+| NEARLY_EXHAUSTED | Redemption usage > 90% of linked coupon/offer capacity | Orange progress bar + "⚠️ Sắp hết lượt" | Increase limit (web) |
 | PAUSING | Pause in progress | Button spinner | Wait |
 | RESUMING | Resume in progress | Button spinner | Wait |
 | OFFLINE | No network | Banner + cached list | Refresh when online |
@@ -276,7 +276,7 @@ Mobile Offers (/commerce/offers)
 
 - Vietnamese: "Ưu đãi", "Tạm dừng", "Tiếp tục"
 - Discount: "Giảm 30%", "Giảm 50K", "Mua 2 tặng 1"
-- Countdown: "Còn 2 ngày", "Còn 3 giờ", "Bắt đầu trong 3 ngày"
+- Countdown: "Còn 2 ngày", "Còn 3 giờ"
 - Revenue: VND compact ("+1.2M VND")
 
 ---
@@ -289,7 +289,7 @@ Mobile Offers (/commerce/offers)
 | `offer.mobile.paused` | Pause action | `offer_id`, `usage_at_pause` |
 | `offer.mobile.resumed` | Resume action | `offer_id` |
 | `offer.mobile.duplicated` | Duplicate | `offer_id` |
-| `offer.mobile.detail_viewed` | Detail tap | `offer_id`, `status` |
+| `offer.mobile.detail_viewed` | Detail tap | `offer_id`, `lifecycle_state` |
 
 ---
 
@@ -299,7 +299,7 @@ Mobile Offers (/commerce/offers)
 |---|---|
 | `AppColors.surfaceElevated` | Offer cards |
 | `AppColors.success` | 🟢 Active badge, healthy progress |
-| `AppColors.warning` | ⏳ Scheduled, expiring soon, nearly exhausted |
+| `AppColors.warning` | Expiring soon, nearly exhausted |
 | `AppColors.danger` | ⏹ Stop action |
 | `AppColors.neutral` | ⏸ Paused badge |
 | `AppTypography.headlineSmall` | Offer name |

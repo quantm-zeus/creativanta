@@ -4,7 +4,7 @@
 > **Module**: M23 — Reporting / Admin / Billing / Diagnostics (S26 Internal Admin)
 > **Route**: `/admin/ai/config`
 > **Platform**: Admin Web (SvelteKit) — VPN-only access
-> **Upstream**: Pack 04 §AI/Media, Pack 08 §Credits, S26 §AI Operations, A1 Schema (ai_model_config, ai_providers), B5 RBAC §3
+> **Upstream**: Pack 04 §AI/Media, Pack 08 §Credits, S26 §AI Operations, A3 API (`AdminAIService`), B5 RBAC §3
 
 ---
 
@@ -43,10 +43,10 @@ Admin-only screen for configuring AI model parameters — feature-to-model mappi
 ### Preconditions
 - Admin user authenticated via internal auth
 - VPN connection active
-- Role: `ai_admin` or `super_admin`
+- Role: `tech_admin` or `super_admin`
 
 ### Postconditions
-- Configuration changes saved to `ai_model_config` table
+- Configuration changes saved through the canonical `AdminAIService` configuration surface
 - Changes propagate to AI routing service within 30s
 - Audit event logged: `admin.ai_config.updated`
 - All active AI requests continue with previous config until completion
@@ -198,13 +198,13 @@ AIConfigPage
 
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Feature mappings | `ai_model_config` | `AdminAIService/GetConfig` | Table rows | No cache (admin) |
-| Model options | `ai_providers.models` | `AdminAIService/ListModels` | Dropdown options | Session |
+| Feature mappings | `AdminAIService` configuration projection | `AdminAIService/GetConfig` | Table rows | No cache (admin) |
+| Model options | `AdminAIService` model catalog projection | `AdminAIService/ListModels` | Dropdown options | Session |
 | Cost estimate | Computed from mapping × volume | `AdminAIService/EstimateCost` | "$142.50" USD | No cache |
-| System prompts | `ai_system_prompts` | `AdminAIService/GetPrompts` | Markdown-rendered text | No cache |
-| Rate limits | `ai_rate_limits` per tier | `AdminAIService/GetRateLimits` | Table rows | No cache |
-| A/B tests | `ai_ab_tests` | `AdminAIService/ListABTests` | Test cards | No cache |
-| Last saved | `ai_model_config.updated_at` | same | Relative time + actor email | No cache |
+| System prompts | `AdminAIService` prompt projection | `AdminAIService/GetPrompts` | Markdown-rendered text | No cache |
+| Rate limits | `AdminAIService` rate-limit projection by tier | `AdminAIService/GetRateLimits` | Table rows | No cache |
+| A/B tests | `AdminAIService` A/B test projection | `AdminAIService/ListABTests` | Test cards | No cache |
+| Last saved | Response metadata from `AdminAIService/GetConfig` | same | Relative time + actor email | No cache |
 
 ---
 
@@ -212,17 +212,17 @@ AIConfigPage
 
 | # | Action | Trigger | API Call | Mutation | UI Result | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Change model for feature | Select from dropdown | — (local) | — | Unsaved changes banner appears | `ai_admin` |
-| 2 | Adjust temperature | Change number input | — (local) | — | Cost estimate updates | `ai_admin` |
-| 3 | Save all changes | Click "💾 Save All" | `AdminAIService/UpdateConfig(payload)` | Multiple config rows updated | Toast "Configuration saved" + last-saved updates | `ai_admin` |
-| 4 | Discard changes | Click "↩ Discard" | — | — | Revert to last saved state | Any admin |
+| 1 | Change model for feature | Select from dropdown | — (local) | — | Unsaved changes banner appears | `tech_admin` |
+| 2 | Adjust temperature | Change number input | — (local) | — | Cost estimate updates | `tech_admin` |
+| 3 | Save all changes | Click "💾 Save All" | `AdminAIService/UpdateConfig(payload)` | Multiple config rows updated | Toast "Configuration saved" + last-saved updates | `tech_admin` |
+| 4 | Discard changes | Click "↩ Discard" | — | — | Revert to last saved state | `tech_admin` / `super_admin` |
 | 5 | Reset prompts | Click "🔄 Reset to default" | Confirmation → `AdminAIService/ResetPrompts` | Restore default prompts | Editors revert to defaults | `super_admin` |
-| 6 | View prompt history | Click "📋 View prompt history" | `AdminAIService/GetPromptHistory` | — | Open history drawer with diff view | `ai_admin` |
-| 7 | Edit rate limit | Click ✏ on tier row | — | — | Row becomes editable | `ai_admin` |
-| 8 | Save rate limits | Save editable row | `AdminAIService/UpdateRateLimits` | Rate limit updated | Toast "Rate limits updated" | `ai_admin` |
-| 9 | Create A/B test | Click "+ New A/B test" | — | — | Open A/B test creation dialog | `ai_admin` |
-| 10 | Stop A/B test | Click "Stop" on test row | `AdminAIService/StopABTest(id)` | Test ended, winner applied | Toast "A/B test stopped. Winner: {model}" | `ai_admin` |
-| 11 | Open cost simulator | Click "📊 Cost simulator" | — | — | Open cost simulation drawer | `ai_admin` |
+| 6 | View prompt history | Click "📋 View prompt history" | `AdminAIService/GetPromptHistory` | — | Open history drawer with diff view | `tech_admin` |
+| 7 | Edit rate limit | Click ✏ on tier row | — | — | Row becomes editable | `tech_admin` |
+| 8 | Save rate limits | Save editable row | `AdminAIService/UpdateRateLimits` | Rate limit updated | Toast "Rate limits updated" | `tech_admin` |
+| 9 | Create A/B test | Click "+ New A/B test" | — | — | Open A/B test creation dialog | `tech_admin` |
+| 10 | Stop A/B test | Click "Stop" on test row | `AdminAIService/StopABTest(id)` | Test ended, winner applied | Toast "A/B test stopped. Winner: {model}" | `tech_admin` |
+| 11 | Open cost simulator | Click "📊 Cost simulator" | — | — | Open cost simulation drawer | `tech_admin` |
 
 ---
 
@@ -262,9 +262,9 @@ AIConfigPage
 
 ## 9. Permission Matrix
 
-| Action | Super Admin | AI Admin | Ops Admin | Support Admin | Read Only |
+| Action | Super Admin | Technical Admin | Operations Admin | Support Admin | Analyst / Auditor |
 |---|---|---|---|---|---|
-| View config | ✅ | ✅ | ✅ | ❌ | ✅ (read) |
+| View config | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Edit model mapping | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Edit prompts | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Reset prompts | ✅ | ❌ | ❌ | ❌ | ❌ |

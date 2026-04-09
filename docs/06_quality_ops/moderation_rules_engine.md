@@ -109,7 +109,7 @@ visible → flagged → hidden → deleted
 
 | Severity | Response Time | Handler |
 |---|---|---|
-| Critical (illegal content / hard-block category) | Immediate auto-block + human confirmation within **4h** | System + ContentMod / SuperAdmin |
+| Critical (illegal content / hard-block category) | Immediate auto-block + human confirmation within **4h** | System + Content Admin / Super Admin |
 | High (copyright, harassment, self-harm, fraud) | **< 24h** review | Admin queue |
 | Medium (policy borderline) | **< 72h** review | Team queue |
 | Low (profanity, minor policy cleanup) | Batch review within 7 days | Workspace owner or admin queue |

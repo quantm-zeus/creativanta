@@ -241,7 +241,7 @@ MorningBriefPage
 | Trend fit score | AI-computed relevance to creator's niche | `CopilotService/Query(trend_fit)` | "🟢 High / 🟡 Medium" | Pre-computed |
 | Top content | `content_performance ORDER BY er DESC LIMIT 1 WHERE period=24h` | ClickHouse query via `AnalyticsService/GetTopContent` | Post card with metrics | Pre-computed |
 | Suggested actions | Aggregation: pending approvals + urgent threads + ready-to-publish | `BriefService/GetSuggestedActions` | Prioritized action list | Pre-computed |
-| Warnings | `diagnostics_records` + `ai_credit_transactions.balance` | `BriefService/GetWarnings` | Warning items with fix CTAs | Pre-computed |
+| Warnings | `diagnostics_records` + `CreditService/GetBalance` projection | `BriefService/GetWarnings` | Warning items with fix CTAs | Pre-computed |
 
 ---
 

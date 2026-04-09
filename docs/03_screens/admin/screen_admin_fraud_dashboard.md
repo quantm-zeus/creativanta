@@ -1,7 +1,7 @@
 # Screen: Admin — Fraud Dashboard
 
 > **Screen ID**: A028
-> **Module**: Admin — Fraud & Abuse Detection
+> **Module**: S26 — Internal Admin & Operations
 > **Route**: `/admin/fraud`
 > **Platform**: Admin Web (SvelteKit) — VPN-only access
 > **Upstream**: S26 §14, B5 RBAC §3 Admin Roles, PRD §32G
@@ -46,7 +46,7 @@ The Fraud Dashboard is the central hub for detecting, investigating, and resolvi
 
 ### Preconditions
 - Admin authenticated via VPN + MFA
-- Role: Super Admin, Operations Admin, Finance Admin (financial fraud only), Analyst (view only), Auditor (view only)
+- Role: Super Admin or Content Admin
 
 ### Postconditions
 - Fraud cases created/updated logged in `admin_audit_log`
@@ -159,12 +159,12 @@ FraudDashboardPage
 |---|---|---|---|---|---|---|
 | 1 | Filter cases | Filter controls | `AdminFraudService/ListCases(filters)` | — | Case list updates | Any fraud-viewing role |
 | 2 | Search cases | Search input | `AdminFraudService/SearchCases(query)` | — | Case list updates | Any fraud-viewing role |
-| 3 | Open case detail | Click "Investigate" | — | — | Navigate → `/admin/fraud/[id]` | Super Admin, Ops Admin, Finance Admin |
-| 4 | Create manual case | Click "Create Case" | `AdminFraudService/CreateCase(data)` | New fraud case created | Toast "Case created" + navigate to detail | Super Admin, Ops Admin |
+| 3 | Open case detail | Click "Investigate" | — | — | Navigate → `/admin/fraud/[id]` | Super Admin, Content Admin |
+| 4 | Create manual case | Click "Create Case" | `AdminFraudService/CreateCase(data)` | New fraud case created | Toast "Case created" + navigate to detail | Super Admin, Content Admin |
 | 5 | Bulk action | Select cases + action | `AdminFraudService/BulkAction(ids, action)` | Cases updated | Toast "X cases updated" | Super Admin only |
-| 6 | Export report | Click "Fraud Report" | `AdminFraudService/ExportReport(period)` | — | Download CSV/PDF | Super Admin, Ops Admin, Analyst |
+| 6 | Export report | Click "Fraud Report" | `AdminFraudService/ExportReport(period)` | — | Download CSV/PDF | Super Admin, Content Admin |
 | 7 | Change period | Period selector | `AdminFraudService/GetSignals(period)` | — | Signals + metrics update | Any fraud-viewing role |
-| 8 | View linked accounts | Click link group | — | — | Open linked-accounts visualization | Super Admin, Ops Admin |
+| 8 | View linked accounts | Click link group | — | — | Open linked-accounts visualization | Super Admin, Content Admin |
 
 ---
 
@@ -184,14 +184,14 @@ FraudDashboardPage
 
 | Feature | Super Admin | Operations | Finance | Content | Support | Tech | Analyst | Auditor |
 |---|---|---|---|---|---|---|---|---|
-| View dashboard | ✅ | ✅ | ✅ (financial) | ❌ | ❌ | ❌ | ✅ (read) | ✅ (read) |
-| View case detail | ✅ | ✅ | ✅ (financial) | ❌ | ❌ | ❌ | ✅ (read) | ✅ (read) |
-| Create case | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Take action (warn/suspend/ban) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Revoke credits | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Block device fingerprint | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Export reports | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ |
-| View device intelligence | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| View dashboard | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| View case detail | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Create case | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Take action (warn/suspend/ban) | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Revoke credits | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Block device fingerprint | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Export reports | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| View device intelligence | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ---
 

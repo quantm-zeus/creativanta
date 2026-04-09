@@ -2,7 +2,7 @@
 layer: contracts
 canonical: false
 created: 2026-04-01
-updated: 2026-04-07
+updated: 2026-04-09
 status: HISTORICAL_TRACEABILITY
 ---
 
@@ -18,7 +18,7 @@ status: HISTORICAL_TRACEABILITY
 |--------|-------|------|
 | Total unique screen API refs | **~907** | Extracted from screen doc action tables |
 | Concrete RPCs in API map | **~1,160** | Per `api_endpoint_map.md` as of 2026-04-06 (§2-§20) |
-| Screen refs matching API map | **907 / 907** | **100% coverage** — all screen RPCs have canonical definitions |
+| Screen refs matching API map | **907 / 907** | **100% inventory coverage** — all screen RPC references map to canonical API definitions |
 | Screen refs with no API map entry | **0** | Previously ~572; fully closed |
 | Gap: screen refs without concrete RPC definition | **0** | ✅ Fully resolved |
 | Affected screen files | **0 / 243** | No screens reference undefined RPCs |
@@ -26,6 +26,8 @@ status: HISTORICAL_TRACEABILITY
 | Services with full RPC-level definitions | **~133** | All 133 services fully defined |
 
 > ✅ **All screen-referenced RPCs now have canonical definitions** in `api_endpoint_map.md` with method, auth level, rate limit, and description.
+>
+> This is an inventory-traceability statement only. It does **not** mean every screen is behaviorally perfect without checking feature/spec/schema/RBAC layers.
 
 
 ---

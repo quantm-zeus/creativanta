@@ -4,7 +4,7 @@
 > **Module**: M14 — Monetization & Offers
 > **Route**: `/offers`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: Pack 06 §7 (Commerce), Product Freeze §22-23, A1 Schema (offers, coupons, coupon_usage, offer_products, campaigns), B5 RBAC §2.7
+> **Upstream**: Pack 06 §7 (Commerce), Product Freeze §22-23, A1 Schema (offers, coupons, products, campaigns), B5 RBAC §2.7
 
 ---
 
@@ -39,8 +39,8 @@ The Offer & Coupon Manager is the central hub for all promotional offers. Shows 
 - Product Detail (W061): "Xem offers cho sản phẩm này" link
 
 ### Exit Points
-- Click offer card → Offer Detail (W058)
-- Click "+ Tạo mới" → Offer Create (W058 with `/offers/new`)
+- Click offer card → Offer Detail (W067)
+- Click "+ Tạo mới" → Offer Create (W067 with `/offers/new`)
 - Click "📊 Analytics" → Offer Analytics
 - Click platform chip → platform-specific offer sync detail
 
@@ -179,12 +179,12 @@ OfferListPage
 
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Offer list | `offers` table filtered by status + workspace | `OfferService/List(workspace_id, status, page, sort)` | Card list | 5m TTL |
-| Tab counts | `COUNT(offers) GROUP BY status` | `OfferService/GetStatusCounts(workspace_id)` | Integer in tab badges | 5m TTL |
+| Offer list | `offers` table filtered by `lifecycle_state` + workspace | `OfferService/List(workspace_id, lifecycle_state, page, sort)` | Card list | 5m TTL |
+| Tab counts | `COUNT(offers) GROUP BY lifecycle_state` | `OfferService/GetStatusCounts(workspace_id)` | Integer in tab badges | 5m TTL |
 | Coupon code | `coupons.code` via `offers.coupon_id` | Included in offer data | Uppercase monospace | — |
-| Redemption count | `COUNT(coupon_usage) WHERE offer_id` | `OfferService/GetRedemptionStats(offer_id)` | "45/100" or "12 lượt" | 2m TTL |
+| Redemption count | Offer redemption projection from `OfferService/GetRedemptionStats(offer_id)` | `OfferService/GetRedemptionStats(offer_id)` | "45/100" or "12 lượt" | 2m TTL |
 | Revenue impact | ClickHouse: `SUM(orders.total) WHERE coupon_id` | Included in list response | Compact VND ("+3.2M VND") | 5m TTL |
-| Avg discount | `AVG(coupon_usage.discount_amount)` | Included in list response | Compact VND ("48K") | 5m TTL |
+| Avg discount | Offer performance projection from `OfferService/List` / `OfferService/GetPerformance` | Included in list response | Compact VND ("48K") | 5m TTL |
 | Conversion rate | `orders_with_coupon / coupon_views × 100` | Included in list response | Percentage ("12.3%") | 5m TTL |
 | Validity dates | `offers.starts_at`, `offers.ends_at` | — | `dd/MM` or `dd/MM/yyyy` | — |
 | Expiry countdown | `offers.ends_at - now()` | Computed client-side | "Còn 3 ngày" or "Hết hạn 2 ngày trước" | — |
@@ -199,8 +199,8 @@ OfferListPage
 |---|---|---|---|---|---|---|
 | 1 | Create new offer | Click "+ Tạo mới" | — | — | Navigate → `/offers/new` | `offer:manage` |
 | 2 | View detail | Click "→ Chi tiết" or card | — | — | Navigate → `/offers/[id]` | `offer:read` |
-| 3 | Pause offer | Click "⏸ Tạm dừng" | `OfferService/Pause(id)` | `offers.status = 'paused'` | Optimistic: status badge → ⏸, card moves to Paused tab. Toast "⏸ Offer đã tạm dừng" | `offer:manage` |
-| 4 | Resume offer | Click "▶ Tiếp tục" | `OfferService/Resume(id)` | `offers.status = 'active'` | Optimistic: status badge → 🟢, card moves to Active tab. Toast "▶ Offer đang hoạt động" | `offer:manage` |
+| 3 | Pause offer | Click "⏸ Tạm dừng" | `OfferService/Pause(id)` | `offers.lifecycle_state = 'paused'` | Optimistic: status badge → ⏸, card moves to Paused tab. Toast "⏸ Offer đã tạm dừng" | `offer:manage` |
+| 4 | Resume offer | Click "▶ Tiếp tục" | `OfferService/Resume(id)` | `offers.lifecycle_state = 'active'` | Optimistic: status badge → 🟢, card moves to Active tab. Toast "▶ Offer đang hoạt động" | `offer:manage` |
 | 5 | Copy coupon code | Click "📋" | — (clipboard API) | — | Toast "📋 Đã copy: FLASH20" + haptic feedback | Any authenticated |
 | 6 | View analytics | Click "📊 Analytics" | — | — | Navigate → `/offers/[id]/analytics` | `offer:read` |
 | 7 | Edit offer | "⋮" → "Chỉnh sửa" | — | — | Navigate → `/offers/[id]` in edit mode | `offer:manage` |

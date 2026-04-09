@@ -17,7 +17,7 @@ created: 2026-04-01
 |---|---|---|---|
 | **Web** (SvelteKit) | SvelteKit 2 + Svelte 5 | 133 screens | Primary workspace for creators/operators |
 | **Mobile** (Flutter) | Flutter 3.41 + Impeller | 61 screens | On-the-go management + consumption |
-| **Admin** (SvelteKit) | SvelteKit (separate app) | 32 screens | Internal operations team only |
+| **Admin** (SvelteKit) | SvelteKit (separate app) | 37 screens | Internal operations team only |
 | **Shared** | Component library | 12 shared specs | Cross-platform components |
 
 ---

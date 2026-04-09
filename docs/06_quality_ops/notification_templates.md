@@ -92,11 +92,11 @@ interface InAppNotification {
 | Template Key | Trigger | Recipient | Subject |
 |---|---|---|---|
 | `admin_moderation_alert` | Content flagged (high severity) | Content Admin | 🔴 [Moderation] Nội dung bị gắn cờ: {object_ref} |
-| `admin_fraud_alert` | Fraud case detected | Ops Admin | 🔴 [Fraud] Nghi ngờ gian lận: {case_id} |
+| `admin_fraud_alert` | Fraud case detected | Content Admin | 🔴 [Fraud] Nghi ngờ gian lận: {case_id} |
 | `admin_user_suspension` | User suspended | Suspended user | ⚠️ Tài khoản tạm dừng |
 | `admin_impersonation_notify` | Impersonation started | Target user (optional) | 🔒 Phiên hỗ trợ đang diễn ra |
 | `admin_incident_alert` | Incident detected | Tech Admin | 🔴 [Incident] {severity}: {affected_services} |
-| `admin_sla_breach` | Support SLA breached | Ops Admin | ⚠️ [SLA Breach] Ticket #{ticket_id} |
+| `admin_sla_breach` | Support SLA breached | Support Admin | ⚠️ [SLA Breach] Ticket #{ticket_id} |
 
 ---
 

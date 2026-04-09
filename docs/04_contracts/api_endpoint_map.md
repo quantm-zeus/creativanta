@@ -1960,17 +1960,17 @@ Rate limit: 100 req/min (read), 30 req/min (write) per API key. IP-based seconda
 
 | RPC | Method | Auth | Rate Limit | Description |
 |---|---|---|---|---|
-| `AdminComplianceService/GetStats` | POST | Super/Ops | 30/min | Get compliance stats |
-| `AdminComplianceService/ListRequests` | POST | Super/Ops | 30/min | List compliance requests (GDPR) |
-| `AdminComplianceService/GetRequest` | POST | Super/Ops | 30/min | Get request detail |
+| `AdminComplianceService/GetStats` | POST | Super/Ops/Auditor | 30/min | Get compliance stats |
+| `AdminComplianceService/ListRequests` | POST | Super/Ops/Auditor | 30/min | List compliance requests (GDPR) |
+| `AdminComplianceService/GetRequest` | POST | Super/Ops/Auditor | 30/min | Get request detail |
 | `AdminComplianceService/ApproveDeletion` | POST | Super/Ops | 5/min | Approve data deletion |
 | `AdminComplianceService/RejectRequest` | POST | Super/Ops | 5/min | Reject request |
 | `AdminComplianceService/GenerateExport` | POST | Super/Ops | 5/min | Generate data export |
-| `AdminComplianceService/GetUserConsents` | POST | Super/Ops | 30/min | Get user consents |
-| `AdminComplianceService/GetBreaches` | POST | Super/Ops | 30/min | List data breaches |
+| `AdminComplianceService/GetUserConsents` | POST | Super/Ops/Auditor | 30/min | Get user consents |
+| `AdminComplianceService/GetBreaches` | POST | Super/Ops/Auditor | 30/min | List data breaches |
 | `AdminComplianceService/CreateBreach` | POST | Super/Ops | 5/min | Create breach report |
-| `AdminComplianceService/GetDPALog` | POST | Super/Ops | 30/min | Get DPA audit log |
-| `AdminComplianceService/ExportDPA` | POST | Super/Ops | 5/min | Export DPA report |
+| `AdminComplianceService/GetDPALog` | POST | Super/Ops/Auditor | 30/min | Get DPA audit log |
+| `AdminComplianceService/ExportDPA` | POST | Super/Ops/Auditor | 5/min | Export DPA report |
 
 ### 18.16 AdminJobService
 

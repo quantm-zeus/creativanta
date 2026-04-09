@@ -286,7 +286,7 @@ struct EventMetadata {
 | `admin.impersonation_ended` | S26 | Audit | `{session_id, duration_seconds}` |
 | `moderation.case_created` | S26 | Content Admin | `{case_id, type, severity, object_ref}` |
 | `moderation.case_resolved` | S26 | Audit | `{case_id, action, resolution}` |
-| `fraud.case_detected` | S26 | Ops Admin | `{case_id, type, severity, implicated_users}` |
+| `fraud.case_detected` | S26 | Content Admin | `{case_id, type, severity, implicated_users}` |
 | `fraud.case_confirmed` | S26 | Finance Admin | `{case_id, financial_impact}` |
 | `feature_flag.toggled` | S26 | All services | `{flag_name, enabled, rollout_pct, toggled_by}` |
 | `system.announcement_published` | S26 | All users | `{announcement_id, type, target_scope}` |
@@ -301,7 +301,7 @@ struct EventMetadata {
 |---|---|---|---|
 | `support.ticket_created` | S19 | Support Admin | `{ticket_id, user_id, category, priority}` |
 | `support.ticket_assigned` | S19 | Support Admin | `{ticket_id, admin_id}` |
-| `support.ticket_escalated` | S19 | Ops Admin | `{ticket_id, reason}` |
+| `support.ticket_escalated` | S19 | Operations Admin | `{ticket_id, reason}` |
 | `support.ticket_resolved` | S19 | User, Analytics | `{ticket_id, resolution_time_mins}` |
 | `support.sla_breached` | S19 | Support Admin, Alert | `{ticket_id, sla_type}` |
 
@@ -318,7 +318,7 @@ struct EventMetadata {
 | `consent.granted` | System | Compliance | `{user_id, consent_type, version}` |
 | `consent.revoked` | System | Compliance | `{user_id, consent_type}` |
 | `referral.rewarded` | M23 | Credits | `{referrer_id, referee_id, credits}` |
-| `referral.fraud_detected` | Fraud | Ops Admin | `{referral_id, reason}` |
+| `referral.fraud_detected` | Fraud | Finance Admin | `{referral_id, reason}` |
 
 ## 19. Commerce Life-Cycle Events (Round 2 Additions)
 

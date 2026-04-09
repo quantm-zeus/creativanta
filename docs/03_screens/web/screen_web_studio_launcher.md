@@ -135,7 +135,7 @@ AIStudioLauncherPage
 |---|---|---|
 | Active jobs | `generation_jobs WHERE status=processing` | `GenerationService/ListActive` |
 | Recent generations | `assets ORDER BY created_at DESC LIMIT 10` | `AssetService/ListRecent(10)` |
-| Credit balance | `credit_transactions` | `AdminBillingService/GetCreditBalance` |
+| Credit balance | `ai_credit_transactions` aggregated balance | `CreditService/GetBalance` |
 | Mode cards | Static config | Client-side |
 
 | # | Action | Trigger | API | Result | Permission |

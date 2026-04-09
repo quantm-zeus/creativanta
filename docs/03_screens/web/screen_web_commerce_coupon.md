@@ -4,7 +4,7 @@
 > **Module**: M14 — Monetization OS (Coupons)
 > **Route**: `/coupons`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: Pack 06 §Commerce, Product Freeze §23, A1 Schema (coupons, coupon_usage), B5 RBAC §2.7
+> **Upstream**: Pack 06 §Commerce, Product Freeze §23, coupons schema + CouponService projections, B5 RBAC §2.7
 
 ---
 
@@ -39,7 +39,7 @@ Create and manage discount coupons across platforms with usage tracking, revenue
 ## 2. Preconditions / Postconditions
 
 ### Preconditions
-- User has `offer:manage` permission (Owner, Admin, Manager, Editor)
+- User has coupon-management access aligned to `CouponService/*` auth: create/update/pause/resume require Owner/Admin/Manager; read/list requires at least Editor
 - At least one product exists (coupons apply to products)
 
 ### Postconditions
@@ -57,7 +57,7 @@ Create and manage discount coupons across platforms with usage tracking, revenue
 │ 🎟️ Mã giảm giá (20)                   [+ Tạo mã mới] [📊 Stats]  │
 ├──────────────────────────────────────────────────────────────────────┤
 │ ┌─ Summary Bar ─────────────────────────────────────────────────┐   │
-│ │ 🟢 8 active · ⏳ 3 scheduled · ⏸ 1 paused · ❌ 8 expired    │   │
+│ │ 🟢 8 active · 📝 3 draft · ⏸ 1 paused · ❌ 8 expired       │   │
 │ │ Usage (30d): 234 redemptions · Impact: -4.5M VND discount     │   │
 │ └────────────────────────────────────────────────────────────────┘   │
 │                                                                      │
@@ -97,11 +97,11 @@ CouponManagerPage
 │   ├── CreateButton ("+ Tạo mã mới", primary CTA)
 │   └── StatsButton ("📊 Stats")
 ├── SummaryBar
-│   ├── StatusCounts (active, scheduled, paused, expired)
+│   ├── StatusCounts (active, draft, paused, expired)
 │   ├── TotalRedemptions (30d)
 │   └── TotalDiscountImpact (30d, formatted VND)
 ├── FilterBar
-│   ├── StatusFilter (Active, Scheduled, Paused, Expired, All)
+│   ├── StatusFilter (Active, Draft, Paused, Expired, All)
 │   ├── TypeFilter (Percentage, Fixed, Free Ship, Bundle, BOGO)
 │   ├── PlatformFilter
 │   └── SearchInput (search by code or name)
@@ -159,15 +159,15 @@ CouponManagerPage
 | Field | Source | Format |
 |---|---|---|
 | Code | `coupons.code` | Uppercase monospace "SUMMER20" |
-| Type | `coupons.discount_type` | "Giảm 20%" / "Giảm 50K" / "Free ship" |
-| Status | `coupons.status` | Badge |
+| Type | `CouponService/List` projection derived from `coupons.coupon_type` + `discount_value` | "Giảm 20%" / "Giảm 50K" / "Free ship" |
+| Status | `coupons.lifecycle_state` | Badge |
 | Validity | `coupons.valid_from` + `valid_until` | Date range or "Không giới hạn" |
-| Max discount | `coupons.max_discount_amount` | VND "100,000đ" |
-| Platforms | `coupons.platforms[]` | Platform chips |
-| Usage | `coupon_usage` count / `coupons.usage_limit` | "45/100" + progress bar |
+| Max discount | Coupon validation/display projection (for percentage coupons) | VND "100,000đ" |
+| Platforms | Channel-distribution projection returned by `CouponService/List` | Platform chips |
+| Usage | `coupons.current_uses` / `coupons.max_uses` (or `remaining_uses`) | "45/100" + progress bar |
 | Revenue impact | Orders using coupon → sum revenue | VND format |
-| Discount given | `coupon_usage` → sum discount_amount | VND format |
-| Products | `coupons.product_scope` | "All" or product names |
+| Discount given | Coupon redemption / order-discount projection from analytics service | VND format |
+| Products | Offer / campaign linkage projection derived from `related_offer_ids` / `related_campaign_ids` | "All" or product names |
 
 ---
 
@@ -226,8 +226,8 @@ CouponManagerPage
 | Create coupon | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Edit coupon | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Pause/resume | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Delete coupon | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Copy/share code | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Delete coupon | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Copy/share code | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
 
 ---
 
@@ -282,9 +282,9 @@ Client-side:
 - Auto-generation uses: `[PREFIX][RANDOM_6_CHAR]` pattern (e.g., `SALE-A3B7K2`)
 
 ### Usage Tracking
-- Platform webhooks: `coupon_used` event → increment `coupon_usage` counter
+- Platform/redemption events: `coupon.used` → increment `coupons.current_uses` and refresh coupon analytics projection
 - Revenue impact: `orders WHERE coupon_id = X` → sum revenue
-- Discount impact: `coupon_usage` → sum `discount_amount`
+- Discount impact: order-discount / redemption projection → sum discount amount
 
 ---
 ## 13. Analytics / Tracking Events
@@ -358,7 +358,7 @@ Client-side:
 - Usage: "45/100 (45%)" or "12/∞ (unlimited)"
 - Validity: "1/4 – 30/4/2026" or "Không giới hạn"
 - Code format: Uppercase, monospace: "SUMMER20"
-- Status: "Đang hoạt động", "Đã lên lịch", "Tạm dừng", "Hết hạn"
+- Status: "Bản nháp", "Đang hoạt động", "Tạm dừng", "Hết hạn", "Thu hồi"
 - Revenue impact: "+8.2M VND" (positive), "-2.3M VND" (discount given)
 
 ---
@@ -367,7 +367,7 @@ Client-side:
 | Token | Usage |
 |---|---|
 | `--color-coupon-active` | Active status badge (🟢 green) |
-| `--color-coupon-scheduled` | Scheduled status badge (⏳ blue) |
+| `--color-coupon-draft` | Draft status badge (📝 blue) |
 | `--color-coupon-paused` | Paused status badge (⏸ gray) |
 | `--color-coupon-expired` | Expired status badge (❌ red) |
 | `--color-usage-safe` | Usage < 70% (green progress) |

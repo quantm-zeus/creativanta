@@ -254,7 +254,7 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 |---|---|---|---|---|---|---|---|---|
 | `admin:user:suspend` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `admin:user:delete` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `admin:credits:adjust` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `admin:credits:adjust` | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `admin:plan:override` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `admin:refund:issue` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `admin:impersonate` | ✅ | ✅ | ❌ | ❌ | ⚠️ | ❌ | ❌ | ❌ |
@@ -271,7 +271,7 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 | `admin:billing:read` | ✅ | ✅ | ✅ | ❌ | ⚠️ | ❌ | ✅ | ✅ |
 | `admin:fee_schedule:manage` | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `admin:report:export` | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| `admin:compliance:read` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| `admin:compliance:read` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | `admin:user:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `admin:workspace:read` | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
 | `admin:commerce:read` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |

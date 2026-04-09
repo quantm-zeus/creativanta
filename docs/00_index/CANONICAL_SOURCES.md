@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-04-07
+last_updated: 2026-04-09
 ---
 
 # Canonical Sources — Single Source of Truth Registry
@@ -27,7 +27,7 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 | Business rules & invariants | 01_business/business_rules.md | Cross-module contracts (PRD §25) |
 | Glossary | 01_business/glossary.md | Canonical naming, One Graph taxonomy |
 | Pricing, tiers, credits | 01_business/pricing_and_credits.md | 5 tiers, add-ons, credit system |
-| Legal & compliance | 01_business/legal_compliance.md | `engineering-approved`, `launch-gated pending legal sign-off` (DEC-001) |
+| Legal & compliance | 01_business/legal_compliance.md | `engineering-approved`, `launch-gated pending legal sign-off` (DEC-001). Engineering implementation may proceed under the approved defaults; final sign-off is a launch gate. |
 
 ## Feature Behavior
 
@@ -44,12 +44,12 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 |-------|---------------|-------|
 | DB schema | 04_contracts/database_schema.md | Canonical table/enum/index contract. Includes workflow/agent step tables, KB tables, admin broadcast/job ops tables, public API usage tables. |
 | API endpoints | 04_contracts/api_endpoint_map.md | Canonical RPC inventory and REST/webhook surface. Coverage is broad, but downstream screen cleanliness and implementation readiness still require OPEN_BLOCKERS review. |
-| Protobuf / gRPC | 04_contracts/protobuf_contracts.md | Transport/codegen overview only. No committed `.proto` files exist yet; see `OPEN_BLOCKERS.md` (`PROTO-C-001`). |
+| Protobuf / gRPC | 04_contracts/protobuf_contracts.md | Transport/codegen overview only. During the docs-only phase, use `api_endpoint_map.md` + `api_examples.md` as the canonical transport authoring source. Commit `/protos/` later when typed client/server generation begins. |
 | Domain events | 04_contracts/domain_event_catalog.md | ~230 canonical event types (Round 5 2026-04-04). All notification matrix events now have verbatim canonical entries. EVT-H-001 fully resolved (74-row mapping table). |
 | API JSON examples | 04_contracts/api_examples.md | 24 request/response examples, companion to api_endpoint_map.md |
 | RBAC permissions | 04_contracts/rbac_permission_matrix.md | 7 roles × ~114 perms + 8 admin roles (~23 perms). Round 5 (2026-04-04): Added `affiliate:read`, `competitor:read`, `evidence:read`, `membership:read/manage`, `admin:user:read`, `admin:workspace:read`, `admin:commerce:read`. Note: `permission_alias_policy.md` was demoted to non-canonical (HISTORICAL_REFERENCE) — screen docs now use RBAC tokens directly. |
 | Connector specs | 04_contracts/connector_specs.md | 6 platforms: TikTok, Shopee, Lazada, YouTube, Instagram, Facebook |
-| Error catalog | 04_contracts/error_catalog.md | Canonical for currently defined domains, but still incomplete. Check coverage note inside the file before assuming a domain has approved error codes. |
+| Error catalog | 04_contracts/error_catalog.md | Canonical error registry across all active domains in the corpus. Add new error families here before implementation uses them. |
 | Screen↔API reconciliation | 04_contracts/screen_api_reconciliation.md | Historical API coverage traceability. Useful for inventory, but not proof that every screen doc is semantically implementation-clean. |
 | Permission alias policy | 09_archive/permission_alias_policy.md | **NOT CANONICAL** (demoted 2026-04-04, moved to `09_archive/`). Historical reference only. Contains semantically unsafe alias mappings (read→manage, delete→create). Screen docs have been directly canonicalized to use RBAC tokens. Do NOT use for implementation. |
 
@@ -70,6 +70,7 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 | Topic | Canonical File | Notes |
 |-------|---------------|-------|
 | QA acceptance packs | 06_quality_ops/qa_acceptance_packs.md | 5-path test matrix |
+| Accessibility spec | 06_quality_ops/accessibility_spec.md | WCAG 2.1 AA implementation contract across surfaces |
 | Security threat model | 06_quality_ops/security_threat_model.md | OWASP Top 10, multi-tenant |
 | Performance benchmarks | 06_quality_ops/performance_benchmarks.md | SLA targets, k6 scenarios |
 | Data migration | 06_quality_ops/data_migration_strategy.md | Import sources, CSV, sync |
@@ -77,7 +78,7 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 | Seed fixtures spec | 06_quality_ops/seed_data.md | Fixture design, seed order, environment policy |
 | Executable seed SQL | 06_quality_ops/seed_data.sql | Canonical seed script for local/test bootstrap |
 | Notification templates | 06_quality_ops/notification_templates.md | 13 email, 8 push, in-app |
-| Analytics taxonomy | 06_quality_ops/analytics_event_taxonomy.md | PostHog events, funnels |
+| Analytics taxonomy | 06_quality_ops/analytics_event_taxonomy.md | PostHog events, funnels, required common properties, and module-complete minimum coverage matrix |
 | Moderation rules | 06_quality_ops/moderation_rules_engine.md | Pipeline, EU AI Act |
 | i18n guide | 06_quality_ops/i18n_guide.md | Paraglide + Flutter intl |
 | Activepieces integration | 06_quality_ops/activepieces_integration.md | 9 pieces, 8 recipes, tiers |
@@ -95,6 +96,7 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 | Topic | Canonical File | Notes |
 |-------|---------------|-------|
 | Docs audit findings | 00_index/OPEN_BLOCKERS.md | Current source of truth for OPEN, PARTIAL, and RESOLVED blockers. Read this file before implementation; do not rely on older summary counts. |
+| Doc ownership / freshness | 00_index/DOC_OWNERSHIP_AND_FRESHNESS.md | Canonical owner-role, cadence, and freshness trigger matrix for the active docs corpus |
 | Build phases | 00_index/IMPLEMENTATION_ORDER.md | 9 phases, dependencies |
 | Architecture decisions | 00_index/DECISION_LOG.md | ≥12 ADRs |
 | Acceptance tests | 00_index/ACCEPTANCE_TESTS.md | Created in Phase 1B |

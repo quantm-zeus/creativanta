@@ -191,7 +191,7 @@ AdminWorkspaceListPage
 | 5 | View owner | Click owner email | Navigate | — | → A003 User Detail | `admin:user:read` |
 | 6 | Suspend workspace | "⏸ Suspend" → confirm reason | Destructive | `AdminService/SuspendWorkspace(id, reason)` | Confirmation dialog → status → 🔴 → toast "Workspace đã bị tạm ngưng" | `admin:user:suspend` (Super, Ops) |
 | 7 | Unsuspend | "▶ Unsuspend" → confirm | Action | `AdminService/UnsuspendWorkspace(id)` | Status → 🟢 → toast | `admin:user:suspend` |
-| 8 | Adjust credits | "💰 Credits" → modal | Action | `AdminService/AdjustCredits(ws_id, amount, reason)` | Modal: amount + reason → toast "Đã điều chỉnh {amount} credits" | `admin:credits:adjust` (Super, Ops, Finance) |
+| 8 | Adjust credits | "💰 Credits" → modal | Action | `AdminService/AdjustCredits(ws_id, amount, reason)` | Modal: amount + reason → toast "Đã điều chỉnh {amount} credits" | `admin:credits:adjust` (Super, Finance) |
 | 9 | Upgrade plan | "⬆ Upgrade" → plan picker | Action | `AdminService/OverridePlan(ws_id, plan, reason)` | Modal: plan + reason + duration → toast | `admin:plan:override` (Super, Ops, Finance) |
 | 10 | Email owner | "📧" → compose in mail client | Action | `mailto:{owner_email}` | Opens mail client | Any admin role |
 | 11 | Copy workspace ID | "📋" | Action | — (clipboard) | Toast: "ID đã copy" | Any |

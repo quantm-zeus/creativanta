@@ -4,7 +4,7 @@
 > **Module**: M14 — Monetization & Offers
 > **Route**: `/offers/[id]` (edit) or `/offers/new` (create)
 > **Platform**: Web (SvelteKit)
-> **Upstream**: Pack 06 §7 (Commerce), Product Freeze §22, A1 Schema (offers, offer_products, coupons, coupon_usage, campaigns), B5 RBAC §2.7
+> **Upstream**: Pack 06 §7 (Commerce), Product Freeze §22, A1 Schema (offers, coupons, products, campaigns), B5 RBAC §2.7
 
 ---
 
@@ -32,14 +32,14 @@ The Offer Detail screen is the primary form for creating and editing promotional
 - Duplicating: Cloning a successful past offer for a new campaign
 
 ### Entry Points
-- Offer List (W057): Click "+" or click existing offer row
+- Offer List (W066): Click "+" or click existing offer row
 - Campaign Detail (W065): "Tạo offer cho campaign" link
 - Product Detail (W061): "Tạo offer" action on product
 - AI Copilot: "Tạo offer giảm 20% cho Serum VitC trong 5 ngày"
 - Sidebar: Monetization → Offers → "+ Tạo offer"
 
 ### Exit Points
-- Save/Activate → redirect to Offer List (W057) with success toast
+- Save/Activate → redirect to Offer List (W066) with success toast
 - Cancel → back to Offer List
 - Click product in selector → Product Detail (W061) in new tab
 - Click campaign → Campaign Detail (W065)
@@ -57,9 +57,9 @@ The Offer Detail screen is the primary form for creating and editing promotional
 
 ### Postconditions
 - Offer record created/updated in `offers` table
-- Associated `offer_products` junction records updated
+- Associated product linkage updated via `offers.product_id` / `product_less_declaration`
 - If coupon enabled: `coupons` record created with generated/custom code
-- If campaign linked: `campaign_offers` junction record created
+- If campaign linked: `offers.campaign_ids` updated
 - Audit event logged: `offer.created` / `offer.updated` / `offer.activated`
 - Analytics event dispatched for tracking
 
@@ -149,7 +149,7 @@ OfferDetailPage
 ├── AppShell (shared)
 ├── PageHeader
 │   ├── BackLink ("← Offers" → /offers)
-│   ├── PageTitle ("Tạo Offer mới" or "{offer.name}")
+│   ├── PageTitle ("Tạo Offer mới" or "{offer.title}")
 │   ├── StatusBadge (draft/active/paused/expired — edit only)
 │   └── HistoryDropdown (revision history — edit only)
 ├── FormContainer (max-width: 720px, centered)
@@ -211,9 +211,9 @@ OfferDetailPage
 | Product list | `products` table | `ProductService/List(workspace_id, status=active)` | Name + price + stock | 5m TTL |
 | Campaign list | `campaigns` table | `CampaignService/List(workspace_id, status=active)` | Dropdown options | 5m TTL |
 | Coupon code check | `coupons.code` uniqueness | `CouponService/CheckAvailability(code)` | ✅ Available / ❌ Taken | No cache |
-| Performance stats | `coupon_usage` + `orders` aggregation | `OfferService/GetPerformance(offer_id)` | Used/total, revenue VND | 2m TTL |
-| Offer name | `offers.name` | — | Text as-is | — |
-| Discount value | `offers.discount_value` | — | `Intl.NumberFormat('vi-VN')` + suffix (% or VND) | — |
+| Performance stats | Offer performance projection from `OfferService/GetPerformance(offer_id)` | `OfferService/GetPerformance(offer_id)` | Used/total, revenue VND | 2m TTL |
+| Offer name | `offers.title` | — | Text as-is | — |
+| Discount value | `offers.pricing_value` / `offers.pricing_logic` | — | `Intl.NumberFormat('vi-VN')` + suffix (% or VND) | — |
 | Start/End dates | `offers.starts_at`, `offers.ends_at` | — | `dd/MM/yyyy HH:mm` | — |
 | Product prices | `products.price` | — | VND with dot separator | — |
 | Revenue impact | ClickHouse aggregation | `OfferService/GetPerformance` | Compact VND ("5.4M VND") | 2m |
@@ -224,11 +224,11 @@ OfferDetailPage
 
 | # | Action | Trigger | API Call | Mutation | UI Result | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Save as draft | Click "Lưu draft" | `OfferService/Create(data, status='draft')` or `OfferService/Update(id, data)` | `offers.status = 'draft'` | Toast "✅ Đã lưu draft" → redirect to `/offers` | `offer:manage` |
-| 2 | Activate offer | Click "🚀 Kích hoạt" | `OfferService/Activate(id)` or `OfferService/Create(data, status='active')` | `offers.status = 'active'`, `offers.activated_at = now` | Confirmation modal → Toast "🚀 Offer đang hoạt động" → redirect | `offer:manage` |
+| 1 | Save as draft | Click "Lưu draft" | `OfferService/Create(data, lifecycle_state='draft')` or `OfferService/Update(id, data)` | `offers.lifecycle_state = 'draft'` | Toast "✅ Đã lưu draft" → redirect to `/offers` | `offer:manage` |
+| 2 | Activate offer | Click "🚀 Kích hoạt" | `OfferService/Activate(id)` or `OfferService/Create(data, lifecycle_state='active')` | `offers.lifecycle_state = 'active'` | Confirmation modal → Toast "🚀 Offer đang hoạt động" → redirect | `offer:manage` |
 | 3 | Update active offer | Click "Lưu" (edit mode, active) | `OfferService/Update(id, data)` | Row updated | Toast "✅ Đã cập nhật" | `offer:manage` |
-| 4 | Pause offer | Click "⏸ Tạm dừng" (active only) | `OfferService/Pause(id)` | `offers.status = 'paused'` | Status badge → paused | `offer:manage` |
-| 5 | Resume offer | Click "▶ Tiếp tục" (paused only) | `OfferService/Resume(id)` | `offers.status = 'active'` | Status badge → active | `offer:manage` |
+| 4 | Pause offer | Click "⏸ Tạm dừng" (active only) | `OfferService/Pause(id)` | `offers.lifecycle_state = 'paused'` | Status badge → paused | `offer:manage` |
+| 5 | Resume offer | Click "▶ Tiếp tục" (paused only) | `OfferService/Resume(id)` | `offers.lifecycle_state = 'active'` | Status badge → active | `offer:manage` |
 | 6 | Delete offer | Click "🗑 Xóa" → confirm | `OfferService/Delete(id)` | Soft delete: `offers.deleted_at = now` | Confirmation modal → Toast "Đã xóa offer" → redirect | `offer:manage` |
 | 7 | Search products | Type in product search | `ProductService/Search(query, workspace_id)` | — | Filtered product list | `product:read` |
 | 8 | Toggle product | Check/uncheck product row | Client-side form state | — | Selected count updates | `offer:manage` |
@@ -245,7 +245,7 @@ OfferDetailPage
 ### Offer Form Fields
 | Field | Rule | Error Message (Vietnamese) |
 |---|---|---|
-| `name` | Required, 3-100 chars | "Tên offer phải từ 3 đến 100 ký tự" |
+| `title` | Required, 3-100 chars | "Tên offer phải từ 3 đến 100 ký tự" |
 | `discount_type` | Required, one of: percentage/fixed/bundle/gift | "Chọn loại giảm giá" |
 | `discount_value` (percentage) | Required, 1-99 | "Phần trăm giảm phải từ 1% đến 99%" |
 | `discount_value` (fixed) | Required, ≥1,000 VND, ≤ product price | "Số tiền giảm phải ≥ 1,000đ và không vượt giá sản phẩm" |

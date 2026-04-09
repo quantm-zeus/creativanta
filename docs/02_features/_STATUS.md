@@ -1,7 +1,7 @@
 ---
 layer: features
 canonical: true
-last_updated: 2026-04-06
+last_updated: 2026-04-09
 ---
 
 # Feature Docs Status
@@ -51,22 +51,22 @@ last_updated: 2026-04-06
 |--------|-------|------|
 | READY | **31** | Doc-spec alignment: Feature + Schema + API service name + JSON examples + Screen (see caveats below) |
 | DRAFT | 0 | — |
-| BLOCKED | **0** | ✅ All blockers resolved |
+| BLOCKED | **0** | No feature-doc-specific blockers remain in this file. Global corpus blockers still exist in `00_index/OPEN_BLOCKERS.md`. |
 | **Total** | **31** | 23 core (M01-M23) + auth + 3 supplementary (copilot, referral, help) + 3 specs (S16, S24, S26) + gamification |
 
-> **Final state (2026-04-06)**:
-> - **31/31 feature modules READY.** Zero DRAFT. Zero BLOCKED. All M07 blockers (API-C-001, API-H-001, API-H-002) confirmed RESOLVED. Includes 23 core (M01-M23) + auth + 7 supplementary/spec modules.
+> **Feature-doc state (2026-04-08)**:
+> - **31/31 feature modules READY.** Zero DRAFT. Zero feature-doc-specific blockers. All M07 API blockers (API-C-001, API-H-001, API-H-002) remain resolved. Includes 23 core (M01-M23) + auth + 7 supplementary/spec modules.
 > - **28/28 doc-spec aligned** (feature doc ↔ schema ↔ screens ↔ API service name) and **full-contract aligned** for screen-referenced API usage. All previously missing screen RPCs were promoted to canonical definitions in `api_endpoint_map.md`.
 > - Schema: canonicalized for workflow/agent step persistence, public API usage/webhooks, KB content, admin broadcasts, and operational queue tables.
 > - API: canonical map remains the authoring source during docs phase; `/protos/` are generated from `api_endpoint_map.md` + `api_examples.md` during implementation Phase 1 per ADR-005.
 > - Events: 225 canonical event types with 74-row CamelCase mapping
-> - Error catalog: 30+ codes, gRPC↔HTTP, retry policies, bilingual UX
+> - Error catalog: canonical coverage across all active domains, gRPC↔HTTP, retry policies, bilingual UX
 > - Business rules: 10/10 DECISION (BIZ-002/007 FINALIZED)
 > - JSON examples: 24 concrete request/response payloads
 >
 > **Readiness caveats**:
 > - Feature docs: READY (all 31/31 — 23 core M01-M23 + auth + 7 supplementary/spec modules).
 > - Screen docs: use `03_screens/SCREEN_IMPLEMENTATION_PROTOCOL.md` whenever a legacy screen contains conceptual aliases or placeholder data-binding rows.
-> - Contract docs: spec-complete; generated transport artifacts remain Phase 1 derivatives.
+> - Contract docs: spec-complete; generated transport artifacts remain deferred implementation derivatives until typed codegen starts.
 > - Ops docs: executable seed SQL now exists; CI/CD remains a canonical spec until code scaffolding is generated.
-> - This corpus is **documentation-complete and implementation-ready** at the spec layer. Generated code/infrastructure artifacts still follow during implementation.
+> - **Do not read this file as a launch-approval verdict.** As of 2026-04-09, the remaining corpus caveats are deferred `.proto` generation and external legal sign-off; internal documentation blockers have been remediated in `OPEN_BLOCKERS.md`.

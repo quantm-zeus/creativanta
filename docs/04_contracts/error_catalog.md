@@ -2,7 +2,7 @@
 layer: contracts
 canonical: true
 created: 2026-04-01
-last_updated: 2026-04-02
+last_updated: 2026-04-09
 status: READY
 ---
 
@@ -11,7 +11,7 @@ status: READY
 > Canonical registry of application error codes, HTTP/gRPC status mapping, user messages, and retryability.
 > Referenced from: `protobuf_contracts.md` (errors.proto), screen docs (error states), API endpoint map.
 
-> Coverage note: the catalog below is canonical for the domains it defines today, but it is not yet exhaustive. Missing canonical sections still need explicit expansion for CONTENT, ENGAGEMENT, FINANCE, LIVE, SEEDING, CREATOR_PRO, and broader ADMIN coverage. Implementers MUST NOT invent domain prefixes or code ranges ad hoc.
+> Coverage note: the catalog below is canonical for all active domains in the current corpus. Additional domain-specific subcodes may be added later, but implementers MUST register them here before use instead of inventing prefixes or code ranges ad hoc.
 
 ## Error Code Convention
 
@@ -19,7 +19,7 @@ status: READY
 <DOMAIN>_<CATEGORY>_<NUMBER>
 ```
 
-- **Domain**: AUTH, BILLING, COMMERCE, CONTENT, PUBLISH, AI, WORKFLOW, ADMIN, SYSTEM
+- **Domain**: AUTH, BILLING, COMMERCE, CONTENT, ENGAGEMENT, FINANCE, LIVE, PUBLISH, AI, WORKFLOW, SEEDING, CREATOR_PRO, ADMIN, SYSTEM
 - **Category**: INVALID, NOTFOUND, FORBIDDEN, CONFLICT, LIMIT, INTERNAL, EXTERNAL, TIMEOUT
 - **Number**: 3-digit sequential per domain-category
 
@@ -108,6 +108,24 @@ Example: `AUTH_INVALID_001`, `BILLING_LIMIT_003`, `AI_EXTERNAL_002`
 | COMMERCE_LIMIT_001 | RESOURCE_EXHAUSTED | 429 | Stock insufficient for order | No | "Sản phẩm hết hàng." |
 | COMMERCE_EXTERNAL_001 | UNAVAILABLE | 503 | E-commerce platform sync failure (Shopee/Lazada API) | Yes (retry) | "Đồng bộ sàn thương mại thất bại." |
 
+## Content Errors (CONTENT_*)
+
+| Code | gRPC | HTTP | Description | Retryable | User Message |
+|---|---|---|---|---|---|
+| CONTENT_NOTFOUND_001 | NOT_FOUND | 404 | Idea, script, asset brief, or continuity object not found or archived | No | "Nội dung không tồn tại hoặc đã được lưu trữ." |
+| CONTENT_INVALID_001 | INVALID_ARGUMENT | 400 | Required content fields missing before promotion, submission, or handoff | No | "Thiếu dữ liệu bắt buộc để tiếp tục." |
+| CONTENT_CONFLICT_001 | FAILED_PRECONDITION | 412 | Invalid content lifecycle or approval state transition | No | "Không thể chuyển trạng thái nội dung này." |
+| CONTENT_CONFLICT_002 | ALREADY_EXISTS | 409 | Review target changed since the reviewer loaded it | No | "Nội dung đã được cập nhật. Vui lòng tải lại trước khi duyệt." |
+
+## Engagement Errors (ENGAGEMENT_*)
+
+| Code | gRPC | HTTP | Description | Retryable | User Message |
+|---|---|---|---|---|---|
+| ENGAGEMENT_NOTFOUND_001 | NOT_FOUND | 404 | Thread, message, contact, or follow-up task not found | No | "Cuộc hội thoại hoặc liên hệ không tồn tại." |
+| ENGAGEMENT_CONFLICT_001 | FAILED_PRECONDITION | 412 | Invalid thread status transition or reply attempted on stale/closed thread | No | "Không thể thao tác trên cuộc hội thoại này ở trạng thái hiện tại." |
+| ENGAGEMENT_EXTERNAL_001 | UNAVAILABLE | 503 | Platform reply/send/sync request failed | Yes (retry) | "Kết nối nền tảng đang lỗi. Vui lòng thử lại." |
+| ENGAGEMENT_LIMIT_001 | RESOURCE_EXHAUSTED | 429 | Auto-reply circuit breaker or reply throttle limit reached | Yes (backoff) | "Hệ thống đang tạm dừng trả lời tự động để tránh lặp." |
+
 ## Publish Errors (PUBLISH_*)
 
 | Code | gRPC | HTTP | Description | Retryable | User Message |
@@ -118,6 +136,41 @@ Example: `AUTH_INVALID_001`, `BILLING_LIMIT_003`, `AI_EXTERNAL_002`
 | PUBLISH_EXTERNAL_002 | DEADLINE_EXCEEDED | 504 | Platform API timeout | Yes (retry once) | "Nền tảng phản hồi quá chậm." |
 | PUBLISH_CONFLICT_001 | FAILED_PRECONDITION | 412 | Cannot publish — asset still generating | No | "Nội dung đang được tạo. Vui lòng đợi." |
 
+## Finance Errors (FINANCE_*)
+
+| Code | gRPC | HTTP | Description | Retryable | User Message |
+|---|---|---|---|---|---|
+| FINANCE_NOTFOUND_001 | NOT_FOUND | 404 | Settlement, evidence object, proof bundle, or reconciliation record not found | No | "Dữ liệu tài chính không tồn tại." |
+| FINANCE_CONFLICT_001 | FAILED_PRECONDITION | 412 | Invalid reconciliation state transition or override attempted on incompatible record state | No | "Không thể đối soát ở trạng thái hiện tại." |
+| FINANCE_FORBIDDEN_001 | PERMISSION_DENIED | 403 | Financial detail or override action requires finance visibility/permissions | No | "Bạn không có quyền truy cập dữ liệu tài chính này." |
+| FINANCE_EXTERNAL_001 | UNAVAILABLE | 503 | Settlement import/export or upstream financial data source unavailable | Yes (retry) | "Nguồn dữ liệu tài chính tạm thời không khả dụng." |
+
+## Live Errors (LIVE_*)
+
+| Code | gRPC | HTTP | Description | Retryable | User Message |
+|---|---|---|---|---|---|
+| LIVE_NOTFOUND_001 | NOT_FOUND | 404 | Live session, cue, or highlight not found | No | "Phiên live không tồn tại." |
+| LIVE_INVALID_001 | INVALID_ARGUMENT | 400 | Run-of-show, offer linkage, or session setup payload is incomplete | No | "Thiết lập phiên live chưa đầy đủ." |
+| LIVE_CONFLICT_001 | FAILED_PRECONDITION | 412 | Invalid live session lifecycle transition | No | "Không thể chuyển trạng thái phiên live." |
+| LIVE_EXTERNAL_001 | UNAVAILABLE | 503 | Streaming platform metrics/control channel unavailable or disconnected | Yes (retry) | "Kết nối nền tảng live đang gián đoạn." |
+
+## Seeding Errors (SEEDING_*)
+
+| Code | gRPC | HTTP | Description | Retryable | User Message |
+|---|---|---|---|---|---|
+| SEEDING_NOTFOUND_001 | NOT_FOUND | 404 | Sample request, shipment, or outcome record not found | No | "Yêu cầu gửi mẫu không tồn tại." |
+| SEEDING_INVALID_001 | INVALID_ARGUMENT | 400 | Carrier or tracking information missing/invalid for shipment action | No | "Thông tin vận chuyển không hợp lệ." |
+| SEEDING_CONFLICT_001 | FAILED_PRECONDITION | 412 | Invalid sample request lifecycle transition | No | "Không thể chuyển trạng thái gửi mẫu." |
+| SEEDING_EXTERNAL_001 | UNAVAILABLE | 503 | Carrier tracking provider unavailable | Yes (retry) | "Không thể lấy trạng thái vận chuyển lúc này." |
+
+## Creator Pro Errors (CREATOR_PRO_*)
+
+| Code | gRPC | HTTP | Description | Retryable | User Message |
+|---|---|---|---|---|---|
+| CREATOR_PRO_NOTFOUND_001 | NOT_FOUND | 404 | Media kit, rate card, link-in-bio page, or brand deal not found | No | "Tài nguyên Creator Pro không tồn tại." |
+| CREATOR_PRO_CONFLICT_001 | FAILED_PRECONDITION | 412 | Invalid brand deal or deliverable pipeline transition | No | "Không thể cập nhật trạng thái hợp tác này." |
+| CREATOR_PRO_LIMIT_001 | RESOURCE_EXHAUSTED | 429 | Current workspace plan does not allow this Creator Pro action | No | "Tính năng Creator Pro này yêu cầu gói cao hơn." |
+
 ## Workflow Errors (WORKFLOW_*)
 
 | Code | gRPC | HTTP | Description | Retryable | User Message |
@@ -125,6 +178,15 @@ Example: `AUTH_INVALID_001`, `BILLING_LIMIT_003`, `AI_EXTERNAL_002`
 | WORKFLOW_CONFLICT_001 | FAILED_PRECONDITION | 412 | Invalid workflow state transition | No | "Không thể thay đổi trạng thái workflow." |
 | WORKFLOW_LIMIT_001 | RESOURCE_EXHAUSTED | 429 | Max concurrent workflow runs exceeded | Yes (queue) | "Đã đạt giới hạn workflow đang chạy." |
 | WORKFLOW_NOTFOUND_001 | NOT_FOUND | 404 | Workflow or recipe template not found | No | "Workflow không tồn tại." |
+
+## Admin Errors (ADMIN_*)
+
+| Code | gRPC | HTTP | Description | Retryable | User Message |
+|---|---|---|---|---|---|
+| ADMIN_NOTFOUND_001 | NOT_FOUND | 404 | Target user, workspace, case, incident, or ticket not found | No | "Đối tượng quản trị không tồn tại." |
+| ADMIN_FORBIDDEN_001 | PERMISSION_DENIED | 403 | Internal admin role lacks permission for requested action | No | "Bạn không có quyền quản trị cho thao tác này." |
+| ADMIN_CONFLICT_001 | FAILED_PRECONDITION | 412 | Impersonation, moderation, or export action blocked by current policy/state | No | "Thao tác quản trị bị chặn bởi chính sách hoặc trạng thái hiện tại." |
+| ADMIN_LIMIT_001 | RESOURCE_EXHAUSTED | 429 | Admin export or bulk operation exceeds allowed scope/window | No | "Phạm vi thao tác quản trị vượt quá giới hạn cho phép." |
 
 ## System Errors (SYSTEM_*)
 

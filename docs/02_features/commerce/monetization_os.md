@@ -4,7 +4,7 @@ module: M14
 canonical: true
 domain: commerce
 status: READY
-last_updated: 2026-03-30
+last_updated: 2026-04-09
 ---
 
 # Feature: Monetization OS (M14)
@@ -47,7 +47,7 @@ M14 exists as the **monetization coordination layer** — the module that manage
 
 1. **RULE-M14-001**: Every monetization object (Offer, Coupon, Affiliate Link, Membership Plan, Campaign) MUST be traceable to the M19 operating ledger when revenue or cost is generated. No monetization surface may produce financial impact outside the ledger graph. This is verified by: offer → order → settlement → ledger chain for revenue; campaign → cost_item → ledger for costs (PRD §23.14 AC, Pack 06 §2.4).
 2. **RULE-M14-002**: Offer lifecycle state machine: `draft → review_required → active → paused → expired → retired`. Every offer MUST have: `offer_type`, `pricing_value`, `pricing_logic`, `cta_text`, `channel_availability`, and `lifecycle_state`. Product-backed offers link to `product_id`; product-less offers MUST have `product_less_declaration` set (Pack 06 §2.3, DB schema §10.2).
-3. **RULE-M14-003**: Coupon lifecycle: `active → used → expired → revoked`. A coupon MUST have: code, discount logic (percentage/fixed), usage limits (per-coupon, per-user), effective window, linked offer/campaign. `coupon.activated`, `coupon.used`, `coupon.expired` events emitted at transitions (Domain events §19).
+3. **RULE-M14-003**: Coupon lifecycle uses the canonical `coupons.lifecycle_state` contract: `draft → active → paused → expired → retired`, with `revoked` reserved for fraud/policy enforcement or irreversible admin override. `coupon.used` is an event, not a lifecycle state: every successful redemption increments `coupons.current_uses`, records discount impact, and may transition the coupon to `expired` when the effective window ends or the configured usage ceiling is reached. Every coupon MUST have: code, discount logic (percentage/fixed/free_shipping), usage limits, effective window, and related offer/campaign refs. Canonical lifecycle fields come from DB schema §19.2; event names come from Domain events §19.
 4. **RULE-M14-004**: Campaign is a coordination object — it groups offers, affiliate links, seeding efforts, and sponsor deliverables under a single operational scope. Campaign lifecycle: `planned → ready → live → paused → completed → cancelled`. Campaigns track budget and related product/offer IDs (DB schema §10.5, Pack 06 §2.5).
 5. **RULE-M14-005**: Monetization surfaces MUST NOT stand apart from the proof/profit system. Every offer activation → `offer.activated` event consumed by M01, M11, M15. Every campaign completion → `campaign.completed` event consumed by M19 for performance assessment. UI surfaces monetization metrics with source class and confidence badges (PRD §23.14 AC).
 6. **RULE-M14-006**: Conversion signal linking traces: engagement thread (M12) → user intent → suggested offer action → offer interaction → conversion event → order (M13) → revenue (M19). This path enables content ROI calculation and "comment-to-commerce" flows that are core to SEA commerce patterns (PRD §17, §25).
@@ -70,8 +70,8 @@ M14 exists as the **monetization coordination layer** — the module that manage
    - `campaign.started` event emitted when activated
 4. **Coupon management**: Operator creates coupons linked to offers/campaigns
    - Code generation (manual or auto), discount logic, limits
-   - `coupon.activated` event emitted
-   - Usage tracked per redemption → `coupon.used` event → feeds M19
+   - Coupon starts as `draft`, moves to `active` via `CouponService/Activate`
+   - Usage tracked per redemption → `coupon.used` event → feeds M19 and increments `current_uses`
 5. **Conversion tracking**: System links engagement signals to monetization
    - Thread intent (M12) → suggested offer → offer interaction → click/lead/conversion
    - `conversion.attributed` event emitted by M16 with commission details
@@ -147,6 +147,22 @@ Object: campaign | DB column: `campaigns.status`
 | live | completed | End date or manual | Campaign objectives met |
 | any (pre-completed) | cancelled | Manager cancels | With reason |
 
+### Coupon Lifecycle
+
+Object: coupon | DB column: `coupons.lifecycle_state`
+see [04_contracts/database_schema.md#19.2](../../04_contracts/database_schema.md)
+
+| From | To | Trigger | Condition |
+|---|---|---|---|
+| — | draft | Coupon created | Required commercial fields populated |
+| draft | active | Coupon activated | Manager+ action |
+| active | paused | Operator pauses | Temporary stop |
+| paused | active | Operator resumes | Resume allowed |
+| active | expired | Effective window ends OR usage ceiling reached | System transition |
+| paused | expired | Effective window ends while paused | System transition |
+| expired | retired | Operator retires | Permanent archival |
+| any (pre-retired) | revoked | Policy/fraud/admin override | Irreversible compliance action |
+
 ## Related Contracts
 
 | Topic | File | Section |
@@ -163,7 +179,7 @@ Object: campaign | DB column: `campaigns.status`
 |---|---|---|
 | Web | Offer management | CRUD view with lifecycle state filters, channel availability matrix |
 | Web | Campaign dashboard | Campaign list with status, budget utilization, linked objects overview |
-| Web | Coupon management | Code list, usage stats, active/expired filters |
+| Web | Coupon management | Code list, usage stats, draft/active/paused/expired filters |
 | Web | Monetization analytics | Cross-object performance: offers × campaigns × channels breakdown |
 | Mobile | Quick coupon/link access | Copy coupon code, share affiliate link, one-tap actions |
 | Mobile | Offer tweaks | Quick price/CTA edits on active offers |
@@ -173,7 +189,7 @@ Object: campaign | DB column: `campaigns.status`
 
 1. **Given** an offer is activated with a linked product, **when** an order is placed using this offer, **then** the revenue chain MUST be traceable: offer → order → settlement → M19 ledger — the offer's `offer_id` MUST appear in the order's `offer_id` field.
 
-2. **Given** a coupon is used in a purchase, **when** the `coupon.used` event fires, **then** the coupon usage count MUST increment, the discount amount MUST be recorded, and the linked order MUST reference the coupon — the discount impact MUST appear in M19's profit calculation.
+2. **Given** a coupon is used in a purchase, **when** the `coupon.used` event fires, **then** `coupons.current_uses` MUST increment, the discount amount MUST be recorded, and the linked order MUST reference the coupon — the discount impact MUST appear in M19's profit calculation.
 
 3. **Given** a campaign with budget $1,000, **when** tracked costs reach $800, **then** the system MUST emit a warning notification to the campaign manager — at $1,000, the manager MUST be alerted with option to pause related offers.
 

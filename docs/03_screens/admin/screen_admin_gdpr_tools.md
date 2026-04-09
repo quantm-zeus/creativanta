@@ -40,7 +40,7 @@ The GDPR & Compliance Tools screen provides workflows for processing data subjec
 
 ### Preconditions
 - Admin authenticated via VPN + MFA
-- Role: Super Admin or Auditor (full access), Operations Admin (view DSR queue only)
+- Role: Super Admin, Operations Admin, or Auditor
 
 ### Postconditions
 - All actions logged in `admin_audit_log` with immutable audit trail
@@ -173,13 +173,13 @@ GDPRToolsPage
 
 | # | Action | Trigger | API Call | Mutation | UI Result | Permission |
 |---|---|---|---|---|---|---|
-| 1 | View request | Click "View" | `AdminComplianceService/GetRequest(id)` | — | Open request detail panel | Auditor+, Ops Admin |
-| 2 | Process data export | Click "Process" on access request | `AdminComplianceService/GenerateExport(userId)` | Export job created | Toast "Export generating..." + progress | Super Admin only |
-| 3 | Approve deletion | Click "Approve Deletion" | `AdminComplianceService/ApproveDeletion(requestId)` | User data queued for deletion + OTP required | Confirmation modal + OTP + toast "Deletion approved" | Super Admin only |
-| 4 | Reject with reason | Click "Reject with Reason" | `AdminComplianceService/RejectRequest(id, reason)` | Request marked rejected | Reason input + toast "Request rejected" + email to user | Super Admin, Auditor |
-| 5 | Search consent | Enter user email | `AdminComplianceService/GetUserConsents(email)` | — | Consent records displayed | Auditor+, Super Admin |
-| 6 | Initiate breach report | Click "Report Breach" | `AdminComplianceService/CreateBreach(data)` | Breach record created + 72hr timer starts | Form → confirmation → toast "Breach reported" | Super Admin only |
-| 7 | Export DPA log | Click "Export" | `AdminComplianceService/ExportDPA` | — | Download PDF/CSV | Super Admin, Auditor |
+| 1 | View request | Click "View" | `AdminComplianceService/GetRequest(id)` | — | Open request detail panel | Super Admin, Operations Admin, Auditor |
+| 2 | Process data export | Click "Process" on access request | `AdminComplianceService/GenerateExport(userId)` | Export job created | Toast "Export generating..." + progress | Super Admin, Operations Admin |
+| 3 | Approve deletion | Click "Approve Deletion" | `AdminComplianceService/ApproveDeletion(requestId)` | User data queued for deletion + OTP required | Confirmation modal + OTP + toast "Deletion approved" | Super Admin, Operations Admin |
+| 4 | Reject with reason | Click "Reject with Reason" | `AdminComplianceService/RejectRequest(id, reason)` | Request marked rejected | Reason input + toast "Request rejected" + email to user | Super Admin, Operations Admin |
+| 5 | Search consent | Enter user email | `AdminComplianceService/GetUserConsents(email)` | — | Consent records displayed | Super Admin, Operations Admin, Auditor |
+| 6 | Initiate breach report | Click "Report Breach" | `AdminComplianceService/CreateBreach(data)` | Breach record created + 72hr timer starts | Form → confirmation → toast "Breach reported" | Super Admin, Operations Admin |
+| 7 | Export DPA log | Click "Export" | `AdminComplianceService/ExportDPA` | — | Download PDF/CSV | Super Admin, Operations Admin, Auditor |
 
 ---
 
@@ -199,13 +199,13 @@ GDPRToolsPage
 
 | Feature | Super Admin | Operations | Finance | Content | Support | Tech | Analyst | Auditor |
 |---|---|---|---|---|---|---|---|---|
-| View data requests | ✅ | ✅ (view) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Process export | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Approve deletion | ✅ (OTP) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| View consent dashboard | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Report breach | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| View DPA log | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Export compliance data | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| View data requests | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Process export | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Approve deletion | ✅ (OTP) | ✅ (OTP) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| View consent dashboard | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Report breach | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| View DPA log | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Export compliance data | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 
 ---
 

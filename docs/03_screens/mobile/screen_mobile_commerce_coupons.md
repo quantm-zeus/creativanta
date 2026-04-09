@@ -4,7 +4,7 @@
 > **Module**: M14 — Monetization & Offers
 > **Route**: `/commerce/coupons` (mobile)
 > **Platform**: Mobile (Flutter)
-> **Upstream**: Pack 06 §7, A1 Schema (coupons, coupon_usage, offers), B5 RBAC §2.7
+> **Upstream**: Pack 06 §7, coupons schema + CouponService projections, B5 RBAC §2.7
 
 ---
 
@@ -62,7 +62,7 @@ Mobile coupon management — view, create, copy, and share discount codes on the
 ┌─ Status Bar ─────────────────────────────────────────────────────────┐
 │ ← Mã giảm giá (10)                               [+ Tạo coupon]   │
 ├──────────────────────────────────────────────────────────────────────┤
-│ Chips: [Tất cả (10)] [🟢 Active (4)] [⏹ Expired (6)]             │
+│ Chips: [Tất cả (10)] [🟢 Active (4)] [⏸ Paused (1)] [⏹ Expired (5)] │
 ├──────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │ ┌─ Coupon Card ───────────────────────────────────────────────────┐ │
@@ -73,7 +73,7 @@ Mobile coupon management — view, create, copy, and share discount codes on the
 │ │                                                                  │ │
 │ │ Revenue impact: +1.2M VND · Expires: 31/03                    │ │
 │ │                                                                  │ │
-│ │ [📋 Copy] [📤 Share] [⏹ Stop]                                 │ │
+│ │ [📋 Copy] [📤 Share] [⏸ Pause]                                │ │
 │ └──────────────────────────────────────────────────────────────────┘ │
 │                                                                      │
 │ ┌─ Coupon Card ───────────────────────────────────────────────────┐ │
@@ -111,7 +111,8 @@ CommerceCouponsScreen (StatefulWidget)
 ├── StatusChipBar (horizontal scroll)
 │   ├── FilterChip("Tất cả", count: 10)
 │   ├── FilterChip("🟢 Active", count: 4)
-│   └── FilterChip("⏹ Expired", count: 6)
+│   ├── FilterChip("⏸ Paused", count: 1)
+│   └── FilterChip("⏹ Expired", count: 5)
 ├── CouponList (Sliver-based)
 │   └── CouponCard[] (repeating)
 │       ├── CouponCode (large, monospace, bold: "SUMMER30")
@@ -149,13 +150,13 @@ CommerceCouponsScreen (StatefulWidget)
 
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Coupon list | `coupons` table | `CouponService/List(workspace_id, status)` | Cards with usage stats | 5m, offline Hive |
-| Chip counts | `COUNT GROUP BY status` | Included in list | Integer badges | 5m |
+| Coupon list | `coupons` + service projection | `CouponService/List(workspace_id, lifecycle_state)` | Cards with usage stats | 5m, offline Hive |
+| Chip counts | `COUNT GROUP BY lifecycle_state` | Included in list | Integer badges | 5m |
 | Coupon code | `coupons.code` | — | UPPERCASE, monospace, bold | — |
-| Usage count | `COUNT(coupon_usage)` | Aggregated in list | "{used}/{limit}" or "{used} lượt" | 5m |
-| Usage progress | `used / limit` | Computed | Linear progress bar | — |
+| Usage count | `coupons.current_uses` + `coupons.max_uses` | Included in list | "{used}/{limit}" or "{used} lượt" | 5m |
+| Usage progress | `current_uses / max_uses` | Computed | Linear progress bar | — |
 | Revenue impact | `SUM(orders.total WHERE coupon_id)` | Aggregated in list | VND compact ("+1.2M VND") | 5m |
-| Expiry date | `coupons.expires_at` | — | "dd/MM" or "Vô thời hạn" | — |
+| Expiry date | `coupons.valid_until` | — | "dd/MM" or "Vô thời hạn" | — |
 
 ---
 
@@ -165,7 +166,7 @@ CommerceCouponsScreen (StatefulWidget)
 |---|---|---|---|---|---|---|
 | 1 | Copy code | Tap "📋 Copy" | — (clipboard) | — | Haptic + Snackbar "📋 Đã copy SUMMER30" | Any |
 | 2 | Share code | Tap "📤 Share" | — (native share sheet) | — | Share sheet opens with formatted message | Any |
-| 3 | Stop coupon | Tap "⏹ Stop" → confirm | `CouponService/Deactivate(id)` | `status = 'expired'` | Confirm dialog → card updates to expired. Haptic. | `offer:manage` |
+| 3 | Pause coupon | Tap "⏸ Pause" → confirm | `CouponService/Pause(id)` | `lifecycle_state = 'paused'` | Confirm dialog → card updates to paused. Haptic. | `offer:manage` |
 | 4 | Recreate coupon | Tap "🔄 Tạo lại" | `CouponService/Create(clone_data)` | New coupon (active) | Bottom sheet pre-filled → create → new card appears | `offer:manage` |
 | 5 | Quick create | Tap "+ Tạo coupon" | `CouponService/Create(data)` | New coupon | Bottom sheet → fill → create → card appears at top | `offer:manage` |
 | 6 | Filter by status | Tap chip | Client-side filter | — | List filters with animation | `offer:read` |
@@ -207,7 +208,7 @@ CommerceCouponsScreen (StatefulWidget)
 | EMPTY_FILTER | No coupons for filter | "Không có mã {status}" | Change filter |
 | NEARLY_EXHAUSTED | Usage > 90% of limit | Orange progress bar + "⚠️ Sắp hết lượt!" warning text | Increase limit (web) or create new |
 | CREATING | Bottom sheet submission | Button spinner | Wait |
-| STOPPING | Stop action in progress | Card dimming animation | Wait |
+| PAUSING | Pause action in progress | Card dimming animation | Wait |
 | REFRESHING | Pull-to-refresh | RefreshIndicator | Wait |
 | OFFLINE | No network | Banner: "📡 Dữ liệu offline" + cached list | Refresh when online |
 | ERROR | API failed | "Không tải được mã giảm giá. [Thử lại]" | Tap retry |
@@ -317,7 +318,7 @@ Mobile Coupons (/commerce/coupons)
 | `coupon.mobile.copied` | Copy code | `coupon_code`, `used_count` |
 | `coupon.mobile.shared` | Share via sheet | `coupon_code`, `share_target` (if available) |
 | `coupon.mobile.created` | Quick create | `code`, `discount_type`, `discount_value` |
-| `coupon.mobile.stopped` | Stop coupon | `coupon_code`, `used_count_at_stop` |
+| `coupon.mobile.paused` | Pause coupon | `coupon_code`, `used_count_at_pause` |
 | `coupon.mobile.recreated` | Recreate expired | `source_code`, `new_code` |
 
 ---
@@ -330,7 +331,7 @@ Mobile Coupons (/commerce/coupons)
 | `AppColors.accent` | Create button |
 | `AppColors.success` | 🟢 Active badge, healthy progress |
 | `AppColors.warning` | 🟠 Nearly exhausted progress |
-| `AppColors.danger` | ⏹ Stop button |
+| `AppColors.danger` | Critical expiry / revoke states |
 | `AppTypography.couponCode` | Code display (24sp, monospace, bold) |
 | `AppTypography.bodySmall` | Usage text, revenue |
 | `AppDimens.cardRadius` | 12.dp |

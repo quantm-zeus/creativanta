@@ -154,7 +154,7 @@ CapabilityMatrixPage
 | Token status | `oauth_tokens` expiry | `ConnectorService/GetTokenStatus` | ✅ Valid / ⚠️ Xd / ⚫ Not connected | 15m TTL |
 | Tier gates | `subscription_tier` + feature flag registry | `TierService/GetFeatureGates(tierId)` | ✅/🔒 per feature | 30m TTL |
 | AI providers | `ai_provider_health` from monitoring | `AIService/GetProviderStatus` | Status per provider + rate limit % | 2m TTL |
-| Credits | `credit_transactions` balance | `AdminBillingService/GetCreditBalance` | "1,456 / 2,000" | Real-time |
+| Credits | `ai_credit_transactions` balance projection | `CreditService/GetBalance` | "1,456 / 2,000" | Real-time |
 | Recent issues | `platform_incidents` last 48h | `CapabilityService/GetRecentIssues` | Timeline | 5m TTL |
 
 ---

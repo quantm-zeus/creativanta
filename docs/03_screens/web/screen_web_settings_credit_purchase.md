@@ -159,7 +159,7 @@ Buy additional AI credits — credit packs with tiered pricing (bulk discounts),
 ## 13. SvelteKit Implementation Notes
 
 - **Route**: `src/routes/(app)/settings/credits/purchase/+page.svelte`
-- **Server load**: `+page.server.ts` → `AdminBillingService/GetCreditBalance` + `AdminBillingService/PurchaseCredits` + `AdminBillingService/GetBillingSummary` + `BillingService/ListCreditPurchases(limit:3)`
+- **Server load**: `+page.server.ts` → `CreditService/GetBalance` + `AdminBillingService/PurchaseCredits` + `AdminBillingService/GetBillingSummary` + `BillingService/ListCreditPurchases(limit:3)`
 - **Buy flow**: Click "Mua" → server creates Stripe Checkout Session → redirect → return with `?checkout=success&session_id=xxx`
 - **Post-checkout**: Poll `CreditService/GetCheckoutStatus(session_id)` every 2s for 30s
 - **Auto-refill**: `CreditService/UpdateAutoRefill(config)` → background job checks balance hourly

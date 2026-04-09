@@ -4,7 +4,7 @@ module: S26
 domain: platform
 status: READY
 created: 2026-04-01
-last_updated: 2026-04-06
+last_updated: 2026-04-08
 canonical: true
 upstream: PRD v3.1 §26
 ---
@@ -35,21 +35,23 @@ Internal Admin Panel provides the operations team with tools to manage users, wo
 
 | Actor | Role | Primary Actions |
 |---|---|---|
-| SuperAdmin | SuperAdmin | Full system access, impersonation, admin role management |
-| ContentMod | ContentMod | Review reports, moderate content, issue warnings/bans |
-| FinanceAdmin | FinanceAdmin | Manage billing, refunds, credit adjustments |
-| SystemOps | SystemOps | Incident management, system config, monitoring |
-| ComplianceOfficer | ComplianceOff | Data deletion requests, consent management |
-| SupportAgent | SupportAgent | User lookup, ticket management, account assistance |
+| Super Admin | `super_admin` | Full system access, impersonation, admin role management |
+| Operations Admin | `ops_admin` | User/workspace management, support queue, operational escalations |
+| Finance Admin | `finance_admin` | Billing, refunds, credit adjustments, revenue operations |
+| Content Admin | `content_admin` | Review reports, moderate content, fraud investigation support |
+| Support Admin | `support_admin` | User lookup, ticket management, account assistance |
+| Technical Admin | `tech_admin` | Incident management, system config, queue/feature-flag operations |
+| Analyst | `analyst` | Read-only analytics and operational reporting |
+| Auditor | `auditor` | Read-only audit/compliance review and export |
 
 ## 2. Business Rules
 
 | Rule | Description |
 |------|-------------|
 | RULE-S26-001 | Admin panel is VPN-restricted + MFA-required, separate from user-facing app |
-| RULE-S26-002 | 8 admin roles: SuperAdmin, UserAdmin, ContentMod, CommerceAdmin, FinanceAdmin, SystemOps, ComplianceOff, SupportAgent |
+| RULE-S26-002 | 8 admin roles: `super_admin`, `ops_admin`, `finance_admin`, `content_admin`, `support_admin`, `tech_admin`, `analyst`, `auditor` |
 | RULE-S26-003 | All admin actions logged to `internal_audit_logs` with old/new values |
-| RULE-S26-004 | Impersonation requires SuperAdmin + justification, auto-expires in 30 minutes |
+| RULE-S26-004 | Impersonation requires Super Admin + justification, auto-expires in 30 minutes |
 | RULE-S26-005 | User suspension requires reason, triggers notification, 24h appeal window |
 | RULE-S26-006 | Content moderation SLA: 4h for CRITICAL, 24h for HIGH, 72h for MEDIUM |
 | RULE-S26-007 | Fraud cases auto-escalate after 48h if unresolved |
@@ -111,8 +113,8 @@ Internal Admin Panel provides the operations team with tools to manage users, wo
 - Expected behavior: User's session is NOT disrupted. Admin sees a read-only mirror. If admin takes a write action, user sees a notification: "An admin performed an action on your account." All admin actions marked with `performed_by_admin = true`.
 
 ### EC-S26-002: Moderator reviews own content
-- Condition: A ContentMod's own published content is user-reported
-- Expected behavior: System auto-assigns to a DIFFERENT moderator. If no other moderator available, escalate to SuperAdmin. Prevents self-review conflict of interest.
+- Condition: A Content Admin's own published content is user-reported
+- Expected behavior: System auto-assigns to a DIFFERENT moderator. If no other moderator available, escalate to Super Admin. Prevents self-review conflict of interest.
 
 ### EC-S26-003: Cascading suspension across workspaces
 - Condition: User is member of 5 workspaces when suspended
@@ -143,15 +145,15 @@ Internal Admin Panel provides the operations team with tools to manage users, wo
 Feature: User Suspension
   Scenario: Admin suspends a user
     Given a user with active account
-    When UserAdmin suspends with reason "TOS violation"
+    When Operations Admin suspends with reason "TOS violation"
     Then user status changes to suspended
     And notification sent to user email
     And action logged to internal_audit_logs
     And 24h appeal window starts
 
 Feature: Impersonation
-  Scenario: SuperAdmin impersonates user
-    Given a SuperAdmin with MFA verified
+  Scenario: Super Admin impersonates user
+    Given a Super Admin with MFA verified
     When impersonation started with justification "Support ticket #1234"
     Then admin sees user's view
     And session auto-expires in 30 minutes

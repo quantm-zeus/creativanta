@@ -285,7 +285,7 @@ AdminFeeConfigPage
 
 ### Visibility Rules
 - **Analyst/Auditor**: Can view rules and history (read-only). All action buttons hidden.
-- **Ops Admin**: Can view and simulate but cannot create/edit/delete fee rules.
+- **Operations Admin**: Can view and simulate but cannot create/edit/delete fee rules.
 - **All other roles**: No access to this page → redirect to admin dashboard.
 
 ---

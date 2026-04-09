@@ -44,7 +44,7 @@ Buy additional AI credits — credit packs with volume discounts, auto-refill co
 
 ### Postconditions
 - Purchase adds credits to workspace balance immediately
-- Transaction recorded in `credit_transactions`
+- Transaction recorded in `ai_credit_transactions`
 - Auto-refill purchase triggered automatically when threshold hit
 
 ---
