@@ -86,22 +86,25 @@ Brand deal tracking with full pipeline — manage partnerships from negotiation 
 
 ## 4. Deal Status Pipeline
 
+> **Canonical lifecycle**: M16 (affiliate_network.md) RULE-M16-009 governs. 6 primary states + cancelled terminal.
+
 ```
 💬 Negotiating → 🤝 Agreed → 🎬 In-progress → 📤 Delivered → 💰 Paid → ✅ Completed
      │                            │                  │
-     └→ ❌ Cancelled              └→ ❌ Cancelled     └→ ⚠️ Disputed
+     └→ ❌ Cancelled              └→ ❌ Cancelled     └→ ⚠️ Disputed → 💰 Paid
+                                                                    └→ ❌ Cancelled
 ```
 
 | Status | Description | Actions Available |
 |---|---|---|
-| 💬 Negotiating | Discussing terms | Accept, Counter, Decline |
+| 💬 Negotiating | Discussing terms | Accept, Counter, Decline, Cancel |
 | 🤝 Agreed | Terms accepted, not started | Start, Cancel |
-| 🎬 In-progress | Creating deliverables | Mark delivered, Update progress |
-| 📤 Delivered | All deliverables sent | Confirm, Dispute |
+| 🎬 In-progress | Creating deliverables | Mark delivered, Update progress, Cancel |
+| 📤 Delivered | All deliverables sent | Confirm payment, Open dispute |
 | 💰 Paid | Payment received | Complete |
 | ✅ Completed | Deal finished | View stats |
-| ❌ Cancelled | Deal cancelled | Archive |
-| ⚠️ Disputed | Payment issue | Escalate |
+| ❌ Cancelled | Deal cancelled (terminal) | Archive |
+| ⚠️ Disputed | Payment/deliverable dispute (sub-state of delivered) | Resolve → Paid, Escalate → Cancelled |
 
 ---
 

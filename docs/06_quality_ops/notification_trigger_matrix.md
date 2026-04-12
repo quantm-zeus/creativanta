@@ -49,7 +49,7 @@ created: 2026-04-01
 | `identity.workspace.frozen` | `workspace.frozen` | `workspace_freeze` | Email + Push | HIGH | All members |
 | `system.export.completed` | `export.completed` | `export_ready` | Email + In-App | NORMAL | Requester |
 | `commerce.referral.qualified` | `referral.qualified` | `referral_reward` | Push + In-App | LOW | Referrer |
-| `billing.subscription.renewal_approaching` | `subscription.trial_ending` | `subscription_renewal` | Email | NORMAL | Billing contact |
+| `billing.subscription.renewal_approaching` | `subscription.renewal_approaching` | `subscription_renewal` | Email | NORMAL | Billing contact |
 | `billing.payment.retry_scheduled` | `subscription.payment_failed` | `dunning_attempt` | Email | HIGH | Billing contact |
 | `system.report.weekly_generated` | `report.weekly_generated` | `weekly_report` | Email | NORMAL | Workspace owner |
 

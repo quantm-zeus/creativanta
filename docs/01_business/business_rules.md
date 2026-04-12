@@ -102,7 +102,7 @@ Source: PRD §30.4
 |---|---|
 | **Free** | Hard block — không cho phép overage |
 | **Starter** | Hard block at limit — có thể mua credit packs bổ sung |
-| **Pro** | Hard block at limit — có thể mua credit packs hoặc auto-buy |
+| **Pro** | Hard block at limit — có thể mua credit packs hoặc bật auto-buy (auto-buy = tự động mua thêm credit pack khi hết, KHÔNG phải tự động tính overage vào invoice như Business tier) |
 | **Business** | Warning at 80% → stronger warning at 95% → warning + email at 100% → allow usage to 110% **only if** valid payment method on file AND overage terms accepted; otherwise hard block at 100% → auto-charge overage on next invoice cycle → hard block at 110% |
 | **Enterprise** | Custom budget alerts per contract, invoiced monthly |
 

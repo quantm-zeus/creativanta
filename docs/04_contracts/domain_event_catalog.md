@@ -3,9 +3,9 @@ layer: contracts
 canonical: true
 source_file: domain_event_catalog.md  # was impl_a4_domain_event_catalog.md (legacy name)
 last_verified: 2026-03-30
-known_issues:
-  - EVT-H-001
+known_issues: []
 resolved_issues:
+  - EVT-H-001  # dot.notation canonical, CamelCase mapping tables added to runtime_workflow.md (2026-04-02)
   - EVT-M-001  # connector.degraded + connector.recovered added §15D (2026-04-02)
 do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 ---
@@ -216,7 +216,7 @@ struct EventMetadata {
 | `workflow_run.failed` | M20 | Diagnostics, Notification | `{run_id, error}` |
 | `workflow_run.cancelled` | M20 | Audit | `{run_id, cancelled_by}` |
 | `workflow_run.manual_intervention_required` | M20 | Notification, Audit | `{run_id, current_node, reason}` |
-| `workflow_run.approval_required` | M20 | Notification | `{run_id, action, approver}` |
+| `workflow_run.approval_required` | M20 | Notification | `{run_id, workflow_id, step_name, action, approver_ids[]}` |
 | `agent_run.started` | M21 | Audit | `{run_id, current_state, plan_summary}` |
 | `agent_run.approval_required` | M21 | Notification | `{run_id, risk_actions[], approver_ids[]}` |
 | `agent_run.waiting_context` | M21 | Notification | `{run_id, requested_context_type, prompt}` |
@@ -235,7 +235,7 @@ struct EventMetadata {
 | `policy.note_created` | M22 | M11 | `{policy_note_id, scope}` |
 | `credits.deducted` | M23 | M01 | `{workspace_id, amount, balance}` |
 | `credits.low_warning` | M23 | Notification | `{workspace_id, remaining}` |
-| `credits.exhausted` | M23 | All AI | `{workspace_id}` |
+| `credits.exhausted` | M23 | All AI, Notification, M01 | `{workspace_id, tier, last_operation}` |
 | `subscription.payment_failed` | M23 | Dunning | `{workspace_id, attempt}` |
 | `subscription.changed` | M23 | Limits | `{workspace_id, from_tier, to_tier}` |
 | `diagnostics.record_created` | M23 | M01, Notification | `{diagnostics_id, severity}` |
@@ -258,7 +258,11 @@ struct EventMetadata {
 | `achievement.unlocked` | Achievement | Notification, Credits | `{workspace_id, achievement_code, credits}` |
 | `xp.earned` | Achievement | Progress | `{workspace_id, xp_amount, source}` |
 | `level.up` | Achievement | Notification | `{workspace_id, new_level}` |
+| `streak.milestone` | Achievement | Notification, Gamification | `{workspace_id, streak_days, milestone_type}` |
 | `streak.broken` | Achievement | Notification | `{workspace_id, streak_days}` |
+| `streak.frozen` | Achievement | Gamification | `{workspace_id, streak_days, freeze_until}` |
+| `challenge.completed` | Achievement | Notification, XP | `{workspace_id, challenge_id, xp_reward}` |
+| `challenge.expired` | Achievement | Cleanup | `{workspace_id, challenge_id}` |
 
 ## 15. Creator Pro Tools Events (S16)
 
@@ -436,8 +440,8 @@ struct EventMetadata {
 | `payment.failed` | Billing | Notification, Admin | `{workspace_id, amount, currency, failure_reason, retry_count}` |
 | `payment.succeeded` | Billing | Notification | `{workspace_id, amount, currency, invoice_id}` |
 | `payment.retry_scheduled` | Billing | Notification | `{workspace_id, retry_at, retry_count}` |
-| `credit.exhausted` | Billing | Notification, M01 | `{workspace_id, tier, last_operation}` |
-| `credit.low` | Billing | Notification | `{workspace_id, remaining_credits, threshold_pct}` |
+| `credits.exhausted` | Billing | Notification, M01, All AI | _(canonical definition in §12 — see above)_ |
+| `credits.low` | Billing | Notification | _(see `credits.low_warning` in §12)_ |
 | `subscription.renewal_approaching` | Billing | Notification | `{workspace_id, tier, renewal_date, days_until}` |
 
 ### 16.3 Content & Production
@@ -452,7 +456,7 @@ struct EventMetadata {
 | Event | Owner | Consumer | Payload Key Fields |
 |---|---|---|---|
 | `sla.breached` | M12 | Notification, Admin | `{thread_id, sla_type, breach_minutes, priority}` |
-| `workflow_run.approval_required` | M20 | Notification | `{run_id, workflow_id, step_name, approver_ids[]}` |
+| `workflow_run.approval_required` | M20 | Notification | _(canonical definition in §11 — see above)_ |
 
 ### 16.5 Publish
 

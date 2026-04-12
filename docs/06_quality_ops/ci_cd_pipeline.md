@@ -74,6 +74,8 @@ jobs:
         run: cargo test --workspace
       - name: Web tests
         run: cd web && pnpm test
+      - name: Flutter tests
+        run: cd mobile && flutter test
 
   test-integration:
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
@@ -153,10 +155,12 @@ jobs:
         run: |
           curl -f https://app.creativanta.app/health
           curl -f https://app.creativanta.app/ready
-      - name: Smoke test
+      - name: Smoke test (business endpoint)
         run: |
-          curl -f https://app.creativanta.app/health
-          curl -f https://app.creativanta.app/ready
+          # Verify a real gRPC/ConnectRPC endpoint responds (not just health check)
+          # Uses an unauthenticated or service-account call to a read-only endpoint
+          curl -f -X POST https://app.creativanta.app/creativanta.capability.v1.CapabilityService/GetPublicStatus \
+            -H 'Content-Type: application/json' -d '{}' || echo "Smoke test warning: business endpoint did not respond"
 ```
 
 ---

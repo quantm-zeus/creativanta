@@ -881,3 +881,127 @@ Source: PRD §23.23 — "internal admin site hoàn toàn tách biệt khỏi mai
     And access requires VPN connection
     And RBAC uses internal role/permission system (separate from workspace RBAC)
     And no cross-authentication possible between main app and internal admin
+
+---
+
+## S16 — Creator Pro Tools
+
+### AC-S16-001: Link-in-Bio page creation and publishing
+Source: M16 RULE-M16-006 — "Link-in-Bio pages on shared domain creativanta.link must have anti-abuse protection"
+
+    Given a Pro+ creator with connected accounts
+    When creator creates a Link-in-Bio page
+    Then page is published on creativanta.link/<slug>
+    And URL destination scan (Google Safe Browsing) runs on all links
+    And page renders with creator's brand kit applied
+    And max 20 links/day throttle enforced
+
+### AC-S16-002: Media Kit AI generation
+Source: M16 RULE-M16-007 — "Media Kit generation pulls real-time metrics"
+
+    Given a creator with ≥1 connected platform account
+    When creator requests Media Kit generation
+    Then AI generates kit with: overview, platform stats, demographics, top content, rate card, past collaborations
+    And 3-5 AI credits deducted per generation
+    And ≥3 professional templates available
+
+### AC-S16-003: Brand Deal lifecycle management
+Source: M16 RULE-M16-009 — "Brand Deal v1 is a simplified manual pipeline"
+
+    Given a creator with an active brand deal
+    When creator progresses deal through states: negotiating → agreed → in_progress → delivered → paid → completed
+    Then each transition is logged with timestamp and actor
+    And cancelled is available from negotiating, agreed, in_progress
+    And disputed is available from delivered (resolves to paid or cancelled)
+
+---
+
+## S24 — Public API
+
+### AC-S24-001: API key management and scoping
+Source: S24 feature spec — "Public API provides external developer access"
+
+    Given a workspace owner or admin
+    When creating a Public API key
+    Then key is scoped to specific permission set (read-only, read-write, custom)
+    And key has configurable rate limits
+    And key activity is logged in api_call_logs table
+
+### AC-S24-002: Webhook delivery reliability
+Source: S24 feature spec — webhook-eligible events
+
+    Given a workspace with configured webhook endpoint
+    When a webhook-eligible event fires (per domain_event_catalog §21)
+    Then webhook is delivered with canonical event payload
+    And failed deliveries are retried per retry policy (3x exponential backoff)
+    And delivery status is logged and visible in developer dashboard
+
+---
+
+## S26 — Internal Admin
+
+### AC-S26-001: Admin impersonation with audit trail
+Source: S26 feature spec — "Admin can impersonate workspace for support"
+
+    Given an internal admin with impersonate permission
+    When admin impersonates a workspace
+    Then admin sees workspace as the owner would see it (read-only by default)
+    And all admin actions during impersonation are logged in audit trail
+    And impersonation session expires after 30 minutes max
+
+### AC-S26-002: Moderation and content takedown
+Source: S26 feature spec — "Content moderation pipeline"
+
+    Given reported content in moderation queue
+    When admin reviews and takes action (warn, hide, remove, ban)
+    Then action is recorded with reason and admin ID
+    And affected user is notified via email and in-app
+    And moderation action can be appealed through support channel
+
+---
+
+## Copilot
+
+### AC-COPILOT-001: Context-aware suggestions across modules
+Source: Copilot feature spec — "AI Copilot provides contextual help"
+
+    Given a user working in any module (M01-M23)
+    When user activates Copilot (shortcut or button)
+    Then Copilot provides context-aware suggestions based on current screen and data
+    And Copilot actions deduct AI credits per operation
+    And Copilot never auto-executes — always requires user confirmation
+
+---
+
+## Referral
+
+### AC-REFERRAL-001: Referral reward distribution
+Source: pricing_and_credits.md — referral program rules
+
+    Given a referrer shares their referral link
+    When referee signs up AND subscribes to a paid tier within 30 days
+    Then referral is marked as qualified (referral.qualified event emitted)
+    And referrer receives credit bonus per tier (defined in pricing_and_credits)
+    And referral tier is recalculated at end of calendar month
+
+---
+
+## Gamification
+
+### AC-GAMIF-001: Streak tracking and reset
+Source: Gamification feature spec — streak mechanics
+
+    Given a user with an active streak
+    When user performs a qualifying action (content creation, publish, engagement)
+    Then streak_days increments and streak_last_activity_date updates
+    And if user misses a day, streak resets to 0
+    And streak milestones trigger achievement unlocks
+
+### AC-GAMIF-002: Achievement unlock and XP grant
+Source: Gamification feature spec — achievement system
+
+    Given an achievement definition in the system
+    When user meets the achievement criteria
+    Then achievement is unlocked (gamification.achievement_unlocked event emitted)
+    And XP is granted per achievement definition
+    And achievement cannot be unlocked twice (GAMIF_CONFLICT_001)

@@ -88,8 +88,9 @@ sequenceDiagram
     participant Credits as Credit System
 
     User->>API: generate_video(brief, character, voice)
-    API->>Credits: check_balance(estimated_cost)
-    Credits-->>API: balance_ok
+    Note over API,Credits: Phase 1 — Reserve (Escrow per §9/§11)
+    API->>Credits: reserve(workspace_id, estimated_cost, ttl=30min)
+    Credits-->>API: reservation_id
     API->>Router: select_pipeline(context)
     
     alt Native Audio (90% cases)
@@ -116,7 +117,9 @@ sequenceDiagram
     FFmpeg-->>Router: final_output
     Router->>Storage: upload(output)
     Storage-->>Router: file_url
-    Router->>Credits: deduct(actual_cost)
+    Note over Router,Credits: Phase 2 — Commit (settle actual cost)
+    Router->>Credits: commit(reservation_id, actual_cost)
+    Credits-->>Router: committed(new_balance)
     Router-->>API: generation_completed
     API-->>User: asset_ready(url)
 ```
@@ -322,7 +325,10 @@ sequenceDiagram
 
 ---
 
-## 9. AI Credit Check & Deduction
+## 9. AI Credit Check & Deduction (Escrow / Two-Phase)
+
+> **Canonical pattern**: Uses the reserve→execute→commit escrow flow defined in §11.
+> All AI credit operations MUST use this two-phase pattern — never immediate deduction.
 
 ```mermaid
 sequenceDiagram
@@ -337,22 +343,33 @@ sequenceDiagram
     Credits->>Cache: get credits:balance:{workspace}
     
     alt Balance Sufficient
-        Credits-->>API: approved(estimated_cost)
-        API->>API: execute AI action
-        API->>Credits: deduct(actual_cost)
-        Credits->>DB: INSERT ai_credit_transaction
-        Credits->>Cache: SET credits:balance (new_balance)
-        Credits-->>API: deducted
+        Note over Credits: Phase 1 — Reserve (Escrow)
+        API->>Credits: reserve(workspace_id, estimated_cost, ttl=30min)
+        Credits->>DB: INSERT ai_credit_transaction (status=reserved)
+        Credits->>Cache: DECRBY credits:balance estimated_cost
+        Credits-->>API: reservation_id
+        
+        Note over API: Execute AI action
+        API->>API: execute AI action (provider call)
+        
+        Note over Credits: Phase 2 — Commit (Settle)
+        API->>Credits: commit(reservation_id, actual_cost)
+        Credits->>DB: UPDATE ai_credit_transaction SET status=committed, amount=actual_cost
+        alt actual_cost < estimated_cost
+            Credits->>Cache: INCRBY credits:balance (estimated - actual)
+            Note over Credits: Refund difference to balance
+        end
+        Credits-->>API: committed(actual_cost, new_balance)
     else Balance Low (Pro/Business)
         Credits-->>API: soft_warning(remaining)
-        API->>API: proceed with warning
+        API->>API: proceed with warning (still use reserve flow)
     else Balance Exhausted (Free/Starter)
         Credits-->>API: hard_block
         API-->>User: credits_exhausted error
     end
 ```
 
-These 9 diagrams cover the core critical flows.
+These 9 diagrams cover the core critical flows. See §11 for the full Credit Reservation (Escrow) Flow specification.
 
 ---
 

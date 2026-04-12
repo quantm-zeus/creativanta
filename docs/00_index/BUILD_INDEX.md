@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-04-06
+last_updated: 2026-04-11
 ---
 
 # Build Index — Creativanta System Map
@@ -14,7 +14,7 @@ Creativanta is a **Proofed Trend-to-Profit Operating System** for creator commer
 
 | Module | Name | Domain | Feature Doc (target) | Build Phase |
 |--------|------|--------|----------------------|-------------|
-| M01 | Home / Daily Decision Engine | platform | 02_features/platform/home_decision_engine.md | P3A |
+| M01 | Home / Daily Decision Engine | platform | 02_features/platform/home_decision_engine.md | P3E | <!-- Phase 8: aggregates all domains, implement last -->
 | M02 | Trend Fusion Radar | intelligence | 02_features/intelligence/trend_radar.md | P3A |
 | M03 | Research & Competitor Intelligence | intelligence | 02_features/intelligence/competitor_intelligence.md | P3A |
 | M04 | Opportunity Board | intelligence | 02_features/intelligence/opportunity_board.md | P3A |

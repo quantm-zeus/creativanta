@@ -68,18 +68,20 @@ Các yêu cầu compliance ảnh hưởng **trực tiếp** đến implementatio
 
 ## 3. Data Retention Rules
 
-| Data Type | Active | After Deletion | Legal Retention |
-|---|---|---|---|
-| Personal data | Suốt subscription | Purge 30 days after grace | — |
-| Content data | Suốt subscription | Purge 30 days | — |
-| AI generation history | Suốt subscription | Purge 30 days | — |
-| Financial/billing records | Suốt subscription | — | 7 năm (tax law), anonymized |
-| Consent records | Suốt active + 5 năm | — | 5 năm after expired/withdrawn |
-| ToS acceptance | Suốt active + 3 năm | — | 3 năm |
-| DMCA records | — | — | 5 năm |
-| AUP violations | — | — | 3 năm |
-| Audit trail | — | — | 3 năm, anonymized |
-| Backup data | — | Purge 90 days | — |
+> **Canonical source**: `business_rules.md` BIZ-010 governs data retention. 3-phase policy applies to all user-deletable data.
+
+| Data Type | Active | Phase 1: Day 0-30 (Read-Only) | Phase 2: Day 30-90 (Soft Delete) | Phase 3: Day 90+ (Hard Delete) | Legal Retention |
+|---|---|---|---|---|---|
+| Personal data | Suốt subscription | Read-only, exportable | Soft-deleted, not visible to user | Hard delete (irreversible) | — |
+| Content data | Suốt subscription | Read-only, exportable | Soft-deleted, archived | Hard delete (irreversible) | — |
+| AI generation history | Suốt subscription | Read-only, exportable | Soft-deleted, archived | Hard delete (irreversible) | — |
+| Financial/billing records | Suốt subscription | Read-only | Anonymized, retained | Anonymized, retained | 7 năm (tax law) |
+| Consent records | Suốt active + 5 năm | Read-only | Retained | Retained | 5 năm after expired/withdrawn |
+| ToS acceptance | Suốt active + 3 năm | Read-only | Retained | Retained | 3 năm |
+| DMCA records | — | Retained | Retained | Retained | 5 năm |
+| AUP violations | — | Retained | Retained | Retained | 3 năm |
+| Audit trail | — | Retained | Retained | Anonymized | 3 năm, anonymized |
+| Backup data | — | Retained | Retained | Purge 90 days | — |
 
 ---
 

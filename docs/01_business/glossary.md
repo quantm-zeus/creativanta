@@ -2,7 +2,7 @@
 layer: business
 canonical: true
 source: screen_shared_glossary.md, creativanta_prd_v_3_1_revised_part_1.md, creativanta_prd_v_3_1_revised_part_2.md
-last_updated: 2026-03-30
+last_updated: 2026-04-11
 ---
 
 # Glossary
@@ -194,7 +194,40 @@ last_updated: 2026-03-30
 | Term | Definition |
 |---|---|
 | **KOC / KOL** | Key Opinion Consumer / Key Opinion Leader — người có ảnh hưởng. User segment, không phải system entity riêng. |
+| **Micro Creator** | Segment: <10K followers, beginner. Sử dụng Free/Starter tier. |
+| **Mid-tier Creator** | Segment: 10K-100K followers, growing. Sử dụng Pro tier. |
+| **Macro Creator** | Segment: 100K-1M followers, established. Sử dụng Pro/Business tier. |
+| **Brand Account** | Segment: corporate/brand entity, uses workspace for affiliate management, seeding. Business/Enterprise tier. |
+| **Agency** | Segment: manages multiple creators, multi-workspace setup. Enterprise tier. |
+| **Affiliate-only** | Segment: creators focused solely on affiliate revenue. Starter+ tier. |
+| **Cross-platform Creator** | Segment: active on 3+ platforms simultaneously. Pro+ tier recommended. |
 
 ---
 
-> **Tổng: 114 entries** | Glossary này sẽ được cập nhật khi downstream docs bổ sung thêm terms.
+## Gamification & Engagement
+
+| Term | Module | Definition |
+|---|---|---|
+| **XP (Experience Points)** | Gamification | Điểm kinh nghiệm tích lũy từ hành động trên hệ thống. Dùng để mở khóa achievements, không đổi được credits. |
+| **Streak** | Gamification | Chuỗi ngày liên tiếp user hoạt động trên hệ thống. Reset nếu miss 1 ngày. |
+| **Achievement** | Gamification | Thành tựu mở khóa khi đạt milestone. Ví dụ: "First Video" (M07), "10-Day Streak", "First Sale" (M13). |
+| **Challenge** | Gamification | Thử thách có thời hạn (daily/weekly/monthly). Hoàn thành nhận XP bonus. |
+| **Creator Score** | Gamification | 0-100 composite score dựa trên: content quality, engagement, revenue, consistency. Non-financial REAL. |
+| **Referral** | M23/Billing | Chương trình giới thiệu: referrer nhận credit bonus khi referee subscribe paid tier. Tier-based rewards. |
+| **Referral Tier** | M23/Billing | Cấp độ referrer dựa trên số lượng successful referrals. Recalculated monthly. |
+
+---
+
+## Packaging & QA (M10)
+
+| Term | Module | Definition |
+|---|---|---|
+| **Packaging Score** | M10 | 0-100 composite score đánh giá chất lượng packaging (thumbnail, caption, hook, tags, CTA). Non-financial REAL. |
+| **Compliance Scan** | M10 | Tự động kiểm tra content vi phạm platform guidelines trước khi publish. Result: pass, pass_with_warnings, review_required, blocked. |
+| **Proof Graph** | M19/System | Bộ liên kết chứng minh từ: trend signal → idea → script → content → publish → order → profit. Traceability chain. |
+| **Operating Loop** | M01/System | Chu kỳ: Intelligence → Creation → Production → Publish → Engagement → Commerce → Finance → Repeat. Core business cycle. |
+| **Full Product from Day 1** | Business | Nguyên tắc: mọi tính năng available (ở mức phù hợp) cho mọi tier từ Day 1. Không lock feature behind tier, chỉ limit credits/usage. |
+
+---
+
+> **Tổng: 133 entries** | Glossary này sẽ được cập nhật khi downstream docs bổ sung thêm terms.

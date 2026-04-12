@@ -446,7 +446,7 @@ Request → Router → Primary Provider
 | **SMS / OTP** | **Twilio** + **SpeedSMS** (VN backup) | OTP verification, VN local SMS fallback |
 | **Push Notifications** | **Firebase Cloud Messaging** (FCM) + APNs | Flutter + Web push, Morning Brief delivery |
 | **In-App Notifications** | Custom (PostgreSQL + WebSocket) | Notification center, read/unread, deep links |
-| **WebSocket (Web)** | **Liveblocks** or **Partykit** | Real-time collaboration, presence awareness |
+| **WebSocket (Web)** | **tokio-tungstenite** (server) + native browser WS | Real-time collaboration, presence awareness. _Liveblocks and Partykit were evaluated but rejected in favor of self-hosted tokio-tungstenite for consistency with Rust backend (ADR-003)._ |
 | **Collaborative Editing** | **Yjs** + **Tiptap Collaboration** | Script co-editing, concurrent workflow editing, CRDT-based |
 | **File Preview** | **pdfjs-dist** + custom | Invoice preview, report export |
 | **Export** | **xlsx** (SheetJS) + **jspdf** | Excel/PDF export cho reports, ledger, profit statements |

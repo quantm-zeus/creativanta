@@ -10,6 +10,8 @@ purpose: AI provider setup (Gemini, OpenAI, ElevenLabs, Veo), adapter trait patt
 
 > **Upstream**: Pack 04 (AI/Media), Tech Stack ADR v3 (ADR-009, ADR-010, ADR-011)
 > **v1 Providers**: Gemini (primary) + OpenAI (fallback) + ElevenLabs (TTS)
+>
+> **Note**: `tech_stack_adr.md` lists 8 strategic provider categories. This guide covers the **v1 implementation scope** — 3 primary providers (Gemini, OpenAI, ElevenLabs) plus specific model choices per category. Phase 2 providers (Kling, Whisper standalone, etc.) are listed with "(P2)" suffix and will be integrated when capacity allows.
 
 ---
 

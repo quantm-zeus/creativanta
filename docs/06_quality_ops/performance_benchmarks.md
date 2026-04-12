@@ -3,7 +3,7 @@ layer: quality_ops
 canonical: true
 source_file: impl_c3_performance_benchmarks.md
 status: READY
-last_verified: 2026-03-30
+last_verified: 2026-04-11
 ---
 
 # C3 — Performance Benchmark Specification
@@ -21,7 +21,7 @@ last_verified: 2026-03-30
 | Web LCP | ≤ 1.5s | Lighthouse, SvelteKit SSR |
 | Web FID/INP | ≤ 100ms | Core Web Vitals |
 | Web CLS | ≤ 0.1 | Core Web Vitals |
-| Web Bundle (gzip) | ≤ 50KB | Vite build analysis |
+| Web Bundle (gzip) | ≤ 120KB initial route | Vite build analysis — full SvelteKit app with shadcn-svelte + ECharts; 50KB unrealistic. Code-split per route. |
 | Mobile FPS | ≥ 58 FPS | Flutter performance overlay |
 | Mobile cold start | ≤ 2s | First frame render |
 | Real-time latency | ≤ 500ms | WebSocket/gRPC streaming |

@@ -19,7 +19,7 @@ status: READY
 <DOMAIN>_<CATEGORY>_<NUMBER>
 ```
 
-- **Domain**: AUTH, BILLING, COMMERCE, CONTENT, ENGAGEMENT, FINANCE, LIVE, PUBLISH, AI, WORKFLOW, SEEDING, CREATOR_PRO, ADMIN, SYSTEM
+- **Domain**: AUTH, BILLING, COMMERCE, CONTENT, ENGAGEMENT, FINANCE, LIVE, PUBLISH, AI, WORKFLOW, SEEDING, CREATOR_PRO, ADMIN, SYSTEM, INTELLIGENCE, CONNECTOR, NOTIFICATION, GAMIFICATION
 - **Category**: INVALID, NOTFOUND, FORBIDDEN, CONFLICT, LIMIT, INTERNAL, EXTERNAL, TIMEOUT
 - **Number**: 3-digit sequential per domain-category
 
@@ -195,6 +195,45 @@ Example: `AUTH_INVALID_001`, `BILLING_LIMIT_003`, `AI_EXTERNAL_002`
 | SYSTEM_INTERNAL_001 | INTERNAL | 500 | Unhandled server error | No | "Lỗi hệ thống. Vui lòng thử lại sau." |
 | SYSTEM_TIMEOUT_001 | DEADLINE_EXCEEDED | 504 | Request processing timeout | Yes (retry once) | "Yêu cầu hết thời gian chờ." |
 | SYSTEM_LIMIT_001 | RESOURCE_EXHAUSTED | 429 | Global rate limit exceeded | Yes (backoff) | "Quá nhiều yêu cầu. Vui lòng chờ." |
+
+## Intelligence Errors (INTELLIGENCE_*)
+
+| Code | gRPC | HTTP | Description | Retryable | User Message |
+|---|---|---|---|---|---|
+| INTEL_NOTFOUND_001 | NOT_FOUND | 404 | Trend/signal not found | No | "Xu hướng không tồn tại." |
+| INTEL_NOTFOUND_002 | NOT_FOUND | 404 | Competitor entity not found | No | "Đối thủ không tồn tại." |
+| INTEL_NOTFOUND_003 | NOT_FOUND | 404 | Opportunity not found | No | "Cơ hội không tồn tại." |
+| INTEL_CONFLICT_001 | ALREADY_EXISTS | 409 | Duplicate competitor registration | No | "Đối thủ đã được đăng ký." |
+| INTEL_STALE_001 | FAILED_PRECONDITION | 412 | Trend data older than 24h threshold | Yes | "Dữ liệu xu hướng đã cũ, đang cập nhật." |
+
+## Connector Errors (CONNECTOR_*)
+
+| Code | gRPC | HTTP | Description | Retryable | User Message |
+|---|---|---|---|---|---|
+| CONN_AUTH_001 | UNAUTHENTICATED | 401 | OAuth token expired or invalid | Yes (refresh) | "Kết nối đã hết hạn, vui lòng kết nối lại." |
+| CONN_AUTH_002 | PERMISSION_DENIED | 403 | Token revoked by platform | No | "Quyền truy cập đã bị thu hồi bởi nền tảng." |
+| CONN_SYNC_001 | UNAVAILABLE | 503 | Platform API unavailable during sync | Yes | "Nền tảng tạm thời không khả dụng, đang thử lại." |
+| CONN_SYNC_002 | DEADLINE_EXCEEDED | 504 | Sync timeout — platform too slow | Yes | "Đồng bộ hết thời gian, đang thử lại." |
+| CONN_RATE_001 | RESOURCE_EXHAUSTED | 429 | Platform rate limit hit | Yes (backoff) | "Đã đạt giới hạn API nền tảng, vui lòng chờ." |
+| CONN_REPAIR_001 | FAILED_PRECONDITION | 412 | Connection repair wizard blocked by active sync | No | "Không thể sửa kết nối khi đang đồng bộ." |
+
+## Notification Errors (NOTIFICATION_*)
+
+| Code | gRPC | HTTP | Description | Retryable | User Message |
+|---|---|---|---|---|---|
+| NOTIF_DELIVERY_001 | UNAVAILABLE | 503 | Push notification delivery failed | Yes | "Không gửi được thông báo, sẽ thử lại." |
+| NOTIF_TEMPLATE_001 | NOT_FOUND | 404 | Notification template not found | No | "Mẫu thông báo không tồn tại." |
+| NOTIF_QUIET_001 | FAILED_PRECONDITION | 412 | Notification suppressed by quiet hours | No | "Thông báo sẽ được gửi sau giờ im lặng." |
+| NOTIF_PREF_001 | FAILED_PRECONDITION | 412 | User disabled this notification channel | No | "Người dùng đã tắt kênh thông báo này." |
+
+## Gamification Errors (GAMIFICATION_*)
+
+| Code | gRPC | HTTP | Description | Retryable | User Message |
+|---|---|---|---|---|---|
+| GAMIF_NOTFOUND_001 | NOT_FOUND | 404 | Achievement definition not found | No | "Thành tựu không tồn tại." |
+| GAMIF_CONFLICT_001 | ALREADY_EXISTS | 409 | Achievement already unlocked for this user | No | "Thành tựu đã được mở khóa." |
+| GAMIF_PRECOND_001 | FAILED_PRECONDITION | 412 | Challenge not active or has expired | No | "Thử thách đã kết thúc hoặc chưa bắt đầu." |
+| GAMIF_PRECOND_002 | FAILED_PRECONDITION | 412 | Streak already claimed for today | No | "Streak hôm nay đã được ghi nhận." |
 
 ---
 

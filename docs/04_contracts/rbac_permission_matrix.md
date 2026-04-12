@@ -137,13 +137,19 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 |---|---|---|---|---|---|---|---|
 | `product:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `product:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `product:delete` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `product:import` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `offer:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `offer:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `offer:activate` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `order:read` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `order:manage` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `campaign:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `campaign:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| `affiliate:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `coupon:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `coupon:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `affiliate:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `affiliate:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `store:manage` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `membership:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `membership:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |

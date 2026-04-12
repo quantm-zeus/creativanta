@@ -31,6 +31,8 @@ last_verified: 2026-03-30
 │  │  clickhouse        → localhost:8123 (HTTP)         │   │
 │  │  mailpit           → localhost:8025 (UI)           │   │
 │  │  jaeger            → localhost:16686 (UI)          │   │
+│  │  minio             → localhost:9001 (Console)      │   │
+│  │  grafana           → localhost:3001 (UI)           │   │
 │  └───────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -108,7 +110,7 @@ services:
       AP_REDIS_PORT: 6379
       AP_ENCRYPTION_KEY: dev_encryption_key_32chars_here!
       AP_JWT_SECRET: dev_jwt_secret_here_32chars_long!
-      AP_EXECUTION_MODE: UNSANDBOXED
+      AP_EXECUTION_MODE: UNSANDBOXED  # ⚠️ DEV ONLY — production MUST use SANDBOXED mode. See security_threat_model.md.
     depends_on:
       postgres:
         condition: service_healthy
@@ -132,10 +134,36 @@ services:
     environment:
       COLLECTOR_OTLP_ENABLED: true
 
+  minio:
+    image: minio/minio:latest
+    container_name: creativanta-storage
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: creativanta-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: true
+    volumes:
+      - grafana_data:/var/lib/grafana
+
 volumes:
   postgres_data:
   meili_data:
   clickhouse_data:
+  minio_data:
+  grafana_data:
 ```
 
 ---
@@ -201,12 +229,18 @@ OPENAI_API_KEY=xxx  # fallback
 AI_DEFAULT_PROVIDER=gemini
 AI_DEFAULT_MODEL=gemini-2.5-flash
 
-# Storage
-R2_ACCOUNT_ID=xxx
-R2_ACCESS_KEY=xxx
-R2_SECRET_KEY=xxx
-R2_BUCKET=creativanta-dev
-R2_PUBLIC_URL=https://storage.creativanta.app
+# Storage (local dev uses MinIO as S3-compatible; production uses Cloudflare R2)
+S3_ENDPOINT=http://localhost:9000
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=minioadmin
+S3_BUCKET=creativanta-dev
+S3_PUBLIC_URL=http://localhost:9000/creativanta-dev
+# Production overrides (R2):
+# R2_ACCOUNT_ID=xxx
+# R2_ACCESS_KEY=xxx
+# R2_SECRET_KEY=xxx
+# R2_BUCKET=creativanta-dev
+# R2_PUBLIC_URL=https://storage.creativanta.app
 
 # Email (dev → mailpit)
 SMTP_HOST=localhost

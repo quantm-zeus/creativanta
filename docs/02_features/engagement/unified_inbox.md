@@ -19,7 +19,7 @@ M12 exists as the **semantic operating inbox** — it ingests all interactions i
 
 ### Covers (M12 owns engagement operating layer)
 - Thread ingestion: comments, DMs, inquiries, sponsor inquiries, sample requests
-- Thread state machine: NEW → TRIAGED → ACTIVE → RESOLVED / SNOOZED / ARCHIVED
+- Thread state machine: NEW → TRIAGED → ACTIVE → {WAITING_ON_USER, WAITING_ON_TEAM, SNOOZED, STALE} → {CONVERTED_TO_TASK, RESOLVED} → ARCHIVED (see RULE-M12-003 for full 10-state enum)
 - AI intent classification: purchase_interest, question, support_issue, objection, sponsor_interest, sample_request, moderation_risk, unknown
 - AI summaries and suggested replies
 - Suggested commerce actions (pin offer, create coupon, route to seeding)
@@ -56,7 +56,7 @@ M12 exists as the **semantic operating inbox** — it ingests all interactions i
 
 1. **RULE-M12-001**: Every thread MUST have `owner_user_id`, `intent`, `status`, and `next_action` populated. A thread CANNOT exist without these mandatory fields. When ingested, system auto-sets `intent = 'unknown'` and `next_action` based on heuristics; human triage refines (PRD §13.8, §23.12 AC).
 2. **RULE-M12-002**: Sponsor inquiries and sample requests are **ingested as messages** into threads, but when classified, they create canonical thread-linked business records (stored as `threads` with `thread_type = 'sponsor_inquiry'` or `thread_type = 'sample_request'`). Routing to M18/S16 owners MUST NOT destroy inbox provenance — the original thread relationship is preserved (Pack 05 §6.4, DB schema §10 Sponsor Inquiry Mapping note).
-3. **RULE-M12-003**: Thread status machine MUST follow canonical transitions. Status = `{new, triaged, active, waiting_on_user, waiting_on_team, converted_to_task, resolved, archived}`. No status skipping — a `new` thread cannot jump to `resolved` without passing through `triaged` or `active` (DB schema §9.2).
+3. **RULE-M12-003**: Thread status machine MUST follow canonical transitions. Status = `{new, triaged, active, waiting_on_user, waiting_on_team, snoozed, stale, converted_to_task, resolved, archived}`. `snoozed` = user-initiated pause with timer (returns to `active` on expiry); `stale` = no activity for configurable threshold (ghost message detection). No status skipping — a `new` thread cannot jump to `resolved` without passing through `triaged` or `active` (DB schema §9.2).
 4. **RULE-M12-004**: SLA tracking is mandatory when configured. When `sla_due_at` is set, system MUST emit `thread.sla_approaching` (at configurable threshold, default 30 min before) and `thread.sla_breached` (at due time). SLA breach feeds M01 Daily Brief as urgent card (Domain events §7).
 5. **RULE-M12-005**: Thread conversions MUST create downstream objects linked back to the source thread. Conversion types: → Idea (M05: `idea_sources` entry), → Offer/Commerce action (M14), → Seeding/Sample request (M18), → Follow-up Task (`follow_up_tasks.source_thread_id`). The thread's `related_object_refs` MUST be updated to include the created object (PRD §25, §23.12 AC).
 6. **RULE-M12-006**: Reply-As identity MUST be visible in compose box. When workspace has multiple Connected Accounts, the compose box MUST display a color-coded badge + avatar + account name. Users CANNOT send a reply without identity tag visible. Identity auto-updates when switching between threads from different accounts (Pack 05 §7.4).

@@ -55,6 +55,7 @@ purpose: Queue architecture, retry strategies, DLQ, outbox pattern, circuit brea
 | `workflow_trigger` | MEDIUM | 3 | 10s, 1min, 5min | ✅ | Activepieces trigger |
 | `settlement_import` | HIGH | 5 | 1min, 5min, 15min, 1h, 6h | ✅ | M19 finance importer |
 | `trend_crawl` | LOW | 2 | 5min, 30min | ❌ | M02 crawler |
+| `ai_credit` | HIGH | 2 | 10s, 1min | ✅ | M23 credit allocation, monthly reset |
 
 ---
 
@@ -148,6 +149,8 @@ CREATE INDEX idx_outbox_unpublished ON event_outbox(published, created_at)
 ```
 
 ### Outbox Poller:
+> **Exception to SeaORM-first rule (ADR-011)**: The outbox poller uses raw SQLx for performance-critical batch polling at 100ms intervals. This is an approved exception per the same reasoning that allows raw SQL for migrations and hot-path queries.
+
 ```rust
 // Runs every 100ms, batches up to 100 events
 async fn poll_outbox(pool: &PgPool, redis: &RedisClient) {
@@ -164,7 +167,7 @@ async fn poll_outbox(pool: &PgPool, redis: &RedisClient) {
 
 Outbox routing rule:
 - Producers MUST persist the exact Redis Stream name into `event_outbox.target_stream` at write time.
-- `target_stream` MUST match one of the canonical queue names in §2 (`publish_jobs`, `generation_jobs`, `sync_jobs`, `notification_push`, `notification_email`, `analytics_events`, `ai_pipeline`, `workflow_trigger`, `settlement_import`, `trend_crawl`).
+- `target_stream` MUST match one of the canonical queue names in §2 (`publish_jobs`, `generation_jobs`, `sync_jobs`, `notification_push`, `notification_email`, `analytics_events`, `ai_pipeline`, `workflow_trigger`, `settlement_import`, `trend_crawl`, `ai_credit`).
 - Pollers MUST publish to the stored stream name directly; they MUST NOT derive queue choice from `event_type` ad hoc at publish time.
 
 ---
@@ -196,12 +199,12 @@ pub struct CircuitBreaker {
 
 | Job | Schedule | Queue | Description |
 |---|---|---|---|
-| Morning Brief | `0 30 6 * * *` (6:30 AM) | notification | Generate + deliver briefs |
+| Morning Brief | `0 30 6 * * *` (6:30 AM) | notification_push | Generate + deliver briefs |
 | Platform Fee Sync | `0 0 2 * * *` (2:00 AM) | sync_jobs | Crawl fee databases |
 | Health Score | `0 0 * * * *` (hourly) | sync_jobs | Poll platform APIs |
 | Stale Data Check | `0 */15 * * * *` (15min) | analytics_events | Check sync freshness |
 | Achievement Check | Event-driven | workflow_trigger | On content/commerce events |
-| Credit Reset | `0 0 0 1 * *` (1st of month) | settlement_import | Monthly credit allocation |
+| Credit Reset | `0 0 0 1 * *` (1st of month) | ai_credit | Monthly credit allocation |
 | DLQ Cleanup | `0 0 3 * * *` (3:00 AM) | — | Auto-discard old DLQ items |
 | Outbox Cleanup | `0 0 4 * * *` (4:00 AM) | — | Delete published outbox > 7d |
 

@@ -55,6 +55,20 @@ Every module must pass 5 acceptance paths:
 - Broken: Generation stuck → cancel + retry + DLQ
 - Audit: Credit deduction traced per generation
 
+### M08 Continuity OS
+- Happy: Create character → attach voice → generate with continuity → asset matches character/brand spec
+- Degraded: Primary voice provider down → fallback voice used, quality warning shown
+- Missing: Character pack incomplete (no voice) → generation blocked with specific missing-field message
+- Broken: Drift detection finds high divergence → asset flagged, re-generation offered
+- Audit: Digital Twin consent verification → consent record logged, EU AI Act metadata attached
+
+### M09 Asset Derivatives
+- Happy: Generate → derive clips/thumbnails/text → all derivatives linked to parent with lineage
+- Degraded: Batch derivative (100+ items) partial failure → successful items complete, failures queued for retry
+- Missing: Source asset deleted (soft) → derivatives show orphan warning, cannot promote
+- Broken: Lineage chain broken (parent missing) → block packaging transition per RULE-M09-001
+- Audit: Derivative promotion to standalone asset → lineage preserved, new asset_id generated
+
 ### M10-M11 Publish
 - Happy: Package QA → schedule → publish → success
 - Degraded: Platform API slow → retry with backoff
@@ -75,6 +89,20 @@ Every module must pass 5 acceptance paths:
 - Missing: No products → import wizard
 - Broken: Order sync fails → DLQ + manual import CSV option
 - Audit: Order lifecycle fully traced
+
+### M17 Live Commerce War Room
+- Happy: Plan → Go Live → Pin offers → End → Post-live proof document generated with revenue data
+- Degraded: WebSocket reconnect during live session → auto-reconnect <3s, no data loss
+- Missing: No product pinned during session → summary generated with content-only metrics
+- Broken: Platform stream disconnect → session paused, reconnect attempted, manual fallback offered
+- Audit: Highlight marked during session → highlight timestamp + clip marked for M09 derivatives
+
+### M18 Seeding CRM
+- Happy: Create sample request → ship → track → log outcome → cost recorded to M19, proof generated
+- Degraded: Shipping API unavailable → manual tracking fallback, status updated manually
+- Missing: Outcome not logged within SLA → follow-up task auto-created per RULE-M18-005
+- Broken: Duplicate sample request for same product+creator → dedup detection, merge or reject
+- Audit: Sample cost exceeds budget threshold → alert to workspace owner, approval required
 
 ### M19 Profit OS
 - Happy: Revenue → fees → costs → net profit with high confidence

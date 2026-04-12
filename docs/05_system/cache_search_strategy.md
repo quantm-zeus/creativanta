@@ -60,6 +60,23 @@ purpose: Dragonfly cache strategy, Meilisearch indexes, ClickHouse analytics sch
 | **TTL-based** | Dashboard, summaries | Auto-expire, lazy refresh |
 | **Pub/Sub** | Multi-instance | Dragonfly Pub/Sub broadcast invalidation |
 
+### 1.4 Dragonfly Keyspace Notifications
+
+> Required for credit reservation TTL expiry and circuit breaker state changes.
+
+```bash
+# Enable keyspace notifications in Dragonfly config (dragonfly.conf or docker env)
+# Ex = expired events + keyevent notifications
+notify-keyspace-events "Ex"
+```
+
+| Key Pattern | Event | Handler | Purpose |
+|---|---|---|---|
+| `credits:reservation:{id}` | `expired` | Credit release handler | Release uncommitted credit reservations back to balance on TTL expiry |
+| `circuit:{provider}` | `expired` | Circuit breaker reset | Reset circuit breaker to half-open on cooldown expiry |
+
+**Implementation note**: Dragonfly supports Redis keyspace notifications via `__keyevent@0__:expired` subscription. The credit reservation handler MUST release reserved credits back to the workspace balance when the 30-minute TTL expires without a commit/release call. This prevents credit leaks from failed AI generation jobs.
+
 ---
 
 ## 2. Meilisearch Indexes
@@ -165,7 +182,7 @@ CREATE TABLE ai_usage (
   input_tokens UInt32,
   output_tokens UInt32,
   cost_usd Decimal64(6),
-  credits_used Float32,
+  credits_used Decimal64(3), -- credit units (whole or fractional); Decimal per DB-H-001
   latency_ms UInt32,
   status String,
   created_at DateTime

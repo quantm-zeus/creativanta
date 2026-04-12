@@ -551,7 +551,7 @@ CREATE POLICY tenant_isolation ON asset_briefs
 CREATE TABLE scenes (
   scene_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   script_id UUID NOT NULL REFERENCES scripts(script_id),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   scene_index SMALLINT NOT NULL,
   description TEXT,
   duration_seconds INTEGER,
@@ -568,7 +568,7 @@ CREATE POLICY tenant_isolation ON scenes
 CREATE TABLE shot_lists (
   shot_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   scene_id UUID NOT NULL REFERENCES scenes(scene_id),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   shot_index SMALLINT NOT NULL,
   shot_type VARCHAR(50),
   description TEXT,
@@ -733,7 +733,7 @@ ALTER TABLE generation_jobs ADD CONSTRAINT chk_generation_jobs_status
 ```sql
 CREATE TABLE continuity_violations (
   violation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   asset_id UUID NOT NULL REFERENCES assets(asset_id),
   pack_id UUID REFERENCES continuity_packs(pack_id),
   violation_type VARCHAR(50) NOT NULL, -- visual_drift, voice_drift, brand_drift, style_drift
@@ -799,7 +799,7 @@ ALTER TABLE publish_items ADD CONSTRAINT chk_publish_items_lifecycle_state
 ```sql
 CREATE TABLE publish_jobs (
   publish_job_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   publish_item_id UUID NOT NULL REFERENCES publish_items(publish_item_id),
   dispatch_strategy VARCHAR(30),
   lifecycle_state VARCHAR(30) NOT NULL DEFAULT 'created', -- created,queued,dispatched,executing,partially_succeeded,succeeded,failed,cancelled,requires_manual_fallback
@@ -826,7 +826,7 @@ ALTER TABLE publish_jobs ADD CONSTRAINT chk_publish_jobs_lifecycle_state
 ```sql
 CREATE TABLE publish_logs (
   publish_log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   publish_job_id UUID NOT NULL REFERENCES publish_jobs(publish_job_id),
   publish_item_id UUID NOT NULL REFERENCES publish_items(publish_item_id),
   attempted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -891,7 +891,7 @@ CREATE TABLE threads (
   owner_user_id UUID REFERENCES users(user_id),
   intent VARCHAR(50), -- purchase, complaint, question, praise, spam, collaboration, sample_request
   priority VARCHAR(10) NOT NULL DEFAULT 'normal', -- urgent,high,normal,low
-  status VARCHAR(30) NOT NULL DEFAULT 'new', -- new,triaged,active,waiting_on_user,waiting_on_team,converted_to_task,resolved,archived
+  status VARCHAR(30) NOT NULL DEFAULT 'new', -- new,triaged,active,waiting_on_user,waiting_on_team,snoozed,stale,converted_to_task,resolved,archived
   next_action TEXT,
   sla_due_at TIMESTAMPTZ,
   related_object_refs JSONB DEFAULT '[]', -- [{type, id}]
@@ -911,14 +911,14 @@ ALTER TABLE threads FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON threads
   USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ALTER TABLE threads ADD CONSTRAINT chk_threads_status
-  CHECK (status IN ('new', 'triaged', 'active', 'waiting_on_user', 'waiting_on_team', 'converted_to_task', 'resolved', 'archived'));
+  CHECK (status IN ('new', 'triaged', 'active', 'waiting_on_user', 'waiting_on_team', 'snoozed', 'stale', 'converted_to_task', 'resolved', 'archived'));
 ```
 
 ### 9.3 messages
 ```sql
 CREATE TABLE messages (
   message_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   thread_id UUID NOT NULL REFERENCES threads(thread_id),
   subtype VARCHAR(20) NOT NULL, -- comment, dm, inquiry, reply, system
   source_platform VARCHAR(50),
@@ -944,7 +944,7 @@ CREATE POLICY tenant_isolation ON messages
 ```sql
 CREATE TABLE follow_up_tasks (
   task_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   source_thread_id UUID REFERENCES threads(thread_id),
   source_object_type VARCHAR(50),
   source_object_id UUID,
@@ -981,9 +981,9 @@ CREATE TABLE products (
   title VARCHAR(500) NOT NULL,
   description TEXT,
   category VARCHAR(100),
-  base_price DECIMAL(15,2),
+  base_price NUMERIC(18,6),
   currency VARCHAR(5) DEFAULT 'VND',
-  cogs DECIMAL(15,2), -- cost of goods sold
+  cogs NUMERIC(18,6), -- cost of goods sold
   catalog_status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, active, archived, discontinued
   inventory_enabled BOOLEAN DEFAULT false,
   external_refs JSONB DEFAULT '[]', -- [{platform, external_id, url}]
@@ -1040,7 +1040,7 @@ CREATE TABLE offers (
   product_id UUID REFERENCES products(product_id),
   product_less_declaration VARCHAR(50), -- if no product: digital, community, service
   title VARCHAR(500) NOT NULL,
-  pricing_value DECIMAL(15,2),
+  pricing_value NUMERIC(18,6),
   pricing_currency VARCHAR(5) DEFAULT 'VND',
   pricing_logic JSONB DEFAULT '{}',
   cta_text VARCHAR(100),
@@ -1073,7 +1073,7 @@ CREATE TABLE orders (
   source_platform VARCHAR(50),
   external_order_id VARCHAR(255),
   lifecycle_state VARCHAR(20) NOT NULL DEFAULT 'created', -- created,confirmed,fulfilled,completed,refunded,partially_refunded,returned,cancelled
-  amount DECIMAL(15,2) NOT NULL,
+  amount NUMERIC(18,6) NOT NULL,
   currency VARCHAR(5) NOT NULL DEFAULT 'VND',
   product_id UUID REFERENCES products(product_id),
   offer_id UUID REFERENCES offers(offer_id),
@@ -1120,13 +1120,13 @@ CREATE TABLE affiliate_links (
   original_url TEXT NOT NULL,
   tracked_url TEXT NOT NULL,
   short_code VARCHAR(50),
-  commission_rate DECIMAL(5,2),
+  commission_rate NUMERIC(5,2),
   lifecycle_state VARCHAR(20) NOT NULL DEFAULT 'active', -- draft,active,paused,revoked,expired
   last_health_check_at TIMESTAMPTZ,
   health_status VARCHAR(20) DEFAULT 'healthy', -- healthy, broken, expired, product_unavailable
   click_count INTEGER DEFAULT 0,
   conversion_count INTEGER DEFAULT 0,
-  revenue_attributed DECIMAL(15,2) DEFAULT 0,
+  revenue_attributed NUMERIC(18,6) DEFAULT 0,
   expires_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -1147,12 +1147,12 @@ CREATE TABLE affiliate_commissions (
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   affiliate_link_id UUID NOT NULL REFERENCES affiliate_links(affiliate_link_id),
   order_id UUID NOT NULL REFERENCES orders(order_id),
-  commission_amount DECIMAL(15,2) NOT NULL,
+  commission_amount NUMERIC(18,6) NOT NULL,
   currency VARCHAR(5) NOT NULL DEFAULT 'VND',
   status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, confirmed, clawed_back, paid_out
   hold_until TIMESTAMPTZ NOT NULL, -- 15 days after order delivery (per BIZ-012)
   clawback_reason VARCHAR(50), -- refund, partial_refund, fraud
-  clawback_amount DECIMAL(15,2),
+  clawback_amount NUMERIC(18,6),
   payout_id UUID, -- references payout batch when paid
   confirmed_at TIMESTAMPTZ,
   clawed_back_at TIMESTAMPTZ,
@@ -1181,7 +1181,7 @@ CREATE TABLE campaigns (
   status VARCHAR(20) NOT NULL DEFAULT 'planned', -- planned,ready,live,paused,completed,cancelled
   start_date DATE,
   end_date DATE,
-  budget DECIMAL(15,2),
+  budget NUMERIC(18,6),
   budget_currency VARCHAR(5) DEFAULT 'VND',
   related_product_ids UUID[] DEFAULT '{}',
   related_offer_ids UUID[] DEFAULT '{}',
@@ -1206,12 +1206,12 @@ ALTER TABLE campaigns ADD CONSTRAINT chk_campaigns_status
 ```sql
 CREATE TABLE settlements (
   settlement_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   source_class source_class NOT NULL DEFAULT 'imported',
   source_platform VARCHAR(50),
   external_settlement_id VARCHAR(255),
-  gross_amount DECIMAL(15,2) NOT NULL,
-  net_amount DECIMAL(15,2) NOT NULL,
+  gross_amount NUMERIC(18,6) NOT NULL,
+  net_amount NUMERIC(18,6) NOT NULL,
   fees JSONB DEFAULT '{}', -- {platform_fee, transaction_fee, service_fee}
   deductions JSONB DEFAULT '{}',
   currency VARCHAR(5) NOT NULL DEFAULT 'VND',
@@ -1235,9 +1235,9 @@ ALTER TABLE settlements ADD CONSTRAINT chk_settlements_state
 ```sql
 CREATE TABLE cost_items (
   cost_item_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   cost_type VARCHAR(50) NOT NULL, -- platform_fee, shipping, ads_spend, ai_credits, commission, service_tool, cogs, other
-  amount DECIMAL(15,2) NOT NULL,
+  amount NUMERIC(18,6) NOT NULL,
   currency VARCHAR(5) NOT NULL DEFAULT 'VND',
   related_scope_type VARCHAR(50), -- workspace, product, campaign, order, asset
   related_scope_id UUID,
@@ -1263,22 +1263,22 @@ CREATE POLICY tenant_isolation ON cost_items
 ```sql
 CREATE TABLE profit_snapshots (
   snapshot_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   scope_type VARCHAR(30) NOT NULL, -- workspace, product, platform, campaign, content, period
   scope_id UUID,
   period_start DATE NOT NULL,
   period_end DATE NOT NULL,
-  gross_revenue DECIMAL(15,2) DEFAULT 0,
-  platform_fees DECIMAL(15,2) DEFAULT 0,
-  shipping_costs DECIMAL(15,2) DEFAULT 0,
-  affiliate_commissions DECIMAL(15,2) DEFAULT 0,
-  refund_deductions DECIMAL(15,2) DEFAULT 0,
-  cogs DECIMAL(15,2) DEFAULT 0,
-  ads_spend DECIMAL(15,2) DEFAULT 0,
-  ai_credit_costs DECIMAL(15,2) DEFAULT 0,
-  other_costs DECIMAL(15,2) DEFAULT 0,
-  net_profit DECIMAL(15,2) DEFAULT 0,
-  margin_pct DECIMAL(5,2),
+  gross_revenue NUMERIC(18,6) DEFAULT 0,
+  platform_fees NUMERIC(18,6) DEFAULT 0,
+  shipping_costs NUMERIC(18,6) DEFAULT 0,
+  affiliate_commissions NUMERIC(18,6) DEFAULT 0,
+  refund_deductions NUMERIC(18,6) DEFAULT 0,
+  cogs NUMERIC(18,6) DEFAULT 0,
+  ads_spend NUMERIC(18,6) DEFAULT 0,
+  ai_credit_costs NUMERIC(18,6) DEFAULT 0,
+  other_costs NUMERIC(18,6) DEFAULT 0,
+  net_profit NUMERIC(18,6) DEFAULT 0,
+  margin_pct NUMERIC(5,2),
   source_class_mix JSONB DEFAULT '{}',
   confidence confidence_band DEFAULT 'medium',
   freshness_at TIMESTAMPTZ DEFAULT NOW(),
@@ -1298,7 +1298,7 @@ CREATE POLICY tenant_isolation ON profit_snapshots
 ```sql
 CREATE TABLE evidence_objects (
   evidence_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   evidence_type VARCHAR(50) NOT NULL, -- screenshot, api_response, receipt, report, platform_data
   source_provenance VARCHAR(100),
   content_hash VARCHAR(128), -- SHA-512 immutable hash
@@ -1320,7 +1320,7 @@ CREATE POLICY tenant_isolation ON evidence_objects
 ```sql
 CREATE TABLE proof_bundles (
   proof_bundle_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   claim_scope VARCHAR(100) NOT NULL,
   claim_summary TEXT NOT NULL,
   supporting_evidence_ids UUID[] NOT NULL DEFAULT '{}',
@@ -1346,7 +1346,7 @@ CREATE POLICY tenant_isolation ON proof_bundles
 ```sql
 CREATE TABLE live_sessions (
   session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   title VARCHAR(500) NOT NULL,
   platform VARCHAR(50),
   connected_account_id UUID REFERENCES connected_accounts(connected_account_id),
@@ -1373,7 +1373,7 @@ ALTER TABLE live_sessions ADD CONSTRAINT chk_live_sessions_status
 ```sql
 CREATE TABLE workflows (
   workflow_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   title VARCHAR(500) NOT NULL,
   workflow_type VARCHAR(30) NOT NULL DEFAULT 'custom', -- custom, recipe_installed, agent
   trigger_config JSONB NOT NULL, -- see §25.4 TriggerConfig
@@ -1401,7 +1401,7 @@ ALTER TABLE workflows ADD CONSTRAINT chk_workflows_status
 ```sql
 CREATE TABLE workflow_runs (
   run_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   workflow_id UUID NOT NULL REFERENCES workflows(workflow_id),
   trigger_event JSONB NOT NULL,
   status VARCHAR(30) NOT NULL DEFAULT 'queued', -- queued,running,waiting_approval,waiting_external_condition,succeeded,partially_succeeded,failed,cancelled,requires_manual_intervention
@@ -1431,7 +1431,7 @@ ALTER TABLE workflow_runs ADD CONSTRAINT chk_workflow_runs_status
 ```sql
 CREATE TABLE agent_runs (
   agent_run_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   recipe_id UUID REFERENCES recipe_templates(recipe_id),
   workflow_id UUID REFERENCES workflows(workflow_id),
   plan_summary TEXT NOT NULL,
@@ -1469,7 +1469,7 @@ ALTER TABLE agent_runs ADD CONSTRAINT chk_agent_runs_current_state
 ```sql
 CREATE TABLE workflow_run_steps (
   step_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   run_id UUID NOT NULL REFERENCES workflow_runs(run_id),
   node_id VARCHAR(100) NOT NULL,
   node_type VARCHAR(30) NOT NULL, -- trigger, condition, transform, action, approval, wait, fallback, diagnostics, handoff, terminal
@@ -1500,7 +1500,7 @@ ALTER TABLE workflow_run_steps ADD CONSTRAINT chk_workflow_run_steps_status
 ```sql
 CREATE TABLE agent_run_steps (
   agent_step_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   agent_run_id UUID NOT NULL REFERENCES agent_runs(agent_run_id),
   step_order SMALLINT NOT NULL,
   phase VARCHAR(30) NOT NULL, -- planning, awaiting_approval, executing, waiting_context, completed
@@ -1532,7 +1532,7 @@ ALTER TABLE agent_run_steps ADD CONSTRAINT chk_agent_run_steps_status
 ```sql
 CREATE TABLE agent_outputs (
   output_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   agent_run_id UUID NOT NULL REFERENCES agent_runs(agent_run_id),
   output_type VARCHAR(50) NOT NULL, -- text, asset, dataset, workflow_patch, recommendation, report
   title VARCHAR(255) NOT NULL,
@@ -1563,10 +1563,10 @@ ALTER TABLE agent_outputs ADD CONSTRAINT chk_agent_outputs_approval_state
 ```sql
 CREATE TABLE billing_events (
   billing_event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   event_type VARCHAR(50) NOT NULL, -- subscription_created, payment_succeeded, payment_failed, credits_deducted, credits_added, refund
   stripe_event_id VARCHAR(255),
-  amount DECIMAL(15,2),
+  amount NUMERIC(18,6),
   currency VARCHAR(5),
   subscription_tier VARCHAR(20),
   credits_change INTEGER,
@@ -1586,7 +1586,7 @@ CREATE POLICY tenant_isolation ON billing_events
 ```sql
 CREATE TABLE ai_credit_transactions (
   transaction_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   transaction_type VARCHAR(30) NOT NULL, -- deduction, monthly_allocation, top_up, promotional, achievement_reward, referral_bonus, overage_charge, refund_system_failure, refund_no_output, refund_partial_output, refund_quality_dispute
   credits INTEGER NOT NULL, -- positive = add, negative = deduct
   balance_after INTEGER NOT NULL,
@@ -1665,7 +1665,7 @@ CREATE POLICY tenant_isolation ON diagnostics_records
 ```sql
 CREATE TABLE notifications (
   notification_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   user_id UUID NOT NULL REFERENCES users(user_id),
   priority VARCHAR(10) NOT NULL DEFAULT 'normal', -- urgent, high, normal, low
   channel VARCHAR(20) NOT NULL DEFAULT 'in_app', -- in_app, push, email
@@ -1704,6 +1704,7 @@ CREATE TABLE creator_progress (
   creator_score REAL DEFAULT 0, -- 0-100 non-financial score
   total_achievements INTEGER DEFAULT 0,
   season_id VARCHAR(50),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ALTER TABLE creator_progress ENABLE ROW LEVEL SECURITY;
@@ -1730,7 +1731,7 @@ CREATE TABLE achievement_definitions (
 
 CREATE TABLE achievement_records (
   record_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   achievement_id UUID NOT NULL REFERENCES achievement_definitions(achievement_id),
   earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   credits_awarded INTEGER NOT NULL DEFAULT 0,
@@ -1756,7 +1757,7 @@ CREATE POLICY tenant_isolation ON achievement_records
 -- Platform health metrics
 CREATE TABLE platform_health_metrics (
   time TIMESTAMPTZ NOT NULL,
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   platform VARCHAR(50) NOT NULL,
   metric_name VARCHAR(100) NOT NULL,
   metric_value REAL NOT NULL, -- non-financial health metric
@@ -1771,13 +1772,13 @@ SELECT create_hypertable('platform_health_metrics', 'time');
 -- API call logs (for cost tracking)
 CREATE TABLE api_call_logs (
   time TIMESTAMPTZ NOT NULL,
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   provider VARCHAR(50) NOT NULL,
   model VARCHAR(100),
   operation VARCHAR(50) NOT NULL,
   input_tokens INTEGER,
   output_tokens INTEGER,
-  cost_usd DECIMAL(10,6),
+  cost_usd NUMERIC(18,6),
   latency_ms INTEGER,
   status VARCHAR(20) NOT NULL
 );
@@ -1825,7 +1826,7 @@ CREATE POLICY tenant_isolation ON link_in_bio_pages
 CREATE TABLE link_items (
   link_item_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   page_id UUID NOT NULL REFERENCES link_in_bio_pages(page_id),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   link_type VARCHAR(20) NOT NULL, -- url, product, video, social, download, email
   label VARCHAR(255) NOT NULL,
   url TEXT NOT NULL,
@@ -1886,13 +1887,14 @@ CREATE TABLE rate_card_items (
   item_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   rate_card_id UUID NOT NULL REFERENCES rate_cards(rate_card_id),
   service_type VARCHAR(50) NOT NULL,
-  price_min DECIMAL(15,2),
-  price_max DECIMAL(15,2),
-  ai_suggested_price DECIMAL(15,2),
+  price_min NUMERIC(18,6),
+  price_max NUMERIC(18,6),
+  ai_suggested_price NUMERIC(18,6),
   description TEXT,
   delivery_time VARCHAR(50),
   position SMALLINT DEFAULT 0,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
 
@@ -1904,7 +1906,7 @@ CREATE TABLE brand_deals (
   brand_name VARCHAR(255) NOT NULL,
   contact_email VARCHAR(255),
   deal_type VARCHAR(30) NOT NULL, -- sponsored_post, product_review, ambassador, affiliate, custom
-  value DECIMAL(15,2),
+  value NUMERIC(18,6),
   currency VARCHAR(5) DEFAULT 'VND',
   status VARCHAR(20) NOT NULL DEFAULT 'negotiating', -- negotiating,agreed,in_progress,delivered,paid,completed,cancelled
   deadline DATE,
@@ -2024,7 +2026,7 @@ CREATE TABLE fraud_cases (
   implicated_user_ids UUID[] DEFAULT '{}',
   implicated_workspace_ids UUID[] DEFAULT '{}',
   evidence JSONB DEFAULT '{}',
-  financial_impact DECIMAL(15,2),
+  financial_impact NUMERIC(18,6),
   assigned_to UUID REFERENCES internal_admins(admin_id),
   resolution TEXT,
   resolution_action VARCHAR(30), -- no_action, warning, credit_revoked, account_suspended, account_banned, legal_referral
@@ -2295,7 +2297,7 @@ CREATE INDEX idx_admin_sessions_active ON admin_sessions(expired_at) WHERE expir
 ```sql
 CREATE TABLE approval_requests (
   request_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   request_type VARCHAR(50) NOT NULL, -- script_approval, publish_approval, workflow_approval, asset_approval
   object_type VARCHAR(50) NOT NULL,
   object_id UUID NOT NULL,
@@ -2321,7 +2323,7 @@ CREATE POLICY tenant_isolation ON approval_requests
 ```sql
 CREATE TABLE capability_snapshots (
   snapshot_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   platform VARCHAR(50) NOT NULL,
   capabilities JSONB NOT NULL, -- {action: capability_state}
   api_version VARCHAR(20),
@@ -2760,7 +2762,7 @@ CREATE UNIQUE INDEX idx_rr_referee ON referral_records(referee_user_id);
 ```sql
 CREATE TABLE file_uploads (
   upload_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   uploader_user_id UUID NOT NULL REFERENCES users(user_id),
   file_name VARCHAR(500) NOT NULL,
   file_size_bytes BIGINT NOT NULL,
@@ -2783,7 +2785,7 @@ CREATE POLICY tenant_isolation ON file_uploads
 ```sql
 CREATE TABLE export_jobs (
   export_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   user_id UUID NOT NULL REFERENCES users(user_id),
   export_type VARCHAR(50) NOT NULL, -- data_export, tax_report, gdpr_export, analytics_export, media_export
   format VARCHAR(20) NOT NULL DEFAULT 'csv', -- csv, xlsx, pdf, json, zip
@@ -2946,11 +2948,11 @@ CREATE POLICY tenant_isolation ON payment_methods
 ```sql
 CREATE TABLE coupons (
   coupon_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   code VARCHAR(50) NOT NULL,
   coupon_type VARCHAR(20) NOT NULL, -- percentage, fixed_amount, free_shipping
-  discount_value DECIMAL(15,2) NOT NULL,
-  min_order_amount DECIMAL(15,2),
+  discount_value NUMERIC(18,6) NOT NULL,
+  min_order_amount NUMERIC(18,6),
   max_uses INTEGER,
   current_uses INTEGER DEFAULT 0,
   lifecycle_state VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, active, paused, expired, retired, revoked (Note: 'revoked' is a downstream extension of Freeze §26.3 for fraud/policy enforcement cases)
@@ -3001,7 +3003,7 @@ CREATE TABLE membership_plans (
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   title VARCHAR(255) NOT NULL,
   description TEXT,
-  price DECIMAL(15,2) NOT NULL,
+  price NUMERIC(18,6) NOT NULL,
   currency VARCHAR(5) DEFAULT 'VND',
   billing_interval VARCHAR(10) NOT NULL DEFAULT 'monthly',
   benefits JSONB DEFAULT '[]', -- [{type, description}]
@@ -3021,10 +3023,10 @@ CREATE POLICY tenant_isolation ON membership_plans
 ```sql
 CREATE TABLE refunds (
   refund_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   order_id UUID NOT NULL REFERENCES orders(order_id),
   refund_type VARCHAR(20) NOT NULL, -- full, partial, credit
-  amount DECIMAL(15,2) NOT NULL,
+  amount NUMERIC(18,6) NOT NULL,
   currency VARCHAR(5) NOT NULL DEFAULT 'VND',
   reason TEXT NOT NULL,
   lifecycle_state VARCHAR(20) NOT NULL DEFAULT 'requested', -- requested, approved, rejected, processing, completed, failed, cancelled (aligned to Freeze §27.2)
@@ -3050,7 +3052,7 @@ ALTER TABLE refunds ADD CONSTRAINT chk_refunds_lifecycle_state
 ```sql
 CREATE TABLE returns (
   return_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   order_id UUID NOT NULL REFERENCES orders(order_id),
   refund_id UUID REFERENCES refunds(refund_id),
   return_type VARCHAR(20) NOT NULL, -- full, partial
@@ -3075,11 +3077,11 @@ ALTER TABLE returns ADD CONSTRAINT chk_returns_lifecycle_state
 ```sql
 CREATE TABLE bundles (
   bundle_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   title VARCHAR(255) NOT NULL,
   offer_id UUID REFERENCES offers(offer_id),
-  bundle_price DECIMAL(15,2),
-  discount_pct DECIMAL(5,2),
+  bundle_price NUMERIC(18,6),
+  discount_pct NUMERIC(5,2),
   status VARCHAR(20) NOT NULL DEFAULT 'draft',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
@@ -3102,17 +3104,18 @@ CREATE TABLE bundle_items (
 ```sql
 CREATE TABLE price_rules (
   price_rule_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   rule_type VARCHAR(30) NOT NULL, -- volume_discount, tiered, time_limited, customer_segment
   conditions JSONB NOT NULL, -- {min_qty, date_range, segment}
   adjustment_type VARCHAR(20) NOT NULL, -- percentage, fixed
-  adjustment_value DECIMAL(15,2) NOT NULL,
+  adjustment_value NUMERIC(18,6) NOT NULL,
   related_product_ids UUID[] DEFAULT '{}',
   priority SMALLINT DEFAULT 0,
   status VARCHAR(20) NOT NULL DEFAULT 'active',
   valid_from TIMESTAMPTZ,
   valid_until TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ALTER TABLE price_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE price_rules FORCE ROW LEVEL SECURITY;
@@ -3125,14 +3128,15 @@ CREATE POLICY tenant_isolation ON price_rules
 CREATE TABLE live_segments (
   segment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id UUID NOT NULL REFERENCES live_sessions(session_id),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   segment_type VARCHAR(30) NOT NULL, -- product_demo, qa, giveaway, flash_sale, intro, outro
   start_offset_seconds INTEGER NOT NULL,
   end_offset_seconds INTEGER,
   title VARCHAR(255),
   pinned_offer_id UUID REFERENCES offers(offer_id),
   notes TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_ls_session ON live_segments(session_id);
 ALTER TABLE live_segments ENABLE ROW LEVEL SECURITY;
@@ -3146,7 +3150,7 @@ CREATE POLICY tenant_isolation ON live_segments
 CREATE TABLE cue_cards (
   cue_card_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id UUID NOT NULL REFERENCES live_sessions(session_id),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   segment_id UUID REFERENCES live_segments(segment_id),
   cue_type VARCHAR(30) NOT NULL, -- product_highlight, talking_point, price_drop, giveaway, qa_prompt, cta, transition
   title VARCHAR(255) NOT NULL,
@@ -3156,7 +3160,8 @@ CREATE TABLE cue_cards (
   display_order SMALLINT NOT NULL DEFAULT 0,
   triggered_at TIMESTAMPTZ, -- when the cue was actually shown/used
   status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, active, used, skipped
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_cc_session ON cue_cards(session_id);
 CREATE INDEX idx_cc_segment ON cue_cards(segment_id);
@@ -3171,7 +3176,7 @@ CREATE POLICY tenant_isolation ON cue_cards
 CREATE TABLE highlights (
   highlight_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id UUID NOT NULL REFERENCES live_sessions(session_id),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   title VARCHAR(255),
   start_offset_seconds INTEGER NOT NULL,
   end_offset_seconds INTEGER NOT NULL,
@@ -3180,7 +3185,8 @@ CREATE TABLE highlights (
   asset_id UUID REFERENCES assets(asset_id), -- linked extracted clip
   engagement_score REAL, -- 0-100 non-financial composite score
   notes TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_hl_session ON highlights(session_id);
 ALTER TABLE highlights ENABLE ROW LEVEL SECURITY;
@@ -3193,7 +3199,7 @@ CREATE POLICY tenant_isolation ON highlights
 ```sql
 CREATE TABLE channel_posts (
   channel_post_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   publish_item_id UUID REFERENCES publish_items(publish_item_id),
   connected_account_id UUID REFERENCES connected_accounts(connected_account_id),
   external_post_id VARCHAR(255),
@@ -3219,7 +3225,7 @@ CREATE POLICY tenant_isolation ON channel_posts
 ```sql
 CREATE TABLE reconciliation_records (
   record_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   scope_type VARCHAR(50) NOT NULL, -- order_batch, settlement_batch, affiliate_period, campaign
   scope_description TEXT,
   related_order_ids UUID[] DEFAULT '{}',
@@ -3243,17 +3249,17 @@ CREATE POLICY tenant_isolation ON reconciliation_records
   USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
-### 19.9F skus (M13 — Tier C, Freeze §15.2)
+### 19.9F skus (M13 — Tier C, Freeze §15.2) — ⚠️ DEPRECATED: use `product_skus` (§10.1B)
 ```sql
 CREATE TABLE skus (
   sku_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   product_id UUID NOT NULL REFERENCES products(product_id),
   sku_code VARCHAR(100) NOT NULL,
   variant_attributes JSONB DEFAULT '{}', -- {color: "Red", size: "M"}
   barcode VARCHAR(50),
-  price_override DECIMAL(15,2), -- NULL = use product base_price
-  cogs_override DECIMAL(15,2), -- NULL = use product cogs
+  price_override NUMERIC(18,6), -- NULL = use product base_price
+  cogs_override NUMERIC(18,6), -- NULL = use product cogs
   weight_grams INTEGER,
   inventory_enabled BOOLEAN DEFAULT true,
   stock_quantity INTEGER NOT NULL DEFAULT 0,
@@ -3276,7 +3282,7 @@ CREATE POLICY tenant_isolation ON skus
 ```sql
 CREATE TABLE inventory_locations (
   location_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   name VARCHAR(255) NOT NULL,
   location_type VARCHAR(30) NOT NULL, -- warehouse, store, supplier, in_transit
   address JSONB DEFAULT '{}',
@@ -3294,7 +3300,7 @@ CREATE POLICY tenant_isolation ON inventory_locations
 ```sql
 CREATE TABLE stock_movements (
   movement_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   sku_id UUID NOT NULL REFERENCES skus(sku_id),
   location_id UUID REFERENCES inventory_locations(location_id),
   movement_type VARCHAR(30) NOT NULL, -- purchase, sale, return, adjustment, transfer, damage, platform_sync
@@ -3318,7 +3324,7 @@ CREATE POLICY tenant_isolation ON stock_movements
 ```sql
 CREATE TABLE sample_requests (
   request_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   campaign_id UUID REFERENCES campaigns(campaign_id),
   product_id UUID REFERENCES products(product_id),
   creator_entity_id UUID REFERENCES entities(entity_id),
@@ -3340,7 +3346,7 @@ ALTER TABLE sample_requests ADD CONSTRAINT chk_sample_requests_status
 CREATE TABLE sample_shipments (
   shipment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   request_id UUID NOT NULL REFERENCES sample_requests(request_id),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   tracking_number VARCHAR(100),
   carrier VARCHAR(50),
   shipped_at TIMESTAMPTZ,
@@ -3364,14 +3370,15 @@ CREATE TABLE recipe_templates (
   title VARCHAR(500) NOT NULL,
   description TEXT,
   category VARCHAR(50),
-  author_workspace_id UUID, -- nullable for system recipes
+  workspace_id UUID REFERENCES workspaces(workspace_id), -- nullable for system recipes
+  author_workspace_id UUID, -- original author; workspace_id used for RLS
   activepieces_template_id VARCHAR(255),
   parameters JSONB DEFAULT '[]', -- [{name, type, default, required}]
   required_capabilities JSONB DEFAULT '[]',
   install_count INTEGER DEFAULT 0,
   rating_avg REAL DEFAULT 0, -- 0-5 non-financial rating
   review_count INTEGER DEFAULT 0,
-  price DECIMAL(10,2) DEFAULT 0, -- 0 = free
+  price NUMERIC(18,6) DEFAULT 0, -- 0 = free
   status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, review_required, published, deprecated, retired
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -3379,21 +3386,22 @@ CREATE TABLE recipe_templates (
 ALTER TABLE recipe_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipe_templates FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON recipe_templates
-  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid OR workspace_id IS NULL);
 ```
 
 ### 19.12 copilot_sessions
 ```sql
 CREATE TABLE copilot_sessions (
   session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   user_id UUID NOT NULL REFERENCES users(user_id),
   mode VARCHAR(20) NOT NULL, -- creative, analytics, action, video_production, help
   context_scope VARCHAR(50),
   messages JSONB DEFAULT '[]', -- [{role, content, timestamp}]
   total_credits_used INTEGER DEFAULT 0,
   ended_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_cs_workspace ON copilot_sessions(workspace_id);
 CREATE INDEX idx_cs_user ON copilot_sessions(user_id);
@@ -3403,16 +3411,16 @@ CREATE POLICY tenant_isolation ON copilot_sessions
   USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
-### 19.13 commissions
+### 19.13 commissions — ⚠️ DEPRECATED: use `affiliate_commissions` (§10.4B)
 ```sql
 CREATE TABLE commissions (
   commission_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   affiliate_link_id UUID REFERENCES affiliate_links(affiliate_link_id),
   order_id UUID REFERENCES orders(order_id),
-  amount DECIMAL(15,2) NOT NULL,
+  amount NUMERIC(18,6) NOT NULL,
   currency VARCHAR(5) DEFAULT 'VND',
-  commission_rate DECIMAL(5,2),
+  commission_rate NUMERIC(5,2),
   status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, confirmed, paid, cancelled
   payout_ref VARCHAR(255),
   calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -3429,10 +3437,10 @@ CREATE POLICY tenant_isolation ON commissions
 ```sql
 CREATE TABLE chargebacks (
   chargeback_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   order_id UUID NOT NULL REFERENCES orders(order_id),
   external_chargeback_id VARCHAR(255),
-  amount DECIMAL(15,2) NOT NULL,
+  amount NUMERIC(18,6) NOT NULL,
   currency VARCHAR(5) DEFAULT 'VND',
   reason VARCHAR(100),
   lifecycle_state VARCHAR(20) NOT NULL DEFAULT 'opened', -- opened, evidence_submitted, won, lost
@@ -3453,11 +3461,11 @@ CREATE POLICY tenant_isolation ON chargebacks
 ```sql
 CREATE TABLE content_attribution_records (
   attribution_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   publish_item_id UUID REFERENCES publish_items(publish_item_id),
   order_id UUID REFERENCES orders(order_id),
   attribution_type VARCHAR(30) NOT NULL, -- direct_click, utm_match, affiliate, organic
-  revenue_attributed DECIMAL(15,2),
+  revenue_attributed NUMERIC(18,6),
   source_class source_class DEFAULT 'inferred',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -3495,8 +3503,8 @@ CREATE TABLE platform_fee_schedules (
   region VARCHAR(50) NOT NULL DEFAULT 'VN', -- VN, TH, ID, SG, PH, MY, US, etc.
   category VARCHAR(100), -- NULL = platform-wide default
   fee_type VARCHAR(50) NOT NULL, -- commission, transaction, payment_processing, shipping_subsidy, service
-  fee_pct DECIMAL(5,4), -- e.g., 0.0500 = 5%
-  fee_fixed DECIMAL(10,2), -- fixed fee amount (nullable)
+  fee_pct NUMERIC(5,4), -- e.g., 0.0500 = 5%
+  fee_fixed NUMERIC(18,6), -- fixed fee amount (nullable)
   fee_currency VARCHAR(5) DEFAULT 'VND',
   effective_from DATE NOT NULL,
   effective_until DATE, -- NULL = current
@@ -3523,7 +3531,7 @@ CREATE INDEX idx_pfs_effective ON platform_fee_schedules(effective_from, effecti
 ```sql
 CREATE TABLE video_edit_jobs (
   job_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   mode VARCHAR(30) NOT NULL, -- quick_edit, clip_factory, multi_merge, remix, product_showcase, image_to_video, link_to_video, translation, video_agent
   source_asset_ids UUID[] DEFAULT '{}', -- input assets
   output_asset_ids UUID[] DEFAULT '{}', -- produced assets
@@ -3559,7 +3567,7 @@ ALTER TABLE video_edit_jobs ADD CONSTRAINT chk_video_edit_jobs_status
 ```sql
 CREATE TABLE remix_blueprints (
   blueprint_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   reference_asset_id UUID NOT NULL REFERENCES assets(asset_id), -- source video analyzed
   output_asset_id UUID REFERENCES assets(asset_id), -- generated remix
   video_edit_job_id UUID REFERENCES video_edit_jobs(job_id),
@@ -3584,7 +3592,7 @@ CREATE POLICY tenant_isolation ON remix_blueprints
 ```sql
 CREATE TABLE clip_collections (
   collection_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   source_asset_id UUID NOT NULL REFERENCES assets(asset_id),
   video_edit_job_id UUID REFERENCES video_edit_jobs(job_id),
   total_clips INTEGER NOT NULL DEFAULT 0,
@@ -3606,7 +3614,7 @@ CREATE POLICY tenant_isolation ON clip_collections
 ```sql
 CREATE TABLE product_showcase_jobs (
   showcase_job_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   video_edit_job_id UUID REFERENCES video_edit_jobs(job_id),
   product_id UUID REFERENCES products(product_id),
   style VARCHAR(30) NOT NULL, -- spin_360, tabletop, flip_reveal, virtual_tryon, lifestyle, unboxing, before_after, review_style
@@ -3633,7 +3641,7 @@ CREATE POLICY tenant_isolation ON product_showcase_jobs
 ```sql
 CREATE TABLE link_to_video_jobs (
   ltv_job_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   video_edit_job_id UUID REFERENCES video_edit_jobs(job_id),
   source_url TEXT NOT NULL,
   platform_detected VARCHAR(30), -- shopee, lazada, tiktok_shop, amazon, shopify, generic
@@ -3659,7 +3667,7 @@ CREATE POLICY tenant_isolation ON link_to_video_jobs
 ```sql
 CREATE TABLE translation_jobs (
   translation_job_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   video_edit_job_id UUID REFERENCES video_edit_jobs(job_id),
   source_asset_id UUID NOT NULL REFERENCES assets(asset_id),
   target_languages VARCHAR(10)[] NOT NULL, -- e.g., {'en', 'th', 'id', 'ja'}
@@ -3684,7 +3692,7 @@ CREATE POLICY tenant_isolation ON translation_jobs
 ```sql
 CREATE TABLE style_packs (
   style_pack_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   name VARCHAR(255) NOT NULL,
   source_asset_id UUID NOT NULL REFERENCES assets(asset_id), -- video analyzed
   extracted_style JSONB NOT NULL DEFAULT '{}', -- {caption, color_grade, transitions, pacing, text_overlay, audio_mix}
@@ -3707,7 +3715,7 @@ CREATE POLICY tenant_isolation ON style_packs
 ```sql
 CREATE TABLE performance_reports (
   report_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   period VARCHAR(10) NOT NULL, -- daily, weekly, monthly
   period_start DATE NOT NULL,
   period_end DATE NOT NULL,
@@ -3731,7 +3739,7 @@ CREATE POLICY tenant_isolation ON performance_reports
 ```sql
 CREATE TABLE ab_test_experiments (
   experiment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   source_asset_id UUID NOT NULL REFERENCES assets(asset_id),
   variants JSONB NOT NULL DEFAULT '[]', -- [{variant_type, asset_id, publish_item_id, variant_label}]
   metrics_snapshot JSONB DEFAULT '{}', -- per-variant metrics
@@ -3779,7 +3787,7 @@ CREATE TABLE challenge_definitions (
 ```sql
 CREATE TABLE challenge_progress (
   progress_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   challenge_id UUID NOT NULL REFERENCES challenge_definitions(challenge_id),
   current_value INTEGER NOT NULL DEFAULT 0,
   target_value INTEGER NOT NULL,
@@ -3804,7 +3812,7 @@ CREATE POLICY tenant_isolation ON challenge_progress
 ```sql
 CREATE TABLE voice_clone_records (
   voice_clone_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   character_id UUID NOT NULL REFERENCES characters(character_id),
   provider VARCHAR(50) NOT NULL DEFAULT 'elevenlabs', -- elevenlabs, future providers
   provider_voice_id VARCHAR(255), -- external voice ID from provider
@@ -3828,7 +3836,7 @@ CREATE POLICY tenant_isolation ON voice_clone_records
 ```sql
 CREATE TABLE repurpose_jobs (
   repurpose_job_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   source_asset_id UUID NOT NULL REFERENCES assets(asset_id),
   pipeline_config JSONB NOT NULL DEFAULT '{}', -- {auto_clips, text_posts, thumbnails, carousel, blog, audio, captions, auto_schedule}
   output_asset_ids UUID[] DEFAULT '{}',
@@ -3855,7 +3863,7 @@ CREATE POLICY tenant_isolation ON repurpose_jobs
 ```sql
 CREATE TABLE link_health_records (
   health_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   affiliate_link_id UUID NOT NULL REFERENCES affiliate_links(affiliate_link_id),
   http_status INTEGER,
   product_status VARCHAR(30), -- available, out_of_stock, discontinued, price_changed, unknown
@@ -3865,7 +3873,7 @@ CREATE TABLE link_health_records (
   suggested_action TEXT,
   checked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   alert_sent BOOLEAN DEFAULT false,
-  estimated_revenue_impact DECIMAL(15,2), -- daily revenue at risk
+  estimated_revenue_impact NUMERIC(18,6), -- daily revenue at risk
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_lhr_link ON link_health_records(affiliate_link_id);
@@ -3881,7 +3889,7 @@ CREATE POLICY tenant_isolation ON link_health_records
 ```sql
 CREATE TABLE platform_health_scores (
   score_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   platform VARCHAR(50) NOT NULL,
   connected_account_id UUID REFERENCES connected_accounts(connected_account_id),
   overall_score REAL NOT NULL, -- 0-100 non-financial health score
@@ -3930,7 +3938,7 @@ CREATE POLICY tenant_isolation ON home_dashboard_config
 ```sql
 CREATE TABLE monetization_offer_views (
   view_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   offer_id UUID NOT NULL REFERENCES offers(offer_id),
   channel VARCHAR(30) NOT NULL, -- link_in_bio, social_post, email, direct, qr_code
   viewer_ip_hash VARCHAR(64), -- SHA-256 hash for dedup, no PII stored

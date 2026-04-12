@@ -58,9 +58,9 @@ INSERT INTO products (
   product_id, workspace_id, product_type, title, category, base_price, currency, catalog_status
 )
 VALUES
-  ('77777777-7777-7777-7777-777777777701', '22222222-2222-2222-2222-222222222201', 'physical', 'Son MAC Ruby Woo', 'cosmetics', 450000.00, 'VND', 'active'),
-  ('77777777-7777-7777-7777-777777777702', '22222222-2222-2222-2222-222222222201', 'physical', 'Kem chong nang Anessa', 'skincare', 380000.00, 'VND', 'active'),
-  ('77777777-7777-7777-7777-777777777703', '22222222-2222-2222-2222-222222222201', 'physical', 'Phan mat Romand', 'cosmetics', 250000.00, 'VND', 'draft')
+  ('77777777-7777-7777-7777-777777777701', '22222222-2222-2222-2222-222222222201', 'physical', 'Son MAC Ruby Woo', 'cosmetics', 450000.000000, 'VND', 'active'),
+  ('77777777-7777-7777-7777-777777777702', '22222222-2222-2222-2222-222222222201', 'physical', 'Kem chong nang Anessa', 'skincare', 380000.000000, 'VND', 'active'),
+  ('77777777-7777-7777-7777-777777777703', '22222222-2222-2222-2222-222222222201', 'physical', 'Phan mat Romand', 'cosmetics', 250000.000000, 'VND', 'draft')
 ON CONFLICT (product_id) DO NOTHING;
 
 INSERT INTO ai_credit_transactions (
@@ -78,15 +78,15 @@ INSERT INTO profit_snapshots (
   other_costs, net_profit, confidence, currency
 )
 VALUES
-  ('99999999-9999-9999-9999-999999999901', '22222222-2222-2222-2222-222222222201', 'workspace', CURRENT_DATE - INTERVAL '30 days', CURRENT_DATE, 45000000.00, 4500000.00, 1200000.00, 350000.00, 800000.00, 38150000.00, 'medium_high', 'VND')
+  ('99999999-9999-9999-9999-999999999901', '22222222-2222-2222-2222-222222222201', 'workspace', CURRENT_DATE - INTERVAL '30 days', CURRENT_DATE, 45000000.000000, 4500000.000000, 1200000.000000, 350000.000000, 800000.000000, 38150000.000000, 'medium_high', 'VND')
 ON CONFLICT (snapshot_id) DO NOTHING;
 
 INSERT INTO cost_items (
   cost_item_id, workspace_id, cost_type, amount, currency, description, source_class
 )
 VALUES
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', '22222222-2222-2222-2222-222222222201', 'ads_spend', 1200000.00, 'VND', 'Shopee ads week 1', 'official'),
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2', '22222222-2222-2222-2222-222222222201', 'software', 350000.00, 'VND', 'Creative tooling subscription', 'official')
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', '22222222-2222-2222-2222-222222222201', 'ads_spend', 1200000.000000, 'VND', 'Shopee ads week 1', 'official'),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2', '22222222-2222-2222-2222-222222222201', 'software', 350000.000000, 'VND', 'Creative tooling subscription', 'official')
 ON CONFLICT (cost_item_id) DO NOTHING;
 
 COMMIT;

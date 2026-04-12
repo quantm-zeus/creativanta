@@ -81,7 +81,7 @@ Token Expiry Check (background worker, every 5 min):
 
 ---
 
-## 2. OWASP Top 10 (2025) Coverage
+## 2. OWASP Top 10 (2021) Coverage
 
 | # | Vulnerability | Risk | Mitigation |
 |---|---|---|---|

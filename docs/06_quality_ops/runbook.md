@@ -101,7 +101,7 @@ docker images creativanta-api --format "{{.Tag}}" | head -5
 # Rollback to previous tag
 export ROLLBACK_TAG=<previous_sha>
 docker compose down api
-docker compose up -d api --image creativanta-api:$ROLLBACK_TAG
+IMAGE_TAG=$ROLLBACK_TAG docker compose up -d api
 
 # Verify
 curl -f https://app.creativanta.app/health
@@ -174,9 +174,9 @@ After every P0/P1 incident, create a post-mortem within 48 hours:
 
 ---
 
-## 6. Database Recovery Procedures
+## 7. Database Recovery Procedures
 
-### 6.1 Point-in-Time Recovery
+### 7.1 Point-in-Time Recovery
 ```bash
 # Stop application
 docker compose stop api worker
@@ -194,7 +194,7 @@ psql -U postgres -d creativanta -c "SELECT count(*) FROM workspaces;"
 docker compose up -d api worker
 ```
 
-### 6.2 Table-Level Recovery
+### 7.2 Table-Level Recovery
 ```bash
 # Restore single table from backup
 pg_restore -U postgres -d creativanta -t <table_name> /backups/daily/creativanta_YYYYMMDD.dump
@@ -202,9 +202,9 @@ pg_restore -U postgres -d creativanta -t <table_name> /backups/daily/creativanta
 
 ---
 
-## 7. Cache Flush Procedures
+## 8. Cache Flush Procedures
 
-### 7.1 Full Cache Flush (Dragonfly)
+### 8.1 Full Cache Flush (Dragonfly)
 ```bash
 # Connect to Dragonfly
 docker exec -it dragonfly redis-cli
@@ -217,7 +217,7 @@ DEL creativanta:cache:analytics:*
 FLUSHDB
 ```
 
-### 7.2 Meilisearch Index Rebuild
+### 8.2 Meilisearch Index Rebuild
 ```bash
 # Delete and recreate index
 curl -X DELETE http://localhost:7700/indexes/content
@@ -227,9 +227,9 @@ docker exec api creativanta-cli reindex --index content
 
 ---
 
-## 8. Credential Rotation
+## 9. Credential Rotation
 
-### 8.1 Database Password
+### 9.1 Database Password
 ```bash
 # 1. Generate new password
 NEW_PASS=$(openssl rand -base64 32)
@@ -241,7 +241,7 @@ sed -i "s/DATABASE_PASSWORD=.*/DATABASE_PASSWORD=$NEW_PASS/" .env
 docker compose restart api worker
 ```
 
-### 8.2 API Key Rotation (External Providers)
+### 9.2 API Key Rotation (External Providers)
 | Provider | Rotation Location | Impact During Rotation |
 |---|---|---|
 | Clerk | Dashboard → API Keys | 0 downtime (overlapping keys) |
@@ -249,7 +249,7 @@ docker compose restart api worker
 | ElevenLabs | Profile → API Keys | Brief AI gen pause |
 | TikTok/Meta | Developer Portal | OAuth re-auth required |
 
-### 8.3 Internal Secrets
+### 9.3 Internal Secrets
 ```bash
 # Rotate JWT signing key (will invalidate all sessions)
 openssl rand -base64 64 > /secrets/jwt_signing_key
@@ -259,11 +259,11 @@ docker compose restart api
 
 ---
 
-## 9. Disaster Recovery & Backup
+## 10. Disaster Recovery & Backup
 
 > Source: Pricing/Credits/Growth Contract §9B
 
-### 9.1 RPO/RTO Targets
+### 10.1 RPO/RTO Targets
 
 | Data Category | RPO (Recovery Point Objective) | RTO (Recovery Time Objective) | Backup Method |
 |---|---|---|---|
@@ -273,7 +273,7 @@ docker compose restart api
 | **Audit** (audit_events, compliance logs) | 0 (zero data loss) | 1 hour | Synchronous WAL, immutable store |
 | **User data** (profiles, settings, preferences) | 1 hour | 2 hours | Hourly incremental backup |
 
-### 9.2 Backup Strategy
+### 10.2 Backup Strategy
 
 | Backup Type | Frequency | Retention | Storage |
 |---|---|---|---|
@@ -282,13 +282,13 @@ docker compose restart api
 | Full backup | Daily (2:00 AM ICT) | 90 days | R2 (SG + backup region) |
 | Monthly archive | Monthly | 1 year | R2 cold storage (3 regions) |
 
-### 9.3 Immutable Backup Rules
+### 10.3 Immutable Backup Rules
 - Audit event backups: immutable (cannot be deleted or modified by any role)
 - Financial backups: immutable retention for 7 years (legal/tax compliance)
 - All backups encrypted at rest (AES-256)
 - Backup integrity: SHA-256 checksum verified on each write and periodic spot-check
 
-### 9.4 Backup Verification
+### 10.4 Backup Verification
 - **Weekly**: Automated restore test to staging environment
   - Restore latest daily backup
   - Run data integrity checks (row counts, checksum sampling)
@@ -300,7 +300,7 @@ docker compose restart api
   - Measure actual RTO
   - Document lessons learned
 
-### 9.5 Cross-Region Replication
+### 10.5 Cross-Region Replication
 
 ```
 Primary: Singapore (Contabo SG)
@@ -313,7 +313,7 @@ Backup: Vietnam / Japan (future scaling)
 └── Cold storage monthly archives
 ```
 
-### 9.6 Failover Architecture
+### 10.6 Failover Architecture
 
 > Phase 1 (single server): Manual failover with automated backup restore
 > Phase 2 (scaling): Active-Passive warm standby with DNS failover
@@ -333,7 +333,7 @@ Backup: Vietnam / Japan (future scaling)
 4. Health checks confirm new primary
 5. Post-failover: investigate root cause of primary failure
 
-### 9.7 P0 Incident Protocol
+### 10.7 P0 Incident Protocol
 - Status page updated within **15 minutes** of detection
 - Ongoing updates every **30 minutes** until resolution
 - Post-mortem published within **5 business days**

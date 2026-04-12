@@ -100,12 +100,12 @@ VALUES
 
 ```sql
 -- Column mapping: name → title, sku_code → (moved to product_skus table), status → catalog_status
--- base_price uses DECIMAL(15,2) in schema
+-- base_price uses NUMERIC(18,6) in schema (DB-H-001 resolved)
 INSERT INTO products (product_id, workspace_id, title, catalog_status, category, base_price, currency, created_at)
 VALUES
-  (gen_random_uuid(), '22222222-2222-2222-2222-222222222201', 'Son MAC Ruby Woo', 'active', 'cosmetics', 450000.00, 'VND', NOW()),
-  (gen_random_uuid(), '22222222-2222-2222-2222-222222222201', 'Kem chống nắng Anessa', 'active', 'skincare', 380000.00, 'VND', NOW()),
-  (gen_random_uuid(), '22222222-2222-2222-2222-222222222201', 'Phấn mắt Romand', 'draft', 'cosmetics', 250000.00, 'VND', NOW());
+  (gen_random_uuid(), '22222222-2222-2222-2222-222222222201', 'Son MAC Ruby Woo', 'active', 'cosmetics', 450000.000000, 'VND', NOW()),
+  (gen_random_uuid(), '22222222-2222-2222-2222-222222222201', 'Kem chống nắng Anessa', 'active', 'skincare', 380000.000000, 'VND', NOW()),
+  (gen_random_uuid(), '22222222-2222-2222-2222-222222222201', 'Phấn mắt Romand', 'draft', 'cosmetics', 250000.000000, 'VND', NOW());
 ```
 
 ## 7. Seed Credit Transactions

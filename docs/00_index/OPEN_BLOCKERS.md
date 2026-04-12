@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-04-09
+last_updated: 2026-04-11
 ---
 
 # Open Blockers
@@ -10,9 +10,9 @@ last_updated: 2026-04-09
 
 ---
 
-## Current Documentation Blockers (Validated 2026-04-09)
+## Current Documentation Blockers (Validated 2026-04-11)
 
-> Historical resolved entries remain below. As of 2026-04-09, there are **no remaining internal documentation blockers** that prevent an AI coding agent from using this corpus as the implementation source of truth.
+> As of 2026-04-11 (independent re-audit), there are **no remaining internal documentation blockers** that prevent an AI coding agent from using this corpus as the implementation source of truth. Fixes applied in this audit round: gamification event gaps (streak.milestone, streak.frozen, challenge.completed, challenge.expired added), Dragonfly keyspace notification config documented, web bundle target corrected (50KB→120KB), Flutter unit tests added to CI, CI smoke test improved, OWASP year corrected, event catalog cross-reference deduplication (§16.2→§12), outbox poller SQLx exception noted, AP_EXECUTION_MODE security warning added.
 
 ## Deferred Implementation Artifacts / External Gates
 
@@ -45,14 +45,65 @@ last_updated: 2026-04-09
 - Verified: repository search for non-canonical admin aliases in `docs/` now returns only control docs plus `SCREEN_IMPLEMENTATION_PROTOCOL.md`.
 - Owner: Screen Doc Lead
 
+## RBAC-H-001: Missing RBAC permission keys and auth-level conflicts
+
+- Layer: Contracts / Security
+- Severity: **HIGH**
+- Status: **RESOLVED** (2026-04-10)
+- Impact: `campaign:read` and `coupon:read` permission keys were referenced by API endpoints but missing from `rbac_permission_matrix.md`. Additionally, `offer:manage` and `product:manage` had conflicting auth levels between RBAC matrix (Editor+) and API endpoint map (Manager+/Admin+ for some operations).
+- Resolution: Added `campaign:read` (Viewer+) and `coupon:read` (Viewer+) permission keys. Split `offer:manage` into granular operations with `offer:activate` at Manager+ and `offer:manage` at Editor+ for CRUD. Added `product:delete` at Admin+ and `product:import` at Manager+ alongside `product:manage` at Editor+. Reconciled all auth levels between RBAC matrix and API endpoint map.
+- Verified: All permission keys referenced in API endpoint map now exist in RBAC matrix.
+- Owner: API Lead
+
+## EVT-H-002: Domain event catalog duplicate definitions and naming collisions
+
+- Layer: Contracts
+- Severity: **HIGH**
+- Status: **RESOLVED** (2026-04-10)
+- Impact: `workflow_run.approval_required` was defined twice (§11 and §16.4) with incompatible payload schemas. `credit.exhausted` (§16.2) and `credits.exhausted` (§12) used inconsistent singular/plural naming with different payloads.
+- Resolution: Merged `workflow_run.approval_required` into a single canonical definition with combined payload `{run_id, workflow_id, step_name, action, approver_ids[]}`. Unified to `credits.exhausted` (plural, §12 format) as canonical; removed singular `credit.exhausted` from §16.2 and replaced with cross-reference.
+- Verified: `grep 'credit\.exhausted' domain_event_catalog.md` returns 0 matches (only `credits.exhausted`).
+- Owner: Backend Lead
+
+## BIZ-H-001: Brand Deal lifecycle contradiction between M16 and S16
+
+- Layer: Features / Screens
+- Severity: **HIGH**
+- Status: **RESOLVED** (2026-04-10)
+- Impact: M16 (affiliate_network.md) defined a 6-state Brand Deal lifecycle, while S16 (screen_web_creator_brand_deals.md) defined 7+1 states. This created an implementation conflict for the commerce domain.
+- Resolution: Designated M16's 6-state machine as canonical (negotiating→agreed→in_progress→delivered→paid→completed + cancelled). Updated S16 screen to adopt M16's lifecycle. S16's extra `disputed` state mapped to a sub-state of `delivered` (dispute resolution flow before payment). S16's `inquiry` maps to pre-Brand Deal CRM thread, not a deal state.
+- Verified: Both M16 and S16 now reference the same 6+1 state machine.
+- Owner: Product
+
+## DOC-M-003: Sequence diagram credit deduction inconsistency
+
+- Layer: System
+- Severity: **HIGH**
+- Status: **RESOLVED** (2026-04-10)
+- Impact: §9 in `sequence_diagrams.md` used an immediate credit deduction pattern, contradicting §11's canonical escrow/two-phase pattern.
+- Resolution: Updated §9 to use the reserve→execute→commit escrow pattern matching §11's canonical flow. Added explicit cross-reference to §11.
+- Verified: §9 now uses `reserve()` before execution and `commit()` after, matching §11.
+- Owner: Backend Lead
+
+## DOC-M-004: Legal compliance data retention contradiction
+
+- Layer: Business / Compliance
+- Severity: **HIGH**
+- Status: **RESOLVED** (2026-04-10)
+- Impact: `legal_compliance.md` §3 stated "Purge 30 days" for data retention, contradicting BIZ-010's canonical 3-phase policy (0-30 read-only, 30-90 soft delete, 90+ hard delete).
+- Resolution: Updated `legal_compliance.md` §3 retention table to match BIZ-010's 3-phase policy. Added cross-reference to `business_rules.md` BIZ-010.
+- Verified: Retention table now shows 3-phase retention matching BIZ-010.
+- Owner: Legal + Product
+
 ## ERR-M-002: Error catalog domain expansion
 
 - Layer: Contracts
 - Severity: **MEDIUM**
-- Status: **RESOLVED** (2026-04-09)
-- Impact: canonical error coverage previously omitted CONTENT, ENGAGEMENT, FINANCE, LIVE, SEEDING, CREATOR_PRO, and ADMIN domains.
-- Resolution: `error_catalog.md` now defines canonical sections for all active domains in the corpus, including state/conflict coverage for content, inbox, finance, live commerce, seeding, creator-pro tools, and internal admin operations.
-- Verified: `error_catalog.md` now contains canonical sections for `CONTENT_*`, `ENGAGEMENT_*`, `FINANCE_*`, `LIVE_*`, `SEEDING_*`, `CREATOR_PRO_*`, and `ADMIN_*`.
+- Status: **RESOLVED** (2026-04-10 — expanded)
+- Impact: canonical error coverage previously omitted CONTENT, ENGAGEMENT, FINANCE, LIVE, SEEDING, CREATOR_PRO, and ADMIN domains (fixed 2026-04-09). Second audit (2026-04-10) found INTELLIGENCE, CONNECTOR, NOTIFICATION, and GAMIFICATION domains still missing.
+- Resolution (pass 1, 2026-04-09): Added CONTENT_*, ENGAGEMENT_*, FINANCE_*, LIVE_*, SEEDING_*, CREATOR_PRO_*, ADMIN_* sections.
+- Resolution (pass 2, 2026-04-10): Added INTELLIGENCE_*, CONNECTOR_*, NOTIFICATION_*, GAMIFICATION_* sections with Vietnamese user messages.
+- Verified: `error_catalog.md` now contains canonical sections for all 18 active domains.
 - Owner: API Lead
 
 ## ANA-M-001: Analytics taxonomy module coverage
@@ -124,14 +175,16 @@ last_updated: 2026-04-09
 - Verified: `grep -c 'ENABLE ROW LEVEL SECURITY' database_schema.md` = 106 (excluding template)
 - Owner: Backend Lead
 
-## DB-H-001: REAL type used for credit/cost/score fields — 31 occurrences
+## DB-H-001: REAL/DECIMAL type used for credit/cost/score fields — 31+38 occurrences
 
 - Layer: DB
 - Severity: **HIGH**
-- Status: **RESOLVED** (previous session)
-- Impact: Originally 31 `REAL` fields for financial data.
-- Resolution: All financial fields converted to `NUMERIC(18,6)`. Remaining `REAL` fields are non-financial scores (relevance, quality, drift) with explicit `-- 0-100 non-financial score` comments.
-- Verified: `grep 'NUMERIC(18,6)' database_schema.md` confirms all financial fields use correct type.
+- Status: **RESOLVED** (2026-04-10 — second pass)
+- Impact: Originally 31 `REAL` fields for financial data (fixed in prior session). Second audit (2026-04-10) discovered 38 additional `DECIMAL(15,2)`, `DECIMAL(5,2)`, `DECIMAL(10,2)`, `DECIMAL(10,6)`, and `DECIMAL(5,4)` fields across ~25 commerce/finance tables that were missed in the first pass.
+- Resolution (pass 1): All `REAL` financial fields converted to `NUMERIC(18,6)`. Non-financial scores retained as `REAL` with explicit `-- 0-100 non-financial score` comments.
+- Resolution (pass 2, 2026-04-10): All remaining `DECIMAL(15,2)` → `NUMERIC(18,6)`, `DECIMAL(5,2)` → `NUMERIC(5,2)`, `DECIMAL(10,6)` → `NUMERIC(10,6)`, `DECIMAL(5,4)` → `NUMERIC(5,4)`, `DECIMAL(10,2)` → `NUMERIC(18,6)`. Zero `DECIMAL` fields remain in schema.
+- Additionally fixed: `recipe_templates` missing `workspace_id` column (RLS policy referenced non-existent column); duplicate tables `skus` and `commissions` marked DEPRECATED in favor of `product_skus` (§10.1B) and `affiliate_commissions` (§10.4B).
+- Verified: `grep DECIMAL database_schema.md` returns 0 matches. `grep 'workspace_id' recipe_templates` section confirms column added.
 - Owner: Backend Lead
 
 ## DB-H-003: deleted_at missing from production tables
