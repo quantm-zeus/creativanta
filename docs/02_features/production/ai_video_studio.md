@@ -255,7 +255,7 @@ see [04_contracts/database_schema.md#7.4](../../04_contracts/database_schema.md)
 
 ### EC-M07-003: Remix Originality Check Fails
 - Condition: AI Remix produces output with 45% script similarity to reference (exceeds 30% threshold)
-- Expected behavior: System blocks output with: "Remix is too similar to the reference (45% similarity, max 30%). [Adjust to 'Loose Inspiration' fidelity] or [Edit script manually]." Asset marked `quality_state = 'blocked'`. User can edit the generated script and re-attempt.
+- Expected behavior: System blocks output with: "Remix is too similar to the reference (45% similarity, max 30%). [Adjust to 'Loose Inspiration' fidelity] or [Edit script manually]." Asset marked `quality_state = 'rejected'` (per assets CHECK constraint: draft/review_required/approved/rejected/promoted_canonical). User can edit the generated script and re-attempt.
 - Reference: RULE-M07-003, Pack 04 §9.5.6
 
 ### EC-M07-004: Concurrent Clip Factory Processing Limit

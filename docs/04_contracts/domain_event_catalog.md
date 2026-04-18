@@ -26,7 +26,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | §10 Finance & Proof (M19) | settlement.imported/reconciled, profit.anomaly_detected, proof_bundle.assembled, etc. |
 | §11 Workflow & Agent (M20-M21) | workflow_run.started/completed/failed, agent_run.started, recipe.installed, etc. |
 | §12 System & Admin (M22-M23) | capability.state_changed, credits.deducted/exhausted, subscription.changed, etc. |
-| §13-14 Morning Brief & Gamification | morning_brief.generated, achievement.unlocked, xp.earned, level.up |
+| §13-14 Morning Brief & Gamification | morning_brief.generated, achievement.unlocked, xp.earned, gamification.level.up |
 | §15 Creator Pro (S16) | link_in_bio.page_created, media_kit.generated, brand_deal.status_changed, etc. |
 | §15B Extended Production | production.video_edit_job.*, production.remix.*, production.clip_factory.*, etc. (~35 events) |
 | §15C-D Gamification & Health | gamification.challenge.*, connector.health_score.*, connector.degraded, connector.recovered, affiliate.link_health.* |
@@ -112,7 +112,10 @@ struct EventMetadata {
 | `script.submitted_for_approval` | M06 | Notification, M20 | `{script_id, approver_id}` |
 | `script.approved` | M06 | M07, M10, Notification | `{script_id, approved_by}` |
 | `script.rejected` | M06 | Notification | `{script_id, reason}` |
+| `script.revision_required` | M06 | Notification | `{script_id, reviewer_id, feedback}` |
 | `script.ready_for_production` | M06 | M07 | `{script_id, asset_brief_id}` |
+| `script.archived` | M06 | M01 | `{script_id}` |
+| `content_brief.created` | M06/M07 | M07, Workflow | `{brief_id, script_id, workspace_id, output_type}` |
 
 ## 5. AI Production Events (M07, M08)
 
@@ -122,6 +125,7 @@ struct EventMetadata {
 | `asset.generation_completed` | M07 | M09, M10, Notification | `{asset_id, job_id, duration, credits_used}` |
 | `asset.generation_failed` | M07 | Diagnostics, Notification | `{asset_id, job_id, error, provider}` |
 | `asset.approved` | M07 | M10, M11 | `{asset_id, approved_by}` |
+| `asset.rejected` | M07 | Notification | `{asset_id, rejected_by, reason}` |
 | `asset.promoted_canonical` | M07 | M08 | `{asset_id, continuity_event}` |
 | `continuity.violation_detected` | M08 | Notification | `{asset_id, pack_id, type, severity}` |
 | `continuity.pack_updated` | M08 | M07 | `{pack_id, version}` |
@@ -141,6 +145,8 @@ struct EventMetadata {
 | `publish.succeeded` | M11 | M01, M12, M19, Notification | `{publish_item_id, external_id, url}` |
 | `publish.failed` | M11 | Diagnostics, Notification | `{publish_item_id, error, fallback}` |
 | `publish.requires_manual_fallback` | M11 | Notification | `{publish_item_id, reason}` |
+| `publish.cancelled` | M11 | Notification, Cleanup | `{publish_item_id, cancelled_by, reason}` |
+| `publish.partially_published` | M11 | Diagnostics, Notification | `{publish_item_id, published_platforms, failed_platforms}` |
 | `channel_post.synced` | M11 | M12, M19 | `{post_id, engagement_snapshot}` |
 
 ## 7. Engagement Events (M12)
@@ -168,22 +174,30 @@ struct EventMetadata {
 | `order.state_changed` | M13 | M19, M01 | `{order_id, from, to}` |
 | `order.refund_initiated` | M13 | M19 | `{order_id, refund_amount}` |
 | `offer.activated` | M14 | M01, M11, M15 | `{offer_id, type}` |
+| `offer.paused` | M14 | M01, Notification | `{offer_id}` |
 | `offer.expired` | M14 | M01, Notification | `{offer_id}` |
+| `offer.retired` | M14 | M01 | `{offer_id}` |
 | `campaign.started` | M14 | M01, M16, M17, M18 | `{campaign_id}` |
 | `campaign.completed` | M14 | M19, Notification | `{campaign_id}` |
 | `affiliate_link.created` | M16 | M14 | `{link_id, product_id}` |
 | `affiliate_link.health_degraded` | M16 | Diagnostics | `{link_id, status}` |
 | `conversion.attributed` | M16 | M19 | `{order_id, link_id, commission}` |
+
+> **Note**: `commission_id` in events below refers to `affiliate_commissions.commission_id` (§10.4B), NOT the deprecated `commissions` table (§19.13).
+
 | `affiliate.commission.earned` | M16 | M19, Notification | `{commission_id, affiliate_link_id, order_id, amount, currency}` |
 | `affiliate.commission.confirmed` | M16 | M19, Notification | `{commission_id, amount, hold_period_days}` |
 | `affiliate.commission.clawed_back` | M16 | M19, Notification | `{commission_id, clawback_reason, refund_amount}` |
 | `affiliate.commission.paid_out` | M16 | M19 | `{commission_id, payout_id, amount}` |
+| `inventory.stock_moved` | M13 | M19, Analytics | `{movement_id, sku_id, location_id, quantity, movement_type}` |
+| `inventory.discrepancy_detected` | M13 | Notification, Reconciliation | `{workspace_id, sku_id, location_id, expected_stock, actual_stock}` |
 
 ## 9. Live Commerce Events (M17)
 
 | Event Type | Emitter | Key Consumers | Payload |
 |---|---|---|---|
 | `live.session_started` | M17 | M01, M12 | `{session_id, platform}` |
+| `live.session_paused` | M17 | M01 | `{session_id}` |
 | `live.session_ended` | M17 | M19, M20, Notification | `{session_id, summary}` |
 | `live.highlight_marked` | M17 | M09 | `{session_id, timestamp, type}` |
 | `live.offer_pinned` | M17 | M14 | `{session_id, offer_id}` |
@@ -257,7 +271,7 @@ struct EventMetadata {
 |---|---|---|---|
 | `achievement.unlocked` | Achievement | Notification, Credits | `{workspace_id, achievement_code, credits}` |
 | `xp.earned` | Achievement | Progress | `{workspace_id, xp_amount, source}` |
-| `level.up` | Achievement | Notification | `{workspace_id, new_level}` |
+| `gamification.level.up` | Achievement | Notification | `{workspace_id, new_level}` |
 | `streak.milestone` | Achievement | Notification, Gamification | `{workspace_id, streak_days, milestone_type}` |
 | `streak.broken` | Achievement | Notification | `{workspace_id, streak_days}` |
 | `streak.frozen` | Achievement | Gamification | `{workspace_id, streak_days, freeze_until}` |
@@ -344,8 +358,8 @@ struct EventMetadata {
 | `subscription.trial_ending` | M23 | Notification | `{workspace_id, trial_ends_at}` |
 | `subscription.renewed` | M23 | Billing | `{subscription_id}` |
 | `subscription.cancelled` | M23 | All | `{subscription_id, reason}` |
-| `commission.calculated` | M16 | M19 | `{commission_id, amount}` |
-| `commission.paid` | M16 | M19, Notification | `{commission_id, payout_ref}` |
+| `affiliate.commission.calculated` | M16 | M19 | `{commission_id, amount}` |
+| `affiliate.commission.paid` | M16 | M19, Notification | `{commission_id, payout_ref}` |
 | `store.page_published` | M15 | Analytics | `{store_page_id, slug}` |
 | `live_segment.created` | M17 | M19 | `{segment_id, session_id, type}` |
 | `sample_request.created` | M18 | M20, Notification | `{request_id, campaign_id, product_id, creator_entity_id}` |
@@ -464,6 +478,8 @@ struct EventMetadata {
 |---|---|---|---|
 | `publish_item.failed` | M11 | Notification, M01 | `{publish_item_id, platform, error_category, error_message}` |
 | `publish_item.succeeded` | M11 | Notification, M01, Analytics | `{publish_item_id, platform, external_url, published_at}` |
+
+> **Clarification (Audit v7)**: `publish_item.failed` and `publish_item.succeeded` in §16.5 are **item-level** events that map 1:1 to a single `publish_items` row. The `publish.succeeded` and `publish.failed` events in §6 are **job-level** events covering the entire publish batch. Notification consumers should subscribe to §16.5 item-level events for per-platform alerts. The §6 job-level events remain canonical for workflow triggers and aggregate status tracking.
 
 ### 16.6 Intelligence
 

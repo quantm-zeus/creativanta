@@ -18,12 +18,12 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | Section | Content |
 |---|---|
 | §1 Endpoint Naming Convention | ConnectRPC, gRPC, REST patterns |
-| §2.1 Identity & Workspace | ~16 RPCs: Auth, Workspace, Connector, User services |
-| §2.2 Intelligence | ~12 RPCs: Trend, Competitor, Opportunity services |
-| §2.3 Content | ~25 RPCs: Idea, Script, Asset, Character, Continuity, Derivative services |
-| §2.4 Publish | ~15 RPCs: Packaging, Publish, Approval services |
-| §2.5 Engagement | ~18 RPCs: Thread, Entity, Suggestion, FollowUp services |
-| §2.6 Commerce | 43 RPCs: Product (8), Offer (9), Order (5), Campaign (7), Affiliate (6), Store (5), Coupon (7) |
+| §2.1 Identity & Workspace | 16 RPCs: Auth, Workspace, Connector, User services |
+| §2.2 Intelligence | 12 RPCs: Trend, Competitor, Opportunity services |
+| §2.3 Content | 27 RPCs: Idea, Script, Asset, Character, Continuity, Derivative services |
+| §2.4 Publish | 17 RPCs: Packaging, Publish, Approval services |
+| §2.5 Engagement | 16 RPCs: Thread, Entity, Suggestion, FollowUp services |
+| §2.6 Commerce | 47 RPCs: Product (8), Offer (9), Order (5), Campaign (7), Affiliate (6), Store (5), Coupon (7) |
 | §2.7 Finance | 26 RPCs: Profit (5), Settlement (3), Cost (4), Reconciliation (5), Evidence (3), Proof (3), Refund (3) |
 | §2.8 Other Domains | 87 RPCs: Workflow (13), Recipe (8), LiveCommerce (11), Seeding (9), Copilot (5), AdminBilling (14), Capability (5), PerformanceCoach (5), VoiceClone (6), SoundStudio (6), Referral (5), Promotional (3), Notification (5) |
 | §3 Webhook Endpoints | Clerk, Stripe, TikTok, Shopee, Lazada, Activepieces |
@@ -55,7 +55,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 
 ## 2. Service Endpoint Map by Domain
 
-### 2.1 Identity & Workspace (~16 RPCs)
+### 2.1 Identity & Workspace (16 RPCs)
 
 | RPC | Method | Auth | Rate Limit |
 |---|---|---|---|
@@ -76,7 +76,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | `UserService/GetProfile` | POST | Self | 120/min |
 | `UserService/UpdatePreferences` | POST | Self | 30/min |
 
-### 2.2 Intelligence (~12 RPCs)
+### 2.2 Intelligence (12 RPCs)
 
 | RPC | Auth | Description |
 |---|---|---|
@@ -93,7 +93,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | `OpportunityService/Convert` | Editor+ | → Idea/Script/Campaign |
 | `OpportunityService/Get` | Member | Detail view |
 
-### 2.3 Content (~25 RPCs)
+### 2.3 Content (27 RPCs)
 
 | RPC | Auth | Description |
 |---|---|---|
@@ -125,7 +125,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | `DerivativeService/Promote` | Editor+ | Promote derivative to primary asset |
 | `DerivativeService/GetStats` | Member | Derivative performance vs source |
 
-### 2.4 Publish (~15 RPCs)
+### 2.4 Publish (17 RPCs)
 
 | RPC | Auth | Description |
 |---|---|---|
@@ -147,7 +147,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | `ApprovalService/Approve` | by policy | Approve action |
 | `ApprovalService/Reject` | by policy | Reject action |
 
-### 2.5 Engagement (~18 RPCs)
+### 2.5 Engagement (16 RPCs)
 
 | RPC | Auth | Description |
 |---|---|---|
@@ -168,7 +168,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | `FollowUpService/List` | Member | Task list |
 | `FollowUpService/Update` | Editor+ | Update status |
 
-### 2.6 Commerce (42 RPCs)
+### 2.6 Commerce (47 RPCs)
 
 #### 2.6.1 ProductService
 

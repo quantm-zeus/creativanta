@@ -411,7 +411,7 @@ Home Dashboard (/)
 - **Route**: `src/routes/(app)/+page.svelte`
 - **Server load**: `+page.server.ts` → parallel fetch all dashboard data
 - **SSR**: Full SSR for greeting + skeleton layout; client-side hydration for dynamic data
-- **Store**: Dashboard store with `writable()` for each widget section
+- **State**: Dashboard `$state` rune for each widget section
 
 ### Data Fetching Strategy
 ```

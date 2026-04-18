@@ -571,8 +571,8 @@ eventSource.addEventListener('ready', (e) => {
 
 ### Edit State Management
 ```
-// Svelte store with undo/redo stack
-const editState = writable({
+// Svelte 5 state with undo/redo stack
+let editState = $state({
   cuts: [],           // [{ startMs, endMs, type: 'filler'|'pause'|'manual' }]
   addons: {
     captions: { enabled: true, style: 'bounce' },

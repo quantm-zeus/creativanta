@@ -168,9 +168,9 @@ CopilotSidebar (global overlay component)
 
 ### Technical Notes
 - Component: `src/lib/components/CopilotSidebar.svelte`
-- Global: mounted in `+layout.svelte`, toggled via Svelte store
+- Global: mounted in `+layout.svelte`, toggled via Svelte 5 `$state` rune
 - Streaming: SSE endpoint for progressive token display
-- Context: `$page.route` + Svelte store for page-specific data
+- Context: `$page.route` + `$state` for page-specific data
 - Session: conversations stored per session, cleared on tab close
 
 ### Related Screens

@@ -475,7 +475,7 @@ RemixBlueprint:
   similarity_score: float  # vs original, must be < 0.30
   virality_score: integer  # 0-100
   status: enum(analyzing, analyzed, generating, generated, failed)
-  credits_used: integer
+  credits_used: decimal  # NUMERIC(18,6) per DB-H-001
 
   created_at, updated_at: timestamp
 ```

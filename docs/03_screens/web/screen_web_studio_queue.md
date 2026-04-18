@@ -457,7 +457,7 @@ Generation Queue (/studio/queue)
 - **Route**: `src/routes/(app)/studio/queue/+page.svelte`
 - **Server load**: `+page.server.ts` → fetch initial job lists (active, completed today, failed)
 - **SSR**: Shell + summary bar SSR; job cards hydrated client-side
-- **Store**: `queueStore` (writable) with sections: `{active: [], completed: [], failed: []}`
+- **State**: `queueState` (`$state`) with sections: `{active: [], completed: [], failed: []}`
 
 ### Data Fetching Strategy
 ```

@@ -403,14 +403,14 @@ ScriptEditorPage
 - **Route**: `src/routes/(app)/scripts/[id]/+page.svelte`
 - **Server load**: `+page.server.ts` → `ScriptService/Get(id)` with sections
 - **Editor**: ProseMirror with custom schema for script sections
-- **Auto-save**: Svelte writable store with `debounce(2000)` → RPC `UpdateSection`
+- **Auto-save**: Svelte 5 `$state` with `debounce(2000)` → RPC `UpdateSection`
 - **AI**: `CopilotService/Query` with SSE streaming into side panel
 - **Split view**: Resizable via CSS `resize` or `svelte-split-pane`
 - **Rich text toolbar**: Context-sensitive (changes per section type)
 
 ### Auto-save Flow
 ```
-keystroke → update Svelte store → debounce 2s
+keystroke → update $state → debounce 2s
   → ScriptService/UpdateSection (optimistic)
   → on success: update SaveStatus to "Saved ✓"
   → on failure: preserve in localStorage, show retry

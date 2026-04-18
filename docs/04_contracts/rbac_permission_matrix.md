@@ -26,7 +26,8 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | §2.11 Live Commerce (M17) | live:read/manage/start_stop/cue_action/highlight |
 | §2.12 Seeding (M18) | sample:read/manage, creator_assignment:manage |
 | §2.13 Creator Pro (S16) | link_in_bio, media_kit, rate_card, brand_deal permissions |
-| §2.14 Copilot & AI | copilot:use_creative/analytics/action/video_production/help, credits:view_balance/top_up |
+| §2.14 Growth & Analytics | gamification, referral, promotion, coach permissions |
+| §2.15 Copilot & AI | copilot:use_creative/analytics/action/video_production/help, credits:view_balance/top_up |
 | §3 Internal Admin RBAC | 8 admin roles: Super, Ops, Finance, Content, Support, Tech, Analyst, Auditor (~20 permission keys) |
 | §4 Constraint Rules | External Collaborator, Contributor constraints, Approval-Required Actions |
 | §5 Implementation | Rust Tower middleware pattern |
@@ -106,6 +107,22 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 | `character:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `continuity:pack_manage` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `derivative:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `voice_clone:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `voice_clone:manage` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `voice_clone:delete` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `sound:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `sound:generate` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `production_job:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `production_job:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `style_pack:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `style_pack:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `style_pack:delete` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `translation:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `translation:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `repurpose:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `repurpose:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+
+> **Audit v8**: VoiceClone, SoundStudio, ProductionJob, StylePack, Translation, Repurpose permissions added to cover Extended Production RPCs (api_endpoint_map.md §15-§20). Auth levels match the API spec.
 
 ### 2.5 Publish (M10-M11)
 
@@ -118,6 +135,9 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 | `publish:approve` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `publish:retry` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `publish:cancel` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `packaging:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `packaging:score` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `packaging:override` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ### 2.6 Engagement (M12)
 
@@ -153,6 +173,16 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 | `store:manage` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `membership:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `membership:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `offer:price_change` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `refund:read` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `refund:manage` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `showcase:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `showcase:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `link_to_video:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `link_to_video:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `ab_test:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `ab_test:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `ab_test:declare_winner` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ### 2.8 Finance & Proof (M19)
 
@@ -223,7 +253,20 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 | `brand_deal:read` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `brand_deal:manage` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
-### 2.14 Copilot & AI (§34)
+### 2.14 Growth & Analytics (Gamification, Referral, Promotions, Coach)
+
+| Permission | Owner | Admin | Manager | Editor | Contributor | Viewer | External |
+|---|---|---|---|---|---|---|---|
+| `gamification:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `gamification:share` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `referral:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `referral:claim` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `promotion:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `promotion:redeem` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `coach:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `coach:generate_plan` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+
+### 2.15 Copilot & AI (§34)
 
 | Permission | Owner | Admin | Manager | Editor | Contributor | Viewer | External |
 |---|---|---|---|---|---|---|---|
@@ -342,7 +385,7 @@ pub async fn check_permission(
 }
 ```
 
-**Workspace RBAC**: ~114 permission keys × 7 roles = full matrix.
+**Workspace RBAC**: ~150 permission keys × 7 roles = full matrix.
 **Admin RBAC**: ~23 permission keys × 8 admin roles = full admin matrix.
 
 > **Audit v5 — C2 Fix**: `workspace:billing:manage` is Owner-only (non-delegatable, aligned to Freeze §46A.4 and Pack 02 §S07.2). `workspace:billing:read` added for Admin and Manager view access. Previous versions had a conflict where B5 allowed Admin billing manage but Pack 02 §S07.2 restricted it to Owner.

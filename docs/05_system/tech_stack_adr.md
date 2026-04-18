@@ -456,6 +456,8 @@ Request → Router → Primary Provider
 
 ## 🏗️ Monorepo Structure
 
+> **Package Manager**: `pnpm` — used across all TypeScript/SvelteKit apps and CI pipelines. Do not use `npm` or `yarn`.
+
 ```
 creativanta/
 ├── protos/                    # 📡 Shared Protobuf definitions (source of truth)

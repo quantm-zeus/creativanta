@@ -427,7 +427,7 @@ UnifiedInboxPage
 ### Data Flow
 ```
 SSE events (new thread / status change / new message)
-  → Svelte store update → UI reactively updates
+  → Svelte 5 $state update → UI reactively updates
   → Unread counter badge (sidebar, page, tab title)
 
 Reply flow:

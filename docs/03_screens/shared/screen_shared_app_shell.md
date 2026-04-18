@@ -134,7 +134,7 @@ AppShell
 ## 7. Technical Notes
 - Component: `src/lib/components/AppShell/AppShell.svelte`
 - Layout: `src/routes/(app)/+layout.svelte`
-- Sidebar state: Svelte store, persisted in localStorage
+- Sidebar state: Svelte 5 `$state` rune, persisted in localStorage
 - Active detection: `$page.route.id` matching
 - Badge sync: SSE `/events/badges` for inbox count
 

@@ -4,7 +4,7 @@
 > **Module**: M13 — Commerce (Products)
 > **Route**: `/products/[id]`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: Pack 06 §Commerce, Product Freeze §21-24, A1 Schema (products, product_variants, product_images, orders, order_items, product_reviews, affiliate_links), B5 RBAC §2.7
+> **Upstream**: Pack 06 §Commerce, Product Freeze §21-24, A1 Schema (products, product_skus, product_images, orders, product_reviews, affiliate_links), B5 RBAC §2.7
 
 ---
 
@@ -271,13 +271,13 @@ ProductDetailPage
 | Description | `products.description` | Same | Text (expandable) | Official | 5m |
 | Images | `product_images[].url` | Same (eager) | CDN images, 400×400 main, 80×80 thumbs | Official | CDN |
 | Price | `products.price` or `MIN/MAX(variants.price)` | Same | "299,000đ" or "từ 299K - 799K" | Official | 5m |
-| Status | `products.status` | Same | Badge: 🟢/🟡/🔴 | Official | 5m |
+| Status | `products.catalog_status` | Same | Badge: 🟢/🟡/🔴 | Official | 5m |
 | Source platform | `products.source_platform` | Same | Platform icon + name | Official | 5m |
-| SKU | `products.sku` | Same | "SVT-C" | Official | 5m |
-| Category | `products.category_path` | Same | "Skincare > Serum" breadcrumb | Official | 5m |
-| Variants | `product_variants[]` | Same (eager) | Table: name + price + stock | Official | 5m |
-| Stock per variant | `product_variants.stock_quantity` | Same | Integer, ⚠️ if low | Official (SSE) | RT |
-| Low stock threshold | `products.low_stock_threshold` (default 10) | Same | ⚠️ indicator | Config | 5m |
+| SKU | `product_skus.sku_code` | Same | "SVT-C" | Official | 5m |
+| Category | `products.category` | Same | "Skincare > Serum" breadcrumb | Official | 5m |
+| Variants | `product_skus[]` | Same (eager) | Table: name + price + stock | Official | 5m |
+| Stock per variant | `product_skus.stock_quantity` | Same | Integer, ⚠️ if low | Official (SSE) | RT |
+| Low stock threshold | `product_skus.low_stock_threshold` (default 10) | Same | ⚠️ indicator | Config | 5m |
 | Orders (period) | `orders` aggregated by product | `ProductService/GetSalesStats(id, period)` | "89" with delta | ClickHouse | 5m |
 | Revenue (period) | `orders.total_amount` sum | Same | "26.6M VND" with delta | ClickHouse | 5m |
 | Commission | `orders.platform_commission` sum | Same | "2.66M VND" | Official | 5m |

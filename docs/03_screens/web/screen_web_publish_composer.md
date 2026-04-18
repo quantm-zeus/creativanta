@@ -54,7 +54,7 @@ The Publish Composer is the multi-platform content creation and scheduling hub â
 - Media file uploaded or asset_id provided as URL param
 
 ### Postconditions
-- `publish_item` created with status `queued` (instant) or `scheduled`
+- `publish_item` created with `lifecycle_state = 'queued'` (instant) or `'scheduled'`
 - Media uploaded to R2/CDN if not already
 - Platform-specific metadata stored per target platform
 - QA check triggered if user clicked "QA Check" before publishing
@@ -493,7 +493,7 @@ function onFormChange() {
 
 ### Preview Reactivity
 - Preview panel reactively displays current form state
-- Caption, hashtags, and media are Svelte stores bound to both compose and preview
+- Caption, hashtags, and media are Svelte 5 `$state` runes bound to both compose and preview
 - Platform validation runs client-side against cached `PlatformRulesService` data
 
 ### Upload to R2

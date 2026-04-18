@@ -24,14 +24,14 @@ last_verified: 2026-03-30
 │  apps/mobile (Flutter) → emulator/device                 │
 │                                                          │
 │  ┌─ Docker Compose ──────────────────────────────────┐   │
-│  │  postgres:17       → localhost:5432                │   │
+│  │  timescaledb-ha:pg17 → localhost:5432              │   │
 │  │  dragonfly         → localhost:6379                │   │
 │  │  meilisearch       → localhost:7700                │   │
 │  │  activepieces      → localhost:8080                │   │
 │  │  clickhouse        → localhost:8123 (HTTP)         │   │
 │  │  mailpit           → localhost:8025 (UI)           │   │
 │  │  jaeger            → localhost:16686 (UI)          │   │
-│  │  minio             → localhost:9001 (Console)      │   │
+│  │  minio             → localhost:9002 (S3) / 9001 (Console) │   │
 │  │  grafana           → localhost:3001 (UI)           │   │
 │  └───────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────┘
@@ -42,7 +42,8 @@ last_verified: 2026-03-30
 ## 2. docker-compose.yml
 
 ```yaml
-version: '3.8'
+# Note: 'version' field is obsolete in modern Docker Compose (v2+) and can be omitted.
+# Retained here for backward compatibility with Docker Compose v1.
 
 services:
   postgres:
@@ -139,7 +140,7 @@ services:
     container_name: creativanta-storage
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"
+      - "9002:9000" # S3 API on 9002 (9000 used by ClickHouse native protocol)
       - "9001:9001"
     environment:
       MINIO_ROOT_USER: minioadmin
@@ -230,11 +231,11 @@ AI_DEFAULT_PROVIDER=gemini
 AI_DEFAULT_MODEL=gemini-2.5-flash
 
 # Storage (local dev uses MinIO as S3-compatible; production uses Cloudflare R2)
-S3_ENDPOINT=http://localhost:9000
+S3_ENDPOINT=http://localhost:9002
 S3_ACCESS_KEY=minioadmin
 S3_SECRET_KEY=minioadmin
 S3_BUCKET=creativanta-dev
-S3_PUBLIC_URL=http://localhost:9000/creativanta-dev
+S3_PUBLIC_URL=http://localhost:9002/creativanta-dev
 # Production overrides (R2):
 # R2_ACCOUNT_ID=xxx
 # R2_ACCESS_KEY=xxx
@@ -278,10 +279,10 @@ docker compose up -d
 cd apps/api && cargo watch -x run
 
 # Run SvelteKit web (dev)
-cd apps/web && npm run dev
+cd apps/web && pnpm dev
 
 # Run SvelteKit admin (dev)
-cd apps/admin && npm run dev -- --port 5174
+cd apps/admin && pnpm dev -- --port 5174
 
 # Run Flutter mobile
 cd apps/mobile && flutter run
@@ -325,10 +326,10 @@ dev-api:
 	cd apps/api && cargo watch -x run
 
 dev-web:
-	cd apps/web && npm run dev
+	cd apps/web && pnpm dev
 
 dev-admin:
-	cd apps/admin && npm run dev -- --port 5174
+	cd apps/admin && pnpm dev -- --port 5174
 
 dev-mobile:
 	cd apps/mobile && flutter run
@@ -358,3 +359,6 @@ status:
 | Mailpit SMTP | 1025 | — |
 | Jaeger UI | 16686 | http://localhost:16686 |
 | OTLP Collector | 4317 | — |
+| MinIO S3 API | 9002 | — |
+| MinIO Console | 9001 | http://localhost:9001 |
+| Grafana | 3001 | http://localhost:3001 |

@@ -17,7 +17,7 @@ last_verified: 2026-03-30
 |---|---|---|---|
 | Email | Mailpit (local) | Resend | MJML → HTML |
 | Push (Mobile) | — | FCM (Android), APNs (iOS) | JSON payload |
-| In-App | — | WebSocket → SvelteKit store | Notification component |
+| In-App | — | WebSocket → Svelte 5 Runes ($state) | Notification component |
 | SMS | — | Twilio (P2, not v1) | Plain text |
 
 ---

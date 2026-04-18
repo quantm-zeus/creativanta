@@ -25,7 +25,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | §7 AI Production (M07-M09) | characters, continuity_packs, assets, generation_jobs, continuity_violations |
 | §8 Publish (M10-M11) | publish_items, publish_jobs, publish_logs |
 | §9 Engagement (M12) | entities, threads, messages, follow_up_tasks |
-| §10 Commerce (M13-M16) | products, offers, skus, orders, order_items, campaigns, affiliate_links, coupons, store_pages, membership_plans |
+| §10 Commerce (M13-M16) | products, offers, skus, orders, campaigns, affiliate_links, coupons, store_pages, membership_plans |
 | §11 Finance & Proof (M19) | profit_snapshots, settlements, cost_items, reconciliation_records, evidence_objects, proof_bundles |
 | §12 Workflow & Operations (M17-M21) | live_sessions, cue_cards, sample_requests, sample_shipments, workflows, workflow_runs, agent_runs, recipes |
 | §13 Billing, Admin, Diagnostics (M23) | ai_credit_transactions, subscription_events, notifications, feature_flags, audit_events, diagnostics_records |
@@ -109,10 +109,10 @@ CREATE TABLE workspaces (
   default_operator_mode operator_mode NOT NULL DEFAULT 'creator',
   primary_region_id UUID REFERENCES regions(region_id),
   primary_currency_id UUID REFERENCES currencies(currency_id),
-  status VARCHAR(20) NOT NULL DEFAULT 'active', -- active, suspended, deleted
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
   subscription_tier VARCHAR(20) NOT NULL DEFAULT 'free', -- free, starter, pro, business, enterprise
-  ai_credits_remaining INTEGER NOT NULL DEFAULT 50,
-  ai_credits_monthly_limit INTEGER NOT NULL DEFAULT 50,
+  ai_credits_remaining INTEGER NOT NULL DEFAULT 50, -- integer credit count (whole units), not monetary value; DB-H-001 NUMERIC(18,6) applies to credit *amounts* in transactions, not counters
+  ai_credits_monthly_limit INTEGER NOT NULL DEFAULT 50, -- integer credit count (whole units), same rationale as above
   billing_cycle_start DATE,
   owner_user_id UUID NOT NULL,
   settings JSONB DEFAULT '{}',
@@ -126,6 +126,10 @@ ALTER TABLE workspaces ENABLE ROW LEVEL SECURITY;
 ALTER TABLE workspaces FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON workspaces
   USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+ALTER TABLE workspaces ADD CONSTRAINT chk_workspaces_status
+  CHECK (status IN ('active', 'suspended', 'deleted'));
+ALTER TABLE workspaces ADD CONSTRAINT chk_workspaces_tier
+  CHECK (subscription_tier IN ('free', 'starter', 'pro', 'business', 'enterprise'));
 ```
 
 ### 4.2 users [GLOBAL]
@@ -183,7 +187,7 @@ CREATE TABLE brand_profiles (
   target_audience TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
+  deleted_at TIMESTAMPTZ -- soft delete (DB-H-003)
 );
 ALTER TABLE brand_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE brand_profiles FORCE ROW LEVEL SECURITY;
@@ -312,6 +316,7 @@ CREATE POLICY tenant_isolation ON trends
 ```
 
 ### 5.3 trend_signals (junction)
+> **RLS note**: No workspace_id — access controlled via FK-joined parent tables (trends, signals) which both have RLS. MUST always be queried through parent JOIN, never directly.
 ```sql
 CREATE TABLE trend_signals (
   trend_id UUID NOT NULL REFERENCES trends(trend_id),
@@ -354,6 +359,7 @@ ALTER TABLE opportunities ADD CONSTRAINT chk_opportunities_priority_state
 ```
 
 ### 5.5 opportunity_sources (polymorphic junction)
+> **RLS note**: No workspace_id — access controlled via FK-joined parent table (opportunities) which has RLS. MUST always be queried through parent JOIN.
 ```sql
 CREATE TABLE opportunity_sources (
   opportunity_id UUID NOT NULL REFERENCES opportunities(opportunity_id),
@@ -457,6 +463,7 @@ CREATE POLICY tenant_isolation ON ideas
 ```
 
 ### 6.2 idea_sources (polymorphic)
+> **RLS note**: No workspace_id — access controlled via FK-joined parent table (ideas) which has RLS. MUST always be queried through parent JOIN.
 ```sql
 CREATE TABLE idea_sources (
   idea_id UUID NOT NULL REFERENCES ideas(idea_id),
@@ -530,7 +537,7 @@ CREATE TABLE asset_briefs (
   script_id UUID NOT NULL REFERENCES scripts(script_id),
   output_type VARCHAR(50) NOT NULL, -- video, image, audio, mixed
   target_format VARCHAR(50), -- 9:16, 16:9, 1:1
-  target_duration_seconds INTEGER,
+  target_duration_seconds INTEGER, -- planned whole seconds; actual duration in assets uses NUMERIC(12,2)
   target_platforms JSONB DEFAULT '[]',
   continuity_requirements JSONB DEFAULT '{}',
   brand_voice_requirements JSONB DEFAULT '{}',
@@ -554,7 +561,7 @@ CREATE TABLE scenes (
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   scene_index SMALLINT NOT NULL,
   description TEXT,
-  duration_seconds INTEGER,
+  duration_seconds INTEGER, -- planned whole seconds; actual duration in assets uses NUMERIC(12,2)
   visual_notes TEXT,
   audio_notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -572,7 +579,7 @@ CREATE TABLE shot_lists (
   shot_index SMALLINT NOT NULL,
   shot_type VARCHAR(50),
   description TEXT,
-  duration_seconds INTEGER,
+  duration_seconds INTEGER, -- planned whole seconds; actual duration in assets uses NUMERIC(12,2)
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ALTER TABLE shot_lists ENABLE ROW LEVEL SECURITY;
@@ -803,8 +810,8 @@ CREATE TABLE publish_jobs (
   publish_item_id UUID NOT NULL REFERENCES publish_items(publish_item_id),
   dispatch_strategy VARCHAR(30),
   lifecycle_state VARCHAR(30) NOT NULL DEFAULT 'created', -- created,queued,dispatched,executing,partially_succeeded,succeeded,failed,cancelled,requires_manual_fallback
-  attempt_count SMALLINT DEFAULT 0,
-  max_attempts SMALLINT DEFAULT 3,
+  attempt_count INTEGER DEFAULT 0, -- standardized INTEGER across all retry tables
+  max_attempts INTEGER DEFAULT 3,
   current_worker_id VARCHAR(100),
   last_execution_summary JSONB,
   approval_request_id UUID,
@@ -889,7 +896,7 @@ CREATE TABLE threads (
   source_platform VARCHAR(50),
   source_post_id VARCHAR(255),
   owner_user_id UUID REFERENCES users(user_id),
-  intent VARCHAR(50), -- purchase, complaint, question, praise, spam, collaboration, sample_request
+  intent VARCHAR(50), -- purchase_interest, question, support_issue, objection, sponsor_interest, sample_request, moderation_risk, unknown
   priority VARCHAR(10) NOT NULL DEFAULT 'normal', -- urgent,high,normal,low
   status VARCHAR(30) NOT NULL DEFAULT 'new', -- new,triaged,active,waiting_on_user,waiting_on_team,snoozed,stale,converted_to_task,resolved,archived
   next_action TEXT,
@@ -1236,7 +1243,7 @@ ALTER TABLE settlements ADD CONSTRAINT chk_settlements_state
 CREATE TABLE cost_items (
   cost_item_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
-  cost_type VARCHAR(50) NOT NULL, -- platform_fee, shipping, ads_spend, ai_credits, commission, service_tool, cogs, other
+  cost_type VARCHAR(50) NOT NULL, -- platform_fee, shipping, ads_spend, ai_credits, commission, service_tool, cogs, seeding, other
   amount NUMERIC(18,6) NOT NULL,
   currency VARCHAR(5) NOT NULL DEFAULT 'VND',
   related_scope_type VARCHAR(50), -- workspace, product, campaign, order, asset
@@ -1444,13 +1451,13 @@ CREATE TABLE agent_runs (
   diagnostics_ref UUID,
   audit_ref UUID,
   context_refs JSONB DEFAULT '[]', -- [{type, id}]
-  credits_used INTEGER DEFAULT 0,
+  credits_used NUMERIC(18,6) DEFAULT 0, -- DB-H-001: credit amount (not counter)
   started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
   created_by UUID REFERENCES users(user_id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  deleted_at TIMESTAMPTZ, -- soft delete (DB-H-003)
+  deleted_at TIMESTAMPTZ -- soft delete (DB-H-003)
 );
 CREATE INDEX idx_ar_workspace ON agent_runs(workspace_id);
 CREATE INDEX idx_ar_state ON agent_runs(current_state);
@@ -1569,7 +1576,7 @@ CREATE TABLE billing_events (
   amount NUMERIC(18,6),
   currency VARCHAR(5),
   subscription_tier VARCHAR(20),
-  credits_change INTEGER,
+  credits_change NUMERIC(18,6), -- DB-H-001: credit transaction amount
   description TEXT,
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -1588,12 +1595,12 @@ CREATE TABLE ai_credit_transactions (
   transaction_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   transaction_type VARCHAR(30) NOT NULL, -- deduction, monthly_allocation, top_up, promotional, achievement_reward, referral_bonus, overage_charge, refund_system_failure, refund_no_output, refund_partial_output, refund_quality_dispute
-  credits INTEGER NOT NULL, -- positive = add, negative = deduct
-  balance_after INTEGER NOT NULL,
+  credits NUMERIC(18,6) NOT NULL, -- DB-H-001: positive = add, negative = deduct
+  balance_after NUMERIC(18,6) NOT NULL, -- DB-H-001: running balance after transaction
   operation_type VARCHAR(50), -- text_gen, image_gen, video_gen, analysis, agent_exec
   generation_job_id UUID,
-  estimated_cost INTEGER, -- estimated credits at reservation time (per BIZ-001)
-  actual_cost INTEGER, -- actual credits consumed after completion (per BIZ-001)
+  estimated_cost NUMERIC(18,6), -- DB-H-001: estimated credits at reservation time (per BIZ-001)
+  actual_cost NUMERIC(18,6), -- DB-H-001: actual credits consumed after completion (per BIZ-001)
   description TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -1721,11 +1728,13 @@ CREATE TABLE achievement_definitions (
   title VARCHAR(255) NOT NULL,
   description TEXT,
   trigger_condition JSONB NOT NULL,
-  reward_credits INTEGER NOT NULL DEFAULT 0,
+  reward_credits INTEGER NOT NULL DEFAULT 0, -- whole credit units (counter, not transaction amount); DB-H-001 NUMERIC applies to credit *amounts* in ai_credit_transactions
   badge_image_url TEXT,
   category VARCHAR(50), -- milestone, streak, content, commerce
   sort_order SMALLINT DEFAULT 0,
-  active BOOLEAN DEFAULT true
+  active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 
@@ -1734,7 +1743,7 @@ CREATE TABLE achievement_records (
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   achievement_id UUID NOT NULL REFERENCES achievement_definitions(achievement_id),
   earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  credits_awarded INTEGER NOT NULL DEFAULT 0,
+  credits_awarded NUMERIC(18,6) NOT NULL DEFAULT 0, -- DB-H-001: credit amount awarded
   UNIQUE(workspace_id, achievement_id)
 );
 ALTER TABLE achievement_records ENABLE ROW LEVEL SECURITY;
@@ -1885,6 +1894,7 @@ CREATE POLICY tenant_isolation ON rate_cards
 
 CREATE TABLE rate_card_items (
   item_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id), -- Audit v8: added for RLS (contains pricing data)
   rate_card_id UUID NOT NULL REFERENCES rate_cards(rate_card_id),
   service_type VARCHAR(50) NOT NULL,
   price_min NUMERIC(18,6),
@@ -1896,6 +1906,10 @@ CREATE TABLE rate_card_items (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE rate_card_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rate_card_items FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON rate_card_items
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 ### 16.5 brand_deals
@@ -2555,6 +2569,11 @@ CREATE TABLE background_jobs (
 );
 CREATE INDEX idx_bgj_queue_status ON background_jobs(queue_name, status, created_at DESC);
 CREATE INDEX idx_bgj_workspace ON background_jobs(workspace_id, created_at DESC);
+ALTER TABLE background_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE background_jobs FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON background_jobs
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+-- Note: system-level jobs (workspace_id IS NULL) require service role access
 ALTER TABLE background_jobs ADD CONSTRAINT chk_background_jobs_status
   CHECK (status IN ('queued', 'running', 'paused', 'succeeded', 'failed', 'cancelled', 'dead_lettered'));
 ALTER TABLE background_jobs ADD CONSTRAINT chk_background_jobs_priority
@@ -2624,6 +2643,11 @@ CREATE INDEX idx_dlq_queue ON dead_letter_queue(queue_name, status);
 CREATE INDEX idx_dlq_workspace ON dead_letter_queue(workspace_id);
 ALTER TABLE dead_letter_queue ADD CONSTRAINT chk_dead_letter_queue_status
   CHECK (status IN ('pending', 'retrying', 'resolved', 'discarded'));
+ALTER TABLE dead_letter_queue ENABLE ROW LEVEL SECURITY;
+ALTER TABLE dead_letter_queue FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON dead_letter_queue
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+-- Note: system-level DLQ items (workspace_id IS NULL) require service role access
 ```
 
 ### 18.4H event_outbox [GLOBAL]
@@ -2631,6 +2655,7 @@ ALTER TABLE dead_letter_queue ADD CONSTRAINT chk_dead_letter_queue_status
 CREATE TABLE event_outbox (
   outbox_id BIGSERIAL PRIMARY KEY,
   event_type VARCHAR(200) NOT NULL,
+  target_stream VARCHAR(100) NOT NULL, -- canonical queue name from queue_retry_design.md §2 (e.g., publish_jobs, generation_jobs)
   aggregate_type VARCHAR(100) NOT NULL,
   aggregate_id UUID NOT NULL,
   workspace_id UUID REFERENCES workspaces(workspace_id),
@@ -2642,6 +2667,11 @@ CREATE TABLE event_outbox (
 );
 CREATE INDEX idx_outbox_unpublished ON event_outbox(published, created_at)
   WHERE published = false;
+ALTER TABLE event_outbox ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event_outbox FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON event_outbox
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+-- Note: outbox poller runs as service role (bypasses RLS) per ADR-011 exception
 ```
 
 ### 18.4I broadcasts [GLOBAL]
@@ -2713,6 +2743,11 @@ ALTER TABLE notification_events ADD CONSTRAINT chk_notification_events_channel
   CHECK (channel IN ('in_app', 'email', 'push', 'sms'));
 ALTER TABLE notification_events ADD CONSTRAINT chk_notification_events_type
   CHECK (event_type IN ('queued', 'sent', 'delivered', 'opened', 'clicked', 'failed'));
+ALTER TABLE notification_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification_events FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON notification_events
+  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+-- Note: system-level events (workspace_id IS NULL) and broadcast delivery tracking require service role access
 ```
 
 ### 18.5 tags (generic polymorphic tagging)
@@ -2722,6 +2757,7 @@ CREATE TABLE tags (
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   name VARCHAR(100) NOT NULL,
   color VARCHAR(7), -- hex color
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(workspace_id, name)
 );
 
@@ -2730,6 +2766,8 @@ ALTER TABLE tags FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON tags
   USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
 
+-- RLS note: taggables has no workspace_id — access controlled via FK-joined parent table (tags) which has RLS.
+-- MUST always be queried through parent JOIN, never directly.
 CREATE TABLE taggables (
   tag_id UUID NOT NULL REFERENCES tags(tag_id),
   taggable_type VARCHAR(50) NOT NULL,
@@ -2748,8 +2786,8 @@ CREATE TABLE referral_records (
   referral_code VARCHAR(20) NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, qualified, rewarded, revoked
   referee_qualified_at TIMESTAMPTZ,
-  referrer_credits_awarded INTEGER DEFAULT 0,
-  referee_credits_awarded INTEGER DEFAULT 0,
+  referrer_credits_awarded NUMERIC(18,6) DEFAULT 0, -- DB-H-001: credit amount
+  referee_credits_awarded NUMERIC(18,6) DEFAULT 0, -- DB-H-001: credit amount
   fraud_check_passed BOOLEAN,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -3257,7 +3295,7 @@ CREATE TABLE skus (
   product_id UUID NOT NULL REFERENCES products(product_id),
   sku_code VARCHAR(100) NOT NULL,
   variant_attributes JSONB DEFAULT '{}', -- {color: "Red", size: "M"}
-  barcode VARCHAR(50),
+  barcode VARCHAR(100), -- standardized with product_skus §10.3
   price_override NUMERIC(18,6), -- NULL = use product base_price
   cogs_override NUMERIC(18,6), -- NULL = use product cogs
   weight_grams INTEGER,
@@ -3301,7 +3339,7 @@ CREATE POLICY tenant_isolation ON inventory_locations
 CREATE TABLE stock_movements (
   movement_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
-  sku_id UUID NOT NULL REFERENCES skus(sku_id),
+  sku_id UUID NOT NULL REFERENCES product_skus(sku_id), -- Audit v8: was skus(sku_id), skus is DEPRECATED per §19.9F
   location_id UUID REFERENCES inventory_locations(location_id),
   movement_type VARCHAR(30) NOT NULL, -- purchase, sale, return, adjustment, transfer, damage, platform_sync
   quantity INTEGER NOT NULL, -- positive = in, negative = out
@@ -3398,7 +3436,7 @@ CREATE TABLE copilot_sessions (
   mode VARCHAR(20) NOT NULL, -- creative, analytics, action, video_production, help
   context_scope VARCHAR(50),
   messages JSONB DEFAULT '[]', -- [{role, content, timestamp}]
-  total_credits_used INTEGER DEFAULT 0,
+  total_credits_used NUMERIC(18,6) DEFAULT 0, -- DB-H-001: credit amount (not counter)
   ended_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -3774,7 +3812,7 @@ CREATE TABLE challenge_definitions (
   description TEXT,
   challenge_type VARCHAR(30) NOT NULL, -- publish_count, revenue_target, engagement_target, streak, custom
   target_value INTEGER NOT NULL,
-  reward_credits INTEGER NOT NULL DEFAULT 0,
+  reward_credits INTEGER NOT NULL DEFAULT 0, -- whole credit units (counter); DB-H-001 NUMERIC applies to credit *amounts*
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
   is_active BOOLEAN DEFAULT true,

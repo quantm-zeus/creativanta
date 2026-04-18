@@ -83,6 +83,8 @@ notify-keyspace-events "Ex"
 
 ### 2.1 Index Definitions
 
+> **Note**: Searchable attributes may be **denormalized** at sync time — e.g., `entity_name` is resolved from `entities` via FK join, `body_text` is extracted from `content` JSONB, `metadata_text` from `metadata` JSONB, `handles_text` from `platform_handles` JSONB, `customer_name` from `customer_entity_id` FK, and `last_message_preview` from the latest `messages` row. These are not direct column names in PostgreSQL.
+
 | Index | Documents | Searchable Attributes | Filterable | Sortable |
 |---|---|---|---|---|
 | `products` | Products | title, description, category | workspace_id, catalog_status, product_type | created_at, base_price |
@@ -145,28 +147,30 @@ CREATE TABLE content_performance (
   reach UInt64,
   impressions UInt64,
   watch_time_seconds UInt64,
-  revenue Decimal64(2),
+  revenue Decimal64(6), -- aligned to PostgreSQL NUMERIC(18,6) per DB-H-001
   synced_at DateTime
 ) ENGINE = MergeTree()
 PARTITION BY toYYYYMM(metric_date)
 ORDER BY (workspace_id, metric_date, publish_item_id);
 
 -- Profit aggregation (M19)
+-- Note: All monetary Decimal columns use Decimal64(6) to match PostgreSQL NUMERIC(18,6) per DB-H-001.
+-- This prevents rounding discrepancies when data flows between PostgreSQL and ClickHouse.
 CREATE TABLE profit_daily (
   workspace_id UUID,
   scope_type String,
   scope_id UUID,
   metric_date Date,
-  gross_revenue Decimal64(2),
-  platform_fees Decimal64(2),
-  shipping_costs Decimal64(2),
-  affiliate_commissions Decimal64(2),
-  refunds Decimal64(2),
-  cogs Decimal64(2),
-  ads_spend Decimal64(2),
-  ai_costs Decimal64(2),
-  other_costs Decimal64(2),
-  net_profit Decimal64(2),
+  gross_revenue Decimal64(6),
+  platform_fees Decimal64(6),
+  shipping_costs Decimal64(6),
+  affiliate_commissions Decimal64(6),
+  refunds Decimal64(6),
+  cogs Decimal64(6),
+  ads_spend Decimal64(6),
+  ai_costs Decimal64(6),
+  other_costs Decimal64(6),
+  net_profit Decimal64(6),
   order_count UInt32,
   currency String DEFAULT 'VND'
 ) ENGINE = SummingMergeTree()
@@ -182,7 +186,7 @@ CREATE TABLE ai_usage (
   input_tokens UInt32,
   output_tokens UInt32,
   cost_usd Decimal64(6),
-  credits_used Decimal64(3), -- credit units (whole or fractional); Decimal per DB-H-001
+  credits_used Decimal64(6), -- aligned to PostgreSQL NUMERIC(18,6) per DB-H-001
   latency_ms UInt32,
   status String,
   created_at DateTime
@@ -223,4 +227,4 @@ GROUP BY workspace_id, metric_date;
 | `scripts` | `embedding` | 768 | IVFFlat | Script similarity search |
 | `products` | `embedding` | 768 | IVFFlat | Product-content matching |
 
-**Embedding model**: Gemini embedding-001 (768 dimensions, multilingual including Vietnamese)
+**Embedding model**: Gemini text-embedding-004 (768 dimensions, multilingual including Vietnamese)

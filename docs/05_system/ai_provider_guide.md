@@ -25,7 +25,7 @@ purpose: AI provider setup (Gemini, OpenAI, ElevenLabs, Veo), adapter trait patt
 | **Image Gen** | Flux 2 Pro (Replicate) | GPT Image | Thumbnails, product images |
 | **TTS** | ElevenLabs | Google Cloud TTS | Voice-over, voice clone |
 | **STT** | Gemini Flash (audio input) | Whisper API | Transcription |
-| **Embedding** | Gemini embedding-001 | — | Semantic search, similarity |
+| **Embedding** | Gemini text-embedding-004 | — | Semantic search, similarity |
 | **Moderation** | OpenAI Moderation (free) | Gemini safety | Content moderation |
 
 ---
@@ -90,7 +90,10 @@ ai_routing:
     reset_timeout_secs: 300
 ```
 
-### 2.3 Credit Cost Table (per operation)
+### 2.3 Credit Cost Table (per operation — default values)
+
+> **Note**: These are default/baseline credit costs used by the AI routing config. The full credit pricing with tier-based ranges is in `01_business/pricing_and_credits.md` §3 (canonical source for pricing). Values here represent the standard-quality defaults; premium/HD variants cost more per the pricing doc.
+
 ```yaml
 credit_costs:
   # LLM
@@ -98,7 +101,7 @@ credit_costs:
   caption_generation: 1     # hashtags, captions
   script_generation: 3      # full script with hooks
   copilot_query: 1          # conversational query
-  copilot_action: 2         # action-executing query
+  copilot_action: 3         # action-executing query (range: 3–15 per pricing doc)
   long_analysis: 5          # competitor deep dive
   
   # Media
@@ -106,7 +109,7 @@ credit_costs:
   thumbnail_generation: 3   # thumbnail variant
   video_generation_per_5s: 10  # per 5 seconds
   tts_per_1000_chars: 2     # voice synthesis
-  voice_clone_setup: 20     # one-time clone
+  voice_clone_setup: 15     # one-time clone (midpoint of 10–20 range per BIZ-001)
   lip_sync_per_5s: 5        # lip sync processing
   
   # Analysis
@@ -172,9 +175,9 @@ pub struct VideoGenRequest {
 
 pub struct VideoGenResult {
     pub video_url: String,
-    pub duration_secs: f32,
+    pub duration_secs: f32,       // in-memory only; persists as NUMERIC(12,2) in assets table
     pub resolution: String,
-    pub cost_usd: f64,
+    pub cost_usd: f64,            // in-memory only; persists as NUMERIC(18,6) per DB-H-001
     pub generation_time_ms: u64,
 }
 ```

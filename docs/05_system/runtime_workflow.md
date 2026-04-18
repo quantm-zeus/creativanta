@@ -98,12 +98,12 @@ Mọi event bắt buộc có:
 | ScriptSubmittedForApproval | `script.submitted_for_approval` | §3.1 |
 | ScriptApproved | `script.approved` | §3.1 |
 | ScriptRejected | `script.rejected` | §3.1 |
-| AssetBriefCreated | `content.asset_brief.created` | §3.1 |
+| AssetBriefCreated | `content_brief.created` | §3.1 |
 | AssetGenerationRequested | `asset.generation_started` | §3.1 |
 | AssetGenerated | `asset.generation_completed` | §3.1 |
 | AssetGenerationFailed | `asset.generation_failed` | §3.1 |
 | AssetApproved | `asset.approved` | §3.1 |
-| AssetRejected | `content.asset.rejected` | §3.1 |
+| AssetRejected | `asset.rejected` | §3.1 |
 | VideoEditJobCreated | `production.video_edit_job.created` | §3.1B |
 | VideoEditJobStarted | `production.video_edit_job.started` | §3.1B |
 | VideoEditJobCompleted | `production.video_edit_job.completed` | §3.1B |

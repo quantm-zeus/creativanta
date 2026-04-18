@@ -55,16 +55,16 @@ jobs:
       - name: Rust lint
         run: cargo clippy --all-targets --all-features -- -D warnings
       - name: Svelte lint
-        run: cd web && pnpm lint
+        run: cd apps/web && pnpm lint
       - name: Dart analyze
-        run: cd mobile && flutter analyze
+        run: cd apps/mobile && flutter analyze
 
   test-unit:
     runs-on: ubuntu-latest
     needs: lint
     services:
       postgres:
-        image: postgres:17
+        image: timescale/timescaledb-ha:pg17  # must match docker_dev_environment.md for TimescaleDB extensions
         env:
           POSTGRES_DB: creativanta_test
           POSTGRES_USER: creativanta
@@ -73,9 +73,9 @@ jobs:
       - name: Rust tests
         run: cargo test --workspace
       - name: Web tests
-        run: cd web && pnpm test
+        run: cd apps/web && pnpm test
       - name: Flutter tests
-        run: cd mobile && flutter test
+        run: cd apps/mobile && flutter test
 
   test-integration:
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
@@ -87,7 +87,7 @@ jobs:
       - name: Run integration tests
         run: cargo test --test '*_integration' -- --test-threads=1
       - name: Playwright E2E
-        run: cd web && pnpm exec playwright test
+        run: cd apps/web && pnpm exec playwright test
 
   contract-sync:
     runs-on: ubuntu-latest

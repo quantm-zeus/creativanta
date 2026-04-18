@@ -4,7 +4,7 @@
 > **Module**: M13 — Product Hub
 > **Route**: `/products`
 > **Platform**: Web (SvelteKit)
-> **Upstream**: Pack 06 §Commerce, Product Freeze §21-24, A1 Schema (products, product_variants, product_images), B5 RBAC §2.7
+> **Upstream**: Pack 06 §Commerce, Product Freeze §21-24, A1 Schema (products, product_skus, product_images), B5 RBAC §2.7
 
 ---
 ## 1. Purpose & Context
@@ -159,13 +159,13 @@ ProductListPage
 
 | Field | Source | API | Display Format | Cache |
 |---|---|---|---|---|
-| Name | `products.name` | `ProductService/List` | Text, max 60 chars | 5m |
-| Price | `products.price` or `MIN(variants.price)` | same | "299,000đ" or "từ 299,000đ" | 5m |
+| Name | `products.title` | `ProductService/List` | Text, max 60 chars | 5m |
+| Price | `products.base_price` or `MIN(product_skus.price)` | same | "299,000đ" or "từ 299,000đ" | 5m |
 | Platform | `products.source_platform` | same | Platform icon + name | 5m |
-| Status | `products.status` | same | Color badge | 5m |
-| SKUs | `COUNT(product_variants)` | same | "SKUs: 3" | 5m |
-| Stock | `SUM(variants.stock_quantity)` | same | "Stock: 245" | Real-time SSE |
-| Low stock threshold | `products.low_stock_threshold` (default 10) | same | ⚠️ if below | 5m |
+| Status | `products.catalog_status` | same | Color badge | 5m |
+| SKUs | `COUNT(product_skus)` | same | "SKUs: 3" | 5m |
+| Stock | `SUM(product_skus.stock_quantity)` | same | "Stock: 245" | Real-time SSE |
+| Low stock threshold | `product_skus.low_stock_threshold` (default 10) | same | ⚠️ if below | 5m |
 | Sold (30d) | `orders` aggregation | same | "89" | 5m |
 | Revenue (30d) | `orders.total_amount` sum | same | "26.6M VND" (compact) | 5m |
 | Image | `product_images[0].url` | same | CDN thumbnail 200×200 | CDN cached |
@@ -367,7 +367,7 @@ Client-side:
 ### SSE Integration
 - Channel: `EventSource('/api/events/products')`
 - Events: `product_created`, `product_updated`, `stock_changed`, `product_deleted`
-- On event: Patch SvelteKit store with delta update (no full refetch)
+- On event: Patch TanStack Query cache with delta update (no full refetch)
 
 ---
 ## 18. Localization Notes
