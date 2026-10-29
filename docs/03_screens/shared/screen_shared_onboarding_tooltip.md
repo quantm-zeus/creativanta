@@ -70,7 +70,7 @@ Step-by-step guided tooltips that highlight key features during first use. Progr
 
 ---
 
-## 2. Preconditions / Postconditions
+## 6. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -80,7 +80,7 @@ Step-by-step guided tooltips that highlight key features during first use. Progr
 
 ---
 
-## 4. Component Hierarchy
+## 7. Component Hierarchy
 ```
 OnboardingTooltipSequence
 ├── HighlightOverlay
@@ -95,7 +95,7 @@ OnboardingTooltipSequence
 
 ---
 
-## 5. Data Binding & Display Format
+## 8. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |

@@ -330,12 +330,12 @@ N/A — Login is a pre-authentication screen. No RBAC applies.
 - Secure cookie: `HttpOnly`, `SameSite=Strict`, `Secure`
 
 ---
-## 5. Data Binding & Display Format
+## 19. Data Binding & Display Format
 *(Refer to screen-specific data binding in section above)*
 
 
 ---
-## 19. Related Screens
+## 20. Related Screens
 
 | Screen | Relationship |
 |---|---|

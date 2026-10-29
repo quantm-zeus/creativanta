@@ -41,7 +41,7 @@ Mobile analytics hub — overview metrics, top content, trend chart, and navigat
 │ [🏠] [💡] [🎬] [💬] [📊]                                          │
 └──────────────────────────────────────────────────────────────────────┘
 ```
-## 7. States
+## 3. States
 | State | Condition | Visual |
 |---|---|---|
 | LOADING | Fetching | Shimmer |
@@ -51,7 +51,7 @@ Mobile analytics hub — overview metrics, top content, trend chart, and navigat
 
 ---
 
-## 2. Preconditions / Postconditions
+## 4. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -62,7 +62,7 @@ Mobile analytics hub — overview metrics, top content, trend chart, and navigat
 
 ---
 
-## 4. Component Hierarchy
+## 5. Component Hierarchy
 ```
 AnalyticsDashboardScreen
 ├── AppBar
@@ -78,7 +78,7 @@ AnalyticsDashboardScreen
 
 ---
 
-## 5. Data Binding & Display Format
+## 6. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |
@@ -88,7 +88,7 @@ AnalyticsDashboardScreen
 
 
 ---
-## 19. Related Screens
+## 7. Related Screens
 | Screen | Relationship |
 |---|---|
 | [W075] Web Analytics Overview | Web equivalent |

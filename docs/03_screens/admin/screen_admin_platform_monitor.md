@@ -49,7 +49,7 @@ Monitor all platform integrations — TikTok, Instagram, Shopee, YouTube, Facebo
 │ └────────────────────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────────────────┘
 ```
-## 7. States
+## 3. States
 | State | Condition | Visual |
 |---|---|---|
 | LOADING | Fetching | Shimmer |
@@ -61,7 +61,7 @@ Monitor all platform integrations — TikTok, Instagram, Shopee, YouTube, Facebo
 
 ---
 
-## 2. Preconditions / Postconditions
+## 4. Preconditions / Postconditions
 ### Preconditions
 - Admin user with appropriate S26 role
 - VPN connection active
@@ -71,7 +71,7 @@ Monitor all platform integrations — TikTok, Instagram, Shopee, YouTube, Facebo
 
 ---
 
-## 4. Component Hierarchy
+## 5. Component Hierarchy
 ```text
 PlatformIntegrationMonitorPage
 ├── AdminShell
@@ -85,7 +85,7 @@ PlatformIntegrationMonitorPage
 
 ---
 
-## 5. Data Binding & Display Format
+## 6. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Provider cards | `connected_accounts`, `platform_health_scores` | `ConnectorService/GetAllStatus` | Health cards | 30s TTL |
@@ -95,7 +95,7 @@ PlatformIntegrationMonitorPage
 
 
 ---
-## 19. Related Screens
+## 7. Related Screens
 | Screen | Relationship |
 |---|---|
 | [A006] System Health | System overview |

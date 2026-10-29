@@ -360,7 +360,7 @@ Register (/register)
 - Honeypot field (hidden input, bot detection)
 
 ---
-## 5. Data Binding & Display Format
+## 18. Data Binding & Display Format
 *(Refer to screen-specific data binding in section above)*
 
 

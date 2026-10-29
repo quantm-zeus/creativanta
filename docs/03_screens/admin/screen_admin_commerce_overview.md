@@ -181,7 +181,7 @@ AdminCommerceOverviewPage
 | ERROR | API failed | Error with retry |
 
 ---
-## 5. Data Binding & Display Format
+## 9. Data Binding & Display Format
 | UI Element | Data Source | API / Projection | Display Format | Cache |
 |---|---|---|---|---|
 | KPI row | Commerce overview projection derived from `orders` + fee schedules | Admin commerce overview projection | GMV / orders / refund / AOV / active workspaces / fees | 5m TTL |
@@ -192,7 +192,7 @@ AdminCommerceOverviewPage
 
 
 ---
-## 19. Related Screens
+## 10. Related Screens
 
 | Screen | Relationship |
 |---|---|

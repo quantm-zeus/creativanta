@@ -243,12 +243,12 @@ DisputeResolutionPage
 - **Retention**: Dispute records and audit trail kept for 5 years (legal compliance)
 
 ---
-## 5. Data Binding & Display Format
+## 12. Data Binding & Display Format
 *(Refer to screen-specific data binding in section above)*
 
 
 ---
-## 19. Related Screens
+## 13. Related Screens
 
 | Screen | Relationship |
 |---|---|

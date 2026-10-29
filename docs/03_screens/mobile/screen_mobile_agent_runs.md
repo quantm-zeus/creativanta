@@ -49,7 +49,7 @@ Monitor AI agent executions on mobile — running/paused/completed/failed cards 
 
 ---
 
-## 7. States
+## 3. States
 | State | Condition | Visual |
 |---|---|---|
 | LOADING | Fetching | Card shimmer |
@@ -60,7 +60,7 @@ Monitor AI agent executions on mobile — running/paused/completed/failed cards 
 
 ---
 
-## 2. Preconditions / Postconditions
+## 4. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -71,7 +71,7 @@ Monitor AI agent executions on mobile — running/paused/completed/failed cards 
 
 ---
 
-## 4. Component Hierarchy
+## 5. Component Hierarchy
 ```
 AgentRunsScreen
 ├── AppBar
@@ -95,7 +95,7 @@ AgentRunsScreen
 
 ---
 
-## 5. Data Binding & Display Format
+## 6. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Agent runs | `agent_runs` filtered by `current_state` | `AgentService/ListRuns` | Card list grouped by status chip | 15s stale max |
@@ -106,7 +106,7 @@ AgentRunsScreen
 
 
 ---
-## 19. Related Screens
+## 7. Related Screens
 | Screen | Relationship |
 |---|---|
 | [W106] Web AI Agent Runs | Web equivalent |

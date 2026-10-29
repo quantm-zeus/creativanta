@@ -96,7 +96,7 @@ MobileNotificationListPage
 
 ---
 
-## 2. Preconditions / Postconditions
+## 4. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted

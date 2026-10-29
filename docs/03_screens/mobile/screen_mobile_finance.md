@@ -46,7 +46,7 @@ Mobile finance hub — net profit overview, revenue vs cost trend, trust badges,
 
 ---
 
-## 7. States
+## 3. States
 | State | Condition | Visual |
 |---|---|---|
 | LOADING | Fetching | Shimmer |
@@ -58,7 +58,7 @@ Mobile finance hub — net profit overview, revenue vs cost trend, trust badges,
 
 ---
 
-## 2. Preconditions / Postconditions
+## 4. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -69,7 +69,7 @@ Mobile finance hub — net profit overview, revenue vs cost trend, trust badges,
 
 ---
 
-## 4. Component Hierarchy
+## 5. Component Hierarchy
 ```
 FinanceOverviewScreen
 ├── AppBar
@@ -85,7 +85,7 @@ FinanceOverviewScreen
 
 ---
 
-## 5. Data Binding & Display Format
+## 6. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |
@@ -95,7 +95,7 @@ FinanceOverviewScreen
 
 
 ---
-## 19. Related Screens
+## 7. Related Screens
 | Screen | Relationship |
 |---|---|
 | [W080] Web Finance Dashboard | Web equivalent |

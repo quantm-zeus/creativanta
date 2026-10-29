@@ -228,7 +228,7 @@ BrandDealManagerPage
 - **Pipeline**: Client-side filtering by status tab; stage counts from server aggregation
 - **Rate card**: Async load `RateCardService/CompareScope(deliverables)` per deal
 - **Status transitions**: `BrandDealService/UpdateStatus(deal_id, new_status)` → optimistic UI
-- **Deliverables**: Inline `BrandDealService/ToggleDeliverable(id, completed)` with proof upload prompt
+- **Deliverables**: Inline `BrandDealService/UpdateDeliverable(id, completed)` with proof upload prompt<!-- AUDIT-FIX 2026-04-19: ToggleDeliverable → UpdateDeliverable to match canonical api_endpoint_map.md §20.7 -->
 - **Payment tracking**: `BrandDealService/UpdatePayment(deal_id, status, amount)` → feeds into Finance module
 
 ---

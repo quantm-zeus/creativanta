@@ -45,7 +45,7 @@ Deep workspace inspection — configuration, members, connections, usage, billin
 │ │ [👤 Impersonate] ← OTP required · audit logged                │
 └──────────────────────────────────────────────────────────────────────┘
 ```
-## 7. States
+## 3. States
 | State | Condition | Visual |
 |---|---|---|
 | LOADING | Fetching | Shimmer |
@@ -56,7 +56,7 @@ Deep workspace inspection — configuration, members, connections, usage, billin
 
 ---
 
-## 2. Preconditions / Postconditions
+## 4. Preconditions / Postconditions
 ### Preconditions
 - Admin user with appropriate S26 role
 - VPN connection active
@@ -66,7 +66,7 @@ Deep workspace inspection — configuration, members, connections, usage, billin
 
 ---
 
-## 4. Component Hierarchy
+## 5. Component Hierarchy
 ```
 WorkspaceDetailPage
 ├── AdminShell (shared)
@@ -81,7 +81,7 @@ WorkspaceDetailPage
 
 ---
 
-## 5. Data Binding & Display Format
+## 6. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |
@@ -91,7 +91,7 @@ WorkspaceDetailPage
 
 
 ---
-## 19. Related Screens
+## 7. Related Screens
 | Screen | Relationship |
 |---|---|
 | [A004] Workspace List | Parent |

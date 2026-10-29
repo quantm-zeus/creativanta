@@ -154,7 +154,7 @@ NotificationCenter
 
 ---
 
-## 9. Navigation Map
+## 7. Navigation Map
 
 ```
 Notification Center (/notifications)
@@ -168,7 +168,7 @@ Notification Center (/notifications)
 
 ---
 
-## 10. Error Handling
+## 8. Error Handling
 
 | Error | Response | Recovery |
 |---|---|---|
@@ -212,7 +212,7 @@ Notification Center (/notifications)
 
 ---
 
-## 2. Preconditions / Postconditions
+## 9. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -222,7 +222,7 @@ Notification Center (/notifications)
 
 ---
 
-## 9. Permission Matrix
+## 10. Permission Matrix
 | Action | Owner | Admin | Manager | Editor | Contributor | Viewer |
 |---|---|---|---|---|---|---|
 | View | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -231,7 +231,7 @@ Notification Center (/notifications)
 
 ---
 
-## 13. Loading Behavior
+## 11. Loading Behavior
 | Stage | Duration | Visual |
 |---|---|---|
 | Screen mount | 0ms | Shell + shimmer skeleton |
@@ -240,7 +240,7 @@ Notification Center (/notifications)
 
 ---
 
-## 16. Localization Notes
+## 12. Localization Notes
 - Primary language: Vietnamese
 - Currency: VND (no decimals, dot separator)
 - Date: DD/MM/YYYY
@@ -249,7 +249,7 @@ Notification Center (/notifications)
 
 ---
 
-## 17. Analytics / Tracking Events
+## 13. Analytics / Tracking Events
 | Event | Trigger | Properties |
 |---|---|---|
 | `notification_center.viewed` | Screen load | `source` |
@@ -258,7 +258,7 @@ Notification Center (/notifications)
 
 ---
 
-## 18. Design Tokens Reference
+## 14. Design Tokens Reference
 | Token | Usage |
 |---|---|
 | `--color-accent` | Primary actions, CTAs |

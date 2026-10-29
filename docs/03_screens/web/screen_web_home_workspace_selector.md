@@ -215,7 +215,7 @@ Workspace Selector (/workspaces)
 
 ---
 
-## 2. Preconditions / Postconditions
+## 11. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -225,7 +225,7 @@ Workspace Selector (/workspaces)
 
 ---
 
-## 15. Real-time Updates
+## 12. Real-time Updates
 | Data | Channel | Frequency |
 |---|---|---|
 | Critical data | SSE or polling | Based on data criticality |
@@ -233,7 +233,7 @@ Workspace Selector (/workspaces)
 
 ---
 
-## 17. Analytics / Tracking Events
+## 13. Analytics / Tracking Events
 | Event | Trigger | Properties |
 |---|---|---|
 | `workspace_selector.viewed` | Screen load | `source` |

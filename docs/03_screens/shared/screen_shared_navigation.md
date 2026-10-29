@@ -78,7 +78,7 @@ Standardized navigation structures for Web sidebar, mobile bottom nav, and admin
 
 ---
 
-## 2. Preconditions / Postconditions
+## 5. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -88,7 +88,7 @@ Standardized navigation structures for Web sidebar, mobile bottom nav, and admin
 
 ---
 
-## 4. Component Hierarchy
+## 6. Component Hierarchy
 ```
 NavigationPatternsPage
 ├── AppShell (shared)
@@ -102,7 +102,7 @@ NavigationPatternsPage
 
 ---
 
-## 5. Data Binding & Display Format
+## 7. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |

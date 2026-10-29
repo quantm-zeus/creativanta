@@ -285,7 +285,7 @@ AffiliateLinkPage
 | ConnectorService | Platform connection status for link validity |
 | ProductService | Product data for link creation |
 | CampaignService | Campaign context for link grouping |
-| HealthCheckService | Link health monitoring results |
+| LinkHealthService | Link health monitoring results |<!-- AUDIT-FIX 2026-04-19: HealthCheckService → LinkHealthService to match canonical api_endpoint_map.md (LinkHealthService/GetReport) -->
 | Trust Badge (S009) | Data provenance display |
 | Confirmation Dialog (S007) | Delete confirmation |
 | Upsell Banner (S011) | Tier limit messaging |
@@ -312,20 +312,6 @@ AffiliateLinkPage
 3. Link health checks run server-side on scheduled jobs; results are cached and displayed.
 
 
----
-## 19. Related Screens
-
-| Screen | Relationship |
-|---|---|
-| [W070] Affiliate Manager | Advanced affiliate management (creators, statements) |
-| [W061] Product Detail | Product referenced in link |
-| [W065] Campaign Detail | Campaign context for link |
-| [W125] Diagnostics Center | Link health deep-dive |
-| [M032] Mobile Affiliates | Mobile equivalent |
-| [S009] Trust Badge | Source/confidence display |
-| [S007] Confirmations | Delete confirmation |
-| [S011] Upsell Banner | Tier limit upsell |
----
 ## 17. SvelteKit Implementation Notes
 
 ### Route & Server Load

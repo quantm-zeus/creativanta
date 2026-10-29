@@ -83,7 +83,7 @@ Email: [invalid_email    ]
 
 ---
 
-## 2. Preconditions / Postconditions
+## 4. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -93,7 +93,7 @@ Email: [invalid_email    ]
 
 ---
 
-## 4. Component Hierarchy
+## 5. Component Hierarchy
 ```
 ErrorStatesPage
 ├── AppShell (shared)
@@ -107,7 +107,7 @@ ErrorStatesPage
 
 ---
 
-## 5. Data Binding & Display Format
+## 6. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |

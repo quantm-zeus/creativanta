@@ -50,7 +50,7 @@ Mobile script browser — list AI-generated and manually created scripts with st
 
 ---
 
-## 7. States
+## 3. States
 
 | State | Condition | Visual |
 |---|---|---|
@@ -61,7 +61,7 @@ Mobile script browser — list AI-generated and manually created scripts with st
 | ERROR | API failed | Error with retry |
 
 ---
-## 2. Preconditions / Postconditions
+## 4. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -72,7 +72,7 @@ Mobile script browser — list AI-generated and manually created scripts with st
 
 ---
 
-## 4. Component Hierarchy
+## 5. Component Hierarchy
 ```
 ScriptListScreen
 ├── AppBar
@@ -88,7 +88,7 @@ ScriptListScreen
 
 ---
 
-## 5. Data Binding & Display Format
+## 6. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |
@@ -98,7 +98,7 @@ ScriptListScreen
 
 
 ---
-## 19. Related Screens
+## 7. Related Screens
 
 | Screen | Relationship |
 |---|---|

@@ -118,7 +118,7 @@ AdminSupportQueuePage
 
 ---
 
-## 2. Preconditions / Postconditions
+## 4. Preconditions / Postconditions
 ### Preconditions
 - Admin user with appropriate S26 role
 - VPN connection active

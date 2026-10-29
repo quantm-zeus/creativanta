@@ -41,7 +41,7 @@ Admin error analytics — error frequency charts, top errors, affected workspace
 │ └────────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────────────┘
 ```
-## 7. States
+## 3. States
 | State | Condition | Visual |
 |---|---|---|
 | LOADING | Fetching | Shimmer |
@@ -50,12 +50,12 @@ Admin error analytics — error frequency charts, top errors, affected workspace
 | SPIKE_DETECTED | Error spike > 3× avg | Red banner: "🔴 Error spike detected!" |
 | ERROR | API failed | Error with retry |
 
-## 9. Permission Matrix
+## 4. Permission Matrix
 Admin: `admin:analytics:read` role required. Read-only for Analyst/Auditor roles (per RBAC §3.2).
 
 ---
 
-## 2. Preconditions / Postconditions
+## 5. Preconditions / Postconditions
 ### Preconditions
 - Admin user with appropriate S26 role
 - VPN connection active
@@ -65,7 +65,7 @@ Admin: `admin:analytics:read` role required. Read-only for Analyst/Auditor roles
 
 ---
 
-## 4. Component Hierarchy
+## 6. Component Hierarchy
 ```
 ErrorAnalyticsPage
 ├── AdminShell (shared)
@@ -80,7 +80,7 @@ ErrorAnalyticsPage
 
 ---
 
-## 5. Data Binding & Display Format
+## 7. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |
@@ -90,7 +90,7 @@ ErrorAnalyticsPage
 
 
 ---
-## 19. Related Screens
+## 8. Related Screens
 | Screen | Relationship |
 |---|---|
 | [A006] System Health | System overview |

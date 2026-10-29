@@ -48,7 +48,7 @@ Mobile media kit viewer — preview and share your media kit. Editing is limited
 │ [🏠] [💡] [🎬] [💬] [📊]                                          │
 └──────────────────────────────────────────────────────────────────────┘
 ```
-## 7. States
+## 3. States
 | State | Condition | Visual |
 |---|---|---|
 | LOADING | Fetching | Shimmer |
@@ -59,7 +59,7 @@ Mobile media kit viewer — preview and share your media kit. Editing is limited
 
 ---
 
-## 2. Preconditions / Postconditions
+## 4. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -70,7 +70,7 @@ Mobile media kit viewer — preview and share your media kit. Editing is limited
 
 ---
 
-## 4. Component Hierarchy
+## 5. Component Hierarchy
 ```
 MediaKitScreen
 ├── AppBar
@@ -86,7 +86,7 @@ MediaKitScreen
 
 ---
 
-## 5. Data Binding & Display Format
+## 6. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |
@@ -96,7 +96,7 @@ MediaKitScreen
 
 
 ---
-## 19. Related Screens
+## 7. Related Screens
 | Screen | Relationship |
 |---|---|
 | [W089] Web Media Kit | Web equivalent (full editor) |

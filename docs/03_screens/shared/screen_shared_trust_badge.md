@@ -201,7 +201,7 @@ interface TrustBadgeProps {
 4. **"Mixed sources" case**: When a metric aggregates Official + Imported data, primary badge shows the lower class (Imported) with tooltip listing all contributing classes.
 
 ---
-## 2. Preconditions / Postconditions
+## 13. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -210,7 +210,7 @@ interface TrustBadgeProps {
 - Analytics events dispatched
 
 ---
-## 4. Component Hierarchy
+## 14. Component Hierarchy
 ```
 TrustBadgeComponentPage
 ├── AppShell (shared)
@@ -223,7 +223,7 @@ TrustBadgeComponentPage
 ```
 
 ---
-## 5. Data Binding & Display Format
+## 15. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |

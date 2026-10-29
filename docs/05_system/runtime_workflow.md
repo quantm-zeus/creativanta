@@ -161,11 +161,11 @@ Mọi event bắt buộc có:
 | ProductShowcaseJobCreated | `production.product_showcase.created` |
 | ProductShowcaseJobCompleted | `production.product_showcase.completed` |
 | ProductShowcaseBatchQueued | `production.product_showcase.batch_queued` |
-| ImageToVideoGenerated | `production.image_to_video.completed` |
+| ImageToVideoGenerated | `production.image_to_video.generated` |<!-- AUDIT-FIX 2026-04-19: renamed .completed → .generated to match domain_event_catalog.md line 397 (canonical name). -->
 | ThumbnailGenerated | `production.thumbnail.generated` |
 | ThumbnailABTestStarted | `production.thumbnail.ab_test_started` |
 | LinkToVideoScraped | `production.link_to_video.scraped` |
-| LinkToVideoGenerated | `production.link_to_video.completed` |
+| LinkToVideoGenerated | `production.link_to_video.generated` |<!-- AUDIT-FIX 2026-04-19: renamed .completed → .generated to match domain_event_catalog.md line 401 (canonical name). -->
 | TranslationJobStarted | `production.translation.started` |
 | TranslationLanguageCompleted | `production.translation.language_completed` |
 | TranslationJobCompleted | `production.translation.completed` |
@@ -175,13 +175,13 @@ Mọi event bắt buộc có:
 | VideoAgentPipelineStarted | `production.video_agent.pipeline_started` |
 | VideoAgentPipelineCompleted | `production.video_agent.pipeline_completed` |
 | PerformanceReportGenerated | `production.performance_report.generated` |
-| ABTestExperimentStarted | `production.ab_test.experiment_started` |
+| ABTestExperimentStarted | `production.ab_test.started` |<!-- AUDIT-FIX 2026-04-19: renamed .experiment_started → .started to match domain_event_catalog.md line 411 (canonical name). -->
 | ABTestWinnerDetermined | `production.ab_test.winner_determined` |
-| CreatorXPEarned | `gamification.xp.earned` |
+| CreatorXPEarned | `xp.earned` |<!-- AUDIT-FIX 2026-04-19: renamed gamification.xp.earned → xp.earned to match domain_event_catalog.md line 273 (canonical name has no gamification. prefix). -->
 | CreatorLevelUp | `gamification.level.up` |
-| CreatorStreakUpdated | `gamification.streak.updated` |
+| CreatorStreakUpdated | `streak.milestone` |<!-- AUDIT-FIX 2026-04-19: renamed gamification.streak.updated → streak.milestone. Catalog (line 275) only defines streak.milestone/broken/frozen — no generic ".updated" event. The display name "StreakUpdated" maps semantically to the forward-progress milestone event; streak.broken/.frozen are separate lifecycle events emitted under their own display names. -->
 | CreatorAchievementUnlocked | `achievement.unlocked` |
-| CreatorQuestCompleted | `gamification.quest.completed` |
+| CreatorQuestCompleted | `gamification.challenge.completed` |<!-- AUDIT-FIX 2026-04-19: renamed gamification.quest.completed → gamification.challenge.completed. Glossary §Gamification defines "Challenge"; schema §22.10 describes challenge_definitions as "Quest/challenge configs" — Quest and Challenge are synonyms. Canonical catalog (line 422) uses "challenge". -->
 
 - ProductShowcaseJobCreated
 - ProductShowcaseJobCompleted

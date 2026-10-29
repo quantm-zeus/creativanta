@@ -47,7 +47,7 @@ Creator Pro hub on mobile — access media kit, brand deals, tax tools, and mone
 │ [🏠] [💡] [🎬] [💬] [📊]                                          │
 └──────────────────────────────────────────────────────────────────────┘
 ```
-## 7. States
+## 3. States
 | State | Condition | Visual |
 |---|---|---|
 | LOADING | Fetching | Card shimmer |
@@ -57,7 +57,7 @@ Creator Pro hub on mobile — access media kit, brand deals, tax tools, and mone
 
 ---
 
-## 2. Preconditions / Postconditions
+## 4. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -68,7 +68,7 @@ Creator Pro hub on mobile — access media kit, brand deals, tax tools, and mone
 
 ---
 
-## 4. Component Hierarchy
+## 5. Component Hierarchy
 ```
 CreatorProDashboardScreen
 ├── AppBar
@@ -84,7 +84,7 @@ CreatorProDashboardScreen
 
 ---
 
-## 5. Data Binding & Display Format
+## 6. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |
@@ -94,7 +94,7 @@ CreatorProDashboardScreen
 
 
 ---
-## 19. Related Screens
+## 7. Related Screens
 | Screen | Relationship |
 |---|---|
 | [W088] Web Creator Pro | Web equivalent |

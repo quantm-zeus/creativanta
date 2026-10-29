@@ -455,7 +455,7 @@ Unified Inbox (/inbox)
 ```
 
 ---
-## 5. Data Binding & Display Format
+## 18. Data Binding & Display Format
 *(Refer to screen-specific data binding in section above)*
 
 

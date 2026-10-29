@@ -44,7 +44,7 @@ Mobile contact detail — full profile with engagement history, purchase timelin
 │ [🏠] [💡] [🎬] [💬] [📊]                                          │
 └──────────────────────────────────────────────────────────────────────┘
 ```
-## 7. States
+## 3. States
 | State | Condition | Visual |
 |---|---|---|
 | LOADING | Fetching | Shimmer |
@@ -54,7 +54,7 @@ Mobile contact detail — full profile with engagement history, purchase timelin
 
 ---
 
-## 2. Preconditions / Postconditions
+## 4. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -65,7 +65,7 @@ Mobile contact detail — full profile with engagement history, purchase timelin
 
 ---
 
-## 4. Component Hierarchy
+## 5. Component Hierarchy
 ```
 ContactDetailScreen
 ├── AppBar
@@ -81,7 +81,7 @@ ContactDetailScreen
 
 ---
 
-## 5. Data Binding & Display Format
+## 6. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |
@@ -91,7 +91,7 @@ ContactDetailScreen
 
 
 ---
-## 19. Related Screens
+## 7. Related Screens
 | Screen | Relationship |
 |---|---|
 | [W049] Web Contact Detail | Web equivalent |

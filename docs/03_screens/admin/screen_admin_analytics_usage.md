@@ -43,7 +43,7 @@ Platform-wide usage analytics — DAU/MAU, feature adoption, API call volumes, A
 │ └────────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────────────┘
 ```
-## 7. States
+## 3. States
 | State | Condition | Visual |
 |---|---|---|
 | LOADING | Fetching | Shimmer |
@@ -53,7 +53,7 @@ Platform-wide usage analytics — DAU/MAU, feature adoption, API call volumes, A
 
 ---
 
-## 2. Preconditions / Postconditions
+## 4. Preconditions / Postconditions
 ### Preconditions
 - Admin user with appropriate S26 role
 - VPN connection active
@@ -63,7 +63,7 @@ Platform-wide usage analytics — DAU/MAU, feature adoption, API call volumes, A
 
 ---
 
-## 4. Component Hierarchy
+## 5. Component Hierarchy
 ```
 UsageAnalyticsPage
 ├── AdminShell (shared)
@@ -78,7 +78,7 @@ UsageAnalyticsPage
 
 ---
 
-## 5. Data Binding & Display Format
+## 6. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |
@@ -88,7 +88,7 @@ UsageAnalyticsPage
 
 
 ---
-## 19. Related Screens
+## 7. Related Screens
 | Screen | Relationship |
 |---|---|
 | [A024] Business Analytics | Revenue metrics |

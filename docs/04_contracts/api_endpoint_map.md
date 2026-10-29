@@ -328,7 +328,8 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | `WorkflowService/Activate` | POST | Manager+ | 10/min | Activate workflow (status=active) |
 | `WorkflowService/Deactivate` | POST | Manager+ | 10/min | Deactivate workflow (status=paused) |
 | `WorkflowService/Run` | POST | Editor+ | 10/min | Manually trigger workflow run |
-| `WorkflowService/InspectRun` | POST | Member | 60/min | Get workflow_run detail + execution_log |
+<!-- AUDIT-FIX 2026-04-19: renamed InspectRun → GetRunDetail for naming consistency with Get*/GetRun* pattern and to match screen refs (2 screens + screen_api_reconciliation.md entry 868). -->
+| `WorkflowService/GetRunDetail` | POST | Member | 60/min | Get workflow_run detail + execution_log |
 | `WorkflowService/GetRunLogs` | POST | Member | 60/min | Get paginated run logs |
 | `WorkflowService/ListRuns` | POST | Member | 60/min | List workflow runs with filters |
 | `WorkflowService/Clone` | POST | Editor+ | 10/min | Clone workflow |
@@ -1591,7 +1592,7 @@ Rate limit: 100 req/min (read), 30 req/min (write) per API key. IP-based seconda
 
 ### 17.5 WorkflowService (Extended)
 
-> Core lifecycle RPCs remain canonical in §2.8.1 (`Create`, `Get`, `List`, `Update`, `Activate`, `Deactivate`, `Run`, `InspectRun`, `GetRunLogs`, `ListRuns`, `Clone`, `Export`, `Import`). This section lists only additional workflow-runtime RPCs beyond that core set.
+> Core lifecycle RPCs remain canonical in §2.8.1 (`Create`, `Get`, `List`, `Update`, `Activate`, `Deactivate`, `Run`, `GetRunDetail`, `GetRunLogs`, `ListRuns`, `Clone`, `Export`, `Import`). This section lists only additional workflow-runtime RPCs beyond that core set.
 
 | RPC | Method | Auth | Rate Limit | Description |
 |---|---|---|---|---|
@@ -1933,6 +1934,7 @@ Rate limit: 100 req/min (read), 30 req/min (write) per API key. IP-based seconda
 | `AdminConfigService/UpdateCreditRate` | POST | Super/Finance | 5/min | Update credit rate |
 | `AdminConfigService/UpdateRateLimit` | POST | Super/Tech | 5/min | Update rate limit |
 | `AdminConfigService/UpdateEmailTemplate` | POST | Super/Ops | 5/min | Update email template |
+| `AdminConfigService/UpdateMaintenance` | POST | Super/Tech | 2/min | Toggle maintenance mode on/off (requires OTP + reason) |<!-- AUDIT-FIX 2026-04-19: Added — referenced by screen_admin_system_config.md action #3; follows Update* naming pattern per §18.12 convention -->
 
 ### 18.13 AdminBroadcastService
 
@@ -2040,6 +2042,7 @@ Rate limit: 100 req/min (read), 30 req/min (write) per API key. IP-based seconda
 | `QueueService/Retry` | POST | Editor+ | 10/min | Retry failed item |
 | `QueueService/Pause` | POST | Editor+ | 10/min | Pause queue item |
 | `QueueService/Resume` | POST | Editor+ | 10/min | Resume paused item |
+| `QueueService/Hide` | POST | Editor+ | 10/min | Soft-hide failed/completed job from queue view (data preserved in DB) |<!-- AUDIT-FIX 2026-04-19: Added — referenced by screen_web_studio_queue.md action #10; distinct from Cancel (which refunds credits) -->
 
 ### 19.3 DiagnosticsService
 

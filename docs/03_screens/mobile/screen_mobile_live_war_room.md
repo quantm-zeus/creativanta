@@ -46,7 +46,7 @@ Real-time command center during live streams — concurrent viewers, engagement 
 │ [🏠] [💡] [🎬] [💬] [📊]                                          │
 └──────────────────────────────────────────────────────────────────────┘
 ```
-## 7. States
+## 3. States
 | State | Condition | Visual |
 |---|---|---|
 | PRE_LIVE | Setting up | "Go live in 3..." countdown |
@@ -58,7 +58,7 @@ Real-time command center during live streams — concurrent viewers, engagement 
 
 ---
 
-## 2. Preconditions / Postconditions
+## 4. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -69,7 +69,7 @@ Real-time command center during live streams — concurrent viewers, engagement 
 
 ---
 
-## 4. Component Hierarchy
+## 5. Component Hierarchy
 ```
 LiveWarRoomScreen
 ├── AppBar
@@ -85,7 +85,7 @@ LiveWarRoomScreen
 
 ---
 
-## 5. Data Binding & Display Format
+## 6. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |
@@ -95,7 +95,7 @@ LiveWarRoomScreen
 
 
 ---
-## 19. Related Screens
+## 7. Related Screens
 | Screen | Relationship |
 |---|---|
 | [W109] Web Live War Room | Web equivalent |

@@ -259,7 +259,7 @@ Special:
 
 ---
 
-## 2. Preconditions / Postconditions
+## 8. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -269,7 +269,7 @@ Special:
 
 ---
 
-## 10. Navigation Map
+## 9. Navigation Map
 ```
 AI Idea Generator (/ideas/generate)
 ├── → Related detail/action screens
@@ -279,7 +279,7 @@ AI Idea Generator (/ideas/generate)
 
 ---
 
-## 13. Loading Behavior
+## 10. Loading Behavior
 | Stage | Duration | Visual |
 |---|---|---|
 | Screen mount | 0ms | Shell + shimmer skeleton |
@@ -288,7 +288,7 @@ AI Idea Generator (/ideas/generate)
 
 ---
 
-## 16. Localization Notes
+## 11. Localization Notes
 - Primary language: Vietnamese
 - Currency: VND (no decimals, dot separator)
 - Date: DD/MM/YYYY
@@ -297,7 +297,7 @@ AI Idea Generator (/ideas/generate)
 
 ---
 
-## 17. Analytics / Tracking Events
+## 12. Analytics / Tracking Events
 | Event | Trigger | Properties |
 |---|---|---|
 | `ai_idea_generator.viewed` | Screen load | `source` |
@@ -306,7 +306,7 @@ AI Idea Generator (/ideas/generate)
 
 ---
 
-## 18. Design Tokens Reference
+## 13. Design Tokens Reference
 | Token | Usage |
 |---|---|
 | `--color-accent` | Primary actions, CTAs |

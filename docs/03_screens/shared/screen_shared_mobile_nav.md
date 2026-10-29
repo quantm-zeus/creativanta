@@ -108,7 +108,7 @@ MobileShell
 
 ---
 
-## 2. Preconditions / Postconditions
+## 8. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -118,7 +118,7 @@ MobileShell
 
 ---
 
-## 5. Data Binding & Display Format
+## 9. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |

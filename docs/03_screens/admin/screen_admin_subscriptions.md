@@ -88,7 +88,7 @@ SubscriptionManagementPage
 
 ---
 
-## 2. Preconditions / Postconditions
+## 3. Preconditions / Postconditions
 ### Preconditions
 - Admin user with appropriate S26 role
 - VPN connection active

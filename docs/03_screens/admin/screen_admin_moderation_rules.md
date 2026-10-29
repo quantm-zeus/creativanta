@@ -48,7 +48,7 @@ Launch-default thresholds follow `06_quality_ops/moderation_rules_engine.md`; th
 │ └────────────────────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────────────────┘
 ```
-## 7. States
+## 3. States
 | State | Condition | Visual |
 |---|---|---|
 | LOADING | Fetching | Shimmer |
@@ -59,7 +59,7 @@ Launch-default thresholds follow `06_quality_ops/moderation_rules_engine.md`; th
 
 ---
 
-## 2. Preconditions / Postconditions
+## 4. Preconditions / Postconditions
 ### Preconditions
 - Admin user with appropriate S26 role
 - VPN connection active
@@ -69,7 +69,7 @@ Launch-default thresholds follow `06_quality_ops/moderation_rules_engine.md`; th
 
 ---
 
-## 4. Component Hierarchy
+## 5. Component Hierarchy
 ```
 ModerationRulesPage
 ├── AdminShell (shared)
@@ -84,7 +84,7 @@ ModerationRulesPage
 
 ---
 
-## 5. Data Binding & Display Format
+## 6. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |
@@ -94,7 +94,7 @@ ModerationRulesPage
 
 
 ---
-## 19. Related Screens
+## 7. Related Screens
 | Screen | Relationship |
 |---|---|
 | [A015] Content Moderation | Uses these rules |

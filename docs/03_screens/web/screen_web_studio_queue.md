@@ -226,7 +226,7 @@ GenerationQueuePage
 | 7 | Redo job | Click "🔄 Redo" | — | Navigate → `/studio/[mode]?redo=job_id` (same params pre-filled) | `asset:generate` |
 | 8 | Retry failed job | Click "🔄 Retry" → confirm | `QueueService/Retry(job_id)` | New job created with same params, card moves to Active | `asset:generate` |
 | 9 | Copy error message | Click "📋 Copy Error" | Client-side clipboard | Toast: "Đã sao chép lỗi" | Any |
-| 10 | Remove failed job | Click "🗑 Remove" → confirm | `QueueService/Hide(job_id)` | Card removed from view (soft-hide, still in DB) | `asset:generate` |
+| 10 | Remove failed job | Click "🗑 Remove" → confirm | `QueueService/Hide(job_id)` | Card removed from view (soft-hide, still in DB) | `asset:generate` |<!-- AUDIT-FIX 2026-04-19: QueueService/Hide now added to canonical api_endpoint_map.md §19.2 -->
 | 11 | Filter by mode | Change mode filter dropdown | Client-side + refetch | List filters to selected mode | `asset:read` |
 | 12 | Filter by status | Change status filter | Client-side + refetch | List filters to selected status | `asset:read` |
 | 13 | View history | Click "📜 Xem lịch sử 7 ngày qua" | `QueueService/ListHistory(days=7)` | Expand with older completed/failed jobs | `asset:read` |

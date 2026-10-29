@@ -155,7 +155,7 @@ Items hidden based on RBAC:
 
 ---
 
-## 2. Preconditions / Postconditions
+## 9. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -165,7 +165,7 @@ Items hidden based on RBAC:
 
 ---
 
-## 5. Data Binding & Display Format
+## 10. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |

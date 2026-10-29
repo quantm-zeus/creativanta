@@ -234,10 +234,10 @@ GamificationDashboardPage
 | Event | Trigger | Properties |
 |---|---|---|
 | `gamification.viewed` | Page load | `level`, `xp`, `streak`, `source` |
-| `gamification.quest_completed` | Quest done | `quest_id`, `quest_type`, `xp_earned` |
+| `gamification.challenge.completed` | Quest done | `quest_id`, `quest_type`, `xp_earned` |<!-- AUDIT-FIX 2026-04-19: quest_completed → challenge.completed to match canonical domain_event_catalog.md line 422 (Quest=Challenge per glossary §Gamification) -->
 | `gamification.achievement_unlocked` | Badge earned | `achievement_id`, `achievement_name` |
 | `gamification.level_up` | Level increased | `from_level`, `to_level`, `total_xp` |
-| `gamification.streak_updated` | Streak change | `streak_days`, `is_broken` |
+| `gamification.streak.milestone` | Streak change | `streak_days`, `is_broken` |<!-- AUDIT-FIX 2026-04-19: streak_updated → streak.milestone to match canonical domain_event_catalog.md line 275 (no generic .updated event; catalog defines streak.milestone/broken/frozen) -->
 | `gamification.leaderboard_viewed` | Leaderboard section visible | `user_rank`, `total_creators` |
 | `gamification.quest_started` | Quest "Start →" CTA | `quest_id`, `target_route` |
 | `gamification.full_leaderboard_clicked` | Full leaderboard link | — |

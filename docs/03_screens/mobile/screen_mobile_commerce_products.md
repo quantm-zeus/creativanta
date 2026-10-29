@@ -175,7 +175,7 @@ CommerceProductListScreen (StatefulWidget)
 | 3 | Filter by status | Tap chip | Client-side filter or refetch | — | List filters. Active chip highlighted. | `product:read` |
 | 4 | Search | Tap 🔍 → type query | `ProductService/Search(query)` | — | Search overlay, debounced 300ms | `product:read` |
 | 5 | Pull to refresh | Pull down | `ProductService/List()` (fresh) | Cache invalidated | Refresh indicator → updated list | `product:read` |
-| 6 | Toggle visibility | Long press card → "Ẩn/Hiện" | `ProductService/ToggleVisibility(id)` | `products.status` toggle | Haptic feedback + toast "Đã ẩn sản phẩm" / "Đã hiện sản phẩm" | `product:manage` |
+| 6 | Toggle visibility | Long press card → "Ẩn/Hiện" | `ProductService/Update(id, {catalog_status})` | `products.catalog_status` toggle | Haptic feedback + toast "Đã ẩn sản phẩm" / "Đã hiện sản phẩm" | `product:manage` |<!-- AUDIT-FIX 2026-04-19: ToggleVisibility → Update(id, {catalog_status}) — no ToggleVisibility RPC in canonical api_endpoint_map.md §2.6.1; Update handles field changes including status -->
 | 7 | Quick stock check | Long press → "Xem tồn kho" | — | — | Bottom sheet with stock by variant/location | `product:read` |
 | 8 | Create (simple) | Tap "+ Tạo" | `ProductService/Create(basic_data)` | New draft product | Bottom sheet: name + price + image → saves as draft | `product:manage` |
 | 9 | Create (redirect) | Tap "Tạo trên web" | — | — | Open web URL or show instructions | `product:manage` |

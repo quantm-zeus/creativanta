@@ -156,7 +156,7 @@ LinkToVideoPage
 | `link_to_video.points_edited` | Manual edit | `edit_count`, `added`, `removed` |
 | `link_to_video.ai_rephrased` | AI rephrase | `credits_used` |
 | `link_to_video.started` | Generate | `platform`, `duration`, `credits` |
-| `link_to_video.completed` | Done | `total_time` |
+| `link_to_video.generated` | Done | `total_time` |<!-- AUDIT-FIX 2026-04-19: .completed → .generated to match canonical domain_event_catalog.md line 401 -->
 
 ---
 

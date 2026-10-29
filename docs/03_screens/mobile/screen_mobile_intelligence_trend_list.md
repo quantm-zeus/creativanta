@@ -130,7 +130,7 @@ Same API as [W09] Web Trend Radar with mobile-optimized payload.
 
 ---
 
-## 2. Preconditions / Postconditions
+## 4. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted

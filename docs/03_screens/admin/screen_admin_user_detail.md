@@ -345,12 +345,12 @@ AdminUserDetailPage
 | Copy button | `aria-label="Copy user ID to clipboard"` |
 
 ---
-## 5. Data Binding & Display Format
+## 13. Data Binding & Display Format
 *(Refer to screen-specific data binding in section above)*
 
 
 ---
-## 19. Related Screens
+## 14. Related Screens
 
 | Screen | Relationship |
 |---|---|

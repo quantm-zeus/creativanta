@@ -77,7 +77,7 @@ Mobile AI Remix with 3-phase wizard. Swipe between phases. Phase 1: paste URL or
 
 ---
 
-## 2. Preconditions / Postconditions
+## 3. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted

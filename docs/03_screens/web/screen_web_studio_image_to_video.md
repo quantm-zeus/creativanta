@@ -191,7 +191,7 @@ ImageToVideoPage
 | `image_to_video.motion_selected` | Style chosen | `motion_style` |
 | `image_to_video.previewed` | Preview clicked | `image_count`, `motion_style` |
 | `image_to_video.started` | Generate clicked | `image_count`, `quality`, `credits`, `aspect` |
-| `image_to_video.completed` | SSE complete | `duration`, `total_time` |
+| `image_to_video.generated` | SSE complete | `duration`, `total_time` |<!-- AUDIT-FIX 2026-04-19: .completed → .generated to match canonical domain_event_catalog.md line 397 -->
 | `image_to_video.failed` | Error | `error_type` |
 
 ---

@@ -199,5 +199,5 @@ Object: workflow_run | DB column: `workflow_runs.status`
 
 ## Open Questions / Blockers
 
-> ✅ **RESOLVED: API-M-001** (2026-04-02) — `WorkflowService` now fully defined in `api_endpoint_map.md` §2.8.1 with 13 RPCs: Create, Get, List, Update, Activate, Deactivate, Run, InspectRun, GetRunLogs, ListRuns, Clone, Export, Import. Each RPC has Method, Auth, Rate Limit, Description.
+> ✅ **RESOLVED: API-M-001** (2026-04-02; renamed 2026-04-19) — `WorkflowService` now fully defined in `api_endpoint_map.md` §2.8.1 with 13 RPCs: Create, Get, List, Update, Activate, Deactivate, Run, GetRunDetail, GetRunLogs, ListRuns, Clone, Export, Import. Each RPC has Method, Auth, Rate Limit, Description.
 > ✅ **RESOLVED: API-M-002** (2026-04-02) — JSON request/response examples added in `api_examples.md` A.14 (WorkflowService/Create) and A.15 (WorkflowService/Run).

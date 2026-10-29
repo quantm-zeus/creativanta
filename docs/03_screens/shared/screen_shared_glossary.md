@@ -324,7 +324,7 @@ N/A — Glossary content is updated by content team and cached for 24h.
 | `--radius-tooltip` | Tooltip border radius |
 
 ---
-## 2. Preconditions / Postconditions
+## 19. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -334,7 +334,7 @@ N/A — Glossary content is updated by content team and cached for 24h.
 
 ---
 
-## 19. Related Screens
+## 20. Related Screens
 
 | Screen | Relationship |
 |---|---|
@@ -344,7 +344,7 @@ N/A — Glossary content is updated by content team and cached for 24h.
 
 ---
 
-## 20. Revision History
+## 21. Revision History
 
 | Date | Version | Change | Author |
 |---|---|---|---|

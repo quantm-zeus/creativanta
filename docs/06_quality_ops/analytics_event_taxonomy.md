@@ -12,7 +12,19 @@ last_verified: 2026-04-09
 
 ---
 
-## 1. Event Naming: `{object}_{action}` (snake_case, past tense)
+## 1. Event Naming: two forms
+
+Creativanta uses two analytics-event naming forms depending on scope:
+
+| Form | Shape | Used for | Example |
+|---|---|---|---|
+| **Module family** (rollup) | `{object}_{action}` snake_case, past tense | The minimum event families in §3 that each module MUST emit. These are the PostHog-catalog events surfaced in funnels and KPI dashboards. | `script_created`, `affiliate_link_created`, `publish_executed` |
+| **Screen drill-down** | `{domain}.{resource}.{action}` dot-notation | Fine-grained UX telemetry emitted from specific screens — clicks, tab switches, filter changes. Each drill-down event MUST roll up to a module family above. | `affiliate.link.created`, `admin.abuse.actioned`, `affiliate.mobile.viewed` |
+
+**Rollup rule**: every dot-notation screen event MUST be attributable to one of the module families in §3. Adding a drill-down event that has no rollup family means the owning module is not analytics-ready (per Governance Rule §5.5).
+
+**Do not mix forms for the same concept**: if a rollup family exists (e.g., `affiliate_link_created`), the drill-down event for the "create link" action MUST share the same verb (e.g., `affiliate.link.created`) — not diverge to `affiliate.link.new` or `affiliate.link.added`.
+
 
 ## 1.1 Required Common Properties
 

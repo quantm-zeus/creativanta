@@ -45,7 +45,7 @@ Real-time system health dashboard — all services status, resource usage, alert
 │ └────────────────────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────────────────┘
 ```
-## 7. States
+## 3. States
 | State | Condition | Visual |
 |---|---|---|
 | LOADING | Fetching | Shimmer |
@@ -56,7 +56,7 @@ Real-time system health dashboard — all services status, resource usage, alert
 
 ---
 
-## 2. Preconditions / Postconditions
+## 4. Preconditions / Postconditions
 ### Preconditions
 - Admin user with appropriate S26 role
 - VPN connection active
@@ -66,7 +66,7 @@ Real-time system health dashboard — all services status, resource usage, alert
 
 ---
 
-## 4. Component Hierarchy
+## 5. Component Hierarchy
 ```text
 SystemHealthPage
 ├── AdminShell
@@ -79,7 +79,7 @@ SystemHealthPage
 
 ---
 
-## 5. Data Binding & Display Format
+## 6. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Service grid | `platform_health_metrics`, `diagnostics_records` | `AdminService/GetSystemHealth` | Latency/uptime/error tiles | 30s TTL |
@@ -89,7 +89,7 @@ SystemHealthPage
 
 
 ---
-## 19. Related Screens
+## 7. Related Screens
 | Screen | Relationship |
 |---|---|
 | [A008] Job Monitor | Background jobs |

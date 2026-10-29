@@ -166,7 +166,7 @@ SystemConfigPage
 |---|---|---|---|---|---|---|
 | 1 | Edit tier pricing | Click "Edit" on tier | `AdminConfigService/UpdateTier(tierId, data)` | Config updated | Confirmation modal + reason required + toast "Pricing updated" | Super Admin |
 | 2 | Edit credit rate | Click "Edit" on operation | `AdminConfigService/UpdateCreditRate(opType, data)` | Config updated | Confirmation modal + toast "Rate updated" | Super Admin |
-| 3 | Toggle maintenance | Click "Activate/Deactivate" | `AdminConfigService/ToggleMaintenance(enabled, opts)` | Maintenance mode toggled | OTP + reason required + banner text + toast | Super Admin |
+| 3 | Toggle maintenance | Click "Activate/Deactivate" | `AdminConfigService/UpdateMaintenance(enabled, opts)` | Maintenance mode toggled | OTP + reason required + banner text + toast | Super Admin |<!-- AUDIT-FIX 2026-04-19: ToggleMaintenance → UpdateMaintenance to match canonical api_endpoint_map.md §18.12 Update* pattern -->
 | 4 | Edit email template | Select template + edit | `AdminConfigService/UpdateEmailTemplate(id, html)` | Template updated | Preview + confirmation + toast "Template saved" | Super Admin |
 | 5 | Update rate limit | Edit limit value + save | `AdminConfigService/UpdateRateLimit(tierId, limits)` | Config updated | Confirmation + toast | Super Admin |
 

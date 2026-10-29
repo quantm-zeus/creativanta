@@ -1,8 +1,10 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-04-11
+last_updated: 2026-04-18
 ---
+
+<!-- AUDIT-FIX: Refreshed last_updated to today; recounted schema guard totals against database_schema.md (FORCE RLS=123, ENABLE RLS=123, deleted_at=58, CHECK constraints=43). [AUTO-DECIDED: recount authoritative — grep against canonical schema file] -->
 
 # Open Blockers
 
@@ -10,9 +12,11 @@ last_updated: 2026-04-11
 
 ---
 
-## Current Documentation Blockers (Validated 2026-04-11)
+## Current Documentation Blockers (Validated 2026-04-18)
 
-> As of 2026-04-11 (independent re-audit), there are **no remaining internal documentation blockers** that prevent an AI coding agent from using this corpus as the implementation source of truth. Fixes applied in this audit round: gamification event gaps (streak.milestone, streak.frozen, challenge.completed, challenge.expired added), Dragonfly keyspace notification config documented, web bundle target corrected (50KB→120KB), Flutter unit tests added to CI, CI smoke test improved, OWASP year corrected, event catalog cross-reference deduplication (§16.2→§12), outbox poller SQLx exception noted, AP_EXECUTION_MODE security warning added.
+<!-- AUDIT-FIX: Validated independently on 2026-04-18; recounted schema guard totals. Previously-claimed counts (106/52/23) were stale — the schema has grown since the 2026-04-02 fix wave. New totals are recorded in DB-C-001, DB-C-002, DB-H-003, DB-H-004 below. -->
+
+> As of 2026-04-18 (independent re-audit), there are **no remaining internal documentation blockers** that prevent an AI coding agent from using this corpus as the implementation source of truth. Fixes applied in prior audit rounds remain valid: gamification event gaps (streak.milestone, streak.frozen, challenge.completed, challenge.expired added), Dragonfly keyspace notification config documented, web bundle target corrected (50KB→120KB), Flutter unit tests added to CI, CI smoke test improved, OWASP year corrected, event catalog cross-reference deduplication (§16.2→§12), outbox poller SQLx exception noted, AP_EXECUTION_MODE security warning added.
 
 ## Deferred Implementation Artifacts / External Gates
 
@@ -134,8 +138,9 @@ last_updated: 2026-04-11
 - Severity: **CRITICAL**
 - Status: **RESOLVED** (2026-04-02)
 - Impact: `FORCE ROW LEVEL SECURITY` previously appeared **0 times** in schema.
-- Resolution: Added `ALTER TABLE <t> ENABLE ROW LEVEL SECURITY;` + `ALTER TABLE <t> FORCE ROW LEVEL SECURITY;` + `CREATE POLICY tenant_isolation` to **106 tenant-scoped tables** in `database_schema.md`. Global tables (users, regions, currencies, internal_admins) and junction tables (trend_signals, etc.) correctly excluded.
-- Verified: `grep -c 'FORCE ROW LEVEL SECURITY' database_schema.md` = 106
+<!-- AUDIT-FIX 2026-04-18: recounted after schema growth — now 123 tenant-scoped tables. -->
+- Resolution: Added `ALTER TABLE <t> ENABLE ROW LEVEL SECURITY;` + `ALTER TABLE <t> FORCE ROW LEVEL SECURITY;` + `CREATE POLICY tenant_isolation` to **123 tenant-scoped tables** (as of 2026-04-18) in `database_schema.md`. Global tables (users, regions, currencies, internal_admins, impersonation_sessions, moderation_cases, broadcast_targets, notification_events, fraud_cases, etc. marked `[GLOBAL]`) and junction tables correctly excluded.
+- Verified (2026-04-18): `grep -c 'FORCE ROW LEVEL SECURITY' database_schema.md` = 123
 - Owner: Backend Lead
 
 ## BIZ-C-001: Subscription tier prices and add-on prices are not approved
@@ -171,8 +176,9 @@ last_updated: 2026-04-11
 - Severity: **CRITICAL**
 - Status: **RESOLVED** (2026-04-02)
 - Impact: Previously only in §1 template, not per-table.
-- Resolution: 106 individual `ENABLE ROW LEVEL SECURITY` statements now present in schema, one per tenant-scoped table. Each includes the full triple: ENABLE + FORCE + tenant_isolation policy.
-- Verified: `grep -c 'ENABLE ROW LEVEL SECURITY' database_schema.md` = 106 (excluding template)
+<!-- AUDIT-FIX 2026-04-18: recounted after schema growth — now 123 statements. -->
+- Resolution: 123 individual `ENABLE ROW LEVEL SECURITY` statements now present in schema (as of 2026-04-18), one per tenant-scoped table. Each includes the full triple: ENABLE + FORCE + tenant_isolation policy.
+- Verified (2026-04-18): `grep -c 'ENABLE ROW LEVEL SECURITY' database_schema.md` = 123
 - Owner: Backend Lead
 
 ## DB-H-001: REAL/DECIMAL type used for credit/cost/score fields — 31+38 occurrences
@@ -193,8 +199,9 @@ last_updated: 2026-04-11
 - Severity: **HIGH**
 - Status: **RESOLVED** (2026-04-02)
 - Impact: Previously only 2 `deleted_at` columns in schema.
-- Resolution: Added `deleted_at TIMESTAMPTZ` to **51 production entity tables** including: ideas, scripts, assets, asset_briefs, characters, continuity_packs, offers, products, orders, campaigns, affiliate_links, publish_items, threads, entities, follow_up_tasks, workflows, recipes, store_pages, membership_plans, live_sessions, brand_deals, rate_cards, media_kits, link_in_bio_pages, and all extended production tables (video_edit_jobs, remix_blueprints, clip_collections, etc.).
-- Verified: `grep -c 'deleted_at TIMESTAMPTZ' database_schema.md` = 52 (51 new + 1 original on workspaces)
+<!-- AUDIT-FIX 2026-04-18: recounted after schema growth — now 58 occurrences. -->
+- Resolution: Added `deleted_at TIMESTAMPTZ` to production entity tables including: ideas, scripts, assets, asset_briefs, characters, continuity_packs, offers, products, orders, campaigns, affiliate_links, publish_items, threads, entities, follow_up_tasks, workflows, recipes, store_pages, membership_plans, live_sessions, brand_deals, rate_cards, media_kits, link_in_bio_pages, and all extended production tables (video_edit_jobs, remix_blueprints, clip_collections, etc.). Additional tables added since 2026-04-02 also include `deleted_at` per the soft-delete rule.
+- Verified (2026-04-18): `grep -c 'deleted_at TIMESTAMPTZ' database_schema.md` = 58
 - Owner: Backend Lead
 
 ## DB-H-004: CHECK constraints missing for status/state fields
@@ -203,8 +210,9 @@ last_updated: 2026-04-11
 - Severity: **HIGH**
 - Status: **RESOLVED** (2026-04-02)
 - Impact: Previously 0 `CHECK` constraints in schema.
-- Resolution: Added **23 CHECK constraints** for lifecycle/status fields on critical tables: assets (generation_state, quality_state), scripts (lifecycle_state, approval_state), publish_items (lifecycle_state), publish_jobs (lifecycle_state), opportunities (priority_state), threads (status), orders (lifecycle_state), offers (lifecycle_state), workflows (status), workflow_runs (status), campaigns (status), generation_jobs (status), agent_runs (current_state), live_sessions (status), signals (lifecycle_state), refunds (lifecycle_state), returns (lifecycle_state), coupons (lifecycle_state), video_edit_jobs (status), sample_requests (status), sample_shipments (status).
-- Verified: `grep -c 'ADD CONSTRAINT chk_' database_schema.md` = 23
+<!-- AUDIT-FIX 2026-04-18: recounted after schema growth — now 43 CHECK constraints. -->
+- Resolution: Added CHECK constraints for lifecycle/status fields on critical tables including: assets (generation_state, quality_state), scripts (lifecycle_state, approval_state), publish_items (lifecycle_state), publish_jobs (lifecycle_state), opportunities (priority_state), threads (status), orders (lifecycle_state), offers (lifecycle_state), workflows (status), workflow_runs (status), campaigns (status), generation_jobs (status), agent_runs (current_state), live_sessions (status), signals (lifecycle_state), refunds (lifecycle_state), returns (lifecycle_state), coupons (lifecycle_state), video_edit_jobs (status), sample_requests (status), sample_shipments (status), plus additional constraints added alongside new tables since 2026-04-02 (broadcast_targets, notification_events, and others — total 43 as of 2026-04-18).
+- Verified (2026-04-18): `grep -c 'ADD CONSTRAINT chk_' database_schema.md` = 43
 - Owner: Backend Lead
 
 ## API-C-001: PerformanceCoachService has no endpoint/proto definition

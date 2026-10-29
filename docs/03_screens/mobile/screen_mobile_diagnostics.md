@@ -63,7 +63,7 @@ Mobile diagnostics — simplified health overview with quick-fix buttons for com
 
 ---
 
-## 7. States
+## 3. States
 
 | State | Condition | Visual |
 |---|---|---|
@@ -75,7 +75,7 @@ Mobile diagnostics — simplified health overview with quick-fix buttons for com
 | ERROR | Diagnostics failed | Error with retry |
 
 ---
-## 2. Preconditions / Postconditions
+## 4. Preconditions / Postconditions
 ### Preconditions
 - User authenticated with valid session
 - Required module permissions granted
@@ -86,7 +86,7 @@ Mobile diagnostics — simplified health overview with quick-fix buttons for com
 
 ---
 
-## 4. Component Hierarchy
+## 5. Component Hierarchy
 ```
 DiagnosticsScreen
 ├── AppBar
@@ -102,7 +102,7 @@ DiagnosticsScreen
 
 ---
 
-## 5. Data Binding & Display Format
+## 6. Data Binding & Display Format
 | UI Element | Data Source | API | Display Format | Cache |
 |---|---|---|---|---|
 | Primary data | Parent screen state or canonical contract object(s) | Resolve via owning feature doc + API/schema contracts | Exact DTO fields from canonical contracts | Per endpoint policy |
@@ -112,7 +112,7 @@ DiagnosticsScreen
 
 
 ---
-## 19. Related Screens
+## 7. Related Screens
 
 | Screen | Relationship |
 |---|---|
