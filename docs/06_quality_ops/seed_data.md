@@ -14,14 +14,14 @@ last_updated: 2026-04-06
 
 ## 1. Seed Execution Order
 
-> FK dependencies dictate the order. Run in this exact sequence.
+> FK dependencies dictate the order (`workspaces` references `regions` and `currencies`). Run in this exact sequence under the migration/superuser role (`creativanta`).
 
 | # | Table(s) | Count | Description |
 |---|----------|-------|-------------|
-| 1 | `users` | 5 | System users with different roles |
-| 2 | `workspaces` | 3 | Free, Pro, Business tier workspaces |
-| 3 | `workspace_members` | 8 | Members across workspaces with different roles |
-| 4 | `regions` | 3 | VN, US, SEA regions |
+| 1 | `currencies` + `regions` | 2, 3 | Global currencies (VND, USD) and regions (VN, US, SEA) |
+| 2 | `users` | 5 | System users with different roles |
+| 3 | `workspaces` | 3 | Pro, Starter/Free, Business tier workspaces |
+| 4 | `workspace_members` | 8 | Members across workspaces with different roles |
 | 5 | `connected_accounts` | 4 | TikTok, Shopee, YouTube, Facebook |
 | 6 | `signals` → `trends` → `trend_signals` | 10, 3, 6 | Intelligence data |
 | 7 | `ideas` | 10 | Ideas across all status values |

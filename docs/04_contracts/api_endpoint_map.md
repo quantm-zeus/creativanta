@@ -51,6 +51,10 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | REST (webhooks) | `POST /webhooks/{provider}` | `POST /webhooks/stripe` |
 | REST (Public API) | `GET/POST /api/v1/{resource}` | `GET /api/v1/products` |
 
+> **Canonical Consolidation Rule (`§2–§9` Core vs. `§10–§20` Extended)**:
+> - Sections `§2–§9` define the primary domain services. Sections `§10–§20` record extended and screen-reconciled RPCs promoted during `API-C-002`.
+> - When authoring `/protos/` (see [protobuf_contracts.md §6](./protobuf_contracts.md#6-phase-gated-proto-authoring--service-consolidation-contract)), always merge split sections for the same service (e.g., `AssetService` in `§2.3`, `§11.7`, `§20.6`) into **one** `service` definition, generate `.proto` files phase-by-phase per `IMPLEMENTATION_ORDER.md`, and derive request/response message fields strictly from `database_schema.md` + `api_examples.md`.
+
 ---
 
 ## 2. Service Endpoint Map by Domain

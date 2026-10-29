@@ -183,15 +183,20 @@ CREATE EXTENSION IF NOT EXISTS "timescaledb";   -- time-series hypertables (Audi
 CREATE DATABASE activepieces_dev;
 
 -- Create application roles
+-- Note: migrations and seed_data.sql run as 'creativanta' (superuser/owner);
+-- the Rust API runtime connects as 'app_user' (NOBYPASSRLS) so PostgreSQL RLS policies are enforced.
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'app_user') THEN
-    CREATE ROLE app_user LOGIN PASSWORD 'dev_password_123';
+    CREATE ROLE app_user LOGIN PASSWORD 'dev_password_123' NOBYPASSRLS;
   END IF;
 END
 $$;
 
 GRANT ALL PRIVILEGES ON DATABASE creativanta_dev TO app_user;
+GRANT ALL ON SCHEMA public TO app_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO app_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO app_user;
 ```
 
 ---

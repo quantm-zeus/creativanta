@@ -121,7 +121,7 @@ CREATE INDEX idx_dlq_workspace ON dead_letter_queue(workspace_id);
 ALTER TABLE dead_letter_queue ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dead_letter_queue FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON dead_letter_queue
-  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 -- Note: system-level DLQ items (workspace_id IS NULL) require superuser/service role access
 ```
 
@@ -154,7 +154,7 @@ CREATE INDEX idx_outbox_unpublished ON event_outbox(published, created_at)
 ALTER TABLE event_outbox ENABLE ROW LEVEL SECURITY;
 ALTER TABLE event_outbox FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON event_outbox
-  USING (workspace_id = current_setting('app.current_tenant_id')::uuid);
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 -- Note: outbox poller runs as service role (bypasses RLS) per ADR-011 exception
 ```
 

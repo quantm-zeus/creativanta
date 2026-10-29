@@ -72,12 +72,12 @@ status: DOCS_ALIGNED
 | Area | Finding | Status | Notes |
 |------|---------|--------|-------|
 | Internal links | 0 broken links | ✅ RESOLVED | Was 161; fixed 2026-04-04 (path-depth + legacy link cleanup) |
-| Seed ↔ Schema | 0 column mismatches | ✅ RESOLVED | Was 10; `seed_data.md` aligned to canonical schema 2026-04-04 |
-| DDL syntax | 0 remaining | ✅ RESOLVED | 49 missing commas fixed 2026-04-04. 2 additional defects in `coupons` and `store_pages` fixed 2026-04-04 (Round 5). |
+| Seed ↔ Schema | 0 column mismatches | ✅ RESOLVED | Was 10; `seed_data.md` and `seed_data.sql` (`cost_items.description`, `ai_credit_transactions` 1420 balance, topological seed order) aligned to canonical schema |
+| DDL syntax & topological order | 0 remaining | ✅ RESOLVED | 0 missing/trailing commas, 0 forward FK references (`regions`/`currencies` at §4.0, `recipe_templates` at §12.3B), and all 123 RLS policies use `NULLIF(current_setting('app.current_tenant_id', true), '')::uuid` |
 | Notification ↔ Events | 0 events missing from catalog | ✅ RESOLVED | Round 5 (2026-04-04): All 5 previously-missing events added to `domain_event_catalog.md`: `user.registered`, `workspace.member_invited`, `auth.suspicious_login`, `thread.priority_changed`, `idea.scored`. Notification matrix is now fully canonical. |
 | Screen permissions ↔ RBAC | 0 active screen-role alias contradictions | ✅ RESOLVED | Remaining alias references are intentionally centralized in `SCREEN_IMPLEMENTATION_PROTOCOL.md` as historical mapping guidance. |
 | RBAC ↔ Screens | 71 canonical permissions not referenced in screens | ℹ️ KNOWN | Intentional: not all RBAC permissions surface in screen UI (e.g., admin-only, system-level) |
 | Screen IDs ↔ SCREEN_INDEX | 0 mismatches | ✅ RESOLVED | Was 176; all 243 screen files aligned to canonical SCREEN_INDEX.md 2026-04-06 |
 | Screen template contamination | Historical shorthand governed by protocol only | ✅ RESOLVED | Exact implementation-bearing placeholder markers are now centralized in `SCREEN_IMPLEMENTATION_PROTOCOL.md`; remaining placeholder mentions in active screens are revision history or loading-state copy. |
 | UUID policy | Application-generated IDs use v7; DB defaults remain fallback v4-style random UUIDs | ✅ RESOLVED | See ADR-015 + database schema naming conventions |
-| Protobuf | Overview doc only; no actual `.proto` files | ℹ️ DEFERRED | Not a docs-alignment blocker; see `OPEN_BLOCKERS.md` (`PROTO-C-001`) |
+| Protobuf | Phase-gated consolidation contract defined; physical `.proto` files deferred to Phase 0/1 codegen | ℹ️ DEFERRED | See `protobuf_contracts.md` §6 and `OPEN_BLOCKERS.md` (`PROTO-C-001`) |

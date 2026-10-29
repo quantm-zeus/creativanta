@@ -1,6 +1,8 @@
 -- Canonical local/dev seed data for Creativanta
 -- Source: docs/06_quality_ops/seed_data.md
--- Last updated: 2026-04-06
+-- Last updated: 2026-04-18
+-- Execution role: Run as the migration/owner superuser role ('creativanta') so multi-workspace
+-- fixtures can be inserted in a single transaction across FORCE ROW LEVEL SECURITY tables.
 
 BEGIN;
 
@@ -69,7 +71,8 @@ INSERT INTO ai_credit_transactions (
 VALUES
   ('88888888-8888-8888-8888-888888888801', '22222222-2222-2222-2222-222222222201', 'monthly_allocation', 1000, 1000, 'Welcome credits (Pro tier)'),
   ('88888888-8888-8888-8888-888888888802', '22222222-2222-2222-2222-222222222201', 'deduction', -50, 950, 'AI Video Generation #1'),
-  ('88888888-8888-8888-8888-888888888803', '22222222-2222-2222-2222-222222222201', 'deduction', -30, 920, 'AI Script Generation')
+  ('88888888-8888-8888-8888-888888888803', '22222222-2222-2222-2222-222222222201', 'deduction', -30, 920, 'AI Script Generation'),
+  ('88888888-8888-8888-8888-888888888804', '22222222-2222-2222-2222-222222222201', 'monthly_allocation', 500, 1420, 'Monthly renewal credits')
 ON CONFLICT (transaction_id) DO NOTHING;
 
 INSERT INTO profit_snapshots (

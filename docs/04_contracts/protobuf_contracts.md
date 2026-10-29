@@ -311,4 +311,30 @@ echo "✅ Proto generation complete for Rust, TypeScript, Dart"
 > **Note**: Internal Admin protos are NOT exposed via public ConnectRPC gateway. They use a separate admin-only gRPC endpoint protected by VPN + admin MFA.
 > **Truthfulness rule**: This section is illustrative only. Until `.proto` files are generated, implementers MUST treat `api_endpoint_map.md` as the authoritative RPC count and `api_examples.md` as the authoritative payload companion.
 
-Actual `.proto` files will be created during implementation Phase 1 (foundation setup).
+---
+
+## 6. Phase-Gated `.proto` Authoring & Service Consolidation Contract
+
+To prevent contract bloat when generating physical `.proto` files from `api_endpoint_map.md`:
+
+1. **Phase-Gated Generation (Do NOT generate all 1,177 RPCs upfront)**:
+   - Author `.proto` files strictly by build phase per `00_index/IMPLEMENTATION_ORDER.md`:
+     - **Phase 0**: `common/types.proto`, `common/errors.proto`, `identity/auth.proto`, `identity/workspace.proto`, `identity/user.proto`, `connector/connector.proto`
+     - **Phase 1**: `intelligence/trend.proto`, `intelligence/competitor.proto`, `intelligence/opportunity.proto`
+     - **Phase 2–3**: `content/*.proto` (including extended M07 production services in §7)
+     - **Phase 4**: `publish/*.proto`, `engagement/*.proto`
+     - **Phase 5**: `commerce/*.proto`, `live/live.proto`, `seeding/sample.proto`, `creator_pro/*.proto`
+     - **Phase 6**: `finance/*.proto`
+     - **Phase 7**: `workflow/*.proto`
+     - **Phase 8**: `copilot/copilot.proto`, `admin/*.proto`, `gamification/achievement.proto`, `internal_admin/*.proto`
+2. **Merging Split Service Sections**:
+   - Services that appear in both Core (`§2–§9`) and Extended/Final sections (`§10–§20`) of `api_endpoint_map.md` (e.g., `WorkspaceService`, `IdeaService`, `ScriptService`, `AssetService`, `PublishService`, `ProductService`, `OfferService`, `OrderService`, `CampaignService`, `AffiliateService`, `ProfitService`, `ReconciliationService`, `WorkflowService`, `SeedingService`, `BrandDealService`) MUST be consolidated into **a single `service <Name> { ... }` block** inside their canonical `.proto` file. Never create separate `*ExtendedService` definitions.
+3. **Canonical Service Alias Consolidation**:
+   - Where screen-derived services in `§10–§20` overlap with canonical core services in `§2–§9`, route or alias them to the canonical `.proto` service below rather than spawning duplicate backend services:
+     - `LiveService` / `LiveAnalyticsService` (§17.1–17.2) → consolidate under `LiveCommerceService` (`live/live.proto`)
+     - `SampleService` (§17.4) → consolidate under `SeedingService` (`seeding/sample.proto`)
+     - `SettingsService` (§10.7) / `UserPreferencesService` (§19.18) → consolidate under `UserService` & `WorkspaceService` (`identity/`)
+     - `TemplateService` (§17.7) → consolidate under `RecipeService` (`workflow/recipe.proto`)
+     - `BillingService` (§14.11) / `CreditService` (§14.10) → consolidate under `AdminBillingService` (`admin/billing.proto`)
+4. **Payload Schema Derivation Rule**:
+   - For RPCs in `§10–§20` that do not have explicit JSON examples in `api_examples.md`, derive request/response message fields directly from the owning table columns in `database_schema.md` + standard `common.Pagination` / `common.PaginatedResponse` wrappers. Never invent non-schema field names.
