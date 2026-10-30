@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-04-09
+last_updated: 2026-10-29
 ---
 
 # Canonical Sources — Single Source of Truth Registry
@@ -46,8 +46,12 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 | API endpoints | 04_contracts/api_endpoint_map.md | Canonical RPC inventory and REST/webhook surface. Coverage is broad, but downstream screen cleanliness and implementation readiness still require OPEN_BLOCKERS review. |
 | Protobuf / gRPC | 04_contracts/protobuf_contracts.md | Transport/codegen overview only. During the docs-only phase, use `api_endpoint_map.md` + `api_examples.md` as the canonical transport authoring source. Commit `/protos/` later when typed client/server generation begins. |
 | Domain events | 04_contracts/domain_event_catalog.md | ~230 canonical event types (Round 5 2026-04-04). All notification matrix events now have verbatim canonical entries. EVT-H-001 fully resolved (74-row mapping table). |
+| API command/message semantics | 04_contracts/api_behavior_contracts.md | Common wire fields, critical commands, validation, replay and phase transport gate. |
+| RPC permission/action bindings | 04_contracts/rpc_permission_bindings.csv | One binding for every inventory RPC; named permissions resolve through RBAC. |
+| Durable credit accounting | 04_contracts/credit_accounting_contract.md | Source lots, reservations, append-only ledger and restart/late-result recovery. |
+| Financial computation | 04_contracts/financial_computation_contract.md | Recognition, cost/FX snapshots, dedup, reconciliation and golden fixtures. |
 | API JSON examples | 04_contracts/api_examples.md | 24 request/response examples, companion to api_endpoint_map.md |
-| RBAC permissions | 04_contracts/rbac_permission_matrix.md | 7 roles × ~114 perms + 8 admin roles (~23 perms). Round 5 (2026-04-04): Added `affiliate:read`, `competitor:read`, `evidence:read`, `membership:read/manage`, `admin:user:read`, `admin:workspace:read`, `admin:commerce:read`. Note: `permission_alias_policy.md` was demoted to non-canonical (HISTORICAL_REFERENCE) — screen docs now use RBAC tokens directly. |
+| RBAC permissions | 04_contracts/rbac_permission_matrix.md | 7 workspace roles + 8 internal admin roles; exact keys are in the matrix. Round 5 (2026-04-04): Added `affiliate:read`, `competitor:read`, `evidence:read`, `membership:read/manage`, `admin:user:read`, `admin:workspace:read`, `admin:commerce:read`. Note: `permission_alias_policy.md` was demoted to non-canonical (HISTORICAL_REFERENCE) — screen docs now use RBAC tokens directly. |
 | Connector specs | 04_contracts/connector_specs.md | 6 platforms: TikTok, Shopee, Lazada, YouTube, Instagram, Facebook |
 | Error catalog | 04_contracts/error_catalog.md | Canonical error registry across all active domains in the corpus. Add new error families here before implementation uses them. |
 | Screen↔API reconciliation | 04_contracts/screen_api_reconciliation.md | Historical API coverage traceability. Useful for inventory, but not proof that every screen doc is semantically implementation-clean. |
@@ -59,7 +63,7 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 |-------|---------------|-------|
 | Tech stack ADR | 05_system/tech_stack_adr.md | 14 ADRs, full stack mapping |
 | Sequence diagrams | 05_system/sequence_diagrams.md | 13 critical flow diagrams |
-| Queue / retry | 05_system/queue_retry_design.md | 10 queues, DLQ, outbox, circuit breaker |
+| Queue / retry | 05_system/queue_retry_design.md | Named queues, at-least-once outbox/inbox, external-effect recovery, DLQ and budgets. |
 | AI provider routing | 05_system/ai_provider_guide.md | Multi-provider adapter, Gemini default |
 | Cache & search | 05_system/cache_search_strategy.md | Dragonfly, Meilisearch, ClickHouse |
 | Runtime workflow | 05_system/runtime_workflow.md | Activepieces integration, tier limits |
@@ -97,7 +101,9 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 |-------|---------------|-------|
 | Docs audit findings | 00_index/OPEN_BLOCKERS.md | Current source of truth for OPEN, PARTIAL, and RESOLVED blockers. Read this file before implementation; do not rely on older summary counts. |
 | Doc ownership / freshness | 00_index/DOC_OWNERSHIP_AND_FRESHNESS.md | Canonical owner-role, cadence, and freshness trigger matrix for the active docs corpus |
-| Build phases | 00_index/IMPLEMENTATION_ORDER.md | 9 phases, dependencies |
+| Build phases | 00_index/IMPLEMENTATION_ORDER.md | P0–P8, all 31 entries, start/completion and exit gates. |
+| AI execution/handoff | 00_index/BUILD_EXECUTION_CONTRACT.md | Evidence states, per-slice packets, external gates, full-scope completion. |
+| Static documentation validation | ../tooling/check_docs.py | Executable selected-invariant checks; not runtime/launch certification. |
 | Architecture decisions | 00_index/DECISION_LOG.md | ≥12 ADRs |
 | Acceptance tests | 00_index/ACCEPTANCE_TESTS.md | Created in Phase 1B |
 | Requirements traceability | 00_index/REQUIREMENTS_TRACEABILITY_MATRIX.md | Module-to-business/feature/contract/runtime/quality traceability backbone |

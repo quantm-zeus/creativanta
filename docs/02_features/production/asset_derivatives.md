@@ -3,8 +3,8 @@ layer: features
 module: M09
 canonical: true
 domain: production
-status: READY
-last_updated: 2026-03-30
+status: SPECIFIED
+last_updated: 2026-10-29
 ---
 
 # Feature: Asset Derivative Manager / Repurpose Hub (M09)

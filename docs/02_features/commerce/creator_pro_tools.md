@@ -2,9 +2,9 @@
 layer: features
 module: S16
 domain: commerce
-status: READY
+status: SPECIFIED
 created: 2026-04-01
-last_updated: 2026-04-02
+last_updated: 2026-10-29
 canonical: true
 upstream: PRD v3.1 §16, §37.1
 ---
@@ -89,34 +89,7 @@ Creator Pro Tools enables creators to monetize their personal brand through **Li
 
 ## 4. State Machine — Brand Deal Lifecycle
 
-| From | To | Trigger | Condition |
-|------|----|---------|-----------|
-| inquiry | negotiation | Creator responds | — |
-| inquiry | declined | Creator declines | — |
-| negotiation | contracted | Both parties agree | Terms finalized |
-| contracted | in_progress | First deliverable started | — |
-| in_progress | delivered | All deliverables marked complete | — |
-| delivered | paid | Payment confirmed | — |
-| paid | closed | Auto-close after 30 days | — |
-| * | cancelled | Either party cancels | Refund rules apply |
-
-## 4.1 Edge Cases
-
-### EC-S16-001: Link-in-Bio page with broken product embeds
-- Condition: Product referenced by a link-in-bio item is discontinued or archived
-- Expected behavior: Item displays "Product unavailable" placeholder. Creator notified to update page. Page remains live with other items functional.
-
-### EC-S16-002: Media Kit with insufficient analytics data
-- Condition: Creator has fewer than 30 days of connected platform data
-- Expected behavior: Media Kit generation shows "Insufficient data" for affected metrics. Available metrics still displayed. Tooltip: "Connect platforms and wait for 30+ days of data for full media kit."
-
-### EC-S16-003: Multiple concurrent brand deal negotiations
-- Condition: Creator has 5+ deals in `negotiation` state simultaneously
-- Expected behavior: System warns "You have [N] active negotiations. Consider finalizing or declining some." No hard limit — just advisory.
-
-### EC-S16-004: Sponsor submits duplicate inquiry
-- Condition: Same sponsor email submits inquiry within 7 days of previous one
-- Expected behavior: System de-duplicates and appends new message to existing inquiry thread. Creator sees updated timestamp.
+Use the canonical [M16 Brand Deal lifecycle](affiliate_network.md#brand-deal-lifecycle-s16-v1) and brand_deals.status values: negotiating, agreed, in_progress, delivered, paid, completed, cancelled. Inquiry is a sponsor-inquiry thread before deal creation; negotiation/contracted/closed are UI labels for negotiating/agreed/completed, never alternate stored values. Cancellation is allowed before completion with reason and any required financial reversal; disputes retain delivered with evidence until resolved. No scope is removed by this vocabulary alignment.
 
 ## 5. Revenue Per Content Tracker
 

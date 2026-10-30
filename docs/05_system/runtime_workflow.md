@@ -434,13 +434,7 @@ Cài recipe phải kiểm tra:
 
 ## 11. Observability Handoff
 
-Detail design tiếp theo phải chốt:
-- event topics/queues
-- ordering guarantees
-- idempotency strategy
-- retry policy per action type
-- dead-letter retention
-- tracing strategy
+Queue topics, ordering, idempotency, retry/DLQ and recovery semantics are owned by [Queue design](queue_retry_design.md); implementation must satisfy its restart/replay fixtures. [Workflow integration](../06_quality_ops/activepieces_integration.md) owns the baseline executor/optional-adapter boundary and runtime budgets. Canonical object/step state remains in PostgreSQL regardless of adapter.
 
 ---
 

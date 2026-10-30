@@ -253,7 +253,7 @@ PublishComposerPage
 | 12 | Tag product | "🛍️ Tag sản phẩm" → modal | `ProductService/List` | Product picker → select → product linked | `publish:create` + `product:read` |
 | 13 | QA check | "📋 QA Check" | — | Navigate to Packaging QA (W056) with current compose state | `publish:create` |
 | 14 | Publish now | "📤 Đăng" (when "Đăng ngay") → confirm | `PublishService/Execute(data)` | Publish item created → navigate to Queue | `publish:execute` |
-| 15 | Schedule publish | "📤 Lên lịch" (when scheduled) → confirm | `PublishService/Schedule(data, datetime)` | Scheduled item created → navigate to Calendar | `publish:execute` |
+| 15 | Schedule publish | "📤 Lên lịch" (when scheduled) → confirm | `PublishService/Schedule(data, datetime)` | Scheduled item created → navigate to Calendar | `publish:schedule` |
 | 16 | Save draft | "💾 Lưu nháp" | `PublishService/SaveDraft(data)` | Toast: "Đã lưu nháp!" | `publish:create` |
 | 17 | Discard | Navigate back without saving → confirm modal | — | Discard changes → navigate back | Any |
 
@@ -310,13 +310,13 @@ PublishComposerPage
 
 | Feature | Owner | Admin | Manager | Editor | Contributor | Viewer | External |
 |---|---|---|---|---|---|---|---|
-| Open composer | ✅ | ✅ | ✅ | ✅ | ⚠️ own content | ❌ | ❌ |
-| Upload media | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Open composer | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Upload media | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | AI caption/hashtags | ✅ | ✅ | ✅ | ✅ | ⚠️ credit check | ❌ | ❌ |
-| Publish immediately | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Publish immediately | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Schedule publish | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Tag product | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Save draft | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Save draft | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ---
 

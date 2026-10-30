@@ -6,8 +6,7 @@ last_updated: 2026-03-30
 
 # Decision Log — Architecture Decision Records
 
-> Full rationale: `docs/creativanta_tech_stack_adr_v3.md`
-> Changelog: `docs/implementation_derivatives_plan.md`
+> Runtime architecture: [Tech stack ADR](../05_system/tech_stack_adr.md). Product scope and delivery: [Implementation Order](IMPLEMENTATION_ORDER.md). Performance figures in older rationale are unverified targets, not release evidence.
 
 ---
 
@@ -27,7 +26,7 @@ last_updated: 2026-03-30
 - Context: User requires native-like smoothness, 120 FPS, zero jank across iOS + Android simultaneously.
 - Decision: Flutter 3.41 + Dart 3.11 with Impeller rendering engine
 - Consequences: 120 FPS sustained, pre-compiled shaders, AOT compilation. Separate codebase from web (shared via .proto contracts).
-- Must not reverse because: Impeller's zero-jank guarantee is mandatory for live commerce real-time UX
+- Must not reverse because: Real-device frame budgets and traces must demonstrate acceptable smoothness; no engine guarantees zero jank for live commerce real-time UX
 
 ## ADR-003: Rust (Axum 0.8+) for Backend API
 
@@ -36,7 +35,7 @@ last_updated: 2026-03-30
 - Context: Need 10-50x throughput vs Node.js, memory safety for multi-tenant isolation, ~20MB Docker images.
 - Decision: Rust + Axum + SeaORM 2.0 + Tonic gRPC + Tokio runtime
 - Consequences: 150K+ req/s, ~5ms p99 latency, ~20MB memory. Higher initial learning curve.
-- Must not reverse because: Rust's memory safety prevents entire classes of multi-tenant data leaks
+- Must not reverse because: Memory safety does not establish authorization; grants, RLS, composite tenant FKs and isolation tests are mandatory
 
 ## ADR-004: ConnectRPC (web) + gRPC binary (mobile)
 
@@ -74,14 +73,13 @@ last_updated: 2026-03-30
 - Consequences: 25x faster than Redis (multi-threaded), 100% protocol compatible, lower memory.
 - Must not reverse because: Performance gains are critical for single-VPS deployment
 
-## ADR-008: Activepieces for User-Facing Workflow Studio (M20/M21)
+## ADR-008: Workflow ownership and adapter license boundary
 
-- Date: 2026-03-25
-- Status: Accepted
-- Context: PRD M20 requires visual workflow builder for non-tech users. n8n's SUL license prohibits SaaS embedding (~$50K/year embed license).
-- Decision: Embed Activepieces (self-hosted, MIT core) as workflow engine
-- Consequences: MIT = zero restrictions for commercial SaaS. 200+ integrations. Custom Creativanta pieces needed.
-- Must not reverse because: n8n license makes it legally impossible for SaaS embedding; building from scratch = 6+ months
+- Date: 2026-10-29 (supersedes 2026-03-25)
+- Status: Accepted engineering default under the full-scope phased-delivery instruction
+- Decision: Own the canonical M20/M21 canvas/runtime baseline. Activepieces core integration or Enterprise embedded builder is optional and requires edition/license/isolation verification. No Enterprise entitlement is assumed.
+- Consequences: All nodes/recipes/agent/mobile functions remain scope. Baseline implementation effort is explicit P7 work; licensed embedding is separately budgeted.
+- Canonical runtime/acceptance: [Workflow integration](../06_quality_ops/activepieces_integration.md).
 
 ## ADR-009: pgvector in PostgreSQL for AI embeddings
 
@@ -145,3 +143,16 @@ last_updated: 2026-03-30
 - Decision: Application-generated external/public IDs MUST use UUID v7. Database defaults may continue using `gen_random_uuid()` as a fallback for seeds, backfills, and internal records when the application layer does not pre-supply an ID.
 - Consequences: Sortable IDs for APIs and event streams without blocking local seeding or migration ergonomics. Schema docs must state the dual rule explicitly.
 - Must not reverse because: Time-sortable IDs materially simplify pagination, event ordering, and debugging across web/mobile/admin surfaces
+
+## ADR-016: Full scope delivered incrementally
+
+- Date: 2026-10-29
+- Authority: Explicit product-owner instruction to keep every function and complete by phase.
+- Decision: P0–P8 and their full-scope ownership/acceptance matrix replace simultaneous Day-1 availability and old phase labels.
+- Consequences: No removed modules/modes/ACs. Partial slices expose honest availability, and P8 must reconcile every original scope item. See IMPLEMENTATION_ORDER.md.
+
+## ADR-017: Durable money and side-effect authority
+
+- Date: 2026-10-29
+- Decision: PostgreSQL credit lots/reservations/ledger and financial postings are authoritative; cache and analytics are projections. Cost-based quotes cap the customer charge. Outbox/inbox and external-effect records handle replay/unknown results.
+- Consequences: Tenant runtime has no bypass/DDL/TRUNCATE access. Financial and async fixtures gate release. Details remain in the owning contract/runtime docs.

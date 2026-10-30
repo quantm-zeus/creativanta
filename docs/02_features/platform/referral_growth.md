@@ -3,8 +3,8 @@ layer: features
 module: referral
 canonical: true
 domain: platform
-status: READY
-last_updated: 2026-04-02
+status: SPECIFIED
+last_updated: 2026-10-29
 upstream: PRD v3.1 §37.2, Pricing/Credits Pack §6–7
 ---
 

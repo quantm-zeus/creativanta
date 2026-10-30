@@ -2,9 +2,9 @@
 layer: features
 module: S26
 domain: platform
-status: READY
+status: SPECIFIED
 created: 2026-04-01
-last_updated: 2026-04-08
+last_updated: 2026-10-29
 canonical: true
 upstream: PRD v3.1 §26
 ---
@@ -51,7 +51,7 @@ Internal Admin Panel provides the operations team with tools to manage users, wo
 | RULE-S26-001 | Admin panel is VPN-restricted + MFA-required, separate from user-facing app |
 | RULE-S26-002 | 8 admin roles: `super_admin`, `ops_admin`, `finance_admin`, `content_admin`, `support_admin`, `tech_admin`, `analyst`, `auditor` |
 | RULE-S26-003 | All admin actions logged to `internal_audit_logs` with old/new values |
-| RULE-S26-004 | Impersonation requires Super Admin + justification, auto-expires in 30 minutes |
+| RULE-S26-004 | Impersonation follows admin:impersonate (Super/Ops and scoped Support) + justification; all sessions read-only, auto-expires in 30 minutes |
 | RULE-S26-005 | User suspension requires reason, triggers notification, 24h appeal window |
 | RULE-S26-006 | Content moderation SLA: 4h for CRITICAL, 24h for HIGH, 72h for MEDIUM |
 | RULE-S26-007 | Fraud cases auto-escalate after 48h if unresolved |

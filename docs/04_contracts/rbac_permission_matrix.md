@@ -276,7 +276,33 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 | `copilot:use_video_production` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `copilot:use_help` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `credits:view_balance` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| `credits:top_up` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `credits:top_up` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+---
+
+
+### 2.16 Explicit utility and projection permissions (2026-10-29)
+
+All remain subject to object/user scope. user:self and support:own never grant access to another user's data. Read permission never authorizes the corresponding write.
+
+| Permission | Owner | Admin | Manager | Editor | Contributor | Viewer | External |
+|---|---|---|---|---|---|---|---|
+| `user:self` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `workspace:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `account:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `file:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `file:manage` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `entity:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `entity:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `task:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `task:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `store:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `cost:read` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `settlement:read` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `reconciliation:read` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `proof_bundle:assemble` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `api_key:manage` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `support:own` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -326,6 +352,19 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 | `admin:commerce:read` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
 
 > **Constraints**: Analyst and Auditor are read-only roles. Support Admin impersonation is read-only mode only (no OTP override). ⚠️ = scoped access (e.g., Support Admin sees billing status but not amounts).
+
+---
+
+
+### 3.3 Explicit administration operations (2026-10-29)
+
+| Permission | Super | Ops | Finance | Content | Support | Tech | Analyst | Auditor |
+|---|---|---|---|---|---|---|---|---|
+| `admin:config:manage` | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `admin:users:manage` | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `admin:admins:manage` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `admin:ai:manage` | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `admin:alerts:manage` | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
 
 ---
 

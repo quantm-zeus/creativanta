@@ -41,6 +41,9 @@ last_verified: 2026-03-30
 
 ## 2. docker-compose.yml
 
+This is the local infrastructure recipe, not a production deployment file. Phase P0 must pin image versions/digests and commit an extracted executable Compose/init/migration setup after a clean-start test; `latest` below is a candidate only and cannot pass the dependency-lock gate. Later-phase services may be behind Compose profiles. Do not use the migration/admin/outbox credential in the API container. API startup must refuse superuser/BYPASSRLS/owner roles and verify required policies/grants.
+
+
 ```yaml
 # Note: 'version' field is obsolete in modern Docker Compose (v2+) and can be omitted.
 # Retained here for backward compatibility with Docker Compose v1.
@@ -109,9 +112,9 @@ services:
       AP_POSTGRES_PASSWORD: dev_password_123
       AP_REDIS_HOST: dragonfly
       AP_REDIS_PORT: 6379
-      AP_ENCRYPTION_KEY: dev_encryption_key_32chars_here!
-      AP_JWT_SECRET: dev_jwt_secret_here_32chars_long!
-      AP_EXECUTION_MODE: UNSANDBOXED  # ⚠️ DEV ONLY — production MUST use SANDBOXED mode. See security_threat_model.md.
+      AP_ENCRYPTION_KEY: 00000000000000000000000000000000 # local-only hex; inject real secret
+      AP_JWT_SECRET: 1111111111111111111111111111111111111111111111111111111111111111 # local only
+      AP_EXECUTION_MODE: UNSANDBOXED  # ⚠️ DEV ONLY — production requires a version-verified isolated execution mode and resource/network limits; see activepieces_integration.md.
     depends_on:
       postgres:
         condition: service_healthy
@@ -182,21 +185,26 @@ CREATE EXTENSION IF NOT EXISTS "timescaledb";   -- time-series hypertables (Audi
 -- Create Activepieces database
 CREATE DATABASE activepieces_dev;
 
--- Create application roles
--- Note: migrations and seed_data.sql run as 'creativanta' (superuser/owner);
--- the Rust API runtime connects as 'app_user' (NOBYPASSRLS) so PostgreSQL RLS policies are enforced.
+-- Local-only credentials; production uses separate injected secrets.
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'app_user') THEN
-    CREATE ROLE app_user LOGIN PASSWORD 'dev_password_123' NOBYPASSRLS;
+    CREATE ROLE app_user LOGIN PASSWORD 'dev_app_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
+  END IF;
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'admin_user') THEN
+    CREATE ROLE admin_user LOGIN PASSWORD 'dev_admin_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
+  END IF;
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'outbox_poller') THEN
+    CREATE ROLE outbox_poller LOGIN PASSWORD 'dev_outbox_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT BYPASSRLS;
   END IF;
 END
 $$;
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+GRANT CONNECT ON DATABASE creativanta_dev TO app_user, admin_user, outbox_poller;
+GRANT USAGE ON SCHEMA public TO app_user, admin_user, outbox_poller;
+-- No blanket table/default grants. Each migration applies the installed-table
+-- allowlist and immutable-record guards owned by database_schema.md §26.
 
-GRANT ALL PRIVILEGES ON DATABASE creativanta_dev TO app_user;
-GRANT ALL ON SCHEMA public TO app_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO app_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO app_user;
 ```
 
 ---
@@ -206,7 +214,12 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO app_user;
 ### .env.development (apps/api)
 ```bash
 # Database
-DATABASE_URL=postgresql://creativanta:dev_password_123@localhost:5432/creativanta_dev
+DATABASE_URL=postgresql://app_user:dev_app_password@localhost:5432/creativanta_dev
+# Migration process only; never load in the public API/worker process:
+MIGRATION_DATABASE_URL=postgresql://creativanta:dev_password_123@localhost:5432/creativanta_dev
+# Separate privileged processes, not public API configuration:
+ADMIN_DATABASE_URL=postgresql://admin_user:dev_admin_password@localhost:5432/creativanta_dev
+OUTBOX_DATABASE_URL=postgresql://outbox_poller:dev_outbox_password@localhost:5432/creativanta_dev
 DATABASE_POOL_SIZE=20
 
 # Cache

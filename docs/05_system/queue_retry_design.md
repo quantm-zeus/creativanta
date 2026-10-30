@@ -15,31 +15,7 @@ purpose: Queue architecture, retry strategies, DLQ, outbox pattern, circuit brea
 
 ## 1. Queue Architecture
 
-```
-┌─ Rust API ────────────────────────────────────┐
-│                                                │
-│  Domain Service → Event Bus (in-proc mpsc)     │
-│       ↓                                        │
-│  Outbox Writer → PostgreSQL outbox table        │
-│       ↓                                        │
-│  Outbox Poller → Redis Streams (Dragonfly)     │
-│       ↓                                        │
-│  Worker Pool (Tokio tasks)                      │
-│       ↓                                        │
-│  ┌─ Consumer Groups ─────────────┐             │
-│  │ publish_jobs    (M11)         │             │
-│  │ generation_jobs (M07)         │             │
-│  │ sync_jobs       (M12,M13)     │             │
-│  │ notification    (Push/Email)  │             │
-│  │ analytics_events (PostHog)    │             │
-│  │ ai_pipeline     (LLM/Media)  │             │
-│  │ workflow_trigger (M20/M21)   │             │
-│  │ cron_scheduler  (Morning...)  │             │
-│  └───────────────────────────────┘             │
-└────────────────────────────────────────────────┘
-```
-
----
+Domain mutation + audit + outbox insertion commit in **one PostgreSQL transaction**. Only after commit may a poller dispatch to Redis Streams. In-process mpsc is an optional wake-up hint, never a durability boundary. Canonical schema: [database schema §18/§26](../04_contracts/database_schema.md). Delivery is at least once; business effects are idempotent.
 
 ## 2. Queue Definitions
 
@@ -84,6 +60,7 @@ pub enum ErrorClass {
     BusinessLogic,    // Validation fail → DO NOT retry
 }
 
+// Illustrative policy shape; the implemented retry schedule must pass §5 recovery fixtures.
 impl RetryPolicy {
     pub fn should_retry(&self, error: &ErrorClass, attempt: u32) -> Option<Duration> {
         if attempt >= self.max_attempts { return None; }
@@ -96,91 +73,33 @@ impl RetryPolicy {
 
 ---
 
-## 4. Dead-Letter Queue (DLQ)
+## 4. Dead-Letter Queue
 
-```sql
-CREATE TABLE dead_letter_queue (
-  dlq_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  queue_name VARCHAR(100) NOT NULL,
-  original_message_id VARCHAR(255) NOT NULL,
-  payload JSONB NOT NULL,
-  error_class VARCHAR(50) NOT NULL,
-  error_message TEXT,
-  last_error_at TIMESTAMPTZ NOT NULL,
-  attempt_count INTEGER NOT NULL,
-  retry_history JSONB DEFAULT '[]', -- [{attempt, error, timestamp}]
-  workspace_id UUID,
-  status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, retrying, resolved, discarded
-  resolved_at TIMESTAMPTZ,
-  resolved_by UUID,
-  resolution_notes TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX idx_dlq_queue ON dead_letter_queue(queue_name, status);
-CREATE INDEX idx_dlq_workspace ON dead_letter_queue(workspace_id);
-ALTER TABLE dead_letter_queue ENABLE ROW LEVEL SECURITY;
-ALTER TABLE dead_letter_queue FORCE ROW LEVEL SECURITY;
-CREATE POLICY tenant_isolation ON dead_letter_queue
-  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
--- Note: system-level DLQ items (workspace_id IS NULL) require superuser/service role access
-```
+DDL is owned by [database schema](../04_contracts/database_schema.md). A failed job retains canonical event/job identity, tenant, attempts, provider outcome and repair diagnostics. After 24h unresolved, alert the owner. Seven days may archive a resolved/acknowledged record; **never discard an unresolved financial or unknown external side effect merely because it is old**. Manual replay keeps original operation identity; it does not bypass idempotency or permission checks. System-level NULL-workspace records are restricted to operations roles.
 
-### DLQ Processing Rules:
-1. **Auto-retry**: TransientError items get 1 more retry after 1 hour
-2. **Manual review**: Items older than 24h trigger diagnostics_record
-3. **Discard**: Items older than 7 days with no resolution → auto-discard
-4. **Notification**: DLQ items for HIGH priority queues → immediate admin notification
+## 5. Transactional Outbox, Inbox and External Effects
 
----
+### 5.1 Producer and poller
 
-## 5. Outbox Pattern (Guaranteed Delivery)
+Persist the full canonical DomainEvent envelope, including stable `event_id`, actor, workspace, aggregate, correlation, version and timestamp. `target_stream` is an allowlisted queue name from §2, chosen by the producer. Payload never contains tokens or service credentials. The outbox poller uses its narrowly granted role; no domain service inherits it.
 
-```sql
-CREATE TABLE event_outbox (
-  outbox_id BIGSERIAL PRIMARY KEY,
-  event_type VARCHAR(200) NOT NULL,
-  target_stream VARCHAR(100) NOT NULL,
-  aggregate_type VARCHAR(100) NOT NULL,
-  aggregate_id UUID NOT NULL,
-  workspace_id UUID,
-  payload JSONB NOT NULL,
-  metadata JSONB DEFAULT '{}',
-  published BOOLEAN NOT NULL DEFAULT false,
-  published_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX idx_outbox_unpublished ON event_outbox(published, created_at)
-  WHERE published = false;
-ALTER TABLE event_outbox ENABLE ROW LEVEL SECURITY;
-ALTER TABLE event_outbox FORCE ROW LEVEL SECURITY;
-CREATE POLICY tenant_isolation ON event_outbox
-  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
--- Note: outbox poller runs as service role (bypasses RLS) per ADR-011 exception
-```
+Every 100ms claim up to 100 unpublished due records in a short transaction using `FOR UPDATE SKIP LOCKED`, updating `lease_owner`, `lease_until = now + 30 seconds` and `attempt_count`. Commit the lease before network I/O. Publish the same event_id/envelope to its stored stream, then conditionally mark published where this lease is still owned. Failure retries with bounded backoff in `next_attempt_at`. Crash after XADD but before marking published legitimately redelivers the same event_id. Expired leases are reclaimable; multiple pollers cannot assume exclusive delivery.
 
-### Outbox Poller:
-> **Exception to SeaORM-first rule (ADR-011)**: The outbox poller uses raw SQLx for performance-critical batch polling at 100ms intervals. This is an approved exception per the same reasoning that allows raw SQL for migrations and hot-path queries.
+### 5.2 Consumer transaction
 
-```rust
-// Runs every 100ms, batches up to 100 events
-async fn poll_outbox(pool: &PgPool, redis: &RedisClient) {
-    let events = sqlx::query("SELECT * FROM event_outbox WHERE published = false ORDER BY created_at LIMIT 100")
-        .fetch_all(pool).await?;
-    
-    for event in events {
-        redis.xadd(&event.target_stream, &event.payload()).await?;
-        sqlx::query("UPDATE event_outbox SET published = true, published_at = NOW() WHERE outbox_id = $1")
-            .bind(event.outbox_id).execute(pool).await?;
-    }
-}
-```
+1. Read via XREADGROUP; validate queue/envelope, source and tenant/actor authority. Recheck current delegated permissions before executing, including revocation and approval expiry.
+2. Set validated user/tenant context in an app_user transaction. Insert `consumer_inbox(workspace_id, consumer_name, event_id)` using ON CONFLICT DO NOTHING RETURNING inbox_id.
+3. If already processed, commit/no-op and XACK. Otherwise apply domain mutations, append audit/ledger and insert new outbox records **in that same transaction**. If anything fails, roll back the inbox row too.
+4. XACK only after commit. A crash between commit and ACK redelivers and takes the no-op path. Recover abandoned pending entries after a 60-second idle lease with XAUTOCLAIM (or equivalent verified operation on the pinned Redis-compatible server).
+5. Keep business dedup keys/ledger identities permanently for their retention period. Retain inbox IDs at least 30 days; replaying older events requires economic-operation dedup and an audited replay plan. Never trim unacknowledged business messages; alert/stop producers before capacity exhaustion. Fair scheduling isolates noisy workspaces.
 
-Outbox routing rule:
-- Producers MUST persist the exact Redis Stream name into `event_outbox.target_stream` at write time.
-- `target_stream` MUST match one of the canonical queue names in §2 (`publish_jobs`, `generation_jobs`, `sync_jobs`, `notification_push`, `notification_email`, `analytics_events`, `ai_pipeline`, `workflow_trigger`, `settlement_import`, `trend_crawl`, `ai_credit`).
-- Pollers MUST publish to the stored stream name directly; they MUST NOT derive queue choice from `event_type` ad hoc at publish time.
+### 5.3 External side effects
 
----
+DB transactions cannot atomically commit with a platform API. Before submission, persist `external_effects` with a unique operation_key, target, prepared/submitted status and request identity. Send provider idempotency key where supported. A timeout after submission is **unknown**, not proof of failure. Query provider status/webhooks and reconcile by provider request ID; do not blindly repeat publish/payment/generation. If no status or idempotency mechanism exists, require manual inspection/proof before resubmission. A definitive result conditionally updates effect + domain + audit/inbox/outbox in one transaction. Retry/cancel/fallback must preserve these identities.
+
+### 5.4 Recovery fixtures
+
+Kill poller after stream publish; run two pollers; kill consumer before/after commit; redeliver webhook; revoke actor before execution; kill worker after platform submission; lose cache; replay a completed financial job. Each fixture must preserve one order/posting/debit and no duplicate external operation. [Credit accounting](../04_contracts/credit_accounting_contract.md) owns credit-specific late-result behavior.
 
 ## 6. Circuit Breaker (Per Provider)
 
@@ -214,7 +133,7 @@ pub struct CircuitBreaker {
 | Health Score | `0 0 * * * *` (hourly) | sync_jobs | Poll platform APIs |
 | Stale Data Check | `0 */15 * * * *` (15min) | analytics_events | Check sync freshness |
 | Achievement Check | Event-driven | workflow_trigger | On content/commerce events |
-| Credit Reset | `0 0 0 1 * *` (1st of month) | ai_credit | Monthly credit allocation |
+| Credit Reset | Every minute: scan due billing anniversaries | ai_credit | Idempotent allocation per subscription period; see credit accounting |
 | DLQ Cleanup | `0 0 3 * * *` (3:00 AM) | — | Auto-discard old DLQ items |
 | Outbox Cleanup | `0 0 4 * * *` (4:00 AM) | — | Delete published outbox > 7d |
 

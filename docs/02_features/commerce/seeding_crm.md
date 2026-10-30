@@ -3,8 +3,8 @@ layer: features
 module: M18
 canonical: true
 domain: commerce
-status: READY
-last_updated: 2026-03-30
+status: SPECIFIED
+last_updated: 2026-10-29
 blockers: []  # API-M-001 resolved 2026-04-02 — SeedingService §2.8.4 (9 RPCs)
 ---
 
@@ -125,7 +125,14 @@ M18 exists as the **seeding operations and sample lifecycle manager** — tracki
 
 ### Sample Request Lifecycle
 
-Object: sample_request | Stored as workflow-scoped records
+The displayed journey below composes fields; do not persist its labels into one status column:
+- Request created → sample_requests.status=requested; approved/declined/cancelled use the same exact values.
+- Shipped/delivered → sample_shipments.status=shipped/delivered; request remains approved until fulfillment is confirmed, then fulfilled.
+- Outcome logged → sample_requests.outcome_status=logged and typed outcome evidence recorded; request remains fulfilled.
+- Follow-up states use sample_requests.follow_up_status and linked follow_up_tasks.
+
+
+Object: sample_request | Canonical sample_requests plus sample_shipments; no shadow workflow-scoped records
 see [04_contracts/domain_event_catalog.md#19](../../04_contracts/domain_event_catalog.md)
 
 | From | To | Trigger | Condition |

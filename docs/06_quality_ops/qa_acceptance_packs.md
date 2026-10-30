@@ -192,7 +192,8 @@ Every module must pass 5 acceptance paths:
 |---|---|---|---|
 | Reserve → commit (normal) | 8 credits reserved, 6 actually used | 6 deducted, 2 returned | `balance = initial - 6` |
 | Reserve → release (AI failure) | 8 credits reserved, AI fails | All 8 restored | `balance = initial` |
-| Reserve → timeout (orphaned) | 8 reserved, no commit within 30min | All 8 restored via TTL expiry | DLQ entry created |
+| Reserve → timeout | Held, never submitted for 30min | DB sweeper releases once | Cache loss does not affect correctness |
+| Unknown provider timeout | In-flight result unknown at lease expiry | Reconciling, hold retained; status probe | No repeat submit/debit; manual escalation after 24h |
 | Insufficient balance (hard block) | Request 10 credits with 5 balance | Request rejected immediately | `credits_exhausted` error |
 | Concurrent reservations | 2 simultaneous requests, enough for 1 | First succeeds, second blocked | No negative balance possible |
 
@@ -244,3 +245,12 @@ Every module must pass 5 acceptance paths:
 | Clone without consent | Audio samples, no consent | Request blocked | Error: "Voice cloning requires consent" |
 | Clone quality check | Provider returns quality_score < threshold | Warning shown to user | Quality score visible |
 | Clone in generation | Clone voice used in video generation | Video uses cloned voice | `character.voice_clone_id` referenced |
+
+## 6. Mandatory phase integrity packs (2026-10-29)
+
+- P0: direct tenant-junction reads, foreign-parent writes, missing context, runtime superuser/BYPASSRLS refusal, TRUNCATE denial, non-owner workspace discovery, internal-note/user-directory denial, membership revocation and delayed/reordered Clerk webhooks.
+- Credit fixtures and state outcomes: [Credit accounting](../04_contracts/credit_accounting_contract.md).
+- Finance fixtures F01–F09 and exact expected arithmetic: [Financial computation](../04_contracts/financial_computation_contract.md).
+- Async process-kill/replay/unknown-side-effect fixtures: [Queue design](../05_system/queue_retry_design.md).
+- Each phase: all delivered feature paths plus explicit later-phase scope; all original scope items must have accepted evidence by P8. [Build execution](../00_index/BUILD_EXECUTION_CONTRACT.md) owns packets/gates.
+- Release: business endpoint failures must fail the smoke script; cold restore and rollback use the exact tested artifacts. Provider approvals and Enterprise embedding rights require actual evidence; fixtures cannot create them.

@@ -2,7 +2,7 @@
 layer: contracts
 canonical: true
 source_file: impl_a1_database_schema.md
-last_verified: 2026-04-06
+last_verified: 2026-10-29
 resolved_issues:
   - DB-C-001  # RLS FORCE added to 106 tables (2026-04-02)
   - DB-C-002  # RLS ENABLE added to 106 tables (2026-04-02)
@@ -25,12 +25,12 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | §7 AI Production (M07-M09) | characters, continuity_packs, assets, generation_jobs, continuity_violations |
 | §8 Publish (M10-M11) | publish_items, publish_jobs, publish_logs |
 | §9 Engagement (M12) | entities, threads, messages, follow_up_tasks |
-| §10 Commerce (M13-M16) | products, offers, skus, orders, campaigns, affiliate_links, coupons, store_pages, membership_plans |
+| §10 Commerce (M13-M16) | products, product_skus, offers, orders, campaigns, affiliate_links, affiliate_commissions; extended store/coupon tables in §19 |
 | §11 Finance & Proof (M19) | profit_snapshots, settlements, cost_items, reconciliation_records, evidence_objects, proof_bundles |
 | §12 Workflow & Operations (M17-M21) | live_sessions, cue_cards, sample_requests, sample_shipments, workflows, workflow_runs, agent_runs, recipes |
 | §13 Billing, Admin, Diagnostics (M23) | ai_credit_transactions, subscription_events, notifications, feature_flags, audit_events, diagnostics_records |
 | §14 Gamification (§37.3) | creator_progress, achievement_definitions, achievement_records, challenge_definitions (§22.10), challenge_progress (§22.11) |
-| §15 TimescaleDB Hypertables | content_metrics, engagement_metrics, commerce_metrics |
+| §15 TimescaleDB Hypertables | platform_health_metrics, api_call_logs |
 | §16 Creator Pro Tools (S16) | link_in_bio_pages, link_in_bio_items, media_kits, rate_cards, brand_deals |
 | §17 Internal Admin (S26) | internal_admins, admin_sessions, moderation_cases, fraud_cases, support_tickets, kb_categories, kb_articles, article_ratings, incidents, system_announcements |
 | §18 Operational Tables | background_jobs, job_schedules, job_metrics, dead_letter_queue, event_outbox, file_uploads, api_keys, broadcasts, notification_events, consent_records, referral_records, export_jobs |
@@ -88,7 +88,7 @@ All tables below include `workspace_id UUID NOT NULL` unless marked `[GLOBAL]`.
 ```sql
 CREATE TYPE source_class AS ENUM ('official','imported','inferred','estimated','unreconciled');
 CREATE TYPE confidence_band AS ENUM ('high','medium_high','medium','low_medium','low');
-CREATE TYPE verification_status AS ENUM ('verified','re_verify','pending');
+CREATE TYPE verification_status AS ENUM ('verified','re_verify','pending','failed');
 CREATE TYPE capability_state AS ENUM ('native','read_only','manual','degraded','unsupported');
 CREATE TYPE reconciliation_state AS ENUM (
   'fully_reconciled','partially_reconciled','awaiting_evidence',
@@ -128,16 +128,20 @@ CREATE TABLE currencies (
 CREATE TABLE workspaces (
   workspace_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_type VARCHAR(50) NOT NULL DEFAULT 'standard',
+  clerk_organization_id VARCHAR(255) UNIQUE,
   display_name VARCHAR(255) NOT NULL,
   slug VARCHAR(100) UNIQUE NOT NULL,
+  referral_code VARCHAR(20) UNIQUE, -- one server-generated referral code per workspace
   default_operator_mode operator_mode NOT NULL DEFAULT 'creator',
   primary_region_id UUID REFERENCES regions(region_id),
   primary_currency_id UUID REFERENCES currencies(currency_id),
   status VARCHAR(20) NOT NULL DEFAULT 'active',
   subscription_tier VARCHAR(20) NOT NULL DEFAULT 'free', -- free, starter, pro, business, enterprise
-  ai_credits_remaining INTEGER NOT NULL DEFAULT 50, -- integer credit count (whole units), not monetary value; DB-H-001 NUMERIC(18,6) applies to credit *amounts* in transactions, not counters
-  ai_credits_monthly_limit INTEGER NOT NULL DEFAULT 50, -- integer credit count (whole units), same rationale as above
+  ai_credits_remaining NUMERIC(18,6) NOT NULL DEFAULT 50, -- total unspent credits, including held credits
+  ai_credits_reserved NUMERIC(18,6) NOT NULL DEFAULT 0, -- available = remaining - reserved
+  ai_credits_monthly_limit NUMERIC(18,6) NOT NULL DEFAULT 50,
   billing_cycle_start DATE,
+  CHECK (ai_credits_remaining >= 0 AND ai_credits_reserved >= 0 AND ai_credits_reserved <= ai_credits_remaining),
   owner_user_id UUID NOT NULL,
   settings JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -164,6 +168,7 @@ ALTER TABLE workspaces ADD CONSTRAINT chk_workspaces_tier
 CREATE TABLE users (
   user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   clerk_id VARCHAR(255) UNIQUE NOT NULL,
+  source_updated_at TIMESTAMPTZ,
   email VARCHAR(255) NOT NULL,
   display_name VARCHAR(255),
   avatar_url TEXT,
@@ -182,6 +187,8 @@ CREATE INDEX idx_users_email ON users(email);
 ```sql
 CREATE TABLE workspace_members (
   workspace_member_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_membership_id VARCHAR(255) UNIQUE,
+  source_updated_at TIMESTAMPTZ,
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   user_id UUID NOT NULL REFERENCES users(user_id),
   role VARCHAR(30) NOT NULL DEFAULT 'viewer', -- owner, admin, manager, editor, contributor, viewer, external
@@ -202,6 +209,22 @@ CREATE POLICY tenant_isolation ON workspace_members
     OR user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid
   );
 ```
+
+### 4.3B user-scoped workspace discovery
+```sql
+CREATE POLICY workspace_discovery ON workspaces FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM workspace_members wm
+    WHERE wm.workspace_id = workspaces.workspace_id
+      AND wm.user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid
+      AND wm.status = 'active'
+  ));
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users FORCE ROW LEVEL SECURITY;
+CREATE POLICY user_self ON users
+  USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid);
+```
+Workspace creation and first Owner membership insert occur in one transaction with authenticated user scope and the new tenant context. Existing member discovery is SELECT-only and does not authorize writes. Each API request revalidates active membership and its current role before setting tenant context.
 
 ### 4.4 brand_profiles
 ```sql
@@ -328,13 +351,18 @@ CREATE POLICY tenant_isolation ON trends
 ```
 
 ### 5.3 trend_signals (junction)
-> **RLS note**: No workspace_id — access controlled via FK-joined parent tables (trends, signals) which both have RLS. MUST always be queried through parent JOIN, never directly.
+> **RLS**: Direct tenant policy and same-workspace parent constraints apply; querying through JOIN is not a security boundary.
 ```sql
 CREATE TABLE trend_signals (
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   trend_id UUID NOT NULL REFERENCES trends(trend_id),
   signal_id UUID NOT NULL REFERENCES signals(signal_id),
   PRIMARY KEY (trend_id, signal_id)
 );
+ALTER TABLE trend_signals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trend_signals FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON trend_signals
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 ```
 
 ### 5.4 opportunities
@@ -371,14 +399,19 @@ ALTER TABLE opportunities ADD CONSTRAINT chk_opportunities_priority_state
 ```
 
 ### 5.5 opportunity_sources (polymorphic junction)
-> **RLS note**: No workspace_id — access controlled via FK-joined parent table (opportunities) which has RLS. MUST always be queried through parent JOIN.
+> **RLS**: Direct tenant policy and same-workspace parent constraints apply; querying through JOIN is not a security boundary.
 ```sql
 CREATE TABLE opportunity_sources (
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   opportunity_id UUID NOT NULL REFERENCES opportunities(opportunity_id),
   source_type VARCHAR(50) NOT NULL, -- trend, signal, competitor, product_opportunity
   source_id UUID NOT NULL,
   PRIMARY KEY (opportunity_id, source_type, source_id)
 );
+ALTER TABLE opportunity_sources ENABLE ROW LEVEL SECURITY;
+ALTER TABLE opportunity_sources FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON opportunity_sources
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 ```
 
 ### 5.6 competitor_entities
@@ -475,14 +508,19 @@ CREATE POLICY tenant_isolation ON ideas
 ```
 
 ### 6.2 idea_sources (polymorphic)
-> **RLS note**: No workspace_id — access controlled via FK-joined parent table (ideas) which has RLS. MUST always be queried through parent JOIN.
+> **RLS**: Direct tenant policy and same-workspace parent constraints apply; querying through JOIN is not a security boundary.
 ```sql
 CREATE TABLE idea_sources (
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   idea_id UUID NOT NULL REFERENCES ideas(idea_id),
   source_type VARCHAR(50) NOT NULL,
   source_id UUID NOT NULL,
   PRIMARY KEY (idea_id, source_type, source_id)
 );
+ALTER TABLE idea_sources ENABLE ROW LEVEL SECURITY;
+ALTER TABLE idea_sources FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON idea_sources
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 ```
 
 ### 6.3 hooks
@@ -618,7 +656,7 @@ CREATE TABLE characters (
   consent_verified BOOLEAN DEFAULT false,
   consent_record_id UUID,
   is_default BOOLEAN DEFAULT false,
-  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  status VARCHAR(20) NOT NULL DEFAULT 'creating' CHECK (status IN ('creating','ready','failed','archived')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ -- soft delete (DB-H-003)
@@ -640,6 +678,7 @@ CREATE TABLE continuity_packs (
   character_id UUID REFERENCES characters(character_id),
   approved_references JSONB DEFAULT '[]',
   rules_summary TEXT,
+  settings JSONB NOT NULL DEFAULT '{}', -- typed pack rules/lookbook/scene memory, §25.7
   allowed_use_scope JSONB DEFAULT '{}',
   version INTEGER NOT NULL DEFAULT 1,
   status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, active, deprecated, retired
@@ -717,6 +756,7 @@ CREATE TABLE generation_jobs (
   model VARCHAR(100),
   pipeline_strategy VARCHAR(30), -- native_audio, audio_first, post_prod_lip_sync, simple_voice_over
   input_params JSONB NOT NULL,
+  prompt_package JSONB NOT NULL DEFAULT '{}', -- versioned prompt/continuity lineage, §25.7
   status VARCHAR(20) NOT NULL DEFAULT 'queued', -- queued,processing,completed,failed,cancelled
   progress_pct SMALLINT DEFAULT 0,
   current_step VARCHAR(100),
@@ -1091,6 +1131,14 @@ CREATE TABLE orders (
   source_class source_class NOT NULL DEFAULT 'imported',
   source_platform VARCHAR(50),
   external_order_id VARCHAR(255),
+  connected_account_id UUID REFERENCES connected_accounts(connected_account_id),
+  tax_amount NUMERIC(18,6) NOT NULL DEFAULT 0,
+  tax_jurisdiction VARCHAR(10),
+  tax_note VARCHAR(100),
+  exchange_rate_snapshot JSONB NOT NULL DEFAULT '{}', -- exact shape in §25.1
+  recognized_at TIMESTAMPTZ, -- revenue recognition, not import time
+  source_updated_at TIMESTAMPTZ,
+  import_fingerprint VARCHAR(128),
   lifecycle_state VARCHAR(20) NOT NULL DEFAULT 'created', -- created,confirmed,fulfilled,completed,refunded,partially_refunded,returned,cancelled
   amount NUMERIC(18,6) NOT NULL,
   currency VARCHAR(5) NOT NULL DEFAULT 'VND',
@@ -1114,6 +1162,10 @@ CREATE TABLE orders (
 CREATE INDEX idx_orders_workspace ON orders(workspace_id);
 CREATE INDEX idx_orders_state ON orders(lifecycle_state);
 CREATE INDEX idx_orders_platform ON orders(source_platform);
+CREATE UNIQUE INDEX idx_orders_external_identity ON orders(workspace_id, connected_account_id, source_platform, external_order_id)
+  WHERE external_order_id IS NOT NULL AND connected_account_id IS NOT NULL;
+CREATE UNIQUE INDEX idx_orders_import_fingerprint ON orders(workspace_id, import_fingerprint)
+  WHERE import_fingerprint IS NOT NULL;
 CREATE INDEX idx_orders_ordered ON orders(ordered_at DESC);
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders FORCE ROW LEVEL SECURITY;
@@ -1229,6 +1281,9 @@ CREATE TABLE settlements (
   source_class source_class NOT NULL DEFAULT 'imported',
   source_platform VARCHAR(50),
   external_settlement_id VARCHAR(255),
+  connected_account_id UUID REFERENCES connected_accounts(connected_account_id),
+  exchange_rate_snapshot JSONB NOT NULL DEFAULT '{}',
+  import_fingerprint VARCHAR(128),
   gross_amount NUMERIC(18,6) NOT NULL,
   net_amount NUMERIC(18,6) NOT NULL,
   fees JSONB DEFAULT '{}', -- {platform_fee, transaction_fee, service_fee}
@@ -1242,6 +1297,10 @@ CREATE TABLE settlements (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ -- soft delete (DB-H-003)
 );
+CREATE UNIQUE INDEX idx_settlement_external ON settlements(workspace_id, connected_account_id, external_settlement_id)
+  WHERE external_settlement_id IS NOT NULL AND connected_account_id IS NOT NULL;
+CREATE UNIQUE INDEX idx_settlement_import ON settlements(workspace_id, import_fingerprint)
+  WHERE import_fingerprint IS NOT NULL;
 ALTER TABLE settlements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settlements FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON settlements
@@ -1296,6 +1355,7 @@ CREATE TABLE profit_snapshots (
   cogs NUMERIC(18,6) DEFAULT 0,
   ads_spend NUMERIC(18,6) DEFAULT 0,
   ai_credit_costs NUMERIC(18,6) DEFAULT 0,
+  seeding_costs NUMERIC(18,6) DEFAULT 0,
   other_costs NUMERIC(18,6) DEFAULT 0,
   net_profit NUMERIC(18,6) DEFAULT 0,
   margin_pct NUMERIC(5,2),
@@ -1321,7 +1381,7 @@ CREATE TABLE evidence_objects (
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   evidence_type VARCHAR(50) NOT NULL, -- screenshot, api_response, receipt, report, platform_data
   source_provenance VARCHAR(100),
-  content_hash VARCHAR(128), -- SHA-512 immutable hash
+  content_hash VARCHAR(128) NOT NULL, -- SHA-512 immutable content; verification metadata may change
   file_url TEXT,
   payload JSONB,
   collected_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -1397,7 +1457,7 @@ CREATE TABLE workflows (
   title VARCHAR(500) NOT NULL,
   workflow_type VARCHAR(30) NOT NULL DEFAULT 'custom', -- custom, recipe_installed, agent
   trigger_config JSONB NOT NULL, -- see §25.4 TriggerConfig
-  action_chain JSONB NOT NULL, -- Activepieces flow definition
+  action_chain JSONB NOT NULL, -- canonical WorkflowGraph (§25.7), adapter-independent
   approval_requirements JSONB DEFAULT '[]',
   status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, active, paused, error, archived
   version INTEGER NOT NULL DEFAULT 1,
@@ -1470,7 +1530,9 @@ CREATE TABLE recipe_templates (
 ALTER TABLE recipe_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipe_templates FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON recipe_templates
-  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid OR workspace_id IS NULL);
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY system_recipe_read ON recipe_templates FOR SELECT
+  USING (workspace_id IS NULL AND status = 'published');
 ```
 
 ### 12.4 agent_runs (Audit v4 — H1: Freeze §16.3 + §28.2)
@@ -1633,18 +1695,24 @@ CREATE POLICY tenant_isolation ON billing_events
 CREATE TABLE ai_credit_transactions (
   transaction_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
-  transaction_type VARCHAR(30) NOT NULL, -- deduction, monthly_allocation, top_up, promotional, achievement_reward, referral_bonus, overage_charge, refund_system_failure, refund_no_output, refund_partial_output, refund_quality_dispute
+  transaction_type VARCHAR(40) NOT NULL, -- deduction, monthly_allocation, top_up, promotional, achievement_reward, referral_bonus, overage_charge, refund_system_failure, refund_no_output, refund_partial_output, refund_quality_dispute
   credits NUMERIC(18,6) NOT NULL, -- DB-H-001: positive = add, negative = deduct
   balance_after NUMERIC(18,6) NOT NULL, -- DB-H-001: running balance after transaction
   operation_type VARCHAR(50), -- text_gen, image_gen, video_gen, analysis, agent_exec
   generation_job_id UUID,
   estimated_cost NUMERIC(18,6), -- DB-H-001: estimated credits at reservation time (per BIZ-001)
-  actual_cost NUMERIC(18,6), -- DB-H-001: actual credits consumed after completion (per BIZ-001)
+  actual_cost NUMERIC(18,6), -- final customer credits, never above confirmed quote
+  reservation_id UUID, -- same-workspace FK installed after reservation tables in §26
+  lot_id UUID, -- same-workspace FK installed after lot tables in §26
+  idempotency_key VARCHAR(255),
+  reference_transaction_id UUID REFERENCES ai_credit_transactions(transaction_id),
   description TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_act_workspace ON ai_credit_transactions(workspace_id);
 CREATE INDEX idx_act_created ON ai_credit_transactions(created_at DESC);
+CREATE UNIQUE INDEX idx_act_idempotency ON ai_credit_transactions(workspace_id, idempotency_key)
+  WHERE idempotency_key IS NOT NULL;
 ALTER TABLE ai_credit_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_credit_transactions FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON ai_credit_transactions
@@ -1741,7 +1809,8 @@ CREATE POLICY tenant_isolation ON notifications
 ```sql
 CREATE TABLE creator_progress (
   progress_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL UNIQUE,
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  user_id UUID NOT NULL REFERENCES users(user_id),
   level SMALLINT NOT NULL DEFAULT 1,
   xp INTEGER NOT NULL DEFAULT 0,
   xp_to_next_level INTEGER NOT NULL DEFAULT 100,
@@ -1751,7 +1820,8 @@ CREATE TABLE creator_progress (
   total_achievements INTEGER DEFAULT 0,
   season_id VARCHAR(50),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(workspace_id, user_id)
 );
 ALTER TABLE creator_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE creator_progress FORCE ROW LEVEL SECURITY;
@@ -1780,10 +1850,11 @@ CREATE TABLE achievement_definitions (
 CREATE TABLE achievement_records (
   record_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  user_id UUID NOT NULL REFERENCES users(user_id),
   achievement_id UUID NOT NULL REFERENCES achievement_definitions(achievement_id),
   earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   credits_awarded NUMERIC(18,6) NOT NULL DEFAULT 0, -- DB-H-001: credit amount awarded
-  UNIQUE(workspace_id, achievement_id)
+  UNIQUE(workspace_id, user_id, achievement_id)
 );
 ALTER TABLE achievement_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE achievement_records FORCE ROW LEVEL SECURITY;
@@ -2058,12 +2129,17 @@ CREATE TABLE moderation_cases (
   reporter_entity_id UUID,
   assigned_to UUID REFERENCES internal_admins(admin_id),
   evidence JSONB DEFAULT '{}',
+  appeal_status VARCHAR(20) NOT NULL DEFAULT 'none' CHECK (appeal_status IN ('none','pending','reviewing','upheld','overturned')),
   resolution TEXT,
   resolution_action VARCHAR(30), -- no_action, warning_sent, content_removed, account_suspended, account_banned
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   resolved_at TIMESTAMPTZ
 );
+ALTER TABLE moderation_cases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE moderation_cases FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON moderation_cases
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 CREATE INDEX idx_mc_status ON moderation_cases(status);
 CREATE INDEX idx_mc_severity ON moderation_cases(severity);
 CREATE INDEX idx_mc_workspace ON moderation_cases(workspace_id);
@@ -2163,6 +2239,7 @@ CREATE POLICY tenant_isolation ON support_tickets
 ### 17.9 support_ticket_messages
 ```sql
 CREATE TABLE support_ticket_messages (
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   message_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   ticket_id UUID NOT NULL REFERENCES support_tickets(ticket_id),
   author_type VARCHAR(20) NOT NULL, -- user, admin, ai_bot, system
@@ -2172,6 +2249,13 @@ CREATE TABLE support_ticket_messages (
   is_internal_note BOOLEAN DEFAULT false, -- only visible to admins
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE support_ticket_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_ticket_messages FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON support_ticket_messages
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid
+    AND (NOT is_internal_note OR current_user = 'admin_user'))
+  WITH CHECK (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid
+    AND (NOT is_internal_note OR current_user = 'admin_user'));
 CREATE INDEX idx_stm_ticket ON support_ticket_messages(ticket_id);
 ```
 
@@ -2363,7 +2447,7 @@ CREATE TABLE approval_requests (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_ar_workspace ON approval_requests(workspace_id);
+CREATE INDEX idx_approval_requests_workspace ON approval_requests(workspace_id);
 CREATE INDEX idx_ar_status ON approval_requests(status);
 CREATE INDEX idx_ar_object ON approval_requests(object_type, object_id);
 ALTER TABLE approval_requests ENABLE ROW LEVEL SECURITY;
@@ -2478,7 +2562,10 @@ CREATE TABLE api_keys (
   key_hash VARCHAR(128) NOT NULL, -- SHA-256 of full key
   name VARCHAR(255) NOT NULL,
   scopes JSONB DEFAULT '[]', -- e.g., ["products:read", "orders:read"]
-  status VARCHAR(20) NOT NULL DEFAULT 'active', -- active, suspended, revoked, expired
+  status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active','rotating','suspended','revoked','expired')),
+  logical_key_id UUID REFERENCES api_keys(api_key_id),
+  replaced_by_key_id UUID REFERENCES api_keys(api_key_id),
+  rotation_grace_ends_at TIMESTAMPTZ,
   last_used_at TIMESTAMPTZ,
   request_count BIGINT DEFAULT 0,
   rate_limit_override INTEGER, -- null = use default
@@ -2693,6 +2780,7 @@ CREATE POLICY tenant_isolation ON dead_letter_queue
 ```sql
 CREATE TABLE event_outbox (
   outbox_id BIGSERIAL PRIMARY KEY,
+  event_id UUID NOT NULL UNIQUE, -- stable DomainEvent.event_id across delivery retries
   event_type VARCHAR(200) NOT NULL,
   target_stream VARCHAR(100) NOT NULL, -- canonical queue name from queue_retry_design.md §2 (e.g., publish_jobs, generation_jobs)
   aggregate_type VARCHAR(100) NOT NULL,
@@ -2702,6 +2790,10 @@ CREATE TABLE event_outbox (
   metadata JSONB DEFAULT '{}',
   published BOOLEAN NOT NULL DEFAULT false,
   published_at TIMESTAMPTZ,
+  lease_owner VARCHAR(100),
+  lease_until TIMESTAMPTZ,
+  attempt_count INTEGER NOT NULL DEFAULT 0,
+  next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_outbox_unpublished ON event_outbox(published, created_at)
@@ -2757,6 +2849,10 @@ CREATE TABLE broadcast_targets (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE broadcast_targets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE broadcast_targets FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON broadcast_targets
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 CREATE INDEX idx_brt_broadcast_status ON broadcast_targets(broadcast_id, delivery_status);
 ALTER TABLE broadcast_targets ADD CONSTRAINT chk_broadcast_targets_status
   CHECK (delivery_status IN ('pending', 'queued', 'delivered', 'failed', 'read', 'clicked'));
@@ -2805,14 +2901,18 @@ ALTER TABLE tags FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON tags
   USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
--- RLS note: taggables has no workspace_id — access controlled via FK-joined parent table (tags) which has RLS.
--- MUST always be queried through parent JOIN, never directly.
+-- Tag associations are directly tenant-scoped; see §26 for parent guards.
 CREATE TABLE taggables (
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   tag_id UUID NOT NULL REFERENCES tags(tag_id),
   taggable_type VARCHAR(50) NOT NULL,
   taggable_id UUID NOT NULL,
   PRIMARY KEY (tag_id, taggable_type, taggable_id)
 );
+ALTER TABLE taggables ENABLE ROW LEVEL SECURITY;
+ALTER TABLE taggables FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON taggables
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 CREATE INDEX idx_taggables_target ON taggables(taggable_type, taggable_id);
 ```
 
@@ -2820,10 +2920,12 @@ CREATE INDEX idx_taggables_target ON taggables(taggable_type, taggable_id);
 ```sql
 CREATE TABLE referral_records (
   referral_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id), -- referring workspace
+  referee_workspace_id UUID REFERENCES workspaces(workspace_id),
   referrer_user_id UUID NOT NULL REFERENCES users(user_id),
   referee_user_id UUID NOT NULL REFERENCES users(user_id),
   referral_code VARCHAR(20) NOT NULL,
-  status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, qualified, rewarded, revoked
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','qualified','rewarded','revoked','expired','fraud_flagged','forfeited')),
   referee_qualified_at TIMESTAMPTZ,
   referrer_credits_awarded NUMERIC(18,6) DEFAULT 0, -- DB-H-001: credit amount
   referee_credits_awarded NUMERIC(18,6) DEFAULT 0, -- DB-H-001: credit amount
@@ -2833,6 +2935,13 @@ CREATE TABLE referral_records (
 );
 CREATE INDEX idx_rr_referrer ON referral_records(referrer_user_id);
 CREATE UNIQUE INDEX idx_rr_referee ON referral_records(referee_user_id);
+ALTER TABLE referral_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE referral_records FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON referral_records
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+GRANT SELECT ON referral_records TO app_user;
+GRANT SELECT, INSERT, UPDATE ON referral_records TO admin_user;
+CREATE POLICY admin_referral_access ON referral_records TO admin_user USING (true);
 ```
 
 ### 18.7 file_uploads
@@ -2907,7 +3016,8 @@ CREATE TABLE user_preferences (
 ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_preferences FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON user_preferences
-  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+  USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid
+    AND (workspace_id IS NULL OR workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid));
 ```
 
 ### 18.10 scheduled_job_configs [GLOBAL]
@@ -2942,8 +3052,8 @@ CREATE TABLE subscriptions (
   plan_tier VARCHAR(20) NOT NULL, -- free, starter, pro, business, enterprise
   status VARCHAR(20) NOT NULL DEFAULT 'active', -- active, trialing, past_due, cancelled, paused
   billing_interval VARCHAR(10) NOT NULL DEFAULT 'monthly', -- monthly, yearly
-  current_period_start DATE,
-  current_period_end DATE,
+  current_period_start TIMESTAMPTZ,
+  current_period_end TIMESTAMPTZ,
   trial_ends_at TIMESTAMPTZ,
   cancelled_at TIMESTAMPTZ,
   cancel_reason TEXT,
@@ -3084,6 +3194,7 @@ CREATE TABLE membership_plans (
   currency VARCHAR(5) DEFAULT 'VND',
   billing_interval VARCHAR(10) NOT NULL DEFAULT 'monthly',
   benefits JSONB DEFAULT '[]', -- [{type, description}]
+  entitlement_config JSONB NOT NULL DEFAULT '{}', -- creator-store content/feature/support entitlements, not SaaS workspace privileges
   status VARCHAR(20) NOT NULL DEFAULT 'draft', -- draft, active, hidden, paused, retired
   subscriber_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -3095,6 +3206,32 @@ ALTER TABLE membership_plans FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON membership_plans
   USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 ```
+
+### 19.4B membership_subscriptions
+```sql
+CREATE TABLE membership_subscriptions (
+  membership_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  plan_id UUID NOT NULL REFERENCES membership_plans(plan_id),
+  customer_entity_id UUID NOT NULL REFERENCES entities(entity_id),
+  status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active','cancelled','expired')),
+  provider_subscription_id VARCHAR(255),
+  current_period_start TIMESTAMPTZ NOT NULL,
+  current_period_end TIMESTAMPTZ NOT NULL,
+  entitlement_snapshot JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(workspace_id, provider_subscription_id)
+);
+ALTER TABLE membership_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE membership_subscriptions FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON membership_subscriptions
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+GRANT SELECT, INSERT, UPDATE ON membership_subscriptions TO app_user;
+```
+
+Member access requires verified customer identity mapped to customer_entity_id and current paid period/entitlement_snapshot; a creator workspace member role alone is not a buyer membership. Provider events are idempotent. Cancel keeps access to current_period_end; payment failure expires access after the specified dunning period.
+
 
 ### 19.5 refunds
 ```sql
@@ -3170,11 +3307,16 @@ CREATE POLICY tenant_isolation ON bundles
   USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
 CREATE TABLE bundle_items (
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   bundle_id UUID NOT NULL REFERENCES bundles(bundle_id),
   product_id UUID NOT NULL REFERENCES products(product_id),
   quantity INTEGER NOT NULL DEFAULT 1,
   PRIMARY KEY (bundle_id, product_id)
 );
+ALTER TABLE bundle_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bundle_items FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON bundle_items
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 ```
 
 ### 19.8 price_rules
@@ -3289,7 +3431,7 @@ CREATE TABLE channel_posts (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_cp_workspace ON channel_posts(workspace_id);
+CREATE INDEX idx_channel_posts_workspace ON channel_posts(workspace_id);
 CREATE INDEX idx_cp_publish ON channel_posts(publish_item_id);
 CREATE UNIQUE INDEX idx_cp_external ON channel_posts(connected_account_id, external_post_id);
 ALTER TABLE channel_posts ENABLE ROW LEVEL SECURITY;
@@ -3327,33 +3469,8 @@ CREATE POLICY tenant_isolation ON reconciliation_records
 ```
 
 ### 19.9F skus (M13 — Tier C, Freeze §15.2) — ⚠️ DEPRECATED: use `product_skus` (§10.1B)
-```sql
-CREATE TABLE skus (
-  sku_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
-  product_id UUID NOT NULL REFERENCES products(product_id),
-  sku_code VARCHAR(100) NOT NULL,
-  variant_attributes JSONB DEFAULT '{}', -- {color: "Red", size: "M"}
-  barcode VARCHAR(100), -- standardized with product_skus §10.3
-  price_override NUMERIC(18,6), -- NULL = use product base_price
-  cogs_override NUMERIC(18,6), -- NULL = use product cogs
-  weight_grams INTEGER,
-  inventory_enabled BOOLEAN DEFAULT true,
-  stock_quantity INTEGER NOT NULL DEFAULT 0,
-  low_stock_threshold INTEGER DEFAULT 10,
-  status VARCHAR(20) NOT NULL DEFAULT 'active', -- active, archived, discontinued
-  external_refs JSONB DEFAULT '[]', -- [{platform, external_sku_id}]
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(workspace_id, sku_code)
-);
-CREATE INDEX idx_skus_product ON skus(product_id);
-CREATE INDEX idx_skus_workspace ON skus(workspace_id);
-ALTER TABLE skus ENABLE ROW LEVEL SECURITY;
-ALTER TABLE skus FORCE ROW LEVEL SECURITY;
-CREATE POLICY tenant_isolation ON skus
-  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
-```
+> Historical alias only: use `product_skus`; no separate `skus` table is created.
+
 
 ### 19.9G inventory_locations (M13 — Tier C, Freeze §15.2)
 ```sql
@@ -3407,6 +3524,9 @@ CREATE TABLE sample_requests (
   creator_entity_id UUID REFERENCES entities(entity_id),
   status VARCHAR(20) NOT NULL DEFAULT 'requested', -- requested, approved, declined, fulfilled, cancelled
   quantity INTEGER NOT NULL DEFAULT 1,
+  outcome_status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (outcome_status IN ('pending','logged')),
+  outcome JSONB NOT NULL DEFAULT '{}', -- content refs, attributable amounts/currency and source class
+  follow_up_status VARCHAR(20) NOT NULL DEFAULT 'pending_followup' CHECK (follow_up_status IN ('pending_followup','contacted','responded','no_response')),
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -3457,7 +3577,7 @@ CREATE TABLE copilot_sessions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_cs_workspace ON copilot_sessions(workspace_id);
+CREATE INDEX idx_copilot_sessions_workspace ON copilot_sessions(workspace_id);
 CREATE INDEX idx_cs_user ON copilot_sessions(user_id);
 ALTER TABLE copilot_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE copilot_sessions FORCE ROW LEVEL SECURITY;
@@ -3466,26 +3586,8 @@ CREATE POLICY tenant_isolation ON copilot_sessions
 ```
 
 ### 19.13 commissions — ⚠️ DEPRECATED: use `affiliate_commissions` (§10.4B)
-```sql
-CREATE TABLE commissions (
-  commission_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
-  affiliate_link_id UUID REFERENCES affiliate_links(affiliate_link_id),
-  order_id UUID REFERENCES orders(order_id),
-  amount NUMERIC(18,6) NOT NULL,
-  currency VARCHAR(5) DEFAULT 'VND',
-  commission_rate NUMERIC(5,2),
-  status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, confirmed, paid, cancelled
-  payout_ref VARCHAR(255),
-  calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX idx_comm_workspace ON commissions(workspace_id);
-ALTER TABLE commissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE commissions FORCE ROW LEVEL SECURITY;
-CREATE POLICY tenant_isolation ON commissions
-  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
-```
+> Historical alias only: use `affiliate_commissions`; no separate `commissions` table is created.
+
 
 ### 19.14 chargebacks
 ```sql
@@ -3799,6 +3901,7 @@ CREATE TABLE ab_test_experiments (
   metrics_snapshot JSONB DEFAULT '{}', -- per-variant metrics
   winner_asset_id UUID REFERENCES assets(asset_id),
   status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, running, completed, cancelled
+  result_status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (result_status IN ('pending','conclusive','inconclusive','scaled')),
   started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
   auto_winner_criteria JSONB DEFAULT '{}', -- {metric, threshold, min_duration_hours}
@@ -3831,7 +3934,8 @@ CREATE TABLE challenge_definitions (
   reward_credits INTEGER NOT NULL DEFAULT 0, -- whole credit units (counter); DB-H-001 NUMERIC applies to credit *amounts*
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
-  is_active BOOLEAN DEFAULT true,
+  status VARCHAR(20) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','enrolling','active','completed','rewarded','cancelled')),
+  is_active BOOLEAN DEFAULT false, -- projection of status, never independent authority
   sort_order SMALLINT DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -3842,6 +3946,7 @@ CREATE TABLE challenge_definitions (
 CREATE TABLE challenge_progress (
   progress_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  user_id UUID NOT NULL REFERENCES users(user_id),
   challenge_id UUID NOT NULL REFERENCES challenge_definitions(challenge_id),
   current_value INTEGER NOT NULL DEFAULT 0,
   target_value INTEGER NOT NULL,
@@ -3851,7 +3956,7 @@ CREATE TABLE challenge_progress (
   reward_transaction_id UUID, -- → ai_credit_transactions
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(workspace_id, challenge_id)
+  UNIQUE(workspace_id, user_id, challenge_id)
 );
 CREATE INDEX idx_chp_workspace ON challenge_progress(workspace_id);
 ALTER TABLE challenge_progress ENABLE ROW LEVEL SECURITY;
@@ -4009,7 +4114,7 @@ CREATE POLICY tenant_isolation ON monetization_offer_views
   USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 ```
 
-Updated total: **~122 tables** covering ALL canonical objects from Pack 02 §3.1-3.5 + §3.4 extended domains + S16 + S19 + S26 + operational + Profit OS + Live Commerce + Agent Runs + Policy/Fallback + Extended Production + Gamification Challenges + Voice Clones + Repurpose Jobs + Platform Health + **Audit v6: product_skus, admin_sessions, invoices, payment_methods, home_dashboard_config, monetization_offer_views** (2026-04-02).
+Table and policy totals are computed by `python3 tooling/check_docs.py`; counts do not establish semantic or runtime readiness.
 
 ---
 
@@ -4022,9 +4127,9 @@ Updated total: **~122 tables** covering ALL canonical objects from Pack 02 §3.1
 | **Click Event** | `api_call_logs` / ClickHouse time-series | High-volume clickstream data is time-series; not relational |
 | **Lead** | `entities` table (relationship_state='lead') | Leads are entities with a specific relationship state |
 | **Conversion Event** | `content_attribution_records` (§19.15) | Content→revenue attribution already tracked |
-| **Creator Payout** | `commissions` table (status='paid') + `settlements` | Payout is a settlement-linked commission state |
+| **Creator Payout** | `affiliate_commissions` + `settlements` | Payout is a settlement-linked commission state |
 | **Affiliate Statement** | Reconciliation Records + Evidence Objects | Statements are imported evidence for reconciliation |
-| **Invoice** | `billing_events` + Stripe Invoice API | Invoices are Stripe-managed; billing events track internally |
+| **Invoice** | `invoices` + payment-provider reference | Canonical invoice rows retain provider references |
 | **Margin Snapshot** | `profit_snapshots` table | Margin is a computed field within profit snapshots |
 | **Experiment** | `ab_test_experiments` table (§22.9) | Now covered as standalone table |
 
@@ -4044,7 +4149,7 @@ Updated total: **~122 tables** covering ALL canonical objects from Pack 02 §3.1
 | **Decision Outcome** | `opportunities.converted_to_type` + `converted_to_id` | VARCHAR + UUID ref |
 | **Lookbook** | `continuity_packs` table (type = 'lookbook') | Uses existing `continuity_packs` table with `pack_type = 'lookbook'`, references stored as `JSONB` in `settings` column |
 | **Scene Memory** | `continuity_packs` table (type = 'scene_memory') | Same pattern as Lookbook |
-| **Prompt Lineage Record** | `asset_generation_jobs.prompt_package` | JSONB within generation job record |
+| **Prompt Lineage Record** | `generation_jobs.prompt_package` | JSONB within generation job record |
 | **Continuity Rule** | `continuity_packs.settings` → `rules[]` | JSONB array within pack settings |
 | **Continuity Violation** | Standalone table `continuity_violations` (§7.5) | Dedicated table with violation_type, severity, drift_score, asset/pack refs |
 
@@ -4065,9 +4170,11 @@ interface OrderItem {
   product_id?: string;      // UUID ref if matched
   name: string;
   quantity: number;
-  unit_price: number;        // in order currency
-  discount: number;          // applied discount
-  total: number;             // unit_price * quantity - discount
+  unit_price: string;        // in order currency
+  discount: string;          // applied discount
+  total: string;             // unit_price * quantity - discount
+  unit_cogs: string;         // immutable transaction-time COGS; never recalculate from current catalog
+  cogs_source_class: 'official' | 'imported' | 'estimated' | 'inferred' | 'unreconciled';
   variation?: string;        // e.g., "Red, XL"
   platform_item_id?: string; // external platform ref
 }
@@ -4077,17 +4184,31 @@ interface OrderItem {
 #### `orders.fee_breakdown`
 ```typescript
 interface FeeBreakdown {
-  platform_fee: number;
-  payment_processing_fee: number;
-  shipping_fee: number;
-  tax: number;
-  commission: number;
-  promo_discount: number;
-  other_fees: { name: string; amount: number }[];
-  total_fees: number;
+  platform_fee: string;
+  payment_processing_fee: string;
+  shipping_fee: string;
+  tax: string;
+  commission: string;
+  promo_discount: string;
+  other_fees: { name: string; amount: string }[];
+  total_fees: string;
   currency: string;
 }
 ```
+
+#### `orders.exchange_rate_snapshot` / `settlements.exchange_rate_snapshot`
+```typescript
+interface ExchangeRateSnapshot {
+  base_currency: string;     // workspace base, ISO 4217
+  quote_currency: string;    // transaction currency
+  rate_to_base: string;      // base units per 1 transaction unit, positive decimal
+  provider: string;          // authorized feed or explicit manual input
+  captured_at: string;       // RFC3339 UTC
+  effective_at: string;
+  source_class: 'official' | 'imported' | 'estimated';
+}
+```
+Same-currency rate is exactly "1". Missing FX or COGS is a visible gap and cannot become verified zero. Historical recognition and rounding rules: [Financial computation contract](financial_computation_contract.md).
 
 ### 25.2 Live Commerce JSONB Shapes
 
@@ -4251,3 +4372,692 @@ interface AutoWinnerCriteria {
 ```
 
 > **Implementation note**: All JSONB columns should be validated against these shapes at the application layer (Rust `serde` deserialize with `#[serde(deny_unknown_fields)]`). Database CHECK constraints are NOT used for JSONB validation — this is enforced at the API boundary.
+
+
+### 25.6 Connector access verification JSONB
+
+`connected_accounts.metadata.access_verifications` and the matching capability projection use:
+```typescript
+interface ActionAccessVerification {
+  action: string; // action from connector_specs.md registry, not arbitrary code
+  api_product: string;
+  api_version: string;
+  endpoint: string;
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  required_scopes: string[];
+  granted_scopes: string[];
+  app_approval_status: 'unverified' | 'test_only' | 'approved' | 'rejected';
+  account_eligible: boolean;
+  markets: string[];
+  documentation_url: string;
+  evidence_ref: string;
+  checked_at: string;
+  valid_until: string;
+  probe_status: 'not_run' | 'passed' | 'failed';
+  restrictions: string[];
+}
+```
+
+### 25.7 Prompt, pack and workflow graph JSONB shapes
+
+```typescript
+interface PromptPackage {
+  script_id?: string;
+  continuity_pack_versions: {pack_id: string; version: number}[];
+  user_prompt: string;
+  system_prompt_version: string;
+  provider_params: Record<string, string | number | boolean>;
+  source_refs: {type: string; id: string}[];
+}
+interface ContinuitySettings {
+  rules: {key: string; value: string; severity: 'warning' | 'block'}[];
+  lookbook?: {asset_ids: string[]; notes: string};
+  scene_memory?: {scene_refs: string[]; summary: string};
+}
+interface WorkflowGraph {
+  schema_version: 1;
+  nodes: {node_id: string; node_type: 'trigger' | 'condition' | 'transform' | 'action' | 'approval' | 'wait' | 'fallback' | 'diagnostics' | 'handoff' | 'terminal'; config: Record<string, unknown>}[];
+  edges: {from_node_id: string; to_node_id: string; branch?: 'success' | 'failure' | 'true' | 'false'}[];
+}
+```
+
+Graph config is a **discriminated typed object per node type**, validated before save/activation: trigger uses TriggerConfig; condition uses allowlisted field/operator/value; transform uses declarative field mappings (no arbitrary eval); action names an inventory RPC and its typed validated input; approval names permitted approver IDs and expiry; wait sets UTC resume time/condition; fallback names a fallback node; diagnostics defines severity/message; handoff names permitted target user; terminal names outcome. No node may store credentials or a raw DB query. Action input must conform to that RPC's compiled contract. Record<string,unknown> above denotes the union representation, not acceptance of unvalidated keys. Cycles are rejected; repeat work uses bounded schedules/cascade rules.
+
+## 26. Execution integrity additions (2026-10-29)
+
+The following are canonical persistence contracts, introduced with their owning P0/P1 slices. Credit transitions are owned by [Credit accounting](credit_accounting_contract.md); monetary recognition by [Financial computation](financial_computation_contract.md); async behavior by [Queue design](../05_system/queue_retry_design.md). These records implement the same canonical graph, not separate shadow business objects.
+
+### 26.1 ai_provider_rates [GLOBAL]
+```sql
+CREATE TABLE ai_provider_rates (
+  rate_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider VARCHAR(100) NOT NULL,
+  model_id VARCHAR(200) NOT NULL,
+  version VARCHAR(100) NOT NULL,
+  currency VARCHAR(5) NOT NULL DEFAULT 'USD',
+  unit_rates JSONB NOT NULL, -- named decimal rates, units and resolution/audio conditions
+  source_url TEXT NOT NULL,
+  verified_at TIMESTAMPTZ NOT NULL,
+  valid_until TIMESTAMPTZ NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT false,
+  UNIQUE(provider, model_id, version)
+);
+```
+
+### 26.2 ai_credit_quotes
+```sql
+CREATE TABLE ai_credit_quotes (
+  quote_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  request_hash VARCHAR(128) NOT NULL,
+  operation_type VARCHAR(100) NOT NULL,
+  rate_version VARCHAR(100) NOT NULL,
+  provider_plan JSONB NOT NULL, -- bounded attempts, units and costs; no credentials
+  cost_ceiling_usd NUMERIC(18,6) NOT NULL CHECK (cost_ceiling_usd >= 0),
+  usd_per_credit_floor NUMERIC(18,6) NOT NULL CHECK (usd_per_credit_floor > 0),
+  gross_margin_floor NUMERIC(5,4) NOT NULL CHECK (gross_margin_floor >= 0 AND gross_margin_floor < 1),
+  quoted_credits NUMERIC(18,6) NOT NULL CHECK (quoted_credits >= 0),
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE ai_credit_quotes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_credit_quotes FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON ai_credit_quotes
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+```
+
+### 26.3 ai_credit_lots
+```sql
+CREATE TABLE ai_credit_lots (
+  lot_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  source_type VARCHAR(30) NOT NULL CHECK (source_type IN ('subscription','purchased','promotional','overage')),
+  granted_credits NUMERIC(18,6) NOT NULL CHECK (granted_credits >= 0),
+  remaining_credits NUMERIC(18,6) NOT NULL CHECK (remaining_credits >= 0),
+  reserved_credits NUMERIC(18,6) NOT NULL DEFAULT 0,
+  expires_at TIMESTAMPTZ,
+  external_grant_key VARCHAR(255) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (reserved_credits >= 0 AND reserved_credits <= remaining_credits AND remaining_credits <= granted_credits),
+  CHECK (source_type <> 'purchased' OR expires_at IS NULL),
+  CHECK (source_type <> 'subscription' OR expires_at IS NOT NULL),
+  UNIQUE(workspace_id, external_grant_key)
+);
+ALTER TABLE ai_credit_lots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_credit_lots FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON ai_credit_lots
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+```
+
+### 26.4 ai_credit_reservations
+```sql
+CREATE TABLE ai_credit_reservations (
+  reservation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  quote_id UUID NOT NULL REFERENCES ai_credit_quotes(quote_id),
+  idempotency_key VARCHAR(255) NOT NULL,
+  request_hash VARCHAR(128) NOT NULL,
+  status VARCHAR(30) NOT NULL DEFAULT 'held' CHECK (status IN ('held','in_flight','reconciling','committed','released','expired')),
+  reserved_credits NUMERIC(18,6) NOT NULL CHECK (reserved_credits >= 0),
+  actual_credits NUMERIC(18,6),
+  expires_at TIMESTAMPTZ NOT NULL,
+  last_heartbeat_at TIMESTAMPTZ,
+  provider_request_id VARCHAR(255),
+  terminal_reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (actual_credits IS NULL OR (actual_credits >= 0 AND actual_credits <= reserved_credits)),
+  UNIQUE(workspace_id, idempotency_key)
+);
+ALTER TABLE ai_credit_reservations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_credit_reservations FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON ai_credit_reservations
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+```
+
+### 26.5 ai_credit_reservation_allocations
+```sql
+CREATE TABLE ai_credit_reservation_allocations (
+  allocation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  reservation_id UUID NOT NULL REFERENCES ai_credit_reservations(reservation_id),
+  lot_id UUID NOT NULL REFERENCES ai_credit_lots(lot_id),
+  credits NUMERIC(18,6) NOT NULL CHECK (credits > 0),
+  UNIQUE(reservation_id, lot_id)
+);
+ALTER TABLE ai_credit_reservation_allocations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_credit_reservation_allocations FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON ai_credit_reservation_allocations
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+```
+
+### 26.6 consumer_inbox
+```sql
+CREATE TABLE consumer_inbox (
+  inbox_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  consumer_name VARCHAR(100) NOT NULL,
+  event_id UUID NOT NULL,
+  processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(workspace_id, consumer_name, event_id)
+);
+ALTER TABLE consumer_inbox ENABLE ROW LEVEL SECURITY;
+ALTER TABLE consumer_inbox FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON consumer_inbox
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+```
+
+### 26.7 api_idempotency_records
+```sql
+CREATE TABLE api_idempotency_records (
+  record_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  actor_id UUID NOT NULL,
+  rpc VARCHAR(255) NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  request_hash VARCHAR(128) NOT NULL,
+  status VARCHAR(20) NOT NULL CHECK (status IN ('processing','completed','failed')),
+  response_payload JSONB,
+  response_code INTEGER,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(workspace_id, actor_id, rpc, idempotency_key)
+);
+ALTER TABLE api_idempotency_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE api_idempotency_records FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON api_idempotency_records
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+```
+
+### 26.8 external_effects
+```sql
+CREATE TABLE external_effects (
+  effect_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  operation_key VARCHAR(255) NOT NULL,
+  provider VARCHAR(100) NOT NULL,
+  connected_account_id UUID REFERENCES connected_accounts(connected_account_id),
+  aggregate_type VARCHAR(100) NOT NULL,
+  aggregate_id UUID NOT NULL,
+  provider_request_id VARCHAR(255),
+  status VARCHAR(20) NOT NULL CHECK (status IN ('prepared','submitted','succeeded','failed','unknown','cancelled')),
+  result_payload JSONB,
+  last_checked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(workspace_id, operation_key)
+);
+ALTER TABLE external_effects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE external_effects FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON external_effects
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+```
+
+### 26.9 settlement_lines
+```sql
+CREATE TABLE settlement_lines (
+  line_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  settlement_id UUID NOT NULL REFERENCES settlements(settlement_id),
+  external_line_id VARCHAR(255) NOT NULL,
+  external_order_id VARCHAR(255),
+  order_id UUID REFERENCES orders(order_id),
+  gross_amount NUMERIC(18,6) NOT NULL,
+  fee_amount NUMERIC(18,6) NOT NULL DEFAULT 0,
+  refund_amount NUMERIC(18,6) NOT NULL DEFAULT 0,
+  net_amount NUMERIC(18,6) NOT NULL,
+  matched_amount NUMERIC(18,6) NOT NULL DEFAULT 0,
+  currency VARCHAR(5) NOT NULL,
+  reconciliation_state reconciliation_state NOT NULL DEFAULT 'imported_only',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(workspace_id, settlement_id, external_line_id)
+);
+ALTER TABLE settlement_lines ENABLE ROW LEVEL SECURITY;
+ALTER TABLE settlement_lines FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON settlement_lines
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+```
+
+### 26.10 financial_postings
+```sql
+CREATE TABLE financial_postings (
+  posting_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  origin_type VARCHAR(100) NOT NULL,
+  origin_id UUID NOT NULL,
+  origin_version VARCHAR(100) NOT NULL,
+  component VARCHAR(50) NOT NULL CHECK (component IN ('revenue','platform_fee','shipping','cogs','ai_credits','commission','ads_spend','seeding','refund','other')),
+  amount NUMERIC(18,6) NOT NULL, -- signed base-currency effect: revenue positive, costs negative
+  currency VARCHAR(5) NOT NULL,
+  source_class source_class NOT NULL,
+  confidence confidence_band NOT NULL,
+  exchange_rate_snapshot JSONB NOT NULL,
+  reversal_of UUID REFERENCES financial_postings(posting_id),
+  effective_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(workspace_id, origin_type, origin_id, origin_version, component)
+);
+ALTER TABLE financial_postings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE financial_postings FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON financial_postings
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+```
+
+### 26.11 Same-tenant referential integrity
+
+UUID-only foreign keys do not establish tenant equality. Install the following constraints after their tables in each slice migration. Polymorphic/JSONB/UUID-array references require an allowlisted type lookup and same-workspace check inside the command transaction; unknown types and foreign IDs return NOT_FOUND. Do not trust a client-supplied workspace ID. Global references are permitted only for explicitly global objects.
+
+```sql
+ALTER TABLE ai_credit_transactions ADD CONSTRAINT fk_act_reservation FOREIGN KEY (reservation_id) REFERENCES ai_credit_reservations(reservation_id);
+ALTER TABLE ai_credit_transactions ADD CONSTRAINT fk_act_lot FOREIGN KEY (lot_id) REFERENCES ai_credit_lots(lot_id);
+ALTER TABLE affiliate_links ADD CONSTRAINT uq_affiliate_links_tenant_pk UNIQUE (workspace_id, affiliate_link_id);
+ALTER TABLE agent_runs ADD CONSTRAINT uq_agent_runs_tenant_pk UNIQUE (workspace_id, agent_run_id);
+ALTER TABLE ai_credit_lots ADD CONSTRAINT uq_ai_credit_lots_tenant_pk UNIQUE (workspace_id, lot_id);
+ALTER TABLE ai_credit_quotes ADD CONSTRAINT uq_ai_credit_quotes_tenant_pk UNIQUE (workspace_id, quote_id);
+ALTER TABLE ai_credit_reservations ADD CONSTRAINT uq_ai_credit_reservations_tenant_pk UNIQUE (workspace_id, reservation_id);
+ALTER TABLE ai_credit_transactions ADD CONSTRAINT uq_ai_credit_transactions_tenant_pk UNIQUE (workspace_id, transaction_id);
+ALTER TABLE api_keys ADD CONSTRAINT uq_api_keys_tenant_pk UNIQUE (workspace_id, api_key_id);
+ALTER TABLE api_webhook_subscriptions ADD CONSTRAINT uq_api_webhook_subscriptions_tenant_pk UNIQUE (workspace_id, webhook_subscription_id);
+ALTER TABLE asset_briefs ADD CONSTRAINT uq_asset_briefs_tenant_pk UNIQUE (workspace_id, asset_brief_id);
+ALTER TABLE assets ADD CONSTRAINT uq_assets_tenant_pk UNIQUE (workspace_id, asset_id);
+ALTER TABLE brand_profiles ADD CONSTRAINT uq_brand_profiles_tenant_pk UNIQUE (workspace_id, brand_profile_id);
+ALTER TABLE bundles ADD CONSTRAINT uq_bundles_tenant_pk UNIQUE (workspace_id, bundle_id);
+ALTER TABLE campaigns ADD CONSTRAINT uq_campaigns_tenant_pk UNIQUE (workspace_id, campaign_id);
+ALTER TABLE characters ADD CONSTRAINT uq_characters_tenant_pk UNIQUE (workspace_id, character_id);
+ALTER TABLE competitor_entities ADD CONSTRAINT uq_competitor_entities_tenant_pk UNIQUE (workspace_id, competitor_id);
+ALTER TABLE connected_accounts ADD CONSTRAINT uq_connected_accounts_tenant_pk UNIQUE (workspace_id, connected_account_id);
+ALTER TABLE consent_records ADD CONSTRAINT uq_consent_records_tenant_pk UNIQUE (workspace_id, consent_id);
+ALTER TABLE continuity_packs ADD CONSTRAINT uq_continuity_packs_tenant_pk UNIQUE (workspace_id, pack_id);
+ALTER TABLE entities ADD CONSTRAINT uq_entities_tenant_pk UNIQUE (workspace_id, entity_id);
+ALTER TABLE financial_postings ADD CONSTRAINT uq_financial_postings_tenant_pk UNIQUE (workspace_id, posting_id);
+ALTER TABLE generation_jobs ADD CONSTRAINT uq_generation_jobs_tenant_pk UNIQUE (workspace_id, job_id);
+ALTER TABLE ideas ADD CONSTRAINT uq_ideas_tenant_pk UNIQUE (workspace_id, idea_id);
+ALTER TABLE inventory_locations ADD CONSTRAINT uq_inventory_locations_tenant_pk UNIQUE (workspace_id, location_id);
+ALTER TABLE link_in_bio_pages ADD CONSTRAINT uq_link_in_bio_pages_tenant_pk UNIQUE (workspace_id, page_id);
+ALTER TABLE live_segments ADD CONSTRAINT uq_live_segments_tenant_pk UNIQUE (workspace_id, segment_id);
+ALTER TABLE live_sessions ADD CONSTRAINT uq_live_sessions_tenant_pk UNIQUE (workspace_id, session_id);
+ALTER TABLE membership_plans ADD CONSTRAINT uq_membership_plans_tenant_pk UNIQUE (workspace_id, plan_id);
+ALTER TABLE notifications ADD CONSTRAINT uq_notifications_tenant_pk UNIQUE (workspace_id, notification_id);
+ALTER TABLE offers ADD CONSTRAINT uq_offers_tenant_pk UNIQUE (workspace_id, offer_id);
+ALTER TABLE opportunities ADD CONSTRAINT uq_opportunities_tenant_pk UNIQUE (workspace_id, opportunity_id);
+ALTER TABLE orders ADD CONSTRAINT uq_orders_tenant_pk UNIQUE (workspace_id, order_id);
+ALTER TABLE policy_notes ADD CONSTRAINT uq_policy_notes_tenant_pk UNIQUE (workspace_id, policy_note_id);
+ALTER TABLE product_skus ADD CONSTRAINT uq_product_skus_tenant_pk UNIQUE (workspace_id, sku_id);
+ALTER TABLE products ADD CONSTRAINT uq_products_tenant_pk UNIQUE (workspace_id, product_id);
+ALTER TABLE publish_items ADD CONSTRAINT uq_publish_items_tenant_pk UNIQUE (workspace_id, publish_item_id);
+ALTER TABLE publish_jobs ADD CONSTRAINT uq_publish_jobs_tenant_pk UNIQUE (workspace_id, publish_job_id);
+ALTER TABLE rate_cards ADD CONSTRAINT uq_rate_cards_tenant_pk UNIQUE (workspace_id, rate_card_id);
+ALTER TABLE recipe_templates ADD CONSTRAINT uq_recipe_templates_tenant_pk UNIQUE (workspace_id, recipe_id);
+ALTER TABLE refunds ADD CONSTRAINT uq_refunds_tenant_pk UNIQUE (workspace_id, refund_id);
+ALTER TABLE sample_requests ADD CONSTRAINT uq_sample_requests_tenant_pk UNIQUE (workspace_id, request_id);
+ALTER TABLE scenes ADD CONSTRAINT uq_scenes_tenant_pk UNIQUE (workspace_id, scene_id);
+ALTER TABLE scripts ADD CONSTRAINT uq_scripts_tenant_pk UNIQUE (workspace_id, script_id);
+ALTER TABLE settlements ADD CONSTRAINT uq_settlements_tenant_pk UNIQUE (workspace_id, settlement_id);
+ALTER TABLE signals ADD CONSTRAINT uq_signals_tenant_pk UNIQUE (workspace_id, signal_id);
+ALTER TABLE subscriptions ADD CONSTRAINT uq_subscriptions_tenant_pk UNIQUE (workspace_id, subscription_id);
+ALTER TABLE support_tickets ADD CONSTRAINT uq_support_tickets_tenant_pk UNIQUE (workspace_id, ticket_id);
+ALTER TABLE tags ADD CONSTRAINT uq_tags_tenant_pk UNIQUE (workspace_id, tag_id);
+ALTER TABLE threads ADD CONSTRAINT uq_threads_tenant_pk UNIQUE (workspace_id, thread_id);
+ALTER TABLE trends ADD CONSTRAINT uq_trends_tenant_pk UNIQUE (workspace_id, trend_id);
+ALTER TABLE video_edit_jobs ADD CONSTRAINT uq_video_edit_jobs_tenant_pk UNIQUE (workspace_id, job_id);
+ALTER TABLE workflow_runs ADD CONSTRAINT uq_workflow_runs_tenant_pk UNIQUE (workspace_id, run_id);
+ALTER TABLE workflows ADD CONSTRAINT uq_workflows_tenant_pk UNIQUE (workspace_id, workflow_id);
+ALTER TABLE trend_signals ADD CONSTRAINT fk_trend_signals_trend_id_tenant FOREIGN KEY (workspace_id, trend_id) REFERENCES trends(workspace_id, trend_id);
+ALTER TABLE trend_signals ADD CONSTRAINT fk_trend_signals_signal_id_tenant FOREIGN KEY (workspace_id, signal_id) REFERENCES signals(workspace_id, signal_id);
+ALTER TABLE opportunity_sources ADD CONSTRAINT fk_opportunity_sources_opportunity_id_tenant FOREIGN KEY (workspace_id, opportunity_id) REFERENCES opportunities(workspace_id, opportunity_id);
+ALTER TABLE benchmark_snapshots ADD CONSTRAINT fk_benchmark_snapshots_competitor_id_tenant FOREIGN KEY (workspace_id, competitor_id) REFERENCES competitor_entities(workspace_id, competitor_id);
+ALTER TABLE idea_sources ADD CONSTRAINT fk_idea_sources_idea_id_tenant FOREIGN KEY (workspace_id, idea_id) REFERENCES ideas(workspace_id, idea_id);
+ALTER TABLE hooks ADD CONSTRAINT fk_hooks_idea_id_tenant FOREIGN KEY (workspace_id, idea_id) REFERENCES ideas(workspace_id, idea_id);
+ALTER TABLE scripts ADD CONSTRAINT fk_scripts_idea_id_tenant FOREIGN KEY (workspace_id, idea_id) REFERENCES ideas(workspace_id, idea_id);
+ALTER TABLE asset_briefs ADD CONSTRAINT fk_asset_briefs_script_id_tenant FOREIGN KEY (workspace_id, script_id) REFERENCES scripts(workspace_id, script_id);
+ALTER TABLE scenes ADD CONSTRAINT fk_scenes_script_id_tenant FOREIGN KEY (workspace_id, script_id) REFERENCES scripts(workspace_id, script_id);
+ALTER TABLE shot_lists ADD CONSTRAINT fk_shot_lists_scene_id_tenant FOREIGN KEY (workspace_id, scene_id) REFERENCES scenes(workspace_id, scene_id);
+ALTER TABLE continuity_packs ADD CONSTRAINT fk_continuity_packs_character_id_tenant FOREIGN KEY (workspace_id, character_id) REFERENCES characters(workspace_id, character_id);
+ALTER TABLE assets ADD CONSTRAINT fk_assets_script_id_tenant FOREIGN KEY (workspace_id, script_id) REFERENCES scripts(workspace_id, script_id);
+ALTER TABLE assets ADD CONSTRAINT fk_assets_asset_brief_id_tenant FOREIGN KEY (workspace_id, asset_brief_id) REFERENCES asset_briefs(workspace_id, asset_brief_id);
+ALTER TABLE assets ADD CONSTRAINT fk_assets_parent_asset_id_tenant FOREIGN KEY (workspace_id, parent_asset_id) REFERENCES assets(workspace_id, asset_id);
+ALTER TABLE generation_jobs ADD CONSTRAINT fk_generation_jobs_asset_id_tenant FOREIGN KEY (workspace_id, asset_id) REFERENCES assets(workspace_id, asset_id);
+ALTER TABLE continuity_violations ADD CONSTRAINT fk_continuity_violations_asset_id_tenant FOREIGN KEY (workspace_id, asset_id) REFERENCES assets(workspace_id, asset_id);
+ALTER TABLE continuity_violations ADD CONSTRAINT fk_continuity_violations_pack_id_tenant FOREIGN KEY (workspace_id, pack_id) REFERENCES continuity_packs(workspace_id, pack_id);
+ALTER TABLE publish_items ADD CONSTRAINT fk_publish_items_asset_id_tenant FOREIGN KEY (workspace_id, asset_id) REFERENCES assets(workspace_id, asset_id);
+ALTER TABLE publish_items ADD CONSTRAINT fk_publish_items_target_account_id_tenant FOREIGN KEY (workspace_id, target_account_id) REFERENCES connected_accounts(workspace_id, connected_account_id);
+ALTER TABLE publish_jobs ADD CONSTRAINT fk_publish_jobs_publish_item_id_tenant FOREIGN KEY (workspace_id, publish_item_id) REFERENCES publish_items(workspace_id, publish_item_id);
+ALTER TABLE publish_logs ADD CONSTRAINT fk_publish_logs_publish_job_id_tenant FOREIGN KEY (workspace_id, publish_job_id) REFERENCES publish_jobs(workspace_id, publish_job_id);
+ALTER TABLE publish_logs ADD CONSTRAINT fk_publish_logs_publish_item_id_tenant FOREIGN KEY (workspace_id, publish_item_id) REFERENCES publish_items(workspace_id, publish_item_id);
+ALTER TABLE threads ADD CONSTRAINT fk_threads_entity_id_tenant FOREIGN KEY (workspace_id, entity_id) REFERENCES entities(workspace_id, entity_id);
+ALTER TABLE messages ADD CONSTRAINT fk_messages_thread_id_tenant FOREIGN KEY (workspace_id, thread_id) REFERENCES threads(workspace_id, thread_id);
+ALTER TABLE messages ADD CONSTRAINT fk_messages_author_entity_id_tenant FOREIGN KEY (workspace_id, author_entity_id) REFERENCES entities(workspace_id, entity_id);
+ALTER TABLE follow_up_tasks ADD CONSTRAINT fk_follow_up_tasks_source_thread_id_tenant FOREIGN KEY (workspace_id, source_thread_id) REFERENCES threads(workspace_id, thread_id);
+ALTER TABLE product_skus ADD CONSTRAINT fk_product_skus_product_id_tenant FOREIGN KEY (workspace_id, product_id) REFERENCES products(workspace_id, product_id);
+ALTER TABLE offers ADD CONSTRAINT fk_offers_product_id_tenant FOREIGN KEY (workspace_id, product_id) REFERENCES products(workspace_id, product_id);
+ALTER TABLE orders ADD CONSTRAINT fk_orders_connected_account_id_tenant FOREIGN KEY (workspace_id, connected_account_id) REFERENCES connected_accounts(workspace_id, connected_account_id);
+ALTER TABLE orders ADD CONSTRAINT fk_orders_product_id_tenant FOREIGN KEY (workspace_id, product_id) REFERENCES products(workspace_id, product_id);
+ALTER TABLE orders ADD CONSTRAINT fk_orders_offer_id_tenant FOREIGN KEY (workspace_id, offer_id) REFERENCES offers(workspace_id, offer_id);
+ALTER TABLE orders ADD CONSTRAINT fk_orders_customer_entity_id_tenant FOREIGN KEY (workspace_id, customer_entity_id) REFERENCES entities(workspace_id, entity_id);
+ALTER TABLE affiliate_links ADD CONSTRAINT fk_affiliate_links_product_id_tenant FOREIGN KEY (workspace_id, product_id) REFERENCES products(workspace_id, product_id);
+ALTER TABLE affiliate_links ADD CONSTRAINT fk_affiliate_links_offer_id_tenant FOREIGN KEY (workspace_id, offer_id) REFERENCES offers(workspace_id, offer_id);
+ALTER TABLE affiliate_commissions ADD CONSTRAINT fk_affiliate_commissions_affiliate_link_id_tenant FOREIGN KEY (workspace_id, affiliate_link_id) REFERENCES affiliate_links(workspace_id, affiliate_link_id);
+ALTER TABLE affiliate_commissions ADD CONSTRAINT fk_affiliate_commissions_order_id_tenant FOREIGN KEY (workspace_id, order_id) REFERENCES orders(workspace_id, order_id);
+ALTER TABLE settlements ADD CONSTRAINT fk_settlements_connected_account_id_tenant FOREIGN KEY (workspace_id, connected_account_id) REFERENCES connected_accounts(workspace_id, connected_account_id);
+ALTER TABLE live_sessions ADD CONSTRAINT fk_live_sessions_connected_account_id_tenant FOREIGN KEY (workspace_id, connected_account_id) REFERENCES connected_accounts(workspace_id, connected_account_id);
+ALTER TABLE workflow_runs ADD CONSTRAINT fk_workflow_runs_workflow_id_tenant FOREIGN KEY (workspace_id, workflow_id) REFERENCES workflows(workspace_id, workflow_id);
+ALTER TABLE agent_runs ADD CONSTRAINT fk_agent_runs_recipe_id_tenant FOREIGN KEY (workspace_id, recipe_id) REFERENCES recipe_templates(workspace_id, recipe_id);
+ALTER TABLE agent_runs ADD CONSTRAINT fk_agent_runs_workflow_id_tenant FOREIGN KEY (workspace_id, workflow_id) REFERENCES workflows(workspace_id, workflow_id);
+ALTER TABLE workflow_run_steps ADD CONSTRAINT fk_workflow_run_steps_run_id_tenant FOREIGN KEY (workspace_id, run_id) REFERENCES workflow_runs(workspace_id, run_id);
+ALTER TABLE agent_run_steps ADD CONSTRAINT fk_agent_run_steps_agent_run_id_tenant FOREIGN KEY (workspace_id, agent_run_id) REFERENCES agent_runs(workspace_id, agent_run_id);
+ALTER TABLE agent_outputs ADD CONSTRAINT fk_agent_outputs_agent_run_id_tenant FOREIGN KEY (workspace_id, agent_run_id) REFERENCES agent_runs(workspace_id, agent_run_id);
+ALTER TABLE ai_credit_transactions ADD CONSTRAINT fk_ai_credit_transactions_reference_transaction_id_tenant FOREIGN KEY (workspace_id, reference_transaction_id) REFERENCES ai_credit_transactions(workspace_id, transaction_id);
+ALTER TABLE link_items ADD CONSTRAINT fk_link_items_page_id_tenant FOREIGN KEY (workspace_id, page_id) REFERENCES link_in_bio_pages(workspace_id, page_id);
+ALTER TABLE media_kits ADD CONSTRAINT fk_media_kits_brand_profile_id_tenant FOREIGN KEY (workspace_id, brand_profile_id) REFERENCES brand_profiles(workspace_id, brand_profile_id);
+ALTER TABLE rate_card_items ADD CONSTRAINT fk_rate_card_items_rate_card_id_tenant FOREIGN KEY (workspace_id, rate_card_id) REFERENCES rate_cards(workspace_id, rate_card_id);
+ALTER TABLE support_ticket_messages ADD CONSTRAINT fk_support_ticket_messages_ticket_id_tenant FOREIGN KEY (workspace_id, ticket_id) REFERENCES support_tickets(workspace_id, ticket_id);
+ALTER TABLE fallback_paths ADD CONSTRAINT fk_fallback_paths_related_policy_note_id_tenant FOREIGN KEY (workspace_id, related_policy_note_id) REFERENCES policy_notes(workspace_id, policy_note_id);
+ALTER TABLE api_keys ADD CONSTRAINT fk_api_keys_logical_key_id_tenant FOREIGN KEY (workspace_id, logical_key_id) REFERENCES api_keys(workspace_id, api_key_id);
+ALTER TABLE api_keys ADD CONSTRAINT fk_api_keys_replaced_by_key_id_tenant FOREIGN KEY (workspace_id, replaced_by_key_id) REFERENCES api_keys(workspace_id, api_key_id);
+ALTER TABLE api_usage_daily ADD CONSTRAINT fk_api_usage_daily_api_key_id_tenant FOREIGN KEY (workspace_id, api_key_id) REFERENCES api_keys(workspace_id, api_key_id);
+ALTER TABLE api_webhook_subscriptions ADD CONSTRAINT fk_api_webhook_subscriptions_api_key_id_tenant FOREIGN KEY (workspace_id, api_key_id) REFERENCES api_keys(workspace_id, api_key_id);
+ALTER TABLE webhook_events ADD CONSTRAINT fk_webhook_events_webhook_subscription_id_tenant FOREIGN KEY (workspace_id, webhook_subscription_id) REFERENCES api_webhook_subscriptions(workspace_id, webhook_subscription_id);
+ALTER TABLE notification_events ADD CONSTRAINT fk_notification_events_notification_id_tenant FOREIGN KEY (workspace_id, notification_id) REFERENCES notifications(workspace_id, notification_id);
+ALTER TABLE taggables ADD CONSTRAINT fk_taggables_tag_id_tenant FOREIGN KEY (workspace_id, tag_id) REFERENCES tags(workspace_id, tag_id);
+ALTER TABLE invoices ADD CONSTRAINT fk_invoices_subscription_id_tenant FOREIGN KEY (workspace_id, subscription_id) REFERENCES subscriptions(workspace_id, subscription_id);
+ALTER TABLE membership_subscriptions ADD CONSTRAINT fk_membership_subscriptions_plan_id_tenant FOREIGN KEY (workspace_id, plan_id) REFERENCES membership_plans(workspace_id, plan_id);
+ALTER TABLE membership_subscriptions ADD CONSTRAINT fk_membership_subscriptions_customer_entity_id_tenant FOREIGN KEY (workspace_id, customer_entity_id) REFERENCES entities(workspace_id, entity_id);
+ALTER TABLE refunds ADD CONSTRAINT fk_refunds_order_id_tenant FOREIGN KEY (workspace_id, order_id) REFERENCES orders(workspace_id, order_id);
+ALTER TABLE refunds ADD CONSTRAINT fk_refunds_settlement_id_tenant FOREIGN KEY (workspace_id, settlement_id) REFERENCES settlements(workspace_id, settlement_id);
+ALTER TABLE returns ADD CONSTRAINT fk_returns_order_id_tenant FOREIGN KEY (workspace_id, order_id) REFERENCES orders(workspace_id, order_id);
+ALTER TABLE returns ADD CONSTRAINT fk_returns_refund_id_tenant FOREIGN KEY (workspace_id, refund_id) REFERENCES refunds(workspace_id, refund_id);
+ALTER TABLE bundles ADD CONSTRAINT fk_bundles_offer_id_tenant FOREIGN KEY (workspace_id, offer_id) REFERENCES offers(workspace_id, offer_id);
+ALTER TABLE bundle_items ADD CONSTRAINT fk_bundle_items_bundle_id_tenant FOREIGN KEY (workspace_id, bundle_id) REFERENCES bundles(workspace_id, bundle_id);
+ALTER TABLE bundle_items ADD CONSTRAINT fk_bundle_items_product_id_tenant FOREIGN KEY (workspace_id, product_id) REFERENCES products(workspace_id, product_id);
+ALTER TABLE live_segments ADD CONSTRAINT fk_live_segments_session_id_tenant FOREIGN KEY (workspace_id, session_id) REFERENCES live_sessions(workspace_id, session_id);
+ALTER TABLE live_segments ADD CONSTRAINT fk_live_segments_pinned_offer_id_tenant FOREIGN KEY (workspace_id, pinned_offer_id) REFERENCES offers(workspace_id, offer_id);
+ALTER TABLE cue_cards ADD CONSTRAINT fk_cue_cards_session_id_tenant FOREIGN KEY (workspace_id, session_id) REFERENCES live_sessions(workspace_id, session_id);
+ALTER TABLE cue_cards ADD CONSTRAINT fk_cue_cards_segment_id_tenant FOREIGN KEY (workspace_id, segment_id) REFERENCES live_segments(workspace_id, segment_id);
+ALTER TABLE cue_cards ADD CONSTRAINT fk_cue_cards_pinned_product_id_tenant FOREIGN KEY (workspace_id, pinned_product_id) REFERENCES products(workspace_id, product_id);
+ALTER TABLE cue_cards ADD CONSTRAINT fk_cue_cards_pinned_offer_id_tenant FOREIGN KEY (workspace_id, pinned_offer_id) REFERENCES offers(workspace_id, offer_id);
+ALTER TABLE highlights ADD CONSTRAINT fk_highlights_session_id_tenant FOREIGN KEY (workspace_id, session_id) REFERENCES live_sessions(workspace_id, session_id);
+ALTER TABLE highlights ADD CONSTRAINT fk_highlights_asset_id_tenant FOREIGN KEY (workspace_id, asset_id) REFERENCES assets(workspace_id, asset_id);
+ALTER TABLE channel_posts ADD CONSTRAINT fk_channel_posts_publish_item_id_tenant FOREIGN KEY (workspace_id, publish_item_id) REFERENCES publish_items(workspace_id, publish_item_id);
+ALTER TABLE channel_posts ADD CONSTRAINT fk_channel_posts_connected_account_id_tenant FOREIGN KEY (workspace_id, connected_account_id) REFERENCES connected_accounts(workspace_id, connected_account_id);
+ALTER TABLE stock_movements ADD CONSTRAINT fk_stock_movements_sku_id_tenant FOREIGN KEY (workspace_id, sku_id) REFERENCES product_skus(workspace_id, sku_id);
+ALTER TABLE stock_movements ADD CONSTRAINT fk_stock_movements_location_id_tenant FOREIGN KEY (workspace_id, location_id) REFERENCES inventory_locations(workspace_id, location_id);
+ALTER TABLE sample_requests ADD CONSTRAINT fk_sample_requests_campaign_id_tenant FOREIGN KEY (workspace_id, campaign_id) REFERENCES campaigns(workspace_id, campaign_id);
+ALTER TABLE sample_requests ADD CONSTRAINT fk_sample_requests_product_id_tenant FOREIGN KEY (workspace_id, product_id) REFERENCES products(workspace_id, product_id);
+ALTER TABLE sample_requests ADD CONSTRAINT fk_sample_requests_creator_entity_id_tenant FOREIGN KEY (workspace_id, creator_entity_id) REFERENCES entities(workspace_id, entity_id);
+ALTER TABLE sample_shipments ADD CONSTRAINT fk_sample_shipments_request_id_tenant FOREIGN KEY (workspace_id, request_id) REFERENCES sample_requests(workspace_id, request_id);
+ALTER TABLE chargebacks ADD CONSTRAINT fk_chargebacks_order_id_tenant FOREIGN KEY (workspace_id, order_id) REFERENCES orders(workspace_id, order_id);
+ALTER TABLE content_attribution_records ADD CONSTRAINT fk_content_attribution_records_publish_item_id_tenant FOREIGN KEY (workspace_id, publish_item_id) REFERENCES publish_items(workspace_id, publish_item_id);
+ALTER TABLE content_attribution_records ADD CONSTRAINT fk_content_attribution_records_order_id_tenant FOREIGN KEY (workspace_id, order_id) REFERENCES orders(workspace_id, order_id);
+ALTER TABLE video_edit_jobs ADD CONSTRAINT fk_video_edit_jobs_generation_job_id_tenant FOREIGN KEY (workspace_id, generation_job_id) REFERENCES generation_jobs(workspace_id, job_id);
+ALTER TABLE video_edit_jobs ADD CONSTRAINT fk_video_edit_jobs_character_id_tenant FOREIGN KEY (workspace_id, character_id) REFERENCES characters(workspace_id, character_id);
+ALTER TABLE video_edit_jobs ADD CONSTRAINT fk_video_edit_jobs_brand_pack_id_tenant FOREIGN KEY (workspace_id, brand_pack_id) REFERENCES continuity_packs(workspace_id, pack_id);
+ALTER TABLE remix_blueprints ADD CONSTRAINT fk_remix_blueprints_reference_asset_id_tenant FOREIGN KEY (workspace_id, reference_asset_id) REFERENCES assets(workspace_id, asset_id);
+ALTER TABLE remix_blueprints ADD CONSTRAINT fk_remix_blueprints_output_asset_id_tenant FOREIGN KEY (workspace_id, output_asset_id) REFERENCES assets(workspace_id, asset_id);
+ALTER TABLE remix_blueprints ADD CONSTRAINT fk_remix_blueprints_video_edit_job_id_tenant FOREIGN KEY (workspace_id, video_edit_job_id) REFERENCES video_edit_jobs(workspace_id, job_id);
+ALTER TABLE clip_collections ADD CONSTRAINT fk_clip_collections_source_asset_id_tenant FOREIGN KEY (workspace_id, source_asset_id) REFERENCES assets(workspace_id, asset_id);
+ALTER TABLE clip_collections ADD CONSTRAINT fk_clip_collections_video_edit_job_id_tenant FOREIGN KEY (workspace_id, video_edit_job_id) REFERENCES video_edit_jobs(workspace_id, job_id);
+ALTER TABLE product_showcase_jobs ADD CONSTRAINT fk_product_showcase_jobs_video_edit_job_id_tenant FOREIGN KEY (workspace_id, video_edit_job_id) REFERENCES video_edit_jobs(workspace_id, job_id);
+ALTER TABLE product_showcase_jobs ADD CONSTRAINT fk_product_showcase_jobs_product_id_tenant FOREIGN KEY (workspace_id, product_id) REFERENCES products(workspace_id, product_id);
+ALTER TABLE product_showcase_jobs ADD CONSTRAINT fk_product_showcase_jobs_output_asset_id_tenant FOREIGN KEY (workspace_id, output_asset_id) REFERENCES assets(workspace_id, asset_id);
+ALTER TABLE product_showcase_jobs ADD CONSTRAINT fk_product_showcase_jobs_character_id_tenant FOREIGN KEY (workspace_id, character_id) REFERENCES characters(workspace_id, character_id);
+ALTER TABLE link_to_video_jobs ADD CONSTRAINT fk_link_to_video_jobs_video_edit_job_id_tenant FOREIGN KEY (workspace_id, video_edit_job_id) REFERENCES video_edit_jobs(workspace_id, job_id);
+ALTER TABLE link_to_video_jobs ADD CONSTRAINT fk_link_to_video_jobs_output_asset_id_tenant FOREIGN KEY (workspace_id, output_asset_id) REFERENCES assets(workspace_id, asset_id);
+ALTER TABLE link_to_video_jobs ADD CONSTRAINT fk_link_to_video_jobs_character_id_tenant FOREIGN KEY (workspace_id, character_id) REFERENCES characters(workspace_id, character_id);
+ALTER TABLE translation_jobs ADD CONSTRAINT fk_translation_jobs_video_edit_job_id_tenant FOREIGN KEY (workspace_id, video_edit_job_id) REFERENCES video_edit_jobs(workspace_id, job_id);
+ALTER TABLE translation_jobs ADD CONSTRAINT fk_translation_jobs_source_asset_id_tenant FOREIGN KEY (workspace_id, source_asset_id) REFERENCES assets(workspace_id, asset_id);
+ALTER TABLE style_packs ADD CONSTRAINT fk_style_packs_source_asset_id_tenant FOREIGN KEY (workspace_id, source_asset_id) REFERENCES assets(workspace_id, asset_id);
+ALTER TABLE style_packs ADD CONSTRAINT fk_style_packs_continuity_pack_id_tenant FOREIGN KEY (workspace_id, continuity_pack_id) REFERENCES continuity_packs(workspace_id, pack_id);
+ALTER TABLE ab_test_experiments ADD CONSTRAINT fk_ab_test_experiments_source_asset_id_tenant FOREIGN KEY (workspace_id, source_asset_id) REFERENCES assets(workspace_id, asset_id);
+ALTER TABLE ab_test_experiments ADD CONSTRAINT fk_ab_test_experiments_winner_asset_id_tenant FOREIGN KEY (workspace_id, winner_asset_id) REFERENCES assets(workspace_id, asset_id);
+ALTER TABLE voice_clone_records ADD CONSTRAINT fk_voice_clone_records_character_id_tenant FOREIGN KEY (workspace_id, character_id) REFERENCES characters(workspace_id, character_id);
+ALTER TABLE voice_clone_records ADD CONSTRAINT fk_voice_clone_records_consent_record_id_tenant FOREIGN KEY (workspace_id, consent_record_id) REFERENCES consent_records(workspace_id, consent_id);
+ALTER TABLE repurpose_jobs ADD CONSTRAINT fk_repurpose_jobs_source_asset_id_tenant FOREIGN KEY (workspace_id, source_asset_id) REFERENCES assets(workspace_id, asset_id);
+ALTER TABLE link_health_records ADD CONSTRAINT fk_link_health_records_affiliate_link_id_tenant FOREIGN KEY (workspace_id, affiliate_link_id) REFERENCES affiliate_links(workspace_id, affiliate_link_id);
+ALTER TABLE platform_health_scores ADD CONSTRAINT fk_platform_health_scores_connected_account_id_tenant FOREIGN KEY (workspace_id, connected_account_id) REFERENCES connected_accounts(workspace_id, connected_account_id);
+ALTER TABLE monetization_offer_views ADD CONSTRAINT fk_monetization_offer_views_offer_id_tenant FOREIGN KEY (workspace_id, offer_id) REFERENCES offers(workspace_id, offer_id);
+ALTER TABLE ai_credit_reservations ADD CONSTRAINT fk_ai_credit_reservations_quote_id_tenant FOREIGN KEY (workspace_id, quote_id) REFERENCES ai_credit_quotes(workspace_id, quote_id);
+ALTER TABLE ai_credit_reservation_allocations ADD CONSTRAINT fk_ai_credit_reservation_allocations_reservation_id_tenant FOREIGN KEY (workspace_id, reservation_id) REFERENCES ai_credit_reservations(workspace_id, reservation_id);
+ALTER TABLE ai_credit_reservation_allocations ADD CONSTRAINT fk_ai_credit_reservation_allocations_lot_id_tenant FOREIGN KEY (workspace_id, lot_id) REFERENCES ai_credit_lots(workspace_id, lot_id);
+ALTER TABLE external_effects ADD CONSTRAINT fk_external_effects_connected_account_id_tenant FOREIGN KEY (workspace_id, connected_account_id) REFERENCES connected_accounts(workspace_id, connected_account_id);
+ALTER TABLE settlement_lines ADD CONSTRAINT fk_settlement_lines_settlement_id_tenant FOREIGN KEY (workspace_id, settlement_id) REFERENCES settlements(workspace_id, settlement_id);
+ALTER TABLE settlement_lines ADD CONSTRAINT fk_settlement_lines_order_id_tenant FOREIGN KEY (workspace_id, order_id) REFERENCES orders(workspace_id, order_id);
+ALTER TABLE financial_postings ADD CONSTRAINT fk_financial_postings_reversal_of_tenant FOREIGN KEY (workspace_id, reversal_of) REFERENCES financial_postings(workspace_id, posting_id);
+ALTER TABLE ai_credit_transactions ADD CONSTRAINT fk_act_reservation_tenant FOREIGN KEY (workspace_id, reservation_id) REFERENCES ai_credit_reservations(workspace_id, reservation_id);
+ALTER TABLE ai_credit_transactions ADD CONSTRAINT fk_act_lot_tenant FOREIGN KEY (workspace_id, lot_id) REFERENCES ai_credit_lots(workspace_id, lot_id);
+```
+
+
+### 26.12 Runtime role grants and immutability
+
+Bootstrap creates `app_user` and `admin_user` as NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS. `outbox_poller` is a dedicated BYPASSRLS role with access only to outbox routing records; domain workers use app_user and set validated tenant context per message. Never give the API migration credentials, TRUNCATE, DDL ownership, or internal-admin table privileges.
+
+The migration role owns tables. Remove blanket default grants. After each migration, grant only installed tables from the allowlist below (absent future-phase tables are not errors in a slice migration). No runtime role receives `GRANT ALL`.
+
+```sql
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+GRANT USAGE ON SCHEMA public TO app_user, admin_user, outbox_poller;
+GRANT SELECT, INSERT, UPDATE, DELETE ON workspaces TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON users TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON workspace_members TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON brand_profiles TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON connected_accounts TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON signals TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON trends TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON trend_signals TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON opportunities TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON opportunity_sources TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON competitor_entities TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON benchmark_snapshots TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON watchlists TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ideas TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON idea_sources TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON hooks TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON scripts TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON asset_briefs TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON scenes TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON shot_lists TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON characters TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON continuity_packs TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON assets TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON generation_jobs TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON continuity_violations TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON publish_items TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON publish_jobs TO app_user;
+GRANT SELECT, INSERT ON publish_logs TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON entities TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON threads TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON messages TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON follow_up_tasks TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON products TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON product_skus TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON offers TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON orders TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON affiliate_links TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON affiliate_commissions TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON campaigns TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON settlements TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON cost_items TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON profit_snapshots TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON evidence_objects TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON proof_bundles TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON live_sessions TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON workflows TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON workflow_runs TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON recipe_templates TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON agent_runs TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON workflow_run_steps TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON agent_run_steps TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON agent_outputs TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON billing_events TO app_user;
+GRANT SELECT, INSERT ON ai_credit_transactions TO app_user;
+GRANT SELECT, INSERT ON audit_events TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON notifications TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON creator_progress TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON achievement_records TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON api_call_logs TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON link_in_bio_pages TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON link_items TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON media_kits TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON rate_cards TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON rate_card_items TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON brand_deals TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON support_tickets TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON support_ticket_messages TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON approval_requests TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON capability_snapshots TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON policy_notes TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON fallback_paths TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON consent_records TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON api_keys TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON api_usage_daily TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON api_webhook_subscriptions TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON webhook_events TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON tags TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON taggables TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON file_uploads TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON export_jobs TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON user_preferences TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON subscriptions TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON invoices TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON payment_methods TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON coupons TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON store_pages TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON membership_plans TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON refunds TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON returns TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON bundles TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON bundle_items TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON price_rules TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON live_segments TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON cue_cards TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON highlights TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON channel_posts TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON reconciliation_records TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON inventory_locations TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON stock_movements TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON sample_requests TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON sample_shipments TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON copilot_sessions TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON chargebacks TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON content_attribution_records TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON video_edit_jobs TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON remix_blueprints TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON clip_collections TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON product_showcase_jobs TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON link_to_video_jobs TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON translation_jobs TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON style_packs TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON performance_reports TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ab_test_experiments TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON challenge_progress TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON voice_clone_records TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON repurpose_jobs TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON link_health_records TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON platform_health_scores TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON home_dashboard_config TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON monetization_offer_views TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ai_credit_quotes TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ai_credit_lots TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ai_credit_reservations TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ai_credit_reservation_allocations TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON consumer_inbox TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON api_idempotency_records TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON external_effects TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON settlement_lines TO app_user;
+GRANT SELECT, INSERT ON financial_postings TO app_user;
+GRANT SELECT ON regions TO app_user;
+GRANT SELECT ON currencies TO app_user;
+GRANT SELECT ON achievement_definitions TO app_user;
+GRANT SELECT ON challenge_definitions TO app_user;
+GRANT SELECT ON ai_provider_rates TO app_user;
+GRANT INSERT ON event_outbox TO app_user;
+GRANT SELECT, UPDATE ON event_outbox TO outbox_poller;
+GRANT USAGE, SELECT ON SEQUENCE event_outbox_outbox_id_seq TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON admin_sessions TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON background_jobs TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON broadcast_targets TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON broadcasts TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON dead_letter_queue TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON diagnostics_records TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON event_outbox TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON feature_flags TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON fraud_cases TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON impersonation_sessions TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON incidents TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON internal_admins TO admin_user;
+GRANT SELECT, INSERT ON internal_audit_logs TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON job_metrics TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON job_schedules TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON kb_article_versions TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON moderation_cases TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON notification_events TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON platform_fee_schedules TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON platform_health_metrics TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON post_mortems TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON scheduled_job_configs TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON system_alerts TO admin_user;
+GRANT SELECT, INSERT, UPDATE ON users TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON support_tickets, support_ticket_messages TO admin_user;
+CREATE POLICY admin_user_directory ON users TO admin_user USING (true);
+CREATE POLICY admin_ticket_access ON support_tickets TO admin_user USING (true);
+CREATE POLICY admin_ticket_messages ON support_ticket_messages TO admin_user USING (true);
+```
+
+Admin access to ordinary tenant objects uses an explicitly validated target workspace and operation-scoped service permission through the domain command layer; admin identity alone does not inherit `app_user` or bypass RLS. Global KB/public projections are read through narrowly granted functions/views that filter publication and visibility; their definitions and allowed columns must ship with the owning slice. Secrets, drafts, internal notes and user-directory rows are never broadly granted to app_user.
+
+Evidence content (`content_hash`, `file_url`, `payload`, provenance) and postings are append-only. Verification metadata may change with an audit event. A migration installs a BEFORE UPDATE/DELETE guard for evidence content and revokes UPDATE/DELETE for the append-only tables above. Legally required erasure is a separately authorized maintenance operation with deletion evidence, not an ordinary API mutation. Direct tenant fixture tests must verify these grants and guards; do not certify immutability from prose alone.
+
+### 26.13 Profile visibility, system templates and immutable evidence guards
+
+```sql
+CREATE POLICY member_profile_read ON users FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM workspace_members wm
+    WHERE wm.user_id = users.user_id
+      AND wm.workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid
+      AND wm.status = 'active'
+  ));
+CREATE FUNCTION protect_evidence_content() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'evidence content is immutable';
+  END IF;
+  IF (NEW.evidence_id, NEW.workspace_id, NEW.evidence_type, NEW.source_provenance,
+      NEW.content_hash, NEW.file_url, NEW.payload, NEW.collected_at, NEW.related_object_refs, NEW.created_at)
+      IS DISTINCT FROM
+     (OLD.evidence_id, OLD.workspace_id, OLD.evidence_type, OLD.source_provenance,
+      OLD.content_hash, OLD.file_url, OLD.payload, OLD.collected_at, OLD.related_object_refs, OLD.created_at)
+     OR NEW.deleted_at IS DISTINCT FROM OLD.deleted_at THEN
+    RAISE EXCEPTION 'evidence content is immutable';
+  END IF;
+  RETURN NEW;
+END
+$$;
+CREATE TRIGGER evidence_content_immutable BEFORE UPDATE OR DELETE ON evidence_objects
+  FOR EACH ROW EXECUTE FUNCTION protect_evidence_content();
+```
+
+Template install clones a published system template into a tenant-owned canonical recipe before agent/run references are created. This permits public template discovery without allowing a tenant to mutate global recipes or attach a foreign tenant's recipe. Profile reads expose only the authorized response projection; user preferences remain user-scoped even inside a shared workspace.
+
+Privileged cross-workspace operations are restricted to the admin service and explicitly granted operational tables:
+```sql
+CREATE POLICY admin_ops_scope ON moderation_cases TO admin_user USING (true);
+CREATE POLICY admin_ops_scope ON broadcast_targets TO admin_user USING (true);
+CREATE POLICY admin_ops_scope ON notification_events TO admin_user USING (true);
+CREATE POLICY admin_ops_scope ON background_jobs TO admin_user USING (true);
+CREATE POLICY admin_ops_scope ON dead_letter_queue TO admin_user USING (true);
+CREATE POLICY admin_ops_scope ON event_outbox TO admin_user USING (true);
+CREATE POLICY admin_ops_scope ON diagnostics_records TO admin_user USING (true);
+CREATE POLICY admin_ops_scope ON platform_health_metrics TO admin_user USING (true);
+```
+
+### 26.14 Owner identity integrity
+
+```sql
+ALTER TABLE workspaces ADD CONSTRAINT fk_workspaces_owner FOREIGN KEY (owner_user_id) REFERENCES users(user_id);
+CREATE UNIQUE INDEX idx_one_active_workspace_owner ON workspace_members(workspace_id)
+  WHERE role = 'owner' AND status = 'active';
+```
+
+Owner transfer updates memberships and workspaces.owner_user_id in one transaction. A command cannot commit with no active owner or a mismatched owner row; the service invariant and adversarial transfer tests enforce existence, while the partial unique index forbids two active owners.

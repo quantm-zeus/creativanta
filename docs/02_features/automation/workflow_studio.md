@@ -3,8 +3,8 @@ layer: features
 module: M20
 canonical: true
 domain: automation
-status: READY
-last_updated: 2026-04-06
+status: SPECIFIED
+last_updated: 2026-10-29
 blockers: []  # API-M-001 resolved 2026-04-02 — WorkflowService §2.8.1 (13 RPCs)
 ---
 

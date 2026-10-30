@@ -44,7 +44,7 @@ Mobile billing management — view current plan, usage breakdown, upgrade/downgr
 
 ### Preconditions
 - User is authenticated
-- User is Owner or Admin (for billing actions)
+- User is Owner (for billing actions)
 - User is any role (for viewing own plan)
 
 ### Postconditions
@@ -177,14 +177,14 @@ BillingScreen
 
 | # | Action | Trigger | API Call | Mutation | UI Result | Permission |
 |---|---|---|---|---|---|---|
-| 1 | Upgrade plan | Tap "📈 Nâng cấp Business" | — | — | Open PlanSelectionSheet (bottom sheet) | Owner/Admin |
-| 2 | Confirm upgrade | Select plan → confirm | `BillingService/ChangePlan(tier)` | `subscription.plan = new_tier` | Toast "Nâng cấp thành công! 🎉" + refresh | Owner/Admin |
+| 1 | Upgrade plan | Tap "📈 Nâng cấp Business" | — | — | Open PlanSelectionSheet (bottom sheet) | Owner |
+| 2 | Confirm upgrade | Select plan → confirm | `BillingService/ChangePlan(tier)` | `subscription.plan = new_tier` | Toast "Nâng cấp thành công! 🎉" + refresh | Owner |
 | 3 | Downgrade plan | Tap "⏸ Hạ cấp" | — | — | Open downgrade confirmation dialog | Owner only |
 | 4 | Confirm downgrade | Confirm in dialog | `BillingService/ChangePlan(tier)` | `subscription.scheduled_change` | Toast "Plan sẽ thay đổi vào {date}" | Owner only |
-| 5 | Buy credits | Tap "🪙 Mua thêm credits" | — | — | Navigate → Credit Purchase screen | Owner/Admin |
+| 5 | Buy credits | Tap "🪙 Mua thêm credits" | — | — | Navigate → Credit Purchase screen | Owner |
 | 6 | View usage detail | Tap "📊 Xem chi tiết sử dụng" | — | — | Navigate → Credit Usage Detail screen | Any |
-| 7 | Change payment method | Tap "✏️ Thay đổi" | — | — | Open payment method editor (Stripe/Paddle UI) | Owner/Admin |
-| 8 | Add backup payment | Tap "+ Thêm phương thức dự phòng" | — | — | Open add payment flow | Owner/Admin |
+| 7 | Change payment method | Tap "✏️ Thay đổi" | — | — | Open payment method editor (Stripe/Paddle UI) | Owner |
+| 8 | Add backup payment | Tap "+ Thêm phương thức dự phòng" | — | — | Open add payment flow | Owner |
 | 9 | Download invoice | Tap "📥 PDF" on invoice row | `BillingService/GetInvoiceUrl(id)` | — | Open PDF in system viewer | Owner/Admin |
 | 10 | View all invoices | Tap "Xem tất cả hóa đơn" | — | — | Navigate → full invoice list | Owner/Admin |
 | 11 | Cancel subscription | From downgrade → "Hủy gói" | `BillingService/CancelPlan` | `subscription.status = cancelled` | Confirmation + grace period banner | Owner only |
@@ -205,7 +205,7 @@ BillingScreen
 | DOWNGRADE_SCHEDULED | Downgrade pending | Info banner: "Plan sẽ chuyển sang {plan} vào {date}" |
 | FREE_TIER | User on free plan | No payment method section. Prominent upgrade CTA. |
 | ERROR | API failure | Full-page error state with retry |
-| NO_PAYMENT_METHOD | Owner/Admin, no card on file | Warning: "Chưa có phương thức thanh toán. [Thêm ngay]" |
+| NO_PAYMENT_METHOD | Owner, no card on file | Warning: "Chưa có phương thức thanh toán. [Thêm ngay]" |
 
 ---
 
@@ -224,12 +224,12 @@ BillingScreen
 | Action | Owner | Admin | Manager | Editor | Contributor | Viewer | External |
 |---|---|---|---|---|---|---|---|
 | View billing page | ✅ | ✅ | ✅ (limited) | ✅ (plan only) | ✅ (plan only) | ✅ (plan only) | ❌ |
-| View invoices | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Upgrade/downgrade | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| View invoices | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Upgrade/downgrade | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Cancel plan | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Manage payment | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Buy credits | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Download invoice | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Manage payment | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Buy credits | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Download invoice | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ---
 

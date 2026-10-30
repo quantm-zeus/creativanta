@@ -3,8 +3,8 @@ layer: features
 module: M02
 canonical: true
 domain: intelligence
-status: READY
-last_updated: 2026-03-30
+status: SPECIFIED
+last_updated: 2026-10-29
 ---
 
 # Feature: Trend Fusion Radar (M02)

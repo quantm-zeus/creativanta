@@ -3,8 +3,8 @@ layer: features
 module: M23
 canonical: true
 domain: platform
-status: READY
-last_updated: 2026-04-07
+status: SPECIFIED
+last_updated: 2026-10-29
 ---
 
 # Feature: Reporting, Admin & Billing (M23)
@@ -47,8 +47,8 @@ Self-service workspace administration for creators and sellers: manage connected
 ## Business Rules (Part A)
 
 1. **RULE-M23-A01**: Billing management is Owner-only. Only workspace Owner can: change plan, update payment method, cancel subscription, request data deletion. Admin role can view billing but not modify (PRD §22, RBAC matrix §5).
-2. **RULE-M23-A02**: Team actions follow RBAC hierarchy — users can only manage members at or below their level. Owner manages all; Admin manages Manager and below; Manager manages Contributor and below (RBAC matrix §1).
-3. **RULE-M23-A03**: Connected account management: connect requires Editor+ (OAuth dance + capability check). Disconnect requires Admin+ (destructive — breaks dependent workflows). Force-reconnect available when token expires (connector_specs §connection).
+2. **RULE-M23-A02**: Team actions follow RBAC hierarchy — users can only manage members at or below their level. Owner manages all; Admin manages Manager and below; Manager invites Editor and below; role assignment remains Admin+ (RBAC matrix §1).
+3. **RULE-M23-A03**: Connected account management: connect requires Manager+ (OAuth dance + capability check). Disconnect requires Admin+ (destructive — breaks dependent workflows). Force-reconnect available when token expires (connector_specs §connection).
 4. **RULE-M23-A04**: Workspace diagnostics show user-facing error summaries for recent issues (publish failures, sync errors, AI generation failures). Each diagnostic links to the affected object and provides recommended actions — NOT raw error logs (Pack 03 §8).
 5. **RULE-M23-A05**: Credit balance and usage dashboard shows: current balance, usage this period, usage by feature category (AI text, AI video, AI image, AI analysis), burn rate, estimated depletion date. Top-up CTA visible when balance < 20% of monthly allocation (PRD §21, Pack 08).
 6. **RULE-M23-A06**: Billing surfaces MUST render plan and add-on prices from the canonical pricing registry (`pricing_and_credits.md` + pricing config), not hardcoded screen values. Extra AI credit packs are one-time purchases; module add-ons follow the workspace billing interval.
@@ -83,19 +83,19 @@ Self-service workspace administration for creators and sellers: manage connected
 
 ### Workspace Subscription
 
+Persisted subscriptions.status values are active, trialing, past_due, cancelled and paused. Free is plan_tier=free, not a subscription status. Trial UI maps to trialing. Grace/read-only are derived billing-policy states, not extra status values.
+
 | From | To | Trigger | Condition |
 |---|---|---|---|
-| — | trial | Workspace created | Free trial period (14 days) |
-| trial | active | User subscribes | Payment confirmed |
-| trial | free | Trial expires without subscription | Downgrade to free tier |
-| active | active | Plan change | Upgrade/downgrade at period boundary |
-| active | grace_period | Payment fails | Dunning flow active (30 days) |
-| active | paused | Owner pauses subscription | Business+ tier only, max 90 days |
-| grace_period | active | Payment succeeds | Card updated or retry succeeds |
-| grace_period | free | 30 days expired | Auto-downgrade, data archived |
-| paused | active | Owner resumes OR max 90 days reached | Auto-resume with 7-day advance notification |
-| active | cancelled | Owner cancels | Access until period end |
-| cancelled | free | Period ends | Downgrade to free tier |
+| — | trialing | Verified workspace onboarding | One eligible trial |
+| trialing | active | Payment confirmed or trial expires to Free | Correct tier/limits applied |
+| active | past_due | Payment fails | Dunning timeline from pricing_and_credits.md |
+| past_due | active | Payment recovers, or dunning ends with Free downgrade | Preserve data; update plan tier appropriately |
+| active | paused | Owner pauses | Business+ and pause policy |
+| paused | active | Resume or pause maximum reached | Advance notice and current payment requirements |
+| active/trialing/past_due | cancelled | Owner cancels | Keep access to paid-through boundary |
+
+Dunning uses the canonical Day 0–14 policy; read-only grace is Day 7–14. Cancellation follows BIZ-010/014 retention after paid access ends and does not silently become the dunning Free downgrade. [Pricing](../../01_business/pricing_and_credits.md) owns exact billing/retention timing; this feature does not redefine it.
 
 > **Pause Rules (Business+ only)**:
 > - Maximum pause duration: 90 days
@@ -148,7 +148,7 @@ See: S26 §2.3 <!-- Legacy ref: creativanta_supplementary_s26_internal_admin_ope
 - User explorer: search, filter, view profile, quick actions (S26 §4)
 - Workspace explorer: health scores, subscription status, usage metrics (S26 §5)
 - Churn risk detection: scoring algorithm, auto-outreach triggers (S26 §5.3)
-- Impersonation: view-as-user (Support Admin+), write-as-user (Super Admin only + OTP per session) (S26 §4.3)
+- Impersonation: view-as-user (Support Admin+), all impersonation remains read-only; explicit privileged writes use their own audited admin commands (S26 §4.3)
 
 ### Billing & Revenue Console
 - Revenue dashboard: MRR/ARR, expansion/contraction, churn waterfall (S26 §6.1)
@@ -190,7 +190,7 @@ See: S26 §2.3 <!-- Legacy ref: creativanta_supplementary_s26_internal_admin_ope
 
 1. **RULE-M23-B01 (CRITICAL)**: **Admin MUST NOT break canonical truth.** Any admin override (reconciliation, publish state, workflow force-cancel, billing adjustment) MUST include: actor, reason, affected objects, old/new state, timestamp, audit reference. The override object links to the canonical object it modified — the original truth is preserved alongside the override (Pack 06 §10, S26 §1.2).
 2. **RULE-M23-B02**: Admin actions are **not operational shortcuts**. Override is an exceptional path, not a default workflow. Patterns to detect: if a specific override is used >10 times daily, trigger review — the system likely needs a proper feature, not repeated admin intervention (Pack 06 §10.3).
-3. **RULE-M23-B03**: Impersonation protocol: view-only (Support Admin+) limited to 30 min, write-capable (Super Admin only + OTP per session). Impersonation NEVER touches billing/payment scope. All page views and clicks during impersonation logged. User is NOT notified but audit trail is complete (S26 §4.3).
+3. **RULE-M23-B03**: Impersonation protocol: view-only (Support Admin+) limited to 30 min, read-only for every role, including Super Admin; privileged writes use separate audited admin commands. Impersonation NEVER touches billing/payment scope. All page views and clicks during impersonation logged. User is NOT notified but audit trail is complete (S26 §4.3).
 4. **RULE-M23-B04**: Zero-trust security: VPN + IP whitelist + MFA (TOTP, no SMS) + 30-min session timeout + max 1 concurrent session + 16-char password with 90-day rotation + login anomaly detection (S26 §2.4).
 
 ---
@@ -379,12 +379,12 @@ When a user submits a bug report, the system MUST auto-capture and attach the fo
 | Last 20 console errors | Browser/App logger | Frontend error trace |
 | Network request failures (last 5 min) | Network interceptor | API failure correlation |
 | User's operator mode | `workspaces.default_operator_mode` | Context for UX issues |
-| User's plan tier | `workspace_members` → `workspaces.tier` | Tier-specific behavior |
+| User's plan tier | `workspace_members` → `workspaces.subscription_tier` | Tier-specific behavior |
 | Browser/App version | User-Agent header | Compatibility check |
 | Screen dimensions | `window.innerWidth × innerHeight` | Responsive layout issues |
 | Active feature flags | Feature flag service | Feature-specific bugs |
 | Current page/route | Router state | Navigation context |
 | Recent user actions (last 10) | Activity logger | Reproduction steps |
-| Workspace locale | `workspaces.timezone`, `language` | Localization issues |
+| Workspace locale | `workspaces.settings` (timezone key), `language` | Localization issues |
 
 > All auto-capture data is included in the bug report payload. No PII (passwords, tokens, financial data) is captured. User is informed: "Diagnostic data will be attached to help resolve this issue faster."

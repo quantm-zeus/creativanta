@@ -89,7 +89,7 @@ sequenceDiagram
 
     User->>API: generate_video(brief, character, voice)
     Note over API,Credits: Phase 1 — Reserve (Escrow per §9/§11)
-    API->>Credits: reserve(workspace_id, estimated_cost, ttl=30min)
+    API->>Credits: reserve(workspace_id, estimated_cost, initial_lease=30min)
     Credits-->>API: reservation_id
     API->>Router: select_pipeline(context)
     
@@ -325,51 +325,9 @@ sequenceDiagram
 
 ---
 
-## 9. AI Credit Check & Deduction (Escrow / Two-Phase)
+## 9. AI Credit Check and Execution
 
-> **Canonical pattern**: Uses the reserve→execute→commit escrow flow defined in §11.
-> All AI credit operations MUST use this two-phase pattern — never immediate deduction.
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant API as Service
-    participant Credits as Credit System
-    participant Cache as Dragonfly
-    participant DB as PostgreSQL
-
-    User->>API: request_ai_action(type)
-    API->>Credits: estimate_cost(action_type)
-    Credits->>Cache: get credits:balance:{workspace}
-    
-    alt Balance Sufficient
-        Note over Credits: Phase 1 — Reserve (Escrow)
-        API->>Credits: reserve(workspace_id, estimated_cost, ttl=30min)
-        Credits->>DB: INSERT ai_credit_transaction (status=reserved)
-        Credits->>Cache: DECRBY credits:balance estimated_cost
-        Credits-->>API: reservation_id
-        
-        Note over API: Execute AI action
-        API->>API: execute AI action (provider call)
-        
-        Note over Credits: Phase 2 — Commit (Settle)
-        API->>Credits: commit(reservation_id, actual_cost)
-        Credits->>DB: UPDATE ai_credit_transaction SET status=committed, amount=actual_cost
-        alt actual_cost < estimated_cost
-            Credits->>Cache: INCRBY credits:balance (estimated - actual)
-            Note over Credits: Refund difference to balance
-        end
-        Credits-->>API: committed(actual_cost, new_balance)
-    else Balance Low (Pro/Business)
-        Credits-->>API: soft_warning(remaining)
-        API->>API: proceed with warning (still use reserve flow)
-    else Balance Exhausted (Free/Starter)
-        Credits-->>API: hard_block
-        API-->>User: credits_exhausted error
-    end
-```
-
-These 9 diagrams cover the core critical flows. See §11 for the full Credit Reservation (Escrow) Flow specification.
+All AI flows use the durable state machine in [Credit accounting](../04_contracts/credit_accounting_contract.md). §11 shows the transaction boundaries; cache is a projection and never authorizes spend. Plan/role/object gates run before quote/hold.
 
 ---
 
@@ -427,55 +385,34 @@ sequenceDiagram
 
 ---
 
-## 11. Credit Reservation (Escrow) Flow (Audit v5 M5)
-
-> **Ref**: Pack 08 §3.4, Freeze §46A.5 — Credit reservation prevents overspend during async AI operations.
+## 11. Durable Credit Reservation
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant Service as Domain Service
-    participant Credits as Credit System
-    participant Cache as Dragonfly
+    participant API
     participant DB as PostgreSQL
-    participant AI as AI Provider
-    participant DLQ as Dead Letter Queue
-
-    User->>Service: request_ai_action(type, params)
-    Service->>Credits: estimate_cost(type, params)
-    Credits-->>Service: estimated=8 credits
-
-    Service->>Credits: reserve(workspace_id, 8, ttl=30min)
-    Credits->>Cache: DECRBY credits:balance:{ws} 8
-    Credits->>Cache: SET credits:reservation:{res_id} 8 EX 1800
-    Credits->>DB: INSERT ai_credit_transaction(type=reserved)
-    Credits-->>Service: reservation_id
-
-    Service->>AI: execute_action(params)
-
-    alt Success
-        AI-->>Service: result(actual_cost=6)
-        Service->>Credits: commit(reservation_id, actual=6)
-        Credits->>Cache: INCRBY credits:balance:{ws} 2
-        Credits->>Cache: DEL credits:reservation:{res_id}
-        Credits->>DB: UPDATE transaction(type=committed, amount=6)
-        Credits->>DB: INSERT transaction(type=refund_partial, amount=2)
-        Service-->>User: action_completed(result)
-    else Failure (AI error)
-        AI-->>Service: error(provider_error)
-        Service->>Credits: release(reservation_id)
-        Credits->>Cache: INCRBY credits:balance:{ws} 8
-        Credits->>Cache: DEL credits:reservation:{res_id}
-        Credits->>DB: UPDATE transaction(type=released)
-        Service-->>User: action_failed(error, credits_restored)
-    else Timeout (reservation expires)
-        Note over Cache: TTL expires after 30min
-        Cache-->>Credits: key expired event
-        Credits->>DB: UPDATE transaction(type=timeout_released)
-        Credits->>Cache: INCRBY credits:balance:{ws} 8
-        Credits->>DLQ: enqueue(orphaned_reservation)
+    participant Worker
+    participant Provider
+    User->>API: Confirm quote_id + confirmed_credits + idempotency_key
+    API->>DB: BEGIN; lock workspace; validate quote; allocate lots
+    API->>DB: INSERT reservation held + allocations + outbox; COMMIT
+    API-->>User: Reservation/job identity
+    Worker->>DB: Claim event; held to in_flight; persist external_effect
+    Worker->>Provider: Submit with stable provider operation identity
+    alt Usable output
+        Provider-->>Worker: Result + measured units
+        Worker->>DB: BEGIN; lock; conditional commit; append debit; release remainder; inbox + outbox; COMMIT
+    else Definite failure or cancellation
+        Worker->>DB: Conditional release exactly once; audit + outbox
+    else Unknown result or worker restart
+        Worker->>DB: Mark reconciling; retain hold; probe/status recovery
     end
+    Note over DB: Sweeper expires only unsubmitted held reservations after 30 minutes
+    Note over DB: Late callbacks and duplicate events cannot debit a terminal reservation
 ```
+
+The complete transitions, source-lot expiry, five-reservation cap and restart fixtures are owned by [Credit accounting](../04_contracts/credit_accounting_contract.md).
 
 ---
 

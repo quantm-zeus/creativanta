@@ -3,8 +3,8 @@ layer: features
 module: M14
 canonical: true
 domain: commerce
-status: READY
-last_updated: 2026-04-09
+status: SPECIFIED
+last_updated: 2026-10-29
 ---
 
 # Feature: Monetization OS (M14)

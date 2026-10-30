@@ -3,8 +3,8 @@ layer: features
 module: M17
 canonical: true
 domain: commerce
-status: READY
-last_updated: 2026-03-30
+status: SPECIFIED
+last_updated: 2026-10-29
 blockers: []  # API-M-001 resolved 2026-04-02 — LiveCommerceService §2.8.3 (11 RPCs)
 ---
 

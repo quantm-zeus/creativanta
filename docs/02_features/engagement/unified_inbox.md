@@ -3,8 +3,8 @@ layer: features
 module: M12
 canonical: true
 domain: engagement
-status: READY
-last_updated: 2026-03-30
+status: SPECIFIED
+last_updated: 2026-10-29
 ---
 
 # Feature: Unified Inbox & Engagement Center (M12)

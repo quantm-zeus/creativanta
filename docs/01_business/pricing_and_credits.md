@@ -2,7 +2,7 @@
 layer: business
 canonical: true
 source: creativanta_pricing_credits_growth_contract_v_3_1.md
-last_updated: 2026-04-07
+last_updated: 2026-10-29
 ---
 
 # Pricing & Credits
@@ -89,7 +89,7 @@ Implementation notes:
 - 50 AI credits per month
 - 2 connected accounts, 1 operator mode
 - Limited Daily Brief
-- Creativanta watermark on AI-generated exports
+- Creativanta watermark on eligible AI-generated exports; omit promotional watermark on platform delivery routes that prohibit it (including TikTok Direct Post). This provider-policy exception does not grant other paid features.
 - Shareable scorecards
 
 ---
@@ -115,86 +115,93 @@ Implementation notes:
 > **CANONICAL CLARIFICATION — Purchased Credit Packs vs Subscription Credits**:
 > - **Subscription credits** (monthly allocation) follow the rollover rules above — unused credits expire or roll over per tier policy.
 > - **Purchased credit packs** (one-time buy) **NEVER expire** and are **NOT subject to rollover limits**. They remain in the workspace balance indefinitely until consumed.
-> - **Consumption order**: Subscription credits are consumed **first** (FIFO within billing cycle), then purchased pack credits. This ensures purchased credits serve as a reserve buffer.
+> - **Consumption order**: Subscription credits are consumed before purchased pack credits (earliest expiry first); expiring promotional grants are consumed before subscription lots. This ensures purchased credits serve as a reserve buffer.
 > - **Display**: Workspace credit balance MUST show breakdown: `{subscription_remaining} + {purchased_remaining} = {total_available}`.
 
-### 2.3 Credit Reservation (Escrow) Flow
-1. User confirm AI action → System tạo reservation (status: pending) → balance giảm
-2. **SUCCESS**: reservation confirmed, adjusted to actual cost (có thể < estimated)
-3. **FAILURE**: credits trả lại balance ngay lập tức
-4. **TIMEOUT**: auto-release sau 15 phút
+### 2.3 Credit Reservation
 
-Rules:
-- Reservation TTL: 15 phút
-- Max 5 concurrent reservations per workspace
-- Reservation pending credits vẫn tính vào "used" cho quota check
+All AI execution follows [Credit accounting](../04_contracts/credit_accounting_contract.md), the sole owner of reserve/commit/release, 30-minute initial lease, in-flight reconciliation, concurrency, expiry and late-result semantics. Credit cache is never financial authority.
 
 ---
 
-## 3. Credit Cost Table
+## 3. Cost-Based Credit Quotes
+
+The operation tables below classify billable operations; no historical credit range is a fixed price or maximum. A quote is computed before consent from a verified, versioned provider rate card. No model ID or provider-price example enables a live route automatically.
+
+### 3.0 Quote algorithm and margin floor
+
+1. Estimate a **bounded worst-case provider cost** in USD for the complete pipeline: input/output tokens, video seconds × samples × resolution/audio rate, TTS characters, music, lip-sync, rendering, paid retries/fallbacks and non-provider variable processing cost. Adapters MUST declare measured units and maximum attempts. Unbounded or stale/unavailable rates block live quotation.
+2. Engineering default `usd_per_credit_floor = 0.015000` is the conservative net USD revenue per credit after the cheapest annual/bulk pricebook and payment fees. `gross_margin_floor = 0.5000`. Price/config changes MUST recompute the floor; promotions below it require an explicitly funded marketing budget or a new quote catalog. Free/included actions charge zero to users but have internal budgets/rate limits.
+3. `quoted_credits = ceil(cost_ceiling_usd / (usd_per_credit_floor × (1 − gross_margin_floor)))`. Persist quote inputs, provider plan and rate version. Quote validity: five minutes. All wire amounts are decimal strings.
+4. Example fixture, not a live rate promise: cost ceiling $0.600000 → 80 credits; at $0.015000 net/credit, revenue $1.200000 and 50% margin. Expensive models, longer clips or paid retry budgets increase the quote.
+5. Actual customer charge uses the same catalog version and measured units, capped at confirmed credits. Additional paid attempts beyond the plan require a new quote and consent. Platform absorbs estimation errors; alert and suspend a systematically loss-making route.
+6. Rate cards require provider/model/currency/units, audio/resolution/sample conditions, source URL, verified_at and valid_until (at most seven days after verification). Routes start disabled; deployment verifies availability, entitlement and measured metering before enabling.
+
+Commercial subscription and credit-pack prices elsewhere in this document remain unchanged. Catalog defaults are engineering policy, not evidence of customer willingness to pay or measured profitability.
+
 
 ### 3.1 Core AI Operations
 
 | AI Operation | Credits | Notes |
 |---|---|---|
-| Text generation (script, idea, copy) | 1–5 | Depends on length |
-| AI image generation (standard) | 3–8 | Flux 2 / SDXL |
-| AI image generation (HD) | 8–15 | GPT Image HD / Flux 2 Max |
-| AI video generation (short <60s, standard) | 15–25 | Veo Fast / Kling Std / Runway Turbo |
-| AI video generation (short <60s, premium) | 30–50 | Veo Quality / Kling Pro |
-| AI video generation (long 1-3min) | 50–150 | Kling 3.0 extended |
-| AI video editing (user upload) | 15–40 | Depends on duration/edits |
-| AI video style transfer | 20–60 | Apply style to uploaded video |
-| AI lip-sync (post-production) | 5–15 | SyncLabs / Wav2Lip per clip |
-| AI video dubbing (1 language) | 10–30 | TTS + lip-sync + final mix per minute |
-| AI music generation | 10–30 | Depends on duration |
-| AI voice generation (standard) | 3–8 | Google Cloud TTS / OpenAI TTS |
-| AI voice generation (premium) | 5–15 | ElevenLabs (expressive, Vietnamese) |
-| AI translation | 2–5 | Per piece |
-| AI content compliance scan | 1–3 | Per content item |
-| AI trend analysis (deep) | 3–10 | Per analysis |
-| AI script rewrite/optimize | 2–5 | Per script |
-| AI thumbnail generation | 3–8 | Per thumbnail |
-| AI caption/subtitle | 2–5 | Per video (Whisper + Gemini) |
-| AI engagement reply suggestion | 1 | Per thread |
-| AI simulation run | 5–15 | Per scenario |
-| AI agent execution | 10–50 | Depends on complexity |
+| Text generation (script, idea, copy) | Cost-based quote | Depends on length |
+| AI image generation (standard) | Cost-based quote | Flux 2 / SDXL |
+| AI image generation (HD) | Cost-based quote | GPT Image HD / Flux 2 Max |
+| AI video generation (short <60s, standard) | Cost-based quote | Veo Fast / Kling Std / Runway Turbo |
+| AI video generation (short <60s, premium) | Cost-based quote | Veo Quality / Kling Pro |
+| AI video generation (long 1-3min) | Cost-based quote | Kling 3.0 extended |
+| AI video editing (user upload) | Cost-based quote | Depends on duration/edits |
+| AI video style transfer | Cost-based quote | Apply style to uploaded video |
+| AI lip-sync (post-production) | Cost-based quote | SyncLabs / Wav2Lip per clip |
+| AI video dubbing (1 language) | Cost-based quote | TTS + lip-sync + final mix per minute |
+| AI music generation | Cost-based quote | Depends on duration |
+| AI voice generation (standard) | Cost-based quote | Google Cloud TTS / OpenAI TTS |
+| AI voice generation (premium) | Cost-based quote | ElevenLabs (expressive, Vietnamese) |
+| AI translation | Cost-based quote | Per piece |
+| AI content compliance scan | Cost-based quote | Per content item |
+| AI trend analysis (deep) | Cost-based quote | Per analysis |
+| AI script rewrite/optimize | Cost-based quote | Per script |
+| AI thumbnail generation | Cost-based quote | Per thumbnail |
+| AI caption/subtitle | Cost-based quote | Per video (Whisper + Gemini) |
+| AI engagement reply suggestion | Cost-based quote | Per thread |
+| AI simulation run | Cost-based quote | Per scenario |
+| AI agent execution | Cost-based quote | Depends on complexity |
 
 ### 3.2 Character & Voice
 
 | Operation | Credits | Notes |
 |---|---|---|
-| Character creation (AI Generated) | 5–10 | Per character |
-| Character creation (Digital Twin) | 15–30 | Processing-intensive, one-time |
-| Voice clone setup | 10–20 | One-time per voice |
-| Character preview (15s test) | 2–3 | Quick validation |
+| Character creation (AI Generated) | Cost-based quote | Per character |
+| Character creation (Digital Twin) | Cost-based quote | Processing-intensive, one-time |
+| Voice clone setup | Cost-based quote | One-time per voice |
+| Character preview (15s test) | Cost-based quote | Quick validation |
 
 ### 3.3 Extended Production Features
 
 | Operation | Credits | Notes |
 |---|---|---|
-| Product Showcase video (per style) | 8–40 | 360° cheapest, Virtual Try-On most expensive |
-| Image-to-Video | 5–15 | Per image, depends on duration |
-| Link-to-Video (URL → video ad) | 20–45 | Scraper + script + visual + voice |
-| AI Translation (video dubbing) | 15–40 | Per language, depends on duration |
-| AI Music (custom BGM) | 5–15 | Per track (30s-3min) |
-| Speech-to-Song | 8–20 | Transform voice-over to singing |
-| AI Sound Effects | 3–8 | Contextual SFX generation |
-| Style extraction (to Style Pack) | 10–20 | Per style analysis + save |
-| AI Video Agent (1-click pipeline) | 30–80 | Full pipeline orchestration |
-| A/B variant generation | 5–15 | Per variant |
-| Performance Coach analysis | 0 | Included in plan |
+| Product Showcase video (per style) | Cost-based quote | 360° cheapest, Virtual Try-On most expensive |
+| Image-to-Video | Cost-based quote | Per image, depends on duration |
+| Link-to-Video (URL → video ad) | Cost-based quote | Scraper + script + visual + voice |
+| AI Translation (video dubbing) | Cost-based quote | Per language, depends on duration |
+| AI Music (custom BGM) | Cost-based quote | Per track (30s-3min) |
+| Speech-to-Song | Cost-based quote | Transform voice-over to singing |
+| AI Sound Effects | Cost-based quote | Contextual SFX generation |
+| Style extraction (to Style Pack) | Cost-based quote | Per style analysis + save |
+| AI Video Agent (1-click pipeline) | Cost-based quote | Full pipeline orchestration |
+| A/B variant generation | Cost-based quote | Per variant |
+| Performance Coach analysis | 0 — included, budgeted internally | Included in plan |
 
 ### 3.4 Copilot
 
 | Copilot Action | Credits | Availability |
 |---|---|---|
-| Analytics query (read-only) | 0 | All tiers |
-| Help / guidance | 0 | All tiers |
-| Content generation (script, caption) | 1–5 | Starter+ |
-| Workflow creation | 2–10 | Pro+ |
-| Multi-step action execution | 3–15 | Pro+ |
-| Voice input | 0 | All tiers |
+| Analytics query (read-only) | 0 — included, budgeted internally | All tiers |
+| Help / guidance | 0 — included, budgeted internally | All tiers |
+| Content generation (script, caption) | Cost-based quote | Starter+ |
+| Workflow creation | Cost-based quote | Pro+ |
+| Multi-step action execution | Cost-based quote | Pro+ |
+| Voice input | 0 — included, budgeted internally | All tiers |
 
 > User chọn model cụ thể → credit cost có thể khác. System hiển thị estimated credits trước generate.
 
@@ -272,7 +279,7 @@ Grace period (Day 7–14): user can view/export data + update payment, but NOT c
 | Large | 2,000 | $60 | ₫1,499,000 | $0.030 |
 | Mega | 10,000 | $200 | ₫4,999,000 | $0.020 |
 
-- Purchased credits không expire (valid suốt subscription active)
+- Purchased credits never expire; inactive/read-only access prevents spending but does not confiscate the lot. Reactivation and legally required erasure follow the credit accounting and retention contracts.
 - Available cho mọi paid tier
 
 ### 5.8 Anti-Abuse

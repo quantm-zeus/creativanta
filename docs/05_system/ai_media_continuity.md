@@ -1189,17 +1189,13 @@ archived → deleted (hard delete after 30 days)
 
 ## 13. Handoff
 
-Detail design tiếp theo phải chốt:
-- provider adapter interfaces
-- job orchestration queues
-- media storage pointers
-- lineage schema
-- drift evaluation rules per pack type
-- **character builder provider integration (HeyGen/D-ID/Synthesia API adapters)**
-- **stock avatar library source and update pipeline**
-- **voice clone provider selection and integration**
-
-
+Implementation handoff is phase P4, using:
+- Provider adapter and verification/rate-card contract: ai_provider_guide.md and connector_specs.md.
+- Durable jobs, retries and unknown results: queue_retry_design.md and credit_accounting_contract.md.
+- Storage pointers, immutable prompt_package, pack settings and lineage: database_schema.md §7/§25.
+- Character/voice providers remain configurable candidates. Enable only the verified licensed API for the target account; digital twin/voice consent must be current before every use.
+- Stock avatars come from a versioned catalog with explicit commercial/derivative rights and evidence; absence of rights disables that item and exposes user-owned/uploaded alternatives. Do not scrape an avatar catalog.
+- Drift thresholds/rules follow this pack and M08; P4 fixtures must measure visual/voice/brand violations and demonstrate block/warn/repair, not claim perfect identity consistency.
 
 ## 14. Acceptance Scenario Inventory
 

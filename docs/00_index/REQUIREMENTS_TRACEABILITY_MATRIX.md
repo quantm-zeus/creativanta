@@ -62,3 +62,7 @@ Before building any feature:
 3. Use the listed quality/ops docs as the minimum validation set.
 
 If a downstream artifact exists without a row here, it is not implementation-authoritative until linked.
+
+## Execution evidence (2026-10-29)
+
+This remains an ownership/requirement map. Exact RPC permission/behavior bindings are owned by [RPC bindings](../04_contracts/rpc_permission_bindings.csv); typed commands by [API behavior](../04_contracts/api_behavior_contracts.md). [Build Execution](BUILD_EXECUTION_CONTRACT.md) defines per-slice evidence and P8 full-scope reconciliation; presence of an artifact does not mean its implementation has passed.

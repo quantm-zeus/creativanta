@@ -1,10 +1,9 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-04-18
+last_updated: 2026-10-29
 ---
 
-<!-- AUDIT-FIX: Refreshed last_updated to today; recounted schema guard totals against database_schema.md (FORCE RLS=123, ENABLE RLS=123, deleted_at=58, CHECK constraints=43). [AUTO-DECIDED: recount authoritative — grep against canonical schema file] -->
 
 # Open Blockers
 
@@ -12,11 +11,25 @@ last_updated: 2026-04-18
 
 ---
 
-## Current Documentation Blockers (Validated 2026-04-18)
+## Current remediation — 2026-10-29
 
-<!-- AUDIT-FIX: Validated independently on 2026-04-18; recounted schema guard totals. Previously-claimed counts (106/52/23) were stale — the schema has grown since the 2026-04-02 fix wave. New totals are recorded in DB-C-001, DB-C-002, DB-H-003, DB-H-004 below. -->
+The product owner authorized retaining full scope and delivery by phase. Earlier blanket readiness claims are superseded by the evidence gates in [BUILD_EXECUTION_CONTRACT.md](BUILD_EXECUTION_CONTRACT.md).
 
-> As of 2026-04-18 (independent re-audit + execution-readiness pass), there are **no remaining internal documentation blockers** that prevent an AI coding agent from using this corpus as the implementation source of truth. Fixes applied in prior audit rounds and the execution-readiness pass remain valid: topological DDL ordering (`regions`/`currencies` before `workspaces`, `recipe_templates` before `agent_runs`), RLS `NULLIF(current_setting('app.current_tenant_id', true), '')::uuid` hardening across all 123 tenant policies + bootstrap user-scope rules on `workspaces`/`workspace_members`, `cost_items.description` alignment with `seed_data.sql`, PostgreSQL 17 schema grants in `init-extensions.sql`, phase-gated `.proto` service consolidation rules (`protobuf_contracts.md` §6), gamification event gaps (`streak.milestone`, `streak.frozen`, `challenge.completed`, `challenge.expired` added), Dragonfly keyspace notification config documented, web bundle target corrected (50KB→120KB), Flutter unit tests added to CI, CI smoke test improved, OWASP year corrected, event catalog cross-reference deduplication (§16.2→§12), outbox poller SQLx exception noted, `AP_EXECUTION_MODE` security warning added.
+| ID | Severity | Corrected specification | Status / evidence |
+|---|---|---|---|
+| DOC-2026-01 | HIGH | Full scope retained; one P0–P8 matrix; honest evidence states | SPEC_RESOLVED — phase coverage check, BUILD_EXECUTION_CONTRACT |
+| SEC-2026-01 | CRITICAL | Runtime role/grants; direct junction RLS; tenant FKs; member discovery; private notes/profiles | SPEC_RESOLVED — schema/role checks and adversarial checker tests; PostgreSQL runtime gate P0 |
+| CRD-2026-01 | CRITICAL | Durable source lots/reservations; immutable debit/refund identity; expiry and unknown/late results | SPEC_RESOLVED — credit_accounting_contract + schema checks; recovery fixtures required P0 |
+| FIN-2026-01 | HIGH | Tax/FX/COGS snapshots; recognition/postings; partial matching; independent arithmetic fixtures | SPEC_RESOLVED — financial_computation_contract; F01–F09 execution required P1 |
+| IAM-2026-01 | HIGH | Clerk session/webhook model; billing Owner-only; specific action bindings; publish screen correction | SPEC_RESOLVED — complete RPC binding check + auth/sensitive-permission regressions |
+| EXT-2026-01 | HIGH | Per-action access records and manual fallback; own workflow baseline and optional licensed adapter | SPEC_RESOLVED — canonical connector/integration specs; actual provider entitlement remains external |
+| API-2026-01 | HIGH | Command fields, validation/replay/failure families, all inventory bindings and phased typed gate | SPEC_RESOLVED — 1,182 binding rows + JSON fixture parse; compiled messages required per slice |
+| OPS-2026-01 | HIGH | Atomic outbox/inbox; durable external effects; fail-closed CI/smoke and blue/green release | SPEC_RESOLVED — queue/CI contracts; process-kill/release evidence required at implementation |
+| ECO-2026-01 | HIGH | Bounded provider-cost quotes, net credit floor, margin and confirmation ceiling | SPEC_RESOLVED — pricing/credit contract checks; live rates and actual metering require verification |
+| STATE-2026-01 | HIGH | Seeding/brand/capability/subscription state alignment, buyer membership and per-user progress | SPEC_RESOLVED — canonical schema/feature vocabulary checks |
+| DDL-2026-01 | HIGH | Duplicate index names and obsolete shadow DDL; seed lot/ledger totals | SPEC_RESOLVED — PostgreSQL grammar parser and selected structural/seed checks |
+
+SPEC_RESOLVED means the reviewed documentation defect was corrected and its listed static checks passed. It never claims runtime implementation, exhaustive semantic proof or external approval. No unknown finding is waived by this label; reopen a concrete contradiction immediately with affected phase and owner.
 
 ## Deferred Implementation Artifacts / External Gates
 
@@ -38,6 +51,17 @@ last_updated: 2026-04-18
 - Status: **EXTERNAL_GATE**
 - Impact: `legal_compliance.md` is engineering-approved and explicitly states that engineering implementation may proceed under approved defaults. Final legal sign-off remains a launch gate, not a blocker for documentation completeness.
 - Owner: Legal + Product
+
+## External access and engine gates — 2026-10-29
+
+- **Provider approval/access**: Integration owner must provide exact app/account/action/API-version/scopes/probe evidence before native activation. Development/manual paths may proceed; docs do not grant access.
+- **Workflow embedding**: Activepieces Enterprise SDK/white-labeling requires actual entitlement. The specified owned canvas/runtime baseline preserves full M20/M21 functionality without assuming that license; optional adapter activation remains gated.
+- **Provider metering/models/dependencies**: P0 pins toolchains/images; each live route verifies availability, legal/commercial rights and current rate card. Unverified candidates stay disabled.
+- **Runtime evidence**: No app, committed phase .proto/migration bundle or running database is represented as tested by this docs remediation. D1–D5 remain implementation gates, not unresolved choices to invent silently.
+
+## Historical audit entries — before 2026-10-29
+
+The entries below retain earlier audit history. Their counts and broad resolution language are historical snapshots; the current contracts, remediation table above and executable checker supersede them. In particular, old exclusions of junction tables from direct RLS and old simultaneous Day-1 delivery are no longer valid implementation instructions.
 
 ## SCR-H-003: Screen corpus cleanup and role canonicalization
 

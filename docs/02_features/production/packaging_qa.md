@@ -3,8 +3,8 @@ layer: features
 module: M10
 canonical: true
 domain: production
-status: READY
-last_updated: 2026-03-30
+status: SPECIFIED
+last_updated: 2026-10-29
 ---
 
 # Feature: Packaging QA / Upload Copilot / Experiment Lab (M10)

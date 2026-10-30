@@ -1,6 +1,6 @@
 -- Canonical local/dev seed data for Creativanta
 -- Source: docs/06_quality_ops/seed_data.md
--- Last updated: 2026-04-18
+-- Last updated: 2026-10-29
 -- Execution role: Run as the migration/owner superuser role ('creativanta') so multi-workspace
 -- fixtures can be inserted in a single transaction across FORCE ROW LEVEL SECURITY tables.
 
@@ -65,23 +65,49 @@ VALUES
   ('77777777-7777-7777-7777-777777777703', '22222222-2222-2222-2222-222222222201', 'physical', 'Phan mat Romand', 'cosmetics', 250000.000000, 'VND', 'draft')
 ON CONFLICT (product_id) DO NOTHING;
 
+INSERT INTO ai_credit_lots (lot_id, workspace_id, source_type, granted_credits, remaining_credits, external_grant_key, expires_at)
+VALUES
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', '22222222-2222-2222-2222-222222222201', 'subscription', 2000, 1920, 'seed:pro:period', NOW() + INTERVAL '1 month'),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2', '22222222-2222-2222-2222-222222222201', 'purchased', 500, 500, 'seed:pro:purchased', NULL),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb3', '22222222-2222-2222-2222-222222222202', 'subscription', 500, 500, 'seed:starter:period', NOW() + INTERVAL '1 month'),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb4', '22222222-2222-2222-2222-222222222203', 'subscription', 10000, 10000, 'seed:business:period', NOW() + INTERVAL '1 month')
+ON CONFLICT (workspace_id, external_grant_key) DO NOTHING;
+
 INSERT INTO ai_credit_transactions (
   transaction_id, workspace_id, transaction_type, credits, balance_after, description
 )
 VALUES
-  ('88888888-8888-8888-8888-888888888801', '22222222-2222-2222-2222-222222222201', 'monthly_allocation', 1000, 1000, 'Welcome credits (Pro tier)'),
-  ('88888888-8888-8888-8888-888888888802', '22222222-2222-2222-2222-222222222201', 'deduction', -50, 950, 'AI Video Generation #1'),
-  ('88888888-8888-8888-8888-888888888803', '22222222-2222-2222-2222-222222222201', 'deduction', -30, 920, 'AI Script Generation'),
-  ('88888888-8888-8888-8888-888888888804', '22222222-2222-2222-2222-222222222201', 'monthly_allocation', 500, 1420, 'Monthly renewal credits')
+  ('88888888-8888-8888-8888-888888888801', '22222222-2222-2222-2222-222222222201', 'monthly_allocation', 2000, 2000, 'Pro subscription grant'),
+  ('88888888-8888-8888-8888-888888888802', '22222222-2222-2222-2222-222222222201', 'deduction', -50, 1950, 'AI Video Generation #1'),
+  ('88888888-8888-8888-8888-888888888803', '22222222-2222-2222-2222-222222222201', 'deduction', -30, 1920, 'AI Script Generation'),
+  ('88888888-8888-8888-8888-888888888804', '22222222-2222-2222-2222-222222222201', 'top_up', 500, 2420, 'Verified purchased pack')
 ON CONFLICT (transaction_id) DO NOTHING;
 
+INSERT INTO ai_credit_transactions (transaction_id, workspace_id, transaction_type, credits, balance_after, lot_id, idempotency_key, description)
+VALUES
+  ('88888888-8888-8888-8888-888888888805', '22222222-2222-2222-2222-222222222202', 'monthly_allocation', 500, 500, 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb3', 'seed:starter:period', 'Starter allocation'),
+  ('88888888-8888-8888-8888-888888888806', '22222222-2222-2222-2222-222222222203', 'monthly_allocation', 10000, 10000, 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb4', 'seed:business:period', 'Business allocation')
+ON CONFLICT (transaction_id) DO NOTHING;
+
+-- Link seed history once to its source lots and durable operation identity.
+UPDATE ai_credit_transactions SET lot_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', idempotency_key = 'seed:' || transaction_id::text
+WHERE transaction_id IN ('88888888-8888-8888-8888-888888888801', '88888888-8888-8888-8888-888888888802', '88888888-8888-8888-8888-888888888803');
+UPDATE ai_credit_transactions SET lot_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2', idempotency_key = 'seed:' || transaction_id::text
+WHERE transaction_id = '88888888-8888-8888-8888-888888888804';
+-- Seed owner role may reconcile fixture projections; runtime ledger entries are append-only.
+UPDATE workspaces SET ai_credits_remaining = CASE subscription_tier WHEN 'pro' THEN 2420 WHEN 'starter' THEN 500 WHEN 'business' THEN 10000 END,
+  ai_credits_reserved = 0,
+  ai_credits_monthly_limit = CASE subscription_tier WHEN 'pro' THEN 2000 WHEN 'starter' THEN 500 WHEN 'business' THEN 10000 END
+WHERE workspace_id IN ('22222222-2222-2222-2222-222222222201','22222222-2222-2222-2222-222222222202','22222222-2222-2222-2222-222222222203');
+
+-- UI-only illustrative snapshot; not proof that recognized postings/finance fixtures pass.
 INSERT INTO profit_snapshots (
   snapshot_id, workspace_id, scope_type, period_start, period_end,
   gross_revenue, platform_fees, affiliate_commissions, ai_credit_costs,
-  other_costs, net_profit, confidence, currency
+  other_costs, net_profit, confidence, currency, source_class_mix
 )
 VALUES
-  ('99999999-9999-9999-9999-999999999901', '22222222-2222-2222-2222-222222222201', 'workspace', CURRENT_DATE - INTERVAL '30 days', CURRENT_DATE, 45000000.000000, 4500000.000000, 1200000.000000, 350000.000000, 800000.000000, 38150000.000000, 'medium_high', 'VND')
+  ('99999999-9999-9999-9999-999999999901', '22222222-2222-2222-2222-222222222201', 'workspace', CURRENT_DATE - INTERVAL '30 days', CURRENT_DATE, 45000000.000000, 4500000.000000, 1200000.000000, 350000.000000, 800000.000000, 38150000.000000, 'low', 'VND', '{"estimated": 1.0}')
 ON CONFLICT (snapshot_id) DO NOTHING;
 
 INSERT INTO cost_items (
@@ -89,7 +115,7 @@ INSERT INTO cost_items (
 )
 VALUES
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', '22222222-2222-2222-2222-222222222201', 'ads_spend', 1200000.000000, 'VND', 'Shopee ads week 1', 'official'),
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2', '22222222-2222-2222-2222-222222222201', 'software', 350000.000000, 'VND', 'Creative tooling subscription', 'official')
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2', '22222222-2222-2222-2222-222222222201', 'service_tool', 350000.000000, 'VND', 'Creative tooling subscription', 'official')
 ON CONFLICT (cost_item_id) DO NOTHING;
 
 COMMIT;

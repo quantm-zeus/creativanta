@@ -3,8 +3,8 @@ layer: features
 module: M01
 canonical: true
 domain: platform
-status: READY
-last_updated: 2026-04-02
+status: SPECIFIED
+last_updated: 2026-10-29
 ---
 
 # Feature: Home / Daily Decision Engine (M01)

@@ -37,6 +37,12 @@ Screen docs are not authoritative for:
 - RBAC token names
 - Derived business computations
 
+## 2A. Executable action and phase contract
+
+[RPC bindings](../04_contracts/rpc_permission_bindings.csv) owns each RPC's permission/family; [API behavior](../04_contracts/api_behavior_contracts.md) owns transport and command semantics. A screen's role grid cannot grant more access. For every action, build its rendered permission state from the binding AND underlying object permission, tier, phase availability, approval and provider capability. A mismatch must be corrected before the slice UI is accepted. Use the owning P0–P8 phase; no unbuilt action is enabled or represented by fake success.
+
+Credit/pricing quantities in wireframes are illustrative. Fetch a live cost-based quote and durable balance before confirming AI action; do not implement historical ranges as prices. Billing mutations are Owner-only. Impersonation is read-only for every admin role.
+
 ## 3. Data-Binding Rule
 
 Treat a screen data-binding row as canonical only if every referenced object exists verbatim in:

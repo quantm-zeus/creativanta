@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-04-11
+last_updated: 2026-10-29
 ---
 
 # Build Index — Creativanta System Map
@@ -14,38 +14,40 @@ Creativanta is a **Proofed Trend-to-Profit Operating System** for creator commer
 
 | Module | Name | Domain | Feature Doc (target) | Build Phase |
 |--------|------|--------|----------------------|-------------|
-| M01 | Home / Daily Decision Engine | platform | 02_features/platform/home_decision_engine.md | P3E | <!-- Phase 8: aggregates all domains, implement last -->
-| M02 | Trend Fusion Radar | intelligence | 02_features/intelligence/trend_radar.md | P3A |
-| M03 | Research & Competitor Intelligence | intelligence | 02_features/intelligence/competitor_intelligence.md | P3A |
-| M04 | Opportunity Board | intelligence | 02_features/intelligence/opportunity_board.md | P3A |
-| M05 | Idea Engine | content | 02_features/content/idea_engine.md | P3B |
-| M06 | Script Lab | content | 02_features/content/script_lab.md | P3B |
-| M07 | AI Video Studio | production | 02_features/production/ai_video_studio.md | P3C |
-| M08 | Continuity OS | content | 02_features/content/continuity_os.md | P3B |
-| M09 | Asset Derivative Manager | production | 02_features/production/asset_derivatives.md | P3C |
-| M10 | Packaging QA | production | 02_features/production/packaging_qa.md | P3C |
-| M11 | Publish Hub | publish | 02_features/publish/publish_hub.md | P3C |
-| M12 | Unified Inbox & Engagement | engagement | 02_features/engagement/unified_inbox.md | P3D |
-| M13 | Product Hub / Inventory | commerce | 02_features/commerce/product_hub.md | P3D |
-| M14 | Monetization OS | commerce | 02_features/commerce/monetization_os.md | P3D |
-| M15 | Creator Store / Offers | commerce | 02_features/commerce/creator_store.md | P3D |
-| M16 | Affiliate Network | commerce | 02_features/commerce/affiliate_network.md | P3D |
-| M17 | Live Commerce War Room | commerce | 02_features/commerce/live_war_room.md | P3D |
-| M18 | Seeding / Sample CRM | commerce | 02_features/commerce/seeding_crm.md | P3D |
-| M19 | Operating Ledger / Profit | finance | 02_features/finance/operating_ledger.md | P3E |
-| M20 | Workflow Studio | automation | 02_features/automation/workflow_studio.md | P3E |
-| M21 | Recipe / Agent Center | automation | 02_features/automation/recipe_agent_center.md | P3E |
-| M22 | Capability Matrix | platform | 02_features/platform/capability_matrix.md | P3E |
-| M23 | Reporting / Admin / Billing | platform | 02_features/platform/reporting_admin_billing.md | P3E |
-| auth | Auth & Session (cross-cutting) | platform | 02_features/platform/auth.md | P3E |
+| M01 | Home / Daily Decision Engine | platform | 02_features/platform/home_decision_engine.md | P0–P8 |
+| M02 | Trend Fusion Radar | intelligence | 02_features/intelligence/trend_radar.md | P2 |
+| M03 | Research & Competitor Intelligence | intelligence | 02_features/intelligence/competitor_intelligence.md | P2 |
+| M04 | Opportunity Board | intelligence | 02_features/intelligence/opportunity_board.md | P2–P6 |
+| M05 | Idea Engine | content | 02_features/content/idea_engine.md | P3 |
+| M06 | Script Lab | content | 02_features/content/script_lab.md | P3 |
+| M07 | AI Video Studio | production | 02_features/production/ai_video_studio.md | P4 |
+| M08 | Continuity OS | content | 02_features/content/continuity_os.md | P3–P4 |
+| M09 | Asset Derivative Manager | production | 02_features/production/asset_derivatives.md | P4–P6 |
+| M10 | Packaging QA | production | 02_features/production/packaging_qa.md | P4–P5 |
+| M11 | Publish Hub | publish | 02_features/publish/publish_hub.md | P5 |
+| M12 | Unified Inbox & Engagement | engagement | 02_features/engagement/unified_inbox.md | P5–P6 |
+| M13 | Product Hub / Inventory | commerce | 02_features/commerce/product_hub.md | P1–P6 |
+| M14 | Monetization OS | commerce | 02_features/commerce/monetization_os.md | P6 |
+| M15 | Creator Store / Offers | commerce | 02_features/commerce/creator_store.md | P6 |
+| M16 | Affiliate Network | commerce | 02_features/commerce/affiliate_network.md | P6 |
+| M17 | Live Commerce War Room | commerce | 02_features/commerce/live_war_room.md | P6 |
+| M18 | Seeding / Sample CRM | commerce | 02_features/commerce/seeding_crm.md | P6 |
+| M19 | Operating Ledger / Profit | finance | 02_features/finance/operating_ledger.md | P1–P8 |
+| M20 | Workflow Studio | automation | 02_features/automation/workflow_studio.md | P7 |
+| M21 | Recipe / Agent Center | automation | 02_features/automation/recipe_agent_center.md | P7 |
+| M22 | Capability Matrix | platform | 02_features/platform/capability_matrix.md | P0–P8 |
+| M23 | Reporting / Admin / Billing | platform | 02_features/platform/reporting_admin_billing.md | P0–P8 |
+| auth | Auth & Session (cross-cutting) | platform | 02_features/platform/auth.md | P0 |
 | — | **Supplementary Specs** | — | — | — |
-| copilot | Copilot (AI Operations Assistant) | platform | 02_features/platform/copilot.md | P3E |
-| referral | Referral & Growth Engine | platform | 02_features/platform/referral_growth.md | P3E |
-| help | Help Center, Changelog & Beta | platform | 02_features/platform/help_center.md | P3E |
-| gamification | Creator Gamification System | platform | 02_features/platform/gamification.md | P3E |
-| S16 | Creator Pro Tools | commerce | 02_features/commerce/creator_pro_tools.md | P3E |
-| S24 | Public API & Webhooks | platform | 02_features/platform/public_api.md | P3E |
-| S26 | Internal Admin Panel | platform | 02_features/platform/internal_admin.md | P3E |
+| copilot | Copilot (AI Operations Assistant) | platform | 02_features/platform/copilot.md | P3–P8 |
+| referral | Referral & Growth Engine | platform | 02_features/platform/referral_growth.md | P8 |
+| help | Help Center, Changelog & Beta | platform | 02_features/platform/help_center.md | P0–P8 |
+| gamification | Creator Gamification System | platform | 02_features/platform/gamification.md | P4–P8 |
+| S16 | Creator Pro Tools | commerce | 02_features/commerce/creator_pro_tools.md | P6 |
+| S24 | Public API & Webhooks | platform | 02_features/platform/public_api.md | P0–P7 |
+| S26 | Internal Admin Panel | platform | 02_features/platform/internal_admin.md | P0–P8 |
+
+> Phase ranges are projections of [IMPLEMENTATION_ORDER.md](IMPLEMENTATION_ORDER.md); that file owns dependencies and completion gates.
 
 ## 3. Cross-Domain Dependency Graph
 
@@ -67,7 +69,7 @@ M09 (Derivatives) ← receives output from:
   └── M17 (Live)         — live highlights → clips
 
 M11 (Publish) → M19 (Profit):
-  └── publish logs = revenue evidence
+  └── publish logs prove distribution; attributed orders/settlements prove revenue
 
 M12 (Inbox) → conversions to:
   ├── M05 (Ideas)        — comment → idea

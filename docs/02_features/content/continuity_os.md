@@ -3,8 +3,8 @@ layer: features
 module: M08
 canonical: true
 domain: content
-status: READY
-last_updated: 2026-03-30
+status: SPECIFIED
+last_updated: 2026-10-29
 ---
 
 # Feature: Continuity OS (M08)

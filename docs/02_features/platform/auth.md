@@ -3,8 +3,8 @@ layer: features
 module: auth
 canonical: true
 domain: platform
-status: READY
-last_updated: 2026-03-30
+status: SPECIFIED
+last_updated: 2026-10-29
 cross_cutting: true
 ---
 
@@ -24,9 +24,9 @@ Auth exists as the **cross-cutting identity layer** — managing user registrati
 - MFA: TOTP authenticator app (optional for users, mandatory for internal admins)
 - Session management: JWT tokens via Clerk, session refresh, logout
 - Workspace selection: post-login workspace picker (users can belong to multiple workspaces)
-- Password reset: forgot password → email link → reset (link valid 1h)
+- Password reset: Clerk-supported email-code/link flow; provider-reported expiry and single-use verification
 - Invite acceptance: workspace invite → accept → join workspace with assigned role
-- Token lifecycle: access token (1h), refresh token (30d), token rotation
+- Token lifecycle: short-lived Clerk session JWT refreshed by its SDK; provider session lifetime is configured separately
 - Account linking: link multiple OAuth providers to same account
 - Security events: new device detection, suspicious login alerts
 
@@ -49,13 +49,13 @@ Auth exists as the **cross-cutting identity layer** — managing user registrati
 ## Business Rules
 
 1. **RULE-AUTH-001**: Registration requires: email verification (magic link or OTP) before workspace access. Social OAuth (Google, Facebook, Apple) auto-verifies email. After verification: onboarding flow (operator mode selection, first workspace creation) (PRD §22, §29).
-2. **RULE-AUTH-002**: Session tokens: access token (JWT, 1h TTL) + refresh token (30d TTL). Access token contains: user_id, current_workspace_id, workspace_role. Token refresh happens transparently — user doesn't see re-auth unless refresh token expires (Pack 02 §14).
-3. **RULE-AUTH-003**: Workspace selection after login: if user belongs to 1 workspace → auto-select. If multiple workspaces → workspace picker screen. Switching workspaces does NOT require re-authentication — new access token issued with different workspace_id claim. Current workspace persisted in session (PRD §22).
-4. **RULE-AUTH-004**: Password reset: user requests reset → reset link sent to email → link valid for 1 hour → single-use. After reset: all existing sessions invalidated → user logs in fresh. Failed reset attempts (>5 in 1h) → temporary account lock (30 min) (Pack 02 §14).
+2. **RULE-AUTH-002**: Clerk issues short-lived session JWTs (currently about 60 seconds) and the supported SDK refreshes them. Creativanta does not mint a separate user refresh token. Validate issuer/audience/expiry/signature/authorized parties with JWKS rotation; map sub to users.clerk_id. Resolve current workspace membership/role from local canonical DB on every authorized request; do not trust client-supplied role or stale JWT role claims. Session lifetime/inactivity settings are provider configuration, separate from JWT TTL. Official reference: https://clerk.com/docs/guides/how-clerk-works/overview (checked 2026-10-29).
+3. **RULE-AUTH-003**: Workspace selection after login: if user belongs to 1 workspace → auto-select. If multiple workspaces → workspace picker screen. Switching workspaces does NOT require re-authentication — the selected workspace changes in application context; its active membership is checked before any data access. Current workspace persisted in session (PRD §22).
+4. **RULE-AUTH-004**: Password reset uses the supported Clerk recovery flow with provider-reported expiry and single-use verification; UI must display expiry/re-request states rather than assume a one-hour custom token. After reset: all existing sessions invalidated → user logs in fresh. Failed reset attempts (>5 in 1h) → temporary account lock (30 min) (Pack 02 §14).
 5. **RULE-AUTH-005**: Invite acceptance: existing user → click invite link → accept → join workspace with assigned role. New user → click invite link → registration form → verify email → join workspace. Invite links expire after 7 days. Expired invites can be re-sent by workspace Admin+ (PRD §22).
 6. **RULE-AUTH-006**: MFA: optional for regular users (encouraged for Owner/Admin roles). MFA methods: TOTP authenticator app (Google Authenticator, Authy). SMS-based MFA NOT supported (security concern). MFA toggle in account settings. Once enabled: required on every login from new device (Pack 02 §14).
 7. **RULE-AUTH-007**: Security events: login from new device/IP → email notification to user. Brute force protection: >10 failed login attempts in 5 min → temporary block (30 min). Account compromise suspected: force password reset + invalidate all sessions. All security events logged for audit (Pack 02 §14, S26 §12.3).
-8. **RULE-AUTH-008**: Clerk webhook integration: Clerk emits events on user/org lifecycle changes → `POST /webhooks/clerk` → system processes: user.created, user.updated, user.deleted, session.created, session.ended, organization.membership_created, organization.invitation_accepted. These events maintain Creativanta's user record in sync with Clerk (API map §3, webhook endpoints).
+8. **RULE-AUTH-008**: Clerk webhook integration: Clerk emits events on user/org lifecycle changes → `POST /webhooks/clerk` → system processes: user.created, user.updated, user.deleted, session.created, session.ended, organizationMembership.created, organizationInvitation.accepted. These events maintain Creativanta's user record in sync with Clerk (API map §3, webhook endpoints).
 
 ## Main Flow
 
@@ -64,9 +64,9 @@ Auth exists as the **cross-cutting identity layer** — managing user registrati
 2. Chooses method: email/password OR social OAuth (Google/Facebook/Apple)
 3. Email method: fill form → receive verification email → click link → verified
 4. Social OAuth: redirect to provider → authorize → auto-verified
-5. `user.created` webhook from Clerk → system creates user record
+5. After verified Clerk sign-in, synchronously idempotent-upsert the user from verified provider identity; user.created webhook is reconciliation and must not block onboarding
 6. Onboarding: select operator mode (6 options) → create first workspace → guided setup
-7. Session established: access token + refresh token issued
+7. Session established: Clerk SDK establishes and maintains the provider session
 
 ### Login
 1. User visits login page
@@ -75,7 +75,7 @@ Auth exists as the **cross-cutting identity layer** — managing user registrati
 4. If MFA enabled: enter TOTP code → validate
 5. Social OAuth: redirect → authorize → return with identity
 6. Workspace selection: auto (1 workspace) or picker (multiple)
-7. Session established: access token (1h) + refresh token (30d)
+7. Session established: Clerk session and short-lived JWT
 8. `session.created` webhook → system updates last_active
 
 ### Logout
@@ -86,7 +86,7 @@ Auth exists as the **cross-cutting identity layer** — managing user registrati
 
 ### Password Reset
 1. User clicks "Forgot password" on login page
-2. Enter email → system sends reset link (valid 1h, single-use)
+2. Enter email → Clerk recovery code/link, single-use and provider-reported expiry
 3. User clicks link → enters new password → confirmed
 4. All existing sessions invalidated → user logs in fresh
 5. Security email: "Your password was changed. If this wasn't you, contact support."
@@ -96,7 +96,7 @@ Auth exists as the **cross-cutting identity layer** — managing user registrati
 2. Click link → redirect to Creativanta
 3. If existing user: review invitation → accept → join workspace → redirect to workspace
 4. If new user: registration form → verify email → join workspace → onboarding
-5. `organization.membership_created` webhook → system assigns role
+5. `organizationMembership.created` webhook → system assigns role
 
 ## Edge Cases
 
@@ -107,12 +107,12 @@ Auth exists as the **cross-cutting identity layer** — managing user registrati
 
 ### EC-AUTH-002: Session Expired During Active Work
 - Condition: Access token expires while user is actively editing (e.g., workflow builder)
-- Expected behavior: Refresh token automatically issues new access token (transparent to user). If refresh token also expired: modal "Your session expired. Please log in again." with session restore after re-auth (navigate back to same page). Unsaved work preserved via local storage draft.
+- Expected behavior: Clerk SDK refreshes the short-lived session token transparently. If the provider session has ended: modal "Your session expired. Please log in again." with session restore after re-auth (navigate back to same page). Unsaved work preserved via local storage draft.
 - Reference: RULE-AUTH-002
 
 ### EC-AUTH-003: User Removed from Workspace While Active
 - Condition: Admin removes user from workspace while user has active session
-- Expected behavior: `organization.membership_deleted` webhook fires → next API call with old workspace_id returns 403 → client redirects to workspace picker. If only workspace: redirect to "You've been removed from [Workspace]. [Create new workspace] [Contact admin]." Session remains valid for other workspaces.
+- Expected behavior: `organizationMembership.deleted` webhook fires → next API call with old workspace_id returns 403 → client redirects to workspace picker. If only workspace: redirect to "You've been removed from [Workspace]. [Create new workspace] [Contact admin]." Session remains valid for other workspaces.
 - Reference: RULE-AUTH-003
 
 ### EC-AUTH-004: Invite Link Used After Expiration
@@ -140,8 +140,8 @@ Auth exists as the **cross-cutting identity layer** — managing user registrati
 
 | State | Description |
 |---|---|
-| active | Valid access + refresh tokens |
-| expired | Access token expired, refresh available |
+| active | Valid Clerk session maintained by SDK |
+| expired | Session JWT expired; SDK attempts refresh against live provider session |
 | invalidated | Explicitly logged out or force-terminated |
 
 ## Related Contracts
@@ -171,16 +171,26 @@ Auth exists as the **cross-cutting identity layer** — managing user registrati
 
 ## Acceptance Criteria
 
-1. **Given** a new user registers with email, **when** the verification link is clicked, **then** the user's account MUST transition to `active`, the `user.created` webhook MUST fire, and the onboarding flow (mode selection + workspace creation) MUST begin.
+1. **Given** a new user registers with email, **when** the verification link is clicked, **then** the user's account MUST transition to `active`, the verified user MUST be synchronously upserted and onboarding MUST begin even if user.created webhook delivery is delayed.
 
-2. **Given** a user belongs to 3 workspaces, **when** they log in, **then** the workspace picker MUST appear showing all 3 workspaces — switching between them MUST NOT require re-authentication, only a new access token with the selected workspace_id.
+2. **Given** a user belongs to 3 workspaces, **when** they log in, **then** the workspace picker MUST appear showing all 3 workspaces — switching between them MUST NOT require re-authentication, only a validated application workspace context; no new Creativanta refresh token.
 
-3. **Given** a user requests a password reset, **when** the reset link is clicked within 1 hour, **then** the password MUST update, ALL existing sessions MUST be invalidated, and a security notification email MUST be sent. If the link is clicked after 1 hour, it MUST show "Link expired" with a re-request option.
+3. **Given** a user requests a password reset, **when** the provider recovery challenge is verified before its reported expiry, **then** the password MUST update, ALL existing sessions MUST be invalidated, and a security notification email MUST be sent. If the recovery challenge has expired, it MUST show "Recovery expired" with a re-request option.
 
-4. **Given** an access token expires during active use, **when** the refresh token is still valid, **then** token refresh MUST happen transparently — the user MUST NOT see a login screen or lose their current context.
+4. **Given** an access token expires during active use, **when** the Clerk provider session is still active, **then** token refresh MUST happen transparently — the user MUST NOT see a login screen or lose their current context.
 
 5. **Given** a workspace invite is sent to a new user, **when** the user clicks the invite link, **then** they MUST be guided through registration → email verification → workspace join with the pre-assigned role — the invite link MUST expire after 7 days.
 
 ## Open Questions / Blockers
 
 - [NONE] — Auth uses Clerk as managed service. Webhook integration defined in API map §3.
+
+## Provider event and membership reconciliation contract (2026-10-29)
+
+Verify raw request body and Svix id/timestamp/signature before persisting webhook_events; deduplicate delivery ID and reject replay outside the verifier window. Subscribe to user.*, session.*, organizationMembership.created/updated/deleted and organizationInvitation.accepted only when present in the pinned Clerk event catalog. Store organization identity in workspaces.clerk_organization_id; map membership to the existing workspace/user. Never auto-create an arbitrary workspace from a webhook's unrecognized organization ID.
+
+Workspace discovery reads the authenticated user's active workspace_members and SELECT discovery policy, even before tenant selection. Invite creation/list/cancel use the Clerk organization API under verified workspace:members permissions; Clerk owns pending invitation records. The application enforces a seven-day maximum invitation age or the provider's shorter expiry. On verified acceptance, synchronize membership before redirect; delayed webhooks reconcile without creating duplicates.
+
+Local role changes/removal are committed synchronously and invalidate permission/session projections immediately; the next request must query active membership and deny revoked access. External webhooks may be duplicated/out of order: compare source_updated_at, fetch authoritative provider state for ambiguous deletion/update order, and never resurrect a removed member from an older event. Login/onboarding cannot wait on webhook delivery. Return the verified local user/workspace context, never a made-up refresh token.
+
+Required fixtures: onboarding with delayed webhook; three workspaces including non-owner membership; token refresh during edit; JWKS rotation; removed member's unexpired JWT; reordered membership update/delete; duplicate invitation acceptance; reset revokes all sessions.

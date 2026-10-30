@@ -3,9 +3,9 @@ layer: features
 module: help
 canonical: true
 domain: platform
-status: READY
+status: SPECIFIED
 created: 2026-04-02
-last_updated: 2026-04-06
+last_updated: 2026-10-29
 upstream: S19 §4, §8, §9
 ---
 

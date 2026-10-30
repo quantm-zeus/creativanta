@@ -1,281 +1,78 @@
 ---
 layer: contracts
 canonical: true
-source_file: impl_b4_connector_specs.md
-last_verified: 2026-03-30
-known_issues:
-  - none
-do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
+last_verified: 2026-10-29
 ---
 
-## Quick Navigation
+# Platform Connector Specifications
 
-| Section | Content |
-|---|---|
-| §1 Connector Lifecycle | State machine: Disconnected → Connecting → Connected → Syncing → Healthy |
-| §2 TikTok (Shop + Creator) | OAuth PKCE, 600 req/min, native: publish/comments/orders/analytics, manual: DM |
-| §3 Shopee | OAuth 2.0, 10 req/s, native: catalog/orders/returns/chat/settlements, unsupported: publish |
-| §4 Lazada | OAuth 2.0, 50 req/s, native: catalog/orders/returns/finance, degraded: chat, unsupported: publish |
-| §5 YouTube | Google OAuth 2.0, quota-based, native: upload/analytics/comments/live/shorts/revenue |
-| §6 Instagram (Graph API) | Meta OAuth 2.0, 200 calls/h, native: publish/insights/comments, degraded: stories/DM |
-| §7 Facebook (Pages API) | OAuth 2.0, 200 calls/h, native: publish/insights/comments/messenger, manual: ads |
-| §8 Connector Adapter Pattern | Rust `PlatformConnector` trait: auth, capability, content, engagement, commerce, health |
-| §9 Capability State Matrix | Cross-platform feature comparison table |
-| §10 Implementation Note | Per-platform API details in code-level docs |
+## 1. Capability is an account/action decision
 
-# B4 — Platform Connector Specifications
+All six platforms remain full product scope. This document specifies candidate integration paths and safe execution defaults; it does not claim Creativanta has received partner approval. An API's existence does not establish access for this app, account, country or commercial use.
 
-> **Upstream**: Pack 05 (Connector/Publish), Product Freeze v3.1
-> **v1 Connectors**: TikTok, Shopee, Lazada, YouTube, Instagram, Facebook
+Runtime values remain the schema enum: native, read_only, manual, degraded, unsupported. Start every unverified action as manual when an authorized import/export/handoff exists, otherwise unsupported. Promote only the specific account/action after its access record and live/sandbox probe pass. A read probe cannot authorize writes. Preserve capability snapshots at scheduling and execution and recheck immediately before external effects.
 
----
+## 2. Per-platform access and fallback registry
 
-## 1. Connector Lifecycle
+| Platform/action | Candidate API product | Access evidence required | Until verified |
+|---|---|---|---|
+| TikTok own profile/video metrics | Display API / approved business product | Approved app product, exact scopes granted by target creator, endpoint probe and allowed fields | User-authorized import |
+| TikTok direct video/photo publish | Content Posting API | Approved video.publish; latest creator_info; audited public-post eligibility or explicitly private test restriction; account posting/duration/privacy options | Export/manual upload with proof |
+| TikTok comments/replies | Separately approved commercial/business product | Exact comment read/reply endpoint and commercial entitlement; Login Kit does not grant this capability | Native-app handoff + manual thread/evidence |
+| TikTok Shop catalog/orders/refunds/settlements | TikTok Shop partner/open platform for target market | Separate Shop app approval, seller grant, account/shop identity, exact product/order/finance permissions and signature protocol | Seller-authorized CSV/report import |
+| TikTok live control/metrics | Approved Shop/business product if available | Separate metrics/control/pinning entitlement and source freshness; never infer start/stop support | Manual live plan/cue/pin with labeled imported metrics |
+| Shopee catalog/orders/inventory/returns/finance | Shopee Open Platform | Partner application and shop authorization; actual API group permissions; signed-request/refresh implementation and market eligibility | Seller export/CSV; manual stock/return entries |
+| Shopee chat/promotions | Approved chat/marketing APIs | Distinct entitlement, messaging-window/opt-in/rate limits and tested write endpoint | Handoff and manual records |
+| Lazada catalog/orders/logistics/finance | Lazada Open Platform | Partner registration, seller authorization, exact API permissions and request signing | Seller-authorized import/manual workflow |
+| Lazada chat | Approved messaging API if available | Exact endpoint/product approval and conversation policy | Native-app handoff |
+| YouTube upload/playlists/comments | YouTube Data API | Enabled project, user grant, required endpoint scopes, quota budget and public-upload/audit eligibility | Export/manual upload and authorized data import |
+| YouTube analytics/revenue | YouTube Analytics/Reporting API | Channel/content-owner role, analytics scope; monetary revenue scope and YPP entitlement separately verified | Authorized reports, revenue labeled imported |
+| YouTube live | Live Streaming/Data API | Channel live eligibility and API operation support; polling or documented stream events | Manual session control and imported metrics |
+| Instagram publish/insights/comments/DM | Current Instagram API with selected login product | Eligible professional account, correct login-product scopes, app review/advanced access; messaging permissions/window separately verified | Export/import and native inbox handoff |
+| Instagram stories/shopping/live | Relevant current Meta product | Exact eligible account/action/region support; no inference from photo/reel publishing | Manual or unsupported, with reason |
+| Facebook Pages publish/reels/comments/insights | Pages/Graph API | Page grant/tasks, app review, correct version/permissions, token and endpoint probe | Export/import/manual |
+| Facebook Messenger/shop/live/ads | Relevant Messenger/Commerce/Live/Marketing API | Separate product permission and messaging/commerce/live policy; ads remain separately configured | Native console handoff/import |
 
-```
-Disconnected → Connecting → Connected → Syncing → Healthy
-                    ↓                       ↓
-                Auth Failed            Degraded / Error
-                    ↓                       ↓
-                Disconnected           Repair Wizard
-```
+No general content-publish API is assumed for Shopee/Lazada. Community posts, DM, live control and competitor data are not enabled merely because another endpoint succeeds. Wildcard scopes such as shop.* and undocumented scope names are prohibited in executable configuration.
 
----
+## 3. Source restrictions
 
-## 2. TikTok (Shop + Creator)
+Trend/competitor analysis may use authorized account data, licensed commercial datasets, user imports/manual observations, or an explicitly permitted public endpoint. A connected creator account does not grant arbitrary competitor data. Do not use TikTok Research API as a commercial data-source fallback: its eligibility excludes commercial users. No scraping/anti-bot bypass is an implementation dependency.
 
-| Property | Value |
-|---|---|
-| **OAuth** | TikTok Login Kit (OAuth 2.0 PKCE) |
-| **Scopes** | user.info.basic, video.list, video.publish, comment.list, shop.* |
-| **Rate Limits** | 600 req/min (content), 1000 req/min (shop) |
-| **Capabilities** | |
+TikTok direct posting requires current creator info, user control of privacy/interactions/disclosure, content preview and explicit consent. Unaudited clients are limited to private/test posting under TikTok's rules. Do not add promotional watermarks to TikTok delivery; a plan watermark rule cannot override provider policy. A publish log proves distribution, not attributable sales or profit.
 
-| Feature | Capability |
-|---|---|
-| Publish video | **Native** |
-| Read comments | **Native** |
-| Reply comments | **Native** |
-| Read orders (Shop) | **Native** |
-| Read analytics | **Native** |
-| DM read/reply | **Manual** (API unavailable) |
-| Live management | **Read-only** (no start/stop API) |
-| Product catalog | **Native** (TikTok Shop) |
+## 4. Access record and health computation
 
-| Data Sync | Frequency | Method |
-|---|---|---|
-| Videos + metrics | Every 30m | REST API polling |
-| Comments | Every 5m | REST API polling |
-| Orders (Shop) | Every 15m | REST API + webhooks |
-| Settlements (Shop) | Daily 2AM | REST API batch |
-| Analytics | Every 1h | REST API |
+The canonical JSON shape for per-action access evidence is in database_schema.md §25.6. For each action record exact platform API product/version, documented endpoint and method, required/granted scopes, app approval status, account/market restrictions, docs/evidence references, checked_at, valid_until and last probe outcome. Evidence contains no tokens. Documentation review is not granted entitlement.
 
----
+An action is native only if product approval, required scope subset, account/region eligibility, supported endpoint, healthy token/probe and policy constraints all pass. Verified read without write is read_only. Temporary outage on a verified route is degraded. Missing access with authorized handoff is manual; no lawful path is unsupported. Expired evidence cannot silently retain native; require refresh/probe and show the reason. Config verification expires within seven days; tokens/limits/health are checked at execution regardless.
 
-## 3. Shopee
+## 5. Authorization and synchronization
 
-| Property | Value |
-|---|---|
-| **OAuth** | Shopee Partner API (OAuth 2.0) |
-| **Scopes** | shop, order, product, returns, finance, chat |
-| **Rate Limits** | 10 req/s per shop |
-| **Capabilities** | |
+Use each provider's documented authorization/signing scheme. Browser/mobile OAuth uses PKCE where supported; partner-key HMAC flows must not be replaced by invented generic OAuth. Verify state/redirect, workspace, one-time nonce, token storage and least-privilege grants. API adapters bind account identity from verified provider results, not client IDs.
 
-| Feature | Capability |
-|---|---|
-| Product catalog | **Native** |
-| Order lifecycle | **Native** |
-| Returns/refunds | **Native** |
-| Chat messages | **Native** |
-| Settlement reports | **Native** |
-| Promotions/vouchers | **Native** |
-| Publish content | **Unsupported** (no content API) |
-| Analytics | **Native** |
+Baseline sync targets (not guaranteed freshness): comments 5min; orders 15min plus verified webhooks; products/metrics 1h; settlements daily. Provider quota and scale determine actual schedules. Persist per-account cursor/watermark, overlap windows for late updates and idempotent source identities. A webhook's provider-specific event name/signature must be verified against the pinned API version before deployment; normalized internal events use domain_event_catalog.md. Do not trust a guessed header or provider event alias.
 
-| Data Sync | Frequency | Method |
-|---|---|---|
-| Orders | Every 10m + webhooks | REST API + Push |
-| Products | Every 1h | REST API |
-| Chat | Every 2m | WebSocket |
-| Settlements | Daily 2AM | REST API batch |
-| Returns | Every 15m + webhooks | REST API + Push |
+Budget limits per app, account and endpoint from verified configuration and response headers; use Retry-After/backoff/jitter and fair scheduling. Numeric rate-limit examples in old docs are not contractual provider limits. Never log tokens; revoke/delete credentials and stop workers on disconnect.
 
----
+## 6. Adapter behavior
 
-## 4. Lazada
+Adapters expose authorization, token refresh, capability assessment, publish/status, comments/reply, products/orders/settlements and health as separately supported operations. Unsupported operations return a typed capability/precondition error with fallback; **never return an empty success list** to mean unsupported. Every submitted operation persists external_effects identity and unknown-result recovery per [queue design](../05_system/queue_retry_design.md). Tenant scope, RBAC and consent are rechecked by domain owners before adapter calls.
 
-| Property | Value |
-|---|---|
-| **OAuth** | Lazada Open Platform (OAuth 2.0) |
-| **Scopes** | product, order, finance, logistics |
-| **Rate Limits** | 50 req/s per app, 5000/min |
-| **Capabilities** | |
+## 7. Acceptance and external gates
 
-| Feature | Capability |
-|---|---|
-| Product catalog | **Native** |
-| Order lifecycle | **Native** |
-| Returns/refunds | **Native** |
-| Finance/settlements | **Native** |
-| Chat | **Degraded** (limited API) |
-| Content publish | **Unsupported** |
-| Analytics | **Native** (Seller Center) |
+Each action must pass: authorized account success; missing permission; wrong account/market; expired/revoked token; quota exhaustion; duplicate webhook; out-of-order update; unknown write result; disconnect during sync; stale evidence; manual proof/import path. Capture actual endpoint/API version/permission/probe evidence in the slice packet. A fake adapter passes development fixtures only, never the external-access gate. Partner approval is an explicit external gate, not a reason to remove its product workflow.
 
-| Data Sync | Frequency | Method |
-|---|---|---|
-| Orders | Every 15m + webhooks | REST API |
-| Products | Every 1h | REST API |
-| Settlements | Daily 2AM | REST API batch |
-| Returns | Every 15m | REST API |
+## 8. Official references checked 2026-10-29
 
----
+- [TikTok content-sharing requirements](https://developers.tiktok.com/docs/en/content-sharing-guidelines)
+- [TikTok Research eligibility](https://developers.tiktok.com/docs/en/research-api-faq)
+- [TikTok developer products](https://developers.tiktok.com/products/)
+- [Shopee Open Platform](https://open.shopee.com/)
+- [Lazada Open Platform](https://open.lazada.com/)
+- [YouTube Data API](https://developers.google.com/youtube/v3)
+- [YouTube Analytics authorization](https://developers.google.com/youtube/analytics/guides/authorization)
+- [Instagram Platform](https://developers.facebook.com/docs/instagram-platform/)
+- [Facebook Pages API](https://developers.facebook.com/docs/pages-api/)
 
-## 5. YouTube (Data API + Content Owner)
-
-| Property | Value |
-|---|---|
-| **OAuth** | Google OAuth 2.0 |
-| **Scopes** | youtube.readonly, youtube.upload, youtube.force-ssl, yt-analytics.readonly |
-| **Rate Limits** | 10,000 units/day (quota-based) |
-| **Capabilities** | |
-
-| Feature | Capability |
-|---|---|
-| Upload video | **Native** (resumable upload) |
-| Read analytics | **Native** |
-| Read comments | **Native** |
-| Reply comments | **Native** |
-| Manage playlists | **Native** |
-| Live stream | **Native** (via Live Streaming API) |
-| Community posts | **Degraded** (limited API support) |
-| Shorts upload | **Native** |
-| Revenue data | **Native** (YouTube Partner Program) |
-
-| Data Sync | Frequency | Method |
-|---|---|---|
-| Videos + metrics | Every 1h | REST API |
-| Comments | Every 10m | REST API |
-| Analytics | Every 6h | YouTube Analytics API |
-| Revenue | Daily 2AM | YouTube Analytics API |
-| Live streams | Real-time | WebSocket |
-
----
-
-## 6. Instagram (Graph API)
-
-| Property | Value |
-|---|---|
-| **OAuth** | Facebook/Meta OAuth 2.0 (Instagram Graph API) |
-| **Scopes** | instagram_basic, instagram_content_publish, instagram_manage_comments, instagram_manage_insights |
-| **Rate Limits** | 200 calls/user/hour |
-| **Capabilities** | |
-
-| Feature | Capability |
-|---|---|
-| Publish photo/reel | **Native** (Container-based) |
-| Read insights | **Native** |
-| Read comments | **Native** |
-| Reply comments | **Native** |
-| Stories | **Degraded** (limited publish API) |
-| DM management | **Read-only** (limited) |
-| Shopping tags | **Native** (Commerce eligible) |
-| Live | **Unsupported** (no API) |
-
-| Data Sync | Frequency | Method |
-|---|---|---|
-| Posts + metrics | Every 1h | REST API |
-| Comments | Every 5m | Webhooks + REST |
-| Insights | Every 6h | REST API |
-| Stories metrics | Every 1h | REST API |
-
----
-
-## 7. Facebook (Pages API)
-
-| Property | Value |
-|---|---|
-| **OAuth** | Facebook OAuth 2.0 (Pages API) |
-| **Scopes** | pages_read_engagement, pages_manage_posts, pages_messaging, pages_read_user_content |
-| **Rate Limits** | 200 calls/user/hour, 4800/app/user |
-| **Capabilities** | |
-
-| Feature | Capability |
-|---|---|
-| Publish post (text/photo/video) | **Native** |
-| Read page insights | **Native** |
-| Read comments | **Native** |
-| Reply comments | **Native** |
-| Messenger management | **Native** |
-| Shop/Commerce | **Native** (Commerce Manager) |
-| Reels | **Native** |
-| Live streaming | **Degraded** (limited control) |
-| Ads integration | **Manual** (separate Ads API) |
-
-| Data Sync | Frequency | Method |
-|---|---|---|
-| Posts + metrics | Every 1h | REST API |
-| Comments | Webhooks (real-time) | Webhooks |
-| Page insights | Every 6h | REST API |
-| Messenger | Webhooks (real-time) | Webhooks |
-
----
-
-## 8. Connector Adapter Pattern (Rust)
-
-```rust
-#[async_trait]
-pub trait PlatformConnector: Send + Sync {
-    fn platform(&self) -> &str;
-    
-    // Auth
-    async fn get_auth_url(&self, redirect_uri: &str) -> Result<String>;
-    async fn exchange_token(&self, code: &str) -> Result<OAuthTokens>;
-    async fn refresh_token(&self, refresh_token: &str) -> Result<OAuthTokens>;
-    
-    // Capability
-    async fn check_capabilities(&self) -> Result<CapabilityReport>;
-    
-    // Content
-    async fn publish_content(&self, req: PublishRequest) -> Result<PublishResult>;
-    async fn get_post_metrics(&self, post_id: &str) -> Result<PostMetrics>;
-    
-    // Engagement
-    async fn get_comments(&self, post_id: &str, cursor: Option<&str>) -> Result<CommentPage>;
-    async fn reply_comment(&self, comment_id: &str, text: &str) -> Result<ReplyResult>;
-    
-    // Commerce (optional)
-    async fn get_orders(&self, since: DateTime<Utc>) -> Result<Vec<OrderImport>> {
-        Ok(vec![]) // Default: not supported
-    }
-    async fn get_settlements(&self, period: DateRange) -> Result<Vec<SettlementImport>> {
-        Ok(vec![])
-    }
-    
-    // Health
-    async fn health_check(&self) -> Result<ConnectorHealth>;
-}
-```
-
----
-
-## 9. Capability State Matrix (Summary)
-
-| Action | TikTok | Shopee | Lazada | YouTube | Instagram | Facebook |
-|---|---|---|---|---|---|---|
-| Publish content | ✅ Native | ❌ | ❌ | ✅ Native | ✅ Native | ✅ Native |
-| Read comments | ✅ | ✅ Chat | ✅ Chat | ✅ | ✅ | ✅ |
-| Reply comments | ✅ | ✅ Chat | ⚠️ Degraded | ✅ | ✅ | ✅ |
-| Read orders | ✅ Shop | ✅ | ✅ | — | ⚠️ Shopping | ⚠️ Commerce |
-| Settlements | ✅ Shop | ✅ | ✅ | ✅ Partner | — | — |
-| Analytics | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| DM/Chat | 🔧 Manual | ✅ | ⚠️ | — | ⚠️ Read-only | ✅ |
-| Live | ⚠️ Read-only | — | — | ✅ | ❌ | ⚠️ |
-| Product catalog | ✅ Shop | ✅ | ✅ | — | ⚠️ Shopping | ⚠️ Commerce |
-
-This matrix feeds directly into `capability_snapshots` table and M22 Policy Center.
-
----
-
-## 10. Implementation Note (Audit v6 — L7)
-
-> This spec provides the connector structure, capability states, sync frequencies, and Rust trait interface. **Detailed per-platform API endpoint mappings, rate limit backoff algorithms, error code mapping, and OAuth flow specifics** will be maintained in code-level documentation within each connector module: `/api/src/connectors/{platform}/README.md`. Implementers should reference each platform's official API documentation alongside this spec.
+The first two references were rechecked during remediation; the remaining links are official implementation entry points and require action-level verification during their owning phase. This list is not a claim that every provider grants the requested access.

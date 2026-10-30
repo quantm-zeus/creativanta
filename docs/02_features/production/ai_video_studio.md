@@ -3,8 +3,8 @@ layer: features
 module: M07
 canonical: true
 domain: production
-status: READY
-last_updated: 2026-03-30
+status: SPECIFIED
+last_updated: 2026-10-29
 ---
 
 # Feature: AI Video Studio (M07)
@@ -310,4 +310,4 @@ see [04_contracts/database_schema.md#7.4](../../04_contracts/database_schema.md)
 
 ## Open Questions
 
-- Voice clone event namespace: PRD uses `gamification.voice_clone.*` but logical namespace is `production.voice_clone.*` or `continuity.voice_clone.*`. EVT-H-001 (event naming convention) has been resolved with CamelCase→dot.notation mapping tables in `runtime_workflow.md` §3.1B/§3.1C, but the specific namespace assignment for voice clone events still needs confirmation in `domain_event_catalog.md`.
+- **Resolved namespace**: use the existing canonical `gamification.voice_clone.created` and `gamification.voice_clone.ready` names verbatim from domain_event_catalog.md. Their namespace is historical; do not rename by aesthetic preference or emit a second parallel production/continuity event.

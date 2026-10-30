@@ -3,8 +3,8 @@ layer: features
 module: M22
 canonical: true
 domain: platform
-status: READY
-last_updated: 2026-03-30
+status: SPECIFIED
+last_updated: 2026-10-29
 ---
 
 # Feature: Capability Matrix (M22)
@@ -45,7 +45,7 @@ M22 exists as the **platform capability truth layer** — maintaining a real-tim
 ## Business Rules
 
 1. **RULE-M22-001 (CRITICAL)**: **Every unsupported or degraded action MUST open a user-facing explanation.** When an operator encounters an unsupported action, the UI MUST NOT show a generic "unavailable" error. Instead, it MUST show: (a) what action is unavailable, (b) why (platform limitation, API change, degradation), (c) when it was last available (if applicable), (d) fallback path if one exists. Policy notes are the mechanism for this explanation (PRD §23.22 AC, Pack 05 §capability).
-2. **RULE-M22-002**: Capability states: `supported` (fully functional), `degraded` (partially working, may fail), `unsupported` (not available on this platform), `unknown` (status cannot be determined — treated as `degraded` for safety). State transitions emit events: `connector.degraded`, `connector.recovered` (catalog §15D), `capability.state_changed` (catalog §12), `connector.health_score.captured` (catalog §15D).
+2. **RULE-M22-002**: Canonical capability states are native, read_only, manual, degraded and unsupported, exactly as capability_state in the schema. Unknown/stale is a freshness/verification condition, not an extra enum: fail closed to manual/unsupported until verified. Access rules are owned by connector_specs.md. State transitions emit events: `connector.degraded`, `connector.recovered` (catalog §15D), `capability.state_changed` (catalog §12), `connector.health_score.captured` (catalog §15D).
 3. **RULE-M22-003**: Platform health score (0–100) composites: API availability (40%), error rate (25%), latency (20%), rate limit remaining (15%). Score thresholds: ≥80 = healthy, 50–79 = degraded, <50 = critical. Score calculated per connected account, not globally (Pack 05, API map §9).
 4. **RULE-M22-004**: Fallback paths MUST be accessible from action context. When a primary action is unavailable, the system MUST suggest alternatives. Example: "TikTok direct publish unavailable → Manual upload fallback: download video + upload manually. [Download video] [View platform status]" — fallback paths are defined per action and configurable per workspace (PRD §23.22 AC).
 5. **RULE-M22-005**: Capability snapshots are captured periodically (default: 30s polling for health, 5-minute full capability refresh) AND on-demand when modules query before action execution. Stale snapshots (>10 min old) trigger a forced refresh before returning capability status to the consumer (API map §9, Pack 03 §11A.2).
@@ -64,9 +64,9 @@ M22 exists as the **platform capability truth layer** — maintaining a real-tim
    - New capability discovered (API update): capability matrix updated
    - Capability removed (API deprecation): action marked `unsupported` + policy note
 3. **Action context query**: Module checks capability before action
-   - M11: "Can I publish a video to TikTok right now?" → M22 returns supported/degraded/unsupported + policy note
+   - M11: "Can I publish a video to TikTok right now?" → M22 returns the canonical five-state capability + policy note
    - M20: "Can this workflow action execute?" → M22 returns capability status + fallback
-   - If degraded: calling module decides (proceed with warning, wait, fallback)
+   - If degraded: mutating calls wait or use the declared fallback; read-only last-known data can render with freshness warning
    - If unsupported: calling module MUST NOT attempt the action
 4. **Dashboard view**: Operator views capability matrix
    - Grid: platforms × action categories (publish, inbox, commerce, analytics sync)
@@ -111,12 +111,15 @@ M22 exists as the **platform capability truth layer** — maintaining a real-tim
 
 ### Capability State Per Action
 
-| State | Badge | Meaning | Module Behavior |
-|---|---|---|---|
-| supported | 🟢 | Fully functional | Execute normally |
-| degraded | 🟡 | Partially working, may fail | Execute with warning OR use fallback |
-| unsupported | 🔴 | Not available on this platform | MUST NOT execute; show fallback |
-| unknown | ⚪ | Status cannot be determined | Treat as degraded; forced refresh |
+| State | Meaning | Execution |
+|---|---|---|
+| native | Exact action/account access verified | Execute with current policy/consent |
+| read_only | Read is verified, write unavailable | Reads only; writes use fallback |
+| manual | Authorized handoff/import/export exists | User completes native-app step with proof |
+| degraded | Previously verified route currently impaired | Mutations wait/fallback; labeled stale reads only |
+| unsupported | No verified lawful execution path | Do not execute; explain limitation |
+
+Unknown/stale verification is metadata, never a sixth enum or permission to attempt a write. [Connector contract](../../04_contracts/connector_specs.md) owns approval/probe/freshness requirements.
 
 ### Health Score Thresholds
 

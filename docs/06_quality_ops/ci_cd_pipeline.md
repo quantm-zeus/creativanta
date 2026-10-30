@@ -1,221 +1,58 @@
 ---
 layer: quality_ops
 canonical: true
-created: 2026-03-31
-last_updated: 2026-04-09
-status: READY_SPEC
+last_updated: 2026-10-29
+status: SPECIFIED
 ---
 
-# CI/CD Pipeline — Creativanta
+# CI/CD Pipeline — Evidence-Gated Delivery
 
-> **Stack**: GitHub Actions + Docker Compose + Contabo VPS
-> **Ref**: ADR-006 (Self-hosted), `05_system/tech_stack_adr.md`
-> **Status meaning**: This document is the canonical CI/CD specification. Workflow YAML, helper scripts, and optional typed transport generation are derivative implementation artifacts; they are not prerequisites for docs readiness. Inline deployment steps below are the canonical source of truth until repository-native wrappers are generated.
+## 1. Scope and prerequisites
 
----
+This is the canonical implementation pipeline contract. The docs-only checkout runs `python3 tooling/check_docs.py`; it does not have an application to compile or deploy. P0 must create the app/toolchain/transport/migration artifacts below and make their jobs fail if any required input is absent. Missing future-phase code is not a reason to report a passing runtime check.
 
-## 1. Pipeline Stages
+Each job checks out the same commit, installs exact toolchain/dependency versions from committed version files and lockfiles, and uses its own initialized workspace. Never rely on a previous runner's disk or use untrusted PR code/secrets on the production/self-hosted deployment host. PR tests run on isolated hosted/ephemeral runners. Deployment runs only for protected reviewed commits, after required tests succeed.
 
-```
-PR Created → Lint → Test → Contract Sync → Build → Migrate → Deploy (staging/prod)
-```
+## 2. Required stages and commands
 
-### Stage Details
-
-| Stage | Trigger | Runner | Timeout | Blocking? |
-|---|---|---|---|---|
-| **Lint** | Every push & PR | ubuntu-latest | 5 min | ✅ |
-| **Test (Unit)** | Every push & PR | ubuntu-latest | 10 min | ✅ |
-| **Test (Integration)** | PR to `main` | self-hosted (Contabo) | 15 min | ✅ |
-| **Contract Sync** | Every push & PR | ubuntu-latest | 3 min | ✅ |
-| **Build (Docker)** | Merge to `main` | self-hosted | 10 min | ✅ |
-| **Migrate (Postgres + ClickHouse)** | After build | self-hosted | 10 min | ✅ |
-| **Deploy (Staging)** | Auto after migrate | self-hosted | 5 min | ❌ (auto) |
-| **Deploy (Production)** | Manual approval | self-hosted | 5 min | ✅ (manual gate) |
-
----
-
-## 2. GitHub Actions Workflow Structure
-
-```yaml
-# .github/workflows/ci.yml
-name: CI Pipeline
-
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
-
-jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Rust lint
-        run: cargo clippy --all-targets --all-features -- -D warnings
-      - name: Svelte lint
-        run: cd apps/web && pnpm lint
-      - name: Dart analyze
-        run: cd apps/mobile && flutter analyze
-
-  test-unit:
-    runs-on: ubuntu-latest
-    needs: lint
-    services:
-      postgres:
-        image: timescale/timescaledb-ha:pg17  # must match docker_dev_environment.md for TimescaleDB extensions
-        env:
-          POSTGRES_DB: creativanta_test
-          POSTGRES_USER: creativanta
-          POSTGRES_PASSWORD: test_password
-    steps:
-      - name: Rust tests
-        run: cargo test --workspace
-      - name: Web tests
-        run: cd apps/web && pnpm test
-      - name: Flutter tests
-        run: cd apps/mobile && flutter test
-
-  test-integration:
-    if: github.event_name == 'pull_request' && github.base_ref == 'main'
-    runs-on: self-hosted
-    needs: test-unit
-    steps:
-      - name: Docker Compose up
-        run: docker compose -f docker-compose.test.yml up -d
-      - name: Run integration tests
-        run: cargo test --test '*_integration' -- --test-threads=1
-      - name: Playwright E2E
-        run: cd apps/web && pnpm exec playwright test
-
-  contract-sync:
-    runs-on: ubuntu-latest
-    needs: test-unit
-    steps:
-      - uses: actions/checkout@v4
-      - name: Verify canonical contract docs are present
-        run: |
-          test -f docs/04_contracts/api_endpoint_map.md
-          test -f docs/04_contracts/database_schema.md
-          test -f docs/04_contracts/domain_event_catalog.md
-          test -f docs/04_contracts/rbac_permission_matrix.md
-      - name: Optional typed transport generation
-        run: |
-          if find protos -name '*.proto' -print -quit | grep -q .; then
-            echo "Run the repository-standard proto/codegen command during implementation phase."
-          else
-            echo "No committed proto sources yet; contract sync passes in docs-only mode."
-          fi
-
-  build:
-    if: github.ref == 'refs/heads/main'
-    runs-on: self-hosted
-    needs: [test-unit, contract-sync]
-    steps:
-      - name: Build Docker images
-        run: docker compose build
-      - name: Tag with commit SHA
-        run: docker tag creativanta-api:latest creativanta-api:${{ github.sha }}
-
-  migrate:
-    needs: build
-    runs-on: self-hosted
-    steps:
-      - name: Apply Postgres migrations
-        run: sea-orm-cli migrate up
-      - name: Apply ClickHouse analytics schema
-        run: |
-          echo "Apply ClickHouse tables/materialized views derived from docs/05_system/cache_search_strategy.md §3 before application rollout."
-      - name: Verify ClickHouse health
-        run: curl -fsS http://127.0.0.1:8123/ping
-
-  deploy-staging:
-    needs: migrate
-    runs-on: self-hosted
-    environment: staging
-    steps:
-      - name: Deploy to staging
-        run: docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
-      - name: Health check
-        run: |
-          curl -f https://staging.creativanta.app/health
-          curl -f https://staging.creativanta.app/ready
-
-  deploy-production:
-    needs: deploy-staging
-    runs-on: self-hosted
-    environment:
-      name: production
-      url: https://app.creativanta.app
-    steps:
-      - name: Deploy (rolling)
-        run: docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
-      - name: Health check
-        run: |
-          curl -f https://app.creativanta.app/health
-          curl -f https://app.creativanta.app/ready
-      - name: Smoke test (business endpoint)
-        run: |
-          # Verify a real gRPC/ConnectRPC endpoint responds (not just health check)
-          # Uses an unauthenticated or service-account call to a read-only endpoint
-          curl -f -X POST https://app.creativanta.app/creativanta.capability.v1.CapabilityService/GetPublicStatus \
-            -H 'Content-Type: application/json' -d '{}' || echo "Smoke test warning: business endpoint did not respond"
-```
-
----
-
-## 3. Environment Promotion
-
-```
-develop → staging (auto) → production (manual approval + 1 reviewer)
-```
-
-| Environment | URL | Auto-deploy? | Reviewers |
-|---|---|---|---|
-| `staging` | staging.creativanta.app | ✅ (on merge to main) | — |
-| `production` | app.creativanta.app | ❌ (manual gate) | 1+ admin |
-
----
-
-## 4. Deployment Strategy
-
-- **Type**: Rolling update (Docker Compose `--no-deps`)
-- **Rollback**: `docker compose up -d --force-recreate` with previous image tag
-- **Zero-downtime**: Health check must pass before old container stops
-- **Database migrations**: Run BEFORE deployment via `sea-orm-cli migrate up`
-- **ClickHouse DDL**: Apply analytics tables/materialized views BEFORE service rollout. The DDL bundle is derived from `05_system/cache_search_strategy.md` §3 and is part of the migration stage, not an optional post-step.
-- **Migration rollback**: Prepare `down` migration for every `up`
-
-### 4.1 ClickHouse Deployment Order
-
-1. Verify ClickHouse health (`/ping`) on the target environment.
-2. Apply or reconcile the analytics schema and materialized views defined from `05_system/cache_search_strategy.md` §3.
-3. Verify core tables accept writes before deploying API/worker containers.
-4. Roll application containers.
-5. Re-run health checks and a minimal analytics smoke check against a read endpoint/dashboard dependency.
-
----
-
-## 5. Secret Management
-
-| Secret | Storage | Rotation |
+| Stage | Required work | Pass condition |
 |---|---|---|
-| Database passwords | Infisical (runtime) + GitHub Secrets (bootstrap only) | 90 days |
-| Stripe API keys | Infisical (runtime) + GitHub Secrets (bootstrap only) | On compromise |
-| AI provider keys | Infisical (runtime) + GitHub Secrets (bootstrap only) | 90 days |
-| JWT signing key | Clerk-managed or Infisical-managed runtime secret | 30 days |
-| Proto/deploy keys | GitHub Deploy Keys | Annual |
+| Docs | `python3 tooling/check_docs.py` | Zero static contract/link/coverage violations |
+| Toolchain | Validate Node/pnpm/Rust/Flutter/protoc/buf and image digests against committed manifest; frozen lockfile installs | Every version fixed; no unreviewed latest image/model/action |
+| Lint | cargo fmt --check; cargo clippy --workspace --all-targets --all-features -- -D warnings; web/admin check+lint; flutter analyze | Every touched platform passes |
+| Transport | buf lint; buf breaking against base revision; generate current-slice Rust/TS/Dart bindings; git diff --exit-code on generated paths | Compiles all three targets; no drift; packet has typed messages and permission bindings |
+| Unit | cargo test --workspace; pnpm --dir apps/web test; pnpm --dir apps/admin test; flutter test in apps/mobile | Required domain/decimal/state tests pass |
+| Integration | Isolated PostgreSQL 17 with vector/Timescale extensions; apply exact migrations and seed twice; runtime-role RLS/grants/FK checks; outbox/inbox/reservation/provider-replay fixtures | All D2/D3 tests pass, not just superuser fixtures |
+| UI/E2E | Playwright web/admin and mobile integration tests for current slice, five QA paths, a11y/i18n | Actual implemented routes/actions/roles match packet |
+| Build | Build immutable API/web/admin/worker/mobile artifacts and containers, generate SBOM and record digests | Same reviewed commit/digests tested in staging |
+| Staging migration | Snapshot/backup; expand-compatible PostgreSQL migrations; apply versioned ClickHouse DDL if slice uses it | Schema versions and representative reads/writes match expected version |
+| Staging deploy | Separate staging Compose project/env/volumes/secrets; deploy candidate slot, readiness and business smoke | Failed health/business smoke fails stage; old service remains routable |
+| Production | Explicit protected-environment approval; repeat compatible migration/deploy using tested digests; authenticated business smoke | All release gates and external access evidence pass |
 
-> **Rule**: NEVER commit secrets to git. Runtime application secrets live in Infisical for staging/production. GitHub Secrets are limited to CI/bootstrap/deploy credentials and MUST NOT be treated as the long-term runtime source of truth.
+Commands requiring app code run only after that phase creates the named project. P0 commits exact repository commands; wrappers are accepted only if failures propagate and logs prove each required check ran. A conditional `echo` or test-file existence check cannot replace transport, migration or integration work.
 
----
+## 3. Contract and dependency synchronization
 
-## 6. Required Checks Before Merge
+The docs gate verifies inventory-to-permission bindings and selected schema invariants. It cannot establish typed RPC completeness. For each implemented RPC, validate the slice packet's exact `.proto` messages, validation/permission/state/replay tests and response projection. Schema revisions update migrations/fixtures before generated entities. Commit lockfiles and pin container digests; document every provider/model/API/engine version and verification expiry.
 
-- [ ] All lint jobs pass (Rust clippy, Svelte lint, Dart analyze)
-- [ ] All unit tests pass
-- [ ] Integration tests pass (for PRs to main)
-- [ ] Contract sync passes; if `/protos/` are committed, typed transport generation produces no drift
-- [ ] At least 1 reviewers approved
-- [ ] No `CRITICAL` or `HIGH` security advisories
+## 4. Deployment and rollback
+
+Docker Compose alone does not guarantee rolling or zero-downtime updates. The P0 release implementation must support blue/green slots behind the proxy: create candidate slot, wait for readiness, run business smoke, switch upstream atomically, drain old slot, retain previous image/config digest. Never call `up --remove-orphans` against a shared production/staging project. Slot/project names and ports are distinct.
+
+Use expand → deploy compatible readers/writers → backfill → verify → later contract migration. A code rollback must remain compatible with the expanded schema. Do not automatically reverse a destructive data migration. Backups/restores must be exercised before release; restore only through an approved incident procedure with reconciliation of external effects.
+
+ClickHouse is a financial read projection, never credit/ledger authority. Commit and apply versioned ClickHouse DDL and required backfill before switching code that reads it. Check schema version and a known aggregate fixture, not only `/ping`. An `echo` about DDL is not a migration.
+
+## 5. Mandatory business smoke
+
+The release script MUST use `set -euo pipefail`, bounded timeouts and failing exit codes. Check `/health` and `/ready`, then an **implemented** read endpoint from the release packet. Do not invent a GetPublicStatus RPC to make a smoke test seem business-aware.
+
+For a release containing finance, an authenticated dedicated smoke workspace query checks its known seeded balance/profit and currency/source labels. Public endpoints cannot validate tenant data. Credentials come from a protected file/secret and must never appear in shell trace/logs. Verify expected JSON fields/values as well as HTTP success. Any curl failure, invalid response, unauthorized response or wrong aggregate fails deployment and prevents proxy switch; no `|| echo`, unconditional success, or warning-only bypass.
+
+## 6. Environment and secrets
+
+Staging and production have separate databases, credentials, buckets, callback URLs, Compose project names, backup prefixes and provider test/live access records. Runtime uses app_user, isolated admin service uses admin_user, migrations use their owner role, and outbox poller uses only its dedicated role. No runtime process receives all four credentials. Production secrets live in Infisical; GitHub Secrets bootstrap CI/deploy only.
+
+## 7. Required release packet
+
+Record commit/artifact digests, accepted slice manifests, migration/schema versions, backup/restore check, rollback slot, provider/model/rate/edition evidence, entitlement flags, actual test output, smoke identity and results, performance/accessibility/security checks, known external gates and protected approval. No blanket launch readiness is inferred from this document or a docs-only CI pass.

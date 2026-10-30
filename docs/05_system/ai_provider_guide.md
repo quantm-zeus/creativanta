@@ -11,7 +11,7 @@ purpose: AI provider setup (Gemini, OpenAI, ElevenLabs, Veo), adapter trait patt
 > **Upstream**: Pack 04 (AI/Media), Tech Stack ADR v3 (ADR-009, ADR-010, ADR-011)
 > **v1 Providers**: Gemini (primary) + OpenAI (fallback) + ElevenLabs (TTS)
 >
-> **Note**: `tech_stack_adr.md` lists 8 strategic provider categories. This guide covers the **v1 implementation scope** — 3 primary providers (Gemini, OpenAI, ElevenLabs) plus specific model choices per category. Phase 2 providers (Kling, Whisper standalone, etc.) are listed with "(P2)" suffix and will be integrated when capacity allows.
+> **Note**: `tech_stack_adr.md` lists 8 strategic provider categories. This guide covers the **v1 implementation scope** — 3 primary providers (Gemini, OpenAI, ElevenLabs) plus specific model choices per category. Historical "(P2)" provider labels mean secondary adapter candidates, not the delivery phase. All owning feature requirements remain assigned by IMPLEMENTATION_ORDER.md; a candidate is enabled only after verification.
 
 ---
 
@@ -90,37 +90,11 @@ ai_routing:
     reset_timeout_secs: 300
 ```
 
-### 2.3 Credit Cost Table (per operation — default values)
+### 2.3 Cost estimation and provider activation
 
-> **Note**: These are default/baseline credit costs used by the AI routing config. The full credit pricing with tier-based ranges is in `01_business/pricing_and_credits.md` §3 (canonical source for pricing). Values here represent the standard-quality defaults; premium/HD variants cost more per the pricing doc.
+Use [Pricing §3](../01_business/pricing_and_credits.md#3-cost-based-credit-quotes) for the cost-based quote algorithm and [Credit accounting](../04_contracts/credit_accounting_contract.md) for durable execution. No hardcoded credit-cost YAML may bypass those contracts. Help/read-only included actions still enforce internal budgets.
 
-```yaml
-credit_costs:
-  # LLM
-  text_analysis: 1          # trend, intent, score
-  caption_generation: 1     # hashtags, captions
-  script_generation: 3      # full script with hooks
-  copilot_query: 1          # conversational query
-  copilot_action: 3         # action-executing query (range: 3–15 per pricing doc)
-  long_analysis: 5          # competitor deep dive
-  
-  # Media
-  image_generation: 5       # single image
-  thumbnail_generation: 3   # thumbnail variant
-  video_generation_per_5s: 10  # per 5 seconds
-  tts_per_1000_chars: 2     # voice synthesis
-  voice_clone_setup: 15     # one-time clone (midpoint of 10–20 range per BIZ-001)
-  lip_sync_per_5s: 5        # lip sync processing
-  
-  # Analysis
-  video_analysis_per_min: 3 # scene detection + ASR
-  remix_analysis: 8         # full creative DNA
-  
-  # Zero-cost
-  copilot_help: 0           # help queries
-  copilot_analytics: 0      # analytics queries
-  performance_coach: 0      # post-publish analysis
-```
+Provider/model names in this guide are candidate adapter configurations, not confirmed available models. P0 records enabled=false until a current endpoint/model probe, permission check, supported dimensions and versioned rate card pass. Before enabling an embedding route, request exactly the schema vector dimension (768) and test it; changing dimension/model requires backfill and a new index, never mixed embeddings. All media/voice providers required by M07/M08 remain scope in P4; fallback becomes usable only after its own access/rate gate.
 
 ---
 

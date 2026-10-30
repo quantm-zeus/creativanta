@@ -3,8 +3,8 @@ layer: features
 module: M16
 canonical: true
 domain: commerce
-status: READY
-last_updated: 2026-03-30
+status: SPECIFIED
+last_updated: 2026-10-29
 ---
 
 # Feature: In-Product Affiliate Network & Creator Pro Tools (M16)
@@ -53,7 +53,7 @@ M16 exists as the **affiliate operations and creator professionalization layer**
 
 1. **RULE-M16-001**: Every attributed performance metric MUST have a `source_class` (official, imported, inferred, estimated, unreconciled) AND a `confidence` level. Attribution from connected platforms with API data = `official`. UTM-based correlation = `inferred`. Manual import = `imported`. Unmatched attribution = `unreconciled`. NO attribution may be displayed without its source class badge (PRD §15.1, §23.16 AC).
 2. **RULE-M16-002**: Ambiguous attribution MUST be explicitly labeled as `inferred` or `unreconciled`. The system MUST NOT present uncertain attribution as definitive truth. UI badge shows "Inferred" or "Awaiting reconciliation" with explanation link. This applies to: cross-device attribution, post-view conversions, multi-touch attribution where last-click rule is ambiguous (PRD §23.16 AC).
-3. **RULE-M16-003**: Affiliate payouts and commissions MUST link to the M19 operating ledger. Every `commission.calculated` event creates a cost_item (type = `commission`) in M19. Every `commission.paid` event links to the corresponding payout settlement. The profit formula in M19 deducts affiliate commissions as a cost layer (PRD §16.5, Pack 06 §4.2).
+3. **RULE-M16-003**: Affiliate payouts and commissions MUST link to the M19 operating ledger. Every `affiliate.commission.calculated` event creates a cost_item (type = `commission`) in M19. Every `affiliate.commission.paid` event links to the corresponding payout settlement. The profit formula in M19 deducts affiliate commissions as a cost layer (PRD §16.5, Pack 06 §4.2).
 4. **RULE-M16-004**: Affiliate statement reconciliation matches imported platform statements against tracked conversions. Reconciliation states: `open → matching → partially_reconciled → fully_reconciled / conflict_detected`. Unreconciled items MUST remain visible with explicit "unreconciled" label — they are NOT hidden or auto-resolved (Pack 06 §6).
 5. **RULE-M16-005**: Link health monitoring checks: redirect hops (warn if >3), HTTPS enforcement, geo-availability, product stock at destination, commission rate changes. Broken links trigger `affiliate.link_health.broken` event (critical notification). System suggests replacement products with similar commission when links break (S14 §S14.4, API §9).
 6. **RULE-M16-006 (S16)**: Link-in-Bio pages on shared domain `creativanta.link` must have anti-abuse protection. URL destination scan (Google Safe Browsing API), AUP violation handling (warn → remove in 48h), mass creation throttle (max 20 links/day), report mechanism. Pro+ tiers can use custom domains with CNAME + SSL auto-provision (S16 §2.4).
@@ -76,8 +76,8 @@ M16 exists as the **affiliate operations and creator professionalization layer**
    - Conversion events matched to clicks (attribution window: configurable, default 7 days)
    - `conversion.attributed` event emitted with `{order_id, link_id, commission, source_class}`
 4. **Commission calculation**: System calculates commission per conversion
-   - `commission.calculated` event → feeds M19 as cost_item
-   - `commission.paid` event when payout confirmed
+   - `affiliate.commission.calculated` event → feeds M19 as cost_item
+   - `affiliate.commission.paid` event when payout confirmed
 5. **Statement reconciliation**: Manager imports platform affiliate statements
    - System matches statement line items against tracked conversions
    - Unmatched items flagged as `unreconciled`
@@ -114,27 +114,11 @@ M16 exists as the **affiliate operations and creator professionalization layer**
 
 ### Affiliate Link Lifecycle
 
-| From | To | Trigger | Condition |
-|---|---|---|---|
-| — | active | Link created | `AffiliateService/CreateLink` (Editor+) |
-| active | paused | Operator pauses | Manual pause or stock-out auto-pause |
-| paused | active | Operator resumes | `AffiliateService/Resume` |
-| active | broken | Health check fails | Redirect broken / product unavailable → `affiliate.link_health.broken` |
-| broken | active | Operator fixes destination | Link destination updated and health check passes |
-| active | expired | TTL reached or campaign ends | System auto-expires based on `expiry_date` |
-| any (except deleted) | deleted | Operator deletes | Soft delete with `deleted_at` |
+Canonical lifecycle values are draft, active, paused, revoked and expired. Broken/product_unavailable are affiliate_links.health_status values; they can coexist with active/paused and must not be written into lifecycle_state. Delete sets deleted_at. Creation enters active (or draft when intentionally incomplete); active↔paused is reversible; active/paused→expired on expiry; permitted policy revocation→revoked is terminal. Health recovery updates health_status and cannot silently reactivate a paused/revoked link.
 
 ### Reconciliation Lifecycle
 
-| From | To | Trigger | Condition |
-|---|---|---|---|
-| — | open | Statement imported | `ReconciliationService/Import` |
-| open | matching | System starts auto-match | Background job matches line items to tracked conversions |
-| matching | partially_reconciled | Some matches found | ≥1 match but unmatched items remain |
-| matching | fully_reconciled | All matches found | 100% line items matched to tracked conversions |
-| matching | conflict_detected | Contradictory matches | Same order attributed to multiple sources → human review required |
-| partially_reconciled | fully_reconciled | Human resolves remaining | All unmatched items manually resolved |
-| conflict_detected | fully_reconciled | Human resolves conflict | Override decision with reason + audit trail |
+Use the canonical seven-state reconciliation_state machine owned by [M19](../finance/operating_ledger.md). Import starts imported_only, candidate matching uses inferred_pending_confirmation, and conflicts resolve through Admin override with reason/audit. "Open" and "matching" are job-progress labels, not persisted reconciliation truth states.
 
 ### Brand Deal Lifecycle (S16 v1)
 
@@ -222,7 +206,7 @@ LinkHealth:
 |---|---|---|
 | DB tables | [04_contracts/database_schema.md](../../04_contracts/database_schema.md) | §10.4 (affiliate_links), §10.5 (campaigns), §16 (Creator Pro: link_in_bio_pages, media_kits, rate_cards, brand_deals) |
 | API | [04_contracts/api_endpoint_map.md](../../04_contracts/api_endpoint_map.md) | §2.6 (AffiliateService, CampaignService — ~10 RPCs), §5 (S16: LinkInBioService, MediaKitService, RateCardService, BrandDealService — ~13 RPCs) |
-| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §8 (affiliate_link.created, conversion.attributed), §15 (S16 events), §15D (affiliate.link_health.*), §19 (commission.calculated, commission.paid, creator_assignment.created) |
+| Events | [04_contracts/domain_event_catalog.md](../../04_contracts/domain_event_catalog.md) | §8 (affiliate_link.created, conversion.attributed), §15 (S16 events), §15D (affiliate.link_health.*), §19 (affiliate.commission.calculated, affiliate.commission.paid, creator_assignment.created) |
 | RBAC | [04_contracts/rbac_permission_matrix.md](../../04_contracts/rbac_permission_matrix.md) | §2.7 (affiliate — Editor+; campaign — Editor+), §2.13 (S16 Creator Pro — varying by feature) |
 | Pack 06 | Pack 06 — Commerce Contract <!-- Legacy ref: creativanta_detail_design_pack_06_commerce_finance_proof_reporting_admin_contract_v_3_1.md — superseded by current feature docs + contract layer --> | §2.4 (Monetization Support), §4.2 (Payout/Statement), §6 (Reconciliation) |
 | S16 Spec | S16 — Creator Pro Tools <!-- Legacy ref: creativanta_supplementary_s16_creator_pro_tools_v_3_1.md — superseded by current feature docs + contract layer --> | §2-7 (Link-in-Bio, Media Kit, Rate Card, Brand Deals, Revenue Tracker, Tax Export) |
@@ -248,7 +232,7 @@ LinkHealth:
 
 2. **Given** a conversion where the customer clicked an affiliate link but also visited directly before purchasing, **when** the system attributes the conversion, **then** it MUST be labeled as `source_class = 'inferred'` with a UI badge showing "Attributed (inferred)" and an explanation of the multi-touch scenario.
 
-3. **Given** a `commission.calculated` event fires, **when** M19 processes it, **then** a `cost_item` MUST be created with `cost_type = 'commission'` linked to the corresponding order/campaign scope — ensuring the affiliate commission is deducted in the M19 profit formula.
+3. **Given** a `affiliate.commission.calculated` event fires, **when** M19 processes it, **then** a `cost_item` MUST be created with `cost_type = 'commission'` linked to the corresponding order/campaign scope — ensuring the affiliate commission is deducted in the M19 profit formula.
 
 4. **Given** a creator generates an AI Media Kit (S16), **when** generation completes, **then** the media kit MUST include auto-populated platform stats from connected accounts, ≥3 sections (overview, stats, top content), and a shareable link — the AI credit cost MUST be 3-5 credits.
 

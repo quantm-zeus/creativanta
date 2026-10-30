@@ -2,7 +2,7 @@
 layer: features
 module: gamification
 domain: platform
-status: READY
+status: SPECIFIED
 created: 2026-04-01
 canonical: true
 upstream: PRD v3.1 §37.3
@@ -48,7 +48,7 @@ Gamification drives user engagement and retention through **Achievements** (mile
 | RULE-GAM-004 | Streak rewards scale: 7-day = 10 credits, 30-day = 50 credits, 90-day = 200 credits |
 | RULE-GAM-005 | Challenges are time-bound (1-30 days), created by admin |
 | RULE-GAM-006 | Challenge participation is opt-in, progress tracked per-user |
-| RULE-GAM-007 | Credit rewards auto-deposited via `CreditService/Grant` on completion |
+| RULE-GAM-007 | Credit rewards auto-deposited through the internal idempotent credit-grant command (credit_accounting_contract.md), never a user-accessible Grant RPC on completion |
 | RULE-GAM-008 | Achievement unlock triggers canonical `achievement.unlocked` event |
 
 ## 3. Key Flows

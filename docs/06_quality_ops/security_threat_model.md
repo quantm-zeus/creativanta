@@ -58,7 +58,7 @@ last_verified: 2026-03-30
 - Principle of least privilege: request only scopes needed for enabled features
 
 ### PKCE Mandate
-- All OAuth 2.0 flows MUST use **PKCE (Proof Key for Code Exchange)**
+- OAuth browser/mobile flows MUST use **PKCE** when the provider supports it; marketplace partner HMAC/server authorization must use its documented protocol. Never invent PKCE support for a provider.
 - Grant type: **Authorization Code with PKCE** (no implicit grant)
 - Code verifier: 128-character random string, SHA-256 challenge method
 - State parameter: CSRF-resistant, workspace-scoped, 10-minute expiry
@@ -94,7 +94,7 @@ Token Expiry Check (background worker, every 5 min):
 | A07 | Auth Failures | HIGH | Clerk (managed IdP), JWT validation, rate limiting auth endpoints |
 | A08 | Data Integrity Failures | MED | Webhook signature verification, Protobuf schema validation |
 | A09 | Logging/Monitoring Gaps | LOW | Structured tracing, Sentry, audit events for all critical actions |
-| A10 | SSRF | MED | URL allowlisting for platform APIs, no user-supplied URL fetch |
+| A10 | SSRF | MED | HTTPS domain allowlist for authorized Link-to-Video/import sources; block private/loopback/link-local IPs before each request/redirect and re-resolve DNS; no arbitrary URL fetch |
 
 ---
 
@@ -104,12 +104,12 @@ Token Expiry Check (background worker, every 5 min):
 Defense-in-Depth Layers:
 1. JWT → extract workspace_id (Tower middleware)
 2. Rust service → validate workspace_id belongs to user
-3. PostgreSQL RLS → SET LOCAL app.current_tenant_id
-4. Query → RLS policy automatically filters ALL data
+3. PostgreSQL RLS → SELECT set_config('app.current_tenant_id', validated_workspace_id, true)
+4. Query → direct RLS on tenant tables/junctions and composite tenant FKs enforce relational scope
 5. Audit → every cross-tenant attempt logged
 ```
 
-**Critical Rule**: No query can ever return data from another workspace, even if application code has a bug. RLS is the safety net.
+**Critical Rule**: Runtime roles and policies must enforce the tenant isolation boundary even when a query omits its tenant predicate. This requires the explicit grant and composite-FK contract in database_schema.md §26; global/admin projections have separate grants and authorization. Test this with the actual runtime roles, including direct junction reads, foreign-parent writes, TRUNCATE denial and secret/internal-note visibility.
 
 ---
 

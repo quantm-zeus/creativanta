@@ -194,11 +194,9 @@ Source: PRD §27
 
 ---
 
-**BIZ-001: Credit cost resolution algorithm** — `DECISION`
-- Problem: Credit cost tables use ranges (e.g., "15–25 credits") but no resolution algorithm specified.
-- Decision: Use **midpoint of range** as default estimated cost. Actual cost determined by AI provider response (token count × model rate). Final cost may be ≤ estimated but NEVER > estimated + 10%.
-- Overage protection: If actual > estimated + 10%, system absorbs the difference (logged as `credit_resolution_overage` metric).
-- Cross-ref: `pricing_and_credits.md` §3.1, `database_schema.md` §13.2 `ai_credit_transactions.estimated_cost / actual_cost`
+**BIZ-001: Credit cost resolution** — `DECISION` (supersedes midpoint pricing, 2026-10-29)
+- Cost-based versioned quotes, margin floor and confirmed charge ceiling are owned by [Pricing §3](pricing_and_credits.md#3-cost-based-credit-quotes). Never calculate provider cost as token count alone for second/character/sample-billed media.
+- Reservation, source lots, compensating ledger entries and restart recovery are owned by [Credit accounting](../04_contracts/credit_accounting_contract.md).
 
 **BIZ-002: Business tier overage billing** — `DECISION` [FINALIZED]
 - Problem: Business tier allows 10% overage buffer (§3.3) but billing mechanism for overage credits undefined.
@@ -235,14 +233,10 @@ Source: PRD §27
 - Exception: Digital-only bundles remain available if any digital component can be delivered.
 - Cross-ref: `product_hub.md` §Business Rules
 
-**BIZ-006: Referral program mechanics** — `DECISION`
-- Problem: Referral reward mechanics not consolidated.
-- Decision: Existing referral feature doc (`02_features/platform/referral_growth.md`) is canonical. Summary:
-  - Referrer earns 100 AI credits when referee completes first paid subscription.
-  - Referee gets 14-day Pro trial extension (stacks with standard trial).
-  - Max 50 referral rewards per workspace per calendar year.
-  - Anti-abuse: Same IP/device/payment method → auto-flagged, manual review required.
-- Cross-ref: `api_endpoint_map.md` §2.8.11 ReferralService, `domain_event_catalog.md` §18 `referral.qualified`
+**BIZ-006: Referral mechanics** — `DECISION`
+- [Referral feature](../02_features/platform/referral_growth.md) is the sole owner of signup/upgrade/qualification bonuses, tier multipliers and recurring commissions. The earlier flat 100-credit summary is superseded.
+- Signup/upgrade bonuses and the 30-day qualification/completion bonus are distinct, idempotent marketing-funded grants. Every reward stage has a unique referral/stage/cycle key. Fraud checks, promotional budget and the configured annual reward cap apply before grant; never award again on churn/return or webhook replay.
+- Recurring commission uses net collected subscription revenue excluding tax/refunds, one financial_postings revenue origin per referral/billing period in the referring workspace. Payout uses external_effects and its unknown-result protocol, with licensed payment/legal gates; it is not a second affiliate-product sale or a second credit bonus.
 
 **BIZ-007: Tax calculation** — `DECISION` [FINALIZED]
 - Problem: Tax jurisdiction rules undefined.
@@ -269,7 +263,7 @@ Source: PRD §27
 **BIZ-008: Currency conversion** — `DECISION`
 - Problem: Multi-currency handling not specified (creators sell across markets with different currencies).
 - Decision: All financial calculations use **workspace base currency** (default: VND). Display in user's preferred currency using cached exchange rates.
-  - Exchange rate source: ECB free API (daily update) + fallback to fixer.io
+  - Exchange rate source: configured authorized currency feed; unsupported pairs require labeled manual/imported rates. Do not assume ECB covers VND.
   - Cache TTL: 1 hour for display, daily snapshot for financial records
   - Profit/loss calculations always in workspace base currency
   - Exchange rate at time of transaction is immutably recorded in `orders.exchange_rate_snapshot JSONB`
@@ -281,7 +275,7 @@ Source: PRD §27
   - All content, assets, workflows, connected accounts preserved (read-only if over limit)
   - Over-limit items: user can view, export, delete — but NOT create new until under limit
   - Connected accounts beyond Free limit: disconnected but credentials retained for 30 days (reconnect on upgrade)
-  - AI credits: reset to Free allocation (50/month), reserved credits released
+  - AI credits: switch subscription grants to Free allocation; preserve purchased lots and reconcile existing reservations per credit_accounting_contract.md (never release an unknown in-flight provider attempt).
   - No data deletion on trial expiry
 - Cross-ref: `pricing_and_credits.md` §5.3 Trial, `auth.md` §Plan Changes
 

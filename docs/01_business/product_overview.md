@@ -2,7 +2,7 @@
 layer: business
 canonical: true
 source: creativanta_prd_v_3_1_revised_part_1.md (§2–§11)
-last_updated: 2026-03-30
+last_updated: 2026-10-29
 ---
 
 # Product Overview
@@ -163,14 +163,16 @@ Creativanta **không** làm các điều sau:
 
 ---
 
-## 10. "Full Product from Day 1" Definition
+## 10. Full Product Scope, Delivered by Phase
 
-> Creativanta là **full product từ ngày đầu ở cấp domain**, không phải ở cấp native parity tuyệt đối trên mọi platform.
+> Product-owner decision, 2026-10-29: giữ toàn bộ chức năng và hoàn thiện dần theo phase. This supersedes the earlier simultaneous "Full Product from Day 1" delivery requirement. Archived PRDs remain unchanged as history; no feature, operator mode, AC, or web/mobile execution requirement is removed.
 
-Điều này có nghĩa:
+- All 23 modules, auth, and seven supplementary/spec entries remain committed scope. All six operator modes remain canonical.
+- Each phase delivers working vertical slices with persisted objects, permissions, contracts, diagnostics, and acceptance evidence. A module may start in one phase and complete in another; its remaining scope must stay explicitly assigned.
+- Navigation exposes shipped capabilities. Unbuilt actions have an explicit unavailable/not-yet-delivered state. Fake live metrics, silently successful stubs, and placeholder execution cannot satisfy acceptance.
+- Web and mobile use the same contracts and ship within the owning phases. Final full-product acceptance includes both real execution surfaces.
+- Native execution depends on verified provider permissions. Manual/import/export paths remain first-class capabilities with honest provenance.
+- Commercial tier entitlement and delivery phase are separate gates: a paid tier cannot unlock unshipped code or unapproved provider access.
+- No agent may delete scope, acceptance criteria, or canonical objects to make a phase pass. Replanning requires a recorded product decision.
 
-- Mọi domain chính phải hiện diện đầy đủ ở cấp UX, object model, schema contract, reporting, trust model và fallback
-- Cùng một domain phải được dùng xuyên web và mobile như execution surface thật
-- Execution có thể khác nhau tùy capability thực tế của platform, nhưng **domain không được biến mất khỏi sản phẩm**
-- Bundle thương mại chỉ mở capability, execution scope hoặc operational limits; **bundle không được dùng để cắt canonical domain model**
-- Downstream documents không được hợp thức hóa việc giảm scope domain bằng wording mơ hồ, placeholder hoặc "phase sau tính tiếp"
+The sole phase/dependency and scope-coverage source is [Implementation Order](../00_index/IMPLEMENTATION_ORDER.md). Agent handoff and evidence rules are owned by [Build Execution Contract](../00_index/BUILD_EXECUTION_CONTRACT.md).

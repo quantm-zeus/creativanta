@@ -2,7 +2,7 @@
 layer: features
 module: S24
 domain: platform
-status: READY
+status: SPECIFIED
 created: 2026-04-01
 canonical: true
 upstream: PRD v3.1 §24

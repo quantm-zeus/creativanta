@@ -3,8 +3,8 @@ layer: features
 module: M13
 canonical: true
 domain: commerce
-status: READY
-last_updated: 2026-03-30
+status: SPECIFIED
+last_updated: 2026-10-29
 ---
 
 # Feature: Product Hub / Inventory / Order Truth (M13)
@@ -182,7 +182,7 @@ see [04_contracts/database_schema.md#10.3](../../04_contracts/database_schema.md
 
 1. **Given** an offer is created in M14, **when** the offer references a product, **then** the `product_id` MUST link to an existing M13 product — OR the offer MUST have `product_less_declaration` set to `'digital'`, `'community'`, or `'service'`.
 
-2. **Given** an order is imported from TikTok Shop, **when** the ingestion completes, **then** the order MUST have `source_class = 'official'`, `lifecycle_state = 'created'`, `source_platform = 'tiktok'`, and `external_order_id` populated — the `order.imported` event MUST be emitted with `{order_id, platform, amount}`.
+2. **Given** an order is imported from TikTok Shop, **when** the ingestion completes, **then** the order MUST have `source_class = 'official'`, `lifecycle_state` matching the imported source (never reset completed orders), `source_platform = 'tiktok'`, and `external_order_id` populated — the `order.imported` event MUST be emitted with `{order_id, platform, amount}`.
 
 3. **Given** an order in `confirmed` state, **when** the seller marks it as fulfilled, **then** `lifecycle_state` MUST transition to `'fulfilled'`, a Stock Movement MUST be created (type='sale'), and `order.state_changed` MUST fire with `{from: 'confirmed', to: 'fulfilled'}`.
 

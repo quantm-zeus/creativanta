@@ -41,7 +41,7 @@ purpose: Dragonfly cache strategy, Meilisearch indexes, ClickHouse analytics sch
 | `subscription:{workspace_id}` | 30m | On tier change | Full subscription details |
 | `feature_flags:{flag_prefix}` | 5m | On toggle | Feature flag state |
 | `support:sla:{workspace_id}` | 5m | On tier change | SLA thresholds per plan |
-| `credits:reservation:{reservation_id}` | 30m | On commit/release | Credit reservation lock (Audit v5 — L6) |
+| `credits:reservation:{reservation_id}` | 30m | On commit/release | Non-authoritative reservation status hint |
 | `remix:originality:{blueprint_id}` | 1h | On re-check | Cached originality check result |
 | `ltv:scraped:{url_hash}` | 24h | Manual invalidation | Link-to-Video scraped product data cache |
 | `challenge:progress:{workspace_id}` | 5m | On progress update | Active challenge progress snapshot |
@@ -54,28 +54,15 @@ purpose: Dragonfly cache strategy, Meilisearch indexes, ClickHouse analytics sch
 
 | Pattern | When | How |
 |---|---|---|
-| **Write-through** | Settings, permissions | Update DB + cache atomically |
+| **Write-through** | Settings, permissions | Commit DB + outbox atomically; invalidate/refresh cache after commit |
 | **Write-behind** | Analytics counters | Batch write to DB every 30s |
 | **Event-driven** | Domain events | Event consumer invalidates cache |
 | **TTL-based** | Dashboard, summaries | Auto-expire, lazy refresh |
 | **Pub/Sub** | Multi-instance | Dragonfly Pub/Sub broadcast invalidation |
 
-### 1.4 Dragonfly Keyspace Notifications
+### 1.4 Expiry hints and durable recovery
 
-> Required for credit reservation TTL expiry and circuit breaker state changes.
-
-```bash
-# Enable keyspace notifications in Dragonfly config (dragonfly.conf or docker env)
-# Ex = expired events + keyevent notifications
-notify-keyspace-events "Ex"
-```
-
-| Key Pattern | Event | Handler | Purpose |
-|---|---|---|---|
-| `credits:reservation:{id}` | `expired` | Credit release handler | Release uncommitted credit reservations back to balance on TTL expiry |
-| `circuit:{provider}` | `expired` | Circuit breaker reset | Reset circuit breaker to half-open on cooldown expiry |
-
-**Implementation note**: Dragonfly supports Redis keyspace notifications via `__keyevent@0__:expired` subscription. The credit reservation handler MUST release reserved credits back to the workspace balance when the 30-minute TTL expires without a commit/release call. This prevents credit leaks from failed AI generation jobs.
+Keyspace notifications/Pub/Sub can be lost during disconnect/restart. Enable expiration notifications only as an optional wake-up optimization; correctness never depends on receiving them. Credit holds and deadlines live in PostgreSQL. The DB sweeper and conditional state transitions in [Credit accounting](../04_contracts/credit_accounting_contract.md) own expiry/reconciliation. A cache key expiring must never itself increment a balance or release an in-flight operation. Circuit-breaker cooldown is also checked from persisted/configured time on the next request.
 
 ---
 

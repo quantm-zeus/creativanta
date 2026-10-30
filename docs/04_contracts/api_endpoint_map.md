@@ -42,6 +42,8 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 
 ---
 
+> Every inventory row is subject to [API behavior contracts](api_behavior_contracts.md). Role labels are minimum envelopes, not permission to bypass named RBAC, tier, object scope, approval or provider-access checks. Inventories and historical JSON projections do not expose DB rows directly.
+
 ## 1. Endpoint Naming Convention
 
 | Protocol | Pattern | Example |
@@ -65,7 +67,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 |---|---|---|---|
 | `AuthService/Login` | POST | Public | 20/min/IP |
 | `AuthService/ValidateSession` | POST | JWT | 100/min |
-| `WorkspaceService/Create` | POST | Owner | 5/min |
+| `WorkspaceService/Create` | POST | Self | 5/min |
 | `WorkspaceService/Get` | POST | Member | 120/min |
 | `WorkspaceService/Update` | POST | Admin+ | 30/min |
 | `WorkspaceService/ListMembers` | POST | Member | 60/min |
@@ -401,14 +403,14 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | `AdminBillingService/ListSubscriptions` | POST | Manager+ | 30/min | List subscription history |
 | `AdminBillingService/GetCreditBalance` | POST | Member | 60/min | Get current credit balance + usage |
 | `AdminBillingService/GetCreditLedger` | POST | Manager+ | 30/min | Get credit transaction history |
-| `AdminBillingService/PurchaseCredits` | POST | Admin+ | 5/min | Purchase additional credit pack |
-| `AdminBillingService/ChangePlan` | POST | Admin+ | 5/min | Upgrade/downgrade subscription tier |
-| `AdminBillingService/CancelSubscription` | POST | Admin+ | 5/min | Cancel subscription |
+| `AdminBillingService/PurchaseCredits` | POST | Owner | 5/min | Purchase additional credit pack |
+| `AdminBillingService/ChangePlan` | POST | Owner | 5/min | Upgrade/downgrade subscription tier |
+| `AdminBillingService/CancelSubscription` | POST | Owner | 5/min | Cancel subscription |
 | `AdminBillingService/GetUsageReport` | POST | Manager+ | 10/min | Get AI credit usage breakdown |
 | `AdminBillingService/GetInvoiceHistory` | POST | Manager+ | 30/min | List invoices (via Stripe) |
 | `AdminBillingService/DownloadInvoice` | POST | Manager+ | 10/min | Download specific invoice PDF |
-| `AdminBillingService/UpdatePaymentMethod` | POST | Admin+ | 5/min | Update payment method (Stripe redirect) |
-| `AdminBillingService/GetPaymentMethod` | POST | Admin+ | 30/min | Get current payment method info |
+| `AdminBillingService/UpdatePaymentMethod` | POST | Owner | 5/min | Update payment method (Stripe redirect) |
+| `AdminBillingService/GetPaymentMethod` | POST | Owner | 30/min | Get current payment method info |
 | `AdminBillingService/ListBillingEvents` | POST | Manager+ | 30/min | List billing events |
 | `AdminBillingService/EstimateCost` | POST | Member | 30/min | Estimate credit cost for operation |
 
@@ -498,7 +500,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 
 | Endpoint | Provider | Method | Signature Header | Verification | Events Handled |
 |---|---|---|---|---|---|
-| `POST /webhooks/clerk` | Clerk | svix | `svix-signature` | HMAC-SHA256 via Svix SDK | `user.created`, `user.updated`, `user.deleted`, `organization.created` |
+| `POST /webhooks/clerk` | Clerk | svix | `svix-signature` | HMAC-SHA256 via Svix SDK | `user.created`, `user.updated`, `user.deleted`, `organization.created`, `organizationMembership.created`, `organizationMembership.updated`, `organizationMembership.deleted`, `organizationInvitation.accepted`, `session.revoked`, `session.ended` |
 | `POST /webhooks/stripe` | Stripe | stripe-signature | `stripe-signature` | `stripe.webhooks.constructEvent()` | `invoice.paid`, `invoice.payment_failed`, `customer.subscription.updated`, `customer.subscription.deleted`, `charge.refunded` |
 | `POST /webhooks/tiktok` | TikTok | tiktok | `X-TikTok-Signature` | HMAC-SHA256 with app secret | `video.published`, `video.deleted`, `shop.order.created`, `shop.order.status_changed`, `comment.created` |
 | `POST /webhooks/shopee` | Shopee | shopee | `Authorization` | HMAC-SHA256 with partner key | `order.status_update`, `item.stock_changed`, `chat.new_message`, `return.request_created` |
@@ -1307,10 +1309,10 @@ Rate limit: 100 req/min (read), 30 req/min (write) per API key. IP-based seconda
 | `CreditService/ListTransactions` | POST | Member | 60/min | List credit transactions |
 | `CreditService/ListRecentUsage` | POST | Member | 60/min | List recent credit usage |
 | `CreditService/ListPackages` | POST | Member | 60/min | List available credit packages |
-| `CreditService/Purchase` | POST | Admin+ | 5/min | Purchase credit package |
+| `CreditService/Purchase` | POST | Owner | 5/min | Purchase credit package |
 | `CreditService/GetCheckoutStatus` | POST | Member | 30/min | Get purchase checkout status |
-| `CreditService/GetAutoRefillConfig` | POST | Admin+ | 30/min | Get auto-refill configuration |
-| `CreditService/UpdateAutoRefill` | POST | Admin+ | 5/min | Update auto-refill settings |
+| `CreditService/GetAutoRefillConfig` | POST | Owner | 30/min | Get auto-refill configuration |
+| `CreditService/UpdateAutoRefill` | POST | Owner | 5/min | Update auto-refill settings |
 
 ### 14.11 BillingService
 
@@ -1319,16 +1321,16 @@ Rate limit: 100 req/min (read), 30 req/min (write) per API key. IP-based seconda
 | `BillingService/GetCurrentPlan` | POST | Member | 60/min | Get current subscription plan |
 | `BillingService/ListPlans` | POST | Member | 60/min | List available plans |
 | `BillingService/GetSubscription` | POST | Member | 60/min | Get subscription detail |
-| `BillingService/GetPaymentMethods` | POST | Admin+ | 30/min | Get payment methods |
-| `BillingService/ChangePlan` | POST | Admin+ | 5/min | Change subscription plan |
-| `BillingService/CancelPlan` | POST | Admin+ | 5/min | Cancel subscription |
-| `BillingService/Cancel` | POST | Admin+ | 5/min | Cancel subscription (alias) |
+| `BillingService/GetPaymentMethods` | POST | Owner | 30/min | Get payment methods |
+| `BillingService/ChangePlan` | POST | Owner | 5/min | Change subscription plan |
+| `BillingService/CancelPlan` | POST | Owner | 5/min | Cancel subscription |
+| `BillingService/Cancel` | POST | Owner | 5/min | Cancel subscription (alias) |
 | `BillingService/ListInvoices` | POST | Manager+ | 30/min | List invoices |
 | `BillingService/GetInvoiceUrl` | POST | Manager+ | 30/min | Get invoice download URL |
 | `BillingService/GetCheckoutStatus` | POST | Member | 30/min | Get checkout status |
 | `BillingService/ListCreditPackages` | POST | Member | 60/min | List credit packages |
 | `BillingService/ListCreditPurchases` | POST | Manager+ | 30/min | List credit purchase history |
-| `BillingService/ApplyRetentionDiscount` | POST | Admin+ | 5/min | Apply retention discount |
+| `BillingService/ApplyRetentionDiscount` | POST | Owner | 5/min | Apply retention discount |
 
 ---
 

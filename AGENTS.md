@@ -9,6 +9,7 @@ Before implementing, generating code, or modifying any file, read:
 1. docs/00_index/BUILD_INDEX.md — system map, 23 module registry, dependency graph
 2. docs/00_index/OPEN_BLOCKERS.md — known bugs/gaps, do NOT silently work around these
 3. docs/00_index/CANONICAL_SOURCES.md — which file is source of truth for each topic
+4. docs/00_index/BUILD_EXECUTION_CONTRACT.md — slice packets, evidence states and execution gates
 
 ## Reading order for a specific feature
 
@@ -65,3 +66,9 @@ Before implementing, generating code, or modifying any file, read:
 | New DB table with RLS | 04_contracts/database_schema.md → 00_index/OPEN_BLOCKERS.md#DB-C-001 → 06_quality_ops/security_threat_model.md |
 | Write QA test | 00_index/ACCEPTANCE_TESTS.md → 02_features/<domain>/<feature>.md → 06_quality_ops/qa_acceptance_packs.md |
 | Dev environment setup | 06_quality_ops/docker_dev_environment.md → 05_system/tech_stack_adr.md → 04_contracts/database_schema.md |
+
+## Product-owner delivery decision — 2026-10-29
+
+Keep all 31 feature/spec entries and six modes. Implement progressively using P0–P8 in docs/00_index/IMPLEMENTATION_ORDER.md. The owner's explicit instruction supersedes simultaneous Day-1 availability in older PRD history; no additional approval is needed for that already-authorized delivery change. Do not remove feature scope or modify docs/09_archive/.
+
+Persisted fields belong to database_schema.md; transport-only fields/commands belong to api_behavior_contracts.md. Every implemented inventory RPC must use rpc_permission_bindings.csv and the named RBAC permission plus underlying object/tier/approval/capability checks. SPECIFIED is not runtime acceptance. Run tooling/check_docs.py after contract/doc edits and keep evidence of the required phase checks.

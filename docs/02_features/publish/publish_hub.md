@@ -3,8 +3,8 @@ layer: features
 module: M11
 canonical: true
 domain: publish
-status: READY
-last_updated: 2026-03-30
+status: SPECIFIED
+last_updated: 2026-10-29
 ---
 
 # Feature: Publish Hub (M11)

@@ -18,11 +18,11 @@ last_updated: 2026-04-11
 | Term | Module | Definition |
 |---|---|---|
 | **One Graph** | Cross-cutting | Nguyên tắc: mọi data quan trọng nằm trong cùng một graph thống nhất. Không data silo. |
-| **Operator Mode** | Cross-cutting | Chế độ vận hành thay đổi UX emphasis (Creator, Seller, Affiliate, Live, Agency, Brand). 6 modes canonical. Mode KHÔNG cắt domain scope. DB: `workspaces.active_operator_mode` |
+| **Operator Mode** | Cross-cutting | Chế độ vận hành thay đổi UX emphasis (Creator, Seller, Affiliate, Live, Agency, Brand). 6 modes canonical. Mode KHÔNG cắt domain scope. DB: `workspaces.default_operator_mode` |
 | **Source Class** | Cross-cutting | Phân loại nguồn gốc dữ liệu. Enum: `official` · `imported` · `inferred` · `estimated` · `unreconciled`. UI badge phải map về 5 lớp này. |
 | **Confidence Band** | Cross-cutting | Mức độ tin cậy của insight/metric. Enum: `high` · `medium_high` · `medium` · `low_medium` · `low`. Phải giải thích lý do. |
-| **Verification Status** | Cross-cutting | Trạng thái xác minh dữ liệu. Enum: `verified` · `re_verify` · `pending` |
-| **Capability State** | M22 | Trạng thái khả năng thực thi action trên platform. Enum: `native` · `read_only` · `manual` · `unsupported`. Phải luôn visible. |
+| **Verification Status** | Cross-cutting | Trạng thái xác minh dữ liệu. Enum: `verified` · `re_verify` · `pending` · `failed` |
+| **Capability State** | M22 | Trạng thái khả năng thực thi action trên platform. Enum: `native` · `read_only` · `manual` · `degraded` · `unsupported`. Phải luôn visible. |
 | **Reconciliation State** | M19 | Trạng thái đối soát tài chính. Enum: `fully_reconciled` · `partially_reconciled` · `awaiting_evidence` · `imported_only` · `inferred_pending_confirmation` · `conflict_detected` · `manually_overridden` |
 | **Workspace** | Cross-cutting | Đơn vị tổ chức cấp cao nhất — chứa mọi data, members, settings. Cross-workspace data isolation bắt buộc. |
 | **Connected Account** | M22, M23 | Tài khoản platform bên thứ ba đã liên kết qua OAuth. Tokens encrypted at rest. |
@@ -226,7 +226,7 @@ last_updated: 2026-04-11
 | **Compliance Scan** | M10 | Tự động kiểm tra content vi phạm platform guidelines trước khi publish. Result: pass, pass_with_warnings, review_required, blocked. |
 | **Proof Graph** | M19/System | Bộ liên kết chứng minh từ: trend signal → idea → script → content → publish → order → profit. Traceability chain. |
 | **Operating Loop** | M01/System | Chu kỳ: Intelligence → Creation → Production → Publish → Engagement → Commerce → Finance → Repeat. Core business cycle. |
-| **Full Product from Day 1** | Business | Nguyên tắc: mọi tính năng available (ở mức phù hợp) cho mọi tier từ Day 1. Không lock feature behind tier, chỉ limit credits/usage. |
+| **Full Product Scope, Delivered by Phase** | Business | Toàn bộ chức năng được giữ lại; giao dần theo phase và nghiệm thu đầy đủ ở P8. Xem product_overview.md và IMPLEMENTATION_ORDER.md. |
 
 ---
 

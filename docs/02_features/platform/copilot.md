@@ -3,7 +3,7 @@ layer: features
 module: copilot
 canonical: true
 domain: platform
-status: READY
+status: SPECIFIED
 created: 2026-04-02
 upstream: PRD v3.1 §34, Pack 08 §7.7, Pricing §11
 ---

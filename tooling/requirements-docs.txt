@@ -1,0 +1,2 @@
+# Optional PostgreSQL grammar validation for check_docs.py --sql
+pglast==8.7

@@ -217,39 +217,9 @@ purpose: Architecture decisions, full tech stack, monorepo structure, performanc
 | Health Score | Cron: hourly → poll APIs → calculate composite → store |
 | AI Pipeline | Saga: prompt → route provider → generate → quality check → review |
 
-### 🔄 Layer 5B: User-Facing Workflow Studio (M20/M21) — Activepieces
+### Layer 5B: User-Facing Workflow Studio (M20/M21)
 
-> **Đây là tính năng user tự thiết kế workflow automation** — không phải system internal jobs.
-> PRD M20 (Workflow Studio) + M21 (Recipe Marketplace) yêu cầu **visual workflow builder** cho user.
-
-| Component | Choice | Rationale |
-|---|---|---|
-| **Workflow Engine** | **Activepieces** (self-hosted, **MIT License**) | Fully open-source, commercial-safe, visual drag-drop canvas, 200+ integrations, webhook triggers |
-| **Deployment** | Activepieces Docker container, managed by Rust API | Isolated per-workspace execution, resource limits per tier |
-| **Visual Canvas (web)** | Activepieces UI embedded via iframe + API | Full workflow builder: trigger → condition → action → approval → fallback |
-| **Visual Canvas (mobile)** | Custom Flutter UI → Activepieces API | Simplified mobile view: run/inspect/approve workflows, not full editor |
-| **Node Types** | Activepieces built-in + custom Creativanta pieces | Custom pieces: Publish, Trend Query, Copilot Action, Profit Alert, Commerce Action, Approval Gate |
-| **Recipe Marketplace** | Custom (Rust API + PostgreSQL) | Recipe = Activepieces flow template + metadata + install/clone logic |
-| **Execution** | Activepieces worker orchestrated by Rust | Rust triggers via REST API, receives webhook callbacks on completion |
-| **Audit Trail** | Activepieces execution logs → synced to PostgreSQL | Immutable audit, correlatable with domain events |
-| **Tier Limits** | Rust middleware enforces | Free: 5 workflows/3 runs per day. Starter: 20/50. Pro: ∞/500. Business: ∞/∞ |
-
-**Why Activepieces over alternatives:**
-
-| Option | Verdict | Reason |
-|---|---|---|
-| **Activepieces** ✅ | **Selected** | **MIT License** (core) — fully legal for SaaS embedding, no revenue share, no restrictions. Visual builder, 200+ integrations, AI-forward, active community |
-| n8n | ⛔ **REJECTED** | **Fair-code SUL license PROHIBITS**: embedding in SaaS, white-labeling, charging users for access. Embed license ~$50K/year. **Legal risk too high.** |
-| Windmill | Rejected | AGPLv3 — copyleft forces open-sourcing our code. Developer-focused, not for non-tech users |
-| Temporal | For internal only | No visual builder for end-users, developer tool |
-| Custom from scratch | Too expensive | Building visual canvas + integrations = 6+ months |
-
-> ⚠️ **CRITICAL LICENSE NOTE**: n8n's Sustainable Use License (SUL) explicitly prohibits:
-> - Selling products where value derives from n8n functionality
-> - White-labeling n8n for customers
-> - Hosting n8n and charging for access
-> - Using n8n as SaaS backend collecting user credentials
-> Activepieces MIT core has **zero restrictions** for commercial SaaS use.
+Workflow architecture, engine/edition boundaries, all required node types and budgets are owned by [Workflow integration](../06_quality_ops/activepieces_integration.md). Creativanta owns the canvas and durable runtime baseline; verified core integrations or licensed Activepieces embedding are optional adapters. No automatic right to Enterprise SDK/white-labeling is inferred from MIT core. Commercial plan limits come from pricing_and_credits.md.
 
 **Activepieces ↔ Creativanta Node Mapping (Pack 03 §4.2):**
 
@@ -379,8 +349,7 @@ Request → Router → Primary Provider
 | **Image Optimization** | **Cloudinary** | — | — | Auto-format, responsive, CDN |
 | **Content Moderation** | **OpenAI Moderation API** (free) | **Gemini Safety** | — | Multi-layer, free tier |
 
-> **Note**: Sora (OpenAI) đã ngừng hoạt động 24/03/2026. Midjourney không có public API. Grok (xAI) chưa có video gen API.
-> Multi-provider là BẮT BUỘC — Sora shutdown chứng minh single-provider risk.
+> Provider/model status and commercial API rights must be reverified before activation. Historical availability/shutdown claims are not deployment inputs. Preserve multiple verified adapters to reduce provider outage risk.
 
 ### 💰 Layer 7: Payments
 
@@ -620,29 +589,31 @@ async fn tenant_middleware(
     mut request: Request,
     next: Next,
 ) -> Response {
-    let tenant_id = extract_tenant_from_jwt(&headers);
+    let tenant_id = validate_current_membership_and_role(&headers, &pool).await?;
     
     // SET LOCAL scoped to transaction
     let mut tx = pool.begin().await?;
-    sqlx::query("SET LOCAL app.current_tenant_id = $1")
+    sqlx::query("SELECT set_config('app.current_tenant_id', $1, true)")
         .bind(&tenant_id)
         .execute(&mut *tx)
         .await?;
     
     request.extensions_mut().insert(TenantContext { tenant_id, tx });
+    // Domain handlers must use this transaction (never the unscoped pool).
+    // Middleware commits on successful domain work and rolls back on any failure.
     next.run(request).await
 }
 ```
 
 **Decision**: Shared database + RLS + transaction-scoped tenant isolation
-**Why**: Cost-effective, defense-in-depth, Rust's memory safety prevents data leaks
+**Why**: Cost-effective, defense-in-depth, Rust helps memory safety; tenant isolation depends on explicit authorization, grants, policies and tests
 
 ### ADR-006: Dragonfly over Redis
 
 **Decision**: Dragonfly as Redis replacement
 **Rationale**:
 - 25x faster than Redis (multi-threaded)
-- 100% Redis protocol compatible (drop-in replacement)
+- Redis-compatible operations must be verified against the pinned Dragonfly release
 - Lower memory usage
 - Perfect for: job queues, caching, rate limiting, session store
 
@@ -797,7 +768,7 @@ Flutter → gRPC (direct) → Rust API (same VPS)
 | **M17** | Live Commerce War Room | WebSocket real-time + Flutter live UI |
 | **M18** | Seeding / Sample CRM | Rust CRM domain + sample shipment tracking |
 | **M19** | Operating Ledger / Profit Graph / Proof Center | ClickHouse OLAP + TimescaleDB + Apache ECharts dashboards |
-| **M20** | **Workflow Studio** | **Activepieces embedded** (visual builder) + Rust orchestration |
+| **M20** | **Workflow Studio** | Owned canvas + durable Rust executor; optional verified adapter |
 | **M21** | **Recipe Marketplace / Agent Center** | Activepieces flow templates + Custom recipe store (Rust + PG) |
 | **M22** | Capability Matrix & Policy Center | Rust capability registry + policy engine |
 | **M23** | Reporting / Admin / Billing / Diagnostics | Rust admin API + Stripe billing + diagnostics + **S26 Internal Admin Site** (separate SvelteKit app, VPN-only, internal auth) |
@@ -838,7 +809,7 @@ Flutter → gRPC (direct) → Rust API (same VPS)
 | WCAG 2.1 AA | shadcn-svelte (Bits UI accessible) + Flutter Semantics |
 | Vietnamese search | Meilisearch (Vietnamese tokenizer) |
 | Multi-tenant isolation | PostgreSQL RLS + Rust Tower middleware |
-| Visual workflow builder (M20) | **Activepieces embedded** (MIT) → drag-drop canvas for non-tech users |
+| Visual workflow builder (M20) | Owned drag-drop canvas; optional licensed embedded builder |
 | Recipe library (M21) | Activepieces flow templates + custom marketplace |
 | Offline mobile | Drift SQLite + background sync |
 | Collaborative editing | Yjs CRDT + Tiptap Collaboration |
@@ -859,30 +830,14 @@ Flutter → gRPC (direct) → Rust API (same VPS)
 | No Clerk SDK for Flutter | Custom auth flow | Clerk REST API + JWT validation in Rust middleware |
 | Smaller Svelte talent pool | Mitigated | AI-assisted dev (1 dev + AI), Svelte 2-4 week learning curve, 30-40% less code |
 | Remotion needs Node.js sidecar | Eliminated | Replaced with Revideo + rust-ffmpeg: framework-agnostic, MIT license, 70x faster |
-| Activepieces adds Node.js dependency | Extra container | Isolated Docker, Rust API controls lifecycle, MIT license = zero legal risk |
+| Activepieces adds Node.js dependency | Extra container | Isolated Docker, Rust API controls lifecycle, edition/license access reviewed before enabling |
 | Multi-AI provider complexity | Config management | YAML-driven routing config, provider health dashboard, cost alerts |
 
 ---
 
-### ADR-008: Activepieces for User-Facing Workflow Studio (M20/M21)
+### ADR-008: Owned workflow contract with optional verified engine adapter
 
-**Decision**: Embed Activepieces (self-hosted, **MIT License**) as the workflow engine for M20 Workflow Studio + M21 Recipe Marketplace
-
-**Context**: PRD M20 requires a **visual workflow builder**. Originally evaluated n8n but discovered **critical license risk**:
-- n8n's fair-code SUL **explicitly prohibits** embedding in commercial SaaS, white-labeling, or charging users for access
-- n8n Embed license costs ~$50K/year
-- Activepieces core is **MIT licensed** — zero restrictions for commercial use
-
-**Architecture**:
-```
-User → Web (SvelteKit) → Activepieces Canvas (embedded iframe/API) → Activepieces Engine
-                                                                    ↕
-                                                          Rust API (via webhooks)
-                                                                    ↕
-                                                          PostgreSQL + Dragonfly
-```
-
-**Tier enforcement**: Rust middleware validates workflow count + run limits before allowing execution.
+**Decision (2026-10-29)**: Creativanta owns the complete M20/M21 canvas/runtime and domain contracts. Activepieces core integration or Enterprise embedding can be enabled only after version/edition/license and isolation verification. The [integration spec](../06_quality_ops/activepieces_integration.md) owns architecture and acceptance. This supersedes blanket MIT embedding and zero-license-cost assumptions; no feature scope is removed.
 
 ---
 
@@ -941,7 +896,7 @@ User → Web (SvelteKit) → Activepieces Canvas (embedded iframe/API) → Activ
 
 ---
 
-> **Bottom line**: Stack v3 (Performance-First) delivers maximum perf: (1) 🚀 SvelteKit 2 replaces Next.js 16 — 65% smaller bundle, 64% faster TTI, LCP ≤1.5s (ADR-012), (2) 🎬 Revideo + rust-ffmpeg replaces Remotion — 70x faster rendering, MIT license, framework-agnostic (ADR-013), (3) 📊 Apache ECharts replaces Recharts — 40+ chart types, Canvas rendering, 3.5M downloads/week (ADR-014), (4) 🤖 AI adapter pattern with Gemini default cuts AI costs 60-75%, (5) ⚙️ Multi-provider media stack (Veo 3.1 + Kling 3.0 + Runway Gen-4) eliminates single-provider risk. Rust API (10x throughput), Flutter (120 FPS), SvelteKit 2 (~50ms HMR, ~42KB bundle), gRPC (7-10x faster). **Self-hosted on Contabo VPS €40/mo** + Cloudflare DNS/R2/WAF. Platform **scales tới hàng triệu users**, chi phí thấp nhất thị trường nhờ smart routing + self-hosted infra.
+> Performance multipliers, cost comparisons and model names in historical rationale are hypotheses, not measured guarantees. Phase release gates use performance_benchmarks.md, current provider rate cards and deployment fixtures. The VPS estimate excludes provider usage, backup/storage/egress, authentication, monitoring, payment fees, workflow licenses and support labor; validate a phase-specific budget before launch.
 
 ---
 

@@ -73,7 +73,7 @@ Example: `AUTH_INVALID_001`, `BILLING_LIMIT_003`, `AI_EXTERNAL_002`
 | AUTH_FORBIDDEN_001 | UNAUTHENTICATED | 401 | Invalid credentials (wrong password) | No | "Email hoặc mật khẩu không đúng." |
 | AUTH_FORBIDDEN_002 | PERMISSION_DENIED | 403 | Account suspended by admin | No | "Tài khoản đã bị tạm ngưng." |
 | AUTH_FORBIDDEN_003 | PERMISSION_DENIED | 403 | MFA verification failed | No | "Mã xác thực không đúng." |
-| AUTH_LIMIT_001 | RESOURCE_EXHAUSTED | 429 | Login rate limit exceeded (5 attempts / 15 min) | Yes (backoff) | "Quá nhiều lần thử. Vui lòng đợi 15 phút." |
+| AUTH_LIMIT_001 | RESOURCE_EXHAUSTED | 429 | Login request/failed-credential limit exceeded; auth contract defines window and lock | Yes (backoff) | "Quá nhiều lần thử. Vui lòng đợi theo thời gian hiển thị." |
 | AUTH_CONFLICT_001 | ALREADY_EXISTS | 409 | Email already registered | No | "Email đã được sử dụng." |
 
 ## Billing Errors (BILLING_*)
@@ -86,6 +86,7 @@ Example: `AUTH_INVALID_001`, `BILLING_LIMIT_003`, `AI_EXTERNAL_002`
 | BILLING_FORBIDDEN_001 | PERMISSION_DENIED | 403 | Only workspace Owner can modify billing | No | "Chỉ chủ workspace mới có thể thay đổi thanh toán." |
 | BILLING_EXTERNAL_001 | UNAVAILABLE | 503 | Payment gateway error (Stripe/VNPay) | Yes (retry) | "Lỗi cổng thanh toán. Vui lòng thử lại." |
 | BILLING_CONFLICT_001 | FAILED_PRECONDITION | 412 | Cannot remove last payment method on paid plan | No | "Không thể xóa phương thức thanh toán cuối cùng." |
+| BILLING_CONFLICT_002 | FAILED_PRECONDITION | 412 | Quote expired/changed, confirmed credit ceiling mismatch or inconsistent reservation input | No | "Báo giá đã thay đổi hoặc hết hạn. Vui lòng xác nhận lại." |
 
 ## AI / Production Errors (AI_*)
 
@@ -193,6 +194,7 @@ Example: `AUTH_INVALID_001`, `BILLING_LIMIT_003`, `AI_EXTERNAL_002`
 | Code | gRPC | HTTP | Description | Retryable | User Message |
 |---|---|---|---|---|---|
 | SYSTEM_INTERNAL_001 | INTERNAL | 500 | Unhandled server error | No | "Lỗi hệ thống. Vui lòng thử lại sau." |
+| SYSTEM_CONFLICT_001 | ALREADY_EXISTS | 409 | Idempotency key reused with a different request hash | No | "Mã yêu cầu đã dùng cho nội dung khác. Vui lòng tải lại." |
 | SYSTEM_TIMEOUT_001 | DEADLINE_EXCEEDED | 504 | Request processing timeout | Yes (retry once) | "Yêu cầu hết thời gian chờ." |
 | SYSTEM_LIMIT_001 | RESOURCE_EXHAUSTED | 429 | Global rate limit exceeded | Yes (backoff) | "Quá nhiều yêu cầu. Vui lòng chờ." |
 

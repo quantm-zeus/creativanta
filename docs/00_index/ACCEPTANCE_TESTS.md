@@ -979,7 +979,7 @@ Source: Copilot feature spec — "AI Copilot provides contextual help"
 Source: pricing_and_credits.md — referral program rules
 
     Given a referrer shares their referral link
-    When referee signs up AND subscribes to a paid tier within 30 days
+    When referee maintains a paid subscription for at least 30 days and fraud checks pass
     Then referral is marked as qualified (referral.qualified event emitted)
     And referrer receives credit bonus per tier (defined in pricing_and_credits)
     And referral tier is recalculated at end of calendar month
@@ -1002,6 +1002,6 @@ Source: Gamification feature spec — achievement system
 
     Given an achievement definition in the system
     When user meets the achievement criteria
-    Then achievement is unlocked (gamification.achievement_unlocked event emitted)
+    Then achievement is unlocked (achievement.unlocked event emitted)
     And XP is granted per achievement definition
     And achievement cannot be unlocked twice (GAMIF_CONFLICT_001)

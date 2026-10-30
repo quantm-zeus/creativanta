@@ -12,6 +12,8 @@ last_updated: 2026-04-02
 
 ---
 
+> Provider examples below are deterministic test scenarios, not proof of live approval, current model availability or quoted retail prices. Mutating requests require idempotency and exact command fields from api_behavior_contracts.md.
+
 ## A.1 Identity — AuthService/Login
 
 ```json
@@ -27,9 +29,8 @@ last_updated: 2026-04-02
 
 // Response (200 OK)
 {
-  "access_token": "eyJhbG...",
-  "refresh_token": "dGhpcyBpcyBhIHJlZnJlc2g...",
-  "expires_in": 3600,
+  "authenticated": true,
+  "session_provider": "clerk",
   "user": {
     "id": "019086a1-7c3e-7000-8000-000000000001",
     "email": "creator@example.com",
@@ -48,7 +49,7 @@ last_updated: 2026-04-02
   "workspace_id": "019086a1-7c3e-7000-8000-000000000010",
   "filters": {
     "platforms": ["tiktok", "youtube"],
-    "min_strength": 0.6,
+    "min_strength": 60,
     "category": "beauty"
   },
   "pagination": { "page_size": 20, "page_token": "" }
@@ -60,7 +61,7 @@ last_updated: 2026-04-02
     {
       "id": "019086a2-1234-7000-8000-000000000001",
       "title": "Glass Skin Tutorial 2026",
-      "strength_score": 0.87,
+      "strength_score": 87,
       "velocity": "rising",
       "platforms": ["tiktok", "youtube"],
       "category": "beauty",
@@ -83,11 +84,12 @@ last_updated: 2026-04-02
 ```json
 // Request
 {
+  "idempotency_key": "fixture-3-request-1",
   "workspace_id": "019086a1-7c3e-7000-8000-000000000010",
   "title": "Product Review: Serum ABC",
-  "content_type": "short_video",
-  "body": "Hook: Bạn có biết serum này đang viral trên TikTok?\n\nScene 1: ...",
-  "source_idea_id": "019086a2-5678-7000-8000-000000000001",
+  "format_type": "short_form",
+  "body": [{"content": "Bạn có biết serum này đang viral trên TikTok?", "notes": "Hook", "duration_target": 3}],
+  "idea_id": "019086a2-5678-7000-8000-000000000001",
   "target_platforms": ["tiktok", "youtube_shorts"],
   "tags": ["beauty", "skincare", "review"]
 }
@@ -111,16 +113,19 @@ last_updated: 2026-04-02
 ```json
 // Request
 {
+  "quote_id": "019086a5-aaaa-7000-8000-000000000099",
+  "confirmed_credits": "80.000000",
+  "idempotency_key": "fixture-4-request-1",
   "workspace_id": "019086a1-7c3e-7000-8000-000000000010",
   "mode": "ai_video_generation",
   "config": {
     "script_id": "019086a3-abcd-7000-8000-000000000001",
     "character_id": "019086a4-1111-7000-8000-000000000001",
     "style": "cinematic",
-    "duration_target_s": 45,
+    "duration_target_s": 6,
     "resolution": "1080p",
     "aspect_ratio": "9:16",
-    "provider_preference": "veo_quality"
+    "provider_preference": "fixture_video_adapter"
   }
 }
 
@@ -128,8 +133,8 @@ last_updated: 2026-04-02
 {
   "job_id": "019086a5-aaaa-7000-8000-000000000001",
   "status": "queued",
-  "estimated_credits": 35,
-  "reserved_credits": 35,
+  "estimated_credits": "80.000000",
+  "reserved_credits": "80.000000",
   "estimated_duration_s": 180,
   "position_in_queue": 3,
   "sse_url": "/api/v1/generations/019086a5-aaaa/stream"
@@ -147,7 +152,7 @@ last_updated: 2026-04-02
   "stage_progress": 0.65,
   "stage_label": "Generating visuals Scene 4/5",
   "estimated_remaining_ms": 45000,
-  "credits_used_so_far": 22
+  "credits_used_so_far": "22"
 }
 
 // SSE Event: completed
@@ -155,8 +160,8 @@ last_updated: 2026-04-02
   "job_id": "019086a5-aaaa-7000-8000-000000000001",
   "status": "completed",
   "asset_id": "019086a6-bbbb-7000-8000-000000000001",
-  "credits_used": 32,
-  "credits_refunded": 3,
+  "credits_used": "32",
+  "credits_refunded": "3",
   "duration_ms": 142500,
   "output": {
     "url": "https://cdn.creativanta.com/assets/019086a6-bbbb.mp4",
@@ -172,6 +177,7 @@ last_updated: 2026-04-02
 ```json
 // Request
 {
+  "idempotency_key": "fixture-6-request-1",
   "workspace_id": "019086a1-7c3e-7000-8000-000000000010",
   "publish_item_id": "019086a7-cccc-7000-8000-000000000001",
   "platforms": [
@@ -218,6 +224,7 @@ last_updated: 2026-04-02
 ```json
 // Request
 {
+  "idempotency_key": "fixture-7-request-1",
   "workspace_id": "019086a1-7c3e-7000-8000-000000000010",
   "thread_id": "019086b0-eeee-7000-8000-000000000001",
   "message": {
@@ -242,6 +249,7 @@ last_updated: 2026-04-02
 ```json
 // Request
 {
+  "idempotency_key": "fixture-8-request-1",
   "workspace_id": "019086a1-7c3e-7000-8000-000000000010",
   "title": "Serum ABC - Whitening Edition",
   "product_type": "physical",
@@ -273,6 +281,7 @@ last_updated: 2026-04-02
 ```json
 // Request (batch import from platform sync)
 {
+  "idempotency_key": "fixture-9-request-1",
   "workspace_id": "019086a1-7c3e-7000-8000-000000000010",
   "source_platform": "shopee",
   "orders": [
@@ -313,6 +322,7 @@ last_updated: 2026-04-02
 ```json
 // Request
 {
+  "idempotency_key": "fixture-10-request-1",
   "workspace_id": "019086a1-7c3e-7000-8000-000000000010",
   "offer_id": "019086c2-3333-7000-8000-000000000001"
 }
@@ -395,16 +405,18 @@ last_updated: 2026-04-02
 }
 ```
 
-## A.13 Finance — ReconciliationService/Reconcile
+## A.13 Finance — ReconciliationService/ManualMatch
 
 ```json
 // Request
 {
+  "idempotency_key": "fixture-13-request-1",
   "workspace_id": "019086a1-7c3e-7000-8000-000000000010",
-  "record_id": "019086d1-6666-7000-8000-000000000001",
-  "action": "match",
-  "matched_settlement_id": "019086d2-7777-7000-8000-000000000001",
-  "note": "Matched via platform settlement report"
+  "order_ids": ["019086c1-2222-7000-8000-000000000001"],
+  "line_ids": ["019086d2-7777-7000-8000-000000000001"],
+  "allocation_amounts": ["350000.000000"],
+  "expected_updated_at": "2026-04-02T16:00:00Z",
+  "reason": "Matched via platform settlement report"
 }
 
 // Response (200 OK)
@@ -423,31 +435,61 @@ last_updated: 2026-04-02
 ```json
 // Request
 {
+  "idempotency_key": "fixture-workflow-create-1",
   "workspace_id": "019086a1-7c3e-7000-8000-000000000010",
-  "name": "Auto-reply to sponsor inquiries",
-  "description": "Detect sponsor intent → draft reply → send for approval",
-  "trigger": {
+  "title": "Approve sponsor reply",
+  "trigger_config": {
     "type": "event",
-    "event_type": "sponsor_inquiry.detected",
-    "conditions": [{ "field": "entity_id", "op": "exists" }]
+    "event_type": "sponsor_inquiry.detected"
   },
-  "nodes": [
-    { "id": "n1", "type": "action", "action": "ai_draft_reply", "config": { "template": "sponsor_reply_v2" } },
-    { "id": "n2", "type": "approval", "approver_role": "manager", "timeout_hours": 24 },
-    { "id": "n3", "type": "action", "action": "send_reply", "config": {} }
-  ],
-  "edges": [
-    { "from": "trigger", "to": "n1" },
-    { "from": "n1", "to": "n2" },
-    { "from": "n2", "to": "n3", "condition": "approved" }
-  ]
+  "action_chain": {
+    "schema_version": 1,
+    "nodes": [
+      {
+        "node_id": "n0",
+        "node_type": "trigger",
+        "config": {
+          "type": "event",
+          "event_type": "sponsor_inquiry.detected"
+        }
+      },
+      {
+        "node_id": "n1",
+        "node_type": "approval",
+        "config": {
+          "approver_ids": [
+            "019086a1-7c3e-7000-8000-000000000001"
+          ],
+          "expires_at": "2026-11-01T00:00:00Z"
+        }
+      },
+      {
+        "node_id": "n2",
+        "node_type": "terminal",
+        "config": {
+          "outcome": "succeeded"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from_node_id": "n0",
+        "to_node_id": "n1"
+      },
+      {
+        "from_node_id": "n1",
+        "to_node_id": "n2",
+        "branch": "success"
+      }
+    ]
+  }
 }
 
 // Response (201 Created)
 {
   "id": "019086e0-8888-7000-8000-000000000001",
   "workspace_id": "019086a1-7c3e-7000-8000-000000000010",
-  "name": "Auto-reply to sponsor inquiries",
+  "title": "Approve sponsor reply",
   "status": "draft",
   "node_count": 3,
   "version": 1,
@@ -460,6 +502,7 @@ last_updated: 2026-04-02
 ```json
 // Request (manual trigger)
 {
+  "idempotency_key": "fixture-15-request-1",
   "workspace_id": "019086a1-7c3e-7000-8000-000000000010",
   "workflow_id": "019086e0-8888-7000-8000-000000000001",
   "trigger_context": {
@@ -484,6 +527,7 @@ last_updated: 2026-04-02
 ```json
 // Request
 {
+  "idempotency_key": "fixture-16-request-1",
   "workspace_id": "019086a1-7c3e-7000-8000-000000000010",
   "title": "Flash Sale Friday - Skincare Sets",
   "platform": "tiktok_live",
@@ -514,6 +558,7 @@ last_updated: 2026-04-02
 ```json
 // Request
 {
+  "idempotency_key": "fixture-17-request-1",
   "workspace_id": "019086a1-7c3e-7000-8000-000000000010",
   "campaign_id": "019086f1-bbbb-7000-8000-000000000001",
   "product_id": "019086c0-1111-7000-8000-000000000001",
@@ -545,33 +590,26 @@ last_updated: 2026-04-02
 ## A.18 Credits — CreditService/GetBalance
 
 ```json
-// Request
-{
-  "workspace_id": "019086a1-7c3e-7000-8000-000000000010"
-}
-
-// Response (200 OK)
 {
   "workspace_id": "019086a1-7c3e-7000-8000-000000000010",
-  "balance": {
-    "available": 1456,
-    "reserved": 35,
-    "total_allocated": 2000,
-    "used_this_period": 544,
-    "rollover_from_last": 0,
-    "purchased_remaining": 200
-  },
-  "tier": "pro",
-  "reset_date": "2026-04-15T00:00:00Z",
-  "low_warning_threshold": 200,
-  "is_low": false
+  "total_remaining": "1656.000000",
+  "reserved": "35.000000",
+  "available": "1621.000000",
+  "subscription_remaining": "1456.000000",
+  "purchased_remaining": "200.000000",
+  "promotional_remaining": "0.000000",
+  "overage_remaining": "0.000000",
+  "subscription_tier": "pro",
+  "next_allocation_at": "2026-11-15T00:00:00Z"
 }
 ```
 
-## A.19 Admin — AdminBillingService/GetWorkspaceOverview
+This read projection is computed from source lots; reservation and total remaining are distinct. Actual generation prices come from quote_id, never from the historical numerical fixture values in other examples.
+
+## A.19 Admin — AdminBillingService/GetBillingSummary
 
 ```json
-// Request (admin-only, VPN-required)
+// Request (workspace-scoped billing read, Manager+)
 {
   "workspace_id": "019086a1-7c3e-7000-8000-000000000010"
 }
@@ -582,13 +620,13 @@ last_updated: 2026-04-02
   "owner_email": "creator@example.com",
   "tier": "pro",
   "subscription_status": "active",
-  "mrr": "299000.000000",
+  "mrr": "1499000.000000",
   "currency": "VND",
   "member_count": 3,
   "connected_accounts": 8,
   "storage_used_bytes": 5368709120,
-  "ai_credits_used_this_month": 1245,
-  "ai_credits_allocated": 2000,
+  "ai_credits_used_this_month": "1245",
+  "ai_credits_allocated": "2000.000000",
   "last_payment_at": "2026-03-15T10:00:00Z",
   "next_billing_at": "2026-04-15T10:00:00Z",
   "dunning_state": null,
@@ -613,10 +651,10 @@ last_updated: 2026-04-02
       "health_score": 92,
       "status": "healthy",
       "capabilities": {
-        "publish": { "state": "available", "rate_limit_remaining": 45, "rate_limit_reset_at": "2026-04-02T17:00:00Z" },
-        "analytics": { "state": "available" },
-        "comments": { "state": "available" },
-        "live": { "state": "available" },
+        "publish": { "state": "native", "rate_limit_remaining": 45, "rate_limit_reset_at": "2026-04-02T17:00:00Z" },
+        "analytics": { "state": "native" },
+        "comments": { "state": "native" },
+        "live": { "state": "native" },
         "shop": { "state": "degraded", "reason": "API rate limit approaching", "degraded_since": "2026-04-02T15:00:00Z" }
       },
       "token_expires_at": "2026-04-15T10:00:00Z"
@@ -627,9 +665,9 @@ last_updated: 2026-04-02
       "health_score": 100,
       "status": "healthy",
       "capabilities": {
-        "publish": { "state": "available" },
-        "analytics": { "state": "available" },
-        "comments": { "state": "available" }
+        "publish": { "state": "native" },
+        "analytics": { "state": "native" },
+        "comments": { "state": "native" }
       },
       "token_expires_at": "2026-05-01T10:00:00Z"
     }
@@ -660,7 +698,7 @@ last_updated: 2026-04-02
     {
       "referee_display_name": "Phạm D",
       "status": "qualified",
-      "credits_earned": 100,
+      "credits_earned": "100",
       "qualified_at": "2026-03-28T12:00:00Z"
     }
   ]
@@ -672,6 +710,9 @@ last_updated: 2026-04-02
 ```json
 // Request
 {
+  "quote_id": "019086a5-aaaa-7000-8000-000000000098",
+  "confirmed_credits": "15.000000",
+  "idempotency_key": "fixture-22-request-1",
   "workspace_id": "019086a1-7c3e-7000-8000-000000000010",
   "character_id": "019086a4-1111-7000-8000-000000000001",
   "name": "Voice - Nguyễn Văn A",
@@ -688,7 +729,7 @@ last_updated: 2026-04-02
   "voice_clone_id": "01908700-1111-7000-8000-000000000001",
   "status": "processing",
   "estimated_duration_s": 300,
-  "credits_reserved": 15,
+  "credits_reserved": "15",
   "consent_status": "granted"
 }
 ```

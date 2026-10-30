@@ -20,8 +20,8 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 # A2 — Protobuf Contract Definitions (Overview & Key Services)
 
 > **Upstream**: Tech Stack ADR v3 (ADR-002, ADR-005), Product Freeze
-> **Protocol**: gRPC (mobile↔API) + ConnectRPC (web↔API) + REST (webhooks only)
-> **Location**: `/protos/` — planned for implementation Phase 1. No actual `.proto` files are committed in the repository yet; this document is the transport/codegen overview derived from the canonical authoring set (`api_endpoint_map.md` + `api_examples.md`).
+> **Protocol**: gRPC (mobile↔API) + ConnectRPC (web↔API) + REST (webhooks/public API)
+> **Location**: `/protos/` — authored incrementally from implementation P0. No actual `.proto` files are committed in the repository yet; this document is the transport/codegen overview derived from the canonical authoring set (`api_endpoint_map.md` + `api_examples.md`).
 
 ---
 
@@ -317,16 +317,9 @@ echo "✅ Proto generation complete for Rust, TypeScript, Dart"
 
 To prevent contract bloat when generating physical `.proto` files from `api_endpoint_map.md`:
 
-1. **Phase-Gated Generation (Do NOT generate all 1,177 RPCs upfront)**:
-   - Author `.proto` files strictly by build phase per `00_index/IMPLEMENTATION_ORDER.md`:
-     - **Phase 0**: `common/types.proto`, `common/errors.proto`, `identity/auth.proto`, `identity/workspace.proto`, `identity/user.proto`, `connector/connector.proto`
-     - **Phase 1**: `intelligence/trend.proto`, `intelligence/competitor.proto`, `intelligence/opportunity.proto`
-     - **Phase 2–3**: `content/*.proto` (including extended M07 production services in §7)
-     - **Phase 4**: `publish/*.proto`, `engagement/*.proto`
-     - **Phase 5**: `commerce/*.proto`, `live/live.proto`, `seeding/sample.proto`, `creator_pro/*.proto`
-     - **Phase 6**: `finance/*.proto`
-     - **Phase 7**: `workflow/*.proto`
-     - **Phase 8**: `copilot/copilot.proto`, `admin/*.proto`, `gamification/achievement.proto`, `internal_admin/*.proto`
+1. **Phase-gated contract authoring**:
+   - Follow [Implementation Order](../00_index/IMPLEMENTATION_ORDER.md), not historical phase labels. P0: common/identity + credit/capability/admin-auth core; P1: commerce/finance core; P2: intelligence; P3: content/continuity; P4: production; P5: publish/engagement; P6: remaining commerce/live/seeding/creator-pro; P7: workflows/agents/public API; P8: remaining projections/admin/help/referral/gamification.
+   - A module starting early receives incremental message additions in later phases. Commit and compile the current slice's `.proto` files before implementing endpoints or screens; do not generate the whole inventory in advance.
 2. **Merging Split Service Sections**:
    - Services that appear in both Core (`§2–§9`) and Extended/Final sections (`§10–§20`) of `api_endpoint_map.md` (e.g., `WorkspaceService`, `IdeaService`, `ScriptService`, `AssetService`, `PublishService`, `ProductService`, `OfferService`, `OrderService`, `CampaignService`, `AffiliateService`, `ProfitService`, `ReconciliationService`, `WorkflowService`, `SeedingService`, `BrandDealService`) MUST be consolidated into **a single `service <Name> { ... }` block** inside their canonical `.proto` file. Never create separate `*ExtendedService` definitions.
 3. **Canonical Service Alias Consolidation**:
@@ -336,5 +329,7 @@ To prevent contract bloat when generating physical `.proto` files from `api_endp
      - `SettingsService` (§10.7) / `UserPreferencesService` (§19.18) → consolidate under `UserService` & `WorkspaceService` (`identity/`)
      - `TemplateService` (§17.7) → consolidate under `RecipeService` (`workflow/recipe.proto`)
      - `BillingService` (§14.11) / `CreditService` (§14.10) → consolidate under `AdminBillingService` (`admin/billing.proto`)
-4. **Payload Schema Derivation Rule**:
-   - For RPCs in `§10–§20` that do not have explicit JSON examples in `api_examples.md`, derive request/response message fields directly from the owning table columns in `database_schema.md` + standard `common.Pagination` / `common.PaginatedResponse` wrappers. Never invent non-schema field names.
+4. **Typed request/response authoring rule**:
+   - [API behavior contracts](api_behavior_contracts.md) owns transport fields, critical command inputs, idempotency, validation and failure semantics. [RPC bindings](rpc_permission_bindings.csv) covers every inventory operation.
+   - Derive persistence-backed **response** types from authorized schema projections, excluding secrets/server internals. Never derive writable command fields by copying a DB row.
+   - Each implemented RPC must have exact compiled request/response messages and tests recorded in its phase packet. State-changing operations use the feature transition tables and specific action permissions. An illustrative service declaration or JSON example alone is not executable contract completion.

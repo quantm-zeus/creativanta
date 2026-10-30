@@ -3,8 +3,8 @@ layer: features
 module: M19
 canonical: true
 domain: finance
-status: READY
-last_updated: 2026-04-06
+status: SPECIFIED
+last_updated: 2026-10-29
 ---
 
 # Feature: Operating Ledger & Proof System (M19)
@@ -56,22 +56,22 @@ M19 exists as the **financial truth and proof layer** — the operating ledger t
 2. **RULE-M19-002**: Proof truth hierarchy determines display priority: `Official (API-confirmed) > Reconciled (matched against settlement) > Estimated (derived from available data) > Inferred (partially traceable) > Unreconciled (no match found)`. Higher-truth data always takes precedence when multiple sources exist for the same metric (Pack 06 §7.1).
 3. **RULE-M19-003**: The **unreconciled bucket** MUST always be visible on profit dashboards. It shows: total unreconciled amount, count of unreconciled items, age distribution. The bucket CANNOT be hidden, collapsed, or auto-resolved. User must explicitly act on each unreconciled item (PRD §23.19 AC).
 4. **RULE-M19-004**: Profit formula: `Net Profit = Gross Revenue − Platform Fees − Shipping − COGS − AI Credits − Affiliate Commissions − Ads Spend − Seeding Costs − Refund Deductions − Other Costs`. Each line item carries its own `source_class` and `confidence`. The formula result inherits the LOWEST confidence from any contributing line item (Pack 06 §5, DB schema §11.3).
-5. **RULE-M19-005**: Evidence objects are **immutable** — once created, they cannot be edited or deleted. Each evidence object has a `content_hash` (SHA-512) for integrity verification. Evidence supports: screenshots, API responses, receipts, reports, platform data exports (DB schema §11.4).
+5. **RULE-M19-005**: Evidence objects are **immutable** — once created, their content cannot be edited; verification metadata may change with audit, and legally required erasure uses an authorized maintenance path. Each evidence object has a `content_hash` (SHA-512) for integrity verification. Evidence supports: screenshots, API responses, receipts, reports, platform data exports (DB schema §11.4).
 6. **RULE-M19-006**: Proof bundles assemble multiple evidence objects into a coherent claim. Every proof bundle MUST document: claim scope, claim summary, supporting evidence IDs, confidence band, coverage summary, and unresolved gaps. Gaps are explicitly listed — a proof bundle with unresolved gaps is still valid but with reduced confidence (DB schema §11.5, Pack 06 §7.2).
-7. **RULE-M19-007**: Canonical reconciliation truth uses the shared enum `reconciliation_state`: `awaiting_evidence`, `imported_only`, `inferred_pending_confirmation`, `partially_reconciled`, `fully_reconciled`, `conflict_detected`, `manually_overridden`. `settlements.settlement_state` is a separate ingestion lifecycle (`imported → normalized → ready_for_matching → archived`) and MUST NOT be confused with reconciliation truth. Override requires Manager+ with reason + audit trail. Conflicts cannot be auto-resolved; they require human decision (Pack 06 §6, DB schema §11.1).
+7. **RULE-M19-007**: Canonical reconciliation truth uses the shared enum `reconciliation_state`: `awaiting_evidence`, `imported_only`, `inferred_pending_confirmation`, `partially_reconciled`, `fully_reconciled`, `conflict_detected`, `manually_overridden`. `settlements.settlement_state` is a separate ingestion lifecycle (`imported → normalized → ready_for_matching → archived`) and MUST NOT be confused with reconciliation truth. Override requires Admin+ with reason + audit trail. Conflicts cannot be auto-resolved; they require human decision (Pack 06 §6, DB schema §11.1).
 8. **RULE-M19-008**: Money cards (UI) MUST show: (a) the monetary value, (b) source class badge (colored icon), (c) confidence indicator (high/medium/low), (d) data freshness timestamp, (e) drilldown CTA to underlying objects/evidence. Frontend MUST NOT perform ad-hoc financial calculations — it MUST consume pre-computed values from profit_snapshots and derived views (Pack 06 §11).
 
 ## Main Flow
 
-1. **Revenue recording**: Orders arrive from M13 → each order creates revenue entries
+1. **Revenue recording**: Orders arrive from M13 → completed orders create recognized revenue postings; earlier states remain pending
    - `order.imported` / `order.state_changed` events consumed
    - Revenue recorded with `source_class` from order (official for connected platform, imported for manual)
 2. **Cost recording**: Cost events arrive from multiple sources
    - AI credits: `asset.generation_completed` → cost_item (type = `ai_credits`)
-   - Commissions: `commission.calculated` → cost_item (type = `commission`)
+   - Commissions: `affiliate.commission.calculated` → cost_item (type = `commission`)
    - Platform fees: extracted from `orders.fee_breakdown`
    - Seeding: `sample_request.approved` → cost_item (type = `seeding`, source_class = `estimated`)
-   - COGS: from `products.cogs` per order line item
+   - COGS: from immutable `orders.items[].unit_cogs` captured at transaction time
    - Other: manual entry with evidence requirement
 3. **Settlement import**: Platform settlements ingested
    - Settlement data imported (Shopee weekly payout, TikTok settlement, etc.)
@@ -83,12 +83,12 @@ M19 exists as the **financial truth and proof layer** — the operating ledger t
    - Fully matched and confirmed → `fully_reconciled`
    - Partially matched → `partially_reconciled`
    - Mismatch detected → `conflict_detected`
-   - Manager override with reason → `manually_overridden`
+   - Admin override with reason → `manually_overridden`
    - Unmatched imported items remain `imported_only`; evidence-gated items remain `awaiting_evidence`
    - `settlement.reconciled` or `reconciliation.conflict_detected` events emitted
 5. **Profit snapshot computation**: System computes materialized profit views
    - Per scope: workspace, product, platform, campaign, content, period
-   - Each snapshot carries `source_class_mix`, `confidence`, `freshness_at`
+   - Each snapshot carries `source_class_mix`, `confidence`, `freshness_at`; recognition, FX, component dedup and fixture arithmetic follow [Financial computation](../../04_contracts/financial_computation_contract.md)
    - `profit.snapshot_updated` event emitted
    - **Computation triggers** (multi-strategy):
      - **Event-driven (primary)**: On `order.state_changed`, `settlement.reconciled`, `cost.recorded`, `refund.completed` → affected scope snapshots recompute within 30s
@@ -114,7 +114,7 @@ M19 exists as the **financial truth and proof layer** — the operating ledger t
 
 ### A2: Reconciliation Conflict
 - Trigger: Settlement amount doesn't match tracked orders
-- Steps: System flags conflict → `reconciliation.conflict_detected` event → Manager reviews → resolves by: adjusting order amounts, adding missing orders, or documenting as agreed discrepancy → audit trail recorded
+- Steps: System flags conflict → `reconciliation.conflict_detected` event → Admin reviews → resolves by: adjusting order amounts, adding missing orders, or documenting as agreed discrepancy → audit trail recorded
 - Result: Conflict resolved with full audit trail, not auto-resolved
 
 ### A3: Proof Bundle for Brand Negotiation
@@ -126,7 +126,7 @@ M19 exists as the **financial truth and proof layer** — the operating ledger t
 
 ### EC-M19-001: Mixed Source Class in Aggregate
 - Condition: Profit snapshot includes 70% official data and 30% estimated data
-- Expected behavior: Aggregate confidence = `'medium'`. Money card shows: value + "medium confidence" badge + caveat "Includes estimated values (30%)." Drilldown shows per-line-item source class breakdown. Dashboard never hides the source mix.
+- Expected behavior: Aggregate confidence inherits the lowest contributing band, capped at `'medium'` for mixed estimated/official sources. Money card shows: value + "medium confidence" badge + caveat "Includes estimated values (30%)." Drilldown shows per-line-item source class breakdown. Dashboard never hides the source mix.
 - Reference: RULE-M19-001, RULE-M19-004
 
 ### EC-M19-002: Settlement Import with No Matching Orders
@@ -160,7 +160,7 @@ Object: order / settlement / reconciliation_record | DB column: `orders.reconcil
 | inferred_pending_confirmation | partially_reconciled | Partial match accepted | Some evidence is still unresolved |
 | inferred_pending_confirmation | conflict_detected | Conflict detected | Amount mismatch or duplicate claim |
 | partially_reconciled | fully_reconciled | Missing evidence provided | Gaps filled |
-| conflict_detected | manually_overridden | Manager overrides with reason | Exception accepted and audit recorded |
+| conflict_detected | manually_overridden | Admin overrides with reason | Exception accepted and audit recorded |
 | fully_reconciled | conflict_detected | Later discrepancy discovered | Re-opened due to reversal/refund/data correction |
 
 ## Related Contracts
@@ -189,11 +189,11 @@ Object: order / settlement / reconciliation_record | DB column: `orders.reconcil
 
 ## Acceptance Criteria
 
-1. **Given** a profit dashboard is displayed, **when** the profit snapshot includes a mix of official (70%) and estimated (30%) data, **then** the money card MUST show: the profit value, a "medium confidence" badge, a caveat "Includes estimated values (30%)," source class breakdown on drilldown — the card MUST NOT present the value as official truth.
+1. **Given** a profit dashboard is displayed, **when** the profit snapshot includes a mix of official (70%) and estimated (30%) data, **then** the money card MUST show: the profit value, a confidence badge following the minimum-band rule (at most medium), a caveat "Includes estimated values (30%)," source class breakdown on drilldown — the card MUST NOT present the value as official truth.
 
 2. **Given** a settlement is imported from Shopee, **when** 5 out of 20 settlement line items have no matching orders in the system, **then** those 5 items MUST appear in the unreconciled bucket with `reconciliation_state = 'imported_only'` — the unreconciled bucket MUST be visible on the profit dashboard, not hidden or collapsed.
 
-3. **Given** a `commission.calculated` event fires from M16, **when** M19 processes it, **then** a `cost_item` MUST be created with `cost_type = 'commission'`, linked to the order/campaign scope — the commission MUST appear as a line item in the profit formula deductions.
+3. **Given** a `affiliate.commission.calculated` event fires from M16, **when** M19 processes it, **then** a `cost_item` MUST be created with `cost_type = 'commission'`, linked to the order/campaign scope — the commission MUST appear as a line item in the profit formula deductions.
 
 4. **Given** an operator assembles a proof bundle for "Campaign X ROI," **when** the bundle includes 8 evidence objects but 2 required evidence categories are missing, **then** the proof bundle MUST show `confidence = 'medium'` (or lower), `unresolved_gaps` listing the 2 missing categories, and `coverage_summary` explaining what IS proven.
 
