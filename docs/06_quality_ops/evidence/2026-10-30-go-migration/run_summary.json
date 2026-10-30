@@ -1,0 +1,72 @@
+{
+  "status": "PASS",
+  "scope": "Go documentation/implementation-plan migration; no Go application compiled or deployed",
+  "git_baseline": "97ce1ce4f27635688d3500d99831f71f98959d02",
+  "completed_at": "2026-10-30T16:06:28.253848+00:00",
+  "checks": [
+    {
+      "command": "python3 tooling/build_plan.py",
+      "started_at": "2026-10-30T16:06:23.465170+00:00",
+      "seconds": 0.265,
+      "exit_code": 0,
+      "log": "build-plan.json"
+    },
+    {
+      "command": "python3 tooling/check_docs.py --json",
+      "started_at": "2026-10-30T16:06:23.731308+00:00",
+      "seconds": 0.349,
+      "exit_code": 0,
+      "log": "docs-check.json"
+    },
+    {
+      "command": "python3 -m unittest discover -s tooling/tests -v",
+      "started_at": "2026-10-30T16:06:24.080704+00:00",
+      "seconds": 3.788,
+      "exit_code": 0,
+      "log": "regression-tests.txt"
+    },
+    {
+      "command": "/tmp/creativanta-docs-review-20261030/bin/python tooling/check_docs.py --sql --json",
+      "started_at": "2026-10-30T16:06:27.869019+00:00",
+      "seconds": 0.326,
+      "exit_code": 0,
+      "log": "sql-check.json"
+    },
+    {
+      "command": "git diff --check",
+      "started_at": "2026-10-30T16:06:28.195312+00:00",
+      "seconds": 0.035,
+      "exit_code": 0,
+      "log": "diff-check.txt"
+    }
+  ],
+  "preservation": {
+    "feature_specs_31_preserved": true,
+    "operator_modes_6_preserved": true,
+    "all_60_task_ids_phases_dependencies_modules_preserved": true,
+    "module_routing_preserved": true,
+    "requirement_ids_preserved": true,
+    "screen_paths_245_preserved": true,
+    "canonical_schema_sql_unchanged": true,
+    "event_catalog_rows_unchanged": true,
+    "permission_bindings_unchanged": true,
+    "rpc_inventory_unchanged": true,
+    "archive_unchanged": true,
+    "prior_review_evidence_unchanged": true
+  },
+  "regression_test_count": 23,
+  "source_hashes": "source-hashes.json",
+  "local_agent_rules": {
+    "paths": [
+      ".agent/rules/tech-stack.md",
+      ".agent/agents/backend-specialist.md"
+    ],
+    "version_control": "These pre-existing local files are excluded by .git/info/exclude; only their project stack guidance was updated."
+  },
+  "limitations": [
+    "No committed application Go module or protobuf bundle yet; P0 must build and verify it.",
+    "SQL was parsed with pglast 8.7, not executed on PostgreSQL.",
+    "Go/TS/Dart compilation, real DB/process isolation, FFmpeg execution and release tests remain phase gates.",
+    "Prior review evidence is kept as historical and is not evidence for changed source hashes."
+  ]
+}

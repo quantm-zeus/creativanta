@@ -4,6 +4,7 @@ canonical: true
 source_file: impl_c2_security_threat_model.md
 status: READY
 last_verified: 2026-03-30
+last_updated: 2026-10-30
 ---
 
 # C2 — Security Threat Model
@@ -22,7 +23,7 @@ last_verified: 2026-03-30
 | **AI Pipeline** | Prompts, outputs | Prompt injection, data leakage | Input sanitization, output filtering, sandbox |
 | **File Upload** | User content | Malware, oversized files | File type validation, size limits, virus scan |
 | **Webhooks** | Event data | Spoofing, replay | Signature verification, idempotency keys |
-| **Database** | All business data | SQL injection, data breach | Parameterized queries (SQLx), RLS, encryption |
+| **Database** | All business data | SQL injection, data breach | Parameterized queries (pgx/sqlc), RLS, encryption |
 | **Admin Site** | Internal tools | Privilege escalation | VPN-only, MFA, separate auth, audit log |
 
 ---
@@ -85,12 +86,12 @@ Token Expiry Check (background worker, every 5 min):
 
 | # | Vulnerability | Risk | Mitigation |
 |---|---|---|---|
-| A01 | Broken Access Control | HIGH | PostgreSQL RLS + Rust Tower RBAC middleware + permission checks |
+| A01 | Broken Access Control | HIGH | PostgreSQL RLS + Go authorization middleware + permission checks |
 | A02 | Cryptographic Failures | MED | AES-256-GCM tokens, Argon2id passwords, TLS everywhere |
-| A03 | Injection | HIGH | SQLx compile-time SQL verification, Protobuf typed inputs |
+| A03 | Injection | HIGH | sqlc-generated typed parameterized queries plus real PostgreSQL fixtures, Protobuf typed inputs |
 | A04 | Insecure Design | MED | Threat modeling (this doc), security reviews |
 | A05 | Security Misconfiguration | MED | Docker hardening, minimal images, no default passwords |
-| A06 | Vulnerable Components | MED | Cargo audit, npm audit, automated Dependabot |
+| A06 | Vulnerable Components | MED | govulncheck, npm audit, automated Dependabot |
 | A07 | Auth Failures | HIGH | Clerk (managed IdP), JWT validation, rate limiting auth endpoints |
 | A08 | Data Integrity Failures | MED | Webhook signature verification, Protobuf schema validation |
 | A09 | Logging/Monitoring Gaps | LOW | Structured tracing, Sentry, audit events for all critical actions |
@@ -102,8 +103,8 @@ Token Expiry Check (background worker, every 5 min):
 
 ```
 Defense-in-Depth Layers:
-1. JWT → extract workspace_id (Tower middleware)
-2. Rust service → validate workspace_id belongs to user
+1. JWT → extract workspace_id (Go HTTP middleware / Connect interceptors)
+2. Go service → validate workspace_id belongs to user
 3. PostgreSQL RLS → SELECT set_config('app.current_tenant_id', validated_workspace_id, true)
 4. Query → direct RLS on tenant tables/junctions and composite tenant FKs enforce relational scope
 5. Audit → every cross-tenant attempt logged
@@ -138,7 +139,7 @@ Defense-in-Depth Layers:
 | Public API | 100 req | 1 min/API key | 429 + X-RateLimit headers |
 | File upload | 30 req | 1 min/workspace | 429 |
 
-Implementation: Sliding window counter via Dragonfly, Tower middleware.
+Implementation: Sliding window counter via Dragonfly, Go HTTP middleware / Connect interceptors.
 
 ---
 

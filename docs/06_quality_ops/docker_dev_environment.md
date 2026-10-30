@@ -3,11 +3,12 @@ layer: quality_ops
 canonical: true
 source_file: impl_b7_docker_dev_environment.md
 last_verified: 2026-03-30
+last_updated: 2026-10-30
 ---
 
 # B7 — Docker Local Development Environment
 
-> **Upstream**: Tech Stack ADR v3, Pack 09
+> **Upstream**: Tech Stack ADR v4, Pack 09
 > **Strategy**: Local Docker Compose for all services, hot-reload for app code
 
 ---
@@ -19,7 +20,7 @@ last_verified: 2026-03-30
 │                    Local Development                      │
 │                                                          │
 │  apps/web (SvelteKit)  → localhost:5173 (Vite dev)       │
-│  apps/api (Rust)       → localhost:3000 (cargo watch)    │
+│  apps/api (Go)       → localhost:3000 (go run ./cmd/api --env-file .env.api.development)    │
 │  apps/admin (SvelteKit)→ localhost:5174 (Vite dev)       │
 │  apps/mobile (Flutter) → emulator/device                 │
 │                                                          │
@@ -211,15 +212,14 @@ GRANT USAGE ON SCHEMA public TO app_user, admin_user, outbox_poller;
 
 ## 4. Environment Files
 
-### .env.development (apps/api)
+### Role-scoped Go process configuration (apps/api)
+
+Go does not automatically load dotenv files. P0 implements an explicit development-only `--env-file` flag in each command; it reads only the named role-specific file and validates the allowed configuration keys/DB role. Production receives injected environment/secrets and rejects development dotenv loading. Never create or source a combined file containing credentials for every role. All env files below are local-only templates, ignored by Git; the implementation commits sanitized examples only.
+
+### .env.api.development (public API / ordinary worker)
 ```bash
 # Database
 DATABASE_URL=postgresql://app_user:dev_app_password@localhost:5432/creativanta_dev
-# Migration process only; never load in the public API/worker process:
-MIGRATION_DATABASE_URL=postgresql://creativanta:dev_password_123@localhost:5432/creativanta_dev
-# Separate privileged processes, not public API configuration:
-ADMIN_DATABASE_URL=postgresql://admin_user:dev_admin_password@localhost:5432/creativanta_dev
-OUTBOX_DATABASE_URL=postgresql://outbox_poller:dev_outbox_password@localhost:5432/creativanta_dev
 DATABASE_POOL_SIZE=20
 
 # Cache
@@ -273,8 +273,27 @@ SENTRY_DSN=
 # Server
 HOST=0.0.0.0
 PORT=3000
-RUST_LOG=info,creativanta=debug
+LOG_LEVEL=debug
 ENVIRONMENT=development
+```
+
+### .env.migrate.development (migration command only)
+```bash
+MIGRATION_DATABASE_URL=postgresql://creativanta:dev_password_123@localhost:5432/creativanta_dev
+```
+
+### .env.admin.development (internal admin command only)
+```bash
+ADMIN_DATABASE_URL=postgresql://admin_user:dev_admin_password@localhost:5432/creativanta_dev
+HOST=127.0.0.1
+PORT=3002
+# Inject separate internal-admin identity/MFA and trusted proxy configuration.
+```
+
+### .env.outbox.development (dispatcher only)
+```bash
+OUTBOX_DATABASE_URL=postgresql://outbox_poller:dev_outbox_password@localhost:5432/creativanta_dev
+REDIS_URL=redis://localhost:6379
 ```
 
 ### .env.development (apps/web)
@@ -289,12 +308,19 @@ PUBLIC_POSTHOG_HOST=
 
 ## 5. Development Commands
 
+All commands below run from a fresh terminal at the repository root unless stated otherwise. P0 creates the named Go module, command packages, configuration flags, Compose file and codegen scripts; these are implementation instructions, not evidence they currently exist. The migration wrapper uses Goose and resolves infra/migrations from the repository root regardless of working directory. Public API supports `/health` and `/ready`; deployment must preserve HTTP/2 for mobile gRPC. The internal admin listener uses port 3002 locally and is never published through the customer API proxy.
+
 ```bash
 # Start all infrastructure
 docker compose up -d
 
-# Run Rust API (hot-reload)
-cd apps/api && cargo watch -x run
+# Run Go API (restart after edits; optional pinned watcher at P0)
+cd apps/api && go run ./cmd/api --env-file .env.api.development
+
+# Run other Go processes in separate terminals from apps/api:
+# go run ./cmd/worker --env-file .env.api.development
+# go run ./cmd/admin-api --env-file .env.admin.development
+# go run ./cmd/outbox --env-file .env.outbox.development
 
 # Run SvelteKit web (dev)
 cd apps/web && pnpm dev
@@ -309,7 +335,7 @@ cd apps/mobile && flutter run
 ./tooling/proto-gen.sh
 
 # Run database migrations
-cd apps/api && cargo run --bin migrate
+cd apps/api && go run ./cmd/migrate --env-file .env.migrate.development up
 
 # Stop all
 docker compose down
@@ -335,13 +361,13 @@ reset:
 	docker compose down -v && docker compose up -d
 
 db-migrate:
-	cd apps/api && cargo run --bin migrate
+	cd apps/api && go run ./cmd/migrate --env-file .env.migrate.development up
 
 proto-gen:
 	./tooling/proto-gen.sh
 
 dev-api:
-	cd apps/api && cargo watch -x run
+	cd apps/api && go run ./cmd/api --env-file .env.api.development
 
 dev-web:
 	cd apps/web && pnpm dev
@@ -367,7 +393,8 @@ status:
 |---|---|---|
 | SvelteKit Web | 5173 | http://localhost:5173 |
 | SvelteKit Admin | 5174 | http://localhost:5174 |
-| Rust API | 3000 | http://localhost:3000 |
+| Go API | 3000 | http://localhost:3000 |
+| Go internal admin API (private) | 3002 | http://127.0.0.1:3002 |
 | PostgreSQL | 5432 | — |
 | Dragonfly (Redis) | 6379 | — |
 | Meilisearch | 7700 | http://localhost:7700 |

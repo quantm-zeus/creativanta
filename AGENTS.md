@@ -72,3 +72,7 @@ Before implementing, generating code, or modifying any file, read:
 Keep all 31 feature/spec entries and six modes. Implement progressively using P0–P8 in docs/00_index/IMPLEMENTATION_ORDER.md. The owner's explicit instruction supersedes simultaneous Day-1 availability in older PRD history; no additional approval is needed for that already-authorized delivery change. Do not remove feature scope or modify docs/09_archive/.
 
 Persisted fields belong to database_schema.md; transport-only fields/commands belong to api_behavior_contracts.md. Every implemented inventory RPC must use rpc_permission_bindings.csv and the named RBAC permission plus underlying object/tier/approval/capability checks. SPECIFIED is not runtime acceptance. Run tooling/check_docs.py after contract/doc edits and keep evidence of the required phase checks.
+
+## Product-owner backend decision — 2026-10-30
+
+Use Go for the API, isolated admin API, workers and owned workflow runtime, per docs/05_system/tech_stack_adr.md ADR-015. The owner explicitly authorized replacing the prior Rust implementation choice; no additional approval is needed for this migration. Keep all features, six modes and P0–P8 gates. Historical archives and recorded check evidence remain unchanged.

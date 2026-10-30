@@ -61,7 +61,7 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 
 | Topic | Canonical File | Notes |
 |-------|---------------|-------|
-| Tech stack ADR | 05_system/tech_stack_adr.md | 14 ADRs, full stack mapping |
+| Tech stack ADR | 05_system/tech_stack_adr.md | Current Go baseline in ADR-015; full stack mapping |
 | Sequence diagrams | 05_system/sequence_diagrams.md | 13 critical flow diagrams |
 | Queue / retry | 05_system/queue_retry_design.md | Named queues, at-least-once outbox/inbox, external-effect recovery, DLQ and budgets. |
 | AI provider routing | 05_system/ai_provider_guide.md | Multi-provider adapter, Gemini default |

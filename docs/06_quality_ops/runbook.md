@@ -3,6 +3,7 @@ layer: quality_ops
 canonical: true
 created: 2026-03-31
 status: READY
+last_updated: 2026-10-30
 ---
 
 # Runbook — Incident Response & Operations
@@ -27,7 +28,7 @@ status: READY
 
 | Service | Endpoint | Expected | Check Interval |
 |---|---|---|---|
-| API (Axum) | `/health` | `200 OK` + `{"status": "healthy"}` | 30s |
+| API (Go net/http + ConnectRPC) | `/health` | `200 OK` + `{"status": "healthy"}` | 30s |
 | API (deep) | `/health/ready` | `200` + DB + Redis connected | 60s |
 | Web (SvelteKit) | `/` | `200` | 60s |
 | PostgreSQL | Port 5432 | `pg_isready` returns 0 | 30s |
@@ -107,10 +108,12 @@ IMAGE_TAG=$ROLLBACK_TAG docker compose up -d api
 curl -f https://app.creativanta.app/health
 ```
 
-**Database rollback**:
+**Database rollback**: Production uses expand-compatible migrations and forward repair; follow [CI/CD rollback](ci_cd_pipeline.md#4-deployment-and-rollback). Never reverse a destructive migration automatically.
 ```bash
-# SeaORM migration down (last N migrations)
-sea-orm-cli migrate down -n 1 -d ./migration
+# Inspect version with the separately injected migration credential.
+cd apps/api && go run ./cmd/migrate status
+# Local disposable DB only, after confirming the down migration is safe:
+# go run ./cmd/migrate down
 ```
 
 ---

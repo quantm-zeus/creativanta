@@ -3,6 +3,7 @@ layer: system
 canonical: true
 created: 2026-04-01
 status: READY
+last_updated: 2026-10-30
 ---
 
 # Observability & Monitoring Architecture
@@ -96,7 +97,7 @@ status: READY
 ```
 Client (web/mobile)
   → [X-Trace-Id header]
-    → Axum middleware (create/continue span)
+    → Go HTTP middleware / Connect interceptors (create/continue span)
       → Service layer (child span)
         → DB query (child span, query text)
         → Redis call (child span)
@@ -137,7 +138,7 @@ Client (web/mobile)
 
 | Project | Platform | DSN Env Var |
 |---|---|---|
-| `creativanta-api` | Rust (sentry-rust) | `SENTRY_DSN_API` |
+| `creativanta-api` | Go (sentry-go) | `SENTRY_DSN_API` |
 | `creativanta-web` | SvelteKit (sentry-svelte) | `SENTRY_DSN_WEB` |
 | `creativanta-mobile` | Flutter (sentry_flutter) | `SENTRY_DSN_MOBILE` |
 | `creativanta-admin` | SvelteKit | `SENTRY_DSN_ADMIN` |

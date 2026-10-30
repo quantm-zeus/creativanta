@@ -4,18 +4,19 @@ canonical: true
 source_file: impl_b3_queue_retry_design.md
 last_verified: 2026-03-30
 purpose: Queue architecture, retry strategies, DLQ, outbox pattern, circuit breaker, and cron registry
+last_updated: 2026-10-30
 ---
 
 # B3 — Queue, Retry & Dead-Letter Design
 
-> **Upstream**: Pack 03 (Event/Workflow), Tech Stack ADR v3
-> **Tech**: Tokio + Redis Streams (Dragonfly) + PostgreSQL outbox
+> **Upstream**: Pack 03 (Event/Workflow), Tech Stack ADR v4
+> **Tech**: Go bounded workers + Redis Streams (Dragonfly) + PostgreSQL outbox
 
 ---
 
 ## 1. Queue Architecture
 
-Domain mutation + audit + outbox insertion commit in **one PostgreSQL transaction**. Only after commit may a poller dispatch to Redis Streams. In-process mpsc is an optional wake-up hint, never a durability boundary. Canonical schema: [database schema §18/§26](../04_contracts/database_schema.md). Delivery is at least once; business effects are idempotent.
+Domain mutation + audit + outbox insertion commit in **one PostgreSQL transaction**. Only after commit may a poller dispatch to Redis Streams. In-process Go channels is an optional wake-up hint, never a durability boundary. Canonical schema: [database schema §18/§26](../04_contracts/database_schema.md). Delivery is at least once; business effects are idempotent.
 
 ## 2. Queue Definitions
 
@@ -37,38 +38,32 @@ Domain mutation + audit + outbox insertion commit in **one PostgreSQL transactio
 
 ## 3. Retry Strategy
 
-```rust
-pub enum RetryStrategy {
-    Exponential { base_delay: Duration, max_delay: Duration, multiplier: f64 },
-    Fixed { delays: Vec<Duration> },
-    None,
+```go
+// Illustrative runtime policy, not a database schema.
+type ErrorClass string
+const (
+    Transient ErrorClass = "transient"
+    ProviderDown ErrorClass = "provider_down"
+    AuthExpired ErrorClass = "auth_expired"
+    InvalidInput ErrorClass = "invalid_input"
+    QuotaExceeded ErrorClass = "quota_exceeded"
+    BusinessLogic ErrorClass = "business_logic"
+)
+type RetryPolicy struct {
+    Delays []time.Duration // Exact bounded queue schedule from §2.
+    Retryable map[ErrorClass]bool
+    NonRetryable map[ErrorClass]bool
 }
-
-pub struct RetryPolicy {
-    pub strategy: RetryStrategy,
-    pub max_attempts: u32,
-    pub retryable_errors: Vec<ErrorClass>,
-    pub non_retryable_errors: Vec<ErrorClass>,
-}
-
-pub enum ErrorClass {
-    Transient,        // Network timeout, rate limit → retry
-    ProviderDown,     // Provider 5xx → retry with backoff
-    AuthExpired,      // Token expired → refresh then retry
-    InvalidInput,     // Bad data → DO NOT retry, send to DLQ
-    QuotaExceeded,    // Rate limit → retry after delay
-    BusinessLogic,    // Validation fail → DO NOT retry
-}
-
-// Illustrative policy shape; the implemented retry schedule must pass §5 recovery fixtures.
-impl RetryPolicy {
-    pub fn should_retry(&self, error: &ErrorClass, attempt: u32) -> Option<Duration> {
-        if attempt >= self.max_attempts { return None; }
-        if self.non_retryable_errors.contains(error) { return None; }
-        // Calculate delay based on strategy
-        Some(self.calculate_delay(attempt))
+func (p RetryPolicy) NextDelay(class ErrorClass, retryIndex int) (time.Duration, bool) {
+    if retryIndex < 0 || retryIndex >= len(p.Delays) ||
+        p.NonRetryable[class] || !p.Retryable[class] {
+        return 0, false
     }
+    return p.Delays[retryIndex], true
 }
+// Call only after external-effect reconciliation establishes safe retry.
+// Context cancellation stops local work; it does not prove provider failure.
+// Authentication refresh is bounded and cannot repeat an unknown effect.
 ```
 
 ---
@@ -103,15 +98,21 @@ Kill poller after stream publish; run two pollers; kill consumer before/after co
 
 ## 6. Circuit Breaker (Per Provider)
 
-```rust
-pub struct CircuitBreaker {
-    failure_threshold: u32,     // 3 failures
-    reset_timeout: Duration,    // 5 minutes
-    half_open_max: u32,         // 1 test request
-    state: CircuitState,        // Closed, Open, HalfOpen
-    failure_count: AtomicU32,
-    last_failure: AtomicU64,
+```go
+// All transitions and half-open admission are protected by one mutex.
+// Process-local state is only a fast guard; provider outcome is durable in DB.
+type CircuitBreaker struct {
+    mu sync.Mutex
+    FailureThreshold uint32
+    ResetTimeout time.Duration
+    HalfOpenMax uint32
+    State string // closed, open, half_open; runtime only
+    FailureCount uint32
+    HalfOpenInFlight uint32
+    LastFailure time.Time
 }
+// Bound probes across replicas via the verified coordination adapter.
+// Opening a breaker never releases an uncertain effect or credit hold.
 ```
 
 | Provider Type | Failure Threshold | Reset Timeout |

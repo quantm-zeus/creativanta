@@ -1,8 +1,8 @@
 ---
 paths:
-  - "**/*.rs"
+  - "**/*.go"
   - "**/migrations/**"
-description: Security and data integrity rules for Rust backend and DB migrations
+description: Security and data integrity rules for Go backend and DB migrations
 ---
 # Security Rules
 

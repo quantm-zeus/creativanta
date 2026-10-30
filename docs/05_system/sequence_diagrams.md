@@ -4,6 +4,7 @@ canonical: true
 source_file: impl_b2_sequence_diagrams.md
 last_verified: 2026-03-30
 purpose: Mermaid sequence diagrams for all critical cross-service flows (13 scenarios)
+last_updated: 2026-10-30
 ---
 
 ## Diagrams Index
@@ -78,12 +79,12 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant User
-    participant API as Rust API
+    participant API as Go API
     participant Router as Pipeline Router
     participant Provider as AI Provider
     participant TTS as ElevenLabs
     participant LipSync as SyncLabs
-    participant FFmpeg as rust-ffmpeg
+    participant FFmpeg as FFmpeg
     participant Storage as R2 Storage
     participant Credits as Credit System
 
@@ -271,21 +272,21 @@ sequenceDiagram
 
 ---
 
-## 7. Authentication Flow (Clerk + Rust)
+## 7. Authentication Flow (Clerk + Go)
 
 ```mermaid
 sequenceDiagram
     participant User
     participant Web as SvelteKit
     participant Clerk as Clerk
-    participant API as Rust API
+    participant API as Go API
     participant DB as PostgreSQL
 
     User->>Web: login
     Web->>Clerk: authenticate
     Clerk-->>Web: session + JWT
     Web->>API: request + JWT (ConnectRPC)
-    API->>API: Tower middleware: validate JWT
+    API->>API: Go HTTP middleware / Connect interceptors: validate JWT
     API->>API: extract workspace_id + role
     API->>DB: SET LOCAL app.current_tenant_id
     API->>API: check_permission(role, action)
@@ -338,7 +339,7 @@ All AI flows use the durable state machine in [Credit accounting](../04_contract
 ```mermaid
 sequenceDiagram
     participant User
-    participant API as Rust API
+    participant API as Go API
     participant Credits as Credit System
     participant Remix as Remix Engine
     participant AI as Gemini AI
@@ -423,7 +424,7 @@ The complete transitions, source-lot expiry, five-reservation cap and restart fi
 ```mermaid
 sequenceDiagram
     participant User
-    participant API as Rust API
+    participant API as Go API
     participant Scraper as Product Scraper
     participant AI as Gemini AI
     participant VideoGen as Video Generator
@@ -473,7 +474,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant User
-    participant API as Rust API
+    participant API as Go API
     participant Repurpose as Repurpose Engine
     participant AI as Gemini AI
     participant ClipEngine as Clip Factory

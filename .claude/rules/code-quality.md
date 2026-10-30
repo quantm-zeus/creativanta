@@ -3,11 +3,15 @@ description: Code style and quality standards for Creativanta tech stack
 ---
 # Code Quality Rules
 
-## Rust (backend)
-- Use thiserror for library errors, anyhow for application errors
-- Use SeaORM 2.0 entity pattern — do not write raw SQL unless necessary
-- Async-first: use Tokio, avoid blocking calls in async context
-- Error handling: never use .unwrap() in production code — use ? operator
+## Go (backend)
+- Follow docs/05_system/tech_stack_adr.md ADR-015; one Go module at apps/api.
+- Use net/http + ConnectRPC, pgx/v5 + sqlc, and versioned Goose SQL migrations.
+- Pass context.Context and deadlines through DB/provider calls; bound goroutine concurrency and join workers during shutdown.
+- Return and wrap errors with %w; no panic for expected request/provider failures.
+- Use only the validated tenant transaction and sqlc WithTx for tenant queries. Never fall back to the pool in a tenant command.
+- Money/credits use exact decimal arithmetic and decimal strings at transport boundaries; never float32/float64.
+- Keep auth, permission, tier/object/approval/capability checks explicit; Go does not enforce these automatically.
+- Run gofmt, go vet, go test -race, govulncheck and code-generation drift checks for the touched Go module.
 
 ## Svelte 5 (web frontend)
 - Use Runes syntax: $state, $derived, $effect — NOT Svelte 4 stores

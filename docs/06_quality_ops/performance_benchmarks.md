@@ -4,20 +4,23 @@ canonical: true
 source_file: impl_c3_performance_benchmarks.md
 status: READY
 last_verified: 2026-04-11
+last_updated: 2026-10-30
 ---
 
 # C3 — Performance Benchmark Specification
 
-> **Upstream**: Tech Stack ADR v3
+> **Upstream**: Tech Stack ADR v4
 
 ---
 
 ## 1. SLA Targets
 
+These are retained engineering targets, not achieved results or language guarantees. Record the exact endpoint mix, dataset, concurrency, cache state, hardware/container budget, timeout/error rate and client/server timing boundary. Both SLA and scenario thresholds apply when measuring the same route; do not silently relax the stricter target by changing the test. Long-running AI/encode work is asynchronous and reports admission and completion separately. Profile Go allocations/GC, goroutine growth, DB pool waits and media-worker pressure under sustained load.
+
 | Metric | Target | Measurement |
 |---|---|---|
-| API Latency p50 | ≤ 10ms | Rust Axum response time |
-| API Latency p99 | ≤ 20ms | Rust Axum response time (ADR baseline ~5ms; 20ms includes DB + cache overhead) |
+| API Latency p50 | ≤ 10ms | Go HTTP/Connect handler response including authorization |
+| API Latency p99 | ≤ 20ms | Go HTTP/Connect handler response including auth + DB/cache; benchmark required, no measured baseline |
 | Web LCP | ≤ 1.5s | Lighthouse, SvelteKit SSR |
 | Web FID/INP | ≤ 100ms | Core Web Vitals |
 | Web CLS | ≤ 0.1 | Core Web Vitals |

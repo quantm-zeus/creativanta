@@ -106,4 +106,13 @@ class DocsGuardTests(unittest.TestCase):
     def test_premature_module_completion_rejected(self):
         self.mutation_fails('00_index/agent_task_catalog.json','"completion_task": "P8-06"','"completion_task": "P4-09"','completion phase mismatch')
 
+    def test_rust_ci_command_after_go_migration_rejected(self):
+        self.mutation_fails('06_quality_ops/ci_cd_pipeline.md','go test -race -count=1 ./...','cargo test --workspace','legacy Rust runtime instruction')
+
+    def test_missing_go_handler_generator_rejected(self):
+        self.mutation_fails('04_contracts/protobuf_contracts.md','local: protoc-gen-connect-go','local: obsolete-handler-generator','Go transport generator missing')
+
+    def test_go_float_provider_cost_rejected(self):
+        self.mutation_fails('05_system/ai_provider_guide.md','CostUSD decimal.Decimal','CostUSD float64','exact decimal arithmetic')
+
 if __name__=='__main__':unittest.main()

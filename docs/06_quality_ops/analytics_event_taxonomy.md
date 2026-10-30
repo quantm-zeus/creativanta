@@ -3,11 +3,12 @@ layer: quality_ops
 canonical: true
 source_file: impl_d3_analytics_event_taxonomy.md
 last_verified: 2026-04-09
+last_updated: 2026-10-30
 ---
 
 # D3 — Analytics Event Taxonomy (PostHog)
 
-> **Upstream**: Pack 01, Tech Stack ADR v3
+> **Upstream**: Pack 01, Tech Stack ADR v4
 > Coverage note: this is the canonical minimum analytics taxonomy for the full active corpus. Screen-level analytics sections may define more detailed events, but they MUST roll up to the event families and KPI intent declared here.
 
 ---

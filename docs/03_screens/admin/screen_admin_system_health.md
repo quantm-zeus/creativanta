@@ -23,7 +23,7 @@ Real-time system health dashboard — all services status, resource usage, alert
 ├──────────────────────────────────────────────────────────────────────┤
 │ ┌─ Service Grid ────────────────────────────────────────────────┐   │
 │ │ SvelteKit App  🟢 OK     3ms    99.99%   0 errors             │   │
-│ │ Rust API       🟢 OK     5ms    99.98%   0 errors             │   │
+│ │ API service  🟢 OK     5ms    99.98%   0 errors             │   │
 │ │ PostgreSQL     🟢 OK     2ms    100%     0 errors             │   │
 │ │ Dragonfly      🟢 OK     <1ms   100%     0 errors             │   │
 │ │ Meilisearch    🟢 OK     8ms    100%     0 errors             │   │

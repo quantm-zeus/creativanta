@@ -6,7 +6,7 @@
 ## Claude Code-specific rules
 
 ### Tech stack (follow exactly — see tech_stack_adr.md for rationale)
-- Rust backend: Axum 0.8+, SeaORM 2.0, Tonic gRPC, Tokio, thiserror/anyhow
+- Go backend: net/http + ConnectRPC, pgx/v5 + sqlc, Goose SQL migrations; see ADR-015
 - Web frontend: SvelteKit 2 + Svelte 5 Runes ($state/$derived/$effect, NOT stores)
 - Mobile: Flutter 3.41 + Riverpod 2.x + go_router + grpc-dart
 - DB: PostgreSQL 17 with RLS; always use NUMERIC(18,6) for money/credits, never REAL
@@ -23,4 +23,4 @@
 See .claude/rules/ for scoped rules:
 - docs-reading.md: docs reading order and constraints
 - security.md: RLS, RBAC, data isolation rules
-- code-quality.md: Rust, Svelte, Flutter code standards
+- code-quality.md: Go, Svelte, Flutter code standards

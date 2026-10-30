@@ -5,6 +5,7 @@ source_file: protobuf_contracts.md  # was impl_a2_protobuf_contracts.md (legacy 
 last_verified: 2026-04-06
 known_issues: []  # API-C-001, API-H-001, API-H-002 all RESOLVED 2026-04-02
 do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
+last_updated: 2026-10-30
 ---
 
 ## Quick Navigation
@@ -14,12 +15,12 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | §1 Proto File Structure | Directory layout: common, identity, intelligence, content, publish, engagement, commerce, finance, workflow, live, seeding, copilot, admin, gamification, connector, creator_pro, internal_admin |
 | §2 Common Types | UUID, Money, Timestamp, Pagination, SourceClass, ConfidenceBand, OperatorMode |
 | §3 Key Service Definitions | WorkspaceService, IdeaService, ScriptService, AssetService, PublishService, CopilotService, ProfitService |
-| §4 Code Generation | proto-gen.sh script for Rust, TypeScript, Dart |
+| §4 Code Generation | proto-gen.sh script for Go, TypeScript, Dart |
 | §5 Service Count Summary | Overview only. `api_endpoint_map.md` is the authoritative RPC inventory; actual `.proto` files are not committed yet. |
 
 # A2 — Protobuf Contract Definitions (Overview & Key Services)
 
-> **Upstream**: Tech Stack ADR v3 (ADR-002, ADR-005), Product Freeze
+> **Upstream**: Tech Stack ADR v4 (ADR-002, ADR-005), Product Freeze
 > **Protocol**: gRPC (mobile↔API) + ConnectRPC (web↔API) + REST (webhooks/public API)
 > **Location**: `/protos/` — authored incrementally from implementation P0. No actual `.proto` files are committed in the repository yet; this document is the transport/codegen overview derived from the canonical authoring set (`api_endpoint_map.md` + `api_examples.md`).
 
@@ -259,30 +260,47 @@ service ProfitService {
 
 ## 4. Code Generation
 
+P0 extracts this configuration to root `buf.gen.yaml`, pins each local plugin executable in the tool manifest and commits matching `go_package` options in each project proto. Dependency proto modules keep their own package options. Do not install `@latest` during generation.
+
+```yaml
+version: v2
+plugins:
+  - local: protoc-gen-go
+    out: apps/api/gen
+    opt: paths=source_relative
+  - local: protoc-gen-connect-go
+    out: apps/api/gen
+    opt: paths=source_relative
+  - local: protoc-gen-es
+    out: packages/shared-types/src
+    opt: target=ts
+  - local: protoc-gen-dart
+    out: apps/mobile/lib/generated
+    opt: grpc
+```
+
 ```bash
-#!/bin/bash
-# tooling/proto-gen.sh
-
-PROTO_DIR="./protos"
-OUT_RUST="./apps/api/src/proto"
-OUT_TS="./packages/shared-types/src"
-OUT_DART="./apps/mobile/lib/generated"
-
-# Rust (tonic-build via build.rs)
-echo "Rust: Generated via build.rs (tonic-build + prost)"
-
-# TypeScript (ConnectRPC)
-npx buf generate --template buf.gen.yaml
-
-# Dart (grpc-dart)
-protoc --dart_out=grpc:$OUT_DART \
-  -I$PROTO_DIR \
-  $(find $PROTO_DIR -name '*.proto')
-
-echo "✅ Proto generation complete for Rust, TypeScript, Dart"
+#!/usr/bin/env bash
+# tooling/proto-gen.sh — P0 must create the executable and pinned buf config.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+buf lint
+buf generate --template buf.gen.yaml
+# buf.gen.yaml invokes ALL pinned generators: protoc-gen-go,
+# protoc-gen-connect-go, protoc-gen-es, and protoc-gen-dart (grpc option).
+# Outputs: apps/api/gen, packages/shared-types/src, apps/mobile/lib/generated.
+(cd apps/api && go test ./gen/...)
+pnpm --dir packages/shared-types check
+(cd apps/mobile && dart analyze lib/generated)
+git diff --exit-code -- apps/api/gen packages/shared-types/src apps/mobile/lib/generated
+test -z "$(git ls-files --others --exclude-standard -- apps/api/gen packages/shared-types/src apps/mobile/lib/generated)"
 ```
 
 ---
+
+P0 pins module import path `github.com/quantm-zeus/creativanta/apps/api` and sets matching `go_package` options under `/gen`. `protoc-gen-go` generates messages; `protoc-gen-connect-go` generates handlers and clients. The Go Connect handlers serve Connect, gRPC and gRPC-Web; Flutter keeps grpc-dart over HTTP/2. Do not generate a second parallel server stack for the same service. Test a TS Connect request and a Dart gRPC request against the same Go service, including errors, metadata, deadlines and streaming. Infrastructure must preserve HTTP/2 for mobile gRPC; proxy/CORS/auth rules remain explicit.
+
+Generators are pinned in a committed Buf/tool manifest, including plugin version/revision and the Dart gRPC option. The script runs after current-slice generated outputs are committed; CI also rejects untracked generated files. Initial authoring creates and reviews the output before accepting D1. Buf generation does not generate application validation, authorization or domain logic automatically.
 
 ## 5. Service Count Summary
 

@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-03-30
+last_updated: 2026-10-30
 ---
 
 # Decision Log — Architecture Decision Records
@@ -28,22 +28,21 @@ last_updated: 2026-03-30
 - Consequences: 120 FPS sustained, pre-compiled shaders, AOT compilation. Separate codebase from web (shared via .proto contracts).
 - Must not reverse because: Real-device frame budgets and traces must demonstrate acceptable smoothness; no engine guarantees zero jank for live commerce real-time UX
 
-## ADR-003: Rust (Axum 0.8+) for Backend API
+## ADR-003: Backend API implementation — superseded by ADR-015
 
-- Date: 2026-03-25
-- Status: Accepted
-- Context: Need 10-50x throughput vs Node.js, memory safety for multi-tenant isolation, ~20MB Docker images.
-- Decision: Rust + Axum + SeaORM 2.0 + Tonic gRPC + Tokio runtime
-- Consequences: 150K+ req/s, ~5ms p99 latency, ~20MB memory. Higher initial learning curve.
-- Must not reverse because: Memory safety does not establish authorization; grants, RLS, composite tenant FKs and isolation tests are mandatory
+- Original date: 2026-03-25
+- Original choice: Rust/Axum; superseded on 2026-10-30 by explicit owner instruction.
+- Current decision: Go net/http + ConnectRPC; see [ADR-015](../05_system/tech_stack_adr.md#adr-015-product-owner-migration-to-go--2026-10-30).
+- Rationale: Reduce implementation/integration complexity for the full phased product. Earlier 150K req/s, 20MB RAM and language speed multipliers were not measured on Creativanta and are withdrawn as evidence.
+- Consequences: Re-author Go codegen, DB access, workers, media orchestration, CI/dev and agent rules. Product behavior and quality gates remain unchanged.
 
 ## ADR-004: ConnectRPC (web) + gRPC binary (mobile)
 
 - Date: 2026-03-25
 - Status: Accepted
-- Context: Need type-safe API contracts across 3 platforms (web TS, mobile Dart, backend Rust) from single .proto source.
+- Context: Need type-safe API contracts across 3 platforms (web TS, mobile Dart, backend Go) from single .proto source.
 - Decision: gRPC + Protobuf for mobile ↔ API, ConnectRPC (Protobuf over HTTP) for web ↔ API, REST only for webhooks
-- Consequences: 7-10x faster than REST/JSON, breaking changes caught at compile time. Browser requires ConnectRPC (no native gRPC).
+- Consequences: Shared generated types and compatibility checks; serialized size and latency must be measured. Browser requires ConnectRPC (no native gRPC).
 - Must not reverse because: Single .proto source prevents API contract drift across 3 codebases
 
 ## ADR-005: Protobuf as Single Source of Truth for API contracts
@@ -51,7 +50,7 @@ last_updated: 2026-03-30
 - Date: 2026-03-25
 - Status: Accepted
 - Context: 3 platforms consuming same API — contract drift is inevitable with manual OpenAPI/Swagger.
-- Decision: Transport contracts are protobuf-first at runtime, but during the docs phase the canonical authoring source is `04_contracts/api_endpoint_map.md` + `04_contracts/api_examples.md`. `.proto` files in `/protos/` are generated from that canonical contract set at implementation kickoff, then become the transport/codegen source for Dart (grpc-dart), Rust (tonic-build + prost), and TypeScript (Connect-ES 2.0).
+- Decision: Transport contracts are protobuf-first at runtime, but during the docs phase the canonical authoring source is `04_contracts/api_endpoint_map.md` + `04_contracts/api_examples.md`. `.proto` files in `/protos/` are generated from that canonical contract set at implementation kickoff, then become the transport/codegen source for Dart (grpc-dart), Go (protoc-gen-go + protoc-gen-connect-go), and TypeScript (Connect-ES 2.0).
 - Consequences: One contract authoring surface exists before codegen. Implementation Phase 1 begins by generating `/protos/` from the canonical API map, after which `proto-gen.sh` becomes the source for generated client/server bindings. CI validates generated code is current once `/protos/` exists.
 - Must not reverse because: Any alternative requires manual sync across 3 codegen targets
 
@@ -90,30 +89,26 @@ last_updated: 2026-03-30
 - Consequences: No extra infra. Shared ACID guarantees with relational data. May need dedicated vector DB at extreme scale.
 - Must not reverse because: Separate vector DB on single VPS would increase operational complexity without benefit at launch scale
 
-## ADR-010: Revideo + rust-ffmpeg replacing Remotion
+## ADR-010: Revideo + isolated FFmpeg media execution
 
-- Date: 2026-03-25
-- Status: Accepted
-- Context: Remotion requires commercial license for SaaS, depends on React/Node.js sidecar, frame capture is slow.
-- Decision: Replace with Revideo (TypeScript, framework-agnostic) + rust-ffmpeg (native)
-- Consequences: MIT license (free), 70x faster rendering via WebCodecs, no React dependency. Migration needed for composition format.
-- Must not reverse because: Remotion commercial license cost + Node.js sidecar contradicts Rust-first architecture
+- Date: 2026-03-25; implementation updated 2026-10-30 under ADR-015.
+- Decision: Go orchestrates FFmpeg/ffprobe subprocesses in resource-limited media workers; Revideo keeps its TypeScript rendering service where required.
+- Consequences: Preserve all video modes, post-production and analysis operations. Verify actual renderer runtime and codec/license requirements; no universal 70× rendering or Node.js-removal claim.
+- Canonical execution/isolation rules: [Tech stack ADR-015](../05_system/tech_stack_adr.md#adr-015-product-owner-migration-to-go--2026-10-30).
 
-## ADR-011: SeaORM 2.0 as Primary ORM
+## ADR-011: Database access — superseded implementation under ADR-015
 
-- Date: 2026-03-25
-- Status: Accepted
-- Context: Need async-native Rust ORM with entity generation, flexible dynamic queries for multi-tenant context.
-- Decision: SeaORM 2.0 with SQLx underneath
-- Consequences: ActiveRecord pattern familiar to most developers. Entity Loader for batch queries. Migration CLI.
-- Must not reverse because: SeaORM's async-native design is required for Tokio runtime compatibility
+- Original date: 2026-03-25; updated 2026-10-30.
+- Original SeaORM/SQLx choice is superseded by Go pgx/v5 + sqlc and Goose SQL migrations.
+- Consequences: Canonical schema owns DDL; generated queries use the validated tenant transaction. Exact decimal arithmetic, RLS/grants/FK and real PostgreSQL fixtures remain mandatory. No ORM auto-migration.
+- Source of implementation rules: [Tech stack ADR](../05_system/tech_stack_adr.md).
 
 ## ADR-012: Multi-tenant via workspace_id + RLS
 
 - Date: 2026-03-25
 - Status: Accepted
 - Context: Shared database for cost efficiency at launch. Must prevent cross-tenant data access.
-- Decision: PostgreSQL RLS + `SET LOCAL app.current_tenant_id` per transaction + Rust Tower middleware
+- Decision: PostgreSQL RLS + `SET LOCAL app.current_tenant_id` per transaction + Go HTTP middleware / Connect interceptors
 - Consequences: Defense-in-depth: middleware enforces tenant, RLS is safety net. Shared schema = simpler ops.
 - Must not reverse because: Per-tenant database isolation would 10-50x infrastructure costs at launch
 
@@ -164,3 +159,14 @@ The owner requested a complete docs review, repairs, improvements and phased AI-
 [CONFLICT: earlier feature/quality examples used nonexistent stock columns, non-schema capability states, unconditional experiment winners and phishing/rights overrides; canonical schema/API/security contracts require scoped identities, five-state capability, evidence gates and non-overridable hard blocks — using the canonical contracts and correcting affected examples.]
 
 This resolves downstream documentation contradictions under the existing precedence rule; it does not amend archived PRD §23 or waive any external approval. Decision scope, tradeoffs and validation are linked from [Build Readiness](BUILD_READINESS.md), [Product Strategy](../01_business/product_strategy_validation.md), and [Agent Build Backlog](AGENT_BUILD_BACKLOG.md).
+
+
+## ADR-015: Go backend and worker baseline
+
+- Date: 2026-10-30
+- Status: OWNER_AUTHORIZED / SPECIFIED
+- Decision owner: Product owner explicitly requested switching to Go in this session.
+- Canonical decision: [Tech stack ADR-015](../05_system/tech_stack_adr.md#adr-015-product-owner-migration-to-go--2026-10-30).
+- [CONFLICT: Prior ADR-003/ADR-011 and their downstream examples prescribed Rust implementation tooling; the owner now explicitly authorizes Go — use Go per this decision. This does not change PRD product behavior or §23 acceptance scope.]
+- Scope preserved: all 31 feature/spec entries, six modes, 60 P0–P8 tasks, all screen requirements and domain contracts. Archived files and previous check artifacts remain historical.
+- Acceptance: docs/codegen/CI/agent-rule consistency checks now; compiled Go/TS/Dart and PostgreSQL/process recovery remain implementation-phase evidence.

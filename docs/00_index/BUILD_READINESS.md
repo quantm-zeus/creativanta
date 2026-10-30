@@ -6,6 +6,12 @@ last_updated: 2026-10-30
 
 # Review sản phẩm, tài liệu và mức sẵn sàng build — 2026-10-30
 
+## Chuyển backend sang Go — 2026-10-30
+
+Theo yêu cầu chủ sản phẩm, API/admin API, worker và runtime workflow chuyển sang Go. [ADR-015](../05_system/tech_stack_adr.md#adr-015-product-owner-migration-to-go--2026-10-30) sở hữu lựa chọn và quy tắc triển khai. Đã đồng bộ codegen Go/TS/Dart, pgx/sqlc, Goose SQL migrations, decimal, queue/provider interfaces, FFmpeg workers, CI/dev và cấu hình agent. Không thay đổi phạm vi/chức năng hoặc dependency P0–P8; task/hash maps được sinh lại. Các con số hiệu năng Rust trước đây không phải benchmark và đã rút khỏi căn cứ sizing.
+
+Kết quả kiểm tra riêng cho lần chuyển đổi nằm ở [Go migration evidence](../06_quality_ops/evidence/2026-10-30-go-migration/run_summary.json). Bằng chứng review trước đó giữ nguyên giá trị lịch sử; chưa có ứng dụng Go được compile hoặc chạy nghiệm thu trong lượt sửa docs này.
+
 ## 1. Kết luận
 
 **Có thể bắt đầu build P0 theo từng task đã định nghĩa. Chưa có cơ sở gọi sản phẩm là đã triển khai, đã nghiệm thu hay sẵn sàng production.** Bộ docs sau review giữ đủ 31 feature/spec, sáu operator mode, các chức năng cũ và phần mở rộng được đề xuất/giữ lại; có backlog và kiểm tra để agent không âm thầm làm mất phạm vi.

@@ -107,7 +107,7 @@ def task_markdown(catalog):
         out.extend('- '+item for item in t['acceptance'])
         out.extend(['',f"Implementation packet: `{t['packet']}`. Compile current-slice messages/migrations before implementation; attach actual commands, fixtures and five-path evidence. The module completion task also reconciles downstream requirements in the requirement inventory.",''])
     # Links from docs/00_index to other docs are ../domain, not ../../domain.
-    return '\n'.join(out).replace('](../../','](../')+'\n'
+    return '\n'.join(out).replace('](../../','](../').rstrip()+'\n'
 
 def validate(root):
     errors=[]

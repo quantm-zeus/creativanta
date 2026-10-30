@@ -4,6 +4,7 @@ canonical: true
 source_file: creativanta_detail_design_pack_04_ai_media_continuity_contract_v_3_1.md
 last_verified: 2026-03-30
 purpose: AI media runtime architecture, generation/prompt/continuity/lineage contracts, video production modes, and character builder
+last_updated: 2026-10-30
 ---
 
 # Creativanta — Detail Design Pack 04 — AI / Media / Continuity Contract v3.1
@@ -48,7 +49,7 @@ Provider có thể là:
 - **Lip-Sync**: SyncLabs / Sync.so (primary), Wav2Lip via Replicate (budget)
 - **AI Avatar**: HeyGen (primary), D-ID (secondary)
 - **Music / SFX**: Royalty-free library (Pixabay/Pexels), Suno (via third-party API)
-- **Video Processing**: rust-ffmpeg (local), Revideo (template video)
+- **Video Processing**: FFmpeg (local), Revideo (template video)
 - BYOK provider (user's own API key)
 
 Provider specifics không được rò lên canonical object model.
@@ -70,7 +71,7 @@ Script → Veo 3.1 / Kling 3.0 → Video + Audio (đã sync sẵn) ✅
 ```
 Script → ElevenLabs TTS (cloned voice) → Audio (.wav)
     → HeyGen/Kling (audio-driven video + lip-sync)
-    → rust-ffmpeg (merge + background music + SFX)
+    → FFmpeg (merge + background music + SFX)
     → Final output ✅
 ```
 - Khi: User cần giọng clone (Digital Twin) hoặc chất lượng voice cao
@@ -84,7 +85,7 @@ Script → ElevenLabs TTS (cloned voice) → Audio (.wav)
           ↓
    SyncLabs Lip-Sync (video + audio → synced video)
           ↓
-   rust-ffmpeg → Final mix (music + SFX + subtitles) → Output ✅
+   FFmpeg → Final mix (music + SFX + subtitles) → Output ✅
 ```
 - Khi: Provider không có native audio, hoặc dubbing sang ngôn ngữ khác
 - Lip-sync: SyncLabs (Sync.so) API — zero-shot, multi-language
@@ -92,12 +93,12 @@ Script → ElevenLabs TTS (cloned voice) → Audio (.wav)
 
 #### Strategy 4: Simple Voice-Over (B-roll / product showcase)
 ```
-Video gen (bất kỳ) + TTS voice-over → rust-ffmpeg overlay → Output ✅
+Video gen (bất kỳ) + TTS voice-over → FFmpeg overlay → Output ✅
 ```
 - Khi: Không có talking head, chỉ narration trên hình ảnh
 - Không cần lip-sync — chỉ merge audio track
 
-### 2.4 Post-Production Mix Contract (rust-ffmpeg)
+### 2.4 Post-Production Mix Contract (FFmpeg)
 
 Mọi video output phải đi qua post-production step:
 - Merge audio tracks (voice + music + SFX)
@@ -254,7 +255,7 @@ Blocked outputs không được đưa sang publish-ready path mà không có exp
 | Capability | Description | Tech | Credit Cost |
 |---|---|---|---|
 | **Text-based editing** | Hiển thị transcript, user xóa text = xóa video segment | Whisper ASR → timed transcript, FFmpeg segment cut | 5–10 |
-| **Animated captions** | Trending caption styles: karaoke, bounce, highlight | Revideo / rust-ffmpeg drawtext | 3–5 |
+| **Animated captions** | Trending caption styles: karaoke, bounce, highlight | Revideo / FFmpeg drawtext | 3–5 |
 | **Active speaker detection** | Auto-reframe video theo người đang nói | Google Video Intelligence / mediapipe face mesh | 5–10 |
 | **Beat-sync music** | Cắt video beats khớp nhạc tự động | Librosa BPM detection + FFmpeg cut-on-beat | 5–10 |
 | **AI B-roll generation** | Gen AI b-roll contextual thay stock footage | Flux 2 / Veo (image/video gen from context) | 10–20 |
@@ -348,7 +349,7 @@ User drag-reorder media → set target duration
     │   ├─ Choose from library
     │   ├─ Upload (copyright check auto)
     │   └─ None
-    → Timeline preview → User adjust → rust-ffmpeg render → Export
+    → Timeline preview → User adjust → FFmpeg render → Export
 ```
 
 #### 9.4.3 Auto-Transition Rules
@@ -407,7 +408,7 @@ LLM Strategy:
 | Text-heavy | AI gen text animations + music | Revideo template engine |
 | Mixed format | Combine strategies per-scene | Smart Pipeline Router (§2.3) |
 
-**Assembly**: Match pacing profile from blueprint → rust-ffmpeg render.
+**Assembly**: Match pacing profile from blueprint → FFmpeg render.
 
 #### 9.5.4 Phase 3 — Polish
 
@@ -566,7 +567,7 @@ style-specific generation:
 ├── Before/After: Flux 2 (scene pair) → FFmpeg (split/wipe transition)
 └── Review Style: HeyGen/Character Pack + product overlay
     ↓
-post-production: rust-ffmpeg (music + text overlay + CTA + aspect ratio)
+post-production: FFmpeg (music + text overlay + CTA + aspect ratio)
     ↓
 output → M09 (derivative mgmt) → M10 (QA) → M11 (publish)
 ```
@@ -792,7 +793,7 @@ Agent orchestrate:
 ├── Step 2: Veo 3.1 generate B-roll per scene
 ├── Step 3: Character voice-over (ElevenLabs)
 ├── Step 4: Trending music auto-select + beat-sync
-├── Step 5: Animated captions (Revideo / rust-ffmpeg drawtext)
+├── Step 5: Animated captions (Revideo / FFmpeg drawtext)
 ├── Step 6: Thumbnail generation (Flux 2)
 ├── Step 7: Virality Score calculation
 ├── Step 8: Platform optimization (9:16, TikTok pace)

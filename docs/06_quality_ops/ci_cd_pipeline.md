@@ -1,7 +1,7 @@
 ---
 layer: quality_ops
 canonical: true
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 status: SPECIFIED
 ---
 
@@ -18,10 +18,10 @@ Each job checks out the same commit, installs exact toolchain/dependency version
 | Stage | Required work | Pass condition |
 |---|---|---|
 | Docs | `python3 tooling/check_docs.py` | Zero static contract/link/coverage violations |
-| Toolchain | Validate Node/pnpm/Rust/Flutter/protoc/buf and image digests against committed manifest; frozen lockfile installs | Every version fixed; no unreviewed latest image/model/action |
-| Lint | cargo fmt --check; cargo clippy --workspace --all-targets --all-features -- -D warnings; web/admin check+lint; flutter analyze | Every touched platform passes |
-| Transport | buf lint; buf breaking against base revision; generate current-slice Rust/TS/Dart bindings; git diff --exit-code on generated paths | Compiles all three targets; no drift; packet has typed messages and permission bindings |
-| Unit | cargo test --workspace; pnpm --dir apps/web test; pnpm --dir apps/admin test; flutter test in apps/mobile | Required domain/decimal/state tests pass |
+| Toolchain | Validate Node/pnpm/Go/Flutter/protoc/buf and image digests against committed manifest; frozen lockfile installs | Every version fixed; no unreviewed latest image/model/action |
+| Lint | in apps/api: test -z "$(gofmt -l .)"; go vet ./...; govulncheck ./...; web/admin check+lint; flutter analyze | Every touched platform passes |
+| Transport | buf lint; buf breaking against base revision; generate current-slice Go/TS/Dart bindings; git diff --exit-code on generated paths | Compiles all three targets; no drift; packet has typed messages and permission bindings |
+| Unit | in apps/api: go test -race -count=1 ./...; pnpm --dir apps/web test; pnpm --dir apps/admin test; flutter test in apps/mobile | Required domain/decimal/state tests pass |
 | Integration | Isolated PostgreSQL 17 with vector/Timescale extensions; apply exact migrations and seed twice; runtime-role RLS/grants/FK checks; outbox/inbox/reservation/provider-replay fixtures | All D2/D3 tests pass, not just superuser fixtures |
 | UI/E2E | Playwright web/admin and mobile integration tests for current slice, five QA paths, a11y/i18n | Actual implemented routes/actions/roles match packet |
 | Build | Build immutable API/web/admin/worker/mobile artifacts and containers, generate SBOM and record digests | Same reviewed commit/digests tested in staging |
@@ -33,7 +33,7 @@ Commands requiring app code run only after that phase creates the named project.
 
 ## 3. Contract and dependency synchronization
 
-The docs gate verifies inventory-to-permission bindings and selected schema invariants. It cannot establish typed RPC completeness. For each implemented RPC, validate the slice packet's exact `.proto` messages, validation/permission/state/replay tests and response projection. Schema revisions update migrations/fixtures before generated entities. Commit lockfiles and pin container digests; document every provider/model/API/engine version and verification expiry.
+The docs gate verifies inventory-to-permission bindings and selected schema invariants. It cannot establish typed RPC completeness. For each implemented RPC, validate the slice packet's exact `.proto` messages, validation/permission/state/replay tests and response projection. Schema revisions update Goose SQL migrations/fixtures before sqlc generation. Run sqlc generate in apps/api and fail on generated diff. Run go mod verify and fail on changes after go mod tidy; commit go.mod/go.sum and pinned tool/generator versions. Build cmd/api, cmd/admin-api, cmd/worker, cmd/outbox and cmd/migrate from the same Go module. Commit lockfiles and pin container digests; document every provider/model/API/engine version and verification expiry.
 
 ## 4. Deployment and rollback
 

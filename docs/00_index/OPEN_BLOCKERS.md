@@ -11,6 +11,10 @@ last_updated: 2026-10-30
 
 ---
 
+## Go implementation decision — 2026-10-30
+
+The owner explicitly authorized replacing the backend implementation language with Go. [ADR-015](../05_system/tech_stack_adr.md#adr-015-product-owner-migration-to-go--2026-10-30) supersedes prior Rust tooling/architecture choices. No feature, event, permission, schema state or phase is removed. Go transport, pgx/sqlc tenant transactions, Goose migrations, media subprocess isolation and CI commands are SPECIFIED; their compilation/runtime evidence remains required at the same D1–D5 gates. Old review evidence is historical and does not validate the revised source hashes.
+
 ## Current review — 2026-10-30
 
 Read [Build Readiness](BUILD_READINESS.md) for findings and actual check artifacts. These rows correct documentation; they do not assert runtime acceptance. All existing external/typed-contract gates below remain active.
@@ -331,7 +335,7 @@ The entries below retain earlier audit history. Their counts and broad resolutio
   - §3.1B: 50-row mapping (core events including production, publish, engagement, workflow, commerce)
   - §3.1C: 24-row mapping (extended production + gamification events)
   - Total: **74 CamelCase events** fully mapped to canonical dot.notation
-- Canonical convention: **dot.notation** (`domain.entity.action`) for all Rust code. CamelCase retained in docs only.
+- Canonical convention: **dot.notation** (`domain.entity.action`) for all Go code. CamelCase retained in docs only.
 - Owner: Backend Lead
 
 ## ERR-M-001: No unified error catalog

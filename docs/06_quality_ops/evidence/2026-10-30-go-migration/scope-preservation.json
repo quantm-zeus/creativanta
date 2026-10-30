@@ -1,0 +1,14 @@
+{
+  "feature_specs_31_preserved": true,
+  "operator_modes_6_preserved": true,
+  "all_60_task_ids_phases_dependencies_modules_preserved": true,
+  "module_routing_preserved": true,
+  "requirement_ids_preserved": true,
+  "screen_paths_245_preserved": true,
+  "canonical_schema_sql_unchanged": true,
+  "event_catalog_rows_unchanged": true,
+  "permission_bindings_unchanged": true,
+  "rpc_inventory_unchanged": true,
+  "archive_unchanged": true,
+  "prior_review_evidence_unchanged": true
+}

@@ -4,6 +4,7 @@ canonical: true
 source_file: creativanta_detail_design_pack_03_event_workflow_agent_runtime_contract_v_3_1.md
 last_verified: 2026-03-30
 purpose: Event model, workflow/agent runtime, approval, retry/DLQ, recipe, audit, observability, and real-time communication contracts
+last_updated: 2026-10-30
 ---
 
 # Creativanta — Detail Design Pack 03 — Event Backbone / Workflow / Agent Runtime Contract v3.1
@@ -83,7 +84,7 @@ Mọi event bắt buộc có:
 
 #### CamelCase → Canonical dot.notation Mapping Table
 
-> **EVT-H-001 Resolution**: This table provides the authoritative mapping between Pack 03's CamelCase display names and the canonical dot.notation event_type strings used in Rust code. The `event_type: String` field in `DomainEvent` MUST use the dot.notation column exclusively.
+> **EVT-H-001 Resolution**: This table provides the authoritative mapping between Pack 03's CamelCase display names and the canonical dot.notation event_type strings used in Go code. The `event_type` JSON field (`EventType string` in Go) field in `DomainEvent` MUST use the dot.notation column exclusively.
 
 | CamelCase (Pack 03 Display) | Canonical dot.notation (Code) | Section |
 |---|---|---|

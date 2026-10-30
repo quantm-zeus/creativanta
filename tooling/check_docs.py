@@ -186,6 +186,25 @@ def audit(root: Path) -> tuple[list[str], dict[str, int]]:
             'public directory lacks explicit visibility policy')
     require('CREATE POLICY tenant_isolation ON media_kits TO app_user' in sql,
             'public directory must not inherit a permissive tenant policy')
+    # Owner-authorized Go migration: historical ADR/evidence may mention Rust,
+    # but current executable instructions must not send an agent to its tools.
+    stack = read('05_system/tech_stack_adr.md')
+    require('## ADR-015: Product-owner migration to Go' in stack and
+            'net/http + ConnectRPC' in stack and 'pgx/v5 + sqlc' in stack,
+            'Go backend decision missing from canonical stack')
+    for path in ['04_contracts/protobuf_contracts.md', '04_contracts/rbac_permission_matrix.md',
+                 '04_contracts/domain_event_catalog.md', '05_system/queue_retry_design.md',
+                 '05_system/ai_provider_guide.md', '06_quality_ops/ci_cd_pipeline.md',
+                 '06_quality_ops/docker_dev_environment.md']:
+        text = read(path)
+        require(not re.search(r'```rust\b|\bcargo\s|\b(?:Axum|Tokio|Tonic|Prost|SeaORM|SQLx|Tower)\b|rust-ffmpeg', text, re.I),
+                f'{path}: legacy Rust runtime instruction after Go migration')
+    proto = read('04_contracts/protobuf_contracts.md')
+    for plugin in ['protoc-gen-go', 'protoc-gen-connect-go', 'protoc-gen-es', 'protoc-gen-dart']:
+        require(f'local: {plugin}\n' in proto, f'Go transport generator missing: {plugin}')
+    provider = read('05_system/ai_provider_guide.md')
+    require(not re.search(r'\b(?:CostUSD|CostPer1MInput|CostPer1MOutput)(?:\(\))?\s+(?:float32|float64)\b', provider),
+            'Go provider money must use exact decimal arithmetic')
     plan_errors,plan_counts=validate_build_plan(root)
     errors.extend(plan_errors)
     return errors, {'active_markdown':len(active_files),'tables':len(tables),'tenant_tables':len(tenant),'rpc_bindings':len(bindings),'modules':len(modules),**plan_counts}

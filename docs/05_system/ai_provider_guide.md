@@ -3,12 +3,13 @@ layer: system
 canonical: true
 source_file: impl_d1_ai_provider_guide.md
 last_verified: 2026-03-30
-purpose: AI provider setup (Gemini, OpenAI, ElevenLabs, Veo), adapter trait pattern, error handling, and cost tracking
+purpose: AI provider setup (Gemini, OpenAI, ElevenLabs, Veo), adapter interface pattern, error handling, and cost tracking
+last_updated: 2026-10-30
 ---
 
 # D1 — AI Provider Integration Guide
 
-> **Upstream**: Pack 04 (AI/Media), Tech Stack ADR v3 (ADR-009, ADR-010, ADR-011)
+> **Upstream**: Pack 04 (AI/Media), Tech Stack ADR v4 (ADR-009, ADR-010, ADR-011)
 > **v1 Providers**: Gemini (primary) + OpenAI (fallback) + ElevenLabs (TTS)
 >
 > **Note**: `tech_stack_adr.md` lists 8 strategic provider categories. This guide covers the **v1 implementation scope** — 3 primary providers (Gemini, OpenAI, ElevenLabs) plus specific model choices per category. Historical "(P2)" provider labels mean secondary adapter candidates, not the delivery phase. All owning feature requirements remain assigned by IMPLEMENTATION_ORDER.md; a candidate is enabled only after verification.
@@ -136,56 +137,55 @@ VEO_MAX_DURATION_SECS=60
 ```
 
 ### Request/Response:
-```rust
-pub struct VideoGenRequest {
-    pub prompt: String,
-    pub duration_secs: u32,        // 5-60
-    pub aspect_ratio: String,      // 16:9, 9:16, 1:1
-    pub style: Option<String>,
-    pub reference_image: Option<Vec<u8>>,
-    pub audio_mode: AudioMode,     // Native, None
-    pub quality: Quality,          // Standard, Premium
+```go
+// Internal adapter DTO sketches. Public/persisted fields remain owned by contracts.
+type VideoGenRequest struct {
+    Prompt string
+    DurationSecs uint32
+    AspectRatio string
+    Style *string
+    ReferenceImage []byte
+    AudioMode AudioMode
+    Quality Quality
 }
-
-pub struct VideoGenResult {
-    pub video_url: String,
-    pub duration_secs: f32,       // in-memory only; persists as NUMERIC(12,2) in assets table
-    pub resolution: String,
-    pub cost_usd: f64,            // in-memory only; persists as NUMERIC(18,6) per DB-H-001
-    pub generation_time_ms: u64,
+type VideoGenResult struct {
+    VideoURL string
+    DurationSecs decimal.Decimal // Exact parse, persists NUMERIC(12,2).
+    Resolution string
+    CostUSD decimal.Decimal // Never convert provider money through float64.
+    GenerationTimeMS uint64
 }
 ```
 
 ---
 
-## 6. Adapter Trait (Implementation Pattern)
+## 6. Adapter Interface (Implementation Pattern)
 
-```rust
-// All providers implement this trait
-#[async_trait]
-pub trait LlmProvider: Send + Sync {
-    fn name(&self) -> &str;
-    fn supports_function_calling(&self) -> bool;
-    fn supports_streaming(&self) -> bool;
-    fn cost_per_1m_input(&self) -> f64;
-    fn cost_per_1m_output(&self) -> f64;
-    
-    async fn complete(&self, req: CompletionRequest) -> Result<CompletionResponse>;
-    async fn stream(&self, req: CompletionRequest) -> Result<Pin<Box<dyn Stream<Item = Result<StreamChunk>>>>>;
-    async fn embed(&self, texts: Vec<String>) -> Result<Vec<Vec<f32>>>;
-    async fn health_check(&self) -> bool;
+```go
+// Small context-aware interfaces; request/result types compile in each slice.
+// decimal.Decimal is github.com/shopspring/decimal, pinned by P0.
+type LLMProvider interface {
+    Name() string
+    SupportsFunctionCalling() bool
+    SupportsStreaming() bool
+    CostPer1MInput() decimal.Decimal
+    CostPer1MOutput() decimal.Decimal
+    Complete(context.Context, CompletionRequest) (CompletionResponse, error)
+    Stream(context.Context, CompletionRequest, func(StreamChunk) error) error
+    Embed(context.Context, []string) ([][]float32, error)
+    HealthCheck(context.Context) error
 }
-
-// Adding a new provider = implement this trait + add to router config
-// ~100-150 lines per provider adapter
+// A streaming callback applies backpressure and propagates errors.
+// Use the current request context; do not spawn detached goroutines for streams.
+// Implement an adapter and verify capabilities/rates before enabling its route.
 ```
 
-```rust
-pub struct StreamChunk {
-    pub delta_text: String,
-    pub is_final: bool,
-    pub finish_reason: Option<String>,
-    pub usage: Option<TokenUsage>,
+```go
+type StreamChunk struct {
+    DeltaText string
+    IsFinal bool
+    FinishReason *string
+    Usage *TokenUsage
 }
 ```
 
@@ -199,7 +199,7 @@ pub struct StreamChunk {
 | 500/502/503 Server Error | Yes | Exponential backoff |
 | 401 Auth Error | No | Rotate API key, alert admin |
 | 400 Bad Request | No | Log, send to DLQ |
-| Timeout (>30s) | Yes | Try fallback provider |
+| Timeout after submission | Reconcile first | Unknown outcome; preserve effect/reservation identity; fallback only after safe resolution and authorized cost ceiling |
 | Content Filter | No | Return to user with explanation |
 | Quota Exceeded | No | Hard block, notify workspace admin |
 

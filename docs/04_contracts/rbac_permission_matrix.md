@@ -6,6 +6,7 @@ last_verified: 2026-03-30
 known_issues:
   - none
 do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
+last_updated: 2026-10-30
 ---
 
 ## Quick Navigation
@@ -30,7 +31,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | §2.15 Copilot & AI | copilot:use_creative/analytics/action/video_production/help, credits:view_balance/top_up |
 | §3 Internal Admin RBAC | 8 admin roles: Super, Ops, Finance, Content, Support, Tech, Analyst, Auditor (~20 permission keys) |
 | §4 Constraint Rules | External Collaborator, Contributor constraints, Approval-Required Actions |
-| §5 Implementation | Rust Tower middleware pattern |
+| §5 Implementation | Go HTTP middleware / Connect interceptors pattern |
 
 # B5 — RBAC Permission Matrix
 
@@ -392,37 +393,23 @@ These actions require approval regardless of role when policy is active:
 
 ---
 
-## 5. Implementation (Rust Tower Middleware)
+## 5. Implementation (Go Middleware and Connect Interceptors)
 
-```rust
-pub struct Permission {
-    pub domain: &'static str,
-    pub resource: &'static str,
-    pub action: &'static str,
+```go
+// Binding lookup uses the exact key in rpc_permission_bindings.csv.
+// The policy checker resolves membership from authenticated server context.
+type PermissionChecker interface {
+    Require(ctx context.Context, rpc string, objectID string) error
 }
 
-impl Permission {
-    pub fn key(&self) -> String {
-        format!("{}:{}:{}", self.domain, self.resource, self.action)
-    }
-}
-
-// Tower middleware checks: JWT → workspace_id → role → permission
-pub async fn check_permission(
-    role: &str,
-    permission: &Permission,
-) -> Result<(), AuthError> {
-    let allowed = PERMISSION_MATRIX
-        .get(role)
-        .and_then(|perms| perms.get(&permission.key()))
-        .copied()
-        .unwrap_or(false);
-    
-    if !allowed {
-        return Err(AuthError::Forbidden(permission.key()));
-    }
-    Ok(())
-}
+// Illustrative handler sequence, not a complete authorization implementation:
+// 1. Verify Clerk session/JWT; resolve current membership and workspace.
+// 2. Resolve RPC binding; check named permission and object scope.
+// 3. Check plan/tier, approval and current capability before mutation.
+// 4. Run domain work + audit/outbox through the same tenant transaction.
+// Deny missing bindings/unknown permission keys; never infer a key by
+// concatenating domain/resource/action (canonical keys have varied lengths).
+// Internal-admin identity and permissions remain a separate trust boundary.
 ```
 
 **Workspace RBAC**: ~150 permission keys × 7 roles = full matrix.

@@ -12,7 +12,7 @@ Generated from [task catalog](agent_task_catalog.json); do not edit this project
 
 Phase: P0. Dependencies: none. Modules: auth, M23.
 
-Pin toolchains; web/admin/mobile/API/worker skeleton, local services and fail-closed CI.
+Pin Go toolchain/dependencies/codegen tools; one apps/api Go module with api/admin-api/worker/outbox/migrate commands; web/admin/mobile shells, local services and fail-closed CI.
 
 Read: [auth.md](../02_features/platform/auth.md), [reporting_admin_billing.md](../02_features/platform/reporting_admin_billing.md), [tech_stack_adr.md](../05_system/tech_stack_adr.md), [docker_dev_environment.md](../06_quality_ops/docker_dev_environment.md), [ci_cd_pipeline.md](../06_quality_ops/ci_cd_pipeline.md).
 
@@ -20,6 +20,7 @@ Required outcomes:
 
 - Clean checkout bootstraps with documented commands
 - Failing command/smoke makes CI fail
+- Go module/tool versions pinned; role-isolated process configuration; gofmt/vet/race/vulnerability checks wired and failing on violations
 
 Implementation packet: `build/phase-P0/p0-01/manifest.json`. Compile current-slice messages/migrations before implementation; attach actual commands, fixtures and five-path evidence. The module completion task also reconciles downstream requirements in the requirement inventory.
 
@@ -27,15 +28,16 @@ Implementation packet: `build/phase-P0/p0-01/manifest.json`. Compile current-sli
 
 Phase: P0. Dependencies: P0-01. Modules: S24, auth.
 
-Compile common proto messages and TS/Rust/Dart clients; validation, pagination, error and idempotency middleware.
+Compile common proto messages and TS/Go/Dart clients; validation, pagination, error and idempotency middleware.
 
-Read: [public_api.md](../02_features/platform/public_api.md), [auth.md](../02_features/platform/auth.md).
+Read: [public_api.md](../02_features/platform/public_api.md), [auth.md](../02_features/platform/auth.md), [protobuf_contracts.md](../04_contracts/protobuf_contracts.md).
 
 Required outcomes:
 
 - Three-language round trip
 - Changed payload with same key conflicts
 - Foreign cursor rejected
+- TS Connect and Flutter gRPC/HTTP2 call the same Go handler; deadline, metadata, error and stream cancellation tested; no generated drift
 
 Implementation packet: `build/phase-P0/p0-02/manifest.json`. Compile current-slice messages/migrations before implementation; attach actual commands, fixtures and five-path evidence. The module completion task also reconciles downstream requirements in the requirement inventory.
 
@@ -70,6 +72,7 @@ Required outcomes:
 - Last owner protected
 - Member revocation enforced
 - Private notes/secrets never serialized
+- pgx/sqlc WithTx covers every tenant query; context isolation, rollback and Goose SQL migrations tested with app_user; money never converts through float
 
 Implementation packet: `build/phase-P0/p0-04/manifest.json`. Compile current-slice messages/migrations before implementation; attach actual commands, fixtures and five-path evidence. The module completion task also reconciles downstream requirements in the requirement inventory.
 
@@ -391,6 +394,7 @@ Required outcomes:
 - Cancel/timeout/unknown-result recovery
 - Fallback no double charge
 - Budget preview and partial batch input validation
+- FFmpeg/ffprobe arguments allowlisted; worker CPU/memory/disk/time limits and process-tree cancellation enforced; output validated before completion
 
 Implementation packet: `build/phase-P4/p4-01/manifest.json`. Compile current-slice messages/migrations before implementation; attach actual commands, fixtures and five-path evidence. The module completion task also reconciles downstream requirements in the requirement inventory.
 
@@ -974,4 +978,3 @@ Required outcomes:
 - Unmet external gate remains explicit, no full launch claim
 
 Implementation packet: `build/phase-P8/p8-09/manifest.json`. Compile current-slice messages/migrations before implementation; attach actual commands, fixtures and five-path evidence. The module completion task also reconciles downstream requirements in the requirement inventory.
-

@@ -292,10 +292,11 @@
         "M23"
       ],
       "status": "SPECIFIED",
-      "deliverable": "Pin toolchains; web/admin/mobile/API/worker skeleton, local services and fail-closed CI.",
+      "deliverable": "Pin Go toolchain/dependencies/codegen tools; one apps/api Go module with api/admin-api/worker/outbox/migrate commands; web/admin/mobile shells, local services and fail-closed CI.",
       "acceptance": [
         "Clean checkout bootstraps with documented commands",
-        "Failing command/smoke makes CI fail"
+        "Failing command/smoke makes CI fail",
+        "Go module/tool versions pinned; role-isolated process configuration; gofmt/vet/race/vulnerability checks wired and failing on violations"
       ],
       "reading_refs": [
         "docs/02_features/platform/auth.md",
@@ -330,15 +331,17 @@
         "auth"
       ],
       "status": "SPECIFIED",
-      "deliverable": "Compile common proto messages and TS/Rust/Dart clients; validation, pagination, error and idempotency middleware.",
+      "deliverable": "Compile common proto messages and TS/Go/Dart clients; validation, pagination, error and idempotency middleware.",
       "acceptance": [
         "Three-language round trip",
         "Changed payload with same key conflicts",
-        "Foreign cursor rejected"
+        "Foreign cursor rejected",
+        "TS Connect and Flutter gRPC/HTTP2 call the same Go handler; deadline, metadata, error and stream cancellation tested; no generated drift"
       ],
       "reading_refs": [
         "docs/02_features/platform/public_api.md",
-        "docs/02_features/platform/auth.md"
+        "docs/02_features/platform/auth.md",
+        "docs/04_contracts/protobuf_contracts.md"
       ],
       "packet": "build/phase-P0/p0-02/manifest.json",
       "contract_refs": [
@@ -409,7 +412,8 @@
         "Two-tenant and direct-junction attacks denied",
         "Last owner protected",
         "Member revocation enforced",
-        "Private notes/secrets never serialized"
+        "Private notes/secrets never serialized",
+        "pgx/sqlc WithTx covers every tenant query; context isolation, rollback and Goose SQL migrations tested with app_user; money never converts through float"
       ],
       "reading_refs": [
         "docs/02_features/platform/auth.md",
@@ -1131,7 +1135,8 @@
       "acceptance": [
         "Cancel/timeout/unknown-result recovery",
         "Fallback no double charge",
-        "Budget preview and partial batch input validation"
+        "Budget preview and partial batch input validation",
+        "FFmpeg/ffprobe arguments allowlisted; worker CPU/memory/disk/time limits and process-tree cancellation enforced; output validated before completion"
       ],
       "reading_refs": [
         "docs/02_features/production/ai_video_studio.md"

@@ -8,6 +8,7 @@ resolved_issues:
   - EVT-H-001  # dot.notation canonical, CamelCase mapping tables added to runtime_workflow.md (2026-04-02)
   - EVT-M-001  # connector.degraded + connector.recovered added §15D (2026-04-02)
 do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
+last_updated: 2026-10-30
 ---
 
 ## Quick Navigation
@@ -32,7 +33,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 | §15C-D Gamification & Health | gamification.challenge.*, connector.health_score.*, connector.degraded, connector.recovered, affiliate.link_health.* |
 | §16-18 Admin, Support, Operational | admin.user_suspended, moderation.case_created, file.uploaded, consent.granted, etc. |
 | §19 Commerce Life-Cycle | refund.*, return.*, chargeback.*, coupon.*, membership.*, commission.*, etc. |
-| §20 Event Transport | Tokio mpsc, Redis Streams, PostgreSQL outbox |
+| §20 Event Transport | Go channels, Redis Streams, PostgreSQL outbox |
 | §21 Webhook-Eligible Events | 13 events eligible for S24 Public API webhooks |
 
 # A4 — Domain Event Catalog
@@ -40,32 +41,33 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 > **Upstream**: Pack 03 (Event/Workflow), Product Freeze v3.1
 > **Pattern**: `{domain}.{entity}.{action}` — past tense, immutable facts
 
-> **Implementation Rule (Audit v6 — L8)**: All event names in Rust code MUST use the `domain.entity.action` dot-notation (e.g., `content.script.approved`). Pack 03 documentation may reference CamelCase names (e.g., `ScriptApproved`) — these are the same events using documentation-style naming. The Rust `event_type: String` field uses dot-notation exclusively.
+> **Implementation Rule (Audit v6 — L8)**: All event names in Go code MUST use the `domain.entity.action` dot-notation (e.g., `content.script.approved`). Pack 03 documentation may reference CamelCase names (e.g., `ScriptApproved`) — these are the same events using documentation-style naming. The Go `event_type` JSON field (`EventType string` in Go) field uses dot-notation exclusively.
 
 ---
 
 ## 1. Event Envelope
 
-```rust
-struct DomainEvent {
-    event_id: Uuid,
-    event_type: String,        // e.g., "content.script.approved"
-    aggregate_type: String,    // e.g., "script"
-    aggregate_id: Uuid,
-    workspace_id: Uuid,
-    actor_id: Option<Uuid>,    // user or system
-    actor_type: String,        // user, system, workflow, agent
-    payload: serde_json::Value,
-    metadata: EventMetadata,
-    occurred_at: DateTime<Utc>,
-    version: u32,
+```go
+// Domain envelope, not an additional persistence schema.
+// Imports: encoding/json, time, github.com/google/uuid.
+type DomainEvent struct {
+    EventID uuid.UUID `json:"event_id"`
+    EventType string `json:"event_type"`
+    AggregateType string `json:"aggregate_type"`
+    AggregateID uuid.UUID `json:"aggregate_id"`
+    WorkspaceID uuid.UUID `json:"workspace_id"`
+    ActorID *uuid.UUID `json:"actor_id"`
+    ActorType string `json:"actor_type"`
+    Payload json.RawMessage `json:"payload"`
+    Metadata EventMetadata `json:"metadata"`
+    OccurredAt time.Time `json:"occurred_at"`
+    Version uint32 `json:"version"`
 }
-
-struct EventMetadata {
-    correlation_id: Uuid,
-    causation_id: Option<Uuid>,
-    trace_id: Option<String>,
-    operator_mode: Option<String>,
+type EventMetadata struct {
+    CorrelationID uuid.UUID `json:"correlation_id"`
+    CausationID *uuid.UUID `json:"causation_id"`
+    TraceID *string `json:"trace_id"`
+    OperatorMode *string `json:"operator_mode"`
 }
 ```
 
@@ -493,7 +495,7 @@ struct EventMetadata {
 
 | Channel | Tech | Use |
 |---|---|---|
-| **In-process** | Tokio mpsc channels | Same-service domain events |
+| **In-process** | Go channels (wake-up hints only) | Same-service domain events |
 | **Cross-service** | Redis Streams (Dragonfly) | Real-time event distribution |
 | **Durable** | PostgreSQL + outbox pattern | Critical business events |
 **Total: ~250 event types** covering all 23 modules + S16/S19/S26 + commerce lifecycles + operational events + M18 seeding lifecycle + extended production (M07 Pack 04 §9.6-9.16) + gamification challenges + platform health (connector.degraded/recovered) + identity freeze events + billing/payment events + notification-required events (§16) + affiliate commission events (§8).

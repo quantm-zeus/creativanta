@@ -3,21 +3,22 @@ layer: quality_ops
 canonical: true
 source_file: impl_c5_activepieces_integration.md
 last_verified: 2026-03-30
+last_updated: 2026-10-30
 ---
 
 # C5 — Activepieces Integration Specification
 
-> **Upstream**: Pack 03 §4.2, Tech Stack ADR v3 (ADR-008)
+> **Upstream**: Pack 03 §4.2, Tech Stack ADR v4 (ADR-008)
 > **License boundary (verified 2026-10-29)**: MIT core does not imply free enterprise embedding/white-labeling. [Official embedding documentation](https://www.activepieces.com/docs/embedding/overview) requires Enterprise; [repository license](https://github.com/activepieces/activepieces/blob/main/LICENSE) separates enterprise directories. No license is assumed purchased.
 
 ## 1. Canonical workflow architecture and engine boundary
 
-Creativanta owns the workflow graph, visual editor, validation, permission checks, step state and audit contract. The baseline P7 implementation is a Creativanta canvas with the Rust durable executor described in runtime_workflow.md. This keeps every M20/M21 node, recipe, agent and mobile operation deliverable without assuming an enterprise license. Activepieces is an optional adapter for verified core integrations or a licensed embedded builder; it never becomes a second business source of truth.
+Creativanta owns the workflow graph, visual editor, validation, permission checks, step state and audit contract. The baseline P7 implementation is a Creativanta canvas with the Go durable executor described in runtime_workflow.md. This keeps every M20/M21 node, recipe, agent and mobile operation deliverable without assuming an enterprise license. Activepieces is an optional adapter for verified core integrations or a licensed embedded builder; it never becomes a second business source of truth.
 
 - Baseline web: canvas edits the canonical graph through WorkflowService; mobile provides the specified run/inspect/approve surface.
 - Executor implements trigger, condition, transform, action, approval, wait, fallback, diagnostics, handoff and terminal nodes. Graph validation rejects unknown types, dangling edges and unbounded cycles; cascade depth default five. Persist steps and waits before acknowledging work; restart resumes conditional state, never replays a completed side effect.
 - Every action calls its canonical domain command with a workspace-scoped, revocable delegated identity. Effective permissions are the intersection of current activating user's permissions, declared workflow scope and tier; never an engine-wide admin key.
-- Activepieces adapter is enabled only for a pinned release/edition whose required API, authentication, isolation and node support have passed a compatibility probe and license review. API paths/SDK JWT provisioning are taken from that edition's docs, not a guessed universal endpoint. If a node is unsupported, route it through the canonical Rust executor, preserving the same run/step IDs and approvals.
+- Activepieces adapter is enabled only for a pinned release/edition whose required API, authentication, isolation and node support have passed a compatibility probe and license review. API paths/SDK JWT provisioning are taken from that edition's docs, not a guessed universal endpoint. If a node is unsupported, route it through the canonical Go executor, preserving the same run/step IDs and approvals.
 - Enterprise embed requires recorded license/entitlement and a verified SDK/iframe CSP/SSO/tenant-isolation test. It is an external gate on that adapter, not a deletion of the visual-builder feature.
 - All runs are inspectable through the same workflow_runs/workflow_run_steps. Adapter logs are supporting diagnostics, not canonical completion evidence. Webhooks are authenticated, replay protected and idempotent.
 
@@ -48,7 +49,7 @@ import { publishSucceededTrigger } from './triggers/publish-succeeded';
 export const creativantaPublish = createPiece({
   displayName: 'Creativanta Publish',
   logoUrl: 'https://...',
-  auth: creativantaAuth, // API key auth to Rust API
+  auth: creativantaAuth, // API key auth to Go API
   actions: [publishAction, scheduleAction],
   triggers: [publishSucceededTrigger],
 });

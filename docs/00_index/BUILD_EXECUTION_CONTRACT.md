@@ -48,7 +48,7 @@ Commit a packet at `build/phase-PN/<slice>/manifest.json` during implementation:
 1. Read BUILD_INDEX → OPEN_BLOCKERS → CANONICAL_SOURCES → phase → owning feature → contracts → runtime → screens → quality docs. Apply canonical precedence and recorded product decisions.
 2. Enumerate included Scope/Covers bullets, rules, alternate/edge flows and ACs. Assign excluded items to their mandatory later phase in `remaining_scope`; none may disappear from P8 coverage.
 3. Complete typed request/response fields, validation, nullable/update semantics, errors, tier/permission/object scope, state preconditions, events, side effects, idempotency and provider uncertainty handling. Follow [API behavior contracts](../04_contracts/api_behavior_contracts.md).
-4. Compile Rust/TypeScript/Dart transport and run migration/seed/permission fixtures before wiring screens. Correct contracts in their owning layer and link downstream.
+4. Compile Go/TypeScript/Dart transport and run migration/seed/permission fixtures before wiring screens. Correct contracts in their owning layer and link downstream.
 5. Implement UI → API → service → persistence/worker → UI, including failure/repair and audit. Test-only adapters cannot satisfy a live provider gate.
 6. Run happy/degraded/missing/broken/audit paths, phase exit fixtures, and isolation/replay/concurrency checks for touched boundaries.
 7. Record actual results. Mark ACCEPTED only with passing evidence and no unresolved scope item in the slice. Handoff names remaining scope and external gates.
@@ -58,7 +58,7 @@ Commit a packet at `build/phase-PN/<slice>/manifest.json` during implementation:
 | Gate | Required evidence |
 |---|---|
 | D0 docs | `python3 tooling/check_docs.py` passes; no unresolved canonical contradiction in the slice |
-| D1 transport | Compiled `.proto` and TS/Rust/Dart generation; no stale diff; every implemented RPC has a complete packet |
+| D1 transport | Compiled `.proto` and TS/Go/Dart generation; no stale diff; every implemented RPC has a complete packet |
 | D2 data | Clean migrations + seed; real PostgreSQL tenant/RLS/FK tests; decimal arithmetic; repeatable import; backup/restore before release |
 | D3 money/async | Concurrent holds cannot overspend; duplicate requests/events cannot double debit/create orders/repeat provider effects; restart and late results tested |
 | D4 product | Owning ACs, web/mobile states and mode behavior pass; unbuilt actions cannot be presented as usable |

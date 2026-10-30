@@ -3,11 +3,12 @@ layer: quality_ops
 canonical: true
 source_file: impl_d5_i18n_guide.md
 last_verified: 2026-03-30
+last_updated: 2026-10-30
 ---
 
 # D5 — Internationalization (i18n) Guide
 
-> **Upstream**: Tech Stack ADR v3 (Paraglide.js)
+> **Upstream**: Tech Stack ADR v4 (Paraglide.js)
 > **Primary**: Vietnamese | **Secondary**: English
 
 ---

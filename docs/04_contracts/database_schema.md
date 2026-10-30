@@ -10,6 +10,7 @@ resolved_issues:
   - DB-H-003  # deleted_at added to 51 entity tables (2026-04-02)
   - DB-H-004  # 23 CHECK constraints added for lifecycle fields (2026-04-02)
 do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
+last_updated: 2026-10-30
 ---
 
 ## Quick Navigation
@@ -43,7 +44,7 @@ do_not_edit_without: Đọc 00_index/OPEN_BLOCKERS.md trước khi sửa
 # A1 — Database Schema Design (PostgreSQL 17 + TimescaleDB + pgvector)
 
 > **Upstream**: PRD v3.1, Product Freeze v3.1, Pack 02 (Backend Schema)
-> **Tech**: PostgreSQL 17, SeaORM 2.0, RLS multi-tenant, pgvector, TimescaleDB
+> **Tech**: PostgreSQL 17, pgx + sqlc, RLS multi-tenant, pgvector, TimescaleDB
 
 ---
 
@@ -61,7 +62,7 @@ CREATE POLICY tenant_isolation ON <table>
 > 1. Every `CREATE TABLE` block for a tenant-scoped table (any table with `workspace_id`) MUST be followed by `ALTER TABLE <t> ENABLE ROW LEVEL SECURITY;` + `ALTER TABLE <t> FORCE ROW LEVEL SECURITY;`. Without `FORCE`, a non-superuser table owner bypasses RLS silently. See OPEN_BLOCKERS.md DB-C-001 / DB-C-002.
 > 2. Always pass `missing_ok = true` wrapped in `NULLIF(..., '')::uuid` (`NULLIF(current_setting('app.current_tenant_id', true), '')::uuid`). Calling 1-argument `current_setting('app.current_tenant_id')` throws `ERROR: unrecognized configuration parameter` in PostgreSQL 17 whenever a transaction runs before `SET LOCAL app.current_tenant_id` is set.
 > 3. **Bootstrap exception (`workspaces` and `workspace_members`)**: During login, session validation, workspace discovery, and initial workspace creation, `app.current_tenant_id` is not yet selected. Middleware sets `SET LOCAL app.current_user_id = '<user_uuid>'`, and the `tenant_isolation` policies on `workspaces` (`owner_user_id`) and `workspace_members` (`user_id`) allow authenticated user-scoped discovery/bootstrap alongside `app.current_tenant_id`.
-> 4. **Role separation**: Database migrations and `seed_data.sql` execute under the migration/owner superuser role (`creativanta`), whereas the Rust API runtime connects as `app_user` (`NOBYPASSRLS`) to guarantee RLS enforcement on every application query.
+> 4. **Role separation**: Database migrations and `seed_data.sql` execute under the migration/owner superuser role (`creativanta`), whereas the Go API runtime connects as `app_user` (`NOBYPASSRLS`) to guarantee RLS enforcement on every application query.
 
 All tables below include `workspace_id UUID NOT NULL` unless marked `[GLOBAL]`.
 
@@ -4384,7 +4385,7 @@ interface AutoWinnerCriteria {
 }
 ```
 
-> **Implementation note**: All JSONB columns should be validated against these shapes at the application layer (Rust `serde` deserialize with `#[serde(deny_unknown_fields)]`). Database CHECK constraints are NOT used for JSONB validation — this is enforced at the API boundary.
+> **Implementation note**: All JSONB columns should be validated against these shapes at the application layer (Go typed JSON decoding with `json.Decoder.DisallowUnknownFields`, explicit shape/enum/decimal validation and rejection of trailing JSON; generated Protobuf JSON uses `protojson.UnmarshalOptions{DiscardUnknown: false}`). Database CHECK constraints are NOT used for JSONB validation — this is enforced at the API boundary.
 
 
 ### 25.6 Connector access verification JSONB

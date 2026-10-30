@@ -3,6 +3,7 @@ layer: quality_ops
 canonical: true
 source_file: impl_c1_qa_acceptance_packs.md
 last_verified: 2026-03-30
+last_updated: 2026-10-30
 ---
 
 # C1 — QA Acceptance Test Packs
@@ -169,7 +170,7 @@ Every module must pass 5 acceptance paths:
 | Accessibility implementation contract | Manual + shared-spec review | Must follow `06_quality_ops/accessibility_spec.md` and shared screen specs |
 | Mobile responsiveness | BrowserStack | iOS Safari, Android Chrome |
 | i18n | Manual | All strings translated, no hardcoded text |
-| Security | OWASP ZAP, cargo audit | No critical/high findings |
+| Security | OWASP ZAP, govulncheck | No critical/high findings |
 | Admin site security | Manual | VPN-only, MFA required, audit trail |
 
 ---

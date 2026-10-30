@@ -23,7 +23,7 @@ M07 exists as the **unified AI production engine** that orchestrates multi-provi
 - 11 Extended Features: Product Showcase, Image-to-Video, Thumbnail Studio, Link-to-Video, Translation Studio, AI Sound Studio, Style Learning, Video Agent, Performance Coach, Video A/B Testing, Creator Gamification
 - Generation job lifecycle (queued → processing → completed/failed/cancelled)
 - Provider routing, failover, circuit breaker (ADR-010)
-- Post-production mix (rust-ffmpeg: normalize, ducking, subtitles, aspect ratio)
+- Post-production mix (FFmpeg: normalize, ducking, subtitles, aspect ratio)
 - Lip-sync orchestration (SyncLabs / Wav2Lip)
 - Cost estimation and credit tracking
 - BYOK (Bring Your Own API Key) support

@@ -4,11 +4,12 @@ canonical: true
 source_file: impl_b6_cache_search_strategy.md
 last_verified: 2026-03-30
 purpose: Dragonfly cache strategy, Meilisearch indexes, ClickHouse analytics schema, and pgvector usage
+last_updated: 2026-10-30
 ---
 
 # B6 — Cache & Search Strategy
 
-> **Upstream**: Tech Stack ADR v3 (Dragonfly, Meilisearch, ClickHouse)
+> **Upstream**: Tech Stack ADR v4 (Dragonfly, Meilisearch, ClickHouse)
 
 ---
 
@@ -199,7 +200,7 @@ GROUP BY workspace_id, metric_date;
 ```
 
 ### 3.3 Data Flow: PostgreSQL → ClickHouse
-- **Method**: Outbox events → Rust worker → ClickHouse HTTP insert
+- **Method**: Outbox events → Go worker → ClickHouse HTTP insert
 - **Frequency**: Near real-time (< 5s delay)
 - **Retention**: ClickHouse keeps 2 years, PostgreSQL keeps current + 3 months detail
 

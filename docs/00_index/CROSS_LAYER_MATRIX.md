@@ -13,7 +13,7 @@ This records canonical artifact ownership, not proof of runtime correctness. All
 |---|---|---|---|
 | Feature → phase | IMPLEMENTATION_ORDER.md | All 31 entries and Build Index phase projection agree | Every scope/AC assigned and accepted by P8 |
 | RPC → permission | rpc_permission_bindings.csv + RBAC | Every inventory RPC bound to existing key/family | Role + object + tier + approval denial/allow tests |
-| Request/response | api_behavior_contracts.md + phase .proto | Critical field/message authoring rules exist; JSON examples parse | Exact compiled TS/Rust/Dart messages and validation/failure tests |
+| Request/response | api_behavior_contracts.md + phase .proto | Critical field/message authoring rules exist; JSON examples parse | Exact compiled TS/Go/Dart messages and validation/failure tests |
 | DB → tenant | database_schema.md | Tenant tables/junctions have direct RLS; relational tenant FKs; unique index names; topological references | PostgreSQL runtime role/isolation/owner/discovery/grant tests |
 | Credit → execution | credit_accounting_contract.md | Durable tables, cost/TTL authority and role sample | Concurrent reserve, cycle reset, restart, duplicate and late result fixtures |
 | Finance → proof | financial_computation_contract.md | Tax/FX/source fields and projection components | Hand-calculated F01–F09, immutable evidence and economic dedup |

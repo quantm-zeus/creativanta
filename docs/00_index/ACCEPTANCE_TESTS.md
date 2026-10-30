@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-03-30
+last_updated: 2026-10-30
 source: PRD Master v3.1 §23.1-§23.23
 rule: Every AC below is a 1:1 conversion of a PRD §23 bullet. No invented ACs.
 ---
@@ -248,7 +248,7 @@ Source: PRD §23.7 — "lip-sync output khớp audio (QA drift check vs canonica
 ### AC-M07-006: Post-production mix meets spec
 Source: PRD §23.7 — "post-production mix output normalize -14 LUFS, aspect ratio correct"
 
-    Given video asset đi qua post-production pipeline (rust-ffmpeg)
+    Given video asset đi qua post-production pipeline (FFmpeg)
     When mix processing hoàn tất
     Then audio output đạt -14 LUFS (±1 LUFS tolerance)
     And aspect ratio output match target platform spec (9:16, 16:9, 1:1)

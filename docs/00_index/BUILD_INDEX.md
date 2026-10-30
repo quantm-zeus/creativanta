@@ -129,4 +129,6 @@ M20/M21 (Workflow/Recipe):
 
 ## 6. Start building
 
+Backend baseline is Go per the owner-authorized [ADR-015](../05_system/tech_stack_adr.md#adr-015-product-owner-migration-to-go--2026-10-30). All API/worker/admin/runtime tasks use that implementation choice; historical Rust examples in archives are not build instructions.
+
 Read [review and readiness](BUILD_READINESS.md), then [Agent Build Backlog](AGENT_BUILD_BACKLOG.md). The task catalog and generated requirement/screen maps preserve the complete corpus with source hashes; all task states start SPECIFIED. [Product strategy](../01_business/product_strategy_validation.md) owns the validation plan and rationale for improvements.
