@@ -226,16 +226,17 @@ Every module must pass 5 acceptance paths:
 | Test | Input | Expected Output | Verification |
 |---|---|---|---|
 | Full pipeline (all enabled) | 10-min video, all outputs enabled | 50+ content pieces (clips, posts, thumbnails, blog, audio, captions) | All output types present |
-| Free tier video limit | 6-min video on Free tier (max 5min) | Rejected | Error: "Video exceeds tier limit" |
-| All outputs are drafts | Pipeline completes | All publish_items have `status = draft` | No auto-publish |
+| Free tier video limit | 6-min video on Free tier (limit from pricing catalog) | Rejected | Error: "Video exceeds tier limit" |
+| All outputs are drafts | Pipeline completes | All publish_items have `lifecycle_state = 'draft'` | No auto-publish |
 | Partial pipeline (clips only) | Config: only auto_clips enabled | Only clips generated | Other output types empty |
 
 ### AB Testing Engine (Pack 04 §9.15)
 | Test | Input | Expected Output | Verification |
 |---|---|---|---|
 | 2-variant test start | Source asset → 2 variants published | Experiment running, metrics tracked | `status = running` |
-| Auto-winner detection | Variant A gets 3x engagement after 48h | Winner auto-declared | `winner_asset_id` set |
-| Manual winner override | User manually picks winner | Winner updated | `status = completed` |
+| Auto-winner detection | ≥1,000 comparable impressions per variant, 48h, metric ratio 3x, fresh valid denominators | Eligible observational recommendation | `winner_asset_id` set, observational label |
+| Insufficient evidence | 20 impressions/variant after 72h | Inconclusive; no auto-scale | winner absent, result_status=inconclusive |
+| Manual selection | Authorized user selects a preferred variant | Choice labeled manual preference; no fabricated statistical proof | Audit + M11 checks before scaling |
 | Experiment cancelled | User cancels running test | Test stopped, no winner | `status = cancelled` |
 
 ### Voice Cloning (Pack 04 §12B)

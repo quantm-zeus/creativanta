@@ -1,7 +1,7 @@
 # Screen: Mobile — Commerce Affiliates
 
 > **Screen ID**: M032
-> **Module**: M14 — Monetization & Affiliates
+> **Module**: M16 — see canonical feature owner in screen_task_map.csv
 > **Route**: `/commerce/affiliates` (mobile)
 > **Platform**: Mobile (Flutter)
 > **Upstream**: Pack 06 §8, A1 Schema (affiliate_links, affiliate_clicks, affiliate_conversions, affiliate_commissions), B5 RBAC §2.7

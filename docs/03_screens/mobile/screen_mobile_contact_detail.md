@@ -1,7 +1,7 @@
 # Screen: Mobile — Contact Detail
 
 > **Screen ID**: M022
-> **Module**: M13 — Engagement & CRM
+> **Module**: M12 — see canonical feature owner in screen_task_map.csv
 > **Route**: `/contacts/[id]` (mobile)
 > **Platform**: Mobile (Flutter)
 > **Upstream**: A1 Schema (contacts, engagement_events, orders), B5 RBAC §2.7

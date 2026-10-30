@@ -4,7 +4,7 @@ module: M17
 canonical: true
 domain: commerce
 status: SPECIFIED
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 blockers: []  # API-M-001 resolved 2026-04-02 — LiveCommerceService §2.8.3 (11 RPCs)
 ---
 
@@ -30,7 +30,7 @@ M17 exists as the **real-time live commerce orchestrator** — managing the full
 
 ### Does NOT cover (M17 boundaries)
 - **Platform native live**: M17 does NOT replace TikTok Live / Facebook Live — it operates alongside as an orchestration layer
-- **M09 owns**: clip extraction from highlights (M17 marks → M09 extracts)
+- **M07 owns**: clip extraction from highlights; M09 owns resulting derivative registration and management
 - **M12 owns**: full inbox/thread management (M17 surfaces high-priority comments during live)
 - **M19 owns**: profit calculations from live (M17 provides session data → M19 aggregates)
 - **M13 owns**: order lifecycle (M17's `live_session_id` links orders to sessions)
@@ -159,7 +159,7 @@ see [04_contracts/database_schema.md#12.1](../../04_contracts/database_schema.md
 
 3. **Given** cue cards are defined in the run-of-show, **when** the live session is active, **then** cue cards MUST appear at their planned times in the operator's war room view — each linked to their parent `live_session_id`.
 
-4. **Given** highlights were marked during a live session, **when** post-live processing runs, **then** highlighted timestamps MUST be sent to M09 for clip extraction — the resulting clips MUST link back to the source live session.
+4. **Given** highlights were marked during a live session, **when** post-live processing runs, **then** highlighted timestamps MUST be sent to M07 for clip extraction and resulting assets registered in M09 — the resulting clips MUST link back to the source live session.
 
 5. **Given** orders arrive with `live_session_id` set, **when** the post-live summary is generated, **then** those orders MUST appear in the summary with their revenue contribution — traceable through Product → Offer → Order → Revenue chain.
 

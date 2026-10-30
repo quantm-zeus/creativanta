@@ -1,7 +1,7 @@
 # Screen: Web — Membership Plans
 
 > **Screen ID**: W071
-> **Module**: M14 — Monetization & Memberships
+> **Module**: M15 — see canonical feature owner in screen_task_map.csv
 > **Route**: `/memberships`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 06 §9, A1 Schema (membership_plans, membership_subscriptions, membership_benefits, subscription_invoices, membership_content), B5 RBAC §2.7

@@ -248,6 +248,7 @@ Example: `content:script:approve`, `commerce:order:read`, `admin:billing:manage`
 | `link_in_bio:manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `media_kit:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ |
 | `media_kit:generate` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `media_kit:publish` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `rate_card:read` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `rate_card:manage` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `brand_deal:read` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |

@@ -1,7 +1,7 @@
 # Screen: Mobile — Link-in-Bio
 
 > **Screen ID**: M047
-> **Module**: M14 — Link-in-Bio
+> **Module**: S16 — see canonical feature owner in screen_task_map.csv
 > **Route**: `/link-in-bio` (mobile)
 > **Platform**: Mobile (Flutter)
 > **Upstream**: A1 Schema (link_pages, link_items), B5 RBAC §2.7

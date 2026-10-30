@@ -36,3 +36,7 @@ This file defines the minimum ownership and review-cadence policy for the active
 | Screen drift against RBAC/schema/API | Escalate to screen doc lead + frontend owner |
 | Ops doc claims runnable behavior without canonical deployment semantics | Escalate to DevOps/platform owner |
 | Review/report file contradicts canonical docs | Mark the review/report file as superseded or update it immediately |
+
+## Task-map freshness
+
+The Product/Engineering owner reviews agent_task_catalog and module completion after every scope/dependency change. Feature or screen edits must regenerate the source-hash inventories with build_plan after semantic review. The checker fails on stale maps. Product owns validation hypotheses; Finance/Commerce owns inventory/financial numerical contracts; Security owns public directory visibility and override boundaries. Evidence logs are historical observations and never replace current checks.

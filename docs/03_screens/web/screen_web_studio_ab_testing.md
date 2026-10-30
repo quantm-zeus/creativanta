@@ -1,7 +1,7 @@
 # Screen: Web — A/B Testing Engine
 
 > **Screen ID**: W027
-> **Module**: M07 — AI Studio
+> **Module**: M10 — see canonical feature owner in screen_task_map.csv
 > **Route**: `/studio/ab-test`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 04, A1 Schema (ab_tests, ab_variants)
@@ -10,7 +10,7 @@
 
 ## 1. Purpose & Context
 
-Generate N video variants (different hooks, CTAs, thumbnails, music) → publish all → auto-pick winner based on engagement metrics after test duration.
+Generate N video variants (different hooks, CTAs, thumbnails, music) → publish all → report an eligible observational winner or inconclusive result using M10/API evidence thresholds after test duration.
 
 ### User Story
 > As a creator optimizing my content, I want to test different hooks and thumbnails and let the system automatically identify the best performer.

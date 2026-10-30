@@ -1,7 +1,7 @@
 # Screen: Mobile — Sample Product Tracker
 
 > **Screen ID**: M034
-> **Module**: M14 — Monetization OS (Samples & Seeding)
+> **Module**: M18 — see canonical feature owner in screen_task_map.csv
 > **Route**: `/commerce/samples` (mobile app)
 > **Platform**: Mobile (Flutter)
 > **Upstream**: Pack 06 §Commerce, Product Freeze §23, A1 Schema (sample_requests, sample_shipments, sample_reviews, products), B5 RBAC §2.7

@@ -1,7 +1,7 @@
 # Screen: Mobile — Copilot Chat
 
 > **Screen ID**: M060
-> **Module**: M01 — Home & Decision (AI Assistant)
+> **Module**: copilot — see canonical feature owner in screen_task_map.csv
 > **Route**: `/copilot` (mobile app)
 > **Platform**: Mobile (Flutter)
 > **Upstream**: Product Freeze §34 (Copilot Tiers), A1 Schema (copilot_sessions §19.12 — messages as JSONB), B5 RBAC §2.14

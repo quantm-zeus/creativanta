@@ -4,7 +4,7 @@ module: M10
 canonical: true
 domain: production
 status: SPECIFIED
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 # Feature: Packaging QA / Upload Copilot / Experiment Lab (M10)
@@ -44,7 +44,7 @@ M10 exists as the **pre-publish quality gate** that scores, validates, and optim
 ## Business Rules
 
 1. **RULE-M10-001**: Every publish attempt MUST have a packaging QA panel visible before execution. The QA panel MUST show: overall packaging score, per-component scores (hook, title, caption, CTA, disclosure, links), readiness checklist status, and compliance scan result. Users cannot skip the QA panel — it is rendered inline in the publish flow (PRD §23.10 AC).
-2. **RULE-M10-002**: Trust-critical checks (disclosure for sponsored content, copyright for music/media, platform policy compliance) MUST require an explicit override reason (≥10 characters) from Manager+ if bypassed. The override MUST be logged with: actor, timestamp, override reason, and the specific check being bypassed. Overrides without reason are forbidden (PRD §23.10 AC).
+2. **RULE-M10-002**: Trust-critical checks (disclosure for sponsored content, copyright for music/media, platform policy compliance) MUST require an explicit override reason (≥10 characters) from Manager+ if bypassed. The override MUST be logged with: actor, timestamp, override reason, and the specific check being bypassed. Overrides without reason are forbidden; only reviewable findings are eligible. Confirmed rights violations, required disclosure omissions, revoked consent and hard moderation blocks require correction or authorized false-positive review, never a workspace override (PRD §23.10 AC).
 3. **RULE-M10-003**: Packaging Score is a composite (0-100) computed from weighted component scores. Components and suggested weights:
    - Hook Score (25%): first 3s effectiveness, hook type matching trend patterns
    - Title Score (20%): SEO quality, keyword presence, character count compliance
@@ -54,8 +54,8 @@ M10 exists as the **pre-publish quality gate** that scores, validates, and optim
    - Link/Coupon Check (10%): links valid, coupons active, redirect chain healthy
    Scores below 50 show "⚠️ Below recommended quality." Scores below 30 show "🔴 Critical issues found."
 4. **RULE-M10-004**: Every readiness gap and error MUST have EITHER a suggested fix action OR an override option. Dead-end errors with no actionable path are forbidden. Example: "Missing disclosure → [Add disclosure] or [Override (Manager+)]" (PRD §23.10 AC).
-5. **RULE-M10-005**: Compliance scan results follow 4 classes: `pass`, `pass_with_warnings`, `review_required`, `blocked`. Blocked content MUST NOT proceed to M11 without Manager+ override. `review_required` generates notification to reviewer (Pack 04 §8.2).
-6. **RULE-M10-006**: A/B Experiments MUST define: hypothesis, variant count (2-5), success metric (CTR/engagement/views), monitoring duration (24-72h), and auto-winner criteria. Experiments link to M07 EF-10 (Video A/B Testing) for variant generation and M11 for spread-schedule publishing.
+5. **RULE-M10-005**: Compliance scan results follow 4 classes: `pass`, `pass_with_warnings`, `review_required`, `blocked`. Hard-blocked content MUST NOT proceed to M11. Only reviewable findings can use a Manager+ override, subject to the moderation contract. `review_required` generates notification to reviewer (Pack 04 §8.2).
+6. **RULE-M10-006**: A/B Experiments MUST define: hypothesis, variant count (2-5), success metric (CTR/engagement/views), monitoring duration and auto-winner criteria under API behavior §7 (24h may be a preview, never default winner acceptance). Experiments link to M07 EF-10 (Video A/B Testing) for variant generation and M11 for spread-schedule publishing.
 
 ## Main Flow
 
@@ -103,7 +103,7 @@ M10 exists as the **pre-publish quality gate** that scores, validates, and optim
 | review_required | overridden | Manager+ provides override reason (≥10 chars) | Override logged to audit trail |
 | overridden | ready_to_publish | Override confirmed | Content enters M11 with override flag |
 | blocked | scoring | User applies fixes | Re-score triggered after fix applied |
-| blocked | overridden | Manager+ overrides (if not score=0) | Score=0 blocks cannot be overridden |
+| blocked | scoring | Correction or authorized false-positive clearance | Hard blocks cannot transition directly to overridden |
 
 ### A/B Experiment Lifecycle
 
@@ -112,7 +112,7 @@ M10 exists as the **pre-publish quality gate** that scores, validates, and optim
 | — | design | User clicks "Create A/B Test" | Experiment setup begins |
 | design | active | Experiment launched | All variants scheduled via M11 |
 | active | monitoring | Variants published | Monitoring period begins (24-72h) |
-| monitoring | complete | Monitoring period ends | Auto-winner selected based on success metric |
+| monitoring | complete | Monitoring period ends | Evidence meets the canonical minimum duration, exposure and metric criteria; observational label retained |
 | monitoring | inconclusive | No statistically significant winner | User prompted to extend monitoring or pick manually |
 | complete | scaled | User scales winner | Winner variant pushed to more platforms |
 | any | cancelled | User cancels | All variant schedules cancelled |
@@ -126,7 +126,7 @@ M10 exists as the **pre-publish quality gate** that scores, validates, and optim
 
 ### EC-M10-002: Music Copyright Detected During Scan
 - Condition: Compliance scan identifies copyrighted music via ACRCloud fingerprint
-- Expected behavior: QA panel shows 🔴 "Copyrighted music detected: [Song Name] by [Artist]. Platform [TikTok] may mute or remove. [Replace music] [Proceed at risk (Manager+ override)]." If user replaces music, rescan runs automatically.
+- Expected behavior: QA panel shows 🔴 "Copyrighted music detected: [Song Name] by [Artist]. Platform [TikTok] may mute or remove. [Replace music] [Submit license / Appeal]." A confirmed rights violation remains blocked; replacing music or clearing a false positive triggers rescan.
 - Reference: Pack 04 §9.2.8, S14.2
 
 ### EC-M10-003: QA Score Zero Due to Missing All Components
@@ -163,14 +163,20 @@ M10 exists as the **pre-publish quality gate** that scores, validates, and optim
 
 1. **Given** a user enters the publish flow for any content, **when** the QA panel loads, **then** it MUST display: overall packaging score (0-100), per-component scores (hook, title, caption, CTA, disclosure, links), readiness checklist, and compliance scan status — the user MUST NOT be able to bypass this panel.
 
-2. **Given** a compliance scan detects copyrighted music, **when** a Manager+ clicks override, **then** the system MUST require a reason ≥10 characters — and the override MUST be logged with actor, timestamp, check bypassed, and reason text.
+2. **Given** a compliance scan finds a possible music match and license evidence exists, **when** an authorized review clears the finding, **then** the review and evidence MUST be audited. A Manager+ may override a reviewable warning with reason ≥10 characters; a confirmed unlicensed violation remains blocked.
 
 3. **Given** content with `packaging_score < 30`, **when** the QA panel renders, **then** it MUST show "🔴 Critical issues found" — and every red item MUST have EITHER a suggested fix action OR an override path (never a dead-end).
 
-4. **Given** a user creates an A/B experiment with 3 variants, **when** the experiment monitoring period ends (72h), **then** the system MUST auto-report the winner based on the defined success metric — and offer "Scale winner to more platforms."
+4. **Given** a user creates an A/B experiment with 3 variants, **when** the experiment monitoring period ends (72h), **then** the system MUST report a winner only if canonical evidence thresholds pass; otherwise report inconclusive with no automatic scaling. Organic comparisons are labeled observational.
 
-5. **Given** a content item with commercial product hooks and no disclosure, **when** the QA panel scans, **then** it MUST flag the disclosure check as 🔴 blocked — only a Manager+ override with reason can allow it to proceed.
+5. **Given** a content item with commercial product hooks and no disclosure, **when** the QA panel scans, **then** it MUST flag the disclosure check as 🔴 blocked — the required disclosure must be added before it can proceed; an override reason cannot substitute for it.
 
 ## Open Questions / Blockers
 
 - [NONE] — No critical blockers specific to M10 in OPEN_BLOCKERS.md.
+
+## Experiment evidence and safe learning
+
+[API behavior §7](../../04_contracts/api_behavior_contracts.md#7-lifecycle-and-grant-storage-clarifications) owns storage mapping and minimum evidence. Compare the same metric, observation window and eligible audience basis. Missing denominators, zero exposure, delayed metrics or materially different exposure produce an explicit inconclusive result; never divide by zero or call a tiny difference a proven uplift. Preserve per-variant source/freshness and exclusions in the result.
+
+Given three variants with 20 impressions each after 72 hours, the result is inconclusive and `winner_asset_id` remains empty. Given adequate observational data, the winner is a recommendation labeled observational; scaling requires a fresh M11 permission, capability, policy and duplicate-post check. Cancelling an experiment stops pending schedules only: already published posts and proof remain in history.

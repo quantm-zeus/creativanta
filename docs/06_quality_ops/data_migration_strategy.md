@@ -2,12 +2,13 @@
 layer: quality_ops
 canonical: true
 source_file: impl_c4_data_migration_strategy.md
-last_verified: 2026-03-30
+last_verified: 2026-10-30
 ---
 
 # C4 — Data Migration & Import Strategy
 
 > **Upstream**: Pack 05 (Connector), Pack 06 (Commerce)
+> API imports require per-action access evidence under [connector specs](../04_contracts/connector_specs.md); otherwise use authorized export/import paths. The table lists candidate integrations, not granted access.
 
 ---
 
@@ -43,8 +44,8 @@ Upload CSV → Validate schema → Parse rows → Validate data
 ```
 
 ### Deduplication Rules:
-- **Orders**: Match by `external_order_id + platform` (unique)
-- **Products**: Match by `title + product_type` (fuzzy, user confirms)
+- **Orders**: Use the account-scoped economic identity and source revision in the financial computation contract; never deduplicate two shops using external_order_id alone.
+- **Products**: Match verified source account/external identity or explicit catalog ID. Title similarity produces a suggestion requiring user confirmation, never an automatic merge.
 - **Contacts**: Match by `platform + handle` (exact)
 
 ## 4. Initial Sync Flow (New Connection)
@@ -79,7 +80,7 @@ Upload CSV → Validate schema → Parse rows → Validate data
 | Error Class | Action | Retry | Example |
 |---|---|---|---|
 | **Schema validation** | Reject row, continue batch | No | Missing required column, wrong date format |
-| **Dedup conflict** | Skip row, log as duplicate | No | Order with same external_id+platform |
+| **Dedup conflict** | Skip row, log as duplicate | No | Identical source identity/revision; changed revision is a correction |
 | **API rate limit** | Pause sync, backoff | Yes (circuit breaker) | Platform API 429 response |
 | **API auth expired** | Pause sync, refresh token | Yes (1 attempt) | OAuth token expired mid-sync |
 | **Network timeout** | Retry with exponential backoff | Yes (3 attempts) | Connection dropped |
@@ -89,18 +90,20 @@ Upload CSV → Validate schema → Parse rows → Validate data
 
 Platform API rate limits interact with sync frequencies from §5. The circuit breaker per provider (see `queue_retry_design.md` §6) governs pause/resume behavior:
 
-| Platform | Rate Limit | Sync Strategy |
-|---|---|---|
-| TikTok Shop | 600 req/min content, 1000 req/min shop | Batch with rate limiter (per connector_specs §2) |
-| Shopee | 10 req/s per shop | Queue-based with token bucket (per connector_specs §3) |
-| Lazada | 50 req/s per app, 5000/min | Batch with 20ms delay (per connector_specs §4) |
-| YouTube | 10,000 units/day | Priority-based allocation across data types |
-| Instagram/Facebook | 200 calls/hour | Graph API paging with backoff |
+Use verified per-app/account/endpoint budgets and Retry-After under the connector contract. The freshness table is a target, not a guarantee of platform quota or availability.
 
 ### Failed Import Recovery
 
 1. **Per-row tracking**: Each import row gets a `sync_status` (success/failed/skipped) with `error_message`
 2. **Import report**: Generated after every batch — includes success count, failure count, and downloadable error CSV
 3. **Manual retry**: Users can re-upload failed rows after correction
-4. **Rollback**: Imports within the same transaction batch can be rolled back via `import_batch_id`; cross-batch rollback requires admin intervention
-5. **Audit trail**: Every import creates `data.import_completed` or `data.import_failed` domain event (see `domain_event_catalog.md` §18)
+4. **Rollback**: Before commit, discard the preview. After commit, apply permission-checked compensating corrections to affected canonical objects; never delete stock/financial history or imply reversal of an external effect.
+5. **Audit trail**: Import results are audited with job/request identity and row outcomes. Emit existing owning events (`order.imported`, `product.created`, `cost.recorded`) only for committed changes, using the domain event catalog.
+
+## 7. Preview, commit and repair acceptance
+
+CSV headers above are upload aliases, not DB column names. The versioned mapping preview resolves aliases to exact schema fields (e.g., product price → base_price, order external_id → external_order_id, status → lifecycle_state, cost date → effective_date). Unknown/ambiguous headers, money locale, currency or timezone require explicit resolution. Template/mapping version and original upload hash are part of commit identity. XLSX input is parsed as data, never executes formulas/macros/external links.
+
+Default import bound: 10 MiB and 10,000 rows per file; larger files are split with stable source identity. Preview shows create/update/unchanged/error rows and economic impact before commit. Successful rows commit independently unless the user chooses an explicitly atomic supported batch; failed rows are downloadable with original source identity for safe retry. Changed file/mapping invalidates the preview. Error exports neutralize spreadsheet formula prefixes without modifying stored canonical text. Raw uploads and import reports obey scoped storage/retention and never expose another tenant.
+
+Tests: repeated file, reordered identical source rows, two shops sharing an order number, changed source revision, missing currency/COGS, locale decimal parsing, invalid foreign reference, hostile spreadsheet cell, failed row retry, crash after commit and stock baseline overlap. Use [financial fixtures](../04_contracts/financial_computation_contract.md) and [inventory fixtures](../04_contracts/inventory_computation_contract.md) for economic results.

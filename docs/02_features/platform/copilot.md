@@ -186,7 +186,7 @@ Feature: Copilot Queries
   Scenario: RBAC enforcement
     Given a Contributor asks "Delete product A"
     When Copilot checks permissions
-    Then response: "Bạn không có quyền xóa sản phẩm. Cần Editor+ role."
+    Then response: "Bạn không có quyền xóa sản phẩm. Cần Admin+ role (product:delete)."
     And no deletion occurs
 ```
 

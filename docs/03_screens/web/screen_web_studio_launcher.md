@@ -281,3 +281,7 @@ AIStudioLauncherPage
 |---|---|---|---|
 | 2026-03-30 | 2.0 | **Tier A upgrade**: 5 errors (jobs poll, credits), grid/job a11y, 8 analytics, SvelteKit impl (SSE jobs, credits), localization, 8 design tokens. | System |
 | 2026-03-27 | 1.0 | Initial specification | System |
+
+## Batch budget preview
+
+Before confirming a batch, show the complete bounded quote, requested outputs, invalid rows and optional single-output preview with its own quote. Changed parameters or expired quote require re-quote. Cancelling after provider submission shows pending confirmation/reconciliation until outcome is known; never promise immediate release of an unknown effect.

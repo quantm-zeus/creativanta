@@ -4,7 +4,7 @@ module: M21
 canonical: true
 domain: automation
 status: SPECIFIED
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 blockers: []  # API-M-001 resolved 2026-04-02 — RecipeService §2.8.2 (8 RPCs)
 ---
 
@@ -208,3 +208,9 @@ Object: agent_run | DB column: `agent_runs.current_state`
 
 > ✅ **RESOLVED: API-M-001** (2026-04-02) — `RecipeService` now fully defined in `api_endpoint_map.md` §2.8.2 with 8 RPCs: Install, Uninstall, List, Get, Run, GetRunStatus, ListRuns, Configure. Each RPC has Method, Auth, Rate Limit, Description.
 > ✅ **RESOLVED: API-M-002** (2026-04-02) — JSON examples created in `api_examples.md` (24 examples total). Note: RecipeService does not yet have dedicated JSON examples (Workflow examples in A.14-A.15 cover the parent domain). RecipeService-specific examples can be added during implementation.
+
+## Style template extension
+
+P8 extends existing recipe governance to the M07 EF-07A style marketplace. A template contains a portable workflow plus sanitized style settings, price/license/version and published review status. Installing requires recipe:install, workflow:create and continuity:pack_manage, with all tenant/tier checks; the resulting workflow remains editable and inactive until activation is approved. Paid template purchase and author share use the same governed M21 payment/ledger path, never a separate untracked balance.
+
+No template carries credentials, private media, biometric identity, cross-tenant IDs or executable arbitrary code. Install clones approved definitions into the destination workspace; mapping substitutes newly created IDs. The API behavior contract owns wire semantics and schema owns snapshot fields. Given a template update or takedown, installed objects retain their prior version and evidence; new installs require a currently available approved version.

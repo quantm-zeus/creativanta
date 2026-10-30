@@ -1,7 +1,7 @@
 ---
 layer: screens
 canonical: true
-last_updated: 2026-04-06
+last_updated: 2026-10-30
 ---
 
 > ## AI Reading Rule
@@ -19,7 +19,7 @@ last_updated: 2026-04-06
 
 # Creativanta — Screen Inventory (Canonical)
 
-> **Total**: 243 screen files (133 Web + 61 Mobile + 37 Admin + 12 Shared)
+> **Total**: 245 screen files (135 Web + 61 Mobile + 37 Admin + 12 Shared)
 > **Note**: Counts verified against filesystem 2026-04-06
 > **Updated**: 2026-04-06 (v8 — Admin coverage completed + screen implementation protocol added)
 > **Status**: Inventory verified. Admin coverage complete. Legacy screen aliases are governed by `SCREEN_IMPLEMENTATION_PROTOCOL.md`.
@@ -27,7 +27,7 @@ last_updated: 2026-04-06
 
 ---
 
-## Web Screens (133 files)
+## Web Screens (135 files)
 
 ### M01 — Home & Navigation
 | ID | File | Screen |
@@ -445,11 +445,11 @@ last_updated: 2026-04-06
 
 | Platform | Count | Status |
 |---|---|---|
-| Web | 133 | ✅ Complete (includes `screen_web_monetization_os.md` added 2026-04-02) |
+| Web | 135 | ✅ Complete (includes `screen_web_monetization_os.md` added 2026-04-02) |
 | Mobile | 61 | ✅ Complete (M012 ID intentionally skipped — no gap) |
 | Admin | 37 | ✅ Complete |
 | Shared | 12 | ✅ Complete |
-| **TOTAL** | **243** | **Coverage complete; see protocol for legacy shorthand resolution rules** |
+| **TOTAL** | **245** | **Coverage complete; see protocol for legacy shorthand resolution rules** |
 
 ---
 
@@ -554,6 +554,13 @@ Creator Pro → Media Kit → Share with brand → Brand Deal → Deliverables �
 > - Cross-Screen Navigation Map (§ Primary Flows + Global Access)
 > - Route information (available in supplementary but not base)
 >
-> **Historical count note**: Base counted 233 files; supplementary counted 235 routes — due to different deduplication approaches. Current authoritative count is in the header (243 as of 2026-04-06).
+> **Historical count note**: Base counted 233 files; supplementary counted 235 routes — due to different deduplication approaches. Current authoritative count is in the header (245 as of 2026-10-30).
 >
 > **No conflicts detected** — content was complementary, not contradictory.
+
+## P8 retained expansion screens
+
+- [W134 Public Creator Directory](web/screen_web_creator_directory.md) — opt-in public discovery, privacy and inquiry.
+- [W135 Deal Contracts](web/screen_web_creator_contracts.md) — versioned template/evidence flow, also used by mobile deal detail.
+
+The generated [screen task map](../00_index/screen_task_map.csv) assigns every screen to its canonical feature/task; old numbered module headers corrected in this review do not redefine feature ownership.

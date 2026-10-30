@@ -1,0 +1,18 @@
+{
+  "operator_modes_unchanged": true,
+  "operator_modes": [
+    "creator",
+    "seller",
+    "affiliate_operator",
+    "live_operator",
+    "agency_mcn",
+    "brand_collaboration"
+  ],
+  "all_feature_document_paths_retained": true,
+  "feature_spec_count": 31,
+  "feature_status_index_retained": true,
+  "original_screens_retained": true,
+  "original_screen_count": 243,
+  "current_screen_count": 245,
+  "ok": true
+}

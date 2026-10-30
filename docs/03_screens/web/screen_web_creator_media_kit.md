@@ -213,3 +213,7 @@ Build and share a professional media kit — auto-synced statistics from connect
 |---|---|---|---|
 | 2026-03-30 | 2.0 | **Tier A upgrade**: 5 errors (sync fail, PDF gen), section/drag a11y, 8 analytics, SvelteKit impl (auto-sync, PDF gen), localization, 9 design tokens (platform-specific). | System |
 | 2026-03-28 | 1.0 | Initial specification | System |
+
+## P8 public-profile controls
+
+Add a separate “Đăng hồ sơ công khai” section showing the exact allowlisted snapshot from schema §27.2, with consent unchecked by default. Preview what a visitor will see, then use MediaKitService/SetDirectoryProfile. Show hidden/pending-review/published independently of private kit generation. Opt-out hides the public profile immediately; it does not delete private kit or deals. Editing private analytics never republishes a snapshot silently.

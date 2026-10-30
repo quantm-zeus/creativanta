@@ -1,7 +1,7 @@
 # Screen: Admin — AI Model Configuration
 
 > **Screen ID**: A013
-> **Module**: M23 — Reporting / Admin / Billing / Diagnostics (S26 Internal Admin)
+> **Module**: S26 — see canonical feature owner in screen_task_map.csv
 > **Route**: `/admin/ai/config`
 > **Platform**: Admin Web (SvelteKit) — VPN-only access
 > **Upstream**: Pack 04 §AI/Media, Pack 08 §Credits, S26 §AI Operations, A3 API (`AdminAIService`), B5 RBAC §3

@@ -4,7 +4,7 @@ module: M13
 canonical: true
 domain: commerce
 status: SPECIFIED
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 # Feature: Product Hub / Inventory / Order Truth (M13)
@@ -50,12 +50,8 @@ M13 exists as the **canonical commerce catalog and order truth layer** — the s
 
 1. **RULE-M13-001**: Every offer MUST map to a Product, OR must be explicitly declared as a product-less offer with `product_less_declaration` set to one of: `digital`, `community`, `service`. No offer may exist without this resolution — this is enforced at offer creation time in M14 (PRD §12.3, §23.13 AC, Pack 06 §2.3).
 2. **RULE-M13-002**: Every order MUST have `source_class` (official, imported, inferred, estimated, unreconciled) AND `lifecycle_state`. Order source class follows PRD §15.1 taxonomy — no ad-hoc labels. The source class determines how the order feeds into M19 profit calculations (PRD §23.13 AC, Pack 06 §3.1).
-3. **RULE-M13-003**: Order lifecycle state machine MUST follow canonical transitions: `created → confirmed → fulfilled → completed`. Terminal states: `completed`, `cancelled`, `refunded`, `partially_refunded`, `returned`. No state skipping — an order cannot jump from `created` to `completed` without passing through `confirmed` and `fulfilled` (DB schema §10.3).
-4. **RULE-M13-004**: Inventory truth MUST NOT be separated from stock movement logic. Stock movements are the source of truth for inventory quantities. Every stock change (sale, return, adjustment, transfer) creates a Stock Movement record. Current stock is DERIVED from movement ledger, not stored as a mutable counter that can desync (PRD §23.13 AC).
-   - **Query-time implementation**: A `current_stock` counter on `inventory_locations` is maintained as a **materialized view/trigger** — updated atomically on each stock_movement INSERT via PostgreSQL trigger (`AFTER INSERT ON stock_movements → UPDATE inventory_locations SET current_stock = current_stock + delta`). This counter is for UI display speed only.
-   - **Reconciliation**: A scheduled job (daily 04:00 UTC) runs `SELECT SUM(delta) FROM stock_movements WHERE product_id = X AND location_id = Y` and compares to `current_stock`. Mismatches trigger `inventory.discrepancy_detected` event → appears in EC-M13-005.
-   - **Cache**: `current_stock` values cached in Dragonfly (TTL: 60s, invalidated on stock_movement event). Screen specs showing real-time stock use this cache.
-   - **Source of truth hierarchy**: stock_movements table (authoritative) > current_stock counter (derived, fast) > Dragonfly cache (display, fast)
+3. **RULE-M13-003**: Order lifecycle state machine MUST follow canonical transitions: `created → confirmed → fulfilled → completed`. Post-sale states `completed`, `partially_refunded` and `returned` remain eligible for documented refund/return updates. Local commands follow the transition table. Authorized source imports may initialize at the actual source state without fabricating earlier events (DB schema §10.3).
+4. **RULE-M13-004**: Stock movements are the immutable quantity authority. Reservation, per-location balances, replay, import baselines and concurrency follow [Inventory computation](../../04_contracts/inventory_computation_contract.md). `product_skus.stock_quantity/stock_reserved` are derived workspace-wide projections; `inventory_locations` is location identity, not a stock counter. Corrections append movements, never overwrite ledger history.
 5. **RULE-M13-005**: Product-to-content mapping tracks which products appear in which content pieces (scripts, assets, publish items). This mapping enables revenue attribution: when an order arrives, the system can trace Product → Content → Offer → Campaign to calculate content ROI (PRD §12.3, S16 §5).
 6. **RULE-M13-006**: Refund and return are separate objects. Refund = money reversal truth. Return = logistics/quantity reversal. They may coexist on the same order but have independent lifecycles. A return without refund and a refund without return are both valid states (Pack 06 §3.2).
 7. **RULE-M13-007**: Order fee breakdown (`fee_breakdown JSONB`) is the primary source for per-order profit calculation in M19. Fields: platform_fee, payment_processing_fee, shipping_fee, tax, commission, promo_discount. This decomposition MUST be populated at ingestion time when platform provides the data (DB schema §10.3, Audit v6 note).
@@ -72,15 +68,15 @@ M13 exists as the **canonical commerce catalog and order truth layer** — the s
    - Inventory enabled per product → creates Inventory Location records
 3. **Order ingestion**: Orders arrive from connected platforms
    - Sync worker imports orders via platform API webhooks
-   - `lifecycle_state = 'created'`, `source_class` set based on source (official for connected platform, imported for manual)
+   - `lifecycle_state` preserves the validated source state; `source_class` reflects official API or imported/manual provenance
    - `order.imported` event emitted → M19 begins tracking
 4. **Order lifecycle progression**:
    - Platform confirms order → `confirmed`
    - Fulfillment completed → `fulfilled`
    - Delivery confirmed → `completed`
    - Each state change emits `order.state_changed` event
-5. **Inventory movement**: Every order → Stock Movement created (deduction)
-   - Returns → reverse Stock Movement (addition)
+5. **Inventory movement**: Confirmed local order reserves stock; fulfillment consumes the reservation and appends one sale movement. Ingestion alone does not deduct a second time.
+   - Accepted physical returns append one return movement; money refunds alone do not restock
    - Manual adjustments → Stock Movement with reason
    - Low stock alerts triggered when threshold reached
 6. **Refund/Return processing**:
@@ -109,7 +105,7 @@ M13 exists as the **canonical commerce catalog and order truth layer** — the s
 
 ### EC-M13-001: Duplicate Order Ingestion
 - Condition: Platform webhook delivers same order twice (network retry)
-- Expected behavior: Idempotent ingestion — system checks `external_order_id` + `source_platform` uniqueness constraint. Duplicate silently ignored. No duplicate Stock Movement created. Audit log records attempted duplicate.
+- Expected behavior: Idempotent ingestion — system checks workspace + connected account + platform + external order identity (or canonical import fingerprint). An identical revision is a no-op; a changed source revision follows correction rules. No duplicate Stock Movement created. Audit log records attempted duplicate.
 - Reference: PRD §28.4
 
 ### EC-M13-002: Order State Regression
@@ -124,7 +120,7 @@ M13 exists as the **canonical commerce catalog and order truth layer** — the s
 
 ### EC-M13-004: Stock Movement Ledger Discrepancy
 - Condition: Derived stock count from movement ledger doesn't match platform's reported stock
-- Expected behavior: System flags discrepancy as `unreconciled`. Dashboard shows both values with explanation. Operator can create reconciliation adjustment (Stock Movement with `type = 'adjustment'`). Adjustment requires reason for audit trail.
+- Expected behavior: System flags discrepancy as `unreconciled`. Dashboard shows both values with explanation. Operator can create reconciliation adjustment (Stock Movement with `movement_type = 'adjustment'`). Adjustment requires reason for audit trail.
 - Reference: RULE-M13-004
 
 ## State Machine
@@ -142,9 +138,9 @@ see [04_contracts/database_schema.md#10.3](../../04_contracts/database_schema.md
 | fulfilled | completed | Delivery confirmed | Customer receives / timeout auto-complete |
 | created | cancelled | Order cancelled before confirmation | Buyer/seller cancellation |
 | confirmed | cancelled | Order cancelled after confirmation | Before fulfillment only |
-| completed | refunded | Full refund processed | Refund lifecycle completed |
-| completed | partially_refunded | Partial refund processed | Partial amount refunded |
-| fulfilled | returned | Return initiated and received | Return lifecycle completed |
+| completed/partially_refunded/returned | refunded | Full cumulative refund processed | Refund lifecycle completed; captured amount limit enforced |
+| completed/partially_refunded/returned | partially_refunded | Partial cumulative refund processed | Captured amount not fully refunded; preserve return record |
+| fulfilled/completed | returned | Physical return accepted | Return lifecycle completed; money truth remains independent |
 
 ### Refund Lifecycle
 
@@ -184,7 +180,7 @@ see [04_contracts/database_schema.md#10.3](../../04_contracts/database_schema.md
 
 2. **Given** an order is imported from TikTok Shop, **when** the ingestion completes, **then** the order MUST have `source_class = 'official'`, `lifecycle_state` matching the imported source (never reset completed orders), `source_platform = 'tiktok'`, and `external_order_id` populated — the `order.imported` event MUST be emitted with `{order_id, platform, amount}`.
 
-3. **Given** an order in `confirmed` state, **when** the seller marks it as fulfilled, **then** `lifecycle_state` MUST transition to `'fulfilled'`, a Stock Movement MUST be created (type='sale'), and `order.state_changed` MUST fire with `{from: 'confirmed', to: 'fulfilled'}`.
+3. **Given** an order in `confirmed` state, **when** the seller marks it as fulfilled, **then** `lifecycle_state` MUST transition to `'fulfilled'`, a Stock Movement MUST be created (`movement_type = 'sale'`), and `order.state_changed` MUST fire with `{from: 'confirmed', to: 'fulfilled'}`.
 
 4. **Given** a refund is processed on a completed order, **when** the refund completes, **then** the order `lifecycle_state` MUST transition to `'refunded'` (or `'partially_refunded'`), AND the refund amount MUST feed into M19 operating ledger as a deduction.
 
@@ -194,3 +190,10 @@ see [04_contracts/database_schema.md#10.3](../../04_contracts/database_schema.md
 
 - [NONE] — No critical blockers specific to M13 in OPEN_BLOCKERS.md. Commerce endpoints defined in API map §2.6 (~30 RPCs).
 - [NOTE] DB-H-001 (RESOLVED): All money/credit fields use `NUMERIC(18,6)` — never REAL or FLOAT. Verified resolved in schema.
+
+## Inventory and import acceptance additions
+
+- Given one sellable unit and two concurrent local orders, only one reservation succeeds; the other receives an actionable out-of-stock response. UI cache never authorizes a sale.
+- Given an initial platform stock baseline and a historical completed order before it, importing the order recognizes financial history without deducting historical stock again.
+- Given fulfillment/return webhook replay, exactly one economic movement exists per identity; failed multi-SKU reservation leaves no partial holds.
+- Given a CSV with ambiguous column mappings or currency/timezone, show a preview and require correction before commit. Reimporting the same rows is idempotent; changed revisions are explicit corrections.

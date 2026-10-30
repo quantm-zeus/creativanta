@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 
@@ -10,6 +10,24 @@ last_updated: 2026-10-29
 > This is the **most critical file** after BUILD_INDEX.md. Every AI agent and developer MUST read this before starting implementation work.
 
 ---
+
+## Current review — 2026-10-30
+
+Read [Build Readiness](BUILD_READINESS.md) for findings and actual check artifacts. These rows correct documentation; they do not assert runtime acceptance. All existing external/typed-contract gates below remain active.
+
+| ID | Severity | Finding and canonical correction | Status / phase evidence still required |
+|---|---|---|---|
+| INV-2026-02 | CRITICAL | M13 referenced nonexistent location stock/delta fields; reserved stock lacked durable per-location identity. Added inventory computation, balance/reservation schema, append-only movement identity and I01–I10 | SPEC_RESOLVED; PostgreSQL races/import baseline/returns required P1/P6 |
+| SAFE-2026-02 | HIGH | Phishing/confirmed rights blocks could be acknowledged away; clarify non-overridable hard blocks and audited false-positive review | SPEC_RESOLVED; UI/API denial and moderation evidence required P4/P6/P8 |
+| STATE-2026-02 | HIGH | Capability scope/AC still used unknown/supported; deal AC used legacy states; partial refund falsely terminal; conflicting remix threshold and unknown-result retry | SPEC_RESOLVED; state/late-result fixtures in owning tasks |
+| DEP-2026-02 | HIGH | Module completion preceded required downstream features; deferred functions lacked explicit tasks | SPEC_RESOLVED; updated phase matrix, 60-task DAG and source-hash coverage; all runtime packets remain unaccepted |
+| PRIV-2026-02 | HIGH | Personal onboarding used workspace-admin mutation; public expansion needed explicit opt-in and narrow reader boundary | SPEC_RESOLVED; self-scope and public-projection negative fixtures P0/P8 |
+| EXP-2026-02 | HIGH | Feature/QA examples unconditionally selected winners despite existing evidence thresholds | SPEC_RESOLVED; low-exposure, missing denominator and observational-label fixtures P5 |
+| FLOW-2026-02 | MEDIUM | Imported-first onboarding, data repairs, batch budget and preflight needed concrete behavior/AC | SPEC_RESOLVED; source features, API projections and task/screen map now own delivery |
+| OPS-2026-02 | HIGH | DLQ cleanup contradicted retention; schedule jitter allowed early posting; import identities/quotas/events drifted | SPEC_RESOLVED; process-kill, timezone, schedule and import fixtures remain required |
+| TEMPLATE-2026-02 | HIGH | Owned recipe runtime lacked portable template body independent of adapter ID | SPEC_RESOLVED; schema template snapshot and install contract, P7/P8 compile/install isolation tests |
+
+No PRD §23 conflict or feature deletion is used to resolve these findings. [Decision log](DECISION_LOG.md) records the contract-precedence corrections. If a new contradictory requirement appears during a slice, reopen it here rather than silently changing behavior.
 
 ## Current remediation — 2026-10-29
 
@@ -378,7 +396,7 @@ The entries below retain earlier audit history. Their counts and broad resolutio
 ### SCR-M-001: Screen specs migrated to docs/03_screens/ ✅
 
 - Original: Screen specs in flat `docs/screens/` not mapped to `docs/03_screens/`
-- Resolution: All screen files now consolidated in `docs/03_screens/` with proper subdirectory structure (web/, mobile/, admin/, shared/). Current canonical count: 243 files after S26 completion on 2026-04-06.
+- Resolution: All screen files consolidated in `docs/03_screens/` with proper subdirectory structure (web/, mobile/, admin/, shared/). The 2026-04-06 S26 baseline had 243 files; the current count including review additions is maintained in [Screen Index](../03_screens/SCREEN_INDEX.md).
 - Resolved: 2026-03-31
 - Verified: filesystem audit + SCREEN_INDEX.md update
 

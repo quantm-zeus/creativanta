@@ -4,7 +4,7 @@ module: M11
 canonical: true
 domain: publish
 status: SPECIFIED
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 # Feature: Publish Hub (M11)
@@ -51,10 +51,10 @@ M11 exists as the **multi-platform publish orchestrator** — the execution engi
 
 1. **RULE-M11-001**: Every publish action MUST display the platform's capability status BEFORE execution. The capability snapshot includes: publish capability (Native/Read-only/Manual/Unsupported), connector health state, and any active policy notes. User MUST see "This platform supports: [capability summary]" before confirming publish (PRD §23.11 AC, Pack 05 §3, §4.5).
 2. **RULE-M11-002**: Publish logs are **immutable execution records**. Every retry creates a new log entry or appends to run history — never overwrites history. A publish state CANNOT be marked `published` without EITHER a success publish log (`result_status = 'success'`) OR an imported proof equivalent (Pack 05 §5.2, PRD §23.11 AC).
-3. **RULE-M11-003**: Publish state machine MUST follow canonical transitions. State skipping is forbidden — content cannot jump from `draft` to `published` without passing through `queued → executing`. The `requires_manual_fallback` state is a terminal state that requires user intervention (DB schema §8.1, §8.2).
+3. **RULE-M11-003**: Publish state machine MUST follow canonical transitions. State skipping is forbidden — content cannot jump from `draft` to `published` without passing through `queued → executing`. The `requires_manual_fallback` state is a waiting-for-user state that can complete after valid manual proof (DB schema §8.1, §8.2).
 4. **RULE-M11-004**: Manual fallback MUST preserve publish intent in the object graph. Even when publishing via export/manual upload, the system MUST maintain: publish item, publish job (mode=export), publish log (execution_path='manual_upload'), and evidence ref (user-uploaded proof screenshot/URL). Fallback items are first-class citizens — not off-graph workarounds (Pack 05 §4.5, §5.2).
-5. **RULE-M11-005**: Batch publishing creates N individual Publish Jobs (1 per clip × 1 per platform), NOT a single group job. Each job has an independent lifecycle: clip 3 failing does NOT stop remaining clips. Rate limits per platform are enforced: TikTok max 10/hour, Reels max 5/hour, YouTube no batch limit (Pack 05 §5.3).
-6. **RULE-M11-006**: System-level publish queue fairness: when >100 jobs/minute target the same platform globally, jitter mode activates — each job delayed ±30s around scheduled time. Paid tiers get priority dispatch. No workspace may consume >20% of system-wide publish slots in any 1-minute window (Pack 05 §5.4).
+5. **RULE-M11-005**: Batch publishing creates N individual Publish Jobs (1 per clip × 1 per platform), NOT a single group job. Each job has an independent lifecycle: clip 3 failing does NOT stop remaining clips. Rate limits per app/account/action come from the verified connector contract; no platform is assumed unlimited (Pack 05 §5.3).
+6. **RULE-M11-006**: System-level publish queue fairness: when >100 jobs/minute target the same platform globally, jitter mode activates — each job delayed 0–30s after its scheduled time (never publish before the approved time). Paid tiers get priority dispatch. No workspace may consume >20% of system-wide publish slots in any 1-minute window (Pack 05 §5.4).
 7. **RULE-M11-007**: Post-publish sync MUST import the external post reference (`external_post_id`, `external_post_url`) and capture an initial engagement snapshot. The `channel_post.synced` event MUST be emitted so M12 (Unified Inbox) and M19 (Finance) can link back to the published content (Domain event catalog §6).
 
 ## Main Flow
@@ -89,7 +89,7 @@ M11 exists as the **multi-platform publish orchestrator** — the execution engi
 
 ### A2: Batch Publish from Clip Factory
 - Trigger: User selects 10 clips from M09 derivative library → "Publish All"
-- Steps: 10 individual Publish Jobs created (1 per clip). Rate-limited dispatch: TikTok queues at max 10/hour. Progress bar: "Publishing 5/10 clips..." Each job has independent lifecycle. Failed job 3 does NOT stop job 4-10.
+- Steps: 10 individual Publish Jobs created (1 per clip). Rate-limited dispatch: dispatch respects the verified app/account/action quota. Progress bar: "Publishing 5/10 clips..." Each job has independent lifecycle. Failed job 3 does NOT stop job 4-10.
 - Result: Partial success is acceptable — user sees summary with per-clip status
 
 ### A3: Approval-Gated Publish
@@ -129,7 +129,7 @@ see [04_contracts/database_schema.md#8.1](../../04_contracts/database_schema.md)
 | — | draft | Publish item created | Content selected + target set |
 | draft | queued | User confirms publish | M10 QA passed (or overridden) |
 | queued | scheduled | User sets schedule time | Schedule time in future |
-| scheduled | ready_to_execute | Schedule time reached | Within jitter window |
+| scheduled | ready_to_execute | Schedule time reached | Scheduled time has arrived; any fairness delay is nonnegative |
 | ready_to_execute | executing | Worker dispatches | Worker available, capability OK |
 | queued | executing | Immediate publish | Manager+ triggers, capability OK |
 | executing | published | Platform API success | Publish log with `result_status = 'success'` created |
@@ -170,7 +170,7 @@ see [04_contracts/database_schema.md#8.1](../../04_contracts/database_schema.md)
 
 3. **Given** a publish item in `requires_manual_fallback` state, **when** the user uploads proof (screenshot + external URL), **then** the system MUST create a publish log with `execution_path = 'manual_upload'` and `evidence_ref` — and transition the item to `'published'`.
 
-4. **Given** a batch publish of 10 clips with TikTok rate limit of 10/hour, **when** execution begins, **then** the system MUST dispatch sequentially respecting rate limits — clip 3 failing MUST NOT stop clips 4-10 — and the user MUST see per-clip status in the progress UI.
+4. **Given** a batch publish of 10 clips with a test connector configured for 10/hour, **when** execution begins, **then** the system MUST dispatch sequentially respecting rate limits — clip 3 failing MUST NOT stop clips 4-10 — and the user MUST see per-clip status in the progress UI.
 
 5. **Given** content is in `executing` state, **when** the connector token is revoked mid-execution, **then** the job MUST fail with `error_code = 'auth_revoked'`, and other queued items for the same connector MUST be paused (not auto-failed) — diagnostics MUST show "[Reconnect]" CTA.
 

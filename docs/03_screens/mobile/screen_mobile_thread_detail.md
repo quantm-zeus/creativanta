@@ -1,7 +1,7 @@
 # Screen: Mobile — Thread Detail
 
 > **Screen ID**: M020
-> **Module**: M13 — Engagement & CRM
+> **Module**: M12 — see canonical feature owner in screen_task_map.csv
 > **Route**: `/inbox/[threadId]` (mobile)
 > **Platform**: Mobile (Flutter)
 > **Upstream**: Pack 01 §4, Product Freeze §21-23, A1 Schema (threads, messages, contacts, engagement_events), B5 RBAC §2.7

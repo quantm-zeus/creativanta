@@ -4,7 +4,7 @@ module: M16
 canonical: true
 domain: commerce
 status: SPECIFIED
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 # Feature: In-Product Affiliate Network & Creator Pro Tools (M16)
@@ -37,7 +37,7 @@ M16 exists as the **affiliate operations and creator professionalization layer**
 - **M13 owns**: product catalog, order lifecycle (M16 links reference M13 products)
 - **M14 owns**: offer strategy, coupon lifecycle rules (M16 uses coupons M14 creates)
 - **M19 owns**: profit calculations, settlement reconciliation logic (M16 feeds data to M19)
-- **S16 P2 scope**: brand deal CRM pipeline (kanban), contract templates, brand marketplace — deferred
+- **S16 expansion owner**: [Creator Pro §12](creator_pro_tools.md#12-retained-expansion--brand-collaboration-workspace) owns kanban, contract templates and opt-in brand discovery; retained for P8.
 
 ## Actors
 
@@ -232,7 +232,7 @@ LinkHealth:
 
 2. **Given** a conversion where the customer clicked an affiliate link but also visited directly before purchasing, **when** the system attributes the conversion, **then** it MUST be labeled as `source_class = 'inferred'` with a UI badge showing "Attributed (inferred)" and an explanation of the multi-touch scenario.
 
-3. **Given** a `affiliate.commission.calculated` event fires, **when** M19 processes it, **then** a `cost_item` MUST be created with `cost_type = 'commission'` linked to the corresponding order/campaign scope — ensuring the affiliate commission is deducted in the M19 profit formula.
+3. **Given** a `affiliate.commission.calculated` event fires, **when** M19 processes it, **then** the workspace economic role MUST follow the financial computation contract: seller commission is one expense; creator commission is income. The same sale MUST NOT deduct seller commission/COGS from a creator income view.
 
 4. **Given** a creator generates an AI Media Kit (S16), **when** generation completes, **then** the media kit MUST include auto-populated platform stats from connected accounts, ≥3 sections (overview, stats, top content), and a shareable link — the AI credit cost MUST be 3-5 credits.
 

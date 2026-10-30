@@ -1,7 +1,7 @@
 # Screen: Mobile — Commerce Product List
 
 > **Screen ID**: M028
-> **Module**: M14 — Commerce
+> **Module**: M13 — see canonical feature owner in screen_task_map.csv
 > **Route**: `/products` (mobile)
 > **Platform**: Mobile (Flutter)
 > **Upstream**: Pack 06 §5, A1 Schema (products, inventory, product_images, product_categories), B5 RBAC §2.7

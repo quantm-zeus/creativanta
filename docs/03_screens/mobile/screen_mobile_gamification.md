@@ -1,7 +1,7 @@
 # Screen: Mobile — Gamification
 
 > **Screen ID**: M038
-> **Module**: M23 — Analytics (Gamification)
+> **Module**: gamification — see canonical feature owner in screen_task_map.csv
 > **Route**: `/gamification` (mobile)
 > **Platform**: Mobile (Flutter)
 > **Upstream**: A1 Schema (user_levels, user_quests, achievements, streaks), B5 RBAC §2.7

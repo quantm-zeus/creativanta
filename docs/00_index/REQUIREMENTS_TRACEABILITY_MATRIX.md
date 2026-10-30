@@ -66,3 +66,7 @@ If a downstream artifact exists without a row here, it is not implementation-aut
 ## Execution evidence (2026-10-29)
 
 This remains an ownership/requirement map. Exact RPC permission/behavior bindings are owned by [RPC bindings](../04_contracts/rpc_permission_bindings.csv); typed commands by [API behavior](../04_contracts/api_behavior_contracts.md). [Build Execution](BUILD_EXECUTION_CONTRACT.md) defines per-slice evidence and P8 full-scope reconciliation; presence of an artifact does not mean its implementation has passed.
+
+## Source-level task coverage — 2026-10-30
+
+The ownership matrix above is complemented by [requirement_task_map.csv](requirement_task_map.csv) for feature sections/individual rules and ACs, plus [screen_task_map.csv](screen_task_map.csv) for every screen. Both are generated from the current sources with hashes and validated by build_plan. [Agent Build Backlog](AGENT_BUILD_BACKLOG.md) defines delivery versus completion ownership; all scopes and six operator modes remain in the final acceptance gate.

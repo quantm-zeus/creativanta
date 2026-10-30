@@ -1,7 +1,7 @@
 # Screen: Mobile — Performance Coach
 
 > **Screen ID**: M039
-> **Module**: M23 — Analytics
+> **Module**: M07 — see canonical feature owner in screen_task_map.csv
 > **Route**: `/analytics/coach` (mobile)
 > **Platform**: Mobile (Flutter)
 > **Upstream**: A1 Schema (coaching_insights, weekly_reports), B5 RBAC §2.7

@@ -4,7 +4,7 @@ module: M01
 canonical: true
 domain: platform
 status: SPECIFIED
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 # Feature: Home / Daily Decision Engine (M01)
@@ -55,7 +55,7 @@ Home dynamically compiles the highest-impact actions across all domains (intelli
 2. **RULE-M01-002**: Home MUST render action cards reflecting the active `workspaces.default_operator_mode` — card family order, terminology, and KPI emphasis MUST follow the canonical 6-mode priority matrix (Pack 01 §S05.1).
 3. **RULE-M01-003**: Home MUST NOT be a static dashboard displaying only numbers — it must surface prioritized decisions with "why this matters" context, using action language (PRD §18.1, §18.4).
 4. **RULE-M01-004**: Every KPI and score displayed on Home MUST have a "Why this number" drawer that shows data sources, confidence band, missing data caveats, and next steps (Pack 01 §7.2).
-5. **RULE-M01-005**: Home MUST provide a first closed-loop onboarding experience for beginners following the 5-step sequence: connect account → create/select product/offer → create idea→script→asset → publish/fallback → track outcome (Pack 01 §5 onboarding).
+5. **RULE-M01-005**: Home MUST provide a first closed-loop onboarding experience for beginners following the 5-step sequence: connect account or authorized import → create/select product/offer → create idea→script→asset → publish/fallback → track outcome (Pack 01 §5 onboarding).
 6. **RULE-M01-006**: All 6 canonical operator modes MUST be represented — never collapse to fewer than 6 (PRD §8.2).
 7. **RULE-M01-007**: Profit/revenue cards on Home MUST carry source badge and confidence badge — estimated and official truth MUST NOT be merged without labeling (PRD §15.7).
 
@@ -84,7 +84,7 @@ Home dynamically compiles the highest-impact actions across all domains (intelli
 ### A1: Beginner First Visit (No Data)
 - Trigger: User opens Home for the first time, no connected accounts, no content
 - Steps: System shows onboarding checklist overlay instead of action cards. Each completed step adds data to Home projection. Partial setup state visible as progress bar.
-- Result: After 5-step completion, Home transitions to standard action card layout
+- Result: After 5-step completion, Home transitions to the full-loop layout; authorized imported data can already produce useful action cards before all five steps complete
 
 ### A2: Connector Broken / Degraded
 - Trigger: `account.token_expired` or `account.sync_failed` event received
@@ -129,7 +129,7 @@ see [04_contracts/domain_event_catalog.md#13](../../04_contracts/domain_event_ca
 
 | From | To | Trigger | Condition |
 |---|---|---|---|
-| — | generated | Cron schedule (daily) | Workspace has at least 1 connected account |
+| — | generated | Cron schedule (daily) | Workspace has authorized actionable data (connected, imported or manual) |
 | generated | delivered | Push/email sent | Channel delivery succeeds |
 | generated | failed | Push/email fails | Channel delivery error |
 
@@ -157,7 +157,7 @@ see [04_contracts/domain_event_catalog.md#13](../../04_contracts/domain_event_ca
 
 2. **Given** a Home action card for "Profit Anomaly Detected", **when** the user taps the card, **then** the system navigates to the Profit Snapshot detail page with the anomaly pre-selected — the card MUST NOT lead to a dead-end summary.
 
-3. **Given** a beginner user with no connected accounts, **when** they open Home for the first time, **then** the system MUST show the onboarding checklist overlay with step 1 "Connect Account" as the primary CTA and progress indicator showing 0/5 steps completed.
+3. **Given** a beginner user with no connected accounts, **when** they open Home for the first time, **then** the system MUST show the onboarding checklist overlay with step 1 "Connect Account or Import Data" as the primary CTA and progress indicator showing 0/5 steps completed.
 
 4. **Given** a KPI card showing "Revenue Today: 5,200,000đ", **when** the user taps "Why this number", **then** the drawer MUST display: data source(s) with source badge (Official/Imported/Inferred), confidence band, last sync timestamp, and if confidence < High, what's missing to improve it.
 
@@ -208,3 +208,13 @@ see [04_contracts/domain_event_catalog.md#13](../../04_contracts/domain_event_ca
 - **Help Center**: `02_features/platform/help_center.md` (article links from tooltips)
 - **Copilot**: `02_features/platform/copilot.md` (handoff from contextual tips)
 - **Gamification**: `02_features/platform/gamification.md` (achievement badges for learning path completion)
+
+## Progressive first value and data-repair actions
+
+Preserve the full five-step operating loop, while letting a new workspace obtain value from the capabilities already delivered. P0 offers setup/help and a clearly labeled isolated demo; P1 accepts authorized product/order/cost import and shows the first profit/evidence gap. Later phases add intelligence, content, publish and commerce tasks. A disabled future step explains availability; it does not block reviewing existing data or falsely mark the whole loop complete.
+
+Onboarding progress is per user/workspace, derived from completed authorized actions. An imported dataset satisfies the data-connection step without claiming native API access. Demo fixtures never contribute to customer profit, activation, rewards or public proof. Six mode priorities remain in the mode contract; beginner is an overlay, not an extra mode.
+
+Data-repair cards surface missing cost/evidence, stale connectors and unmatched settlement amounts, with one repair CTA and a visible reason. Only show facts the viewer may read; lacking finance permission must not reveal a money gap, amount or related private object. Completing the underlying repair removes/recomputes the card, rather than marking it fixed locally.
+
+Given a Seller Owner with no connected accounts, importing a valid order/cost sample produces a labeled profit view and repair checklist in P1. Given an ordinary member, completing their personal checklist cannot change workspace settings or another user's progress. Given a pending future phase, the user can continue the available path without fake success or an upsell for unshipped functionality.

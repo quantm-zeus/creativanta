@@ -4,7 +4,7 @@ module: M19
 canonical: true
 domain: finance
 status: SPECIFIED
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 # Feature: Operating Ledger & Proof System (M19)
@@ -193,7 +193,7 @@ Object: order / settlement / reconciliation_record | DB column: `orders.reconcil
 
 2. **Given** a settlement is imported from Shopee, **when** 5 out of 20 settlement line items have no matching orders in the system, **then** those 5 items MUST appear in the unreconciled bucket with `reconciliation_state = 'imported_only'` — the unreconciled bucket MUST be visible on the profit dashboard, not hidden or collapsed.
 
-3. **Given** a `affiliate.commission.calculated` event fires from M16, **when** M19 processes it, **then** a `cost_item` MUST be created with `cost_type = 'commission'`, linked to the order/campaign scope — the commission MUST appear as a line item in the profit formula deductions.
+3. **Given** a `affiliate.commission.calculated` event fires from M16, **when** M19 processes it, **then** the workspace's economic role MUST determine whether the amount is seller commission expense or creator affiliate income, using the financial computation contract; repeated observations of the same component MUST NOT create a second posting.
 
 4. **Given** an operator assembles a proof bundle for "Campaign X ROI," **when** the bundle includes 8 evidence objects but 2 required evidence categories are missing, **then** the proof bundle MUST show `confidence = 'medium'` (or lower), `unresolved_gaps` listing the 2 missing categories, and `coverage_summary` explaining what IS proven.
 
@@ -203,3 +203,11 @@ Object: order / settlement / reconciliation_record | DB column: `orders.reconcil
 
 - [NONE] — No critical blockers specific to M19 in OPEN_BLOCKERS.md. Finance endpoints defined in API map §2.7 (~20 RPCs).
 - [NOTE] DB-H-001 (RESOLVED): All money/credit fields use `NUMERIC(18,6)` — never REAL or FLOAT. Verified resolved in schema.
+
+## Evidence coverage and repair queue
+
+Alongside the profit value, show missing required component count, unreconciled amount/count and freshness, with links to the contributing orders/costs/evidence. Coverage is computed on the server by the financial contract, never inferred from a reassuring badge or a zero-valued missing field. Order the repair queue by explicit severity, oldest unresolved timestamp, then stable object identity; explain this ordering and allow filtering by source/product/period.
+
+A repair action opens the existing reconciliation, cost or evidence flow with its own permission check. An operator without that permission can inspect only authorized gaps and request an authorized reviewer through the existing task flow. No new write path may set profit or declare raw evidence verified.
+
+Given an order without COGS, show incomplete profit and a cost-entry CTA, including an explicit zero-cost-with-reason path. Given a later cost correction, recompute gaps and financial projections without altering the imported proof. Given an aggregate with unknown components, show unknown count separately from source percentages, even if the recorded missing amount is zero.

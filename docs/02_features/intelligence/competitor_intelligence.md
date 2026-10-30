@@ -4,7 +4,7 @@ module: M03
 canonical: true
 domain: intelligence
 status: SPECIFIED
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 # Feature: Research & Competitor Intelligence (M03)
@@ -31,7 +31,7 @@ M03 exists to **transform market/competitor research into actionable operating i
 - Automated scraping of competitor accounts in violation of platform policies (PRD §6.3)
 - Trend signal ingestion and scoring (owned by M02)
 - Opportunity prioritization and conversion workflow (owned by M04)
-- Real-time competitor monitoring or alerting (potential P2 feature — Pack 01 §S05.1 footnote)
+- Continuous competitor monitoring is the retained expansion below; P2 supplies on-demand/import analysis and P8 completes monitoring
 - Financial benchmarking against competitor revenue (no access to competitor financial data)
 
 ## Actors
@@ -153,4 +153,10 @@ Competitor entities have soft lifecycle managed implicitly:
 
 ## Open Questions / Blockers
 
-- [NONE] — No critical blockers specific to M03. Note: real-time competitor monitoring is explicitly marked as P2 in Pack 01 and excluded from P1 scope.
+- External data-source entitlement remains gated by the connector contract. Historical phase labels do not override the current implementation order.
+
+## Authorized competitor monitoring expansion
+
+Retain the previously deferred monitoring/alerting function in P8. CompetitorService/SetAlerts stores per-competitor subscriptions under competitor_entities.metadata.monitoring. Use only authorized API/licensed data or user-import updates. Schedule at the verified source cadence; show actual last capture time and never promise live coverage when only daily imports exist. Alert only on a configured threshold crossing, suppress repeats for the same snapshot, and reset the latch after recovery.
+
+If access expires, pause collection and show repair/import actions while retaining old labeled snapshots. Given an identical snapshot replay, no duplicate alert is sent. Given stale or missing denominator data, show insufficient data rather than a claimed competitor performance drop. Monitoring cannot infer competitor revenue or broaden the source's commercial-use permission.

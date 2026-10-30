@@ -156,3 +156,11 @@ last_updated: 2026-03-30
 - Date: 2026-10-29
 - Decision: PostgreSQL credit lots/reservations/ledger and financial postings are authoritative; cache and analytics are projections. Cost-based quotes cap the customer charge. Outbox/inbox and external-effect records handle replay/unknown results.
 - Consequences: Tenant runtime has no bypass/DDL/TRUNCATE access. Financial and async fixtures gate release. Details remain in the owning contract/runtime docs.
+
+## DEC-2026-10-30 — Review corrections and full-scope agent backlog
+
+The owner requested a complete docs review, repairs, improvements and phased AI-agent tasks while retaining every function. Keep all 31 entries and six modes. Correct completion phases where a module depends on later publish/agent/commerce/growth work; retain previously deferred competitor monitoring, brand CRM/templates/discovery and style sharing as explicit P8 tasks. Implement the improvements through existing module owners and canonical contracts, without creating extra top-level modules.
+
+[CONFLICT: earlier feature/quality examples used nonexistent stock columns, non-schema capability states, unconditional experiment winners and phishing/rights overrides; canonical schema/API/security contracts require scoped identities, five-state capability, evidence gates and non-overridable hard blocks — using the canonical contracts and correcting affected examples.]
+
+This resolves downstream documentation contradictions under the existing precedence rule; it does not amend archived PRD §23 or waive any external approval. Decision scope, tradeoffs and validation are linked from [Build Readiness](BUILD_READINESS.md), [Product Strategy](../01_business/product_strategy_validation.md), and [Agent Build Backlog](AGENT_BUILD_BACKLOG.md).

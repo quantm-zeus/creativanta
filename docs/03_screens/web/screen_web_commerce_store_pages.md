@@ -1,7 +1,7 @@
 # Screen: Web — Store Pages & Editor
 
 > **Screen ID**: W072
-> **Module**: M14 — Monetization & Storefront
+> **Module**: M15 — see canonical feature owner in screen_task_map.csv
 > **Route**: `/store` (list) or `/store/[id]/edit` (editor)
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 06 §10, A1 Schema (store_pages, store_sections, store_themes, products, orders), B5 RBAC §2.7

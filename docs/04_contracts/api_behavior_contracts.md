@@ -1,7 +1,7 @@
 ---
 layer: contracts
 canonical: true
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 # API Behavior and Message Contracts
@@ -95,3 +95,37 @@ Characters use creating/ready/failed/archived. Sample journey UI composes sample
 Challenge definitions persist their lifecycle status; is_active is only its projection. Individual progress/achievement/streak records are keyed by workspace and user, with a source-event idempotency key on credit grants. Buyer membership_subscriptions and their entitlement_snapshot are separate from SaaS subscriptions: a creator's membership cannot unlock Creativanta plan features or permissions. API key rotation creates replacement key material with shared logical_key_id and a bounded old-key grace period; API usage and tier count use the logical identity.
 
 AB experiment UI phases design/active/monitoring/complete/scaled map to pending/running/completed plus result_status. Default observational comparison requires at least 1,000 impressions per variant, 48h duration and the configured metric threshold (default 1.5×); insufficient evidence yields completed+inconclusive with no automatic winner. Organic posts without randomized equivalent exposure must be labeled observational, not causal/statistically proven uplift. Workspace revenue is never inferred solely from views or a winning variant.
+
+## 8. Reviewed operator projections and commands
+
+These response fields are transport-only. They do not create extra persisted status values. Every aggregate applies the underlying object's read permissions in addition to the RPC binding.
+
+| Operation / projection | Exact fields and behavior |
+|---|---|
+| WorkspaceService/CompleteOnboarding | CommandContext + completed_step: int 1–5; updates only authenticated user's user_preferences progress after server verification of that step. Returns completed_steps: int[], completed: bool. No caller-supplied user_id or workspace settings mutation. |
+| DashboardService/GetMobileHome and Home projections | Existing cards plus onboarding: {completed_steps: int[], next_step: optional int, available: bool, reason: optional string}; unavailable future steps are visible, never counted complete. No demo metrics in customer projections. |
+| ProfitService/GetSummary / DrillDown | data_gaps: {object_type: allowlisted string, object_id: UUID, component: string, reason: string, severity: 'high'|'medium'|'low', first_seen_at: Timestamp, repair_action: optional allowlisted action}[]; missing_component_count: int; unreconciled_count: int; unreconciled_amount: Money; as_of: Timestamp. Counts cover the requested authorized scope, while data_gaps is paginated. Gap identity is derived from object/component; no parallel financial ledger. |
+| InventoryService/CreateStockMovement / BulkStockIn | CommandContext + typed items {sku_id, location_id, movement_type, quantity: nonzero int, reference_type/id, reason}; reject direct sale/return/transfer fabrication through a generic adjustment form. Server derives movement_key from the economic source. Bulk count ≤100; each declared stock-in batch atomic. Reservation/consumption are internal order commands under the inventory contract, not public stock-counter edits. |
+| Import preview (existing owning Product/Order/Cost import commands) | source identity + safe upload_id + explicit column_mapping + currency/timezone; dry_run: bool. Response rows {row_number, action: 'create'|'update'|'unchanged'|'error', resource_id?: UUID, errors: ErrorDetail[]}, totals and preview_hash. Commit requires the same upload/mapping hash and idempotency key; stale source versions conflict. No write in dry_run except isolated diagnostics/audit. |
+| WorkflowService/Test | workflow_id + expected_updated_at + typed test inputs; returns simulated: true, nodes: {node_id, action, target_refs, permission_allowed: bool, capability_state, approval_required: bool, quoted_credits?: decimal string, reason?: string}[], total_credit_ceiling?: decimal string, unresolved_inputs: string[]. Unknown quotes stay unknown and block activation of a bounded paid plan. Does not submit live effects or create credit holds. |
+
+Public creator discovery and contract extensions are in the inventory below. New RPCs use the same error/replay and public-output restrictions as all other commands.
+
+| Operation | Exact input / output and gates |
+|---|---|
+| MediaKitService/SetDirectoryProfile | CommandContext + media_kit_id + directory_opt_in: bool + optional typed PublicCreatorProfile from schema §27.2. Requires media_kit:publish (Manager+), Starter+ media-kit entitlement and ownership. Opt-out immediate; opt-in/edit → pending_review until internal content moderation clears it. Return kit ID and directory_status only. |
+| CreatorDirectoryService/Search | Public; text ≤120 chars, category/language allowlists, Pagination (max 20). Return published {media_kit_id, profile: PublicCreatorProfile} only. No financial or tenant filters. Fail closed if visibility cannot be verified. |
+| CreatorDirectoryService/Get | Public media_kit_id; return the same public projection or NOT_FOUND. |
+| SponsorInquiryService/Submit | Public target media_kit_id + verified sender email + message 1–4000 + anti-abuse challenge + idempotency key. Server resolves published opt-in target; rate-limit 5/hour/verified sender and IP. Return opaque submission receipt, never thread/workspace identity. This explicitly permitted public intake creates a moderated sponsor-inquiry thread, never a deal or email campaign. Unknown/hidden target gives generic unavailable. |
+| BrandDealService/ListContractTemplates | brand_deal:read; list published KB templates tagged contract_template, version/source and drafting-aid disclaimer. No private KB content. |
+| BrandDealService/AttachContract | CommandContext + deal_id + evidence_id; brand_deal:manage and authorized evidence access; validate immutable same-tenant document, append version reference and audit. Existing versions remain unchanged. Upload uses EvidenceService/Submit with evidence:submit. |
+
+SponsorInquiryService/Accept additionally requires brand_deal:manage when creating a deal, and preserves inquiry_thread_id. Public intake authorization does not permit other public mutations. All directory and contract actions remain unavailable until P8 task acceptance, moderation, privacy and public-projection tests pass.
+
+### Competitor monitoring command
+
+CompetitorService/SetAlerts takes CommandContext, competitor_id and the typed monitoring shape in schema §27.3; requires competitor:manage. Validate source access, baseline snapshot and observation window. Disabled monitoring cancels future polling but preserves history. Notifications are delivered through the existing notification/audit path; do not invent a competitor domain event. This expansion completes in P8.
+
+### Recipe snapshot install
+
+RecipeService/Install and TemplateService/Deploy accept CommandContext + recipe_id + template_version + typed parameter values. Require recipe:install and workflow:create; style_workflow additionally requires continuity:pack_manage. Resolve only a published entitled version, verify paid purchase once where applicable, clone the tenant recipe, create the inactive workflow and optional continuity style pack atomically, then return recipe_id, workflow_id and optional pack_id. Same idempotency key/version returns the same installation; version change requires a new explicit update/installation. A template cannot automatically activate a workflow or access the author's private objects. No external SDK ID is required for the owned runtime path.

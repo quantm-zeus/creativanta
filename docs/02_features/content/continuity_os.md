@@ -4,7 +4,7 @@ module: M08
 canonical: true
 domain: content
 status: SPECIFIED
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 # Feature: Continuity OS (M08)
@@ -205,7 +205,7 @@ see [04_contracts/database_schema.md#7.2](../../04_contracts/database_schema.md)
 
 3. **Given** a Free-tier user with 1 existing character, **when** they attempt to create a second character, **then** the system MUST block creation and display: "Character limit reached (1/1). [Upgrade] or [Archive existing]" — no partial creation occurs.
 
-4. **Given** a generated asset with `drift_severity = 'high'`, **when** the asset is evaluated by the continuity QA service, **then** the asset MUST be blocked from the publish-ready path — only a Manager+ with explicit override reason can unblock it.
+4. **Given** a generated asset with `drift_severity = 'high_drift'`, **when** the asset is evaluated by the continuity QA service, **then** the asset MUST be blocked from the publish-ready path — only a Manager+ with explicit override reason can unblock it.
 
 5. **Given** a user creates a new character and saves it, **when** the character is stored, **then** the system MUST auto-create a corresponding Character Pack (`continuity_packs.pack_type = 'character'`) and store the `character_pack_id` FK on the character — the `character.created` event MUST be emitted.
 

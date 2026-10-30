@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 # Build Execution Contract
@@ -73,3 +73,9 @@ Approvals, enterprise licenses, production credentials and legal sign-off cannot
 ## 6. Full-scope completion
 
 P8 requires every scope item and AC from all 31 entries in [Implementation Order](IMPLEMENTATION_ORDER.md) to map to accepted packets. Every screen action maps to an implemented RPC or defined local interaction. Financial/provider truth must survive degraded and manual paths. Commercial entitlement and phased availability are independently enforced.
+
+## 7. Source-linked task handoff
+
+Use [Agent Build Backlog](AGENT_BUILD_BACKLOG.md) and its generated requirement/screen maps. Each implementation manifest additionally records `task_id`, `requirement_ids`, `screen_refs`, `source_hashes` and `baseline_commit`. The acceptance task reconciles every unit of the module, including earlier delivery tasks and later consumer integrations. Do not treat a section hash as a passing test; enumerate individual behaviors/actions inside each unit and attach evidence.
+
+D0 includes build_plan validation through check_docs. Source drift, removed requirements, task cycles and premature completion must be resolved before continuing dependent work. A changed canonical source invalidates the affected packet's assumption until its tests/contract are reviewed; unrelated accepted packets remain usable.

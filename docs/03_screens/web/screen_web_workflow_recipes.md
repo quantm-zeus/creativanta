@@ -1,7 +1,7 @@
 # Screen: Web — Recipe Templates
 
 > **Screen ID**: W103
-> **Module**: M21 — Recipe / Agent Center
+> **Module**: M20 — see canonical feature owner in screen_task_map.csv
 > **Route**: `/workflows/templates`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: M21 Recipe & Agent Center, A1 Schema (`recipe_templates`), B5 RBAC §2.9, API §17.7 (`TemplateService`)

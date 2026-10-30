@@ -4,7 +4,7 @@ module: M20
 canonical: true
 domain: automation
 status: SPECIFIED
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 blockers: []  # API-M-001 resolved 2026-04-02 — WorkflowService §2.8.1 (13 RPCs)
 ---
 
@@ -193,7 +193,7 @@ Object: workflow_run | DB column: `workflow_runs.status`
 
 3. **Given** a workflow with an approval gate configured, **when** the run reaches the approval node, **then** the run MUST enter `'waiting_approval'` state, the approver MUST be notified, and if the approval expires without response: the run MUST auto-deny and follow the reject/fallback path.
 
-4. **Given** an operator triggers a dry run, **when** the simulation completes, **then** the system MUST show which nodes would execute and which conditions would match — NO side effects MUST occur (no events emitted, no external calls made, no database mutations).
+4. **Given** an operator triggers a dry run, **when** the simulation completes, **then** the system MUST show which nodes would execute and which conditions would match — NO business side effects MUST occur: no publish/payment/notification, credit debit, domain event or domain-object mutation. The isolated dry-run record and audit may persist, marked simulation; reads use authorized snapshots and fixtures.
 
 5. **Given** a workflow run completes with 3 action nodes producing side effects, **when** the run is inspected, **then** each side effect MUST appear in the action log with: actor, action, affected objects, old/new state, timestamp, correlation_id — the audit trail MUST be complete and navigable.
 
@@ -201,3 +201,11 @@ Object: workflow_run | DB column: `workflow_runs.status`
 
 > ✅ **RESOLVED: API-M-001** (2026-04-02; renamed 2026-04-19) — `WorkflowService` now fully defined in `api_endpoint_map.md` §2.8.1 with 13 RPCs: Create, Get, List, Update, Activate, Deactivate, Run, GetRunDetail, GetRunLogs, ListRuns, Clone, Export, Import. Each RPC has Method, Auth, Rate Limit, Description.
 > ✅ **RESOLVED: API-M-002** (2026-04-02) — JSON request/response examples added in `api_examples.md` A.14 (WorkflowService/Create) and A.15 (WorkflowService/Run).
+
+## Preflight and approval-bound execution
+
+Before activation, preview each action's target, permission/capability, approval requirement and maximum quoted credit spend. Missing inputs remain visible, with no invented execution result. Dry run uses deterministic adapters; live credentials and external write adapters are inaccessible to simulation.
+
+Approval binds the graph version, target objects, action inputs, budget and expiry. Editing any of these invalidates pending approval. Recheck membership/delegated permissions, object version and access immediately before each effect. If they changed, pause for review with the diff and repair action; do not replay already confirmed effects.
+
+Given a publish plan approved for account A, changing the target to B requires fresh approval. Given a revoked team member or expired quote, resume cannot execute the old approval. Given a dry run, no outbound effect or credit transaction exists, but its simulation audit remains inspectable.

@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 # Canonical Sources — Single Source of Truth Registry
@@ -66,7 +66,7 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 | Queue / retry | 05_system/queue_retry_design.md | Named queues, at-least-once outbox/inbox, external-effect recovery, DLQ and budgets. |
 | AI provider routing | 05_system/ai_provider_guide.md | Multi-provider adapter, Gemini default |
 | Cache & search | 05_system/cache_search_strategy.md | Dragonfly, Meilisearch, ClickHouse |
-| Runtime workflow | 05_system/runtime_workflow.md | Activepieces integration, tier limits |
+| Runtime workflow | 05_system/runtime_workflow.md | Owned builder/runtime, optional licensed Activepieces adapter, tier limits |
 | AI media & continuity | 05_system/ai_media_continuity.md | Multi-provider video/image/TTS/voice |
 
 ## Quality & Operations
@@ -108,3 +108,15 @@ Cross-link rule: If file A mentions content owned by file B, A places exactly on
 | Acceptance tests | 00_index/ACCEPTANCE_TESTS.md | Created in Phase 1B |
 | Requirements traceability | 00_index/REQUIREMENTS_TRACEABILITY_MATRIX.md | Module-to-business/feature/contract/runtime/quality traceability backbone |
 | Cross-layer matrix | 00_index/CROSS_LAYER_MATRIX.md | Module mapping and integrity snapshot. It is not a blanket claim that the corpus is contradiction-free or fully implementation-ready. |
+
+## Review and phased build additions — 2026-10-30
+
+| Topic | Canonical File | Notes |
+|---|---|---|
+| Product validation and improvement rationale | 01_business/product_strategy_validation.md | Pilot segments, hypotheses, decision criteria and checked external references; no demand claims |
+| Agent task decomposition | 00_index/agent_task_catalog.json | Exact task IDs/dependencies, source routing and module-completion owners |
+| Backlog usage | 00_index/AGENT_BUILD_BACKLOG.md | How to choose/split a slice and preserve scope; AGENT_TASK_CARDS is a generated projection |
+| Requirement and screen coverage | 00_index/requirement_task_map.csv; 00_index/screen_task_map.csv | Generated source/line/hash links; not copied behavior or runtime acceptance |
+| Backlog validation | ../tooling/build_plan.py | Rebuild and drift/dependency/module checks, integrated into check_docs |
+| Inventory computations | 04_contracts/inventory_computation_contract.md | Stock ledger, durable reservations, baseline imports, locking and I01–I10 fixtures |
+| Current review results | 00_index/BUILD_READINESS.md | Findings, corrected specs, readiness limits and actual verification artifacts |

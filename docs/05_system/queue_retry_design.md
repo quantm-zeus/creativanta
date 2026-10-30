@@ -28,7 +28,7 @@ Domain mutation + audit + outbox insertion commit in **one PostgreSQL transactio
 | `notification_email` | LOW | 3 | 30s, 5min, 30min | ✅ | Resend/SMTP sender |
 | `analytics_events` | LOW | 1 | — | ❌ | PostHog/ClickHouse |
 | `ai_pipeline` | MEDIUM | 3 | 30s, 2min, 10min | ✅ | LLM adapter |
-| `workflow_trigger` | MEDIUM | 3 | 10s, 1min, 5min | ✅ | Activepieces trigger |
+| `workflow_trigger` | MEDIUM | 3 | 10s, 1min, 5min | ✅ | Owned workflow runtime or licensed adapter |
 | `settlement_import` | HIGH | 5 | 1min, 5min, 15min, 1h, 6h | ✅ | M19 finance importer |
 | `trend_crawl` | LOW | 2 | 5min, 30min | ❌ | M02 crawler |
 | `ai_credit` | HIGH | 2 | 10s, 1min | ✅ | M23 credit allocation, monthly reset |
@@ -128,13 +128,13 @@ pub struct CircuitBreaker {
 
 | Job | Schedule | Queue | Description |
 |---|---|---|---|
-| Morning Brief | `0 30 6 * * *` (6:30 AM) | notification_push | Generate + deliver briefs |
+| Morning Brief | Every minute: due workspace-configured local morning_brief_time (default 07:00) | notification_push | Generate once per workspace/local date; authorized imported/manual data eligible |
 | Platform Fee Sync | `0 0 2 * * *` (2:00 AM) | sync_jobs | Crawl fee databases |
 | Health Score | `0 0 * * * *` (hourly) | sync_jobs | Poll platform APIs |
 | Stale Data Check | `0 */15 * * * *` (15min) | analytics_events | Check sync freshness |
 | Achievement Check | Event-driven | workflow_trigger | On content/commerce events |
 | Credit Reset | Every minute: scan due billing anniversaries | ai_credit | Idempotent allocation per subscription period; see credit accounting |
-| DLQ Cleanup | `0 0 3 * * *` (3:00 AM) | — | Auto-discard old DLQ items |
+| DLQ Cleanup | `0 0 3 * * *` (UTC) | — | Archive resolved/acknowledged records only, per §4; retain unresolved financial/unknown effects |
 | Outbox Cleanup | `0 0 4 * * *` (4:00 AM) | — | Delete published outbox > 7d |
 
 ---
@@ -152,3 +152,7 @@ pub struct CircuitBreaker {
 | Search | 120 req | 1 min | workspace |
 
 Implementation: Sliding window counter via Dragonfly (Redis MULTI/EXEC).
+
+## Schedule interpretation
+
+Six-field cron examples are seconds/minutes/hours/day/month/weekday in UTC unless an explicit per-workspace schedule is stated. Morning Brief uses the workspace IANA timezone and home_dashboard_config.morning_brief_time, with a unique workspace/local-date delivery identity; timezone changes or DST transitions cannot deliver twice for one local date. Missing a run does not resend a stale brief. Keep generated, delivered and failed outcomes separate and audit retries.

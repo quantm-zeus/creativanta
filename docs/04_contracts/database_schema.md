@@ -1071,8 +1071,8 @@ CREATE TABLE product_skus (
   price_override NUMERIC(18,6), -- NULL = use product.base_price
   cogs_override NUMERIC(18,6), -- NULL = use product.cogs
   currency VARCHAR(5) DEFAULT 'VND',
-  stock_quantity INTEGER DEFAULT 0,
-  stock_reserved INTEGER DEFAULT 0,
+  stock_quantity INTEGER DEFAULT 0, -- derived SUM(inventory_balances.on_hand), never client-writable
+  stock_reserved INTEGER DEFAULT 0, -- derived SUM(inventory_balances.reserved), never client-writable
   low_stock_threshold INTEGER DEFAULT 5,
   barcode VARCHAR(100),
   weight_grams INTEGER,
@@ -1517,6 +1517,9 @@ CREATE TABLE recipe_templates (
   workspace_id UUID REFERENCES workspaces(workspace_id), -- nullable for system recipes
   author_workspace_id UUID, -- original author; workspace_id used for RLS
   activepieces_template_id VARCHAR(255),
+  template_kind VARCHAR(20) NOT NULL DEFAULT 'workflow' CHECK (template_kind IN ('workflow','style_workflow')),
+  template_version INTEGER NOT NULL DEFAULT 1 CHECK (template_version > 0),
+  template_payload JSONB NOT NULL DEFAULT '{}', -- portable snapshot, §27.4
   parameters JSONB DEFAULT '[]', -- [{name, type, default, required}]
   required_capabilities JSONB DEFAULT '[]',
   install_count INTEGER DEFAULT 0,
@@ -1972,6 +1975,10 @@ CREATE TABLE media_kits (
   sections JSONB NOT NULL DEFAULT '[]', -- [{type, title, content, position}]
   brand_profile_id UUID REFERENCES brand_profiles(brand_profile_id),
   share_url TEXT,
+  directory_opt_in BOOLEAN NOT NULL DEFAULT false,
+  directory_status VARCHAR(20) NOT NULL DEFAULT 'hidden' CHECK (directory_status IN ('hidden','pending_review','published')),
+  directory_profile JSONB NOT NULL DEFAULT '{}', -- explicit public snapshot, §27.2
+  directory_consented_at TIMESTAMPTZ,
   last_generated_at TIMESTAMPTZ,
   generation_credits_used NUMERIC(18,6) DEFAULT 0, -- DB-H-001: financial precision
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -1980,7 +1987,7 @@ CREATE TABLE media_kits (
 );
 ALTER TABLE media_kits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE media_kits FORCE ROW LEVEL SECURITY;
-CREATE POLICY tenant_isolation ON media_kits
+CREATE POLICY tenant_isolation ON media_kits TO app_user
   USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 ```
 
@@ -2035,6 +2042,8 @@ CREATE TABLE brand_deals (
   status VARCHAR(20) NOT NULL DEFAULT 'negotiating', -- negotiating,agreed,in_progress,delivered,paid,completed,cancelled
   deadline DATE,
   deliverables TEXT,
+  contract_evidence_ids UUID[] NOT NULL DEFAULT '{}', -- immutable document versions, same-tenant checked
+  inquiry_thread_id UUID REFERENCES threads(thread_id),
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -3006,6 +3015,8 @@ CREATE TABLE user_preferences (
   quiet_hours_end TIME, -- e.g., 07:00
   morning_brief_enabled BOOLEAN DEFAULT true,
   morning_brief_channel VARCHAR(20) DEFAULT 'push', -- push, email, both
+  onboarding_completed BOOLEAN NOT NULL DEFAULT false,
+  onboarding_progress JSONB NOT NULL DEFAULT '{"completed_steps": []}', -- §27.1, authenticated user's progress
   theme VARCHAR(10) DEFAULT 'system', -- light, dark, system
   sidebar_collapsed BOOLEAN DEFAULT false,
   default_view_mode VARCHAR(20) DEFAULT 'grid', -- grid, list, kanban
@@ -3496,9 +3507,10 @@ CREATE TABLE stock_movements (
   movement_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   sku_id UUID NOT NULL REFERENCES product_skus(sku_id), -- Audit v8: was skus(sku_id), skus is DEPRECATED per §19.9F
-  location_id UUID REFERENCES inventory_locations(location_id),
+  location_id UUID NOT NULL REFERENCES inventory_locations(location_id),
   movement_type VARCHAR(30) NOT NULL, -- purchase, sale, return, adjustment, transfer, damage, platform_sync
-  quantity INTEGER NOT NULL, -- positive = in, negative = out
+  movement_key VARCHAR(255) NOT NULL, -- stable economic identity, including source revision
+  quantity INTEGER NOT NULL CHECK (quantity <> 0), -- positive = in, negative = out
   reference_type VARCHAR(50), -- order, return, manual, platform_import
   reference_id UUID,
   source_class source_class NOT NULL DEFAULT 'imported',
@@ -3506,6 +3518,7 @@ CREATE TABLE stock_movements (
   moved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+CREATE UNIQUE INDEX idx_sm_identity ON stock_movements(workspace_id, movement_key);
 CREATE INDEX idx_sm_sku ON stock_movements(sku_id);
 CREATE INDEX idx_sm_moved ON stock_movements(moved_at DESC);
 ALTER TABLE stock_movements ENABLE ROW LEVEL SECURITY;
@@ -4080,8 +4093,8 @@ CREATE TABLE home_dashboard_config (
   morning_brief_enabled BOOLEAN DEFAULT true,
   morning_brief_channels JSONB DEFAULT '["push", "email"]', -- ["push", "email", "in_app"]
   morning_brief_time TIME DEFAULT '07:00', -- local time
-  onboarding_completed BOOLEAN DEFAULT false,
-  onboarding_progress JSONB DEFAULT '{"step": 0, "completed_steps": []}',
+  onboarding_completed BOOLEAN DEFAULT false, -- workspace setup projection only; personal progress is user_preferences
+  onboarding_progress JSONB DEFAULT '{"step": 0, "completed_steps": []}', -- workspace aggregate, not personal completion authority
   beginner_tips_dismissed BOOLEAN DEFAULT false,
   last_home_visit_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -4643,6 +4656,47 @@ CREATE POLICY tenant_isolation ON financial_postings
   USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 ```
 
+### 26.10A inventory_balances and stock_reservations
+
+These implement M13's reserved stock and fast projections. [Inventory computation](inventory_computation_contract.md) owns locking and ledger semantics. Physical locations must be explicit, including a named virtual platform location when no warehouse mapping exists.
+
+```sql
+CREATE TABLE inventory_balances (
+  balance_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  sku_id UUID NOT NULL REFERENCES product_skus(sku_id),
+  location_id UUID NOT NULL REFERENCES inventory_locations(location_id),
+  on_hand INTEGER NOT NULL DEFAULT 0,
+  reserved INTEGER NOT NULL DEFAULT 0 CHECK (reserved >= 0),
+  opening_at TIMESTAMPTZ, -- verified/imported initial count boundary; NULL means not initialized
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(workspace_id, sku_id, location_id)
+);
+ALTER TABLE inventory_balances ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inventory_balances FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON inventory_balances
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE TABLE stock_reservations (
+  reservation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  order_id UUID NOT NULL REFERENCES orders(order_id),
+  sku_id UUID NOT NULL REFERENCES product_skus(sku_id),
+  location_id UUID NOT NULL REFERENCES inventory_locations(location_id),
+  reservation_key VARCHAR(255) NOT NULL,
+  quantity INTEGER NOT NULL CHECK (quantity > 0),
+  status VARCHAR(20) NOT NULL DEFAULT 'held' CHECK (status IN ('held','consumed','released','expired')),
+  expires_at TIMESTAMPTZ, -- unpaid checkout only; confirmed fulfillment holds do not auto-expire
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(workspace_id, reservation_key, sku_id, location_id)
+);
+CREATE INDEX idx_stock_reservations_expiry ON stock_reservations(expires_at) WHERE status = 'held';
+ALTER TABLE stock_reservations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stock_reservations FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON stock_reservations
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+```
+
 ### 26.11 Same-tenant referential integrity
 
 UUID-only foreign keys do not establish tenant equality. Install the following constraints after their tables in each slice migration. Polymorphic/JSONB/UUID-array references require an allowlisted type lookup and same-workspace check inside the command transaction; unknown types and foreign IDs return NOT_FOUND. Do not trust a client-supplied workspace ID. Global references are permitted only for explicitly global objects.
@@ -4702,6 +4756,12 @@ ALTER TABLE trends ADD CONSTRAINT uq_trends_tenant_pk UNIQUE (workspace_id, tren
 ALTER TABLE video_edit_jobs ADD CONSTRAINT uq_video_edit_jobs_tenant_pk UNIQUE (workspace_id, job_id);
 ALTER TABLE workflow_runs ADD CONSTRAINT uq_workflow_runs_tenant_pk UNIQUE (workspace_id, run_id);
 ALTER TABLE workflows ADD CONSTRAINT uq_workflows_tenant_pk UNIQUE (workspace_id, workflow_id);
+ALTER TABLE inventory_balances ADD CONSTRAINT fk_inventory_balances_sku_id_tenant FOREIGN KEY (workspace_id, sku_id) REFERENCES product_skus(workspace_id, sku_id);
+ALTER TABLE inventory_balances ADD CONSTRAINT fk_inventory_balances_location_id_tenant FOREIGN KEY (workspace_id, location_id) REFERENCES inventory_locations(workspace_id, location_id);
+ALTER TABLE stock_reservations ADD CONSTRAINT fk_stock_reservations_order_id_tenant FOREIGN KEY (workspace_id, order_id) REFERENCES orders(workspace_id, order_id);
+ALTER TABLE stock_reservations ADD CONSTRAINT fk_stock_reservations_sku_id_tenant FOREIGN KEY (workspace_id, sku_id) REFERENCES product_skus(workspace_id, sku_id);
+ALTER TABLE stock_reservations ADD CONSTRAINT fk_stock_reservations_location_id_tenant FOREIGN KEY (workspace_id, location_id) REFERENCES inventory_locations(workspace_id, location_id);
+ALTER TABLE brand_deals ADD CONSTRAINT fk_brand_deals_inquiry_thread_id_tenant FOREIGN KEY (workspace_id, inquiry_thread_id) REFERENCES threads(workspace_id, thread_id);
 ALTER TABLE trend_signals ADD CONSTRAINT fk_trend_signals_trend_id_tenant FOREIGN KEY (workspace_id, trend_id) REFERENCES trends(workspace_id, trend_id);
 ALTER TABLE trend_signals ADD CONSTRAINT fk_trend_signals_signal_id_tenant FOREIGN KEY (workspace_id, signal_id) REFERENCES signals(workspace_id, signal_id);
 ALTER TABLE opportunity_sources ADD CONSTRAINT fk_opportunity_sources_opportunity_id_tenant FOREIGN KEY (workspace_id, opportunity_id) REFERENCES opportunities(workspace_id, opportunity_id);
@@ -4934,7 +4994,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON highlights TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON channel_posts TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON reconciliation_records TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON inventory_locations TO app_user;
-GRANT SELECT, INSERT, UPDATE, DELETE ON stock_movements TO app_user;
+GRANT SELECT, INSERT ON stock_movements TO app_user;
+GRANT SELECT, INSERT, UPDATE ON inventory_balances TO app_user;
+GRANT SELECT, INSERT, UPDATE ON stock_reservations TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON sample_requests TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON sample_shipments TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON copilot_sessions TO app_user;
@@ -5061,3 +5123,45 @@ CREATE UNIQUE INDEX idx_one_active_workspace_owner ON workspace_members(workspac
 ```
 
 Owner transfer updates memberships and workspaces.owner_user_id in one transaction. A command cannot commit with no active owner or a mismatched owner row; the service invariant and adversarial transfer tests enforce existence, while the partial unique index forbids two active owners.
+
+## 27. Reviewed product projections and public discovery
+
+### 27.1 Personal onboarding
+
+`user_preferences.onboarding_progress` has shape `{completed_steps: number[]}` with distinct integers 1–5 for the M01 loop. Server verifies linked domain actions under the authenticated user/workspace context; completion of all five sets onboarding_completed. Client completion cannot grant rewards, privileges, connector access or phase availability. Workspace-level home_dashboard_config progress remains a setup summary only.
+
+### 27.2 Public creator profile snapshot
+
+`media_kits.directory_profile` is a separately consented snapshot, never automatic serialization of sections or analytics:
+
+```typescript
+interface PublicCreatorProfile {
+  display_name: string; // 1–120 characters
+  bio: string; // 0–2000 characters; sanitized text
+  categories: string[]; // max 10 allowlisted categories
+  languages: string[]; // max 10 supported language tags
+  portfolio_urls: string[]; // max 10 verified safe HTTPS URLs
+  public_rates: {service_type: string; amount: string; currency: string}[]; // optional max 20, decimal money
+}
+```
+
+Directory publishing requires explicit profile confirmation, `directory_opt_in = true`, current consent and internal moderation clearance. Editing the public snapshot returns it to pending_review; opt-out sets hidden immediately. Ordinary generated kit changes do not silently publish new analytics. P8 bootstrap adds a dedicated NOSUPERUSER NOINHERIT NOBYPASSRLS `directory_reader` role, never granted to app_user. The public service uses it only for the following restricted projection:
+
+```sql
+GRANT USAGE ON SCHEMA public TO directory_reader;
+GRANT SELECT (media_kit_id, directory_profile) ON media_kits TO directory_reader;
+CREATE POLICY public_directory_read ON media_kits FOR SELECT TO directory_reader
+  USING (directory_opt_in AND directory_status = 'published' AND deleted_at IS NULL);
+```
+
+No workspace ID, email, draft kit, raw stats, evidence or deal data is granted to that role. The tenant policy is scoped to app_user, and directory_reader must not inherit or be a member of app_user: PostgreSQL combines permissive policies with OR, so a public reader must never gain a tenant-policy route to hidden snapshots, even with a forged tenant session setting. Public pages/search revalidate visibility against the authoritative store before response; purge indexes/cache on opt-out and deny stale results immediately. Sponsored inquiry delivery resolves the target workspace through an isolated server command after verifying the published kit, never by accepting a public caller's workspace_id. Anti-abuse limits and moderation apply before creating a thread.
+
+Contract template source content is a published KB article tagged `contract_template`. Selecting one copies a rendered version into immutable evidence; brand_deals.contract_evidence_ids records same-tenant evidence versions. Later template edits never change a signed or sent version. External signature proof is separate evidence linked to the same deal; no implicit legal approval.
+
+### 27.3 Competitor monitoring configuration
+
+`competitor_entities.metadata.monitoring` is `{enabled: boolean, metric: 'engagement_rate'|'post_frequency'|'observed_price', threshold: number, direction: 'above'|'below', min_interval_minutes: number}`. Nonfinancial normalized comparison threshold is a finite percentage change, not a stored money amount. Minimum interval is 60 minutes and may be raised by provider quota/freshness. Alert dedup uses the canonical notification/economic event identity and snapshot ID, not a mutable guessed last-seen timestamp. Price observations retain their decimal currency values in benchmark evidence; never persist monetary amounts as JSON numbers here.
+
+### 27.4 Portable recipe snapshot
+
+recipe_templates.template_payload is `{schema_version: 1, graph: WorkflowGraph, style_settings?: ContinuitySettings, license_notice: string}` using §25.7 types. The workflow kind has no style_settings; style_workflow requires them. Published rows cannot have an empty graph or license notice. Graph refs are declared parameter placeholders, never source-tenant object IDs. Review permits only documented node/config keys and plain style values; no scripts, tokens, private URLs, face or voice samples. Install resolves parameters after same-tenant checks and saves a new canonical workflow and, for style_workflow, a continuity_packs row with pack_type=style. Template version and source recipe identity are recorded in immutable install audit. This also provides the owned-runtime workflow template body independently of an Activepieces template ID.

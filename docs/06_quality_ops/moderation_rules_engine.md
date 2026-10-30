@@ -113,3 +113,7 @@ visible → flagged → hidden → deleted
 | High (copyright, harassment, self-harm, fraud) | **< 24h** review | Admin queue |
 | Medium (policy borderline) | **< 72h** review | Team queue |
 | Low (profanity, minor policy cleanup) | Batch review within 7 days | Workspace owner or admin queue |
+
+## 7. Override boundary
+
+Workspace packaging overrides apply only to reviewable warnings. They cannot clear confirmed phishing/malware, revoked clone consent, a required disclosure omission, a confirmed unlicensed rights violation, or a hard-block category. An authorized internal Content Admin can review a disputed classification and clear a false positive with evidence and audit; that is a new moderation decision, not permission to bypass a confirmed violation. Re-evaluate packaging and capability after any clearance. Screens offer correction, licensed replacement or appeal, never a generic proceed-at-risk CTA for hard blocks.

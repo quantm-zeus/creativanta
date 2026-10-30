@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 status: SPECIFIED
 ---
 
@@ -24,3 +24,7 @@ This records canonical artifact ownership, not proof of runtime correctness. All
 | Release → production | ci_cd_pipeline.md | Required fail-closed stage semantics | Actual CI, authenticated smoke, restore/rollback, legal/external gates |
 
 Run `python3 tooling/check_docs.py`, optional `--sql` with pinned pglast, and `python3 -m unittest discover -s tooling/tests`. These checks cover selected static invariants and checker regressions; they do not certify every screen/algorithm or execute app/DB/provider behavior. Canonical sources and runtime gates must be reevaluated when their inputs change.
+
+## Review additions — 2026-10-30
+
+Source-linked task/section/screen coverage is now checked by [build_plan](../../tooling/build_plan.py); [backlog](AGENT_BUILD_BACKLOG.md) defines its limits. Inventory locking/reservations and public directory/template extensions require their PostgreSQL and privacy fixtures in addition to the prior boundary checks. A passing source map proves assignment/freshness, not semantic correctness of every screen or compiled RPC.

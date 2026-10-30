@@ -359,7 +359,7 @@ WorkspaceService/GetPreferences,workspace:read,query,auth,Member
 WorkspaceService/UpdatePreferences,workspace:settings:manage,command,auth,Admin+
 WorkspaceService/GetUsage,workspace:read,query,auth,Manager+
 WorkspaceService/UpdateMemberRole,workspace:roles:assign,command,auth,Admin+
-WorkspaceService/CompleteOnboarding,workspace:settings:manage,command,auth,Admin+
+WorkspaceService/CompleteOnboarding,user:self,command,M01,Member
 WorkspaceService/SetDefaultCharacter,workspace:settings:manage,command,auth,Editor+
 WorkspaceService/SetModes,workspace:settings:manage,command,auth,Admin+
 WorkspaceService/UpdateProfile,workspace:settings:manage,command,auth,Admin+
@@ -1181,3 +1181,9 @@ CampaignService/GetTopProducts,campaign:read,query,M14,Member
 CampaignService/LinkContent,campaign:manage,command,M14,Editor+
 CampaignService/LinkOffer,campaign:manage,command,M14,Editor+
 CampaignService/UnlinkContent,campaign:manage,command,M14,Editor+
+MediaKitService/SetDirectoryProfile,media_kit:publish,command,S16,Manager+
+CreatorDirectoryService/Search,PUBLIC,public,S16,Public
+CreatorDirectoryService/Get,PUBLIC,public,S16,Public
+SponsorInquiryService/Submit,PUBLIC,public,S16,Public verified sender
+BrandDealService/ListContractTemplates,brand_deal:read,query,S16,Manager+
+BrandDealService/AttachContract,brand_deal:manage,command,S16,Manager+

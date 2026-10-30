@@ -4,7 +4,7 @@ module: M22
 canonical: true
 domain: platform
 status: SPECIFIED
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 # Feature: Capability Matrix (M22)
@@ -20,7 +20,7 @@ M22 exists as the **platform capability truth layer** — maintaining a real-tim
 ### Covers (M22 owns capability awareness)
 - Capability snapshots per platform: feature availability, API status, rate limits
 - Platform health scoring: 0–100 composite score per platform per connected account
-- Capability states per action: `supported`, `degraded`, `unsupported`, `unknown`
+- Capability states per action: `native`, `read_only`, `manual`, `degraded`, `unsupported`; verification freshness is separate metadata
 - Policy notes: human-readable explanations for why an action is unavailable or degraded
 - Fallback paths: alternative actions when primary path is unavailable
 - Connector health monitoring: periodic health checks, degradation detection, recovery detection
@@ -94,12 +94,12 @@ M22 exists as the **platform capability truth layer** — maintaining a real-tim
 
 ### EC-M22-001: Capability Check During Network Partition
 - Condition: M22 cannot reach platform API to verify capability
-- Expected behavior: Capability status = `unknown` → treated as `degraded` for safety. Policy note: "Platform status could not be verified. [Retry check] [Proceed with caution]." Actions that require `supported` status will not execute. Cached last-known status shown with staleness indicator.
+- Expected behavior: Return `manual` when an authorized handoff exists, otherwise `unsupported`, with an unverified/stale explanation. Policy note: "Platform status could not be verified. [Retry check] [View fallback]." No native mutation is allowed. Cached last-known data is visibly stale.
 - Reference: RULE-M22-002, RULE-M22-005
 
 ### EC-M22-002: Platform Partially Supporting a Feature
-- Condition: TikTok supports video publish but not carousel publish
-- Expected behavior: Capability matrix shows per-action-type granularity. "TikTok: Video Publish = supported, Carousel Publish = unsupported." Policy note for carousel: "TikTok API does not support carousel posts via API. Upload manually via TikTok app." Content creation (M07/M10) shows this constraint when selecting publish targets.
+- Condition: the verified access record for an account permits video publish but does not permit photo/carousel publish
+- Expected behavior: Capability matrix shows per-action-type granularity. "This account: Video Publish = native, Photo/Carousel Publish = manual." The policy note describes the missing account/action access and handoff. Do not hardcode a platform-wide prohibition from this fixture. Content creation (M07/M10) shows this constraint when selecting publish targets.
 - Reference: RULE-M22-001, RULE-M22-004
 
 ### EC-M22-003: All Platforms Degraded Simultaneously
@@ -158,9 +158,9 @@ Unknown/stale verification is metadata, never a sixth enum or permission to atte
 
 3. **Given** M20 queries M22 before executing a workflow action, **when** M22 returns `'degraded'` for the action's required capability, **then** M20 MUST receive the degradation context including: current status, policy note, and available fallback path — enabling M20 to make an informed execution decision.
 
-4. **Given** M22 cannot reach a platform API for capability verification, **when** a module queries that capability, **then** M22 MUST return `'unknown'` status (treated as degraded), show staleness indicator for cached data, and trigger a forced refresh — the system MUST NOT return stale `'supported'` status as fresh.
+4. **Given** M22 cannot reach a platform API for capability verification, **when** a module queries that capability, **then** M22 MUST return `'manual'` if an authorized handoff exists, otherwise `'unsupported'`, explain unverified/stale access and trigger a refresh — the system MUST NOT return stale `'native'` access as fresh.
 
-5. **Given** TikTok supports video publish but not carousel publish, **when** the operator views the capability matrix, **then** the matrix MUST show per-action-type granularity: "Video Publish: 🟢 Supported" and "Carousel Publish: 🔴 Unsupported — [policy note]" — capabilities are NOT all-or-nothing per platform.
+5. **Given** the verified access record for an account permits video publish but does not permit photo/carousel publish, **when** the operator views the capability matrix, **then** the matrix MUST show per-action-type granularity: "Video Publish: 🟢 Native" and "Photo/Carousel Publish: Manual — [account-specific policy note]" — capabilities are NOT all-or-nothing per platform.
 
 ## Open Questions / Blockers
 
@@ -178,7 +178,7 @@ Beyond passive monitoring, the Platform Health Score MUST proactively surface ac
 
 | Metric Drop | Alert Content | CTA |
 |---|---|---|
-| Shop response rate < 90% | "Cần trả lời 3 tin nhắn để tăng lên >90%" | [Mở Inbox] |
+| Shop response rate < 90% | "Tỷ lệ phản hồi thấp — xem tin nhắn cần xử lý" | [Mở Inbox] |
 | Listing quality < 80% | "Sản phẩm A thiếu mô tả chi tiết" | [Sửa sản phẩm] |
 | Order fulfillment delay | "5 đơn hàng chưa xử lý > 24h" | [Xem đơn hàng] |
 | Engagement rate drop > 20% | "Tương tác giảm 25% tuần này" | [Xem phân tích] |
@@ -191,9 +191,10 @@ Feature: Platform Health Score Proactive Coaching
   Scenario: Shop response rate drop triggers coaching
     Given a seller's TikTok Shop response rate drops to 88%
     When the health score component detects response_rate < 90%
-    Then a Home decision card appears: "Cần trả lời 3 tin nhắn để tăng lên >90%"
+    Then a Home decision card appears: "Tỷ lệ phản hồi thấp — xem tin nhắn cần xử lý"
     And the primary CTA links to the Unified Inbox filtered to unanswered messages
-    And the health score breakdown shows response_rate as "degraded"
+    And the coaching drawer shows response_rate source, observation window and missing data
+    And this business metric does not change technical API capability
 
   Scenario: Overall platform health critical
     Given a platform's health score drops below 50
@@ -203,5 +204,5 @@ Feature: Platform Health Score Proactive Coaching
     And the dashboard shows specific actionable steps to improve each component
 ```
 
-> **Schema Cross-reference (GAP-M007 verification)**: Achievement-related schemas are: `achievement_definitions` + `achievement_records` (§14.2), `creator_progress` (§14.1, includes streak columns), `challenge_definitions` + `challenge_progress` (§22.10-22.11). See [database_schema.md](../../04_contracts/database_schema.md). The gamification feature spec at `02_features/platform/gamification.md` references these schemas by table name — full field definitions are canonical in the DB schema contract only.
+> Technical connector health and business-performance coaching are separate projections. Response rate, listing quality and engagement cannot grant API access or change the technical health formula. Coaching must show the observed numerator/denominator and period; do not promise that replying to a fixed number of messages guarantees a platform score.
 

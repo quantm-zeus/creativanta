@@ -4,7 +4,7 @@ module: M06
 canonical: true
 domain: content
 status: SPECIFIED
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 # Feature: Script Lab (M06)
@@ -50,7 +50,7 @@ M06 exists to be the **structured authoring and approval gateway** between ideat
 
 1. **RULE-M06-001**: Script lifecycle MUST follow the defined state machine — `lifecycle_state` tracks creation progress, `approval_state` tracks review progress. These are two independent state machines that both must be in valid terminal states before production handoff (PRD §23.6, DB schema §6.4: separate `lifecycle_state` and `approval_state`).
 2. **RULE-M06-002**: Script rejection (`approval_state = 'rejected'`) MUST include a `rejection_reason` text field. Empty rejection reasons are forbidden — the system MUST validate that a reason ≥10 characters is provided before accepting the rejection (PRD §23.6 AC, Pack 02 §9.2).
-3. **RULE-M06-003**: Every script MUST reference its source idea via `idea_id` FK. Orphan scripts without an idea reference are permitted ONLY when created directly from an Opportunity conversion (M04 → M06), in which case `idea_id` may be NULL but `continuity_refs` or creator context must be present (DB schema §6.4, Pack 02 §9.2).
+3. **RULE-M06-003**: Every script MUST reference its source idea via `idea_id` FK. Direct scripts may originate from Opportunity conversion or explicit manual authoring. In either case `idea_id` may be NULL; preserve the opportunity source or manual author audit and require continuity refs or creator context (DB schema §6.4, Pack 02 §9.2).
 4. **RULE-M06-004**: Channel rewrite MUST produce a platform-specific variant of the script while preserving core message and continuity. Rewritten scripts share the same `idea_id` but differ in `format_type`, `duration_target_seconds`, and `publish_target_profiles`. Each rewrite is a separate script row, not a version of the same script (PRD §23.6: "channel rewrites").
 5. **RULE-M06-005**: Script → Asset Brief conversion MUST populate: `output_type`, `target_format` (aspect ratio), `target_duration_seconds`, `target_platforms`, `continuity_requirements`, `brand_voice_requirements`, and `production_instructions`. The Asset Brief status MUST start as `'draft'` and transition to `'ready'` only when all required fields are populated (DB schema §6.5).
 6. **RULE-M06-006**: `script.ready_for_production` event MUST only be emitted when BOTH `lifecycle_state = 'ready_for_production'` AND `approval_state = 'approved'`. This event triggers M07 to make the script available for AI generation (Domain event catalog §4).
@@ -173,7 +173,7 @@ see [04_contracts/database_schema.md#6.4](../../04_contracts/database_schema.md)
 
 ## Acceptance Criteria
 
-1. **Given** a Manager types "No" as the only rejection reason (3 characters), **when** they submit the rejection, **then** the system MUST return a validation error requiring at least 10 characters — the script's `approval_state` MUST remain `'pending_approval'`.
+1. **Given** a Manager types "No" as the only rejection reason (2 characters), **when** they submit the rejection, **then** the system MUST return a validation error requiring at least 10 characters — the script's `approval_state` MUST remain `'pending_approval'`.
 
 2. **Given** a script with `lifecycle_state = 'approved'` and `approval_state = 'approved'`, **when** the user creates an Asset Brief from this script, **then** the system MUST emit `script.ready_for_production` with `{script_id, asset_brief_id}` — and the Asset Brief MUST contain `script_id`, `output_type`, `target_format`, and `continuity_requirements`.
 

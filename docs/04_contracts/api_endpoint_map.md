@@ -733,7 +733,7 @@ Rate limit: 100 req/min (read), 30 req/min (write) per API key. IP-based seconda
 | `WorkspaceService/UpdatePreferences` | POST | Admin+ | 30/min | Update workspace preferences |
 | `WorkspaceService/GetUsage` | POST | Manager+ | 30/min | Get workspace resource usage |
 | `WorkspaceService/UpdateMemberRole` | POST | Admin+ | 20/min | Update member role |
-| `WorkspaceService/CompleteOnboarding` | POST | Admin+ | 5/min | Mark onboarding as complete |
+| `WorkspaceService/CompleteOnboarding` | POST | Member | 5/min | Mark authenticated user's validated onboarding progress; user:self, no workspace-settings write |
 | `WorkspaceService/SetDefaultCharacter` | POST | Editor+ | 10/min | Set default brand character |
 | `WorkspaceService/SetModes` | POST | Admin+ | 10/min | Set workspace operation modes |
 | `WorkspaceService/UpdateProfile` | POST | Admin+ | 30/min | Update workspace profile info |
@@ -2294,3 +2294,16 @@ Rate limit: 100 req/min (read), 30 req/min (write) per API key. IP-based seconda
 > **Note**: This document is the canonical API contract for Creativanta. All screen-referenced RPCs have been promoted to canonical status with method, auth, rate limit, and description. The `screen_api_reconciliation.md` document should be updated to reflect this closure.
 
 > **JSON Examples**: See companion file [`api_examples.md`](./api_examples.md) for 24 concrete request/response payloads covering Auth, Trends, Scripts, Generation, Publish, Threads, Products, Orders, Offers, Coupons, Profit, Reconciliation, Workflows, LiveCommerce, Seeding, Credits, Admin, Capability, Referral, VoiceClone, Error responses, and Pagination conventions.
+
+## 21. Retained brand collaboration expansion (P8)
+
+Behavior/fields: [API behavior §8](api_behavior_contracts.md#8-reviewed-operator-projections-and-commands). Public methods expose only the explicitly consented snapshot.
+
+| Method | Transport | Auth | Rate Limit | Description |
+|---|---|---|---|---|
+| `MediaKitService/SetDirectoryProfile` | POST | Manager+ | 10/min | Confirm or withdraw public profile consent; media_kit:publish |
+| `CreatorDirectoryService/Search` | POST | Public | 30/min/IP | Search verified public profile snapshots |
+| `CreatorDirectoryService/Get` | POST | Public | 60/min/IP | Public snapshot after current visibility check |
+| `SponsorInquiryService/Submit` | POST | Public verified sender | 5/hour/IP and sender | Moderated inquiry to an opted-in creator |
+| `BrandDealService/ListContractTemplates` | POST | Manager+ | 30/min | Published drafting templates with version |
+| `BrandDealService/AttachContract` | POST | Manager+ | 10/min | Attach immutable same-tenant contract evidence |

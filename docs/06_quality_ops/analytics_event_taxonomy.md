@@ -157,3 +157,19 @@ Each active module/spec below defines the minimum analytics events that MUST exi
 | `new_profit_dashboard` | A/B test new dashboard design |
 | `copilot_v2` | Test new copilot model |
 | `gamification` | Enable achievement system |
+
+## 6. Product validation measurements
+
+These are analytical definitions, not new domain events. Use existing canonical object identities and approved analytics families; product analytics never authorizes financial writes. Exclude demo/test/internal accounts and deduplicate by workspace/object/operation identity. Show sample size, observation window and missingness in every cohort report.
+
+| Measure | Definition / source | Limitation |
+|---|---|---|
+| First value | Time from workspace creation to first authorized imported/connected financial snapshot viewed with source/gap disclosure; use onboarding and profit_dashboard_viewed | Demo views excluded; first value does not imply all five onboarding steps or verified profit |
+| Weekly proofed operating loops | Distinct linked content/publish objects with an attributed completed order, versioned cost/profit projection and inspectable evidence reviewed in that week; count each publish object once | Imported/manual proof remains labeled; reported attribution is not causal uplift; unresolved gaps exclude it from the proof-complete subset |
+| Weekly operator retention | Activated eligible workspaces performing at least one real domain action or evidence review in week N divided by the same activation cohort eligible for week N | Login/page view alone does not count; show cohort size and censored workspaces |
+| Repair burden | Median operator time and unresolved required-component count per imported batch/report | Missing time tracking remains unknown, never zero |
+| Usable production yield | Accepted usable outputs / terminal generation attempts, by mode/provider and quote version | Show cancellations and unresolved outcomes separately; exclude previews from final-output yield |
+| Cost per accepted output | Actual provider/render/storage/egress cost allocated to a cohort, including failed paid attempts, divided by accepted outputs | Decimal money from server ledger/metering; zero accepted outputs → undefined, not zero cost |
+| Net unit economics | Net recognized subscription/top-up revenue minus provider, compute, storage/egress, payment/refund and attributed support cost for a billing cohort | Show allocation method and unknown costs; request quote margin alone is insufficient |
+
+Source_class and confidence use the full canonical schema enum, including medium_high and low_medium. Do not collapse bands before aggregation. Suggested pilot targets and decision ownership live in the business strategy document; they are not measured achievements or release SLAs.

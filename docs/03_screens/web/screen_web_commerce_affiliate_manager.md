@@ -1,7 +1,7 @@
 # Screen: Web — Affiliate Manager
 
 > **Screen ID**: W070
-> **Module**: M14 — Monetization & Affiliates
+> **Module**: M16 — see canonical feature owner in screen_task_map.csv
 > **Route**: `/affiliate`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 06 §8, Product Freeze §24, A1 Schema (affiliate_links, affiliate_clicks, affiliate_conversions, affiliate_commissions, creator_profiles), B5 RBAC §2.7

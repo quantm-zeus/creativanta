@@ -1,7 +1,7 @@
 ---
 layer: index
 canonical: true
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 # Build Index — Creativanta System Map
@@ -15,12 +15,12 @@ Creativanta is a **Proofed Trend-to-Profit Operating System** for creator commer
 | Module | Name | Domain | Feature Doc (target) | Build Phase |
 |--------|------|--------|----------------------|-------------|
 | M01 | Home / Daily Decision Engine | platform | 02_features/platform/home_decision_engine.md | P0–P8 |
-| M02 | Trend Fusion Radar | intelligence | 02_features/intelligence/trend_radar.md | P2 |
-| M03 | Research & Competitor Intelligence | intelligence | 02_features/intelligence/competitor_intelligence.md | P2 |
+| M02 | Trend Fusion Radar | intelligence | 02_features/intelligence/trend_radar.md | P2–P4 |
+| M03 | Research & Competitor Intelligence | intelligence | 02_features/intelligence/competitor_intelligence.md | P2–P8 |
 | M04 | Opportunity Board | intelligence | 02_features/intelligence/opportunity_board.md | P2–P6 |
-| M05 | Idea Engine | content | 02_features/content/idea_engine.md | P3 |
+| M05 | Idea Engine | content | 02_features/content/idea_engine.md | P3–P6 |
 | M06 | Script Lab | content | 02_features/content/script_lab.md | P3 |
-| M07 | AI Video Studio | production | 02_features/production/ai_video_studio.md | P4 |
+| M07 | AI Video Studio | production | 02_features/production/ai_video_studio.md | P4–P8 |
 | M08 | Continuity OS | content | 02_features/content/continuity_os.md | P3–P4 |
 | M09 | Asset Derivative Manager | production | 02_features/production/asset_derivatives.md | P4–P6 |
 | M10 | Packaging QA | production | 02_features/production/packaging_qa.md | P4–P5 |
@@ -34,7 +34,7 @@ Creativanta is a **Proofed Trend-to-Profit Operating System** for creator commer
 | M18 | Seeding / Sample CRM | commerce | 02_features/commerce/seeding_crm.md | P6 |
 | M19 | Operating Ledger / Profit | finance | 02_features/finance/operating_ledger.md | P1–P8 |
 | M20 | Workflow Studio | automation | 02_features/automation/workflow_studio.md | P7 |
-| M21 | Recipe / Agent Center | automation | 02_features/automation/recipe_agent_center.md | P7 |
+| M21 | Recipe / Agent Center | automation | 02_features/automation/recipe_agent_center.md | P7–P8 |
 | M22 | Capability Matrix | platform | 02_features/platform/capability_matrix.md | P0–P8 |
 | M23 | Reporting / Admin / Billing | platform | 02_features/platform/reporting_admin_billing.md | P0–P8 |
 | auth | Auth & Session (cross-cutting) | platform | 02_features/platform/auth.md | P0 |
@@ -43,7 +43,7 @@ Creativanta is a **Proofed Trend-to-Profit Operating System** for creator commer
 | referral | Referral & Growth Engine | platform | 02_features/platform/referral_growth.md | P8 |
 | help | Help Center, Changelog & Beta | platform | 02_features/platform/help_center.md | P0–P8 |
 | gamification | Creator Gamification System | platform | 02_features/platform/gamification.md | P4–P8 |
-| S16 | Creator Pro Tools | commerce | 02_features/commerce/creator_pro_tools.md | P6 |
+| S16 | Creator Pro Tools | commerce | 02_features/commerce/creator_pro_tools.md | P6–P8 |
 | S24 | Public API & Webhooks | platform | 02_features/platform/public_api.md | P0–P7 |
 | S26 | Internal Admin Panel | platform | 02_features/platform/internal_admin.md | P0–P8 |
 
@@ -126,3 +126,7 @@ M20/M21 (Workflow/Recipe):
 13. NEVER collapse operator modes into fewer than 6 — all 6 are canonical (PRD §8.2)
 14. NEVER assign money/profit calculations to frontend — always use finance/proof layer (PRD §28.5)
 15. NEVER build a module as an island surface disconnected from the Unified Operating Loop (PRD §10)
+
+## 6. Start building
+
+Read [review and readiness](BUILD_READINESS.md), then [Agent Build Backlog](AGENT_BUILD_BACKLOG.md). The task catalog and generated requirement/screen maps preserve the complete corpus with source hashes; all task states start SPECIFIED. [Product strategy](../01_business/product_strategy_validation.md) owns the validation plan and rationale for improvements.

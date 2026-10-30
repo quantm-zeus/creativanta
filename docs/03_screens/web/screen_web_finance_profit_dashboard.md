@@ -484,3 +484,7 @@ Every financial number has a `source_class` (S009) from the canonical taxonomy:
 |---|---|---|---|
 | 2026-03-30 | 2.1 | **Tier A cleanup**: Replaced generic Error/Loading/Localization boilerplate with screen-specific content. Already had edge cases, a11y, analytics, tokens, impl. | System |
 | 2026-03-28 | 2.0 | Full specification | System |
+
+## Evidence coverage and repair panel
+
+Beside the profit value, render the server's missing-component count, unreconciled amount/count and as_of timestamp from API behavior §8. Show a paginated repair queue with severity, age, explanation and one authorized repair CTA. An absent amount is unknown, not zero. Preserve the existing money source/confidence badges and visible unreconciled bucket on mobile drilldown.

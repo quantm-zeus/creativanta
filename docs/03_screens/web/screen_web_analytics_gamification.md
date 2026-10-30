@@ -1,7 +1,7 @@
 # Screen: Web — Gamification Dashboard
 
 > **Screen ID**: W079
-> **Module**: M23 — Analytics (Gamification)
+> **Module**: gamification — see canonical feature owner in screen_task_map.csv
 > **Route**: `/gamification`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 02, PRD §23.24, A1 Schema (gamification_levels, achievements, quests, xp_events), B5 RBAC §2.7

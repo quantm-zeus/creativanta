@@ -12,8 +12,8 @@ This file defines how an engineer or AI coding agent must use `docs/03_screens/`
 
 Use this order whenever a screen spec and another layer differ:
 
-1. `docs/02_features/` for business logic, acceptance criteria, workflow rules, state transitions
-2. `docs/04_contracts/` for schema names, DTO fields, RPC names, event names, RBAC tokens
+1. `docs/04_contracts/` for exact schema, DTO, RPC, event, permission and numerical semantics
+2. `docs/02_features/` for business behavior and acceptance, using those exact contracts
 3. `docs/05_system/` for async behavior, retries, queues, provider routing, real-time flows
 4. `docs/03_screens/` for route, layout, UX states, entry/exit points, CTA placement, copy
 

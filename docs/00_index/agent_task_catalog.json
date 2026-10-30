@@ -1,0 +1,2480 @@
+{
+  "schema_version": 1,
+  "updated": "2026-10-30",
+  "state": "SPECIFIED",
+  "modules": {
+    "auth": {
+      "default_task": "P0-03",
+      "completion_task": "P0-09",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/platform/auth.md"
+    },
+    "M01": {
+      "default_task": "P8-01",
+      "completion_task": "P8-01",
+      "section_routes": [
+        {
+          "pattern": "Progressive first value",
+          "task": "P1-05"
+        }
+      ],
+      "feature_ref": "docs/02_features/platform/home_decision_engine.md"
+    },
+    "M02": {
+      "default_task": "P2-01",
+      "completion_task": "P4-09",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/intelligence/trend_radar.md"
+    },
+    "M03": {
+      "default_task": "P2-02",
+      "completion_task": "P8-07",
+      "section_routes": [
+        {
+          "pattern": "monitoring expansion",
+          "task": "P8-07"
+        }
+      ],
+      "feature_ref": "docs/02_features/intelligence/competitor_intelligence.md"
+    },
+    "M04": {
+      "default_task": "P2-03",
+      "completion_task": "P6-09",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/intelligence/opportunity_board.md"
+    },
+    "M05": {
+      "default_task": "P3-01",
+      "completion_task": "P6-09",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/content/idea_engine.md"
+    },
+    "M06": {
+      "default_task": "P3-02",
+      "completion_task": "P3-05",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/content/script_lab.md"
+    },
+    "M07": {
+      "default_task": "P4-01",
+      "completion_task": "P8-06",
+      "section_routes": [
+        {
+          "pattern": "Mode 1:",
+          "task": "P4-02"
+        },
+        {
+          "pattern": "Mode 2:",
+          "task": "P4-03"
+        },
+        {
+          "pattern": "Mode [34]:",
+          "task": "P4-04"
+        },
+        {
+          "pattern": "EF-0[1-4]:",
+          "task": "P4-05"
+        },
+        {
+          "pattern": "EF-0[56]:",
+          "task": "P4-06"
+        },
+        {
+          "pattern": "EF-07:",
+          "task": "P4-07"
+        },
+        {
+          "pattern": "EF-07A:",
+          "task": "P8-06"
+        },
+        {
+          "pattern": "EF-08:",
+          "task": "P7-04"
+        },
+        {
+          "pattern": "EF-(09|10):",
+          "task": "P5-05"
+        },
+        {
+          "pattern": "EF-11:",
+          "task": "P8-06"
+        }
+      ],
+      "feature_ref": "docs/02_features/production/ai_video_studio.md"
+    },
+    "M08": {
+      "default_task": "P3-03",
+      "completion_task": "P4-09",
+      "section_routes": [
+        {
+          "pattern": "Acceptance Criteria|Character Lifecycle|Drift",
+          "task": "P4-07"
+        }
+      ],
+      "feature_ref": "docs/02_features/content/continuity_os.md"
+    },
+    "M09": {
+      "default_task": "P4-08",
+      "completion_task": "P6-09",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/production/asset_derivatives.md"
+    },
+    "M10": {
+      "default_task": "P4-08",
+      "completion_task": "P5-05",
+      "section_routes": [
+        {
+          "pattern": "Experiment|A/B",
+          "task": "P5-05"
+        }
+      ],
+      "feature_ref": "docs/02_features/production/packaging_qa.md"
+    },
+    "M11": {
+      "default_task": "P5-01",
+      "completion_task": "P5-04",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/publish/publish_hub.md"
+    },
+    "M12": {
+      "default_task": "P5-02",
+      "completion_task": "P6-09",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/engagement/unified_inbox.md"
+    },
+    "M13": {
+      "default_task": "P1-02",
+      "completion_task": "P6-09",
+      "section_routes": [
+        {
+          "pattern": "Scope|Actors|Product|Import",
+          "task": "P1-01"
+        }
+      ],
+      "feature_ref": "docs/02_features/commerce/product_hub.md"
+    },
+    "M14": {
+      "default_task": "P6-01",
+      "completion_task": "P6-09",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/commerce/monetization_os.md"
+    },
+    "M15": {
+      "default_task": "P6-02",
+      "completion_task": "P6-09",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/commerce/creator_store.md"
+    },
+    "M16": {
+      "default_task": "P6-03",
+      "completion_task": "P6-09",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/commerce/affiliate_network.md"
+    },
+    "M17": {
+      "default_task": "P6-05",
+      "completion_task": "P6-09",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/commerce/live_war_room.md"
+    },
+    "M18": {
+      "default_task": "P6-06",
+      "completion_task": "P6-09",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/commerce/seeding_crm.md"
+    },
+    "M19": {
+      "default_task": "P1-03",
+      "completion_task": "P8-02",
+      "section_routes": [
+        {
+          "pattern": "Evidence coverage|Reconciliation",
+          "task": "P1-04"
+        }
+      ],
+      "feature_ref": "docs/02_features/finance/operating_ledger.md"
+    },
+    "M20": {
+      "default_task": "P7-02",
+      "completion_task": "P7-05",
+      "section_routes": [
+        {
+          "pattern": "Preflight",
+          "task": "P7-02"
+        }
+      ],
+      "feature_ref": "docs/02_features/automation/workflow_studio.md"
+    },
+    "M21": {
+      "default_task": "P7-03",
+      "completion_task": "P8-06",
+      "section_routes": [
+        {
+          "pattern": "Style template",
+          "task": "P8-06"
+        }
+      ],
+      "feature_ref": "docs/02_features/automation/recipe_agent_center.md"
+    },
+    "M22": {
+      "default_task": "P0-07",
+      "completion_task": "P8-03",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/platform/capability_matrix.md"
+    },
+    "M23": {
+      "default_task": "P8-02",
+      "completion_task": "P8-02",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/platform/reporting_admin_billing.md"
+    },
+    "copilot": {
+      "default_task": "P3-04",
+      "completion_task": "P8-01",
+      "section_routes": [
+        {
+          "pattern": "Action|Multi-step",
+          "task": "P7-04"
+        }
+      ],
+      "feature_ref": "docs/02_features/platform/copilot.md"
+    },
+    "referral": {
+      "default_task": "P8-05",
+      "completion_task": "P8-05",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/platform/referral_growth.md"
+    },
+    "help": {
+      "default_task": "P8-04",
+      "completion_task": "P8-04",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/platform/help_center.md"
+    },
+    "gamification": {
+      "default_task": "P8-06",
+      "completion_task": "P8-06",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/platform/gamification.md"
+    },
+    "S16": {
+      "default_task": "P6-04",
+      "completion_task": "P8-07",
+      "section_routes": [
+        {
+          "pattern": "12\\. Retained expansion",
+          "task": "P8-07"
+        }
+      ],
+      "feature_ref": "docs/02_features/commerce/creator_pro_tools.md"
+    },
+    "S24": {
+      "default_task": "P7-05",
+      "completion_task": "P7-05",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/platform/public_api.md"
+    },
+    "S26": {
+      "default_task": "P8-03",
+      "completion_task": "P8-03",
+      "section_routes": [],
+      "feature_ref": "docs/02_features/platform/internal_admin.md"
+    }
+  },
+  "tasks": [
+    {
+      "id": "P0-01",
+      "phase": "P0",
+      "title": "Bootstrap repo, toolchain và CI",
+      "depends_on": [],
+      "modules": [
+        "auth",
+        "M23"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Pin toolchains; web/admin/mobile/API/worker skeleton, local services and fail-closed CI.",
+      "acceptance": [
+        "Clean checkout bootstraps with documented commands",
+        "Failing command/smoke makes CI fail"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/auth.md",
+        "docs/02_features/platform/reporting_admin_billing.md",
+        "docs/05_system/tech_stack_adr.md",
+        "docs/06_quality_ops/docker_dev_environment.md",
+        "docs/06_quality_ops/ci_cd_pipeline.md"
+      ],
+      "packet": "build/phase-P0/p0-01/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P0/p0-01/manifest.json"
+      ]
+    },
+    {
+      "id": "P0-02",
+      "phase": "P0",
+      "title": "Transport, errors và request identity",
+      "depends_on": [
+        "P0-01"
+      ],
+      "modules": [
+        "S24",
+        "auth"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Compile common proto messages and TS/Rust/Dart clients; validation, pagination, error and idempotency middleware.",
+      "acceptance": [
+        "Three-language round trip",
+        "Changed payload with same key conflicts",
+        "Foreign cursor rejected"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/public_api.md",
+        "docs/02_features/platform/auth.md"
+      ],
+      "packet": "build/phase-P0/p0-02/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P0/p0-02/manifest.json"
+      ]
+    },
+    {
+      "id": "P0-03",
+      "phase": "P0",
+      "title": "Identity, workspace và personal onboarding",
+      "depends_on": [
+        "P0-02"
+      ],
+      "modules": [
+        "auth",
+        "M01"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Clerk session mapping, signup/recovery/MFA, invitations, workspace discovery and self-scoped progress.",
+      "acceptance": [
+        "Delayed user webhook does not block login",
+        "Non-owner discovers joined workspace",
+        "Recovery revokes sessions",
+        "Personal completion cannot change workspace settings"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/auth.md",
+        "docs/02_features/platform/home_decision_engine.md"
+      ],
+      "packet": "build/phase-P0/p0-03/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P0/p0-03/manifest.json"
+      ]
+    },
+    {
+      "id": "P0-04",
+      "phase": "P0",
+      "title": "Tenant schema, RBAC và private projections",
+      "depends_on": [
+        "P0-03"
+      ],
+      "modules": [
+        "auth",
+        "M23",
+        "S26"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Slice migrations, grants, direct RLS, tenant FKs and response filtering.",
+      "acceptance": [
+        "Two-tenant and direct-junction attacks denied",
+        "Last owner protected",
+        "Member revocation enforced",
+        "Private notes/secrets never serialized"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/auth.md",
+        "docs/02_features/platform/reporting_admin_billing.md",
+        "docs/02_features/platform/internal_admin.md"
+      ],
+      "packet": "build/phase-P0/p0-04/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P0/p0-04/manifest.json"
+      ]
+    },
+    {
+      "id": "P0-05",
+      "phase": "P0",
+      "title": "Outbox, inbox và unknown external effects",
+      "depends_on": [
+        "P0-04"
+      ],
+      "modules": [
+        "M23",
+        "S24"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Durable queues, audit, dedup, lease recovery and diagnostics.",
+      "acceptance": [
+        "Kill before/after commit and ACK",
+        "Duplicate webhook has one effect",
+        "Unresolved external result never blindly retried"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/reporting_admin_billing.md",
+        "docs/02_features/platform/public_api.md",
+        "docs/05_system/queue_retry_design.md"
+      ],
+      "packet": "build/phase-P0/p0-05/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P0/p0-05/manifest.json"
+      ]
+    },
+    {
+      "id": "P0-06",
+      "phase": "P0",
+      "title": "Credit lots, quotes và billing foundations",
+      "depends_on": [
+        "P0-05"
+      ],
+      "modules": [
+        "M23"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Versioned pricebook, lots, holds, debit/refund, expiry and billing sandbox.",
+      "acceptance": [
+        "Concurrent holds cannot overspend",
+        "Late result and cycle boundary preserve lots",
+        "Paid retry cannot exceed confirmed quote"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/reporting_admin_billing.md",
+        "docs/04_contracts/credit_accounting_contract.md"
+      ],
+      "packet": "build/phase-P0/p0-06/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P0/p0-06/manifest.json"
+      ]
+    },
+    {
+      "id": "P0-07",
+      "phase": "P0",
+      "title": "Capability và internal-admin isolation",
+      "depends_on": [
+        "P0-04",
+        "P0-05"
+      ],
+      "modules": [
+        "M22",
+        "S26"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Account/action verification registry; isolated admin MFA, audit, moderation and kill switch foundation.",
+      "acceptance": [
+        "Unverified route cannot execute",
+        "Workspace role cannot call admin listener",
+        "Impersonation is read-only"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/capability_matrix.md",
+        "docs/02_features/platform/internal_admin.md"
+      ],
+      "packet": "build/phase-P0/p0-07/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P0/p0-07/manifest.json"
+      ]
+    },
+    {
+      "id": "P0-08",
+      "phase": "P0",
+      "title": "Shells, notifications và help entry",
+      "depends_on": [
+        "P0-03",
+        "P0-07"
+      ],
+      "modules": [
+        "M01",
+        "help",
+        "M23"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Web/mobile/admin navigation, loading/empty/error/repair, i18n/a11y base, scoped notification/help.",
+      "acceptance": [
+        "Six mode identities retained",
+        "Unbuilt action unavailable with explanation",
+        "No demo data in customer totals"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/home_decision_engine.md",
+        "docs/02_features/platform/help_center.md",
+        "docs/02_features/platform/reporting_admin_billing.md"
+      ],
+      "packet": "build/phase-P0/p0-08/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P0/p0-08/manifest.json"
+      ]
+    },
+    {
+      "id": "P0-09",
+      "phase": "P0",
+      "title": "Foundation acceptance",
+      "depends_on": [
+        "P0-06",
+        "P0-08"
+      ],
+      "modules": [
+        "auth",
+        "S24"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Run P0 integration gates and evidence pack; auth complete, service identity ready.",
+      "acceptance": [
+        "Seed twice",
+        "All P0 security/credit/recovery cases pass",
+        "No future-phase RPC accidentally exposed"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/auth.md",
+        "docs/02_features/platform/public_api.md"
+      ],
+      "packet": "build/phase-P0/p0-09/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P0/p0-09/manifest.json"
+      ]
+    },
+    {
+      "id": "P1-01",
+      "phase": "P1",
+      "title": "Products, SKU và import preview",
+      "depends_on": [
+        "P0-09"
+      ],
+      "modules": [
+        "M13"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Canonical catalog, variants, import mapping/preview and product-content refs.",
+      "acceptance": [
+        "Two shops with same source ID remain separate",
+        "Repeated rows no-op",
+        "Invalid mappings need correction"
+      ],
+      "reading_refs": [
+        "docs/02_features/commerce/product_hub.md",
+        "docs/06_quality_ops/data_migration_strategy.md"
+      ],
+      "packet": "build/phase-P1/p1-01/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P1/p1-01/manifest.json"
+      ]
+    },
+    {
+      "id": "P1-02",
+      "phase": "P1",
+      "title": "Orders, stock ledger và reservations",
+      "depends_on": [
+        "P1-01"
+      ],
+      "modules": [
+        "M13"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Order ingestion/transitions, stock baselines, balances/holds and refund/return core.",
+      "acceptance": [
+        "Inventory I01–I10 on PostgreSQL",
+        "Historical imports do not double-deduct",
+        "Partial refund followed by full refund works"
+      ],
+      "reading_refs": [
+        "docs/02_features/commerce/product_hub.md",
+        "docs/04_contracts/inventory_computation_contract.md"
+      ],
+      "packet": "build/phase-P1/p1-02/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P1/p1-02/manifest.json"
+      ]
+    },
+    {
+      "id": "P1-03",
+      "phase": "P1",
+      "title": "Financial postings, FX và cost snapshots",
+      "depends_on": [
+        "P1-02"
+      ],
+      "modules": [
+        "M19"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Recognition, decimal/FX arithmetic, costs, settlement lines and correcting postings.",
+      "acceptance": [
+        "Independent F01–F09 values",
+        "Settlement fee not duplicated",
+        "Missing COGS never verified zero"
+      ],
+      "reading_refs": [
+        "docs/02_features/finance/operating_ledger.md",
+        "docs/04_contracts/financial_computation_contract.md"
+      ],
+      "packet": "build/phase-P1/p1-03/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P1/p1-03/manifest.json"
+      ]
+    },
+    {
+      "id": "P1-04",
+      "phase": "P1",
+      "title": "Reconciliation, evidence và repair queue",
+      "depends_on": [
+        "P1-03"
+      ],
+      "modules": [
+        "M19",
+        "M01"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Match capacity, immutable proof, source/confidence drilldown and permission-filtered data gaps.",
+      "acceptance": [
+        "Concurrent partial match cannot overallocate",
+        "Evidence modification denied",
+        "Finance gaps do not leak to Viewer"
+      ],
+      "reading_refs": [
+        "docs/02_features/finance/operating_ledger.md",
+        "docs/02_features/platform/home_decision_engine.md"
+      ],
+      "packet": "build/phase-P1/p1-04/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P1/p1-04/manifest.json"
+      ]
+    },
+    {
+      "id": "P1-05",
+      "phase": "P1",
+      "title": "First-value loop và payment replay",
+      "depends_on": [
+        "P1-04"
+      ],
+      "modules": [
+        "M01",
+        "M19",
+        "M23"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Web/mobile import-to-profit loop, configured local brief, billing replay and pilot instrumentation.",
+      "acceptance": [
+        "No connector required for authorized import",
+        "DST/timezone cannot double-deliver brief",
+        "Payment replay cannot double-grant",
+        "P1 pilot measurements record actual unknowns"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/home_decision_engine.md",
+        "docs/02_features/finance/operating_ledger.md",
+        "docs/02_features/platform/reporting_admin_billing.md"
+      ],
+      "packet": "build/phase-P1/p1-05/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P1/p1-05/manifest.json"
+      ]
+    },
+    {
+      "id": "P2-01",
+      "phase": "P2",
+      "title": "Signals, scoring, search và watchlists",
+      "depends_on": [
+        "P1-05"
+      ],
+      "modules": [
+        "M02"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Authorized ingestion, trend lineage, scoring/freshness, alerts and searchable watchlist.",
+      "acceptance": [
+        "Source unavailable shows degraded data",
+        "Threshold alerts deduplicate",
+        "Tenant-scoped semantic search"
+      ],
+      "reading_refs": [
+        "docs/02_features/intelligence/trend_radar.md"
+      ],
+      "packet": "build/phase-P2/p2-01/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P2/p2-01/manifest.json"
+      ]
+    },
+    {
+      "id": "P2-02",
+      "phase": "P2",
+      "title": "Competitor registry và benchmark",
+      "depends_on": [
+        "P2-01"
+      ],
+      "modules": [
+        "M03"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Competitor imports/on-demand analysis, pricing/format comparison, white-space and notes.",
+      "acceptance": [
+        "Inferred insight labeled",
+        "Stale snapshots visible",
+        "No assumed access to competitor finance"
+      ],
+      "reading_refs": [
+        "docs/02_features/intelligence/competitor_intelligence.md"
+      ],
+      "packet": "build/phase-P2/p2-02/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P2/p2-02/manifest.json"
+      ]
+    },
+    {
+      "id": "P2-03",
+      "phase": "P2",
+      "title": "Opportunity prioritization và ownership",
+      "depends_on": [
+        "P2-02"
+      ],
+      "modules": [
+        "M04"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Source links, scoring/reasons, state transitions, owners and Home intelligence.",
+      "acceptance": [
+        "Unassigned open items remain repairable",
+        "Concurrent assign/convert conflicts",
+        "No orphan opportunity"
+      ],
+      "reading_refs": [
+        "docs/02_features/intelligence/opportunity_board.md"
+      ],
+      "packet": "build/phase-P2/p2-03/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P2/p2-03/manifest.json"
+      ]
+    },
+    {
+      "id": "P2-04",
+      "phase": "P2",
+      "title": "Intelligence acceptance và access proof",
+      "depends_on": [
+        "P2-03"
+      ],
+      "modules": [
+        "M02",
+        "M03",
+        "M04",
+        "M22"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "P2 authorized-source and manual/import operating loop; downstream actions gated.",
+      "acceptance": [
+        "Every live source has access evidence",
+        "Future conversions remain assigned to later tasks",
+        "Empty/degraded/audit paths pass"
+      ],
+      "reading_refs": [
+        "docs/02_features/intelligence/trend_radar.md",
+        "docs/02_features/intelligence/competitor_intelligence.md",
+        "docs/02_features/intelligence/opportunity_board.md",
+        "docs/02_features/platform/capability_matrix.md"
+      ],
+      "packet": "build/phase-P2/p2-04/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P2/p2-04/manifest.json"
+      ]
+    },
+    {
+      "id": "P3-01",
+      "phase": "P3",
+      "title": "Ideas, hooks, dedup và mobile capture",
+      "depends_on": [
+        "P2-04"
+      ],
+      "modules": [
+        "M05"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Manual/trend/product ideas, hook bank, AI enrichment, state progression and capture.",
+      "acceptance": [
+        "Duplicate idea warns without silent merge",
+        "Source lineage retained",
+        "Mobile title-only draft works"
+      ],
+      "reading_refs": [
+        "docs/02_features/content/idea_engine.md"
+      ],
+      "packet": "build/phase-P3/p3-01/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P3/p3-01/manifest.json"
+      ]
+    },
+    {
+      "id": "P3-02",
+      "phase": "P3",
+      "title": "Scripts, approvals, versions và asset briefs",
+      "depends_on": [
+        "P3-01"
+      ],
+      "modules": [
+        "M06"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Structured scenes/shots, channel rewrite, approval conflict handling and production brief.",
+      "acceptance": [
+        "Stale approval fails",
+        "Rejection reason validated",
+        "Ready-for-production requires approval and complete brief"
+      ],
+      "reading_refs": [
+        "docs/02_features/content/script_lab.md"
+      ],
+      "packet": "build/phase-P3/p3-02/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P3/p3-02/manifest.json"
+      ]
+    },
+    {
+      "id": "P3-03",
+      "phase": "P3",
+      "title": "Continuity packs, characters và consent",
+      "depends_on": [
+        "P0-06",
+        "P3-02"
+      ],
+      "modules": [
+        "M08"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Versioned packs, references, character setup, consent and slot gating; production preview completed in P4.",
+      "acceptance": [
+        "Revoked consent blocks generation",
+        "Pack updates retain old lineage",
+        "Only one default character"
+      ],
+      "reading_refs": [
+        "docs/02_features/content/continuity_os.md"
+      ],
+      "packet": "build/phase-P3/p3-03/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P3/p3-03/manifest.json"
+      ]
+    },
+    {
+      "id": "P3-04",
+      "phase": "P3",
+      "title": "Copilot read/creative assistance",
+      "depends_on": [
+        "P3-03"
+      ],
+      "modules": [
+        "copilot"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Permission-filtered workspace Q&A, help and quoted draft generation.",
+      "acceptance": [
+        "Contributor cannot delete product",
+        "Read query cannot expose finance",
+        "Generated script needs quote confirmation"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/copilot.md"
+      ],
+      "packet": "build/phase-P3/p3-04/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P3/p3-04/manifest.json"
+      ]
+    },
+    {
+      "id": "P3-05",
+      "phase": "P3",
+      "title": "Content handoffs và mobile review acceptance",
+      "depends_on": [
+        "P3-04"
+      ],
+      "modules": [
+        "M02",
+        "M04",
+        "M05",
+        "M06",
+        "M01"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Trend/opportunity-to-idea/script flow and mobile approvals; validate P3 ACs.",
+      "acceptance": [
+        "Source chain reaches approved brief",
+        "Concurrent edits preserve data",
+        "No publish side effects from creative assistant"
+      ],
+      "reading_refs": [
+        "docs/02_features/intelligence/trend_radar.md",
+        "docs/02_features/intelligence/opportunity_board.md",
+        "docs/02_features/content/idea_engine.md",
+        "docs/02_features/content/script_lab.md",
+        "docs/02_features/platform/home_decision_engine.md"
+      ],
+      "packet": "build/phase-P3/p3-05/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P3/p3-05/manifest.json"
+      ]
+    },
+    {
+      "id": "P4-01",
+      "phase": "P4",
+      "title": "Production jobs, router và budgets",
+      "depends_on": [
+        "P3-05"
+      ],
+      "modules": [
+        "M07"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Durable jobs, bounded quotes, provider adapters, BYOK, lineage, upload safety and post-production.",
+      "acceptance": [
+        "Cancel/timeout/unknown-result recovery",
+        "Fallback no double charge",
+        "Budget preview and partial batch input validation"
+      ],
+      "reading_refs": [
+        "docs/02_features/production/ai_video_studio.md"
+      ],
+      "packet": "build/phase-P4/p4-01/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P4/p4-01/manifest.json"
+      ]
+    },
+    {
+      "id": "P4-02",
+      "phase": "P4",
+      "title": "Quick Edit",
+      "depends_on": [
+        "P4-01"
+      ],
+      "modules": [
+        "M07"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Text edits, captions, reframe, beat sync, B-roll, hook library and licensed audio.",
+      "acceptance": [
+        "Poor ASR can be repaired",
+        "Correct ratio/audio/subtitles",
+        "Deleted text maps to intended segment"
+      ],
+      "reading_refs": [
+        "docs/02_features/production/ai_video_studio.md"
+      ],
+      "packet": "build/phase-P4/p4-02/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P4/p4-02/manifest.json"
+      ]
+    },
+    {
+      "id": "P4-03",
+      "phase": "P4",
+      "title": "Clip Factory",
+      "depends_on": [
+        "P4-02"
+      ],
+      "modules": [
+        "M07"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Scene/transcript analysis, clip review, variants, scoring and batch outputs.",
+      "acceptance": [
+        "No speech uses visual path",
+        "Missing trend data labeled",
+        "Each clip has source lineage"
+      ],
+      "reading_refs": [
+        "docs/02_features/production/ai_video_studio.md"
+      ],
+      "packet": "build/phase-P4/p4-03/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P4/p4-03/manifest.json"
+      ]
+    },
+    {
+      "id": "P4-04",
+      "phase": "P4",
+      "title": "Multi-Merge và Remix",
+      "depends_on": [
+        "P4-01"
+      ],
+      "modules": [
+        "M07"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Multi-input timeline, creative-DNA analysis, licensed generation and originality gate.",
+      "acceptance": [
+        "One canonical similarity threshold",
+        "No unlicensed media bypass",
+        "Foreign/DRM source has usable error"
+      ],
+      "reading_refs": [
+        "docs/02_features/production/ai_video_studio.md"
+      ],
+      "packet": "build/phase-P4/p4-04/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P4/p4-04/manifest.json"
+      ]
+    },
+    {
+      "id": "P4-05",
+      "phase": "P4",
+      "title": "Showcase, Image/Link-to-Video và thumbnails",
+      "depends_on": [
+        "P4-03",
+        "P4-04"
+      ],
+      "modules": [
+        "M07"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "EF01–04 production modes; product context, safe URL fetch and thumbnails.",
+      "acceptance": [
+        "All listed styles/options",
+        "SSRF/unsafe source blocked",
+        "Missing product attributes explained"
+      ],
+      "reading_refs": [
+        "docs/02_features/production/ai_video_studio.md"
+      ],
+      "packet": "build/phase-P4/p4-05/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P4/p4-05/manifest.json"
+      ]
+    },
+    {
+      "id": "P4-06",
+      "phase": "P4",
+      "title": "Translation, sound và voice",
+      "depends_on": [
+        "P4-01",
+        "P3-03"
+      ],
+      "modules": [
+        "M07",
+        "M08"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "EF05–06 localization, dubbing, music/SFX/voice clone and post-production.",
+      "acceptance": [
+        "Consent required",
+        "Language/voice quality repair",
+        "Licensed input and measured quote"
+      ],
+      "reading_refs": [
+        "docs/02_features/production/ai_video_studio.md",
+        "docs/02_features/content/continuity_os.md"
+      ],
+      "packet": "build/phase-P4/p4-06/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P4/p4-06/manifest.json"
+      ]
+    },
+    {
+      "id": "P4-07",
+      "phase": "P4",
+      "title": "Style learning và complete continuity",
+      "depends_on": [
+        "P4-06"
+      ],
+      "modules": [
+        "M07",
+        "M08"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "EF07 style extraction/transfer, character preview, drift and reference/version QA.",
+      "acceptance": [
+        "15s preview quoted",
+        "High drift blocks readiness",
+        "Consent withdrawal prevents new use"
+      ],
+      "reading_refs": [
+        "docs/02_features/production/ai_video_studio.md",
+        "docs/02_features/content/continuity_os.md"
+      ],
+      "packet": "build/phase-P4/p4-07/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P4/p4-07/manifest.json"
+      ]
+    },
+    {
+      "id": "P4-08",
+      "phase": "P4",
+      "title": "Derivative library và packaging QA",
+      "depends_on": [
+        "P4-05",
+        "P4-07"
+      ],
+      "modules": [
+        "M09",
+        "M10"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Lineage/collections/bulk operations, QA components, presets, review and hard-block handling.",
+      "acceptance": [
+        "150-item partial batch results",
+        "No lineage → routing denied",
+        "Hard blocks cannot be workspace-overridden"
+      ],
+      "reading_refs": [
+        "docs/02_features/production/asset_derivatives.md",
+        "docs/02_features/production/packaging_qa.md"
+      ],
+      "packet": "build/phase-P4/p4-08/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P4/p4-08/manifest.json"
+      ]
+    },
+    {
+      "id": "P4-09",
+      "phase": "P4",
+      "title": "Production integration acceptance",
+      "depends_on": [
+        "P4-08"
+      ],
+      "modules": [
+        "M02",
+        "M07",
+        "M08",
+        "M09",
+        "M10",
+        "gamification"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Trend-to-remix integration, all core/EF01–07 production ACs, durable event hooks.",
+      "acceptance": [
+        "All four production modes exercised",
+        "Provider route evidence or honest disabled path",
+        "Future coaching/agent/gamification completion retained"
+      ],
+      "reading_refs": [
+        "docs/02_features/intelligence/trend_radar.md",
+        "docs/02_features/production/ai_video_studio.md",
+        "docs/02_features/content/continuity_os.md",
+        "docs/02_features/production/asset_derivatives.md",
+        "docs/02_features/production/packaging_qa.md",
+        "docs/02_features/platform/gamification.md"
+      ],
+      "packet": "build/phase-P4/p4-09/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P4/p4-09/manifest.json"
+      ]
+    },
+    {
+      "id": "P5-01",
+      "phase": "P5",
+      "title": "Publish calendar, scheduling và native/manual proof",
+      "depends_on": [
+        "P4-09"
+      ],
+      "modules": [
+        "M11"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Per-target jobs, approval/capability recheck, schedule fairness and manual fallback.",
+      "acceptance": [
+        "Never publish before schedule",
+        "Unknown submit reconciles",
+        "Manual proof retains graph",
+        "Token revoke pauses affected queued work"
+      ],
+      "reading_refs": [
+        "docs/02_features/publish/publish_hub.md"
+      ],
+      "packet": "build/phase-P5/p5-01/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P5/p5-01/manifest.json"
+      ]
+    },
+    {
+      "id": "P5-02",
+      "phase": "P5",
+      "title": "Inbox, entities, reply và SLA",
+      "depends_on": [
+        "P5-01"
+      ],
+      "modules": [
+        "M12"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Authorized message ingestion, triage, reply-as, assignments, suggestions and follow-up.",
+      "acceptance": [
+        "Messaging-window denial",
+        "Bot-loop/viral surge handling",
+        "Ghost messages and revoked account repair"
+      ],
+      "reading_refs": [
+        "docs/02_features/engagement/unified_inbox.md"
+      ],
+      "packet": "build/phase-P5/p5-02/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P5/p5-02/manifest.json"
+      ]
+    },
+    {
+      "id": "P5-03",
+      "phase": "P5",
+      "title": "Metrics, attribution và derivative feedback",
+      "depends_on": [
+        "P5-02"
+      ],
+      "modules": [
+        "M09",
+        "M19",
+        "S16"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Channel post metrics and attributed order links, source rollups and confidence.",
+      "acceptance": [
+        "Workspace revenue counted once",
+        "Missing denominators remain unknown",
+        "Imported proof not upgraded to official"
+      ],
+      "reading_refs": [
+        "docs/02_features/production/asset_derivatives.md",
+        "docs/02_features/finance/operating_ledger.md",
+        "docs/02_features/commerce/creator_pro_tools.md"
+      ],
+      "packet": "build/phase-P5/p5-03/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P5/p5-03/manifest.json"
+      ]
+    },
+    {
+      "id": "P5-04",
+      "phase": "P5",
+      "title": "Distribution/engagement acceptance",
+      "depends_on": [
+        "P5-03"
+      ],
+      "modules": [
+        "M11",
+        "M12",
+        "M22"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Web/mobile publish/inbox loop across verified and manual routes.",
+      "acceptance": [
+        "Five acceptance paths",
+        "Replay with one external result",
+        "Commerce/seeding actions retain P6 task links"
+      ],
+      "reading_refs": [
+        "docs/02_features/publish/publish_hub.md",
+        "docs/02_features/engagement/unified_inbox.md",
+        "docs/02_features/platform/capability_matrix.md"
+      ],
+      "packet": "build/phase-P5/p5-04/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P5/p5-04/manifest.json"
+      ]
+    },
+    {
+      "id": "P5-05",
+      "phase": "P5",
+      "title": "Experiment Lab và Performance Coach",
+      "depends_on": [
+        "P5-04"
+      ],
+      "modules": [
+        "M07",
+        "M10"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "EF09–10 analytics, thumbnails/video experiments and improvement feedback.",
+      "acceptance": [
+        "Low exposure → inconclusive",
+        "Observational label retained",
+        "Scaling rechecks M11 gates"
+      ],
+      "reading_refs": [
+        "docs/02_features/production/ai_video_studio.md",
+        "docs/02_features/production/packaging_qa.md"
+      ],
+      "packet": "build/phase-P5/p5-05/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P5/p5-05/manifest.json"
+      ]
+    },
+    {
+      "id": "P6-01",
+      "phase": "P6",
+      "title": "Offers, coupons, campaigns và experiments",
+      "depends_on": [
+        "P5-05"
+      ],
+      "modules": [
+        "M14"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Pricing/lifecycle, coupon redemption limits, campaign budgets and monetization coordination.",
+      "acceptance": [
+        "Expired offer rejected at checkout",
+        "Coupon races do not exceed limits",
+        "Financial impact reaches ledger"
+      ],
+      "reading_refs": [
+        "docs/02_features/commerce/monetization_os.md"
+      ],
+      "packet": "build/phase-P6/p6-01/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P6/p6-01/manifest.json"
+      ]
+    },
+    {
+      "id": "P6-02",
+      "phase": "P6",
+      "title": "Store, checkout, digital delivery và memberships",
+      "depends_on": [
+        "P6-01",
+        "P1-02"
+      ],
+      "modules": [
+        "M15",
+        "M13"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Store builder/domain/SEO/widgets, bundles, buyer entitlements and payment integration.",
+      "acceptance": [
+        "Bundle stock atomic",
+        "Payment replay no duplicate delivery",
+        "Buyer subscription cannot unlock SaaS privileges"
+      ],
+      "reading_refs": [
+        "docs/02_features/commerce/creator_store.md",
+        "docs/02_features/commerce/product_hub.md"
+      ],
+      "packet": "build/phase-P6/p6-02/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P6/p6-02/manifest.json"
+      ]
+    },
+    {
+      "id": "P6-03",
+      "phase": "P6",
+      "title": "Affiliate links, attribution và payouts",
+      "depends_on": [
+        "P6-01"
+      ],
+      "modules": [
+        "M16",
+        "M19"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Creator assignments, links/coupons, statement imports, commissions/reversals and payout proof.",
+      "acceptance": [
+        "Creator income distinct from seller expense",
+        "Ambiguous attribution labeled",
+        "Broken link repair"
+      ],
+      "reading_refs": [
+        "docs/02_features/commerce/affiliate_network.md",
+        "docs/02_features/finance/operating_ledger.md"
+      ],
+      "packet": "build/phase-P6/p6-03/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P6/p6-03/manifest.json"
+      ]
+    },
+    {
+      "id": "P6-04",
+      "phase": "P6",
+      "title": "Creator Pro v1 và brand deals",
+      "depends_on": [
+        "P6-03"
+      ],
+      "modules": [
+        "S16",
+        "M16"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Bio pages, media kits, rate cards, deal proof, content ROI and exports.",
+      "acceptance": [
+        "Canonical deal lifecycle",
+        "Phishing cannot be acknowledged away",
+        "Zero-view RPM undefined",
+        "All six modes can reach entitled tools"
+      ],
+      "reading_refs": [
+        "docs/02_features/commerce/creator_pro_tools.md",
+        "docs/02_features/commerce/affiliate_network.md"
+      ],
+      "packet": "build/phase-P6/p6-04/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P6/p6-04/manifest.json"
+      ]
+    },
+    {
+      "id": "P6-05",
+      "phase": "P6",
+      "title": "Live War Room và post-live highlights",
+      "depends_on": [
+        "P6-01",
+        "P5-02"
+      ],
+      "modules": [
+        "M17",
+        "M09"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Run-of-show, cues, live pin/manual controls, highlights and proof summary.",
+      "acceptance": [
+        "Reconnect does not duplicate commands",
+        "M07 extracts, M09 registers clips",
+        "Revenue traceable and labeled"
+      ],
+      "reading_refs": [
+        "docs/02_features/commerce/live_war_room.md",
+        "docs/02_features/production/asset_derivatives.md"
+      ],
+      "packet": "build/phase-P6/p6-05/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P6/p6-05/manifest.json"
+      ]
+    },
+    {
+      "id": "P6-06",
+      "phase": "P6",
+      "title": "Seeding CRM và costs/outcomes",
+      "depends_on": [
+        "P6-03",
+        "P5-02"
+      ],
+      "modules": [
+        "M18"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Roster/sample requests, shipments, follow-up, content outcomes and seeding ROI.",
+      "acceptance": [
+        "Request/shipment/outcome states separate",
+        "Missing outcome not definitive zero",
+        "Replay no duplicate sample cost"
+      ],
+      "reading_refs": [
+        "docs/02_features/commerce/seeding_crm.md"
+      ],
+      "packet": "build/phase-P6/p6-06/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P6/p6-06/manifest.json"
+      ]
+    },
+    {
+      "id": "P6-07",
+      "phase": "P6",
+      "title": "Fulfillment/refund and finance adapters",
+      "depends_on": [
+        "P6-02",
+        "P6-04",
+        "P6-05",
+        "P6-06"
+      ],
+      "modules": [
+        "M13",
+        "M19"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Complete commerce platform adapters, physical returns, partial refunds and stock/ledger reconciliation.",
+      "acceptance": [
+        "I01–I10 plus payment races",
+        "Correcting fees preserve proof",
+        "No double refund/restock"
+      ],
+      "reading_refs": [
+        "docs/02_features/commerce/product_hub.md",
+        "docs/02_features/finance/operating_ledger.md"
+      ],
+      "packet": "build/phase-P6/p6-07/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P6/p6-07/manifest.json"
+      ]
+    },
+    {
+      "id": "P6-08",
+      "phase": "P6",
+      "title": "Cross-domain commerce conversions",
+      "depends_on": [
+        "P6-07"
+      ],
+      "modules": [
+        "M04",
+        "M05",
+        "M12"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Opportunity/idea/thread → campaign/live/offer/seeding/deal with shared lineage.",
+      "acceptance": [
+        "Each target permission rechecked",
+        "Failed conversion atomic",
+        "Source survives conversion"
+      ],
+      "reading_refs": [
+        "docs/02_features/intelligence/opportunity_board.md",
+        "docs/02_features/content/idea_engine.md",
+        "docs/02_features/engagement/unified_inbox.md"
+      ],
+      "packet": "build/phase-P6/p6-08/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P6/p6-08/manifest.json"
+      ]
+    },
+    {
+      "id": "P6-09",
+      "phase": "P6",
+      "title": "Commerce acceptance across web/mobile",
+      "depends_on": [
+        "P6-08"
+      ],
+      "modules": [
+        "M04",
+        "M05",
+        "M09",
+        "M12",
+        "M13",
+        "M14",
+        "M15",
+        "M16",
+        "M17",
+        "M18",
+        "S16"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Complete owning P6 ACs, operational repairs, mobile execution and scope reconciliation.",
+      "acceptance": [
+        "No function lost between modules",
+        "Partial/unreconciled outcomes visible",
+        "Actual provider/payment/shipping gate evidence"
+      ],
+      "reading_refs": [
+        "docs/02_features/intelligence/opportunity_board.md",
+        "docs/02_features/content/idea_engine.md",
+        "docs/02_features/production/asset_derivatives.md",
+        "docs/02_features/engagement/unified_inbox.md",
+        "docs/02_features/commerce/product_hub.md",
+        "docs/02_features/commerce/monetization_os.md",
+        "docs/02_features/commerce/creator_store.md",
+        "docs/02_features/commerce/affiliate_network.md",
+        "docs/02_features/commerce/live_war_room.md",
+        "docs/02_features/commerce/seeding_crm.md",
+        "docs/02_features/commerce/creator_pro_tools.md"
+      ],
+      "packet": "build/phase-P6/p6-09/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P6/p6-09/manifest.json"
+      ]
+    },
+    {
+      "id": "P7-01",
+      "phase": "P7",
+      "title": "Workflow builder và complete node model",
+      "depends_on": [
+        "P6-09"
+      ],
+      "modules": [
+        "M20"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Owned canvas or entitled adapter; all triggers/nodes, validation, versions and imports.",
+      "acceptance": [
+        "Cycle/unbounded graph rejected",
+        "Every node type round trip",
+        "No embedding license assumed"
+      ],
+      "reading_refs": [
+        "docs/02_features/automation/workflow_studio.md"
+      ],
+      "packet": "build/phase-P7/p7-01/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P7/p7-01/manifest.json"
+      ]
+    },
+    {
+      "id": "P7-02",
+      "phase": "P7",
+      "title": "Workflow runtime, preflight và approvals",
+      "depends_on": [
+        "P7-01"
+      ],
+      "modules": [
+        "M20"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Simulation, scoped execution, waits/approval expiry, resume/fallback/diagnostics and DLQ.",
+      "acceptance": [
+        "Simulation has no business effects",
+        "Changed action invalidates approval",
+        "Resume never replays confirmed effect"
+      ],
+      "reading_refs": [
+        "docs/02_features/automation/workflow_studio.md"
+      ],
+      "packet": "build/phase-P7/p7-02/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P7/p7-02/manifest.json"
+      ]
+    },
+    {
+      "id": "P7-03",
+      "phase": "P7",
+      "title": "Recipe marketplace và governance",
+      "depends_on": [
+        "P7-02"
+      ],
+      "modules": [
+        "M21"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Install editable workflows, review/rating/versioning, submission/takedown and revenue share.",
+      "acceptance": [
+        "Install preserves canonical graph",
+        "Missing capability explained",
+        "Tenant/system template isolation"
+      ],
+      "reading_refs": [
+        "docs/02_features/automation/recipe_agent_center.md"
+      ],
+      "packet": "build/phase-P7/p7-03/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P7/p7-03/manifest.json"
+      ]
+    },
+    {
+      "id": "P7-04",
+      "phase": "P7",
+      "title": "Agent runtime, Video Agent và Copilot actions",
+      "depends_on": [
+        "P7-03"
+      ],
+      "modules": [
+        "M21",
+        "M07",
+        "copilot"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Planning, bounded memory, approvals, budgets, handoff and one-click production orchestration.",
+      "acceptance": [
+        "Every step checks delegated permissions",
+        "Budget ceiling pauses",
+        "Partial failure has audited handoff"
+      ],
+      "reading_refs": [
+        "docs/02_features/automation/recipe_agent_center.md",
+        "docs/02_features/production/ai_video_studio.md",
+        "docs/02_features/platform/copilot.md"
+      ],
+      "packet": "build/phase-P7/p7-04/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P7/p7-04/manifest.json"
+      ]
+    },
+    {
+      "id": "P7-05",
+      "phase": "P7",
+      "title": "Public API, webhooks và automation acceptance",
+      "depends_on": [
+        "P7-04"
+      ],
+      "modules": [
+        "S24",
+        "M20",
+        "M21"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Developer scopes/keys/rotation, outbound signatures/retries, quotas and P7 acceptance.",
+      "acceptance": [
+        "Read-only key cannot mutate",
+        "Replay-safe outbound webhook",
+        "All automation node/agent outcomes pass"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/public_api.md",
+        "docs/02_features/automation/workflow_studio.md",
+        "docs/02_features/automation/recipe_agent_center.md"
+      ],
+      "packet": "build/phase-P7/p7-05/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P7/p7-05/manifest.json"
+      ]
+    },
+    {
+      "id": "P8-01",
+      "phase": "P8",
+      "title": "Six-mode Home, mobile parity và onboarding completion",
+      "depends_on": [
+        "P7-05"
+      ],
+      "modules": [
+        "M01"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Complete decision/brief/learning paths and shared web/mobile surfaces.",
+      "acceptance": [
+        "All six mode priorities",
+        "First-value and full-loop completion distinct",
+        "Every shared UI state and route mapped"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/home_decision_engine.md"
+      ],
+      "packet": "build/phase-P8/p8-01/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P8/p8-01/manifest.json"
+      ]
+    },
+    {
+      "id": "P8-02",
+      "phase": "P8",
+      "title": "Full billing, reporting, retention và cost economics",
+      "depends_on": [
+        "P8-01"
+      ],
+      "modules": [
+        "M23",
+        "M19"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "All payment methods behind access gates, add-ons, trial/dunning, exports/retention and complete financial reports.",
+      "acceptance": [
+        "Cancellation differs from dunning",
+        "Purchased credits preserved",
+        "Restore/export/erase evidence",
+        "Measured cohort economics"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/reporting_admin_billing.md",
+        "docs/02_features/finance/operating_ledger.md"
+      ],
+      "packet": "build/phase-P8/p8-02/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P8/p8-02/manifest.json"
+      ]
+    },
+    {
+      "id": "P8-03",
+      "phase": "P8",
+      "title": "Internal admin, ops và capability completion",
+      "depends_on": [
+        "P8-02"
+      ],
+      "modules": [
+        "S26",
+        "M22"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Complete moderation/support/fraud/config/jobs/analytics tools and proactive capability coaching.",
+      "acceptance": [
+        "Privileged role boundaries",
+        "Hard-block appeal audit",
+        "Technical health distinct from business metrics"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/internal_admin.md",
+        "docs/02_features/platform/capability_matrix.md"
+      ],
+      "packet": "build/phase-P8/p8-03/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P8/p8-03/manifest.json"
+      ]
+    },
+    {
+      "id": "P8-04",
+      "phase": "P8",
+      "title": "Help, changelog, beta, status và support",
+      "depends_on": [
+        "P8-03"
+      ],
+      "modules": [
+        "help"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Full KB authoring/review, contextual help, beta/changelog/status and support SLAs.",
+      "acceptance": [
+        "Stale article review",
+        "Beta grant once",
+        "Incident notifications and subscription privacy"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/help_center.md"
+      ],
+      "packet": "build/phase-P8/p8-04/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P8/p8-04/manifest.json"
+      ]
+    },
+    {
+      "id": "P8-05",
+      "phase": "P8",
+      "title": "Referral, commissions và anti-fraud",
+      "depends_on": [
+        "P8-02"
+      ],
+      "modules": [
+        "referral"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Full referral tiers, qualification/hold/reversal, prompts and growth analytics.",
+      "acceptance": [
+        "No immediate qualified reward on pending payment",
+        "Self-referral held for review",
+        "Replay/refund reverses once"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/referral_growth.md"
+      ],
+      "packet": "build/phase-P8/p8-05/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P8/p8-05/manifest.json"
+      ]
+    },
+    {
+      "id": "P8-06",
+      "phase": "P8",
+      "title": "Gamification và style-template sharing",
+      "depends_on": [
+        "P8-04",
+        "P8-05"
+      ],
+      "modules": [
+        "gamification",
+        "M07",
+        "M21"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "All XP/streak/quest/achievement rules and EF11; retained style-pack marketplace extension through recipe governance.",
+      "acceptance": [
+        "Per-user progress",
+        "Reward event replay once",
+        "Licensed template install clones tenant-owned pack",
+        "No private source media in shared style template"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/gamification.md",
+        "docs/02_features/production/ai_video_studio.md",
+        "docs/02_features/automation/recipe_agent_center.md"
+      ],
+      "packet": "build/phase-P8/p8-06/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P8/p8-06/manifest.json"
+      ]
+    },
+    {
+      "id": "P8-07",
+      "phase": "P8",
+      "title": "Competitor monitoring và brand collaboration expansion",
+      "depends_on": [
+        "P8-03",
+        "P8-06"
+      ],
+      "modules": [
+        "M03",
+        "S16"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Authorized continuous alerts, deal kanban, contract templates and opt-in creator directory/inquiries.",
+      "acceptance": [
+        "No source access → paused/import path",
+        "Opt-out removes public snapshot immediately",
+        "Sponsor cannot read private workspace; directory_reader cannot read hidden snapshots even with a forged tenant session setting",
+        "Contract versions immutable"
+      ],
+      "reading_refs": [
+        "docs/02_features/intelligence/competitor_intelligence.md",
+        "docs/02_features/commerce/creator_pro_tools.md"
+      ],
+      "packet": "build/phase-P8/p8-07/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P8/p8-07/manifest.json"
+      ]
+    },
+    {
+      "id": "P8-08",
+      "phase": "P8",
+      "title": "Security, accessibility, load và release rehearsal",
+      "depends_on": [
+        "P8-07"
+      ],
+      "modules": [
+        "M23",
+        "S26"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Full-surface a11y/i18n, security/load/restore/rollback and provider/legal review.",
+      "acceptance": [
+        "Real restore and failing smoke",
+        "No stale provider/license evidence",
+        "Tenant/privacy tests across public and internal paths"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/reporting_admin_billing.md",
+        "docs/02_features/platform/internal_admin.md",
+        "docs/06_quality_ops/accessibility_spec.md",
+        "docs/06_quality_ops/performance_benchmarks.md",
+        "docs/06_quality_ops/security_threat_model.md",
+        "docs/06_quality_ops/runbook.md"
+      ],
+      "packet": "build/phase-P8/p8-08/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P8/p8-08/manifest.json"
+      ]
+    },
+    {
+      "id": "P8-09",
+      "phase": "P8",
+      "title": "Full-scope acceptance và handoff",
+      "depends_on": [
+        "P8-08"
+      ],
+      "modules": [
+        "M01",
+        "M23"
+      ],
+      "status": "SPECIFIED",
+      "deliverable": "Reconcile every section, PRD-derived AC, screen action, RPC and retained extension; evidence-backed release decision.",
+      "acceptance": [
+        "Zero uncovered requirements",
+        "No stub success or untracked remaining scope",
+        "Unmet external gate remains explicit, no full launch claim"
+      ],
+      "reading_refs": [
+        "docs/02_features/platform/home_decision_engine.md",
+        "docs/02_features/platform/reporting_admin_billing.md"
+      ],
+      "packet": "build/phase-P8/p8-09/manifest.json",
+      "contract_refs": [
+        "docs/04_contracts/api_behavior_contracts.md",
+        "docs/04_contracts/database_schema.md",
+        "docs/04_contracts/rpc_permission_bindings.csv",
+        "docs/04_contracts/domain_event_catalog.md"
+      ],
+      "required_outputs": [
+        "Compiled typed RPC packet and validations for touched surface",
+        "Slice migration/grants and deterministic fixtures",
+        "Working vertical flow with web/mobile states where applicable",
+        "Five-path, permission and replay evidence at build/phase-P8/p8-09/manifest.json"
+      ]
+    }
+  ]
+}

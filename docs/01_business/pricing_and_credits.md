@@ -2,7 +2,7 @@
 layer: business
 canonical: true
 source: creativanta_pricing_credits_growth_contract_v_3_1.md
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 # Pricing & Credits
@@ -116,7 +116,7 @@ Implementation notes:
 > - **Subscription credits** (monthly allocation) follow the rollover rules above — unused credits expire or roll over per tier policy.
 > - **Purchased credit packs** (one-time buy) **NEVER expire** and are **NOT subject to rollover limits**. They remain in the workspace balance indefinitely until consumed.
 > - **Consumption order**: Subscription credits are consumed before purchased pack credits (earliest expiry first); expiring promotional grants are consumed before subscription lots. This ensures purchased credits serve as a reserve buffer.
-> - **Display**: Workspace credit balance MUST show breakdown: `{subscription_remaining} + {purchased_remaining} = {total_available}`.
+> - **Display**: Workspace credit balance MUST use the complete CreditBalance projection in API behavior contracts: all source lots, total remaining, reserved and spendable available. Subscription plus purchased alone omits promotional/overage lots and held amounts.
 
 ### 2.3 Credit Reservation
 

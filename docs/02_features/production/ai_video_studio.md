@@ -4,7 +4,7 @@ module: M07
 canonical: true
 domain: production
 status: SPECIFIED
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 # Feature: AI Video Studio (M07)
@@ -48,13 +48,13 @@ M07 exists as the **unified AI production engine** that orchestrates multi-provi
 ## Business Rules
 
 1. **RULE-M07-001**: Every generated asset MUST carry full lineage: `source_provider`, `source_model`, `generation_prompt`, `continuity_pack_ids`, `generation_cost_credits`, and `generation_cost_usd`. Assets without lineage are invalid (PRD §23.7 AC, Pack 04 §6).
-2. **RULE-M07-002**: Generation failure MUST produce a usable explanation via `generation_jobs.error_message` + `error_code`, and auto-fallback to secondary provider if available. Fallback does NOT change the lineage provider — the new attempt creates a new `generation_jobs` row (Pack 04 §11, ai_provider_guide §7).
+2. **RULE-M07-002**: Generation failure MUST produce a usable explanation via `generation_jobs.error_message` + `error_code`, and auto-fallback to secondary provider if available. Fallback preserves original-attempt history and records the actual successful provider in output lineage; attempts remain bound to one authorized operation/reservation (Pack 04 §11, ai_provider_guide §7).
 3. **RULE-M07-003**: AI Remix output MUST pass originality check: script similarity < 30% vs reference original. If similarity ≥ 30%, the remix is blocked with "Output too similar to reference. [Adjust settings] or [Try 'Loose inspiration' fidelity]." NO footage or audio from the reference is used — only analysis data (Pack 04 §9.5.6).
 4. **RULE-M07-004**: Clip Factory Virality Score MUST use live data from Trend Engine (M02/M03) for the Content Relevance component (10% weight). Scores computed without trend data MUST be flagged: "Score based on pattern only — trend data unavailable." This is a competitive differentiator (Pack 04 §9.3.3).
 5. **RULE-M07-005**: All video output MUST pass through post-production mix: audio normalization (-14 LUFS target), aspect ratio compliance, subtitle overlay if enabled. Output that skips post-production is non-compliant (Pack 04 §2.4).
 6. **RULE-M07-006**: Generation cost MUST be estimated and shown to the user BEFORE triggering generation. User MUST confirm the estimated credit cost. Actual cost is reconciled after completion (PRD §23.7 AC, ai_provider_guide §2.3).
 7. **RULE-M07-007**: `generation_jobs.status` and `assets.generation_state` MUST be updated atomically. `assets.generation_state` is derived from the most recent `generation_jobs.status` — they are NOT independent (DB schema §7.4 State Sync Rule).
-8. **RULE-M07-008**: Multi-Merge compliance scan MUST pass before export. Blocked results cannot proceed to M10/M11 without explicit Manager+ override with reason (Pack 04 §9.4, Pack 04 §8.3).
+8. **RULE-M07-008**: Multi-Merge compliance scan MUST pass before export. Reviewable results require Manager+ override with reason; hard blocks remain non-overridable under the moderation contract (Pack 04 §9.4, Pack 04 §8.3).
 
 ---
 
@@ -121,7 +121,7 @@ Score = Engagement Pattern Match (30%)   ← from Trend Engine M02/M03
 
 **Auto-transition rules**: Image→Image: Ken Burns + 0.5-1s; Video→Video: crossfade 0.3-0.5s; Image→Video: fade-in 0.5s; Beat-sync override if music selected.
 
-**Edge Case (EC-M07-M01)**: User uploads copyrighted music → ACRCloud detects → show "⚠️ Music detected as copyrighted: [Song Name]. [Replace with royalty-free] or [Proceed at risk]." If user proceeds, compliance flag set on output.
+**Edge Case (EC-M07-M01)**: User uploads copyrighted music → ACRCloud detects → show "⚠️ Music detected as copyrighted: [Song Name]. [Replace with licensed audio] or [Submit license for review]." A detected match is reviewed against license evidence; confirmed rights/policy violations cannot be bypassed by accepting risk.
 
 ### Mode 4: AI Remix Studio (ref→new)
 
@@ -144,7 +144,7 @@ Side-by-side preview (original vs remix), per-scene editing, compliance scan, Vi
 | Script similarity < 30% | LLM text similarity check — block if exceeded |
 | No footage reuse | Only analysis data passed to generation |
 | No audio reuse | Always generate new voice + music |
-| Originality score | Block if > 70% transcript similarity |
+| Originality score | Same script-similarity gate as RULE-M07-003; no separate 70% bypass threshold |
 | Abuse detection | Max 20 remixes/day/workspace rate limit |
 
 **Edge Case (EC-M07-R01)**: Reference video URL is geo-blocked or DRM-protected → download fails → show "Cannot access video at this URL. [Upload video file instead] or [Try different URL]." No partial analysis occurs.
@@ -192,8 +192,14 @@ Side-by-side preview (original vs remix), per-scene editing, compliance scan, Vi
 ### EF-07: AI Style Learning & Transfer
 - Upload video with desirable style → AI extracts: caption style, color grade, transition timing, pacing, text overlay, audio mix
 - Save as "Style Pack" → integrates with Continuity OS (M08) alongside Brand Pack / Character Pack
-- Future: Style Pack Marketplace (community share/sell)
+- Community sharing/selling remains committed through EF-07A and M21 governance
 - Credits: 10-20 per style extraction
+
+### EF-07A: Style Pack Marketplace
+- Publish a consented, licensed style-settings snapshot through M21 recipe review and pricing; no private reference footage, cloned identity or voice is included.
+- Install clones a new tenant-owned continuity style pack plus editable application workflow. Updates create a new reviewed version; never silently rewrite installed packs or old lineage.
+- Takedown stops new installs; existing copies follow the recorded license and moderation decision, with traceable notice. Sharing a style does not transfer copyright in its source media.
+- Acceptance: foreign tenant assets are inaccessible; a repeat purchase/install cannot double-charge or duplicate the same installation; a changed template version needs explicit update. See M21's Style template extension and schema §27.4.
 
 ### EF-08: AI Video Agent (1-Click Pipeline)
 - User describes idea in 1 sentence → Agent orchestrates full pipeline → video ready to publish
@@ -210,7 +216,7 @@ Side-by-side preview (original vs remix), per-scene editing, compliance scan, Vi
 
 ### EF-10: Video A/B Testing Engine
 - AI generates variations (hook, CTA, thumbnail, music) → publish all → monitor 24-72h → auto-report winner
-- Auto-scale winner (re-schedule to more platforms)
+- Offer scaling only for an eligible result under M10; execute through M11 consent/capability or P7 bounded delegation
 - Uses M10 Experiment Lab for variant tracking
 - Credits: 5-15 per variant
 
@@ -244,8 +250,8 @@ see [04_contracts/database_schema.md#7.4](../../04_contracts/database_schema.md)
 ## Edge Cases
 
 ### EC-M07-001: Provider Circuit Breaker During Active Job
-- Condition: Veo 3.1 circuit breaks mid-generation (3 consecutive failures within 300s)
-- Expected behavior: Current job marked `failed` with `error_code = 'circuit_breaker'`. System auto-queues retry with fallback provider (Kling 3.0). New `generation_jobs` row created with `provider = 'kling'`. User notified: "Primary provider temporarily unavailable. Retrying with alternative provider." Lineage correctly tracks the provider switch.
+- Condition: The active provider opens its configured circuit breaker while a generation is in flight
+- Expected behavior: Preserve an unknown in-flight outcome and reconcile it before retry. Only a definitive failure may take an allowed fallback under the existing quote/consent ceiling. Record every attempt and the successful provider lineage. Notify the user whether status is being checked, a permitted fallback is running, or fresh consent is needed.
 - Reference: ai_provider_guide §7, Pack 04 §2.2
 
 ### EC-M07-002: Cost Estimation Exceeds User Credit Balance
@@ -290,7 +296,7 @@ see [04_contracts/database_schema.md#7.4](../../04_contracts/database_schema.md)
 
 1. **Given** a user triggers video generation with estimated cost of 15 credits, **when** the confirmation dialog appears, **then** it MUST show "Estimated cost: 15 credits. Your balance: [N] credits. [Generate] [Cancel]" — and the system MUST NOT start the job until the user confirms.
 
-2. **Given** Veo 3.1 fails 3 times in 5 minutes, **when** the circuit breaker activates, **then** the system MUST auto-retry the failed job with Kling 3.0 (fallback provider) — the new job row MUST have `provider = 'kling'` and the original job MUST have `error_code = 'circuit_breaker'`.
+2. **Given** the configured video-provider circuit breaker opens after definitive failures, **when** a permitted fallback is available within the confirmed quote and consent, **then** the system MUST record the fallback attempt and actual provider lineage without a second debit. An unknown prior result MUST be reconciled before resubmission; a costlier route requires a new confirmation.
 
 3. **Given** Clip Factory processes a 30-minute video, **when** clips are scored, **then** the Virality Score for each clip MUST include a Content Relevance component (10% weight) sourced from Trend Engine (M02/M03) — if trend data is unavailable, the score MUST carry a "⚠️ Pattern-only" badge.
 
@@ -311,3 +317,11 @@ see [04_contracts/database_schema.md#7.4](../../04_contracts/database_schema.md)
 ## Open Questions
 
 - **Resolved namespace**: use the existing canonical `gamification.voice_clone.created` and `gamification.voice_clone.ready` names verbatim from domain_event_catalog.md. Their namespace is historical; do not rename by aesthetic preference or emit a second parallel production/continuity event.
+
+## Production budget and readiness improvements
+
+Before a batch, show the complete bounded credit quote, number/duration of outputs, licensed input/consent gaps, and retry/cancel behavior. Offer a single-output preview before confirming the remaining batch; this is optional and separately quoted, never an unannounced extra charge. Existing confirmed reservations remain the spend authority.
+
+Provider/model names and credit ranges in mode examples are illustrative candidates; availability and current price come from verified routing and the pricebook. Scores are ranking aids, never guarantees of virality, sales or originality rights. The similarity threshold is a product heuristic, not proof of copyright clearance.
+
+Given a 20-product batch with one invalid input, preview identifies the row and lets the user confirm only valid rows; no invalid row is charged. Given an expired quote or changed quantity, confirmation requires a fresh quote. EF-08, EF-09/10 and EF-11 complete with their downstream agent, publish/experiment and gamification dependencies in the task backlog; P4 production acceptance alone does not accept all M07 extensions.

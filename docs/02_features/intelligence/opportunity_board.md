@@ -4,7 +4,7 @@ module: M04
 canonical: true
 domain: intelligence
 status: SPECIFIED
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 # Feature: Opportunity Board (M04)
@@ -51,8 +51,8 @@ M04 exists to be the bridge between intelligence (M02/M03) and execution (M05/M0
 > INVARIANTS — rút từ PRD §13.1, §23.4, Pack 02 §9.1 AC. Bắt buộc implement đúng.
 
 1. **RULE-M04-001**: Every Opportunity MUST map back to at least one source object (trend, signal, competitor entity, product opportunity, or thread) via `opportunity_sources` junction table. Orphan opportunities without source provenance are forbidden (PRD §12.3: "Mỗi Opportunity phải map được về ít nhất một source object", §23.4 AC).
-2. **RULE-M04-002**: Every Opportunity MUST have an `owner_user_id` once it transitions beyond `draft` state. Unowned opportunities in `open` or later states MUST trigger a system prompt to assign an owner (PRD §23.4 AC: "opportunity phải có owner và status").
-3. **RULE-M04-003**: Every Opportunity MUST have either a `priority_reason` (text explanation) OR a `confidence` context explaining why it's at its current priority. Opportunities without any priority justification are not valid for board display (PRD §23.4 AC: "opportunity phải có priority reason hoặc confidence context", PRD §13.1).
+2. **RULE-M04-002**: Every Opportunity MUST have an `owner_user_id` before entering `assigned` or execution states. Open/prioritized opportunities may await assignment and MUST display an assign-owner prompt (PRD §23.4 AC: "opportunity phải có owner và status").
+3. **RULE-M04-003**: Every Opportunity MUST have either a `priority_reason` (text explanation) OR a `confidence` context explaining why it's at its current priority. Opportunities without priority justification remain visible with a repair warning, but cannot be promoted to prioritized or execution states (PRD §23.4 AC: "opportunity phải có priority reason hoặc confidence context", PRD §13.1).
 4. **RULE-M04-004**: State transitions MUST follow the defined state machine — skipping states is forbidden. The `converted_to_type` and `converted_to_id` fields MUST be populated when transitioning to `converted` state (DB schema §5.4).
 5. **RULE-M04-005**: Expected profit estimation MUST carry `confidence` band and `source_class`. Estimated profit MUST NOT be displayed as finalized truth — UI MUST show "Estimate" badge with explanation of assumptions (PRD §15.1, §15.2).
 6. **RULE-M04-006**: Conversion to downstream objects MUST preserve the source lineage. When an opportunity converts to an idea, the idea's `idea_sources` table MUST reference the opportunity. When converting to a campaign, the campaign MUST reference the opportunity as origin.
@@ -133,7 +133,7 @@ see [04_contracts/database_schema.md#5.4](../../04_contracts/database_schema.md)
 |---|---|---|---|
 | — | draft | Opportunity created (manual or auto) | Source refs populated |
 | draft | open | User validates and opens | `title` + `summary` filled |
-| open | prioritized | User scores impact/effort | `expected_impact` + `expected_effort` set |
+| open | prioritized | User scores impact/effort | `expected_impact` + `expected_effort` and priority justification set |
 | prioritized | assigned | Manager assigns owner | `owner_user_id` set (Manager+ role) |
 | assigned | in_progress | Owner starts execution | Owner confirms active work |
 | in_progress | converted | User converts to idea/script/campaign | `converted_to_type` + `converted_to_id` populated |

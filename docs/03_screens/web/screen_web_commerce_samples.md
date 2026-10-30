@@ -1,7 +1,7 @@
 # Screen: Web — Sample Requests
 
 > **Screen ID**: W074
-> **Module**: M14 — Commerce (overlaps M15 Seeding)
+> **Module**: M18 — see canonical feature owner in screen_task_map.csv
 > **Route**: `/samples`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 06 §11, A1 Schema (sample_requests, sample_shipments, products, creator_profiles, orders), B5 RBAC §2.7

@@ -1,0 +1,92 @@
+{
+  "status": "PASS",
+  "scope": "Documentation and static specification checks only; no runtime, production or market acceptance",
+  "completed_at": "2026-10-30T15:46:14.059798+00:00",
+  "git_baseline": "f2b1becea77c49f5f0c4d2da8897b737ab825bc4",
+  "worktree_changes": "Review edits are uncommitted",
+  "commands": [
+    {
+      "command": "python3 tooling/build_plan.py",
+      "started_at": "2026-10-30T15:45:22.880140+00:00",
+      "duration_seconds": 0.24,
+      "exit_code": 0,
+      "passed": true,
+      "log": "build-plan.json"
+    },
+    {
+      "command": "python3 tooling/check_docs.py --json",
+      "started_at": "2026-10-30T15:45:23.121042+00:00",
+      "duration_seconds": 0.33,
+      "exit_code": 0,
+      "passed": true,
+      "log": "docs-check.json"
+    },
+    {
+      "command": "python3 -m unittest discover -s tooling/tests -v",
+      "started_at": "2026-10-30T15:45:23.450843+00:00",
+      "duration_seconds": 3.18,
+      "exit_code": 0,
+      "passed": true,
+      "log": "regression-tests.txt"
+    },
+    {
+      "command": "/tmp/creativanta-docs-review-20261030/bin/python tooling/check_docs.py --sql --json",
+      "started_at": "2026-10-30T15:45:26.630538+00:00",
+      "duration_seconds": 0.318,
+      "exit_code": 0,
+      "passed": true,
+      "log": "sql-check.json"
+    },
+    {
+      "command": "git diff --check",
+      "started_at": "2026-10-30T15:45:26.948531+00:00",
+      "duration_seconds": 0.036,
+      "exit_code": 0,
+      "passed": true,
+      "log": "diff-check.txt"
+    },
+    {
+      "command": "git status --porcelain -- docs/09_archive/",
+      "started_at": "2026-10-30T15:45:26.984663+00:00",
+      "duration_seconds": 0.021,
+      "exit_code": 0,
+      "passed": true,
+      "log": "archive-status.txt"
+    },
+    {
+      "command": "python3 docs/06_quality_ops/evidence/2026-10-30-docs-review/verify_scope.py",
+      "started_at": "2026-10-30T15:46:13.828889+00:00",
+      "exit_code": 0,
+      "passed": true,
+      "log": "scope-preservation.json"
+    }
+  ],
+  "scope_preservation": {
+    "operator_modes_unchanged": true,
+    "operator_modes": [
+      "creator",
+      "seller",
+      "affiliate_operator",
+      "live_operator",
+      "agency_mcn",
+      "brand_collaboration"
+    ],
+    "all_feature_document_paths_retained": true,
+    "feature_spec_count": 31,
+    "feature_status_index_retained": true,
+    "original_screens_retained": true,
+    "original_screen_count": 243,
+    "current_screen_count": 245,
+    "ok": true
+  },
+  "sql_parser": "pglast==8.7 in temporary virtualenv; SQL parsed, not executed",
+  "test_count": 20,
+  "limitations": [
+    "Typed proto compilation and real PostgreSQL migrations/concurrency remain implementation gates",
+    "API/provider/license/legal approvals and actual pilot/customer evidence remain external gates",
+    "Source mapping detects coverage/drift; it does not prove every behavior is correctly implemented"
+  ],
+  "validation_notes": [
+    "Initial path-preservation comparison used recursive baseline paths but only feature subfolder paths in the working tree, incorrectly treating the unchanged _STATUS.md index as removed. verify_scope.py applies matching recursive enumeration; the original output is retained in initial-scope-preservation.json. All original feature documents are present."
+  ]
+}

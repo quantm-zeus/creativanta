@@ -1,7 +1,7 @@
 # Screen: Web — Copilot Dialog
 
 > **Screen ID**: W008
-> **Module**: M01 — Home & Decision (AI Copilot)
+> **Module**: copilot — see canonical feature owner in screen_task_map.csv
 > **Route**: Overlay/Sidebar (global, accessible from any page)
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 01 §4, Product Freeze §9, CopilotService

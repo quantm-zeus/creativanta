@@ -1,7 +1,7 @@
 # Screen: Web — Asset Library
 
 > **Screen ID**: W029
-> **Module**: M07 — AI Studio
+> **Module**: M09 — see canonical feature owner in screen_task_map.csv
 > **Route**: `/studio/library`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 04, A1 Schema (assets)

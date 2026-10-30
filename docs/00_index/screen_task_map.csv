@@ -1,0 +1,246 @@
+source,declared_module,module,delivery_task,acceptance_task,sha256
+docs/03_screens/admin/screen_admin_abuse_reports.md,S26 — Internal Admin & Operations (Trust & Safety),S26,P8-03,P8-03,1fb7f8fda982d2dd5758eff8e493e3ac9d8d0d33eb20155e3b796e3ef8da6970
+docs/03_screens/admin/screen_admin_admin_management.md,Admin — Internal Administration,S26,P8-03,P8-03,075023dcaf170408ed655a5df3931aa6f914bf3caea1e8584f77c324392e616b
+docs/03_screens/admin/screen_admin_ai_config.md,S26 — see canonical feature owner in screen_task_map.csv,S26,P8-03,P8-03,8d8469f16e5cd396ab1ae6ceccfd34d3be9866657faf6877d0d858070d1a91c3
+docs/03_screens/admin/screen_admin_ai_credits.md,S26 — Internal Admin & Operations,S26,P8-03,P8-03,2775199f22a73ecbb5086a6ee214a9500475a86dab1b3e38ada66527d60f658c
+docs/03_screens/admin/screen_admin_ai_ops.md,Admin — AI Ops,S26,P8-03,P8-03,35ee41722a79e827e5498afba8e9e8e9f6e695fdd856f40860bb47b1073f6888
+docs/03_screens/admin/screen_admin_ai_providers.md,Admin — AI Operations,S26,P8-03,P8-03,df6ee5e100b631b20e6200a7ef29a7f56906fbb1010150bb0ff04b9d2c25ca94
+docs/03_screens/admin/screen_admin_analytics_business.md,S26 — Internal Admin & Operations,S26,P8-03,P8-03,ffb94fc114e255cd9ac4610e189752410245ab31e85fa409e9a0f1ccd1b350ee
+docs/03_screens/admin/screen_admin_analytics_errors.md,Admin — Analytics,S26,P8-03,P8-03,b7a746075549850da78e374c0da8b50fec2666389a3c8739534def4cc3b626b4
+docs/03_screens/admin/screen_admin_analytics_usage.md,Admin — Analytics,S26,P8-03,P8-03,4bffe4e2ec7be4ab2a192d4ccf749b3905f6439a79a9eadba649b088fc928425
+docs/03_screens/admin/screen_admin_audit_log.md,Admin — Security,S26,P8-03,P8-03,97c03c4a55d98e29087583a9e55d1ac3057d6da730472bb7b9f196e0dcc21ce5
+docs/03_screens/admin/screen_admin_commerce_disputes.md,Admin — Commerce Operations,S26,P8-03,P8-03,3a0ac10c9cfd87d05fbc990615e01635f088bdf911f14bbe370b211162efd42f
+docs/03_screens/admin/screen_admin_commerce_fees.md,Admin — Commerce Operations (S26),S26,P8-03,P8-03,575221b8d2f841a3e4ce23844af4f83218b38afb435aca97ce3515426ed4c24c
+docs/03_screens/admin/screen_admin_commerce_overview.md,S26 — Internal Admin & Operations,S26,P8-03,P8-03,bc3002a9f33d1e55fca37584e9060fd263e4c2d50512c9e9a56ed9ab6ea90092
+docs/03_screens/admin/screen_admin_connector_debug.md,S26 — Internal Admin & Operations,S26,P8-03,P8-03,ca4c9247d60654f68fefaf036026eb6abd415a433835e796a25a6ac13e5461c1
+docs/03_screens/admin/screen_admin_dashboard.md,Admin — System Operations,S26,P8-03,P8-03,05261afd5219d8817b0cae3960bd64fec9296f6ea35a63d5fc9120d5e3069d17
+docs/03_screens/admin/screen_admin_dlq_inspector.md,S26 — Internal Admin & Operations,S26,P8-03,P8-03,1c75ee22c12e4573d4cd490ce9a4930e645d88450b95dedd6017cbb4be72ab90
+docs/03_screens/admin/screen_admin_email_campaign_manager.md,S26 — Internal Admin & Communications,S26,P8-03,P8-03,99ac1867b44dc8e26e70216fac548f19dc1281d0862983c57a734b5da0848d7d
+docs/03_screens/admin/screen_admin_feature_flags.md,Admin — Config,S26,P8-03,P8-03,72a4c99c847758fbc775b4b1549516c30cf01b086d13520ff9bef71f5ae51ac3
+docs/03_screens/admin/screen_admin_fraud_dashboard.md,S26 — Internal Admin & Operations,S26,P8-03,P8-03,6b8c68e13713fb087d03ba26377a962caa4ecbadeb49aac82326bd83ec36fa32
+docs/03_screens/admin/screen_admin_gdpr_tools.md,Admin — Compliance & Data Protection,S26,P8-03,P8-03,92b07d7a70ea333d9059a6cfd4ea4e372f129fa2fe0969c1e0f8f729be9ac899
+docs/03_screens/admin/screen_admin_incident_manager.md,Admin — System Operations,S26,P8-03,P8-03,05d84069f384cda669171cd553e31779f602a9c3c32efe160b0d052310bacea6
+docs/03_screens/admin/screen_admin_job_monitor.md,S26 — Internal Admin & Operations,S26,P8-03,P8-03,d2145456b8c2efade9a96e7c980005f7cf32d5bcd06ec743a9dac06c6bd7393a
+docs/03_screens/admin/screen_admin_knowledge_base_editor.md,S26 — Internal Admin & Support Operations,S26,P8-03,P8-03,1a4a44a0b86c5e3c2c2c46dd6345fbd6f628eb5a27f1f7d29b1b33ce130655dd
+docs/03_screens/admin/screen_admin_moderation.md,S26 — Internal Admin & Operations (Trust & Safety),S26,P8-03,P8-03,eddeebdbd58ffd944686ee1e49b130f7868da822850b9cd3112f74e2e1fe79c6
+docs/03_screens/admin/screen_admin_moderation_rules.md,Admin — Trust & Safety,S26,P8-03,P8-03,bbe031711fa9db054589f70c47427743270aba77660a4e5a59650bcf8b02a16c
+docs/03_screens/admin/screen_admin_notifications.md,S26 — Internal Admin & Operations,S26,P8-03,P8-03,e6c693e949940b5047a68315034cb337be1610a68045f4d3c51df3f319d0cddd
+docs/03_screens/admin/screen_admin_platform_monitor.md,S26 — Platform Operations,S26,P8-03,P8-03,bbec5bbd9aabc3318bae58d2dc46d8fd7505dc03acad39ead52cd1e370231a74
+docs/03_screens/admin/screen_admin_revenue.md,S26 — Internal Admin & Operations,S26,P8-03,P8-03,9879ff211d6dfa97bdf338d425a27945e0ca7da465623d57ef894b8e5a91c884
+docs/03_screens/admin/screen_admin_subscription_override.md,"S26 — Internal Admin, Billing & Revenue",S26,P8-03,P8-03,5725d85f84eae262d3560ad7c5682a0d1a9db7f6f7eebece4b2e08bca3a21fe9
+docs/03_screens/admin/screen_admin_subscriptions.md,S26 — Billing & Revenue Operations,S26,P8-03,P8-03,d91e672cd5294f1ffb52b37f9eea2b256307255603587ada2458bec8d2116887
+docs/03_screens/admin/screen_admin_support_queue.md,S26 — Support Operations,S26,P8-03,P8-03,abdf036994764cd286bf2c3ad60e60ce6ec98598ea5807fb46df302e2a257dc6
+docs/03_screens/admin/screen_admin_system_config.md,Admin — System Configuration,S26,P8-03,P8-03,fb13ec5d4e3300b0fdf041f3607d51104f188a44a5df56ad721c6c436e7cd824
+docs/03_screens/admin/screen_admin_system_health.md,S26 — Core Operations,S26,P8-03,P8-03,0a31f9c421c43358525cbabff6b753901b3a863caeed44f6470ef0d53ede3cf0
+docs/03_screens/admin/screen_admin_user_detail.md,Admin — User Management (S26),S26,P8-03,P8-03,5b9b2887ddaf2202e7a11f9603d3c056f3beaa8ec9570c03b2ace193822fc6ed
+docs/03_screens/admin/screen_admin_user_list.md,Admin — User Management,S26,P8-03,P8-03,2ad47b3dc74aff3458ebeba44cb5ee6e087486d252683601976649f07b09d1d9
+docs/03_screens/admin/screen_admin_workspace_detail.md,Admin — Workspace Management,S26,P8-03,P8-03,2397024fefb61a48b6fcdd350457212f6d0c809ac9fc41dc267e0786d96f22c7
+docs/03_screens/admin/screen_admin_workspace_list.md,Admin — Workspace Management (S26),S26,P8-03,P8-03,6ab0da6d4d120b0ca16b65595e0d792cec0293061032153b59ebbcdd9d6ba541
+docs/03_screens/mobile/screen_mobile_agent_runs.md,M21 — Recipe & Agent Center,M21,P7-03,P8-06,49fa3edac92eeba226fe6eec9712b2029ff3f9e924fff2a0b7b897329b02fafe
+docs/03_screens/mobile/screen_mobile_analytics.md,M23 — Analytics,M23,P8-02,P8-02,bcf64783a22e8076dadd6cbca6527086897c79998e2ba68cce329b58689b68d0
+docs/03_screens/mobile/screen_mobile_analytics_overview.md,M17 — Analytics & Reporting,M17,P6-05,P6-09,76ea31d3b5bdfb89343cefcb52ce7dbd621633fb8ea8e76fca6b60a66bbede37
+docs/03_screens/mobile/screen_mobile_approval_queue.md,M20 — Workflow Studio,M20,P7-02,P7-05,5ab1fdded2e1e5123ef64d956713edf81dde1b43213e397029fba6f171058c5a
+docs/03_screens/mobile/screen_mobile_billing.md,M23 — Reporting / Admin / Billing / Diagnostics,M23,P8-02,P8-02,8d8a81b294194cb591473e8aa4bcbbd495fcbcbc4fb74125cc07ded87a51f6c1
+docs/03_screens/mobile/screen_mobile_brand_deals.md,S16 — Creator Pro Tools,S16,P6-04,P8-07,d0609046066136835ac89b6579ba308ffadfcec1ed755fd41207c639dbf8f999
+docs/03_screens/mobile/screen_mobile_calendar.md,M11 — Publish Hub,M11,P5-01,P5-04,1f5cd2f5c06e96f4a60df833b4c9f34762868e95e985ecb4d96ef42520b98407
+docs/03_screens/mobile/screen_mobile_commerce_affiliates.md,M16 — see canonical feature owner in screen_task_map.csv,M16,P6-03,P6-09,919115aac167063a535d621f41ec7685853f4f17aed1bf6958e27e8ecec6879c
+docs/03_screens/mobile/screen_mobile_commerce_campaigns.md,M14 — Monetization & Campaigns,M14,P6-01,P6-09,677b47da86692f4c6cb5f306a33717ed80b662b51454723e42046d40f056e84c
+docs/03_screens/mobile/screen_mobile_commerce_coupons.md,M14 — Monetization & Offers,M14,P6-01,P6-09,620caad286b17c14e73cc6c8351e1d68019aadc3e1c0b92d6584bf3922bece19
+docs/03_screens/mobile/screen_mobile_commerce_dashboard.md,M13 — Product Hub / Commerce,M13,P1-02,P6-09,f426fb487216baca1cf7ee7e9537ece8c388da5a29188dd13b304d8d6aa413bc
+docs/03_screens/mobile/screen_mobile_commerce_offers.md,M14 — Monetization & Offers,M14,P6-01,P6-09,900b9e095cd278c42efeeb6ee3d7dedeff35186083e52a4e24aa6a6598a26b4e
+docs/03_screens/mobile/screen_mobile_commerce_orders.md,M13 — Product Hub / Order Management,M13,P1-02,P6-09,3911968e3b9df240b71f3d1fb0523e03d5402f0213ba7f9afd3f550cffcbb788
+docs/03_screens/mobile/screen_mobile_commerce_products.md,M13 — see canonical feature owner in screen_task_map.csv,M13,P1-02,P6-09,1cac3c9d4b5524b4f99a3435d808bd9c379ec61e1185ac4cd3355336a31d1ddd
+docs/03_screens/mobile/screen_mobile_commerce_refunds.md,M13 — Product Hub / Order Truth,M13,P1-02,P6-09,ee7c001866de0f8b7fb04f2066dbd20c36d618443027d6f5645d1e016fe10448
+docs/03_screens/mobile/screen_mobile_commerce_samples.md,M18 — see canonical feature owner in screen_task_map.csv,M18,P6-06,P6-09,24720c593858d21e378f87ffd285bb878dfab2f39bb6c204fcf4b45b27e2dccb
+docs/03_screens/mobile/screen_mobile_competitors.md,M23 — Analytics,M23,P8-02,P8-02,d7823b114d88613b497fdaca9f36dc291f8e52941baf1327c6e149d6e498e50e
+docs/03_screens/mobile/screen_mobile_connections.md,M23 — Settings,M23,P8-02,P8-02,a24b13c71d00fe4efc0ab1d100b78adb04b3b00208a242f4afd9d92f8493124f
+docs/03_screens/mobile/screen_mobile_contact_detail.md,M12 — see canonical feature owner in screen_task_map.csv,M12,P5-02,P6-09,92c9526e4fdeef35c81d8a2cfbaba437847e6cf409acb60a869e9f336e9ec101
+docs/03_screens/mobile/screen_mobile_contacts.md,M12 — see canonical feature owner in screen_task_map.csv,M12,P5-02,P6-09,7917afac85d7f747d8e9913e14f83e0c68bb420cb67c1626c762e74b07fffd63
+docs/03_screens/mobile/screen_mobile_content_idea_board.md,M05 — Idea Engine,M05,P3-01,P6-09,eb85f69088b49a2266d2bb99a3f2521635087ff5b3936da37060db70c2f0d538
+docs/03_screens/mobile/screen_mobile_copilot.md,copilot — see canonical feature owner in screen_task_map.csv,copilot,P3-04,P8-01,7f245f6caa19d47fed438e85083cc42ebc9e3079a00785f3c2e9ad61953be268
+docs/03_screens/mobile/screen_mobile_cost_entry.md,M19 — Operating Ledger / Profit Graph / Proof Center,M19,P1-03,P8-02,de191241d8675253fb73c9e6a3a9ec54af94d45f7287cf9828548ff312c698d9
+docs/03_screens/mobile/screen_mobile_creator_pro.md,S16 — Creator Pro Tools,S16,P6-04,P8-07,7787fb82c57dd7f9ed333d427a1839c513c0f3602ce17eaee0f59291cfe0ef30
+docs/03_screens/mobile/screen_mobile_diagnostics.md,M23 — Settings,M23,P8-02,P8-02,6194513955d90e31c1015bba83239b2a3c621044b31fb9b5733cf1685097ad64
+docs/03_screens/mobile/screen_mobile_engagement_inbox.md,M12 — Unified Inbox & Engagement,M12,P5-02,P6-09,a725d1c2f816c7b1b714ac0750c71d0e11b23ff395cdab9d68cfe790a745b728
+docs/03_screens/mobile/screen_mobile_finance.md,M19 — Finance,M19,P1-03,P8-02,c24ae83db985b40e98235ae0901bf0af2797c2ac0d43dfd24d170f713e2b9b65
+docs/03_screens/mobile/screen_mobile_finance_summary.md,M19 — Finance,M19,P1-03,P8-02,28ab0c18cbcf29c2f6a152fa2194f3eb42e03b1b5385dd1799aae8abb9b58415
+docs/03_screens/mobile/screen_mobile_gamification.md,gamification — see canonical feature owner in screen_task_map.csv,gamification,P8-06,P8-06,cde7e0ae91eebc7a4069b1fb8b1bb393e4bfdec8889d6215447027803fc26b19
+docs/03_screens/mobile/screen_mobile_home_dashboard.md,M01 — Home & Decision Engine,M01,P8-01,P8-01,5de430c08b3fa347650adb522c34bc4f6aac0467f76c27eebd1d37b2adfeca42
+docs/03_screens/mobile/screen_mobile_home_notification_list.md,M01 — Home (Global),M01,P8-01,P8-01,dcf11a8ca90ebc54edce00dd44d9793c56ad9905069569ffd3a6c92ead3f7a1c
+docs/03_screens/mobile/screen_mobile_home_workspace_switch.md,M01 — Home (Global),M01,P8-01,P8-01,5f79347261cfaecaab3aac33a47bfe81e91aecd21208b393ec5405a710ca2aea
+docs/03_screens/mobile/screen_mobile_idea_detail.md,M05 — Content Pipeline,M05,P3-01,P6-09,4bd412ff61b6905fed23d1ac9496d05987d958d927378af1be1196bae9f5b5d5
+docs/03_screens/mobile/screen_mobile_intelligence_trend_list.md,M02 — Trend Radar,M02,P2-01,P4-09,28ba3c41356c445becc7165e1553a18e9780e928822ef3ebfb2b524656b15b25
+docs/03_screens/mobile/screen_mobile_link_in_bio.md,S16 — see canonical feature owner in screen_task_map.csv,S16,P6-04,P8-07,8323186c17815f3dde43fa1591c6b8caa2d20d012310cde9193943f18d52f330
+docs/03_screens/mobile/screen_mobile_live_war_room.md,M17 — Live Commerce War Room,M17,P6-05,P6-09,41510f01d2cbfc1ce95a95084aaad1cfce58a284d828b4f792b7aed42cd603ca
+docs/03_screens/mobile/screen_mobile_media_kit.md,S16 — Creator Pro Tools,S16,P6-04,P8-07,7314dcae18ef89ebd9db6d4b3e3a8b0551c3473de630dc3f9973bb1799a4bf04
+docs/03_screens/mobile/screen_mobile_morning_brief.md,M01 — Home & Decision,M01,P8-01,P8-01,e11678d15c4bb5b2796829c71182fc80732dfa02b3d3b6d32ac2a66e1163bfb3
+docs/03_screens/mobile/screen_mobile_onboarding.md,M01 — Home (First Run),M01,P8-01,P8-01,4223d4f9149cc3e51fff13bfa7cce89ad2ee04058795b80ee4363f3dfe1c39ef
+docs/03_screens/mobile/screen_mobile_performance_coach.md,M07 — see canonical feature owner in screen_task_map.csv,M07,P5-05,P8-06,26dd6e1be09df9b092977f518ea48df3cd64a921a69b9a4eebe089f3ba9dbc27
+docs/03_screens/mobile/screen_mobile_post_analytics.md,M23 — Analytics,M23,P8-02,P8-02,39824f6b39374c7bfea52b899c57f9c07494315d83a2f5a5512b0341a028f83c
+docs/03_screens/mobile/screen_mobile_publish_queue.md,M11 — Publish Hub,M11,P5-01,P5-04,c56efdf234a6a1db857ddb09488ac8e488684af404ff59682ac24db995773596
+docs/03_screens/mobile/screen_mobile_publish_quick.md,M11 — Publish Hub,M11,P5-01,P5-04,66f1b1fbdd9685e8174a623ec85691fac75da6752216045dce81a21846f2ea9e
+docs/03_screens/mobile/screen_mobile_quick_capture.md,M05 — Content Pipeline,M05,P3-01,P6-09,87a8dff7bac22a10411290b114e5e10f2164f6cbcc2bcac3bcb60affe6f7a3e5
+docs/03_screens/mobile/screen_mobile_recipes.md,M21 — Workflow Marketplace / Recipe Economy / Agent Center,M21,P7-03,P8-06,49bb6eef65f870c4b1fad1c304e313d23f884e75935b87b514c0bb44d8b22b74
+docs/03_screens/mobile/screen_mobile_reconciliation.md,M19 — Operating Ledger / Profit Graph / Proof Center,M19,P1-03,P8-02,d1ac58a6808c61134f83cb857018041efb029fca6ee7665e1ebcb986bbde0b0d
+docs/03_screens/mobile/screen_mobile_referral.md,referral — see canonical feature owner in screen_task_map.csv,referral,P8-05,P8-05,113f3faee3bb840e2ac1a2b420b46213666f80b0d0c8b7fc15138308a60f4fb0
+docs/03_screens/mobile/screen_mobile_revenue.md,M19 — Finance,M19,P1-03,P8-02,8fc97a052fd3124fa99e42f2c5ea06b0bd8c4bc90356760c8017435021410ce5
+docs/03_screens/mobile/screen_mobile_script_editor.md,M06 — Script Lab,M06,P3-02,P3-05,08cf1316b0b26752ec222c3ae574b506672696351b4ab4d2c743aa7994701a2e
+docs/03_screens/mobile/screen_mobile_script_list.md,M05 — Content Pipeline,M05,P3-01,P6-09,b0f4139f8fded9b4cf0c39ecb03582a25e3f600a9f33c62b491628734e082fa6
+docs/03_screens/mobile/screen_mobile_search.md,M01 — Home / Daily Decision Engine,M01,P8-01,P8-01,8cb3307ab8cd6eb6121e769c23d66a28825a0b9eb9abf1b898afa02a5877a855
+docs/03_screens/mobile/screen_mobile_seeding.md,M18 — Seeding / Sample CRM,M18,P6-06,P6-09,f653524d20b9643195f9d1036d7f65b73032bf50d05a7ed68bb3b6a2c5df9383
+docs/03_screens/mobile/screen_mobile_settings.md,M23 — Settings,M23,P8-02,P8-02,17fa3531fab84d5602d533df8a1485cd3d76e7bafd2dc9b1f9d8566735ebd5ff
+docs/03_screens/mobile/screen_mobile_studio_ai_remix.md,M07 — AI Studio,M07,P4-04,P8-06,19eaee92616d5817aa66f03bd6eabbfc73b9685ebf4af70ba52f880a6ad3d357
+docs/03_screens/mobile/screen_mobile_studio_clip_factory.md,M07 — AI Studio,M07,P4-03,P8-06,996dd63978e00061c96d174a08a2e672fe56f5cd2463e40e27872e13d864845a
+docs/03_screens/mobile/screen_mobile_studio_launcher.md,M07 — AI Video Studio,M07,P4-01,P8-06,271c99202ef49b0b3fae9cf3619aa0e9a1a808aa0b8e783cc2f5aa99c53be794
+docs/03_screens/mobile/screen_mobile_studio_quick_edit.md,M07 — AI Studio,M07,P4-02,P8-06,bf0b8fefe40afb00c4a6707cde129a5acbb31d3de87b3ec6ee56cc35ad2fbbf8
+docs/03_screens/mobile/screen_mobile_support.md,S19 — Help Center,help,P8-04,P8-04,477d96eff49abbda012ea3b152b6be943b9834fc9d2acbdb9ba3d6af60e48174
+docs/03_screens/mobile/screen_mobile_task_queue.md,M20 — Workflow Studio,M20,P7-02,P7-05,e7e970dc0edcb4ef45cf2fa4ed2f800f55cd4735a343ed3777ff15c2e7834fd6
+docs/03_screens/mobile/screen_mobile_thread_detail.md,M12 — see canonical feature owner in screen_task_map.csv,M12,P5-02,P6-09,9c9f74ef9320df4b0a0f4b2b9d37cbf8fad6e47875e04d2f9f591615da4d9628
+docs/03_screens/mobile/screen_mobile_workflow_monitor.md,M20 — Workflow Studio,M20,P7-02,P7-05,1e28de6bb330d802f4b81d59591926481a24e8656932e0d78b615e138b2d30e1
+docs/03_screens/shared/screen_shared_app_shell.md,,M01,P8-01,P8-01,6b2e82bd57a0311ad628174dea0efaa0c02cbf1eb19ebecb74a6de4a9f2d5905
+docs/03_screens/shared/screen_shared_command_palette.md,Shared — Platform Navigation,M01,P8-01,P8-01,4693e9a962054c4ebecd77b1027d00308b0160e391798dbceb52ced7f69d0ef1
+docs/03_screens/shared/screen_shared_confirmations.md,Shared — UI Patterns,M01,P8-01,P8-01,1254ef861c4dd1e35b294ce954af3669e1eaa577c4dc7b6b1602b0a60d5a12c1
+docs/03_screens/shared/screen_shared_empty_states.md,Shared — UI States,M01,P8-01,P8-01,79dc70d92c4854bd68e8e5eaea6152681db4f9828d030a06ca382bc7261460f6
+docs/03_screens/shared/screen_shared_error_states.md,Shared — UI States,M01,P8-01,P8-01,620434f74ce9e9e304f5e10464fd8cb679659ad6f398d2259e35e3a30b2dbb1f
+docs/03_screens/shared/screen_shared_glossary.md,Shared — Educational UX,M01,P8-01,P8-01,c9df1071b56067efc06100e3181c66e19756257aab91bd42a962da08efb87e20
+docs/03_screens/shared/screen_shared_loading_states.md,Shared — UI States,M01,P8-01,P8-01,dae395eeee4ff53e0e9fa66ebcf87c64b3408e1735bdcefc21108f65765255e0
+docs/03_screens/shared/screen_shared_mobile_nav.md,,M01,P8-01,P8-01,d68788b0c9ad7394529a25c864f17e0771f676b1d95ed8640646ce364e0e2d07
+docs/03_screens/shared/screen_shared_navigation.md,Shared — UI Patterns,M01,P8-01,P8-01,60b3fd6f1465ef2f1f399cc06bc982aea345463f3696195b65484e35467dd082
+docs/03_screens/shared/screen_shared_onboarding_tooltip.md,,M01,P8-01,P8-01,5e777d60ea7337cbf7ab924e34ed99412e55ca7e665ee77c0107c96d531253a1
+docs/03_screens/shared/screen_shared_trust_badge.md,Shared — UI Components,M01,P8-01,P8-01,9c05d5c181a1f309bd0f854c152dbdfbd65aba77c5f2f5ab527efd870884b338
+docs/03_screens/shared/screen_shared_upsell_banner.md,,M01,P8-01,P8-01,a38709dab6a1a215058bca2ba95f51aee5f3870978aa690945ed79234f110534
+docs/03_screens/web/screen_web_analytics_detail.md,M17 — Analytics,M17,P6-05,P6-09,5c556c9a80267ffe57a559e65a96bb43e2461d940fbceec29a7620551be1ba6b
+docs/03_screens/web/screen_web_analytics_gamification.md,gamification — see canonical feature owner in screen_task_map.csv,gamification,P8-06,P8-06,c8ea60a6af9e1eed5855b5c538e0119869c0bab3bb59e4c675bf9447774b992e
+docs/03_screens/web/screen_web_analytics_overview.md,M17 — Analytics & Reporting,M17,P6-05,P6-09,05271550c6a02843a52b6345702949250eabb993b4b9d4cc95dfd6c370206886
+docs/03_screens/web/screen_web_analytics_performance.md,M23 — Analytics & Reporting,M23,P8-02,P8-02,20f4a7952048d08af1b6b3651ec6eeb9994586985f2fa59f2f19e852fa0fa1c7
+docs/03_screens/web/screen_web_analytics_post_detail.md,M23 — Analytics & Reporting,M23,P8-02,P8-02,9cf3350255a163d67f2a9f25b9d293288f3de15baba9062aa22699ef7b37396b
+docs/03_screens/web/screen_web_auth_forgot_password.md,Auth,auth,P0-03,P0-09,ce7b3e839b90446dd64b73edce96a34faf6106a43a60a049f70565173ac60617
+docs/03_screens/web/screen_web_auth_login.md,Auth,auth,P0-03,P0-09,c1764f2758bf7406502906e72dd80726ffca66fd3fbb879deeb1d5cc8f24c227
+docs/03_screens/web/screen_web_auth_register.md,Auth,auth,P0-03,P0-09,b142024aa1d808082f604d425a451d405ede345c11544b1ffcebc18db96f9b05
+docs/03_screens/web/screen_web_capability_matrix.md,M22 — Capability Matrix,M22,P0-07,P8-03,22149f2b5319ab4af079b31e70dc0261f4c213222cb55a97e8287d177726e880
+docs/03_screens/web/screen_web_commerce_affiliate.md,M16 — In-Product Affiliate Network,M16,P6-03,P6-09,3eb3fd4bd7d9a2d16e443248654cf19e8f0d2599149697ba53f49f09aad4fef7
+docs/03_screens/web/screen_web_commerce_affiliate_manager.md,M16 — see canonical feature owner in screen_task_map.csv,M16,P6-03,P6-09,6d3dcfccd3220b105eab503d5136f674ac803d78220a9b45c87c43efb9de4ab9
+docs/03_screens/web/screen_web_commerce_campaign_detail.md,M14 — Monetization & Campaigns,M14,P6-01,P6-09,7dc338f405c9feadbd3e40fe50ef4c961be219929e01841f0f15621de6a56770
+docs/03_screens/web/screen_web_commerce_campaign_list.md,M14 — Monetization OS (Campaigns),M14,P6-01,P6-09,cc843b2e30ff1e4c2e5b39bbb5f7911e85247c838187e142f7fe647792d0044c
+docs/03_screens/web/screen_web_commerce_coupon.md,M14 — Monetization OS (Coupons),M14,P6-01,P6-09,d0b7d5281fe7659f87f3a247554ad1e7857853e9b35f2109d23ea55d446fa454
+docs/03_screens/web/screen_web_commerce_inventory.md,M13 — Product Hub / Inventory / Order Truth,M13,P1-02,P6-09,10b9ee339b2261e0b34eabbe21845acd6b2d337a799f0aef7b23f315a7258e51
+docs/03_screens/web/screen_web_commerce_membership.md,M15 — see canonical feature owner in screen_task_map.csv,M15,P6-02,P6-09,08072b490d4130aca2204ecad998205ef76630dd6f5be5b9685f75d858a25a2d
+docs/03_screens/web/screen_web_commerce_offer_detail.md,M14 — Monetization & Offers,M14,P6-01,P6-09,24ae4bc50399de7180592a9e6d317cbe0ecc8e120a3c53d3d07ee0377e9d935b
+docs/03_screens/web/screen_web_commerce_offer_list.md,M14 — Monetization & Offers,M14,P6-01,P6-09,cb70c2fca8803777e9b72dc34ff13b168008050218b11be927488eb628eeae14
+docs/03_screens/web/screen_web_commerce_order_detail.md,M13 — Product Hub / Order Truth,M13,P1-02,P6-09,79c223d2303d9d07e944c9e966fbe46592cc51c1b18b431ff0a6d27cc28020be
+docs/03_screens/web/screen_web_commerce_order_list.md,M13 — Product Hub / Inventory / Order,M13,P1-02,P6-09,1f58e093ca6838d677dca6a1ccaafa36338fd9305a6e2c3a9c8d65ebe9825971
+docs/03_screens/web/screen_web_commerce_product_detail.md,M13 — Commerce (Products),M13,P1-02,P6-09,caeb4f7e6f85152f7083572a7cbed7bf1c1bf4082ac099e4c5583988121a3866
+docs/03_screens/web/screen_web_commerce_product_list.md,M13 — Product Hub,M13,P1-02,P6-09,4c2504460e750c67ea64566ad2a1b4f1c408577fe788fb1de854961829e49148
+docs/03_screens/web/screen_web_commerce_refunds.md,M13 — Product Hub / Order Truth,M13,P1-02,P6-09,1aa5dffc164e63c22966fb7953794ac3525b54fe77014ffc91c551832e44b970
+docs/03_screens/web/screen_web_commerce_samples.md,M18 — see canonical feature owner in screen_task_map.csv,M18,P6-06,P6-09,4ac386fad6f8067ef97c3583ed340780ddd67ee0fa4b37e51da710b7940ff736
+docs/03_screens/web/screen_web_commerce_store_pages.md,M15 — see canonical feature owner in screen_task_map.csv,M15,P6-02,P6-09,6cbab6239576d541485039ebb10a3c087233e2b5c75a675bca13d0b450cc28d6
+docs/03_screens/web/screen_web_content_asset_brief.md,M06 — Script Lab,M06,P3-02,P3-05,5509d7706ed5f27e0b0c29e752189d55d3e5f11c47772ce87815538219450a0e
+docs/03_screens/web/screen_web_content_continuity.md,M08 — Continuity OS,M08,P3-03,P4-09,9b845beaf6a93880c2dbc9642b548fbe9161c467ce824fd039d6e6cb2c7b2c51
+docs/03_screens/web/screen_web_content_derivatives.md,M09 — Asset Derivative Manager,M09,P4-08,P6-09,0930fd8d3d0527b1d4c0e997e617e02061c1ff623ef3c23b050b181000ce3467
+docs/03_screens/web/screen_web_content_idea_board.md,M05 — Idea Engine,M05,P3-01,P6-09,624119290bd6237cfa08a37147fcae2a88a0cf98ed942847418967414864140b
+docs/03_screens/web/screen_web_content_idea_detail.md,M05 — Idea Engine,M05,P3-01,P6-09,62653d1ab9a77dc07690308531af7572dfa2d6a769ac3c22746750ca2c4d5653
+docs/03_screens/web/screen_web_content_idea_generator.md,M05 — Idea Engine,M05,P3-01,P6-09,6b09abe26b7c615acd4a130d33c90b5eb154113164d1f9b886359f5cb906969a
+docs/03_screens/web/screen_web_content_script_editor.md,M06 — Script Lab,M06,P3-02,P3-05,8ca031a7ca7d9229bd5935f4932c2421fd619d1adb03316a074ab38ba5fe7acc
+docs/03_screens/web/screen_web_content_script_list.md,M06 — Script Lab,M06,P3-02,P3-05,577fa1846e5511ed76b6f6e6131769a1795cea8d13b952a6a2a2da3d229c03b6
+docs/03_screens/web/screen_web_content_script_review.md,M06 — Script Lab,M06,P3-02,P3-05,06d9214537fa32a432f7e92cdb371cd207bace6a0c6d9abe32d5b9ee69c713a3
+docs/03_screens/web/screen_web_creator_brand_deals.md,S16 — Creator Pro Tools,S16,P6-04,P8-07,3a35f5337165017748d53beb73cd9ffea7d1de53d66eea2535356b0fe232fb7e
+docs/03_screens/web/screen_web_creator_contracts.md,S16 — Creator Pro Tools,S16,P8-07,P8-07,9642f5f03c91567a7e877963c0a57385e8f1283a987aec98cc5bea13eb09c1ff
+docs/03_screens/web/screen_web_creator_directory.md,S16 — Creator Pro Tools,S16,P8-07,P8-07,f53b710e9dd2dd06581e2cbfeb8e7cbe0bd93eaf4ede8df0f80b1a8da7c4617d
+docs/03_screens/web/screen_web_creator_inquiries.md,S16 — Creator Pro Tools,S16,P6-04,P8-07,d93cd02fa7ccff5c20410170fc36492a91ae7715f368dd6eaef778d4fcbf803b
+docs/03_screens/web/screen_web_creator_link_in_bio.md,S16 — Creator Pro Tools,S16,P6-04,P8-07,6d39c757b2806e1d8180f2760f8bc420df2f6e1f9f529767caf7dfac21c4b919
+docs/03_screens/web/screen_web_creator_media_kit.md,S16 — Creator Pro Tools,S16,P6-04,P8-07,5adf3fc348f85dac0deac69215ad5351257a9078392c1f90856b3127e02e39b7
+docs/03_screens/web/screen_web_creator_partnerships.md,S16 — Creator Pro Tools,S16,P6-04,P8-07,23228237d0914eba3ecca12942f50c9ffdc84d6aaacf3116e9a9c54cd52b2271
+docs/03_screens/web/screen_web_creator_pro_dashboard.md,S16 — Creator Pro Tools,S16,P6-04,P8-07,6263c747b36d6893d65803700e2730e26ecbc65b7ce3f429710ede95bc3ebbf7
+docs/03_screens/web/screen_web_creator_rate_card.md,S16 — Creator Pro Tools,S16,P6-04,P8-07,948f60b46eb9f9526d874e7511837ad9579008377adbda96df94f90eb58793a3
+docs/03_screens/web/screen_web_creator_revenue.md,S16 — Creator Pro Tools (Revenue Analytics),S16,P6-04,P8-07,284bc34aec22b0d93437736aadd072558bc5563f2caf1b6adec21914c052b496
+docs/03_screens/web/screen_web_creator_tax_export.md,S16 — Creator Pro Tools,S16,P6-04,P8-07,70ca006cc9f3d580fb75522a2f6592f3db70385711bca62204397b12a5a0a247
+docs/03_screens/web/screen_web_engagement_bulk_triage.md,M12 — Unified Inbox & Engagement,M12,P5-02,P6-09,1b42bf34faee12c96e0d9788e544a0bf10ebe1a8ccbcce84f0a162739968e9cc
+docs/03_screens/web/screen_web_engagement_contact_detail.md,M12 — Unified Inbox & Engagement,M12,P5-02,P6-09,3bda509df60e625f5f71d2f066c27baf79db4415542dbc166025e87686beb4b3
+docs/03_screens/web/screen_web_engagement_contact_list.md,M12 — Unified Inbox & Engagement,M12,P5-02,P6-09,119e6e100b6e4e622eabe6ef7cd4b10c05867a94649c5e4fc6b5d1f6737679d1
+docs/03_screens/web/screen_web_engagement_followup_tasks.md,M12 — Unified Inbox & Engagement,M12,P5-02,P6-09,abb609c3d49d06c9ba89600258f9b686e1c2f7286ea61e86e8ad864ff1e44820
+docs/03_screens/web/screen_web_engagement_thread_detail.md,M12 — Unified Inbox & Engagement,M12,P5-02,P6-09,890a8afe1c842e809be67e495424ef3ce82f88cacbdbdbdc9132a72ce1a87e1b
+docs/03_screens/web/screen_web_engagement_unified_inbox.md,M12 — Unified Inbox & Engagement,M12,P5-02,P6-09,47d45a75dbcb89fdbc2200dc2403c26373a4fec5c1c7225ee77f75650ae0ea0e
+docs/03_screens/web/screen_web_finance_costs.md,M19 — Operating Ledger (Costs),M19,P1-03,P8-02,9c02f557aeeef67d1014711fba2c088151d5e62bc7e10f0287f342090322f6b4
+docs/03_screens/web/screen_web_finance_dashboard.md,M19 — Operating Ledger,M19,P1-03,P8-02,2397fd5dd2131ccc8fbc0a10c7e75b67bf5e5b7dd867286793b9d5d55d903604
+docs/03_screens/web/screen_web_finance_profit_dashboard.md,M19 — Operating Ledger / Profit Graph / Proof,M19,P1-03,P8-02,41f2bbb165a4d1e536ad709399df75511c14306e16ed1638ed4f4274d67d0120
+docs/03_screens/web/screen_web_finance_proof.md,M19 — Operating Ledger (Proof Chain),M19,P1-03,P8-02,094102c1b6b00ebe2448d3ed07c36568cd0a39452f4bde06504e100148bb3d96
+docs/03_screens/web/screen_web_finance_reconciliation.md,M19 — Operating Ledger (Reconciliation),M19,P1-03,P8-02,4aae72e1dda708122cb2899867dfb7d20e3d038414027de2bb8022f07d17f0de
+docs/03_screens/web/screen_web_finance_reports.md,M19 — Operating Ledger (Reports),M19,P1-03,P8-02,14f12f735b35e9508f2399251c291df1a595e2ba3885593e0e2dd7da48393b70
+docs/03_screens/web/screen_web_finance_revenue.md,M19 — Operating Ledger (Revenue),M19,P1-03,P8-02,d7c0d654b281bcaaca96e10d86441485dc6d9709c6b0d3ccab7a14125fbbcb74
+docs/03_screens/web/screen_web_finance_settlements.md,M19 — Operating Ledger (Settlements),M19,P1-03,P8-02,79ba9787a3fe118172db7c82c270d06f34e767658729f5a5ac2744ea2232c2ad
+docs/03_screens/web/screen_web_home_copilot_dialog.md,copilot — see canonical feature owner in screen_task_map.csv,copilot,P3-04,P8-01,a0ed82ee1d5e352c0e5809b62565550010b691ea7d23a0f27f0bd42d5613fb53
+docs/03_screens/web/screen_web_home_dashboard.md,M01 — Home & Decision,M01,P8-01,P8-01,f7254c4dd1ba06c8fe7cd3087078a045d54f2415425c927b7eb42b32d6834573
+docs/03_screens/web/screen_web_home_global_search.md,M01 — Home & Decision,M01,P8-01,P8-01,6f58f4534ad59a4cda99050e79e708c6f1faa887c1cc02bce568c97e842992c5
+docs/03_screens/web/screen_web_home_morning_brief.md,M01 — Home & Navigation,M01,P8-01,P8-01,5f0c4aedf1085558e53e261dcba9629b7f489ccd7682f5aa2bc89fc0d9747417
+docs/03_screens/web/screen_web_home_notification_center.md,M01 — Home & Decision,M01,P8-01,P8-01,1a695cab87199d6cb015aa3662d464efdb3dd53ea58cdf0ce57da5711073a1b0
+docs/03_screens/web/screen_web_home_onboarding.md,M01 — Home & Decision,M01,P8-01,P8-01,a9e4e753649dd66c440194e936f7642c68b4e535942ff7342af210d8f194d4ad
+docs/03_screens/web/screen_web_home_quick_actions.md,M01 — Home & Decision,M01,P8-01,P8-01,ac6da63849a531a4c0d66c8055a3c8a72b8242010d47840adf3fb0fe376c3b0c
+docs/03_screens/web/screen_web_home_settings_hub.md,M01 — Home & Decision / M23 Settings,M01,P8-01,P8-01,f3971a1f01cb6212297793e66b83ebca7ce0dc36e628537617be5a51ea5f2371
+docs/03_screens/web/screen_web_home_workspace_selector.md,M01 — Home & Decision,M01,P8-01,P8-01,a2786bc288816f7c95cf91e18164ad832c25b94a02cf5bfa9337e5124042ddf2
+docs/03_screens/web/screen_web_intelligence_benchmark.md,M03 — Competitive Intelligence,M03,P2-02,P8-07,d2a533619935e109764a874ee23e5473ac59fa7a4efbed2e47d49ff0da95a25a
+docs/03_screens/web/screen_web_intelligence_competitor_registry.md,M03 — Competitive Intelligence,M03,P2-02,P8-07,1cc1c0864f4fdb7ef86da7314596c4928d5d579bfbc9adde25512d71b1c0f272
+docs/03_screens/web/screen_web_intelligence_opportunity_board.md,M04 — Opportunity Board,M04,P2-03,P6-09,6108dfe62aa56a8f0020ad4f78c57b61c9e6bf268ee7a67d66a510d3408da9a3
+docs/03_screens/web/screen_web_intelligence_opportunity_convert.md,M04 — Opportunity Board,M04,P2-03,P6-09,b070996201bfe71980da36215743f300e740d51f91cf4544d09be12ce31c5227
+docs/03_screens/web/screen_web_intelligence_opportunity_detail.md,M04 — Opportunity Board,M04,P2-03,P6-09,76092935cd872d60788dd9e9b70ad64354ee0e6e079e02c073556f854752374a
+docs/03_screens/web/screen_web_intelligence_trend_detail.md,M02 — Trend Radar,M02,P2-01,P4-09,b5f057dbcd464433546855b3c5722af6c5ba860dcd276c68570c4bab6d57ebb3
+docs/03_screens/web/screen_web_intelligence_trend_radar.md,M02 — Trend Radar,M02,P2-01,P4-09,56c013895529cbfb877770f887762fd875671c1c75bcffb69787e574d07ded8c
+docs/03_screens/web/screen_web_intelligence_watchlist.md,M02 — Trend Radar,M02,P2-01,P4-09,f6579271221a66f72c530c7d1ba315eeedb642375c3601584238be463ebfeddd
+docs/03_screens/web/screen_web_live_planner.md,M17 — Live Commerce War Room,M17,P6-05,P6-09,b7e7605390c28d5643173b9e1718a71455a0dc9ee50064724a80460d49b1ea9f
+docs/03_screens/web/screen_web_live_setup.md,M17 — Live Commerce War Room,M17,P6-05,P6-09,25106e6d671e9808a82e2d33e3916b366b64ad0a090a62aec52da2902e58864f
+docs/03_screens/web/screen_web_live_summary.md,M17 — Live Commerce War Room,M17,P6-05,P6-09,56ebd25e5064492ab3cdb01643f0cfb7276c9a3b9f78c480cd6e156c3b0a3bef
+docs/03_screens/web/screen_web_live_war_room.md,M17 — Live Commerce War Room,M17,P6-05,P6-09,58fd1681c3e26486316284bbec220fd13f1a718c36bf467c48ca328b6e52c440
+docs/03_screens/web/screen_web_monetization_os.md,,M14,P6-01,P6-09,0d9a212bbd5ff8b96d0d2cd6b543ce7a3dd4d00f005a600fec3e5114fad952ad
+docs/03_screens/web/screen_web_publish_calendar.md,M11 — Publish Hub,M11,P5-01,P5-04,ebdea60f923d023084d3f879a647e7766548b8f4302b70c7f1362d3b1604ba54
+docs/03_screens/web/screen_web_publish_calendar_full.md,M11 — Publish Hub,M11,P5-01,P5-04,5c7336a821f475f0d52b4141c5873c0f228460ed023ba9d84857c0a6dd42e82b
+docs/03_screens/web/screen_web_publish_channel_posts.md,M11 — Publish Hub,M11,P5-01,P5-04,6111ceb5dc025fb1bade55c4cca84dd2b3dfa913abfa5560f9190f991ec9243e
+docs/03_screens/web/screen_web_publish_composer.md,M11 — Publish Hub,M11,P5-01,P5-04,9924c6bd886f8a2e0edd89def60dc5dbe243cffcf9350d749e5a5acf25054ef6
+docs/03_screens/web/screen_web_publish_diagnostics.md,M11 — Publish Hub (Diagnostics),M11,P5-01,P5-04,51bc9ad0bdede5ff6e3dbf350e2e252fc77f21cd4dad38a1aa354628680c103b
+docs/03_screens/web/screen_web_publish_item_detail.md,M11 — Publish Hub,M11,P5-01,P5-04,4652c7af70eddb14082bf4b0080f2ce40bfa8f83dfe0b7de88e0c1c7afd174a8
+docs/03_screens/web/screen_web_publish_packaging_qa.md,M10 — Packaging QA,M10,P4-08,P5-05,b3dbbf5f4e904263070583d8083cf7e021ee9b0d25440f61ac75f33a3e1ac3e1
+docs/03_screens/web/screen_web_publish_queue.md,M11 — Publish Hub,M11,P5-01,P5-04,dfad4592ba6e2e63f0f1fded2338e6082030d82106869047e8d3d788ef743f6f
+docs/03_screens/web/screen_web_seeding_assignments.md,M18 — Seeding / Sample CRM,M18,P6-06,P6-09,5e8ab421ee9fc693bec7978997c5512957ec6dc4a22750fc7477b18069f88b6b
+docs/03_screens/web/screen_web_seeding_campaigns.md,M18 — Seeding / Sample CRM,M18,P6-06,P6-09,af7cad9c55ccc9a26c9a7de7466c030f98373459fc73b7b1f8096e37730619a5
+docs/03_screens/web/screen_web_seeding_requests.md,M18 — Seeding / Sample CRM,M18,P6-06,P6-09,b56297501e68743819bf49d5f18af6426922218e82da0dcdfdc80251fa024f4d
+docs/03_screens/web/screen_web_settings_ai.md,M23 — Settings,M23,P8-02,P8-02,d877b3f95f63cb9b1569982caf5a4ff93d5c9e855c1813f90f799f3300a60e68
+docs/03_screens/web/screen_web_settings_api_keys.md,M23 — Settings,M23,P8-02,P8-02,fe6b5b7592af5e9911f3743f962edc818a44d7390aed2318874f69bc9c4b673f
+docs/03_screens/web/screen_web_settings_billing.md,M23 — Settings,M23,P8-02,P8-02,c95b1940433b16dacd8037ff43598ea58babcdcd90faf40220fa0a7fe8ad3e65
+docs/03_screens/web/screen_web_settings_brand.md,M23 — Settings,M23,P8-02,P8-02,2cbc34c60a43ff36f1465451352b216e02386962f3cc75d6f042bd888656703b
+docs/03_screens/web/screen_web_settings_connector_detail.md,M23 — Settings,M23,P8-02,P8-02,45e1441de03afebe807e6c9d86e97fbd7c5be91dd6a1f13d9df6c76973a726a7
+docs/03_screens/web/screen_web_settings_connectors.md,M22 — Capability Matrix (Connectors),M22,P0-07,P8-03,279c1b4cd7a75111be4267ec54111af9bf4eef12f1259e668f8a47095b31ce5f
+docs/03_screens/web/screen_web_settings_credit_purchase.md,M23 — Settings,M23,P8-02,P8-02,1e44b8e5c6c6165f1f1375c34fad9770df5d1a9988afabff0cf0a9c9f1575e29
+docs/03_screens/web/screen_web_settings_credit_usage.md,M23 — Settings,M23,P8-02,P8-02,9d734905f97364e6ca45b9e93000b8dc1cf66f5960c9e697882ad4f49c14d702
+docs/03_screens/web/screen_web_settings_credits.md,M23 — Settings,M23,P8-02,P8-02,e4ce6c4b81d77dd3fd3969558e4ff3395f0528c8524697f9f70039886cb0680c
+docs/03_screens/web/screen_web_settings_data_export.md,M23 — Settings / Legal Compliance,M23,P8-02,P8-02,f44e112ca4b5ae51050096fd41704402278bcf5b56c2fb63d30f2ab7b11651c3
+docs/03_screens/web/screen_web_settings_diagnostics.md,M23 — Settings,M23,P8-02,P8-02,252da571d99fb141d93220dce407d6beb3a6e6f6a3872a16b9ff6e83130c5f81
+docs/03_screens/web/screen_web_settings_members.md,M23 — Workspace Administration,M23,P8-02,P8-02,e83b7735bebae806916d4ecef851b39b276d470f895ea81797df846463b95a74
+docs/03_screens/web/screen_web_settings_notifications.md,M23 — Settings,M23,P8-02,P8-02,2460d9717880301c306c9dce200f9e824bf5b0890e63ae1e1b9961b45247151d
+docs/03_screens/web/screen_web_settings_referral.md,referral — see canonical feature owner in screen_task_map.csv,referral,P8-05,P8-05,d8031aaed0c18adc698d6331228b77c4f829d3f2a0f0e7c19709dab0561cdd62
+docs/03_screens/web/screen_web_settings_team.md,M23 — Settings,M23,P8-02,P8-02,486bb07727bc470dbb7137804d3d70bc772a87b5d8533528869be7d32a42988e
+docs/03_screens/web/screen_web_settings_workspace.md,M23 — Settings,M23,P8-02,P8-02,14d8f47d7d2eaf405b0e80bfbe2d594baf381c71c0a1bd7e2dc129aff912dc6a
+docs/03_screens/web/screen_web_studio_ab_testing.md,M10 — see canonical feature owner in screen_task_map.csv,M10,P5-05,P5-05,7595df2d7ce40fd04cb63c577e38ff1e5a50b82613c1923d878f5a02caaf1d1b
+docs/03_screens/web/screen_web_studio_ai_remix.md,M07 — AI Studio,M07,P4-04,P8-06,aaf66ff7e7b06f9f082df8bf4270e503a577caffd5ae8c299e7c08308135ffc8
+docs/03_screens/web/screen_web_studio_asset_library.md,M09 — see canonical feature owner in screen_task_map.csv,M09,P4-08,P6-09,3f2778785636fd99b379b4e7fd900ad7180008da09cfa130b96401a092ce5392
+docs/03_screens/web/screen_web_studio_character.md,M08 — Continuity OS,M08,P3-03,P4-09,9b589f942c77af354848d9d23bb8b686a4302d10eb4413d620049eb2a8c73d19
+docs/03_screens/web/screen_web_studio_clip_factory.md,M07 — AI Studio,M07,P4-03,P8-06,a531697a46d646947140187d56d9587e5dcefe3dc0e8abd6c5d007843772980e
+docs/03_screens/web/screen_web_studio_image_to_video.md,M07 — AI Studio,M07,P4-05,P8-06,5a8a822e0e4ffa8954241ebabb2730a395178dc56d63c6c27b66a3ecee52530d
+docs/03_screens/web/screen_web_studio_launcher.md,M07 — AI Video Studio,M07,P4-01,P8-06,9e2b11d0fac1b94c89c5ab88f6272f664353f88680edd7f9206ea52e0a15c079
+docs/03_screens/web/screen_web_studio_link_to_video.md,M07 — AI Studio,M07,P4-05,P8-06,91d4dbcfea9a7cfa1809a588a8cda12f76d3b61fac52001cce7838b67e7ef2f1
+docs/03_screens/web/screen_web_studio_multi_merge.md,M07 — AI Studio,M07,P4-04,P8-06,e5c77429c74b767aa4c6493c6fb89e71078b7ab447594e0a975e757a7adf7ec5
+docs/03_screens/web/screen_web_studio_product_showcase.md,M07 — AI Studio,M07,P4-05,P8-06,c923b45883ed6e582bcd7ce4bf4132b3d6a9bb0fcac79591a15d2125e809beef
+docs/03_screens/web/screen_web_studio_queue.md,M07 — AI Studio,M07,P4-01,P8-06,a970b23ede689e1d180e546a887e7d25905d9631dbc0f4356cdeb0cd75e982a6
+docs/03_screens/web/screen_web_studio_quick_edit.md,M07 — AI Studio,M07,P4-02,P8-06,6acd011d51401946acce41004c841fb9b9bf9993af111ef171757d21d2eefd7e
+docs/03_screens/web/screen_web_studio_sound.md,M07 — AI Studio,M07,P4-06,P8-06,c6d09542d458cbdccee5bb996c50d52cfde195ee46936d1b66c17693683c66e1
+docs/03_screens/web/screen_web_studio_style_learning.md,M07 — AI Studio,M07,P4-07,P8-06,b4952ac73badcdb1681ef152871fe658a557394c6a11e9adaa4f6a4fa52eb584
+docs/03_screens/web/screen_web_studio_thumbnail.md,M07 — AI Studio,M07,P4-05,P8-06,aadf8e578862ee3334b3383df68ae3c1320b9c038235b32d5bff04b7e9f591ce
+docs/03_screens/web/screen_web_studio_translation.md,M07 — AI Studio,M07,P4-06,P8-06,776ade74f082ade1eb8f5d7282a94f7cda62aed7c1544ba33b0675513b9fbf08
+docs/03_screens/web/screen_web_studio_video_agent.md,M07 — AI Studio,M07,P7-04,P8-06,57b4bac4c6d7afdbce55577d22faa41dbbd770defc4065b5692ab341fd34749f
+docs/03_screens/web/screen_web_support_article.md,S19 — Help Center,help,P8-04,P8-04,7aca3484b97032ca9543a4f51730ffbc7795f1410e67ccc9f074a6a74d345db4
+docs/03_screens/web/screen_web_support_center.md,S19 — Help Center,help,P8-04,P8-04,6e42029452247f1020bb91f7e737671921a25486bac35f99c6cac6fa212cc490
+docs/03_screens/web/screen_web_support_ticket_create.md,S19 — Help Center,help,P8-04,P8-04,8482829cf6ce3cd02dcce245e6b8af0852eb9b6162b692bdbb778e3e0f287b31
+docs/03_screens/web/screen_web_workflow_agents.md,M20 — see canonical feature owner in screen_task_map.csv,M20,P7-02,P7-05,f16b5007286ba184c3dc7e3c18fe0b5209efa7679c76a1c94a9e72551ef47d89
+docs/03_screens/web/screen_web_workflow_approvals.md,M20 — Workflow Studio (Approvals),M20,P7-02,P7-05,9e0b13365b1b9edc18c4142e51cf00353a9c7736b49831d18efbe21d2dafd48f
+docs/03_screens/web/screen_web_workflow_builder.md,M20 — Workflow Studio,M20,P7-02,P7-05,0c91822551d6c929cb6e213e085de934d4538ad9fd176d4fb56a01604c29b28f
+docs/03_screens/web/screen_web_workflow_list.md,M20 — Workflow Studio,M20,P7-02,P7-05,a23d01a47b62ea7ed1366135fb0ac447b83133416b7419c7b6acede8af6f24d9
+docs/03_screens/web/screen_web_workflow_recipes.md,M20 — see canonical feature owner in screen_task_map.csv,M20,P7-02,P7-05,18cb7a01387be10d113227778fc8c45a213e387d6a382a04487ee4720511cd70
+docs/03_screens/web/screen_web_workflow_runs.md,M20 — Workflow Studio,M20,P7-02,P7-05,360ce28b7d1af27686704cf658346ebe09243faf30fe19270a96b25a1c7e7f59
+docs/03_screens/web/screen_web_workflow_tasks.md,M20 — Workflow Studio (Tasks),M20,P7-02,P7-05,08449a606c6ed52efa9ecbc2c457d591ee22b608390fde20894f410716ffc504

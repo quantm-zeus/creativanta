@@ -432,7 +432,7 @@ LLM Strategy:
 
 | Safeguard | Rule | Implementation |
 |---|---|---|
-| Originality Score | Block nếu script similarity > 70% | LLM + text similarity scoring |
+| Originality Score | Use M07 RULE-M07-003 similarity threshold; no alternate bypass | LLM + text similarity scoring; heuristic, not rights clearance |
 | Script Rewrite Check | Output script similarity < 30% vs original | Automated similarity check |
 | No Footage Reuse | KHÔNG lấy bất kỳ frame nào từ video gốc | Only analysis data passed to gen |
 | Audio Independence | KHÔNG sử dụng audio gốc | Always gen new voice + select new music |
@@ -637,7 +637,7 @@ Upload bất kỳ ảnh nào → AI biến thành video có chuyển động t�
 - **Auto-extract**: AI chọn best frame từ video → enhance face/lighting → add text overlay
 - **Generate from prompt**: "Thumbnail cho video skincare routine" → 5 options
 - **Template library**: 50+ trending thumbnail styles (reaction face, split screen, before/after, bold text...)
-- **A/B variants**: Tạo 2-3 thumbnails → publish → auto-pick winner dựa trên CTR (via M10 Experiment Lab)
+- **A/B variants**: Tạo 2-3 thumbnails → publish → report CTR comparison with evidence thresholds and inconclusive path (via M10 Experiment Lab)
 - **Platform optimization**: YouTube (16:9 bold), TikTok (9:16 cover), Instagram (1:1 clean)
 - **Brand consistency**: Auto-apply brand fonts/colors/logo từ Brand Pack
 
@@ -862,7 +862,7 @@ AI generate variations:
     ↓
 Publish all variants (spread schedule, §5.3 batch publish rules)
     ↓
-AI monitor 24-72h → auto-report winner + insight
+AI monitor → apply M10/API evidence thresholds → report eligible observational winner or inconclusive + insight
     ↓
 Auto-scale winner (re-schedule to more platforms)
 ```

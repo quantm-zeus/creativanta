@@ -1,7 +1,7 @@
 # Screen: Web — Settings: Referral Center
 
 > **Screen ID**: W126
-> **Module**: M23 — Settings
+> **Module**: referral — see canonical feature owner in screen_task_map.csv
 > **Route**: `/settings/referral`
 > **Platform**: Web (SvelteKit)
 > **Upstream**: Pack 10, A1 Schema (referrals, referral_rewards), B5 RBAC §2.9

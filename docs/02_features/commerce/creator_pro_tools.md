@@ -4,7 +4,7 @@ module: S16
 domain: commerce
 status: SPECIFIED
 created: 2026-04-01
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 canonical: true
 upstream: PRD v3.1 §16, §37.1
 ---
@@ -34,11 +34,11 @@ Creator Pro Tools enables creators to monetize their personal brand through **Li
 - Tax Report Export (monthly/quarterly/yearly)
 
 ### Does NOT cover (Non-goals for this module)
-- Content creation or video production (owned by M08 AI Video Studio)
+- Content creation or video production (owned by M07 AI Video Studio)
 - Payment processing or invoicing (owned by external payment provider)
 - Platform-specific creator program enrollment (external)
 - Influencer marketplace / brand discovery (not in v1)
-- Brand deal CRM pipeline (kanban), contract templates, brand marketplace (P2)
+- Brand deal CRM pipeline (kanban), contract templates, brand marketplace: retained expansion, delivered in P8 under the section below (historical "P2" is not the current phase number)
 
 ## 1.2 Actors
 
@@ -56,7 +56,7 @@ Creator Pro Tools enables creators to monetize their personal brand through **Li
 | RULE-S16-001 | Link-in-Bio pages are workspace-scoped, one active page per workspace |
 | RULE-S16-002 | Media Kits auto-populate from analytics data (last 90 days) |
 | RULE-S16-003 | Rate Cards support multiple currencies using workspace default |
-| RULE-S16-004 | Brand Deals follow lifecycle: `inquiry → negotiation → contracted → in_progress → delivered → paid → closed` |
+| RULE-S16-004 | Brand Deals follow the canonical M16 lifecycle linked in §4; inquiry remains a thread |
 | RULE-S16-005 | Deliverable tracking tied to `publish_items` for proof-of-work |
 | RULE-S16-006 | Link-in-Bio URLs scanned via Google Safe Browsing API. AUP violations: warn → 48h → auto-remove |
 | RULE-S16-007 | Mass link creation throttle: max 20 links/day/workspace (anti-spam bot) |
@@ -190,11 +190,12 @@ Export income reports for tax filing purposes.
 | Mode | Access Level |
 |---|---|
 | Creator Mode | Full access to all Creator Pro features |
-| Seller Mode | Revenue + Tax Export only |
+| Seller Mode | Emphasize Revenue + Tax Export; all entitled tools remain reachable |
 | Agency Mode | Per-creator views (multi-workspace aggregation) |
-| Affiliate Mode | Revenue + Rate Card only |
+| Affiliate Mode | Emphasize Revenue + Rate Card; all entitled tools remain reachable |
 | Brand Collab Mode | Full access |
-| Beginner Mode | Guided unlock via progressive disclosure |
+| Live Operator Mode | Emphasize live deliverables, proof and content revenue |
+| Beginner overlay (any mode) | Guided discovery; does not create a seventh mode or change access |
 
 ---
 
@@ -226,7 +227,7 @@ Feature: Brand Deal Pipeline
   Scenario: Full deal lifecycle
     Given a sponsor inquiry for workspace
     When creator responds → negotiates → contracts → delivers → gets paid
-    Then deal status follows: inquiry → negotiation → contracted → in_progress → delivered → paid → closed
+    Then the inquiry remains a thread and the deal follows negotiating → agreed → in_progress → delivered → paid → completed
     And each transition is logged in audit_events
 
 Feature: Link-in-Bio Domain Protection
@@ -235,7 +236,8 @@ Feature: Link-in-Bio Domain Protection
     When the system scans the URL via Google Safe Browsing API
     And the URL is flagged as phishing
     Then a warning is displayed to the creator
-    And the link is NOT published until creator removes or overrides (with AUP acknowledgment)
+    And the link is NOT published; creator can remove it or request security review of a false positive
+    And AUP acknowledgment cannot authorize publishing a confirmed phishing URL
 
   Scenario: Custom domain setup
     Given a Pro user navigates to Link-in-Bio settings
@@ -309,3 +311,14 @@ Feature: Custom Domain
 - **Pricing**: `01_business/pricing_and_credits.md` (tier gating alignment)
 - **Finance**: `02_features/finance/operating_ledger.md` (revenue attribution feeds)
 - **Affiliate**: `02_features/commerce/affiliate_network.md` (UTM + link health overlap)
+
+## 12. Retained expansion — brand collaboration workspace
+
+The historical deferred CRM/contract/marketplace scope remains committed, owned here and completed in P8. It is separate from the workflow recipe marketplace.
+
+- Kanban is a view of existing `brand_deals`, using §4 transitions, ownership, filters and optimistic conflict checks. Moving a card calls the same status command; no shadow CRM table.
+- Contract templates are editable drafting aids attached as versioned evidence to a deal. The creator reviews terms and records external signature proof; the product does not claim that generated text is legal advice or an electronic-signature service.
+- Brand discovery uses explicitly opted-in, published media kits and rate cards; draft/private analytics, contact details and financial amounts are excluded from search. Sponsors submit an inquiry through the existing public inquiry flow. Cross-workspace copying requires the creator's consent; discovery creates no permission to read a workspace.
+- Directory abuse controls: rate limits, report/remove, moderation and opt-out removal from public search/cache. No scraping or contact harvesting.
+- Given an opted-out creator, when a sponsor searches the directory, then neither profile nor cached preview is returned. Given a sponsor inquiry, accepting it creates a canonical deal linked to the original thread. Given a changed deal, a stale kanban move fails without overwriting it.
+- [API behavior §8](../../04_contracts/api_behavior_contracts.md#8-reviewed-operator-projections-and-commands) and schema §27 own public fields, opt-in storage, inquiry and template commands. P8 compiles and tests these contracts before activation; existing v1 tools remain independently buildable.

@@ -186,3 +186,7 @@ WorkflowBuilderPage
 |---|---|---|---|
 | 2026-03-30 | 2.0 | **Tier A upgrade**: 5 errors (save, test), canvas/panel a11y, 8 analytics, SvelteKit impl (Activepieces, drag-drop, auto-save), localization, 8 design tokens (node-type). | System |
 | 2026-03-28 | 1.0 | Initial specification | System |
+
+## Preflight before activation
+
+Show a review panel for per-node target, permission, capability, approval and quoted maximum spend from WorkflowService/Test. Unknown inputs/quotes remain visible and block a paid bounded plan. Simulation is labeled throughout. Graph/target/budget changes invalidate approval and show a diff requiring renewed confirmation; do not silently resume changed actions.

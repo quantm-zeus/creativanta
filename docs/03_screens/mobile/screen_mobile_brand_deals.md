@@ -153,3 +153,7 @@ BrandDealsPipelineScreen
 |---|---|---|---|
 | 2026-03-28 | Patch | Removed duplicate template sections. Replaced with screen-specific Error Handling, Accessibility, Loading, Localization, Design Tokens. | System |
 | 2026-03-28 | 1.0 | Initial specification | System |
+
+## P8 kanban and document parity
+
+Add a status-filtered list equivalent to web kanban, with accessible move/status controls using the canonical M16 lifecycle and optimistic checks. Document tab supports the template preview, safe upload, immutable versions and external signature evidence in [Deal Contracts](../web/screen_web_creator_contracts.md). Inquiry remains a separate thread before deal creation. All writes recheck permissions and show conflict/repair states.

@@ -1,7 +1,7 @@
 # Screen: Mobile — Referral Center
 
 > **Screen ID**: M062
-> **Module**: M23 — Settings / Growth
+> **Module**: referral — see canonical feature owner in screen_task_map.csv
 > **Route**: `/m/settings/referral`
 > **Platform**: Mobile (Flutter)
 > **Upstream**: Pack 08 §Growth/Referral, referral projections + `ai_credit_transactions`, B5 RBAC §2.9

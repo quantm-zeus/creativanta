@@ -14,6 +14,9 @@ import sys
 from pathlib import Path
 from urllib.parse import unquote
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from build_plan import validate as validate_build_plan
+
 ROOT = Path(__file__).resolve().parents[1]
 
 def audit(root: Path) -> tuple[list[str], dict[str, int]]:
@@ -153,7 +156,39 @@ def audit(root: Path) -> tuple[list[str], dict[str, int]]:
     for table,fields in re.findall(r'INSERT INTO (\w+)\s*\((.*?)\)\s*VALUES',seed,re.S):
         require(table in tables,f'seed: unknown table {table}')
         for field in fields.split(','):require(field.strip() in columns.get(table,set()),f'seed: unknown column {table}.{field.strip()}')
-    return errors, {'active_markdown':len(active_files),'tables':len(tables),'tenant_tables':len(tenant),'rpc_bindings':len(bindings),'modules':len(modules)}
+
+    # Review regressions: documentation can otherwise pass while teaching unsafe behavior.
+    inventory = read('02_features/commerce/product_hub.md')
+    require('SUM(delta)' not in inventory and not re.search(r'inventory_locations.{0,30}current_stock', inventory),
+            'inventory feature references phantom stock columns')
+    for table in ['inventory_balances','stock_reservations']:
+        require(table in tenant, f'missing durable inventory table {table}')
+    require('movement_key' in columns.get('stock_movements',set()), 'stock ledger lacks durable movement identity')
+    require('CREATE UNIQUE INDEX idx_sm_identity ON stock_movements(workspace_id, movement_key)' in sql,
+            'stock ledger lacks unique economic identity')
+    require('GRANT SELECT, INSERT, UPDATE, DELETE ON stock_movements TO app_user' not in sql,
+            'stock ledger runtime grant breaks immutability')
+    require('onboarding_progress' in columns.get('user_preferences',set()), 'personal onboarding lacks self-scoped storage')
+    require(binding_by_rpc.get('WorkspaceService/CompleteOnboarding',{}).get('permission_key')=='user:self',
+            'personal onboarding permission drift')
+    require("return `'unknown'` status" not in capability and 'Capability status = `unknown`' not in capability,
+            'capability feature returns non-schema unknown enum')
+    creator = read('02_features/commerce/creator_pro_tools.md')
+    require('overrides (with AUP acknowledgment)' not in creator, 'phishing override remains in Creator Pro acceptance')
+    studio = read('02_features/production/ai_video_studio.md')
+    require('Block if > 70% transcript similarity' not in studio, 'conflicting remix similarity threshold')
+    require('EF-07A' in studio and 'EF-11' in studio, 'retained production extension missing')
+    for field in ['template_kind','template_version','template_payload']:
+        require(field in columns.get('recipe_templates',set()),f'portable recipe snapshot missing {field}')
+    require(not re.search(r'GRANT SELECT(?:,.*)? ON media_kits TO directory_reader',sql),
+            'public directory must use column-scoped grants')
+    require('CREATE POLICY public_directory_read ON media_kits FOR SELECT TO directory_reader' in sql,
+            'public directory lacks explicit visibility policy')
+    require('CREATE POLICY tenant_isolation ON media_kits TO app_user' in sql,
+            'public directory must not inherit a permissive tenant policy')
+    plan_errors,plan_counts=validate_build_plan(root)
+    errors.extend(plan_errors)
+    return errors, {'active_markdown':len(active_files),'tables':len(tables),'tenant_tables':len(tenant),'rpc_bindings':len(bindings),'modules':len(modules),**plan_counts}
 
 def main() -> int:
     parser=argparse.ArgumentParser(description=__doc__)

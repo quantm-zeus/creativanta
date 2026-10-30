@@ -463,3 +463,7 @@ Home Dashboard (/)
 | Date | Version | Change | Author |
 |---|---|---|---|
 | 2026-03-27 | 1.0 | Initial screen specification | System |
+
+## Progressive first-value layout
+
+Follow M01's progressive first-value flow: show “Connect or import” and currently available next steps; future-phase steps explain availability. Imported data can populate authorized cards before full onboarding. Data-repair cards open the owning object/action, with source/freshness and permission-filtered gaps; personal completion never changes workspace settings.
