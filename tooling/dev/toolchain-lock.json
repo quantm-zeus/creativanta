@@ -1,0 +1,22 @@
+{
+  "project": "Creativanta",
+  "phase": "P0-01",
+  "lockedAt": "2026-10-31",
+  "platform": "linux/amd64",
+  "tools": {
+    "go": "1.27.3",
+    "flutter": "3.47.9",
+    "dart": "3.13.7",
+    "node": "24.21.0",
+    "pnpm": "10.34.9",
+    "buf": "1.75.0"
+  },
+  "environment": "VPS dev sandbox; production deployments excluded",
+  "rules": [
+    "No production secrets",
+    "Go supersedes Rust for Creativanta",
+    "Mobile device E2E requires dedicated runner",
+    "Pin dependencies",
+    "P0-01 not accepted without CI evidence"
+  ]
+}
