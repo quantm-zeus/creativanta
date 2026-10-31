@@ -1,0 +1,4650 @@
+{
+  "name": "Creativanta",
+  "status": "DESIGN_CONCEPT_NOT_IMPLEMENTED",
+  "modules": [
+    {
+      "id": "M01",
+      "name": "Home / Daily Decision Engine",
+      "domain": "platform",
+      "feature": "02features/platform/homedecisionengine.md",
+      "phase": "P0–P8"
+    },
+    {
+      "id": "M02",
+      "name": "Trend Fusion Radar",
+      "domain": "intelligence",
+      "feature": "02features/intelligence/trendradar.md",
+      "phase": "P2–P4"
+    },
+    {
+      "id": "M03",
+      "name": "Research & Competitor Intelligence",
+      "domain": "intelligence",
+      "feature": "02features/intelligence/competitorintelligence.md",
+      "phase": "P2–P8"
+    },
+    {
+      "id": "M04",
+      "name": "Opportunity Board",
+      "domain": "intelligence",
+      "feature": "02features/intelligence/opportunityboard.md",
+      "phase": "P2–P6"
+    },
+    {
+      "id": "M05",
+      "name": "Idea Engine",
+      "domain": "content",
+      "feature": "02features/content/ideaengine.md",
+      "phase": "P3–P6"
+    },
+    {
+      "id": "M06",
+      "name": "Script Lab",
+      "domain": "content",
+      "feature": "02features/content/scriptlab.md",
+      "phase": "P3"
+    },
+    {
+      "id": "M07",
+      "name": "AI Video Studio",
+      "domain": "production",
+      "feature": "02features/production/aivideostudio.md",
+      "phase": "P4–P8"
+    },
+    {
+      "id": "M08",
+      "name": "Continuity OS",
+      "domain": "content",
+      "feature": "02features/content/continuityos.md",
+      "phase": "P3–P4"
+    },
+    {
+      "id": "M09",
+      "name": "Asset Derivative Manager",
+      "domain": "production",
+      "feature": "02features/production/assetderivatives.md",
+      "phase": "P4–P6"
+    },
+    {
+      "id": "M10",
+      "name": "Packaging QA",
+      "domain": "production",
+      "feature": "02features/production/packagingqa.md",
+      "phase": "P4–P5"
+    },
+    {
+      "id": "M11",
+      "name": "Publish Hub",
+      "domain": "publish",
+      "feature": "02features/publish/publishhub.md",
+      "phase": "P5"
+    },
+    {
+      "id": "M12",
+      "name": "Unified Inbox & Engagement",
+      "domain": "engagement",
+      "feature": "02features/engagement/unifiedinbox.md",
+      "phase": "P5–P6"
+    },
+    {
+      "id": "M13",
+      "name": "Product Hub / Inventory",
+      "domain": "commerce",
+      "feature": "02features/commerce/producthub.md",
+      "phase": "P1–P6"
+    },
+    {
+      "id": "M14",
+      "name": "Monetization OS",
+      "domain": "commerce",
+      "feature": "02features/commerce/monetizationos.md",
+      "phase": "P6"
+    },
+    {
+      "id": "M15",
+      "name": "Creator Store / Offers",
+      "domain": "commerce",
+      "feature": "02features/commerce/creatorstore.md",
+      "phase": "P6"
+    },
+    {
+      "id": "M16",
+      "name": "Affiliate Network",
+      "domain": "commerce",
+      "feature": "02features/commerce/affiliatenetwork.md",
+      "phase": "P6"
+    },
+    {
+      "id": "M17",
+      "name": "Live Commerce War Room",
+      "domain": "commerce",
+      "feature": "02features/commerce/livewarroom.md",
+      "phase": "P6"
+    },
+    {
+      "id": "M18",
+      "name": "Seeding / Sample CRM",
+      "domain": "commerce",
+      "feature": "02features/commerce/seedingcrm.md",
+      "phase": "P6"
+    },
+    {
+      "id": "M19",
+      "name": "Operating Ledger / Profit",
+      "domain": "finance",
+      "feature": "02features/finance/operatingledger.md",
+      "phase": "P1–P8"
+    },
+    {
+      "id": "M20",
+      "name": "Workflow Studio",
+      "domain": "automation",
+      "feature": "02features/automation/workflowstudio.md",
+      "phase": "P7"
+    },
+    {
+      "id": "M21",
+      "name": "Recipe / Agent Center",
+      "domain": "automation",
+      "feature": "02features/automation/recipeagentcenter.md",
+      "phase": "P7–P8"
+    },
+    {
+      "id": "M22",
+      "name": "Capability Matrix",
+      "domain": "platform",
+      "feature": "02features/platform/capabilitymatrix.md",
+      "phase": "P0–P8"
+    },
+    {
+      "id": "M23",
+      "name": "Reporting / Admin / Billing",
+      "domain": "platform",
+      "feature": "02features/platform/reportingadminbilling.md",
+      "phase": "P0–P8"
+    },
+    {
+      "id": "auth",
+      "name": "Auth & Session (cross-cutting)",
+      "domain": "platform",
+      "feature": "02features/platform/auth.md",
+      "phase": "P0"
+    },
+    {
+      "id": "copilot",
+      "name": "Copilot (AI Operations Assistant)",
+      "domain": "platform",
+      "feature": "02features/platform/copilot.md",
+      "phase": "P3–P8"
+    },
+    {
+      "id": "referral",
+      "name": "Referral & Growth Engine",
+      "domain": "platform",
+      "feature": "02features/platform/referralgrowth.md",
+      "phase": "P8"
+    },
+    {
+      "id": "help",
+      "name": "Help Center, Changelog & Beta",
+      "domain": "platform",
+      "feature": "02features/platform/helpcenter.md",
+      "phase": "P0–P8"
+    },
+    {
+      "id": "gamification",
+      "name": "Creator Gamification System",
+      "domain": "platform",
+      "feature": "02features/platform/gamification.md",
+      "phase": "P4–P8"
+    },
+    {
+      "id": "S16",
+      "name": "Creator Pro Tools",
+      "domain": "commerce",
+      "feature": "02features/commerce/creatorprotools.md",
+      "phase": "P6–P8"
+    },
+    {
+      "id": "S24",
+      "name": "Public API & Webhooks",
+      "domain": "platform",
+      "feature": "02features/platform/publicapi.md",
+      "phase": "P0–P7"
+    },
+    {
+      "id": "S26",
+      "name": "Internal Admin Panel",
+      "domain": "platform",
+      "feature": "02features/platform/internaladmin.md",
+      "phase": "P0–P8"
+    }
+  ],
+  "screens": [
+    {
+      "id": "W076",
+      "title": "Web — Analytics Detail Report",
+      "platform": "web",
+      "module": "M17",
+      "route": "/analytics/[platform]",
+      "purpose": "The Analytics Detail Report provides deep per-platform analytics with engagement trends, audience demographics, content performance ranking, best posting times, and AI-generated strategic recommendations. This is the drill-down from the Analytics Overview — where a creator goes to understa",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data / Data Binding",
+        "User Actions",
+        "States / State Machine"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/web/screen_web_analytics_detail.md"
+    },
+    {
+      "id": "W079",
+      "title": "Web — Gamification Dashboard",
+      "platform": "web",
+      "module": "gamification",
+      "route": "/gamification",
+      "purpose": "Creator engagement through game mechanics — levels with XP progression, daily/weekly quests, achievement badges, posting streaks, and leaderboard. Gamification drives consistent content creation and platform feature adoption.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "Component Hierarchy",
+        "XP System",
+        "Level Tiers",
+        "States",
+        "Edge Cases"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/web/screen_web_analytics_gamification.md"
+    },
+    {
+      "id": "W075",
+      "title": "Web — Analytics Overview",
+      "platform": "web",
+      "module": "M17",
+      "route": "/analytics",
+      "purpose": "The Analytics Overview is the reporting hub — aggregated metrics across all platforms with drill-down capability. Shows content performance, audience growth, engagement trends, and top-performing content with AI-powered insights.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "Edge Cases",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/web/screen_web_analytics_overview.md"
+    },
+    {
+      "id": "W077",
+      "title": "Web — Performance Coach",
+      "platform": "web",
+      "module": "M23",
+      "route": "/performance",
+      "purpose": "AI-powered content coaching — weekly report card with overall grade, post-by-post performance insights, strengths/weaknesses analysis, and strategic recommendations for content improvement. This is the \"learn\" feedback loop in the Trend-to-Profit pipeline.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Grading System",
+        "States",
+        "Permissions"
+      ],
+      "kind": "form",
+      "source": "docs/03_screens/web/screen_web_analytics_performance.md"
+    },
+    {
+      "id": "W078",
+      "title": "Web — Post Analytics Detail",
+      "platform": "web",
+      "module": "M23",
+      "route": "/analytics/post/[id]",
+      "purpose": "Per-post deep analytics — real-time metrics, reach curve over 72h, audience demographics, AI-powered performance analysis, peer comparison, and revenue attribution.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "Component Hierarchy",
+        "States",
+        "Edge Cases",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/web/screen_web_analytics_post_detail.md"
+    },
+    {
+      "id": "W012a",
+      "title": "Web — Forgot Password",
+      "platform": "web",
+      "module": "auth",
+      "route": "/auth/forgot-password",
+      "purpose": "Allows users who have forgotten their password to initiate a password reset flow. This is a critical auth recovery path that must be secure yet user-friendly.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "form",
+      "source": "docs/03_screens/web/screen_web_auth_forgot_password.md"
+    },
+    {
+      "id": "W010",
+      "title": "Web — Authentication: Login",
+      "platform": "web",
+      "module": "auth",
+      "route": "/login",
+      "purpose": "The Login page is the primary authentication entry point for Creativanta web application. It supports email/password login, social OAuth (Google, Apple), and magic link authentication. This is the first impression screen — it must look polished, trustworthy, and load fast.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "form",
+      "source": "docs/03_screens/web/screen_web_auth_login.md"
+    },
+    {
+      "id": "W011",
+      "title": "Web — Authentication: Register",
+      "platform": "web",
+      "module": "auth",
+      "route": "/register",
+      "purpose": "The Registration page is the entry point for new users into the Creativanta ecosystem. It supports email/password registration and social OAuth (Google, Apple). After registration, users go through email verification → workspace creation → onboarding wizard, which is the critical funnel fr",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "form",
+      "source": "docs/03_screens/web/screen_web_auth_register.md"
+    },
+    {
+      "id": "W130",
+      "title": "Web — Capability Matrix",
+      "platform": "web",
+      "module": "M22",
+      "route": "/settings/capabilities",
+      "purpose": "The Capability Matrix is the transparency layer showing users exactly which features are available, degraded, or unavailable based on their connected platforms, subscription tier, and current platform health. It is the single source of truth for \"can I do X right now?\" — replacing vague er",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "State Machine"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_capability_matrix.md"
+    },
+    {
+      "id": "W069",
+      "title": "Web — Affiliate Links Overview",
+      "platform": "web",
+      "module": "M16",
+      "route": "/commerce/affiliates",
+      "purpose": "The Affiliate Links Overview screen manages affiliate link generation, tracking, and performance monitoring. It shows the click → order → revenue funnel per link with source class badges and health monitoring.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules (Create/Edit Link Modal)"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_commerce_affiliate.md"
+    },
+    {
+      "id": "W070",
+      "title": "Web — Affiliate Manager",
+      "platform": "web",
+      "module": "M16",
+      "route": "/affiliate",
+      "purpose": "The Affiliate Manager is the command center for all affiliate/referral links. It tracks click-through rates, conversion data, commission earnings, and source content attribution across platforms (TikTok Shop, Shopee, custom links). This screen bridges commerce and creator monetization — sh",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_commerce_affiliate_manager.md"
+    },
+    {
+      "id": "W065",
+      "title": "Web — Campaign Detail",
+      "platform": "web",
+      "module": "M14",
+      "route": "/campaigns/[id]",
+      "purpose": "The Campaign Detail screen is a real-time performance dashboard for a specific marketing campaign. It shows revenue attribution, a multi-stage conversion funnel, linked content and offers, cost analysis with ROAS calculation, and per-platform breakdown. This is where sellers evaluate wheth",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Validation Rules"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_commerce_campaign_detail.md"
+    },
+    {
+      "id": "W064",
+      "title": "Web — Campaign Manager",
+      "platform": "web",
+      "module": "M14",
+      "route": "/campaigns",
+      "purpose": "Marketing campaign manager — the umbrella entity that groups products, offers, content, and affiliate links with unified performance tracking, ROI attribution, and budget control. Campaigns connect the content pipeline to commerce outcomes.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules (Create/Edit)"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/web/screen_web_commerce_campaign_list.md"
+    },
+    {
+      "id": "W068",
+      "title": "Web — Coupon Manager",
+      "platform": "web",
+      "module": "M14",
+      "route": "/coupons",
+      "purpose": "Create and manage discount coupons across platforms with usage tracking, revenue impact analysis, and platform distribution. Coupons are the promotional instrument layer — used inside campaigns, shared via affiliate links, or distributed directly to customers.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules (Create/Edit)"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_commerce_coupon.md"
+    },
+    {
+      "id": "W075a",
+      "title": "Web — Inventory & Stock Management",
+      "platform": "web",
+      "module": "M13",
+      "route": "/commerce/inventory",
+      "purpose": "Centralized inventory management view for tracking stock levels across multiple locations and platforms. Essential for Seller Mode and Live Operator Mode users who need real-time stock visibility.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_commerce_inventory.md"
+    },
+    {
+      "id": "W071",
+      "title": "Web — Membership Plans",
+      "platform": "web",
+      "module": "M15",
+      "route": "/memberships",
+      "purpose": "Membership Plans is the creator's subscription management dashboard — create and manage paid membership tiers for audiences. Supports custom pricing, drag-sortable benefits, subscriber lifecycle management, MRR/churn analytics, and multi-provider billing (Stripe, VNPay). This is a recurrin",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_commerce_membership.md"
+    },
+    {
+      "id": "W067",
+      "title": "Web — Offer Detail / Create",
+      "platform": "web",
+      "module": "M14",
+      "route": "/offers/[id]",
+      "purpose": "The Offer Detail screen is the primary form for creating and editing promotional offers. It supports 4 offer types (percentage, fixed amount, bundle, free gift), product association, time/quantity constraints, and multi-channel distribution (coupon codes, affiliate links, campaigns). This ",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Validation Rules"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_commerce_offer_detail.md"
+    },
+    {
+      "id": "W066",
+      "title": "Web — Offer & Coupon Manager",
+      "platform": "web",
+      "module": "M14",
+      "route": "/offers",
+      "purpose": "The Offer & Coupon Manager is the central hub for all promotional offers. Shows all offers across statuses (active, scheduled, paused, expired) with real-time redemption tracking, revenue impact, and platform distribution. This is the primary entry point for the offer lifecycle — from crea",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Validation Rules"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/web/screen_web_commerce_offer_list.md"
+    },
+    {
+      "id": "W063",
+      "title": "Web — Order Detail",
+      "platform": "web",
+      "module": "M13",
+      "route": "/orders/[id]",
+      "purpose": "Full order detail page showing order items, buyer information, price breakdown with platform fees, delivery timeline, content attribution, and profit calculation. This is where commerce data connects to the Profit OS proof chain — every fee and deduction is itemized and source-attributed.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "States"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_commerce_order_detail.md"
+    },
+    {
+      "id": "W062",
+      "title": "Web — Order Management",
+      "platform": "web",
+      "module": "M13",
+      "route": "/orders",
+      "purpose": "Cross-platform order list that aggregates all orders synced from TikTok Shop, Shopee, Lazada, and direct store channels into one unified view. Provides daily summary statistics, advanced filtering, full-text search, real-time new order notifications, bulk export, and buyer contact integrat",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/web/screen_web_commerce_order_list.md"
+    },
+    {
+      "id": "W061",
+      "title": "Web — Product Detail",
+      "platform": "web",
+      "module": "M13",
+      "route": "/products/[id]",
+      "purpose": "The Product Detail page is the 360° intelligence hub for a single product — bridging commerce data with content strategy. It shows product information, variant/inventory management, sales performance over time, content attribution (which videos/scripts drove sales), platform sync status, a",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data / Data Binding",
+        "User Actions",
+        "States / State Machine"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_commerce_product_detail.md"
+    },
+    {
+      "id": "W060",
+      "title": "Web — Product List",
+      "platform": "web",
+      "module": "M13",
+      "route": "/products",
+      "purpose": "The Product List displays all products in the workspace — synced from e-commerce platforms (TikTok Shop, Shopee, Lazada) and manually created. Supports grid/list view with filtering, full-text search (Meilisearch), and quick actions for content creation and offer linking. This is the comme",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/web/screen_web_commerce_product_list.md"
+    },
+    {
+      "id": "W073",
+      "title": "Web — Refund Management",
+      "platform": "web",
+      "module": "M13",
+      "route": "/orders/refunds",
+      "purpose": "Track and process refund requests across all connected platforms. Pipeline view with evidence review, customer purchase history, and accept/reject workflow. Refunds are critical for accurate Profit OS calculations — every refund adjusts the operating ledger.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules (Resolution Form)"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_commerce_refunds.md"
+    },
+    {
+      "id": "W074",
+      "title": "Web — Sample Requests",
+      "platform": "web",
+      "module": "M18",
+      "route": "/samples",
+      "purpose": "Sample Requests manages the lifecycle of product sample distribution to influencers/reviewers from the commerce perspective. Tracks the 5-stage pipeline (Requested → Approved → Shipped → Received → Review Published), integrates carrier tracking APIs, monitors inventory impact, and calculat",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_commerce_samples.md"
+    },
+    {
+      "id": "W072",
+      "title": "Web — Store Pages & Editor",
+      "platform": "web",
+      "module": "M15",
+      "route": "/store",
+      "purpose": "Store Pages is the no-code micro-storefront builder — creators build product landing pages with a visual drag-and-drop editor, then publish to creativanta.link/shop/{slug}. Supports hero banners, product grids, testimonials, about sections, FAQ, and custom HTML. Includes live preview, them",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_commerce_store_pages.md"
+    },
+    {
+      "id": "W020",
+      "title": "Web — Asset Brief Editor",
+      "platform": "web",
+      "module": "M06",
+      "route": "/scripts/[id]/brief",
+      "purpose": "The Asset Brief is the visual production plan that bridges Script → AI Studio. It defines shot-by-shot visual notes, reference images, color palettes, and product placements. This document guides both AI generation and human production.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "User Actions",
+        "Validation Rules",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_content_asset_brief.md"
+    },
+    {
+      "id": "W019",
+      "title": "Web — Continuity Packs",
+      "platform": "web",
+      "module": "M08",
+      "route": "/continuity",
+      "purpose": "Continuity Packs is the \"character bible\" for AI-generated content — a management hub for reusable character profiles, brand kits, and voice presets that ensure consistency across all AI-generated videos, scripts, and TTS output. When a creator sets up \"Chef Hùng\" as a character with speci",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data / Data Binding",
+        "User Actions",
+        "States / State Machine"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_content_continuity.md"
+    },
+    {
+      "id": "W018",
+      "title": "Web — Derivative Manager",
+      "platform": "web",
+      "module": "M09",
+      "route": "/derivatives",
+      "purpose": "Manage content derivatives — repurposed/remixed versions of original content for different platforms. Tree structure groups derivatives under their source content, showing platform-specific adaptations (aspect ratios, durations, formats) and their publish status.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Derivative Types",
+        "User Actions",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_content_derivatives.md"
+    },
+    {
+      "id": "W012",
+      "title": "Web — Idea Board",
+      "platform": "web",
+      "module": "M05",
+      "route": "/ideas",
+      "purpose": "The Idea Board is the content pipeline's front door — a Kanban-style board for capturing, scoring, prioritizing, and advancing content ideas through stages: Inbox → Evaluating → Approved → In Script → Done. Ideas can be created manually (one-click capture from anywhere), generated by AI (b",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data / Data Binding",
+        "User Actions",
+        "States / State Machine"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_content_idea_board.md"
+    },
+    {
+      "id": "W013",
+      "title": "Web — Idea Detail",
+      "platform": "web",
+      "module": "M05",
+      "route": "/ideas/[id]",
+      "purpose": "Full detail view of a single idea. Shows the idea's origin (manual/AI/trend/opportunity), AI score breakdown, attached references, linked scripts, and conversion actions. Also serves as the editing interface for idea enrichment.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding",
+        "Actions Table",
+        "States",
+        "Validation Rules"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_content_idea_detail.md"
+    },
+    {
+      "id": "W014",
+      "title": "Web — AI Idea Generator",
+      "platform": "web",
+      "module": "M05",
+      "route": "/ideas/generate",
+      "purpose": "The AI Idea Generator creates content ideas from natural language prompts, trends, audience data, and product catalog. Users describe what they want (\"content ideas about skincare for TikTok\"), and AI generates 10+ scored suggestions with titles, hooks, format suggestions, and estimated pe",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "State Machine",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_content_idea_generator.md"
+    },
+    {
+      "id": "W016",
+      "title": "Web — Script Editor",
+      "platform": "web",
+      "module": "M06",
+      "route": "/scripts/[id]",
+      "purpose": "The Script Editor is the primary content writing workspace — a structured, AI-augmented editor with section-based composition (Hook, Body, CTA), real-time brand voice enforcement, platform-specific guidelines, version history, and a review/approval workflow. Scripts link to ideas upstream ",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "editor",
+      "source": "docs/03_screens/web/screen_web_content_script_editor.md"
+    },
+    {
+      "id": "W015",
+      "title": "Web — Script List",
+      "platform": "web",
+      "module": "M06",
+      "route": "/scripts",
+      "purpose": "Script List displays all scripts in the workspace with status filtering, search, and quick stats. The bridge between the Idea Board (upstream) and the AI Studio/Publish pipeline (downstream). Designed for rapid triage — see what needs writing, reviewing, or is ready for production.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "editor",
+      "source": "docs/03_screens/web/screen_web_content_script_list.md"
+    },
+    {
+      "id": "W017",
+      "title": "Web — Script Approval Review",
+      "platform": "web",
+      "module": "M06",
+      "route": "/scripts/[id]/review",
+      "purpose": "Script review mode — read-only script view with inline commenting, approval/rejection workflow, and change request tracking. Reviewers can add feedback per section and make a final decision.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "States",
+        "Permission Matrix",
+        "Edge Cases"
+      ],
+      "kind": "editor",
+      "source": "docs/03_screens/web/screen_web_content_script_review.md"
+    },
+    {
+      "id": "W095",
+      "title": "Web — Brand Deal Manager",
+      "platform": "web",
+      "module": "S16",
+      "route": "/creator-pro/deals",
+      "purpose": "Brand deal tracking with full pipeline — manage partnerships from negotiation through delivery to payment. Includes deliverable checklists, payment tracking, and deal performance analytics.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "Deal Status Pipeline",
+        "Component Hierarchy",
+        "States",
+        "Tier Gating",
+        "Error Handling"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_creator_brand_deals.md"
+    },
+    {
+      "id": "W135",
+      "title": "Deal Contract Templates and Evidence",
+      "platform": "web",
+      "module": "S16",
+      "route": "/creator-pro/deals/:deal_id/contracts",
+      "purpose": "Read Creator Pro §12 and API behavior §8. Brand deal and evidence remain canonical objects.",
+      "sections": [
+        "Feature and contract ownership",
+        "Layout and flow",
+        "Actions, permissions and states",
+        "UI acceptance"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_creator_contracts.md"
+    },
+    {
+      "id": "W134",
+      "title": "Public Creator Directory",
+      "platform": "web",
+      "module": "S16",
+      "route": "/creators",
+      "purpose": "Read Creator Pro §12, then API behavior §8 and schema §27.2. The directory exposes only explicitly consented published snapshots.",
+      "sections": [
+        "Feature and contract ownership",
+        "Layout and navigation",
+        "Actions and states",
+        "UI acceptance"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_creator_directory.md"
+    },
+    {
+      "id": "W090",
+      "title": "Web — Sponsor Inquiries",
+      "platform": "web",
+      "module": "S16",
+      "route": "/creator-pro/inquiries",
+      "purpose": "Manage incoming sponsor and brand collaboration inquiries with a status pipeline: New → Negotiating → Accepted → Declined. Inquiries come from brands contacting the creator through various channels — the system aggregates them into a single inbox-like view.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_creator_inquiries.md"
+    },
+    {
+      "id": "W092",
+      "title": "Web — Link-in-Bio Builder",
+      "platform": "web",
+      "module": "S16",
+      "route": "/creator-pro/link-in-bio",
+      "purpose": "Build a personal landing page at creativanta.link/{username} with drag-reorder links, theme selection, analytics, and optional custom domain.",
+      "sections": [
+        "Purpose & Context",
+        "2-5. Layout & Actions",
+        "Error Handling",
+        "Accessibility",
+        "Loading Behavior",
+        "Analytics Events",
+        "SvelteKit Implementation Notes"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_creator_link_in_bio.md"
+    },
+    {
+      "id": "W089",
+      "title": "Web — Media Kit Editor",
+      "platform": "web",
+      "module": "S16",
+      "route": "/creator-pro/media-kit",
+      "purpose": "Build and share a professional media kit — auto-synced statistics from connected platforms, audience demographics, curated portfolio, customizable rate card, and shareable public link with PDF download.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Error Handling",
+        "Accessibility",
+        "Loading Behavior",
+        "Analytics Events"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_creator_media_kit.md"
+    },
+    {
+      "id": "W091",
+      "title": "Web — Partnership Manager",
+      "platform": "web",
+      "module": "S16",
+      "route": "/creator-pro/partnerships",
+      "purpose": "The Partnership Manager tracks active brand collaborations — deliverables, deadlines, payments, proof of performance. This is the operational center for Brand Collaboration operator mode users managing sponsor relationships.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_creator_partnerships.md"
+    },
+    {
+      "id": "W088",
+      "title": "Web — Creator Pro Dashboard",
+      "platform": "web",
+      "module": "S16",
+      "route": "/creator-pro",
+      "purpose": "Creator-specific command center — engagement KPIs with cross-platform aggregation, active brand partnerships with deliverable tracking, real-time sponsor inquiry alerts, and quick access to Media Kit and Rate Card tools.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "States",
+        "Tier Gating",
+        "Error Handling"
+      ],
+      "kind": "dashboard",
+      "source": "docs/03_screens/web/screen_web_creator_pro_dashboard.md"
+    },
+    {
+      "id": "W093",
+      "title": "Web — Rate Card Builder",
+      "platform": "web",
+      "module": "S16",
+      "route": "/creator-pro/rate-card",
+      "purpose": "Build a professional pricing table for brand collaborations — editable service pricing with AI-suggested rates based on engagement metrics, niche, and market benchmarks. The rate card feeds into the Media Kit (W089) and Sponsor Inquiries (W090) for automated budget comparison.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "User Actions",
+        "Validation Rules",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_creator_rate_card.md"
+    },
+    {
+      "id": "W094",
+      "title": "Web — Revenue Per Content",
+      "platform": "web",
+      "module": "S16",
+      "route": "/creator-pro/revenue",
+      "purpose": "Revenue attribution per content piece — track ROI of every video/post by connecting content creation costs to revenue generated through that content. Shows RPM (Revenue Per Mille) trends, production cost analysis, and AI-generated optimization insights.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Key Metrics",
+        "States",
+        "Permissions & Tier Gating"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/web/screen_web_creator_revenue.md"
+    },
+    {
+      "id": "W096",
+      "title": "Web — Tax Report Export",
+      "platform": "web",
+      "module": "S16",
+      "route": "/creator-pro/tax-export",
+      "purpose": "Export income reports for tax filing — monthly/quarterly/yearly with income & expense breakdown by source, net calculation, multi-format export, and trust-level annotations.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Error Handling",
+        "Accessibility",
+        "Loading Behavior",
+        "Analytics Events"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_creator_tax_export.md"
+    },
+    {
+      "id": "W050",
+      "title": "Web — Bulk Triage",
+      "platform": "web",
+      "module": "M12",
+      "route": "/inbox/triage",
+      "purpose": "Bulk Triage is a rapid processing mode for clearing inbox backlog. Threads are presented one-at-a-time (Tinder-like card swipe UX), with pre-generated AI replies. Users can quickly approve replies, modify, assign, or skip.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "States",
+        "Edge Cases",
+        "Error Handling"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_engagement_bulk_triage.md"
+    },
+    {
+      "id": "W049",
+      "title": "Web — Contact Detail",
+      "platform": "web",
+      "module": "M12",
+      "route": "/contacts/[id]",
+      "purpose": "Full profile view of a single contact — showing all interactions, purchase history, platform presence, and AI-generated engagement recommendations.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "States",
+        "Edge Cases",
+        "Error Handling"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_engagement_contact_detail.md"
+    },
+    {
+      "id": "W048",
+      "title": "Web — Contact List",
+      "platform": "web",
+      "module": "M12",
+      "route": "/contacts",
+      "purpose": "Contact List is a lightweight CRM showing all people who have interacted with the creator — commenters, DM senders, buyers, collaborators. AI auto-enriches profiles with purchase history, engagement frequency, and customer value scoring.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "Customer Value Scoring",
+        "States",
+        "Permission Matrix"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/web/screen_web_engagement_contact_list.md"
+    },
+    {
+      "id": "W051",
+      "title": "Web — Follow-up Tasks",
+      "platform": "web",
+      "module": "M12",
+      "route": "/inbox/tasks",
+      "purpose": "Follow-up Tasks tracks pending actions created from inbox threads — e.g., \"Send product sample to @customer\", \"Create special offer for VIP buyer\", \"Follow up on collaboration inquiry\". Each task links to its source thread.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "States",
+        "Edge Cases",
+        "Error Handling"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_engagement_followup_tasks.md"
+    },
+    {
+      "id": "W047",
+      "title": "Web — Thread Detail",
+      "platform": "web",
+      "module": "M12",
+      "route": "/inbox/[id]",
+      "purpose": "Full-page thread view — an alternative to the split-pane inbox for deep-link access and focused conversations. Shows the complete message history with AI intent classification and suggested replies.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "States",
+        "Real-time Updates",
+        "Error Handling"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_engagement_thread_detail.md"
+    },
+    {
+      "id": "W046",
+      "title": "Web — Unified Inbox",
+      "platform": "web",
+      "module": "M12",
+      "route": "/inbox",
+      "purpose": "The Unified Inbox aggregates comments, DMs, and mentions from all connected platforms (TikTok, Instagram, YouTube, Shopee, Facebook) into a single split-pane interface. AI-powered intent detection classifies each message (purchase inquiry, praise, criticism, complaint, question, spam), aut",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/web/screen_web_engagement_unified_inbox.md"
+    },
+    {
+      "id": "W083",
+      "title": "Web — Finance: Cost Detail",
+      "platform": "web",
+      "module": "M19",
+      "route": "/finance/costs",
+      "purpose": "Cost breakdown by category — platform fees, AI credits, advertising, shipping, COGS, and custom costs. Period trends with optimization hints from the AI Copilot. This is the cost truth layer: every cost is categorized, source-attributed, and deducted from revenue in Profit OS.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules (Add/Edit Custom Cost)"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/web/screen_web_finance_costs.md"
+    },
+    {
+      "id": "W080",
+      "title": "Web — Finance: Profit Dashboard",
+      "platform": "web",
+      "module": "M19",
+      "route": "/finance",
+      "purpose": "Main finance dashboard — net profit overview with trust annotations, revenue vs cost trend, margin health tracking, and quick links to detailed breakdowns. The command center for financial health.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "Component Hierarchy",
+        "States",
+        "Permissions",
+        "Edge Cases",
+        "Error Handling"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/web/screen_web_finance_dashboard.md"
+    },
+    {
+      "id": "W081",
+      "title": "Web — Profit Dashboard",
+      "platform": "web",
+      "module": "M19",
+      "route": "/finance",
+      "purpose": "The Profit Dashboard is the financial cockpit of Creativanta — showing real net profit (revenue minus all costs), revenue breakdown by platform/product, cost tracking by category, reconciliation status per platform, and proof audit trail. Every financial number is traceable to its source v",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/web/screen_web_finance_profit_dashboard.md"
+    },
+    {
+      "id": "W085",
+      "title": "Web — Proof Browser",
+      "platform": "web",
+      "module": "M19",
+      "route": "/finance/proof",
+      "purpose": "Browse and verify proof bundles — evidence objects that support financial claims. This is the trust accountability layer of Profit OS: every financial number (revenue, cost, profit) must trace back to proof items. Proof bundles group evidence by period and claim type, showing coverage gaps",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "States"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/web/screen_web_finance_proof.md"
+    },
+    {
+      "id": "W084",
+      "title": "Web — Reconciliation Center",
+      "platform": "web",
+      "module": "M19",
+      "route": "/finance/reconciliation",
+      "purpose": "Reconcile financial data across platforms — match orders ↔ settlements ↔ payouts automatically, then surface anomalies and conflicts for human review. This is the \"trust audit\" layer: every VND of revenue must trace to a settlement, and every settlement must trace to real orders.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "States"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/web/screen_web_finance_reconciliation.md"
+    },
+    {
+      "id": "W087",
+      "title": "Web — Financial Reports",
+      "platform": "web",
+      "module": "M19",
+      "route": "/profit/reports",
+      "purpose": "Generate P&L statements, cash flow summaries, and custom financial reports with trust annotations (source class badges) and multi-format export (CSV, PDF, Google Sheets).",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Report Templates",
+        "States",
+        "Permissions"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/web/screen_web_finance_reports.md"
+    },
+    {
+      "id": "W082",
+      "title": "Web — Finance: Revenue Detail",
+      "platform": "web",
+      "module": "M19",
+      "route": "/finance/revenue",
+      "purpose": "Revenue breakdown by source, platform, product, and content — with period comparison, trend analysis, source class transparency, and export capability. This is the \"revenue truth\" screen where every VND is attributed and source-classified per PRD §33 operating ledger requirements.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "States"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/web/screen_web_finance_revenue.md"
+    },
+    {
+      "id": "W086",
+      "title": "Web — Settlement Tracker",
+      "platform": "web",
+      "module": "M19",
+      "route": "/finance/settlements",
+      "purpose": "Track platform payouts/settlements — match settlements to orders, verify bank deposit references, and resolve amount mismatches. Settlements are the \"proof of payment\" from platforms: they confirm how much money was actually transferred to the creator's bank account.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "User Actions",
+        "States",
+        "Permissions"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/web/screen_web_finance_settlements.md"
+    },
+    {
+      "id": "W008",
+      "title": "Web — Copilot Dialog",
+      "platform": "web",
+      "module": "copilot",
+      "route": "",
+      "purpose": "The AI Copilot is a conversational AI assistant that slides in from the right side of any page. It can answer questions about the workspace data, suggest actions, generate content, and help with decision-making. Context-aware: it knows what page the user is on and can reference visible dat",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "6-20. Standard Sections",
+        "Preconditions / Postconditions",
+        "Data Binding & Display Format"
+      ],
+      "kind": "dashboard",
+      "source": "docs/03_screens/web/screen_web_home_copilot_dialog.md"
+    },
+    {
+      "id": "W001",
+      "title": "Web — Home Dashboard",
+      "platform": "web",
+      "module": "M01",
+      "route": "/",
+      "purpose": "The Home Dashboard is the primary landing page after workspace selection. It serves as the decision cockpit — an intelligence-first overview showing what's happening now, what needs attention, and what to do next. It is NOT a generic dashboard with static metrics; it is dynamically persona",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "State Machine",
+        "Validation Rules"
+      ],
+      "kind": "dashboard",
+      "source": "docs/03_screens/web/screen_web_home_dashboard.md"
+    },
+    {
+      "id": "W004",
+      "title": "Web — Global Search",
+      "platform": "web",
+      "module": "M01",
+      "route": "/search",
+      "purpose": "Global Search provides instant cross-entity search across ideas, scripts, trends, products, orders, contacts, and asset files. Powered by Meilisearch for typo-tolerant, sub-50ms results. Accessible via Cmd+K shortcut anywhere in the app.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "6-20. Standard Sections"
+      ],
+      "kind": "dashboard",
+      "source": "docs/03_screens/web/screen_web_home_global_search.md"
+    },
+    {
+      "id": "W009",
+      "title": "Web — Morning Brief",
+      "platform": "web",
+      "module": "M01",
+      "route": "/daily-brief",
+      "purpose": "The Morning Brief is an AI-generated daily operational summary — a \"newsletter for your business\" that includes overnight financial highlights, trending signals worth acting on, top-performing content, suggested priority actions, and operational warnings. Designed for a 2-3 minute scan to ",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data / Data Binding",
+        "User Actions",
+        "States / State Machine"
+      ],
+      "kind": "dashboard",
+      "source": "docs/03_screens/web/screen_web_home_morning_brief.md"
+    },
+    {
+      "id": "W003",
+      "title": "Web — Notification Center",
+      "platform": "web",
+      "module": "M01",
+      "route": "/notifications",
+      "purpose": "The Notification Center aggregates all system notifications — from new orders, publishing events, AI results, team mentions, and platform alerts. It has two modes: a dropdown (bell icon in topbar) for quick glance, and a full page for browsing history.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "State Machine",
+        "7-8. Validation & Permission"
+      ],
+      "kind": "dashboard",
+      "source": "docs/03_screens/web/screen_web_home_notification_center.md"
+    },
+    {
+      "id": "W006",
+      "title": "Web — Onboarding Setup",
+      "platform": "web",
+      "module": "M01",
+      "route": "/onboarding",
+      "purpose": "Multi-step onboarding wizard activated after first workspace creation. Guides new users through: profile setup → connect platforms → set preferences → choose operator mode → complete. Each step is skippable but encouraged.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "6-20. Standard Sections",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "form",
+      "source": "docs/03_screens/web/screen_web_home_onboarding.md"
+    },
+    {
+      "id": "W005",
+      "title": "Web — Quick Action Menu",
+      "platform": "web",
+      "module": "M01",
+      "route": "",
+      "purpose": "The Quick Action Menu is a floating action button (FAB) permanently anchored to the bottom-right of every app page. When activated, it expands into a radial or stacked menu offering one-tap access to the most frequent creation actions across all modules. This eliminates the need to navigat",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data / Data Binding",
+        "User Actions",
+        "States / State Machine"
+      ],
+      "kind": "dashboard",
+      "source": "docs/03_screens/web/screen_web_home_quick_actions.md"
+    },
+    {
+      "id": "W007",
+      "title": "Web — Settings Page",
+      "platform": "web",
+      "module": "M01",
+      "route": "/settings",
+      "purpose": "Settings hub — the navigation page for all workspace and account configuration. Shows a sidebar with settings categories and a main content area for the selected category.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "6-20. Standard Sections",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_home_settings_hub.md"
+    },
+    {
+      "id": "W002",
+      "title": "Web — Workspace Selector",
+      "platform": "web",
+      "module": "M01",
+      "route": "/workspaces",
+      "purpose": "The Workspace Selector is the first screen after Clerk authentication. Users with multiple workspaces choose which to enter. Users with a single workspace are auto-redirected to Home Dashboard (/). Also accessible anytime via the workspace dropdown in the sidebar.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "State Machine",
+        "Validation Rules"
+      ],
+      "kind": "dashboard",
+      "source": "docs/03_screens/web/screen_web_home_workspace_selector.md"
+    },
+    {
+      "id": "W041",
+      "title": "Web — Benchmark View",
+      "platform": "web",
+      "module": "M03",
+      "route": "/intelligence/benchmarks",
+      "purpose": "The Benchmark View provides side-by-side comparison of the user's metrics vs tracked competitors. Shows where the user leads or lags across key metrics (followers, engagement, posting frequency, content performance, growth rate).",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data Binding & Actions",
+        "Edge Cases",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_intelligence_benchmark.md"
+    },
+    {
+      "id": "W040",
+      "title": "Web — Competitor Registry",
+      "platform": "web",
+      "module": "M03",
+      "route": "/intelligence/competitors",
+      "purpose": "The Competitor Registry lets creators track competitor accounts across platforms. AI scores each competitor for relevance, monitors posting patterns, and feeds into the Benchmark View for comparative analysis.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Edge Cases",
+        "Error Handling"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/web/screen_web_intelligence_competitor_registry.md"
+    },
+    {
+      "id": "W043",
+      "title": "Web — Opportunity Board",
+      "platform": "web",
+      "module": "M04",
+      "route": "/intelligence/opportunities",
+      "purpose": "The Opportunity Board surfaces AI-scored opportunities — content gaps, trending topics the user hasn't covered, under-served niches, and content types with high potential. Opportunities are generated daily by the AI Copilot from trend data, competitor analysis, and audience signals.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Edge Cases",
+        "Error Handling"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_intelligence_opportunity_board.md"
+    },
+    {
+      "id": "W045",
+      "title": "Web — Opportunity Convert",
+      "platform": "web",
+      "module": "M04",
+      "route": "/intelligence/opportunities/[id]/convert",
+      "purpose": "Guided wizard to convert an opportunity into actionable content. Users choose between quick idea creation, direct script writing, or multi-piece planning. Pre-filled with AI suggestions from the opportunity analysis.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "Edge Cases",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_intelligence_opportunity_convert.md"
+    },
+    {
+      "id": "W044",
+      "title": "Web — Opportunity Detail",
+      "platform": "web",
+      "module": "M04",
+      "route": "/intelligence/opportunities/[id]",
+      "purpose": "Full detail view of a single AI-generated opportunity. Shows the complete analysis, supporting evidence, action history, and conversion path. This is the \"intelligence brief\" that justifies why this opportunity is worth pursuing.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Edge Cases",
+        "Error Handling"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_intelligence_opportunity_detail.md"
+    },
+    {
+      "id": "W039",
+      "title": "Web — Trend Detail",
+      "platform": "web",
+      "module": "M02",
+      "route": "/intelligence/trends/[id]",
+      "purpose": "Deep-dive into a single trend — showing its trajectory over time, related content, top-performing examples, audience overlap scores, and one-click conversion to ideas/scripts. This is the \"intelligence brief\" for a trend.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "State Machine",
+        "Validation Rules"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_intelligence_trend_detail.md"
+    },
+    {
+      "id": "W038",
+      "title": "Web — Trend Radar",
+      "platform": "web",
+      "module": "M02",
+      "route": "/intelligence/trends",
+      "purpose": "The Trend Radar is the intelligence engine's primary discovery interface — a real-time \"content weather map\" showing what's trending across connected platforms (TikTok, YouTube, Shopee, Google Trends, Instagram). The screen combines AI-powered scoring, multi-axis filtering, sparkline visua",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data / Data Binding",
+        "User Actions",
+        "States / State Machine"
+      ],
+      "kind": "dashboard",
+      "source": "docs/03_screens/web/screen_web_intelligence_trend_radar.md"
+    },
+    {
+      "id": "W042",
+      "title": "Web — Watchlist Manager",
+      "platform": "web",
+      "module": "M02",
+      "route": "/intelligence/watchlist",
+      "purpose": "Watchlists allow creators to organize and track trends they're interested in. Users can create multiple named watchlists (e.g., \"Beauty Trends\", \"Food Content Ideas\") and receive notifications when watched trends change significantly.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "State Machine",
+        "Validation Rules"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/web/screen_web_intelligence_watchlist.md"
+    },
+    {
+      "id": "W107",
+      "title": "Web — Live Session Planner",
+      "platform": "web",
+      "module": "M17",
+      "route": "/live/plan",
+      "purpose": "Plan and manage live selling sessions — view upcoming, active, and past sessions with quick access to setup, war room, and post-live analytics. The planner follows the PRD live commerce flow: Plan → Setup → War Room → Post-Live Summary.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_live_planner.md"
+    },
+    {
+      "id": "W108",
+      "title": "Web — Live Session Setup",
+      "platform": "web",
+      "module": "M17",
+      "route": "/live/[id]/setup",
+      "purpose": "Prepare everything for a live session — product lineup with drag-reorder, cue cards with timing, special offers configuration, and pre-live equipment checklist. This is the \"Prepare\" step: Plan → Setup → War Room → Post-Live.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "User Actions",
+        "States",
+        "Error Handling"
+      ],
+      "kind": "form",
+      "source": "docs/03_screens/web/screen_web_live_setup.md"
+    },
+    {
+      "id": "W110",
+      "title": "Web — Post-Live Summary",
+      "platform": "web",
+      "module": "M17",
+      "route": "/live/[id]/summary",
+      "purpose": "Post-session analytics with AI-generated improvement suggestions — session KPIs, viewer engagement timeline, per-product performance, chat pattern analysis, and highlight clips. This is the \"learn & improve\" step of the Live Commerce flow: Plan → Setup → War Room → Post-Live Summary.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "States",
+        "Permissions",
+        "Error Handling"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_live_summary.md"
+    },
+    {
+      "id": "W109",
+      "title": "Web — Live War Room",
+      "platform": "web",
+      "module": "M17",
+      "route": "/live/[id]/war-room",
+      "purpose": "Full-screen live selling command center — product queue, AI chat triage, real-time stats, and quick actions (flash sale, highlight, coupon). No sidebar — maximum screen real estate.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "3-5. Component & Actions",
+        "Error Handling",
+        "Accessibility",
+        "Loading Behavior",
+        "Analytics Events"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_live_war_room.md"
+    },
+    {
+      "id": "screen_web_monetization_os",
+      "title": "Monetization OS (Web) — M14",
+      "platform": "web",
+      "module": "M14",
+      "route": "",
+      "purpose": "Central monetization management surface for offers, coupons, campaigns, and conversion tracking. Aggregates offers from multiple channels (Creator Store, Social, Affiliate, Link-in-Bio) into a unified view with ROI metrics.",
+      "sections": [
+        "Screen ID",
+        "Purpose",
+        "Entry Points",
+        "Layout",
+        "Data Sources",
+        "State Machine",
+        "Error Handling"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_monetization_os.md"
+    },
+    {
+      "id": "W054",
+      "title": "Web — Schedule Calendar",
+      "platform": "web",
+      "module": "M11",
+      "route": "/publish/calendar",
+      "purpose": "The Schedule Calendar is the visual content planning hub — a week/month calendar view displaying all scheduled, published, and draft content across platforms. Creators can visually plan content cadence, identify posting gaps, drag-to-reschedule posts, and see AI-recommended optimal time sl",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data / Data Binding",
+        "User Actions",
+        "States / State Machine"
+      ],
+      "kind": "calendar",
+      "source": "docs/03_screens/web/screen_web_publish_calendar.md"
+    },
+    {
+      "id": "W055",
+      "title": "Web — Content Calendar (Full View)",
+      "platform": "web",
+      "module": "M11",
+      "route": "/publish/calendar/full",
+      "purpose": "Full calendar view with month/week/day modes showing all scheduled, published, and draft content. Color-coded by platform with drag-to-reschedule and AI optimal time overlay.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "3-5. Component & Actions",
+        "Edge Cases",
+        "Error Handling",
+        "Accessibility",
+        "Loading Behavior"
+      ],
+      "kind": "calendar",
+      "source": "docs/03_screens/web/screen_web_publish_calendar_full.md"
+    },
+    {
+      "id": "W059",
+      "title": "Web — Channel Posts",
+      "platform": "web",
+      "module": "M11",
+      "route": "/publish/posts",
+      "purpose": "Channel Posts is the retrospective content library — a unified view of all published content across every connected platform (TikTok, Instagram, YouTube, X/Twitter, Facebook). It shows per-post performance metrics, cross-platform comparison insights, and provides quick actions for derivati",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data / Data Binding",
+        "User Actions",
+        "States / State Machine"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_publish_channel_posts.md"
+    },
+    {
+      "id": "W052",
+      "title": "Web — Publish Composer",
+      "platform": "web",
+      "module": "M11",
+      "route": "/publish/compose",
+      "purpose": "The Publish Composer is the multi-platform content creation and scheduling hub — a single split-screen form where creators compose a post (attach media, write caption, manage hashtags) and publish or schedule to multiple social platforms simultaneously. Each platform gets a live preview mo",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data / Data Binding",
+        "User Actions",
+        "States / State Machine"
+      ],
+      "kind": "editor",
+      "source": "docs/03_screens/web/screen_web_publish_composer.md"
+    },
+    {
+      "id": "W058",
+      "title": "Web — Publish Diagnostics",
+      "platform": "web",
+      "module": "M11",
+      "route": "/publish/[id]/diagnostics",
+      "purpose": "Deep technical diagnostics for a publish item — API call logs, platform capability state at publish time, error traces, retry history, and actionable recommendations. This is the debugging surface when a publish fails or partially succeeds.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_publish_diagnostics.md"
+    },
+    {
+      "id": "W057",
+      "title": "Web — Publish Item Detail",
+      "platform": "web",
+      "module": "M11",
+      "route": "/publish/[id]",
+      "purpose": "The Publish Item Detail screen provides a comprehensive view of a single piece of published (or in-flight) content — its media preview, per-platform publish status with real-time logs, early performance metrics, and lineage back to the original idea/script/trend. This is the \"mission contr",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data / Data Binding",
+        "User Actions",
+        "States / State Machine"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_publish_item_detail.md"
+    },
+    {
+      "id": "W056",
+      "title": "Web — Packaging QA",
+      "platform": "web",
+      "module": "M10",
+      "route": "/packaging/[asset_id]",
+      "purpose": "Packaging QA is the automated pre-publish quality gate: before content goes live, it runs a comprehensive checklist of technical, content, brand, and platform-specific checks against the asset. The creator gets a clear pass/warning/fail scorecard with actionable fix suggestions, inline edi",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data / Data Binding",
+        "User Actions",
+        "States / State Machine"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_publish_packaging_qa.md"
+    },
+    {
+      "id": "W053",
+      "title": "Web — Publish Queue",
+      "platform": "web",
+      "module": "M11",
+      "route": "/publish",
+      "purpose": "The Publish Queue is the primary execution dashboard for content publishing. It shows all publish jobs across four states: Scheduled, Publishing, Published, and Failed. Users can preview, edit, publish immediately, pause, retry failed posts, and view diagnostics.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "6-20. Standard Sections",
+        "Edge Cases",
+        "Error Handling"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/web/screen_web_publish_queue.md"
+    },
+    {
+      "id": "W112",
+      "title": "Web — Seeding Creator Assignment",
+      "platform": "web",
+      "module": "M18",
+      "route": "/seeding/assignments",
+      "purpose": "Assign products to external creators (KOLs) and track their deliverables through the seeding pipeline: Assigned → Shipped → Received → Creating → Published. This is the operational CRM for managing product seeding relationships.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Pipeline Status Flow",
+        "User Actions",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_seeding_assignments.md"
+    },
+    {
+      "id": "W113",
+      "title": "Web — Seeding Campaign Dashboard",
+      "platform": "web",
+      "module": "M18",
+      "route": "/seeding/campaigns",
+      "purpose": "Campaign-level view of seeding effectiveness — products seeded to creators, content output tracking, reach measurement, and ROI calculation. Seeding campaigns are the systematic outreach programs where brands send free products to KOLs/creators in exchange for content creation.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Seeding Pipeline Stages",
+        "User Actions",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_seeding_campaigns.md"
+    },
+    {
+      "id": "W111",
+      "title": "Web — Seeding Request Manager",
+      "platform": "web",
+      "module": "M18",
+      "route": "/seeding/requests",
+      "purpose": "Manage sample product requests to creators/influencers for review content. Pipeline view tracks the entire lifecycle: requested → approved → shipped → received → review published.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Request Status Flow",
+        "States",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_seeding_requests.md"
+    },
+    {
+      "id": "W123",
+      "title": "Web — Settings: AI Preferences",
+      "platform": "web",
+      "module": "M23",
+      "route": "/settings/ai",
+      "purpose": "AI behavior preferences — default generation quality, credit usage limits, voice/style defaults, and AI model preferences per feature. Controls how all AI features behave workspace-wide.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "Component Hierarchy",
+        "States",
+        "Permissions",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_settings_ai.md"
+    },
+    {
+      "id": "W124",
+      "title": "Web — Settings: API Keys",
+      "platform": "web",
+      "module": "M23",
+      "route": "/settings/api",
+      "purpose": "Manage API access tokens (Pro+ only) — create keys with scoped permissions, rotate keys safely, revoke compromised keys, and monitor usage with rate limit tracking.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Available Scopes",
+        "User Actions",
+        "States",
+        "Tier Gating"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_settings_api_keys.md"
+    },
+    {
+      "id": "W119",
+      "title": "Web — Settings: Billing & Plan",
+      "platform": "web",
+      "module": "M23",
+      "route": "/settings/billing",
+      "purpose": "The Billing & Plan screen is the financial command center for workspace subscription management. Creators can view their current plan and usage, upgrade/downgrade between tiers, purchase additional AI credits, manage payment methods (via Stripe), view billing history with downloadable invo",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data / Data Binding",
+        "User Actions",
+        "States / State Machine"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_settings_billing.md"
+    },
+    {
+      "id": "W118",
+      "title": "Web — Settings: Brand Voice & Identity",
+      "platform": "web",
+      "module": "M23",
+      "route": "/settings/brand",
+      "purpose": "Configure brand identity: voice profile, visual guidelines, target audience, and content themes. Used by AI Copilot, Script Editor, and all Studio modes to maintain brand consistency.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "3-5. Component & Actions",
+        "Edge Cases",
+        "Error Handling",
+        "Accessibility",
+        "Loading Behavior"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_settings_brand.md"
+    },
+    {
+      "id": "W127",
+      "title": "Web — Connected Account Detail",
+      "platform": "web",
+      "module": "M23",
+      "route": "/settings/connections/[id]",
+      "purpose": "Deep settings for a connected platform account — sync frequency per data type, data retention policies, OAuth token management, capability status, and sync history with error logs.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Error Handling",
+        "Accessibility",
+        "Loading Behavior",
+        "Analytics Events"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_settings_connector_detail.md"
+    },
+    {
+      "id": "W117",
+      "title": "Web — Settings: Connected Accounts",
+      "platform": "web",
+      "module": "M22",
+      "route": "/settings/connections",
+      "purpose": "Manage all platform connections — social media (TikTok, Instagram, YouTube, Facebook) and commerce platforms (Shopee, Lazada, TikTok Shop). Shows per-platform capability status, rate limit usage, sync history, and connection health. This is the \"nerve center\" for all external integrations.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "States"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_settings_connectors.md"
+    },
+    {
+      "id": "W128",
+      "title": "Web — Credit Purchase",
+      "platform": "web",
+      "module": "M23",
+      "route": "/settings/credits/purchase",
+      "purpose": "Buy additional AI credits — credit packs with tiered pricing (bulk discounts), auto-refill configuration, usage projection highlighting urgency, and payment method management.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Edge Cases",
+        "Error Handling",
+        "Accessibility",
+        "Loading Behavior"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_settings_credit_purchase.md"
+    },
+    {
+      "id": "W121",
+      "title": "Web — AI Credit Usage",
+      "platform": "web",
+      "module": "M23",
+      "route": "/settings/credits/usage",
+      "purpose": "Track AI credit consumption — balance with depletion forecast, daily usage chart by AI mode, and detailed usage history with filtering.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Error Handling",
+        "Accessibility",
+        "Loading Behavior",
+        "Analytics Events"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_settings_credit_usage.md"
+    },
+    {
+      "id": "W120",
+      "title": "Web — Settings: Credit Purchase",
+      "platform": "web",
+      "module": "M23",
+      "route": "/settings/credits/purchase",
+      "purpose": "Buy additional AI credits — credit packs with volume discounts, auto-refill configuration, usage analytics, and depletion projections.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "User Actions",
+        "States",
+        "Permissions"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_settings_credits.md"
+    },
+    {
+      "id": "W129",
+      "title": "Web — Data Export & Account Deletion",
+      "platform": "web",
+      "module": "M23",
+      "route": "/settings/data",
+      "purpose": "GDPR/PDPA compliant screen for users to request data export (right to portability) and account/workspace deletion (right to erasure). This is a legal launch requirement.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_settings_data_export.md"
+    },
+    {
+      "id": "W125",
+      "title": "Web — Diagnostics Center",
+      "platform": "web",
+      "module": "M23",
+      "route": "/settings/diagnostics",
+      "purpose": "System health overview — all active issues, warnings, degraded services with 4-step repair wizard. Monitors platform connectors, AI providers, database, cache, and search services.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Permission Matrix",
+        "Error Handling",
+        "Accessibility",
+        "Loading Behavior"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_settings_diagnostics.md"
+    },
+    {
+      "id": "W115",
+      "title": "Web — Settings: Workspace Members",
+      "platform": "web",
+      "module": "M23",
+      "route": "/settings/workspace/members",
+      "purpose": "Manage workspace members — invite by email, assign canonical roles (Owner, Admin, Manager, Editor, Contributor, Viewer, External), transfer ownership, remove members, and track pending invitations. Roles follow the B5 §2 canonical 7-role workspace RBAC model.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_settings_members.md"
+    },
+    {
+      "id": "W122",
+      "title": "Web — Settings: Notifications",
+      "platform": "web",
+      "module": "M23",
+      "route": "/settings/notifications",
+      "purpose": "Notification preferences — granular control over push, email, and in-app notifications per event type. Includes quiet hours, email digest frequency, and team mention controls.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "Component Hierarchy",
+        "User Actions",
+        "Mandatory Notifications (Cannot Disable)",
+        "States",
+        "Error Handling"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_settings_notifications.md"
+    },
+    {
+      "id": "W126",
+      "title": "Web — Settings: Referral Center",
+      "platform": "web",
+      "module": "referral",
+      "route": "/settings/referral",
+      "purpose": "Referral program dashboard — personal referral link with multi-channel sharing, conversion tracking with funnel metrics, credit rewards, and tier progression.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Error Handling",
+        "Accessibility",
+        "Loading Behavior",
+        "Analytics Events"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_settings_referral.md"
+    },
+    {
+      "id": "W116",
+      "title": "Web — Settings: Team & Roles",
+      "platform": "web",
+      "module": "M23",
+      "route": "/settings/team",
+      "purpose": "Manage team members within a workspace: invite, assign roles, set permissions, and remove access. Supports Owner, Admin, Manager, Editor, Viewer, and custom roles.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "3-5. Component & Actions",
+        "Edge Cases",
+        "Error Handling",
+        "Accessibility",
+        "Loading Behavior"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_settings_team.md"
+    },
+    {
+      "id": "W114",
+      "title": "Web — Settings: Workspace",
+      "platform": "web",
+      "module": "M23",
+      "route": "/settings/workspace",
+      "purpose": "Workspace general settings — name, logo, timezone, language, default currency, and connected platforms overview. Foundation configuration for the entire workspace that affects all modules and users.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Validation Rules",
+        "States",
+        "Permissions"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/web/screen_web_settings_workspace.md"
+    },
+    {
+      "id": "W027",
+      "title": "Web — A/B Testing Engine",
+      "platform": "web",
+      "module": "M10",
+      "route": "/studio/ab-test",
+      "purpose": "Generate N video variants (different hooks, CTAs, thumbnails, music) → publish all → report an eligible observational winner or inconclusive result using M10/API evidence thresholds after test duration.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "3-5. Component Hierarchy & Actions",
+        "Winner Criteria Options",
+        "States",
+        "Edge Cases",
+        "Error Handling"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_studio_ab_testing.md"
+    },
+    {
+      "id": "W025",
+      "title": "Web — AI Remix Studio",
+      "platform": "web",
+      "module": "M07",
+      "route": "/studio/remix",
+      "purpose": "3-phase pipeline: (1) Input reference video + settings → (2) AI extracts Creative DNA (structure, pacing, style) → (3) Generate original remix with originality safeguards. Includes side-by-side comparison and per-scene editing.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "6-20. Standard Sections",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_studio_ai_remix.md"
+    },
+    {
+      "id": "W029",
+      "title": "Web — Asset Library",
+      "platform": "web",
+      "module": "M09",
+      "route": "/studio/library",
+      "purpose": "Central library for all AI-generated and uploaded media assets. Filterable gallery with metadata, usage tracking, and quick publish shortcuts.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "3-5. Component & Actions",
+        "States",
+        "Edge Cases",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/web/screen_web_studio_asset_library.md"
+    },
+    {
+      "id": "W037",
+      "title": "Web — Character Builder & Library",
+      "platform": "web",
+      "module": "M08",
+      "route": "/studio/characters",
+      "purpose": "Create and manage AI-generated video characters — consistent personas for product demos, tutorials, and UGC-style content. Characters maintain visual consistency across productions.",
+      "sections": [
+        "Purpose & Context",
+        "2-5. Layout & Actions",
+        "Component Hierarchy",
+        "States",
+        "Edge Cases",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_studio_character.md"
+    },
+    {
+      "id": "W023",
+      "title": "Web — Clip Factory",
+      "platform": "web",
+      "module": "M07",
+      "route": "/studio/clip-factory",
+      "purpose": "Upload a long video → AI detects and extracts best clips → rate by virality score → batch export. Designed for repurposing YouTube/podcast content into short-form TikTok/Reels clips.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "Edge Cases",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_studio_clip_factory.md"
+    },
+    {
+      "id": "W035",
+      "title": "Web — Image-to-Video Mode",
+      "platform": "web",
+      "module": "M07",
+      "route": "/studio/image-to-video",
+      "purpose": "Transform static images into animated videos. AI adds motion (pan, zoom, parallax, morphing), transitions between images, and optional music/voice-over. Ideal for converting product photos, carousel posts, or artwork into video content.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "Motion Styles",
+        "States",
+        "Component Hierarchy",
+        "Edge Cases",
+        "Error Handling"
+      ],
+      "kind": "editor",
+      "source": "docs/03_screens/web/screen_web_studio_image_to_video.md"
+    },
+    {
+      "id": "W021",
+      "title": "Web — AI Studio Launcher",
+      "platform": "web",
+      "module": "M07",
+      "route": "/studio",
+      "purpose": "The AI Studio Launcher is the gateway to all AI-powered content generation tools. It presents production modes as cards — each mode opens a specialized tool (Video, Image, Remix, Avatar, Voiceover, Music, Subtitle, Thumbnail, B-Roll, Text-to-Video, Image-to-Video). Also shows recent genera",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "6-20. Standard Sections",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_studio_launcher.md"
+    },
+    {
+      "id": "W036",
+      "title": "Web — Link-to-Video Mode",
+      "platform": "web",
+      "module": "M07",
+      "route": "/studio/link-to-video",
+      "purpose": "Paste a URL (article, product page, blog post) → AI scrapes content → generates a video summary with visuals, voice-over, and text overlays. Great for repurposing written content into video.",
+      "sections": [
+        "Purpose & Context",
+        "2-5. Layout & Actions",
+        "Component Hierarchy",
+        "States",
+        "Edge Cases",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "editor",
+      "source": "docs/03_screens/web/screen_web_studio_link_to_video.md"
+    },
+    {
+      "id": "W034",
+      "title": "Web — Multi-Merge Mode",
+      "platform": "web",
+      "module": "M07",
+      "route": "/studio/multi-merge",
+      "purpose": "Combine multiple media files (videos + images) into one polished video with AI transitions, voice-over, and music. Timeline-based editor with drag-to-reorder and transition controls.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "Edge Cases",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_studio_multi_merge.md"
+    },
+    {
+      "id": "W024",
+      "title": "Web — Product Showcase Mode",
+      "platform": "web",
+      "module": "M07",
+      "route": "/studio/product-showcase",
+      "purpose": "AI-generated product showcase videos from product images + description. Creates professional product demos, unboxing simulations, and feature highlights with AI voice-over and music.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "States",
+        "Edge Cases",
+        "Error Handling"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_studio_product_showcase.md"
+    },
+    {
+      "id": "W030",
+      "title": "Web — Generation Queue",
+      "platform": "web",
+      "module": "M07",
+      "route": "/studio/queue",
+      "purpose": "The Generation Queue is the real-time monitoring hub for all AI generation jobs across every Studio mode. It shows active jobs with live progress, completed outputs ready for review, and failed jobs with retry options. This is the \"task manager\" of the AI Studio — creators return here to c",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data / Data Binding",
+        "User Actions",
+        "States / State Machine"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/web/screen_web_studio_queue.md"
+    },
+    {
+      "id": "W022",
+      "title": "Web — Quick Edit Mode",
+      "platform": "web",
+      "module": "M07",
+      "route": "/studio/quick-edit",
+      "purpose": "Quick Edit Mode is a transcript-based video editor — the \"text editor for video\" concept. Instead of traditional timeline-based cutting, creators edit video by editing text: AI transcribes the video with word-level timestamps, detects filler words (\"ừm\", \"à\") and dead pauses, then the crea",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data / Data Binding",
+        "User Actions",
+        "States / State Machine"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_studio_quick_edit.md"
+    },
+    {
+      "id": "W028",
+      "title": "Web — Sound Studio",
+      "platform": "web",
+      "module": "M07",
+      "route": "/studio/sound",
+      "purpose": "AI audio generation hub with 4 tabs: Music Generation, Beat Sync, Speech-to-Song, and SFX. Includes waveform editor for mixing voice, music, and effects with auto-duck feature.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "States",
+        "Edge Cases",
+        "Error Handling"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_studio_sound.md"
+    },
+    {
+      "id": "W032",
+      "title": "Web — Style Learning",
+      "platform": "web",
+      "module": "M07",
+      "route": "/studio/style-learning",
+      "purpose": "Extract editing style from reference videos → create reusable Style Pack for Continuity OS. Analyzes color palette, cut pacing, text style, music preferences, transitions, hook patterns, and visual mood.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "3-5. Component & Actions",
+        "States",
+        "Edge Cases",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_studio_style_learning.md"
+    },
+    {
+      "id": "W026",
+      "title": "Web — Thumbnail Studio",
+      "platform": "web",
+      "module": "M07",
+      "route": "/studio/thumbnail",
+      "purpose": "AI thumbnail generation optimized for click-through rate. Generate multiple variants from video frames or custom prompts, with text overlay options and A/B variant suggestions.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "3-5. Component & Actions",
+        "CTR Prediction Model",
+        "States",
+        "Edge Cases",
+        "Error Handling"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_studio_thumbnail.md"
+    },
+    {
+      "id": "W033",
+      "title": "Web — Translation Studio",
+      "platform": "web",
+      "module": "M07",
+      "route": "/studio/translate",
+      "purpose": "Translate existing videos into other languages. AI replaces voice-over with translated speech (lip-sync optional), translates on-screen text/captions, and adapts cultural references.",
+      "sections": [
+        "Purpose & Context",
+        "2-5. Layout & Actions",
+        "Component Hierarchy",
+        "Credit Estimation",
+        "States",
+        "Edge Cases",
+        "Error Handling"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_studio_translation.md"
+    },
+    {
+      "id": "W031",
+      "title": "Web — AI Video Agent",
+      "platform": "web",
+      "module": "M07",
+      "route": "/studio/agent",
+      "purpose": "1-click full pipeline — describe what you want → AI handles entire production from script to ready-to-publish. The most powerful and expensive studio mode: text prompt → complete video with script, visuals, voice-over, music, and captions.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "Edge Cases",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "editor",
+      "source": "docs/03_screens/web/screen_web_studio_video_agent.md"
+    },
+    {
+      "id": "W098",
+      "title": "Web — Help Article Viewer",
+      "platform": "web",
+      "module": "help",
+      "route": "/support/articles/[slug]",
+      "purpose": "Individual help article with table-of-contents sidebar, related articles, breadcrumb navigation, feedback system, and escalation path to ticket creation.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Error Handling",
+        "Accessibility",
+        "Loading Behavior",
+        "Analytics Events"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_support_article.md"
+    },
+    {
+      "id": "W097",
+      "title": "Web — Support Center",
+      "platform": "web",
+      "module": "help",
+      "route": "/support",
+      "purpose": "Help center with self-service knowledge base, AI-powered search, and support ticket system — FAQ categories, article search, live ticket management, and status tracking.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "User Actions",
+        "States",
+        "Error Handling"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_support_center.md"
+    },
+    {
+      "id": "W099",
+      "title": "Web — Support Ticket Create",
+      "platform": "web",
+      "module": "help",
+      "route": "/support/new",
+      "purpose": "User-facing form to submit support tickets with AI self-help pre-check, category selection, description, and file attachments. Encourages self-resolution via knowledge base before creating a ticket.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Error Handling",
+        "Accessibility",
+        "Loading Behavior",
+        "Analytics Events"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_support_ticket_create.md"
+    },
+    {
+      "id": "W106",
+      "title": "Web — AI Agent Runs",
+      "platform": "web",
+      "module": "M20",
+      "route": "/agents",
+      "purpose": "Monitor AI agent executions — agents that perform multi-step autonomous tasks like research, content generation, or batch operations. Agents differ from workflows in that they make decisions autonomously and can pause for human input.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Error Handling",
+        "Accessibility",
+        "Loading Behavior",
+        "Analytics Events"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_workflow_agents.md"
+    },
+    {
+      "id": "W104",
+      "title": "Web — Approval Queue",
+      "platform": "web",
+      "module": "M20",
+      "route": "/approvals",
+      "purpose": "Centralized approval queue — scripts, assets, workflows, publish items, and AI-generated content awaiting human approval. Inline preview with approve/reject/request-changes actions. Approvals can come from manual workflow steps, content review requirements, or AI confidence gates.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "Component Hierarchy",
+        "States",
+        "Permissions",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_workflow_approvals.md"
+    },
+    {
+      "id": "W101",
+      "title": "Web — Workflow Builder",
+      "platform": "web",
+      "module": "M20",
+      "route": "/workflows/[id]",
+      "purpose": "Visual drag-drop workflow builder powered by Activepieces. Three panels: node palette (left), canvas (center), config panel (right). Supports triggers, actions, conditions, and utilities.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "3-5. Component & Actions",
+        "Error Handling",
+        "Accessibility",
+        "Loading Behavior",
+        "Analytics Events"
+      ],
+      "kind": "editor",
+      "source": "docs/03_screens/web/screen_web_workflow_builder.md"
+    },
+    {
+      "id": "W100",
+      "title": "Web — Workflow List",
+      "platform": "web",
+      "module": "M20",
+      "route": "/workflows",
+      "purpose": "List all automation workflows with status, trigger type, run history, and error alerts. This is the gateway to the visual workflow builder. Workflows automate repetitive tasks: auto-replies, scheduling, content pipelines, commerce actions, and custom business logic.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Trigger Types",
+        "User Actions",
+        "States"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/web/screen_web_workflow_list.md"
+    },
+    {
+      "id": "W103",
+      "title": "Web — Recipe Templates",
+      "platform": "web",
+      "module": "M20",
+      "route": "/workflows/templates",
+      "purpose": "Pre-built workflow templates — one-click deploy common automation recipes for content creation, engagement, commerce, and analytics. Templates are curated by Creativanta and rated by the community.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "Component Hierarchy",
+        "States",
+        "Error Handling",
+        "Accessibility",
+        "Loading Behavior"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_workflow_recipes.md"
+    },
+    {
+      "id": "W102",
+      "title": "Web — Workflow Run History",
+      "platform": "web",
+      "module": "M20",
+      "route": "/workflows/[id]/runs",
+      "purpose": "The Workflow Run History shows all execution records for a specific workflow — run status, duration, per-step execution logs with input/output data, error traces, retry capability, and real-time monitoring of in-progress runs. This is the primary debugging and monitoring surface for automa",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_workflow_runs.md"
+    },
+    {
+      "id": "W105",
+      "title": "Web — Task Queue",
+      "platform": "web",
+      "module": "M20",
+      "route": "/tasks",
+      "purpose": "All tasks — workflow-generated, manual, and follow-ups. Kanban or list view with drag between columns. Tasks are the to-do items that require human action, generated by workflows or created manually.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Error Handling",
+        "Accessibility",
+        "Loading Behavior",
+        "Analytics Events"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/web/screen_web_workflow_tasks.md"
+    },
+    {
+      "id": "M053",
+      "title": "Mobile — Agent Runs",
+      "platform": "mobile",
+      "module": "M21",
+      "route": "/agents",
+      "purpose": "Monitor AI agent executions on mobile — running/paused/completed/failed cards with progress, retry, and output viewing.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_agent_runs.md"
+    },
+    {
+      "id": "M035",
+      "title": "Mobile — Analytics Dashboard",
+      "platform": "mobile",
+      "module": "M23",
+      "route": "/analytics",
+      "purpose": "Mobile analytics hub — overview metrics, top content, trend chart, and navigation to detail screens. Optimized for quick daily check.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/mobile/screen_mobile_analytics.md"
+    },
+    {
+      "id": "M036",
+      "title": "Mobile — Analytics Overview",
+      "platform": "mobile",
+      "module": "M17",
+      "route": "/analytics",
+      "purpose": "Mobile Analytics is the quick-check performance dashboard — designed for the \"check my stats while waiting for coffee\" usage pattern. Shows key metrics in a glanceable 2×2 grid, platform breakdown, top performing content, and AI-generated insights. Optimized for vertical scroll-feed UX wit",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "States"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/mobile/screen_mobile_analytics_overview.md"
+    },
+    {
+      "id": "M051",
+      "title": "Mobile — Approval Queue",
+      "platform": "mobile",
+      "module": "M20",
+      "route": "/m/approvals",
+      "purpose": "Mobile-optimized approval queue for reviewing and acting on pending approvals — scripts, AI-generated content, publish items, workflow actions, and asset reviews. Designed for fast swipe-to-approve interaction on the go, making mobile a real execution surface for managers and team leads.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/mobile/screen_mobile_approval_queue.md"
+    },
+    {
+      "id": "M061",
+      "title": "Mobile — Billing & Subscription",
+      "platform": "mobile",
+      "module": "M23",
+      "route": "/m/settings/billing",
+      "purpose": "Mobile billing management — view current plan, usage breakdown, upgrade/downgrade, payment method management, and invoice history. Optimized for quick plan checks and upgrade decisions on mobile.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_billing.md"
+    },
+    {
+      "id": "M046",
+      "title": "Mobile — Brand Deals Pipeline",
+      "platform": "mobile",
+      "module": "S16",
+      "route": "/creator-pro/deals",
+      "purpose": "Mobile brand deal management — pipeline view with swipe actions, revenue tracking, deadline alerts.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_brand_deals.md"
+    },
+    {
+      "id": "M025",
+      "title": "Mobile — Publish Calendar",
+      "platform": "mobile",
+      "module": "M11",
+      "route": "/calendar",
+      "purpose": "Mobile content calendar — visual week/month timeline of scheduled, published, and draft posts. Enables creators to visualize publishing cadence, identify gaps and conflicts, and quickly reschedule. Optimized for \"check my schedule at a glance.\"",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "calendar",
+      "source": "docs/03_screens/mobile/screen_mobile_calendar.md"
+    },
+    {
+      "id": "M032",
+      "title": "Mobile — Commerce Affiliates",
+      "platform": "mobile",
+      "module": "M16",
+      "route": "/commerce/affiliates",
+      "purpose": "Mobile affiliate link manager — quick-access to copy/share affiliate links, monitor click/conversion stats, and track commission earnings. Optimized for content creators who need to grab affiliate links quickly before/during content creation (e.g., adding link to TikTok bio mid-livestream)",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_commerce_affiliates.md"
+    },
+    {
+      "id": "M031",
+      "title": "Mobile — Commerce Campaigns",
+      "platform": "mobile",
+      "module": "M14",
+      "route": "/commerce/campaigns",
+      "purpose": "Mobile campaign monitoring — at-a-glance campaign status, budget usage, ROAS metrics, and quick pause/resume. Designed for on-the-go performance monitoring with push alerts for budget milestones. Full campaign creation and content linking defers to web (W064/W065).",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_commerce_campaigns.md"
+    },
+    {
+      "id": "M033",
+      "title": "Mobile — Commerce Coupons",
+      "platform": "mobile",
+      "module": "M14",
+      "route": "/commerce/coupons",
+      "purpose": "Mobile coupon management — view, create, copy, and share discount codes on the go. Optimized for quick coupon code distribution via native share sheet and clipboard, with at-a-glance usage stats and status filters. Complex coupon configuration defers to web (W068).",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_commerce_coupons.md"
+    },
+    {
+      "id": "M026",
+      "title": "Mobile — Commerce Dashboard",
+      "platform": "mobile",
+      "module": "M13",
+      "route": "/commerce",
+      "purpose": "Mobile commerce overview — the \"business cockpit\" for Seller Mode. Shows today's key commerce KPIs, recent orders requiring action, low-stock alerts, top-selling products, and quick navigation to commerce sub-modules. Designed for the \"check sales while on the go\" pattern with one-thumb op",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "dashboard",
+      "source": "docs/03_screens/mobile/screen_mobile_commerce_dashboard.md"
+    },
+    {
+      "id": "M029",
+      "title": "Mobile — Commerce Offers",
+      "platform": "mobile",
+      "module": "M14",
+      "route": "/commerce/offers",
+      "purpose": "Mobile offer management — monitor flash sales, bundle deals, and seasonal promotions. Focused on real-time monitoring with quick status toggle (pause/resume). Full offer creation and editing defers to web ([W066] list / [W067] detail). Push notifications alert when offers are expiring or n",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_commerce_offers.md"
+    },
+    {
+      "id": "M027",
+      "title": "Mobile — Commerce Order List",
+      "platform": "mobile",
+      "module": "M13",
+      "route": "/orders",
+      "purpose": "The Mobile Order List is the on-the-go order management surface. Creators can monitor incoming orders, take quick actions (confirm, ship, contact buyer), and track fulfillment status. Push notifications deep-link directly to specific orders. Designed for rapid triage — swipe gestures for c",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/mobile/screen_mobile_commerce_orders.md"
+    },
+    {
+      "id": "M028",
+      "title": "Mobile — Commerce Product List",
+      "platform": "mobile",
+      "module": "M13",
+      "route": "/products",
+      "purpose": "Mobile product browser — grid/list toggle, status chip filters, quick inventory check, real-time search, and low-stock alerts. Designed as a monitoring-first view optimized for on-the-go product management with critical quick actions (toggle visibility, check stock) while deferring complex",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_commerce_products.md"
+    },
+    {
+      "id": "M030",
+      "title": "Mobile — Refund Management",
+      "platform": "mobile",
+      "module": "M13",
+      "route": "/commerce/refunds",
+      "purpose": "Mobile refund management — the on-the-go pipeline for reviewing, approving, and rejecting refund requests. Uses swipe-to-decide gestures for rapid triage, inline evidence previews, buyer reputation scoring, and SLA countdown timers. Designed for the \"refund review while away from desktop\" ",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_commerce_refunds.md"
+    },
+    {
+      "id": "M034",
+      "title": "Mobile — Sample Product Tracker",
+      "platform": "mobile",
+      "module": "M18",
+      "route": "/commerce/samples",
+      "purpose": "Mobile sample product tracker — a simplified pipeline view for monitoring sample shipments sent to influencers/KOLs, tracking receipt confirmations, review deadlines, and ROI calculation. Designed for the \"check sample status on the go\" pattern with quick-contact actions and overdue alerti",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_commerce_samples.md"
+    },
+    {
+      "id": "M018",
+      "title": "Mobile — Competitor Tracking",
+      "platform": "mobile",
+      "module": "M23",
+      "route": "/analytics/competitors",
+      "purpose": "Mobile competitor tracking — monitor competitor accounts with growth rate, posting frequency, and engagement trends. Simplified card view of web equivalent.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_competitors.md"
+    },
+    {
+      "id": "M058",
+      "title": "Mobile — Connected Accounts",
+      "platform": "mobile",
+      "module": "M23",
+      "route": "/settings/connections",
+      "purpose": "Mobile connected accounts — platform connection status, quick reconnect, sync status, and new platform connection via OAuth. Simplified view of web Connectors (W117).",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_connections.md"
+    },
+    {
+      "id": "M022",
+      "title": "Mobile — Contact Detail",
+      "platform": "mobile",
+      "module": "M12",
+      "route": "/contacts/[id]",
+      "purpose": "Mobile contact detail — full profile with engagement history, purchase timeline, AI-detected attributes, and quick actions (call, message, tag).",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/mobile/screen_mobile_contact_detail.md"
+    },
+    {
+      "id": "M021",
+      "title": "Mobile — Contact List",
+      "platform": "mobile",
+      "module": "M12",
+      "route": "/contacts",
+      "purpose": "Mobile CRM — unified contact list merged from all connected platforms with VIP labels, lifetime value (LTV), engagement recency, purchase history, and quick call/message actions. Supports alphabetical index for fast scrolling, filter chips for segmentation, and search for finding specific ",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_contacts.md"
+    },
+    {
+      "id": "M008",
+      "title": "Mobile — Idea Board",
+      "platform": "mobile",
+      "module": "M05",
+      "route": "/ideas",
+      "purpose": "Mobile Idea Board — a vertical card list (not Kanban) optimized for one-thumb mobile operation. Ideas sortable by status, AI score, or date, with swipe gestures for rapid status progression. Provides quick add via FAB, filter by status chips, and AI idea generation. This is the mobile entr",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_content_idea_board.md"
+    },
+    {
+      "id": "M060",
+      "title": "Mobile — Copilot Chat",
+      "platform": "mobile",
+      "module": "copilot",
+      "route": "/copilot",
+      "purpose": "The Mobile Copilot is a context-aware AI assistant accessible from any screen via a floating action button. It answers questions about the user's workspace data (analytics, trends, orders, content performance), generates content ideas and scripts, executes quick actions (create idea, check",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_copilot.md"
+    },
+    {
+      "id": "M043",
+      "title": "Mobile — Cost Entry",
+      "platform": "mobile",
+      "module": "M19",
+      "route": "/m/finance/costs/new",
+      "purpose": "Mobile-optimized cost entry form for logging expenses on the go — supports receipt scanning with AI auto-fill, manual entry, recurring costs, and source class tagging. Critical for maintaining accurate Profit OS calculations.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/mobile/screen_mobile_cost_entry.md"
+    },
+    {
+      "id": "M045",
+      "title": "Mobile — Creator Pro Dashboard",
+      "platform": "mobile",
+      "module": "S16",
+      "route": "/creator-pro",
+      "purpose": "Creator Pro hub on mobile — access media kit, brand deals, tax tools, and monetization analytics from a single dashboard.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_creator_pro.md"
+    },
+    {
+      "id": "M059",
+      "title": "Mobile — Diagnostics",
+      "platform": "mobile",
+      "module": "M23",
+      "route": "/settings/diagnostics",
+      "purpose": "Mobile diagnostics — simplified health overview with quick-fix buttons for common issues. Shows critical alerts prominently and allows one-tap fixes for routine problems.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_diagnostics.md"
+    },
+    {
+      "id": "M019",
+      "title": "Mobile — Unified Inbox",
+      "platform": "mobile",
+      "module": "M12",
+      "route": "/inbox",
+      "purpose": "Mobile Unified Inbox — the highest-frequency mobile screen after the home dashboard. Optimized for rapid triage with swipe gestures, AI-suggested replies, and one-thumb operation. Threads are sorted by AI-computed priority with intent badges for instant classification. Designed for the \"re",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/mobile/screen_mobile_engagement_inbox.md"
+    },
+    {
+      "id": "M040",
+      "title": "Mobile — Finance Overview",
+      "platform": "mobile",
+      "module": "M19",
+      "route": "/finance",
+      "purpose": "Mobile finance hub — net profit overview, revenue vs cost trend, trust badges, and navigation to detailed screens.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/mobile/screen_mobile_finance.md"
+    },
+    {
+      "id": "M041",
+      "title": "Mobile — Finance Summary",
+      "platform": "mobile",
+      "module": "M19",
+      "route": "/finance/summary",
+      "purpose": "Detailed mobile P&L summary — revenue vs cost by category, margin analysis, AI-generated financial insights, and export option.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/mobile/screen_mobile_finance_summary.md"
+    },
+    {
+      "id": "M038",
+      "title": "Mobile — Gamification",
+      "platform": "mobile",
+      "module": "gamification",
+      "route": "/gamification",
+      "purpose": "Mobile gamification — level progress, streak counter, active quests, achievement grid, and leaderboard. Motivational quick glance designed to drive daily engagement.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_gamification.md"
+    },
+    {
+      "id": "M001",
+      "title": "Mobile — Home Dashboard",
+      "platform": "mobile",
+      "module": "M01",
+      "route": "/",
+      "purpose": "The Mobile Home Dashboard is the app's primary landing screen — a vertical scroll-feed of today's priorities optimized for quick glance and one-thumb operation. Unlike the web dashboard (3-column grid), mobile uses a single-column card stack with swipe interactions, haptic feedback, and in",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "dashboard",
+      "source": "docs/03_screens/mobile/screen_mobile_home_dashboard.md"
+    },
+    {
+      "id": "M002",
+      "title": "Mobile — Notification List",
+      "platform": "mobile",
+      "module": "M01",
+      "route": "/notifications",
+      "purpose": "Mobile notification list — full-screen view of all notifications grouped by recency. Tappable for navigation to source entity. Mark-all-read and per-item swipe-to-dismiss.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "6-20. Standard Sections",
+        "Preconditions / Postconditions",
+        "Data Binding & Display Format"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/mobile/screen_mobile_home_notification_list.md"
+    },
+    {
+      "id": "M004",
+      "title": "Mobile — Workspace Switch",
+      "platform": "mobile",
+      "module": "M01",
+      "route": "",
+      "purpose": "Mobile workspace switcher — bottom sheet displaying all workspaces with quick switch capability. Shows workspace avatar, name, plan, and unread notification count per workspace.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "6-20. Standard Sections",
+        "Preconditions / Postconditions",
+        "Data Binding & Display Format"
+      ],
+      "kind": "dashboard",
+      "source": "docs/03_screens/mobile/screen_mobile_home_workspace_switch.md"
+    },
+    {
+      "id": "M009",
+      "title": "Mobile — Idea Detail",
+      "platform": "mobile",
+      "module": "M05",
+      "route": "/ideas/[id]",
+      "purpose": "Mobile idea detail — full idea card with AI variations, trending context, and action flow to create script/content.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/mobile/screen_mobile_idea_detail.md"
+    },
+    {
+      "id": "M017",
+      "title": "Mobile — Trend List",
+      "platform": "mobile",
+      "module": "M02",
+      "route": "/trends",
+      "purpose": "Mobile Trend List is the mobile-optimized version of the Trend Radar. Single-column card stack optimized for vertical scroll, with platform filter chips and swipe-to-save gestures.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "6-20. Standard Sections",
+        "Preconditions / Postconditions",
+        "Data Binding & Display Format"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/mobile/screen_mobile_intelligence_trend_list.md"
+    },
+    {
+      "id": "M047",
+      "title": "Mobile — Link-in-Bio",
+      "platform": "mobile",
+      "module": "S16",
+      "route": "/link-in-bio",
+      "purpose": "Mobile link-in-bio editor — manage links, reorder, toggle visibility. Preview live page and share link.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_link_in_bio.md"
+    },
+    {
+      "id": "M055",
+      "title": "Mobile — Live War Room",
+      "platform": "mobile",
+      "module": "M17",
+      "route": "/live/[streamId]",
+      "purpose": "Real-time command center during live streams — concurrent viewers, engagement rate, AI-suggested talking points, pinned product, and audience sentiment. Updated every 5 seconds.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_live_war_room.md"
+    },
+    {
+      "id": "M048",
+      "title": "Mobile — Media Kit",
+      "platform": "mobile",
+      "module": "S16",
+      "route": "/creator-pro/media-kit",
+      "purpose": "Mobile media kit viewer — preview and share your media kit. Editing is limited; full editing on web.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_media_kit.md"
+    },
+    {
+      "id": "M003",
+      "title": "Mobile — Morning Brief",
+      "platform": "mobile",
+      "module": "M01",
+      "route": "/morning-brief",
+      "purpose": "AI-generated daily briefing — a single-scroll page with collapsible card sections covering yesterday's performance, financial summary, trending topics, and priority action items. Delivered via push notification at 6:30 AM, this is the creator's \"first look\" of the day.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_morning_brief.md"
+    },
+    {
+      "id": "M007",
+      "title": "Mobile — Onboarding Flow",
+      "platform": "mobile",
+      "module": "M01",
+      "route": "/onboarding",
+      "purpose": "5-step onboarding for first-time mobile users — welcome, niche selection, platform connect, first AI idea, and completion. Optimized for < 2 minute completion with skip option.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "form",
+      "source": "docs/03_screens/mobile/screen_mobile_onboarding.md"
+    },
+    {
+      "id": "M039",
+      "title": "Mobile — Performance Coach",
+      "platform": "mobile",
+      "module": "M07",
+      "route": "/analytics/coach",
+      "purpose": "Mobile AI performance coach — weekly coaching cards with actionable recommendations, content quality scores, and \"do this next\" suggestions.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "form",
+      "source": "docs/03_screens/mobile/screen_mobile_performance_coach.md"
+    },
+    {
+      "id": "M037",
+      "title": "Mobile — Post Analytics Detail",
+      "platform": "mobile",
+      "module": "M23",
+      "route": "/analytics/post/[id]",
+      "purpose": "Single post performance on mobile — key metrics, 72h reach timeline, AI insight cards, and audience breakdown. Scrollable vertical layout.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/mobile/screen_mobile_post_analytics.md"
+    },
+    {
+      "id": "M024",
+      "title": "Mobile — Publish Queue",
+      "platform": "mobile",
+      "module": "M11",
+      "route": "/publish",
+      "purpose": "Mobile publish queue — the chronological view of scheduled, published, and draft posts. Enables creators to monitor upcoming content, execute \"publish now\" for urgent posts, identify incomplete drafts requiring action, and manage their content pipeline from mobile. Designed for the \"check ",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Validation Rules"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/mobile/screen_mobile_publish_queue.md"
+    },
+    {
+      "id": "M023",
+      "title": "Mobile — Quick Publish",
+      "platform": "mobile",
+      "module": "M11",
+      "route": "/publish/quick",
+      "purpose": "Mobile Quick Publish is a streamlined single-screen flow for publishing content directly from mobile. Users select media (from device gallery or AI Studio assets), add AI-assisted captions and hashtags, choose target platforms with real-time compatibility checks, set schedule or publish im",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_publish_quick.md"
+    },
+    {
+      "id": "M006",
+      "title": "Mobile — Quick Capture",
+      "platform": "mobile",
+      "module": "M05",
+      "route": "/capture",
+      "purpose": "Ultra-fast idea capture — text, voice memo, or photo, designed to save in under 3 seconds. Captures inspiration anytime, anywhere. Opens as a modal overlay (not a full page) to minimize context switching.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_quick_capture.md"
+    },
+    {
+      "id": "M054",
+      "title": "Mobile — Workflow Recipes / Templates",
+      "platform": "mobile",
+      "module": "M21",
+      "route": "/m/workflows/templates",
+      "purpose": "Browse, search, and deploy pre-built workflow templates (recipes) on mobile. Features category filters, community ratings, credit cost estimates, and one-tap deployment. Designed to make workflow adoption dead-simple, even for non-technical users.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_recipes.md"
+    },
+    {
+      "id": "M044",
+      "title": "Mobile — Reconciliation",
+      "platform": "mobile",
+      "module": "M19",
+      "route": "/m/finance/reconcile",
+      "purpose": "Mobile-optimized reconciliation interface using swipe-to-match interaction. Matches imported/estimated financial entries with official records to improve profit truth accuracy. Designed like a card-swiping interface (similar to approval queue) for fast processing.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_reconciliation.md"
+    },
+    {
+      "id": "M062",
+      "title": "Mobile — Referral Center",
+      "platform": "mobile",
+      "module": "referral",
+      "route": "/m/settings/referral",
+      "purpose": "Mobile referral dashboard — share personalized referral link, track conversion funnel (clicks → signups → paid conversions), earn credits, and progress through referral tiers. Optimized for social sharing on mobile.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_referral.md"
+    },
+    {
+      "id": "M042",
+      "title": "Mobile — Revenue Tracking",
+      "platform": "mobile",
+      "module": "M19",
+      "route": "/finance/revenue",
+      "purpose": "Mobile revenue overview — daily/weekly/monthly revenue with source breakdown and trust badges. Optimized for quick financial check on the go.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/mobile/screen_mobile_revenue.md"
+    },
+    {
+      "id": "M011",
+      "title": "Mobile — Script Editor",
+      "platform": "mobile",
+      "module": "M06",
+      "route": "/scripts/[id]",
+      "purpose": "The Mobile Script Editor allows creators to view, edit, and approve scripts on-the-go. It features section-by-section editing (Hook, Body, CTA), per-section AI regeneration, a readthrough timer for duration calibration, and voice-to-text input. Optimized for one-thumb editing with large to",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "editor",
+      "source": "docs/03_screens/mobile/screen_mobile_script_editor.md"
+    },
+    {
+      "id": "M010",
+      "title": "Mobile — Script List",
+      "platform": "mobile",
+      "module": "M05",
+      "route": "/scripts",
+      "purpose": "Mobile script browser — list AI-generated and manually created scripts with status (draft/approved/used), quick preview, and filter by platform/status.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "editor",
+      "source": "docs/03_screens/mobile/screen_mobile_script_list.md"
+    },
+    {
+      "id": "M005",
+      "title": "Mobile — Universal Search",
+      "platform": "mobile",
+      "module": "M01",
+      "route": "/m/search",
+      "purpose": "Full-screen universal search overlay that searches across all workspace objects — ideas, scripts, assets, products, orders, contacts, threads, workflows, and help articles. Powered by Meilisearch with <50ms instant results, typo tolerance, and faceted grouping.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_search.md"
+    },
+    {
+      "id": "M056",
+      "title": "Mobile — Seeding Requests",
+      "platform": "mobile",
+      "module": "M18",
+      "route": "/seeding",
+      "purpose": "Mobile seeding — track sample product delivery to influencers with pipeline status, ROI tracking, and quick contact.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_seeding.md"
+    },
+    {
+      "id": "M057",
+      "title": "Mobile — Settings",
+      "platform": "mobile",
+      "module": "M23",
+      "route": "/settings",
+      "purpose": "Mobile settings hub — grouped list of all account and workspace settings. Includes profile, notifications, connected platforms, brand, team, billing, and app preferences.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "3-5. Component & Actions",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Error Handling"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/mobile/screen_mobile_settings.md"
+    },
+    {
+      "id": "M016",
+      "title": "Mobile — AI Remix",
+      "platform": "mobile",
+      "module": "M07",
+      "route": "/studio/remix",
+      "purpose": "Mobile AI Remix with 3-phase wizard. Swipe between phases. Phase 1: paste URL or upload reference. Phase 2: Creative DNA accordion sections with keep/modify toggles. Phase 3: preview + export.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "3-5. Component & Actions",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Error Handling"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_studio_ai_remix.md"
+    },
+    {
+      "id": "M015",
+      "title": "Mobile — Clip Factory",
+      "platform": "mobile",
+      "module": "M07",
+      "route": "/studio/clip-factory",
+      "purpose": "Mobile clip factory uses Tinder-style swipe selection for detected clips. Upload long video → AI analyzes → swipe through clips (right=select, left=skip, up=preview) → batch generate selected.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "3-5. Component & Actions",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Error Handling"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_studio_clip_factory.md"
+    },
+    {
+      "id": "M013",
+      "title": "Mobile — Studio Launcher",
+      "platform": "mobile",
+      "module": "M07",
+      "route": "/studio",
+      "purpose": "Mobile Studio is the AI generation hub on mobile — a launcher interface for all production modes (video, image, voiceover, music, subtitle, thumbnail). Shows active job progress with real-time updates, a quick-access mode grid, recent creations gallery, and credit balance. Optimized for \"c",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_studio_launcher.md"
+    },
+    {
+      "id": "M014",
+      "title": "Mobile — Quick Edit",
+      "platform": "mobile",
+      "module": "M07",
+      "route": "/studio/quick-edit",
+      "purpose": "Mobile-optimized transcript-based video editing. Upload from camera roll → AI transcribes → swipe words to delete → toggle edit options → generate. Tabbed UI: Transcript, Edit Plan, Settings.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "3-5. Component & Actions",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Error Handling"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_studio_quick_edit.md"
+    },
+    {
+      "id": "M049",
+      "title": "Mobile — Support Center",
+      "platform": "mobile",
+      "module": "help",
+      "route": "/support",
+      "purpose": "Mobile support center — search knowledge base, view tickets, create ticket with AI pre-check. Streamlined for quick issue resolution.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/mobile/screen_mobile_support.md"
+    },
+    {
+      "id": "M052",
+      "title": "Mobile — Task Queue",
+      "platform": "mobile",
+      "module": "M20",
+      "route": "/m/tasks",
+      "purpose": "Personal and team task queue on mobile — aggregates tasks from workflows, manual assignments, scheduled deadlines, and system-generated action items. Designed for swipe-to-complete interaction and grouped by urgency.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/mobile/screen_mobile_task_queue.md"
+    },
+    {
+      "id": "M020",
+      "title": "Mobile — Thread Detail",
+      "platform": "mobile",
+      "module": "M12",
+      "route": "/inbox/[threadId]",
+      "purpose": "Single conversation thread on mobile — the full message history with a contact, enriched with AI reply suggestions, contact context bar (VIP status, LTV, purchase intent, sentiment), quick actions, and inline order/product references. Optimized for thumb-zone reply and rapid customer engag",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "Validation Rules"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/mobile/screen_mobile_thread_detail.md"
+    },
+    {
+      "id": "M050",
+      "title": "Mobile — Workflow Monitor",
+      "platform": "mobile",
+      "module": "M20",
+      "route": "/m/workflows/runs",
+      "purpose": "Mobile workflow execution monitor for tracking running, completed, and failed workflow runs. Enables on-the-go monitoring, quick retry of failed runs, and responding to paused workflows that need human input. Essential for users relying on automated pipelines.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "dashboard",
+      "source": "docs/03_screens/mobile/screen_mobile_workflow_monitor.md"
+    },
+    {
+      "id": "A017",
+      "title": "Admin — Abuse Reports",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/abuse",
+      "purpose": "Centralized abuse report review and action queue. Handles content violations (spam, scam, misinformation, harassment), user complaints, and AI-flagged content. Features auto-classification with confidence scores, evidence collection, escalation paths, and bulk moderation actions.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/admin/screen_admin_abuse_reports.md"
+    },
+    {
+      "id": "A032",
+      "title": "Admin — Admin Team Management",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/team",
+      "purpose": "Admin Team Management is the interface for creating, modifying, and revoking internal admin accounts. This is a Super Admin exclusive screen — the only place where internal admin users and their roles can be managed. The internal admin system is completely isolated from workspace RBAC.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/admin/screen_admin_admin_management.md"
+    },
+    {
+      "id": "A013",
+      "title": "Admin — AI Model Configuration",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/ai/config",
+      "purpose": "Admin-only screen for configuring AI model parameters — feature-to-model mapping, temperature/token limits, system prompts, safety guidelines, and per-plan rate limits. This controls the AI behavior across the entire platform.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/admin/screen_admin_ai_config.md"
+    },
+    {
+      "id": "A014",
+      "title": "Admin — AI Credit Management",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/ai/credits",
+      "purpose": "Manage platform-wide AI credit pools — grant/revoke credits, view consumption patterns, set per-plan allocations, track cost vs. revenue margins, and configure credit pricing.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/admin/screen_admin_ai_credits.md"
+    },
+    {
+      "id": "A011",
+      "title": "Admin — AI Operations",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/ai-ops",
+      "purpose": "Monitor and manage AI provider integrations: credit consumption, provider health, model selection, cost tracking, and fallback configuration. Critical for managing multi-provider AI strategy.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "3-5. Component & Actions",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Error Handling"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/admin/screen_admin_ai_ops.md"
+    },
+    {
+      "id": "A012",
+      "title": "Admin — AI Provider Management",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/ai/providers",
+      "purpose": "Manage AI providers — API keys, model routing, fallback chains, cost tracking, and health status per provider.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/admin/screen_admin_ai_providers.md"
+    },
+    {
+      "id": "A024",
+      "title": "Admin — Business Analytics Dashboard",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/analytics/business",
+      "purpose": "Executive-level business analytics dashboard showing key SaaS metrics — MRR, ARR, churn, LTV, CAC, plan distribution, conversion funnels, and cohort retention analysis. Core dashboard for platform business decisions.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/admin/screen_admin_analytics_business.md"
+    },
+    {
+      "id": "A025",
+      "title": "Admin — Error Analytics",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/analytics/errors",
+      "purpose": "Admin error analytics — error frequency charts, top errors, affected workspaces, error type breakdown, and resolution tracking. Helps operations team prioritize bug fixes.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Permission Matrix",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/admin/screen_admin_analytics_errors.md"
+    },
+    {
+      "id": "A023",
+      "title": "Admin — Usage Analytics",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/analytics/usage",
+      "purpose": "Platform-wide usage analytics — DAU/MAU, feature adoption, API call volumes, AI credit consumption, and storage usage patterns.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/admin/screen_admin_analytics_usage.md"
+    },
+    {
+      "id": "A010",
+      "title": "Admin — Audit Log",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/audit-log",
+      "purpose": "Immutable audit trail of all administrative and critical user actions. Searchable, filterable, with export for compliance. Essential for security auditing and incident investigation.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "3-5. Component & Actions",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Error Handling"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/admin/screen_admin_audit_log.md"
+    },
+    {
+      "id": "A019",
+      "title": "Admin — Dispute Resolution",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/commerce/disputes",
+      "purpose": "Review and resolve commerce disputes between workspaces and platforms. Includes evidence review, refund approval, SLA tracking, and escalation management. Disputes originate from order issues (product quality, non-delivery, wrong item), refund disagreements, or payment discrepancies.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/admin/screen_admin_commerce_disputes.md"
+    },
+    {
+      "id": "A020",
+      "title": "Admin — Commerce Fee Configuration",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/commerce/fees",
+      "purpose": "The Commerce Fee Configuration screen manages platform commission fees — the revenue Creativanta earns from commerce transactions processed through the platform. Admins configure per-plan, per-channel fee percentages, fee caps, promotional overrides, and effective date ranges. Includes a r",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/admin/screen_admin_commerce_fees.md"
+    },
+    {
+      "id": "A018",
+      "title": "Admin — Global Commerce Stats",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/commerce",
+      "purpose": "Platform-wide commerce overview — cross-workspace GMV, order volume, refund rates, platform fee health, and top-performing workspace rankings. This is the Admin's bird's-eye view of all commerce activity across the Creativanta platform.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "User Actions",
+        "Health Scoring",
+        "Permissions (Admin RBAC — 8 roles)"
+      ],
+      "kind": "dashboard",
+      "source": "docs/03_screens/admin/screen_admin_commerce_overview.md"
+    },
+    {
+      "id": "A033",
+      "title": "Admin — Connector Debug",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/platforms/[provider]/debug",
+      "purpose": "Deep-dive diagnostic workspace for a single connector provider or connected account. This screen is used after A007 Platform Monitor identifies degradation, token expiry, sync backlog, or webhook failures.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "User Actions",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/admin/screen_admin_connector_debug.md"
+    },
+    {
+      "id": "A001",
+      "title": "Admin — Dashboard",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin",
+      "purpose": "The Admin Dashboard is the operations command center for Creativanta internal staff. It shows real-time system health, active user metrics, revenue KPIs, support queue, and operational alerts. This is a completely isolated system from the main workspace application — separate auth, separat",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "States"
+      ],
+      "kind": "dashboard",
+      "source": "docs/03_screens/admin/screen_admin_dashboard.md"
+    },
+    {
+      "id": "A036",
+      "title": "Admin — DLQ Inspector",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/jobs/dlq",
+      "purpose": "Standalone review surface for dead-lettered jobs that require manual triage, replay, or discard. This separates long-tail operational cleanup from the broader A008 Job Monitor.",
+      "sections": [
+        "Purpose & Context",
+        "Data Binding & Display Format",
+        "User Actions",
+        "States",
+        "Validation Rules",
+        "Related Screens",
+        "Revision History"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/admin/screen_admin_dlq_inspector.md"
+    },
+    {
+      "id": "A035",
+      "title": "Admin — Email Campaign Manager",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/notifications/campaigns",
+      "purpose": "Email-first broadcast management surface for lifecycle emails, maintenance campaigns, targeted feature launches, and delivery analytics. This is the operational companion to A027 Notification Broadcast, optimized for email scheduling and CTR analysis.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout",
+        "Data Binding & Display Format",
+        "User Actions",
+        "States",
+        "Related Screens"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/admin/screen_admin_email_campaign_manager.md"
+    },
+    {
+      "id": "A009",
+      "title": "Admin — Feature Flag Manager",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/feature-flags",
+      "purpose": "Manage feature flags — enable/disable features per user segment, rollout percentage, and A/B testing. Critical for safe deployments.",
+      "sections": [
+        "Purpose & Context",
+        "2-5. Layout & Actions",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Error Handling",
+        "Accessibility"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/admin/screen_admin_feature_flags.md"
+    },
+    {
+      "id": "A028",
+      "title": "Admin — Fraud Dashboard",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/fraud",
+      "purpose": "The Fraud Dashboard is the central hub for detecting, investigating, and resolving fraud and abuse patterns across the Creativanta platform. It surfaces automated fraud signals, provides device/identity intelligence, and enables case-based investigation workflows.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "dashboard",
+      "source": "docs/03_screens/admin/screen_admin_fraud_dashboard.md"
+    },
+    {
+      "id": "A029",
+      "title": "Admin — GDPR & Compliance Tools",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/compliance/gdpr",
+      "purpose": "The GDPR & Compliance Tools screen provides workflows for processing data subject requests (access, erasure, portability), managing consent records, and handling data breach notifications. This screen ensures Creativanta meets PDPA (Vietnam) and GDPR (EU) compliance requirements.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/admin/screen_admin_gdpr_tools.md"
+    },
+    {
+      "id": "A031",
+      "title": "Admin — Incident Manager",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/incidents",
+      "purpose": "The Incident Manager tracks system incidents, outages, and service degradations. It provides a structured workflow from detection through resolution, including post-mortem documentation and action item tracking.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/admin/screen_admin_incident_manager.md"
+    },
+    {
+      "id": "A008",
+      "title": "Admin — Background Job Monitor",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/jobs",
+      "purpose": "Real-time monitoring dashboard for all background jobs across the platform — platform sync jobs, AI processing tasks, scheduled exports, report generation, data migrations, and maintenance tasks. Provides visibility into queue health, processing times, and failure rates with retry/kill cap",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "dashboard",
+      "source": "docs/03_screens/admin/screen_admin_job_monitor.md"
+    },
+    {
+      "id": "A034",
+      "title": "Admin — Knowledge Base Editor",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/support/kb",
+      "purpose": "Editorial surface for knowledge base articles, stale-content review, localized publishing, and version history. This is the canonical admin write surface behind the Help Center.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Data Binding & Display Format",
+        "User Actions",
+        "States",
+        "Validation Rules"
+      ],
+      "kind": "editor",
+      "source": "docs/03_screens/admin/screen_admin_knowledge_base_editor.md"
+    },
+    {
+      "id": "A015",
+      "title": "Admin — Content Moderation Queue",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/moderation",
+      "purpose": "Primary queue for reviewing moderationcases created by automated checks, user reports, or manual admin escalation. This screen is the first-stop operational surface for deciding whether a reported object is safe, should be warned, should be removed, or must be escalated.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/admin/screen_admin_moderation.md"
+    },
+    {
+      "id": "A016",
+      "title": "Admin — Moderation Rules",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/moderation/rules",
+      "purpose": "Configure content moderation rules — keyword lists, AI detection thresholds, auto-actions on violations, and escalation policies.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/admin/screen_admin_moderation_rules.md"
+    },
+    {
+      "id": "A027",
+      "title": "Admin — Notification Broadcast",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/notifications",
+      "purpose": "Platform-wide notification broadcast system for internal admins to send announcements, maintenance alerts, feature updates, and targeted communications. Supports multi-channel delivery (in-app, email, push), audience targeting by plan/region/workspace, scheduling, and delivery analytics.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/admin/screen_admin_notifications.md"
+    },
+    {
+      "id": "A007",
+      "title": "Admin — Platform Integration Monitor",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/platforms",
+      "purpose": "Monitor all platform integrations — TikTok, Instagram, Shopee, YouTube, Facebook. Health status, sync errors, rate limit usage, and token expiry warnings.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "form",
+      "source": "docs/03_screens/admin/screen_admin_platform_monitor.md"
+    },
+    {
+      "id": "A022",
+      "title": "Admin — Platform Revenue Dashboard",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/revenue",
+      "purpose": "Platform revenue dashboard — detailed breakdown of subscription MRR, commission fees, credit sales, and revenue by source/plan. Includes real-time transaction feed, revenue forecasting, and anomaly detection.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Layout Structure",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "analytics",
+      "source": "docs/03_screens/admin/screen_admin_revenue.md"
+    },
+    {
+      "id": "A037",
+      "title": "Admin — Subscription Override",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/subscriptions/overrides",
+      "purpose": "Controlled override surface for temporary plan changes, grace periods, commercial concessions, manual tier migrations, and override audit review. This screen owns write-path plan overrides that are only quick actions elsewhere.",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Data Binding & Display Format",
+        "User Actions",
+        "Validation Rules",
+        "States",
+        "Related Screens"
+      ],
+      "kind": "editor",
+      "source": "docs/03_screens/admin/screen_admin_subscription_override.md"
+    },
+    {
+      "id": "A021",
+      "title": "Admin — Subscription & Billing Management",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/subscriptions",
+      "purpose": "Manage subscription plans, view MRR trends, handle billing issues, and monitor user plan distribution. Includes plan configuration and credit allocation management.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "3-5. Component & Actions",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Error Handling"
+      ],
+      "kind": "editor",
+      "source": "docs/03_screens/admin/screen_admin_subscriptions.md"
+    },
+    {
+      "id": "A026",
+      "title": "Admin — Support Queue",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/support",
+      "purpose": "Admin support queue — manages user support tickets with priority-based SLA tracking. Shows ticket list, assignment, response times, and escalation status.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "6-20. Standard Sections",
+        "Preconditions / Postconditions",
+        "Data Binding & Display Format"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/admin/screen_admin_support_queue.md"
+    },
+    {
+      "id": "A030",
+      "title": "Admin — System Configuration",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/config",
+      "purpose": "The System Configuration screen is the central control panel for all platform-wide settings. Only Super Admin can modify these configs. It covers pricing, AI credit rates, rate limits, storage limits, SLA configs, AUP rules, email templates, platform connector configs, and maintenance mode",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Actions Table",
+        "States"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/admin/screen_admin_system_config.md"
+    },
+    {
+      "id": "A006",
+      "title": "Admin — System Health",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/health",
+      "purpose": "Real-time system health dashboard — all services status, resource usage, alerts, and operational KPIs. Auto-refresh every 30 seconds.",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "workspace",
+      "source": "docs/03_screens/admin/screen_admin_system_health.md"
+    },
+    {
+      "id": "A003",
+      "title": "Admin — User Detail",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/users/[id]",
+      "purpose": "The User Detail screen is the comprehensive profile investigation surface for admin operators. It displays full account information, workspace memberships, activity timeline, credit usage, content statistics, risk scoring, and admin actions (suspend, impersonate, grant credits, delete). Th",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/admin/screen_admin_user_detail.md"
+    },
+    {
+      "id": "A002",
+      "title": "Admin — User Management",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/users",
+      "purpose": "Admin User Management — list, search, and manage all platform users and their workspaces. Supports account actions (suspend, verify, reset), workspace inspection, and subscription management.",
+      "sections": [
+        "Purpose & Context",
+        "Layout Structure",
+        "Component Hierarchy",
+        "4-5. Data & Actions",
+        "6-20. Standard Sections",
+        "Preconditions / Postconditions",
+        "Data Binding & Display Format"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/admin/screen_admin_user_list.md"
+    },
+    {
+      "id": "A005",
+      "title": "Admin — Workspace Detail",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/workspaces/[id]",
+      "purpose": "Deep workspace inspection — configuration, members, connections, usage, billing, content stats, and admin actions (suspend, upgrade, grant, delete).",
+      "sections": [
+        "Purpose & Context",
+        "Screen Layout",
+        "States",
+        "Preconditions / Postconditions",
+        "Component Hierarchy",
+        "Data Binding & Display Format",
+        "Related Screens"
+      ],
+      "kind": "detail",
+      "source": "docs/03_screens/admin/screen_admin_workspace_detail.md"
+    },
+    {
+      "id": "A004",
+      "title": "Admin — Workspace List",
+      "platform": "admin",
+      "module": "S26",
+      "route": "/admin/workspaces",
+      "purpose": "The Workspace List is the master registry of all Creativanta workspaces. Admin operators use this screen to monitor workspace health, investigate issues, manage subscriptions, and take administrative actions (suspend, credit adjustment, plan override). This is the primary workspace managem",
+      "sections": [
+        "Purpose & Context",
+        "Preconditions / Postconditions",
+        "Screen Layout",
+        "Component Hierarchy",
+        "Displayed Data",
+        "User Actions",
+        "Validation Rules"
+      ],
+      "kind": "table",
+      "source": "docs/03_screens/admin/screen_admin_workspace_list.md"
+    }
+  ],
+  "counts": {
+    "web": 135,
+    "mobile": 61,
+    "admin": 37
+  },
+  "note": "Visual concepts only; fictional demo data, no API or accepted implementation."
+}

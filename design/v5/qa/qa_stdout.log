@@ -1,0 +1,11 @@
+ALL_ROUTES web 1440 checked 135 runtimeErrors 0
+ALL_ROUTES web 820 checked 135 runtimeErrors 0
+ALL_ROUTES web 390 checked 135 runtimeErrors 0
+ALL_ROUTES web 360 checked 135 runtimeErrors 0
+ALL_ROUTES admin 1440 checked 37 runtimeErrors 0
+ALL_ROUTES admin 390 checked 37 runtimeErrors 0
+ALL_ROUTES mobile 1440 checked 61 runtimeErrors 0
+ALL_ROUTES mobile 820 checked 61 runtimeErrors 0
+ALL_ROUTES mobile 390 checked 61 runtimeErrors 0
+ALL_ROUTES mobile 360 checked 61 runtimeErrors 0
+FINAL_QA {"checks":858,"distinctScreens":233,"captures":54,"failures":0,"examples":[]}

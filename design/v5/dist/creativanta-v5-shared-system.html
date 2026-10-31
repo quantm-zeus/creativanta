@@ -1,0 +1,192 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Creativanta Go — Approved Design System · 12 Patterns</title><style>:root{--paper:#fbf9f5;--ink:#242924;--muted:#889188;--forest:#274333;--brand:#d94a31;--border:#e8e5dc}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}html,body{margin:0;padding:0;background:var(--paper);color:var(--ink)}
+body{font:13px/1.55 Inter,"Be Vietnam Pro",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font:inherit}button{cursor:pointer}
+:focus-visible{outline:3px solid #d94a3166;outline-offset:2px}
+.system-shell{max-width:1600px;margin:auto}
+.system-top{height:76px;padding:0 clamp(21px,4vw,76px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:25px;background:#fffefa}
+.system-logo{display:flex;align-items:center;gap:10px;white-space:nowrap}
+.system-logo strong{font-size:17px;font-weight:820;letter-spacing:-.06em}
+.system-logo strong span{color:var(--brand)}
+.logo-mark{height:30px;width:30px;border-radius:10px;background:var(--brand)}
+.top-links{display:flex;margin-left:auto;gap:25px}
+.top-links a{font-size:11px;font-weight:710;color:#839184;text-decoration:none}
+.top-links a:hover{color:#b94330}
+.system-label{font-size:10px;font-weight:780;color:#ad7963;background:#fff1e8;border-radius:9px;padding:8px 11px;white-space:nowrap}
+main{padding:0 clamp(21px,4vw,76px) 75px}
+.intro{padding:85px 0 75px;max-width:1100px}
+.eyebrow{font-size:10px;letter-spacing:.13em;font-weight:780;color:#748c76;display:flex;align-items:center;gap:10px}
+.live-dot{width:8px;height:8px;background:#63aa7d;border-radius:50%;box-shadow:0 0 0 4px #e3eee2}
+.intro h1{font-size:clamp(40px,5.3vw,77px);font-weight:770;line-height:1.12;letter-spacing:-.071em;margin:26px 0 17px;color:#18241a}
+.intro h1 em{font-family:Georgia,serif;color:#bd5639;font-weight:500}
+.intro p{font-size:14px;color:#7b867b;line-height:1.8;max-width:740px}
+.intro-tags{margin-top:28px;display:flex;gap:9px;flex-wrap:wrap}
+.intro-tags span{padding:8px 12px;border:1px solid #e8e4db;background:white;border-radius:9px;color:#738477;font-size:10px;font-weight:710}
+.section-head{display:flex;align-items:center;gap:30px;margin:18px 0 22px}
+.section-head small{letter-spacing:.13em;font-size:10px;color:#adad9f;font-weight:750;white-space:nowrap}
+.section-head h2{font-size:22px;font-weight:745;letter-spacing:-.045em;margin:0}
+.foundation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px}
+.pattern-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+#components{margin-top:60px}
+.pattern{background:#fffefa;border:1px solid #e8e5dc;border-radius:19px;padding:22px;min-width:0;overflow:hidden;box-shadow:0 8px 28px #222c1f05}
+.pattern-top{display:flex;align-items:center;gap:11px;margin-bottom:18px}
+.pattern-top span{color:#b6b8ad;font-size:10px;font-weight:750}
+.pattern-top h3{font-size:14px;letter-spacing:-.024em;font-weight:750;margin:0;color:#344036}
+.pattern-caption{font-size:10.5px;color:#949c91;line-height:1.7;margin:13px 0 0}
+.swatch-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.swatch{aspect-ratio:.91;border-radius:10px;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:3px;padding:11px 9px;border:1px solid #00000009}
+.swatch b{font-size:11px}.swatch small{font-size:9px;font-weight:580;opacity:.79}
+.type-preview{display:flex;flex-direction:column;gap:10px}
+.type-display{font-size:clamp(26px,3vw,43px);font-weight:770;letter-spacing:-.055em;line-height:1.2}
+.type-editorial{font-family:Georgia,serif;font-size:clamp(20px,2.3vw,32px);font-style:italic;color:#bc5638;line-height:1.3}
+.type-preview p{color:#858e83;margin:0;font-size:11px}
+.type-preview small{color:#a2a79b;font-size:10px}
+.demo-area{min-height:155px}
+.button-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.btn{border:1px solid transparent;border-radius:10px;padding:10px 13px;min-height:42px;font-size:11px;font-weight:760;white-space:nowrap}
+.btn.primary{background:#d94a31;color:white}.btn.primary:hover{background:#b73b29}
+.btn.secondary{background:#fffefa;border-color:#e6e2d8;color:#435644}.btn.secondary:hover{background:#f0f5ed}
+.btn.tertiary{background:#274333;color:#fff}.btn.tertiary:hover{background:#365f44}
+.btn.subtle{background:#f4f1eb;color:#7c867a}.btn.subtle:hover{background:#eae7e0}
+.field-label{display:block;font-size:11px;color:#576a5b;font-weight:740;margin:9px 0 7px}
+.field{border:1px solid #e6e2d9;border-radius:10px;padding:10px 12px;font-size:12px;min-height:43px;background:#fffefa;color:#334436;width:100%;outline:0}
+.field:focus{border-color:#e0a991;box-shadow:0 0 0 3px #fce9e0}
+.help-text{display:block;font-size:10px;color:#959d92;margin:6px 0 11px}
+.help-text.invalid{color:#c34f3c}
+.mini-nav{display:flex;gap:5px;flex-wrap:wrap}
+.mini-nav button{border:0;background:#f4f1e9;border-radius:9px;color:#809084;padding:10px;font-size:10px;min-height:39px;font-weight:750}
+.mini-nav button.active{background:#264a36;color:white}
+.mini-info{margin-top:18px;padding:12px;border-radius:9px;background:#f1f5ed;color:#738a76;font-size:10.5px;line-height:1.6}
+.insight-card{border-radius:17px;background:#284432;color:#fff;padding:21px;display:flex;flex-direction:column;gap:12px;min-height:181px;position:relative;overflow:hidden}
+.insight-card:after{content:"";position:absolute;right:-42px;top:-30px;width:150px;height:150px;border-radius:50%;border:23px solid #b5d6bb22}
+.insight-label{font-size:9px;letter-spacing:.1em;color:#b7dcc2;font-weight:760}
+.insight-card strong{font-size:24px;line-height:1.2;letter-spacing:-.044em;font-weight:720}
+.insight-card button{align-self:flex-start;background:#fffefa;border:0;color:#29513c;font-weight:750;font-size:11px;padding:9px 12px;border-radius:8px;z-index:1}
+.badges{display:flex;gap:8px;flex-wrap:wrap;padding-top:15px}
+.status{font-size:10px;font-weight:760;border-radius:8px;padding:7px 10px}
+.status.good{color:#467951;background:#e5f2e7}.status.warning{color:#b57e51;background:#fff0df}
+.status.error{color:#c35940;background:#feeae6}.status.neutral{background:#f0eee7;color:#8c9488}
+.data-toolbar{display:flex;gap:7px}.data-toolbar .field{flex:1;min-width:0}
+.table-overflow{max-width:100%;overflow:auto;margin-top:13px}
+table{width:100%;border-collapse:collapse;min-width:270px}
+th{font-size:10px;font-weight:730;color:#9aa297;text-align:left;padding:10px}
+td{font-size:11px;color:#68786a;padding:10px;border-top:1px solid #ede9e0}
+td button{border:0;background:none;color:#bc543a;font-size:10px}
+.metric-label{font-size:10px;letter-spacing:.05em;color:#8e9d90;display:block}
+.metric{font-size:28px;letter-spacing:-.05em;color:#2e7248;display:block;margin:8px 0}
+.demo-area svg{width:100%;height:auto;max-height:115px}
+.list-sample{display:flex;align-items:center;gap:10px;padding:14px;border:1px solid var(--border);border-radius:12px;margin-bottom:13px}
+.list-icon{width:33px;height:33px;border-radius:10px;background:#f9eee5;color:#c45b42;display:grid;place-items:center}
+.list-sample strong{display:block;font-size:11px;font-weight:740}
+.list-sample small{display:block;font-size:10px;color:#9a9d94;margin-top:4px}
+.sheet-sample{border:1px solid #e9e5dc;background:#fbfaf6;border-radius:18px 18px 9px 9px;display:flex;align-items:flex-start;flex-direction:column;gap:10px;padding:13px 17px 17px}
+.sheet-handle{width:39px;height:4px;border-radius:99px;background:#e0dfd6;align-self:center;margin:1px 0 8px}
+.sheet-sample strong{font-size:12px}
+.sheet-sample small{font-size:10px;color:#9aa295;line-height:1.55}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:16px}
+.steps div{background:#f0f3e9;padding:12px 10px;border-radius:10px}
+.steps div:nth-child(2){background:#fff0e7}
+.steps small{display:block;font-size:9px;color:#92a08f}
+.steps strong{display:block;font-size:11px;color:#4b6851;margin-top:10px}
+.flow-summary{margin-top:64px}
+.principle-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.principle-grid div{border-top:1px solid #e2e2d8;padding:18px 8px}
+.principle-grid b{font-size:12px}
+.principle-grid p{color:#8b958b;font-size:11px;line-height:1.65}
+footer{text-align:center;padding:34px;color:#9ba195;font-size:10px;border-top:1px solid var(--border)}
+#toast{position:fixed;right:20px;bottom:20px;z-index:200;pointer-events:none}
+.toast{background:#2b4031;color:#fff;border-radius:11px;padding:12px 15px;font-size:11px;box-shadow:0 14px 25px #192f1e22}
+#global-modal:empty{display:none}
+.modal-backdrop{position:fixed;inset:0;background:#18241988;z-index:160;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(3px)}
+.dialog{border-radius:20px;background:#fffefa;padding:24px;width:min(420px,100%);box-shadow:0 25px 80px #131c1329}
+.dialog h3{font-size:20px;margin:0 0 10px;letter-spacing:-.04em}
+.dialog p{font-size:12px;line-height:1.7;color:#808c80}
+.dialog-buttons{display:flex;justify-content:flex-end;gap:8px;margin-top:21px}
+@media(max-width:1150px){.pattern-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:750px){
+ .system-top{padding:0 17px;height:66px}
+ .top-links{display:none}.system-label{margin-left:auto;font-size:9px}
+ .intro{padding:51px 0 52px}
+ .foundation-grid,.pattern-grid,.principle-grid{grid-template-columns:minmax(0,1fr)}
+ .section-head{display:block}.section-head h2{margin-top:8px}
+ .pattern{padding:19px}
+ .swatch{aspect-ratio:1;padding:9px 7px}
+ .swatch b{font-size:10px}.swatch small{font-size:8px}
+}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;scroll-behavior:auto!important}}
+</style></head>
+<body><div class="system-shell"><header class="system-top"><div class="system-logo"><span class="logo-mark"></span><strong>creativanta<span>.</span></strong></div><nav class="top-links" aria-label="Mục lục"><a href="#foundation">Nền tảng</a><a href="#components">Thành phần</a><a href="#flows">Tương tác</a></nav><div class="system-label">GO SYSTEM / APPROVED V5</div></header>
+<main>
+<div class="intro"><div class="eyebrow"><span class="live-dot"></span> DESIGN SYSTEM ĐÃ CHỐT / 31.10.2026</div>
+<h1>Một ngôn ngữ thiết kế.<br><em>Cho mọi điểm chạm.</em></h1><p>Áp dụng xuyên suốt Creativanta Web, Mobile, Admin: nền giấy ấm, charcoal, vermilion và xanh forest. Không sao chép design system V2/V3.</p>
+<div class="intro-tags"><span>135 Web</span><span>61 Mobile</span><span>37 Admin</span><span>12 Shared patterns</span></div></div>
+<section id="foundation"><div class="section-head"><small>01 / FOUNDATION</small><h2>Màu sắc và kiểu chữ</h2></div><div class="foundation-grid">
+<div class="pattern"><div class="pattern-top"><span>01</span><h3>Bảng màu thương hiệu</h3></div><div class="swatch-row"><div class="swatch" style="background:#fbf9f5;color:#253327"><b>Paper</b><small>#FBF9F5</small></div><div class="swatch" style="background:#274333;color:white"><b>Forest</b><small>#274333</small></div><div class="swatch" style="background:#d94a31;color:white"><b>Vermilion</b><small>#D94A31</small></div><div class="swatch" style="background:#242924;color:white"><b>Charcoal</b><small>#242924</small></div></div><p class="pattern-caption">Tập trung, có cá tính, không dùng màu chỉ để trang trí.</p></div>
+<div class="pattern"><div class="pattern-top"><span>02</span><h3>Typography</h3></div><div class="type-preview"><div class="type-display">Ý tưởng đáng tạo.</div><div class="type-editorial">Một ngày đẹp để bắt đầu.</div><p>Chữ rõ ràng, nhịp đọc thoáng và các cỡ chữ có mục đích.</p><small>Inter / Be Vietnam Pro / System · Georgia accent</small></div></div></div></section>
+<section id="components"><div class="section-head"><small>02 / COMPONENTS</small><h2>Những thành phần cốt lõi</h2></div>
+<div class="pattern-grid">
+<div class="pattern"><div class="pattern-top"><span>03</span><h3>Nút và hành động</h3></div><div class="demo-area"><div class="button-row"><button class="btn primary" data-action="toast" data-msg="Đã chọn hành động chính (DEMO)">Hành động chính ↗</button><button class="btn secondary" data-action="toast" data-msg="Đã xem hành động phụ (DEMO)">Xem thêm</button></div><div class="button-row"><button class="btn tertiary" data-action="modal">Mở dialog</button><button class="btn subtle" data-action="toggle-disabled">Bật/tắt chức năng</button></div></div><p class="pattern-caption">Phân cấp primary, secondary, tertiary; trạng thái phản hồi rõ ràng.</p></div>
+<div class="pattern"><div class="pattern-top"><span>04</span><h3>Biểu mẫu và kiểm tra đầu vào</h3></div><div class="demo-area"><label class="field-label" for="sample-email">Email</label><input id="sample-email" class="field" placeholder="hello@creativanta.vn" type="email"/><small id="field-help" class="help-text">Dùng để kiểm tra trạng thái validation.</small><button class="btn primary" data-action="validate">Kiểm tra</button></div></div>
+<div class="pattern"><div class="pattern-top"><span>05</span><h3>Điều hướng theo công việc</h3></div><div class="demo-area"><div class="mini-nav"><button class="active" data-action="nav">Tổng quan</button><button data-action="nav">Khám phá</button><button data-action="nav">Sáng tạo</button><button data-action="nav">Kinh doanh</button></div><div class="mini-info">Chỉ hiển thị luồng sử dụng chính. Tính năng ít dùng nằm trong tìm kiếm nhanh.</div></div></div>
+<div class="pattern"><div class="pattern-top"><span>06</span><h3>Thẻ thông tin và CTA</h3></div><div class="demo-area"><div class="insight-card"><span class="insight-label">CƠ HỘI / DEMO</span><strong>Xu hướng tốt<br>đang chờ bạn.</strong><button data-action="toast" data-msg="Đã mở cơ hội mẫu">Khám phá ngay →</button></div></div></div>
+<div class="pattern"><div class="pattern-top"><span>07</span><h3>Bảng dữ liệu thao tác</h3></div><div class="demo-area"><div class="data-toolbar"><input id="table-filter" class="field" placeholder="Tìm bản ghi..."/><button class="btn secondary" data-action="sort-table">Sắp xếp ↓</button></div><div class="table-overflow"><table><thead><tr><th>Tên</th><th>Trạng thái</th><th></th></tr></thead><tbody id="demo-rows"></tbody></table></div></div></div>
+<div class="pattern"><div class="pattern-top"><span>08</span><h3>Trạng thái và bằng chứng</h3></div><div class="demo-area"><div class="badges"><span class="status good">Đã xác nhận</span><span class="status warning">Chờ kiểm tra</span><span class="status error">Cần xử lý</span><span class="status neutral">DEMO</span></div><p class="pattern-caption">Chỉ dùng màu khi biểu thị trạng thái có ý nghĩa. Mỗi badge luôn có nhãn chữ.</p></div></div>
+<div class="pattern"><div class="pattern-top"><span>09</span><h3>Biểu đồ và số liệu</h3></div><div class="demo-area"><span class="metric-label">Hiệu quả nội dung / DEMO</span><strong class="metric">+18,6%</strong><svg viewBox="0 0 340 125" role="img" aria-label="Biểu đồ tăng trưởng demo"><path d="M5 105H335M5 65H335" stroke="#e7eae0" stroke-dasharray="4 5"/><path d="M8 97L50 89L92 93L134 66L176 72L218 53L260 43L302 51L331 28" fill="none" stroke="#458760" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+<div class="pattern"><div class="pattern-top"><span>10</span><h3>Card danh sách và trạng thái trống</h3></div><div class="demo-area"><div id="state-display" class="list-sample"><div class="list-icon">✦</div><div><strong>Ý tưởng được lưu</strong><small>Chuẩn bị bước tiếp theo · DEMO</small></div></div><div class="button-row"><button class="btn secondary" data-action="sample-state" data-state="content">Có dữ liệu</button><button class="btn secondary" data-action="sample-state" data-state="empty">Trống</button><button class="btn secondary" data-action="sample-state" data-state="error">Lỗi</button></div></div></div>
+<div class="pattern"><div class="pattern-top"><span>11</span><h3>Hộp thoại và bottom sheet</h3></div><div class="demo-area"><div class="sheet-sample"><span class="sheet-handle"></span><strong>Chọn bước tiếp theo</strong><small>Trên Mobile, các hành động liên quan xuất hiện trong sheet vừa tầm ngón tay.</small><button class="btn primary" data-action="sheet">Thử mở sheet</button></div></div></div>
+<div class="pattern"><div class="pattern-top"><span>12</span><h3>Luồng công việc và xác nhận</h3></div><div class="demo-area"><div class="steps"><div><small>01</small><strong>Ý tưởng</strong></div><div><small>02</small><strong>Kịch bản</strong></div><div><small>03</small><strong>Kiểm tra</strong></div></div><button class="btn primary" data-action="confirm">Thử phê duyệt</button><p class="pattern-caption">Thao tác nguy hiểm luôn yêu cầu xác nhận; không tự động xuất bản hay chi tiền.</p></div></div>
+</div></section>
+<section id="flows" class="flow-summary"><div class="section-head"><small>03 / PRINCIPLES</small><h2>Triển khai nhất quán</h2></div><div class="principle-grid"><div><b>Mobile-first</b><p>Bottom navigation 5 mục, hành động lớn, vùng chạm tối thiểu 44px.</p></div><div><b>Điều hướng theo công việc</b><p>Tổ chức theo hành trình từ khám phá đến doanh thu, không phơi toàn bộ module.</p></div><div><b>Tin cậy</b><p>Phân biệt DEMO và dữ liệu thật; không hứa action backend đang tồn tại.</p></div></div></section>
+</main><footer>Creativanta Go V5 · Product-owner approved visual direction · Prototypes only, not production acceptance.</footer></div>
+<div id="global-modal"></div><div id="toast" role="status" aria-live="polite"></div><script>(function(){
+'use strict';
+const items=[['Routine 60 giây','Đang duyệt'],['Video AI cho creator','Chờ kiểm tra'],['Góc làm việc xanh','Đã xác nhận']];
+let desc=false;
+function esc(x){return String(x).replace(/[&<>"']/g,a=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[a]))}
+function toast(msg){const e=document.getElementById('toast');e.innerHTML='<div class="toast">'+esc(msg)+'</div>';clearTimeout(window.__systemToast);window.__systemToast=setTimeout(()=>e.innerHTML='',3200)}
+function renderRows(){
+ const q=document.getElementById('table-filter')?.value.toLocaleLowerCase('vi')||'';
+ const records=items.slice().sort((a,b)=>desc?b[0].localeCompare(a[0]):a[0].localeCompare(b[0]));
+ document.getElementById('demo-rows').innerHTML=records.filter(x=>x[0].toLocaleLowerCase('vi').includes(q)).map((r,i)=>
+ '<tr><td>'+esc(r[0])+'</td><td><span class="status '+(/xác nhận/i.test(r[1])?'good':'warning')+'">'+esc(r[1])+'</span></td>'+
+ '<td><button data-action="record" data-index="'+i+'">Xem</button></td></tr>').join('');
+}
+function modal(title,content,confirmText='Đã hiểu'){
+ document.getElementById('global-modal').innerHTML='<div class="modal-backdrop" data-action="close-backdrop"><div class="dialog" role="dialog" aria-modal="true" aria-label="'+esc(title)+'" data-stop>'+
+ '<h3>'+esc(title)+'</h3><p>'+content+'</p>'+
+ '<div class="dialog-buttons"><button class="btn secondary" data-action="close-modal">Đóng</button><button class="btn primary" data-action="confirm-modal">'+esc(confirmText)+'</button></div></div></div>';
+ document.querySelector('.dialog .btn.primary')?.focus();
+}
+function close(){document.getElementById('global-modal').innerHTML=''}
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-action]');if(!b)return;
+ const action=b.dataset.action;
+ if(action==='toast'){toast(b.dataset.msg||'Đã xử lý trong bản DEMO');return}
+ if(action==='modal'){modal('Hộp thoại trong design system','Tương tác có nút rõ ràng, phân cấp và có thể đóng bằng phím Escape.');return}
+ if(action==='sheet'){modal('Mobile bottom sheet','Trên mobile, nội dung quan trọng xuất hiện ở sheet vừa tầm ngón tay.');return}
+ if(action==='confirm'){modal('Xác nhận hành động','Bước xác nhận bắt buộc cho thao tác xuất bản, hoàn tiền, xóa hoặc thay đổi quyền.','Xác nhận DEMO');return}
+ if(action==='close-modal'){close();return}
+ if(action==='close-backdrop'){if(e.target===b)close();return}
+ if(action==='confirm-modal'){close();toast('Đã xác nhận thao tác mô phỏng');return}
+ if(action==='toggle-disabled'){b.classList.toggle('active');toast('Đã đổi trạng thái thành phần DEMO');return}
+ if(action==='validate'){
+  const email=document.getElementById('sample-email').value.trim();const help=document.getElementById('field-help');
+  const ok=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);help.textContent=ok?'Email hợp lệ · Không được gửi đi':'Vui lòng nhập một email hợp lệ';help.classList.toggle('invalid',!ok);toast(ok?'Đã kiểm tra email hợp lệ':'Biểu mẫu chưa hợp lệ');return;
+ }
+ if(action==='nav'){document.querySelectorAll('.mini-nav button').forEach(x=>x.classList.toggle('active',x===b));toast('Đã chọn '+b.textContent+' (DEMO)');return}
+ if(action==='sort-table'){desc=!desc;renderRows();toast('Đã đổi thứ tự bảng');return}
+ if(action==='record'){modal('Chi tiết bản ghi DEMO','Có thể xem chi tiết và các trạng thái minh họa mà không mở API thật.');return}
+ if(action==='sample-state'){
+  const t=document.getElementById('state-display');
+  const key=b.dataset.state;
+  t.innerHTML=key==='empty'?'<div style="padding:19px;color:#a1a79b;font-size:11px">Chưa có dữ liệu phù hợp với bộ lọc này.</div>':
+    key==='error'?'<div style="padding:19px;color:#c65f45;font-size:11px">Không thể tải dữ liệu mẫu. Thử lại.</div>':
+    '<div class="list-icon">✦</div><div><strong>Ý tưởng được lưu</strong><small>Chuẩn bị bước tiếp theo · DEMO</small></div>';
+ }
+});
+document.getElementById('table-filter').addEventListener('input',renderRows);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+renderRows();
+})();</script>
+</body></html>
