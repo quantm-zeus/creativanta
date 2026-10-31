@@ -12,22 +12,22 @@ docs/03_screens/admin/screen_admin_audit_log.md,Admin — Security,S26,P8-03,P8-
 docs/03_screens/admin/screen_admin_commerce_disputes.md,Admin — Commerce Operations,S26,P8-03,P8-03,3a0ac10c9cfd87d05fbc990615e01635f088bdf911f14bbe370b211162efd42f
 docs/03_screens/admin/screen_admin_commerce_fees.md,Admin — Commerce Operations (S26),S26,P8-03,P8-03,575221b8d2f841a3e4ce23844af4f83218b38afb435aca97ce3515426ed4c24c
 docs/03_screens/admin/screen_admin_commerce_overview.md,S26 — Internal Admin & Operations,S26,P8-03,P8-03,bc3002a9f33d1e55fca37584e9060fd263e4c2d50512c9e9a56ed9ab6ea90092
-docs/03_screens/admin/screen_admin_connector_debug.md,S26 — Internal Admin & Operations,S26,P8-03,P8-03,ca4c9247d60654f68fefaf036026eb6abd415a433835e796a25a6ac13e5461c1
+docs/03_screens/admin/screen_admin_connector_debug.md,S26 — Internal Admin & Operations,S26,P8-03,P8-03,18c72d37eff5406e79698d2cff43de1765539a5b66c22b9661ba90e5cb88d341
 docs/03_screens/admin/screen_admin_dashboard.md,Admin — System Operations,S26,P8-03,P8-03,05261afd5219d8817b0cae3960bd64fec9296f6ea35a63d5fc9120d5e3069d17
-docs/03_screens/admin/screen_admin_dlq_inspector.md,S26 — Internal Admin & Operations,S26,P8-03,P8-03,1c75ee22c12e4573d4cd490ce9a4930e645d88450b95dedd6017cbb4be72ab90
-docs/03_screens/admin/screen_admin_email_campaign_manager.md,S26 — Internal Admin & Communications,S26,P8-03,P8-03,99ac1867b44dc8e26e70216fac548f19dc1281d0862983c57a734b5da0848d7d
+docs/03_screens/admin/screen_admin_dlq_inspector.md,S26 — Internal Admin & Operations,S26,P8-03,P8-03,0c7bfd981797a23acecadefbefa168ec57b1d35d3dd02e6abc4253e8ab4ffa19
+docs/03_screens/admin/screen_admin_email_campaign_manager.md,S26 — Internal Admin & Communications,S26,P8-03,P8-03,ef3fd696a331861d86766cb5018ab0f9380745e343670b59037023c191b0c529
 docs/03_screens/admin/screen_admin_feature_flags.md,Admin — Config,S26,P8-03,P8-03,72a4c99c847758fbc775b4b1549516c30cf01b086d13520ff9bef71f5ae51ac3
 docs/03_screens/admin/screen_admin_fraud_dashboard.md,S26 — Internal Admin & Operations,S26,P8-03,P8-03,6b8c68e13713fb087d03ba26377a962caa4ecbadeb49aac82326bd83ec36fa32
 docs/03_screens/admin/screen_admin_gdpr_tools.md,Admin — Compliance & Data Protection,S26,P8-03,P8-03,92b07d7a70ea333d9059a6cfd4ea4e372f129fa2fe0969c1e0f8f729be9ac899
 docs/03_screens/admin/screen_admin_incident_manager.md,Admin — System Operations,S26,P8-03,P8-03,05d84069f384cda669171cd553e31779f602a9c3c32efe160b0d052310bacea6
 docs/03_screens/admin/screen_admin_job_monitor.md,S26 — Internal Admin & Operations,S26,P8-03,P8-03,d2145456b8c2efade9a96e7c980005f7cf32d5bcd06ec743a9dac06c6bd7393a
-docs/03_screens/admin/screen_admin_knowledge_base_editor.md,S26 — Internal Admin & Support Operations,S26,P8-03,P8-03,1a4a44a0b86c5e3c2c2c46dd6345fbd6f628eb5a27f1f7d29b1b33ce130655dd
+docs/03_screens/admin/screen_admin_knowledge_base_editor.md,S26 — Internal Admin & Support Operations,S26,P8-03,P8-03,b099b32d280606b2495f156edfa4e0f7e75ee5a65c4855010b1f2ebc22763860
 docs/03_screens/admin/screen_admin_moderation.md,S26 — Internal Admin & Operations (Trust & Safety),S26,P8-03,P8-03,eddeebdbd58ffd944686ee1e49b130f7868da822850b9cd3112f74e2e1fe79c6
 docs/03_screens/admin/screen_admin_moderation_rules.md,Admin — Trust & Safety,S26,P8-03,P8-03,bbe031711fa9db054589f70c47427743270aba77660a4e5a59650bcf8b02a16c
 docs/03_screens/admin/screen_admin_notifications.md,S26 — Internal Admin & Operations,S26,P8-03,P8-03,e6c693e949940b5047a68315034cb337be1610a68045f4d3c51df3f319d0cddd
 docs/03_screens/admin/screen_admin_platform_monitor.md,S26 — Platform Operations,S26,P8-03,P8-03,bbec5bbd9aabc3318bae58d2dc46d8fd7505dc03acad39ead52cd1e370231a74
 docs/03_screens/admin/screen_admin_revenue.md,S26 — Internal Admin & Operations,S26,P8-03,P8-03,9879ff211d6dfa97bdf338d425a27945e0ca7da465623d57ef894b8e5a91c884
-docs/03_screens/admin/screen_admin_subscription_override.md,"S26 — Internal Admin, Billing & Revenue",S26,P8-03,P8-03,5725d85f84eae262d3560ad7c5682a0d1a9db7f6f7eebece4b2e08bca3a21fe9
+docs/03_screens/admin/screen_admin_subscription_override.md,"S26 — Internal Admin, Billing & Revenue",S26,P8-03,P8-03,031a822a46dba6e5805b1818ada6435ac5a17b656da4e70eebcff143845f839e
 docs/03_screens/admin/screen_admin_subscriptions.md,S26 — Billing & Revenue Operations,S26,P8-03,P8-03,d91e672cd5294f1ffb52b37f9eea2b256307255603587ada2458bec8d2116887
 docs/03_screens/admin/screen_admin_support_queue.md,S26 — Support Operations,S26,P8-03,P8-03,abdf036994764cd286bf2c3ad60e60ce6ec98598ea5807fb46df302e2a257dc6
 docs/03_screens/admin/screen_admin_system_config.md,Admin — System Configuration,S26,P8-03,P8-03,fb13ec5d4e3300b0fdf041f3607d51104f188a44a5df56ad721c6c436e7cd824

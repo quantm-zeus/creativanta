@@ -63,8 +63,8 @@ Standalone review surface for dead-lettered jobs that require manual triage, rep
 
 | Screen | Relationship |
 |---|---|
-| [screen_admin_job_monitor.md](/Users/quantm/Documents/My Projects/creativanta/docs/03_screens/admin/screen_admin_job_monitor.md) | Parent job monitor |
-| [screen_admin_incident_manager.md](/Users/quantm/Documents/My Projects/creativanta/docs/03_screens/admin/screen_admin_incident_manager.md) | Incident escalation |
+| [screen_admin_job_monitor.md](screen_admin_job_monitor.md) | Parent job monitor |
+| [screen_admin_incident_manager.md](screen_admin_incident_manager.md) | Incident escalation |
 
 ---
 ## 7. Revision History

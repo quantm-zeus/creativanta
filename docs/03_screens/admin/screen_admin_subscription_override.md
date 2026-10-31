@@ -77,8 +77,8 @@ Controlled override surface for temporary plan changes, grace periods, commercia
 
 | Screen | Relationship |
 |---|---|
-| [screen_admin_subscriptions.md](/Users/quantm/Documents/My Projects/creativanta/docs/03_screens/admin/screen_admin_subscriptions.md) | Parent billing overview |
-| [screen_admin_workspace_list.md](/Users/quantm/Documents/My Projects/creativanta/docs/03_screens/admin/screen_admin_workspace_list.md) | Workspace quick actions |
+| [screen_admin_subscriptions.md](screen_admin_subscriptions.md) | Parent billing overview |
+| [screen_admin_workspace_list.md](screen_admin_workspace_list.md) | Workspace quick actions |
 
 ---
 ## 8. Revision History

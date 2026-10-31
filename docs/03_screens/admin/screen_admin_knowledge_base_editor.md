@@ -100,9 +100,9 @@ Editorial surface for knowledge base articles, stale-content review, localized p
 
 | Screen | Relationship |
 |---|---|
-| [screen_admin_support_queue.md](/Users/quantm/Documents/My Projects/creativanta/docs/03_screens/admin/screen_admin_support_queue.md) | Ticket-driven article creation |
-| [screen_web_support_center.md](/Users/quantm/Documents/My Projects/creativanta/docs/03_screens/web/screen_web_support_center.md) | User-facing consumer |
-| [screen_web_support_article.md](/Users/quantm/Documents/My Projects/creativanta/docs/03_screens/web/screen_web_support_article.md) | Public article rendering |
+| [screen_admin_support_queue.md](screen_admin_support_queue.md) | Ticket-driven article creation |
+| [screen_web_support_center.md](../web/screen_web_support_center.md) | User-facing consumer |
+| [screen_web_support_article.md](../web/screen_web_support_article.md) | Public article rendering |
 
 ---
 ## 9. Revision History

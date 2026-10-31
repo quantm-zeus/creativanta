@@ -149,9 +149,9 @@ ConnectorDebugPage
 
 | Screen | Relationship |
 |---|---|
-| [screen_admin_platform_monitor.md](/Users/quantm/Documents/My Projects/creativanta/docs/03_screens/admin/screen_admin_platform_monitor.md) | Parent provider monitor |
-| [screen_admin_job_monitor.md](/Users/quantm/Documents/My Projects/creativanta/docs/03_screens/admin/screen_admin_job_monitor.md) | Sync job queue context |
-| [screen_admin_incident_manager.md](/Users/quantm/Documents/My Projects/creativanta/docs/03_screens/admin/screen_admin_incident_manager.md) | Escalation target |
+| [screen_admin_platform_monitor.md](screen_admin_platform_monitor.md) | Parent provider monitor |
+| [screen_admin_job_monitor.md](screen_admin_job_monitor.md) | Sync job queue context |
+| [screen_admin_incident_manager.md](screen_admin_incident_manager.md) | Escalation target |
 
 ---
 ## 11. Revision History

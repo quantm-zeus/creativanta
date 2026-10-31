@@ -80,8 +80,8 @@ reach estimate, CTR trend, bounce/failure breakdown, and quick actions.
 
 | Screen | Relationship |
 |---|---|
-| [screen_admin_notifications.md](/Users/quantm/Documents/My Projects/creativanta/docs/03_screens/admin/screen_admin_notifications.md) | General broadcast composer |
-| [screen_admin_subscriptions.md](/Users/quantm/Documents/My Projects/creativanta/docs/03_screens/admin/screen_admin_subscriptions.md) | Billing-lifecycle campaigns |
+| [screen_admin_notifications.md](screen_admin_notifications.md) | General broadcast composer |
+| [screen_admin_subscriptions.md](screen_admin_subscriptions.md) | Billing-lifecycle campaigns |
 
 ---
 ## 8. Revision History
