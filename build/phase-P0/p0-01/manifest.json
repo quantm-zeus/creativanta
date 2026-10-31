@@ -1,0 +1,113 @@
+{
+  "phase": "P0",
+  "slice": "p0-01-bootstrap-toolchain-ci",
+  "task_id": "P0-01",
+  "status": "SPECIFIED",
+  "feature_refs": [
+    "docs/02_features/platform/auth.md",
+    "docs/02_features/platform/reporting_admin_billing.md",
+    "docs/05_system/tech_stack_adr.md",
+    "docs/06_quality_ops/docker_dev_environment.md",
+    "docs/06_quality_ops/ci_cd_pipeline.md"
+  ],
+  "scope_items": [
+    {
+      "source": "docs/06_quality_ops/ci_cd_pipeline.md",
+      "requirement": "Section 2: Required stages and commands (D0, Toolchain, Lint, Transport, Unit, Smoke)",
+      "evidence": [
+        ".github/workflows/ci.yml",
+        "tooling/ci/check_d0.sh",
+        "tooling/ci/check_env.sh",
+        "tooling/ci/check_go.sh",
+        "tooling/ci/check_node.sh",
+        "tooling/ci/check_flutter.sh",
+        "tooling/ci/check_proto.sh"
+      ]
+    },
+    {
+      "source": "docs/06_quality_ops/ci_cd_pipeline.md",
+      "requirement": "Section 5: Mandatory business smoke and fail-closed readiness prior to dependencies",
+      "evidence": [
+        "tooling/ci/smoke_test.sh"
+      ]
+    },
+    {
+      "source": "docs/00_index/BUILD_EXECUTION_CONTRACT.md",
+      "requirement": "Section 4: Hard Gates D0 docs and zero greenwashing policy",
+      "evidence": [
+        "tooling/ci/check_d0.sh",
+        "tooling/ci/self_test_failure.sh"
+      ]
+    },
+    {
+      "source": "docs/05_system/tech_stack_adr.md",
+      "requirement": "ADR-015: Pinned toolchain (Go 1.27.3, Flutter 3.47.9, Node 24, pnpm 10.34.9, Buf 1.75.0)",
+      "evidence": [
+        ".github/workflows/ci.yml",
+        "tooling/ci/check_env.sh"
+      ]
+    }
+  ],
+  "rpc_contracts": [],
+  "migration_files": [],
+  "permission_keys": [],
+  "event_types": [],
+  "screen_routes": [],
+  "external_gates": [
+    {
+      "gate": "Android Emulator E2E",
+      "status": "DEFERRED",
+      "reason": "Requires nested KVM virtualization and complete packaged mobile artifacts in P8",
+      "deferred_to": "P8"
+    },
+    {
+      "gate": "PostgreSQL 17 Multi-tenant RLS and Role Isolation",
+      "status": "DEFERRED",
+      "reason": "Requires schema migrations, role grants (app_user, admin_user), and RLS policies in P0-04",
+      "deferred_to": "P0-04"
+    },
+    {
+      "gate": "Outbox/Inbox Lease Recovery and Deduplication",
+      "status": "DEFERRED",
+      "reason": "Requires event_outbox/consumer_inbox tables and poller processes in P0-05",
+      "deferred_to": "P0-05"
+    },
+    {
+      "gate": "External AI and Payment Provider Keys",
+      "status": "GATED",
+      "reason": "Production credentials cannot be committed; deterministic mock fixtures used until launch approval",
+      "deferred_to": "P4-P6"
+    }
+  ],
+  "checks": [],
+  "remaining_scope": [
+    {
+      "component": "apps/api Go module commands and implementation",
+      "assigned_to": "feat/p0-01-api worktree"
+    },
+    {
+      "component": "apps/web and apps/admin shell initialization",
+      "assigned_to": "feat/p0-01-web worktree"
+    },
+    {
+      "component": "apps/mobile Flutter shell initialization",
+      "assigned_to": "feat/p0-01-mobile worktree"
+    },
+    {
+      "component": "Full branch integration and test execution",
+      "assigned_to": "Orchestrator merge step"
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "D1 contract generation deferred to P0-02 because no current-slice RPC is implemented",
+      "gate": "D1",
+      "status": "DEFERRED"
+    },
+    {
+      "decision": "P0-01 not accepted until consolidated checks and CI run with actual artifacts",
+      "gate": "D0/P0-01",
+      "status": "OPEN"
+    }
+  ]
+}

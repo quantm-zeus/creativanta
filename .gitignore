@@ -15,3 +15,22 @@ CLAUDE.local.md
 # .claude/settings.json
 # .agent/rules/
 # .agent/skills/
+
+# CI / Test / Coverage Artifacts
+__pycache__/
+*.py[cod]
+*.out
+coverage.txt
+coverage.html
+coverage/
+.nyc_output/
+tooling/ci/.tmp/
+
+# Workspace Build Outputs (Do NOT ignore root build/ where phase packets live)
+apps/mobile/.dart_tool/
+apps/mobile/build/
+apps/web/.svelte-kit/
+apps/web/build/
+apps/admin/.svelte-kit/
+apps/admin/build/
+node_modules/

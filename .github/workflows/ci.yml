@@ -1,0 +1,240 @@
+name: Creativanta CI Pipeline
+
+# ==============================================================================
+# Creativanta Evidence-Gated CI Pipeline
+# Canonical Sources:
+# - docs/00_index/BUILD_EXECUTION_CONTRACT.md (Hard Gates D0-D5)
+# - docs/06_quality_ops/ci_cd_pipeline.md
+# - docs/05_system/tech_stack_adr.md (ADR-015 Go Migration & Pinned Versions)
+#
+# Pinned Versions:
+# - Go: 1.27.3
+# - Flutter: 3.47.9
+# - Node: 24
+# - pnpm: 10.34.9
+# - Buf: 1.75.0
+#
+# Anti-Greenwashing:
+# - set -euo pipefail throughout
+# - Missing application artifacts or tests FAIL immediately (no skip, no || true)
+# - Live smoke tests verify fail-closed /ready (503) prior to dependencies
+# - Self-test proves that intentional failures prevent CI green
+# ==============================================================================
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - "feat/**"
+  pull_request:
+    branches:
+      - main
+      - staging
+
+# PREVENT SECRETS INJECTION ON PULL REQUESTS:
+# Global permissions default to minimal read-only access.
+# PR runs from forks / branches receive no secrets and no repository write tokens.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ----------------------------------------------------------------------------
+  # JOB 1: D0 Documentation Invariants Gate
+  # ----------------------------------------------------------------------------
+  d0-documentation:
+    name: "Gate D0: Documentation Invariants"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install documentation audit dependencies (pglast)
+        run: |
+          pip install --upgrade pip
+          if [ -f "tooling/requirements-docs.txt" ]; then
+            pip install -r tooling/requirements-docs.txt
+          fi
+
+      - name: Run D0 Documentation Audit
+        run: |
+          chmod +x tooling/ci/check_d0.sh
+          ./tooling/ci/check_d0.sh
+
+  # ----------------------------------------------------------------------------
+  # JOB 2: CI Failure Propagation Self-Test
+  # ----------------------------------------------------------------------------
+  self-test-failure-proof:
+    name: "Gate: Failure Propagation Self-Test"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run Failure Propagation Self-Test
+        run: |
+          chmod +x tooling/ci/self_test_failure.sh
+          ./tooling/ci/self_test_failure.sh
+
+  # ----------------------------------------------------------------------------
+  # JOB 3: Go Stdlib Unit / Format / Vet / Race
+  # ----------------------------------------------------------------------------
+  go-backend:
+    name: "Backend: Go Quality Gate (Pinned 1.27.3)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Pinned Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.3"
+          cache: false  # stdlib-only P0 base has no go.sum
+
+      - name: Run Go Backend Verification
+        run: |
+          chmod +x tooling/ci/check_go.sh
+          ./tooling/ci/check_go.sh
+
+  # ----------------------------------------------------------------------------
+  # JOB 4: Web and Admin Frontend (Node 24, pnpm 10.34.9)
+  # ----------------------------------------------------------------------------
+  web-admin-frontend:
+    name: "Frontend: Web & Admin (Node 24, pnpm 10.34.9)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Set up Pinned pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: "10.34.9"
+          run_install: false
+
+      - name: Run Web & Admin Checks
+        run: |
+          chmod +x tooling/ci/check_node.sh
+          ./tooling/ci/check_node.sh
+
+  # ----------------------------------------------------------------------------
+  # JOB 5: Flutter Mobile (Flutter 3.47.9)
+  # ----------------------------------------------------------------------------
+  flutter-mobile:
+    name: "Mobile: Flutter Analysis & Tests (Flutter 3.47.9)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java for Flutter / Android toolchain
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Set up Pinned Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.9"
+          channel: "stable"
+          cache: true
+
+      - name: Run Flutter Quality Gate
+        run: |
+          chmod +x tooling/ci/check_flutter.sh
+          ./tooling/ci/check_flutter.sh
+
+  # ----------------------------------------------------------------------------
+  # JOB 6: Protobuf Transport & Contract Gate (Buf 1.75.0)
+  # ----------------------------------------------------------------------------
+  protobuf-transport:
+    # Explicitly DEFERRED until P0-02 authors the first canonical .proto.
+    name: "Toolchain: Buf CLI (contracts deferred to P0-02)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Needed for breaking change checks
+
+      - name: Set up Pinned Buf CLI
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          version: "1.75.0"
+
+      - name: Verify pinned Buf executable (P0-01 scope)
+        run: |
+          set -euo pipefail
+          test "$(buf --version)" = "1.75.0"
+          echo "Buf tool installed; proto lint/generation deferred to P0-02"
+
+  # ----------------------------------------------------------------------------
+  # JOB 7: Live API Smoke Test (Health & Fail-Closed Readiness)
+  # ----------------------------------------------------------------------------
+  live-smoke-check:
+    name: "Smoke: API Health & Fail-Closed Readiness"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go runtime for real API smoke
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.3"
+          cache: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Execute Live Smoke Test
+        run: |
+          chmod +x tooling/ci/smoke_test.sh
+          ./tooling/ci/smoke_test.sh
+
+  # ----------------------------------------------------------------------------
+  # CI COMPLETION GATE: Aggregates all concurrent jobs
+  # ----------------------------------------------------------------------------
+  ci-completion-gate:
+    name: "CI Gate: All Verification Passed"
+    runs-on: ubuntu-latest
+    needs:
+      - d0-documentation
+      - self-test-failure-proof
+      - go-backend
+      - web-admin-frontend
+      - flutter-mobile
+      - protobuf-transport
+      - live-smoke-check
+    steps:
+      - name: Confirm all gates succeeded
+        run: |
+          echo "================================================================"
+          echo "P0-01 baseline checks completed successfully."
+          echo "D1 transport remains unverified until P0-02 introduces .proto contracts."
+          echo "D2-D5 are NOT accepted by this P0-01 workflow."
+          echo "================================================================"
