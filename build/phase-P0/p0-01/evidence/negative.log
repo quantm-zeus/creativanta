@@ -1,0 +1,4 @@
+command: bash tooling/ci/self_test_failure.sh
+checked_at: 2026-11-01T02:13:04Z
+result:
+NEGATIVE_TESTS_PASS: pipeline, assertion, anti-mask, bad readiness correctly fail

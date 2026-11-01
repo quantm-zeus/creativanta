@@ -1,0 +1,3 @@
+command: docker compose --env-file .env.dev.local -f tooling/dev/compose.yaml --profile database config --quiet
+checked_at: 2026-11-01T02:14:50Z
+result:

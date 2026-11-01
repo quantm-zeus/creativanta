@@ -1,0 +1,3 @@
+command: actionlint -color=false .github/workflows/ci.yml
+checked_at: 2026-11-01T02:14:50Z
+result:

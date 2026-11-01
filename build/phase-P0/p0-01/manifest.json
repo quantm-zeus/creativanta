@@ -1,0 +1,231 @@
+{
+  "phase": "P0",
+  "slice": "p0-01-bootstrap-toolchain-ci",
+  "task_id": "P0-01",
+  "status": "IMPLEMENTED",
+  "feature_refs": [
+    "docs/02_features/platform/auth.md",
+    "docs/02_features/platform/reporting_admin_billing.md",
+    "docs/05_system/tech_stack_adr.md",
+    "docs/06_quality_ops/docker_dev_environment.md",
+    "docs/06_quality_ops/ci_cd_pipeline.md"
+  ],
+  "scope_items": [
+    {
+      "source": "docs/06_quality_ops/ci_cd_pipeline.md",
+      "requirement": "Section 2: Required stages and commands (D0, Toolchain, Lint, Transport, Unit, Smoke)",
+      "evidence": [
+        ".github/workflows/ci.yml",
+        "tooling/ci/check_d0.sh",
+        "tooling/ci/check_env.sh",
+        "tooling/ci/check_go.sh",
+        "tooling/ci/check_node.sh",
+        "tooling/ci/check_flutter.sh",
+        "tooling/ci/check_proto.sh"
+      ]
+    },
+    {
+      "source": "docs/06_quality_ops/ci_cd_pipeline.md",
+      "requirement": "Section 5: Mandatory business smoke and fail-closed readiness prior to dependencies",
+      "evidence": [
+        "tooling/ci/smoke_test.sh"
+      ]
+    },
+    {
+      "source": "docs/00_index/BUILD_EXECUTION_CONTRACT.md",
+      "requirement": "Section 4: Hard Gates D0 docs and zero greenwashing policy",
+      "evidence": [
+        "tooling/ci/check_d0.sh",
+        "tooling/ci/self_test_failure.sh"
+      ]
+    },
+    {
+      "source": "docs/05_system/tech_stack_adr.md",
+      "requirement": "ADR-015: Pinned toolchain (Go 1.27.3, Flutter 3.47.9, Node 24, pnpm 10.34.9, Buf 1.75.0)",
+      "evidence": [
+        ".github/workflows/ci.yml",
+        "tooling/ci/check_env.sh"
+      ]
+    }
+  ],
+  "rpc_contracts": [],
+  "migration_files": [],
+  "permission_keys": [],
+  "event_types": [],
+  "screen_routes": [],
+  "external_gates": [
+    {
+      "gate": "Android Emulator E2E",
+      "status": "DEFERRED",
+      "reason": "Requires nested KVM virtualization and complete packaged mobile artifacts in P8",
+      "deferred_to": "P8"
+    },
+    {
+      "gate": "PostgreSQL 17 Multi-tenant RLS and Role Isolation",
+      "status": "DEFERRED",
+      "reason": "Requires schema migrations, role grants (app_user, admin_user), and RLS policies in P0-04",
+      "deferred_to": "P0-04"
+    },
+    {
+      "gate": "Outbox/Inbox Lease Recovery and Deduplication",
+      "status": "DEFERRED",
+      "reason": "Requires event_outbox/consumer_inbox tables and poller processes in P0-05",
+      "deferred_to": "P0-05"
+    },
+    {
+      "gate": "External AI and Payment Provider Keys",
+      "status": "GATED",
+      "reason": "No external provider integration or mock success is implemented in P0-01; remains unavailable until verified credentials/entitlements and acceptance tests.",
+      "deferred_to": "P4-P6"
+    }
+  ],
+  "checks": [
+    {
+      "command": "bash tooling/ci/check_env.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/toolchain.log",
+      "checked_at": "2026-11-01T02:13:01Z"
+    },
+    {
+      "command": "python tooling/check_docs.py --sql",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/docs_sql.log",
+      "checked_at": "2026-11-01T02:13:03Z"
+    },
+    {
+      "command": "bash tooling/ci/self_test_failure.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/negative.log",
+      "checked_at": "2026-11-01T02:13:04Z"
+    },
+    {
+      "command": "bash tooling/ci/check_go.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/go_api.log",
+      "checked_at": "2026-11-01T02:15:34Z"
+    },
+    {
+      "command": "bash tooling/ci/check_entrypoints.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/entrypoints.log",
+      "checked_at": "2026-11-01T02:15:42Z"
+    },
+    {
+      "command": "bash tooling/ci/smoke_test.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/smoke_go_admin.log",
+      "checked_at": "2026-11-01T02:13:12Z"
+    },
+    {
+      "command": "bash tooling/ci/check_node.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/node_web_admin.log",
+      "checked_at": "2026-11-01T02:13:14Z"
+    },
+    {
+      "command": "bash tooling/ci/check_flutter.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/flutter.log",
+      "checked_at": "2026-11-01T02:14:21Z"
+    },
+    {
+      "command": "actionlint .github/workflows/ci.yml",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/actionlint.log",
+      "checked_at": "2026-11-01T02:14:50Z"
+    },
+    {
+      "command": "docker compose config --quiet",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/compose.log",
+      "checked_at": "2026-11-01T02:14:50Z"
+    },
+    {
+      "command": "docker compose ps and psql SHOW server_version",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/db_health.log",
+      "checked_at": "2026-11-01T02:15:44Z"
+    },
+    {
+      "command": "git clone --local feat/p0-01-integration and run full verification",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/clean_checkout.log",
+      "checked_at": "2026-11-01T02:16:09Z"
+    },
+    {
+      "command": "GitHub Actions Creativanta CI Pipeline run 41264636158",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/github_actions_41264636158.json",
+      "checked_at": "2026-11-01T02:20:09Z"
+    }
+  ],
+  "remaining_scope": [
+    {
+      "component": "Formal P0-01 acceptance and source-linked requirement reconciliation",
+      "assigned_to": "P0-01 acceptance review",
+      "status": "PENDING"
+    },
+    {
+      "component": "Compiled Go/TS/Dart Protobuf transport and behavior contract",
+      "assigned_to": "P0-02",
+      "status": "DEFERRED"
+    },
+    {
+      "component": "Clerk identity and workspace membership",
+      "assigned_to": "P0-03",
+      "status": "DEFERRED"
+    },
+    {
+      "component": "Tenant grants and RLS, privileged database roles",
+      "assigned_to": "P0-04",
+      "status": "DEFERRED"
+    },
+    {
+      "component": "Durable outbox/worker and effect replay",
+      "assigned_to": "P0-05",
+      "status": "DEFERRED"
+    },
+    {
+      "component": "Mobile emulator/device E2E",
+      "assigned_to": "P8",
+      "status": "DEFERRED"
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "Clean checkout and all 8 GitHub Actions jobs passed on commit 0200ac2; P0-01 implementation verified, formal acceptance remains separate",
+      "gate": "P0-01",
+      "status": "CI_VERIFIED"
+    },
+    {
+      "decision": "No canonical RPC is introduced in bootstrap; three-language generated transport is P0-02",
+      "gate": "D1",
+      "status": "DEFERRED"
+    },
+    {
+      "decision": "Admin API and unimplemented worker/outbox/migrate must remain fail-closed; dev PostgreSQL uses nonproduction bootstrap role only",
+      "gate": "P0-01/P0-04",
+      "status": "VERIFIED_P0_SCOPE"
+    }
+  ],
+  "baseline_commit": "100d699",
+  "implementation_commit": "0200ac2",
+  "requirement_ids": [],
+  "screen_refs": [],
+  "source_hashes": {
+    "docs/02_features/platform/auth.md": "86fde7cb6a3d3aa7bd5f24c2aa6bf04ba0cfa910927f6f723ace0f17ec515610",
+    "docs/02_features/platform/reporting_admin_billing.md": "26feab5d241108cf6679c0c73a0aaedcb3d5ce4a38a3be720800864fa9bda429",
+    "docs/05_system/tech_stack_adr.md": "2cd9c7cee945fc8e3f265ffaa633629429433d66d2c60f2205ad94ddc3e1da23",
+    "docs/06_quality_ops/docker_dev_environment.md": "4fb6c5749a10d5b8a09db6b8ec1b084e812583580428be04aa1aae97a7b95c6c",
+    "docs/06_quality_ops/ci_cd_pipeline.md": "6343db567f3a0c830e9ca412f778006db1e5501e48fa5f346a455b8f60de9a4b"
+  },
+  "local_verification": "PASSED — remote GitHub Actions pending",
+  "remote_verification": {
+    "status": "PASSED",
+    "run_id": 41264636158,
+    "verified_commit": "0200ac2978cc7039a74807ea3101d9b7eb134473",
+    "url": "https://github.com/quantm-zeus/creativanta/actions/runs/41264636158",
+    "job_count": 8,
+    "conclusion": "success"
+  }
+}

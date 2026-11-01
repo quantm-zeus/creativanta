@@ -1,0 +1,23 @@
+{
+  "name": "creativanta",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=24.0.0 <25",
+    "pnpm": "10.34.9"
+  },
+  "scripts": {
+    "build": "pnpm --recursive run build",
+    "check": "pnpm --recursive run check",
+    "test": "pnpm --recursive run test",
+    "dev:web": "pnpm --filter @creativanta/web dev",
+    "dev:admin": "pnpm --filter @creativanta/admin dev",
+    "build:web": "pnpm --filter @creativanta/web build",
+    "build:admin": "pnpm --filter @creativanta/admin build",
+    "check:web": "pnpm --filter @creativanta/web check",
+    "check:admin": "pnpm --filter @creativanta/admin check",
+    "test:web": "pnpm --filter @creativanta/web test",
+    "test:admin": "pnpm --filter @creativanta/admin test"
+  }
+}

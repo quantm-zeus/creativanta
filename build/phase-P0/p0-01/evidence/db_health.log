@@ -1,0 +1,6 @@
+command: bash tooling/dev/dev-services.sh ps
+checked_at: 2026-11-01T02:15:44Z
+NAME                         IMAGE                                                                                                                        COMMAND                  SERVICE     CREATED          STATUS                    PORTS
+creativanta-p0-dragonfly-1   docker.dragonflydb.io/dragonflydb/dragonfly:v2.0.2@sha256:061f00b201b58e12f974e4e96c761a881ee1c05e9d8ee967466a604b7299753b   "/usr/bin/tini -- en…"   dragonfly   58 seconds ago   Up 56 seconds (healthy)   127.0.0.1:16379->6379/tcp
+creativanta-p0-postgres-1    postgres:17.10@sha256:7958605b474b3d264a969cb3a123d6aa00ad1e1fe9da8a69984dabb704d93317                                       "docker-entrypoint.s…"   postgres    9 hours ago      Up 9 hours (healthy)      127.0.0.1:15432->5432/tcp
+17.10 (Debian 17.10-1.pgdg13+1)

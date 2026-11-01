@@ -1,0 +1,52 @@
+command: bash tooling/ci/check_go.sh
+checked_at: 2026-11-01T02:15:34Z
+=== Go Backend Quality Gate ===
+Detected Go version: 1.27.3
+Checking Go formatting (gofmt)...
+gofmt check passed.
+Verifying Go module dependencies (go mod verify)...
+all modules verified
+Running Go static analysis (go vet ./...)...
+go vet check passed.
+Running pinned govulncheck ./...
+No vulnerabilities found.
+Running unit tests with thread race detector (go test -race -count=1 ./...)...
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/admin-api	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/api	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/migrate	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/outbox	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/worker	[no test files]
+=== RUN   TestHealthz_200
+=== RUN   TestHealthz_200/api_role
+=== RUN   TestHealthz_200/admin-api_role
+--- PASS: TestHealthz_200 (0.00s)
+    --- PASS: TestHealthz_200/api_role (0.00s)
+    --- PASS: TestHealthz_200/admin-api_role (0.00s)
+=== RUN   TestRoleValidation_FailsClosed
+--- PASS: TestRoleValidation_FailsClosed (0.00s)
+=== RUN   TestReadyz_503WhenNilOrFalse
+=== RUN   TestReadyz_503WhenNilOrFalse/nil_readiness_func
+=== RUN   TestReadyz_503WhenNilOrFalse/false_readiness_func
+--- PASS: TestReadyz_503WhenNilOrFalse (0.00s)
+    --- PASS: TestReadyz_503WhenNilOrFalse/nil_readiness_func (0.00s)
+    --- PASS: TestReadyz_503WhenNilOrFalse/false_readiness_func (0.00s)
+=== RUN   TestReadyz_200WhenTrue
+--- PASS: TestReadyz_200WhenTrue (0.00s)
+=== RUN   TestMethodRestrictions_405
+--- PASS: TestMethodRestrictions_405 (0.00s)
+=== RUN   TestUnknownPath_404
+--- PASS: TestUnknownPath_404 (0.00s)
+=== RUN   TestServe_PublicBindRefusal
+--- PASS: TestServe_PublicBindRefusal (0.00s)
+=== RUN   TestServe_CancelledContext
+--- PASS: TestServe_CancelledContext (0.03s)
+=== RUN   TestServe_PropagatesUnexpectedError
+--- PASS: TestServe_PropagatesUnexpectedError (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/bootstrap	1.070s
+Verifying unimplemented worker/outbox/migrate fail-closed...
+PASS: worker fails closed (exit 2)
+PASS: outbox fails closed (exit 2)
+PASS: migrate fails closed (exit 2)
+P0_ENTRYPOINTS_FAIL_CLOSED_PASS
+=== Go Backend Quality Gate: ALL CHECKS PASSED ===

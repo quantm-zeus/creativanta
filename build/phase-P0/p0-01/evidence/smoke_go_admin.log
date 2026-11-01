@@ -1,0 +1,4 @@
+command: bash tooling/ci/smoke_test.sh
+checked_at: 2026-11-01T02:13:12Z
+result:
+REAL_SMOKE_PASS: /healthz 200, /readyz 503, POST 405, admin-api isolated
