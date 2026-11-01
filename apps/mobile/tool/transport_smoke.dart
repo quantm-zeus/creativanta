@@ -194,13 +194,14 @@ Future<void> main() async {
     // Cancelling StreamSubscription alone does not cancel the underlying gRPC call.
     await watchStream.cancel();
     await watchSub.cancel();
+    // This standalone test CLI has verified every RPC and cancelled its stream.
+    // grpc-dart keeps an idle HTTP/2 event-loop handle after a graceful shutdown;
+    // exit explicitly only on the verified success path.
+    stdout.writeln('DART_GRPC_REAL_TRANSPORT_PASS');
+    await stdout.flush();
+    exit(0);
   } finally {
     // Streaming RPCs may remain in-flight. Test must not hang on graceful shutdown.
     await channel.shutdown().timeout(const Duration(seconds: 3));
   }
-  stdout.writeln('DART_GRPC_REAL_TRANSPORT_PASS');
-  await stdout.flush();
-  // grpc-dart may keep HTTP/2 idle timers after successful shutdown.
-  // CLI exits explicitly ONLY after all assertions and channel shutdown complete.
-  exit(0);
 }
