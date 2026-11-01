@@ -11,12 +11,14 @@
 - Workspace discovery before selecting a tenant, using current membership (including ordinary `editor`/`viewer` non-owner roles) instead of workspace ownership.
 - Real Connect HTTP test invokes a fixture handler through authentication, revocation, wrong origin, foreign workspace and missing-selection negatives.
 - Real PostgreSQL 17 temporary-table integration tests: active and revoked membership, workspace suspension/deletion and non-owner discovery; fixture data is rolled back.
+- Synchronous verified-user identity upsert boundary (`ClerkUserDirectory`, `SQLUserUpserter`, `Resolver.SyncVerifiedUser`): verifies JWT + active Clerk session + verified primary email from `GET /v1/users/{user_id}`, and idempotently upserts canonical `users` with `source_updated_at` monotonic ordering so delayed `user.created` webhooks cannot regress state or block onboarding.
+- Verified Clerk Svix webhook boundary in `apps/api/internal/clerkwebhook`: fixed `whsec_` signing secret validation, bounded request body (64 KiB default), single-valued Svix headers, 5-minute replay/timestamp window, constant-time HMAC-SHA256 verification, pinned event allowlist, and transactional SQL reconciliation (`SQLReconciler`) for `users`, `workspaces`, `workspace_members`, and workspace-scoped `webhook_events`.
 
 ## Deterministic quality commands
 
 ```sh
 cd apps/api
-go test -race -count=1 ./internal/identity ./internal/transportauth
+go test -race -count=1 ./internal/identity ./internal/clerkwebhook ./internal/transportauth
 go vet ./...
 govulncheck ./...
 ```
