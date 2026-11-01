@@ -3,6 +3,7 @@ package identity
 import (
 	"context"
 	"database/sql"
+	"strings"
 )
 
 // WorkspaceSummary contains only minimally needed workspace picker fields.
@@ -40,7 +41,7 @@ func (m SQLMembershipLookup) Discover(ctx context.Context, subject string) ([]Wo
 	if !ok {
 		return nil, ErrNotConfigured
 	}
-	if subject == "" || len(subject) > 255 {
+	if subject == "" || len(subject) > 255 || strings.TrimSpace(subject) != subject {
 		return nil, ErrUnauthorized
 	}
 	rows, err := db.QueryContext(ctx, activeDiscoveryQuery, subject)
@@ -62,6 +63,9 @@ func (m SQLMembershipLookup) Discover(ctx context.Context, subject string) ([]Wo
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
@@ -70,6 +74,9 @@ func (m SQLMembershipLookup) Discover(ctx context.Context, subject string) ([]Wo
 func (r Resolver) DiscoverWorkspaces(ctx context.Context, token string) ([]WorkspaceSummary, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
+	}
+	if token == "" || strings.TrimSpace(token) != token {
+		return nil, ErrUnauthorized
 	}
 	if r.Tokens == nil || r.Sessions == nil || r.Memberships == nil {
 		return nil, ErrNotConfigured
@@ -94,6 +101,9 @@ func (r Resolver) DiscoverWorkspaces(ctx context.Context, token string) ([]Works
 	}
 	items, err := discovery.Discover(ctx, identity.Subject)
 	if err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	return items, nil
