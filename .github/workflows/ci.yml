@@ -174,28 +174,75 @@ jobs:
           ./tooling/ci/check_flutter.sh
 
   # ----------------------------------------------------------------------------
-  # JOB 6: Protobuf Transport & Contract Gate (Buf 1.75.0)
+  # JOB 6: Actual P0-02 transport (one Go handler, Connect TS, grpc-dart)
   # ----------------------------------------------------------------------------
   protobuf-transport:
-    # Explicitly DEFERRED until P0-02 authors the first canonical .proto.
-    name: "Toolchain: Buf CLI (contracts deferred to P0-02)"
+    name: "Transport: Go TS Dart integration and generated contract gate"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Checkout repository
+      - name: Checkout repository with full base history
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Needed for breaking change checks
+          fetch-depth: 0
 
-      - name: Set up Pinned Buf CLI
+      - name: Set up Go 1.27.3
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.3"
+          cache: false
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Set up pnpm 10.34.9
+        uses: pnpm/action-setup@v4
+        with:
+          version: "10.34.9"
+          run_install: false
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Set up Flutter 3.47.9 and Dart
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.9"
+          channel: "stable"
+          cache: true
+
+      - name: Set up Buf 1.75.0
         uses: bufbuild/buf-setup-action@v1
         with:
           version: "1.75.0"
 
-      - name: Verify pinned Buf executable (P0-01 scope)
+      - name: Install pinned local Protobuf compiler plugins
         run: |
           set -euo pipefail
-          test "$(buf --version)" = "1.75.0"
-          echo "Buf tool installed; proto lint/generation deferred to P0-02"
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.12
+          go install connectrpc.com/connect/cmd/protoc-gen-connect-go@v1.21.1
+          npm install --global --prefix "$HOME/.local/proto-es" @bufbuild/protoc-gen-es@2.16.0
+          dart pub global activate protoc_plugin 25.1.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/proto-es/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+
+      - name: Install locked project dependencies
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          (cd apps/mobile && flutter pub get)
+
+      - name: Verify protobuf schema, generated code, Go race and unit tests
+        run: bash tooling/ci/check_proto.sh
+
+      - name: Run real Connect TypeScript and grpc-dart clients against same Go server
+        run: bash tooling/ci/proto_integration.sh
 
   # ----------------------------------------------------------------------------
   # JOB 7: Live API Smoke Test (Health & Fail-Closed Readiness)
@@ -241,7 +288,7 @@ jobs:
       - name: Confirm all gates succeeded
         run: |
           echo "================================================================"
-          echo "P0-01 baseline checks completed successfully."
-          echo "D1 transport remains unverified until P0-02 introduces .proto contracts."
-          echo "D2-D5 are NOT accepted by this P0-01 workflow."
+          echo "P0-01 bootstrap and current P0-02 transport checks passed."
+          echo "P0-02 acceptance also requires independent review and its complete task manifest."
+          echo "D2-D5 remain unimplemented; no production readiness is implied."
           echo "================================================================"

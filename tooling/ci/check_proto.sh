@@ -1,63 +1,42 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# Creativanta CI/CD - Protobuf Transport Quality Gate
-# Canonical Source: docs/06_quality_ops/ci_cd_pipeline.md (Transport stage)
-# Pinned Toolchain: Buf 1.75.0
-# Zero Greenwashing: Missing proto definitions, lint errors, or breaking changes
-# fail immediately.
-# ==============================================================================
+# P0-02 strict: generated contracts compile, remain tracked, and are backward compatible.
 set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$ROOT"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+test -f buf.yaml && test -f buf.gen.yaml
+test -f protos/creativanta/common/v1/types.proto
+test -f protos/creativanta/common/v1/errors.proto
+test -f protos/creativanta/transport/test/v1/fixture.proto
+test -f apps/api/gen/creativanta/transport/test/v1/transporttestv1connect/fixture.connect.go
+test -f packages/shared-types/src/creativanta/transport/test/v1/fixture_pb.ts
+test -f apps/mobile/lib/generated/creativanta/transport/test/v1/fixture.pbgrpc.dart
+test -f apps/api/internal/transportfixture/server_test.go
+test -f apps/mobile/test/generated_proto_test.dart
+test -f packages/shared-types/test/unit.test.ts
 
-cd "${REPO_ROOT}"
+echo 'CONTRACT_CODEGEN_DRIFT'
+bash tooling/proto-gen.sh verify
 
-echo "=== Protobuf Transport Quality Gate ==="
-
-# 1. Zero Greenwashing: Proto Artifact Check
-if [ ! -d "protos" ] && [ ! -f "buf.yaml" ]; then
-    echo "FATAL: Neither 'protos' directory nor 'buf.yaml' was found! Protobuf artifacts are missing." >&2
-    exit 1
+if ! git rev-parse --verify origin/main >/dev/null 2>&1; then
+  echo 'FATAL: origin/main required for contract breaking gate' >&2
+  exit 1
+fi
+if git ls-tree -r --name-only origin/main -- protos | grep -q '\.proto$';then
+  echo 'CHECK_BACKWARD_COMPATIBILITY'
+  buf breaking --against '.git#branch=origin/main'
+else
+  echo 'INITIAL_PROTO_BASELINE: origin/main contains zero protos'
 fi
 
-# 2. Toolchain check
-if ! command -v buf >/dev/null 2>&1; then
-    echo "FATAL: 'buf' binary not found in PATH." >&2
-    exit 1
-fi
+echo 'GO_TRANSPORT_NEGATIVE_TESTS_AND_RACE'
+(cd apps/api &&
+ GOTOOLCHAIN=local go test -race -count=1 ./gen/... ./internal/transportfixture ./cmd/transport-fixture-test &&
+ GOTOOLCHAIN=local go vet ./... &&
+ GOTOOLCHAIN=local go mod verify)
 
-BUF_VER=$(buf --version | sed 's/v//')
-echo "Detected Buf version: $BUF_VER"
-
-if [[ "${STRICT_TOOLCHAIN:-1}" == "1" && "$BUF_VER" != "1.75.0"* ]]; then
-    echo "FATAL: Buf version violation. Required: 1.75.0, Got: $BUF_VER" >&2
-    exit 1
-fi
-
-# 3. Buf Lint
-echo "Running buf lint..."
-buf lint
-
-# 4. Buf Breaking Change Check (if git tracking base exists)
-if git rev-parse --verify origin/main >/dev/null 2>&1; then
-    echo "Running buf breaking against origin/main..."
-    buf breaking --against '.git#branch=origin/main'
-elif git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
-    echo "Running buf breaking against HEAD~1..."
-    buf breaking --against '.git#commit=HEAD~1'
-fi
-
-# 5. Generated code drift check
-if [ -f "buf.gen.yaml" ]; then
-    echo "Checking code generation drift (buf generate)..."
-    buf generate
-    DIFF=$(git status --porcelain -- apps/api/gen apps/web/src/lib/gen apps/mobile/lib/gen 2>/dev/null)
-    if [ -n "$DIFF" ]; then
-        echo "FATAL: Protobuf code generation drift detected! Commit generated files." >&2
-        echo "$DIFF" >&2
-        exit 1
-    fi
-fi
-
-echo "=== Protobuf Transport Quality Gate: ALL CHECKS PASSED ==="
+echo 'UNIT_TYPESCRIPT'
+pnpm --dir packages/shared-types test
+echo 'UNIT_DART'
+(cd apps/mobile && flutter test --no-pub test/generated_proto_test.dart)
+echo 'P0_PROTO_CONTRACT_AND_LOCAL_TEST_PASS'
