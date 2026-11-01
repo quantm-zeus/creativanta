@@ -29,6 +29,12 @@ else
   echo 'INITIAL_PROTO_BASELINE: origin/main contains zero protos'
 fi
 
+echo 'TEST_ONLY_FIXTURE_ISOLATION'
+if grep -R -n -E 'transportfixture|TransportFixtureService' apps/api/cmd/api apps/api/cmd/admin-api --include='*.go';then
+  echo 'FATAL: test fixture referenced by production API or Admin API' >&2
+  exit 1
+fi
+
 echo 'GO_TRANSPORT_NEGATIVE_TESTS_AND_RACE'
 (cd apps/api &&
  GOTOOLCHAIN=local go test -race -count=1 ./gen/... ./internal/transportfixture ./cmd/transport-fixture-test &&

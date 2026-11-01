@@ -1,7 +1,7 @@
 {
   "task_id": "P0-02",
   "title": "Transport, errors and request identity",
-  "status": "SPECIFIED",
+  "status": "CONTRACT_READY",
   "baseline_commit": "d70b7589b49f9eab890427784a8205eb694a20d0",
   "phase": "P0",
   "feature_refs": [
@@ -22,7 +22,7 @@
     {
       "id": "P0-02-a",
       "name": "Versioned common proto + test-only integration fixture, pinned Go/TS/Dart codegen",
-      "status": "CODEGEN_VERIFIED",
+      "status": "IMPLEMENTED",
       "owner": "Gemini 4 Argon High + tooling",
       "source_files": [
         "protos/creativanta/common/v1/types.proto",
@@ -33,25 +33,25 @@
     {
       "id": "P0-02-b",
       "name": "Go generated Connect fixture handler, metadata/deadline/stream and idempotency/cursor negative tests",
-      "status": "SPECIFIED",
+      "status": "IMPLEMENTED",
       "owner": "Go Builder"
     },
     {
       "id": "P0-02-c",
       "name": "TypeScript Connect real client cross-boundary RPC tests",
-      "status": "SPECIFIED",
+      "status": "IMPLEMENTED",
       "owner": "TypeScript Builder"
     },
     {
       "id": "P0-02-d",
       "name": "Dart grpc-dart HTTP2 real client tests",
-      "status": "SPECIFIED",
+      "status": "IMPLEMENTED",
       "owner": "Flutter Builder"
     },
     {
       "id": "P0-02-e",
       "name": "Independent QA, breaking change and generated-drift CI",
-      "status": "SPECIFIED",
+      "status": "CI_LOCAL_VERIFIED",
       "owner": "QA Agent"
     }
   ],
@@ -61,6 +61,60 @@
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-02/evidence/contract_codegen.log",
       "checked_at": "2026-11-01T04:37:15.155096+00:00"
+    },
+    {
+      "command": "bash tooling/ci/check_proto.sh",
+      "exit_code": 0,
+      "checked_at": "2026-11-01T04:58:39.014869+00:00",
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_proto.log"
+    },
+    {
+      "command": "bash tooling/ci/check_go.sh",
+      "exit_code": 0,
+      "checked_at": "2026-11-01T04:58:39.015237+00:00",
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_go.log"
+    },
+    {
+      "command": "bash tooling/ci/check_node.sh",
+      "exit_code": 0,
+      "checked_at": "2026-11-01T04:58:39.015854+00:00",
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_node.log"
+    },
+    {
+      "command": "bash tooling/ci/check_flutter.sh",
+      "exit_code": 0,
+      "checked_at": "2026-11-01T04:58:39.016160+00:00",
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_flutter.log"
+    },
+    {
+      "command": "bash tooling/ci/check_d0.sh",
+      "exit_code": 0,
+      "checked_at": "2026-11-01T04:58:39.016495+00:00",
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_d0.log"
+    },
+    {
+      "command": "bash tooling/ci/self_test_failure.sh",
+      "exit_code": 0,
+      "checked_at": "2026-11-01T04:58:39.016746+00:00",
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_negative.log"
+    },
+    {
+      "command": "actionlint .github/workflows/ci.yml",
+      "exit_code": 0,
+      "checked_at": "2026-11-01T04:58:39.016927+00:00",
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_ci_syntax.log"
+    },
+    {
+      "command": "bash tooling/ci/proto_integration.sh",
+      "exit_code": 0,
+      "checked_at": "2026-11-01T04:58:39.017160+00:00",
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_transport.log"
+    },
+    {
+      "command": "Three independent Go+TypeScript+Dart real cross-language transport runs",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_three_passes.log",
+      "checked_at": "2026-11-01T04:58:39.022487+00:00"
     }
   ],
   "acceptance_requirements": [
@@ -78,10 +132,45 @@
   ],
   "external_gates": [],
   "remaining_scope": [
-    "P0-02-b Go runtime",
-    "P0-02-c TS integration",
-    "P0-02-d Dart gRPC integration",
-    "P0-02-e CI and negative tests"
+    {
+      "id": "P0-02-runtime",
+      "task": "P0-02",
+      "status": "NOT_IMPLEMENTED",
+      "description": "Production Connect interceptor for validated request IDs, authenticated principal/workspace and structured ErrorDetail including safe status mapping"
+    },
+    {
+      "id": "P0-02-middleware",
+      "task": "P0-02/P0-03",
+      "status": "NOT_IMPLEMENTED",
+      "description": "Shared Go/TS/Dart client production configuration: trust, retries, pagination validation and deadlines without using test fixture"
+    },
+    {
+      "id": "P0-02-persistent-idempotency",
+      "task": "P0-04/P0-05",
+      "status": "DEPENDENCY_BLOCKED",
+      "description": "Atomic durable tenant-scoped idempotency store, restart and concurrency proof"
+    },
+    {
+      "id": "P0-02-signed-cursor",
+      "task": "P0-03/P0-04",
+      "status": "DEPENDENCY_BLOCKED",
+      "description": "Real principal-bound cursor and managed signer, not test-only per-process HMAC"
+    },
+    {
+      "id": "P0-02-remote-ci",
+      "task": "P0-02",
+      "status": "PENDING",
+      "description": "GitHub Actions on PR for generated drift, Go, TS Connect, Dart grpc and negative tests"
+    }
   ],
-  "scope_note": "Generated client/server code compiles; this packet is NOT P0-02 acceptance until cross-language runtime tests are executed."
+  "scope_note": "Generated client/server code compiles; this packet is NOT P0-02 acceptance until cross-language runtime tests are executed.",
+  "acceptance_status": "PENDING",
+  "local_verification": "PASS: pinned proto codegen, Go/TS/Dart compiled, Go race, TS/Dart unit, 3x real interop, Go/Node/Flutter/D0 security gates; remote GitHub Actions pending",
+  "implementation_commit": "38381eb",
+  "security_assurance": "Fixture is TEST-ONLY; dedicated cmd/transport-fixture-test. CI rejects fixture imports in production API/Admin API. Test header x-workspace-id is deliberately NOT an authentication boundary.",
+  "review_evidence_path": "build/phase-P0/p0-02/evidence/argon_architecture_review.txt",
+  "remote_verification": {
+    "status": "PENDING",
+    "conclusion": null
+  }
 }

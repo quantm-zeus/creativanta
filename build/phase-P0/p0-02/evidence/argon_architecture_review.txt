@@ -1,0 +1,33 @@
+ARGON_P002_REVIEW
+
+### 1. Kết luận Kiểm toán Kiến trúc (Verdict cho P0-02 Parent)
+* **Trạng thái P0-02 Parent:** **CHƯA ĐƯỢC NGHIỆM THU (`PARTIAL / HARNESS-VERIFIED ONLY` — KHÔNG ĐƯỢC ĐÁNH DẤU `ACCEPTED`)**.
+* **Đánh giá độc lập:** Việc dựng thành công Protobuf (Buf v1.75), sinh code đồng bộ không lệch (zero-drift) cho Go/TS/Dart và chạy pass 3 vòng liên tiếp E2E trên cùng một Go localhost binary đã chứng minh vững chắc **tầng giao thức (wire protocol) và bộ khung kiểm thử (conformance harness)**. Tuy nhiên, toàn bộ hành vi hiện tại mới chạy trên **test-only fixture (`Echo`/`Execute`/`List`/`Watch`)** độc lập với server API/Admin thực tế và dùng bộ nhớ tạm (in-memory). Tuyệt đối không được đánh đồng test fixture này với Business API hay nghiệm thu sớm P0-02.
+
+---
+
+### 2. Trạng thái Chi tiết Từng Sub-slice (Sub-slice Status)
+
+| Sub-slice | Trạng thái | Ghi nhận Thực tế & Giới hạn |
+| :--- | :--- | :--- |
+| **1. Common Proto Contracts & Codegen (Go/TS/Dart)** | **ĐẠT (Completed)** | Buf 1.75, ghim phiên bản package, kiểm tra chống trôi codegen (drift check). Các kiểu nền tảng (`Money` thập phân chính xác tuân thủ DB-H-001, `UUID`, `CommandContext`, `Pagination`, `ErrorDetail`) đã biên dịch sạch trên cả 3 ngôn ngữ. |
+| **2. Cross-Language Transport & Interop Harness** | **ĐẠT Ở MỨC HARNESS (Verified on Fixture)** | 6 Go tests (gồm 24 luồng song song với `-race`), 5 TS Connect integration tests, và Dart `grpc-dart` qua HTTP/2 thật đã pass 3 vòng lặp liên tiếp cùng trỏ vào 1 Go fixture server duy nhất. |
+| **3. Request Identity & Error Semantics** | **MỘT PHẦN (Fixture-Only)** | Đã xử lý `x-workspace-id`, `x-request-id` và chuẩn hóa `ErrorDetail` trong test binary, nhưng **chưa** đóng gói thành production Connect interceptor/middleware gắn vào API/Admin server chính. |
+| **4. Paging & Signed Cursor** | **MỘT PHẦN (Fixture-Only)** | Đã chứng minh HMAC-signed cursor (TTL 15 phút, ràng buộc tenant/filter/sort, chặn lộ dữ liệu chéo tenant), nhưng mới dừng ở logic fixture và dựa vào header thô, chưa gắn với cấu hình khóa production và định danh xác thực (JWT/P0-03). |
+| **5. Idempotency (First / Replay / Conflict)** | **MỘT PHẦN (In-Memory Only)** | Đã kiểm chứng đúng ngữ nghĩa hoàn trả (same-key replay) và báo lỗi xung đột (changed-key/payload conflict) trên Go/TS/Dart, nhưng đang lưu **in-memory**, mất trạng thái khi restart và không an toàn khi chạy đa tiến trình/production. |
+| **6. Deadlines & Streamed Cancellation** | **MỘT PHẦN (Fixture-Only)** | Đã chứng minh truyền ngữ cảnh hủy (context cancellation) và timeout/deadline qua HTTP/2 stream giữa Dart/TS và Go fixture, nhưng chưa áp vào pipeline worker/handler của API thực tế. |
+
+---
+
+### 3. Các Cổng Bắt buộc Còn Thiếu để Hoàn tất Chính thức P0-02 (Minimum Missing Gates)
+
+Để chuyển P0-02 từ trạng thái *Harness Verified* sang *Production Ready / Formal Completion*, bắt buộc phải hoàn thành 4 cổng sau:
+
+1. **Gate 1 — Production Connect Middleware & Server Mounting:**
+   * Tách logic xử lý `x-request-id`, `x-workspace-id`, chuẩn hóa lỗi (`ErrorDetail`), deadline và context cancellation từ test fixture thành gói **Connect Interceptor chuẩn dùng chung** và mount trực tiếp vào tiến trình Production API & Isolated Admin API (thay vì chỉ chạy ở binary test riêng lẻ).
+2. **Gate 2 — Persistent & Tenant-Scoped Idempotency Store:**
+   * Thay thế bộ nhớ tạm (in-memory) bằng tầng lưu trữ bền vững (PostgreSQL/Redis) có khóa nguyên tử (atomic lock/lease), đối chiếu băm payload (payload hash), cơ chế hết hạn (TTL) và cô lập theo `workspace_id` (tuân thủ RLS/DB-C-001).
+3. **Gate 3 — Xác thực Ngữ cảnh & Quản lý Khóa Cursor (Liên kết P0-03):**
+   * Kết nối bộ ký HMAC cursor với cơ chế nạp secret chuẩn của hệ thống; đồng thời chuyển nguồn `workspace_id`/principal từ việc tin tưởng trực tiếp header test sang ngữ cảnh định danh đã xác thực (tích hợp với Clerk JWT / P0-03 identity middleware khi sẵn sàng).
+4. **Gate 4 — Cô lập Tuyệt đối Test Fixture khỏi Production Binary:**
+   * Đóng băng các RPC giả lập (`Echo`/`Execute`/`List`/`Watch`) trong phạm vi gói kiểm thử hợp chuẩn (conformance test suite), đảm bảo không lộ ra router production và không trộn lẫn với các RPC nghiệp vụ chính thức (vốn bắt buộc đi qua `rpc_permission_bindings.csv` và kiểm tra RBAC).
