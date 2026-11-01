@@ -1,0 +1,14 @@
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/admin-api	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/api	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/migrate	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/outbox	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/transport-fixture-test	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/worker	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1/transporttestv1connect	[no test files]
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/bootstrap	1.089s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/identity	3.249s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportauth	1.099s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportfixture	1.327s
+No vulnerabilities found.

@@ -1,0 +1,2 @@
+command: actionlint -color=false .github/workflows/ci.yml
+PASS

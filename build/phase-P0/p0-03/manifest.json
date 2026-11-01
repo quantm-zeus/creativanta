@@ -1,0 +1,80 @@
+{
+  "task_id": "P0-03",
+  "phase": "P0",
+  "title": "Identity, workspace and personal onboarding",
+  "status": "SPECIFIED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "1a86e66",
+  "source_hashes": {
+    "docs/02_features/platform/auth.md": "86fde7cb6a3d3aa7bd5f24c2aa6bf04ba0cfa910927f6f723ace0f17ec515610",
+    "docs/04_contracts/database_schema.md": "f1fb695b33e4cf50f3f68b7a359ee36727ca0f25f5cd20fbc72a559ca3a0376b",
+    "docs/04_contracts/protobuf_contracts.md": "ea544b9ae4082471e45cf378894d36ab000190530c8162b4b56a1dfd46e55761",
+    "docs/00_index/BUILD_EXECUTION_CONTRACT.md": "5f5a6226a5ec2a2c7d207e2a65f977c87d28678b75375d419761118a6865ba99"
+  },
+  "verified_sub_slices": [
+    "JWT RS256, exact issuer/audience/authorized party, expiry/nbf/iat/sid, JWKS bounded cache and rotation",
+    "Clerk session status lookup with active/revoked/expired/user mismatch test fixture",
+    "Transport user-facing WorkspaceVerifier required JWT + active session + active membership",
+    "SQL local active member and preselection nonowner discovery, tested against actual dev PostgreSQL",
+    "Real HTTP Connect mock service negative and authorized flow, Go race tests",
+    "JWKS anti-DoS remediation: RW lock for cache read, single-flight try-lock, detached 4s refresh, outage rate limiting; two new attack regression tests PASS"
+  ],
+  "checks": [
+    {
+      "command": "bash tooling/ci/check_identity.sh with local PostgreSQL 17 test DSN",
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_identity_postgres.log",
+      "result": "PASS"
+    },
+    {
+      "command": "govulncheck ./...",
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_govulncheck.log",
+      "result": "PASS"
+    },
+    {
+      "command": "go vet ./...",
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_govet.log",
+      "result": "PASS"
+    },
+    {
+      "command": "actionlint .github/workflows/ci.yml",
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_actionlint.log",
+      "result": "PASS"
+    },
+    {
+      "command": "go test -race ./...; go vet ./...; govulncheck ./...",
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_full_go_vuln.log",
+      "result": "PASS"
+    },
+    {
+      "command": "python tooling/check_docs.py --sql",
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_docs_sql.log",
+      "result": "PASS"
+    }
+  ],
+  "remaining_scope": [
+    "Actual Clerk instance and secret configuration; real issuer/audience/azp, JWT refresh E2E",
+    "P0-04 narrow DB reader privileges and RLS for preselection workspace discovery",
+    "Clerk onboarding and verified user synchronous upsert, invitations, MFA and recovery flows",
+    "Signed Svix webhook ingestion with replay, dedupe and ordering protections",
+    "Web/Flutter Clerk SDK sign-in and token refresh with verified UI acceptance",
+    "Independent security review, GitHub Actions CI, release gating and actual production integration"
+  ],
+  "external_gates": {
+    "clerk_prod": "UNAVAILABLE_NOT_CONFIGURED",
+    "real_clerk_end_to_end": "NOT_TESTED",
+    "tenant_rls": "P0-04_DEPENDENCY",
+    "production_routes": "NOT_MOUNTED"
+  },
+  "notes": "JWT keys are locally generated test fixtures only. Database membership integration uses rollback-only temporary tables and does not prove P0-04 RLS. P0-03 is not accepted or production ready.",
+  "recorded_at_utc": "2026-11-01T14:21:04.844302+00:00",
+  "security_review": {
+    "model": "Gemini 4 Argon High",
+    "status": "PARTIAL_TIMEOUT",
+    "evidence": "build/phase-P0/p0-03/evidence/argon_partial_review.log",
+    "confirmed_finding": "HIGH - global JWKS cache mutex blocked during network I/O",
+    "remediation": "Separate cache read lock from nonblocking bounded JWKS refresh; regression and outage throttling PASS",
+    "approval": "NOT_GRANTED_FULL_REVIEW"
+  },
+  "remote_ci": "PENDING_DRAFT_PR"
+}

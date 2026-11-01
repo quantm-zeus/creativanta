@@ -248,6 +248,38 @@ jobs:
         run: bash tooling/ci/check_transport_security.sh
 
   # ----------------------------------------------------------------------------
+  # P0-03: Real PostgreSQL, verified JWT and Connect authorization.
+  identity-p003:
+    name: "Identity: JWT, revocation and PostgreSQL membership"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17.10@sha256:7958605b474b3d264a969cb3a123d6aa00ad1e1fe9da8a69984dabb704d93317
+        env:
+          POSTGRES_USER: ci_identity
+          POSTGRES_DB: creativanta_ci
+          POSTGRES_PASSWORD: ci_fixture_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci_identity -d creativanta_ci"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup pinned Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.3"
+          cache: false
+      - name: Verify real identity security tests against PostgreSQL
+        env:
+          CREATIVANTA_TEST_POSTGRES_DSN: "postgres://ci_identity:ci_fixture_only@127.0.0.1:5432/creativanta_ci?sslmode=disable"
+        run: bash tooling/ci/check_identity.sh
+
   # JOB 7: Live API Smoke Test (Health & Fail-Closed Readiness)
   # ----------------------------------------------------------------------------
   live-smoke-check:
@@ -286,6 +318,7 @@ jobs:
       - web-admin-frontend
       - flutter-mobile
       - protobuf-transport
+      - identity-p003
       - live-smoke-check
     steps:
       - name: Confirm all gates succeeded
