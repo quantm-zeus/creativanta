@@ -199,4 +199,8 @@ Future<void> main() async {
     await channel.shutdown().timeout(const Duration(seconds: 3));
   }
   stdout.writeln('DART_GRPC_REAL_TRANSPORT_PASS');
+  await stdout.flush();
+  // grpc-dart may keep HTTP/2 idle timers after successful shutdown.
+  // CLI exits explicitly ONLY after all assertions and channel shutdown complete.
+  exit(0);
 }
