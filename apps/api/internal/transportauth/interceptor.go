@@ -44,6 +44,13 @@ type Session struct {
 type Verifier interface {
 	Verify(ctx context.Context, bearerToken string) (Session, error)
 }
+
+// WorkspaceVerifier is a strictly stronger extension for real user sessions.
+// Its implementation must validate the candidate workspace against current
+// server-side membership, not merely accept a client header or JWT role.
+type WorkspaceVerifier interface {
+	VerifyWorkspace(ctx context.Context, bearerToken, requestedWorkspaceID string) (Session, error)
+}
 type Options struct {
 	Mode     Mode
 	Verifier Verifier
@@ -139,7 +146,17 @@ func (s *serverInterceptor) authenticate(ctx context.Context, h http.Header, id 
 	if token == "" || strings.TrimSpace(token) != token || strings.ContainsAny(token, " \t\r\n") {
 		return nil, safeError(connect.CodeUnauthenticated, "AUTH_FORBIDDEN_001", id)
 	}
-	principal, err := s.opts.Verifier.Verify(ctx, token)
+	var principal Session
+	var err error
+	if workspaceVerifier, ok := s.opts.Verifier.(WorkspaceVerifier); ok && s.opts.Mode == ModeAPI {
+		candidates := h.Values("x-workspace-id")
+		if len(candidates) != 1 || !validUUID(candidates[0]) {
+			return nil, safeError(connect.CodeNotFound, "SYSTEM_NOTFOUND_001", id)
+		}
+		principal, err = workspaceVerifier.VerifyWorkspace(ctx, token, candidates[0])
+	} else {
+		principal, err = s.opts.Verifier.Verify(ctx, token)
+	}
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		return nil, sanitize(ctxErr, id, s.opts.Mode)
 	}

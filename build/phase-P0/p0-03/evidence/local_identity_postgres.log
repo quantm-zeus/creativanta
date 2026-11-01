@@ -1,0 +1,193 @@
+=== RUN   TestSessionCheckerConfiguration
+--- PASS: TestSessionCheckerConfiguration (0.00s)
+=== RUN   TestFreshSessionStateAndRevocation
+=== RUN   TestFreshSessionStateAndRevocation/active
+=== RUN   TestFreshSessionStateAndRevocation/revoked
+=== RUN   TestFreshSessionStateAndRevocation/expired
+=== RUN   TestFreshSessionStateAndRevocation/foreign_user
+=== RUN   TestFreshSessionStateAndRevocation/other_session
+=== RUN   TestFreshSessionStateAndRevocation/expired_at
+=== RUN   TestFreshSessionStateAndRevocation/missing
+=== RUN   TestFreshSessionStateAndRevocation/upstream_503
+=== RUN   TestFreshSessionStateAndRevocation/broken_payload
+--- PASS: TestFreshSessionStateAndRevocation (0.04s)
+    --- PASS: TestFreshSessionStateAndRevocation/active (0.02s)
+    --- PASS: TestFreshSessionStateAndRevocation/revoked (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/expired (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/foreign_user (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/other_session (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/expired_at (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/missing (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/upstream_503 (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/broken_payload (0.00s)
+=== RUN   TestSessionStatusRejectsInvalidIDAndCancellation
+--- PASS: TestSessionStatusRejectsInvalidIDAndCancellation (0.00s)
+=== RUN   TestUnknownKIDRefreshDoesNotBlockKnownValidToken
+--- PASS: TestUnknownKIDRefreshDoesNotBlockKnownValidToken (0.62s)
+=== RUN   TestExpiredJWKSOutageIsRateLimited
+--- PASS: TestExpiredJWKSOutageIsRateLimited (0.10s)
+=== RUN   TestClerkJWTVerifiedClaimsAndCache
+--- PASS: TestClerkJWTVerifiedClaimsAndCache (0.12s)
+=== RUN   TestClerkJWTRejectsUntrustedClaims
+=== RUN   TestClerkJWTRejectsUntrustedClaims/wrong_issuer
+=== RUN   TestClerkJWTRejectsUntrustedClaims/wrong_azp
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_subject
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_not_before
+=== RUN   TestClerkJWTRejectsUntrustedClaims/wrong_audience
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_audience
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_expiry
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_issued_at
+=== RUN   TestClerkJWTRejectsUntrustedClaims/bad_session
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_azp
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_session
+=== RUN   TestClerkJWTRejectsUntrustedClaims/expired
+=== RUN   TestClerkJWTRejectsUntrustedClaims/issued_in_future
+=== RUN   TestClerkJWTRejectsUntrustedClaims/not_yet_valid
+=== RUN   TestClerkJWTRejectsUntrustedClaims/bad_subject
+--- PASS: TestClerkJWTRejectsUntrustedClaims (0.14s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/wrong_issuer (0.02s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/wrong_azp (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_subject (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_not_before (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/wrong_audience (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_audience (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_expiry (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_issued_at (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/bad_session (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_azp (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_session (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/expired (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/issued_in_future (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/not_yet_valid (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/bad_subject (0.00s)
+=== RUN   TestClerkJWTWrongSignatureNeverAccepted
+--- PASS: TestClerkJWTWrongSignatureNeverAccepted (0.64s)
+=== RUN   TestClerkJWTRotationAndStaleRejection
+--- PASS: TestClerkJWTRotationAndStaleRejection (0.28s)
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/missing_audience
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/ssrf_userinfo
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/arbitrary_path
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/origin_http_insecure
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/missing_origins
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/http_issuer
+--- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens (0.32s)
+    --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/missing_audience (0.00s)
+    --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/ssrf_userinfo (0.00s)
+    --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/arbitrary_path (0.00s)
+    --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/origin_http_insecure (0.00s)
+    --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/missing_origins (0.00s)
+    --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/http_issuer (0.00s)
+=== RUN   TestEndToEndJWTSessionMembershipOnConnect
+--- PASS: TestEndToEndJWTSessionMembershipOnConnect (0.42s)
+=== RUN   TestDiscoveryRequiresVerifiedSession
+--- PASS: TestDiscoveryRequiresVerifiedSession (0.00s)
+=== RUN   TestPostgresNonOwnerWorkspaceDiscovery
+--- PASS: TestPostgresNonOwnerWorkspaceDiscovery (0.10s)
+=== RUN   TestPostgresMembershipUsesCurrentCanonicalState
+--- PASS: TestPostgresMembershipUsesCurrentCanonicalState (0.05s)
+=== RUN   TestMembershipMissingDBFailsClosed
+--- PASS: TestMembershipMissingDBFailsClosed (0.00s)
+=== RUN   TestResolverFailsClosedWhenUnconfigured
+--- PASS: TestResolverFailsClosedWhenUnconfigured (0.00s)
+=== RUN   TestResolverDoesNotTrustUnverifiedToken
+--- PASS: TestResolverDoesNotTrustUnverifiedToken (0.00s)
+=== RUN   TestVerifiedTokenAloneCannotGrantWorkspaceAccess
+--- PASS: TestVerifiedTokenAloneCannotGrantWorkspaceAccess (0.00s)
+=== RUN   TestResolverRespectsCancelledContext
+--- PASS: TestResolverRespectsCancelledContext (0.00s)
+=== RUN   TestWorkspaceResolutionRequiresThreeIndependentProofs
+--- PASS: TestWorkspaceResolutionRequiresThreeIndependentProofs (0.00s)
+=== RUN   TestRevocationAndForeignWorkspaceDenied
+=== RUN   TestRevocationAndForeignWorkspaceDenied/revoked
+=== RUN   TestRevocationAndForeignWorkspaceDenied/foreign
+=== RUN   TestRevocationAndForeignWorkspaceDenied/removed
+=== RUN   TestRevocationAndForeignWorkspaceDenied/provider_down
+=== RUN   TestRevocationAndForeignWorkspaceDenied/member_down
+=== RUN   TestRevocationAndForeignWorkspaceDenied/no_sessions
+=== RUN   TestRevocationAndForeignWorkspaceDenied/no_member_db
+=== RUN   TestRevocationAndForeignWorkspaceDenied/invalid_workspace
+--- PASS: TestRevocationAndForeignWorkspaceDenied (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/revoked (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/foreign (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/removed (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/provider_down (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/member_down (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/no_sessions (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/no_member_db (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/invalid_workspace (0.00s)
+=== RUN   TestWorkspaceResolverDoesNotProceedOnCancelledRequest
+--- PASS: TestWorkspaceResolverDoesNotProceedOnCancelledRequest (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/identity	3.864s
+=== RUN   TestRealHTTPConnectHandlerUsesVerifiedWorkspace
+--- PASS: TestRealHTTPConnectHandlerUsesVerifiedWorkspace (0.02s)
+=== RUN   TestRealHTTPConnectHandlerDeniesNilVerifier
+--- PASS: TestRealHTTPConnectHandlerDeniesNilVerifier (0.00s)
+=== RUN   TestInvalidModeRejected
+--- PASS: TestInvalidModeRejected (0.00s)
+=== RUN   TestFailClosedNilVerifierAndInvalidAuthorization
+=== RUN   TestFailClosedNilVerifierAndInvalidAuthorization/nil-verifier
+=== RUN   TestFailClosedNilVerifierAndInvalidAuthorization/missing-authorization
+=== RUN   TestFailClosedNilVerifierAndInvalidAuthorization/wrong-scheme
+=== RUN   TestFailClosedNilVerifierAndInvalidAuthorization/blank-token
+=== RUN   TestFailClosedNilVerifierAndInvalidAuthorization/extra-space
+=== RUN   TestFailClosedNilVerifierAndInvalidAuthorization/expired-token
+--- PASS: TestFailClosedNilVerifierAndInvalidAuthorization (0.00s)
+    --- PASS: TestFailClosedNilVerifierAndInvalidAuthorization/nil-verifier (0.00s)
+    --- PASS: TestFailClosedNilVerifierAndInvalidAuthorization/missing-authorization (0.00s)
+    --- PASS: TestFailClosedNilVerifierAndInvalidAuthorization/wrong-scheme (0.00s)
+    --- PASS: TestFailClosedNilVerifierAndInvalidAuthorization/blank-token (0.00s)
+    --- PASS: TestFailClosedNilVerifierAndInvalidAuthorization/extra-space (0.00s)
+    --- PASS: TestFailClosedNilVerifierAndInvalidAuthorization/expired-token (0.00s)
+=== RUN   TestDuplicateIdentityHeadersRejected
+--- PASS: TestDuplicateIdentityHeadersRejected (0.00s)
+=== RUN   TestSessionWorkspaceCannotBeSpoofed
+--- PASS: TestSessionWorkspaceCannotBeSpoofed (0.00s)
+=== RUN   TestVerifiedSessionAndCorrelationPropagation
+=== RUN   TestVerifiedSessionAndCorrelationPropagation/supplied-UUID
+=== RUN   TestVerifiedSessionAndCorrelationPropagation/invalid-injected-ID
+=== RUN   TestVerifiedSessionAndCorrelationPropagation/missing-ID
+--- PASS: TestVerifiedSessionAndCorrelationPropagation (0.00s)
+    --- PASS: TestVerifiedSessionAndCorrelationPropagation/supplied-UUID (0.00s)
+    --- PASS: TestVerifiedSessionAndCorrelationPropagation/invalid-injected-ID (0.00s)
+    --- PASS: TestVerifiedSessionAndCorrelationPropagation/missing-ID (0.00s)
+=== RUN   TestBadVerifierAndAdminIsolation
+--- PASS: TestBadVerifierAndAdminIsolation (0.00s)
+=== RUN   TestInternalErrorsRedactSecretsAndPreserveCorrelation
+--- PASS: TestInternalErrorsRedactSecretsAndPreserveCorrelation (0.00s)
+=== RUN   TestKnownConnectErrorsMappedToCatalog
+--- PASS: TestKnownConnectErrorsMappedToCatalog (0.00s)
+=== RUN   TestStreamingRejectsAuthAndSanitizesDeadline
+--- PASS: TestStreamingRejectsAuthAndSanitizesDeadline (0.00s)
+=== RUN   TestDeadlineContextFromVerifier
+--- PASS: TestDeadlineContextFromVerifier (0.00s)
+=== RUN   TestContextCancellationPassedThrough
+--- PASS: TestContextCancellationPassedThrough (0.00s)
+=== RUN   TestEmptyWorkspaceHeaderAndNilUUIDFailClosed
+--- PASS: TestEmptyWorkspaceHeaderAndNilUUIDFailClosed (0.00s)
+=== RUN   TestAdminResidualTenantRejected
+--- PASS: TestAdminResidualTenantRejected (0.00s)
+=== RUN   TestAmbiguousCorrelationHeadersAreNotTrusted
+=== RUN   TestAmbiguousCorrelationHeadersAreNotTrusted/duplicate-correlation
+=== RUN   TestAmbiguousCorrelationHeadersAreNotTrusted/conflicting-trace
+=== RUN   TestAmbiguousCorrelationHeadersAreNotTrusted/invalid-correlation-and-valid-request
+--- PASS: TestAmbiguousCorrelationHeadersAreNotTrusted (0.00s)
+    --- PASS: TestAmbiguousCorrelationHeadersAreNotTrusted/duplicate-correlation (0.00s)
+    --- PASS: TestAmbiguousCorrelationHeadersAreNotTrusted/conflicting-trace (0.00s)
+    --- PASS: TestAmbiguousCorrelationHeadersAreNotTrusted/invalid-correlation-and-valid-request (0.00s)
+=== RUN   TestDuplicateWorkspaceDoesNotDiscloseBeforeAuthentication
+--- PASS: TestDuplicateWorkspaceDoesNotDiscloseBeforeAuthentication (0.00s)
+=== RUN   TestVerifierChildTimeoutMapsCorrectly
+--- PASS: TestVerifierChildTimeoutMapsCorrectly (0.00s)
+=== RUN   TestRequestCancellationOverridesDownstreamError
+--- PASS: TestRequestCancellationOverridesDownstreamError (0.00s)
+=== RUN   TestCanceledBeforeVerificationDoesNotReachHandler
+--- PASS: TestCanceledBeforeVerificationDoesNotReachHandler (0.00s)
+=== RUN   TestWrappedConnectInternalDoesNotBecomeClientTimeout
+--- PASS: TestWrappedConnectInternalDoesNotBecomeClientTimeout (0.00s)
+=== RUN   TestStreamingCancellationBeforeHandler
+--- PASS: TestStreamingCancellationBeforeHandler (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportauth	1.081s
+P0-03_TESTS_PASS: JWT, revocation, workspace and PostgreSQL
