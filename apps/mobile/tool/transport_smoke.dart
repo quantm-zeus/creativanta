@@ -192,9 +192,9 @@ Future<void> main() async {
           throw StateError('Timed out waiting for first Watch event'),
     );
     await watchSub.cancel();
-
-    stdout.writeln('DART_GRPC_REAL_TRANSPORT_PASS');
   } finally {
-    await channel.shutdown();
+    // Streaming RPCs may remain in-flight. Test must not hang on graceful shutdown.
+    await channel.terminate().timeout(const Duration(seconds: 3));
   }
+  stdout.writeln('DART_GRPC_REAL_TRANSPORT_PASS');
 }
