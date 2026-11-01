@@ -191,10 +191,12 @@ Future<void> main() async {
       onTimeout: () =>
           throw StateError('Timed out waiting for first Watch event'),
     );
+    // Cancelling StreamSubscription alone does not cancel the underlying gRPC call.
+    await watchStream.cancel();
     await watchSub.cancel();
   } finally {
     // Streaming RPCs may remain in-flight. Test must not hang on graceful shutdown.
-    await channel.terminate().timeout(const Duration(seconds: 3));
+    await channel.shutdown().timeout(const Duration(seconds: 3));
   }
   stdout.writeln('DART_GRPC_REAL_TRANSPORT_PASS');
 }
