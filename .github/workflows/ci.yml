@@ -244,6 +244,9 @@ jobs:
       - name: Run real Connect TypeScript and grpc-dart clients against same Go server
         run: bash tooling/ci/proto_integration.sh
 
+      - name: Verify fail-closed production transport seam and TS/Dart wire validation
+        run: bash tooling/ci/check_transport_security.sh
+
   # ----------------------------------------------------------------------------
   # JOB 7: Live API Smoke Test (Health & Fail-Closed Readiness)
   # ----------------------------------------------------------------------------

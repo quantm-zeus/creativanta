@@ -197,6 +197,10 @@ Example: `AUTH_INVALID_001`, `BILLING_LIMIT_003`, `AI_EXTERNAL_002`
 | SYSTEM_CONFLICT_001 | ALREADY_EXISTS | 409 | Idempotency key reused with a different request hash | No | "Mã yêu cầu đã dùng cho nội dung khác. Vui lòng tải lại." |
 | SYSTEM_TIMEOUT_001 | DEADLINE_EXCEEDED | 504 | Request processing timeout | Yes (retry once) | "Yêu cầu hết thời gian chờ." |
 | SYSTEM_LIMIT_001 | RESOURCE_EXHAUSTED | 429 | Global rate limit exceeded | Yes (backoff) | "Quá nhiều yêu cầu. Vui lòng chờ." |
+| SYSTEM_INVALID_001 | INVALID_ARGUMENT | 400 | Invalid transport request field or malformed canonical input | No | "Dữ liệu yêu cầu không hợp lệ." |
+| SYSTEM_NOTFOUND_001 | NOT_FOUND | 404 | Generic unavailable or foreign-scoped resource; no disclosure of existence | No | "Không tìm thấy tài nguyên." |
+| SYSTEM_FORBIDDEN_001 | PERMISSION_DENIED | 403 | Verified requester lacks access to this operation or scope | No | "Bạn không có quyền truy cập." |
+| SYSTEM_CANCELED_001 | CANCELED | 499 (non-standard) | Caller canceled the request or stream; no retry by default | No | "Yêu cầu đã bị hủy." |
 
 ## Intelligence Errors (INTELLIGENCE_*)
 

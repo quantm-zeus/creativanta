@@ -14,7 +14,7 @@
   "source_hashes": {
     "docs/04_contracts/protobuf_contracts.md": "ea544b9ae4082471e45cf378894d36ab000190530c8162b4b56a1dfd46e55761",
     "docs/04_contracts/api_behavior_contracts.md": "57be6961180b8e847b0d0521ef9dbfade5c08bdb490bbbb846fbc784a9ca6802",
-    "docs/04_contracts/error_catalog.md": "35d1b053ac3ec7c020ca869a7df51cfe07e974713900b8e40a16b184ad404a47",
+    "docs/04_contracts/error_catalog.md": "9ef3d42c19c40e0ce9d608beabea7371e2279e3dc13a54d438def37e06069460",
     "docs/04_contracts/api_endpoint_map.md": "efe0cabf3ae83e27eabf05281a213dfd6423ce83ad25cd9c68f08620abe1d628",
     "docs/00_index/AGENT_TASK_CARDS.md": "1230195b8b480ca948159b3574905f33521575d65f570bfc9b627004cb76201a"
   },
@@ -53,6 +53,37 @@
       "name": "Independent QA, breaking change and generated-drift CI",
       "status": "CI_VERIFIED",
       "owner": "QA Agent"
+    },
+    {
+      "id": "P0-02-f",
+      "name": "Production-oriented Connect interceptor contract with fail-closed verifier, secure request context, safe errors, admin isolation; no live auth yet",
+      "status": "IMPLEMENTED_TESTED",
+      "owner": "Go builder, Argon security review",
+      "source_files": [
+        "apps/api/internal/transportauth/interceptor.go",
+        "apps/api/internal/transportauth/interceptor_test.go",
+        "apps/api/internal/transportauth/interceptor_http_test.go"
+      ]
+    },
+    {
+      "id": "P0-02-g",
+      "name": "Strict canonical input validation on TypeScript and Dart without any external authority",
+      "status": "IMPLEMENTED_TESTED",
+      "owner": "Two independent Gemini 3.8 Flash High agents + runtime runner",
+      "source_files": [
+        "packages/shared-types/src/transport/validation.ts",
+        "apps/mobile/lib/core/transport_validation.dart"
+      ]
+    },
+    {
+      "id": "P0-02-h",
+      "name": "Independent transport safety gate with Go race, error registry alignment and TS/Dart validator tests",
+      "status": "CI_LOCAL_VERIFIED",
+      "owner": "QA CI reviewer",
+      "source_files": [
+        "tooling/ci/check_transport_security.sh",
+        ".github/workflows/ci.yml"
+      ]
     }
   ],
   "checks": [
@@ -127,6 +158,60 @@
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-02/evidence/p002_local_recheck_20261101.log",
       "checked_at": "2026-11-01T12:42:10.603240+00:00"
+    },
+    {
+      "command": "P0-02 independent Argon round-two remediation and security Go race + TS/Dart validation + Go vet",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_runtime_security.log",
+      "checked_at": "2026-11-01T13:06:48.992986+00:00"
+    },
+    {
+      "command": "P0-02 runtime integration: contracts",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_runtime_contracts.log",
+      "checked_at": "2026-11-01T12:57:42Z"
+    },
+    {
+      "command": "P0-02 runtime integration: interop",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_runtime_interop.log",
+      "checked_at": "2026-11-01T12:58:02Z"
+    },
+    {
+      "command": "P0-02 runtime integration: go",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_runtime_go.log",
+      "checked_at": "2026-11-01T12:58:13Z"
+    },
+    {
+      "command": "P0-02 runtime integration: node",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_runtime_node.log",
+      "checked_at": "2026-11-01T13:01:02.068113+00:00"
+    },
+    {
+      "command": "P0-02 runtime integration: flutter",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_runtime_flutter.log",
+      "checked_at": "2026-11-01T12:59:01Z"
+    },
+    {
+      "command": "P0-02 runtime integration: d0",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_runtime_d0.log",
+      "checked_at": "2026-11-01T12:59:17Z"
+    },
+    {
+      "command": "P0-02 runtime integration: negative",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_runtime_negative.log",
+      "checked_at": "2026-11-01T12:59:18Z"
+    },
+    {
+      "command": "P0-02 runtime integration: actionlint",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_runtime_actionlint.log",
+      "checked_at": "2026-11-01T12:59:19Z"
     }
   ],
   "acceptance_requirements": [
@@ -147,14 +232,14 @@
     {
       "id": "P0-02-runtime",
       "task": "P0-02",
-      "status": "NOT_IMPLEMENTED",
-      "description": "Production Connect interceptor for validated request IDs, authenticated principal/workspace and structured ErrorDetail including safe status mapping"
+      "status": "PARTIAL_VERIFIED",
+      "description": "Reusable verified-session Connect server interceptor built and unit/HTTP/race tested. NOT mounted in production API/Admin; Clerk verifier, tenant RBAC and error policy missing on real business RPCs."
     },
     {
       "id": "P0-02-middleware",
       "task": "P0-02/P0-03",
-      "status": "NOT_IMPLEMENTED",
-      "description": "Shared Go/TS/Dart client production configuration: trust, retries, pagination validation and deadlines without using test fixture"
+      "status": "PARTIAL_VERIFIED",
+      "description": "Strict TS and Dart client wire validation built/tested. Production authenticated client trust/retry/deadline configuration still missing; Clerk and business RPC dependencies."
     },
     {
       "id": "P0-02-persistent-idempotency",
@@ -171,11 +256,17 @@
     {
       "id": "P0-02-remote-ci",
       "task": "P0-02",
-      "status": "VERIFIED",
-      "description": "CI run 41275147393 green 8/8 on submitted contract harness."
+      "status": "PENDING_NEW_PR",
+      "description": "Older PR #2 remote Go/TS/Dart harness CI passed. New production-oriented transport sub-slice requires fresh GitHub Actions validation in its own PR."
+    },
+    {
+      "id": "P0-02-Clerk-integration",
+      "task": "P0-03",
+      "status": "BLOCKED_DEPENDENCY",
+      "description": "Verifier is an interface only: no Clerk JWKS/token issuer/audience validation nor membership-backed principal/tenant resolver. No business RPCs exposed."
     }
   ],
-  "scope_note": "Test-only Go/TS/Dart contract harness verified; production middleware/auth/idempotency not yet accepted.",
+  "scope_note": "CONTRACT_READY only: Go/TS/Dart interop + strict wire validators + fail-closed reusable interceptor with test verifier. NO real Clerk, domain RPCs, RLS, durable idempotency, or production routing.",
   "acceptance_status": "PENDING",
   "local_verification": "PASS: pinned proto codegen, Go/TS/Dart compiled, Go race, TS/Dart unit, 3x real interop, Go/Node/Flutter/D0 security gates; remote GitHub Actions pending",
   "implementation_commit": "38381eb",
@@ -188,5 +279,29 @@
     "url": "https://github.com/quantm-zeus/creativanta/actions/runs/41275147393",
     "verified_commit": "0eaf80231819f3b85e07ab882126d09c28de83ff",
     "jobs_success": 8
+  },
+  "review_evidence_paths": [
+    "build/phase-P0/p0-02/evidence/argon_architecture_review.txt",
+    "build/phase-P0/p0-02/evidence/p002_argon_security_review_20261101.txt",
+    "build/phase-P0/p0-02/evidence/p002_argon_security_review_round2_20261101.txt",
+    "build/phase-P0/p0-02/evidence/p002_argon_round2_remediation_20261101.md"
+  ],
+  "new_subslice_remote_ci": {
+    "status": "PENDING_NEW_COMMIT",
+    "commit": null,
+    "url": null
+  },
+  "security_review_round2": {
+    "verdict": "NEEDS_FIX",
+    "remediation_status": "IMPLEMENTED_AND_LOCAL_TEST_PASS",
+    "acceptance": "NOT_PRODUCTION_ACCEPTED",
+    "evidence_path": "build/phase-P0/p0-02/evidence/p002_argon_security_review_round2_20261101.txt"
+  },
+  "runtime_source_hashes": {
+    "apps/api/internal/transportauth/interceptor.go": "a98d1a0bdde446589889aec33964fe0c266738c53a8af5560fb53fab8b96f4e3",
+    "apps/api/internal/transportauth/interceptor_test.go": "90678bad91863a612024b9a7aead6bf1df3feaec90fab2c7bc2f37cef4f65f6d",
+    "apps/api/internal/transportauth/interceptor_http_test.go": "a1a70ba0c22a238306f2751bdb10a2b5f5733916b02a367da5a72b4b9573fac3",
+    "packages/shared-types/src/transport/validation.ts": "aac97d29691d8e33100af168bc12de998dd0ee127c86358e90db365bbe038c15",
+    "apps/mobile/lib/core/transport_validation.dart": "cf5b92c75b4b4a2f7788930f7cca7cbfdadfdcae9e575581cdff7b182b392a84"
   }
 }
