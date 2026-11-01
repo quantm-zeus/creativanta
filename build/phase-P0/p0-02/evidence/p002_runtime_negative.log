@@ -1,0 +1,4 @@
+check: negative
+checked_at: 2026-11-01T12:59:18Z
+result:
+NEGATIVE_TESTS_PASS: pipeline, assertion, anti-mask, bad readiness correctly fail

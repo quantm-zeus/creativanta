@@ -1,0 +1,189 @@
+### Verdict
+
+**CONDITIONAL / REQUIRES REMEDIATION BEFORE PRODUCTION WIRING**
+
+The `transportauth` interceptor is **not accepted for production wiring** in its current state. While `serverInterceptor` holds no mutable per-request state (making the struct itself concurrency-safe assuming the injected `Verifier` is goroutine-safe), the implementation contains concrete defects across header presence checking, nil-UUID validation, context cancellation propagation during authentication and streaming startup, correlation header sanitization, role/workspace state hygiene, and error catalogue enforcement.
+
+---
+
+### Coverage Summary by Review Dimension
+
+| Dimension | Assessment |
+|---|---|
+| **Auth Header Smuggling** | `len(h.Values("Authorization")) != 1` blocks duplicate `Authorization` headers, and `strings.ContainsAny(token, " \t\r\n")` blocks whitespace folding. However, `x-workspace-id` and `x-correlation-id`/`x-request-id` remain vulnerable to empty-value and multi-header ambiguities (Findings 1, 4). |
+| **Trust of Client Workspace** | `ModeAPI` binds workspace identity to `principal.WorkspaceID` from `Verifier`, but permits an explicitly supplied empty `x-workspace-id:` header and leaves untrusted header state on `req.Header()` (Finding 1). |
+| **Role Isolation** | `ModeAPI` rejects `principal.InternalAdmin == true`, and `ModeAdminAPI` requires `principal.InternalAdmin == true`. However, `ModeAdminAPI` does not reject or zero out a non-empty `principal.WorkspaceID` on admin principals (Finding 2). |
+| **Context Cancellation** | `authenticate()` swallows `context.Canceled` and `context.DeadlineExceeded` from `Verifier.Verify` and remaps them to `CodeUnauthenticated` (`AUTH_FORBIDDEN_001`). `WrapStreamingHandler` also fails to check `ctx.Err()` before invoking `next(ctx, conn)` (Finding 3). |
+| **Safe Error Mapping** | `sanitize()` inspects `errors.Is(err, context.DeadlineExceeded)` / `context.Canceled` before `connect.CodeOf(err)`, which can misclassify internal downstream child-context timeouts as client timeouts, and overwrites any pre-mapped `publicErrors` key (Finding 6). |
+| **UUID Validation** | `uuidPattern` matches the all-zero Nil UUID (`00000000-0000-0000-0000-000000000000`), allowing zero-initialized UUID strings from a faulty `Verifier` to pass `UserID` and `WorkspaceID` checks (Finding 5). |
+| **Error Catalogue** | `WrapUnary` and `WrapStreamingHandler` bypass `safeError` and `publicErrors` when `correlation()` fails, returning an uncatalogued error string without `commonv1.ErrorDetail` metadata (Finding 7). |
+| **Concurrency** | `serverInterceptor` and `publicErrors` are only read after construction (`e.Meta().Set` mutates a per-error `http.Header`). Concurrency safety holds only if the `Verifier` implementation is safe for concurrent use, which is not documented or enforced on the `Verifier` interface contract. |
+
+---
+
+### Concrete Findings
+
+#### Finding 1: Empty-Value `x-workspace-id` Header Bypass in Both `ModeAdminAPI` and `ModeAPI`
+* **Severity:** Medium
+* **Dimension:** Auth Header Smuggling / Trust of Client Workspace
+* **Exact Function:** `(*serverInterceptor).authenticate`
+* **Analysis:**
+  `authenticate` checks `if len(h.Values("x-workspace-id")) > 1`, and then uses `h.Get("x-workspace-id") != ""` in `ModeAdminAPI` and `supplied := h.Get("x-workspace-id"); supplied != ""` in `ModeAPI`.
+  In Go's `net/http`, if a client sends a single header with an empty value (`X-Workspace-Id:`) or whitespace-only value before trimming, `len(h.Values("x-workspace-id"))` is `1` while `h.Get("x-workspace-id")` returns `""`.
+  - In `ModeAdminAPI`, the presence of `X-Workspace-Id:` with an empty value is not rejected despite the requirement that admin requests never carry `x-workspace-id`.
+  - In `ModeAPI`, an explicitly sent empty `X-Workspace-Id:` header bypasses the `supplied != principal.WorkspaceID` mismatch check.
+* **Suggested Fix:**
+  Check header presence via `h.Values("x-workspace-id")` rather than relying on `h.Get(...) != ""`:
+  ```go
+  wsValues := h.Values("x-workspace-id")
+  if len(wsValues) > 1 {
+      return nil, safeError(connect.CodeNotFound, "SYSTEM_NOTFOUND_001", id)
+  }
+  if s.opts.Mode == ModeAdminAPI {
+      if !principal.InternalAdmin {
+          return nil, safeError(connect.CodePermissionDenied, "ADMIN_FORBIDDEN_001", id)
+      }
+      if len(wsValues) > 0 {
+          return nil, safeError(connect.CodeNotFound, "SYSTEM_NOTFOUND_001", id)
+      }
+  } else {
+      if principal.InternalAdmin || !isValidNonNilUUID(principal.WorkspaceID) {
+          return nil, safeError(connect.CodeUnauthenticated, "AUTH_FORBIDDEN_001", id)
+      }
+      if len(wsValues) == 1 && wsValues[0] != principal.WorkspaceID {
+          return nil, safeError(connect.CodeNotFound, "SYSTEM_NOTFOUND_001", id)
+      }
+  }
+  ```
+
+---
+
+#### Finding 2: Incomplete Role Isolation — `ModeAdminAPI` Retains Residual `WorkspaceID` in `Session`
+* **Severity:** Medium
+* **Dimension:** Role Isolation / Trust of Client Workspace
+* **Exact Function:** `(*serverInterceptor).authenticate`
+* **Analysis:**
+  In `ModeAdminAPI`, `authenticate` verifies `principal.InternalAdmin` and rejects non-empty `x-workspace-id` headers, but never validates or clears `principal.WorkspaceID` on the `Session` returned by `Verifier.Verify`. If a token verifier populates `WorkspaceID` on an admin token (or returns a dirty field), `PrincipalFromContext(ctx)` in `ModeAdminAPI` exposes an unvalidated `WorkspaceID`, risking accidental ambient workspace scoping in admin handlers instead of explicit typed targets.
+* **Suggested Fix:**
+  Fail closed if an admin session carries a `WorkspaceID` (or explicitly clear it before storing in `ctx`):
+  ```go
+  if s.opts.Mode == ModeAdminAPI {
+      if !principal.InternalAdmin || principal.WorkspaceID != "" {
+          return nil, safeError(connect.CodePermissionDenied, "ADMIN_FORBIDDEN_001", id)
+      }
+      if len(h.Values("x-workspace-id")) > 0 {
+          return nil, safeError(connect.CodeNotFound, "SYSTEM_NOTFOUND_001", id)
+      }
+  }
+  ```
+
+---
+
+#### Finding 3: Context Cancellation Masked as `AUTH_FORBIDDEN_001` and Missing Pre-Handler Check in Streaming
+* **Severity:** Medium
+* **Dimension:** Context Cancellation
+* **Exact Functions:** `(*serverInterceptor).authenticate`, `(*serverInterceptor).WrapUnary`, `(*serverInterceptor).WrapStreamingHandler`
+* **Analysis:**
+  1. Neither `WrapUnary` nor `WrapStreamingHandler` checks `ctx.Err()` prior to calling `authenticate`.
+  2. When `ctx` is canceled or times out during `s.opts.Verifier.Verify(ctx, token)`, `Verify` returns `context.Canceled` or `context.DeadlineExceeded`. `authenticate` catches `if err != nil` and unconditionally returns `safeError(connect.CodeUnauthenticated, "AUTH_FORBIDDEN_001", id)`, masking client cancellations and timeouts as authentication failures.
+  3. Unlike `WrapUnary`, `WrapStreamingHandler` does not check `if err = ctx.Err(); err != nil` after `authenticate` before calling `next(ctx, conn)`. If the context is canceled during a non-context-observing `Verify` call, `next(ctx, conn)` is still invoked.
+* **Suggested Fix:**
+  Check `ctx.Err()` before `authenticate`, preserve context errors inside `authenticate`, and check `ctx.Err()` before `next` in both interceptors:
+  ```go
+  // Inside authenticate, immediately after Verify:
+  principal, err := s.opts.Verifier.Verify(ctx, token)
+  if err != nil {
+      if ctxErr := ctx.Err(); ctxErr != nil {
+          return nil, sanitize(ctxErr, id, s.opts.Mode)
+      }
+      return nil, safeError(connect.CodeUnauthenticated, "AUTH_FORBIDDEN_001", id)
+  }
+
+  // Inside WrapStreamingHandler, before next(ctx, conn):
+  if err = ctx.Err(); err != nil {
+      return sanitize(err, id, s.opts.Mode)
+  }
+  ```
+
+---
+
+#### Finding 4: Correlation Header Smuggling and Unsanitized Request Headers
+* **Severity:** Medium
+* **Dimension:** Auth Header Smuggling / Safe Error Mapping
+* **Exact Function:** `correlation`
+* **Analysis:**
+  `correlation(h http.Header)` iterates over `[]string{"x-correlation-id", "x-request-id"}` and calls `h.Get(key)`, which returns only the first header value.
+  - If a request contains multiple `x-correlation-id` headers (e.g., `x-correlation-id: <valid-uuid>` followed by `x-correlation-id: <attacker-injected-value>`), `correlation()` accepts the first value while leaving all values intact in `req.Header()`.
+  - If `x-correlation-id` contains a malformed value, `correlation()` generates a new UUID in context, while `req.Header()` retains the malformed client header for any downstream code inspecting request headers directly.
+* **Suggested Fix:**
+  Reject duplicate correlation headers (or require `len(h.Values(key)) == 1`) and overwrite/normalize `h.Set("x-correlation-id", id)` while deleting `x-request-id` once canonicalized:
+  ```go
+  func correlation(h http.Header) (string, error) {
+      for _, key := range []string{"x-correlation-id", "x-request-id"} {
+          vals := h.Values(key)
+          if len(vals) == 1 && isValidNonNilUUID(vals[0]) {
+              return vals[0], nil
+          }
+          if len(vals) > 1 {
+              break // Do not trust ambiguous multi-value headers; generate fresh UUID
+          }
+      }
+      // ... generate UUID v4 ...
+  }
+  ```
+
+---
+
+#### Finding 5: `uuidPattern` Accepts the All-Zero Nil UUID (`00000000-0000-0000-0000-000000000000`)
+* **Severity:** Medium
+* **Dimension:** UUID Validation
+* **Exact Functions:** `(*serverInterceptor).authenticate`, `correlation`
+* **Analysis:**
+  `uuidPattern` (`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`) matches `"00000000-0000-0000-0000-000000000000"`. In Go, formatting a zero-valued `[16]byte` or `uuid.UUID{}` produces the Nil UUID string. If a downstream `Verifier` converts an uninitialized UUID struct to a string, `uuidPattern.MatchString` succeeds for both `principal.UserID` and `principal.WorkspaceID`, violating fail-closed tenant and principal validation.
+* **Suggested Fix:**
+  Introduce a dedicated helper that explicitly rejects the Nil UUID alongside regex matching:
+  ```go
+  const nilUUID = "00000000-0000-0000-0000-000000000000"
+
+  func isValidNonNilUUID(s string) bool {
+      return s != nilUUID && uuidPattern.MatchString(s)
+  }
+  ```
+  Use `isValidNonNilUUID` for `principal.UserID`, `principal.WorkspaceID`, and `correlation()`.
+
+---
+
+#### Finding 6: `sanitize` Overwrites Explicit Connect Codes on Wrapped Context Errors and Drops Existing Catalogue Keys
+* **Severity:** Low
+* **Dimension:** Safe Error Mapping / Error Catalogue
+* **Exact Function:** `sanitize`
+* **Analysis:**
+  `sanitize` evaluates `errors.Is(err, context.Canceled)` and `errors.Is(err, context.DeadlineExceeded)` before inspecting `connect.CodeOf(err)`.
+  - If a handler makes an internal outbound call using a child `context.WithTimeout` that expires while the parent request context is still active, and wraps the error (e.g., `connect.NewError(connect.CodeInternal, fmt.Errorf("...", context.DeadlineExceeded))`), `errors.Is(err, context.DeadlineExceeded)` matches and misreports an internal dependency failure as a client request timeout (`CodeDeadlineExceeded` / `SYSTEM_TIMEOUT_001`).
+  - Additionally, if a handler returns a `*connect.Error` already constructed by `safeError`, `sanitize` rebuilds the error from `connect.CodeOf(err)` alone, losing any distinction if multiple catalogue keys ever share a `connect.Code`.
+* **Suggested Fix:**
+  Only map raw context errors to `CodeCanceled`/`CodeDeadlineExceeded` when `connect.CodeOf(err) == connect.CodeUnknown` (i.e. an unmapped error) or when the request's own `ctx.Err()` is set, rather than overriding explicit `connect.Error` codes from handlers.
+
+---
+
+#### Finding 7: Entropy Failure Path Bypasses `safeError` and `publicErrors` Catalogue
+* **Severity:** Low
+* **Dimension:** Error Catalogue / Safe Error Mapping
+* **Exact Functions:** `(*serverInterceptor).WrapUnary`, `(*serverInterceptor).WrapStreamingHandler`
+* **Analysis:**
+  When `correlation(...)` returns an error:
+  ```go
+  id, err := correlation(req.Header())
+  if err != nil {
+      return nil, connect.NewError(connect.CodeInternal, errors.New("Không thể tạo mã yêu cầu."))
+  }
+  ```
+  This returns a raw `connect.Error` with a hardcoded string (`"Không thể tạo mã yêu cầu."`) that does not exist in `publicErrors` and omits the `commonv1.ErrorDetail` payload (`SYSTEM_INTERNAL_001`).
+* **Suggested Fix:**
+  Route correlation failures through `safeError` using the canonical `"SYSTEM_INTERNAL_001"` key and the Nil UUID (or empty string) as fallback correlation ID:
+  ```go
+  id, err := correlation(req.Header())
+  if err != nil {
+      return nil, safeError(connect.CodeInternal, "SYSTEM_INTERNAL_001", "00000000-0000-0000-0000-000000000000")
+  }
+  ```

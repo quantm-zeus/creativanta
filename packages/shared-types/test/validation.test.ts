@@ -222,6 +222,7 @@ describe('normalizePagination', () => {
     expect(() => normalizePagination(20, 'token\x001')).toThrow(RangeError);
     expect(() => normalizePagination(20, 'token\x1f1')).toThrow(RangeError);
     expect(() => normalizePagination(20, 'token\x7f1')).toThrow(RangeError);
+    expect(() => normalizePagination(20, 'token\u00851')).toThrow(RangeError);
   });
 
   it('rejects non-string pageToken with RangeError', () => {

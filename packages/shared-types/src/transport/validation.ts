@@ -12,7 +12,8 @@ const DECIMAL_AMOUNT_REGEX = /^(0|[1-9]\d*)(\.\d+)?$/;
 
 const PRINTABLE_ASCII_REGEX = /^[\x20-\x7E]+$/;
 
-const PAGE_TOKEN_FORBIDDEN_REGEX = /[\s\x00-\x1f\x7f]/;
+// Reject C0 and C1 controls consistently with the Dart client.
+const PAGE_TOKEN_FORBIDDEN_REGEX = /[\s\x00-\x1f\x7f\u0080-\u009f]/;
 
 const LONE_SURROGATE_REGEX =
   /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
