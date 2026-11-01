@@ -51,7 +51,7 @@
     {
       "id": "P0-02-e",
       "name": "Independent QA, breaking change and generated-drift CI",
-      "status": "CI_LOCAL_VERIFIED",
+      "status": "CI_VERIFIED",
       "owner": "QA Agent"
     }
   ],
@@ -115,6 +115,18 @@
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-02/evidence/p002_three_passes.log",
       "checked_at": "2026-11-01T04:58:39.022487+00:00"
+    },
+    {
+      "command": "GitHub Actions 41275147393: Go TS Dart transport and D0 Go Node Flutter smoke",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_github_run_41275147393.json",
+      "checked_at": "2026-11-01T05:02:38Z"
+    },
+    {
+      "command": "Local check_proto.sh && proto_integration.sh && self_test_failure.sh && actionlint",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-02/evidence/p002_local_recheck_20261101.log",
+      "checked_at": "2026-11-01T12:42:10.603240+00:00"
     }
   ],
   "acceptance_requirements": [
@@ -159,18 +171,22 @@
     {
       "id": "P0-02-remote-ci",
       "task": "P0-02",
-      "status": "PENDING",
-      "description": "GitHub Actions on PR for generated drift, Go, TS Connect, Dart grpc and negative tests"
+      "status": "VERIFIED",
+      "description": "CI run 41275147393 green 8/8 on submitted contract harness."
     }
   ],
-  "scope_note": "Generated client/server code compiles; this packet is NOT P0-02 acceptance until cross-language runtime tests are executed.",
+  "scope_note": "Test-only Go/TS/Dart contract harness verified; production middleware/auth/idempotency not yet accepted.",
   "acceptance_status": "PENDING",
   "local_verification": "PASS: pinned proto codegen, Go/TS/Dart compiled, Go race, TS/Dart unit, 3x real interop, Go/Node/Flutter/D0 security gates; remote GitHub Actions pending",
   "implementation_commit": "38381eb",
   "security_assurance": "Fixture is TEST-ONLY; dedicated cmd/transport-fixture-test. CI rejects fixture imports in production API/Admin API. Test header x-workspace-id is deliberately NOT an authentication boundary.",
   "review_evidence_path": "build/phase-P0/p0-02/evidence/argon_architecture_review.txt",
   "remote_verification": {
-    "status": "PENDING",
-    "conclusion": null
+    "status": "PASSED",
+    "conclusion": "success",
+    "run_id": 41275147393,
+    "url": "https://github.com/quantm-zeus/creativanta/actions/runs/41275147393",
+    "verified_commit": "0eaf80231819f3b85e07ab882126d09c28de83ff",
+    "jobs_success": 8
   }
 }
