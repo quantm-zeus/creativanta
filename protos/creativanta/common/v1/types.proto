@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package creativanta.common.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1;commonv1";
+
+// Canonical UUID wrapper.
+// Timestamps across all contracts MUST use google.protobuf.Timestamp directly.
+// Validation belongs to application code:
+// - value: required canonical RFC 9562 UUID string (including v7), length 36 chars.
+message UUID {
+  string value = 1;
+}
+
+// Monetary amount using exact decimal string representation.
+// Floating-point representations are strictly forbidden.
+// Validation belongs to application code:
+// - amount: canonical base-10 decimal string, precision <=18, scale <=6, no exponent/NaN/Infinity; negative only when permitted by owning command.
+// - currency: required uppercase ISO 4217 3-letter currency code (e.g., "VND", "USD"), length 3 chars.
+message Money {
+  string amount = 1;
+  string currency = 2;
+}
+
+// Cursor-based pagination parameters.
+// Validation belongs to application code:
+// - page_size: bounds 1..100, default 20 when omitted or 0.
+// - page_token: optional opaque cursor string, length 0..512 chars.
+message Pagination {
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+// Cursor-based pagination metadata returned in list responses.
+// Validation belongs to application code:
+// - next_page_token: opaque cursor string (0..512 chars); empty when has_more is false.
+// - total_count: bounds >= 0.
+// - has_more: true if additional records exist after this page.
+message PaginatedResponse {
+  string next_page_token = 1;
+  optional int64 total_count = 2;
+  bool has_more = 3;
+}
+
+// Standard envelope context for mutating commands.
+// Validation belongs to application code:
+// - idempotency_key: required non-empty ASCII string, bounds 1..255 chars.
+// - expected_updated_at: optional optimistic concurrency control timestamp.
+// - reason: optional human-readable audit reason, bounds 1..2000 chars when set (required for privileged/override commands).
+// - workspace_id: optional compatibility tenant UUID; if supplied must equal the authenticated selected workspace (never an authorization source).
+message CommandContext {
+  string idempotency_key = 1;
+  google.protobuf.Timestamp expected_updated_at = 2;
+  string reason = 3;
+  UUID workspace_id = 4;
+}
+
+// Provenance classification for metrics, records, and external data.
+// Validation belongs to application code: must be a defined enum value != SOURCE_CLASS_UNSPECIFIED (1..5).
+enum SourceClass {
+  SOURCE_CLASS_UNSPECIFIED = 0;
+  SOURCE_CLASS_OFFICIAL = 1;
+  SOURCE_CLASS_IMPORTED = 2;
+  SOURCE_CLASS_INFERRED = 3;
+  SOURCE_CLASS_ESTIMATED = 4;
+  SOURCE_CLASS_UNRECONCILED = 5;
+}
+
+// Confidence band for AI-generated, inferred, or estimated values.
+// Validation belongs to application code: must be a defined enum value != CONFIDENCE_BAND_UNSPECIFIED (1..5).
+enum ConfidenceBand {
+  CONFIDENCE_BAND_UNSPECIFIED = 0;
+  CONFIDENCE_BAND_HIGH = 1;
+  CONFIDENCE_BAND_MEDIUM_HIGH = 2;
+  CONFIDENCE_BAND_MEDIUM = 3;
+  CONFIDENCE_BAND_LOW_MEDIUM = 4;
+  CONFIDENCE_BAND_LOW = 5;
+}
+
+// Six canonical operator modes supported by Creativanta.
+// Validation belongs to application code: must be a defined enum value != OPERATOR_MODE_UNSPECIFIED (1..6).
+enum OperatorMode {
+  OPERATOR_MODE_UNSPECIFIED = 0;
+  OPERATOR_MODE_CREATOR = 1;
+  OPERATOR_MODE_SELLER = 2;
+  OPERATOR_MODE_AFFILIATE_OPERATOR = 3;
+  OPERATOR_MODE_LIVE_OPERATOR = 4;
+  OPERATOR_MODE_AGENCY_MCN = 5;
+  OPERATOR_MODE_BRAND_COLLABORATION = 6;
+}

@@ -1,0 +1,87 @@
+{
+  "task_id": "P0-02",
+  "title": "Transport, errors and request identity",
+  "status": "SPECIFIED",
+  "baseline_commit": "d70b7589b49f9eab890427784a8205eb694a20d0",
+  "phase": "P0",
+  "feature_refs": [
+    "docs/04_contracts/protobuf_contracts.md",
+    "docs/04_contracts/api_behavior_contracts.md",
+    "docs/04_contracts/error_catalog.md",
+    "docs/04_contracts/api_endpoint_map.md",
+    "docs/00_index/AGENT_TASK_CARDS.md"
+  ],
+  "source_hashes": {
+    "docs/04_contracts/protobuf_contracts.md": "ea544b9ae4082471e45cf378894d36ab000190530c8162b4b56a1dfd46e55761",
+    "docs/04_contracts/api_behavior_contracts.md": "57be6961180b8e847b0d0521ef9dbfade5c08bdb490bbbb846fbc784a9ca6802",
+    "docs/04_contracts/error_catalog.md": "35d1b053ac3ec7c020ca869a7df51cfe07e974713900b8e40a16b184ad404a47",
+    "docs/04_contracts/api_endpoint_map.md": "efe0cabf3ae83e27eabf05281a213dfd6423ce83ad25cd9c68f08620abe1d628",
+    "docs/00_index/AGENT_TASK_CARDS.md": "1230195b8b480ca948159b3574905f33521575d65f570bfc9b627004cb76201a"
+  },
+  "sub_slices": [
+    {
+      "id": "P0-02-a",
+      "name": "Versioned common proto + test-only integration fixture, pinned Go/TS/Dart codegen",
+      "status": "CODEGEN_VERIFIED",
+      "owner": "Gemini 4 Argon High + tooling",
+      "source_files": [
+        "protos/creativanta/common/v1/types.proto",
+        "protos/creativanta/common/v1/errors.proto",
+        "protos/creativanta/transport/test/v1/fixture.proto"
+      ]
+    },
+    {
+      "id": "P0-02-b",
+      "name": "Go generated Connect fixture handler, metadata/deadline/stream and idempotency/cursor negative tests",
+      "status": "SPECIFIED",
+      "owner": "Go Builder"
+    },
+    {
+      "id": "P0-02-c",
+      "name": "TypeScript Connect real client cross-boundary RPC tests",
+      "status": "SPECIFIED",
+      "owner": "TypeScript Builder"
+    },
+    {
+      "id": "P0-02-d",
+      "name": "Dart grpc-dart HTTP2 real client tests",
+      "status": "SPECIFIED",
+      "owner": "Flutter Builder"
+    },
+    {
+      "id": "P0-02-e",
+      "name": "Independent QA, breaking change and generated-drift CI",
+      "status": "SPECIFIED",
+      "owner": "QA Agent"
+    }
+  ],
+  "checks": [
+    {
+      "command": "buf lint && bash tooling/proto-gen.sh generate",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-02/evidence/contract_codegen.log",
+      "checked_at": "2026-11-01T04:37:15.155096+00:00"
+    }
+  ],
+  "acceptance_requirements": [
+    "Same handler Go/TS/Dart round-trip",
+    "same-key changed payload returns ALREADY_EXISTS/SYSTEM_CONFLICT_001",
+    "different workspace cursor rejected",
+    "header metadata validated and cancellation/deadline observed",
+    "gRPC streaming cancellation tested",
+    "all source-compiled codegen outputs deterministic and tracked"
+  ],
+  "security": [
+    "Fixture service only registered in test binary; never production api/admin-api",
+    "No Clerk identity or tenant authorization is simulated as production",
+    "No production credentials"
+  ],
+  "external_gates": [],
+  "remaining_scope": [
+    "P0-02-b Go runtime",
+    "P0-02-c TS integration",
+    "P0-02-d Dart gRPC integration",
+    "P0-02-e CI and negative tests"
+  ],
+  "scope_note": "Generated client/server code compiles; this packet is NOT P0-02 acceptance until cross-language runtime tests are executed."
+}
