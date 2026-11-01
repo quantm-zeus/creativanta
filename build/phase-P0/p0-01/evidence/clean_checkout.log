@@ -1,0 +1,56 @@
+command: git clone --local --no-hardlinks --branch feat/p0-01-integration <local-project> <temporary-repo>
+checked_at: 2026-11-01T02:16:09Z
+clean_commit: fce80b7
+verify_new_checkout
+strict_env:
+P0_TOOLCHAIN_PASS: Go 1.27.3, Flutter 3.47.9, Dart 3.13.7, Node 24, pnpm 10.34.9, Buf 1.75.0, govulncheck 1.9.0
+docs_doctor:
+.......................
+----------------------------------------------------------------------
+Ran 23 tests in 10.072s
+
+OK
+active_markdown=337, tables=165, tenant_tables=140, rpc_bindings=1188, modules=31, build_tasks=60, requirement_units=1333, screen_assignments=245
+Static checks only; runtime, typed transport and external gates require separate evidence.
+[P0-00] D0 and 23 tooling tests: PASS
+[P0-00] Important: this is NOT evidence for D1-D5 or P0-01 acceptance
+Go_gate:
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/bootstrap	1.060s
+Verifying unimplemented worker/outbox/migrate fail-closed...
+PASS: worker fails closed (exit 2)
+PASS: outbox fails closed (exit 2)
+PASS: migrate fails closed (exit 2)
+P0_ENTRYPOINTS_FAIL_CLOSED_PASS
+=== Go Backend Quality Gate: ALL CHECKS PASSED ===
+Node_Web_Admin_gate:
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  02:17:04
+   Duration  487ms (transform 59ms, setup 0ms, collect 63ms, tests 3ms, environment 0ms, prepare 109ms)
+
+Running real SvelteKit SSR smoke (Web + Admin)...
+OK web / 200
+OK web /kham-pha 200
+OK web /sang-tao 200
+OK web /xuat-ban 200
+OK web /kinh-doanh 200
+OK admin / 200
+WEB_ADMIN_REAL_SSR_SMOKE_PASS
+=== Web & Admin Frontend Quality Gate: ALL CHECKS PASSED ===
+Flutter_gate:
+  test_api 0.7.12 (0.7.15 available)
+  vector_math 2.4.0 (2.4.4 available)
+Got dependencies!
+5 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+00:00 +0: loading /tmp/creativanta-clean-AB1enn/repo/apps/mobile/test/widget_test.dart
+00:00 +0: P0 mobile home is explicit about unavailable integrations
+00:01 +1: five navigation destinations change workspace content
+00:02 +2: All tests passed!
+=== Flutter Mobile Quality Gate: ALL CHECKS PASSED ===
+API_smoke_gate:
+REAL_SMOKE_PASS: /healthz 200, /readyz 503, POST 405, admin-api isolated
+Negative_gate:
+NEGATIVE_TESTS_PASS: pipeline, assertion, anti-mask, bad readiness correctly fail
+clean_status:
+CLEAN_CHECKOUT_PASS

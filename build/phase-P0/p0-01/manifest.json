@@ -75,39 +75,143 @@
     {
       "gate": "External AI and Payment Provider Keys",
       "status": "GATED",
-      "reason": "Production credentials cannot be committed; deterministic mock fixtures used until launch approval",
+      "reason": "No external provider integration or mock success is implemented in P0-01; remains unavailable until verified credentials/entitlements and acceptance tests.",
       "deferred_to": "P4-P6"
     }
   ],
-  "checks": [],
+  "checks": [
+    {
+      "command": "bash tooling/ci/check_env.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/toolchain.log",
+      "checked_at": "2026-11-01T02:13:01Z"
+    },
+    {
+      "command": "python tooling/check_docs.py --sql",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/docs_sql.log",
+      "checked_at": "2026-11-01T02:13:03Z"
+    },
+    {
+      "command": "bash tooling/ci/self_test_failure.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/negative.log",
+      "checked_at": "2026-11-01T02:13:04Z"
+    },
+    {
+      "command": "bash tooling/ci/check_go.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/go_api.log",
+      "checked_at": "2026-11-01T02:15:34Z"
+    },
+    {
+      "command": "bash tooling/ci/check_entrypoints.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/entrypoints.log",
+      "checked_at": "2026-11-01T02:15:42Z"
+    },
+    {
+      "command": "bash tooling/ci/smoke_test.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/smoke_go_admin.log",
+      "checked_at": "2026-11-01T02:13:12Z"
+    },
+    {
+      "command": "bash tooling/ci/check_node.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/node_web_admin.log",
+      "checked_at": "2026-11-01T02:13:14Z"
+    },
+    {
+      "command": "bash tooling/ci/check_flutter.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/flutter.log",
+      "checked_at": "2026-11-01T02:14:21Z"
+    },
+    {
+      "command": "actionlint .github/workflows/ci.yml",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/actionlint.log",
+      "checked_at": "2026-11-01T02:14:50Z"
+    },
+    {
+      "command": "docker compose config --quiet",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/compose.log",
+      "checked_at": "2026-11-01T02:14:50Z"
+    },
+    {
+      "command": "docker compose ps and psql SHOW server_version",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/db_health.log",
+      "checked_at": "2026-11-01T02:15:44Z"
+    },
+    {
+      "command": "git clone --local feat/p0-01-integration and run full verification",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-01/evidence/clean_checkout.log",
+      "checked_at": "2026-11-01T02:16:09Z"
+    }
+  ],
   "remaining_scope": [
     {
-      "component": "apps/api Go module commands and implementation",
-      "assigned_to": "feat/p0-01-api worktree"
+      "component": "GitHub Actions remote gate (P0-01)",
+      "assigned_to": "CI on feat/p0-01-integration",
+      "status": "PENDING"
     },
     {
-      "component": "apps/web and apps/admin shell initialization",
-      "assigned_to": "feat/p0-01-web worktree"
+      "component": "Compiled Go/TS/Dart Protobuf transport and behavior contract",
+      "assigned_to": "P0-02",
+      "status": "DEFERRED"
     },
     {
-      "component": "apps/mobile Flutter shell initialization",
-      "assigned_to": "feat/p0-01-mobile worktree"
+      "component": "Clerk identity and workspace membership",
+      "assigned_to": "P0-03",
+      "status": "DEFERRED"
     },
     {
-      "component": "Full branch integration and test execution",
-      "assigned_to": "Orchestrator merge step"
+      "component": "Tenant grants and RLS, privileged database roles",
+      "assigned_to": "P0-04",
+      "status": "DEFERRED"
+    },
+    {
+      "component": "Durable outbox/worker and effect replay",
+      "assigned_to": "P0-05",
+      "status": "DEFERRED"
+    },
+    {
+      "component": "Mobile emulator/device E2E",
+      "assigned_to": "P8",
+      "status": "DEFERRED"
     }
   ],
   "decisions": [
     {
-      "decision": "D1 contract generation deferred to P0-02 because no current-slice RPC is implemented",
+      "decision": "P0-01 may not claim ACCEPTED without an actual successful remote CI run; local tests and a clean clone now pass",
+      "gate": "P0-01",
+      "status": "PENDING_REMOTE_CI"
+    },
+    {
+      "decision": "No canonical RPC is introduced in bootstrap; three-language generated transport is P0-02",
       "gate": "D1",
       "status": "DEFERRED"
     },
     {
-      "decision": "P0-01 not accepted until consolidated checks and CI run with actual artifacts",
-      "gate": "D0/P0-01",
-      "status": "OPEN"
+      "decision": "Admin API and unimplemented worker/outbox/migrate must remain fail-closed; dev PostgreSQL uses nonproduction bootstrap role only",
+      "gate": "P0-01/P0-04",
+      "status": "VERIFIED_P0_SCOPE"
     }
-  ]
+  ],
+  "baseline_commit": "100d699",
+  "implementation_commit": "fce80b7",
+  "requirement_ids": [],
+  "screen_refs": [],
+  "source_hashes": {
+    "docs/02_features/platform/auth.md": "86fde7cb6a3d3aa7bd5f24c2aa6bf04ba0cfa910927f6f723ace0f17ec515610",
+    "docs/02_features/platform/reporting_admin_billing.md": "26feab5d241108cf6679c0c73a0aaedcb3d5ce4a38a3be720800864fa9bda429",
+    "docs/05_system/tech_stack_adr.md": "2cd9c7cee945fc8e3f265ffaa633629429433d66d2c60f2205ad94ddc3e1da23",
+    "docs/06_quality_ops/docker_dev_environment.md": "4fb6c5749a10d5b8a09db6b8ec1b084e812583580428be04aa1aae97a7b95c6c",
+    "docs/06_quality_ops/ci_cd_pipeline.md": "6343db567f3a0c830e9ca412f778006db1e5501e48fa5f346a455b8f60de9a4b"
+  },
+  "local_verification": "PASSED — remote GitHub Actions pending"
 }
