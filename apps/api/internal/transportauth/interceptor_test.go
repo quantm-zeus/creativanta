@@ -350,30 +350,81 @@ func TestAdminResidualTenantRejected(t *testing.T) {
 	_, err := call(intercept(t, ModeAdminAPI, verifier), reqWith(authHeader()), success)
 	requireError(t, err, connect.CodePermissionDenied, "ADMIN_FORBIDDEN_001")
 }
-func TestAmbiguousCorrelationHeadersAreNormalized(t *testing.T) {
-	req := reqWith(authHeader())
-	req.Header().Set("x-correlation-id", suppliedID)
-	req.Header().Add("x-correlation-id", foreignUUID)
-	_, err := call(intercept(t, ModeAPI, verified()), req, func(ctx context.Context, r connect.AnyRequest) (connect.AnyResponse, error) {
-		normalized := r.Header().Values("x-correlation-id")
-		if len(normalized) != 1 || !validUUID(normalized[0]) || normalized[0] == suppliedID {
-			t.Fatalf("ambiguous correlation accepted: %v", normalized)
-		}
-		if r.Header().Get("x-request-id") != normalized[0] {
-			t.Fatal("request id not normalized")
-		}
-		if r.Header().Get("x-workspace-id") != wsUUID {
-			t.Fatal("server workspace not propagated")
-		}
-		if CorrelationIDFromContext(ctx) != normalized[0] {
-			t.Fatal("context trace differs")
-		}
-		return connect.NewResponse(&commonv1.UUID{Value: normalized[0]}), nil
-	})
-	if err != nil {
-		t.Fatal(err)
+func TestAmbiguousCorrelationHeadersAreNotTrusted(t *testing.T) {
+	for _, tc := range []struct {
+		name                 string
+		correlation, request string
+		duplicate            bool
+	}{
+		{"duplicate-correlation", suppliedID, "", true},
+		{"conflicting-trace", suppliedID, foreignUUID, false},
+		{"invalid-correlation-and-valid-request", "broken", suppliedID, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := reqWith(authHeader())
+			req.Header().Set("x-correlation-id", tc.correlation)
+			if tc.request != "" {
+				req.Header().Set("x-request-id", tc.request)
+			}
+			if tc.duplicate {
+				req.Header().Add("x-correlation-id", foreignUUID)
+			}
+			orig := append([]string(nil), req.Header().Values("x-correlation-id")...)
+			res, err := call(intercept(t, ModeAPI, verified()), req, func(ctx context.Context, r connect.AnyRequest) (connect.AnyResponse, error) {
+				id := CorrelationIDFromContext(ctx)
+				if !validUUID(id) || id == suppliedID || id == foreignUUID {
+					t.Fatalf("ambiguous caller trace trusted: %s", id)
+				}
+				principal, ok := PrincipalFromContext(ctx)
+				if !ok || principal.WorkspaceID != wsUUID {
+					t.Fatal("verified principal missing from context")
+				}
+				if len(r.Header().Values("x-correlation-id")) != len(orig) {
+					t.Fatal("mutated caller-owned http.Header")
+				}
+				return connect.NewResponse(&commonv1.UUID{Value: id}), nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res.Header().Get("x-correlation-id") != res.Any().(*commonv1.UUID).GetValue() {
+				t.Fatal("response correlation does not match context")
+			}
+		})
 	}
 }
+func TestDuplicateWorkspaceDoesNotDiscloseBeforeAuthentication(t *testing.T) {
+	v := verified()
+	req := reqWith(map[string]string{})
+	req.Header().Add("x-workspace-id", wsUUID)
+	req.Header().Add("x-workspace-id", foreignUUID)
+	_, err := call(intercept(t, ModeAPI, v), req, success)
+	requireError(t, err, connect.CodeUnauthenticated, "AUTH_FORBIDDEN_001")
+	if v.calls != 0 {
+		t.Fatal("invalid token reached verifier")
+	}
+}
+func TestVerifierChildTimeoutMapsCorrectly(t *testing.T) {
+	v := &fixedVerifier{sess: Session{UserID: userUUID, WorkspaceID: wsUUID}, err: fmt.Errorf("JWKS transport timeout: %w", context.DeadlineExceeded)}
+	_, err := call(intercept(t, ModeAPI, v), reqWith(authHeader()), success)
+	requireError(t, err, connect.CodeDeadlineExceeded, "SYSTEM_TIMEOUT_001")
+	if strings.Contains(err.Error(), "JWKS transport") {
+		t.Fatal("verifier error leaked")
+	}
+}
+func TestRequestCancellationOverridesDownstreamError(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, err := callWithContext(ctx, intercept(t, ModeAPI, verified()), reqWith(authHeader()), func(context.Context, connect.AnyRequest) (connect.AnyResponse, error) {
+		cancel()
+		return nil, errors.New("sql connection error")
+	})
+	requireError(t, err, connect.CodeCanceled, "SYSTEM_CANCELED_001")
+	if strings.Contains(err.Error(), "sql") {
+		t.Fatal("database failure string leaked")
+	}
+}
+
 func TestCanceledBeforeVerificationDoesNotReachHandler(t *testing.T) {
 	v := verified()
 	ctx, cancel := context.WithCancel(context.Background())

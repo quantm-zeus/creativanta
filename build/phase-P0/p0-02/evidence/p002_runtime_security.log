@@ -1,5 +1,5 @@
-check: client-parity-regression
-checked_at: 2026-11-01T12:59:53Z
+check: final-Argon-remediation-security-recheck
+checked_at: 2026-11-01T13:06:22Z
 P0_02_CANONICAL_ERROR_REGISTRY
 ERROR_REGISTRY_PASS 10 registered transport codes
 P0_02_TEST_ONLY_FIXTURE_MUST_NOT_ENTER_PRODUCTION
@@ -9,12 +9,12 @@ P0_02_TYPESCRIPT_WIRE_VALIDATION
 
  RUN  v3.0.7 /home/whaleorcale/evergreen/worktrees/creativanta-p0-02-runtime-integration/packages/shared-types
 
- ✓ test/validation.test.ts (37 tests) 25ms
+ ✓ test/validation.test.ts (37 tests) 26ms
 
  Test Files  1 passed (1)
       Tests  37 passed (37)
-   Start at  12:59:58
-   Duration  839ms (transform 207ms, setup 0ms, collect 209ms, tests 25ms, environment 0ms, prepare 144ms)
+   Start at  13:06:26
+   Duration  663ms (transform 139ms, setup 0ms, collect 142ms, tests 26ms, environment 0ms, prepare 171ms)
 
 P0_02_DART_WIRE_VALIDATION
 00:00 +0: loading /home/whaleorcale/evergreen/worktrees/creativanta-p0-02-runtime-integration/apps/mobile/test/transport_validation_test.dart

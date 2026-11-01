@@ -4,7 +4,7 @@
 
 - `NewServerInterceptor(Options{Mode, Verifier})` returns a server interceptor. `Verifier=nil` always denies; no development auth bypass is present.
 - Only `Verifier.Verify` is authoritative for internal user and selected workspace UUIDs. Caller `x-workspace-id` is compatibility-only and must match; multi-value, empty, invalid or foreign headers are rejected. Admin actor cannot carry workspace context or use a workspace role as internal-admin permission.
-- Correlation ID is normalized, assigned to context/response and to protobuf `ErrorDetail`. Unexpected internal errors are sanitized with canonical codes from `docs/04_contracts/error_catalog.md`.
+- Correlation ID is normalized, assigned to context/response and to protobuf `ErrorDetail`. Unexpected internal errors are sanitized with canonical codes from `docs/04_contracts/error_catalog.md`. Incoming HTTP headers are read-only and never become authorization or a writable trust channel.
 - Unary, streaming, cancellation, duplicate headers, safe error mapping, and a real HTTP Connect handler are covered by test. The test fixture service remains isolated from `cmd/api` and `cmd/admin-api`.
 - This is a **transport trust interface**, not a replacement for Clerk JWT issuer/audience/signature verification, per-object RLS, API RBAC, credit authorization or durable idempotency.
 - Entropy failure on correlation-ID generation is a catastrophic system precondition. The handler refuses with a generic INTERNAL error; it does not fabricate a valid UUID or silently continue. No protobuf correlation detail can be attached if a UUID cannot be securely produced.

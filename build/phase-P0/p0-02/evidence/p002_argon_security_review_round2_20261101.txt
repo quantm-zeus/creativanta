@@ -1,0 +1,43 @@
+**Verdict:** **NEEDS FIX** (hoặc chỉ chấp nhận **PASS FOR TEST-ONLY PREPARATION** với điều kiện khóa chặt trong phạm vi unit test nội bộ trước khi ghép `P0-03` Clerk verifier; **chưa sẵn sàng xác thực thực tế**, hiện mới chỉ có interface `Verifier` và chưa có bất kỳ business RPC nào được mount/active trong production).
+
+### Đánh giá theo các tiêu chí kiểm tra
+
+| Tiêu chí | Trạng thái | Ghi chú kỹ thuật |
+|---|---|---|
+| Không trao quyền cho client header | Đạt một phần | `Session` chỉ lấy từ `Verifier.Verify(ctx, token)` và lưu vào context qua unexported key (`principalContextKey{}`). Tuy nhiên kiểm tra `x-workspace-id` lặp lại vẫn chạy trước khi verify token. |
+| `Authorization`, `x-workspace-id`, correlation rỗng/lặp | Còn lỗ hổng | `Authorization` rỗng/lặp bị chặn; nhưng `x-workspace-id` lặp trả `CodeNotFound` trước khi xác thực token, và cặp `x-correlation-id` / `x-request-id` chưa kiểm tra chéo khi xung đột. |
+| Zero UUID (`00000000-...`) | Đạt | `validUUID` chặn `nilUUID` và ép regex hex chữ thường `^[0-9a-f]{8}-...-[0-9a-f]{12}$` cho `UserID`, `WorkspaceID` và correlation ID. |
+| Cô lập Admin khỏi role/tenant người dùng | Đạt | `ModeAdminAPI` bắt buộc `InternalAdmin && WorkspaceID == ""` và cấm gửi `x-workspace-id`; `ModeAPI` cấm `InternalAdmin == true` và bắt buộc `validUUID(WorkspaceID)`. |
+| Hủy context trước / sau `Verifier` | Còn lỗ hổng | Có kiểm tra `ctx.Err()` của parent context trước và ngay sau `Verifier.Verify`, nhưng lỗi timeout/cancel từ child context bên trong `Verifier.Verify` bị ép thành `CodeUnauthenticated`. |
+| Ngữ nghĩa lỗi child context được bọc (wrapped) | Còn lỗ hổng | `sanitize()` chỉ kiểm tra `errors.Is(err, context.Canceled/DeadlineExceeded)` khi `connect.CodeOf(err) == connect.CodeUnknown`. |
+| Protobuf `ErrorDetail` an toàn | Còn lỗ hổng nhỏ | `safeError` gắn `commonv1.ErrorDetail` với message tĩnh từ `publicErrors`, nhưng nhánh lỗi `correlation()` trả `connect.NewError` trần không qua `safeError`. |
+| Production API chưa đăng ký business RPC trước khi có Clerk | Đạt | Package chỉ cung cấp interceptor + interface `Verifier` (nil verifier sẽ fail-closed mọi request), không mount RPC và chưa có xác thực Clerk thực tế (`P0-03`). |
+| Giả định đồng thời (Concurrency) | Cần lưu ý | `serverInterceptor` bất biến sau khởi tạo (với điều kiện implementation của `Verifier` thread-safe), nhưng interceptor mutate trực tiếp `http.Header` đầu vào. |
+
+---
+
+### 6 vấn đề cụ thể còn tồn tại
+
+1. **Kiểm tra `x-workspace-id` lặp trước khi xác thực token làm lộ `CodeNotFound` cho request chưa xác thực (`authenticate`)**
+   - Trong `authenticate()`, nhánh `if len(workspaceHeaders) > 1` trả về `CodeNotFound` (`SYSTEM_NOTFOUND_001`) **trước khi** kiểm tra định dạng `Bearer ` và trước khi gọi `s.opts.Verifier.Verify(ctx, token)`.
+   - Hệ quả: Caller không có token hợp lệ (chỉ cần gửi 1 header `Authorization` bất kỳ kèm 2 header `x-workspace-id`) nhận được `CodeNotFound` thay vì `CodeUnauthenticated` (`AUTH_FORBIDDEN_001`), vi phạm thứ tự fail-closed authentication-first.
+
+2. **Timeout/cancel từ child context bên trong `Verifier.Verify` bị biến thành `CodeUnauthenticated` (`authenticate`)**
+   - Sau `principal, err := s.opts.Verifier.Verify(ctx, token)`, code chỉ kiểm tra `if ctxErr := ctx.Err(); ctxErr != nil` trên parent `ctx`.
+   - Nếu `Verifier.Verify` tạo child context có timeout riêng (`context.WithTimeout(ctx, ...)`) và trả về lỗi bọc `context.DeadlineExceeded` hoặc `context.Canceled` trong khi parent `ctx.Err()` vẫn là `nil`, nhánh `if err != nil` kế tiếp sẽ trả `safeError(connect.CodeUnauthenticated, "AUTH_FORBIDDEN_001", id)` thay vì phân loại qua `sanitize` (`SYSTEM_TIMEOUT_001` / `SYSTEM_CANCELED_001`).
+
+3. **Lỗi child context được bọc trong `*connect.Error` và lỗi phát sinh khi parent `ctx` đã hủy bị phân loại sai thành `SYSTEM_INTERNAL_001` (`sanitize`, `WrapUnary`, `WrapStreamingHandler`)**
+   - Trong `sanitize()`, `errors.Is(err, context.Canceled)` và `errors.Is(err, context.DeadlineExceeded)` chỉ được kiểm tra khi `connect.CodeOf(err) == connect.CodeUnknown`. Nếu handler hoặc tầng dưới bọc lỗi child context vào `connect.NewError(connect.CodeInternal, fmt.Errorf("...: %w", childCtx.Err()))`, `code` khác `CodeUnknown` nên rơi xuống `default` (`SYSTEM_INTERNAL_001`).
+   - Trong `WrapUnary` và `WrapStreamingHandler`, sau khi gọi `next(...)`, nhánh `if err != nil` chạy trước `if err = ctx.Err(); err != nil`. Nếu request context đã bị hủy/timeout nhưng downstream trả về lỗi I/O không bọc `ctx.Err()`, interceptor trả `SYSTEM_INTERNAL_001` thay vì ưu tiên trạng thái hủy/timeout của `ctx.Err()`.
+
+4. **Xử lý nhập nhằng giữa `x-correlation-id` và `x-request-id` chưa chặt (`correlation`)**
+   - Vòng lặp duyệt `[]string{"x-correlation-id", "x-request-id"}` thoát ngay (`break`) khi `x-correlation-id` có đúng 1 UUID hợp lệ mà không kiểm tra `x-request-id`. Nếu client gửi `x-correlation-id` hợp lệ kèm `x-request-id` bị lặp hoặc mang một UUID khác, sự bất nhất giữa hai trace header bị bỏ qua.
+   - Ngược lại, nếu client gửi `x-correlation-id: ""` (1 giá trị nhưng rỗng/sai định dạng) kèm `x-request-id` hợp lệ, vòng lặp không `break` ở `x-correlation-id` mà rơi sang chấp nhận `x-request-id`.
+
+5. **Nhánh lỗi tạo entropy trong `correlation()` bỏ qua `safeError`, làm mất protobuf `ErrorDetail` (`WrapUnary`, `WrapStreamingHandler`)**
+   - Khi `correlation(...)` trả lỗi (`rand.Read` thất bại), cả unary và streaming đều trả `connect.NewError(connect.CodeInternal, errors.New(publicErrors["SYSTEM_INTERNAL_001"]))` trực tiếp.
+   - Phản hồi này không đi qua `safeError`, dẫn đến thiếu `commonv1.ErrorDetail` trong Connect error details so với mọi lỗi khác của package.
+
+6. **Ghi đè trực tiếp `http.Header` của request (`correlation`, `authenticate`)**
+   - `h.Set("x-correlation-id", ...)`, `h.Set("x-request-id", ...)`, `h.Set("x-workspace-id", ...)` và `h.Del("x-workspace-id")` mutate trực tiếp `map[string][]string` từ `req.Header()` / `conn.RequestHeader()`.
+   - Nếu HTTP middleware tầng ngoài hoặc bài test đồng thời giữ tham chiếu đọc cùng `http.Header` trên goroutine khác sẽ gây data race trên map; đồng thời việc kiểm tra `len(workspaceHeaders)` trong `authenticate()` phải đặt sau khi `Verify` thành công trước khi thực hiện chuẩn hóa header.

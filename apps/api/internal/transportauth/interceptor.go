@@ -74,7 +74,7 @@ func (s *serverInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc 
 	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 		id, err := correlation(req.Header())
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, errors.New(publicErrors["SYSTEM_INTERNAL_001"]))
+			return nil, safeError(connect.CodeInternal, "SYSTEM_INTERNAL_001", nilUUID)
 		}
 		ctx, err = s.authenticate(ctx, req.Header(), id)
 		if err != nil {
@@ -84,10 +84,10 @@ func (s *serverInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc 
 			return nil, sanitize(err, id, s.opts.Mode)
 		}
 		res, err := next(ctx, req)
-		if err != nil {
-			return nil, sanitize(err, id, s.opts.Mode)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, sanitize(ctxErr, id, s.opts.Mode)
 		}
-		if err = ctx.Err(); err != nil {
+		if err != nil {
 			return nil, sanitize(err, id, s.opts.Mode)
 		}
 		if res == nil {
@@ -104,7 +104,7 @@ func (s *serverInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFu
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
 		id, err := correlation(conn.RequestHeader())
 		if err != nil {
-			return connect.NewError(connect.CodeInternal, errors.New(publicErrors["SYSTEM_INTERNAL_001"]))
+			return safeError(connect.CodeInternal, "SYSTEM_INTERNAL_001", nilUUID)
 		}
 		conn.ResponseHeader().Set("x-correlation-id", id)
 		ctx, err = s.authenticate(ctx, conn.RequestHeader(), id)
@@ -114,10 +114,11 @@ func (s *serverInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFu
 		if err = ctx.Err(); err != nil {
 			return sanitize(err, id, s.opts.Mode)
 		}
-		if err = next(ctx, conn); err != nil {
-			return sanitize(err, id, s.opts.Mode)
+		err = next(ctx, conn)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return sanitize(ctxErr, id, s.opts.Mode)
 		}
-		if err = ctx.Err(); err != nil {
+		if err != nil {
 			return sanitize(err, id, s.opts.Mode)
 		}
 		return nil
@@ -129,10 +130,6 @@ func (s *serverInterceptor) authenticate(ctx context.Context, h http.Header, id 
 	}
 	if s.opts.Verifier == nil || len(h.Values("Authorization")) != 1 {
 		return nil, safeError(connect.CodeUnauthenticated, "AUTH_FORBIDDEN_001", id)
-	}
-	workspaceHeaders := h.Values("x-workspace-id")
-	if len(workspaceHeaders) > 1 {
-		return nil, safeError(connect.CodeNotFound, "SYSTEM_NOTFOUND_001", id)
 	}
 	authorization := h.Get("Authorization")
 	if len(authorization) < 8 || len(authorization) > 8199 || !strings.HasPrefix(authorization, "Bearer ") {
@@ -146,8 +143,22 @@ func (s *serverInterceptor) authenticate(ctx context.Context, h http.Header, id 
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		return nil, sanitize(ctxErr, id, s.opts.Mode)
 	}
-	if err != nil || !validUUID(principal.UserID) {
+	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return nil, sanitize(context.Canceled, id, s.opts.Mode)
+		}
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, sanitize(context.DeadlineExceeded, id, s.opts.Mode)
+		}
 		return nil, safeError(connect.CodeUnauthenticated, "AUTH_FORBIDDEN_001", id)
+	}
+	if !validUUID(principal.UserID) {
+		return nil, safeError(connect.CodeUnauthenticated, "AUTH_FORBIDDEN_001", id)
+	}
+	// Tenant header validation only follows successful verified identity.
+	workspaceHeaders := h.Values("x-workspace-id")
+	if len(workspaceHeaders) > 1 {
+		return nil, safeError(connect.CodeNotFound, "SYSTEM_NOTFOUND_001", id)
 	}
 	if s.opts.Mode == ModeAdminAPI {
 		if !principal.InternalAdmin || principal.WorkspaceID != "" {
@@ -165,29 +176,26 @@ func (s *serverInterceptor) authenticate(ctx context.Context, h http.Header, id 
 			return nil, safeError(connect.CodeNotFound, "SYSTEM_NOTFOUND_001", id)
 		}
 	}
-	// Normalize metadata seen by downstream handlers to the verified identity.
-	// Domain handlers must still use PrincipalFromContext for authorization.
-	if s.opts.Mode == ModeAPI {
-		h.Set("x-workspace-id", principal.WorkspaceID)
-	} else {
-		h.Del("x-workspace-id")
-	}
+	// The incoming header is read-only. It is NOT the authorization source;
+	// downstream handlers must use PrincipalFromContext instead.
 	ctx = context.WithValue(ctx, principalContextKey{}, principal)
 	ctx = context.WithValue(ctx, correlationContextKey{}, id)
 	return ctx, nil
 }
 func correlation(h http.Header) (string, error) {
 	var id string
-	for _, key := range []string{"x-correlation-id", "x-request-id"} {
-		values := h.Values(key)
-		if len(values) > 1 {
-			break
-		} // ambiguous caller trace headers are not trustworthy
-		if len(values) == 1 && validUUID(values[0]) {
-			id = values[0]
-			break
+	correlationHeaders := h.Values("x-correlation-id")
+	requestHeaders := h.Values("x-request-id")
+	switch {
+	case len(correlationHeaders) == 0 && len(requestHeaders) == 1 && validUUID(requestHeaders[0]):
+		id = requestHeaders[0]
+	case len(correlationHeaders) == 1 && validUUID(correlationHeaders[0]):
+		if len(requestHeaders) == 0 || (len(requestHeaders) == 1 && requestHeaders[0] == correlationHeaders[0]) {
+			id = correlationHeaders[0]
 		}
 	}
+	// Conflicting, duplicate or malformed trace headers never become trusted
+	// identifiers. No client-provided headers are mutated (race-safe).
 	if id == "" {
 		var raw [16]byte
 		if _, err := rand.Read(raw[:]); err != nil {
@@ -197,9 +205,6 @@ func correlation(h http.Header) (string, error) {
 		raw[8] = raw[8]&0x3f | 0x80
 		id = fmt.Sprintf("%x-%x-%x-%x-%x", raw[:4], raw[4:6], raw[6:8], raw[8:10], raw[10:])
 	}
-	// Canonicalize the headers visible to downstream Connect handlers.
-	h.Set("x-correlation-id", id)
-	h.Set("x-request-id", id)
 	return id, nil
 }
 
