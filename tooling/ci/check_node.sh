@@ -99,4 +99,7 @@ pnpm --dir apps/admin build
 echo "Running pnpm --dir apps/admin test..."
 pnpm --dir apps/admin test
 
+echo "Running real SvelteKit SSR smoke (Web + Admin)..."
+bash "${SCRIPT_DIR}/check_web_smoke.sh"
+
 echo "=== Web & Admin Frontend Quality Gate: ALL CHECKS PASSED ==="

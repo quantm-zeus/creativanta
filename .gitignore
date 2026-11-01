@@ -34,3 +34,6 @@ apps/web/build/
 apps/admin/.svelte-kit/
 apps/admin/build/
 node_modules/
+
+# Local-only development credentials (never commit)
+.env.dev.local

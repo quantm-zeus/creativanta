@@ -1,0 +1,50 @@
+# Isolated development services; no production credentials or global ports.
+name: creativanta-p0
+
+services:
+  postgres:
+    image: postgres:17.10@sha256:7958605b474b3d264a969cb3a123d6aa00ad1e1fe9da8a69984dabb704d93317
+    profiles: [database]
+    restart: "no"
+    environment:
+      POSTGRES_USER: creativanta_dev
+      POSTGRES_DB: creativanta_dev
+      POSTGRES_PASSWORD: ${CV_DB_DEV_PASSWORD:?Set a local-only password in .env.dev.local}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - creativanta_pg17_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U creativanta_dev -d creativanta_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    security_opt:
+      - no-new-privileges:true
+    networks: [dev-internal]
+
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:v2.0.2@sha256:061f00b201b58e12f974e4e96c761a881ee1c05e9d8ee967466a604b7299753b
+    profiles: [async]
+    restart: "no"
+    command: ["--maxmemory=512mb", "--proactor_threads=1", "--cache_mode=true"]
+    mem_limit: 768m
+    ports:
+      - "127.0.0.1:16379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "127.0.0.1", "-p", "6379", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    security_opt:
+      - no-new-privileges:true
+    networks: [dev-internal]
+
+networks:
+  dev-internal:
+    internal: false
+
+volumes:
+  creativanta_pg17_dev:
+    name: creativanta_p0_pg17_dev

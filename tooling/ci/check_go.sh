@@ -63,15 +63,18 @@ go vet ./...
 echo "go vet check passed."
 
 # 6. Vulnerability check (govulncheck if installed)
-if command -v govulncheck >/dev/null 2>&1; then
-    echo "Running govulncheck ./..."
-    govulncheck ./...
-else
-    echo "govulncheck not installed; skipping vulnerability scan (run govulncheck in CI)."
+if ! command -v govulncheck >/dev/null 2>&1; then
+    echo "FATAL: govulncheck missing; install pinned v1.9.0 before Go verification" >&2
+    exit 1
 fi
+echo "Running pinned govulncheck ./..."
+govulncheck ./...
 
 # 7. Unit and Race Detection Tests
 echo "Running unit tests with thread race detector (go test -race -count=1 ./...)..."
 go test -race -v -count=1 ./...
+
+echo "Verifying unimplemented worker/outbox/migrate fail-closed..."
+bash "${SCRIPT_DIR}/check_entrypoints.sh"
 
 echo "=== Go Backend Quality Gate: ALL CHECKS PASSED ==="

@@ -1,0 +1,6 @@
+command: bash tooling/ci/check_entrypoints.sh
+checked_at: 2026-11-01T02:15:42Z
+PASS: worker fails closed (exit 2)
+PASS: outbox fails closed (exit 2)
+PASS: migrate fails closed (exit 2)
+P0_ENTRYPOINTS_FAIL_CLOSED_PASS

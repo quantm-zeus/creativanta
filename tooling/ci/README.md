@@ -21,8 +21,10 @@ All scripts adhere strictly to **docs/00_index/BUILD_EXECUTION_CONTRACT.md** and
 |---|---|---|
 | `check_env.sh` | Verifies pinned versions across toolchains | Go 1.27.3, Flutter 3.47.9, Node 24, pnpm 10.34.9, Buf 1.75.0 |
 | `check_d0.sh` | Runs D0 documentation static invariant checks | `python3 tooling/check_docs.py` |
-| `check_go.sh` | Go format, module verification, static analysis, unit race tests | `gofmt -l`, `go vet`, `go test -race` in `apps/api` |
+| `check_entrypoints.sh` | Tests unimplemented worker, outbox, migrate exit non-zero, no fake success | 3 compiled Go binaries |
+| `check_go.sh` | Go format, module verification, static analysis, unit race tests | `gofmt -l`, `go vet`, `govulncheck v1.9.0`, `go test -race` in `apps/api` |
 | `check_node.sh` | Web & Admin frontend installation, build, lint, and tests | `pnpm --frozen-lockfile` in `apps/web`, `apps/admin` |
+| `check_web_smoke.sh` | Real built SvelteKit SSR smoke on localhost | Five Web routes, isolated Admin deny page, unknown route 404 |
 | `check_flutter.sh` | Flutter mobile analysis and unit tests | `flutter analyze`, `flutter test` in `apps/mobile` |
 | `check_proto.sh` | Buf linting and contract drift checking | `buf lint`, `buf breaking` |
 | `smoke_test.sh` | Live smoke probe testing liveness and fail-closed readiness | Validates HTTP 200 on `/healthz` and HTTP 503 on `/readyz` |

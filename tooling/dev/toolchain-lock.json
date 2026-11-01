@@ -9,7 +9,8 @@
     "dart": "3.13.7",
     "node": "24.21.0",
     "pnpm": "10.34.9",
-    "buf": "1.75.0"
+    "buf": "1.75.0",
+    "govulncheck": "1.9.0"
   },
   "environment": "VPS dev sandbox; production deployments excluded",
   "rules": [
