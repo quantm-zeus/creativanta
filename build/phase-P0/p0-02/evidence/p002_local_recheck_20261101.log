@@ -1,0 +1,75 @@
+START=2026-11-01T12:41:04Z
+PROTO_GATE
+CONTRACT_CODEGEN_DRIFT
+PROTO_SOURCE_LINT
+GENERATE_GO_TS_DART
+GO_COMPILE
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1/transporttestv1connect	[no test files]
+all modules verified
+TS_COMPILE
+
+> @creativanta/shared-types@0.1.0 check /home/whaleorcale/evergreen/worktrees/creativanta-p0-02-integration/packages/shared-types
+> tsc --noEmit -p tsconfig.json
+
+DART_COMPILE
+Analyzing generated...
+No issues found!
+REJECT_GENERATED_CODE_DRIFT
+PROTO_4_TARGETS_PASS mode=verify
+INITIAL_PROTO_BASELINE: origin/main contains zero protos
+TEST_ONLY_FIXTURE_ISOLATION
+GO_TRANSPORT_NEGATIVE_TESTS_AND_RACE
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1/transporttestv1connect	[no test files]
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportfixture	1.285s
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/transport-fixture-test	[no test files]
+all modules verified
+UNIT_TYPESCRIPT
+
+> @creativanta/shared-types@0.1.0 test /home/whaleorcale/evergreen/worktrees/creativanta-p0-02-integration/packages/shared-types
+> vitest run test/unit.test.ts
+
+
+ RUN  v3.0.7 /home/whaleorcale/evergreen/worktrees/creativanta-p0-02-integration/packages/shared-types
+
+ ✓ test/unit.test.ts (4 tests) 7ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  12:41:21
+   Duration  814ms (transform 140ms, setup 0ms, collect 309ms, tests 7ms, environment 0ms, prepare 146ms)
+
+UNIT_DART
+00:00 +0: loading /home/whaleorcale/evergreen/worktrees/creativanta-p0-02-integration/apps/mobile/test/generated_proto_test.dart
+00:00 +0: Generated Protobuf Tests Money serialization and exact string deserialization
+00:00 +1: Generated Protobuf Tests CommandContext instantiation with UUID and field validation
+00:00 +2: All tests passed!
+P0_PROTO_CONTRACT_AND_LOCAL_TEST_PASS
+REAL_THREE_LANGUAGE
+BUILD_REAL_GO_TRANSPORT_FIXTURE
+GO_H2C_TEST_ONLY_SERVER_STARTED
+RUN_TYPESCRIPT_CONNECT_REAL_CLIENT
+
+> @creativanta/shared-types@0.1.0 test:transport /home/whaleorcale/evergreen/worktrees/creativanta-p0-02-integration/packages/shared-types
+> vitest run test/transport.test.ts
+
+
+ RUN  v3.0.7 /home/whaleorcale/evergreen/worktrees/creativanta-p0-02-integration/packages/shared-types
+
+ ✓ test/transport.test.ts (5 tests) 193ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  12:41:31
+   Duration  1.08s (transform 122ms, setup 0ms, collect 393ms, tests 193ms, environment 0ms, prepare 131ms)
+
+RUN_DART_GRPC_HTTP2_REAL_CLIENT
+DART_GRPC_REAL_TRANSPORT_PASS
+GO_TS_DART_SAME_HANDLER_INTEGRATION_PASS
+NEGATIVE
+NEGATIVE_TESTS_PASS: pipeline, assertion, anti-mask, bad readiness correctly fail
+YAML_LINT
+COMPLETE=2026-11-01T12:41:39Z

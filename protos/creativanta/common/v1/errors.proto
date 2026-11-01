@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package creativanta.common.v1;
+
+import "creativanta/common/v1/types.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1;commonv1";
+
+// Field-level validation or domain error entry.
+// Validation belongs to application code:
+// - field: required dot-delimited field path, bounds 1..255 chars.
+// - reason: required human-readable or machine-parsable field failure reason, bounds 1..500 chars.
+message FieldError {
+  string field = 1;
+  string reason = 2;
+}
+
+// Canonical wire error detail payload.
+// HTTP/gRPC status code mappings and error codes are defined canonically in docs/04_contracts/error_catalog.md.
+// Do not invent error codes in proto definitions.
+// Validation belongs to application code:
+// - code: required canonical error code from docs/04_contracts/error_catalog.md, bounds 1..128 chars.
+// - message: required safe human-readable summary, bounds 1..2000 chars.
+// - correlation_id: required request correlation UUID.
+// - field_errors: optional list of field-level errors, bounds 0..100 items.
+// - retry_after_ms: optional non-negative backoff duration in milliseconds, bounds >= 0.
+// - fallback_action: optional client recovery hint from error_catalog.md, bounds 0..128 chars.
+message ErrorDetail {
+  string code = 1;
+  string message = 2;
+  UUID correlation_id = 3;
+  repeated FieldError field_errors = 4;
+  optional int64 retry_after_ms = 5;
+  string fallback_action = 6;
+}

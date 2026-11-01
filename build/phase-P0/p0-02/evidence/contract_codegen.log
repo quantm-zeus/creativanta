@@ -1,0 +1,16 @@
+PROTO_SOURCE_LINT
+GENERATE_GO_TS_DART
+GO_COMPILE
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1/transporttestv1connect	[no test files]
+all modules verified
+TS_COMPILE
+
+> @creativanta/shared-types@0.1.0 check /home/whaleorcale/evergreen/worktrees/creativanta-p0-02-contracts/packages/shared-types
+> tsc --noEmit -p tsconfig.json
+
+DART_COMPILE
+Analyzing generated...
+No issues found!
+PROTO_4_TARGETS_PASS mode=generate

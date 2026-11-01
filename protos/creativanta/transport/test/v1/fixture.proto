@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package creativanta.transport.test.v1;
+
+import "creativanta/common/v1/types.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1;transporttestv1";
+
+// TEST-ONLY TRANSPORT VERIFICATION CONTRACT.
+// This service is strictly for the integration test server to verify that TypeScript Connect
+// and Dart gRPC clients reach the exact same Go generated handler implementation.
+// It MUST NEVER be registered on the production API or isolated admin API.
+service TransportFixtureService {
+  // Verifies unary request/response serialization, auth context propagation, and workspace scoping.
+  rpc Echo(EchoRequest) returns (EchoResponse);
+
+  // Verifies mutating command envelope handling and idempotency replay detection.
+  rpc Execute(ExecuteRequest) returns (ExecuteResponse);
+
+  // Verifies cursor pagination, filtering, and sorting parameters across transports.
+  rpc List(ListRequest) returns (ListResponse);
+
+  // Verifies server-streaming delivery over Connect and gRPC transports.
+  rpc Watch(WatchRequest) returns (stream WatchResponse);
+}
+
+// Unary echo request.
+// Validation belongs to application code:
+// - text: required non-empty string, bounds 1..1000 chars.
+// - workspace_id: required canonical UUID string, length 36 chars.
+message EchoRequest {
+  string text = 1;
+  string workspace_id = 2;
+}
+
+// Unary echo response.
+message EchoResponse {
+  string text = 1;
+  string workspace_id = 2;
+}
+
+// Mutating command fixture request.
+// Validation belongs to application code:
+// - context: required CommandContext with valid workspace_id and idempotency_key (1..255 chars).
+// - payload: required string payload, bounds 1..4096 chars.
+message ExecuteRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string payload = 2;
+}
+
+// Mutating command fixture response.
+message ExecuteResponse {
+  string payload = 1;
+  bool replayed = 2;
+}
+
+// Paginated list fixture request.
+// Validation belongs to application code:
+// - pagination: optional Pagination (page_size bounds 1..100, default 20).
+// - workspace_id: required canonical UUID string, length 36 chars.
+// - filter: optional filter expression, bounds 0..255 chars.
+// - sort: optional sort expression, bounds 0..128 chars.
+message ListRequest {
+  creativanta.common.v1.Pagination pagination = 1;
+  string workspace_id = 2;
+  string filter = 3;
+  string sort = 4;
+}
+
+// Paginated list fixture response.
+message ListResponse {
+  repeated string items = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+// Server-streaming watch fixture request.
+// Validation belongs to application code:
+// - max_events: bounds 1..100.
+message WatchRequest {
+  int32 max_events = 1;
+}
+
+// Server-streaming watch fixture event.
+// Validation belongs to application code:
+// - sequence: 1-based event sequence number, bounds >= 1.
+// - message: non-empty event payload, bounds 1..1000 chars.
+message WatchResponse {
+  int32 sequence = 1;
+  string message = 2;
+}

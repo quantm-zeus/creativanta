@@ -1,0 +1,22 @@
+{
+  "source": "docs/04_contracts/protobuf_contracts.md#4-code-generation",
+  "phase": "P0-02",
+  "versions": {
+    "buf": "1.75.0",
+    "protocGenGo": "1.36.12",
+    "protocGenConnectGo": "1.21.1",
+    "protocGenEs": "2.16.0",
+    "protocGenDart": "25.1.0",
+    "goRuntimeProtobuf": "1.36.12",
+    "goRuntimeConnect": "1.21.1",
+    "npmProtobuf": "2.16.0",
+    "dartProtobuf": "6.1.0",
+    "dartGrpc": "5.2.0"
+  },
+  "policy": {
+    "generatedArtifactsCommitted": true,
+    "productionTestFixtureRegistered": false,
+    "sourceOfTruth": "protos/",
+    "breakingAgainst": "origin/main once first proto snapshot exists"
+  }
+}
