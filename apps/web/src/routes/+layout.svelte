@@ -1,8 +1,10 @@
 <script lang="ts">
   import '../app.css';
+  import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import Header from '$lib/components/Header.svelte';
   import Navigation from '$lib/components/Navigation.svelte';
+  import { authStore } from '$lib/auth';
   import type { Snippet } from 'svelte';
 
   interface Props {
@@ -10,6 +12,10 @@
   }
 
   let { children }: Props = $props();
+
+  onMount(() => {
+    authStore.init();
+  });
 </script>
 
 <div class="min-h-screen flex flex-col bg-[#fbf9f5] text-[#242924]">
