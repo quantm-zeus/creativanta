@@ -165,7 +165,15 @@ Future<void> main() async {
       );
     }
 
-    final watchStream = client.watch(
+    // Use an independent HTTP/2 channel for streaming. The prior unary channel
+    // intentionally exercised a deadline; grpc-dart may close its connection.
+    final watchChannel = ClientChannel(
+      uri.host,
+      port: uri.port,
+      options: const ChannelOptions(credentials: ChannelCredentials.insecure()),
+    );
+    final watchClient = TransportFixtureServiceClient(watchChannel);
+    final watchStream = watchClient.watch(
       WatchRequest(maxEvents: 5),
       options: baseOptions,
     );
