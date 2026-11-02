@@ -56,6 +56,7 @@
     "apps/api/internal/migrate/migrator_test.go": "51f63726537863cf3f152bf4823fb441ad889377495eb82cc3edf8b0bae162ae",
     "apps/api/internal/rbac/phase_exposure_test.go": "08acce6050b922074b66a9ae9fba02fd3f22881818200e4543174d5ae0817abb",
     "apps/api/internal/serviceidentity/serviceidentity_postgres_test.go": "79fbfcbc2d1ac623931f025774822aa7bc487171076868ecf73cc1cbf2808f1d",
+    "apps/api/internal/serviceidentity/store.go": "bfab5db45d00b470fe565732fc5b5f03b12efa77e1c31a755e32c6ea84f2c1bd",
     "infra/migrations/00001_p0_04_tenant_schema_rls_and_grants.sql": "680a3a1755ac4bc1a9d3e7f557b6728dbb3e13cdb6f1653e55d4a976ec029dc8"
   },
   "scope_items": [

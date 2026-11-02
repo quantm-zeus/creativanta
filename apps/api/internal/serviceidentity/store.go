@@ -466,27 +466,26 @@ func (p *PgStore) RecordUsage(ctx context.Context, workspaceID, apiKeyID string,
 		readInc = 0
 		writeInc = 1
 	}
-	errorInc := 0
+	error4xxInc := 0
 	if isError {
-		errorInc = 1
+		error4xxInc = 1
 	}
 
-	// Upsert into api_usage_daily
+	// Upsert into api_usage_daily per docs/04_contracts/database_schema.md §18.4A
 	upsertQuery := `
 		INSERT INTO api_usage_daily (
-			workspace_id, api_key_id, usage_date, request_count, read_count, write_count, error_count, billable_ai_credits, created_at, updated_at
+			workspace_id, api_key_id, usage_date, read_requests, write_requests, error_4xx_count, error_5xx_count, billable_ai_credits, created_at, updated_at
 		) VALUES (
-			$1::uuid, $2::uuid, $3::date, 1, $4, $5, $6, $7, NOW(), NOW()
+			$1::uuid, $2::uuid, $3::date, $4, $5, $6, 0, $7, NOW(), NOW()
 		)
-		ON CONFLICT (workspace_id, api_key_id, usage_date) DO UPDATE SET
-			request_count = api_usage_daily.request_count + 1,
-			read_count = api_usage_daily.read_count + EXCLUDED.read_count,
-			write_count = api_usage_daily.write_count + EXCLUDED.write_count,
-			error_count = api_usage_daily.error_count + EXCLUDED.error_count,
+		ON CONFLICT (api_key_id, usage_date) DO UPDATE SET
+			read_requests = api_usage_daily.read_requests + EXCLUDED.read_requests,
+			write_requests = api_usage_daily.write_requests + EXCLUDED.write_requests,
+			error_4xx_count = api_usage_daily.error_4xx_count + EXCLUDED.error_4xx_count,
 			billable_ai_credits = api_usage_daily.billable_ai_credits + EXCLUDED.billable_ai_credits,
 			updated_at = NOW()
 	`
-	_, err = tx.Exec(ctx, upsertQuery, workspaceID, apiKeyID, date, readInc, writeInc, errorInc, billableAICredits)
+	_, err = tx.Exec(ctx, upsertQuery, workspaceID, apiKeyID, date, readInc, writeInc, error4xxInc, billableAICredits)
 	if err != nil {
 		return err
 	}
@@ -499,7 +498,8 @@ func (p *PgStore) RecordUsage(ctx context.Context, workspaceID, apiKeyID string,
 
 func (p *PgStore) GetUsage(ctx context.Context, workspaceID, apiKeyID string, startDate, endDate string) ([]UsageMetrics, error) {
 	query := `
-		SELECT workspace_id, api_key_id, usage_date::text, request_count, read_count, write_count, error_count, billable_ai_credits
+		SELECT workspace_id, api_key_id, usage_date::text, (read_requests + write_requests) AS request_count,
+		       read_requests, write_requests, (error_4xx_count + error_5xx_count) AS error_count, billable_ai_credits
 		FROM api_usage_daily
 		WHERE workspace_id = $1::uuid AND api_key_id = $2::uuid
 		  AND ($3 = '' OR usage_date >= $3::date)
