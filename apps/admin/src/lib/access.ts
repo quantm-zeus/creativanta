@@ -345,3 +345,66 @@ export function evaluateKillSwitchToggle(params: {
     reason: `Đã cập nhật Công tắc ngắt khẩn cấp (${params.flagKey}) và phát sự kiện feature_flag.toggled.`
   };
 }
+
+export const STALE_ARTICLE_THRESHOLD_DAYS = 90;
+
+export interface KBAdminVerdict {
+  allowed: boolean;
+  errorCode: 'OK' | 'ADMIN_FORBIDDEN_001' | 'AUTH_FORBIDDEN_001';
+  reason: string;
+}
+
+/**
+ * Evaluates internal admin permission to manage Knowledge Base articles.
+ * Workspace roles are strictly forbidden (Acceptance Target: Internal Admin Isolation).
+ */
+export function evaluateKBAdminAccess(
+  session?: VerifiedAdminSession | null,
+  action: 'create' | 'update' | 'publish' | 'archive' = 'publish'
+): KBAdminVerdict {
+  if (!session) {
+    return {
+      allowed: false,
+      errorCode: 'AUTH_FORBIDDEN_001',
+      reason: 'Yêu cầu phiên đăng nhập Admin nội bộ đã xác thực.'
+    };
+  }
+  if (!session.internalAdmin || isWorkspaceRole(session.role) || !isInternalAdminRole(session.role)) {
+    return {
+      allowed: false,
+      errorCode: 'ADMIN_FORBIDDEN_001',
+      reason: `Vai trò Workspace (${session.role || 'unknown'}) không được phép quản trị bài viết Knowledge Base.`
+    };
+  }
+  if (session.role !== 'super_admin' && session.role !== 'content_admin' && session.role !== 'ops_admin') {
+    return {
+      allowed: false,
+      errorCode: 'ADMIN_FORBIDDEN_001',
+      reason: `Vai trò ${session.role} không có quyền thực hiện thao tác ${action} trên Knowledge Base.`
+    };
+  }
+  return {
+    allowed: true,
+    errorCode: 'OK',
+    reason: `Thao tác ${action} bài viết Knowledge Base được phê duyệt.`
+  };
+}
+
+/**
+ * Verifies whether a Knowledge Base article is overdue for review (>= 90 days stale).
+ * Per docs/02_features/platform/help_center.md Acceptance Criteria 2.
+ */
+export function isArticleStale(
+  lastReviewedAtIso: string,
+  nowMs = Date.now()
+): { isStale: boolean; daysSinceReview: number } {
+  const reviewedMs = Date.parse(lastReviewedAtIso);
+  if (isNaN(reviewedMs)) {
+    return { isStale: true, daysSinceReview: 999 };
+  }
+  const days = Math.floor((nowMs - reviewedMs) / (1000 * 60 * 60 * 24));
+  return {
+    isStale: days >= STALE_ARTICLE_THRESHOLD_DAYS,
+    daysSinceReview: days
+  };
+}

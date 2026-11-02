@@ -6,6 +6,9 @@ import 'package:creativanta_mobile/ui/auth/operator_mode_sheet.dart';
 import 'package:creativanta_mobile/ui/auth/session_expired_dialog.dart';
 import 'package:creativanta_mobile/ui/auth/sign_in_screen.dart';
 import 'package:creativanta_mobile/ui/auth/workspace_switcher_sheet.dart';
+import 'package:creativanta_mobile/ui/notification/notification_sheet.dart';
+import 'package:creativanta_mobile/ui/help/help_sheet.dart';
+import 'package:creativanta_mobile/ui/home/why_number_sheet.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -253,6 +256,8 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
     super.dispose();
   }
 
+  String _uiState = 'normal'; // 'normal' | 'loading' | 'empty' | 'error' | 'repair'
+
   void _openWorkspaceSwitcher() {
     WorkspaceSwitchSheet.show(
       context: context,
@@ -274,6 +279,56 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
           setState(() {});
         }
       },
+    );
+  }
+
+  void _openNotificationSheet() {
+    NotificationSheet.show(context);
+  }
+
+  void _openHelpSheet() {
+    HelpSheet.show(context);
+  }
+
+  void _openWhyNumberSheet() {
+    WhyNumberSheet.show(
+      context: context,
+      metricTitle: 'Doanh thu mẫu minh họa (Demo GMV)',
+      displayValue: '48.500.000 ₫',
+      dataSourceBadge: 'DEMO',
+      confidenceLevel: 'LOW',
+      calculationFormula: 'SUM(demo_fixture_orders.amount) WHERE status = "completed"',
+      caveats: const [
+        'Dữ liệu mẫu fixture tĩnh độc lập phục vụ trải nghiệm.',
+        'Tuyệt đối không cộng gộp vào tổng doanh thu thực tế của tài khoản (Acceptance Target 3).',
+      ],
+      nextSteps: const [
+        'Kết nối tài khoản TikTok Shop hoặc Shopee trong phần Kênh kết nối.',
+        'Đồng bộ đơn hàng thực tế qua giao thức OAuth.',
+      ],
+      isCustomerVerified: false,
+    );
+  }
+
+  Widget _buildUIStateChip(String key, String label) {
+    final isSelected = _uiState == key;
+    return GestureDetector(
+      onTap: () => setState(() => _uiState = key),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? CreativantaApp.forest : const Color(0xFFF1EFEA),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: isSelected ? Colors.white : const Color(0xFF7D837B),
+          ),
+        ),
+      ),
     );
   }
 
@@ -342,7 +397,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
         actions: [
           // Operator mode chip trigger
           Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 4),
             child: ActionChip(
               avatar: const Icon(
                 Icons.tune_rounded,
@@ -362,6 +417,21 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
               side: const BorderSide(color: Color(0xFFC7DCC8)),
               onPressed: _openOperatorModeSheet,
             ),
+          ),
+          // Help Center trigger button
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded, size: 20, color: CreativantaApp.ink),
+            tooltip: 'Trung tâm trợ giúp',
+            onPressed: _openHelpSheet,
+          ),
+          // Scoped Notifications Bell trigger
+          IconButton(
+            icon: const Badge(
+              label: Text('2', style: TextStyle(fontSize: 9)),
+              child: Icon(Icons.notifications_outlined, size: 20, color: CreativantaApp.ink),
+            ),
+            tooltip: 'Thông báo',
+            onPressed: _openNotificationSheet,
           ),
           // User session menu
           PopupMenuButton<String>(
@@ -505,7 +575,320 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                   color: Color(0xFF7D837B),
                 ),
               ),
-              const SizedBox(height: 25),
+              if (selectedIndex == 0) ...[
+                const SizedBox(height: 16),
+                // 4 UI States Switcher
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFEFA),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE8E5DC)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Kiểm thử 4 trạng thái giao diện:',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF7D837B),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          _buildUIStateChip('normal', '1. Chuẩn'),
+                          _buildUIStateChip('loading', '2. Đang tải'),
+                          _buildUIStateChip('empty', '3. Trống'),
+                          _buildUIStateChip('error', '4. Lỗi'),
+                          _buildUIStateChip('repair', '5. Sửa lỗi'),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Error State Banner
+                if (_uiState == 'error') ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFBEEE9),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: CreativantaApp.vermilion.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.error_outline_rounded, color: CreativantaApp.vermilion, size: 18),
+                            SizedBox(width: 8),
+                            Text(
+                              'Lỗi đồng bộ dữ liệu quyết định (M01-E-503)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: CreativantaApp.vermilion,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Không thể kết nối máy chủ phân tích tín hiệu thời gian thực.',
+                          style: TextStyle(fontSize: 11, color: CreativantaApp.ink),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            ElevatedButton(
+                              onPressed: () => setState(() => _uiState = 'normal'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: CreativantaApp.vermilion,
+                                foregroundColor: Colors.white,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              child: const Text('Thử lại', style: TextStyle(fontSize: 11)),
+                            ),
+                            const SizedBox(width: 8),
+                            TextButton(
+                              onPressed: _openHelpSheet,
+                              child: const Text('Xem tài liệu trợ giúp', style: TextStyle(fontSize: 11)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Repair State Card
+                if (_uiState == 'repair') ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF9C3),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFF854D0E).withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: Color(0xFF854D0E), size: 24),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'Cần sửa: TikTok Shop bị ngắt kết nối',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF854D0E),
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Cần cấp lại quyền truy cập sau 30 ngày.',
+                                style: TextStyle(fontSize: 10.5, color: CreativantaApp.ink),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF854D0E),
+                            foregroundColor: Colors.white,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          child: const Text('Cấp lại', style: TextStyle(fontSize: 11)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Loading Skeleton State
+                if (_uiState == 'loading') ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8E5DC),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'Đang tải nhịp quyết định theo vai trò...',
+                        style: TextStyle(fontSize: 12, color: Color(0xFF7D837B)),
+                      ),
+                    ),
+                  ),
+                ],
+
+                // Empty State
+                if (_uiState == 'empty') ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFEFA),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE8E5DC)),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.check_circle_outline_rounded, color: CreativantaApp.forest, size: 36),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Tất cả quyết định hôm nay đã hoàn thành',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Không có cảnh báo tồn kho hoặc vi phạm SLA nào.',
+                          style: TextStyle(fontSize: 11, color: Color(0xFF7D837B)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Strict Revenue Totals Isolation Card (Target 3)
+                if (_uiState == 'normal') ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFEFA),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE8E5DC)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'DOANH THU & SỐ LIỆU MINH BẠCH',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.1,
+                                color: Color(0xFF7D837B),
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: _openWhyNumberSheet,
+                              icon: const Icon(Icons.info_outline_rounded, size: 14),
+                              label: const Text('Tại sao có số này?', style: TextStyle(fontSize: 11)),
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                visualDensity: VisualDensity.compact,
+                                foregroundColor: CreativantaApp.forest,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            // Customer Verified Total
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFBF9F5),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: CreativantaApp.forest.withValues(alpha: 0.2)),
+                                ),
+                                child: const Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Thực tế (Verified)',
+                                      style: TextStyle(
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: CreativantaApp.forest,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      '0 ₫',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: 'monospace',
+                                        color: CreativantaApp.ink,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'Chưa có đơn thực',
+                                      style: TextStyle(fontSize: 9.5, color: Color(0xFF7D837B)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            // Demo Fixture (Strictly Isolated)
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFBEEE9),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: CreativantaApp.vermilion.withValues(alpha: 0.3)),
+                                ),
+                                child: const Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'DEMO (Cách ly)',
+                                      style: TextStyle(
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: CreativantaApp.vermilion,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      '48.500.000 ₫',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: 'monospace',
+                                        color: CreativantaApp.vermilion,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'Không cộng dồn',
+                                      style: TextStyle(fontSize: 9.5, color: CreativantaApp.vermilion),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+              const SizedBox(height: 20),
               Container(
                 decoration: BoxDecoration(
                   color: CreativantaApp.forest,

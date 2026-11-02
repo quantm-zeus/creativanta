@@ -4,6 +4,8 @@
   import { page } from '$app/stores';
   import Header from '$lib/components/Header.svelte';
   import Navigation from '$lib/components/Navigation.svelte';
+  import NotificationDrawer from '$lib/components/NotificationDrawer.svelte';
+  import HelpDrawer from '$lib/components/HelpDrawer.svelte';
   import { authStore } from '$lib/auth';
   import type { Snippet } from 'svelte';
 
@@ -31,4 +33,8 @@
       {@render children()}
     {/if}
   </main>
+
+  <!-- Global Slide-over Drawers for Scoped Notifications & Contextual Help -->
+  <NotificationDrawer />
+  <HelpDrawer />
 </div>

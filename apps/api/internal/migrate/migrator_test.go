@@ -222,8 +222,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 3 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 {
-		t.Fatalf("expected versions [1, 2, 3] applied, got %v", applied)
+	if len(applied) != 4 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 || applied[3] != 4 {
+		t.Fatalf("expected versions [1, 2, 3, 4] applied, got %v", applied)
 	}
 	if !runner.lastTx.committed || runner.lastTx.rolledBack {
 		t.Fatalf("expected transaction committed")
@@ -238,13 +238,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for all 3 migrations.
+	// Status reports Applied = true for all 4 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 3 || !statuses[0].Applied || !statuses[1].Applied || !statuses[2].Applied {
-		t.Fatalf("expected status Applied=true for all 3 migrations, got %+v", statuses)
+	if len(statuses) != 4 || !statuses[0].Applied || !statuses[1].Applied || !statuses[2].Applied || !statuses[3].Applied {
+		t.Fatalf("expected status Applied=true for all 4 migrations, got %+v", statuses)
 	}
 
 	// Down without allowLocalRollback fails closed.
@@ -252,7 +252,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 3, then version 2, then version 1.
+	// Down with allowLocalRollback=true rolls back version 4, then version 3, then version 2, then version 1.
+	rolled4, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v4 failed: %v", err)
+	}
+	if rolled4 != 4 {
+		t.Fatalf("expected rolled back version 4, got %d", rolled4)
+	}
 	rolled3, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v3 failed: %v", err)
@@ -317,13 +324,16 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	_, _ = adminPool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
 	dir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 
-	// Apply migration Up, then Down three times, then Up again to prove full Goose SQL repeatability.
+	// Apply migration Up, then Down four times, then Up again to prove full Goose SQL repeatability.
 	applied, err := Up(ctx, adminPool, dir)
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 3 {
-		t.Fatalf("expected 3 applied migrations, got %v", applied)
+	if len(applied) != 4 {
+		t.Fatalf("expected 4 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v4 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v3 failed: %v", err)

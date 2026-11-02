@@ -1,0 +1,4 @@
+PASS: worker fails closed (exit 2)
+PASS: outbox fails closed (exit 2)
+PASS: migrate fails closed (exit 2)
+P0_ENTRYPOINTS_FAIL_CLOSED_PASS
