@@ -1,0 +1,22 @@
+name: Creativanta Autonomous Harness Tests
+on:
+  push:
+    branches:
+      - feat/continuous-agent-harness
+  pull_request:
+    paths:
+      - "tooling/agent_harness/**"
+      - ".github/workflows/agent-harness.yml"
+permissions:
+  contents: read
+jobs:
+  harness-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python harness scheduler tests
+        working-directory: tooling/agent_harness
+        run: |
+          python3 -m compileall -q supervisor.py
+          python3 -m unittest discover -s tests -v
