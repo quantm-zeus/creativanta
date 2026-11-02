@@ -610,11 +610,11 @@ func (s *Service) GetOrComputeProfitSnapshot(
 
 	if s.eventSink != nil {
 		payload, _ := json.Marshal(map[string]any{
-			"snapshot_id":  snapshot.SnapshotID,
-			"workspace_id": snapshot.WorkspaceID,
+			"snapshot_id":   snapshot.SnapshotID,
+			"workspace_id":  snapshot.WorkspaceID,
 			"gross_revenue": snapshot.GrossRevenue.String(),
-			"net_profit":   snapshot.NetProfit.String(),
-			"confidence":   snapshot.Confidence,
+			"net_profit":    snapshot.NetProfit.String(),
+			"confidence":    snapshot.Confidence,
 		})
 		_ = s.eventSink.Emit(ctx, OutboxEvent{
 			EventID:       newUUID(),

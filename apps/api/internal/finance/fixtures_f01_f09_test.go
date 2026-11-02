@@ -33,7 +33,9 @@ func setupFinanceTestHarness() (*finance.Service, finance.Store, *mockSink) {
 
 // F01 recognized profit:
 // Inputs: Completed order revenue 1,000,000 VND; fee 100,000; shipping 20,000; COGS 400,000;
-//         AI 10,000; commission 50,000; ads 30,000; seeding 15,000
+//
+//	AI 10,000; commission 50,000; ads 30,000; seeding 15,000
+//
 // Expected: net 375,000; all components separate
 func TestF01_RecognizedProfit(t *testing.T) {
 	ctx := context.Background()
@@ -614,14 +616,14 @@ func TestF08_PartialSettlement(t *testing.T) {
 
 	// Import settlement with two lines of 500,000 net amount each
 	settlement := &finance.Settlement{
-		SettlementID:         settlementID,
-		WorkspaceID:          wsID,
-		SourceClass:          finance.SourceClassOfficial,
-		GrossAmount:          tenantdb.MustParseExactDecimal("1000000.000000"),
-		NetAmount:            tenantdb.MustParseExactDecimal("1000000.000000"),
-		Currency:             "VND",
-		SettlementState:      finance.SettlementStateReadyForMatching,
-		ReconciliationState:  finance.ReconciliationImportedOnly,
+		SettlementID:        settlementID,
+		WorkspaceID:         wsID,
+		SourceClass:         finance.SourceClassOfficial,
+		GrossAmount:         tenantdb.MustParseExactDecimal("1000000.000000"),
+		NetAmount:           tenantdb.MustParseExactDecimal("1000000.000000"),
+		Currency:            "VND",
+		SettlementState:     finance.SettlementStateReadyForMatching,
+		ReconciliationState: finance.ReconciliationImportedOnly,
 	}
 	lines := []finance.SettlementLine{
 		{

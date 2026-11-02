@@ -19,4 +19,4 @@
     migrator_test.go:797: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL seed twice idempotency suite executes in CI
 --- SKIP: TestPostgresSeedTwiceIdempotency (0.00s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/migrate	0.196s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/migrate	(cached)

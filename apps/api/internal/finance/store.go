@@ -86,11 +86,11 @@ type Store interface {
 
 type MemoryStore struct {
 	mu          sync.RWMutex
-	postings    map[string]*FinancialPosting    // postingID -> posting
-	costItems   map[string]*CostItem            // costItemID -> item
-	settlements map[string]*Settlement          // settlementID -> settlement
-	lines       map[string]*SettlementLine      // lineID -> line
-	snapshots   map[string]*ProfitSnapshot      // snapshotID -> snapshot
+	postings    map[string]*FinancialPosting // postingID -> posting
+	costItems   map[string]*CostItem         // costItemID -> item
+	settlements map[string]*Settlement       // settlementID -> settlement
+	lines       map[string]*SettlementLine   // lineID -> line
+	snapshots   map[string]*ProfitSnapshot   // snapshotID -> snapshot
 }
 
 func NewMemoryStore() *MemoryStore {

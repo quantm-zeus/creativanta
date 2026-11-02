@@ -26,4 +26,4 @@
 === RUN   TestSettlementServiceHandlers
 --- PASS: TestSettlementServiceHandlers (0.00s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/finance	1.047s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/finance	1.043s

@@ -64,7 +64,7 @@ const (
 	CostStatePendingEvidence = "pending_evidence"
 	CostStateReconciled      = "reconciled"
 	CostStateEstimated       = "estimated"
-	CostStateSuperseded       = "superseded"
+	CostStateSuperseded      = "superseded"
 )
 
 var (
@@ -88,7 +88,7 @@ type ExchangeRateSnapshot struct {
 	Provider      string    `json:"provider"`       // sbv, ecb, manual, platform
 	CapturedAt    time.Time `json:"captured_at"`
 	EffectiveAt   time.Time `json:"effective_at"`
-	SourceClass   string    `json:"source_class"`   // official, imported, estimated
+	SourceClass   string    `json:"source_class"` // official, imported, estimated
 }
 
 // FinancialPosting represents an immutable, append-only posting in the operating ledger (§26.10).
@@ -98,7 +98,7 @@ type FinancialPosting struct {
 	OriginType           string // order, settlement, cost_item, refund
 	OriginID             string
 	OriginVersion        string
-	Component            string // ComponentRevenue, ComponentPlatformFee, etc.
+	Component            string                // ComponentRevenue, ComponentPlatformFee, etc.
 	Amount               tenantdb.ExactDecimal // Signed base-currency amount: revenue positive, costs/refunds negative
 	Currency             string
 	SourceClass          string

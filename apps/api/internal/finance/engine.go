@@ -10,7 +10,9 @@ import (
 )
 
 // ComputeBaseAmount converts transaction currency amount to workspace base currency amount:
-//   base_amount = transaction_amount * rate_to_base
+//
+//	base_amount = transaction_amount * rate_to_base
+//
 // Same-currency conversion rate is strictly 1.
 // Rates must be strictly positive.
 func ComputeBaseAmount(txAmount tenantdb.ExactDecimal, fx ExchangeRateSnapshot) (tenantdb.ExactDecimal, error) {

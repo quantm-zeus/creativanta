@@ -472,9 +472,9 @@ func (h *SettlementHandler) Import(ctx context.Context, req *connect.Request[fin
 	}
 
 	return connect.NewResponse(&financev1.SettlementServiceImportResponse{
-		Settlement:          toProtoSettlement(result),
-		ImportedLinesCount:  int32(len(result.Lines)),
-		AlreadyExisted:      false,
+		Settlement:         toProtoSettlement(result),
+		ImportedLinesCount: int32(len(result.Lines)),
+		AlreadyExisted:     false,
 	}), nil
 }
 
