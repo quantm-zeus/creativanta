@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "counts": {
+    "build_tasks": 60,
+    "requirement_units": 1333,
+    "screen_assignments": 245
+  },
+  "errors": []
+}
+test_baseline_passes (test_docs_checker.DocsGuardTests.test_baseline_passes) ... ok
+test_cross_tenant_fk_gap_rejected (test_docs_checker.DocsGuardTests.test_cross_tenant_fk_gap_rejected) ... ok
+test_duplicate_index_rejected (test_docs_checker.DocsGuardTests.test_duplicate_index_rejected) ... ok
+test_feature_changes_invalidate_coverage (test_docs_checker.DocsGuardTests.test_feature_changes_invalidate_coverage) ... ok
+test_go_float_provider_cost_rejected (test_docs_checker.DocsGuardTests.test_go_float_provider_cost_rejected) ... ok
+test_missing_fx_snapshot_rejected (test_docs_checker.DocsGuardTests.test_missing_fx_snapshot_rejected) ... ok
+test_missing_go_handler_generator_rejected (test_docs_checker.DocsGuardTests.test_missing_go_handler_generator_rejected) ... ok
+test_missing_junction_rls_rejected (test_docs_checker.DocsGuardTests.test_missing_junction_rls_rejected) ... ok
+test_missing_stock_identity_rejected (test_docs_checker.DocsGuardTests.test_missing_stock_identity_rejected) ... ok
+test_mutable_stock_ledger_rejected (test_docs_checker.DocsGuardTests.test_mutable_stock_ledger_rejected) ... ok
+test_noncanonical_capability_rejected (test_docs_checker.DocsGuardTests.test_noncanonical_capability_rejected) ... ok
+test_old_credit_ttl_rejected (test_docs_checker.DocsGuardTests.test_old_credit_ttl_rejected) ... ok
+test_onboarding_workspace_permission_rejected (test_docs_checker.DocsGuardTests.test_onboarding_workspace_permission_rejected) ... ok
+test_phishing_override_rejected (test_docs_checker.DocsGuardTests.test_phishing_override_rejected) ... ok
+test_premature_module_completion_rejected (test_docs_checker.DocsGuardTests.test_premature_module_completion_rejected) ... ok
+test_public_directory_tenant_policy_bypass_rejected (test_docs_checker.DocsGuardTests.test_public_directory_tenant_policy_bypass_rejected) ... ok
+test_public_directory_wide_grant_rejected (test_docs_checker.DocsGuardTests.test_public_directory_wide_grant_rejected) ... ok
+test_removed_module_rejected (test_docs_checker.DocsGuardTests.test_removed_module_rejected) ... ok
+test_rust_ci_command_after_go_migration_rejected (test_docs_checker.DocsGuardTests.test_rust_ci_command_after_go_migration_rejected) ... ok
+test_sensitive_permission_downgrade_rejected (test_docs_checker.DocsGuardTests.test_sensitive_permission_downgrade_rejected) ... ok
+test_superuser_dsn_rejected (test_docs_checker.DocsGuardTests.test_superuser_dsn_rejected) ... ok
+test_task_cycle_rejected (test_docs_checker.DocsGuardTests.test_task_cycle_rejected) ... ok
+test_unknown_rpc_permission_rejected (test_docs_checker.DocsGuardTests.test_unknown_rpc_permission_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 10.476s
+
+OK

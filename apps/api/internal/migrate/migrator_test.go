@@ -744,3 +744,120 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	}
 	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_imp_write_mode`)
 }
+
+// TestPostgresSeedTwiceIdempotency satisfies Acceptance Target 1:
+// Executes docs/06_quality_ops/seed_data.sql against live PostgreSQL 17,
+// verifies row counts, then executes seed_data.sql a SECOND time,
+// asserting 100% idempotent execution with zero conflict errors or data corruption.
+func TestPostgresSeedTwiceIdempotency(t *testing.T) {
+	dsn := os.Getenv("CREATIVANTA_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL seed twice idempotency suite executes in CI")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+
+	adminPool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect adminPool: %v", err)
+	}
+	defer adminPool.Close()
+
+	// 1. Ensure migrations are applied
+	migrationsDir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
+	if _, err := Up(ctx, adminPool, migrationsDir); err != nil {
+		t.Fatalf("migrate.Up failed: %v", err)
+	}
+
+	// 2. Read canonical seed SQL
+	seedPath := filepath.Join("..", "..", "..", "..", "docs", "06_quality_ops", "seed_data.sql")
+	seedBytes, err := os.ReadFile(seedPath)
+	if err != nil {
+		t.Fatalf("read seed_data.sql: %v", err)
+	}
+	seedSQL := string(seedBytes)
+
+	// Clean up any previous seed data to ensure fresh verification
+	cleanupSQL := `
+		DELETE FROM cost_items WHERE cost_item_id IN ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2');
+		DELETE FROM profit_snapshots WHERE snapshot_id = '99999999-9999-9999-9999-999999999901';
+		ALTER TABLE ai_credit_transactions DISABLE TRIGGER trg_ai_credit_transactions_immutable;
+		DELETE FROM ai_credit_transactions WHERE workspace_id IN ('22222222-2222-2222-2222-222222222201','22222222-2222-2222-2222-222222222202','22222222-2222-2222-2222-222222222203');
+		ALTER TABLE ai_credit_transactions ENABLE TRIGGER trg_ai_credit_transactions_immutable;
+		DELETE FROM ai_credit_lots WHERE workspace_id IN ('22222222-2222-2222-2222-222222222201','22222222-2222-2222-2222-222222222202','22222222-2222-2222-2222-222222222203');
+		DELETE FROM products WHERE workspace_id = '22222222-2222-2222-2222-222222222201';
+		DELETE FROM ideas WHERE workspace_id = '22222222-2222-2222-2222-222222222201';
+		DELETE FROM workspace_members WHERE workspace_id IN ('22222222-2222-2222-2222-222222222201','22222222-2222-2222-2222-222222222202','22222222-2222-2222-2222-222222222203');
+		DELETE FROM workspaces WHERE workspace_id IN ('22222222-2222-2222-2222-222222222201','22222222-2222-2222-2222-222222222202','22222222-2222-2222-2222-222222222203');
+		DELETE FROM users WHERE clerk_id IN ('user_seed_owner','user_seed_manager','user_seed_editor','user_seed_viewer','user_seed_admin');
+	`
+	_, _ = adminPool.Exec(ctx, cleanupSQL)
+
+	// --- SEED EXECUTION 1 ---
+	t.Log("Executing seed_data.sql (pass 1)...")
+	if _, err := adminPool.Exec(ctx, seedSQL); err != nil {
+		t.Fatalf("seed_data.sql pass 1 failed: %v", err)
+	}
+
+	// Helper to collect row counts
+	type tableCounts struct {
+		currencies   int
+		regions      int
+		users        int
+		workspaces   int
+		members      int
+		ideas        int
+		products     int
+		creditLots   int
+		transactions int
+		snapshots    int
+		costItems    int
+	}
+
+	getCounts := func() tableCounts {
+		var c tableCounts
+		_ = adminPool.QueryRow(ctx, `SELECT COUNT(*) FROM currencies WHERE code IN ('VND', 'USD')`).Scan(&c.currencies)
+		_ = adminPool.QueryRow(ctx, `SELECT COUNT(*) FROM regions WHERE code IN ('VN', 'US', 'SEA')`).Scan(&c.regions)
+		_ = adminPool.QueryRow(ctx, `SELECT COUNT(*) FROM users WHERE clerk_id LIKE 'user_seed_%'`).Scan(&c.users)
+		_ = adminPool.QueryRow(ctx, `SELECT COUNT(*) FROM workspaces WHERE workspace_id IN ('22222222-2222-2222-2222-222222222201','22222222-2222-2222-2222-222222222202','22222222-2222-2222-2222-222222222203')`).Scan(&c.workspaces)
+		_ = adminPool.QueryRow(ctx, `SELECT COUNT(*) FROM workspace_members WHERE workspace_id IN ('22222222-2222-2222-2222-222222222201','22222222-2222-2222-2222-222222222202','22222222-2222-2222-2222-222222222203')`).Scan(&c.members)
+		_ = adminPool.QueryRow(ctx, `SELECT COUNT(*) FROM ideas WHERE workspace_id = '22222222-2222-2222-2222-222222222201'`).Scan(&c.ideas)
+		_ = adminPool.QueryRow(ctx, `SELECT COUNT(*) FROM products WHERE workspace_id = '22222222-2222-2222-2222-222222222201'`).Scan(&c.products)
+		_ = adminPool.QueryRow(ctx, `SELECT COUNT(*) FROM ai_credit_lots WHERE workspace_id IN ('22222222-2222-2222-2222-222222222201','22222222-2222-2222-2222-222222222202','22222222-2222-2222-2222-222222222203')`).Scan(&c.creditLots)
+		_ = adminPool.QueryRow(ctx, `SELECT COUNT(*) FROM ai_credit_transactions WHERE workspace_id IN ('22222222-2222-2222-2222-222222222201','22222222-2222-2222-2222-222222222202','22222222-2222-2222-2222-222222222203')`).Scan(&c.transactions)
+		_ = adminPool.QueryRow(ctx, `SELECT COUNT(*) FROM profit_snapshots WHERE snapshot_id = '99999999-9999-9999-9999-999999999901'`).Scan(&c.snapshots)
+		_ = adminPool.QueryRow(ctx, `SELECT COUNT(*) FROM cost_items WHERE cost_item_id IN ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2')`).Scan(&c.costItems)
+		return c
+	}
+
+	counts1 := getCounts()
+	if counts1.currencies != 2 || counts1.regions != 3 || counts1.users != 5 || counts1.workspaces != 3 ||
+		counts1.members != 5 || counts1.ideas != 3 || counts1.products != 3 || counts1.creditLots != 4 ||
+		counts1.transactions != 6 || counts1.snapshots != 1 || counts1.costItems != 2 {
+		t.Fatalf("unexpected counts after pass 1: %+v", counts1)
+	}
+
+	// --- SEED EXECUTION 2 (IDEMPOTENCY PROOF) ---
+	t.Log("Executing seed_data.sql (pass 2 - idempotency verification)...")
+	if _, err := adminPool.Exec(ctx, seedSQL); err != nil {
+		t.Fatalf("seed_data.sql pass 2 failed (idempotency violation): %v", err)
+	}
+
+	counts2 := getCounts()
+	if counts1 != counts2 {
+		t.Fatalf("idempotency violation: counts changed between pass 1 and pass 2: pass1=%+v pass2=%+v", counts1, counts2)
+	}
+
+	// Check balance verification on workspace 1
+	var creditsRemaining int
+	err = adminPool.QueryRow(ctx, `SELECT ai_credits_remaining FROM workspaces WHERE workspace_id = '22222222-2222-2222-2222-222222222201'`).Scan(&creditsRemaining)
+	if err != nil {
+		t.Fatalf("query credits_remaining: %v", err)
+	}
+	if creditsRemaining != 2420 {
+		t.Fatalf("expected credits remaining 2420, got %d", creditsRemaining)
+	}
+
+	t.Log("Seed twice idempotency check PASSED successfully.")
+}

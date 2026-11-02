@@ -93,6 +93,24 @@ END
 $$;
 -- +goose StatementEnd
 
+-- 4.0 regions & currencies [GLOBAL]
+CREATE TABLE IF NOT EXISTS regions (
+  region_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code VARCHAR(10) UNIQUE NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  default_currency_code VARCHAR(5) NOT NULL,
+  date_format VARCHAR(20) DEFAULT 'DD/MM/YYYY',
+  number_format JSONB DEFAULT '{"decimal":".","thousands":","}'
+);
+
+CREATE TABLE IF NOT EXISTS currencies (
+  currency_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code VARCHAR(5) UNIQUE NOT NULL,
+  symbol VARCHAR(10) NOT NULL,
+  decimal_places SMALLINT NOT NULL DEFAULT 2,
+  display_format VARCHAR(50)
+);
+
 -- 4.1 workspaces & users & workspace_members
 CREATE TABLE IF NOT EXISTS workspaces (
   workspace_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -105,6 +123,8 @@ CREATE TABLE IF NOT EXISTS workspaces (
   slug VARCHAR(100) UNIQUE NOT NULL,
   referral_code VARCHAR(20) UNIQUE,
   owner_user_id UUID NOT NULL,
+  primary_region_id UUID REFERENCES regions(region_id),
+  primary_currency_id UUID REFERENCES currencies(currency_id),
   subscription_tier VARCHAR(20) NOT NULL DEFAULT 'free'
     CHECK (subscription_tier IN ('free','starter','pro','business','enterprise')),
   default_mode operator_mode NOT NULL DEFAULT 'creator',
@@ -450,16 +470,22 @@ CREATE TABLE IF NOT EXISTS ideas (
   idea_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   title VARCHAR(500) NOT NULL,
+  description TEXT,
+  audience_intent TEXT,
+  creator_intent TEXT,
+  suggested_format VARCHAR(50),
+  suggested_direction TEXT,
   angle TEXT,
   hook_suggestion TEXT,
   target_persona VARCHAR(255),
   recommended_formats VARCHAR(50)[] DEFAULT '{}',
   recommended_platforms VARCHAR(50)[] DEFAULT '{}',
   score REAL DEFAULT 0,
+  idea_score REAL DEFAULT 0,
   score_breakdown JSONB DEFAULT '{}',
   commercial_link_ids UUID[] DEFAULT '{}',
-  status VARCHAR(30) NOT NULL DEFAULT 'captured'
-    CHECK (status IN ('captured','scored','shortlisted','scheduled','in_script','converted','rejected','archived')),
+  status VARCHAR(30) NOT NULL DEFAULT 'draft'
+    CHECK (status IN ('draft','candidate','selected','converted','archived','captured','scored','shortlisted','scheduled','in_script','rejected')),
   rejection_reason VARCHAR(255),
   converted_to_type VARCHAR(50),
   converted_to_id UUID,
@@ -707,6 +733,68 @@ DROP TRIGGER IF EXISTS trg_protect_evidence_content ON evidence_objects;
 CREATE TRIGGER trg_protect_evidence_content
   BEFORE UPDATE OR DELETE ON evidence_objects
   FOR EACH ROW EXECUTE FUNCTION protect_evidence_content();
+
+-- §11.2 & §11.3 cost_items & profit_snapshots
+CREATE TABLE IF NOT EXISTS cost_items (
+  cost_item_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  cost_type VARCHAR(50) NOT NULL,
+  amount NUMERIC(18,6) NOT NULL,
+  currency VARCHAR(5) NOT NULL DEFAULT 'VND',
+  description TEXT,
+  related_scope_type VARCHAR(50),
+  related_scope_id UUID,
+  source_class source_class NOT NULL DEFAULT 'estimated',
+  evidence_id UUID,
+  confidence_reason TEXT,
+  cost_state VARCHAR(20) NOT NULL DEFAULT 'recorded',
+  effective_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
+  CONSTRAINT uq_cost_items_tenant_pk UNIQUE (workspace_id, cost_item_id)
+);
+CREATE INDEX IF NOT EXISTS idx_ci_workspace ON cost_items(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_ci_type ON cost_items(cost_type);
+CREATE INDEX IF NOT EXISTS idx_ci_date ON cost_items(effective_date);
+ALTER TABLE cost_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cost_items FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON cost_items
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+
+CREATE TABLE IF NOT EXISTS profit_snapshots (
+  snapshot_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
+  scope_type VARCHAR(30) NOT NULL,
+  scope_id UUID,
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  gross_revenue NUMERIC(18,6) DEFAULT 0,
+  platform_fees NUMERIC(18,6) DEFAULT 0,
+  shipping_costs NUMERIC(18,6) DEFAULT 0,
+  affiliate_commissions NUMERIC(18,6) DEFAULT 0,
+  refund_deductions NUMERIC(18,6) DEFAULT 0,
+  cogs NUMERIC(18,6) DEFAULT 0,
+  ads_spend NUMERIC(18,6) DEFAULT 0,
+  ai_credit_costs NUMERIC(18,6) DEFAULT 0,
+  seeding_costs NUMERIC(18,6) DEFAULT 0,
+  other_costs NUMERIC(18,6) DEFAULT 0,
+  net_profit NUMERIC(18,6) DEFAULT 0,
+  margin_pct NUMERIC(5,2),
+  source_class_mix JSONB DEFAULT '{}',
+  confidence confidence_band DEFAULT 'medium',
+  freshness_at TIMESTAMPTZ DEFAULT NOW(),
+  currency VARCHAR(5) NOT NULL DEFAULT 'VND',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_profit_snapshots_tenant_pk UNIQUE (workspace_id, snapshot_id)
+);
+CREATE INDEX IF NOT EXISTS idx_ps_workspace ON profit_snapshots(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_ps_scope ON profit_snapshots(scope_type, scope_id);
+CREATE INDEX IF NOT EXISTS idx_ps_period ON profit_snapshots(period_start, period_end);
+ALTER TABLE profit_snapshots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profit_snapshots FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON profit_snapshots
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
 -- §13.1–§13.3 billing_events, ai_credit_transactions, audit_events
 CREATE TABLE IF NOT EXISTS billing_events (
@@ -1186,6 +1274,8 @@ REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC;
 
 -- app_user grants (never receives TRUNCATE, DDL, or internal_admin privileges)
+GRANT SELECT ON regions TO app_user;
+GRANT SELECT ON currencies TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON workspaces TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON users TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON workspace_members TO app_user;
@@ -1223,10 +1313,14 @@ GRANT USAGE, SELECT ON SEQUENCE event_outbox_outbox_id_seq TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON tags TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON taggables TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON subscriptions TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON cost_items TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON profit_snapshots TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON api_idempotency_records TO app_user;
 GRANT SELECT, INSERT ON financial_postings TO app_user;
 
 -- admin_user grants
+GRANT SELECT, INSERT, UPDATE, DELETE ON regions TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON currencies TO admin_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON internal_admins TO admin_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON admin_sessions TO admin_user;
 GRANT SELECT, INSERT ON internal_audit_logs TO admin_user;
@@ -1236,6 +1330,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON users TO admin_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON workspace_members TO admin_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON support_tickets TO admin_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON support_ticket_messages TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON cost_items TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON profit_snapshots TO admin_user;
 GRANT SELECT, INSERT, UPDATE ON evidence_objects TO admin_user;
 GRANT SELECT, INSERT ON audit_events TO admin_user;
 GRANT SELECT, INSERT ON ai_credit_transactions TO admin_user;
@@ -1273,6 +1369,8 @@ DROP TABLE IF EXISTS media_kits CASCADE;
 DROP TABLE IF EXISTS audit_events CASCADE;
 DROP TABLE IF EXISTS ai_credit_transactions CASCADE;
 DROP TABLE IF EXISTS billing_events CASCADE;
+DROP TABLE IF EXISTS profit_snapshots CASCADE;
+DROP TABLE IF EXISTS cost_items CASCADE;
 DROP TABLE IF EXISTS evidence_objects CASCADE;
 DROP TABLE IF EXISTS bundle_items CASCADE;
 DROP TABLE IF EXISTS bundles CASCADE;
@@ -1295,6 +1393,8 @@ DROP TABLE IF EXISTS brand_profiles CASCADE;
 DROP TABLE IF EXISTS workspace_members CASCADE;
 DROP TABLE IF EXISTS workspaces CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS regions CASCADE;
+DROP TABLE IF EXISTS currencies CASCADE;
 DROP TYPE IF EXISTS verification_status;
 DROP TYPE IF EXISTS reconciliation_state;
 DROP TYPE IF EXISTS operator_mode;
