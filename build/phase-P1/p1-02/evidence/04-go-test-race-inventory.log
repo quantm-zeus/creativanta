@@ -1,0 +1,25 @@
+=== RUN   TestI01_SimultaneousHoldsOneUnit
+--- PASS: TestI01_SimultaneousHoldsOneUnit (0.00s)
+=== RUN   TestI02_FulfillHeldOrderReplayIdempotency
+--- PASS: TestI02_FulfillHeldOrderReplayIdempotency (0.00s)
+=== RUN   TestI03_BundleFailedLineLeavesNoPartialHolds
+--- PASS: TestI03_BundleFailedLineLeavesNoPartialHolds (0.00s)
+=== RUN   TestI04_OpeningCountBaselineProtectsHistoricalOrder
+--- PASS: TestI04_OpeningCountBaselineProtectsHistoricalOrder (0.00s)
+=== RUN   TestI05_PhysicalReturnReplayAndRefundSeparation
+--- PASS: TestI05_PhysicalReturnReplayAndRefundSeparation (0.00s)
+=== RUN   TestI06_ExpiryRacesPaymentConfirmation
+--- PASS: TestI06_ExpiryRacesPaymentConfirmation (0.00s)
+=== RUN   TestI07_CrossTenantIsolation
+--- PASS: TestI07_CrossTenantIsolation (0.00s)
+=== RUN   TestI08_ExternalCorrectionDrivesStockBelowReservations
+--- PASS: TestI08_ExternalCorrectionDrivesStockBelowReservations (0.00s)
+=== RUN   TestI09_ReconcileLedgerAndBalanceIntegrity
+--- PASS: TestI09_ReconcileLedgerAndBalanceIntegrity (0.00s)
+=== RUN   TestI10_PolledAbsoluteCountTwiceNoOp
+--- PASS: TestI10_PolledAbsoluteCountTwiceNoOp (0.00s)
+=== RUN   TestPostgresLiveInventoryStore
+    inventory_postgres_test.go:18: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL inventory suite executes in CI
+--- SKIP: TestPostgresLiveInventoryStore (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/inventory	1.040s

@@ -1,0 +1,597 @@
+syntax = "proto3";
+
+package creativanta.commerce.v1;
+
+import "creativanta/common/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1;commercev1";
+
+// Source classification taxonomy per PRD §15.1.
+enum OrderSourceClass {
+  ORDER_SOURCE_CLASS_UNSPECIFIED = 0;
+  ORDER_SOURCE_CLASS_OFFICIAL = 1;
+  ORDER_SOURCE_CLASS_IMPORTED = 2;
+  ORDER_SOURCE_CLASS_INFERRED = 3;
+  ORDER_SOURCE_CLASS_ESTIMATED = 4;
+  ORDER_SOURCE_CLASS_UNRECONCILED = 5;
+}
+
+// Canonical order lifecycle state machine per RULE-M13-003.
+enum OrderLifecycleState {
+  ORDER_LIFECYCLE_STATE_UNSPECIFIED = 0;
+  ORDER_LIFECYCLE_STATE_CREATED = 1;
+  ORDER_LIFECYCLE_STATE_CONFIRMED = 2;
+  ORDER_LIFECYCLE_STATE_FULFILLED = 3;
+  ORDER_LIFECYCLE_STATE_COMPLETED = 4;
+  ORDER_LIFECYCLE_STATE_REFUNDED = 5;
+  ORDER_LIFECYCLE_STATE_PARTIALLY_REFUNDED = 6;
+  ORDER_LIFECYCLE_STATE_RETURNED = 7;
+  ORDER_LIFECYCLE_STATE_CANCELLED = 8;
+}
+
+// Refund lifecycle state machine per Freeze §27.2.
+enum RefundLifecycleState {
+  REFUND_LIFECYCLE_STATE_UNSPECIFIED = 0;
+  REFUND_LIFECYCLE_STATE_REQUESTED = 1;
+  REFUND_LIFECYCLE_STATE_APPROVED = 2;
+  REFUND_LIFECYCLE_STATE_REJECTED = 3;
+  REFUND_LIFECYCLE_STATE_PROCESSING = 4;
+  REFUND_LIFECYCLE_STATE_COMPLETED = 5;
+  REFUND_LIFECYCLE_STATE_FAILED = 6;
+  REFUND_LIFECYCLE_STATE_CANCELLED = 7;
+}
+
+// Return lifecycle state machine per DB Schema §19.6.
+enum ReturnLifecycleState {
+  RETURN_LIFECYCLE_STATE_UNSPECIFIED = 0;
+  RETURN_LIFECYCLE_STATE_INITIATED = 1;
+  RETURN_LIFECYCLE_STATE_APPROVED = 2;
+  RETURN_LIFECYCLE_STATE_SHIPPED_BACK = 3;
+  RETURN_LIFECYCLE_STATE_RECEIVED = 4;
+  RETURN_LIFECYCLE_STATE_INSPECTED = 5;
+  RETURN_LIFECYCLE_STATE_CLOSED = 6;
+  RETURN_LIFECYCLE_STATE_REJECTED = 7;
+}
+
+// Immutable stock movement types per DB Schema §19.9H.
+enum StockMovementType {
+  STOCK_MOVEMENT_TYPE_UNSPECIFIED = 0;
+  STOCK_MOVEMENT_TYPE_PURCHASE = 1;
+  STOCK_MOVEMENT_TYPE_SALE = 2;
+  STOCK_MOVEMENT_TYPE_RETURN = 3;
+  STOCK_MOVEMENT_TYPE_ADJUSTMENT = 4;
+  STOCK_MOVEMENT_TYPE_TRANSFER = 5;
+  STOCK_MOVEMENT_TYPE_DAMAGE = 6;
+  STOCK_MOVEMENT_TYPE_PLATFORM_SYNC = 7;
+}
+
+// Reservation lifecycle states per DB Schema §26.12.
+enum StockReservationStatus {
+  STOCK_RESERVATION_STATUS_UNSPECIFIED = 0;
+  STOCK_RESERVATION_STATUS_HELD = 1;
+  STOCK_RESERVATION_STATUS_CONSUMED = 2;
+  STOCK_RESERVATION_STATUS_RELEASED = 3;
+  STOCK_RESERVATION_STATUS_EXPIRED = 4;
+}
+
+// Single item line in an order per DB Schema §25.1.
+message OrderItem {
+  string sku = 1;
+  string product_id = 2;
+  string name = 3;
+  int32 quantity = 4;
+  creativanta.common.v1.Money unit_price = 5;
+  creativanta.common.v1.Money discount = 6;
+  creativanta.common.v1.Money total = 7;
+  creativanta.common.v1.Money unit_cogs = 8;
+  OrderSourceClass cogs_source_class = 9;
+  string variation = 10;
+  string platform_item_id = 11;
+}
+
+// Other fee component in fee breakdown.
+message OtherFee {
+  string name = 1;
+  creativanta.common.v1.Money amount = 2;
+}
+
+// Order fee decomposition per DB Schema §25.1.
+message FeeBreakdown {
+  creativanta.common.v1.Money platform_fee = 1;
+  creativanta.common.v1.Money payment_processing_fee = 2;
+  creativanta.common.v1.Money shipping_fee = 3;
+  creativanta.common.v1.Money tax = 4;
+  creativanta.common.v1.Money commission = 5;
+  creativanta.common.v1.Money promo_discount = 6;
+  repeated OtherFee other_fees = 7;
+  creativanta.common.v1.Money total_fees = 8;
+  string currency = 9;
+}
+
+// Canonical Order object per DB Schema §10.3.
+message Order {
+  string order_id = 1;
+  string workspace_id = 2;
+  OrderSourceClass source_class = 3;
+  string source_platform = 4;
+  string external_order_id = 5;
+  string connected_account_id = 6;
+  creativanta.common.v1.Money tax_amount = 7;
+  string tax_jurisdiction = 8;
+  string tax_note = 9;
+  string exchange_rate_snapshot_json = 10;
+  google.protobuf.Timestamp recognized_at = 11;
+  google.protobuf.Timestamp source_updated_at = 12;
+  string import_fingerprint = 13;
+  OrderLifecycleState lifecycle_state = 14;
+  creativanta.common.v1.Money amount = 15;
+  string currency = 16;
+  string product_id = 17;
+  string offer_id = 18;
+  string campaign_id = 19;
+  string post_id = 20;
+  string live_session_id = 21;
+  string customer_entity_id = 22;
+  repeated OrderItem items = 23;
+  FeeBreakdown fee_breakdown = 24;
+  string shipping_address_json = 25;
+  string reconciliation_state = 26;
+  repeated string evidence_refs = 27;
+  string metadata_json = 28;
+  google.protobuf.Timestamp ordered_at = 29;
+  google.protobuf.Timestamp created_at = 30;
+  google.protobuf.Timestamp updated_at = 31;
+  google.protobuf.Timestamp deleted_at = 32;
+}
+
+// Inventory physical or virtual location per DB Schema §19.9G.
+message InventoryLocation {
+  string location_id = 1;
+  string workspace_id = 2;
+  string name = 3;
+  string location_type = 4;
+  string address_json = 5;
+  bool is_default = 6;
+  string status = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+// Immutable stock movement ledger entry per DB Schema §19.9H.
+message StockMovement {
+  string movement_id = 1;
+  string workspace_id = 2;
+  string sku_id = 3;
+  string location_id = 4;
+  StockMovementType movement_type = 5;
+  string movement_key = 6;
+  int32 quantity = 7;
+  string reference_type = 8;
+  string reference_id = 9;
+  google.protobuf.Timestamp source_created_at = 10;
+  string reason = 11;
+  string metadata_json = 12;
+  google.protobuf.Timestamp created_at = 13;
+}
+
+// Rebuildable balance projection per DB Schema §26.11.
+message InventoryBalance {
+  string balance_id = 1;
+  string workspace_id = 2;
+  string sku_id = 3;
+  string location_id = 4;
+  int32 on_hand = 5;
+  int32 reserved = 6;
+  google.protobuf.Timestamp opening_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// Durable stock hold reservation per DB Schema §26.12.
+message StockReservation {
+  string reservation_id = 1;
+  string workspace_id = 2;
+  string order_id = 3;
+  string sku_id = 4;
+  string location_id = 5;
+  string reservation_key = 6;
+  int32 quantity = 7;
+  StockReservationStatus status = 8;
+  google.protobuf.Timestamp expires_at = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+// Financial refund reversal record per DB Schema §19.5.
+message Refund {
+  string refund_id = 1;
+  string workspace_id = 2;
+  string order_id = 3;
+  string refund_type = 4;
+  creativanta.common.v1.Money amount = 5;
+  string currency = 6;
+  string reason = 7;
+  RefundLifecycleState lifecycle_state = 8;
+  OrderSourceClass source_class = 9;
+  string source_platform = 10;
+  string external_refund_id = 11;
+  string settlement_id = 12;
+  repeated string evidence_refs = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+  google.protobuf.Timestamp deleted_at = 16;
+}
+
+// Return item details.
+message ReturnItem {
+  string sku = 1;
+  int32 quantity = 2;
+  string reason = 3;
+}
+
+// Logistics/physical return reversal per DB Schema §19.6.
+message Return {
+  string return_id = 1;
+  string workspace_id = 2;
+  string order_id = 3;
+  string refund_id = 4;
+  string return_type = 5;
+  repeated ReturnItem items = 6;
+  ReturnLifecycleState lifecycle_state = 7;
+  string tracking_number = 8;
+  string evidence_photo_url = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+  google.protobuf.Timestamp deleted_at = 12;
+}
+
+// Helper types for inventory batch operations and alerts.
+message StockMovementItem {
+  string sku_id = 1;
+  int32 quantity = 2;
+}
+
+message InventoryAlert {
+  string sku_id = 1;
+  string product_title = 2;
+  string sku_code = 3;
+  int32 current_stock = 4;
+  int32 threshold = 5;
+  string alert_level = 6;
+}
+
+// --- OrderService Requests and Responses ---
+
+message OrderServiceListRequest {
+  creativanta.common.v1.Pagination pagination = 1;
+  OrderLifecycleState state = 2;
+  string source_platform = 3;
+  string date_from = 4;
+  string date_to = 5;
+}
+
+message OrderServiceListResponse {
+  repeated Order orders = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message OrderServiceGetRequest {
+  string order_id = 1;
+}
+
+message OrderServiceGetResponse {
+  Order order = 1;
+  repeated Refund refunds = 2;
+  repeated Return returns = 3;
+  repeated StockReservation reservations = 4;
+}
+
+message OrderServiceImportRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string connected_account_id = 2;
+  string platform = 3;
+  string source_data = 4;
+  string format = 5;
+  string preview_token = 6;
+  bool dry_run = 7;
+  map<string, string> column_mappings = 8;
+}
+
+message OrderServiceImportResponse {
+  bool is_preview = 1;
+  string preview_token = 2;
+  int32 total_rows = 3;
+  int32 create_count = 4;
+  int32 update_count = 5;
+  int32 unchanged_count = 6;
+  int32 error_count = 7;
+  repeated Order created_orders = 8;
+  string import_fingerprint = 9;
+}
+
+message OrderServiceExportRequest {
+  string format = 1;
+  OrderLifecycleState state = 2;
+  string date_from = 3;
+  string date_to = 4;
+}
+
+message OrderServiceExportResponse {
+  string download_url = 1;
+  int32 row_count = 2;
+}
+
+message OrderServiceUpdateStatusRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string order_id = 2;
+  OrderLifecycleState target_state = 3;
+  string reason = 4;
+}
+
+message OrderServiceUpdateStatusResponse {
+  Order order = 1;
+}
+
+message OrderServiceSearchRequest {
+  string query = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+message OrderServiceSearchResponse {
+  repeated Order orders = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message OrderServiceConfirmRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string order_id = 2;
+}
+
+message OrderServiceConfirmResponse {
+  Order order = 1;
+}
+
+message OrderServiceGetTodayStatsRequest {}
+
+message OrderServiceGetTodayStatsResponse {
+  int32 order_count = 1;
+  creativanta.common.v1.Money total_amount = 2;
+  int32 pending_fulfillment_count = 3;
+}
+
+message OrderServiceGetDailyStatsRequest {
+  string date = 1;
+}
+
+message OrderServiceGetDailyStatsResponse {
+  int32 order_count = 1;
+  creativanta.common.v1.Money total_amount = 2;
+}
+
+message OrderServiceGetLabelRequest {
+  string order_id = 1;
+}
+
+message OrderServiceGetLabelResponse {
+  string label_url = 1;
+  string tracking_number = 2;
+  string carrier = 3;
+}
+
+message OrderServiceListRecentRequest {
+  int32 limit = 1;
+}
+
+message OrderServiceListRecentResponse {
+  repeated Order orders = 1;
+}
+
+message OrderServiceBulkCancelRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  repeated string order_ids = 2;
+  string reason = 3;
+}
+
+message OrderServiceBulkCancelResponse {
+  int32 cancelled_count = 1;
+  repeated string failed_order_ids = 2;
+}
+
+message OrderServiceBulkUpdateStatusRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  repeated string order_ids = 2;
+  OrderLifecycleState target_state = 3;
+}
+
+message OrderServiceBulkUpdateStatusResponse {
+  int32 updated_count = 1;
+  repeated string failed_order_ids = 2;
+}
+
+// --- InventoryService Requests and Responses ---
+
+message InventoryServiceGetSummaryRequest {}
+
+message InventoryServiceGetSummaryResponse {
+  int32 total_skus = 1;
+  int32 total_on_hand = 2;
+  int32 total_reserved = 3;
+  int32 low_stock_alerts = 4;
+}
+
+message InventoryServiceListStockRequest {
+  string location_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+message InventoryServiceListStockResponse {
+  repeated InventoryBalance items = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message InventoryServiceListMovementsRequest {
+  string sku_id = 1;
+  string location_id = 2;
+  creativanta.common.v1.Pagination pagination = 3;
+}
+
+message InventoryServiceListMovementsResponse {
+  repeated StockMovement movements = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message InventoryServiceCreateStockMovementRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string sku_id = 2;
+  string location_id = 3;
+  StockMovementType movement_type = 4;
+  int32 quantity = 5;
+  string reason = 6;
+  string reference_type = 7;
+  string reference_id = 8;
+}
+
+message InventoryServiceCreateStockMovementResponse {
+  StockMovement movement = 1;
+  InventoryBalance new_balance = 2;
+}
+
+message InventoryServiceBulkStockInRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string location_id = 2;
+  repeated StockMovementItem items = 3;
+  string reason = 4;
+}
+
+message InventoryServiceBulkStockInResponse {
+  int32 processed_count = 1;
+  repeated StockMovement movements = 2;
+}
+
+message InventoryServiceGetAlertsRequest {}
+
+message InventoryServiceGetAlertsResponse {
+  repeated InventoryAlert alerts = 1;
+}
+
+message InventoryServiceUpdateThresholdsRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string sku_id = 2;
+  int32 low_stock_threshold = 3;
+}
+
+message InventoryServiceUpdateThresholdsResponse {
+  string sku_id = 1;
+  int32 low_stock_threshold = 2;
+}
+
+message InventoryServiceExportRequest {
+  string location_id = 1;
+  string format = 2;
+}
+
+message InventoryServiceExportResponse {
+  string download_url = 1;
+  int32 row_count = 2;
+}
+
+// --- RefundService Requests and Responses ---
+
+message RefundServiceCreateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string order_id = 2;
+  creativanta.common.v1.Money amount = 3;
+  string reason = 4;
+  string refund_type = 5;
+}
+
+message RefundServiceCreateResponse {
+  Refund refund = 1;
+  Order updated_order = 2;
+}
+
+message RefundServiceGetRequest {
+  string refund_id = 1;
+}
+
+message RefundServiceGetResponse {
+  Refund refund = 1;
+}
+
+message RefundServiceListRequest {
+  string order_id = 1;
+  RefundLifecycleState state = 2;
+  creativanta.common.v1.Pagination pagination = 3;
+}
+
+message RefundServiceListResponse {
+  repeated Refund refunds = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message RefundServiceApproveRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string refund_id = 2;
+  string reason = 3;
+}
+
+message RefundServiceApproveResponse {
+  Refund refund = 1;
+  Order updated_order = 2;
+}
+
+message RefundServiceRejectRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string refund_id = 2;
+  string reason = 3;
+}
+
+message RefundServiceRejectResponse {
+  Refund refund = 1;
+}
+
+message RefundServiceGetStatsRequest {}
+
+message RefundServiceGetStatsResponse {
+  int32 total_refunds = 1;
+  creativanta.common.v1.Money total_refunded_amount = 2;
+  int32 pending_approval_count = 3;
+}
+
+// OrderService manages order lifecycle, ingestion, search, and status transitions.
+service OrderService {
+  rpc List(OrderServiceListRequest) returns (OrderServiceListResponse);
+  rpc Get(OrderServiceGetRequest) returns (OrderServiceGetResponse);
+  rpc Import(OrderServiceImportRequest) returns (OrderServiceImportResponse);
+  rpc Export(OrderServiceExportRequest) returns (OrderServiceExportResponse);
+  rpc UpdateStatus(OrderServiceUpdateStatusRequest) returns (OrderServiceUpdateStatusResponse);
+  rpc Search(OrderServiceSearchRequest) returns (OrderServiceSearchResponse);
+  rpc Confirm(OrderServiceConfirmRequest) returns (OrderServiceConfirmResponse);
+  rpc GetTodayStats(OrderServiceGetTodayStatsRequest) returns (OrderServiceGetTodayStatsResponse);
+  rpc GetDailyStats(OrderServiceGetDailyStatsRequest) returns (OrderServiceGetDailyStatsResponse);
+  rpc GetLabel(OrderServiceGetLabelRequest) returns (OrderServiceGetLabelResponse);
+  rpc ListRecent(OrderServiceListRecentRequest) returns (OrderServiceListRecentResponse);
+  rpc BulkCancel(OrderServiceBulkCancelRequest) returns (OrderServiceBulkCancelResponse);
+  rpc BulkUpdateStatus(OrderServiceBulkUpdateStatusRequest) returns (OrderServiceBulkUpdateStatusResponse);
+}
+
+// InventoryService manages warehouses, stock balances, movements, and alerts.
+service InventoryService {
+  rpc GetSummary(InventoryServiceGetSummaryRequest) returns (InventoryServiceGetSummaryResponse);
+  rpc ListStock(InventoryServiceListStockRequest) returns (InventoryServiceListStockResponse);
+  rpc ListMovements(InventoryServiceListMovementsRequest) returns (InventoryServiceListMovementsResponse);
+  rpc CreateStockMovement(InventoryServiceCreateStockMovementRequest) returns (InventoryServiceCreateStockMovementResponse);
+  rpc BulkStockIn(InventoryServiceBulkStockInRequest) returns (InventoryServiceBulkStockInResponse);
+  rpc GetAlerts(InventoryServiceGetAlertsRequest) returns (InventoryServiceGetAlertsResponse);
+  rpc UpdateThresholds(InventoryServiceUpdateThresholdsRequest) returns (InventoryServiceUpdateThresholdsResponse);
+  rpc Export(InventoryServiceExportRequest) returns (InventoryServiceExportResponse);
+}
+
+// RefundService handles financial refund requests, approvals, and metrics.
+service RefundService {
+  rpc Create(RefundServiceCreateRequest) returns (RefundServiceCreateResponse);
+  rpc Get(RefundServiceGetRequest) returns (RefundServiceGetResponse);
+  rpc List(RefundServiceListRequest) returns (RefundServiceListResponse);
+  rpc Approve(RefundServiceApproveRequest) returns (RefundServiceApproveResponse);
+  rpc Reject(RefundServiceRejectRequest) returns (RefundServiceRejectResponse);
+  rpc GetStats(RefundServiceGetStatsRequest) returns (RefundServiceGetStatsResponse);
+}
