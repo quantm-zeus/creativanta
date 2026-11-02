@@ -1,0 +1,176 @@
+{
+  "task_id": "P1-03",
+  "phase": "P1",
+  "slice": "p1-03",
+  "title": "Financial postings, FX và cost snapshots",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "aee8779",
+  "feature_refs": [
+    "docs/02_features/finance/operating_ledger.md",
+    "docs/04_contracts/financial_computation_contract.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_behavior_contracts.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/error_catalog.md"
+  ],
+  "requirement_ids": [
+    "M19-001",
+    "M19-002",
+    "M19-003",
+    "M19-004",
+    "M19-005",
+    "M19-006",
+    "M19-007",
+    "M19-008",
+    "DB-C-001",
+    "DB-H-001"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_finance_profit_dashboard.md",
+    "docs/03_screens/web/screen_web_finance_settlements.md",
+    "docs/03_screens/web/screen_web_finance_costs.md"
+  ],
+  "source_hashes": {
+    "infra/migrations/00007_p1_03_finance_postings_costs_settlements_snapshots.sql": "d3a60cf693bdcb9ac6c0da8685ed6f7b0ab31a065730ce1f5f46439494a0059e",
+    "protos/creativanta/finance/v1/finance.proto": "a0f2cfa1fb8d9ae8d557a4e3ebac08b0d179bba612956c0bdd47fd7d5a945217",
+    "apps/api/internal/finance/model.go": "9cc160b8e6fe2ecb4b05e623966abffafb7d9c92859a34b6cede971bb7f17753",
+    "apps/api/internal/finance/engine.go": "69f23ca3ba0ef41c2445beb4210f119a2f34fc6d842d69a45b21b96f0b0c12d0",
+    "apps/api/internal/finance/store.go": "e138763bec70ad79c76bcd1a85c2f2214070a30a58604ccb6e6c5d54055f9239",
+    "apps/api/internal/finance/service.go": "6e58e707524f7272546c7a6a477ebcf4a4426d2e5bc76993f57f1c456517c712",
+    "apps/api/internal/finance/handler.go": "65ab2492080700a44730a12b0e61b4383dbd755397c15439ec75b2ff056849d3",
+    "apps/api/internal/finance/fixtures_f01_f09_test.go": "245bf2ddabea3597f4fba70fd683e062879307d02b53b823893d1d3afcefebc2",
+    "apps/api/internal/finance/service_test.go": "fe4478750215b5fe834434def51f5b512e41da66c737cb864502c01fc5301f66",
+    "apps/api/internal/migrate/migrator_test.go": "10145238cdfa7a6b7be4854aedc48a1325b62a9cd81cf76bb0e4c8b3aefb4684",
+    "apps/api/internal/rbac/phase_exposure_test.go": "e8ccb6fbec7aaa1e3c1f30128644ce0aa7d3f08f6de11edf51b747f19bf78952"
+  },
+  "scope_items": [
+    "Database Migration 00007: Added 4 PostgreSQL 17 tables (settlements, settlement_lines, cost_items, profit_snapshots) with full Row Level Security (ENABLE/FORCE RLS), tenant isolation policies, strict foreign key references, and exact decimal money types (NUMERIC(18,6)).",
+    "Protobuf Contracts & Multi-Target Generation: Defined 3 canonical services (ProfitService, SettlementService, CostService) with 10 RPCs. Compiled and verified cleanly across all 4 targets (Go, Connect-Go, TypeScript, Dart) with zero codegen drift.",
+    "Acceptance Target 1: Golden Fixtures F01–F09 implemented and passing under race conditions:",
+    "  - F01: Completed order profit recognition with 8 separate active posting components (gross revenue, platform fee, shipping, COGS, AI generation, affiliate commission, ad spend, seeding) summing to exact net profit 375,000 VND.",
+    "  - F02: Partial refund preserves recognized gross revenue while posting an explicit refund component netting to 275,000 VND.",
+    "  - F03: Settlement fee deduplication ensures platform settlement fee supersedes estimated order fee via reversal posting rather than accumulating doubly.",
+    "  - F04: Historical FX rate preservation freezes transaction base amount snapshot (25,000 VND/USD); subsequent rate fluctuations do not alter historical base amounts.",
+    "  - F05: Pending orders separate unearned revenue/cost into pending buckets; recognized profit remains zero until order completion.",
+    "  - F06: Replay idempotency and order correction via reversal postings replaces prior fee without duplicating recognized order revenue.",
+    "  - F07: Missing COGS is never verified or defaulted to zero; flags is_incomplete=true, unknown_required_components_count>0, confidence=low.",
+    "  - F08: Multi-line partial settlement strictly caps total matched amount at order total (1,000,000 VND) and rejects over-allocation.",
+    "  - F09: Source confidence mixing inherits lowest contributing component (mixed official high and estimated/inferred low forces aggregate low confidence).",
+    "Acceptance Target 2: Settlement fee not duplicated. Settlement lines with matching order fees create reversal postings for estimated fees, maintaining clean net proof.",
+    "Acceptance Target 3: Missing COGS never verified zero. Proof engine strictly prohibits assuming zero cost of goods sold.",
+    "Concurrency & Race Safety: All financial calculations and store operations pass -race test suite cleanly with zero data races."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestF01 through TestF09 in apps/api/internal/finance/fixtures_f01_f09_test.go pass with 100% clean race checks.",
+    "Acceptance Target 2 Verified: TestF03SettlementFeeDeduplication confirms settlement fee replaces estimated fee via reversal without double-counting.",
+    "Acceptance Target 3 Verified: TestF07MissingCOGSNeverVerifiedZero confirms missing COGS marks snapshot incomplete with low confidence and non-zero unknown components count.",
+    "Reversal & Correction Verified: TestF06ReplayAndCorrection confirms correction postings net out prior postings cleanly.",
+    "FX Historical Immutability Verified: TestF04ExchangeRatePreservation confirms base currency calculations remain frozen to historical rates.",
+    "ConnectRPC Handlers Verified: ProfitServiceHandler, SettlementServiceHandler, and CostServiceHandler compile and bind cleanly."
+  ],
+  "rpc_contracts": [
+    "ProfitService/GetSummary",
+    "ProfitService/GetSnapshot",
+    "ProfitService/RefreshSnapshot",
+    "SettlementService/Import",
+    "SettlementService/List",
+    "SettlementService/Get",
+    "CostService/Create",
+    "CostService/List",
+    "CostService/Update",
+    "CostService/Delete"
+  ],
+  "migration_files": [
+    "infra/migrations/00007_p1_03_finance_postings_costs_settlements_snapshots.sql"
+  ],
+  "permission_keys": [
+    "profit:read",
+    "profit:detailed_read",
+    "settlement:import",
+    "settlement:read",
+    "cost:manage",
+    "cost:read"
+  ],
+  "event_types": [
+    "settlement.imported",
+    "settlement.reconciled",
+    "cost.recorded",
+    "profit.snapshot_updated",
+    "profit.anomaly_detected"
+  ],
+  "screen_routes": [
+    "/finance",
+    "/finance/settlements",
+    "/finance/costs"
+  ],
+  "checks": [
+    {
+      "command": "bash tooling/ci/check_d0.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-03/evidence/01-check-d0.log"
+    },
+    {
+      "command": "python3 tooling/check_docs.py --sql",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-03/evidence/02-check-docs-sql.log"
+    },
+    {
+      "command": "bash tooling/ci/check_proto.sh verify",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-03/evidence/03-check-proto.log"
+    },
+    {
+      "command": "cd apps/api && go test -race -v -count=1 ./internal/finance",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-03/evidence/04-go-test-race-finance.log"
+    },
+    {
+      "command": "cd apps/api && go test -v -count=1 ./internal/finance -run TestF0",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-03/evidence/05-go-test-f01-f09.log"
+    },
+    {
+      "command": "cd apps/api && go test -v ./internal/migrate",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-03/evidence/06-migrator-test.log"
+    },
+    {
+      "command": "cd apps/api && go test ./...",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-03/evidence/07-go-test-all.log"
+    },
+    {
+      "command": "bash tooling/ci/check_node.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-03/evidence/08-check-node.log"
+    },
+    {
+      "command": "bash tooling/ci/check_flutter.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-03/evidence/09-check-flutter.log"
+    }
+  ],
+  "external_gates": [
+    "External Platform Settlement Feeds (TikTok Shop, Shopee, Lazada): Live settlement report download and OAuth sync are unconfigured in local hermetic environment; settlement CSV/JSON parser and match engine verified with local fixtures.",
+    "Live FX Rate API Providers: Real-time FX polling service remains external; historical exchange rate snapshot immutability is fully verified locally.",
+    "PostgreSQL 17 Database Service: Local PostgreSQL service container runs in GitHub CI; live migration rollback tests validate SQL migration 00007."
+  ],
+  "remaining_scope": [
+    "P1-04: Reconciliation, evidence và repair queue (match capacity, immutable proof chain, permission-filtered data gaps).",
+    "P1-05: First-value loop và payment replay.",
+    "P2-P8: Future modules per docs/00_index/IMPLEMENTATION_ORDER.md."
+  ],
+  "notes": "P1-03 Financial postings, FX and cost snapshots implementation complete. Migration 00007 deployed and verified. Golden fixtures F01-F09 pass with zero race conditions. Settlement fee deduplication and missing COGS confidence handling verified."
+}

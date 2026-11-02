@@ -1,0 +1,411 @@
+syntax = "proto3";
+
+package creativanta.finance.v1;
+
+import "creativanta/common/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/finance/v1;financev1";
+
+// Financial component breakdown per DB Schema §26.10 & Financial computation contract.
+enum FinancialComponent {
+  FINANCIAL_COMPONENT_UNSPECIFIED = 0;
+  FINANCIAL_COMPONENT_REVENUE = 1;
+  FINANCIAL_COMPONENT_PLATFORM_FEE = 2;
+  FINANCIAL_COMPONENT_SHIPPING = 3;
+  FINANCIAL_COMPONENT_COGS = 4;
+  FINANCIAL_COMPONENT_AI_CREDITS = 5;
+  FINANCIAL_COMPONENT_COMMISSION = 6;
+  FINANCIAL_COMPONENT_ADS_SPEND = 7;
+  FINANCIAL_COMPONENT_SEEDING = 8;
+  FINANCIAL_COMPONENT_REFUND = 9;
+  FINANCIAL_COMPONENT_OTHER = 10;
+}
+
+// Canonical reconciliation truth state machine per RULE-M19-007.
+enum ReconciliationState {
+  RECONCILIATION_STATE_UNSPECIFIED = 0;
+  RECONCILIATION_STATE_IMPORTED_ONLY = 1;
+  RECONCILIATION_STATE_AWAITING_EVIDENCE = 2;
+  RECONCILIATION_STATE_INFERRED_PENDING_CONFIRMATION = 3;
+  RECONCILIATION_STATE_PARTIALLY_RECONCILED = 4;
+  RECONCILIATION_STATE_FULLY_RECONCILED = 5;
+  RECONCILIATION_STATE_CONFLICT_DETECTED = 6;
+  RECONCILIATION_STATE_MANUALLY_OVERRIDDEN = 7;
+}
+
+// Ingestion lifecycle for settlements per DB Schema §11.1.
+enum SettlementState {
+  SETTLEMENT_STATE_UNSPECIFIED = 0;
+  SETTLEMENT_STATE_IMPORTED = 1;
+  SETTLEMENT_STATE_NORMALIZED = 2;
+  SETTLEMENT_STATE_READY_FOR_MATCHING = 3;
+  SETTLEMENT_STATE_ARCHIVED = 4;
+}
+
+// Cost item state per DB Schema §11.2.
+enum CostState {
+  COST_STATE_UNSPECIFIED = 0;
+  COST_STATE_RECORDED = 1;
+  COST_STATE_PENDING_EVIDENCE = 2;
+  COST_STATE_RECONCILED = 3;
+  COST_STATE_ESTIMATED = 4;
+  COST_STATE_SUPERSEDED = 5;
+}
+
+// Immutable exchange rate snapshot captured at transaction time (§25.1).
+message ExchangeRateSnapshot {
+  string base_currency = 1;
+  string quote_currency = 2;
+  string rate_to_base = 3;
+  string provider = 4;
+  google.protobuf.Timestamp captured_at = 5;
+  google.protobuf.Timestamp effective_at = 6;
+  creativanta.common.v1.SourceClass source_class = 7;
+}
+
+// Financial posting record (append-only ledger §26.10).
+message FinancialPosting {
+  string posting_id = 1;
+  string workspace_id = 2;
+  string origin_type = 3;
+  string origin_id = 4;
+  string origin_version = 5;
+  FinancialComponent component = 6;
+  creativanta.common.v1.Money amount = 7; // signed base-currency effect
+  creativanta.common.v1.SourceClass source_class = 8;
+  creativanta.common.v1.ConfidenceBand confidence = 9;
+  ExchangeRateSnapshot exchange_rate = 10;
+  string reversal_of = 11;
+  google.protobuf.Timestamp effective_at = 12;
+  google.protobuf.Timestamp created_at = 13;
+}
+
+// Cost item record (§11.2).
+message CostItem {
+  string cost_item_id = 1;
+  string workspace_id = 2;
+  string cost_type = 3;
+  creativanta.common.v1.Money amount = 4;
+  string description = 5;
+  string related_scope_type = 6;
+  string related_scope_id = 7;
+  creativanta.common.v1.SourceClass source_class = 8;
+  string evidence_id = 9;
+  string confidence_reason = 10;
+  CostState cost_state = 11;
+  string effective_date = 12; // YYYY-MM-DD
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+}
+
+// Settlement line record (§26.9).
+message SettlementLine {
+  string line_id = 1;
+  string workspace_id = 2;
+  string settlement_id = 3;
+  string external_line_id = 4;
+  string external_order_id = 5;
+  string order_id = 6;
+  creativanta.common.v1.Money gross_amount = 7;
+  creativanta.common.v1.Money fee_amount = 8;
+  creativanta.common.v1.Money refund_amount = 9;
+  creativanta.common.v1.Money net_amount = 10;
+  creativanta.common.v1.Money matched_amount = 11;
+  string currency = 12;
+  ReconciliationState reconciliation_state = 13;
+  google.protobuf.Timestamp created_at = 14;
+}
+
+// Platform settlement record (§11.1).
+message Settlement {
+  string settlement_id = 1;
+  string workspace_id = 2;
+  creativanta.common.v1.SourceClass source_class = 3;
+  string source_platform = 4;
+  string external_settlement_id = 5;
+  string connected_account_id = 6;
+  ExchangeRateSnapshot exchange_rate = 7;
+  string import_fingerprint = 8;
+  creativanta.common.v1.Money gross_amount = 9;
+  creativanta.common.v1.Money net_amount = 10;
+  string fees_json = 11;
+  string deductions_json = 12;
+  string currency = 13;
+  SettlementState settlement_state = 14;
+  ReconciliationState reconciliation_state = 15;
+  repeated string related_order_ids = 16;
+  string effective_date = 17;
+  google.protobuf.Timestamp created_at = 18;
+  google.protobuf.Timestamp updated_at = 19;
+  repeated SettlementLine lines = 20;
+}
+
+// Profit snapshot projection (§11.3).
+message ProfitSnapshot {
+  string snapshot_id = 1;
+  string workspace_id = 2;
+  string scope_type = 3;
+  string scope_id = 4;
+  string period_start = 5;
+  string period_end = 6;
+  creativanta.common.v1.Money gross_revenue = 7;
+  creativanta.common.v1.Money platform_fees = 8;
+  creativanta.common.v1.Money shipping_costs = 9;
+  creativanta.common.v1.Money affiliate_commissions = 10;
+  creativanta.common.v1.Money refund_deductions = 11;
+  creativanta.common.v1.Money cogs = 12;
+  creativanta.common.v1.Money ads_spend = 13;
+  creativanta.common.v1.Money ai_credit_costs = 14;
+  creativanta.common.v1.Money seeding_costs = 15;
+  creativanta.common.v1.Money other_costs = 16;
+  creativanta.common.v1.Money net_profit = 17;
+  string margin_pct = 18;
+  string source_class_mix_json = 19;
+  creativanta.common.v1.ConfidenceBand confidence = 20;
+  google.protobuf.Timestamp freshness_at = 21;
+  string currency = 22;
+  google.protobuf.Timestamp created_at = 23;
+  bool is_incomplete = 24;
+  int32 unknown_required_components_count = 25;
+  creativanta.common.v1.Money pending_revenue = 26;
+  creativanta.common.v1.Money unreconciled_amount = 27;
+  int32 unreconciled_count = 28;
+}
+
+// Anomaly alert detected in profit/cost stream (§2.7.1).
+message ProfitAnomaly {
+  string anomaly_id = 1;
+  string workspace_id = 2;
+  string anomaly_type = 3;
+  string severity = 4; // info, warning, critical
+  string description = 5;
+  creativanta.common.v1.Money expected_amount = 6;
+  creativanta.common.v1.Money actual_amount = 7;
+  google.protobuf.Timestamp detected_at = 8;
+}
+
+// ============================================================================
+// Service Requests & Responses
+// ============================================================================
+
+// ProfitService/GetSummary
+message ProfitServiceGetSummaryRequest {
+  string workspace_id = 1;
+  string scope_type = 2; // workspace, product, platform, campaign, content
+  string scope_id = 3;
+  string period_start = 4; // YYYY-MM-DD
+  string period_end = 5;   // YYYY-MM-DD
+}
+
+message ProfitServiceGetSummaryResponse {
+  ProfitSnapshot snapshot = 1;
+  map<string, string> component_breakdown = 2;
+  map<string, double> source_class_percentages = 3;
+}
+
+// ProfitService/DrillDown
+message ProfitServiceDrillDownRequest {
+  string workspace_id = 1;
+  string scope_type = 2;
+  string scope_id = 3;
+  string period_start = 4;
+  string period_end = 5;
+  string drilldown_by = 6; // product, platform, campaign, content, cost_type
+}
+
+message ProfitDrillDownItem {
+  string key = 1;
+  string label = 2;
+  creativanta.common.v1.Money revenue = 3;
+  creativanta.common.v1.Money costs = 4;
+  creativanta.common.v1.Money net_profit = 5;
+  creativanta.common.v1.ConfidenceBand confidence = 6;
+  creativanta.common.v1.SourceClass primary_source_class = 7;
+}
+
+message ProfitServiceDrillDownResponse {
+  repeated ProfitDrillDownItem items = 1;
+  string currency = 2;
+}
+
+// ProfitService/GetAnomalies
+message ProfitServiceGetAnomaliesRequest {
+  string workspace_id = 1;
+  string period_start = 2;
+  string period_end = 3;
+}
+
+message ProfitServiceGetAnomaliesResponse {
+  repeated ProfitAnomaly anomalies = 1;
+}
+
+// ProfitService/GetSnapshot
+message ProfitServiceGetSnapshotRequest {
+  string workspace_id = 1;
+  string snapshot_id = 2;
+  string scope_type = 3;
+  string scope_id = 4;
+  string period_start = 5;
+  string period_end = 6;
+}
+
+message ProfitServiceGetSnapshotResponse {
+  ProfitSnapshot snapshot = 1;
+}
+
+// ProfitService/RefreshSnapshot
+message ProfitServiceRefreshSnapshotRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string scope_type = 3;
+  string scope_id = 4;
+  string period_start = 5;
+  string period_end = 6;
+}
+
+message ProfitServiceRefreshSnapshotResponse {
+  ProfitSnapshot snapshot = 1;
+}
+
+// SettlementService/Import
+message SettlementLineInput {
+  string external_line_id = 1;
+  string external_order_id = 2;
+  creativanta.common.v1.Money gross_amount = 3;
+  creativanta.common.v1.Money fee_amount = 4;
+  creativanta.common.v1.Money refund_amount = 5;
+  creativanta.common.v1.Money net_amount = 6;
+}
+
+message SettlementServiceImportRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string source_platform = 3;
+  string external_settlement_id = 4;
+  string connected_account_id = 5;
+  creativanta.common.v1.Money gross_amount = 6;
+  creativanta.common.v1.Money net_amount = 7;
+  string currency = 8;
+  string effective_date = 9;
+  string import_fingerprint = 10;
+  repeated SettlementLineInput lines = 11;
+  ExchangeRateSnapshot exchange_rate = 12;
+}
+
+message SettlementServiceImportResponse {
+  Settlement settlement = 1;
+  int32 imported_lines_count = 2;
+  bool already_existed = 3;
+}
+
+// SettlementService/List
+message SettlementServiceListRequest {
+  string workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+  string source_platform = 3;
+  SettlementState settlement_state = 4;
+  ReconciliationState reconciliation_state = 5;
+}
+
+message SettlementServiceListResponse {
+  repeated Settlement settlements = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+// SettlementService/Get
+message SettlementServiceGetRequest {
+  string workspace_id = 1;
+  string settlement_id = 2;
+}
+
+message SettlementServiceGetResponse {
+  Settlement settlement = 1;
+}
+
+// CostService/Create
+message CostServiceCreateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string cost_type = 3;
+  creativanta.common.v1.Money amount = 4;
+  string description = 5;
+  string related_scope_type = 6;
+  string related_scope_id = 7;
+  creativanta.common.v1.SourceClass source_class = 8;
+  string evidence_id = 9;
+  string confidence_reason = 10;
+  string effective_date = 11;
+}
+
+message CostServiceCreateResponse {
+  CostItem cost_item = 1;
+}
+
+// CostService/List
+message CostServiceListRequest {
+  string workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+  string cost_type = 3;
+  string related_scope_type = 4;
+  string related_scope_id = 5;
+  string period_start = 6;
+  string period_end = 7;
+}
+
+message CostServiceListResponse {
+  repeated CostItem cost_items = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+// CostService/Update
+message CostServiceUpdateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string cost_item_id = 3;
+  creativanta.common.v1.Money amount = 4;
+  string description = 5;
+  string cost_type = 6;
+  creativanta.common.v1.SourceClass source_class = 7;
+  CostState cost_state = 8;
+}
+
+message CostServiceUpdateResponse {
+  CostItem cost_item = 1;
+}
+
+// CostService/Delete
+message CostServiceDeleteRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string cost_item_id = 3;
+}
+
+message CostServiceDeleteResponse {
+  bool success = 1;
+}
+
+// ============================================================================
+// Service Definitions
+// ============================================================================
+
+service ProfitService {
+  rpc GetSummary(ProfitServiceGetSummaryRequest) returns (ProfitServiceGetSummaryResponse);
+  rpc DrillDown(ProfitServiceDrillDownRequest) returns (ProfitServiceDrillDownResponse);
+  rpc GetAnomalies(ProfitServiceGetAnomaliesRequest) returns (ProfitServiceGetAnomaliesResponse);
+  rpc GetSnapshot(ProfitServiceGetSnapshotRequest) returns (ProfitServiceGetSnapshotResponse);
+  rpc RefreshSnapshot(ProfitServiceRefreshSnapshotRequest) returns (ProfitServiceRefreshSnapshotResponse);
+}
+
+service SettlementService {
+  rpc Import(SettlementServiceImportRequest) returns (SettlementServiceImportResponse);
+  rpc List(SettlementServiceListRequest) returns (SettlementServiceListResponse);
+  rpc Get(SettlementServiceGetRequest) returns (SettlementServiceGetResponse);
+}
+
+service CostService {
+  rpc Create(CostServiceCreateRequest) returns (CostServiceCreateResponse);
+  rpc List(CostServiceListRequest) returns (CostServiceListResponse);
+  rpc Update(CostServiceUpdateRequest) returns (CostServiceUpdateResponse);
+  rpc Delete(CostServiceDeleteRequest) returns (CostServiceDeleteResponse);
+}
