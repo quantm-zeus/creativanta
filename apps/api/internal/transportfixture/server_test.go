@@ -177,6 +177,9 @@ func TestDeadlineAndStreamCancel(t *testing.T) {
 	if err == nil {
 		t.Fatal("deadline ignored")
 	}
+	if code := connect.CodeOf(err); code != connect.CodeDeadlineExceeded && code != connect.CodeCanceled {
+		t.Fatalf("expected deadline_exceeded or canceled on timeout, got %v (%v)", code, err)
+	}
 	streamCtx, stop := context.WithCancel(context.Background())
 	defer stop()
 	stream, err := c.Watch(streamCtx, metadata(&fixturev1.WatchRequest{MaxEvents: 10}, "test-watch", workspace))

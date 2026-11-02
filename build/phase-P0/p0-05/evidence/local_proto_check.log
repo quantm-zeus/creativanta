@@ -26,7 +26,7 @@ GO_TRANSPORT_NEGATIVE_TESTS_AND_RACE
 ?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1	[no test files]
 ?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1	[no test files]
 ?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1/transporttestv1connect	[no test files]
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportfixture	1.293s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportfixture	1.268s
 ?   	github.com/quantm-zeus/creativanta/apps/api/cmd/transport-fixture-test	[no test files]
 all modules verified
 UNIT_TYPESCRIPT
@@ -41,26 +41,12 @@ UNIT_TYPESCRIPT
 
  Test Files  1 passed (1)
       Tests  4 passed (4)
-   Start at  06:49:17
-   Duration  664ms (transform 115ms, setup 0ms, collect 223ms, tests 8ms, environment 0ms, prepare 129ms)
+   Start at  07:18:38
+   Duration  682ms (transform 113ms, setup 0ms, collect 219ms, tests 8ms, environment 0ms, prepare 135ms)
 
 UNIT_DART
 00:00 +0: loading /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p0-05/apps/mobile/test/generated_proto_test.dart
 00:00 +0: Generated Protobuf Tests Money serialization and exact string deserialization
 00:00 +1: Generated Protobuf Tests CommandContext instantiation with UUID and field validation
 00:00 +2: All tests passed!
-The Flutter CLI developer tool uses Google Analytics to report usage and diagnostic
-data along with package dependencies, and crash reporting to send basic crash
-reports. This data is used to help improve the Dart platform, Flutter framework,
-and related tools.
-
-Telemetry is not sent on the very first run. To disable reporting of telemetry,
-run this terminal command:
-
-    flutter --disable-analytics
-
-If you opt out of telemetry, an opt-out event will be sent, and then no further
-information will be sent. This data is collected in accordance with the Google
-Privacy Policy (https://policies.google.com/privacy).
-
 P0_PROTO_CONTRACT_AND_LOCAL_TEST_PASS

@@ -195,9 +195,10 @@
     "Created canonical Goose SQL migration 00002_p0_05_outbox_inbox_external_effects.sql installing consumer_inbox, external_effects, diagnostics_records, dead_letter_queue, background_jobs, and api_usage_daily with ENABLE + FORCE ROW LEVEL SECURITY, composite same-tenant FKs (§26.11), protect_audit_log_immutability() triggers on audit_events and internal_audit_logs (§26.12), and narrow role grants.",
     "Implemented apps/api/internal/outbox with FOR UPDATE SKIP LOCKED 30-second outbox poller leases, conditional MarkPublished lease-owner checks, XREADGROUP + 60-second XAUTOCLAIM PEL recovery, atomic consumer_inbox deduplication before XACK, and live actor/approval re-verification before execution.",
     "Implemented ExternalEffectGuard and DLQManager so operations in 'unknown' or 'submitted' state are never blindly retried or replayed from DLQ without reconciliation proof, and OPS-2026-02 protects unresolved and financial DLQ items from 30-day purge.",
-    "Implemented M23 DiagnosticsService ConnectRPC handler (apps/api/internal/diagnostics) enforcing RBAC (diagnostics:read and workspace:settings:manage), RULE-M23-A04 user-facing sanitization, and the 4-step Guided Repair Wizard (Verify -> Diagnose -> Fix -> Confirm) across Web (/settings/diagnostics, W125) and Mobile (M059)."
+    "Implemented M23 DiagnosticsService ConnectRPC handler (apps/api/internal/diagnostics) enforcing RBAC (diagnostics:read and workspace:settings:manage), RULE-M23-A04 user-facing sanitization, and the 4-step Guided Repair Wizard (Verify -> Diagnose -> Fix -> Confirm) across Web (/settings/diagnostics, W125) and Mobile (M059).",
+    "Fixed server-side context deadline/cancellation error mapping in apps/api/internal/transportfixture/server.go so context.DeadlineExceeded maps to connect.CodeDeadlineExceeded (gRPC status 4) rather than connect.CodeUnknown (gRPC status 2) when server-side grpc-timeout fires concurrently with client-side deadline timers."
   ],
   "notes": "P0-05 implementation and all local static/unit/race/web/mobile/proto/transport checks are complete (LOCAL_IMPLEMENTED). Live PostgreSQL 17.10 execution of TestPostgresLiveOutboxInboxAndExternalEffects is wired into tooling/ci/check_identity.sh for GitHub Actions CI.",
-  "recorded_at_utc": "2026-11-02T06:46:00Z",
+  "recorded_at_utc": "2026-11-02T07:20:00Z",
   "remote_ci": "PENDING_PUSH"
 }
