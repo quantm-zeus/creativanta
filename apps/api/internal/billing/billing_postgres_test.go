@@ -342,4 +342,73 @@ func TestPostgresLiveCreditLotsQuotesAndBilling(t *testing.T) {
 	if delErr == nil || !strings.Contains(delErr.Error(), "append-only") {
 		t.Fatalf("expected protect_credit_transaction_immutability trigger to block DELETE, got %v", delErr)
 	}
+
+	// 5. P1-05 Acceptance Target #3: Verify PostgreSQL-level payment grant replay cannot double-grant
+	//    across ai_credit_lots (workspace_id, external_grant_key) and ai_credit_transactions (workspace_id, idempotency_key).
+	err = tenantdb.WithTx(ctx, appPool, tenantdb.Scope{
+		WorkspaceID:             tenantA,
+		UserID:                  userA,
+		RequireActiveMembership: true,
+	}, func(txCtx context.Context, q *tenantdb.Queries) error {
+		const replayLotID = "44444444-4444-4444-8444-444444444499"
+		_, inserted1, err := q.InsertCreditLotIdempotent(txCtx, tenantdb.CreditLotRow{
+			LotID:            replayLotID,
+			WorkspaceID:      tenantA,
+			SourceType:       SourcePurchased,
+			GrantedCredits:   tenantdb.MustParseExactDecimal("500"),
+			RemainingCredits: tenantdb.MustParseExactDecimal("500"),
+			ReservedCredits:  tenantdb.ZeroDecimal(),
+			ExpiresAt:        nil,
+			ExternalGrantKey: "stripe_pack:cs_p105_replay_test",
+		})
+		if err != nil || !inserted1 {
+			return fmt.Errorf("first InsertCreditLotIdempotent failed: inserted=%v err=%v", inserted1, err)
+		}
+		// Replay the exact same external_grant_key with a new candidate LotID -> must return inserted=false!
+		_, inserted2, err := q.InsertCreditLotIdempotent(txCtx, tenantdb.CreditLotRow{
+			LotID:            "44444444-4444-4444-8444-444444444498",
+			WorkspaceID:      tenantA,
+			SourceType:       SourcePurchased,
+			GrantedCredits:   tenantdb.MustParseExactDecimal("500"),
+			RemainingCredits: tenantdb.MustParseExactDecimal("500"),
+			ReservedCredits:  tenantdb.ZeroDecimal(),
+			ExpiresAt:        nil,
+			ExternalGrantKey: "stripe_pack:cs_p105_replay_test",
+		})
+		if err != nil || inserted2 {
+			return fmt.Errorf("expected second InsertCreditLotIdempotent for same external_grant_key to be no-op (inserted=false), got inserted=%v err=%v", inserted2, err)
+		}
+		_, txInserted1, err := q.InsertCreditTransaction(txCtx, tenantdb.CreditTransactionRow{
+			WorkspaceID:    tenantA,
+			UserID:         userA,
+			OperationType:  "credit_purchase",
+			CreditsDelta:   tenantdb.MustParseExactDecimal("500"),
+			BalanceAfter:   tenantdb.MustParseExactDecimal("502"),
+			Source:         SourcePurchased,
+			LotID:          replayLotID,
+			IdempotencyKey: "grant:stripe_pack:cs_p105_replay_test",
+			Description:    "P1-05 top-up grant",
+		})
+		if err != nil || !txInserted1 {
+			return fmt.Errorf("first InsertCreditTransaction grant failed: inserted=%v err=%v", txInserted1, err)
+		}
+		_, txInserted2, err := q.InsertCreditTransaction(txCtx, tenantdb.CreditTransactionRow{
+			WorkspaceID:    tenantA,
+			UserID:         userA,
+			OperationType:  "credit_purchase",
+			CreditsDelta:   tenantdb.MustParseExactDecimal("500"),
+			BalanceAfter:   tenantdb.MustParseExactDecimal("1002"),
+			Source:         SourcePurchased,
+			LotID:          replayLotID,
+			IdempotencyKey: "grant:stripe_pack:cs_p105_replay_test",
+			Description:    "Duplicate replay grant attempt",
+		})
+		if err != nil || txInserted2 {
+			return fmt.Errorf("expected duplicate grant InsertCreditTransaction to be suppressed (inserted=false), got inserted=%v err=%v", txInserted2, err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("PostgreSQL payment replay idempotency verification failed: %v", err)
+	}
 }

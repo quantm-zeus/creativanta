@@ -1,0 +1,193 @@
+{
+  "task_id": "P1-05",
+  "phase": "P1",
+  "slice": "p1-05",
+  "title": "First-value loop và payment replay",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "cbc8852",
+  "feature_refs": [
+    "docs/02_features/platform/home_decision_engine.md",
+    "docs/02_features/finance/operating_ledger.md",
+    "docs/02_features/platform/reporting_admin_billing.md",
+    "docs/01_business/pricing_and_credits.md",
+    "docs/01_business/product_strategy_validation.md",
+    "docs/06_quality_ops/analytics_event_taxonomy.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_behavior_contracts.md",
+    "docs/04_contracts/credit_accounting_contract.md",
+    "docs/04_contracts/financial_computation_contract.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/error_catalog.md",
+    "docs/05_system/queue_retry_design.md"
+  ],
+  "requirement_ids": [
+    "M01-f944abe3adba-001",
+    "M01-001",
+    "M01-002",
+    "M01-003",
+    "M01-004",
+    "M19-001",
+    "M19-005",
+    "M19-006",
+    "M19-007",
+    "M23-001",
+    "M23-002",
+    "DB-C-001",
+    "DB-H-001"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_home_dashboard.md",
+    "docs/03_screens/web/screen_web_home_morning_brief.md",
+    "docs/03_screens/web/screen_web_finance_profit_dashboard.md",
+    "docs/03_screens/web/screen_web_settings_billing.md",
+    "docs/03_screens/mobile/screen_mobile_home_dashboard.md",
+    "docs/03_screens/mobile/screen_mobile_billing.md"
+  ],
+  "source_hashes": {
+    "infra/migrations/00009_p1_05_home_dashboard_config_and_billing_replay.sql": "c764b11b324044ee29eb27fc0466c2bcf4886a1aea8ebe72da99655c0e17c53d",
+    "apps/api/internal/migrate/migrator.go": "e1b51615b8573d00dafbf3e85321c939a447988ca69f832bcd12532bc167da0b",
+    "apps/api/internal/migrate/migrator_test.go": "a1a09a1f9f761f806191016bc35d3c97a72a8f4160b75995a0dae686fb460d4a",
+    "apps/api/internal/billing/ledger.go": "426718d095023b880fcf7fb5beffbcf2b7b6d6a654a158e45bee86065514afea",
+    "apps/api/internal/billing/service.go": "a629c921b3c119a258f4846c6b718773192a07e38bcbc40e227b9002a5e2730e",
+    "apps/api/internal/billing/billing_test.go": "29565a1624a0de2119047b6ff0f890199e2de6d40120c5e2630532f8f90071a1",
+    "apps/api/internal/billing/billing_postgres_test.go": "476fb2190fd8d39c5a29e6bdfe844a7299cf9787789da5bf166bccb88e72135e",
+    "apps/api/internal/home/morning_brief.go": "5bcd1f81f130632167df674987bc1ea256c0519d2182d06cb52794e7a0c61152",
+    "apps/api/internal/home/pilot.go": "716cdce23143fa8e0f085fc1b2759af24ac5eafa242450e75f8ea460990becc3",
+    "apps/api/internal/home/service.go": "fc762d8f7081343bb02a02391f5eaad591a13959003b4cea21c026a6d7d56e1f",
+    "apps/api/internal/home/service_test.go": "aed0301f44a0a22ab5e243757e431dd495ce1eda705b5ffab7d310fa6fd25d4e",
+    "apps/web/src/lib/p1_first_value/index.ts": "8359dd7fc1e947a9cb1e5c8c786dd6f1be4bbfd7a9ce37d5934a6d97c0a53b9e",
+    "apps/web/src/lib/p1_first_value/p1_first_value.test.ts": "081dfff73ee24c5f10322923b788973ed24fed176e2085b0688d521d96536b81",
+    "apps/web/src/routes/+page.svelte": "b8eed50cc327bd7bb0748c8343d71499d74ad13f884ed4a2b8fde0f224b0d1d6",
+    "apps/web/src/routes/kinh-doanh/+page.svelte": "830829cc25c6dbd37d450fc170e84f5eb4f45b04586195ba434d67a0c026215f",
+    "apps/mobile/lib/main.dart": "08e04b2b87b8893ccbc04988d97674a0e7e795e86aa410865bcb08aadbd4e076",
+    "apps/mobile/test/widget_test.dart": "ab802db9b9db8fad36f84c6e0dca4fe0551b9514119effc28f46cabcd03efeca"
+  },
+  "scope_items": [
+    "Database Migration 00009: Added home_dashboard_config (§22.14) with workspace_id, operator_mode, morning_brief_enabled, morning_brief_channels, morning_brief_time, onboarding_completed, onboarding_progress, ENABLE/FORCE ROW LEVEL SECURITY, tenant_isolation and admin_ops_scope policies, narrow app_user/admin_user grants, and unique index idx_be_workspace_stripe_event on billing_events(workspace_id, stripe_event_id).",
+    "Acceptance Target 1 (No connector required for authorized import): Implemented IngestAuthorizedImport and ResolveUnderlyingDataRepair in Go (apps/api/internal/home/service.go) and TypeScript/SvelteKit (apps/web/src/lib/p1_first_value/index.ts, apps/web/src/routes/kinh-doanh/+page.svelte) plus mobile Home summary (apps/mobile/lib/main.dart). Accepts authorized product/order/cost/settlement imports with ConnectedAccountsCount = 0, labels imported metrics with source_class=imported and confidence_band=low when gaps exist, surfaces data-repair cards with 1 CTA and visible reason, dynamically removes repair cards when underlying gaps are resolved, redacts finance gaps for viewer role, and tracks per-user personal onboarding progress (Steps 1, 2, 5 available in P1; Steps 3, 4 unavailable; IsClosedLoopComplete=false).",
+    "Acceptance Target 2 (DST/timezone cannot double-deliver brief): Implemented EvaluateAndDeliverMorningBrief in apps/api/internal/home/morning_brief.go and evaluateMorningBriefSchedule in apps/web/src/lib/p1_first_value/index.ts using IANA timezones, bounded stale window (15m), and unique per-workspace local-date idempotency key morning_brief:<workspace_id>:<YYYY-MM-DD>. Verified across UTC day boundaries in Asia/Ho_Chi_Minh, Spring Forward and Fall Back DST transitions in America/New_York, and timezone changes on the same local date.",
+    "Acceptance Target 3 (Payment replay cannot double-grant): Hardened SettleStripeWebhook in apps/api/internal/billing/ledger.go and service.go (plus PostgreSQL InsertCreditLotIdempotent/InsertCreditTransaction in billing_postgres_test.go and evaluateStripeWebhookReplay in TypeScript) to enforce idempotency across both Stripe event_id AND underlying economic grant identity (external_grant_key on ai_credit_lots, idempotency_key on ai_credit_transactions, stripe_invoice_id on invoices, and checkout_session_id settlement state), while rejecting unpaid sessions.",
+    "Acceptance Target 4 (P1 pilot measurements record actual unknowns): Implemented RecordPilotObservation and EvaluatePilotCohort in apps/api/internal/home/pilot.go and evaluateP1PilotCohort in apps/web/src/lib/p1_first_value/index.ts per docs/01_business/product_strategy_validation.md and docs/06_quality_ops/analytics_event_taxonomy.md (§6). Excludes demo/internal data, deduplicates by (workspace_id, object_id, operation_id), preserves all 5 canonical confidence bands (high, medium_high, medium, low_medium, low), and records missing operator time tracking or zero accepted outputs as nil/unknown (never coerced to 0)."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestP105NoConnectorRequiredForAuthorizedImportAndDataRepair (Go -race) and P1-05 Vitest suite confirm 0-connector import, dynamic repair card removal, viewer RBAC redaction, and per-user personal onboarding progress.",
+    "Acceptance Target 2 Verified: TestP105DSTAndTimezoneCannotDoubleDeliverMorningBrief (Go -race) and P1-05 Vitest suite confirm zero duplicate Morning Brief deliveries across UTC day crossover, America/New_York DST Spring Forward & Fall Back, and timezone shifts.",
+    "Acceptance Target 3 Verified: TestP105PaymentReplayCannotDoubleGrant (Go -race, including concurrent replay goroutines), TestPostgresLiveCreditLotsQuotesAndBilling step 5, and P1-05 Vitest suite confirm duplicate/re-emitted webhooks never double-grant credits or duplicate invoices.",
+    "Acceptance Target 4 Verified: TestP105PilotMeasurementsRecordActualUnknowns (Go -race) and P1-05 Vitest suite confirm missing operator repair time and zero accepted outputs remain unknown/nil rather than 0.",
+    "Migration 00009 Verified: TestLoadAndValidateCanonicalP004Migration and TestUpStatusDownTransactionalBehavior in apps/api/internal/migrate/migrator_test.go pass for all 9 migrations.",
+    "Web & Mobile Surfaces Verified: check_node.sh (svelte-check, vite build, 53 web tests + 6 admin tests), check_web_smoke.sh (real SSR HTTP 200 on /, /kham-pha, /sang-tao, /xuat-ban, /kinh-doanh), and check_flutter.sh (flutter analyze --fatal-infos --fatal-warnings + 69 tests) all pass."
+  ],
+  "rpc_contracts": [
+    "DashboardService/GetMobileHome",
+    "DashboardService/GetDecisionCards",
+    "DashboardService/GetWhyThisNumber",
+    "DashboardService/CompleteOnboardingStep",
+    "AdminBillingService/GetBillingSummary",
+    "AdminBillingService/PurchaseCredits",
+    "AdminBillingService/ChangePlan",
+    "CreditService/GetBalance"
+  ],
+  "migration_files": [
+    "infra/migrations/00009_p1_05_home_dashboard_config_and_billing_replay.sql"
+  ],
+  "permission_keys": [
+    "workspace:settings:read",
+    "workspace:settings:manage",
+    "workspace:billing:read",
+    "workspace:billing:manage",
+    "credits:view_balance",
+    "credits:top_up",
+    "finance:transactions:read",
+    "profit:read"
+  ],
+  "event_types": [
+    "morning_brief.generated",
+    "credits.purchased",
+    "billing.payment_succeeded",
+    "billing.payment_failed",
+    "profit.snapshot_updated"
+  ],
+  "screen_routes": [
+    "/",
+    "/kinh-doanh",
+    "/settings/billing"
+  ],
+  "evidence_files": [
+    "build/phase-P1/p1-05/evidence/01-check-d0.log",
+    "build/phase-P1/p1-05/evidence/02-check-proto.log",
+    "build/phase-P1/p1-05/evidence/03-check-go.log",
+    "build/phase-P1/p1-05/evidence/04-go-test-race-home-billing-migrate.log",
+    "build/phase-P1/p1-05/evidence/05-check-node.log",
+    "build/phase-P1/p1-05/evidence/06-check-web-smoke.log",
+    "build/phase-P1/p1-05/evidence/07-check-flutter.log"
+  ],
+  "checks": [
+    {
+      "command": "bash tooling/ci/check_d0.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-05/evidence/01-check-d0.log",
+      "checked_at": "2026-11-02T17:38:00Z"
+    },
+    {
+      "command": "bash tooling/ci/check_proto.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-05/evidence/02-check-proto.log",
+      "checked_at": "2026-11-02T17:38:00Z"
+    },
+    {
+      "command": "bash tooling/ci/check_go.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-05/evidence/03-check-go.log",
+      "checked_at": "2026-11-02T17:38:00Z"
+    },
+    {
+      "command": "cd apps/api && go test -race -v -count=1 ./internal/home/... ./internal/billing/... ./internal/migrate/...",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-05/evidence/04-go-test-race-home-billing-migrate.log",
+      "checked_at": "2026-11-02T17:38:00Z"
+    },
+    {
+      "command": "bash tooling/ci/check_node.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-05/evidence/05-check-node.log",
+      "checked_at": "2026-11-02T17:38:00Z"
+    },
+    {
+      "command": "bash tooling/ci/check_web_smoke.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-05/evidence/06-check-web-smoke.log",
+      "checked_at": "2026-11-02T17:38:00Z"
+    },
+    {
+      "command": "bash tooling/ci/check_flutter.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-05/evidence/07-check-flutter.log",
+      "checked_at": "2026-11-02T17:38:00Z"
+    }
+  ],
+  "external_gates": [
+    "Live Stripe Webhook & Checkout Sandbox: Production/staging Stripe webhook secret and live Stripe Checkout redirect require external Stripe credentials; webhook signature verification and replay idempotency across event_id and external_grant_key are verified locally.",
+    "Live Clerk IdP & Webhook Verification: External Clerk JWKS/Svix credentials remain an external gate.",
+    "PostgreSQL 17 Live Container in CI: CREATIVANTA_TEST_DATABASE_URL live PostgreSQL tests execute in GitHub Actions CI service containers; static SQL AST/RLS contract validation and transactional migrator tests pass locally."
+  ],
+  "remaining_scope": [
+    "P2-P8: Future phase slices per docs/00_index/IMPLEMENTATION_ORDER.md and docs/00_index/AGENT_BUILD_BACKLOG.md."
+  ],
+  "decisions": [
+    "Enforced Morning Brief local-date delivery identity (morning_brief:<workspace_id>:<YYYY-MM-DD>) evaluated in workspace IANA timezone with 15-minute staleness bound so DST transitions and timezone updates never double-deliver.",
+    "Enforced dual-key Stripe webhook idempotency across both stripe_event_id and economic external_grant_key (stripe_pack:<session_id> / sub_alloc:<sub_id>:<period_key>) so event redeliveries or cross-event invoice.paid notifications never double-grant credits.",
+    "Represented missing operator repair time and zero-accepted-output production cost as explicit nil/unknown values in P1 pilot cohort reporting rather than coercing to zero."
+  ],
+  "notes": "P1-05 First-value loop and payment replay implemented and verified locally across Go, PostgreSQL migration 00009, SvelteKit Web, and Flutter Mobile. All 4 acceptance targets (no connector required for authorized import, DST/timezone Morning Brief idempotency, payment replay double-grant prevention, and honest unknown recording in P1 pilot measurements) are tested and passing."
+}

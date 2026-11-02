@@ -937,6 +937,49 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                   ],
                 ),
               ),
+              if (selectedIndex == 0 && _uiState == 'normal') ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFEFA),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE8E5DC)),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'P1-05 FIRST-VALUE & MORNING BRIEF',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.1,
+                          color: CreativantaApp.forest,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Không bắt buộc connector khi nhập dữ liệu hợp lệ (0 connected accounts).',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: CreativantaApp.ink,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Morning Brief: 07:00 Asia/Ho_Chi_Minh · Khóa chống gửi trùng theo ngày địa phương (DST/timezone safe) · Chống cấp trùng tín dụng khi phát lại webhook thanh toán.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF7D837B),
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 22),
               Semantics(
                 label: 'Trạng thái tích hợp: chưa kết nối backend',

@@ -241,3 +241,522 @@ func TestOnboardingChecklistProgress(t *testing.T) {
 		t.Errorf("expected Step 1 is_completed=true")
 	}
 }
+
+func TestP105NoConnectorRequiredForAuthorizedImportAndDataRepair(t *testing.T) {
+	svc := home.NewService(nil)
+	now := time.Date(2026, 11, 2, 8, 0, 0, 0, time.UTC)
+
+	ownerCtx := home.WithCallerContext(context.Background(), home.CallerContext{
+		UserID:        "user_owner_1",
+		WorkspaceID:   testWorkspaceID,
+		WorkspaceRole: "owner",
+	})
+	memberCtx := home.WithCallerContext(context.Background(), home.CallerContext{
+		UserID:        "user_member_2",
+		WorkspaceID:   testWorkspaceID,
+		WorkspaceRole: "editor",
+	})
+	viewerCtx := home.WithCallerContext(context.Background(), home.CallerContext{
+		UserID:        "user_viewer_3",
+		WorkspaceID:   testWorkspaceID,
+		WorkspaceRole: "viewer",
+	})
+
+	// 1. Demo fixture import must be rejected (Demo fixtures never contribute to customer profit or activation).
+	if _, err := svc.IngestAuthorizedImport(ownerCtx, home.AuthorizedImportRequest{
+		WorkspaceID:            testWorkspaceID,
+		ConnectedAccountsCount: 0,
+		OrdersCount:            5,
+		GrossRevenueCents:      10000000,
+		IsDemoFixture:          true,
+		ImportedAt:             now,
+	}); err == nil {
+		t.Fatalf("expected demo fixture import to be rejected")
+	}
+
+	// 2. Viewer role must be denied import mutation.
+	if _, err := svc.IngestAuthorizedImport(viewerCtx, home.AuthorizedImportRequest{
+		WorkspaceID:            testWorkspaceID,
+		ConnectedAccountsCount: 0,
+		OrdersCount:            5,
+		GrossRevenueCents:      10000000,
+		ImportedAt:             now,
+	}); err == nil {
+		t.Fatalf("expected viewer role to be denied IngestAuthorizedImport")
+	}
+
+	// 3. Seller Owner with ZERO connected accounts imports a valid product/order/cost sample with 2 data-repair gaps.
+	proj, err := svc.IngestAuthorizedImport(ownerCtx, home.AuthorizedImportRequest{
+		WorkspaceID:            testWorkspaceID,
+		ConnectedAccountsCount: 0, // NO native API connector required!
+		ProductsCount:          3,
+		OrdersCount:            12,
+		CostsCount:             1,
+		GrossRevenueCents:      8500000,
+		KnownCostsCents:        2100000,
+		Currency:               "VND",
+		RepairGaps: []home.DataRepairGap{
+			{
+				GapID:       "gap-missing-cogs-sku-a",
+				GapKind:     "missing_cogs",
+				Title:       "Thiếu giá vốn (COGS) cho 2 SKU bán chạy",
+				Reason:      "2 SKU trong lô nhập CSV chưa có giá vốn; lợi nhuận đang gắn nhãn chưa hoàn chỉnh (Confidence: LOW).",
+				RepairCTA:   "Cập nhật giá vốn SKU",
+				RepairRoute: "/kinh-doanh",
+				AmountCents: 1500000,
+				Currency:    "VND",
+			},
+			{
+				GapID:       "gap-unmatched-settlement-nov",
+				GapKind:     "unmatched_settlement",
+				Title:       "Chênh lệch đối soát sao kê chưa khớp",
+				Reason:      "1 khoản thanh toán 450.000 ₫ chưa khớp chứng từ đơn hàng.",
+				RepairCTA:   "Mở hàng đợi đối soát",
+				RepairRoute: "/kinh-doanh",
+				AmountCents: 450000,
+				Currency:    "VND",
+			},
+		},
+		ImportedAt: now,
+	})
+	if err != nil {
+		t.Fatalf("IngestAuthorizedImport with 0 connectors failed: %v", err)
+	}
+	if proj.ConnectedAccountsCount != 0 || proj.RequiresNativeConnector {
+		t.Fatalf("expected ConnectedAccountsCount=0 and RequiresNativeConnector=false, got count=%d req=%v",
+			proj.ConnectedAccountsCount, proj.RequiresNativeConnector)
+	}
+	if proj.SourceBadge != adminv1.DataSourceBadge_DATA_SOURCE_BADGE_IMPORTED {
+		t.Fatalf("expected source badge IMPORTED, got %v", proj.SourceBadge)
+	}
+	if proj.Confidence != adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_LOW || !proj.IsIncomplete || proj.UnknownRequiredComponentsCount != 2 {
+		t.Fatalf("expected Confidence=LOW, IsIncomplete=true, UnknownRequiredComponentsCount=2, got conf=%v inc=%v unk=%d",
+			proj.Confidence, proj.IsIncomplete, proj.UnknownRequiredComponentsCount)
+	}
+	if proj.FormattedGrossRevenue != "8.500.000 ₫" || proj.FormattedNetProfit != "6.400.000 ₫" {
+		t.Fatalf("unexpected formatted revenue/profit: rev=%s net=%s", proj.FormattedGrossRevenue, proj.FormattedNetProfit)
+	}
+
+	// Verify Owner's personal onboarding progress: Steps 1, 2, 5 completed (3/5), Steps 3 & 4 unavailable, IsClosedLoopComplete=false!
+	if proj.PersonalOnboarding.CompletedCount != 3 || proj.PersonalOnboarding.IsClosedLoopComplete {
+		t.Fatalf("expected CompletedCount=3 and IsClosedLoopComplete=false in P1, got count=%d complete=%v",
+			proj.PersonalOnboarding.CompletedCount, proj.PersonalOnboarding.IsClosedLoopComplete)
+	}
+	if proj.PersonalOnboarding.Steps[2].IsAvailable || proj.PersonalOnboarding.Steps[3].IsAvailable {
+		t.Fatalf("expected future-phase Steps 3 and 4 to remain IsAvailable=false in P1")
+	}
+
+	// Attempting to complete unshipped future step 3 in P1 must fail closed.
+	if _, err := svc.CompleteOnboardingStep(ownerCtx, connect.NewRequest(&adminv1.CompleteOnboardingStepRequest{
+		WorkspaceId: &commonv1.UUID{Value: testWorkspaceID},
+		StepNumber:  3,
+	})); err == nil {
+		t.Fatalf("expected completing unavailable future-phase step 3 in P1 to fail")
+	}
+
+	// 4. Verify personal onboarding isolation: Member 2 starts at 0/5 and completing Step 1 for Member 2
+	//    does NOT alter Owner's progress or workspace dashboard config.
+	cfgBefore := svc.GetWorkspaceDashboardConfig(testWorkspaceID)
+	memberHome, err := svc.GetMobileHome(memberCtx, connect.NewRequest(&adminv1.GetMobileHomeRequest{
+		WorkspaceId: &commonv1.UUID{Value: testWorkspaceID},
+		ActiveMode:  adminv1.OperatorModeId_OPERATOR_MODE_ID_SELLER,
+	}))
+	if err != nil {
+		t.Fatalf("GetMobileHome for member failed: %v", err)
+	}
+	if memberHome.Msg.Onboarding.CompletedCount != 0 {
+		t.Fatalf("expected member personal onboarding to be isolated at 0 completed steps, got %d", memberHome.Msg.Onboarding.CompletedCount)
+	}
+	if _, err := svc.CompleteOnboardingStep(memberCtx, connect.NewRequest(&adminv1.CompleteOnboardingStepRequest{
+		WorkspaceId: &commonv1.UUID{Value: testWorkspaceID},
+		StepNumber:  1,
+	})); err != nil {
+		t.Fatalf("member CompleteOnboardingStep(1) failed: %v", err)
+	}
+	cfgAfter := svc.GetWorkspaceDashboardConfig(testWorkspaceID)
+	if cfgBefore.MorningBriefTime != cfgAfter.MorningBriefTime || cfgBefore.Timezone != cfgAfter.Timezone {
+		t.Fatalf("member personal checklist completion must not mutate workspace settings")
+	}
+
+	// 5. Verify RBAC privacy on Data-Repair cards:
+	//    Owner sees the 2 data_repair cards; Viewer sees ZERO data_repair or M19 cards and ZERO revenue total!
+	ownerCardsResp, err := svc.GetDecisionCards(ownerCtx, connect.NewRequest(&adminv1.GetDecisionCardsRequest{
+		WorkspaceId:  &commonv1.UUID{Value: testWorkspaceID},
+		OperatorMode: adminv1.OperatorModeId_OPERATOR_MODE_ID_SELLER,
+	}))
+	if err != nil {
+		t.Fatalf("GetDecisionCards for owner failed: %v", err)
+	}
+	repairCountOwner := 0
+	for _, c := range ownerCardsResp.Msg.Cards {
+		if c.CardFamily == "data_repair" {
+			repairCountOwner++
+		}
+	}
+	if repairCountOwner != 2 {
+		t.Fatalf("expected Owner to see 2 data_repair cards, got %d", repairCountOwner)
+	}
+
+	viewerCardsResp, err := svc.GetDecisionCards(viewerCtx, connect.NewRequest(&adminv1.GetDecisionCardsRequest{
+		WorkspaceId:  &commonv1.UUID{Value: testWorkspaceID},
+		OperatorMode: adminv1.OperatorModeId_OPERATOR_MODE_ID_SELLER,
+	}))
+	if err != nil {
+		t.Fatalf("GetDecisionCards for viewer failed: %v", err)
+	}
+	for _, c := range viewerCardsResp.Msg.Cards {
+		if c.CardFamily == "data_repair" || c.ModuleRef == "M19" || c.CardFamily == "revenue_today" {
+			t.Fatalf("RBAC PRIVACY VIOLATION: viewer saw restricted finance/repair card %s (%s)", c.CardId, c.CardFamily)
+		}
+	}
+	viewerHomeResp, err := svc.GetMobileHome(viewerCtx, connect.NewRequest(&adminv1.GetMobileHomeRequest{
+		WorkspaceId: &commonv1.UUID{Value: testWorkspaceID},
+		ActiveMode:  adminv1.OperatorModeId_OPERATOR_MODE_ID_SELLER,
+	}))
+	if err != nil {
+		t.Fatalf("GetMobileHome for viewer failed: %v", err)
+	}
+	if viewerHomeResp.Msg.CustomerVerifiedTotalRevenue != "" {
+		t.Fatalf("RBAC PRIVACY VIOLATION: viewer saw CustomerVerifiedTotalRevenue=%q", viewerHomeResp.Msg.CustomerVerifiedTotalRevenue)
+	}
+
+	// 6. Completing the underlying repairs in domain state dynamically removes the repair cards
+	//    and upgrades profit confidence from LOW to MEDIUM.
+	afterRepair1, err := svc.ResolveUnderlyingDataRepair(ownerCtx, testWorkspaceID, "gap-missing-cogs-sku-a", 1500000)
+	if err != nil {
+		t.Fatalf("ResolveUnderlyingDataRepair 1 failed: %v", err)
+	}
+	if len(afterRepair1.ActiveRepairCards) != 1 || afterRepair1.FormattedNetProfit != "4.900.000 ₫" {
+		t.Fatalf("expected 1 remaining repair card and net profit 4.900.000 ₫, got cards=%d net=%s",
+			len(afterRepair1.ActiveRepairCards), afterRepair1.FormattedNetProfit)
+	}
+
+	afterRepair2, err := svc.ResolveUnderlyingDataRepair(ownerCtx, testWorkspaceID, "gap-unmatched-settlement-nov", 0)
+	if err != nil {
+		t.Fatalf("ResolveUnderlyingDataRepair 2 failed: %v", err)
+	}
+	if len(afterRepair2.ActiveRepairCards) != 0 || afterRepair2.IsIncomplete || afterRepair2.Confidence != adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_MEDIUM {
+		t.Fatalf("expected 0 repair cards, IsIncomplete=false, Confidence=MEDIUM after resolving all gaps, got cards=%d inc=%v conf=%v",
+			len(afterRepair2.ActiveRepairCards), afterRepair2.IsIncomplete, afterRepair2.Confidence)
+	}
+}
+
+func TestP105DSTAndTimezoneCannotDoubleDeliverMorningBrief(t *testing.T) {
+	svc := home.NewService(nil)
+	ownerCtx := home.WithCallerContext(context.Background(), home.CallerContext{
+		UserID:        "user_owner_1",
+		WorkspaceID:   testWorkspaceID,
+		WorkspaceRole: "owner",
+	})
+
+	// 1. Workspace with no authorized data (only demo fixture) is ineligible for Morning Brief.
+	svc.SeedWorkspaceMetric(testWorkspaceID, home.StoredMetric{
+		MetricKey:     "demo_only",
+		AmountCents:   5000000,
+		DataSource:    adminv1.DataSourceBadge_DATA_SOURCE_BADGE_DEMO,
+		IsDemoFixture: true,
+	})
+	ineligibleRes, err := svc.EvaluateAndDeliverMorningBrief(home.MorningBriefEvalInput{
+		WorkspaceID: testWorkspaceID,
+		NowUTC:      time.Date(2026, 11, 1, 0, 5, 0, 0, time.UTC), // 07:05 Asia/Ho_Chi_Minh
+	})
+	if err != nil || ineligibleRes.Decision != "ineligible_no_authorized_data" {
+		t.Fatalf("expected workspace with only demo fixture to be ineligible_no_authorized_data, got %+v, err=%v", ineligibleRes, err)
+	}
+
+	// 2. Ingest authorized P1 import (with 0 connected accounts) -> workspace becomes eligible!
+	if _, err := svc.IngestAuthorizedImport(ownerCtx, home.AuthorizedImportRequest{
+		WorkspaceID:            testWorkspaceID,
+		ConnectedAccountsCount: 0,
+		ProductsCount:          2,
+		OrdersCount:            4,
+		GrossRevenueCents:      3200000,
+		KnownCostsCents:        1200000,
+		Currency:               "VND",
+	}); err != nil {
+		t.Fatalf("IngestAuthorizedImport failed: %v", err)
+	}
+
+	// 3. Configure workspace for America/New_York at "01:30" on US DST Fall-Back day (Sunday 2026-11-01).
+	//    On 2026-11-01 in America/New_York:
+	//      - First 01:30 local time is 01:30 EDT (UTC-4) = 2026-11-01T05:30:00Z
+	//      - Second 01:30 local time (after fall-back at 02:00 EDT -> 01:00 EST) is 01:30 EST (UTC-5) = 2026-11-01T06:30:00Z
+	if _, err := svc.ConfigureWorkspaceDashboard(home.HomeDashboardConfig{
+		WorkspaceID:          testWorkspaceID,
+		OperatorMode:         adminv1.OperatorModeId_OPERATOR_MODE_ID_SELLER,
+		Timezone:             "America/New_York",
+		MorningBriefEnabled:  true,
+		MorningBriefTime:     "01:30",
+		MorningBriefChannels: []string{"push", "in_app"},
+	}); err != nil {
+		t.Fatalf("ConfigureWorkspaceDashboard failed: %v", err)
+	}
+
+	// First 01:30 local occurrence (EDT, 05:30 UTC): delivers once!
+	dstRun1, err := svc.EvaluateAndDeliverMorningBrief(home.MorningBriefEvalInput{
+		WorkspaceID: testWorkspaceID,
+		NowUTC:      time.Date(2026, 11, 1, 5, 30, 0, 0, time.UTC),
+	})
+	if err != nil || dstRun1.Decision != home.MorningBriefStatusDelivered || dstRun1.AlreadyProcessedForLocalDate {
+		t.Fatalf("expected first 01:30 EDT evaluation to deliver brief, got %+v, err=%v", dstRun1, err)
+	}
+	if dstRun1.LocalDate != "2026-11-01" || dstRun1.Record == nil || len(dstRun1.Record.Items) != 5 {
+		t.Fatalf("expected local_date=2026-11-01 and 5 brief items, got date=%s rec=%+v", dstRun1.LocalDate, dstRun1.Record)
+	}
+
+	// Second 01:30 local occurrence 1 hour later during DST fall-back (EST, 06:30 UTC): MUST NOT double-deliver!
+	dstRun2, err := svc.EvaluateAndDeliverMorningBrief(home.MorningBriefEvalInput{
+		WorkspaceID: testWorkspaceID,
+		NowUTC:      time.Date(2026, 11, 1, 6, 30, 0, 0, time.UTC),
+	})
+	if err != nil || dstRun2.Decision != "already_delivered_local_date" || !dstRun2.AlreadyProcessedForLocalDate {
+		t.Fatalf("ACCEPTANCE VIOLATION: DST fall-back double-delivered brief! got %+v, err=%v", dstRun2, err)
+	}
+
+	// 4. Timezone change test on 2026-11-02:
+	//    Configure Asia/Ho_Chi_Minh (UTC+7) at 07:00 -> delivers at 2026-11-02T00:02:00Z (07:02 ICT).
+	//    Then change workspace timezone to Europe/London (UTC+0) at 07:00 -> when 2026-11-02T07:02:00Z arrives (07:02 GMT on 2026-11-02),
+	//    it MUST NOT deliver a second time for local_date 2026-11-02!
+	_, _ = svc.ConfigureWorkspaceDashboard(home.HomeDashboardConfig{
+		WorkspaceID:         testWorkspaceID,
+		OperatorMode:        adminv1.OperatorModeId_OPERATOR_MODE_ID_SELLER,
+		Timezone:            "Asia/Ho_Chi_Minh",
+		MorningBriefEnabled: true,
+		MorningBriefTime:    "07:00",
+	})
+	tzRun1, err := svc.EvaluateAndDeliverMorningBrief(home.MorningBriefEvalInput{
+		WorkspaceID: testWorkspaceID,
+		NowUTC:      time.Date(2026, 11, 2, 0, 2, 0, 0, time.UTC), // 07:02 ICT on 2026-11-02
+	})
+	if err != nil || tzRun1.Decision != home.MorningBriefStatusDelivered {
+		t.Fatalf("expected 07:02 ICT on 2026-11-02 to deliver, got %+v, err=%v", tzRun1, err)
+	}
+
+	// Operator changes workspace timezone to Europe/London on the same day:
+	_, _ = svc.ConfigureWorkspaceDashboard(home.HomeDashboardConfig{
+		WorkspaceID:         testWorkspaceID,
+		OperatorMode:        adminv1.OperatorModeId_OPERATOR_MODE_ID_SELLER,
+		Timezone:            "Europe/London",
+		MorningBriefEnabled: true,
+		MorningBriefTime:    "07:00",
+	})
+	tzRun2, err := svc.EvaluateAndDeliverMorningBrief(home.MorningBriefEvalInput{
+		WorkspaceID: testWorkspaceID,
+		NowUTC:      time.Date(2026, 11, 2, 7, 2, 0, 0, time.UTC), // 07:02 GMT on 2026-11-02
+	})
+	if err != nil || tzRun2.Decision != "already_delivered_local_date" || !tzRun2.AlreadyProcessedForLocalDate {
+		t.Fatalf("ACCEPTANCE VIOLATION: Timezone change double-delivered brief for 2026-11-02! got %+v, err=%v", tzRun2, err)
+	}
+
+	// 5. Missed run (stale window > 15m) on 2026-11-03 at 09:00 GMT when configured for 07:00 GMT -> skipped_stale_window!
+	staleRun, err := svc.EvaluateAndDeliverMorningBrief(home.MorningBriefEvalInput{
+		WorkspaceID: testWorkspaceID,
+		NowUTC:      time.Date(2026, 11, 3, 9, 0, 0, 0, time.UTC),
+	})
+	if err != nil || staleRun.Decision != "skipped_stale_window" {
+		t.Fatalf("expected missed window (09:00 vs 07:00) to return skipped_stale_window, got %+v, err=%v", staleRun, err)
+	}
+
+	// 6. Separate generated, delivered, and failed outcomes + retry audit on 2026-11-04:
+	failDeliv, err := svc.EvaluateAndDeliverMorningBrief(home.MorningBriefEvalInput{
+		WorkspaceID:        testWorkspaceID,
+		NowUTC:             time.Date(2026, 11, 4, 7, 1, 0, 0, time.UTC),
+		ForceDeliveryError: context.DeadlineExceeded,
+	})
+	if err != nil || failDeliv.Decision != home.MorningBriefStatusFailed || failDeliv.Record == nil {
+		t.Fatalf("expected delivery failure to record Status=failed, got %+v, err=%v", failDeliv, err)
+	}
+	if failDeliv.Record.GeneratedAt == nil || failDeliv.Record.DeliveredAt != nil || failDeliv.Record.FailedAt == nil {
+		t.Fatalf("expected GeneratedAt!=nil, DeliveredAt==nil, FailedAt!=nil on delivery failure, got %+v", failDeliv.Record)
+	}
+
+	// Subsequent automatic cron tick without IsExplicitRetry does NOT resend stale failed brief:
+	noStaleRetry, err := svc.EvaluateAndDeliverMorningBrief(home.MorningBriefEvalInput{
+		WorkspaceID:     testWorkspaceID,
+		NowUTC:          time.Date(2026, 11, 4, 7, 3, 0, 0, time.UTC),
+		IsExplicitRetry: false,
+	})
+	if err != nil || noStaleRetry.Decision != "already_failed_no_stale_resend" {
+		t.Fatalf("expected automatic tick after failure to return already_failed_no_stale_resend, got %+v, err=%v", noStaleRetry, err)
+	}
+
+	// Explicit audited retry within freshness window succeeds and records audit trail:
+	explicitRetry, err := svc.EvaluateAndDeliverMorningBrief(home.MorningBriefEvalInput{
+		WorkspaceID:     testWorkspaceID,
+		NowUTC:          time.Date(2026, 11, 4, 7, 5, 0, 0, time.UTC),
+		IsExplicitRetry: true,
+	})
+	if err != nil || explicitRetry.Decision != home.MorningBriefStatusDelivered || explicitRetry.Record.RetryCount != 1 {
+		t.Fatalf("expected explicit audited retry to deliver with RetryCount=1, got %+v, err=%v", explicitRetry, err)
+	}
+}
+
+func TestP105PilotMeasurementsRecordActualUnknowns(t *testing.T) {
+	svc := home.NewService(nil)
+	winStart := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	winEnd := time.Date(2026, 11, 8, 0, 0, 0, 0, time.UTC)
+	created := winStart.Add(1 * time.Hour)
+	viewed := created.Add(15 * time.Minute) // 900 seconds
+
+	// 1. Record demo and internal observations -> must be excluded from cohort report.
+	_ = svc.RecordPilotObservation(home.PilotObservation{
+		WorkspaceID:    "ws-demo",
+		ObjectID:       "obj-demo",
+		OperationID:    "op-demo",
+		IsDemoFixture:  true,
+		Kind:           "repair_batch",
+		SourceClass:    home.SourceClassImported,
+		ConfidenceBand: home.ConfidenceBandHigh,
+		ObservedAt:     winStart.Add(2 * time.Hour),
+	})
+	_ = svc.RecordPilotObservation(home.PilotObservation{
+		WorkspaceID:                 "ws-internal",
+		ObjectID:                    "obj-int",
+		OperationID:                 "op-int",
+		IsInternalAccount:           true,
+		Kind:                        "production_job",
+		StartedProductionJob:        true,
+		AcceptedWithinBoundedPasses: true,
+		ObservedAt:                  winStart.Add(2 * time.Hour),
+	})
+
+	// 2. Record First Value observations (1 known latency = 900s, 1 unknown latency where FirstSnapshotViewedAt is nil).
+	_ = svc.RecordPilotObservation(home.PilotObservation{
+		WorkspaceID:               "ws-pilot-1",
+		ObjectID:                  "onb-1",
+		OperationID:               "fv-1",
+		Kind:                      "first_value_view",
+		SourceClass:               home.SourceClassImported,
+		ConfidenceBand:            home.ConfidenceBandMediumHigh,
+		WorkspaceCreatedAt:        &created,
+		FirstSnapshotViewedAt:     &viewed,
+		HasSourceAndGapDisclosure: true,
+		ObservedAt:                viewed,
+	})
+	// Duplicate (workspace_id, object_id, operation_id) -> must be deduplicated!
+	_ = svc.RecordPilotObservation(home.PilotObservation{
+		WorkspaceID:               "ws-pilot-1",
+		ObjectID:                  "onb-1",
+		OperationID:               "fv-1",
+		Kind:                      "first_value_view",
+		SourceClass:               home.SourceClassImported,
+		ConfidenceBand:            home.ConfidenceBandMediumHigh,
+		WorkspaceCreatedAt:        &created,
+		FirstSnapshotViewedAt:     &viewed,
+		HasSourceAndGapDisclosure: true,
+		ObservedAt:                viewed,
+	})
+	_ = svc.RecordPilotObservation(home.PilotObservation{
+		WorkspaceID:               "ws-pilot-2",
+		ObjectID:                  "onb-2",
+		OperationID:               "fv-2",
+		Kind:                      "first_value_view",
+		SourceClass:               home.SourceClassImported,
+		ConfidenceBand:            home.ConfidenceBandLowMedium,
+		WorkspaceCreatedAt:        &created,
+		FirstSnapshotViewedAt:     nil, // not yet reached first value -> unknown latency, never 0
+		HasSourceAndGapDisclosure: false,
+		ObservedAt:                winStart.Add(3 * time.Hour),
+	})
+
+	// 3. Record Repair Burden batches where OperatorRepairSeconds is nil (missing time tracking -> MUST remain unknown, NEVER 0).
+	_ = svc.RecordPilotObservation(home.PilotObservation{
+		WorkspaceID:                 "ws-pilot-1",
+		ObjectID:                    "batch-csv-1",
+		OperationID:                 "import-1",
+		Kind:                        "repair_batch",
+		SourceClass:                 home.SourceClassImported,
+		ConfidenceBand:              home.ConfidenceBandLow,
+		UnresolvedRequiredGapsCount: 3,
+		OperatorRepairSeconds:       nil, // Missing operator time tracking!
+		ObservedAt:                  winStart.Add(4 * time.Hour),
+	})
+	_ = svc.RecordPilotObservation(home.PilotObservation{
+		WorkspaceID:                 "ws-pilot-2",
+		ObjectID:                    "batch-csv-2",
+		OperationID:                 "import-2",
+		Kind:                        "repair_batch",
+		SourceClass:                 home.SourceClassEstimated,
+		ConfidenceBand:              home.ConfidenceBandMedium,
+		UnresolvedRequiredGapsCount: 1,
+		OperatorRepairSeconds:       nil, // Missing operator time tracking!
+		ObservedAt:                  winStart.Add(5 * time.Hour),
+	})
+
+	// 4. Record Production Jobs with 2 started jobs and ZERO accepted outputs -> CostPerAcceptedOutput MUST be undefined/unknown, NEVER 0!
+	_ = svc.RecordPilotObservation(home.PilotObservation{
+		WorkspaceID:                 "ws-pilot-1",
+		ObjectID:                    "job-1",
+		OperationID:                 "gen-1",
+		Kind:                        "production_job",
+		SourceClass:                 home.SourceClassOfficial,
+		ConfidenceBand:              home.ConfidenceBandHigh,
+		StartedProductionJob:        true,
+		AcceptedWithinBoundedPasses: false,
+		SettledProviderCostMicros:   400000, // $0.40
+		SettledCreditsMicros:        54000000,
+		ObservedAt:                  winStart.Add(6 * time.Hour),
+	})
+
+	// 5. Record Unit Economics scope with nil COGSMicros and nil ShippingCostsMicros -> recorded as explicit unknowns!
+	knownFee := int64(250000000000)
+	_ = svc.RecordPilotObservation(home.PilotObservation{
+		WorkspaceID:             "ws-pilot-1",
+		ObjectID:                "scope-order-1",
+		OperationID:             "econ-1",
+		Kind:                    "unit_economics",
+		SourceClass:             home.SourceClassUnreconciled,
+		ConfidenceBand:          home.ConfidenceBandLow,
+		RecognizedRevenueMicros: 3200000000000,
+		PlatformFeesMicros:      &knownFee,
+		ShippingCostsMicros:     nil, // Unknown shipping cost!
+		COGSMicros:              nil, // Unknown COGS!
+		ObservedAt:              winStart.Add(7 * time.Hour),
+	})
+
+	report := svc.BuildPilotCohortReport(winStart, winEnd)
+
+	if report.ExcludedDemoOrInternalCount != 2 {
+		t.Fatalf("expected 2 excluded demo/internal observations, got %d", report.ExcludedDemoOrInternalCount)
+	}
+	if report.DeduplicatedDuplicatesCount != 1 {
+		t.Fatalf("expected 1 deduplicated observation, got %d", report.DeduplicatedDuplicatesCount)
+	}
+
+	// Verify all 5 canonical confidence bands are preserved without collapsing medium_high or low_medium:
+	for _, band := range []string{
+		home.ConfidenceBandHigh,
+		home.ConfidenceBandMediumHigh,
+		home.ConfidenceBandMedium,
+		home.ConfidenceBandLowMedium,
+		home.ConfidenceBandLow,
+	} {
+		if report.ConfidenceBandDistribution[band] == 0 {
+			t.Fatalf("expected uncollapsed confidence_band %q to be present in distribution, got %+v", band, report.ConfidenceBandDistribution)
+		}
+	}
+
+	// Verify Repair Burden: missing operator time tracking remains unknown (OperatorTimeKnown=false, MedianOperatorRepairSeconds=nil), NEVER 0!
+	if report.RepairBurden.OperatorTimeKnown || report.RepairBurden.MedianOperatorRepairSeconds != nil {
+		t.Fatalf("ACCEPTANCE VIOLATION: missing operator time tracking was fabricated as known/zero! got %+v", report.RepairBurden)
+	}
+	if report.RepairBurden.UnknownOperatorTimeBatchesCount != 2 || report.RepairBurden.MedianUnresolvedRequiredGapsCount == nil || *report.RepairBurden.MedianUnresolvedRequiredGapsCount != 2 {
+		t.Fatalf("unexpected RepairBurden counts: %+v", report.RepairBurden)
+	}
+
+	// Verify Cost per Accepted Output: 0 accepted outputs -> CostPerAcceptedOutputKnown=false, nil pointers, status="undefined_zero_accepted_outputs"!
+	if report.ProductionYieldAndCost.CostPerAcceptedOutputKnown ||
+		report.ProductionYieldAndCost.CostUSDPerAcceptedMicros != nil ||
+		report.ProductionYieldAndCost.CreditsPerAcceptedMicros != nil ||
+		report.ProductionYieldAndCost.CostPerAcceptedOutputStatus != "undefined_zero_accepted_outputs" {
+		t.Fatalf("ACCEPTANCE VIOLATION: zero accepted outputs fabricated a zero cost per accepted output! got %+v", report.ProductionYieldAndCost)
+	}
+
+	// Verify Net Unit Economics: records actual unknown cost components (cogs=1, shipping_costs=1).
+	if !report.NetUnitEconomics.HasUnknownCosts ||
+		report.NetUnitEconomics.IncompleteScopesCount != 1 ||
+		report.NetUnitEconomics.UnknownComponentCounts["cogs"] != 1 ||
+		report.NetUnitEconomics.UnknownComponentCounts["shipping_costs"] != 1 {
+		t.Fatalf("expected NetUnitEconomics to record unknown cogs=1 and shipping_costs=1, got %+v", report.NetUnitEconomics)
+	}
+}

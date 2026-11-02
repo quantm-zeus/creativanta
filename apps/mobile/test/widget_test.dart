@@ -153,4 +153,51 @@ void main() {
     expect(find.text('MODE: CREATOR'), findsOneWidget);
     expect(find.text('Sáng tạo'), findsOneWidget);
   });
+
+  testWidgets('P1-05 mobile home surfaces connector-free import and local Morning Brief schedule', (
+    WidgetTester tester,
+  ) async {
+    const defaultWs = WorkspaceSummary(
+      id: '018f7a31-2233-7444-8555-667788990011',
+      name: 'Creativanta HQ',
+      role: 'owner',
+      plan: 'Pro Plan',
+      isActive: true,
+    );
+    final session = AuthSession(
+      user: const UserIdentity(
+        id: 'usr_test',
+        email: 'creator@creativanta.com',
+        displayName: 'Creator One',
+      ),
+      sessionToken: 'test-token',
+      sessionId: 'sess_test',
+      expiresAt: DateTime.now().add(const Duration(hours: 1)),
+      activeWorkspace: defaultWs,
+      availableWorkspaces: const [defaultWs],
+      activeMode: OperatorMode.creator,
+      isTestDouble: true,
+    );
+
+    final adapter = TestAuthProviderAdapter(
+      initialStatus: AuthStatus.authenticated,
+      initialSession: session,
+    );
+
+    await tester.pumpWidget(CreativantaApp(authAdapter: adapter));
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(ListView), const Offset(0, -400));
+    await tester.pumpAndSettle();
+
+    expect(find.text('P1-05 FIRST-VALUE & MORNING BRIEF'), findsOneWidget);
+    expect(
+      find.textContaining('0 connected accounts'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('DST/timezone safe'),
+      findsOneWidget,
+    );
+  });
 }

@@ -665,6 +665,17 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 		requiredRLSTables = []string{
 			"notifications",
 		}
+	case 9:
+		requiredFragments = []requiredFragment{
+			{"home_dashboard_config table", "CREATE TABLE IF NOT EXISTS home_dashboard_config"},
+			{"unique tenant PK on home_dashboard_config", "uq_home_dashboard_config_tenant_pk"},
+			{"tenant_isolation policy on home_dashboard_config", "CREATE POLICY tenant_isolation ON home_dashboard_config"},
+			{"admin_ops_scope policy on home_dashboard_config", "CREATE POLICY admin_ops_scope ON home_dashboard_config"},
+			{"billing_events stripe_event_id unique index", "CREATE UNIQUE INDEX IF NOT EXISTS idx_be_workspace_stripe_event"},
+		}
+		requiredRLSTables = []string{
+			"home_dashboard_config",
+		}
 	default:
 		return nil
 	}

@@ -246,6 +246,21 @@ func sortLotsInConsumptionOrder(lots []tenantdb.CreditLotRow) {
 	})
 }
 
+// BillingEventRecord represents a canonical row in billing_events (§13.1).
+type BillingEventRecord struct {
+	BillingEventID   string
+	WorkspaceID      string
+	EventType        string
+	StripeEventID    string
+	Amount           tenantdb.ExactDecimal
+	Currency         string
+	SubscriptionTier string
+	CreditsChange    tenantdb.ExactDecimal
+	Description      string
+	Metadata         map[string]any
+	CreatedAt        time.Time
+}
+
 // WorkspaceBillingState holds a workspace's complete credit & billing state inside a store transaction.
 type WorkspaceBillingState struct {
 	WorkspaceID       string
@@ -262,6 +277,7 @@ type WorkspaceBillingState struct {
 	Reservations      map[string]tenantdb.CreditReservationRow
 	Allocations       map[string][]tenantdb.CreditReservationAllocationRow
 	Transactions      []tenantdb.CreditTransactionRow
+	BillingEvents     []BillingEventRecord
 	OutboxEvents      []EmittedEvent
 	LateResultReports []LateResultReport
 	ProcessedWebhooks map[string]time.Time
