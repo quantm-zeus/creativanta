@@ -29,6 +29,20 @@ $$;
 ALTER TABLE connected_accounts
   ADD COLUMN IF NOT EXISTS capability_summary JSONB NOT NULL DEFAULT '{}'::jsonb;
 
+DROP POLICY IF EXISTS admin_ops_scope ON workspaces;
+CREATE POLICY admin_ops_scope ON workspaces
+  FOR ALL
+  TO admin_user
+  USING (true)
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS admin_ops_scope ON connected_accounts;
+CREATE POLICY admin_ops_scope ON connected_accounts
+  FOR ALL
+  TO admin_user
+  USING (true)
+  WITH CHECK (true);
+
 -- 2. Capability Snapshots (§18.2)
 CREATE TABLE IF NOT EXISTS capability_snapshots (
   snapshot_id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -388,6 +402,7 @@ TO app_user;
 
 -- admin_user: internal admin operations on S26 & M22 tables
 GRANT SELECT, INSERT, UPDATE, DELETE ON
+  connected_accounts,
   capability_snapshots,
   policy_notes,
   fallback_paths,
@@ -415,6 +430,10 @@ REVOKE ALL PRIVILEGES ON
   post_mortems,
   system_alerts
 FROM app_user, admin_user;
+
+REVOKE ALL PRIVILEGES ON connected_accounts FROM admin_user;
+DROP POLICY IF EXISTS admin_ops_scope ON connected_accounts;
+DROP POLICY IF EXISTS admin_ops_scope ON workspaces;
 
 DROP TABLE IF EXISTS system_alerts;
 DROP TABLE IF EXISTS post_mortems;

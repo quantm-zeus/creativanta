@@ -8,12 +8,12 @@ RUN_TYPESCRIPT_CONNECT_REAL_CLIENT
 
  RUN  v3.0.7 /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p0-07/packages/shared-types
 
- ✓ test/transport.test.ts (5 tests) 197ms
+ ✓ test/transport.test.ts (5 tests) 212ms
 
  Test Files  1 passed (1)
       Tests  5 passed (5)
-   Start at  08:32:55
-   Duration  1.00s (transform 145ms, setup 0ms, collect 387ms, tests 197ms, environment 0ms, prepare 131ms)
+   Start at  08:53:07
+   Duration  1.08s (transform 147ms, setup 0ms, collect 380ms, tests 212ms, environment 0ms, prepare 145ms)
 
 RUN_DART_GRPC_HTTP2_REAL_CLIENT
 DART_GRPC_REAL_TRANSPORT_PASS

@@ -679,6 +679,9 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	if _, err := tx.Exec(ctx, `RESET ROLE`); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_user_id', $2, true)`, tenantA, userA); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := tx.Exec(ctx, `SET LOCAL ROLE admin_user`); err != nil {
 		t.Fatal(err)
 	}

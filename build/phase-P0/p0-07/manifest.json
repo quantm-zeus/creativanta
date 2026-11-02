@@ -64,7 +64,7 @@
     "protos/creativanta/admin/v1/internal_admin.proto": "d41d64977174ec595f45788963a30239cc268dd7178544e5497f7bdec40a3efe",
     "infra/migrations/00001_p0_04_tenant_schema_rls_and_grants.sql": "04bae9a67b0aaa3893010e881200294d5a9b13ccbcb3dbe5b649227404b4bdda",
     "infra/migrations/00002_p0_05_outbox_inbox_external_effects.sql": "97f552dc390e9cb8efef48010de92fa279bc310924edfedc7b31a3dd15552701",
-    "infra/migrations/00003_p0_07_capability_and_admin_isolation.sql": "1dc2b6607d4691ab7bfe4a6e69255682f01e1f9ae71be31189399b9f98039596"
+    "infra/migrations/00003_p0_07_capability_and_admin_isolation.sql": "17ed31de5536345eda91db658da1c7445ba609f0d62bbe45d2c9f666996c2f5f"
   },
   "scope_items": [
     "Canonical Goose SQL migration (infra/migrations/00003_p0_07_capability_and_admin_isolation.sql) creating capability_state enum (§3), capability_snapshots (§18.2), policy_notes (§18.2B), fallback_paths (§18.2C), platform_health_scores (§22.15), moderation_cases (§17.4), fraud_cases (§17.5), feature_flags (§17.6), system_announcements (§17.7), incidents, post_mortems, and system_alerts (§17.10-17.11) with ENABLE + FORCE ROW LEVEL SECURITY, admin_ops_scope policies (§26.13), same-tenant composite foreign keys fk_fallback_paths_related_policy_note_id_tenant and fk_platform_health_scores_connected_account_id_tenant (§26.11), and narrow per-role grants (§26.12)",
@@ -140,91 +140,91 @@
       "command": "bash tooling/ci/check_d0.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/01-check-d0.log",
-      "checked_at": "2026-11-02T08:35:52Z",
+      "checked_at": "2026-11-02T08:55:21Z",
       "result": "PASS"
     },
     {
       "command": "python3 tooling/check_docs.py --sql",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/02-check-docs-sql.log",
-      "checked_at": "2026-11-02T08:35:52Z",
+      "checked_at": "2026-11-02T08:55:21Z",
       "result": "PASS"
     },
     {
       "command": "python3 tooling/build_plan.py && python3 -m unittest discover -s tooling/tests -v",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/03-build-plan-and-tests.log",
-      "checked_at": "2026-11-02T08:35:52Z",
+      "checked_at": "2026-11-02T08:55:21Z",
       "result": "PASS"
     },
     {
       "command": "cd apps/api && go mod verify && go vet ./...",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/04-go-mod-verify-vet.log",
-      "checked_at": "2026-11-02T08:35:52Z",
+      "checked_at": "2026-11-02T08:55:21Z",
       "result": "PASS"
     },
     {
       "command": "cd apps/api && go test -race -v -count=1 ./...",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/05-go-test-race.log",
-      "checked_at": "2026-11-02T08:35:52Z",
+      "checked_at": "2026-11-02T08:55:21Z",
       "result": "PASS"
     },
     {
       "command": "bash tooling/ci/check_entrypoints.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/06-check-entrypoints.log",
-      "checked_at": "2026-11-02T08:35:52Z",
+      "checked_at": "2026-11-02T08:55:21Z",
       "result": "PASS"
     },
     {
       "command": "bash tooling/ci/check_proto.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/07-check-proto.log",
-      "checked_at": "2026-11-02T08:35:52Z",
+      "checked_at": "2026-11-02T08:55:21Z",
       "result": "PASS"
     },
     {
       "command": "bash tooling/ci/proto_integration.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/08-proto-integration.log",
-      "checked_at": "2026-11-02T08:35:52Z",
+      "checked_at": "2026-11-02T08:55:21Z",
       "result": "PASS"
     },
     {
       "command": "bash tooling/ci/check_transport_security.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/09-check-transport-security.log",
-      "checked_at": "2026-11-02T08:35:52Z",
+      "checked_at": "2026-11-02T08:55:21Z",
       "result": "PASS"
     },
     {
       "command": "bash tooling/ci/smoke_test.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/11-smoke-test.log",
-      "checked_at": "2026-11-02T08:35:52Z",
+      "checked_at": "2026-11-02T08:55:21Z",
       "result": "PASS"
     },
     {
       "command": "bash tooling/ci/self_test_failure.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/12-self-test-failure.log",
-      "checked_at": "2026-11-02T08:35:52Z",
+      "checked_at": "2026-11-02T08:55:21Z",
       "result": "PASS"
     },
     {
       "command": "bash tooling/ci/check_node.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/13-check-node.log",
-      "checked_at": "2026-11-02T08:35:52Z",
+      "checked_at": "2026-11-02T08:55:21Z",
       "result": "PASS"
     },
     {
       "command": "bash tooling/ci/check_flutter.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/14-check-flutter.log",
-      "checked_at": "2026-11-02T08:35:52Z",
+      "checked_at": "2026-11-02T08:55:21Z",
       "result": "PASS"
     }
   ],
@@ -246,6 +246,6 @@
     "Enforced strictly read_only impersonation with 30-minute auto-expiry, mandatory reason (>=15 chars), prohibition on impersonating internal admins, append-only internal_audit_logs capture, and runtime rejection of all mutating requests under impersonation."
   ],
   "notes": "P0-07 implementation and all local static, SQL AST, Go race, proto 4-target, transport security, smoke, self-test, Svelte/Node, and Flutter checks are complete (LOCAL_IMPLEMENTED). Live PostgreSQL 17.10 execution of P0-07 tests is wired into tooling/ci/check_identity.sh for GitHub Actions CI.",
-  "recorded_at_utc": "2026-11-02T08:36:00Z",
+  "recorded_at_utc": "2026-11-02T08:55:21Z",
   "remote_ci": "PENDING_PUSH"
 }
