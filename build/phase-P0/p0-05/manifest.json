@@ -1,0 +1,203 @@
+{
+  "task_id": "P0-05",
+  "phase": "P0",
+  "slice": "p0-05",
+  "title": "Outbox, inbox và unknown external effects",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "181ad20",
+  "feature_refs": [
+    "docs/02_features/platform/reporting_admin_billing.md",
+    "docs/02_features/platform/public_api.md",
+    "docs/05_system/queue_retry_design.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_behavior_contracts.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md"
+  ],
+  "requirement_ids": [
+    "RULE-M23-A04",
+    "RULE-M23-B01",
+    "EC-M23-005",
+    "RULE-S24-001",
+    "RULE-S24-005",
+    "RULE-S24-006",
+    "OPS-2026-01",
+    "OPS-2026-02",
+    "STATE-2026-02",
+    "DB-C-001",
+    "DB-C-002",
+    "DB-H-001",
+    "DB-H-004"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_settings_diagnostics.md",
+    "docs/03_screens/mobile/screen_mobile_diagnostics.md"
+  ],
+  "source_hashes": {
+    "docs/02_features/platform/reporting_admin_billing.md": "26feab5d241108cf6679c0c73a0aaedcb3d5ce4a38a3be720800864fa9bda429",
+    "docs/02_features/platform/public_api.md": "d16b0fb8aeeb850647ad7614d051cb8e670824588c1b5d760ad99fc4833e8329",
+    "docs/05_system/queue_retry_design.md": "79a22c7de761f2457557dab5fc86782eae2ae04f9254ae9120296f8c39350602",
+    "docs/04_contracts/database_schema.md": "f1fb695b33e4cf50f3f68b7a359ee36727ca0f25f5cd20fbc72a559ca3a0376b",
+    "docs/04_contracts/api_behavior_contracts.md": "57be6961180b8e847b0d0521ef9dbfade5c08bdb490bbbb846fbc784a9ca6802",
+    "docs/04_contracts/rpc_permission_bindings.csv": "e970c926e3d3310391e0d966fdf54d0ffc28fe056885a65f747d2e16f62d1569",
+    "docs/04_contracts/domain_event_catalog.md": "f85704096638fe181e158e455d551b99e1d8cf009aa9530fc19c65fc1334e5de",
+    "docs/03_screens/web/screen_web_settings_diagnostics.md": "252da571d99fb141d93220dce407d6beb3a6e6f6a3872a16b9ff6e83130c5f81",
+    "docs/03_screens/mobile/screen_mobile_diagnostics.md": "6194513955d90e31c1015bba83239b2a3c621044b31fb9b5733cf1685097ad64",
+    "protos/creativanta/admin/v1/diagnostics.proto": "0ce90a77a1ebb80c07e3e9b41e80751633bc883d999068ca327644cd8a427a95",
+    "infra/migrations/00002_p0_05_outbox_inbox_external_effects.sql": "97f552dc390e9cb8efef48010de92fa279bc310924edfedc7b31a3dd15552701"
+  },
+  "scope_items": [
+    "Canonical Goose SQL migration (infra/migrations/00002_p0_05_outbox_inbox_external_effects.sql) creating consumer_inbox (§26.6), external_effects (§26.8), diagnostics_records (§13.4), dead_letter_queue (§18.4G), background_jobs (§18.4D), and api_usage_daily (§18.4A) with ENABLE + FORCE ROW LEVEL SECURITY, admin_ops_scope policies (§26.13), same-tenant composite foreign keys fk_external_effects_connected_account_id_tenant and fk_api_usage_daily_api_key_id_tenant (§26.11), protect_audit_log_immutability() BEFORE UPDATE OR DELETE triggers on audit_events and internal_audit_logs (§26.12), and narrow per-role grants",
+    "Compiled DiagnosticsService Protobuf contract (protos/creativanta/admin/v1/diagnostics.proto) and 4-target generated artifacts (Go, Go Connect, TypeScript ES, Dart/Flutter gRPC) for GetOverview, GetHealthGrid, ListIssues, RunFullCheck, and ExecuteRepairStep",
+    "Transactional Outbox & Consumer Inbox runtime (apps/api/internal/outbox) implementing canonical queue specs, OutboxPoller with FOR UPDATE SKIP LOCKED 30s leases and lease-owner verification on MarkPublished, ConsumerWorker with XREADGROUP + 60s XAUTOCLAIM recovery and consumer_inbox deduplication before XACK, live actor/approval re-verification before execution, 3-state provider CircuitBreaker, and FairWorkspaceScheduler",
+    "External Effects Guard, Webhook Deduplication, and DLQ Manager (apps/api/internal/outbox) enforcing that unresolved ('unknown' or 'submitted') external effects are never blindly retried or replayed from DLQ without reconciliation proof, inbound webhook deduplication via (provider, idempotency_key) and (workspace_id, consumer_name, event_id), outbound S24 webhook sanitization/HMAC-SHA256 signing/100-failure auto-suspension, and OPS-2026-02 DLQ retention protection",
+    "Workspace DiagnosticsService handler (apps/api/internal/diagnostics) enforcing RBAC (diagnostics:read and workspace:settings:manage), RULE-M23-A04 user-facing message sanitization, idempotency replay/conflict checks, and the 4-step Guided Repair Wizard (Verify -> Diagnose -> Fix -> Confirm) reconciling unknown external effects",
+    "Web Diagnostics Center (/settings/diagnostics, W125) and Mobile Diagnostics Screen (M059) with unit and widget tests"
+  ],
+  "verified_sub_slices": [
+    "Kill before/after outbox lease commit, after XADD before MarkPublished, before consumer DB commit, and after consumer DB commit before XACK verified to produce strictly 1 domain side effect (TestKillBeforeAndAfterOutboxLeaseAndConsumerCommitAndAck)",
+    "20 concurrent duplicate inbound webhooks verified to produce strictly 1 domain effect (TestDuplicateWebhookHasStrictlyOneEffect)",
+    "Unresolved ('unknown'/'submitted') external effects verified to block automatic retry and manual DLQ replay until reconciled with proof, while OPS-2026-02 protects unresolved and financial DLQ items from 30-day purge (TestUnresolvedExternalEffectNeverBlindlyRetried)",
+    "Live actor/permission revocation before queued message execution aborts execution and records an immutable audit event (TestConsumerLiveAuthRevocationAbortsQueuedEffectAndAudits)",
+    "DiagnosticsService RBAC, cross-tenant isolation, RULE-M23-A04 SQL/token sanitization, and 4-step Guided Repair Wizard reconciliation verified (TestRuleM23A04SanitizationAndRepairWizardReconcilesUnknownExternalEffect)",
+    "31 Up and 12 Down SQL statements in 00002_p0_05_outbox_inbox_external_effects.sql validated by pglast PostgreSQL AST parser and static contract validator"
+  ],
+  "rpc_contracts": [
+    "creativanta.admin.v1.DiagnosticsService/GetOverview",
+    "creativanta.admin.v1.DiagnosticsService/GetHealthGrid",
+    "creativanta.admin.v1.DiagnosticsService/ListIssues",
+    "creativanta.admin.v1.DiagnosticsService/RunFullCheck",
+    "creativanta.admin.v1.DiagnosticsService/ExecuteRepairStep"
+  ],
+  "migration_files": [
+    "infra/migrations/00001_p0_04_tenant_schema_rls_and_grants.sql",
+    "infra/migrations/00002_p0_05_outbox_inbox_external_effects.sql"
+  ],
+  "permission_keys": [
+    "diagnostics:read",
+    "workspace:settings:manage"
+  ],
+  "event_types": [
+    "diagnostics.record_created",
+    "diagnostics.opened",
+    "diagnostics.resolved",
+    "audit.event_captured"
+  ],
+  "screen_routes": [
+    "/settings/diagnostics"
+  ],
+  "checks": [
+    {
+      "command": "bash tooling/ci/check_d0.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-05/evidence/local_d0_check.log",
+      "checked_at": "2026-11-02T06:45:00Z",
+      "result": "PASS"
+    },
+    {
+      "command": "python tooling/check_docs.py --sql",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-05/evidence/local_docs_sql.log",
+      "checked_at": "2026-11-02T06:45:00Z",
+      "result": "PASS"
+    },
+    {
+      "command": "python tooling/build_plan.py && python -m unittest discover -s tooling/tests -v",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-05/evidence/local_tooling_tests.log",
+      "checked_at": "2026-11-02T06:45:00Z",
+      "result": "PASS"
+    },
+    {
+      "command": "cd apps/api && go mod verify && go vet ./...",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-05/evidence/local_govet.log",
+      "checked_at": "2026-11-02T06:45:00Z",
+      "result": "PASS"
+    },
+    {
+      "command": "cd apps/api && go test -race -v -count=1 ./...",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-05/evidence/local_go_race_tests.log",
+      "checked_at": "2026-11-02T06:45:00Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/check_entrypoints.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-05/evidence/local_entrypoints.log",
+      "checked_at": "2026-11-02T06:45:00Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/check_proto.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-05/evidence/local_proto_check.log",
+      "checked_at": "2026-11-02T06:46:00Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/proto_integration.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-05/evidence/local_proto_integration.log",
+      "checked_at": "2026-11-02T06:46:00Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/check_transport_security.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-05/evidence/local_transport_security.log",
+      "checked_at": "2026-11-02T06:46:00Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/smoke_test.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-05/evidence/local_smoke_test.log",
+      "checked_at": "2026-11-02T06:46:00Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/self_test_failure.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-05/evidence/local_self_test_failure.log",
+      "checked_at": "2026-11-02T06:46:00Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/check_node.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-05/evidence/local_node_check.log",
+      "checked_at": "2026-11-02T06:45:00Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/check_flutter.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-05/evidence/local_flutter_check.log",
+      "checked_at": "2026-11-02T06:45:00Z",
+      "result": "PASS"
+    }
+  ],
+  "remaining_scope": [
+    "CI PostgreSQL 17.10 live execution of TestPostgresLiveOutboxInboxAndExternalEffects via tooling/ci/check_identity.sh (no local PostgreSQL daemon in worker container)",
+    "Live Redis Streams (Dragonfly) broker adapter wiring and production HTTP/Connect listener mounting in P0-08/P0-09",
+    "Independent GitHub Actions CI green run and security review before ACCEPTED status"
+  ],
+  "external_gates": {
+    "local_postgres_daemon": "UNAVAILABLE_IN_CONTAINER_VERIFIED_IN_CI",
+    "dragonfly_redis_streams": "UNAVAILABLE_IN_CONTAINER_MEMORY_BROKER_VERIFIED",
+    "external_provider_webhooks": "UNAVAILABLE_NOT_CONFIGURED"
+  },
+  "decisions": [
+    "Created canonical Goose SQL migration 00002_p0_05_outbox_inbox_external_effects.sql installing consumer_inbox, external_effects, diagnostics_records, dead_letter_queue, background_jobs, and api_usage_daily with ENABLE + FORCE ROW LEVEL SECURITY, composite same-tenant FKs (§26.11), protect_audit_log_immutability() triggers on audit_events and internal_audit_logs (§26.12), and narrow role grants.",
+    "Implemented apps/api/internal/outbox with FOR UPDATE SKIP LOCKED 30-second outbox poller leases, conditional MarkPublished lease-owner checks, XREADGROUP + 60-second XAUTOCLAIM PEL recovery, atomic consumer_inbox deduplication before XACK, and live actor/approval re-verification before execution.",
+    "Implemented ExternalEffectGuard and DLQManager so operations in 'unknown' or 'submitted' state are never blindly retried or replayed from DLQ without reconciliation proof, and OPS-2026-02 protects unresolved and financial DLQ items from 30-day purge.",
+    "Implemented M23 DiagnosticsService ConnectRPC handler (apps/api/internal/diagnostics) enforcing RBAC (diagnostics:read and workspace:settings:manage), RULE-M23-A04 user-facing sanitization, and the 4-step Guided Repair Wizard (Verify -> Diagnose -> Fix -> Confirm) across Web (/settings/diagnostics, W125) and Mobile (M059)."
+  ],
+  "notes": "P0-05 implementation and all local static/unit/race/web/mobile/proto/transport checks are complete (LOCAL_IMPLEMENTED). Live PostgreSQL 17.10 execution of TestPostgresLiveOutboxInboxAndExternalEffects is wired into tooling/ci/check_identity.sh for GitHub Actions CI.",
+  "recorded_at_utc": "2026-11-02T06:46:00Z",
+  "remote_ci": "PENDING_PUSH"
+}

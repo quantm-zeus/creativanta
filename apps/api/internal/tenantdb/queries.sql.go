@@ -883,3 +883,487 @@ func (q *Queries) InsertBundleItem(ctx context.Context, workspaceID, bundleID, p
 	`, workspaceID, bundleID, productID, quantity)
 	return err
 }
+
+// =============================================================================
+// P0-05: Outbox, Consumer Inbox, External Effects, Diagnostics & DLQ Queries
+// =============================================================================
+
+// EnqueueOutboxEventParams defines parameters for appending a canonical DomainEvent to event_outbox.
+type EnqueueOutboxEventParams struct {
+	EventID       string
+	EventType     string
+	TargetStream  string
+	AggregateType string
+	AggregateID   string
+	WorkspaceID   string
+	Payload       []byte
+	Metadata      []byte
+}
+
+const enqueueOutboxEventSQL = `
+INSERT INTO event_outbox (
+  event_id, event_type, target_stream, aggregate_type, aggregate_id,
+  workspace_id, payload, metadata
+) VALUES (
+  $1::uuid, $2, $3, $4, $5::uuid,
+  $6::uuid, $7::jsonb, $8::jsonb
+)
+`
+
+// EnqueueOutboxEvent appends an unpublished event to event_outbox inside the current tenant transaction.
+// Note: app_user has INSERT (and sequence USAGE/SELECT) on event_outbox, never SELECT/UPDATE/DELETE.
+func (q *Queries) EnqueueOutboxEvent(ctx context.Context, arg EnqueueOutboxEventParams) error {
+	if _, err := q.requireTenantTx(ctx, arg.WorkspaceID); err != nil {
+		return err
+	}
+	if !IsValidNonZeroUUID(arg.EventID) || !IsValidNonZeroUUID(arg.AggregateID) {
+		return ErrInvalidTenantScope
+	}
+	payload := arg.Payload
+	if len(payload) == 0 {
+		payload = []byte(`{}`)
+	}
+	meta := arg.Metadata
+	if len(meta) == 0 {
+		meta = []byte(`{}`)
+	}
+	_, err := q.db.Exec(
+		ctx,
+		enqueueOutboxEventSQL,
+		arg.EventID,
+		arg.EventType,
+		arg.TargetStream,
+		arg.AggregateType,
+		arg.AggregateID,
+		arg.WorkspaceID,
+		payload,
+		meta,
+	)
+	return err
+}
+
+const tryInsertConsumerInboxSQL = `
+INSERT INTO consumer_inbox (
+  inbox_id, workspace_id, consumer_name, event_id
+) VALUES (
+  $1::uuid, $2::uuid, $3, $4::uuid
+)
+ON CONFLICT (workspace_id, consumer_name, event_id) DO NOTHING
+`
+
+// TryInsertConsumerInbox atomically records consumer inbox processing inside WithTx.
+// Returns (true, nil) when the event is newly claimed, or (false, nil) if already processed.
+func (q *Queries) TryInsertConsumerInbox(ctx context.Context, inboxID, workspaceID, consumerName, eventID string) (bool, error) {
+	if _, err := q.requireTenantTx(ctx, workspaceID); err != nil {
+		return false, err
+	}
+	if !IsValidNonZeroUUID(inboxID) || !IsValidNonZeroUUID(eventID) {
+		return false, ErrInvalidTenantScope
+	}
+	tag, err := q.db.Exec(ctx, tryInsertConsumerInboxSQL, inboxID, workspaceID, consumerName, eventID)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
+}
+
+// ExternalEffectRow models a row in external_effects (§26.8).
+type ExternalEffectRow struct {
+	EffectID           string
+	WorkspaceID        string
+	OperationKey       string
+	Provider           string
+	ConnectedAccountID string
+	AggregateType      string
+	AggregateID        string
+	ProviderRequestID  string
+	Status             string
+	ResultPayload      json.RawMessage
+	LastCheckedAt      *time.Time
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+// PrepareExternalEffectParams defines parameters for preparing an external effect row.
+type PrepareExternalEffectParams struct {
+	EffectID           string
+	WorkspaceID        string
+	OperationKey       string
+	Provider           string
+	ConnectedAccountID string
+	AggregateType      string
+	AggregateID        string
+}
+
+const getExternalEffectByOperationKeyForUpdateSQL = `
+SELECT
+  effect_id::text, workspace_id::text, operation_key, provider,
+  COALESCE(connected_account_id::text, ''), aggregate_type, aggregate_id::text,
+  COALESCE(provider_request_id, ''), status, COALESCE(result_payload, '{}'::jsonb),
+  last_checked_at, created_at, updated_at
+FROM external_effects
+WHERE workspace_id = $1::uuid
+  AND operation_key = $2
+FOR UPDATE
+`
+
+// GetExternalEffectForUpdate locks and returns an external_effects row by operation_key inside WithTx.
+func (q *Queries) GetExternalEffectForUpdate(ctx context.Context, workspaceID, operationKey string) (ExternalEffectRow, bool, error) {
+	if _, err := q.requireTenantTx(ctx, workspaceID); err != nil {
+		return ExternalEffectRow{}, false, err
+	}
+	var row ExternalEffectRow
+	err := q.db.QueryRow(ctx, getExternalEffectByOperationKeyForUpdateSQL, workspaceID, operationKey).Scan(
+		&row.EffectID,
+		&row.WorkspaceID,
+		&row.OperationKey,
+		&row.Provider,
+		&row.ConnectedAccountID,
+		&row.AggregateType,
+		&row.AggregateID,
+		&row.ProviderRequestID,
+		&row.Status,
+		&row.ResultPayload,
+		&row.LastCheckedAt,
+		&row.CreatedAt,
+		&row.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ExternalEffectRow{}, false, nil
+		}
+		return ExternalEffectRow{}, false, err
+	}
+	return row, true, nil
+}
+
+const insertExternalEffectSQL = `
+INSERT INTO external_effects (
+  effect_id, workspace_id, operation_key, provider, connected_account_id,
+  aggregate_type, aggregate_id, status, result_payload
+) VALUES (
+  $1::uuid, $2::uuid, $3, $4, NULLIF($5, '')::uuid,
+  $6, $7::uuid, 'prepared', '{}'::jsonb
+)
+RETURNING
+  effect_id::text, workspace_id::text, operation_key, provider,
+  COALESCE(connected_account_id::text, ''), aggregate_type, aggregate_id::text,
+  COALESCE(provider_request_id, ''), status, COALESCE(result_payload, '{}'::jsonb),
+  last_checked_at, created_at, updated_at
+`
+
+// InsertPreparedExternalEffect inserts a new 'prepared' external_effects row inside WithTx.
+func (q *Queries) InsertPreparedExternalEffect(ctx context.Context, arg PrepareExternalEffectParams) (ExternalEffectRow, error) {
+	if _, err := q.requireTenantTx(ctx, arg.WorkspaceID); err != nil {
+		return ExternalEffectRow{}, err
+	}
+	if !IsValidNonZeroUUID(arg.EffectID) || !IsValidNonZeroUUID(arg.AggregateID) {
+		return ExternalEffectRow{}, ErrInvalidTenantScope
+	}
+	var row ExternalEffectRow
+	err := q.db.QueryRow(
+		ctx,
+		insertExternalEffectSQL,
+		arg.EffectID,
+		arg.WorkspaceID,
+		arg.OperationKey,
+		arg.Provider,
+		arg.ConnectedAccountID,
+		arg.AggregateType,
+		arg.AggregateID,
+	).Scan(
+		&row.EffectID,
+		&row.WorkspaceID,
+		&row.OperationKey,
+		&row.Provider,
+		&row.ConnectedAccountID,
+		&row.AggregateType,
+		&row.AggregateID,
+		&row.ProviderRequestID,
+		&row.Status,
+		&row.ResultPayload,
+		&row.LastCheckedAt,
+		&row.CreatedAt,
+		&row.UpdatedAt,
+	)
+	return row, err
+}
+
+// UpdateExternalEffectStatusParams defines parameters for transitioning an external_effects row.
+type UpdateExternalEffectStatusParams struct {
+	WorkspaceID       string
+	OperationKey      string
+	Status            string
+	ProviderRequestID string
+	ResultPayload     []byte
+}
+
+const updateExternalEffectStatusSQL = `
+UPDATE external_effects
+SET
+  status = $3,
+  provider_request_id = COALESCE(NULLIF($4, ''), provider_request_id),
+  result_payload = COALESCE($5::jsonb, result_payload),
+  last_checked_at = NOW(),
+  updated_at = NOW()
+WHERE workspace_id = $1::uuid
+  AND operation_key = $2
+RETURNING
+  effect_id::text, workspace_id::text, operation_key, provider,
+  COALESCE(connected_account_id::text, ''), aggregate_type, aggregate_id::text,
+  COALESCE(provider_request_id, ''), status, COALESCE(result_payload, '{}'::jsonb),
+  last_checked_at, created_at, updated_at
+`
+
+// UpdateExternalEffectStatus updates an external_effects row inside WithTx.
+func (q *Queries) UpdateExternalEffectStatus(ctx context.Context, arg UpdateExternalEffectStatusParams) (ExternalEffectRow, error) {
+	if _, err := q.requireTenantTx(ctx, arg.WorkspaceID); err != nil {
+		return ExternalEffectRow{}, err
+	}
+	payload := arg.ResultPayload
+	if len(payload) == 0 {
+		payload = []byte(`{}`)
+	}
+	var row ExternalEffectRow
+	err := q.db.QueryRow(
+		ctx,
+		updateExternalEffectStatusSQL,
+		arg.WorkspaceID,
+		arg.OperationKey,
+		arg.Status,
+		arg.ProviderRequestID,
+		payload,
+	).Scan(
+		&row.EffectID,
+		&row.WorkspaceID,
+		&row.OperationKey,
+		&row.Provider,
+		&row.ConnectedAccountID,
+		&row.AggregateType,
+		&row.AggregateID,
+		&row.ProviderRequestID,
+		&row.Status,
+		&row.ResultPayload,
+		&row.LastCheckedAt,
+		&row.CreatedAt,
+		&row.UpdatedAt,
+	)
+	return row, err
+}
+
+// DiagnosticRecordRow models a row in diagnostics_records (§13.4).
+type DiagnosticRecordRow struct {
+	DiagnosticsID         string
+	WorkspaceID           string
+	ScopeType             string
+	ScopeID               string
+	ErrorType             string
+	Severity              string
+	UserFacingExplanation string
+	OperatorExplanation   string
+	LikelyCauses          []string
+	SuggestedActions      []string
+	RepairPath            string
+	Status                string
+	DetectedAt            time.Time
+	ResolvedAt            *time.Time
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+}
+
+// InsertDiagnosticRecordParams defines parameters for inserting a diagnostics_records row.
+type InsertDiagnosticRecordParams struct {
+	DiagnosticsID         string
+	WorkspaceID           string
+	ScopeType             string
+	ScopeID               string
+	ErrorType             string
+	Severity              string
+	UserFacingExplanation string
+	OperatorExplanation   string
+	LikelyCauses          []string
+	SuggestedActions      []string
+	RepairPath            string
+	Status                string
+}
+
+const insertDiagnosticRecordSQL = `
+INSERT INTO diagnostics_records (
+  diagnostics_id, workspace_id, scope_type, scope_id, error_type,
+  severity, user_facing_explanation, operator_explanation,
+  likely_causes, suggested_actions, repair_path, status
+) VALUES (
+  $1::uuid, $2::uuid, $3, NULLIF($4, '')::uuid, $5,
+  $6, $7, $8,
+  $9::jsonb, $10::jsonb, $11, $12
+)
+RETURNING
+  diagnostics_id::text, workspace_id::text, scope_type, COALESCE(scope_id::text, ''),
+  error_type, severity, user_facing_explanation, COALESCE(operator_explanation, ''),
+  COALESCE(likely_causes, '[]'::jsonb), COALESCE(suggested_actions, '[]'::jsonb),
+  COALESCE(repair_path, ''), status, detected_at, resolved_at, created_at, updated_at
+`
+
+// InsertDiagnosticRecord inserts a diagnostics_records row inside WithTx.
+func (q *Queries) InsertDiagnosticRecord(ctx context.Context, arg InsertDiagnosticRecordParams) (DiagnosticRecordRow, error) {
+	if _, err := q.requireTenantTx(ctx, arg.WorkspaceID); err != nil {
+		return DiagnosticRecordRow{}, err
+	}
+	if !IsValidNonZeroUUID(arg.DiagnosticsID) {
+		return DiagnosticRecordRow{}, ErrInvalidTenantScope
+	}
+	causesJSON, err := json.Marshal(arg.LikelyCauses)
+	if err != nil || len(arg.LikelyCauses) == 0 {
+		causesJSON = []byte(`[]`)
+	}
+	actionsJSON, err := json.Marshal(arg.SuggestedActions)
+	if err != nil || len(arg.SuggestedActions) == 0 {
+		actionsJSON = []byte(`[]`)
+	}
+	status := arg.Status
+	if status == "" {
+		status = "open"
+	}
+	var row DiagnosticRecordRow
+	var rawCauses, rawActions []byte
+	err = q.db.QueryRow(
+		ctx,
+		insertDiagnosticRecordSQL,
+		arg.DiagnosticsID,
+		arg.WorkspaceID,
+		arg.ScopeType,
+		arg.ScopeID,
+		arg.ErrorType,
+		arg.Severity,
+		arg.UserFacingExplanation,
+		arg.OperatorExplanation,
+		causesJSON,
+		actionsJSON,
+		arg.RepairPath,
+		status,
+	).Scan(
+		&row.DiagnosticsID,
+		&row.WorkspaceID,
+		&row.ScopeType,
+		&row.ScopeID,
+		&row.ErrorType,
+		&row.Severity,
+		&row.UserFacingExplanation,
+		&row.OperatorExplanation,
+		&rawCauses,
+		&rawActions,
+		&row.RepairPath,
+		&row.Status,
+		&row.DetectedAt,
+		&row.ResolvedAt,
+		&row.CreatedAt,
+		&row.UpdatedAt,
+	)
+	if err != nil {
+		return DiagnosticRecordRow{}, err
+	}
+	_ = json.Unmarshal(rawCauses, &row.LikelyCauses)
+	_ = json.Unmarshal(rawActions, &row.SuggestedActions)
+	return row, nil
+}
+
+const listDiagnosticRecordsSQL = `
+SELECT
+  diagnostics_id::text, workspace_id::text, scope_type, COALESCE(scope_id::text, ''),
+  error_type, severity, user_facing_explanation, COALESCE(operator_explanation, ''),
+  COALESCE(likely_causes, '[]'::jsonb), COALESCE(suggested_actions, '[]'::jsonb),
+  COALESCE(repair_path, ''), status, detected_at, resolved_at, created_at, updated_at
+FROM diagnostics_records
+WHERE workspace_id = $1::uuid
+ORDER BY detected_at DESC, diagnostics_id ASC
+`
+
+// ListDiagnosticRecords lists diagnostics_records for a tenant workspace inside WithTx.
+func (q *Queries) ListDiagnosticRecords(ctx context.Context, workspaceID string) ([]DiagnosticRecordRow, error) {
+	if _, err := q.requireTenantTx(ctx, workspaceID); err != nil {
+		return nil, err
+	}
+	rows, err := q.db.Query(ctx, listDiagnosticRecordsSQL, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []DiagnosticRecordRow
+	for rows.Next() {
+		var row DiagnosticRecordRow
+		var rawCauses, rawActions []byte
+		if err := rows.Scan(
+			&row.DiagnosticsID,
+			&row.WorkspaceID,
+			&row.ScopeType,
+			&row.ScopeID,
+			&row.ErrorType,
+			&row.Severity,
+			&row.UserFacingExplanation,
+			&row.OperatorExplanation,
+			&rawCauses,
+			&rawActions,
+			&row.RepairPath,
+			&row.Status,
+			&row.DetectedAt,
+			&row.ResolvedAt,
+			&row.CreatedAt,
+			&row.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		_ = json.Unmarshal(rawCauses, &row.LikelyCauses)
+		_ = json.Unmarshal(rawActions, &row.SuggestedActions)
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
+const updateDiagnosticRecordStatusSQL = `
+UPDATE diagnostics_records
+SET
+  status = $3,
+  resolved_at = CASE WHEN $3 IN ('resolved', 'closed') THEN NOW() ELSE resolved_at END,
+  updated_at = NOW()
+WHERE workspace_id = $1::uuid
+  AND diagnostics_id = $2::uuid
+RETURNING
+  diagnostics_id::text, workspace_id::text, scope_type, COALESCE(scope_id::text, ''),
+  error_type, severity, user_facing_explanation, COALESCE(operator_explanation, ''),
+  COALESCE(likely_causes, '[]'::jsonb), COALESCE(suggested_actions, '[]'::jsonb),
+  COALESCE(repair_path, ''), status, detected_at, resolved_at, created_at, updated_at
+`
+
+// UpdateDiagnosticRecordStatus updates the status of a diagnostics_records row inside WithTx.
+func (q *Queries) UpdateDiagnosticRecordStatus(ctx context.Context, workspaceID, diagnosticsID, status string) (DiagnosticRecordRow, error) {
+	if _, err := q.requireTenantTx(ctx, workspaceID); err != nil {
+		return DiagnosticRecordRow{}, err
+	}
+	var row DiagnosticRecordRow
+	var rawCauses, rawActions []byte
+	err := q.db.QueryRow(ctx, updateDiagnosticRecordStatusSQL, workspaceID, diagnosticsID, status).Scan(
+		&row.DiagnosticsID,
+		&row.WorkspaceID,
+		&row.ScopeType,
+		&row.ScopeID,
+		&row.ErrorType,
+		&row.Severity,
+		&row.UserFacingExplanation,
+		&row.OperatorExplanation,
+		&rawCauses,
+		&rawActions,
+		&row.RepairPath,
+		&row.Status,
+		&row.DetectedAt,
+		&row.ResolvedAt,
+		&row.CreatedAt,
+		&row.UpdatedAt,
+	)
+	if err != nil {
+		return DiagnosticRecordRow{}, err
+	}
+	_ = json.Unmarshal(rawCauses, &row.LikelyCauses)
+	_ = json.Unmarshal(rawActions, &row.SuggestedActions)
+	return row, nil
+}

@@ -20,8 +20,8 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadDir(%q) failed: %v", dir, err)
 	}
-	if len(migrations) == 0 {
-		t.Fatalf("expected at least 1 migration in %q", dir)
+	if len(migrations) < 2 {
+		t.Fatalf("expected at least 2 migrations in %q, got %d", dir, len(migrations))
 	}
 
 	m := migrations[0]
@@ -39,7 +39,18 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	}
 
 	if err := ValidateCanonicalMigrationContract(m); err != nil {
-		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration: %v", err)
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v1: %v", err)
+	}
+
+	m2 := migrations[1]
+	if m2.Version != 2 {
+		t.Fatalf("expected version 2, got %d", m2.Version)
+	}
+	if len(m2.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v2, got %q", m2.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m2); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v2: %v", err)
 	}
 }
 
@@ -200,8 +211,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 1 || applied[0] != 1 {
-		t.Fatalf("expected version [1] applied, got %v", applied)
+	if len(applied) != 2 || applied[0] != 1 || applied[1] != 2 {
+		t.Fatalf("expected versions [1, 2] applied, got %v", applied)
 	}
 	if !runner.lastTx.committed || runner.lastTx.rolledBack {
 		t.Fatalf("expected transaction committed")
@@ -216,13 +227,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true.
+	// Status reports Applied = true for both migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 1 || !statuses[0].Applied {
-		t.Fatalf("expected status Applied=true, got %+v", statuses)
+	if len(statuses) != 2 || !statuses[0].Applied || !statuses[1].Applied {
+		t.Fatalf("expected status Applied=true for both migrations, got %+v", statuses)
 	}
 
 	// Down without allowLocalRollback fails closed.
@@ -230,10 +241,17 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 1.
+	// Down with allowLocalRollback=true rolls back version 2 first, then version 1.
+	rolled2, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v2 failed: %v", err)
+	}
+	if rolled2 != 2 {
+		t.Fatalf("expected rolled back version 2, got %d", rolled2)
+	}
 	rolled, err := Down(ctx, runner, dir, true)
 	if err != nil {
-		t.Fatalf("Down(allowLocalRollback=true) failed: %v", err)
+		t.Fatalf("Down(allowLocalRollback=true) for v1 failed: %v", err)
 	}
 	if rolled != 1 {
 		t.Fatalf("expected rolled back version 1, got %d", rolled)
@@ -281,37 +299,42 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	_, _ = adminPool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
 	dir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 
-	// Apply migration Up, then Down, then Up again to prove full Goose SQL repeatability.
+	// Apply migration Up, then Down twice, then Up again to prove full Goose SQL repeatability.
 	applied, err := Up(ctx, adminPool, dir)
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 1 {
-		t.Fatalf("expected 1 applied migration, got %v", applied)
+	if len(applied) != 2 {
+		t.Fatalf("expected 2 applied migrations, got %v", applied)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
-		t.Fatalf("Down rollback failed: %v", err)
+		t.Fatalf("Down rollback v2 failed: %v", err)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v1 failed: %v", err)
 	}
 	if _, err := Up(ctx, adminPool, dir); err != nil {
 		t.Fatalf("re-apply Up after Down failed: %v", err)
 	}
 
 	const (
-		userA   = "11111111-1111-4111-8111-111111111111"
-		userB   = "22222222-2222-4222-8222-222222222222"
-		tenantA = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
-		tenantB = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
-		trendA  = "33333333-3333-4333-8333-333333333333"
-		signalA = "44444444-4444-4444-8444-444444444444"
-		trendB  = "55555555-5555-4555-8555-555555555555"
-		signalB = "66666666-6666-4666-8666-666666666666"
-		ticketA = "77777777-7777-4777-8777-777777777777"
-		evidA   = "88888888-8888-4888-8888-888888888888"
-		kitPubA = "99999999-9999-4999-8999-999999999991"
-		kitHidA = "99999999-9999-4999-8999-999999999992"
+		userA    = "11111111-1111-4111-8111-111111111111"
+		userB    = "22222222-2222-4222-8222-222222222222"
+		tenantA  = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+		tenantB  = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+		trendA   = "33333333-3333-4333-8333-333333333333"
+		signalA  = "44444444-4444-4444-8444-444444444444"
+		trendB   = "55555555-5555-4555-8555-555555555555"
+		signalB  = "66666666-6666-4666-8666-666666666666"
+		ticketA  = "77777777-7777-4777-8777-777777777777"
+		evidA    = "88888888-8888-4888-8888-888888888888"
+		kitPubA  = "99999999-9999-4999-8999-999999999991"
+		kitHidA  = "99999999-9999-4999-8999-999999999992"
+		connAccA = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+		auditA   = "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
 	)
 
-	// Seed users, two tenants, trends, signals, support tickets, and media kits as migration owner.
+	// Seed users, two tenants, trends, signals, support tickets, media kits, connected accounts, and audit events.
 	seedSQL := `
 		INSERT INTO users (user_id, external_auth_id, email, display_name, status) VALUES
 		  ('11111111-1111-4111-8111-111111111111', 'user_ext_a', 'a@example.com', 'User A', 'active'),
@@ -324,6 +347,9 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		INSERT INTO workspace_members (workspace_id, user_id, role, status) VALUES
 		  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '11111111-1111-4111-8111-111111111111', 'owner', 'active'),
 		  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', '22222222-2222-4222-8222-222222222222', 'owner', 'active');
+
+		INSERT INTO connected_accounts (connected_account_id, workspace_id, platform, platform_account_id, status) VALUES
+		  ('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'tiktok', 'tt_acc_a', 'active');
 
 		INSERT INTO trends (trend_id, workspace_id, title) VALUES
 		  ('33333333-3333-4333-8333-333333333333', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Trend A'),
@@ -382,7 +408,7 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("direct-junction read attack succeeded: Tenant B saw %d rows from Tenant A trend_signals", visibleJunction)
 	}
 
-	// Test 2: Cross-tenant composite FK write attack on trend_signals denied!
+	// Test 2: Cross-tenant composite FK write attack on trend_signals and external_effects denied!
 	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_junction`); err != nil {
 		t.Fatal(err)
 	}
@@ -393,6 +419,17 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("expected composite tenant FK to reject cross-tenant trend_signals link")
 	}
 	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_junction`)
+
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_effect_fk`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO external_effects (workspace_id, operation_key, provider, connected_account_id, aggregate_type, aggregate_id, status)
+		VALUES ($1::uuid, 'op_cross_1', 'tiktok', $2::uuid, 'publish_job', $3::uuid, 'prepared')
+	`, tenantB, connAccA, trendB); err == nil {
+		t.Fatalf("expected fk_external_effects_connected_account_id_tenant to reject cross-tenant connected_account_id")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_effect_fk`)
 
 	// Test 3: Switch to Tenant A as app_user -> verify support_ticket_messages hides is_internal_note = true!
 	if _, err := tx.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_user_id', $2, true)`, tenantA, userA); err != nil {
@@ -418,13 +455,27 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	}
 	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_internal_note`)
 
-	// Test 4: Immutable evidence_objects trigger protect_evidence_content().
+	// Test 4: Immutable evidence_objects trigger protect_evidence_content() and audit_events trigger protect_audit_log_immutability().
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO evidence_objects (evidence_id, workspace_id, evidence_type, content_hash)
 		VALUES ($1::uuid, $2::uuid, 'receipt', 'sha512_original_hash')
 	`, evidA, tenantA); err != nil {
 		t.Fatalf("insert evidence_objects failed: %v", err)
 	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events (audit_event_id, workspace_id, actor_user_id, actor_type, action, resource_type, resource_id)
+		VALUES ($1::uuid, $2::uuid, $3::uuid, 'user', 'diagnostics.check', 'workspace', $2::uuid)
+	`, auditA, tenantA, userA); err != nil {
+		t.Fatalf("insert audit_events failed: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_audit_update`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE audit_events SET action = 'tampered' WHERE audit_event_id = $1::uuid`, auditA); err == nil {
+		t.Fatalf("expected audit_events UPDATE to be denied by privileges/trigger")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_audit_update`)
+
 	// Updating verification_status is permitted:
 	if _, err := tx.Exec(ctx, `
 		UPDATE evidence_objects SET verification_status = 'verified' WHERE evidence_id = $1::uuid
@@ -469,6 +520,42 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_admin_tbl`)
 
 	// Test 6: directory_reader role can read ONLY (media_kit_id, directory_profile) on published opt-in rows.
+	if _, err := tx.Exec(ctx, `RESET ROLE`); err != nil {
+		t.Fatal(err)
+	}
+	// Verify even table owner cannot UPDATE or DELETE audit_events thanks to protect_audit_log_immutability():
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_owner_audit_update`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE audit_events SET action = 'tampered' WHERE audit_event_id = $1::uuid`, auditA); err == nil {
+		t.Fatalf("expected protect_audit_log_immutability() to block owner UPDATE on audit_events")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_owner_audit_update`)
+
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_owner_audit_delete`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM audit_events WHERE audit_event_id = $1::uuid`, auditA); err == nil {
+		t.Fatalf("expected protect_audit_log_immutability() to block owner DELETE on audit_events")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_owner_audit_delete`)
+
+	// Test 7: outbox_poller can SELECT/UPDATE event_outbox but is denied access to consumer_inbox and external_effects.
+	if _, err := tx.Exec(ctx, `SET LOCAL ROLE outbox_poller`); err != nil {
+		t.Fatalf("SET LOCAL ROLE outbox_poller: %v", err)
+	}
+	var outboxCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM event_outbox`).Scan(&outboxCount); err != nil {
+		t.Fatalf("outbox_poller SELECT event_outbox failed: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_poller_inbox`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `SELECT COUNT(*) FROM consumer_inbox`); err == nil {
+		t.Fatalf("expected outbox_poller SELECT on consumer_inbox to be denied")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_poller_inbox`)
+
 	if _, err := tx.Exec(ctx, `RESET ROLE`); err != nil {
 		t.Fatal(err)
 	}
