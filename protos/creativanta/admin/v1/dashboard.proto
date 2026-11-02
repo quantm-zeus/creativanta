@@ -1,0 +1,159 @@
+syntax = "proto3";
+
+package creativanta.admin.v1;
+
+import "creativanta/common/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1;adminv1";
+
+enum OperatorModeId {
+  OPERATOR_MODE_ID_UNSPECIFIED = 0;
+  OPERATOR_MODE_ID_CREATOR = 1;
+  OPERATOR_MODE_ID_SELLER = 2;
+  OPERATOR_MODE_ID_AFFILIATE_OPERATOR = 3;
+  OPERATOR_MODE_ID_LIVE_OPERATOR = 4;
+  OPERATOR_MODE_ID_AGENCY_MCN = 5;
+  OPERATOR_MODE_ID_BRAND_COLLABORATION = 6;
+}
+
+enum DataSourceBadge {
+  DATA_SOURCE_BADGE_UNSPECIFIED = 0;
+  DATA_SOURCE_BADGE_OFFICIAL = 1; // Native platform connector verified
+  DATA_SOURCE_BADGE_IMPORTED = 2; // Authorized CSV/file import
+  DATA_SOURCE_BADGE_INFERRED = 3; // Algorithmic estimation
+  DATA_SOURCE_BADGE_DEMO = 4;     // Isolated test/demo double - NEVER in customer totals
+}
+
+enum ConfidenceLevel {
+  CONFIDENCE_LEVEL_UNSPECIFIED = 0;
+  CONFIDENCE_LEVEL_HIGH = 1;
+  CONFIDENCE_LEVEL_MEDIUM = 2;
+  CONFIDENCE_LEVEL_LOW = 3;
+}
+
+enum UIStateType {
+  UI_STATE_TYPE_UNSPECIFIED = 0;
+  UI_STATE_TYPE_NORMAL = 1;
+  UI_STATE_TYPE_LOADING = 2;
+  UI_STATE_TYPE_EMPTY = 3;
+  UI_STATE_TYPE_ERROR = 4;
+  UI_STATE_TYPE_REPAIR = 5;
+}
+
+message DecisionCard {
+  string card_id = 1;
+  string card_family = 2; // e.g. "opportunities", "urgent_threads", "pending_approvals", "profit_anomalies", "diagnostics_issues"
+  string title = 3;
+  string description = 4;
+  string primary_cta_label = 5;
+  string primary_cta_route = 6;
+  bool is_action_available = 7;
+  string unavailable_reason = 8;
+  DataSourceBadge data_source = 9;
+  ConfidenceLevel confidence = 10;
+  string why_this_matters = 11;
+  int32 priority_rank = 12;
+  string module_ref = 13;
+  UIStateType state_type = 14;
+  string repair_instructions = 15;
+}
+
+message OnboardingStepProgress {
+  int32 step_number = 1; // 1 to 5
+  string step_key = 2;   // "connect_data", "select_offer", "create_content", "publish", "track_outcome"
+  string title = 3;
+  string description = 4;
+  bool is_completed = 5;
+  bool is_available = 6;
+  string unavailable_reason = 7;
+}
+
+message OnboardingChecklist {
+  repeated OnboardingStepProgress steps = 1;
+  int32 completed_count = 2;
+  int32 total_steps = 3;
+  bool is_closed_loop_complete = 4;
+}
+
+message WhyThisNumberDetails {
+  string metric_key = 1;
+  string display_name = 2;
+  string formatted_value = 3;
+  DataSourceBadge data_source = 4;
+  ConfidenceLevel confidence = 5;
+  google.protobuf.Timestamp last_synced_at = 6;
+  repeated string data_origins = 7;
+  repeated string missing_data_caveats = 8;
+  repeated string recommended_next_steps = 9;
+  bool contains_demo_data = 10; // Explicit assertion: demo data must NOT mix with live totals
+}
+
+message GetMobileHomeRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  OperatorModeId active_mode = 2;
+}
+
+message GetMobileHomeResponse {
+  creativanta.common.v1.UUID workspace_id = 1;
+  OperatorModeId active_mode = 2;
+  string morning_brief_headline = 3;
+  repeated DecisionCard decision_cards = 4;
+  OnboardingChecklist onboarding = 5;
+  int32 unread_notification_count = 6;
+  string customer_verified_total_revenue = 7; // Real customer totals only - excludes demo
+  DataSourceBadge revenue_source_badge = 8;
+  google.protobuf.Timestamp generated_at = 9;
+}
+
+message GetPipelineRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+}
+
+message GetPipelineResponse {
+  creativanta.common.v1.UUID workspace_id = 1;
+  int32 ideas_count = 2;
+  int32 scripts_count = 3;
+  int32 assets_generating_count = 4;
+  int32 queued_publish_count = 5;
+  int32 pending_approvals_count = 6;
+}
+
+message GetDecisionCardsRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  OperatorModeId operator_mode = 2;
+  bool include_demo_fixtures = 3;
+}
+
+message GetDecisionCardsResponse {
+  OperatorModeId operator_mode = 1;
+  repeated DecisionCard cards = 2;
+  google.protobuf.Timestamp as_of = 3;
+}
+
+message GetWhyThisNumberRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string metric_key = 2;
+}
+
+message GetWhyThisNumberResponse {
+  WhyThisNumberDetails details = 1;
+}
+
+message CompleteOnboardingStepRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  int32 step_number = 2;
+}
+
+message CompleteOnboardingStepResponse {
+  OnboardingChecklist updated_checklist = 1;
+}
+
+// Daily Decision Engine & Dashboard Service (M01)
+service DashboardService {
+  rpc GetMobileHome(GetMobileHomeRequest) returns (GetMobileHomeResponse);
+  rpc GetPipeline(GetPipelineRequest) returns (GetPipelineResponse);
+  rpc GetDecisionCards(GetDecisionCardsRequest) returns (GetDecisionCardsResponse);
+  rpc GetWhyThisNumber(GetWhyThisNumberRequest) returns (GetWhyThisNumberResponse);
+  rpc CompleteOnboardingStep(CompleteOnboardingStepRequest) returns (CompleteOnboardingStepResponse);
+}

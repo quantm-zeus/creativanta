@@ -1,0 +1,226 @@
+syntax = "proto3";
+
+package creativanta.admin.v1;
+
+import "creativanta/common/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1;adminv1";
+
+enum KBArticleStatus {
+  KB_ARTICLE_STATUS_UNSPECIFIED = 0;
+  KB_ARTICLE_STATUS_DRAFT = 1;
+  KB_ARTICLE_STATUS_REVIEW = 2;
+  KB_ARTICLE_STATUS_PUBLISHED = 3;
+  KB_ARTICLE_STATUS_ARCHIVED = 4;
+}
+
+enum KBArticleType {
+  KB_ARTICLE_TYPE_UNSPECIFIED = 0;
+  KB_ARTICLE_TYPE_GETTING_STARTED = 1;
+  KB_ARTICLE_TYPE_HOW_TO = 2;
+  KB_ARTICLE_TYPE_FAQ = 3;
+  KB_ARTICLE_TYPE_TROUBLESHOOTING = 4;
+  KB_ARTICLE_TYPE_API_REFERENCE = 5;
+  KB_ARTICLE_TYPE_CHANGELOG = 6;
+}
+
+message KBCategory {
+  creativanta.common.v1.UUID category_id = 1;
+  string slug = 2;
+  string display_name = 3;
+  string description = 4;
+  string icon_key = 5;
+  int32 sort_order = 6;
+  bool is_active = 7;
+  int32 article_count = 8;
+}
+
+message KBArticleSummary {
+  creativanta.common.v1.UUID article_id = 1;
+  creativanta.common.v1.UUID category_id = 2;
+  string slug = 3;
+  string locale = 4;
+  string title = 5;
+  string summary = 6;
+  KBArticleStatus status = 7;
+  KBArticleType article_type = 8;
+  repeated string target_modules = 9;
+  repeated string target_operator_modes = 10;
+  repeated string tags = 11;
+  int32 estimated_read_minutes = 12;
+  int32 helpful_votes = 13;
+  int32 unhelpful_votes = 14;
+  int32 view_count = 15;
+  google.protobuf.Timestamp last_reviewed_at = 16;
+  optional google.protobuf.Timestamp published_at = 17;
+  bool is_stale_for_review = 18; // >90 days since last review
+}
+
+message KBArticleDetail {
+  KBArticleSummary summary = 1;
+  string body_markdown = 2;
+  repeated creativanta.common.v1.UUID related_article_ids = 3;
+  repeated string target_tiers = 4;
+}
+
+message SearchRequest {
+  string query = 1;
+  string locale = 2;
+  string module_filter = 3; // e.g. "M01", "M07"
+  string operator_mode_filter = 4; // e.g. "creator", "seller"
+  optional creativanta.common.v1.UUID category_id = 5;
+  creativanta.common.v1.Pagination pagination = 6;
+}
+
+message SearchResponse {
+  repeated KBArticleSummary articles = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message GetCategoriesRequest {
+  string locale = 1;
+  bool active_only = 2;
+}
+
+message GetCategoriesResponse {
+  repeated KBCategory categories = 1;
+}
+
+message GetArticleRequest {
+  string slug_or_id = 1;
+  string locale = 2;
+}
+
+message GetArticleResponse {
+  KBArticleDetail article = 1;
+}
+
+message RateArticleRequest {
+  creativanta.common.v1.UUID article_id = 1;
+  creativanta.common.v1.UUID user_id = 2;
+  bool helpful = 3;
+  string feedback_text = 4;
+}
+
+message RateArticleResponse {
+  bool success = 1;
+  int32 helpful_votes = 2;
+  int32 unhelpful_votes = 3;
+}
+
+message ListRecentRequest {
+  string locale = 1;
+  string module_filter = 2;
+  int32 limit = 3;
+}
+
+message ListRecentResponse {
+  repeated KBArticleSummary articles = 1;
+}
+
+// KBAdminService messages
+message ListArticlesRequest {
+  KBArticleStatus status_filter = 1;
+  KBArticleType type_filter = 2;
+  string module_filter = 3;
+  bool stale_only = 4;
+  creativanta.common.v1.Pagination pagination = 5;
+}
+
+message ListArticlesResponse {
+  repeated KBArticleSummary articles = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+  int32 total_stale_count = 3;
+}
+
+message KBAdminServiceGetArticleRequest {
+  creativanta.common.v1.UUID article_id = 1;
+}
+
+message KBAdminServiceGetArticleResponse {
+  KBArticleDetail article = 1;
+}
+
+message CreateArticleRequest {
+  creativanta.common.v1.UUID category_id = 1;
+  string slug = 2;
+  string locale = 3;
+  string title = 4;
+  string summary = 5;
+  string body_markdown = 6;
+  KBArticleType article_type = 7;
+  repeated string target_modules = 8;
+  repeated string target_operator_modes = 9;
+  repeated string tags = 10;
+  int32 estimated_read_minutes = 11;
+}
+
+message CreateArticleResponse {
+  KBArticleDetail article = 1;
+}
+
+message UpdateArticleRequest {
+  creativanta.common.v1.UUID article_id = 1;
+  string title = 2;
+  string summary = 3;
+  string body_markdown = 4;
+  KBArticleType article_type = 5;
+  repeated string target_modules = 6;
+  repeated string target_operator_modes = 7;
+  repeated string tags = 8;
+  int32 estimated_read_minutes = 9;
+  string change_note = 10;
+}
+
+message UpdateArticleResponse {
+  KBArticleDetail article = 1;
+}
+
+message PublishArticleRequest {
+  creativanta.common.v1.UUID article_id = 1;
+}
+
+message PublishArticleResponse {
+  KBArticleDetail article = 1;
+}
+
+message ArchiveArticleRequest {
+  creativanta.common.v1.UUID article_id = 1;
+  string reason = 2;
+}
+
+message ArchiveArticleResponse {
+  bool success = 1;
+}
+
+message ListStaleArticlesRequest {
+  int32 days_threshold = 1; // default 90 days per BIZ rule
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+message ListStaleArticlesResponse {
+  repeated KBArticleSummary stale_articles = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+  int32 stale_count = 3;
+}
+
+// User-facing Help Center Service (M01/help)
+service KBService {
+  rpc Search(SearchRequest) returns (SearchResponse);
+  rpc GetCategories(GetCategoriesRequest) returns (GetCategoriesResponse);
+  rpc GetArticle(GetArticleRequest) returns (GetArticleResponse);
+  rpc RateArticle(RateArticleRequest) returns (RateArticleResponse);
+  rpc ListRecent(ListRecentRequest) returns (ListRecentResponse);
+}
+
+// Ops-facing Internal Admin KB Service (S26/help)
+service KBAdminService {
+  rpc ListArticles(ListArticlesRequest) returns (ListArticlesResponse);
+  rpc GetArticle(KBAdminServiceGetArticleRequest) returns (KBAdminServiceGetArticleResponse);
+  rpc CreateArticle(CreateArticleRequest) returns (CreateArticleResponse);
+  rpc UpdateArticle(UpdateArticleRequest) returns (UpdateArticleResponse);
+  rpc PublishArticle(PublishArticleRequest) returns (PublishArticleResponse);
+  rpc ArchiveArticle(ArchiveArticleRequest) returns (ArchiveArticleResponse);
+  rpc ListStaleArticles(ListStaleArticlesRequest) returns (ListStaleArticlesResponse);
+}

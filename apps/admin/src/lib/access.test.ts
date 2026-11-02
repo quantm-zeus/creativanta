@@ -7,6 +7,8 @@ import {
   evaluateImpersonationAction,
   evaluateKillSwitchToggle,
   evaluateModerationDecision,
+  evaluateKBAdminAccess,
+  isArticleStale,
   type VerifiedAdminSession
 } from './access';
 
@@ -161,5 +163,47 @@ describe('P0-01 / P0-07 Internal Admin Isolation, Impersonation, Moderation & Ki
         auditReason: 'Emergency upstream TikTok outage INC-2026-042'
       }).allowed
     ).toBe(true);
+  });
+
+  it('restricts Knowledge Base management to content_admin/super_admin and rejects workspace roles', () => {
+    // Reject unauthenticated
+    expect(evaluateKBAdminAccess(null).allowed).toBe(false);
+
+    // Reject workspace role (owner)
+    expect(
+      evaluateKBAdminAccess({
+        sessionId: 's-1',
+        adminId: 'a-1',
+        role: 'owner',
+        internalAdmin: false,
+        vpnVerified: true,
+        mfaVerified: true,
+        status: 'active',
+        expiresAtMs: Date.now() + 10000
+      }).allowed
+    ).toBe(false);
+
+    // Allow content_admin
+    expect(
+      evaluateKBAdminAccess({
+        sessionId: 's-2',
+        adminId: 'a-2',
+        role: 'content_admin',
+        internalAdmin: true,
+        vpnVerified: true,
+        mfaVerified: true,
+        status: 'active',
+        expiresAtMs: Date.now() + 10000
+      }).allowed
+    ).toBe(true);
+
+    // Stale article detection (90 days)
+    const nowMs = Date.parse('2026-11-02T10:00:00Z');
+    const freshIso = new Date(nowMs - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const staleIso = new Date(nowMs - 95 * 24 * 60 * 60 * 1000).toISOString();
+
+    expect(isArticleStale(freshIso, nowMs).isStale).toBe(false);
+    expect(isArticleStale(staleIso, nowMs).isStale).toBe(true);
+    expect(isArticleStale(staleIso, nowMs).daysSinceReview).toBe(95);
   });
 });

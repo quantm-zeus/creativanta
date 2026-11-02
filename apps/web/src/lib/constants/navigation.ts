@@ -1,7 +1,10 @@
-/**
- * Job-based navigation configuration for Creativanta Go V5
- * Approved jobs: Tổng quan, Khám phá, Sáng tạo, Xuất bản, Kinh doanh
- */
+export {
+  OPERATOR_MODES,
+  DEFAULT_OPERATOR_MODE,
+  modeStore,
+  type OperatorModeId,
+  type OperatorModeDef
+} from './modes';
 export interface NavItem {
   id: 'overview' | 'explore' | 'create' | 'publish' | 'commerce';
   label: string;

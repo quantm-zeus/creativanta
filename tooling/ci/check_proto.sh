@@ -4,6 +4,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
+if [ ! -w "${XDG_CONFIG_HOME:-$HOME/.config}" ] && [ -d "$HOME/.flutter_config" ]; then
+  export XDG_CONFIG_HOME="$HOME/.flutter_config"
+fi
+
 test -f buf.yaml && test -f buf.gen.yaml
 test -f protos/creativanta/common/v1/types.proto
 test -f protos/creativanta/common/v1/errors.proto

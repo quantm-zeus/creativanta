@@ -1,0 +1,140 @@
+syntax = "proto3";
+
+package creativanta.admin.v1;
+
+import "creativanta/common/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1;adminv1";
+
+// Notification priority levels per database_schema.md §13.5
+enum NotificationPriority {
+  NOTIFICATION_PRIORITY_UNSPECIFIED = 0;
+  NOTIFICATION_PRIORITY_LOW = 1;
+  NOTIFICATION_PRIORITY_NORMAL = 2;
+  NOTIFICATION_PRIORITY_HIGH = 3;
+  NOTIFICATION_PRIORITY_URGENT = 4;
+}
+
+// Notification delivery channels per database_schema.md §13.5
+enum NotificationChannel {
+  NOTIFICATION_CHANNEL_UNSPECIFIED = 0;
+  NOTIFICATION_CHANNEL_IN_APP = 1;
+  NOTIFICATION_CHANNEL_PUSH = 2;
+  NOTIFICATION_CHANNEL_EMAIL = 3;
+}
+
+// Single notification item
+message NotificationItem {
+  creativanta.common.v1.UUID notification_id = 1;
+  creativanta.common.v1.UUID workspace_id = 2;
+  creativanta.common.v1.UUID user_id = 3;
+  NotificationPriority priority = 4;
+  NotificationChannel channel = 5;
+  string title = 6;
+  string body = 7;
+  string deep_link = 8;
+  string action_buttons_json = 9;
+  string grouped_key = 10;
+  optional google.protobuf.Timestamp read_at = 11;
+  optional google.protobuf.Timestamp dismissed_at = 12;
+  optional google.protobuf.Timestamp delivered_at = 13;
+  google.protobuf.Timestamp created_at = 14;
+}
+
+message ListRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.UUID user_id = 2;
+  bool unread_only = 3;
+  NotificationPriority min_priority = 4;
+  creativanta.common.v1.Pagination pagination = 5;
+}
+
+message ListResponse {
+  repeated NotificationItem notifications = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+  int32 unread_count = 3;
+}
+
+message MarkReadRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.UUID user_id = 2;
+  creativanta.common.v1.UUID notification_id = 3;
+}
+
+message MarkReadResponse {
+  bool success = 1;
+  google.protobuf.Timestamp read_at = 2;
+}
+
+message MarkAllReadRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.UUID user_id = 2;
+}
+
+message MarkAllReadResponse {
+  int32 count_marked_read = 1;
+  google.protobuf.Timestamp read_at = 2;
+}
+
+message DismissRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.UUID user_id = 2;
+  creativanta.common.v1.UUID notification_id = 3;
+}
+
+message DismissResponse {
+  bool success = 1;
+  google.protobuf.Timestamp dismissed_at = 2;
+}
+
+message GetUnreadCountRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.UUID user_id = 2;
+}
+
+message GetUnreadCountResponse {
+  int32 unread_count = 1;
+  int32 urgent_count = 2;
+}
+
+message NotificationPreferences {
+  bool email_enabled = 1;
+  bool push_enabled = 2;
+  bool in_app_enabled = 3;
+  bool quiet_hours_enabled = 4;
+  string quiet_hours_start = 5; // e.g. "22:00"
+  string quiet_hours_end = 6;   // e.g. "07:00"
+  string digest_frequency = 7;  // "instant", "daily", "weekly"
+}
+
+message GetPreferencesRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.UUID user_id = 2;
+}
+
+message GetPreferencesResponse {
+  NotificationPreferences preferences = 1;
+}
+
+message UpdatePreferencesRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.UUID user_id = 2;
+  NotificationPreferences preferences = 3;
+}
+
+message UpdatePreferencesResponse {
+  NotificationPreferences preferences = 1;
+  google.protobuf.Timestamp updated_at = 2;
+}
+
+// Scoped Notification Service (M23)
+service NotificationService {
+  rpc List(ListRequest) returns (ListResponse);
+  rpc MarkRead(MarkReadRequest) returns (MarkReadResponse);
+  rpc MarkAllRead(MarkAllReadRequest) returns (MarkAllReadResponse);
+  rpc Dismiss(DismissRequest) returns (DismissResponse);
+  rpc GetUnreadCount(GetUnreadCountRequest) returns (GetUnreadCountResponse);
+  rpc GetPreferences(GetPreferencesRequest) returns (GetPreferencesResponse);
+  rpc UpdatePreferences(UpdatePreferencesRequest) returns (UpdatePreferencesResponse);
+}

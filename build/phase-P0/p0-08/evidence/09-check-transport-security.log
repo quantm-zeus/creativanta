@@ -1,0 +1,43 @@
+P0_02_CANONICAL_ERROR_REGISTRY
+ERROR_REGISTRY_PASS 10 registered transport codes
+P0_02_TEST_ONLY_FIXTURE_MUST_NOT_ENTER_PRODUCTION
+P0_02_FAIL_CLOSED_INTERCEPTOR
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportauth	1.059s
+P0_02_TYPESCRIPT_WIRE_VALIDATION
+
+ RUN  v3.0.7 /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p0-08/packages/shared-types
+
+ ✓ test/validation.test.ts (37 tests) 49ms
+
+ Test Files  1 passed (1)
+      Tests  37 passed (37)
+   Start at  10:15:59
+   Duration  664ms (transform 146ms, setup 0ms, collect 176ms, tests 49ms, environment 0ms, prepare 128ms)
+
+P0_02_DART_WIRE_VALIDATION
+00:00 +0: loading /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p0-08/apps/mobile/test/transport_validation_test.dart
+00:00 +0: isCanonicalUuid and validateCanonicalUuid accepts valid lowercase canonical UUIDs
+00:00 +1: isCanonicalUuid and validateCanonicalUuid rejects uppercase and mixed-case UUIDs
+00:00 +2: isCanonicalUuid and validateCanonicalUuid rejects malformed UUIDs, incorrect hyphens and lengths
+00:00 +3: validateMoney accepts valid amounts and standard currencies
+00:00 +4: validateMoney validates currency must be 3 uppercase ASCII letters
+00:00 +5: validateMoney rejects leading zeros on integers greater than zero
+00:00 +6: validateMoney enforces decimal places limit up to 6
+00:00 +7: validateMoney enforces total digits limit up to 18
+00:00 +8: validateMoney rejects scientific notation, plus sign, spaces, and empty strings
+00:00 +9: validateMoney handles negative amounts according to allowNegative flag
+00:00 +10: normalizePagination normalizes pageSize 0 to 20
+00:00 +11: normalizePagination preserves valid pageSize between 1 and 100
+00:00 +12: normalizePagination rejects pageSize < 0 or > 100
+00:00 +13: normalizePagination accepts empty pageToken and valid token strings
+00:00 +14: normalizePagination enforces pageToken length <= 512
+00:00 +15: normalizePagination rejects pageToken with spaces or control characters
+00:00 +16: validateIdempotencyKey accepts valid 1..255 printable ASCII keys
+00:00 +17: validateIdempotencyKey rejects empty key or key > 255 chars
+00:00 +18: validateIdempotencyKey rejects non-printable or non-ASCII characters
+00:00 +19: validateReason accepts null reason
+00:00 +20: validateReason accepts valid reason between 1 and 2000 characters
+00:00 +21: validateReason rejects empty string reason
+00:00 +22: validateReason rejects reason exceeding 2000 characters
+00:00 +23: All tests passed!
+P0_02_PRODUCTION_TRANSPORT_SEAM_TESTS_PASS

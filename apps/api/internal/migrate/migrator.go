@@ -513,84 +513,7 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 	var requiredRLSTables []string
 
 	switch m.Version {
-	case 4:
-		requiredFragments = []requiredFragment{
-			{"ai_provider_rates table", "CREATE TABLE ai_provider_rates"},
-			{"ai_credit_quotes table", "CREATE TABLE ai_credit_quotes"},
-			{"ai_credit_lots table", "CREATE TABLE ai_credit_lots"},
-			{"ai_credit_reservations table", "CREATE TABLE ai_credit_reservations"},
-			{"ai_credit_reservation_allocations table", "CREATE TABLE ai_credit_reservation_allocations"},
-			{"invoices table", "CREATE TABLE invoices"},
-			{"payment_methods table", "CREATE TABLE payment_methods"},
-			{"composite tenant FK on ai_credit_reservations -> ai_credit_quotes", "fk_ai_credit_reservations_quote_id_tenant"},
-			{"composite tenant FK on ai_credit_reservation_allocations -> ai_credit_reservations", "fk_ai_credit_reservation_allocations_reservation_id_tenant"},
-			{"composite tenant FK on ai_credit_reservation_allocations -> ai_credit_lots", "fk_ai_credit_reservation_allocations_lot_id_tenant"},
-			{"composite tenant FK on invoices -> subscriptions", "fk_invoices_subscription_id_tenant"},
-			{"composite tenant FK on ai_credit_transactions -> ai_credit_reservations", "fk_act_reservation_tenant"},
-			{"composite tenant FK on ai_credit_transactions -> ai_credit_lots", "fk_act_lot_tenant"},
-			{"ai_credit_transactions append-only immutability function", "CREATE OR REPLACE FUNCTION protect_credit_transaction_immutability()"},
-			{"ai_credit_transactions append-only immutability trigger", "CREATE TRIGGER trg_ai_credit_transactions_immutable"},
-		}
-		requiredRLSTables = []string{
-			"ai_credit_quotes",
-			"ai_credit_lots",
-			"ai_credit_reservations",
-			"ai_credit_reservation_allocations",
-			"invoices",
-			"payment_methods",
-		}
-	case 2:
-		requiredFragments = []requiredFragment{
-			{"consumer_inbox table", "CREATE TABLE consumer_inbox"},
-			{"external_effects table", "CREATE TABLE external_effects"},
-			{"diagnostics_records table", "CREATE TABLE diagnostics_records"},
-			{"dead_letter_queue table", "CREATE TABLE dead_letter_queue"},
-			{"background_jobs table", "CREATE TABLE background_jobs"},
-			{"api_usage_daily table", "CREATE TABLE api_usage_daily"},
-			{"composite tenant FK on external_effects -> connected_accounts", "fk_external_effects_connected_account_id_tenant"},
-			{"composite tenant FK on api_usage_daily -> api_keys", "fk_api_usage_daily_api_key_id_tenant"},
-			{"audit immutability function", "CREATE OR REPLACE FUNCTION protect_audit_log_immutability()"},
-			{"audit_events immutability trigger", "CREATE TRIGGER audit_events_immutable"},
-			{"internal_audit_logs immutability trigger", "CREATE TRIGGER internal_audit_logs_immutable"},
-			{"admin_ops_scope policy on diagnostics_records", "CREATE POLICY admin_ops_scope ON diagnostics_records TO admin_user"},
-			{"admin_ops_scope policy on dead_letter_queue", "CREATE POLICY admin_ops_scope ON dead_letter_queue TO admin_user"},
-			{"admin_ops_scope policy on background_jobs", "CREATE POLICY admin_ops_scope ON background_jobs TO admin_user"},
-		}
-		requiredRLSTables = []string{
-			"consumer_inbox",
-			"external_effects",
-			"diagnostics_records",
-			"dead_letter_queue",
-			"background_jobs",
-			"api_usage_daily",
-		}
-	case 3:
-		requiredFragments = []requiredFragment{
-			{"capability_state enum", "CREATE TYPE capability_state AS ENUM"},
-			{"capability_snapshots table", "CREATE TABLE IF NOT EXISTS capability_snapshots"},
-			{"policy_notes table", "CREATE TABLE IF NOT EXISTS policy_notes"},
-			{"fallback_paths table", "CREATE TABLE IF NOT EXISTS fallback_paths"},
-			{"platform_health_scores table", "CREATE TABLE IF NOT EXISTS platform_health_scores"},
-			{"moderation_cases table", "CREATE TABLE IF NOT EXISTS moderation_cases"},
-			{"fraud_cases table", "CREATE TABLE IF NOT EXISTS fraud_cases"},
-			{"feature_flags table", "CREATE TABLE IF NOT EXISTS feature_flags"},
-			{"system_announcements table", "CREATE TABLE IF NOT EXISTS system_announcements"},
-			{"incidents table", "CREATE TABLE IF NOT EXISTS incidents"},
-			{"post_mortems table", "CREATE TABLE IF NOT EXISTS post_mortems"},
-			{"system_alerts table", "CREATE TABLE IF NOT EXISTS system_alerts"},
-			{"unique tenant PK on policy_notes", "uq_policy_notes_tenant_pk"},
-			{"composite tenant FK on fallback_paths -> policy_notes", "fk_fallback_paths_related_policy_note_id_tenant"},
-			{"composite tenant FK on platform_health_scores -> connected_accounts", "fk_platform_health_scores_connected_account_id_tenant"},
-			{"admin_ops_scope policy on moderation_cases", "CREATE POLICY admin_ops_scope ON moderation_cases"},
-		}
-		requiredRLSTables = []string{
-			"capability_snapshots",
-			"policy_notes",
-			"fallback_paths",
-			"platform_health_scores",
-			"moderation_cases",
-		}
-	default:
+	case 1:
 		requiredFragments = []requiredFragment{
 			{"app_user role NOBYPASSRLS", "app_user NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"},
 			{"admin_user role NOBYPASSRLS", "admin_user NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"},
@@ -652,6 +575,98 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 			"api_idempotency_records",
 			"financial_postings",
 		}
+	case 2:
+		requiredFragments = []requiredFragment{
+			{"consumer_inbox table", "CREATE TABLE consumer_inbox"},
+			{"external_effects table", "CREATE TABLE external_effects"},
+			{"diagnostics_records table", "CREATE TABLE diagnostics_records"},
+			{"dead_letter_queue table", "CREATE TABLE dead_letter_queue"},
+			{"background_jobs table", "CREATE TABLE background_jobs"},
+			{"api_usage_daily table", "CREATE TABLE api_usage_daily"},
+			{"composite tenant FK on external_effects -> connected_accounts", "fk_external_effects_connected_account_id_tenant"},
+			{"composite tenant FK on api_usage_daily -> api_keys", "fk_api_usage_daily_api_key_id_tenant"},
+			{"audit immutability function", "CREATE OR REPLACE FUNCTION protect_audit_log_immutability()"},
+			{"audit_events immutability trigger", "CREATE TRIGGER audit_events_immutable"},
+			{"internal_audit_logs immutability trigger", "CREATE TRIGGER internal_audit_logs_immutable"},
+			{"admin_ops_scope policy on diagnostics_records", "CREATE POLICY admin_ops_scope ON diagnostics_records TO admin_user"},
+			{"admin_ops_scope policy on dead_letter_queue", "CREATE POLICY admin_ops_scope ON dead_letter_queue TO admin_user"},
+			{"admin_ops_scope policy on background_jobs", "CREATE POLICY admin_ops_scope ON background_jobs TO admin_user"},
+		}
+		requiredRLSTables = []string{
+			"consumer_inbox",
+			"external_effects",
+			"diagnostics_records",
+			"dead_letter_queue",
+			"background_jobs",
+			"api_usage_daily",
+		}
+	case 3:
+		requiredFragments = []requiredFragment{
+			{"capability_state enum", "CREATE TYPE capability_state AS ENUM"},
+			{"capability_snapshots table", "CREATE TABLE IF NOT EXISTS capability_snapshots"},
+			{"policy_notes table", "CREATE TABLE IF NOT EXISTS policy_notes"},
+			{"fallback_paths table", "CREATE TABLE IF NOT EXISTS fallback_paths"},
+			{"platform_health_scores table", "CREATE TABLE IF NOT EXISTS platform_health_scores"},
+			{"moderation_cases table", "CREATE TABLE IF NOT EXISTS moderation_cases"},
+			{"fraud_cases table", "CREATE TABLE IF NOT EXISTS fraud_cases"},
+			{"feature_flags table", "CREATE TABLE IF NOT EXISTS feature_flags"},
+			{"system_announcements table", "CREATE TABLE IF NOT EXISTS system_announcements"},
+			{"incidents table", "CREATE TABLE IF NOT EXISTS incidents"},
+			{"post_mortems table", "CREATE TABLE IF NOT EXISTS post_mortems"},
+			{"system_alerts table", "CREATE TABLE IF NOT EXISTS system_alerts"},
+			{"unique tenant PK on policy_notes", "uq_policy_notes_tenant_pk"},
+			{"composite tenant FK on fallback_paths -> policy_notes", "fk_fallback_paths_related_policy_note_id_tenant"},
+			{"composite tenant FK on platform_health_scores -> connected_accounts", "fk_platform_health_scores_connected_account_id_tenant"},
+			{"admin_ops_scope policy on moderation_cases", "CREATE POLICY admin_ops_scope ON moderation_cases"},
+		}
+		requiredRLSTables = []string{
+			"capability_snapshots",
+			"policy_notes",
+			"fallback_paths",
+			"platform_health_scores",
+			"moderation_cases",
+		}
+	case 4:
+		requiredFragments = []requiredFragment{
+			{"ai_provider_rates table", "CREATE TABLE ai_provider_rates"},
+			{"ai_credit_quotes table", "CREATE TABLE ai_credit_quotes"},
+			{"ai_credit_lots table", "CREATE TABLE ai_credit_lots"},
+			{"ai_credit_reservations table", "CREATE TABLE ai_credit_reservations"},
+			{"ai_credit_reservation_allocations table", "CREATE TABLE ai_credit_reservation_allocations"},
+			{"invoices table", "CREATE TABLE invoices"},
+			{"payment_methods table", "CREATE TABLE payment_methods"},
+			{"composite tenant FK on ai_credit_reservations -> ai_credit_quotes", "fk_ai_credit_reservations_quote_id_tenant"},
+			{"composite tenant FK on ai_credit_reservation_allocations -> ai_credit_reservations", "fk_ai_credit_reservation_allocations_reservation_id_tenant"},
+			{"composite tenant FK on ai_credit_reservation_allocations -> ai_credit_lots", "fk_ai_credit_reservation_allocations_lot_id_tenant"},
+			{"composite tenant FK on invoices -> subscriptions", "fk_invoices_subscription_id_tenant"},
+			{"composite tenant FK on ai_credit_transactions -> ai_credit_reservations", "fk_act_reservation_tenant"},
+			{"composite tenant FK on ai_credit_transactions -> ai_credit_lots", "fk_act_lot_tenant"},
+			{"ai_credit_transactions append-only immutability function", "CREATE OR REPLACE FUNCTION protect_credit_transaction_immutability()"},
+			{"ai_credit_transactions append-only immutability trigger", "CREATE TRIGGER trg_ai_credit_transactions_immutable"},
+		}
+		requiredRLSTables = []string{
+			"ai_credit_quotes",
+			"ai_credit_lots",
+			"ai_credit_reservations",
+			"ai_credit_reservation_allocations",
+			"invoices",
+			"payment_methods",
+		}
+	case 5:
+		requiredFragments = []requiredFragment{
+			{"notifications table", "CREATE TABLE IF NOT EXISTS notifications"},
+			{"kb_categories table", "CREATE TABLE IF NOT EXISTS kb_categories"},
+			{"kb_articles table", "CREATE TABLE IF NOT EXISTS kb_articles"},
+			{"kb_article_versions table", "CREATE TABLE IF NOT EXISTS kb_article_versions"},
+			{"article_ratings table", "CREATE TABLE IF NOT EXISTS article_ratings"},
+			{"tenant_isolation policy on notifications", "CREATE POLICY tenant_isolation ON notifications"},
+			{"admin_ops_scope policy on notifications", "CREATE POLICY admin_ops_scope ON notifications"},
+		}
+		requiredRLSTables = []string{
+			"notifications",
+		}
+	default:
+		return nil
 	}
 
 	for _, req := range requiredFragments {

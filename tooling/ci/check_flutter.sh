@@ -16,6 +16,10 @@ cd "${REPO_ROOT}"
 
 echo "=== Flutter Mobile Quality Gate ==="
 
+if [ ! -w "${XDG_CONFIG_HOME:-$HOME/.config}" ] && [ -d "$HOME/.flutter_config" ]; then
+    export XDG_CONFIG_HOME="$HOME/.flutter_config"
+fi
+
 # 1. Zero Greenwashing: Artifact Existence Check
 if [ ! -d "apps/mobile" ]; then
     echo "FATAL: 'apps/mobile' directory does not exist! Required mobile application artifacts are missing." >&2
