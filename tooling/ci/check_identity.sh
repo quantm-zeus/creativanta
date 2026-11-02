@@ -48,7 +48,7 @@ trap 'rm -f "$log" "$log_p004"' EXIT
 (
  cd "$ROOT/apps/api"
  CREATIVANTA_TEST_DATABASE_URL="$CREATIVANTA_TEST_POSTGRES_DSN" \
-   GOTOOLCHAIN=local go test -p 1 -race -count=1 -v ./internal/migrate ./internal/tenantdb ./internal/rbac ./internal/workspace ./internal/outbox ./internal/diagnostics ./internal/capability ./internal/internaladmin ./internal/billing ./internal/home ./internal/help ./internal/notification
+   GOTOOLCHAIN=local go test -p 1 -race -count=1 -v ./internal/migrate ./internal/tenantdb ./internal/rbac ./internal/workspace ./internal/outbox ./internal/diagnostics ./internal/capability ./internal/internaladmin ./internal/billing ./internal/home ./internal/help ./internal/notification ./internal/serviceidentity
 ) | tee "$log_p004"
 grep -q -- '--- PASS: TestPostgresLiveMigrationAndAppUserRLS' "$log_p004" || {
  echo 'P0-04 FAIL: live PostgreSQL Goose migration and app_user RLS test was skipped' >&2
@@ -143,3 +143,17 @@ grep -q -- '--- PASS: TestSearchContextualModuleFilter' "$log_p004" || {
  exit 1
 }
 echo 'P0-08_TESTS_PASS: Six mode identities retained, unbuilt action explanations, no demo data in totals, scoped notifications, and contextual help entry'
+
+grep -q -- '--- PASS: TestPostgresSeedTwiceIdempotency' "$log_p004" || {
+ echo 'P0-09 FAIL: live PostgreSQL seed twice idempotency test was skipped' >&2
+ exit 1
+}
+grep -q -- '--- PASS: TestNoFuturePhaseRPCExposed' "$log_p004" || {
+ echo 'P0-09 FAIL: no future phase RPC exposed gate test was skipped' >&2
+ exit 1
+}
+grep -q -- '--- PASS: TestPostgresLiveServiceIdentityAndAPIKeys' "$log_p004" || {
+ echo 'P0-09 FAIL: live PostgreSQL service identity and API keys test was skipped' >&2
+ exit 1
+}
+echo 'P0-09_TESTS_PASS: Seed twice idempotency, no future-phase RPCs exposed, service identity and API keys isolation'
