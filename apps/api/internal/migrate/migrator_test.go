@@ -85,6 +85,28 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if err := ValidateCanonicalMigrationContract(m5); err != nil {
 		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v5: %v", err)
 	}
+
+	m6 := migrations[5]
+	if m6.Version != 6 {
+		t.Fatalf("expected version 6, got %d", m6.Version)
+	}
+	if len(m6.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v6, got %q", m6.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m6); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v6: %v", err)
+	}
+
+	m7 := migrations[6]
+	if m7.Version != 7 {
+		t.Fatalf("expected version 7, got %d", m7.Version)
+	}
+	if len(m7.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v7, got %q", m7.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m7); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v7: %v", err)
+	}
 }
 
 func TestValidateCanonicalMigrationContractRejectsViolations(t *testing.T) {
@@ -244,8 +266,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 6 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 || applied[3] != 4 || applied[4] != 5 || applied[5] != 6 {
-		t.Fatalf("expected versions [1, 2, 3, 4, 5, 6] applied, got %v", applied)
+	if len(applied) != 7 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 || applied[3] != 4 || applied[4] != 5 || applied[5] != 6 || applied[6] != 7 {
+		t.Fatalf("expected versions [1, 2, 3, 4, 5, 6, 7] applied, got %v", applied)
 	}
 	if !runner.lastTx.committed || runner.lastTx.rolledBack {
 		t.Fatalf("expected transaction committed")
@@ -260,13 +282,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for all 6 migrations.
+	// Status reports Applied = true for all 7 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 6 || !statuses[0].Applied || !statuses[1].Applied || !statuses[2].Applied || !statuses[3].Applied || !statuses[4].Applied || !statuses[5].Applied {
-		t.Fatalf("expected status Applied=true for all 6 migrations, got %+v", statuses)
+	if len(statuses) != 7 || !statuses[0].Applied || !statuses[1].Applied || !statuses[2].Applied || !statuses[3].Applied || !statuses[4].Applied || !statuses[5].Applied || !statuses[6].Applied {
+		t.Fatalf("expected status Applied=true for all 7 migrations, got %+v", statuses)
 	}
 
 	// Down without allowLocalRollback fails closed.
@@ -274,7 +296,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 6, then 5, then 4, then 3, then 2, then 1.
+	// Down with allowLocalRollback=true rolls back version 7, then 6, then 5, then 4, then 3, then 2, then 1.
+	rolled7, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v7 failed: %v", err)
+	}
+	if rolled7 != 7 {
+		t.Fatalf("expected rolled back version 7, got %d", rolled7)
+	}
 	rolled6, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v6 failed: %v", err)
@@ -365,8 +394,11 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 6 {
-		t.Fatalf("expected 6 applied migrations, got %v", applied)
+	if len(applied) != 7 {
+		t.Fatalf("expected 7 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v7 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v6 failed: %v", err)

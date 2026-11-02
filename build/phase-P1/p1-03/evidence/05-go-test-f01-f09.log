@@ -1,0 +1,20 @@
+=== RUN   TestF01_RecognizedProfit
+--- PASS: TestF01_RecognizedProfit (0.00s)
+=== RUN   TestF02_PartialRefund
+--- PASS: TestF02_PartialRefund (0.00s)
+=== RUN   TestF03_SettlementDuplication
+--- PASS: TestF03_SettlementDuplication (0.00s)
+=== RUN   TestF04_FX
+--- PASS: TestF04_FX (0.00s)
+=== RUN   TestF05_PendingOrder
+--- PASS: TestF05_PendingOrder (0.00s)
+=== RUN   TestF06_ReplayAndCorrection
+--- PASS: TestF06_ReplayAndCorrection (0.00s)
+=== RUN   TestF07_UnknownCOGS
+--- PASS: TestF07_UnknownCOGS (0.00s)
+=== RUN   TestF08_PartialSettlement
+--- PASS: TestF08_PartialSettlement (0.00s)
+=== RUN   TestF09_SourceMix
+--- PASS: TestF09_SourceMix (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/finance	0.011s
