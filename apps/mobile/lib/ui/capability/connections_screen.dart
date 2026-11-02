@@ -95,7 +95,8 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    verdict.executable
+                    verdict.state == CapabilityState.CAPABILITY_STATE_NATIVE &&
+                            verdict.executable
                         ? 'Trạng thái: Tự động (Native API) — Cho phép thực thi'
                         : 'Trạng thái: Chặn tự động thực thi (${verdict.state.name})',
                     key: const Key('capability-verdict-text'),

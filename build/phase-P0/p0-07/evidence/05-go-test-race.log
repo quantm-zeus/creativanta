@@ -36,24 +36,24 @@
 === RUN   TestServe_PropagatesUnexpectedError
 --- PASS: TestServe_PropagatesUnexpectedError (0.00s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/bootstrap	1.076s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/bootstrap	1.167s
 === RUN   TestUnverifiedStaleReadOnlyAndKilledRoutesCannotExecute
---- PASS: TestUnverifiedStaleReadOnlyAndKilledRoutesCannotExecute (0.01s)
+--- PASS: TestUnverifiedStaleReadOnlyAndKilledRoutesCannotExecute (0.04s)
 === RUN   TestCompositeHealthScoresProactiveCoachingTokenRedactionAndImpersonationReadOnly
---- PASS: TestCompositeHealthScoresProactiveCoachingTokenRedactionAndImpersonationReadOnly (0.02s)
+--- PASS: TestCompositeHealthScoresProactiveCoachingTokenRedactionAndImpersonationReadOnly (0.09s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/capability	1.066s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/capability	1.324s
 === RUN   TestSQLReconcilerSessionRevocationAndEndedEventsNotifyRecorder
 --- PASS: TestSQLReconcilerSessionRevocationAndEndedEventsNotifyRecorder (0.00s)
 === RUN   TestSQLReconcilerFailsClosedOnNilDependenciesAndMissingGlobalClaimer
 --- PASS: TestSQLReconcilerFailsClosedOnNilDependenciesAndMissingGlobalClaimer (0.00s)
 === RUN   TestPostgresClerkWebhookMembershipAndUserReconciliation
     reconcile_sql_test.go:142: set CREATIVANTA_TEST_POSTGRES_DSN to run real PostgreSQL webhook reconciliation tests
---- SKIP: TestPostgresClerkWebhookMembershipAndUserReconciliation (0.00s)
+--- SKIP: TestPostgresClerkWebhookMembershipAndUserReconciliation (0.01s)
 === RUN   TestKnownValidSignedFixture
---- PASS: TestKnownValidSignedFixture (0.00s)
+--- PASS: TestKnownValidSignedFixture (0.03s)
 === RUN   TestMultiSignatureRotationAcceptsMatchingV1
---- PASS: TestMultiSignatureRotationAcceptsMatchingV1 (0.00s)
+--- PASS: TestMultiSignatureRotationAcceptsMatchingV1 (0.01s)
 === RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures
 === RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/spoofed_signing_key
 === RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/tampered_body
@@ -66,14 +66,14 @@ ok  	github.com/quantm-zeus/creativanta/apps/api/internal/capability	1.066s
 === RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/invalid_message_id_prefix
 === RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/non_numeric_timestamp
 === RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/malformed_signature_entry
---- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures (0.00s)
+--- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures (0.08s)
     --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/spoofed_signing_key (0.00s)
     --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/tampered_body (0.00s)
     --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/tampered_svix_id (0.00s)
     --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/expired_replayed_timestamp (0.00s)
     --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/future_timestamp (0.00s)
     --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/duplicate_svix_signature_headers (0.00s)
-    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/duplicate_svix_id_headers (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/duplicate_svix_id_headers (0.01s)
     --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/missing_svix_signature (0.00s)
     --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/invalid_message_id_prefix (0.00s)
     --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/non_numeric_timestamp (0.00s)
@@ -84,24 +84,24 @@ ok  	github.com/quantm-zeus/creativanta/apps/api/internal/capability	1.066s
 === RUN   TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/unverified_primary_email_rejected
 === RUN   TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/invalid_membership_role_rejected
 === RUN   TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/invitation_accepted_owner_role_rejected
---- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected (0.00s)
+--- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected (0.04s)
     --- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/unknown_event_type (0.00s)
     --- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/organization_created_disallowed_to_prevent_auto_workspace (0.00s)
     --- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/unverified_primary_email_rejected (0.00s)
-    --- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/invalid_membership_role_rejected (0.00s)
+    --- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/invalid_membership_role_rejected (0.02s)
     --- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/invitation_accepted_owner_role_rejected (0.00s)
 === RUN   TestHandlerNilDependenciesBoundedBodyAndDuplicateDelivery
---- PASS: TestHandlerNilDependenciesBoundedBodyAndDuplicateDelivery (0.00s)
+--- PASS: TestHandlerNilDependenciesBoundedBodyAndDuplicateDelivery (0.01s)
 === RUN   TestNewVerifierRejectsWeakOrMalformedConfigs
 --- PASS: TestNewVerifierRejectsWeakOrMalformedConfigs (0.00s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/clerkwebhook	1.068s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/clerkwebhook	1.443s
 === RUN   TestDiagnosticsServiceRBACAndCrossTenantIsolation
---- PASS: TestDiagnosticsServiceRBACAndCrossTenantIsolation (0.01s)
+--- PASS: TestDiagnosticsServiceRBACAndCrossTenantIsolation (0.02s)
 === RUN   TestRuleM23A04SanitizationAndRepairWizardReconcilesUnknownExternalEffect
---- PASS: TestRuleM23A04SanitizationAndRepairWizardReconcilesUnknownExternalEffect (0.01s)
+--- PASS: TestRuleM23A04SanitizationAndRepairWizardReconcilesUnknownExternalEffect (0.07s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/diagnostics	1.063s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/diagnostics	1.275s
 === RUN   TestSessionCheckerConfiguration
 --- PASS: TestSessionCheckerConfiguration (0.00s)
 === RUN   TestFreshSessionStateAndRevocation
@@ -114,8 +114,8 @@ ok  	github.com/quantm-zeus/creativanta/apps/api/internal/diagnostics	1.063s
 === RUN   TestFreshSessionStateAndRevocation/missing
 === RUN   TestFreshSessionStateAndRevocation/upstream_503
 === RUN   TestFreshSessionStateAndRevocation/broken_payload
---- PASS: TestFreshSessionStateAndRevocation (0.04s)
-    --- PASS: TestFreshSessionStateAndRevocation/active (0.02s)
+--- PASS: TestFreshSessionStateAndRevocation (0.08s)
+    --- PASS: TestFreshSessionStateAndRevocation/active (0.04s)
     --- PASS: TestFreshSessionStateAndRevocation/revoked (0.00s)
     --- PASS: TestFreshSessionStateAndRevocation/expired (0.00s)
     --- PASS: TestFreshSessionStateAndRevocation/foreign_user (0.00s)
@@ -123,51 +123,51 @@ ok  	github.com/quantm-zeus/creativanta/apps/api/internal/diagnostics	1.063s
     --- PASS: TestFreshSessionStateAndRevocation/expired_at (0.00s)
     --- PASS: TestFreshSessionStateAndRevocation/missing (0.00s)
     --- PASS: TestFreshSessionStateAndRevocation/upstream_503 (0.00s)
-    --- PASS: TestFreshSessionStateAndRevocation/broken_payload (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/broken_payload (0.01s)
 === RUN   TestSessionStatusRejectsInvalidIDAndCancellation
 --- PASS: TestSessionStatusRejectsInvalidIDAndCancellation (0.00s)
 === RUN   TestUnknownKIDRefreshDoesNotBlockKnownValidToken
---- PASS: TestUnknownKIDRefreshDoesNotBlockKnownValidToken (0.85s)
+--- PASS: TestUnknownKIDRefreshDoesNotBlockKnownValidToken (0.89s)
 === RUN   TestExpiredJWKSOutageIsRateLimited
---- PASS: TestExpiredJWKSOutageIsRateLimited (0.32s)
+--- PASS: TestExpiredJWKSOutageIsRateLimited (0.36s)
 === RUN   TestClerkJWTVerifiedClaimsAndCache
---- PASS: TestClerkJWTVerifiedClaimsAndCache (0.16s)
+--- PASS: TestClerkJWTVerifiedClaimsAndCache (0.29s)
 === RUN   TestClerkJWTRejectsUntrustedClaims
+=== RUN   TestClerkJWTRejectsUntrustedClaims/wrong_issuer
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_expiry
 === RUN   TestClerkJWTRejectsUntrustedClaims/bad_session
 === RUN   TestClerkJWTRejectsUntrustedClaims/missing_subject
-=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_expiry
 === RUN   TestClerkJWTRejectsUntrustedClaims/missing_not_before
 === RUN   TestClerkJWTRejectsUntrustedClaims/issued_in_future
-=== RUN   TestClerkJWTRejectsUntrustedClaims/wrong_issuer
-=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_audience
-=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_session
+=== RUN   TestClerkJWTRejectsUntrustedClaims/bad_subject
 === RUN   TestClerkJWTRejectsUntrustedClaims/wrong_azp
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_session
 === RUN   TestClerkJWTRejectsUntrustedClaims/missing_issued_at
 === RUN   TestClerkJWTRejectsUntrustedClaims/expired
 === RUN   TestClerkJWTRejectsUntrustedClaims/not_yet_valid
-=== RUN   TestClerkJWTRejectsUntrustedClaims/bad_subject
 === RUN   TestClerkJWTRejectsUntrustedClaims/wrong_audience
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_audience
 === RUN   TestClerkJWTRejectsUntrustedClaims/missing_azp
---- PASS: TestClerkJWTRejectsUntrustedClaims (0.42s)
-    --- PASS: TestClerkJWTRejectsUntrustedClaims/bad_session (0.04s)
-    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_subject (0.01s)
+--- PASS: TestClerkJWTRejectsUntrustedClaims (1.49s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/wrong_issuer (0.10s)
     --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_expiry (0.01s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/bad_session (0.01s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_subject (0.01s)
     --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_not_before (0.01s)
-    --- PASS: TestClerkJWTRejectsUntrustedClaims/issued_in_future (0.00s)
-    --- PASS: TestClerkJWTRejectsUntrustedClaims/wrong_issuer (0.00s)
-    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_audience (0.00s)
-    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_session (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/issued_in_future (0.01s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/bad_subject (0.01s)
     --- PASS: TestClerkJWTRejectsUntrustedClaims/wrong_azp (0.01s)
-    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_issued_at (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_session (0.01s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_issued_at (0.01s)
     --- PASS: TestClerkJWTRejectsUntrustedClaims/expired (0.01s)
     --- PASS: TestClerkJWTRejectsUntrustedClaims/not_yet_valid (0.01s)
-    --- PASS: TestClerkJWTRejectsUntrustedClaims/bad_subject (0.00s)
     --- PASS: TestClerkJWTRejectsUntrustedClaims/wrong_audience (0.01s)
-    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_azp (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_audience (0.01s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_azp (0.01s)
 === RUN   TestClerkJWTWrongSignatureNeverAccepted
---- PASS: TestClerkJWTWrongSignatureNeverAccepted (0.32s)
+--- PASS: TestClerkJWTWrongSignatureNeverAccepted (1.06s)
 === RUN   TestClerkJWTRotationAndStaleRejection
---- PASS: TestClerkJWTRotationAndStaleRejection (0.11s)
+--- PASS: TestClerkJWTRotationAndStaleRejection (0.66s)
 === RUN   TestClerkJWTRejectsMalformedConfigsAndTokens
 === RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/missing_origins
 === RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/http_issuer
@@ -175,7 +175,7 @@ ok  	github.com/quantm-zeus/creativanta/apps/api/internal/diagnostics	1.063s
 === RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/ssrf_userinfo
 === RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/arbitrary_path
 === RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/origin_http_insecure
---- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens (0.08s)
+--- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens (0.48s)
     --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/missing_origins (0.00s)
     --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/http_issuer (0.00s)
     --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/missing_audience (0.00s)
@@ -183,7 +183,7 @@ ok  	github.com/quantm-zeus/creativanta/apps/api/internal/diagnostics	1.063s
     --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/arbitrary_path (0.00s)
     --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/origin_http_insecure (0.00s)
 === RUN   TestEndToEndJWTSessionMembershipOnConnect
---- PASS: TestEndToEndJWTSessionMembershipOnConnect (0.14s)
+--- PASS: TestEndToEndJWTSessionMembershipOnConnect (1.19s)
 === RUN   TestDiscoveryRequiresVerifiedSession
 --- PASS: TestDiscoveryRequiresVerifiedSession (0.00s)
 === RUN   TestPostgresNonOwnerWorkspaceDiscovery
@@ -205,7 +205,7 @@ ok  	github.com/quantm-zeus/creativanta/apps/api/internal/diagnostics	1.063s
 === RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/step_zero
 === RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/step_six
 === RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/missing_idempotency_key
---- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations (0.00s)
+--- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations (0.02s)
     --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/caller_supplied_user_id (0.00s)
     --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/workspace_settings_mutation (0.00s)
     --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/operator_mode_mutation (0.00s)
@@ -260,30 +260,30 @@ ok  	github.com/quantm-zeus/creativanta/apps/api/internal/diagnostics	1.063s
 === RUN   TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/unverified_primary_email
 === RUN   TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/banned_user
 === RUN   TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/mismatched_user_id
---- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles (0.01s)
-    --- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/verified_active_user (0.00s)
-    --- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/unverified_primary_email (0.00s)
-    --- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/banned_user (0.00s)
-    --- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/mismatched_user_id (0.00s)
+--- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles (0.04s)
+    --- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/verified_active_user (0.01s)
+    --- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/unverified_primary_email (0.01s)
+    --- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/banned_user (0.01s)
+    --- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/mismatched_user_id (0.01s)
 === RUN   TestSyncVerifiedUserRequiresTokenSessionAndVerifiedProfile
---- PASS: TestSyncVerifiedUserRequiresTokenSessionAndVerifiedProfile (0.00s)
+--- PASS: TestSyncVerifiedUserRequiresTokenSessionAndVerifiedProfile (0.01s)
 === RUN   TestPostgresSynchronousUserUpsertSurvivesDelayedWebhook
     user_sync_test.go:167: set CREATIVANTA_TEST_POSTGRES_DSN to run real PostgreSQL user sync test
 --- SKIP: TestPostgresSynchronousUserUpsertSurvivesDelayedWebhook (0.00s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/identity	3.500s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/identity	7.708s
 === RUN   TestWorkspaceRoleCannotCallAdminListenerAndVPNMFAGate
---- PASS: TestWorkspaceRoleCannotCallAdminListenerAndVPNMFAGate (0.01s)
+--- PASS: TestWorkspaceRoleCannotCallAdminListenerAndVPNMFAGate (0.02s)
 === RUN   TestImpersonationIsStrictlyReadOnlyAndAutoExpiresAfter30Minutes
---- PASS: TestImpersonationIsStrictlyReadOnlyAndAutoExpiresAfter30Minutes (0.01s)
+--- PASS: TestImpersonationIsStrictlyReadOnlyAndAutoExpiresAfter30Minutes (0.02s)
 === RUN   TestModerationRulesHardBlockSelfReviewGuardAndKillSwitchHaltsCapability
---- PASS: TestModerationRulesHardBlockSelfReviewGuardAndKillSwitchHaltsCapability (0.01s)
+--- PASS: TestModerationRulesHardBlockSelfReviewGuardAndKillSwitchHaltsCapability (0.03s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/internaladmin	1.069s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/internaladmin	1.185s
 === RUN   TestFailClosedAndProductionReadiness
 --- PASS: TestFailClosedAndProductionReadiness (0.00s)
 === RUN   TestInviterRBACHierarchyAndNoOwnerGrant
---- PASS: TestInviterRBACHierarchyAndNoOwnerGrant (0.02s)
+--- PASS: TestInviterRBACHierarchyAndNoOwnerGrant (0.04s)
 === RUN   TestVerifiedClerkIdentityAndNewVsExistingFlows
 --- PASS: TestVerifiedClerkIdentityAndNewVsExistingFlows (0.01s)
 === RUN   TestNoRoleSelfElevationAndInviterRevocation
@@ -293,32 +293,32 @@ ok  	github.com/quantm-zeus/creativanta/apps/api/internal/internaladmin	1.069s
 === RUN   TestCrossTenantIsolation
 --- PASS: TestCrossTenantIsolation (0.00s)
 === RUN   TestIdempotencyRecoveryWebhookReconciliationAndConcurrency
---- PASS: TestIdempotencyRecoveryWebhookReconciliationAndConcurrency (0.02s)
+--- PASS: TestIdempotencyRecoveryWebhookReconciliationAndConcurrency (0.03s)
 === RUN   TestPartialFailureRecoveryAfterProviderAccept
 --- PASS: TestPartialFailureRecoveryAfterProviderAccept (0.00s)
 === RUN   TestEdgeValidationUnconfiguredAdaptersAndWebhookBranches
---- PASS: TestEdgeValidationUnconfiguredAdaptersAndWebhookBranches (0.00s)
+--- PASS: TestEdgeValidationUnconfiguredAdaptersAndWebhookBranches (0.01s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/invitations	1.100s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/invitations	1.149s
 === RUN   TestLoadAndValidateCanonicalP004Migration
---- PASS: TestLoadAndValidateCanonicalP004Migration (0.20s)
+--- PASS: TestLoadAndValidateCanonicalP004Migration (0.91s)
 === RUN   TestValidateCanonicalMigrationContractRejectsViolations
 === RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_GRANT_ALL
 === RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_FLOAT_or_REAL_on_money_or_credit_column_(DB-H-001)
 === RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_FORCE_ROW_LEVEL_SECURITY_on_junction_table
 === RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_composite_tenant_FK
---- PASS: TestValidateCanonicalMigrationContractRejectsViolations (0.47s)
-    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_GRANT_ALL (0.04s)
-    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_FLOAT_or_REAL_on_money_or_credit_column_(DB-H-001) (0.14s)
-    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_FORCE_ROW_LEVEL_SECURITY_on_junction_table (0.14s)
-    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_composite_tenant_FK (0.14s)
+--- PASS: TestValidateCanonicalMigrationContractRejectsViolations (0.66s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_GRANT_ALL (0.05s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_FLOAT_or_REAL_on_money_or_credit_column_(DB-H-001) (0.25s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_FORCE_ROW_LEVEL_SECURITY_on_junction_table (0.16s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_composite_tenant_FK (0.18s)
 === RUN   TestUpStatusDownTransactionalBehavior
---- PASS: TestUpStatusDownTransactionalBehavior (0.83s)
+--- PASS: TestUpStatusDownTransactionalBehavior (0.88s)
 === RUN   TestPostgresLiveMigrationAndAppUserRLS
     migrator_test.go:304: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL 17.10 migration & RLS suite executes in CI
 --- SKIP: TestPostgresLiveMigrationAndAppUserRLS (0.00s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/migrate	2.539s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/migrate	3.601s
 === RUN   TestPostgresLiveOutboxInboxAndExternalEffects
     outbox_postgres_test.go:19: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL 17.10 outbox/inbox/external_effects suite executes in CI
 --- SKIP: TestPostgresLiveOutboxInboxAndExternalEffects (0.00s)
@@ -339,7 +339,7 @@ ok  	github.com/quantm-zeus/creativanta/apps/api/internal/migrate	2.539s
 === RUN   TestCircuitBreakerAndFairWorkspaceScheduler
 --- PASS: TestCircuitBreakerAndFairWorkspaceScheduler (0.00s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/outbox	1.036s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/outbox	1.121s
 === RUN   TestMatrixMatchesCanonicalMarkdownContractCellForCell
 --- PASS: TestMatrixMatchesCanonicalMarkdownContractCellForCell (0.00s)
 === RUN   TestLoadAll1188RPCPermissionBindingsAndEnforceFailClosed
@@ -347,7 +347,7 @@ ok  	github.com/quantm-zeus/creativanta/apps/api/internal/outbox	1.036s
 === RUN   TestConstraintRulesExternalContributorApprovalAndImpersonation
 --- PASS: TestConstraintRulesExternalContributorApprovalAndImpersonation (0.01s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/rbac	1.049s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/rbac	1.078s
 === RUN   TestExactDecimalMoneyRejectsFloatAndEnforcesNumeric18_6
 --- PASS: TestExactDecimalMoneyRejectsFloatAndEnforcesNumeric18_6 (0.00s)
 === RUN   TestQueriesFailClosedOutsideWithTx
@@ -358,9 +358,9 @@ ok  	github.com/quantm-zeus/creativanta/apps/api/internal/rbac	1.049s
     withtx_test.go:375: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL WithTx test runs in CI
 --- SKIP: TestPostgresLiveWithTxIsolationAndRollback (0.00s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb	1.046s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb	1.067s
 === RUN   TestRealHTTPConnectHandlerUsesVerifiedWorkspace
---- PASS: TestRealHTTPConnectHandlerUsesVerifiedWorkspace (0.02s)
+--- PASS: TestRealHTTPConnectHandlerUsesVerifiedWorkspace (0.03s)
 === RUN   TestRealHTTPConnectHandlerDeniesNilVerifier
 --- PASS: TestRealHTTPConnectHandlerDeniesNilVerifier (0.01s)
 === RUN   TestInvalidModeRejected
@@ -428,23 +428,23 @@ ok  	github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb	1.046s
 === RUN   TestStreamingCancellationBeforeHandler
 --- PASS: TestStreamingCancellationBeforeHandler (0.00s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportauth	1.071s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportauth	1.109s
 === RUN   TestEcho
---- PASS: TestEcho (0.01s)
+--- PASS: TestEcho (0.02s)
 === RUN   TestEchoMetadataFailures
 --- PASS: TestEchoMetadataFailures (0.01s)
 === RUN   TestIdempotencyReplayConflict
 --- PASS: TestIdempotencyReplayConflict (0.02s)
 === RUN   TestConcurrentIdempotencyOneNew
---- PASS: TestConcurrentIdempotencyOneNew (0.14s)
+--- PASS: TestConcurrentIdempotencyOneNew (0.10s)
 === RUN   TestForeignAndTamperedCursorDenied
---- PASS: TestForeignAndTamperedCursorDenied (0.03s)
+--- PASS: TestForeignAndTamperedCursorDenied (0.01s)
 === RUN   TestDeadlineAndStreamCancel
---- PASS: TestDeadlineAndStreamCancel (0.11s)
+--- PASS: TestDeadlineAndStreamCancel (0.13s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportfixture	1.368s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportfixture	1.340s
 === RUN   TestLastOwnerProtectionAndAtomicOwnershipTransfer
---- PASS: TestLastOwnerProtectionAndAtomicOwnershipTransfer (0.01s)
+--- PASS: TestLastOwnerProtectionAndAtomicOwnershipTransfer (0.02s)
 === RUN   TestMemberRevocationEnforcedImmediatelyOnNextRequest
 --- PASS: TestMemberRevocationEnforcedImmediatelyOnNextRequest (0.01s)
 === RUN   TestPrivateNotesAndSecretsNeverSerialized
@@ -453,4 +453,4 @@ ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportfixture	1.368
     service_test.go:678: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL workspace service test executes in CI
 --- SKIP: TestPostgresLiveWorkspaceOwnerProtectionRevocationAndProjections (0.00s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/workspace	1.053s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/workspace	1.079s

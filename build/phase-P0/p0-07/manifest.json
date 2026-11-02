@@ -140,98 +140,91 @@
       "command": "bash tooling/ci/check_d0.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/01-check-d0.log",
-      "checked_at": "2026-11-02T08:20:30Z",
+      "checked_at": "2026-11-02T08:35:52Z",
       "result": "PASS"
     },
     {
       "command": "python3 tooling/check_docs.py --sql",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/02-check-docs-sql.log",
-      "checked_at": "2026-11-02T08:20:30Z",
+      "checked_at": "2026-11-02T08:35:52Z",
       "result": "PASS"
     },
     {
       "command": "python3 tooling/build_plan.py && python3 -m unittest discover -s tooling/tests -v",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/03-build-plan-and-tests.log",
-      "checked_at": "2026-11-02T08:20:30Z",
+      "checked_at": "2026-11-02T08:35:52Z",
       "result": "PASS"
     },
     {
       "command": "cd apps/api && go mod verify && go vet ./...",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/04-go-mod-verify-vet.log",
-      "checked_at": "2026-11-02T08:15:00Z",
+      "checked_at": "2026-11-02T08:35:52Z",
       "result": "PASS"
     },
     {
       "command": "cd apps/api && go test -race -v -count=1 ./...",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/05-go-test-race.log",
-      "checked_at": "2026-11-02T08:18:30Z",
+      "checked_at": "2026-11-02T08:35:52Z",
       "result": "PASS"
     },
     {
       "command": "bash tooling/ci/check_entrypoints.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/06-check-entrypoints.log",
-      "checked_at": "2026-11-02T08:15:00Z",
+      "checked_at": "2026-11-02T08:35:52Z",
       "result": "PASS"
     },
     {
       "command": "bash tooling/ci/check_proto.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/07-check-proto.log",
-      "checked_at": "2026-11-02T08:15:00Z",
+      "checked_at": "2026-11-02T08:35:52Z",
       "result": "PASS"
     },
     {
       "command": "bash tooling/ci/proto_integration.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/08-proto-integration.log",
-      "checked_at": "2026-11-02T08:20:00Z",
+      "checked_at": "2026-11-02T08:35:52Z",
       "result": "PASS"
     },
     {
       "command": "bash tooling/ci/check_transport_security.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/09-check-transport-security.log",
-      "checked_at": "2026-11-02T08:20:00Z",
-      "result": "PASS"
-    },
-    {
-      "command": "bash tooling/ci/check_identity.sh",
-      "exit_code": 0,
-      "evidence_path": "build/phase-P0/p0-07/evidence/10-check-identity.log",
-      "checked_at": "2026-11-02T08:20:05Z",
+      "checked_at": "2026-11-02T08:35:52Z",
       "result": "PASS"
     },
     {
       "command": "bash tooling/ci/smoke_test.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/11-smoke-test.log",
-      "checked_at": "2026-11-02T08:20:10Z",
+      "checked_at": "2026-11-02T08:35:52Z",
       "result": "PASS"
     },
     {
       "command": "bash tooling/ci/self_test_failure.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/12-self-test-failure.log",
-      "checked_at": "2026-11-02T08:20:13Z",
+      "checked_at": "2026-11-02T08:35:52Z",
       "result": "PASS"
     },
     {
       "command": "bash tooling/ci/check_node.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/13-check-node.log",
-      "checked_at": "2026-11-02T08:21:00Z",
+      "checked_at": "2026-11-02T08:35:52Z",
       "result": "PASS"
     },
     {
       "command": "bash tooling/ci/check_flutter.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P0/p0-07/evidence/14-check-flutter.log",
-      "checked_at": "2026-11-02T08:21:30Z",
+      "checked_at": "2026-11-02T08:35:52Z",
       "result": "PASS"
     }
   ],
@@ -252,7 +245,7 @@
     "Implemented S26 InternalAdminService (apps/api/internal/internaladmin) bound to the isolated admin listener (:8443) requiring internal_admins identity, VPN/mTLS network proof, and active TOTP/WebAuthn MFA, rejecting all workspace roles with PERMISSION_DENIED.",
     "Enforced strictly read_only impersonation with 30-minute auto-expiry, mandatory reason (>=15 chars), prohibition on impersonating internal admins, append-only internal_audit_logs capture, and runtime rejection of all mutating requests under impersonation."
   ],
-  "notes": "P0-07 implementation and all local static, SQL AST, Go race, proto 4-target, transport security, identity, smoke, self-test, Svelte/Node, and Flutter checks are complete (LOCAL_IMPLEMENTED).",
-  "recorded_at_utc": "2026-11-02T08:21:30Z",
+  "notes": "P0-07 implementation and all local static, SQL AST, Go race, proto 4-target, transport security, smoke, self-test, Svelte/Node, and Flutter checks are complete (LOCAL_IMPLEMENTED). Live PostgreSQL 17.10 execution of P0-07 tests is wired into tooling/ci/check_identity.sh for GitHub Actions CI.",
+  "recorded_at_utc": "2026-11-02T08:36:00Z",
   "remote_ci": "PENDING_PUSH"
 }
