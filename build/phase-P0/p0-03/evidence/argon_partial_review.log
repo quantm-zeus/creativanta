@@ -1,0 +1,41 @@
+Dưới đây là kết quả rà soát bảo mật và tính đúng đắn (security & correctness review) trực tiếp trên mã nguồn Go được cung cấp, phân tách rõ **Production Blockers** và **Local Test-Only / Prep Wiring**.
+
+---
+
+## I. Production Blockers (Lỗi nghiêm trọng chặn vận hành / Bảo mật & Độ sẵn sàng)
+
+### 1. [HIGH] DoS toàn cục & vô hiệu hóa làm mới JWKS thông qua `kid` giả mạo (Mutex giữ suốt I/O mạng + dùng `ctx` của request khách)
+* **File:** `apps/api/internal/identity/clerkjwt.go`
+* **Đoạn mã:**
+```go
+func (v *SessionTokenVerifier) keyFor(ctx context.Context, kid string) (*rsa.PublicKey, error) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	now := v.now()
+	if now.Before(v.expires) {
+		if key := v.keys[kid]; key != nil {
+			return key, nil
+		}
+		if now.Sub(v.lastRefresh) < time.Second {
+			return nil, ErrInvalidToken
+		}
+	}
+	if err := v.refresh(ctx); err != nil {
+		return nil, ErrInvalidToken
+	}
+...
+}
+
+func (v *SessionTokenVerifier) refresh(ctx context.Context) error {
+	v.lastRefresh = v.now()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, v.jwksURL, nil)
+```
+* **Điều kiện khai thác (Exploit condition):**
+  1. Trong `VerifyToken`, `jwt.ParseWithClaims` gọi `keyFunc` (`v.keyFor(ctx, kid)`) **trước khi** xác thực chữ ký RSA. Do đó, kẻ tấn công không cần khóa bí mật hay tài khoản hợp lệ, chỉ cần gửi JWT giả có header `{"alg":"RS256","typ":"JWT","kid":"fake_kid_1"}` mỗi giây 1 lần.
+  2. **Nghẽn toàn bộ luồng xác thực (Global Lock Contention):** `v.mu` là `sync.Mutex` (không phải `RWMutex` hay `singleflight` tách biệt). Khi kẻ tấn công gửi `kid` lạ mỗi giây 1 lần (hoặc khi `now >= v.expires`), `keyFor` giữ `v.mu.Lock()` trong suốt thời gian thực hiện HTTP GET tới Clerk JWKS (timeout tối đa `5s`). Mọi request hợp lệ khác (kể cả các request dùng `kid` **đã có sẵn trong cache**) đều bị treo tại `v.mu.Lock()`.
+  3. **Reset bộ đếm throttle `lastRefresh` bằng `ctx` bị hủy (Refresh Starvation):** `v.refresh(ctx)` gán `v.lastRefresh = v.now()` ngay đầu hàm và dùng trực tiếp `ctx` của HTTP request từ client. Kẻ tấn công có thể gửi JWT với `kid` lạ rồi hủy kết nối ngay lập tức (`ctx.Canceled`). `v.refresh(ctx)` thất bại nhưng `v.lastRefresh` đã bị cập nhật, khiến các request hợp lệ trong 1 giây tiếp theo không thể làm mới JWKS khi Clerk vừa xoay vòng khóa (key rotation).
+  4. Khi cache hết hạn (`!now.Before(v.expires)`), nhánh kiểm tra `now.Sub(v.lastRefresh) < time.Second` bị bỏ qua hoàn toàn; nếu JWKS endpoint lỗi, mọi request đồng thời sẽ xếp hàng gọi `v.refresh(ctx)` liên tiếp.
+* **Khắc phục (Remediation):**
+  * Dùng `sync.RWMutex` để đọc cache (`v.keys[kid]`) không chặn lẫn nhau.
+  * Tách context làm mới JWKS khỏi `ctx` của một request đơn lẻ (ví dụ dùng `context.WithTimeout(context.WithoutCancel(ctx), v.client.Timeout)` kết hợp `singleflight`).
+  * Áp dụng throttle `lastRefresh` cho cả trường hợp cache[agy] print timeout after 2m40s with turn in progress; returning partial output

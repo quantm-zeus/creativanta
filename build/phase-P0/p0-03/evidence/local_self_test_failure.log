@@ -1,0 +1,1 @@
+NEGATIVE_TESTS_PASS: pipeline, assertion, anti-mask, bad readiness correctly fail

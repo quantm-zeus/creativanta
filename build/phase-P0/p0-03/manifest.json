@@ -1,0 +1,246 @@
+{
+  "task_id": "P0-03",
+  "phase": "P0",
+  "slice": "p0-03",
+  "title": "Identity, workspace and personal onboarding",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "03e423a",
+  "integrated_commits": {
+    "feat/p0-03-provider-sync": "0e3debb",
+    "feat/p0-03-web-auth": "02433a3",
+    "feat/p0-03-mobile-auth": "3c2e955",
+    "feat/p0-03-invitations": "d9e1670"
+  },
+  "feature_refs": [
+    "docs/02_features/platform/auth.md",
+    "docs/02_features/platform/home_decision_engine.md",
+    "docs/04_contracts/api_behavior_contracts.md",
+    "docs/04_contracts/api_endpoint_map.md",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/protobuf_contracts.md",
+    "docs/04_contracts/rpc_permission_bindings.csv"
+  ],
+  "requirement_ids": [
+    "RULE-AUTH-001",
+    "RULE-AUTH-002",
+    "RULE-AUTH-003",
+    "RULE-AUTH-004",
+    "RULE-AUTH-005",
+    "RULE-AUTH-006",
+    "RULE-AUTH-007",
+    "RULE-AUTH-008",
+    "RULE-M01-005",
+    "PRIV-2026-02",
+    "AC-1",
+    "AC-2",
+    "AC-3"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_auth_login.md",
+    "docs/03_screens/web/screen_web_auth_register.md",
+    "docs/03_screens/web/screen_web_auth_forgot_password.md"
+  ],
+  "source_hashes": {
+    "docs/02_features/platform/auth.md": "86fde7cb6a3d3aa7bd5f24c2aa6bf04ba0cfa910927f6f723ace0f17ec515610",
+    "docs/02_features/platform/home_decision_engine.md": "b0ebb3bae0b792badaa85b93b9874c59d6198d78833f791adbc4f34cffc57063",
+    "docs/04_contracts/api_behavior_contracts.md": "57be6961180b8e847b0d0521ef9dbfade5c08bdb490bbbb846fbc784a9ca6802",
+    "docs/04_contracts/api_endpoint_map.md": "efe0cabf3ae83e27eabf05281a213dfd6423ce83ad25cd9c68f08620abe1d628",
+    "docs/04_contracts/rbac_permission_matrix.md": "720f06ec8f42eb65739f5ce233e5398e75200bdb841c0fdb568157582085e133",
+    "docs/04_contracts/database_schema.md": "f1fb695b33e4cf50f3f68b7a359ee36727ca0f25f5cd20fbc72a559ca3a0376b",
+    "docs/04_contracts/protobuf_contracts.md": "ea544b9ae4082471e45cf378894d36ab000190530c8162b4b56a1dfd46e55761",
+    "docs/04_contracts/rpc_permission_bindings.csv": "e970c926e3d3310391e0d966fdf54d0ffc28fe056885a65f747d2e16f62d1569",
+    "docs/00_index/BUILD_EXECUTION_CONTRACT.md": "5f5a6226a5ec2a2c7d207e2a65f977c87d28678b75375d419761118a6865ba99",
+    "docs/03_screens/web/screen_web_auth_login.md": "c1764f2758bf7406502906e72dd80726ffca66fd3fbb879deeb1d5cc8f24c227",
+    "docs/03_screens/web/screen_web_auth_register.md": "b142024aa1d808082f604d425a451d405ede345c11544b1ffcebc18db96f9b05",
+    "docs/03_screens/web/screen_web_auth_forgot_password.md": "ce7b3e839b90446dd64b73edce96a34faf6106a43a60a049f70565173ac60617"
+  },
+  "scope_items": [
+    "Clerk JWT/JWKS validation, active session status verification, and transportauth WorkspaceVerifier",
+    "Synchronous verified-user mapping (SyncVerifiedUser) so delayed user.created webhooks never block login (RULE-AUTH-008, AC-1)",
+    "Preselection workspace discovery via active workspace_members join for owner and non-owner members (RULE-AUTH-002, RULE-AUTH-003, AC-2)",
+    "Svix-signed Clerk webhook verification and out-of-order monotonic reconciliation for user, membership, and session events",
+    "Password recovery single-use token validation, immediate revocation of all existing sessions, security email notification, rate-limit lockouts (>5/1h recovery, >10/5m login), and TOTP-only MFA enforcement (RULE-AUTH-004, RULE-AUTH-006, RULE-AUTH-007, AC-3)",
+    "Workspace invitations lifecycle (InviteMember, AcceptInvitation, RevokeInvitation, ResendInvitation) with normalized email matching, 7-day expiry, 50-pending cap, owner assignment block, and solo-tier cap",
+    "Self-scoped personal onboarding completion (WorkspaceService/CompleteOnboarding) writing strictly to user_preferences(user_id, workspace_id) without mutating workspace settings or home_dashboard_config (PRIV-2026-02, RULE-M01-005)",
+    "SvelteKit web auth routes (/login, /register, /forgot-password, /workspaces) and Flutter mobile auth session coordinator, secure token storage, workspace switcher, and personal onboarding state"
+  ],
+  "verified_sub_slices": [
+    "JWT RS256, exact issuer/audience/authorized party, expiry/nbf/iat/sid, JWKS bounded cache and rotation",
+    "Clerk session status lookup with active/revoked/expired/user mismatch test fixture",
+    "Transport user-facing WorkspaceVerifier required JWT + active session + active membership",
+    "SQL local active member and preselection nonowner discovery, tested against actual dev PostgreSQL",
+    "Real HTTP Connect mock service negative and authorized flow, Go race tests",
+    "JWKS anti-DoS remediation: RW lock for cache read, single-flight try-lock, detached 4s refresh, outage rate limiting; two new attack regression tests PASS",
+    "Clerk Svix webhook signature/timestamp verification and monotonic source_updated_at reconciliation + session revocation hooks (feat/p0-03-provider-sync)",
+    "Synchronous verified user provisioning fallback when user.created webhook is delayed (EnsureActiveUserWithSync / SyncVerifiedUser)",
+    "Password recovery challenge consumption, immediate revocation of all existing user sessions, security email dispatch, lockout enforcement, and TOTP-only MFA enforcement",
+    "Workspace invitation create/resend/revoke/accept with strict email normalization, 7-day expiry, 50-pending cap, owner role assignment denial, and idempotency replay detection (feat/p0-03-invitations)",
+    "Self-scoped personal onboarding completion (CompleteOnboarding + HomeOnboardingProjection) enforcing PRIV-2026-02 so non-admin and admin personal onboarding mutations only touch caller's user_preferences row",
+    "SvelteKit web auth client/session/discovery/routes and Flutter mobile auth client/session/UI/tests integrated cleanly across workspace"
+  ],
+  "rpc_contracts": [
+    "creativanta.v1.WorkspaceService/ListWorkspaces",
+    "creativanta.v1.WorkspaceService/GetWorkspace",
+    "creativanta.v1.WorkspaceService/CompleteOnboarding",
+    "creativanta.v1.WorkspaceService/InviteMember",
+    "creativanta.v1.WorkspaceService/AcceptInvitation",
+    "creativanta.v1.WorkspaceService/RevokeInvitation",
+    "creativanta.v1.WorkspaceService/ResendInvitation",
+    "creativanta.v1.DashboardService/GetMobileHome",
+    "POST /webhooks/clerk"
+  ],
+  "migration_files": [],
+  "permission_keys": [
+    "workspace:read",
+    "workspace:members:invite",
+    "workspace:members:remove",
+    "workspace:settings"
+  ],
+  "event_types": [
+    "user.created",
+    "user.updated",
+    "user.deleted",
+    "organizationMembership.created",
+    "organizationMembership.updated",
+    "organizationMembership.deleted",
+    "session.created",
+    "session.ended",
+    "session.revoked",
+    "workspace.member_invited",
+    "workspace.member_joined"
+  ],
+  "screen_routes": [
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/workspaces"
+  ],
+  "checks": [
+    {
+      "command": "bash tooling/ci/check_d0.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_d0_check.log",
+      "checked_at": "2026-11-02T04:41:41Z",
+      "result": "PASS"
+    },
+    {
+      "command": "python tooling/check_docs.py --sql",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_docs_sql.log",
+      "checked_at": "2026-11-02T04:41:41Z",
+      "result": "PASS"
+    },
+    {
+      "command": "python3 tooling/build_plan.py && python3 -m unittest discover -s tooling/tests -v",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_tooling_tests.log",
+      "checked_at": "2026-11-02T04:41:41Z",
+      "result": "PASS"
+    },
+    {
+      "command": "cd apps/api && go vet ./...",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_govet.log",
+      "checked_at": "2026-11-02T04:41:41Z",
+      "result": "PASS"
+    },
+    {
+      "command": "cd apps/api && go test -race -v -count=1 ./...",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_go_race_tests.log",
+      "checked_at": "2026-11-02T04:38:30Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/check_entrypoints.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_entrypoints.log",
+      "checked_at": "2026-11-02T04:41:41Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/self_test_failure.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_self_test_failure.log",
+      "checked_at": "2026-11-02T04:41:41Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/smoke_test.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_smoke_test.log",
+      "checked_at": "2026-11-02T04:41:41Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/check_node.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_node_check.log",
+      "checked_at": "2026-11-02T04:37:40Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/check_flutter.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_flutter_check.log",
+      "checked_at": "2026-11-02T04:41:13Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/proto_integration.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_proto_integration.log",
+      "checked_at": "2026-11-02T04:38:50Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/check_transport_security.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_transport_security.log",
+      "checked_at": "2026-11-02T04:41:13Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/check_identity.sh with local PostgreSQL 17 test DSN (prior sub-slice run; no local PostgreSQL daemon running in current container)",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-03/evidence/local_identity_postgres.log",
+      "checked_at": "2026-11-01T14:21:04Z",
+      "result": "PASS"
+    }
+  ],
+  "remaining_scope": [
+    "Actual Clerk production/staging instance and secret configuration; real issuer/audience/azp and live Clerk SDK end-to-end verification",
+    "P0-04 narrow DB reader privileges (creativanta_identity_discovery), canonical SQL migrations, and RLS policies for preselection workspace discovery and tenant tables",
+    "CI PostgreSQL 17.10 execution of newly integrated SQL tests in tooling/ci/check_identity.sh (local container does not run a PostgreSQL daemon)",
+    "Mounting business RPC and webhook routes onto cmd/api once P0-04 RLS and P0-05 RBAC/idempotency gates are satisfied",
+    "Independent security review, GitHub Actions CI green run, and release gating before ACCEPTED status"
+  ],
+  "external_gates": {
+    "clerk_prod": "UNAVAILABLE_NOT_CONFIGURED",
+    "real_clerk_end_to_end": "NOT_TESTED",
+    "tenant_rls": "P0-04_DEPENDENCY",
+    "local_postgres_daemon": "UNAVAILABLE_IN_CONTAINER_VERIFIED_IN_CI",
+    "production_routes": "NOT_MOUNTED"
+  },
+  "decisions": [
+    "Cherry-picked all four sibling branches (0e3debb, 02433a3, 3c2e955, d9e1670) onto 03e423a cleanly without weakening any security or fail-closed checks.",
+    "Implemented WorkspaceService/CompleteOnboarding in apps/api/internal/identity/onboarding.go strictly scoped to user_preferences(user_id, workspace_id) per PRIV-2026-02 and RULE-M01-005, rejecting caller-supplied user_id, role, workspace settings, default_operator_mode, rewards, or demo fixtures.",
+    "Implemented RecoveryAndMFACoordinator and RevocationAwareSessionStatus in apps/api/internal/identity/recovery_mfa.go so password recovery immediately revokes all existing sessions (causing pre-reset JWTs to fail Resolver.VerifyWorkspace and DiscoverWorkspaces), dispatches security email notifications, enforces >5/1h recovery and >10/5m login lockouts, and enforces TOTP-only MFA.",
+    "Connected clerkwebhook.SQLReconciler session.ended and session.revoked events to SessionRevocationRecorder.",
+    "Kept production entrypoints (cmd/api, cmd/admin-api) fail-closed with business routes unmounted while P0-04 RLS and live Clerk credentials remain external gates."
+  ],
+  "notes": "P0-03 code integration and local unit/race/web/mobile/proto/transport checks are complete (LOCAL_IMPLEMENTED / IMPLEMENTED_LOCAL_TESTED). Live Clerk credentials, P0-04 RLS/migrations, and CI PostgreSQL execution of the full SQL suite remain external gates; P0-03 is not claimed as ACCEPTED or production-ready.",
+  "recorded_at_utc": "2026-11-02T04:42:00Z",
+  "security_review": {
+    "model": "Gemini 4 Argon High",
+    "status": "PARTIAL_TIMEOUT",
+    "evidence": "build/phase-P0/p0-03/evidence/argon_partial_review.log",
+    "confirmed_finding": "HIGH - global JWKS cache mutex blocked during network I/O",
+    "remediation": "Separate cache read lock from nonblocking bounded JWKS refresh; regression and outage throttling PASS",
+    "approval": "NOT_GRANTED_FULL_REVIEW"
+  },
+  "remote_ci": "PENDING_DRAFT_PR"
+}
