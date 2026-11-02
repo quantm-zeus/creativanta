@@ -10,8 +10,10 @@ package tenantdb
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -404,10 +406,14 @@ func (q *Queries) InsertCreditLotIdempotent(ctx context.Context, arg CreditLotRo
 		return row, true, nil
 	}
 
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return CreditLotRow{}, false, err
+	}
+
 	// Duplicate external_grant_key -> read existing lot.
 	existing, getErr := q.GetCreditLotByGrantKey(ctx, arg.WorkspaceID, arg.ExternalGrantKey)
 	if getErr != nil {
-		return CreditLotRow{}, false, err
+		return CreditLotRow{}, false, getErr
 	}
 	return existing, false, nil
 }
@@ -921,6 +927,9 @@ func (q *Queries) InsertCreditTransaction(ctx context.Context, arg CreditTransac
 		&row.CreatedAt,
 	)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return CreditTransactionRow{}, false, nil
+		}
 		return CreditTransactionRow{}, false, err
 	}
 	row.UserID = arg.UserID

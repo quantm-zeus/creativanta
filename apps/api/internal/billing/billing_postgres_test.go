@@ -73,24 +73,33 @@ func TestPostgresLiveCreditLotsQuotesAndBilling(t *testing.T) {
 		INSERT INTO users (user_id, external_auth_id, email, display_name, status) VALUES
 		  ($1::uuid, 'p006_ext_a', 'p006_a@example.com', 'P006 User A', 'active'),
 		  ($2::uuid, 'p006_ext_b', 'p006_b@example.com', 'P006 User B', 'active')
-		ON CONFLICT (user_id) DO NOTHING;
-
-		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, status) VALUES
-		  ($3::uuid, 'P006 Tenant A', 'p006-tenant-a', $1::uuid, 'active'),
-		  ($4::uuid, 'P006 Tenant B', 'p006-tenant-b', $2::uuid, 'active')
-		ON CONFLICT (workspace_id) DO NOTHING;
-
-		INSERT INTO workspace_members (workspace_id, user_id, role, status) VALUES
-		  ($3::uuid, $1::uuid, 'owner', 'active'),
-		  ($4::uuid, $2::uuid, 'owner', 'active')
-		ON CONFLICT (workspace_id, user_id) DO NOTHING;
-	`, userA, userB, tenantA, tenantB)
+		ON CONFLICT (user_id) DO NOTHING
+	`, userA, userB)
 	if err != nil {
-		t.Fatalf("seed P0-06 tenants: %v", err)
+		t.Fatalf("seed P0-06 users: %v", err)
+	}
+
+	_, err = adminPool.Exec(ctx, `
+		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, status) VALUES
+		  ($1::uuid, 'P006 Tenant A', 'p006-tenant-a', $2::uuid, 'active'),
+		  ($3::uuid, 'P006 Tenant B', 'p006-tenant-b', $4::uuid, 'active')
+		ON CONFLICT (workspace_id) DO NOTHING
+	`, tenantA, userA, tenantB, userB)
+	if err != nil {
+		t.Fatalf("seed P0-06 workspaces: %v", err)
+	}
+
+	_, err = adminPool.Exec(ctx, `
+		INSERT INTO workspace_members (workspace_id, user_id, role, status) VALUES
+		  ($1::uuid, $2::uuid, 'owner', 'active'),
+		  ($3::uuid, $4::uuid, 'owner', 'active')
+		ON CONFLICT (workspace_id, user_id) DO NOTHING
+	`, tenantA, userA, tenantB, userB)
+	if err != nil {
+		t.Fatalf("seed P0-06 workspace_members: %v", err)
 	}
 
 	// Clean any prior test rows for tenantA / tenantB.
-	_, _ = adminPool.Exec(ctx, `DELETE FROM ai_credit_transactions WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
 	_, _ = adminPool.Exec(ctx, `DELETE FROM ai_credit_reservation_allocations WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
 	_, _ = adminPool.Exec(ctx, `DELETE FROM ai_credit_reservations WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
 	_, _ = adminPool.Exec(ctx, `DELETE FROM ai_credit_lots WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
@@ -200,7 +209,7 @@ func TestPostgresLiveCreditLotsQuotesAndBilling(t *testing.T) {
 	}
 
 	// 2. Verify composite tenant FK blocks linking Tenant A reservation to Tenant B quote.
-	err = tenantdb.WithTx(ctx, appPool, tenantdb.Scope{
+	fkTxErr := tenantdb.WithTx(ctx, appPool, tenantdb.Scope{
 		WorkspaceID:             tenantA,
 		UserID:                  userA,
 		RequireActiveMembership: true,
@@ -214,13 +223,10 @@ func TestPostgresLiveCreditLotsQuotesAndBilling(t *testing.T) {
 			ReservedCredits: tenantdb.MustParseExactDecimal("8"),
 			ExpiresAt:       now.Add(30 * time.Minute),
 		})
-		if fkErr == nil {
-			return fmt.Errorf("expected fk_ai_credit_reservations_quote_id_tenant to reject cross-tenant quote")
-		}
-		return nil
+		return fkErr
 	})
-	if err != nil {
-		t.Fatalf("composite FK test failed: %v", err)
+	if fkTxErr == nil {
+		t.Fatalf("expected fk_ai_credit_reservations_quote_id_tenant to reject cross-tenant quote")
 	}
 
 	// 3. Concurrent PostgreSQL FOR UPDATE reservations: two simultaneous 8-credit reservations

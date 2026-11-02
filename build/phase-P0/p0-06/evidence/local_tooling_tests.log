@@ -32,6 +32,6 @@ test_task_cycle_rejected (test_docs_checker.DocsGuardTests.test_task_cycle_rejec
 test_unknown_rpc_permission_rejected (test_docs_checker.DocsGuardTests.test_unknown_rpc_permission_rejected) ... ok
 
 ----------------------------------------------------------------------
-Ran 23 tests in 24.946s
+Ran 23 tests in 25.478s
 
 OK
