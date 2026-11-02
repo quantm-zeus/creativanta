@@ -129,6 +129,17 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if err := ValidateCanonicalMigrationContract(m9); err != nil {
 		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v9: %v", err)
 	}
+
+	m10 := migrations[9]
+	if m10.Version != 10 {
+		t.Fatalf("expected version 10, got %d", m10.Version)
+	}
+	if len(m10.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v10, got %q", m10.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m10); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v10: %v", err)
+	}
 }
 
 func TestValidateCanonicalMigrationContractRejectsViolations(t *testing.T) {
@@ -288,8 +299,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 9 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 || applied[3] != 4 || applied[4] != 5 || applied[5] != 6 || applied[6] != 7 || applied[7] != 8 || applied[8] != 9 {
-		t.Fatalf("expected versions [1, 2, 3, 4, 5, 6, 7, 8, 9] applied, got %v", applied)
+	if len(applied) != 10 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 || applied[3] != 4 || applied[4] != 5 || applied[5] != 6 || applied[6] != 7 || applied[7] != 8 || applied[8] != 9 || applied[9] != 10 {
+		t.Fatalf("expected versions [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] applied, got %v", applied)
 	}
 	if !runner.lastTx.committed || runner.lastTx.rolledBack {
 		t.Fatalf("expected transaction committed")
@@ -304,13 +315,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for all 9 migrations.
+	// Status reports Applied = true for all 10 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 9 || !statuses[0].Applied || !statuses[1].Applied || !statuses[2].Applied || !statuses[3].Applied || !statuses[4].Applied || !statuses[5].Applied || !statuses[6].Applied || !statuses[7].Applied || !statuses[8].Applied {
-		t.Fatalf("expected status Applied=true for all 9 migrations, got %+v", statuses)
+	if len(statuses) != 10 || !statuses[0].Applied || !statuses[1].Applied || !statuses[2].Applied || !statuses[3].Applied || !statuses[4].Applied || !statuses[5].Applied || !statuses[6].Applied || !statuses[7].Applied || !statuses[8].Applied || !statuses[9].Applied {
+		t.Fatalf("expected status Applied=true for all 10 migrations, got %+v", statuses)
 	}
 
 	// Down without allowLocalRollback fails closed.
@@ -318,7 +329,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 9, then 8, then 7, then 6, then 5, then 4, then 3, then 2, then 1.
+	// Down with allowLocalRollback=true rolls back version 10, then 9, then 8, then 7, then 6, then 5, then 4, then 3, then 2, then 1.
+	rolled10, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v10 failed: %v", err)
+	}
+	if rolled10 != 10 {
+		t.Fatalf("expected rolled back version 10, got %d", rolled10)
+	}
 	rolled9, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v9 failed: %v", err)
@@ -425,13 +443,16 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	_, _ = adminPool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
 	dir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 
-	// Apply migration Up, then Down nine times, then Up again to prove full Goose SQL repeatability.
+	// Apply migration Up, then Down ten times, then Up again to prove full Goose SQL repeatability.
 	applied, err := Up(ctx, adminPool, dir)
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 9 {
-		t.Fatalf("expected 9 applied migrations, got %v", applied)
+	if len(applied) != 10 {
+		t.Fatalf("expected 10 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v10 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v9 failed: %v", err)
@@ -520,6 +541,12 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		INSERT INTO media_kits (media_kit_id, workspace_id, sections, directory_opt_in, directory_status, directory_profile) VALUES
 		  ('99999999-9999-4999-8999-999999999991', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '[{"private":"draft"}]'::jsonb, true, 'published', '{"display_name":"Creator A","handle":"creator_a","categories":["beauty"],"platforms":["tiktok"],"accepts_inquiries":true}'::jsonb),
 		  ('99999999-9999-4999-8999-999999999992', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '[{"private":"secret"}]'::jsonb, false, 'hidden', '{"display_name":"Hidden Creator","handle":"hidden_a"}'::jsonb);
+
+		INSERT INTO watchlists (watchlist_id, workspace_id, name, type) VALUES
+		  ('aaaaaaaa-1111-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Watchlist A', 'trend');
+
+		INSERT INTO watchlist_alert_logs (alert_log_id, workspace_id, watchlist_id, trend_id, alert_fingerprint, cooldown_until) VALUES
+		  ('aaaaaaaa-2222-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-1111-4aaa-8aaa-aaaaaaaaaaaa', '33333333-3333-4333-8333-333333333333', 'fp_a', NOW() + INTERVAL '1 hour');
 	`
 	if _, err := adminPool.Exec(ctx, seedSQL); err != nil {
 		t.Fatalf("seedSQL failed: %v", err)
@@ -555,6 +582,22 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("direct-junction read attack succeeded: Tenant B saw %d rows from Tenant A trend_signals", visibleJunction)
 	}
 
+	var visibleWatchlists int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM watchlists WHERE workspace_id = $1::uuid`, tenantA).Scan(&visibleWatchlists); err != nil {
+		t.Fatal(err)
+	}
+	if visibleWatchlists != 0 {
+		t.Fatalf("watchlists RLS breach: Tenant B saw %d watchlists from Tenant A", visibleWatchlists)
+	}
+
+	var visibleAlertLogs int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM watchlist_alert_logs WHERE workspace_id = $1::uuid`, tenantA).Scan(&visibleAlertLogs); err != nil {
+		t.Fatal(err)
+	}
+	if visibleAlertLogs != 0 {
+		t.Fatalf("watchlist_alert_logs RLS breach: Tenant B saw %d alert logs from Tenant A", visibleAlertLogs)
+	}
+
 	// Test 2: Cross-tenant composite FK write attack on trend_signals and external_effects denied!
 	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_junction`); err != nil {
 		t.Fatal(err)
@@ -566,6 +609,17 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("expected composite tenant FK to reject cross-tenant trend_signals link")
 	}
 	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_junction`)
+
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_watchlist`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO watchlists (watchlist_id, workspace_id, name, type)
+		VALUES (gen_random_uuid(), $1::uuid, 'Cross Tenant Watchlist', 'trend')
+	`, tenantA); err == nil {
+		t.Fatalf("expected RLS WITH CHECK to reject Tenant B inserting watchlist with workspace_id=Tenant A")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_watchlist`)
 
 	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_effect_fk`); err != nil {
 		t.Fatal(err)

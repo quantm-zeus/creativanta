@@ -9,6 +9,7 @@ import 'package:creativanta_mobile/ui/auth/workspace_switcher_sheet.dart';
 import 'package:creativanta_mobile/ui/notification/notification_sheet.dart';
 import 'package:creativanta_mobile/ui/help/help_sheet.dart';
 import 'package:creativanta_mobile/ui/home/why_number_sheet.dart';
+import 'package:creativanta_mobile/ui/trend/trend_radar_view.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -337,6 +338,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
     final current = destinations[selectedIndex];
     final session = _adapter.currentSession;
     final activeWorkspace = session?.activeWorkspace.name ?? 'Creativanta HQ';
+    final activeWorkspaceId = session?.activeWorkspace.id ?? '018f7a31-2233-7444-8555-667788990011';
     final activeRole = session?.activeWorkspace.role ?? 'owner';
     final activeMode = session?.activeMode ?? OperatorMode.creator;
 
@@ -888,55 +890,64 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                   ),
                 ],
               ],
-              const SizedBox(height: 20),
-              Container(
-                decoration: BoxDecoration(
-                  color: CreativantaApp.forest,
-                  borderRadius: BorderRadius.circular(23),
+              if (selectedIndex == 1) ...[
+                const SizedBox(height: 16),
+                TrendRadarView(
+                  currentWorkspaceId: activeWorkspaceId,
+                  currentUserId: session?.user.id ?? 'usr_default',
                 ),
-                padding: const EdgeInsets.all(23),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'FOUNDATION / ĐANG XÂY DỰNG',
-                      style: TextStyle(
-                        color: Color(0xFFC7DCC8),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
+              ],
+              if (selectedIndex != 1) ...[
+                const SizedBox(height: 20),
+                Container(
+                  decoration: BoxDecoration(
+                    color: CreativantaApp.forest,
+                    borderRadius: BorderRadius.circular(23),
+                  ),
+                  padding: const EdgeInsets.all(23),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'FOUNDATION / ĐANG XÂY DỰNG',
+                        style: TextStyle(
+                          color: Color(0xFFC7DCC8),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 19),
-                    Text(
-                      selectedIndex == 0
-                          ? 'Nền tảng vững.\nTrải nghiệm tốt.'
-                          : 'Sắp có trong\nCreativanta Go.',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 27,
-                        height: 1.25,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.7,
+                      const SizedBox(height: 19),
+                      Text(
+                        selectedIndex == 0
+                            ? 'Nền tảng vững.\nTrải nghiệm tốt.'
+                            : 'Sắp có trong\nCreativanta Go.',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 27,
+                          height: 1.25,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.7,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Đây là shell P0. Chưa có dữ liệu sản phẩm hoặc thao tác nghiệp vụ thật.',
-                      style: TextStyle(
-                        color: Color(0xFFD4E0D5),
-                        fontSize: 12,
-                        height: 1.6,
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Đây là shell P0. Chưa có dữ liệu sản phẩm hoặc thao tác nghiệp vụ thật.',
+                        style: TextStyle(
+                          color: Color(0xFFD4E0D5),
+                          fontSize: 12,
+                          height: 1.6,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 22),
-                    const FilledButton(
-                      onPressed: null,
-                      child: Text('Chưa khả dụng'),
-                    ),
-                  ],
+                      const SizedBox(height: 22),
+                      const FilledButton(
+                        onPressed: null,
+                        child: Text('Chưa khả dụng'),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
               if (selectedIndex == 0 && _uiState == 'normal') ...[
                 const SizedBox(height: 16),
                 Container(

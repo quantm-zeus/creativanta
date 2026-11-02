@@ -1,0 +1,46 @@
+=== RUN   TestMultiDimensionalScoringCalculation
+=== RUN   TestMultiDimensionalScoringCalculation/all_maximum_values_(zero_saturation_is_best)
+=== RUN   TestMultiDimensionalScoringCalculation/all_zero_values_(100_saturation_is_worst)
+=== RUN   TestMultiDimensionalScoringCalculation/balanced_medium_values
+=== RUN   TestMultiDimensionalScoringCalculation/high_saturation_penalizes_score
+--- PASS: TestMultiDimensionalScoringCalculation (0.00s)
+    --- PASS: TestMultiDimensionalScoringCalculation/all_maximum_values_(zero_saturation_is_best) (0.00s)
+    --- PASS: TestMultiDimensionalScoringCalculation/all_zero_values_(100_saturation_is_worst) (0.00s)
+    --- PASS: TestMultiDimensionalScoringCalculation/balanced_medium_values (0.00s)
+    --- PASS: TestMultiDimensionalScoringCalculation/high_saturation_penalizes_score (0.00s)
+=== RUN   TestAcceptanceTarget1_SourceUnavailableShowsDegradedData
+--- PASS: TestAcceptanceTarget1_SourceUnavailableShowsDegradedData (0.00s)
+=== RUN   TestAcceptanceTarget2_ThresholdAlertsDeduplicateAndBatchStorms
+--- PASS: TestAcceptanceTarget2_ThresholdAlertsDeduplicateAndBatchStorms (0.00s)
+=== RUN   TestAcceptanceTarget3_TenantScopedSemanticSearch
+--- PASS: TestAcceptanceTarget3_TenantScopedSemanticSearch (0.00s)
+=== RUN   TestRBACPermissions
+--- PASS: TestRBACPermissions (0.00s)
+=== RUN   TestLineageAndOpportunityConversion
+--- PASS: TestLineageAndOpportunityConversion (0.00s)
+=== RUN   TestConcurrentTrendOperationsNoRace
+--- PASS: TestConcurrentTrendOperationsNoRace (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/trend	1.040s
+=== RUN   TestLoadAndValidateCanonicalP004Migration
+--- PASS: TestLoadAndValidateCanonicalP004Migration (0.31s)
+=== RUN   TestValidateCanonicalMigrationContractRejectsViolations
+=== RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_GRANT_ALL
+=== RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_FLOAT_or_REAL_on_money_or_credit_column_(DB-H-001)
+=== RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_FORCE_ROW_LEVEL_SECURITY_on_junction_table
+=== RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_composite_tenant_FK
+--- PASS: TestValidateCanonicalMigrationContractRejectsViolations (0.47s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_GRANT_ALL (0.03s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_FLOAT_or_REAL_on_money_or_credit_column_(DB-H-001) (0.14s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_FORCE_ROW_LEVEL_SECURITY_on_junction_table (0.15s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_composite_tenant_FK (0.13s)
+=== RUN   TestUpStatusDownTransactionalBehavior
+--- PASS: TestUpStatusDownTransactionalBehavior (1.46s)
+=== RUN   TestPostgresLiveMigrationAndAppUserRLS
+    migrator_test.go:430: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL 17.10 migration & RLS suite executes in CI
+--- SKIP: TestPostgresLiveMigrationAndAppUserRLS (0.00s)
+=== RUN   TestPostgresSeedTwiceIdempotency
+    migrator_test.go:893: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL seed twice idempotency suite executes in CI
+--- SKIP: TestPostgresSeedTwiceIdempotency (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/migrate	3.276s

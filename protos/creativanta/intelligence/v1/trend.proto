@@ -1,0 +1,431 @@
+syntax = "proto3";
+
+package creativanta.intelligence.v1;
+
+import "creativanta/common/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/intelligence/v1;intelligencev1";
+
+// ConfidenceBand represents confidence classification per database_schema.md §3.2.
+enum ConfidenceBand {
+  CONFIDENCE_BAND_UNSPECIFIED = 0;
+  CONFIDENCE_BAND_HIGH = 1;
+  CONFIDENCE_BAND_MEDIUM_HIGH = 2;
+  CONFIDENCE_BAND_MEDIUM = 3;
+  CONFIDENCE_BAND_LOW_MEDIUM = 4;
+  CONFIDENCE_BAND_LOW = 5;
+}
+
+// SourceClass represents data lineage classification per database_schema.md §3.1.
+enum SourceClass {
+  SOURCE_CLASS_UNSPECIFIED = 0;
+  SOURCE_CLASS_OFFICIAL = 1;
+  SOURCE_CLASS_IMPORTED = 2;
+  SOURCE_CLASS_INFERRED = 3;
+  SOURCE_CLASS_ESTIMATED = 4;
+  SOURCE_CLASS_UNRECONCILED = 5;
+}
+
+// LifecycleState represents the trend lifecycle stage per database_schema.md §5.2.
+enum LifecycleState {
+  LIFECYCLE_STATE_UNSPECIFIED = 0;
+  LIFECYCLE_STATE_EMERGING = 1;
+  LIFECYCLE_STATE_RISING = 2;
+  LIFECYCLE_STATE_PEAKING = 3;
+  LIFECYCLE_STATE_DECLINING = 4;
+  LIFECYCLE_STATE_EXPIRED = 5;
+  LIFECYCLE_STATE_ARCHIVED = 6;
+}
+
+// SignalRef represents an ingested provenance signal linked to a trend.
+message SignalRef {
+  string signal_id = 1;
+  string workspace_id = 2;
+  string source_platform = 3;
+  SourceClass source_class = 4;
+  string signal_type = 5;
+  string normalized_summary = 6;
+  ConfidenceBand confidence = 7;
+  google.protobuf.Timestamp freshness_at = 8;
+  google.protobuf.Timestamp collected_at = 9;
+}
+
+// Trend represents a scored trend entity with multi-dimensional scores and lineage.
+message Trend {
+  string trend_id = 1;
+  string workspace_id = 2;
+  string title = 3;
+  string summary = 4;
+  string category = 5;
+  repeated string platforms = 6;
+  float strength_score = 7;
+  float velocity_score = 8;
+  float freshness_score = 9;
+  float saturation_score = 10;
+  ConfidenceBand confidence = 11;
+  string confidence_reason = 12;
+  SourceClass source_class = 13;
+  LifecycleState lifecycle_state = 14;
+  google.protobuf.Timestamp freshness_at = 15;
+  string why_now = 16;
+  string relevance_description = 17;
+  repeated SignalRef source_signals = 18;
+  bool is_saved = 19;
+  bool is_degraded = 20;
+  string degraded_reason = 21;
+  repeated float embedding_vector = 22;
+  google.protobuf.Timestamp created_at = 23;
+  google.protobuf.Timestamp updated_at = 24;
+}
+
+// AlertThreshold defines criteria for threshold alert triggers.
+message AlertThreshold {
+  float min_velocity_score = 1;
+  float min_strength_score = 2;
+  float spike_percentage = 3;
+  int32 cooldown_minutes = 4;
+}
+
+// Watchlist represents an entity watchlist tracked by the creator/operator.
+message Watchlist {
+  string watchlist_id = 1;
+  string workspace_id = 2;
+  string name = 3;
+  string type = 4;
+  string criteria_json = 5;
+  bool alert_enabled = 6;
+  AlertThreshold alert_threshold = 7;
+  repeated string tracked_trend_ids = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// WatchlistAlert represents a deduplicated alert event emitted for a watchlist breach.
+message WatchlistAlert {
+  string alert_log_id = 1;
+  string watchlist_id = 2;
+  string trend_id = 3;
+  string trend_title = 4;
+  string alert_fingerprint = 5;
+  float velocity_score = 6;
+  float threshold_value = 7;
+  google.protobuf.Timestamp delivered_at = 8;
+  google.protobuf.Timestamp cooldown_until = 9;
+  bool is_batched_summary = 10;
+  int32 batched_alert_count = 11;
+}
+
+// ----------------------------------------------------------------------------
+// TrendService Messages
+// ----------------------------------------------------------------------------
+
+message TrendServiceListRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string category = 3;
+  string platform = 4;
+  ConfidenceBand min_confidence = 5;
+  float min_strength_score = 6;
+  string sort_by = 7;
+  creativanta.common.v1.Pagination pagination = 8;
+}
+
+message TrendServiceListResponse {
+  repeated Trend trends = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+  int32 total_count = 3;
+  bool source_degraded = 4;
+  repeated string disconnected_sources = 5;
+}
+
+message TrendServiceGetRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string trend_id = 3;
+}
+
+message TrendServiceGetResponse {
+  Trend trend = 1;
+  repeated SignalRef lineage_signals = 2;
+  string improvement_advice = 3;
+}
+
+message TrendServiceSearchRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string query = 3;
+  repeated float query_embedding = 4;
+  int32 limit = 5;
+}
+
+message TrendServiceSearchResponse {
+  repeated Trend results = 1;
+  int32 total_matches = 2;
+  string search_strategy = 3;
+}
+
+message TrendServiceManageWatchlistRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string action = 3; // "create", "update", "delete", "save_trend"
+  string watchlist_id = 4;
+  string name = 5;
+  string type = 6;
+  string criteria_json = 7;
+  bool alert_enabled = 8;
+  AlertThreshold alert_threshold = 9;
+  string trend_id = 10;
+}
+
+message TrendServiceManageWatchlistResponse {
+  bool success = 1;
+  Watchlist watchlist = 2;
+  string message = 3;
+}
+
+message TrendServiceGetTopRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  int32 limit = 3;
+}
+
+message TrendServiceGetTopResponse {
+  repeated Trend top_trends = 1;
+}
+
+message TrendServiceListTopRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string time_window = 3; // "24h", "7d", "30d"
+  int32 limit = 4;
+}
+
+message TrendServiceListTopResponse {
+  repeated Trend trends = 1;
+}
+
+message TrendServiceListRelatedRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string trend_id = 3;
+}
+
+message TrendServiceListRelatedResponse {
+  repeated Trend related_trends = 1;
+}
+
+message TrendServiceGetTimeSeriesRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string trend_id = 3;
+  string interval = 4; // "hourly", "daily"
+}
+
+message TimeSeriesPoint {
+  google.protobuf.Timestamp timestamp = 1;
+  float volume = 2;
+  float velocity = 3;
+}
+
+message TrendServiceGetTimeSeriesResponse {
+  string trend_id = 1;
+  repeated TimeSeriesPoint points = 2;
+}
+
+message TrendServiceGetSparklinesRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  repeated string trend_ids = 3;
+}
+
+message SparklineData {
+  string trend_id = 1;
+  repeated float values = 2;
+}
+
+message TrendServiceGetSparklinesResponse {
+  repeated SparklineData sparklines = 1;
+}
+
+message TrendServiceGetStatsRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+}
+
+message TrendServiceGetStatsResponse {
+  int32 total_active_trends = 1;
+  int32 new_today = 2;
+  int32 spiking_count = 3;
+  map<string, int32> platform_distribution = 4;
+  bool source_degraded = 5;
+  repeated string disconnected_sources = 6;
+}
+
+message TrendServiceGetExamplesRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string trend_id = 3;
+}
+
+message TrendExampleItem {
+  string external_url = 1;
+  string platform = 2;
+  string creator_handle = 3;
+  string caption = 4;
+  int64 view_count = 5;
+}
+
+message TrendServiceGetExamplesResponse {
+  string trend_id = 1;
+  repeated TrendExampleItem examples = 2;
+}
+
+message TrendServiceGetAudienceFitRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string trend_id = 3;
+}
+
+message TrendServiceGetAudienceFitResponse {
+  string trend_id = 1;
+  float fit_score = 2;
+  string rationale = 3;
+  repeated string suggested_angles = 4;
+}
+
+// ----------------------------------------------------------------------------
+// WatchlistService Messages
+// ----------------------------------------------------------------------------
+
+message WatchlistServiceCreateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string name = 3;
+  string type = 4;
+  string criteria_json = 5;
+  bool alert_enabled = 6;
+  AlertThreshold alert_threshold = 7;
+}
+
+message WatchlistServiceCreateResponse {
+  Watchlist watchlist = 1;
+}
+
+message WatchlistServiceListRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  creativanta.common.v1.Pagination pagination = 3;
+}
+
+message WatchlistServiceListResponse {
+  repeated Watchlist watchlists = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+message WatchlistServiceDeleteRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string watchlist_id = 3;
+}
+
+message WatchlistServiceDeleteResponse {
+  bool success = 1;
+}
+
+message WatchlistServiceUpdateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string watchlist_id = 3;
+  string name = 4;
+  string criteria_json = 5;
+  bool alert_enabled = 6;
+  AlertThreshold alert_threshold = 7;
+}
+
+message WatchlistServiceUpdateResponse {
+  Watchlist watchlist = 1;
+}
+
+message WatchlistServiceAddItemRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string watchlist_id = 3;
+  string trend_id = 4;
+}
+
+message WatchlistServiceAddItemResponse {
+  bool success = 1;
+  int32 item_count = 2;
+}
+
+message WatchlistServiceRemoveItemRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string watchlist_id = 3;
+  string trend_id = 4;
+}
+
+message WatchlistServiceRemoveItemResponse {
+  bool success = 1;
+  int32 item_count = 2;
+}
+
+message WatchlistServiceGetItemsRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string watchlist_id = 3;
+  creativanta.common.v1.Pagination pagination = 4;
+}
+
+message WatchlistServiceGetItemsResponse {
+  string watchlist_id = 1;
+  repeated Trend items = 2;
+  creativanta.common.v1.Pagination pagination = 3;
+}
+
+message WatchlistServiceMuteItemRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string watchlist_id = 3;
+  string trend_id = 4;
+  int32 mute_hours = 5;
+}
+
+message WatchlistServiceMuteItemResponse {
+  bool success = 1;
+  google.protobuf.Timestamp muted_until = 2;
+}
+
+// ----------------------------------------------------------------------------
+// Services
+// ----------------------------------------------------------------------------
+
+// TrendService provides signal ingestion, multi-dimensional scoring,
+// degraded source handling, provenance lineage, and tenant-scoped search.
+service TrendService {
+  rpc List(TrendServiceListRequest) returns (TrendServiceListResponse);
+  rpc Get(TrendServiceGetRequest) returns (TrendServiceGetResponse);
+  rpc Search(TrendServiceSearchRequest) returns (TrendServiceSearchResponse);
+  rpc ManageWatchlist(TrendServiceManageWatchlistRequest) returns (TrendServiceManageWatchlistResponse);
+  rpc GetTop(TrendServiceGetTopRequest) returns (TrendServiceGetTopResponse);
+  rpc ListTop(TrendServiceListTopRequest) returns (TrendServiceListTopResponse);
+  rpc ListRelated(TrendServiceListRelatedRequest) returns (TrendServiceListRelatedResponse);
+  rpc GetTimeSeries(TrendServiceGetTimeSeriesRequest) returns (TrendServiceGetTimeSeriesResponse);
+  rpc GetSparklines(TrendServiceGetSparklinesRequest) returns (TrendServiceGetSparklinesResponse);
+  rpc GetStats(TrendServiceGetStatsRequest) returns (TrendServiceGetStatsResponse);
+  rpc GetExamples(TrendServiceGetExamplesRequest) returns (TrendServiceGetExamplesResponse);
+  rpc GetAudienceFit(TrendServiceGetAudienceFitRequest) returns (TrendServiceGetAudienceFitResponse);
+}
+
+// WatchlistService manages trend/competitor/keyword watchlists and alert thresholds.
+service WatchlistService {
+  rpc Create(WatchlistServiceCreateRequest) returns (WatchlistServiceCreateResponse);
+  rpc List(WatchlistServiceListRequest) returns (WatchlistServiceListResponse);
+  rpc Delete(WatchlistServiceDeleteRequest) returns (WatchlistServiceDeleteResponse);
+  rpc Update(WatchlistServiceUpdateRequest) returns (WatchlistServiceUpdateResponse);
+  rpc AddItem(WatchlistServiceAddItemRequest) returns (WatchlistServiceAddItemResponse);
+  rpc RemoveItem(WatchlistServiceRemoveItemRequest) returns (WatchlistServiceRemoveItemResponse);
+  rpc GetItems(WatchlistServiceGetItemsRequest) returns (WatchlistServiceGetItemsResponse);
+  rpc MuteItem(WatchlistServiceMuteItemRequest) returns (WatchlistServiceMuteItemResponse);
+}
