@@ -286,7 +286,9 @@ CI and integrated into staging only, never deployed automatically.
 
     def finish_worker(self, task_id, proc, log):
         try:
-            output = log.read_text(errors="replace")[-18000:]
+            with log.open("rb") as stream:
+                stream.seek(max(0, log.stat().st_size - 18000))
+                output = stream.read().decode("utf-8", errors="replace")
         except OSError:
             output = ""
         if proc.returncode:
@@ -316,9 +318,10 @@ CI and integrated into staging only, never deployed automatically.
         if report["status"] != "implemented_local" or not report["checks"]:
             self.mark_retry(task_id, "partial scope or missing actual test commands")
             return
-        if command(["git", "diff", "--check", row["base_sha"], "HEAD"],
-                   workspace, check=False):
-            self.mark_retry(task_id, "git diff --check reported violations")
+        try:
+            command(["git", "diff", "--check", row["base_sha"], "HEAD"], workspace)
+        except Exception as ex:
+            self.mark_retry(task_id, f"git diff --check rejected changes: {ex}")
             return
         try:
             command(["git", "push", "origin", f"HEAD:refs/heads/{row['branch']}"],
@@ -374,6 +377,9 @@ CI and integrated into staging only, never deployed automatically.
             return
         if info.get("state") != "OPEN" or info.get("isDraft"):
             self.update(task_id, status="BLOCKED", error="PR not open/reviewable")
+            return
+        if time.time() - row["started"] > 4 * 3600:
+            self.mark_retry(task_id, "GitHub CI pending for over four hours")
             return
         verdict = eval_checks(info.get("statusCheckRollup") or [])
         if verdict == "failure":
