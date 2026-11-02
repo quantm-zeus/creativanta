@@ -68,17 +68,158 @@ const (
 )
 
 var (
-	ErrMissingTenant       = errors.New("finance: workspace_id required in tenant context")
-	ErrPostingNotFound     = errors.New("finance: financial posting not found")
-	ErrDuplicatePosting    = errors.New("finance: duplicate financial posting for origin/component")
-	ErrSettlementNotFound  = errors.New("finance: settlement not found")
-	ErrDuplicateSettlement = errors.New("finance: settlement already exists with external ID or fingerprint")
-	ErrCostItemNotFound    = errors.New("finance: cost item not found")
-	ErrInvalidAmount       = errors.New("finance: invalid decimal amount")
-	ErrCurrencyMismatch    = errors.New("finance: currency mismatch in financial aggregation")
-	ErrNegativeRate        = errors.New("finance: exchange rate must be strictly positive")
-	ErrCapacityExceeded    = errors.New("finance: settlement line capacity exceeded for matched amount")
+	ErrMissingTenant         = errors.New("finance: workspace_id required in tenant context")
+	ErrPostingNotFound       = errors.New("finance: financial posting not found")
+	ErrDuplicatePosting      = errors.New("finance: duplicate financial posting for origin/component")
+	ErrSettlementNotFound    = errors.New("finance: settlement not found")
+	ErrDuplicateSettlement   = errors.New("finance: settlement already exists with external ID or fingerprint")
+	ErrCostItemNotFound      = errors.New("finance: cost item not found")
+	ErrInvalidAmount         = errors.New("finance: invalid decimal amount")
+	ErrCurrencyMismatch      = errors.New("finance: currency mismatch in financial aggregation")
+	ErrNegativeRate          = errors.New("finance: exchange rate must be strictly positive")
+	ErrCapacityExceeded      = errors.New("finance: settlement line capacity exceeded for matched amount")
+	ErrEvidenceNotFound      = errors.New("finance: evidence object not found")
+	ErrEvidenceImmutable     = errors.New("finance: evidence content is immutable; cannot modify or delete")
+	ErrProofBundleNotFound   = errors.New("finance: proof bundle not found")
+	ErrRecordNotFound        = errors.New("finance: reconciliation record not found")
+	ErrOrderNotFound         = errors.New("finance: order not found")
+	ErrOrderCapacityExceeded = errors.New("finance: order capacity exceeded for matched amount")
 )
+
+// Verification status constants per DB Schema §3.
+const (
+	VerificationStatusPending  = "pending"
+	VerificationStatusVerified = "verified"
+	VerificationStatusReVerify = "re_verify"
+	VerificationStatusFailed   = "failed"
+)
+
+// ObjectRef models a reference to related domain entity (§11.4).
+type ObjectRef struct {
+	Type string `json:"type"`
+	ID   string `json:"id"`
+}
+
+// EvidenceObject represents an immutable proof artifact with SHA-512 content hash (§11.4 & RULE-M19-005).
+type EvidenceObject struct {
+	EvidenceID         string
+	WorkspaceID        string
+	EvidenceType       string // screenshot, api_response, receipt, report, platform_data
+	SourceProvenance   string
+	ContentHash        string // SHA-512 hex
+	FileURL            string
+	PayloadJSON        string
+	CollectedAt        time.Time
+	VerificationStatus string
+	RelatedObjectRefs  []ObjectRef
+	CreatedAt          time.Time
+	DeletedAt          *time.Time
+}
+
+// ProofBundle represents an assembled claim with supporting evidence (§11.5 & RULE-M19-006).
+type ProofBundle struct {
+	ProofBundleID         string
+	WorkspaceID           string
+	ClaimScope            string
+	ClaimSummary          string
+	SupportingEvidenceIDs []string
+	SourceClassContext    map[string]any
+	Confidence            string
+	CoverageSummary       string
+	UnresolvedGaps        string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	DeletedAt             *time.Time
+}
+
+// ReconciliationRecord represents a batch or scope reconciliation record (§19.9E).
+type ReconciliationRecord struct {
+	RecordID             string
+	WorkspaceID          string
+	ScopeType            string // order_batch, settlement_batch, affiliate_period, campaign
+	ScopeDescription     string
+	RelatedOrderIDs      []string
+	RelatedSettlementIDs []string
+	MatchedAmount        tenantdb.ExactDecimal
+	DiscrepancyAmount    tenantdb.ExactDecimal
+	DiscrepancyReason    string
+	ReconciliationState  string
+	Currency             string
+	MismatchesJSON       string
+	OverrideReason       string
+	OverrideBy           string
+	OverrideAt           *time.Time
+	PeriodStart          string
+	PeriodEnd            string
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+}
+
+// ReconciliationMatch represents a partial match allocation between a line and an order (§4).
+type ReconciliationMatch struct {
+	MatchID         string
+	WorkspaceID     string
+	RecordID        string
+	SettlementID    string
+	LineID          string
+	OrderID         string
+	AllocatedAmount tenantdb.ExactDecimal
+	Currency        string
+	CreatedAt       time.Time
+}
+
+// Order represents the order fields relevant for finance reconciliation (§10.3).
+type Order struct {
+	OrderID             string
+	WorkspaceID         string
+	LifecycleState      string
+	Amount              tenantdb.ExactDecimal
+	MatchedAmount       tenantdb.ExactDecimal
+	Currency            string
+	ReconciliationState string
+	COGSAmount          *tenantdb.ExactDecimal
+	OrderedAt           time.Time
+}
+
+// DataGapItem models a permission-filtered repair item in the repair queue (RULE-M19-001, M01).
+type DataGapItem struct {
+	GapID              string
+	GapType            string // missing_cogs, unreconciled_settlement, missing_evidence, stale_connector
+	Severity           string // critical, warning, info
+	Title              string
+	Description        string
+	RelatedObjectType  string
+	RelatedObjectID    string
+	MonetaryAmount     tenantdb.ExactDecimal
+	UnresolvedSince    time.Time
+	RepairCTALabel     string
+	RepairCTARoute     string
+	RequiredPermission string
+}
+
+// Filter types
+type ReconciliationFilter struct {
+	ReconciliationState string
+	PeriodStart         string
+	PeriodEnd           string
+}
+
+type EvidenceFilter struct {
+	EvidenceType       string
+	VerificationStatus string
+}
+
+type ProofBundleFilter struct {
+	ClaimScope string
+}
+
+type DataGapFilter struct {
+	Severity    string
+	GapType     string
+	PeriodStart string
+	PeriodEnd   string
+	ProductID   string
+}
 
 // ExchangeRateSnapshot captures immutable currency conversion snapshot at transaction time (§25.1).
 type ExchangeRateSnapshot struct {

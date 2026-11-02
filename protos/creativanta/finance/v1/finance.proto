@@ -53,6 +53,21 @@ enum CostState {
   COST_STATE_SUPERSEDED = 5;
 }
 
+// Verification status for evidence objects per DB Schema §3.
+enum VerificationStatus {
+  VERIFICATION_STATUS_UNSPECIFIED = 0;
+  VERIFICATION_STATUS_PENDING = 1;
+  VERIFICATION_STATUS_VERIFIED = 2;
+  VERIFICATION_STATUS_RE_VERIFY = 3;
+  VERIFICATION_STATUS_FAILED = 4;
+}
+
+// Reference to related domain object (§11.4).
+message ObjectRef {
+  string type = 1;
+  string id = 2;
+}
+
 // Immutable exchange rate snapshot captured at transaction time (§25.1).
 message ExchangeRateSnapshot {
   string base_currency = 1;
@@ -183,6 +198,88 @@ message ProfitAnomaly {
   creativanta.common.v1.Money expected_amount = 6;
   creativanta.common.v1.Money actual_amount = 7;
   google.protobuf.Timestamp detected_at = 8;
+}
+
+// Canonical reconciliation record per DB Schema §19.9E.
+message ReconciliationRecord {
+  string record_id = 1;
+  string workspace_id = 2;
+  string scope_type = 3; // order_batch, settlement_batch, affiliate_period, campaign
+  string scope_description = 4;
+  repeated string related_order_ids = 5;
+  repeated string related_settlement_ids = 6;
+  creativanta.common.v1.Money matched_amount = 7;
+  creativanta.common.v1.Money discrepancy_amount = 8;
+  string discrepancy_reason = 9;
+  ReconciliationState reconciliation_state = 10;
+  string currency = 11;
+  string mismatches_json = 12;
+  string override_reason = 13;
+  string override_by = 14;
+  google.protobuf.Timestamp override_at = 15;
+  string period_start = 16;
+  string period_end = 17;
+  google.protobuf.Timestamp created_at = 18;
+  google.protobuf.Timestamp updated_at = 19;
+}
+
+// Partial match allocation linking a settlement line to an order (§4 capacity contract).
+message ReconciliationMatch {
+  string match_id = 1;
+  string workspace_id = 2;
+  string record_id = 3;
+  string settlement_id = 4;
+  string line_id = 5;
+  string order_id = 6;
+  creativanta.common.v1.Money allocated_amount = 7;
+  string currency = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+// Immutable evidence object with content_hash (SHA-512) per DB Schema §11.4 & RULE-M19-005.
+message EvidenceObject {
+  string evidence_id = 1;
+  string workspace_id = 2;
+  string evidence_type = 3; // screenshot, api_response, receipt, report, platform_data
+  string source_provenance = 4;
+  string content_hash = 5; // SHA-512 immutable hash
+  string file_url = 6;
+  string payload_json = 7;
+  google.protobuf.Timestamp collected_at = 8;
+  VerificationStatus verification_status = 9;
+  repeated ObjectRef related_object_refs = 10;
+  google.protobuf.Timestamp created_at = 11;
+}
+
+// Proof bundle assembling claims and evidence per DB Schema §11.5 & RULE-M19-006.
+message ProofBundle {
+  string proof_bundle_id = 1;
+  string workspace_id = 2;
+  string claim_scope = 3;
+  string claim_summary = 4;
+  repeated string supporting_evidence_ids = 5;
+  string source_class_context_json = 6;
+  creativanta.common.v1.ConfidenceBand confidence = 7;
+  string coverage_summary = 8;
+  string unresolved_gaps = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+// Permission-filtered data gap item in the repair queue (RULE-M19-001, M01).
+message DataGapItem {
+  string gap_id = 1;
+  string gap_type = 2; // missing_cogs, unreconciled_settlement, missing_evidence, stale_connector
+  string severity = 3; // critical, warning, info
+  string title = 4;
+  string description = 5;
+  string related_object_type = 6;
+  string related_object_id = 7;
+  creativanta.common.v1.Money monetary_amount = 8;
+  google.protobuf.Timestamp unresolved_since = 9;
+  string repair_cta_label = 10;
+  string repair_cta_route = 11;
+  string required_permission = 12;
 }
 
 // ============================================================================
@@ -386,6 +483,199 @@ message CostServiceDeleteResponse {
 }
 
 // ============================================================================
+// ReconciliationService Requests & Responses
+// ============================================================================
+
+message ReconciliationServiceQueueRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string scope_type = 3;
+  string scope_description = 4;
+  repeated string order_ids = 5;
+  repeated string settlement_ids = 6;
+  string period_start = 7;
+  string period_end = 8;
+}
+
+message ReconciliationServiceQueueResponse {
+  ReconciliationRecord record = 1;
+}
+
+message ReconciliationServiceMatchRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string settlement_id = 3;
+  string line_id = 4;
+  string order_id = 5;
+  creativanta.common.v1.Money allocation_amount = 6;
+  string record_id = 7;
+}
+
+message ReconciliationServiceMatchResponse {
+  bool success = 1;
+  SettlementLine line = 2;
+  ReconciliationState order_reconciliation_state = 3;
+  creativanta.common.v1.Money line_remaining_capacity = 4;
+  creativanta.common.v1.Money order_remaining_capacity = 5;
+  ReconciliationRecord record = 6;
+  ReconciliationMatch match = 7;
+}
+
+message ReconciliationServiceManualMatchRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string settlement_id = 3;
+  string line_id = 4;
+  string order_id = 5;
+  creativanta.common.v1.Money allocation_amount = 6;
+  string record_id = 7;
+}
+
+message ReconciliationServiceManualMatchResponse {
+  bool success = 1;
+  SettlementLine line = 2;
+  ReconciliationState order_reconciliation_state = 3;
+  creativanta.common.v1.Money line_remaining_capacity = 4;
+  creativanta.common.v1.Money order_remaining_capacity = 5;
+  ReconciliationRecord record = 6;
+  ReconciliationMatch match = 7;
+}
+
+message ReconciliationServiceOverrideRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string record_id = 3;
+  string decision = 4; // accepted_discrepancy, force_reconciled, manual_override
+  string reason = 5;
+  repeated string evidence_ids = 6;
+}
+
+message ReconciliationServiceOverrideResponse {
+  ReconciliationRecord record = 1;
+}
+
+message ReconciliationServiceGetRecordRequest {
+  string workspace_id = 1;
+  string record_id = 2;
+}
+
+message ReconciliationServiceGetRecordResponse {
+  ReconciliationRecord record = 1;
+  repeated ReconciliationMatch matches = 2;
+}
+
+message ReconciliationServiceListRecordsRequest {
+  string workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+  ReconciliationState reconciliation_state = 3;
+  string period_start = 4;
+  string period_end = 5;
+}
+
+message ReconciliationServiceListRecordsResponse {
+  repeated ReconciliationRecord records = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message ReconciliationServiceListPendingRequest {
+  string workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+  string severity = 3;
+  string gap_type = 4;
+  string period_start = 5;
+  string period_end = 6;
+  string product_id = 7;
+}
+
+message ReconciliationServiceListPendingResponse {
+  repeated DataGapItem items = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+  int32 missing_components_count = 3;
+  creativanta.common.v1.Money total_unreconciled_amount = 4;
+  int32 unreconciled_count = 5;
+}
+
+// ============================================================================
+// EvidenceService Requests & Responses
+// ============================================================================
+
+message EvidenceServiceSubmitRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string evidence_type = 3;
+  string source_provenance = 4;
+  string content_hash = 5;
+  string file_url = 6;
+  string payload_json = 7;
+  repeated ObjectRef related_object_refs = 8;
+  bytes raw_content = 9;
+}
+
+message EvidenceServiceSubmitResponse {
+  EvidenceObject evidence = 1;
+}
+
+message EvidenceServiceGetRequest {
+  string workspace_id = 1;
+  string evidence_id = 2;
+}
+
+message EvidenceServiceGetResponse {
+  EvidenceObject evidence = 1;
+}
+
+message EvidenceServiceListRequest {
+  string workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+  string evidence_type = 3;
+  string verification_status = 4;
+}
+
+message EvidenceServiceListResponse {
+  repeated EvidenceObject items = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+// ============================================================================
+// ProofService Requests & Responses
+// ============================================================================
+
+message ProofServiceAssembleRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string claim_scope = 3;
+  string claim_summary = 4;
+  repeated string supporting_evidence_ids = 5;
+  creativanta.common.v1.ConfidenceBand confidence = 6;
+  string coverage_summary = 7;
+  string unresolved_gaps = 8;
+}
+
+message ProofServiceAssembleResponse {
+  ProofBundle proof_bundle = 1;
+}
+
+message ProofServiceGetRequest {
+  string workspace_id = 1;
+  string proof_bundle_id = 2;
+}
+
+message ProofServiceGetResponse {
+  ProofBundle proof_bundle = 1;
+}
+
+message ProofServiceListRequest {
+  string workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+  string claim_scope = 3;
+}
+
+message ProofServiceListResponse {
+  repeated ProofBundle proof_bundles = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+// ============================================================================
 // Service Definitions
 // ============================================================================
 
@@ -408,4 +698,26 @@ service CostService {
   rpc List(CostServiceListRequest) returns (CostServiceListResponse);
   rpc Update(CostServiceUpdateRequest) returns (CostServiceUpdateResponse);
   rpc Delete(CostServiceDeleteRequest) returns (CostServiceDeleteResponse);
+}
+
+service ReconciliationService {
+  rpc Queue(ReconciliationServiceQueueRequest) returns (ReconciliationServiceQueueResponse);
+  rpc Match(ReconciliationServiceMatchRequest) returns (ReconciliationServiceMatchResponse);
+  rpc ManualMatch(ReconciliationServiceManualMatchRequest) returns (ReconciliationServiceManualMatchResponse);
+  rpc Override(ReconciliationServiceOverrideRequest) returns (ReconciliationServiceOverrideResponse);
+  rpc GetRecord(ReconciliationServiceGetRecordRequest) returns (ReconciliationServiceGetRecordResponse);
+  rpc ListRecords(ReconciliationServiceListRecordsRequest) returns (ReconciliationServiceListRecordsResponse);
+  rpc ListPending(ReconciliationServiceListPendingRequest) returns (ReconciliationServiceListPendingResponse);
+}
+
+service EvidenceService {
+  rpc Submit(EvidenceServiceSubmitRequest) returns (EvidenceServiceSubmitResponse);
+  rpc Get(EvidenceServiceGetRequest) returns (EvidenceServiceGetResponse);
+  rpc List(EvidenceServiceListRequest) returns (EvidenceServiceListResponse);
+}
+
+service ProofService {
+  rpc Assemble(ProofServiceAssembleRequest) returns (ProofServiceAssembleResponse);
+  rpc Get(ProofServiceGetRequest) returns (ProofServiceGetResponse);
+  rpc List(ProofServiceListRequest) returns (ProofServiceListResponse);
 }

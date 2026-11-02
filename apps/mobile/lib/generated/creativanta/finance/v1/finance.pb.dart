@@ -23,6 +23,75 @@ export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
 
 export 'finance.pbenum.dart';
 
+/// Reference to related domain object (§11.4).
+class ObjectRef extends $pb.GeneratedMessage {
+  factory ObjectRef({
+    $core.String? type,
+    $core.String? id,
+  }) {
+    final result = ObjectRef._();
+    if (type != null) result.type = type;
+    if (id != null) result.id = id;
+    return result;
+  }
+
+  ObjectRef._();
+
+  factory ObjectRef.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ObjectRef()..mergeFromBuffer(data, registry);
+  factory ObjectRef.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ObjectRef()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ObjectRef',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ObjectRef.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'type')
+    ..aOS(2, _omitFieldNames ? '' : 'id')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ObjectRef clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ObjectRef copyWith(void Function(ObjectRef) updates) =>
+      super.copyWith((message) => updates(message as ObjectRef)) as ObjectRef;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ObjectRef() / ObjectRef.new instead')
+  static ObjectRef create() => ObjectRef._();
+  static $pb.GeneratedMessage $_createMessage() => ObjectRef._();
+  @$core.override
+  ObjectRef createEmptyInstance() => ObjectRef._();
+  @$core.pragma('dart2js:noInline')
+  static ObjectRef getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ObjectRef>(ObjectRef.$_createMessage);
+  static ObjectRef? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get type => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set type($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasType() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearType() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get id => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set id($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearId() => $_clearField(2);
+}
+
 /// Immutable exchange rate snapshot captured at transaction time (§25.1).
 class ExchangeRateSnapshot extends $pb.GeneratedMessage {
   factory ExchangeRateSnapshot({
@@ -1718,6 +1787,1013 @@ class ProfitAnomaly extends $pb.GeneratedMessage {
   void clearDetectedAt() => $_clearField(8);
   @$pb.TagNumber(8)
   $1.Timestamp ensureDetectedAt() => $_ensure(7);
+}
+
+/// Canonical reconciliation record per DB Schema §19.9E.
+class ReconciliationRecord extends $pb.GeneratedMessage {
+  factory ReconciliationRecord({
+    $core.String? recordId,
+    $core.String? workspaceId,
+    $core.String? scopeType,
+    $core.String? scopeDescription,
+    $core.Iterable<$core.String>? relatedOrderIds,
+    $core.Iterable<$core.String>? relatedSettlementIds,
+    $2.Money? matchedAmount,
+    $2.Money? discrepancyAmount,
+    $core.String? discrepancyReason,
+    ReconciliationState? reconciliationState,
+    $core.String? currency,
+    $core.String? mismatchesJson,
+    $core.String? overrideReason,
+    $core.String? overrideBy,
+    $1.Timestamp? overrideAt,
+    $core.String? periodStart,
+    $core.String? periodEnd,
+    $1.Timestamp? createdAt,
+    $1.Timestamp? updatedAt,
+  }) {
+    final result = ReconciliationRecord._();
+    if (recordId != null) result.recordId = recordId;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (scopeType != null) result.scopeType = scopeType;
+    if (scopeDescription != null) result.scopeDescription = scopeDescription;
+    if (relatedOrderIds != null) result.relatedOrderIds.addAll(relatedOrderIds);
+    if (relatedSettlementIds != null)
+      result.relatedSettlementIds.addAll(relatedSettlementIds);
+    if (matchedAmount != null) result.matchedAmount = matchedAmount;
+    if (discrepancyAmount != null) result.discrepancyAmount = discrepancyAmount;
+    if (discrepancyReason != null) result.discrepancyReason = discrepancyReason;
+    if (reconciliationState != null)
+      result.reconciliationState = reconciliationState;
+    if (currency != null) result.currency = currency;
+    if (mismatchesJson != null) result.mismatchesJson = mismatchesJson;
+    if (overrideReason != null) result.overrideReason = overrideReason;
+    if (overrideBy != null) result.overrideBy = overrideBy;
+    if (overrideAt != null) result.overrideAt = overrideAt;
+    if (periodStart != null) result.periodStart = periodStart;
+    if (periodEnd != null) result.periodEnd = periodEnd;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    return result;
+  }
+
+  ReconciliationRecord._();
+
+  factory ReconciliationRecord.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationRecord()..mergeFromBuffer(data, registry);
+  factory ReconciliationRecord.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationRecord()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReconciliationRecord',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ReconciliationRecord.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'recordId')
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'scopeType')
+    ..aOS(4, _omitFieldNames ? '' : 'scopeDescription')
+    ..pPS(5, _omitFieldNames ? '' : 'relatedOrderIds')
+    ..pPS(6, _omitFieldNames ? '' : 'relatedSettlementIds')
+    ..aOM<$2.Money>(7, _omitFieldNames ? '' : 'matchedAmount',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOM<$2.Money>(8, _omitFieldNames ? '' : 'discrepancyAmount',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOS(9, _omitFieldNames ? '' : 'discrepancyReason')
+    ..aE<ReconciliationState>(10, _omitFieldNames ? '' : 'reconciliationState',
+        enumValues: ReconciliationState.values)
+    ..aOS(11, _omitFieldNames ? '' : 'currency')
+    ..aOS(12, _omitFieldNames ? '' : 'mismatchesJson')
+    ..aOS(13, _omitFieldNames ? '' : 'overrideReason')
+    ..aOS(14, _omitFieldNames ? '' : 'overrideBy')
+    ..aOM<$1.Timestamp>(15, _omitFieldNames ? '' : 'overrideAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOS(16, _omitFieldNames ? '' : 'periodStart')
+    ..aOS(17, _omitFieldNames ? '' : 'periodEnd')
+    ..aOM<$1.Timestamp>(18, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOM<$1.Timestamp>(19, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationRecord clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationRecord copyWith(void Function(ReconciliationRecord) updates) =>
+      super.copyWith((message) => updates(message as ReconciliationRecord))
+          as ReconciliationRecord;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReconciliationRecord() / ReconciliationRecord.new instead')
+  static ReconciliationRecord create() => ReconciliationRecord._();
+  static $pb.GeneratedMessage $_createMessage() => ReconciliationRecord._();
+  @$core.override
+  ReconciliationRecord createEmptyInstance() => ReconciliationRecord._();
+  @$core.pragma('dart2js:noInline')
+  static ReconciliationRecord getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReconciliationRecord>(
+          ReconciliationRecord.$_createMessage);
+  static ReconciliationRecord? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get recordId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set recordId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRecordId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRecordId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get scopeType => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set scopeType($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasScopeType() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearScopeType() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get scopeDescription => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set scopeDescription($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasScopeDescription() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearScopeDescription() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $pb.PbList<$core.String> get relatedOrderIds => $_getList(4);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.String> get relatedSettlementIds => $_getList(5);
+
+  @$pb.TagNumber(7)
+  $2.Money get matchedAmount => $_getN(6);
+  @$pb.TagNumber(7)
+  set matchedAmount($2.Money value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasMatchedAmount() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearMatchedAmount() => $_clearField(7);
+  @$pb.TagNumber(7)
+  $2.Money ensureMatchedAmount() => $_ensure(6);
+
+  @$pb.TagNumber(8)
+  $2.Money get discrepancyAmount => $_getN(7);
+  @$pb.TagNumber(8)
+  set discrepancyAmount($2.Money value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasDiscrepancyAmount() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearDiscrepancyAmount() => $_clearField(8);
+  @$pb.TagNumber(8)
+  $2.Money ensureDiscrepancyAmount() => $_ensure(7);
+
+  @$pb.TagNumber(9)
+  $core.String get discrepancyReason => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set discrepancyReason($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasDiscrepancyReason() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearDiscrepancyReason() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  ReconciliationState get reconciliationState => $_getN(9);
+  @$pb.TagNumber(10)
+  set reconciliationState(ReconciliationState value) => $_setField(10, value);
+  @$pb.TagNumber(10)
+  $core.bool hasReconciliationState() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearReconciliationState() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get currency => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set currency($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasCurrency() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearCurrency() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get mismatchesJson => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set mismatchesJson($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasMismatchesJson() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearMismatchesJson() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.String get overrideReason => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set overrideReason($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasOverrideReason() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearOverrideReason() => $_clearField(13);
+
+  @$pb.TagNumber(14)
+  $core.String get overrideBy => $_getSZ(13);
+  @$pb.TagNumber(14)
+  set overrideBy($core.String value) => $_setString(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasOverrideBy() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearOverrideBy() => $_clearField(14);
+
+  @$pb.TagNumber(15)
+  $1.Timestamp get overrideAt => $_getN(14);
+  @$pb.TagNumber(15)
+  set overrideAt($1.Timestamp value) => $_setField(15, value);
+  @$pb.TagNumber(15)
+  $core.bool hasOverrideAt() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearOverrideAt() => $_clearField(15);
+  @$pb.TagNumber(15)
+  $1.Timestamp ensureOverrideAt() => $_ensure(14);
+
+  @$pb.TagNumber(16)
+  $core.String get periodStart => $_getSZ(15);
+  @$pb.TagNumber(16)
+  set periodStart($core.String value) => $_setString(15, value);
+  @$pb.TagNumber(16)
+  $core.bool hasPeriodStart() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearPeriodStart() => $_clearField(16);
+
+  @$pb.TagNumber(17)
+  $core.String get periodEnd => $_getSZ(16);
+  @$pb.TagNumber(17)
+  set periodEnd($core.String value) => $_setString(16, value);
+  @$pb.TagNumber(17)
+  $core.bool hasPeriodEnd() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearPeriodEnd() => $_clearField(17);
+
+  @$pb.TagNumber(18)
+  $1.Timestamp get createdAt => $_getN(17);
+  @$pb.TagNumber(18)
+  set createdAt($1.Timestamp value) => $_setField(18, value);
+  @$pb.TagNumber(18)
+  $core.bool hasCreatedAt() => $_has(17);
+  @$pb.TagNumber(18)
+  void clearCreatedAt() => $_clearField(18);
+  @$pb.TagNumber(18)
+  $1.Timestamp ensureCreatedAt() => $_ensure(17);
+
+  @$pb.TagNumber(19)
+  $1.Timestamp get updatedAt => $_getN(18);
+  @$pb.TagNumber(19)
+  set updatedAt($1.Timestamp value) => $_setField(19, value);
+  @$pb.TagNumber(19)
+  $core.bool hasUpdatedAt() => $_has(18);
+  @$pb.TagNumber(19)
+  void clearUpdatedAt() => $_clearField(19);
+  @$pb.TagNumber(19)
+  $1.Timestamp ensureUpdatedAt() => $_ensure(18);
+}
+
+/// Partial match allocation linking a settlement line to an order (§4 capacity contract).
+class ReconciliationMatch extends $pb.GeneratedMessage {
+  factory ReconciliationMatch({
+    $core.String? matchId,
+    $core.String? workspaceId,
+    $core.String? recordId,
+    $core.String? settlementId,
+    $core.String? lineId,
+    $core.String? orderId,
+    $2.Money? allocatedAmount,
+    $core.String? currency,
+    $1.Timestamp? createdAt,
+  }) {
+    final result = ReconciliationMatch._();
+    if (matchId != null) result.matchId = matchId;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (recordId != null) result.recordId = recordId;
+    if (settlementId != null) result.settlementId = settlementId;
+    if (lineId != null) result.lineId = lineId;
+    if (orderId != null) result.orderId = orderId;
+    if (allocatedAmount != null) result.allocatedAmount = allocatedAmount;
+    if (currency != null) result.currency = currency;
+    if (createdAt != null) result.createdAt = createdAt;
+    return result;
+  }
+
+  ReconciliationMatch._();
+
+  factory ReconciliationMatch.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationMatch()..mergeFromBuffer(data, registry);
+  factory ReconciliationMatch.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationMatch()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReconciliationMatch',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ReconciliationMatch.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'matchId')
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'recordId')
+    ..aOS(4, _omitFieldNames ? '' : 'settlementId')
+    ..aOS(5, _omitFieldNames ? '' : 'lineId')
+    ..aOS(6, _omitFieldNames ? '' : 'orderId')
+    ..aOM<$2.Money>(7, _omitFieldNames ? '' : 'allocatedAmount',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOS(8, _omitFieldNames ? '' : 'currency')
+    ..aOM<$1.Timestamp>(9, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationMatch clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationMatch copyWith(void Function(ReconciliationMatch) updates) =>
+      super.copyWith((message) => updates(message as ReconciliationMatch))
+          as ReconciliationMatch;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use ReconciliationMatch() / ReconciliationMatch.new instead')
+  static ReconciliationMatch create() => ReconciliationMatch._();
+  static $pb.GeneratedMessage $_createMessage() => ReconciliationMatch._();
+  @$core.override
+  ReconciliationMatch createEmptyInstance() => ReconciliationMatch._();
+  @$core.pragma('dart2js:noInline')
+  static ReconciliationMatch getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReconciliationMatch>(
+          ReconciliationMatch.$_createMessage);
+  static ReconciliationMatch? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get matchId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set matchId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasMatchId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearMatchId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get recordId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set recordId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasRecordId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRecordId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get settlementId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set settlementId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSettlementId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSettlementId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get lineId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set lineId($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLineId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLineId() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get orderId => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set orderId($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasOrderId() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearOrderId() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $2.Money get allocatedAmount => $_getN(6);
+  @$pb.TagNumber(7)
+  set allocatedAmount($2.Money value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasAllocatedAmount() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearAllocatedAmount() => $_clearField(7);
+  @$pb.TagNumber(7)
+  $2.Money ensureAllocatedAmount() => $_ensure(6);
+
+  @$pb.TagNumber(8)
+  $core.String get currency => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set currency($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasCurrency() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearCurrency() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $1.Timestamp get createdAt => $_getN(8);
+  @$pb.TagNumber(9)
+  set createdAt($1.Timestamp value) => $_setField(9, value);
+  @$pb.TagNumber(9)
+  $core.bool hasCreatedAt() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearCreatedAt() => $_clearField(9);
+  @$pb.TagNumber(9)
+  $1.Timestamp ensureCreatedAt() => $_ensure(8);
+}
+
+/// Immutable evidence object with content_hash (SHA-512) per DB Schema §11.4 & RULE-M19-005.
+class EvidenceObject extends $pb.GeneratedMessage {
+  factory EvidenceObject({
+    $core.String? evidenceId,
+    $core.String? workspaceId,
+    $core.String? evidenceType,
+    $core.String? sourceProvenance,
+    $core.String? contentHash,
+    $core.String? fileUrl,
+    $core.String? payloadJson,
+    $1.Timestamp? collectedAt,
+    VerificationStatus? verificationStatus,
+    $core.Iterable<ObjectRef>? relatedObjectRefs,
+    $1.Timestamp? createdAt,
+  }) {
+    final result = EvidenceObject._();
+    if (evidenceId != null) result.evidenceId = evidenceId;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (evidenceType != null) result.evidenceType = evidenceType;
+    if (sourceProvenance != null) result.sourceProvenance = sourceProvenance;
+    if (contentHash != null) result.contentHash = contentHash;
+    if (fileUrl != null) result.fileUrl = fileUrl;
+    if (payloadJson != null) result.payloadJson = payloadJson;
+    if (collectedAt != null) result.collectedAt = collectedAt;
+    if (verificationStatus != null)
+      result.verificationStatus = verificationStatus;
+    if (relatedObjectRefs != null)
+      result.relatedObjectRefs.addAll(relatedObjectRefs);
+    if (createdAt != null) result.createdAt = createdAt;
+    return result;
+  }
+
+  EvidenceObject._();
+
+  factory EvidenceObject.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EvidenceObject()..mergeFromBuffer(data, registry);
+  factory EvidenceObject.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EvidenceObject()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'EvidenceObject',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: EvidenceObject.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'evidenceId')
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'evidenceType')
+    ..aOS(4, _omitFieldNames ? '' : 'sourceProvenance')
+    ..aOS(5, _omitFieldNames ? '' : 'contentHash')
+    ..aOS(6, _omitFieldNames ? '' : 'fileUrl')
+    ..aOS(7, _omitFieldNames ? '' : 'payloadJson')
+    ..aOM<$1.Timestamp>(8, _omitFieldNames ? '' : 'collectedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aE<VerificationStatus>(9, _omitFieldNames ? '' : 'verificationStatus',
+        enumValues: VerificationStatus.values)
+    ..pPM<ObjectRef>(10, _omitFieldNames ? '' : 'relatedObjectRefs',
+        subBuilder: ObjectRef.$_createMessage)
+    ..aOM<$1.Timestamp>(11, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EvidenceObject clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EvidenceObject copyWith(void Function(EvidenceObject) updates) =>
+      super.copyWith((message) => updates(message as EvidenceObject))
+          as EvidenceObject;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use EvidenceObject() / EvidenceObject.new instead')
+  static EvidenceObject create() => EvidenceObject._();
+  static $pb.GeneratedMessage $_createMessage() => EvidenceObject._();
+  @$core.override
+  EvidenceObject createEmptyInstance() => EvidenceObject._();
+  @$core.pragma('dart2js:noInline')
+  static EvidenceObject getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<EvidenceObject>(
+          EvidenceObject.$_createMessage);
+  static EvidenceObject? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get evidenceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set evidenceId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasEvidenceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearEvidenceId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get evidenceType => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set evidenceType($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasEvidenceType() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearEvidenceType() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get sourceProvenance => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set sourceProvenance($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSourceProvenance() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSourceProvenance() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get contentHash => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set contentHash($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasContentHash() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearContentHash() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get fileUrl => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set fileUrl($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasFileUrl() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearFileUrl() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get payloadJson => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set payloadJson($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasPayloadJson() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearPayloadJson() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $1.Timestamp get collectedAt => $_getN(7);
+  @$pb.TagNumber(8)
+  set collectedAt($1.Timestamp value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasCollectedAt() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearCollectedAt() => $_clearField(8);
+  @$pb.TagNumber(8)
+  $1.Timestamp ensureCollectedAt() => $_ensure(7);
+
+  @$pb.TagNumber(9)
+  VerificationStatus get verificationStatus => $_getN(8);
+  @$pb.TagNumber(9)
+  set verificationStatus(VerificationStatus value) => $_setField(9, value);
+  @$pb.TagNumber(9)
+  $core.bool hasVerificationStatus() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearVerificationStatus() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $pb.PbList<ObjectRef> get relatedObjectRefs => $_getList(9);
+
+  @$pb.TagNumber(11)
+  $1.Timestamp get createdAt => $_getN(10);
+  @$pb.TagNumber(11)
+  set createdAt($1.Timestamp value) => $_setField(11, value);
+  @$pb.TagNumber(11)
+  $core.bool hasCreatedAt() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearCreatedAt() => $_clearField(11);
+  @$pb.TagNumber(11)
+  $1.Timestamp ensureCreatedAt() => $_ensure(10);
+}
+
+/// Proof bundle assembling claims and evidence per DB Schema §11.5 & RULE-M19-006.
+class ProofBundle extends $pb.GeneratedMessage {
+  factory ProofBundle({
+    $core.String? proofBundleId,
+    $core.String? workspaceId,
+    $core.String? claimScope,
+    $core.String? claimSummary,
+    $core.Iterable<$core.String>? supportingEvidenceIds,
+    $core.String? sourceClassContextJson,
+    $2.ConfidenceBand? confidence,
+    $core.String? coverageSummary,
+    $core.String? unresolvedGaps,
+    $1.Timestamp? createdAt,
+    $1.Timestamp? updatedAt,
+  }) {
+    final result = ProofBundle._();
+    if (proofBundleId != null) result.proofBundleId = proofBundleId;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (claimScope != null) result.claimScope = claimScope;
+    if (claimSummary != null) result.claimSummary = claimSummary;
+    if (supportingEvidenceIds != null)
+      result.supportingEvidenceIds.addAll(supportingEvidenceIds);
+    if (sourceClassContextJson != null)
+      result.sourceClassContextJson = sourceClassContextJson;
+    if (confidence != null) result.confidence = confidence;
+    if (coverageSummary != null) result.coverageSummary = coverageSummary;
+    if (unresolvedGaps != null) result.unresolvedGaps = unresolvedGaps;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    return result;
+  }
+
+  ProofBundle._();
+
+  factory ProofBundle.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProofBundle()..mergeFromBuffer(data, registry);
+  factory ProofBundle.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProofBundle()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProofBundle',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ProofBundle.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'proofBundleId')
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'claimScope')
+    ..aOS(4, _omitFieldNames ? '' : 'claimSummary')
+    ..pPS(5, _omitFieldNames ? '' : 'supportingEvidenceIds')
+    ..aOS(6, _omitFieldNames ? '' : 'sourceClassContextJson')
+    ..aE<$2.ConfidenceBand>(7, _omitFieldNames ? '' : 'confidence',
+        enumValues: $2.ConfidenceBand.values)
+    ..aOS(8, _omitFieldNames ? '' : 'coverageSummary')
+    ..aOS(9, _omitFieldNames ? '' : 'unresolvedGaps')
+    ..aOM<$1.Timestamp>(10, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOM<$1.Timestamp>(11, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProofBundle clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProofBundle copyWith(void Function(ProofBundle) updates) =>
+      super.copyWith((message) => updates(message as ProofBundle))
+          as ProofBundle;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ProofBundle() / ProofBundle.new instead')
+  static ProofBundle create() => ProofBundle._();
+  static $pb.GeneratedMessage $_createMessage() => ProofBundle._();
+  @$core.override
+  ProofBundle createEmptyInstance() => ProofBundle._();
+  @$core.pragma('dart2js:noInline')
+  static ProofBundle getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ProofBundle>(
+          ProofBundle.$_createMessage);
+  static ProofBundle? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get proofBundleId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set proofBundleId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasProofBundleId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearProofBundleId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get claimScope => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set claimScope($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasClaimScope() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearClaimScope() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get claimSummary => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set claimSummary($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasClaimSummary() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearClaimSummary() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $pb.PbList<$core.String> get supportingEvidenceIds => $_getList(4);
+
+  @$pb.TagNumber(6)
+  $core.String get sourceClassContextJson => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set sourceClassContextJson($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSourceClassContextJson() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSourceClassContextJson() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $2.ConfidenceBand get confidence => $_getN(6);
+  @$pb.TagNumber(7)
+  set confidence($2.ConfidenceBand value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasConfidence() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearConfidence() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get coverageSummary => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set coverageSummary($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasCoverageSummary() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearCoverageSummary() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get unresolvedGaps => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set unresolvedGaps($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasUnresolvedGaps() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearUnresolvedGaps() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $1.Timestamp get createdAt => $_getN(9);
+  @$pb.TagNumber(10)
+  set createdAt($1.Timestamp value) => $_setField(10, value);
+  @$pb.TagNumber(10)
+  $core.bool hasCreatedAt() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearCreatedAt() => $_clearField(10);
+  @$pb.TagNumber(10)
+  $1.Timestamp ensureCreatedAt() => $_ensure(9);
+
+  @$pb.TagNumber(11)
+  $1.Timestamp get updatedAt => $_getN(10);
+  @$pb.TagNumber(11)
+  set updatedAt($1.Timestamp value) => $_setField(11, value);
+  @$pb.TagNumber(11)
+  $core.bool hasUpdatedAt() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearUpdatedAt() => $_clearField(11);
+  @$pb.TagNumber(11)
+  $1.Timestamp ensureUpdatedAt() => $_ensure(10);
+}
+
+/// Permission-filtered data gap item in the repair queue (RULE-M19-001, M01).
+class DataGapItem extends $pb.GeneratedMessage {
+  factory DataGapItem({
+    $core.String? gapId,
+    $core.String? gapType,
+    $core.String? severity,
+    $core.String? title,
+    $core.String? description,
+    $core.String? relatedObjectType,
+    $core.String? relatedObjectId,
+    $2.Money? monetaryAmount,
+    $1.Timestamp? unresolvedSince,
+    $core.String? repairCtaLabel,
+    $core.String? repairCtaRoute,
+    $core.String? requiredPermission,
+  }) {
+    final result = DataGapItem._();
+    if (gapId != null) result.gapId = gapId;
+    if (gapType != null) result.gapType = gapType;
+    if (severity != null) result.severity = severity;
+    if (title != null) result.title = title;
+    if (description != null) result.description = description;
+    if (relatedObjectType != null) result.relatedObjectType = relatedObjectType;
+    if (relatedObjectId != null) result.relatedObjectId = relatedObjectId;
+    if (monetaryAmount != null) result.monetaryAmount = monetaryAmount;
+    if (unresolvedSince != null) result.unresolvedSince = unresolvedSince;
+    if (repairCtaLabel != null) result.repairCtaLabel = repairCtaLabel;
+    if (repairCtaRoute != null) result.repairCtaRoute = repairCtaRoute;
+    if (requiredPermission != null)
+      result.requiredPermission = requiredPermission;
+    return result;
+  }
+
+  DataGapItem._();
+
+  factory DataGapItem.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DataGapItem()..mergeFromBuffer(data, registry);
+  factory DataGapItem.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DataGapItem()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DataGapItem',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: DataGapItem.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'gapId')
+    ..aOS(2, _omitFieldNames ? '' : 'gapType')
+    ..aOS(3, _omitFieldNames ? '' : 'severity')
+    ..aOS(4, _omitFieldNames ? '' : 'title')
+    ..aOS(5, _omitFieldNames ? '' : 'description')
+    ..aOS(6, _omitFieldNames ? '' : 'relatedObjectType')
+    ..aOS(7, _omitFieldNames ? '' : 'relatedObjectId')
+    ..aOM<$2.Money>(8, _omitFieldNames ? '' : 'monetaryAmount',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOM<$1.Timestamp>(9, _omitFieldNames ? '' : 'unresolvedSince',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOS(10, _omitFieldNames ? '' : 'repairCtaLabel')
+    ..aOS(11, _omitFieldNames ? '' : 'repairCtaRoute')
+    ..aOS(12, _omitFieldNames ? '' : 'requiredPermission')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DataGapItem clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DataGapItem copyWith(void Function(DataGapItem) updates) =>
+      super.copyWith((message) => updates(message as DataGapItem))
+          as DataGapItem;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use DataGapItem() / DataGapItem.new instead')
+  static DataGapItem create() => DataGapItem._();
+  static $pb.GeneratedMessage $_createMessage() => DataGapItem._();
+  @$core.override
+  DataGapItem createEmptyInstance() => DataGapItem._();
+  @$core.pragma('dart2js:noInline')
+  static DataGapItem getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<DataGapItem>(
+          DataGapItem.$_createMessage);
+  static DataGapItem? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get gapId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set gapId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasGapId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearGapId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get gapType => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set gapType($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasGapType() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearGapType() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get severity => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set severity($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSeverity() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSeverity() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get title => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set title($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTitle() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTitle() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get description => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set description($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasDescription() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearDescription() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get relatedObjectType => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set relatedObjectType($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasRelatedObjectType() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearRelatedObjectType() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get relatedObjectId => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set relatedObjectId($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasRelatedObjectId() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearRelatedObjectId() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $2.Money get monetaryAmount => $_getN(7);
+  @$pb.TagNumber(8)
+  set monetaryAmount($2.Money value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasMonetaryAmount() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearMonetaryAmount() => $_clearField(8);
+  @$pb.TagNumber(8)
+  $2.Money ensureMonetaryAmount() => $_ensure(7);
+
+  @$pb.TagNumber(9)
+  $1.Timestamp get unresolvedSince => $_getN(8);
+  @$pb.TagNumber(9)
+  set unresolvedSince($1.Timestamp value) => $_setField(9, value);
+  @$pb.TagNumber(9)
+  $core.bool hasUnresolvedSince() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearUnresolvedSince() => $_clearField(9);
+  @$pb.TagNumber(9)
+  $1.Timestamp ensureUnresolvedSince() => $_ensure(8);
+
+  @$pb.TagNumber(10)
+  $core.String get repairCtaLabel => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set repairCtaLabel($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasRepairCtaLabel() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearRepairCtaLabel() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get repairCtaRoute => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set repairCtaRoute($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasRepairCtaRoute() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearRepairCtaRoute() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get requiredPermission => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set requiredPermission($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasRequiredPermission() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearRequiredPermission() => $_clearField(12);
 }
 
 /// ProfitService/GetSummary
@@ -4404,6 +5480,2683 @@ class CostServiceDeleteResponse extends $pb.GeneratedMessage {
   $core.bool hasSuccess() => $_has(0);
   @$pb.TagNumber(1)
   void clearSuccess() => $_clearField(1);
+}
+
+class ReconciliationServiceQueueRequest extends $pb.GeneratedMessage {
+  factory ReconciliationServiceQueueRequest({
+    $2.CommandContext? context,
+    $core.String? workspaceId,
+    $core.String? scopeType,
+    $core.String? scopeDescription,
+    $core.Iterable<$core.String>? orderIds,
+    $core.Iterable<$core.String>? settlementIds,
+    $core.String? periodStart,
+    $core.String? periodEnd,
+  }) {
+    final result = ReconciliationServiceQueueRequest._();
+    if (context != null) result.context = context;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (scopeType != null) result.scopeType = scopeType;
+    if (scopeDescription != null) result.scopeDescription = scopeDescription;
+    if (orderIds != null) result.orderIds.addAll(orderIds);
+    if (settlementIds != null) result.settlementIds.addAll(settlementIds);
+    if (periodStart != null) result.periodStart = periodStart;
+    if (periodEnd != null) result.periodEnd = periodEnd;
+    return result;
+  }
+
+  ReconciliationServiceQueueRequest._();
+
+  factory ReconciliationServiceQueueRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceQueueRequest()..mergeFromBuffer(data, registry);
+  factory ReconciliationServiceQueueRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceQueueRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReconciliationServiceQueueRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ReconciliationServiceQueueRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'scopeType')
+    ..aOS(4, _omitFieldNames ? '' : 'scopeDescription')
+    ..pPS(5, _omitFieldNames ? '' : 'orderIds')
+    ..pPS(6, _omitFieldNames ? '' : 'settlementIds')
+    ..aOS(7, _omitFieldNames ? '' : 'periodStart')
+    ..aOS(8, _omitFieldNames ? '' : 'periodEnd')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceQueueRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceQueueRequest copyWith(
+          void Function(ReconciliationServiceQueueRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ReconciliationServiceQueueRequest))
+          as ReconciliationServiceQueueRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReconciliationServiceQueueRequest() / ReconciliationServiceQueueRequest.new instead')
+  static ReconciliationServiceQueueRequest create() =>
+      ReconciliationServiceQueueRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ReconciliationServiceQueueRequest._();
+  @$core.override
+  ReconciliationServiceQueueRequest createEmptyInstance() =>
+      ReconciliationServiceQueueRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ReconciliationServiceQueueRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReconciliationServiceQueueRequest>(
+          ReconciliationServiceQueueRequest.$_createMessage);
+  static ReconciliationServiceQueueRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get scopeType => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set scopeType($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasScopeType() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearScopeType() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get scopeDescription => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set scopeDescription($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasScopeDescription() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearScopeDescription() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $pb.PbList<$core.String> get orderIds => $_getList(4);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.String> get settlementIds => $_getList(5);
+
+  @$pb.TagNumber(7)
+  $core.String get periodStart => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set periodStart($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasPeriodStart() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearPeriodStart() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get periodEnd => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set periodEnd($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasPeriodEnd() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearPeriodEnd() => $_clearField(8);
+}
+
+class ReconciliationServiceQueueResponse extends $pb.GeneratedMessage {
+  factory ReconciliationServiceQueueResponse({
+    ReconciliationRecord? record,
+  }) {
+    final result = ReconciliationServiceQueueResponse._();
+    if (record != null) result.record = record;
+    return result;
+  }
+
+  ReconciliationServiceQueueResponse._();
+
+  factory ReconciliationServiceQueueResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceQueueResponse()..mergeFromBuffer(data, registry);
+  factory ReconciliationServiceQueueResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceQueueResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReconciliationServiceQueueResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ReconciliationServiceQueueResponse.$_createMessage)
+    ..aOM<ReconciliationRecord>(1, _omitFieldNames ? '' : 'record',
+        subBuilder: ReconciliationRecord.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceQueueResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceQueueResponse copyWith(
+          void Function(ReconciliationServiceQueueResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ReconciliationServiceQueueResponse))
+          as ReconciliationServiceQueueResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReconciliationServiceQueueResponse() / ReconciliationServiceQueueResponse.new instead')
+  static ReconciliationServiceQueueResponse create() =>
+      ReconciliationServiceQueueResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ReconciliationServiceQueueResponse._();
+  @$core.override
+  ReconciliationServiceQueueResponse createEmptyInstance() =>
+      ReconciliationServiceQueueResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ReconciliationServiceQueueResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReconciliationServiceQueueResponse>(
+          ReconciliationServiceQueueResponse.$_createMessage);
+  static ReconciliationServiceQueueResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ReconciliationRecord get record => $_getN(0);
+  @$pb.TagNumber(1)
+  set record(ReconciliationRecord value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRecord() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRecord() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ReconciliationRecord ensureRecord() => $_ensure(0);
+}
+
+class ReconciliationServiceMatchRequest extends $pb.GeneratedMessage {
+  factory ReconciliationServiceMatchRequest({
+    $2.CommandContext? context,
+    $core.String? workspaceId,
+    $core.String? settlementId,
+    $core.String? lineId,
+    $core.String? orderId,
+    $2.Money? allocationAmount,
+    $core.String? recordId,
+  }) {
+    final result = ReconciliationServiceMatchRequest._();
+    if (context != null) result.context = context;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (settlementId != null) result.settlementId = settlementId;
+    if (lineId != null) result.lineId = lineId;
+    if (orderId != null) result.orderId = orderId;
+    if (allocationAmount != null) result.allocationAmount = allocationAmount;
+    if (recordId != null) result.recordId = recordId;
+    return result;
+  }
+
+  ReconciliationServiceMatchRequest._();
+
+  factory ReconciliationServiceMatchRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceMatchRequest()..mergeFromBuffer(data, registry);
+  factory ReconciliationServiceMatchRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceMatchRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReconciliationServiceMatchRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ReconciliationServiceMatchRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'settlementId')
+    ..aOS(4, _omitFieldNames ? '' : 'lineId')
+    ..aOS(5, _omitFieldNames ? '' : 'orderId')
+    ..aOM<$2.Money>(6, _omitFieldNames ? '' : 'allocationAmount',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOS(7, _omitFieldNames ? '' : 'recordId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceMatchRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceMatchRequest copyWith(
+          void Function(ReconciliationServiceMatchRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ReconciliationServiceMatchRequest))
+          as ReconciliationServiceMatchRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReconciliationServiceMatchRequest() / ReconciliationServiceMatchRequest.new instead')
+  static ReconciliationServiceMatchRequest create() =>
+      ReconciliationServiceMatchRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ReconciliationServiceMatchRequest._();
+  @$core.override
+  ReconciliationServiceMatchRequest createEmptyInstance() =>
+      ReconciliationServiceMatchRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ReconciliationServiceMatchRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReconciliationServiceMatchRequest>(
+          ReconciliationServiceMatchRequest.$_createMessage);
+  static ReconciliationServiceMatchRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get settlementId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set settlementId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSettlementId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSettlementId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get lineId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set lineId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLineId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLineId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get orderId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set orderId($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasOrderId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearOrderId() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $2.Money get allocationAmount => $_getN(5);
+  @$pb.TagNumber(6)
+  set allocationAmount($2.Money value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasAllocationAmount() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAllocationAmount() => $_clearField(6);
+  @$pb.TagNumber(6)
+  $2.Money ensureAllocationAmount() => $_ensure(5);
+
+  @$pb.TagNumber(7)
+  $core.String get recordId => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set recordId($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasRecordId() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearRecordId() => $_clearField(7);
+}
+
+class ReconciliationServiceMatchResponse extends $pb.GeneratedMessage {
+  factory ReconciliationServiceMatchResponse({
+    $core.bool? success,
+    SettlementLine? line,
+    ReconciliationState? orderReconciliationState,
+    $2.Money? lineRemainingCapacity,
+    $2.Money? orderRemainingCapacity,
+    ReconciliationRecord? record,
+    ReconciliationMatch? match,
+  }) {
+    final result = ReconciliationServiceMatchResponse._();
+    if (success != null) result.success = success;
+    if (line != null) result.line = line;
+    if (orderReconciliationState != null)
+      result.orderReconciliationState = orderReconciliationState;
+    if (lineRemainingCapacity != null)
+      result.lineRemainingCapacity = lineRemainingCapacity;
+    if (orderRemainingCapacity != null)
+      result.orderRemainingCapacity = orderRemainingCapacity;
+    if (record != null) result.record = record;
+    if (match != null) result.match = match;
+    return result;
+  }
+
+  ReconciliationServiceMatchResponse._();
+
+  factory ReconciliationServiceMatchResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceMatchResponse()..mergeFromBuffer(data, registry);
+  factory ReconciliationServiceMatchResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceMatchResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReconciliationServiceMatchResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ReconciliationServiceMatchResponse.$_createMessage)
+    ..aOB(1, _omitFieldNames ? '' : 'success')
+    ..aOM<SettlementLine>(2, _omitFieldNames ? '' : 'line',
+        subBuilder: SettlementLine.$_createMessage)
+    ..aE<ReconciliationState>(
+        3, _omitFieldNames ? '' : 'orderReconciliationState',
+        enumValues: ReconciliationState.values)
+    ..aOM<$2.Money>(4, _omitFieldNames ? '' : 'lineRemainingCapacity',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOM<$2.Money>(5, _omitFieldNames ? '' : 'orderRemainingCapacity',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOM<ReconciliationRecord>(6, _omitFieldNames ? '' : 'record',
+        subBuilder: ReconciliationRecord.$_createMessage)
+    ..aOM<ReconciliationMatch>(7, _omitFieldNames ? '' : 'match',
+        subBuilder: ReconciliationMatch.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceMatchResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceMatchResponse copyWith(
+          void Function(ReconciliationServiceMatchResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ReconciliationServiceMatchResponse))
+          as ReconciliationServiceMatchResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReconciliationServiceMatchResponse() / ReconciliationServiceMatchResponse.new instead')
+  static ReconciliationServiceMatchResponse create() =>
+      ReconciliationServiceMatchResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ReconciliationServiceMatchResponse._();
+  @$core.override
+  ReconciliationServiceMatchResponse createEmptyInstance() =>
+      ReconciliationServiceMatchResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ReconciliationServiceMatchResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReconciliationServiceMatchResponse>(
+          ReconciliationServiceMatchResponse.$_createMessage);
+  static ReconciliationServiceMatchResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get success => $_getBF(0);
+  @$pb.TagNumber(1)
+  set success($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  SettlementLine get line => $_getN(1);
+  @$pb.TagNumber(2)
+  set line(SettlementLine value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasLine() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLine() => $_clearField(2);
+  @$pb.TagNumber(2)
+  SettlementLine ensureLine() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  ReconciliationState get orderReconciliationState => $_getN(2);
+  @$pb.TagNumber(3)
+  set orderReconciliationState(ReconciliationState value) =>
+      $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasOrderReconciliationState() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearOrderReconciliationState() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $2.Money get lineRemainingCapacity => $_getN(3);
+  @$pb.TagNumber(4)
+  set lineRemainingCapacity($2.Money value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLineRemainingCapacity() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLineRemainingCapacity() => $_clearField(4);
+  @$pb.TagNumber(4)
+  $2.Money ensureLineRemainingCapacity() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  $2.Money get orderRemainingCapacity => $_getN(4);
+  @$pb.TagNumber(5)
+  set orderRemainingCapacity($2.Money value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasOrderRemainingCapacity() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearOrderRemainingCapacity() => $_clearField(5);
+  @$pb.TagNumber(5)
+  $2.Money ensureOrderRemainingCapacity() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  ReconciliationRecord get record => $_getN(5);
+  @$pb.TagNumber(6)
+  set record(ReconciliationRecord value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasRecord() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearRecord() => $_clearField(6);
+  @$pb.TagNumber(6)
+  ReconciliationRecord ensureRecord() => $_ensure(5);
+
+  @$pb.TagNumber(7)
+  ReconciliationMatch get match => $_getN(6);
+  @$pb.TagNumber(7)
+  set match(ReconciliationMatch value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasMatch() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearMatch() => $_clearField(7);
+  @$pb.TagNumber(7)
+  ReconciliationMatch ensureMatch() => $_ensure(6);
+}
+
+class ReconciliationServiceManualMatchRequest extends $pb.GeneratedMessage {
+  factory ReconciliationServiceManualMatchRequest({
+    $2.CommandContext? context,
+    $core.String? workspaceId,
+    $core.String? settlementId,
+    $core.String? lineId,
+    $core.String? orderId,
+    $2.Money? allocationAmount,
+    $core.String? recordId,
+  }) {
+    final result = ReconciliationServiceManualMatchRequest._();
+    if (context != null) result.context = context;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (settlementId != null) result.settlementId = settlementId;
+    if (lineId != null) result.lineId = lineId;
+    if (orderId != null) result.orderId = orderId;
+    if (allocationAmount != null) result.allocationAmount = allocationAmount;
+    if (recordId != null) result.recordId = recordId;
+    return result;
+  }
+
+  ReconciliationServiceManualMatchRequest._();
+
+  factory ReconciliationServiceManualMatchRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceManualMatchRequest()
+        ..mergeFromBuffer(data, registry);
+  factory ReconciliationServiceManualMatchRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceManualMatchRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReconciliationServiceManualMatchRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance:
+          ReconciliationServiceManualMatchRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'settlementId')
+    ..aOS(4, _omitFieldNames ? '' : 'lineId')
+    ..aOS(5, _omitFieldNames ? '' : 'orderId')
+    ..aOM<$2.Money>(6, _omitFieldNames ? '' : 'allocationAmount',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOS(7, _omitFieldNames ? '' : 'recordId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceManualMatchRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceManualMatchRequest copyWith(
+          void Function(ReconciliationServiceManualMatchRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ReconciliationServiceManualMatchRequest))
+          as ReconciliationServiceManualMatchRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReconciliationServiceManualMatchRequest() / ReconciliationServiceManualMatchRequest.new instead')
+  static ReconciliationServiceManualMatchRequest create() =>
+      ReconciliationServiceManualMatchRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ReconciliationServiceManualMatchRequest._();
+  @$core.override
+  ReconciliationServiceManualMatchRequest createEmptyInstance() =>
+      ReconciliationServiceManualMatchRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ReconciliationServiceManualMatchRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ReconciliationServiceManualMatchRequest>(
+          ReconciliationServiceManualMatchRequest.$_createMessage);
+  static ReconciliationServiceManualMatchRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get settlementId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set settlementId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSettlementId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSettlementId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get lineId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set lineId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLineId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLineId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get orderId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set orderId($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasOrderId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearOrderId() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $2.Money get allocationAmount => $_getN(5);
+  @$pb.TagNumber(6)
+  set allocationAmount($2.Money value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasAllocationAmount() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAllocationAmount() => $_clearField(6);
+  @$pb.TagNumber(6)
+  $2.Money ensureAllocationAmount() => $_ensure(5);
+
+  @$pb.TagNumber(7)
+  $core.String get recordId => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set recordId($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasRecordId() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearRecordId() => $_clearField(7);
+}
+
+class ReconciliationServiceManualMatchResponse extends $pb.GeneratedMessage {
+  factory ReconciliationServiceManualMatchResponse({
+    $core.bool? success,
+    SettlementLine? line,
+    ReconciliationState? orderReconciliationState,
+    $2.Money? lineRemainingCapacity,
+    $2.Money? orderRemainingCapacity,
+    ReconciliationRecord? record,
+    ReconciliationMatch? match,
+  }) {
+    final result = ReconciliationServiceManualMatchResponse._();
+    if (success != null) result.success = success;
+    if (line != null) result.line = line;
+    if (orderReconciliationState != null)
+      result.orderReconciliationState = orderReconciliationState;
+    if (lineRemainingCapacity != null)
+      result.lineRemainingCapacity = lineRemainingCapacity;
+    if (orderRemainingCapacity != null)
+      result.orderRemainingCapacity = orderRemainingCapacity;
+    if (record != null) result.record = record;
+    if (match != null) result.match = match;
+    return result;
+  }
+
+  ReconciliationServiceManualMatchResponse._();
+
+  factory ReconciliationServiceManualMatchResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceManualMatchResponse()
+        ..mergeFromBuffer(data, registry);
+  factory ReconciliationServiceManualMatchResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceManualMatchResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReconciliationServiceManualMatchResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance:
+          ReconciliationServiceManualMatchResponse.$_createMessage)
+    ..aOB(1, _omitFieldNames ? '' : 'success')
+    ..aOM<SettlementLine>(2, _omitFieldNames ? '' : 'line',
+        subBuilder: SettlementLine.$_createMessage)
+    ..aE<ReconciliationState>(
+        3, _omitFieldNames ? '' : 'orderReconciliationState',
+        enumValues: ReconciliationState.values)
+    ..aOM<$2.Money>(4, _omitFieldNames ? '' : 'lineRemainingCapacity',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOM<$2.Money>(5, _omitFieldNames ? '' : 'orderRemainingCapacity',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOM<ReconciliationRecord>(6, _omitFieldNames ? '' : 'record',
+        subBuilder: ReconciliationRecord.$_createMessage)
+    ..aOM<ReconciliationMatch>(7, _omitFieldNames ? '' : 'match',
+        subBuilder: ReconciliationMatch.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceManualMatchResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceManualMatchResponse copyWith(
+          void Function(ReconciliationServiceManualMatchResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ReconciliationServiceManualMatchResponse))
+          as ReconciliationServiceManualMatchResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReconciliationServiceManualMatchResponse() / ReconciliationServiceManualMatchResponse.new instead')
+  static ReconciliationServiceManualMatchResponse create() =>
+      ReconciliationServiceManualMatchResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ReconciliationServiceManualMatchResponse._();
+  @$core.override
+  ReconciliationServiceManualMatchResponse createEmptyInstance() =>
+      ReconciliationServiceManualMatchResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ReconciliationServiceManualMatchResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ReconciliationServiceManualMatchResponse>(
+          ReconciliationServiceManualMatchResponse.$_createMessage);
+  static ReconciliationServiceManualMatchResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get success => $_getBF(0);
+  @$pb.TagNumber(1)
+  set success($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  SettlementLine get line => $_getN(1);
+  @$pb.TagNumber(2)
+  set line(SettlementLine value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasLine() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLine() => $_clearField(2);
+  @$pb.TagNumber(2)
+  SettlementLine ensureLine() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  ReconciliationState get orderReconciliationState => $_getN(2);
+  @$pb.TagNumber(3)
+  set orderReconciliationState(ReconciliationState value) =>
+      $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasOrderReconciliationState() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearOrderReconciliationState() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $2.Money get lineRemainingCapacity => $_getN(3);
+  @$pb.TagNumber(4)
+  set lineRemainingCapacity($2.Money value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLineRemainingCapacity() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLineRemainingCapacity() => $_clearField(4);
+  @$pb.TagNumber(4)
+  $2.Money ensureLineRemainingCapacity() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  $2.Money get orderRemainingCapacity => $_getN(4);
+  @$pb.TagNumber(5)
+  set orderRemainingCapacity($2.Money value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasOrderRemainingCapacity() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearOrderRemainingCapacity() => $_clearField(5);
+  @$pb.TagNumber(5)
+  $2.Money ensureOrderRemainingCapacity() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  ReconciliationRecord get record => $_getN(5);
+  @$pb.TagNumber(6)
+  set record(ReconciliationRecord value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasRecord() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearRecord() => $_clearField(6);
+  @$pb.TagNumber(6)
+  ReconciliationRecord ensureRecord() => $_ensure(5);
+
+  @$pb.TagNumber(7)
+  ReconciliationMatch get match => $_getN(6);
+  @$pb.TagNumber(7)
+  set match(ReconciliationMatch value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasMatch() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearMatch() => $_clearField(7);
+  @$pb.TagNumber(7)
+  ReconciliationMatch ensureMatch() => $_ensure(6);
+}
+
+class ReconciliationServiceOverrideRequest extends $pb.GeneratedMessage {
+  factory ReconciliationServiceOverrideRequest({
+    $2.CommandContext? context,
+    $core.String? workspaceId,
+    $core.String? recordId,
+    $core.String? decision,
+    $core.String? reason,
+    $core.Iterable<$core.String>? evidenceIds,
+  }) {
+    final result = ReconciliationServiceOverrideRequest._();
+    if (context != null) result.context = context;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (recordId != null) result.recordId = recordId;
+    if (decision != null) result.decision = decision;
+    if (reason != null) result.reason = reason;
+    if (evidenceIds != null) result.evidenceIds.addAll(evidenceIds);
+    return result;
+  }
+
+  ReconciliationServiceOverrideRequest._();
+
+  factory ReconciliationServiceOverrideRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceOverrideRequest()..mergeFromBuffer(data, registry);
+  factory ReconciliationServiceOverrideRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceOverrideRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReconciliationServiceOverrideRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ReconciliationServiceOverrideRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'recordId')
+    ..aOS(4, _omitFieldNames ? '' : 'decision')
+    ..aOS(5, _omitFieldNames ? '' : 'reason')
+    ..pPS(6, _omitFieldNames ? '' : 'evidenceIds')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceOverrideRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceOverrideRequest copyWith(
+          void Function(ReconciliationServiceOverrideRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ReconciliationServiceOverrideRequest))
+          as ReconciliationServiceOverrideRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReconciliationServiceOverrideRequest() / ReconciliationServiceOverrideRequest.new instead')
+  static ReconciliationServiceOverrideRequest create() =>
+      ReconciliationServiceOverrideRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ReconciliationServiceOverrideRequest._();
+  @$core.override
+  ReconciliationServiceOverrideRequest createEmptyInstance() =>
+      ReconciliationServiceOverrideRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ReconciliationServiceOverrideRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ReconciliationServiceOverrideRequest>(
+          ReconciliationServiceOverrideRequest.$_createMessage);
+  static ReconciliationServiceOverrideRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get recordId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set recordId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasRecordId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRecordId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get decision => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set decision($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasDecision() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDecision() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get reason => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set reason($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasReason() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearReason() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.String> get evidenceIds => $_getList(5);
+}
+
+class ReconciliationServiceOverrideResponse extends $pb.GeneratedMessage {
+  factory ReconciliationServiceOverrideResponse({
+    ReconciliationRecord? record,
+  }) {
+    final result = ReconciliationServiceOverrideResponse._();
+    if (record != null) result.record = record;
+    return result;
+  }
+
+  ReconciliationServiceOverrideResponse._();
+
+  factory ReconciliationServiceOverrideResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceOverrideResponse()..mergeFromBuffer(data, registry);
+  factory ReconciliationServiceOverrideResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceOverrideResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReconciliationServiceOverrideResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance:
+          ReconciliationServiceOverrideResponse.$_createMessage)
+    ..aOM<ReconciliationRecord>(1, _omitFieldNames ? '' : 'record',
+        subBuilder: ReconciliationRecord.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceOverrideResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceOverrideResponse copyWith(
+          void Function(ReconciliationServiceOverrideResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ReconciliationServiceOverrideResponse))
+          as ReconciliationServiceOverrideResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReconciliationServiceOverrideResponse() / ReconciliationServiceOverrideResponse.new instead')
+  static ReconciliationServiceOverrideResponse create() =>
+      ReconciliationServiceOverrideResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ReconciliationServiceOverrideResponse._();
+  @$core.override
+  ReconciliationServiceOverrideResponse createEmptyInstance() =>
+      ReconciliationServiceOverrideResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ReconciliationServiceOverrideResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ReconciliationServiceOverrideResponse>(
+          ReconciliationServiceOverrideResponse.$_createMessage);
+  static ReconciliationServiceOverrideResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ReconciliationRecord get record => $_getN(0);
+  @$pb.TagNumber(1)
+  set record(ReconciliationRecord value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRecord() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRecord() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ReconciliationRecord ensureRecord() => $_ensure(0);
+}
+
+class ReconciliationServiceGetRecordRequest extends $pb.GeneratedMessage {
+  factory ReconciliationServiceGetRecordRequest({
+    $core.String? workspaceId,
+    $core.String? recordId,
+  }) {
+    final result = ReconciliationServiceGetRecordRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (recordId != null) result.recordId = recordId;
+    return result;
+  }
+
+  ReconciliationServiceGetRecordRequest._();
+
+  factory ReconciliationServiceGetRecordRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceGetRecordRequest()..mergeFromBuffer(data, registry);
+  factory ReconciliationServiceGetRecordRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceGetRecordRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReconciliationServiceGetRecordRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance:
+          ReconciliationServiceGetRecordRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(2, _omitFieldNames ? '' : 'recordId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceGetRecordRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceGetRecordRequest copyWith(
+          void Function(ReconciliationServiceGetRecordRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ReconciliationServiceGetRecordRequest))
+          as ReconciliationServiceGetRecordRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReconciliationServiceGetRecordRequest() / ReconciliationServiceGetRecordRequest.new instead')
+  static ReconciliationServiceGetRecordRequest create() =>
+      ReconciliationServiceGetRecordRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ReconciliationServiceGetRecordRequest._();
+  @$core.override
+  ReconciliationServiceGetRecordRequest createEmptyInstance() =>
+      ReconciliationServiceGetRecordRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ReconciliationServiceGetRecordRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ReconciliationServiceGetRecordRequest>(
+          ReconciliationServiceGetRecordRequest.$_createMessage);
+  static ReconciliationServiceGetRecordRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get workspaceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set workspaceId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get recordId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set recordId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasRecordId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearRecordId() => $_clearField(2);
+}
+
+class ReconciliationServiceGetRecordResponse extends $pb.GeneratedMessage {
+  factory ReconciliationServiceGetRecordResponse({
+    ReconciliationRecord? record,
+    $core.Iterable<ReconciliationMatch>? matches,
+  }) {
+    final result = ReconciliationServiceGetRecordResponse._();
+    if (record != null) result.record = record;
+    if (matches != null) result.matches.addAll(matches);
+    return result;
+  }
+
+  ReconciliationServiceGetRecordResponse._();
+
+  factory ReconciliationServiceGetRecordResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceGetRecordResponse()..mergeFromBuffer(data, registry);
+  factory ReconciliationServiceGetRecordResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceGetRecordResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReconciliationServiceGetRecordResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance:
+          ReconciliationServiceGetRecordResponse.$_createMessage)
+    ..aOM<ReconciliationRecord>(1, _omitFieldNames ? '' : 'record',
+        subBuilder: ReconciliationRecord.$_createMessage)
+    ..pPM<ReconciliationMatch>(2, _omitFieldNames ? '' : 'matches',
+        subBuilder: ReconciliationMatch.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceGetRecordResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceGetRecordResponse copyWith(
+          void Function(ReconciliationServiceGetRecordResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ReconciliationServiceGetRecordResponse))
+          as ReconciliationServiceGetRecordResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReconciliationServiceGetRecordResponse() / ReconciliationServiceGetRecordResponse.new instead')
+  static ReconciliationServiceGetRecordResponse create() =>
+      ReconciliationServiceGetRecordResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ReconciliationServiceGetRecordResponse._();
+  @$core.override
+  ReconciliationServiceGetRecordResponse createEmptyInstance() =>
+      ReconciliationServiceGetRecordResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ReconciliationServiceGetRecordResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ReconciliationServiceGetRecordResponse>(
+          ReconciliationServiceGetRecordResponse.$_createMessage);
+  static ReconciliationServiceGetRecordResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ReconciliationRecord get record => $_getN(0);
+  @$pb.TagNumber(1)
+  set record(ReconciliationRecord value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRecord() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRecord() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ReconciliationRecord ensureRecord() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<ReconciliationMatch> get matches => $_getList(1);
+}
+
+class ReconciliationServiceListRecordsRequest extends $pb.GeneratedMessage {
+  factory ReconciliationServiceListRecordsRequest({
+    $core.String? workspaceId,
+    $2.Pagination? pagination,
+    ReconciliationState? reconciliationState,
+    $core.String? periodStart,
+    $core.String? periodEnd,
+  }) {
+    final result = ReconciliationServiceListRecordsRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (pagination != null) result.pagination = pagination;
+    if (reconciliationState != null)
+      result.reconciliationState = reconciliationState;
+    if (periodStart != null) result.periodStart = periodStart;
+    if (periodEnd != null) result.periodEnd = periodEnd;
+    return result;
+  }
+
+  ReconciliationServiceListRecordsRequest._();
+
+  factory ReconciliationServiceListRecordsRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceListRecordsRequest()
+        ..mergeFromBuffer(data, registry);
+  factory ReconciliationServiceListRecordsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceListRecordsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReconciliationServiceListRecordsRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance:
+          ReconciliationServiceListRecordsRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'workspaceId')
+    ..aOM<$2.Pagination>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.Pagination.$_createMessage)
+    ..aE<ReconciliationState>(3, _omitFieldNames ? '' : 'reconciliationState',
+        enumValues: ReconciliationState.values)
+    ..aOS(4, _omitFieldNames ? '' : 'periodStart')
+    ..aOS(5, _omitFieldNames ? '' : 'periodEnd')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceListRecordsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceListRecordsRequest copyWith(
+          void Function(ReconciliationServiceListRecordsRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ReconciliationServiceListRecordsRequest))
+          as ReconciliationServiceListRecordsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReconciliationServiceListRecordsRequest() / ReconciliationServiceListRecordsRequest.new instead')
+  static ReconciliationServiceListRecordsRequest create() =>
+      ReconciliationServiceListRecordsRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ReconciliationServiceListRecordsRequest._();
+  @$core.override
+  ReconciliationServiceListRecordsRequest createEmptyInstance() =>
+      ReconciliationServiceListRecordsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ReconciliationServiceListRecordsRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ReconciliationServiceListRecordsRequest>(
+          ReconciliationServiceListRecordsRequest.$_createMessage);
+  static ReconciliationServiceListRecordsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get workspaceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set workspaceId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $2.Pagination get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($2.Pagination value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.Pagination ensurePagination() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  ReconciliationState get reconciliationState => $_getN(2);
+  @$pb.TagNumber(3)
+  set reconciliationState(ReconciliationState value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasReconciliationState() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearReconciliationState() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get periodStart => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set periodStart($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPeriodStart() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPeriodStart() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get periodEnd => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set periodEnd($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPeriodEnd() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPeriodEnd() => $_clearField(5);
+}
+
+class ReconciliationServiceListRecordsResponse extends $pb.GeneratedMessage {
+  factory ReconciliationServiceListRecordsResponse({
+    $core.Iterable<ReconciliationRecord>? records,
+    $2.PaginatedResponse? pagination,
+  }) {
+    final result = ReconciliationServiceListRecordsResponse._();
+    if (records != null) result.records.addAll(records);
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  ReconciliationServiceListRecordsResponse._();
+
+  factory ReconciliationServiceListRecordsResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceListRecordsResponse()
+        ..mergeFromBuffer(data, registry);
+  factory ReconciliationServiceListRecordsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceListRecordsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReconciliationServiceListRecordsResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance:
+          ReconciliationServiceListRecordsResponse.$_createMessage)
+    ..pPM<ReconciliationRecord>(1, _omitFieldNames ? '' : 'records',
+        subBuilder: ReconciliationRecord.$_createMessage)
+    ..aOM<$2.PaginatedResponse>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.PaginatedResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceListRecordsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceListRecordsResponse copyWith(
+          void Function(ReconciliationServiceListRecordsResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ReconciliationServiceListRecordsResponse))
+          as ReconciliationServiceListRecordsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReconciliationServiceListRecordsResponse() / ReconciliationServiceListRecordsResponse.new instead')
+  static ReconciliationServiceListRecordsResponse create() =>
+      ReconciliationServiceListRecordsResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ReconciliationServiceListRecordsResponse._();
+  @$core.override
+  ReconciliationServiceListRecordsResponse createEmptyInstance() =>
+      ReconciliationServiceListRecordsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ReconciliationServiceListRecordsResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ReconciliationServiceListRecordsResponse>(
+          ReconciliationServiceListRecordsResponse.$_createMessage);
+  static ReconciliationServiceListRecordsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<ReconciliationRecord> get records => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($2.PaginatedResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse ensurePagination() => $_ensure(1);
+}
+
+class ReconciliationServiceListPendingRequest extends $pb.GeneratedMessage {
+  factory ReconciliationServiceListPendingRequest({
+    $core.String? workspaceId,
+    $2.Pagination? pagination,
+    $core.String? severity,
+    $core.String? gapType,
+    $core.String? periodStart,
+    $core.String? periodEnd,
+    $core.String? productId,
+  }) {
+    final result = ReconciliationServiceListPendingRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (pagination != null) result.pagination = pagination;
+    if (severity != null) result.severity = severity;
+    if (gapType != null) result.gapType = gapType;
+    if (periodStart != null) result.periodStart = periodStart;
+    if (periodEnd != null) result.periodEnd = periodEnd;
+    if (productId != null) result.productId = productId;
+    return result;
+  }
+
+  ReconciliationServiceListPendingRequest._();
+
+  factory ReconciliationServiceListPendingRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceListPendingRequest()
+        ..mergeFromBuffer(data, registry);
+  factory ReconciliationServiceListPendingRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceListPendingRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReconciliationServiceListPendingRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance:
+          ReconciliationServiceListPendingRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'workspaceId')
+    ..aOM<$2.Pagination>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.Pagination.$_createMessage)
+    ..aOS(3, _omitFieldNames ? '' : 'severity')
+    ..aOS(4, _omitFieldNames ? '' : 'gapType')
+    ..aOS(5, _omitFieldNames ? '' : 'periodStart')
+    ..aOS(6, _omitFieldNames ? '' : 'periodEnd')
+    ..aOS(7, _omitFieldNames ? '' : 'productId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceListPendingRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceListPendingRequest copyWith(
+          void Function(ReconciliationServiceListPendingRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ReconciliationServiceListPendingRequest))
+          as ReconciliationServiceListPendingRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReconciliationServiceListPendingRequest() / ReconciliationServiceListPendingRequest.new instead')
+  static ReconciliationServiceListPendingRequest create() =>
+      ReconciliationServiceListPendingRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ReconciliationServiceListPendingRequest._();
+  @$core.override
+  ReconciliationServiceListPendingRequest createEmptyInstance() =>
+      ReconciliationServiceListPendingRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ReconciliationServiceListPendingRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ReconciliationServiceListPendingRequest>(
+          ReconciliationServiceListPendingRequest.$_createMessage);
+  static ReconciliationServiceListPendingRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get workspaceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set workspaceId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $2.Pagination get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($2.Pagination value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.Pagination ensurePagination() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $core.String get severity => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set severity($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSeverity() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSeverity() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get gapType => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set gapType($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasGapType() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearGapType() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get periodStart => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set periodStart($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPeriodStart() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPeriodStart() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get periodEnd => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set periodEnd($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasPeriodEnd() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearPeriodEnd() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get productId => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set productId($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasProductId() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearProductId() => $_clearField(7);
+}
+
+class ReconciliationServiceListPendingResponse extends $pb.GeneratedMessage {
+  factory ReconciliationServiceListPendingResponse({
+    $core.Iterable<DataGapItem>? items,
+    $2.PaginatedResponse? pagination,
+    $core.int? missingComponentsCount,
+    $2.Money? totalUnreconciledAmount,
+    $core.int? unreconciledCount,
+  }) {
+    final result = ReconciliationServiceListPendingResponse._();
+    if (items != null) result.items.addAll(items);
+    if (pagination != null) result.pagination = pagination;
+    if (missingComponentsCount != null)
+      result.missingComponentsCount = missingComponentsCount;
+    if (totalUnreconciledAmount != null)
+      result.totalUnreconciledAmount = totalUnreconciledAmount;
+    if (unreconciledCount != null) result.unreconciledCount = unreconciledCount;
+    return result;
+  }
+
+  ReconciliationServiceListPendingResponse._();
+
+  factory ReconciliationServiceListPendingResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceListPendingResponse()
+        ..mergeFromBuffer(data, registry);
+  factory ReconciliationServiceListPendingResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReconciliationServiceListPendingResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReconciliationServiceListPendingResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance:
+          ReconciliationServiceListPendingResponse.$_createMessage)
+    ..pPM<DataGapItem>(1, _omitFieldNames ? '' : 'items',
+        subBuilder: DataGapItem.$_createMessage)
+    ..aOM<$2.PaginatedResponse>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.PaginatedResponse.$_createMessage)
+    ..aI(3, _omitFieldNames ? '' : 'missingComponentsCount')
+    ..aOM<$2.Money>(4, _omitFieldNames ? '' : 'totalUnreconciledAmount',
+        subBuilder: $2.Money.$_createMessage)
+    ..aI(5, _omitFieldNames ? '' : 'unreconciledCount')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceListPendingResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReconciliationServiceListPendingResponse copyWith(
+          void Function(ReconciliationServiceListPendingResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ReconciliationServiceListPendingResponse))
+          as ReconciliationServiceListPendingResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReconciliationServiceListPendingResponse() / ReconciliationServiceListPendingResponse.new instead')
+  static ReconciliationServiceListPendingResponse create() =>
+      ReconciliationServiceListPendingResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ReconciliationServiceListPendingResponse._();
+  @$core.override
+  ReconciliationServiceListPendingResponse createEmptyInstance() =>
+      ReconciliationServiceListPendingResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ReconciliationServiceListPendingResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ReconciliationServiceListPendingResponse>(
+          ReconciliationServiceListPendingResponse.$_createMessage);
+  static ReconciliationServiceListPendingResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<DataGapItem> get items => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($2.PaginatedResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse ensurePagination() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $core.int get missingComponentsCount => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set missingComponentsCount($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasMissingComponentsCount() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearMissingComponentsCount() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $2.Money get totalUnreconciledAmount => $_getN(3);
+  @$pb.TagNumber(4)
+  set totalUnreconciledAmount($2.Money value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTotalUnreconciledAmount() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTotalUnreconciledAmount() => $_clearField(4);
+  @$pb.TagNumber(4)
+  $2.Money ensureTotalUnreconciledAmount() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  $core.int get unreconciledCount => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set unreconciledCount($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasUnreconciledCount() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearUnreconciledCount() => $_clearField(5);
+}
+
+class EvidenceServiceSubmitRequest extends $pb.GeneratedMessage {
+  factory EvidenceServiceSubmitRequest({
+    $2.CommandContext? context,
+    $core.String? workspaceId,
+    $core.String? evidenceType,
+    $core.String? sourceProvenance,
+    $core.String? contentHash,
+    $core.String? fileUrl,
+    $core.String? payloadJson,
+    $core.Iterable<ObjectRef>? relatedObjectRefs,
+    $core.List<$core.int>? rawContent,
+  }) {
+    final result = EvidenceServiceSubmitRequest._();
+    if (context != null) result.context = context;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (evidenceType != null) result.evidenceType = evidenceType;
+    if (sourceProvenance != null) result.sourceProvenance = sourceProvenance;
+    if (contentHash != null) result.contentHash = contentHash;
+    if (fileUrl != null) result.fileUrl = fileUrl;
+    if (payloadJson != null) result.payloadJson = payloadJson;
+    if (relatedObjectRefs != null)
+      result.relatedObjectRefs.addAll(relatedObjectRefs);
+    if (rawContent != null) result.rawContent = rawContent;
+    return result;
+  }
+
+  EvidenceServiceSubmitRequest._();
+
+  factory EvidenceServiceSubmitRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EvidenceServiceSubmitRequest()..mergeFromBuffer(data, registry);
+  factory EvidenceServiceSubmitRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EvidenceServiceSubmitRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'EvidenceServiceSubmitRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: EvidenceServiceSubmitRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'evidenceType')
+    ..aOS(4, _omitFieldNames ? '' : 'sourceProvenance')
+    ..aOS(5, _omitFieldNames ? '' : 'contentHash')
+    ..aOS(6, _omitFieldNames ? '' : 'fileUrl')
+    ..aOS(7, _omitFieldNames ? '' : 'payloadJson')
+    ..pPM<ObjectRef>(8, _omitFieldNames ? '' : 'relatedObjectRefs',
+        subBuilder: ObjectRef.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        9, _omitFieldNames ? '' : 'rawContent', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EvidenceServiceSubmitRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EvidenceServiceSubmitRequest copyWith(
+          void Function(EvidenceServiceSubmitRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as EvidenceServiceSubmitRequest))
+          as EvidenceServiceSubmitRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use EvidenceServiceSubmitRequest() / EvidenceServiceSubmitRequest.new instead')
+  static EvidenceServiceSubmitRequest create() =>
+      EvidenceServiceSubmitRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      EvidenceServiceSubmitRequest._();
+  @$core.override
+  EvidenceServiceSubmitRequest createEmptyInstance() =>
+      EvidenceServiceSubmitRequest._();
+  @$core.pragma('dart2js:noInline')
+  static EvidenceServiceSubmitRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<EvidenceServiceSubmitRequest>(
+          EvidenceServiceSubmitRequest.$_createMessage);
+  static EvidenceServiceSubmitRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get evidenceType => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set evidenceType($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasEvidenceType() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearEvidenceType() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get sourceProvenance => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set sourceProvenance($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSourceProvenance() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSourceProvenance() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get contentHash => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set contentHash($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasContentHash() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearContentHash() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get fileUrl => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set fileUrl($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasFileUrl() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearFileUrl() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get payloadJson => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set payloadJson($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasPayloadJson() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearPayloadJson() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $pb.PbList<ObjectRef> get relatedObjectRefs => $_getList(7);
+
+  @$pb.TagNumber(9)
+  $core.List<$core.int> get rawContent => $_getN(8);
+  @$pb.TagNumber(9)
+  set rawContent($core.List<$core.int> value) => $_setBytes(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasRawContent() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearRawContent() => $_clearField(9);
+}
+
+class EvidenceServiceSubmitResponse extends $pb.GeneratedMessage {
+  factory EvidenceServiceSubmitResponse({
+    EvidenceObject? evidence,
+  }) {
+    final result = EvidenceServiceSubmitResponse._();
+    if (evidence != null) result.evidence = evidence;
+    return result;
+  }
+
+  EvidenceServiceSubmitResponse._();
+
+  factory EvidenceServiceSubmitResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EvidenceServiceSubmitResponse()..mergeFromBuffer(data, registry);
+  factory EvidenceServiceSubmitResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EvidenceServiceSubmitResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'EvidenceServiceSubmitResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: EvidenceServiceSubmitResponse.$_createMessage)
+    ..aOM<EvidenceObject>(1, _omitFieldNames ? '' : 'evidence',
+        subBuilder: EvidenceObject.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EvidenceServiceSubmitResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EvidenceServiceSubmitResponse copyWith(
+          void Function(EvidenceServiceSubmitResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as EvidenceServiceSubmitResponse))
+          as EvidenceServiceSubmitResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use EvidenceServiceSubmitResponse() / EvidenceServiceSubmitResponse.new instead')
+  static EvidenceServiceSubmitResponse create() =>
+      EvidenceServiceSubmitResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      EvidenceServiceSubmitResponse._();
+  @$core.override
+  EvidenceServiceSubmitResponse createEmptyInstance() =>
+      EvidenceServiceSubmitResponse._();
+  @$core.pragma('dart2js:noInline')
+  static EvidenceServiceSubmitResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<EvidenceServiceSubmitResponse>(
+          EvidenceServiceSubmitResponse.$_createMessage);
+  static EvidenceServiceSubmitResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  EvidenceObject get evidence => $_getN(0);
+  @$pb.TagNumber(1)
+  set evidence(EvidenceObject value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasEvidence() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearEvidence() => $_clearField(1);
+  @$pb.TagNumber(1)
+  EvidenceObject ensureEvidence() => $_ensure(0);
+}
+
+class EvidenceServiceGetRequest extends $pb.GeneratedMessage {
+  factory EvidenceServiceGetRequest({
+    $core.String? workspaceId,
+    $core.String? evidenceId,
+  }) {
+    final result = EvidenceServiceGetRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (evidenceId != null) result.evidenceId = evidenceId;
+    return result;
+  }
+
+  EvidenceServiceGetRequest._();
+
+  factory EvidenceServiceGetRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EvidenceServiceGetRequest()..mergeFromBuffer(data, registry);
+  factory EvidenceServiceGetRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EvidenceServiceGetRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'EvidenceServiceGetRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: EvidenceServiceGetRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(2, _omitFieldNames ? '' : 'evidenceId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EvidenceServiceGetRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EvidenceServiceGetRequest copyWith(
+          void Function(EvidenceServiceGetRequest) updates) =>
+      super.copyWith((message) => updates(message as EvidenceServiceGetRequest))
+          as EvidenceServiceGetRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use EvidenceServiceGetRequest() / EvidenceServiceGetRequest.new instead')
+  static EvidenceServiceGetRequest create() => EvidenceServiceGetRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      EvidenceServiceGetRequest._();
+  @$core.override
+  EvidenceServiceGetRequest createEmptyInstance() =>
+      EvidenceServiceGetRequest._();
+  @$core.pragma('dart2js:noInline')
+  static EvidenceServiceGetRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<EvidenceServiceGetRequest>(
+          EvidenceServiceGetRequest.$_createMessage);
+  static EvidenceServiceGetRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get workspaceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set workspaceId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get evidenceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set evidenceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasEvidenceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearEvidenceId() => $_clearField(2);
+}
+
+class EvidenceServiceGetResponse extends $pb.GeneratedMessage {
+  factory EvidenceServiceGetResponse({
+    EvidenceObject? evidence,
+  }) {
+    final result = EvidenceServiceGetResponse._();
+    if (evidence != null) result.evidence = evidence;
+    return result;
+  }
+
+  EvidenceServiceGetResponse._();
+
+  factory EvidenceServiceGetResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EvidenceServiceGetResponse()..mergeFromBuffer(data, registry);
+  factory EvidenceServiceGetResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EvidenceServiceGetResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'EvidenceServiceGetResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: EvidenceServiceGetResponse.$_createMessage)
+    ..aOM<EvidenceObject>(1, _omitFieldNames ? '' : 'evidence',
+        subBuilder: EvidenceObject.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EvidenceServiceGetResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EvidenceServiceGetResponse copyWith(
+          void Function(EvidenceServiceGetResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as EvidenceServiceGetResponse))
+          as EvidenceServiceGetResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use EvidenceServiceGetResponse() / EvidenceServiceGetResponse.new instead')
+  static EvidenceServiceGetResponse create() => EvidenceServiceGetResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      EvidenceServiceGetResponse._();
+  @$core.override
+  EvidenceServiceGetResponse createEmptyInstance() =>
+      EvidenceServiceGetResponse._();
+  @$core.pragma('dart2js:noInline')
+  static EvidenceServiceGetResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<EvidenceServiceGetResponse>(
+          EvidenceServiceGetResponse.$_createMessage);
+  static EvidenceServiceGetResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  EvidenceObject get evidence => $_getN(0);
+  @$pb.TagNumber(1)
+  set evidence(EvidenceObject value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasEvidence() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearEvidence() => $_clearField(1);
+  @$pb.TagNumber(1)
+  EvidenceObject ensureEvidence() => $_ensure(0);
+}
+
+class EvidenceServiceListRequest extends $pb.GeneratedMessage {
+  factory EvidenceServiceListRequest({
+    $core.String? workspaceId,
+    $2.Pagination? pagination,
+    $core.String? evidenceType,
+    $core.String? verificationStatus,
+  }) {
+    final result = EvidenceServiceListRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (pagination != null) result.pagination = pagination;
+    if (evidenceType != null) result.evidenceType = evidenceType;
+    if (verificationStatus != null)
+      result.verificationStatus = verificationStatus;
+    return result;
+  }
+
+  EvidenceServiceListRequest._();
+
+  factory EvidenceServiceListRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EvidenceServiceListRequest()..mergeFromBuffer(data, registry);
+  factory EvidenceServiceListRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EvidenceServiceListRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'EvidenceServiceListRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: EvidenceServiceListRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'workspaceId')
+    ..aOM<$2.Pagination>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.Pagination.$_createMessage)
+    ..aOS(3, _omitFieldNames ? '' : 'evidenceType')
+    ..aOS(4, _omitFieldNames ? '' : 'verificationStatus')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EvidenceServiceListRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EvidenceServiceListRequest copyWith(
+          void Function(EvidenceServiceListRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as EvidenceServiceListRequest))
+          as EvidenceServiceListRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use EvidenceServiceListRequest() / EvidenceServiceListRequest.new instead')
+  static EvidenceServiceListRequest create() => EvidenceServiceListRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      EvidenceServiceListRequest._();
+  @$core.override
+  EvidenceServiceListRequest createEmptyInstance() =>
+      EvidenceServiceListRequest._();
+  @$core.pragma('dart2js:noInline')
+  static EvidenceServiceListRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<EvidenceServiceListRequest>(
+          EvidenceServiceListRequest.$_createMessage);
+  static EvidenceServiceListRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get workspaceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set workspaceId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $2.Pagination get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($2.Pagination value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.Pagination ensurePagination() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $core.String get evidenceType => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set evidenceType($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasEvidenceType() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearEvidenceType() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get verificationStatus => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set verificationStatus($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasVerificationStatus() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearVerificationStatus() => $_clearField(4);
+}
+
+class EvidenceServiceListResponse extends $pb.GeneratedMessage {
+  factory EvidenceServiceListResponse({
+    $core.Iterable<EvidenceObject>? items,
+    $2.PaginatedResponse? pagination,
+  }) {
+    final result = EvidenceServiceListResponse._();
+    if (items != null) result.items.addAll(items);
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  EvidenceServiceListResponse._();
+
+  factory EvidenceServiceListResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EvidenceServiceListResponse()..mergeFromBuffer(data, registry);
+  factory EvidenceServiceListResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EvidenceServiceListResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'EvidenceServiceListResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: EvidenceServiceListResponse.$_createMessage)
+    ..pPM<EvidenceObject>(1, _omitFieldNames ? '' : 'items',
+        subBuilder: EvidenceObject.$_createMessage)
+    ..aOM<$2.PaginatedResponse>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.PaginatedResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EvidenceServiceListResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EvidenceServiceListResponse copyWith(
+          void Function(EvidenceServiceListResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as EvidenceServiceListResponse))
+          as EvidenceServiceListResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use EvidenceServiceListResponse() / EvidenceServiceListResponse.new instead')
+  static EvidenceServiceListResponse create() =>
+      EvidenceServiceListResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      EvidenceServiceListResponse._();
+  @$core.override
+  EvidenceServiceListResponse createEmptyInstance() =>
+      EvidenceServiceListResponse._();
+  @$core.pragma('dart2js:noInline')
+  static EvidenceServiceListResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<EvidenceServiceListResponse>(
+          EvidenceServiceListResponse.$_createMessage);
+  static EvidenceServiceListResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<EvidenceObject> get items => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($2.PaginatedResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse ensurePagination() => $_ensure(1);
+}
+
+class ProofServiceAssembleRequest extends $pb.GeneratedMessage {
+  factory ProofServiceAssembleRequest({
+    $2.CommandContext? context,
+    $core.String? workspaceId,
+    $core.String? claimScope,
+    $core.String? claimSummary,
+    $core.Iterable<$core.String>? supportingEvidenceIds,
+    $2.ConfidenceBand? confidence,
+    $core.String? coverageSummary,
+    $core.String? unresolvedGaps,
+  }) {
+    final result = ProofServiceAssembleRequest._();
+    if (context != null) result.context = context;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (claimScope != null) result.claimScope = claimScope;
+    if (claimSummary != null) result.claimSummary = claimSummary;
+    if (supportingEvidenceIds != null)
+      result.supportingEvidenceIds.addAll(supportingEvidenceIds);
+    if (confidence != null) result.confidence = confidence;
+    if (coverageSummary != null) result.coverageSummary = coverageSummary;
+    if (unresolvedGaps != null) result.unresolvedGaps = unresolvedGaps;
+    return result;
+  }
+
+  ProofServiceAssembleRequest._();
+
+  factory ProofServiceAssembleRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProofServiceAssembleRequest()..mergeFromBuffer(data, registry);
+  factory ProofServiceAssembleRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProofServiceAssembleRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProofServiceAssembleRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ProofServiceAssembleRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'claimScope')
+    ..aOS(4, _omitFieldNames ? '' : 'claimSummary')
+    ..pPS(5, _omitFieldNames ? '' : 'supportingEvidenceIds')
+    ..aE<$2.ConfidenceBand>(6, _omitFieldNames ? '' : 'confidence',
+        enumValues: $2.ConfidenceBand.values)
+    ..aOS(7, _omitFieldNames ? '' : 'coverageSummary')
+    ..aOS(8, _omitFieldNames ? '' : 'unresolvedGaps')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProofServiceAssembleRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProofServiceAssembleRequest copyWith(
+          void Function(ProofServiceAssembleRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as ProofServiceAssembleRequest))
+          as ProofServiceAssembleRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProofServiceAssembleRequest() / ProofServiceAssembleRequest.new instead')
+  static ProofServiceAssembleRequest create() =>
+      ProofServiceAssembleRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProofServiceAssembleRequest._();
+  @$core.override
+  ProofServiceAssembleRequest createEmptyInstance() =>
+      ProofServiceAssembleRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ProofServiceAssembleRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ProofServiceAssembleRequest>(
+          ProofServiceAssembleRequest.$_createMessage);
+  static ProofServiceAssembleRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get claimScope => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set claimScope($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasClaimScope() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearClaimScope() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get claimSummary => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set claimSummary($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasClaimSummary() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearClaimSummary() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $pb.PbList<$core.String> get supportingEvidenceIds => $_getList(4);
+
+  @$pb.TagNumber(6)
+  $2.ConfidenceBand get confidence => $_getN(5);
+  @$pb.TagNumber(6)
+  set confidence($2.ConfidenceBand value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasConfidence() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearConfidence() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get coverageSummary => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set coverageSummary($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasCoverageSummary() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearCoverageSummary() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get unresolvedGaps => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set unresolvedGaps($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasUnresolvedGaps() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearUnresolvedGaps() => $_clearField(8);
+}
+
+class ProofServiceAssembleResponse extends $pb.GeneratedMessage {
+  factory ProofServiceAssembleResponse({
+    ProofBundle? proofBundle,
+  }) {
+    final result = ProofServiceAssembleResponse._();
+    if (proofBundle != null) result.proofBundle = proofBundle;
+    return result;
+  }
+
+  ProofServiceAssembleResponse._();
+
+  factory ProofServiceAssembleResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProofServiceAssembleResponse()..mergeFromBuffer(data, registry);
+  factory ProofServiceAssembleResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProofServiceAssembleResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProofServiceAssembleResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ProofServiceAssembleResponse.$_createMessage)
+    ..aOM<ProofBundle>(1, _omitFieldNames ? '' : 'proofBundle',
+        subBuilder: ProofBundle.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProofServiceAssembleResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProofServiceAssembleResponse copyWith(
+          void Function(ProofServiceAssembleResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as ProofServiceAssembleResponse))
+          as ProofServiceAssembleResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProofServiceAssembleResponse() / ProofServiceAssembleResponse.new instead')
+  static ProofServiceAssembleResponse create() =>
+      ProofServiceAssembleResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProofServiceAssembleResponse._();
+  @$core.override
+  ProofServiceAssembleResponse createEmptyInstance() =>
+      ProofServiceAssembleResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ProofServiceAssembleResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ProofServiceAssembleResponse>(
+          ProofServiceAssembleResponse.$_createMessage);
+  static ProofServiceAssembleResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ProofBundle get proofBundle => $_getN(0);
+  @$pb.TagNumber(1)
+  set proofBundle(ProofBundle value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasProofBundle() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearProofBundle() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ProofBundle ensureProofBundle() => $_ensure(0);
+}
+
+class ProofServiceGetRequest extends $pb.GeneratedMessage {
+  factory ProofServiceGetRequest({
+    $core.String? workspaceId,
+    $core.String? proofBundleId,
+  }) {
+    final result = ProofServiceGetRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (proofBundleId != null) result.proofBundleId = proofBundleId;
+    return result;
+  }
+
+  ProofServiceGetRequest._();
+
+  factory ProofServiceGetRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProofServiceGetRequest()..mergeFromBuffer(data, registry);
+  factory ProofServiceGetRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProofServiceGetRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProofServiceGetRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ProofServiceGetRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(2, _omitFieldNames ? '' : 'proofBundleId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProofServiceGetRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProofServiceGetRequest copyWith(
+          void Function(ProofServiceGetRequest) updates) =>
+      super.copyWith((message) => updates(message as ProofServiceGetRequest))
+          as ProofServiceGetRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProofServiceGetRequest() / ProofServiceGetRequest.new instead')
+  static ProofServiceGetRequest create() => ProofServiceGetRequest._();
+  static $pb.GeneratedMessage $_createMessage() => ProofServiceGetRequest._();
+  @$core.override
+  ProofServiceGetRequest createEmptyInstance() => ProofServiceGetRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ProofServiceGetRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ProofServiceGetRequest>(
+          ProofServiceGetRequest.$_createMessage);
+  static ProofServiceGetRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get workspaceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set workspaceId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get proofBundleId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set proofBundleId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasProofBundleId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearProofBundleId() => $_clearField(2);
+}
+
+class ProofServiceGetResponse extends $pb.GeneratedMessage {
+  factory ProofServiceGetResponse({
+    ProofBundle? proofBundle,
+  }) {
+    final result = ProofServiceGetResponse._();
+    if (proofBundle != null) result.proofBundle = proofBundle;
+    return result;
+  }
+
+  ProofServiceGetResponse._();
+
+  factory ProofServiceGetResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProofServiceGetResponse()..mergeFromBuffer(data, registry);
+  factory ProofServiceGetResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProofServiceGetResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProofServiceGetResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ProofServiceGetResponse.$_createMessage)
+    ..aOM<ProofBundle>(1, _omitFieldNames ? '' : 'proofBundle',
+        subBuilder: ProofBundle.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProofServiceGetResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProofServiceGetResponse copyWith(
+          void Function(ProofServiceGetResponse) updates) =>
+      super.copyWith((message) => updates(message as ProofServiceGetResponse))
+          as ProofServiceGetResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProofServiceGetResponse() / ProofServiceGetResponse.new instead')
+  static ProofServiceGetResponse create() => ProofServiceGetResponse._();
+  static $pb.GeneratedMessage $_createMessage() => ProofServiceGetResponse._();
+  @$core.override
+  ProofServiceGetResponse createEmptyInstance() => ProofServiceGetResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ProofServiceGetResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ProofServiceGetResponse>(
+          ProofServiceGetResponse.$_createMessage);
+  static ProofServiceGetResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ProofBundle get proofBundle => $_getN(0);
+  @$pb.TagNumber(1)
+  set proofBundle(ProofBundle value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasProofBundle() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearProofBundle() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ProofBundle ensureProofBundle() => $_ensure(0);
+}
+
+class ProofServiceListRequest extends $pb.GeneratedMessage {
+  factory ProofServiceListRequest({
+    $core.String? workspaceId,
+    $2.Pagination? pagination,
+    $core.String? claimScope,
+  }) {
+    final result = ProofServiceListRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (pagination != null) result.pagination = pagination;
+    if (claimScope != null) result.claimScope = claimScope;
+    return result;
+  }
+
+  ProofServiceListRequest._();
+
+  factory ProofServiceListRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProofServiceListRequest()..mergeFromBuffer(data, registry);
+  factory ProofServiceListRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProofServiceListRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProofServiceListRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ProofServiceListRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'workspaceId')
+    ..aOM<$2.Pagination>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.Pagination.$_createMessage)
+    ..aOS(3, _omitFieldNames ? '' : 'claimScope')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProofServiceListRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProofServiceListRequest copyWith(
+          void Function(ProofServiceListRequest) updates) =>
+      super.copyWith((message) => updates(message as ProofServiceListRequest))
+          as ProofServiceListRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProofServiceListRequest() / ProofServiceListRequest.new instead')
+  static ProofServiceListRequest create() => ProofServiceListRequest._();
+  static $pb.GeneratedMessage $_createMessage() => ProofServiceListRequest._();
+  @$core.override
+  ProofServiceListRequest createEmptyInstance() => ProofServiceListRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ProofServiceListRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ProofServiceListRequest>(
+          ProofServiceListRequest.$_createMessage);
+  static ProofServiceListRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get workspaceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set workspaceId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $2.Pagination get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($2.Pagination value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.Pagination ensurePagination() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $core.String get claimScope => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set claimScope($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasClaimScope() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearClaimScope() => $_clearField(3);
+}
+
+class ProofServiceListResponse extends $pb.GeneratedMessage {
+  factory ProofServiceListResponse({
+    $core.Iterable<ProofBundle>? proofBundles,
+    $2.PaginatedResponse? pagination,
+  }) {
+    final result = ProofServiceListResponse._();
+    if (proofBundles != null) result.proofBundles.addAll(proofBundles);
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  ProofServiceListResponse._();
+
+  factory ProofServiceListResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProofServiceListResponse()..mergeFromBuffer(data, registry);
+  factory ProofServiceListResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProofServiceListResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProofServiceListResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ProofServiceListResponse.$_createMessage)
+    ..pPM<ProofBundle>(1, _omitFieldNames ? '' : 'proofBundles',
+        subBuilder: ProofBundle.$_createMessage)
+    ..aOM<$2.PaginatedResponse>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.PaginatedResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProofServiceListResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProofServiceListResponse copyWith(
+          void Function(ProofServiceListResponse) updates) =>
+      super.copyWith((message) => updates(message as ProofServiceListResponse))
+          as ProofServiceListResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProofServiceListResponse() / ProofServiceListResponse.new instead')
+  static ProofServiceListResponse create() => ProofServiceListResponse._();
+  static $pb.GeneratedMessage $_createMessage() => ProofServiceListResponse._();
+  @$core.override
+  ProofServiceListResponse createEmptyInstance() =>
+      ProofServiceListResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ProofServiceListResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ProofServiceListResponse>(
+          ProofServiceListResponse.$_createMessage);
+  static ProofServiceListResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<ProofBundle> get proofBundles => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($2.PaginatedResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse ensurePagination() => $_ensure(1);
 }
 
 const $core.bool _omitFieldNames =

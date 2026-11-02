@@ -1,0 +1,108 @@
+{
+  "task_id": "P1-04",
+  "phase": "P1",
+  "slice": "p1-04",
+  "title": "Reconciliation, evidence và repair queue",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "e32bd06",
+  "feature_refs": [
+    "docs/02_features/finance/operating_ledger.md",
+    "docs/02_features/platform/home_decision_engine.md",
+    "docs/04_contracts/financial_computation_contract.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_behavior_contracts.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/error_catalog.md"
+  ],
+  "requirement_ids": [
+    "M19-001",
+    "M19-005",
+    "M19-006",
+    "M19-007",
+    "M01-002",
+    "M01-004",
+    "DB-C-001",
+    "DB-H-001"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_finance_reconciliation.md",
+    "docs/03_screens/web/screen_web_finance_evidence.md",
+    "docs/03_screens/web/screen_web_finance_profit_dashboard.md"
+  ],
+  "source_hashes": {
+    "infra/migrations/00008_p1_04_reconciliation_records_matches_proof_bundles.sql": "eb438333f67cb7a66a0e433ad4f490709a4466eebaa15a70f769ac65cc1e627f",
+    "protos/creativanta/finance/v1/finance.proto": "d652538a01f774ff01678d455ebc24bf55204a8f4c7e17a03782bcc848945026",
+    "apps/api/internal/finance/model.go": "2101c3e4565500cb3a97e2d39986e13a154e6b4a83e31415aec36109cd43b809",
+    "apps/api/internal/finance/store.go": "a88bc60b1726f8a5e00eb1b0765620c637010db465bc1178c0927ac786e86b6d",
+    "apps/api/internal/finance/service.go": "eda69cd60babd87384a3db72409351cf9508e2a7e5b9e49bbb2a319abef06f74",
+    "apps/api/internal/finance/handler.go": "e8729e00718fb998ae8faa73a45f966972fd9fdf246510d29bf593135b03ba8e",
+    "apps/api/internal/home/service.go": "6cad8940a3f3224f6585ea70c7260037176904dc5b43a2e640f96d115bd750ee",
+    "apps/api/internal/migrate/migrator_test.go": "388f5a923d2532fe02126bc827b6e72301b0c592a359b0350a6704a0745467af",
+    "apps/api/internal/finance/reconciliation_p1_04_test.go": "afd6642057b4963983299d22fb7d5e963f7037d720b5b552d1a8c0ccc4d803ab"
+  },
+  "scope_items": [
+    "Database Migration 00008: Added 3 PostgreSQL 17 tables (reconciliation_records, proof_bundles, reconciliation_matches) plus orders.matched_amount with full Row Level Security (ENABLE/FORCE RLS), tenant isolation policies, admin ops scope, strict foreign keys, and exact decimal types (NUMERIC(18,6)).",
+    "Protobuf Contracts & Multi-Target Generation: Defined 3 canonical services (ReconciliationService, EvidenceService, ProofService) with 13 RPCs. Compiled and verified cleanly across all 4 targets (Go, Connect-Go, TypeScript, Dart) with zero codegen drift.",
+    "Acceptance Target 1: Concurrent partial match cannot overallocate. AtomicMatch enforces settlement line remaining capacity and order capacity in both MemoryStore and PostgresStore (SELECT ... FOR UPDATE). Concurrently tested with 20 parallel threads under -race without data races or over-allocation.",
+    "Acceptance Target 2: Evidence modification denied. Content fields and deletion are strictly immutable (RULE-M19-005) via both PostgreSQL trigger protect_evidence_content() and Go store/service layers. SHA-512 content hashes are verified on submission.",
+    "Acceptance Target 3: Finance gaps do not leak to Viewer. Repair Queue / Data Gaps (ListPendingGaps), ReconciliationService.ListPending, Home Decision Engine (GetMobileHome), and metric drilldown (GetWhyThisNumber) strictly redact financial data, decision cards, and verified totals when queried by RoleViewer.",
+    "Proof Bundles: Claim assembly with verified supporting evidence and dynamic confidence band evaluation (high, medium, low).",
+    "Concurrency & Race Safety: All financial calculations and store operations pass -race test suite cleanly with zero data races."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestConcurrentPartialMatchCannotOverallocate and TestAsymmetricMatchCapacity pass with 100% clean race checks.",
+    "Acceptance Target 2 Verified: TestEvidenceModificationDenied confirms content mutation and deletion are rejected with ErrEvidenceImmutable, and SHA-512 verification functions correctly.",
+    "Acceptance Target 3 Verified: TestFinanceGapsDoNotLeakToViewer confirms Viewer cannot access finance gaps, verified revenue, or finance decision cards.",
+    "Proof Bundle Assembly Verified: TestProofBundleAssemblyAndConfidence confirms dynamic confidence band assignment and strict evidence ID verification.",
+    "Migration 00008 Verified: apps/api/internal/migrate/migrator_test.go verifies up/down transactional migration cleanly.",
+    "ConnectRPC Handlers Verified: ReconciliationServiceHandler, EvidenceServiceHandler, and ProofServiceHandler compile and bind cleanly with RBAC checks."
+  ],
+  "rpc_contracts": [
+    "ReconciliationService/Queue",
+    "ReconciliationService/Match",
+    "ReconciliationService/ManualMatch",
+    "ReconciliationService/Override",
+    "ReconciliationService/GetRecord",
+    "ReconciliationService/ListRecords",
+    "ReconciliationService/ListPending",
+    "EvidenceService/Submit",
+    "EvidenceService/Get",
+    "EvidenceService/List",
+    "ProofService/Assemble",
+    "ProofService/Get",
+    "ProofService/List"
+  ],
+  "migration_files": [
+    "infra/migrations/00008_p1_04_reconciliation_records_matches_proof_bundles.sql"
+  ],
+  "permission_keys": [
+    "reconciliation:manage",
+    "reconciliation:override",
+    "reconciliation:read",
+    "evidence:submit",
+    "evidence:read",
+    "proof_bundle:assemble",
+    "proof_bundle:read"
+  ],
+  "event_types": [
+    "reconciliation.batch_queued",
+    "reconciliation.matched",
+    "reconciliation.overridden",
+    "evidence.submitted",
+    "proof_bundle.assembled"
+  ],
+  "evidence_files": [
+    "build/phase-P1/p1-04/evidence/01-check-d0.log",
+    "build/phase-P1/p1-04/evidence/02-check-proto.log",
+    "build/phase-P1/p1-04/evidence/03-check-go.log",
+    "build/phase-P1/p1-04/evidence/04-go-test-race-reconciliation.log",
+    "build/phase-P1/p1-04/evidence/05-go-test-all.log",
+    "build/phase-P1/p1-04/evidence/06-migrator-test.log",
+    "build/phase-P1/p1-04/evidence/07-check-node.log",
+    "build/phase-P1/p1-04/evidence/08-check-flutter.log"
+  ]
+}

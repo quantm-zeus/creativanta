@@ -1,0 +1,10 @@
+=== RUN   TestConcurrentPartialMatchCannotOverallocate
+--- PASS: TestConcurrentPartialMatchCannotOverallocate (0.00s)
+=== RUN   TestEvidenceModificationDenied
+--- PASS: TestEvidenceModificationDenied (0.00s)
+=== RUN   TestFinanceGapsDoNotLeakToViewer
+--- PASS: TestFinanceGapsDoNotLeakToViewer (0.00s)
+=== RUN   TestProofBundleAssemblyAndConfidence
+--- PASS: TestProofBundleAssemblyAndConfidence (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/finance	(cached)

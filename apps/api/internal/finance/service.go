@@ -2,10 +2,15 @@ package finance
 
 import (
 	"context"
+	"crypto/sha512"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 )
 
@@ -651,4 +656,339 @@ func mapCostTypeToComponent(costType string) string {
 	default:
 		return ComponentOther
 	}
+}
+
+// ----------------------------------------------------------------------------
+// Service: Reconciliation & Matching (M19 / P1-04)
+// ----------------------------------------------------------------------------
+
+func (s *Service) QueueReconciliationBatch(ctx context.Context, r *ReconciliationRecord) (*ReconciliationRecord, error) {
+	if r.WorkspaceID == "" {
+		return nil, ErrMissingTenant
+	}
+	if r.ReconciliationState == "" {
+		r.ReconciliationState = ReconciliationImportedOnly
+	}
+	if err := s.store.CreateReconciliationRecord(ctx, r); err != nil {
+		return nil, err
+	}
+
+	if s.eventSink != nil {
+		payload, _ := json.Marshal(map[string]any{
+			"record_id":    r.RecordID,
+			"workspace_id": r.WorkspaceID,
+			"scope_type":   r.ScopeType,
+		})
+		_ = s.eventSink.Emit(ctx, OutboxEvent{
+			EventID:       newUUID(),
+			EventType:     "reconciliation.batch_queued",
+			AggregateType: "reconciliation_record",
+			AggregateID:   r.RecordID,
+			WorkspaceID:   r.WorkspaceID,
+			PayloadJSON:   payload,
+			CreatedAt:     s.clock(),
+		})
+	}
+	return r, nil
+}
+
+func (s *Service) Match(
+	ctx context.Context,
+	workspaceID, settlementID, lineID, orderID, recordID string,
+	allocAmount tenantdb.ExactDecimal,
+) (*SettlementLine, *Order, *ReconciliationMatch, error) {
+	if workspaceID == "" {
+		return nil, nil, nil, ErrMissingTenant
+	}
+	line, order, match, err := s.store.AtomicMatch(ctx, workspaceID, settlementID, lineID, orderID, recordID, allocAmount)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	if s.eventSink != nil {
+		payload, _ := json.Marshal(map[string]any{
+			"match_id":         match.MatchID,
+			"workspace_id":     workspaceID,
+			"line_id":          lineID,
+			"order_id":         orderID,
+			"allocated_amount": allocAmount.String(),
+			"record_id":        recordID,
+		})
+		_ = s.eventSink.Emit(ctx, OutboxEvent{
+			EventID:       newUUID(),
+			EventType:     "reconciliation.matched",
+			AggregateType: "reconciliation_match",
+			AggregateID:   match.MatchID,
+			WorkspaceID:   workspaceID,
+			PayloadJSON:   payload,
+			CreatedAt:     s.clock(),
+		})
+	}
+	return line, order, match, nil
+}
+
+func (s *Service) ManualMatch(
+	ctx context.Context,
+	workspaceID, settlementID, lineID, orderID, recordID string,
+	allocAmount tenantdb.ExactDecimal,
+	reason string,
+	actorID string,
+) (*SettlementLine, *Order, *ReconciliationMatch, error) {
+	line, order, match, err := s.Match(ctx, workspaceID, settlementID, lineID, orderID, recordID, allocAmount)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if recordID != "" {
+		rec, getErr := s.store.GetReconciliationRecord(ctx, workspaceID, recordID)
+		if getErr == nil && rec != nil {
+			rec.OverrideReason = reason
+			rec.OverrideBy = actorID
+			now := s.clock()
+			rec.OverrideAt = &now
+			rec.ReconciliationState = ReconciliationManuallyOverridden
+			_ = s.store.UpdateReconciliationRecord(ctx, rec)
+		}
+	}
+	return line, order, match, nil
+}
+
+func (s *Service) OverrideReconciliation(
+	ctx context.Context,
+	workspaceID, recordID, decision, reason, actorID string,
+	evidenceIDs []string,
+) (*ReconciliationRecord, error) {
+	if workspaceID == "" {
+		return nil, ErrMissingTenant
+	}
+	rec, err := s.store.GetReconciliationRecord(ctx, workspaceID, recordID)
+	if err != nil {
+		return nil, err
+	}
+
+	now := s.clock()
+	rec.OverrideReason = reason
+	rec.OverrideBy = actorID
+	rec.OverrideAt = &now
+	rec.ReconciliationState = ReconciliationManuallyOverridden
+	rec.UpdatedAt = now
+
+	if err := s.store.UpdateReconciliationRecord(ctx, rec); err != nil {
+		return nil, err
+	}
+
+	if s.eventSink != nil {
+		payload, _ := json.Marshal(map[string]any{
+			"record_id":    recordID,
+			"workspace_id": workspaceID,
+			"decision":     decision,
+			"reason":       reason,
+			"override_by":  actorID,
+		})
+		_ = s.eventSink.Emit(ctx, OutboxEvent{
+			EventID:       newUUID(),
+			EventType:     "reconciliation.overridden",
+			AggregateType: "reconciliation_record",
+			AggregateID:   recordID,
+			WorkspaceID:   workspaceID,
+			PayloadJSON:   payload,
+			CreatedAt:     s.clock(),
+		})
+	}
+	return rec, nil
+}
+
+func (s *Service) GetReconciliationRecord(ctx context.Context, workspaceID, recordID string) (*ReconciliationRecord, []ReconciliationMatch, error) {
+	if workspaceID == "" {
+		return nil, nil, ErrMissingTenant
+	}
+	rec, err := s.store.GetReconciliationRecord(ctx, workspaceID, recordID)
+	if err != nil {
+		return nil, nil, err
+	}
+	matches, err := s.store.ListReconciliationMatches(ctx, workspaceID, recordID)
+	if err != nil {
+		return nil, nil, err
+	}
+	return rec, matches, nil
+}
+
+func (s *Service) ListReconciliationRecords(ctx context.Context, workspaceID string, filter ReconciliationFilter, limit, offset int) ([]ReconciliationRecord, int64, error) {
+	if workspaceID == "" {
+		return nil, 0, ErrMissingTenant
+	}
+	return s.store.ListReconciliationRecords(ctx, workspaceID, filter, limit, offset)
+}
+
+func (s *Service) ListPendingGaps(
+	ctx context.Context,
+	workspaceID string,
+	callerRole string,
+	filter DataGapFilter,
+	limit, offset int,
+) ([]DataGapItem, int64, int32, tenantdb.ExactDecimal, int32, error) {
+	if workspaceID == "" {
+		return nil, 0, 0, tenantdb.ZeroDecimal(), 0, ErrMissingTenant
+	}
+
+	// CRITICAL ACCEPTANCE TARGET: Finance gaps do not leak to Viewer
+	if callerRole == "viewer" || callerRole == rbac.RoleViewer {
+		return []DataGapItem{}, 0, 0, tenantdb.ZeroDecimal(), 0, nil
+	}
+
+	items, total, err := s.store.ListDataGaps(ctx, workspaceID, filter, limit, offset)
+	if err != nil {
+		return nil, 0, 0, tenantdb.ZeroDecimal(), 0, err
+	}
+
+	// Calculate overall unreconciled amount and counts
+	unreconciledAmount := tenantdb.ZeroDecimal()
+	unreconciledCount := 0
+	for _, item := range items {
+		if item.GapType == "unreconciled_settlement" {
+			unreconciledCount++
+			unreconciledAmount, _ = unreconciledAmount.Add(item.MonetaryAmount)
+		}
+	}
+
+	return items, total, int32(len(s.missingCOGSOrders)), unreconciledAmount, int32(unreconciledCount), nil
+}
+
+// ----------------------------------------------------------------------------
+// Service: Evidence Objects (§11.4 & RULE-M19-005)
+// ----------------------------------------------------------------------------
+
+func (s *Service) SubmitEvidence(ctx context.Context, e *EvidenceObject, rawContent []byte) (*EvidenceObject, error) {
+	if e.WorkspaceID == "" {
+		return nil, ErrMissingTenant
+	}
+
+	// Compute SHA-512 content hash if raw content is provided
+	if len(rawContent) > 0 {
+		hashArr := sha512.Sum512(rawContent)
+		computedHash := hex.EncodeToString(hashArr[:])
+		if e.ContentHash != "" && !strings.EqualFold(e.ContentHash, computedHash) {
+			return nil, errors.New("finance: content_hash does not match computed SHA-512")
+		}
+		e.ContentHash = computedHash
+	}
+
+	if e.ContentHash == "" {
+		return nil, errors.New("finance: content_hash is required for evidence")
+	}
+
+	if e.VerificationStatus == "" {
+		e.VerificationStatus = VerificationStatusPending
+	}
+	if e.CollectedAt.IsZero() {
+		e.CollectedAt = s.clock()
+	}
+
+	if err := s.store.CreateEvidence(ctx, e); err != nil {
+		return nil, err
+	}
+
+	if s.eventSink != nil {
+		payload, _ := json.Marshal(map[string]any{
+			"evidence_id":       e.EvidenceID,
+			"workspace_id":      e.WorkspaceID,
+			"evidence_type":     e.EvidenceType,
+			"source_provenance": e.SourceProvenance,
+			"content_hash":      e.ContentHash,
+		})
+		_ = s.eventSink.Emit(ctx, OutboxEvent{
+			EventID:       newUUID(),
+			EventType:     "evidence.submitted",
+			AggregateType: "evidence_object",
+			AggregateID:   e.EvidenceID,
+			WorkspaceID:   e.WorkspaceID,
+			PayloadJSON:   payload,
+			CreatedAt:     s.clock(),
+		})
+	}
+
+	return e, nil
+}
+
+func (s *Service) GetEvidence(ctx context.Context, workspaceID, evidenceID string) (*EvidenceObject, error) {
+	if workspaceID == "" {
+		return nil, ErrMissingTenant
+	}
+	return s.store.GetEvidence(ctx, workspaceID, evidenceID)
+}
+
+func (s *Service) ListEvidence(ctx context.Context, workspaceID string, filter EvidenceFilter, limit, offset int) ([]EvidenceObject, int64, error) {
+	if workspaceID == "" {
+		return nil, 0, ErrMissingTenant
+	}
+	return s.store.ListEvidence(ctx, workspaceID, filter, limit, offset)
+}
+
+// ----------------------------------------------------------------------------
+// Service: Proof Bundles (§11.5 & RULE-M19-006)
+// ----------------------------------------------------------------------------
+
+func (s *Service) AssembleProofBundle(ctx context.Context, pb *ProofBundle) (*ProofBundle, error) {
+	if pb.WorkspaceID == "" {
+		return nil, ErrMissingTenant
+	}
+
+	// Verify all supporting evidence exists
+	allVerified := true
+	for _, evID := range pb.SupportingEvidenceIDs {
+		ev, err := s.store.GetEvidence(ctx, pb.WorkspaceID, evID)
+		if err != nil {
+			return nil, fmt.Errorf("supporting evidence %s not found: %w", evID, err)
+		}
+		if ev.VerificationStatus != VerificationStatusVerified {
+			allVerified = false
+		}
+	}
+
+	if pb.Confidence == "" {
+		if len(pb.SupportingEvidenceIDs) == 0 {
+			pb.Confidence = ConfidenceLow
+		} else if allVerified {
+			pb.Confidence = ConfidenceHigh
+		} else {
+			pb.Confidence = ConfidenceMedium
+		}
+	}
+
+	if err := s.store.CreateProofBundle(ctx, pb); err != nil {
+		return nil, err
+	}
+
+	if s.eventSink != nil {
+		payload, _ := json.Marshal(map[string]any{
+			"proof_bundle_id": pb.ProofBundleID,
+			"workspace_id":    pb.WorkspaceID,
+			"claim_scope":     pb.ClaimScope,
+			"confidence":      pb.Confidence,
+		})
+		_ = s.eventSink.Emit(ctx, OutboxEvent{
+			EventID:       newUUID(),
+			EventType:     "proof_bundle.assembled",
+			AggregateType: "proof_bundle",
+			AggregateID:   pb.ProofBundleID,
+			WorkspaceID:   pb.WorkspaceID,
+			PayloadJSON:   payload,
+			CreatedAt:     s.clock(),
+		})
+	}
+
+	return pb, nil
+}
+
+func (s *Service) GetProofBundle(ctx context.Context, workspaceID, bundleID string) (*ProofBundle, error) {
+	if workspaceID == "" {
+		return nil, ErrMissingTenant
+	}
+	return s.store.GetProofBundle(ctx, workspaceID, bundleID)
+}
+
+func (s *Service) ListProofBundles(ctx context.Context, workspaceID string, filter ProofBundleFilter, limit, offset int) ([]ProofBundle, int64, error) {
+	if workspaceID == "" {
+		return nil, 0, ErrMissingTenant
+	}
+	return s.store.ListProofBundles(ctx, workspaceID, filter, limit, offset)
 }

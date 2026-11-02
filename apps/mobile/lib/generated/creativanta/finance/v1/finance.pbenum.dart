@@ -183,5 +183,39 @@ class CostState extends $pb.ProtobufEnum {
   const CostState._(super.value, super.name);
 }
 
+/// Verification status for evidence objects per DB Schema §3.
+class VerificationStatus extends $pb.ProtobufEnum {
+  static const VerificationStatus VERIFICATION_STATUS_UNSPECIFIED =
+      VerificationStatus._(
+          0, _omitEnumNames ? '' : 'VERIFICATION_STATUS_UNSPECIFIED');
+  static const VerificationStatus VERIFICATION_STATUS_PENDING =
+      VerificationStatus._(
+          1, _omitEnumNames ? '' : 'VERIFICATION_STATUS_PENDING');
+  static const VerificationStatus VERIFICATION_STATUS_VERIFIED =
+      VerificationStatus._(
+          2, _omitEnumNames ? '' : 'VERIFICATION_STATUS_VERIFIED');
+  static const VerificationStatus VERIFICATION_STATUS_RE_VERIFY =
+      VerificationStatus._(
+          3, _omitEnumNames ? '' : 'VERIFICATION_STATUS_RE_VERIFY');
+  static const VerificationStatus VERIFICATION_STATUS_FAILED =
+      VerificationStatus._(
+          4, _omitEnumNames ? '' : 'VERIFICATION_STATUS_FAILED');
+
+  static const $core.List<VerificationStatus> values = <VerificationStatus>[
+    VERIFICATION_STATUS_UNSPECIFIED,
+    VERIFICATION_STATUS_PENDING,
+    VERIFICATION_STATUS_VERIFIED,
+    VERIFICATION_STATUS_RE_VERIFY,
+    VERIFICATION_STATUS_FAILED,
+  ];
+
+  static final $core.List<VerificationStatus?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 4);
+  static VerificationStatus? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const VerificationStatus._(super.value, super.name);
+}
+
 const $core.bool _omitEnumNames =
     $core.bool.fromEnvironment('protobuf.omit_enum_names');
