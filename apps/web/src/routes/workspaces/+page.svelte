@@ -67,16 +67,22 @@
       </p>
     </div>
 
-    <!-- Create Workspace Button (Disabled in P0-03) -->
+    <!-- Team & RBAC Link + Create Workspace Button -->
     <div class="flex items-center gap-2">
+      <a
+        href="/settings/team"
+        class="inline-flex items-center gap-1.5 rounded-lg border border-[#274333] bg-[#ffffff] px-3 py-2 text-xs font-semibold text-[#274333] hover:bg-[#eef3f0] transition-colors"
+      >
+        <span>Team &amp; Vai trò (W115/W116)</span>
+      </a>
       <button
         type="button"
         disabled
-        title="Tạo workspace mới yêu cầu backend P0-04 (WorkspaceService/Create)"
+        title="Endpoint WorkspaceService/Create chưa được gắn kết (unmounted)"
         class="inline-flex items-center gap-1.5 rounded-lg border border-[#e7e2d7] bg-[#f4f0e8] px-3 py-2 text-xs font-semibold text-[#8a968c] cursor-not-allowed"
       >
         <span>+ Tạo mới</span>
-        <span class="text-[10px] font-mono">(Chờ P0-04)</span>
+        <span class="text-[10px] font-mono">(Unmounted)</span>
       </button>
     </div>
   </div>

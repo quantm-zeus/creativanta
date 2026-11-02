@@ -2,6 +2,12 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createAuthStore } from './store';
 import { CANONICAL_OPERATOR_MODES, type WorkspaceSummary } from './types';
 import { resetClerkInstance, type ClerkBrowserInstance } from './clerk';
+import {
+  CANONICAL_WORKSPACE_ROLES,
+  canModifyMemberInUI,
+  reconcileRevokedWorkspaceSession,
+  assertSafeClientProjection
+} from './rbac';
 
 describe('P0-03 Web User-Facing Identity & Auth Store', () => {
   let mockClerk: ClerkBrowserInstance;
@@ -293,6 +299,93 @@ describe('P0-03 Web User-Facing Identity & Auth Store', () => {
       store.setOperatorMode('agency_mcn');
       store.subscribe((val) => (current = val))();
       expect(current.activeMode).toBe('agency_mcn');
+    });
+  });
+
+  describe('6. P0-04 RBAC, Last-Owner Protection, Revocation & Private Projections', () => {
+    it('defines all 7 canonical workspace roles from rbac_permission_matrix.md §1', () => {
+      expect(CANONICAL_WORKSPACE_ROLES).toHaveLength(7);
+      expect(CANONICAL_WORKSPACE_ROLES.map((r) => r.role)).toEqual([
+        'owner',
+        'admin',
+        'manager',
+        'editor',
+        'contributor',
+        'viewer',
+        'external'
+      ]);
+    });
+
+    it('protects the last workspace owner and prevents self/privilege escalation in UI', () => {
+      // Owner cannot demote/remove self when last owner
+      const selfOwner = canModifyMemberInUI({
+        actorRole: 'owner',
+        actorUserId: 'u-1',
+        targetUserId: 'u-1',
+        targetRole: 'owner',
+        activeOwnerCount: 1
+      });
+      expect(selfOwner.canChangeRole).toBe(false);
+      expect(selfOwner.canRemove).toBe(false);
+      expect(selfOwner.reason).toContain('Chủ sở hữu duy nhất');
+
+      // Admin cannot modify Owner
+      const adminOnOwner = canModifyMemberInUI({
+        actorRole: 'admin',
+        actorUserId: 'u-admin',
+        targetUserId: 'u-owner',
+        targetRole: 'owner',
+        activeOwnerCount: 1
+      });
+      expect(adminOnOwner.canChangeRole).toBe(false);
+      expect(adminOnOwner.canRemove).toBe(false);
+      expect(adminOnOwner.reason).toContain('Quản trị viên không thể');
+
+      // Admin can modify Editor
+      const adminOnEditor = canModifyMemberInUI({
+        actorRole: 'admin',
+        actorUserId: 'u-admin',
+        targetUserId: 'u-editor',
+        targetRole: 'editor',
+        activeOwnerCount: 1
+      });
+      expect(adminOnEditor.canChangeRole).toBe(true);
+      expect(adminOnEditor.canRemove).toBe(true);
+    });
+
+    it('enforces member revocation on active workspace (EC-AUTH-003)', () => {
+      const revokedRes = reconcileRevokedWorkspaceSession(
+        mockWorkspaces,
+        'ws-editor-2',
+        'ws-editor-2'
+      );
+      expect(revokedRes.remainingWorkspaces.map((w) => w.id)).toEqual(['ws-owner-1', 'ws-viewer-3']);
+      expect(revokedRes.nextActiveWorkspace).toBeNull();
+      expect(revokedRes.redirectPath).toBe('/workspaces');
+    });
+
+    it('rejects private notes and secret fields in client projections', () => {
+      expect(() =>
+        assertSafeClientProjection({
+          workspace_id: 'ws-1',
+          name: 'Safe Workspace'
+        })
+      ).not.toThrow();
+
+      expect(() =>
+        assertSafeClientProjection({
+          connected_account_id: 'ca-1',
+          access_token_encrypted: 'leaked_bytes'
+        })
+      ).toThrow(/Forbidden secret\/private key/);
+
+      expect(() =>
+        assertSafeClientProjection({
+          message_id: 'msg-1',
+          body: 'Confidential internal triage',
+          is_internal_note: true
+        })
+      ).toThrow(/Forbidden internal support note/);
     });
   });
 });
