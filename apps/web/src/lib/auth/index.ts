@@ -5,3 +5,4 @@
 export * from './types';
 export * from './clerk';
 export * from './store';
+export * from './rbac';
