@@ -57,7 +57,7 @@
     "apps/api/internal/rbac/phase_exposure_test.go": "08acce6050b922074b66a9ae9fba02fd3f22881818200e4543174d5ae0817abb",
     "apps/api/internal/serviceidentity/serviceidentity_postgres_test.go": "79fbfcbc2d1ac623931f025774822aa7bc487171076868ecf73cc1cbf2808f1d",
     "apps/api/internal/serviceidentity/store.go": "bfab5db45d00b470fe565732fc5b5f03b12efa77e1c31a755e32c6ea84f2c1bd",
-    "infra/migrations/00001_p0_04_tenant_schema_rls_and_grants.sql": "680a3a1755ac4bc1a9d3e7f557b6728dbb3e13cdb6f1653e55d4a976ec029dc8"
+    "infra/migrations/00001_p0_04_tenant_schema_rls_and_grants.sql": "b2f4c41ab41c013d19f260a450982229bc4ef7f159d4f334cf56c6706a28a1e6"
   },
   "scope_items": [
     "Service Identity Subsystem (apps/api/internal/serviceidentity): Complete implementation of machine-to-machine service identity and API key lifecycle under PRD §24 (public API) and database_schema §api_keys. Includes 256-bit cryptographically secure key generation with crk_live_/crk_test_ prefixes, SHA-256 one-way hashing, tier-gated key count caps (Starter=3, Pro=10, Business=25, Enterprise=custom), tier capability restriction (Starter read-only), 90-day auto-expiry with 75-day warning (RULE-S24-004), 24-hour dual-valid rotation grace period (EC-S24-001), immediate revocation, sliding-window rate limiting (100 read/min, 30 write/min, 1000 IP/min per RULE-S24-002, EC-S24-002) with X-RateLimit headers and 429 Retry-After calculation, and daily request metering into api_usage_daily (RULE-S24-005).",
