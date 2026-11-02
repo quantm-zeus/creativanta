@@ -25,6 +25,7 @@ var allowedModules = map[string]bool{
 	"S26":  true,
 	"M13":  true, // Phase P1: Product Hub / Inventory / Order Truth
 	"M19":  true, // Phase P1-03: Operating Ledger / Profit / Costs / Settlements (M19)
+	"M02":  true, // Phase P2: Trend Fusion Radar (M02)
 }
 
 // TestNoFuturePhaseRPCExposed satisfies Acceptance Target:

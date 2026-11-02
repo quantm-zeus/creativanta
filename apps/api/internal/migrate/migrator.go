@@ -676,6 +676,22 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 		requiredRLSTables = []string{
 			"home_dashboard_config",
 		}
+	case 10:
+		requiredFragments = []requiredFragment{
+			{"trends strength_score column", "ALTER TABLE trends ADD COLUMN IF NOT EXISTS strength_score"},
+			{"watchlists table", "CREATE TABLE IF NOT EXISTS watchlists"},
+			{"unique tenant PK on watchlists", "uq_watchlists_tenant_pk"},
+			{"tenant_isolation policy on watchlists", "CREATE POLICY tenant_isolation ON watchlists"},
+			{"admin_ops_scope policy on watchlists", "CREATE POLICY admin_ops_scope ON watchlists"},
+			{"watchlist_alert_logs table", "CREATE TABLE IF NOT EXISTS watchlist_alert_logs"},
+			{"unique dedup constraint on watchlist_alert_logs", "uq_watchlist_alert_dedup"},
+			{"tenant_isolation policy on watchlist_alert_logs", "CREATE POLICY tenant_isolation ON watchlist_alert_logs"},
+			{"admin_ops_scope policy on watchlist_alert_logs", "CREATE POLICY admin_ops_scope ON watchlist_alert_logs"},
+		}
+		requiredRLSTables = []string{
+			"watchlists",
+			"watchlist_alert_logs",
+		}
 	default:
 		return nil
 	}

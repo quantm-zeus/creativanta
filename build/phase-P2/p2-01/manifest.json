@@ -1,0 +1,116 @@
+{
+  "task_id": "P2-01",
+  "phase": "P2",
+  "slice": "p2-01",
+  "title": "Signals, scoring, search và watchlists",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "1289036",
+  "feature_refs": [
+    "docs/02_features/intelligence/trend_radar.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_endpoint_map.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/05_system/queue_retry_design.md"
+  ],
+  "requirement_ids": [
+    "M02-001",
+    "M02-002",
+    "M02-003",
+    "M02-004",
+    "EC-M02-001",
+    "EC-M02-004",
+    "RULE-M02-002",
+    "DB-C-001",
+    "DB-H-001"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_intelligence_trend_radar.md",
+    "docs/03_screens/mobile/screen_mobile_intelligence_trend_list.md"
+  ],
+  "source_hashes": {
+    "infra/migrations/00010_p2_01_intelligence_trends_watchlists_and_search.sql": "a0b59d61b7ce23dea23ff6c07e8567098d1eafca2fb92c890927e19f79bce584",
+    "protos/creativanta/intelligence/v1/trend.proto": "c2ad05786c4e96e0a78a1737ee9b4721e22914e5f7fc9144956862501e1f0fa0",
+    "apps/api/internal/migrate/migrator.go": "3628b72767331a3d1639937f316ec48ca6ad8f857deb2f5956150664ef3072a6",
+    "apps/api/internal/migrate/migrator_test.go": "d62d64192df5a8aba6fa58e4d7917a0d31f671f43f20086a928541ab099b9289",
+    "apps/api/internal/rbac/phase_exposure_test.go": "94cc4f2689a1756bdec78a8ef60fafee1fffe38aff3acc4c6efcd378e0439093",
+    "apps/api/internal/trend/service.go": "cebdef55a9b9e8c6f2191cdef72814f77d515110d8de746a1e996ae498335dec",
+    "apps/api/internal/trend/service_test.go": "5dc455a72fb4a7ae0e6fcbbfb90ed3b1d45a5723bfab5c3020ed1f7f60668bfb",
+    "apps/web/src/lib/trend/index.ts": "9ad4ddf4d23e2226550d476c488ef7e85aa7cb02c15444c195e4f39b4e7b7a6c",
+    "apps/web/src/lib/trend/trend.test.ts": "dc3886e8c667f6c9ff76dc087e6b87caa02121515b9da2d62d8ba1d5a7c6a01e",
+    "apps/web/src/routes/kham-pha/+page.svelte": "cba3ead06a94c0a79240896a223f5197669d7cbe8c2eef2cff88d6f94e93ef32",
+    "apps/mobile/lib/trend/trend_models.dart": "93ddbb5195bfcf72711e088ee2e1bd66a71355233bef62ec13288f17cd979f72",
+    "apps/mobile/lib/ui/trend/trend_radar_view.dart": "adb1799e62b04b2392c74a51f57a958638e098423c465609df0f3dcfeca7fea6",
+    "apps/mobile/lib/main.dart": "60cbd4f8bb79d1173e56480615eb4c95fb6d9afe5d214b81f65e5f1242a91d15",
+    "apps/mobile/test/trend_test.dart": "2771e083846a5331b8cf1090759e9c1e34964487fc4e5d49ffbefce7760fa217"
+  },
+  "scope_items": [
+    "Database Migration 00010: Added strength_score, freshness_score, saturation_score, freshness_at, why_now, relevance_description, and embedding_vector to trends; created watchlists table with uq_watchlists_tenant_pk, ENABLE/FORCE ROW LEVEL SECURITY, tenant_isolation and admin_ops_scope policies; created watchlist_alert_logs for durable alert deduplication and cooldown tracking; narrow app_user/admin_user grants; reversible transactional down migration.",
+    "Acceptance Target 1 (Source unavailable shows degraded data): Handled external platform disconnections and expired tokens (e.g. TikTok, Shopee, Google Trends). When disconnected, flags is_degraded=true, demotes confidence to CONFIDENCE_BAND_LOW, marks source_class=ESTIMATED, displays prominent degraded alert banner with reconnect CTA button on both Web and Mobile surfaces.",
+    "Acceptance Target 2 (Threshold alerts deduplicate): Watchlist threshold alerts deduplicate/debounce via deterministic fingerprints sha256(workspace_id:watchlist_id:trend_id:metric) and cooldown window (60 minutes). Implemented alert storm batching (EC-M02-004): when >5 simultaneous breaches occur, collapses into a single summary alert with count on Go backend, Web frontend, and Mobile client.",
+    "Acceptance Target 3 (Tenant-scoped semantic search): Vector and keyword search is strictly filtered by workspace_id = caller.WorkspaceID. Cross-tenant search attempts fail closed with zero data leakage across Go ConnectRPC backend, SvelteKit web client, and Flutter mobile client.",
+    "Module M04 Opportunity Conversion: Implemented ConvertToOpportunity RPC and client helpers linking source trend provenance into opportunity drafts with strict RBAC authorization."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestAcceptanceTarget1_SourceUnavailableShowsDegradedData (Go -race), Vitest suite (web), and Flutter unit/widget tests confirm degraded flag, low confidence, estimated source class, and reconnect guidance.",
+    "Acceptance Target 2 Verified: TestAcceptanceTarget2_ThresholdAlertsDeduplicateAndBatchStorms (Go -race), Vitest suite (web), and Flutter tests confirm fingerprint deduplication within cooldown window and storm summary batching for >5 breaches.",
+    "Acceptance Target 3 Verified: TestAcceptanceTarget3_TenantScopedSemanticSearch (Go -race), Vitest suite (web), and Flutter tests confirm strict workspace isolation and keyword/semantic matching.",
+    "Migration 00010 Verified: TestLoadAndValidateCanonicalP004Migration and TestUpStatusDownTransactionalBehavior pass for all 10 migrations.",
+    "Four-Target Proto Codegen Verified: check_proto.sh passes lint, generate, drift check, buf breaking backward compatibility, Go vet/test, TypeScript vitest, Dart analyze/test.",
+    "Web & Mobile Surfaces Verified: check_node.sh (svelte-check, vite build, 64 web tests + 6 admin tests), check_web_smoke.sh (SSR HTTP 200 on /kham-pha), and check_flutter.sh (flutter analyze --fatal-infos --fatal-warnings + 74 tests) all pass."
+  ],
+  "rpc_contracts": [
+    "TrendService/List",
+    "TrendService/Get",
+    "TrendService/Search",
+    "TrendService/ManageWatchlist",
+    "TrendService/GetTop",
+    "TrendService/ListTop",
+    "TrendService/ListRelated",
+    "TrendService/GetTimeSeries",
+    "TrendService/GetSparklines",
+    "TrendService/GetStats",
+    "TrendService/GetExamples",
+    "TrendService/GetAudienceFit",
+    "WatchlistService/Create",
+    "WatchlistService/List",
+    "WatchlistService/Delete",
+    "WatchlistService/Update",
+    "WatchlistService/AddItem",
+    "WatchlistService/RemoveItem",
+    "WatchlistService/GetItems",
+    "WatchlistService/MuteItem"
+  ],
+  "migration_files": [
+    "infra/migrations/00010_p2_01_intelligence_trends_watchlists_and_search.sql"
+  ],
+  "permission_keys": [
+    "trend:read",
+    "trend:export",
+    "trend:watchlist:manage",
+    "opportunity:convert"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-TIKTOK-RADAR",
+      "PENDING_LIVE_INGESTION",
+      "Phase P2 local mock and degraded evaluation passed; live TikTok Open Platform Trend API connector requires OAuth production client secrets."
+    ],
+    [
+      "EXT-GATE-SHOPEE-AFFILIATE",
+      "PENDING_LIVE_INGESTION",
+      "Phase P2 local mock and degraded evaluation passed; live Shopee Open Platform affiliate trending API requires partner key."
+    ],
+    [
+      "EXT-GATE-VECTOR-INDEX-PGVECTOR",
+      "LOCAL_VERIFIED",
+      "Vector embedding column and hybrid cosine/token search contracts verified locally; production pgvector HNSW index executes in staging PostgreSQL."
+    ]
+  ],
+  "remaining_scope": [
+    "Module M03 (Competitor Intelligence) and Module M04 (Opportunity Board) scheduled for phases P3 and P4 per implementation backlog."
+  ]
+}
