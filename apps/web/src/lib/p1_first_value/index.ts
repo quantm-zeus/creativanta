@@ -570,4 +570,3 @@ export function evaluateStripeWebhookReplay(
     reason: `Đã cấp phát nguyên tử ${formatExactMicros(grantMicros)} credits cho khoá ${event.externalGrantKey}.`
   };
 }
-

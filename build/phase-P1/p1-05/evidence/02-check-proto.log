@@ -34,7 +34,7 @@ GO_TRANSPORT_NEGATIVE_TESTS_AND_RACE
 ?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/finance/v1/financev1connect	[no test files]
 ?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1	[no test files]
 ?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1/transporttestv1connect	[no test files]
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportfixture	1.323s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportfixture	1.263s
 ?   	github.com/quantm-zeus/creativanta/apps/api/cmd/transport-fixture-test	[no test files]
 all modules verified
 UNIT_TYPESCRIPT
@@ -45,15 +45,14 @@ UNIT_TYPESCRIPT
 
  RUN  v3.0.7 /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/packages/shared-types
 
- ✓ test/unit.test.ts (4 tests) 10ms
+ ✓ test/unit.test.ts (4 tests) 7ms
 
  Test Files  1 passed (1)
       Tests  4 passed (4)
-   Start at  17:23:21
-   Duration  994ms (transform 151ms, setup 0ms, collect 378ms, tests 10ms, environment 0ms, prepare 242ms)
+   Start at  17:34:33
+   Duration  596ms (transform 98ms, setup 0ms, collect 201ms, tests 7ms, environment 0ms, prepare 120ms)
 
 UNIT_DART
-Waiting for another flutter command to release the startup lock...
 00:00 +0: loading /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/generated_proto_test.dart
 00:00 +0: Generated Protobuf Tests Money serialization and exact string deserialization
 00:00 +1: Generated Protobuf Tests CommandContext instantiation with UUID and field validation
