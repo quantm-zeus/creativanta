@@ -1,0 +1,239 @@
+{
+  "task_id": "P1-01",
+  "phase": "P1",
+  "slice": "p1-01",
+  "title": "Canonical catalog, variants, import mapping/preview and product-content refs",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "172d602",
+  "feature_refs": [
+    "docs/02_features/commerce/product_hub.md",
+    "docs/06_quality_ops/data_migration_strategy.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/protobuf_contracts.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/error_catalog.md"
+  ],
+  "requirement_ids": [
+    "M13-CATALOG-001",
+    "M13-CATALOG-002",
+    "M13-VARIANTS-001",
+    "M13-IMPORT-001",
+    "M13-IMPORT-002",
+    "M13-CONTENT-001",
+    "RULE-IMPORT-SEC-001",
+    "RULE-IMPORT-DEDUP-001",
+    "DB-C-001",
+    "DB-H-001"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_commerce_products.md",
+    "docs/03_screens/web/screen_web_commerce_product_import.md"
+  ],
+  "source_hashes": {
+    "docs/02_features/commerce/product_hub.md": "1bfeb425c0a13a01b298064532f551420aa82b304ced5ea922a008e25705a5fa",
+    "docs/06_quality_ops/data_migration_strategy.md": "039bb767c06f42319ff8803ffe208bbd9a5ad94ffae1e15b001c01b88aae01b0",
+    "docs/04_contracts/database_schema.md": "f1fb695b33e4cf50f3f68b7a359ee36727ca0f25f5cd20fbc72a559ca3a0376b",
+    "docs/04_contracts/protobuf_contracts.md": "ea544b9ae4082471e45cf378894d36ab000190530c8162b4b56a1dfd46e55761",
+    "docs/04_contracts/rpc_permission_bindings.csv": "e970c926e3d3310391e0d966fdf54d0ffc28fe056885a65f747d2e16f62d1569",
+    "docs/04_contracts/domain_event_catalog.md": "f85704096638fe181e158e455d551b99e1d8cf009aa9530fc19c65fc1334e5de",
+    "protos/creativanta/commerce/v1/product.proto": "5d03a654b681cb4d415433f0aa35f61c21740e76b9334baae53890812a903127",
+    "apps/api/internal/product/model.go": "026bf23c3fd83ae0354e1fc9eaab348fd90973eafe2bc30140a0e1c6263e5169",
+    "apps/api/internal/product/store.go": "bb1e2d85ba6a5cbeb6aa1d3437201193bcf46179f42ae3820b98e7105b6b70f1",
+    "apps/api/internal/product/import_engine.go": "4a6a3aa9ad6b70056dfd88748df7c5ca3a0ff3c34af5238c7907604531d2fe0b",
+    "apps/api/internal/product/service.go": "1dc5dfee9474b5f355c6b29abeddd97147a8df4d39cda3d9478316de27e11c3e",
+    "apps/api/internal/product/handler.go": "ad9d02eb1991451e293751e639067c195d6d0499228405f49b4749b2601f747d",
+    "apps/api/internal/product/service_test.go": "216385155e45c4b58a19e9c9d9d3caa82bcd3e538ec2bf13bf447282d40cddfa",
+    "apps/api/internal/product/import_preview_test.go": "8060b82b052a320d47052c65cd9594cbc3692a4a55b0538ec7fef652a5e4ac5f",
+    "apps/api/internal/product/handler_test.go": "641aa806a0074b7d8c84ac0551e6e827c9bfeeb701a2e75b7fa56ececab81dfd",
+    "apps/api/internal/rbac/phase_exposure_test.go": "6de84cbc513123210cc9c4a110ffc87e15a5b71aed68d30368ddb52c56ab9137"
+  },
+  "scope_items": [
+    "Canonical Catalog & Variant Management: Implemented Product and ProductSku domain model, validation rules (title required, non-empty, product type in physical/digital/service, base price non-negative exact decimal with 3-character ISO currency, SKU code unique per product), status lifecycle (draft, active, archived), and PostgreSQL RLS tenant isolation.",
+    "Import Preview & Mapping Engine: Implemented complete mapping engine with header alias resolution dictionary, field validation, formula injection neutralization (escaping '=', '+', '-', '@' characters), account-scoped external ID deduplication, in-file duplicate suppression, and deterministic sorted-key preview tokens.",
+    "Acceptance Target 1: Deduplication strictly scoped by workspace_id + connected_account_id + platform + external_id. Two different shops with the identical external source ID remain completely independent products without cross-account collision.",
+    "Acceptance Target 2: Repeated rows within an import file or re-importing unchanged data are recognized via external ID and data hashing and marked as unchanged no-ops (unchanged), creating no redundant database records or mutations.",
+    "Acceptance Target 3: Malformed or unmapped required columns flag requires_mapping_correction = true with detailed mapping_errors, generating no preview token and preventing commit until mappings are corrected.",
+    "Product-Content References: Bidirectional linking between products and creative content assets (content_id, media_url, content_type), tracking performance metrics and linked assets.",
+    "Multi-Target Protobuf Contracts: Consolidated 19 canonical RPCs from rpc_permission_bindings.csv into protos/creativanta/commerce/v1/product.proto. Generated and verified across all four targets (Go, Connect-Go, TypeScript, Dart) with zero codegen drift.",
+    "Outbox Domain Events: Emits product.created and product.catalog_status_changed into transactional outbox upon catalog mutations."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestAcceptanceTarget1_TwoShopsWithSameSourceIDRemainSeparate verifies that two distinct connected accounts importing identical source ID SH-SKU-999 create two distinct product records.",
+    "Acceptance Target 2 Verified: TestAcceptanceTarget2_RepeatedRowsNoOp verifies that repeated rows in the same CSV or repeated imports produce no-op unchanged results.",
+    "Acceptance Target 3 Verified: TestAcceptanceTarget3_InvalidMappingsNeedCorrection verifies that missing required column mappings flag correction required and refuse commit until corrected.",
+    "Formula Injection Neutralization Verified: TestFormulaInjectionNeutralization verifies cells beginning with '=', '+', '-', '@' are safely prefixed with a single quote.",
+    "Preview Token Integrity Verified: TestPreviewTokenMismatchRejection verifies tamper prevention via SHA-256 fingerprint validation.",
+    "ConnectRPC Handler Verified: TestConnectHandler_CreateAndGet verifies Connect-Go unary handlers for ProductService.",
+    "Stock & Content Ref Lifecycle Verified: TestProductLifecycle_CRUD, TestStockUpdateAndThresholds, and TestProductContentLinking verify full catalog and variant operations.",
+    "Zero Future Phase Exposure Verified: TestNoFuturePhaseRPCExposed in internal/rbac confirms module M13 is authorized for Phase P1 and all future phase RPCs (P2-P8) fail closed."
+  ],
+  "rpc_contracts": [
+    "ProductService/Create",
+    "ProductService/Get",
+    "ProductService/List",
+    "ProductService/Update",
+    "ProductService/Delete",
+    "ProductService/Archive",
+    "ProductService/BatchTag",
+    "ProductService/Import",
+    "ProductService/Search",
+    "ProductService/GetStats",
+    "ProductService/GetSalesStats",
+    "ProductService/GetSalesChart",
+    "ProductService/GetReviews",
+    "ProductService/GetRank",
+    "ProductService/GetLinkedContent",
+    "ProductService/LinkContent",
+    "ProductService/UpdateStock",
+    "ProductService/SetAlertThreshold",
+    "ProductService/BulkArchive"
+  ],
+  "migration_files": [
+    "infra/migrations/00001_p0_04_tenant_schema_rls_and_grants.sql"
+  ],
+  "permission_keys": [
+    "product:create",
+    "product:read",
+    "product:update",
+    "product:delete",
+    "product:archive",
+    "product:import",
+    "product:analytics",
+    "product:link_content",
+    "inventory:update"
+  ],
+  "event_types": [
+    "product.created",
+    "product.catalog_status_changed"
+  ],
+  "screen_routes": [
+    "/kinh-doanh/san-pham",
+    "/kinh-doanh/san-pham/import"
+  ],
+  "checks": [
+    {
+      "command": "bash tooling/ci/check_d0.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-01/evidence/01-check-d0.log",
+      "checked_at": "2026-11-02T12:33:35Z"
+    },
+    {
+      "command": "python3 tooling/check_docs.py --sql",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-01/evidence/02-check-docs-sql.log",
+      "checked_at": "2026-11-02T12:33:40Z"
+    },
+    {
+      "command": "python3 tooling/build_plan.py && python3 -m unittest discover -s tooling/tests -v",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-01/evidence/03-build-plan-and-tests.log",
+      "checked_at": "2026-11-02T12:33:55Z"
+    },
+    {
+      "command": "cd apps/api && go mod verify && go vet ./...",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-01/evidence/04-go-mod-verify-vet.log",
+      "checked_at": "2026-11-02T12:34:00Z"
+    },
+    {
+      "command": "cd apps/api && go test -race -v -count=1 ./...",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-01/evidence/05-go-test-race.log",
+      "checked_at": "2026-11-02T12:34:22Z"
+    },
+    {
+      "command": "bash tooling/ci/check_entrypoints.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-01/evidence/06-check-entrypoints.log",
+      "checked_at": "2026-11-02T12:34:28Z"
+    },
+    {
+      "command": "bash tooling/ci/check_proto.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-01/evidence/07-check-proto.log",
+      "checked_at": "2026-11-02T12:35:02Z"
+    },
+    {
+      "command": "bash tooling/ci/proto_integration.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-01/evidence/08-proto-integration.log",
+      "checked_at": "2026-11-02T12:35:17Z"
+    },
+    {
+      "command": "bash tooling/ci/check_transport_security.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-01/evidence/09-check-transport-security.log",
+      "checked_at": "2026-11-02T12:35:27Z"
+    },
+    {
+      "command": "bash tooling/ci/smoke_test.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-01/evidence/10-smoke-test.log",
+      "checked_at": "2026-11-02T12:35:33Z"
+    },
+    {
+      "command": "bash tooling/ci/self_test_failure.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-01/evidence/11-self-test-failure.log",
+      "checked_at": "2026-11-02T12:35:37Z"
+    },
+    {
+      "command": "bash tooling/ci/check_node.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-01/evidence/12-check-node.log",
+      "checked_at": "2026-11-02T12:36:41Z"
+    },
+    {
+      "command": "bash tooling/ci/check_flutter.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-01/evidence/13-check-flutter.log",
+      "checked_at": "2026-11-02T12:37:17Z"
+    },
+    {
+      "command": "cd apps/api && go test -race -v -count=1 ./internal/product",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-01/evidence/14-product-service-test.log",
+      "checked_at": "2026-11-02T12:37:24Z"
+    },
+    {
+      "command": "git diff origin/staging...HEAD --check",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-01/manifest.json",
+      "checked_at": "2026-11-02T12:37:30Z"
+    }
+  ],
+  "external_gates": [
+    "External Marketplace APIs (TikTok Shop, Shopee, Lazada): Live merchant API tokens unconfigured in local test environment; import engine uses standardized CSV/JSON parsing and simulated payloads.",
+    "Clerk Auth Provider: Live Clerk session validation unconfigured; verified using local test context and tenant claims.",
+    "PostgreSQL 17 Database: In-memory store utilized for unit tests; PostgreSQL store implements tenant RLS context and query contracts ready for live service container in CI."
+  ],
+  "remaining_scope": [
+    "P1-02: Inventory sync, stock ledger, multi-warehouse allocations.",
+    "P1-03: Order ingestion, state machine, multi-shop fulfillment."
+  ],
+  "decisions": [
+    "Consolidated ProductService RPC block in protos/creativanta/commerce/v1/product.proto following protobuf_contracts.md Rule 2.",
+    "Exact decimal arithmetic using standard math/big.Rat (and tenantdb.ExactDecimal) avoiding IEEE-754 float precision loss per DB-H-001.",
+    "Account-scoped deduplication key (workspace_id + connected_account_id + platform + external_id) ensures strict separation across merchant accounts per data_migration_strategy.md §3.",
+    "Formula injection neutralization escapes leading '=', '+', '-', '@' characters with a single quote prefix."
+  ],
+  "notes": "P1-01 Canonical catalog, variants, import preview and content refs implemented and verified locally. All three acceptance targets verified with automated tests. Full multi-target codegen, Go race test suite, Node quality gate, and Flutter mobile test suite pass cleanly."
+}

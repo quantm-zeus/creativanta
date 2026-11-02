@@ -14,8 +14,8 @@ import (
 	"github.com/quantm-zeus/creativanta/apps/api/internal/bootstrap"
 )
 
-// Allowed P0 modules per docs/00_index/IMPLEMENTATION_ORDER.md §2 and AGENT_BUILD_BACKLOG.md
-var p0AllowedModules = map[string]bool{
+// Allowed modules up to Phase P1 per docs/00_index/IMPLEMENTATION_ORDER.md §2 and AGENT_BUILD_BACKLOG.md
+var allowedModules = map[string]bool{
 	"auth": true,
 	"S24":  true,
 	"M01":  true,
@@ -23,13 +23,14 @@ var p0AllowedModules = map[string]bool{
 	"M23":  true,
 	"help": true,
 	"S26":  true,
+	"M13":  true, // Phase P1: Product Hub / Inventory / Order Truth
 }
 
-// TestNoFuturePhaseRPCExposed satisfies Acceptance Target 3:
+// TestNoFuturePhaseRPCExposed satisfies Acceptance Target:
 // "No future-phase RPC accidentally exposed"
 //
 // 1. Reads docs/04_contracts/rpc_permission_bindings.csv
-// 2. Identifies all RPCs belonging to future-phase modules (P1–P8: M02–M21, S16, referral, etc.)
+// 2. Identifies all RPCs belonging to future-phase modules (P2–P8: M02–M12, M14–M18, M20–M21, S16, referral, etc.)
 // 3. Verifies that NO .proto file in protos/ contains any future-phase service or RPC definitions
 // 4. Verifies that NO Go entrypoint in apps/api/cmd/api or apps/api/cmd/admin-api registers future-phase handlers
 // 5. Performs live HTTP probe against api handler to verify future-phase paths return 404/fail-closed
@@ -77,7 +78,7 @@ func TestNoFuturePhaseRPCExposed(t *testing.T) {
 		rpcName := strings.TrimSpace(rec[rpcIdx])
 		moduleName := strings.TrimSpace(rec[modIdx])
 
-		if p0AllowedModules[moduleName] {
+		if allowedModules[moduleName] {
 			p0RPCs[rpcName] = moduleName
 		} else {
 			futureRPCs[rpcName] = moduleName
@@ -87,7 +88,7 @@ func TestNoFuturePhaseRPCExposed(t *testing.T) {
 	if len(futureRPCs) == 0 {
 		t.Fatal("expected future-phase RPCs to be cataloged in rpc_permission_bindings.csv")
 	}
-	t.Logf("Cataloged %d P0 RPCs and %d future-phase RPCs", len(p0RPCs), len(futureRPCs))
+	t.Logf("Cataloged %d current-phase RPCs and %d future-phase RPCs", len(p0RPCs), len(futureRPCs))
 
 	// 1. Audit all .proto files in protos/
 	protoDir := filepath.Join(root, "protos")
@@ -167,12 +168,12 @@ func TestNoFuturePhaseRPCExposed(t *testing.T) {
 	defer server.Close()
 
 	probeFuturePaths := []string{
-		"/creativanta.commerce.v1.ProductService/List",
 		"/creativanta.trends.v1.TrendService/List",
 		"/creativanta.workflow.v1.WorkflowService/Create",
 		"/creativanta.script.v1.ScriptService/Generate",
 		"/creativanta.publish.v1.PublishService/PublishNow",
-		"/ProductService/List",
+		"/creativanta.live.v1.LiveCommerceService/StartSession",
+		"/creativanta.monetization.v1.OfferService/Create",
 		"/TrendService/List",
 	}
 

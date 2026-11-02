@@ -1,0 +1,381 @@
+syntax = "proto3";
+
+package creativanta.commerce.v1;
+
+import "creativanta/common/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1;commercev1";
+
+// Product catalog item classification.
+enum ProductType {
+  PRODUCT_TYPE_UNSPECIFIED = 0;
+  PRODUCT_TYPE_PHYSICAL = 1;
+  PRODUCT_TYPE_DIGITAL = 2;
+  PRODUCT_TYPE_SERVICE = 3;
+  PRODUCT_TYPE_MEMBERSHIP = 4;
+  PRODUCT_TYPE_BUNDLE = 5;
+}
+
+// Product catalog lifecycle status.
+enum CatalogStatus {
+  CATALOG_STATUS_UNSPECIFIED = 0;
+  CATALOG_STATUS_DRAFT = 1;
+  CATALOG_STATUS_ACTIVE = 2;
+  CATALOG_STATUS_ARCHIVED = 3;
+  CATALOG_STATUS_DISCONTINUED = 4;
+}
+
+// External reference link for a product or SKU on a connected commerce platform.
+message ExternalRef {
+  string platform = 1;
+  string external_id = 2;
+  string url = 3;
+  string connected_account_id = 4;
+}
+
+// Canonical SKU variant under a product.
+message ProductSku {
+  string sku_id = 1;
+  string workspace_id = 2;
+  string product_id = 3;
+  string sku_code = 4;
+  map<string, string> variant_attributes = 5;
+  creativanta.common.v1.Money price_override = 6;
+  creativanta.common.v1.Money cogs_override = 7;
+  string currency = 8;
+  int32 stock_quantity = 9;
+  int32 stock_reserved = 10;
+  int32 low_stock_threshold = 11;
+  string barcode = 12;
+  int32 weight_grams = 13;
+  bool is_active = 14;
+  repeated ExternalRef external_refs = 15;
+  google.protobuf.Timestamp created_at = 16;
+  google.protobuf.Timestamp updated_at = 17;
+  google.protobuf.Timestamp deleted_at = 18;
+}
+
+// Canonical Product entity in the M13 catalog.
+message Product {
+  string product_id = 1;
+  string workspace_id = 2;
+  ProductType product_type = 3;
+  string title = 4;
+  string description = 5;
+  string category = 6;
+  creativanta.common.v1.Money base_price = 7;
+  string currency = 8;
+  creativanta.common.v1.Money cogs = 9;
+  CatalogStatus catalog_status = 10;
+  bool inventory_enabled = 11;
+  repeated ExternalRef external_refs = 12;
+  repeated string images = 13;
+  string metadata_json = 14;
+  repeated ProductSku skus = 15;
+  google.protobuf.Timestamp created_at = 16;
+  google.protobuf.Timestamp updated_at = 17;
+  google.protobuf.Timestamp deleted_at = 18;
+}
+
+// Linked content item reference.
+message ContentRef {
+  string content_id = 1;
+  string content_type = 2;
+  string title = 3;
+  string url = 4;
+  google.protobuf.Timestamp linked_at = 5;
+  string metadata_json = 6;
+}
+
+message CreateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  ProductType product_type = 2;
+  string title = 3;
+  string description = 4;
+  string category = 5;
+  creativanta.common.v1.Money base_price = 6;
+  creativanta.common.v1.Money cogs = 7;
+  string currency = 8;
+  CatalogStatus catalog_status = 9;
+  bool inventory_enabled = 10;
+  repeated ExternalRef external_refs = 11;
+  repeated string images = 12;
+  string metadata_json = 13;
+  repeated ProductSku initial_skus = 14;
+}
+
+message CreateResponse {
+  Product product = 1;
+}
+
+message GetRequest {
+  string product_id = 1;
+}
+
+message GetResponse {
+  Product product = 1;
+}
+
+message ListRequest {
+  creativanta.common.v1.Pagination pagination = 1;
+  CatalogStatus status_filter = 2;
+  ProductType type_filter = 3;
+  string category_filter = 4;
+  string search_query = 5;
+}
+
+message ListResponse {
+  repeated Product products = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message UpdateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string product_id = 2;
+  optional string title = 3;
+  optional string description = 4;
+  optional string category = 5;
+  creativanta.common.v1.Money base_price = 6;
+  creativanta.common.v1.Money cogs = 7;
+  optional CatalogStatus catalog_status = 8;
+  optional bool inventory_enabled = 9;
+  repeated ExternalRef external_refs = 10;
+  repeated string images = 11;
+  optional string metadata_json = 12;
+}
+
+message UpdateResponse {
+  Product product = 1;
+}
+
+message DeleteRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string product_id = 2;
+}
+
+message DeleteResponse {
+  bool success = 1;
+}
+
+message ArchiveRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string product_id = 2;
+}
+
+message ArchiveResponse {
+  Product product = 1;
+}
+
+message BatchTagRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  repeated string product_ids = 2;
+  repeated string tags_to_add = 3;
+  repeated string tags_to_remove = 4;
+}
+
+message BatchTagResponse {
+  int32 updated_count = 1;
+}
+
+message ImportRowResult {
+  int32 row_number = 1;
+  string source_id = 2;
+  string title = 3;
+  string action = 4; // "create", "update", "unchanged", "error"
+  string error_message = 5;
+  string product_id = 6;
+  string sku_code = 7;
+}
+
+message ImportRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string source_platform = 2; // "csv", "tiktok", "shopee", "lazada"
+  string connected_account_id = 3;
+  string raw_data = 4; // CSV or data payload
+  string file_name = 5;
+  map<string, string> column_mappings = 6;
+  string default_currency = 7;
+  bool preview_only = 8;
+  string preview_token = 9;
+  bool dry_run = 10;
+}
+
+message ImportResponse {
+  bool is_preview = 1;
+  string preview_token = 2;
+  int32 total_rows = 3;
+  int32 create_count = 4;
+  int32 update_count = 5;
+  int32 unchanged_count = 6;
+  int32 error_count = 7;
+  bool requires_mapping_correction = 8;
+  repeated string mapping_errors = 9;
+  repeated ImportRowResult rows = 10;
+  repeated Product created_products = 11;
+  string import_fingerprint = 12;
+  string downloadable_error_csv = 13;
+}
+
+message SearchRequest {
+  string query = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+message SearchResponse {
+  repeated Product products = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message GetStatsRequest {
+  string product_id = 1;
+}
+
+message GetStatsResponse {
+  string product_id = 1;
+  int32 total_orders = 2;
+  creativanta.common.v1.Money total_revenue = 3;
+  int32 active_skus_count = 4;
+  int32 on_hand_stock = 5;
+  int32 reserved_stock = 6;
+}
+
+message GetSalesStatsRequest {
+  string product_id = 1;
+  string period = 2; // "7d", "30d", "90d"
+}
+
+message GetSalesStatsResponse {
+  string product_id = 1;
+  creativanta.common.v1.Money gross_sales = 2;
+  creativanta.common.v1.Money net_sales = 3;
+  int32 units_sold = 4;
+  int32 refund_count = 5;
+}
+
+message SalesChartPoint {
+  string timestamp = 1;
+  creativanta.common.v1.Money amount = 2;
+  int32 order_count = 3;
+}
+
+message GetSalesChartRequest {
+  string product_id = 1;
+  string interval = 2; // "day", "week", "month"
+}
+
+message GetSalesChartResponse {
+  string product_id = 1;
+  repeated SalesChartPoint data_points = 2;
+}
+
+message ProductReviewItem {
+  string review_id = 1;
+  string author_name = 2;
+  int32 rating = 3;
+  string comment = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+message GetReviewsRequest {
+  string product_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+message GetReviewsResponse {
+  string product_id = 1;
+  repeated ProductReviewItem reviews = 2;
+  creativanta.common.v1.PaginatedResponse pagination = 3;
+}
+
+message GetRankRequest {
+  string product_id = 1;
+  string category = 2;
+}
+
+message GetRankResponse {
+  string product_id = 1;
+  int32 rank_in_category = 2;
+  int32 rank_in_workspace = 3;
+}
+
+message GetLinkedContentRequest {
+  string product_id = 1;
+}
+
+message GetLinkedContentResponse {
+  string product_id = 1;
+  repeated ContentRef linked_contents = 2;
+}
+
+message LinkContentRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string product_id = 2;
+  string content_id = 3;
+  string content_type = 4;
+  string title = 5;
+  string url = 6;
+  string metadata_json = 7;
+}
+
+message LinkContentResponse {
+  bool success = 1;
+  ContentRef linked_content = 2;
+}
+
+message UpdateStockRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string product_id = 2;
+  string sku_id = 3;
+  int32 delta_quantity = 4;
+  string reason = 5;
+}
+
+message UpdateStockResponse {
+  string sku_id = 1;
+  int32 new_stock_quantity = 2;
+}
+
+message SetAlertThresholdRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string product_id = 2;
+  string sku_id = 3;
+  int32 low_stock_threshold = 4;
+}
+
+message SetAlertThresholdResponse {
+  string sku_id = 1;
+  int32 low_stock_threshold = 2;
+}
+
+message BulkArchiveRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  repeated string product_ids = 2;
+}
+
+message BulkArchiveResponse {
+  int32 archived_count = 1;
+}
+
+// ProductService manages catalog items, variant SKUs, imports, and linked content.
+service ProductService {
+  rpc Create(CreateRequest) returns (CreateResponse);
+  rpc Get(GetRequest) returns (GetResponse);
+  rpc List(ListRequest) returns (ListResponse);
+  rpc Update(UpdateRequest) returns (UpdateResponse);
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+  rpc Archive(ArchiveRequest) returns (ArchiveResponse);
+  rpc BatchTag(BatchTagRequest) returns (BatchTagResponse);
+  rpc Import(ImportRequest) returns (ImportResponse);
+  rpc Search(SearchRequest) returns (SearchResponse);
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
+  rpc GetSalesStats(GetSalesStatsRequest) returns (GetSalesStatsResponse);
+  rpc GetSalesChart(GetSalesChartRequest) returns (GetSalesChartResponse);
+  rpc GetReviews(GetReviewsRequest) returns (GetReviewsResponse);
+  rpc GetRank(GetRankRequest) returns (GetRankResponse);
+  rpc GetLinkedContent(GetLinkedContentRequest) returns (GetLinkedContentResponse);
+  rpc LinkContent(LinkContentRequest) returns (LinkContentResponse);
+  rpc UpdateStock(UpdateStockRequest) returns (UpdateStockResponse);
+  rpc SetAlertThreshold(SetAlertThresholdRequest) returns (SetAlertThresholdResponse);
+  rpc BulkArchive(BulkArchiveRequest) returns (BulkArchiveResponse);
+}
