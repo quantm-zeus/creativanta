@@ -513,7 +513,7 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 	var requiredRLSTables []string
 
 	switch m.Version {
-	case 3:
+	case 4:
 		requiredFragments = []requiredFragment{
 			{"ai_provider_rates table", "CREATE TABLE ai_provider_rates"},
 			{"ai_credit_quotes table", "CREATE TABLE ai_credit_quotes"},
@@ -563,6 +563,32 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 			"dead_letter_queue",
 			"background_jobs",
 			"api_usage_daily",
+		}
+	case 3:
+		requiredFragments = []requiredFragment{
+			{"capability_state enum", "CREATE TYPE capability_state AS ENUM"},
+			{"capability_snapshots table", "CREATE TABLE IF NOT EXISTS capability_snapshots"},
+			{"policy_notes table", "CREATE TABLE IF NOT EXISTS policy_notes"},
+			{"fallback_paths table", "CREATE TABLE IF NOT EXISTS fallback_paths"},
+			{"platform_health_scores table", "CREATE TABLE IF NOT EXISTS platform_health_scores"},
+			{"moderation_cases table", "CREATE TABLE IF NOT EXISTS moderation_cases"},
+			{"fraud_cases table", "CREATE TABLE IF NOT EXISTS fraud_cases"},
+			{"feature_flags table", "CREATE TABLE IF NOT EXISTS feature_flags"},
+			{"system_announcements table", "CREATE TABLE IF NOT EXISTS system_announcements"},
+			{"incidents table", "CREATE TABLE IF NOT EXISTS incidents"},
+			{"post_mortems table", "CREATE TABLE IF NOT EXISTS post_mortems"},
+			{"system_alerts table", "CREATE TABLE IF NOT EXISTS system_alerts"},
+			{"unique tenant PK on policy_notes", "uq_policy_notes_tenant_pk"},
+			{"composite tenant FK on fallback_paths -> policy_notes", "fk_fallback_paths_related_policy_note_id_tenant"},
+			{"composite tenant FK on platform_health_scores -> connected_accounts", "fk_platform_health_scores_connected_account_id_tenant"},
+			{"admin_ops_scope policy on moderation_cases", "CREATE POLICY admin_ops_scope ON moderation_cases"},
+		}
+		requiredRLSTables = []string{
+			"capability_snapshots",
+			"policy_notes",
+			"fallback_paths",
+			"platform_health_scores",
+			"moderation_cases",
 		}
 	default:
 		requiredFragments = []requiredFragment{

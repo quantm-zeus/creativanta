@@ -8,8 +8,8 @@
   "acceptance_status": "LOCAL_IMPLEMENTED",
   "overall_state": "LOCAL_IMPLEMENTED",
   "canonical_accept_state": "PENDING_CI_AND_EXTERNAL_GATES",
-  "baseline_commit": "c11ac160004ce8de5d56261b1aa137d922aa9c91",
-  "updated_at": "2026-11-02T08:50:50Z",
+  "baseline_commit": "b6431612207762ac3afff1289c4f3076b76ed199",
+  "updated_at": "2026-11-02T09:13:00Z",
   "feature_refs": [
     "docs/02_features/platform/reporting_admin_billing.md",
     "docs/04_contracts/credit_accounting_contract.md",
@@ -33,7 +33,7 @@
     "docs/04_contracts/credit_accounting_contract.md": "f9c1dfd7cba92ce0a3aeffc2a0d7122cb0db567eb70e7668e3991717c8d5af4f",
     "docs/01_business/pricing_and_credits.md": "07b2880467a0e3cfd19fb4f51dfbcf297d3fff61c3e1bcb5e3284942f1ad9280",
     "docs/04_contracts/database_schema.md": "f1fb695b33e4cf50f3f68b7a359ee36727ca0f25f5cd20fbc72a559ca3a0376b",
-    "infra/migrations/00003_p0_06_credit_lots_quotes_and_billing.sql": "c6f00ac33ff57137e22e91799cecc244b3795a146094050f5cd5f5c4016ab499"
+    "infra/migrations/00004_p0_06_credit_lots_quotes_and_billing.sql": "c6f00ac33ff57137e22e91799cecc244b3795a146094050f5cd5f5c4016ab499"
   },
   "scope_items": {
     "MOD-19": "LOCAL_IMPLEMENTED",
@@ -60,7 +60,7 @@
       "id": "P0-06A-sql-migration-lots-quotes-reservations-billing",
       "status": "LOCAL_IMPLEMENTED",
       "files": [
-        "infra/migrations/00003_p0_06_credit_lots_quotes_and_billing.sql",
+        "infra/migrations/00004_p0_06_credit_lots_quotes_and_billing.sql",
         "apps/api/internal/tenantdb/money.go",
         "apps/api/internal/tenantdb/queries_billing.sql.go"
       ]
@@ -100,7 +100,7 @@
     }
   ],
   "migration_files": [
-    "infra/migrations/00003_p0_06_credit_lots_quotes_and_billing.sql"
+    "infra/migrations/00004_p0_06_credit_lots_quotes_and_billing.sql"
   ],
   "permission_keys": [
     "credits:view_balance",
@@ -127,7 +127,7 @@
     "/m/settings/billing"
   ],
   "deliverables": [
-    "infra/migrations/00003_p0_06_credit_lots_quotes_and_billing.sql",
+    "infra/migrations/00004_p0_06_credit_lots_quotes_and_billing.sql",
     "protos/creativanta/admin/v1/billing.proto",
     "apps/api/gen/creativanta/admin/v1/billing.pb.go",
     "apps/api/gen/creativanta/admin/v1/adminv1connect/billing.connect.go",
@@ -175,7 +175,7 @@
     }
   ],
   "database_objects": {
-    "migration_file": "infra/migrations/00003_p0_06_credit_lots_quotes_and_billing.sql",
+    "migration_file": "infra/migrations/00004_p0_06_credit_lots_quotes_and_billing.sql",
     "tables_created": [
       "ai_provider_rates",
       "ai_credit_quotes",

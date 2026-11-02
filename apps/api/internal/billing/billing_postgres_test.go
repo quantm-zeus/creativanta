@@ -27,7 +27,7 @@ func buildAppUserBillingDSN(adminDSN string) (string, error) {
 }
 
 // TestPostgresLiveCreditLotsQuotesAndBilling verifies P0-06 against live PostgreSQL 17.10:
-//  1. 00003_p0_06_credit_lots_quotes_and_billing.sql schema, constraints, and narrow grants
+//  1. 00004_p0_06_credit_lots_quotes_and_billing.sql schema, constraints, and narrow grants
 //  2. Tenant RLS isolation under app_user across ai_credit_quotes, ai_credit_lots,
 //     ai_credit_reservations, ai_credit_reservation_allocations, invoices, and payment_methods
 //  3. Same-tenant composite FK enforcement on ai_credit_reservations and ai_credit_transactions

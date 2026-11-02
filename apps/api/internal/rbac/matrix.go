@@ -491,7 +491,7 @@ func CheckAdminPermission(permissionKey string, pctx PolicyContext, isMutating b
 	}
 	if decision == AccessConstrained {
 		if pctx.AdminRole == AdminRoleSupport {
-			if permissionKey == "admin:impersonate" && isMutating {
+			if permissionKey == "admin:impersonate" && !pctx.SupportScopedReadAllowed {
 				return ErrImpersonationReadOnly
 			}
 			if (permissionKey == "admin:audit_log:read" || permissionKey == "admin:billing:read") && !pctx.SupportScopedReadAllowed {

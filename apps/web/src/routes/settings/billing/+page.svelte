@@ -63,7 +63,7 @@
     title="Dịch vụ Thanh toán &amp; Sổ cái Credits (P0-06 Backend Slice Ready — Transport Unmounted)"
     domain="Credit Lots, Cost-Based Quotes &amp; Billing Foundations (P0-06)"
     requires="Mounting of AdminBillingService / BillingService / CreditService ConnectRPC Handlers &amp; Live Stripe Webhook"
-    message="Lược đồ PostgreSQL 00003_p0_06_credit_lots_quotes_and_billing.sql (ai_provider_rates, ai_credit_quotes, ai_credit_lots, ai_credit_reservations, ai_credit_reservation_allocations, invoices, payment_methods) và gói apps/api/internal/billing đã được triển khai và kiểm thử. Giao diện chỉ hiển thị bảng giá chuẩn có phiên bản, không giả lập giao dịch thanh toán."
+    message="Lược đồ PostgreSQL 00004_p0_06_credit_lots_quotes_and_billing.sql (ai_provider_rates, ai_credit_quotes, ai_credit_lots, ai_credit_reservations, ai_credit_reservation_allocations, invoices, payment_methods) và gói apps/api/internal/billing đã được triển khai và kiểm thử. Giao diện chỉ hiển thị bảng giá chuẩn có phiên bản, không giả lập giao dịch thanh toán."
   />
 
   <div class="flex items-center justify-between">

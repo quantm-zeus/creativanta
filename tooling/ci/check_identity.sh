@@ -48,7 +48,7 @@ trap 'rm -f "$log" "$log_p004"' EXIT
 (
  cd "$ROOT/apps/api"
  CREATIVANTA_TEST_DATABASE_URL="$CREATIVANTA_TEST_POSTGRES_DSN" \
-   GOTOOLCHAIN=local go test -p 1 -race -count=1 -v ./internal/migrate ./internal/tenantdb ./internal/rbac ./internal/workspace ./internal/outbox ./internal/diagnostics ./internal/billing
+   GOTOOLCHAIN=local go test -p 1 -race -count=1 -v ./internal/migrate ./internal/tenantdb ./internal/rbac ./internal/workspace ./internal/outbox ./internal/diagnostics ./internal/capability ./internal/internaladmin ./internal/billing
 ) | tee "$log_p004"
 grep -q -- '--- PASS: TestPostgresLiveMigrationAndAppUserRLS' "$log_p004" || {
  echo 'P0-04 FAIL: live PostgreSQL Goose migration and app_user RLS test was skipped' >&2
@@ -85,6 +85,24 @@ grep -q -- '--- PASS: TestRuleM23A04SanitizationAndRepairWizardReconcilesUnknown
  exit 1
 }
 echo 'P0-05_TESTS_PASS: Outbox lease recovery, consumer inbox deduplication, kill before/after commit and ACK, webhook dedup, unknown external effects guard, audit immutability, and M23 DiagnosticsService'
+
+grep -q -- '--- PASS: TestUnverifiedStaleReadOnlyAndKilledRoutesCannotExecute' "$log_p004" || {
+ echo 'P0-07 FAIL: unverified route execution gate test was skipped' >&2
+ exit 1
+}
+grep -q -- '--- PASS: TestWorkspaceRoleCannotCallAdminListenerAndVPNMFAGate' "$log_p004" || {
+ echo 'P0-07 FAIL: workspace role rejected on admin listener test was skipped' >&2
+ exit 1
+}
+grep -q -- '--- PASS: TestImpersonationIsStrictlyReadOnlyAndAutoExpiresAfter30Minutes' "$log_p004" || {
+ echo 'P0-07 FAIL: read-only impersonation test was skipped' >&2
+ exit 1
+}
+grep -q -- '--- PASS: TestModerationRulesHardBlockSelfReviewGuardAndKillSwitchHaltsCapability' "$log_p004" || {
+ echo 'P0-07 FAIL: moderation hard-block and kill switch test was skipped' >&2
+ exit 1
+}
+echo 'P0-07_TESTS_PASS: Capability verification registry, unverified route block, composite health score, isolated admin listener VPN/MFA gate, read-only impersonation, moderation rules engine, and kill switches'
 
 grep -q -- '--- PASS: TestPostgresLiveCreditLotsQuotesAndBilling' "$log_p004" || {
  echo 'P0-06 FAIL: live PostgreSQL credit lots, quotes and billing test was skipped' >&2
