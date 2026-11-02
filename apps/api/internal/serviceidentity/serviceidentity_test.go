@@ -403,3 +403,58 @@ func TestConcurrentRequestsAndThreadSafety(t *testing.T) {
 		t.Errorf("expected positive request count")
 	}
 }
+
+func TestUpdateScopes(t *testing.T) {
+	ctx := context.Background()
+	store := serviceidentity.NewMemoryStore()
+	svc := serviceidentity.NewService(store, nil, nil)
+
+	const (
+		workspaceID = "22222222-2222-2222-2222-222222222201"
+		userID      = "11111111-1111-1111-1111-111111111101"
+	)
+
+	key, err := svc.CreateKey(ctx, serviceidentity.CreateKeyRequest{
+		WorkspaceID: workspaceID,
+		CreatedBy:   userID,
+		Tier:        serviceidentity.TierPro,
+		Name:        "Scope Update Key",
+		Scopes:      []string{serviceidentity.ScopeProductsRead},
+		Live:        true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. Cannot update with empty scopes
+	if err := svc.UpdateScopes(ctx, workspaceID, key.APIKeyID, serviceidentity.TierPro, []string{}); !errors.Is(err, serviceidentity.ErrInvalidScopes) {
+		t.Fatalf("expected ErrInvalidScopes, got %v", err)
+	}
+
+	// 2. Cannot update with unsupported scope for tier
+	if err := svc.UpdateScopes(ctx, workspaceID, key.APIKeyID, serviceidentity.TierStarter, []string{serviceidentity.ScopeProductsManage}); !errors.Is(err, serviceidentity.ErrScopeNotPermitted) {
+		t.Fatalf("expected ErrScopeNotPermitted, got %v", err)
+	}
+
+	// 3. Successfully update scopes for Pro tier
+	newScopes := []string{serviceidentity.ScopeProductsRead, serviceidentity.ScopeProductsManage, serviceidentity.ScopeOrdersRead}
+	if err := svc.UpdateScopes(ctx, workspaceID, key.APIKeyID, serviceidentity.TierPro, newScopes); err != nil {
+		t.Fatalf("UpdateScopes failed: %v", err)
+	}
+
+	authCtx, _, err := svc.Authenticate(ctx, key.PlainKey, false, "127.0.0.1")
+	if err != nil {
+		t.Fatalf("Authenticate failed after update: %v", err)
+	}
+	if !authCtx.HasScope(serviceidentity.ScopeProductsManage) {
+		t.Fatalf("expected to have ScopeProductsManage after update")
+	}
+
+	// 4. Cannot update scopes on revoked key
+	if err := svc.RevokeKey(ctx, workspaceID, key.APIKeyID, "testing"); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.UpdateScopes(ctx, workspaceID, key.APIKeyID, serviceidentity.TierPro, newScopes); err == nil {
+		t.Fatalf("expected error updating scopes on revoked key")
+	}
+}

@@ -229,10 +229,7 @@ func (s *Service) UpdateScopes(ctx context.Context, workspaceID, apiKeyID string
 		return fmt.Errorf("serviceidentity: cannot update scopes on %s key", key.Status)
 	}
 
-	key.Scopes = newScopes
-	key.UpdatedAt = s.clock()
-	// Persist by updating key
-	return s.store.InsertKey(ctx, *key)
+	return s.store.UpdateKeyScopes(ctx, workspaceID, apiKeyID, newScopes, s.clock())
 }
 
 // Authenticate verifies an incoming API key Bearer token, enforces rate limits,

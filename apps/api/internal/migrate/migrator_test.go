@@ -765,7 +765,7 @@ func TestPostgresSeedTwiceIdempotency(t *testing.T) {
 	defer adminPool.Close()
 
 	// 1. Ensure migrations are applied
-	migrationsDir := filepath.Join("..", "..", "..", "infra", "migrations")
+	migrationsDir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 	if _, err := Up(ctx, adminPool, migrationsDir); err != nil {
 		t.Fatalf("migrate.Up failed: %v", err)
 	}

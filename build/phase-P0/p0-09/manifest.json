@@ -84,10 +84,10 @@
     "APIKeyService/UpdateScopes"
   ],
   "migration_files": [
-    "infra/migrations/00001_p0_platform_initial_schema.sql",
-    "infra/migrations/00002_p0_05_diagnostics_and_repairs.sql",
-    "infra/migrations/00003_p0_06_billing_credits_and_quotes.sql",
-    "infra/migrations/00004_p0_07_capability_and_internal_admin.sql",
+    "infra/migrations/00001_p0_04_tenant_schema_rls_and_grants.sql",
+    "infra/migrations/00002_p0_05_outbox_inbox_external_effects.sql",
+    "infra/migrations/00003_p0_07_capability_and_admin_isolation.sql",
+    "infra/migrations/00004_p0_06_credit_lots_quotes_and_billing.sql",
     "infra/migrations/00005_p0_08_notifications_and_help_center.sql"
   ],
   "permission_keys": [

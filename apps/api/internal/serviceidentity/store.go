@@ -2,11 +2,13 @@ package serviceidentity
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -18,9 +20,17 @@ type Store interface {
 	ListKeysByWorkspace(ctx context.Context, workspaceID string) ([]APIKey, error)
 	CountActiveKeys(ctx context.Context, workspaceID string) (int, error)
 	UpdateKeyStatus(ctx context.Context, workspaceID, apiKeyID string, status Status, reason string, updatedAt time.Time) error
+	UpdateKeyScopes(ctx context.Context, workspaceID, apiKeyID string, scopes []string, updatedAt time.Time) error
 	RotateKey(ctx context.Context, oldKeyID string, newKey APIKey, graceEndsAt time.Time) error
 	RecordUsage(ctx context.Context, workspaceID, apiKeyID string, date string, isWrite bool, isError bool, billableAICredits int) error
 	GetUsage(ctx context.Context, workspaceID, apiKeyID string, startDate, endDate string) ([]UsageMetrics, error)
+}
+
+// DBTX abstracts execution against a pgx connection pool or transaction.
+type DBTX interface {
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
 // MemoryStore provides a thread-safe in-memory store for unit testing and deterministic verification.
@@ -115,6 +125,20 @@ func (s *MemoryStore) UpdateKeyStatus(_ context.Context, workspaceID, apiKeyID s
 	return nil
 }
 
+func (s *MemoryStore) UpdateKeyScopes(_ context.Context, workspaceID, apiKeyID string, scopes []string, updatedAt time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	k, exists := s.keys[apiKeyID]
+	if !exists || k.WorkspaceID != workspaceID {
+		return ErrKeyNotFound
+	}
+	k.Scopes = append([]string(nil), scopes...)
+	k.UpdatedAt = updatedAt
+	s.keys[apiKeyID] = k
+	return nil
+}
+
 func (s *MemoryStore) RotateKey(_ context.Context, oldKeyID string, newKey APIKey, graceEndsAt time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -190,14 +214,20 @@ func (s *MemoryStore) GetUsage(_ context.Context, workspaceID, apiKeyID string, 
 	return result, nil
 }
 
-// PgStore implements Store using real PostgreSQL via pgxpool.Pool.
+// PgStore implements Store using real PostgreSQL via pgxpool.Pool or pgx.Tx.
 type PgStore struct {
 	pool *pgxpool.Pool
+	db   DBTX
 }
 
-// NewPgStore creates a new PostgreSQL store for API keys.
+// NewPgStore creates a new PostgreSQL store for API keys backed by a connection pool.
 func NewPgStore(pool *pgxpool.Pool) *PgStore {
-	return &PgStore{pool: pool}
+	return &PgStore{pool: pool, db: pool}
+}
+
+// NewPgStoreTx creates a PostgreSQL store executing against an existing transaction or DBTX.
+func NewPgStoreTx(db DBTX) *PgStore {
+	return &PgStore{pool: nil, db: db}
 }
 
 func (p *PgStore) InsertKey(ctx context.Context, key APIKey) error {
@@ -220,8 +250,16 @@ func (p *PgStore) InsertKey(ctx context.Context, key APIKey) error {
 		replacedByKeyID = &key.ReplacedByKeyID
 	}
 
-	_, err := p.pool.Exec(ctx, query,
-		key.APIKeyID, key.WorkspaceID, key.KeyPrefix, key.KeyHash, key.Name, key.Scopes, key.Status,
+	scopesJSON, err := json.Marshal(key.Scopes)
+	if err != nil {
+		return fmt.Errorf("marshal scopes: %w", err)
+	}
+	if len(key.Scopes) == 0 {
+		scopesJSON = []byte("[]")
+	}
+
+	_, err = p.db.Exec(ctx, query,
+		key.APIKeyID, key.WorkspaceID, key.KeyPrefix, key.KeyHash, key.Name, string(scopesJSON), key.Status,
 		logicalKeyID, replacedByKeyID, key.RotationGraceEndsAt, key.ExpiresAt,
 		key.CreatedBy, key.CreatedAt, key.UpdatedAt,
 	)
@@ -237,7 +275,7 @@ func (p *PgStore) GetKeyByID(ctx context.Context, workspaceID, apiKeyID string) 
 		FROM api_keys
 		WHERE api_key_id = $1::uuid AND workspace_id = $2::uuid
 	`
-	row := p.pool.QueryRow(ctx, query, apiKeyID, workspaceID)
+	row := p.db.QueryRow(ctx, query, apiKeyID, workspaceID)
 	return scanAPIKey(row)
 }
 
@@ -250,7 +288,7 @@ func (p *PgStore) GetKeyByHash(ctx context.Context, keyHash string) (*APIKey, er
 		FROM api_keys
 		WHERE key_hash = $1
 	`
-	row := p.pool.QueryRow(ctx, query, keyHash)
+	row := p.db.QueryRow(ctx, query, keyHash)
 	return scanAPIKey(row)
 }
 
@@ -264,7 +302,7 @@ func (p *PgStore) ListKeysByWorkspace(ctx context.Context, workspaceID string) (
 		WHERE workspace_id = $1::uuid
 		ORDER BY created_at DESC
 	`
-	rows, err := p.pool.Query(ctx, query, workspaceID)
+	rows, err := p.db.Query(ctx, query, workspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -288,7 +326,7 @@ func (p *PgStore) CountActiveKeys(ctx context.Context, workspaceID string) (int,
 		WHERE workspace_id = $1::uuid AND status IN ('active', 'rotating')
 	`
 	var count int
-	err := p.pool.QueryRow(ctx, query, workspaceID).Scan(&count)
+	err := p.db.QueryRow(ctx, query, workspaceID).Scan(&count)
 	return count, err
 }
 
@@ -298,7 +336,30 @@ func (p *PgStore) UpdateKeyStatus(ctx context.Context, workspaceID, apiKeyID str
 		SET status = $1, suspended_reason = $2, updated_at = $3
 		WHERE api_key_id = $4::uuid AND workspace_id = $5::uuid
 	`
-	tag, err := p.pool.Exec(ctx, query, status, reason, updatedAt, apiKeyID, workspaceID)
+	tag, err := p.db.Exec(ctx, query, status, reason, updatedAt, apiKeyID, workspaceID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrKeyNotFound
+	}
+	return nil
+}
+
+func (p *PgStore) UpdateKeyScopes(ctx context.Context, workspaceID, apiKeyID string, scopes []string, updatedAt time.Time) error {
+	scopesJSON, err := json.Marshal(scopes)
+	if err != nil {
+		return fmt.Errorf("marshal scopes: %w", err)
+	}
+	if len(scopes) == 0 {
+		scopesJSON = []byte("[]")
+	}
+	query := `
+		UPDATE api_keys
+		SET scopes = $1::jsonb, updated_at = $2
+		WHERE api_key_id = $3::uuid AND workspace_id = $4::uuid
+	`
+	tag, err := p.db.Exec(ctx, query, string(scopesJSON), updatedAt, apiKeyID, workspaceID)
 	if err != nil {
 		return err
 	}
@@ -309,27 +370,21 @@ func (p *PgStore) UpdateKeyStatus(ctx context.Context, workspaceID, apiKeyID str
 }
 
 func (p *PgStore) RotateKey(ctx context.Context, oldKeyID string, newKey APIKey, graceEndsAt time.Time) error {
-	tx, err := p.pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	// Update old key to rotating
-	updateQuery := `
-		UPDATE api_keys
-		SET status = 'rotating', rotation_grace_ends_at = $1, replaced_by_key_id = $2::uuid, updated_at = $3
-		WHERE api_key_id = $4::uuid
-	`
-	tag, err := tx.Exec(ctx, updateQuery, graceEndsAt, newKey.APIKeyID, newKey.CreatedAt, oldKeyID)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrKeyNotFound
+	var tx pgx.Tx
+	var err error
+	if p.pool != nil {
+		tx, err = p.pool.Begin(ctx)
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback(ctx)
+	} else if existingTx, ok := p.db.(pgx.Tx); ok {
+		tx = existingTx
+	} else {
+		return fmt.Errorf("serviceidentity: transaction required for key rotation")
 	}
 
-	// Insert new key
+	// 1. Insert new key first so that replaced_by_key_id FK constraint will be satisfied when updating old key
 	insertQuery := `
 		INSERT INTO api_keys (
 			api_key_id, workspace_id, key_prefix, key_hash, name, scopes, status,
@@ -344,23 +399,56 @@ func (p *PgStore) RotateKey(ctx context.Context, oldKeyID string, newKey APIKey,
 		logicalKeyID = &newKey.LogicalKeyID
 	}
 
+	scopesJSON, err := json.Marshal(newKey.Scopes)
+	if err != nil {
+		return fmt.Errorf("marshal scopes: %w", err)
+	}
+	if len(newKey.Scopes) == 0 {
+		scopesJSON = []byte("[]")
+	}
+
 	_, err = tx.Exec(ctx, insertQuery,
-		newKey.APIKeyID, newKey.WorkspaceID, newKey.KeyPrefix, newKey.KeyHash, newKey.Name, newKey.Scopes, newKey.Status,
+		newKey.APIKeyID, newKey.WorkspaceID, newKey.KeyPrefix, newKey.KeyHash, newKey.Name, string(scopesJSON), newKey.Status,
 		logicalKeyID, newKey.ExpiresAt, newKey.CreatedBy, newKey.CreatedAt, newKey.UpdatedAt,
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("insert rotated key: %w", err)
 	}
 
-	return tx.Commit(ctx)
+	// 2. Update old key to rotating status and set replaced_by_key_id pointing to newly inserted key
+	updateQuery := `
+		UPDATE api_keys
+		SET status = 'rotating', rotation_grace_ends_at = $1, replaced_by_key_id = $2::uuid, updated_at = $3
+		WHERE api_key_id = $4::uuid
+	`
+	tag, err := tx.Exec(ctx, updateQuery, graceEndsAt, newKey.APIKeyID, newKey.CreatedAt, oldKeyID)
+	if err != nil {
+		return fmt.Errorf("update old key status: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrKeyNotFound
+	}
+
+	if p.pool != nil {
+		return tx.Commit(ctx)
+	}
+	return nil
 }
 
 func (p *PgStore) RecordUsage(ctx context.Context, workspaceID, apiKeyID string, date string, isWrite bool, isError bool, billableAICredits int) error {
-	tx, err := p.pool.Begin(ctx)
-	if err != nil {
-		return err
+	var tx pgx.Tx
+	var err error
+	if p.pool != nil {
+		tx, err = p.pool.Begin(ctx)
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback(ctx)
+	} else if existingTx, ok := p.db.(pgx.Tx); ok {
+		tx = existingTx
+	} else {
+		return fmt.Errorf("serviceidentity: transaction required for recording usage")
 	}
-	defer tx.Rollback(ctx)
 
 	// Update last_used_at and request_count on api_keys
 	_, err = tx.Exec(ctx, `
@@ -403,7 +491,10 @@ func (p *PgStore) RecordUsage(ctx context.Context, workspaceID, apiKeyID string,
 		return err
 	}
 
-	return tx.Commit(ctx)
+	if p.pool != nil {
+		return tx.Commit(ctx)
+	}
+	return nil
 }
 
 func (p *PgStore) GetUsage(ctx context.Context, workspaceID, apiKeyID string, startDate, endDate string) ([]UsageMetrics, error) {
@@ -415,7 +506,7 @@ func (p *PgStore) GetUsage(ctx context.Context, workspaceID, apiKeyID string, st
 		  AND ($4 = '' OR usage_date <= $4::date)
 		ORDER BY usage_date ASC
 	`
-	rows, err := p.pool.Query(ctx, query, workspaceID, apiKeyID, startDate, endDate)
+	rows, err := p.db.Query(ctx, query, workspaceID, apiKeyID, startDate, endDate)
 	if err != nil {
 		return nil, err
 	}
@@ -443,8 +534,9 @@ type rowScanner interface {
 func scanAPIKey(row rowScanner) (*APIKey, error) {
 	var k APIKey
 	var logicalKeyID, replacedByKeyID *string
+	var rawScopes []byte
 	err := row.Scan(
-		&k.APIKeyID, &k.WorkspaceID, &k.KeyPrefix, &k.KeyHash, &k.Name, &k.Scopes, &k.Status,
+		&k.APIKeyID, &k.WorkspaceID, &k.KeyPrefix, &k.KeyHash, &k.Name, &rawScopes, &k.Status,
 		&logicalKeyID, &replacedByKeyID, &k.RotationGraceEndsAt, &k.LastUsedAt,
 		&k.RequestCount, &k.ExpiresAt, &k.CreatedBy, &k.SuspendedReason,
 		&k.CreatedAt, &k.UpdatedAt,
@@ -454,6 +546,12 @@ func scanAPIKey(row rowScanner) (*APIKey, error) {
 			return nil, ErrKeyNotFound
 		}
 		return nil, fmt.Errorf("scan api_key: %w", err)
+	}
+	if len(rawScopes) > 0 {
+		_ = json.Unmarshal(rawScopes, &k.Scopes)
+	}
+	if k.Scopes == nil {
+		k.Scopes = []string{}
 	}
 	if logicalKeyID != nil {
 		k.LogicalKeyID = *logicalKeyID
