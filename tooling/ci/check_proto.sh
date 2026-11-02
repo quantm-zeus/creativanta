@@ -8,6 +8,10 @@ if [ ! -w "${XDG_CONFIG_HOME:-$HOME/.config}" ] && [ -d "$HOME/.flutter_config" 
   export XDG_CONFIG_HOME="$HOME/.flutter_config"
 fi
 
+if [ -z "${GOTMPDIR:-}" ] && [ -d "$HOME/tmp" ]; then
+  export GOTMPDIR="$HOME/tmp"
+fi
+
 test -f buf.yaml && test -f buf.gen.yaml
 test -f protos/creativanta/common/v1/types.proto
 test -f protos/creativanta/common/v1/errors.proto

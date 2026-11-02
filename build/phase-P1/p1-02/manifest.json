@@ -1,0 +1,211 @@
+{
+  "task_id": "P1-02",
+  "phase": "P1",
+  "slice": "p1-02",
+  "title": "Orders, stock ledger và reservations",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "62a6288",
+  "feature_refs": [
+    "docs/02_features/commerce/product_hub.md",
+    "docs/04_contracts/inventory_computation_contract.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_behavior_contracts.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/error_catalog.md"
+  ],
+  "requirement_ids": [
+    "M13-ORDER-001",
+    "M13-ORDER-002",
+    "M13-INVENTORY-001",
+    "M13-INVENTORY-002",
+    "M13-RESERVATION-001",
+    "M13-REFUND-001",
+    "M13-RETURN-001",
+    "RULE-M13-001",
+    "RULE-M13-002",
+    "RULE-M13-003",
+    "RULE-M13-004",
+    "RULE-M13-005",
+    "RULE-M13-006",
+    "DB-C-001",
+    "DB-H-001"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_commerce_orders.md",
+    "docs/03_screens/web/screen_web_commerce_inventory.md"
+  ],
+  "source_hashes": {
+    "infra/migrations/00006_p1_02_orders_inventory_reservations_refunds.sql": "d463a8f01946972a3f9c4243943a91452e0722b850478d7a998f842e0a1655f3",
+    "protos/creativanta/commerce/v1/order.proto": "084dfa3376acef212597b19ca2915f206076a174f728df413b67d9f3be2ee997",
+    "apps/api/internal/inventory/model.go": "2f1f57b8279af3d63d2c4cda5fbd98f0bf07068bb93c8ad3227694fee4974dd9",
+    "apps/api/internal/inventory/store.go": "eacbccf89474e36fdb328ef66a4dafa6ca5a857543331569c24773737ed3b0ba",
+    "apps/api/internal/inventory/service.go": "d71326aa59bf56af1a961aaafef6437d0539c82c5817cd9ca044db7a995bd4b1",
+    "apps/api/internal/inventory/handler.go": "03059523a054c7df20959bd09d678931863f85e73b31d58bde0cd3f189d30510",
+    "apps/api/internal/inventory/fixtures_i01_i10_test.go": "496b4a5e6ef459bc18491299118f8304c8bdb094df785168b4ac997085e23185",
+    "apps/api/internal/order/model.go": "656eb9b5ffa10aa9e45adddd7f31f0e36957c9b6c49b6acbbb0c24f9f9fb908c",
+    "apps/api/internal/order/store.go": "f721256e8af7c28a13a1234728dfb17c974d065ea705ff8ead1de12ef46cadc8",
+    "apps/api/internal/order/service.go": "f5de14537da0eb3aca287e015ca3491179cee08648e02af11dd3ccb2fe6215bf",
+    "apps/api/internal/order/handler.go": "8248a4a634f574b85c5b879f1f6e7e1a435ac953383c06cf5003df9468bdcd03",
+    "apps/api/internal/order/service_test.go": "9e694f57ca6331e64ffedc91f3a38846e56099eec5904a7d77ca4b5166b973e1"
+  },
+  "scope_items": [
+    "Database Migration 00006: Added 7 PostgreSQL 17 tables (inventory_locations, orders, stock_movements, inventory_balances, stock_reservations, refunds, returns) with full Row Level Security (ENABLE/FORCE RLS), tenant isolation policies, strict foreign key references, and exact decimal money types (NUMERIC(18,6)).",
+    "Protobuf Contracts & Multi-Target Generation: Defined 3 canonical services (OrderService, InventoryService, RefundService) with 27 RPCs. Compiled and verified cleanly across all 4 targets (Go, Connect-Go, TypeScript, Dart) with zero codegen drift.",
+    "Acceptance Target 1: Inventory Fixtures I01-I10 implemented and passing under race conditions:",
+    "  - I01: Simultaneous reservations for scarce stock fail closed on insufficient quantity.",
+    "  - I02: Fulfill held order replay idempotency returns identical movement without double-deduction.",
+    "  - I03: Bundle atomicity ensures all-or-nothing holds with zero orphaned lines.",
+    "  - I04: Opening count baseline protects historical orders from re-deduction.",
+    "  - I05: Physical return replay restocks goods while financial refund does not.",
+    "  - I06: Reservation expiry races payment confirmation with deterministic atomic winner.",
+    "  - I07: Cross-tenant isolation blocks cross-workspace operations fail-closed.",
+    "  - I08: External count corrections reconcile balances safely even if available stock goes negative.",
+    "  - I09: Immutable ledger reconciliation verifies sum(movements) matches balance projection.",
+    "  - I10: Polled absolute platform count idempotency ignores identical re-observations.",
+    "Acceptance Target 2: Historical imports do not double-deduct stock. Orders with ordered_at <= opening_at boundary do not reserve or deduct inventory.",
+    "Acceptance Target 3: Partial refund followed by full refund works. Initial partial refund transitions order to partially_refunded, subsequent refund completing order total transitions to refunded, and over-refunding is strictly rejected.",
+    "Physical Returns vs Financial Refunds Separation: Return receipts trigger inventory restocking movements; refund approvals perform financial adjustments only without touching physical stock."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestI01 through TestI10 in apps/api/internal/inventory/fixtures_i01_i10_test.go pass with 100% clean race checks.",
+    "Acceptance Target 2 Verified: TestHistoricalImportDoesNotDoubleDeductStock verifies opening baseline protection for imported orders.",
+    "Acceptance Target 3 Verified: TestPartialRefundFollowedByFullRefund verifies partial refund followed by full settlement and rejection of over-refunds.",
+    "Order Ingestion Idempotency Verified: TestOrderIngestionIdempotency verifies duplicate prevention across import fingerprints and external IDs.",
+    "Order Lifecycle & Cancellation Verified: TestOrderLifecycleAndCancellation verifies state transitions and automatic release of stock reservations on cancellation.",
+    "Return Restock vs Refund Separation Verified: TestPhysicalReturnRestocksInventoryWhileRefundDoesNot confirms physical returns restock inventory while refunds do not.",
+    "ConnectRPC Handlers Verified: OrderServiceHandler, InventoryServiceHandler, and RefundServiceHandler compile and bind cleanly."
+  ],
+  "rpc_contracts": [
+    "OrderService/List",
+    "OrderService/Get",
+    "OrderService/Import",
+    "OrderService/Export",
+    "OrderService/UpdateStatus",
+    "OrderService/Search",
+    "OrderService/Confirm",
+    "OrderService/GetTodayStats",
+    "OrderService/GetDailyStats",
+    "OrderService/GetLabel",
+    "OrderService/ListRecent",
+    "OrderService/BulkCancel",
+    "OrderService/BulkUpdateStatus",
+    "InventoryService/GetSummary",
+    "InventoryService/ListStock",
+    "InventoryService/ListMovements",
+    "InventoryService/CreateStockMovement",
+    "InventoryService/BulkStockIn",
+    "InventoryService/GetAlerts",
+    "InventoryService/UpdateThresholds",
+    "InventoryService/Export",
+    "RefundService/Create",
+    "RefundService/Get",
+    "RefundService/List",
+    "RefundService/Approve",
+    "RefundService/Reject",
+    "RefundService/GetStats"
+  ],
+  "migration_files": [
+    "infra/migrations/00006_p1_02_orders_inventory_reservations_refunds.sql"
+  ],
+  "permission_keys": [
+    "order:read",
+    "order:manage",
+    "product:read",
+    "product:manage",
+    "refund:read",
+    "refund:manage"
+  ],
+  "event_types": [
+    "commerce.order.created",
+    "commerce.order.confirmed",
+    "commerce.order.fulfilled",
+    "commerce.order.completed",
+    "commerce.order.cancelled",
+    "commerce.order.refunded",
+    "commerce.inventory.movement_appended",
+    "commerce.inventory.baseline_recorded",
+    "commerce.inventory.synced",
+    "commerce.reservation.held",
+    "commerce.reservation.fulfilled",
+    "commerce.reservation.released",
+    "commerce.reservation.expired",
+    "commerce.refund.requested",
+    "commerce.refund.approved",
+    "commerce.refund.completed",
+    "commerce.return.initiated",
+    "commerce.return.closed"
+  ],
+  "screen_routes": [
+    "/kinh-doanh/don-hang",
+    "/kinh-doanh/ton-kho"
+  ],
+  "checks": [
+    {
+      "command": "bash tooling/ci/check_d0.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-02/evidence/01-check-d0.log"
+    },
+    {
+      "command": "python3 tooling/check_docs.py --sql",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-02/evidence/02-check-docs-sql.log"
+    },
+    {
+      "command": "bash tooling/ci/check_proto.sh verify",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-02/evidence/03-check-proto.log"
+    },
+    {
+      "command": "cd apps/api && go test -race -v -count=1 ./internal/inventory",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-02/evidence/04-go-test-race-inventory.log"
+    },
+    {
+      "command": "cd apps/api && go test -race -v -count=1 ./internal/order",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-02/evidence/05-go-test-race-order.log"
+    },
+    {
+      "command": "cd apps/api && go test -v ./internal/migrate",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-02/evidence/06-migrator-test.log"
+    },
+    {
+      "command": "cd apps/api && go test ./...",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-02/evidence/07-go-test-all.log"
+    },
+    {
+      "command": "bash tooling/ci/check_node.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-02/evidence/08-check-node.log"
+    },
+    {
+      "command": "bash tooling/ci/check_flutter.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence_path": "build/phase-P1/p1-02/evidence/09-check-flutter.log"
+    }
+  ],
+  "external_gates": [
+    "External Commerce Connectors (Shopee, TikTok Shop, Lazada): Live OAuth and platform webhook credentials remain unconfigured in local test; hermetic ingest engine and idempotency guards are fully verified locally.",
+    "PostgreSQL 17 Database Service: Local PostgreSQL service container runs in GitHub CI; live integration test suites (TestPostgresLiveInventoryStore, TestPostgresLiveOrderStore) execute against the containerized PostgreSQL database."
+  ],
+  "remaining_scope": [
+    "P1-03: Offers, campaign tracking, and financial reconciliation matrix.",
+    "P1-04: Batch settlement engine and payout ledger.",
+    "P2-P8: Future modules (M04-M12, M14-M21) per IMPLEMENTATION_ORDER.md."
+  ],
+  "notes": "P1-02 Orders, stock ledger and reservations implementation complete. Migration 00006 deployed and tested. Inventory fixtures I01-I10 pass under race conditions. Historical import stock protection and partial/full refund lifecycle progression are tested and verified."
+}

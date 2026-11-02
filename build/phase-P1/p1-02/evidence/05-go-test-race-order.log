@@ -1,0 +1,15 @@
+=== RUN   TestPostgresLiveOrderStore
+    order_postgres_test.go:19: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL order suite executes in CI
+--- SKIP: TestPostgresLiveOrderStore (0.00s)
+=== RUN   TestHistoricalImportDoesNotDoubleDeductStock
+--- PASS: TestHistoricalImportDoesNotDoubleDeductStock (0.00s)
+=== RUN   TestPartialRefundFollowedByFullRefund
+--- PASS: TestPartialRefundFollowedByFullRefund (0.00s)
+=== RUN   TestOrderIngestionIdempotency
+--- PASS: TestOrderIngestionIdempotency (0.00s)
+=== RUN   TestOrderLifecycleAndCancellation
+--- PASS: TestOrderLifecycleAndCancellation (0.00s)
+=== RUN   TestPhysicalReturnRestocksInventoryWhileRefundDoesNot
+--- PASS: TestPhysicalReturnRestocksInventoryWhileRefundDoesNot (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/order	1.038s
