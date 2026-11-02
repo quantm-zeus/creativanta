@@ -4,6 +4,10 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
+
+if [ ! -w "${XDG_CONFIG_HOME:-$HOME/.config}" ] && [ -d "$HOME/.flutter_config" ]; then
+  export XDG_CONFIG_HOME="$HOME/.flutter_config"
+fi
 test -f apps/api/internal/transportauth/interceptor.go
 test -f apps/api/internal/transportauth/interceptor_http_test.go
 test -f packages/shared-types/src/transport/validation.ts

@@ -2,17 +2,17 @@ P0_02_CANONICAL_ERROR_REGISTRY
 ERROR_REGISTRY_PASS 10 registered transport codes
 P0_02_TEST_ONLY_FIXTURE_MUST_NOT_ENTER_PRODUCTION
 P0_02_FAIL_CLOSED_INTERCEPTOR
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportauth	1.060s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportauth	1.059s
 P0_02_TYPESCRIPT_WIRE_VALIDATION
 
  RUN  v3.0.7 /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p0-08/packages/shared-types
 
- ✓ test/validation.test.ts (37 tests) 28ms
+ ✓ test/validation.test.ts (37 tests) 49ms
 
  Test Files  1 passed (1)
       Tests  37 passed (37)
-   Start at  09:41:01
-   Duration  616ms (transform 145ms, setup 0ms, collect 151ms, tests 28ms, environment 0ms, prepare 134ms)
+   Start at  10:15:59
+   Duration  664ms (transform 146ms, setup 0ms, collect 176ms, tests 49ms, environment 0ms, prepare 128ms)
 
 P0_02_DART_WIRE_VALIDATION
 00:00 +0: loading /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p0-08/apps/mobile/test/transport_validation_test.dart

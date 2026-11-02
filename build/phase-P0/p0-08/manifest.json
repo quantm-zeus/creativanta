@@ -6,7 +6,7 @@
   "status": "LOCAL_IMPLEMENTED",
   "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
   "acceptance_status": "PENDING",
-  "baseline_commit": "b643161",
+  "baseline_commit": "15e9e36",
   "feature_refs": [
     "docs/02_features/platform/home_decision_engine.md",
     "docs/02_features/platform/help_center.md",

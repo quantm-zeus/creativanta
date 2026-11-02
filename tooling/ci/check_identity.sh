@@ -48,7 +48,7 @@ trap 'rm -f "$log" "$log_p004"' EXIT
 (
  cd "$ROOT/apps/api"
  CREATIVANTA_TEST_DATABASE_URL="$CREATIVANTA_TEST_POSTGRES_DSN" \
-   GOTOOLCHAIN=local go test -p 1 -race -count=1 -v ./internal/migrate ./internal/tenantdb ./internal/rbac ./internal/workspace ./internal/outbox ./internal/diagnostics ./internal/capability ./internal/internaladmin ./internal/billing
+   GOTOOLCHAIN=local go test -p 1 -race -count=1 -v ./internal/migrate ./internal/tenantdb ./internal/rbac ./internal/workspace ./internal/outbox ./internal/diagnostics ./internal/capability ./internal/internaladmin ./internal/billing ./internal/home ./internal/help ./internal/notification
 ) | tee "$log_p004"
 grep -q -- '--- PASS: TestPostgresLiveMigrationAndAppUserRLS' "$log_p004" || {
  echo 'P0-04 FAIL: live PostgreSQL Goose migration and app_user RLS test was skipped' >&2
@@ -121,3 +121,25 @@ grep -q -- '--- PASS: TestPaidRetryCannotExceedConfirmedQuote' "$log_p004" || {
  exit 1
 }
 echo 'P0-06_TESTS_PASS: Versioned pricebook, cost-based quotes, credit lots, concurrent holds, late-result quarantine, cycle boundary rollover/expiry, and billing sandbox'
+
+grep -q -- '--- PASS: TestSixModeIdentitiesRetained' "$log_p004" || {
+ echo 'P0-08 FAIL: six mode identities test was skipped' >&2
+ exit 1
+}
+grep -q -- '--- PASS: TestUnbuiltActionUnavailableWithExplanation' "$log_p004" || {
+ echo 'P0-08 FAIL: unbuilt action unavailable test was skipped' >&2
+ exit 1
+}
+grep -q -- '--- PASS: TestNoDemoDataInCustomerTotals' "$log_p004" || {
+ echo 'P0-08 FAIL: no demo data in customer totals test was skipped' >&2
+ exit 1
+}
+grep -q -- '--- PASS: TestScopedAccessAndTenantIsolation' "$log_p004" || {
+ echo 'P0-08 FAIL: scoped access and tenant isolation test was skipped' >&2
+ exit 1
+}
+grep -q -- '--- PASS: TestSearchContextualModuleFilter' "$log_p004" || {
+ echo 'P0-08 FAIL: contextual module filter help search test was skipped' >&2
+ exit 1
+}
+echo 'P0-08_TESTS_PASS: Six mode identities retained, unbuilt action explanations, no demo data in totals, scoped notifications, and contextual help entry'
