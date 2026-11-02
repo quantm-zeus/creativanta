@@ -1,0 +1,31 @@
+=== RUN   TestHandlerConnectRPCEndpoints
+--- PASS: TestHandlerConnectRPCEndpoints (0.00s)
+=== RUN   TestAcceptanceTarget1_TwoShopsWithSameSourceIDRemainSeparate
+    import_preview_test.go:101: PASS: Target 1 verified. Two shops importing the same external ID produce separate isolated products.
+--- PASS: TestAcceptanceTarget1_TwoShopsWithSameSourceIDRemainSeparate (0.00s)
+=== RUN   TestAcceptanceTarget2_RepeatedRowsNoOp
+    import_preview_test.go:189: PASS: Target 2 verified. Repeated rows inside file and subsequent re-imports no-op idempotently.
+--- PASS: TestAcceptanceTarget2_RepeatedRowsNoOp (0.00s)
+=== RUN   TestAcceptanceTarget3_InvalidMappingsNeedCorrection
+    import_preview_test.go:229: Detected mapping errors: [missing required column mapping: 'title' (or alias 'product_title', 'name', 'ten_san_pham')]
+    import_preview_test.go:305: PASS: Target 3 verified. Invalid mappings flag required correction, block commit, and accept corrections.
+--- PASS: TestAcceptanceTarget3_InvalidMappingsNeedCorrection (0.00s)
+=== RUN   TestSpreadsheetFormulaNeutralization
+--- PASS: TestSpreadsheetFormulaNeutralization (0.00s)
+=== RUN   TestPreviewTokenIntegrity
+--- PASS: TestPreviewTokenIntegrity (0.00s)
+=== RUN   TestPostgresLiveProductAndSkuCatalog
+    product_postgres_test.go:40: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL M13 product catalog suite executes in CI
+--- SKIP: TestPostgresLiveProductAndSkuCatalog (0.00s)
+=== RUN   TestProductLifecycleCRUD
+--- PASS: TestProductLifecycleCRUD (0.00s)
+=== RUN   TestProductValidationRules
+--- PASS: TestProductValidationRules (0.00s)
+=== RUN   TestProductContentLinking
+--- PASS: TestProductContentLinking (0.00s)
+=== RUN   TestStockAndThresholdManagement
+--- PASS: TestStockAndThresholdManagement (0.00s)
+=== RUN   TestBatchTaggingAndBulkArchive
+--- PASS: TestBatchTaggingAndBulkArchive (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/product	1.037s

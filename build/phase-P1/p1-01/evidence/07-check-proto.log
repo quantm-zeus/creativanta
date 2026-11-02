@@ -1,0 +1,57 @@
+CONTRACT_CODEGEN_DRIFT
+PROTO_SOURCE_LINT
+GENERATE_GO_TS_DART
+GO_COMPILE
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1/adminv1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1/commercev1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1/transporttestv1connect	[no test files]
+all modules verified
+TS_COMPILE
+
+> @creativanta/shared-types@0.1.0 check /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-01/packages/shared-types
+> tsc --noEmit -p tsconfig.json
+
+DART_COMPILE
+Analyzing generated...
+No issues found!
+REJECT_GENERATED_CODE_DRIFT
+PROTO_4_TARGETS_PASS mode=verify
+CHECK_BACKWARD_COMPATIBILITY
+TEST_ONLY_FIXTURE_ISOLATION
+GO_TRANSPORT_NEGATIVE_TESTS_AND_RACE
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1/adminv1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1/commercev1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1/transporttestv1connect	[no test files]
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportfixture	1.249s
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/transport-fixture-test	[no test files]
+all modules verified
+UNIT_TYPESCRIPT
+
+> @creativanta/shared-types@0.1.0 test /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-01/packages/shared-types
+> vitest run test/unit.test.ts
+
+
+ RUN  v3.0.7 /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-01/packages/shared-types
+
+ ✓ test/unit.test.ts (4 tests) 11ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  12:34:53
+   Duration  662ms (transform 117ms, setup 0ms, collect 232ms, tests 11ms, environment 0ms, prepare 130ms)
+
+UNIT_DART
+00:00 +0: loading /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-01/apps/mobile/test/generated_proto_test.dart
+00:00 +0: Generated Protobuf Tests Money serialization and exact string deserialization
+00:00 +1: Generated Protobuf Tests CommandContext instantiation with UUID and field validation
+00:00 +2: Generated Protobuf Tests P0-07 CapabilityMatrixCell and ImpersonateResponse round-trip serialization
+00:00 +3: All tests passed!
+P0_PROTO_CONTRACT_AND_LOCAL_TEST_PASS
