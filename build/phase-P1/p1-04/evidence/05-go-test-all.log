@@ -1,0 +1,39 @@
+=== RUN   TestPostgresLiveFinanceStore
+    finance_postgres_test.go:19: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL finance suite executes in CI
+--- SKIP: TestPostgresLiveFinanceStore (0.00s)
+=== RUN   TestF01_RecognizedProfit
+--- PASS: TestF01_RecognizedProfit (0.00s)
+=== RUN   TestF02_PartialRefund
+--- PASS: TestF02_PartialRefund (0.00s)
+=== RUN   TestF03_SettlementDuplication
+--- PASS: TestF03_SettlementDuplication (0.00s)
+=== RUN   TestF04_FX
+--- PASS: TestF04_FX (0.00s)
+=== RUN   TestF05_PendingOrder
+--- PASS: TestF05_PendingOrder (0.00s)
+=== RUN   TestF06_ReplayAndCorrection
+--- PASS: TestF06_ReplayAndCorrection (0.00s)
+=== RUN   TestF07_UnknownCOGS
+--- PASS: TestF07_UnknownCOGS (0.00s)
+=== RUN   TestF08_PartialSettlement
+--- PASS: TestF08_PartialSettlement (0.00s)
+=== RUN   TestF09_SourceMix
+--- PASS: TestF09_SourceMix (0.00s)
+=== RUN   TestConcurrentPartialMatchCannotOverallocate
+--- PASS: TestConcurrentPartialMatchCannotOverallocate (0.00s)
+=== RUN   TestAsymmetricMatchCapacity
+--- PASS: TestAsymmetricMatchCapacity (0.00s)
+=== RUN   TestEvidenceModificationDenied
+--- PASS: TestEvidenceModificationDenied (0.00s)
+=== RUN   TestFinanceGapsDoNotLeakToViewer
+--- PASS: TestFinanceGapsDoNotLeakToViewer (0.00s)
+=== RUN   TestProofBundleAssemblyAndConfidence
+--- PASS: TestProofBundleAssemblyAndConfidence (0.00s)
+=== RUN   TestCostServiceCRUDAndHandlers
+--- PASS: TestCostServiceCRUDAndHandlers (0.00s)
+=== RUN   TestProfitServiceHandlers
+--- PASS: TestProfitServiceHandlers (0.00s)
+=== RUN   TestSettlementServiceHandlers
+--- PASS: TestSettlementServiceHandlers (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/finance	0.015s

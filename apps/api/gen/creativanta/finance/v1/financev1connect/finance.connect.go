@@ -27,6 +27,12 @@ const (
 	SettlementServiceName = "creativanta.finance.v1.SettlementService"
 	// CostServiceName is the fully-qualified name of the CostService service.
 	CostServiceName = "creativanta.finance.v1.CostService"
+	// ReconciliationServiceName is the fully-qualified name of the ReconciliationService service.
+	ReconciliationServiceName = "creativanta.finance.v1.ReconciliationService"
+	// EvidenceServiceName is the fully-qualified name of the EvidenceService service.
+	EvidenceServiceName = "creativanta.finance.v1.EvidenceService"
+	// ProofServiceName is the fully-qualified name of the ProofService service.
+	ProofServiceName = "creativanta.finance.v1.ProofService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -66,6 +72,39 @@ const (
 	CostServiceUpdateProcedure = "/creativanta.finance.v1.CostService/Update"
 	// CostServiceDeleteProcedure is the fully-qualified name of the CostService's Delete RPC.
 	CostServiceDeleteProcedure = "/creativanta.finance.v1.CostService/Delete"
+	// ReconciliationServiceQueueProcedure is the fully-qualified name of the ReconciliationService's
+	// Queue RPC.
+	ReconciliationServiceQueueProcedure = "/creativanta.finance.v1.ReconciliationService/Queue"
+	// ReconciliationServiceMatchProcedure is the fully-qualified name of the ReconciliationService's
+	// Match RPC.
+	ReconciliationServiceMatchProcedure = "/creativanta.finance.v1.ReconciliationService/Match"
+	// ReconciliationServiceManualMatchProcedure is the fully-qualified name of the
+	// ReconciliationService's ManualMatch RPC.
+	ReconciliationServiceManualMatchProcedure = "/creativanta.finance.v1.ReconciliationService/ManualMatch"
+	// ReconciliationServiceOverrideProcedure is the fully-qualified name of the ReconciliationService's
+	// Override RPC.
+	ReconciliationServiceOverrideProcedure = "/creativanta.finance.v1.ReconciliationService/Override"
+	// ReconciliationServiceGetRecordProcedure is the fully-qualified name of the
+	// ReconciliationService's GetRecord RPC.
+	ReconciliationServiceGetRecordProcedure = "/creativanta.finance.v1.ReconciliationService/GetRecord"
+	// ReconciliationServiceListRecordsProcedure is the fully-qualified name of the
+	// ReconciliationService's ListRecords RPC.
+	ReconciliationServiceListRecordsProcedure = "/creativanta.finance.v1.ReconciliationService/ListRecords"
+	// ReconciliationServiceListPendingProcedure is the fully-qualified name of the
+	// ReconciliationService's ListPending RPC.
+	ReconciliationServiceListPendingProcedure = "/creativanta.finance.v1.ReconciliationService/ListPending"
+	// EvidenceServiceSubmitProcedure is the fully-qualified name of the EvidenceService's Submit RPC.
+	EvidenceServiceSubmitProcedure = "/creativanta.finance.v1.EvidenceService/Submit"
+	// EvidenceServiceGetProcedure is the fully-qualified name of the EvidenceService's Get RPC.
+	EvidenceServiceGetProcedure = "/creativanta.finance.v1.EvidenceService/Get"
+	// EvidenceServiceListProcedure is the fully-qualified name of the EvidenceService's List RPC.
+	EvidenceServiceListProcedure = "/creativanta.finance.v1.EvidenceService/List"
+	// ProofServiceAssembleProcedure is the fully-qualified name of the ProofService's Assemble RPC.
+	ProofServiceAssembleProcedure = "/creativanta.finance.v1.ProofService/Assemble"
+	// ProofServiceGetProcedure is the fully-qualified name of the ProofService's Get RPC.
+	ProofServiceGetProcedure = "/creativanta.finance.v1.ProofService/Get"
+	// ProofServiceListProcedure is the fully-qualified name of the ProofService's List RPC.
+	ProofServiceListProcedure = "/creativanta.finance.v1.ProofService/List"
 )
 
 // ProfitServiceClient is a client for the creativanta.finance.v1.ProfitService service.
@@ -511,4 +550,478 @@ func (UnimplementedCostServiceHandler) Update(context.Context, *connect.Request[
 
 func (UnimplementedCostServiceHandler) Delete(context.Context, *connect.Request[v1.CostServiceDeleteRequest]) (*connect.Response[v1.CostServiceDeleteResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.CostService.Delete is not implemented"))
+}
+
+// ReconciliationServiceClient is a client for the creativanta.finance.v1.ReconciliationService
+// service.
+type ReconciliationServiceClient interface {
+	Queue(context.Context, *connect.Request[v1.ReconciliationServiceQueueRequest]) (*connect.Response[v1.ReconciliationServiceQueueResponse], error)
+	Match(context.Context, *connect.Request[v1.ReconciliationServiceMatchRequest]) (*connect.Response[v1.ReconciliationServiceMatchResponse], error)
+	ManualMatch(context.Context, *connect.Request[v1.ReconciliationServiceManualMatchRequest]) (*connect.Response[v1.ReconciliationServiceManualMatchResponse], error)
+	Override(context.Context, *connect.Request[v1.ReconciliationServiceOverrideRequest]) (*connect.Response[v1.ReconciliationServiceOverrideResponse], error)
+	GetRecord(context.Context, *connect.Request[v1.ReconciliationServiceGetRecordRequest]) (*connect.Response[v1.ReconciliationServiceGetRecordResponse], error)
+	ListRecords(context.Context, *connect.Request[v1.ReconciliationServiceListRecordsRequest]) (*connect.Response[v1.ReconciliationServiceListRecordsResponse], error)
+	ListPending(context.Context, *connect.Request[v1.ReconciliationServiceListPendingRequest]) (*connect.Response[v1.ReconciliationServiceListPendingResponse], error)
+}
+
+// NewReconciliationServiceClient constructs a client for the
+// creativanta.finance.v1.ReconciliationService service. By default, it uses the Connect protocol
+// with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To
+// use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb()
+// options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewReconciliationServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ReconciliationServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	reconciliationServiceMethods := v1.File_creativanta_finance_v1_finance_proto.Services().ByName("ReconciliationService").Methods()
+	return &reconciliationServiceClient{
+		queue: connect.NewClient[v1.ReconciliationServiceQueueRequest, v1.ReconciliationServiceQueueResponse](
+			httpClient,
+			baseURL+ReconciliationServiceQueueProcedure,
+			connect.WithSchema(reconciliationServiceMethods.ByName("Queue")),
+			connect.WithClientOptions(opts...),
+		),
+		match: connect.NewClient[v1.ReconciliationServiceMatchRequest, v1.ReconciliationServiceMatchResponse](
+			httpClient,
+			baseURL+ReconciliationServiceMatchProcedure,
+			connect.WithSchema(reconciliationServiceMethods.ByName("Match")),
+			connect.WithClientOptions(opts...),
+		),
+		manualMatch: connect.NewClient[v1.ReconciliationServiceManualMatchRequest, v1.ReconciliationServiceManualMatchResponse](
+			httpClient,
+			baseURL+ReconciliationServiceManualMatchProcedure,
+			connect.WithSchema(reconciliationServiceMethods.ByName("ManualMatch")),
+			connect.WithClientOptions(opts...),
+		),
+		override: connect.NewClient[v1.ReconciliationServiceOverrideRequest, v1.ReconciliationServiceOverrideResponse](
+			httpClient,
+			baseURL+ReconciliationServiceOverrideProcedure,
+			connect.WithSchema(reconciliationServiceMethods.ByName("Override")),
+			connect.WithClientOptions(opts...),
+		),
+		getRecord: connect.NewClient[v1.ReconciliationServiceGetRecordRequest, v1.ReconciliationServiceGetRecordResponse](
+			httpClient,
+			baseURL+ReconciliationServiceGetRecordProcedure,
+			connect.WithSchema(reconciliationServiceMethods.ByName("GetRecord")),
+			connect.WithClientOptions(opts...),
+		),
+		listRecords: connect.NewClient[v1.ReconciliationServiceListRecordsRequest, v1.ReconciliationServiceListRecordsResponse](
+			httpClient,
+			baseURL+ReconciliationServiceListRecordsProcedure,
+			connect.WithSchema(reconciliationServiceMethods.ByName("ListRecords")),
+			connect.WithClientOptions(opts...),
+		),
+		listPending: connect.NewClient[v1.ReconciliationServiceListPendingRequest, v1.ReconciliationServiceListPendingResponse](
+			httpClient,
+			baseURL+ReconciliationServiceListPendingProcedure,
+			connect.WithSchema(reconciliationServiceMethods.ByName("ListPending")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// reconciliationServiceClient implements ReconciliationServiceClient.
+type reconciliationServiceClient struct {
+	queue       *connect.Client[v1.ReconciliationServiceQueueRequest, v1.ReconciliationServiceQueueResponse]
+	match       *connect.Client[v1.ReconciliationServiceMatchRequest, v1.ReconciliationServiceMatchResponse]
+	manualMatch *connect.Client[v1.ReconciliationServiceManualMatchRequest, v1.ReconciliationServiceManualMatchResponse]
+	override    *connect.Client[v1.ReconciliationServiceOverrideRequest, v1.ReconciliationServiceOverrideResponse]
+	getRecord   *connect.Client[v1.ReconciliationServiceGetRecordRequest, v1.ReconciliationServiceGetRecordResponse]
+	listRecords *connect.Client[v1.ReconciliationServiceListRecordsRequest, v1.ReconciliationServiceListRecordsResponse]
+	listPending *connect.Client[v1.ReconciliationServiceListPendingRequest, v1.ReconciliationServiceListPendingResponse]
+}
+
+// Queue calls creativanta.finance.v1.ReconciliationService.Queue.
+func (c *reconciliationServiceClient) Queue(ctx context.Context, req *connect.Request[v1.ReconciliationServiceQueueRequest]) (*connect.Response[v1.ReconciliationServiceQueueResponse], error) {
+	return c.queue.CallUnary(ctx, req)
+}
+
+// Match calls creativanta.finance.v1.ReconciliationService.Match.
+func (c *reconciliationServiceClient) Match(ctx context.Context, req *connect.Request[v1.ReconciliationServiceMatchRequest]) (*connect.Response[v1.ReconciliationServiceMatchResponse], error) {
+	return c.match.CallUnary(ctx, req)
+}
+
+// ManualMatch calls creativanta.finance.v1.ReconciliationService.ManualMatch.
+func (c *reconciliationServiceClient) ManualMatch(ctx context.Context, req *connect.Request[v1.ReconciliationServiceManualMatchRequest]) (*connect.Response[v1.ReconciliationServiceManualMatchResponse], error) {
+	return c.manualMatch.CallUnary(ctx, req)
+}
+
+// Override calls creativanta.finance.v1.ReconciliationService.Override.
+func (c *reconciliationServiceClient) Override(ctx context.Context, req *connect.Request[v1.ReconciliationServiceOverrideRequest]) (*connect.Response[v1.ReconciliationServiceOverrideResponse], error) {
+	return c.override.CallUnary(ctx, req)
+}
+
+// GetRecord calls creativanta.finance.v1.ReconciliationService.GetRecord.
+func (c *reconciliationServiceClient) GetRecord(ctx context.Context, req *connect.Request[v1.ReconciliationServiceGetRecordRequest]) (*connect.Response[v1.ReconciliationServiceGetRecordResponse], error) {
+	return c.getRecord.CallUnary(ctx, req)
+}
+
+// ListRecords calls creativanta.finance.v1.ReconciliationService.ListRecords.
+func (c *reconciliationServiceClient) ListRecords(ctx context.Context, req *connect.Request[v1.ReconciliationServiceListRecordsRequest]) (*connect.Response[v1.ReconciliationServiceListRecordsResponse], error) {
+	return c.listRecords.CallUnary(ctx, req)
+}
+
+// ListPending calls creativanta.finance.v1.ReconciliationService.ListPending.
+func (c *reconciliationServiceClient) ListPending(ctx context.Context, req *connect.Request[v1.ReconciliationServiceListPendingRequest]) (*connect.Response[v1.ReconciliationServiceListPendingResponse], error) {
+	return c.listPending.CallUnary(ctx, req)
+}
+
+// ReconciliationServiceHandler is an implementation of the
+// creativanta.finance.v1.ReconciliationService service.
+type ReconciliationServiceHandler interface {
+	Queue(context.Context, *connect.Request[v1.ReconciliationServiceQueueRequest]) (*connect.Response[v1.ReconciliationServiceQueueResponse], error)
+	Match(context.Context, *connect.Request[v1.ReconciliationServiceMatchRequest]) (*connect.Response[v1.ReconciliationServiceMatchResponse], error)
+	ManualMatch(context.Context, *connect.Request[v1.ReconciliationServiceManualMatchRequest]) (*connect.Response[v1.ReconciliationServiceManualMatchResponse], error)
+	Override(context.Context, *connect.Request[v1.ReconciliationServiceOverrideRequest]) (*connect.Response[v1.ReconciliationServiceOverrideResponse], error)
+	GetRecord(context.Context, *connect.Request[v1.ReconciliationServiceGetRecordRequest]) (*connect.Response[v1.ReconciliationServiceGetRecordResponse], error)
+	ListRecords(context.Context, *connect.Request[v1.ReconciliationServiceListRecordsRequest]) (*connect.Response[v1.ReconciliationServiceListRecordsResponse], error)
+	ListPending(context.Context, *connect.Request[v1.ReconciliationServiceListPendingRequest]) (*connect.Response[v1.ReconciliationServiceListPendingResponse], error)
+}
+
+// NewReconciliationServiceHandler builds an HTTP handler from the service implementation. It
+// returns the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewReconciliationServiceHandler(svc ReconciliationServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	reconciliationServiceMethods := v1.File_creativanta_finance_v1_finance_proto.Services().ByName("ReconciliationService").Methods()
+	reconciliationServiceQueueHandler := connect.NewUnaryHandler(
+		ReconciliationServiceQueueProcedure,
+		svc.Queue,
+		connect.WithSchema(reconciliationServiceMethods.ByName("Queue")),
+		connect.WithHandlerOptions(opts...),
+	)
+	reconciliationServiceMatchHandler := connect.NewUnaryHandler(
+		ReconciliationServiceMatchProcedure,
+		svc.Match,
+		connect.WithSchema(reconciliationServiceMethods.ByName("Match")),
+		connect.WithHandlerOptions(opts...),
+	)
+	reconciliationServiceManualMatchHandler := connect.NewUnaryHandler(
+		ReconciliationServiceManualMatchProcedure,
+		svc.ManualMatch,
+		connect.WithSchema(reconciliationServiceMethods.ByName("ManualMatch")),
+		connect.WithHandlerOptions(opts...),
+	)
+	reconciliationServiceOverrideHandler := connect.NewUnaryHandler(
+		ReconciliationServiceOverrideProcedure,
+		svc.Override,
+		connect.WithSchema(reconciliationServiceMethods.ByName("Override")),
+		connect.WithHandlerOptions(opts...),
+	)
+	reconciliationServiceGetRecordHandler := connect.NewUnaryHandler(
+		ReconciliationServiceGetRecordProcedure,
+		svc.GetRecord,
+		connect.WithSchema(reconciliationServiceMethods.ByName("GetRecord")),
+		connect.WithHandlerOptions(opts...),
+	)
+	reconciliationServiceListRecordsHandler := connect.NewUnaryHandler(
+		ReconciliationServiceListRecordsProcedure,
+		svc.ListRecords,
+		connect.WithSchema(reconciliationServiceMethods.ByName("ListRecords")),
+		connect.WithHandlerOptions(opts...),
+	)
+	reconciliationServiceListPendingHandler := connect.NewUnaryHandler(
+		ReconciliationServiceListPendingProcedure,
+		svc.ListPending,
+		connect.WithSchema(reconciliationServiceMethods.ByName("ListPending")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.finance.v1.ReconciliationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case ReconciliationServiceQueueProcedure:
+			reconciliationServiceQueueHandler.ServeHTTP(w, r)
+		case ReconciliationServiceMatchProcedure:
+			reconciliationServiceMatchHandler.ServeHTTP(w, r)
+		case ReconciliationServiceManualMatchProcedure:
+			reconciliationServiceManualMatchHandler.ServeHTTP(w, r)
+		case ReconciliationServiceOverrideProcedure:
+			reconciliationServiceOverrideHandler.ServeHTTP(w, r)
+		case ReconciliationServiceGetRecordProcedure:
+			reconciliationServiceGetRecordHandler.ServeHTTP(w, r)
+		case ReconciliationServiceListRecordsProcedure:
+			reconciliationServiceListRecordsHandler.ServeHTTP(w, r)
+		case ReconciliationServiceListPendingProcedure:
+			reconciliationServiceListPendingHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedReconciliationServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedReconciliationServiceHandler struct{}
+
+func (UnimplementedReconciliationServiceHandler) Queue(context.Context, *connect.Request[v1.ReconciliationServiceQueueRequest]) (*connect.Response[v1.ReconciliationServiceQueueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ReconciliationService.Queue is not implemented"))
+}
+
+func (UnimplementedReconciliationServiceHandler) Match(context.Context, *connect.Request[v1.ReconciliationServiceMatchRequest]) (*connect.Response[v1.ReconciliationServiceMatchResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ReconciliationService.Match is not implemented"))
+}
+
+func (UnimplementedReconciliationServiceHandler) ManualMatch(context.Context, *connect.Request[v1.ReconciliationServiceManualMatchRequest]) (*connect.Response[v1.ReconciliationServiceManualMatchResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ReconciliationService.ManualMatch is not implemented"))
+}
+
+func (UnimplementedReconciliationServiceHandler) Override(context.Context, *connect.Request[v1.ReconciliationServiceOverrideRequest]) (*connect.Response[v1.ReconciliationServiceOverrideResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ReconciliationService.Override is not implemented"))
+}
+
+func (UnimplementedReconciliationServiceHandler) GetRecord(context.Context, *connect.Request[v1.ReconciliationServiceGetRecordRequest]) (*connect.Response[v1.ReconciliationServiceGetRecordResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ReconciliationService.GetRecord is not implemented"))
+}
+
+func (UnimplementedReconciliationServiceHandler) ListRecords(context.Context, *connect.Request[v1.ReconciliationServiceListRecordsRequest]) (*connect.Response[v1.ReconciliationServiceListRecordsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ReconciliationService.ListRecords is not implemented"))
+}
+
+func (UnimplementedReconciliationServiceHandler) ListPending(context.Context, *connect.Request[v1.ReconciliationServiceListPendingRequest]) (*connect.Response[v1.ReconciliationServiceListPendingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ReconciliationService.ListPending is not implemented"))
+}
+
+// EvidenceServiceClient is a client for the creativanta.finance.v1.EvidenceService service.
+type EvidenceServiceClient interface {
+	Submit(context.Context, *connect.Request[v1.EvidenceServiceSubmitRequest]) (*connect.Response[v1.EvidenceServiceSubmitResponse], error)
+	Get(context.Context, *connect.Request[v1.EvidenceServiceGetRequest]) (*connect.Response[v1.EvidenceServiceGetResponse], error)
+	List(context.Context, *connect.Request[v1.EvidenceServiceListRequest]) (*connect.Response[v1.EvidenceServiceListResponse], error)
+}
+
+// NewEvidenceServiceClient constructs a client for the creativanta.finance.v1.EvidenceService
+// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
+// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
+// the connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewEvidenceServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) EvidenceServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	evidenceServiceMethods := v1.File_creativanta_finance_v1_finance_proto.Services().ByName("EvidenceService").Methods()
+	return &evidenceServiceClient{
+		submit: connect.NewClient[v1.EvidenceServiceSubmitRequest, v1.EvidenceServiceSubmitResponse](
+			httpClient,
+			baseURL+EvidenceServiceSubmitProcedure,
+			connect.WithSchema(evidenceServiceMethods.ByName("Submit")),
+			connect.WithClientOptions(opts...),
+		),
+		get: connect.NewClient[v1.EvidenceServiceGetRequest, v1.EvidenceServiceGetResponse](
+			httpClient,
+			baseURL+EvidenceServiceGetProcedure,
+			connect.WithSchema(evidenceServiceMethods.ByName("Get")),
+			connect.WithClientOptions(opts...),
+		),
+		list: connect.NewClient[v1.EvidenceServiceListRequest, v1.EvidenceServiceListResponse](
+			httpClient,
+			baseURL+EvidenceServiceListProcedure,
+			connect.WithSchema(evidenceServiceMethods.ByName("List")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// evidenceServiceClient implements EvidenceServiceClient.
+type evidenceServiceClient struct {
+	submit *connect.Client[v1.EvidenceServiceSubmitRequest, v1.EvidenceServiceSubmitResponse]
+	get    *connect.Client[v1.EvidenceServiceGetRequest, v1.EvidenceServiceGetResponse]
+	list   *connect.Client[v1.EvidenceServiceListRequest, v1.EvidenceServiceListResponse]
+}
+
+// Submit calls creativanta.finance.v1.EvidenceService.Submit.
+func (c *evidenceServiceClient) Submit(ctx context.Context, req *connect.Request[v1.EvidenceServiceSubmitRequest]) (*connect.Response[v1.EvidenceServiceSubmitResponse], error) {
+	return c.submit.CallUnary(ctx, req)
+}
+
+// Get calls creativanta.finance.v1.EvidenceService.Get.
+func (c *evidenceServiceClient) Get(ctx context.Context, req *connect.Request[v1.EvidenceServiceGetRequest]) (*connect.Response[v1.EvidenceServiceGetResponse], error) {
+	return c.get.CallUnary(ctx, req)
+}
+
+// List calls creativanta.finance.v1.EvidenceService.List.
+func (c *evidenceServiceClient) List(ctx context.Context, req *connect.Request[v1.EvidenceServiceListRequest]) (*connect.Response[v1.EvidenceServiceListResponse], error) {
+	return c.list.CallUnary(ctx, req)
+}
+
+// EvidenceServiceHandler is an implementation of the creativanta.finance.v1.EvidenceService
+// service.
+type EvidenceServiceHandler interface {
+	Submit(context.Context, *connect.Request[v1.EvidenceServiceSubmitRequest]) (*connect.Response[v1.EvidenceServiceSubmitResponse], error)
+	Get(context.Context, *connect.Request[v1.EvidenceServiceGetRequest]) (*connect.Response[v1.EvidenceServiceGetResponse], error)
+	List(context.Context, *connect.Request[v1.EvidenceServiceListRequest]) (*connect.Response[v1.EvidenceServiceListResponse], error)
+}
+
+// NewEvidenceServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewEvidenceServiceHandler(svc EvidenceServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	evidenceServiceMethods := v1.File_creativanta_finance_v1_finance_proto.Services().ByName("EvidenceService").Methods()
+	evidenceServiceSubmitHandler := connect.NewUnaryHandler(
+		EvidenceServiceSubmitProcedure,
+		svc.Submit,
+		connect.WithSchema(evidenceServiceMethods.ByName("Submit")),
+		connect.WithHandlerOptions(opts...),
+	)
+	evidenceServiceGetHandler := connect.NewUnaryHandler(
+		EvidenceServiceGetProcedure,
+		svc.Get,
+		connect.WithSchema(evidenceServiceMethods.ByName("Get")),
+		connect.WithHandlerOptions(opts...),
+	)
+	evidenceServiceListHandler := connect.NewUnaryHandler(
+		EvidenceServiceListProcedure,
+		svc.List,
+		connect.WithSchema(evidenceServiceMethods.ByName("List")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.finance.v1.EvidenceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case EvidenceServiceSubmitProcedure:
+			evidenceServiceSubmitHandler.ServeHTTP(w, r)
+		case EvidenceServiceGetProcedure:
+			evidenceServiceGetHandler.ServeHTTP(w, r)
+		case EvidenceServiceListProcedure:
+			evidenceServiceListHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedEvidenceServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedEvidenceServiceHandler struct{}
+
+func (UnimplementedEvidenceServiceHandler) Submit(context.Context, *connect.Request[v1.EvidenceServiceSubmitRequest]) (*connect.Response[v1.EvidenceServiceSubmitResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.EvidenceService.Submit is not implemented"))
+}
+
+func (UnimplementedEvidenceServiceHandler) Get(context.Context, *connect.Request[v1.EvidenceServiceGetRequest]) (*connect.Response[v1.EvidenceServiceGetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.EvidenceService.Get is not implemented"))
+}
+
+func (UnimplementedEvidenceServiceHandler) List(context.Context, *connect.Request[v1.EvidenceServiceListRequest]) (*connect.Response[v1.EvidenceServiceListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.EvidenceService.List is not implemented"))
+}
+
+// ProofServiceClient is a client for the creativanta.finance.v1.ProofService service.
+type ProofServiceClient interface {
+	Assemble(context.Context, *connect.Request[v1.ProofServiceAssembleRequest]) (*connect.Response[v1.ProofServiceAssembleResponse], error)
+	Get(context.Context, *connect.Request[v1.ProofServiceGetRequest]) (*connect.Response[v1.ProofServiceGetResponse], error)
+	List(context.Context, *connect.Request[v1.ProofServiceListRequest]) (*connect.Response[v1.ProofServiceListResponse], error)
+}
+
+// NewProofServiceClient constructs a client for the creativanta.finance.v1.ProofService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewProofServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ProofServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	proofServiceMethods := v1.File_creativanta_finance_v1_finance_proto.Services().ByName("ProofService").Methods()
+	return &proofServiceClient{
+		assemble: connect.NewClient[v1.ProofServiceAssembleRequest, v1.ProofServiceAssembleResponse](
+			httpClient,
+			baseURL+ProofServiceAssembleProcedure,
+			connect.WithSchema(proofServiceMethods.ByName("Assemble")),
+			connect.WithClientOptions(opts...),
+		),
+		get: connect.NewClient[v1.ProofServiceGetRequest, v1.ProofServiceGetResponse](
+			httpClient,
+			baseURL+ProofServiceGetProcedure,
+			connect.WithSchema(proofServiceMethods.ByName("Get")),
+			connect.WithClientOptions(opts...),
+		),
+		list: connect.NewClient[v1.ProofServiceListRequest, v1.ProofServiceListResponse](
+			httpClient,
+			baseURL+ProofServiceListProcedure,
+			connect.WithSchema(proofServiceMethods.ByName("List")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// proofServiceClient implements ProofServiceClient.
+type proofServiceClient struct {
+	assemble *connect.Client[v1.ProofServiceAssembleRequest, v1.ProofServiceAssembleResponse]
+	get      *connect.Client[v1.ProofServiceGetRequest, v1.ProofServiceGetResponse]
+	list     *connect.Client[v1.ProofServiceListRequest, v1.ProofServiceListResponse]
+}
+
+// Assemble calls creativanta.finance.v1.ProofService.Assemble.
+func (c *proofServiceClient) Assemble(ctx context.Context, req *connect.Request[v1.ProofServiceAssembleRequest]) (*connect.Response[v1.ProofServiceAssembleResponse], error) {
+	return c.assemble.CallUnary(ctx, req)
+}
+
+// Get calls creativanta.finance.v1.ProofService.Get.
+func (c *proofServiceClient) Get(ctx context.Context, req *connect.Request[v1.ProofServiceGetRequest]) (*connect.Response[v1.ProofServiceGetResponse], error) {
+	return c.get.CallUnary(ctx, req)
+}
+
+// List calls creativanta.finance.v1.ProofService.List.
+func (c *proofServiceClient) List(ctx context.Context, req *connect.Request[v1.ProofServiceListRequest]) (*connect.Response[v1.ProofServiceListResponse], error) {
+	return c.list.CallUnary(ctx, req)
+}
+
+// ProofServiceHandler is an implementation of the creativanta.finance.v1.ProofService service.
+type ProofServiceHandler interface {
+	Assemble(context.Context, *connect.Request[v1.ProofServiceAssembleRequest]) (*connect.Response[v1.ProofServiceAssembleResponse], error)
+	Get(context.Context, *connect.Request[v1.ProofServiceGetRequest]) (*connect.Response[v1.ProofServiceGetResponse], error)
+	List(context.Context, *connect.Request[v1.ProofServiceListRequest]) (*connect.Response[v1.ProofServiceListResponse], error)
+}
+
+// NewProofServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewProofServiceHandler(svc ProofServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	proofServiceMethods := v1.File_creativanta_finance_v1_finance_proto.Services().ByName("ProofService").Methods()
+	proofServiceAssembleHandler := connect.NewUnaryHandler(
+		ProofServiceAssembleProcedure,
+		svc.Assemble,
+		connect.WithSchema(proofServiceMethods.ByName("Assemble")),
+		connect.WithHandlerOptions(opts...),
+	)
+	proofServiceGetHandler := connect.NewUnaryHandler(
+		ProofServiceGetProcedure,
+		svc.Get,
+		connect.WithSchema(proofServiceMethods.ByName("Get")),
+		connect.WithHandlerOptions(opts...),
+	)
+	proofServiceListHandler := connect.NewUnaryHandler(
+		ProofServiceListProcedure,
+		svc.List,
+		connect.WithSchema(proofServiceMethods.ByName("List")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.finance.v1.ProofService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case ProofServiceAssembleProcedure:
+			proofServiceAssembleHandler.ServeHTTP(w, r)
+		case ProofServiceGetProcedure:
+			proofServiceGetHandler.ServeHTTP(w, r)
+		case ProofServiceListProcedure:
+			proofServiceListHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedProofServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedProofServiceHandler struct{}
+
+func (UnimplementedProofServiceHandler) Assemble(context.Context, *connect.Request[v1.ProofServiceAssembleRequest]) (*connect.Response[v1.ProofServiceAssembleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ProofService.Assemble is not implemented"))
+}
+
+func (UnimplementedProofServiceHandler) Get(context.Context, *connect.Request[v1.ProofServiceGetRequest]) (*connect.Response[v1.ProofServiceGetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ProofService.Get is not implemented"))
+}
+
+func (UnimplementedProofServiceHandler) List(context.Context, *connect.Request[v1.ProofServiceListRequest]) (*connect.Response[v1.ProofServiceListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ProofService.List is not implemented"))
 }

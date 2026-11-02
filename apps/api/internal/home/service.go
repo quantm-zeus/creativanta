@@ -101,8 +101,18 @@ func (s *Service) GetMobileHome(
 	}
 
 	cards := s.buildDecisionCardsForMode(mode)
+	caller, hasCaller := CallerFromContext(ctx)
+	isViewer := hasCaller && (caller.WorkspaceRole == "viewer" || caller.WorkspaceRole == rbac.RoleViewer)
+	if isViewer {
+		cards = filterCardsForRole(cards, caller.WorkspaceRole)
+	}
+
 	checklist := s.getOnboardingChecklist(msg.WorkspaceId.Value, "default-user")
 	verifiedRevenue, sourceBadge := s.computeCustomerVerifiedTotalRevenue(msg.WorkspaceId.Value)
+	if isViewer {
+		verifiedRevenue = ""
+		sourceBadge = adminv1.DataSourceBadge_DATA_SOURCE_BADGE_UNSPECIFIED
+	}
 
 	resp := &adminv1.GetMobileHomeResponse{
 		WorkspaceId:                  msg.WorkspaceId,
@@ -156,11 +166,28 @@ func (s *Service) GetDecisionCards(
 	}
 
 	cards := s.buildDecisionCardsForMode(mode)
+	if caller, ok := CallerFromContext(ctx); ok && (caller.WorkspaceRole == "viewer" || caller.WorkspaceRole == rbac.RoleViewer) {
+		cards = filterCardsForRole(cards, caller.WorkspaceRole)
+	}
 	return connect.NewResponse(&adminv1.GetDecisionCardsResponse{
 		OperatorMode: mode,
 		Cards:        cards,
 		AsOf:         timestamppb.New(time.Now().UTC()),
 	}), nil
+}
+
+func filterCardsForRole(cards []*adminv1.DecisionCard, role string) []*adminv1.DecisionCard {
+	if role != "viewer" && role != rbac.RoleViewer {
+		return cards
+	}
+	var filtered []*adminv1.DecisionCard
+	for _, c := range cards {
+		if c.ModuleRef == "M19" || c.CardFamily == "revenue_today" || c.CardFamily == "profit_anomalies" {
+			continue
+		}
+		filtered = append(filtered, c)
+	}
+	return filtered
 }
 
 // GetWhyThisNumber implements DashboardService/GetWhyThisNumber (RULE-M01-004, RULE-M01-007).
@@ -171,6 +198,10 @@ func (s *Service) GetWhyThisNumber(
 	msg := req.Msg
 	if msg == nil || msg.WorkspaceId == nil || msg.MetricKey == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
+	}
+
+	if caller, ok := CallerFromContext(ctx); ok && (caller.WorkspaceRole == "viewer" || caller.WorkspaceRole == rbac.RoleViewer) {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("home: viewer role is not authorized to view financial metric drilldowns"))
 	}
 
 	s.mu.RLock()

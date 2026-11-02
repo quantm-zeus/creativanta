@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -78,6 +79,33 @@ type Store interface {
 	GetSnapshot(ctx context.Context, workspaceID, snapshotID string) (*ProfitSnapshot, error)
 	GetLatestSnapshot(ctx context.Context, workspaceID, scopeType, scopeID, periodStart, periodEnd string) (*ProfitSnapshot, error)
 	ListSnapshots(ctx context.Context, workspaceID, scopeType string, limit int) ([]ProfitSnapshot, error)
+
+	// Reconciliation & Matching (M19 / P1-04)
+	CreateOrder(ctx context.Context, o *Order) error
+	GetOrder(ctx context.Context, workspaceID, orderID string) (*Order, error)
+	UpdateOrderMatched(ctx context.Context, workspaceID, orderID string, matchedAmount tenantdb.ExactDecimal, newState string) error
+	CreateReconciliationRecord(ctx context.Context, r *ReconciliationRecord) error
+	GetReconciliationRecord(ctx context.Context, workspaceID, recordID string) (*ReconciliationRecord, error)
+	ListReconciliationRecords(ctx context.Context, workspaceID string, filter ReconciliationFilter, limit, offset int) ([]ReconciliationRecord, int64, error)
+	UpdateReconciliationRecord(ctx context.Context, r *ReconciliationRecord) error
+	CreateReconciliationMatch(ctx context.Context, m *ReconciliationMatch) error
+	ListReconciliationMatches(ctx context.Context, workspaceID, recordID string) ([]ReconciliationMatch, error)
+	AtomicMatch(ctx context.Context, workspaceID, settlementID, lineID, orderID, recordID string, allocAmount tenantdb.ExactDecimal) (*SettlementLine, *Order, *ReconciliationMatch, error)
+
+	// Evidence Objects (§11.4 & RULE-M19-005)
+	CreateEvidence(ctx context.Context, e *EvidenceObject) error
+	GetEvidence(ctx context.Context, workspaceID, evidenceID string) (*EvidenceObject, error)
+	ListEvidence(ctx context.Context, workspaceID string, filter EvidenceFilter, limit, offset int) ([]EvidenceObject, int64, error)
+	UpdateEvidence(ctx context.Context, e *EvidenceObject) error
+	DeleteEvidence(ctx context.Context, workspaceID, evidenceID string) error
+
+	// Proof Bundles (§11.5 & RULE-M19-006)
+	CreateProofBundle(ctx context.Context, pb *ProofBundle) error
+	GetProofBundle(ctx context.Context, workspaceID, bundleID string) (*ProofBundle, error)
+	ListProofBundles(ctx context.Context, workspaceID string, filter ProofBundleFilter, limit, offset int) ([]ProofBundle, int64, error)
+
+	// Data Gaps & Repair Queue (M19 / M01)
+	ListDataGaps(ctx context.Context, workspaceID string, filter DataGapFilter, limit, offset int) ([]DataGapItem, int64, error)
 }
 
 // ============================================================================
@@ -86,11 +114,16 @@ type Store interface {
 
 type MemoryStore struct {
 	mu          sync.RWMutex
-	postings    map[string]*FinancialPosting // postingID -> posting
-	costItems   map[string]*CostItem         // costItemID -> item
-	settlements map[string]*Settlement       // settlementID -> settlement
-	lines       map[string]*SettlementLine   // lineID -> line
-	snapshots   map[string]*ProfitSnapshot   // snapshotID -> snapshot
+	postings    map[string]*FinancialPosting     // postingID -> posting
+	costItems   map[string]*CostItem             // costItemID -> item
+	settlements map[string]*Settlement           // settlementID -> settlement
+	lines       map[string]*SettlementLine       // lineID -> line
+	snapshots   map[string]*ProfitSnapshot       // snapshotID -> snapshot
+	records     map[string]*ReconciliationRecord // recordID -> record
+	matches     map[string]*ReconciliationMatch  // matchID -> match
+	orders      map[string]*Order                // orderID -> order
+	evidence    map[string]*EvidenceObject       // evidenceID -> evidence
+	bundles     map[string]*ProofBundle          // bundleID -> bundle
 }
 
 func NewMemoryStore() *MemoryStore {
@@ -100,6 +133,11 @@ func NewMemoryStore() *MemoryStore {
 		settlements: make(map[string]*Settlement),
 		lines:       make(map[string]*SettlementLine),
 		snapshots:   make(map[string]*ProfitSnapshot),
+		records:     make(map[string]*ReconciliationRecord),
+		matches:     make(map[string]*ReconciliationMatch),
+		orders:      make(map[string]*Order),
+		evidence:    make(map[string]*EvidenceObject),
+		bundles:     make(map[string]*ProofBundle),
 	}
 }
 
@@ -552,6 +590,565 @@ func (m *MemoryStore) ListSnapshots(_ context.Context, workspaceID, scopeType st
 		result = result[:limit]
 	}
 	return result, nil
+}
+
+// ----------------------------------------------------------------------------
+// MemoryStore: Orders
+// ----------------------------------------------------------------------------
+
+func (m *MemoryStore) CreateOrder(_ context.Context, o *Order) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if o.OrderID == "" {
+		o.OrderID = newUUID()
+	}
+	if o.OrderedAt.IsZero() {
+		o.OrderedAt = time.Now().UTC()
+	}
+	cp := *o
+	m.orders[o.OrderID] = &cp
+	return nil
+}
+
+func (m *MemoryStore) GetOrder(_ context.Context, workspaceID, orderID string) (*Order, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	o, ok := m.orders[orderID]
+	if !ok || o.WorkspaceID != workspaceID {
+		return nil, ErrOrderNotFound
+	}
+	cp := *o
+	return &cp, nil
+}
+
+func (m *MemoryStore) UpdateOrderMatched(_ context.Context, workspaceID, orderID string, matchedAmount tenantdb.ExactDecimal, newState string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	o, ok := m.orders[orderID]
+	if !ok || o.WorkspaceID != workspaceID {
+		return ErrOrderNotFound
+	}
+	if matchedAmount.Cmp(o.Amount) > 0 {
+		return ErrOrderCapacityExceeded
+	}
+	o.MatchedAmount = matchedAmount
+	if newState != "" {
+		o.ReconciliationState = newState
+	}
+	return nil
+}
+
+// ----------------------------------------------------------------------------
+// MemoryStore: Reconciliation Records & Matches
+// ----------------------------------------------------------------------------
+
+func (m *MemoryStore) CreateReconciliationRecord(_ context.Context, r *ReconciliationRecord) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if r.RecordID == "" {
+		r.RecordID = newUUID()
+	}
+	now := time.Now().UTC()
+	if r.CreatedAt.IsZero() {
+		r.CreatedAt = now
+	}
+	if r.UpdatedAt.IsZero() {
+		r.UpdatedAt = now
+	}
+	if r.ReconciliationState == "" {
+		r.ReconciliationState = ReconciliationImportedOnly
+	}
+	cp := *r
+	m.records[r.RecordID] = &cp
+	return nil
+}
+
+func (m *MemoryStore) GetReconciliationRecord(_ context.Context, workspaceID, recordID string) (*ReconciliationRecord, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	r, ok := m.records[recordID]
+	if !ok || r.WorkspaceID != workspaceID {
+		return nil, ErrRecordNotFound
+	}
+	cp := *r
+	return &cp, nil
+}
+
+func (m *MemoryStore) ListReconciliationRecords(_ context.Context, workspaceID string, filter ReconciliationFilter, limit, offset int) ([]ReconciliationRecord, int64, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var matched []ReconciliationRecord
+	for _, r := range m.records {
+		if r.WorkspaceID != workspaceID {
+			continue
+		}
+		if filter.ReconciliationState != "" && r.ReconciliationState != filter.ReconciliationState {
+			continue
+		}
+		if filter.PeriodStart != "" && r.PeriodStart < filter.PeriodStart {
+			continue
+		}
+		if filter.PeriodEnd != "" && r.PeriodEnd > filter.PeriodEnd {
+			continue
+		}
+		matched = append(matched, *r)
+	}
+
+	sort.Slice(matched, func(i, j int) bool {
+		return matched[i].CreatedAt.After(matched[j].CreatedAt)
+	})
+
+	total := int64(len(matched))
+	if offset > len(matched) {
+		return nil, total, nil
+	}
+	matched = matched[offset:]
+	if limit > 0 && len(matched) > limit {
+		matched = matched[:limit]
+	}
+	return matched, total, nil
+}
+
+func (m *MemoryStore) UpdateReconciliationRecord(_ context.Context, r *ReconciliationRecord) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	existing, ok := m.records[r.RecordID]
+	if !ok || existing.WorkspaceID != r.WorkspaceID {
+		return ErrRecordNotFound
+	}
+	r.UpdatedAt = time.Now().UTC()
+	cp := *r
+	m.records[r.RecordID] = &cp
+	return nil
+}
+
+func (m *MemoryStore) CreateReconciliationMatch(_ context.Context, match *ReconciliationMatch) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if match.MatchID == "" {
+		match.MatchID = newUUID()
+	}
+	if match.CreatedAt.IsZero() {
+		match.CreatedAt = time.Now().UTC()
+	}
+	cp := *match
+	m.matches[match.MatchID] = &cp
+	return nil
+}
+
+func (m *MemoryStore) ListReconciliationMatches(_ context.Context, workspaceID, recordID string) ([]ReconciliationMatch, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var result []ReconciliationMatch
+	for _, match := range m.matches {
+		if match.WorkspaceID == workspaceID {
+			if recordID == "" || match.RecordID == recordID {
+				result = append(result, *match)
+			}
+		}
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].CreatedAt.Before(result[j].CreatedAt)
+	})
+	return result, nil
+}
+
+// AtomicMatch executes a concurrent-safe partial match enforcing remaining capacity on BOTH the line and order.
+func (m *MemoryStore) AtomicMatch(
+	_ context.Context,
+	workspaceID, settlementID, lineID, orderID, recordID string,
+	allocAmount tenantdb.ExactDecimal,
+) (*SettlementLine, *Order, *ReconciliationMatch, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	line, ok := m.lines[lineID]
+	if !ok || line.WorkspaceID != workspaceID {
+		return nil, nil, nil, errors.New("finance: settlement line not found")
+	}
+
+	order, ok := m.orders[orderID]
+	if !ok || order.WorkspaceID != workspaceID {
+		return nil, nil, nil, ErrOrderNotFound
+	}
+
+	// 1. Enforce settlement line capacity
+	newLineMatched, err := line.MatchedAmount.Add(allocAmount)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if newLineMatched.Cmp(line.NetAmount) > 0 {
+		return nil, nil, nil, ErrCapacityExceeded
+	}
+
+	// 2. Enforce order capacity
+	newOrderMatched, err := order.MatchedAmount.Add(allocAmount)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if newOrderMatched.Cmp(order.Amount) > 0 {
+		return nil, nil, nil, ErrOrderCapacityExceeded
+	}
+
+	// 3. Update settlement line state
+	line.MatchedAmount = newLineMatched
+	if newLineMatched.Cmp(line.NetAmount) == 0 {
+		line.ReconciliationState = ReconciliationFullyReconciled
+	} else {
+		line.ReconciliationState = ReconciliationPartiallyReconciled
+	}
+
+	// 4. Update order state
+	order.MatchedAmount = newOrderMatched
+	if newOrderMatched.Cmp(order.Amount) == 0 {
+		order.ReconciliationState = ReconciliationFullyReconciled
+	} else {
+		order.ReconciliationState = ReconciliationPartiallyReconciled
+	}
+
+	// 5. Create durable match link
+	match := &ReconciliationMatch{
+		MatchID:         newUUID(),
+		WorkspaceID:     workspaceID,
+		RecordID:        recordID,
+		SettlementID:    settlementID,
+		LineID:          lineID,
+		OrderID:         orderID,
+		AllocatedAmount: allocAmount,
+		Currency:        line.Currency,
+		CreatedAt:       time.Now().UTC(),
+	}
+	m.matches[match.MatchID] = match
+
+	// 6. Update batch record if supplied
+	if recordID != "" {
+		if rec, ok := m.records[recordID]; ok && rec.WorkspaceID == workspaceID {
+			rec.MatchedAmount, _ = rec.MatchedAmount.Add(allocAmount)
+			rec.UpdatedAt = time.Now().UTC()
+		}
+	}
+
+	lineCopy := *line
+	orderCopy := *order
+	matchCopy := *match
+	return &lineCopy, &orderCopy, &matchCopy, nil
+}
+
+// ----------------------------------------------------------------------------
+// MemoryStore: Evidence Objects (§11.4 & RULE-M19-005)
+// ----------------------------------------------------------------------------
+
+func (m *MemoryStore) CreateEvidence(_ context.Context, e *EvidenceObject) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if e.EvidenceID == "" {
+		e.EvidenceID = newUUID()
+	}
+	now := time.Now().UTC()
+	if e.CollectedAt.IsZero() {
+		e.CollectedAt = now
+	}
+	if e.CreatedAt.IsZero() {
+		e.CreatedAt = now
+	}
+	if e.VerificationStatus == "" {
+		e.VerificationStatus = VerificationStatusPending
+	}
+	cp := *e
+	m.evidence[e.EvidenceID] = &cp
+	return nil
+}
+
+func (m *MemoryStore) GetEvidence(_ context.Context, workspaceID, evidenceID string) (*EvidenceObject, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	e, ok := m.evidence[evidenceID]
+	if !ok || e.WorkspaceID != workspaceID {
+		return nil, ErrEvidenceNotFound
+	}
+	cp := *e
+	return &cp, nil
+}
+
+func (m *MemoryStore) ListEvidence(_ context.Context, workspaceID string, filter EvidenceFilter, limit, offset int) ([]EvidenceObject, int64, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var matched []EvidenceObject
+	for _, e := range m.evidence {
+		if e.WorkspaceID != workspaceID || e.DeletedAt != nil {
+			continue
+		}
+		if filter.EvidenceType != "" && e.EvidenceType != filter.EvidenceType {
+			continue
+		}
+		if filter.VerificationStatus != "" && e.VerificationStatus != filter.VerificationStatus {
+			continue
+		}
+		matched = append(matched, *e)
+	}
+
+	sort.Slice(matched, func(i, j int) bool {
+		return matched[i].CreatedAt.After(matched[j].CreatedAt)
+	})
+
+	total := int64(len(matched))
+	if offset > len(matched) {
+		return nil, total, nil
+	}
+	matched = matched[offset:]
+	if limit > 0 && len(matched) > limit {
+		matched = matched[:limit]
+	}
+	return matched, total, nil
+}
+
+// UpdateEvidence strictly enforces evidence immutability (RULE-M19-005).
+// Only VerificationStatus may be updated; altering content fields is rejected.
+func (m *MemoryStore) UpdateEvidence(_ context.Context, e *EvidenceObject) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	existing, ok := m.evidence[e.EvidenceID]
+	if !ok || existing.WorkspaceID != e.WorkspaceID {
+		return ErrEvidenceNotFound
+	}
+
+	// Invariant: Content fields CANNOT be modified!
+	if existing.WorkspaceID != e.WorkspaceID ||
+		existing.EvidenceType != e.EvidenceType ||
+		existing.SourceProvenance != e.SourceProvenance ||
+		existing.ContentHash != e.ContentHash ||
+		existing.FileURL != e.FileURL ||
+		existing.PayloadJSON != e.PayloadJSON {
+		return ErrEvidenceImmutable
+	}
+
+	existing.VerificationStatus = e.VerificationStatus
+	return nil
+}
+
+// DeleteEvidence rejects hard deletion (RULE-M19-005).
+func (m *MemoryStore) DeleteEvidence(_ context.Context, workspaceID, evidenceID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	e, ok := m.evidence[evidenceID]
+	if !ok || e.WorkspaceID != workspaceID {
+		return ErrEvidenceNotFound
+	}
+
+	// Invariant: Evidence objects cannot be hard-deleted
+	return ErrEvidenceImmutable
+}
+
+// ----------------------------------------------------------------------------
+// MemoryStore: Proof Bundles (§11.5 & RULE-M19-006)
+// ----------------------------------------------------------------------------
+
+func (m *MemoryStore) CreateProofBundle(_ context.Context, pb *ProofBundle) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if pb.ProofBundleID == "" {
+		pb.ProofBundleID = newUUID()
+	}
+	now := time.Now().UTC()
+	if pb.CreatedAt.IsZero() {
+		pb.CreatedAt = now
+	}
+	if pb.UpdatedAt.IsZero() {
+		pb.UpdatedAt = now
+	}
+	if pb.Confidence == "" {
+		pb.Confidence = ConfidenceMedium
+	}
+	cp := *pb
+	m.bundles[pb.ProofBundleID] = &cp
+	return nil
+}
+
+func (m *MemoryStore) GetProofBundle(_ context.Context, workspaceID, bundleID string) (*ProofBundle, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	pb, ok := m.bundles[bundleID]
+	if !ok || pb.WorkspaceID != workspaceID || pb.DeletedAt != nil {
+		return nil, ErrProofBundleNotFound
+	}
+	cp := *pb
+	return &cp, nil
+}
+
+func (m *MemoryStore) ListProofBundles(_ context.Context, workspaceID string, filter ProofBundleFilter, limit, offset int) ([]ProofBundle, int64, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var matched []ProofBundle
+	for _, pb := range m.bundles {
+		if pb.WorkspaceID != workspaceID || pb.DeletedAt != nil {
+			continue
+		}
+		if filter.ClaimScope != "" && pb.ClaimScope != filter.ClaimScope {
+			continue
+		}
+		matched = append(matched, *pb)
+	}
+
+	sort.Slice(matched, func(i, j int) bool {
+		return matched[i].CreatedAt.After(matched[j].CreatedAt)
+	})
+
+	total := int64(len(matched))
+	if offset > len(matched) {
+		return nil, total, nil
+	}
+	matched = matched[offset:]
+	if limit > 0 && len(matched) > limit {
+		matched = matched[:limit]
+	}
+	return matched, total, nil
+}
+
+// ----------------------------------------------------------------------------
+// MemoryStore: Data Gaps & Repair Queue (M19 / M01)
+// ----------------------------------------------------------------------------
+
+func (m *MemoryStore) ListDataGaps(_ context.Context, workspaceID string, filter DataGapFilter, limit, offset int) ([]DataGapItem, int64, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var items []DataGapItem
+
+	// 1. Missing COGS on completed orders
+	for _, order := range m.orders {
+		if order.WorkspaceID != workspaceID {
+			continue
+		}
+		if order.LifecycleState == "completed" && (order.COGSAmount == nil || order.COGSAmount.IsZero()) {
+			items = append(items, DataGapItem{
+				GapID:              "gap-cogs-" + order.OrderID,
+				GapType:            "missing_cogs",
+				Severity:           "critical",
+				Title:              "Đơn hàng thiếu giá vốn (COGS)",
+				Description:        "Đơn hàng hoàn tất nhưng chưa có bản ghi giá vốn thực tế.",
+				RelatedObjectType:  "order",
+				RelatedObjectID:    order.OrderID,
+				MonetaryAmount:     order.Amount,
+				UnresolvedSince:    order.OrderedAt,
+				RepairCTALabel:     "Nhập giá vốn",
+				RepairCTARoute:     "/finance/costs?order_id=" + order.OrderID,
+				RequiredPermission: "cost:manage",
+			})
+		}
+	}
+
+	// 2. Unreconciled settlement lines
+	for _, line := range m.lines {
+		if line.WorkspaceID != workspaceID {
+			continue
+		}
+		if line.ReconciliationState == ReconciliationImportedOnly || line.ReconciliationState == ReconciliationPartiallyReconciled {
+			rem, _ := line.NetAmount.Sub(line.MatchedAmount)
+			if rem.Cmp(tenantdb.ZeroDecimal()) > 0 {
+				items = append(items, DataGapItem{
+					GapID:              "gap-sment-" + line.LineID,
+					GapType:            "unreconciled_settlement",
+					Severity:           "warning",
+					Title:              "Khoản thanh toán chưa đối soát",
+					Description:        "Khoản tiền sàn đã giải ngân nhưng chưa khớp với đơn hàng tương ứng.",
+					RelatedObjectType:  "settlement_line",
+					RelatedObjectID:    line.LineID,
+					MonetaryAmount:     rem,
+					UnresolvedSince:    line.CreatedAt,
+					RepairCTALabel:     "Khớp đối soát",
+					RepairCTARoute:     "/finance/reconciliation?line_id=" + line.LineID,
+					RequiredPermission: "reconciliation:manage",
+				})
+			}
+		}
+	}
+
+	// 3. Cost items pending evidence
+	for _, item := range m.costItems {
+		if item.WorkspaceID != workspaceID {
+			continue
+		}
+		if item.CostState == CostStatePendingEvidence {
+			items = append(items, DataGapItem{
+				GapID:              "gap-cost-" + item.CostItemID,
+				GapType:            "missing_evidence",
+				Severity:           "warning",
+				Title:              "Chi phí chưa có chứng từ hợp lệ",
+				Description:        "Chi phí được ghi nhận ước tính nhưng chưa đính kèm chứng từ.",
+				RelatedObjectType:  "cost_item",
+				RelatedObjectID:    item.CostItemID,
+				MonetaryAmount:     item.Amount,
+				UnresolvedSince:    item.CreatedAt,
+				RepairCTALabel:     "Tải lên chứng từ",
+				RepairCTARoute:     "/finance/evidence?cost_id=" + item.CostItemID,
+				RequiredPermission: "evidence:submit",
+			})
+		}
+	}
+
+	// Severity ranking: critical (1) > warning (2) > info (3)
+	severityRank := func(s string) int {
+		switch s {
+		case "critical":
+			return 1
+		case "warning":
+			return 2
+		default:
+			return 3
+		}
+	}
+
+	// Sort by: explicit severity, oldest unresolved timestamp, then stable object identity (§RULE-M19-001)
+	sort.Slice(items, func(i, j int) bool {
+		rI := severityRank(items[i].Severity)
+		rJ := severityRank(items[j].Severity)
+		if rI != rJ {
+			return rI < rJ
+		}
+		if !items[i].UnresolvedSince.Equal(items[j].UnresolvedSince) {
+			return items[i].UnresolvedSince.Before(items[j].UnresolvedSince)
+		}
+		return items[i].GapID < items[j].GapID
+	})
+
+	// Filtering
+	var filtered []DataGapItem
+	for _, item := range items {
+		if filter.Severity != "" && item.Severity != filter.Severity {
+			continue
+		}
+		if filter.GapType != "" && item.GapType != filter.GapType {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	total := int64(len(filtered))
+	if offset > len(filtered) {
+		return nil, total, nil
+	}
+	filtered = filtered[offset:]
+	if limit > 0 && len(filtered) > limit {
+		filtered = filtered[:limit]
+	}
+	return filtered, total, nil
 }
 
 // ============================================================================
@@ -1464,4 +2061,1016 @@ func scanSnapshotRow(rows pgx.Rows) (*ProfitSnapshot, error) {
 		_ = json.Unmarshal(mixBytes, &s.SourceClassMix)
 	}
 	return &s, nil
+}
+
+func (p *PostgresStore) CreateOrder(ctx context.Context, o *Order) error {
+	if o.OrderID == "" {
+		o.OrderID = newUUID()
+	}
+	if o.OrderedAt.IsZero() {
+		o.OrderedAt = time.Now().UTC()
+	}
+	query := `
+		INSERT INTO orders (
+			order_id, workspace_id, amount, matched_amount, currency,
+			lifecycle_state, reconciliation_state, ordered_at, created_at, updated_at
+		) VALUES (
+			$1, $2, $3, $4, $5,
+			$6, $7, $8, NOW(), NOW()
+		)
+	`
+	_, err := p.pool.Exec(ctx, query,
+		o.OrderID, o.WorkspaceID, o.Amount.ToPgNumeric(), o.MatchedAmount.ToPgNumeric(),
+		o.Currency, o.LifecycleState, o.ReconciliationState, o.OrderedAt,
+	)
+	return err
+}
+
+func (p *PostgresStore) GetOrder(ctx context.Context, workspaceID, orderID string) (*Order, error) {
+	query := `
+		SELECT order_id, workspace_id, amount, matched_amount, currency,
+		       lifecycle_state, reconciliation_state, ordered_at
+		FROM orders
+		WHERE workspace_id = $1 AND order_id = $2
+	`
+	var o Order
+	var amtNum, matchNum pgtype.Numeric
+	err := p.pool.QueryRow(ctx, query, workspaceID, orderID).Scan(
+		&o.OrderID, &o.WorkspaceID, &amtNum, &matchNum, &o.Currency,
+		&o.LifecycleState, &o.ReconciliationState, &o.OrderedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrOrderNotFound
+		}
+		return nil, err
+	}
+	o.Amount, _ = tenantdb.FromPgNumeric(amtNum)
+	o.MatchedAmount, _ = tenantdb.FromPgNumeric(matchNum)
+	return &o, nil
+}
+
+func (p *PostgresStore) UpdateOrderMatched(ctx context.Context, workspaceID, orderID string, matchedAmount tenantdb.ExactDecimal, newState string) error {
+	query := `
+		UPDATE orders
+		SET matched_amount = $1, reconciliation_state = $2, updated_at = NOW()
+		WHERE workspace_id = $3 AND order_id = $4
+	`
+	_, err := p.pool.Exec(ctx, query, matchedAmount.ToPgNumeric(), newState, workspaceID, orderID)
+	return err
+}
+
+func (p *PostgresStore) CreateReconciliationRecord(ctx context.Context, r *ReconciliationRecord) error {
+	if r.RecordID == "" {
+		r.RecordID = newUUID()
+	}
+	now := time.Now().UTC()
+	if r.CreatedAt.IsZero() {
+		r.CreatedAt = now
+	}
+	if r.UpdatedAt.IsZero() {
+		r.UpdatedAt = now
+	}
+	query := `
+		INSERT INTO reconciliation_records (
+			record_id, workspace_id, scope_type, scope_description,
+			related_order_ids, related_settlement_ids, matched_amount,
+			discrepancy_amount, discrepancy_reason, reconciliation_state,
+			currency, mismatches, override_reason, override_by, override_at,
+			period_start, period_end, created_at, updated_at
+		) VALUES (
+			$1, $2, $3, $4,
+			$5, $6, $7,
+			$8, $9, $10,
+			$11, $12, $13, $14, $15,
+			$16, $17, $18, $19
+		)
+	`
+	mismatchesJSON := r.MismatchesJSON
+	if mismatchesJSON == "" {
+		mismatchesJSON = "[]"
+	}
+	var pStart, pEnd *string
+	if r.PeriodStart != "" {
+		pStart = &r.PeriodStart
+	}
+	if r.PeriodEnd != "" {
+		pEnd = &r.PeriodEnd
+	}
+	var overrideBy *string
+	if r.OverrideBy != "" {
+		overrideBy = &r.OverrideBy
+	}
+
+	_, err := p.pool.Exec(ctx, query,
+		r.RecordID, r.WorkspaceID, r.ScopeType, r.ScopeDescription,
+		r.RelatedOrderIDs, r.RelatedSettlementIDs, r.MatchedAmount.ToPgNumeric(),
+		r.DiscrepancyAmount.ToPgNumeric(), r.DiscrepancyReason, r.ReconciliationState,
+		r.Currency, []byte(mismatchesJSON), r.OverrideReason, overrideBy, r.OverrideAt,
+		pStart, pEnd, r.CreatedAt, r.UpdatedAt,
+	)
+	return err
+}
+
+func (p *PostgresStore) GetReconciliationRecord(ctx context.Context, workspaceID, recordID string) (*ReconciliationRecord, error) {
+	query := `
+		SELECT record_id, workspace_id, scope_type, scope_description,
+		       related_order_ids, related_settlement_ids, matched_amount,
+		       discrepancy_amount, discrepancy_reason, reconciliation_state,
+		       currency, mismatches, override_reason, override_by, override_at,
+		       period_start, period_end, created_at, updated_at
+		FROM reconciliation_records
+		WHERE workspace_id = $1 AND record_id = $2
+	`
+	row := p.pool.QueryRow(ctx, query, workspaceID, recordID)
+	return scanReconciliationRecord(row)
+}
+
+func (p *PostgresStore) ListReconciliationRecords(ctx context.Context, workspaceID string, filter ReconciliationFilter, limit, offset int) ([]ReconciliationRecord, int64, error) {
+	where := "WHERE workspace_id = $1"
+	args := []any{workspaceID}
+	idx := 2
+
+	if filter.ReconciliationState != "" {
+		where += fmt.Sprintf(" AND reconciliation_state = $%d", idx)
+		args = append(args, filter.ReconciliationState)
+		idx++
+	}
+	if filter.PeriodStart != "" {
+		where += fmt.Sprintf(" AND period_start >= $%d", idx)
+		args = append(args, filter.PeriodStart)
+		idx++
+	}
+	if filter.PeriodEnd != "" {
+		where += fmt.Sprintf(" AND period_end <= $%d", idx)
+		args = append(args, filter.PeriodEnd)
+		idx++
+	}
+
+	countQuery := "SELECT COUNT(*) FROM reconciliation_records " + where
+	var total int64
+	if err := p.pool.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	query := fmt.Sprintf(`
+		SELECT record_id, workspace_id, scope_type, scope_description,
+		       related_order_ids, related_settlement_ids, matched_amount,
+		       discrepancy_amount, discrepancy_reason, reconciliation_state,
+		       currency, mismatches, override_reason, override_by, override_at,
+		       period_start, period_end, created_at, updated_at
+		FROM reconciliation_records
+		%s
+		ORDER BY created_at DESC
+	`, where)
+
+	if limit > 0 {
+		query += fmt.Sprintf(" LIMIT %d", limit)
+	}
+	if offset > 0 {
+		query += fmt.Sprintf(" OFFSET %d", offset)
+	}
+
+	rows, err := p.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var records []ReconciliationRecord
+	for rows.Next() {
+		r, err := scanReconciliationRecordRow(rows)
+		if err != nil {
+			return nil, 0, err
+		}
+		records = append(records, *r)
+	}
+	return records, total, nil
+}
+
+func (p *PostgresStore) UpdateReconciliationRecord(ctx context.Context, r *ReconciliationRecord) error {
+	mismatchesJSON := r.MismatchesJSON
+	if mismatchesJSON == "" {
+		mismatchesJSON = "[]"
+	}
+	var overrideBy *string
+	if r.OverrideBy != "" {
+		overrideBy = &r.OverrideBy
+	}
+
+	query := `
+		UPDATE reconciliation_records
+		SET scope_type = $1, scope_description = $2, related_order_ids = $3,
+		    related_settlement_ids = $4, matched_amount = $5, discrepancy_amount = $6,
+		    discrepancy_reason = $7, reconciliation_state = $8, mismatches = $9,
+		    override_reason = $10, override_by = $11, override_at = $12, updated_at = NOW()
+		WHERE workspace_id = $13 AND record_id = $14
+	`
+	_, err := p.pool.Exec(ctx, query,
+		r.ScopeType, r.ScopeDescription, r.RelatedOrderIDs,
+		r.RelatedSettlementIDs, r.MatchedAmount.ToPgNumeric(), r.DiscrepancyAmount.ToPgNumeric(),
+		r.DiscrepancyReason, r.ReconciliationState, []byte(mismatchesJSON),
+		r.OverrideReason, overrideBy, r.OverrideAt,
+		r.WorkspaceID, r.RecordID,
+	)
+	return err
+}
+
+func (p *PostgresStore) CreateReconciliationMatch(ctx context.Context, m *ReconciliationMatch) error {
+	if m.MatchID == "" {
+		m.MatchID = newUUID()
+	}
+	if m.CreatedAt.IsZero() {
+		m.CreatedAt = time.Now().UTC()
+	}
+	var recordID *string
+	if m.RecordID != "" {
+		recordID = &m.RecordID
+	}
+
+	query := `
+		INSERT INTO reconciliation_matches (
+			match_id, workspace_id, record_id, settlement_id,
+			line_id, order_id, allocated_amount, currency, created_at
+		) VALUES (
+			$1, $2, $3, $4,
+			$5, $6, $7, $8, $9
+		)
+	`
+	_, err := p.pool.Exec(ctx, query,
+		m.MatchID, m.WorkspaceID, recordID, m.SettlementID,
+		m.LineID, m.OrderID, m.AllocatedAmount.ToPgNumeric(), m.Currency, m.CreatedAt,
+	)
+	return err
+}
+
+func (p *PostgresStore) ListReconciliationMatches(ctx context.Context, workspaceID, recordID string) ([]ReconciliationMatch, error) {
+	query := `
+		SELECT match_id, workspace_id, record_id, settlement_id,
+		       line_id, order_id, allocated_amount, currency, created_at
+		FROM reconciliation_matches
+		WHERE workspace_id = $1
+	`
+	args := []any{workspaceID}
+	if recordID != "" {
+		query += " AND record_id = $2"
+		args = append(args, recordID)
+	}
+	query += " ORDER BY created_at ASC"
+
+	rows, err := p.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var matches []ReconciliationMatch
+	for rows.Next() {
+		var m ReconciliationMatch
+		var allocNum pgtype.Numeric
+		var recID *string
+		if err := rows.Scan(
+			&m.MatchID, &m.WorkspaceID, &recID, &m.SettlementID,
+			&m.LineID, &m.OrderID, &allocNum, &m.Currency, &m.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		if recID != nil {
+			m.RecordID = *recID
+		}
+		m.AllocatedAmount, _ = tenantdb.FromPgNumeric(allocNum)
+		matches = append(matches, m)
+	}
+	return matches, nil
+}
+
+func (p *PostgresStore) AtomicMatch(
+	ctx context.Context,
+	workspaceID, settlementID, lineID, orderID, recordID string,
+	allocAmount tenantdb.ExactDecimal,
+) (*SettlementLine, *Order, *ReconciliationMatch, error) {
+	tx, err := p.pool.Begin(ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	// 1. Lock and read settlement line
+	lineQuery := `
+		SELECT line_id, workspace_id, settlement_id, external_line_id,
+		       external_order_id, order_id, gross_amount, fee_amount,
+		       refund_amount, net_amount, matched_amount, currency,
+		       reconciliation_state, created_at
+		FROM settlement_lines
+		WHERE workspace_id = $1 AND settlement_id = $2 AND line_id = $3
+		FOR UPDATE
+	`
+	var l SettlementLine
+	var grossNum, feeNum, refNum, netNum, matchNum pgtype.Numeric
+	var extOrder, ordID *string
+
+	err = tx.QueryRow(ctx, lineQuery, workspaceID, settlementID, lineID).Scan(
+		&l.LineID, &l.WorkspaceID, &l.SettlementID, &l.ExternalLineID,
+		&extOrder, &ordID, &grossNum, &feeNum,
+		&refNum, &netNum, &matchNum, &l.Currency,
+		&l.ReconciliationState, &l.CreatedAt,
+	)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("lock settlement line: %w", err)
+	}
+	if extOrder != nil {
+		l.ExternalOrderID = *extOrder
+	}
+	if ordID != nil {
+		l.OrderID = *ordID
+	}
+	l.GrossAmount, _ = tenantdb.FromPgNumeric(grossNum)
+	l.FeeAmount, _ = tenantdb.FromPgNumeric(feeNum)
+	l.RefundAmount, _ = tenantdb.FromPgNumeric(refNum)
+	l.NetAmount, _ = tenantdb.FromPgNumeric(netNum)
+	l.MatchedAmount, _ = tenantdb.FromPgNumeric(matchNum)
+
+	newLineMatched, err := l.MatchedAmount.Add(allocAmount)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if newLineMatched.Cmp(l.NetAmount) > 0 {
+		return nil, nil, nil, ErrCapacityExceeded
+	}
+
+	// 2. Lock and read order
+	orderQuery := `
+		SELECT order_id, workspace_id, amount, matched_amount, currency,
+		       lifecycle_state, reconciliation_state, ordered_at
+		FROM orders
+		WHERE workspace_id = $1 AND order_id = $2
+		FOR UPDATE
+	`
+	var o Order
+	var oAmtNum, oMatchNum pgtype.Numeric
+	err = tx.QueryRow(ctx, orderQuery, workspaceID, orderID).Scan(
+		&o.OrderID, &o.WorkspaceID, &oAmtNum, &oMatchNum, &o.Currency,
+		&o.LifecycleState, &o.ReconciliationState, &o.OrderedAt,
+	)
+	if err != nil {
+		return nil, nil, nil, ErrOrderNotFound
+	}
+	o.Amount, _ = tenantdb.FromPgNumeric(oAmtNum)
+	o.MatchedAmount, _ = tenantdb.FromPgNumeric(oMatchNum)
+
+	newOrderMatched, err := o.MatchedAmount.Add(allocAmount)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if newOrderMatched.Cmp(o.Amount) > 0 {
+		return nil, nil, nil, ErrOrderCapacityExceeded
+	}
+
+	// 3. Update line
+	l.MatchedAmount = newLineMatched
+	if newLineMatched.Cmp(l.NetAmount) == 0 {
+		l.ReconciliationState = ReconciliationFullyReconciled
+	} else {
+		l.ReconciliationState = ReconciliationPartiallyReconciled
+	}
+	_, err = tx.Exec(ctx, `
+		UPDATE settlement_lines
+		SET matched_amount = $1, reconciliation_state = $2
+		WHERE workspace_id = $3 AND line_id = $4
+	`, l.MatchedAmount.ToPgNumeric(), l.ReconciliationState, workspaceID, lineID)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// 4. Update order
+	o.MatchedAmount = newOrderMatched
+	if newOrderMatched.Cmp(o.Amount) == 0 {
+		o.ReconciliationState = ReconciliationFullyReconciled
+	} else {
+		o.ReconciliationState = ReconciliationPartiallyReconciled
+	}
+	_, err = tx.Exec(ctx, `
+		UPDATE orders
+		SET matched_amount = $1, reconciliation_state = $2, updated_at = NOW()
+		WHERE workspace_id = $3 AND order_id = $4
+	`, o.MatchedAmount.ToPgNumeric(), o.ReconciliationState, workspaceID, orderID)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// 5. Create match
+	match := &ReconciliationMatch{
+		MatchID:         newUUID(),
+		WorkspaceID:     workspaceID,
+		RecordID:        recordID,
+		SettlementID:    settlementID,
+		LineID:          lineID,
+		OrderID:         orderID,
+		AllocatedAmount: allocAmount,
+		Currency:        l.Currency,
+		CreatedAt:       time.Now().UTC(),
+	}
+	var recIDParam *string
+	if recordID != "" {
+		recIDParam = &recordID
+	}
+	_, err = tx.Exec(ctx, `
+		INSERT INTO reconciliation_matches (
+			match_id, workspace_id, record_id, settlement_id,
+			line_id, order_id, allocated_amount, currency, created_at
+		) VALUES (
+			$1, $2, $3, $4,
+			$5, $6, $7, $8, $9
+		)
+	`, match.MatchID, workspaceID, recIDParam, settlementID, lineID, orderID, allocAmount.ToPgNumeric(), match.Currency, match.CreatedAt)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// 6. Update batch record if supplied
+	if recordID != "" {
+		_, err = tx.Exec(ctx, `
+			UPDATE reconciliation_records
+			SET matched_amount = matched_amount + $1, updated_at = NOW()
+			WHERE workspace_id = $2 AND record_id = $3
+		`, allocAmount.ToPgNumeric(), workspaceID, recordID)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, nil, nil, err
+	}
+
+	return &l, &o, match, nil
+}
+
+func (p *PostgresStore) CreateEvidence(ctx context.Context, e *EvidenceObject) error {
+	if e.EvidenceID == "" {
+		e.EvidenceID = newUUID()
+	}
+	now := time.Now().UTC()
+	if e.CollectedAt.IsZero() {
+		e.CollectedAt = now
+	}
+	if e.CreatedAt.IsZero() {
+		e.CreatedAt = now
+	}
+	if e.VerificationStatus == "" {
+		e.VerificationStatus = VerificationStatusPending
+	}
+	var payloadBytes []byte
+	if e.PayloadJSON != "" {
+		payloadBytes = []byte(e.PayloadJSON)
+	}
+	refsBytes, _ := json.Marshal(e.RelatedObjectRefs)
+
+	query := `
+		INSERT INTO evidence_objects (
+			evidence_id, workspace_id, evidence_type, source_provenance,
+			content_hash, file_url, payload, collected_at,
+			verification_status, related_object_refs, created_at
+		) VALUES (
+			$1, $2, $3, $4,
+			$5, $6, $7, $8,
+			$9, $10, $11
+		)
+	`
+	_, err := p.pool.Exec(ctx, query,
+		e.EvidenceID, e.WorkspaceID, e.EvidenceType, e.SourceProvenance,
+		e.ContentHash, e.FileURL, payloadBytes, e.CollectedAt,
+		e.VerificationStatus, refsBytes, e.CreatedAt,
+	)
+	return err
+}
+
+func (p *PostgresStore) GetEvidence(ctx context.Context, workspaceID, evidenceID string) (*EvidenceObject, error) {
+	query := `
+		SELECT evidence_id, workspace_id, evidence_type, source_provenance,
+		       content_hash, file_url, payload, collected_at,
+		       verification_status, related_object_refs, created_at, deleted_at
+		FROM evidence_objects
+		WHERE workspace_id = $1 AND evidence_id = $2
+	`
+	row := p.pool.QueryRow(ctx, query, workspaceID, evidenceID)
+	return scanEvidence(row)
+}
+
+func (p *PostgresStore) ListEvidence(ctx context.Context, workspaceID string, filter EvidenceFilter, limit, offset int) ([]EvidenceObject, int64, error) {
+	where := "WHERE workspace_id = $1 AND deleted_at IS NULL"
+	args := []any{workspaceID}
+	idx := 2
+
+	if filter.EvidenceType != "" {
+		where += fmt.Sprintf(" AND evidence_type = $%d", idx)
+		args = append(args, filter.EvidenceType)
+		idx++
+	}
+	if filter.VerificationStatus != "" {
+		where += fmt.Sprintf(" AND verification_status = $%d", idx)
+		args = append(args, filter.VerificationStatus)
+		idx++
+	}
+
+	countQuery := "SELECT COUNT(*) FROM evidence_objects " + where
+	var total int64
+	if err := p.pool.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	query := fmt.Sprintf(`
+		SELECT evidence_id, workspace_id, evidence_type, source_provenance,
+		       content_hash, file_url, payload, collected_at,
+		       verification_status, related_object_refs, created_at, deleted_at
+		FROM evidence_objects
+		%s
+		ORDER BY created_at DESC
+	`, where)
+
+	if limit > 0 {
+		query += fmt.Sprintf(" LIMIT %d", limit)
+	}
+	if offset > 0 {
+		query += fmt.Sprintf(" OFFSET %d", offset)
+	}
+
+	rows, err := p.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var items []EvidenceObject
+	for rows.Next() {
+		e, err := scanEvidenceRow(rows)
+		if err != nil {
+			return nil, 0, err
+		}
+		items = append(items, *e)
+	}
+	return items, total, nil
+}
+
+func (p *PostgresStore) UpdateEvidence(ctx context.Context, e *EvidenceObject) error {
+	existing, err := p.GetEvidence(ctx, e.WorkspaceID, e.EvidenceID)
+	if err != nil {
+		return err
+	}
+	// RULE-M19-005 Immutability check
+	if existing.WorkspaceID != e.WorkspaceID ||
+		existing.EvidenceType != e.EvidenceType ||
+		existing.SourceProvenance != e.SourceProvenance ||
+		existing.ContentHash != e.ContentHash ||
+		existing.FileURL != e.FileURL ||
+		existing.PayloadJSON != e.PayloadJSON {
+		return ErrEvidenceImmutable
+	}
+	query := `
+		UPDATE evidence_objects
+		SET verification_status = $1
+		WHERE workspace_id = $2 AND evidence_id = $3
+	`
+	_, err = p.pool.Exec(ctx, query, e.VerificationStatus, e.WorkspaceID, e.EvidenceID)
+	return err
+}
+
+func (p *PostgresStore) DeleteEvidence(_ context.Context, _, _ string) error {
+	// RULE-M19-005: Evidence objects cannot be deleted
+	return ErrEvidenceImmutable
+}
+
+func (p *PostgresStore) CreateProofBundle(ctx context.Context, pb *ProofBundle) error {
+	if pb.ProofBundleID == "" {
+		pb.ProofBundleID = newUUID()
+	}
+	now := time.Now().UTC()
+	if pb.CreatedAt.IsZero() {
+		pb.CreatedAt = now
+	}
+	if pb.UpdatedAt.IsZero() {
+		pb.UpdatedAt = now
+	}
+	if pb.Confidence == "" {
+		pb.Confidence = ConfidenceMedium
+	}
+	ctxJSON, _ := json.Marshal(pb.SourceClassContext)
+
+	query := `
+		INSERT INTO proof_bundles (
+			proof_bundle_id, workspace_id, claim_scope, claim_summary,
+			supporting_evidence_ids, source_class_context, confidence,
+			coverage_summary, unresolved_gaps, created_at, updated_at
+		) VALUES (
+			$1, $2, $3, $4,
+			$5, $6, $7,
+			$8, $9, $10, $11
+		)
+	`
+	_, err := p.pool.Exec(ctx, query,
+		pb.ProofBundleID, pb.WorkspaceID, pb.ClaimScope, pb.ClaimSummary,
+		pb.SupportingEvidenceIDs, ctxJSON, pb.Confidence,
+		pb.CoverageSummary, pb.UnresolvedGaps, pb.CreatedAt, pb.UpdatedAt,
+	)
+	return err
+}
+
+func (p *PostgresStore) GetProofBundle(ctx context.Context, workspaceID, bundleID string) (*ProofBundle, error) {
+	query := `
+		SELECT proof_bundle_id, workspace_id, claim_scope, claim_summary,
+		       supporting_evidence_ids, source_class_context, confidence,
+		       coverage_summary, unresolved_gaps, created_at, updated_at, deleted_at
+		FROM proof_bundles
+		WHERE workspace_id = $1 AND proof_bundle_id = $2 AND deleted_at IS NULL
+	`
+	row := p.pool.QueryRow(ctx, query, workspaceID, bundleID)
+	return scanProofBundle(row)
+}
+
+func (p *PostgresStore) ListProofBundles(ctx context.Context, workspaceID string, filter ProofBundleFilter, limit, offset int) ([]ProofBundle, int64, error) {
+	where := "WHERE workspace_id = $1 AND deleted_at IS NULL"
+	args := []any{workspaceID}
+	idx := 2
+
+	if filter.ClaimScope != "" {
+		where += fmt.Sprintf(" AND claim_scope = $%d", idx)
+		args = append(args, filter.ClaimScope)
+		idx++
+	}
+
+	countQuery := "SELECT COUNT(*) FROM proof_bundles " + where
+	var total int64
+	if err := p.pool.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	query := fmt.Sprintf(`
+		SELECT proof_bundle_id, workspace_id, claim_scope, claim_summary,
+		       supporting_evidence_ids, source_class_context, confidence,
+		       coverage_summary, unresolved_gaps, created_at, updated_at, deleted_at
+		FROM proof_bundles
+		%s
+		ORDER BY created_at DESC
+	`, where)
+
+	if limit > 0 {
+		query += fmt.Sprintf(" LIMIT %d", limit)
+	}
+	if offset > 0 {
+		query += fmt.Sprintf(" OFFSET %d", offset)
+	}
+
+	rows, err := p.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var bundles []ProofBundle
+	for rows.Next() {
+		b, err := scanProofBundleRow(rows)
+		if err != nil {
+			return nil, 0, err
+		}
+		bundles = append(bundles, *b)
+	}
+	return bundles, total, nil
+}
+
+func (p *PostgresStore) ListDataGaps(ctx context.Context, workspaceID string, filter DataGapFilter, limit, offset int) ([]DataGapItem, int64, error) {
+	var items []DataGapItem
+
+	// 1. Missing COGS on completed orders
+	orderRows, err := p.pool.Query(ctx, `
+		SELECT order_id, amount, ordered_at
+		FROM orders
+		WHERE workspace_id = $1 AND lifecycle_state = 'completed'
+		  AND (NOT (fee_breakdown ? 'cogs') OR (fee_breakdown->>'cogs')::numeric = 0)
+	`, workspaceID)
+	if err == nil {
+		defer orderRows.Close()
+		for orderRows.Next() {
+			var oID string
+			var amtNum pgtype.Numeric
+			var ordAt time.Time
+			if err := orderRows.Scan(&oID, &amtNum, &ordAt); err == nil {
+				amt, _ := tenantdb.FromPgNumeric(amtNum)
+				items = append(items, DataGapItem{
+					GapID:              "gap-cogs-" + oID,
+					GapType:            "missing_cogs",
+					Severity:           "critical",
+					Title:              "Đơn hàng thiếu giá vốn (COGS)",
+					Description:        "Đơn hàng hoàn tất nhưng chưa có bản ghi giá vốn thực tế.",
+					RelatedObjectType:  "order",
+					RelatedObjectID:    oID,
+					MonetaryAmount:     amt,
+					UnresolvedSince:    ordAt,
+					RepairCTALabel:     "Nhập giá vốn",
+					RepairCTARoute:     "/finance/costs?order_id=" + oID,
+					RequiredPermission: "cost:manage",
+				})
+			}
+		}
+	}
+
+	// 2. Unreconciled settlement lines
+	lineRows, err := p.pool.Query(ctx, `
+		SELECT line_id, (net_amount - matched_amount) AS rem_amount, created_at
+		FROM settlement_lines
+		WHERE workspace_id = $1
+		  AND reconciliation_state IN ('imported_only', 'partially_reconciled')
+		  AND net_amount > matched_amount
+	`, workspaceID)
+	if err == nil {
+		defer lineRows.Close()
+		for lineRows.Next() {
+			var lID string
+			var remNum pgtype.Numeric
+			var cAt time.Time
+			if err := lineRows.Scan(&lID, &remNum, &cAt); err == nil {
+				rem, _ := tenantdb.FromPgNumeric(remNum)
+				items = append(items, DataGapItem{
+					GapID:              "gap-sment-" + lID,
+					GapType:            "unreconciled_settlement",
+					Severity:           "warning",
+					Title:              "Khoản thanh toán chưa đối soát",
+					Description:        "Khoản tiền sàn đã giải ngân nhưng chưa khớp với đơn hàng tương ứng.",
+					RelatedObjectType:  "settlement_line",
+					RelatedObjectID:    lID,
+					MonetaryAmount:     rem,
+					UnresolvedSince:    cAt,
+					RepairCTALabel:     "Khớp đối soát",
+					RepairCTARoute:     "/finance/reconciliation?line_id=" + lID,
+					RequiredPermission: "reconciliation:manage",
+				})
+			}
+		}
+	}
+
+	// 3. Cost items pending evidence
+	costRows, err := p.pool.Query(ctx, `
+		SELECT cost_item_id, amount, created_at
+		FROM cost_items
+		WHERE workspace_id = $1 AND cost_state = 'pending_evidence'
+	`, workspaceID)
+	if err == nil {
+		defer costRows.Close()
+		for costRows.Next() {
+			var cID string
+			var amtNum pgtype.Numeric
+			var cAt time.Time
+			if err := costRows.Scan(&cID, &amtNum, &cAt); err == nil {
+				amt, _ := tenantdb.FromPgNumeric(amtNum)
+				items = append(items, DataGapItem{
+					GapID:              "gap-cost-" + cID,
+					GapType:            "missing_evidence",
+					Severity:           "warning",
+					Title:              "Chi phí chưa có chứng từ hợp lệ",
+					Description:        "Chi phí được ghi nhận ước tính nhưng chưa đính kèm chứng từ.",
+					RelatedObjectType:  "cost_item",
+					RelatedObjectID:    cID,
+					MonetaryAmount:     amt,
+					UnresolvedSince:    cAt,
+					RepairCTALabel:     "Tải lên chứng từ",
+					RepairCTARoute:     "/finance/evidence?cost_id=" + cID,
+					RequiredPermission: "evidence:submit",
+				})
+			}
+		}
+	}
+
+	severityRank := func(s string) int {
+		switch s {
+		case "critical":
+			return 1
+		case "warning":
+			return 2
+		default:
+			return 3
+		}
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		rI := severityRank(items[i].Severity)
+		rJ := severityRank(items[j].Severity)
+		if rI != rJ {
+			return rI < rJ
+		}
+		if !items[i].UnresolvedSince.Equal(items[j].UnresolvedSince) {
+			return items[i].UnresolvedSince.Before(items[j].UnresolvedSince)
+		}
+		return items[i].GapID < items[j].GapID
+	})
+
+	var filtered []DataGapItem
+	for _, item := range items {
+		if filter.Severity != "" && item.Severity != filter.Severity {
+			continue
+		}
+		if filter.GapType != "" && item.GapType != filter.GapType {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	total := int64(len(filtered))
+	if offset > len(filtered) {
+		return nil, total, nil
+	}
+	filtered = filtered[offset:]
+	if limit > 0 && len(filtered) > limit {
+		filtered = filtered[:limit]
+	}
+	return filtered, total, nil
+}
+
+func scanReconciliationRecord(row pgx.Row) (*ReconciliationRecord, error) {
+	var r ReconciliationRecord
+	var matchNum, discNum pgtype.Numeric
+	var mismatchesBytes []byte
+	var pStart, pEnd, overReason, overBy *string
+	var overAt *time.Time
+
+	err := row.Scan(
+		&r.RecordID, &r.WorkspaceID, &r.ScopeType, &r.ScopeDescription,
+		&r.RelatedOrderIDs, &r.RelatedSettlementIDs, &matchNum,
+		&discNum, &r.DiscrepancyReason, &r.ReconciliationState,
+		&r.Currency, &mismatchesBytes, &overReason, &overBy, &overAt,
+		&pStart, &pEnd, &r.CreatedAt, &r.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrRecordNotFound
+		}
+		return nil, err
+	}
+	r.MatchedAmount, _ = tenantdb.FromPgNumeric(matchNum)
+	r.DiscrepancyAmount, _ = tenantdb.FromPgNumeric(discNum)
+	if len(mismatchesBytes) > 0 {
+		r.MismatchesJSON = string(mismatchesBytes)
+	}
+	if overReason != nil {
+		r.OverrideReason = *overReason
+	}
+	if overBy != nil {
+		r.OverrideBy = *overBy
+	}
+	r.OverrideAt = overAt
+	if pStart != nil {
+		r.PeriodStart = *pStart
+	}
+	if pEnd != nil {
+		r.PeriodEnd = *pEnd
+	}
+	return &r, nil
+}
+
+func scanReconciliationRecordRow(rows pgx.Rows) (*ReconciliationRecord, error) {
+	var r ReconciliationRecord
+	var matchNum, discNum pgtype.Numeric
+	var mismatchesBytes []byte
+	var pStart, pEnd, overReason, overBy *string
+	var overAt *time.Time
+
+	err := rows.Scan(
+		&r.RecordID, &r.WorkspaceID, &r.ScopeType, &r.ScopeDescription,
+		&r.RelatedOrderIDs, &r.RelatedSettlementIDs, &matchNum,
+		&discNum, &r.DiscrepancyReason, &r.ReconciliationState,
+		&r.Currency, &mismatchesBytes, &overReason, &overBy, &overAt,
+		&pStart, &pEnd, &r.CreatedAt, &r.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	r.MatchedAmount, _ = tenantdb.FromPgNumeric(matchNum)
+	r.DiscrepancyAmount, _ = tenantdb.FromPgNumeric(discNum)
+	if len(mismatchesBytes) > 0 {
+		r.MismatchesJSON = string(mismatchesBytes)
+	}
+	if overReason != nil {
+		r.OverrideReason = *overReason
+	}
+	if overBy != nil {
+		r.OverrideBy = *overBy
+	}
+	r.OverrideAt = overAt
+	if pStart != nil {
+		r.PeriodStart = *pStart
+	}
+	if pEnd != nil {
+		r.PeriodEnd = *pEnd
+	}
+	return &r, nil
+}
+
+func scanEvidence(row pgx.Row) (*EvidenceObject, error) {
+	var e EvidenceObject
+	var payloadBytes, refsBytes []byte
+	var fileURL, prov *string
+
+	err := row.Scan(
+		&e.EvidenceID, &e.WorkspaceID, &e.EvidenceType, &prov,
+		&e.ContentHash, &fileURL, &payloadBytes, &e.CollectedAt,
+		&e.VerificationStatus, &refsBytes, &e.CreatedAt, &e.DeletedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrEvidenceNotFound
+		}
+		return nil, err
+	}
+	if prov != nil {
+		e.SourceProvenance = *prov
+	}
+	if fileURL != nil {
+		e.FileURL = *fileURL
+	}
+	if len(payloadBytes) > 0 {
+		e.PayloadJSON = string(payloadBytes)
+	}
+	if len(refsBytes) > 0 {
+		_ = json.Unmarshal(refsBytes, &e.RelatedObjectRefs)
+	}
+	return &e, nil
+}
+
+func scanEvidenceRow(rows pgx.Rows) (*EvidenceObject, error) {
+	var e EvidenceObject
+	var payloadBytes, refsBytes []byte
+	var fileURL, prov *string
+
+	err := rows.Scan(
+		&e.EvidenceID, &e.WorkspaceID, &e.EvidenceType, &prov,
+		&e.ContentHash, &fileURL, &payloadBytes, &e.CollectedAt,
+		&e.VerificationStatus, &refsBytes, &e.CreatedAt, &e.DeletedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if prov != nil {
+		e.SourceProvenance = *prov
+	}
+	if fileURL != nil {
+		e.FileURL = *fileURL
+	}
+	if len(payloadBytes) > 0 {
+		e.PayloadJSON = string(payloadBytes)
+	}
+	if len(refsBytes) > 0 {
+		_ = json.Unmarshal(refsBytes, &e.RelatedObjectRefs)
+	}
+	return &e, nil
+}
+
+func scanProofBundle(row pgx.Row) (*ProofBundle, error) {
+	var pb ProofBundle
+	var ctxBytes []byte
+	var cov, gaps *string
+
+	err := row.Scan(
+		&pb.ProofBundleID, &pb.WorkspaceID, &pb.ClaimScope, &pb.ClaimSummary,
+		&pb.SupportingEvidenceIDs, &ctxBytes, &pb.Confidence,
+		&cov, &gaps, &pb.CreatedAt, &pb.UpdatedAt, &pb.DeletedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrProofBundleNotFound
+		}
+		return nil, err
+	}
+	if cov != nil {
+		pb.CoverageSummary = *cov
+	}
+	if gaps != nil {
+		pb.UnresolvedGaps = *gaps
+	}
+	if len(ctxBytes) > 0 {
+		_ = json.Unmarshal(ctxBytes, &pb.SourceClassContext)
+	}
+	return &pb, nil
+}
+
+func scanProofBundleRow(rows pgx.Rows) (*ProofBundle, error) {
+	var pb ProofBundle
+	var ctxBytes []byte
+	var cov, gaps *string
+
+	err := rows.Scan(
+		&pb.ProofBundleID, &pb.WorkspaceID, &pb.ClaimScope, &pb.ClaimSummary,
+		&pb.SupportingEvidenceIDs, &ctxBytes, &pb.Confidence,
+		&cov, &gaps, &pb.CreatedAt, &pb.UpdatedAt, &pb.DeletedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if cov != nil {
+		pb.CoverageSummary = *cov
+	}
+	if gaps != nil {
+		pb.UnresolvedGaps = *gaps
+	}
+	if len(ctxBytes) > 0 {
+		_ = json.Unmarshal(ctxBytes, &pb.SourceClassContext)
+	}
+	return &pb, nil
 }

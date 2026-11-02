@@ -9,6 +9,7 @@ import (
 	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
 	financev1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/finance/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/finance/v1/financev1connect"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -158,6 +159,28 @@ func toProtoSnapshot(s *ProfitSnapshot) *financev1.ProfitSnapshot {
 	}
 }
 
+func toProtoSettlementLine(l *SettlementLine) *financev1.SettlementLine {
+	if l == nil {
+		return nil
+	}
+	return &financev1.SettlementLine{
+		LineId:              l.LineID,
+		WorkspaceId:         l.WorkspaceID,
+		SettlementId:        l.SettlementID,
+		ExternalLineId:      l.ExternalLineID,
+		ExternalOrderId:     l.ExternalOrderID,
+		OrderId:             l.OrderID,
+		GrossAmount:         &commonv1.Money{Amount: l.GrossAmount.Fixed6String(), Currency: l.Currency},
+		FeeAmount:           &commonv1.Money{Amount: l.FeeAmount.Fixed6String(), Currency: l.Currency},
+		RefundAmount:        &commonv1.Money{Amount: l.RefundAmount.Fixed6String(), Currency: l.Currency},
+		NetAmount:           &commonv1.Money{Amount: l.NetAmount.Fixed6String(), Currency: l.Currency},
+		MatchedAmount:       &commonv1.Money{Amount: l.MatchedAmount.Fixed6String(), Currency: l.Currency},
+		Currency:            l.Currency,
+		ReconciliationState: toProtoReconciliationState(l.ReconciliationState),
+		CreatedAt:           timestamppb.New(l.CreatedAt),
+	}
+}
+
 func toProtoSettlement(s *Settlement) *financev1.Settlement {
 	if s == nil {
 		return nil
@@ -167,22 +190,7 @@ func toProtoSettlement(s *Settlement) *financev1.Settlement {
 
 	var protoLines []*financev1.SettlementLine
 	for _, l := range s.Lines {
-		protoLines = append(protoLines, &financev1.SettlementLine{
-			LineId:              l.LineID,
-			WorkspaceId:         l.WorkspaceID,
-			SettlementId:        l.SettlementID,
-			ExternalLineId:      l.ExternalLineID,
-			ExternalOrderId:     l.ExternalOrderID,
-			OrderId:             l.OrderID,
-			GrossAmount:         &commonv1.Money{Amount: l.GrossAmount.Fixed6String(), Currency: l.Currency},
-			FeeAmount:           &commonv1.Money{Amount: l.FeeAmount.Fixed6String(), Currency: l.Currency},
-			RefundAmount:        &commonv1.Money{Amount: l.RefundAmount.Fixed6String(), Currency: l.Currency},
-			NetAmount:           &commonv1.Money{Amount: l.NetAmount.Fixed6String(), Currency: l.Currency},
-			MatchedAmount:       &commonv1.Money{Amount: l.MatchedAmount.Fixed6String(), Currency: l.Currency},
-			Currency:            l.Currency,
-			ReconciliationState: toProtoReconciliationState(l.ReconciliationState),
-			CreatedAt:           timestamppb.New(l.CreatedAt),
-		})
+		protoLines = append(protoLines, toProtoSettlementLine(&l))
 	}
 
 	return &financev1.Settlement{
@@ -681,5 +689,762 @@ func (h *CostHandler) Delete(ctx context.Context, req *connect.Request[financev1
 
 	return connect.NewResponse(&financev1.CostServiceDeleteResponse{
 		Success: true,
+	}), nil
+}
+
+// ----------------------------------------------------------------------------
+// Model to Proto Converters
+// ----------------------------------------------------------------------------
+
+func toProtoVerificationStatus(status string) financev1.VerificationStatus {
+	switch status {
+	case VerificationStatusPending:
+		return financev1.VerificationStatus_VERIFICATION_STATUS_PENDING
+	case VerificationStatusVerified:
+		return financev1.VerificationStatus_VERIFICATION_STATUS_VERIFIED
+	case VerificationStatusReVerify:
+		return financev1.VerificationStatus_VERIFICATION_STATUS_RE_VERIFY
+	case VerificationStatusFailed:
+		return financev1.VerificationStatus_VERIFICATION_STATUS_FAILED
+	default:
+		return financev1.VerificationStatus_VERIFICATION_STATUS_UNSPECIFIED
+	}
+}
+
+func toProtoReconciliationRecord(r *ReconciliationRecord) *financev1.ReconciliationRecord {
+	if r == nil {
+		return nil
+	}
+	protoRec := &financev1.ReconciliationRecord{
+		RecordId:             r.RecordID,
+		WorkspaceId:          r.WorkspaceID,
+		ScopeType:            r.ScopeType,
+		ScopeDescription:     r.ScopeDescription,
+		RelatedOrderIds:      r.RelatedOrderIDs,
+		RelatedSettlementIds: r.RelatedSettlementIDs,
+		DiscrepancyReason:    r.DiscrepancyReason,
+		ReconciliationState:  toProtoReconciliationState(r.ReconciliationState),
+		Currency:             r.Currency,
+		MismatchesJson:       r.MismatchesJSON,
+		OverrideReason:       r.OverrideReason,
+		OverrideBy:           r.OverrideBy,
+		PeriodStart:          r.PeriodStart,
+		PeriodEnd:            r.PeriodEnd,
+		CreatedAt:            timestamppb.New(r.CreatedAt),
+		UpdatedAt:            timestamppb.New(r.UpdatedAt),
+	}
+	if !r.MatchedAmount.IsZero() {
+		protoRec.MatchedAmount, _ = r.MatchedAmount.ToProtoMoney(r.Currency, false)
+	}
+	if !r.DiscrepancyAmount.IsZero() {
+		protoRec.DiscrepancyAmount, _ = r.DiscrepancyAmount.ToProtoMoney(r.Currency, true)
+	}
+	if r.OverrideAt != nil {
+		protoRec.OverrideAt = timestamppb.New(*r.OverrideAt)
+	}
+	return protoRec
+}
+
+func toProtoReconciliationMatch(m *ReconciliationMatch) *financev1.ReconciliationMatch {
+	if m == nil {
+		return nil
+	}
+	match := &financev1.ReconciliationMatch{
+		MatchId:      m.MatchID,
+		WorkspaceId:  m.WorkspaceID,
+		RecordId:     m.RecordID,
+		SettlementId: m.SettlementID,
+		LineId:       m.LineID,
+		OrderId:      m.OrderID,
+		Currency:     m.Currency,
+		CreatedAt:    timestamppb.New(m.CreatedAt),
+	}
+	match.AllocatedAmount, _ = m.AllocatedAmount.ToProtoMoney(m.Currency, false)
+	return match
+}
+
+func toProtoEvidenceObject(e *EvidenceObject) *financev1.EvidenceObject {
+	if e == nil {
+		return nil
+	}
+	var refs []*financev1.ObjectRef
+	for _, r := range e.RelatedObjectRefs {
+		refs = append(refs, &financev1.ObjectRef{
+			Type: r.Type,
+			Id:   r.ID,
+		})
+	}
+	return &financev1.EvidenceObject{
+		EvidenceId:         e.EvidenceID,
+		WorkspaceId:        e.WorkspaceID,
+		EvidenceType:       e.EvidenceType,
+		SourceProvenance:   e.SourceProvenance,
+		ContentHash:        e.ContentHash,
+		FileUrl:            e.FileURL,
+		PayloadJson:        e.PayloadJSON,
+		CollectedAt:        timestamppb.New(e.CollectedAt),
+		VerificationStatus: toProtoVerificationStatus(e.VerificationStatus),
+		RelatedObjectRefs:  refs,
+		CreatedAt:          timestamppb.New(e.CreatedAt),
+	}
+}
+
+func toProtoProofBundle(pb *ProofBundle) *financev1.ProofBundle {
+	if pb == nil {
+		return nil
+	}
+	ctxBytes, _ := json.Marshal(pb.SourceClassContext)
+	return &financev1.ProofBundle{
+		ProofBundleId:          pb.ProofBundleID,
+		WorkspaceId:            pb.WorkspaceID,
+		ClaimScope:             pb.ClaimScope,
+		ClaimSummary:           pb.ClaimSummary,
+		SupportingEvidenceIds:  pb.SupportingEvidenceIDs,
+		SourceClassContextJson: string(ctxBytes),
+		Confidence:             toProtoConfidenceBand(pb.Confidence),
+		CoverageSummary:        pb.CoverageSummary,
+		UnresolvedGaps:         pb.UnresolvedGaps,
+		CreatedAt:              timestamppb.New(pb.CreatedAt),
+		UpdatedAt:              timestamppb.New(pb.UpdatedAt),
+	}
+}
+
+func toProtoDataGapItem(item *DataGapItem) *financev1.DataGapItem {
+	if item == nil {
+		return nil
+	}
+	protoItem := &financev1.DataGapItem{
+		GapId:              item.GapID,
+		GapType:            item.GapType,
+		Severity:           item.Severity,
+		Title:              item.Title,
+		Description:        item.Description,
+		RelatedObjectType:  item.RelatedObjectType,
+		RelatedObjectId:    item.RelatedObjectID,
+		UnresolvedSince:    timestamppb.New(item.UnresolvedSince),
+		RepairCtaLabel:     item.RepairCTALabel,
+		RepairCtaRoute:     item.RepairCTARoute,
+		RequiredPermission: item.RequiredPermission,
+	}
+	protoItem.MonetaryAmount, _ = item.MonetaryAmount.ToProtoMoney("VND", false)
+	return protoItem
+}
+
+// ============================================================================
+// ReconciliationService Handler
+// ============================================================================
+
+type ReconciliationHandler struct {
+	service  *Service
+	bindings *rbac.Registry
+}
+
+func NewReconciliationHandler(service *Service, bindings ...*rbac.Registry) *ReconciliationHandler {
+	var b *rbac.Registry
+	if len(bindings) > 0 {
+		b = bindings[0]
+	}
+	return &ReconciliationHandler{service: service, bindings: b}
+}
+
+var _ financev1connect.ReconciliationServiceHandler = (*ReconciliationHandler)(nil)
+
+func (h *ReconciliationHandler) authorize(ctx context.Context, rpcName, wsID string) error {
+	if h.bindings == nil {
+		return nil
+	}
+	pctx, ok := rbac.PolicyContextFromContext(ctx)
+	if !ok {
+		return nil
+	}
+	if pctx.WorkspaceID != "" && pctx.WorkspaceID != wsID {
+		return connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
+	}
+	pctx.WorkspaceID = wsID
+	_, err := h.bindings.Authorize(rpcName, pctx)
+	if err != nil {
+		return connect.NewError(connect.CodePermissionDenied, err)
+	}
+	return nil
+}
+
+func (h *ReconciliationHandler) Queue(ctx context.Context, req *connect.Request[financev1.ReconciliationServiceQueueRequest]) (*connect.Response[financev1.ReconciliationServiceQueueResponse], error) {
+	wsID, err := resolveTenantContext(ctx, req.Msg.Context)
+	if err != nil {
+		return nil, err
+	}
+	if err := h.authorize(ctx, "ReconciliationService/Queue", wsID); err != nil {
+		return nil, err
+	}
+	msg := req.Msg
+
+	rec := &ReconciliationRecord{
+		WorkspaceID:          wsID,
+		ScopeType:            msg.ScopeType,
+		ScopeDescription:     msg.ScopeDescription,
+		RelatedOrderIDs:      msg.OrderIds,
+		RelatedSettlementIDs: msg.SettlementIds,
+		PeriodStart:          msg.PeriodStart,
+		PeriodEnd:            msg.PeriodEnd,
+		ReconciliationState:  ReconciliationImportedOnly,
+		Currency:             "VND",
+	}
+
+	created, err := h.service.QueueReconciliationBatch(ctx, rec)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&financev1.ReconciliationServiceQueueResponse{
+		Record: toProtoReconciliationRecord(created),
+	}), nil
+}
+
+func (h *ReconciliationHandler) Match(ctx context.Context, req *connect.Request[financev1.ReconciliationServiceMatchRequest]) (*connect.Response[financev1.ReconciliationServiceMatchResponse], error) {
+	wsID, err := resolveTenantContext(ctx, req.Msg.Context)
+	if err != nil {
+		return nil, err
+	}
+	if err := h.authorize(ctx, "ReconciliationService/Match", wsID); err != nil {
+		return nil, err
+	}
+	msg := req.Msg
+
+	allocAmt, err := tenantdb.ParseExactDecimal(msg.AllocationAmount.GetAmount())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	line, order, match, err := h.service.Match(ctx, wsID, msg.SettlementId, msg.LineId, msg.OrderId, msg.RecordId, allocAmt)
+	if err != nil {
+		if errors.Is(err, ErrCapacityExceeded) || errors.Is(err, ErrOrderCapacityExceeded) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	lineRem, _ := line.NetAmount.Sub(line.MatchedAmount)
+	orderRem, _ := order.Amount.Sub(order.MatchedAmount)
+	lineRemMoney, _ := lineRem.ToProtoMoney(line.Currency, false)
+	orderRemMoney, _ := orderRem.ToProtoMoney(order.Currency, false)
+
+	var protoRec *financev1.ReconciliationRecord
+	if msg.RecordId != "" {
+		if rec, _, err := h.service.GetReconciliationRecord(ctx, wsID, msg.RecordId); err == nil {
+			protoRec = toProtoReconciliationRecord(rec)
+		}
+	}
+
+	return connect.NewResponse(&financev1.ReconciliationServiceMatchResponse{
+		Success:                  true,
+		Line:                     toProtoSettlementLine(line),
+		OrderReconciliationState: toProtoReconciliationState(order.ReconciliationState),
+		LineRemainingCapacity:    lineRemMoney,
+		OrderRemainingCapacity:   orderRemMoney,
+		Record:                   protoRec,
+		Match:                    toProtoReconciliationMatch(match),
+	}), nil
+}
+
+func (h *ReconciliationHandler) ManualMatch(ctx context.Context, req *connect.Request[financev1.ReconciliationServiceManualMatchRequest]) (*connect.Response[financev1.ReconciliationServiceManualMatchResponse], error) {
+	wsID, err := resolveTenantContext(ctx, req.Msg.Context)
+	if err != nil {
+		return nil, err
+	}
+	if err := h.authorize(ctx, "ReconciliationService/ManualMatch", wsID); err != nil {
+		return nil, err
+	}
+	msg := req.Msg
+
+	allocAmt, err := tenantdb.ParseExactDecimal(msg.AllocationAmount.GetAmount())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	actorID := ""
+	if session, ok := transportauth.PrincipalFromContext(ctx); ok {
+		actorID = session.UserID
+	}
+
+	line, order, match, err := h.service.ManualMatch(ctx, wsID, msg.SettlementId, msg.LineId, msg.OrderId, msg.RecordId, allocAmt, "manual_override", actorID)
+	if err != nil {
+		if errors.Is(err, ErrCapacityExceeded) || errors.Is(err, ErrOrderCapacityExceeded) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	lineRem, _ := line.NetAmount.Sub(line.MatchedAmount)
+	orderRem, _ := order.Amount.Sub(order.MatchedAmount)
+	lineRemMoney, _ := lineRem.ToProtoMoney(line.Currency, false)
+	orderRemMoney, _ := orderRem.ToProtoMoney(order.Currency, false)
+
+	var protoRec *financev1.ReconciliationRecord
+	if msg.RecordId != "" {
+		if rec, _, err := h.service.GetReconciliationRecord(ctx, wsID, msg.RecordId); err == nil {
+			protoRec = toProtoReconciliationRecord(rec)
+		}
+	}
+
+	return connect.NewResponse(&financev1.ReconciliationServiceManualMatchResponse{
+		Success:                  true,
+		Line:                     toProtoSettlementLine(line),
+		OrderReconciliationState: toProtoReconciliationState(order.ReconciliationState),
+		LineRemainingCapacity:    lineRemMoney,
+		OrderRemainingCapacity:   orderRemMoney,
+		Record:                   protoRec,
+		Match:                    toProtoReconciliationMatch(match),
+	}), nil
+}
+
+func (h *ReconciliationHandler) Override(ctx context.Context, req *connect.Request[financev1.ReconciliationServiceOverrideRequest]) (*connect.Response[financev1.ReconciliationServiceOverrideResponse], error) {
+	wsID, err := resolveTenantContext(ctx, req.Msg.Context)
+	if err != nil {
+		return nil, err
+	}
+	if err := h.authorize(ctx, "ReconciliationService/Override", wsID); err != nil {
+		return nil, err
+	}
+	msg := req.Msg
+
+	actorID := ""
+	if session, ok := transportauth.PrincipalFromContext(ctx); ok {
+		actorID = session.UserID
+	}
+
+	rec, err := h.service.OverrideReconciliation(ctx, wsID, msg.RecordId, msg.Decision, msg.Reason, actorID, msg.EvidenceIds)
+	if err != nil {
+		if errors.Is(err, ErrRecordNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&financev1.ReconciliationServiceOverrideResponse{
+		Record: toProtoReconciliationRecord(rec),
+	}), nil
+}
+
+func (h *ReconciliationHandler) GetRecord(ctx context.Context, req *connect.Request[financev1.ReconciliationServiceGetRecordRequest]) (*connect.Response[financev1.ReconciliationServiceGetRecordResponse], error) {
+	wsID := req.Msg.WorkspaceId
+	if wsID == "" {
+		resolved, err := resolveTenantContext(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		wsID = resolved
+	}
+	if err := h.authorize(ctx, "ReconciliationService/GetRecord", wsID); err != nil {
+		return nil, err
+	}
+
+	rec, matches, err := h.service.GetReconciliationRecord(ctx, wsID, req.Msg.RecordId)
+	if err != nil {
+		if errors.Is(err, ErrRecordNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	var protoMatches []*financev1.ReconciliationMatch
+	for i := range matches {
+		protoMatches = append(protoMatches, toProtoReconciliationMatch(&matches[i]))
+	}
+
+	return connect.NewResponse(&financev1.ReconciliationServiceGetRecordResponse{
+		Record:  toProtoReconciliationRecord(rec),
+		Matches: protoMatches,
+	}), nil
+}
+
+func (h *ReconciliationHandler) ListRecords(ctx context.Context, req *connect.Request[financev1.ReconciliationServiceListRecordsRequest]) (*connect.Response[financev1.ReconciliationServiceListRecordsResponse], error) {
+	wsID := req.Msg.WorkspaceId
+	if wsID == "" {
+		resolved, err := resolveTenantContext(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		wsID = resolved
+	}
+	if err := h.authorize(ctx, "ReconciliationService/ListRecords", wsID); err != nil {
+		return nil, err
+	}
+
+	limit := 50
+	offset := 0
+	if req.Msg.Pagination != nil && req.Msg.Pagination.PageSize > 0 {
+		limit = int(req.Msg.Pagination.PageSize)
+	}
+
+	filter := ReconciliationFilter{
+		PeriodStart: req.Msg.PeriodStart,
+		PeriodEnd:   req.Msg.PeriodEnd,
+	}
+
+	records, total, err := h.service.ListReconciliationRecords(ctx, wsID, filter, limit, offset)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	var protoRecords []*financev1.ReconciliationRecord
+	for i := range records {
+		protoRecords = append(protoRecords, toProtoReconciliationRecord(&records[i]))
+	}
+
+	return connect.NewResponse(&financev1.ReconciliationServiceListRecordsResponse{
+		Records: protoRecords,
+		Pagination: &commonv1.PaginatedResponse{
+			TotalCount: &total,
+			HasMore:    int64(offset+len(records)) < total,
+		},
+	}), nil
+}
+
+func (h *ReconciliationHandler) ListPending(ctx context.Context, req *connect.Request[financev1.ReconciliationServiceListPendingRequest]) (*connect.Response[financev1.ReconciliationServiceListPendingResponse], error) {
+	wsID := req.Msg.WorkspaceId
+	if wsID == "" {
+		resolved, err := resolveTenantContext(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		wsID = resolved
+	}
+
+	callerRole := ""
+	if pctx, ok := rbac.PolicyContextFromContext(ctx); ok {
+		callerRole = pctx.Role
+	}
+
+	// CRITICAL ACCEPTANCE TARGET: Finance gaps do not leak to Viewer
+	if callerRole == "viewer" || callerRole == rbac.RoleViewer {
+		return connect.NewResponse(&financev1.ReconciliationServiceListPendingResponse{
+			Items:                   nil,
+			Pagination:              &commonv1.PaginatedResponse{},
+			MissingComponentsCount:  0,
+			TotalUnreconciledAmount: nil,
+			UnreconciledCount:       0,
+		}), nil
+	}
+
+	if err := h.authorize(ctx, "ReconciliationService/ListPending", wsID); err != nil {
+		return nil, err
+	}
+
+	limit := 50
+	offset := 0
+	if req.Msg.Pagination != nil && req.Msg.Pagination.PageSize > 0 {
+		limit = int(req.Msg.Pagination.PageSize)
+	}
+
+	filter := DataGapFilter{
+		Severity:    req.Msg.Severity,
+		GapType:     req.Msg.GapType,
+		PeriodStart: req.Msg.PeriodStart,
+		PeriodEnd:   req.Msg.PeriodEnd,
+		ProductID:   req.Msg.ProductId,
+	}
+
+	items, total, missingCount, unreconciledAmt, unreconciledCount, err := h.service.ListPendingGaps(ctx, wsID, callerRole, filter, limit, offset)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	var protoItems []*financev1.DataGapItem
+	for i := range items {
+		protoItems = append(protoItems, toProtoDataGapItem(&items[i]))
+	}
+
+	unreconciledMoney, _ := unreconciledAmt.ToProtoMoney("VND", false)
+
+	return connect.NewResponse(&financev1.ReconciliationServiceListPendingResponse{
+		Items: protoItems,
+		Pagination: &commonv1.PaginatedResponse{
+			TotalCount: &total,
+			HasMore:    int64(offset+len(items)) < total,
+		},
+		MissingComponentsCount:  missingCount,
+		TotalUnreconciledAmount: unreconciledMoney,
+		UnreconciledCount:       unreconciledCount,
+	}), nil
+}
+
+// ============================================================================
+// EvidenceService Handler
+// ============================================================================
+
+type EvidenceHandler struct {
+	service  *Service
+	bindings *rbac.Registry
+}
+
+func NewEvidenceHandler(service *Service, bindings ...*rbac.Registry) *EvidenceHandler {
+	var b *rbac.Registry
+	if len(bindings) > 0 {
+		b = bindings[0]
+	}
+	return &EvidenceHandler{service: service, bindings: b}
+}
+
+var _ financev1connect.EvidenceServiceHandler = (*EvidenceHandler)(nil)
+
+func (h *EvidenceHandler) authorize(ctx context.Context, rpcName, wsID string) error {
+	if h.bindings == nil {
+		return nil
+	}
+	pctx, ok := rbac.PolicyContextFromContext(ctx)
+	if !ok {
+		return nil
+	}
+	if pctx.WorkspaceID != "" && pctx.WorkspaceID != wsID {
+		return connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
+	}
+	pctx.WorkspaceID = wsID
+	_, err := h.bindings.Authorize(rpcName, pctx)
+	if err != nil {
+		return connect.NewError(connect.CodePermissionDenied, err)
+	}
+	return nil
+}
+
+func (h *EvidenceHandler) Submit(ctx context.Context, req *connect.Request[financev1.EvidenceServiceSubmitRequest]) (*connect.Response[financev1.EvidenceServiceSubmitResponse], error) {
+	wsID, err := resolveTenantContext(ctx, req.Msg.Context)
+	if err != nil {
+		return nil, err
+	}
+	if err := h.authorize(ctx, "EvidenceService/Submit", wsID); err != nil {
+		return nil, err
+	}
+	msg := req.Msg
+
+	var refs []ObjectRef
+	for _, r := range msg.RelatedObjectRefs {
+		refs = append(refs, ObjectRef{
+			Type: r.Type,
+			ID:   r.Id,
+		})
+	}
+
+	ev := &EvidenceObject{
+		WorkspaceID:        wsID,
+		EvidenceType:       msg.EvidenceType,
+		SourceProvenance:   msg.SourceProvenance,
+		ContentHash:        msg.ContentHash,
+		FileURL:            msg.FileUrl,
+		PayloadJSON:        msg.PayloadJson,
+		RelatedObjectRefs:  refs,
+		VerificationStatus: VerificationStatusPending,
+	}
+
+	created, err := h.service.SubmitEvidence(ctx, ev, msg.RawContent)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	return connect.NewResponse(&financev1.EvidenceServiceSubmitResponse{
+		Evidence: toProtoEvidenceObject(created),
+	}), nil
+}
+
+func (h *EvidenceHandler) Get(ctx context.Context, req *connect.Request[financev1.EvidenceServiceGetRequest]) (*connect.Response[financev1.EvidenceServiceGetResponse], error) {
+	wsID := req.Msg.WorkspaceId
+	if wsID == "" {
+		resolved, err := resolveTenantContext(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		wsID = resolved
+	}
+	if err := h.authorize(ctx, "EvidenceService/Get", wsID); err != nil {
+		return nil, err
+	}
+
+	ev, err := h.service.GetEvidence(ctx, wsID, req.Msg.EvidenceId)
+	if err != nil {
+		if errors.Is(err, ErrEvidenceNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&financev1.EvidenceServiceGetResponse{
+		Evidence: toProtoEvidenceObject(ev),
+	}), nil
+}
+
+func (h *EvidenceHandler) List(ctx context.Context, req *connect.Request[financev1.EvidenceServiceListRequest]) (*connect.Response[financev1.EvidenceServiceListResponse], error) {
+	wsID := req.Msg.WorkspaceId
+	if wsID == "" {
+		resolved, err := resolveTenantContext(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		wsID = resolved
+	}
+	if err := h.authorize(ctx, "EvidenceService/List", wsID); err != nil {
+		return nil, err
+	}
+
+	limit := 50
+	offset := 0
+	if req.Msg.Pagination != nil && req.Msg.Pagination.PageSize > 0 {
+		limit = int(req.Msg.Pagination.PageSize)
+	}
+
+	filter := EvidenceFilter{
+		EvidenceType:       req.Msg.EvidenceType,
+		VerificationStatus: req.Msg.VerificationStatus,
+	}
+
+	items, total, err := h.service.ListEvidence(ctx, wsID, filter, limit, offset)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	var protoItems []*financev1.EvidenceObject
+	for i := range items {
+		protoItems = append(protoItems, toProtoEvidenceObject(&items[i]))
+	}
+
+	return connect.NewResponse(&financev1.EvidenceServiceListResponse{
+		Items: protoItems,
+		Pagination: &commonv1.PaginatedResponse{
+			TotalCount: &total,
+			HasMore:    int64(offset+len(items)) < total,
+		},
+	}), nil
+}
+
+// ============================================================================
+// ProofService Handler
+// ============================================================================
+
+type ProofHandler struct {
+	service  *Service
+	bindings *rbac.Registry
+}
+
+func NewProofHandler(service *Service, bindings ...*rbac.Registry) *ProofHandler {
+	var b *rbac.Registry
+	if len(bindings) > 0 {
+		b = bindings[0]
+	}
+	return &ProofHandler{service: service, bindings: b}
+}
+
+var _ financev1connect.ProofServiceHandler = (*ProofHandler)(nil)
+
+func (h *ProofHandler) authorize(ctx context.Context, rpcName, wsID string) error {
+	if h.bindings == nil {
+		return nil
+	}
+	pctx, ok := rbac.PolicyContextFromContext(ctx)
+	if !ok {
+		return nil
+	}
+	if pctx.WorkspaceID != "" && pctx.WorkspaceID != wsID {
+		return connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
+	}
+	pctx.WorkspaceID = wsID
+	_, err := h.bindings.Authorize(rpcName, pctx)
+	if err != nil {
+		return connect.NewError(connect.CodePermissionDenied, err)
+	}
+	return nil
+}
+
+func (h *ProofHandler) Assemble(ctx context.Context, req *connect.Request[financev1.ProofServiceAssembleRequest]) (*connect.Response[financev1.ProofServiceAssembleResponse], error) {
+	wsID, err := resolveTenantContext(ctx, req.Msg.Context)
+	if err != nil {
+		return nil, err
+	}
+	if err := h.authorize(ctx, "ProofService/Assemble", wsID); err != nil {
+		return nil, err
+	}
+	msg := req.Msg
+
+	pb := &ProofBundle{
+		WorkspaceID:           wsID,
+		ClaimScope:            msg.ClaimScope,
+		ClaimSummary:          msg.ClaimSummary,
+		SupportingEvidenceIDs: msg.SupportingEvidenceIds,
+		CoverageSummary:       msg.CoverageSummary,
+		UnresolvedGaps:        msg.UnresolvedGaps,
+	}
+
+	assembled, err := h.service.AssembleProofBundle(ctx, pb)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	return connect.NewResponse(&financev1.ProofServiceAssembleResponse{
+		ProofBundle: toProtoProofBundle(assembled),
+	}), nil
+}
+
+func (h *ProofHandler) Get(ctx context.Context, req *connect.Request[financev1.ProofServiceGetRequest]) (*connect.Response[financev1.ProofServiceGetResponse], error) {
+	wsID := req.Msg.WorkspaceId
+	if wsID == "" {
+		resolved, err := resolveTenantContext(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		wsID = resolved
+	}
+	if err := h.authorize(ctx, "ProofService/Get", wsID); err != nil {
+		return nil, err
+	}
+
+	pb, err := h.service.GetProofBundle(ctx, wsID, req.Msg.ProofBundleId)
+	if err != nil {
+		if errors.Is(err, ErrProofBundleNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&financev1.ProofServiceGetResponse{
+		ProofBundle: toProtoProofBundle(pb),
+	}), nil
+}
+
+func (h *ProofHandler) List(ctx context.Context, req *connect.Request[financev1.ProofServiceListRequest]) (*connect.Response[financev1.ProofServiceListResponse], error) {
+	wsID := req.Msg.WorkspaceId
+	if wsID == "" {
+		resolved, err := resolveTenantContext(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		wsID = resolved
+	}
+	if err := h.authorize(ctx, "ProofService/List", wsID); err != nil {
+		return nil, err
+	}
+
+	limit := 50
+	offset := 0
+	if req.Msg.Pagination != nil && req.Msg.Pagination.PageSize > 0 {
+		limit = int(req.Msg.Pagination.PageSize)
+	}
+
+	filter := ProofBundleFilter{
+		ClaimScope: req.Msg.ClaimScope,
+	}
+
+	bundles, total, err := h.service.ListProofBundles(ctx, wsID, filter, limit, offset)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	var protoBundles []*financev1.ProofBundle
+	for i := range bundles {
+		protoBundles = append(protoBundles, toProtoProofBundle(&bundles[i]))
+	}
+
+	return connect.NewResponse(&financev1.ProofServiceListResponse{
+		ProofBundles: protoBundles,
+		Pagination: &commonv1.PaginatedResponse{
+			TotalCount: &total,
+			HasMore:    int64(offset+len(bundles)) < total,
+		},
 	}), nil
 }
