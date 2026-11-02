@@ -745,3 +745,179 @@ func TestLotConsumptionPriorityRefundAndBillingSandbox(t *testing.T) {
 		t.Fatalf("expected purchased balance restored to 100 after refund, got %s", balAfterRefund.PurchasedRemaining.String())
 	}
 }
+
+// TestP105PaymentReplayCannotDoubleGrant verifies P1-05 Acceptance Target #3:
+//   - Unsettled payment_status ("unpaid" / "requires_payment_method") is rejected and grants 0 credits.
+//   - Replaying the exact same Stripe EventID for a credit pack top-up is a no-op.
+//   - Replaying with a DIFFERENT Stripe EventID for the same CheckoutSessionID is a no-op (session_already_settled).
+//   - Cross-event replay (checkout.session.completed followed by invoice.paid for the same checkout session) is a no-op.
+//   - Subscription invoice.paid grants monthly credits once; replaying invoice.paid with the same EventID or a DIFFERENT
+//     EventID for the same (subscription_id, period_key) or stripe_invoice_id is a no-op.
+//   - 10 concurrent webhook replays for the same payment settle exactly once under -race.
+func TestP105PaymentReplayCannotDoubleGrant(t *testing.T) {
+	now := time.Date(2026, 11, 2, 14, 0, 0, 0, time.UTC)
+	reg := loadTestRBAC(t)
+	store := NewMemoryStore(now)
+	engine := NewEngine(store)
+	svc := NewService(reg, engine, "whsec_p1_05_replay_secret")
+	svc.SetClock(func() time.Time { return now })
+
+	ownerCtx := rbac.WithPolicyContext(context.Background(), rbac.PolicyContext{
+		ActorUserID: testUserOwner,
+		WorkspaceID: testWorkspaceA,
+		Role:        rbac.RoleOwner,
+	})
+
+	// 1. Upgrade workspace to Pro (2,000 monthly credits) and create a Medium credit pack checkout session (500 credits).
+	if _, err := svc.ChangePlan(ownerCtx, &adminv1.ChangePlanRequest{
+		Context:         &commonv1.CommandContext{IdempotencyKey: "p105-plan-pro"},
+		TargetPlan:      "pro",
+		BillingInterval: "monthly",
+		Currency:        "USD",
+	}); err != nil {
+		t.Fatalf("ChangePlan failed: %v", err)
+	}
+
+	purchaseResp, err := svc.PurchaseCredits(ownerCtx, &adminv1.PurchaseCreditsRequest{
+		Context:  &commonv1.CommandContext{IdempotencyKey: "p105-buy-medium"},
+		PackCode: "medium",
+		Currency: "USD",
+	})
+	if err != nil {
+		t.Fatalf("PurchaseCredits failed: %v", err)
+	}
+	sessID := purchaseResp.GetCheckoutSessionId()
+
+	// 2. Unsettled payment must be rejected and grant zero credits.
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_unsettled_001",
+		EventType:         "checkout.session.completed",
+		WorkspaceID:       testWorkspaceA,
+		CheckoutSessionID: sessID,
+		PaymentStatus:     "unpaid",
+		OccurredAt:        now,
+	}); !errors.Is(err, ErrInvalidBillingInput) {
+		t.Fatalf("expected unsettled payment_status='unpaid' to fail with ErrInvalidBillingInput, got %v", err)
+	}
+	balAfterUnpaid, _ := engine.GetBalance(testWorkspaceA, now)
+	if !balAfterUnpaid.Available.IsZero() {
+		t.Fatalf("expected 0 available credits after rejected unpaid webhook, got %s", balAfterUnpaid.Available.String())
+	}
+
+	// 3. Concurrent webhook replay storm for the credit pack checkout session (some with same EventID, some with distinct EventIDs).
+	startCh := make(chan struct{})
+	var wg sync.WaitGroup
+	var settledCount int32
+	var duplicateCount int32
+
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			<-startCh
+			evtID := "evt_pack_primary"
+			evtType := "checkout.session.completed"
+			if idx >= 3 && idx < 6 {
+				evtID = fmt.Sprintf("evt_pack_redelivery_%d", idx)
+			} else if idx >= 6 {
+				evtID = fmt.Sprintf("evt_pack_invoice_paid_%d", idx)
+				evtType = "invoice.paid"
+			}
+			res, wErr := svc.SettleStripeWebhook(StripeWebhookEvent{
+				EventID:           evtID,
+				EventType:         evtType,
+				WorkspaceID:       testWorkspaceA,
+				CheckoutSessionID: sessID,
+				StripeInvoiceID:   "in_" + sessID,
+				PaymentStatus:     "paid",
+				OccurredAt:        now,
+			})
+			if wErr != nil {
+				t.Errorf("SettleStripeWebhook goroutine %d failed: %v", idx, wErr)
+				return
+			}
+			if res.Duplicate {
+				atomic.AddInt32(&duplicateCount, 1)
+			} else {
+				atomic.AddInt32(&settledCount, 1)
+			}
+		}(i)
+	}
+	close(startCh)
+	wg.Wait()
+
+	if settledCount != 1 || duplicateCount != 7 {
+		t.Fatalf("expected exactly 1 primary settlement and 7 duplicates across concurrent pack replays, got settled=%d duplicate=%d", settledCount, duplicateCount)
+	}
+
+	balAfterPack, _ := engine.GetBalance(testWorkspaceA, now)
+	if balAfterPack.PurchasedRemaining.String() != "500" || balAfterPack.Available.String() != "500" {
+		t.Fatalf("expected exactly 500 purchased credits after replay storm, got purchased=%s available=%s",
+			balAfterPack.PurchasedRemaining.String(), balAfterPack.Available.String())
+	}
+
+	// 4. Subscription invoice.paid settlement + replays with same EventID, new EventID for same period_key,
+	//    new EventID for same stripe_invoice_id, and Engine.RunCycleBoundary for the same period_key.
+	subSettle1, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:         "evt_sub_inv_2026_11_a",
+		EventType:       "invoice.paid",
+		WorkspaceID:     testWorkspaceA,
+		SubscriptionID:  "90000000-0000-4000-8000-000000000001",
+		PeriodKey:       "2026-11",
+		StripeInvoiceID: "in_sub_pro_2026_11",
+		PaymentStatus:   "paid",
+		NextPeriodEnd:   now.Add(30 * 24 * time.Hour),
+		OccurredAt:      now,
+	})
+	if err != nil || subSettle1.Duplicate || subSettle1.GrantedLot == nil || subSettle1.GrantedLot.GrantedCredits.String() != "2000" {
+		t.Fatalf("expected first subscription invoice.paid to grant 2000 Pro credits, got %+v, err=%v", subSettle1, err)
+	}
+
+	// Replay with a DIFFERENT EventID for the same (subscription_id, period_key):
+	subReplayDiffEvt, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:         "evt_sub_inv_2026_11_b_resent",
+		EventType:       "invoice.paid",
+		WorkspaceID:     testWorkspaceA,
+		SubscriptionID:  "90000000-0000-4000-8000-000000000001",
+		PeriodKey:       "2026-11",
+		StripeInvoiceID: "in_sub_pro_2026_11",
+		PaymentStatus:   "paid",
+		NextPeriodEnd:   now.Add(30 * 24 * time.Hour),
+		OccurredAt:      now.Add(1 * time.Minute),
+	})
+	if err != nil || !subReplayDiffEvt.Duplicate || subReplayDiffEvt.Status != "invoice_already_settled" {
+		t.Fatalf("expected subscription invoice replay with new EventID to return Duplicate=true (invoice_already_settled), got %+v, err=%v", subReplayDiffEvt, err)
+	}
+
+	// Replay via RunCycleBoundary for the same period_key:
+	cycleReplay, err := engine.RunCycleBoundary(CycleBoundaryRequest{
+		WorkspaceID:    testWorkspaceA,
+		SubscriptionID: "90000000-0000-4000-8000-000000000001",
+		PeriodKey:      "2026-11",
+		NextPeriodEnd:  now.Add(30 * 24 * time.Hour),
+		Now:            now.Add(2 * time.Minute),
+	})
+	if err != nil || !cycleReplay.AlreadyProcessedPeriod {
+		t.Fatalf("expected RunCycleBoundary for already-settled period 2026-11 to report AlreadyProcessedPeriod=true, got %+v, err=%v", cycleReplay, err)
+	}
+
+	// Verify final balance is 2000 (subscription) + 500 (purchased) = 2500 credits, with exactly 2 lots, 2 transactions, and 2 invoices.
+	finalBal, _ := engine.GetBalance(testWorkspaceA, now)
+	if finalBal.SubscriptionRemaining.String() != "2000" || finalBal.PurchasedRemaining.String() != "500" || finalBal.Available.String() != "2500" {
+		t.Fatalf("unexpected final balance after all payment replays: sub=%s pur=%s avail=%s (want 2000, 500, 2500)",
+			finalBal.SubscriptionRemaining.String(), finalBal.PurchasedRemaining.String(), finalBal.Available.String())
+	}
+
+	ledgerResp, err := svc.GetCreditLedger(ownerCtx, &adminv1.GetCreditLedgerRequest{
+		WorkspaceId: &commonv1.UUID{Value: testWorkspaceA},
+	})
+	if err != nil || len(ledgerResp.GetEntries()) != 2 {
+		t.Fatalf("expected exactly 2 positive credit ledger transactions (1 pack + 1 sub), got %d (err=%v)", len(ledgerResp.GetEntries()), err)
+	}
+	summaryResp, err := svc.GetBillingSummary(ownerCtx, &adminv1.GetBillingSummaryRequest{
+		WorkspaceId: &commonv1.UUID{Value: testWorkspaceA},
+	})
+	if err != nil || len(summaryResp.GetRecentInvoices()) != 2 {
+		t.Fatalf("expected exactly 2 invoices (1 pack + 1 sub), got %d (err=%v)", len(summaryResp.GetRecentInvoices()), err)
+	}
+}

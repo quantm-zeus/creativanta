@@ -1,0 +1,113 @@
+=== Flutter Mobile Quality Gate ===
+Detected Flutter version: 3.47.9
+Fetching Flutter dependencies (flutter pub get)...
+Resolving dependencies...
+Downloading packages...
+  cupertino_icons 1.0.9 (2.0.0 available)
+  http2 2.3.1 (3.1.0 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.3 (1.19.0 available)
+  test_api 0.7.12 (0.7.15 available)
+  vector_math 2.4.0 (2.4.4 available)
+Got dependencies!
+6 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Running Flutter analysis (flutter analyze --fatal-infos --fatal-warnings)...
+Resolving dependencies...
+Downloading packages...
+  cupertino_icons 1.0.9 (2.0.0 available)
+  http2 2.3.1 (3.1.0 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.3 (1.19.0 available)
+  test_api 0.7.12 (0.7.15 available)
+  vector_math 2.4.0 (2.4.4 available)
+Got dependencies!
+6 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Analyzing mobile...                                             
+No issues found! (ran in 13.5s)
+flutter analyze passed.
+Running Flutter unit tests (flutter test)...
+Resolving dependencies...
+Downloading packages...
+  cupertino_icons 1.0.9 (2.0.0 available)
+  http2 2.3.1 (3.1.0 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.3 (1.19.0 available)
+  test_api 0.7.12 (0.7.15 available)
+  vector_math 2.4.0 (2.4.4 available)
+Got dependencies!
+6 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+00:00 +0: loading /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/diagnostics_test.dart
+00:00 +0: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/diagnostics_test.dart: P0-05 Mobile Diagnostics & Generated Protobuf (M059) DiagnosticsService protobuf roundtrip for ExecuteRepairStepRequest
+00:00 +1: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/diagnostics_test.dart: P0-05 Mobile Diagnostics & Generated Protobuf (M059) blocks blind retry when external_effects status is unknown or submitted
+00:00 +2: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/diagnostics_test.dart: P0-05 Mobile Diagnostics & Generated Protobuf (M059) sanitizes raw SQL and secrets per RULE-M23-A04 and enforces Step 3 proof
+00:00 +3: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/diagnostics_test.dart: P0-05 Mobile Diagnostics & Generated Protobuf (M059) MobileDiagnosticsScreen renders M059 unknown external effect guard
+00:01 +4: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/diagnostics_test.dart: P0-05 Mobile Diagnostics & Generated Protobuf (M059) MobileDiagnosticsScreen renders M059 unknown external effect guard
+00:02 +5: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/diagnostics_test.dart: P0-05 Mobile Diagnostics & Generated Protobuf (M059) MobileDiagnosticsScreen renders M059 unknown external effect guard
+00:02 +6: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/diagnostics_test.dart: P0-05 Mobile Diagnostics & Generated Protobuf (M059) MobileDiagnosticsScreen renders M059 unknown external effect guard
+00:02 +7: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/billing_test.dart: P0-06 Mobile Billing, Credit Lots & Quotes (M061) MobileBillingScreen renders M061 credit hold and Owner-only state
+00:05 +8: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_adapter_test.dart: ClerkAuthProviderAdapter unconfigured fail-closed contract defaults to unconfigured status and documents external provider gate
+00:05 +9: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_adapter_test.dart: ClerkAuthProviderAdapter unconfigured fail-closed contract signInWithEmailPassword fails closed with PROVIDER_UNAVAILABLE_001
+00:05 +10: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_adapter_test.dart: ClerkAuthProviderAdapter unconfigured fail-closed contract signInWithOAuth fails closed when unconfigured
+00:05 +11: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_adapter_test.dart: ClerkAuthProviderAdapter unconfigured fail-closed contract refreshToken fails closed when unauthenticated
+00:05 +12: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_adapter_test.dart: ClerkAuthProviderAdapter unconfigured fail-closed contract signOut clears state and remains fail-closed unconfigured
+00:05 +13: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_adapter_test.dart: TestAuthProviderAdapter test double behavior handles authentication flow with test double session
+00:05 +14: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_adapter_test.dart: TestAuthProviderAdapter test double behavior RULE-AUTH-003: switches workspace without re-authentication
+00:05 +15: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_adapter_test.dart: TestAuthProviderAdapter test double behavior rejects switching to non-existent workspace
+00:05 +16: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_adapter_test.dart: TestAuthProviderAdapter test double behavior switches across all six canonical operator modes
+00:05 +17: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_adapter_test.dart: TestAuthProviderAdapter test double behavior handles token expiry and transparent refresh
+00:05 +18: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_adapter_test.dart: TestAuthProviderAdapter test double behavior sign-out resets session and status
+00:05 +19: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_adapter_test.dart: AuthSession security redaction toString() redacts sessionToken
+00:07 +20: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_widget_test.dart: MobileAuthScreen Widget Tests unconfigured state displays external provider gate banner and fail-closed notice
+00:08 +21: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_widget_test.dart: MobileAuthScreen Widget Tests unconfigured state displays external provider gate banner and fail-closed notice
+00:08 +22: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_widget_test.dart: MobileAuthScreen Widget Tests unconfigured state displays external provider gate banner and fail-closed notice
+00:08 +23: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_widget_test.dart: MobileAuthScreen Widget Tests unconfigured state displays external provider gate banner and fail-closed notice
+00:08 +24: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_widget_test.dart: MobileAuthScreen Widget Tests unconfigured state displays external provider gate banner and fail-closed notice
+00:08 +25: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_widget_test.dart: MobileAuthScreen Widget Tests unconfigured state displays external provider gate banner and fail-closed notice
+00:08 +26: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/auth/auth_widget_test.dart: MobileAuthScreen Widget Tests unconfigured state displays external provider gate banner and fail-closed notice
+00:13 +27: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 1. All six operator modes identities are retained and switchable
+00:14 +28: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 1. All six operator modes identities are retained and switchable
+00:15 +29: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 1. All six operator modes identities are retained and switchable
+00:15 +30: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 1. All six operator modes identities are retained and switchable
+00:15 +31: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 1. All six operator modes identities are retained and switchable
+00:16 +32: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:17 +33: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:17 +34: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:17 +35: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:17 +36: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:17 +37: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:17 +38: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:17 +39: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:17 +40: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:17 +41: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:17 +42: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:17 +43: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:17 +44: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:17 +45: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:17 +46: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:17 +47: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:17 +48: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:18 +49: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:18 +50: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:18 +51: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:18 +52: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:18 +53: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:18 +54: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:18 +55: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:18 +56: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:20 +57: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:21 +58: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/capability_test.dart: P0-07 M058 Mobile Capability Verification & Read-Only Impersonation ConnectionsScreen disables mutations under read-only impersonation
+00:23 +59: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/capability_test.dart: P0-07 M058 Mobile Capability Verification & Read-Only Impersonation ConnectionsScreen disables mutations under read-only impersonation
+00:23 +60: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 5. 4 UI States are switchable on mobile home
+00:25 +61: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/widget_test.dart: P0 mobile entry is explicit about fail-closed external provider gate when unconfigured
+00:27 +62: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/widget_test.dart: P0 mobile entry is explicit about fail-closed external provider gate when unconfigured
+00:27 +63: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/widget_test.dart: P0 mobile entry is explicit about fail-closed external provider gate when unconfigured
+00:27 +64: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/widget_test.dart: P0 mobile entry is explicit about fail-closed external provider gate when unconfigured
+00:29 +65: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/widget_test.dart: P0 mobile home is explicit about unavailable integrations when authenticated
+00:30 +66: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/widget_test.dart: five navigation destinations change workspace content
+00:31 +67: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/widget_test.dart: app shell displays active workspace and operator mode
+00:32 +68: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p1-05/apps/mobile/test/widget_test.dart: P1-05 mobile home surfaces connector-free import and local Morning Brief schedule
+00:33 +69: All tests passed!
+=== Flutter Mobile Quality Gate: ALL CHECKS PASSED ===

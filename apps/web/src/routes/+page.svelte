@@ -5,6 +5,39 @@
   import { P0_UNSUPPORTED_FEATURES } from '$lib/constants/navigation';
   import { modeStore, type OperatorModeId } from '$lib/constants/modes';
   import { helpStore } from '$lib/help/store';
+  import { evaluateMorningBriefSchedule, evaluateP1PilotCohort } from '$lib/p1_first_value';
+
+  let briefTimezone = $state<'Asia/Ho_Chi_Minh' | 'America/New_York'>('Asia/Ho_Chi_Minh');
+  let briefSchedule = $derived(
+    evaluateMorningBriefSchedule(
+      {
+        workspaceId: 'ws-p1-home',
+        timezone: briefTimezone,
+        morningBriefEnabled: true,
+        morningBriefTime: '07:00',
+        hasAuthorizedData: true
+      },
+      briefTimezone === 'Asia/Ho_Chi_Minh' ? '2026-11-02T00:05:00Z' : '2026-11-01T12:05:00Z',
+      new Set()
+    )
+  );
+  let pilotSummary = $derived(
+    evaluateP1PilotCohort([
+      {
+        workspaceId: 'ws-p1-home',
+        objectId: 'import-batch-01',
+        operationId: 'op-p1-01',
+        isDemoOrInternal: false,
+        sourceClass: 'imported',
+        confidenceBand: 'low',
+        unresolvedRequiredComponentsCount: 2,
+        operatorRepairSeconds: null,
+        startedProductionJob: false,
+        acceptedOutput: false,
+        settledCostUsd: '0'
+      }
+    ])
+  );
 
   type UIState = 'normal' | 'loading' | 'empty' | 'error' | 'repair';
   let activeUIState = $state<UIState>('normal');
@@ -515,6 +548,46 @@
       </JobCard>
     </div>
   {/if}
+
+  <!-- P1-05 Configured Local Morning Brief & Pilot Instrumentation Disclosure -->
+  <div class="rounded-xl border border-[#e7e2d7] bg-[#ffffff] p-5 shadow-xs space-y-3">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <div>
+        <h3 class="text-sm font-bold tracking-tight text-[#242924]">
+          Bản tin Buổi sáng theo Múi giờ &amp; Đo lường Pilot P1 (P1-05)
+        </h3>
+        <p class="text-xs text-[#616c63]">
+          Khóa chống gửi trùng theo ngày địa phương (<code>{briefSchedule.deliveryKey}</code>) và bảo toàn giá trị <code>unknown</code> thực tế khi thiếu dữ liệu đo lường.
+        </p>
+      </div>
+      <div class="flex items-center gap-2 text-xs">
+        <span class="font-semibold text-[#242924]">Múi giờ (IANA):</span>
+        <select
+          bind:value={briefTimezone}
+          class="rounded border border-[#e7e2d7] bg-[#fbf9f5] px-2 py-1 text-xs text-[#242924]"
+        >
+          <option value="Asia/Ho_Chi_Minh">Asia/Ho_Chi_Minh (07:00 ICT)</option>
+          <option value="America/New_York">America/New_York (07:00 EST/EDT DST)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+      <div class="rounded-lg border border-[#e7e2d7] bg-[#fbf9f5] p-3">
+        <div class="font-semibold text-[#274333]">Lịch Morning Brief (home_dashboard_config)</div>
+        <div class="mt-1 text-[#616c63]">
+          Ngày địa phương: <strong class="font-mono text-[#242924]">{briefSchedule.localDate}</strong> · Giờ địa phương: <strong class="font-mono text-[#242924]">{briefSchedule.localTimeHHMM}</strong> · Quyết định: <strong class="font-mono text-[#274333]">{briefSchedule.decision}</strong>
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-[#e7e2d7] bg-[#fbf9f5] p-3">
+        <div class="font-semibold text-[#274333]">Đo lường Pilot P1 (Báo cáo trung thực Unknowns)</div>
+        <div class="mt-1 text-[#616c63]">
+          Thời gian sửa lỗi (operator_time_known): <strong class="font-mono text-[#d94a31]">{pilotSummary.repairBurden.operatorTimeKnown ? `${pilotSummary.repairBurden.medianOperatorRepairSeconds}s` : 'UNKNOWN (null)'}</strong> · Chi phí/đầu ra: <strong class="font-mono text-[#d94a31]">{pilotSummary.costPerAcceptedOutput.status}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- P0 Architectural Status Table -->
   <div class="rounded-xl border border-[#e7e2d7] bg-[#ffffff] p-5 shadow-xs">

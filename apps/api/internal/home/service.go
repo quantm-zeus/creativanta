@@ -18,8 +18,11 @@ import (
 )
 
 var (
-	ErrUnauthenticated = errors.New("home: unauthenticated request")
-	ErrInvalidInput    = errors.New("home: invalid input parameters")
+	ErrUnauthenticated        = errors.New("home: unauthenticated request")
+	ErrInvalidInput           = errors.New("home: invalid input parameters")
+	ErrPermissionDenied       = errors.New("home: caller role is not authorized for this action")
+	ErrStepUnavailableInPhase = errors.New("home: onboarding step belongs to an unshipped future phase and cannot be completed in P1")
+	ErrDemoFixtureNotAllowed  = errors.New("home: demo fixtures cannot contribute to customer profit, activation, or proof")
 )
 
 // CallerContext models the authenticated caller context.
@@ -45,7 +48,7 @@ func CallerFromContext(ctx context.Context) (CallerContext, bool) {
 	return c, ok
 }
 
-// StoredMetric models a business KPI record.
+// StoredMetric holds a financial/operational KPI with provenance and demo flag.
 type StoredMetric struct {
 	MetricKey          string
 	DisplayName        string
@@ -57,25 +60,113 @@ type StoredMetric struct {
 	DataOrigins        []string
 	MissingDataCaveats []string
 	RecommendedSteps   []string
-	IsDemoFixture      bool // True if purely mock/simulation
+	IsDemoFixture      bool
+}
+
+// DataRepairGap represents an active data/evidence gap surfaced on Home in P1
+// per docs/02_features/platform/home_decision_engine.md (§Progressive first value and data-repair actions)
+// and docs/02_features/finance/operating_ledger.md (§Evidence coverage and repair queue).
+type DataRepairGap struct {
+	GapID       string // e.g. "gap-missing-cogs-sku-1", "gap-unmatched-settlement-1"
+	GapKind     string // "missing_cogs", "missing_evidence", "unmatched_settlement", "stale_connector"
+	Title       string
+	Reason      string // visible reason explaining why the number/proof is incomplete
+	RepairCTA   string // single repair CTA label
+	RepairRoute string // e.g. "/kinh-doanh"
+	AmountCents int64  // optional affected amount (hidden from viewers lacking finance permission)
+	Currency    string
+	Resolved    bool
+}
+
+// WorkspaceImportState tracks a workspace's P1 authorized imported/connected state
+// without requiring native platform API connectors (Acceptance Target #1).
+type WorkspaceImportState struct {
+	WorkspaceID                string
+	ConnectedAccountsCount     int
+	AuthorizedProductsCount    int
+	AuthorizedOrdersCount      int
+	AuthorizedCostsCount       int
+	AuthorizedSettlementsCount int
+	GrossRevenueCents          int64
+	KnownCostsCents            int64
+	Currency                   string
+	SourceBadge                adminv1.DataSourceBadge
+	RepairGaps                 []DataRepairGap
+	LastImportedAt             time.Time
+}
+
+// AuthorizedImportRequest specifies an authorized P1 product/order/cost/settlement import batch
+// that requires ZERO connected accounts.
+type AuthorizedImportRequest struct {
+	WorkspaceID            string
+	ConnectedAccountsCount int // 0 is explicitly valid in P1 ("No connector required for authorized import")
+	ProductsCount          int
+	OrdersCount            int
+	CostsCount             int
+	SettlementsCount       int
+	GrossRevenueCents      int64
+	KnownCostsCents        int64
+	Currency               string
+	RepairGaps             []DataRepairGap
+	IsDemoFixture          bool
+	ImportedAt             time.Time
+}
+
+// AuthorizedImportProjection returns the labeled P1 profit view, active repair checklist,
+// and the authenticated caller's updated personal onboarding checklist.
+type AuthorizedImportProjection struct {
+	WorkspaceID                    string
+	ConnectedAccountsCount         int
+	RequiresNativeConnector        bool
+	FormattedGrossRevenue          string
+	FormattedNetProfit             string
+	SourceBadge                    adminv1.DataSourceBadge
+	Confidence                     adminv1.ConfidenceLevel
+	IsIncomplete                   bool
+	UnknownRequiredComponentsCount int
+	ActiveRepairCards              []*adminv1.DecisionCard
+	PersonalOnboarding             *adminv1.OnboardingChecklist
 }
 
 // Service implements DashboardServiceHandler (M01).
 type Service struct {
 	adminv1connect.UnimplementedDashboardServiceHandler
-	mu         sync.RWMutex
-	onboarding map[string][]bool         // key: workspaceID:userID -> array of 5 booleans
-	metrics    map[string][]StoredMetric // key: workspaceID
-	bindings   *rbac.Registry
+	mu                sync.RWMutex
+	onboarding        map[string][]bool                      // key: workspaceID:userID -> array of 5 booleans
+	metrics           map[string][]StoredMetric              // key: workspaceID
+	configs           map[string]HomeDashboardConfig         // key: workspaceID
+	briefDeliveries   map[string]*MorningBriefDeliveryRecord // key: morning_brief:<workspaceID>:<YYYY-MM-DD>
+	imports           map[string]*WorkspaceImportState       // key: workspaceID
+	pilotObservations []PilotObservation
+	bindings          *rbac.Registry
 }
 
 // NewService creates a new DashboardService instance.
 func NewService(bindings *rbac.Registry) *Service {
 	return &Service{
-		onboarding: make(map[string][]bool),
-		metrics:    make(map[string][]StoredMetric),
-		bindings:   bindings,
+		onboarding:      make(map[string][]bool),
+		metrics:         make(map[string][]StoredMetric),
+		configs:         make(map[string]HomeDashboardConfig),
+		briefDeliveries: make(map[string]*MorningBriefDeliveryRecord),
+		imports:         make(map[string]*WorkspaceImportState),
+		bindings:        bindings,
 	}
+}
+
+func callerUserID(ctx context.Context) string {
+	if caller, ok := CallerFromContext(ctx); ok && strings.TrimSpace(caller.UserID) != "" {
+		return strings.TrimSpace(caller.UserID)
+	}
+	return "default-user"
+}
+
+func isViewerRole(ctx context.Context) bool {
+	caller, ok := CallerFromContext(ctx)
+	if !ok {
+		return false
+	}
+	role := strings.ToLower(strings.TrimSpace(caller.WorkspaceRole))
+	return role == "viewer" || role == strings.ToLower(rbac.RoleViewer)
 }
 
 // SeedWorkspaceMetric records a financial/operational KPI for a workspace.
@@ -83,6 +174,273 @@ func (s *Service) SeedWorkspaceMetric(workspaceID string, m StoredMetric) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.metrics[workspaceID] = append(s.metrics[workspaceID], m)
+}
+
+// IngestAuthorizedImport accepts an authorized product/order/cost/settlement import in P1
+// with ZERO connected accounts required (Acceptance Target #1: "No connector required for authorized import").
+//   - Rejects demo fixtures from contributing to customer profit, activation, or proof.
+//   - Computes a labeled profit projection (with source_class=IMPORTED and confidence_band=LOW when gaps exist).
+//   - Populates data-repair cards with 1 repair CTA and visible reason.
+//   - Updates ONLY the authenticated user's personal onboarding progress for available P1 steps (1, 2, 5)
+//     while keeping future-phase steps (3, 4) unavailable and IsClosedLoopComplete=false.
+func (s *Service) IngestAuthorizedImport(ctx context.Context, req AuthorizedImportRequest) (AuthorizedImportProjection, error) {
+	wsID := strings.TrimSpace(req.WorkspaceID)
+	if wsID == "" {
+		return AuthorizedImportProjection{}, ErrInvalidInput
+	}
+	if isViewerRole(ctx) {
+		return AuthorizedImportProjection{}, connect.NewError(connect.CodePermissionDenied, ErrPermissionDenied)
+	}
+	if req.IsDemoFixture {
+		return AuthorizedImportProjection{}, ErrDemoFixtureNotAllowed
+	}
+	if req.ProductsCount == 0 && req.OrdersCount == 0 && req.CostsCount == 0 && req.SettlementsCount == 0 {
+		return AuthorizedImportProjection{}, fmt.Errorf("%w: import batch must contain at least one product, order, cost, or settlement record", ErrInvalidInput)
+	}
+
+	now := req.ImportedAt
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	currency := strings.TrimSpace(req.Currency)
+	if currency == "" {
+		currency = "VND"
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	badge := adminv1.DataSourceBadge_DATA_SOURCE_BADGE_IMPORTED
+	if req.ConnectedAccountsCount > 0 {
+		badge = adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL
+	}
+
+	gapsCopy := make([]DataRepairGap, len(req.RepairGaps))
+	copy(gapsCopy, req.RepairGaps)
+
+	st := &WorkspaceImportState{
+		WorkspaceID:                wsID,
+		ConnectedAccountsCount:     req.ConnectedAccountsCount,
+		AuthorizedProductsCount:    req.ProductsCount,
+		AuthorizedOrdersCount:      req.OrdersCount,
+		AuthorizedCostsCount:       req.CostsCount,
+		AuthorizedSettlementsCount: req.SettlementsCount,
+		GrossRevenueCents:          req.GrossRevenueCents,
+		KnownCostsCents:            req.KnownCostsCents,
+		Currency:                   currency,
+		SourceBadge:                badge,
+		RepairGaps:                 gapsCopy,
+		LastImportedAt:             now,
+	}
+	s.imports[wsID] = st
+	s.recomputeImportedRevenueMetricLocked(wsID, st)
+
+	// Derive personal onboarding progress for the authenticated user without mutating another user's progress.
+	uID := callerUserID(ctx)
+	obKey := wsID + ":" + uID
+	steps, exists := s.onboarding[obKey]
+	if !exists {
+		steps = make([]bool, 5)
+	}
+	// Step 1 (connect_data): satisfied by authorized imported dataset even when ConnectedAccountsCount == 0!
+	steps[0] = true
+	// Step 2 (select_offer / M13): satisfied when catalog or order items are present.
+	if req.ProductsCount > 0 || req.OrdersCount > 0 {
+		steps[1] = true
+	}
+	// Step 5 (track_outcome / M19): satisfied when labeled profit snapshot & repair checklist are computed.
+	if req.OrdersCount > 0 || req.CostsCount > 0 || req.SettlementsCount > 0 {
+		steps[4] = true
+	}
+	// Steps 3 (create_content, P4) and 4 (publish, P5) remain false in P1.
+	s.onboarding[obKey] = steps
+
+	return s.buildImportProjectionLocked(wsID, uID), nil
+}
+
+// ResolveUnderlyingDataRepair marks an underlying finance/reconciliation repair gap as completed
+// in the domain state and dynamically recomputes/removes the corresponding Home data-repair card
+// (rather than marking it fixed locally in UI state).
+func (s *Service) ResolveUnderlyingDataRepair(ctx context.Context, workspaceID, gapID string, addedKnownCostCents int64) (AuthorizedImportProjection, error) {
+	wsID := strings.TrimSpace(workspaceID)
+	gID := strings.TrimSpace(gapID)
+	if wsID == "" || gID == "" {
+		return AuthorizedImportProjection{}, ErrInvalidInput
+	}
+	if isViewerRole(ctx) {
+		return AuthorizedImportProjection{}, connect.NewError(connect.CodePermissionDenied, ErrPermissionDenied)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	st, ok := s.imports[wsID]
+	if !ok {
+		return AuthorizedImportProjection{}, fmt.Errorf("%w: no import state found for workspace %q", ErrInvalidInput, wsID)
+	}
+
+	found := false
+	for i := range st.RepairGaps {
+		if st.RepairGaps[i].GapID == gID && !st.RepairGaps[i].Resolved {
+			st.RepairGaps[i].Resolved = true
+			found = true
+			break
+		}
+	}
+	if !found {
+		return AuthorizedImportProjection{}, fmt.Errorf("%w: active repair gap %q not found", ErrInvalidInput, gID)
+	}
+	if addedKnownCostCents > 0 {
+		st.KnownCostsCents += addedKnownCostCents
+		st.AuthorizedCostsCount++
+	}
+	st.LastImportedAt = time.Now().UTC()
+	s.recomputeImportedRevenueMetricLocked(wsID, st)
+
+	return s.buildImportProjectionLocked(wsID, callerUserID(ctx)), nil
+}
+
+func (s *Service) recomputeImportedRevenueMetricLocked(workspaceID string, st *WorkspaceImportState) {
+	var caveats []string
+	var nextSteps []string
+	unresolvedCount := 0
+	for _, g := range st.RepairGaps {
+		if !g.Resolved {
+			unresolvedCount++
+			caveats = append(caveats, g.Reason)
+			nextSteps = append(nextSteps, g.RepairCTA)
+		}
+	}
+	conf := adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_MEDIUM
+	if unresolvedCount > 0 {
+		conf = adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_LOW
+	} else if st.SourceBadge == adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL {
+		conf = adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH
+	}
+
+	origin := "Dữ liệu nhập CSV được ủy quyền (không yêu cầu kết nối API nền tảng)"
+	if st.ConnectedAccountsCount > 0 {
+		origin = "Đồng bộ từ tài khoản kết nối và dữ liệu nhập đối soát"
+	}
+
+	newMetric := StoredMetric{
+		MetricKey:          "imported_revenue_p1",
+		DisplayName:        "Doanh thu dữ liệu nhập P1",
+		AmountCents:        st.GrossRevenueCents,
+		Currency:           st.Currency,
+		DataSource:         st.SourceBadge,
+		Confidence:         conf,
+		LastSyncedAt:       st.LastImportedAt,
+		DataOrigins:        []string{origin},
+		MissingDataCaveats: caveats,
+		RecommendedSteps:   nextSteps,
+		IsDemoFixture:      false,
+	}
+
+	metrics := s.metrics[workspaceID]
+	replaced := false
+	for i := range metrics {
+		if metrics[i].MetricKey == "imported_revenue_p1" {
+			metrics[i] = newMetric
+			replaced = true
+			break
+		}
+	}
+	if !replaced {
+		metrics = append(metrics, newMetric)
+	}
+	s.metrics[workspaceID] = metrics
+}
+
+func (s *Service) buildImportProjectionLocked(workspaceID, userID string) AuthorizedImportProjection {
+	st := s.imports[workspaceID]
+	steps := s.onboarding[workspaceID+":"+userID]
+	if len(steps) == 0 {
+		steps = make([]bool, 5)
+	}
+	checklist := s.buildOnboardingChecklistFromSteps(steps)
+
+	if st == nil {
+		return AuthorizedImportProjection{
+			WorkspaceID:             workspaceID,
+			RequiresNativeConnector: false,
+			FormattedGrossRevenue:   formatMoney(0, "VND"),
+			FormattedNetProfit:      formatMoney(0, "VND"),
+			SourceBadge:             adminv1.DataSourceBadge_DATA_SOURCE_BADGE_IMPORTED,
+			Confidence:              adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_LOW,
+			IsIncomplete:            true,
+			PersonalOnboarding:      checklist,
+		}
+	}
+
+	repairCards := s.buildDataRepairCardsLocked(workspaceID)
+	unresolved := len(repairCards)
+	conf := adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_MEDIUM
+	if unresolved > 0 {
+		conf = adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_LOW
+	} else if st.SourceBadge == adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL {
+		conf = adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH
+	}
+
+	netProfit := st.GrossRevenueCents - st.KnownCostsCents
+	return AuthorizedImportProjection{
+		WorkspaceID:                    workspaceID,
+		ConnectedAccountsCount:         st.ConnectedAccountsCount,
+		RequiresNativeConnector:        false, // P1 never requires a native platform connector for authorized import
+		FormattedGrossRevenue:          formatMoney(st.GrossRevenueCents, st.Currency),
+		FormattedNetProfit:             formatMoney(netProfit, st.Currency),
+		SourceBadge:                    st.SourceBadge,
+		Confidence:                     conf,
+		IsIncomplete:                   unresolved > 0,
+		UnknownRequiredComponentsCount: unresolved,
+		ActiveRepairCards:              repairCards,
+		PersonalOnboarding:             checklist,
+	}
+}
+
+func (s *Service) buildDataRepairCardsLocked(workspaceID string) []*adminv1.DecisionCard {
+	st, ok := s.imports[workspaceID]
+	if !ok || st == nil {
+		return nil
+	}
+	var cards []*adminv1.DecisionCard
+	rank := int32(10)
+	for _, g := range st.RepairGaps {
+		if g.Resolved {
+			continue
+		}
+		cta := strings.TrimSpace(g.RepairCTA)
+		if cta == "" {
+			cta = "Bổ sung dữ liệu & chứng từ"
+		}
+		route := strings.TrimSpace(g.RepairRoute)
+		if route == "" {
+			route = "/kinh-doanh"
+		}
+		desc := g.Reason
+		if g.AmountCents > 0 {
+			desc = fmt.Sprintf("%s (Giá trị ảnh hưởng: %s)", g.Reason, formatMoney(g.AmountCents, st.Currency))
+		}
+		cards = append(cards, &adminv1.DecisionCard{
+			CardId:             "card-repair-" + g.GapID,
+			CardFamily:         "data_repair",
+			Title:              g.Title,
+			Description:        desc,
+			PrimaryCtaLabel:    cta,
+			PrimaryCtaRoute:    route,
+			IsActionAvailable:  true,
+			UnavailableReason:  "",
+			DataSource:         st.SourceBadge,
+			Confidence:         adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_LOW,
+			WhyThisMatters:     g.Reason,
+			PriorityRank:       rank,
+			ModuleRef:          "M19",
+			StateType:          adminv1.UIStateType_UI_STATE_TYPE_REPAIR,
+			RepairInstructions: g.Reason,
+		})
+		rank++
+	}
+	return cards
 }
 
 // GetMobileHome implements DashboardService/GetMobileHome.
@@ -100,14 +458,17 @@ func (s *Service) GetMobileHome(
 		mode = adminv1.OperatorModeId_OPERATOR_MODE_ID_CREATOR
 	}
 
-	cards := s.buildDecisionCardsForMode(mode)
+	s.mu.RLock()
+	cards := s.buildWorkspaceDecisionCardsLocked(msg.WorkspaceId.Value, mode)
+	s.mu.RUnlock()
+
 	caller, hasCaller := CallerFromContext(ctx)
 	isViewer := hasCaller && (caller.WorkspaceRole == "viewer" || caller.WorkspaceRole == rbac.RoleViewer)
 	if isViewer {
 		cards = filterCardsForRole(cards, caller.WorkspaceRole)
 	}
 
-	checklist := s.getOnboardingChecklist(msg.WorkspaceId.Value, "default-user")
+	checklist := s.getOnboardingChecklist(msg.WorkspaceId.Value, callerUserID(ctx))
 	verifiedRevenue, sourceBadge := s.computeCustomerVerifiedTotalRevenue(msg.WorkspaceId.Value)
 	if isViewer {
 		verifiedRevenue = ""
@@ -139,7 +500,7 @@ func (s *Service) GetPipeline(
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
 
-	// P0 Pipeline stub - honest counts without fake live activity
+	// P0/P1 Pipeline stub - honest counts without fake live activity
 	return connect.NewResponse(&adminv1.GetPipelineResponse{
 		WorkspaceId:           msg.WorkspaceId,
 		IdeasCount:            0,
@@ -165,7 +526,15 @@ func (s *Service) GetDecisionCards(
 		mode = adminv1.OperatorModeId_OPERATOR_MODE_ID_CREATOR
 	}
 
-	cards := s.buildDecisionCardsForMode(mode)
+	wsID := ""
+	if msg.WorkspaceId != nil {
+		wsID = msg.WorkspaceId.Value
+	}
+
+	s.mu.RLock()
+	cards := s.buildWorkspaceDecisionCardsLocked(wsID, mode)
+	s.mu.RUnlock()
+
 	if caller, ok := CallerFromContext(ctx); ok && (caller.WorkspaceRole == "viewer" || caller.WorkspaceRole == rbac.RoleViewer) {
 		cards = filterCardsForRole(cards, caller.WorkspaceRole)
 	}
@@ -176,13 +545,28 @@ func (s *Service) GetDecisionCards(
 	}), nil
 }
 
+func (s *Service) buildWorkspaceDecisionCardsLocked(workspaceID string, mode adminv1.OperatorModeId) []*adminv1.DecisionCard {
+	baseCards := s.buildDecisionCardsForMode(mode)
+	if strings.TrimSpace(workspaceID) == "" {
+		return baseCards
+	}
+	repairCards := s.buildDataRepairCardsLocked(workspaceID)
+	if len(repairCards) == 0 {
+		return baseCards
+	}
+	combined := make([]*adminv1.DecisionCard, 0, len(baseCards)+len(repairCards))
+	combined = append(combined, baseCards...)
+	combined = append(combined, repairCards...)
+	return combined
+}
+
 func filterCardsForRole(cards []*adminv1.DecisionCard, role string) []*adminv1.DecisionCard {
 	if role != "viewer" && role != rbac.RoleViewer {
 		return cards
 	}
 	var filtered []*adminv1.DecisionCard
 	for _, c := range cards {
-		if c.ModuleRef == "M19" || c.CardFamily == "revenue_today" || c.CardFamily == "profit_anomalies" {
+		if c.ModuleRef == "M19" || c.CardFamily == "revenue_today" || c.CardFamily == "profit_anomalies" || c.CardFamily == "data_repair" {
 			continue
 		}
 		filtered = append(filtered, c)
@@ -228,8 +612,8 @@ func (s *Service) GetWhyThisNumber(
 				Confidence:           adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
 				LastSyncedAt:         timestamppb.New(now),
 				DataOrigins:          []string{"Chưa có đơn hàng hoặc dữ liệu đối soát phát sinh."},
-				MissingDataCaveats:   []string{"Cần kết nối TikTok Shop hoặc Shopee để đồng bộ đơn hàng."},
-				RecommendedNextSteps: []string{"Vào Cài đặt > Kết nối nền tảng để kích hoạt đồng bộ dữ liệu."},
+				MissingDataCaveats:   []string{"Có thể nhập tệp CSV đơn hàng/chi phí hoặc kết nối TikTok Shop / Shopee."},
+				RecommendedNextSteps: []string{"Vào Kinh doanh > Nhập dữ liệu CSV hoặc Cài đặt > Kết nối nền tảng."},
 				ContainsDemoData:     false,
 			},
 		}), nil
@@ -252,6 +636,10 @@ func (s *Service) GetWhyThisNumber(
 }
 
 // CompleteOnboardingStep implements DashboardService/CompleteOnboardingStep.
+// Scoped per (workspace_id, user_id) per database_schema.md §27.1 and home_decision_engine.md:
+//   - Completing a personal checklist step never changes workspace settings or another user's progress.
+//   - Disabled future-phase steps (Step 3 M07 in P4, Step 4 M11 in P5) cannot be completed in P1
+//     and never falsely mark the 5-step closed loop complete.
 func (s *Service) CompleteOnboardingStep(
 	ctx context.Context,
 	req *connect.Request[adminv1.CompleteOnboardingStepRequest],
@@ -260,11 +648,14 @@ func (s *Service) CompleteOnboardingStep(
 	if msg == nil || msg.WorkspaceId == nil || msg.StepNumber < 1 || msg.StepNumber > 5 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
+	if msg.StepNumber == 3 || msg.StepNumber == 4 {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrStepUnavailableInPhase)
+	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	key := msg.WorkspaceId.Value + ":default-user"
+	key := msg.WorkspaceId.Value + ":" + callerUserID(ctx)
 	steps, exists := s.onboarding[key]
 	if !exists {
 		steps = make([]bool, 5)
@@ -290,13 +681,13 @@ func (s *Service) buildDecisionCardsForMode(mode adminv1.OperatorModeId) []*admi
 				CardId:            "card-seller-orders",
 				CardFamily:        "order_queue",
 				Title:             "Hàng đợi đơn hàng cần xử lý",
-				Description:       "Kiểm tra và chuẩn bị hàng cho các đơn mới phát sinh hôm nay.",
+				Description:       "Kiểm tra và chuẩn bị hàng cho các đơn mới phát sinh hoặc dữ liệu nhập P1.",
 				PrimaryCtaLabel:   "Mở danh sách đơn hàng",
 				PrimaryCtaRoute:   "/kinh-doanh",
-				IsActionAvailable: false,
-				UnavailableReason: "M13/OrderService chưa mở cổng trong Phase 0. Đang chờ hoàn tất kiểm thử API ở P1.",
-				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
-				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_IMPORTED,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_MEDIUM,
 				WhyThisMatters:    "Giao hàng đúng SLA sàn để tránh phạt tỷ lệ trễ hạn.",
 				PriorityRank:      1,
 				ModuleRef:         "M13",
@@ -306,13 +697,13 @@ func (s *Service) buildDecisionCardsForMode(mode adminv1.OperatorModeId) []*admi
 				CardId:            "card-seller-revenue",
 				CardFamily:        "revenue_today",
 				Title:             "Doanh thu hôm nay: 0 ₫",
-				Description:       "Theo dõi số liệu doanh số bán hàng tổng hợp từ các gian hàng liên kết.",
+				Description:       "Theo dõi số liệu doanh số bán hàng và biên lợi nhuận từ dữ liệu nhập hợp lệ hoặc gian hàng liên kết.",
 				PrimaryCtaLabel:   "Xem đối soát lợi nhuận",
 				PrimaryCtaRoute:   "/kinh-doanh",
-				IsActionAvailable: false,
-				UnavailableReason: "Sổ cái tài chính M19 sẽ được kích hoạt tại Phase P1.",
-				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
-				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_IMPORTED,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_MEDIUM,
 				WhyThisMatters:    "Đánh giá nhịp bán hàng và dòng tiền trong ngày.",
 				PriorityRank:      2,
 				ModuleRef:         "M19",
@@ -325,9 +716,9 @@ func (s *Service) buildDecisionCardsForMode(mode adminv1.OperatorModeId) []*admi
 				Description:       "Không có sản phẩm nào chạm ngưỡng tồn kho tối thiểu.",
 				PrimaryCtaLabel:   "Kiểm tra kho hàng",
 				PrimaryCtaRoute:   "/kinh-doanh",
-				IsActionAvailable: false,
-				UnavailableReason: "Kho hàng M13 chưa kết nối kho thực tế trong Phase 0.",
-				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_IMPORTED,
 				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
 				WhyThisMatters:    "Tránh tình trạng đứt hàng khi chiến dịch quảng cáo đang chạy.",
 				PriorityRank:      3,
@@ -539,7 +930,10 @@ func (s *Service) getMorningBriefHeadline(mode adminv1.OperatorModeId) string {
 func (s *Service) computeCustomerVerifiedTotalRevenue(workspaceID string) (string, adminv1.DataSourceBadge) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	return s.computeCustomerVerifiedTotalRevenueLocked(workspaceID)
+}
 
+func (s *Service) computeCustomerVerifiedTotalRevenueLocked(workspaceID string) (string, adminv1.DataSourceBadge) {
 	wsMetrics := s.metrics[workspaceID]
 	totalCents := int64(0)
 	hasOfficial := false
@@ -579,13 +973,6 @@ func (s *Service) getOnboardingChecklist(workspaceID, userID string) *adminv1.On
 }
 
 func (s *Service) buildOnboardingChecklistFromSteps(steps []bool) *adminv1.OnboardingChecklist {
-	completedCount := int32(0)
-	for _, c := range steps {
-		if c {
-			completedCount++
-		}
-	}
-
 	stepDefs := []struct {
 		key         string
 		title       string
@@ -596,16 +983,16 @@ func (s *Service) buildOnboardingChecklistFromSteps(steps []bool) *adminv1.Onboa
 		{
 			key:         "connect_data",
 			title:       "Kết nối tài khoản hoặc nhập dữ liệu mẫu",
-			desc:        "Liên kết kênh TikTok Shop / Shopee hoặc nhập tệp CSV dữ liệu sản phẩm.",
+			desc:        "Nhập tệp CSV sản phẩm/đơn hàng/chi phí hợp lệ (không bắt buộc kết nối API) hoặc liên kết kênh bán.",
 			available:   true,
 			unavailDesc: "",
 		},
 		{
 			key:         "select_offer",
 			title:       "Tạo hoặc chọn sản phẩm kinh doanh",
-			desc:        "Thiết lập danh mục sản phẩm và ưu đãi hoa hồng trong Product Hub.",
-			available:   false,
-			unavailDesc: "Product Hub M13 sẽ mở cổng quản lý sản phẩm ở Phase P1.",
+			desc:        "Thiết lập danh mục sản phẩm, biến thể SKU và tồn kho trong Product Hub (M13).",
+			available:   true,
+			unavailDesc: "",
 		},
 		{
 			key:         "create_content",
@@ -624,17 +1011,25 @@ func (s *Service) buildOnboardingChecklistFromSteps(steps []bool) *adminv1.Onboa
 		{
 			key:         "track_outcome",
 			title:       "Đo lường doanh thu và lợi nhuận thực tế",
-			desc:        "Xem đối soát chi phí, hoa hồng và biên lợi nhuận ròng trên Sổ cái.",
-			available:   false,
-			unavailDesc: "Sổ cái lợi nhuận M19 sẽ khả dụng tại Phase P1.",
+			desc:        "Xem đối soát chi phí, chứng từ và biên lợi nhuận ròng trên Sổ cái (M19).",
+			available:   true,
+			unavailDesc: "",
 		},
 	}
 
+	completedCount := int32(0)
+	allStepsAvailable := true
 	var pbSteps []*adminv1.OnboardingStepProgress
 	for i, d := range stepDefs {
+		if !d.available {
+			allStepsAvailable = false
+		}
 		completed := false
-		if i < len(steps) {
+		if d.available && i < len(steps) {
 			completed = steps[i]
+		}
+		if completed {
+			completedCount++
 		}
 		pbSteps = append(pbSteps, &adminv1.OnboardingStepProgress{
 			StepNumber:        int32(i + 1),
@@ -651,7 +1046,7 @@ func (s *Service) buildOnboardingChecklistFromSteps(steps []bool) *adminv1.Onboa
 		Steps:                pbSteps,
 		CompletedCount:       completedCount,
 		TotalSteps:           5,
-		IsClosedLoopComplete: completedCount == 5,
+		IsClosedLoopComplete: allStepsAvailable && completedCount == 5,
 	}
 }
 
@@ -659,9 +1054,18 @@ func formatMoney(cents int64, currency string) string {
 	if currency == "" {
 		currency = "VND"
 	}
+	neg := cents < 0
+	absCents := cents
+	if neg {
+		absCents = -cents
+	}
+	prefix := ""
+	if neg {
+		prefix = "-"
+	}
 	// For VND, amount in whole units (1,000,000 đ)
 	if currency == "VND" {
-		raw := fmt.Sprintf("%d", cents)
+		raw := fmt.Sprintf("%d", absCents)
 		var parts []string
 		for len(raw) > 3 {
 			parts = append([]string{raw[len(raw)-3:]}, parts...)
@@ -670,9 +1074,9 @@ func formatMoney(cents int64, currency string) string {
 		if len(raw) > 0 {
 			parts = append([]string{raw}, parts...)
 		}
-		return strings.Join(parts, ".") + " ₫"
+		return prefix + strings.Join(parts, ".") + " ₫"
 	}
-	dollars := cents / 100
-	remainder := cents % 100
-	return fmt.Sprintf("$%d.%02d", dollars, remainder)
+	dollars := absCents / 100
+	remainder := absCents % 100
+	return fmt.Sprintf("%s$%d.%02d", prefix, dollars, remainder)
 }

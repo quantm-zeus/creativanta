@@ -30,8 +30,10 @@ type StripeWebhookEvent struct {
 	EventType         string // "checkout.session.completed", "invoice.paid", "invoice.payment_failed"
 	WorkspaceID       string
 	CheckoutSessionID string
+	StripeInvoiceID   string
 	SubscriptionID    string
 	PeriodKey         string
+	PaymentStatus     string // optional; when set on payment/invoice events, must be "paid"
 	NextPeriodEnd     time.Time
 	OccurredAt        time.Time
 }
@@ -619,6 +621,14 @@ func (s *Service) UpdatePaymentMethod(ctx context.Context, req *adminv1.UpdatePa
 
 // SettleStripeWebhook processes a verified Stripe webhook event idempotently.
 // Credits and subscription period allocations are granted ONLY upon verified webhook settlement.
+// Enforces P1-05 Acceptance Target #3 ("Payment replay cannot double-grant"):
+//   - Deduplicates by Stripe EventID AND by underlying economic grant identity
+//     (external_grant_key on ai_credit_lots, idempotency_key on ai_credit_transactions,
+//     stripe_invoice_id on invoices, and checkout_session_id settlement status).
+//   - Replaying the same EventID, replaying with a new EventID for the same checkout session,
+//     invoice, or subscription billing period, or cross-event delivery (checkout.session.completed
+//     followed by invoice.paid for the same session/period) never double-grants credits or
+//     creates duplicate ledger transactions or invoices.
 func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlementResult, error) {
 	if strings.TrimSpace(evt.EventID) == "" || strings.TrimSpace(evt.WorkspaceID) == "" {
 		return WebhookSettlementResult{}, ErrInvalidBillingInput
@@ -626,6 +636,192 @@ func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlement
 	now := evt.OccurredAt
 	if now.IsZero() {
 		now = s.clock()
+	}
+
+	findLotByGrantKey := func(st *WorkspaceBillingState, grantKey string) *tenantdb.CreditLotRow {
+		if strings.TrimSpace(grantKey) == "" {
+			return nil
+		}
+		for i := range st.Lots {
+			if st.Lots[i].ExternalGrantKey == grantKey {
+				lotCopy := st.Lots[i]
+				return &lotCopy
+			}
+		}
+		return nil
+	}
+
+	findInvoiceByStripeID := func(st *WorkspaceBillingState, stripeInvID string) *tenantdb.InvoiceRow {
+		if strings.TrimSpace(stripeInvID) == "" {
+			return nil
+		}
+		for i := range st.Invoices {
+			if st.Invoices[i].StripeInvoiceID == stripeInvID {
+				invCopy := st.Invoices[i]
+				return &invCopy
+			}
+		}
+		return nil
+	}
+
+	hasTxWithIdempotencyKey := func(st *WorkspaceBillingState, idempKey string) bool {
+		if strings.TrimSpace(idempKey) == "" {
+			return false
+		}
+		for i := range st.Transactions {
+			if st.Transactions[i].IdempotencyKey == idempKey {
+				return true
+			}
+		}
+		return false
+	}
+
+	recordBillingEventOnce := func(st *WorkspaceBillingState, rec BillingEventRecord) {
+		for i := range st.BillingEvents {
+			if rec.StripeEventID != "" && st.BillingEvents[i].StripeEventID == rec.StripeEventID {
+				return
+			}
+		}
+		st.BillingEvents = append(st.BillingEvents, rec)
+	}
+
+	settleCreditPackSession := func(st *WorkspaceBillingState, sess *CheckoutSessionRecord) (WebhookSettlementResult, error) {
+		grantKey := "stripe_pack:" + sess.SessionID
+		stripeInvID := strings.TrimSpace(evt.StripeInvoiceID)
+		if stripeInvID == "" {
+			stripeInvID = "in_" + sess.SessionID
+		}
+
+		existingLot := findLotByGrantKey(st, grantKey)
+		existingInv := findInvoiceByStripeID(st, stripeInvID)
+		if existingInv == nil {
+			existingInv = findInvoiceByStripeID(st, "in_"+sess.SessionID)
+		}
+		if sess.Status == "settled" || existingLot != nil || hasTxWithIdempotencyKey(st, "grant:"+grantKey) || existingInv != nil {
+			st.ProcessedWebhooks[evt.EventID] = now
+			return WebhookSettlementResult{
+				EventID:    evt.EventID,
+				Duplicate:  true,
+				Status:     "session_already_settled",
+				GrantedLot: existingLot,
+				Invoice:    existingInv,
+			}, nil
+		}
+
+		pack, ok := LookupCreditPack(sess.PackCode)
+		if !ok {
+			return WebhookSettlementResult{}, fmt.Errorf("%w: invalid pack_code %q on session", ErrInvalidBillingInput, sess.PackCode)
+		}
+
+		lotID := s.engine.store.nextUUID("31000000")
+		lot := tenantdb.CreditLotRow{
+			LotID:            lotID,
+			WorkspaceID:      evt.WorkspaceID,
+			SourceType:       SourcePurchased,
+			GrantedCredits:   pack.Credits,
+			RemainingCredits: pack.Credits,
+			ReservedCredits:  tenantdb.ZeroDecimal(),
+			ExpiresAt:        nil, // Purchased credits NEVER expire
+			ExternalGrantKey: grantKey,
+			CreatedAt:        now,
+		}
+		st.Lots = append(st.Lots, lot)
+		sortLotsInConsumptionOrder(st.Lots)
+
+		bal := computeBalanceFromState(st, now)
+		txRow := tenantdb.CreditTransactionRow{
+			TransactionID:  s.engine.store.nextUUID("41000000"),
+			WorkspaceID:    evt.WorkspaceID,
+			UserID:         sess.UserID,
+			OperationType:  "credit_purchase",
+			CreditsDelta:   pack.Credits,
+			BalanceAfter:   bal.Available,
+			Source:         SourcePurchased,
+			LotID:          lotID,
+			IdempotencyKey: "grant:" + grantKey,
+			Description:    fmt.Sprintf("Purchased %s (%s credits)", pack.DisplayName, pack.Credits.String()),
+			CreatedAt:      now,
+		}
+		st.Transactions = append([]tenantdb.CreditTransactionRow{txRow}, st.Transactions...)
+
+		inv := tenantdb.InvoiceRow{
+			InvoiceID:        s.engine.store.nextUUID("92000000"),
+			WorkspaceID:      evt.WorkspaceID,
+			StripeInvoiceID:  stripeInvID,
+			InvoiceNumber:    fmt.Sprintf("INV-%d", len(st.Invoices)+1001),
+			Status:           "paid",
+			Currency:         sess.Currency,
+			Subtotal:         sess.Amount,
+			DiscountAmount:   tenantdb.ZeroDecimal(),
+			TaxAmount:        tenantdb.ZeroDecimal(),
+			Total:            sess.Amount,
+			AmountPaid:       sess.Amount,
+			AmountDue:        tenantdb.ZeroDecimal(),
+			InvoicePDFURL:    "https://pay.stripe.com/invoice/" + sess.SessionID + "/pdf",
+			HostedInvoiceURL: "https://invoice.stripe.com/i/" + sess.SessionID,
+			PaidAt:           &now,
+			CreatedAt:        now,
+			UpdatedAt:        now,
+		}
+		st.Invoices = append([]tenantdb.InvoiceRow{inv}, st.Invoices...)
+
+		sess.Status = "settled"
+		sess.SettledAt = &now
+		st.ProcessedWebhooks[evt.EventID] = now
+
+		recordBillingEventOnce(st, BillingEventRecord{
+			BillingEventID:   s.engine.store.nextUUID("93000000"),
+			WorkspaceID:      evt.WorkspaceID,
+			EventType:        evt.EventType,
+			StripeEventID:    evt.EventID,
+			Amount:           sess.Amount,
+			Currency:         sess.Currency,
+			SubscriptionTier: st.SubscriptionTier,
+			CreditsChange:    pack.Credits,
+			Description:      txRow.Description,
+			Metadata: map[string]any{
+				"checkout_session_id": sess.SessionID,
+				"pack_code":           sess.PackCode,
+				"grant_key":           grantKey,
+			},
+			CreatedAt: now,
+		})
+
+		st.OutboxEvents = append(st.OutboxEvents,
+			EmittedEvent{
+				EventType:      EventCreditsPurchased,
+				WorkspaceID:    evt.WorkspaceID,
+				AggregateType:  "credit_lot",
+				AggregateID:    lotID,
+				IdempotencyKey: "evt:purchased:" + sess.SessionID,
+				Payload: map[string]any{
+					"pack_code": sess.PackCode,
+					"credits":   pack.Credits.String(),
+					"lot_id":    lotID,
+				},
+				CreatedAt: now,
+			},
+			EmittedEvent{
+				EventType:      EventBillingPaymentSucceeded,
+				WorkspaceID:    evt.WorkspaceID,
+				AggregateType:  "invoice",
+				AggregateID:    inv.InvoiceID,
+				IdempotencyKey: "evt:payment_ok:" + sess.SessionID,
+				Payload: map[string]any{
+					"invoice_id": inv.InvoiceID,
+					"amount":     sess.Amount.String(),
+					"currency":   sess.Currency,
+				},
+				CreatedAt: now,
+			},
+		)
+		return WebhookSettlementResult{
+			EventID:    evt.EventID,
+			Duplicate:  false,
+			Status:     "settled_credit_pack",
+			GrantedLot: &lot,
+			Invoice:    &inv,
+		}, nil
 	}
 
 	var out WebhookSettlementResult
@@ -638,7 +834,13 @@ func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlement
 			}
 			return nil
 		}
-		st.ProcessedWebhooks[evt.EventID] = now
+
+		// Verify payment status is settled when explicitly provided on a grant-producing event.
+		if (evt.EventType == "checkout.session.completed" || evt.EventType == "invoice.paid") &&
+			strings.TrimSpace(evt.PaymentStatus) != "" &&
+			strings.ToLower(strings.TrimSpace(evt.PaymentStatus)) != "paid" {
+			return fmt.Errorf("%w: unsettled payment_status %q cannot grant credits", ErrInvalidBillingInput, evt.PaymentStatus)
+		}
 
 		switch evt.EventType {
 		case "checkout.session.completed":
@@ -646,117 +848,206 @@ func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlement
 			if !ok {
 				return fmt.Errorf("%w: unknown checkout_session_id %q", ErrInvalidBillingInput, evt.CheckoutSessionID)
 			}
-			if sess.Status == "settled" {
+			res, err := settleCreditPackSession(st, sess)
+			if err != nil {
+				return err
+			}
+			out = res
+			return nil
+
+		case "invoice.paid":
+			// If this invoice corresponds to a credit pack checkout session, use the exact same session grant key
+			// so checkout.session.completed + invoice.paid cannot double-grant.
+			if strings.TrimSpace(evt.CheckoutSessionID) != "" {
+				if sess, ok := st.CheckoutSessions[evt.CheckoutSessionID]; ok && (sess.Kind == "" || sess.Kind == "credit_pack") {
+					res, err := settleCreditPackSession(st, sess)
+					if err != nil {
+						return err
+					}
+					out = res
+					return nil
+				}
+			}
+
+			subID := strings.TrimSpace(evt.SubscriptionID)
+			if subID == "" && st.Subscription != nil {
+				subID = st.Subscription.SubscriptionID
+			}
+			if subID == "" {
+				subID = "default_sub"
+			}
+			periodKey := strings.TrimSpace(evt.PeriodKey)
+			if periodKey == "" && strings.TrimSpace(evt.StripeInvoiceID) != "" {
+				periodKey = "inv:" + strings.TrimSpace(evt.StripeInvoiceID)
+			}
+			if periodKey == "" {
+				return fmt.Errorf("%w: invoice.paid requires period_key or stripe_invoice_id", ErrInvalidBillingInput)
+			}
+
+			grantKey := fmt.Sprintf("sub_alloc:%s:%s", subID, periodKey)
+			stripeInvID := strings.TrimSpace(evt.StripeInvoiceID)
+			if stripeInvID == "" {
+				stripeInvID = fmt.Sprintf("in_sub_%s_%s", subID, periodKey)
+			}
+
+			existingLot := findLotByGrantKey(st, grantKey)
+			existingInv := findInvoiceByStripeID(st, stripeInvID)
+			if existingLot != nil || hasTxWithIdempotencyKey(st, "grant:"+grantKey) || existingInv != nil {
+				st.ProcessedWebhooks[evt.EventID] = now
 				out = WebhookSettlementResult{
-					EventID:   evt.EventID,
-					Duplicate: true,
-					Status:    "session_already_settled",
+					EventID:    evt.EventID,
+					Duplicate:  true,
+					Status:     "invoice_already_settled",
+					GrantedLot: existingLot,
+					Invoice:    existingInv,
 				}
 				return nil
 			}
-			pack, ok := LookupCreditPack(sess.PackCode)
+
+			tierCode := st.SubscriptionTier
+			if st.Subscription != nil && st.Subscription.Plan != "" {
+				tierCode = st.Subscription.Plan
+			}
+			tierSpec, ok := LookupTier(tierCode)
 			if !ok {
-				return fmt.Errorf("%w: invalid pack_code %q on session", ErrInvalidBillingInput, sess.PackCode)
+				tierSpec, _ = LookupTier("free")
 			}
 
-			grantKey := "stripe_pack:" + sess.SessionID
-			lotID := s.engine.store.nextUUID("31000000")
+			nextExp := evt.NextPeriodEnd.UTC()
+			if nextExp.IsZero() {
+				nextExp = now.UTC().Add(30 * 24 * time.Hour)
+			}
+
+			lotID := s.engine.store.nextUUID("84000000")
 			lot := tenantdb.CreditLotRow{
 				LotID:            lotID,
 				WorkspaceID:      evt.WorkspaceID,
-				SourceType:       SourcePurchased,
-				GrantedCredits:   pack.Credits,
-				RemainingCredits: pack.Credits,
+				SourceType:       SourceSubscription,
+				GrantedCredits:   tierSpec.MonthlyCredits,
+				RemainingCredits: tierSpec.MonthlyCredits,
 				ReservedCredits:  tenantdb.ZeroDecimal(),
-				ExpiresAt:        nil, // Purchased credits NEVER expire
+				ExpiresAt:        &nextExp,
 				ExternalGrantKey: grantKey,
-				CreatedAt:        now,
+				CreatedAt:        now.UTC(),
 			}
 			st.Lots = append(st.Lots, lot)
 			sortLotsInConsumptionOrder(st.Lots)
 
-			bal := computeBalanceFromState(st, now)
-			txRow := tenantdb.CreditTransactionRow{
-				TransactionID:  s.engine.store.nextUUID("41000000"),
+			balAfter := computeBalanceFromState(st, now).Available
+			allocTx := tenantdb.CreditTransactionRow{
+				TransactionID:  s.engine.store.nextUUID("85000000"),
 				WorkspaceID:    evt.WorkspaceID,
-				UserID:         sess.UserID,
-				OperationType:  "credit_purchase",
-				CreditsDelta:   pack.Credits,
-				BalanceAfter:   bal.Available,
-				Source:         SourcePurchased,
+				OperationType:  "subscription_allocation",
+				CreditsDelta:   tierSpec.MonthlyCredits,
+				BalanceAfter:   balAfter,
+				Source:         SourceSubscription,
 				LotID:          lotID,
 				IdempotencyKey: "grant:" + grantKey,
-				Description:    fmt.Sprintf("Purchased %s (%s credits)", pack.DisplayName, pack.Credits.String()),
-				CreatedAt:      now,
+				Description:    fmt.Sprintf("Monthly subscription credit allocation for period %s (%s tier)", periodKey, tierSpec.TierCode),
+				CreatedAt:      now.UTC(),
 			}
-			st.Transactions = append([]tenantdb.CreditTransactionRow{txRow}, st.Transactions...)
+			st.Transactions = append([]tenantdb.CreditTransactionRow{allocTx}, st.Transactions...)
+
+			invAmount := tierSpec.MonthlyPriceUSD
+			invCurrency := "USD"
+			if st.Subscription != nil {
+				if !st.Subscription.Amount.IsZero() {
+					invAmount = st.Subscription.Amount
+				}
+				if st.Subscription.Currency != "" {
+					invCurrency = st.Subscription.Currency
+				}
+				st.Subscription.Status = "active"
+				st.Subscription.CurrentPeriodStart = now.UTC()
+				st.Subscription.CurrentPeriodEnd = nextExp
+				st.Subscription.UpdatedAt = now.UTC()
+			}
 
 			inv := tenantdb.InvoiceRow{
 				InvoiceID:        s.engine.store.nextUUID("92000000"),
 				WorkspaceID:      evt.WorkspaceID,
-				StripeInvoiceID:  "in_" + sess.SessionID,
+				SubscriptionID:   subID,
+				StripeInvoiceID:  stripeInvID,
 				InvoiceNumber:    fmt.Sprintf("INV-%d", len(st.Invoices)+1001),
 				Status:           "paid",
-				Currency:         sess.Currency,
-				Subtotal:         sess.Amount,
+				Currency:         invCurrency,
+				Subtotal:         invAmount,
 				DiscountAmount:   tenantdb.ZeroDecimal(),
 				TaxAmount:        tenantdb.ZeroDecimal(),
-				Total:            sess.Amount,
-				AmountPaid:       sess.Amount,
+				Total:            invAmount,
+				AmountPaid:       invAmount,
 				AmountDue:        tenantdb.ZeroDecimal(),
-				InvoicePDFURL:    "https://pay.stripe.com/invoice/" + sess.SessionID + "/pdf",
-				HostedInvoiceURL: "https://invoice.stripe.com/i/" + sess.SessionID,
+				InvoicePDFURL:    "https://pay.stripe.com/invoice/" + stripeInvID + "/pdf",
+				HostedInvoiceURL: "https://invoice.stripe.com/i/" + stripeInvID,
 				PaidAt:           &now,
 				CreatedAt:        now,
 				UpdatedAt:        now,
 			}
 			st.Invoices = append([]tenantdb.InvoiceRow{inv}, st.Invoices...)
+			st.ProcessedWebhooks[evt.EventID] = now
 
-			sess.Status = "settled"
-			sess.SettledAt = &now
+			recordBillingEventOnce(st, BillingEventRecord{
+				BillingEventID:   s.engine.store.nextUUID("93000000"),
+				WorkspaceID:      evt.WorkspaceID,
+				EventType:        evt.EventType,
+				StripeEventID:    evt.EventID,
+				Amount:           invAmount,
+				Currency:         invCurrency,
+				SubscriptionTier: tierSpec.TierCode,
+				CreditsChange:    tierSpec.MonthlyCredits,
+				Description:      allocTx.Description,
+				Metadata: map[string]any{
+					"subscription_id":   subID,
+					"period_key":        periodKey,
+					"stripe_invoice_id": stripeInvID,
+					"grant_key":         grantKey,
+				},
+				CreatedAt: now,
+			})
 
-			st.OutboxEvents = append(st.OutboxEvents,
-				EmittedEvent{
-					EventType:      EventCreditsPurchased,
-					WorkspaceID:    evt.WorkspaceID,
-					AggregateType:  "credit_lot",
-					AggregateID:    lotID,
-					IdempotencyKey: "evt:purchased:" + sess.SessionID,
-					Payload: map[string]any{
-						"pack_code": sess.PackCode,
-						"credits":   pack.Credits.String(),
-						"lot_id":    lotID,
-					},
-					CreatedAt: now,
+			st.OutboxEvents = append(st.OutboxEvents, EmittedEvent{
+				EventType:      EventBillingPaymentSucceeded,
+				WorkspaceID:    evt.WorkspaceID,
+				AggregateType:  "invoice",
+				AggregateID:    inv.InvoiceID,
+				IdempotencyKey: "evt:payment_ok:" + stripeInvID,
+				Payload: map[string]any{
+					"invoice_id":      inv.InvoiceID,
+					"subscription_id": subID,
+					"period_key":      periodKey,
+					"amount":          invAmount.String(),
+					"currency":        invCurrency,
 				},
-				EmittedEvent{
-					EventType:      EventBillingPaymentSucceeded,
-					WorkspaceID:    evt.WorkspaceID,
-					AggregateType:  "invoice",
-					AggregateID:    inv.InvoiceID,
-					IdempotencyKey: "evt:payment_ok:" + sess.SessionID,
-					Payload: map[string]any{
-						"invoice_id": inv.InvoiceID,
-						"amount":     sess.Amount.String(),
-						"currency":   sess.Currency,
-					},
-					CreatedAt: now,
-				},
-			)
+				CreatedAt: now,
+			})
+
 			out = WebhookSettlementResult{
 				EventID:    evt.EventID,
 				Duplicate:  false,
-				Status:     "settled_credit_pack",
+				Status:     "settled_subscription_invoice",
 				GrantedLot: &lot,
 				Invoice:    &inv,
 			}
 			return nil
 
 		case "invoice.payment_failed":
+			st.ProcessedWebhooks[evt.EventID] = now
 			if st.Subscription != nil {
 				st.Subscription.Status = "past_due"
 				st.Subscription.UpdatedAt = now
 			}
+			recordBillingEventOnce(st, BillingEventRecord{
+				BillingEventID:   s.engine.store.nextUUID("93000000"),
+				WorkspaceID:      evt.WorkspaceID,
+				EventType:        evt.EventType,
+				StripeEventID:    evt.EventID,
+				Currency:         "USD",
+				SubscriptionTier: st.SubscriptionTier,
+				CreditsChange:    tenantdb.ZeroDecimal(),
+				Description:      "Invoice payment failed; subscription moved to past_due",
+				Metadata:         map[string]any{"event_id": evt.EventID},
+				CreatedAt:        now,
+			})
 			st.OutboxEvents = append(st.OutboxEvents, EmittedEvent{
 				EventType:      EventBillingPaymentFailed,
 				WorkspaceID:    evt.WorkspaceID,
@@ -774,6 +1065,7 @@ func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlement
 			return nil
 
 		default:
+			st.ProcessedWebhooks[evt.EventID] = now
 			out = WebhookSettlementResult{
 				EventID:   evt.EventID,
 				Duplicate: false,
