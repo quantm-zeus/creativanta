@@ -1,0 +1,364 @@
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/admin-api	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/api	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/migrate	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/outbox	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/transport-fixture-test	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/worker	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1/transporttestv1connect	[no test files]
+=== RUN   TestHealthz_200
+=== RUN   TestHealthz_200/api_role
+=== RUN   TestHealthz_200/admin-api_role
+--- PASS: TestHealthz_200 (0.00s)
+    --- PASS: TestHealthz_200/api_role (0.00s)
+    --- PASS: TestHealthz_200/admin-api_role (0.00s)
+=== RUN   TestRoleValidation_FailsClosed
+--- PASS: TestRoleValidation_FailsClosed (0.00s)
+=== RUN   TestReadyz_503WhenNilOrFalse
+=== RUN   TestReadyz_503WhenNilOrFalse/nil_readiness_func
+=== RUN   TestReadyz_503WhenNilOrFalse/false_readiness_func
+--- PASS: TestReadyz_503WhenNilOrFalse (0.00s)
+    --- PASS: TestReadyz_503WhenNilOrFalse/nil_readiness_func (0.00s)
+    --- PASS: TestReadyz_503WhenNilOrFalse/false_readiness_func (0.00s)
+=== RUN   TestReadyz_200WhenTrue
+--- PASS: TestReadyz_200WhenTrue (0.00s)
+=== RUN   TestMethodRestrictions_405
+--- PASS: TestMethodRestrictions_405 (0.00s)
+=== RUN   TestUnknownPath_404
+--- PASS: TestUnknownPath_404 (0.00s)
+=== RUN   TestServe_PublicBindRefusal
+--- PASS: TestServe_PublicBindRefusal (0.00s)
+=== RUN   TestServe_CancelledContext
+--- PASS: TestServe_CancelledContext (0.03s)
+=== RUN   TestServe_PropagatesUnexpectedError
+--- PASS: TestServe_PropagatesUnexpectedError (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/bootstrap	1.069s
+=== RUN   TestSQLReconcilerSessionRevocationAndEndedEventsNotifyRecorder
+--- PASS: TestSQLReconcilerSessionRevocationAndEndedEventsNotifyRecorder (0.00s)
+=== RUN   TestSQLReconcilerFailsClosedOnNilDependenciesAndMissingGlobalClaimer
+--- PASS: TestSQLReconcilerFailsClosedOnNilDependenciesAndMissingGlobalClaimer (0.00s)
+=== RUN   TestPostgresClerkWebhookMembershipAndUserReconciliation
+    reconcile_sql_test.go:142: set CREATIVANTA_TEST_POSTGRES_DSN to run real PostgreSQL webhook reconciliation tests
+--- SKIP: TestPostgresClerkWebhookMembershipAndUserReconciliation (0.00s)
+=== RUN   TestKnownValidSignedFixture
+--- PASS: TestKnownValidSignedFixture (0.00s)
+=== RUN   TestMultiSignatureRotationAcceptsMatchingV1
+--- PASS: TestMultiSignatureRotationAcceptsMatchingV1 (0.00s)
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/spoofed_signing_key
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/tampered_body
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/tampered_svix_id
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/expired_replayed_timestamp
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/future_timestamp
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/duplicate_svix_signature_headers
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/duplicate_svix_id_headers
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/missing_svix_signature
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/invalid_message_id_prefix
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/non_numeric_timestamp
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/malformed_signature_entry
+--- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/spoofed_signing_key (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/tampered_body (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/tampered_svix_id (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/expired_replayed_timestamp (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/future_timestamp (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/duplicate_svix_signature_headers (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/duplicate_svix_id_headers (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/missing_svix_signature (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/invalid_message_id_prefix (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/non_numeric_timestamp (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/malformed_signature_entry (0.00s)
+=== RUN   TestEventAllowlistAndUnsignedOrUnverifiedDataRejected
+=== RUN   TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/unknown_event_type
+=== RUN   TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/organization_created_disallowed_to_prevent_auto_workspace
+=== RUN   TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/unverified_primary_email_rejected
+=== RUN   TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/invalid_membership_role_rejected
+=== RUN   TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/invitation_accepted_owner_role_rejected
+--- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected (0.00s)
+    --- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/unknown_event_type (0.00s)
+    --- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/organization_created_disallowed_to_prevent_auto_workspace (0.00s)
+    --- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/unverified_primary_email_rejected (0.00s)
+    --- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/invalid_membership_role_rejected (0.00s)
+    --- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/invitation_accepted_owner_role_rejected (0.00s)
+=== RUN   TestHandlerNilDependenciesBoundedBodyAndDuplicateDelivery
+--- PASS: TestHandlerNilDependenciesBoundedBodyAndDuplicateDelivery (0.00s)
+=== RUN   TestNewVerifierRejectsWeakOrMalformedConfigs
+--- PASS: TestNewVerifierRejectsWeakOrMalformedConfigs (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/clerkwebhook	1.048s
+=== RUN   TestSessionCheckerConfiguration
+--- PASS: TestSessionCheckerConfiguration (0.00s)
+=== RUN   TestFreshSessionStateAndRevocation
+=== RUN   TestFreshSessionStateAndRevocation/active
+=== RUN   TestFreshSessionStateAndRevocation/revoked
+=== RUN   TestFreshSessionStateAndRevocation/expired
+=== RUN   TestFreshSessionStateAndRevocation/foreign_user
+=== RUN   TestFreshSessionStateAndRevocation/other_session
+=== RUN   TestFreshSessionStateAndRevocation/expired_at
+=== RUN   TestFreshSessionStateAndRevocation/missing
+=== RUN   TestFreshSessionStateAndRevocation/upstream_503
+=== RUN   TestFreshSessionStateAndRevocation/broken_payload
+--- PASS: TestFreshSessionStateAndRevocation (0.03s)
+    --- PASS: TestFreshSessionStateAndRevocation/active (0.02s)
+    --- PASS: TestFreshSessionStateAndRevocation/revoked (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/expired (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/foreign_user (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/other_session (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/expired_at (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/missing (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/upstream_503 (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/broken_payload (0.00s)
+=== RUN   TestSessionStatusRejectsInvalidIDAndCancellation
+--- PASS: TestSessionStatusRejectsInvalidIDAndCancellation (0.00s)
+=== RUN   TestUnknownKIDRefreshDoesNotBlockKnownValidToken
+--- PASS: TestUnknownKIDRefreshDoesNotBlockKnownValidToken (0.70s)
+=== RUN   TestExpiredJWKSOutageIsRateLimited
+--- PASS: TestExpiredJWKSOutageIsRateLimited (0.16s)
+=== RUN   TestClerkJWTVerifiedClaimsAndCache
+--- PASS: TestClerkJWTVerifiedClaimsAndCache (0.26s)
+=== RUN   TestClerkJWTRejectsUntrustedClaims
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_audience
+=== RUN   TestClerkJWTRejectsUntrustedClaims/wrong_azp
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_session
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_issued_at
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_not_before
+=== RUN   TestClerkJWTRejectsUntrustedClaims/expired
+=== RUN   TestClerkJWTRejectsUntrustedClaims/bad_subject
+=== RUN   TestClerkJWTRejectsUntrustedClaims/wrong_issuer
+=== RUN   TestClerkJWTRejectsUntrustedClaims/issued_in_future
+=== RUN   TestClerkJWTRejectsUntrustedClaims/bad_session
+=== RUN   TestClerkJWTRejectsUntrustedClaims/wrong_audience
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_azp
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_expiry
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_subject
+=== RUN   TestClerkJWTRejectsUntrustedClaims/not_yet_valid
+--- PASS: TestClerkJWTRejectsUntrustedClaims (0.49s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_audience (0.02s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/wrong_azp (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_session (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_issued_at (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_not_before (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/expired (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/bad_subject (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/wrong_issuer (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/issued_in_future (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/bad_session (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/wrong_audience (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_azp (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_expiry (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_subject (0.00s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/not_yet_valid (0.00s)
+=== RUN   TestClerkJWTWrongSignatureNeverAccepted
+--- PASS: TestClerkJWTWrongSignatureNeverAccepted (0.40s)
+=== RUN   TestClerkJWTRotationAndStaleRejection
+--- PASS: TestClerkJWTRotationAndStaleRejection (0.42s)
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/missing_audience
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/ssrf_userinfo
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/arbitrary_path
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/origin_http_insecure
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/missing_origins
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/http_issuer
+--- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens (0.29s)
+    --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/missing_audience (0.00s)
+    --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/ssrf_userinfo (0.00s)
+    --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/arbitrary_path (0.00s)
+    --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/origin_http_insecure (0.00s)
+    --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/missing_origins (0.00s)
+    --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/http_issuer (0.00s)
+=== RUN   TestEndToEndJWTSessionMembershipOnConnect
+--- PASS: TestEndToEndJWTSessionMembershipOnConnect (0.19s)
+=== RUN   TestDiscoveryRequiresVerifiedSession
+--- PASS: TestDiscoveryRequiresVerifiedSession (0.00s)
+=== RUN   TestPostgresNonOwnerWorkspaceDiscovery
+    discovery_test.go:49: real PostgreSQL DSN is needed for discovery fixture
+--- SKIP: TestPostgresNonOwnerWorkspaceDiscovery (0.00s)
+=== RUN   TestPostgresMembershipUsesCurrentCanonicalState
+    membership_sql_test.go:19: set CREATIVANTA_TEST_POSTGRES_DSN to run real PostgreSQL integration
+--- SKIP: TestPostgresMembershipUsesCurrentCanonicalState (0.00s)
+=== RUN   TestMembershipMissingDBFailsClosed
+--- PASS: TestMembershipMissingDBFailsClosed (0.00s)
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/caller_supplied_user_id
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/workspace_settings_mutation
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/operator_mode_mutation
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/role_escalation
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/direct_completed_override
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/credit_reward_injection
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/unknown_field
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/step_zero
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/step_six
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/missing_idempotency_key
+--- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/caller_supplied_user_id (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/workspace_settings_mutation (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/operator_mode_mutation (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/role_escalation (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/direct_completed_override (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/credit_reward_injection (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/unknown_field (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/step_zero (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/step_six (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/missing_idempotency_key (0.00s)
+=== RUN   TestPersonalOnboardingCannotMutateWorkspaceSettingsOrOtherUsers
+--- PASS: TestPersonalOnboardingCannotMutateWorkspaceSettingsOrOtherUsers (0.00s)
+=== RUN   TestPostgresPersonalOnboardingCannotMutateWorkspaceSettings
+    onboarding_test.go:380: set CREATIVANTA_TEST_POSTGRES_DSN to run real PostgreSQL personal onboarding isolation tests
+--- SKIP: TestPostgresPersonalOnboardingCannotMutateWorkspaceSettings (0.00s)
+=== RUN   TestRecoveryRevokesAllActiveSessionsAndRejectsExpiredOrReplayedChallenge
+--- PASS: TestRecoveryRevokesAllActiveSessionsAndRejectsExpiredOrReplayedChallenge (0.00s)
+=== RUN   TestRecoveryAndLoginBruteForceLockoutAndMFATOTPPolicy
+--- PASS: TestRecoveryAndLoginBruteForceLockoutAndMFATOTPPolicy (0.00s)
+=== RUN   TestResolverFailsClosedWhenUnconfigured
+--- PASS: TestResolverFailsClosedWhenUnconfigured (0.00s)
+=== RUN   TestResolverDoesNotTrustUnverifiedToken
+--- PASS: TestResolverDoesNotTrustUnverifiedToken (0.00s)
+=== RUN   TestVerifiedTokenAloneCannotGrantWorkspaceAccess
+--- PASS: TestVerifiedTokenAloneCannotGrantWorkspaceAccess (0.00s)
+=== RUN   TestResolverRespectsCancelledContext
+--- PASS: TestResolverRespectsCancelledContext (0.00s)
+=== RUN   TestWorkspaceResolutionRequiresThreeIndependentProofs
+--- PASS: TestWorkspaceResolutionRequiresThreeIndependentProofs (0.00s)
+=== RUN   TestRevocationAndForeignWorkspaceDenied
+=== RUN   TestRevocationAndForeignWorkspaceDenied/revoked
+=== RUN   TestRevocationAndForeignWorkspaceDenied/foreign
+=== RUN   TestRevocationAndForeignWorkspaceDenied/removed
+=== RUN   TestRevocationAndForeignWorkspaceDenied/provider_down
+=== RUN   TestRevocationAndForeignWorkspaceDenied/member_down
+=== RUN   TestRevocationAndForeignWorkspaceDenied/no_sessions
+=== RUN   TestRevocationAndForeignWorkspaceDenied/no_member_db
+=== RUN   TestRevocationAndForeignWorkspaceDenied/invalid_workspace
+--- PASS: TestRevocationAndForeignWorkspaceDenied (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/revoked (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/foreign (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/removed (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/provider_down (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/member_down (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/no_sessions (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/no_member_db (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/invalid_workspace (0.00s)
+=== RUN   TestWorkspaceResolverDoesNotProceedOnCancelledRequest
+--- PASS: TestWorkspaceResolverDoesNotProceedOnCancelledRequest (0.00s)
+=== RUN   TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles
+=== RUN   TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/verified_active_user
+=== RUN   TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/unverified_primary_email
+=== RUN   TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/banned_user
+=== RUN   TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/mismatched_user_id
+--- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles (0.02s)
+    --- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/verified_active_user (0.00s)
+    --- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/unverified_primary_email (0.00s)
+    --- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/banned_user (0.00s)
+    --- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/mismatched_user_id (0.00s)
+=== RUN   TestSyncVerifiedUserRequiresTokenSessionAndVerifiedProfile
+--- PASS: TestSyncVerifiedUserRequiresTokenSessionAndVerifiedProfile (0.00s)
+=== RUN   TestPostgresSynchronousUserUpsertSurvivesDelayedWebhook
+    user_sync_test.go:167: set CREATIVANTA_TEST_POSTGRES_DSN to run real PostgreSQL user sync test
+--- SKIP: TestPostgresSynchronousUserUpsertSurvivesDelayedWebhook (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/identity	4.005s
+=== RUN   TestFailClosedAndProductionReadiness
+--- PASS: TestFailClosedAndProductionReadiness (0.00s)
+=== RUN   TestInviterRBACHierarchyAndNoOwnerGrant
+--- PASS: TestInviterRBACHierarchyAndNoOwnerGrant (0.02s)
+=== RUN   TestVerifiedClerkIdentityAndNewVsExistingFlows
+--- PASS: TestVerifiedClerkIdentityAndNewVsExistingFlows (0.00s)
+=== RUN   TestNoRoleSelfElevationAndInviterRevocation
+--- PASS: TestNoRoleSelfElevationAndInviterRevocation (0.00s)
+=== RUN   TestSevenDayExpiryAndInvalidRevokedDeclinedResendFlows
+--- PASS: TestSevenDayExpiryAndInvalidRevokedDeclinedResendFlows (0.00s)
+=== RUN   TestCrossTenantIsolation
+--- PASS: TestCrossTenantIsolation (0.00s)
+=== RUN   TestIdempotencyRecoveryWebhookReconciliationAndConcurrency
+--- PASS: TestIdempotencyRecoveryWebhookReconciliationAndConcurrency (0.01s)
+=== RUN   TestPartialFailureRecoveryAfterProviderAccept
+--- PASS: TestPartialFailureRecoveryAfterProviderAccept (0.00s)
+=== RUN   TestEdgeValidationUnconfiguredAdaptersAndWebhookBranches
+--- PASS: TestEdgeValidationUnconfiguredAdaptersAndWebhookBranches (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/invitations	1.075s
+=== RUN   TestRealHTTPConnectHandlerUsesVerifiedWorkspace
+--- PASS: TestRealHTTPConnectHandlerUsesVerifiedWorkspace (0.02s)
+=== RUN   TestRealHTTPConnectHandlerDeniesNilVerifier
+--- PASS: TestRealHTTPConnectHandlerDeniesNilVerifier (0.01s)
+=== RUN   TestInvalidModeRejected
+--- PASS: TestInvalidModeRejected (0.00s)
+=== RUN   TestFailClosedNilVerifierAndInvalidAuthorization
+=== RUN   TestFailClosedNilVerifierAndInvalidAuthorization/nil-verifier
+=== RUN   TestFailClosedNilVerifierAndInvalidAuthorization/missing-authorization
+=== RUN   TestFailClosedNilVerifierAndInvalidAuthorization/wrong-scheme
+=== RUN   TestFailClosedNilVerifierAndInvalidAuthorization/blank-token
+=== RUN   TestFailClosedNilVerifierAndInvalidAuthorization/extra-space
+=== RUN   TestFailClosedNilVerifierAndInvalidAuthorization/expired-token
+--- PASS: TestFailClosedNilVerifierAndInvalidAuthorization (0.00s)
+    --- PASS: TestFailClosedNilVerifierAndInvalidAuthorization/nil-verifier (0.00s)
+    --- PASS: TestFailClosedNilVerifierAndInvalidAuthorization/missing-authorization (0.00s)
+    --- PASS: TestFailClosedNilVerifierAndInvalidAuthorization/wrong-scheme (0.00s)
+    --- PASS: TestFailClosedNilVerifierAndInvalidAuthorization/blank-token (0.00s)
+    --- PASS: TestFailClosedNilVerifierAndInvalidAuthorization/extra-space (0.00s)
+    --- PASS: TestFailClosedNilVerifierAndInvalidAuthorization/expired-token (0.00s)
+=== RUN   TestDuplicateIdentityHeadersRejected
+--- PASS: TestDuplicateIdentityHeadersRejected (0.00s)
+=== RUN   TestSessionWorkspaceCannotBeSpoofed
+--- PASS: TestSessionWorkspaceCannotBeSpoofed (0.00s)
+=== RUN   TestVerifiedSessionAndCorrelationPropagation
+=== RUN   TestVerifiedSessionAndCorrelationPropagation/supplied-UUID
+=== RUN   TestVerifiedSessionAndCorrelationPropagation/invalid-injected-ID
+=== RUN   TestVerifiedSessionAndCorrelationPropagation/missing-ID
+--- PASS: TestVerifiedSessionAndCorrelationPropagation (0.00s)
+    --- PASS: TestVerifiedSessionAndCorrelationPropagation/supplied-UUID (0.00s)
+    --- PASS: TestVerifiedSessionAndCorrelationPropagation/invalid-injected-ID (0.00s)
+    --- PASS: TestVerifiedSessionAndCorrelationPropagation/missing-ID (0.00s)
+=== RUN   TestBadVerifierAndAdminIsolation
+--- PASS: TestBadVerifierAndAdminIsolation (0.00s)
+=== RUN   TestInternalErrorsRedactSecretsAndPreserveCorrelation
+--- PASS: TestInternalErrorsRedactSecretsAndPreserveCorrelation (0.00s)
+=== RUN   TestKnownConnectErrorsMappedToCatalog
+--- PASS: TestKnownConnectErrorsMappedToCatalog (0.00s)
+=== RUN   TestStreamingRejectsAuthAndSanitizesDeadline
+--- PASS: TestStreamingRejectsAuthAndSanitizesDeadline (0.00s)
+=== RUN   TestDeadlineContextFromVerifier
+--- PASS: TestDeadlineContextFromVerifier (0.00s)
+=== RUN   TestContextCancellationPassedThrough
+--- PASS: TestContextCancellationPassedThrough (0.00s)
+=== RUN   TestEmptyWorkspaceHeaderAndNilUUIDFailClosed
+--- PASS: TestEmptyWorkspaceHeaderAndNilUUIDFailClosed (0.00s)
+=== RUN   TestAdminResidualTenantRejected
+--- PASS: TestAdminResidualTenantRejected (0.00s)
+=== RUN   TestAmbiguousCorrelationHeadersAreNotTrusted
+=== RUN   TestAmbiguousCorrelationHeadersAreNotTrusted/duplicate-correlation
+=== RUN   TestAmbiguousCorrelationHeadersAreNotTrusted/conflicting-trace
+=== RUN   TestAmbiguousCorrelationHeadersAreNotTrusted/invalid-correlation-and-valid-request
+--- PASS: TestAmbiguousCorrelationHeadersAreNotTrusted (0.00s)
+    --- PASS: TestAmbiguousCorrelationHeadersAreNotTrusted/duplicate-correlation (0.00s)
+    --- PASS: TestAmbiguousCorrelationHeadersAreNotTrusted/conflicting-trace (0.00s)
+    --- PASS: TestAmbiguousCorrelationHeadersAreNotTrusted/invalid-correlation-and-valid-request (0.00s)
+=== RUN   TestDuplicateWorkspaceDoesNotDiscloseBeforeAuthentication
+--- PASS: TestDuplicateWorkspaceDoesNotDiscloseBeforeAuthentication (0.00s)
+=== RUN   TestVerifierChildTimeoutMapsCorrectly
+--- PASS: TestVerifierChildTimeoutMapsCorrectly (0.00s)
+=== RUN   TestRequestCancellationOverridesDownstreamError
+--- PASS: TestRequestCancellationOverridesDownstreamError (0.00s)
+=== RUN   TestCanceledBeforeVerificationDoesNotReachHandler
+--- PASS: TestCanceledBeforeVerificationDoesNotReachHandler (0.00s)
+=== RUN   TestWrappedConnectInternalDoesNotBecomeClientTimeout
+--- PASS: TestWrappedConnectInternalDoesNotBecomeClientTimeout (0.00s)
+=== RUN   TestStreamingCancellationBeforeHandler
+--- PASS: TestStreamingCancellationBeforeHandler (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportauth	1.097s
+=== RUN   TestEcho
+--- PASS: TestEcho (0.01s)
+=== RUN   TestEchoMetadataFailures
+--- PASS: TestEchoMetadataFailures (0.01s)
+=== RUN   TestIdempotencyReplayConflict
+--- PASS: TestIdempotencyReplayConflict (0.03s)
+=== RUN   TestConcurrentIdempotencyOneNew
+--- PASS: TestConcurrentIdempotencyOneNew (0.12s)
+=== RUN   TestForeignAndTamperedCursorDenied
+--- PASS: TestForeignAndTamperedCursorDenied (0.03s)
+=== RUN   TestDeadlineAndStreamCancel
+--- PASS: TestDeadlineAndStreamCancel (0.12s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportfixture	1.360s

@@ -22,6 +22,108 @@ func (f *fixedAuthMembershipChecker) FetchMembershipState(_ context.Context, _, 
 	return f.state, f.err
 }
 
+type noopSQLRunner struct{}
+
+func (noopSQLRunner) ExecContext(_ context.Context, _ string, _ ...any) (sql.Result, error) {
+	return nil, nil
+}
+
+func (noopSQLRunner) QueryRowContext(_ context.Context, _ string, _ ...any) *sql.Row {
+	return nil
+}
+
+type memoryGlobalClaimer struct {
+	seen map[string]bool
+}
+
+func (m *memoryGlobalClaimer) ClaimGlobalDelivery(_ context.Context, _ SQLRunner, evt VerifiedEvent) (bool, error) {
+	if m.seen == nil {
+		m.seen = make(map[string]bool)
+	}
+	if m.seen[evt.DeliveryID] {
+		return false, nil
+	}
+	m.seen[evt.DeliveryID] = true
+	return true, nil
+}
+
+type recordedSessionRevocation struct {
+	subject   string
+	sessionID string
+}
+
+type memorySessionRevocationRecorder struct {
+	revocations []recordedSessionRevocation
+}
+
+func (m *memorySessionRevocationRecorder) RevokeSession(subject, sessionID string) {
+	m.revocations = append(m.revocations, recordedSessionRevocation{
+		subject:   subject,
+		sessionID: sessionID,
+	})
+}
+
+func TestSQLReconcilerSessionRevocationAndEndedEventsNotifyRecorder(t *testing.T) {
+	recorder := &memorySessionRevocationRecorder{}
+	reconciler := &SQLReconciler{
+		DB:                 noopSQLRunner{},
+		GlobalDeliveries:   &memoryGlobalClaimer{},
+		SessionRevocations: recorder,
+	}
+
+	revokedEvt := VerifiedEvent{
+		DeliveryID:       "msg_sess_revoked_1",
+		WebhookTimestamp: fixedFixtureTime,
+		SourceUpdatedAt:  fixedFixtureTime,
+		Type:             EventSessionRevoked,
+		RawPayload:       []byte(`{"type":"session.revoked"}`),
+		Session: &SessionEventData{
+			SessionID:       "sess_rev_01",
+			ClerkUserID:     "user_recover_99",
+			Status:          "revoked",
+			SourceUpdatedAt: fixedFixtureTime,
+		},
+	}
+	res, err := reconciler.ProcessVerifiedEvent(context.Background(), revokedEvt)
+	if err != nil || res.Duplicate {
+		t.Fatalf("expected session.revoked to succeed, got res=%+v err=%v", res, err)
+	}
+
+	// Duplicate delivery must not re-fire recorder
+	res, err = reconciler.ProcessVerifiedEvent(context.Background(), revokedEvt)
+	if err != nil || !res.Duplicate {
+		t.Fatalf("expected duplicate session.revoked to return Duplicate=true, got res=%+v err=%v", res, err)
+	}
+
+	endedEvt := VerifiedEvent{
+		DeliveryID:       "msg_sess_ended_1",
+		WebhookTimestamp: fixedFixtureTime,
+		SourceUpdatedAt:  fixedFixtureTime,
+		Type:             EventSessionEnded,
+		RawPayload:       []byte(`{"type":"session.ended"}`),
+		Session: &SessionEventData{
+			SessionID:       "sess_end_02",
+			ClerkUserID:     "user_recover_99",
+			Status:          "ended",
+			SourceUpdatedAt: fixedFixtureTime,
+		},
+	}
+	res, err = reconciler.ProcessVerifiedEvent(context.Background(), endedEvt)
+	if err != nil || res.Duplicate {
+		t.Fatalf("expected session.ended to succeed, got res=%+v err=%v", res, err)
+	}
+
+	if len(recorder.revocations) != 2 {
+		t.Fatalf("expected 2 recorded session revocations, got %+v", recorder.revocations)
+	}
+	if recorder.revocations[0].subject != "user_recover_99" || recorder.revocations[0].sessionID != "sess_rev_01" {
+		t.Fatalf("unexpected first revocation: %+v", recorder.revocations[0])
+	}
+	if recorder.revocations[1].subject != "user_recover_99" || recorder.revocations[1].sessionID != "sess_end_02" {
+		t.Fatalf("unexpected second revocation: %+v", recorder.revocations[1])
+	}
+}
+
 func TestSQLReconcilerFailsClosedOnNilDependenciesAndMissingGlobalClaimer(t *testing.T) {
 	var nilReconciler *SQLReconciler
 	if _, err := nilReconciler.ProcessVerifiedEvent(context.Background(), VerifiedEvent{}); !errors.Is(err, ErrNotConfigured) {

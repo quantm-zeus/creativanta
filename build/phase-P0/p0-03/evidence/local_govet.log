@@ -1,2 +1,1 @@
-COMMAND: go vet ./...
-RESULT: PASS
+go vet ./...: PASS

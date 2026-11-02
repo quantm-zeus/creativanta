@@ -1,0 +1,20 @@
+BUILD_REAL_GO_TRANSPORT_FIXTURE
+GO_H2C_TEST_ONLY_SERVER_STARTED
+RUN_TYPESCRIPT_CONNECT_REAL_CLIENT
+
+> @creativanta/shared-types@0.1.0 test:transport /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p0-03/packages/shared-types
+> vitest run test/transport.test.ts
+
+
+ RUN  v3.0.7 /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p0-03/packages/shared-types
+
+ ✓ test/transport.test.ts (5 tests) 198ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  04:38:44
+   Duration  1.13s (transform 134ms, setup 0ms, collect 490ms, tests 198ms, environment 0ms, prepare 152ms)
+
+RUN_DART_GRPC_HTTP2_REAL_CLIENT
+DART_GRPC_REAL_TRANSPORT_PASS
+GO_TS_DART_SAME_HANDLER_INTEGRATION_PASS

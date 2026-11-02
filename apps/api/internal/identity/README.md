@@ -13,12 +13,15 @@
 - Real PostgreSQL 17 temporary-table integration tests: active and revoked membership, workspace suspension/deletion and non-owner discovery; fixture data is rolled back.
 - Synchronous verified-user identity upsert boundary (`ClerkUserDirectory`, `SQLUserUpserter`, `Resolver.SyncVerifiedUser`): verifies JWT + active Clerk session + verified primary email from `GET /v1/users/{user_id}`, and idempotently upserts canonical `users` with `source_updated_at` monotonic ordering so delayed `user.created` webhooks cannot regress state or block onboarding.
 - Verified Clerk Svix webhook boundary in `apps/api/internal/clerkwebhook`: fixed `whsec_` signing secret validation, bounded request body (64 KiB default), single-valued Svix headers, 5-minute replay/timestamp window, constant-time HMAC-SHA256 verification, pinned event allowlist, and transactional SQL reconciliation (`SQLReconciler`) for `users`, `workspaces`, `workspace_members`, and workspace-scoped `webhook_events`.
+- Password recovery session revocation, brute-force lockout, and TOTP-only MFA boundary (`RecoveryAndMFACoordinator`, `RevocationAwareSessionStatus` in `recovery_mfa.go`): single-use recovery challenges with provider-reported expiry (`Recovery expired` + re-request option), revocation of all existing sessions on password reset, `>5/1h` recovery lockout, `>10/5m` login lockout, and TOTP-only MFA enforcement (`sms` rejected).
+- Self-scoped personal onboarding progress (`OnboardingCoordinator`, `SQLOnboardingStore` in `onboarding.go`): implements `WorkspaceService/CompleteOnboarding` (`PRIV-2026-02`), updating only `user_preferences(user_id, workspace_id)` after server-side step verification, rejecting demo fixtures and forbidden workspace/privilege fields (`user_id`, `role`, `settings`, `default_operator_mode`), and leaving `workspaces` and `home_dashboard_config` untouched.
+- Isolated invitation lifecycle and acceptance boundary in `apps/api/internal/invitations`: downward inviter RBAC ceiling, 7-day maximum expiry, synchronous new-user provisioning when `user.created` is delayed, idempotent replay, and webhook reconciliation.
 
 ## Deterministic quality commands
 
 ```sh
 cd apps/api
-go test -race -count=1 ./internal/identity ./internal/clerkwebhook ./internal/transportauth
+go test -race -count=1 ./internal/identity ./internal/clerkwebhook ./internal/invitations ./internal/transportauth
 go vet ./...
 govulncheck ./...
 ```

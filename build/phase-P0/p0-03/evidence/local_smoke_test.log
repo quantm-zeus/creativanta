@@ -1,0 +1,1 @@
+REAL_SMOKE_PASS: /healthz 200, /readyz 503, POST 405, admin-api isolated

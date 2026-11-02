@@ -55,12 +55,20 @@ type GlobalDeliveryClaimer interface {
 	ClaimGlobalDelivery(ctx context.Context, db SQLRunner, evt VerifiedEvent) (claimed bool, err error)
 }
 
+// SessionRevocationRecorder records provider session termination events
+// (session.ended, session.revoked) so active session verifiers immediately
+// reject terminated sessions even before short-lived JWT expiry.
+type SessionRevocationRecorder interface {
+	RevokeSession(subject, sessionID string)
+}
+
 // SQLReconciler reconciles verified Clerk webhook events against canonical
 // PostgreSQL tables (users, workspaces, workspace_members, webhook_events).
 type SQLReconciler struct {
 	DB                      SQLRunner
 	GlobalDeliveries        GlobalDeliveryClaimer
 	AuthoritativeMembership AuthoritativeMembershipChecker
+	SessionRevocations      SessionRevocationRecorder
 }
 
 const (
@@ -450,6 +458,9 @@ func (r *SQLReconciler) processSessionEvent(ctx context.Context, evt VerifiedEve
 	if evt.Type == EventSessionCreated {
 		_, err := r.DB.ExecContext(ctx, updateUserLastLoginQuery, sess.ClerkUserID, sess.SourceUpdatedAt)
 		return ProcessResult{}, err
+	}
+	if (evt.Type == EventSessionEnded || evt.Type == EventSessionRevoked) && r.SessionRevocations != nil {
+		r.SessionRevocations.RevokeSession(sess.ClerkUserID, sess.SessionID)
 	}
 	return ProcessResult{}, nil
 }
