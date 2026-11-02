@@ -54,6 +54,12 @@
       >
         ← Team &amp; RBAC (W115)
       </a>
+      <a
+        href="/settings/billing"
+        class="rounded-lg border border-[#e7e2d7] bg-[#ffffff] px-3 py-2 text-xs font-semibold text-[#242924] hover:border-[#8a968c] transition-colors"
+      >
+        Thanh toán &amp; Credits (W119) →
+      </a>
     </div>
   </div>
 
