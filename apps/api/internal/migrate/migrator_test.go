@@ -20,8 +20,8 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadDir(%q) failed: %v", dir, err)
 	}
-	if len(migrations) < 2 {
-		t.Fatalf("expected at least 2 migrations in %q, got %d", dir, len(migrations))
+	if len(migrations) < 3 {
+		t.Fatalf("expected at least 3 migrations in %q, got %d", dir, len(migrations))
 	}
 
 	m := migrations[0]
@@ -51,6 +51,17 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	}
 	if err := ValidateCanonicalMigrationContract(m2); err != nil {
 		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v2: %v", err)
+	}
+
+	m3 := migrations[2]
+	if m3.Version != 3 {
+		t.Fatalf("expected version 3, got %d", m3.Version)
+	}
+	if len(m3.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v3, got %q", m3.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m3); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v3: %v", err)
 	}
 }
 
@@ -211,8 +222,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 2 || applied[0] != 1 || applied[1] != 2 {
-		t.Fatalf("expected versions [1, 2] applied, got %v", applied)
+	if len(applied) != 3 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 {
+		t.Fatalf("expected versions [1, 2, 3] applied, got %v", applied)
 	}
 	if !runner.lastTx.committed || runner.lastTx.rolledBack {
 		t.Fatalf("expected transaction committed")
@@ -227,13 +238,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for both migrations.
+	// Status reports Applied = true for all 3 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 2 || !statuses[0].Applied || !statuses[1].Applied {
-		t.Fatalf("expected status Applied=true for both migrations, got %+v", statuses)
+	if len(statuses) != 3 || !statuses[0].Applied || !statuses[1].Applied || !statuses[2].Applied {
+		t.Fatalf("expected status Applied=true for all 3 migrations, got %+v", statuses)
 	}
 
 	// Down without allowLocalRollback fails closed.
@@ -241,7 +252,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 2 first, then version 1.
+	// Down with allowLocalRollback=true rolls back version 3, then version 2, then version 1.
+	rolled3, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v3 failed: %v", err)
+	}
+	if rolled3 != 3 {
+		t.Fatalf("expected rolled back version 3, got %d", rolled3)
+	}
 	rolled2, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v2 failed: %v", err)
@@ -299,13 +317,16 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	_, _ = adminPool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
 	dir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 
-	// Apply migration Up, then Down twice, then Up again to prove full Goose SQL repeatability.
+	// Apply migration Up, then Down three times, then Up again to prove full Goose SQL repeatability.
 	applied, err := Up(ctx, adminPool, dir)
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 2 {
-		t.Fatalf("expected 2 applied migrations, got %v", applied)
+	if len(applied) != 3 {
+		t.Fatalf("expected 3 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v3 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v2 failed: %v", err)
@@ -576,4 +597,105 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("expected directory_reader SELECT on private sections column to be denied")
 	}
 	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_dir_col`)
+
+	// Test 8 (P0-07): Composite tenant FKs on fallback_paths -> policy_notes and platform_health_scores -> connected_accounts,
+	// plus app_user vs admin_user isolation on moderation_cases, fraud_cases, and impersonation_sessions (mode='read_only').
+	if _, err := tx.Exec(ctx, `RESET ROLE`); err != nil {
+		t.Fatal(err)
+	}
+	const (
+		policyNoteA = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1"
+		adminID1    = "ffffffff-ffff-4fff-8fff-fffffffffff1"
+	)
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO policy_notes (policy_note_id, workspace_id, platform, capability_key, summary)
+		VALUES ($1::uuid, $2::uuid, 'tiktok', 'publish_post', 'TikTok Direct Post requires approved scopes')
+	`, policyNoteA, tenantA); err != nil {
+		t.Fatalf("seed policy_notes failed: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO internal_admins (admin_id, email, display_name, password_hash, role, mfa_enabled)
+		VALUES ($1::uuid, 'ops@creativanta.internal', 'Ops Admin', '$argon2id$v=19$m=65536,t=3,p=4$test', 'ops_admin', true)
+	`, adminID1); err != nil {
+		t.Fatalf("seed internal_admins failed: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO moderation_cases (workspace_id, content_type, content_id, flag_reason, sla_deadline)
+		VALUES ($1::uuid, 'publish_item', $2::uuid, 'spam', NOW() + INTERVAL '4 hours')
+	`, tenantA, trendA); err != nil {
+		t.Fatalf("seed moderation_cases failed: %v", err)
+	}
+
+	if _, err := tx.Exec(ctx, `SET LOCAL ROLE app_user`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_user_id', $2, true)`, tenantB, userB); err != nil {
+		t.Fatal(err)
+	}
+
+	// Cross-tenant fk_fallback_paths_related_policy_note_id_tenant must fail:
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_fp_fk`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO fallback_paths (workspace_id, platform, capability_key, fallback_type, instructions, related_policy_note_id)
+		VALUES ($1::uuid, 'tiktok', 'publish_post', 'manual_upload', 'Upload manually', $2::uuid)
+	`, tenantB, policyNoteA); err == nil {
+		t.Fatalf("expected fk_fallback_paths_related_policy_note_id_tenant to reject cross-tenant policy_note_id")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_fp_fk`)
+
+	// Cross-tenant fk_platform_health_scores_connected_account_id_tenant must fail:
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_phs_fk`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO platform_health_scores (workspace_id, connected_account_id, platform, overall_score, snapshot_date)
+		VALUES ($1::uuid, $2::uuid, 'tiktok', 85, CURRENT_DATE)
+	`, tenantB, connAccA); err == nil {
+		t.Fatalf("expected fk_platform_health_scores_connected_account_id_tenant to reject cross-tenant connected_account_id")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_phs_fk`)
+
+	// app_user cannot access fraud_cases or mutate moderation_cases:
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_app_fraud`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `SELECT COUNT(*) FROM fraud_cases`); err == nil {
+		t.Fatalf("expected app_user SELECT on fraud_cases to be denied")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_app_fraud`)
+
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_app_mod_write`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE moderation_cases SET status = 'approved'`); err == nil {
+		t.Fatalf("expected app_user UPDATE on moderation_cases to be denied")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_app_mod_write`)
+
+	// Switch to admin_user: can manage moderation_cases and create read_only impersonation_sessions,
+	// but non-read_only impersonation mode is rejected by DB CHECK constraint!
+	if _, err := tx.Exec(ctx, `RESET ROLE`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `SET LOCAL ROLE admin_user`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO impersonation_sessions (admin_id, target_user_id, target_workspace_id, mode, expires_at)
+		VALUES ($1::uuid, $2::uuid, $3::uuid, 'read_only', NOW() + INTERVAL '30 minutes')
+	`, adminID1, userA, tenantA); err != nil {
+		t.Fatalf("admin_user insert read_only impersonation_sessions failed: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_imp_write_mode`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO impersonation_sessions (admin_id, target_user_id, target_workspace_id, mode, expires_at)
+		VALUES ($1::uuid, $2::uuid, $3::uuid, 'read_write', NOW() + INTERVAL '30 minutes')
+	`, adminID1, userA, tenantA); err == nil {
+		t.Fatalf("expected impersonation_sessions CHECK (mode IN ('read_only')) to reject 'read_write'")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_imp_write_mode`)
 }

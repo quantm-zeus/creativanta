@@ -1,0 +1,210 @@
+syntax = "proto3";
+
+package creativanta.admin.v1;
+
+import "creativanta/common/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1;adminv1";
+
+// Isolated Internal Admin Authentication & Read-Only Impersonation service (S26).
+// Mounted ONLY on the isolated admin listener (RoleAdminAPI / ModeAdminAPI).
+// Workspace tokens and workspace roles are strictly rejected with ADMIN_FORBIDDEN_001.
+service AdminAuthService {
+  // Authenticates an internal admin with email, password, VPN verification, and TOTP MFA code.
+  // Permission binding: PUBLIC (isolated admin listener only).
+  rpc Login(LoginRequest) returns (LoginResponse);
+
+  // Starts a strictly read-only, 30-minute time-bounded impersonation session for support investigation.
+  // Required admin RBAC permission: admin:impersonate.
+  rpc Impersonate(ImpersonateRequest) returns (ImpersonateResponse);
+
+  // Ends an active read-only impersonation session and records an immutable internal audit log entry.
+  // Required admin RBAC permission: admin:impersonate.
+  rpc EndImpersonation(EndImpersonationRequest) returns (EndImpersonationResponse);
+}
+
+// Isolated Internal Admin Moderation Queue & Rules Engine service (S26).
+// Enforces normalized 0-100 risk bands, non-overridable hard blocks (SAFE-2026-02),
+// self-review conflict-of-interest protection (EC-S26-002), and SLA tracking (RULE-S26-006).
+service ModerationService {
+  // Lists moderation cases ordered by SLA deadline and severity.
+  // Required admin RBAC permission: admin:moderation:manage.
+  rpc ListCases(ListCasesRequest) returns (ListCasesResponse);
+
+  // Executes a moderation decision (approve, reject, warn, suspend, escalate) with mandatory reason and audit log.
+  // Required admin RBAC permission: admin:moderation:manage.
+  rpc ActOnCase(ActOnCaseRequest) returns (ActOnCaseResponse);
+}
+
+// Isolated Internal Admin System Configuration, Kill Switch & Maintenance service (S26).
+service SystemConfigService {
+  // Returns the internal admin operational health dashboard summary (A001).
+  // Required admin RBAC permission: admin:analytics:read.
+  rpc GetDashboard(GetDashboardRequest) returns (GetDashboardResponse);
+
+  // Toggles a feature flag or emergency kill switch with mandatory audit reason and MFA session.
+  // Required admin RBAC permission: admin:feature_flag:toggle.
+  rpc ToggleFlag(ToggleFlagRequest) returns (ToggleFlagResponse);
+
+  // Toggles platform-wide maintenance mode with mandatory audit reason and MFA session.
+  // Required admin RBAC permission: admin:maintenance:toggle.
+  rpc ToggleMaintenance(ToggleMaintenanceRequest) returns (ToggleMaintenanceResponse);
+}
+
+// Request for AdminAuthService/Login.
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+  string totp_code = 3;
+  string ip_address = 4;
+  string user_agent = 5;
+  bool vpn_verified = 6;
+}
+
+// Response for AdminAuthService/Login.
+message LoginResponse {
+  creativanta.common.v1.UUID session_id = 1;
+  creativanta.common.v1.UUID admin_id = 2;
+  string role = 3;
+  string session_token = 4;
+  bool mfa_verified = 5;
+  bool vpn_verified = 6;
+  google.protobuf.Timestamp expires_at = 7;
+}
+
+// Request for AdminAuthService/Impersonate.
+message ImpersonateRequest {
+  creativanta.common.v1.UUID target_user_id = 1;
+  creativanta.common.v1.UUID target_workspace_id = 2;
+  string reason = 3;
+  string support_ticket_id = 4;
+  string idempotency_key = 5;
+}
+
+// Response for AdminAuthService/Impersonate.
+message ImpersonateResponse {
+  creativanta.common.v1.UUID impersonation_id = 1;
+  creativanta.common.v1.UUID admin_id = 2;
+  creativanta.common.v1.UUID target_user_id = 3;
+  creativanta.common.v1.UUID target_workspace_id = 4;
+  string mode = 5;
+  google.protobuf.Timestamp started_at = 6;
+  google.protobuf.Timestamp expires_at = 7;
+  bool replayed = 8;
+}
+
+// Request for AdminAuthService/EndImpersonation.
+message EndImpersonationRequest {
+  creativanta.common.v1.UUID impersonation_id = 1;
+  string reason = 2;
+}
+
+// Response for AdminAuthService/EndImpersonation.
+message EndImpersonationResponse {
+  creativanta.common.v1.UUID impersonation_id = 1;
+  google.protobuf.Timestamp ended_at = 2;
+}
+
+// Moderation case item for A015 queue.
+message ModerationCaseItem {
+  creativanta.common.v1.UUID case_id = 1;
+  creativanta.common.v1.UUID workspace_id = 2;
+  string content_type = 3;
+  creativanta.common.v1.UUID content_id = 4;
+  string flag_reason = 5;
+  string flag_source = 6;
+  int32 risk_score = 7;
+  bool is_hard_block = 8;
+  string status = 9;
+  creativanta.common.v1.UUID assigned_admin_id = 10;
+  string decision_reason = 11;
+  google.protobuf.Timestamp sla_deadline = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp decided_at = 14;
+}
+
+// Request for ModerationService/ListCases.
+message ListCasesRequest {
+  string status_filter = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+// Response for ModerationService/ListCases.
+message ListCasesResponse {
+  repeated ModerationCaseItem cases = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+// Request for ModerationService/ActOnCase.
+message ActOnCaseRequest {
+  creativanta.common.v1.UUID case_id = 1;
+  string decision = 2;
+  string reason = 3;
+  string evidence_reference = 4;
+  string idempotency_key = 5;
+}
+
+// Response for ModerationService/ActOnCase.
+message ActOnCaseResponse {
+  ModerationCaseItem moderation_case = 1;
+  creativanta.common.v1.UUID audit_log_id = 2;
+  bool replayed = 3;
+}
+
+// Feature flag / kill switch item for A009.
+message FeatureFlagItem {
+  creativanta.common.v1.UUID flag_id = 1;
+  string flag_key = 2;
+  string name = 3;
+  string description = 4;
+  string status = 5;
+  int32 percentage = 6;
+  bool is_kill_switch = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// Request for SystemConfigService/GetDashboard.
+message GetDashboardRequest {}
+
+// Response for SystemConfigService/GetDashboard.
+message GetDashboardResponse {
+  bool maintenance_mode = 1;
+  int32 active_kill_switches_count = 2;
+  int32 pending_moderation_cases_count = 3;
+  int32 active_impersonation_sessions_count = 4;
+  int32 audit_log_entries_count = 5;
+  google.protobuf.Timestamp generated_at = 6;
+}
+
+// Request for SystemConfigService/ToggleFlag.
+message ToggleFlagRequest {
+  string flag_key = 1;
+  string status = 2;
+  int32 percentage = 3;
+  bool is_kill_switch = 4;
+  string reason = 5;
+  string idempotency_key = 6;
+}
+
+// Response for SystemConfigService/ToggleFlag.
+message ToggleFlagResponse {
+  FeatureFlagItem flag = 1;
+  creativanta.common.v1.UUID audit_log_id = 2;
+  bool replayed = 3;
+}
+
+// Request for SystemConfigService/ToggleMaintenance.
+message ToggleMaintenanceRequest {
+  bool enabled = 1;
+  string reason = 2;
+  string idempotency_key = 3;
+}
+
+// Response for SystemConfigService/ToggleMaintenance.
+message ToggleMaintenanceResponse {
+  bool maintenance_mode = 1;
+  creativanta.common.v1.UUID audit_log_id = 2;
+  bool replayed = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}

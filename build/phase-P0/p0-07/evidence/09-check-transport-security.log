@@ -1,0 +1,7 @@
+P0_02_CANONICAL_ERROR_REGISTRY
+ERROR_REGISTRY_PASS 10 registered transport codes
+P0_02_TEST_ONLY_FIXTURE_MUST_NOT_ENTER_PRODUCTION
+P0_02_FAIL_CLOSED_INTERCEPTOR
+fork/exec /tmp/go-build3062986089/b001/transportauth.test: permission denied
+FAIL	github.com/quantm-zeus/creativanta/apps/api/internal/transportauth	0.001s
+FAIL

@@ -1,0 +1,2 @@
+tooling/ci/smoke_test.sh: line 33: /tmp/tmp.8Jis3G7orq/creativanta-api: Permission denied
+FAIL: API terminated during startup

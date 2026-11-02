@@ -1,0 +1,24 @@
+=== Flutter Mobile Quality Gate ===
+Unhandled exception:
+Error: Flutter failed to write to a file at "/home/whaleorcale/.config/tool_state".
+Please ensure that the SDK and/or project is installed in a location that has read/write permissions for the current user.
+Try running:
+  sudo chown -R $(whoami) /home/whaleorcale/.config/tool_state
+
+#0      throwToolExit (package:flutter_tools/src/base/common.dart:34:3)
+#1      _throwFileSystemException (package:flutter_tools/src/base/error_handling_io.dart:1508:3)
+#2      _handlePosixException (package:flutter_tools/src/base/error_handling_io.dart:1400:3)
+#3      _onFileSystemException (package:flutter_tools/src/base/error_handling_io.dart:1336:5)
+#4      _runSync (package:flutter_tools/src/base/error_handling_io.dart:1140:7)
+#5      ErrorHandlingFile.writeAsStringSync (package:flutter_tools/src/base/error_handling_io.dart:300:5)
+#6      Config._flushValues (package:flutter_tools/src/base/config.dart:182:11)
+#7      Config.setValue (package:flutter_tools/src/base/config.dart:171:5)
+#8      _DefaultPersistentToolState.setIsRunningOnBot (package:flutter_tools/src/persistent_tool_state.dart:123:13)
+#9      BotDetector.isRunningOnBot (package:flutter_tools/src/base/bot_detector.dart:79:26)
+<asynchronous suspension>
+#10     runInContext.runnerWrapper (package:flutter_tools/src/context_runner.dart:75:20)
+<asynchronous suspension>
+#11     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+<asynchronous suspension>
+#12     main (package:flutter_tools/executable.dart:103:3)
+<asynchronous suspension>

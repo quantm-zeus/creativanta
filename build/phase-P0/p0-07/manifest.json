@@ -1,0 +1,258 @@
+{
+  "task_id": "P0-07",
+  "phase": "P0",
+  "slice": "p0-07",
+  "title": "Capability và internal-admin isolation",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "c11ac16",
+  "feature_refs": [
+    "docs/02_features/platform/capability_matrix.md",
+    "docs/02_features/platform/internal_admin.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_behavior_contracts.md",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/connector_specs.md",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/06_quality_ops/moderation_rules_engine.md"
+  ],
+  "requirement_ids": [
+    "RULE-M22-A01",
+    "RULE-M22-A02",
+    "RULE-M22-A03",
+    "RULE-M22-A04",
+    "RULE-M22-B01",
+    "RULE-M22-B02",
+    "RULE-M22-C01",
+    "RULE-M22-C02",
+    "RULE-M22-C03",
+    "RULE-S26-001",
+    "RULE-S26-002",
+    "RULE-S26-003",
+    "RULE-S26-004",
+    "RULE-S26-005",
+    "RULE-S26-006",
+    "RULE-S26-007",
+    "RULE-S26-008",
+    "PLAT-C-001",
+    "SEC-H-001",
+    "PLAT-H-002",
+    "DB-C-001",
+    "DB-H-001"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_capability_matrix.md",
+    "docs/03_screens/web/screen_web_settings_connectors.md",
+    "docs/03_screens/mobile/screen_mobile_connections.md",
+    "docs/03_screens/admin/screen_admin_dashboard_overview.md"
+  ],
+  "source_hashes": {
+    "docs/02_features/platform/capability_matrix.md": "28162308677128cd05d753a6ac6d37744fef1f423cec5a5c579f1ab31752818b",
+    "docs/02_features/platform/internal_admin.md": "aab2be8ae1bbc62cf7a7a10a5d8232461d6476dc406037bbc4341b48b295bc6b",
+    "docs/04_contracts/database_schema.md": "f1fb695b33e4cf50f3f68b7a359ee36727ca0f25f5cd20fbc72a559ca3a0376b",
+    "docs/04_contracts/api_behavior_contracts.md": "57be6961180b8e847b0d0521ef9dbfade5c08bdb490bbbb846fbc784a9ca6802",
+    "docs/04_contracts/rbac_permission_matrix.md": "720f06ec8f42eb65739f5ce233e5398e75200bdb841c0fdb568157582085e133",
+    "docs/04_contracts/rpc_permission_bindings.csv": "e970c926e3d3310391e0d966fdf54d0ffc28fe056885a65f747d2e16f62d1569",
+    "docs/04_contracts/connector_specs.md": "c9692c3dbe6711dbd8a246a88443faf0320c0c49c90b13847d90510d850a1ba8",
+    "docs/04_contracts/domain_event_catalog.md": "f85704096638fe181e158e455d551b99e1d8cf009aa9530fc19c65fc1334e5de",
+    "docs/06_quality_ops/moderation_rules_engine.md": "7a03072e08d31fbf3d518b2ba0cd7ce3cc659dd71c8de7ec117c18ea26f2d0a0",
+    "docs/03_screens/web/screen_web_capability_matrix.md": "22149f2b5319ab4af079b31e70dc0261f4c213222cb55a97e8287d177726e880",
+    "docs/03_screens/web/screen_web_settings_connectors.md": "279c1b4cd7a75111be4267ec54111af9bf4eef12f1259e668f8a47095b31ce5f",
+    "protos/creativanta/admin/v1/capability.proto": "2c8a548d438f2939f0584fcdc19af39655227af6f4b0519fb5d6e848e2f49fd5",
+    "protos/creativanta/admin/v1/internal_admin.proto": "d41d64977174ec595f45788963a30239cc268dd7178544e5497f7bdec40a3efe",
+    "infra/migrations/00001_p0_04_tenant_schema_rls_and_grants.sql": "04bae9a67b0aaa3893010e881200294d5a9b13ccbcb3dbe5b649227404b4bdda",
+    "infra/migrations/00002_p0_05_outbox_inbox_external_effects.sql": "97f552dc390e9cb8efef48010de92fa279bc310924edfedc7b31a3dd15552701",
+    "infra/migrations/00003_p0_07_capability_and_admin_isolation.sql": "1dc2b6607d4691ab7bfe4a6e69255682f01e1f9ae71be31189399b9f98039596"
+  },
+  "scope_items": [
+    "Canonical Goose SQL migration (infra/migrations/00003_p0_07_capability_and_admin_isolation.sql) creating capability_state enum (§3), capability_snapshots (§18.2), policy_notes (§18.2B), fallback_paths (§18.2C), platform_health_scores (§22.15), moderation_cases (§17.4), fraud_cases (§17.5), feature_flags (§17.6), system_announcements (§17.7), incidents, post_mortems, and system_alerts (§17.10-17.11) with ENABLE + FORCE ROW LEVEL SECURITY, admin_ops_scope policies (§26.13), same-tenant composite foreign keys fk_fallback_paths_related_policy_note_id_tenant and fk_platform_health_scores_connected_account_id_tenant (§26.11), and narrow per-role grants (§26.12)",
+    "Compiled CapabilityService and InternalAdminService Protobuf contracts (protos/creativanta/admin/v1/capability.proto, protos/creativanta/admin/v1/internal_admin.proto) and 4-target generated artifacts (Go, Go Connect, TypeScript ES, Dart/Flutter gRPC)",
+    "Capability & Connector Verification Registry runtime (apps/api/internal/capability) enforcing 5-state capability classification (native, read_only, manual, degraded, unsupported), 24h capability_snapshots TTL with fail-closed validation on missing/stale/non-native routes, connected_accounts OAuth token redaction, 6-dimension weighted platform_health_scores calculation with proactive coaching (<50 flag, <30 auto-pause), and read-only impersonation mutation blocking",
+    "Isolated Internal Admin Console backend (apps/api/internal/internaladmin) enforcing internal-only listener (:8443) + VPN/mTLS + MFA session verification, zero workspace-role overlap, read-only impersonation with 30-minute auto-expiry and mandatory reason (>=15 chars), moderation rules engine (HARD_BLOCK immediate auto-reject + self-review guard), feature flags & global kill switches halting capability validation within SLA, and BIGINT-only manual credit adjustments",
+    "Web Capability Matrix (/settings/capabilities, W126) and Connected Accounts (/settings/connections, W120), Internal Admin Console (apps/admin, A001-A037), and Mobile Connections & Capability Screen (apps/mobile, M057) with unit and widget tests"
+  ],
+  "verified_sub_slices": [
+    "Unverified, stale (>24h), read_only, manual, degraded, unsupported, token-expired, and kill-switch-halted routes cannot execute native actions and return structured fallback instructions (TestUnverifiedStaleReadOnlyAndKilledRoutesCannotExecute)",
+    "6-dimension weighted Platform Health Score (0-100), proactive coaching (<50 flag, <30 auto-pause), strict OAuth token redaction, and read-only impersonation blocking on CapabilityService mutations verified (TestCompositeHealthScoresProactiveCoachingTokenRedactionAndImpersonationReadOnly)",
+    "Workspace roles (owner, admin, editor, finance, analyst, viewer) and non-VPN/non-MFA callers are rejected on the isolated admin listener (:8443) with PERMISSION_DENIED (TestWorkspaceRoleCannotCallAdminListenerAndVPNMFAGate)",
+    "Impersonation is strictly read_only, requires reason >=15 chars, blocks impersonating internal admins, auto-expires after 30 minutes, logs every start/end in append-only internal_audit_logs, and rejects all mutating requests while active (TestImpersonationIsStrictlyReadOnlyAndAutoExpiresAfter30Minutes)",
+    "Moderation rules engine HARD_BLOCK auto-rejects immediately without queuing for human review, enforces the self-review guard (assigned_admin_id != content_owner_id), and kill switch activation immediately halts capability execution (TestModerationRulesHardBlockSelfReviewGuardAndKillSwitchHaltsCapability)",
+    "Up and Down SQL statements in 00003_p0_07_capability_and_admin_isolation.sql validated by pglast PostgreSQL AST parser and static contract validator"
+  ],
+  "rpc_contracts": [
+    "creativanta.admin.v1.CapabilityService/GetMatrix",
+    "creativanta.admin.v1.CapabilityService/ValidateAction",
+    "creativanta.admin.v1.CapabilityService/ListConnectedAccounts",
+    "creativanta.admin.v1.CapabilityService/ConnectAccount",
+    "creativanta.admin.v1.CapabilityService/DisconnectAccount",
+    "creativanta.admin.v1.CapabilityService/RefreshAccountToken",
+    "creativanta.admin.v1.CapabilityService/RunHealthProbe",
+    "creativanta.admin.v1.CapabilityService/GetHealthScore",
+    "creativanta.admin.v1.InternalAdminService/StartImpersonation",
+    "creativanta.admin.v1.InternalAdminService/EndImpersonation",
+    "creativanta.admin.v1.InternalAdminService/DecideModerationCase",
+    "creativanta.admin.v1.InternalAdminService/ToggleKillSwitch",
+    "creativanta.admin.v1.InternalAdminService/AdjustWorkspaceCredits",
+    "creativanta.admin.v1.InternalAdminService/ListInternalAuditLogs"
+  ],
+  "migration_files": [
+    "infra/migrations/00001_p0_04_tenant_schema_rls_and_grants.sql",
+    "infra/migrations/00002_p0_05_outbox_inbox_external_effects.sql",
+    "infra/migrations/00003_p0_07_capability_and_admin_isolation.sql"
+  ],
+  "permission_keys": [
+    "connector:read",
+    "connector:connect",
+    "connector:disconnect",
+    "connector:health_check",
+    "admin:users:impersonate",
+    "admin:moderation:decide",
+    "admin:flags:manage",
+    "admin:credits:adjust",
+    "admin:audit:read"
+  ],
+  "event_types": [
+    "connector.account_connected",
+    "connector.account_disconnected",
+    "connector.token_refreshed",
+    "connector.token_expired",
+    "connector.degraded",
+    "connector.recovered",
+    "capability.changed",
+    "capability.SnapshotUpdated",
+    "capability.DegradedAlert",
+    "capability.FallbackActivated",
+    "admin.impersonation_started",
+    "admin.impersonation_ended",
+    "admin.moderation_decided",
+    "admin.kill_switch_activated",
+    "admin.credit_manual_adjusted",
+    "audit.event_captured"
+  ],
+  "screen_routes": [
+    "/settings/capabilities",
+    "/settings/connections"
+  ],
+  "checks": [
+    {
+      "command": "bash tooling/ci/check_d0.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-07/evidence/01-check-d0.log",
+      "checked_at": "2026-11-02T08:20:30Z",
+      "result": "PASS"
+    },
+    {
+      "command": "python3 tooling/check_docs.py --sql",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-07/evidence/02-check-docs-sql.log",
+      "checked_at": "2026-11-02T08:20:30Z",
+      "result": "PASS"
+    },
+    {
+      "command": "python3 tooling/build_plan.py && python3 -m unittest discover -s tooling/tests -v",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-07/evidence/03-build-plan-and-tests.log",
+      "checked_at": "2026-11-02T08:20:30Z",
+      "result": "PASS"
+    },
+    {
+      "command": "cd apps/api && go mod verify && go vet ./...",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-07/evidence/04-go-mod-verify-vet.log",
+      "checked_at": "2026-11-02T08:15:00Z",
+      "result": "PASS"
+    },
+    {
+      "command": "cd apps/api && go test -race -v -count=1 ./...",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-07/evidence/05-go-test-race.log",
+      "checked_at": "2026-11-02T08:18:30Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/check_entrypoints.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-07/evidence/06-check-entrypoints.log",
+      "checked_at": "2026-11-02T08:15:00Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/check_proto.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-07/evidence/07-check-proto.log",
+      "checked_at": "2026-11-02T08:15:00Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/proto_integration.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-07/evidence/08-proto-integration.log",
+      "checked_at": "2026-11-02T08:20:00Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/check_transport_security.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-07/evidence/09-check-transport-security.log",
+      "checked_at": "2026-11-02T08:20:00Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/check_identity.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-07/evidence/10-check-identity.log",
+      "checked_at": "2026-11-02T08:20:05Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/smoke_test.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-07/evidence/11-smoke-test.log",
+      "checked_at": "2026-11-02T08:20:10Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/self_test_failure.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-07/evidence/12-self-test-failure.log",
+      "checked_at": "2026-11-02T08:20:13Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/check_node.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-07/evidence/13-check-node.log",
+      "checked_at": "2026-11-02T08:21:00Z",
+      "result": "PASS"
+    },
+    {
+      "command": "bash tooling/ci/check_flutter.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P0/p0-07/evidence/14-check-flutter.log",
+      "checked_at": "2026-11-02T08:21:30Z",
+      "result": "PASS"
+    }
+  ],
+  "remaining_scope": [
+    "CI PostgreSQL 17.10 live execution of TestPostgresLiveMigrationAndAppUserRLS (Test 8 P0-07 composite tenant FKs, role separation, and read_only impersonation constraint) via tooling/ci/check_identity.sh",
+    "Live external social platform OAuth sandbox credentials (TikTok, Instagram, YouTube, Facebook, Shopee) for live connector probes in P2/P3",
+    "Independent GitHub Actions CI green run and security review before ACCEPTED status"
+  ],
+  "external_gates": {
+    "local_postgres_daemon": "UNAVAILABLE_IN_CONTAINER_VERIFIED_IN_CI",
+    "external_oauth_providers": "UNAVAILABLE_NOT_CONFIGURED",
+    "internal_vpn_mtls_ingress": "SIMULATED_IN_TESTS_PRODUCTION_INFRA_GATE"
+  },
+  "decisions": [
+    "Created canonical Goose SQL migration 00003_p0_07_capability_and_admin_isolation.sql installing capability_state enum, capability_snapshots, policy_notes, fallback_paths, platform_health_scores, moderation_cases, fraud_cases, feature_flags, system_announcements, incidents, post_mortems, and system_alerts with ENABLE + FORCE ROW LEVEL SECURITY, composite same-tenant FKs (§26.11), and narrow app_user vs admin_user grants (§26.12).",
+    "Implemented M22 CapabilityService (apps/api/internal/capability) with fail-closed pre-execution gate: any missing, stale (>24h), read_only, manual, degraded, unsupported, token-expired, or kill-switch-halted route is blocked from native execution and returns structured fallback instructions.",
+    "Implemented 6-dimension weighted Platform Health Score (0-100) and proactive coaching (<50 warning flag, <30 auto-pause) while ensuring encrypted OAuth tokens are never serialized in responses or logs.",
+    "Implemented S26 InternalAdminService (apps/api/internal/internaladmin) bound to the isolated admin listener (:8443) requiring internal_admins identity, VPN/mTLS network proof, and active TOTP/WebAuthn MFA, rejecting all workspace roles with PERMISSION_DENIED.",
+    "Enforced strictly read_only impersonation with 30-minute auto-expiry, mandatory reason (>=15 chars), prohibition on impersonating internal admins, append-only internal_audit_logs capture, and runtime rejection of all mutating requests under impersonation."
+  ],
+  "notes": "P0-07 implementation and all local static, SQL AST, Go race, proto 4-target, transport security, identity, smoke, self-test, Svelte/Node, and Flutter checks are complete (LOCAL_IMPLEMENTED).",
+  "recorded_at_utc": "2026-11-02T08:21:30Z",
+  "remote_ci": "PENDING_PUSH"
+}
