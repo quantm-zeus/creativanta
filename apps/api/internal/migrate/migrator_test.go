@@ -782,7 +782,9 @@ func TestPostgresSeedTwiceIdempotency(t *testing.T) {
 	cleanupSQL := `
 		DELETE FROM cost_items WHERE cost_item_id IN ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2');
 		DELETE FROM profit_snapshots WHERE snapshot_id = '99999999-9999-9999-9999-999999999901';
+		ALTER TABLE ai_credit_transactions DISABLE TRIGGER trg_ai_credit_transactions_immutable;
 		DELETE FROM ai_credit_transactions WHERE workspace_id IN ('22222222-2222-2222-2222-222222222201','22222222-2222-2222-2222-222222222202','22222222-2222-2222-2222-222222222203');
+		ALTER TABLE ai_credit_transactions ENABLE TRIGGER trg_ai_credit_transactions_immutable;
 		DELETE FROM ai_credit_lots WHERE workspace_id IN ('22222222-2222-2222-2222-222222222201','22222222-2222-2222-2222-222222222202','22222222-2222-2222-2222-222222222203');
 		DELETE FROM products WHERE workspace_id = '22222222-2222-2222-2222-222222222201';
 		DELETE FROM ideas WHERE workspace_id = '22222222-2222-2222-2222-222222222201';

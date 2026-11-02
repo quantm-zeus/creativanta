@@ -74,26 +74,17 @@ VALUES
 ON CONFLICT (workspace_id, external_grant_key) DO NOTHING;
 
 INSERT INTO ai_credit_transactions (
-  transaction_id, workspace_id, transaction_type, credits, balance_after, description
+  transaction_id, workspace_id, transaction_type, credits, balance_after, lot_id, idempotency_key, description
 )
 VALUES
-  ('88888888-8888-8888-8888-888888888801', '22222222-2222-2222-2222-222222222201', 'monthly_allocation', 2000, 2000, 'Pro subscription grant'),
-  ('88888888-8888-8888-8888-888888888802', '22222222-2222-2222-2222-222222222201', 'deduction', -50, 1950, 'AI Video Generation #1'),
-  ('88888888-8888-8888-8888-888888888803', '22222222-2222-2222-2222-222222222201', 'deduction', -30, 1920, 'AI Script Generation'),
-  ('88888888-8888-8888-8888-888888888804', '22222222-2222-2222-2222-222222222201', 'top_up', 500, 2420, 'Verified purchased pack')
-ON CONFLICT (transaction_id) DO NOTHING;
-
-INSERT INTO ai_credit_transactions (transaction_id, workspace_id, transaction_type, credits, balance_after, lot_id, idempotency_key, description)
-VALUES
+  ('88888888-8888-8888-8888-888888888801', '22222222-2222-2222-2222-222222222201', 'monthly_allocation', 2000, 2000, 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', 'seed:88888888-8888-8888-8888-888888888801', 'Pro subscription grant'),
+  ('88888888-8888-8888-8888-888888888802', '22222222-2222-2222-2222-222222222201', 'deduction', -50, 1950, 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', 'seed:88888888-8888-8888-8888-888888888802', 'AI Video Generation #1'),
+  ('88888888-8888-8888-8888-888888888803', '22222222-2222-2222-2222-222222222201', 'deduction', -30, 1920, 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', 'seed:88888888-8888-8888-8888-888888888803', 'AI Script Generation'),
+  ('88888888-8888-8888-8888-888888888804', '22222222-2222-2222-2222-222222222201', 'top_up', 500, 2420, 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2', 'seed:88888888-8888-8888-8888-888888888804', 'Verified purchased pack'),
   ('88888888-8888-8888-8888-888888888805', '22222222-2222-2222-2222-222222222202', 'monthly_allocation', 500, 500, 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb3', 'seed:starter:period', 'Starter allocation'),
   ('88888888-8888-8888-8888-888888888806', '22222222-2222-2222-2222-222222222203', 'monthly_allocation', 10000, 10000, 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb4', 'seed:business:period', 'Business allocation')
 ON CONFLICT (transaction_id) DO NOTHING;
 
--- Link seed history once to its source lots and durable operation identity.
-UPDATE ai_credit_transactions SET lot_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', idempotency_key = 'seed:' || transaction_id::text
-WHERE transaction_id IN ('88888888-8888-8888-8888-888888888801', '88888888-8888-8888-8888-888888888802', '88888888-8888-8888-8888-888888888803');
-UPDATE ai_credit_transactions SET lot_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2', idempotency_key = 'seed:' || transaction_id::text
-WHERE transaction_id = '88888888-8888-8888-8888-888888888804';
 -- Seed owner role may reconcile fixture projections; runtime ledger entries are append-only.
 UPDATE workspaces SET ai_credits_remaining = CASE subscription_tier WHEN 'pro' THEN 2420 WHEN 'starter' THEN 500 WHEN 'business' THEN 10000 END,
   ai_credits_reserved = 0,
