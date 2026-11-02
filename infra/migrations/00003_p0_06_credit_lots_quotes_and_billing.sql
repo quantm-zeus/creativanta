@@ -207,38 +207,38 @@ CREATE TRIGGER trg_ai_credit_transactions_immutable
 ALTER TABLE ai_credit_quotes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_credit_quotes FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON ai_credit_quotes
-  USING (workspace_id = NULLIF(current_setting('app.current_workspace_id', true), '')::uuid)
-  WITH CHECK (workspace_id = NULLIF(current_setting('app.current_workspace_id', true), '')::uuid);
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
+  WITH CHECK (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
 ALTER TABLE ai_credit_lots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_credit_lots FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON ai_credit_lots
-  USING (workspace_id = NULLIF(current_setting('app.current_workspace_id', true), '')::uuid)
-  WITH CHECK (workspace_id = NULLIF(current_setting('app.current_workspace_id', true), '')::uuid);
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
+  WITH CHECK (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
 ALTER TABLE ai_credit_reservations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_credit_reservations FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON ai_credit_reservations
-  USING (workspace_id = NULLIF(current_setting('app.current_workspace_id', true), '')::uuid)
-  WITH CHECK (workspace_id = NULLIF(current_setting('app.current_workspace_id', true), '')::uuid);
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
+  WITH CHECK (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
 ALTER TABLE ai_credit_reservation_allocations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_credit_reservation_allocations FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON ai_credit_reservation_allocations
-  USING (workspace_id = NULLIF(current_setting('app.current_workspace_id', true), '')::uuid)
-  WITH CHECK (workspace_id = NULLIF(current_setting('app.current_workspace_id', true), '')::uuid);
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
+  WITH CHECK (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
 ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE invoices FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON invoices
-  USING (workspace_id = NULLIF(current_setting('app.current_workspace_id', true), '')::uuid)
-  WITH CHECK (workspace_id = NULLIF(current_setting('app.current_workspace_id', true), '')::uuid);
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
+  WITH CHECK (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
 ALTER TABLE payment_methods ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payment_methods FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON payment_methods
-  USING (workspace_id = NULLIF(current_setting('app.current_workspace_id', true), '')::uuid)
-  WITH CHECK (workspace_id = NULLIF(current_setting('app.current_workspace_id', true), '')::uuid);
+  USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
+  WITH CHECK (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
 -- ----------------------------------------------------------------------------
 -- 11. Narrow Role Grants (§26.12 — NEVER GRANT ALL)
@@ -246,10 +246,10 @@ CREATE POLICY tenant_isolation ON payment_methods
 GRANT SELECT ON ai_provider_rates TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ai_provider_rates TO admin_user;
 
-GRANT SELECT, INSERT ON ai_credit_quotes TO app_user;
-GRANT SELECT, INSERT, UPDATE ON ai_credit_lots, ai_credit_reservations TO app_user;
-GRANT SELECT, INSERT ON ai_credit_reservation_allocations TO app_user;
-GRANT SELECT, INSERT, UPDATE ON invoices, payment_methods TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ai_credit_quotes TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ai_credit_lots, ai_credit_reservations TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ai_credit_reservation_allocations TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON invoices, payment_methods TO app_user;
 
 GRANT SELECT ON ai_credit_quotes, ai_credit_lots, ai_credit_reservations, ai_credit_reservation_allocations, invoices, payment_methods TO admin_user;
 

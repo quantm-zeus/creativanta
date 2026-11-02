@@ -1,3 +1,12 @@
+{
+  "ok": true,
+  "counts": {
+    "build_tasks": 60,
+    "requirement_units": 1333,
+    "screen_assignments": 245
+  },
+  "errors": []
+}
 test_baseline_passes (test_docs_checker.DocsGuardTests.test_baseline_passes) ... ok
 test_cross_tenant_fk_gap_rejected (test_docs_checker.DocsGuardTests.test_cross_tenant_fk_gap_rejected) ... ok
 test_duplicate_index_rejected (test_docs_checker.DocsGuardTests.test_duplicate_index_rejected) ... ok
@@ -23,6 +32,6 @@ test_task_cycle_rejected (test_docs_checker.DocsGuardTests.test_task_cycle_rejec
 test_unknown_rpc_permission_rejected (test_docs_checker.DocsGuardTests.test_unknown_rpc_permission_rejected) ... ok
 
 ----------------------------------------------------------------------
-Ran 23 tests in 12.689s
+Ran 23 tests in 24.946s
 
 OK

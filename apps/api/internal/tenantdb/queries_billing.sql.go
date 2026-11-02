@@ -849,36 +849,32 @@ type CreditTransactionRow struct {
 
 const insertCreditTransactionSQL = `
 INSERT INTO ai_credit_transactions (
-  transaction_id, workspace_id, user_id, operation_type, credits_delta,
-  balance_after, source, reference_id, reservation_id, lot_id, quote_id,
-  reference_transaction_id, provider_cost_usd, rate_version, idempotency_key, description
+  transaction_id, workspace_id, transaction_type, credits,
+  balance_after, operation_type, generation_job_id, actual_cost,
+  reservation_id, lot_id, reference_transaction_id, idempotency_key, description
 )
 VALUES (
   COALESCE(NULLIF($1, '')::uuid, gen_random_uuid()),
   $2::uuid,
-  NULLIF($3, '')::uuid,
+  COALESCE(NULLIF($3, ''), 'debit'),
   $4,
   $5,
-  $6,
-  $7,
-  NULLIF($8, '')::uuid,
+  NULLIF($6, ''),
+  NULLIF($7, '')::uuid,
+  $8,
   NULLIF($9, '')::uuid,
   NULLIF($10, '')::uuid,
   NULLIF($11, '')::uuid,
-  NULLIF($12, '')::uuid,
-  $13,
-  NULLIF($14, ''),
-  $15,
-  NULLIF($16, '')
+  NULLIF($12, ''),
+  NULLIF($13, '')
 )
-ON CONFLICT (workspace_id, idempotency_key) DO NOTHING
+ON CONFLICT (workspace_id, idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING
 RETURNING
-  transaction_id::text, workspace_id::text, COALESCE(user_id::text, ''),
-  operation_type, credits_delta, balance_after, source,
-  COALESCE(reference_id::text, ''), COALESCE(reservation_id::text, ''),
-  COALESCE(lot_id::text, ''), COALESCE(quote_id::text, ''),
-  COALESCE(reference_transaction_id::text, ''), provider_cost_usd,
-  COALESCE(rate_version, ''), idempotency_key, COALESCE(description, ''), created_at
+  transaction_id::text, workspace_id::text, COALESCE(operation_type, ''),
+  credits, balance_after, transaction_type,
+  COALESCE(generation_job_id::text, ''), COALESCE(reservation_id::text, ''),
+  COALESCE(lot_id::text, ''), COALESCE(reference_transaction_id::text, ''),
+  actual_cost, COALESCE(idempotency_key, ''), COALESCE(description, ''), created_at
 `
 
 // InsertCreditTransaction appends an immutable row to ai_credit_transactions inside WithTx.
@@ -897,24 +893,20 @@ func (q *Queries) InsertCreditTransaction(ctx context.Context, arg CreditTransac
 		insertCreditTransactionSQL,
 		arg.TransactionID,
 		arg.WorkspaceID,
-		arg.UserID,
-		arg.OperationType,
+		arg.Source,
 		arg.CreditsDelta.ToPgNumeric(),
 		arg.BalanceAfter.ToPgNumeric(),
-		arg.Source,
+		arg.OperationType,
 		arg.ReferenceID,
+		costNum,
 		arg.ReservationID,
 		arg.LotID,
-		arg.QuoteID,
 		arg.ReferenceTransactionID,
-		costNum,
-		arg.RateVersion,
 		arg.IdempotencyKey,
 		arg.Description,
 	).Scan(
 		&row.TransactionID,
 		&row.WorkspaceID,
-		&row.UserID,
 		&row.OperationType,
 		&deltaNum,
 		&balNum,
@@ -922,10 +914,8 @@ func (q *Queries) InsertCreditTransaction(ctx context.Context, arg CreditTransac
 		&row.ReferenceID,
 		&row.ReservationID,
 		&row.LotID,
-		&row.QuoteID,
 		&row.ReferenceTransactionID,
 		&outCostNum,
-		&row.RateVersion,
 		&row.IdempotencyKey,
 		&row.Description,
 		&row.CreatedAt,
@@ -933,6 +923,9 @@ func (q *Queries) InsertCreditTransaction(ctx context.Context, arg CreditTransac
 	if err != nil {
 		return CreditTransactionRow{}, false, err
 	}
+	row.UserID = arg.UserID
+	row.QuoteID = arg.QuoteID
+	row.RateVersion = arg.RateVersion
 	if row.CreditsDelta, err = FromPgNumeric(deltaNum); err != nil {
 		return CreditTransactionRow{}, false, err
 	}
@@ -951,12 +944,11 @@ func (q *Queries) InsertCreditTransaction(ctx context.Context, arg CreditTransac
 
 const listCreditTransactionsSQL = `
 SELECT
-  transaction_id::text, workspace_id::text, COALESCE(user_id::text, ''),
-  operation_type, credits_delta, balance_after, source,
-  COALESCE(reference_id::text, ''), COALESCE(reservation_id::text, ''),
-  COALESCE(lot_id::text, ''), COALESCE(quote_id::text, ''),
-  COALESCE(reference_transaction_id::text, ''), provider_cost_usd,
-  COALESCE(rate_version, ''), idempotency_key, COALESCE(description, ''), created_at
+  transaction_id::text, workspace_id::text, COALESCE(operation_type, ''),
+  credits, balance_after, transaction_type,
+  COALESCE(generation_job_id::text, ''), COALESCE(reservation_id::text, ''),
+  COALESCE(lot_id::text, ''), COALESCE(reference_transaction_id::text, ''),
+  actual_cost, COALESCE(idempotency_key, ''), COALESCE(description, ''), created_at
 FROM ai_credit_transactions
 WHERE workspace_id = $1::uuid
 ORDER BY created_at DESC, transaction_id DESC
@@ -980,7 +972,6 @@ func (q *Queries) ListCreditTransactions(ctx context.Context, workspaceID string
 		if err := rows.Scan(
 			&row.TransactionID,
 			&row.WorkspaceID,
-			&row.UserID,
 			&row.OperationType,
 			&deltaNum,
 			&balNum,
@@ -988,10 +979,8 @@ func (q *Queries) ListCreditTransactions(ctx context.Context, workspaceID string
 			&row.ReferenceID,
 			&row.ReservationID,
 			&row.LotID,
-			&row.QuoteID,
 			&row.ReferenceTransactionID,
 			&outCostNum,
-			&row.RateVersion,
 			&row.IdempotencyKey,
 			&row.Description,
 			&row.CreatedAt,
@@ -1040,49 +1029,37 @@ type SubscriptionRow struct {
 
 const upsertSubscriptionSQL = `
 INSERT INTO subscriptions (
-  subscription_id, workspace_id, stripe_customer_id, stripe_subscription_id,
-  plan, billing_interval, status, amount, currency, current_period_start,
-  current_period_end, cancel_at_period_end, canceled_at, trial_end, addons, metadata
+  subscription_id, workspace_id, stripe_subscription_id,
+  plan_tier, billing_interval, status, current_period_start,
+  current_period_end, cancelled_at, trial_ends_at
 )
 VALUES (
   COALESCE(NULLIF($1, '')::uuid, gen_random_uuid()),
   $2::uuid,
   NULLIF($3, ''),
-  NULLIF($4, ''),
+  $4,
   $5,
   $6,
   $7,
   $8,
   $9,
-  $10,
-  $11,
-  $12,
-  $13,
-  $14,
-  $15::jsonb,
-  $16::jsonb
+  $10
 )
 ON CONFLICT (subscription_id) DO UPDATE SET
-  stripe_customer_id = COALESCE(EXCLUDED.stripe_customer_id, subscriptions.stripe_customer_id),
   stripe_subscription_id = COALESCE(EXCLUDED.stripe_subscription_id, subscriptions.stripe_subscription_id),
-  plan = EXCLUDED.plan,
+  plan_tier = EXCLUDED.plan_tier,
   billing_interval = EXCLUDED.billing_interval,
   status = EXCLUDED.status,
-  amount = EXCLUDED.amount,
-  currency = EXCLUDED.currency,
   current_period_start = EXCLUDED.current_period_start,
   current_period_end = EXCLUDED.current_period_end,
-  cancel_at_period_end = EXCLUDED.cancel_at_period_end,
-  canceled_at = EXCLUDED.canceled_at,
-  trial_end = EXCLUDED.trial_end,
-  addons = EXCLUDED.addons,
-  metadata = EXCLUDED.metadata,
+  cancelled_at = EXCLUDED.cancelled_at,
+  trial_ends_at = EXCLUDED.trial_ends_at,
   updated_at = NOW()
 RETURNING
-  subscription_id::text, workspace_id::text, COALESCE(stripe_customer_id, ''),
-  COALESCE(stripe_subscription_id, ''), plan, billing_interval, status, amount,
-  currency, current_period_start, current_period_end, cancel_at_period_end,
-  canceled_at, trial_end, addons, metadata, created_at, updated_at
+  subscription_id::text, workspace_id::text,
+  COALESCE(stripe_subscription_id, ''), plan_tier, billing_interval, status,
+  current_period_start, current_period_end,
+  cancelled_at, trial_ends_at, created_at, updated_at
 `
 
 // UpsertSubscription inserts or updates a workspace subscription inside WithTx.
@@ -1090,72 +1067,52 @@ func (q *Queries) UpsertSubscription(ctx context.Context, arg SubscriptionRow) (
 	if _, err := q.requireTenantTx(ctx, arg.WorkspaceID); err != nil {
 		return SubscriptionRow{}, err
 	}
-	rawAddons, err := json.Marshal(arg.Addons)
-	if err != nil || len(arg.Addons) == 0 {
-		rawAddons = []byte(`[]`)
-	}
-	meta := arg.MetadataJSON
-	if len(meta) == 0 {
-		meta = []byte(`{}`)
-	}
 	var row SubscriptionRow
-	var amtNum pgtype.Numeric
-	var rawOutAddons []byte
-	err = q.db.QueryRow(
+	err := q.db.QueryRow(
 		ctx,
 		upsertSubscriptionSQL,
 		arg.SubscriptionID,
 		arg.WorkspaceID,
-		arg.StripeCustomerID,
 		arg.StripeSubscriptionID,
 		arg.Plan,
 		arg.BillingInterval,
 		arg.Status,
-		arg.Amount.ToPgNumeric(),
-		arg.Currency,
 		arg.CurrentPeriodStart,
 		arg.CurrentPeriodEnd,
-		arg.CancelAtPeriodEnd,
 		arg.CanceledAt,
 		arg.TrialEnd,
-		rawAddons,
-		meta,
 	).Scan(
 		&row.SubscriptionID,
 		&row.WorkspaceID,
-		&row.StripeCustomerID,
 		&row.StripeSubscriptionID,
 		&row.Plan,
 		&row.BillingInterval,
 		&row.Status,
-		&amtNum,
-		&row.Currency,
 		&row.CurrentPeriodStart,
 		&row.CurrentPeriodEnd,
-		&row.CancelAtPeriodEnd,
 		&row.CanceledAt,
 		&row.TrialEnd,
-		&rawOutAddons,
-		&row.MetadataJSON,
 		&row.CreatedAt,
 		&row.UpdatedAt,
 	)
 	if err != nil {
 		return SubscriptionRow{}, err
 	}
-	if row.Amount, err = FromPgNumeric(amtNum); err != nil {
-		return SubscriptionRow{}, err
-	}
-	_ = json.Unmarshal(rawOutAddons, &row.Addons)
+	row.StripeCustomerID = arg.StripeCustomerID
+	row.Amount = arg.Amount
+	row.Currency = arg.Currency
+	row.CancelAtPeriodEnd = arg.CancelAtPeriodEnd
+	row.Addons = arg.Addons
+	row.MetadataJSON = arg.MetadataJSON
 	return row, nil
 }
 
 const getWorkspaceSubscriptionSQL = `
 SELECT
-  subscription_id::text, workspace_id::text, COALESCE(stripe_customer_id, ''),
-  COALESCE(stripe_subscription_id, ''), plan, billing_interval, status, amount,
-  currency, current_period_start, current_period_end, cancel_at_period_end,
-  canceled_at, trial_end, addons, metadata, created_at, updated_at
+  subscription_id::text, workspace_id::text,
+  COALESCE(stripe_subscription_id, ''), plan_tier, billing_interval, status,
+  current_period_start, current_period_end,
+  cancelled_at, trial_ends_at, created_at, updated_at
 FROM subscriptions
 WHERE workspace_id = $1::uuid
 ORDER BY created_at DESC
@@ -1168,35 +1125,24 @@ func (q *Queries) GetWorkspaceSubscription(ctx context.Context, workspaceID stri
 		return SubscriptionRow{}, err
 	}
 	var row SubscriptionRow
-	var amtNum pgtype.Numeric
-	var rawOutAddons []byte
 	err := q.db.QueryRow(ctx, getWorkspaceSubscriptionSQL, workspaceID).Scan(
 		&row.SubscriptionID,
 		&row.WorkspaceID,
-		&row.StripeCustomerID,
 		&row.StripeSubscriptionID,
 		&row.Plan,
 		&row.BillingInterval,
 		&row.Status,
-		&amtNum,
-		&row.Currency,
 		&row.CurrentPeriodStart,
 		&row.CurrentPeriodEnd,
-		&row.CancelAtPeriodEnd,
 		&row.CanceledAt,
 		&row.TrialEnd,
-		&rawOutAddons,
-		&row.MetadataJSON,
 		&row.CreatedAt,
 		&row.UpdatedAt,
 	)
 	if err != nil {
 		return SubscriptionRow{}, err
 	}
-	if row.Amount, err = FromPgNumeric(amtNum); err != nil {
-		return SubscriptionRow{}, err
-	}
-	_ = json.Unmarshal(rawOutAddons, &row.Addons)
+	row.Currency = "USD"
 	return row, nil
 }
 
