@@ -37,6 +37,11 @@
     "DB-C-001",
     "DB-H-001"
   ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_auth_forgot_password.md",
+    "docs/03_screens/web/screen_web_auth_login.md",
+    "docs/03_screens/web/screen_web_auth_register.md"
+  ],
   "source_hashes": {
     "docs/02_features/platform/auth.md": "86fde7cb6a3d3aa7bd5f24c2aa6bf04ba0cfa910927f6f723ace0f17ec515610",
     "docs/02_features/platform/public_api.md": "d16b0fb8aeeb850647ad7614d051cb8e670824588c1b5d760ad99fc4833e8329",
@@ -68,6 +73,41 @@
     "Composite Verifier: Interceptor correctly authenticates both Clerk JWT session tokens and API key Bearer tokens; foreign workspace tokens and invalid keys fail closed with permission/auth denials (TestCompositeVerifierAndInterceptorIntegration).",
     "No Future-Phase RPC Leaked: Automated audit across 1,188 bindings, all proto files, Go entrypoints, and runtime HTTP router confirms 0 future-phase RPCs exposed (TestNoFuturePhaseRPCExposed).",
     "All P0 Unit and Concurrency Suites Pass: Zero race conditions detected across Go, Node, and Flutter test suites."
+  ],
+  "rpc_contracts": [
+    "APIKeyService/Create",
+    "APIKeyService/List",
+    "APIKeyService/Revoke",
+    "APIKeyService/Rotate",
+    "APIKeyService/GetUsage",
+    "APIKeyService/GetUsageStats",
+    "APIKeyService/UpdateScopes"
+  ],
+  "migration_files": [
+    "infra/migrations/00001_p0_platform_initial_schema.sql",
+    "infra/migrations/00002_p0_05_diagnostics_and_repairs.sql",
+    "infra/migrations/00003_p0_06_billing_credits_and_quotes.sql",
+    "infra/migrations/00004_p0_07_capability_and_internal_admin.sql",
+    "infra/migrations/00005_p0_08_notifications_and_help_center.sql"
+  ],
+  "permission_keys": [
+    "api_key:manage",
+    "workspace:read",
+    "workspace:settings:manage",
+    "user:self"
+  ],
+  "event_types": [
+    "api_key.created",
+    "api_key.rotated",
+    "api_key.revoked",
+    "workspace.created",
+    "account.connected"
+  ],
+  "screen_routes": [
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/workspaces"
   ],
   "checks": [
     {
