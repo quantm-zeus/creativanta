@@ -51,7 +51,7 @@
     "docs/04_contracts/domain_event_catalog.md": "f85704096638fe181e158e455d551b99e1d8cf009aa9530fc19c65fc1334e5de",
     "docs/03_screens/web/screen_web_settings_members.md": "e83b7735bebae806916d4ecef851b39b276d470f895ea81797df846463b95a74",
     "docs/03_screens/web/screen_web_settings_team.md": "486bb07727bc470dbb7137804d3d70bc772a87b5d8533528869be7d32a42988e",
-    "infra/migrations/00001_p0_04_tenant_schema_rls_and_grants.sql": "16774f42956d7d42c47ba88d50a0fa220819a7f283c0a444a8b42bdfb5b74146"
+    "infra/migrations/00001_p0_04_tenant_schema_rls_and_grants.sql": "04bae9a67b0aaa3893010e881200294d5a9b13ccbcb3dbe5b649227404b4bdda"
   },
   "scope_items": [
     "Canonical Goose SQL migration (infra/migrations/00001_p0_04_tenant_schema_rls_and_grants.sql) with NOLOGIN role hierarchy (app_user, admin_user, outbox_poller, directory_reader), core and slice tenant tables, direct-junction tables (trend_signals, opportunity_sources, idea_sources, taggables, bundle_items, support_ticket_messages) with workspace_id, composite same-tenant foreign keys (database_schema.md §26.11), single-active-owner invariant (fk_workspaces_owner + idx_one_active_workspace_owner, §26.14), immutable evidence trigger protect_evidence_content() (§26.13), ENABLE + FORCE ROW LEVEL SECURITY policies, and narrow per-role grants (§26.12, §27.2)",
@@ -62,7 +62,7 @@
     "Web Team & RBAC screen (/settings/team, W115/W116) and client RBAC/revocation projection helpers (apps/web/src/lib/auth/rbac.ts)"
   ],
   "verified_sub_slices": [
-    "266 Up statements and 49 Down statements in 00001_p0_04_tenant_schema_rls_and_grants.sql validated with pglast PostgreSQL AST parser and static contract validator",
+    "268 Up statements and 49 Down statements in 00001_p0_04_tenant_schema_rls_and_grants.sql validated with pglast PostgreSQL AST parser and static contract validator",
     "Two-tenant and direct-junction isolation verified via composite FKs, RLS policies, and WithTx scope checks",
     "Last-owner protection and atomic ownership transfer verified in workspace.Service and UI guards",
     "Immediate member revocation enforcement verified on next request and mid-session workspace reconciliation (EC-AUTH-003)",

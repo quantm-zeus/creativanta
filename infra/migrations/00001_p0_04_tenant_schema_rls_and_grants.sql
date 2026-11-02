@@ -96,17 +96,25 @@ $$;
 -- 4.1 workspaces & users & workspace_members
 CREATE TABLE IF NOT EXISTS workspaces (
   workspace_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_type VARCHAR(50) NOT NULL DEFAULT 'standard',
+  clerk_organization_id VARCHAR(255) UNIQUE,
   external_org_id VARCHAR(255) UNIQUE,
   source_updated_at TIMESTAMPTZ,
-  name VARCHAR(255) NOT NULL,
+  name VARCHAR(255) NOT NULL DEFAULT '',
+  display_name VARCHAR(255) NOT NULL DEFAULT '',
   slug VARCHAR(100) UNIQUE NOT NULL,
+  referral_code VARCHAR(20) UNIQUE,
   owner_user_id UUID NOT NULL,
   subscription_tier VARCHAR(20) NOT NULL DEFAULT 'free'
     CHECK (subscription_tier IN ('free','starter','pro','business','enterprise')),
   default_mode operator_mode NOT NULL DEFAULT 'creator',
+  default_operator_mode operator_mode NOT NULL DEFAULT 'creator',
   enabled_modes operator_mode[] NOT NULL DEFAULT '{creator}',
   ai_credits_remaining NUMERIC(18,6) NOT NULL DEFAULT 30,
+  ai_credits_reserved NUMERIC(18,6) NOT NULL DEFAULT 0,
   ai_credits_monthly_limit NUMERIC(18,6) NOT NULL DEFAULT 30,
+  billing_cycle_start DATE,
+  CHECK (ai_credits_remaining >= 0 AND ai_credits_reserved >= 0 AND ai_credits_reserved <= ai_credits_remaining),
   storage_used_bytes BIGINT NOT NULL DEFAULT 0,
   storage_limit_bytes BIGINT NOT NULL DEFAULT 1073741824,
   settings JSONB NOT NULL DEFAULT '{}',
@@ -115,23 +123,27 @@ CREATE TABLE IF NOT EXISTS workspaces (
   status VARCHAR(20) NOT NULL DEFAULT 'active'
     CHECK (status IN ('active','suspended','cancelled','deleted')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS users (
   user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  external_auth_id VARCHAR(255) UNIQUE NOT NULL,
+  clerk_id VARCHAR(255) UNIQUE,
+  external_auth_id VARCHAR(255) UNIQUE,
   source_updated_at TIMESTAMPTZ,
   email VARCHAR(255) UNIQUE NOT NULL,
-  display_name VARCHAR(255) NOT NULL,
+  display_name VARCHAR(255) NOT NULL DEFAULT '',
   avatar_url TEXT,
   locale VARCHAR(10) NOT NULL DEFAULT 'vi-VN',
+  timezone VARCHAR(50) NOT NULL DEFAULT 'Asia/Ho_Chi_Minh',
   notification_prefs JSONB NOT NULL DEFAULT '{}',
   onboarding_completed BOOLEAN NOT NULL DEFAULT false,
   onboarding_step SMALLINT NOT NULL DEFAULT 0,
   status VARCHAR(20) NOT NULL DEFAULT 'active'
     CHECK (status IN ('active','suspended','banned','deleted')),
   last_login_at TIMESTAMPTZ,
+  last_active_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -142,15 +154,18 @@ ALTER TABLE workspaces
 
 CREATE TABLE IF NOT EXISTS workspace_members (
   member_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_member_id UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE,
+  clerk_membership_id VARCHAR(255) UNIQUE,
   external_membership_id VARCHAR(255) UNIQUE,
   source_updated_at TIMESTAMPTZ,
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
   user_id UUID NOT NULL REFERENCES users(user_id),
   role VARCHAR(30) NOT NULL DEFAULT 'viewer'
-    CHECK (role IN ('owner','admin','manager','editor','contributor','viewer','external')),
+    CHECK (role IN ('owner','admin','manager','editor','contributor','viewer','external','client_reviewer')),
   status VARCHAR(20) NOT NULL DEFAULT 'active'
-    CHECK (status IN ('invited','active','suspended','revoked')),
+    CHECK (status IN ('invited','active','suspended','revoked','removed')),
   invited_by UUID REFERENCES users(user_id),
+  invited_at TIMESTAMPTZ,
   joined_at TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -263,15 +278,30 @@ ALTER TABLE connected_accounts FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON connected_accounts
   USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
--- §4.3B user_preferences
+-- §18.9 user_preferences
 CREATE TABLE IF NOT EXISTS user_preferences (
-  pref_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  preference_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  pref_id UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE,
   user_id UUID NOT NULL REFERENCES users(user_id),
   workspace_id UUID REFERENCES workspaces(workspace_id),
-  category VARCHAR(30) NOT NULL
+  category VARCHAR(30) DEFAULT 'display'
     CHECK (category IN ('ai','notification','display','editor','privacy')),
   preferences JSONB NOT NULL DEFAULT '{}',
+  notification_email BOOLEAN DEFAULT true,
+  notification_push BOOLEAN DEFAULT true,
+  notification_in_app BOOLEAN DEFAULT true,
+  quiet_hours_start TIME,
+  quiet_hours_end TIME,
+  morning_brief_enabled BOOLEAN DEFAULT true,
+  morning_brief_channel VARCHAR(20) DEFAULT 'push',
+  onboarding_completed BOOLEAN NOT NULL DEFAULT false,
+  onboarding_progress JSONB NOT NULL DEFAULT '{"completed_steps": []}',
+  theme VARCHAR(10) DEFAULT 'system',
+  sidebar_collapsed BOOLEAN DEFAULT false,
+  default_view_mode VARCHAR(20) DEFAULT 'grid',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, workspace_id),
   UNIQUE(user_id, workspace_id, category)
 );
 CREATE INDEX IF NOT EXISTS idx_up_user ON user_preferences(user_id);
@@ -900,6 +930,9 @@ ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE support_tickets FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON support_tickets
   USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY admin_ticket_access ON support_tickets FOR ALL TO admin_user
+  USING (true)
+  WITH CHECK (true);
 
 CREATE TABLE IF NOT EXISTS support_ticket_messages (
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
@@ -922,6 +955,9 @@ CREATE POLICY tenant_isolation ON support_ticket_messages
     AND (NOT is_internal_note OR current_user = 'admin_user'))
   WITH CHECK (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid
     AND (NOT is_internal_note OR current_user = 'admin_user'));
+CREATE POLICY admin_ticket_messages ON support_ticket_messages FOR ALL TO admin_user
+  USING (true)
+  WITH CHECK (true);
 
 -- §18.2–§18.5 api_keys, api_webhook_subscriptions, webhook_events, event_outbox, tags, taggables
 CREATE TABLE IF NOT EXISTS api_keys (
@@ -1000,6 +1036,7 @@ CREATE TABLE IF NOT EXISTS webhook_events (
   received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   processed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (provider, idempotency_key),
   CONSTRAINT fk_webhook_events_webhook_subscription_id_tenant
     FOREIGN KEY (workspace_id, webhook_subscription_id) REFERENCES api_webhook_subscriptions(workspace_id, webhook_subscription_id)
 );
@@ -1092,16 +1129,21 @@ CREATE POLICY tenant_isolation ON subscriptions
 CREATE TABLE IF NOT EXISTS api_idempotency_records (
   record_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES workspaces(workspace_id),
-  actor_id UUID NOT NULL,
-  rpc VARCHAR(255) NOT NULL,
+  actor_id UUID,
+  actor_user_id UUID,
+  rpc VARCHAR(255),
+  rpc_name VARCHAR(255),
   idempotency_key VARCHAR(255) NOT NULL,
   request_hash VARCHAR(128) NOT NULL,
-  status VARCHAR(20) NOT NULL CHECK (status IN ('processing','completed','failed')),
+  status VARCHAR(20) NOT NULL DEFAULT 'completed'
+    CHECK (status IN ('processing','completed','failed')),
   response_payload JSONB,
+  response_body JSONB,
   response_code INTEGER,
-  expires_at TIMESTAMPTZ NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '24 hours'),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(workspace_id, actor_id, rpc, idempotency_key)
+  UNIQUE(workspace_id, actor_id, rpc, idempotency_key),
+  UNIQUE(workspace_id, actor_user_id, idempotency_key)
 );
 ALTER TABLE api_idempotency_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE api_idempotency_records FORCE ROW LEVEL SECURITY;
