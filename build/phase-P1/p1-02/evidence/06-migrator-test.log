@@ -16,7 +16,7 @@
     migrator_test.go:347: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL 17.10 migration & RLS suite executes in CI
 --- SKIP: TestPostgresLiveMigrationAndAppUserRLS (0.00s)
 === RUN   TestPostgresSeedTwiceIdempotency
-    migrator_test.go:762: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL seed twice idempotency suite executes in CI
+    migrator_test.go:765: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL seed twice idempotency suite executes in CI
 --- SKIP: TestPostgresSeedTwiceIdempotency (0.00s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/migrate	(cached)
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/migrate	0.199s

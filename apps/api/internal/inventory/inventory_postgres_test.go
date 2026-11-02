@@ -32,9 +32,21 @@ func TestPostgresLiveInventoryStore(t *testing.T) {
 		t.Fatalf("migrate.Up: %v", err)
 	}
 
-	store := inventory.NewPostgresStore(pool)
-	wsID := "00000000-0000-0000-0000-000000000001"
+	wsID := "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa14"
 	locID := "22222222-2222-2222-2222-222222222222"
+	userID := "11111111-1111-4111-8111-111111111114"
+
+	// Ensure workspace exists
+	_, _ = pool.Exec(ctx, `
+		INSERT INTO users (user_id, email, display_name, created_at, updated_at)
+		VALUES ($1::uuid, 'inv-user@test.com', 'Inv User', NOW(), NOW())
+		ON CONFLICT (user_id) DO NOTHING;
+		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, created_at, updated_at)
+		VALUES ($2::uuid, 'Inv Workspace', 'inv-ws', $1::uuid, NOW(), NOW())
+		ON CONFLICT (workspace_id) DO NOTHING;
+	`, userID, wsID)
+
+	store := inventory.NewPostgresStore(pool)
 
 	// Create location
 	loc := &inventory.Location{

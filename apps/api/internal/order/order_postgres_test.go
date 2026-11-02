@@ -33,9 +33,21 @@ func TestPostgresLiveOrderStore(t *testing.T) {
 		t.Fatalf("migrate.Up: %v", err)
 	}
 
-	store := order.NewPostgresStore(pool)
-	wsID := "00000000-0000-0000-0000-000000000001"
+	wsID := "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa15"
 	ordID := "33333333-3333-3333-3333-333333333333"
+	userID := "11111111-1111-4111-8111-111111111115"
+
+	// Ensure workspace exists
+	_, _ = pool.Exec(ctx, `
+		INSERT INTO users (user_id, email, display_name, created_at, updated_at)
+		VALUES ($1::uuid, 'order-user@test.com', 'Order User', NOW(), NOW())
+		ON CONFLICT (user_id) DO NOTHING;
+		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, created_at, updated_at)
+		VALUES ($2::uuid, 'Order Workspace', 'order-ws', $1::uuid, NOW(), NOW())
+		ON CONFLICT (workspace_id) DO NOTHING;
+	`, userID, wsID)
+
+	store := order.NewPostgresStore(pool)
 
 	ord := &order.Order{
 		OrderID:        ordID,
