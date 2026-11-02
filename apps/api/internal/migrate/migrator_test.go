@@ -348,8 +348,8 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '11111111-1111-4111-8111-111111111111', 'owner', 'active'),
 		  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', '22222222-2222-4222-8222-222222222222', 'owner', 'active');
 
-		INSERT INTO connected_accounts (connected_account_id, workspace_id, platform, platform_account_id, status) VALUES
-		  ('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'tiktok', 'tt_acc_a', 'active');
+		INSERT INTO connected_accounts (connected_account_id, workspace_id, platform, account_type, external_account_id, connection_state) VALUES
+		  ('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'tiktok', 'creator', 'tt_acc_a', 'connected');
 
 		INSERT INTO trends (trend_id, workspace_id, title) VALUES
 		  ('33333333-3333-4333-8333-333333333333', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Trend A'),
