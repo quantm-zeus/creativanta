@@ -1,0 +1,252 @@
+syntax = "proto3";
+
+package creativanta.admin.v1;
+
+import "creativanta/common/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1;adminv1";
+
+// Workspace Capability Matrix & Policy Transparency service (M22).
+// Enforces the 5-state capability contract (native, read_only, manual, degraded, unsupported),
+// ActionAccessVerification pre-execution gates, policy notes, fallback paths, and composite
+// platform health scores with proactive business coaching (RULE-M22-001 through RULE-M22-005).
+service CapabilityService {
+  // Returns the workspace capability matrix across all 6 canonical platforms and actions.
+  // Required RBAC permission: capability:read.
+  rpc GetMatrix(GetMatrixRequest) returns (GetMatrixResponse);
+
+  // Returns composite platform health scores (0-100) and proactive coaching cards for connected accounts.
+  // Required RBAC permission: capability:read.
+  rpc GetHealthScores(GetHealthScoresRequest) returns (GetHealthScoresResponse);
+
+  // Lists policy notes explaining platform restrictions and approval requirements.
+  // Required RBAC permission: capability:read.
+  rpc ListPolicyNotes(ListPolicyNotesRequest) returns (ListPolicyNotesResponse);
+
+  // Lists guided fallback paths for actions in manual, read_only, degraded, or unsupported state.
+  // Required RBAC permission: capability:read.
+  rpc ListFallbackPaths(ListFallbackPathsRequest) returns (ListFallbackPathsResponse);
+}
+
+// Workspace Connected Accounts & Action Verification service (M22).
+// Never exposes access_token_encrypted or refresh_token_encrypted (RULE-M22-005).
+service ConnectorService {
+  // Lists connected accounts in the workspace with sanitized token status and health score.
+  // Required RBAC permission: account:read.
+  rpc List(ConnectorServiceListRequest) returns (ConnectorServiceListResponse);
+
+  // Evaluates whether a specific platform action is verified and executable for a connected account.
+  // Required RBAC permission: account:read.
+  rpc Check(ConnectorServiceCheckRequest) returns (ConnectorServiceCheckResponse);
+
+  // Computes and persists the composite platform health score for a connected account.
+  // Required RBAC permission: account:read.
+  rpc CheckHealth(ConnectorServiceCheckHealthRequest) returns (ConnectorServiceCheckHealthResponse);
+
+  // Disconnects a connected account and revokes its active capability snapshots.
+  // Required RBAC permission: account:disconnect.
+  rpc Disconnect(ConnectorServiceDisconnectRequest) returns (ConnectorServiceDisconnectResponse);
+}
+
+// Canonical 5 capability states from database_schema.md §3.
+enum CapabilityState {
+  CAPABILITY_STATE_UNSPECIFIED = 0;
+  CAPABILITY_STATE_NATIVE = 1;
+  CAPABILITY_STATE_READ_ONLY = 2;
+  CAPABILITY_STATE_MANUAL = 3;
+  CAPABILITY_STATE_DEGRADED = 4;
+  CAPABILITY_STATE_UNSUPPORTED = 5;
+}
+
+// Fallback mechanism type from database_schema.md §18.2C.
+enum FallbackType {
+  FALLBACK_TYPE_UNSPECIFIED = 0;
+  FALLBACK_TYPE_MANUAL_UPLOAD = 1;
+  FALLBACK_TYPE_CSV_IMPORT = 2;
+  FALLBACK_TYPE_WEBHOOK_WORKAROUND = 3;
+  FALLBACK_TYPE_BROWSER_ASSIST = 4;
+  FALLBACK_TYPE_UNSUPPORTED = 5;
+}
+
+// Policy note explaining why a platform capability is restricted or requires manual fallback.
+message PolicyNoteItem {
+  creativanta.common.v1.UUID policy_note_id = 1;
+  string platform = 2;
+  string capability_key = 3;
+  string summary = 4;
+  string detail = 5;
+  string source_url = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+// Guided fallback path for non-native capabilities (RULE-M22-001, RULE-M22-004).
+message FallbackPathItem {
+  creativanta.common.v1.UUID fallback_path_id = 1;
+  string platform = 2;
+  string capability_key = 3;
+  FallbackType fallback_type = 4;
+  string instructions = 5;
+  string estimated_effort = 6;
+  creativanta.common.v1.UUID related_policy_note_id = 7;
+}
+
+// Single cell in the workspace capability matrix.
+message CapabilityMatrixCell {
+  string platform = 1;
+  string capability_key = 2;
+  string display_name = 3;
+  CapabilityState state = 4;
+  bool verification_fresh = 5;
+  bool executable = 6;
+  string reason = 7;
+  PolicyNoteItem policy_note = 8;
+  FallbackPathItem fallback_path = 9;
+  google.protobuf.Timestamp checked_at = 10;
+  google.protobuf.Timestamp valid_until = 11;
+}
+
+// Request for GetMatrix.
+message GetMatrixRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string platform_filter = 2;
+}
+
+// Response for GetMatrix.
+message GetMatrixResponse {
+  creativanta.common.v1.UUID workspace_id = 1;
+  repeated CapabilityMatrixCell cells = 2;
+  google.protobuf.Timestamp generated_at = 3;
+}
+
+// Proactive business coaching recommendation (PRD §36B).
+// Never alters technical API capability state.
+message ProactiveCoachingCard {
+  string metric_key = 1;
+  string observed_value = 2;
+  string threshold_value = 3;
+  int64 numerator = 4;
+  int64 denominator = 5;
+  string window_label = 6;
+  string message = 7;
+  repeated string recommended_actions = 8;
+}
+
+// Composite platform health score card (RULE-M22-003).
+message PlatformHealthScoreCard {
+  creativanta.common.v1.UUID health_score_id = 1;
+  creativanta.common.v1.UUID connected_account_id = 2;
+  string platform = 3;
+  int32 overall_score = 4;
+  string status_band = 5;
+  int32 availability_score = 6;
+  int32 error_rate_score = 7;
+  int32 latency_score = 8;
+  int32 rate_limit_score = 9;
+  repeated string risk_flags = 10;
+  repeated ProactiveCoachingCard coaching_cards = 11;
+  google.protobuf.Timestamp captured_at = 12;
+}
+
+// Request for GetHealthScores.
+message GetHealthScoresRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+}
+
+// Response for GetHealthScores.
+message GetHealthScoresResponse {
+  creativanta.common.v1.UUID workspace_id = 1;
+  repeated PlatformHealthScoreCard scores = 2;
+}
+
+// Request for ListPolicyNotes.
+message ListPolicyNotesRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string platform_filter = 2;
+}
+
+// Response for ListPolicyNotes.
+message ListPolicyNotesResponse {
+  repeated PolicyNoteItem policy_notes = 1;
+}
+
+// Request for ListFallbackPaths.
+message ListFallbackPathsRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string platform_filter = 2;
+}
+
+// Response for ListFallbackPaths.
+message ListFallbackPathsResponse {
+  repeated FallbackPathItem fallback_paths = 1;
+}
+
+// Sanitized connected account summary (never contains encrypted OAuth tokens).
+message ConnectedAccountItem {
+  creativanta.common.v1.UUID connected_account_id = 1;
+  creativanta.common.v1.UUID workspace_id = 2;
+  string platform = 3;
+  string account_type = 4;
+  string external_account_id = 5;
+  string account_name = 6;
+  string status = 7;
+  int32 health_score = 8;
+  repeated string granted_scopes = 9;
+  google.protobuf.Timestamp token_expires_at = 10;
+  google.protobuf.Timestamp last_synced_at = 11;
+}
+
+// Request for ConnectorService/List.
+message ConnectorServiceListRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+}
+
+// Response for ConnectorService/List.
+message ConnectorServiceListResponse {
+  repeated ConnectedAccountItem accounts = 1;
+}
+
+// Request for ConnectorService/Check.
+message ConnectorServiceCheckRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.UUID connected_account_id = 2;
+  string platform = 3;
+  string action_key = 4;
+  string target_market = 5;
+  bool require_write = 6;
+}
+
+// Response for ConnectorService/Check.
+message ConnectorServiceCheckResponse {
+  CapabilityState state = 1;
+  bool executable = 2;
+  bool verification_fresh = 3;
+  string reason = 4;
+  PolicyNoteItem policy_note = 5;
+  FallbackPathItem fallback_path = 6;
+}
+
+// Request for ConnectorService/CheckHealth.
+message ConnectorServiceCheckHealthRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.UUID connected_account_id = 2;
+}
+
+// Response for ConnectorService/CheckHealth.
+message ConnectorServiceCheckHealthResponse {
+  PlatformHealthScoreCard health_score = 1;
+}
+
+// Request for ConnectorService/Disconnect.
+message ConnectorServiceDisconnectRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  creativanta.common.v1.UUID connected_account_id = 2;
+}
+
+// Response for ConnectorService/Disconnect.
+message ConnectorServiceDisconnectResponse {
+  creativanta.common.v1.UUID connected_account_id = 1;
+  string status = 2;
+  bool replayed = 3;
+  google.protobuf.Timestamp disconnected_at = 4;
+}

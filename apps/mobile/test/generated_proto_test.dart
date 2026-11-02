@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:creativanta_mobile/generated/creativanta/admin/v1/capability.pb.dart';
+import 'package:creativanta_mobile/generated/creativanta/admin/v1/internal_admin.pb.dart';
 import 'package:creativanta_mobile/generated/creativanta/common/v1/types.pb.dart';
 
 void main() {
@@ -36,6 +38,30 @@ void main() {
       expect(deserialized.idempotencyKey, 'dart-01');
       expect(deserialized.workspaceId.value, workspaceUuid);
       expect(deserialized, equals(ctx));
+    });
+
+    test('P0-07 CapabilityMatrixCell and ImpersonateResponse round-trip serialization', () {
+      final cell = CapabilityMatrixCell(
+        platform: 'tiktok',
+        capabilityKey: 'publish_post',
+        displayName: 'TikTok Video Publish',
+        state: CapabilityState.CAPABILITY_STATE_MANUAL,
+        verificationFresh: false,
+        executable: false,
+        reason: 'Unverified route cannot execute',
+      );
+      final cellDecoded = CapabilityMatrixCell.fromBuffer(cell.writeToBuffer());
+      expect(cellDecoded.platform, 'tiktok');
+      expect(cellDecoded.state, CapabilityState.CAPABILITY_STATE_MANUAL);
+      expect(cellDecoded.executable, isFalse);
+
+      final imp = ImpersonateResponse(
+        impersonationId: UUID(value: '00000000-0000-4000-8000-000000000099'),
+        mode: 'read_only',
+      );
+      final impDecoded = ImpersonateResponse.fromBuffer(imp.writeToBuffer());
+      expect(impDecoded.mode, 'read_only');
+      expect(impDecoded.impersonationId.value, '00000000-0000-4000-8000-000000000099');
     });
   });
 }

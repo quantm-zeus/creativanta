@@ -1367,3 +1367,350 @@ func (q *Queries) UpdateDiagnosticRecordStatus(ctx context.Context, workspaceID,
 	_ = json.Unmarshal(rawActions, &row.SuggestedActions)
 	return row, nil
 }
+
+// =============================================================================
+// P0-07: Capability Snapshots, Policy Notes, Fallback Paths & Health Scores
+// =============================================================================
+
+// CapabilitySnapshotRow models a row in capability_snapshots (§18.2).
+type CapabilitySnapshotRow struct {
+	SnapshotID           string
+	WorkspaceID          string
+	Platform             string
+	CapabilityKey        string
+	State                string
+	Reason               string
+	FallbackType         string
+	FallbackInstructions string
+	PolicyNote           string
+	CheckedAt            time.Time
+	ValidUntil           *time.Time
+	CreatedAt            time.Time
+}
+
+// InsertCapabilitySnapshotParams defines parameters for inserting a capability_snapshots row.
+type InsertCapabilitySnapshotParams struct {
+	SnapshotID           string
+	WorkspaceID          string
+	Platform             string
+	CapabilityKey        string
+	State                string
+	Reason               string
+	FallbackType         string
+	FallbackInstructions string
+	PolicyNote           string
+	CheckedAt            time.Time
+	ValidUntil           *time.Time
+}
+
+const insertCapabilitySnapshotSQL = `
+INSERT INTO capability_snapshots (
+  snapshot_id, workspace_id, platform, capability_key, state,
+  reason, fallback_type, fallback_instructions, policy_note,
+  checked_at, valid_until
+) VALUES (
+  $1::uuid, $2::uuid, $3, $4, $5::capability_state,
+  $6, $7, $8, $9,
+  $10, $11
+)
+RETURNING
+  snapshot_id::text, workspace_id::text, platform, capability_key, state::text,
+  COALESCE(reason, ''), COALESCE(fallback_type, ''), COALESCE(fallback_instructions, ''),
+  COALESCE(policy_note, ''), checked_at, valid_until, created_at
+`
+
+// InsertCapabilitySnapshot inserts a capability_snapshots row inside WithTx.
+func (q *Queries) InsertCapabilitySnapshot(ctx context.Context, arg InsertCapabilitySnapshotParams) (CapabilitySnapshotRow, error) {
+	if _, err := q.requireTenantTx(ctx, arg.WorkspaceID); err != nil {
+		return CapabilitySnapshotRow{}, err
+	}
+	if !IsValidNonZeroUUID(arg.SnapshotID) {
+		return CapabilitySnapshotRow{}, ErrInvalidTenantScope
+	}
+	checkedAt := arg.CheckedAt
+	if checkedAt.IsZero() {
+		checkedAt = time.Now().UTC()
+	}
+	var row CapabilitySnapshotRow
+	err := q.db.QueryRow(
+		ctx,
+		insertCapabilitySnapshotSQL,
+		arg.SnapshotID,
+		arg.WorkspaceID,
+		arg.Platform,
+		arg.CapabilityKey,
+		arg.State,
+		arg.Reason,
+		arg.FallbackType,
+		arg.FallbackInstructions,
+		arg.PolicyNote,
+		checkedAt,
+		arg.ValidUntil,
+	).Scan(
+		&row.SnapshotID,
+		&row.WorkspaceID,
+		&row.Platform,
+		&row.CapabilityKey,
+		&row.State,
+		&row.Reason,
+		&row.FallbackType,
+		&row.FallbackInstructions,
+		&row.PolicyNote,
+		&row.CheckedAt,
+		&row.ValidUntil,
+		&row.CreatedAt,
+	)
+	return row, err
+}
+
+// PolicyNoteRow models a row in policy_notes (§18.2B).
+type PolicyNoteRow struct {
+	PolicyNoteID  string
+	WorkspaceID   string
+	Platform      string
+	CapabilityKey string
+	Summary       string
+	Detail        string
+	SourceURL     string
+	EffectiveDate *time.Time
+	UpdatedAt     time.Time
+	CreatedAt     time.Time
+}
+
+// InsertPolicyNoteParams defines parameters for inserting a policy_notes row.
+type InsertPolicyNoteParams struct {
+	PolicyNoteID  string
+	WorkspaceID   string
+	Platform      string
+	CapabilityKey string
+	Summary       string
+	Detail        string
+	SourceURL     string
+	EffectiveDate *time.Time
+}
+
+const insertPolicyNoteSQL = `
+INSERT INTO policy_notes (
+  policy_note_id, workspace_id, platform, capability_key,
+  summary, detail, source_url, effective_date
+) VALUES (
+  $1::uuid, $2::uuid, $3, $4,
+  $5, $6, $7, $8
+)
+RETURNING
+  policy_note_id::text, workspace_id::text, platform, capability_key,
+  summary, COALESCE(detail, ''), COALESCE(source_url, ''), effective_date,
+  updated_at, created_at
+`
+
+// InsertPolicyNote inserts a policy_notes row inside WithTx.
+func (q *Queries) InsertPolicyNote(ctx context.Context, arg InsertPolicyNoteParams) (PolicyNoteRow, error) {
+	if _, err := q.requireTenantTx(ctx, arg.WorkspaceID); err != nil {
+		return PolicyNoteRow{}, err
+	}
+	if !IsValidNonZeroUUID(arg.PolicyNoteID) {
+		return PolicyNoteRow{}, ErrInvalidTenantScope
+	}
+	var row PolicyNoteRow
+	err := q.db.QueryRow(
+		ctx,
+		insertPolicyNoteSQL,
+		arg.PolicyNoteID,
+		arg.WorkspaceID,
+		arg.Platform,
+		arg.CapabilityKey,
+		arg.Summary,
+		arg.Detail,
+		arg.SourceURL,
+		arg.EffectiveDate,
+	).Scan(
+		&row.PolicyNoteID,
+		&row.WorkspaceID,
+		&row.Platform,
+		&row.CapabilityKey,
+		&row.Summary,
+		&row.Detail,
+		&row.SourceURL,
+		&row.EffectiveDate,
+		&row.UpdatedAt,
+		&row.CreatedAt,
+	)
+	return row, err
+}
+
+// FallbackPathRow models a row in fallback_paths (§18.2C).
+type FallbackPathRow struct {
+	FallbackPathID      string
+	WorkspaceID         string
+	Platform            string
+	CapabilityKey       string
+	FallbackType        string
+	Instructions        string
+	EstimatedEffort     string
+	RelatedPolicyNoteID string
+	IsActive            bool
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+}
+
+// InsertFallbackPathParams defines parameters for inserting a fallback_paths row.
+type InsertFallbackPathParams struct {
+	FallbackPathID      string
+	WorkspaceID         string
+	Platform            string
+	CapabilityKey       string
+	FallbackType        string
+	Instructions        string
+	EstimatedEffort     string
+	RelatedPolicyNoteID string
+	IsActive            bool
+}
+
+const insertFallbackPathSQL = `
+INSERT INTO fallback_paths (
+  fallback_path_id, workspace_id, platform, capability_key,
+  fallback_type, instructions, estimated_effort, related_policy_note_id, is_active
+) VALUES (
+  $1::uuid, $2::uuid, $3, $4,
+  $5, $6, $7, NULLIF($8, '')::uuid, $9
+)
+RETURNING
+  fallback_path_id::text, workspace_id::text, platform, capability_key,
+  fallback_type, instructions, COALESCE(estimated_effort, ''),
+  COALESCE(related_policy_note_id::text, ''), is_active, created_at, updated_at
+`
+
+// InsertFallbackPath inserts a fallback_paths row inside WithTx.
+func (q *Queries) InsertFallbackPath(ctx context.Context, arg InsertFallbackPathParams) (FallbackPathRow, error) {
+	if _, err := q.requireTenantTx(ctx, arg.WorkspaceID); err != nil {
+		return FallbackPathRow{}, err
+	}
+	if !IsValidNonZeroUUID(arg.FallbackPathID) {
+		return FallbackPathRow{}, ErrInvalidTenantScope
+	}
+	var row FallbackPathRow
+	err := q.db.QueryRow(
+		ctx,
+		insertFallbackPathSQL,
+		arg.FallbackPathID,
+		arg.WorkspaceID,
+		arg.Platform,
+		arg.CapabilityKey,
+		arg.FallbackType,
+		arg.Instructions,
+		arg.EstimatedEffort,
+		arg.RelatedPolicyNoteID,
+		arg.IsActive,
+	).Scan(
+		&row.FallbackPathID,
+		&row.WorkspaceID,
+		&row.Platform,
+		&row.CapabilityKey,
+		&row.FallbackType,
+		&row.Instructions,
+		&row.EstimatedEffort,
+		&row.RelatedPolicyNoteID,
+		&row.IsActive,
+		&row.CreatedAt,
+		&row.UpdatedAt,
+	)
+	return row, err
+}
+
+// PlatformHealthScoreRow models a row in platform_health_scores (§22.15).
+type PlatformHealthScoreRow struct {
+	HealthScoreID      string
+	WorkspaceID        string
+	ConnectedAccountID string
+	Platform           string
+	OverallScore       int
+	Dimensions         json.RawMessage
+	RiskFlags          json.RawMessage
+	Recommendations    json.RawMessage
+	SnapshotDate       time.Time
+	CreatedAt          time.Time
+}
+
+// UpsertPlatformHealthScoreParams defines parameters for upserting a platform_health_scores row.
+type UpsertPlatformHealthScoreParams struct {
+	HealthScoreID      string
+	WorkspaceID        string
+	ConnectedAccountID string
+	Platform           string
+	OverallScore       int
+	Dimensions         json.RawMessage
+	RiskFlags          json.RawMessage
+	Recommendations    json.RawMessage
+	SnapshotDate       time.Time
+}
+
+const upsertPlatformHealthScoreSQL = `
+INSERT INTO platform_health_scores (
+  health_score_id, workspace_id, connected_account_id, platform,
+  overall_score, dimensions, risk_flags, recommendations, snapshot_date
+) VALUES (
+  $1::uuid, $2::uuid, $3::uuid, $4,
+  $5, $6::jsonb, $7::jsonb, $8::jsonb, $9::date
+)
+ON CONFLICT (connected_account_id, snapshot_date) DO UPDATE SET
+  overall_score = EXCLUDED.overall_score,
+  dimensions = EXCLUDED.dimensions,
+  risk_flags = EXCLUDED.risk_flags,
+  recommendations = EXCLUDED.recommendations
+RETURNING
+  health_score_id::text, workspace_id::text, connected_account_id::text, platform,
+  overall_score, COALESCE(dimensions, '{}'::jsonb), COALESCE(risk_flags, '[]'::jsonb),
+  COALESCE(recommendations, '[]'::jsonb), snapshot_date, created_at
+`
+
+// UpsertPlatformHealthScore inserts or updates a daily platform_health_scores row inside WithTx.
+func (q *Queries) UpsertPlatformHealthScore(ctx context.Context, arg UpsertPlatformHealthScoreParams) (PlatformHealthScoreRow, error) {
+	if _, err := q.requireTenantTx(ctx, arg.WorkspaceID); err != nil {
+		return PlatformHealthScoreRow{}, err
+	}
+	if !IsValidNonZeroUUID(arg.HealthScoreID) || !IsValidNonZeroUUID(arg.ConnectedAccountID) {
+		return PlatformHealthScoreRow{}, ErrInvalidTenantScope
+	}
+	dims := arg.Dimensions
+	if len(dims) == 0 {
+		dims = []byte(`{}`)
+	}
+	flags := arg.RiskFlags
+	if len(flags) == 0 {
+		flags = []byte(`[]`)
+	}
+	recs := arg.Recommendations
+	if len(recs) == 0 {
+		recs = []byte(`[]`)
+	}
+	snapDate := arg.SnapshotDate
+	if snapDate.IsZero() {
+		snapDate = time.Now().UTC()
+	}
+	var row PlatformHealthScoreRow
+	err := q.db.QueryRow(
+		ctx,
+		upsertPlatformHealthScoreSQL,
+		arg.HealthScoreID,
+		arg.WorkspaceID,
+		arg.ConnectedAccountID,
+		arg.Platform,
+		arg.OverallScore,
+		dims,
+		flags,
+		recs,
+		snapDate.Format("2006-01-02"),
+	).Scan(
+		&row.HealthScoreID,
+		&row.WorkspaceID,
+		&row.ConnectedAccountID,
+		&row.Platform,
+		&row.OverallScore,
+		&row.Dimensions,
+		&row.RiskFlags,
+		&row.Recommendations,
+		&row.SnapshotDate,
+		&row.CreatedAt,
+	)
+	return row, err
+}
