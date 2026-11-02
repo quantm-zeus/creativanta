@@ -628,6 +628,32 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 		}
 	case 4:
 		requiredFragments = []requiredFragment{
+			{"ai_provider_rates table", "CREATE TABLE ai_provider_rates"},
+			{"ai_credit_quotes table", "CREATE TABLE ai_credit_quotes"},
+			{"ai_credit_lots table", "CREATE TABLE ai_credit_lots"},
+			{"ai_credit_reservations table", "CREATE TABLE ai_credit_reservations"},
+			{"ai_credit_reservation_allocations table", "CREATE TABLE ai_credit_reservation_allocations"},
+			{"invoices table", "CREATE TABLE invoices"},
+			{"payment_methods table", "CREATE TABLE payment_methods"},
+			{"composite tenant FK on ai_credit_reservations -> ai_credit_quotes", "fk_ai_credit_reservations_quote_id_tenant"},
+			{"composite tenant FK on ai_credit_reservation_allocations -> ai_credit_reservations", "fk_ai_credit_reservation_allocations_reservation_id_tenant"},
+			{"composite tenant FK on ai_credit_reservation_allocations -> ai_credit_lots", "fk_ai_credit_reservation_allocations_lot_id_tenant"},
+			{"composite tenant FK on invoices -> subscriptions", "fk_invoices_subscription_id_tenant"},
+			{"composite tenant FK on ai_credit_transactions -> ai_credit_reservations", "fk_act_reservation_tenant"},
+			{"composite tenant FK on ai_credit_transactions -> ai_credit_lots", "fk_act_lot_tenant"},
+			{"ai_credit_transactions append-only immutability function", "CREATE OR REPLACE FUNCTION protect_credit_transaction_immutability()"},
+			{"ai_credit_transactions append-only immutability trigger", "CREATE TRIGGER trg_ai_credit_transactions_immutable"},
+		}
+		requiredRLSTables = []string{
+			"ai_credit_quotes",
+			"ai_credit_lots",
+			"ai_credit_reservations",
+			"ai_credit_reservation_allocations",
+			"invoices",
+			"payment_methods",
+		}
+	case 5:
+		requiredFragments = []requiredFragment{
 			{"notifications table", "CREATE TABLE IF NOT EXISTS notifications"},
 			{"kb_categories table", "CREATE TABLE IF NOT EXISTS kb_categories"},
 			{"kb_articles table", "CREATE TABLE IF NOT EXISTS kb_articles"},

@@ -50,10 +50,10 @@
     "protos/creativanta/admin/v1/notification.proto": "a1e5cc2d2a79e26ca9555e9de0ac4cb9152b8088a06abff4d653e6e84b4d372c",
     "protos/creativanta/admin/v1/help.proto": "3972fd37179a732c0d145e5e00b95aa6092c4906747da3a5b0c51fd3f87a001a",
     "protos/creativanta/admin/v1/dashboard.proto": "4cafc1ec83fec1656e248a11fd5eb2316ed82c1476de449f952e9864b4299de6",
-    "infra/migrations/00004_p0_08_notifications_and_help_center.sql": "ab5ad90acda31e228fe9b86fdd9b7cac8badb891580b30668959cc371e29eb2f"
+    "infra/migrations/00005_p0_08_notifications_and_help_center.sql": "ab5ad90acda31e228fe9b86fdd9b7cac8badb891580b30668959cc371e29eb2f"
   },
   "scope_items": [
-    "Canonical Goose SQL migration (infra/migrations/00004_p0_08_notifications_and_help_center.sql) creating notifications (§26.13 tenant-scoped with ENABLE + FORCE ROW LEVEL SECURITY), global kb_categories, kb_articles, kb_article_versions, and article_ratings with explicit app_user and admin_user grants, down drops, and zero-float decimal adherence",
+    "Canonical Goose SQL migration (infra/migrations/00005_p0_08_notifications_and_help_center.sql) creating notifications (§26.13 tenant-scoped with ENABLE + FORCE ROW LEVEL SECURITY), global kb_categories, kb_articles, kb_article_versions, and article_ratings with explicit app_user and admin_user grants, down drops, and zero-float decimal adherence",
     "Compiled NotificationService, HelpService, and DashboardService Protobuf contracts (protos/creativanta/admin/v1/notification.proto, protos/creativanta/admin/v1/help.proto, protos/creativanta/admin/v1/dashboard.proto) and 4-target generated artifacts (Go, Go Connect, TypeScript ES, Dart/Flutter gRPC)",
     "Go API Backend Services: Notification service (apps/api/internal/notification) with tenant isolation, unread counter, priority sort, mark-all-read and preferences; Help service (apps/api/internal/help) with contextual module filtering, 90-day stale article flags, and internal admin isolation; Home Decision Engine (apps/api/internal/home) with 6 canonical operator mode identity retention, transparent unbuilt action unavailability, strict demo fixture isolation from customer totals, 'Why this number' KPI explanations, and 5-step closed-loop onboarding sequence",
     "Web Application Shell (apps/web): 6-mode switcher, Notification Drawer with unread badges, contextual Help Drawer with module search, 'Why this number' drilldown modal, 4 UI state switchers (normal, loading, empty, error/repair), strict customer vs demo data isolation, WCAG 2.1 AA a11y labels, and vi-VN i18n base",
@@ -66,7 +66,7 @@
     "No demo data in customer totals: verified customer metrics (0 VND) are strictly partitioned from preview/demo fixtures with DEMO badge and non-aggregation invariants (TestNoDemoDataInCustomerTotals, WhyThisNumberModal, shell_notifications_help_test.dart)",
     "Scoped notification system: tenant-scoped notifications, mark-read, mark-all-read, dismiss-from-active, and category preferences verified with thread-race detector (TestScopedAccessAndTenantIsolation, notification.test.ts, NotificationDrawer)",
     "Contextual help system: search by current module filter, 90-day stale article flag, helpful/unhelpful rating updates, and internal admin role gate verified (TestSearchContextualModuleFilter, TestStaleArticleDetection, HelpDrawer)",
-    "Up and Down SQL statements in 00004_p0_08_notifications_and_help_center.sql validated by pglast PostgreSQL AST parser and static contract validator"
+    "Up and Down SQL statements in 00005_p0_08_notifications_and_help_center.sql validated by pglast PostgreSQL AST parser and static contract validator"
   ],
   "rpc_contracts": [
     "creativanta.admin.v1.NotificationService/ListNotifications",
@@ -85,7 +85,7 @@
     "creativanta.admin.v1.DashboardService/GetWhyThisNumberBreakdown"
   ],
   "migration_files": [
-    "infra/migrations/00004_p0_08_notifications_and_help_center.sql"
+    "infra/migrations/00005_p0_08_notifications_and_help_center.sql"
   ],
   "permission_keys": [
     "admin:user:read",
