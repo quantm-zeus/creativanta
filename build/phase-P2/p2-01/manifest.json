@@ -35,7 +35,7 @@
     "infra/migrations/00010_p2_01_intelligence_trends_watchlists_and_search.sql": "a0b59d61b7ce23dea23ff6c07e8567098d1eafca2fb92c890927e19f79bce584",
     "protos/creativanta/intelligence/v1/trend.proto": "c2ad05786c4e96e0a78a1737ee9b4721e22914e5f7fc9144956862501e1f0fa0",
     "apps/api/internal/migrate/migrator.go": "3628b72767331a3d1639937f316ec48ca6ad8f857deb2f5956150664ef3072a6",
-    "apps/api/internal/migrate/migrator_test.go": "d62d64192df5a8aba6fa58e4d7917a0d31f671f43f20086a928541ab099b9289",
+    "apps/api/internal/migrate/migrator_test.go": "eeee1e91ae0015fcbe34e657a6ec308e9f7ea9fbec08f46f425ebd1d32d5cc5b",
     "apps/api/internal/rbac/phase_exposure_test.go": "94cc4f2689a1756bdec78a8ef60fafee1fffe38aff3acc4c6efcd378e0439093",
     "apps/api/internal/trend/service.go": "cebdef55a9b9e8c6f2191cdef72814f77d515110d8de746a1e996ae498335dec",
     "apps/api/internal/trend/service_test.go": "5dc455a72fb4a7ae0e6fcbbfb90ed3b1d45a5723bfab5c3020ed1f7f60668bfb",

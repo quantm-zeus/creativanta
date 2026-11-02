@@ -129,6 +129,17 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if err := ValidateCanonicalMigrationContract(m9); err != nil {
 		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v9: %v", err)
 	}
+
+	m10 := migrations[9]
+	if m10.Version != 10 {
+		t.Fatalf("expected version 10, got %d", m10.Version)
+	}
+	if len(m10.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v10, got %q", m10.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m10); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v10: %v", err)
+	}
 }
 
 func TestValidateCanonicalMigrationContractRejectsViolations(t *testing.T) {
@@ -432,13 +443,16 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	_, _ = adminPool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
 	dir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 
-	// Apply migration Up, then Down nine times, then Up again to prove full Goose SQL repeatability.
+	// Apply migration Up, then Down ten times, then Up again to prove full Goose SQL repeatability.
 	applied, err := Up(ctx, adminPool, dir)
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 9 {
-		t.Fatalf("expected 9 applied migrations, got %v", applied)
+	if len(applied) != 10 {
+		t.Fatalf("expected 10 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v10 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v9 failed: %v", err)
@@ -527,6 +541,12 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		INSERT INTO media_kits (media_kit_id, workspace_id, sections, directory_opt_in, directory_status, directory_profile) VALUES
 		  ('99999999-9999-4999-8999-999999999991', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '[{"private":"draft"}]'::jsonb, true, 'published', '{"display_name":"Creator A","handle":"creator_a","categories":["beauty"],"platforms":["tiktok"],"accepts_inquiries":true}'::jsonb),
 		  ('99999999-9999-4999-8999-999999999992', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '[{"private":"secret"}]'::jsonb, false, 'hidden', '{"display_name":"Hidden Creator","handle":"hidden_a"}'::jsonb);
+
+		INSERT INTO watchlists (watchlist_id, workspace_id, name, type) VALUES
+		  ('aaaaaaaa-1111-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Watchlist A', 'trend');
+
+		INSERT INTO watchlist_alert_logs (alert_log_id, workspace_id, watchlist_id, trend_id, alert_fingerprint, cooldown_until) VALUES
+		  ('aaaaaaaa-2222-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-1111-4aaa-8aaa-aaaaaaaaaaaa', '33333333-3333-4333-8333-333333333333', 'fp_a', NOW() + INTERVAL '1 hour');
 	`
 	if _, err := adminPool.Exec(ctx, seedSQL); err != nil {
 		t.Fatalf("seedSQL failed: %v", err)
@@ -562,6 +582,22 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("direct-junction read attack succeeded: Tenant B saw %d rows from Tenant A trend_signals", visibleJunction)
 	}
 
+	var visibleWatchlists int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM watchlists WHERE workspace_id = $1::uuid`, tenantA).Scan(&visibleWatchlists); err != nil {
+		t.Fatal(err)
+	}
+	if visibleWatchlists != 0 {
+		t.Fatalf("watchlists RLS breach: Tenant B saw %d watchlists from Tenant A", visibleWatchlists)
+	}
+
+	var visibleAlertLogs int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM watchlist_alert_logs WHERE workspace_id = $1::uuid`, tenantA).Scan(&visibleAlertLogs); err != nil {
+		t.Fatal(err)
+	}
+	if visibleAlertLogs != 0 {
+		t.Fatalf("watchlist_alert_logs RLS breach: Tenant B saw %d alert logs from Tenant A", visibleAlertLogs)
+	}
+
 	// Test 2: Cross-tenant composite FK write attack on trend_signals and external_effects denied!
 	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_junction`); err != nil {
 		t.Fatal(err)
@@ -573,6 +609,17 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("expected composite tenant FK to reject cross-tenant trend_signals link")
 	}
 	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_junction`)
+
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_watchlist`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO watchlists (watchlist_id, workspace_id, name, type)
+		VALUES (gen_random_uuid(), $1::uuid, 'Cross Tenant Watchlist', 'trend')
+	`, tenantA); err == nil {
+		t.Fatalf("expected RLS WITH CHECK to reject Tenant B inserting watchlist with workspace_id=Tenant A")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_watchlist`)
 
 	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_effect_fk`); err != nil {
 		t.Fatal(err)
