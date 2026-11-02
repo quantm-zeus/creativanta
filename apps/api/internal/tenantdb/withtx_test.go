@@ -125,6 +125,20 @@ func TestExactDecimalMoneyRejectsFloatAndEnforcesNumeric18_6(t *testing.T) {
 	if _, _, err := FromProtoMoney(&commonv1.Money{Amount: "5", Currency: "vnd"}, false); !errors.Is(err, ErrInvalidCurrency) {
 		t.Fatalf("expected lowercase currency to be rejected")
 	}
+
+	// 6. Cost-based quote ceiling arithmetic (pricing_and_credits.md §3.0).
+	costCeiling := MustParseExactDecimal("0.600000")
+	floorUSD := MustParseExactDecimal("0.015000")
+	marginFloor := MustParseExactDecimal("0.5000")
+	quoted, err := ComputeQuotedCredits(costCeiling, floorUSD, marginFloor)
+	if err != nil || quoted.String() != "80" {
+		t.Fatalf("ComputeQuotedCredits(0.600000, 0.015000, 0.5000) = %s, err=%v, want 80", quoted.String(), err)
+	}
+	costCeilingSlightlyOver := MustParseExactDecimal("0.600001")
+	quotedOver, err := ComputeQuotedCredits(costCeilingSlightlyOver, floorUSD, marginFloor)
+	if err != nil || quotedOver.String() != "81" {
+		t.Fatalf("ComputeQuotedCredits(0.600001, 0.015000, 0.5000) = %s, err=%v, want 81", quotedOver.String(), err)
+	}
 }
 
 func TestQueriesFailClosedOutsideWithTx(t *testing.T) {
@@ -133,6 +147,15 @@ func TestQueriesFailClosedOutsideWithTx(t *testing.T) {
 
 	if _, err := rawQueries.GetWorkspace(ctx, testTenantA); !errors.Is(err, ErrUntrustedTransaction) {
 		t.Fatalf("GetWorkspace outside WithTx must fail with ErrUntrustedTransaction, got %v", err)
+	}
+	if _, err := rawQueries.GetWorkspaceForUpdate(ctx, testTenantA); !errors.Is(err, ErrUntrustedTransaction) {
+		t.Fatalf("GetWorkspaceForUpdate outside WithTx must fail with ErrUntrustedTransaction, got %v", err)
+	}
+	if _, err := rawQueries.ListCreditLotsForUpdate(ctx, testTenantA); !errors.Is(err, ErrUntrustedTransaction) {
+		t.Fatalf("ListCreditLotsForUpdate outside WithTx must fail with ErrUntrustedTransaction, got %v", err)
+	}
+	if _, err := rawQueries.ListCreditTransactions(ctx, testTenantA); !errors.Is(err, ErrUntrustedTransaction) {
+		t.Fatalf("ListCreditTransactions outside WithTx must fail with ErrUntrustedTransaction, got %v", err)
 	}
 	if _, err := rawQueries.ListWorkspaceMembers(ctx, testTenantA); !errors.Is(err, ErrUntrustedTransaction) {
 		t.Fatalf("ListWorkspaceMembers outside WithTx must fail with ErrUntrustedTransaction, got %v", err)

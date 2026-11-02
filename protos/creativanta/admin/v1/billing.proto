@@ -1,0 +1,571 @@
+syntax = "proto3";
+
+package creativanta.admin.v1;
+
+import "creativanta/common/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1;adminv1";
+
+// Canonical credit lot source types (§26.3).
+enum CreditSourceType {
+  CREDIT_SOURCE_TYPE_UNSPECIFIED = 0;
+  CREDIT_SOURCE_TYPE_SUBSCRIPTION = 1;
+  CREDIT_SOURCE_TYPE_PURCHASED = 2;
+  CREDIT_SOURCE_TYPE_PROMOTIONAL = 3;
+  CREDIT_SOURCE_TYPE_OVERAGE = 4;
+}
+
+// Canonical credit reservation states (§26.4).
+enum CreditReservationStatus {
+  CREDIT_RESERVATION_STATUS_UNSPECIFIED = 0;
+  CREDIT_RESERVATION_STATUS_HELD = 1;
+  CREDIT_RESERVATION_STATUS_IN_FLIGHT = 2;
+  CREDIT_RESERVATION_STATUS_RECONCILING = 3;
+  CREDIT_RESERVATION_STATUS_COMMITTED = 4;
+  CREDIT_RESERVATION_STATUS_RELEASED = 5;
+  CREDIT_RESERVATION_STATUS_EXPIRED = 6;
+}
+
+// Canonical subscription lifecycle statuses (§19.1).
+enum SubscriptionStatus {
+  SUBSCRIPTION_STATUS_UNSPECIFIED = 0;
+  SUBSCRIPTION_STATUS_ACTIVE = 1;
+  SUBSCRIPTION_STATUS_PAST_DUE = 2;
+  SUBSCRIPTION_STATUS_CANCELED = 3;
+  SUBSCRIPTION_STATUS_TRIALING = 4;
+  SUBSCRIPTION_STATUS_INCOMPLETE = 5;
+  SUBSCRIPTION_STATUS_PAUSED = 6;
+}
+
+// Canonical invoice statuses (§19.1B).
+enum InvoiceStatus {
+  INVOICE_STATUS_UNSPECIFIED = 0;
+  INVOICE_STATUS_DRAFT = 1;
+  INVOICE_STATUS_OPEN = 2;
+  INVOICE_STATUS_PAID = 3;
+  INVOICE_STATUS_VOID = 4;
+  INVOICE_STATUS_UNCOLLECTIBLE = 5;
+}
+
+// Versioned cost-based quote projection (§26.2 & api_behavior_contracts.md §2).
+// All decimal credit and USD amounts use exact base-10 string representations (never float).
+message CreditQuote {
+  creativanta.common.v1.UUID quote_id = 1;
+  string operation_type = 2;
+  string rate_version = 3;
+  string request_hash = 4;
+  string cost_ceiling_usd = 5;
+  string usd_per_credit_floor = 6;
+  string gross_margin_floor = 7;
+  string quoted_credits = 8;
+  google.protobuf.Timestamp expires_at = 9;
+  string provider_plan_json = 10;
+}
+
+// Durable credit lot projection (§26.3).
+message CreditLotSummary {
+  creativanta.common.v1.UUID lot_id = 1;
+  CreditSourceType source_type = 2;
+  string granted_credits = 3;
+  string remaining_credits = 4;
+  string reserved_credits = 5;
+  string available_credits = 6;
+  google.protobuf.Timestamp expires_at = 7;
+  string external_grant_key = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+// Canonical CreditBalance projection (api_behavior_contracts.md §2).
+message CreditBalance {
+  string total_remaining = 1;
+  string reserved = 2;
+  string available = 3;
+  string subscription_remaining = 4;
+  string purchased_remaining = 5;
+  string promotional_remaining = 6;
+  string overage_remaining = 7;
+  google.protobuf.Timestamp next_allocation_at = 8;
+  string subscription_tier = 9;
+  repeated CreditLotSummary active_lots = 10;
+}
+
+// Append-only AI credit transaction projection (§13.2).
+message CreditTransactionEntry {
+  creativanta.common.v1.UUID transaction_id = 1;
+  creativanta.common.v1.UUID workspace_id = 2;
+  creativanta.common.v1.UUID user_id = 3;
+  string operation_type = 4;
+  string credits_delta = 5;
+  string balance_after = 6;
+  string source = 7;
+  creativanta.common.v1.UUID reference_id = 8;
+  creativanta.common.v1.UUID reservation_id = 9;
+  creativanta.common.v1.UUID lot_id = 10;
+  creativanta.common.v1.UUID quote_id = 11;
+  creativanta.common.v1.UUID reference_transaction_id = 12;
+  string provider_cost_usd = 13;
+  string rate_version = 14;
+  string idempotency_key = 15;
+  string description = 16;
+  google.protobuf.Timestamp created_at = 17;
+}
+
+// Canonical subscription tier entry from the versioned pricebook (pricing_and_credits.md §1.1).
+message PlanCatalogEntry {
+  string tier_code = 1;
+  string display_name = 2;
+  creativanta.common.v1.Money monthly_price_usd = 3;
+  creativanta.common.v1.Money annual_price_usd = 4;
+  creativanta.common.v1.Money monthly_price_vnd = 5;
+  creativanta.common.v1.Money annual_price_vnd = 6;
+  string monthly_credits = 7;
+  string rollover_fraction = 8;
+  int32 max_seats = 9;
+  int32 max_channels = 10;
+  int32 max_storage_gb = 11;
+  bool overage_eligible = 12;
+}
+
+// Canonical credit top-up pack entry (pricing_and_credits.md §5.7).
+message CreditPackEntry {
+  string pack_code = 1;
+  string display_name = 2;
+  string credits = 3;
+  creativanta.common.v1.Money price_usd = 4;
+  creativanta.common.v1.Money price_vnd = 5;
+  bool never_expires = 6;
+}
+
+// Canonical module add-on entry (pricing_and_credits.md §4).
+message AddonCatalogEntry {
+  string addon_code = 1;
+  string display_name = 2;
+  creativanta.common.v1.Money monthly_price_usd = 3;
+  creativanta.common.v1.Money monthly_price_vnd = 4;
+  repeated string eligible_tiers = 5;
+}
+
+// Subscription summary projection (§19.1).
+message SubscriptionSummary {
+  creativanta.common.v1.UUID subscription_id = 1;
+  creativanta.common.v1.UUID workspace_id = 2;
+  string plan = 3;
+  string billing_interval = 4;
+  SubscriptionStatus status = 5;
+  creativanta.common.v1.Money amount = 6;
+  google.protobuf.Timestamp current_period_start = 7;
+  google.protobuf.Timestamp current_period_end = 8;
+  bool cancel_at_period_end = 9;
+  google.protobuf.Timestamp canceled_at = 10;
+  repeated string addons = 11;
+}
+
+// Payment method summary projection (§19.1C).
+message PaymentMethodSummary {
+  creativanta.common.v1.UUID payment_method_id = 1;
+  string stripe_payment_method_id = 2;
+  string type = 3;
+  string card_brand = 4;
+  string card_last4 = 5;
+  int32 card_exp_month = 6;
+  int32 card_exp_year = 7;
+  bool is_default = 8;
+}
+
+// Invoice summary projection (§19.1B).
+message InvoiceSummary {
+  creativanta.common.v1.UUID invoice_id = 1;
+  string invoice_number = 2;
+  InvoiceStatus status = 3;
+  creativanta.common.v1.Money subtotal = 4;
+  creativanta.common.v1.Money discount_amount = 5;
+  creativanta.common.v1.Money tax_amount = 6;
+  creativanta.common.v1.Money total = 7;
+  creativanta.common.v1.Money amount_paid = 8;
+  creativanta.common.v1.Money amount_due = 9;
+  string invoice_pdf_url = 10;
+  string hosted_invoice_url = 11;
+  google.protobuf.Timestamp period_start = 12;
+  google.protobuf.Timestamp period_end = 13;
+  google.protobuf.Timestamp paid_at = 14;
+  google.protobuf.Timestamp created_at = 15;
+}
+
+// Auto-refill configuration for workspace credit top-ups (W120).
+message AutoRefillConfig {
+  bool enabled = 1;
+  string threshold_credits = 2;
+  string pack_code = 3;
+}
+
+// Usage breakdown entry by operation type (W121).
+message OperationUsageBreakdown {
+  string operation_type = 1;
+  string credits_used = 2;
+  int64 operation_count = 3;
+}
+
+// ============================================================================
+// AdminBillingService Requests & Responses (§2.8.6)
+// ============================================================================
+
+message GetBillingSummaryRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+}
+
+message GetBillingSummaryResponse {
+  SubscriptionSummary subscription = 1;
+  CreditBalance credit_balance = 2;
+  PaymentMethodSummary default_payment_method = 3;
+  repeated InvoiceSummary recent_invoices = 4;
+  string pricebook_version = 5;
+}
+
+message GetCreditBalanceRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+}
+
+message GetCreditBalanceResponse {
+  CreditBalance balance = 1;
+}
+
+message GetCreditLedgerRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+  string operation_type_filter = 3;
+  string source_filter = 4;
+}
+
+message GetCreditLedgerResponse {
+  repeated CreditTransactionEntry entries = 1;
+  creativanta.common.v1.PaginatedResponse page_info = 2;
+}
+
+message PurchaseCreditsRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string pack_code = 2;
+  string currency = 3;
+  string success_url = 4;
+  string cancel_url = 5;
+}
+
+message PurchaseCreditsResponse {
+  string checkout_session_id = 1;
+  string checkout_url = 2;
+  string status = 3;
+  CreditPackEntry pack = 4;
+}
+
+message ChangePlanRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string target_plan = 2;
+  string billing_interval = 3;
+  string currency = 4;
+  repeated string addons = 5;
+}
+
+message ChangePlanResponse {
+  SubscriptionSummary subscription = 1;
+  string effective_mode = 2;
+  string checkout_session_id = 3;
+  string checkout_url = 4;
+}
+
+message CancelSubscriptionRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string cancellation_reason = 2;
+  bool pause_instead = 3;
+  int32 pause_months = 4;
+}
+
+message CancelSubscriptionResponse {
+  SubscriptionSummary subscription = 1;
+}
+
+message UpdatePaymentMethodRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string stripe_payment_method_id = 2;
+  bool set_default = 3;
+  bool remove = 4;
+}
+
+message UpdatePaymentMethodResponse {
+  PaymentMethodSummary payment_method = 1;
+  repeated PaymentMethodSummary payment_methods = 2;
+}
+
+message GetPaymentMethodRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+}
+
+message GetPaymentMethodResponse {
+  PaymentMethodSummary default_payment_method = 1;
+  repeated PaymentMethodSummary payment_methods = 2;
+}
+
+message EstimateCostRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string operation_type = 2;
+  string provider = 3;
+  string model_id = 4;
+  string fallback_provider = 5;
+  string fallback_model_id = 6;
+  int32 max_provider_attempts = 7;
+  map<string, string> measured_units = 8;
+}
+
+message EstimateCostResponse {
+  CreditQuote quote = 1;
+  CreditBalance current_balance = 2;
+  bool sufficient_credits = 3;
+}
+
+// ============================================================================
+// CreditService Requests & Responses (§14.10)
+// ============================================================================
+
+message GetBalanceRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+}
+
+message GetBalanceResponse {
+  CreditBalance balance = 1;
+}
+
+message GetUsageStatsRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+}
+
+message GetUsageStatsResponse {
+  string credits_used_this_period = 1;
+  string credits_remaining = 2;
+  repeated OperationUsageBreakdown breakdown = 3;
+}
+
+message GetMonthlyUsageRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string year_month = 2;
+}
+
+message GetMonthlyUsageResponse {
+  string year_month = 1;
+  string total_credits_used = 2;
+  repeated OperationUsageBreakdown breakdown = 3;
+}
+
+message ListTransactionsRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+message ListTransactionsResponse {
+  repeated CreditTransactionEntry transactions = 1;
+  creativanta.common.v1.PaginatedResponse page_info = 2;
+}
+
+message ListRecentUsageRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  int32 limit = 2;
+}
+
+message ListRecentUsageResponse {
+  repeated CreditTransactionEntry usage_entries = 1;
+}
+
+message ListPackagesRequest {
+  string currency = 1;
+}
+
+message ListPackagesResponse {
+  repeated CreditPackEntry packages = 1;
+  string pricebook_version = 2;
+}
+
+message PurchaseRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string pack_code = 2;
+  string currency = 3;
+  string success_url = 4;
+  string cancel_url = 5;
+}
+
+message PurchaseResponse {
+  string checkout_session_id = 1;
+  string checkout_url = 2;
+  string status = 3;
+  CreditPackEntry pack = 4;
+}
+
+message GetAutoRefillConfigRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+}
+
+message GetAutoRefillConfigResponse {
+  AutoRefillConfig config = 1;
+}
+
+message UpdateAutoRefillRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  AutoRefillConfig config = 2;
+}
+
+message UpdateAutoRefillResponse {
+  AutoRefillConfig config = 1;
+}
+
+// ============================================================================
+// BillingService Requests & Responses (§14.11)
+// ============================================================================
+
+message GetCurrentPlanRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+}
+
+message GetCurrentPlanResponse {
+  PlanCatalogEntry current_plan = 1;
+  SubscriptionSummary subscription = 2;
+}
+
+message ListPlansRequest {
+  string currency = 1;
+}
+
+message ListPlansResponse {
+  repeated PlanCatalogEntry plans = 1;
+  repeated AddonCatalogEntry addons = 2;
+  string pricebook_version = 3;
+}
+
+message GetSubscriptionRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+}
+
+message GetSubscriptionResponse {
+  SubscriptionSummary subscription = 1;
+}
+
+message GetPaymentMethodsRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+}
+
+message GetPaymentMethodsResponse {
+  repeated PaymentMethodSummary payment_methods = 1;
+}
+
+message CancelPlanRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string cancellation_reason = 2;
+  bool pause_instead = 3;
+  int32 pause_months = 4;
+}
+
+message CancelPlanResponse {
+  SubscriptionSummary subscription = 1;
+}
+
+message ListInvoicesRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+message ListInvoicesResponse {
+  repeated InvoiceSummary invoices = 1;
+  creativanta.common.v1.PaginatedResponse page_info = 2;
+}
+
+message GetInvoiceUrlRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.UUID invoice_id = 2;
+}
+
+message GetInvoiceUrlResponse {
+  string invoice_pdf_url = 1;
+  string hosted_invoice_url = 2;
+}
+
+message GetCheckoutStatusRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string checkout_session_id = 2;
+}
+
+message GetCheckoutStatusResponse {
+  string checkout_session_id = 1;
+  string status = 2;
+  bool settled = 3;
+  CreditBalance balance = 4;
+}
+
+message ListCreditPackagesRequest {
+  string currency = 1;
+}
+
+message ListCreditPackagesResponse {
+  repeated CreditPackEntry packages = 1;
+  string pricebook_version = 2;
+}
+
+message ListCreditPurchasesRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+message ListCreditPurchasesResponse {
+  repeated CreditTransactionEntry purchases = 1;
+  creativanta.common.v1.PaginatedResponse page_info = 2;
+}
+
+message ApplyRetentionDiscountRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string reason_code = 2;
+}
+
+message ApplyRetentionDiscountResponse {
+  SubscriptionSummary subscription = 1;
+  string discount_percent = 2;
+  int32 duration_months = 3;
+}
+
+// ============================================================================
+// Services (§2.8.6 AdminBillingService, §14.10 CreditService, §14.11 BillingService)
+// Worker-only credit Reserve/Commit/Release operations are intentionally NOT
+// exposed on any public user RPC surface (api_behavior_contracts.md §4).
+// ============================================================================
+
+service AdminBillingService {
+  rpc GetBillingSummary(GetBillingSummaryRequest) returns (GetBillingSummaryResponse);
+  rpc GetCreditBalance(GetCreditBalanceRequest) returns (GetCreditBalanceResponse);
+  rpc GetCreditLedger(GetCreditLedgerRequest) returns (GetCreditLedgerResponse);
+  rpc PurchaseCredits(PurchaseCreditsRequest) returns (PurchaseCreditsResponse);
+  rpc ChangePlan(ChangePlanRequest) returns (ChangePlanResponse);
+  rpc CancelSubscription(CancelSubscriptionRequest) returns (CancelSubscriptionResponse);
+  rpc UpdatePaymentMethod(UpdatePaymentMethodRequest) returns (UpdatePaymentMethodResponse);
+  rpc GetPaymentMethod(GetPaymentMethodRequest) returns (GetPaymentMethodResponse);
+  rpc EstimateCost(EstimateCostRequest) returns (EstimateCostResponse);
+}
+
+service CreditService {
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
+  rpc GetUsageStats(GetUsageStatsRequest) returns (GetUsageStatsResponse);
+  rpc GetMonthlyUsage(GetMonthlyUsageRequest) returns (GetMonthlyUsageResponse);
+  rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse);
+  rpc ListRecentUsage(ListRecentUsageRequest) returns (ListRecentUsageResponse);
+  rpc ListPackages(ListPackagesRequest) returns (ListPackagesResponse);
+  rpc Purchase(PurchaseRequest) returns (PurchaseResponse);
+  rpc GetAutoRefillConfig(GetAutoRefillConfigRequest) returns (GetAutoRefillConfigResponse);
+  rpc UpdateAutoRefill(UpdateAutoRefillRequest) returns (UpdateAutoRefillResponse);
+}
+
+service BillingService {
+  rpc GetCurrentPlan(GetCurrentPlanRequest) returns (GetCurrentPlanResponse);
+  rpc ListPlans(ListPlansRequest) returns (ListPlansResponse);
+  rpc GetSubscription(GetSubscriptionRequest) returns (GetSubscriptionResponse);
+  rpc GetPaymentMethods(GetPaymentMethodsRequest) returns (GetPaymentMethodsResponse);
+  rpc CancelPlan(CancelPlanRequest) returns (CancelPlanResponse);
+  rpc ListInvoices(ListInvoicesRequest) returns (ListInvoicesResponse);
+  rpc GetInvoiceUrl(GetInvoiceUrlRequest) returns (GetInvoiceUrlResponse);
+  rpc GetCheckoutStatus(GetCheckoutStatusRequest) returns (GetCheckoutStatusResponse);
+  rpc ListCreditPackages(ListCreditPackagesRequest) returns (ListCreditPackagesResponse);
+  rpc ListCreditPurchases(ListCreditPurchasesRequest) returns (ListCreditPurchasesResponse);
+  rpc ApplyRetentionDiscount(ApplyRetentionDiscountRequest) returns (ApplyRetentionDiscountResponse);
+}

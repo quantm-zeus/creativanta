@@ -7,6 +7,7 @@
 package tenantdb
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -243,6 +244,102 @@ func (d ExactDecimal) IsNegative() bool {
 	return d.micros != nil && d.micros.Sign() < 0
 }
 
+// IsZero reports whether d == 0.
+func (d ExactDecimal) IsZero() bool {
+	return d.micros == nil || d.micros.Sign() == 0
+}
+
+// MustParseExactDecimal parses raw or panics if raw is not a valid canonical decimal string.
+func MustParseExactDecimal(raw string) ExactDecimal {
+	dec, err := ParseExactDecimal(raw)
+	if err != nil {
+		panic(err)
+	}
+	return dec
+}
+
+// MulFloor multiplies two non-negative ExactDecimals and truncates any sub-micro remainder toward zero.
+func (d ExactDecimal) MulFloor(other ExactDecimal) (ExactDecimal, error) {
+	a := big.NewInt(0)
+	if d.micros != nil {
+		a.Set(d.micros)
+	}
+	b := big.NewInt(0)
+	if other.micros != nil {
+		b.Set(other.micros)
+	}
+	prod := new(big.Int).Mul(a, b)
+	scaled := new(big.Int).Quo(prod, tenPow6)
+	return FromPgNumeric(pgtype.Numeric{Int: scaled, Exp: -MaxDecimalScale, Valid: true})
+}
+
+// CeilWhole rounds a positive ExactDecimal up to the smallest whole integer >= d.
+func (d ExactDecimal) CeilWhole() (ExactDecimal, error) {
+	a := big.NewInt(0)
+	if d.micros != nil {
+		a.Set(d.micros)
+	}
+	if a.Sign() <= 0 {
+		return ExactDecimal{micros: a}, nil
+	}
+	whole, rem := new(big.Int).QuoRem(a, tenPow6, new(big.Int))
+	if rem.Sign() > 0 {
+		whole.Add(whole, big.NewInt(1))
+	}
+	scaled := new(big.Int).Mul(whole, tenPow6)
+	return FromPgNumeric(pgtype.Numeric{Int: scaled, Exp: -MaxDecimalScale, Valid: true})
+}
+
+// ComputeQuotedCredits computes the canonical cost-based credit quote ceiling using
+// exact integer big.Int arithmetic (NEVER float):
+//
+//	quoted_credits = ceil(cost_ceiling_usd / (usd_per_credit_floor * (1 - gross_margin_floor)))
+//
+// Reference: docs/01_business/pricing_and_credits.md §3.0 & docs/04_contracts/credit_accounting_contract.md §2.
+func ComputeQuotedCredits(costCeilingUSD, usdPerCreditFloor, grossMarginFloor ExactDecimal) (ExactDecimal, error) {
+	costMicros := big.NewInt(0)
+	if costCeilingUSD.micros != nil {
+		costMicros.Set(costCeilingUSD.micros)
+	}
+	if costMicros.Sign() <= 0 {
+		return ExactDecimal{}, fmt.Errorf("%w: cost_ceiling_usd must be > 0", ErrInvalidDecimal)
+	}
+
+	floorMicros := big.NewInt(0)
+	if usdPerCreditFloor.micros != nil {
+		floorMicros.Set(usdPerCreditFloor.micros)
+	}
+	if floorMicros.Sign() <= 0 {
+		return ExactDecimal{}, fmt.Errorf("%w: usd_per_credit_floor must be > 0", ErrInvalidDecimal)
+	}
+
+	marginMicros := big.NewInt(0)
+	if grossMarginFloor.micros != nil {
+		marginMicros.Set(grossMarginFloor.micros)
+	}
+	if marginMicros.Sign() < 0 || marginMicros.Cmp(tenPow6) >= 0 {
+		return ExactDecimal{}, fmt.Errorf("%w: gross_margin_floor must be in [0, 1)", ErrInvalidDecimal)
+	}
+
+	// oneMinusMarginMicros = 1_000_000 - marginMicros
+	oneMinusMarginMicros := new(big.Int).Sub(tenPow6, marginMicros)
+	// denom (scale 10^12) = floorMicros * oneMinusMarginMicros
+	denom := new(big.Int).Mul(floorMicros, oneMinusMarginMicros)
+	// num (scale 10^12) = costMicros * 1_000_000
+	num := new(big.Int).Mul(costMicros, tenPow6)
+
+	// ceilWholeCredits = (num + denom - 1) / denom
+	numPlus := new(big.Int).Add(num, denom)
+	numPlus.Sub(numPlus, big.NewInt(1))
+	wholeCredits := new(big.Int).Quo(numPlus, denom)
+	if wholeCredits.Sign() <= 0 {
+		wholeCredits.SetInt64(1)
+	}
+
+	scaledCredits := new(big.Int).Mul(wholeCredits, tenPow6)
+	return FromPgNumeric(pgtype.Numeric{Int: scaledCredits, Exp: -MaxDecimalScale, Valid: true})
+}
+
 // ToProtoMoney converts ExactDecimal and an ISO 4217 currency into a validated commonv1.Money.
 func (d ExactDecimal) ToProtoMoney(currency string, allowNegative bool) (*commonv1.Money, error) {
 	if !isoCurrencyPattern.MatchString(currency) {
@@ -273,4 +370,28 @@ func FromProtoMoney(m *commonv1.Money, allowNegative bool) (ExactDecimal, string
 		return ExactDecimal{}, "", fmt.Errorf("%w: negative amount %s not permitted", ErrInvalidDecimal, m.GetAmount())
 	}
 	return dec, m.GetCurrency(), nil
+}
+
+// MarshalJSON serializes ExactDecimal as a canonical base-10 decimal string (never a JSON number/float).
+func (d ExactDecimal) MarshalJSON() ([]byte, error) {
+	return json.Marshal(d.String())
+}
+
+// UnmarshalJSON parses a canonical base-10 decimal string into ExactDecimal, rejecting JSON numbers/floats.
+func (d *ExactDecimal) UnmarshalJSON(data []byte) error {
+	trimmed := strings.TrimSpace(string(data))
+	if trimmed == "null" {
+		d.micros = big.NewInt(0)
+		return nil
+	}
+	var raw string
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("%w: JSON money/credit must be a quoted decimal string, got %s", ErrFloatForbidden, trimmed)
+	}
+	parsed, err := ParseExactDecimal(raw)
+	if err != nil {
+		return err
+	}
+	d.micros = parsed.micros
+	return nil
 }

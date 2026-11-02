@@ -48,7 +48,7 @@ trap 'rm -f "$log" "$log_p004"' EXIT
 (
  cd "$ROOT/apps/api"
  CREATIVANTA_TEST_DATABASE_URL="$CREATIVANTA_TEST_POSTGRES_DSN" \
-   GOTOOLCHAIN=local go test -p 1 -race -count=1 -v ./internal/migrate ./internal/tenantdb ./internal/rbac ./internal/workspace ./internal/outbox ./internal/diagnostics
+   GOTOOLCHAIN=local go test -p 1 -race -count=1 -v ./internal/migrate ./internal/tenantdb ./internal/rbac ./internal/workspace ./internal/outbox ./internal/diagnostics ./internal/billing
 ) | tee "$log_p004"
 grep -q -- '--- PASS: TestPostgresLiveMigrationAndAppUserRLS' "$log_p004" || {
  echo 'P0-04 FAIL: live PostgreSQL Goose migration and app_user RLS test was skipped' >&2
@@ -85,3 +85,21 @@ grep -q -- '--- PASS: TestRuleM23A04SanitizationAndRepairWizardReconcilesUnknown
  exit 1
 }
 echo 'P0-05_TESTS_PASS: Outbox lease recovery, consumer inbox deduplication, kill before/after commit and ACK, webhook dedup, unknown external effects guard, audit immutability, and M23 DiagnosticsService'
+
+grep -q -- '--- PASS: TestPostgresLiveCreditLotsQuotesAndBilling' "$log_p004" || {
+ echo 'P0-06 FAIL: live PostgreSQL credit lots, quotes and billing test was skipped' >&2
+ exit 1
+}
+grep -q -- '--- PASS: TestConcurrentHoldsCannotOverspend' "$log_p004" || {
+ echo 'P0-06 FAIL: concurrent holds overspend test was skipped' >&2
+ exit 1
+}
+grep -q -- '--- PASS: TestLateResultAndCycleBoundaryPreserveLots' "$log_p004" || {
+ echo 'P0-06 FAIL: late result and cycle boundary lot preservation test was skipped' >&2
+ exit 1
+}
+grep -q -- '--- PASS: TestPaidRetryCannotExceedConfirmedQuote' "$log_p004" || {
+ echo 'P0-06 FAIL: paid retry confirmed quote ceiling test was skipped' >&2
+ exit 1
+}
+echo 'P0-06_TESTS_PASS: Versioned pricebook, cost-based quotes, credit lots, concurrent holds, late-result quarantine, cycle boundary rollover/expiry, and billing sandbox'

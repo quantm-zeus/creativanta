@@ -1,0 +1,214 @@
+{
+  "task_id": "P0-06",
+  "phase": "P0",
+  "title": "Credit lots, quotes và billing foundations",
+  "status": "LOCAL_IMPLEMENTED",
+  "overall_state": "LOCAL_IMPLEMENTED",
+  "canonical_accept_state": "PENDING_CI_AND_EXTERNAL_GATES",
+  "updated_at": "2026-11-02T08:02:00Z",
+  "deliverables": [
+    "infra/migrations/00003_p0_06_credit_lots_quotes_and_billing.sql",
+    "protos/creativanta/admin/v1/billing.proto",
+    "apps/api/gen/creativanta/admin/v1/billing.pb.go",
+    "apps/api/gen/creativanta/admin/v1/adminv1connect/billing.connect.go",
+    "packages/shared-types/src/creativanta/admin/v1/billing_pb.ts",
+    "apps/mobile/lib/generated/creativanta/admin/v1/billing.pb.dart",
+    "apps/api/internal/tenantdb/money.go",
+    "apps/api/internal/tenantdb/queries_billing.sql.go",
+    "apps/api/internal/billing/pricebook.go",
+    "apps/api/internal/billing/ledger.go",
+    "apps/api/internal/billing/service.go",
+    "apps/api/internal/billing/billing_test.go",
+    "apps/api/internal/billing/billing_postgres_test.go",
+    "apps/web/src/lib/billing/index.ts",
+    "apps/web/src/lib/billing/billing.test.ts",
+    "apps/web/src/routes/settings/billing/+page.svelte",
+    "apps/web/src/routes/settings/credits/purchase/+page.svelte",
+    "apps/web/src/routes/settings/credits/usage/+page.svelte",
+    "apps/mobile/lib/billing/billing_models.dart",
+    "apps/mobile/lib/ui/billing/billing_screen.dart",
+    "apps/mobile/test/billing_test.dart"
+  ],
+  "acceptance_targets": [
+    {
+      "target": "Concurrent holds cannot overspend",
+      "state": "LOCAL_IMPLEMENTED",
+      "verification": [
+        "TestConcurrentHoldsCannotOverspend in apps/api/internal/billing/billing_test.go (two simultaneous 8-credit holds against 10 available credits under go test -race -> exactly 1 succeeds and 1 fails with BILLING_LIMIT_001; 6th active hold fails with BILLING_LIMIT_002)",
+        "TestPostgresLiveCreditLotsQuotesAndBilling in apps/api/internal/billing/billing_postgres_test.go (concurrent PostgreSQL SELECT ... FOR UPDATE holds in tenantdb.WithTx)",
+        "apps/web/src/lib/billing/billing.test.ts & apps/mobile/test/billing_test.dart"
+      ]
+    },
+    {
+      "target": "Late result and cycle boundary preserve lots",
+      "state": "LOCAL_IMPLEMENTED",
+      "verification": [
+        "TestLateResultAndCycleBoundaryPreserveLots in apps/api/internal/billing/billing_test.go (sweeper expires only held reservations past 30m TTL, never in_flight/reconciling; late provider result after released/expired quarantines output with zero customer debit; cycle boundary preserves purchased lots with expires_at IS NULL, computes 20% Pro/Business rollover once, retains in-flight holds on source lot, expires unused remainder from expired subscription lot upon late commit/release, and prevents duplicate monthly allocations on replay)"
+      ]
+    },
+    {
+      "target": "Paid retry cannot exceed confirmed quote",
+      "state": "LOCAL_IMPLEMENTED",
+      "verification": [
+        "TestPaidRetryCannotExceedConfirmedQuote in apps/api/internal/billing/billing_test.go (exact decimal ceiling formula cost_ceiling_usd=0.600000 -> 80 credits; disabled/stale >7d rate cards fail closed; bounded retries/fallbacks commit using same rate card version and measured units capped at confirmed quote reserved_credits; additional paid retry beyond max_provider_attempts or unquoted model fails closed with BILLING_CONFLICT_002)"
+      ]
+    }
+  ],
+  "database_objects": {
+    "migration_file": "infra/migrations/00003_p0_06_credit_lots_quotes_and_billing.sql",
+    "tables_created": [
+      "ai_provider_rates",
+      "ai_credit_quotes",
+      "ai_credit_lots",
+      "ai_credit_reservations",
+      "ai_credit_reservation_allocations",
+      "invoices",
+      "payment_methods"
+    ],
+    "rls_forced_tables": [
+      "ai_credit_quotes",
+      "ai_credit_lots",
+      "ai_credit_reservations",
+      "ai_credit_reservation_allocations",
+      "invoices",
+      "payment_methods"
+    ],
+    "composite_tenant_fks": [
+      "fk_ai_credit_reservations_quote_id_tenant",
+      "fk_ai_credit_reservation_allocations_reservation_id_tenant",
+      "fk_ai_credit_reservation_allocations_lot_id_tenant",
+      "fk_invoices_subscription_id_tenant",
+      "fk_act_reservation_tenant",
+      "fk_act_lot_tenant"
+    ],
+    "immutability_triggers": [
+      "trg_ai_credit_transactions_immutable"
+    ]
+  },
+  "rpc_contracts": [
+    {
+      "rpc": "AdminBillingService/EstimateCost",
+      "permission_key": "credits:view_balance",
+      "role_envelope": "Member",
+      "state": "LOCAL_IMPLEMENTED"
+    },
+    {
+      "rpc": "AdminBillingService/GetCreditBalance",
+      "permission_key": "credits:view_balance",
+      "role_envelope": "Member",
+      "state": "LOCAL_IMPLEMENTED"
+    },
+    {
+      "rpc": "AdminBillingService/GetBillingSummary",
+      "permission_key": "workspace:billing:read",
+      "role_envelope": "Manager+",
+      "state": "LOCAL_IMPLEMENTED"
+    },
+    {
+      "rpc": "AdminBillingService/GetCreditLedger",
+      "permission_key": "workspace:billing:read",
+      "role_envelope": "Manager+",
+      "state": "LOCAL_IMPLEMENTED"
+    },
+    {
+      "rpc": "AdminBillingService/PurchaseCredits",
+      "permission_key": "credits:top_up",
+      "role_envelope": "Owner",
+      "state": "LOCAL_IMPLEMENTED"
+    },
+    {
+      "rpc": "AdminBillingService/ChangePlan",
+      "permission_key": "workspace:billing:manage",
+      "role_envelope": "Owner",
+      "state": "LOCAL_IMPLEMENTED"
+    },
+    {
+      "rpc": "AdminBillingService/CancelSubscription",
+      "permission_key": "workspace:billing:manage",
+      "role_envelope": "Owner",
+      "state": "LOCAL_IMPLEMENTED"
+    },
+    {
+      "rpc": "AdminBillingService/UpdatePaymentMethod",
+      "permission_key": "workspace:billing:manage",
+      "role_envelope": "Owner",
+      "state": "LOCAL_IMPLEMENTED"
+    },
+    {
+      "rpc": "CreditService/GetBalance",
+      "permission_key": "credits:view_balance",
+      "role_envelope": "Member",
+      "state": "LOCAL_IMPLEMENTED"
+    },
+    {
+      "rpc": "CreditService/ListPackages",
+      "permission_key": "credits:view_balance",
+      "role_envelope": "Member",
+      "state": "LOCAL_IMPLEMENTED"
+    },
+    {
+      "rpc": "CreditService/Purchase",
+      "permission_key": "credits:top_up",
+      "role_envelope": "Owner",
+      "state": "LOCAL_IMPLEMENTED"
+    },
+    {
+      "rpc": "BillingService/ListPlans",
+      "permission_key": "workspace:billing:read",
+      "role_envelope": "Member",
+      "state": "LOCAL_IMPLEMENTED"
+    }
+  ],
+  "screens": [
+    {
+      "screen_id": "W119",
+      "route": "/settings/billing",
+      "file": "apps/web/src/routes/settings/billing/+page.svelte",
+      "state": "LOCAL_IMPLEMENTED"
+    },
+    {
+      "screen_id": "W120",
+      "route": "/settings/credits/purchase",
+      "file": "apps/web/src/routes/settings/credits/purchase/+page.svelte",
+      "state": "LOCAL_IMPLEMENTED"
+    },
+    {
+      "screen_id": "W128",
+      "route": "/settings/credits/purchase",
+      "file": "apps/web/src/routes/settings/credits/purchase/+page.svelte",
+      "state": "LOCAL_IMPLEMENTED"
+    },
+    {
+      "screen_id": "W121",
+      "route": "/settings/credits/usage",
+      "file": "apps/web/src/routes/settings/credits/usage/+page.svelte",
+      "state": "LOCAL_IMPLEMENTED"
+    },
+    {
+      "screen_id": "M061",
+      "route": "/m/settings/billing",
+      "file": "apps/mobile/lib/ui/billing/billing_screen.dart",
+      "state": "LOCAL_IMPLEMENTED"
+    }
+  ],
+  "evidence_files": [
+    "build/phase-P0/p0-06/evidence/local_d0_check.log",
+    "build/phase-P0/p0-06/evidence/local_docs_sql.log",
+    "build/phase-P0/p0-06/evidence/local_tooling_tests.log",
+    "build/phase-P0/p0-06/evidence/local_go_race_tests.log",
+    "build/phase-P0/p0-06/evidence/local_govet.log",
+    "build/phase-P0/p0-06/evidence/local_entrypoints.log",
+    "build/phase-P0/p0-06/evidence/local_proto_check.log",
+    "build/phase-P0/p0-06/evidence/local_proto_integration.log",
+    "build/phase-P0/p0-06/evidence/local_transport_security.log",
+    "build/phase-P0/p0-06/evidence/local_smoke_test.log",
+    "build/phase-P0/p0-06/evidence/local_self_test_failure.log",
+    "build/phase-P0/p0-06/evidence/local_node_check.log",
+    "build/phase-P0/p0-06/evidence/local_flutter_check.log"
+  ],
+  "external_gates": [
+    "Live PostgreSQL 17.10 execution of TestPostgresLiveCreditLotsQuotesAndBilling via tooling/ci/check_identity.sh in GitHub Actions CI",
+    "Live Stripe merchant account, webhook signing secret, and checkout/invoice webhook delivery in staging/production",
+    "Mounting of AdminBillingService, CreditService, and BillingService ConnectRPC handlers on cmd/api and live AI provider execution in P1+"
+  ]
+}

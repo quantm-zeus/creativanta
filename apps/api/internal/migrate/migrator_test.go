@@ -20,8 +20,8 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadDir(%q) failed: %v", dir, err)
 	}
-	if len(migrations) < 2 {
-		t.Fatalf("expected at least 2 migrations in %q, got %d", dir, len(migrations))
+	if len(migrations) < 3 {
+		t.Fatalf("expected at least 3 migrations in %q, got %d", dir, len(migrations))
 	}
 
 	m := migrations[0]
@@ -51,6 +51,17 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	}
 	if err := ValidateCanonicalMigrationContract(m2); err != nil {
 		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v2: %v", err)
+	}
+
+	m3 := migrations[2]
+	if m3.Version != 3 {
+		t.Fatalf("expected version 3, got %d", m3.Version)
+	}
+	if len(m3.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v3, got %q", m3.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m3); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v3: %v", err)
 	}
 }
 
@@ -211,8 +222,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 2 || applied[0] != 1 || applied[1] != 2 {
-		t.Fatalf("expected versions [1, 2] applied, got %v", applied)
+	if len(applied) != 3 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 {
+		t.Fatalf("expected versions [1, 2, 3] applied, got %v", applied)
 	}
 	if !runner.lastTx.committed || runner.lastTx.rolledBack {
 		t.Fatalf("expected transaction committed")
@@ -227,13 +238,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for both migrations.
+	// Status reports Applied = true for all 3 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 2 || !statuses[0].Applied || !statuses[1].Applied {
-		t.Fatalf("expected status Applied=true for both migrations, got %+v", statuses)
+	if len(statuses) != 3 || !statuses[0].Applied || !statuses[1].Applied || !statuses[2].Applied {
+		t.Fatalf("expected status Applied=true for all 3 migrations, got %+v", statuses)
 	}
 
 	// Down without allowLocalRollback fails closed.
@@ -241,7 +252,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 2 first, then version 1.
+	// Down with allowLocalRollback=true rolls back version 3, then version 2, then version 1.
+	rolled3, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v3 failed: %v", err)
+	}
+	if rolled3 != 3 {
+		t.Fatalf("expected rolled back version 3, got %d", rolled3)
+	}
 	rolled2, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v2 failed: %v", err)
@@ -299,13 +317,16 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	_, _ = adminPool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
 	dir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 
-	// Apply migration Up, then Down twice, then Up again to prove full Goose SQL repeatability.
+	// Apply migration Up, then Down three times, then Up again to prove full Goose SQL repeatability.
 	applied, err := Up(ctx, adminPool, dir)
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 2 {
-		t.Fatalf("expected 2 applied migrations, got %v", applied)
+	if len(applied) != 3 {
+		t.Fatalf("expected 3 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v3 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v2 failed: %v", err)
