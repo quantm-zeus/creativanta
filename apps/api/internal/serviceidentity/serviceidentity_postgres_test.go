@@ -50,33 +50,50 @@ func TestPostgresLiveServiceIdentityAndAPIKeys(t *testing.T) {
 	}
 
 	const (
-		tenantA = "22222222-2222-2222-2222-222222222201"
-		tenantB = "22222222-2222-2222-2222-222222222203"
-		userA   = "11111111-1111-1111-1111-111111111101"
-		userB   = "11111111-1111-1111-1111-111111111105"
+		tenantA = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa91"
+		tenantB = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb92"
+		userA   = "11111111-1111-4111-8111-111111111191"
+		userB   = "22222222-2222-4222-8222-222222222292"
 	)
 
+	// Clean up any test keys and fixtures
+	cleanup := func() {
+		_, _ = adminPool.Exec(ctx, `DELETE FROM api_usage_daily WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
+		_, _ = adminPool.Exec(ctx, `DELETE FROM api_keys WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
+	}
+	cleanup()
+	defer cleanup()
+
 	// Ensure users, workspaces, and memberships exist for tenantA and tenantB
-	_, _ = adminPool.Exec(ctx, `
-		INSERT INTO users (user_id, clerk_id, email, display_name) VALUES
-		  ($1::uuid, 'user_seed_owner', 'owner@demo.creativanta.app', 'Minh Nguyen'),
-		  ($2::uuid, 'user_seed_admin', 'admin@demo.creativanta.app', 'Admin User')
-		ON CONFLICT (user_id) DO NOTHING;
+	_, err = adminPool.Exec(ctx, `
+		INSERT INTO users (user_id, external_auth_id, email, display_name, status) VALUES
+		  ($1::uuid, 'svc_user_a', 'svc_user_a@example.com', 'Service User A', 'active'),
+		  ($2::uuid, 'svc_user_b', 'svc_user_b@example.com', 'Service User B', 'active')
+		ON CONFLICT (user_id) DO NOTHING
+	`, userA, userB)
+	if err != nil {
+		t.Fatalf("seed serviceidentity users: %v", err)
+	}
 
-		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, subscription_tier) VALUES
-		  ($3::uuid, 'Demo Creator Studio', 'demo-studio', $1::uuid, 'pro'),
-		  ($4::uuid, 'Business Agency', 'business-agency', $2::uuid, 'business')
-		ON CONFLICT (workspace_id) DO NOTHING;
+	_, err = adminPool.Exec(ctx, `
+		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, status, subscription_tier) VALUES
+		  ($1::uuid, 'Service Tenant A', 'svc-tenant-a', $2::uuid, 'active', 'pro'),
+		  ($3::uuid, 'Service Tenant B', 'svc-tenant-b', $4::uuid, 'active', 'business')
+		ON CONFLICT (workspace_id) DO NOTHING
+	`, tenantA, userA, tenantB, userB)
+	if err != nil {
+		t.Fatalf("seed serviceidentity workspaces: %v", err)
+	}
 
-		INSERT INTO workspace_members (workspace_member_id, workspace_id, user_id, role) VALUES
-		  ('55555555-5555-5555-5555-555555555501', $3::uuid, $1::uuid, 'owner'),
-		  ('55555555-5555-5555-5555-555555555505', $4::uuid, $2::uuid, 'owner')
-		ON CONFLICT (workspace_id, user_id) DO NOTHING;
-	`, userA, userB, tenantA, tenantB)
-
-	// Clean up test keys
-	_, _ = adminPool.Exec(ctx, `DELETE FROM api_usage_daily WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
-	_, _ = adminPool.Exec(ctx, `DELETE FROM api_keys WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
+	_, err = adminPool.Exec(ctx, `
+		INSERT INTO workspace_members (workspace_member_id, workspace_id, user_id, role, status) VALUES
+		  ('55555555-5555-4555-8555-555555555591', $1::uuid, $2::uuid, 'owner', 'active'),
+		  ('55555555-5555-4555-8555-555555555592', $3::uuid, $4::uuid, 'owner', 'active')
+		ON CONFLICT (workspace_id, user_id) DO NOTHING
+	`, tenantA, userA, tenantB, userB)
+	if err != nil {
+		t.Fatalf("seed serviceidentity workspace_members: %v", err)
+	}
 
 	_, err = adminPool.Exec(ctx, `ALTER ROLE app_user WITH LOGIN PASSWORD 'app_user_test_pw' NOBYPASSRLS`)
 	if err != nil {

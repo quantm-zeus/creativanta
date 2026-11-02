@@ -93,6 +93,24 @@ END
 $$;
 -- +goose StatementEnd
 
+-- 4.0 regions & currencies [GLOBAL]
+CREATE TABLE IF NOT EXISTS regions (
+  region_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code VARCHAR(10) UNIQUE NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  default_currency_code VARCHAR(5) NOT NULL,
+  date_format VARCHAR(20) DEFAULT 'DD/MM/YYYY',
+  number_format JSONB DEFAULT '{"decimal":".","thousands":","}'
+);
+
+CREATE TABLE IF NOT EXISTS currencies (
+  currency_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code VARCHAR(5) UNIQUE NOT NULL,
+  symbol VARCHAR(10) NOT NULL,
+  decimal_places SMALLINT NOT NULL DEFAULT 2,
+  display_format VARCHAR(50)
+);
+
 -- 4.1 workspaces & users & workspace_members
 CREATE TABLE IF NOT EXISTS workspaces (
   workspace_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -105,6 +123,8 @@ CREATE TABLE IF NOT EXISTS workspaces (
   slug VARCHAR(100) UNIQUE NOT NULL,
   referral_code VARCHAR(20) UNIQUE,
   owner_user_id UUID NOT NULL,
+  primary_region_id UUID REFERENCES regions(region_id),
+  primary_currency_id UUID REFERENCES currencies(currency_id),
   subscription_tier VARCHAR(20) NOT NULL DEFAULT 'free'
     CHECK (subscription_tier IN ('free','starter','pro','business','enterprise')),
   default_mode operator_mode NOT NULL DEFAULT 'creator',
@@ -1186,6 +1206,8 @@ REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC;
 
 -- app_user grants (never receives TRUNCATE, DDL, or internal_admin privileges)
+GRANT SELECT ON regions TO app_user;
+GRANT SELECT ON currencies TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON workspaces TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON users TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON workspace_members TO app_user;
@@ -1227,6 +1249,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON api_idempotency_records TO app_user;
 GRANT SELECT, INSERT ON financial_postings TO app_user;
 
 -- admin_user grants
+GRANT SELECT, INSERT, UPDATE, DELETE ON regions TO admin_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON currencies TO admin_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON internal_admins TO admin_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON admin_sessions TO admin_user;
 GRANT SELECT, INSERT ON internal_audit_logs TO admin_user;
@@ -1295,6 +1319,8 @@ DROP TABLE IF EXISTS brand_profiles CASCADE;
 DROP TABLE IF EXISTS workspace_members CASCADE;
 DROP TABLE IF EXISTS workspaces CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS regions CASCADE;
+DROP TABLE IF EXISTS currencies CASCADE;
 DROP TYPE IF EXISTS verification_status;
 DROP TYPE IF EXISTS reconciliation_state;
 DROP TYPE IF EXISTS operator_mode;
