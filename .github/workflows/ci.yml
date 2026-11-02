@@ -220,6 +220,7 @@ jobs:
         uses: bufbuild/buf-setup-action@v1
         with:
           version: "1.75.0"
+          github_token: ${{ github.token }}
 
       - name: Install pinned local Protobuf compiler plugins
         run: |

@@ -493,7 +493,7 @@ var (
 )
 
 // ValidateCanonicalMigrationContract statically verifies that a migration adheres
-// to Creativanta's P0-04 tenant isolation, role/grant, composite FK, and money rules.
+// to Creativanta's P0-04 / P0-05 tenant isolation, role/grant, composite FK, and money rules.
 func ValidateCanonicalMigrationContract(m Migration) error {
 	upSQL := strings.Join(m.UpStatements, ";\n")
 
@@ -504,76 +504,108 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 		return fmt.Errorf("%w: %s uses floating-point type for financial/credit column (%s)", ErrContractViolation, m.Filename, match)
 	}
 
-	requiredFragments := []struct {
+	type requiredFragment struct {
 		desc    string
 		snippet string
-	}{
-		{"app_user role NOBYPASSRLS", "app_user NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"},
-		{"admin_user role NOBYPASSRLS", "admin_user NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"},
-		{"outbox_poller role BYPASSRLS", "outbox_poller NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT BYPASSRLS"},
-		{"directory_reader role NOBYPASSRLS", "directory_reader NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"},
-		{"owner FK fk_workspaces_owner", "ADD CONSTRAINT fk_workspaces_owner FOREIGN KEY (owner_user_id) REFERENCES users(user_id)"},
-		{"single active owner partial unique index", "CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_workspace_owner"},
-		{"immutable evidence trigger function", "CREATE OR REPLACE FUNCTION protect_evidence_content()"},
-		{"immutable evidence trigger binding", "CREATE TRIGGER trg_protect_evidence_content"},
-		{"support_ticket_messages internal note RLS guard", "AND (NOT is_internal_note OR current_user = 'admin_user')"},
-		{"media_kits directory_reader policy", "CREATE POLICY public_directory_read ON media_kits FOR SELECT TO directory_reader"},
-		{"media_kits column-restricted grant to directory_reader", "GRANT SELECT (media_kit_id, directory_profile) ON media_kits TO directory_reader"},
-		{"composite tenant FK on trend_signals -> trends", "fk_trend_signals_trend_id_tenant"},
-		{"composite tenant FK on trend_signals -> signals", "fk_trend_signals_signal_id_tenant"},
-		{"composite tenant FK on opportunity_sources -> opportunities", "fk_opportunity_sources_opportunity_id_tenant"},
-		{"composite tenant FK on idea_sources -> ideas", "fk_idea_sources_idea_id_tenant"},
-		{"composite tenant FK on taggables -> tags", "fk_taggables_tag_id_tenant"},
-		{"composite tenant FK on bundle_items -> bundles", "fk_bundle_items_bundle_id_tenant"},
-		{"composite tenant FK on bundle_items -> products", "fk_bundle_items_product_id_tenant"},
-		{"composite tenant FK on support_ticket_messages -> support_tickets", "fk_support_ticket_messages_ticket_id_tenant"},
+	}
+
+	var requiredFragments []requiredFragment
+	var requiredRLSTables []string
+
+	switch m.Version {
+	case 2:
+		requiredFragments = []requiredFragment{
+			{"consumer_inbox table", "CREATE TABLE consumer_inbox"},
+			{"external_effects table", "CREATE TABLE external_effects"},
+			{"diagnostics_records table", "CREATE TABLE diagnostics_records"},
+			{"dead_letter_queue table", "CREATE TABLE dead_letter_queue"},
+			{"background_jobs table", "CREATE TABLE background_jobs"},
+			{"api_usage_daily table", "CREATE TABLE api_usage_daily"},
+			{"composite tenant FK on external_effects -> connected_accounts", "fk_external_effects_connected_account_id_tenant"},
+			{"composite tenant FK on api_usage_daily -> api_keys", "fk_api_usage_daily_api_key_id_tenant"},
+			{"audit immutability function", "CREATE OR REPLACE FUNCTION protect_audit_log_immutability()"},
+			{"audit_events immutability trigger", "CREATE TRIGGER audit_events_immutable"},
+			{"internal_audit_logs immutability trigger", "CREATE TRIGGER internal_audit_logs_immutable"},
+			{"admin_ops_scope policy on diagnostics_records", "CREATE POLICY admin_ops_scope ON diagnostics_records TO admin_user"},
+			{"admin_ops_scope policy on dead_letter_queue", "CREATE POLICY admin_ops_scope ON dead_letter_queue TO admin_user"},
+			{"admin_ops_scope policy on background_jobs", "CREATE POLICY admin_ops_scope ON background_jobs TO admin_user"},
+		}
+		requiredRLSTables = []string{
+			"consumer_inbox",
+			"external_effects",
+			"diagnostics_records",
+			"dead_letter_queue",
+			"background_jobs",
+			"api_usage_daily",
+		}
+	default:
+		requiredFragments = []requiredFragment{
+			{"app_user role NOBYPASSRLS", "app_user NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"},
+			{"admin_user role NOBYPASSRLS", "admin_user NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"},
+			{"outbox_poller role BYPASSRLS", "outbox_poller NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT BYPASSRLS"},
+			{"directory_reader role NOBYPASSRLS", "directory_reader NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"},
+			{"owner FK fk_workspaces_owner", "ADD CONSTRAINT fk_workspaces_owner FOREIGN KEY (owner_user_id) REFERENCES users(user_id)"},
+			{"single active owner partial unique index", "CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_workspace_owner"},
+			{"immutable evidence trigger function", "CREATE OR REPLACE FUNCTION protect_evidence_content()"},
+			{"immutable evidence trigger binding", "CREATE TRIGGER trg_protect_evidence_content"},
+			{"support_ticket_messages internal note RLS guard", "AND (NOT is_internal_note OR current_user = 'admin_user')"},
+			{"media_kits directory_reader policy", "CREATE POLICY public_directory_read ON media_kits FOR SELECT TO directory_reader"},
+			{"media_kits column-restricted grant to directory_reader", "GRANT SELECT (media_kit_id, directory_profile) ON media_kits TO directory_reader"},
+			{"composite tenant FK on trend_signals -> trends", "fk_trend_signals_trend_id_tenant"},
+			{"composite tenant FK on trend_signals -> signals", "fk_trend_signals_signal_id_tenant"},
+			{"composite tenant FK on opportunity_sources -> opportunities", "fk_opportunity_sources_opportunity_id_tenant"},
+			{"composite tenant FK on idea_sources -> ideas", "fk_idea_sources_idea_id_tenant"},
+			{"composite tenant FK on taggables -> tags", "fk_taggables_tag_id_tenant"},
+			{"composite tenant FK on bundle_items -> bundles", "fk_bundle_items_bundle_id_tenant"},
+			{"composite tenant FK on bundle_items -> products", "fk_bundle_items_product_id_tenant"},
+			{"composite tenant FK on support_ticket_messages -> support_tickets", "fk_support_ticket_messages_ticket_id_tenant"},
+		}
+		requiredRLSTables = []string{
+			"workspaces",
+			"users",
+			"workspace_members",
+			"brand_profiles",
+			"connected_accounts",
+			"user_preferences",
+			"signals",
+			"trends",
+			"trend_signals",
+			"opportunities",
+			"opportunity_sources",
+			"competitor_entities",
+			"ideas",
+			"idea_sources",
+			"entities",
+			"threads",
+			"products",
+			"product_skus",
+			"offers",
+			"bundles",
+			"bundle_items",
+			"evidence_objects",
+			"billing_events",
+			"ai_credit_transactions",
+			"audit_events",
+			"media_kits",
+			"brand_deals",
+			"support_tickets",
+			"support_ticket_messages",
+			"api_keys",
+			"api_webhook_subscriptions",
+			"webhook_events",
+			"event_outbox",
+			"tags",
+			"taggables",
+			"subscriptions",
+			"api_idempotency_records",
+			"financial_postings",
+		}
 	}
 
 	for _, req := range requiredFragments {
 		if !strings.Contains(upSQL, req.snippet) {
 			return fmt.Errorf("%w: %s missing required %s (%q)", ErrContractViolation, m.Filename, req.desc, req.snippet)
 		}
-	}
-
-	requiredRLSTables := []string{
-		"workspaces",
-		"users",
-		"workspace_members",
-		"brand_profiles",
-		"connected_accounts",
-		"user_preferences",
-		"signals",
-		"trends",
-		"trend_signals",
-		"opportunities",
-		"opportunity_sources",
-		"competitor_entities",
-		"ideas",
-		"idea_sources",
-		"entities",
-		"threads",
-		"products",
-		"product_skus",
-		"offers",
-		"bundles",
-		"bundle_items",
-		"evidence_objects",
-		"billing_events",
-		"ai_credit_transactions",
-		"audit_events",
-		"media_kits",
-		"brand_deals",
-		"support_tickets",
-		"support_ticket_messages",
-		"api_keys",
-		"api_webhook_subscriptions",
-		"webhook_events",
-		"event_outbox",
-		"tags",
-		"taggables",
-		"subscriptions",
-		"api_idempotency_records",
-		"financial_postings",
 	}
 
 	for _, tbl := range requiredRLSTables {

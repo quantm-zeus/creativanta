@@ -48,7 +48,7 @@ trap 'rm -f "$log" "$log_p004"' EXIT
 (
  cd "$ROOT/apps/api"
  CREATIVANTA_TEST_DATABASE_URL="$CREATIVANTA_TEST_POSTGRES_DSN" \
-   GOTOOLCHAIN=local go test -p 1 -race -count=1 -v ./internal/migrate ./internal/tenantdb ./internal/rbac ./internal/workspace
+   GOTOOLCHAIN=local go test -p 1 -race -count=1 -v ./internal/migrate ./internal/tenantdb ./internal/rbac ./internal/workspace ./internal/outbox ./internal/diagnostics
 ) | tee "$log_p004"
 grep -q -- '--- PASS: TestPostgresLiveMigrationAndAppUserRLS' "$log_p004" || {
  echo 'P0-04 FAIL: live PostgreSQL Goose migration and app_user RLS test was skipped' >&2
@@ -63,3 +63,25 @@ grep -q -- '--- PASS: TestPostgresLiveWorkspaceOwnerProtectionRevocationAndProje
  exit 1
 }
 echo 'P0-04_TESTS_PASS: Goose migrations, app_user RLS, direct-junction composite FKs, WithTx, RBAC, last-owner protection, member revocation and private projections'
+
+grep -q -- '--- PASS: TestPostgresLiveOutboxInboxAndExternalEffects' "$log_p004" || {
+ echo 'P0-05 FAIL: live PostgreSQL outbox/inbox/external_effects test was skipped' >&2
+ exit 1
+}
+grep -q -- '--- PASS: TestKillBeforeAndAfterOutboxLeaseAndConsumerCommitAndAck' "$log_p004" || {
+ echo 'P0-05 FAIL: kill before/after commit and ACK test was skipped' >&2
+ exit 1
+}
+grep -q -- '--- PASS: TestDuplicateWebhookHasStrictlyOneEffect' "$log_p004" || {
+ echo 'P0-05 FAIL: duplicate webhook idempotency test was skipped' >&2
+ exit 1
+}
+grep -q -- '--- PASS: TestUnresolvedExternalEffectNeverBlindlyRetried' "$log_p004" || {
+ echo 'P0-05 FAIL: unresolved external effect guard test was skipped' >&2
+ exit 1
+}
+grep -q -- '--- PASS: TestRuleM23A04SanitizationAndRepairWizardReconcilesUnknownExternalEffect' "$log_p004" || {
+ echo 'P0-05 FAIL: DiagnosticsService M23 repair wizard test was skipped' >&2
+ exit 1
+}
+echo 'P0-05_TESTS_PASS: Outbox lease recovery, consumer inbox deduplication, kill before/after commit and ACK, webhook dedup, unknown external effects guard, audit immutability, and M23 DiagnosticsService'

@@ -94,6 +94,16 @@ func validateMetadata(h http.Header, bodyWorkspace string) (string, string, erro
 	return ws, requestID, nil
 }
 
+func connectContextErr(err error) error {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return connect.NewError(connect.CodeDeadlineExceeded, err)
+	}
+	if errors.Is(err, context.Canceled) {
+		return connect.NewError(connect.CodeCanceled, err)
+	}
+	return connect.NewError(connect.CodeOf(err), err)
+}
+
 func (s *Server) Echo(ctx context.Context, req *connect.Request[fixturev1.EchoRequest]) (*connect.Response[fixturev1.EchoResponse], error) {
 	ws, rid, err := validateMetadata(req.Header(), req.Msg.GetWorkspaceId())
 	if err != nil {
@@ -114,7 +124,7 @@ func (s *Server) Echo(ctx context.Context, req *connect.Request[fixturev1.EchoRe
 			select {
 			case <-timer.C:
 			case <-ctx.Done():
-				return nil, connect.NewError(connect.CodeOf(ctx.Err()), ctx.Err())
+				return nil, connectContextErr(ctx.Err())
 			}
 		}
 	}
@@ -237,7 +247,7 @@ func (s *Server) Watch(ctx context.Context, req *connect.Request[fixturev1.Watch
 	for i := int32(1); i <= max; i++ {
 		select {
 		case <-ctx.Done():
-			return connect.NewError(connect.CodeOf(ctx.Err()), ctx.Err())
+			return connectContextErr(ctx.Err())
 		case <-ticker.C:
 			if err := stream.Send(&fixturev1.WatchResponse{Sequence: i, Message: fmt.Sprintf("event-%d", i)}); err != nil {
 				return err

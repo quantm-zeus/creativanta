@@ -1,0 +1,182 @@
+syntax = "proto3";
+
+package creativanta.admin.v1;
+
+import "creativanta/common/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1;adminv1";
+
+// Workspace Diagnostics Center service (M23).
+// Provides health summary, 8-category health grid, user-friendly issue explanations
+// (RULE-M23-A04), full health checks, and 4-step guided repair wizard execution
+// including unknown external effect reconciliation.
+service DiagnosticsService {
+  // Returns high-level workspace health KPIs (overall status, active issues, connected accounts, queue health).
+  // Required RBAC permission: diagnostics:read.
+  rpc GetOverview(GetOverviewRequest) returns (GetOverviewResponse);
+
+  // Returns the 8-category diagnostic health grid for the workspace.
+  // Required RBAC permission: diagnostics:read.
+  rpc GetHealthGrid(GetHealthGridRequest) returns (GetHealthGridResponse);
+
+  // Lists diagnostic issues with user-facing explanations, likely causes, and recommended actions.
+  // Required RBAC permission: diagnostics:read.
+  rpc ListIssues(ListIssuesRequest) returns (ListIssuesResponse);
+
+  // Runs a full diagnostic health check across connected accounts, queues, webhooks, and external effects.
+  // Required RBAC permission: workspace:settings:manage.
+  rpc RunFullCheck(RunFullCheckRequest) returns (RunFullCheckResponse);
+
+  // Executes one step of the 4-step guided repair wizard (Verify -> Diagnose -> Fix -> Confirm).
+  // Required RBAC permission: workspace:settings:manage.
+  rpc ExecuteRepairStep(ExecuteRepairStepRequest) returns (ExecuteRepairStepResponse);
+}
+
+// Overall health state for a workspace or diagnostic category.
+enum DiagnosticHealthStatus {
+  DIAGNOSTIC_HEALTH_STATUS_UNSPECIFIED = 0;
+  DIAGNOSTIC_HEALTH_STATUS_HEALTHY = 1;
+  DIAGNOSTIC_HEALTH_STATUS_WARNING = 2;
+  DIAGNOSTIC_HEALTH_STATUS_ERROR = 3;
+  DIAGNOSTIC_HEALTH_STATUS_CRITICAL = 4;
+}
+
+// Severity level for a diagnostic issue record.
+enum DiagnosticSeverity {
+  DIAGNOSTIC_SEVERITY_UNSPECIFIED = 0;
+  DIAGNOSTIC_SEVERITY_INFO = 1;
+  DIAGNOSTIC_SEVERITY_WARNING = 2;
+  DIAGNOSTIC_SEVERITY_ERROR = 3;
+  DIAGNOSTIC_SEVERITY_CRITICAL = 4;
+}
+
+// Lifecycle status of a diagnostic issue record.
+enum DiagnosticIssueStatus {
+  DIAGNOSTIC_ISSUE_STATUS_UNSPECIFIED = 0;
+  DIAGNOSTIC_ISSUE_STATUS_OPEN = 1;
+  DIAGNOSTIC_ISSUE_STATUS_ACKNOWLEDGED = 2;
+  DIAGNOSTIC_ISSUE_STATUS_RESOLVING = 3;
+  DIAGNOSTIC_ISSUE_STATUS_RESOLVED = 4;
+  DIAGNOSTIC_ISSUE_STATUS_CLOSED = 5;
+}
+
+// Step identifier in the 4-step guided repair wizard (W125 / M059).
+enum RepairWizardStep {
+  REPAIR_WIZARD_STEP_UNSPECIFIED = 0;
+  REPAIR_WIZARD_STEP_VERIFY = 1;
+  REPAIR_WIZARD_STEP_DIAGNOSE = 2;
+  REPAIR_WIZARD_STEP_FIX = 3;
+  REPAIR_WIZARD_STEP_CONFIRM = 4;
+}
+
+// Request for GetOverview.
+message GetOverviewRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+}
+
+// Response for GetOverview.
+message GetOverviewResponse {
+  creativanta.common.v1.UUID workspace_id = 1;
+  DiagnosticHealthStatus overall_status = 2;
+  int32 active_issues_count = 3;
+  int32 critical_issues_count = 4;
+  int32 warning_issues_count = 5;
+  int32 healthy_categories_count = 6;
+  int32 total_categories_count = 7;
+  int32 unknown_external_effects_count = 8;
+  int32 pending_dlq_count = 9;
+  google.protobuf.Timestamp last_checked_at = 10;
+}
+
+// Request for GetHealthGrid.
+message GetHealthGridRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+}
+
+// Single category card in the 8-category diagnostic health grid.
+message HealthCategoryCard {
+  string category_key = 1;
+  string display_name = 2;
+  DiagnosticHealthStatus status = 3;
+  string summary = 4;
+  int32 open_issues_count = 5;
+  google.protobuf.Timestamp last_checked_at = 6;
+}
+
+// Response for GetHealthGrid.
+message GetHealthGridResponse {
+  creativanta.common.v1.UUID workspace_id = 1;
+  repeated HealthCategoryCard categories = 2;
+  google.protobuf.Timestamp generated_at = 3;
+}
+
+// Request for ListIssues.
+message ListIssuesRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+  DiagnosticSeverity severity_filter = 3;
+  DiagnosticIssueStatus status_filter = 4;
+  string scope_type_filter = 5;
+}
+
+// User-facing diagnostic issue record compliant with RULE-M23-A04.
+message DiagnosticIssue {
+  creativanta.common.v1.UUID diagnostics_id = 1;
+  creativanta.common.v1.UUID workspace_id = 2;
+  string scope_type = 3;
+  creativanta.common.v1.UUID scope_id = 4;
+  string error_type = 5;
+  DiagnosticSeverity severity = 6;
+  string user_facing_explanation = 7;
+  repeated string likely_causes = 8;
+  repeated string suggested_actions = 9;
+  string repair_path = 10;
+  DiagnosticIssueStatus status = 11;
+  bool requires_manual_reconciliation = 12;
+  google.protobuf.Timestamp detected_at = 13;
+  google.protobuf.Timestamp resolved_at = 14;
+}
+
+// Response for ListIssues.
+message ListIssuesResponse {
+  repeated DiagnosticIssue issues = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+// Request for RunFullCheck.
+message RunFullCheckRequest {
+  creativanta.common.v1.CommandContext context = 1;
+}
+
+// Response for RunFullCheck.
+message RunFullCheckResponse {
+  creativanta.common.v1.UUID check_run_id = 1;
+  DiagnosticHealthStatus overall_status = 2;
+  int32 issues_detected = 3;
+  int32 unknown_effects_detected = 4;
+  repeated HealthCategoryCard categories = 5;
+  google.protobuf.Timestamp completed_at = 6;
+  bool replayed = 7;
+}
+
+// Request for ExecuteRepairStep.
+message ExecuteRepairStepRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  creativanta.common.v1.UUID diagnostics_id = 2;
+  RepairWizardStep step = 3;
+  string action_key = 4;
+  string verification_reference = 5;
+}
+
+// Response for ExecuteRepairStep.
+message ExecuteRepairStepResponse {
+  creativanta.common.v1.UUID diagnostics_id = 1;
+  RepairWizardStep completed_step = 2;
+  RepairWizardStep next_step = 3;
+  DiagnosticIssueStatus issue_status = 4;
+  string user_facing_result = 5;
+  bool resolved = 6;
+  bool replayed = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
