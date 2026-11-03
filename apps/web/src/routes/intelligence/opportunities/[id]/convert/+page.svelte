@@ -5,6 +5,8 @@
     isConcurrentConflict,
     type Opportunity,
   } from '$lib/opportunity';
+  import DownstreamGatingNotice from '$lib/intelligence/DownstreamGatingNotice.svelte';
+  import type { DownstreamTargetType } from '$lib/intelligence/access_proof';
 
   const opportunityId = page.params.id || 'opp-001';
 
@@ -51,7 +53,7 @@
   });
 
   // Wizard state
-  let conversionType = $state<'idea' | 'script' | 'campaign'>('idea');
+  let conversionType = $state<DownstreamTargetType>('idea');
   let contentTitle = $state('Morning skincare routine — 3 bước tối giản cho da dầu');
   let selectedPlatform = $state('tiktok');
   let selectedFormat = $state('short_form');
@@ -148,8 +150,11 @@
 
   <!-- Step 1: Chọn hình thức chuyển đổi -->
   <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-    <h2 class="text-base font-bold text-slate-900">Bước 1: Chọn hình thức chuyển đổi</h2>
-    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div class="flex items-center justify-between">
+      <h2 class="text-base font-bold text-slate-900">Bước 1: Chọn hình thức chuyển đổi</h2>
+      <span class="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600 font-mono">P2 Operating Loop</span>
+    </div>
+    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <button
         type="button"
         onclick={() => conversionType = 'idea'}
@@ -157,7 +162,7 @@
       >
         <span class="text-2xl">💡</span>
         <span class="mt-2 text-sm font-bold text-slate-900">Tạo 1 ý tưởng mới</span>
-        <span class="mt-1 text-xs text-slate-500">Nhanh chóng thêm vào Idea Board để ủ mầm và thảo luận với team.</span>
+        <span class="mt-1 text-xs text-slate-500">Thêm vào Idea Board. Giai đoạn P3 (M05).</span>
       </button>
 
       <button
@@ -167,7 +172,7 @@
       >
         <span class="text-2xl">📝</span>
         <span class="mt-2 text-sm font-bold text-slate-900">Viết kịch bản ngay</span>
-        <span class="mt-1 text-xs text-slate-500">Mở Studio kịch bản với gợi ý hook và khung sườn 30s từ AI.</span>
+        <span class="mt-1 text-xs text-slate-500">Mở Studio kịch bản 30s. Giai đoạn P3 (M06).</span>
       </button>
 
       <button
@@ -177,8 +182,22 @@
       >
         <span class="text-2xl">📦</span>
         <span class="mt-2 text-sm font-bold text-slate-900">Lên chiến dịch tổng</span>
-        <span class="mt-1 text-xs text-slate-500">Tạo chuỗi nội dung đa kênh (TikTok, Reels, Shorts) theo kế hoạch tuần.</span>
+        <span class="mt-1 text-xs text-slate-500">Kế hoạch đa kênh tuần. Giai đoạn P6 (M14).</span>
       </button>
+
+      <button
+        type="button"
+        onclick={() => conversionType = 'live_plan'}
+        class="flex flex-col items-start rounded-xl border p-4 text-left transition {conversionType === 'live_plan' ? 'border-indigo-600 bg-indigo-50/30 ring-2 ring-indigo-600' : 'border-slate-200 hover:border-slate-300'}"
+      >
+        <span class="text-2xl">🔴</span>
+        <span class="mt-2 text-sm font-bold text-slate-900">Phiên phát sóng Live</span>
+        <span class="mt-1 text-xs text-slate-500">Kịch bản phiên Live & Cue. Giai đoạn P6 (M17).</span>
+      </button>
+    </div>
+
+    <div class="mt-4">
+      <DownstreamGatingNotice targetType={conversionType} opportunityId={opportunity.id} />
     </div>
   </div>
 
