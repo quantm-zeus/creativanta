@@ -9,6 +9,7 @@ OK web /ideas 200
 OK web /scripts 200
 OK web /studio 200
 OK web /studio/queue 200
+OK web /studio/quick-edit 200
 OK web /studio/sound 200
 OK web /studio/translate 200
 OK web /studio/style-learning 200

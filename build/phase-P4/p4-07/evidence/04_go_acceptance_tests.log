@@ -36,6 +36,16 @@
 --- PASS: TestRemix_SSRFPrevention (0.00s)
 === RUN   TestVideoEditJob_LifecycleAndCancelRefund
 --- PASS: TestVideoEditJob_LifecycleAndCancelRefund (0.00s)
+=== RUN   TestASRRepairAndFallback_AcceptanceTarget1
+--- PASS: TestASRRepairAndFallback_AcceptanceTarget1 (0.00s)
+=== RUN   TestAspectAudioSubtitlesBeatCopyright_AcceptanceTarget2
+--- PASS: TestAspectAudioSubtitlesBeatCopyright_AcceptanceTarget2 (0.00s)
+=== RUN   TestDeletedTextMappingAndZeroDrift_AcceptanceTarget3
+--- PASS: TestDeletedTextMappingAndZeroDrift_AcceptanceTarget3 (0.00s)
+=== RUN   TestQuickEditServiceAndHooks
+--- PASS: TestQuickEditServiceAndHooks (0.00s)
+=== RUN   TestQuickEditConcurrency
+--- PASS: TestQuickEditConcurrency (0.00s)
 === RUN   TestCancelAndRecovery
 --- PASS: TestCancelAndRecovery (0.00s)
 === RUN   TestFallbackNoDoubleCharge
@@ -49,26 +59,26 @@
 === RUN   TestUploadSafety
 --- PASS: TestUploadSafety (0.00s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/production	(cached)
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/production	1.058s
 === RUN   TestLoadAndValidateCanonicalP004Migration
---- PASS: TestLoadAndValidateCanonicalP004Migration (0.44s)
+--- PASS: TestLoadAndValidateCanonicalP004Migration (0.51s)
 === RUN   TestValidateCanonicalMigrationContractRejectsViolations
 === RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_GRANT_ALL
 === RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_FLOAT_or_REAL_on_money_or_credit_column_(DB-H-001)
 === RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_FORCE_ROW_LEVEL_SECURITY_on_junction_table
 === RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_composite_tenant_FK
---- PASS: TestValidateCanonicalMigrationContractRejectsViolations (0.55s)
-    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_GRANT_ALL (0.03s)
-    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_FLOAT_or_REAL_on_money_or_credit_column_(DB-H-001) (0.13s)
-    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_FORCE_ROW_LEVEL_SECURITY_on_junction_table (0.19s)
-    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_composite_tenant_FK (0.17s)
+--- PASS: TestValidateCanonicalMigrationContractRejectsViolations (0.54s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_GRANT_ALL (0.04s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_FLOAT_or_REAL_on_money_or_credit_column_(DB-H-001) (0.19s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_FORCE_ROW_LEVEL_SECURITY_on_junction_table (0.14s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_composite_tenant_FK (0.14s)
 === RUN   TestUpStatusDownTransactionalBehavior
---- PASS: TestUpStatusDownTransactionalBehavior (2.39s)
+--- PASS: TestUpStatusDownTransactionalBehavior (2.45s)
 === RUN   TestPostgresLiveMigrationAndAppUserRLS
-    migrator_test.go:615: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL 17.10 migration & RLS suite executes in CI
+    migrator_test.go:638: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL 17.10 migration & RLS suite executes in CI
 --- SKIP: TestPostgresLiveMigrationAndAppUserRLS (0.00s)
 === RUN   TestPostgresSeedTwiceIdempotency
-    migrator_test.go:1390: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL seed twice idempotency suite executes in CI
+    migrator_test.go:1507: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL seed twice idempotency suite executes in CI
 --- SKIP: TestPostgresSeedTwiceIdempotency (0.00s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/migrate	(cached)
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/migrate	4.539s

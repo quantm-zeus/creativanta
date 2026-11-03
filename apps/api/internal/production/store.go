@@ -93,9 +93,9 @@ type MemoryStore struct {
 	assets       map[string]map[string]*Asset                     // workspaceID -> assetID -> Asset
 	jobs         map[string]map[string]*GenerationJob             // workspaceID -> jobID -> GenerationJob
 	uploads      map[string]map[string]*FileUpload                // workspaceID -> uploadID -> FileUpload
-	transcripts  map[string]map[string]*TranscriptRecord     // workspaceID -> transcriptID -> TranscriptRecord
-	drafts       map[string]map[string]*QuickEditDraftRecord // workspaceID -> draftID -> QuickEditDraftRecord
-	sounds       map[string]map[string]*SoundTrackRecord     // workspaceID ("" for global) -> soundID -> SoundTrackRecord
+	transcripts  map[string]map[string]*TranscriptRecord          // workspaceID -> transcriptID -> TranscriptRecord
+	drafts       map[string]map[string]*QuickEditDraftRecord      // workspaceID -> draftID -> QuickEditDraftRecord
+	sounds       map[string]map[string]*SoundTrackRecord          // workspaceID ("" for global) -> soundID -> SoundTrackRecord
 	blueprints   map[string]map[string]*RemixBlueprint            // workspaceID -> blueprintID -> RemixBlueprint
 	videoJobs    map[string]map[string]*VideoEditJobRecord        // workspaceID -> jobID -> VideoEditJobRecord
 	translations map[string]map[string]*TranslationJob            // workspaceID -> jobID -> TranslationJob

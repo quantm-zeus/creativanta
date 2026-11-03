@@ -2,11 +2,11 @@
   "task_id": "P4-07",
   "phase": "P4",
   "slice": "p4-07",
-  "title": "Style learning và complete continuity",
+  "title": "Style learning v\u00e0 complete continuity",
   "status": "LOCAL_IMPLEMENTED",
   "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
   "acceptance_status": "PENDING",
-  "baseline_commit": "acdf5cc7497991ea52261d065ca8f0e0256d3abc",
+  "baseline_commit": "92e94c8ccb2ecefedca79db4156c7418302cd77c",
   "feature_refs": [
     "docs/02_features/production/ai_video_studio.md",
     "docs/02_features/content/continuity_os.md",
@@ -36,16 +36,16 @@
     "docs/03_screens/web/screen_web_content_continuity.md"
   ],
   "source_hashes": {
-    "infra/migrations/00020_p4_07_style_learning_character_preview_and_drift_qa.sql": "714104a6c0b62e77083a56934035ac1843dbcda00902df5941ace844a74b4b71",
-    "protos/creativanta/production/v1/production.proto": "5f737fa8bea931bdf512f50dd2be6a45f8f462962c3122cc7f50ab787153dbe9",
-    "apps/api/internal/production/types.go": "759c1d84f5ff7a8b9a4b31a6756b3ee870de470e4488c1a4d40afee453103561",
-    "apps/api/internal/production/store.go": "518a268657fb5eff516a26ab93ca286be36cd62bd28ddb137e7383e0466107c8",
-    "apps/api/internal/production/service.go": "8d8ce0f1727d7199a70643c015c125c7a6c34e94f6538af5c87622e018dc329d",
+    "infra/migrations/00021_p4_07_style_learning_character_preview_and_drift_qa.sql": "714104a6c0b62e77083a56934035ac1843dbcda00902df5941ace844a74b4b71",
+    "protos/creativanta/production/v1/production.proto": "21764890acc843fef4de8b7ee376a2fe121646900f564c019983331ecf27e137",
+    "apps/api/internal/production/types.go": "3392170512e90bde6f41bbb4cf670df961efbcbad47a2abe8e061f10e00dafd2",
+    "apps/api/internal/production/store.go": "99210d6bf9a1c409bf980948609d66538544c2385ed611031cb0657bcad2e1b1",
+    "apps/api/internal/production/service.go": "1aaf5522c07e22dafb0c677681ab6d7c2cc6675308741f9cd8cba29d14b90db3",
     "apps/api/internal/production/style.go": "aded0f50f0fdb219e608e33807b77b78d33f1d555aef2e20a938f53a26dcc3c9",
     "apps/api/internal/production/character_preview.go": "3bbbd5a9f9f66d5b1e72a928e111fedbc1d445ee808133d3d30b9b91e41a128e",
     "apps/api/internal/production/drift_qa.go": "1172ccb4def795048dc0e7074d92d16f0ae807152f398993f1ab5a9184b04af6",
     "apps/api/internal/production/continuity_drift_test.go": "25d739848c8504b44e5bb393fae3cbb4d177a2bfbe995298f69b19817dc88020",
-    "apps/api/internal/migrate/migrator_test.go": "480385cf948ea96be9dee36b511fa94c2559d28582ea2f4dcdbe93fc600bbe22",
+    "apps/api/internal/migrate/migrator_test.go": "34399be1b934faa8a16b912a66a1827e921427b8ec3dd7e52121104cc9ad9d7a",
     "apps/web/src/lib/production/types.ts": "0003a0ccd95485a0327c35a6aea4d476f042374420e97c0d5bcc0443607d64ec",
     "apps/web/src/lib/production/index.ts": "ed4cc95eb6a240bb9b4ee563e63232a4bf5d348fe886cfb0d58c4a12e9d74f98",
     "apps/web/src/lib/production/continuity_drift.test.ts": "a75923be02e5f785a29422b429bacea010bf73bdf0b631f4b2f50abb51bc43d9",
@@ -54,10 +54,10 @@
     "apps/web/src/routes/studio/style-learning/+page.svelte": "98c9931770fee300d68bb54f492ae06ba16ac22b9f97027c4359ff079fc8eeb1",
     "apps/mobile/lib/content/continuity_models.dart": "123ede4a996e195270f57206c7e1950585cc3b41e954b9b390b45af2dee96f3d",
     "apps/mobile/test/continuity_drift_acceptance_test.dart": "c74b8a9a3cb904fe92b458173bc1959907153009a337c5cb185bf1a74f433de2",
-    "tooling/ci/check_web_smoke.sh": "4b5ea9dbd57df6f278e596a694a743c320164140a8ca4801aefd795fc3bbc124"
+    "tooling/ci/check_web_smoke.sh": "df8ecc95e3b46f0a3462a2333643ecf6495c97682470b40331eb233ec7f6bf12"
   },
   "scope_items": [
-    "Database Migration 00020: Created style_packs table (§22.7) with composite tenant foreign keys to workspaces, assets, and continuity_packs; added drift_score, drift_severity, drift_details to assets; added override_reason and resolved_at to continuity_violations (§7.5); strict multi-tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY); exact numeric money/credits (DB-H-001); narrow role grants to app_user and admin_user; and verified 20-step reversible down migration.",
+    "Database Migration 00021: Created style_packs table (\u00a722.7) with composite tenant foreign keys to workspaces, assets, and continuity_packs; added drift_score, drift_severity, drift_details to assets; added override_reason and resolved_at to continuity_violations (\u00a77.5); strict multi-tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY); exact numeric money/credits (DB-H-001); narrow role grants to app_user and admin_user; and verified 21-step reversible down migration.",
     "Acceptance Target 1 (15s preview quoted): Character builder Step 3 quotes 15s duration, bounded credit quote (5 credits), and verifies spend authority before rendering test preview (RULE-M08-001, AC 1).",
     "Acceptance Target 2 (High drift blocks readiness): Assets with drift score > 60 (high_drift) create a blocking violation in continuity_violations table and are blocked from ready/approved state unless explicitly overridden by Manager+ with justification (RULE-M08-005, AC 4).",
     "Acceptance Target 3 (Consent withdrawal prevents new use): Likeness consent revocation immediately invalidates linked digital twins and blocks all subsequent generation, character preview, dubbing, or voiceover (RULE-M08-002, EC-M08-001).",
@@ -68,9 +68,9 @@
     "Acceptance Target 2 Verified: TestAcceptanceTarget2_HighDriftBlocksReadiness (Go -race), Vitest web suite, and Flutter acceptance test suite confirm >60 drift score triggers high_drift severity and blocking violation, blocks approval, and requires Manager+ explicit override justification.",
     "Acceptance Target 3 Verified: TestAcceptanceTarget3_ConsentWithdrawalPreventsNewUse (Go -race), Vitest web suite, and Flutter acceptance test suite confirm consent revocation immediately cascades to invalidate digital twins and blocks character preview and generation.",
     "EF-07 Style Learning & Transfer Verified: TestEF07_StyleExtractionAndTransfer (Go -race), W032 UI route (/studio/style-learning), Vitest suite, and Flutter acceptance test suite confirm 1-5 video extraction, 15 credit quote, 7 aesthetic parameters, and style pack persistence.",
-    "Migration 00020 Verified: Migrator test suite (migrator_test.go) passes all 20 migrations up, status verification, and clean down transactional reversal.",
+    "Migration 00021 Verified: Migrator test suite (migrator_test.go) passes all 21 migrations up, status verification, and clean down transactional reversal.",
     "Four-Target Proto Codegen Verified: proto-gen.sh verify passes Buf lint, codegen across Go, TypeScript, and Dart, git drift verification, TypeScript compilation, and Dart generated code analyze.",
-    "Web & Mobile Surfaces Verified: check_web_smoke.sh (SSR HTTP 200 on /studio/style-learning), svelte-check (0 errors, 0 warnings), vitest (180 tests passing across 22 test files), and check_flutter.sh (flutter analyze 0 issues, 160 tests passing) all pass cleanly."
+    "Web & Mobile Surfaces Verified: check_web_smoke.sh (SSR HTTP 200 on /studio/style-learning and /studio/quick-edit), svelte-check (0 errors, 0 warnings), vitest (180 tests passing), and check_flutter.sh (flutter analyze 0 issues, 164 tests passing) all pass cleanly."
   ],
   "rpc_contracts": [
     "StylePackService/ExtractStyle",
@@ -86,7 +86,7 @@
     "AssetService/OverrideDriftViolation"
   ],
   "migration_files": [
-    "infra/migrations/00020_p4_07_style_learning_character_preview_and_drift_qa.sql"
+    "infra/migrations/00021_p4_07_style_learning_character_preview_and_drift_qa.sql"
   ],
   "permission_keys": [
     "style_pack:create",
@@ -111,7 +111,65 @@
     [
       "EXT-GATE-POSTGRES-LIVE-RLS",
       "PENDING_CI_LIVE_POSTGRES",
-      "Migration 00020 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow role grants verified via local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+      "Migration 00021 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow role grants verified via local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
     ]
+  ],
+  "checks": [
+    {
+      "command": "python3 tooling/check_docs.py",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-07/evidence/01_d0_invariants.log",
+      "checked_at": "2026-11-03T14:29:20Z"
+    },
+    {
+      "command": "tooling/proto-gen.sh verify",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-07/evidence/02_proto_contracts.log",
+      "checked_at": "2026-11-03T14:29:59Z"
+    },
+    {
+      "command": "bash tooling/ci/check_web_smoke.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-07/evidence/03_web_smoke.log",
+      "checked_at": "2026-11-03T14:30:03Z"
+    },
+    {
+      "command": "go test -v -race ./internal/production ./internal/migrate",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-07/evidence/04_go_acceptance_tests.log",
+      "checked_at": "2026-11-03T14:30:11Z"
+    },
+    {
+      "command": "pnpm --dir apps/web test src/lib/production/continuity_drift.test.ts",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-07/evidence/05_web_tests.log",
+      "checked_at": "2026-11-03T14:30:18Z"
+    },
+    {
+      "command": "flutter test test/continuity_drift_acceptance_test.dart",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-07/evidence/06_flutter_acceptance_tests.log",
+      "checked_at": "2026-11-03T14:30:25Z"
+    }
+  ],
+  "remaining_scope": [
+    {
+      "source": "docs/02_features/production/ai_video_studio.md",
+      "heading": "EF-07A: Style Pack Marketplace",
+      "target_task": "P7-01",
+      "note": "Community style pack marketplace and recipe selling deferred to automation/agent center per PRD implementation order."
+    },
+    {
+      "source": "docs/02_features/production/asset_derivatives.md",
+      "heading": "Asset Derivatives & Lineage QA",
+      "target_task": "P4-08",
+      "note": "Packaging QA and derivative asset lineage bulk operations."
+    }
+  ],
+  "decisions": [
+    "ADR-P4-07-001: Model 15s preview duration with a fixed 5 credit cost quote that verifies user spend authority prior to generation invocation.",
+    "ADR-P4-07-002: Enforce threshold of >60 for high_drift severity which creates an unbypassed blocking record in continuity_violations requiring Manager+ explicit override.",
+    "ADR-P4-07-003: Consent withdrawal on digital twin likeness cascades immediately to invalidate linked characters from generation pipelines and preview.",
+    "ADR-P4-07-004: Style learning (EF-07) extracts 7 core parameters (color grade, lighting, camera, pace, composition, texture, audio atmosphere) with a 15-credit quote for 1-5 videos."
   ]
 }

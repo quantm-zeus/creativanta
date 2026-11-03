@@ -1,58 +1,14 @@
 
-> @creativanta/web@0.1.0 check /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/web
-> svelte-kit sync && svelte-check --tsconfig ./tsconfig.json
-
-
-====================================
-Loading svelte-check in workspace: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/web
-Getting Svelte diagnostics...
-
-====================================
-svelte-check found 0 errors and 0 warnings
-
 > @creativanta/web@0.1.0 test /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/web
-> vitest run
+> vitest run src/lib/production/continuity_drift.test.ts
 
 
  RUN  v3.0.7 /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/web
 
- ✓ src/lib/trend/trend.test.ts (11 tests) 49ms
- ✓ src/lib/idea/idea.test.ts (14 tests) 30ms
- ✓ src/lib/p1_first_value/p1_first_value.test.ts (4 tests) 226ms
-stderr | src/lib/auth/auth.test.ts > P0-03 Web User-Facing Identity & Auth Store > 4. Sign-Out & Failure Transitions > transitions to error state when Clerk initialization throws unexpectedly
-[AUTH STORE] Init error: Error: Clerk SDK network timeout
-    at /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/web/src/lib/auth/auth.test.ts:257:50
-    at file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/node_modules/@vitest/runner/dist/index.js:174:14
-    at file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/node_modules/@vitest/runner/dist/index.js:558:28
-    at file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/node_modules/@vitest/runner/dist/index.js:61:24
-    at new Promise (<anonymous>)
-    at runWithTimeout (file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/node_modules/@vitest/runner/dist/index.js:41:12)
-    at runTest (file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/node_modules/@vitest/runner/dist/index.js:1137:17)
-    at processTicksAndRejections (node:internal/process/task_queues:104:5)
-    at runSuite (file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/node_modules/@vitest/runner/dist/index.js:1291:15)
-    at runSuite (file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/node_modules/@vitest/runner/dist/index.js:1291:15)
+ ✓ src/lib/production/continuity_drift.test.ts (10 tests) 10ms
 
- ✓ src/lib/auth/auth.test.ts (17 tests) 74ms
- ✓ src/lib/competitor/competitor.test.ts (11 tests) 136ms
- ✓ src/lib/script/script.test.ts (15 tests) 38ms
- ✓ src/lib/copilot/copilot.test.ts (17 tests) 27ms
- ✓ src/lib/opportunity/opportunity.test.ts (13 tests) 22ms
- ✓ src/lib/production/production.test.ts (7 tests) 25ms
- ✓ src/lib/intelligence/intelligence.test.ts (12 tests) 15ms
- ✓ src/lib/content/content.test.ts (6 tests) 13ms
- ✓ src/lib/capability/capability.test.ts (4 tests) 9ms
- ✓ src/lib/billing/billing.test.ts (5 tests) 13ms
- ✓ src/lib/continuity/continuity.test.ts (9 tests) 15ms
- ✓ src/lib/production/continuity_drift.test.ts (10 tests) 15ms
- ✓ src/lib/diagnostics/diagnostics.test.ts (5 tests) 16ms
- ✓ src/lib/production/sound_translation.test.ts (2 tests) 6ms
- ✓ src/lib/help/help.test.ts (4 tests) 17ms
- ✓ src/lib/notification/notification.test.ts (6 tests) 12ms
- ✓ src/lib/constants/modes.test.ts (3 tests) 13ms
- ✓ src/lib/constants/routes.test.ts (3 tests) 12ms
- ✓ src/lib/constants/navigation.test.ts (2 tests) 9ms
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  14:30:16
+   Duration  1.64s (transform 928ms, setup 0ms, collect 1.23s, tests 10ms, environment 0ms, prepare 101ms)
 
- Test Files  22 passed (22)
-      Tests  180 passed (180)
-   Start at  13:55:32
-   Duration  12.77s (transform 4.49s, setup 0ms, collect 9.78s, tests 793ms, environment 10ms, prepare 4.51s)
