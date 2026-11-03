@@ -217,6 +217,17 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if err := ValidateCanonicalMigrationContract(m17); err != nil {
 		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v17: %v", err)
 	}
+
+	m18 := migrations[17]
+	if m18.Version != 18 {
+		t.Fatalf("expected version 18, got %d", m18.Version)
+	}
+	if len(m18.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v18, got %q", m18.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m18); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v18: %v", err)
+	}
 }
 
 func TestValidateCanonicalMigrationContractRejectsViolations(t *testing.T) {
@@ -376,8 +387,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 17 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 || applied[3] != 4 || applied[4] != 5 || applied[5] != 6 || applied[6] != 7 || applied[7] != 8 || applied[8] != 9 || applied[9] != 10 || applied[10] != 11 || applied[11] != 12 || applied[12] != 13 || applied[13] != 14 || applied[14] != 15 || applied[15] != 16 || applied[16] != 17 {
-		t.Fatalf("expected versions [1..17] applied, got %v", applied)
+	if len(applied) != 18 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 || applied[3] != 4 || applied[4] != 5 || applied[5] != 6 || applied[6] != 7 || applied[7] != 8 || applied[8] != 9 || applied[9] != 10 || applied[10] != 11 || applied[11] != 12 || applied[12] != 13 || applied[13] != 14 || applied[14] != 15 || applied[15] != 16 || applied[16] != 17 || applied[17] != 18 {
+		t.Fatalf("expected versions [1..18] applied, got %v", applied)
 	}
 	if !runner.lastTx.committed || runner.lastTx.rolledBack {
 		t.Fatalf("expected transaction committed")
@@ -392,13 +403,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for all 17 migrations.
+	// Status reports Applied = true for all 18 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 17 || !statuses[0].Applied || !statuses[1].Applied || !statuses[2].Applied || !statuses[3].Applied || !statuses[4].Applied || !statuses[5].Applied || !statuses[6].Applied || !statuses[7].Applied || !statuses[8].Applied || !statuses[9].Applied || !statuses[10].Applied || !statuses[11].Applied || !statuses[12].Applied || !statuses[13].Applied || !statuses[14].Applied || !statuses[15].Applied || !statuses[16].Applied {
-		t.Fatalf("expected status Applied=true for all 17 migrations, got %+v", statuses)
+	if len(statuses) != 18 || !statuses[0].Applied || !statuses[1].Applied || !statuses[2].Applied || !statuses[3].Applied || !statuses[4].Applied || !statuses[5].Applied || !statuses[6].Applied || !statuses[7].Applied || !statuses[8].Applied || !statuses[9].Applied || !statuses[10].Applied || !statuses[11].Applied || !statuses[12].Applied || !statuses[13].Applied || !statuses[14].Applied || !statuses[15].Applied || !statuses[16].Applied || !statuses[17].Applied {
+		t.Fatalf("expected status Applied=true for all 18 migrations, got %+v", statuses)
 	}
 
 	// Down without allowLocalRollback fails closed.
@@ -406,7 +417,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 17, then 16, then 15, then 14, then 13, then 12, then 11, then 10, then 9, then 8, then 7, then 6, then 5, then 4, then 3, then 2, then 1.
+	// Down with allowLocalRollback=true rolls back version 18, then 17, then 16, then 15, then 14, then 13, then 12, then 11, then 10, then 9, then 8, then 7, then 6, then 5, then 4, then 3, then 2, then 1.
+	rolled18, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v18 failed: %v", err)
+	}
+	if rolled18 != 18 {
+		t.Fatalf("expected rolled back version 18, got %d", rolled18)
+	}
 	rolled17, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v17 failed: %v", err)
