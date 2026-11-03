@@ -58,7 +58,7 @@
     "apps/api/internal/production/service_video_edit.go": "bd95e41e9fd90fd4a3f875140770bce331bb27bcb6c18ee673ece29dfc4740dd",
     "apps/api/internal/production/multimerge_remix_test.go": "23e3cf50f61daf26e98f9ad2da11506890009ab752fcf770deefdc08bfef7fee",
     "apps/api/internal/migrate/migrator_test.go": "613901aa4bfd89be28b09dfe09dbec694f19012701d9357982c0429e7b3d040a",
-    "apps/web/src/lib/production/types.ts": "c23a14c8d62a2d9d189a703ee2126ef5b728da43652ee8fa6b4ec858cf0a788b",
+    "apps/web/src/lib/production/types.ts": "1a118c08dad5677b9e8b9bae0a5d5f5af38c75cfeffdd8fb21ebf3465d2d2c2a",
     "apps/web/src/lib/production/index.ts": "5fcf59bf99dd2edaee82c6daca94b884ba5d1141901bae2ec1c5c5d60288cf42",
     "apps/web/src/lib/production/RemixOriginalityGate.svelte": "28ec4395fbdf77aa0275ed4a018ad22acadda3807b413ed6dde569b701e92ebb",
     "apps/web/src/routes/studio/remix/+page.svelte": "3ad3486eed75c9370e29fd8a94a1bdb22dfa4a751a53add9832ee3ca172858f9",

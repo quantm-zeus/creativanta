@@ -154,4 +154,3 @@ export interface MultiMergeSettings {
 	aspectRatio: '9:16' | '16:9' | '1:1';
 	pacing: 'fast' | 'medium' | 'slow';
 }
-
