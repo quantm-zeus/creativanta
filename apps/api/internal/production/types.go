@@ -30,6 +30,11 @@ var (
 	ErrScriptSimilarityExceeded = errors.New("production: remix script similarity exceeds 30% threshold (RULE-M07-003)")
 	ErrCircuitBreakerOpen       = errors.New("production: provider circuit breaker open due to consecutive failures")
 	ErrInvalidBatchRow          = errors.New("production: invalid batch input row")
+	ErrTranscriptNotFound       = errors.New("production: transcript not found")
+	ErrDraftNotFound            = errors.New("production: quick edit draft not found")
+	ErrSoundNotFound            = errors.New("production: sound track not found")
+	ErrAlignmentFailed          = errors.New("production: auto-alignment failed. [Try segment mode] or [Manual cut]")
+	ErrCopyrightViolation       = errors.New("production: music detected as copyrighted without commercial license clearance (EC-M07-M01)")
 )
 
 // CallerContext models authenticated caller context across production operations.
@@ -193,4 +198,156 @@ type BatchBudgetPreviewResult struct {
 	CurrentAvailableCredits tenantdb.ExactDecimal      `json:"current_available_credits"`
 	QuoteID                 string                     `json:"quote_id"`
 	QuoteExpiresAt          time.Time                  `json:"quote_expires_at"`
+}
+
+// TranscriptWordRecord represents a word with millisecond timecodes and filler metadata.
+type TranscriptWordRecord struct {
+	WordID     string  `json:"word_id"`
+	Text       string  `json:"text"`
+	StartMS    int64   `json:"start_ms"`
+	EndMS      int64   `json:"end_ms"`
+	Confidence float64 `json:"confidence"`
+	IsFiller   bool    `json:"is_filler"`
+	FillerType string  `json:"filler_type,omitempty"`
+	IsDeleted  bool    `json:"is_deleted"`
+}
+
+// TranscriptSegmentRecord represents a continuous sentence or speaker utterance.
+type TranscriptSegmentRecord struct {
+	SegmentID string `json:"segment_id"`
+	StartMS   int64  `json:"start_ms"`
+	EndMS     int64  `json:"end_ms"`
+	Text      string `json:"text"`
+	SpeakerID string `json:"speaker_id,omitempty"`
+}
+
+// TranscriptRecord represents durable speech transcription.
+type TranscriptRecord struct {
+	TranscriptID    string                    `json:"transcript_id"`
+	WorkspaceID     string                    `json:"workspace_id"`
+	AssetID         string                    `json:"asset_id"`
+	Language        string                    `json:"language"`
+	RawText         string                    `json:"raw_text"`
+	Words           []TranscriptWordRecord    `json:"words"`
+	Segments        []TranscriptSegmentRecord `json:"segments"`
+	FillerCount     int                       `json:"filler_count"`
+	PauseCount      int                       `json:"pause_count"`
+	AlignmentStatus string                    `json:"alignment_status"` // auto_aligned, repaired, manual_fallback, failed
+	AlignmentError  string                    `json:"alignment_error,omitempty"`
+	CreatedAt       time.Time                 `json:"created_at"`
+	UpdatedAt       time.Time                 `json:"updated_at"`
+	DeletedAt       *time.Time                `json:"deleted_at,omitempty"`
+}
+
+// DeadPauseRecord identifies silent gaps between speech.
+type DeadPauseRecord struct {
+	StartMS    int64 `json:"start_ms"`
+	EndMS      int64 `json:"end_ms"`
+	DurationMS int64 `json:"duration_ms"`
+}
+
+// TranscriptAnalysisRecord holds ASR analysis, filler/pause counts and hook quality score.
+type TranscriptAnalysisRecord struct {
+	FillerCount          int               `json:"filler_count"`
+	PauseCount           int               `json:"pause_count"`
+	HookQualityScore     float64           `json:"hook_quality_score"` // 0-10
+	EstimatedTimeSavedMS int64             `json:"estimated_time_saved_ms"`
+	FinalDurationMS      int64             `json:"final_duration_ms"`
+	DetectedFillers      []string          `json:"detected_fillers"`
+	DeadPauses           []DeadPauseRecord `json:"dead_pauses"`
+	HookFeedback         string            `json:"hook_feedback"`
+}
+
+// TranscriptCorrectionItem holds user corrections for dialect/accent repair (EC-M07-Q01).
+type TranscriptCorrectionItem struct {
+	WordID        string `json:"word_id"`
+	CorrectedText string `json:"corrected_text"`
+	NewStartMS    int64  `json:"new_start_ms"`
+	NewEndMS      int64  `json:"new_end_ms"`
+	MarkCut       bool   `json:"mark_cut"`
+}
+
+// CutIntervalRecord represents a cut timestamp interval [start_ms, end_ms].
+type CutIntervalRecord struct {
+	StartMS int64  `json:"start_ms"`
+	EndMS   int64  `json:"end_ms"`
+	Reason  string `json:"reason"` // filler, pause, manual_cut, hook_trim
+}
+
+// QuickEditAddonsConfig contains user-selected studio enhancements.
+type QuickEditAddonsConfig struct {
+	AutoCaptions     bool    `json:"auto_captions"`
+	CaptionStyle     string  `json:"caption_style"` // bounce, karaoke, highlight, typewriter
+	AddHook          bool    `json:"add_hook"`
+	HookID           string  `json:"hook_id,omitempty"`
+	HookType         string  `json:"hook_type,omitempty"` // question, shock, story, pov, listicle, contrast
+	BeatSync         bool    `json:"beat_sync"`
+	SoundID          string  `json:"sound_id,omitempty"`
+	BRoll            bool    `json:"b_roll"`
+	BRollScene       string  `json:"b_roll_scene,omitempty"`
+	PlatformPreset   string  `json:"platform_preset,omitempty"` // tiktok, youtube_shorts, reels
+	AudioEnhancement bool    `json:"audio_enhancement"`
+	TargetLUFS       float64 `json:"target_lufs"`   // default -14.0 LUFS
+	ReframeRatio     string  `json:"reframe_ratio"` // 9:16, 16:9, 1:1
+}
+
+// QuickEditDraftRecord stores an in-progress Quick Edit draft.
+type QuickEditDraftRecord struct {
+	DraftID          string                `json:"draft_id"`
+	WorkspaceID      string                `json:"workspace_id"`
+	AssetID          string                `json:"asset_id"`
+	TranscriptID     string                `json:"transcript_id"`
+	Name             string                `json:"name"`
+	Cuts             []CutIntervalRecord   `json:"cuts"`
+	Addons           QuickEditAddonsConfig `json:"addons"`
+	EstimatedCredits tenantdb.ExactDecimal `json:"estimated_credits"`
+	CreatedBy        string                `json:"created_by,omitempty"`
+	CreatedAt        time.Time             `json:"created_at"`
+	UpdatedAt        time.Time             `json:"updated_at"`
+}
+
+// SoundTrackRecord represents royalty-free or tenant-owned audio assets.
+type SoundTrackRecord struct {
+	SoundID             string    `json:"sound_id"`
+	WorkspaceID         string    `json:"workspace_id,omitempty"` // empty for global
+	Title               string    `json:"title"`
+	Artist              string    `json:"artist"`
+	Genre               string    `json:"genre"`
+	BPM                 int       `json:"bpm"`
+	DurationSeconds     float64   `json:"duration_seconds"`
+	AudioURL            string    `json:"audio_url"`
+	IsRoyaltyFree       bool      `json:"is_royalty_free"`
+	ACRCloudCleared     bool      `json:"acrcloud_cleared"`
+	ACRCloudFingerprint string    `json:"acrcloud_fingerprint,omitempty"`
+	LicenseType         string    `json:"license_type"`
+	Tags                []string  `json:"tags"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
+}
+
+// BeatSyncGridRecord holds BPM and detected beat timecodes.
+type BeatSyncGridRecord struct {
+	BPM                  int     `json:"bpm"`
+	BeatTimestampsMS     []int64 `json:"beat_timestamps_ms"`
+	DownbeatTimestampsMS []int64 `json:"downbeat_timestamps_ms"`
+	Confidence           float64 `json:"confidence"`
+}
+
+// CopyrightScanRecord holds ACRCloud scan results.
+type CopyrightScanRecord struct {
+	IsCopyrighted         bool                `json:"is_copyrighted"`
+	MatchedTrack          string              `json:"matched_track,omitempty"`
+	MatchedArtist         string              `json:"matched_artist,omitempty"`
+	ClearanceAllowed      bool                `json:"clearance_allowed"`
+	ScanProvider          string              `json:"scan_provider"`
+	SuggestedAlternatives []*SoundTrackRecord `json:"suggested_alternatives,omitempty"`
+}
+
+// HookItem represents a curated hook from the Smart Hook Library.
+type HookItem struct {
+	HookID             string  `json:"hook_id"`
+	HookText           string  `json:"hook_text"`
+	HookType           string  `json:"hook_type"` // question, shock, story, pov, listicle, contrast
+	EffectivenessScore float64 `json:"effectiveness_score"`
+	Source             string  `json:"source"`
 }
