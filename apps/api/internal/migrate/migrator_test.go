@@ -140,6 +140,17 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if err := ValidateCanonicalMigrationContract(m10); err != nil {
 		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v10: %v", err)
 	}
+
+	m11 := migrations[10]
+	if m11.Version != 11 {
+		t.Fatalf("expected version 11, got %d", m11.Version)
+	}
+	if len(m11.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v11, got %q", m11.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m11); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v11: %v", err)
+	}
 }
 
 func TestValidateCanonicalMigrationContractRejectsViolations(t *testing.T) {
@@ -299,8 +310,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 10 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 || applied[3] != 4 || applied[4] != 5 || applied[5] != 6 || applied[6] != 7 || applied[7] != 8 || applied[8] != 9 || applied[9] != 10 {
-		t.Fatalf("expected versions [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] applied, got %v", applied)
+	if len(applied) != 11 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 || applied[3] != 4 || applied[4] != 5 || applied[5] != 6 || applied[6] != 7 || applied[7] != 8 || applied[8] != 9 || applied[9] != 10 || applied[10] != 11 {
+		t.Fatalf("expected versions [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] applied, got %v", applied)
 	}
 	if !runner.lastTx.committed || runner.lastTx.rolledBack {
 		t.Fatalf("expected transaction committed")
@@ -315,13 +326,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for all 10 migrations.
+	// Status reports Applied = true for all 11 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 10 || !statuses[0].Applied || !statuses[1].Applied || !statuses[2].Applied || !statuses[3].Applied || !statuses[4].Applied || !statuses[5].Applied || !statuses[6].Applied || !statuses[7].Applied || !statuses[8].Applied || !statuses[9].Applied {
-		t.Fatalf("expected status Applied=true for all 10 migrations, got %+v", statuses)
+	if len(statuses) != 11 || !statuses[0].Applied || !statuses[1].Applied || !statuses[2].Applied || !statuses[3].Applied || !statuses[4].Applied || !statuses[5].Applied || !statuses[6].Applied || !statuses[7].Applied || !statuses[8].Applied || !statuses[9].Applied || !statuses[10].Applied {
+		t.Fatalf("expected status Applied=true for all 11 migrations, got %+v", statuses)
 	}
 
 	// Down without allowLocalRollback fails closed.
@@ -329,7 +340,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 10, then 9, then 8, then 7, then 6, then 5, then 4, then 3, then 2, then 1.
+	// Down with allowLocalRollback=true rolls back version 11, then 10, then 9, then 8, then 7, then 6, then 5, then 4, then 3, then 2, then 1.
+	rolled11, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v11 failed: %v", err)
+	}
+	if rolled11 != 11 {
+		t.Fatalf("expected rolled back version 11, got %d", rolled11)
+	}
 	rolled10, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v10 failed: %v", err)
@@ -443,13 +461,16 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	_, _ = adminPool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
 	dir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 
-	// Apply migration Up, then Down ten times, then Up again to prove full Goose SQL repeatability.
+	// Apply migration Up, then Down eleven times, then Up again to prove full Goose SQL repeatability.
 	applied, err := Up(ctx, adminPool, dir)
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 10 {
-		t.Fatalf("expected 10 applied migrations, got %v", applied)
+	if len(applied) != 11 {
+		t.Fatalf("expected 11 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v11 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v10 failed: %v", err)
@@ -547,6 +568,12 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 
 		INSERT INTO watchlist_alert_logs (alert_log_id, workspace_id, watchlist_id, trend_id, alert_fingerprint, cooldown_until) VALUES
 		  ('aaaaaaaa-2222-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-1111-4aaa-8aaa-aaaaaaaaaaaa', '33333333-3333-4333-8333-333333333333', 'fp_a', NOW() + INTERVAL '1 hour');
+
+		INSERT INTO competitor_entities (competitor_id, workspace_id, name, entity_type, platform, external_handle) VALUES
+		  ('aaaaaaaa-3333-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Competitor A', 'creator', 'tiktok', '@competitor_a');
+
+		INSERT INTO benchmark_snapshots (snapshot_id, workspace_id, competitor_id, snapshot_type, source_class, confidence) VALUES
+		  ('aaaaaaaa-4444-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-3333-4aaa-8aaa-aaaaaaaaaaaa', 'benchmark', 'inferred', 'high');
 	`
 	if _, err := adminPool.Exec(ctx, seedSQL); err != nil {
 		t.Fatalf("seedSQL failed: %v", err)
@@ -598,6 +625,22 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("watchlist_alert_logs RLS breach: Tenant B saw %d alert logs from Tenant A", visibleAlertLogs)
 	}
 
+	var visibleCompetitors int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM competitor_entities WHERE workspace_id = $1::uuid`, tenantA).Scan(&visibleCompetitors); err != nil {
+		t.Fatal(err)
+	}
+	if visibleCompetitors != 0 {
+		t.Fatalf("competitor_entities RLS breach: Tenant B saw %d competitors from Tenant A", visibleCompetitors)
+	}
+
+	var visibleBenchmarks int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM benchmark_snapshots WHERE workspace_id = $1::uuid`, tenantA).Scan(&visibleBenchmarks); err != nil {
+		t.Fatal(err)
+	}
+	if visibleBenchmarks != 0 {
+		t.Fatalf("benchmark_snapshots RLS breach: Tenant B saw %d benchmarks from Tenant A", visibleBenchmarks)
+	}
+
 	// Test 2: Cross-tenant composite FK write attack on trend_signals and external_effects denied!
 	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_junction`); err != nil {
 		t.Fatal(err)
@@ -631,6 +674,28 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("expected fk_external_effects_connected_account_id_tenant to reject cross-tenant connected_account_id")
 	}
 	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_effect_fk`)
+
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_benchmark_fk`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO benchmark_snapshots (snapshot_id, workspace_id, competitor_id, snapshot_type, source_class, confidence)
+		VALUES (gen_random_uuid(), $1::uuid, 'aaaaaaaa-3333-4aaa-8aaa-aaaaaaaaaaaa'::uuid, 'benchmark', 'inferred', 'medium')
+	`, tenantB); err == nil {
+		t.Fatalf("expected fk_benchmark_snapshots_competitor_id_tenant to reject cross-tenant competitor_id link")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_benchmark_fk`)
+
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_benchmark_rls`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO benchmark_snapshots (snapshot_id, workspace_id, snapshot_type, source_class, confidence)
+		VALUES (gen_random_uuid(), $1::uuid, 'benchmark', 'inferred', 'low')
+	`, tenantA); err == nil {
+		t.Fatalf("expected RLS WITH CHECK to reject Tenant B inserting benchmark_snapshots with workspace_id=Tenant A")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_benchmark_rls`)
 
 	// Test 3: Switch to Tenant A as app_user -> verify support_ticket_messages hides is_internal_note = true!
 	if _, err := tx.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_user_id', $2, true)`, tenantA, userA); err != nil {

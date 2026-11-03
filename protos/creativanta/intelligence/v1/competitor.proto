@@ -1,0 +1,383 @@
+syntax = "proto3";
+
+package creativanta.intelligence.v1;
+
+import "creativanta/intelligence/v1/trend.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/intelligence/v1;intelligencev1";
+
+// AlertDirection defines whether an alert triggers above or below a threshold.
+enum AlertDirection {
+  ALERT_DIRECTION_UNSPECIFIED = 0;
+  ALERT_DIRECTION_ABOVE = 1;
+  ALERT_DIRECTION_BELOW = 2;
+}
+
+// AlertMetric defines the metric to monitor for a competitor.
+enum AlertMetric {
+  ALERT_METRIC_UNSPECIFIED = 0;
+  ALERT_METRIC_ENGAGEMENT_RATE = 1;
+  ALERT_METRIC_POST_FREQUENCY = 2;
+  ALERT_METRIC_OBSERVED_PRICE = 3;
+}
+
+// AlertConfig defines per-competitor alert subscriptions per database_schema.md §27.3.
+message AlertConfig {
+  bool enabled = 1;
+  AlertMetric metric = 2;
+  double threshold = 3;
+  AlertDirection direction = 4;
+  int32 min_interval_minutes = 5;
+}
+
+// CompetitorEntity represents a tracked competitor entity per database_schema.md §5.6.
+message CompetitorEntity {
+  string competitor_id = 1;
+  string workspace_id = 2;
+  string name = 3;
+  string platform = 4;
+  string external_handle = 5;
+  string category = 6;
+  string notes = 7;
+  float relevance_score = 8;
+  string relevance_reason = 9;
+  int64 followers_count = 10;
+  int32 video_count_30d = 11;
+  int64 avg_views = 12;
+  float growth_rate_30d = 13;
+  float avg_engagement_rate = 14;
+  float posting_frequency_per_day = 15;
+  google.protobuf.Timestamp last_post_at = 16;
+  string status = 17;
+  google.protobuf.Timestamp created_at = 18;
+  google.protobuf.Timestamp updated_at = 19;
+  AlertConfig alert_config = 20;
+}
+
+// CompetitorSuggestion represents an AI-suggested competitor entity.
+message CompetitorSuggestion {
+  string suggestion_id = 1;
+  string name = 2;
+  string platform = 3;
+  string external_handle = 4;
+  int64 followers_count = 5;
+  float relevance_score = 6;
+  string ai_explanation = 7;
+  string category = 8;
+  bool is_dismissed = 9;
+}
+
+// WhyExplanation provides the basis, limitations, and data gaps per RULE-M03-002.
+message WhyExplanation {
+  repeated string data_sources = 1;
+  repeated string limitations = 2;
+  repeated string data_gaps = 3;
+  string basis_summary = 4;
+}
+
+// BenchmarkMetrics holds metrics for benchmark analysis per database_schema.md §5.7.
+message BenchmarkMetrics {
+  float content_frequency_per_week = 1;
+  float engagement_rate = 2;
+  int64 avg_views = 3;
+  map<string, float> format_distribution = 4;
+  string observed_price_range = 5;
+  repeated string offer_types = 6;
+  int64 follower_count = 7;
+  float follower_growth_pct = 8;
+}
+
+// BenchmarkSnapshot represents a point-in-time benchmark capture per database_schema.md §5.7.
+message BenchmarkSnapshot {
+  string snapshot_id = 1;
+  string workspace_id = 2;
+  string competitor_id = 3;
+  string snapshot_type = 4;
+  string data_period_start = 5;
+  string data_period_end = 6;
+  BenchmarkMetrics metrics = 7;
+  SourceClass source_class = 8;
+  ConfidenceBand confidence = 9;
+  google.protobuf.Timestamp captured_at = 10;
+  google.protobuf.Timestamp created_at = 11;
+  bool is_stale = 12;
+  string stale_warning = 13;
+  int32 days_since_capture = 14;
+  WhyExplanation why_explanation = 15;
+}
+
+// WhiteSpaceGap represents an uncovered niche or content opportunity per RULE-M03-001.
+message WhiteSpaceGap {
+  string gap_id = 1;
+  string category = 2;
+  string format_type = 3;
+  string price_tier = 4;
+  string description = 5;
+  string opportunity_hypothesis = 6;
+  SourceClass source_class = 7;
+  ConfidenceBand confidence = 8;
+  repeated string competitor_ids = 9;
+  WhyExplanation why_explanation = 10;
+}
+
+// PricingComparisonItem represents observational pricing comparison per RULE-M03-003.
+message PricingComparisonItem {
+  string item_id = 1;
+  string competitor_id = 2;
+  string competitor_name = 3;
+  string product_name = 4;
+  string observed_price = 5;
+  string currency = 6;
+  string offer_type = 7;
+  bool is_observational = 8;
+  string disclaimer = 9;
+  SourceClass source_class = 10;
+}
+
+// FormatComparisonItem represents content format pattern analysis.
+message FormatComparisonItem {
+  string format_name = 1;
+  float your_share_pct = 2;
+  float market_avg_share_pct = 3;
+  float top_competitor_share_pct = 4;
+  string recommendation = 5;
+  SourceClass source_class = 6;
+  ConfidenceBand confidence = 7;
+}
+
+// FinancialNonConflationNotice enforces Acceptance Target 3 and RULE-M03-003.
+message FinancialNonConflationNotice {
+  string metric_name = 1;
+  string status = 2;
+  string display_value = 3;
+  string caveat_text = 4;
+  bool is_conflation_blocked = 5;
+}
+
+// EntityBenchmarkScore summarizes comparative score across key axes.
+message EntityBenchmarkScore {
+  string entity_id = 1;
+  string entity_name = 2;
+  string handle = 3;
+  bool is_you = 4;
+  int32 rank = 5;
+  float overall_score = 6;
+  int64 followers = 7;
+  float growth_rate = 8;
+  float engagement_rate = 9;
+  int64 avg_views = 10;
+  float posts_per_week = 11;
+  repeated string leader_badges = 12;
+}
+
+// BenchmarkComparison aggregates side-by-side comparison per Screen W041.
+message BenchmarkComparison {
+  string workspace_id = 1;
+  string period = 2;
+  int32 total_tracked = 3;
+  int32 your_rank = 4;
+  float your_overall_score = 5;
+  float score_delta_vs_last_month = 6;
+  repeated EntityBenchmarkScore entities = 7;
+  EntityBenchmarkScore market_average = 8;
+  FinancialNonConflationNotice revenue_metric_guard = 9;
+  string ai_insight_summary = 10;
+  SourceClass insight_source_class = 11;
+  ConfidenceBand insight_confidence = 12;
+  WhyExplanation insight_why = 13;
+}
+
+// BenchmarkDataPoint represents a data point on a competitor benchmark curve.
+message BenchmarkDataPoint {
+  google.protobuf.Timestamp timestamp = 1;
+  double value = 2;
+  string formatted_value = 3;
+}
+
+// TimeSeriesSeries represents one entity's metric curve.
+message TimeSeriesSeries {
+  string entity_id = 1;
+  string entity_name = 2;
+  string handle = 3;
+  bool is_you = 4;
+  repeated BenchmarkDataPoint points = 5;
+}
+
+// CompetitorPreview provides live handle preview metadata.
+message CompetitorPreview {
+  string platform = 1;
+  string external_handle = 2;
+  string display_name = 3;
+  string avatar_url = 4;
+  int64 followers_count = 5;
+  float relevance_preview = 6;
+  string relevance_explanation = 7;
+}
+
+// CompetitorServiceListRequest is the request for CompetitorService.List.
+message CompetitorServiceListRequest {
+  string workspace_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+  string platform = 4;
+  string category = 5;
+  string search_query = 6;
+}
+
+// CompetitorServiceListResponse is the response for CompetitorService.List.
+message CompetitorServiceListResponse {
+  repeated CompetitorEntity competitors = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+
+// CompetitorServiceAddRequest is the request for CompetitorService.Add.
+message CompetitorServiceAddRequest {
+  string workspace_id = 1;
+  string platform = 2;
+  string external_handle = 3;
+  string name = 4;
+  string category = 5;
+  string notes = 6;
+  string idempotency_key = 7;
+}
+
+// CompetitorServiceAddResponse is the response for CompetitorService.Add.
+message CompetitorServiceAddResponse {
+  CompetitorEntity competitor = 1;
+}
+
+// CompetitorServiceRemoveRequest is the request for CompetitorService.Remove.
+message CompetitorServiceRemoveRequest {
+  string workspace_id = 1;
+  string competitor_id = 2;
+}
+
+// CompetitorServiceRemoveResponse is the response for CompetitorService.Remove.
+message CompetitorServiceRemoveResponse {
+  bool success = 1;
+  string competitor_id = 2;
+}
+
+// GetSuggestionsRequest is the request for CompetitorService.GetSuggestions.
+message GetSuggestionsRequest {
+  string workspace_id = 1;
+  string category = 2;
+  int32 limit = 3;
+}
+
+// GetSuggestionsResponse is the response for CompetitorService.GetSuggestions.
+message GetSuggestionsResponse {
+  repeated CompetitorSuggestion suggestions = 1;
+}
+
+// DismissSuggestionRequest is the request for CompetitorService.DismissSuggestion.
+message DismissSuggestionRequest {
+  string workspace_id = 1;
+  string suggestion_id = 2;
+}
+
+// DismissSuggestionResponse is the response for CompetitorService.DismissSuggestion.
+message DismissSuggestionResponse {
+  bool success = 1;
+  string suggestion_id = 2;
+}
+
+// SetAlertsRequest is the request for CompetitorService.SetAlerts.
+message SetAlertsRequest {
+  string workspace_id = 1;
+  string competitor_id = 2;
+  AlertConfig alert_config = 3;
+}
+
+// SetAlertsResponse is the response for CompetitorService.SetAlerts.
+message SetAlertsResponse {
+  bool success = 1;
+  string competitor_id = 2;
+  AlertConfig alert_config = 3;
+}
+
+// ValidateHandleRequest is the request for CompetitorService.ValidateHandle.
+message ValidateHandleRequest {
+  string workspace_id = 1;
+  string platform = 2;
+  string external_handle = 3;
+}
+
+// ValidateHandleResponse is the response for CompetitorService.ValidateHandle.
+message ValidateHandleResponse {
+  bool is_valid = 1;
+  string error_message = 2;
+  CompetitorPreview preview = 3;
+}
+
+// AnalyzeBenchmarkRequest is the request for CompetitorService.AnalyzeBenchmark.
+message AnalyzeBenchmarkRequest {
+  string workspace_id = 1;
+  string competitor_id = 2;
+  string snapshot_type = 3;
+  string data_period_start = 4;
+  string data_period_end = 5;
+}
+
+// AnalyzeBenchmarkResponse is the response for CompetitorService.AnalyzeBenchmark.
+message AnalyzeBenchmarkResponse {
+  BenchmarkSnapshot snapshot = 1;
+  repeated WhiteSpaceGap white_space_gaps = 2;
+  repeated PricingComparisonItem pricing_comparisons = 3;
+  repeated FormatComparisonItem format_comparisons = 4;
+}
+
+// BenchmarkServiceCompareRequest is the request for BenchmarkService.Compare.
+message BenchmarkServiceCompareRequest {
+  string workspace_id = 1;
+  repeated string competitor_ids = 2;
+  string period = 3;
+}
+
+// BenchmarkServiceCompareResponse is the response for BenchmarkService.Compare.
+message BenchmarkServiceCompareResponse {
+  BenchmarkComparison comparison = 1;
+}
+
+// GetTimeSeriesRequest is the request for BenchmarkService.GetTimeSeries.
+message GetTimeSeriesRequest {
+  string workspace_id = 1;
+  repeated string competitor_ids = 2;
+  string metric = 3;
+  string period = 4;
+}
+
+// GetTimeSeriesResponse is the response for BenchmarkService.GetTimeSeries.
+message GetTimeSeriesResponse {
+  repeated TimeSeriesSeries series = 1;
+}
+
+// CompetitorService manages competitor tracking and on-demand analysis per M03.
+service CompetitorService {
+  // List retrieves the paginated registry of tracked competitors.
+  rpc List(CompetitorServiceListRequest) returns (CompetitorServiceListResponse);
+  // Add registers a new competitor into the workspace registry.
+  rpc Add(CompetitorServiceAddRequest) returns (CompetitorServiceAddResponse);
+  // Remove removes a competitor from tracking.
+  rpc Remove(CompetitorServiceRemoveRequest) returns (CompetitorServiceRemoveResponse);
+  // GetSuggestions retrieves AI-recommended competitors to track.
+  rpc GetSuggestions(GetSuggestionsRequest) returns (GetSuggestionsResponse);
+  // DismissSuggestion dismisses a suggested competitor.
+  rpc DismissSuggestion(DismissSuggestionRequest) returns (DismissSuggestionResponse);
+  // SetAlerts configures alert thresholds for a competitor.
+  rpc SetAlerts(SetAlertsRequest) returns (SetAlertsResponse);
+  // ValidateHandle checks if a handle exists and generates preview metadata.
+  rpc ValidateHandle(ValidateHandleRequest) returns (ValidateHandleResponse);
+  // AnalyzeBenchmark captures or generates an on-demand benchmark snapshot.
+  rpc AnalyzeBenchmark(AnalyzeBenchmarkRequest) returns (AnalyzeBenchmarkResponse);
+}
+
+// BenchmarkService provides comparative benchmarking against competitor sets per M03.
+service BenchmarkService {
+  // Compare calculates side-by-side performance across competitors and market average.
+  rpc Compare(BenchmarkServiceCompareRequest) returns (BenchmarkServiceCompareResponse);
+  // GetTimeSeries retrieves historical metric curves for visual comparison.
+  rpc GetTimeSeries(GetTimeSeriesRequest) returns (GetTimeSeriesResponse);
+}

@@ -1,0 +1,288 @@
+=== Web & Admin Frontend Quality Gate ===
+Detected Node: 24.21.0, pnpm: 10.34.9
+Installing dependencies with frozen lockfile...
+Scope: all 4 workspace projects
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 0, reused 1, downloaded 0, added 0
+Packages: -71
+-----------------------------------------------------------------------
+Progress: resolved 0, reused 64, downloaded 0, added 0, done
+
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: browser-tabs-lock@1.3.0, core-js@3.47.0,            │
+│   esbuild@0.25.12.                                                           │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Done in 1.5s using pnpm v10.34.9
+
+   ╭──────────────────────────────────────────────────────────────────────╮
+   │                                                                      │
+   │                 Update available! 10.34.9 → 12.16.1.                 │
+   │                 Changelog: https://pnpm.io/v/12.16.1                 │
+   │   To update, run: curl -fsSL https://get.pnpm.io/install.sh | sh -   │
+   │                                                                      │
+   ╰──────────────────────────────────────────────────────────────────────╯
+
+--- Testing apps/web ---
+Running pnpm --dir apps/web check...
+
+> @creativanta/web@0.1.0 check /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p2-02/apps/web
+> svelte-kit sync && svelte-check --tsconfig ./tsconfig.json
+
+
+====================================
+Loading svelte-check in workspace: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p2-02/apps/web
+Getting Svelte diagnostics...
+
+====================================
+svelte-check found 0 errors and 0 warnings
+Running pnpm --dir apps/web build...
+
+> @creativanta/web@0.1.0 build /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p2-02/apps/web
+> vite build
+
+vite v6.2.0 building SSR bundle for production...
+transforming...
+✓ 201 modules transformed.
+rendering chunks...
+vite v6.2.0 building for production...
+transforming...
+✓ 197 modules transformed.
+rendering chunks...
+computing gzip size...
+.svelte-kit/output/client/_app/version.json                           0.03 kB │ gzip:   0.05 kB
+.svelte-kit/output/client/.vite/manifest.json                        15.70 kB │ gzip:   1.75 kB
+.svelte-kit/output/client/_app/immutable/assets/0.7YJMlc5h.css       40.01 kB │ gzip:   7.55 kB
+.svelte-kit/output/client/_app/immutable/chunks/CF2R9Zdq.js           0.04 kB │ gzip:   0.06 kB
+.svelte-kit/output/client/_app/immutable/entry/start.BGI4G2uc.js      0.06 kB │ gzip:   0.08 kB
+.svelte-kit/output/client/_app/immutable/chunks/DXXdnNlz.js           0.20 kB │ gzip:   0.17 kB
+.svelte-kit/output/client/_app/immutable/chunks/B9DMwN2C.js           0.23 kB │ gzip:   0.16 kB
+.svelte-kit/output/client/_app/immutable/chunks/SwpP26OM.js           0.31 kB │ gzip:   0.23 kB
+.svelte-kit/output/client/_app/immutable/chunks/RFXBoAwv.js           0.33 kB │ gzip:   0.26 kB
+.svelte-kit/output/client/_app/immutable/chunks/5AQSyh7p.js           0.52 kB │ gzip:   0.34 kB
+.svelte-kit/output/client/_app/immutable/nodes/1.Dg57gAJ8.js          0.58 kB │ gzip:   0.37 kB
+.svelte-kit/output/client/_app/immutable/chunks/DX8rZ-S3.js           0.62 kB │ gzip:   0.43 kB
+.svelte-kit/output/client/_app/immutable/chunks/vNsnaCgi.js           0.71 kB │ gzip:   0.40 kB
+.svelte-kit/output/client/_app/immutable/chunks/DTi9ulbP.js           0.81 kB │ gzip:   0.43 kB
+.svelte-kit/output/client/_app/immutable/chunks/DAsgrIV1.js           0.98 kB │ gzip:   0.56 kB
+.svelte-kit/output/client/_app/immutable/chunks/Dg1jCHO1.js           1.02 kB │ gzip:   0.56 kB
+.svelte-kit/output/client/_app/immutable/chunks/D7kE2EKE.js           1.13 kB │ gzip:   0.65 kB
+.svelte-kit/output/client/_app/immutable/chunks/C1FmrZbK.js           1.14 kB │ gzip:   0.68 kB
+.svelte-kit/output/client/_app/immutable/chunks/DQPOcPHg.js           1.37 kB │ gzip:   0.83 kB
+.svelte-kit/output/client/_app/immutable/chunks/C5t3ZVPr.js           1.64 kB │ gzip:   0.89 kB
+.svelte-kit/output/client/_app/immutable/chunks/iakhjuw9.js           1.71 kB │ gzip:   0.84 kB
+.svelte-kit/output/client/_app/immutable/nodes/9.CN3dkyXr.js          2.02 kB │ gzip:   1.22 kB
+.svelte-kit/output/client/_app/immutable/nodes/3.RA-w8knf.js          2.05 kB │ gzip:   1.25 kB
+.svelte-kit/output/client/_app/immutable/chunks/v_9nX9vp.js           2.21 kB │ gzip:   1.02 kB
+.svelte-kit/output/client/_app/immutable/chunks/BfJUtWyK.js           3.20 kB │ gzip:   1.62 kB
+.svelte-kit/output/client/_app/immutable/nodes/19.BEMYTr7V.js         3.22 kB │ gzip:   1.52 kB
+.svelte-kit/output/client/_app/immutable/nodes/10.CugTitzp.js         3.27 kB │ gzip:   1.62 kB
+.svelte-kit/output/client/_app/immutable/chunks/CT8PLW4l.js           4.13 kB │ gzip:   2.01 kB
+.svelte-kit/output/client/_app/immutable/chunks/DBghh_GP.js           4.67 kB │ gzip:   2.24 kB
+.svelte-kit/output/client/_app/immutable/nodes/14.BIsVme_C.js         4.94 kB │ gzip:   2.24 kB
+.svelte-kit/output/client/_app/immutable/nodes/15.COt0pO5x.js         5.81 kB │ gzip:   2.31 kB
+.svelte-kit/output/client/_app/immutable/chunks/ebQ3Tqif.js           5.83 kB │ gzip:   2.37 kB
+.svelte-kit/output/client/_app/immutable/nodes/13.BUaQzFLk.js         7.10 kB │ gzip:   3.03 kB
+.svelte-kit/output/client/_app/immutable/nodes/12.D6ISpjEj.js         7.29 kB │ gzip:   3.33 kB
+.svelte-kit/output/client/_app/immutable/chunks/D2Z-GnmX.js           7.48 kB │ gzip:   3.24 kB
+.svelte-kit/output/client/_app/immutable/entry/app.Ch9HsAZL.js        7.94 kB │ gzip:   3.04 kB
+.svelte-kit/output/client/_app/immutable/nodes/11.DAxpLSI7.js         8.15 kB │ gzip:   3.16 kB
+.svelte-kit/output/client/_app/immutable/nodes/7.BeckmQUD.js          8.53 kB │ gzip:   3.70 kB
+.svelte-kit/output/client/_app/immutable/nodes/18.Dhy1ZoeG.js         8.88 kB │ gzip:   3.79 kB
+.svelte-kit/output/client/_app/immutable/nodes/17.A-6tg-Ak.js        10.01 kB │ gzip:   3.93 kB
+.svelte-kit/output/client/_app/immutable/chunks/Bdx1RDDP.js          10.16 kB │ gzip:   3.70 kB
+.svelte-kit/output/client/_app/immutable/chunks/BJme0bRU.js          10.45 kB │ gzip:   4.19 kB
+.svelte-kit/output/client/_app/immutable/nodes/8.D8R8oMV9.js         10.74 kB │ gzip:   4.15 kB
+.svelte-kit/output/client/_app/immutable/chunks/MVeDbFWG.js          12.42 kB │ gzip:   5.70 kB
+.svelte-kit/output/client/_app/immutable/chunks/C_7NJspM.js          12.84 kB │ gzip:   5.16 kB
+.svelte-kit/output/client/_app/immutable/nodes/16.DND1BZX0.js        14.41 kB │ gzip:   5.36 kB
+.svelte-kit/output/client/_app/immutable/nodes/4.BITtpT-U.js         19.57 kB │ gzip:   6.50 kB
+.svelte-kit/output/client/_app/immutable/nodes/5.BLNA6BbD.js         23.20 kB │ gzip:   7.63 kB
+.svelte-kit/output/client/_app/immutable/nodes/2.D3anAp5X.js         27.95 kB │ gzip:   9.73 kB
+.svelte-kit/output/client/_app/immutable/nodes/0.QJD6SMa1.js         30.99 kB │ gzip:   9.87 kB
+.svelte-kit/output/client/_app/immutable/chunks/tdWhe4dQ.js          34.10 kB │ gzip:  13.01 kB
+.svelte-kit/output/client/_app/immutable/nodes/6.Dzhv97a5.js         35.42 kB │ gzip:  11.70 kB
+.svelte-kit/output/client/_app/immutable/chunks/Sjkp5fVZ.js       1,598.93 kB │ gzip: 594.03 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 6.43s
+.svelte-kit/output/server/.vite/manifest.json                                       10.12 kB
+.svelte-kit/output/server/_app/immutable/assets/_layout.Dr0arVGF.css                39.88 kB
+.svelte-kit/output/server/entries/pages/_layout.ts.js                                0.07 kB
+.svelte-kit/output/server/internal.js                                                0.31 kB
+.svelte-kit/output/server/chunks/equality.js                                         0.33 kB
+.svelte-kit/output/server/chunks/escaping.js                                         0.53 kB
+.svelte-kit/output/server/chunks/stores.js                                           0.55 kB
+.svelte-kit/output/server/entries/fallbacks/error.svelte.js                          0.65 kB
+.svelte-kit/output/server/chunks/attributes.js                                       0.70 kB
+.svelte-kit/output/server/chunks/client.js                                           1.17 kB
+.svelte-kit/output/server/chunks/UnavailableNotice.js                                1.24 kB
+.svelte-kit/output/server/chunks/JobCard.js                                          1.89 kB
+.svelte-kit/output/server/entries/pages/register/_page.svelte.js                     2.16 kB
+.svelte-kit/output/server/entries/pages/forgot-password/_page.svelte.js              2.19 kB
+.svelte-kit/output/server/chunks/index2.js                                           2.68 kB
+.svelte-kit/output/server/entries/pages/xuat-ban/_page.svelte.js                     3.51 kB
+.svelte-kit/output/server/entries/pages/sang-tao/_page.svelte.js                     3.56 kB
+.svelte-kit/output/server/entries/pages/settings/credits/purchase/_page.svelte.js    4.74 kB
+.svelte-kit/output/server/chunks/exports.js                                          5.47 kB
+.svelte-kit/output/server/entries/pages/settings/diagnostics/_page.svelte.js         6.23 kB
+.svelte-kit/output/server/entries/pages/settings/credits/usage/_page.svelte.js       6.37 kB
+.svelte-kit/output/server/entries/pages/settings/capabilities/_page.svelte.js        6.58 kB
+.svelte-kit/output/server/entries/pages/settings/connections/_page.svelte.js         6.83 kB
+.svelte-kit/output/server/chunks/index3.js                                           6.84 kB
+.svelte-kit/output/server/entries/pages/settings/billing/_page.svelte.js             7.75 kB
+.svelte-kit/output/server/entries/pages/settings/team/_page.svelte.js                7.96 kB
+.svelte-kit/output/server/entries/pages/kinh-doanh/_page.svelte.js                   8.05 kB
+.svelte-kit/output/server/chunks/index4.js                                           8.72 kB
+.svelte-kit/output/server/entries/pages/workspaces/_page.svelte.js                   9.47 kB
+.svelte-kit/output/server/entries/pages/login/_page.svelte.js                        9.79 kB
+.svelte-kit/output/server/chunks/index5.js                                          13.57 kB
+.svelte-kit/output/server/chunks/store.js                                           14.00 kB
+.svelte-kit/output/server/chunks/CompetitorWhyDrawer.js                             14.04 kB
+.svelte-kit/output/server/chunks/navigation.js                                      14.64 kB
+.svelte-kit/output/server/entries/pages/intelligence/competitors/_page.svelte.js    14.75 kB
+.svelte-kit/output/server/entries/pages/_page.svelte.js                             17.38 kB
+.svelte-kit/output/server/chunks/internal.js                                        18.78 kB
+.svelte-kit/output/server/entries/pages/intelligence/benchmarks/_page.svelte.js     20.03 kB
+.svelte-kit/output/server/entries/pages/kham-pha/_page.svelte.js                    25.29 kB
+.svelte-kit/output/server/chunks/index.js                                           28.95 kB
+.svelte-kit/output/server/entries/pages/_layout.svelte.js                           32.97 kB
+.svelte-kit/output/server/index.js                                                 100.40 kB
+✓ built in 11.80s
+
+Run npm run preview to preview your production build locally.
+
+> Using @sveltejs/adapter-node
+  ✔ done
+Running pnpm --dir apps/web test...
+
+> @creativanta/web@0.1.0 test /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p2-02/apps/web
+> vitest run
+
+
+ RUN  v3.0.7 /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p2-02/apps/web
+
+ ✓ src/lib/trend/trend.test.ts (11 tests) 18ms
+ ✓ src/lib/p1_first_value/p1_first_value.test.ts (4 tests) 50ms
+stderr | src/lib/auth/auth.test.ts > P0-03 Web User-Facing Identity & Auth Store > 4. Sign-Out & Failure Transitions > transitions to error state when Clerk initialization throws unexpectedly
+[AUTH STORE] Init error: Error: Clerk SDK network timeout
+    at /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p2-02/apps/web/src/lib/auth/auth.test.ts:257:50
+    at file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p2-02/node_modules/@vitest/runner/dist/index.js:174:14
+    at file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p2-02/node_modules/@vitest/runner/dist/index.js:558:28
+    at file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p2-02/node_modules/@vitest/runner/dist/index.js:61:24
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p2-02/node_modules/@vitest/runner/dist/index.js:41:12)
+    at runTest (file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p2-02/node_modules/@vitest/runner/dist/index.js:1137:17)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at runSuite (file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p2-02/node_modules/@vitest/runner/dist/index.js:1291:15)
+    at runSuite (file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p2-02/node_modules/@vitest/runner/dist/index.js:1291:15)
+
+ ✓ src/lib/auth/auth.test.ts (17 tests) 63ms
+ ✓ src/lib/competitor/competitor.test.ts (11 tests) 97ms
+ ✓ src/lib/capability/capability.test.ts (4 tests) 9ms
+ ✓ src/lib/billing/billing.test.ts (5 tests) 10ms
+ ✓ src/lib/diagnostics/diagnostics.test.ts (5 tests) 11ms
+ ✓ src/lib/help/help.test.ts (4 tests) 8ms
+ ✓ src/lib/notification/notification.test.ts (6 tests) 8ms
+ ✓ src/lib/constants/modes.test.ts (3 tests) 13ms
+ ✓ src/lib/constants/routes.test.ts (3 tests) 10ms
+ ✓ src/lib/constants/navigation.test.ts (2 tests) 8ms
+
+ Test Files  12 passed (12)
+      Tests  75 passed (75)
+   Start at  04:27:37
+   Duration  4.50s (transform 1.29s, setup 0ms, collect 2.99s, tests 306ms, environment 4ms, prepare 1.62s)
+
+--- Testing apps/admin ---
+Running pnpm --dir apps/admin check...
+
+> @creativanta/admin@0.1.0 check /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p2-02/apps/admin
+> svelte-kit sync && svelte-check --tsconfig ./tsconfig.json
+
+
+====================================
+Loading svelte-check in workspace: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p2-02/apps/admin
+Getting Svelte diagnostics...
+
+====================================
+svelte-check found 0 errors and 0 warnings
+Running pnpm --dir apps/admin build...
+
+> @creativanta/admin@0.1.0 build /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p2-02/apps/admin
+> vite build
+
+vite v6.2.0 building SSR bundle for production...
+transforming...
+✓ 158 modules transformed.
+rendering chunks...
+vite v6.2.0 building for production...
+transforming...
+✓ 136 modules transformed.
+rendering chunks...
+computing gzip size...
+.svelte-kit/output/client/_app/version.json                        0.03 kB │ gzip:  0.05 kB
+.svelte-kit/output/client/.vite/manifest.json                      2.98 kB │ gzip:  0.59 kB
+.svelte-kit/output/client/_app/immutable/assets/0.K2kEd9AR.css     9.51 kB │ gzip:  2.66 kB
+.svelte-kit/output/client/_app/immutable/entry/start.DClnc6MU.js   0.06 kB │ gzip:  0.08 kB
+.svelte-kit/output/client/_app/immutable/chunks/9ISM32Md.js        0.32 kB │ gzip:  0.25 kB
+.svelte-kit/output/client/_app/immutable/chunks/BQS-lkPc.js        0.62 kB │ gzip:  0.43 kB
+.svelte-kit/output/client/_app/immutable/chunks/QnACGAOW.js        1.00 kB │ gzip:  0.57 kB
+.svelte-kit/output/client/_app/immutable/nodes/1.BbjhgWuC.js       1.03 kB │ gzip:  0.60 kB
+.svelte-kit/output/client/_app/immutable/nodes/0.D6b-ATa6.js       1.12 kB │ gzip:  0.68 kB
+.svelte-kit/output/client/_app/immutable/chunks/BB6c6W61.js        2.20 kB │ gzip:  1.01 kB
+.svelte-kit/output/client/_app/immutable/chunks/B3MekvKB.js        2.77 kB │ gzip:  1.48 kB
+.svelte-kit/output/client/_app/immutable/entry/app.DZmkmTif.js     7.02 kB │ gzip:  3.32 kB
+.svelte-kit/output/client/_app/immutable/chunks/IquGna2z.js       12.62 kB │ gzip:  5.07 kB
+.svelte-kit/output/client/_app/immutable/nodes/2.CkoPV8nn.js      12.83 kB │ gzip:  5.40 kB
+.svelte-kit/output/client/_app/immutable/chunks/DCseUC8m.js       34.47 kB │ gzip: 13.17 kB
+✓ built in 1.28s
+.svelte-kit/output/server/.vite/manifest.json                           1.92 kB
+.svelte-kit/output/server/_app/immutable/assets/_layout.Cr-fGH3n.css    9.40 kB
+.svelte-kit/output/server/internal.js                                   0.31 kB
+.svelte-kit/output/server/chunks/escaping.js                            0.53 kB
+.svelte-kit/output/server/chunks/equality.js                            0.77 kB
+.svelte-kit/output/server/entries/pages/_layout.svelte.js               0.95 kB
+.svelte-kit/output/server/entries/fallbacks/error.svelte.js             1.73 kB
+.svelte-kit/output/server/chunks/index.js                               2.84 kB
+.svelte-kit/output/server/chunks/exports.js                             6.89 kB
+.svelte-kit/output/server/entries/pages/_page.svelte.js                11.52 kB
+.svelte-kit/output/server/chunks/internal.js                           41.73 kB
+.svelte-kit/output/server/index.js                                    100.33 kB
+✓ built in 4.68s
+
+Run npm run preview to preview your production build locally.
+
+> Using @sveltejs/adapter-node
+  ✔ done
+Running pnpm --dir apps/admin test...
+
+> @creativanta/admin@0.1.0 test /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p2-02/apps/admin
+> vitest run
+
+
+ RUN  v3.0.7 /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p2-02/apps/admin
+
+ ✓ src/lib/access.test.ts (6 tests) 10ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  04:27:58
+   Duration  564ms (transform 97ms, setup 0ms, collect 114ms, tests 10ms, environment 0ms, prepare 110ms)
+
+Running real SvelteKit SSR smoke (Web + Admin)...
+OK web / 200
+OK web /kham-pha 200
+OK web /sang-tao 200
+OK web /xuat-ban 200
+OK web /kinh-doanh 200
+OK web /intelligence/competitors 200
+OK web /intelligence/benchmarks 200
+OK admin / 200
+WEB_ADMIN_REAL_SSR_SMOKE_PASS
+=== Web & Admin Frontend Quality Gate: ALL CHECKS PASSED ===
