@@ -1,0 +1,56 @@
+=== RUN   TestAcceptanceTarget1_StaleApprovalFails
+--- PASS: TestAcceptanceTarget1_StaleApprovalFails (0.01s)
+=== RUN   TestAcceptanceTarget2_RejectionReasonValidated
+=== RUN   TestAcceptanceTarget2_RejectionReasonValidated/InvalidReason_
+=== RUN   TestAcceptanceTarget2_RejectionReasonValidated/InvalidReason____
+=== RUN   TestAcceptanceTarget2_RejectionReasonValidated/InvalidReason_bad
+=== RUN   TestAcceptanceTarget2_RejectionReasonValidated/InvalidReason_fix_it
+=== RUN   TestAcceptanceTarget2_RejectionReasonValidated/InvalidReason_too_slow
+=== RUN   TestAcceptanceTarget2_RejectionReasonValidated/InvalidReason_123456789
+--- PASS: TestAcceptanceTarget2_RejectionReasonValidated (0.00s)
+    --- PASS: TestAcceptanceTarget2_RejectionReasonValidated/InvalidReason_ (0.00s)
+    --- PASS: TestAcceptanceTarget2_RejectionReasonValidated/InvalidReason____ (0.00s)
+    --- PASS: TestAcceptanceTarget2_RejectionReasonValidated/InvalidReason_bad (0.00s)
+    --- PASS: TestAcceptanceTarget2_RejectionReasonValidated/InvalidReason_fix_it (0.00s)
+    --- PASS: TestAcceptanceTarget2_RejectionReasonValidated/InvalidReason_too_slow (0.00s)
+    --- PASS: TestAcceptanceTarget2_RejectionReasonValidated/InvalidReason_123456789 (0.00s)
+=== RUN   TestAcceptanceTarget3_ReadyForProductionRequiresApprovalAndCompleteBrief
+--- PASS: TestAcceptanceTarget3_ReadyForProductionRequiresApprovalAndCompleteBrief (0.00s)
+=== RUN   TestEmptyScenesBlockSubmission
+--- PASS: TestEmptyScenesBlockSubmission (0.00s)
+=== RUN   TestChannelRewriteProducesIndependentScriptWithSameIdea
+--- PASS: TestChannelRewriteProducesIndependentScriptWithSameIdea (0.00s)
+=== RUN   TestCommercialOfferHooks_AutoSuggestDisclosure
+--- PASS: TestCommercialOfferHooks_AutoSuggestDisclosure (0.00s)
+=== RUN   TestScriptVersionSnapshotAndRestore
+--- PASS: TestScriptVersionSnapshotAndRestore (0.00s)
+=== RUN   TestRBACPermissionGating
+--- PASS: TestRBACPermissionGating (0.00s)
+=== RUN   TestMultiTenantIsolation
+--- PASS: TestMultiTenantIsolation (0.00s)
+=== RUN   TestConcurrentScriptOperations_NoRace
+--- PASS: TestConcurrentScriptOperations_NoRace (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/script	1.085s
+=== RUN   TestLoadAndValidateCanonicalP004Migration
+--- PASS: TestLoadAndValidateCanonicalP004Migration (0.55s)
+=== RUN   TestValidateCanonicalMigrationContractRejectsViolations
+=== RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_GRANT_ALL
+=== RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_FLOAT_or_REAL_on_money_or_credit_column_(DB-H-001)
+=== RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_FORCE_ROW_LEVEL_SECURITY_on_junction_table
+=== RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_composite_tenant_FK
+--- PASS: TestValidateCanonicalMigrationContractRejectsViolations (0.77s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_GRANT_ALL (0.04s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_FLOAT_or_REAL_on_money_or_credit_column_(DB-H-001) (0.21s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_FORCE_ROW_LEVEL_SECURITY_on_junction_table (0.26s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_composite_tenant_FK (0.22s)
+=== RUN   TestUpStatusDownTransactionalBehavior
+--- PASS: TestUpStatusDownTransactionalBehavior (1.79s)
+=== RUN   TestPostgresLiveMigrationAndAppUserRLS
+    migrator_test.go:502: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL 17.10 migration & RLS suite executes in CI
+--- SKIP: TestPostgresLiveMigrationAndAppUserRLS (0.00s)
+=== RUN   TestPostgresSeedTwiceIdempotency
+    migrator_test.go:1132: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL seed twice idempotency suite executes in CI
+--- SKIP: TestPostgresSeedTwiceIdempotency (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/migrate	4.157s
