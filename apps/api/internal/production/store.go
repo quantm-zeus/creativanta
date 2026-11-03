@@ -65,22 +65,46 @@ type Store interface {
 	CreateSoundTrack(ctx context.Context, track *SoundTrack) error
 	GetSoundTrack(ctx context.Context, workspaceID, trackID string) (*SoundTrack, error)
 	ListSoundTracks(ctx context.Context, workspaceID, category, genre, mood string, limit, offset int) ([]*SoundTrack, int64, error)
+
+	// Style packs (EF-07, P4-07)
+	CreateStylePack(ctx context.Context, pack *StylePackRecord) error
+	GetStylePack(ctx context.Context, workspaceID, packID string) (*StylePackRecord, error)
+	ListStylePacks(ctx context.Context, workspaceID string, limit, offset int) ([]*StylePackRecord, int64, error)
+	UpdateStylePack(ctx context.Context, pack *StylePackRecord) error
+	DeleteStylePack(ctx context.Context, workspaceID, packID string) error
+
+	// Continuity violations & QA (M08, P4-07)
+	CreateContinuityViolation(ctx context.Context, v *ContinuityViolationRecord) error
+	GetContinuityViolation(ctx context.Context, workspaceID, violationID string) (*ContinuityViolationRecord, error)
+	ResolveContinuityViolation(ctx context.Context, workspaceID, violationID, resolvedBy, overrideReason string) error
+	ListContinuityViolations(ctx context.Context, workspaceID, assetID string) ([]*ContinuityViolationRecord, error)
+
+	// Characters & Consent for Previews (M08, P4-07)
+	SaveCharacter(ctx context.Context, char *ProductionCharacter) error
+	GetCharacter(ctx context.Context, workspaceID, characterID string) (*ProductionCharacter, error)
+	SaveConsentRecord(ctx context.Context, cr *ProductionConsentRecord) error
+	GetConsentRecord(ctx context.Context, workspaceID, consentID string) (*ProductionConsentRecord, error)
+	RevokeConsentRecord(ctx context.Context, workspaceID, consentID string) error
 }
 
 // MemoryStore provides a thread-safe, tenant-isolated in-memory store for production.
 type MemoryStore struct {
 	mu           sync.RWMutex
-	assets       map[string]map[string]*Asset                // workspaceID -> assetID -> Asset
-	jobs         map[string]map[string]*GenerationJob        // workspaceID -> jobID -> GenerationJob
-	uploads      map[string]map[string]*FileUpload           // workspaceID -> uploadID -> FileUpload
-	transcripts  map[string]map[string]*TranscriptRecord     // workspaceID -> transcriptID -> TranscriptRecord
-	drafts       map[string]map[string]*QuickEditDraftRecord // workspaceID -> draftID -> QuickEditDraftRecord
-	sounds       map[string]map[string]*SoundTrackRecord     // workspaceID ("" for global) -> soundID -> SoundTrackRecord
-	blueprints   map[string]map[string]*RemixBlueprint       // workspaceID -> blueprintID -> RemixBlueprint
-	videoJobs    map[string]map[string]*VideoEditJobRecord   // workspaceID -> jobID -> VideoEditJobRecord
-	translations map[string]map[string]*TranslationJob       // workspaceID -> jobID -> TranslationJob
-	voiceClones  map[string]map[string]*VoiceCloneRecord     // workspaceID -> cloneID -> VoiceCloneRecord
-	soundTracks  map[string]map[string]*SoundTrack           // workspaceID -> trackID -> SoundTrack
+	assets       map[string]map[string]*Asset                     // workspaceID -> assetID -> Asset
+	jobs         map[string]map[string]*GenerationJob             // workspaceID -> jobID -> GenerationJob
+	uploads      map[string]map[string]*FileUpload                // workspaceID -> uploadID -> FileUpload
+	transcripts  map[string]map[string]*TranscriptRecord          // workspaceID -> transcriptID -> TranscriptRecord
+	drafts       map[string]map[string]*QuickEditDraftRecord      // workspaceID -> draftID -> QuickEditDraftRecord
+	sounds       map[string]map[string]*SoundTrackRecord          // workspaceID ("" for global) -> soundID -> SoundTrackRecord
+	blueprints   map[string]map[string]*RemixBlueprint            // workspaceID -> blueprintID -> RemixBlueprint
+	videoJobs    map[string]map[string]*VideoEditJobRecord        // workspaceID -> jobID -> VideoEditJobRecord
+	translations map[string]map[string]*TranslationJob            // workspaceID -> jobID -> TranslationJob
+	voiceClones  map[string]map[string]*VoiceCloneRecord          // workspaceID -> cloneID -> VoiceCloneRecord
+	soundTracks  map[string]map[string]*SoundTrack                // workspaceID -> trackID -> SoundTrack
+	stylePacks   map[string]map[string]*StylePackRecord           // workspaceID -> stylePackID -> StylePackRecord
+	violations   map[string]map[string]*ContinuityViolationRecord // workspaceID -> violationID -> ContinuityViolationRecord
+	characters   map[string]map[string]*ProductionCharacter       // workspaceID -> characterID -> ProductionCharacter
+	consents     map[string]map[string]*ProductionConsentRecord   // workspaceID -> consentID -> ProductionConsentRecord
 }
 
 // NewMemoryStore constructs a new MemoryStore.
@@ -97,6 +121,10 @@ func NewMemoryStore() *MemoryStore {
 		translations: make(map[string]map[string]*TranslationJob),
 		voiceClones:  make(map[string]map[string]*VoiceCloneRecord),
 		soundTracks:  make(map[string]map[string]*SoundTrack),
+		stylePacks:   make(map[string]map[string]*StylePackRecord),
+		violations:   make(map[string]map[string]*ContinuityViolationRecord),
+		characters:   make(map[string]map[string]*ProductionCharacter),
+		consents:     make(map[string]map[string]*ProductionConsentRecord),
 	}
 	ms.initGlobalSoundLibrary()
 	return ms
@@ -1022,4 +1050,253 @@ func (s *MemoryStore) ListSoundTracks(ctx context.Context, workspaceID, category
 		end = len(matched)
 	}
 	return matched[offset:end], total, nil
+}
+
+// Style Pack Store Implementation
+
+func (s *MemoryStore) CreateStylePack(ctx context.Context, pack *StylePackRecord) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.stylePacks[pack.WorkspaceID] == nil {
+		s.stylePacks[pack.WorkspaceID] = make(map[string]*StylePackRecord)
+	}
+	cp := *pack
+	s.stylePacks[pack.WorkspaceID][pack.StylePackID] = &cp
+	return nil
+}
+
+func (s *MemoryStore) GetStylePack(ctx context.Context, workspaceID, packID string) (*StylePackRecord, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.stylePacks[workspaceID]
+	if ws == nil {
+		return nil, ErrStylePackNotFound
+	}
+	p, ok := ws[packID]
+	if !ok || p.DeletedAt != nil {
+		return nil, ErrStylePackNotFound
+	}
+	cp := *p
+	return &cp, nil
+}
+
+func (s *MemoryStore) ListStylePacks(ctx context.Context, workspaceID string, limit, offset int) ([]*StylePackRecord, int64, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.stylePacks[workspaceID]
+	if ws == nil {
+		return []*StylePackRecord{}, 0, nil
+	}
+
+	var active []*StylePackRecord
+	for _, p := range ws {
+		if p.DeletedAt == nil && p.IsActive {
+			cp := *p
+			active = append(active, &cp)
+		}
+	}
+
+	total := int64(len(active))
+	if offset < 0 {
+		offset = 0
+	}
+	if offset >= len(active) {
+		return []*StylePackRecord{}, total, nil
+	}
+	end := offset + limit
+	if limit <= 0 || end > len(active) {
+		end = len(active)
+	}
+	return active[offset:end], total, nil
+}
+
+func (s *MemoryStore) UpdateStylePack(ctx context.Context, pack *StylePackRecord) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.stylePacks[pack.WorkspaceID] == nil {
+		return ErrStylePackNotFound
+	}
+	if _, ok := s.stylePacks[pack.WorkspaceID][pack.StylePackID]; !ok {
+		return ErrStylePackNotFound
+	}
+	cp := *pack
+	s.stylePacks[pack.WorkspaceID][pack.StylePackID] = &cp
+	return nil
+}
+
+func (s *MemoryStore) DeleteStylePack(ctx context.Context, workspaceID, packID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ws := s.stylePacks[workspaceID]
+	if ws == nil {
+		return ErrStylePackNotFound
+	}
+	p, ok := ws[packID]
+	if !ok || p.DeletedAt != nil {
+		return ErrStylePackNotFound
+	}
+	now := time.Now().UTC()
+	p.DeletedAt = &now
+	p.IsActive = false
+	return nil
+}
+
+// Continuity Violation Store Implementation
+
+func (s *MemoryStore) CreateContinuityViolation(ctx context.Context, v *ContinuityViolationRecord) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.violations[v.WorkspaceID] == nil {
+		s.violations[v.WorkspaceID] = make(map[string]*ContinuityViolationRecord)
+	}
+	cp := *v
+	s.violations[v.WorkspaceID][v.ViolationID] = &cp
+	return nil
+}
+
+func (s *MemoryStore) GetContinuityViolation(ctx context.Context, workspaceID, violationID string) (*ContinuityViolationRecord, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.violations[workspaceID]
+	if ws == nil {
+		return nil, ErrViolationNotFound
+	}
+	v, ok := ws[violationID]
+	if !ok {
+		return nil, ErrViolationNotFound
+	}
+	cp := *v
+	return &cp, nil
+}
+
+func (s *MemoryStore) ResolveContinuityViolation(ctx context.Context, workspaceID, violationID, resolvedBy, overrideReason string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ws := s.violations[workspaceID]
+	if ws == nil {
+		return ErrViolationNotFound
+	}
+	v, ok := ws[violationID]
+	if !ok {
+		return ErrViolationNotFound
+	}
+	now := time.Now().UTC()
+	v.Resolved = true
+	v.ResolvedBy = resolvedBy
+	v.ResolvedAt = &now
+	v.OverrideReason = overrideReason
+	return nil
+}
+
+func (s *MemoryStore) ListContinuityViolations(ctx context.Context, workspaceID, assetID string) ([]*ContinuityViolationRecord, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.violations[workspaceID]
+	if ws == nil {
+		return []*ContinuityViolationRecord{}, nil
+	}
+
+	var matched []*ContinuityViolationRecord
+	for _, v := range ws {
+		if assetID == "" || v.AssetID == assetID {
+			cp := *v
+			matched = append(matched, &cp)
+		}
+	}
+	return matched, nil
+}
+
+// Characters & Consent Store Implementation
+
+func (s *MemoryStore) SaveCharacter(ctx context.Context, char *ProductionCharacter) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.characters[char.WorkspaceID] == nil {
+		s.characters[char.WorkspaceID] = make(map[string]*ProductionCharacter)
+	}
+	cp := *char
+	s.characters[char.WorkspaceID][char.CharacterID] = &cp
+	return nil
+}
+
+func (s *MemoryStore) GetCharacter(ctx context.Context, workspaceID, characterID string) (*ProductionCharacter, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.characters[workspaceID]
+	if ws == nil {
+		return nil, fmt.Errorf("character %q not found in workspace %q", characterID, workspaceID)
+	}
+	c, ok := ws[characterID]
+	if !ok {
+		return nil, fmt.Errorf("character %q not found in workspace %q", characterID, workspaceID)
+	}
+	cp := *c
+	return &cp, nil
+}
+
+func (s *MemoryStore) SaveConsentRecord(ctx context.Context, cr *ProductionConsentRecord) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.consents[cr.WorkspaceID] == nil {
+		s.consents[cr.WorkspaceID] = make(map[string]*ProductionConsentRecord)
+	}
+	cp := *cr
+	s.consents[cr.WorkspaceID][cr.ConsentID] = &cp
+	return nil
+}
+
+func (s *MemoryStore) GetConsentRecord(ctx context.Context, workspaceID, consentID string) (*ProductionConsentRecord, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.consents[workspaceID]
+	if ws == nil {
+		return nil, fmt.Errorf("consent record %q not found in workspace %q", consentID, workspaceID)
+	}
+	cr, ok := ws[consentID]
+	if !ok {
+		return nil, fmt.Errorf("consent record %q not found in workspace %q", consentID, workspaceID)
+	}
+	cp := *cr
+	return &cp, nil
+}
+
+func (s *MemoryStore) RevokeConsentRecord(ctx context.Context, workspaceID, consentID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ws := s.consents[workspaceID]
+	if ws == nil {
+		return fmt.Errorf("consent record %q not found in workspace %q", consentID, workspaceID)
+	}
+	cr, ok := ws[consentID]
+	if !ok {
+		return fmt.Errorf("consent record %q not found in workspace %q", consentID, workspaceID)
+	}
+	now := time.Now().UTC()
+	cr.Granted = false
+	cr.RevokedAt = &now
+
+	// Cascade revocation to any characters in workspace referencing this consent record
+	if chars := s.characters[workspaceID]; chars != nil {
+		for _, c := range chars {
+			if c.ConsentRecordID == consentID {
+				c.ConsentVerified = false
+				c.Status = "archived"
+			}
+		}
+	}
+	return nil
 }

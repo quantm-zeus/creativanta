@@ -1,11 +1,13 @@
 <script lang="ts">
   import type { CharacterType } from './types';
   import ConsentModal from './ConsentModal.svelte';
+  import { quoteCharacterPreview, type CharacterPreviewQuote } from '$lib/production';
 
   interface Props {
     workspaceTier?: string;
     activeCharacterCount?: number;
     isQuotaExceeded?: boolean;
+    creditBalance?: number;
     onCancel?: () => void;
     onSave?: (data: {
       name: string;
@@ -23,6 +25,7 @@
     workspaceTier = 'free',
     activeCharacterCount = 0,
     isQuotaExceeded = false,
+    creditBalance = 50,
     onCancel,
     onSave,
   }: Props = $props();
@@ -42,10 +45,11 @@
   let consentRecordId = $state('');
   let showConsentModal = $state(false);
 
-  // Step 3 Preview State (RULE-M08-001, AC 1)
+  // Step 3 Preview State (RULE-M08-001, AC 1, Target 1)
   let previewVerified = $state(false);
   let previewVideoUrl = $state('');
   let isGeneratingPreview = $state(false);
+  let previewQuote = $state<CharacterPreviewQuote>(quoteCharacterPreview(creditBalance, 15));
 
   let errorMsg = $state('');
 
@@ -83,13 +87,25 @@
       errorMsg = 'Vui lòng nhập tên nhân vật trước khi tạo bản xem trước.';
       return;
     }
-    currentStep = 3;
-    if (!previewVerified) {
-      generatePreviewVideo();
+    if (characterType === 'digital_twin' && !consentVerified) {
+      errorMsg = 'Nhân vật Digital Twin bắt buộc phải hoàn thành xác thực chân dung trước khi tiếp tục (RULE-M08-002, Target 3).';
+      showConsentModal = true;
+      return;
     }
+    previewQuote = quoteCharacterPreview(creditBalance, 15);
+    currentStep = 3;
   }
 
   function generatePreviewVideo() {
+    errorMsg = '';
+    if (characterType === 'digital_twin' && !consentVerified) {
+      errorMsg = 'Chưa có sự chấp thuận hình ảnh hoặc đã bị thu hồi (Consent Revoked). Không thể tạo bản xem trước.';
+      return;
+    }
+    if (!previewQuote.canAfford) {
+      errorMsg = 'Số dư credit không đủ để chi trả cho bản xem trước 15s (yêu cầu 5 credits).';
+      return;
+    }
     isGeneratingPreview = true;
     setTimeout(() => {
       isGeneratingPreview = false;
@@ -321,37 +337,91 @@
     </div>
   {/if}
 
-  <!-- STEP 3: PREVIEW TEST VIDEO (RULE-M08-001, AC 1) -->
+  <!-- STEP 3: PREVIEW TEST VIDEO (RULE-M08-001, AC 1, Target 1, Target 3) -->
   {#if currentStep === 3}
     <div class="space-y-4 text-xs">
-      <div class="p-4 bg-gray-50 border rounded-xl space-y-3">
+      <!-- Quote Card (Acceptance Target 1: 15s preview quoted) -->
+      <div class="p-4 bg-indigo-50/60 border border-indigo-200 rounded-xl space-y-3">
         <div class="flex items-center justify-between">
-          <div class="font-bold text-gray-900">Bản xem trước 15 giây (Preview Verification)</div>
-          {#if previewVerified}
+          <div class="font-bold text-indigo-950 text-sm">Báo giá xem trước nhân vật (15s Preview Quote)</div>
+          <span class="px-2 py-0.5 rounded text-[11px] font-bold {previewQuote.canAfford ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}">
+            {previewQuote.canAfford ? '✓ Đủ điều kiện chi tiêu' : '❌ Số dư không đủ'}
+          </span>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white p-3 rounded-lg border border-indigo-100">
+          <div>
+            <div class="text-[10px] uppercase font-bold text-gray-400">Thời lượng</div>
+            <div class="text-sm font-bold text-gray-900">{previewQuote.durationSeconds} giây</div>
+          </div>
+          <div>
+            <div class="text-[10px] uppercase font-bold text-gray-400">Chi phí cố định</div>
+            <div class="text-sm font-bold text-indigo-600">{previewQuote.creditsRequired} credits</div>
+          </div>
+          <div>
+            <div class="text-[10px] uppercase font-bold text-gray-400">Số dư hiện tại</div>
+            <div class="text-sm font-bold text-gray-900">{creditBalance} credits</div>
+          </div>
+          <div>
+            <div class="text-[10px] uppercase font-bold text-gray-400">Động cơ render</div>
+            <div class="text-sm font-bold text-gray-900">{previewQuote.provider}</div>
+          </div>
+        </div>
+
+        {#if characterType === 'digital_twin'}
+          <div class="p-2.5 rounded-lg text-xs {consentVerified ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'}">
+            {#if consentVerified}
+              <span>✓ Đã xác thực văn bản chấp thuận chân dung (Consent Record: {consentRecordId}).</span>
+            {:else}
+              <span>⚠️ <strong>Cảnh báo (Target 3):</strong> Nhân vật Digital Twin bị chặn render do thiếu hoặc đã thu hồi quyền chân dung.</span>
+            {/if}
+          </div>
+        {/if}
+
+        {#if !previewVerified}
+          <button
+            type="button"
+            onclick={generatePreviewVideo}
+            disabled={isGeneratingPreview || !previewQuote.canAfford || (characterType === 'digital_twin' && !consentVerified)}
+            class="w-full py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+          >
+            {#if isGeneratingPreview}
+              <span class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+              Đang render video xem trước 15s...
+            {:else}
+              🎬 Render video xem trước 15s (5 credits)
+            {/if}
+          </button>
+        {/if}
+      </div>
+
+      <!-- Preview Player / Result -->
+      {#if previewVerified && previewVideoUrl}
+        <div class="p-4 bg-gray-50 border rounded-xl space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="font-bold text-gray-900">Bản xem trước 15 giây đã hoàn tất</div>
             <span class="px-2 py-0.5 rounded font-bold bg-emerald-100 text-emerald-800 text-[11px]">
               ✓ Đã xác thực
             </span>
-          {/if}
-        </div>
-        <p class="text-gray-600">
-          Theo tiêu chí chấp nhận AC 1: Hệ thống tạo video thử nghiệm 15 giây kết hợp ngoại hình và giọng đọc để bạn duyệt trước khi lưu vào thư viện. Bạn có thể quay lại Bước 2 để tinh chỉnh bất kỳ lúc nào.
-        </p>
-
-        {#if isGeneratingPreview}
-          <div class="py-8 text-center text-gray-500 font-medium space-y-2">
-            <div class="animate-spin w-6 h-6 border-2 border-primary-600 border-t-transparent rounded-full mx-auto"></div>
-            <div>Đang render video thử nghiệm 15s...</div>
           </div>
-        {:else if previewVideoUrl}
           <div class="aspect-video bg-black/90 rounded-lg overflow-hidden flex items-center justify-center text-white relative">
             <div class="text-center p-4">
               <span class="text-3xl block mb-2">▶️</span>
               <p class="font-semibold text-sm">Xem trước: {name} (15 giây)</p>
-              <p class="text-[11px] text-gray-400 mt-1">Giọng điệu: {speakingTone} · Tỷ lệ: 9:16 & 16:9</p>
+              <p class="text-[11px] text-gray-400 mt-1">Giọng điệu: {speakingTone} · Tỷ lệ: 9:16 & 16:9 · 5 credits deducted</p>
             </div>
           </div>
-        {/if}
-      </div>
+          <div class="flex justify-end">
+            <button
+              type="button"
+              onclick={generatePreviewVideo}
+              class="text-xs text-primary-600 hover:underline font-semibold"
+            >
+              🔄 Render lại bản xem trước khác (5 credits)
+            </button>
+          </div>
+        </div>
+      {/if}
 
       <div class="flex items-center justify-between pt-4 border-t">
         <button

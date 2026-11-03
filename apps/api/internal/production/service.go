@@ -40,9 +40,13 @@ type Service struct {
 	enhancer    *EnhancerEngine
 	balances    map[string]tenantdb.ExactDecimal // workspaceID -> available credits
 	mockRefunds map[string]tenantdb.ExactDecimal // jobID -> refunded credits
+	events      []DomainEvent
 	VoiceClone  *VoiceCloneManager
 	SoundStudio *SoundStudioManager
 	Translation *TranslationManager
+	StylePack   *StylePackManager
+	AIService   *AIOpsManager
+	DriftQA     *DriftQAManager
 }
 
 var _ productionv1connect.StudioServiceHandler = (*Service)(nil)
@@ -108,6 +112,9 @@ func NewService(cfg ServiceConfig) *Service {
 	svc.VoiceClone = NewVoiceCloneManager(st, svc)
 	svc.SoundStudio = NewSoundStudioManager(st, svc)
 	svc.Translation = NewTranslationManager(st, svc, svc.VoiceClone)
+	svc.StylePack = NewStylePackManager(st, svc)
+	svc.AIService = NewAIOpsManager(st, svc)
+	svc.DriftQA = NewDriftQAManager(st, svc)
 	return svc
 }
 
@@ -152,6 +159,41 @@ func (s *Service) deductCredits(workspaceID string, amount tenantdb.ExactDecimal
 	if res, err := curr.Sub(amount); err == nil {
 		s.balances[workspaceID] = res
 	}
+}
+
+// DeductCredits decrements workspace balance with balance check.
+func (s *Service) DeductCredits(workspaceID string, amount tenantdb.ExactDecimal) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	curr, ok := s.balances[workspaceID]
+	if !ok {
+		curr = tenantdb.MustParseExactDecimal("100")
+	}
+	if curr.Cmp(amount) < 0 {
+		return ErrInsufficientCredits
+	}
+	res, err := curr.Sub(amount)
+	if err != nil {
+		return err
+	}
+	s.balances[workspaceID] = res
+	return nil
+}
+
+// RecordEvent records a domain event for audit/testing.
+func (s *Service) RecordEvent(e DomainEvent) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.events = append(s.events, e)
+}
+
+// Events returns a copy of recorded domain events.
+func (s *Service) Events() []DomainEvent {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]DomainEvent, len(s.events))
+	copy(out, s.events)
+	return out
 }
 
 // refundCredits restores workspace balance.
@@ -712,11 +754,36 @@ func (s *Service) Approve(ctx context.Context, req *connect.Request[productionv1
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
 
+	// Acceptance Target 2: High drift blocks readiness unless resolved/overridden
+	if asset.DriftSeverity == "high_drift" {
+		viols, _ := s.store.ListContinuityViolations(ctx, wsID, asset.AssetID)
+		hasUnresolved := false
+		for _, v := range viols {
+			if v.Severity == "blocking" && !v.Resolved {
+				hasUnresolved = true
+				break
+			}
+		}
+		if hasUnresolved {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, ErrHighDriftBlocksReadiness)
+		}
+	}
+
 	asset.QualityState = "approved"
 	asset.UpdatedAt = time.Now().UTC()
 	_ = s.store.UpdateAsset(ctx, asset)
 
 	return connect.NewResponse(&productionv1.ApproveResponse{Asset: toProtoAsset(asset)}), nil
+}
+
+// EvaluateDrift evaluates asset drift against canonical references and blocks high drift (QA).
+func (s *Service) EvaluateDrift(ctx context.Context, req *connect.Request[productionv1.EvaluateDriftRequest]) (*connect.Response[productionv1.EvaluateDriftResponse], error) {
+	return s.DriftQA.EvaluateDrift(ctx, req)
+}
+
+// OverrideDriftViolation resolves a blocking drift violation with manager justification.
+func (s *Service) OverrideDriftViolation(ctx context.Context, req *connect.Request[productionv1.OverrideDriftViolationRequest]) (*connect.Response[productionv1.OverrideDriftViolationResponse], error) {
+	return s.DriftQA.OverrideDriftViolation(ctx, req)
 }
 
 // PromoteCanonical promotes an approved asset to canonical character/brand pack (Manager+).
@@ -947,7 +1014,7 @@ func toProtoAsset(a *Asset) *productionv1.Asset {
 		})
 	}
 
-	return &productionv1.Asset{
+	res := &productionv1.Asset{
 		AssetId:               a.AssetID,
 		WorkspaceId:           a.WorkspaceID,
 		AssetType:             a.AssetType,
@@ -974,7 +1041,13 @@ func toProtoAsset(a *Asset) *productionv1.Asset {
 		DerivativeType:        a.DerivativeType,
 		CreatedAt:             timestamppb.New(a.CreatedAt),
 		UpdatedAt:             timestamppb.New(a.UpdatedAt),
+		DriftSeverity:         a.DriftSeverity,
+		DriftDetailsJson:      a.DriftDetailsJSON,
 	}
+	if a.DriftScore != nil {
+		res.DriftScore = *a.DriftScore
+	}
+	return res
 }
 
 func toProtoBatchBudgetPreview(p BatchBudgetPreviewResult) *productionv1.BatchBudgetPreview {

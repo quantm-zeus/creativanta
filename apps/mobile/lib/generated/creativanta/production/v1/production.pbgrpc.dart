@@ -259,6 +259,24 @@ class AssetServiceClient extends $grpc.Client {
     return $createUnaryCall(_$upload, request, options: options);
   }
 
+  /// EvaluateDrift evaluates asset drift against canonical references and blocks high drift (QA).
+  $grpc.ResponseFuture<$0.EvaluateDriftResponse> evaluateDrift(
+    $0.EvaluateDriftRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$evaluateDrift, request, options: options);
+  }
+
+  /// OverrideDriftViolation resolves a blocking drift violation with manager justification.
+  $grpc.ResponseFuture<$0.OverrideDriftViolationResponse>
+      overrideDriftViolation(
+    $0.OverrideDriftViolationRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$overrideDriftViolation, request,
+        options: options);
+  }
+
   // method descriptors
 
   static final _$generate =
@@ -294,6 +312,16 @@ class AssetServiceClient extends $grpc.Client {
           '/creativanta.production.v1.AssetService/Upload',
           ($0.UploadRequest value) => value.writeToBuffer(),
           $0.UploadResponse.fromBuffer);
+  static final _$evaluateDrift =
+      $grpc.ClientMethod<$0.EvaluateDriftRequest, $0.EvaluateDriftResponse>(
+          '/creativanta.production.v1.AssetService/EvaluateDrift',
+          ($0.EvaluateDriftRequest value) => value.writeToBuffer(),
+          $0.EvaluateDriftResponse.fromBuffer);
+  static final _$overrideDriftViolation = $grpc.ClientMethod<
+          $0.OverrideDriftViolationRequest, $0.OverrideDriftViolationResponse>(
+      '/creativanta.production.v1.AssetService/OverrideDriftViolation',
+      ($0.OverrideDriftViolationRequest value) => value.writeToBuffer(),
+      $0.OverrideDriftViolationResponse.fromBuffer);
 }
 
 @$pb.GrpcServiceName('creativanta.production.v1.AssetService')
@@ -352,6 +380,24 @@ abstract class AssetServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.UploadRequest.fromBuffer(value),
         ($0.UploadResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.EvaluateDriftRequest, $0.EvaluateDriftResponse>(
+            'EvaluateDrift',
+            evaluateDrift_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.EvaluateDriftRequest.fromBuffer(value),
+            ($0.EvaluateDriftResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.OverrideDriftViolationRequest,
+            $0.OverrideDriftViolationResponse>(
+        'OverrideDriftViolation',
+        overrideDriftViolation_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.OverrideDriftViolationRequest.fromBuffer(value),
+        ($0.OverrideDriftViolationResponse value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.GenerateResponse> generate_Pre($grpc.ServiceCall $call,
@@ -410,6 +456,24 @@ abstract class AssetServiceBase extends $grpc.Service {
 
   $async.Future<$0.UploadResponse> upload(
       $grpc.ServiceCall call, $0.UploadRequest request);
+
+  $async.Future<$0.EvaluateDriftResponse> evaluateDrift_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.EvaluateDriftRequest> $request) async {
+    return evaluateDrift($call, await $request);
+  }
+
+  $async.Future<$0.EvaluateDriftResponse> evaluateDrift(
+      $grpc.ServiceCall call, $0.EvaluateDriftRequest request);
+
+  $async.Future<$0.OverrideDriftViolationResponse> overrideDriftViolation_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.OverrideDriftViolationRequest> $request) async {
+    return overrideDriftViolation($call, await $request);
+  }
+
+  $async.Future<$0.OverrideDriftViolationResponse> overrideDriftViolation(
+      $grpc.ServiceCall call, $0.OverrideDriftViolationRequest request);
 }
 
 /// QuickEditService manages Quick Edit drafts and text-based timeline editing.
@@ -1358,4 +1422,326 @@ abstract class VideoEditJobServiceBase extends $grpc.Service {
 
   $async.Future<$0.VideoEditJobServiceRetryResponse> retry(
       $grpc.ServiceCall call, $0.VideoEditJobServiceRetryRequest request);
+}
+
+/// StylePackService manages learned editing styles (api_endpoint_map.md §7.7).
+@$pb.GrpcServiceName('creativanta.production.v1.StylePackService')
+class StylePackServiceClient extends $grpc.Client {
+  /// The hostname for this service.
+  static const $core.String defaultHost = '';
+
+  /// OAuth scopes needed for the client.
+  static const $core.List<$core.String> oauthScopes = [
+    '',
+  ];
+
+  StylePackServiceClient(super.channel, {super.options, super.interceptors});
+
+  $grpc.ResponseFuture<$0.StylePackServiceExtractResponse> extract(
+    $0.StylePackServiceExtractRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$extract, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.StylePackServiceCreateResponse> create(
+    $0.StylePackServiceCreateRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$create, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.StylePackServiceGetResponse> get(
+    $0.StylePackServiceGetRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$get, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.StylePackServiceListResponse> list(
+    $0.StylePackServiceListRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$list, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.StylePackServiceApplyResponse> apply(
+    $0.StylePackServiceApplyRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$apply, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.StylePackServiceDeleteResponse> delete(
+    $0.StylePackServiceDeleteRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$delete, request, options: options);
+  }
+
+  // method descriptors
+
+  static final _$extract = $grpc.ClientMethod<$0.StylePackServiceExtractRequest,
+          $0.StylePackServiceExtractResponse>(
+      '/creativanta.production.v1.StylePackService/Extract',
+      ($0.StylePackServiceExtractRequest value) => value.writeToBuffer(),
+      $0.StylePackServiceExtractResponse.fromBuffer);
+  static final _$create = $grpc.ClientMethod<$0.StylePackServiceCreateRequest,
+          $0.StylePackServiceCreateResponse>(
+      '/creativanta.production.v1.StylePackService/Create',
+      ($0.StylePackServiceCreateRequest value) => value.writeToBuffer(),
+      $0.StylePackServiceCreateResponse.fromBuffer);
+  static final _$get = $grpc.ClientMethod<$0.StylePackServiceGetRequest,
+          $0.StylePackServiceGetResponse>(
+      '/creativanta.production.v1.StylePackService/Get',
+      ($0.StylePackServiceGetRequest value) => value.writeToBuffer(),
+      $0.StylePackServiceGetResponse.fromBuffer);
+  static final _$list = $grpc.ClientMethod<$0.StylePackServiceListRequest,
+          $0.StylePackServiceListResponse>(
+      '/creativanta.production.v1.StylePackService/List',
+      ($0.StylePackServiceListRequest value) => value.writeToBuffer(),
+      $0.StylePackServiceListResponse.fromBuffer);
+  static final _$apply = $grpc.ClientMethod<$0.StylePackServiceApplyRequest,
+          $0.StylePackServiceApplyResponse>(
+      '/creativanta.production.v1.StylePackService/Apply',
+      ($0.StylePackServiceApplyRequest value) => value.writeToBuffer(),
+      $0.StylePackServiceApplyResponse.fromBuffer);
+  static final _$delete = $grpc.ClientMethod<$0.StylePackServiceDeleteRequest,
+          $0.StylePackServiceDeleteResponse>(
+      '/creativanta.production.v1.StylePackService/Delete',
+      ($0.StylePackServiceDeleteRequest value) => value.writeToBuffer(),
+      $0.StylePackServiceDeleteResponse.fromBuffer);
+}
+
+@$pb.GrpcServiceName('creativanta.production.v1.StylePackService')
+abstract class StylePackServiceBase extends $grpc.Service {
+  $core.String get $name => 'creativanta.production.v1.StylePackService';
+
+  StylePackServiceBase() {
+    $addMethod($grpc.ServiceMethod<$0.StylePackServiceExtractRequest,
+            $0.StylePackServiceExtractResponse>(
+        'Extract',
+        extract_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.StylePackServiceExtractRequest.fromBuffer(value),
+        ($0.StylePackServiceExtractResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.StylePackServiceCreateRequest,
+            $0.StylePackServiceCreateResponse>(
+        'Create',
+        create_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.StylePackServiceCreateRequest.fromBuffer(value),
+        ($0.StylePackServiceCreateResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.StylePackServiceGetRequest,
+            $0.StylePackServiceGetResponse>(
+        'Get',
+        get_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.StylePackServiceGetRequest.fromBuffer(value),
+        ($0.StylePackServiceGetResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.StylePackServiceListRequest,
+            $0.StylePackServiceListResponse>(
+        'List',
+        list_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.StylePackServiceListRequest.fromBuffer(value),
+        ($0.StylePackServiceListResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.StylePackServiceApplyRequest,
+            $0.StylePackServiceApplyResponse>(
+        'Apply',
+        apply_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.StylePackServiceApplyRequest.fromBuffer(value),
+        ($0.StylePackServiceApplyResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.StylePackServiceDeleteRequest,
+            $0.StylePackServiceDeleteResponse>(
+        'Delete',
+        delete_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.StylePackServiceDeleteRequest.fromBuffer(value),
+        ($0.StylePackServiceDeleteResponse value) => value.writeToBuffer()));
+  }
+
+  $async.Future<$0.StylePackServiceExtractResponse> extract_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.StylePackServiceExtractRequest> $request) async {
+    return extract($call, await $request);
+  }
+
+  $async.Future<$0.StylePackServiceExtractResponse> extract(
+      $grpc.ServiceCall call, $0.StylePackServiceExtractRequest request);
+
+  $async.Future<$0.StylePackServiceCreateResponse> create_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.StylePackServiceCreateRequest> $request) async {
+    return create($call, await $request);
+  }
+
+  $async.Future<$0.StylePackServiceCreateResponse> create(
+      $grpc.ServiceCall call, $0.StylePackServiceCreateRequest request);
+
+  $async.Future<$0.StylePackServiceGetResponse> get_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.StylePackServiceGetRequest> $request) async {
+    return get($call, await $request);
+  }
+
+  $async.Future<$0.StylePackServiceGetResponse> get(
+      $grpc.ServiceCall call, $0.StylePackServiceGetRequest request);
+
+  $async.Future<$0.StylePackServiceListResponse> list_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.StylePackServiceListRequest> $request) async {
+    return list($call, await $request);
+  }
+
+  $async.Future<$0.StylePackServiceListResponse> list(
+      $grpc.ServiceCall call, $0.StylePackServiceListRequest request);
+
+  $async.Future<$0.StylePackServiceApplyResponse> apply_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.StylePackServiceApplyRequest> $request) async {
+    return apply($call, await $request);
+  }
+
+  $async.Future<$0.StylePackServiceApplyResponse> apply(
+      $grpc.ServiceCall call, $0.StylePackServiceApplyRequest request);
+
+  $async.Future<$0.StylePackServiceDeleteResponse> delete_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.StylePackServiceDeleteRequest> $request) async {
+    return delete($call, await $request);
+  }
+
+  $async.Future<$0.StylePackServiceDeleteResponse> delete(
+      $grpc.ServiceCall call, $0.StylePackServiceDeleteRequest request);
+}
+
+/// AIService manages AI style analysis, preview generation and quoting (api_endpoint_map.md §13, §14).
+@$pb.GrpcServiceName('creativanta.production.v1.AIService')
+class AIServiceClient extends $grpc.Client {
+  /// The hostname for this service.
+  static const $core.String defaultHost = '';
+
+  /// OAuth scopes needed for the client.
+  static const $core.List<$core.String> oauthScopes = [
+    '',
+  ];
+
+  AIServiceClient(super.channel, {super.options, super.interceptors});
+
+  $grpc.ResponseFuture<$0.GenerateCharacterPreviewResponse>
+      generateCharacterPreview(
+    $0.GenerateCharacterPreviewRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$generateCharacterPreview, request,
+        options: options);
+  }
+
+  $grpc.ResponseFuture<$0.QuoteCharacterPreviewResponse> quoteCharacterPreview(
+    $0.QuoteCharacterPreviewRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$quoteCharacterPreview, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.AnalyzeStyleResponse> analyzeStyle(
+    $0.AnalyzeStyleRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$analyzeStyle, request, options: options);
+  }
+
+  // method descriptors
+
+  static final _$generateCharacterPreview = $grpc.ClientMethod<
+          $0.GenerateCharacterPreviewRequest,
+          $0.GenerateCharacterPreviewResponse>(
+      '/creativanta.production.v1.AIService/GenerateCharacterPreview',
+      ($0.GenerateCharacterPreviewRequest value) => value.writeToBuffer(),
+      $0.GenerateCharacterPreviewResponse.fromBuffer);
+  static final _$quoteCharacterPreview = $grpc.ClientMethod<
+          $0.QuoteCharacterPreviewRequest, $0.QuoteCharacterPreviewResponse>(
+      '/creativanta.production.v1.AIService/QuoteCharacterPreview',
+      ($0.QuoteCharacterPreviewRequest value) => value.writeToBuffer(),
+      $0.QuoteCharacterPreviewResponse.fromBuffer);
+  static final _$analyzeStyle =
+      $grpc.ClientMethod<$0.AnalyzeStyleRequest, $0.AnalyzeStyleResponse>(
+          '/creativanta.production.v1.AIService/AnalyzeStyle',
+          ($0.AnalyzeStyleRequest value) => value.writeToBuffer(),
+          $0.AnalyzeStyleResponse.fromBuffer);
+}
+
+@$pb.GrpcServiceName('creativanta.production.v1.AIService')
+abstract class AIServiceBase extends $grpc.Service {
+  $core.String get $name => 'creativanta.production.v1.AIService';
+
+  AIServiceBase() {
+    $addMethod($grpc.ServiceMethod<$0.GenerateCharacterPreviewRequest,
+            $0.GenerateCharacterPreviewResponse>(
+        'GenerateCharacterPreview',
+        generateCharacterPreview_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GenerateCharacterPreviewRequest.fromBuffer(value),
+        ($0.GenerateCharacterPreviewResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.QuoteCharacterPreviewRequest,
+            $0.QuoteCharacterPreviewResponse>(
+        'QuoteCharacterPreview',
+        quoteCharacterPreview_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.QuoteCharacterPreviewRequest.fromBuffer(value),
+        ($0.QuoteCharacterPreviewResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.AnalyzeStyleRequest, $0.AnalyzeStyleResponse>(
+            'AnalyzeStyle',
+            analyzeStyle_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.AnalyzeStyleRequest.fromBuffer(value),
+            ($0.AnalyzeStyleResponse value) => value.writeToBuffer()));
+  }
+
+  $async.Future<$0.GenerateCharacterPreviewResponse>
+      generateCharacterPreview_Pre($grpc.ServiceCall $call,
+          $async.Future<$0.GenerateCharacterPreviewRequest> $request) async {
+    return generateCharacterPreview($call, await $request);
+  }
+
+  $async.Future<$0.GenerateCharacterPreviewResponse> generateCharacterPreview(
+      $grpc.ServiceCall call, $0.GenerateCharacterPreviewRequest request);
+
+  $async.Future<$0.QuoteCharacterPreviewResponse> quoteCharacterPreview_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.QuoteCharacterPreviewRequest> $request) async {
+    return quoteCharacterPreview($call, await $request);
+  }
+
+  $async.Future<$0.QuoteCharacterPreviewResponse> quoteCharacterPreview(
+      $grpc.ServiceCall call, $0.QuoteCharacterPreviewRequest request);
+
+  $async.Future<$0.AnalyzeStyleResponse> analyzeStyle_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.AnalyzeStyleRequest> $request) async {
+    return analyzeStyle($call, await $request);
+  }
+
+  $async.Future<$0.AnalyzeStyleResponse> analyzeStyle(
+      $grpc.ServiceCall call, $0.AnalyzeStyleRequest request);
 }

@@ -202,3 +202,61 @@ export interface MultiMergeSettings {
 	aspectRatio: '9:16' | '16:9' | '1:1';
 	pacing: 'fast' | 'medium' | 'slow';
 }
+
+export interface StyleElements {
+	colorPalette: string;
+	cutPacing: string;
+	textStyle: string;
+	musicStyle: string;
+	transitions: string;
+	hookPattern: string;
+	visualMood: string;
+	avgCutDurationMs: number;
+	colorPaletteHex: string[];
+}
+
+export interface StylePack {
+	stylePackId: string;
+	workspaceId: string;
+	name: string;
+	sourceAssetId: string;
+	extractedStyle: StyleElements;
+	isActive: boolean;
+	continuityPackId?: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface CharacterPreviewQuote {
+	quoteId: string;
+	creditsRequired: string;
+	durationSeconds: number;
+	provider: string;
+	canAfford: boolean;
+}
+
+export interface DriftEvaluationResult {
+	assetId: string;
+	packId: string;
+	packVersion: number;
+	driftScore: number;
+	driftSeverity: 'none' | 'low_drift' | 'moderate_drift' | 'high_drift';
+	isBlocked: boolean;
+	violationReasons: string[];
+	violationId?: string;
+}
+
+export interface ContinuityViolation {
+	violationId: string;
+	workspaceId: string;
+	assetId: string;
+	packId: string;
+	violationType: string;
+	severity: 'warning' | 'blocking';
+	description: string;
+	driftScore: number;
+	resolved: boolean;
+	resolvedBy?: string;
+	resolvedAt?: string;
+	overrideReason?: string;
+}

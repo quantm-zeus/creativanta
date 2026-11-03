@@ -239,6 +239,28 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if err := ValidateCanonicalMigrationContract(m19); err != nil {
 		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v19: %v", err)
 	}
+
+	m20 := migrations[19]
+	if m20.Version != 20 {
+		t.Fatalf("expected version 20, got %d", m20.Version)
+	}
+	if len(m20.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v20, got %q", m20.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m20); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v20: %v", err)
+	}
+
+	m21 := migrations[20]
+	if m21.Version != 21 {
+		t.Fatalf("expected version 21, got %d", m21.Version)
+	}
+	if len(m21.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v21, got %q", m21.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m21); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v21: %v", err)
+	}
 }
 
 func TestValidateCanonicalMigrationContractRejectsViolations(t *testing.T) {
@@ -398,8 +420,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 20 {
-		t.Fatalf("expected 20 applied migrations, got %d", len(applied))
+	if len(applied) != 21 {
+		t.Fatalf("expected 21 applied migrations, got %d", len(applied))
 	}
 	for i, v := range applied {
 		if v != int64(i+1) {
@@ -419,13 +441,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for all 20 migrations.
+	// Status reports Applied = true for all 21 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 20 {
-		t.Fatalf("expected status for 20 migrations, got %d", len(statuses))
+	if len(statuses) != 21 {
+		t.Fatalf("expected status for 21 migrations, got %d", len(statuses))
 	}
 	for i, s := range statuses {
 		if !s.Applied {
@@ -438,7 +460,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 20, then 19, then 18...
+	// Down with allowLocalRollback=true rolls back version 21, then 20, then 19, then 18...
+	rolled21, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v21 failed: %v", err)
+	}
+	if rolled21 != 21 {
+		t.Fatalf("expected rolled back version 21, got %d", rolled21)
+	}
 	rolled20, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v20 failed: %v", err)
@@ -627,8 +656,11 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 20 {
-		t.Fatalf("expected 20 applied migrations, got %v", applied)
+	if len(applied) != 21 {
+		t.Fatalf("expected 21 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v21 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v20 failed: %v", err)
