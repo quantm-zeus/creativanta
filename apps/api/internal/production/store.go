@@ -78,15 +78,15 @@ type Store interface {
 // MemoryStore provides a thread-safe, tenant-isolated in-memory store for production.
 type MemoryStore struct {
 	mu           sync.RWMutex
-	assets       map[string]map[string]*Asset              // workspaceID -> assetID -> Asset
-	jobs         map[string]map[string]*GenerationJob      // workspaceID -> jobID -> GenerationJob
-	uploads      map[string]map[string]*FileUpload         // workspaceID -> uploadID -> FileUpload
-	blueprints   map[string]map[string]*RemixBlueprint     // workspaceID -> blueprintID -> RemixBlueprint
-	videoJobs    map[string]map[string]*VideoEditJobRecord // workspaceID -> jobID -> VideoEditJobRecord
-	translations map[string]map[string]*TranslationJob     // workspaceID -> jobID -> TranslationJob
-	voiceClones  map[string]map[string]*VoiceCloneRecord   // workspaceID -> cloneID -> VoiceCloneRecord
-	soundTracks  map[string]map[string]*SoundTrack         // workspaceID -> trackID -> SoundTrack
-	stylePacks   map[string]map[string]*StylePackRecord    // workspaceID -> stylePackID -> StylePackRecord
+	assets       map[string]map[string]*Asset                     // workspaceID -> assetID -> Asset
+	jobs         map[string]map[string]*GenerationJob             // workspaceID -> jobID -> GenerationJob
+	uploads      map[string]map[string]*FileUpload                // workspaceID -> uploadID -> FileUpload
+	blueprints   map[string]map[string]*RemixBlueprint            // workspaceID -> blueprintID -> RemixBlueprint
+	videoJobs    map[string]map[string]*VideoEditJobRecord        // workspaceID -> jobID -> VideoEditJobRecord
+	translations map[string]map[string]*TranslationJob            // workspaceID -> jobID -> TranslationJob
+	voiceClones  map[string]map[string]*VoiceCloneRecord          // workspaceID -> cloneID -> VoiceCloneRecord
+	soundTracks  map[string]map[string]*SoundTrack                // workspaceID -> trackID -> SoundTrack
+	stylePacks   map[string]map[string]*StylePackRecord           // workspaceID -> stylePackID -> StylePackRecord
 	violations   map[string]map[string]*ContinuityViolationRecord // workspaceID -> violationID -> ContinuityViolationRecord
 	characters   map[string]map[string]*ProductionCharacter       // workspaceID -> characterID -> ProductionCharacter
 	consents     map[string]map[string]*ProductionConsentRecord   // workspaceID -> consentID -> ProductionConsentRecord
@@ -968,4 +968,3 @@ func (s *MemoryStore) RevokeConsentRecord(ctx context.Context, workspaceID, cons
 	}
 	return nil
 }
-

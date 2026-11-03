@@ -347,10 +347,10 @@ func TestEF07_StyleExtractionAndTransfer(t *testing.T) {
 		Context: &commonv1.CommandContext{
 			WorkspaceId: &commonv1.UUID{Value: "ws-prod"},
 		},
-		Name:                   "Tech Review Fast Cut Style",
-		SourceAssetId:          "ref-video-01",
-		ExtractedStyleJson:     extractResp.Msg.GetExtractedStyleJson(),
-		LinkToContinuityPack:   true,
+		Name:                 "Tech Review Fast Cut Style",
+		SourceAssetId:        "ref-video-01",
+		ExtractedStyleJson:   extractResp.Msg.GetExtractedStyleJson(),
+		LinkToContinuityPack: true,
 	})
 	createResp, err := svc.StylePack.Create(ctx, createReq)
 	if err != nil {

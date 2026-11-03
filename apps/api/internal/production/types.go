@@ -506,4 +506,3 @@ type ProductionConsentRecord struct {
 	GrantedAt   *time.Time
 	RevokedAt   *time.Time
 }
-

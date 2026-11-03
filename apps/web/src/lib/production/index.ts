@@ -537,4 +537,3 @@ export function calculateStyleExtractionQuote(videoCount: number): {
 		isValid: true
 	};
 }
-

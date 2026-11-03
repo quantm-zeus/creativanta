@@ -1215,4 +1215,3 @@ service AIService {
   rpc QuoteCharacterPreview(QuoteCharacterPreviewRequest) returns (QuoteCharacterPreviewResponse);
   rpc AnalyzeStyle(AnalyzeStyleRequest) returns (AnalyzeStyleResponse);
 }
-
