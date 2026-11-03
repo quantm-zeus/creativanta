@@ -1,0 +1,95 @@
+{
+  "task_id": "P2-02",
+  "phase": "P2",
+  "slice": "p2-02",
+  "title": "Competitor registry và benchmark",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "1289036",
+  "feature_refs": [
+    "docs/02_features/intelligence/competitor_intelligence.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_endpoint_map.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/05_system/queue_retry_design.md"
+  ],
+  "requirement_ids": [
+    "M03-001",
+    "M03-002",
+    "M03-003",
+    "RULE-M03-001",
+    "RULE-M03-002",
+    "RULE-M03-003",
+    "RULE-M03-004",
+    "EC-M03-002",
+    "DB-C-001",
+    "DB-H-001"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_intelligence_competitor_registry.md",
+    "docs/03_screens/web/screen_web_intelligence_benchmark.md"
+  ],
+  "source_hashes": {
+    "infra/migrations/00011_p2_02_competitor_entities_and_benchmark_snapshots.sql": "cd20cff5d662abd8dbbe647c67cf2a512a5678c1d82d0da229c7a139d2100ca7",
+    "protos/creativanta/intelligence/v1/competitor.proto": "5a4ad865be98881f27ba4422138a3df92b1b98159d62986f3db111cb26a2f22e",
+    "apps/api/internal/migrate/migrator_test.go": "71ccdc7f1f062fc5d67e6594c3e4e7fb92feff14656772daafb58ca303027bc3",
+    "apps/api/internal/rbac/phase_exposure_test.go": "6866006c727c56ed4ade317db14102a00eedcb3e0273ded009bcee13351f2354",
+    "apps/api/internal/competitor/service.go": "9f8887b896ab41a13628cb4f63370c85bd77192547a5f1407ea94d9fdd5bd3ba",
+    "apps/api/internal/competitor/service_test.go": "bc00cc3624c64dd7717785e1d799dcd3b1282a66fa58b212605e134fe46628a4",
+    "apps/web/src/lib/competitor/index.ts": "32fc37b85ebf8d7114cf20f5cc7ebe8b4554909ac04392fc77669831c8cc0b2b",
+    "apps/web/src/lib/competitor/competitor.test.ts": "0be280c12f7b7414684caa1aa25e4934dd6233af7003bd303073d466735ebf78",
+    "apps/web/src/lib/competitor/CompetitorWhyDrawer.svelte": "40b055286bec34a65dddde7dcaf6cf1194ef52dc8c085f7e1f31613cb4c58c32",
+    "apps/web/src/routes/intelligence/competitors/+page.svelte": "2a801e9dc6dd8b28209604efe7e4f1ae63a4269d43f818bbb7e51be3fb51763a",
+    "apps/web/src/routes/intelligence/benchmarks/+page.svelte": "6c472eec586a18c0f1ccf3382e2c077b43890f40b40e934fa026640998d8f40f",
+    "apps/mobile/lib/competitor/competitor_models.dart": "481379eac222adbc438e12885a41db61aac0d96c0d3dd80bb829319d18c6520b",
+    "apps/mobile/lib/ui/competitor/competitor_why_sheet.dart": "e21330bb8b7a0ee21245a9855802d004bc9af7e68c1043dc60797a382a23d427",
+    "apps/mobile/lib/ui/competitor/competitor_registry_view.dart": "a99b2aee4b2382353be9978e68fa4929b0d38029e3be8f3071dacde1b33cd0ad",
+    "apps/mobile/lib/ui/competitor/benchmark_comparison_view.dart": "e4a44ad1caa9ad80c526803f8f73ed2ee15a2e3e38e88556aaad7732a3556650",
+    "apps/mobile/test/competitor_test.dart": "862448abb7cb5818457e5610970a5fec1c052546d5a4fa76926e2b8e23423293"
+  },
+  "scope_items": [
+    "Database Migration 00011: Extended competitor_entities with platform, external_handle, relevance_score, relevance_reason, followers_count, video_count_30d, avg_views, growth_rate_30d, avg_engagement_rate, posting_frequency_per_day, last_post_at, and alert_config; created benchmark_snapshots table with composite tenant foreign key (workspace_id, competitor_id) REFERENCES competitor_entities(workspace_id, competitor_id), ENABLE/FORCE ROW LEVEL SECURITY, tenant_isolation and admin_ops_scope policies; narrow role grants to app_user and admin_user; reversible transactional down migration.",
+    "Acceptance Target 1 (Inferred insight labeled): Every inferred insight carries source_class = 'inferred', confidence band (high/medium/low), and an accessible 'Why' drawer/sheet explaining data sources, algorithmic limitations, and data gaps per RULE-M03-001 and RULE-M03-002 across Go ConnectRPC backend, SvelteKit web client, and Flutter mobile client.",
+    "Acceptance Target 2 (Stale snapshots visible): Snapshots older than 30 days are automatically flagged with is_stale = true, displaying a prominent warning badge/banner and 'Làm mới dữ liệu' (Refresh) CTA button per RULE-M03-004 across backend models, web benchmark view, and mobile benchmark screen.",
+    "Acceptance Target 3 (No assumed access to competitor finance): Strict separation of observational competitor data from accounting truth per RULE-M03-003 and EC-M03-002. Competitor revenue/profit is strictly private, displays as '—', and any attempt to feed competitor benchmarks into M19 Operating Ledger fails validation.",
+    "Screen W040 & W041 Implementation: SvelteKit Web Competitor Registry (/intelligence/competitors) and Benchmark View (/intelligence/benchmarks) with custom SVG radar chart, comparative metrics table with 🏆 leader badges, AI suggestions, and alert configuration with 60-minute minimum interval (§27.3).",
+    "Mobile Flutter Implementation: CompetitorRegistryView and BenchmarkComparisonView with CompetitorWhySheet, podium rankings, and full widget tests."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestAcceptanceTarget1_InferredInsightLabeled (Go -race), Vitest suite (web), and Flutter unit/widget tests confirm source_class=INFERRED, confidence band, and WhyExplanation data sources, limitations, and data gaps.",
+    "Acceptance Target 2 Verified: TestAcceptanceTarget2_StaleSnapshotsVisible (Go -race), Vitest suite (web), and Flutter unit/widget tests confirm >30 days staleness warning and refresh behavior.",
+    "Acceptance Target 3 Verified: TestAcceptanceTarget3_NoAssumedAccessToCompetitorFinance (Go -race), Vitest suite (web), and Flutter unit/widget tests confirm private revenue guard ('—') and rejection of financial conflation with M19 ledger/cogs.",
+    "Migration 00011 Verified: TestLoadAndValidateCanonicalP004Migration and TestUpStatusDownTransactionalBehavior pass for all 11 migrations.",
+    "Four-Target Proto Codegen Verified: check_proto.sh passes lint, generate, drift check, buf breaking backward compatibility, Go vet/test, TypeScript vitest, Dart analyze/test.",
+    "Web & Mobile Surfaces Verified: check_node.sh (svelte-check, vite build, 75 web tests + 6 admin tests), check_web_smoke.sh (SSR HTTP 200 on /intelligence/competitors and /intelligence/benchmarks), and check_flutter.sh (flutter analyze --fatal-infos --fatal-warnings + 80 tests) all pass."
+  ],
+  "rpc_contracts": [
+    "CompetitorService/List",
+    "CompetitorService/Add",
+    "CompetitorService/Remove",
+    "CompetitorService/GetSuggestions",
+    "CompetitorService/DismissSuggestion",
+    "CompetitorService/SetAlerts",
+    "CompetitorService/ValidateHandle",
+    "CompetitorService/AnalyzeBenchmark",
+    "BenchmarkService/Compare",
+    "BenchmarkService/GetTimeSeries"
+  ],
+  "migration_files": [
+    "infra/migrations/00011_p2_02_competitor_entities_and_benchmark_snapshots.sql"
+  ],
+  "permission_keys": [
+    "competitor:read",
+    "competitor:manage"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-SCRAPER-PROXY",
+      "PENDING_LIVE_CRAWLER",
+      "Phase P2 local mock and synthetic validation passed; live scraping/TikTok API ingress requires proxy infrastructure."
+    ]
+  ]
+}

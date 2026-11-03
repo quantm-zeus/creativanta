@@ -352,6 +352,23 @@
     </div>
 
     <div class="flex flex-wrap items-center gap-2">
+      <!-- Competitor & Benchmark Navigation Links (M03) -->
+      <a
+        href="/intelligence/competitors"
+        class="inline-flex items-center gap-1.5 rounded-md border border-[#e7e2d7] bg-[#ffffff] px-3 py-1.5 text-xs font-semibold text-[#242924] hover:bg-[#f4f0e8] transition-colors shadow-xs"
+      >
+        <span>🏆 Đối thủ</span>
+        <span class="rounded bg-[#f4f0e8] px-1 text-[10px] text-[#616c63]">M03</span>
+      </a>
+
+      <a
+        href="/intelligence/benchmarks"
+        class="inline-flex items-center gap-1.5 rounded-md border border-[#e7e2d7] bg-[#ffffff] px-3 py-1.5 text-xs font-semibold text-[#242924] hover:bg-[#f4f0e8] transition-colors shadow-xs"
+      >
+        <span>📊 Benchmark</span>
+        <span class="rounded bg-[#f4f0e8] px-1 text-[10px] text-[#616c63]">M03</span>
+      </a>
+
       <!-- Watchlist Drawer Trigger -->
       <button
         type="button"
