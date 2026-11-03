@@ -569,8 +569,8 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		INSERT INTO watchlist_alert_logs (alert_log_id, workspace_id, watchlist_id, trend_id, alert_fingerprint, cooldown_until) VALUES
 		  ('aaaaaaaa-2222-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-1111-4aaa-8aaa-aaaaaaaaaaaa', '33333333-3333-4333-8333-333333333333', 'fp_a', NOW() + INTERVAL '1 hour');
 
-		INSERT INTO competitor_entities (competitor_id, workspace_id, name, platform, external_handle) VALUES
-		  ('aaaaaaaa-3333-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Competitor A', 'tiktok', '@competitor_a');
+		INSERT INTO competitor_entities (competitor_id, workspace_id, name, entity_type, platform, external_handle) VALUES
+		  ('aaaaaaaa-3333-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Competitor A', 'creator', 'tiktok', '@competitor_a');
 
 		INSERT INTO benchmark_snapshots (snapshot_id, workspace_id, competitor_id, snapshot_type, source_class, confidence) VALUES
 		  ('aaaaaaaa-4444-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-3333-4aaa-8aaa-aaaaaaaaaaaa', 'benchmark', 'inferred', 'high');
