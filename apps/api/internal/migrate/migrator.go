@@ -744,6 +744,16 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 			"continuity_packs",
 			"continuity_pack_versions",
 		}
+	case 16:
+		requiredFragments = []requiredFragment{
+			{"copilot_sessions table", "CREATE TABLE IF NOT EXISTS copilot_sessions"},
+			{"composite tenant FK on copilot_sessions -> workspace_members", "fk_copilot_sessions_member_tenant"},
+			{"tenant_isolation policy on copilot_sessions", "CREATE POLICY tenant_isolation ON copilot_sessions"},
+			{"admin_ops_scope policy on copilot_sessions", "CREATE POLICY admin_ops_scope ON copilot_sessions"},
+		}
+		requiredRLSTables = []string{
+			"copilot_sessions",
+		}
 	default:
 		return nil
 	}

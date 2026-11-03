@@ -1,0 +1,436 @@
+syntax = "proto3";
+
+package creativanta.copilot.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/copilot/v1;copilotv1";
+
+// CopilotMode tracks the operational mode of the Copilot session per database_schema.md §19.12.
+enum CopilotMode {
+  COPILOT_MODE_UNSPECIFIED = 0;
+  COPILOT_MODE_CREATIVE = 1;
+  COPILOT_MODE_ANALYTICS = 2;
+  COPILOT_MODE_ACTION = 3;
+  COPILOT_MODE_VIDEO_PRODUCTION = 4;
+  COPILOT_MODE_HELP = 5;
+}
+
+// ActionQuoteStatus tracks the confirmation lifecycle of an AI credit quote.
+enum ActionQuoteStatus {
+  ACTION_QUOTE_STATUS_UNSPECIFIED = 0;
+  ACTION_QUOTE_STATUS_PENDING = 1;
+  ACTION_QUOTE_STATUS_CONFIRMED = 2;
+  ACTION_QUOTE_STATUS_CANCELLED = 3;
+  ACTION_QUOTE_STATUS_EXPIRED = 4;
+}
+
+// ActionQuote represents a durable credit cost preview before executing generative/side-effect actions.
+message ActionQuote {
+  string quote_id = 1;
+  string workspace_id = 2;
+  string operation_type = 3;
+  int64 quoted_credits = 4;
+  string cost_ceiling_usd = 5;
+  ActionQuoteStatus status = 6;
+  google.protobuf.Timestamp expires_at = 7;
+  google.protobuf.Timestamp created_at = 8;
+  string action_preview = 9;
+}
+
+// ActionCard represents an executable or proposed action button in Copilot response.
+message ActionCard {
+  string action_id = 1;
+  string action_type = 2; // e.g. "create_script", "delete_product", "view_details"
+  string title = 3;
+  string description = 4;
+  string required_permission = 5;
+  bool requires_confirmation = 6;
+  ActionQuote quote = 7;
+  map<string, string> parameters = 8;
+}
+
+// DataCard represents structured evidence, analytics, or metrics returned in Copilot response.
+message DataCard {
+  string card_id = 1;
+  string title = 2;
+  string summary = 3;
+  bool is_financial = 4;
+  bool is_redacted = 5;
+  string redaction_reason = 6;
+  repeated string source_badges = 7;
+  map<string, string> metrics = 8;
+}
+
+// CopilotMessage represents a single turn in a Copilot conversation.
+message CopilotMessage {
+  string message_id = 1;
+  string session_id = 2;
+  string role = 3; // "user", "assistant", "system"
+  string content = 4;
+  repeated ActionCard action_cards = 5;
+  repeated DataCard data_cards = 6;
+  ActionQuote pending_quote = 7;
+  bool permission_denied = 8;
+  string denial_reason = 9;
+  google.protobuf.Timestamp created_at = 10;
+}
+
+// CopilotSession represents a workspace-scoped conversation session per database_schema.md §19.12.
+message CopilotSession {
+  string session_id = 1;
+  string workspace_id = 2;
+  string user_id = 3;
+  CopilotMode mode = 4;
+  string context_scope = 5;
+  repeated CopilotMessage messages = 6;
+  string total_credits_used = 7;
+  google.protobuf.Timestamp ended_at = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// SuggestionItem represents a recommended quick prompt or action.
+message SuggestionItem {
+  string suggestion_id = 1;
+  string label = 2;
+  string prompt_text = 3;
+  string category = 4;
+  string target_module = 5;
+}
+
+// Request and Response messages for CopilotService methods
+
+message CopilotServiceQueryRequest {
+  string workspace_id = 1;
+  string session_id = 2;
+  string query = 3;
+  CopilotMode mode = 4;
+  string context_scope = 5;
+  repeated string context_ids = 6;
+  string confirmed_quote_id = 7; // provided when confirming a quoted draft generation
+}
+
+message CopilotServiceQueryResponse {
+  CopilotSession session = 1;
+  CopilotMessage message = 2;
+  bool requires_quote_confirmation = 3;
+  ActionQuote quote = 4;
+  bool is_financial_query = 5;
+  bool financial_data_redacted = 6;
+}
+
+message CopilotServiceSendMessageRequest {
+  string workspace_id = 1;
+  string session_id = 2;
+  string content = 3;
+  CopilotMode mode = 4;
+  string context_scope = 5;
+  string confirmed_quote_id = 6; // provided when confirming quote preview
+}
+
+message CopilotServiceSendMessageResponse {
+  CopilotSession session = 1;
+  CopilotMessage reply = 2;
+  bool requires_quote_confirmation = 3;
+  ActionQuote quote = 4;
+}
+
+message CopilotServiceChatRequest {
+  string workspace_id = 1;
+  string session_id = 2;
+  string message = 3;
+  CopilotMode mode = 4;
+  string context_scope = 5;
+}
+
+message CopilotServiceChatResponse {
+  CopilotSession session = 1;
+  CopilotMessage reply = 2;
+}
+
+message CopilotServiceGetSessionRequest {
+  string workspace_id = 1;
+  string session_id = 2;
+}
+
+message CopilotServiceGetSessionResponse {
+  CopilotSession session = 1;
+}
+
+message CopilotServiceClearSessionRequest {
+  string workspace_id = 1;
+  string session_id = 2;
+}
+
+message CopilotServiceClearSessionResponse {
+  bool cleared = 1;
+  string session_id = 2;
+}
+
+message CopilotServiceGetSuggestionsRequest {
+  string workspace_id = 1;
+  string context_scope = 2;
+  CopilotMode mode = 3;
+}
+
+message CopilotServiceGetSuggestionsResponse {
+  repeated SuggestionItem suggestions = 1;
+}
+
+message CopilotServiceGetContextualActionsRequest {
+  string workspace_id = 1;
+  string screen_route = 2;
+  string object_id = 3;
+}
+
+message CopilotServiceGetContextualActionsResponse {
+  repeated ActionCard actions = 1;
+}
+
+message CopilotServiceSetContextRequest {
+  string workspace_id = 1;
+  string session_id = 2;
+  string context_scope = 3;
+  CopilotMode mode = 4;
+}
+
+message CopilotServiceSetContextResponse {
+  CopilotSession session = 1;
+}
+
+message CopilotServiceGetHistoryRequest {
+  string workspace_id = 1;
+  int32 limit = 2;
+  string page_token = 3;
+}
+
+message CopilotServiceGetHistoryResponse {
+  repeated CopilotSession sessions = 1;
+  string next_page_token = 2;
+}
+
+message CopilotServiceFeedbackRequest {
+  string workspace_id = 1;
+  string session_id = 2;
+  string message_id = 3;
+  bool is_positive = 4;
+  string feedback_text = 5;
+}
+
+message CopilotServiceFeedbackResponse {
+  bool recorded = 1;
+}
+
+message CopilotServiceGenerateIdeasRequest {
+  string workspace_id = 1;
+  string topic = 2;
+  int32 count = 3;
+  string confirmed_quote_id = 4;
+}
+
+message CopilotServiceGenerateIdeasResponse {
+  repeated string ideas = 1;
+  ActionQuote quote = 2;
+  bool requires_confirmation = 3;
+}
+
+message CopilotServiceGenerateCaptionRequest {
+  string workspace_id = 1;
+  string content_summary = 2;
+  string platform = 3;
+}
+
+message CopilotServiceGenerateCaptionResponse {
+  string caption = 1;
+  repeated string hashtags = 2;
+}
+
+message CopilotServiceGenerateReplyRequest {
+  string workspace_id = 1;
+  string incoming_message = 2;
+  string platform = 3;
+}
+
+message CopilotServiceGenerateReplyResponse {
+  string suggested_reply = 1;
+}
+
+message CopilotServiceGenerateAvatarRequest {
+  string workspace_id = 1;
+  string prompt = 2;
+  string style = 3;
+}
+
+message CopilotServiceGenerateAvatarResponse {
+  string avatar_url = 1;
+}
+
+message CopilotServiceShortenCaptionRequest {
+  string workspace_id = 1;
+  string text = 2;
+  int32 max_length = 3;
+}
+
+message CopilotServiceShortenCaptionResponse {
+  string shortened_text = 1;
+}
+
+message CopilotServiceSuggestHashtagsRequest {
+  string workspace_id = 1;
+  string topic = 2;
+  int32 count = 3;
+}
+
+message CopilotServiceSuggestHashtagsResponse {
+  repeated string hashtags = 1;
+}
+
+message CopilotServiceDismissReplyRequest {
+  string workspace_id = 1;
+  string reply_id = 2;
+}
+
+message CopilotServiceDismissReplyResponse {
+  bool dismissed = 1;
+}
+
+message CopilotServiceRegenerateSectionRequest {
+  string workspace_id = 1;
+  string section_text = 2;
+  string instruction = 3;
+}
+
+message CopilotServiceRegenerateSectionResponse {
+  string regenerated_text = 1;
+}
+
+message CopilotServiceScoreIdeaRequest {
+  string workspace_id = 1;
+  string idea_text = 2;
+}
+
+message CopilotServiceScoreIdeaResponse {
+  int32 virality_score = 1;
+  string critique = 2;
+}
+
+message CopilotServiceCheckBrandVoiceRequest {
+  string workspace_id = 1;
+  string text = 2;
+  string brand_pack_id = 3;
+}
+
+message CopilotServiceCheckBrandVoiceResponse {
+  int32 consistency_score = 1;
+  repeated string recommendations = 2;
+}
+
+message CopilotServiceAnalyzeAnalyticsRequest {
+  string workspace_id = 1;
+  string timeframe = 2;
+}
+
+message CopilotServiceAnalyzeAnalyticsResponse {
+  string summary = 1;
+  repeated string findings = 2;
+  bool is_redacted = 3;
+}
+
+message CopilotServiceAnalyzePipelineRequest {
+  string workspace_id = 1;
+}
+
+message CopilotServiceAnalyzePipelineResponse {
+  string pipeline_health = 1;
+  repeated string bottlenecks = 2;
+}
+
+message CopilotServiceAnalyticsInsightsRequest {
+  string workspace_id = 1;
+  string module = 2;
+}
+
+message CopilotServiceAnalyticsInsightsResponse {
+  repeated string insights = 1;
+}
+
+message CopilotServiceFinanceInsightRequest {
+  string workspace_id = 1;
+  string period = 2;
+}
+
+message CopilotServiceFinanceInsightResponse {
+  string insight = 1;
+  bool is_redacted = 2;
+  string redaction_reason = 3;
+}
+
+message CopilotServiceTrendInsightRequest {
+  string workspace_id = 1;
+  string category = 2;
+}
+
+message CopilotServiceTrendInsightResponse {
+  repeated string trend_recommendations = 1;
+}
+
+message CopilotServiceGetContentOptimizationRequest {
+  string workspace_id = 1;
+  string content_id = 2;
+}
+
+message CopilotServiceGetContentOptimizationResponse {
+  repeated string suggestions = 1;
+}
+
+message CopilotServiceGetCostOptimizationRequest {
+  string workspace_id = 1;
+}
+
+message CopilotServiceGetCostOptimizationResponse {
+  repeated string suggestions = 1;
+  bool is_redacted = 2;
+}
+
+message CopilotServiceGetOptimalTimesRequest {
+  string workspace_id = 1;
+  string platform = 2;
+}
+
+message CopilotServiceGetOptimalTimesResponse {
+  repeated string optimal_time_slots = 1;
+}
+
+// CopilotService provides conversational operational intelligence, action guidance,
+// and quoted draft generation across the Creativanta operating graph.
+service CopilotService {
+  rpc Query(CopilotServiceQueryRequest) returns (CopilotServiceQueryResponse);
+  rpc GetSuggestions(CopilotServiceGetSuggestionsRequest) returns (CopilotServiceGetSuggestionsResponse);
+  rpc GetContextualActions(CopilotServiceGetContextualActionsRequest) returns (CopilotServiceGetContextualActionsResponse);
+  rpc SetContext(CopilotServiceSetContextRequest) returns (CopilotServiceSetContextResponse);
+  rpc GetHistory(CopilotServiceGetHistoryRequest) returns (CopilotServiceGetHistoryResponse);
+  rpc Chat(CopilotServiceChatRequest) returns (CopilotServiceChatResponse);
+  rpc SendMessage(CopilotServiceSendMessageRequest) returns (CopilotServiceSendMessageResponse);
+  rpc GetSession(CopilotServiceGetSessionRequest) returns (CopilotServiceGetSessionResponse);
+  rpc ClearSession(CopilotServiceClearSessionRequest) returns (CopilotServiceClearSessionResponse);
+  rpc Feedback(CopilotServiceFeedbackRequest) returns (CopilotServiceFeedbackResponse);
+  rpc GenerateIdeas(CopilotServiceGenerateIdeasRequest) returns (CopilotServiceGenerateIdeasResponse);
+  rpc GenerateCaption(CopilotServiceGenerateCaptionRequest) returns (CopilotServiceGenerateCaptionResponse);
+  rpc GenerateReply(CopilotServiceGenerateReplyRequest) returns (CopilotServiceGenerateReplyResponse);
+  rpc GenerateAvatar(CopilotServiceGenerateAvatarRequest) returns (CopilotServiceGenerateAvatarResponse);
+  rpc ShortenCaption(CopilotServiceShortenCaptionRequest) returns (CopilotServiceShortenCaptionResponse);
+  rpc SuggestHashtags(CopilotServiceSuggestHashtagsRequest) returns (CopilotServiceSuggestHashtagsResponse);
+  rpc DismissReply(CopilotServiceDismissReplyRequest) returns (CopilotServiceDismissReplyResponse);
+  rpc RegenerateSection(CopilotServiceRegenerateSectionRequest) returns (CopilotServiceRegenerateSectionResponse);
+  rpc ScoreIdea(CopilotServiceScoreIdeaRequest) returns (CopilotServiceScoreIdeaResponse);
+  rpc CheckBrandVoice(CopilotServiceCheckBrandVoiceRequest) returns (CopilotServiceCheckBrandVoiceResponse);
+  rpc AnalyzeAnalytics(CopilotServiceAnalyzeAnalyticsRequest) returns (CopilotServiceAnalyzeAnalyticsResponse);
+  rpc AnalyzePipeline(CopilotServiceAnalyzePipelineRequest) returns (CopilotServiceAnalyzePipelineResponse);
+  rpc AnalyticsInsights(CopilotServiceAnalyticsInsightsRequest) returns (CopilotServiceAnalyticsInsightsResponse);
+  rpc FinanceInsight(CopilotServiceFinanceInsightRequest) returns (CopilotServiceFinanceInsightResponse);
+  rpc TrendInsight(CopilotServiceTrendInsightRequest) returns (CopilotServiceTrendInsightResponse);
+  rpc GetContentOptimization(CopilotServiceGetContentOptimizationRequest) returns (CopilotServiceGetContentOptimizationResponse);
+  rpc GetCostOptimization(CopilotServiceGetCostOptimizationRequest) returns (CopilotServiceGetCostOptimizationResponse);
+  rpc GetOptimalTimes(CopilotServiceGetOptimalTimesRequest) returns (CopilotServiceGetOptimalTimesResponse);
+}

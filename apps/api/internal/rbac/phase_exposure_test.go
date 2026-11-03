@@ -16,21 +16,22 @@ import (
 
 // Allowed modules up to Phase P1 per docs/00_index/IMPLEMENTATION_ORDER.md §2 and AGENT_BUILD_BACKLOG.md
 var allowedModules = map[string]bool{
-	"auth": true,
-	"S24":  true,
-	"M01":  true,
-	"M22":  true,
-	"M23":  true,
-	"help": true,
-	"S26":  true,
-	"M13":  true, // Phase P1: Product Hub / Inventory / Order Truth
-	"M19":  true, // Phase P1-03: Operating Ledger / Profit / Costs / Settlements (M19)
-	"M02":  true, // Phase P2: Trend Fusion Radar (M02)
-	"M03":  true, // Phase P2-02: Research & Competitor Intelligence (M03)
-	"M04":  true, // Phase P2-03: Opportunity Board (M04)
-	"M05":  true, // Phase P3: Idea Engine (M05)
-	"M06":  true, // Phase P3-02: Script Lab (M06)
-	"M08":  true, // Phase P3-03: Continuity OS (M08)
+	"auth":    true,
+	"S24":     true,
+	"M01":     true,
+	"M22":     true,
+	"M23":     true,
+	"help":    true,
+	"S26":     true,
+	"M13":     true, // Phase P1: Product Hub / Inventory / Order Truth
+	"M19":     true, // Phase P1-03: Operating Ledger / Profit / Costs / Settlements (M19)
+	"M02":     true, // Phase P2: Trend Fusion Radar (M02)
+	"M03":     true, // Phase P2-02: Research & Competitor Intelligence (M03)
+	"M04":     true, // Phase P2-03: Opportunity Board (M04)
+	"M05":     true, // Phase P3: Idea Engine (M05)
+	"M06":     true, // Phase P3-02: Script Lab (M06)
+	"M08":     true, // Phase P3-03: Continuity OS (M08)
+	"copilot": true, // Phase P3-04: Copilot Operations Assistant (copilot)
 }
 
 // TestNoFuturePhaseRPCExposed satisfies Acceptance Target:
