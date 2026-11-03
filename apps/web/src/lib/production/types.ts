@@ -79,6 +79,43 @@ export interface AssetLineage {
 	continuityScore?: number;
 }
 
+export interface SoundTrackItem {
+	trackId: string;
+	workspaceId: string;
+	title: string;
+	category: 'music' | 'sfx' | 'ambient';
+	genre: string;
+	mood: string;
+	bpm: number;
+	durationSeconds: number;
+	fileUrl: string;
+	licenseType: string;
+	licenseId: string;
+	isVerifiedLicense: boolean;
+	waveformPeaks: number[];
+	createdAt: string;
+}
+
+export interface TranslationJobItem {
+	jobId: string;
+	workspaceId: string;
+	sourceAssetId: string;
+	targetLanguages: string[];
+	lipSyncEnabled: boolean;
+	culturalAdaptationEnabled: boolean;
+	translateCaptions: boolean;
+	voiceOption: 'native' | 'cloned';
+	voiceCloneId?: string;
+	status: 'queued' | 'processing' | 'completed' | 'failed';
+	qualityScores: Record<string, number>;
+	repairNotes: Record<string, string>;
+	outputAssetIds: Record<string, string>;
+	totalCreditsUsed: string;
+	quoteId: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
 export type FidelityLevel = 'match_1to1' | 'adapt' | 'loose';
 
 export interface CreativeDNA {
@@ -119,6 +156,17 @@ export interface RemixBlueprint {
 	errorMessage?: string;
 	createdAt: string;
 	updatedAt: string;
+}
+
+export interface VoiceCloneOption {
+	voiceCloneId: string;
+	name: string;
+	characterId: string;
+	cloneStatus: 'ready' | 'pending' | 'revoked';
+	consentRecordId: string;
+	consentStatus: 'active' | 'revoked' | 'pending';
+	qualityScore: number;
+	repairApplied: boolean;
 }
 
 export interface CopyrightCheckResult {

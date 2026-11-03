@@ -398,8 +398,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 19 {
-		t.Fatalf("expected 19 applied migrations, got %d", len(applied))
+	if len(applied) != 20 {
+		t.Fatalf("expected 20 applied migrations, got %d", len(applied))
 	}
 	for i, v := range applied {
 		if v != int64(i+1) {
@@ -419,13 +419,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for all 18 migrations.
+	// Status reports Applied = true for all 20 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 19 {
-		t.Fatalf("expected status for 19 migrations, got %d", len(statuses))
+	if len(statuses) != 20 {
+		t.Fatalf("expected status for 20 migrations, got %d", len(statuses))
 	}
 	for i, s := range statuses {
 		if !s.Applied {
@@ -438,7 +438,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 19, then 18, then 17...
+	// Down with allowLocalRollback=true rolls back version 20, then 19, then 18...
+	rolled20, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v20 failed: %v", err)
+	}
+	if rolled20 != 20 {
+		t.Fatalf("expected rolled back version 20, got %d", rolled20)
+	}
 	rolled19, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v19 failed: %v", err)
@@ -615,13 +622,16 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	_, _ = adminPool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
 	dir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 
-	// Apply migration Up, then Down nineteen times, then Up again to prove full Goose SQL repeatability.
+	// Apply migration Up, then Down twenty times, then Up again to prove full Goose SQL repeatability.
 	applied, err := Up(ctx, adminPool, dir)
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 19 {
-		t.Fatalf("expected 19 applied migrations, got %v", applied)
+	if len(applied) != 20 {
+		t.Fatalf("expected 20 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v20 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v19 failed: %v", err)

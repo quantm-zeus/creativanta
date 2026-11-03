@@ -1,0 +1,5 @@
+=== Running D0 Documentation Invariants Check ===
+Documentation invariants: PASS
+active_markdown=337, tables=165, tenant_tables=140, rpc_bindings=1188, modules=31, build_tasks=60, requirement_units=1333, screen_assignments=245, parsed_sql_blocks=163
+Static checks only; runtime, typed transport and external gates require separate evidence.
+=== D0 Documentation Invariant Gate: PASS ===

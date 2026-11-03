@@ -553,31 +553,6 @@ message QuickEditServiceSaveDraftResponse {
   QuickEditDraft draft = 1;
 }
 
-// QuickEditService manages Quick Edit drafts and text-based timeline editing.
-service QuickEditService {
-  // SaveDraft persists an in-progress quick edit draft.
-  rpc SaveDraft(QuickEditServiceSaveDraftRequest) returns (QuickEditServiceSaveDraftResponse);
-}
-
-// ============================================================================
-// Sound Studio Data Types & Services (M07 EF-06)
-// ============================================================================
-
-message SoundTrack {
-  string sound_id = 1;
-  creativanta.common.v1.UUID workspace_id = 2;
-  string title = 3;
-  string artist = 4;
-  string genre = 5;
-  int32 bpm = 6;
-  double duration_seconds = 7;
-  string audio_url = 8;
-  bool is_royalty_free = 9;
-  bool acrcloud_cleared = 10;
-  string license_type = 11;
-  repeated string tags = 12;
-}
-
 message BeatSyncGrid {
   int32 bpm = 1;
   repeated int64 beat_timestamps_ms = 2;
@@ -585,100 +560,330 @@ message BeatSyncGrid {
   double confidence = 4;
 }
 
-message CopyrightScanResult {
-  bool is_copyrighted = 1;
-  string matched_track = 2;
-  string matched_artist = 3;
-  bool clearance_allowed = 4;
-  string scan_provider = 5;
-  repeated SoundTrack suggested_alternatives = 6;
+// QuickEditService manages Quick Edit drafts and text-based timeline editing.
+service QuickEditService {
+  // SaveDraft persists an in-progress quick edit draft.
+  rpc SaveDraft(QuickEditServiceSaveDraftRequest) returns (QuickEditServiceSaveDraftResponse);
 }
 
-message GenerateMusicRequest {
+
+// ============================================================================
+// Translation & Localization Messages (M07 EF-05)
+// ============================================================================
+
+// TranslationJob represents a multi-language localization job per database_schema.md §22.6.
+message TranslationJob {
+  string translation_job_id = 1;
+  string workspace_id = 2;
+  string video_edit_job_id = 3;
+  string source_asset_id = 4;
+  repeated string target_languages = 5;
+  bool lip_sync_enabled = 6;
+  bool cultural_adaptation_enabled = 7;
+  bool translate_captions = 8;
+  bool translate_overlays = 9;
+  string voice_option = 10;
+  string voice_clone_id = 11;
+  map<string, string> per_language_status = 12;
+  map<string, string> output_asset_ids = 13;
+  string total_credits_used = 14;
+  string status = 15;
+  map<string, double> quality_scores = 16;
+  map<string, string> repair_notes = 17;
+  string quote_id = 18;
+  google.protobuf.Timestamp created_at = 19;
+  google.protobuf.Timestamp updated_at = 20;
+}
+
+// TranslationSegment represents a timecoded speech segment with quality scoring and repair state.
+message TranslationSegment {
+  string segment_id = 1;
+  double start_time_s = 2;
+  double end_time_s = 3;
+  string source_text = 4;
+  map<string, string> translations = 5;
+  double quality_score = 6;
+  bool needs_repair = 7;
+  string repair_reason = 8;
+}
+
+message TranslationServiceCreateRequest {
   creativanta.common.v1.CommandContext context = 1;
-  string prompt = 2;
-  string genre = 3;
-  int32 bpm = 4;
-  double duration_seconds = 5;
+  string source_asset_id = 2;
+  repeated string target_languages = 3;
+  bool lip_sync_enabled = 4;
+  bool cultural_adaptation_enabled = 5;
+  bool translate_captions = 6;
+  bool translate_overlays = 7;
+  string voice_option = 8;
+  string voice_clone_id = 9;
+  string quote_id = 10;
+  string confirmed_credits = 11;
+  map<string, string> custom_script_corrections = 12;
 }
 
-message GenerateMusicResponse {
-  SoundTrack sound = 1;
-  GenerationJob job = 2;
+message TranslationServiceCreateResponse {
+  TranslationJob job = 1;
+  string credits_reserved = 2;
+  double discount_applied_pct = 3;
 }
 
-message GenerateSFXRequest {
-  creativanta.common.v1.CommandContext context = 1;
-  string prompt = 2;
-  double duration_seconds = 3;
-}
-
-message GenerateSFXResponse {
-  SoundTrack sound = 1;
-  GenerationJob job = 2;
-}
-
-message AnalyzeBeatRequest {
+message TranslationServiceGetRequest {
   creativanta.common.v1.UUID workspace_id = 1;
-  string sound_id = 2;
-  string audio_url = 3;
+  string translation_job_id = 2;
 }
 
-message AnalyzeBeatResponse {
-  BeatSyncGrid grid = 1;
+message TranslationServiceGetResponse {
+  TranslationJob job = 1;
+  repeated Asset output_assets = 2;
+  repeated TranslationSegment segments = 3;
 }
 
-message ListSoundLibraryRequest {
+message TranslationServiceListRequest {
   creativanta.common.v1.UUID workspace_id = 1;
-  string genre = 2;
-  bool royalty_free_only = 3;
-  creativanta.common.v1.Pagination pagination = 4;
+  creativanta.common.v1.Pagination pagination = 2;
 }
 
-message ListSoundLibraryResponse {
-  repeated SoundTrack sounds = 1;
+message TranslationServiceListResponse {
+  repeated TranslationJob jobs = 1;
   creativanta.common.v1.PaginatedResponse pagination = 2;
 }
 
-message GetSoundRequest {
+// TranslationService manages AI video translation, lip-sync, cultural adaptation and localization (M07 EF-05).
+service TranslationService {
+  rpc Create(TranslationServiceCreateRequest) returns (TranslationServiceCreateResponse);
+  rpc Get(TranslationServiceGetRequest) returns (TranslationServiceGetResponse);
+  rpc List(TranslationServiceListRequest) returns (TranslationServiceListResponse);
+}
+
+// ============================================================================
+// Sound Studio Messages (M07 EF-06)
+// ============================================================================
+
+// SoundTrack represents an audio or sound design asset with verified licensing metadata.
+message SoundTrack {
+  string track_id = 1;
+  string workspace_id = 2;
+  string title = 3;
+  string category = 4; // music, sfx, ambient
+  string genre = 5;
+  string mood = 6;
+  int32 bpm = 7;
+  double duration_seconds = 8;
+  string file_url = 9;
+  string license_type = 10; // commercial_royalty_free, licensed_library, user_uploaded
+  string license_id = 11;
+  bool is_verified_license = 12;
+  repeated float waveform_peaks = 13;
+  google.protobuf.Timestamp created_at = 14;
+}
+
+message SoundStudioServiceGenerateMusicRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string prompt = 2;
+  string genre = 3;
+  string mood = 4;
+  int32 bpm = 5;
+  int32 duration_seconds = 6;
+  string license_type = 7;
+  string quote_id = 8;
+  string confirmed_credits = 9;
+}
+
+message SoundStudioServiceGenerateMusicResponse {
+  SoundTrack track = 1;
+  Asset asset = 2;
+  string credits_deducted = 3;
+}
+
+message SoundStudioServiceGenerateSFXRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string prompt = 2;
+  string category = 3;
+  double duration_seconds = 4;
+  string quote_id = 5;
+  string confirmed_credits = 6;
+}
+
+message SoundStudioServiceGenerateSFXResponse {
+  SoundTrack track = 1;
+  Asset asset = 2;
+  string credits_deducted = 3;
+}
+
+message SoundStudioServiceAnalyzeBeatRequest {
   creativanta.common.v1.UUID workspace_id = 1;
-  string sound_id = 2;
+  string audio_asset_id = 2;
+  string audio_url = 3;
 }
 
-message GetSoundResponse {
-  SoundTrack sound = 1;
+message SoundStudioServiceAnalyzeBeatResponse {
+  double bpm = 1;
+  repeated int64 beat_timestamps_ms = 2;
+  repeated int64 downbeat_timestamps_ms = 3;
+  double tempo_confidence = 4;
+  repeated int64 suggested_cut_points_ms = 5;
 }
 
-message PreviewSoundRequest {
+message SoundStudioServiceListSoundLibraryRequest {
   creativanta.common.v1.UUID workspace_id = 1;
-  string sound_id = 2;
-  double preview_duration_seconds = 3;
+  string category = 2;
+  string genre = 3;
+  string mood = 4;
+  creativanta.common.v1.Pagination pagination = 5;
 }
 
-message PreviewSoundResponse {
+message SoundStudioServiceListSoundLibraryResponse {
+  repeated SoundTrack tracks = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message SoundStudioServiceGetSoundRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string asset_id = 2;
+}
+
+message SoundStudioServiceGetSoundResponse {
+  SoundTrack track = 1;
+}
+
+message SoundStudioServicePreviewSoundRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string track_id = 2;
+  int32 preview_start_ms = 3;
+  int32 preview_duration_ms = 4;
+}
+
+message SoundStudioServicePreviewSoundResponse {
   string preview_url = 1;
-  double preview_duration_seconds = 2;
+  repeated float waveform_peaks = 2;
+  bool is_free = 3;
 }
 
-// SoundStudioService provides music generation, sound effects, beat analysis and sound library access.
+// SoundStudioService manages background music generation, beat synchronization, SFX, and sound library (M07 EF-06).
 service SoundStudioService {
-  // GenerateMusic generates a background music track based on prompt and tempo.
-  rpc GenerateMusic(GenerateMusicRequest) returns (GenerateMusicResponse);
+  rpc GenerateMusic(SoundStudioServiceGenerateMusicRequest) returns (SoundStudioServiceGenerateMusicResponse);
+  rpc GenerateSFX(SoundStudioServiceGenerateSFXRequest) returns (SoundStudioServiceGenerateSFXResponse);
+  rpc AnalyzeBeat(SoundStudioServiceAnalyzeBeatRequest) returns (SoundStudioServiceAnalyzeBeatResponse);
+  rpc ListSoundLibrary(SoundStudioServiceListSoundLibraryRequest) returns (SoundStudioServiceListSoundLibraryResponse);
+  rpc GetSound(SoundStudioServiceGetSoundRequest) returns (SoundStudioServiceGetSoundResponse);
+  rpc PreviewSound(SoundStudioServicePreviewSoundRequest) returns (SoundStudioServicePreviewSoundResponse);
+}
 
-  // GenerateSFX generates contextual sound effects.
-  rpc GenerateSFX(GenerateSFXRequest) returns (GenerateSFXResponse);
+// ============================================================================
+// Voice Clone Messages (M08)
+// ============================================================================
 
-  // AnalyzeBeat detects tempo and downbeat timestamps for timeline beat-sync.
-  rpc AnalyzeBeat(AnalyzeBeatRequest) returns (AnalyzeBeatResponse);
+// VoiceCloneRecord represents a cloned voice profile linked to characters and consent records per database_schema.md §22.12.
+message VoiceCloneRecord {
+  string voice_clone_id = 1;
+  string workspace_id = 2;
+  string character_id = 3;
+  string provider = 4;
+  string provider_voice_id = 5;
+  string voice_name = 6;
+  repeated string sample_audio_urls = 7;
+  string clone_status = 8;
+  string consent_record_id = 9;
+  double quality_score = 10;
+  bool repair_applied = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
 
-  // ListSoundLibrary lists royalty-free tracks and tenant-owned audio assets.
-  rpc ListSoundLibrary(ListSoundLibraryRequest) returns (ListSoundLibraryResponse);
+message VoiceCloneServiceCreateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string character_id = 2;
+  string name = 3;
+  repeated string sample_audio_urls = 4;
+  bool consent_confirmed = 5;
+  string consent_record_id = 6;
+  string language = 7;
+  string quote_id = 8;
+  string confirmed_credits = 9;
+}
 
-  // GetSound retrieves a single sound track with copyright clearance details.
-  rpc GetSound(GetSoundRequest) returns (GetSoundResponse);
+message VoiceCloneServiceCreateResponse {
+  VoiceCloneRecord record = 1;
+  string status = 2;
+  int32 estimated_duration_s = 3;
+  string credits_reserved = 4;
+  string consent_status = 5;
+}
 
-  // PreviewSound generates or retrieves a short sample preview of a track.
-  rpc PreviewSound(PreviewSoundRequest) returns (PreviewSoundResponse);
+message VoiceCloneServiceGetRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string voice_clone_id = 2;
+}
+
+message VoiceCloneServiceGetResponse {
+  VoiceCloneRecord record = 1;
+}
+
+message VoiceCloneServiceListRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string character_id = 2;
+  creativanta.common.v1.Pagination pagination = 3;
+}
+
+message VoiceCloneServiceListResponse {
+  repeated VoiceCloneRecord records = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message VoiceCloneServiceDeleteRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string voice_clone_id = 2;
+  bool revoke_consent = 3;
+}
+
+message VoiceCloneServiceDeleteResponse {
+  bool success = 1;
+  string message = 2;
+  bool consent_revoked = 3;
+}
+
+message VoiceCloneServiceGenerateVoiceoverRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string voice_clone_id = 2;
+  string text = 3;
+  string language = 4;
+  double speed = 5;
+  double pitch = 6;
+  string quote_id = 7;
+  string confirmed_credits = 8;
+}
+
+message VoiceCloneServiceGenerateVoiceoverResponse {
+  string asset_id = 1;
+  string audio_url = 2;
+  double duration_seconds = 3;
+  string credits_used = 4;
+}
+
+message VoiceCloneServiceGetConsentStatusRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string voice_clone_id = 2;
+  string character_id = 3;
+}
+
+message VoiceCloneServiceGetConsentStatusResponse {
+  string consent_record_id = 1;
+  string consent_status = 2;
+  google.protobuf.Timestamp granted_at = 3;
+  google.protobuf.Timestamp revoked_at = 4;
+  string declaration_text = 5;
+  bool is_valid_for_generation = 6;
+}
+
+// VoiceCloneService manages digital voice cloning, consent gating, voiceover synthesis and revocation (M08).
+service VoiceCloneService {
+  rpc Create(VoiceCloneServiceCreateRequest) returns (VoiceCloneServiceCreateResponse);
+  rpc Get(VoiceCloneServiceGetRequest) returns (VoiceCloneServiceGetResponse);
+  rpc List(VoiceCloneServiceListRequest) returns (VoiceCloneServiceListResponse);
+  rpc Delete(VoiceCloneServiceDeleteRequest) returns (VoiceCloneServiceDeleteResponse);
+  rpc GenerateVoiceover(VoiceCloneServiceGenerateVoiceoverRequest) returns (VoiceCloneServiceGenerateVoiceoverResponse);
+  rpc GetConsentStatus(VoiceCloneServiceGetConsentStatusRequest) returns (VoiceCloneServiceGetConsentStatusResponse);
 }
 
 // ============================================================================

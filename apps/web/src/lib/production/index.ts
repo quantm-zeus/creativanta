@@ -67,9 +67,20 @@ export const PRODUCTION_MODES: ProductionMode[] = [
 		title: 'AI Sound & BGM Studio',
 		description: 'Soạn nhạc nền và hiệu ứng âm thanh bản quyền độc quyền',
 		icon: '🎵',
-		creditCost: 15,
+		creditCost: 8,
 		durationSecs: 30,
-		route: '/studio'
+		route: '/studio/sound',
+		badge: 'W028'
+	},
+	{
+		id: 'translation',
+		title: 'AI Translation & Localization',
+		description: 'Dịch thuật video đa ngôn ngữ, khớp khẩu hình lip-sync và thích ứng văn hóa',
+		icon: '🌐',
+		creditCost: 35,
+		durationSecs: 60,
+		route: '/studio/translate',
+		badge: 'W033'
 	},
 	{
 		id: 'subtitles',
@@ -158,6 +169,45 @@ export function validateBatchInputClient(
 		currentAvailableCredits: availableCredits.toString(),
 		sufficientCredits: availableCredits >= totalCreditsNum,
 		items: rows
+	};
+}
+
+/**
+ * Calculates translation quote with multi-language volume discount formula.
+ * Formula per screen_web_studio_translation.md §5:
+ * base = 20 cr/lang, lip_sync = +10 cr/lang, cultural = +5 cr/lang
+ * discount = 10% per additional language (max 30%)
+ * total = round(languages * (base + lip_sync + cultural) * (1 - discount))
+ */
+export function calculateTranslationQuoteClient(
+	langsCount: number,
+	lipSync: boolean,
+	cultural: boolean
+): { totalCredits: string; discountPct: number; costPerLanguage: number } {
+	if (langsCount <= 0) {
+		return { totalCredits: '0', discountPct: 0, costPerLanguage: 0 };
+	}
+
+	let costPerLang = 20;
+	if (lipSync) costPerLang += 10;
+	if (cultural) costPerLang += 5;
+
+	let discountPct = 0;
+	if (langsCount > 1) {
+		discountPct = (langsCount - 1) * 0.1;
+		if (discountPct > 0.3) {
+			discountPct = 0.3;
+		}
+	}
+
+	const gross = langsCount * costPerLang;
+	const net = gross * (1.0 - discountPct);
+	const total = Math.round(net);
+
+	return {
+		totalCredits: total.toString(),
+		discountPct,
+		costPerLanguage: costPerLang
 	};
 }
 

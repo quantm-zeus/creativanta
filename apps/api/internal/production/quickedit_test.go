@@ -189,7 +189,7 @@ func TestAspectAudioSubtitlesBeatCopyright_AcceptanceTarget2(t *testing.T) {
 	}
 
 	// 5. ACRCloud Copyright Scan & Enforcement (EC-M07-M01)
-	globalSounds, _, _ := st.ListSoundTracks(context.Background(), "", "", true, 10, 0)
+	globalSounds, _, _ := st.ListSoundRecords(context.Background(), "", "", true, 10, 0)
 
 	// Clean audio test
 	scanClean, err := enhancer.ScanAudioCopyright("https://cdn.creativanta.com/audio/my_recording.mp3", "clean_hash_123", globalSounds)
@@ -366,7 +366,7 @@ func TestQuickEditServiceAndHooks(t *testing.T) {
 	}
 
 	// 2. SoundStudioService: List pre-seeded tracks
-	listReq := connect.NewRequest(&productionv1.ListSoundLibraryRequest{
+	listReq := connect.NewRequest(&productionv1.SoundStudioServiceListSoundLibraryRequest{
 		WorkspaceId: &commonv1.UUID{Value: wsID},
 		Pagination: &commonv1.Pagination{
 			PageSize: 10,
@@ -376,8 +376,8 @@ func TestQuickEditServiceAndHooks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListSoundLibrary failed: %v", err)
 	}
-	if len(listResp.Msg.GetSounds()) < 6 {
-		t.Fatalf("expected at least 6 pre-seeded royalty-free tracks, got %d", len(listResp.Msg.GetSounds()))
+	if len(listResp.Msg.GetTracks()) < 6 {
+		t.Fatalf("expected at least 6 pre-seeded royalty-free tracks, got %d", len(listResp.Msg.GetTracks()))
 	}
 
 	// 3. Smart Hook Library: Check 60 hooks across 6 categories
@@ -428,7 +428,7 @@ func TestQuickEditConcurrency(t *testing.T) {
 			}
 
 			// Concurrently list sound tracks
-			listReq := connect.NewRequest(&productionv1.ListSoundLibraryRequest{
+			listReq := connect.NewRequest(&productionv1.SoundStudioServiceListSoundLibraryRequest{
 				WorkspaceId: &commonv1.UUID{Value: wsID},
 			})
 			_, err = svc.ListSoundLibrary(ctx, listReq)

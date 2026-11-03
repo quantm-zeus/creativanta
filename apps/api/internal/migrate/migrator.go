@@ -766,6 +766,15 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 		}
 	case 19:
 		requiredFragments = []requiredFragment{
+			{"translation_jobs table", "CREATE TABLE IF NOT EXISTS translation_jobs"},
+			{"voice_clone_records table", "CREATE TABLE IF NOT EXISTS voice_clone_records"},
+		}
+		requiredRLSTables = []string{
+			"translation_jobs",
+			"voice_clone_records",
+		}
+	case 20:
+		requiredFragments = []requiredFragment{
 			{"transcripts table", "CREATE TABLE IF NOT EXISTS transcripts"},
 			{"quick_edit_drafts table", "CREATE TABLE IF NOT EXISTS quick_edit_drafts"},
 			{"sound_library table", "CREATE TABLE IF NOT EXISTS sound_library"},

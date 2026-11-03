@@ -1,0 +1,116 @@
+{
+  "task_id": "P4-06",
+  "phase": "P4",
+  "slice": "p4-06",
+  "title": "Translation, sound và voice",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "99ab5895786f423ce97b69c4fae9bb8b975aa967",
+  "feature_refs": [
+    "docs/02_features/production/ai_video_studio.md",
+    "docs/02_features/content/continuity_os.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_endpoint_map.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/05_system/queue_retry_design.md",
+    "docs/05_system/ai_provider_guide.md"
+  ],
+  "requirement_ids": [
+    "M07-27f16922b278-001",
+    "M07-e3a7ebdcc4a5-001",
+    "M08-b80c598ab13f-001",
+    "RULE-M08-002",
+    "EC-M07-002",
+    "DB-C-001",
+    "DB-H-001"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_studio_sound.md",
+    "docs/03_screens/web/screen_web_studio_translation.md"
+  ],
+  "source_hashes": {
+    "infra/migrations/00019_p4_06_translation_sound_and_voice_clone.sql": "2a69604ab40f8efba6d9ba369e71d0f5d9eaa5b38db6fedcd370766ad73a1a50",
+    "protos/creativanta/production/v1/production.proto": "713d2f8133a4a32f648f358976a4afa52963a254779869858e832f218647b9e6",
+    "apps/api/internal/production/types.go": "28d23fbe24a773a3c4a76ab77c337c7c202dda5eeb4aa6d030eef960f58d2f01",
+    "apps/api/internal/production/store.go": "30c62906e3958e55be9b8082c13df5b9aef0c13eaae7874cc5107e6be7622da0",
+    "apps/api/internal/production/service.go": "6cc19fc094880358a51492c212fb3fe57374b6bff17047568ebf61fcdc53106c",
+    "apps/api/internal/production/voice_clone.go": "ef06723ab55756c0b559d027c79763c19135d58e6d4bab41f8c78d2086bed453",
+    "apps/api/internal/production/sound.go": "40f25c7cf964929724bcb666a8b9a3cd989e363ce228e2d4f5c6028414095a80",
+    "apps/api/internal/production/translation.go": "f57c8efadfcbcd63f5e6b4aedf949ac10fe0e348e65e9837a767e39ece6b37e8",
+    "apps/api/internal/production/localization_sound_test.go": "402f09c957edf03064f75beef36e3231af42242613a5657d3f7188961162520d",
+    "apps/api/internal/migrate/migrator_test.go": "6bb0682b860975aebb637dbdec947c02207c57342dd833c01dbfe482b86a3e24",
+    "apps/web/src/lib/production/types.ts": "39c6f0dd125c55da4f252fdb0aafd70ef0c06bb98a36348e6a030394ac450e89",
+    "apps/web/src/lib/production/index.ts": "e050d4c199eba1d74e2b1f381027e82af9cd111a808e7590c0b4a8ee6400555a",
+    "apps/web/src/lib/production/production.test.ts": "57fe988786b1571d94f6fd26dc0a53dc6671f5bbb2cc184a3d6540e3dc7b8902",
+    "apps/web/src/lib/production/sound_translation.test.ts": "d83f6bf7a5e57cd797d55657239a7c81efd9a2067a9e29b8e4278e32118d85c3",
+    "apps/web/src/routes/studio/sound/+page.svelte": "e41bfd1fe476c6844cb95064bbacc951e12362b8fb3059605a6e07591e42c105",
+    "apps/web/src/routes/studio/translate/+page.svelte": "055c34e7cbf848881b64504f78ec8691375a1cb0d6d1517d00296af4cc7c800b",
+    "apps/mobile/lib/production/sound_translation_models.dart": "9c6c6d3070dddaaf7339d5127999f4eb28613fd286acbeae6bb445ff3ff3928c",
+    "apps/mobile/test/sound_translation_acceptance_test.dart": "dd616f4ab4f5bd019134ac168d3ea3b17bd91f2a91d89f6224f57b57a0c0974f",
+    "tooling/ci/check_web_smoke.sh": "d2ea255ec19fad5074ef9d1221785d9c66e632ffa425a997d06826563d5e6f2f"
+  },
+  "scope_items": [
+    "Database Migration 00019: Created translation_jobs and voice_clone_records tables with composite tenant FKs to workspaces, assets, video_edit_jobs, characters, and consent_records; strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY); exact numeric money/credits (DB-H-001); narrow role grants to app_user and admin_user; and verified 19-step reversible down migration.",
+    "Acceptance Target 1 (Consent required): Verifiable likeness consent gating enforced for digital twin voice clone creation, usage in voiceover, and translation dubbing. Consent revocation immediately cascades to block all subsequent voice generation and video translation.",
+    "Acceptance Target 2 (Language/voice quality repair): Audio normalization to -14 LUFS (EBU R128), script translation quality scoring and clarity repair detection, auto-ducking (-18 dB), and multi-sample audio quality scoring.",
+    "Acceptance Target 3 (Licensed input and measured quote): Bounded credit quote before execution with multi-language volume discount formula: total = languages * (base + lip_sync + cultural) * (1 - discount). Verified commercial royalty-free license metadata, rights confirmation, free preview player, and beat sync extraction."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestAcceptanceTarget1_ConsentRequired (Go -race), Vitest web suite, and Flutter test suite confirm consent gating, tier gating, and revocation cascade.",
+    "Acceptance Target 2 Verified: TestAcceptanceTarget2_LanguageVoiceQualityRepair (Go -race), Vitest web suite, and Flutter test suite confirm -14 LUFS audio normalization, quality scoring, and speech clarity repair notes.",
+    "Acceptance Target 3 Verified: TestAcceptanceTarget3_LicensedInputAndMeasuredQuote (Go -race), Vitest volume discount formula test, and Flutter acceptance test confirm measured quote calculation, credit deduction, CC0 licensing, and beat sync cues.",
+    "Migration 00019 Verified: Migrator test suite (migrator_test.go) passes all 19 migrations up, status verification, and clean down transactional reversal.",
+    "Four-Target Proto Codegen Verified: check_proto.sh passes Buf lint, codegen across Go, TypeScript, and Dart, git drift verification, backward compatibility check against origin/main, Go transport negative tests, TypeScript vitest, and Dart tests.",
+    "Web & Mobile Surfaces Verified: check_node.sh (svelte-check 0/0, vite build, 167 tests across 21 test files), check_web_smoke.sh (SSR HTTP 200 on /studio/sound and /studio/translate), and check_flutter.sh (flutter analyze 0 issues, 149 tests passing) all pass."
+  ],
+  "rpc_contracts": [
+    "TranslationService/Create",
+    "TranslationService/Get",
+    "TranslationService/List",
+    "SoundStudioService/GenerateMusic",
+    "SoundStudioService/GenerateSFX",
+    "SoundStudioService/AnalyzeBeat",
+    "SoundStudioService/ListSoundLibrary",
+    "SoundStudioService/GetSound",
+    "SoundStudioService/PreviewSound",
+    "VoiceCloneService/Create",
+    "VoiceCloneService/Get",
+    "VoiceCloneService/List",
+    "VoiceCloneService/Delete",
+    "VoiceCloneService/GenerateVoiceover",
+    "VoiceCloneService/GetConsentStatus"
+  ],
+  "migration_files": [
+    "infra/migrations/00019_p4_06_translation_sound_and_voice_clone.sql"
+  ],
+  "permission_keys": [
+    "translation:create",
+    "translation:read",
+    "sound_studio:generate",
+    "sound_studio:read",
+    "voice_clone:create",
+    "voice_clone:read",
+    "voice_clone:manage",
+    "voice_clone:generate"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-AI-PROVIDER-TRANSLATION",
+      "PENDING_PRODUCTION_KEY",
+      "Production multi-language translation and lip-sync models (SyncLabs, HeyGen, ElevenLabs) require production API credentials and live billing accounts. Mock provider adapters with realistic latencies, quality scoring, and error responses verified locally."
+    ],
+    [
+      "EXT-GATE-AI-PROVIDER-AUDIO",
+      "PENDING_PRODUCTION_KEY",
+      "Production music and SFX generation models (Stable Audio, MusicGen, ElevenLabs) require production API keys. Local adapters and verified royalty-free metadata tested locally."
+    ],
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "Migration 00019 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+    ]
+  ]
+}

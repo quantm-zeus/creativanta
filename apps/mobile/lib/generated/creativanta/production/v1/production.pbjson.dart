@@ -1827,43 +1827,6 @@ final $typed_data.Uint8List quickEditServiceSaveDraftResponseDescriptor =
         'CiFRdWlja0VkaXRTZXJ2aWNlU2F2ZURyYWZ0UmVzcG9uc2USPwoFZHJhZnQYASABKAsyKS5jcm'
         'VhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlF1aWNrRWRpdERyYWZ0UgVkcmFmdA==');
 
-@$core.Deprecated('Use soundTrackDescriptor instead')
-const SoundTrack$json = {
-  '1': 'SoundTrack',
-  '2': [
-    {'1': 'sound_id', '3': 1, '4': 1, '5': 9, '10': 'soundId'},
-    {
-      '1': 'workspace_id',
-      '3': 2,
-      '4': 1,
-      '5': 11,
-      '6': '.creativanta.common.v1.UUID',
-      '10': 'workspaceId'
-    },
-    {'1': 'title', '3': 3, '4': 1, '5': 9, '10': 'title'},
-    {'1': 'artist', '3': 4, '4': 1, '5': 9, '10': 'artist'},
-    {'1': 'genre', '3': 5, '4': 1, '5': 9, '10': 'genre'},
-    {'1': 'bpm', '3': 6, '4': 1, '5': 5, '10': 'bpm'},
-    {'1': 'duration_seconds', '3': 7, '4': 1, '5': 1, '10': 'durationSeconds'},
-    {'1': 'audio_url', '3': 8, '4': 1, '5': 9, '10': 'audioUrl'},
-    {'1': 'is_royalty_free', '3': 9, '4': 1, '5': 8, '10': 'isRoyaltyFree'},
-    {'1': 'acrcloud_cleared', '3': 10, '4': 1, '5': 8, '10': 'acrcloudCleared'},
-    {'1': 'license_type', '3': 11, '4': 1, '5': 9, '10': 'licenseType'},
-    {'1': 'tags', '3': 12, '4': 3, '5': 9, '10': 'tags'},
-  ],
-};
-
-/// Descriptor for `SoundTrack`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List soundTrackDescriptor = $convert.base64Decode(
-    'CgpTb3VuZFRyYWNrEhkKCHNvdW5kX2lkGAEgASgJUgdzb3VuZElkEj4KDHdvcmtzcGFjZV9pZB'
-    'gCIAEoCzIbLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5VVUlEUgt3b3Jrc3BhY2VJZBIUCgV0aXRs'
-    'ZRgDIAEoCVIFdGl0bGUSFgoGYXJ0aXN0GAQgASgJUgZhcnRpc3QSFAoFZ2VucmUYBSABKAlSBW'
-    'dlbnJlEhAKA2JwbRgGIAEoBVIDYnBtEikKEGR1cmF0aW9uX3NlY29uZHMYByABKAFSD2R1cmF0'
-    'aW9uU2Vjb25kcxIbCglhdWRpb191cmwYCCABKAlSCGF1ZGlvVXJsEiYKD2lzX3JveWFsdHlfZn'
-    'JlZRgJIAEoCFINaXNSb3lhbHR5RnJlZRIpChBhY3JjbG91ZF9jbGVhcmVkGAogASgIUg9hY3Jj'
-    'bG91ZENsZWFyZWQSIQoMbGljZW5zZV90eXBlGAsgASgJUgtsaWNlbnNlVHlwZRISCgR0YWdzGA'
-    'wgAygJUgR0YWdz');
-
 @$core.Deprecated('Use beatSyncGridDescriptor instead')
 const BeatSyncGrid$json = {
   '1': 'BeatSyncGrid',
@@ -1893,44 +1856,227 @@ final $typed_data.Uint8List beatSyncGridDescriptor = $convert.base64Decode(
     'IgAygDUhBiZWF0VGltZXN0YW1wc01zEjQKFmRvd25iZWF0X3RpbWVzdGFtcHNfbXMYAyADKANS'
     'FGRvd25iZWF0VGltZXN0YW1wc01zEh4KCmNvbmZpZGVuY2UYBCABKAFSCmNvbmZpZGVuY2U=');
 
-@$core.Deprecated('Use copyrightScanResultDescriptor instead')
-const CopyrightScanResult$json = {
-  '1': 'CopyrightScanResult',
+@$core.Deprecated('Use translationJobDescriptor instead')
+const TranslationJob$json = {
+  '1': 'TranslationJob',
   '2': [
-    {'1': 'is_copyrighted', '3': 1, '4': 1, '5': 8, '10': 'isCopyrighted'},
-    {'1': 'matched_track', '3': 2, '4': 1, '5': 9, '10': 'matchedTrack'},
-    {'1': 'matched_artist', '3': 3, '4': 1, '5': 9, '10': 'matchedArtist'},
     {
-      '1': 'clearance_allowed',
-      '3': 4,
+      '1': 'translation_job_id',
+      '3': 1,
+      '4': 1,
+      '5': 9,
+      '10': 'translationJobId'
+    },
+    {'1': 'workspace_id', '3': 2, '4': 1, '5': 9, '10': 'workspaceId'},
+    {'1': 'video_edit_job_id', '3': 3, '4': 1, '5': 9, '10': 'videoEditJobId'},
+    {'1': 'source_asset_id', '3': 4, '4': 1, '5': 9, '10': 'sourceAssetId'},
+    {'1': 'target_languages', '3': 5, '4': 3, '5': 9, '10': 'targetLanguages'},
+    {'1': 'lip_sync_enabled', '3': 6, '4': 1, '5': 8, '10': 'lipSyncEnabled'},
+    {
+      '1': 'cultural_adaptation_enabled',
+      '3': 7,
       '4': 1,
       '5': 8,
-      '10': 'clearanceAllowed'
+      '10': 'culturalAdaptationEnabled'
     },
-    {'1': 'scan_provider', '3': 5, '4': 1, '5': 9, '10': 'scanProvider'},
     {
-      '1': 'suggested_alternatives',
-      '3': 6,
+      '1': 'translate_captions',
+      '3': 8,
+      '4': 1,
+      '5': 8,
+      '10': 'translateCaptions'
+    },
+    {
+      '1': 'translate_overlays',
+      '3': 9,
+      '4': 1,
+      '5': 8,
+      '10': 'translateOverlays'
+    },
+    {'1': 'voice_option', '3': 10, '4': 1, '5': 9, '10': 'voiceOption'},
+    {'1': 'voice_clone_id', '3': 11, '4': 1, '5': 9, '10': 'voiceCloneId'},
+    {
+      '1': 'per_language_status',
+      '3': 12,
       '4': 3,
       '5': 11,
-      '6': '.creativanta.production.v1.SoundTrack',
-      '10': 'suggestedAlternatives'
+      '6': '.creativanta.production.v1.TranslationJob.PerLanguageStatusEntry',
+      '10': 'perLanguageStatus'
     },
+    {
+      '1': 'output_asset_ids',
+      '3': 13,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.TranslationJob.OutputAssetIdsEntry',
+      '10': 'outputAssetIds'
+    },
+    {
+      '1': 'total_credits_used',
+      '3': 14,
+      '4': 1,
+      '5': 9,
+      '10': 'totalCreditsUsed'
+    },
+    {'1': 'status', '3': 15, '4': 1, '5': 9, '10': 'status'},
+    {
+      '1': 'quality_scores',
+      '3': 16,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.TranslationJob.QualityScoresEntry',
+      '10': 'qualityScores'
+    },
+    {
+      '1': 'repair_notes',
+      '3': 17,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.TranslationJob.RepairNotesEntry',
+      '10': 'repairNotes'
+    },
+    {'1': 'quote_id', '3': 18, '4': 1, '5': 9, '10': 'quoteId'},
+    {
+      '1': 'created_at',
+      '3': 19,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+    {
+      '1': 'updated_at',
+      '3': 20,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'updatedAt'
+    },
+  ],
+  '3': [
+    TranslationJob_PerLanguageStatusEntry$json,
+    TranslationJob_OutputAssetIdsEntry$json,
+    TranslationJob_QualityScoresEntry$json,
+    TranslationJob_RepairNotesEntry$json
   ],
 };
 
-/// Descriptor for `CopyrightScanResult`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List copyrightScanResultDescriptor = $convert.base64Decode(
-    'ChNDb3B5cmlnaHRTY2FuUmVzdWx0EiUKDmlzX2NvcHlyaWdodGVkGAEgASgIUg1pc0NvcHlyaW'
-    'dodGVkEiMKDW1hdGNoZWRfdHJhY2sYAiABKAlSDG1hdGNoZWRUcmFjaxIlCg5tYXRjaGVkX2Fy'
-    'dGlzdBgDIAEoCVINbWF0Y2hlZEFydGlzdBIrChFjbGVhcmFuY2VfYWxsb3dlZBgEIAEoCFIQY2'
-    'xlYXJhbmNlQWxsb3dlZBIjCg1zY2FuX3Byb3ZpZGVyGAUgASgJUgxzY2FuUHJvdmlkZXISXAoW'
-    'c3VnZ2VzdGVkX2FsdGVybmF0aXZlcxgGIAMoCzIlLmNyZWF0aXZhbnRhLnByb2R1Y3Rpb24udj'
-    'EuU291bmRUcmFja1IVc3VnZ2VzdGVkQWx0ZXJuYXRpdmVz');
+@$core.Deprecated('Use translationJobDescriptor instead')
+const TranslationJob_PerLanguageStatusEntry$json = {
+  '1': 'PerLanguageStatusEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 9, '10': 'value'},
+  ],
+  '7': {'7': true},
+};
 
-@$core.Deprecated('Use generateMusicRequestDescriptor instead')
-const GenerateMusicRequest$json = {
-  '1': 'GenerateMusicRequest',
+@$core.Deprecated('Use translationJobDescriptor instead')
+const TranslationJob_OutputAssetIdsEntry$json = {
+  '1': 'OutputAssetIdsEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 9, '10': 'value'},
+  ],
+  '7': {'7': true},
+};
+
+@$core.Deprecated('Use translationJobDescriptor instead')
+const TranslationJob_QualityScoresEntry$json = {
+  '1': 'QualityScoresEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 1, '10': 'value'},
+  ],
+  '7': {'7': true},
+};
+
+@$core.Deprecated('Use translationJobDescriptor instead')
+const TranslationJob_RepairNotesEntry$json = {
+  '1': 'RepairNotesEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 9, '10': 'value'},
+  ],
+  '7': {'7': true},
+};
+
+/// Descriptor for `TranslationJob`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List translationJobDescriptor = $convert.base64Decode(
+    'Cg5UcmFuc2xhdGlvbkpvYhIsChJ0cmFuc2xhdGlvbl9qb2JfaWQYASABKAlSEHRyYW5zbGF0aW'
+    '9uSm9iSWQSIQoMd29ya3NwYWNlX2lkGAIgASgJUgt3b3Jrc3BhY2VJZBIpChF2aWRlb19lZGl0'
+    'X2pvYl9pZBgDIAEoCVIOdmlkZW9FZGl0Sm9iSWQSJgoPc291cmNlX2Fzc2V0X2lkGAQgASgJUg'
+    '1zb3VyY2VBc3NldElkEikKEHRhcmdldF9sYW5ndWFnZXMYBSADKAlSD3RhcmdldExhbmd1YWdl'
+    'cxIoChBsaXBfc3luY19lbmFibGVkGAYgASgIUg5saXBTeW5jRW5hYmxlZBI+ChtjdWx0dXJhbF'
+    '9hZGFwdGF0aW9uX2VuYWJsZWQYByABKAhSGWN1bHR1cmFsQWRhcHRhdGlvbkVuYWJsZWQSLQoS'
+    'dHJhbnNsYXRlX2NhcHRpb25zGAggASgIUhF0cmFuc2xhdGVDYXB0aW9ucxItChJ0cmFuc2xhdG'
+    'Vfb3ZlcmxheXMYCSABKAhSEXRyYW5zbGF0ZU92ZXJsYXlzEiEKDHZvaWNlX29wdGlvbhgKIAEo'
+    'CVILdm9pY2VPcHRpb24SJAoOdm9pY2VfY2xvbmVfaWQYCyABKAlSDHZvaWNlQ2xvbmVJZBJwCh'
+    'NwZXJfbGFuZ3VhZ2Vfc3RhdHVzGAwgAygLMkAuY3JlYXRpdmFudGEucHJvZHVjdGlvbi52MS5U'
+    'cmFuc2xhdGlvbkpvYi5QZXJMYW5ndWFnZVN0YXR1c0VudHJ5UhFwZXJMYW5ndWFnZVN0YXR1cx'
+    'JnChBvdXRwdXRfYXNzZXRfaWRzGA0gAygLMj0uY3JlYXRpdmFudGEucHJvZHVjdGlvbi52MS5U'
+    'cmFuc2xhdGlvbkpvYi5PdXRwdXRBc3NldElkc0VudHJ5Ug5vdXRwdXRBc3NldElkcxIsChJ0b3'
+    'RhbF9jcmVkaXRzX3VzZWQYDiABKAlSEHRvdGFsQ3JlZGl0c1VzZWQSFgoGc3RhdHVzGA8gASgJ'
+    'UgZzdGF0dXMSYwoOcXVhbGl0eV9zY29yZXMYECADKAsyPC5jcmVhdGl2YW50YS5wcm9kdWN0aW'
+    '9uLnYxLlRyYW5zbGF0aW9uSm9iLlF1YWxpdHlTY29yZXNFbnRyeVINcXVhbGl0eVNjb3JlcxJd'
+    'CgxyZXBhaXJfbm90ZXMYESADKAsyOi5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlRyYW5zbG'
+    'F0aW9uSm9iLlJlcGFpck5vdGVzRW50cnlSC3JlcGFpck5vdGVzEhkKCHF1b3RlX2lkGBIgASgJ'
+    'UgdxdW90ZUlkEjkKCmNyZWF0ZWRfYXQYEyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW'
+    '1wUgljcmVhdGVkQXQSOQoKdXBkYXRlZF9hdBgUIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1l'
+    'c3RhbXBSCXVwZGF0ZWRBdBpEChZQZXJMYW5ndWFnZVN0YXR1c0VudHJ5EhAKA2tleRgBIAEoCV'
+    'IDa2V5EhQKBXZhbHVlGAIgASgJUgV2YWx1ZToCOAEaQQoTT3V0cHV0QXNzZXRJZHNFbnRyeRIQ'
+    'CgNrZXkYASABKAlSA2tleRIUCgV2YWx1ZRgCIAEoCVIFdmFsdWU6AjgBGkAKElF1YWxpdHlTY2'
+    '9yZXNFbnRyeRIQCgNrZXkYASABKAlSA2tleRIUCgV2YWx1ZRgCIAEoAVIFdmFsdWU6AjgBGj4K'
+    'EFJlcGFpck5vdGVzRW50cnkSEAoDa2V5GAEgASgJUgNrZXkSFAoFdmFsdWUYAiABKAlSBXZhbH'
+    'VlOgI4AQ==');
+
+@$core.Deprecated('Use translationSegmentDescriptor instead')
+const TranslationSegment$json = {
+  '1': 'TranslationSegment',
+  '2': [
+    {'1': 'segment_id', '3': 1, '4': 1, '5': 9, '10': 'segmentId'},
+    {'1': 'start_time_s', '3': 2, '4': 1, '5': 1, '10': 'startTimeS'},
+    {'1': 'end_time_s', '3': 3, '4': 1, '5': 1, '10': 'endTimeS'},
+    {'1': 'source_text', '3': 4, '4': 1, '5': 9, '10': 'sourceText'},
+    {
+      '1': 'translations',
+      '3': 5,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.TranslationSegment.TranslationsEntry',
+      '10': 'translations'
+    },
+    {'1': 'quality_score', '3': 6, '4': 1, '5': 1, '10': 'qualityScore'},
+    {'1': 'needs_repair', '3': 7, '4': 1, '5': 8, '10': 'needsRepair'},
+    {'1': 'repair_reason', '3': 8, '4': 1, '5': 9, '10': 'repairReason'},
+  ],
+  '3': [TranslationSegment_TranslationsEntry$json],
+};
+
+@$core.Deprecated('Use translationSegmentDescriptor instead')
+const TranslationSegment_TranslationsEntry$json = {
+  '1': 'TranslationsEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 9, '10': 'value'},
+  ],
+  '7': {'7': true},
+};
+
+/// Descriptor for `TranslationSegment`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List translationSegmentDescriptor = $convert.base64Decode(
+    'ChJUcmFuc2xhdGlvblNlZ21lbnQSHQoKc2VnbWVudF9pZBgBIAEoCVIJc2VnbWVudElkEiAKDH'
+    'N0YXJ0X3RpbWVfcxgCIAEoAVIKc3RhcnRUaW1lUxIcCgplbmRfdGltZV9zGAMgASgBUghlbmRU'
+    'aW1lUxIfCgtzb3VyY2VfdGV4dBgEIAEoCVIKc291cmNlVGV4dBJjCgx0cmFuc2xhdGlvbnMYBS'
+    'ADKAsyPy5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlRyYW5zbGF0aW9uU2VnbWVudC5UcmFu'
+    'c2xhdGlvbnNFbnRyeVIMdHJhbnNsYXRpb25zEiMKDXF1YWxpdHlfc2NvcmUYBiABKAFSDHF1YW'
+    'xpdHlTY29yZRIhCgxuZWVkc19yZXBhaXIYByABKAhSC25lZWRzUmVwYWlyEiMKDXJlcGFpcl9y'
+    'ZWFzb24YCCABKAlSDHJlcGFpclJlYXNvbho/ChFUcmFuc2xhdGlvbnNFbnRyeRIQCgNrZXkYAS'
+    'ABKAlSA2tleRIUCgV2YWx1ZRgCIAEoCVIFdmFsdWU6AjgB');
+
+@$core.Deprecated('Use translationServiceCreateRequestDescriptor instead')
+const TranslationServiceCreateRequest$json = {
+  '1': 'TranslationServiceCreateRequest',
   '2': [
     {
       '1': 'context',
@@ -1940,104 +2086,114 @@ const GenerateMusicRequest$json = {
       '6': '.creativanta.common.v1.CommandContext',
       '10': 'context'
     },
-    {'1': 'prompt', '3': 2, '4': 1, '5': 9, '10': 'prompt'},
-    {'1': 'genre', '3': 3, '4': 1, '5': 9, '10': 'genre'},
-    {'1': 'bpm', '3': 4, '4': 1, '5': 5, '10': 'bpm'},
-    {'1': 'duration_seconds', '3': 5, '4': 1, '5': 1, '10': 'durationSeconds'},
+    {'1': 'source_asset_id', '3': 2, '4': 1, '5': 9, '10': 'sourceAssetId'},
+    {'1': 'target_languages', '3': 3, '4': 3, '5': 9, '10': 'targetLanguages'},
+    {'1': 'lip_sync_enabled', '3': 4, '4': 1, '5': 8, '10': 'lipSyncEnabled'},
+    {
+      '1': 'cultural_adaptation_enabled',
+      '3': 5,
+      '4': 1,
+      '5': 8,
+      '10': 'culturalAdaptationEnabled'
+    },
+    {
+      '1': 'translate_captions',
+      '3': 6,
+      '4': 1,
+      '5': 8,
+      '10': 'translateCaptions'
+    },
+    {
+      '1': 'translate_overlays',
+      '3': 7,
+      '4': 1,
+      '5': 8,
+      '10': 'translateOverlays'
+    },
+    {'1': 'voice_option', '3': 8, '4': 1, '5': 9, '10': 'voiceOption'},
+    {'1': 'voice_clone_id', '3': 9, '4': 1, '5': 9, '10': 'voiceCloneId'},
+    {'1': 'quote_id', '3': 10, '4': 1, '5': 9, '10': 'quoteId'},
+    {
+      '1': 'confirmed_credits',
+      '3': 11,
+      '4': 1,
+      '5': 9,
+      '10': 'confirmedCredits'
+    },
+    {
+      '1': 'custom_script_corrections',
+      '3': 12,
+      '4': 3,
+      '5': 11,
+      '6':
+          '.creativanta.production.v1.TranslationServiceCreateRequest.CustomScriptCorrectionsEntry',
+      '10': 'customScriptCorrections'
+    },
   ],
+  '3': [TranslationServiceCreateRequest_CustomScriptCorrectionsEntry$json],
 };
 
-/// Descriptor for `GenerateMusicRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List generateMusicRequestDescriptor = $convert.base64Decode(
-    'ChRHZW5lcmF0ZU11c2ljUmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3JlYXRpdmFudGEuY2'
-    '9tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EhYKBnByb21wdBgCIAEoCVIGcHJvbXB0'
-    'EhQKBWdlbnJlGAMgASgJUgVnZW5yZRIQCgNicG0YBCABKAVSA2JwbRIpChBkdXJhdGlvbl9zZW'
-    'NvbmRzGAUgASgBUg9kdXJhdGlvblNlY29uZHM=');
-
-@$core.Deprecated('Use generateMusicResponseDescriptor instead')
-const GenerateMusicResponse$json = {
-  '1': 'GenerateMusicResponse',
+@$core.Deprecated('Use translationServiceCreateRequestDescriptor instead')
+const TranslationServiceCreateRequest_CustomScriptCorrectionsEntry$json = {
+  '1': 'CustomScriptCorrectionsEntry',
   '2': [
-    {
-      '1': 'sound',
-      '3': 1,
-      '4': 1,
-      '5': 11,
-      '6': '.creativanta.production.v1.SoundTrack',
-      '10': 'sound'
-    },
+    {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 9, '10': 'value'},
+  ],
+  '7': {'7': true},
+};
+
+/// Descriptor for `TranslationServiceCreateRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List translationServiceCreateRequestDescriptor = $convert.base64Decode(
+    'Ch9UcmFuc2xhdGlvblNlcnZpY2VDcmVhdGVSZXF1ZXN0Ej8KB2NvbnRleHQYASABKAsyJS5jcm'
+    'VhdGl2YW50YS5jb21tb24udjEuQ29tbWFuZENvbnRleHRSB2NvbnRleHQSJgoPc291cmNlX2Fz'
+    'c2V0X2lkGAIgASgJUg1zb3VyY2VBc3NldElkEikKEHRhcmdldF9sYW5ndWFnZXMYAyADKAlSD3'
+    'RhcmdldExhbmd1YWdlcxIoChBsaXBfc3luY19lbmFibGVkGAQgASgIUg5saXBTeW5jRW5hYmxl'
+    'ZBI+ChtjdWx0dXJhbF9hZGFwdGF0aW9uX2VuYWJsZWQYBSABKAhSGWN1bHR1cmFsQWRhcHRhdG'
+    'lvbkVuYWJsZWQSLQoSdHJhbnNsYXRlX2NhcHRpb25zGAYgASgIUhF0cmFuc2xhdGVDYXB0aW9u'
+    'cxItChJ0cmFuc2xhdGVfb3ZlcmxheXMYByABKAhSEXRyYW5zbGF0ZU92ZXJsYXlzEiEKDHZvaW'
+    'NlX29wdGlvbhgIIAEoCVILdm9pY2VPcHRpb24SJAoOdm9pY2VfY2xvbmVfaWQYCSABKAlSDHZv'
+    'aWNlQ2xvbmVJZBIZCghxdW90ZV9pZBgKIAEoCVIHcXVvdGVJZBIrChFjb25maXJtZWRfY3JlZG'
+    'l0cxgLIAEoCVIQY29uZmlybWVkQ3JlZGl0cxKTAQoZY3VzdG9tX3NjcmlwdF9jb3JyZWN0aW9u'
+    'cxgMIAMoCzJXLmNyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuVHJhbnNsYXRpb25TZXJ2aWNlQ3'
+    'JlYXRlUmVxdWVzdC5DdXN0b21TY3JpcHRDb3JyZWN0aW9uc0VudHJ5UhdjdXN0b21TY3JpcHRD'
+    'b3JyZWN0aW9ucxpKChxDdXN0b21TY3JpcHRDb3JyZWN0aW9uc0VudHJ5EhAKA2tleRgBIAEoCV'
+    'IDa2V5EhQKBXZhbHVlGAIgASgJUgV2YWx1ZToCOAE=');
+
+@$core.Deprecated('Use translationServiceCreateResponseDescriptor instead')
+const TranslationServiceCreateResponse$json = {
+  '1': 'TranslationServiceCreateResponse',
+  '2': [
     {
       '1': 'job',
-      '3': 2,
-      '4': 1,
-      '5': 11,
-      '6': '.creativanta.production.v1.GenerationJob',
-      '10': 'job'
-    },
-  ],
-};
-
-/// Descriptor for `GenerateMusicResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List generateMusicResponseDescriptor = $convert.base64Decode(
-    'ChVHZW5lcmF0ZU11c2ljUmVzcG9uc2USOwoFc291bmQYASABKAsyJS5jcmVhdGl2YW50YS5wcm'
-    '9kdWN0aW9uLnYxLlNvdW5kVHJhY2tSBXNvdW5kEjoKA2pvYhgCIAEoCzIoLmNyZWF0aXZhbnRh'
-    'LnByb2R1Y3Rpb24udjEuR2VuZXJhdGlvbkpvYlIDam9i');
-
-@$core.Deprecated('Use generateSFXRequestDescriptor instead')
-const GenerateSFXRequest$json = {
-  '1': 'GenerateSFXRequest',
-  '2': [
-    {
-      '1': 'context',
       '3': 1,
       '4': 1,
       '5': 11,
-      '6': '.creativanta.common.v1.CommandContext',
-      '10': 'context'
-    },
-    {'1': 'prompt', '3': 2, '4': 1, '5': 9, '10': 'prompt'},
-    {'1': 'duration_seconds', '3': 3, '4': 1, '5': 1, '10': 'durationSeconds'},
-  ],
-};
-
-/// Descriptor for `GenerateSFXRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List generateSFXRequestDescriptor = $convert.base64Decode(
-    'ChJHZW5lcmF0ZVNGWFJlcXVlc3QSPwoHY29udGV4dBgBIAEoCzIlLmNyZWF0aXZhbnRhLmNvbW'
-    '1vbi52MS5Db21tYW5kQ29udGV4dFIHY29udGV4dBIWCgZwcm9tcHQYAiABKAlSBnByb21wdBIp'
-    'ChBkdXJhdGlvbl9zZWNvbmRzGAMgASgBUg9kdXJhdGlvblNlY29uZHM=');
-
-@$core.Deprecated('Use generateSFXResponseDescriptor instead')
-const GenerateSFXResponse$json = {
-  '1': 'GenerateSFXResponse',
-  '2': [
-    {
-      '1': 'sound',
-      '3': 1,
-      '4': 1,
-      '5': 11,
-      '6': '.creativanta.production.v1.SoundTrack',
-      '10': 'sound'
-    },
-    {
-      '1': 'job',
-      '3': 2,
-      '4': 1,
-      '5': 11,
-      '6': '.creativanta.production.v1.GenerationJob',
+      '6': '.creativanta.production.v1.TranslationJob',
       '10': 'job'
     },
+    {'1': 'credits_reserved', '3': 2, '4': 1, '5': 9, '10': 'creditsReserved'},
+    {
+      '1': 'discount_applied_pct',
+      '3': 3,
+      '4': 1,
+      '5': 1,
+      '10': 'discountAppliedPct'
+    },
   ],
 };
 
-/// Descriptor for `GenerateSFXResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List generateSFXResponseDescriptor = $convert.base64Decode(
-    'ChNHZW5lcmF0ZVNGWFJlc3BvbnNlEjsKBXNvdW5kGAEgASgLMiUuY3JlYXRpdmFudGEucHJvZH'
-    'VjdGlvbi52MS5Tb3VuZFRyYWNrUgVzb3VuZBI6CgNqb2IYAiABKAsyKC5jcmVhdGl2YW50YS5w'
-    'cm9kdWN0aW9uLnYxLkdlbmVyYXRpb25Kb2JSA2pvYg==');
+/// Descriptor for `TranslationServiceCreateResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List translationServiceCreateResponseDescriptor =
+    $convert.base64Decode(
+        'CiBUcmFuc2xhdGlvblNlcnZpY2VDcmVhdGVSZXNwb25zZRI7CgNqb2IYASABKAsyKS5jcmVhdG'
+        'l2YW50YS5wcm9kdWN0aW9uLnYxLlRyYW5zbGF0aW9uSm9iUgNqb2ISKQoQY3JlZGl0c19yZXNl'
+        'cnZlZBgCIAEoCVIPY3JlZGl0c1Jlc2VydmVkEjAKFGRpc2NvdW50X2FwcGxpZWRfcGN0GAMgAS'
+        'gBUhJkaXNjb3VudEFwcGxpZWRQY3Q=');
 
-@$core.Deprecated('Use analyzeBeatRequestDescriptor instead')
-const AnalyzeBeatRequest$json = {
-  '1': 'AnalyzeBeatRequest',
+@$core.Deprecated('Use translationServiceGetRequestDescriptor instead')
+const TranslationServiceGetRequest$json = {
+  '1': 'TranslationServiceGetRequest',
   '2': [
     {
       '1': 'workspace_id',
@@ -2047,40 +2203,65 @@ const AnalyzeBeatRequest$json = {
       '6': '.creativanta.common.v1.UUID',
       '10': 'workspaceId'
     },
-    {'1': 'sound_id', '3': 2, '4': 1, '5': 9, '10': 'soundId'},
-    {'1': 'audio_url', '3': 3, '4': 1, '5': 9, '10': 'audioUrl'},
-  ],
-};
-
-/// Descriptor for `AnalyzeBeatRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List analyzeBeatRequestDescriptor = $convert.base64Decode(
-    'ChJBbmFseXplQmVhdFJlcXVlc3QSPgoMd29ya3NwYWNlX2lkGAEgASgLMhsuY3JlYXRpdmFudG'
-    'EuY29tbW9uLnYxLlVVSURSC3dvcmtzcGFjZUlkEhkKCHNvdW5kX2lkGAIgASgJUgdzb3VuZElk'
-    'EhsKCWF1ZGlvX3VybBgDIAEoCVIIYXVkaW9Vcmw=');
-
-@$core.Deprecated('Use analyzeBeatResponseDescriptor instead')
-const AnalyzeBeatResponse$json = {
-  '1': 'AnalyzeBeatResponse',
-  '2': [
     {
-      '1': 'grid',
-      '3': 1,
+      '1': 'translation_job_id',
+      '3': 2,
       '4': 1,
-      '5': 11,
-      '6': '.creativanta.production.v1.BeatSyncGrid',
-      '10': 'grid'
+      '5': 9,
+      '10': 'translationJobId'
     },
   ],
 };
 
-/// Descriptor for `AnalyzeBeatResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List analyzeBeatResponseDescriptor = $convert.base64Decode(
-    'ChNBbmFseXplQmVhdFJlc3BvbnNlEjsKBGdyaWQYASABKAsyJy5jcmVhdGl2YW50YS5wcm9kdW'
-    'N0aW9uLnYxLkJlYXRTeW5jR3JpZFIEZ3JpZA==');
+/// Descriptor for `TranslationServiceGetRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List translationServiceGetRequestDescriptor =
+    $convert.base64Decode(
+        'ChxUcmFuc2xhdGlvblNlcnZpY2VHZXRSZXF1ZXN0Ej4KDHdvcmtzcGFjZV9pZBgBIAEoCzIbLm'
+        'NyZWF0aXZhbnRhLmNvbW1vbi52MS5VVUlEUgt3b3Jrc3BhY2VJZBIsChJ0cmFuc2xhdGlvbl9q'
+        'b2JfaWQYAiABKAlSEHRyYW5zbGF0aW9uSm9iSWQ=');
 
-@$core.Deprecated('Use listSoundLibraryRequestDescriptor instead')
-const ListSoundLibraryRequest$json = {
-  '1': 'ListSoundLibraryRequest',
+@$core.Deprecated('Use translationServiceGetResponseDescriptor instead')
+const TranslationServiceGetResponse$json = {
+  '1': 'TranslationServiceGetResponse',
+  '2': [
+    {
+      '1': 'job',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.TranslationJob',
+      '10': 'job'
+    },
+    {
+      '1': 'output_assets',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.Asset',
+      '10': 'outputAssets'
+    },
+    {
+      '1': 'segments',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.TranslationSegment',
+      '10': 'segments'
+    },
+  ],
+};
+
+/// Descriptor for `TranslationServiceGetResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List translationServiceGetResponseDescriptor = $convert.base64Decode(
+    'Ch1UcmFuc2xhdGlvblNlcnZpY2VHZXRSZXNwb25zZRI7CgNqb2IYASABKAsyKS5jcmVhdGl2YW'
+    '50YS5wcm9kdWN0aW9uLnYxLlRyYW5zbGF0aW9uSm9iUgNqb2ISRQoNb3V0cHV0X2Fzc2V0cxgC'
+    'IAMoCzIgLmNyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuQXNzZXRSDG91dHB1dEFzc2V0cxJJCg'
+    'hzZWdtZW50cxgDIAMoCzItLmNyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuVHJhbnNsYXRpb25T'
+    'ZWdtZW50UghzZWdtZW50cw==');
+
+@$core.Deprecated('Use translationServiceListRequestDescriptor instead')
+const TranslationServiceListRequest$json = {
+  '1': 'TranslationServiceListRequest',
   '2': [
     {
       '1': 'workspace_id',
@@ -2090,11 +2271,9 @@ const ListSoundLibraryRequest$json = {
       '6': '.creativanta.common.v1.UUID',
       '10': 'workspaceId'
     },
-    {'1': 'genre', '3': 2, '4': 1, '5': 9, '10': 'genre'},
-    {'1': 'royalty_free_only', '3': 3, '4': 1, '5': 8, '10': 'royaltyFreeOnly'},
     {
       '1': 'pagination',
-      '3': 4,
+      '3': 2,
       '4': 1,
       '5': 11,
       '6': '.creativanta.common.v1.Pagination',
@@ -2103,24 +2282,24 @@ const ListSoundLibraryRequest$json = {
   ],
 };
 
-/// Descriptor for `ListSoundLibraryRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List listSoundLibraryRequestDescriptor = $convert.base64Decode(
-    'ChdMaXN0U291bmRMaWJyYXJ5UmVxdWVzdBI+Cgx3b3Jrc3BhY2VfaWQYASABKAsyGy5jcmVhdG'
-    'l2YW50YS5jb21tb24udjEuVVVJRFILd29ya3NwYWNlSWQSFAoFZ2VucmUYAiABKAlSBWdlbnJl'
-    'EioKEXJveWFsdHlfZnJlZV9vbmx5GAMgASgIUg9yb3lhbHR5RnJlZU9ubHkSQQoKcGFnaW5hdG'
-    'lvbhgEIAEoCzIhLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5QYWdpbmF0aW9uUgpwYWdpbmF0aW9u');
+/// Descriptor for `TranslationServiceListRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List translationServiceListRequestDescriptor =
+    $convert.base64Decode(
+        'Ch1UcmFuc2xhdGlvblNlcnZpY2VMaXN0UmVxdWVzdBI+Cgx3b3Jrc3BhY2VfaWQYASABKAsyGy'
+        '5jcmVhdGl2YW50YS5jb21tb24udjEuVVVJRFILd29ya3NwYWNlSWQSQQoKcGFnaW5hdGlvbhgC'
+        'IAEoCzIhLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5QYWdpbmF0aW9uUgpwYWdpbmF0aW9u');
 
-@$core.Deprecated('Use listSoundLibraryResponseDescriptor instead')
-const ListSoundLibraryResponse$json = {
-  '1': 'ListSoundLibraryResponse',
+@$core.Deprecated('Use translationServiceListResponseDescriptor instead')
+const TranslationServiceListResponse$json = {
+  '1': 'TranslationServiceListResponse',
   '2': [
     {
-      '1': 'sounds',
+      '1': 'jobs',
       '3': 1,
       '4': 3,
       '5': 11,
-      '6': '.creativanta.production.v1.SoundTrack',
-      '10': 'sounds'
+      '6': '.creativanta.production.v1.TranslationJob',
+      '10': 'jobs'
     },
     {
       '1': 'pagination',
@@ -2133,56 +2312,203 @@ const ListSoundLibraryResponse$json = {
   ],
 };
 
-/// Descriptor for `ListSoundLibraryResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List listSoundLibraryResponseDescriptor = $convert.base64Decode(
-    'ChhMaXN0U291bmRMaWJyYXJ5UmVzcG9uc2USPQoGc291bmRzGAEgAygLMiUuY3JlYXRpdmFudG'
-    'EucHJvZHVjdGlvbi52MS5Tb3VuZFRyYWNrUgZzb3VuZHMSSAoKcGFnaW5hdGlvbhgCIAEoCzIo'
-    'LmNyZWF0aXZhbnRhLmNvbW1vbi52MS5QYWdpbmF0ZWRSZXNwb25zZVIKcGFnaW5hdGlvbg==');
+/// Descriptor for `TranslationServiceListResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List translationServiceListResponseDescriptor =
+    $convert.base64Decode(
+        'Ch5UcmFuc2xhdGlvblNlcnZpY2VMaXN0UmVzcG9uc2USPQoEam9icxgBIAMoCzIpLmNyZWF0aX'
+        'ZhbnRhLnByb2R1Y3Rpb24udjEuVHJhbnNsYXRpb25Kb2JSBGpvYnMSSAoKcGFnaW5hdGlvbhgC'
+        'IAEoCzIoLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5QYWdpbmF0ZWRSZXNwb25zZVIKcGFnaW5hdG'
+        'lvbg==');
 
-@$core.Deprecated('Use getSoundRequestDescriptor instead')
-const GetSoundRequest$json = {
-  '1': 'GetSoundRequest',
+@$core.Deprecated('Use soundTrackDescriptor instead')
+const SoundTrack$json = {
+  '1': 'SoundTrack',
   '2': [
+    {'1': 'track_id', '3': 1, '4': 1, '5': 9, '10': 'trackId'},
+    {'1': 'workspace_id', '3': 2, '4': 1, '5': 9, '10': 'workspaceId'},
+    {'1': 'title', '3': 3, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'category', '3': 4, '4': 1, '5': 9, '10': 'category'},
+    {'1': 'genre', '3': 5, '4': 1, '5': 9, '10': 'genre'},
+    {'1': 'mood', '3': 6, '4': 1, '5': 9, '10': 'mood'},
+    {'1': 'bpm', '3': 7, '4': 1, '5': 5, '10': 'bpm'},
+    {'1': 'duration_seconds', '3': 8, '4': 1, '5': 1, '10': 'durationSeconds'},
+    {'1': 'file_url', '3': 9, '4': 1, '5': 9, '10': 'fileUrl'},
+    {'1': 'license_type', '3': 10, '4': 1, '5': 9, '10': 'licenseType'},
+    {'1': 'license_id', '3': 11, '4': 1, '5': 9, '10': 'licenseId'},
     {
-      '1': 'workspace_id',
-      '3': 1,
+      '1': 'is_verified_license',
+      '3': 12,
+      '4': 1,
+      '5': 8,
+      '10': 'isVerifiedLicense'
+    },
+    {'1': 'waveform_peaks', '3': 13, '4': 3, '5': 2, '10': 'waveformPeaks'},
+    {
+      '1': 'created_at',
+      '3': 14,
       '4': 1,
       '5': 11,
-      '6': '.creativanta.common.v1.UUID',
-      '10': 'workspaceId'
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
     },
-    {'1': 'sound_id', '3': 2, '4': 1, '5': 9, '10': 'soundId'},
   ],
 };
 
-/// Descriptor for `GetSoundRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List getSoundRequestDescriptor = $convert.base64Decode(
-    'Cg9HZXRTb3VuZFJlcXVlc3QSPgoMd29ya3NwYWNlX2lkGAEgASgLMhsuY3JlYXRpdmFudGEuY2'
-    '9tbW9uLnYxLlVVSURSC3dvcmtzcGFjZUlkEhkKCHNvdW5kX2lkGAIgASgJUgdzb3VuZElk');
+/// Descriptor for `SoundTrack`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List soundTrackDescriptor = $convert.base64Decode(
+    'CgpTb3VuZFRyYWNrEhkKCHRyYWNrX2lkGAEgASgJUgd0cmFja0lkEiEKDHdvcmtzcGFjZV9pZB'
+    'gCIAEoCVILd29ya3NwYWNlSWQSFAoFdGl0bGUYAyABKAlSBXRpdGxlEhoKCGNhdGVnb3J5GAQg'
+    'ASgJUghjYXRlZ29yeRIUCgVnZW5yZRgFIAEoCVIFZ2VucmUSEgoEbW9vZBgGIAEoCVIEbW9vZB'
+    'IQCgNicG0YByABKAVSA2JwbRIpChBkdXJhdGlvbl9zZWNvbmRzGAggASgBUg9kdXJhdGlvblNl'
+    'Y29uZHMSGQoIZmlsZV91cmwYCSABKAlSB2ZpbGVVcmwSIQoMbGljZW5zZV90eXBlGAogASgJUg'
+    'tsaWNlbnNlVHlwZRIdCgpsaWNlbnNlX2lkGAsgASgJUglsaWNlbnNlSWQSLgoTaXNfdmVyaWZp'
+    'ZWRfbGljZW5zZRgMIAEoCFIRaXNWZXJpZmllZExpY2Vuc2USJQoOd2F2ZWZvcm1fcGVha3MYDS'
+    'ADKAJSDXdhdmVmb3JtUGVha3MSOQoKY3JlYXRlZF9hdBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1'
+    'Zi5UaW1lc3RhbXBSCWNyZWF0ZWRBdA==');
 
-@$core.Deprecated('Use getSoundResponseDescriptor instead')
-const GetSoundResponse$json = {
-  '1': 'GetSoundResponse',
+@$core
+    .Deprecated('Use soundStudioServiceGenerateMusicRequestDescriptor instead')
+const SoundStudioServiceGenerateMusicRequest$json = {
+  '1': 'SoundStudioServiceGenerateMusicRequest',
   '2': [
     {
-      '1': 'sound',
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'prompt', '3': 2, '4': 1, '5': 9, '10': 'prompt'},
+    {'1': 'genre', '3': 3, '4': 1, '5': 9, '10': 'genre'},
+    {'1': 'mood', '3': 4, '4': 1, '5': 9, '10': 'mood'},
+    {'1': 'bpm', '3': 5, '4': 1, '5': 5, '10': 'bpm'},
+    {'1': 'duration_seconds', '3': 6, '4': 1, '5': 5, '10': 'durationSeconds'},
+    {'1': 'license_type', '3': 7, '4': 1, '5': 9, '10': 'licenseType'},
+    {'1': 'quote_id', '3': 8, '4': 1, '5': 9, '10': 'quoteId'},
+    {
+      '1': 'confirmed_credits',
+      '3': 9,
+      '4': 1,
+      '5': 9,
+      '10': 'confirmedCredits'
+    },
+  ],
+};
+
+/// Descriptor for `SoundStudioServiceGenerateMusicRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List soundStudioServiceGenerateMusicRequestDescriptor = $convert.base64Decode(
+    'CiZTb3VuZFN0dWRpb1NlcnZpY2VHZW5lcmF0ZU11c2ljUmVxdWVzdBI/Cgdjb250ZXh0GAEgAS'
+    'gLMiUuY3JlYXRpdmFudGEuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EhYKBnBy'
+    'b21wdBgCIAEoCVIGcHJvbXB0EhQKBWdlbnJlGAMgASgJUgVnZW5yZRISCgRtb29kGAQgASgJUg'
+    'Rtb29kEhAKA2JwbRgFIAEoBVIDYnBtEikKEGR1cmF0aW9uX3NlY29uZHMYBiABKAVSD2R1cmF0'
+    'aW9uU2Vjb25kcxIhCgxsaWNlbnNlX3R5cGUYByABKAlSC2xpY2Vuc2VUeXBlEhkKCHF1b3RlX2'
+    'lkGAggASgJUgdxdW90ZUlkEisKEWNvbmZpcm1lZF9jcmVkaXRzGAkgASgJUhBjb25maXJtZWRD'
+    'cmVkaXRz');
+
+@$core
+    .Deprecated('Use soundStudioServiceGenerateMusicResponseDescriptor instead')
+const SoundStudioServiceGenerateMusicResponse$json = {
+  '1': 'SoundStudioServiceGenerateMusicResponse',
+  '2': [
+    {
+      '1': 'track',
       '3': 1,
       '4': 1,
       '5': 11,
       '6': '.creativanta.production.v1.SoundTrack',
-      '10': 'sound'
+      '10': 'track'
+    },
+    {
+      '1': 'asset',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.Asset',
+      '10': 'asset'
+    },
+    {'1': 'credits_deducted', '3': 3, '4': 1, '5': 9, '10': 'creditsDeducted'},
+  ],
+};
+
+/// Descriptor for `SoundStudioServiceGenerateMusicResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List soundStudioServiceGenerateMusicResponseDescriptor =
+    $convert.base64Decode(
+        'CidTb3VuZFN0dWRpb1NlcnZpY2VHZW5lcmF0ZU11c2ljUmVzcG9uc2USOwoFdHJhY2sYASABKA'
+        'syJS5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlNvdW5kVHJhY2tSBXRyYWNrEjYKBWFzc2V0'
+        'GAIgASgLMiAuY3JlYXRpdmFudGEucHJvZHVjdGlvbi52MS5Bc3NldFIFYXNzZXQSKQoQY3JlZG'
+        'l0c19kZWR1Y3RlZBgDIAEoCVIPY3JlZGl0c0RlZHVjdGVk');
+
+@$core.Deprecated('Use soundStudioServiceGenerateSFXRequestDescriptor instead')
+const SoundStudioServiceGenerateSFXRequest$json = {
+  '1': 'SoundStudioServiceGenerateSFXRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'prompt', '3': 2, '4': 1, '5': 9, '10': 'prompt'},
+    {'1': 'category', '3': 3, '4': 1, '5': 9, '10': 'category'},
+    {'1': 'duration_seconds', '3': 4, '4': 1, '5': 1, '10': 'durationSeconds'},
+    {'1': 'quote_id', '3': 5, '4': 1, '5': 9, '10': 'quoteId'},
+    {
+      '1': 'confirmed_credits',
+      '3': 6,
+      '4': 1,
+      '5': 9,
+      '10': 'confirmedCredits'
     },
   ],
 };
 
-/// Descriptor for `GetSoundResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List getSoundResponseDescriptor = $convert.base64Decode(
-    'ChBHZXRTb3VuZFJlc3BvbnNlEjsKBXNvdW5kGAEgASgLMiUuY3JlYXRpdmFudGEucHJvZHVjdG'
-    'lvbi52MS5Tb3VuZFRyYWNrUgVzb3VuZA==');
+/// Descriptor for `SoundStudioServiceGenerateSFXRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List soundStudioServiceGenerateSFXRequestDescriptor =
+    $convert.base64Decode(
+        'CiRTb3VuZFN0dWRpb1NlcnZpY2VHZW5lcmF0ZVNGWFJlcXVlc3QSPwoHY29udGV4dBgBIAEoCz'
+        'IlLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5Db21tYW5kQ29udGV4dFIHY29udGV4dBIWCgZwcm9t'
+        'cHQYAiABKAlSBnByb21wdBIaCghjYXRlZ29yeRgDIAEoCVIIY2F0ZWdvcnkSKQoQZHVyYXRpb2'
+        '5fc2Vjb25kcxgEIAEoAVIPZHVyYXRpb25TZWNvbmRzEhkKCHF1b3RlX2lkGAUgASgJUgdxdW90'
+        'ZUlkEisKEWNvbmZpcm1lZF9jcmVkaXRzGAYgASgJUhBjb25maXJtZWRDcmVkaXRz');
 
-@$core.Deprecated('Use previewSoundRequestDescriptor instead')
-const PreviewSoundRequest$json = {
-  '1': 'PreviewSoundRequest',
+@$core.Deprecated('Use soundStudioServiceGenerateSFXResponseDescriptor instead')
+const SoundStudioServiceGenerateSFXResponse$json = {
+  '1': 'SoundStudioServiceGenerateSFXResponse',
+  '2': [
+    {
+      '1': 'track',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.SoundTrack',
+      '10': 'track'
+    },
+    {
+      '1': 'asset',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.Asset',
+      '10': 'asset'
+    },
+    {'1': 'credits_deducted', '3': 3, '4': 1, '5': 9, '10': 'creditsDeducted'},
+  ],
+};
+
+/// Descriptor for `SoundStudioServiceGenerateSFXResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List soundStudioServiceGenerateSFXResponseDescriptor =
+    $convert.base64Decode(
+        'CiVTb3VuZFN0dWRpb1NlcnZpY2VHZW5lcmF0ZVNGWFJlc3BvbnNlEjsKBXRyYWNrGAEgASgLMi'
+        'UuY3JlYXRpdmFudGEucHJvZHVjdGlvbi52MS5Tb3VuZFRyYWNrUgV0cmFjaxI2CgVhc3NldBgC'
+        'IAEoCzIgLmNyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuQXNzZXRSBWFzc2V0EikKEGNyZWRpdH'
+        'NfZGVkdWN0ZWQYAyABKAlSD2NyZWRpdHNEZWR1Y3RlZA==');
+
+@$core.Deprecated('Use soundStudioServiceAnalyzeBeatRequestDescriptor instead')
+const SoundStudioServiceAnalyzeBeatRequest$json = {
+  '1': 'SoundStudioServiceAnalyzeBeatRequest',
   '2': [
     {
       '1': 'workspace_id',
@@ -2192,44 +2518,622 @@ const PreviewSoundRequest$json = {
       '6': '.creativanta.common.v1.UUID',
       '10': 'workspaceId'
     },
-    {'1': 'sound_id', '3': 2, '4': 1, '5': 9, '10': 'soundId'},
+    {'1': 'audio_asset_id', '3': 2, '4': 1, '5': 9, '10': 'audioAssetId'},
+    {'1': 'audio_url', '3': 3, '4': 1, '5': 9, '10': 'audioUrl'},
+  ],
+};
+
+/// Descriptor for `SoundStudioServiceAnalyzeBeatRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List soundStudioServiceAnalyzeBeatRequestDescriptor =
+    $convert.base64Decode(
+        'CiRTb3VuZFN0dWRpb1NlcnZpY2VBbmFseXplQmVhdFJlcXVlc3QSPgoMd29ya3NwYWNlX2lkGA'
+        'EgASgLMhsuY3JlYXRpdmFudGEuY29tbW9uLnYxLlVVSURSC3dvcmtzcGFjZUlkEiQKDmF1ZGlv'
+        'X2Fzc2V0X2lkGAIgASgJUgxhdWRpb0Fzc2V0SWQSGwoJYXVkaW9fdXJsGAMgASgJUghhdWRpb1'
+        'VybA==');
+
+@$core.Deprecated('Use soundStudioServiceAnalyzeBeatResponseDescriptor instead')
+const SoundStudioServiceAnalyzeBeatResponse$json = {
+  '1': 'SoundStudioServiceAnalyzeBeatResponse',
+  '2': [
+    {'1': 'bpm', '3': 1, '4': 1, '5': 1, '10': 'bpm'},
     {
-      '1': 'preview_duration_seconds',
+      '1': 'beat_timestamps_ms',
+      '3': 2,
+      '4': 3,
+      '5': 3,
+      '10': 'beatTimestampsMs'
+    },
+    {
+      '1': 'downbeat_timestamps_ms',
       '3': 3,
-      '4': 1,
-      '5': 1,
-      '10': 'previewDurationSeconds'
+      '4': 3,
+      '5': 3,
+      '10': 'downbeatTimestampsMs'
+    },
+    {'1': 'tempo_confidence', '3': 4, '4': 1, '5': 1, '10': 'tempoConfidence'},
+    {
+      '1': 'suggested_cut_points_ms',
+      '3': 5,
+      '4': 3,
+      '5': 3,
+      '10': 'suggestedCutPointsMs'
     },
   ],
 };
 
-/// Descriptor for `PreviewSoundRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List previewSoundRequestDescriptor = $convert.base64Decode(
-    'ChNQcmV2aWV3U291bmRSZXF1ZXN0Ej4KDHdvcmtzcGFjZV9pZBgBIAEoCzIbLmNyZWF0aXZhbn'
-    'RhLmNvbW1vbi52MS5VVUlEUgt3b3Jrc3BhY2VJZBIZCghzb3VuZF9pZBgCIAEoCVIHc291bmRJ'
-    'ZBI4ChhwcmV2aWV3X2R1cmF0aW9uX3NlY29uZHMYAyABKAFSFnByZXZpZXdEdXJhdGlvblNlY2'
-    '9uZHM=');
+/// Descriptor for `SoundStudioServiceAnalyzeBeatResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List soundStudioServiceAnalyzeBeatResponseDescriptor =
+    $convert.base64Decode(
+        'CiVTb3VuZFN0dWRpb1NlcnZpY2VBbmFseXplQmVhdFJlc3BvbnNlEhAKA2JwbRgBIAEoAVIDYn'
+        'BtEiwKEmJlYXRfdGltZXN0YW1wc19tcxgCIAMoA1IQYmVhdFRpbWVzdGFtcHNNcxI0ChZkb3du'
+        'YmVhdF90aW1lc3RhbXBzX21zGAMgAygDUhRkb3duYmVhdFRpbWVzdGFtcHNNcxIpChB0ZW1wb1'
+        '9jb25maWRlbmNlGAQgASgBUg90ZW1wb0NvbmZpZGVuY2USNQoXc3VnZ2VzdGVkX2N1dF9wb2lu'
+        'dHNfbXMYBSADKANSFHN1Z2dlc3RlZEN1dFBvaW50c01z');
 
-@$core.Deprecated('Use previewSoundResponseDescriptor instead')
-const PreviewSoundResponse$json = {
-  '1': 'PreviewSoundResponse',
+@$core.Deprecated(
+    'Use soundStudioServiceListSoundLibraryRequestDescriptor instead')
+const SoundStudioServiceListSoundLibraryRequest$json = {
+  '1': 'SoundStudioServiceListSoundLibraryRequest',
   '2': [
-    {'1': 'preview_url', '3': 1, '4': 1, '5': 9, '10': 'previewUrl'},
     {
-      '1': 'preview_duration_seconds',
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'category', '3': 2, '4': 1, '5': 9, '10': 'category'},
+    {'1': 'genre', '3': 3, '4': 1, '5': 9, '10': 'genre'},
+    {'1': 'mood', '3': 4, '4': 1, '5': 9, '10': 'mood'},
+    {
+      '1': 'pagination',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Pagination',
+      '10': 'pagination'
+    },
+  ],
+};
+
+/// Descriptor for `SoundStudioServiceListSoundLibraryRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List
+    soundStudioServiceListSoundLibraryRequestDescriptor = $convert.base64Decode(
+        'CilTb3VuZFN0dWRpb1NlcnZpY2VMaXN0U291bmRMaWJyYXJ5UmVxdWVzdBI+Cgx3b3Jrc3BhY2'
+        'VfaWQYASABKAsyGy5jcmVhdGl2YW50YS5jb21tb24udjEuVVVJRFILd29ya3NwYWNlSWQSGgoI'
+        'Y2F0ZWdvcnkYAiABKAlSCGNhdGVnb3J5EhQKBWdlbnJlGAMgASgJUgVnZW5yZRISCgRtb29kGA'
+        'QgASgJUgRtb29kEkEKCnBhZ2luYXRpb24YBSABKAsyIS5jcmVhdGl2YW50YS5jb21tb24udjEu'
+        'UGFnaW5hdGlvblIKcGFnaW5hdGlvbg==');
+
+@$core.Deprecated(
+    'Use soundStudioServiceListSoundLibraryResponseDescriptor instead')
+const SoundStudioServiceListSoundLibraryResponse$json = {
+  '1': 'SoundStudioServiceListSoundLibraryResponse',
+  '2': [
+    {
+      '1': 'tracks',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.SoundTrack',
+      '10': 'tracks'
+    },
+    {
+      '1': 'pagination',
       '3': 2,
       '4': 1,
-      '5': 1,
-      '10': 'previewDurationSeconds'
+      '5': 11,
+      '6': '.creativanta.common.v1.PaginatedResponse',
+      '10': 'pagination'
     },
   ],
 };
 
-/// Descriptor for `PreviewSoundResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List previewSoundResponseDescriptor = $convert.base64Decode(
-    'ChRQcmV2aWV3U291bmRSZXNwb25zZRIfCgtwcmV2aWV3X3VybBgBIAEoCVIKcHJldmlld1VybB'
-    'I4ChhwcmV2aWV3X2R1cmF0aW9uX3NlY29uZHMYAiABKAFSFnByZXZpZXdEdXJhdGlvblNlY29u'
-    'ZHM=');
+/// Descriptor for `SoundStudioServiceListSoundLibraryResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List
+    soundStudioServiceListSoundLibraryResponseDescriptor =
+    $convert.base64Decode(
+        'CipTb3VuZFN0dWRpb1NlcnZpY2VMaXN0U291bmRMaWJyYXJ5UmVzcG9uc2USPQoGdHJhY2tzGA'
+        'EgAygLMiUuY3JlYXRpdmFudGEucHJvZHVjdGlvbi52MS5Tb3VuZFRyYWNrUgZ0cmFja3MSSAoK'
+        'cGFnaW5hdGlvbhgCIAEoCzIoLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5QYWdpbmF0ZWRSZXNwb2'
+        '5zZVIKcGFnaW5hdGlvbg==');
+
+@$core.Deprecated('Use soundStudioServiceGetSoundRequestDescriptor instead')
+const SoundStudioServiceGetSoundRequest$json = {
+  '1': 'SoundStudioServiceGetSoundRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'asset_id', '3': 2, '4': 1, '5': 9, '10': 'assetId'},
+  ],
+};
+
+/// Descriptor for `SoundStudioServiceGetSoundRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List soundStudioServiceGetSoundRequestDescriptor =
+    $convert.base64Decode(
+        'CiFTb3VuZFN0dWRpb1NlcnZpY2VHZXRTb3VuZFJlcXVlc3QSPgoMd29ya3NwYWNlX2lkGAEgAS'
+        'gLMhsuY3JlYXRpdmFudGEuY29tbW9uLnYxLlVVSURSC3dvcmtzcGFjZUlkEhkKCGFzc2V0X2lk'
+        'GAIgASgJUgdhc3NldElk');
+
+@$core.Deprecated('Use soundStudioServiceGetSoundResponseDescriptor instead')
+const SoundStudioServiceGetSoundResponse$json = {
+  '1': 'SoundStudioServiceGetSoundResponse',
+  '2': [
+    {
+      '1': 'track',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.SoundTrack',
+      '10': 'track'
+    },
+  ],
+};
+
+/// Descriptor for `SoundStudioServiceGetSoundResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List soundStudioServiceGetSoundResponseDescriptor =
+    $convert.base64Decode(
+        'CiJTb3VuZFN0dWRpb1NlcnZpY2VHZXRTb3VuZFJlc3BvbnNlEjsKBXRyYWNrGAEgASgLMiUuY3'
+        'JlYXRpdmFudGEucHJvZHVjdGlvbi52MS5Tb3VuZFRyYWNrUgV0cmFjaw==');
+
+@$core.Deprecated('Use soundStudioServicePreviewSoundRequestDescriptor instead')
+const SoundStudioServicePreviewSoundRequest$json = {
+  '1': 'SoundStudioServicePreviewSoundRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'track_id', '3': 2, '4': 1, '5': 9, '10': 'trackId'},
+    {'1': 'preview_start_ms', '3': 3, '4': 1, '5': 5, '10': 'previewStartMs'},
+    {
+      '1': 'preview_duration_ms',
+      '3': 4,
+      '4': 1,
+      '5': 5,
+      '10': 'previewDurationMs'
+    },
+  ],
+};
+
+/// Descriptor for `SoundStudioServicePreviewSoundRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List soundStudioServicePreviewSoundRequestDescriptor =
+    $convert.base64Decode(
+        'CiVTb3VuZFN0dWRpb1NlcnZpY2VQcmV2aWV3U291bmRSZXF1ZXN0Ej4KDHdvcmtzcGFjZV9pZB'
+        'gBIAEoCzIbLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5VVUlEUgt3b3Jrc3BhY2VJZBIZCgh0cmFj'
+        'a19pZBgCIAEoCVIHdHJhY2tJZBIoChBwcmV2aWV3X3N0YXJ0X21zGAMgASgFUg5wcmV2aWV3U3'
+        'RhcnRNcxIuChNwcmV2aWV3X2R1cmF0aW9uX21zGAQgASgFUhFwcmV2aWV3RHVyYXRpb25Ncw==');
+
+@$core
+    .Deprecated('Use soundStudioServicePreviewSoundResponseDescriptor instead')
+const SoundStudioServicePreviewSoundResponse$json = {
+  '1': 'SoundStudioServicePreviewSoundResponse',
+  '2': [
+    {'1': 'preview_url', '3': 1, '4': 1, '5': 9, '10': 'previewUrl'},
+    {'1': 'waveform_peaks', '3': 2, '4': 3, '5': 2, '10': 'waveformPeaks'},
+    {'1': 'is_free', '3': 3, '4': 1, '5': 8, '10': 'isFree'},
+  ],
+};
+
+/// Descriptor for `SoundStudioServicePreviewSoundResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List soundStudioServicePreviewSoundResponseDescriptor =
+    $convert.base64Decode(
+        'CiZTb3VuZFN0dWRpb1NlcnZpY2VQcmV2aWV3U291bmRSZXNwb25zZRIfCgtwcmV2aWV3X3VybB'
+        'gBIAEoCVIKcHJldmlld1VybBIlCg53YXZlZm9ybV9wZWFrcxgCIAMoAlINd2F2ZWZvcm1QZWFr'
+        'cxIXCgdpc19mcmVlGAMgASgIUgZpc0ZyZWU=');
+
+@$core.Deprecated('Use voiceCloneRecordDescriptor instead')
+const VoiceCloneRecord$json = {
+  '1': 'VoiceCloneRecord',
+  '2': [
+    {'1': 'voice_clone_id', '3': 1, '4': 1, '5': 9, '10': 'voiceCloneId'},
+    {'1': 'workspace_id', '3': 2, '4': 1, '5': 9, '10': 'workspaceId'},
+    {'1': 'character_id', '3': 3, '4': 1, '5': 9, '10': 'characterId'},
+    {'1': 'provider', '3': 4, '4': 1, '5': 9, '10': 'provider'},
+    {'1': 'provider_voice_id', '3': 5, '4': 1, '5': 9, '10': 'providerVoiceId'},
+    {'1': 'voice_name', '3': 6, '4': 1, '5': 9, '10': 'voiceName'},
+    {'1': 'sample_audio_urls', '3': 7, '4': 3, '5': 9, '10': 'sampleAudioUrls'},
+    {'1': 'clone_status', '3': 8, '4': 1, '5': 9, '10': 'cloneStatus'},
+    {'1': 'consent_record_id', '3': 9, '4': 1, '5': 9, '10': 'consentRecordId'},
+    {'1': 'quality_score', '3': 10, '4': 1, '5': 1, '10': 'qualityScore'},
+    {'1': 'repair_applied', '3': 11, '4': 1, '5': 8, '10': 'repairApplied'},
+    {
+      '1': 'created_at',
+      '3': 12,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+    {
+      '1': 'updated_at',
+      '3': 13,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'updatedAt'
+    },
+  ],
+};
+
+/// Descriptor for `VoiceCloneRecord`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List voiceCloneRecordDescriptor = $convert.base64Decode(
+    'ChBWb2ljZUNsb25lUmVjb3JkEiQKDnZvaWNlX2Nsb25lX2lkGAEgASgJUgx2b2ljZUNsb25lSW'
+    'QSIQoMd29ya3NwYWNlX2lkGAIgASgJUgt3b3Jrc3BhY2VJZBIhCgxjaGFyYWN0ZXJfaWQYAyAB'
+    'KAlSC2NoYXJhY3RlcklkEhoKCHByb3ZpZGVyGAQgASgJUghwcm92aWRlchIqChFwcm92aWRlcl'
+    '92b2ljZV9pZBgFIAEoCVIPcHJvdmlkZXJWb2ljZUlkEh0KCnZvaWNlX25hbWUYBiABKAlSCXZv'
+    'aWNlTmFtZRIqChFzYW1wbGVfYXVkaW9fdXJscxgHIAMoCVIPc2FtcGxlQXVkaW9VcmxzEiEKDG'
+    'Nsb25lX3N0YXR1cxgIIAEoCVILY2xvbmVTdGF0dXMSKgoRY29uc2VudF9yZWNvcmRfaWQYCSAB'
+    'KAlSD2NvbnNlbnRSZWNvcmRJZBIjCg1xdWFsaXR5X3Njb3JlGAogASgBUgxxdWFsaXR5U2Nvcm'
+    'USJQoOcmVwYWlyX2FwcGxpZWQYCyABKAhSDXJlcGFpckFwcGxpZWQSOQoKY3JlYXRlZF9hdBgM'
+    'IAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSCWNyZWF0ZWRBdBI5Cgp1cGRhdGVkX2'
+    'F0GA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcFIJdXBkYXRlZEF0');
+
+@$core.Deprecated('Use voiceCloneServiceCreateRequestDescriptor instead')
+const VoiceCloneServiceCreateRequest$json = {
+  '1': 'VoiceCloneServiceCreateRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'character_id', '3': 2, '4': 1, '5': 9, '10': 'characterId'},
+    {'1': 'name', '3': 3, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'sample_audio_urls', '3': 4, '4': 3, '5': 9, '10': 'sampleAudioUrls'},
+    {
+      '1': 'consent_confirmed',
+      '3': 5,
+      '4': 1,
+      '5': 8,
+      '10': 'consentConfirmed'
+    },
+    {'1': 'consent_record_id', '3': 6, '4': 1, '5': 9, '10': 'consentRecordId'},
+    {'1': 'language', '3': 7, '4': 1, '5': 9, '10': 'language'},
+    {'1': 'quote_id', '3': 8, '4': 1, '5': 9, '10': 'quoteId'},
+    {
+      '1': 'confirmed_credits',
+      '3': 9,
+      '4': 1,
+      '5': 9,
+      '10': 'confirmedCredits'
+    },
+  ],
+};
+
+/// Descriptor for `VoiceCloneServiceCreateRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List voiceCloneServiceCreateRequestDescriptor = $convert.base64Decode(
+    'Ch5Wb2ljZUNsb25lU2VydmljZUNyZWF0ZVJlcXVlc3QSPwoHY29udGV4dBgBIAEoCzIlLmNyZW'
+    'F0aXZhbnRhLmNvbW1vbi52MS5Db21tYW5kQ29udGV4dFIHY29udGV4dBIhCgxjaGFyYWN0ZXJf'
+    'aWQYAiABKAlSC2NoYXJhY3RlcklkEhIKBG5hbWUYAyABKAlSBG5hbWUSKgoRc2FtcGxlX2F1ZG'
+    'lvX3VybHMYBCADKAlSD3NhbXBsZUF1ZGlvVXJscxIrChFjb25zZW50X2NvbmZpcm1lZBgFIAEo'
+    'CFIQY29uc2VudENvbmZpcm1lZBIqChFjb25zZW50X3JlY29yZF9pZBgGIAEoCVIPY29uc2VudF'
+    'JlY29yZElkEhoKCGxhbmd1YWdlGAcgASgJUghsYW5ndWFnZRIZCghxdW90ZV9pZBgIIAEoCVIH'
+    'cXVvdGVJZBIrChFjb25maXJtZWRfY3JlZGl0cxgJIAEoCVIQY29uZmlybWVkQ3JlZGl0cw==');
+
+@$core.Deprecated('Use voiceCloneServiceCreateResponseDescriptor instead')
+const VoiceCloneServiceCreateResponse$json = {
+  '1': 'VoiceCloneServiceCreateResponse',
+  '2': [
+    {
+      '1': 'record',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.VoiceCloneRecord',
+      '10': 'record'
+    },
+    {'1': 'status', '3': 2, '4': 1, '5': 9, '10': 'status'},
+    {
+      '1': 'estimated_duration_s',
+      '3': 3,
+      '4': 1,
+      '5': 5,
+      '10': 'estimatedDurationS'
+    },
+    {'1': 'credits_reserved', '3': 4, '4': 1, '5': 9, '10': 'creditsReserved'},
+    {'1': 'consent_status', '3': 5, '4': 1, '5': 9, '10': 'consentStatus'},
+  ],
+};
+
+/// Descriptor for `VoiceCloneServiceCreateResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List voiceCloneServiceCreateResponseDescriptor = $convert.base64Decode(
+    'Ch9Wb2ljZUNsb25lU2VydmljZUNyZWF0ZVJlc3BvbnNlEkMKBnJlY29yZBgBIAEoCzIrLmNyZW'
+    'F0aXZhbnRhLnByb2R1Y3Rpb24udjEuVm9pY2VDbG9uZVJlY29yZFIGcmVjb3JkEhYKBnN0YXR1'
+    'cxgCIAEoCVIGc3RhdHVzEjAKFGVzdGltYXRlZF9kdXJhdGlvbl9zGAMgASgFUhJlc3RpbWF0ZW'
+    'REdXJhdGlvblMSKQoQY3JlZGl0c19yZXNlcnZlZBgEIAEoCVIPY3JlZGl0c1Jlc2VydmVkEiUK'
+    'DmNvbnNlbnRfc3RhdHVzGAUgASgJUg1jb25zZW50U3RhdHVz');
+
+@$core.Deprecated('Use voiceCloneServiceGetRequestDescriptor instead')
+const VoiceCloneServiceGetRequest$json = {
+  '1': 'VoiceCloneServiceGetRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'voice_clone_id', '3': 2, '4': 1, '5': 9, '10': 'voiceCloneId'},
+  ],
+};
+
+/// Descriptor for `VoiceCloneServiceGetRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List voiceCloneServiceGetRequestDescriptor =
+    $convert.base64Decode(
+        'ChtWb2ljZUNsb25lU2VydmljZUdldFJlcXVlc3QSPgoMd29ya3NwYWNlX2lkGAEgASgLMhsuY3'
+        'JlYXRpdmFudGEuY29tbW9uLnYxLlVVSURSC3dvcmtzcGFjZUlkEiQKDnZvaWNlX2Nsb25lX2lk'
+        'GAIgASgJUgx2b2ljZUNsb25lSWQ=');
+
+@$core.Deprecated('Use voiceCloneServiceGetResponseDescriptor instead')
+const VoiceCloneServiceGetResponse$json = {
+  '1': 'VoiceCloneServiceGetResponse',
+  '2': [
+    {
+      '1': 'record',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.VoiceCloneRecord',
+      '10': 'record'
+    },
+  ],
+};
+
+/// Descriptor for `VoiceCloneServiceGetResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List voiceCloneServiceGetResponseDescriptor =
+    $convert.base64Decode(
+        'ChxWb2ljZUNsb25lU2VydmljZUdldFJlc3BvbnNlEkMKBnJlY29yZBgBIAEoCzIrLmNyZWF0aX'
+        'ZhbnRhLnByb2R1Y3Rpb24udjEuVm9pY2VDbG9uZVJlY29yZFIGcmVjb3Jk');
+
+@$core.Deprecated('Use voiceCloneServiceListRequestDescriptor instead')
+const VoiceCloneServiceListRequest$json = {
+  '1': 'VoiceCloneServiceListRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'character_id', '3': 2, '4': 1, '5': 9, '10': 'characterId'},
+    {
+      '1': 'pagination',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Pagination',
+      '10': 'pagination'
+    },
+  ],
+};
+
+/// Descriptor for `VoiceCloneServiceListRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List voiceCloneServiceListRequestDescriptor = $convert.base64Decode(
+    'ChxWb2ljZUNsb25lU2VydmljZUxpc3RSZXF1ZXN0Ej4KDHdvcmtzcGFjZV9pZBgBIAEoCzIbLm'
+    'NyZWF0aXZhbnRhLmNvbW1vbi52MS5VVUlEUgt3b3Jrc3BhY2VJZBIhCgxjaGFyYWN0ZXJfaWQY'
+    'AiABKAlSC2NoYXJhY3RlcklkEkEKCnBhZ2luYXRpb24YAyABKAsyIS5jcmVhdGl2YW50YS5jb2'
+    '1tb24udjEuUGFnaW5hdGlvblIKcGFnaW5hdGlvbg==');
+
+@$core.Deprecated('Use voiceCloneServiceListResponseDescriptor instead')
+const VoiceCloneServiceListResponse$json = {
+  '1': 'VoiceCloneServiceListResponse',
+  '2': [
+    {
+      '1': 'records',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.VoiceCloneRecord',
+      '10': 'records'
+    },
+    {
+      '1': 'pagination',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.PaginatedResponse',
+      '10': 'pagination'
+    },
+  ],
+};
+
+/// Descriptor for `VoiceCloneServiceListResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List voiceCloneServiceListResponseDescriptor = $convert.base64Decode(
+    'Ch1Wb2ljZUNsb25lU2VydmljZUxpc3RSZXNwb25zZRJFCgdyZWNvcmRzGAEgAygLMisuY3JlYX'
+    'RpdmFudGEucHJvZHVjdGlvbi52MS5Wb2ljZUNsb25lUmVjb3JkUgdyZWNvcmRzEkgKCnBhZ2lu'
+    'YXRpb24YAiABKAsyKC5jcmVhdGl2YW50YS5jb21tb24udjEuUGFnaW5hdGVkUmVzcG9uc2VSCn'
+    'BhZ2luYXRpb24=');
+
+@$core.Deprecated('Use voiceCloneServiceDeleteRequestDescriptor instead')
+const VoiceCloneServiceDeleteRequest$json = {
+  '1': 'VoiceCloneServiceDeleteRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'voice_clone_id', '3': 2, '4': 1, '5': 9, '10': 'voiceCloneId'},
+    {'1': 'revoke_consent', '3': 3, '4': 1, '5': 8, '10': 'revokeConsent'},
+  ],
+};
+
+/// Descriptor for `VoiceCloneServiceDeleteRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List voiceCloneServiceDeleteRequestDescriptor =
+    $convert.base64Decode(
+        'Ch5Wb2ljZUNsb25lU2VydmljZURlbGV0ZVJlcXVlc3QSPwoHY29udGV4dBgBIAEoCzIlLmNyZW'
+        'F0aXZhbnRhLmNvbW1vbi52MS5Db21tYW5kQ29udGV4dFIHY29udGV4dBIkCg52b2ljZV9jbG9u'
+        'ZV9pZBgCIAEoCVIMdm9pY2VDbG9uZUlkEiUKDnJldm9rZV9jb25zZW50GAMgASgIUg1yZXZva2'
+        'VDb25zZW50');
+
+@$core.Deprecated('Use voiceCloneServiceDeleteResponseDescriptor instead')
+const VoiceCloneServiceDeleteResponse$json = {
+  '1': 'VoiceCloneServiceDeleteResponse',
+  '2': [
+    {'1': 'success', '3': 1, '4': 1, '5': 8, '10': 'success'},
+    {'1': 'message', '3': 2, '4': 1, '5': 9, '10': 'message'},
+    {'1': 'consent_revoked', '3': 3, '4': 1, '5': 8, '10': 'consentRevoked'},
+  ],
+};
+
+/// Descriptor for `VoiceCloneServiceDeleteResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List voiceCloneServiceDeleteResponseDescriptor =
+    $convert.base64Decode(
+        'Ch9Wb2ljZUNsb25lU2VydmljZURlbGV0ZVJlc3BvbnNlEhgKB3N1Y2Nlc3MYASABKAhSB3N1Y2'
+        'Nlc3MSGAoHbWVzc2FnZRgCIAEoCVIHbWVzc2FnZRInCg9jb25zZW50X3Jldm9rZWQYAyABKAhS'
+        'DmNvbnNlbnRSZXZva2Vk');
+
+@$core.Deprecated(
+    'Use voiceCloneServiceGenerateVoiceoverRequestDescriptor instead')
+const VoiceCloneServiceGenerateVoiceoverRequest$json = {
+  '1': 'VoiceCloneServiceGenerateVoiceoverRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'voice_clone_id', '3': 2, '4': 1, '5': 9, '10': 'voiceCloneId'},
+    {'1': 'text', '3': 3, '4': 1, '5': 9, '10': 'text'},
+    {'1': 'language', '3': 4, '4': 1, '5': 9, '10': 'language'},
+    {'1': 'speed', '3': 5, '4': 1, '5': 1, '10': 'speed'},
+    {'1': 'pitch', '3': 6, '4': 1, '5': 1, '10': 'pitch'},
+    {'1': 'quote_id', '3': 7, '4': 1, '5': 9, '10': 'quoteId'},
+    {
+      '1': 'confirmed_credits',
+      '3': 8,
+      '4': 1,
+      '5': 9,
+      '10': 'confirmedCredits'
+    },
+  ],
+};
+
+/// Descriptor for `VoiceCloneServiceGenerateVoiceoverRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List
+    voiceCloneServiceGenerateVoiceoverRequestDescriptor = $convert.base64Decode(
+        'CilWb2ljZUNsb25lU2VydmljZUdlbmVyYXRlVm9pY2VvdmVyUmVxdWVzdBI/Cgdjb250ZXh0GA'
+        'EgASgLMiUuY3JlYXRpdmFudGEuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EiQK'
+        'DnZvaWNlX2Nsb25lX2lkGAIgASgJUgx2b2ljZUNsb25lSWQSEgoEdGV4dBgDIAEoCVIEdGV4dB'
+        'IaCghsYW5ndWFnZRgEIAEoCVIIbGFuZ3VhZ2USFAoFc3BlZWQYBSABKAFSBXNwZWVkEhQKBXBp'
+        'dGNoGAYgASgBUgVwaXRjaBIZCghxdW90ZV9pZBgHIAEoCVIHcXVvdGVJZBIrChFjb25maXJtZW'
+        'RfY3JlZGl0cxgIIAEoCVIQY29uZmlybWVkQ3JlZGl0cw==');
+
+@$core.Deprecated(
+    'Use voiceCloneServiceGenerateVoiceoverResponseDescriptor instead')
+const VoiceCloneServiceGenerateVoiceoverResponse$json = {
+  '1': 'VoiceCloneServiceGenerateVoiceoverResponse',
+  '2': [
+    {'1': 'asset_id', '3': 1, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'audio_url', '3': 2, '4': 1, '5': 9, '10': 'audioUrl'},
+    {'1': 'duration_seconds', '3': 3, '4': 1, '5': 1, '10': 'durationSeconds'},
+    {'1': 'credits_used', '3': 4, '4': 1, '5': 9, '10': 'creditsUsed'},
+  ],
+};
+
+/// Descriptor for `VoiceCloneServiceGenerateVoiceoverResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List
+    voiceCloneServiceGenerateVoiceoverResponseDescriptor =
+    $convert.base64Decode(
+        'CipWb2ljZUNsb25lU2VydmljZUdlbmVyYXRlVm9pY2VvdmVyUmVzcG9uc2USGQoIYXNzZXRfaW'
+        'QYASABKAlSB2Fzc2V0SWQSGwoJYXVkaW9fdXJsGAIgASgJUghhdWRpb1VybBIpChBkdXJhdGlv'
+        'bl9zZWNvbmRzGAMgASgBUg9kdXJhdGlvblNlY29uZHMSIQoMY3JlZGl0c191c2VkGAQgASgJUg'
+        'tjcmVkaXRzVXNlZA==');
+
+@$core.Deprecated(
+    'Use voiceCloneServiceGetConsentStatusRequestDescriptor instead')
+const VoiceCloneServiceGetConsentStatusRequest$json = {
+  '1': 'VoiceCloneServiceGetConsentStatusRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'voice_clone_id', '3': 2, '4': 1, '5': 9, '10': 'voiceCloneId'},
+    {'1': 'character_id', '3': 3, '4': 1, '5': 9, '10': 'characterId'},
+  ],
+};
+
+/// Descriptor for `VoiceCloneServiceGetConsentStatusRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List voiceCloneServiceGetConsentStatusRequestDescriptor =
+    $convert.base64Decode(
+        'CihWb2ljZUNsb25lU2VydmljZUdldENvbnNlbnRTdGF0dXNSZXF1ZXN0Ej4KDHdvcmtzcGFjZV'
+        '9pZBgBIAEoCzIbLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5VVUlEUgt3b3Jrc3BhY2VJZBIkCg52'
+        'b2ljZV9jbG9uZV9pZBgCIAEoCVIMdm9pY2VDbG9uZUlkEiEKDGNoYXJhY3Rlcl9pZBgDIAEoCV'
+        'ILY2hhcmFjdGVySWQ=');
+
+@$core.Deprecated(
+    'Use voiceCloneServiceGetConsentStatusResponseDescriptor instead')
+const VoiceCloneServiceGetConsentStatusResponse$json = {
+  '1': 'VoiceCloneServiceGetConsentStatusResponse',
+  '2': [
+    {'1': 'consent_record_id', '3': 1, '4': 1, '5': 9, '10': 'consentRecordId'},
+    {'1': 'consent_status', '3': 2, '4': 1, '5': 9, '10': 'consentStatus'},
+    {
+      '1': 'granted_at',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'grantedAt'
+    },
+    {
+      '1': 'revoked_at',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'revokedAt'
+    },
+    {'1': 'declaration_text', '3': 5, '4': 1, '5': 9, '10': 'declarationText'},
+    {
+      '1': 'is_valid_for_generation',
+      '3': 6,
+      '4': 1,
+      '5': 8,
+      '10': 'isValidForGeneration'
+    },
+  ],
+};
+
+/// Descriptor for `VoiceCloneServiceGetConsentStatusResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List voiceCloneServiceGetConsentStatusResponseDescriptor = $convert.base64Decode(
+    'CilWb2ljZUNsb25lU2VydmljZUdldENvbnNlbnRTdGF0dXNSZXNwb25zZRIqChFjb25zZW50X3'
+    'JlY29yZF9pZBgBIAEoCVIPY29uc2VudFJlY29yZElkEiUKDmNvbnNlbnRfc3RhdHVzGAIgASgJ'
+    'Ug1jb25zZW50U3RhdHVzEjkKCmdyYW50ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVG'
+    'ltZXN0YW1wUglncmFudGVkQXQSOQoKcmV2b2tlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1'
+    'Zi5UaW1lc3RhbXBSCXJldm9rZWRBdBIpChBkZWNsYXJhdGlvbl90ZXh0GAUgASgJUg9kZWNsYX'
+    'JhdGlvblRleHQSNQoXaXNfdmFsaWRfZm9yX2dlbmVyYXRpb24YBiABKAhSFGlzVmFsaWRGb3JH'
+    'ZW5lcmF0aW9u');
 
 @$core.Deprecated('Use creativeDnaDescriptor instead')
 const CreativeDna$json = {
