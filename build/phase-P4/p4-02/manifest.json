@@ -24,15 +24,15 @@
     "docs/03_screens/mobile/screen_mobile_studio_quick_edit.md"
   ],
   "source_hashes": {
-    "infra/migrations/00019_p4_02_quick_edit_transcripts_and_sound_library.sql": "a83f6a79c13585ea162920a06737f83879309f8a876c2e85070ed2c6d727ef55",
-    "protos/creativanta/production/v1/production.proto": "63348e2a93c0629bee3a39463bcec154f8d92bbc5522f1400160fd2f562a55a9",
-    "apps/api/internal/production/types.go": "8034db684b4893486ba374cd49b1f13ffe40eaccfd8270c244665499bd593749",
-    "apps/api/internal/production/store.go": "1ca848a6b441f4d30c20d1abb02621a71435ecfa527a4ae3537329a395098261",
+    "infra/migrations/00020_p4_02_quick_edit_transcripts_and_sound_library.sql": "a83f6a79c13585ea162920a06737f83879309f8a876c2e85070ed2c6d727ef55",
+    "protos/creativanta/production/v1/production.proto": "333cff92ef45b2b72bda40b6c9cd0d93409ed778e40c84bfb848b0900e5d48e5",
+    "apps/api/internal/production/types.go": "3ef4e0d88a9dba834d5c025274342dc6f11c36c57867643d46e20b8ef08fb04a",
+    "apps/api/internal/production/store.go": "c1123bec8c0775759e9b7fccfdf9b3594b17dbdb85c04874721731b593c02171",
     "apps/api/internal/production/quickedit_asr.go": "62981f113e745baeecc4f8671e24840f559d3047ab4f5644d020d1601f268b28",
     "apps/api/internal/production/quickedit_cut_engine.go": "6761a1dc82d32333a82e4779afeb8bc0f52b034168a14488a7a06e28f6ecdad1",
     "apps/api/internal/production/quickedit_enhancer.go": "c32ff9112d0a723b90be0c834005212b1405aee629a650ce74186a71e0275710",
-    "apps/api/internal/production/quickedit_service.go": "bea5f5f76491809380fc096940046c846324c260e99866aaf93564301b309336",
-    "apps/api/internal/production/quickedit_test.go": "8488096c8250c25bbc67aff605c7f7036507ff0cfb0782d05223c10bb06bcc33",
+    "apps/api/internal/production/quickedit_service.go": "547b1c742972ec31826c1e1a4c699a54ea93d404e2b116ef5090c7a1f2d1a95d",
+    "apps/api/internal/production/quickedit_test.go": "95a12628c66d6e27de41c0165b184f9a53277bd3e2426503396962848941aebd",
     "apps/web/src/lib/production/quickedit.ts": "8cd8d75f18370652aa4d95e5ca9049c14a6666de836df5288b98681eee4c780d",
     "apps/web/src/lib/production/quickedit.test.ts": "f30da61b34989a2121d1be74f4184d5805757d5ce4fbda80adad831b212f1876",
     "apps/web/src/routes/studio/quick-edit/+page.svelte": "d6f31ea5df8e24e43c09ac68e6ca3f74ef33167d4bee42380bfd46230469254c",
@@ -157,7 +157,7 @@
     }
   ],
   "migration_files": [
-    "infra/migrations/00019_p4_02_quick_edit_transcripts_and_sound_library.sql"
+    "infra/migrations/00020_p4_02_quick_edit_transcripts_and_sound_library.sql"
   ],
   "permission_keys": [
     "asset:generate",
@@ -188,7 +188,7 @@
     [
       "EXT-GATE-POSTGRES-LIVE-RLS",
       "PENDING_CI_LIVE_POSTGRES",
-      "Migration 00019 schema (transcripts, transcript_words, quick_edit_drafts, sound_tracks), foreign keys, RLS policies, and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+      "Migration 00020 schema (transcripts, transcript_words, quick_edit_drafts, sound_tracks), foreign keys, RLS policies, and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
     ]
   ],
   "checks": [
@@ -196,31 +196,31 @@
       "command": "tooling/ci/check_d0.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P4/p4-02/evidence/check_d0.log",
-      "checked_at": "2026-11-03T13:16:25Z"
+      "checked_at": "2026-11-03T13:51:00Z"
     },
     {
       "command": "tooling/ci/check_proto.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P4/p4-02/evidence/check_proto.log",
-      "checked_at": "2026-11-03T13:17:27Z"
+      "checked_at": "2026-11-03T13:52:22Z"
     },
     {
-      "command": "mkdir -p $HOME/tmp && cd apps/api && GOTMPDIR=$HOME/tmp GOTOOLCHAIN=local go test -race -v ./internal/production/... ./internal/migrate/...",
+      "command": "bash tooling/ci/check_go.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P4/p4-02/evidence/check_go.log",
-      "checked_at": "2026-11-03T13:17:44Z"
+      "checked_at": "2026-11-03T13:53:50Z"
     },
     {
-      "command": "pnpm --dir apps/web test && pnpm --dir apps/web check && pnpm --dir apps/web build && pnpm --dir apps/admin build && bash tooling/ci/check_web_smoke.sh",
+      "command": "bash tooling/ci/check_node.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P4/p4-02/evidence/check_node.log",
-      "checked_at": "2026-11-03T13:18:58Z"
+      "checked_at": "2026-11-03T13:55:46Z"
     },
     {
       "command": "bash tooling/ci/check_flutter.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P4/p4-02/evidence/check_flutter.log",
-      "checked_at": "2026-11-03T13:20:03Z"
+      "checked_at": "2026-11-03T13:57:23Z"
     }
   ],
   "remaining_scope": [
