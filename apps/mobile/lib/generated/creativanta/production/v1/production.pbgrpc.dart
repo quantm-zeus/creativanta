@@ -411,3 +411,335 @@ abstract class AssetServiceBase extends $grpc.Service {
   $async.Future<$0.UploadResponse> upload(
       $grpc.ServiceCall call, $0.UploadRequest request);
 }
+
+/// RemixService implements Phase 1-3 AI Remix Studio pipeline (api_endpoint_map.md §7.2).
+@$pb.GrpcServiceName('creativanta.production.v1.RemixService')
+class RemixServiceClient extends $grpc.Client {
+  /// The hostname for this service.
+  static const $core.String defaultHost = '';
+
+  /// OAuth scopes needed for the client.
+  static const $core.List<$core.String> oauthScopes = [
+    '',
+  ];
+
+  RemixServiceClient(super.channel, {super.options, super.interceptors});
+
+  /// Analyze extracts Creative DNA from reference video (Phase 1).
+  $grpc.ResponseFuture<$0.RemixServiceAnalyzeResponse> analyze(
+    $0.RemixServiceAnalyzeRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$analyze, request, options: options);
+  }
+
+  /// GetBlueprint retrieves Creative DNA blueprint and editable script.
+  $grpc.ResponseFuture<$0.RemixServiceGetBlueprintResponse> getBlueprint(
+    $0.RemixServiceGetBlueprintRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getBlueprint, request, options: options);
+  }
+
+  /// Generate recreates original remix with strict originality check (<30% similarity).
+  $grpc.ResponseFuture<$0.RemixServiceGenerateResponse> generate(
+    $0.RemixServiceGenerateRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$generate, request, options: options);
+  }
+
+  /// Regenerate adjusts an individual scene or regenerated output.
+  $grpc.ResponseFuture<$0.RemixServiceRegenerateResponse> regenerate(
+    $0.RemixServiceRegenerateRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$regenerate, request, options: options);
+  }
+
+  // method descriptors
+
+  static final _$analyze = $grpc.ClientMethod<$0.RemixServiceAnalyzeRequest,
+          $0.RemixServiceAnalyzeResponse>(
+      '/creativanta.production.v1.RemixService/Analyze',
+      ($0.RemixServiceAnalyzeRequest value) => value.writeToBuffer(),
+      $0.RemixServiceAnalyzeResponse.fromBuffer);
+  static final _$getBlueprint = $grpc.ClientMethod<
+          $0.RemixServiceGetBlueprintRequest,
+          $0.RemixServiceGetBlueprintResponse>(
+      '/creativanta.production.v1.RemixService/GetBlueprint',
+      ($0.RemixServiceGetBlueprintRequest value) => value.writeToBuffer(),
+      $0.RemixServiceGetBlueprintResponse.fromBuffer);
+  static final _$generate = $grpc.ClientMethod<$0.RemixServiceGenerateRequest,
+          $0.RemixServiceGenerateResponse>(
+      '/creativanta.production.v1.RemixService/Generate',
+      ($0.RemixServiceGenerateRequest value) => value.writeToBuffer(),
+      $0.RemixServiceGenerateResponse.fromBuffer);
+  static final _$regenerate = $grpc.ClientMethod<
+          $0.RemixServiceRegenerateRequest, $0.RemixServiceRegenerateResponse>(
+      '/creativanta.production.v1.RemixService/Regenerate',
+      ($0.RemixServiceRegenerateRequest value) => value.writeToBuffer(),
+      $0.RemixServiceRegenerateResponse.fromBuffer);
+}
+
+@$pb.GrpcServiceName('creativanta.production.v1.RemixService')
+abstract class RemixServiceBase extends $grpc.Service {
+  $core.String get $name => 'creativanta.production.v1.RemixService';
+
+  RemixServiceBase() {
+    $addMethod($grpc.ServiceMethod<$0.RemixServiceAnalyzeRequest,
+            $0.RemixServiceAnalyzeResponse>(
+        'Analyze',
+        analyze_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.RemixServiceAnalyzeRequest.fromBuffer(value),
+        ($0.RemixServiceAnalyzeResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.RemixServiceGetBlueprintRequest,
+            $0.RemixServiceGetBlueprintResponse>(
+        'GetBlueprint',
+        getBlueprint_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.RemixServiceGetBlueprintRequest.fromBuffer(value),
+        ($0.RemixServiceGetBlueprintResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.RemixServiceGenerateRequest,
+            $0.RemixServiceGenerateResponse>(
+        'Generate',
+        generate_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.RemixServiceGenerateRequest.fromBuffer(value),
+        ($0.RemixServiceGenerateResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.RemixServiceRegenerateRequest,
+            $0.RemixServiceRegenerateResponse>(
+        'Regenerate',
+        regenerate_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.RemixServiceRegenerateRequest.fromBuffer(value),
+        ($0.RemixServiceRegenerateResponse value) => value.writeToBuffer()));
+  }
+
+  $async.Future<$0.RemixServiceAnalyzeResponse> analyze_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.RemixServiceAnalyzeRequest> $request) async {
+    return analyze($call, await $request);
+  }
+
+  $async.Future<$0.RemixServiceAnalyzeResponse> analyze(
+      $grpc.ServiceCall call, $0.RemixServiceAnalyzeRequest request);
+
+  $async.Future<$0.RemixServiceGetBlueprintResponse> getBlueprint_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.RemixServiceGetBlueprintRequest> $request) async {
+    return getBlueprint($call, await $request);
+  }
+
+  $async.Future<$0.RemixServiceGetBlueprintResponse> getBlueprint(
+      $grpc.ServiceCall call, $0.RemixServiceGetBlueprintRequest request);
+
+  $async.Future<$0.RemixServiceGenerateResponse> generate_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.RemixServiceGenerateRequest> $request) async {
+    return generate($call, await $request);
+  }
+
+  $async.Future<$0.RemixServiceGenerateResponse> generate(
+      $grpc.ServiceCall call, $0.RemixServiceGenerateRequest request);
+
+  $async.Future<$0.RemixServiceRegenerateResponse> regenerate_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.RemixServiceRegenerateRequest> $request) async {
+    return regenerate($call, await $request);
+  }
+
+  $async.Future<$0.RemixServiceRegenerateResponse> regenerate(
+      $grpc.ServiceCall call, $0.RemixServiceRegenerateRequest request);
+}
+
+/// VideoEditJobService manages production editing jobs including Multi-Merge (api_endpoint_map.md §7.1).
+@$pb.GrpcServiceName('creativanta.production.v1.VideoEditJobService')
+class VideoEditJobServiceClient extends $grpc.Client {
+  /// The hostname for this service.
+  static const $core.String defaultHost = '';
+
+  /// OAuth scopes needed for the client.
+  static const $core.List<$core.String> oauthScopes = [
+    '',
+  ];
+
+  VideoEditJobServiceClient(super.channel, {super.options, super.interceptors});
+
+  /// Create starts a new production job (e.g. multi_merge, quick_edit).
+  $grpc.ResponseFuture<$0.VideoEditJobServiceCreateResponse> create(
+    $0.VideoEditJobServiceCreateRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$create, request, options: options);
+  }
+
+  /// Get retrieves job status and metadata.
+  $grpc.ResponseFuture<$0.VideoEditJobServiceGetResponse> get(
+    $0.VideoEditJobServiceGetRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$get, request, options: options);
+  }
+
+  /// List returns filtered production jobs for a workspace.
+  $grpc.ResponseFuture<$0.VideoEditJobServiceListResponse> list(
+    $0.VideoEditJobServiceListRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$list, request, options: options);
+  }
+
+  /// Cancel cancels an in-flight video edit job and refunds unspent credits.
+  $grpc.ResponseFuture<$0.VideoEditJobServiceCancelResponse> cancel(
+    $0.VideoEditJobServiceCancelRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$cancel, request, options: options);
+  }
+
+  /// Retry retries a failed video edit job.
+  $grpc.ResponseFuture<$0.VideoEditJobServiceRetryResponse> retry(
+    $0.VideoEditJobServiceRetryRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$retry, request, options: options);
+  }
+
+  // method descriptors
+
+  static final _$create = $grpc.ClientMethod<
+          $0.VideoEditJobServiceCreateRequest,
+          $0.VideoEditJobServiceCreateResponse>(
+      '/creativanta.production.v1.VideoEditJobService/Create',
+      ($0.VideoEditJobServiceCreateRequest value) => value.writeToBuffer(),
+      $0.VideoEditJobServiceCreateResponse.fromBuffer);
+  static final _$get = $grpc.ClientMethod<$0.VideoEditJobServiceGetRequest,
+          $0.VideoEditJobServiceGetResponse>(
+      '/creativanta.production.v1.VideoEditJobService/Get',
+      ($0.VideoEditJobServiceGetRequest value) => value.writeToBuffer(),
+      $0.VideoEditJobServiceGetResponse.fromBuffer);
+  static final _$list = $grpc.ClientMethod<$0.VideoEditJobServiceListRequest,
+          $0.VideoEditJobServiceListResponse>(
+      '/creativanta.production.v1.VideoEditJobService/List',
+      ($0.VideoEditJobServiceListRequest value) => value.writeToBuffer(),
+      $0.VideoEditJobServiceListResponse.fromBuffer);
+  static final _$cancel = $grpc.ClientMethod<
+          $0.VideoEditJobServiceCancelRequest,
+          $0.VideoEditJobServiceCancelResponse>(
+      '/creativanta.production.v1.VideoEditJobService/Cancel',
+      ($0.VideoEditJobServiceCancelRequest value) => value.writeToBuffer(),
+      $0.VideoEditJobServiceCancelResponse.fromBuffer);
+  static final _$retry = $grpc.ClientMethod<$0.VideoEditJobServiceRetryRequest,
+          $0.VideoEditJobServiceRetryResponse>(
+      '/creativanta.production.v1.VideoEditJobService/Retry',
+      ($0.VideoEditJobServiceRetryRequest value) => value.writeToBuffer(),
+      $0.VideoEditJobServiceRetryResponse.fromBuffer);
+}
+
+@$pb.GrpcServiceName('creativanta.production.v1.VideoEditJobService')
+abstract class VideoEditJobServiceBase extends $grpc.Service {
+  $core.String get $name => 'creativanta.production.v1.VideoEditJobService';
+
+  VideoEditJobServiceBase() {
+    $addMethod($grpc.ServiceMethod<$0.VideoEditJobServiceCreateRequest,
+            $0.VideoEditJobServiceCreateResponse>(
+        'Create',
+        create_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.VideoEditJobServiceCreateRequest.fromBuffer(value),
+        ($0.VideoEditJobServiceCreateResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.VideoEditJobServiceGetRequest,
+            $0.VideoEditJobServiceGetResponse>(
+        'Get',
+        get_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.VideoEditJobServiceGetRequest.fromBuffer(value),
+        ($0.VideoEditJobServiceGetResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.VideoEditJobServiceListRequest,
+            $0.VideoEditJobServiceListResponse>(
+        'List',
+        list_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.VideoEditJobServiceListRequest.fromBuffer(value),
+        ($0.VideoEditJobServiceListResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.VideoEditJobServiceCancelRequest,
+            $0.VideoEditJobServiceCancelResponse>(
+        'Cancel',
+        cancel_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.VideoEditJobServiceCancelRequest.fromBuffer(value),
+        ($0.VideoEditJobServiceCancelResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.VideoEditJobServiceRetryRequest,
+            $0.VideoEditJobServiceRetryResponse>(
+        'Retry',
+        retry_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.VideoEditJobServiceRetryRequest.fromBuffer(value),
+        ($0.VideoEditJobServiceRetryResponse value) => value.writeToBuffer()));
+  }
+
+  $async.Future<$0.VideoEditJobServiceCreateResponse> create_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.VideoEditJobServiceCreateRequest> $request) async {
+    return create($call, await $request);
+  }
+
+  $async.Future<$0.VideoEditJobServiceCreateResponse> create(
+      $grpc.ServiceCall call, $0.VideoEditJobServiceCreateRequest request);
+
+  $async.Future<$0.VideoEditJobServiceGetResponse> get_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.VideoEditJobServiceGetRequest> $request) async {
+    return get($call, await $request);
+  }
+
+  $async.Future<$0.VideoEditJobServiceGetResponse> get(
+      $grpc.ServiceCall call, $0.VideoEditJobServiceGetRequest request);
+
+  $async.Future<$0.VideoEditJobServiceListResponse> list_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.VideoEditJobServiceListRequest> $request) async {
+    return list($call, await $request);
+  }
+
+  $async.Future<$0.VideoEditJobServiceListResponse> list(
+      $grpc.ServiceCall call, $0.VideoEditJobServiceListRequest request);
+
+  $async.Future<$0.VideoEditJobServiceCancelResponse> cancel_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.VideoEditJobServiceCancelRequest> $request) async {
+    return cancel($call, await $request);
+  }
+
+  $async.Future<$0.VideoEditJobServiceCancelResponse> cancel(
+      $grpc.ServiceCall call, $0.VideoEditJobServiceCancelRequest request);
+
+  $async.Future<$0.VideoEditJobServiceRetryResponse> retry_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.VideoEditJobServiceRetryRequest> $request) async {
+    return retry($call, await $request);
+  }
+
+  $async.Future<$0.VideoEditJobServiceRetryResponse> retry(
+      $grpc.ServiceCall call, $0.VideoEditJobServiceRetryRequest request);
+}

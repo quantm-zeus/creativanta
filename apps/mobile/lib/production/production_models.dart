@@ -280,3 +280,259 @@ BatchBudgetPreviewModel evaluateBatchPreview({
     items: evaluated,
   );
 }
+
+// ============================================================================
+// Multi-Merge and AI Remix Mobile Models & Validators (P4-04)
+// ============================================================================
+
+const double kCanonicalSimilarityThreshold = 30.0;
+
+class OriginalityCheckModel {
+  final double similarityPercentage;
+  final double canonicalThresholdPercentage;
+  final double originalityScore;
+  final bool passed;
+  final String explanation;
+  final List<String> actionableAlternatives;
+
+  const OriginalityCheckModel({
+    required this.similarityPercentage,
+    this.canonicalThresholdPercentage = kCanonicalSimilarityThreshold,
+    required this.originalityScore,
+    required this.passed,
+    required this.explanation,
+    this.actionableAlternatives = const [],
+  });
+}
+
+OriginalityCheckModel evaluateRemixOriginality(double similarityPercentage) {
+  final passed = similarityPercentage < kCanonicalSimilarityThreshold;
+  final originalityScore = (100.0 - similarityPercentage).clamp(0.0, 100.0);
+  if (!passed) {
+    return OriginalityCheckModel(
+      similarityPercentage: similarityPercentage,
+      originalityScore: originalityScore,
+      passed: false,
+      explanation:
+          'Remix is too similar to reference (${similarityPercentage.toStringAsFixed(1)}% similarity, max ${kCanonicalSimilarityThreshold.toStringAsFixed(1)}%). [Adjust to \'Loose Inspiration\' fidelity] or [Edit script manually].',
+      actionableAlternatives: const [
+        "Adjust to 'Loose Inspiration' fidelity",
+        'Edit script manually',
+        'Focus on a different angle or product benefit',
+      ],
+    );
+  }
+  return OriginalityCheckModel(
+    similarityPercentage: similarityPercentage,
+    originalityScore: originalityScore,
+    passed: true,
+    explanation:
+        'Passed originality check: ${similarityPercentage.toStringAsFixed(1)}% similarity (threshold: <${kCanonicalSimilarityThreshold.toStringAsFixed(1)}%).',
+  );
+}
+
+class ReferenceUrlValidation {
+  final bool isValid;
+  final bool isDRM;
+  final bool isGeoBlocked;
+  final String? errorMessage;
+  final String? actionableAdvice;
+
+  const ReferenceUrlValidation({
+    required this.isValid,
+    this.isDRM = false,
+    this.isGeoBlocked = false,
+    this.errorMessage,
+    this.actionableAdvice,
+  });
+}
+
+ReferenceUrlValidation validateReferenceUrl(String rawUrl) {
+  final trimmed = rawUrl.trim();
+  if (trimmed.isEmpty) {
+    return const ReferenceUrlValidation(
+      isValid: false,
+      errorMessage: 'Video URL cannot be empty.',
+      actionableAdvice:
+          'Please paste a valid video URL or upload a file directly.',
+    );
+  }
+  final uri = Uri.tryParse(trimmed);
+  if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) {
+    return const ReferenceUrlValidation(
+      isValid: false,
+      errorMessage: 'Invalid protocol. Must be HTTP or HTTPS.',
+      actionableAdvice:
+          'Cannot access video at this URL. [Upload video file instead] or [Try different URL].',
+    );
+  }
+  final host = uri.host.toLowerCase();
+  if (host == 'localhost' ||
+      host == '127.0.0.1' ||
+      host.startsWith('10.') ||
+      host.startsWith('192.168.') ||
+      host.startsWith('169.254.') ||
+      host == '::1') {
+    return const ReferenceUrlValidation(
+      isValid: false,
+      errorMessage:
+          'Access to internal network destinations is forbidden (SSRF protection).',
+      actionableAdvice:
+          'Cannot access video at this URL. [Upload video file instead] or [Try different URL].',
+    );
+  }
+  final lower = trimmed.toLowerCase();
+  if (lower.contains('drm-protected') ||
+      lower.contains('widevine') ||
+      lower.contains('fairplay') ||
+      lower.contains('netflix.com') ||
+      lower.contains('disneyplus.com') ||
+      lower.contains('drm=')) {
+    return const ReferenceUrlValidation(
+      isValid: false,
+      isDRM: true,
+      errorMessage:
+          'Reference video is protected by Digital Rights Management (DRM).',
+      actionableAdvice:
+          'Cannot access video at this URL. [Upload video file instead] or [Try different URL].',
+    );
+  }
+  if (lower.contains('geo-blocked') ||
+      lower.contains('georestricted') ||
+      lower.contains('geo-restricted') ||
+      lower.contains('hulu.com') ||
+      lower.contains('restricted-region')) {
+    return const ReferenceUrlValidation(
+      isValid: false,
+      isGeoBlocked: true,
+      errorMessage:
+          'Reference video is restricted or geo-blocked in the server region.',
+      actionableAdvice:
+          'Cannot access video at this URL. [Upload video file instead] or [Try different URL].',
+    );
+  }
+  return const ReferenceUrlValidation(isValid: true);
+}
+
+class MultiMergeItemModel {
+  final String itemId;
+  final String assetId;
+  final String mediaType; // video, image, audio
+  final String title;
+  final double durationSeconds;
+  final String? transitionToNext;
+  final bool hasCopyrightHit;
+  final String? licenseProofKey;
+
+  const MultiMergeItemModel({
+    required this.itemId,
+    required this.assetId,
+    required this.mediaType,
+    required this.title,
+    required this.durationSeconds,
+    this.transitionToNext,
+    this.hasCopyrightHit = false,
+    this.licenseProofKey,
+  });
+
+  MultiMergeItemModel copyWith({
+    String? itemId,
+    String? assetId,
+    String? mediaType,
+    String? title,
+    double? durationSeconds,
+    String? transitionToNext,
+    bool? hasCopyrightHit,
+    String? licenseProofKey,
+  }) {
+    return MultiMergeItemModel(
+      itemId: itemId ?? this.itemId,
+      assetId: assetId ?? this.assetId,
+      mediaType: mediaType ?? this.mediaType,
+      title: title ?? this.title,
+      durationSeconds: durationSeconds ?? this.durationSeconds,
+      transitionToNext: transitionToNext ?? this.transitionToNext,
+      hasCopyrightHit: hasCopyrightHit ?? this.hasCopyrightHit,
+      licenseProofKey: licenseProofKey ?? this.licenseProofKey,
+    );
+  }
+}
+
+int getTierMaxMedia(String tier) {
+  switch (tier.toLowerCase()) {
+    case 'business':
+    case 'enterprise':
+      return 50;
+    case 'pro':
+      return 20;
+    case 'starter':
+      return 10;
+    case 'free':
+    default:
+      return 5;
+  }
+}
+
+class MultiMergeValidationResult {
+  final bool isValid;
+  final List<String> errors;
+  final List<MultiMergeItemModel> processedItems;
+  final bool hasUnlicensedCopyrightBlock;
+
+  const MultiMergeValidationResult({
+    required this.isValid,
+    required this.errors,
+    required this.processedItems,
+    required this.hasUnlicensedCopyrightBlock,
+  });
+}
+
+MultiMergeValidationResult validateMultiMergeTimeline(
+    String tier, List<MultiMergeItemModel> items,
+    {bool autoTransitions = true}) {
+  final errors = <String>[];
+  bool hasCopyrightBlock = false;
+
+  if (items.length < 2) {
+    errors.add('Multi-merge requires at least 2 media files.');
+  }
+
+  final maxAllowed = getTierMaxMedia(tier);
+  if (items.length > maxAllowed) {
+    errors.add('Item count (${items.length}) exceeds tier limit of $maxAllowed.');
+  }
+
+  final processed = <MultiMergeItemModel>[];
+  for (int i = 0; i < items.length; i++) {
+    var item = items[i];
+    // Auto transition
+    if (autoTransitions && i < items.length - 1) {
+      final next = items[i + 1];
+      if (item.mediaType == 'image' && next.mediaType == 'image') {
+        item = item.copyWith(transitionToNext: 'ken_burns');
+      } else if (item.mediaType == 'video' && next.mediaType == 'video') {
+        item = item.copyWith(transitionToNext: 'crossfade');
+      } else if (item.mediaType == 'image' && next.mediaType == 'video') {
+        item = item.copyWith(transitionToNext: 'fade_in');
+      } else {
+        item = item.copyWith(transitionToNext: 'cut');
+      }
+    }
+
+    if (item.hasCopyrightHit &&
+        (item.licenseProofKey == null ||
+            item.licenseProofKey!.trim().isEmpty)) {
+      hasCopyrightBlock = true;
+      errors.add(
+          'Track "${item.title}" detected as copyrighted. Rights violations cannot be bypassed by accepting risk (SAFE-2026-02).');
+    }
+    processed.add(item);
+  }
+
+  return MultiMergeValidationResult(
+    isValid: errors.isEmpty,
+    errors: errors,
+    processedItems: processed,
+    hasUnlicensedCopyrightBlock: hasCopyrightBlock,
+  );
+}
