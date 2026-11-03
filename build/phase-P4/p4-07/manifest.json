@@ -1,0 +1,117 @@
+{
+  "task_id": "P4-07",
+  "phase": "P4",
+  "slice": "p4-07",
+  "title": "Style learning và complete continuity",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "acdf5cc7497991ea52261d065ca8f0e0256d3abc",
+  "feature_refs": [
+    "docs/02_features/production/ai_video_studio.md",
+    "docs/02_features/content/continuity_os.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_endpoint_map.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/05_system/queue_retry_design.md",
+    "docs/05_system/ai_provider_guide.md"
+  ],
+  "requirement_ids": [
+    "EF-07",
+    "EF-07A",
+    "RULE-M08-001",
+    "RULE-M08-002",
+    "RULE-M08-004",
+    "RULE-M08-005",
+    "RULE-M08-006",
+    "EC-M08-001",
+    "DB-C-001",
+    "DB-H-001"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_studio_style_learning.md",
+    "docs/03_screens/web/screen_web_studio_character.md",
+    "docs/03_screens/web/screen_web_content_continuity.md"
+  ],
+  "source_hashes": {
+    "infra/migrations/00020_p4_07_style_learning_character_preview_and_drift_qa.sql": "714104a6c0b62e77083a56934035ac1843dbcda00902df5941ace844a74b4b71",
+    "protos/creativanta/production/v1/production.proto": "41ed554fd6508f23a4183f08cdfb49e71c18e8704cd35ee08ccbad2ab5085d2d",
+    "apps/api/internal/production/types.go": "5c3a55754e3ec6c7046f8cda9e7cb65ecb12e0afbd7a8b5e43e908e95a4f5f71",
+    "apps/api/internal/production/store.go": "c3d3590bf6428feb15ef6325944eb976283034d99be372690ce1d2a6c1e5f676",
+    "apps/api/internal/production/service.go": "8d8ce0f1727d7199a70643c015c125c7a6c34e94f6538af5c87622e018dc329d",
+    "apps/api/internal/production/style.go": "aded0f50f0fdb219e608e33807b77b78d33f1d555aef2e20a938f53a26dcc3c9",
+    "apps/api/internal/production/character_preview.go": "3bbbd5a9f9f66d5b1e72a928e111fedbc1d445ee808133d3d30b9b91e41a128e",
+    "apps/api/internal/production/drift_qa.go": "1172ccb4def795048dc0e7074d92d16f0ae807152f398993f1ab5a9184b04af6",
+    "apps/api/internal/production/continuity_drift_test.go": "9bc22ab582c7a07fa336ab6072d512643e36fb505eafe4439ca6b9fc9714a0a4",
+    "apps/api/internal/migrate/migrator_test.go": "480385cf948ea96be9dee36b511fa94c2559d28582ea2f4dcdbe93fc600bbe22",
+    "apps/web/src/lib/production/types.ts": "0003a0ccd95485a0327c35a6aea4d476f042374420e97c0d5bcc0443607d64ec",
+    "apps/web/src/lib/production/index.ts": "ed51061dbf7b082c3ce8dbf143fa7d1b4ffc5b918018d8749ad1435179f244b2",
+    "apps/web/src/lib/production/continuity_drift.test.ts": "a75923be02e5f785a29422b429bacea010bf73bdf0b631f4b2f50abb51bc43d9",
+    "apps/web/src/lib/continuity/CharacterWizard.svelte": "a6c32eef570303d80514757c3d981a256b0a5940b7c03561456e5f83c01159f4",
+    "apps/web/src/routes/studio/+page.svelte": "c2c2fc8baa58f765c1d391266dfb434e0a87ecdde27a3b907ac985d6bd77c4a3",
+    "apps/web/src/routes/studio/style-learning/+page.svelte": "98c9931770fee300d68bb54f492ae06ba16ac22b9f97027c4359ff079fc8eeb1",
+    "apps/mobile/lib/content/continuity_models.dart": "123ede4a996e195270f57206c7e1950585cc3b41e954b9b390b45af2dee96f3d",
+    "apps/mobile/test/continuity_drift_acceptance_test.dart": "c74b8a9a3cb904fe92b458173bc1959907153009a337c5cb185bf1a74f433de2",
+    "tooling/ci/check_web_smoke.sh": "4b5ea9dbd57df6f278e596a694a743c320164140a8ca4801aefd795fc3bbc124"
+  },
+  "scope_items": [
+    "Database Migration 00020: Created style_packs table (§22.7) with composite tenant foreign keys to workspaces, assets, and continuity_packs; added drift_score, drift_severity, drift_details to assets; added override_reason and resolved_at to continuity_violations (§7.5); strict multi-tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY); exact numeric money/credits (DB-H-001); narrow role grants to app_user and admin_user; and verified 20-step reversible down migration.",
+    "Acceptance Target 1 (15s preview quoted): Character builder Step 3 quotes 15s duration, bounded credit quote (5 credits), and verifies spend authority before rendering test preview (RULE-M08-001, AC 1).",
+    "Acceptance Target 2 (High drift blocks readiness): Assets with drift score > 60 (high_drift) create a blocking violation in continuity_violations table and are blocked from ready/approved state unless explicitly overridden by Manager+ with justification (RULE-M08-005, AC 4).",
+    "Acceptance Target 3 (Consent withdrawal prevents new use): Likeness consent revocation immediately invalidates linked digital twins and blocks all subsequent generation, character preview, dubbing, or voiceover (RULE-M08-002, EC-M08-001).",
+    "EF-07 Style Learning & Transfer (Screen W032): Upload 1-5 reference videos, extract 7 aesthetic style parameters (color grading, lighting, camera movement, pace/cadence, composition, texture/grain, audio atmosphere), save reusable style pack, and apply to subsequent video generation pipelines."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestAcceptanceTarget1_15sPreviewQuoted (Go -race), Vitest web suite (continuity_drift.test.ts), and Flutter acceptance test suite confirm 15s preview duration quote, fixed 5 credits cost, and spend authority gating.",
+    "Acceptance Target 2 Verified: TestAcceptanceTarget2_HighDriftBlocksReadiness (Go -race), Vitest web suite, and Flutter acceptance test suite confirm >60 drift score triggers high_drift severity and blocking violation, blocks approval, and requires Manager+ explicit override justification.",
+    "Acceptance Target 3 Verified: TestAcceptanceTarget3_ConsentWithdrawalPreventsNewUse (Go -race), Vitest web suite, and Flutter acceptance test suite confirm consent revocation immediately cascades to invalidate digital twins and blocks character preview and generation.",
+    "EF-07 Style Learning & Transfer Verified: TestEF07_StyleExtractionAndTransfer (Go -race), W032 UI route (/studio/style-learning), Vitest suite, and Flutter acceptance test suite confirm 1-5 video extraction, 15 credit quote, 7 aesthetic parameters, and style pack persistence.",
+    "Migration 00020 Verified: Migrator test suite (migrator_test.go) passes all 20 migrations up, status verification, and clean down transactional reversal.",
+    "Four-Target Proto Codegen Verified: proto-gen.sh verify passes Buf lint, codegen across Go, TypeScript, and Dart, git drift verification, TypeScript compilation, and Dart generated code analyze.",
+    "Web & Mobile Surfaces Verified: check_web_smoke.sh (SSR HTTP 200 on /studio/style-learning), svelte-check (0 errors, 0 warnings), vitest (180 tests passing across 22 test files), and check_flutter.sh (flutter analyze 0 issues, 160 tests passing) all pass cleanly."
+  ],
+  "rpc_contracts": [
+    "StylePackService/ExtractStyle",
+    "StylePackService/CreateStylePack",
+    "StylePackService/GetStylePack",
+    "StylePackService/ListStylePacks",
+    "StylePackService/ApplyStylePack",
+    "StylePackService/DeleteStylePack",
+    "AIService/GenerateCharacterPreview",
+    "AIService/QuoteCharacterPreview",
+    "AIService/AnalyzeStyle",
+    "AssetService/EvaluateDrift",
+    "AssetService/OverrideDriftViolation"
+  ],
+  "migration_files": [
+    "infra/migrations/00020_p4_07_style_learning_character_preview_and_drift_qa.sql"
+  ],
+  "permission_keys": [
+    "style_pack:create",
+    "style_pack:read",
+    "style_pack:apply",
+    "style_pack:delete",
+    "character:preview",
+    "continuity_violation:override",
+    "asset:evaluate_drift"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-AI-PROVIDER-STYLE-LEARNING",
+      "PENDING_PRODUCTION_KEY",
+      "Production multi-video style extraction and transfer models require production Vision-Language API credentials and live billing accounts. Local provider engine with realistic 7-parameter extraction and 15 credit quotes verified locally."
+    ],
+    [
+      "EXT-GATE-AI-PROVIDER-PREVIEW-FAST",
+      "PENDING_PRODUCTION_KEY",
+      "Production 15s preview video rendering (veo-preview-fast) requires production model API keys. Local fast-preview generator and spend authority checks verified locally."
+    ],
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "Migration 00020 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow role grants verified via local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+    ]
+  ]
+}

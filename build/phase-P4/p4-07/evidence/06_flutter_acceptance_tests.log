@@ -1,0 +1,204 @@
+=== Flutter Mobile Quality Gate ===
+Detected Flutter version: 3.47.9
+Fetching Flutter dependencies (flutter pub get)...
+Resolving dependencies...
+Downloading packages...
+  cupertino_icons 1.0.9 (2.0.0 available)
+  http2 2.3.1 (3.1.0 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.3 (1.19.0 available)
+  test_api 0.7.12 (0.7.15 available)
+  vector_math 2.4.0 (2.4.4 available)
+Got dependencies!
+6 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Running Flutter analysis (flutter analyze --fatal-infos --fatal-warnings)...
+Resolving dependencies...
+Downloading packages...
+  cupertino_icons 1.0.9 (2.0.0 available)
+  http2 2.3.1 (3.1.0 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.3 (1.19.0 available)
+  test_api 0.7.12 (0.7.15 available)
+  vector_math 2.4.0 (2.4.4 available)
+Got dependencies!
+6 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Analyzing mobile...                                             
+No issues found! (ran in 8.9s)
+flutter analyze passed.
+Running Flutter unit tests (flutter test)...
+Resolving dependencies...
+Downloading packages...
+  cupertino_icons 1.0.9 (2.0.0 available)
+  http2 2.3.1 (3.1.0 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.3 (1.19.0 available)
+  test_api 0.7.12 (0.7.15 available)
+  vector_math 2.4.0 (2.4.4 available)
+Got dependencies!
+6 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+00:00 +0: loading /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/production_acceptance_test.dart
+00:00 +0: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/production_acceptance_test.dart: P4-01 Production Jobs, Router & Budgets Acceptance Tests Acceptance Target 3: Budget preview and partial batch input validation
+00:00 +1: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/production_acceptance_test.dart: P4-01 Production Jobs, Router & Budgets Acceptance Tests Acceptance Target 1: Cancel and recovery immediately refunds balance on UI
+00:00 +2: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/production_acceptance_test.dart: P4-01 Production Jobs, Router & Budgets Acceptance Tests Acceptance Target 1: Cancel and recovery immediately refunds balance on UI
+00:00 +3: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/production_acceptance_test.dart: P4-01 Production Jobs, Router & Budgets Acceptance Tests Acceptance Target 1: Cancel and recovery immediately refunds balance on UI
+00:00 +4: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/production_acceptance_test.dart: P4-01 Production Jobs, Router & Budgets Acceptance Tests Acceptance Target 1: Cancel and recovery immediately refunds balance on UI
+00:02 +5: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/production_acceptance_test.dart: P4-01 Production Jobs, Router & Budgets Acceptance Tests Acceptance Target 1: Cancel and recovery immediately refunds balance on UI
+00:02 +6: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/production_acceptance_test.dart: P4-01 Production Jobs, Router & Budgets Acceptance Tests Acceptance Target 2: Fallback provider Kling displays fallback badge without double debit
+00:03 +7: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/production_acceptance_test.dart: P4-01 Production Jobs, Router & Budgets Acceptance Tests Acceptance Target 4: Sandboxed post-production and FFmpeg/ffprobe security bounds
+00:04 +8: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/sound_translation_acceptance_test.dart: P4-06 Sound, Translation & Voice Clone Acceptance Tests Acceptance Target 1: Likeness consent required for voice clone creation and dubbing
+00:04 +9: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/sound_translation_acceptance_test.dart: P4-06 Sound, Translation & Voice Clone Acceptance Tests Acceptance Target 2: Quality scoring, speech clarity repair & -14 LUFS normalization
+00:04 +10: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/sound_translation_acceptance_test.dart: P4-06 Sound, Translation & Voice Clone Acceptance Tests Acceptance Target 3: Measured quote with multi-language volume discount formula
+00:05 +11: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/billing_test.dart: P0-06 Mobile Billing, Credit Lots & Quotes (M061) AdminBillingService protobuf roundtrip for EstimateCostResponse and CreditBalance
+00:05 +12: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/billing_test.dart: P0-06 Mobile Billing, Credit Lots & Quotes (M061) computes exact cost-based quote ceiling without floating point
+00:05 +13: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/auth/auth_adapter_test.dart: ClerkAuthProviderAdapter unconfigured fail-closed contract defaults to unconfigured status and documents external provider gate
+00:05 +14: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/auth/auth_adapter_test.dart: ClerkAuthProviderAdapter unconfigured fail-closed contract defaults to unconfigured status and documents external provider gate
+00:05 +15: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/billing_test.dart: P0-06 Mobile Billing, Credit Lots & Quotes (M061) MobileBillingScreen renders M061 credit hold and Owner-only state
+00:05 +16: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/billing_test.dart: P0-06 Mobile Billing, Credit Lots & Quotes (M061) MobileBillingScreen renders M061 credit hold and Owner-only state
+00:05 +17: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/billing_test.dart: P0-06 Mobile Billing, Credit Lots & Quotes (M061) MobileBillingScreen renders M061 credit hold and Owner-only state
+00:05 +18: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/billing_test.dart: P0-06 Mobile Billing, Credit Lots & Quotes (M061) MobileBillingScreen renders M061 credit hold and Owner-only state
+00:05 +19: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/billing_test.dart: P0-06 Mobile Billing, Credit Lots & Quotes (M061) MobileBillingScreen renders M061 credit hold and Owner-only state
+00:06 +20: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/billing_test.dart: P0-06 Mobile Billing, Credit Lots & Quotes (M061) MobileBillingScreen renders M061 credit hold and Owner-only state
+00:06 +21: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/billing_test.dart: P0-06 Mobile Billing, Credit Lots & Quotes (M061) MobileBillingScreen renders M061 credit hold and Owner-only state
+00:06 +22: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/billing_test.dart: P0-06 Mobile Billing, Credit Lots & Quotes (M061) MobileBillingScreen renders M061 credit hold and Owner-only state
+00:06 +23: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/billing_test.dart: P0-06 Mobile Billing, Credit Lots & Quotes (M061) MobileBillingScreen renders M061 credit hold and Owner-only state
+00:06 +24: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/billing_test.dart: P0-06 Mobile Billing, Credit Lots & Quotes (M061) MobileBillingScreen renders M061 credit hold and Owner-only state
+00:06 +25: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/billing_test.dart: P0-06 Mobile Billing, Credit Lots & Quotes (M061) MobileBillingScreen renders M061 credit hold and Owner-only state
+00:06 +26: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/billing_test.dart: P0-06 Mobile Billing, Credit Lots & Quotes (M061) MobileBillingScreen renders M061 credit hold and Owner-only state
+00:08 +27: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/auth/auth_widget_test.dart: MobileAuthScreen Widget Tests unconfigured state displays external provider gate banner and fail-closed notice
+00:10 +28: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/auth/auth_widget_test.dart: MobileAuthScreen Widget Tests unconfigured state displays external provider gate banner and fail-closed notice
+00:10 +29: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/auth/auth_widget_test.dart: MobileAuthScreen Widget Tests unconfigured state displays external provider gate banner and fail-closed notice
+00:10 +30: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/auth/auth_widget_test.dart: MobileAuthScreen Widget Tests unconfigured state displays external provider gate banner and fail-closed notice
+00:10 +31: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/auth/auth_widget_test.dart: MobileAuthScreen Widget Tests unconfigured state displays external provider gate banner and fail-closed notice
+00:10 +32: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/auth/auth_widget_test.dart: MobileAuthScreen Widget Tests unconfigured state displays external provider gate banner and fail-closed notice
+00:10 +33: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/auth/auth_widget_test.dart: MobileAuthScreen Widget Tests unconfigured state displays external provider gate banner and fail-closed notice
+00:12 +34: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/auth/auth_widget_test.dart: MobileAuthScreen Widget Tests unconfigured state displays external provider gate banner and fail-closed notice
+00:13 +35: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/script_lab_test.dart: M06 Script Lab Business Rules & Acceptance Targets Acceptance Target 1: Stale approval fails (EC-M06-003) MobileScriptReviewView displays stale banner and disables actions when stale
+00:14 +36: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/script_lab_test.dart: M06 Script Lab Business Rules & Acceptance Targets Acceptance Target 1: Stale approval fails (EC-M06-003) MobileScriptReviewView displays stale banner and disables actions when stale
+00:15 +37: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/script_lab_test.dart: M06 Script Lab Business Rules & Acceptance Targets Acceptance Target 1: Stale approval fails (EC-M06-003) MobileScriptReviewView displays stale banner and disables actions when stale
+00:15 +38: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/auth/auth_widget_test.dart: OperatorModeSheet (6 Modes) Widget Tests displays all six operator modes and allows switching
+00:15 +39: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/auth/auth_widget_test.dart: OperatorModeSheet (6 Modes) Widget Tests displays all six operator modes and allows switching
+00:15 +40: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/script_lab_test.dart: M06 Script Lab Business Rules & Acceptance Targets Acceptance Target 2: Rejection reason validated (RULE-M06-002, EC-M06-002) Rejection dialog enforces >= 10 characters before allowing confirm
+00:16 +41: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/script_lab_test.dart: M06 Script Lab Business Rules & Acceptance Targets Acceptance Target 2: Rejection reason validated (RULE-M06-002, EC-M06-002) Rejection dialog enforces >= 10 characters before allowing confirm
+00:18 +42: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/opportunity_test.dart: Mobile Opportunity Board (M04) Unit Tests Multi-dimensional composite scoring calculation
+00:18 +43: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/opportunity_test.dart: Mobile Opportunity Board (M04) Unit Tests Multi-dimensional composite scoring calculation
+00:18 +44: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/script_lab_test.dart: M06 Script Lab Business Rules & Acceptance Targets Acceptance Target 3: Ready for production requires approval and complete brief denies ready for production if script is unapproved
+00:18 +45: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/opportunity_test.dart: Mobile Opportunity Board (M04) Unit Tests Acceptance Target 1: Unassigned open items remain repairable
+00:18 +46: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/script_lab_test.dart: M06 Script Lab Business Rules & Acceptance Targets Acceptance Target 3: Ready for production requires approval and complete brief denies ready for production if asset brief is missing or incomplete
+00:18 +47: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/opportunity_test.dart: Mobile Opportunity Board (M04) Unit Tests Acceptance Target 2: State transitions and concurrency conflict detection
+00:18 +48: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/opportunity_test.dart: Mobile Opportunity Board (M04) Unit Tests Acceptance Target 2: State transitions and concurrency conflict detection
+00:18 +49: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/script_lab_test.dart: M06 Script Lab Business Rules & Acceptance Targets EC-M06-001: Empty scenes block submission validateScenesForSubmission blocks empty scene list
+00:18 +50: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/opportunity_test.dart: Mobile Opportunity Board (M04) Unit Tests Acceptance Target 3: No orphan opportunity provenance
+00:18 +51: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/script_lab_test.dart: M06 Script Lab Business Rules & Acceptance Targets EC-M06-001: Empty scenes block submission validateScenesForSubmission blocks scene with empty content
+00:18 +52: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/opportunity_test.dart: Mobile Opportunity Board (M04) Unit Tests OpportunityBoardView renders score, title, and repair banner
+00:18 +53: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/opportunity_test.dart: Mobile Opportunity Board (M04) Unit Tests OpportunityBoardView renders score, title, and repair banner
+00:18 +54: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/opportunity_test.dart: Mobile Opportunity Board (M04) Unit Tests OpportunityBoardView renders score, title, and repair banner
+00:18 +55: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/opportunity_test.dart: Mobile Opportunity Board (M04) Unit Tests OpportunityBoardView renders score, title, and repair banner
+00:20 +56: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/opportunity_test.dart: Mobile Opportunity Board (M04) Unit Tests OpportunityBoardView renders score, title, and repair banner
+00:20 +57: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/opportunity_test.dart: Mobile Opportunity Board (M04) Unit Tests OpportunityBoardView renders score, title, and repair banner
+00:20 +58: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/opportunity_test.dart: Mobile Opportunity Board (M04) Unit Tests OpportunityBoardView renders score, title, and repair banner
+00:20 +59: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/copilot_test.dart: Mobile Copilot Widget Tests Target 1: Contributor triggers deletion refusal UI
+00:23 +60: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/copilot_test.dart: Mobile Copilot Widget Tests Target 1: Contributor triggers deletion refusal UI
+00:23 +61: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/copilot_test.dart: Mobile Copilot Widget Tests Target 1: Contributor triggers deletion refusal UI
+00:23 +62: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/copilot_test.dart: Mobile Copilot Widget Tests Target 1: Contributor triggers deletion refusal UI
+00:23 +63: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/copilot_test.dart: Mobile Copilot Widget Tests Target 1: Contributor triggers deletion refusal UI
+00:24 +64: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/continuity_os_test.dart: MobileCharacterLibraryView Widget Tests Renders quota card and character cards with default badge
+00:25 +65: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/continuity_os_test.dart: MobileCharacterLibraryView Widget Tests Renders quota card and character cards with default badge
+00:26 +66: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/continuity_os_test.dart: MobileCharacterLibraryView Widget Tests Renders quota card and character cards with default badge
+00:26 +67: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/continuity_os_test.dart: MobileCharacterLibraryView Widget Tests Switching default character atomically unsets previous default
+00:28 +68: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 1. All six operator modes identities are retained and switchable
+00:29 +69: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 1. All six operator modes identities are retained and switchable
+00:29 +70: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 1. All six operator modes identities are retained and switchable
+00:29 +71: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 1. All six operator modes identities are retained and switchable
+00:29 +72: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 1. All six operator modes identities are retained and switchable
+00:35 +73: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/trend_test.dart: TrendRadarView Widget Tests renders trend cards, degraded toggle, and search filter
+00:36 +74: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 2. Notifications sheet opens, marks read, and dismisses items
+00:37 +75: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:38 +76: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:38 +77: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:38 +78: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:38 +79: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:38 +80: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:38 +81: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:38 +82: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:38 +83: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:38 +84: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:38 +85: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:38 +86: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:38 +87: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:38 +88: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:38 +89: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:39 +90: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:39 +91: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:39 +92: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:39 +93: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:39 +94: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:39 +95: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:39 +96: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:39 +97: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:39 +98: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 3. Help center sheet opens, searches, and allows article rating
+00:39 +99: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 4. Why This Number sheet enforces strict Demo data isolation
+00:41 +100: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/competitor_test.dart: Mobile Competitor Registry & Benchmark (M03) Unit Tests Acceptance Target 1: Inferred Insight Labeled with Why Explanation
+00:41 +101: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 5. 4 UI States are switchable on mobile home
+00:41 +102: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 5. 4 UI States are switchable on mobile home
+00:41 +103: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 5. 4 UI States are switchable on mobile home
+00:41 +104: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/shell_notifications_help_test.dart: P0-08 Mobile Shells, Notifications & Help Center Entry 5. 4 UI States are switchable on mobile home
+00:43 +105: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/competitor_test.dart: Mobile Competitor UI Widget Tests CompetitorRegistryView renders title, cards, and AI relevance
+00:44 +106: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/competitor_test.dart: Mobile Competitor UI Widget Tests BenchmarkComparisonView renders stale banner, podium, and private revenue
+00:45 +107: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/competitor_test.dart: Mobile Competitor UI Widget Tests BenchmarkComparisonView renders stale banner, podium, and private revenue
+00:45 +108: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/competitor_test.dart: Mobile Competitor UI Widget Tests BenchmarkComparisonView renders stale banner, podium, and private revenue
+00:45 +109: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/competitor_test.dart: Mobile Competitor UI Widget Tests BenchmarkComparisonView renders stale banner, podium, and private revenue
+00:45 +110: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/competitor_test.dart: Mobile Competitor UI Widget Tests BenchmarkComparisonView renders stale banner, podium, and private revenue
+00:45 +111: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/competitor_test.dart: Mobile Competitor UI Widget Tests BenchmarkComparisonView renders stale banner, podium, and private revenue
+00:45 +112: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/competitor_test.dart: Mobile Competitor UI Widget Tests BenchmarkComparisonView renders stale banner, podium, and private revenue
+00:45 +113: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/competitor_test.dart: Mobile Competitor UI Widget Tests BenchmarkComparisonView renders stale banner, podium, and private revenue
+00:45 +114: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/competitor_test.dart: Mobile Competitor UI Widget Tests BenchmarkComparisonView renders stale banner, podium, and private revenue
+00:45 +115: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/competitor_test.dart: Mobile Competitor UI Widget Tests BenchmarkComparisonView renders stale banner, podium, and private revenue
+00:45 +116: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/competitor_test.dart: Mobile Competitor UI Widget Tests BenchmarkComparisonView renders stale banner, podium, and private revenue
+00:45 +117: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/competitor_test.dart: Mobile Competitor UI Widget Tests BenchmarkComparisonView renders stale banner, podium, and private revenue
+00:47 +118: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/capability_test.dart: P0-07 M058 Mobile Capability Verification & Read-Only Impersonation blocks unverified, stale (>10m), GET-only probe, and kill-switched routes
+00:47 +119: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/capability_test.dart: P0-07 M058 Mobile Capability Verification & Read-Only Impersonation ConnectionsScreen disables mutations under read-only impersonation
+00:50 +120: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/widget_test.dart: P0 mobile entry is explicit about fail-closed external provider gate when unconfigured
+00:51 +121: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/widget_test.dart: P0 mobile home is explicit about unavailable integrations when authenticated
+00:52 +122: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/widget_test.dart: P0 mobile home is explicit about unavailable integrations when authenticated
+00:52 +123: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/widget_test.dart: P0 mobile home is explicit about unavailable integrations when authenticated
+00:52 +124: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/widget_test.dart: P0 mobile home is explicit about unavailable integrations when authenticated
+00:53 +125: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/ai_remix_view_test.dart: P4-04 Mobile AI Remix & Multi-Merge Acceptance Tests Widget Test: Entering DRM URL shows usable error banner with actionable advice
+00:56 +126: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/ai_remix_view_test.dart: P4-04 Mobile AI Remix & Multi-Merge Acceptance Tests Widget Test: Entering DRM URL shows usable error banner with actionable advice
+00:56 +127: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/ai_remix_view_test.dart: P4-04 Mobile AI Remix & Multi-Merge Acceptance Tests Widget Test: Entering DRM URL shows usable error banner with actionable advice
+00:57 +128: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/widget_test.dart: P1-05 mobile home surfaces connector-free import and local Morning Brief schedule
+00:59 +129: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/intelligence_acceptance_test.dart: P2-04 Intelligence Acceptance and Access Proof (Mobile) Acceptance Target 1: Live source fails closed without valid access evidence
+00:59 +130: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/intelligence_acceptance_test.dart: P2-04 Intelligence Acceptance and Access Proof (Mobile) Acceptance Target 1: Expired token transitions to degraded state with reconnect flag
+00:59 +131: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/intelligence_acceptance_test.dart: P2-04 Intelligence Acceptance and Access Proof (Mobile) Acceptance Target 1: Valid evidence and scopes mark verified
+00:59 +132: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/intelligence_acceptance_test.dart: P2-04 Intelligence Acceptance and Access Proof (Mobile) Acceptance Target 2: Downstream conversions assigned to P3 and P6 (gated in P2)
+00:59 +133: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/intelligence_acceptance_test.dart: P2-04 Intelligence Acceptance and Access Proof (Mobile) Acceptance Target 3: Empty and degraded state summary evaluator
+00:59 +134: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/intelligence_acceptance_test.dart: P2-04 Intelligence Acceptance and Access Proof (Mobile) Formula neutralization protects against spreadsheet injection
+00:59 +135: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/intelligence_acceptance_test.dart: P2-04 Intelligence Acceptance and Access Proof (Mobile) Financial non-conflation guard blocks M02/M03/M04 entering M19 ledger
+00:59 +136: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/intelligence_acceptance_test.dart: P2-04 Intelligence Acceptance and Access Proof (Mobile) Widget Test: AccessEvidenceBadge renders verified and degraded states
+01:00 +137: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/intelligence_acceptance_test.dart: P2-04 Intelligence Acceptance and Access Proof (Mobile) Widget Test: AccessEvidenceBadge renders verified and degraded states
+01:00 +138: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/intelligence_acceptance_test.dart: P2-04 Intelligence Acceptance and Access Proof (Mobile) Widget Test: AccessEvidenceBadge renders verified and degraded states
+01:00 +139: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/intelligence_acceptance_test.dart: P2-04 Intelligence Acceptance and Access Proof (Mobile) Widget Test: AccessEvidenceBadge renders verified and degraded states
+01:01 +140: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/intelligence_acceptance_test.dart: P2-04 Intelligence Acceptance and Access Proof (Mobile) Widget Test: DownstreamGatingNoticeCard renders phase assignment & lineage
+01:01 +141: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/idea_engine_test.dart: Mobile Idea Engine (M05) - Acceptance Target Tests Acceptance Target 1: Duplicate idea warns without silent merge
+01:02 +142: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/idea_engine_test.dart: Mobile Idea Engine (M05) - Acceptance Target Tests Acceptance Target 2: Source lineage retained across types & archive
+01:02 +143: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/idea_engine_test.dart: Mobile Idea Engine (M05) - Acceptance Target Tests Acceptance Target 3: Mobile title-only draft works
+01:02 +144: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/idea_engine_test.dart: Mobile Idea Engine (M05) - Acceptance Target Tests RULE-M05-002: Canonical state machine progression
+01:02 +145: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/idea_engine_test.dart: Mobile Idea Engine (M05) - Acceptance Target Tests EC-M05-004: Validate required fields before script conversion
+01:02 +146: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/idea_engine_test.dart: Mobile Idea Engine Widget Tests QuickCaptureSheet creates title-only draft
+01:03 +147: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/idea_engine_test.dart: Mobile Idea Engine Widget Tests QuickCaptureSheet creates title-only draft
+01:04 +148: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/idea_engine_test.dart: Mobile Idea Engine Widget Tests QuickCaptureSheet creates title-only draft
+01:06 +149: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/content_handoff_acceptance_test.dart: P3-05 Content Handoffs & Mobile Review Acceptance Tests Target 1: Source chain reaches approved brief SourceChainLineageWidget renders nodes, badges and blockers properly
+01:06 +150: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/idea_engine_test.dart: Mobile Idea Engine Widget Tests QuickCaptureSheet shows duplicate warning and allows proceeding without merge
+01:06 +151: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/idea_engine_test.dart: Mobile Idea Engine Widget Tests QuickCaptureSheet shows duplicate warning and allows proceeding without merge
+01:06 +152: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/content_handoff_acceptance_test.dart: P3-05 Content Handoffs & Mobile Review Acceptance Tests Target 2: Concurrent edits preserve data MobileScriptReviewView displays stale warning and blocks approval on conflict
+01:07 +153: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/idea_engine_test.dart: Mobile Idea Engine Widget Tests IdeaBoardView renders ideas, provenance, status filter and quick capture CTA
+01:08 +154: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/content_handoff_acceptance_test.dart: P3-05 Content Handoffs & Mobile Review Acceptance Tests Target 2: Concurrent edits preserve data MobileScriptEditorView displays conflict banner and disables save when stale
+01:08 +155: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/content_handoff_acceptance_test.dart: P3-05 Content Handoffs & Mobile Review Acceptance Tests Target 3: No publish side effects from creative assistant CreativeAssistantPublishCheck detects publish intents across English and Vietnamese
+01:08 +156: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/content_handoff_acceptance_test.dart: P3-05 Content Handoffs & Mobile Review Acceptance Tests Target 3: No publish side effects from creative assistant MobileScriptEditorView creative assistant blocks publish command in sheet
+01:09 +157: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/content_handoff_acceptance_test.dart: P3-05 Content Handoffs & Mobile Review Acceptance Tests M011 Mobile Script Editor Lifecycle & Readthrough Timer Timer starts, updates display, and resets properly
+01:10 +158: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/content_handoff_acceptance_test.dart: P3-05 Content Handoffs & Mobile Review Acceptance Tests M011 Mobile Script Editor Lifecycle & Readthrough Timer Saving script calls onSaveScript and bumps versionIndex
+01:11 +159: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/mobile/test/content_handoff_acceptance_test.dart: P3-05 Content Handoffs & Mobile Review Acceptance Tests M011 Mobile Script Editor Lifecycle & Readthrough Timer Goto production button is disabled if ready-for-production prerequisites not met
+01:12 +160: All tests passed!
+=== Flutter Mobile Quality Gate: ALL CHECKS PASSED ===

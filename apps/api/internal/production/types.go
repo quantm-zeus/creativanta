@@ -141,6 +141,9 @@ type Asset struct {
 	ErrorMessage          string                `json:"error_message,omitempty"`
 	ParentAssetID         string                `json:"parent_asset_id,omitempty"`
 	DerivativeType        string                `json:"derivative_type,omitempty"`
+	DriftScore            *float32              `json:"drift_score,omitempty"`
+	DriftSeverity         string                `json:"drift_severity,omitempty"` // none, low_drift, moderate_drift, high_drift
+	DriftDetailsJSON      string                `json:"drift_details_json,omitempty"`
 	CreatedBy             string                `json:"created_by,omitempty"`
 	CreatedAt             time.Time             `json:"created_at"`
 	UpdatedAt             time.Time             `json:"updated_at"`
@@ -390,3 +393,117 @@ type VideoEditJobRecord struct {
 	UpdatedAt          time.Time             `json:"updated_at"`
 	DeletedAt          *time.Time            `json:"deleted_at,omitempty"`
 }
+
+// ----------------------------------------------------------------------------
+// Style Learning, Character Preview & Drift QA Types (M07 EF-07 & M08)
+// ----------------------------------------------------------------------------
+
+// Domain errors for P4-07.
+var (
+	ErrHighDriftBlocksReadiness = errors.New("high drift blocks asset readiness: asset has high drift and unresolved blocking violation; requires Manager+ override with explicit reason")
+	ErrOverrideReasonRequired   = errors.New("explicit override reason is required to unblock high drift violation")
+	ErrConsentNotVerified       = errors.New("digital twin consent has not been verified")
+	ErrStylePackNotFound        = errors.New("style pack not found")
+	ErrStylePackDeleted         = errors.New("style pack has been deleted")
+	ErrInvalidPreviewDuration   = errors.New("preview duration must be between 1 and 30 seconds (standard 15s)")
+	ErrInvalidReferenceVideos   = errors.New("style extraction requires 1 to 5 reference videos")
+	ErrContinuityPackNotFound   = errors.New("continuity pack not found")
+	ErrViolationNotFound        = errors.New("continuity violation not found")
+)
+
+// DomainEvent represents an emitted domain event per domain_event_catalog.md §5, §15.
+type DomainEvent struct {
+	EventType   string
+	WorkspaceID string
+	Payload     map[string]any
+	OccurredAt  time.Time
+}
+
+// StylePackRecord represents a learned editing style pack (database_schema.md §22.7).
+type StylePackRecord struct {
+	StylePackID        string     `json:"style_pack_id"`
+	WorkspaceID        string     `json:"workspace_id"`
+	Name               string     `json:"name"`
+	SourceAssetID      string     `json:"source_asset_id"`
+	ExtractedStyleJSON string     `json:"extracted_style_json"`
+	IsActive           bool       `json:"is_active"`
+	ContinuityPackID   string     `json:"continuity_pack_id,omitempty"`
+	CreatedAt          time.Time  `json:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
+	DeletedAt          *time.Time `json:"deleted_at,omitempty"`
+}
+
+// StyleElementsDomain captures 7 extracted styling parameters (Screen W032).
+type StyleElementsDomain struct {
+	ColorPalette     string   `json:"color_palette"`
+	CutPacing        string   `json:"cut_pacing"`
+	TextStyle        string   `json:"text_style"`
+	MusicStyle       string   `json:"music_style"`
+	Transitions      string   `json:"transitions"`
+	HookPattern      string   `json:"hook_pattern"`
+	VisualMood       string   `json:"visual_mood"`
+	AvgCutDurationMs int32    `json:"avg_cut_duration_ms"`
+	ColorPaletteHex  []string `json:"color_palette_hex"`
+}
+
+// ContinuityViolationRecord represents a row in continuity_violations (§7.5).
+type ContinuityViolationRecord struct {
+	ViolationID    string     `json:"violation_id"`
+	WorkspaceID    string     `json:"workspace_id"`
+	AssetID        string     `json:"asset_id"`
+	PackID         string     `json:"pack_id"`
+	ViolationType  string     `json:"violation_type"` // visual_drift, voice_drift, brand_drift, style_drift
+	Severity       string     `json:"severity"`       // warning, blocking
+	Description    string     `json:"description"`
+	DriftScore     float32    `json:"drift_score"`
+	Resolved       bool       `json:"resolved"`
+	ResolvedBy     string     `json:"resolved_by,omitempty"`
+	ResolvedAt     *time.Time `json:"resolved_at,omitempty"`
+	OverrideReason string     `json:"override_reason,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	DeletedAt      *time.Time `json:"deleted_at,omitempty"`
+}
+
+// DriftEvaluationDomain represents the result of evaluating asset drift against canonical references.
+type DriftEvaluationDomain struct {
+	AssetID          string   `json:"asset_id"`
+	PackID           string   `json:"pack_id"`
+	PackVersion      int32    `json:"pack_version"`
+	DriftScore       float32  `json:"drift_score"`
+	DriftSeverity    string   `json:"drift_severity"` // none, low_drift, moderate_drift, high_drift
+	IsBlocked        bool     `json:"is_blocked"`
+	ViolationReasons []string `json:"violation_reasons"`
+	DetailsJSON      string   `json:"details_json"`
+	ViolationID      string   `json:"violation_id,omitempty"`
+}
+
+// ProductionCharacter represents a character avatar for video generation and previews.
+type ProductionCharacter struct {
+	CharacterID        string
+	WorkspaceID        string
+	Name               string
+	CharacterType      string // digital_twin, ai_generated, stock
+	Description        string
+	ConsentVerified    bool
+	ConsentRecordID    string
+	IsDefault          bool
+	Status             string // creating, ready, failed, archived
+	CharacterPackID    string
+	VisualSettingsJSON string
+	VoiceSettingsJSON  string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+// ProductionConsentRecord represents a legally binding consent record.
+type ProductionConsentRecord struct {
+	ConsentID   string
+	UserID      string
+	WorkspaceID string
+	ConsentType string
+	Version     string
+	Granted     bool
+	GrantedAt   *time.Time
+	RevokedAt   *time.Time
+}
+

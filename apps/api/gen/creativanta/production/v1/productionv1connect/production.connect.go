@@ -35,6 +35,10 @@ const (
 	RemixServiceName = "creativanta.production.v1.RemixService"
 	// VideoEditJobServiceName is the fully-qualified name of the VideoEditJobService service.
 	VideoEditJobServiceName = "creativanta.production.v1.VideoEditJobService"
+	// StylePackServiceName is the fully-qualified name of the StylePackService service.
+	StylePackServiceName = "creativanta.production.v1.StylePackService"
+	// AIServiceName is the fully-qualified name of the AIService service.
+	AIServiceName = "creativanta.production.v1.AIService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -72,6 +76,12 @@ const (
 	AssetServicePromoteCanonicalProcedure = "/creativanta.production.v1.AssetService/PromoteCanonical"
 	// AssetServiceUploadProcedure is the fully-qualified name of the AssetService's Upload RPC.
 	AssetServiceUploadProcedure = "/creativanta.production.v1.AssetService/Upload"
+	// AssetServiceEvaluateDriftProcedure is the fully-qualified name of the AssetService's
+	// EvaluateDrift RPC.
+	AssetServiceEvaluateDriftProcedure = "/creativanta.production.v1.AssetService/EvaluateDrift"
+	// AssetServiceOverrideDriftViolationProcedure is the fully-qualified name of the AssetService's
+	// OverrideDriftViolation RPC.
+	AssetServiceOverrideDriftViolationProcedure = "/creativanta.production.v1.AssetService/OverrideDriftViolation"
 	// TranslationServiceCreateProcedure is the fully-qualified name of the TranslationService's Create
 	// RPC.
 	TranslationServiceCreateProcedure = "/creativanta.production.v1.TranslationService/Create"
@@ -136,6 +146,27 @@ const (
 	// VideoEditJobServiceRetryProcedure is the fully-qualified name of the VideoEditJobService's Retry
 	// RPC.
 	VideoEditJobServiceRetryProcedure = "/creativanta.production.v1.VideoEditJobService/Retry"
+	// StylePackServiceExtractProcedure is the fully-qualified name of the StylePackService's Extract
+	// RPC.
+	StylePackServiceExtractProcedure = "/creativanta.production.v1.StylePackService/Extract"
+	// StylePackServiceCreateProcedure is the fully-qualified name of the StylePackService's Create RPC.
+	StylePackServiceCreateProcedure = "/creativanta.production.v1.StylePackService/Create"
+	// StylePackServiceGetProcedure is the fully-qualified name of the StylePackService's Get RPC.
+	StylePackServiceGetProcedure = "/creativanta.production.v1.StylePackService/Get"
+	// StylePackServiceListProcedure is the fully-qualified name of the StylePackService's List RPC.
+	StylePackServiceListProcedure = "/creativanta.production.v1.StylePackService/List"
+	// StylePackServiceApplyProcedure is the fully-qualified name of the StylePackService's Apply RPC.
+	StylePackServiceApplyProcedure = "/creativanta.production.v1.StylePackService/Apply"
+	// StylePackServiceDeleteProcedure is the fully-qualified name of the StylePackService's Delete RPC.
+	StylePackServiceDeleteProcedure = "/creativanta.production.v1.StylePackService/Delete"
+	// AIServiceGenerateCharacterPreviewProcedure is the fully-qualified name of the AIService's
+	// GenerateCharacterPreview RPC.
+	AIServiceGenerateCharacterPreviewProcedure = "/creativanta.production.v1.AIService/GenerateCharacterPreview"
+	// AIServiceQuoteCharacterPreviewProcedure is the fully-qualified name of the AIService's
+	// QuoteCharacterPreview RPC.
+	AIServiceQuoteCharacterPreviewProcedure = "/creativanta.production.v1.AIService/QuoteCharacterPreview"
+	// AIServiceAnalyzeStyleProcedure is the fully-qualified name of the AIService's AnalyzeStyle RPC.
+	AIServiceAnalyzeStyleProcedure = "/creativanta.production.v1.AIService/AnalyzeStyle"
 )
 
 // StudioServiceClient is a client for the creativanta.production.v1.StudioService service.
@@ -338,6 +369,10 @@ type AssetServiceClient interface {
 	PromoteCanonical(context.Context, *connect.Request[v1.PromoteCanonicalRequest]) (*connect.Response[v1.PromoteCanonicalResponse], error)
 	// Upload uploads a source asset safely with MIME and virus scan checks.
 	Upload(context.Context, *connect.Request[v1.UploadRequest]) (*connect.Response[v1.UploadResponse], error)
+	// EvaluateDrift evaluates asset drift against canonical references and blocks high drift (QA).
+	EvaluateDrift(context.Context, *connect.Request[v1.EvaluateDriftRequest]) (*connect.Response[v1.EvaluateDriftResponse], error)
+	// OverrideDriftViolation resolves a blocking drift violation with manager justification.
+	OverrideDriftViolation(context.Context, *connect.Request[v1.OverrideDriftViolationRequest]) (*connect.Response[v1.OverrideDriftViolationResponse], error)
 }
 
 // NewAssetServiceClient constructs a client for the creativanta.production.v1.AssetService service.
@@ -393,18 +428,32 @@ func NewAssetServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(assetServiceMethods.ByName("Upload")),
 			connect.WithClientOptions(opts...),
 		),
+		evaluateDrift: connect.NewClient[v1.EvaluateDriftRequest, v1.EvaluateDriftResponse](
+			httpClient,
+			baseURL+AssetServiceEvaluateDriftProcedure,
+			connect.WithSchema(assetServiceMethods.ByName("EvaluateDrift")),
+			connect.WithClientOptions(opts...),
+		),
+		overrideDriftViolation: connect.NewClient[v1.OverrideDriftViolationRequest, v1.OverrideDriftViolationResponse](
+			httpClient,
+			baseURL+AssetServiceOverrideDriftViolationProcedure,
+			connect.WithSchema(assetServiceMethods.ByName("OverrideDriftViolation")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // assetServiceClient implements AssetServiceClient.
 type assetServiceClient struct {
-	generate         *connect.Client[v1.GenerateRequest, v1.GenerateResponse]
-	getStatus        *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
-	list             *connect.Client[v1.ListRequest, v1.ListResponse]
-	get              *connect.Client[v1.GetRequest, v1.GetResponse]
-	approve          *connect.Client[v1.ApproveRequest, v1.ApproveResponse]
-	promoteCanonical *connect.Client[v1.PromoteCanonicalRequest, v1.PromoteCanonicalResponse]
-	upload           *connect.Client[v1.UploadRequest, v1.UploadResponse]
+	generate               *connect.Client[v1.GenerateRequest, v1.GenerateResponse]
+	getStatus              *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
+	list                   *connect.Client[v1.ListRequest, v1.ListResponse]
+	get                    *connect.Client[v1.GetRequest, v1.GetResponse]
+	approve                *connect.Client[v1.ApproveRequest, v1.ApproveResponse]
+	promoteCanonical       *connect.Client[v1.PromoteCanonicalRequest, v1.PromoteCanonicalResponse]
+	upload                 *connect.Client[v1.UploadRequest, v1.UploadResponse]
+	evaluateDrift          *connect.Client[v1.EvaluateDriftRequest, v1.EvaluateDriftResponse]
+	overrideDriftViolation *connect.Client[v1.OverrideDriftViolationRequest, v1.OverrideDriftViolationResponse]
 }
 
 // Generate calls creativanta.production.v1.AssetService.Generate.
@@ -442,6 +491,16 @@ func (c *assetServiceClient) Upload(ctx context.Context, req *connect.Request[v1
 	return c.upload.CallUnary(ctx, req)
 }
 
+// EvaluateDrift calls creativanta.production.v1.AssetService.EvaluateDrift.
+func (c *assetServiceClient) EvaluateDrift(ctx context.Context, req *connect.Request[v1.EvaluateDriftRequest]) (*connect.Response[v1.EvaluateDriftResponse], error) {
+	return c.evaluateDrift.CallUnary(ctx, req)
+}
+
+// OverrideDriftViolation calls creativanta.production.v1.AssetService.OverrideDriftViolation.
+func (c *assetServiceClient) OverrideDriftViolation(ctx context.Context, req *connect.Request[v1.OverrideDriftViolationRequest]) (*connect.Response[v1.OverrideDriftViolationResponse], error) {
+	return c.overrideDriftViolation.CallUnary(ctx, req)
+}
+
 // AssetServiceHandler is an implementation of the creativanta.production.v1.AssetService service.
 type AssetServiceHandler interface {
 	// Generate initiates AI generation or executes preflight budget preview (dry_run).
@@ -458,6 +517,10 @@ type AssetServiceHandler interface {
 	PromoteCanonical(context.Context, *connect.Request[v1.PromoteCanonicalRequest]) (*connect.Response[v1.PromoteCanonicalResponse], error)
 	// Upload uploads a source asset safely with MIME and virus scan checks.
 	Upload(context.Context, *connect.Request[v1.UploadRequest]) (*connect.Response[v1.UploadResponse], error)
+	// EvaluateDrift evaluates asset drift against canonical references and blocks high drift (QA).
+	EvaluateDrift(context.Context, *connect.Request[v1.EvaluateDriftRequest]) (*connect.Response[v1.EvaluateDriftResponse], error)
+	// OverrideDriftViolation resolves a blocking drift violation with manager justification.
+	OverrideDriftViolation(context.Context, *connect.Request[v1.OverrideDriftViolationRequest]) (*connect.Response[v1.OverrideDriftViolationResponse], error)
 }
 
 // NewAssetServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -509,6 +572,18 @@ func NewAssetServiceHandler(svc AssetServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(assetServiceMethods.ByName("Upload")),
 		connect.WithHandlerOptions(opts...),
 	)
+	assetServiceEvaluateDriftHandler := connect.NewUnaryHandler(
+		AssetServiceEvaluateDriftProcedure,
+		svc.EvaluateDrift,
+		connect.WithSchema(assetServiceMethods.ByName("EvaluateDrift")),
+		connect.WithHandlerOptions(opts...),
+	)
+	assetServiceOverrideDriftViolationHandler := connect.NewUnaryHandler(
+		AssetServiceOverrideDriftViolationProcedure,
+		svc.OverrideDriftViolation,
+		connect.WithSchema(assetServiceMethods.ByName("OverrideDriftViolation")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/creativanta.production.v1.AssetService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AssetServiceGenerateProcedure:
@@ -525,6 +600,10 @@ func NewAssetServiceHandler(svc AssetServiceHandler, opts ...connect.HandlerOpti
 			assetServicePromoteCanonicalHandler.ServeHTTP(w, r)
 		case AssetServiceUploadProcedure:
 			assetServiceUploadHandler.ServeHTTP(w, r)
+		case AssetServiceEvaluateDriftProcedure:
+			assetServiceEvaluateDriftHandler.ServeHTTP(w, r)
+		case AssetServiceOverrideDriftViolationProcedure:
+			assetServiceOverrideDriftViolationHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -560,6 +639,14 @@ func (UnimplementedAssetServiceHandler) PromoteCanonical(context.Context, *conne
 
 func (UnimplementedAssetServiceHandler) Upload(context.Context, *connect.Request[v1.UploadRequest]) (*connect.Response[v1.UploadResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.AssetService.Upload is not implemented"))
+}
+
+func (UnimplementedAssetServiceHandler) EvaluateDrift(context.Context, *connect.Request[v1.EvaluateDriftRequest]) (*connect.Response[v1.EvaluateDriftResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.AssetService.EvaluateDrift is not implemented"))
+}
+
+func (UnimplementedAssetServiceHandler) OverrideDriftViolation(context.Context, *connect.Request[v1.OverrideDriftViolationRequest]) (*connect.Response[v1.OverrideDriftViolationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.AssetService.OverrideDriftViolation is not implemented"))
 }
 
 // TranslationServiceClient is a client for the creativanta.production.v1.TranslationService
@@ -1433,4 +1520,327 @@ func (UnimplementedVideoEditJobServiceHandler) Cancel(context.Context, *connect.
 
 func (UnimplementedVideoEditJobServiceHandler) Retry(context.Context, *connect.Request[v1.VideoEditJobServiceRetryRequest]) (*connect.Response[v1.VideoEditJobServiceRetryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.VideoEditJobService.Retry is not implemented"))
+}
+
+// StylePackServiceClient is a client for the creativanta.production.v1.StylePackService service.
+type StylePackServiceClient interface {
+	Extract(context.Context, *connect.Request[v1.StylePackServiceExtractRequest]) (*connect.Response[v1.StylePackServiceExtractResponse], error)
+	Create(context.Context, *connect.Request[v1.StylePackServiceCreateRequest]) (*connect.Response[v1.StylePackServiceCreateResponse], error)
+	Get(context.Context, *connect.Request[v1.StylePackServiceGetRequest]) (*connect.Response[v1.StylePackServiceGetResponse], error)
+	List(context.Context, *connect.Request[v1.StylePackServiceListRequest]) (*connect.Response[v1.StylePackServiceListResponse], error)
+	Apply(context.Context, *connect.Request[v1.StylePackServiceApplyRequest]) (*connect.Response[v1.StylePackServiceApplyResponse], error)
+	Delete(context.Context, *connect.Request[v1.StylePackServiceDeleteRequest]) (*connect.Response[v1.StylePackServiceDeleteResponse], error)
+}
+
+// NewStylePackServiceClient constructs a client for the creativanta.production.v1.StylePackService
+// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
+// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
+// the connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewStylePackServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) StylePackServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	stylePackServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("StylePackService").Methods()
+	return &stylePackServiceClient{
+		extract: connect.NewClient[v1.StylePackServiceExtractRequest, v1.StylePackServiceExtractResponse](
+			httpClient,
+			baseURL+StylePackServiceExtractProcedure,
+			connect.WithSchema(stylePackServiceMethods.ByName("Extract")),
+			connect.WithClientOptions(opts...),
+		),
+		create: connect.NewClient[v1.StylePackServiceCreateRequest, v1.StylePackServiceCreateResponse](
+			httpClient,
+			baseURL+StylePackServiceCreateProcedure,
+			connect.WithSchema(stylePackServiceMethods.ByName("Create")),
+			connect.WithClientOptions(opts...),
+		),
+		get: connect.NewClient[v1.StylePackServiceGetRequest, v1.StylePackServiceGetResponse](
+			httpClient,
+			baseURL+StylePackServiceGetProcedure,
+			connect.WithSchema(stylePackServiceMethods.ByName("Get")),
+			connect.WithClientOptions(opts...),
+		),
+		list: connect.NewClient[v1.StylePackServiceListRequest, v1.StylePackServiceListResponse](
+			httpClient,
+			baseURL+StylePackServiceListProcedure,
+			connect.WithSchema(stylePackServiceMethods.ByName("List")),
+			connect.WithClientOptions(opts...),
+		),
+		apply: connect.NewClient[v1.StylePackServiceApplyRequest, v1.StylePackServiceApplyResponse](
+			httpClient,
+			baseURL+StylePackServiceApplyProcedure,
+			connect.WithSchema(stylePackServiceMethods.ByName("Apply")),
+			connect.WithClientOptions(opts...),
+		),
+		delete: connect.NewClient[v1.StylePackServiceDeleteRequest, v1.StylePackServiceDeleteResponse](
+			httpClient,
+			baseURL+StylePackServiceDeleteProcedure,
+			connect.WithSchema(stylePackServiceMethods.ByName("Delete")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// stylePackServiceClient implements StylePackServiceClient.
+type stylePackServiceClient struct {
+	extract *connect.Client[v1.StylePackServiceExtractRequest, v1.StylePackServiceExtractResponse]
+	create  *connect.Client[v1.StylePackServiceCreateRequest, v1.StylePackServiceCreateResponse]
+	get     *connect.Client[v1.StylePackServiceGetRequest, v1.StylePackServiceGetResponse]
+	list    *connect.Client[v1.StylePackServiceListRequest, v1.StylePackServiceListResponse]
+	apply   *connect.Client[v1.StylePackServiceApplyRequest, v1.StylePackServiceApplyResponse]
+	delete  *connect.Client[v1.StylePackServiceDeleteRequest, v1.StylePackServiceDeleteResponse]
+}
+
+// Extract calls creativanta.production.v1.StylePackService.Extract.
+func (c *stylePackServiceClient) Extract(ctx context.Context, req *connect.Request[v1.StylePackServiceExtractRequest]) (*connect.Response[v1.StylePackServiceExtractResponse], error) {
+	return c.extract.CallUnary(ctx, req)
+}
+
+// Create calls creativanta.production.v1.StylePackService.Create.
+func (c *stylePackServiceClient) Create(ctx context.Context, req *connect.Request[v1.StylePackServiceCreateRequest]) (*connect.Response[v1.StylePackServiceCreateResponse], error) {
+	return c.create.CallUnary(ctx, req)
+}
+
+// Get calls creativanta.production.v1.StylePackService.Get.
+func (c *stylePackServiceClient) Get(ctx context.Context, req *connect.Request[v1.StylePackServiceGetRequest]) (*connect.Response[v1.StylePackServiceGetResponse], error) {
+	return c.get.CallUnary(ctx, req)
+}
+
+// List calls creativanta.production.v1.StylePackService.List.
+func (c *stylePackServiceClient) List(ctx context.Context, req *connect.Request[v1.StylePackServiceListRequest]) (*connect.Response[v1.StylePackServiceListResponse], error) {
+	return c.list.CallUnary(ctx, req)
+}
+
+// Apply calls creativanta.production.v1.StylePackService.Apply.
+func (c *stylePackServiceClient) Apply(ctx context.Context, req *connect.Request[v1.StylePackServiceApplyRequest]) (*connect.Response[v1.StylePackServiceApplyResponse], error) {
+	return c.apply.CallUnary(ctx, req)
+}
+
+// Delete calls creativanta.production.v1.StylePackService.Delete.
+func (c *stylePackServiceClient) Delete(ctx context.Context, req *connect.Request[v1.StylePackServiceDeleteRequest]) (*connect.Response[v1.StylePackServiceDeleteResponse], error) {
+	return c.delete.CallUnary(ctx, req)
+}
+
+// StylePackServiceHandler is an implementation of the creativanta.production.v1.StylePackService
+// service.
+type StylePackServiceHandler interface {
+	Extract(context.Context, *connect.Request[v1.StylePackServiceExtractRequest]) (*connect.Response[v1.StylePackServiceExtractResponse], error)
+	Create(context.Context, *connect.Request[v1.StylePackServiceCreateRequest]) (*connect.Response[v1.StylePackServiceCreateResponse], error)
+	Get(context.Context, *connect.Request[v1.StylePackServiceGetRequest]) (*connect.Response[v1.StylePackServiceGetResponse], error)
+	List(context.Context, *connect.Request[v1.StylePackServiceListRequest]) (*connect.Response[v1.StylePackServiceListResponse], error)
+	Apply(context.Context, *connect.Request[v1.StylePackServiceApplyRequest]) (*connect.Response[v1.StylePackServiceApplyResponse], error)
+	Delete(context.Context, *connect.Request[v1.StylePackServiceDeleteRequest]) (*connect.Response[v1.StylePackServiceDeleteResponse], error)
+}
+
+// NewStylePackServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewStylePackServiceHandler(svc StylePackServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	stylePackServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("StylePackService").Methods()
+	stylePackServiceExtractHandler := connect.NewUnaryHandler(
+		StylePackServiceExtractProcedure,
+		svc.Extract,
+		connect.WithSchema(stylePackServiceMethods.ByName("Extract")),
+		connect.WithHandlerOptions(opts...),
+	)
+	stylePackServiceCreateHandler := connect.NewUnaryHandler(
+		StylePackServiceCreateProcedure,
+		svc.Create,
+		connect.WithSchema(stylePackServiceMethods.ByName("Create")),
+		connect.WithHandlerOptions(opts...),
+	)
+	stylePackServiceGetHandler := connect.NewUnaryHandler(
+		StylePackServiceGetProcedure,
+		svc.Get,
+		connect.WithSchema(stylePackServiceMethods.ByName("Get")),
+		connect.WithHandlerOptions(opts...),
+	)
+	stylePackServiceListHandler := connect.NewUnaryHandler(
+		StylePackServiceListProcedure,
+		svc.List,
+		connect.WithSchema(stylePackServiceMethods.ByName("List")),
+		connect.WithHandlerOptions(opts...),
+	)
+	stylePackServiceApplyHandler := connect.NewUnaryHandler(
+		StylePackServiceApplyProcedure,
+		svc.Apply,
+		connect.WithSchema(stylePackServiceMethods.ByName("Apply")),
+		connect.WithHandlerOptions(opts...),
+	)
+	stylePackServiceDeleteHandler := connect.NewUnaryHandler(
+		StylePackServiceDeleteProcedure,
+		svc.Delete,
+		connect.WithSchema(stylePackServiceMethods.ByName("Delete")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.production.v1.StylePackService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case StylePackServiceExtractProcedure:
+			stylePackServiceExtractHandler.ServeHTTP(w, r)
+		case StylePackServiceCreateProcedure:
+			stylePackServiceCreateHandler.ServeHTTP(w, r)
+		case StylePackServiceGetProcedure:
+			stylePackServiceGetHandler.ServeHTTP(w, r)
+		case StylePackServiceListProcedure:
+			stylePackServiceListHandler.ServeHTTP(w, r)
+		case StylePackServiceApplyProcedure:
+			stylePackServiceApplyHandler.ServeHTTP(w, r)
+		case StylePackServiceDeleteProcedure:
+			stylePackServiceDeleteHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedStylePackServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedStylePackServiceHandler struct{}
+
+func (UnimplementedStylePackServiceHandler) Extract(context.Context, *connect.Request[v1.StylePackServiceExtractRequest]) (*connect.Response[v1.StylePackServiceExtractResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.StylePackService.Extract is not implemented"))
+}
+
+func (UnimplementedStylePackServiceHandler) Create(context.Context, *connect.Request[v1.StylePackServiceCreateRequest]) (*connect.Response[v1.StylePackServiceCreateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.StylePackService.Create is not implemented"))
+}
+
+func (UnimplementedStylePackServiceHandler) Get(context.Context, *connect.Request[v1.StylePackServiceGetRequest]) (*connect.Response[v1.StylePackServiceGetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.StylePackService.Get is not implemented"))
+}
+
+func (UnimplementedStylePackServiceHandler) List(context.Context, *connect.Request[v1.StylePackServiceListRequest]) (*connect.Response[v1.StylePackServiceListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.StylePackService.List is not implemented"))
+}
+
+func (UnimplementedStylePackServiceHandler) Apply(context.Context, *connect.Request[v1.StylePackServiceApplyRequest]) (*connect.Response[v1.StylePackServiceApplyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.StylePackService.Apply is not implemented"))
+}
+
+func (UnimplementedStylePackServiceHandler) Delete(context.Context, *connect.Request[v1.StylePackServiceDeleteRequest]) (*connect.Response[v1.StylePackServiceDeleteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.StylePackService.Delete is not implemented"))
+}
+
+// AIServiceClient is a client for the creativanta.production.v1.AIService service.
+type AIServiceClient interface {
+	GenerateCharacterPreview(context.Context, *connect.Request[v1.GenerateCharacterPreviewRequest]) (*connect.Response[v1.GenerateCharacterPreviewResponse], error)
+	QuoteCharacterPreview(context.Context, *connect.Request[v1.QuoteCharacterPreviewRequest]) (*connect.Response[v1.QuoteCharacterPreviewResponse], error)
+	AnalyzeStyle(context.Context, *connect.Request[v1.AnalyzeStyleRequest]) (*connect.Response[v1.AnalyzeStyleResponse], error)
+}
+
+// NewAIServiceClient constructs a client for the creativanta.production.v1.AIService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewAIServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AIServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	aIServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("AIService").Methods()
+	return &aIServiceClient{
+		generateCharacterPreview: connect.NewClient[v1.GenerateCharacterPreviewRequest, v1.GenerateCharacterPreviewResponse](
+			httpClient,
+			baseURL+AIServiceGenerateCharacterPreviewProcedure,
+			connect.WithSchema(aIServiceMethods.ByName("GenerateCharacterPreview")),
+			connect.WithClientOptions(opts...),
+		),
+		quoteCharacterPreview: connect.NewClient[v1.QuoteCharacterPreviewRequest, v1.QuoteCharacterPreviewResponse](
+			httpClient,
+			baseURL+AIServiceQuoteCharacterPreviewProcedure,
+			connect.WithSchema(aIServiceMethods.ByName("QuoteCharacterPreview")),
+			connect.WithClientOptions(opts...),
+		),
+		analyzeStyle: connect.NewClient[v1.AnalyzeStyleRequest, v1.AnalyzeStyleResponse](
+			httpClient,
+			baseURL+AIServiceAnalyzeStyleProcedure,
+			connect.WithSchema(aIServiceMethods.ByName("AnalyzeStyle")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// aIServiceClient implements AIServiceClient.
+type aIServiceClient struct {
+	generateCharacterPreview *connect.Client[v1.GenerateCharacterPreviewRequest, v1.GenerateCharacterPreviewResponse]
+	quoteCharacterPreview    *connect.Client[v1.QuoteCharacterPreviewRequest, v1.QuoteCharacterPreviewResponse]
+	analyzeStyle             *connect.Client[v1.AnalyzeStyleRequest, v1.AnalyzeStyleResponse]
+}
+
+// GenerateCharacterPreview calls creativanta.production.v1.AIService.GenerateCharacterPreview.
+func (c *aIServiceClient) GenerateCharacterPreview(ctx context.Context, req *connect.Request[v1.GenerateCharacterPreviewRequest]) (*connect.Response[v1.GenerateCharacterPreviewResponse], error) {
+	return c.generateCharacterPreview.CallUnary(ctx, req)
+}
+
+// QuoteCharacterPreview calls creativanta.production.v1.AIService.QuoteCharacterPreview.
+func (c *aIServiceClient) QuoteCharacterPreview(ctx context.Context, req *connect.Request[v1.QuoteCharacterPreviewRequest]) (*connect.Response[v1.QuoteCharacterPreviewResponse], error) {
+	return c.quoteCharacterPreview.CallUnary(ctx, req)
+}
+
+// AnalyzeStyle calls creativanta.production.v1.AIService.AnalyzeStyle.
+func (c *aIServiceClient) AnalyzeStyle(ctx context.Context, req *connect.Request[v1.AnalyzeStyleRequest]) (*connect.Response[v1.AnalyzeStyleResponse], error) {
+	return c.analyzeStyle.CallUnary(ctx, req)
+}
+
+// AIServiceHandler is an implementation of the creativanta.production.v1.AIService service.
+type AIServiceHandler interface {
+	GenerateCharacterPreview(context.Context, *connect.Request[v1.GenerateCharacterPreviewRequest]) (*connect.Response[v1.GenerateCharacterPreviewResponse], error)
+	QuoteCharacterPreview(context.Context, *connect.Request[v1.QuoteCharacterPreviewRequest]) (*connect.Response[v1.QuoteCharacterPreviewResponse], error)
+	AnalyzeStyle(context.Context, *connect.Request[v1.AnalyzeStyleRequest]) (*connect.Response[v1.AnalyzeStyleResponse], error)
+}
+
+// NewAIServiceHandler builds an HTTP handler from the service implementation. It returns the path
+// on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewAIServiceHandler(svc AIServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	aIServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("AIService").Methods()
+	aIServiceGenerateCharacterPreviewHandler := connect.NewUnaryHandler(
+		AIServiceGenerateCharacterPreviewProcedure,
+		svc.GenerateCharacterPreview,
+		connect.WithSchema(aIServiceMethods.ByName("GenerateCharacterPreview")),
+		connect.WithHandlerOptions(opts...),
+	)
+	aIServiceQuoteCharacterPreviewHandler := connect.NewUnaryHandler(
+		AIServiceQuoteCharacterPreviewProcedure,
+		svc.QuoteCharacterPreview,
+		connect.WithSchema(aIServiceMethods.ByName("QuoteCharacterPreview")),
+		connect.WithHandlerOptions(opts...),
+	)
+	aIServiceAnalyzeStyleHandler := connect.NewUnaryHandler(
+		AIServiceAnalyzeStyleProcedure,
+		svc.AnalyzeStyle,
+		connect.WithSchema(aIServiceMethods.ByName("AnalyzeStyle")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.production.v1.AIService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case AIServiceGenerateCharacterPreviewProcedure:
+			aIServiceGenerateCharacterPreviewHandler.ServeHTTP(w, r)
+		case AIServiceQuoteCharacterPreviewProcedure:
+			aIServiceQuoteCharacterPreviewHandler.ServeHTTP(w, r)
+		case AIServiceAnalyzeStyleProcedure:
+			aIServiceAnalyzeStyleHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedAIServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedAIServiceHandler struct{}
+
+func (UnimplementedAIServiceHandler) GenerateCharacterPreview(context.Context, *connect.Request[v1.GenerateCharacterPreviewRequest]) (*connect.Response[v1.GenerateCharacterPreviewResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.AIService.GenerateCharacterPreview is not implemented"))
+}
+
+func (UnimplementedAIServiceHandler) QuoteCharacterPreview(context.Context, *connect.Request[v1.QuoteCharacterPreviewRequest]) (*connect.Response[v1.QuoteCharacterPreviewResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.AIService.QuoteCharacterPreview is not implemented"))
+}
+
+func (UnimplementedAIServiceHandler) AnalyzeStyle(context.Context, *connect.Request[v1.AnalyzeStyleRequest]) (*connect.Response[v1.AnalyzeStyleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.AIService.AnalyzeStyle is not implemented"))
 }

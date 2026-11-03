@@ -239,6 +239,17 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if err := ValidateCanonicalMigrationContract(m19); err != nil {
 		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v19: %v", err)
 	}
+
+	m20 := migrations[19]
+	if m20.Version != 20 {
+		t.Fatalf("expected version 20, got %d", m20.Version)
+	}
+	if len(m20.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v20, got %q", m20.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m20); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v20: %v", err)
+	}
 }
 
 func TestValidateCanonicalMigrationContractRejectsViolations(t *testing.T) {
@@ -398,8 +409,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 19 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 || applied[3] != 4 || applied[4] != 5 || applied[5] != 6 || applied[6] != 7 || applied[7] != 8 || applied[8] != 9 || applied[9] != 10 || applied[10] != 11 || applied[11] != 12 || applied[12] != 13 || applied[13] != 14 || applied[14] != 15 || applied[15] != 16 || applied[16] != 17 || applied[17] != 18 || applied[18] != 19 {
-		t.Fatalf("expected versions [1..19] applied, got %v", applied)
+	if len(applied) != 20 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 || applied[3] != 4 || applied[4] != 5 || applied[5] != 6 || applied[6] != 7 || applied[7] != 8 || applied[8] != 9 || applied[9] != 10 || applied[10] != 11 || applied[11] != 12 || applied[12] != 13 || applied[13] != 14 || applied[14] != 15 || applied[15] != 16 || applied[16] != 17 || applied[17] != 18 || applied[18] != 19 || applied[19] != 20 {
+		t.Fatalf("expected versions [1..20] applied, got %v", applied)
 	}
 	if !runner.lastTx.committed || runner.lastTx.rolledBack {
 		t.Fatalf("expected transaction committed")
@@ -414,13 +425,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for all 19 migrations.
+	// Status reports Applied = true for all 20 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 19 {
-		t.Fatalf("expected status for 19 migrations, got %d", len(statuses))
+	if len(statuses) != 20 {
+		t.Fatalf("expected status for 20 migrations, got %d", len(statuses))
 	}
 	for i, s := range statuses {
 		if !s.Applied {
@@ -433,7 +444,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 19, then 18, then 17, then 16...
+	// Down with allowLocalRollback=true rolls back version 20, then 19, then 18, then 17, then 16...
+	rolled20, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v20 failed: %v", err)
+	}
+	if rolled20 != 20 {
+		t.Fatalf("expected rolled back version 20, got %d", rolled20)
+	}
 	rolled19, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v19 failed: %v", err)
@@ -610,13 +628,16 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	_, _ = adminPool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
 	dir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 
-	// Apply migration Up, then Down nineteen times, then Up again to prove full Goose SQL repeatability.
+	// Apply migration Up, then Down twenty times, then Up again to prove full Goose SQL repeatability.
 	applied, err := Up(ctx, adminPool, dir)
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 19 {
-		t.Fatalf("expected 19 applied migrations, got %v", applied)
+	if len(applied) != 20 {
+		t.Fatalf("expected 20 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v20 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v19 failed: %v", err)

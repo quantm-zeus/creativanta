@@ -214,3 +214,177 @@ class CharacterItem {
     );
   }
 }
+
+/// Style Elements extracted per Screen W032 & EF-07.
+class StyleElementsItem {
+  const StyleElementsItem({
+    required this.colorGrading,
+    required this.lighting,
+    required this.cameraMovement,
+    required this.paceCadence,
+    required this.composition,
+    required this.textureGrain,
+    required this.audioAtmosphere,
+  });
+
+  final String colorGrading;
+  final String lighting;
+  final String cameraMovement;
+  final String paceCadence;
+  final String composition;
+  final String textureGrain;
+  final String audioAtmosphere;
+}
+
+/// Style Pack model per database_schema.md §22.7 & EF-07.
+class StylePackItem {
+  const StylePackItem({
+    required this.stylePackId,
+    required this.workspaceId,
+    required this.name,
+    this.description = '',
+    required this.elements,
+    this.sourceVideoUrls = const [],
+    this.status = 'ready',
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  final String stylePackId;
+  final String workspaceId;
+  final String name;
+  final String description;
+  final StyleElementsItem elements;
+  final List<String> sourceVideoUrls;
+  final String status;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+}
+
+/// 15-second Character Preview Quote (Acceptance Target 1 & RULE-M08-001).
+class CharacterPreviewQuoteItem {
+  const CharacterPreviewQuoteItem({
+    required this.quoteId,
+    required this.creditsRequired,
+    required this.durationSeconds,
+    required this.provider,
+    required this.canAfford,
+  });
+
+  final String quoteId;
+  final String creditsRequired; // '5.000000'
+  final int durationSeconds; // 15
+  final String provider;
+  final bool canAfford;
+
+  static CharacterPreviewQuoteItem calculate({
+    required double balance,
+    int durationSeconds = 15,
+  }) {
+    final dur = durationSeconds > 0 ? durationSeconds : 15;
+    return CharacterPreviewQuoteItem(
+      quoteId: 'quote-preview-${DateTime.now().millisecondsSinceEpoch}',
+      creditsRequired: '5.000000',
+      durationSeconds: dur,
+      provider: 'veo-preview-fast',
+      canAfford: balance >= 5.0,
+    );
+  }
+}
+
+/// Drift Evaluation Result (Acceptance Target 2 & RULE-M08-005).
+class DriftEvaluationResultItem {
+  const DriftEvaluationResultItem({
+    required this.assetId,
+    required this.packId,
+    this.packVersion = 1,
+    required this.driftScore,
+    required this.driftSeverity,
+    required this.isBlocked,
+    this.violationReasons = const [],
+    this.violationId,
+  });
+
+  final String assetId;
+  final String packId;
+  final int packVersion;
+  final double driftScore;
+  final String driftSeverity; // 'none', 'low_drift', 'moderate_drift', 'high_drift'
+  final bool isBlocked;
+  final List<String> violationReasons;
+  final String? violationId;
+
+  static DriftEvaluationResultItem evaluate({
+    required String assetId,
+    required String packId,
+    required double driftScore,
+  }) {
+    String severity;
+    bool blocked = false;
+    final reasons = <String>[];
+
+    if (driftScore <= 15.0) {
+      severity = 'none';
+    } else if (driftScore <= 35.0) {
+      severity = 'low_drift';
+    } else if (driftScore <= 60.0) {
+      severity = 'moderate_drift';
+    } else {
+      severity = 'high_drift';
+      blocked = true;
+      reasons.add('Drift score exceeds 60 threshold (score: $driftScore)');
+      reasons.add('Face similarity or style tolerance violation');
+    }
+
+    return DriftEvaluationResultItem(
+      assetId: assetId,
+      packId: packId,
+      driftScore: driftScore,
+      driftSeverity: severity,
+      isBlocked: blocked,
+      violationReasons: reasons,
+      violationId: blocked ? 'viol-${DateTime.now().millisecondsSinceEpoch}' : null,
+    );
+  }
+}
+
+/// Continuity Violation Record (Acceptance Target 2 & database_schema.md §7.5).
+class ContinuityViolationItem {
+  const ContinuityViolationItem({
+    required this.violationId,
+    required this.workspaceId,
+    required this.packId,
+    required this.assetId,
+    required this.ruleType,
+    required this.severity,
+    this.detailsJson = '{}',
+    this.overrideReason,
+    this.resolvedAt,
+    this.createdAt,
+  });
+
+  final String violationId;
+  final String workspaceId;
+  final String packId;
+  final String assetId;
+  final String ruleType;
+  final String severity;
+  final String detailsJson;
+  final String? overrideReason;
+  final DateTime? resolvedAt;
+  final DateTime? createdAt;
+
+  bool get isResolved => resolvedAt != null;
+  bool get isBlocking => severity == 'critical' || severity == 'high_drift';
+}
+
+/// Enforces high drift readiness blocking gate (Acceptance Target 2).
+bool canApproveAssetMobile({
+  required String driftSeverity,
+  required bool hasUnresolvedBlockingViolation,
+}) {
+  if (driftSeverity == 'high_drift' && hasUnresolvedBlockingViolation) {
+    return false;
+  }
+  return true;
+}

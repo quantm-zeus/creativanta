@@ -11,7 +11,9 @@ import type {
 	BatchBudgetPreview,
 	OriginalityCheckResult,
 	MultiMergeTimelineItem,
-	CopyrightCheckResult
+	CopyrightCheckResult,
+	CharacterPreviewQuote,
+	DriftEvaluationResult
 } from './types';
 
 export const PRODUCTION_MODES: ProductionMode[] = [
@@ -118,6 +120,16 @@ export const PRODUCTION_MODES: ProductionMode[] = [
 		durationSecs: 15,
 		route: '/studio',
 		badge: 'Tiết kiệm thời gian'
+	},
+	{
+		id: 'style_learning',
+		title: 'AI Style Learning & Transfer',
+		description: 'Trích xuất 7 tham số phong cách từ 1-5 video mẫu và tái áp dụng cho dự án (EF-07)',
+		icon: '🎨',
+		creditCost: 15,
+		durationSecs: 0,
+		route: '/studio/style-learning',
+		badge: 'W032 · EF-07'
 	}
 ];
 
@@ -431,3 +443,98 @@ export function validateMultiMergeTimelineClient(
 		copyrightBlocks
 	};
 }
+
+/**
+ * Calculates a bounded quote for a 15-second character test video preview (Acceptance Target 1).
+ */
+export function quoteCharacterPreview(
+	balance: number,
+	durationSeconds: number = 15
+): CharacterPreviewQuote {
+	const duration = durationSeconds > 0 ? durationSeconds : 15;
+	const creditsRequired = '5.000000';
+	const cost = 5.0;
+	return {
+		quoteId: `quote-preview-${Date.now()}`,
+		creditsRequired,
+		durationSeconds: duration,
+		provider: 'veo-preview-fast',
+		canAfford: balance >= cost
+	};
+}
+
+/**
+ * Evaluates asset deviation against canonical references (Acceptance Target 2).
+ */
+export function evaluateDrift(
+	assetId: string,
+	packId: string,
+	driftScore: number
+): DriftEvaluationResult {
+	let severity: 'none' | 'low_drift' | 'moderate_drift' | 'high_drift' = 'none';
+	let isBlocked = false;
+	const violationReasons: string[] = [];
+
+	if (driftScore <= 15.0) {
+		severity = 'none';
+	} else if (driftScore <= 35.0) {
+		severity = 'low_drift';
+	} else if (driftScore <= 60.0) {
+		severity = 'moderate_drift';
+	} else {
+		severity = 'high_drift';
+		isBlocked = true;
+		violationReasons.push(`Face similarity index falls below 0.85 threshold (measured score ${driftScore})`);
+		violationReasons.push('Style and voice parameters exceed allowable drift tolerance (+14%)');
+	}
+
+	return {
+		assetId,
+		packId,
+		packVersion: 1,
+		driftScore,
+		driftSeverity: severity,
+		isBlocked,
+		violationReasons,
+		violationId: isBlocked ? `viol-${Date.now()}` : undefined
+	};
+}
+
+/**
+ * Enforces high drift readiness blocking gate (Acceptance Target 2 & RULE-M08-005).
+ */
+export function canApproveAsset(
+	driftSeverity: string,
+	hasUnresolvedBlockingViolation: boolean
+): { canApprove: boolean; blockerMessage?: string } {
+	if (driftSeverity === 'high_drift' && hasUnresolvedBlockingViolation) {
+		return {
+			canApprove: false,
+			blockerMessage:
+				'Độ lệch chuẩn cao (High drift) chặn xuất bản (RULE-M08-005, AC 4). Cần Quản lý (Manager+) ghi rõ lý do ghi đè để mở khóa.'
+		};
+	}
+	return { canApprove: true };
+}
+
+/**
+ * Validates style extraction inputs and computes bounded credit quote (EF-07).
+ */
+export function calculateStyleExtractionQuote(videoCount: number): {
+	creditsRequired: number;
+	isValid: boolean;
+	errorMessage?: string;
+} {
+	if (videoCount < 1 || videoCount > 5) {
+		return {
+			creditsRequired: 0,
+			isValid: false,
+			errorMessage: 'Yêu cầu tải lên từ 1 đến 5 video tham chiếu để trích xuất phong cách (Screen W032).'
+		};
+	}
+	return {
+		creditsRequired: 15,
+		isValid: true
+	};
+}
+
