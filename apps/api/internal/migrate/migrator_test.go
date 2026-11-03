@@ -162,6 +162,17 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if err := ValidateCanonicalMigrationContract(m12); err != nil {
 		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v12: %v", err)
 	}
+
+	m13 := migrations[12]
+	if m13.Version != 13 {
+		t.Fatalf("expected version 13, got %d", m13.Version)
+	}
+	if len(m13.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v13, got %q", m13.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m13); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v13: %v", err)
+	}
 }
 
 func TestValidateCanonicalMigrationContractRejectsViolations(t *testing.T) {
@@ -486,13 +497,16 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	_, _ = adminPool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
 	dir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 
-	// Apply migration Up, then Down twelve times, then Up again to prove full Goose SQL repeatability.
+	// Apply migration Up, then Down thirteen times, then Up again to prove full Goose SQL repeatability.
 	applied, err := Up(ctx, adminPool, dir)
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 12 {
-		t.Fatalf("expected 12 applied migrations, got %v", applied)
+	if len(applied) != 13 {
+		t.Fatalf("expected 13 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v13 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v12 failed: %v", err)
@@ -974,6 +988,53 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("expected impersonation_sessions CHECK (mode IN ('read_only')) to reject 'read_write'")
 	}
 	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_imp_write_mode`)
+
+	// Test 9 (P3-01): Hooks table tenant isolation and composite foreign key to ideas
+	const (
+		ideaA = "aaaaaaaa-5555-4aaa-8aaa-aaaaaaaaaaaa"
+		hookA = "aaaaaaaa-6666-4aaa-8aaa-aaaaaaaaaaaa"
+	)
+	if _, err := tx.Exec(ctx, `RESET ROLE`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO ideas (idea_id, workspace_id, title, status)
+		VALUES ($1::uuid, $2::uuid, 'Test Idea A', 'draft')
+	`, ideaA, tenantA); err != nil {
+		t.Fatalf("seed idea failed: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO hooks (hook_id, workspace_id, idea_id, hook_text, hook_type, source)
+		VALUES ($1::uuid, $2::uuid, $3::uuid, 'Why do 90 percent fail?', 'question', 'manual')
+	`, hookA, tenantA, ideaA); err != nil {
+		t.Fatalf("seed hook failed: %v", err)
+	}
+
+	if _, err := tx.Exec(ctx, `SET LOCAL ROLE app_user`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_user_id', $2, true)`, tenantB, userB); err != nil {
+		t.Fatal(err)
+	}
+	var hookCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM hooks WHERE hook_id = $1::uuid`, hookA).Scan(&hookCount); err != nil {
+		t.Fatal(err)
+	}
+	if hookCount != 0 {
+		t.Fatalf("hooks RLS breach: Tenant B saw %d hooks from Tenant A", hookCount)
+	}
+
+	// Cross-tenant composite FK write attack on hooks denied:
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_hook_fk`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO hooks (workspace_id, idea_id, hook_text, hook_type, source)
+		VALUES ($1::uuid, $2::uuid, 'Cross hook', 'shock', 'manual')
+	`, tenantB, ideaA); err == nil {
+		t.Fatalf("expected composite tenant FK to reject cross-tenant idea_id on hooks")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_hook_fk`)
 }
 
 // TestPostgresSeedTwiceIdempotency satisfies Acceptance Target 1:

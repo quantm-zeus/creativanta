@@ -47,7 +47,7 @@
     "apps/api/internal/idea/store.go": "137ba0b3f9a89c2bc3b9b5c164bdb02bb08e59766ac7bcf1409057eab5f6aa98",
     "apps/api/internal/idea/service.go": "2580f2f58cb4c2b4d2d397530d466cd09dbca53932aee9860e99619309f896a1",
     "apps/api/internal/idea/service_test.go": "4d48247961d2d2473b43b28be0ad295cfb27a754075885732ec7f2d0afc7c0ae",
-    "apps/api/internal/migrate/migrator_test.go": "8566d28c4993ec6024e76e9d2d1646e7adb77e3499167762e56e99fedf06f178",
+    "apps/api/internal/migrate/migrator_test.go": "cb7934d65152861141e71d53d63a30cc8e0bdfbeca4e1b77a27e12b5b45240ee",
     "apps/api/internal/rbac/phase_exposure_test.go": "1c200bb7890f73352d1039c7dc79e49e9967bed618a653231fbc2f89fee1def0",
     "apps/web/src/lib/idea/index.ts": "850c624f93cd2cbac81c57abd058df6d41d1511aeda50910dc3ec62acf1595d8",
     "apps/web/src/lib/idea/DuplicateWarningBanner.svelte": "db7c70fc3fc60378c80be4f2e59cc0d96d6f95699b1089b9ea776db05d0e20c8",
