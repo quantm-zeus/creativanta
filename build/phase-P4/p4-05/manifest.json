@@ -56,7 +56,7 @@
     "apps/api/internal/production/link_to_video.go": "7f52cb0a7c2922c25e034bc5474102ed1684ce58dccf7a883fe1fc1eeb02f076",
     "apps/api/internal/production/thumbnail.go": "3a4375070ecbe536ddaa7c1ba72c507caacf90329e236ca6dd1280507697a2b7",
     "apps/api/internal/production/showcase_link_thumb_test.go": "c3559e78ca44bd03e1ace7cbd99ac71c211076e6a32298b75bc76a074240e38b",
-    "apps/api/internal/migrate/migrator_test.go": "559219f179f28184791af426bc26ed2548673aa0ffe9d9463be8f08a2fe24bd5",
+    "apps/api/internal/migrate/migrator_test.go": "e75e4bc192804ed74fe8ca82625982519d7c2c345520552e0b862e0360a7fa0b",
     "apps/web/src/lib/production/types.ts": "0003a0ccd95485a0327c35a6aea4d476f042374420e97c0d5bcc0443607d64ec",
     "apps/web/src/lib/production/index.ts": "f05155147f230cda35880931b44410d9c8e11404f68d21ffd2c4c9a2fa1c98bc",
     "apps/web/src/lib/production/showcase_link_thumb.ts": "995aafb861d0da3569cd28e40e4de04cabf939f2c85c13c573797fb5eb724bec",
