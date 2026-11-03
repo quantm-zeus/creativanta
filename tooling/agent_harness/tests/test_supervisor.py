@@ -1,8 +1,12 @@
 import json
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
-from supervisor import eval_checks, deps_ready, retry_seconds, json_result, safe_id, Harness
+from supervisor import (
+    eval_checks, deps_ready, retry_seconds, json_result, safe_id,
+    remaining_launch_budget, repair_evidence_whitespace, Harness,
+)
 
 class HarnessPureTests(unittest.TestCase):
     def test_checks_fail_closed_on_missing_or_pending(self):
@@ -26,6 +30,60 @@ class HarnessPureTests(unittest.TestCase):
         self.assertEqual(retry_seconds(1),15)
         self.assertGreater(retry_seconds(3),retry_seconds(2))
         self.assertLessEqual(retry_seconds(100),1800)
+    def test_local_launch_quota_is_not_provider_quota(self):
+        self.assertIsNone(remaining_launch_budget(0, 10000))
+        self.assertIsNone(remaining_launch_budget(None, 10000))
+        self.assertEqual(remaining_launch_budget(36, 12), 24)
+        self.assertEqual(remaining_launch_budget(36, 36), 0)
+        with self.assertRaises(ValueError):
+            remaining_launch_budget(-1, 10)
+
+    def test_whitespace_repair_only_generated_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.email", "test@example.org"],
+                           cwd=repo, check=True)
+            logfile = repo / "build/phase-P2/p2-02/evidence/13-check-flutter.log"
+            logfile.parent.mkdir(parents=True)
+            logfile.write_text("initial\n")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-qm", "baseline"], cwd=repo, check=True)
+            base = subprocess.check_output(["git", "rev-parse", "HEAD"],
+                                           cwd=repo, text=True).strip()
+            logfile.write_text("Analyzing mobile...   \nNo issues found!\n")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-qm", "task"], cwd=repo, check=True)
+            self.assertTrue(repair_evidence_whitespace(repo, base, "P2-02"))
+            self.assertEqual(logfile.read_text(),
+                             "Analyzing mobile...\nNo issues found!\n")
+            self.assertFalse(repair_evidence_whitespace(repo, base, "P2-02"))
+            self.assertEqual(subprocess.run(
+                ["git", "diff", "--check", base, "HEAD"], cwd=repo,
+                capture_output=True).returncode, 0)
+
+    def test_whitespace_repair_rejects_source_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.email", "test@example.org"],
+                           cwd=repo, check=True)
+            source = repo / "main.go"
+            source.write_text("package main\n")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-qm", "baseline"], cwd=repo, check=True)
+            base = subprocess.check_output(["git", "rev-parse", "HEAD"],
+                                           cwd=repo, text=True).strip()
+            source.write_text("package main   \n")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-qm", "code"], cwd=repo, check=True)
+            self.assertFalse(repair_evidence_whitespace(repo, base, "P2-02"))
+            self.assertNotEqual(subprocess.run(
+                ["git", "diff", "--check", base, "HEAD"], cwd=repo,
+                capture_output=True).returncode, 0)
+
     def test_reject_invalid_ids(self):
         with self.assertRaises(ValueError):
             safe_id("P0-03; rm")

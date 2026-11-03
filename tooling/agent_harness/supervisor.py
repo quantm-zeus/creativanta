@@ -38,6 +38,18 @@ def retry_seconds(attempt):
 def deps_ready(deps, statuses):
     return all(statuses.get(dep) == DONE for dep in deps)
 
+def remaining_launch_budget(max_runs_per_24h, launches):
+    """Zero/null disables only Creativanta's LOCAL launch quota, not AGY provider limits.
+
+    Concurrent agents, per-task bounded retries, maximum runtime, CI and staging
+    restrictions remain active independently of this optional launch counter.
+    """
+    if max_runs_per_24h is None or max_runs_per_24h == 0:
+        return None
+    if type(max_runs_per_24h) is not int or max_runs_per_24h < 0:
+        raise ValueError("max_runs_per_24h must be a nonnegative integer or null")
+    return max(0, max_runs_per_24h - launches)
+
 def eval_checks(checks):
     """Return pending/failure/success; no CI entries never count as success."""
     if not checks:
@@ -74,6 +86,55 @@ def json_result(path):
         return data
     except (OSError, ValueError, TypeError):
         return None
+
+def repair_evidence_whitespace(workspace, base_sha, task_id):
+    """Correct only generated task evidence .log whitespace, never source or tests.
+
+    The full Git diff check is still mandatory after the repair commit.
+    """
+    diff = subprocess.run(["git", "diff", "--check", base_sha, "HEAD"],
+                          cwd=str(workspace), text=True, capture_output=True,
+                          timeout=60)
+    if diff.returncode == 0:
+        return False
+    lines = [line for line in diff.stdout.splitlines()
+             if line.strip() and not line.startswith("+")]
+    prefix = f"build/phase-{task_id.split('-')[0]}/{task_id.lower()}/evidence/"
+    targets = set()
+    trim_eof = set()
+    if not lines:
+        return False
+    for line in lines:
+        match = re.fullmatch(
+            r"([^:\n]+\.log):\d+: (trailing whitespace\.|new blank line at EOF\.)",
+            line)
+        if not match or not match.group(1).startswith(prefix):
+            return False
+        rel = match.group(1)
+        if "/" in rel[len(prefix):] or ".." in Path(rel).parts:
+            return False
+        targets.add(rel)
+        if "new blank line at EOF" in line:
+            trim_eof.add(rel)
+    changed = []
+    for rel in sorted(targets):
+        path = Path(workspace) / rel
+        if not path.is_file() or path.is_symlink():
+            return False
+        data = path.read_bytes()
+        cleaned = re.sub(rb"[ \t]+(?=\r?\n|$)", b"", data)
+        if rel in trim_eof:
+            cleaned = cleaned.rstrip(b"\r\n") + b"\n"
+        if cleaned != data:
+            path.write_bytes(cleaned)
+            changed.append(rel)
+    if not changed:
+        return False
+    command(["git", "add", "--", *changed], workspace)
+    command(["git", "commit", "-m",
+             f"chore({task_id.lower()}): normalize generated evidence log whitespace"],
+            workspace)
+    return True
 
 class Harness:
     def __init__(self, config_file):
@@ -291,6 +352,8 @@ CI and integrated into staging only, never deployed automatically.
                 output = stream.read().decode("utf-8", errors="replace")
         except OSError:
             output = ""
+        self.log_event(task_id, "AGY_EXITED",
+                       f"pid={proc.pid} exit={proc.returncode}; log={log.name}")
         if proc.returncode:
             self.mark_retry(task_id, f"AGY exit={proc.returncode}; log={log}")
             return
@@ -319,7 +382,15 @@ CI and integrated into staging only, never deployed automatically.
             self.mark_retry(task_id, "partial scope or missing actual test commands")
             return
         try:
+            fixed = repair_evidence_whitespace(workspace, row["base_sha"], task_id)
+            if fixed:
+                self.log_event(task_id, "EVIDENCE_WHITESPACE_REPAIRED",
+                               "generated .log whitespace-only correction committed")
+            # Never disable the original full-code/fixture Git check.
             command(["git", "diff", "--check", row["base_sha"], "HEAD"], workspace)
+            sha = command(["git", "rev-parse", "HEAD"], workspace)
+            if command(["git", "status", "--porcelain"], workspace):
+                raise RuntimeError("dirty working tree after evidence normalization")
         except Exception as ex:
             self.mark_retry(task_id, f"git diff --check rejected changes: {ex}")
             return
@@ -426,12 +497,13 @@ CI and integrated into staging only, never deployed automatically.
             "SELECT COUNT(*) FROM events WHERE action='STARTED' AND ts>?",
             (now-86400,)).fetchone()[0]
         slots = max(0, self.cfg["max_concurrent"] - len(self.active))
-        quotas = max(0, self.cfg["max_runs_per_24h"] - launched_today)
-        if not slots or not quotas:
+        budget = remaining_launch_budget(self.cfg.get("max_runs_per_24h", 0),
+                                         launched_today)
+        if not slots or budget == 0:
             return
         statuses = {k: row["status"] for k, row in self.rows().items()}
         for task in self.tasks.values():
-            if not slots or not quotas:
+            if not slots or budget == 0:
                 return
             row = self.rows()[task["id"]]
             if row["status"] not in {PENDING, "RETRY"} or row["ready_at"] > now:
@@ -443,15 +515,45 @@ CI and integrated into staging only, never deployed automatically.
             except Exception as ex:
                 self.mark_retry(task["id"], f"launch failed: {ex}")
             slots -= 1
-            quotas -= 1
+            if budget is not None:
+                budget -= 1
 
     def write_snapshot(self):
         rows = self.rows()
         statuses = {k: v["status"] for k, v in rows.items()}
+        now = int(time.time())
+        starts = self.db.execute(
+            "SELECT COUNT(*) FROM events WHERE action='STARTED' AND ts>?",
+            (now - 86400,)).fetchone()[0]
+        budget = remaining_launch_budget(self.cfg.get("max_runs_per_24h", 0),
+                                         starts)
+        active_processes = {}
+        for task_id, (proc, started, logfile) in self.active.items():
+            try:
+                stats = logfile.stat()
+                log_bytes = stats.st_size
+                log_age = max(0, now - int(stats.st_mtime)) if log_bytes else None
+            except OSError:
+                log_bytes, log_age = 0, None
+            active_processes[task_id] = {
+                "pid": proc.pid,
+                "alive": proc.poll() is None,
+                "elapsed_seconds": max(0, now - started),
+                "log_bytes": log_bytes,
+                "last_log_output_age_seconds": log_age,
+            }
         snap = {
-            "time_utc": int(time.time()),
+            "time_utc": now,
             "pid": os.getpid(),
             "running": sorted(self.active),
+            "processes": active_processes,
+            "scheduler": {
+                "max_concurrent": self.cfg["max_concurrent"],
+                "launches_24h": starts,
+                "local_launch_cap": self.cfg.get("max_runs_per_24h", 0),
+                "remaining_launch_budget": budget,
+                "daily_local_cap_disabled": budget is None,
+            },
             "counts": {s: list(statuses.values()).count(s) for s in set(statuses.values())},
             "tasks": [
                 {"id": k, "status": r["status"], "attempts": r["attempts"],

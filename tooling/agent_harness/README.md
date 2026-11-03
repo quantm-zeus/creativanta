@@ -72,10 +72,24 @@ docker compose logs --tail 100 --no-color scheduler
 docker compose restart scheduler
 ```
 
-Config keys: `max_concurrent` (default 2), `max_runs_per_24h` (24),
+Config keys: `max_concurrent` (default 2), `max_runs_per_24h` (0 = disabled),
 `max_agent_minutes` (45), `max_iterations_per_task` (6), `paused` and
 model routing. Changes are reread at every poll. SQLite, GitHub and worktree
 state are source-of-truth; the dashboard is an observation, not authority.
+
+The local `max_runs_per_24h` counter is NOT an AGY provider quota. Setting
+it to `0` or `null` disables Creativanta's artificial daily launch cap. Keep
+`max_concurrent`, agent timeouts, bounded retries, dependencies, CI and staging
+gates enforced. The supervisor reports actual active subprocess PIDs, elapsed
+runtime, log activity and launch history separately in `data/status.json`.
+A live process proves only that AGY started; code commits and CI are stronger
+proof of useful completion.
+
+If `git diff --check` rejects *only* whitespace in machine-generated
+`build/phase-P*/p*-*/evidence/*.log` files, the harness makes a traceable
+whitespace-only commit and reruns the original strict Git check. Source code,
+schema, test fixtures and security checks are never automatically bypassed.
+Provider-side API quotas and billing limits are not controlled here.
 
 ### Limitations
 
