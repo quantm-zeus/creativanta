@@ -244,6 +244,11 @@ func (d ExactDecimal) IsNegative() bool {
 	return d.micros != nil && d.micros.Sign() < 0
 }
 
+// IsPositive reports whether d > 0.
+func (d ExactDecimal) IsPositive() bool {
+	return d.micros != nil && d.micros.Sign() > 0
+}
+
 // IsZero reports whether d == 0.
 func (d ExactDecimal) IsZero() bool {
 	return d.micros == nil || d.micros.Sign() == 0

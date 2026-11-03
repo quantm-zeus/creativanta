@@ -206,6 +206,17 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if err := ValidateCanonicalMigrationContract(m16); err != nil {
 		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v16: %v", err)
 	}
+
+	m17 := migrations[16]
+	if m17.Version != 17 {
+		t.Fatalf("expected version 17, got %d", m17.Version)
+	}
+	if len(m17.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v17, got %q", m17.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m17); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v17: %v", err)
+	}
 }
 
 func TestValidateCanonicalMigrationContractRejectsViolations(t *testing.T) {
@@ -365,8 +376,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 16 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 || applied[3] != 4 || applied[4] != 5 || applied[5] != 6 || applied[6] != 7 || applied[7] != 8 || applied[8] != 9 || applied[9] != 10 || applied[10] != 11 || applied[11] != 12 || applied[12] != 13 || applied[13] != 14 || applied[14] != 15 || applied[15] != 16 {
-		t.Fatalf("expected versions [1..16] applied, got %v", applied)
+	if len(applied) != 17 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 || applied[3] != 4 || applied[4] != 5 || applied[5] != 6 || applied[6] != 7 || applied[7] != 8 || applied[8] != 9 || applied[9] != 10 || applied[10] != 11 || applied[11] != 12 || applied[12] != 13 || applied[13] != 14 || applied[14] != 15 || applied[15] != 16 || applied[16] != 17 {
+		t.Fatalf("expected versions [1..17] applied, got %v", applied)
 	}
 	if !runner.lastTx.committed || runner.lastTx.rolledBack {
 		t.Fatalf("expected transaction committed")
@@ -381,13 +392,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for all 16 migrations.
+	// Status reports Applied = true for all 17 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 16 || !statuses[0].Applied || !statuses[1].Applied || !statuses[2].Applied || !statuses[3].Applied || !statuses[4].Applied || !statuses[5].Applied || !statuses[6].Applied || !statuses[7].Applied || !statuses[8].Applied || !statuses[9].Applied || !statuses[10].Applied || !statuses[11].Applied || !statuses[12].Applied || !statuses[13].Applied || !statuses[14].Applied || !statuses[15].Applied {
-		t.Fatalf("expected status Applied=true for all 16 migrations, got %+v", statuses)
+	if len(statuses) != 17 || !statuses[0].Applied || !statuses[1].Applied || !statuses[2].Applied || !statuses[3].Applied || !statuses[4].Applied || !statuses[5].Applied || !statuses[6].Applied || !statuses[7].Applied || !statuses[8].Applied || !statuses[9].Applied || !statuses[10].Applied || !statuses[11].Applied || !statuses[12].Applied || !statuses[13].Applied || !statuses[14].Applied || !statuses[15].Applied || !statuses[16].Applied {
+		t.Fatalf("expected status Applied=true for all 17 migrations, got %+v", statuses)
 	}
 
 	// Down without allowLocalRollback fails closed.
@@ -395,7 +406,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 16, then 15, then 14, then 13, then 12, then 11, then 10, then 9, then 8, then 7, then 6, then 5, then 4, then 3, then 2, then 1.
+	// Down with allowLocalRollback=true rolls back version 17, then 16, then 15, then 14, then 13, then 12, then 11, then 10, then 9, then 8, then 7, then 6, then 5, then 4, then 3, then 2, then 1.
+	rolled17, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v17 failed: %v", err)
+	}
+	if rolled17 != 17 {
+		t.Fatalf("expected rolled back version 17, got %d", rolled17)
+	}
 	rolled16, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v16 failed: %v", err)
@@ -551,13 +569,16 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	_, _ = adminPool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
 	dir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 
-	// Apply migration Up, then Down sixteen times, then Up again to prove full Goose SQL repeatability.
+	// Apply migration Up, then Down seventeen times, then Up again to prove full Goose SQL repeatability.
 	applied, err := Up(ctx, adminPool, dir)
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 16 {
-		t.Fatalf("expected 16 applied migrations, got %v", applied)
+	if len(applied) != 17 {
+		t.Fatalf("expected 17 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v17 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v16 failed: %v", err)
@@ -1237,6 +1258,58 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("expected unique constraint uq_characters_single_default to reject multiple default characters in workspace")
 	}
 	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_second_default`)
+
+	// P4-01: Assets & Generation Jobs RLS and Composite FK checks
+	assetA := "44444444-4444-4444-4444-444444444401"
+	jobA := "44444444-4444-4444-4444-444444444402"
+	if _, err := tx.Exec(ctx, `RESET ROLE`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO assets (asset_id, workspace_id, asset_type, title, source_generation_mode, generation_state, quality_state)
+		VALUES ($1::uuid, $2::uuid, 'video', 'Video Asset A', 'ai_generated', 'queued', 'draft')
+	`, assetA, tenantA); err != nil {
+		t.Fatalf("seed asset failed: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO generation_jobs (job_id, workspace_id, asset_id, job_type, provider, status, estimated_credits)
+		VALUES ($1::uuid, $2::uuid, $3::uuid, 'video_gen', 'veo', 'queued', 15.000000)
+	`, jobA, tenantA, assetA); err != nil {
+		t.Fatalf("seed generation_job failed: %v", err)
+	}
+
+	if _, err := tx.Exec(ctx, `SET LOCAL ROLE app_user`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_user_id', $2, true)`, tenantB, userB); err != nil {
+		t.Fatal(err)
+	}
+	var assetCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM assets WHERE asset_id = $1::uuid`, assetA).Scan(&assetCount); err != nil {
+		t.Fatal(err)
+	}
+	if assetCount != 0 {
+		t.Fatalf("assets RLS breach: Tenant B saw %d assets from Tenant A", assetCount)
+	}
+	var jobCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM generation_jobs WHERE job_id = $1::uuid`, jobA).Scan(&jobCount); err != nil {
+		t.Fatal(err)
+	}
+	if jobCount != 0 {
+		t.Fatalf("generation_jobs RLS breach: Tenant B saw %d generation jobs from Tenant A", jobCount)
+	}
+
+	// Cross-tenant composite FK write attack on generation_jobs denied:
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_job_fk`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO generation_jobs (workspace_id, asset_id, job_type, provider, status)
+		VALUES ($1::uuid, $2::uuid, 'video_gen', 'veo', 'queued')
+	`, tenantB, assetA); err == nil {
+		t.Fatalf("expected composite tenant FK to reject cross-tenant asset_id on generation_jobs")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_job_fk`)
 }
 
 // TestPostgresSeedTwiceIdempotency satisfies Acceptance Target 1:

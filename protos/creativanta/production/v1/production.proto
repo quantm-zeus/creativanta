@@ -1,0 +1,393 @@
+syntax = "proto3";
+
+package creativanta.production.v1;
+
+import "google/protobuf/timestamp.proto";
+import "creativanta/common/v1/types.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/production/v1;productionv1";
+
+// GenerationJobStatus matches database_schema.md §7.4 generation_jobs.status.
+enum GenerationJobStatus {
+  GENERATION_JOB_STATUS_UNSPECIFIED = 0;
+  GENERATION_JOB_STATUS_QUEUED = 1;
+  GENERATION_JOB_STATUS_PROCESSING = 2;
+  GENERATION_JOB_STATUS_COMPLETED = 3;
+  GENERATION_JOB_STATUS_FAILED = 4;
+  GENERATION_JOB_STATUS_CANCELLED = 5;
+}
+
+// AssetGenerationState matches database_schema.md §7.3 assets.generation_state.
+enum AssetGenerationState {
+  ASSET_GENERATION_STATE_UNSPECIFIED = 0;
+  ASSET_GENERATION_STATE_QUEUED = 1;
+  ASSET_GENERATION_STATE_GENERATING = 2;
+  ASSET_GENERATION_STATE_GENERATED = 3;
+  ASSET_GENERATION_STATE_FAILED = 4;
+  ASSET_GENERATION_STATE_CANCELLED = 5;
+}
+
+// AssetQualityState matches database_schema.md §7.3 assets.quality_state.
+enum AssetQualityState {
+  ASSET_QUALITY_STATE_UNSPECIFIED = 0;
+  ASSET_QUALITY_STATE_DRAFT = 1;
+  ASSET_QUALITY_STATE_REVIEW_REQUIRED = 2;
+  ASSET_QUALITY_STATE_APPROVED = 3;
+  ASSET_QUALITY_STATE_REJECTED = 4;
+  ASSET_QUALITY_STATE_PROMOTED_CANONICAL = 5;
+}
+
+// PipelineStrategy matches database_schema.md §7.4 generation_jobs.pipeline_strategy.
+enum PipelineStrategy {
+  PIPELINE_STRATEGY_UNSPECIFIED = 0;
+  PIPELINE_STRATEGY_NATIVE_AUDIO = 1;
+  PIPELINE_STRATEGY_AUDIO_FIRST = 2;
+  PIPELINE_STRATEGY_POST_PROD_LIP_SYNC = 3;
+  PIPELINE_STRATEGY_SIMPLE_VOICE_OVER = 4;
+}
+
+// ProductionMode tracks the 4 core + 11 extended studio modes (ai_video_studio.md §Scope).
+enum ProductionMode {
+  PRODUCTION_MODE_UNSPECIFIED = 0;
+  PRODUCTION_MODE_QUICK_EDIT = 1;
+  PRODUCTION_MODE_CLIP_FACTORY = 2;
+  PRODUCTION_MODE_MULTI_MERGE = 3;
+  PRODUCTION_MODE_AI_REMIX = 4;
+  PRODUCTION_MODE_PRODUCT_SHOWCASE = 5;
+  PRODUCTION_MODE_IMAGE_TO_VIDEO = 6;
+  PRODUCTION_MODE_LINK_TO_VIDEO = 7;
+  PRODUCTION_MODE_TRANSLATION = 8;
+  PRODUCTION_MODE_VIDEO_AGENT = 9;
+  PRODUCTION_MODE_THUMBNAIL_STUDIO = 10;
+  PRODUCTION_MODE_SOUND_STUDIO = 11;
+  PRODUCTION_MODE_STYLE_LEARNING = 12;
+}
+
+// ProductionModeInfo describes an available production mode for launcher screens.
+message ProductionModeInfo {
+  ProductionMode mode = 1;
+  string title = 2;
+  string description = 3;
+  string icon = 4;
+  string credit_cost_range = 5;
+  bool is_available = 6;
+  repeated string supported_aspect_ratios = 7;
+}
+
+// LineageItem records provenance per RULE-M07-001.
+message LineageItem {
+  string source_provider = 1;
+  string source_model = 2;
+  string generation_prompt = 3;
+  repeated string continuity_pack_ids = 4;
+  string generation_cost_credits = 5;
+  string generation_cost_usd = 6;
+  string parent_asset_id = 7;
+  google.protobuf.Timestamp recorded_at = 8;
+}
+
+// PostProductionConfig configures FFmpeg processing and normalization per RULE-M07-005.
+message PostProductionConfig {
+  bool normalize_audio = 1;
+  double target_lufs = 2; // Default -14.0 LUFS
+  string aspect_ratio = 3; // e.g. "9:16", "16:9", "1:1"
+  bool subtitle_overlay = 4;
+  string subtitle_style = 5;
+  bool active_speaker_reframe = 6;
+}
+
+// GenerationJob represents a durable generation job per database_schema.md §7.4.
+message GenerationJob {
+  string job_id = 1;
+  string workspace_id = 2;
+  string asset_id = 3;
+  string job_type = 4;
+  string provider = 5;
+  string model = 6;
+  PipelineStrategy pipeline_strategy = 7;
+  string input_params_json = 8;
+  string prompt_package_json = 9;
+  GenerationJobStatus status = 10;
+  int32 progress_pct = 11;
+  string current_step = 12;
+  string estimated_credits = 13;
+  string actual_credits = 14;
+  string actual_cost_usd = 15;
+  string provider_job_id = 16;
+  string result_url = 17;
+  string result_metadata_json = 18;
+  string error_code = 19;
+  string error_message = 20;
+  int32 retry_count = 21;
+  int32 max_retries = 22;
+  google.protobuf.Timestamp started_at = 23;
+  google.protobuf.Timestamp completed_at = 24;
+  google.protobuf.Timestamp created_at = 25;
+  google.protobuf.Timestamp updated_at = 26;
+  string quote_id = 27;
+  string reservation_id = 28;
+}
+
+// Asset represents a canonical creative asset per database_schema.md §7.3.
+message Asset {
+  string asset_id = 1;
+  string workspace_id = 2;
+  string asset_type = 3;
+  string title = 4;
+  string script_id = 5;
+  string asset_brief_id = 6;
+  string source_generation_mode = 7;
+  string source_provider = 8;
+  string source_model = 9;
+  string file_url = 10;
+  int64 file_size_bytes = 11;
+  string duration_seconds = 12;
+  string resolution = 13;
+  string aspect_ratio = 14;
+  string mime_type = 15;
+  AssetGenerationState generation_state = 16;
+  AssetQualityState quality_state = 17;
+  repeated LineageItem lineage = 18;
+  repeated string continuity_pack_ids = 19;
+  string generation_cost_credits = 20;
+  string generation_cost_usd = 21;
+  string generation_prompt = 22;
+  string parent_asset_id = 23;
+  string derivative_type = 24;
+  google.protobuf.Timestamp created_at = 25;
+  google.protobuf.Timestamp updated_at = 26;
+}
+
+// BatchInputValidationItem evaluates single row in a batch (RULE-M07-006 & Section 28).
+message BatchInputValidationItem {
+  int32 row_index = 1;
+  string item_id = 2;
+  string item_name = 3;
+  bool is_valid = 4;
+  string validation_error = 5;
+  string estimated_credits = 6;
+  string estimated_cost_usd = 7;
+}
+
+// BatchBudgetPreview holds preflight quote & partial batch validation results.
+message BatchBudgetPreview {
+  string total_estimated_credits = 1;
+  string total_cost_ceiling_usd = 2;
+  int32 total_items = 3;
+  int32 valid_items_count = 4;
+  int32 invalid_items_count = 5;
+  repeated BatchInputValidationItem items = 6;
+  bool sufficient_credits = 7;
+  string current_available_credits = 8;
+  string quote_id = 9;
+  google.protobuf.Timestamp quote_expires_at = 10;
+}
+
+// ============================================================================
+// StudioService Request / Response Messages
+// ============================================================================
+
+message GetModesRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+}
+
+message GetModesResponse {
+  repeated ProductionModeInfo modes = 1;
+}
+
+message GetActiveJobsRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+message GetActiveJobsResponse {
+  repeated GenerationJob jobs = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+  int32 total_active_count = 3;
+}
+
+message GetRecentAssetsRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  int32 limit = 2;
+}
+
+message GetRecentAssetsResponse {
+  repeated Asset assets = 1;
+}
+
+message CancelRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string job_id = 2;
+}
+
+message CancelResponse {
+  GenerationJob job = 1;
+  bool credits_refunded = 2;
+  string refunded_credits = 3;
+}
+
+message RetryRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string job_id = 2;
+  bool use_fallback_provider = 3;
+}
+
+message RetryResponse {
+  GenerationJob job = 1;
+  string message = 2;
+}
+
+// ============================================================================
+// AssetService Request / Response Messages
+// ============================================================================
+
+message BatchGenerationItem {
+  string item_id = 1;
+  string item_name = 2;
+  string prompt = 3;
+  string reference_url = 4;
+  repeated string image_urls = 5;
+}
+
+message GenerateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string title = 2;
+  ProductionMode mode = 3;
+  string prompt = 4;
+  string script_id = 5;
+  string asset_brief_id = 6;
+  repeated string continuity_pack_ids = 7;
+  PipelineStrategy pipeline_strategy = 8;
+  string preferred_provider = 9;
+  string preferred_model = 10;
+  PostProductionConfig post_production = 11;
+  string byok_api_key = 12; // Optional BYOK key
+  string quote_id = 13; // Bounded quote ID from preflight
+  string confirmed_credits = 14; // Must match quoted credits
+  bool dry_run = 15; // Set true for budget preview & partial batch validation
+  repeated BatchGenerationItem batch_items = 16; // For batch generation
+}
+
+message GenerateResponse {
+  bool is_dry_run = 1;
+  BatchBudgetPreview budget_preview = 2;
+  GenerationJob job = 3;
+  Asset asset = 4;
+  repeated GenerationJob batch_jobs = 5;
+  repeated Asset batch_assets = 6;
+}
+
+message GetStatusRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string job_id = 2;
+}
+
+message GetStatusResponse {
+  GenerationJob job = 1;
+  Asset asset = 2;
+}
+
+message ListRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string asset_type = 2;
+  string generation_state = 3;
+  string quality_state = 4;
+  creativanta.common.v1.Pagination pagination = 5;
+}
+
+message ListResponse {
+  repeated Asset assets = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message GetRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string asset_id = 2;
+}
+
+message GetResponse {
+  Asset asset = 1;
+}
+
+message ApproveRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string asset_id = 2;
+  string feedback_notes = 3;
+}
+
+message ApproveResponse {
+  Asset asset = 1;
+}
+
+message PromoteCanonicalRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string asset_id = 2;
+  string pack_id = 3;
+}
+
+message PromoteCanonicalResponse {
+  Asset asset = 1;
+  string canonical_pack_id = 2;
+}
+
+message UploadRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string file_name = 2;
+  string mime_type = 3;
+  int64 file_size_bytes = 4;
+  bytes file_content = 5;
+  string upload_purpose = 6; // asset, avatar, brand_logo, evidence
+}
+
+message UploadResponse {
+  string upload_id = 1;
+  string storage_url = 2;
+  string virus_scan_status = 3;
+  Asset asset = 4;
+}
+
+// ============================================================================
+// Service Declarations
+// ============================================================================
+
+// StudioService manages studio modes, monitoring, and job queues.
+service StudioService {
+  // GetModes returns the list of available studio modes and current pricing/limits.
+  rpc GetModes(GetModesRequest) returns (GetModesResponse);
+
+  // GetActiveJobs returns active processing and queued generation jobs.
+  rpc GetActiveJobs(GetActiveJobsRequest) returns (GetActiveJobsResponse);
+
+  // GetRecentAssets returns the most recent outputs for the studio launcher.
+  rpc GetRecentAssets(GetRecentAssetsRequest) returns (GetRecentAssetsResponse);
+
+  // Cancel cancels an in-flight or queued job and handles credit reconciliation/refund.
+  rpc Cancel(CancelRequest) returns (CancelResponse);
+
+  // Retry retries a failed generation job, optionally switching to a fallback provider.
+  rpc Retry(RetryRequest) returns (RetryResponse);
+}
+
+// AssetService manages generation, lifecycle, approval, and promotion of assets.
+service AssetService {
+  // Generate initiates AI generation or executes preflight budget preview (dry_run).
+  rpc Generate(GenerateRequest) returns (GenerateResponse);
+
+  // GetStatus polls current job execution and aggregate asset state.
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+
+  // List returns workspace assets filtered by state or type.
+  rpc List(ListRequest) returns (ListResponse);
+
+  // Get retrieves a single asset with full lineage metadata.
+  rpc Get(GetRequest) returns (GetResponse);
+
+  // Approve marks an asset approved (Manager+).
+  rpc Approve(ApproveRequest) returns (ApproveResponse);
+
+  // PromoteCanonical promotes an approved asset to canonical character/brand pack (Manager+).
+  rpc PromoteCanonical(PromoteCanonicalRequest) returns (PromoteCanonicalResponse);
+
+  // Upload uploads a source asset safely with MIME and virus scan checks.
+  rpc Upload(UploadRequest) returns (UploadResponse);
+}
