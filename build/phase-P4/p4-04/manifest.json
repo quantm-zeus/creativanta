@@ -1,0 +1,170 @@
+{
+  "task_id": "P4-04",
+  "phase": "P4",
+  "slice": "p4-04",
+  "title": "Multi-Merge và Remix",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "ebf5a0ad9e6fbb6f848465f3f80d1bd29b5de3a5",
+  "feature_refs": [
+    "docs/02_features/production/ai_video_studio.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_endpoint_map.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/05_system/queue_retry_design.md",
+    "docs/05_system/ai_provider_guide.md"
+  ],
+  "requirement_ids": [
+    "M07-21a41a836d54-001",
+    "M07-863f518ad8eb-001",
+    "M07-ccc73337bf50-001",
+    "M07-1418b5b564dd-001",
+    "M07-33705edcaf82-001",
+    "DB-C-001",
+    "DB-H-001",
+    "RULE-M07-003",
+    "RULE-M07-008",
+    "SAFE-2026-02"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_studio_ai_remix.md",
+    "docs/03_screens/web/screen_web_studio_multi_merge.md",
+    "docs/03_screens/mobile/screen_mobile_studio_ai_remix.md"
+  ],
+  "screen_routes": [
+    "/studio/remix",
+    "/studio/multi-merge",
+    "mobile://studio/ai_remix"
+  ],
+  "event_types": [
+    "remix.completed",
+    "production.remix.analysis_started",
+    "production.remix.creative_dna_extracted",
+    "production.remix.generation_completed",
+    "production.remix.originality_checked"
+  ],
+  "source_hashes": {
+    "infra/migrations/00018_p4_04_remix_blueprints_and_multimerge.sql": "fd8c88d73ccf0d9e9b888b0b334e961b308c503fb4c307be8796e7245262e819",
+    "protos/creativanta/production/v1/production.proto": "7643d9c7a94fa918214a496e78aabfd3271b318e4bb70e158c79576707476ee2",
+    "apps/api/internal/production/types.go": "10cca9289a6c5519130de58b976a2efb15475cdc5d0dc54d49a85e80b1f35149",
+    "apps/api/internal/production/store.go": "88c352579c1ce95251d49c4bed0d5fe7f255fc4ae4c01527d3a187faea663cd4",
+    "apps/api/internal/production/service.go": "515acc0f2a3bb1c5d5eb18dcbea19badabb0f8dc0ca93f35229c5bdb7d1a4798",
+    "apps/api/internal/production/remix.go": "942489982990a09e3d2e41bfe052ab8d714a876d8a9956110d50f61f67b416f7",
+    "apps/api/internal/production/multimerge.go": "2235807485883ba25547c954eebec3a7dce7587741d4f2a7ffa84c36d83cab39",
+    "apps/api/internal/production/service_remix.go": "454ed55339daa23ba312be7063c5be1741432609691dee9917f054436e9bd85f",
+    "apps/api/internal/production/service_video_edit.go": "bd95e41e9fd90fd4a3f875140770bce331bb27bcb6c18ee673ece29dfc4740dd",
+    "apps/api/internal/production/multimerge_remix_test.go": "23e3cf50f61daf26e98f9ad2da11506890009ab752fcf770deefdc08bfef7fee",
+    "apps/api/internal/migrate/migrator_test.go": "613901aa4bfd89be28b09dfe09dbec694f19012701d9357982c0429e7b3d040a",
+    "apps/web/src/lib/production/types.ts": "1a118c08dad5677b9e8b9bae0a5d5f5af38c75cfeffdd8fb21ebf3465d2d2c2a",
+    "apps/web/src/lib/production/index.ts": "5fcf59bf99dd2edaee82c6daca94b884ba5d1141901bae2ec1c5c5d60288cf42",
+    "apps/web/src/lib/production/RemixOriginalityGate.svelte": "28ec4395fbdf77aa0275ed4a018ad22acadda3807b413ed6dde569b701e92ebb",
+    "apps/web/src/routes/studio/remix/+page.svelte": "3ad3486eed75c9370e29fd8a94a1bdb22dfa4a751a53add9832ee3ca172858f9",
+    "apps/web/src/routes/studio/multi-merge/+page.svelte": "4576f679b63fd529c1447835492302a61c7796d02637eaed55acfcc3bfc99efa",
+    "apps/web/src/lib/production/production.test.ts": "11281d392fbbecfd45b0179a6b82a862acc697d5ff7d1f7ff4d53d68cff60d86",
+    "apps/mobile/lib/production/production_models.dart": "cb0b3a525cf850afdd6f04ca27f130b4751ef5c01166f3f26862955c3eabd9bf",
+    "apps/mobile/lib/ui/production/ai_remix_view.dart": "a7ca8e4f8d5d27c5953053eff3bc6122ab084ef5ddac7a23116ce0a016f6c2f3",
+    "apps/mobile/test/ai_remix_view_test.dart": "b296ac70c217298ea7df72bee632a1bae2b4c192f636b416c372e0247391e63d"
+  },
+  "scope_items": [
+    "Database Migration 00018: Created remix_blueprints table with workspace composite tenant keys, strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY), app_user and admin_user policies, composite foreign keys referencing workspaces, scripts, and assets, explicit decimal money columns, and reversible transactional down migration.",
+    "Acceptance Target 1 (One canonical similarity threshold): AI Remix output enforces strictly < 30.0% script similarity vs reference original across backend, web, and mobile (RULE-M07-003, PRD §23.7, Pack 04 §9.5.6). No separate 70% bypass threshold exists. If similarity >= 30%, generation is blocked with quality_state = 'rejected', 0 credits are deducted, and actionable guidance is returned.",
+    "Acceptance Target 2 (No unlicensed media bypass): Multi-Merge compliance checks (RULE-M07-008, SAFE-2026-02, EC-M07-M01) strictly prohibit bypassing detected copyrighted music or unlicensed media by accepting risk. Hard blocks require verified license evidence or asset substitution before export.",
+    "Acceptance Target 3 (Foreign/DRM source has usable error): Reference video URLs that are DRM-protected (Netflix, Disney+, Widevine, FairPlay), geo-restricted (Hulu, geo-blocked), or private/SSRF targets return structured domain errors (ERR_DRM_PROTECTED, ERR_GEO_BLOCKED, ERR_SSRF_BLOCKED) with actionable copy ('Cannot access video at this URL. [Upload video file instead] or [Try different URL]') and zero partial analysis (EC-M07-R01)."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: multimerge_remix_test.go (TestAcceptanceTarget1_OneCanonicalSimilarityThreshold), Svelte test suite (production.test.ts), and Flutter test suite (ai_remix_view_test.dart) verify the canonical < 30.0% threshold, blocking generation and rejecting script similarity >= 30% with zero credit deductions.",
+    "Acceptance Target 2 Verified: multimerge_remix_test.go (TestAcceptanceTarget2_NoUnlicensedMediaBypass), web multi-merge page tests, and Flutter models verify SAFE-2026-02 compliance: detected copyright hard-blocks export and cannot be bypassed by acknowledging risk without verified license proof.",
+    "Acceptance Target 3 Verified: multimerge_remix_test.go (TestAcceptanceTarget3_ForeignDRMSourceUsableError), web URL validator tests, and Flutter widget tests verify structured errors for DRM, geo-blocks, and SSRF loopback/private IPs with actionable user instructions.",
+    "Migration 00018 Verified: migrator_test.go passes all 18 migrations including 00018_p4_04_remix_blueprints_and_multimerge.sql with bidirectional transactional tests and app_user RLS enforcement.",
+    "Protobuf Contracts Verified: check_proto.sh passes proto lint, code generation, zero-drift verification, buf breaking backward compatibility, Go vet/test, TypeScript vitest, and Dart test suites.",
+    "Quality Gates Verified: tooling/ci/check_d0.sh (docs & consistency), tooling/ci/check_go.sh (gofmt, vet, govulncheck, race detector), tooling/ci/check_node.sh (svelte-check, vite build, vitest tests, SSR smoke), and tooling/ci/check_flutter.sh (analyze fatal-infos/warnings, 146 unit/widget tests) all pass."
+  ],
+  "rpc_contracts": [
+    "RemixService/Analyze",
+    "RemixService/GetBlueprint",
+    "RemixService/Generate",
+    "RemixService/Regenerate",
+    "VideoEditJobService/Create",
+    "VideoEditJobService/Get",
+    "VideoEditJobService/List",
+    "VideoEditJobService/Cancel",
+    "VideoEditJobService/Retry"
+  ],
+  "migration_files": [
+    "infra/migrations/00018_p4_04_remix_blueprints_and_multimerge.sql"
+  ],
+  "permission_keys": [
+    "asset:generate",
+    "asset:read",
+    "production_job:manage",
+    "production_job:read"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-ACRCLOUD-API",
+      "PENDING_PRODUCTION_KEY",
+      "ACRCloud audio fingerprinting service requires production credentials for live music copyright verification; local fingerprint database fixture and heuristic rules verified."
+    ],
+    [
+      "EXT-GATE-AI-PROVIDER-VIDEO",
+      "PENDING_PRODUCTION_KEY",
+      "Live AI video generation models (Veo, Kling, HeyGen) require cloud production keys; mock provider adapters with realistic latencies and failure responses verified."
+    ],
+    [
+      "EXT-GATE-CLERK-AUTH",
+      "PENDING_PRODUCTION_TENANT",
+      "Production Clerk instance and webhook signing credentials for live multi-tenant JWT validation."
+    ],
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "Migration 00018 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+    ]
+  ],
+  "checks": [
+    {
+      "command": "tooling/ci/check_d0.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence": "build/phase-P4/p4-04/evidence/check_d0.log"
+    },
+    {
+      "command": "tooling/ci/check_proto.sh verify",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence": "build/phase-P4/p4-04/evidence/check_proto.log"
+    },
+    {
+      "command": "tooling/ci/check_go.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence": "build/phase-P4/p4-04/evidence/check_go.log"
+    },
+    {
+      "command": "tooling/ci/check_node.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence": "build/phase-P4/p4-04/evidence/check_node.log"
+    },
+    {
+      "command": "tooling/ci/check_flutter.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence": "build/phase-P4/p4-04/evidence/check_flutter.log"
+    }
+  ],
+  "remaining_scope": [
+    "P4-05: Showcase, Image/Link-to-Video và thumbnails — EF01–04 production modes; product context, safe URL fetch and thumbnails.",
+    "P4-06: Production Review & Final Approval — Mobile approval, revision requests, export package and compliance audit.",
+    "P4-07: Continuity OS Integration — Character and voice consistency across long-form video pipelines.",
+    "P4-08: AI Video Studio Final Phase Acceptance — End-to-end integration and provider performance verification."
+  ],
+  "decisions": [
+    "DEC-P4-04-01: Canonical threshold strictly < 30.0% script similarity vs reference original. Replaced any legacy 70% threshold references per RULE-M07-003 and PRD §23.7.",
+    "DEC-P4-04-02: Non-bypassable copyright scan (SAFE-2026-02, RULE-M07-008, EC-M07-M01). Detected copyright violations cannot be bypassed by acknowledging risk without verified license proof.",
+    "DEC-P4-04-03: Zero partial analysis on DRM or geo-blocked source URLs (EC-M07-R01). Returns structured error with actionable user options."
+  ]
+}

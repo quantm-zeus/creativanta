@@ -1,46 +1,14 @@
 
 > @creativanta/web@0.1.0 test /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-06/apps/web
-> vitest run
+> vitest run src/lib/production/sound_translation.test.ts src/lib/production/production.test.ts
 
 
  RUN  v3.0.7 /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-06/apps/web
 
- ✓ src/lib/trend/trend.test.ts (11 tests) 40ms
- ✓ src/lib/idea/idea.test.ts (14 tests) 17ms
- ✓ src/lib/p1_first_value/p1_first_value.test.ts (4 tests) 62ms
-stderr | src/lib/auth/auth.test.ts > P0-03 Web User-Facing Identity & Auth Store > 4. Sign-Out & Failure Transitions > transitions to error state when Clerk initialization throws unexpectedly
-[AUTH STORE] Init error: Error: Clerk SDK network timeout
-    at /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-06/apps/web/src/lib/auth/auth.test.ts:257:50
-    at file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-06/node_modules/@vitest/runner/dist/index.js:174:14
-    at file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-06/node_modules/@vitest/runner/dist/index.js:558:28
-    at file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-06/node_modules/@vitest/runner/dist/index.js:61:24
-    at new Promise (<anonymous>)
-    at runWithTimeout (file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-06/node_modules/@vitest/runner/dist/index.js:41:12)
-    at runTest (file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-06/node_modules/@vitest/runner/dist/index.js:1137:17)
-    at processTicksAndRejections (node:internal/process/task_queues:104:5)
-    at runSuite (file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-06/node_modules/@vitest/runner/dist/index.js:1291:15)
-    at runSuite (file:///home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-06/node_modules/@vitest/runner/dist/index.js:1291:15)
+ ✓ src/lib/production/sound_translation.test.ts (2 tests) 8ms
+ ✓ src/lib/production/production.test.ts (7 tests) 23ms
 
- ✓ src/lib/auth/auth.test.ts (17 tests) 107ms
- ✓ src/lib/script/script.test.ts (15 tests) 22ms
- ✓ src/lib/competitor/competitor.test.ts (11 tests) 152ms
- ✓ src/lib/opportunity/opportunity.test.ts (13 tests) 18ms
- ✓ src/lib/copilot/copilot.test.ts (17 tests) 24ms
- ✓ src/lib/intelligence/intelligence.test.ts (12 tests) 29ms
- ✓ src/lib/content/content.test.ts (6 tests) 27ms
- ✓ src/lib/capability/capability.test.ts (4 tests) 12ms
- ✓ src/lib/billing/billing.test.ts (5 tests) 33ms
- ✓ src/lib/continuity/continuity.test.ts (9 tests) 23ms
- ✓ src/lib/diagnostics/diagnostics.test.ts (5 tests) 13ms
- ✓ src/lib/production/production.test.ts (4 tests) 10ms
- ✓ src/lib/production/sound_translation.test.ts (2 tests) 10ms
- ✓ src/lib/help/help.test.ts (4 tests) 12ms
- ✓ src/lib/notification/notification.test.ts (6 tests) 12ms
- ✓ src/lib/constants/modes.test.ts (3 tests) 13ms
- ✓ src/lib/constants/routes.test.ts (3 tests) 9ms
- ✓ src/lib/constants/navigation.test.ts (2 tests) 8ms
-
- Test Files  21 passed (21)
-      Tests  167 passed (167)
-   Start at  12:39:42
-   Duration  9.98s (transform 2.54s, setup 0ms, collect 5.90s, tests 653ms, environment 10ms, prepare 4.13s)
+ Test Files  2 passed (2)
+      Tests  9 passed (9)
+   Start at  13:11:36
+   Duration  1.94s (transform 1.15s, setup 0ms, collect 2.95s, tests 32ms, environment 1ms, prepare 237ms)

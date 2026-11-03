@@ -6,7 +6,7 @@
   "status": "LOCAL_IMPLEMENTED",
   "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
   "acceptance_status": "PENDING",
-  "baseline_commit": "ebf5a0ad9e6fbb6f848465f3f80d1bd29b5de3a5",
+  "baseline_commit": "99ab5895786f423ce97b69c4fae9bb8b975aa967",
   "feature_refs": [
     "docs/02_features/production/ai_video_studio.md",
     "docs/02_features/content/continuity_os.md",
@@ -32,19 +32,19 @@
     "docs/03_screens/web/screen_web_studio_translation.md"
   ],
   "source_hashes": {
-    "infra/migrations/00018_p4_06_translation_sound_and_voice_clone.sql": "2a69604ab40f8efba6d9ba369e71d0f5d9eaa5b38db6fedcd370766ad73a1a50",
-    "protos/creativanta/production/v1/production.proto": "54623da7f4a222d4a4c56b5a4087a45053361f328cdb19efe28567dec9d401f4",
-    "apps/api/internal/production/types.go": "711266ba3fb4987d0d42aeedba7e0c6d4b8f7903577e24b8e1961efbeac66131",
-    "apps/api/internal/production/store.go": "08ece10ae65e2bd6e5b0e00b201d416bb3a6ce83453d22f983e47cdbff8431ff",
-    "apps/api/internal/production/service.go": "3315eef760cb036076da548c25da9e64f4bbf026631adcc64945340297ef678d",
+    "infra/migrations/00019_p4_06_translation_sound_and_voice_clone.sql": "2a69604ab40f8efba6d9ba369e71d0f5d9eaa5b38db6fedcd370766ad73a1a50",
+    "protos/creativanta/production/v1/production.proto": "713d2f8133a4a32f648f358976a4afa52963a254779869858e832f218647b9e6",
+    "apps/api/internal/production/types.go": "28d23fbe24a773a3c4a76ab77c337c7c202dda5eeb4aa6d030eef960f58d2f01",
+    "apps/api/internal/production/store.go": "30c62906e3958e55be9b8082c13df5b9aef0c13eaae7874cc5107e6be7622da0",
+    "apps/api/internal/production/service.go": "6cc19fc094880358a51492c212fb3fe57374b6bff17047568ebf61fcdc53106c",
     "apps/api/internal/production/voice_clone.go": "ef06723ab55756c0b559d027c79763c19135d58e6d4bab41f8c78d2086bed453",
     "apps/api/internal/production/sound.go": "40f25c7cf964929724bcb666a8b9a3cd989e363ce228e2d4f5c6028414095a80",
     "apps/api/internal/production/translation.go": "f57c8efadfcbcd63f5e6b4aedf949ac10fe0e348e65e9837a767e39ece6b37e8",
     "apps/api/internal/production/localization_sound_test.go": "402f09c957edf03064f75beef36e3231af42242613a5657d3f7188961162520d",
-    "apps/api/internal/migrate/migrator_test.go": "1a25eff8067c591880b4f1718c14de50d334f6920735d7cba4c83a12ff700b83",
-    "apps/web/src/lib/production/types.ts": "b89f61e3b7e33918de2915eaa66ee0aff55908a2e8ae8f0ad1ab7161b7a748b5",
-    "apps/web/src/lib/production/index.ts": "6da2a94423370121a0d37c312b8a39a4c7cb0eb4890cab14e234e09b1362001c",
-    "apps/web/src/lib/production/production.test.ts": "18523d1ba45324006426766af1e84ade4b17f830c606ab63072d8d3f44fce4af",
+    "apps/api/internal/migrate/migrator_test.go": "6bb0682b860975aebb637dbdec947c02207c57342dd833c01dbfe482b86a3e24",
+    "apps/web/src/lib/production/types.ts": "39c6f0dd125c55da4f252fdb0aafd70ef0c06bb98a36348e6a030394ac450e89",
+    "apps/web/src/lib/production/index.ts": "e050d4c199eba1d74e2b1f381027e82af9cd111a808e7590c0b4a8ee6400555a",
+    "apps/web/src/lib/production/production.test.ts": "57fe988786b1571d94f6fd26dc0a53dc6671f5bbb2cc184a3d6540e3dc7b8902",
     "apps/web/src/lib/production/sound_translation.test.ts": "d83f6bf7a5e57cd797d55657239a7c81efd9a2067a9e29b8e4278e32118d85c3",
     "apps/web/src/routes/studio/sound/+page.svelte": "e41bfd1fe476c6844cb95064bbacc951e12362b8fb3059605a6e07591e42c105",
     "apps/web/src/routes/studio/translate/+page.svelte": "055c34e7cbf848881b64504f78ec8691375a1cb0d6d1517d00296af4cc7c800b",
@@ -53,7 +53,7 @@
     "tooling/ci/check_web_smoke.sh": "d2ea255ec19fad5074ef9d1221785d9c66e632ffa425a997d06826563d5e6f2f"
   },
   "scope_items": [
-    "Database Migration 00018: Created translation_jobs and voice_clone_records tables with composite tenant FKs to workspaces, assets, video_edit_jobs, characters, and consent_records; strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY); exact numeric money/credits (DB-H-001); narrow role grants to app_user and admin_user; and verified 18-step reversible down migration.",
+    "Database Migration 00019: Created translation_jobs and voice_clone_records tables with composite tenant FKs to workspaces, assets, video_edit_jobs, characters, and consent_records; strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY); exact numeric money/credits (DB-H-001); narrow role grants to app_user and admin_user; and verified 19-step reversible down migration.",
     "Acceptance Target 1 (Consent required): Verifiable likeness consent gating enforced for digital twin voice clone creation, usage in voiceover, and translation dubbing. Consent revocation immediately cascades to block all subsequent voice generation and video translation.",
     "Acceptance Target 2 (Language/voice quality repair): Audio normalization to -14 LUFS (EBU R128), script translation quality scoring and clarity repair detection, auto-ducking (-18 dB), and multi-sample audio quality scoring.",
     "Acceptance Target 3 (Licensed input and measured quote): Bounded credit quote before execution with multi-language volume discount formula: total = languages * (base + lip_sync + cultural) * (1 - discount). Verified commercial royalty-free license metadata, rights confirmation, free preview player, and beat sync extraction."
@@ -62,9 +62,9 @@
     "Acceptance Target 1 Verified: TestAcceptanceTarget1_ConsentRequired (Go -race), Vitest web suite, and Flutter test suite confirm consent gating, tier gating, and revocation cascade.",
     "Acceptance Target 2 Verified: TestAcceptanceTarget2_LanguageVoiceQualityRepair (Go -race), Vitest web suite, and Flutter test suite confirm -14 LUFS audio normalization, quality scoring, and speech clarity repair notes.",
     "Acceptance Target 3 Verified: TestAcceptanceTarget3_LicensedInputAndMeasuredQuote (Go -race), Vitest volume discount formula test, and Flutter acceptance test confirm measured quote calculation, credit deduction, CC0 licensing, and beat sync cues.",
-    "Migration 00018 Verified: Migrator test suite (migrator_test.go) passes all 18 migrations up, status verification, and clean down transactional reversal.",
+    "Migration 00019 Verified: Migrator test suite (migrator_test.go) passes all 19 migrations up, status verification, and clean down transactional reversal.",
     "Four-Target Proto Codegen Verified: check_proto.sh passes Buf lint, codegen across Go, TypeScript, and Dart, git drift verification, backward compatibility check against origin/main, Go transport negative tests, TypeScript vitest, and Dart tests.",
-    "Web & Mobile Surfaces Verified: check_node.sh (svelte-check 0/0, vite build, 167 tests across 21 test files), check_web_smoke.sh (SSR HTTP 200 on /studio/sound and /studio/translate), and check_flutter.sh (flutter analyze 0 issues, 145 tests passing) all pass."
+    "Web & Mobile Surfaces Verified: check_node.sh (svelte-check 0/0, vite build, 167 tests across 21 test files), check_web_smoke.sh (SSR HTTP 200 on /studio/sound and /studio/translate), and check_flutter.sh (flutter analyze 0 issues, 149 tests passing) all pass."
   ],
   "rpc_contracts": [
     "TranslationService/Create",
@@ -84,7 +84,7 @@
     "VoiceCloneService/GetConsentStatus"
   ],
   "migration_files": [
-    "infra/migrations/00018_p4_06_translation_sound_and_voice_clone.sql"
+    "infra/migrations/00019_p4_06_translation_sound_and_voice_clone.sql"
   ],
   "permission_keys": [
     "translation:create",
@@ -110,7 +110,7 @@
     [
       "EXT-GATE-POSTGRES-LIVE-RLS",
       "PENDING_CI_LIVE_POSTGRES",
-      "Migration 00018 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+      "Migration 00019 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
     ]
   ]
 }
