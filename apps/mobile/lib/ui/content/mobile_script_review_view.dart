@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:creativanta_mobile/content/content_handoff_models.dart';
 import 'package:creativanta_mobile/content/script_models.dart';
 import 'package:creativanta_mobile/generated/creativanta/content/v1/script.pbenum.dart';
+import 'package:creativanta_mobile/ui/content/source_chain_lineage_widget.dart';
 
 /// Mobile review and approval screen for Module M06 (Script Lab).
 class MobileScriptReviewView extends StatefulWidget {
   const MobileScriptReviewView({
     super.key,
     required this.script,
+    this.lineage,
     this.assetBrief,
     required this.reviewerExpectedVersion,
     required this.onApprove,
@@ -14,6 +17,7 @@ class MobileScriptReviewView extends StatefulWidget {
   });
 
   final ScriptItem script;
+  final SourceChainLineage? lineage;
   final AssetBriefItem? assetBrief;
   final int reviewerExpectedVersion;
   final VoidCallback onApprove;
@@ -176,6 +180,12 @@ class _MobileScriptReviewViewState extends State<MobileScriptReviewView> {
             ),
 
           const SizedBox(height: 12),
+
+          // Source Chain Lineage Breadcrumb
+          if (widget.lineage != null) ...[
+            SourceChainLineageWidget(lineage: widget.lineage!),
+            const SizedBox(height: 12),
+          ],
 
           // Script scenes breakdown
           Card(

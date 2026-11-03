@@ -16,3 +16,7 @@ export * from './capability';
 export * from './script';
 export * from './continuity';
 export * from './copilot';
+export { default as SourceChainLineage } from './content/SourceChainLineage.svelte';
+export { default as ConcurrentConflictBanner } from './content/ConcurrentConflictBanner.svelte';
+export { default as CreativeAssistantPublishGuard } from './content/CreativeAssistantPublishGuard.svelte';
+export { hasPublishIntent, type SourceChainLineage as SourceChainLineageData, type LineageNode } from './content';

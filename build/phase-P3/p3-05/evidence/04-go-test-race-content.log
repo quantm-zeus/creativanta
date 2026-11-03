@@ -1,0 +1,16 @@
+=== RUN   TestTarget1_SourceChainReachesApprovedBrief
+--- PASS: TestTarget1_SourceChainReachesApprovedBrief (0.00s)
+=== RUN   TestTarget2_ConcurrentEditsPreserveData_StaleReviewConflict
+--- PASS: TestTarget2_ConcurrentEditsPreserveData_StaleReviewConflict (0.01s)
+=== RUN   TestTarget2_ConcurrentAuthorEdits_VersionCheck
+--- PASS: TestTarget2_ConcurrentAuthorEdits_VersionCheck (0.00s)
+=== RUN   TestTarget3_NoPublishSideEffectsFromCreativeAssistant
+--- PASS: TestTarget3_NoPublishSideEffectsFromCreativeAssistant (0.00s)
+=== RUN   TestTarget3_CreativeAssistanceProducesDraftOnly
+--- PASS: TestTarget3_CreativeAssistanceProducesDraftOnly (0.00s)
+=== RUN   TestEdgeCasesAndNegativeRules
+--- PASS: TestEdgeCasesAndNegativeRules (0.00s)
+=== RUN   TestConcurrentEditsAndApprovalsRace
+--- PASS: TestConcurrentEditsAndApprovalsRace (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/content	1.040s
