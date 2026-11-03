@@ -1,0 +1,258 @@
+syntax = "proto3";
+
+package creativanta.content.v1;
+
+import "creativanta/intelligence/v1/trend.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/content/v1;contentv1";
+
+// IdeaStatus defines canonical idea lifecycle states per database_schema.md §6.1 and idea_engine.md.
+enum IdeaStatus {
+  IDEA_STATUS_UNSPECIFIED = 0;
+  IDEA_STATUS_DRAFT = 1;
+  IDEA_STATUS_CANDIDATE = 2;
+  IDEA_STATUS_SELECTED = 3;
+  IDEA_STATUS_CONVERTED = 4;
+  IDEA_STATUS_ARCHIVED = 5;
+}
+
+// HookType defines classification for hooks in hook bank per database_schema.md §6.3.
+enum HookType {
+  HOOK_TYPE_UNSPECIFIED = 0;
+  HOOK_TYPE_QUESTION = 1;
+  HOOK_TYPE_SHOCK = 2;
+  HOOK_TYPE_STORY = 3;
+  HOOK_TYPE_POV = 4;
+  HOOK_TYPE_LISTICLE = 5;
+  HOOK_TYPE_CONTRAST = 6;
+}
+
+// HookSource defines attribution for hooks per database_schema.md §6.3.
+enum HookSource {
+  HOOK_SOURCE_UNSPECIFIED = 0;
+  HOOK_SOURCE_MANUAL = 1;
+  HOOK_SOURCE_AI_GENERATED = 2;
+  HOOK_SOURCE_LIBRARY = 3;
+}
+
+// IdeaSourceRef represents an origin link via idea_sources junction per database_schema.md §6.2.
+message IdeaSourceRef {
+  string source_type = 1; // trend, opportunity, product, thread, comment_cluster, objection, offer, manual
+  string source_id = 2;   // UUID or user_id for manual
+  string source_title = 3;
+  string source_url = 4;
+  bool is_archived = 5;   // EC-M05-002: source object expired/archived
+  string archive_notice = 6;
+}
+
+// Hook represents an intro hook associated with an idea per database_schema.md §6.3.
+message Hook {
+  string hook_id = 1;
+  string workspace_id = 2;
+  string idea_id = 3;
+  string hook_text = 4;
+  HookType hook_type = 5;
+  float effectiveness_score = 6;
+  int32 usage_count = 7;
+  HookSource source = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+// DuplicateWarning indicates potential semantic duplication per RULE-M05-005 and EC-M05-001.
+message DuplicateWarning {
+  bool is_duplicate = 1;
+  float similarity_score = 2; // > 0.85
+  string existing_idea_id = 3;
+  string existing_idea_title = 4;
+  string warning_message = 5;
+}
+
+// Idea represents a structured content idea per database_schema.md §6.1.
+message Idea {
+  string idea_id = 1;
+  string workspace_id = 2;
+  string title = 3;
+  string description = 4;
+  string audience_intent = 5;
+  string creator_intent = 6;
+  string suggested_format = 7;
+  string suggested_direction = 8;
+  IdeaStatus status = 9;
+  float idea_score = 10;
+  string converted_to_type = 11; // script, campaign
+  string converted_to_id = 12;
+  string created_by = 13;
+  repeated IdeaSourceRef sources = 14;
+  repeated Hook hooks = 15;
+  repeated float embedding_vector = 16;
+  google.protobuf.Timestamp created_at = 17;
+  google.protobuf.Timestamp updated_at = 18;
+  creativanta.intelligence.v1.SourceClass source_class = 19;
+  creativanta.intelligence.v1.ConfidenceBand confidence = 20;
+  repeated string recommended_formats = 21;
+  repeated string recommended_platforms = 22;
+  string angle = 23;
+  string hook_suggestion = 24;
+}
+
+message IdeaServiceCreateRequest {
+  string workspace_id = 1;
+  string title = 2;
+  string description = 3;
+  string audience_intent = 4;
+  string creator_intent = 5;
+  string suggested_format = 6;
+  string suggested_direction = 7;
+  repeated IdeaSourceRef source_refs = 8;
+  repeated string initial_hooks = 9;
+  bool confirm_duplicate = 10; // if true, proceed even if similarity > 0.85 (no silent merge)
+  bool check_duplicate_only = 11; // test for duplicates without saving
+  bool is_mobile_quick_capture = 12; // Acceptance Target 3: title-only draft
+}
+
+message IdeaServiceCreateResponse {
+  Idea idea = 1;
+  DuplicateWarning duplicate_warning = 2;
+  bool created = 3;
+}
+
+message IdeaServiceListRequest {
+  string workspace_id = 1;
+  IdeaStatus status = 2;
+  string source_type = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+  string search_query = 6;
+}
+
+message IdeaServiceListResponse {
+  repeated Idea ideas = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+
+message IdeaServiceGetRequest {
+  string workspace_id = 1;
+  string idea_id = 2;
+}
+
+message IdeaServiceGetResponse {
+  Idea idea = 1;
+}
+
+message IdeaServiceUpdateRequest {
+  string workspace_id = 1;
+  string idea_id = 2;
+  google.protobuf.Timestamp expected_updated_at = 3;
+  string title = 4;
+  string description = 5;
+  string audience_intent = 6;
+  string creator_intent = 7;
+  string suggested_format = 8;
+  string suggested_direction = 9;
+  string angle = 10;
+}
+
+message IdeaServiceUpdateResponse {
+  Idea idea = 1;
+}
+
+message IdeaServiceDeleteRequest {
+  string workspace_id = 1;
+  string idea_id = 2;
+}
+
+message IdeaServiceDeleteResponse {
+  bool success = 1;
+}
+
+message IdeaServiceUpdateStatusRequest {
+  string workspace_id = 1;
+  string idea_id = 2;
+  google.protobuf.Timestamp expected_updated_at = 3;
+  IdeaStatus target_status = 4;
+  string reason = 5;
+}
+
+message IdeaServiceUpdateStatusResponse {
+  Idea idea = 1;
+}
+
+message IdeaServiceGenerateRequest {
+  string workspace_id = 1;
+  string prompt = 2;
+  string source_type = 3;
+  string source_id = 4;
+  string target_audience = 5;
+  int32 count = 6; // default 3, max 10
+}
+
+message IdeaServiceGenerateResponse {
+  repeated Idea generated_ideas = 1;
+  int32 remaining_hourly_quota = 2;
+}
+
+message IdeaServiceConvertRequest {
+  string workspace_id = 1;
+  string idea_id = 2;
+  google.protobuf.Timestamp expected_updated_at = 3;
+  string conversion_type = 4; // script, campaign
+  string title = 5;
+}
+
+message IdeaServiceConvertResponse {
+  Idea idea = 1;
+  string converted_to_type = 2;
+  string converted_to_id = 3;
+  string script_id = 4;
+}
+
+message IdeaServiceSearchRequest {
+  string workspace_id = 1;
+  string query = 2;
+  int32 limit = 3;
+  float min_similarity = 4;
+}
+
+message IdeaServiceSearchResponse {
+  repeated Idea ideas = 1;
+  repeated float similarity_scores = 2;
+}
+
+message IdeaServiceCreateFromTrendRequest {
+  string workspace_id = 1;
+  string trend_id = 2;
+  string title = 3;
+  string audience_intent = 4;
+}
+
+message IdeaServiceCreateFromTrendResponse {
+  Idea idea = 1;
+}
+
+message IdeaServiceListMobileRequest {
+  string workspace_id = 1;
+  IdeaStatus status = 2;
+  int32 limit = 3;
+}
+
+message IdeaServiceListMobileResponse {
+  repeated Idea ideas = 1;
+  int32 total_count = 2;
+}
+
+// IdeaService manages ideation, hooks, deduplication, scoring, and conversions (M05).
+service IdeaService {
+  rpc Create(IdeaServiceCreateRequest) returns (IdeaServiceCreateResponse);
+  rpc List(IdeaServiceListRequest) returns (IdeaServiceListResponse);
+  rpc Get(IdeaServiceGetRequest) returns (IdeaServiceGetResponse);
+  rpc Update(IdeaServiceUpdateRequest) returns (IdeaServiceUpdateResponse);
+  rpc Delete(IdeaServiceDeleteRequest) returns (IdeaServiceDeleteResponse);
+  rpc UpdateStatus(IdeaServiceUpdateStatusRequest) returns (IdeaServiceUpdateStatusResponse);
+  rpc Generate(IdeaServiceGenerateRequest) returns (IdeaServiceGenerateResponse);
+  rpc Convert(IdeaServiceConvertRequest) returns (IdeaServiceConvertResponse);
+  rpc Search(IdeaServiceSearchRequest) returns (IdeaServiceSearchResponse);
+  rpc CreateFromTrend(IdeaServiceCreateFromTrendRequest) returns (IdeaServiceCreateFromTrendResponse);
+  rpc ListMobile(IdeaServiceListMobileRequest) returns (IdeaServiceListMobileResponse);
+}

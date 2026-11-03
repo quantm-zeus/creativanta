@@ -37,24 +37,23 @@
   />
 
   <div class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-    <!-- Card 1: Idea Engine -->
+    <!-- Card 1: Idea Engine (M05 - Active Phase P3) -->
     <JobCard
       title="Idea Engine"
       moduleTag="M05"
-      isUnavailable={true}
+      isUnavailable={false}
       description="Biến tín hiệu thị trường, phản hồi của người mua và góc phản biện thành ý tưởng kịch bản có tính chuyển đổi."
     >
       <div class="space-y-2">
-        <div class="rounded bg-[#fbf9f5] p-2.5 text-xs text-[#616c63] border border-[#e7e2d7]">
-          Khuôn mẫu ý tưởng: 0/12 mẫu khả dụng
+        <div class="rounded bg-emerald-50 p-2.5 text-xs text-emerald-800 border border-emerald-200">
+          ✨ Hoạt động trong Phase P3: Dedup (&gt;85%), Hook Bank và bảo toàn Lineage
         </div>
-        <button
-          type="button"
-          disabled
-          class="w-full cursor-not-allowed rounded-md bg-[#e7e2d7] py-2 px-3 text-xs font-medium text-[#616c63]"
+        <a
+          href="/ideas"
+          class="block w-full text-center rounded-md bg-[#274333] py-2 px-3 text-xs font-semibold text-white shadow-sm hover:bg-[#1f3528]"
         >
-          Sinh ý tưởng bằng AI (Chưa khả dụng)
-        </button>
+          Mở Kho ý tưởng (Idea Board) →
+        </a>
       </div>
     </JobCard>
 
