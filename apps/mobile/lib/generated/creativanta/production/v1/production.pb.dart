@@ -162,6 +162,7 @@ class LineageItem extends $pb.GeneratedMessage {
     $core.String? generationCostUsd,
     $core.String? parentAssetId,
     $1.Timestamp? recordedAt,
+    $core.String? trendId,
   }) {
     final result = LineageItem._();
     if (sourceProvider != null) result.sourceProvider = sourceProvider;
@@ -174,6 +175,7 @@ class LineageItem extends $pb.GeneratedMessage {
     if (generationCostUsd != null) result.generationCostUsd = generationCostUsd;
     if (parentAssetId != null) result.parentAssetId = parentAssetId;
     if (recordedAt != null) result.recordedAt = recordedAt;
+    if (trendId != null) result.trendId = trendId;
     return result;
   }
 
@@ -200,6 +202,7 @@ class LineageItem extends $pb.GeneratedMessage {
     ..aOS(7, _omitFieldNames ? '' : 'parentAssetId')
     ..aOM<$1.Timestamp>(8, _omitFieldNames ? '' : 'recordedAt',
         subBuilder: $1.Timestamp.$_createMessage)
+    ..aOS(9, _omitFieldNames ? '' : 'trendId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -291,6 +294,15 @@ class LineageItem extends $pb.GeneratedMessage {
   void clearRecordedAt() => $_clearField(8);
   @$pb.TagNumber(8)
   $1.Timestamp ensureRecordedAt() => $_ensure(7);
+
+  @$pb.TagNumber(9)
+  $core.String get trendId => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set trendId($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasTrendId() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearTrendId() => $_clearField(9);
 }
 
 /// PostProductionConfig configures FFmpeg processing and normalization per RULE-M07-005.
@@ -9440,6 +9452,7 @@ class RemixBlueprint extends $pb.GeneratedMessage {
     $core.String? errorMessage,
     $1.Timestamp? createdAt,
     $1.Timestamp? updatedAt,
+    $core.String? trendId,
   }) {
     final result = RemixBlueprint._();
     if (blueprintId != null) result.blueprintId = blueprintId;
@@ -9459,6 +9472,7 @@ class RemixBlueprint extends $pb.GeneratedMessage {
     if (errorMessage != null) result.errorMessage = errorMessage;
     if (createdAt != null) result.createdAt = createdAt;
     if (updatedAt != null) result.updatedAt = updatedAt;
+    if (trendId != null) result.trendId = trendId;
     return result;
   }
 
@@ -9497,6 +9511,7 @@ class RemixBlueprint extends $pb.GeneratedMessage {
         subBuilder: $1.Timestamp.$_createMessage)
     ..aOM<$1.Timestamp>(16, _omitFieldNames ? '' : 'updatedAt',
         subBuilder: $1.Timestamp.$_createMessage)
+    ..aOS(17, _omitFieldNames ? '' : 'trendId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -9670,6 +9685,15 @@ class RemixBlueprint extends $pb.GeneratedMessage {
   void clearUpdatedAt() => $_clearField(16);
   @$pb.TagNumber(16)
   $1.Timestamp ensureUpdatedAt() => $_ensure(15);
+
+  @$pb.TagNumber(17)
+  $core.String get trendId => $_getSZ(16);
+  @$pb.TagNumber(17)
+  set trendId($core.String value) => $_setString(16, value);
+  @$pb.TagNumber(17)
+  $core.bool hasTrendId() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearTrendId() => $_clearField(17);
 }
 
 /// OriginalityCheckResult enforces canonical RULE-M07-003 similarity check (<30% threshold).
@@ -10571,6 +10595,7 @@ class RemixServiceAnalyzeRequest extends $pb.GeneratedMessage {
     $core.String? characterId,
     $core.String? brandPackId,
     $core.Iterable<$core.String>? targetPlatforms,
+    $core.String? trendId,
   }) {
     final result = RemixServiceAnalyzeRequest._();
     if (context != null) result.context = context;
@@ -10581,6 +10606,7 @@ class RemixServiceAnalyzeRequest extends $pb.GeneratedMessage {
     if (characterId != null) result.characterId = characterId;
     if (brandPackId != null) result.brandPackId = brandPackId;
     if (targetPlatforms != null) result.targetPlatforms.addAll(targetPlatforms);
+    if (trendId != null) result.trendId = trendId;
     return result;
   }
 
@@ -10608,6 +10634,7 @@ class RemixServiceAnalyzeRequest extends $pb.GeneratedMessage {
     ..aOS(6, _omitFieldNames ? '' : 'characterId')
     ..aOS(7, _omitFieldNames ? '' : 'brandPackId')
     ..pPS(8, _omitFieldNames ? '' : 'targetPlatforms')
+    ..aOS(9, _omitFieldNames ? '' : 'trendId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -10704,6 +10731,15 @@ class RemixServiceAnalyzeRequest extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(8)
   $pb.PbList<$core.String> get targetPlatforms => $_getList(7);
+
+  @$pb.TagNumber(9)
+  $core.String get trendId => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set trendId($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasTrendId() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearTrendId() => $_clearField(9);
 }
 
 class RemixServiceAnalyzeResponse extends $pb.GeneratedMessage {

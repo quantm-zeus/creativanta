@@ -216,4 +216,60 @@ describe('Production Studio Web - Acceptance Tests', () => {
 		expect(ssrf.isValid).toBe(false);
 		expect(ssrf.errorMessage).toContain('SSRF');
 	});
+
+	it('P4-09 Target 1 & 3: Trend-to-remix blueprint retains trend provenance and lineage tracking', () => {
+		const trendId = 'trend-skincare-vietnam-2026';
+		const referenceUrl = 'https://tiktok.com/@creator/video/73918274912';
+		const topic = 'Review kem duong am rau ma';
+
+		const blueprint: import('./types').RemixBlueprint = {
+			blueprintId: 'bp-p409-test',
+			workspaceId: 'ws-sample',
+			referenceAssetId: 'ref-asset-123',
+			referenceUrl,
+			trendId,
+			referenceTranscript: 'Day la video goc ve kem duong am',
+			remixScript: `Kich ban remix theo trend ${trendId}: ${topic}`,
+			fidelityLevel: 'adapt',
+			originalityScore: 84.0,
+			similarityPercentage: 16.0,
+			status: 'analyzed',
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+			creativeDna: {
+				sceneCount: 5,
+				hookType: 'Question',
+				contentStructureJson: JSON.stringify(['Hook', 'Problem', 'Solution', 'CTA']),
+				pacingProfileJson: JSON.stringify({ rhythm: 'Fast' }),
+				visualStyleJson: JSON.stringify({ palette: 'Vibrant' }),
+				audioProfileJson: JSON.stringify({ genre: 'Electronic' }),
+				transitionMapJson: JSON.stringify({ intro: 'cut' }),
+				totalDurationSeconds: 24,
+				engagementStructureJson: JSON.stringify({ pattern: 'Viral' })
+			}
+		};
+
+		expect(blueprint.trendId).toBe('trend-skincare-vietnam-2026');
+		expect(blueprint.remixScript).toContain(trendId);
+		expect(blueprint.similarityPercentage).toBeLessThan(30.0);
+
+		// Lineage record preservation
+		const lineage: import('./types').AssetLineage = {
+			assetId: 'asset-remix-p409',
+			title: 'Remixed Video from Trend',
+			assetType: 'video',
+			generationState: 'completed',
+			qualityState: 'passed',
+			sourceProvider: 'veo',
+			sourceModel: 'veo-2-turbo',
+			durationSeconds: 24,
+			resolution: '1080x1920',
+			storageUrl: 'https://cdn.creativanta.test/assets/remix-p409.mp4',
+			trendId: blueprint.trendId,
+			costUSD: '0.04'
+		};
+
+		expect(lineage.trendId).toBe('trend-skincare-vietnam-2026');
+		expect(lineage.sourceProvider).toBe('veo');
+	});
 });

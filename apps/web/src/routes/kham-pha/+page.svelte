@@ -717,24 +717,34 @@
           </div>
 
           <!-- Action buttons -->
-          <div class="mt-4 pt-3 border-t border-[#e7e2d7] grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onclick={() => toggleSaveWatchlist(trend)}
-              class="rounded-md border border-[#e7e2d7] bg-[#fbf9f5] py-1.5 px-2 text-xs font-semibold transition-colors {activeWatchlist.trendIds.includes(trend.id) ? 'bg-[#274333] text-[#fbf9f5] border-[#274333]' : 'text-[#242924] hover:bg-[#e7e2d7]'}"
-              data-testid="save-watchlist-btn-{trend.id}"
-            >
-              {activeWatchlist.trendIds.includes(trend.id) ? '✓ Đã lưu' : '📌 Watchlist'}
-            </button>
+          <div class="mt-4 pt-3 border-t border-[#e7e2d7] space-y-2">
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onclick={() => toggleSaveWatchlist(trend)}
+                class="rounded-md border border-[#e7e2d7] bg-[#fbf9f5] py-1.5 px-2 text-xs font-semibold transition-colors {activeWatchlist.trendIds.includes(trend.id) ? 'bg-[#274333] text-[#fbf9f5] border-[#274333]' : 'text-[#242924] hover:bg-[#e7e2d7]'}"
+                data-testid="save-watchlist-btn-{trend.id}"
+              >
+                {activeWatchlist.trendIds.includes(trend.id) ? '✓ Đã lưu' : '📌 Watchlist'}
+              </button>
 
-            <button
-              type="button"
-              onclick={() => handleConvertToOpportunity(trend)}
-              class="rounded-md bg-[#274333] py-1.5 px-2 text-xs font-semibold text-[#fbf9f5] hover:bg-[#1f3528] transition-colors shadow-xs"
-              data-testid="convert-opp-btn-{trend.id}"
+              <button
+                type="button"
+                onclick={() => handleConvertToOpportunity(trend)}
+                class="rounded-md bg-[#274333] py-1.5 px-2 text-xs font-semibold text-[#fbf9f5] hover:bg-[#1f3528] transition-colors shadow-xs"
+                data-testid="convert-opp-btn-{trend.id}"
+              >
+                💡 Tạo cơ hội
+              </button>
+            </div>
+
+            <a
+              href="/studio/remix?trend_id={encodeURIComponent(trend.id)}&topic={encodeURIComponent(trend.title)}&reference_url={encodeURIComponent('https://tiktok.com/@trend/video/' + trend.id)}"
+              class="w-full flex items-center justify-center gap-1 rounded-md border border-[#274333] bg-[#eef3f0] py-1.5 px-2 text-xs font-semibold text-[#274333] hover:bg-[#dce7e1] transition-colors shadow-xs"
+              data-testid="remix-trend-btn-{trend.id}"
             >
-              💡 Tạo cơ hội
-            </button>
+              🔄 Remix video này
+            </a>
           </div>
         </div>
       {/each}
@@ -785,6 +795,13 @@
                 >
                   Cơ hội
                 </button>
+                <a
+                  href="/studio/remix?trend_id={encodeURIComponent(trend.id)}&topic={encodeURIComponent(trend.title)}&reference_url={encodeURIComponent('https://tiktok.com/@trend/video/' + trend.id)}"
+                  class="font-semibold text-[#274333] hover:underline"
+                  data-testid="remix-trend-table-btn-{trend.id}"
+                >
+                  Remix
+                </a>
               </td>
             </tr>
           {/each}

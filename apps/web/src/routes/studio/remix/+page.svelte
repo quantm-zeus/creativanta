@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 	import {
 		validateRemixOriginality,
 		validateReferenceUrlClient,
@@ -10,6 +12,9 @@
 	// Wizard Phases: 1: Input, 2: DNA Report, 3: Polish & Export
 	let currentPhase: 1 | 2 | 3 = 1;
 
+	// Trend provenance lineage
+	let trendId = '';
+
 	// Phase 1 inputs
 	let inputMode: 'url' | 'upload' = 'url';
 	let referenceUrl = 'https://tiktok.com/@creator/video/73918274912';
@@ -19,6 +24,20 @@
 	let characterId = 'char-mila';
 	let brandPackId = 'brand-default';
 	let targetPlatforms = ['TikTok', 'Reels'];
+
+	onMount(() => {
+		const params = $page.url.searchParams;
+		const qTrend = params.get('trend_id');
+		if (qTrend) trendId = qTrend;
+		const qUrl = params.get('reference_url');
+		if (qUrl) {
+			referenceUrl = qUrl;
+			inputMode = 'url';
+			handleUrlChange();
+		}
+		const qTopic = params.get('topic');
+		if (qTopic) topic = qTopic;
+	});
 
 	// URL Validation state (DRM / Geo-blocked / SSRF detection)
 	let urlValidationError: {
@@ -83,6 +102,7 @@
 				workspaceId: 'ws-current',
 				referenceAssetId: 'ref-asset-sample',
 				referenceUrl: inputMode === 'url' ? referenceUrl : undefined,
+				trendId: trendId || undefined,
 				referenceTranscript: 'Video hướng dẫn quy trình dưỡng da 4 bước buổi tối với kem chống nắng và serum thảo mộc.',
 				remixScript: `Kịch bản chuyển thể phong cách năng động: ${topic}. Bước 1 làm sạch sâu, bước 2 cấp ẩm tức thì, bước 3 khóa ẩm toàn diện. Hãy bắt đầu ngay hôm nay!`,
 				fidelityLevel: fidelity,
@@ -195,6 +215,25 @@
 			</span>
 		</div>
 	</div>
+
+	<!-- Trend Provenance Lineage Banner (EC-M02-M07) -->
+	{#if trendId}
+		<div
+			class="mb-6 rounded-xl border border-primary-500/40 bg-primary-950/30 p-4 flex items-center justify-between text-xs"
+			data-testid="trend-provenance-banner"
+		>
+			<div class="flex items-center gap-3">
+				<span class="text-xl">📈</span>
+				<div>
+					<div class="font-semibold text-primary-200">Xuất phát từ Xu hướng Thịnh hành: <span class="font-mono text-white">#{trendId}</span></div>
+					<div class="text-neutral-400 mt-0.5">Dữ liệu xu hướng từ Trend Radar đã kết nối trực tiếp vào Remix Studio để đảm bảo bảo toàn tính nguyên bản và dòng dõi (lineage).</div>
+				</div>
+			</div>
+			<span class="rounded bg-primary-900/60 border border-primary-700 px-2.5 py-1 font-mono text-[11px] text-primary-300">
+				Lineage Attached
+			</span>
+		</div>
+	{/if}
 
 	<!-- ========================================================================= -->
 	<!-- Phase 1: Input -->
@@ -503,6 +542,20 @@
 	<!-- ========================================================================= -->
 	{#if currentPhase === 3 && originalityResult}
 		<div class="space-y-6">
+			<!-- Lineage Verification Banner -->
+			{#if trendId}
+				<div
+					class="rounded-lg border border-emerald-500/40 bg-emerald-950/20 p-3.5 flex items-center justify-between text-xs text-emerald-200"
+					data-testid="trend-lineage-verified"
+				>
+					<div class="flex items-center gap-2">
+						<span class="text-base">✅</span>
+						<span>Dòng dõi nguồn (Lineage): Trend <strong>#{trendId}</strong> đã liên kết thành công vào tài sản xuất xưởng.</span>
+					</div>
+					<span class="font-mono text-emerald-400 text-[11px]">EC-M02-M07 Lineage Verified</span>
+				</div>
+			{/if}
+
 			<!-- Canonical Originality Gate Component -->
 			<RemixOriginalityGate
 				result={originalityResult}

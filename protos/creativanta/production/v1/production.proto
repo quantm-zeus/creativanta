@@ -114,6 +114,7 @@ message LineageItem {
   string generation_cost_usd = 6;
   string parent_asset_id = 7;
   google.protobuf.Timestamp recorded_at = 8;
+  string trend_id = 9;
 }
 
 // PostProductionConfig configures FFmpeg processing and normalization per RULE-M07-005.
@@ -931,6 +932,7 @@ message RemixBlueprint {
   string error_message = 14;
   google.protobuf.Timestamp created_at = 15;
   google.protobuf.Timestamp updated_at = 16;
+  string trend_id = 17;
 }
 
 // OriginalityCheckResult enforces canonical RULE-M07-003 similarity check (<30% threshold).
@@ -1019,6 +1021,7 @@ message RemixServiceAnalyzeRequest {
   string character_id = 6;
   string brand_pack_id = 7;
   repeated string target_platforms = 8;
+  string trend_id = 9;
 }
 
 message RemixServiceAnalyzeResponse {

@@ -1,0 +1,37 @@
+=== RUN   TestP409_AcceptanceTarget1_AllFourProductionModes
+=== RUN   TestP409_AcceptanceTarget1_AllFourProductionModes/Mode_1:_Quick_Edit
+=== RUN   TestP409_AcceptanceTarget1_AllFourProductionModes/Mode_2:_Clip_Factory
+=== RUN   TestP409_AcceptanceTarget1_AllFourProductionModes/Mode_3:_Multi-Merge
+=== RUN   TestP409_AcceptanceTarget1_AllFourProductionModes/Mode_4:_AI_Remix_Studio
+--- PASS: TestP409_AcceptanceTarget1_AllFourProductionModes (0.01s)
+    --- PASS: TestP409_AcceptanceTarget1_AllFourProductionModes/Mode_1:_Quick_Edit (0.00s)
+    --- PASS: TestP409_AcceptanceTarget1_AllFourProductionModes/Mode_2:_Clip_Factory (0.00s)
+    --- PASS: TestP409_AcceptanceTarget1_AllFourProductionModes/Mode_3:_Multi-Merge (0.00s)
+    --- PASS: TestP409_AcceptanceTarget1_AllFourProductionModes/Mode_4:_AI_Remix_Studio (0.00s)
+=== RUN   TestP409_AcceptanceTarget2_CoreAndEF01to07ExtendedFeatures
+=== RUN   TestP409_AcceptanceTarget2_CoreAndEF01to07ExtendedFeatures/EF01_Product_Showcase
+=== RUN   TestP409_AcceptanceTarget2_CoreAndEF01to07ExtendedFeatures/EF02_Image-to-Video
+=== RUN   TestP409_AcceptanceTarget2_CoreAndEF01to07ExtendedFeatures/EF03_AI_Thumbnails
+=== RUN   TestP409_AcceptanceTarget2_CoreAndEF01to07ExtendedFeatures/EF04_Link-to-Video
+=== RUN   TestP409_AcceptanceTarget2_CoreAndEF01to07ExtendedFeatures/EF05_Dubbing_&_Translation
+=== RUN   TestP409_AcceptanceTarget2_CoreAndEF01to07ExtendedFeatures/EF06_Sound_&_Voice_Clone
+=== RUN   TestP409_AcceptanceTarget2_CoreAndEF01to07ExtendedFeatures/EF07_Style_Learning_&_Continuity
+--- PASS: TestP409_AcceptanceTarget2_CoreAndEF01to07ExtendedFeatures (0.00s)
+    --- PASS: TestP409_AcceptanceTarget2_CoreAndEF01to07ExtendedFeatures/EF01_Product_Showcase (0.00s)
+    --- PASS: TestP409_AcceptanceTarget2_CoreAndEF01to07ExtendedFeatures/EF02_Image-to-Video (0.00s)
+    --- PASS: TestP409_AcceptanceTarget2_CoreAndEF01to07ExtendedFeatures/EF03_AI_Thumbnails (0.00s)
+    --- PASS: TestP409_AcceptanceTarget2_CoreAndEF01to07ExtendedFeatures/EF04_Link-to-Video (0.00s)
+    --- PASS: TestP409_AcceptanceTarget2_CoreAndEF01to07ExtendedFeatures/EF05_Dubbing_&_Translation (0.00s)
+    --- PASS: TestP409_AcceptanceTarget2_CoreAndEF01to07ExtendedFeatures/EF06_Sound_&_Voice_Clone (0.00s)
+    --- PASS: TestP409_AcceptanceTarget2_CoreAndEF01to07ExtendedFeatures/EF07_Style_Learning_&_Continuity (0.00s)
+=== RUN   TestP409_AcceptanceTarget3_TrendToRemixLineageAndGamificationHooks
+--- PASS: TestP409_AcceptanceTarget3_TrendToRemixLineageAndGamificationHooks (0.00s)
+=== RUN   TestP409_AcceptanceTarget4_ProviderRoutingAndHonestDisabledPath
+--- PASS: TestP409_AcceptanceTarget4_ProviderRoutingAndHonestDisabledPath (0.00s)
+=== RUN   TestP409_AcceptanceTarget5_FutureScopesRetained
+--- PASS: TestP409_AcceptanceTarget5_FutureScopesRetained (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/production	(cached)
+testing: warning: no tests to run
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/migrate	1.032s [no tests to run]

@@ -100,6 +100,7 @@ type LineageRecord struct {
 	GenerationCostCredits tenantdb.ExactDecimal `json:"generation_cost_credits"`
 	GenerationCostUSD     tenantdb.ExactDecimal `json:"generation_cost_usd"`
 	ParentAssetID         string                `json:"parent_asset_id,omitempty"`
+	TrendID               string                `json:"trend_id,omitempty"`
 	RecordedAt            time.Time             `json:"recorded_at"`
 }
 
@@ -488,6 +489,7 @@ type RemixBlueprint struct {
 	Status               string      `json:"status"`                // analyzing, analyzed, generating, generated, failed, rejected
 	RejectionReason      string      `json:"rejection_reason,omitempty"`
 	ErrorMessage         string      `json:"error_message,omitempty"`
+	TrendID              string      `json:"trend_id,omitempty"`
 	CreatedAt            time.Time   `json:"created_at"`
 	UpdatedAt            time.Time   `json:"updated_at"`
 	DeletedAt            *time.Time  `json:"deleted_at,omitempty"`

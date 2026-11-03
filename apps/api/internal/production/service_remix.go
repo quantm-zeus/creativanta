@@ -3,6 +3,7 @@ package production
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -83,6 +84,16 @@ func (s *RemixServiceServer) Analyze(ctx context.Context, req *connect.Request[p
 		refTranscript = refAsset.GenerationPrompt
 	}
 
+	trendID := stringsTrim(req.Msg.GetTrendId())
+	if trendID == "" {
+		if strings.Contains(req.Msg.GetTopic(), "[trend_id:") {
+			parts := strings.Split(req.Msg.GetTopic(), "[trend_id:")
+			if len(parts) > 1 {
+				trendID = strings.TrimSuffix(strings.TrimSpace(parts[1]), "]")
+			}
+		}
+	}
+
 	blueprint := &RemixBlueprint{
 		BlueprintID:          bpID,
 		WorkspaceID:          wsID,
@@ -95,6 +106,7 @@ func (s *RemixServiceServer) Analyze(ctx context.Context, req *connect.Request[p
 		OriginalityScore:     85.0, // Initial target estimate
 		SimilarityPercentage: 15.0, // Initial estimate
 		Status:               "analyzed",
+		TrendID:              trendID,
 		CreatedAt:            time.Now().UTC(),
 		UpdatedAt:            time.Now().UTC(),
 	}
@@ -102,6 +114,19 @@ func (s *RemixServiceServer) Analyze(ctx context.Context, req *connect.Request[p
 	if err := s.svc.store.CreateRemixBlueprint(ctx, blueprint); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to save blueprint: %w", err))
 	}
+
+	s.svc.RecordEvent(DomainEvent{
+		EventType:   "production.remix.analysis_started",
+		WorkspaceID: wsID,
+		Payload: map[string]any{
+			"blueprint_id":       bpID,
+			"reference_asset_id": refAssetID,
+			"reference_url":      refURL,
+			"trend_id":           trendID,
+			"user_id":            caller.UserID,
+		},
+		OccurredAt: time.Now().UTC(),
+	})
 
 	return connect.NewResponse(&productionv1.RemixServiceAnalyzeResponse{
 		Blueprint:       toProtoRemixBlueprint(blueprint),
@@ -233,6 +258,7 @@ func (s *RemixServiceServer) Generate(ctx context.Context, req *connect.Request[
 				GenerationCostCredits: genCredits,
 				GenerationCostUSD:     tenantdb.MustParseExactDecimal("0.525000"),
 				ParentAssetID:         bp.ReferenceAssetID,
+				TrendID:               bp.TrendID,
 				RecordedAt:            now,
 			},
 		},
@@ -273,6 +299,30 @@ func (s *RemixServiceServer) Generate(ctx context.Context, req *connect.Request[
 	bp.OutputAssetID = outputAssetID
 	bp.VideoEditJobID = jobID
 	_ = s.svc.store.UpdateRemixBlueprint(ctx, bp)
+
+	s.svc.RecordEvent(DomainEvent{
+		EventType:   "production.remix.generation_completed",
+		WorkspaceID: wsID,
+		Payload: map[string]any{
+			"blueprint_id":      bp.BlueprintID,
+			"output_asset_id":   outputAssetID,
+			"originality_score": origCheck.OriginalityScore,
+			"trend_id":          bp.TrendID,
+			"user_id":           caller.UserID,
+		},
+		OccurredAt: now,
+	})
+	s.svc.RecordEvent(DomainEvent{
+		EventType:   "remix.completed",
+		WorkspaceID: wsID,
+		Payload: map[string]any{
+			"asset_id":   outputAssetID,
+			"source_ref": bp.ReferenceAssetID,
+			"trend_id":   bp.TrendID,
+			"user_id":    caller.UserID,
+		},
+		OccurredAt: now,
+	})
 
 	return connect.NewResponse(&productionv1.RemixServiceGenerateResponse{
 		Blueprint:        toProtoRemixBlueprint(bp),
@@ -363,6 +413,7 @@ func toProtoRemixBlueprint(bp *RemixBlueprint) *productionv1.RemixBlueprint {
 		ErrorMessage:         bp.ErrorMessage,
 		CreatedAt:            timestamppb.New(bp.CreatedAt),
 		UpdatedAt:            timestamppb.New(bp.UpdatedAt),
+		TrendId:              bp.TrendID,
 	}
 }
 

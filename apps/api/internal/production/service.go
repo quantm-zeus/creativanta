@@ -52,6 +52,7 @@ type Service struct {
 	LinkToVideo     *LinkToVideoManager
 	DerivativeMgr   *DerivativeManager
 	PackagingQAMgr  *PackagingQAManager
+	Gamification    *GamificationHook
 }
 
 var _ productionv1connect.StudioServiceHandler = (*Service)(nil)
@@ -155,6 +156,7 @@ func NewService(cfg ServiceConfig) *Service {
 	svc.LinkToVideo = NewLinkToVideoManager(st, svc)
 	svc.DerivativeMgr = NewDerivativeManager(st)
 	svc.PackagingQAMgr = NewPackagingQAManager(st)
+	svc.Gamification = NewGamificationHook(svc)
 	return svc
 }
 
@@ -225,11 +227,18 @@ func (s *Service) DeductCredits(workspaceID string, amount tenantdb.ExactDecimal
 	return nil
 }
 
-// RecordEvent records a domain event for audit/testing.
+// RecordEvent records a domain event for audit/testing and notifies hooks.
 func (s *Service) RecordEvent(e DomainEvent) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	if e.OccurredAt.IsZero() {
+		e.OccurredAt = time.Now().UTC()
+	}
 	s.events = append(s.events, e)
+	s.mu.Unlock()
+
+	if s.Gamification != nil && e.EventType != "achievement.unlocked" {
+		s.Gamification.HandleEvent(e)
+	}
 }
 
 // Events returns a copy of recorded domain events.
@@ -239,6 +248,11 @@ func (s *Service) Events() []DomainEvent {
 	out := make([]DomainEvent, len(s.events))
 	copy(out, s.events)
 	return out
+}
+
+// AddCredits deposits credits into workspace balance (e.g. gamification reward).
+func (s *Service) AddCredits(workspaceID string, amount tenantdb.ExactDecimal) {
+	s.refundCredits(workspaceID, amount)
 }
 
 // refundCredits restores workspace balance.
@@ -1056,6 +1070,7 @@ func toProtoAsset(a *Asset) *productionv1.Asset {
 			GenerationCostUsd:     l.GenerationCostUSD.String(),
 			ParentAssetId:         l.ParentAssetID,
 			RecordedAt:            timestamppb.New(l.RecordedAt),
+			TrendId:               l.TrendID,
 		})
 	}
 

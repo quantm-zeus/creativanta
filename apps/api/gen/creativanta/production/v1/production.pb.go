@@ -986,6 +986,7 @@ type LineageItem struct {
 	GenerationCostUsd     string                 `protobuf:"bytes,6,opt,name=generation_cost_usd,json=generationCostUsd,proto3" json:"generation_cost_usd,omitempty"`
 	ParentAssetId         string                 `protobuf:"bytes,7,opt,name=parent_asset_id,json=parentAssetId,proto3" json:"parent_asset_id,omitempty"`
 	RecordedAt            *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=recorded_at,json=recordedAt,proto3" json:"recorded_at,omitempty"`
+	TrendId               string                 `protobuf:"bytes,9,opt,name=trend_id,json=trendId,proto3" json:"trend_id,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -1074,6 +1075,13 @@ func (x *LineageItem) GetRecordedAt() *timestamppb.Timestamp {
 		return x.RecordedAt
 	}
 	return nil
+}
+
+func (x *LineageItem) GetTrendId() string {
+	if x != nil {
+		return x.TrendId
+	}
+	return ""
 }
 
 // PostProductionConfig configures FFmpeg processing and normalization per RULE-M07-005.
@@ -7361,6 +7369,7 @@ type RemixBlueprint struct {
 	ErrorMessage         string                 `protobuf:"bytes,14,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
 	CreatedAt            *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt            *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	TrendId              string                 `protobuf:"bytes,17,opt,name=trend_id,json=trendId,proto3" json:"trend_id,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -7505,6 +7514,13 @@ func (x *RemixBlueprint) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *RemixBlueprint) GetTrendId() string {
+	if x != nil {
+		return x.TrendId
+	}
+	return ""
 }
 
 // OriginalityCheckResult enforces canonical RULE-M07-003 similarity check (<30% threshold).
@@ -8137,6 +8153,7 @@ type RemixServiceAnalyzeRequest struct {
 	CharacterId      string                 `protobuf:"bytes,6,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
 	BrandPackId      string                 `protobuf:"bytes,7,opt,name=brand_pack_id,json=brandPackId,proto3" json:"brand_pack_id,omitempty"`
 	TargetPlatforms  []string               `protobuf:"bytes,8,rep,name=target_platforms,json=targetPlatforms,proto3" json:"target_platforms,omitempty"`
+	TrendId          string                 `protobuf:"bytes,9,opt,name=trend_id,json=trendId,proto3" json:"trend_id,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -8225,6 +8242,13 @@ func (x *RemixServiceAnalyzeRequest) GetTargetPlatforms() []string {
 		return x.TargetPlatforms
 	}
 	return nil
+}
+
+func (x *RemixServiceAnalyzeRequest) GetTrendId() string {
+	if x != nil {
+		return x.TrendId
+	}
+	return ""
 }
 
 type RemixServiceAnalyzeResponse struct {
@@ -17490,7 +17514,7 @@ const file_creativanta_production_v1_production_proto_rawDesc = "" +
 	"\x04icon\x18\x04 \x01(\tR\x04icon\x12*\n" +
 	"\x11credit_cost_range\x18\x05 \x01(\tR\x0fcreditCostRange\x12!\n" +
 	"\fis_available\x18\x06 \x01(\bR\visAvailable\x126\n" +
-	"\x17supported_aspect_ratios\x18\a \x03(\tR\x15supportedAspectRatios\"\x83\x03\n" +
+	"\x17supported_aspect_ratios\x18\a \x03(\tR\x15supportedAspectRatios\"\x9e\x03\n" +
 	"\vLineageItem\x12'\n" +
 	"\x0fsource_provider\x18\x01 \x01(\tR\x0esourceProvider\x12!\n" +
 	"\fsource_model\x18\x02 \x01(\tR\vsourceModel\x12+\n" +
@@ -17500,7 +17524,8 @@ const file_creativanta_production_v1_production_proto_rawDesc = "" +
 	"\x13generation_cost_usd\x18\x06 \x01(\tR\x11generationCostUsd\x12&\n" +
 	"\x0fparent_asset_id\x18\a \x01(\tR\rparentAssetId\x12;\n" +
 	"\vrecorded_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"recordedAt\"\x8b\x02\n" +
+	"recordedAt\x12\x19\n" +
+	"\btrend_id\x18\t \x01(\tR\atrendId\"\x8b\x02\n" +
 	"\x14PostProductionConfig\x12'\n" +
 	"\x0fnormalize_audio\x18\x01 \x01(\bR\x0enormalizeAudio\x12\x1f\n" +
 	"\vtarget_lufs\x18\x02 \x01(\x01R\n" +
@@ -18120,7 +18145,7 @@ const file_creativanta_production_v1_production_proto_rawDesc = "" +
 	"\x12audio_profile_json\x18\x06 \x01(\tR\x10audioProfileJson\x12.\n" +
 	"\x13transition_map_json\x18\a \x01(\tR\x11transitionMapJson\x124\n" +
 	"\x16total_duration_seconds\x18\b \x01(\x01R\x14totalDurationSeconds\x12:\n" +
-	"\x19engagement_structure_json\x18\t \x01(\tR\x17engagementStructureJson\"\xa3\x06\n" +
+	"\x19engagement_structure_json\x18\t \x01(\tR\x17engagementStructureJson\"\xbe\x06\n" +
 	"\x0eRemixBlueprint\x12!\n" +
 	"\fblueprint_id\x18\x01 \x01(\tR\vblueprintId\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12,\n" +
@@ -18140,7 +18165,8 @@ const file_creativanta_production_v1_production_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xb3\x02\n" +
+	"updated_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x19\n" +
+	"\btrend_id\x18\x11 \x01(\tR\atrendId\"\xb3\x02\n" +
 	"\x16OriginalityCheckResult\x123\n" +
 	"\x15similarity_percentage\x18\x01 \x01(\x01R\x14similarityPercentage\x12D\n" +
 	"\x1ecanonical_threshold_percentage\x18\x02 \x01(\x01R\x1ccanonicalThresholdPercentage\x12+\n" +
@@ -18208,7 +18234,7 @@ const file_creativanta_production_v1_production_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x89\x03\n" +
+	"updated_at\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xa4\x03\n" +
 	"\x1aRemixServiceAnalyzeRequest\x12?\n" +
 	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12,\n" +
 	"\x12reference_asset_id\x18\x02 \x01(\tR\x10referenceAssetId\x12#\n" +
@@ -18217,7 +18243,8 @@ const file_creativanta_production_v1_production_proto_rawDesc = "" +
 	"\x05topic\x18\x05 \x01(\tR\x05topic\x12!\n" +
 	"\fcharacter_id\x18\x06 \x01(\tR\vcharacterId\x12\"\n" +
 	"\rbrand_pack_id\x18\a \x01(\tR\vbrandPackId\x12)\n" +
-	"\x10target_platforms\x18\b \x03(\tR\x0ftargetPlatforms\"\x91\x01\n" +
+	"\x10target_platforms\x18\b \x03(\tR\x0ftargetPlatforms\x12\x19\n" +
+	"\btrend_id\x18\t \x01(\tR\atrendId\"\x91\x01\n" +
 	"\x1bRemixServiceAnalyzeResponse\x12G\n" +
 	"\tblueprint\x18\x01 \x01(\v2).creativanta.production.v1.RemixBlueprintR\tblueprint\x12)\n" +
 	"\x10credits_deducted\x18\x02 \x01(\tR\x0fcreditsDeducted\"\x84\x01\n" +
