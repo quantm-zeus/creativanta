@@ -1,0 +1,20 @@
+=== RUN   TestAcceptanceTarget1_ConsentRequired
+--- PASS: TestAcceptanceTarget1_ConsentRequired (0.00s)
+=== RUN   TestAcceptanceTarget2_LanguageVoiceQualityRepair
+--- PASS: TestAcceptanceTarget2_LanguageVoiceQualityRepair (0.00s)
+=== RUN   TestAcceptanceTarget3_LicensedInputAndMeasuredQuote
+--- PASS: TestAcceptanceTarget3_LicensedInputAndMeasuredQuote (0.00s)
+=== RUN   TestCancelAndRecovery
+--- PASS: TestCancelAndRecovery (0.00s)
+=== RUN   TestFallbackNoDoubleCharge
+--- PASS: TestFallbackNoDoubleCharge (0.00s)
+=== RUN   TestBudgetPreviewAndPartialBatchValidation
+--- PASS: TestBudgetPreviewAndPartialBatchValidation (0.00s)
+=== RUN   TestFFmpegAllowlistAndSecurity
+--- PASS: TestFFmpegAllowlistAndSecurity (0.00s)
+=== RUN   TestRBACPermissionEnforcement
+--- PASS: TestRBACPermissionEnforcement (0.00s)
+=== RUN   TestUploadSafety
+--- PASS: TestUploadSafety (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/production	(cached)
