@@ -1,0 +1,97 @@
+{
+  "task_id": "P5-01",
+  "phase": "P5",
+  "slice": "p5-01",
+  "title": "Publish calendar, scheduling và native/manual proof",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "7809410a74f74597c59f04d9188882f06706f09f",
+  "feature_refs": [
+    "docs/02_features/publish/publish_hub.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/05_system/queue_retry_design.md",
+    "docs/05_system/connector_specs.md"
+  ],
+  "requirement_ids": [
+    "M11-b8d4e94157ea-001",
+    "M11-b8d4e94157ea-002",
+    "M11-b8d4e94157ea-003",
+    "M11-b8d4e94157ea-004",
+    "M11-b8d4e94157ea-005"
+  ],
+  "source_files": {
+    "infra/migrations/00026_p5_01_publish_items_jobs_logs_and_channel_posts.sql": "7bf24d54fa20714382c98a5a7edf361c0752476c220c5caae3ebbbc00c019548",
+    "apps/api/internal/migrate/migrator.go": "f18f47597151071a3ca51e5a3d0f459ecc30cd418cfcde10c3e1d27990e64fe9",
+    "apps/api/internal/migrate/migrator_test.go": "2604ca8e5fc0efdbbefb4ae3c9a69918f208180e47e3cb594ebcf01ab47fde51",
+    "protos/creativanta/publish/v1/publish.proto": "6ec78ac5b45eced88eabda75111a9940bf93652440c94e06c2fe73a564091aaa",
+    "apps/api/internal/publish/types.go": "fcc05f63c17141bd19ce94b3ef0eed80b89e9c5f72225fd269888bd70037d660",
+    "apps/api/internal/publish/service.go": "c1edf67a00a506114eeb1a40e36a171e10a53fd9ceadf17fb90dcfb6746d6565",
+    "apps/api/internal/publish/service_test.go": "01075711eaec54ce290c28469a34eb036f9446264f8264e8480e61d6a2ee6e94",
+    "apps/web/src/lib/publish/types.ts": "ba5b86d6bc9eabe7d810db2e458aa1cc51503ea85ba2688a4660d8d8e8e6b0fe",
+    "apps/web/src/lib/publish/publish_service.ts": "2286a7f3c2eb2f250683360347f25045f6007c6fbd8fe45cb2f0c98939b1ee29",
+    "apps/web/src/lib/publish/publish.test.ts": "33b95b6af72e9b5d51c33e33879456a11c04974d5998397d19940f69b401d202",
+    "apps/web/src/lib/publish/index.ts": "bb5f193e210ca6bb760a1ba97d575a91fdc879a74bce3fc998e08e73dfdbeff2",
+    "apps/web/src/lib/index.ts": "dd2c18b60cee9e6d9ef46afb2ef490f7f158788b732137553904a075cd26b823",
+    "apps/mobile/lib/publish/publish_models.dart": "b37fd23d11a5557a59a78faf2ad41cca918d9600b4f3f83171aa7126181dbaf4",
+    "apps/mobile/test/publish_acceptance_test.dart": "b3dce216ae2264b5cb7c5a6865e3b20e0b1d7f759f7bd5a91c6c7290a7b72ff6"
+  },
+  "scope_items": [
+    "Database Migration 00026: Created publish_items, publish_jobs, publish_logs, and channel_posts tables with workspace composite tenant keys, strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY), foreign keys to workspaces and connected_accounts, and narrow role-based grants (publish_logs is strictly append-only SELECT/INSERT for app_user); reversible transactional down migration verified.",
+    "Acceptance Target 1 (Never publish before schedule): Schedule fairness jitter delay (0..30s) is strictly non-negative and additive (effective_time >= schedule_at). Dispatch timing watchdog rejects execution when now < schedule_at with ErrPrematurePublish / PrematurePublishError.",
+    "Acceptance Target 2 (Unknown submit reconciles): Platform timeouts, connection drops, and unknown submit results are recorded as unknown; the system never blindly re-posts or assumes success. Reconciles via provider request ID status check (marking published if confirmed on remote platform, or retry_pending without duplicate posting).",
+    "Acceptance Target 3 (Manual proof retains graph): Manual fallback export packages generate download URLs, formatted captions, hashtags, platform checklists, and verification URLs. Operator proof submissions create immutable publish_logs records (execution_path='manual_upload', result_status='success', evidence_ref) and update publish_items to published while retaining the full graph connection.",
+    "Acceptance Target 4 (Token revoke pauses affected queued work): Credential revocation (auth_revoked) during execution immediately fails the executing job with auth_expired, and pauses (diagnostics_state='blocked') all other queued/scheduled jobs targeting that same connected account without auto-failing them or affecting other accounts."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestAcceptanceTarget1_NeverPublishBeforeSchedule and TestAcceptanceTarget1_ScheduleFairnessJitterActivation (Go -race), Vitest web test suite, and Flutter tests confirm non-negative additive jitter and rejection of premature execution.",
+    "Acceptance Target 2 Verified: TestAcceptanceTarget2_UnknownSubmitReconciles (Go -race), Vitest web test suite, and Flutter tests confirm remote status reconciliation via provider request ID without duplicate dispatch.",
+    "Acceptance Target 3 Verified: TestAcceptanceTarget3_ManualProofRetainsGraph (Go -race), Vitest web test suite, and Flutter tests confirm manual export package generation, immutable audit log creation, and graph retention to publish items/jobs.",
+    "Acceptance Target 4 Verified: TestAcceptanceTarget4_TokenRevokePausesAffectedQueuedWork (Go -race), Vitest web test suite, and Flutter tests confirm account isolation, executing job failure, and targeted pausing of queued jobs sharing the revoked account.",
+    "Migration 00026 Verified: Migrator test suite (migrator_test.go) passes all 26 migrations up, status verification, and clean down transactional reversal.",
+    "Four-Target Proto Codegen Verified: check_proto.sh passes lint, generate, drift check, buf breaking backward compatibility, Go vet/test, TypeScript vitest, and Dart test suites.",
+    "Web & Mobile Surfaces Verified: Vitest web test suite (27 files, 213 tests passing), svelte-check (0 errors, 0 warnings), Vite production build (adapter-node ✔ done), and Flutter test suite (182 tests passing, flutter analyze 0 issues) all pass."
+  ],
+  "rpc_contracts": [
+    "PublishService/CreatePublishItem",
+    "PublishService/GetPublishItem",
+    "PublishService/SchedulePublish",
+    "PublishService/ExecutePublishJob",
+    "PublishService/ReconcileUnknownSubmit",
+    "PublishService/GenerateManualExportPackage",
+    "PublishService/SubmitManualProof",
+    "PublishService/HandleTokenRevocation",
+    "PublishService/ListCalendarItems"
+  ],
+  "migration_files": [
+    "infra/migrations/00026_p5_01_publish_items_jobs_logs_and_channel_posts.sql"
+  ],
+  "permission_keys": [
+    "publish:create",
+    "publish:read",
+    "publish:schedule",
+    "publish:execute",
+    "publish:manual_proof",
+    "publish:revoke_handle"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-TIKTOK-CONTENT-POSTING-API",
+      "PENDING_DEVELOPER_APP_APPROVAL",
+      "Direct native TikTok video publishing requires approved TikTok Developer App with video.publish and video.upload scopes; manual fallback package and proof flow verified locally."
+    ],
+    [
+      "EXT-GATE-META-GRAPH-API",
+      "PENDING_APP_REVIEW",
+      "Meta / Instagram Reels publishing requires approved Instagram Content Publishing API permissions; manual proof flow verified locally."
+    ],
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "Migration 00026 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+    ]
+  ]
+}

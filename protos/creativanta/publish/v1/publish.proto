@@ -1,0 +1,649 @@
+syntax = "proto3";
+
+package creativanta.publish.v1;
+
+import "google/protobuf/timestamp.proto";
+import "creativanta/common/v1/types.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/publish/v1;publishv1";
+
+// PublishMode represents the execution mode for a publish item.
+enum PublishMode {
+  PUBLISH_MODE_UNSPECIFIED = 0;
+  PUBLISH_MODE_DIRECT = 1;
+  PUBLISH_MODE_DRAFT = 2;
+  PUBLISH_MODE_EXPORT = 3;
+  PUBLISH_MODE_MANUAL = 4;
+}
+
+// PublishItemLifecycleState matches database_schema.md §8.1 publish_items.lifecycle_state.
+enum PublishItemLifecycleState {
+  PUBLISH_ITEM_LIFECYCLE_STATE_UNSPECIFIED = 0;
+  PUBLISH_ITEM_LIFECYCLE_STATE_DRAFT = 1;
+  PUBLISH_ITEM_LIFECYCLE_STATE_QUEUED = 2;
+  PUBLISH_ITEM_LIFECYCLE_STATE_SCHEDULED = 3;
+  PUBLISH_ITEM_LIFECYCLE_STATE_READY_TO_EXECUTE = 4;
+  PUBLISH_ITEM_LIFECYCLE_STATE_EXECUTING = 5;
+  PUBLISH_ITEM_LIFECYCLE_STATE_PUBLISHED = 6;
+  PUBLISH_ITEM_LIFECYCLE_STATE_PARTIALLY_PUBLISHED = 7;
+  PUBLISH_ITEM_LIFECYCLE_STATE_FAILED = 8;
+  PUBLISH_ITEM_LIFECYCLE_STATE_CANCELLED = 9;
+  PUBLISH_ITEM_LIFECYCLE_STATE_REQUIRES_MANUAL_FALLBACK = 10;
+}
+
+// PublishJobLifecycleState matches database_schema.md §8.2 publish_jobs.lifecycle_state.
+enum PublishJobLifecycleState {
+  PUBLISH_JOB_LIFECYCLE_STATE_UNSPECIFIED = 0;
+  PUBLISH_JOB_LIFECYCLE_STATE_CREATED = 1;
+  PUBLISH_JOB_LIFECYCLE_STATE_QUEUED = 2;
+  PUBLISH_JOB_LIFECYCLE_STATE_DISPATCHED = 3;
+  PUBLISH_JOB_LIFECYCLE_STATE_EXECUTING = 4;
+  PUBLISH_JOB_LIFECYCLE_STATE_PARTIALLY_SUCCEEDED = 5;
+  PUBLISH_JOB_LIFECYCLE_STATE_SUCCEEDED = 6;
+  PUBLISH_JOB_LIFECYCLE_STATE_FAILED = 7;
+  PUBLISH_JOB_LIFECYCLE_STATE_CANCELLED = 8;
+  PUBLISH_JOB_LIFECYCLE_STATE_REQUIRES_MANUAL_FALLBACK = 9;
+}
+
+// PublishResultStatus matches database_schema.md §8.3 publish_logs.result_status.
+enum PublishResultStatus {
+  PUBLISH_RESULT_STATUS_UNSPECIFIED = 0;
+  PUBLISH_RESULT_STATUS_SUCCESS = 1;
+  PUBLISH_RESULT_STATUS_PARTIAL_SUCCESS = 2;
+  PUBLISH_RESULT_STATUS_FAILED = 3;
+  PUBLISH_RESULT_STATUS_TIMEOUT = 4;
+}
+
+// ExecutionPath matches database_schema.md §8.3 publish_logs.execution_path.
+enum ExecutionPath {
+  EXECUTION_PATH_UNSPECIFIED = 0;
+  EXECUTION_PATH_NATIVE_API = 1;
+  EXECUTION_PATH_MANUAL_UPLOAD = 2;
+  EXECUTION_PATH_EXPORT_PACKAGE = 3;
+}
+
+// DiagnosticsState matches database_schema.md §8.1 publish_items.diagnostics_state.
+enum DiagnosticsState {
+  DIAGNOSTICS_STATE_UNSPECIFIED = 0;
+  DIAGNOSTICS_STATE_HEALTHY = 1;
+  DIAGNOSTICS_STATE_WARNING = 2;
+  DIAGNOSTICS_STATE_DEGRADED = 3;
+  DIAGNOSTICS_STATE_BLOCKED = 4;
+}
+
+// PublishCapabilityState matches capability.Service State values.
+enum PublishCapabilityState {
+  PUBLISH_CAPABILITY_STATE_UNSPECIFIED = 0;
+  PUBLISH_CAPABILITY_STATE_NATIVE = 1;
+  PUBLISH_CAPABILITY_STATE_READ_ONLY = 2;
+  PUBLISH_CAPABILITY_STATE_MANUAL = 3;
+  PUBLISH_CAPABILITY_STATE_DEGRADED = 4;
+  PUBLISH_CAPABILITY_STATE_UNSUPPORTED = 5;
+}
+
+// PublishItem represents a content piece prepared or scheduled for publication.
+message PublishItem {
+  string publish_item_id = 1;
+  string workspace_id = 2;
+  string asset_id = 3;
+  string target_platform = 4;
+  string target_account_id = 5;
+  string target_format = 6;
+  PublishMode publish_mode = 7;
+  string title = 8;
+  string description = 9;
+  repeated string hashtags = 10;
+  google.protobuf.Timestamp schedule_at = 11;
+  string capability_snapshot_id = 12;
+  PublishItemLifecycleState lifecycle_state = 13;
+  DiagnosticsState diagnostics_state = 14;
+  repeated string linked_offer_ids = 15;
+  repeated string linked_campaign_ids = 16;
+  float packaging_score = 17;
+  string compliance_scan_result = 18;
+  string created_by = 19;
+  google.protobuf.Timestamp created_at = 20;
+  google.protobuf.Timestamp updated_at = 21;
+}
+
+// PublishJob represents a single dispatch execution attempt for a publish item.
+message PublishJob {
+  string publish_job_id = 1;
+  string workspace_id = 2;
+  string publish_item_id = 3;
+  string dispatch_strategy = 4;
+  PublishJobLifecycleState lifecycle_state = 5;
+  int32 attempt_count = 6;
+  int32 max_attempts = 7;
+  string current_worker_id = 8;
+  string approval_request_id = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+// PublishLog is an immutable execution record.
+message PublishLog {
+  string publish_log_id = 1;
+  string workspace_id = 2;
+  string publish_job_id = 3;
+  string publish_item_id = 4;
+  google.protobuf.Timestamp attempted_at = 5;
+  google.protobuf.Timestamp completed_at = 6;
+  google.protobuf.Timestamp failed_at = 7;
+  string actor_user_id = 8;
+  creativanta.common.v1.OperatorMode acting_mode = 9;
+  ExecutionPath execution_path = 10;
+  string capability_snapshot_id = 11;
+  PublishResultStatus result_status = 12;
+  string external_post_id = 13;
+  string external_post_url = 14;
+  string diagnostics_ref = 15;
+  string evidence_ref = 16;
+  string error_code = 17;
+  string error_message = 18;
+}
+
+// ChannelPost represents a post tracked on an external platform after publishing.
+message ChannelPost {
+  string channel_post_id = 1;
+  string workspace_id = 2;
+  string publish_item_id = 3;
+  string connected_account_id = 4;
+  string external_post_id = 5;
+  string external_permalink = 6;
+  string title = 7;
+  string thumbnail_url = 8;
+  google.protobuf.Timestamp synced_at = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+// PlatformCapabilitySummary provides pre-publish capability awareness (RULE-M11-001).
+message PlatformCapabilitySummary {
+  string platform = 1;
+  PublishCapabilityState capability_state = 2;
+  string connector_state = 3;
+  bool requires_manual_fallback = 4;
+  string policy_summary = 5;
+  string fallback_instructions = 6;
+  repeated string required_scopes = 7;
+  bool executable = 8;
+}
+
+// ManualExportPackage provides the asset package for offline upload.
+message ManualExportPackage {
+  string publish_item_id = 1;
+  string title = 2;
+  string description = 3;
+  repeated string hashtags = 4;
+  string media_url = 5;
+  string target_platform = 6;
+  string instructions = 7;
+  string recommended_aspect_ratio = 8;
+}
+
+// CreateItemRequest / Response
+message CreateItemRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string asset_id = 2;
+  string target_platform = 3;
+  string target_account_id = 4;
+  string target_format = 5;
+  PublishMode publish_mode = 6;
+  string title = 7;
+  string description = 8;
+  repeated string hashtags = 9;
+  google.protobuf.Timestamp schedule_at = 10;
+}
+
+message CreateItemResponse {
+  PublishItem item = 1;
+  PlatformCapabilitySummary capability_summary = 2;
+}
+
+// ScheduleRequest / Response
+message ScheduleRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string publish_item_id = 2;
+  google.protobuf.Timestamp scheduled_at = 3;
+}
+
+message ScheduleResponse {
+  PublishItem item = 1;
+  PublishJob job = 2;
+  google.protobuf.Timestamp scheduled_at = 3;
+  int32 jitter_delay_seconds = 4;
+}
+
+// ExecuteRequest / Response
+message ExecuteRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string publish_item_id = 2;
+  string publish_job_id = 3;
+}
+
+message ExecuteResponse {
+  PublishItem item = 1;
+  PublishJob job = 2;
+  PublishLog log = 3;
+  ChannelPost channel_post = 4;
+}
+
+// RetryRequest / Response
+message RetryRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string publish_item_id = 2;
+  string reason = 3;
+}
+
+message RetryResponse {
+  PublishItem item = 1;
+  PublishJob job = 2;
+}
+
+// CancelRequest / Response
+message CancelRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string publish_item_id = 2;
+  string reason = 3;
+}
+
+message CancelResponse {
+  PublishItem item = 1;
+  bool cancelled = 2;
+}
+
+// ListQueueRequest / Response
+message ListQueueRequest {
+  string workspace_id = 1;
+  PublishItemLifecycleState state_filter = 2;
+  creativanta.common.v1.Pagination pagination = 3;
+}
+
+message ListQueueResponse {
+  repeated PublishItem items = 1;
+  repeated PublishJob jobs = 2;
+  creativanta.common.v1.PaginatedResponse pagination = 3;
+}
+
+// GetLogsRequest / Response
+message GetLogsRequest {
+  string publish_item_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+message GetLogsResponse {
+  repeated PublishLog logs = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+// GetDiagnosticsRequest / Response
+message GetDiagnosticsRequest {
+  string publish_item_id = 1;
+}
+
+message GetDiagnosticsResponse {
+  string publish_item_id = 1;
+  DiagnosticsState diagnostics_state = 2;
+  string error_code = 3;
+  string error_message = 4;
+  string repair_recommendation = 5;
+  bool can_reconnect = 6;
+  bool can_manual_fallback = 7;
+  bool can_retry = 8;
+  PlatformCapabilitySummary capability_summary = 9;
+}
+
+// SubmitManualProofRequest / Response (RULE-M11-004, Acceptance Target 3)
+message SubmitManualProofRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string publish_item_id = 2;
+  string evidence_url = 3;
+  string external_post_url = 4;
+  string notes = 5;
+}
+
+message SubmitManualProofResponse {
+  PublishItem item = 1;
+  PublishLog log = 2;
+  ChannelPost channel_post = 3;
+  bool graph_retained = 4;
+}
+
+// ReconcilePublishRequest / Response (Acceptance Target 2)
+message ReconcilePublishRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string publish_item_id = 2;
+  string publish_job_id = 3;
+  string provider_request_id = 4;
+}
+
+message ReconcilePublishResponse {
+  PublishItem item = 1;
+  PublishJob job = 2;
+  PublishLog log = 3;
+  bool reconciled = 4;
+  string reconciliation_outcome = 5; // confirmed_published, confirmed_not_published, still_unknown
+}
+
+// ExportManualPackageRequest / Response
+message ExportManualPackageRequest {
+  string publish_item_id = 1;
+}
+
+message ExportManualPackageResponse {
+  ManualExportPackage package = 1;
+}
+
+// PauseQueueRequest / Response (Acceptance Target 4)
+message PauseQueueRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string connected_account_id = 2;
+  string reason = 3;
+}
+
+message PauseQueueResponse {
+  int32 paused_jobs_count = 1;
+  repeated string paused_publish_item_ids = 2;
+}
+
+// Generic CRUD & Extended RPC Request/Response Types
+message GetRequest {
+  string publish_item_id = 1;
+}
+
+message GetResponse {
+  PublishItem item = 1;
+  PlatformCapabilitySummary capability_summary = 2;
+}
+
+message ListRequest {
+  string workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+message ListResponse {
+  repeated PublishItem items = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message GetDraftRequest {
+  string draft_id = 1;
+}
+
+message GetDraftResponse {
+  PublishItem item = 1;
+}
+
+message SaveDraftRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  PublishItem item = 2;
+}
+
+message SaveDraftResponse {
+  PublishItem item = 1;
+}
+
+message UpdateDraftRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string publish_item_id = 2;
+  string title = 3;
+  string description = 4;
+  repeated string hashtags = 5;
+}
+
+message UpdateDraftResponse {
+  PublishItem item = 1;
+}
+
+message ListDraftsRequest {
+  string workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+message ListDraftsResponse {
+  repeated PublishItem drafts = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message PublishNowRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string publish_item_id = 2;
+}
+
+message PublishNowResponse {
+  PublishItem item = 1;
+  PublishJob job = 2;
+}
+
+message RescheduleRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string publish_item_id = 2;
+  google.protobuf.Timestamp new_schedule_at = 3;
+}
+
+message RescheduleResponse {
+  PublishItem item = 1;
+}
+
+message DeleteRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string publish_item_id = 2;
+}
+
+message DeleteResponse {
+  bool deleted = 1;
+}
+
+message DuplicateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string publish_item_id = 2;
+}
+
+message DuplicateResponse {
+  PublishItem item = 1;
+}
+
+message PauseRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string publish_item_id = 2;
+}
+
+message PauseResponse {
+  PublishItem item = 1;
+}
+
+message CheckCompatibilityRequest {
+  string target_platform = 1;
+  string asset_id = 2;
+  string target_account_id = 3;
+}
+
+message CheckCompatibilityResponse {
+  PlatformCapabilitySummary capability_summary = 1;
+  bool compatible = 2;
+  repeated string issues = 3;
+}
+
+message UpdateMetadataRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string publish_item_id = 2;
+  string title = 3;
+  string description = 4;
+  repeated string hashtags = 5;
+}
+
+message UpdateMetadataResponse {
+  PublishItem item = 1;
+}
+
+message GetCalendarRequest {
+  string workspace_id = 1;
+  google.protobuf.Timestamp start_date = 2;
+  google.protobuf.Timestamp end_date = 3;
+}
+
+message CalendarEntry {
+  PublishItem item = 1;
+  google.protobuf.Timestamp scheduled_time = 2;
+  string status = 3;
+}
+
+message GetCalendarResponse {
+  repeated CalendarEntry entries = 1;
+}
+
+message ListByDateRangeRequest {
+  string workspace_id = 1;
+  google.protobuf.Timestamp start_date = 2;
+  google.protobuf.Timestamp end_date = 3;
+  creativanta.common.v1.Pagination pagination = 4;
+}
+
+message ListByDateRangeResponse {
+  repeated PublishItem items = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message ListUpcomingRequest {
+  string workspace_id = 1;
+  int32 limit = 2;
+}
+
+message ListUpcomingResponse {
+  repeated PublishItem items = 1;
+}
+
+message ListPublishedRequest {
+  string workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+message ListPublishedResponse {
+  repeated PublishItem items = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message ListPostsRequest {
+  string workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+message ListPostsResponse {
+  repeated ChannelPost posts = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message GetPlatformStatusRequest {
+  string platform = 1;
+}
+
+message GetPlatformStatusResponse {
+  PlatformCapabilitySummary status = 1;
+}
+
+message GetCrossPostInsightsRequest {
+  string publish_item_id = 1;
+}
+
+message GetCrossPostInsightsResponse {
+  string publish_item_id = 1;
+  repeated ChannelPost posts = 2;
+  int64 total_views = 3;
+  int64 total_likes = 4;
+}
+
+message PublishVariantsRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  repeated string publish_item_ids = 2;
+}
+
+message PublishVariantsResponse {
+  repeated PublishItem items = 1;
+  repeated PublishJob jobs = 2;
+}
+
+message HoldScheduleRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string publish_item_id = 2;
+}
+
+message HoldScheduleResponse {
+  PublishItem item = 1;
+}
+
+message ScheduleRetryRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string publish_item_id = 2;
+  google.protobuf.Timestamp retry_at = 3;
+}
+
+message ScheduleRetryResponse {
+  PublishItem item = 1;
+}
+
+message TagProductRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string publish_item_id = 2;
+  string product_id = 3;
+}
+
+message TagProductResponse {
+  PublishItem item = 1;
+}
+
+message UntagProductRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string publish_item_id = 2;
+  string product_id = 3;
+}
+
+message UntagProductResponse {
+  PublishItem item = 1;
+}
+
+// PublishService is the multi-platform publish orchestrator (M11).
+service PublishService {
+  // Core M11 RPCs (api_endpoint_map.md §2.4)
+  rpc CreateItem(CreateItemRequest) returns (CreateItemResponse);
+  rpc Schedule(ScheduleRequest) returns (ScheduleResponse);
+  rpc Execute(ExecuteRequest) returns (ExecuteResponse);
+  rpc Retry(RetryRequest) returns (RetryResponse);
+  rpc Cancel(CancelRequest) returns (CancelResponse);
+  rpc ListQueue(ListQueueRequest) returns (ListQueueResponse);
+  rpc GetLogs(GetLogsRequest) returns (GetLogsResponse);
+  rpc GetDiagnostics(GetDiagnosticsRequest) returns (GetDiagnosticsResponse);
+
+  // Acceptance targets & critical flows
+  rpc SubmitManualProof(SubmitManualProofRequest) returns (SubmitManualProofResponse);
+  rpc ReconcilePublish(ReconcilePublishRequest) returns (ReconcilePublishResponse);
+  rpc ExportManualPackage(ExportManualPackageRequest) returns (ExportManualPackageResponse);
+  rpc PauseQueue(PauseQueueRequest) returns (PauseQueueResponse);
+
+  // Extended Publish RPCs (api_endpoint_map.md §12.1)
+  rpc Get(GetRequest) returns (GetResponse);
+  rpc List(ListRequest) returns (ListResponse);
+  rpc GetDraft(GetDraftRequest) returns (GetDraftResponse);
+  rpc SaveDraft(SaveDraftRequest) returns (SaveDraftResponse);
+  rpc UpdateDraft(UpdateDraftRequest) returns (UpdateDraftResponse);
+  rpc ListDrafts(ListDraftsRequest) returns (ListDraftsResponse);
+  rpc PublishNow(PublishNowRequest) returns (PublishNowResponse);
+  rpc Reschedule(RescheduleRequest) returns (RescheduleResponse);
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+  rpc Duplicate(DuplicateRequest) returns (DuplicateResponse);
+  rpc Pause(PauseRequest) returns (PauseResponse);
+  rpc CheckCompatibility(CheckCompatibilityRequest) returns (CheckCompatibilityResponse);
+  rpc UpdateMetadata(UpdateMetadataRequest) returns (UpdateMetadataResponse);
+  rpc GetCalendar(GetCalendarRequest) returns (GetCalendarResponse);
+  rpc ListByDateRange(ListByDateRangeRequest) returns (ListByDateRangeResponse);
+  rpc ListUpcoming(ListUpcomingRequest) returns (ListUpcomingResponse);
+  rpc ListPublished(ListPublishedRequest) returns (ListPublishedResponse);
+  rpc ListPosts(ListPostsRequest) returns (ListPostsResponse);
+  rpc GetPlatformStatus(GetPlatformStatusRequest) returns (GetPlatformStatusResponse);
+  rpc GetCrossPostInsights(GetCrossPostInsightsRequest) returns (GetCrossPostInsightsResponse);
+  rpc PublishVariants(PublishVariantsRequest) returns (PublishVariantsResponse);
+  rpc HoldSchedule(HoldScheduleRequest) returns (HoldScheduleResponse);
+  rpc ScheduleRetry(ScheduleRetryRequest) returns (ScheduleRetryResponse);
+  rpc TagProduct(TagProductRequest) returns (TagProductResponse);
+  rpc UntagProduct(UntagProductRequest) returns (UntagProductResponse);
+}
