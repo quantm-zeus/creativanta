@@ -1060,7 +1060,7 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	// P3-02: Scripts & Asset Briefs RLS and Composite FK checks
 	scriptA := "33333333-3333-3333-3333-333333333301"
 	briefA := "33333333-3333-3333-3333-333333333302"
-	if _, err := tx.Exec(ctx, `SET LOCAL ROLE postgres`); err != nil {
+	if _, err := tx.Exec(ctx, `RESET ROLE`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := tx.Exec(ctx, `

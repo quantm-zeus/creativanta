@@ -59,7 +59,7 @@
     "apps/api/internal/script/store.go": "24758cda970b86cab9d3e64de67f74c35b2ee37e12a236cf97f58d46e05de768",
     "apps/api/internal/script/service.go": "c620f1abe447211a406030351eac9474d2f39eb6b30a6ee51be3cdbe2e45578d",
     "apps/api/internal/script/service_test.go": "53b65d3c56d783dcdc67858194abaff368d62d587e966c39d6019bb1de3ba83b",
-    "apps/api/internal/migrate/migrator_test.go": "16791fa9571f42d74a5af9f2a387a249f0ef6b89952308acee08f43ca73360d7",
+    "apps/api/internal/migrate/migrator_test.go": "af00c01dbdc3200388421a41c1dc044e393d9322f23e5c8ea2cbfd051269e609",
     "apps/api/internal/rbac/phase_exposure_test.go": "c3ec5c45b43a56da85a141ff0120f5b1eeca465a294be4370d2ac67c8190c276",
     "apps/web/src/lib/script/index.ts": "4d8882e20a05a8be52d2923157e1283f42b69cfe4fb4409434ef70ad138bfe21",
     "apps/web/src/lib/script/ApprovalStatusBadge.svelte": "88a1c84bc0ec30584d51eda246309a5e6d9e0cf40631d63be78621ec02b88460",
