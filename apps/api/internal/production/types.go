@@ -603,6 +603,7 @@ type ClipCollectionRecord struct {
 	UpdatedAt      time.Time        `json:"updated_at"`
 	DeletedAt      *time.Time       `json:"deleted_at,omitempty"`
 }
+
 // ----------------------------------------------------------------------------
 // Style Learning, Character Preview & Drift QA Types (M07 EF-07 & M08)
 // ----------------------------------------------------------------------------

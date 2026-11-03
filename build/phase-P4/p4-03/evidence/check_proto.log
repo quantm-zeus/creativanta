@@ -50,7 +50,7 @@ GO_TRANSPORT_NEGATIVE_TESTS_AND_RACE
 ?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/production/v1/productionv1connect	[no test files]
 ?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1	[no test files]
 ?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1/transporttestv1connect	[no test files]
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportfixture	1.260s
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/transportfixture	1.280s
 ?   	github.com/quantm-zeus/creativanta/apps/api/cmd/transport-fixture-test	[no test files]
 all modules verified
 UNIT_TYPESCRIPT
@@ -65,8 +65,8 @@ UNIT_TYPESCRIPT
 
  Test Files  1 passed (1)
       Tests  4 passed (4)
-   Start at  14:45:54
-   Duration  710ms (transform 108ms, setup 0ms, collect 263ms, tests 8ms, environment 0ms, prepare 120ms)
+   Start at  15:15:15
+   Duration  701ms (transform 108ms, setup 0ms, collect 283ms, tests 8ms, environment 0ms, prepare 136ms)
 
 UNIT_DART
 00:00 +0: loading /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-03/apps/mobile/test/generated_proto_test.dart
