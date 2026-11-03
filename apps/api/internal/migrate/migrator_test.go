@@ -587,13 +587,16 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	_, _ = adminPool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
 	dir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 
-	// Apply migration Up, then Down seventeen times, then Up again to prove full Goose SQL repeatability.
+	// Apply migration Up, then Down eighteen times, then Up again to prove full Goose SQL repeatability.
 	applied, err := Up(ctx, adminPool, dir)
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 17 {
-		t.Fatalf("expected 17 applied migrations, got %v", applied)
+	if len(applied) != 18 {
+		t.Fatalf("expected 18 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v18 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v17 failed: %v", err)
@@ -1328,6 +1331,97 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("expected composite tenant FK to reject cross-tenant asset_id on generation_jobs")
 	}
 	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_job_fk`)
+
+	// P4-02: Transcripts, Quick Edit Drafts & Sound Library RLS and Composite FK checks
+	transcriptA := "55555555-5555-4555-8555-555555555501"
+	draftA := "55555555-5555-4555-8555-555555555502"
+	soundCustomA := "55555555-5555-4555-8555-555555555503"
+
+	if _, err := tx.Exec(ctx, `RESET ROLE`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO transcripts (transcript_id, workspace_id, asset_id, language, raw_text, alignment_status)
+		VALUES ($1::uuid, $2::uuid, $3::uuid, 'vi', 'Hello world video A', 'auto_aligned')
+	`, transcriptA, tenantA, assetA); err != nil {
+		t.Fatalf("seed transcript failed: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO quick_edit_drafts (draft_id, workspace_id, asset_id, transcript_id, name, estimated_credits)
+		VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 'Draft A', 15.000000)
+	`, draftA, tenantA, assetA, transcriptA); err != nil {
+		t.Fatalf("seed quick_edit_draft failed: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO sound_library (sound_id, workspace_id, title, artist, genre, duration_seconds, audio_url)
+		VALUES ($1::uuid, $2::uuid, 'Tenant A Exclusive Track', 'Artist A', 'chill', 120.0, 'https://cdn.example.com/a.mp3')
+	`, soundCustomA, tenantA); err != nil {
+		t.Fatalf("seed tenant-specific sound failed: %v", err)
+	}
+
+	if _, err := tx.Exec(ctx, `SET LOCAL ROLE app_user`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_user_id', $2, true)`, tenantB, userB); err != nil {
+		t.Fatal(err)
+	}
+
+	var transcriptCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM transcripts WHERE transcript_id = $1::uuid`, transcriptA).Scan(&transcriptCount); err != nil {
+		t.Fatal(err)
+	}
+	if transcriptCount != 0 {
+		t.Fatalf("transcripts RLS breach: Tenant B saw %d transcripts from Tenant A", transcriptCount)
+	}
+
+	var draftCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM quick_edit_drafts WHERE draft_id = $1::uuid`, draftA).Scan(&draftCount); err != nil {
+		t.Fatal(err)
+	}
+	if draftCount != 0 {
+		t.Fatalf("quick_edit_drafts RLS breach: Tenant B saw %d drafts from Tenant A", draftCount)
+	}
+
+	var customSoundCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM sound_library WHERE sound_id = $1::uuid`, soundCustomA).Scan(&customSoundCount); err != nil {
+		t.Fatal(err)
+	}
+	if customSoundCount != 0 {
+		t.Fatalf("sound_library RLS breach: Tenant B saw %d workspace-specific sounds from Tenant A", customSoundCount)
+	}
+
+	// Global sounds (workspace_id IS NULL) must still be visible to Tenant B
+	var globalSoundCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM sound_library WHERE workspace_id IS NULL`).Scan(&globalSoundCount); err != nil {
+		t.Fatal(err)
+	}
+	if globalSoundCount < 6 {
+		t.Fatalf("expected at least 6 seeded global sounds visible to Tenant B, got %d", globalSoundCount)
+	}
+
+	// Cross-tenant composite FK write attack on transcripts denied (tenantB cannot bind to tenantA's assetA):
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_transcript_fk`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO transcripts (workspace_id, asset_id, language, raw_text)
+		VALUES ($1::uuid, $2::uuid, 'vi', 'Cross tenant attack')
+	`, tenantB, assetA); err == nil {
+		t.Fatalf("expected composite tenant FK to reject cross-tenant asset_id on transcripts")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_transcript_fk`)
+
+	// Cross-tenant composite FK write attack on quick_edit_drafts denied:
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_draft_fk`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO quick_edit_drafts (workspace_id, asset_id, transcript_id, name)
+		VALUES ($1::uuid, $2::uuid, $3::uuid, 'Cross draft attack')
+	`, tenantB, assetA, transcriptA); err == nil {
+		t.Fatalf("expected composite tenant FK to reject cross-tenant asset/transcript on quick_edit_drafts")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_draft_fk`)
 }
 
 // TestPostgresSeedTwiceIdempotency satisfies Acceptance Target 1:
