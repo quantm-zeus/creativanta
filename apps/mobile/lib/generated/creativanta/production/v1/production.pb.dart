@@ -19810,6 +19810,4490 @@ class LinkToVideoServiceGetResponse extends $pb.GeneratedMessage {
   LinkToVideoJob ensureJob() => $_ensure(0);
 }
 
+class DerivativeItem extends $pb.GeneratedMessage {
+  factory DerivativeItem({
+    $core.String? assetId,
+    $core.String? parentAssetId,
+    $core.String? title,
+    $core.String? derivativeType,
+    $core.String? targetChannel,
+    $core.String? aspectRatio,
+    $core.String? ctaVariant,
+    $core.String? subtitleLanguage,
+    $core.double? durationSeconds,
+    $core.String? resolution,
+    $core.String? fileUrl,
+    $core.String? qualityState,
+    $core.String? generationState,
+    $core.Iterable<$core.String>? tags,
+    $fixnum.Int64? views,
+    $core.double? engagementRate,
+    $core.double? ctr,
+    $1.Timestamp? createdAt,
+    $1.Timestamp? updatedAt,
+  }) {
+    final result = DerivativeItem._();
+    if (assetId != null) result.assetId = assetId;
+    if (parentAssetId != null) result.parentAssetId = parentAssetId;
+    if (title != null) result.title = title;
+    if (derivativeType != null) result.derivativeType = derivativeType;
+    if (targetChannel != null) result.targetChannel = targetChannel;
+    if (aspectRatio != null) result.aspectRatio = aspectRatio;
+    if (ctaVariant != null) result.ctaVariant = ctaVariant;
+    if (subtitleLanguage != null) result.subtitleLanguage = subtitleLanguage;
+    if (durationSeconds != null) result.durationSeconds = durationSeconds;
+    if (resolution != null) result.resolution = resolution;
+    if (fileUrl != null) result.fileUrl = fileUrl;
+    if (qualityState != null) result.qualityState = qualityState;
+    if (generationState != null) result.generationState = generationState;
+    if (tags != null) result.tags.addAll(tags);
+    if (views != null) result.views = views;
+    if (engagementRate != null) result.engagementRate = engagementRate;
+    if (ctr != null) result.ctr = ctr;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    return result;
+  }
+
+  DerivativeItem._();
+
+  factory DerivativeItem.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeItem()..mergeFromBuffer(data, registry);
+  factory DerivativeItem.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeItem()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DerivativeItem',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DerivativeItem.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'assetId')
+    ..aOS(2, _omitFieldNames ? '' : 'parentAssetId')
+    ..aOS(3, _omitFieldNames ? '' : 'title')
+    ..aOS(4, _omitFieldNames ? '' : 'derivativeType')
+    ..aOS(5, _omitFieldNames ? '' : 'targetChannel')
+    ..aOS(6, _omitFieldNames ? '' : 'aspectRatio')
+    ..aOS(7, _omitFieldNames ? '' : 'ctaVariant')
+    ..aOS(8, _omitFieldNames ? '' : 'subtitleLanguage')
+    ..aD(9, _omitFieldNames ? '' : 'durationSeconds')
+    ..aOS(10, _omitFieldNames ? '' : 'resolution')
+    ..aOS(11, _omitFieldNames ? '' : 'fileUrl')
+    ..aOS(12, _omitFieldNames ? '' : 'qualityState')
+    ..aOS(13, _omitFieldNames ? '' : 'generationState')
+    ..pPS(14, _omitFieldNames ? '' : 'tags')
+    ..aInt64(15, _omitFieldNames ? '' : 'views')
+    ..aD(16, _omitFieldNames ? '' : 'engagementRate')
+    ..aD(17, _omitFieldNames ? '' : 'ctr')
+    ..aOM<$1.Timestamp>(18, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOM<$1.Timestamp>(19, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeItem clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeItem copyWith(void Function(DerivativeItem) updates) =>
+      super.copyWith((message) => updates(message as DerivativeItem))
+          as DerivativeItem;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use DerivativeItem() / DerivativeItem.new instead')
+  static DerivativeItem create() => DerivativeItem._();
+  static $pb.GeneratedMessage $_createMessage() => DerivativeItem._();
+  @$core.override
+  DerivativeItem createEmptyInstance() => DerivativeItem._();
+  @$core.pragma('dart2js:noInline')
+  static DerivativeItem getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<DerivativeItem>(
+          DerivativeItem.$_createMessage);
+  static DerivativeItem? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get assetId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set assetId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAssetId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAssetId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get parentAssetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set parentAssetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasParentAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearParentAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get title => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set title($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTitle() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTitle() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get derivativeType => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set derivativeType($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasDerivativeType() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDerivativeType() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get targetChannel => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set targetChannel($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasTargetChannel() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearTargetChannel() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get aspectRatio => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set aspectRatio($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasAspectRatio() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAspectRatio() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get ctaVariant => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set ctaVariant($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasCtaVariant() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearCtaVariant() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get subtitleLanguage => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set subtitleLanguage($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasSubtitleLanguage() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearSubtitleLanguage() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.double get durationSeconds => $_getN(8);
+  @$pb.TagNumber(9)
+  set durationSeconds($core.double value) => $_setDouble(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasDurationSeconds() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearDurationSeconds() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get resolution => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set resolution($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasResolution() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearResolution() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get fileUrl => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set fileUrl($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasFileUrl() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearFileUrl() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get qualityState => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set qualityState($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasQualityState() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearQualityState() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.String get generationState => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set generationState($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasGenerationState() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearGenerationState() => $_clearField(13);
+
+  @$pb.TagNumber(14)
+  $pb.PbList<$core.String> get tags => $_getList(13);
+
+  @$pb.TagNumber(15)
+  $fixnum.Int64 get views => $_getI64(14);
+  @$pb.TagNumber(15)
+  set views($fixnum.Int64 value) => $_setInt64(14, value);
+  @$pb.TagNumber(15)
+  $core.bool hasViews() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearViews() => $_clearField(15);
+
+  @$pb.TagNumber(16)
+  $core.double get engagementRate => $_getN(15);
+  @$pb.TagNumber(16)
+  set engagementRate($core.double value) => $_setDouble(15, value);
+  @$pb.TagNumber(16)
+  $core.bool hasEngagementRate() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearEngagementRate() => $_clearField(16);
+
+  @$pb.TagNumber(17)
+  $core.double get ctr => $_getN(16);
+  @$pb.TagNumber(17)
+  set ctr($core.double value) => $_setDouble(16, value);
+  @$pb.TagNumber(17)
+  $core.bool hasCtr() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearCtr() => $_clearField(17);
+
+  @$pb.TagNumber(18)
+  $1.Timestamp get createdAt => $_getN(17);
+  @$pb.TagNumber(18)
+  set createdAt($1.Timestamp value) => $_setField(18, value);
+  @$pb.TagNumber(18)
+  $core.bool hasCreatedAt() => $_has(17);
+  @$pb.TagNumber(18)
+  void clearCreatedAt() => $_clearField(18);
+  @$pb.TagNumber(18)
+  $1.Timestamp ensureCreatedAt() => $_ensure(17);
+
+  @$pb.TagNumber(19)
+  $1.Timestamp get updatedAt => $_getN(18);
+  @$pb.TagNumber(19)
+  set updatedAt($1.Timestamp value) => $_setField(19, value);
+  @$pb.TagNumber(19)
+  $core.bool hasUpdatedAt() => $_has(18);
+  @$pb.TagNumber(19)
+  void clearUpdatedAt() => $_clearField(19);
+  @$pb.TagNumber(19)
+  $1.Timestamp ensureUpdatedAt() => $_ensure(18);
+}
+
+class BatchItemError extends $pb.GeneratedMessage {
+  factory BatchItemError({
+    $core.String? assetId,
+    $core.String? errorCode,
+    $core.String? errorMessage,
+  }) {
+    final result = BatchItemError._();
+    if (assetId != null) result.assetId = assetId;
+    if (errorCode != null) result.errorCode = errorCode;
+    if (errorMessage != null) result.errorMessage = errorMessage;
+    return result;
+  }
+
+  BatchItemError._();
+
+  factory BatchItemError.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BatchItemError()..mergeFromBuffer(data, registry);
+  factory BatchItemError.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BatchItemError()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'BatchItemError',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: BatchItemError.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'assetId')
+    ..aOS(2, _omitFieldNames ? '' : 'errorCode')
+    ..aOS(3, _omitFieldNames ? '' : 'errorMessage')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BatchItemError clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BatchItemError copyWith(void Function(BatchItemError) updates) =>
+      super.copyWith((message) => updates(message as BatchItemError))
+          as BatchItemError;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use BatchItemError() / BatchItemError.new instead')
+  static BatchItemError create() => BatchItemError._();
+  static $pb.GeneratedMessage $_createMessage() => BatchItemError._();
+  @$core.override
+  BatchItemError createEmptyInstance() => BatchItemError._();
+  @$core.pragma('dart2js:noInline')
+  static BatchItemError getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<BatchItemError>(
+          BatchItemError.$_createMessage);
+  static BatchItemError? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get assetId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set assetId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAssetId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAssetId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get errorCode => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set errorCode($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasErrorCode() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearErrorCode() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get errorMessage => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set errorMessage($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasErrorMessage() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearErrorMessage() => $_clearField(3);
+}
+
+class DerivativeLineageNode extends $pb.GeneratedMessage {
+  factory DerivativeLineageNode({
+    $core.String? assetId,
+    $core.String? parentAssetId,
+    $core.String? title,
+    $core.String? derivativeType,
+    $core.String? assetType,
+    $core.String? qualityState,
+    $core.int? depth,
+    $fixnum.Int64? views,
+    $core.double? engagementRate,
+    $core.double? ctr,
+    $core.bool? isSourceDeleted,
+    $core.Iterable<DerivativeLineageNode>? children,
+  }) {
+    final result = DerivativeLineageNode._();
+    if (assetId != null) result.assetId = assetId;
+    if (parentAssetId != null) result.parentAssetId = parentAssetId;
+    if (title != null) result.title = title;
+    if (derivativeType != null) result.derivativeType = derivativeType;
+    if (assetType != null) result.assetType = assetType;
+    if (qualityState != null) result.qualityState = qualityState;
+    if (depth != null) result.depth = depth;
+    if (views != null) result.views = views;
+    if (engagementRate != null) result.engagementRate = engagementRate;
+    if (ctr != null) result.ctr = ctr;
+    if (isSourceDeleted != null) result.isSourceDeleted = isSourceDeleted;
+    if (children != null) result.children.addAll(children);
+    return result;
+  }
+
+  DerivativeLineageNode._();
+
+  factory DerivativeLineageNode.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeLineageNode()..mergeFromBuffer(data, registry);
+  factory DerivativeLineageNode.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeLineageNode()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DerivativeLineageNode',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DerivativeLineageNode.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'assetId')
+    ..aOS(2, _omitFieldNames ? '' : 'parentAssetId')
+    ..aOS(3, _omitFieldNames ? '' : 'title')
+    ..aOS(4, _omitFieldNames ? '' : 'derivativeType')
+    ..aOS(5, _omitFieldNames ? '' : 'assetType')
+    ..aOS(6, _omitFieldNames ? '' : 'qualityState')
+    ..aI(7, _omitFieldNames ? '' : 'depth')
+    ..aInt64(8, _omitFieldNames ? '' : 'views')
+    ..aD(9, _omitFieldNames ? '' : 'engagementRate')
+    ..aD(10, _omitFieldNames ? '' : 'ctr')
+    ..aOB(11, _omitFieldNames ? '' : 'isSourceDeleted')
+    ..pPM<DerivativeLineageNode>(12, _omitFieldNames ? '' : 'children',
+        subBuilder: DerivativeLineageNode.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeLineageNode clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeLineageNode copyWith(
+          void Function(DerivativeLineageNode) updates) =>
+      super.copyWith((message) => updates(message as DerivativeLineageNode))
+          as DerivativeLineageNode;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DerivativeLineageNode() / DerivativeLineageNode.new instead')
+  static DerivativeLineageNode create() => DerivativeLineageNode._();
+  static $pb.GeneratedMessage $_createMessage() => DerivativeLineageNode._();
+  @$core.override
+  DerivativeLineageNode createEmptyInstance() => DerivativeLineageNode._();
+  @$core.pragma('dart2js:noInline')
+  static DerivativeLineageNode getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DerivativeLineageNode>(
+          DerivativeLineageNode.$_createMessage);
+  static DerivativeLineageNode? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get assetId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set assetId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAssetId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAssetId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get parentAssetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set parentAssetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasParentAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearParentAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get title => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set title($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTitle() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTitle() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get derivativeType => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set derivativeType($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasDerivativeType() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDerivativeType() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get assetType => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set assetType($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasAssetType() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearAssetType() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get qualityState => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set qualityState($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasQualityState() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearQualityState() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.int get depth => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set depth($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasDepth() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearDepth() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $fixnum.Int64 get views => $_getI64(7);
+  @$pb.TagNumber(8)
+  set views($fixnum.Int64 value) => $_setInt64(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasViews() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearViews() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.double get engagementRate => $_getN(8);
+  @$pb.TagNumber(9)
+  set engagementRate($core.double value) => $_setDouble(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasEngagementRate() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearEngagementRate() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.double get ctr => $_getN(9);
+  @$pb.TagNumber(10)
+  set ctr($core.double value) => $_setDouble(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasCtr() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearCtr() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.bool get isSourceDeleted => $_getBF(10);
+  @$pb.TagNumber(11)
+  set isSourceDeleted($core.bool value) => $_setBool(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasIsSourceDeleted() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearIsSourceDeleted() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $pb.PbList<DerivativeLineageNode> get children => $_getList(11);
+}
+
+class DerivativeStats extends $pb.GeneratedMessage {
+  factory DerivativeStats({
+    $core.String? sourceAssetId,
+    $core.int? totalDerivatives,
+    $fixnum.Int64? aggregateViews,
+    $core.double? averageEngagementRate,
+    $core.double? averageCtr,
+    $core.String? topPerformingDerivativeId,
+    $core.Iterable<DerivativeItem>? topDerivatives,
+  }) {
+    final result = DerivativeStats._();
+    if (sourceAssetId != null) result.sourceAssetId = sourceAssetId;
+    if (totalDerivatives != null) result.totalDerivatives = totalDerivatives;
+    if (aggregateViews != null) result.aggregateViews = aggregateViews;
+    if (averageEngagementRate != null)
+      result.averageEngagementRate = averageEngagementRate;
+    if (averageCtr != null) result.averageCtr = averageCtr;
+    if (topPerformingDerivativeId != null)
+      result.topPerformingDerivativeId = topPerformingDerivativeId;
+    if (topDerivatives != null) result.topDerivatives.addAll(topDerivatives);
+    return result;
+  }
+
+  DerivativeStats._();
+
+  factory DerivativeStats.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeStats()..mergeFromBuffer(data, registry);
+  factory DerivativeStats.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeStats()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DerivativeStats',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DerivativeStats.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'sourceAssetId')
+    ..aI(2, _omitFieldNames ? '' : 'totalDerivatives')
+    ..aInt64(3, _omitFieldNames ? '' : 'aggregateViews')
+    ..aD(4, _omitFieldNames ? '' : 'averageEngagementRate')
+    ..aD(5, _omitFieldNames ? '' : 'averageCtr')
+    ..aOS(6, _omitFieldNames ? '' : 'topPerformingDerivativeId')
+    ..pPM<DerivativeItem>(7, _omitFieldNames ? '' : 'topDerivatives',
+        subBuilder: DerivativeItem.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeStats clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeStats copyWith(void Function(DerivativeStats) updates) =>
+      super.copyWith((message) => updates(message as DerivativeStats))
+          as DerivativeStats;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use DerivativeStats() / DerivativeStats.new instead')
+  static DerivativeStats create() => DerivativeStats._();
+  static $pb.GeneratedMessage $_createMessage() => DerivativeStats._();
+  @$core.override
+  DerivativeStats createEmptyInstance() => DerivativeStats._();
+  @$core.pragma('dart2js:noInline')
+  static DerivativeStats getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<DerivativeStats>(
+          DerivativeStats.$_createMessage);
+  static DerivativeStats? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get sourceAssetId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sourceAssetId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSourceAssetId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSourceAssetId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get totalDerivatives => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set totalDerivatives($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTotalDerivatives() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTotalDerivatives() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get aggregateViews => $_getI64(2);
+  @$pb.TagNumber(3)
+  set aggregateViews($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAggregateViews() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAggregateViews() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.double get averageEngagementRate => $_getN(3);
+  @$pb.TagNumber(4)
+  set averageEngagementRate($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasAverageEngagementRate() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearAverageEngagementRate() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.double get averageCtr => $_getN(4);
+  @$pb.TagNumber(5)
+  set averageCtr($core.double value) => $_setDouble(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasAverageCtr() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearAverageCtr() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get topPerformingDerivativeId => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set topPerformingDerivativeId($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasTopPerformingDerivativeId() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTopPerformingDerivativeId() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $pb.PbList<DerivativeItem> get topDerivatives => $_getList(6);
+}
+
+class DerivativeServiceListRequest extends $pb.GeneratedMessage {
+  factory DerivativeServiceListRequest({
+    $2.UUID? workspaceId,
+    $core.String? sourceAssetId,
+    $core.String? derivativeType,
+    $core.String? targetChannel,
+    $core.String? status,
+    $2.Pagination? pagination,
+  }) {
+    final result = DerivativeServiceListRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (sourceAssetId != null) result.sourceAssetId = sourceAssetId;
+    if (derivativeType != null) result.derivativeType = derivativeType;
+    if (targetChannel != null) result.targetChannel = targetChannel;
+    if (status != null) result.status = status;
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  DerivativeServiceListRequest._();
+
+  factory DerivativeServiceListRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceListRequest()..mergeFromBuffer(data, registry);
+  factory DerivativeServiceListRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceListRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DerivativeServiceListRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DerivativeServiceListRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'sourceAssetId')
+    ..aOS(3, _omitFieldNames ? '' : 'derivativeType')
+    ..aOS(4, _omitFieldNames ? '' : 'targetChannel')
+    ..aOS(5, _omitFieldNames ? '' : 'status')
+    ..aOM<$2.Pagination>(6, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.Pagination.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceListRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceListRequest copyWith(
+          void Function(DerivativeServiceListRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as DerivativeServiceListRequest))
+          as DerivativeServiceListRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DerivativeServiceListRequest() / DerivativeServiceListRequest.new instead')
+  static DerivativeServiceListRequest create() =>
+      DerivativeServiceListRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      DerivativeServiceListRequest._();
+  @$core.override
+  DerivativeServiceListRequest createEmptyInstance() =>
+      DerivativeServiceListRequest._();
+  @$core.pragma('dart2js:noInline')
+  static DerivativeServiceListRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DerivativeServiceListRequest>(
+          DerivativeServiceListRequest.$_createMessage);
+  static DerivativeServiceListRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get sourceAssetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set sourceAssetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSourceAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSourceAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get derivativeType => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set derivativeType($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDerivativeType() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDerivativeType() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get targetChannel => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set targetChannel($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTargetChannel() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTargetChannel() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get status => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set status($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasStatus() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearStatus() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $2.Pagination get pagination => $_getN(5);
+  @$pb.TagNumber(6)
+  set pagination($2.Pagination value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasPagination() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearPagination() => $_clearField(6);
+  @$pb.TagNumber(6)
+  $2.Pagination ensurePagination() => $_ensure(5);
+}
+
+class DerivativeServiceListResponse extends $pb.GeneratedMessage {
+  factory DerivativeServiceListResponse({
+    $core.Iterable<DerivativeItem>? derivatives,
+    $2.PaginatedResponse? pagination,
+  }) {
+    final result = DerivativeServiceListResponse._();
+    if (derivatives != null) result.derivatives.addAll(derivatives);
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  DerivativeServiceListResponse._();
+
+  factory DerivativeServiceListResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceListResponse()..mergeFromBuffer(data, registry);
+  factory DerivativeServiceListResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceListResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DerivativeServiceListResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DerivativeServiceListResponse.$_createMessage)
+    ..pPM<DerivativeItem>(1, _omitFieldNames ? '' : 'derivatives',
+        subBuilder: DerivativeItem.$_createMessage)
+    ..aOM<$2.PaginatedResponse>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.PaginatedResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceListResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceListResponse copyWith(
+          void Function(DerivativeServiceListResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as DerivativeServiceListResponse))
+          as DerivativeServiceListResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DerivativeServiceListResponse() / DerivativeServiceListResponse.new instead')
+  static DerivativeServiceListResponse create() =>
+      DerivativeServiceListResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      DerivativeServiceListResponse._();
+  @$core.override
+  DerivativeServiceListResponse createEmptyInstance() =>
+      DerivativeServiceListResponse._();
+  @$core.pragma('dart2js:noInline')
+  static DerivativeServiceListResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DerivativeServiceListResponse>(
+          DerivativeServiceListResponse.$_createMessage);
+  static DerivativeServiceListResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<DerivativeItem> get derivatives => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($2.PaginatedResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse ensurePagination() => $_ensure(1);
+}
+
+class DerivativeServiceCreateRequest extends $pb.GeneratedMessage {
+  factory DerivativeServiceCreateRequest({
+    $2.CommandContext? context,
+    $core.String? parentAssetId,
+    $core.String? derivativeType,
+    $core.String? targetChannel,
+    $core.String? aspectRatio,
+    $core.String? title,
+    $core.String? ctaVariant,
+    $core.String? subtitleLanguage,
+    $core.Iterable<$core.String>? tags,
+    $core.String? prompt,
+  }) {
+    final result = DerivativeServiceCreateRequest._();
+    if (context != null) result.context = context;
+    if (parentAssetId != null) result.parentAssetId = parentAssetId;
+    if (derivativeType != null) result.derivativeType = derivativeType;
+    if (targetChannel != null) result.targetChannel = targetChannel;
+    if (aspectRatio != null) result.aspectRatio = aspectRatio;
+    if (title != null) result.title = title;
+    if (ctaVariant != null) result.ctaVariant = ctaVariant;
+    if (subtitleLanguage != null) result.subtitleLanguage = subtitleLanguage;
+    if (tags != null) result.tags.addAll(tags);
+    if (prompt != null) result.prompt = prompt;
+    return result;
+  }
+
+  DerivativeServiceCreateRequest._();
+
+  factory DerivativeServiceCreateRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceCreateRequest()..mergeFromBuffer(data, registry);
+  factory DerivativeServiceCreateRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceCreateRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DerivativeServiceCreateRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DerivativeServiceCreateRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'parentAssetId')
+    ..aOS(3, _omitFieldNames ? '' : 'derivativeType')
+    ..aOS(4, _omitFieldNames ? '' : 'targetChannel')
+    ..aOS(5, _omitFieldNames ? '' : 'aspectRatio')
+    ..aOS(6, _omitFieldNames ? '' : 'title')
+    ..aOS(7, _omitFieldNames ? '' : 'ctaVariant')
+    ..aOS(8, _omitFieldNames ? '' : 'subtitleLanguage')
+    ..pPS(9, _omitFieldNames ? '' : 'tags')
+    ..aOS(10, _omitFieldNames ? '' : 'prompt')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceCreateRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceCreateRequest copyWith(
+          void Function(DerivativeServiceCreateRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as DerivativeServiceCreateRequest))
+          as DerivativeServiceCreateRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DerivativeServiceCreateRequest() / DerivativeServiceCreateRequest.new instead')
+  static DerivativeServiceCreateRequest create() =>
+      DerivativeServiceCreateRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      DerivativeServiceCreateRequest._();
+  @$core.override
+  DerivativeServiceCreateRequest createEmptyInstance() =>
+      DerivativeServiceCreateRequest._();
+  @$core.pragma('dart2js:noInline')
+  static DerivativeServiceCreateRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DerivativeServiceCreateRequest>(
+          DerivativeServiceCreateRequest.$_createMessage);
+  static DerivativeServiceCreateRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get parentAssetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set parentAssetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasParentAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearParentAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get derivativeType => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set derivativeType($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDerivativeType() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDerivativeType() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get targetChannel => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set targetChannel($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTargetChannel() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTargetChannel() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get aspectRatio => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set aspectRatio($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasAspectRatio() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearAspectRatio() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get title => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set title($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasTitle() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTitle() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get ctaVariant => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set ctaVariant($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasCtaVariant() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearCtaVariant() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get subtitleLanguage => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set subtitleLanguage($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasSubtitleLanguage() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearSubtitleLanguage() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $pb.PbList<$core.String> get tags => $_getList(8);
+
+  @$pb.TagNumber(10)
+  $core.String get prompt => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set prompt($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasPrompt() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearPrompt() => $_clearField(10);
+}
+
+class DerivativeServiceCreateResponse extends $pb.GeneratedMessage {
+  factory DerivativeServiceCreateResponse({
+    DerivativeItem? derivative,
+    $core.String? operationId,
+  }) {
+    final result = DerivativeServiceCreateResponse._();
+    if (derivative != null) result.derivative = derivative;
+    if (operationId != null) result.operationId = operationId;
+    return result;
+  }
+
+  DerivativeServiceCreateResponse._();
+
+  factory DerivativeServiceCreateResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceCreateResponse()..mergeFromBuffer(data, registry);
+  factory DerivativeServiceCreateResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceCreateResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DerivativeServiceCreateResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DerivativeServiceCreateResponse.$_createMessage)
+    ..aOM<DerivativeItem>(1, _omitFieldNames ? '' : 'derivative',
+        subBuilder: DerivativeItem.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'operationId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceCreateResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceCreateResponse copyWith(
+          void Function(DerivativeServiceCreateResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as DerivativeServiceCreateResponse))
+          as DerivativeServiceCreateResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DerivativeServiceCreateResponse() / DerivativeServiceCreateResponse.new instead')
+  static DerivativeServiceCreateResponse create() =>
+      DerivativeServiceCreateResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      DerivativeServiceCreateResponse._();
+  @$core.override
+  DerivativeServiceCreateResponse createEmptyInstance() =>
+      DerivativeServiceCreateResponse._();
+  @$core.pragma('dart2js:noInline')
+  static DerivativeServiceCreateResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DerivativeServiceCreateResponse>(
+          DerivativeServiceCreateResponse.$_createMessage);
+  static DerivativeServiceCreateResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  DerivativeItem get derivative => $_getN(0);
+  @$pb.TagNumber(1)
+  set derivative(DerivativeItem value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDerivative() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDerivative() => $_clearField(1);
+  @$pb.TagNumber(1)
+  DerivativeItem ensureDerivative() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get operationId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set operationId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasOperationId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearOperationId() => $_clearField(2);
+}
+
+class DerivativeServiceBatchTagRequest extends $pb.GeneratedMessage {
+  factory DerivativeServiceBatchTagRequest({
+    $2.CommandContext? context,
+    $core.Iterable<$core.String>? assetIds,
+    $core.Iterable<$core.String>? addTags,
+    $core.Iterable<$core.String>? removeTags,
+  }) {
+    final result = DerivativeServiceBatchTagRequest._();
+    if (context != null) result.context = context;
+    if (assetIds != null) result.assetIds.addAll(assetIds);
+    if (addTags != null) result.addTags.addAll(addTags);
+    if (removeTags != null) result.removeTags.addAll(removeTags);
+    return result;
+  }
+
+  DerivativeServiceBatchTagRequest._();
+
+  factory DerivativeServiceBatchTagRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceBatchTagRequest()..mergeFromBuffer(data, registry);
+  factory DerivativeServiceBatchTagRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceBatchTagRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DerivativeServiceBatchTagRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DerivativeServiceBatchTagRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..pPS(2, _omitFieldNames ? '' : 'assetIds')
+    ..pPS(3, _omitFieldNames ? '' : 'addTags')
+    ..pPS(4, _omitFieldNames ? '' : 'removeTags')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceBatchTagRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceBatchTagRequest copyWith(
+          void Function(DerivativeServiceBatchTagRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as DerivativeServiceBatchTagRequest))
+          as DerivativeServiceBatchTagRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DerivativeServiceBatchTagRequest() / DerivativeServiceBatchTagRequest.new instead')
+  static DerivativeServiceBatchTagRequest create() =>
+      DerivativeServiceBatchTagRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      DerivativeServiceBatchTagRequest._();
+  @$core.override
+  DerivativeServiceBatchTagRequest createEmptyInstance() =>
+      DerivativeServiceBatchTagRequest._();
+  @$core.pragma('dart2js:noInline')
+  static DerivativeServiceBatchTagRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DerivativeServiceBatchTagRequest>(
+          DerivativeServiceBatchTagRequest.$_createMessage);
+  static DerivativeServiceBatchTagRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<$core.String> get assetIds => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<$core.String> get addTags => $_getList(2);
+
+  @$pb.TagNumber(4)
+  $pb.PbList<$core.String> get removeTags => $_getList(3);
+}
+
+class DerivativeServiceBatchTagResponse extends $pb.GeneratedMessage {
+  factory DerivativeServiceBatchTagResponse({
+    $core.int? totalItems,
+    $core.int? succeededCount,
+    $core.int? failedCount,
+    $core.Iterable<$core.String>? succeededAssetIds,
+    $core.Iterable<BatchItemError>? failures,
+    $core.String? summary,
+  }) {
+    final result = DerivativeServiceBatchTagResponse._();
+    if (totalItems != null) result.totalItems = totalItems;
+    if (succeededCount != null) result.succeededCount = succeededCount;
+    if (failedCount != null) result.failedCount = failedCount;
+    if (succeededAssetIds != null)
+      result.succeededAssetIds.addAll(succeededAssetIds);
+    if (failures != null) result.failures.addAll(failures);
+    if (summary != null) result.summary = summary;
+    return result;
+  }
+
+  DerivativeServiceBatchTagResponse._();
+
+  factory DerivativeServiceBatchTagResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceBatchTagResponse()..mergeFromBuffer(data, registry);
+  factory DerivativeServiceBatchTagResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceBatchTagResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DerivativeServiceBatchTagResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DerivativeServiceBatchTagResponse.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'totalItems')
+    ..aI(2, _omitFieldNames ? '' : 'succeededCount')
+    ..aI(3, _omitFieldNames ? '' : 'failedCount')
+    ..pPS(4, _omitFieldNames ? '' : 'succeededAssetIds')
+    ..pPM<BatchItemError>(5, _omitFieldNames ? '' : 'failures',
+        subBuilder: BatchItemError.$_createMessage)
+    ..aOS(6, _omitFieldNames ? '' : 'summary')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceBatchTagResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceBatchTagResponse copyWith(
+          void Function(DerivativeServiceBatchTagResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as DerivativeServiceBatchTagResponse))
+          as DerivativeServiceBatchTagResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DerivativeServiceBatchTagResponse() / DerivativeServiceBatchTagResponse.new instead')
+  static DerivativeServiceBatchTagResponse create() =>
+      DerivativeServiceBatchTagResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      DerivativeServiceBatchTagResponse._();
+  @$core.override
+  DerivativeServiceBatchTagResponse createEmptyInstance() =>
+      DerivativeServiceBatchTagResponse._();
+  @$core.pragma('dart2js:noInline')
+  static DerivativeServiceBatchTagResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DerivativeServiceBatchTagResponse>(
+          DerivativeServiceBatchTagResponse.$_createMessage);
+  static DerivativeServiceBatchTagResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get totalItems => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set totalItems($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTotalItems() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTotalItems() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get succeededCount => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set succeededCount($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSucceededCount() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSucceededCount() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get failedCount => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set failedCount($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasFailedCount() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearFailedCount() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $pb.PbList<$core.String> get succeededAssetIds => $_getList(3);
+
+  @$pb.TagNumber(5)
+  $pb.PbList<BatchItemError> get failures => $_getList(4);
+
+  @$pb.TagNumber(6)
+  $core.String get summary => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set summary($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSummary() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSummary() => $_clearField(6);
+}
+
+class DerivativeServiceGetLineageRequest extends $pb.GeneratedMessage {
+  factory DerivativeServiceGetLineageRequest({
+    $2.UUID? workspaceId,
+    $core.String? assetId,
+  }) {
+    final result = DerivativeServiceGetLineageRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (assetId != null) result.assetId = assetId;
+    return result;
+  }
+
+  DerivativeServiceGetLineageRequest._();
+
+  factory DerivativeServiceGetLineageRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceGetLineageRequest()..mergeFromBuffer(data, registry);
+  factory DerivativeServiceGetLineageRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceGetLineageRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DerivativeServiceGetLineageRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DerivativeServiceGetLineageRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'assetId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceGetLineageRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceGetLineageRequest copyWith(
+          void Function(DerivativeServiceGetLineageRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as DerivativeServiceGetLineageRequest))
+          as DerivativeServiceGetLineageRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DerivativeServiceGetLineageRequest() / DerivativeServiceGetLineageRequest.new instead')
+  static DerivativeServiceGetLineageRequest create() =>
+      DerivativeServiceGetLineageRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      DerivativeServiceGetLineageRequest._();
+  @$core.override
+  DerivativeServiceGetLineageRequest createEmptyInstance() =>
+      DerivativeServiceGetLineageRequest._();
+  @$core.pragma('dart2js:noInline')
+  static DerivativeServiceGetLineageRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DerivativeServiceGetLineageRequest>(
+          DerivativeServiceGetLineageRequest.$_createMessage);
+  static DerivativeServiceGetLineageRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get assetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set assetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAssetId() => $_clearField(2);
+}
+
+class DerivativeServiceGetLineageResponse extends $pb.GeneratedMessage {
+  factory DerivativeServiceGetLineageResponse({
+    DerivativeLineageNode? rootSource,
+    DerivativeLineageNode? targetNode,
+    $core.Iterable<DerivativeLineageNode>? chain,
+    $core.bool? hasLineage,
+    $core.String? lineageSummary,
+  }) {
+    final result = DerivativeServiceGetLineageResponse._();
+    if (rootSource != null) result.rootSource = rootSource;
+    if (targetNode != null) result.targetNode = targetNode;
+    if (chain != null) result.chain.addAll(chain);
+    if (hasLineage != null) result.hasLineage = hasLineage;
+    if (lineageSummary != null) result.lineageSummary = lineageSummary;
+    return result;
+  }
+
+  DerivativeServiceGetLineageResponse._();
+
+  factory DerivativeServiceGetLineageResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceGetLineageResponse()..mergeFromBuffer(data, registry);
+  factory DerivativeServiceGetLineageResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceGetLineageResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DerivativeServiceGetLineageResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DerivativeServiceGetLineageResponse.$_createMessage)
+    ..aOM<DerivativeLineageNode>(1, _omitFieldNames ? '' : 'rootSource',
+        subBuilder: DerivativeLineageNode.$_createMessage)
+    ..aOM<DerivativeLineageNode>(2, _omitFieldNames ? '' : 'targetNode',
+        subBuilder: DerivativeLineageNode.$_createMessage)
+    ..pPM<DerivativeLineageNode>(3, _omitFieldNames ? '' : 'chain',
+        subBuilder: DerivativeLineageNode.$_createMessage)
+    ..aOB(4, _omitFieldNames ? '' : 'hasLineage')
+    ..aOS(5, _omitFieldNames ? '' : 'lineageSummary')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceGetLineageResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceGetLineageResponse copyWith(
+          void Function(DerivativeServiceGetLineageResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as DerivativeServiceGetLineageResponse))
+          as DerivativeServiceGetLineageResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DerivativeServiceGetLineageResponse() / DerivativeServiceGetLineageResponse.new instead')
+  static DerivativeServiceGetLineageResponse create() =>
+      DerivativeServiceGetLineageResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      DerivativeServiceGetLineageResponse._();
+  @$core.override
+  DerivativeServiceGetLineageResponse createEmptyInstance() =>
+      DerivativeServiceGetLineageResponse._();
+  @$core.pragma('dart2js:noInline')
+  static DerivativeServiceGetLineageResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              DerivativeServiceGetLineageResponse>(
+          DerivativeServiceGetLineageResponse.$_createMessage);
+  static DerivativeServiceGetLineageResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  DerivativeLineageNode get rootSource => $_getN(0);
+  @$pb.TagNumber(1)
+  set rootSource(DerivativeLineageNode value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRootSource() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRootSource() => $_clearField(1);
+  @$pb.TagNumber(1)
+  DerivativeLineageNode ensureRootSource() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  DerivativeLineageNode get targetNode => $_getN(1);
+  @$pb.TagNumber(2)
+  set targetNode(DerivativeLineageNode value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTargetNode() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTargetNode() => $_clearField(2);
+  @$pb.TagNumber(2)
+  DerivativeLineageNode ensureTargetNode() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<DerivativeLineageNode> get chain => $_getList(2);
+
+  @$pb.TagNumber(4)
+  $core.bool get hasLineage => $_getBF(3);
+  @$pb.TagNumber(4)
+  set hasLineage($core.bool value) => $_setBool(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasHasLineage() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearHasLineage() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get lineageSummary => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set lineageSummary($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLineageSummary() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLineageSummary() => $_clearField(5);
+}
+
+class DerivativeServiceDeleteRequest extends $pb.GeneratedMessage {
+  factory DerivativeServiceDeleteRequest({
+    $2.CommandContext? context,
+    $core.String? assetId,
+  }) {
+    final result = DerivativeServiceDeleteRequest._();
+    if (context != null) result.context = context;
+    if (assetId != null) result.assetId = assetId;
+    return result;
+  }
+
+  DerivativeServiceDeleteRequest._();
+
+  factory DerivativeServiceDeleteRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceDeleteRequest()..mergeFromBuffer(data, registry);
+  factory DerivativeServiceDeleteRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceDeleteRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DerivativeServiceDeleteRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DerivativeServiceDeleteRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'assetId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceDeleteRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceDeleteRequest copyWith(
+          void Function(DerivativeServiceDeleteRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as DerivativeServiceDeleteRequest))
+          as DerivativeServiceDeleteRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DerivativeServiceDeleteRequest() / DerivativeServiceDeleteRequest.new instead')
+  static DerivativeServiceDeleteRequest create() =>
+      DerivativeServiceDeleteRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      DerivativeServiceDeleteRequest._();
+  @$core.override
+  DerivativeServiceDeleteRequest createEmptyInstance() =>
+      DerivativeServiceDeleteRequest._();
+  @$core.pragma('dart2js:noInline')
+  static DerivativeServiceDeleteRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DerivativeServiceDeleteRequest>(
+          DerivativeServiceDeleteRequest.$_createMessage);
+  static DerivativeServiceDeleteRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get assetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set assetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAssetId() => $_clearField(2);
+}
+
+class DerivativeServiceDeleteResponse extends $pb.GeneratedMessage {
+  factory DerivativeServiceDeleteResponse({
+    $core.bool? success,
+    $core.String? assetId,
+  }) {
+    final result = DerivativeServiceDeleteResponse._();
+    if (success != null) result.success = success;
+    if (assetId != null) result.assetId = assetId;
+    return result;
+  }
+
+  DerivativeServiceDeleteResponse._();
+
+  factory DerivativeServiceDeleteResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceDeleteResponse()..mergeFromBuffer(data, registry);
+  factory DerivativeServiceDeleteResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceDeleteResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DerivativeServiceDeleteResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DerivativeServiceDeleteResponse.$_createMessage)
+    ..aOB(1, _omitFieldNames ? '' : 'success')
+    ..aOS(2, _omitFieldNames ? '' : 'assetId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceDeleteResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceDeleteResponse copyWith(
+          void Function(DerivativeServiceDeleteResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as DerivativeServiceDeleteResponse))
+          as DerivativeServiceDeleteResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DerivativeServiceDeleteResponse() / DerivativeServiceDeleteResponse.new instead')
+  static DerivativeServiceDeleteResponse create() =>
+      DerivativeServiceDeleteResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      DerivativeServiceDeleteResponse._();
+  @$core.override
+  DerivativeServiceDeleteResponse createEmptyInstance() =>
+      DerivativeServiceDeleteResponse._();
+  @$core.pragma('dart2js:noInline')
+  static DerivativeServiceDeleteResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DerivativeServiceDeleteResponse>(
+          DerivativeServiceDeleteResponse.$_createMessage);
+  static DerivativeServiceDeleteResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get success => $_getBF(0);
+  @$pb.TagNumber(1)
+  set success($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get assetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set assetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAssetId() => $_clearField(2);
+}
+
+class DerivativeServicePromoteRequest extends $pb.GeneratedMessage {
+  factory DerivativeServicePromoteRequest({
+    $2.CommandContext? context,
+    $core.String? assetId,
+  }) {
+    final result = DerivativeServicePromoteRequest._();
+    if (context != null) result.context = context;
+    if (assetId != null) result.assetId = assetId;
+    return result;
+  }
+
+  DerivativeServicePromoteRequest._();
+
+  factory DerivativeServicePromoteRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServicePromoteRequest()..mergeFromBuffer(data, registry);
+  factory DerivativeServicePromoteRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServicePromoteRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DerivativeServicePromoteRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DerivativeServicePromoteRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'assetId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServicePromoteRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServicePromoteRequest copyWith(
+          void Function(DerivativeServicePromoteRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as DerivativeServicePromoteRequest))
+          as DerivativeServicePromoteRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DerivativeServicePromoteRequest() / DerivativeServicePromoteRequest.new instead')
+  static DerivativeServicePromoteRequest create() =>
+      DerivativeServicePromoteRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      DerivativeServicePromoteRequest._();
+  @$core.override
+  DerivativeServicePromoteRequest createEmptyInstance() =>
+      DerivativeServicePromoteRequest._();
+  @$core.pragma('dart2js:noInline')
+  static DerivativeServicePromoteRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DerivativeServicePromoteRequest>(
+          DerivativeServicePromoteRequest.$_createMessage);
+  static DerivativeServicePromoteRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get assetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set assetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAssetId() => $_clearField(2);
+}
+
+class DerivativeServicePromoteResponse extends $pb.GeneratedMessage {
+  factory DerivativeServicePromoteResponse({
+    DerivativeItem? derivative,
+    $core.bool? isCanonical,
+  }) {
+    final result = DerivativeServicePromoteResponse._();
+    if (derivative != null) result.derivative = derivative;
+    if (isCanonical != null) result.isCanonical = isCanonical;
+    return result;
+  }
+
+  DerivativeServicePromoteResponse._();
+
+  factory DerivativeServicePromoteResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServicePromoteResponse()..mergeFromBuffer(data, registry);
+  factory DerivativeServicePromoteResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServicePromoteResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DerivativeServicePromoteResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DerivativeServicePromoteResponse.$_createMessage)
+    ..aOM<DerivativeItem>(1, _omitFieldNames ? '' : 'derivative',
+        subBuilder: DerivativeItem.$_createMessage)
+    ..aOB(2, _omitFieldNames ? '' : 'isCanonical')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServicePromoteResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServicePromoteResponse copyWith(
+          void Function(DerivativeServicePromoteResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as DerivativeServicePromoteResponse))
+          as DerivativeServicePromoteResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DerivativeServicePromoteResponse() / DerivativeServicePromoteResponse.new instead')
+  static DerivativeServicePromoteResponse create() =>
+      DerivativeServicePromoteResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      DerivativeServicePromoteResponse._();
+  @$core.override
+  DerivativeServicePromoteResponse createEmptyInstance() =>
+      DerivativeServicePromoteResponse._();
+  @$core.pragma('dart2js:noInline')
+  static DerivativeServicePromoteResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DerivativeServicePromoteResponse>(
+          DerivativeServicePromoteResponse.$_createMessage);
+  static DerivativeServicePromoteResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  DerivativeItem get derivative => $_getN(0);
+  @$pb.TagNumber(1)
+  set derivative(DerivativeItem value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDerivative() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDerivative() => $_clearField(1);
+  @$pb.TagNumber(1)
+  DerivativeItem ensureDerivative() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.bool get isCanonical => $_getBF(1);
+  @$pb.TagNumber(2)
+  set isCanonical($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasIsCanonical() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearIsCanonical() => $_clearField(2);
+}
+
+class DerivativeServiceGetStatsRequest extends $pb.GeneratedMessage {
+  factory DerivativeServiceGetStatsRequest({
+    $2.UUID? workspaceId,
+    $core.String? sourceAssetId,
+  }) {
+    final result = DerivativeServiceGetStatsRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (sourceAssetId != null) result.sourceAssetId = sourceAssetId;
+    return result;
+  }
+
+  DerivativeServiceGetStatsRequest._();
+
+  factory DerivativeServiceGetStatsRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceGetStatsRequest()..mergeFromBuffer(data, registry);
+  factory DerivativeServiceGetStatsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceGetStatsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DerivativeServiceGetStatsRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DerivativeServiceGetStatsRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'sourceAssetId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceGetStatsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceGetStatsRequest copyWith(
+          void Function(DerivativeServiceGetStatsRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as DerivativeServiceGetStatsRequest))
+          as DerivativeServiceGetStatsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DerivativeServiceGetStatsRequest() / DerivativeServiceGetStatsRequest.new instead')
+  static DerivativeServiceGetStatsRequest create() =>
+      DerivativeServiceGetStatsRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      DerivativeServiceGetStatsRequest._();
+  @$core.override
+  DerivativeServiceGetStatsRequest createEmptyInstance() =>
+      DerivativeServiceGetStatsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static DerivativeServiceGetStatsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DerivativeServiceGetStatsRequest>(
+          DerivativeServiceGetStatsRequest.$_createMessage);
+  static DerivativeServiceGetStatsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get sourceAssetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set sourceAssetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSourceAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSourceAssetId() => $_clearField(2);
+}
+
+class DerivativeServiceGetStatsResponse extends $pb.GeneratedMessage {
+  factory DerivativeServiceGetStatsResponse({
+    DerivativeStats? stats,
+  }) {
+    final result = DerivativeServiceGetStatsResponse._();
+    if (stats != null) result.stats = stats;
+    return result;
+  }
+
+  DerivativeServiceGetStatsResponse._();
+
+  factory DerivativeServiceGetStatsResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceGetStatsResponse()..mergeFromBuffer(data, registry);
+  factory DerivativeServiceGetStatsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DerivativeServiceGetStatsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DerivativeServiceGetStatsResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DerivativeServiceGetStatsResponse.$_createMessage)
+    ..aOM<DerivativeStats>(1, _omitFieldNames ? '' : 'stats',
+        subBuilder: DerivativeStats.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceGetStatsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DerivativeServiceGetStatsResponse copyWith(
+          void Function(DerivativeServiceGetStatsResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as DerivativeServiceGetStatsResponse))
+          as DerivativeServiceGetStatsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DerivativeServiceGetStatsResponse() / DerivativeServiceGetStatsResponse.new instead')
+  static DerivativeServiceGetStatsResponse create() =>
+      DerivativeServiceGetStatsResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      DerivativeServiceGetStatsResponse._();
+  @$core.override
+  DerivativeServiceGetStatsResponse createEmptyInstance() =>
+      DerivativeServiceGetStatsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static DerivativeServiceGetStatsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DerivativeServiceGetStatsResponse>(
+          DerivativeServiceGetStatsResponse.$_createMessage);
+  static DerivativeServiceGetStatsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  DerivativeStats get stats => $_getN(0);
+  @$pb.TagNumber(1)
+  set stats(DerivativeStats value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasStats() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearStats() => $_clearField(1);
+  @$pb.TagNumber(1)
+  DerivativeStats ensureStats() => $_ensure(0);
+}
+
+class PackagingScoreComponent extends $pb.GeneratedMessage {
+  factory PackagingScoreComponent({
+    $core.String? componentName,
+    $core.double? score,
+    $core.double? weight,
+    $core.String? status,
+    $core.String? findings,
+    $core.String? suggestedFix,
+    $core.bool? isHardBlocked,
+    $core.bool? canOverride,
+  }) {
+    final result = PackagingScoreComponent._();
+    if (componentName != null) result.componentName = componentName;
+    if (score != null) result.score = score;
+    if (weight != null) result.weight = weight;
+    if (status != null) result.status = status;
+    if (findings != null) result.findings = findings;
+    if (suggestedFix != null) result.suggestedFix = suggestedFix;
+    if (isHardBlocked != null) result.isHardBlocked = isHardBlocked;
+    if (canOverride != null) result.canOverride = canOverride;
+    return result;
+  }
+
+  PackagingScoreComponent._();
+
+  factory PackagingScoreComponent.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingScoreComponent()..mergeFromBuffer(data, registry);
+  factory PackagingScoreComponent.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingScoreComponent()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PackagingScoreComponent',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: PackagingScoreComponent.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'componentName')
+    ..aD(2, _omitFieldNames ? '' : 'score')
+    ..aD(3, _omitFieldNames ? '' : 'weight')
+    ..aOS(4, _omitFieldNames ? '' : 'status')
+    ..aOS(5, _omitFieldNames ? '' : 'findings')
+    ..aOS(6, _omitFieldNames ? '' : 'suggestedFix')
+    ..aOB(7, _omitFieldNames ? '' : 'isHardBlocked')
+    ..aOB(8, _omitFieldNames ? '' : 'canOverride')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingScoreComponent clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingScoreComponent copyWith(
+          void Function(PackagingScoreComponent) updates) =>
+      super.copyWith((message) => updates(message as PackagingScoreComponent))
+          as PackagingScoreComponent;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PackagingScoreComponent() / PackagingScoreComponent.new instead')
+  static PackagingScoreComponent create() => PackagingScoreComponent._();
+  static $pb.GeneratedMessage $_createMessage() => PackagingScoreComponent._();
+  @$core.override
+  PackagingScoreComponent createEmptyInstance() => PackagingScoreComponent._();
+  @$core.pragma('dart2js:noInline')
+  static PackagingScoreComponent getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PackagingScoreComponent>(
+          PackagingScoreComponent.$_createMessage);
+  static PackagingScoreComponent? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get componentName => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set componentName($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasComponentName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearComponentName() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.double get score => $_getN(1);
+  @$pb.TagNumber(2)
+  set score($core.double value) => $_setDouble(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasScore() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearScore() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get weight => $_getN(2);
+  @$pb.TagNumber(3)
+  set weight($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasWeight() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearWeight() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get status => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set status($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasStatus() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearStatus() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get findings => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set findings($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasFindings() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearFindings() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get suggestedFix => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set suggestedFix($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSuggestedFix() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSuggestedFix() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.bool get isHardBlocked => $_getBF(6);
+  @$pb.TagNumber(7)
+  set isHardBlocked($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasIsHardBlocked() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearIsHardBlocked() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.bool get canOverride => $_getBF(7);
+  @$pb.TagNumber(8)
+  set canOverride($core.bool value) => $_setBool(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasCanOverride() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearCanOverride() => $_clearField(8);
+}
+
+class ReadinessCheckItem extends $pb.GeneratedMessage {
+  factory ReadinessCheckItem({
+    $core.String? checkId,
+    $core.String? platform,
+    $core.String? checkType,
+    $core.String? status,
+    $core.String? currentValue,
+    $core.String? requiredValue,
+    $core.String? suggestedFix,
+    $core.bool? isHardBlocked,
+    $core.bool? canOverride,
+  }) {
+    final result = ReadinessCheckItem._();
+    if (checkId != null) result.checkId = checkId;
+    if (platform != null) result.platform = platform;
+    if (checkType != null) result.checkType = checkType;
+    if (status != null) result.status = status;
+    if (currentValue != null) result.currentValue = currentValue;
+    if (requiredValue != null) result.requiredValue = requiredValue;
+    if (suggestedFix != null) result.suggestedFix = suggestedFix;
+    if (isHardBlocked != null) result.isHardBlocked = isHardBlocked;
+    if (canOverride != null) result.canOverride = canOverride;
+    return result;
+  }
+
+  ReadinessCheckItem._();
+
+  factory ReadinessCheckItem.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReadinessCheckItem()..mergeFromBuffer(data, registry);
+  factory ReadinessCheckItem.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReadinessCheckItem()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReadinessCheckItem',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ReadinessCheckItem.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'checkId')
+    ..aOS(2, _omitFieldNames ? '' : 'platform')
+    ..aOS(3, _omitFieldNames ? '' : 'checkType')
+    ..aOS(4, _omitFieldNames ? '' : 'status')
+    ..aOS(5, _omitFieldNames ? '' : 'currentValue')
+    ..aOS(6, _omitFieldNames ? '' : 'requiredValue')
+    ..aOS(7, _omitFieldNames ? '' : 'suggestedFix')
+    ..aOB(8, _omitFieldNames ? '' : 'isHardBlocked')
+    ..aOB(9, _omitFieldNames ? '' : 'canOverride')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReadinessCheckItem clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReadinessCheckItem copyWith(void Function(ReadinessCheckItem) updates) =>
+      super.copyWith((message) => updates(message as ReadinessCheckItem))
+          as ReadinessCheckItem;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ReadinessCheckItem() / ReadinessCheckItem.new instead')
+  static ReadinessCheckItem create() => ReadinessCheckItem._();
+  static $pb.GeneratedMessage $_createMessage() => ReadinessCheckItem._();
+  @$core.override
+  ReadinessCheckItem createEmptyInstance() => ReadinessCheckItem._();
+  @$core.pragma('dart2js:noInline')
+  static ReadinessCheckItem getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReadinessCheckItem>(
+          ReadinessCheckItem.$_createMessage);
+  static ReadinessCheckItem? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get checkId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set checkId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCheckId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCheckId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get platform => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set platform($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPlatform() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPlatform() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get checkType => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set checkType($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCheckType() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCheckType() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get status => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set status($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasStatus() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearStatus() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get currentValue => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set currentValue($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasCurrentValue() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearCurrentValue() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get requiredValue => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set requiredValue($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasRequiredValue() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearRequiredValue() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get suggestedFix => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set suggestedFix($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasSuggestedFix() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearSuggestedFix() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.bool get isHardBlocked => $_getBF(7);
+  @$pb.TagNumber(8)
+  set isHardBlocked($core.bool value) => $_setBool(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasIsHardBlocked() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearIsHardBlocked() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.bool get canOverride => $_getBF(8);
+  @$pb.TagNumber(9)
+  set canOverride($core.bool value) => $_setBool(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasCanOverride() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearCanOverride() => $_clearField(9);
+}
+
+class ComplianceScanDetail extends $pb.GeneratedMessage {
+  factory ComplianceScanDetail({
+    $core.String? scanId,
+    $core.String? category,
+    $core.String? status,
+    $core.String? findingDescription,
+    $core.String? matchedWork,
+    $core.String? matchConfidence,
+    $core.bool? isHardBlocked,
+    $core.bool? canOverride,
+  }) {
+    final result = ComplianceScanDetail._();
+    if (scanId != null) result.scanId = scanId;
+    if (category != null) result.category = category;
+    if (status != null) result.status = status;
+    if (findingDescription != null)
+      result.findingDescription = findingDescription;
+    if (matchedWork != null) result.matchedWork = matchedWork;
+    if (matchConfidence != null) result.matchConfidence = matchConfidence;
+    if (isHardBlocked != null) result.isHardBlocked = isHardBlocked;
+    if (canOverride != null) result.canOverride = canOverride;
+    return result;
+  }
+
+  ComplianceScanDetail._();
+
+  factory ComplianceScanDetail.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ComplianceScanDetail()..mergeFromBuffer(data, registry);
+  factory ComplianceScanDetail.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ComplianceScanDetail()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ComplianceScanDetail',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ComplianceScanDetail.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'scanId')
+    ..aOS(2, _omitFieldNames ? '' : 'category')
+    ..aOS(3, _omitFieldNames ? '' : 'status')
+    ..aOS(4, _omitFieldNames ? '' : 'findingDescription')
+    ..aOS(5, _omitFieldNames ? '' : 'matchedWork')
+    ..aOS(6, _omitFieldNames ? '' : 'matchConfidence')
+    ..aOB(7, _omitFieldNames ? '' : 'isHardBlocked')
+    ..aOB(8, _omitFieldNames ? '' : 'canOverride')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ComplianceScanDetail clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ComplianceScanDetail copyWith(void Function(ComplianceScanDetail) updates) =>
+      super.copyWith((message) => updates(message as ComplianceScanDetail))
+          as ComplianceScanDetail;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ComplianceScanDetail() / ComplianceScanDetail.new instead')
+  static ComplianceScanDetail create() => ComplianceScanDetail._();
+  static $pb.GeneratedMessage $_createMessage() => ComplianceScanDetail._();
+  @$core.override
+  ComplianceScanDetail createEmptyInstance() => ComplianceScanDetail._();
+  @$core.pragma('dart2js:noInline')
+  static ComplianceScanDetail getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ComplianceScanDetail>(
+          ComplianceScanDetail.$_createMessage);
+  static ComplianceScanDetail? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get scanId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set scanId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasScanId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearScanId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get category => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set category($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCategory() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCategory() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get status => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set status($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasStatus() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearStatus() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get findingDescription => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set findingDescription($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasFindingDescription() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearFindingDescription() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get matchedWork => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set matchedWork($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasMatchedWork() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearMatchedWork() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get matchConfidence => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set matchConfidence($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasMatchConfidence() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearMatchConfidence() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.bool get isHardBlocked => $_getBF(6);
+  @$pb.TagNumber(7)
+  set isHardBlocked($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasIsHardBlocked() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearIsHardBlocked() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.bool get canOverride => $_getBF(7);
+  @$pb.TagNumber(8)
+  set canOverride($core.bool value) => $_setBool(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasCanOverride() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearCanOverride() => $_clearField(8);
+}
+
+class UploadPreset extends $pb.GeneratedMessage {
+  factory UploadPreset({
+    $core.String? presetId,
+    $core.String? name,
+    $core.String? targetPlatform,
+    $core.String? targetFormat,
+    $core.String? hashtagTemplate,
+    $core.String? disclosureTemplate,
+    $core.String? ctaTemplate,
+    $core.String? defaultAspectRatio,
+    $1.Timestamp? createdAt,
+  }) {
+    final result = UploadPreset._();
+    if (presetId != null) result.presetId = presetId;
+    if (name != null) result.name = name;
+    if (targetPlatform != null) result.targetPlatform = targetPlatform;
+    if (targetFormat != null) result.targetFormat = targetFormat;
+    if (hashtagTemplate != null) result.hashtagTemplate = hashtagTemplate;
+    if (disclosureTemplate != null)
+      result.disclosureTemplate = disclosureTemplate;
+    if (ctaTemplate != null) result.ctaTemplate = ctaTemplate;
+    if (defaultAspectRatio != null)
+      result.defaultAspectRatio = defaultAspectRatio;
+    if (createdAt != null) result.createdAt = createdAt;
+    return result;
+  }
+
+  UploadPreset._();
+
+  factory UploadPreset.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UploadPreset()..mergeFromBuffer(data, registry);
+  factory UploadPreset.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UploadPreset()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UploadPreset',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: UploadPreset.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'presetId')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..aOS(3, _omitFieldNames ? '' : 'targetPlatform')
+    ..aOS(4, _omitFieldNames ? '' : 'targetFormat')
+    ..aOS(5, _omitFieldNames ? '' : 'hashtagTemplate')
+    ..aOS(6, _omitFieldNames ? '' : 'disclosureTemplate')
+    ..aOS(7, _omitFieldNames ? '' : 'ctaTemplate')
+    ..aOS(8, _omitFieldNames ? '' : 'defaultAspectRatio')
+    ..aOM<$1.Timestamp>(9, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UploadPreset clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UploadPreset copyWith(void Function(UploadPreset) updates) =>
+      super.copyWith((message) => updates(message as UploadPreset))
+          as UploadPreset;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use UploadPreset() / UploadPreset.new instead')
+  static UploadPreset create() => UploadPreset._();
+  static $pb.GeneratedMessage $_createMessage() => UploadPreset._();
+  @$core.override
+  UploadPreset createEmptyInstance() => UploadPreset._();
+  @$core.pragma('dart2js:noInline')
+  static UploadPreset getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<UploadPreset>(
+          UploadPreset.$_createMessage);
+  static UploadPreset? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get presetId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set presetId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPresetId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPresetId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get targetPlatform => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set targetPlatform($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTargetPlatform() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTargetPlatform() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get targetFormat => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set targetFormat($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTargetFormat() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTargetFormat() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get hashtagTemplate => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set hashtagTemplate($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasHashtagTemplate() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearHashtagTemplate() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get disclosureTemplate => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set disclosureTemplate($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasDisclosureTemplate() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearDisclosureTemplate() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get ctaTemplate => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set ctaTemplate($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasCtaTemplate() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearCtaTemplate() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get defaultAspectRatio => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set defaultAspectRatio($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasDefaultAspectRatio() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearDefaultAspectRatio() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $1.Timestamp get createdAt => $_getN(8);
+  @$pb.TagNumber(9)
+  set createdAt($1.Timestamp value) => $_setField(9, value);
+  @$pb.TagNumber(9)
+  $core.bool hasCreatedAt() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearCreatedAt() => $_clearField(9);
+  @$pb.TagNumber(9)
+  $1.Timestamp ensureCreatedAt() => $_ensure(8);
+}
+
+class ABExperiment extends $pb.GeneratedMessage {
+  factory ABExperiment({
+    $core.String? experimentId,
+    $core.String? sourceAssetId,
+    $core.String? title,
+    $core.String? hypothesis,
+    $core.Iterable<$core.String>? variantAssetIds,
+    $core.int? variantCount,
+    $core.String? targetMetric,
+    $core.int? minDurationHours,
+    $fixnum.Int64? minImpressionsPerVariant,
+    $core.double? autoWinnerThresholdMultiplier,
+    $core.String? status,
+    $core.String? resultStatus,
+    $core.String? winnerAssetId,
+    $core.bool? isObservational,
+    $core.String? inconclusiveReason,
+  }) {
+    final result = ABExperiment._();
+    if (experimentId != null) result.experimentId = experimentId;
+    if (sourceAssetId != null) result.sourceAssetId = sourceAssetId;
+    if (title != null) result.title = title;
+    if (hypothesis != null) result.hypothesis = hypothesis;
+    if (variantAssetIds != null) result.variantAssetIds.addAll(variantAssetIds);
+    if (variantCount != null) result.variantCount = variantCount;
+    if (targetMetric != null) result.targetMetric = targetMetric;
+    if (minDurationHours != null) result.minDurationHours = minDurationHours;
+    if (minImpressionsPerVariant != null)
+      result.minImpressionsPerVariant = minImpressionsPerVariant;
+    if (autoWinnerThresholdMultiplier != null)
+      result.autoWinnerThresholdMultiplier = autoWinnerThresholdMultiplier;
+    if (status != null) result.status = status;
+    if (resultStatus != null) result.resultStatus = resultStatus;
+    if (winnerAssetId != null) result.winnerAssetId = winnerAssetId;
+    if (isObservational != null) result.isObservational = isObservational;
+    if (inconclusiveReason != null)
+      result.inconclusiveReason = inconclusiveReason;
+    return result;
+  }
+
+  ABExperiment._();
+
+  factory ABExperiment.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABExperiment()..mergeFromBuffer(data, registry);
+  factory ABExperiment.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABExperiment()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ABExperiment',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ABExperiment.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'experimentId')
+    ..aOS(2, _omitFieldNames ? '' : 'sourceAssetId')
+    ..aOS(3, _omitFieldNames ? '' : 'title')
+    ..aOS(4, _omitFieldNames ? '' : 'hypothesis')
+    ..pPS(5, _omitFieldNames ? '' : 'variantAssetIds')
+    ..aI(6, _omitFieldNames ? '' : 'variantCount')
+    ..aOS(7, _omitFieldNames ? '' : 'targetMetric')
+    ..aI(8, _omitFieldNames ? '' : 'minDurationHours')
+    ..aInt64(9, _omitFieldNames ? '' : 'minImpressionsPerVariant')
+    ..aD(10, _omitFieldNames ? '' : 'autoWinnerThresholdMultiplier')
+    ..aOS(11, _omitFieldNames ? '' : 'status')
+    ..aOS(12, _omitFieldNames ? '' : 'resultStatus')
+    ..aOS(13, _omitFieldNames ? '' : 'winnerAssetId')
+    ..aOB(14, _omitFieldNames ? '' : 'isObservational')
+    ..aOS(15, _omitFieldNames ? '' : 'inconclusiveReason')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABExperiment clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABExperiment copyWith(void Function(ABExperiment) updates) =>
+      super.copyWith((message) => updates(message as ABExperiment))
+          as ABExperiment;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ABExperiment() / ABExperiment.new instead')
+  static ABExperiment create() => ABExperiment._();
+  static $pb.GeneratedMessage $_createMessage() => ABExperiment._();
+  @$core.override
+  ABExperiment createEmptyInstance() => ABExperiment._();
+  @$core.pragma('dart2js:noInline')
+  static ABExperiment getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ABExperiment>(
+          ABExperiment.$_createMessage);
+  static ABExperiment? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get experimentId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set experimentId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasExperimentId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearExperimentId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get sourceAssetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set sourceAssetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSourceAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSourceAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get title => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set title($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTitle() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTitle() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get hypothesis => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set hypothesis($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasHypothesis() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearHypothesis() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $pb.PbList<$core.String> get variantAssetIds => $_getList(4);
+
+  @$pb.TagNumber(6)
+  $core.int get variantCount => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set variantCount($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasVariantCount() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearVariantCount() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get targetMetric => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set targetMetric($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasTargetMetric() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearTargetMetric() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.int get minDurationHours => $_getIZ(7);
+  @$pb.TagNumber(8)
+  set minDurationHours($core.int value) => $_setSignedInt32(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasMinDurationHours() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearMinDurationHours() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $fixnum.Int64 get minImpressionsPerVariant => $_getI64(8);
+  @$pb.TagNumber(9)
+  set minImpressionsPerVariant($fixnum.Int64 value) => $_setInt64(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasMinImpressionsPerVariant() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearMinImpressionsPerVariant() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.double get autoWinnerThresholdMultiplier => $_getN(9);
+  @$pb.TagNumber(10)
+  set autoWinnerThresholdMultiplier($core.double value) =>
+      $_setDouble(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasAutoWinnerThresholdMultiplier() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearAutoWinnerThresholdMultiplier() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get status => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set status($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasStatus() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearStatus() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get resultStatus => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set resultStatus($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasResultStatus() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearResultStatus() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.String get winnerAssetId => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set winnerAssetId($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasWinnerAssetId() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearWinnerAssetId() => $_clearField(13);
+
+  @$pb.TagNumber(14)
+  $core.bool get isObservational => $_getBF(13);
+  @$pb.TagNumber(14)
+  set isObservational($core.bool value) => $_setBool(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasIsObservational() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearIsObservational() => $_clearField(14);
+
+  @$pb.TagNumber(15)
+  $core.String get inconclusiveReason => $_getSZ(14);
+  @$pb.TagNumber(15)
+  set inconclusiveReason($core.String value) => $_setString(14, value);
+  @$pb.TagNumber(15)
+  $core.bool hasInconclusiveReason() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearInconclusiveReason() => $_clearField(15);
+}
+
+class OverrideAuditRecord extends $pb.GeneratedMessage {
+  factory OverrideAuditRecord({
+    $core.String? overrideId,
+    $core.String? checkIdOrCategory,
+    $core.String? overriddenByUserId,
+    $core.String? actorRole,
+    $core.String? reason,
+    $1.Timestamp? createdAt,
+  }) {
+    final result = OverrideAuditRecord._();
+    if (overrideId != null) result.overrideId = overrideId;
+    if (checkIdOrCategory != null) result.checkIdOrCategory = checkIdOrCategory;
+    if (overriddenByUserId != null)
+      result.overriddenByUserId = overriddenByUserId;
+    if (actorRole != null) result.actorRole = actorRole;
+    if (reason != null) result.reason = reason;
+    if (createdAt != null) result.createdAt = createdAt;
+    return result;
+  }
+
+  OverrideAuditRecord._();
+
+  factory OverrideAuditRecord.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      OverrideAuditRecord()..mergeFromBuffer(data, registry);
+  factory OverrideAuditRecord.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      OverrideAuditRecord()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'OverrideAuditRecord',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: OverrideAuditRecord.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'overrideId')
+    ..aOS(2, _omitFieldNames ? '' : 'checkIdOrCategory')
+    ..aOS(3, _omitFieldNames ? '' : 'overriddenByUserId')
+    ..aOS(4, _omitFieldNames ? '' : 'actorRole')
+    ..aOS(5, _omitFieldNames ? '' : 'reason')
+    ..aOM<$1.Timestamp>(6, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OverrideAuditRecord clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OverrideAuditRecord copyWith(void Function(OverrideAuditRecord) updates) =>
+      super.copyWith((message) => updates(message as OverrideAuditRecord))
+          as OverrideAuditRecord;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use OverrideAuditRecord() / OverrideAuditRecord.new instead')
+  static OverrideAuditRecord create() => OverrideAuditRecord._();
+  static $pb.GeneratedMessage $_createMessage() => OverrideAuditRecord._();
+  @$core.override
+  OverrideAuditRecord createEmptyInstance() => OverrideAuditRecord._();
+  @$core.pragma('dart2js:noInline')
+  static OverrideAuditRecord getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<OverrideAuditRecord>(
+          OverrideAuditRecord.$_createMessage);
+  static OverrideAuditRecord? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get overrideId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set overrideId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasOverrideId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearOverrideId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get checkIdOrCategory => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set checkIdOrCategory($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCheckIdOrCategory() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCheckIdOrCategory() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get overriddenByUserId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set overriddenByUserId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasOverriddenByUserId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearOverriddenByUserId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get actorRole => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set actorRole($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasActorRole() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearActorRole() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get reason => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set reason($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasReason() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearReason() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $1.Timestamp get createdAt => $_getN(5);
+  @$pb.TagNumber(6)
+  set createdAt($1.Timestamp value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasCreatedAt() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearCreatedAt() => $_clearField(6);
+  @$pb.TagNumber(6)
+  $1.Timestamp ensureCreatedAt() => $_ensure(5);
+}
+
+class PackagingReport extends $pb.GeneratedMessage {
+  factory PackagingReport({
+    $core.String? reportId,
+    $core.String? assetId,
+    $core.String? publishItemId,
+    $core.double? overallPackagingScore,
+    $core.String? scoreStatus,
+    $core.Iterable<PackagingScoreComponent>? components,
+    $core.Iterable<ReadinessCheckItem>? readinessChecks,
+    $core.Iterable<ComplianceScanDetail>? complianceDetails,
+    $core.String? complianceOverallResult,
+    $core.bool? hasHardBlocks,
+    $core.Iterable<$core.String>? hardBlockReasons,
+    $core.bool? readyForPackaging,
+    $core.bool? readyToPublish,
+    $core.Iterable<OverrideAuditRecord>? appliedOverrides,
+    $1.Timestamp? createdAt,
+  }) {
+    final result = PackagingReport._();
+    if (reportId != null) result.reportId = reportId;
+    if (assetId != null) result.assetId = assetId;
+    if (publishItemId != null) result.publishItemId = publishItemId;
+    if (overallPackagingScore != null)
+      result.overallPackagingScore = overallPackagingScore;
+    if (scoreStatus != null) result.scoreStatus = scoreStatus;
+    if (components != null) result.components.addAll(components);
+    if (readinessChecks != null) result.readinessChecks.addAll(readinessChecks);
+    if (complianceDetails != null)
+      result.complianceDetails.addAll(complianceDetails);
+    if (complianceOverallResult != null)
+      result.complianceOverallResult = complianceOverallResult;
+    if (hasHardBlocks != null) result.hasHardBlocks = hasHardBlocks;
+    if (hardBlockReasons != null)
+      result.hardBlockReasons.addAll(hardBlockReasons);
+    if (readyForPackaging != null) result.readyForPackaging = readyForPackaging;
+    if (readyToPublish != null) result.readyToPublish = readyToPublish;
+    if (appliedOverrides != null)
+      result.appliedOverrides.addAll(appliedOverrides);
+    if (createdAt != null) result.createdAt = createdAt;
+    return result;
+  }
+
+  PackagingReport._();
+
+  factory PackagingReport.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingReport()..mergeFromBuffer(data, registry);
+  factory PackagingReport.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingReport()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PackagingReport',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: PackagingReport.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'reportId')
+    ..aOS(2, _omitFieldNames ? '' : 'assetId')
+    ..aOS(3, _omitFieldNames ? '' : 'publishItemId')
+    ..aD(4, _omitFieldNames ? '' : 'overallPackagingScore')
+    ..aOS(5, _omitFieldNames ? '' : 'scoreStatus')
+    ..pPM<PackagingScoreComponent>(6, _omitFieldNames ? '' : 'components',
+        subBuilder: PackagingScoreComponent.$_createMessage)
+    ..pPM<ReadinessCheckItem>(7, _omitFieldNames ? '' : 'readinessChecks',
+        subBuilder: ReadinessCheckItem.$_createMessage)
+    ..pPM<ComplianceScanDetail>(8, _omitFieldNames ? '' : 'complianceDetails',
+        subBuilder: ComplianceScanDetail.$_createMessage)
+    ..aOS(9, _omitFieldNames ? '' : 'complianceOverallResult')
+    ..aOB(10, _omitFieldNames ? '' : 'hasHardBlocks')
+    ..pPS(11, _omitFieldNames ? '' : 'hardBlockReasons')
+    ..aOB(12, _omitFieldNames ? '' : 'readyForPackaging')
+    ..aOB(13, _omitFieldNames ? '' : 'readyToPublish')
+    ..pPM<OverrideAuditRecord>(14, _omitFieldNames ? '' : 'appliedOverrides',
+        subBuilder: OverrideAuditRecord.$_createMessage)
+    ..aOM<$1.Timestamp>(15, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingReport clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingReport copyWith(void Function(PackagingReport) updates) =>
+      super.copyWith((message) => updates(message as PackagingReport))
+          as PackagingReport;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use PackagingReport() / PackagingReport.new instead')
+  static PackagingReport create() => PackagingReport._();
+  static $pb.GeneratedMessage $_createMessage() => PackagingReport._();
+  @$core.override
+  PackagingReport createEmptyInstance() => PackagingReport._();
+  @$core.pragma('dart2js:noInline')
+  static PackagingReport getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<PackagingReport>(
+          PackagingReport.$_createMessage);
+  static PackagingReport? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get reportId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set reportId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasReportId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearReportId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get assetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set assetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get publishItemId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set publishItemId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPublishItemId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPublishItemId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.double get overallPackagingScore => $_getN(3);
+  @$pb.TagNumber(4)
+  set overallPackagingScore($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasOverallPackagingScore() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearOverallPackagingScore() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get scoreStatus => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set scoreStatus($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasScoreStatus() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearScoreStatus() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<PackagingScoreComponent> get components => $_getList(5);
+
+  @$pb.TagNumber(7)
+  $pb.PbList<ReadinessCheckItem> get readinessChecks => $_getList(6);
+
+  @$pb.TagNumber(8)
+  $pb.PbList<ComplianceScanDetail> get complianceDetails => $_getList(7);
+
+  @$pb.TagNumber(9)
+  $core.String get complianceOverallResult => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set complianceOverallResult($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasComplianceOverallResult() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearComplianceOverallResult() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.bool get hasHardBlocks => $_getBF(9);
+  @$pb.TagNumber(10)
+  set hasHardBlocks($core.bool value) => $_setBool(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasHasHardBlocks() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearHasHardBlocks() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $pb.PbList<$core.String> get hardBlockReasons => $_getList(10);
+
+  @$pb.TagNumber(12)
+  $core.bool get readyForPackaging => $_getBF(11);
+  @$pb.TagNumber(12)
+  set readyForPackaging($core.bool value) => $_setBool(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasReadyForPackaging() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearReadyForPackaging() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.bool get readyToPublish => $_getBF(12);
+  @$pb.TagNumber(13)
+  set readyToPublish($core.bool value) => $_setBool(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasReadyToPublish() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearReadyToPublish() => $_clearField(13);
+
+  @$pb.TagNumber(14)
+  $pb.PbList<OverrideAuditRecord> get appliedOverrides => $_getList(13);
+
+  @$pb.TagNumber(15)
+  $1.Timestamp get createdAt => $_getN(14);
+  @$pb.TagNumber(15)
+  set createdAt($1.Timestamp value) => $_setField(15, value);
+  @$pb.TagNumber(15)
+  $core.bool hasCreatedAt() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearCreatedAt() => $_clearField(15);
+  @$pb.TagNumber(15)
+  $1.Timestamp ensureCreatedAt() => $_ensure(14);
+}
+
+class PackagingServiceScoreRequest extends $pb.GeneratedMessage {
+  factory PackagingServiceScoreRequest({
+    $2.CommandContext? context,
+    $core.String? assetId,
+    $core.String? publishItemId,
+    $core.String? targetPlatform,
+    $core.String? title,
+    $core.String? caption,
+    $core.Iterable<$core.String>? hashtags,
+    $core.String? cta,
+    $core.String? disclosure,
+    $core.String? audioTrackId,
+    $core.String? presetId,
+    $core.bool? isCommercial,
+  }) {
+    final result = PackagingServiceScoreRequest._();
+    if (context != null) result.context = context;
+    if (assetId != null) result.assetId = assetId;
+    if (publishItemId != null) result.publishItemId = publishItemId;
+    if (targetPlatform != null) result.targetPlatform = targetPlatform;
+    if (title != null) result.title = title;
+    if (caption != null) result.caption = caption;
+    if (hashtags != null) result.hashtags.addAll(hashtags);
+    if (cta != null) result.cta = cta;
+    if (disclosure != null) result.disclosure = disclosure;
+    if (audioTrackId != null) result.audioTrackId = audioTrackId;
+    if (presetId != null) result.presetId = presetId;
+    if (isCommercial != null) result.isCommercial = isCommercial;
+    return result;
+  }
+
+  PackagingServiceScoreRequest._();
+
+  factory PackagingServiceScoreRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceScoreRequest()..mergeFromBuffer(data, registry);
+  factory PackagingServiceScoreRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceScoreRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PackagingServiceScoreRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: PackagingServiceScoreRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'assetId')
+    ..aOS(3, _omitFieldNames ? '' : 'publishItemId')
+    ..aOS(4, _omitFieldNames ? '' : 'targetPlatform')
+    ..aOS(5, _omitFieldNames ? '' : 'title')
+    ..aOS(6, _omitFieldNames ? '' : 'caption')
+    ..pPS(7, _omitFieldNames ? '' : 'hashtags')
+    ..aOS(8, _omitFieldNames ? '' : 'cta')
+    ..aOS(9, _omitFieldNames ? '' : 'disclosure')
+    ..aOS(10, _omitFieldNames ? '' : 'audioTrackId')
+    ..aOS(11, _omitFieldNames ? '' : 'presetId')
+    ..aOB(12, _omitFieldNames ? '' : 'isCommercial')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceScoreRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceScoreRequest copyWith(
+          void Function(PackagingServiceScoreRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as PackagingServiceScoreRequest))
+          as PackagingServiceScoreRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PackagingServiceScoreRequest() / PackagingServiceScoreRequest.new instead')
+  static PackagingServiceScoreRequest create() =>
+      PackagingServiceScoreRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PackagingServiceScoreRequest._();
+  @$core.override
+  PackagingServiceScoreRequest createEmptyInstance() =>
+      PackagingServiceScoreRequest._();
+  @$core.pragma('dart2js:noInline')
+  static PackagingServiceScoreRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PackagingServiceScoreRequest>(
+          PackagingServiceScoreRequest.$_createMessage);
+  static PackagingServiceScoreRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get assetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set assetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get publishItemId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set publishItemId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPublishItemId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPublishItemId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get targetPlatform => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set targetPlatform($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTargetPlatform() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTargetPlatform() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get title => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set title($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasTitle() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearTitle() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get caption => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set caption($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasCaption() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearCaption() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $pb.PbList<$core.String> get hashtags => $_getList(6);
+
+  @$pb.TagNumber(8)
+  $core.String get cta => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set cta($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasCta() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearCta() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get disclosure => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set disclosure($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasDisclosure() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearDisclosure() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get audioTrackId => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set audioTrackId($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasAudioTrackId() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearAudioTrackId() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get presetId => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set presetId($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasPresetId() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearPresetId() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.bool get isCommercial => $_getBF(11);
+  @$pb.TagNumber(12)
+  set isCommercial($core.bool value) => $_setBool(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasIsCommercial() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearIsCommercial() => $_clearField(12);
+}
+
+class PackagingServiceScoreResponse extends $pb.GeneratedMessage {
+  factory PackagingServiceScoreResponse({
+    PackagingReport? report,
+  }) {
+    final result = PackagingServiceScoreResponse._();
+    if (report != null) result.report = report;
+    return result;
+  }
+
+  PackagingServiceScoreResponse._();
+
+  factory PackagingServiceScoreResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceScoreResponse()..mergeFromBuffer(data, registry);
+  factory PackagingServiceScoreResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceScoreResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PackagingServiceScoreResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: PackagingServiceScoreResponse.$_createMessage)
+    ..aOM<PackagingReport>(1, _omitFieldNames ? '' : 'report',
+        subBuilder: PackagingReport.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceScoreResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceScoreResponse copyWith(
+          void Function(PackagingServiceScoreResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as PackagingServiceScoreResponse))
+          as PackagingServiceScoreResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PackagingServiceScoreResponse() / PackagingServiceScoreResponse.new instead')
+  static PackagingServiceScoreResponse create() =>
+      PackagingServiceScoreResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PackagingServiceScoreResponse._();
+  @$core.override
+  PackagingServiceScoreResponse createEmptyInstance() =>
+      PackagingServiceScoreResponse._();
+  @$core.pragma('dart2js:noInline')
+  static PackagingServiceScoreResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PackagingServiceScoreResponse>(
+          PackagingServiceScoreResponse.$_createMessage);
+  static PackagingServiceScoreResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  PackagingReport get report => $_getN(0);
+  @$pb.TagNumber(1)
+  set report(PackagingReport value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasReport() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearReport() => $_clearField(1);
+  @$pb.TagNumber(1)
+  PackagingReport ensureReport() => $_ensure(0);
+}
+
+class PackagingServiceScanComplianceRequest extends $pb.GeneratedMessage {
+  factory PackagingServiceScanComplianceRequest({
+    $2.CommandContext? context,
+    $core.String? assetId,
+    $core.String? publishItemId,
+    $core.String? targetPlatform,
+  }) {
+    final result = PackagingServiceScanComplianceRequest._();
+    if (context != null) result.context = context;
+    if (assetId != null) result.assetId = assetId;
+    if (publishItemId != null) result.publishItemId = publishItemId;
+    if (targetPlatform != null) result.targetPlatform = targetPlatform;
+    return result;
+  }
+
+  PackagingServiceScanComplianceRequest._();
+
+  factory PackagingServiceScanComplianceRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceScanComplianceRequest()..mergeFromBuffer(data, registry);
+  factory PackagingServiceScanComplianceRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceScanComplianceRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PackagingServiceScanComplianceRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          PackagingServiceScanComplianceRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'assetId')
+    ..aOS(3, _omitFieldNames ? '' : 'publishItemId')
+    ..aOS(4, _omitFieldNames ? '' : 'targetPlatform')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceScanComplianceRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceScanComplianceRequest copyWith(
+          void Function(PackagingServiceScanComplianceRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as PackagingServiceScanComplianceRequest))
+          as PackagingServiceScanComplianceRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PackagingServiceScanComplianceRequest() / PackagingServiceScanComplianceRequest.new instead')
+  static PackagingServiceScanComplianceRequest create() =>
+      PackagingServiceScanComplianceRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PackagingServiceScanComplianceRequest._();
+  @$core.override
+  PackagingServiceScanComplianceRequest createEmptyInstance() =>
+      PackagingServiceScanComplianceRequest._();
+  @$core.pragma('dart2js:noInline')
+  static PackagingServiceScanComplianceRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              PackagingServiceScanComplianceRequest>(
+          PackagingServiceScanComplianceRequest.$_createMessage);
+  static PackagingServiceScanComplianceRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get assetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set assetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get publishItemId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set publishItemId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPublishItemId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPublishItemId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get targetPlatform => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set targetPlatform($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTargetPlatform() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTargetPlatform() => $_clearField(4);
+}
+
+class PackagingServiceScanComplianceResponse extends $pb.GeneratedMessage {
+  factory PackagingServiceScanComplianceResponse({
+    $core.String? complianceScanResult,
+    $core.Iterable<ComplianceScanDetail>? details,
+    $core.bool? hasHardBlocks,
+  }) {
+    final result = PackagingServiceScanComplianceResponse._();
+    if (complianceScanResult != null)
+      result.complianceScanResult = complianceScanResult;
+    if (details != null) result.details.addAll(details);
+    if (hasHardBlocks != null) result.hasHardBlocks = hasHardBlocks;
+    return result;
+  }
+
+  PackagingServiceScanComplianceResponse._();
+
+  factory PackagingServiceScanComplianceResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceScanComplianceResponse()..mergeFromBuffer(data, registry);
+  factory PackagingServiceScanComplianceResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceScanComplianceResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PackagingServiceScanComplianceResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          PackagingServiceScanComplianceResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'complianceScanResult')
+    ..pPM<ComplianceScanDetail>(2, _omitFieldNames ? '' : 'details',
+        subBuilder: ComplianceScanDetail.$_createMessage)
+    ..aOB(3, _omitFieldNames ? '' : 'hasHardBlocks')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceScanComplianceResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceScanComplianceResponse copyWith(
+          void Function(PackagingServiceScanComplianceResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as PackagingServiceScanComplianceResponse))
+          as PackagingServiceScanComplianceResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PackagingServiceScanComplianceResponse() / PackagingServiceScanComplianceResponse.new instead')
+  static PackagingServiceScanComplianceResponse create() =>
+      PackagingServiceScanComplianceResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PackagingServiceScanComplianceResponse._();
+  @$core.override
+  PackagingServiceScanComplianceResponse createEmptyInstance() =>
+      PackagingServiceScanComplianceResponse._();
+  @$core.pragma('dart2js:noInline')
+  static PackagingServiceScanComplianceResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              PackagingServiceScanComplianceResponse>(
+          PackagingServiceScanComplianceResponse.$_createMessage);
+  static PackagingServiceScanComplianceResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get complianceScanResult => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set complianceScanResult($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasComplianceScanResult() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearComplianceScanResult() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<ComplianceScanDetail> get details => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $core.bool get hasHardBlocks => $_getBF(2);
+  @$pb.TagNumber(3)
+  set hasHardBlocks($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasHasHardBlocks() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearHasHardBlocks() => $_clearField(3);
+}
+
+class PackagingServiceGetReportRequest extends $pb.GeneratedMessage {
+  factory PackagingServiceGetReportRequest({
+    $2.UUID? workspaceId,
+    $core.String? assetId,
+    $core.String? publishItemId,
+  }) {
+    final result = PackagingServiceGetReportRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (assetId != null) result.assetId = assetId;
+    if (publishItemId != null) result.publishItemId = publishItemId;
+    return result;
+  }
+
+  PackagingServiceGetReportRequest._();
+
+  factory PackagingServiceGetReportRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceGetReportRequest()..mergeFromBuffer(data, registry);
+  factory PackagingServiceGetReportRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceGetReportRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PackagingServiceGetReportRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: PackagingServiceGetReportRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'assetId')
+    ..aOS(3, _omitFieldNames ? '' : 'publishItemId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceGetReportRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceGetReportRequest copyWith(
+          void Function(PackagingServiceGetReportRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as PackagingServiceGetReportRequest))
+          as PackagingServiceGetReportRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PackagingServiceGetReportRequest() / PackagingServiceGetReportRequest.new instead')
+  static PackagingServiceGetReportRequest create() =>
+      PackagingServiceGetReportRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PackagingServiceGetReportRequest._();
+  @$core.override
+  PackagingServiceGetReportRequest createEmptyInstance() =>
+      PackagingServiceGetReportRequest._();
+  @$core.pragma('dart2js:noInline')
+  static PackagingServiceGetReportRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PackagingServiceGetReportRequest>(
+          PackagingServiceGetReportRequest.$_createMessage);
+  static PackagingServiceGetReportRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get assetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set assetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get publishItemId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set publishItemId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPublishItemId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPublishItemId() => $_clearField(3);
+}
+
+class PackagingServiceGetReportResponse extends $pb.GeneratedMessage {
+  factory PackagingServiceGetReportResponse({
+    PackagingReport? report,
+  }) {
+    final result = PackagingServiceGetReportResponse._();
+    if (report != null) result.report = report;
+    return result;
+  }
+
+  PackagingServiceGetReportResponse._();
+
+  factory PackagingServiceGetReportResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceGetReportResponse()..mergeFromBuffer(data, registry);
+  factory PackagingServiceGetReportResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceGetReportResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PackagingServiceGetReportResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: PackagingServiceGetReportResponse.$_createMessage)
+    ..aOM<PackagingReport>(1, _omitFieldNames ? '' : 'report',
+        subBuilder: PackagingReport.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceGetReportResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceGetReportResponse copyWith(
+          void Function(PackagingServiceGetReportResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as PackagingServiceGetReportResponse))
+          as PackagingServiceGetReportResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PackagingServiceGetReportResponse() / PackagingServiceGetReportResponse.new instead')
+  static PackagingServiceGetReportResponse create() =>
+      PackagingServiceGetReportResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PackagingServiceGetReportResponse._();
+  @$core.override
+  PackagingServiceGetReportResponse createEmptyInstance() =>
+      PackagingServiceGetReportResponse._();
+  @$core.pragma('dart2js:noInline')
+  static PackagingServiceGetReportResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PackagingServiceGetReportResponse>(
+          PackagingServiceGetReportResponse.$_createMessage);
+  static PackagingServiceGetReportResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  PackagingReport get report => $_getN(0);
+  @$pb.TagNumber(1)
+  set report(PackagingReport value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasReport() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearReport() => $_clearField(1);
+  @$pb.TagNumber(1)
+  PackagingReport ensureReport() => $_ensure(0);
+}
+
+class PackagingServiceBatchScoreRequest extends $pb.GeneratedMessage {
+  factory PackagingServiceBatchScoreRequest({
+    $2.CommandContext? context,
+    $core.Iterable<$core.String>? assetIds,
+    $core.String? targetPlatform,
+  }) {
+    final result = PackagingServiceBatchScoreRequest._();
+    if (context != null) result.context = context;
+    if (assetIds != null) result.assetIds.addAll(assetIds);
+    if (targetPlatform != null) result.targetPlatform = targetPlatform;
+    return result;
+  }
+
+  PackagingServiceBatchScoreRequest._();
+
+  factory PackagingServiceBatchScoreRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceBatchScoreRequest()..mergeFromBuffer(data, registry);
+  factory PackagingServiceBatchScoreRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceBatchScoreRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PackagingServiceBatchScoreRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: PackagingServiceBatchScoreRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..pPS(2, _omitFieldNames ? '' : 'assetIds')
+    ..aOS(3, _omitFieldNames ? '' : 'targetPlatform')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceBatchScoreRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceBatchScoreRequest copyWith(
+          void Function(PackagingServiceBatchScoreRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as PackagingServiceBatchScoreRequest))
+          as PackagingServiceBatchScoreRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PackagingServiceBatchScoreRequest() / PackagingServiceBatchScoreRequest.new instead')
+  static PackagingServiceBatchScoreRequest create() =>
+      PackagingServiceBatchScoreRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PackagingServiceBatchScoreRequest._();
+  @$core.override
+  PackagingServiceBatchScoreRequest createEmptyInstance() =>
+      PackagingServiceBatchScoreRequest._();
+  @$core.pragma('dart2js:noInline')
+  static PackagingServiceBatchScoreRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PackagingServiceBatchScoreRequest>(
+          PackagingServiceBatchScoreRequest.$_createMessage);
+  static PackagingServiceBatchScoreRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<$core.String> get assetIds => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $core.String get targetPlatform => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set targetPlatform($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTargetPlatform() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTargetPlatform() => $_clearField(3);
+}
+
+class PackagingServiceBatchScoreResponse extends $pb.GeneratedMessage {
+  factory PackagingServiceBatchScoreResponse({
+    $core.int? totalItems,
+    $core.int? scoredCount,
+    $core.int? failedCount,
+    $core.Iterable<PackagingReport>? reports,
+    $core.Iterable<BatchItemError>? failures,
+  }) {
+    final result = PackagingServiceBatchScoreResponse._();
+    if (totalItems != null) result.totalItems = totalItems;
+    if (scoredCount != null) result.scoredCount = scoredCount;
+    if (failedCount != null) result.failedCount = failedCount;
+    if (reports != null) result.reports.addAll(reports);
+    if (failures != null) result.failures.addAll(failures);
+    return result;
+  }
+
+  PackagingServiceBatchScoreResponse._();
+
+  factory PackagingServiceBatchScoreResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceBatchScoreResponse()..mergeFromBuffer(data, registry);
+  factory PackagingServiceBatchScoreResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceBatchScoreResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PackagingServiceBatchScoreResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: PackagingServiceBatchScoreResponse.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'totalItems')
+    ..aI(2, _omitFieldNames ? '' : 'scoredCount')
+    ..aI(3, _omitFieldNames ? '' : 'failedCount')
+    ..pPM<PackagingReport>(4, _omitFieldNames ? '' : 'reports',
+        subBuilder: PackagingReport.$_createMessage)
+    ..pPM<BatchItemError>(5, _omitFieldNames ? '' : 'failures',
+        subBuilder: BatchItemError.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceBatchScoreResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceBatchScoreResponse copyWith(
+          void Function(PackagingServiceBatchScoreResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as PackagingServiceBatchScoreResponse))
+          as PackagingServiceBatchScoreResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PackagingServiceBatchScoreResponse() / PackagingServiceBatchScoreResponse.new instead')
+  static PackagingServiceBatchScoreResponse create() =>
+      PackagingServiceBatchScoreResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PackagingServiceBatchScoreResponse._();
+  @$core.override
+  PackagingServiceBatchScoreResponse createEmptyInstance() =>
+      PackagingServiceBatchScoreResponse._();
+  @$core.pragma('dart2js:noInline')
+  static PackagingServiceBatchScoreResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PackagingServiceBatchScoreResponse>(
+          PackagingServiceBatchScoreResponse.$_createMessage);
+  static PackagingServiceBatchScoreResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get totalItems => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set totalItems($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTotalItems() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTotalItems() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get scoredCount => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set scoredCount($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasScoredCount() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearScoredCount() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get failedCount => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set failedCount($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasFailedCount() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearFailedCount() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $pb.PbList<PackagingReport> get reports => $_getList(3);
+
+  @$pb.TagNumber(5)
+  $pb.PbList<BatchItemError> get failures => $_getList(4);
+}
+
+class PackagingServiceOverrideResultRequest extends $pb.GeneratedMessage {
+  factory PackagingServiceOverrideResultRequest({
+    $2.CommandContext? context,
+    $core.String? assetId,
+    $core.String? publishItemId,
+    $core.String? checkIdOrCategory,
+    $core.String? reason,
+  }) {
+    final result = PackagingServiceOverrideResultRequest._();
+    if (context != null) result.context = context;
+    if (assetId != null) result.assetId = assetId;
+    if (publishItemId != null) result.publishItemId = publishItemId;
+    if (checkIdOrCategory != null) result.checkIdOrCategory = checkIdOrCategory;
+    if (reason != null) result.reason = reason;
+    return result;
+  }
+
+  PackagingServiceOverrideResultRequest._();
+
+  factory PackagingServiceOverrideResultRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceOverrideResultRequest()..mergeFromBuffer(data, registry);
+  factory PackagingServiceOverrideResultRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceOverrideResultRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PackagingServiceOverrideResultRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          PackagingServiceOverrideResultRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'assetId')
+    ..aOS(3, _omitFieldNames ? '' : 'publishItemId')
+    ..aOS(4, _omitFieldNames ? '' : 'checkIdOrCategory')
+    ..aOS(5, _omitFieldNames ? '' : 'reason')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceOverrideResultRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceOverrideResultRequest copyWith(
+          void Function(PackagingServiceOverrideResultRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as PackagingServiceOverrideResultRequest))
+          as PackagingServiceOverrideResultRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PackagingServiceOverrideResultRequest() / PackagingServiceOverrideResultRequest.new instead')
+  static PackagingServiceOverrideResultRequest create() =>
+      PackagingServiceOverrideResultRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PackagingServiceOverrideResultRequest._();
+  @$core.override
+  PackagingServiceOverrideResultRequest createEmptyInstance() =>
+      PackagingServiceOverrideResultRequest._();
+  @$core.pragma('dart2js:noInline')
+  static PackagingServiceOverrideResultRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              PackagingServiceOverrideResultRequest>(
+          PackagingServiceOverrideResultRequest.$_createMessage);
+  static PackagingServiceOverrideResultRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get assetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set assetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get publishItemId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set publishItemId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPublishItemId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPublishItemId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get checkIdOrCategory => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set checkIdOrCategory($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCheckIdOrCategory() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCheckIdOrCategory() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get reason => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set reason($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasReason() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearReason() => $_clearField(5);
+}
+
+class PackagingServiceOverrideResultResponse extends $pb.GeneratedMessage {
+  factory PackagingServiceOverrideResultResponse({
+    $core.bool? success,
+    $core.String? message,
+    PackagingReport? updatedReport,
+  }) {
+    final result = PackagingServiceOverrideResultResponse._();
+    if (success != null) result.success = success;
+    if (message != null) result.message = message;
+    if (updatedReport != null) result.updatedReport = updatedReport;
+    return result;
+  }
+
+  PackagingServiceOverrideResultResponse._();
+
+  factory PackagingServiceOverrideResultResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceOverrideResultResponse()..mergeFromBuffer(data, registry);
+  factory PackagingServiceOverrideResultResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceOverrideResultResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PackagingServiceOverrideResultResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          PackagingServiceOverrideResultResponse.$_createMessage)
+    ..aOB(1, _omitFieldNames ? '' : 'success')
+    ..aOS(2, _omitFieldNames ? '' : 'message')
+    ..aOM<PackagingReport>(3, _omitFieldNames ? '' : 'updatedReport',
+        subBuilder: PackagingReport.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceOverrideResultResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceOverrideResultResponse copyWith(
+          void Function(PackagingServiceOverrideResultResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as PackagingServiceOverrideResultResponse))
+          as PackagingServiceOverrideResultResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PackagingServiceOverrideResultResponse() / PackagingServiceOverrideResultResponse.new instead')
+  static PackagingServiceOverrideResultResponse create() =>
+      PackagingServiceOverrideResultResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PackagingServiceOverrideResultResponse._();
+  @$core.override
+  PackagingServiceOverrideResultResponse createEmptyInstance() =>
+      PackagingServiceOverrideResultResponse._();
+  @$core.pragma('dart2js:noInline')
+  static PackagingServiceOverrideResultResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              PackagingServiceOverrideResultResponse>(
+          PackagingServiceOverrideResultResponse.$_createMessage);
+  static PackagingServiceOverrideResultResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get success => $_getBF(0);
+  @$pb.TagNumber(1)
+  set success($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get message => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set message($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasMessage() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearMessage() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  PackagingReport get updatedReport => $_getN(2);
+  @$pb.TagNumber(3)
+  set updatedReport(PackagingReport value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasUpdatedReport() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearUpdatedReport() => $_clearField(3);
+  @$pb.TagNumber(3)
+  PackagingReport ensureUpdatedReport() => $_ensure(2);
+}
+
+class PackagingServiceGetHistoryRequest extends $pb.GeneratedMessage {
+  factory PackagingServiceGetHistoryRequest({
+    $2.UUID? workspaceId,
+    $core.String? assetId,
+    $2.Pagination? pagination,
+  }) {
+    final result = PackagingServiceGetHistoryRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (assetId != null) result.assetId = assetId;
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  PackagingServiceGetHistoryRequest._();
+
+  factory PackagingServiceGetHistoryRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceGetHistoryRequest()..mergeFromBuffer(data, registry);
+  factory PackagingServiceGetHistoryRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceGetHistoryRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PackagingServiceGetHistoryRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: PackagingServiceGetHistoryRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'assetId')
+    ..aOM<$2.Pagination>(3, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.Pagination.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceGetHistoryRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceGetHistoryRequest copyWith(
+          void Function(PackagingServiceGetHistoryRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as PackagingServiceGetHistoryRequest))
+          as PackagingServiceGetHistoryRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PackagingServiceGetHistoryRequest() / PackagingServiceGetHistoryRequest.new instead')
+  static PackagingServiceGetHistoryRequest create() =>
+      PackagingServiceGetHistoryRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PackagingServiceGetHistoryRequest._();
+  @$core.override
+  PackagingServiceGetHistoryRequest createEmptyInstance() =>
+      PackagingServiceGetHistoryRequest._();
+  @$core.pragma('dart2js:noInline')
+  static PackagingServiceGetHistoryRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PackagingServiceGetHistoryRequest>(
+          PackagingServiceGetHistoryRequest.$_createMessage);
+  static PackagingServiceGetHistoryRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get assetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set assetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $2.Pagination get pagination => $_getN(2);
+  @$pb.TagNumber(3)
+  set pagination($2.Pagination value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPagination() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPagination() => $_clearField(3);
+  @$pb.TagNumber(3)
+  $2.Pagination ensurePagination() => $_ensure(2);
+}
+
+class PackagingServiceGetHistoryResponse extends $pb.GeneratedMessage {
+  factory PackagingServiceGetHistoryResponse({
+    $core.Iterable<PackagingReport>? reports,
+    $2.PaginatedResponse? pagination,
+  }) {
+    final result = PackagingServiceGetHistoryResponse._();
+    if (reports != null) result.reports.addAll(reports);
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  PackagingServiceGetHistoryResponse._();
+
+  factory PackagingServiceGetHistoryResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceGetHistoryResponse()..mergeFromBuffer(data, registry);
+  factory PackagingServiceGetHistoryResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceGetHistoryResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PackagingServiceGetHistoryResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: PackagingServiceGetHistoryResponse.$_createMessage)
+    ..pPM<PackagingReport>(1, _omitFieldNames ? '' : 'reports',
+        subBuilder: PackagingReport.$_createMessage)
+    ..aOM<$2.PaginatedResponse>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.PaginatedResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceGetHistoryResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceGetHistoryResponse copyWith(
+          void Function(PackagingServiceGetHistoryResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as PackagingServiceGetHistoryResponse))
+          as PackagingServiceGetHistoryResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PackagingServiceGetHistoryResponse() / PackagingServiceGetHistoryResponse.new instead')
+  static PackagingServiceGetHistoryResponse create() =>
+      PackagingServiceGetHistoryResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PackagingServiceGetHistoryResponse._();
+  @$core.override
+  PackagingServiceGetHistoryResponse createEmptyInstance() =>
+      PackagingServiceGetHistoryResponse._();
+  @$core.pragma('dart2js:noInline')
+  static PackagingServiceGetHistoryResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PackagingServiceGetHistoryResponse>(
+          PackagingServiceGetHistoryResponse.$_createMessage);
+  static PackagingServiceGetHistoryResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<PackagingReport> get reports => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($2.PaginatedResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse ensurePagination() => $_ensure(1);
+}
+
+class PackagingServiceRunQARequest extends $pb.GeneratedMessage {
+  factory PackagingServiceRunQARequest({
+    $2.CommandContext? context,
+    $core.String? assetId,
+    $core.Iterable<$core.String>? targetPlatforms,
+    $core.String? presetId,
+  }) {
+    final result = PackagingServiceRunQARequest._();
+    if (context != null) result.context = context;
+    if (assetId != null) result.assetId = assetId;
+    if (targetPlatforms != null) result.targetPlatforms.addAll(targetPlatforms);
+    if (presetId != null) result.presetId = presetId;
+    return result;
+  }
+
+  PackagingServiceRunQARequest._();
+
+  factory PackagingServiceRunQARequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceRunQARequest()..mergeFromBuffer(data, registry);
+  factory PackagingServiceRunQARequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceRunQARequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PackagingServiceRunQARequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: PackagingServiceRunQARequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'assetId')
+    ..pPS(3, _omitFieldNames ? '' : 'targetPlatforms')
+    ..aOS(4, _omitFieldNames ? '' : 'presetId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceRunQARequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceRunQARequest copyWith(
+          void Function(PackagingServiceRunQARequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as PackagingServiceRunQARequest))
+          as PackagingServiceRunQARequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PackagingServiceRunQARequest() / PackagingServiceRunQARequest.new instead')
+  static PackagingServiceRunQARequest create() =>
+      PackagingServiceRunQARequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PackagingServiceRunQARequest._();
+  @$core.override
+  PackagingServiceRunQARequest createEmptyInstance() =>
+      PackagingServiceRunQARequest._();
+  @$core.pragma('dart2js:noInline')
+  static PackagingServiceRunQARequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PackagingServiceRunQARequest>(
+          PackagingServiceRunQARequest.$_createMessage);
+  static PackagingServiceRunQARequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get assetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set assetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<$core.String> get targetPlatforms => $_getList(2);
+
+  @$pb.TagNumber(4)
+  $core.String get presetId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set presetId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPresetId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPresetId() => $_clearField(4);
+}
+
+class PackagingServiceRunQAResponse extends $pb.GeneratedMessage {
+  factory PackagingServiceRunQAResponse({
+    PackagingReport? report,
+  }) {
+    final result = PackagingServiceRunQAResponse._();
+    if (report != null) result.report = report;
+    return result;
+  }
+
+  PackagingServiceRunQAResponse._();
+
+  factory PackagingServiceRunQAResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceRunQAResponse()..mergeFromBuffer(data, registry);
+  factory PackagingServiceRunQAResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PackagingServiceRunQAResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PackagingServiceRunQAResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: PackagingServiceRunQAResponse.$_createMessage)
+    ..aOM<PackagingReport>(1, _omitFieldNames ? '' : 'report',
+        subBuilder: PackagingReport.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceRunQAResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PackagingServiceRunQAResponse copyWith(
+          void Function(PackagingServiceRunQAResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as PackagingServiceRunQAResponse))
+          as PackagingServiceRunQAResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PackagingServiceRunQAResponse() / PackagingServiceRunQAResponse.new instead')
+  static PackagingServiceRunQAResponse create() =>
+      PackagingServiceRunQAResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PackagingServiceRunQAResponse._();
+  @$core.override
+  PackagingServiceRunQAResponse createEmptyInstance() =>
+      PackagingServiceRunQAResponse._();
+  @$core.pragma('dart2js:noInline')
+  static PackagingServiceRunQAResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PackagingServiceRunQAResponse>(
+          PackagingServiceRunQAResponse.$_createMessage);
+  static PackagingServiceRunQAResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  PackagingReport get report => $_getN(0);
+  @$pb.TagNumber(1)
+  set report(PackagingReport value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasReport() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearReport() => $_clearField(1);
+  @$pb.TagNumber(1)
+  PackagingReport ensureReport() => $_ensure(0);
+}
+
 const $core.bool _omitFieldNames =
     $core.bool.fromEnvironment('protobuf.omit_field_names');
 const $core.bool _omitMessageNames =

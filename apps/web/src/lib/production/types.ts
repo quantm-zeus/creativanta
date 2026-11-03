@@ -260,3 +260,140 @@ export interface ContinuityViolation {
 	resolvedAt?: string;
 	overrideReason?: string;
 }
+
+// M09: Derivative Library & Repurpose Hub
+export interface DerivativeItem {
+	assetId: string;
+	parentAssetId: string;
+	title: string;
+	derivativeType: 'clip' | 'variant' | 'remix' | 'repurpose' | 'thumbnail' | string;
+	targetChannel: 'tiktok' | 'youtube_shorts' | 'instagram_reels' | 'facebook' | string;
+	aspectRatio: string;
+	ctaVariant?: string;
+	subtitleLanguage?: string;
+	durationSeconds: number;
+	resolution: string;
+	fileUrl?: string;
+	qualityState: string;
+	generationState: string;
+	tags: string[];
+	views: number;
+	engagementRate: number;
+	ctr: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface BatchItemError {
+	assetId: string;
+	errorCode: string;
+	errorMessage: string;
+}
+
+export interface BatchTagResult {
+	totalItems: number;
+	succeededCount: number;
+	failedCount: number;
+	succeededAssetIds: string[];
+	failures: BatchItemError[];
+	summary: string;
+}
+
+export interface DerivativeLineageNode {
+	assetId: string;
+	parentAssetId: string;
+	title: string;
+	derivativeType: string;
+	assetType: string;
+	qualityState: string;
+	depth: number;
+	views: number;
+	engagementRate: number;
+	ctr: number;
+	isSourceDeleted: boolean;
+	children?: DerivativeLineageNode[];
+}
+
+export interface DerivativeStats {
+	sourceAssetId: string;
+	totalDerivatives: number;
+	aggregateViews: number;
+	averageEngagementRate: number;
+	averageCtr: number;
+	topPerformingDerivativeId: string;
+	topDerivatives?: DerivativeItem[];
+}
+
+// M10: Packaging QA & Pre-publish Scorecard
+export interface PackagingScoreComponent {
+	componentName: 'hook' | 'title' | 'caption' | 'cta' | 'disclosure' | 'link' | string;
+	score: number;
+	weight: number;
+	status: 'pass' | 'warning' | 'blocked';
+	findings: string;
+	suggestedFix: string;
+	isHardBlocked: boolean;
+	canOverride: boolean;
+}
+
+export interface ReadinessCheckItem {
+	checkId: string;
+	platform: string;
+	checkType: string;
+	status: 'pass' | 'warning' | 'blocked';
+	currentValue: string;
+	requiredValue: string;
+	suggestedFix: string;
+	isHardBlocked: boolean;
+	canOverride: boolean;
+}
+
+export interface ComplianceScanDetail {
+	scanId: string;
+	category: 'copyright' | 'content_policy' | 'platform_rules' | 'shadowban_risk' | 'consent' | string;
+	status: 'pass' | 'pass_with_warnings' | 'review_required' | 'blocked';
+	findingDescription: string;
+	matchedWork?: string;
+	matchConfidence?: string;
+	isHardBlocked: boolean;
+	canOverride: boolean;
+}
+
+export interface OverrideAuditRecord {
+	overrideId: string;
+	checkIdOrCategory: string;
+	overriddenByUserId: string;
+	actorRole: string;
+	reason: string;
+	createdAt: string;
+}
+
+export interface PackagingReport {
+	reportId: string;
+	assetId: string;
+	publishItemId: string;
+	overallPackagingScore: number;
+	scoreStatus: 'pass' | 'below_recommended' | 'critical';
+	components: PackagingScoreComponent[];
+	readinessChecks: ReadinessCheckItem[];
+	complianceDetails: ComplianceScanDetail[];
+	complianceOverallResult: string;
+	hasHardBlocks: boolean;
+	hardBlockReasons: string[];
+	readyForPackaging: boolean;
+	readyToPublish: boolean;
+	appliedOverrides: OverrideAuditRecord[];
+	createdAt: string;
+}
+
+export interface UploadPreset {
+	presetId: string;
+	presetName: string;
+	targetPlatform: string;
+	aspectRatio: string;
+	maxDurationSeconds: number;
+	titleTemplate: string;
+	defaultHashtags: string[];
+	defaultCta: string;
+	disclosureRequired: boolean;
+}

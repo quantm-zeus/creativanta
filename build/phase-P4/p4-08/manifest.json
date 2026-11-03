@@ -1,0 +1,178 @@
+{
+  "task_id": "P4-08",
+  "phase": "P4",
+  "slice": "p4-08",
+  "title": "Derivative library và packaging QA",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "c89e78d8769b82631571d0ae9bbe32011746c4ef",
+  "feature_refs": [
+    "docs/02_features/production/asset_derivatives.md",
+    "docs/02_features/production/packaging_qa.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_endpoint_map.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/05_system/queue_retry_design.md"
+  ],
+  "requirement_ids": [
+    "M09",
+    "M10",
+    "RULE-M09-001",
+    "RULE-M09-002",
+    "RULE-M09-003",
+    "RULE-M09-004",
+    "RULE-M10-001",
+    "RULE-M10-002",
+    "RULE-M10-003",
+    "RULE-M10-004",
+    "RULE-M10-005",
+    "RULE-M10-006",
+    "SAFE-2026-02",
+    "INV-2026-02",
+    "EC-M09-001",
+    "EC-M09-002",
+    "DB-C-001",
+    "DB-H-001"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_studio_derivatives.md",
+    "docs/03_screens/web/screen_web_packaging_qa.md",
+    "docs/03_screens/web/screen_web_studio_library.md"
+  ],
+  "source_hashes": {
+    "infra/migrations/00024_p4_08_derivatives_repurpose_experiments_and_packaging_qa.sql": "f06245d0a69b106ccfd7e81d8c828ee653ea326e4fcc1065051b0ef6c5a5f583",
+    "protos/creativanta/production/v1/production.proto": "c36500494665ad3a0a7b63a32e8adbd41de6fb0afec3f145ad68a054b6eb5e6b",
+    "apps/api/internal/production/types.go": "a35b32652a31ff8a5dda3b65af72c8ff8521eb0d93b22914eab25f54891f57c9",
+    "apps/api/internal/production/store.go": "e8a35b54a7570fe1084c43ee38d64a112ea6884dab0189ea9f97ca791d3f70f9",
+    "apps/api/internal/production/store_derivative_packaging.go": "44d427a99ae8e53381cef45516767afde760ac3ac07b3581ec825aaaa447c4ee",
+    "apps/api/internal/production/derivative_manager.go": "7ad5e61c1f7aa28f8f43847105ffc4a5d27ddf6865bcad746297dc6d8ced33e3",
+    "apps/api/internal/production/packaging_qa_manager.go": "4c9105e54a4a34ce6d04239685a0382f92fc8196cb5f10d9d976ee677cc2c190",
+    "apps/api/internal/production/service.go": "1969bb0e3b48f37f580debcbd70c0c14c407e0983f334a3e4ffa8ada360fee91",
+    "apps/api/internal/production/service_derivative_packaging.go": "0fa27e4fff3e8d18b6d03745357b18c8df0c213d9583306f7cfbd663435adb3c",
+    "apps/api/internal/production/derivative_packaging_test.go": "89b467074be1e677f5367440566bfb5962868ebcd80d445f023c04b8f52a364b",
+    "apps/api/internal/migrate/migrator_test.go": "fff85ec19ca061befcce9e111c6142a075e0e9efc1c298922dc6b36a189fcb53",
+    "apps/web/src/lib/production/types.ts": "0d86bf702df5ac8f39eea50f5ba2ec6d37a4ca508b54f109a4682388b7ea4dc6",
+    "apps/web/src/lib/production/derivative_packaging.ts": "d94071146782dfb25330d9403611e5d7683f6b5d37871466bb178a61b01abc1c",
+    "apps/web/src/lib/production/derivative_packaging.test.ts": "b298db04858035c11a0c94f079d2aa91f6be853f65167b027bada50a1209b273",
+    "apps/web/src/lib/production/PackagingQAPanel.svelte": "fa31cf3e4c0bed592267a2c392d85fd80634037a3a2425928b78118d015dcc4c",
+    "apps/web/src/lib/production/DerivativeBatchBar.svelte": "7dea5b877777d0eb3fe0a71d949eb53037a7cc9b07df12a313e2fee29553986f",
+    "apps/web/src/routes/studio/derivatives/+page.svelte": "7ecd739119a71b031d01dabbe11e0a49c649868fdcf8f9047c8e16bb37758850",
+    "apps/web/src/routes/packaging/[asset_id]/+page.svelte": "1ece253ea1ad09461bdb939c1f212c37b87296e8d1f3e7a5e83aa5dbdbf8034d",
+    "apps/web/src/routes/studio/library/+page.svelte": "7baedb2df3ccf1845196831c65b34599798d0080e978da0f8ec88fc59c21310c",
+    "apps/mobile/lib/production/derivative_packaging_models.dart": "64a5a1dc57f198b2f873a190af2969b816af890512e0bbdebdda764f527fb815",
+    "apps/mobile/test/derivative_packaging_acceptance_test.dart": "680c10ad6251a6dc106ecfafa7cb3d8f1784eb512a0e3b2d7e7c4d146f0219c0"
+  },
+  "scope_items": [
+    "Database Migration 00024: Created repurpose_jobs, ab_test_experiments, packaging_qa_results, and upload_presets tables with composite tenant foreign keys to workspaces and assets; strict multi-tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY); exact numeric money/credits (DB-H-001); narrow role grants to app_user and admin_user; and verified 24-step reversible down migration.",
+    "Acceptance Target 1 (150-item partial batch results): Batch tagging and bulk operations handle batches of >=100 items (tested on 150 items) with structured partial failure reporting ('147/150 succeeded. 3 failed: [view details].') and granular per-item error codes.",
+    "Acceptance Target 2 (No lineage -> routing denied): Assets without parent_asset_id lineage are strictly denied routing to packaging/publish (RULE-M09-001, AC 5) with ErrMissingLineage.",
+    "Acceptance Target 3 (Hard blocks cannot be workspace-overridden): Commercial content without disclosure (isCommercial: true with empty disclosure) and confirmed copyright violations are hard-blocked (isHardBlocked: true, canOverride: false). Hard blocks cannot be overridden by any role, including Manager, Admin, or Owner (SAFE-2026-02, RULE-M10-002). Only reviewable warnings can be overridden by Manager+ with justification >= 10 chars.",
+    "RULE-M10-006 & API Behavior §7: A/B testing experiment evaluations under 1,000 impressions per variant are marked inconclusive with empty winner, and conclusive once impressions >= 1,000 and lift >= 1.2x.",
+    "RULE-M09-003: Aggregated derivative performance metrics calculate total views, average engagement rate, and platform distribution across linked children."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestAcceptanceTarget1_150ItemPartialBatchResults (Go -race), Vitest web suite (derivative_packaging.test.ts), and Flutter acceptance test suite confirm 150-item batch operation with 147 successes and 3 failures returning exact count and summary message.",
+    "Acceptance Target 2 Verified: TestAcceptanceTarget2_NoLineageRoutingDenied (Go -race), Vitest web suite, and Flutter acceptance test suite confirm orphan derivatives without parent_asset_id fail routing with ErrMissingLineage / LineageError / LineageException.",
+    "Acceptance Target 3 Verified: TestAcceptanceTarget3_HardBlocksCannotBeWorkspaceOverridden (Go -race), Vitest web suite, and Flutter acceptance test suite confirm commercial content without disclosure produces a non-overridable hard block, and Manager+ override succeeds only for reviewable warnings with reason >= 10 chars.",
+    "Lineage Inspection & Deletion Verified: TestLineageTreeInspectionAndSourceDeletion verifies parent source deletion preserves children with archived flag (EC-M09-001).",
+    "A/B Testing Threshold Verified: TestABExperimentInconclusiveUnderEvidenceThreshold confirms inconclusive status under 1000 impressions (RULE-M10-006).",
+    "Migration 00024 Verified: Migrator test suite (migrator_test.go) passes all 24 migrations up, status verification, and clean down transactional reversal.",
+    "Four-Target Proto Codegen Verified: proto-gen.sh verify passes Buf lint, codegen across Go, TypeScript, and Dart, git drift verification, TypeScript compilation, and Dart generated code analyze.",
+    "Web & Mobile Surfaces Verified: svelte-check (0 errors, 0 warnings), vitest (derivative_packaging.test.ts passing), vite build and SSR adapter-node smoke, and flutter analyze / tests all pass cleanly."
+  ],
+  "rpc_contracts": [
+    "DerivativeService/ListDerivatives",
+    "DerivativeService/CreateDerivative",
+    "DerivativeService/BatchTagDerivatives",
+    "DerivativeService/GetDerivativeLineage",
+    "DerivativeService/DeleteDerivative",
+    "DerivativeService/PromoteDerivative",
+    "DerivativeService/GetDerivativeStats",
+    "PackagingService/ScoreAsset",
+    "PackagingService/ScanCompliance",
+    "PackagingService/GetPackagingReport",
+    "PackagingService/BatchScoreAssets",
+    "PackagingService/OverridePackagingResult",
+    "PackagingService/GetPackagingHistory",
+    "PackagingService/RunPackagingQA"
+  ],
+  "migration_files": [
+    "infra/migrations/00024_p4_08_derivatives_repurpose_experiments_and_packaging_qa.sql"
+  ],
+  "permission_keys": [
+    "derivative:read",
+    "derivative:write",
+    "derivative:delete",
+    "derivative:promote",
+    "packaging:read",
+    "packaging:run",
+    "packaging:override"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-AI-PROVIDER-PACKAGING-SCORING",
+      "PENDING_PRODUCTION_KEY",
+      "Production packaging hook scoring and multimodal compliance scanning require production Vision-Language API credentials and live billing accounts. Deterministic 6-factor scorecard and compliance validation verified locally."
+    ],
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "Migration 00024 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow role grants verified via local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+    ]
+  ],
+  "checks": [
+    {
+      "command": "python3 tooling/check_docs.py",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-08/evidence/01_d0_invariants.log",
+      "checked_at": "2026-11-03T17:03:00Z"
+    },
+    {
+      "command": "tooling/proto-gen.sh verify",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-08/evidence/02_proto_contracts.log",
+      "checked_at": "2026-11-03T17:04:00Z"
+    },
+    {
+      "command": "pnpm --dir apps/web check && pnpm --dir apps/web build",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-08/evidence/03_web_smoke.log",
+      "checked_at": "2026-11-03T17:05:00Z"
+    },
+    {
+      "command": "cd apps/api && go test -v -race ./internal/production ./internal/migrate",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-08/evidence/04_go_acceptance_tests.log",
+      "checked_at": "2026-11-03T17:05:47Z"
+    },
+    {
+      "command": "pnpm --dir apps/web test run src/lib/production/derivative_packaging.test.ts",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-08/evidence/05_web_tests.log",
+      "checked_at": "2026-11-03T17:05:54Z"
+    },
+    {
+      "command": "cd apps/mobile && flutter test test/derivative_packaging_acceptance_test.dart",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-08/evidence/06_flutter_acceptance_tests.log",
+      "checked_at": "2026-11-03T17:06:05Z"
+    }
+  ],
+  "remaining_scope": [
+    {
+      "source": "docs/02_features/production/asset_derivatives.md",
+      "heading": "P4-09 Production Integration Acceptance",
+      "target_task": "P4-09",
+      "note": "Cross-service end-to-end integration and gamification across M07/M08/M09/M10."
+    }
+  ],
+  "decisions": [
+    "ADR-P4-08-001: 150-item batch operations return structured partial success summaries (e.g. '147/150 succeeded. 3 failed: [view details].') with granular per-item error codes.",
+    "ADR-P4-08-002: Assets without parent_asset_id lineage are strictly blocked from packaging and publishing with ErrMissingLineage (RULE-M09-001).",
+    "ADR-P4-08-003: Hard blocks (confirmed rights violations, missing commercial disclosure) are non-overridable even by Workspace Manager or Owner (SAFE-2026-02, RULE-M10-002). Only reviewable warnings can be overridden with reason >= 10 chars by Manager+.",
+    "ADR-P4-08-004: A/B experiments require >= 1000 impressions per variant before declaring a conclusive winner (RULE-M10-006)."
+  ]
+}

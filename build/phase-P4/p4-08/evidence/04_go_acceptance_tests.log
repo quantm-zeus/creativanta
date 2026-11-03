@@ -1,0 +1,60 @@
+=== RUN   TestClipFactory_AcceptanceTarget1_NoSpeechUsesVisualPath
+--- PASS: TestClipFactory_AcceptanceTarget1_NoSpeechUsesVisualPath (0.00s)
+=== RUN   TestClipFactory_AcceptanceTarget2_MissingTrendDataLabeled
+--- PASS: TestClipFactory_AcceptanceTarget2_MissingTrendDataLabeled (0.00s)
+=== RUN   TestClipFactory_AcceptanceTarget3_EachClipHasSourceLineage
+--- PASS: TestClipFactory_AcceptanceTarget3_EachClipHasSourceLineage (0.01s)
+=== RUN   TestClipFactory_ConcurrencyLimit_ECM07C04
+--- PASS: TestClipFactory_ConcurrencyLimit_ECM07C04 (0.00s)
+=== RUN   TestClipFactory_RBACEnforcement
+--- PASS: TestClipFactory_RBACEnforcement (0.00s)
+=== RUN   TestAcceptanceTarget1_15sPreviewQuoted
+--- PASS: TestAcceptanceTarget1_15sPreviewQuoted (0.00s)
+=== RUN   TestAcceptanceTarget2_HighDriftBlocksReadiness
+--- PASS: TestAcceptanceTarget2_HighDriftBlocksReadiness (0.00s)
+=== RUN   TestAcceptanceTarget3_ConsentWithdrawalPreventsNewUse
+--- PASS: TestAcceptanceTarget3_ConsentWithdrawalPreventsNewUse (0.00s)
+=== RUN   TestEF07_StyleExtractionAndTransfer
+--- PASS: TestEF07_StyleExtractionAndTransfer (0.00s)
+=== RUN   TestAcceptanceTarget1_150ItemPartialBatchResults
+--- PASS: TestAcceptanceTarget1_150ItemPartialBatchResults (0.00s)
+=== RUN   TestAcceptanceTarget2_NoLineageRoutingDenied
+--- PASS: TestAcceptanceTarget2_NoLineageRoutingDenied (0.00s)
+=== RUN   TestAcceptanceTarget3_HardBlocksCannotBeWorkspaceOverridden
+--- PASS: TestAcceptanceTarget3_HardBlocksCannotBeWorkspaceOverridden (0.00s)
+=== RUN   TestLineageTreeInspectionAndSourceDeletion
+--- PASS: TestLineageTreeInspectionAndSourceDeletion (0.00s)
+=== RUN   TestABExperimentInconclusiveUnderEvidenceThreshold
+--- PASS: TestABExperimentInconclusiveUnderEvidenceThreshold (0.00s)
+=== RUN   TestAcceptanceTarget1_ConsentRequired
+--- PASS: TestAcceptanceTarget1_ConsentRequired (0.00s)
+=== RUN   TestAcceptanceTarget2_LanguageVoiceQualityRepair
+--- PASS: TestAcceptanceTarget2_LanguageVoiceQualityRepair (0.00s)
+=== RUN   TestAcceptanceTarget3_LicensedInputAndMeasuredQuote
+--- PASS: TestAcceptanceTarget3_LicensedInputAndMeasuredQuote (0.00s)
+=== RUN   TestAcceptanceTarget1_AllListedStylesAndOptions
+=== RUN   TestAcceptanceTarget1_AllListedStylesAndOptions/EF-01:_All_8_Showcase_styles_supported_with_credit_quotes
+=== RUN   TestAcceptanceTarget1_AllListedStylesAndOptions/EF-02:_Image-to-Video_6_motion_styles_+_presets,_durations_3-15s,_loop_and_tiers
+=== RUN   TestAcceptanceTarget1_AllListedStylesAndOptions/EF-03:_Thumbnail_Studio_5_template_styles_&_5-factor_CTR_mathematical_breakdown
+=== RUN   TestAcceptanceTarget1_AllListedStylesAndOptions/EF-04:_Link-to-Video_5_script_templates_generation
+--- PASS: TestAcceptanceTarget1_AllListedStylesAndOptions (0.00s)
+    --- PASS: TestAcceptanceTarget1_AllListedStylesAndOptions/EF-01:_All_8_Showcase_styles_supported_with_credit_quotes (0.00s)
+    --- PASS: TestAcceptanceTarget1_AllListedStylesAndOptions/EF-02:_Image-to-Video_6_motion_styles_+_presets,_durations_3-15s,_loop_and_tiers (0.00s)
+    --- PASS: TestAcceptanceTarget1_AllListedStylesAndOptions/EF-03:_Thumbnail_Studio_5_template_styles_&_5-factor_CTR_mathematical_breakdown (0.00s)
+    --- PASS: TestAcceptanceTarget1_AllListedStylesAndOptions/EF-04:_Link-to-Video_5_script_templates_generation (0.00s)
+=== RUN   TestAcceptanceTarget2_SSRFAndUnsafeSourceBlocked
+=== RUN   TestAcceptanceTarget2_SSRFAndUnsafeSourceBlocked/SSRF_IP_and_Scheme_Rejections
+=== RUN   TestAcceptanceTarget2_SSRFAndUnsafeSourceBlocked/DRM_and_Geo-blocking_Detection_(EC-M07-R01)
+--- PASS: TestAcceptanceTarget2_SSRFAndUnsafeSourceBlocked (0.00s)
+    --- PASS: TestAcceptanceTarget2_SSRFAndUnsafeSourceBlocked/SSRF_IP_and_Scheme_Rejections (0.00s)
+    --- PASS: TestAcceptanceTarget2_SSRFAndUnsafeSourceBlocked/DRM_and_Geo-blocking_Detection_(EC-M07-R01) (0.00s)
+=== RUN   TestAcceptanceTarget3_MissingProductAttributesExplained
+=== RUN   TestAcceptanceTarget3_MissingProductAttributesExplained/Showcase:_Missing_photos,_360_spin_with_<_8_images,_and_missing_description
+=== RUN   TestAcceptanceTarget3_MissingProductAttributesExplained/Batch_Mode:_20-product_batch_with_1_invalid_row_allows_confirming_valid_rows_only
+=== RUN   TestAcceptanceTarget3_MissingProductAttributesExplained/Link-to-Video:_Scraped_product_missing_attributes_explanation
+--- PASS: TestAcceptanceTarget3_MissingProductAttributesExplained (0.00s)
+    --- PASS: TestAcceptanceTarget3_MissingProductAttributesExplained/Showcase:_Missing_photos,_360_spin_with_<_8_images,_and_missing_description (0.00s)
+    --- PASS: TestAcceptanceTarget3_MissingProductAttributesExplained/Batch_Mode:_20-product_batch_with_1_invalid_row_allows_confirming_valid_rows_only (0.00s)
+    --- PASS: TestAcceptanceTarget3_MissingProductAttributesExplained/Link-to-Video:_Scraped_product_missing_attributes_explanation (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/production	1.081s

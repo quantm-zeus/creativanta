@@ -47,6 +47,10 @@ const (
 	ProductShowcaseServiceName = "creativanta.production.v1.ProductShowcaseService"
 	// LinkToVideoServiceName is the fully-qualified name of the LinkToVideoService service.
 	LinkToVideoServiceName = "creativanta.production.v1.LinkToVideoService"
+	// DerivativeServiceName is the fully-qualified name of the DerivativeService service.
+	DerivativeServiceName = "creativanta.production.v1.DerivativeService"
+	// PackagingServiceName is the fully-qualified name of the PackagingService service.
+	PackagingServiceName = "creativanta.production.v1.PackagingService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -210,6 +214,45 @@ const (
 	LinkToVideoServiceGenerateProcedure = "/creativanta.production.v1.LinkToVideoService/Generate"
 	// LinkToVideoServiceGetProcedure is the fully-qualified name of the LinkToVideoService's Get RPC.
 	LinkToVideoServiceGetProcedure = "/creativanta.production.v1.LinkToVideoService/Get"
+	// DerivativeServiceListProcedure is the fully-qualified name of the DerivativeService's List RPC.
+	DerivativeServiceListProcedure = "/creativanta.production.v1.DerivativeService/List"
+	// DerivativeServiceCreateProcedure is the fully-qualified name of the DerivativeService's Create
+	// RPC.
+	DerivativeServiceCreateProcedure = "/creativanta.production.v1.DerivativeService/Create"
+	// DerivativeServiceBatchTagProcedure is the fully-qualified name of the DerivativeService's
+	// BatchTag RPC.
+	DerivativeServiceBatchTagProcedure = "/creativanta.production.v1.DerivativeService/BatchTag"
+	// DerivativeServiceGetLineageProcedure is the fully-qualified name of the DerivativeService's
+	// GetLineage RPC.
+	DerivativeServiceGetLineageProcedure = "/creativanta.production.v1.DerivativeService/GetLineage"
+	// DerivativeServiceDeleteProcedure is the fully-qualified name of the DerivativeService's Delete
+	// RPC.
+	DerivativeServiceDeleteProcedure = "/creativanta.production.v1.DerivativeService/Delete"
+	// DerivativeServicePromoteProcedure is the fully-qualified name of the DerivativeService's Promote
+	// RPC.
+	DerivativeServicePromoteProcedure = "/creativanta.production.v1.DerivativeService/Promote"
+	// DerivativeServiceGetStatsProcedure is the fully-qualified name of the DerivativeService's
+	// GetStats RPC.
+	DerivativeServiceGetStatsProcedure = "/creativanta.production.v1.DerivativeService/GetStats"
+	// PackagingServiceScoreProcedure is the fully-qualified name of the PackagingService's Score RPC.
+	PackagingServiceScoreProcedure = "/creativanta.production.v1.PackagingService/Score"
+	// PackagingServiceScanComplianceProcedure is the fully-qualified name of the PackagingService's
+	// ScanCompliance RPC.
+	PackagingServiceScanComplianceProcedure = "/creativanta.production.v1.PackagingService/ScanCompliance"
+	// PackagingServiceGetReportProcedure is the fully-qualified name of the PackagingService's
+	// GetReport RPC.
+	PackagingServiceGetReportProcedure = "/creativanta.production.v1.PackagingService/GetReport"
+	// PackagingServiceBatchScoreProcedure is the fully-qualified name of the PackagingService's
+	// BatchScore RPC.
+	PackagingServiceBatchScoreProcedure = "/creativanta.production.v1.PackagingService/BatchScore"
+	// PackagingServiceOverrideResultProcedure is the fully-qualified name of the PackagingService's
+	// OverrideResult RPC.
+	PackagingServiceOverrideResultProcedure = "/creativanta.production.v1.PackagingService/OverrideResult"
+	// PackagingServiceGetHistoryProcedure is the fully-qualified name of the PackagingService's
+	// GetHistory RPC.
+	PackagingServiceGetHistoryProcedure = "/creativanta.production.v1.PackagingService/GetHistory"
+	// PackagingServiceRunQAProcedure is the fully-qualified name of the PackagingService's RunQA RPC.
+	PackagingServiceRunQAProcedure = "/creativanta.production.v1.PackagingService/RunQA"
 )
 
 // StudioServiceClient is a client for the creativanta.production.v1.StudioService service.
@@ -2398,4 +2441,459 @@ func (UnimplementedLinkToVideoServiceHandler) Generate(context.Context, *connect
 
 func (UnimplementedLinkToVideoServiceHandler) Get(context.Context, *connect.Request[v1.LinkToVideoServiceGetRequest]) (*connect.Response[v1.LinkToVideoServiceGetResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.LinkToVideoService.Get is not implemented"))
+}
+
+// DerivativeServiceClient is a client for the creativanta.production.v1.DerivativeService service.
+type DerivativeServiceClient interface {
+	List(context.Context, *connect.Request[v1.DerivativeServiceListRequest]) (*connect.Response[v1.DerivativeServiceListResponse], error)
+	Create(context.Context, *connect.Request[v1.DerivativeServiceCreateRequest]) (*connect.Response[v1.DerivativeServiceCreateResponse], error)
+	BatchTag(context.Context, *connect.Request[v1.DerivativeServiceBatchTagRequest]) (*connect.Response[v1.DerivativeServiceBatchTagResponse], error)
+	GetLineage(context.Context, *connect.Request[v1.DerivativeServiceGetLineageRequest]) (*connect.Response[v1.DerivativeServiceGetLineageResponse], error)
+	Delete(context.Context, *connect.Request[v1.DerivativeServiceDeleteRequest]) (*connect.Response[v1.DerivativeServiceDeleteResponse], error)
+	Promote(context.Context, *connect.Request[v1.DerivativeServicePromoteRequest]) (*connect.Response[v1.DerivativeServicePromoteResponse], error)
+	GetStats(context.Context, *connect.Request[v1.DerivativeServiceGetStatsRequest]) (*connect.Response[v1.DerivativeServiceGetStatsResponse], error)
+}
+
+// NewDerivativeServiceClient constructs a client for the
+// creativanta.production.v1.DerivativeService service. By default, it uses the Connect protocol
+// with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To
+// use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb()
+// options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewDerivativeServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) DerivativeServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	derivativeServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("DerivativeService").Methods()
+	return &derivativeServiceClient{
+		list: connect.NewClient[v1.DerivativeServiceListRequest, v1.DerivativeServiceListResponse](
+			httpClient,
+			baseURL+DerivativeServiceListProcedure,
+			connect.WithSchema(derivativeServiceMethods.ByName("List")),
+			connect.WithClientOptions(opts...),
+		),
+		create: connect.NewClient[v1.DerivativeServiceCreateRequest, v1.DerivativeServiceCreateResponse](
+			httpClient,
+			baseURL+DerivativeServiceCreateProcedure,
+			connect.WithSchema(derivativeServiceMethods.ByName("Create")),
+			connect.WithClientOptions(opts...),
+		),
+		batchTag: connect.NewClient[v1.DerivativeServiceBatchTagRequest, v1.DerivativeServiceBatchTagResponse](
+			httpClient,
+			baseURL+DerivativeServiceBatchTagProcedure,
+			connect.WithSchema(derivativeServiceMethods.ByName("BatchTag")),
+			connect.WithClientOptions(opts...),
+		),
+		getLineage: connect.NewClient[v1.DerivativeServiceGetLineageRequest, v1.DerivativeServiceGetLineageResponse](
+			httpClient,
+			baseURL+DerivativeServiceGetLineageProcedure,
+			connect.WithSchema(derivativeServiceMethods.ByName("GetLineage")),
+			connect.WithClientOptions(opts...),
+		),
+		delete: connect.NewClient[v1.DerivativeServiceDeleteRequest, v1.DerivativeServiceDeleteResponse](
+			httpClient,
+			baseURL+DerivativeServiceDeleteProcedure,
+			connect.WithSchema(derivativeServiceMethods.ByName("Delete")),
+			connect.WithClientOptions(opts...),
+		),
+		promote: connect.NewClient[v1.DerivativeServicePromoteRequest, v1.DerivativeServicePromoteResponse](
+			httpClient,
+			baseURL+DerivativeServicePromoteProcedure,
+			connect.WithSchema(derivativeServiceMethods.ByName("Promote")),
+			connect.WithClientOptions(opts...),
+		),
+		getStats: connect.NewClient[v1.DerivativeServiceGetStatsRequest, v1.DerivativeServiceGetStatsResponse](
+			httpClient,
+			baseURL+DerivativeServiceGetStatsProcedure,
+			connect.WithSchema(derivativeServiceMethods.ByName("GetStats")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// derivativeServiceClient implements DerivativeServiceClient.
+type derivativeServiceClient struct {
+	list       *connect.Client[v1.DerivativeServiceListRequest, v1.DerivativeServiceListResponse]
+	create     *connect.Client[v1.DerivativeServiceCreateRequest, v1.DerivativeServiceCreateResponse]
+	batchTag   *connect.Client[v1.DerivativeServiceBatchTagRequest, v1.DerivativeServiceBatchTagResponse]
+	getLineage *connect.Client[v1.DerivativeServiceGetLineageRequest, v1.DerivativeServiceGetLineageResponse]
+	delete     *connect.Client[v1.DerivativeServiceDeleteRequest, v1.DerivativeServiceDeleteResponse]
+	promote    *connect.Client[v1.DerivativeServicePromoteRequest, v1.DerivativeServicePromoteResponse]
+	getStats   *connect.Client[v1.DerivativeServiceGetStatsRequest, v1.DerivativeServiceGetStatsResponse]
+}
+
+// List calls creativanta.production.v1.DerivativeService.List.
+func (c *derivativeServiceClient) List(ctx context.Context, req *connect.Request[v1.DerivativeServiceListRequest]) (*connect.Response[v1.DerivativeServiceListResponse], error) {
+	return c.list.CallUnary(ctx, req)
+}
+
+// Create calls creativanta.production.v1.DerivativeService.Create.
+func (c *derivativeServiceClient) Create(ctx context.Context, req *connect.Request[v1.DerivativeServiceCreateRequest]) (*connect.Response[v1.DerivativeServiceCreateResponse], error) {
+	return c.create.CallUnary(ctx, req)
+}
+
+// BatchTag calls creativanta.production.v1.DerivativeService.BatchTag.
+func (c *derivativeServiceClient) BatchTag(ctx context.Context, req *connect.Request[v1.DerivativeServiceBatchTagRequest]) (*connect.Response[v1.DerivativeServiceBatchTagResponse], error) {
+	return c.batchTag.CallUnary(ctx, req)
+}
+
+// GetLineage calls creativanta.production.v1.DerivativeService.GetLineage.
+func (c *derivativeServiceClient) GetLineage(ctx context.Context, req *connect.Request[v1.DerivativeServiceGetLineageRequest]) (*connect.Response[v1.DerivativeServiceGetLineageResponse], error) {
+	return c.getLineage.CallUnary(ctx, req)
+}
+
+// Delete calls creativanta.production.v1.DerivativeService.Delete.
+func (c *derivativeServiceClient) Delete(ctx context.Context, req *connect.Request[v1.DerivativeServiceDeleteRequest]) (*connect.Response[v1.DerivativeServiceDeleteResponse], error) {
+	return c.delete.CallUnary(ctx, req)
+}
+
+// Promote calls creativanta.production.v1.DerivativeService.Promote.
+func (c *derivativeServiceClient) Promote(ctx context.Context, req *connect.Request[v1.DerivativeServicePromoteRequest]) (*connect.Response[v1.DerivativeServicePromoteResponse], error) {
+	return c.promote.CallUnary(ctx, req)
+}
+
+// GetStats calls creativanta.production.v1.DerivativeService.GetStats.
+func (c *derivativeServiceClient) GetStats(ctx context.Context, req *connect.Request[v1.DerivativeServiceGetStatsRequest]) (*connect.Response[v1.DerivativeServiceGetStatsResponse], error) {
+	return c.getStats.CallUnary(ctx, req)
+}
+
+// DerivativeServiceHandler is an implementation of the creativanta.production.v1.DerivativeService
+// service.
+type DerivativeServiceHandler interface {
+	List(context.Context, *connect.Request[v1.DerivativeServiceListRequest]) (*connect.Response[v1.DerivativeServiceListResponse], error)
+	Create(context.Context, *connect.Request[v1.DerivativeServiceCreateRequest]) (*connect.Response[v1.DerivativeServiceCreateResponse], error)
+	BatchTag(context.Context, *connect.Request[v1.DerivativeServiceBatchTagRequest]) (*connect.Response[v1.DerivativeServiceBatchTagResponse], error)
+	GetLineage(context.Context, *connect.Request[v1.DerivativeServiceGetLineageRequest]) (*connect.Response[v1.DerivativeServiceGetLineageResponse], error)
+	Delete(context.Context, *connect.Request[v1.DerivativeServiceDeleteRequest]) (*connect.Response[v1.DerivativeServiceDeleteResponse], error)
+	Promote(context.Context, *connect.Request[v1.DerivativeServicePromoteRequest]) (*connect.Response[v1.DerivativeServicePromoteResponse], error)
+	GetStats(context.Context, *connect.Request[v1.DerivativeServiceGetStatsRequest]) (*connect.Response[v1.DerivativeServiceGetStatsResponse], error)
+}
+
+// NewDerivativeServiceHandler builds an HTTP handler from the service implementation. It returns
+// the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewDerivativeServiceHandler(svc DerivativeServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	derivativeServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("DerivativeService").Methods()
+	derivativeServiceListHandler := connect.NewUnaryHandler(
+		DerivativeServiceListProcedure,
+		svc.List,
+		connect.WithSchema(derivativeServiceMethods.ByName("List")),
+		connect.WithHandlerOptions(opts...),
+	)
+	derivativeServiceCreateHandler := connect.NewUnaryHandler(
+		DerivativeServiceCreateProcedure,
+		svc.Create,
+		connect.WithSchema(derivativeServiceMethods.ByName("Create")),
+		connect.WithHandlerOptions(opts...),
+	)
+	derivativeServiceBatchTagHandler := connect.NewUnaryHandler(
+		DerivativeServiceBatchTagProcedure,
+		svc.BatchTag,
+		connect.WithSchema(derivativeServiceMethods.ByName("BatchTag")),
+		connect.WithHandlerOptions(opts...),
+	)
+	derivativeServiceGetLineageHandler := connect.NewUnaryHandler(
+		DerivativeServiceGetLineageProcedure,
+		svc.GetLineage,
+		connect.WithSchema(derivativeServiceMethods.ByName("GetLineage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	derivativeServiceDeleteHandler := connect.NewUnaryHandler(
+		DerivativeServiceDeleteProcedure,
+		svc.Delete,
+		connect.WithSchema(derivativeServiceMethods.ByName("Delete")),
+		connect.WithHandlerOptions(opts...),
+	)
+	derivativeServicePromoteHandler := connect.NewUnaryHandler(
+		DerivativeServicePromoteProcedure,
+		svc.Promote,
+		connect.WithSchema(derivativeServiceMethods.ByName("Promote")),
+		connect.WithHandlerOptions(opts...),
+	)
+	derivativeServiceGetStatsHandler := connect.NewUnaryHandler(
+		DerivativeServiceGetStatsProcedure,
+		svc.GetStats,
+		connect.WithSchema(derivativeServiceMethods.ByName("GetStats")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.production.v1.DerivativeService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case DerivativeServiceListProcedure:
+			derivativeServiceListHandler.ServeHTTP(w, r)
+		case DerivativeServiceCreateProcedure:
+			derivativeServiceCreateHandler.ServeHTTP(w, r)
+		case DerivativeServiceBatchTagProcedure:
+			derivativeServiceBatchTagHandler.ServeHTTP(w, r)
+		case DerivativeServiceGetLineageProcedure:
+			derivativeServiceGetLineageHandler.ServeHTTP(w, r)
+		case DerivativeServiceDeleteProcedure:
+			derivativeServiceDeleteHandler.ServeHTTP(w, r)
+		case DerivativeServicePromoteProcedure:
+			derivativeServicePromoteHandler.ServeHTTP(w, r)
+		case DerivativeServiceGetStatsProcedure:
+			derivativeServiceGetStatsHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedDerivativeServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedDerivativeServiceHandler struct{}
+
+func (UnimplementedDerivativeServiceHandler) List(context.Context, *connect.Request[v1.DerivativeServiceListRequest]) (*connect.Response[v1.DerivativeServiceListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.DerivativeService.List is not implemented"))
+}
+
+func (UnimplementedDerivativeServiceHandler) Create(context.Context, *connect.Request[v1.DerivativeServiceCreateRequest]) (*connect.Response[v1.DerivativeServiceCreateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.DerivativeService.Create is not implemented"))
+}
+
+func (UnimplementedDerivativeServiceHandler) BatchTag(context.Context, *connect.Request[v1.DerivativeServiceBatchTagRequest]) (*connect.Response[v1.DerivativeServiceBatchTagResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.DerivativeService.BatchTag is not implemented"))
+}
+
+func (UnimplementedDerivativeServiceHandler) GetLineage(context.Context, *connect.Request[v1.DerivativeServiceGetLineageRequest]) (*connect.Response[v1.DerivativeServiceGetLineageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.DerivativeService.GetLineage is not implemented"))
+}
+
+func (UnimplementedDerivativeServiceHandler) Delete(context.Context, *connect.Request[v1.DerivativeServiceDeleteRequest]) (*connect.Response[v1.DerivativeServiceDeleteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.DerivativeService.Delete is not implemented"))
+}
+
+func (UnimplementedDerivativeServiceHandler) Promote(context.Context, *connect.Request[v1.DerivativeServicePromoteRequest]) (*connect.Response[v1.DerivativeServicePromoteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.DerivativeService.Promote is not implemented"))
+}
+
+func (UnimplementedDerivativeServiceHandler) GetStats(context.Context, *connect.Request[v1.DerivativeServiceGetStatsRequest]) (*connect.Response[v1.DerivativeServiceGetStatsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.DerivativeService.GetStats is not implemented"))
+}
+
+// PackagingServiceClient is a client for the creativanta.production.v1.PackagingService service.
+type PackagingServiceClient interface {
+	Score(context.Context, *connect.Request[v1.PackagingServiceScoreRequest]) (*connect.Response[v1.PackagingServiceScoreResponse], error)
+	ScanCompliance(context.Context, *connect.Request[v1.PackagingServiceScanComplianceRequest]) (*connect.Response[v1.PackagingServiceScanComplianceResponse], error)
+	GetReport(context.Context, *connect.Request[v1.PackagingServiceGetReportRequest]) (*connect.Response[v1.PackagingServiceGetReportResponse], error)
+	BatchScore(context.Context, *connect.Request[v1.PackagingServiceBatchScoreRequest]) (*connect.Response[v1.PackagingServiceBatchScoreResponse], error)
+	OverrideResult(context.Context, *connect.Request[v1.PackagingServiceOverrideResultRequest]) (*connect.Response[v1.PackagingServiceOverrideResultResponse], error)
+	GetHistory(context.Context, *connect.Request[v1.PackagingServiceGetHistoryRequest]) (*connect.Response[v1.PackagingServiceGetHistoryResponse], error)
+	RunQA(context.Context, *connect.Request[v1.PackagingServiceRunQARequest]) (*connect.Response[v1.PackagingServiceRunQAResponse], error)
+}
+
+// NewPackagingServiceClient constructs a client for the creativanta.production.v1.PackagingService
+// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
+// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
+// the connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewPackagingServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) PackagingServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	packagingServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("PackagingService").Methods()
+	return &packagingServiceClient{
+		score: connect.NewClient[v1.PackagingServiceScoreRequest, v1.PackagingServiceScoreResponse](
+			httpClient,
+			baseURL+PackagingServiceScoreProcedure,
+			connect.WithSchema(packagingServiceMethods.ByName("Score")),
+			connect.WithClientOptions(opts...),
+		),
+		scanCompliance: connect.NewClient[v1.PackagingServiceScanComplianceRequest, v1.PackagingServiceScanComplianceResponse](
+			httpClient,
+			baseURL+PackagingServiceScanComplianceProcedure,
+			connect.WithSchema(packagingServiceMethods.ByName("ScanCompliance")),
+			connect.WithClientOptions(opts...),
+		),
+		getReport: connect.NewClient[v1.PackagingServiceGetReportRequest, v1.PackagingServiceGetReportResponse](
+			httpClient,
+			baseURL+PackagingServiceGetReportProcedure,
+			connect.WithSchema(packagingServiceMethods.ByName("GetReport")),
+			connect.WithClientOptions(opts...),
+		),
+		batchScore: connect.NewClient[v1.PackagingServiceBatchScoreRequest, v1.PackagingServiceBatchScoreResponse](
+			httpClient,
+			baseURL+PackagingServiceBatchScoreProcedure,
+			connect.WithSchema(packagingServiceMethods.ByName("BatchScore")),
+			connect.WithClientOptions(opts...),
+		),
+		overrideResult: connect.NewClient[v1.PackagingServiceOverrideResultRequest, v1.PackagingServiceOverrideResultResponse](
+			httpClient,
+			baseURL+PackagingServiceOverrideResultProcedure,
+			connect.WithSchema(packagingServiceMethods.ByName("OverrideResult")),
+			connect.WithClientOptions(opts...),
+		),
+		getHistory: connect.NewClient[v1.PackagingServiceGetHistoryRequest, v1.PackagingServiceGetHistoryResponse](
+			httpClient,
+			baseURL+PackagingServiceGetHistoryProcedure,
+			connect.WithSchema(packagingServiceMethods.ByName("GetHistory")),
+			connect.WithClientOptions(opts...),
+		),
+		runQA: connect.NewClient[v1.PackagingServiceRunQARequest, v1.PackagingServiceRunQAResponse](
+			httpClient,
+			baseURL+PackagingServiceRunQAProcedure,
+			connect.WithSchema(packagingServiceMethods.ByName("RunQA")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// packagingServiceClient implements PackagingServiceClient.
+type packagingServiceClient struct {
+	score          *connect.Client[v1.PackagingServiceScoreRequest, v1.PackagingServiceScoreResponse]
+	scanCompliance *connect.Client[v1.PackagingServiceScanComplianceRequest, v1.PackagingServiceScanComplianceResponse]
+	getReport      *connect.Client[v1.PackagingServiceGetReportRequest, v1.PackagingServiceGetReportResponse]
+	batchScore     *connect.Client[v1.PackagingServiceBatchScoreRequest, v1.PackagingServiceBatchScoreResponse]
+	overrideResult *connect.Client[v1.PackagingServiceOverrideResultRequest, v1.PackagingServiceOverrideResultResponse]
+	getHistory     *connect.Client[v1.PackagingServiceGetHistoryRequest, v1.PackagingServiceGetHistoryResponse]
+	runQA          *connect.Client[v1.PackagingServiceRunQARequest, v1.PackagingServiceRunQAResponse]
+}
+
+// Score calls creativanta.production.v1.PackagingService.Score.
+func (c *packagingServiceClient) Score(ctx context.Context, req *connect.Request[v1.PackagingServiceScoreRequest]) (*connect.Response[v1.PackagingServiceScoreResponse], error) {
+	return c.score.CallUnary(ctx, req)
+}
+
+// ScanCompliance calls creativanta.production.v1.PackagingService.ScanCompliance.
+func (c *packagingServiceClient) ScanCompliance(ctx context.Context, req *connect.Request[v1.PackagingServiceScanComplianceRequest]) (*connect.Response[v1.PackagingServiceScanComplianceResponse], error) {
+	return c.scanCompliance.CallUnary(ctx, req)
+}
+
+// GetReport calls creativanta.production.v1.PackagingService.GetReport.
+func (c *packagingServiceClient) GetReport(ctx context.Context, req *connect.Request[v1.PackagingServiceGetReportRequest]) (*connect.Response[v1.PackagingServiceGetReportResponse], error) {
+	return c.getReport.CallUnary(ctx, req)
+}
+
+// BatchScore calls creativanta.production.v1.PackagingService.BatchScore.
+func (c *packagingServiceClient) BatchScore(ctx context.Context, req *connect.Request[v1.PackagingServiceBatchScoreRequest]) (*connect.Response[v1.PackagingServiceBatchScoreResponse], error) {
+	return c.batchScore.CallUnary(ctx, req)
+}
+
+// OverrideResult calls creativanta.production.v1.PackagingService.OverrideResult.
+func (c *packagingServiceClient) OverrideResult(ctx context.Context, req *connect.Request[v1.PackagingServiceOverrideResultRequest]) (*connect.Response[v1.PackagingServiceOverrideResultResponse], error) {
+	return c.overrideResult.CallUnary(ctx, req)
+}
+
+// GetHistory calls creativanta.production.v1.PackagingService.GetHistory.
+func (c *packagingServiceClient) GetHistory(ctx context.Context, req *connect.Request[v1.PackagingServiceGetHistoryRequest]) (*connect.Response[v1.PackagingServiceGetHistoryResponse], error) {
+	return c.getHistory.CallUnary(ctx, req)
+}
+
+// RunQA calls creativanta.production.v1.PackagingService.RunQA.
+func (c *packagingServiceClient) RunQA(ctx context.Context, req *connect.Request[v1.PackagingServiceRunQARequest]) (*connect.Response[v1.PackagingServiceRunQAResponse], error) {
+	return c.runQA.CallUnary(ctx, req)
+}
+
+// PackagingServiceHandler is an implementation of the creativanta.production.v1.PackagingService
+// service.
+type PackagingServiceHandler interface {
+	Score(context.Context, *connect.Request[v1.PackagingServiceScoreRequest]) (*connect.Response[v1.PackagingServiceScoreResponse], error)
+	ScanCompliance(context.Context, *connect.Request[v1.PackagingServiceScanComplianceRequest]) (*connect.Response[v1.PackagingServiceScanComplianceResponse], error)
+	GetReport(context.Context, *connect.Request[v1.PackagingServiceGetReportRequest]) (*connect.Response[v1.PackagingServiceGetReportResponse], error)
+	BatchScore(context.Context, *connect.Request[v1.PackagingServiceBatchScoreRequest]) (*connect.Response[v1.PackagingServiceBatchScoreResponse], error)
+	OverrideResult(context.Context, *connect.Request[v1.PackagingServiceOverrideResultRequest]) (*connect.Response[v1.PackagingServiceOverrideResultResponse], error)
+	GetHistory(context.Context, *connect.Request[v1.PackagingServiceGetHistoryRequest]) (*connect.Response[v1.PackagingServiceGetHistoryResponse], error)
+	RunQA(context.Context, *connect.Request[v1.PackagingServiceRunQARequest]) (*connect.Response[v1.PackagingServiceRunQAResponse], error)
+}
+
+// NewPackagingServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewPackagingServiceHandler(svc PackagingServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	packagingServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("PackagingService").Methods()
+	packagingServiceScoreHandler := connect.NewUnaryHandler(
+		PackagingServiceScoreProcedure,
+		svc.Score,
+		connect.WithSchema(packagingServiceMethods.ByName("Score")),
+		connect.WithHandlerOptions(opts...),
+	)
+	packagingServiceScanComplianceHandler := connect.NewUnaryHandler(
+		PackagingServiceScanComplianceProcedure,
+		svc.ScanCompliance,
+		connect.WithSchema(packagingServiceMethods.ByName("ScanCompliance")),
+		connect.WithHandlerOptions(opts...),
+	)
+	packagingServiceGetReportHandler := connect.NewUnaryHandler(
+		PackagingServiceGetReportProcedure,
+		svc.GetReport,
+		connect.WithSchema(packagingServiceMethods.ByName("GetReport")),
+		connect.WithHandlerOptions(opts...),
+	)
+	packagingServiceBatchScoreHandler := connect.NewUnaryHandler(
+		PackagingServiceBatchScoreProcedure,
+		svc.BatchScore,
+		connect.WithSchema(packagingServiceMethods.ByName("BatchScore")),
+		connect.WithHandlerOptions(opts...),
+	)
+	packagingServiceOverrideResultHandler := connect.NewUnaryHandler(
+		PackagingServiceOverrideResultProcedure,
+		svc.OverrideResult,
+		connect.WithSchema(packagingServiceMethods.ByName("OverrideResult")),
+		connect.WithHandlerOptions(opts...),
+	)
+	packagingServiceGetHistoryHandler := connect.NewUnaryHandler(
+		PackagingServiceGetHistoryProcedure,
+		svc.GetHistory,
+		connect.WithSchema(packagingServiceMethods.ByName("GetHistory")),
+		connect.WithHandlerOptions(opts...),
+	)
+	packagingServiceRunQAHandler := connect.NewUnaryHandler(
+		PackagingServiceRunQAProcedure,
+		svc.RunQA,
+		connect.WithSchema(packagingServiceMethods.ByName("RunQA")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.production.v1.PackagingService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case PackagingServiceScoreProcedure:
+			packagingServiceScoreHandler.ServeHTTP(w, r)
+		case PackagingServiceScanComplianceProcedure:
+			packagingServiceScanComplianceHandler.ServeHTTP(w, r)
+		case PackagingServiceGetReportProcedure:
+			packagingServiceGetReportHandler.ServeHTTP(w, r)
+		case PackagingServiceBatchScoreProcedure:
+			packagingServiceBatchScoreHandler.ServeHTTP(w, r)
+		case PackagingServiceOverrideResultProcedure:
+			packagingServiceOverrideResultHandler.ServeHTTP(w, r)
+		case PackagingServiceGetHistoryProcedure:
+			packagingServiceGetHistoryHandler.ServeHTTP(w, r)
+		case PackagingServiceRunQAProcedure:
+			packagingServiceRunQAHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedPackagingServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedPackagingServiceHandler struct{}
+
+func (UnimplementedPackagingServiceHandler) Score(context.Context, *connect.Request[v1.PackagingServiceScoreRequest]) (*connect.Response[v1.PackagingServiceScoreResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.PackagingService.Score is not implemented"))
+}
+
+func (UnimplementedPackagingServiceHandler) ScanCompliance(context.Context, *connect.Request[v1.PackagingServiceScanComplianceRequest]) (*connect.Response[v1.PackagingServiceScanComplianceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.PackagingService.ScanCompliance is not implemented"))
+}
+
+func (UnimplementedPackagingServiceHandler) GetReport(context.Context, *connect.Request[v1.PackagingServiceGetReportRequest]) (*connect.Response[v1.PackagingServiceGetReportResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.PackagingService.GetReport is not implemented"))
+}
+
+func (UnimplementedPackagingServiceHandler) BatchScore(context.Context, *connect.Request[v1.PackagingServiceBatchScoreRequest]) (*connect.Response[v1.PackagingServiceBatchScoreResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.PackagingService.BatchScore is not implemented"))
+}
+
+func (UnimplementedPackagingServiceHandler) OverrideResult(context.Context, *connect.Request[v1.PackagingServiceOverrideResultRequest]) (*connect.Response[v1.PackagingServiceOverrideResultResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.PackagingService.OverrideResult is not implemented"))
+}
+
+func (UnimplementedPackagingServiceHandler) GetHistory(context.Context, *connect.Request[v1.PackagingServiceGetHistoryRequest]) (*connect.Response[v1.PackagingServiceGetHistoryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.PackagingService.GetHistory is not implemented"))
+}
+
+func (UnimplementedPackagingServiceHandler) RunQA(context.Context, *connect.Request[v1.PackagingServiceRunQARequest]) (*connect.Response[v1.PackagingServiceRunQAResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.PackagingService.RunQA is not implemented"))
 }

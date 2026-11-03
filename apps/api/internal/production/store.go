@@ -104,6 +104,36 @@ type Store interface {
 	CreateLinkToVideoJob(ctx context.Context, job *LinkToVideoJobRecord) error
 	GetLinkToVideoJob(ctx context.Context, workspaceID, jobID string) (*LinkToVideoJobRecord, error)
 	UpdateLinkToVideoJob(ctx context.Context, job *LinkToVideoJobRecord) error
+
+	// Derivatives (M09, P4-08)
+	SaveDerivative(ctx context.Context, d *DerivativeRecord) error
+	GetDerivative(ctx context.Context, workspaceID, assetID string) (*DerivativeRecord, error)
+	ListDerivatives(ctx context.Context, workspaceID, sourceAssetID, derivativeType, targetChannel, status string, limit, offset int) ([]*DerivativeRecord, int64, error)
+	UpdateDerivativeTags(ctx context.Context, workspaceID, assetID string, addTags, removeTags []string) error
+	DeleteDerivative(ctx context.Context, workspaceID, assetID string) error
+	GetLineageChain(ctx context.Context, workspaceID, assetID string) ([]*DerivativeRecord, error)
+	GetDerivativeChildren(ctx context.Context, workspaceID, parentAssetID string) ([]*DerivativeRecord, error)
+
+	// Packaging QA & Results (M10, P4-08)
+	SaveQAResult(ctx context.Context, r *PackagingQAItem) error
+	GetQAResult(ctx context.Context, workspaceID, assetID, publishItemID string) (*PackagingQAItem, error)
+	ListQAResults(ctx context.Context, workspaceID, assetID string, limit, offset int) ([]*PackagingQAItem, int64, error)
+	UpdateQAResultOverrides(ctx context.Context, workspaceID, qaResultID string, override *OverrideRecord) error
+
+	// Presets & Experiments (M10, P4-08)
+	SavePreset(ctx context.Context, p *UploadPresetRecord) error
+	GetPreset(ctx context.Context, workspaceID, presetID string) (*UploadPresetRecord, error)
+	ListPresets(ctx context.Context, workspaceID, targetPlatform string) ([]*UploadPresetRecord, error)
+
+	SaveExperiment(ctx context.Context, exp *ABExperimentRecord) error
+	GetExperiment(ctx context.Context, workspaceID, experimentID string) (*ABExperimentRecord, error)
+	ListExperiments(ctx context.Context, workspaceID, sourceAssetID string) ([]*ABExperimentRecord, error)
+	UpdateExperiment(ctx context.Context, exp *ABExperimentRecord) error
+
+	// Repurpose Jobs (M09, P4-08)
+	SaveRepurposeJob(ctx context.Context, job *RepurposeJobRecord) error
+	GetRepurposeJob(ctx context.Context, workspaceID, jobID string) (*RepurposeJobRecord, error)
+	UpdateRepurposeJob(ctx context.Context, job *RepurposeJobRecord) error
 }
 
 // MemoryStore provides a thread-safe, tenant-isolated in-memory store for production.
@@ -127,6 +157,11 @@ type MemoryStore struct {
 	consents        map[string]map[string]*ProductionConsentRecord   // workspaceID -> consentID -> ProductionConsentRecord
 	showcaseJobs    map[string]map[string]*ProductShowcaseJobRecord  // workspaceID -> showcaseJobID -> ProductShowcaseJobRecord
 	ltvJobs         map[string]map[string]*LinkToVideoJobRecord      // workspaceID -> ltvJobID -> LinkToVideoJobRecord
+	derivatives     map[string]map[string]*DerivativeRecord          // workspaceID -> assetID -> DerivativeRecord
+	qaResults       map[string]map[string]*PackagingQAItem           // workspaceID -> qaResultID -> PackagingQAItem
+	presets         map[string]map[string]*UploadPresetRecord        // workspaceID -> presetID -> UploadPresetRecord
+	experiments     map[string]map[string]*ABExperimentRecord        // workspaceID -> experimentID -> ABExperimentRecord
+	repurposeJobs   map[string]map[string]*RepurposeJobRecord        // workspaceID -> jobID -> RepurposeJobRecord
 }
 
 // NewMemoryStore constructs a new MemoryStore.
@@ -150,6 +185,11 @@ func NewMemoryStore() *MemoryStore {
 		consents:        make(map[string]map[string]*ProductionConsentRecord),
 		showcaseJobs:    make(map[string]map[string]*ProductShowcaseJobRecord),
 		ltvJobs:         make(map[string]map[string]*LinkToVideoJobRecord),
+		derivatives:     make(map[string]map[string]*DerivativeRecord),
+		qaResults:       make(map[string]map[string]*PackagingQAItem),
+		presets:         make(map[string]map[string]*UploadPresetRecord),
+		experiments:     make(map[string]map[string]*ABExperimentRecord),
+		repurposeJobs:   make(map[string]map[string]*RepurposeJobRecord),
 	}
 	ms.initGlobalSoundLibrary()
 	return ms
