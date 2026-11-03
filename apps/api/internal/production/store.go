@@ -93,6 +93,17 @@ type Store interface {
 	SaveConsentRecord(ctx context.Context, cr *ProductionConsentRecord) error
 	GetConsentRecord(ctx context.Context, workspaceID, consentID string) (*ProductionConsentRecord, error)
 	RevokeConsentRecord(ctx context.Context, workspaceID, consentID string) error
+
+	// Product Showcase (§22.4, EF-01, P4-05)
+	CreateShowcaseJob(ctx context.Context, job *ProductShowcaseJobRecord) error
+	GetShowcaseJob(ctx context.Context, workspaceID, jobID string) (*ProductShowcaseJobRecord, error)
+	ListShowcaseJobs(ctx context.Context, workspaceID, productID, batchID string, limit, offset int) ([]*ProductShowcaseJobRecord, int64, error)
+	UpdateShowcaseJob(ctx context.Context, job *ProductShowcaseJobRecord) error
+
+	// Link-to-Video (§22.5, EF-04, P4-05)
+	CreateLinkToVideoJob(ctx context.Context, job *LinkToVideoJobRecord) error
+	GetLinkToVideoJob(ctx context.Context, workspaceID, jobID string) (*LinkToVideoJobRecord, error)
+	UpdateLinkToVideoJob(ctx context.Context, job *LinkToVideoJobRecord) error
 }
 
 // MemoryStore provides a thread-safe, tenant-isolated in-memory store for production.
@@ -114,6 +125,8 @@ type MemoryStore struct {
 	violations      map[string]map[string]*ContinuityViolationRecord // workspaceID -> violationID -> ContinuityViolationRecord
 	characters      map[string]map[string]*ProductionCharacter       // workspaceID -> characterID -> ProductionCharacter
 	consents        map[string]map[string]*ProductionConsentRecord   // workspaceID -> consentID -> ProductionConsentRecord
+	showcaseJobs    map[string]map[string]*ProductShowcaseJobRecord  // workspaceID -> showcaseJobID -> ProductShowcaseJobRecord
+	ltvJobs         map[string]map[string]*LinkToVideoJobRecord      // workspaceID -> ltvJobID -> LinkToVideoJobRecord
 }
 
 // NewMemoryStore constructs a new MemoryStore.
@@ -135,6 +148,8 @@ func NewMemoryStore() *MemoryStore {
 		violations:      make(map[string]map[string]*ContinuityViolationRecord),
 		characters:      make(map[string]map[string]*ProductionCharacter),
 		consents:        make(map[string]map[string]*ProductionConsentRecord),
+		showcaseJobs:    make(map[string]map[string]*ProductShowcaseJobRecord),
+		ltvJobs:         make(map[string]map[string]*LinkToVideoJobRecord),
 	}
 	ms.initGlobalSoundLibrary()
 	return ms
@@ -1453,5 +1468,139 @@ func (s *MemoryStore) RevokeConsentRecord(ctx context.Context, workspaceID, cons
 			}
 		}
 	}
+	return nil
+}
+
+// Product Showcase Store Implementation (§22.4, EF-01, P4-05)
+
+func (s *MemoryStore) CreateShowcaseJob(ctx context.Context, job *ProductShowcaseJobRecord) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if job.WorkspaceID == "" || job.ShowcaseJobID == "" {
+		return fmt.Errorf("production: workspace_id and showcase_job_id are required")
+	}
+	if s.showcaseJobs[job.WorkspaceID] == nil {
+		s.showcaseJobs[job.WorkspaceID] = make(map[string]*ProductShowcaseJobRecord)
+	}
+	cp := *job
+	if cp.CreatedAt.IsZero() {
+		cp.CreatedAt = time.Now().UTC()
+	}
+	cp.UpdatedAt = time.Now().UTC()
+	s.showcaseJobs[job.WorkspaceID][job.ShowcaseJobID] = &cp
+	return nil
+}
+
+func (s *MemoryStore) GetShowcaseJob(ctx context.Context, workspaceID, jobID string) (*ProductShowcaseJobRecord, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.showcaseJobs[workspaceID]
+	if ws == nil {
+		return nil, ErrShowcaseJobNotFound
+	}
+	job, ok := ws[jobID]
+	if !ok {
+		return nil, ErrShowcaseJobNotFound
+	}
+	cp := *job
+	return &cp, nil
+}
+
+func (s *MemoryStore) ListShowcaseJobs(ctx context.Context, workspaceID, productID, batchID string, limit, offset int) ([]*ProductShowcaseJobRecord, int64, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.showcaseJobs[workspaceID]
+	if ws == nil {
+		return nil, 0, nil
+	}
+
+	var matched []*ProductShowcaseJobRecord
+	for _, j := range ws {
+		if productID != "" && j.ProductID != productID {
+			continue
+		}
+		if batchID != "" && j.BatchID != batchID {
+			continue
+		}
+		cp := *j
+		matched = append(matched, &cp)
+	}
+
+	total := int64(len(matched))
+	if offset > len(matched) {
+		return []*ProductShowcaseJobRecord{}, total, nil
+	}
+	end := offset + limit
+	if limit <= 0 || end > len(matched) {
+		end = len(matched)
+	}
+	return matched[offset:end], total, nil
+}
+
+func (s *MemoryStore) UpdateShowcaseJob(ctx context.Context, job *ProductShowcaseJobRecord) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ws := s.showcaseJobs[job.WorkspaceID]
+	if ws == nil || ws[job.ShowcaseJobID] == nil {
+		return ErrShowcaseJobNotFound
+	}
+	cp := *job
+	cp.UpdatedAt = time.Now().UTC()
+	s.showcaseJobs[job.WorkspaceID][job.ShowcaseJobID] = &cp
+	return nil
+}
+
+// Link-to-Video Store Implementation (§22.5, EF-04, P4-05)
+
+func (s *MemoryStore) CreateLinkToVideoJob(ctx context.Context, job *LinkToVideoJobRecord) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if job.WorkspaceID == "" || job.LtvJobID == "" {
+		return fmt.Errorf("production: workspace_id and ltv_job_id are required")
+	}
+	if s.ltvJobs[job.WorkspaceID] == nil {
+		s.ltvJobs[job.WorkspaceID] = make(map[string]*LinkToVideoJobRecord)
+	}
+	cp := *job
+	if cp.CreatedAt.IsZero() {
+		cp.CreatedAt = time.Now().UTC()
+	}
+	cp.UpdatedAt = time.Now().UTC()
+	s.ltvJobs[job.WorkspaceID][job.LtvJobID] = &cp
+	return nil
+}
+
+func (s *MemoryStore) GetLinkToVideoJob(ctx context.Context, workspaceID, jobID string) (*LinkToVideoJobRecord, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.ltvJobs[workspaceID]
+	if ws == nil {
+		return nil, ErrLinkToVideoJobNotFound
+	}
+	job, ok := ws[jobID]
+	if !ok {
+		return nil, ErrLinkToVideoJobNotFound
+	}
+	cp := *job
+	return &cp, nil
+}
+
+func (s *MemoryStore) UpdateLinkToVideoJob(ctx context.Context, job *LinkToVideoJobRecord) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ws := s.ltvJobs[job.WorkspaceID]
+	if ws == nil || ws[job.LtvJobID] == nil {
+		return ErrLinkToVideoJobNotFound
+	}
+	cp := *job
+	cp.UpdatedAt = time.Now().UTC()
+	s.ltvJobs[job.WorkspaceID][job.LtvJobID] = &cp
 	return nil
 }

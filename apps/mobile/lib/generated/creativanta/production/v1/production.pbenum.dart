@@ -354,5 +354,201 @@ class TranscriptAlignmentStatus extends $pb.ProtobufEnum {
   const TranscriptAlignmentStatus._(super.value, super.name);
 }
 
+class ImageMotionStyle extends $pb.ProtobufEnum {
+  static const ImageMotionStyle IMAGE_MOTION_STYLE_UNSPECIFIED =
+      ImageMotionStyle._(
+          0, _omitEnumNames ? '' : 'IMAGE_MOTION_STYLE_UNSPECIFIED');
+  static const ImageMotionStyle IMAGE_MOTION_STYLE_CINEMATIC_PAN =
+      ImageMotionStyle._(
+          1, _omitEnumNames ? '' : 'IMAGE_MOTION_STYLE_CINEMATIC_PAN');
+  static const ImageMotionStyle IMAGE_MOTION_STYLE_PRODUCT_ROTATE =
+      ImageMotionStyle._(
+          2, _omitEnumNames ? '' : 'IMAGE_MOTION_STYLE_PRODUCT_ROTATE');
+  static const ImageMotionStyle IMAGE_MOTION_STYLE_PARALLAX_3D =
+      ImageMotionStyle._(
+          3, _omitEnumNames ? '' : 'IMAGE_MOTION_STYLE_PARALLAX_3D');
+  static const ImageMotionStyle IMAGE_MOTION_STYLE_SUBTLE_MOVEMENT =
+      ImageMotionStyle._(
+          4, _omitEnumNames ? '' : 'IMAGE_MOTION_STYLE_SUBTLE_MOVEMENT');
+  static const ImageMotionStyle IMAGE_MOTION_STYLE_ZOOM_IN =
+      ImageMotionStyle._(5, _omitEnumNames ? '' : 'IMAGE_MOTION_STYLE_ZOOM_IN');
+  static const ImageMotionStyle IMAGE_MOTION_STYLE_CUSTOM_PROMPT =
+      ImageMotionStyle._(
+          6, _omitEnumNames ? '' : 'IMAGE_MOTION_STYLE_CUSTOM_PROMPT');
+  static const ImageMotionStyle IMAGE_MOTION_STYLE_KEN_BURNS =
+      ImageMotionStyle._(
+          7, _omitEnumNames ? '' : 'IMAGE_MOTION_STYLE_KEN_BURNS');
+  static const ImageMotionStyle IMAGE_MOTION_STYLE_MORPH =
+      ImageMotionStyle._(8, _omitEnumNames ? '' : 'IMAGE_MOTION_STYLE_MORPH');
+  static const ImageMotionStyle IMAGE_MOTION_STYLE_RANDOM =
+      ImageMotionStyle._(9, _omitEnumNames ? '' : 'IMAGE_MOTION_STYLE_RANDOM');
+
+  static const $core.List<ImageMotionStyle> values = <ImageMotionStyle>[
+    IMAGE_MOTION_STYLE_UNSPECIFIED,
+    IMAGE_MOTION_STYLE_CINEMATIC_PAN,
+    IMAGE_MOTION_STYLE_PRODUCT_ROTATE,
+    IMAGE_MOTION_STYLE_PARALLAX_3D,
+    IMAGE_MOTION_STYLE_SUBTLE_MOVEMENT,
+    IMAGE_MOTION_STYLE_ZOOM_IN,
+    IMAGE_MOTION_STYLE_CUSTOM_PROMPT,
+    IMAGE_MOTION_STYLE_KEN_BURNS,
+    IMAGE_MOTION_STYLE_MORPH,
+    IMAGE_MOTION_STYLE_RANDOM,
+  ];
+
+  static final $core.List<ImageMotionStyle?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 9);
+  static ImageMotionStyle? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const ImageMotionStyle._(super.value, super.name);
+}
+
+class ThumbnailTemplateStyle extends $pb.ProtobufEnum {
+  static const ThumbnailTemplateStyle THUMBNAIL_TEMPLATE_STYLE_UNSPECIFIED =
+      ThumbnailTemplateStyle._(
+          0, _omitEnumNames ? '' : 'THUMBNAIL_TEMPLATE_STYLE_UNSPECIFIED');
+  static const ThumbnailTemplateStyle THUMBNAIL_TEMPLATE_STYLE_EMOTION =
+      ThumbnailTemplateStyle._(
+          1, _omitEnumNames ? '' : 'THUMBNAIL_TEMPLATE_STYLE_EMOTION');
+  static const ThumbnailTemplateStyle THUMBNAIL_TEMPLATE_STYLE_YOUTUBE =
+      ThumbnailTemplateStyle._(
+          2, _omitEnumNames ? '' : 'THUMBNAIL_TEMPLATE_STYLE_YOUTUBE');
+  static const ThumbnailTemplateStyle THUMBNAIL_TEMPLATE_STYLE_SPLIT =
+      ThumbnailTemplateStyle._(
+          3, _omitEnumNames ? '' : 'THUMBNAIL_TEMPLATE_STYLE_SPLIT');
+  static const ThumbnailTemplateStyle THUMBNAIL_TEMPLATE_STYLE_CLICKBAIT =
+      ThumbnailTemplateStyle._(
+          4, _omitEnumNames ? '' : 'THUMBNAIL_TEMPLATE_STYLE_CLICKBAIT');
+  static const ThumbnailTemplateStyle THUMBNAIL_TEMPLATE_STYLE_CLEAN =
+      ThumbnailTemplateStyle._(
+          5, _omitEnumNames ? '' : 'THUMBNAIL_TEMPLATE_STYLE_CLEAN');
+
+  static const $core.List<ThumbnailTemplateStyle> values =
+      <ThumbnailTemplateStyle>[
+    THUMBNAIL_TEMPLATE_STYLE_UNSPECIFIED,
+    THUMBNAIL_TEMPLATE_STYLE_EMOTION,
+    THUMBNAIL_TEMPLATE_STYLE_YOUTUBE,
+    THUMBNAIL_TEMPLATE_STYLE_SPLIT,
+    THUMBNAIL_TEMPLATE_STYLE_CLICKBAIT,
+    THUMBNAIL_TEMPLATE_STYLE_CLEAN,
+  ];
+
+  static final $core.List<ThumbnailTemplateStyle?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 5);
+  static ThumbnailTemplateStyle? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const ThumbnailTemplateStyle._(super.value, super.name);
+}
+
+class ShowcaseStyle extends $pb.ProtobufEnum {
+  static const ShowcaseStyle SHOWCASE_STYLE_UNSPECIFIED =
+      ShowcaseStyle._(0, _omitEnumNames ? '' : 'SHOWCASE_STYLE_UNSPECIFIED');
+  static const ShowcaseStyle SHOWCASE_STYLE_360_SPIN =
+      ShowcaseStyle._(1, _omitEnumNames ? '' : 'SHOWCASE_STYLE_360_SPIN');
+  static const ShowcaseStyle SHOWCASE_STYLE_TABLETOP_DEMO =
+      ShowcaseStyle._(2, _omitEnumNames ? '' : 'SHOWCASE_STYLE_TABLETOP_DEMO');
+  static const ShowcaseStyle SHOWCASE_STYLE_FLIP_REVEAL =
+      ShowcaseStyle._(3, _omitEnumNames ? '' : 'SHOWCASE_STYLE_FLIP_REVEAL');
+  static const ShowcaseStyle SHOWCASE_STYLE_VIRTUAL_TRY_ON =
+      ShowcaseStyle._(4, _omitEnumNames ? '' : 'SHOWCASE_STYLE_VIRTUAL_TRY_ON');
+  static const ShowcaseStyle SHOWCASE_STYLE_LIFESTYLE_CONTEXT = ShowcaseStyle._(
+      5, _omitEnumNames ? '' : 'SHOWCASE_STYLE_LIFESTYLE_CONTEXT');
+  static const ShowcaseStyle SHOWCASE_STYLE_UNBOXING_SIMULATION =
+      ShowcaseStyle._(
+          6, _omitEnumNames ? '' : 'SHOWCASE_STYLE_UNBOXING_SIMULATION');
+  static const ShowcaseStyle SHOWCASE_STYLE_BEFORE_AFTER =
+      ShowcaseStyle._(7, _omitEnumNames ? '' : 'SHOWCASE_STYLE_BEFORE_AFTER');
+  static const ShowcaseStyle SHOWCASE_STYLE_REVIEW_STYLE =
+      ShowcaseStyle._(8, _omitEnumNames ? '' : 'SHOWCASE_STYLE_REVIEW_STYLE');
+
+  static const $core.List<ShowcaseStyle> values = <ShowcaseStyle>[
+    SHOWCASE_STYLE_UNSPECIFIED,
+    SHOWCASE_STYLE_360_SPIN,
+    SHOWCASE_STYLE_TABLETOP_DEMO,
+    SHOWCASE_STYLE_FLIP_REVEAL,
+    SHOWCASE_STYLE_VIRTUAL_TRY_ON,
+    SHOWCASE_STYLE_LIFESTYLE_CONTEXT,
+    SHOWCASE_STYLE_UNBOXING_SIMULATION,
+    SHOWCASE_STYLE_BEFORE_AFTER,
+    SHOWCASE_STYLE_REVIEW_STYLE,
+  ];
+
+  static final $core.List<ShowcaseStyle?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 8);
+  static ShowcaseStyle? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const ShowcaseStyle._(super.value, super.name);
+}
+
+class ScriptTemplate extends $pb.ProtobufEnum {
+  static const ScriptTemplate SCRIPT_TEMPLATE_UNSPECIFIED =
+      ScriptTemplate._(0, _omitEnumNames ? '' : 'SCRIPT_TEMPLATE_UNSPECIFIED');
+  static const ScriptTemplate SCRIPT_TEMPLATE_PROBLEM_SOLUTION =
+      ScriptTemplate._(
+          1, _omitEnumNames ? '' : 'SCRIPT_TEMPLATE_PROBLEM_SOLUTION');
+  static const ScriptTemplate SCRIPT_TEMPLATE_LISTICLE_REVIEW =
+      ScriptTemplate._(
+          2, _omitEnumNames ? '' : 'SCRIPT_TEMPLATE_LISTICLE_REVIEW');
+  static const ScriptTemplate SCRIPT_TEMPLATE_TESTIMONIAL =
+      ScriptTemplate._(3, _omitEnumNames ? '' : 'SCRIPT_TEMPLATE_TESTIMONIAL');
+  static const ScriptTemplate SCRIPT_TEMPLATE_FLASH_SALE =
+      ScriptTemplate._(4, _omitEnumNames ? '' : 'SCRIPT_TEMPLATE_FLASH_SALE');
+  static const ScriptTemplate SCRIPT_TEMPLATE_COMPARISON =
+      ScriptTemplate._(5, _omitEnumNames ? '' : 'SCRIPT_TEMPLATE_COMPARISON');
+
+  static const $core.List<ScriptTemplate> values = <ScriptTemplate>[
+    SCRIPT_TEMPLATE_UNSPECIFIED,
+    SCRIPT_TEMPLATE_PROBLEM_SOLUTION,
+    SCRIPT_TEMPLATE_LISTICLE_REVIEW,
+    SCRIPT_TEMPLATE_TESTIMONIAL,
+    SCRIPT_TEMPLATE_FLASH_SALE,
+    SCRIPT_TEMPLATE_COMPARISON,
+  ];
+
+  static final $core.List<ScriptTemplate?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 5);
+  static ScriptTemplate? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const ScriptTemplate._(super.value, super.name);
+}
+
+class LinkPlatform extends $pb.ProtobufEnum {
+  static const LinkPlatform LINK_PLATFORM_UNSPECIFIED =
+      LinkPlatform._(0, _omitEnumNames ? '' : 'LINK_PLATFORM_UNSPECIFIED');
+  static const LinkPlatform LINK_PLATFORM_SHOPEE =
+      LinkPlatform._(1, _omitEnumNames ? '' : 'LINK_PLATFORM_SHOPEE');
+  static const LinkPlatform LINK_PLATFORM_LAZADA =
+      LinkPlatform._(2, _omitEnumNames ? '' : 'LINK_PLATFORM_LAZADA');
+  static const LinkPlatform LINK_PLATFORM_TIKTOK_SHOP =
+      LinkPlatform._(3, _omitEnumNames ? '' : 'LINK_PLATFORM_TIKTOK_SHOP');
+  static const LinkPlatform LINK_PLATFORM_AMAZON =
+      LinkPlatform._(4, _omitEnumNames ? '' : 'LINK_PLATFORM_AMAZON');
+  static const LinkPlatform LINK_PLATFORM_SHOPIFY =
+      LinkPlatform._(5, _omitEnumNames ? '' : 'LINK_PLATFORM_SHOPIFY');
+  static const LinkPlatform LINK_PLATFORM_GENERIC =
+      LinkPlatform._(6, _omitEnumNames ? '' : 'LINK_PLATFORM_GENERIC');
+
+  static const $core.List<LinkPlatform> values = <LinkPlatform>[
+    LINK_PLATFORM_UNSPECIFIED,
+    LINK_PLATFORM_SHOPEE,
+    LINK_PLATFORM_LAZADA,
+    LINK_PLATFORM_TIKTOK_SHOP,
+    LINK_PLATFORM_AMAZON,
+    LINK_PLATFORM_SHOPIFY,
+    LINK_PLATFORM_GENERIC,
+  ];
+
+  static final $core.List<LinkPlatform?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 6);
+  static LinkPlatform? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const LinkPlatform._(super.value, super.name);
+}
+
 const $core.bool _omitEnumNames =
     $core.bool.fromEnvironment('protobuf.omit_enum_names');

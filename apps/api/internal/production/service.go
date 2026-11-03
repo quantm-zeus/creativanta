@@ -30,24 +30,26 @@ type ServiceConfig struct {
 
 // Service implements StudioService and AssetService ConnectRPC handlers.
 type Service struct {
-	mu          sync.RWMutex
-	store       Store
-	router      *PipelineRouter
-	budgetCalc  *BudgetCalculator
-	postProd    *PostProductionExecutor
-	asrEngine   *ASREngine
-	cutEngine   *CutEngine
-	enhancer    *EnhancerEngine
-	balances    map[string]tenantdb.ExactDecimal // workspaceID -> available credits
-	mockRefunds map[string]tenantdb.ExactDecimal // jobID -> refunded credits
-	clipFactory *ClipFactoryEngine
-	events      []DomainEvent
-	VoiceClone  *VoiceCloneManager
-	SoundStudio *SoundStudioManager
-	Translation *TranslationManager
-	StylePack   *StylePackManager
-	AIService   *AIOpsManager
-	DriftQA     *DriftQAManager
+	mu              sync.RWMutex
+	store           Store
+	router          *PipelineRouter
+	budgetCalc      *BudgetCalculator
+	postProd        *PostProductionExecutor
+	asrEngine       *ASREngine
+	cutEngine       *CutEngine
+	enhancer        *EnhancerEngine
+	balances        map[string]tenantdb.ExactDecimal // workspaceID -> available credits
+	mockRefunds     map[string]tenantdb.ExactDecimal // jobID -> refunded credits
+	clipFactory     *ClipFactoryEngine
+	events          []DomainEvent
+	VoiceClone      *VoiceCloneManager
+	SoundStudio     *SoundStudioManager
+	Translation     *TranslationManager
+	StylePack       *StylePackManager
+	AIService       *AIOpsManager
+	DriftQA         *DriftQAManager
+	ProductShowcase *ProductShowcaseManager
+	LinkToVideo     *LinkToVideoManager
 }
 
 var _ productionv1connect.StudioServiceHandler = (*Service)(nil)
@@ -55,6 +57,8 @@ var _ productionv1connect.AssetServiceHandler = (*Service)(nil)
 var _ productionv1connect.RemixServiceHandler = (*RemixServiceServer)(nil)
 var _ productionv1connect.VideoEditJobServiceHandler = (*VideoEditJobServiceServer)(nil)
 var _ productionv1connect.ClipFactoryServiceHandler = (*ClipFactoryServiceServer)(nil)
+var _ productionv1connect.ProductShowcaseServiceHandler = (*ProductShowcaseManager)(nil)
+var _ productionv1connect.LinkToVideoServiceHandler = (*LinkToVideoManager)(nil)
 
 // RemixServiceServer implements RemixService ConnectRPC handler.
 type RemixServiceServer struct {
@@ -79,6 +83,16 @@ func (s *Service) VideoEditJob() productionv1connect.VideoEditJobServiceHandler 
 // ClipFactory returns the ClipFactoryServiceHandler.
 func (s *Service) ClipFactory() productionv1connect.ClipFactoryServiceHandler {
 	return &ClipFactoryServiceServer{svc: s}
+}
+
+// ProductShowcaseService returns the ProductShowcaseServiceHandler.
+func (s *Service) ProductShowcaseService() productionv1connect.ProductShowcaseServiceHandler {
+	return s.ProductShowcase
+}
+
+// LinkToVideoService returns the LinkToVideoServiceHandler.
+func (s *Service) LinkToVideoService() productionv1connect.LinkToVideoServiceHandler {
+	return s.LinkToVideo
 }
 
 // NewService creates a new Production service.
@@ -123,6 +137,8 @@ func NewService(cfg ServiceConfig) *Service {
 	svc.StylePack = NewStylePackManager(st, svc)
 	svc.AIService = NewAIOpsManager(st, svc)
 	svc.DriftQA = NewDriftQAManager(st, svc)
+	svc.ProductShowcase = NewProductShowcaseManager(st, svc)
+	svc.LinkToVideo = NewLinkToVideoManager(st, svc)
 	return svc
 }
 

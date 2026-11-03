@@ -299,6 +299,7 @@ message GenerateRequest {
   string confirmed_credits = 14; // Must match quoted credits
   bool dry_run = 15; // Set true for budget preview & partial batch validation
   repeated BatchGenerationItem batch_items = 16; // For batch generation
+  ImageToVideoConfig image_to_video_config = 17; // For EF-02 image-to-video conversion
 }
 
 message GenerateResponse {
@@ -1503,9 +1504,351 @@ service StylePackService {
   rpc Delete(StylePackServiceDeleteRequest) returns (StylePackServiceDeleteResponse);
 }
 
-// AIService manages AI style analysis, preview generation and quoting (api_endpoint_map.md §13, §14).
+// AIService manages AI style analysis, preview generation, thumbnails and quoting (api_endpoint_map.md §13, §14, §15.1).
 service AIService {
   rpc GenerateCharacterPreview(GenerateCharacterPreviewRequest) returns (GenerateCharacterPreviewResponse);
   rpc QuoteCharacterPreview(QuoteCharacterPreviewRequest) returns (QuoteCharacterPreviewResponse);
   rpc AnalyzeStyle(AnalyzeStyleRequest) returns (AnalyzeStyleResponse);
+  rpc GenerateThumbnails(GenerateThumbnailsRequest) returns (GenerateThumbnailsResponse);
+}
+
+// ============================================================================
+// Image-to-Video Messages (EF-02, Mode 6)
+// ============================================================================
+
+enum ImageMotionStyle {
+  IMAGE_MOTION_STYLE_UNSPECIFIED = 0;
+  IMAGE_MOTION_STYLE_CINEMATIC_PAN = 1;
+  IMAGE_MOTION_STYLE_PRODUCT_ROTATE = 2;
+  IMAGE_MOTION_STYLE_PARALLAX_3D = 3;
+  IMAGE_MOTION_STYLE_SUBTLE_MOVEMENT = 4;
+  IMAGE_MOTION_STYLE_ZOOM_IN = 5;
+  IMAGE_MOTION_STYLE_CUSTOM_PROMPT = 6;
+  IMAGE_MOTION_STYLE_KEN_BURNS = 7;
+  IMAGE_MOTION_STYLE_MORPH = 8;
+  IMAGE_MOTION_STYLE_RANDOM = 9;
+}
+
+message PerImageMotionSetting {
+  string image_url = 1;
+  int32 duration_seconds = 2;
+  ImageMotionStyle motion_style = 3;
+  string focal_point = 4;
+}
+
+message ImageToVideoConfig {
+  repeated string image_urls = 1;
+  repeated PerImageMotionSetting per_image_settings = 2;
+  ImageMotionStyle default_motion_style = 3;
+  int32 duration_seconds = 4;
+  bool loop_friendly = 5;
+  bool auto_music_sync = 6;
+  string transition_type = 7;
+  double transition_duration = 8;
+  string background_music = 9;
+  int32 music_volume = 10;
+  string voice_over_character = 11;
+  string voice_over_script = 12;
+  string aspect_ratio = 13;
+  string quality_tier = 14;
+}
+
+// ============================================================================
+// AI Thumbnail Studio Messages (EF-03, Mode 10)
+// ============================================================================
+
+enum ThumbnailTemplateStyle {
+  THUMBNAIL_TEMPLATE_STYLE_UNSPECIFIED = 0;
+  THUMBNAIL_TEMPLATE_STYLE_EMOTION = 1;
+  THUMBNAIL_TEMPLATE_STYLE_YOUTUBE = 2;
+  THUMBNAIL_TEMPLATE_STYLE_SPLIT = 3;
+  THUMBNAIL_TEMPLATE_STYLE_CLICKBAIT = 4;
+  THUMBNAIL_TEMPLATE_STYLE_CLEAN = 5;
+}
+
+message CTRFactorBreakdown {
+  double face_expression_score = 1; // 30% weight
+  double text_contrast_score = 2;   // 25% weight
+  double color_vibrancy_score = 3;  // 20% weight
+  double composition_score = 4;     // 15% weight
+  double trending_match_score = 5;  // 10% weight
+  double total_predicted_ctr = 6;   // 0.0 - 100.0%
+  string level = 7;                 // high (>70), medium (40-70), low (<40)
+}
+
+message TextOverlayConfig {
+  string headline = 1;
+  string font_family = 2;
+  int32 font_size = 3;
+  string font_color = 4;
+  string position = 5; // top, center, bottom
+  bool outline = 6;
+  bool shadow = 7;
+}
+
+message ThumbnailVariant {
+  string variant_id = 1;
+  string image_url = 2;
+  ThumbnailTemplateStyle style = 3;
+  CTRFactorBreakdown ctr_breakdown = 4;
+  TextOverlayConfig text_overlay = 5;
+  bool has_face_detected = 6;
+}
+
+message GenerateThumbnailsRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string source_image_url = 2;
+  string source_video_asset_id = 3;
+  int64 video_frame_timestamp_ms = 4;
+  string prompt = 5;
+  ThumbnailTemplateStyle template_style = 6;
+  int32 variant_count = 7;
+  TextOverlayConfig text_overlay = 8;
+  string quote_id = 9;
+  string confirmed_credits = 10;
+}
+
+message GenerateThumbnailsResponse {
+  repeated ThumbnailVariant variants = 1;
+  string credits_deducted = 2;
+  repeated string warnings = 3;
+}
+
+// ============================================================================
+// Product Showcase Service & Messages (EF-01, Mode 5)
+// ============================================================================
+
+enum ShowcaseStyle {
+  SHOWCASE_STYLE_UNSPECIFIED = 0;
+  SHOWCASE_STYLE_360_SPIN = 1;
+  SHOWCASE_STYLE_TABLETOP_DEMO = 2;
+  SHOWCASE_STYLE_FLIP_REVEAL = 3;
+  SHOWCASE_STYLE_VIRTUAL_TRY_ON = 4;
+  SHOWCASE_STYLE_LIFESTYLE_CONTEXT = 5;
+  SHOWCASE_STYLE_UNBOXING_SIMULATION = 6;
+  SHOWCASE_STYLE_BEFORE_AFTER = 7;
+  SHOWCASE_STYLE_REVIEW_STYLE = 8;
+}
+
+message MissingProductAttribute {
+  string attribute = 1;
+  string level = 2; // warning, blocking
+  string message = 3;
+  string actionable_recovery = 4;
+}
+
+message ShowcaseCustomization {
+  string background = 1;
+  int32 duration = 2;
+  string music = 3;
+  string voice = 4;
+  string headline = 5;
+  string subtitle = 6;
+  string cta = 7;
+  string aspect_ratio = 8;
+  string pacing = 9;
+  string color_grade = 10;
+  bool remove_background = 11;
+}
+
+message ProductShowcaseJob {
+  string showcase_job_id = 1;
+  string workspace_id = 2;
+  string video_edit_job_id = 3;
+  string product_id = 4;
+  ShowcaseStyle style = 5;
+  ShowcaseCustomization customization = 6;
+  string batch_id = 7;
+  string output_asset_id = 8;
+  string character_id = 9;
+  string status = 10;
+  string credits_used = 11;
+  repeated MissingProductAttribute attribute_explanations = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+}
+
+message ProductShowcaseServiceCreateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string product_id = 2;
+  ShowcaseStyle style = 3;
+  ShowcaseCustomization customization = 4;
+  string character_id = 5;
+  repeated string manual_image_urls = 6;
+  string manual_description = 7;
+  string quote_id = 8;
+  string confirmed_credits = 9;
+}
+
+message ProductShowcaseServiceCreateResponse {
+  ProductShowcaseJob job = 1;
+  repeated MissingProductAttribute warnings = 2;
+  string estimated_credits = 3;
+}
+
+message ProductShowcaseBatchItem {
+  string product_id = 1;
+  ShowcaseStyle style = 2;
+  ShowcaseCustomization customization = 3;
+  string character_id = 4;
+  repeated string manual_image_urls = 5;
+}
+
+message ProductShowcaseServiceCreateBatchRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  repeated ProductShowcaseBatchItem items = 2;
+  bool dry_run = 3;
+  string quote_id = 4;
+  string confirmed_credits = 5;
+}
+
+message ProductShowcaseBatchItemResult {
+  int32 item_index = 1;
+  string product_id = 2;
+  bool valid = 3;
+  string rejection_reason = 4;
+  repeated MissingProductAttribute attribute_explanations = 5;
+  string credits_required = 6;
+  string showcase_job_id = 7;
+}
+
+message ProductShowcaseServiceCreateBatchResponse {
+  string batch_id = 1;
+  bool is_dry_run = 2;
+  int32 total_items = 3;
+  int32 valid_items = 4;
+  int32 invalid_items = 5;
+  string total_credits_quoted = 6;
+  repeated ProductShowcaseBatchItemResult results = 7;
+}
+
+message ProductShowcaseServiceGetRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string showcase_job_id = 2;
+}
+
+message ProductShowcaseServiceGetResponse {
+  ProductShowcaseJob job = 1;
+}
+
+message ProductShowcaseServiceListRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string product_id = 2;
+  string batch_id = 3;
+  int32 limit = 4;
+  string page_token = 5;
+}
+
+message ProductShowcaseServiceListResponse {
+  repeated ProductShowcaseJob jobs = 1;
+  string next_page_token = 2;
+}
+
+// ProductShowcaseService manages AI product showcase video generation (api_endpoint_map.md §7.4).
+service ProductShowcaseService {
+  rpc Create(ProductShowcaseServiceCreateRequest) returns (ProductShowcaseServiceCreateResponse);
+  rpc CreateBatch(ProductShowcaseServiceCreateBatchRequest) returns (ProductShowcaseServiceCreateBatchResponse);
+  rpc Get(ProductShowcaseServiceGetRequest) returns (ProductShowcaseServiceGetResponse);
+  rpc List(ProductShowcaseServiceListRequest) returns (ProductShowcaseServiceListResponse);
+}
+
+// ============================================================================
+// Link-to-Video Service & Messages (EF-04, Mode 7)
+// ============================================================================
+
+enum ScriptTemplate {
+  SCRIPT_TEMPLATE_UNSPECIFIED = 0;
+  SCRIPT_TEMPLATE_PROBLEM_SOLUTION = 1;
+  SCRIPT_TEMPLATE_LISTICLE_REVIEW = 2;
+  SCRIPT_TEMPLATE_TESTIMONIAL = 3;
+  SCRIPT_TEMPLATE_FLASH_SALE = 4;
+  SCRIPT_TEMPLATE_COMPARISON = 5;
+}
+
+enum LinkPlatform {
+  LINK_PLATFORM_UNSPECIFIED = 0;
+  LINK_PLATFORM_SHOPEE = 1;
+  LINK_PLATFORM_LAZADA = 2;
+  LINK_PLATFORM_TIKTOK_SHOP = 3;
+  LINK_PLATFORM_AMAZON = 4;
+  LINK_PLATFORM_SHOPIFY = 5;
+  LINK_PLATFORM_GENERIC = 6;
+}
+
+message ScrapedProductData {
+  string name = 1;
+  string price = 2;
+  string currency = 3;
+  repeated string images = 4;
+  string description = 5;
+  repeated string bullet_points = 6;
+  repeated string reviews = 7;
+  LinkPlatform platform = 8;
+  repeated MissingProductAttribute missing_attributes = 9;
+  string summary = 10;
+}
+
+message LinkToVideoJob {
+  string ltv_job_id = 1;
+  string workspace_id = 2;
+  string video_edit_job_id = 3;
+  string source_url = 4;
+  LinkPlatform platform_detected = 5;
+  ScrapedProductData scraped_data = 6;
+  ScriptTemplate script_template = 7;
+  string generated_script = 8;
+  string output_asset_id = 9;
+  string character_id = 10;
+  string status = 11;
+  string credits_used = 12;
+  string error_code = 13;
+  string error_message = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+}
+
+message LinkToVideoServiceScrapeRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string url = 2;
+}
+
+message LinkToVideoServiceScrapeResponse {
+  bool success = 1;
+  ScrapedProductData data = 2;
+  string error_code = 3;
+  string error_message = 4;
+}
+
+message LinkToVideoServiceGenerateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string source_url = 2;
+  ScriptTemplate script_template = 3;
+  string custom_script = 4;
+  ScrapedProductData override_data = 5;
+  string character_id = 6;
+  string visual_style = 7;
+  int32 duration_seconds = 8;
+  string quote_id = 9;
+  string confirmed_credits = 10;
+}
+
+message LinkToVideoServiceGenerateResponse {
+  LinkToVideoJob job = 1;
+  string credits_deducted = 2;
+}
+
+message LinkToVideoServiceGetRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string ltv_job_id = 2;
+}
+
+message LinkToVideoServiceGetResponse {
+  LinkToVideoJob job = 1;
+}
+
+// LinkToVideoService manages scraping and video ad generation from product links (api_endpoint_map.md §7.5).
+service LinkToVideoService {
+  rpc Scrape(LinkToVideoServiceScrapeRequest) returns (LinkToVideoServiceScrapeResponse);
+  rpc Generate(LinkToVideoServiceGenerateRequest) returns (LinkToVideoServiceGenerateResponse);
+  rpc Get(LinkToVideoServiceGetRequest) returns (LinkToVideoServiceGetResponse);
 }

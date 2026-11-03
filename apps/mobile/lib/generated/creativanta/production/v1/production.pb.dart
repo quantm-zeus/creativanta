@@ -2346,6 +2346,7 @@ class GenerateRequest extends $pb.GeneratedMessage {
     $core.String? confirmedCredits,
     $core.bool? dryRun,
     $core.Iterable<BatchGenerationItem>? batchItems,
+    ImageToVideoConfig? imageToVideoConfig,
   }) {
     final result = GenerateRequest._();
     if (context != null) result.context = context;
@@ -2365,6 +2366,8 @@ class GenerateRequest extends $pb.GeneratedMessage {
     if (confirmedCredits != null) result.confirmedCredits = confirmedCredits;
     if (dryRun != null) result.dryRun = dryRun;
     if (batchItems != null) result.batchItems.addAll(batchItems);
+    if (imageToVideoConfig != null)
+      result.imageToVideoConfig = imageToVideoConfig;
     return result;
   }
 
@@ -2403,6 +2406,8 @@ class GenerateRequest extends $pb.GeneratedMessage {
     ..aOB(15, _omitFieldNames ? '' : 'dryRun')
     ..pPM<BatchGenerationItem>(16, _omitFieldNames ? '' : 'batchItems',
         subBuilder: BatchGenerationItem.$_createMessage)
+    ..aOM<ImageToVideoConfig>(17, _omitFieldNames ? '' : 'imageToVideoConfig',
+        subBuilder: ImageToVideoConfig.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2562,6 +2567,17 @@ class GenerateRequest extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(16)
   $pb.PbList<BatchGenerationItem> get batchItems => $_getList(15);
+
+  @$pb.TagNumber(17)
+  ImageToVideoConfig get imageToVideoConfig => $_getN(16);
+  @$pb.TagNumber(17)
+  set imageToVideoConfig(ImageToVideoConfig value) => $_setField(17, value);
+  @$pb.TagNumber(17)
+  $core.bool hasImageToVideoConfig() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearImageToVideoConfig() => $_clearField(17);
+  @$pb.TagNumber(17)
+  ImageToVideoConfig ensureImageToVideoConfig() => $_ensure(16);
 }
 
 class GenerateResponse extends $pb.GeneratedMessage {
@@ -16283,6 +16299,3515 @@ class OverrideDriftViolationResponse extends $pb.GeneratedMessage {
   $core.bool hasNewQualityState() => $_has(2);
   @$pb.TagNumber(3)
   void clearNewQualityState() => $_clearField(3);
+}
+
+class PerImageMotionSetting extends $pb.GeneratedMessage {
+  factory PerImageMotionSetting({
+    $core.String? imageUrl,
+    $core.int? durationSeconds,
+    ImageMotionStyle? motionStyle,
+    $core.String? focalPoint,
+  }) {
+    final result = PerImageMotionSetting._();
+    if (imageUrl != null) result.imageUrl = imageUrl;
+    if (durationSeconds != null) result.durationSeconds = durationSeconds;
+    if (motionStyle != null) result.motionStyle = motionStyle;
+    if (focalPoint != null) result.focalPoint = focalPoint;
+    return result;
+  }
+
+  PerImageMotionSetting._();
+
+  factory PerImageMotionSetting.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerImageMotionSetting()..mergeFromBuffer(data, registry);
+  factory PerImageMotionSetting.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerImageMotionSetting()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PerImageMotionSetting',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: PerImageMotionSetting.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'imageUrl')
+    ..aI(2, _omitFieldNames ? '' : 'durationSeconds')
+    ..aE<ImageMotionStyle>(3, _omitFieldNames ? '' : 'motionStyle',
+        enumValues: ImageMotionStyle.values)
+    ..aOS(4, _omitFieldNames ? '' : 'focalPoint')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerImageMotionSetting clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerImageMotionSetting copyWith(
+          void Function(PerImageMotionSetting) updates) =>
+      super.copyWith((message) => updates(message as PerImageMotionSetting))
+          as PerImageMotionSetting;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PerImageMotionSetting() / PerImageMotionSetting.new instead')
+  static PerImageMotionSetting create() => PerImageMotionSetting._();
+  static $pb.GeneratedMessage $_createMessage() => PerImageMotionSetting._();
+  @$core.override
+  PerImageMotionSetting createEmptyInstance() => PerImageMotionSetting._();
+  @$core.pragma('dart2js:noInline')
+  static PerImageMotionSetting getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PerImageMotionSetting>(
+          PerImageMotionSetting.$_createMessage);
+  static PerImageMotionSetting? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get imageUrl => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set imageUrl($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasImageUrl() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearImageUrl() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get durationSeconds => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set durationSeconds($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasDurationSeconds() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearDurationSeconds() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  ImageMotionStyle get motionStyle => $_getN(2);
+  @$pb.TagNumber(3)
+  set motionStyle(ImageMotionStyle value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasMotionStyle() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearMotionStyle() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get focalPoint => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set focalPoint($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasFocalPoint() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearFocalPoint() => $_clearField(4);
+}
+
+class ImageToVideoConfig extends $pb.GeneratedMessage {
+  factory ImageToVideoConfig({
+    $core.Iterable<$core.String>? imageUrls,
+    $core.Iterable<PerImageMotionSetting>? perImageSettings,
+    ImageMotionStyle? defaultMotionStyle,
+    $core.int? durationSeconds,
+    $core.bool? loopFriendly,
+    $core.bool? autoMusicSync,
+    $core.String? transitionType,
+    $core.double? transitionDuration,
+    $core.String? backgroundMusic,
+    $core.int? musicVolume,
+    $core.String? voiceOverCharacter,
+    $core.String? voiceOverScript,
+    $core.String? aspectRatio,
+    $core.String? qualityTier,
+  }) {
+    final result = ImageToVideoConfig._();
+    if (imageUrls != null) result.imageUrls.addAll(imageUrls);
+    if (perImageSettings != null)
+      result.perImageSettings.addAll(perImageSettings);
+    if (defaultMotionStyle != null)
+      result.defaultMotionStyle = defaultMotionStyle;
+    if (durationSeconds != null) result.durationSeconds = durationSeconds;
+    if (loopFriendly != null) result.loopFriendly = loopFriendly;
+    if (autoMusicSync != null) result.autoMusicSync = autoMusicSync;
+    if (transitionType != null) result.transitionType = transitionType;
+    if (transitionDuration != null)
+      result.transitionDuration = transitionDuration;
+    if (backgroundMusic != null) result.backgroundMusic = backgroundMusic;
+    if (musicVolume != null) result.musicVolume = musicVolume;
+    if (voiceOverCharacter != null)
+      result.voiceOverCharacter = voiceOverCharacter;
+    if (voiceOverScript != null) result.voiceOverScript = voiceOverScript;
+    if (aspectRatio != null) result.aspectRatio = aspectRatio;
+    if (qualityTier != null) result.qualityTier = qualityTier;
+    return result;
+  }
+
+  ImageToVideoConfig._();
+
+  factory ImageToVideoConfig.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ImageToVideoConfig()..mergeFromBuffer(data, registry);
+  factory ImageToVideoConfig.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ImageToVideoConfig()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ImageToVideoConfig',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ImageToVideoConfig.$_createMessage)
+    ..pPS(1, _omitFieldNames ? '' : 'imageUrls')
+    ..pPM<PerImageMotionSetting>(2, _omitFieldNames ? '' : 'perImageSettings',
+        subBuilder: PerImageMotionSetting.$_createMessage)
+    ..aE<ImageMotionStyle>(3, _omitFieldNames ? '' : 'defaultMotionStyle',
+        enumValues: ImageMotionStyle.values)
+    ..aI(4, _omitFieldNames ? '' : 'durationSeconds')
+    ..aOB(5, _omitFieldNames ? '' : 'loopFriendly')
+    ..aOB(6, _omitFieldNames ? '' : 'autoMusicSync')
+    ..aOS(7, _omitFieldNames ? '' : 'transitionType')
+    ..aD(8, _omitFieldNames ? '' : 'transitionDuration')
+    ..aOS(9, _omitFieldNames ? '' : 'backgroundMusic')
+    ..aI(10, _omitFieldNames ? '' : 'musicVolume')
+    ..aOS(11, _omitFieldNames ? '' : 'voiceOverCharacter')
+    ..aOS(12, _omitFieldNames ? '' : 'voiceOverScript')
+    ..aOS(13, _omitFieldNames ? '' : 'aspectRatio')
+    ..aOS(14, _omitFieldNames ? '' : 'qualityTier')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ImageToVideoConfig clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ImageToVideoConfig copyWith(void Function(ImageToVideoConfig) updates) =>
+      super.copyWith((message) => updates(message as ImageToVideoConfig))
+          as ImageToVideoConfig;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ImageToVideoConfig() / ImageToVideoConfig.new instead')
+  static ImageToVideoConfig create() => ImageToVideoConfig._();
+  static $pb.GeneratedMessage $_createMessage() => ImageToVideoConfig._();
+  @$core.override
+  ImageToVideoConfig createEmptyInstance() => ImageToVideoConfig._();
+  @$core.pragma('dart2js:noInline')
+  static ImageToVideoConfig getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ImageToVideoConfig>(
+          ImageToVideoConfig.$_createMessage);
+  static ImageToVideoConfig? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<$core.String> get imageUrls => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<PerImageMotionSetting> get perImageSettings => $_getList(1);
+
+  @$pb.TagNumber(3)
+  ImageMotionStyle get defaultMotionStyle => $_getN(2);
+  @$pb.TagNumber(3)
+  set defaultMotionStyle(ImageMotionStyle value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDefaultMotionStyle() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDefaultMotionStyle() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get durationSeconds => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set durationSeconds($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasDurationSeconds() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDurationSeconds() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get loopFriendly => $_getBF(4);
+  @$pb.TagNumber(5)
+  set loopFriendly($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLoopFriendly() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLoopFriendly() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.bool get autoMusicSync => $_getBF(5);
+  @$pb.TagNumber(6)
+  set autoMusicSync($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasAutoMusicSync() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAutoMusicSync() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get transitionType => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set transitionType($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasTransitionType() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearTransitionType() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.double get transitionDuration => $_getN(7);
+  @$pb.TagNumber(8)
+  set transitionDuration($core.double value) => $_setDouble(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasTransitionDuration() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearTransitionDuration() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get backgroundMusic => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set backgroundMusic($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasBackgroundMusic() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearBackgroundMusic() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.int get musicVolume => $_getIZ(9);
+  @$pb.TagNumber(10)
+  set musicVolume($core.int value) => $_setSignedInt32(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasMusicVolume() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearMusicVolume() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get voiceOverCharacter => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set voiceOverCharacter($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasVoiceOverCharacter() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearVoiceOverCharacter() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get voiceOverScript => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set voiceOverScript($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasVoiceOverScript() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearVoiceOverScript() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.String get aspectRatio => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set aspectRatio($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasAspectRatio() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearAspectRatio() => $_clearField(13);
+
+  @$pb.TagNumber(14)
+  $core.String get qualityTier => $_getSZ(13);
+  @$pb.TagNumber(14)
+  set qualityTier($core.String value) => $_setString(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasQualityTier() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearQualityTier() => $_clearField(14);
+}
+
+class CTRFactorBreakdown extends $pb.GeneratedMessage {
+  factory CTRFactorBreakdown({
+    $core.double? faceExpressionScore,
+    $core.double? textContrastScore,
+    $core.double? colorVibrancyScore,
+    $core.double? compositionScore,
+    $core.double? trendingMatchScore,
+    $core.double? totalPredictedCtr,
+    $core.String? level,
+  }) {
+    final result = CTRFactorBreakdown._();
+    if (faceExpressionScore != null)
+      result.faceExpressionScore = faceExpressionScore;
+    if (textContrastScore != null) result.textContrastScore = textContrastScore;
+    if (colorVibrancyScore != null)
+      result.colorVibrancyScore = colorVibrancyScore;
+    if (compositionScore != null) result.compositionScore = compositionScore;
+    if (trendingMatchScore != null)
+      result.trendingMatchScore = trendingMatchScore;
+    if (totalPredictedCtr != null) result.totalPredictedCtr = totalPredictedCtr;
+    if (level != null) result.level = level;
+    return result;
+  }
+
+  CTRFactorBreakdown._();
+
+  factory CTRFactorBreakdown.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CTRFactorBreakdown()..mergeFromBuffer(data, registry);
+  factory CTRFactorBreakdown.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CTRFactorBreakdown()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CTRFactorBreakdown',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: CTRFactorBreakdown.$_createMessage)
+    ..aD(1, _omitFieldNames ? '' : 'faceExpressionScore')
+    ..aD(2, _omitFieldNames ? '' : 'textContrastScore')
+    ..aD(3, _omitFieldNames ? '' : 'colorVibrancyScore')
+    ..aD(4, _omitFieldNames ? '' : 'compositionScore')
+    ..aD(5, _omitFieldNames ? '' : 'trendingMatchScore')
+    ..aD(6, _omitFieldNames ? '' : 'totalPredictedCtr')
+    ..aOS(7, _omitFieldNames ? '' : 'level')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CTRFactorBreakdown clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CTRFactorBreakdown copyWith(void Function(CTRFactorBreakdown) updates) =>
+      super.copyWith((message) => updates(message as CTRFactorBreakdown))
+          as CTRFactorBreakdown;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use CTRFactorBreakdown() / CTRFactorBreakdown.new instead')
+  static CTRFactorBreakdown create() => CTRFactorBreakdown._();
+  static $pb.GeneratedMessage $_createMessage() => CTRFactorBreakdown._();
+  @$core.override
+  CTRFactorBreakdown createEmptyInstance() => CTRFactorBreakdown._();
+  @$core.pragma('dart2js:noInline')
+  static CTRFactorBreakdown getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CTRFactorBreakdown>(
+          CTRFactorBreakdown.$_createMessage);
+  static CTRFactorBreakdown? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.double get faceExpressionScore => $_getN(0);
+  @$pb.TagNumber(1)
+  set faceExpressionScore($core.double value) => $_setDouble(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasFaceExpressionScore() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearFaceExpressionScore() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.double get textContrastScore => $_getN(1);
+  @$pb.TagNumber(2)
+  set textContrastScore($core.double value) => $_setDouble(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTextContrastScore() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTextContrastScore() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get colorVibrancyScore => $_getN(2);
+  @$pb.TagNumber(3)
+  set colorVibrancyScore($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasColorVibrancyScore() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearColorVibrancyScore() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.double get compositionScore => $_getN(3);
+  @$pb.TagNumber(4)
+  set compositionScore($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCompositionScore() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCompositionScore() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.double get trendingMatchScore => $_getN(4);
+  @$pb.TagNumber(5)
+  set trendingMatchScore($core.double value) => $_setDouble(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasTrendingMatchScore() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearTrendingMatchScore() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.double get totalPredictedCtr => $_getN(5);
+  @$pb.TagNumber(6)
+  set totalPredictedCtr($core.double value) => $_setDouble(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasTotalPredictedCtr() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTotalPredictedCtr() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get level => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set level($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasLevel() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearLevel() => $_clearField(7);
+}
+
+class TextOverlayConfig extends $pb.GeneratedMessage {
+  factory TextOverlayConfig({
+    $core.String? headline,
+    $core.String? fontFamily,
+    $core.int? fontSize,
+    $core.String? fontColor,
+    $core.String? position,
+    $core.bool? outline,
+    $core.bool? shadow,
+  }) {
+    final result = TextOverlayConfig._();
+    if (headline != null) result.headline = headline;
+    if (fontFamily != null) result.fontFamily = fontFamily;
+    if (fontSize != null) result.fontSize = fontSize;
+    if (fontColor != null) result.fontColor = fontColor;
+    if (position != null) result.position = position;
+    if (outline != null) result.outline = outline;
+    if (shadow != null) result.shadow = shadow;
+    return result;
+  }
+
+  TextOverlayConfig._();
+
+  factory TextOverlayConfig.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TextOverlayConfig()..mergeFromBuffer(data, registry);
+  factory TextOverlayConfig.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TextOverlayConfig()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TextOverlayConfig',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: TextOverlayConfig.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'headline')
+    ..aOS(2, _omitFieldNames ? '' : 'fontFamily')
+    ..aI(3, _omitFieldNames ? '' : 'fontSize')
+    ..aOS(4, _omitFieldNames ? '' : 'fontColor')
+    ..aOS(5, _omitFieldNames ? '' : 'position')
+    ..aOB(6, _omitFieldNames ? '' : 'outline')
+    ..aOB(7, _omitFieldNames ? '' : 'shadow')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TextOverlayConfig clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TextOverlayConfig copyWith(void Function(TextOverlayConfig) updates) =>
+      super.copyWith((message) => updates(message as TextOverlayConfig))
+          as TextOverlayConfig;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use TextOverlayConfig() / TextOverlayConfig.new instead')
+  static TextOverlayConfig create() => TextOverlayConfig._();
+  static $pb.GeneratedMessage $_createMessage() => TextOverlayConfig._();
+  @$core.override
+  TextOverlayConfig createEmptyInstance() => TextOverlayConfig._();
+  @$core.pragma('dart2js:noInline')
+  static TextOverlayConfig getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<TextOverlayConfig>(
+          TextOverlayConfig.$_createMessage);
+  static TextOverlayConfig? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get headline => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set headline($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasHeadline() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearHeadline() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get fontFamily => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set fontFamily($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFontFamily() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFontFamily() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get fontSize => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set fontSize($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasFontSize() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearFontSize() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get fontColor => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set fontColor($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasFontColor() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearFontColor() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get position => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set position($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPosition() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPosition() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.bool get outline => $_getBF(5);
+  @$pb.TagNumber(6)
+  set outline($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasOutline() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearOutline() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.bool get shadow => $_getBF(6);
+  @$pb.TagNumber(7)
+  set shadow($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasShadow() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearShadow() => $_clearField(7);
+}
+
+class ThumbnailVariant extends $pb.GeneratedMessage {
+  factory ThumbnailVariant({
+    $core.String? variantId,
+    $core.String? imageUrl,
+    ThumbnailTemplateStyle? style,
+    CTRFactorBreakdown? ctrBreakdown,
+    TextOverlayConfig? textOverlay,
+    $core.bool? hasFaceDetected,
+  }) {
+    final result = ThumbnailVariant._();
+    if (variantId != null) result.variantId = variantId;
+    if (imageUrl != null) result.imageUrl = imageUrl;
+    if (style != null) result.style = style;
+    if (ctrBreakdown != null) result.ctrBreakdown = ctrBreakdown;
+    if (textOverlay != null) result.textOverlay = textOverlay;
+    if (hasFaceDetected != null) result.hasFaceDetected = hasFaceDetected;
+    return result;
+  }
+
+  ThumbnailVariant._();
+
+  factory ThumbnailVariant.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ThumbnailVariant()..mergeFromBuffer(data, registry);
+  factory ThumbnailVariant.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ThumbnailVariant()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ThumbnailVariant',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ThumbnailVariant.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'variantId')
+    ..aOS(2, _omitFieldNames ? '' : 'imageUrl')
+    ..aE<ThumbnailTemplateStyle>(3, _omitFieldNames ? '' : 'style',
+        enumValues: ThumbnailTemplateStyle.values)
+    ..aOM<CTRFactorBreakdown>(4, _omitFieldNames ? '' : 'ctrBreakdown',
+        subBuilder: CTRFactorBreakdown.$_createMessage)
+    ..aOM<TextOverlayConfig>(5, _omitFieldNames ? '' : 'textOverlay',
+        subBuilder: TextOverlayConfig.$_createMessage)
+    ..aOB(6, _omitFieldNames ? '' : 'hasFaceDetected')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ThumbnailVariant clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ThumbnailVariant copyWith(void Function(ThumbnailVariant) updates) =>
+      super.copyWith((message) => updates(message as ThumbnailVariant))
+          as ThumbnailVariant;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ThumbnailVariant() / ThumbnailVariant.new instead')
+  static ThumbnailVariant create() => ThumbnailVariant._();
+  static $pb.GeneratedMessage $_createMessage() => ThumbnailVariant._();
+  @$core.override
+  ThumbnailVariant createEmptyInstance() => ThumbnailVariant._();
+  @$core.pragma('dart2js:noInline')
+  static ThumbnailVariant getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ThumbnailVariant>(
+          ThumbnailVariant.$_createMessage);
+  static ThumbnailVariant? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get variantId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set variantId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasVariantId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearVariantId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get imageUrl => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set imageUrl($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasImageUrl() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearImageUrl() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  ThumbnailTemplateStyle get style => $_getN(2);
+  @$pb.TagNumber(3)
+  set style(ThumbnailTemplateStyle value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasStyle() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearStyle() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  CTRFactorBreakdown get ctrBreakdown => $_getN(3);
+  @$pb.TagNumber(4)
+  set ctrBreakdown(CTRFactorBreakdown value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCtrBreakdown() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCtrBreakdown() => $_clearField(4);
+  @$pb.TagNumber(4)
+  CTRFactorBreakdown ensureCtrBreakdown() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  TextOverlayConfig get textOverlay => $_getN(4);
+  @$pb.TagNumber(5)
+  set textOverlay(TextOverlayConfig value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasTextOverlay() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearTextOverlay() => $_clearField(5);
+  @$pb.TagNumber(5)
+  TextOverlayConfig ensureTextOverlay() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  $core.bool get hasFaceDetected => $_getBF(5);
+  @$pb.TagNumber(6)
+  set hasFaceDetected($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasHasFaceDetected() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearHasFaceDetected() => $_clearField(6);
+}
+
+class GenerateThumbnailsRequest extends $pb.GeneratedMessage {
+  factory GenerateThumbnailsRequest({
+    $2.CommandContext? context,
+    $core.String? sourceImageUrl,
+    $core.String? sourceVideoAssetId,
+    $fixnum.Int64? videoFrameTimestampMs,
+    $core.String? prompt,
+    ThumbnailTemplateStyle? templateStyle,
+    $core.int? variantCount,
+    TextOverlayConfig? textOverlay,
+    $core.String? quoteId,
+    $core.String? confirmedCredits,
+  }) {
+    final result = GenerateThumbnailsRequest._();
+    if (context != null) result.context = context;
+    if (sourceImageUrl != null) result.sourceImageUrl = sourceImageUrl;
+    if (sourceVideoAssetId != null)
+      result.sourceVideoAssetId = sourceVideoAssetId;
+    if (videoFrameTimestampMs != null)
+      result.videoFrameTimestampMs = videoFrameTimestampMs;
+    if (prompt != null) result.prompt = prompt;
+    if (templateStyle != null) result.templateStyle = templateStyle;
+    if (variantCount != null) result.variantCount = variantCount;
+    if (textOverlay != null) result.textOverlay = textOverlay;
+    if (quoteId != null) result.quoteId = quoteId;
+    if (confirmedCredits != null) result.confirmedCredits = confirmedCredits;
+    return result;
+  }
+
+  GenerateThumbnailsRequest._();
+
+  factory GenerateThumbnailsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GenerateThumbnailsRequest()..mergeFromBuffer(data, registry);
+  factory GenerateThumbnailsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GenerateThumbnailsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GenerateThumbnailsRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: GenerateThumbnailsRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'sourceImageUrl')
+    ..aOS(3, _omitFieldNames ? '' : 'sourceVideoAssetId')
+    ..aInt64(4, _omitFieldNames ? '' : 'videoFrameTimestampMs')
+    ..aOS(5, _omitFieldNames ? '' : 'prompt')
+    ..aE<ThumbnailTemplateStyle>(6, _omitFieldNames ? '' : 'templateStyle',
+        enumValues: ThumbnailTemplateStyle.values)
+    ..aI(7, _omitFieldNames ? '' : 'variantCount')
+    ..aOM<TextOverlayConfig>(8, _omitFieldNames ? '' : 'textOverlay',
+        subBuilder: TextOverlayConfig.$_createMessage)
+    ..aOS(9, _omitFieldNames ? '' : 'quoteId')
+    ..aOS(10, _omitFieldNames ? '' : 'confirmedCredits')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GenerateThumbnailsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GenerateThumbnailsRequest copyWith(
+          void Function(GenerateThumbnailsRequest) updates) =>
+      super.copyWith((message) => updates(message as GenerateThumbnailsRequest))
+          as GenerateThumbnailsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GenerateThumbnailsRequest() / GenerateThumbnailsRequest.new instead')
+  static GenerateThumbnailsRequest create() => GenerateThumbnailsRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      GenerateThumbnailsRequest._();
+  @$core.override
+  GenerateThumbnailsRequest createEmptyInstance() =>
+      GenerateThumbnailsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GenerateThumbnailsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GenerateThumbnailsRequest>(
+          GenerateThumbnailsRequest.$_createMessage);
+  static GenerateThumbnailsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get sourceImageUrl => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set sourceImageUrl($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSourceImageUrl() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSourceImageUrl() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get sourceVideoAssetId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set sourceVideoAssetId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSourceVideoAssetId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSourceVideoAssetId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get videoFrameTimestampMs => $_getI64(3);
+  @$pb.TagNumber(4)
+  set videoFrameTimestampMs($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasVideoFrameTimestampMs() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearVideoFrameTimestampMs() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get prompt => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set prompt($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPrompt() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPrompt() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  ThumbnailTemplateStyle get templateStyle => $_getN(5);
+  @$pb.TagNumber(6)
+  set templateStyle(ThumbnailTemplateStyle value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasTemplateStyle() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTemplateStyle() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.int get variantCount => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set variantCount($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasVariantCount() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearVariantCount() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  TextOverlayConfig get textOverlay => $_getN(7);
+  @$pb.TagNumber(8)
+  set textOverlay(TextOverlayConfig value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasTextOverlay() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearTextOverlay() => $_clearField(8);
+  @$pb.TagNumber(8)
+  TextOverlayConfig ensureTextOverlay() => $_ensure(7);
+
+  @$pb.TagNumber(9)
+  $core.String get quoteId => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set quoteId($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasQuoteId() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearQuoteId() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get confirmedCredits => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set confirmedCredits($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasConfirmedCredits() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearConfirmedCredits() => $_clearField(10);
+}
+
+class GenerateThumbnailsResponse extends $pb.GeneratedMessage {
+  factory GenerateThumbnailsResponse({
+    $core.Iterable<ThumbnailVariant>? variants,
+    $core.String? creditsDeducted,
+    $core.Iterable<$core.String>? warnings,
+  }) {
+    final result = GenerateThumbnailsResponse._();
+    if (variants != null) result.variants.addAll(variants);
+    if (creditsDeducted != null) result.creditsDeducted = creditsDeducted;
+    if (warnings != null) result.warnings.addAll(warnings);
+    return result;
+  }
+
+  GenerateThumbnailsResponse._();
+
+  factory GenerateThumbnailsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GenerateThumbnailsResponse()..mergeFromBuffer(data, registry);
+  factory GenerateThumbnailsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GenerateThumbnailsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GenerateThumbnailsResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: GenerateThumbnailsResponse.$_createMessage)
+    ..pPM<ThumbnailVariant>(1, _omitFieldNames ? '' : 'variants',
+        subBuilder: ThumbnailVariant.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'creditsDeducted')
+    ..pPS(3, _omitFieldNames ? '' : 'warnings')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GenerateThumbnailsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GenerateThumbnailsResponse copyWith(
+          void Function(GenerateThumbnailsResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as GenerateThumbnailsResponse))
+          as GenerateThumbnailsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GenerateThumbnailsResponse() / GenerateThumbnailsResponse.new instead')
+  static GenerateThumbnailsResponse create() => GenerateThumbnailsResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      GenerateThumbnailsResponse._();
+  @$core.override
+  GenerateThumbnailsResponse createEmptyInstance() =>
+      GenerateThumbnailsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GenerateThumbnailsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GenerateThumbnailsResponse>(
+          GenerateThumbnailsResponse.$_createMessage);
+  static GenerateThumbnailsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<ThumbnailVariant> get variants => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $core.String get creditsDeducted => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set creditsDeducted($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCreditsDeducted() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCreditsDeducted() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<$core.String> get warnings => $_getList(2);
+}
+
+class MissingProductAttribute extends $pb.GeneratedMessage {
+  factory MissingProductAttribute({
+    $core.String? attribute,
+    $core.String? level,
+    $core.String? message,
+    $core.String? actionableRecovery,
+  }) {
+    final result = MissingProductAttribute._();
+    if (attribute != null) result.attribute = attribute;
+    if (level != null) result.level = level;
+    if (message != null) result.message = message;
+    if (actionableRecovery != null)
+      result.actionableRecovery = actionableRecovery;
+    return result;
+  }
+
+  MissingProductAttribute._();
+
+  factory MissingProductAttribute.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      MissingProductAttribute()..mergeFromBuffer(data, registry);
+  factory MissingProductAttribute.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      MissingProductAttribute()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'MissingProductAttribute',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: MissingProductAttribute.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'attribute')
+    ..aOS(2, _omitFieldNames ? '' : 'level')
+    ..aOS(3, _omitFieldNames ? '' : 'message')
+    ..aOS(4, _omitFieldNames ? '' : 'actionableRecovery')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  MissingProductAttribute clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  MissingProductAttribute copyWith(
+          void Function(MissingProductAttribute) updates) =>
+      super.copyWith((message) => updates(message as MissingProductAttribute))
+          as MissingProductAttribute;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use MissingProductAttribute() / MissingProductAttribute.new instead')
+  static MissingProductAttribute create() => MissingProductAttribute._();
+  static $pb.GeneratedMessage $_createMessage() => MissingProductAttribute._();
+  @$core.override
+  MissingProductAttribute createEmptyInstance() => MissingProductAttribute._();
+  @$core.pragma('dart2js:noInline')
+  static MissingProductAttribute getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<MissingProductAttribute>(
+          MissingProductAttribute.$_createMessage);
+  static MissingProductAttribute? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get attribute => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set attribute($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAttribute() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAttribute() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get level => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set level($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasLevel() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLevel() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get message => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set message($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasMessage() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearMessage() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get actionableRecovery => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set actionableRecovery($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasActionableRecovery() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearActionableRecovery() => $_clearField(4);
+}
+
+class ShowcaseCustomization extends $pb.GeneratedMessage {
+  factory ShowcaseCustomization({
+    $core.String? background,
+    $core.int? duration,
+    $core.String? music,
+    $core.String? voice,
+    $core.String? headline,
+    $core.String? subtitle,
+    $core.String? cta,
+    $core.String? aspectRatio,
+    $core.String? pacing,
+    $core.String? colorGrade,
+    $core.bool? removeBackground,
+  }) {
+    final result = ShowcaseCustomization._();
+    if (background != null) result.background = background;
+    if (duration != null) result.duration = duration;
+    if (music != null) result.music = music;
+    if (voice != null) result.voice = voice;
+    if (headline != null) result.headline = headline;
+    if (subtitle != null) result.subtitle = subtitle;
+    if (cta != null) result.cta = cta;
+    if (aspectRatio != null) result.aspectRatio = aspectRatio;
+    if (pacing != null) result.pacing = pacing;
+    if (colorGrade != null) result.colorGrade = colorGrade;
+    if (removeBackground != null) result.removeBackground = removeBackground;
+    return result;
+  }
+
+  ShowcaseCustomization._();
+
+  factory ShowcaseCustomization.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ShowcaseCustomization()..mergeFromBuffer(data, registry);
+  factory ShowcaseCustomization.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ShowcaseCustomization()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ShowcaseCustomization',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ShowcaseCustomization.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'background')
+    ..aI(2, _omitFieldNames ? '' : 'duration')
+    ..aOS(3, _omitFieldNames ? '' : 'music')
+    ..aOS(4, _omitFieldNames ? '' : 'voice')
+    ..aOS(5, _omitFieldNames ? '' : 'headline')
+    ..aOS(6, _omitFieldNames ? '' : 'subtitle')
+    ..aOS(7, _omitFieldNames ? '' : 'cta')
+    ..aOS(8, _omitFieldNames ? '' : 'aspectRatio')
+    ..aOS(9, _omitFieldNames ? '' : 'pacing')
+    ..aOS(10, _omitFieldNames ? '' : 'colorGrade')
+    ..aOB(11, _omitFieldNames ? '' : 'removeBackground')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ShowcaseCustomization clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ShowcaseCustomization copyWith(
+          void Function(ShowcaseCustomization) updates) =>
+      super.copyWith((message) => updates(message as ShowcaseCustomization))
+          as ShowcaseCustomization;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ShowcaseCustomization() / ShowcaseCustomization.new instead')
+  static ShowcaseCustomization create() => ShowcaseCustomization._();
+  static $pb.GeneratedMessage $_createMessage() => ShowcaseCustomization._();
+  @$core.override
+  ShowcaseCustomization createEmptyInstance() => ShowcaseCustomization._();
+  @$core.pragma('dart2js:noInline')
+  static ShowcaseCustomization getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ShowcaseCustomization>(
+          ShowcaseCustomization.$_createMessage);
+  static ShowcaseCustomization? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get background => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set background($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasBackground() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearBackground() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get duration => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set duration($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasDuration() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearDuration() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get music => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set music($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasMusic() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearMusic() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get voice => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set voice($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasVoice() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearVoice() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get headline => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set headline($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasHeadline() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearHeadline() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get subtitle => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set subtitle($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSubtitle() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSubtitle() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get cta => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set cta($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasCta() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearCta() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get aspectRatio => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set aspectRatio($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasAspectRatio() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearAspectRatio() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get pacing => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set pacing($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasPacing() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearPacing() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get colorGrade => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set colorGrade($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasColorGrade() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearColorGrade() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.bool get removeBackground => $_getBF(10);
+  @$pb.TagNumber(11)
+  set removeBackground($core.bool value) => $_setBool(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasRemoveBackground() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearRemoveBackground() => $_clearField(11);
+}
+
+class ProductShowcaseJob extends $pb.GeneratedMessage {
+  factory ProductShowcaseJob({
+    $core.String? showcaseJobId,
+    $core.String? workspaceId,
+    $core.String? videoEditJobId,
+    $core.String? productId,
+    ShowcaseStyle? style,
+    ShowcaseCustomization? customization,
+    $core.String? batchId,
+    $core.String? outputAssetId,
+    $core.String? characterId,
+    $core.String? status,
+    $core.String? creditsUsed,
+    $core.Iterable<MissingProductAttribute>? attributeExplanations,
+    $1.Timestamp? createdAt,
+    $1.Timestamp? updatedAt,
+  }) {
+    final result = ProductShowcaseJob._();
+    if (showcaseJobId != null) result.showcaseJobId = showcaseJobId;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (videoEditJobId != null) result.videoEditJobId = videoEditJobId;
+    if (productId != null) result.productId = productId;
+    if (style != null) result.style = style;
+    if (customization != null) result.customization = customization;
+    if (batchId != null) result.batchId = batchId;
+    if (outputAssetId != null) result.outputAssetId = outputAssetId;
+    if (characterId != null) result.characterId = characterId;
+    if (status != null) result.status = status;
+    if (creditsUsed != null) result.creditsUsed = creditsUsed;
+    if (attributeExplanations != null)
+      result.attributeExplanations.addAll(attributeExplanations);
+    if (createdAt != null) result.createdAt = createdAt;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    return result;
+  }
+
+  ProductShowcaseJob._();
+
+  factory ProductShowcaseJob.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseJob()..mergeFromBuffer(data, registry);
+  factory ProductShowcaseJob.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseJob()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProductShowcaseJob',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ProductShowcaseJob.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'showcaseJobId')
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'videoEditJobId')
+    ..aOS(4, _omitFieldNames ? '' : 'productId')
+    ..aE<ShowcaseStyle>(5, _omitFieldNames ? '' : 'style',
+        enumValues: ShowcaseStyle.values)
+    ..aOM<ShowcaseCustomization>(6, _omitFieldNames ? '' : 'customization',
+        subBuilder: ShowcaseCustomization.$_createMessage)
+    ..aOS(7, _omitFieldNames ? '' : 'batchId')
+    ..aOS(8, _omitFieldNames ? '' : 'outputAssetId')
+    ..aOS(9, _omitFieldNames ? '' : 'characterId')
+    ..aOS(10, _omitFieldNames ? '' : 'status')
+    ..aOS(11, _omitFieldNames ? '' : 'creditsUsed')
+    ..pPM<MissingProductAttribute>(
+        12, _omitFieldNames ? '' : 'attributeExplanations',
+        subBuilder: MissingProductAttribute.$_createMessage)
+    ..aOM<$1.Timestamp>(13, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOM<$1.Timestamp>(14, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseJob clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseJob copyWith(void Function(ProductShowcaseJob) updates) =>
+      super.copyWith((message) => updates(message as ProductShowcaseJob))
+          as ProductShowcaseJob;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ProductShowcaseJob() / ProductShowcaseJob.new instead')
+  static ProductShowcaseJob create() => ProductShowcaseJob._();
+  static $pb.GeneratedMessage $_createMessage() => ProductShowcaseJob._();
+  @$core.override
+  ProductShowcaseJob createEmptyInstance() => ProductShowcaseJob._();
+  @$core.pragma('dart2js:noInline')
+  static ProductShowcaseJob getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ProductShowcaseJob>(
+          ProductShowcaseJob.$_createMessage);
+  static ProductShowcaseJob? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get showcaseJobId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set showcaseJobId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasShowcaseJobId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearShowcaseJobId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get videoEditJobId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set videoEditJobId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasVideoEditJobId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearVideoEditJobId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get productId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set productId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasProductId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearProductId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  ShowcaseStyle get style => $_getN(4);
+  @$pb.TagNumber(5)
+  set style(ShowcaseStyle value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasStyle() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearStyle() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  ShowcaseCustomization get customization => $_getN(5);
+  @$pb.TagNumber(6)
+  set customization(ShowcaseCustomization value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasCustomization() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearCustomization() => $_clearField(6);
+  @$pb.TagNumber(6)
+  ShowcaseCustomization ensureCustomization() => $_ensure(5);
+
+  @$pb.TagNumber(7)
+  $core.String get batchId => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set batchId($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasBatchId() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearBatchId() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get outputAssetId => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set outputAssetId($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasOutputAssetId() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearOutputAssetId() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get characterId => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set characterId($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasCharacterId() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearCharacterId() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get status => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set status($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasStatus() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearStatus() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get creditsUsed => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set creditsUsed($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasCreditsUsed() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearCreditsUsed() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $pb.PbList<MissingProductAttribute> get attributeExplanations =>
+      $_getList(11);
+
+  @$pb.TagNumber(13)
+  $1.Timestamp get createdAt => $_getN(12);
+  @$pb.TagNumber(13)
+  set createdAt($1.Timestamp value) => $_setField(13, value);
+  @$pb.TagNumber(13)
+  $core.bool hasCreatedAt() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearCreatedAt() => $_clearField(13);
+  @$pb.TagNumber(13)
+  $1.Timestamp ensureCreatedAt() => $_ensure(12);
+
+  @$pb.TagNumber(14)
+  $1.Timestamp get updatedAt => $_getN(13);
+  @$pb.TagNumber(14)
+  set updatedAt($1.Timestamp value) => $_setField(14, value);
+  @$pb.TagNumber(14)
+  $core.bool hasUpdatedAt() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearUpdatedAt() => $_clearField(14);
+  @$pb.TagNumber(14)
+  $1.Timestamp ensureUpdatedAt() => $_ensure(13);
+}
+
+class ProductShowcaseServiceCreateRequest extends $pb.GeneratedMessage {
+  factory ProductShowcaseServiceCreateRequest({
+    $2.CommandContext? context,
+    $core.String? productId,
+    ShowcaseStyle? style,
+    ShowcaseCustomization? customization,
+    $core.String? characterId,
+    $core.Iterable<$core.String>? manualImageUrls,
+    $core.String? manualDescription,
+    $core.String? quoteId,
+    $core.String? confirmedCredits,
+  }) {
+    final result = ProductShowcaseServiceCreateRequest._();
+    if (context != null) result.context = context;
+    if (productId != null) result.productId = productId;
+    if (style != null) result.style = style;
+    if (customization != null) result.customization = customization;
+    if (characterId != null) result.characterId = characterId;
+    if (manualImageUrls != null) result.manualImageUrls.addAll(manualImageUrls);
+    if (manualDescription != null) result.manualDescription = manualDescription;
+    if (quoteId != null) result.quoteId = quoteId;
+    if (confirmedCredits != null) result.confirmedCredits = confirmedCredits;
+    return result;
+  }
+
+  ProductShowcaseServiceCreateRequest._();
+
+  factory ProductShowcaseServiceCreateRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseServiceCreateRequest()..mergeFromBuffer(data, registry);
+  factory ProductShowcaseServiceCreateRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseServiceCreateRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProductShowcaseServiceCreateRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ProductShowcaseServiceCreateRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'productId')
+    ..aE<ShowcaseStyle>(3, _omitFieldNames ? '' : 'style',
+        enumValues: ShowcaseStyle.values)
+    ..aOM<ShowcaseCustomization>(4, _omitFieldNames ? '' : 'customization',
+        subBuilder: ShowcaseCustomization.$_createMessage)
+    ..aOS(5, _omitFieldNames ? '' : 'characterId')
+    ..pPS(6, _omitFieldNames ? '' : 'manualImageUrls')
+    ..aOS(7, _omitFieldNames ? '' : 'manualDescription')
+    ..aOS(8, _omitFieldNames ? '' : 'quoteId')
+    ..aOS(9, _omitFieldNames ? '' : 'confirmedCredits')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseServiceCreateRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseServiceCreateRequest copyWith(
+          void Function(ProductShowcaseServiceCreateRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProductShowcaseServiceCreateRequest))
+          as ProductShowcaseServiceCreateRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProductShowcaseServiceCreateRequest() / ProductShowcaseServiceCreateRequest.new instead')
+  static ProductShowcaseServiceCreateRequest create() =>
+      ProductShowcaseServiceCreateRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProductShowcaseServiceCreateRequest._();
+  @$core.override
+  ProductShowcaseServiceCreateRequest createEmptyInstance() =>
+      ProductShowcaseServiceCreateRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ProductShowcaseServiceCreateRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ProductShowcaseServiceCreateRequest>(
+          ProductShowcaseServiceCreateRequest.$_createMessage);
+  static ProductShowcaseServiceCreateRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get productId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set productId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasProductId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearProductId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  ShowcaseStyle get style => $_getN(2);
+  @$pb.TagNumber(3)
+  set style(ShowcaseStyle value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasStyle() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearStyle() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  ShowcaseCustomization get customization => $_getN(3);
+  @$pb.TagNumber(4)
+  set customization(ShowcaseCustomization value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCustomization() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCustomization() => $_clearField(4);
+  @$pb.TagNumber(4)
+  ShowcaseCustomization ensureCustomization() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  $core.String get characterId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set characterId($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasCharacterId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearCharacterId() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.String> get manualImageUrls => $_getList(5);
+
+  @$pb.TagNumber(7)
+  $core.String get manualDescription => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set manualDescription($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasManualDescription() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearManualDescription() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get quoteId => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set quoteId($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasQuoteId() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearQuoteId() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get confirmedCredits => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set confirmedCredits($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasConfirmedCredits() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearConfirmedCredits() => $_clearField(9);
+}
+
+class ProductShowcaseServiceCreateResponse extends $pb.GeneratedMessage {
+  factory ProductShowcaseServiceCreateResponse({
+    ProductShowcaseJob? job,
+    $core.Iterable<MissingProductAttribute>? warnings,
+    $core.String? estimatedCredits,
+  }) {
+    final result = ProductShowcaseServiceCreateResponse._();
+    if (job != null) result.job = job;
+    if (warnings != null) result.warnings.addAll(warnings);
+    if (estimatedCredits != null) result.estimatedCredits = estimatedCredits;
+    return result;
+  }
+
+  ProductShowcaseServiceCreateResponse._();
+
+  factory ProductShowcaseServiceCreateResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseServiceCreateResponse()..mergeFromBuffer(data, registry);
+  factory ProductShowcaseServiceCreateResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseServiceCreateResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProductShowcaseServiceCreateResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ProductShowcaseServiceCreateResponse.$_createMessage)
+    ..aOM<ProductShowcaseJob>(1, _omitFieldNames ? '' : 'job',
+        subBuilder: ProductShowcaseJob.$_createMessage)
+    ..pPM<MissingProductAttribute>(2, _omitFieldNames ? '' : 'warnings',
+        subBuilder: MissingProductAttribute.$_createMessage)
+    ..aOS(3, _omitFieldNames ? '' : 'estimatedCredits')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseServiceCreateResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseServiceCreateResponse copyWith(
+          void Function(ProductShowcaseServiceCreateResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProductShowcaseServiceCreateResponse))
+          as ProductShowcaseServiceCreateResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProductShowcaseServiceCreateResponse() / ProductShowcaseServiceCreateResponse.new instead')
+  static ProductShowcaseServiceCreateResponse create() =>
+      ProductShowcaseServiceCreateResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProductShowcaseServiceCreateResponse._();
+  @$core.override
+  ProductShowcaseServiceCreateResponse createEmptyInstance() =>
+      ProductShowcaseServiceCreateResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ProductShowcaseServiceCreateResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ProductShowcaseServiceCreateResponse>(
+          ProductShowcaseServiceCreateResponse.$_createMessage);
+  static ProductShowcaseServiceCreateResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ProductShowcaseJob get job => $_getN(0);
+  @$pb.TagNumber(1)
+  set job(ProductShowcaseJob value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasJob() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearJob() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ProductShowcaseJob ensureJob() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<MissingProductAttribute> get warnings => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $core.String get estimatedCredits => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set estimatedCredits($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasEstimatedCredits() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearEstimatedCredits() => $_clearField(3);
+}
+
+class ProductShowcaseBatchItem extends $pb.GeneratedMessage {
+  factory ProductShowcaseBatchItem({
+    $core.String? productId,
+    ShowcaseStyle? style,
+    ShowcaseCustomization? customization,
+    $core.String? characterId,
+    $core.Iterable<$core.String>? manualImageUrls,
+  }) {
+    final result = ProductShowcaseBatchItem._();
+    if (productId != null) result.productId = productId;
+    if (style != null) result.style = style;
+    if (customization != null) result.customization = customization;
+    if (characterId != null) result.characterId = characterId;
+    if (manualImageUrls != null) result.manualImageUrls.addAll(manualImageUrls);
+    return result;
+  }
+
+  ProductShowcaseBatchItem._();
+
+  factory ProductShowcaseBatchItem.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseBatchItem()..mergeFromBuffer(data, registry);
+  factory ProductShowcaseBatchItem.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseBatchItem()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProductShowcaseBatchItem',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ProductShowcaseBatchItem.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'productId')
+    ..aE<ShowcaseStyle>(2, _omitFieldNames ? '' : 'style',
+        enumValues: ShowcaseStyle.values)
+    ..aOM<ShowcaseCustomization>(3, _omitFieldNames ? '' : 'customization',
+        subBuilder: ShowcaseCustomization.$_createMessage)
+    ..aOS(4, _omitFieldNames ? '' : 'characterId')
+    ..pPS(5, _omitFieldNames ? '' : 'manualImageUrls')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseBatchItem clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseBatchItem copyWith(
+          void Function(ProductShowcaseBatchItem) updates) =>
+      super.copyWith((message) => updates(message as ProductShowcaseBatchItem))
+          as ProductShowcaseBatchItem;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProductShowcaseBatchItem() / ProductShowcaseBatchItem.new instead')
+  static ProductShowcaseBatchItem create() => ProductShowcaseBatchItem._();
+  static $pb.GeneratedMessage $_createMessage() => ProductShowcaseBatchItem._();
+  @$core.override
+  ProductShowcaseBatchItem createEmptyInstance() =>
+      ProductShowcaseBatchItem._();
+  @$core.pragma('dart2js:noInline')
+  static ProductShowcaseBatchItem getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ProductShowcaseBatchItem>(
+          ProductShowcaseBatchItem.$_createMessage);
+  static ProductShowcaseBatchItem? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get productId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set productId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasProductId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearProductId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  ShowcaseStyle get style => $_getN(1);
+  @$pb.TagNumber(2)
+  set style(ShowcaseStyle value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasStyle() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearStyle() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  ShowcaseCustomization get customization => $_getN(2);
+  @$pb.TagNumber(3)
+  set customization(ShowcaseCustomization value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCustomization() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCustomization() => $_clearField(3);
+  @$pb.TagNumber(3)
+  ShowcaseCustomization ensureCustomization() => $_ensure(2);
+
+  @$pb.TagNumber(4)
+  $core.String get characterId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set characterId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCharacterId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCharacterId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $pb.PbList<$core.String> get manualImageUrls => $_getList(4);
+}
+
+class ProductShowcaseServiceCreateBatchRequest extends $pb.GeneratedMessage {
+  factory ProductShowcaseServiceCreateBatchRequest({
+    $2.CommandContext? context,
+    $core.Iterable<ProductShowcaseBatchItem>? items,
+    $core.bool? dryRun,
+    $core.String? quoteId,
+    $core.String? confirmedCredits,
+  }) {
+    final result = ProductShowcaseServiceCreateBatchRequest._();
+    if (context != null) result.context = context;
+    if (items != null) result.items.addAll(items);
+    if (dryRun != null) result.dryRun = dryRun;
+    if (quoteId != null) result.quoteId = quoteId;
+    if (confirmedCredits != null) result.confirmedCredits = confirmedCredits;
+    return result;
+  }
+
+  ProductShowcaseServiceCreateBatchRequest._();
+
+  factory ProductShowcaseServiceCreateBatchRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseServiceCreateBatchRequest()
+        ..mergeFromBuffer(data, registry);
+  factory ProductShowcaseServiceCreateBatchRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseServiceCreateBatchRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProductShowcaseServiceCreateBatchRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          ProductShowcaseServiceCreateBatchRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..pPM<ProductShowcaseBatchItem>(2, _omitFieldNames ? '' : 'items',
+        subBuilder: ProductShowcaseBatchItem.$_createMessage)
+    ..aOB(3, _omitFieldNames ? '' : 'dryRun')
+    ..aOS(4, _omitFieldNames ? '' : 'quoteId')
+    ..aOS(5, _omitFieldNames ? '' : 'confirmedCredits')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseServiceCreateBatchRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseServiceCreateBatchRequest copyWith(
+          void Function(ProductShowcaseServiceCreateBatchRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProductShowcaseServiceCreateBatchRequest))
+          as ProductShowcaseServiceCreateBatchRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProductShowcaseServiceCreateBatchRequest() / ProductShowcaseServiceCreateBatchRequest.new instead')
+  static ProductShowcaseServiceCreateBatchRequest create() =>
+      ProductShowcaseServiceCreateBatchRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProductShowcaseServiceCreateBatchRequest._();
+  @$core.override
+  ProductShowcaseServiceCreateBatchRequest createEmptyInstance() =>
+      ProductShowcaseServiceCreateBatchRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ProductShowcaseServiceCreateBatchRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ProductShowcaseServiceCreateBatchRequest>(
+          ProductShowcaseServiceCreateBatchRequest.$_createMessage);
+  static ProductShowcaseServiceCreateBatchRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<ProductShowcaseBatchItem> get items => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $core.bool get dryRun => $_getBF(2);
+  @$pb.TagNumber(3)
+  set dryRun($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDryRun() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDryRun() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get quoteId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set quoteId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasQuoteId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearQuoteId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get confirmedCredits => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set confirmedCredits($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasConfirmedCredits() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearConfirmedCredits() => $_clearField(5);
+}
+
+class ProductShowcaseBatchItemResult extends $pb.GeneratedMessage {
+  factory ProductShowcaseBatchItemResult({
+    $core.int? itemIndex,
+    $core.String? productId,
+    $core.bool? valid,
+    $core.String? rejectionReason,
+    $core.Iterable<MissingProductAttribute>? attributeExplanations,
+    $core.String? creditsRequired,
+    $core.String? showcaseJobId,
+  }) {
+    final result = ProductShowcaseBatchItemResult._();
+    if (itemIndex != null) result.itemIndex = itemIndex;
+    if (productId != null) result.productId = productId;
+    if (valid != null) result.valid = valid;
+    if (rejectionReason != null) result.rejectionReason = rejectionReason;
+    if (attributeExplanations != null)
+      result.attributeExplanations.addAll(attributeExplanations);
+    if (creditsRequired != null) result.creditsRequired = creditsRequired;
+    if (showcaseJobId != null) result.showcaseJobId = showcaseJobId;
+    return result;
+  }
+
+  ProductShowcaseBatchItemResult._();
+
+  factory ProductShowcaseBatchItemResult.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseBatchItemResult()..mergeFromBuffer(data, registry);
+  factory ProductShowcaseBatchItemResult.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseBatchItemResult()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProductShowcaseBatchItemResult',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ProductShowcaseBatchItemResult.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'itemIndex')
+    ..aOS(2, _omitFieldNames ? '' : 'productId')
+    ..aOB(3, _omitFieldNames ? '' : 'valid')
+    ..aOS(4, _omitFieldNames ? '' : 'rejectionReason')
+    ..pPM<MissingProductAttribute>(
+        5, _omitFieldNames ? '' : 'attributeExplanations',
+        subBuilder: MissingProductAttribute.$_createMessage)
+    ..aOS(6, _omitFieldNames ? '' : 'creditsRequired')
+    ..aOS(7, _omitFieldNames ? '' : 'showcaseJobId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseBatchItemResult clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseBatchItemResult copyWith(
+          void Function(ProductShowcaseBatchItemResult) updates) =>
+      super.copyWith(
+              (message) => updates(message as ProductShowcaseBatchItemResult))
+          as ProductShowcaseBatchItemResult;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProductShowcaseBatchItemResult() / ProductShowcaseBatchItemResult.new instead')
+  static ProductShowcaseBatchItemResult create() =>
+      ProductShowcaseBatchItemResult._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProductShowcaseBatchItemResult._();
+  @$core.override
+  ProductShowcaseBatchItemResult createEmptyInstance() =>
+      ProductShowcaseBatchItemResult._();
+  @$core.pragma('dart2js:noInline')
+  static ProductShowcaseBatchItemResult getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ProductShowcaseBatchItemResult>(
+          ProductShowcaseBatchItemResult.$_createMessage);
+  static ProductShowcaseBatchItemResult? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get itemIndex => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set itemIndex($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasItemIndex() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearItemIndex() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get productId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set productId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasProductId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearProductId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get valid => $_getBF(2);
+  @$pb.TagNumber(3)
+  set valid($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasValid() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearValid() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get rejectionReason => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set rejectionReason($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasRejectionReason() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearRejectionReason() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $pb.PbList<MissingProductAttribute> get attributeExplanations => $_getList(4);
+
+  @$pb.TagNumber(6)
+  $core.String get creditsRequired => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set creditsRequired($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasCreditsRequired() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearCreditsRequired() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get showcaseJobId => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set showcaseJobId($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasShowcaseJobId() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearShowcaseJobId() => $_clearField(7);
+}
+
+class ProductShowcaseServiceCreateBatchResponse extends $pb.GeneratedMessage {
+  factory ProductShowcaseServiceCreateBatchResponse({
+    $core.String? batchId,
+    $core.bool? isDryRun,
+    $core.int? totalItems,
+    $core.int? validItems,
+    $core.int? invalidItems,
+    $core.String? totalCreditsQuoted,
+    $core.Iterable<ProductShowcaseBatchItemResult>? results,
+  }) {
+    final result = ProductShowcaseServiceCreateBatchResponse._();
+    if (batchId != null) result.batchId = batchId;
+    if (isDryRun != null) result.isDryRun = isDryRun;
+    if (totalItems != null) result.totalItems = totalItems;
+    if (validItems != null) result.validItems = validItems;
+    if (invalidItems != null) result.invalidItems = invalidItems;
+    if (totalCreditsQuoted != null)
+      result.totalCreditsQuoted = totalCreditsQuoted;
+    if (results != null) result.results.addAll(results);
+    return result;
+  }
+
+  ProductShowcaseServiceCreateBatchResponse._();
+
+  factory ProductShowcaseServiceCreateBatchResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseServiceCreateBatchResponse()
+        ..mergeFromBuffer(data, registry);
+  factory ProductShowcaseServiceCreateBatchResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseServiceCreateBatchResponse()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProductShowcaseServiceCreateBatchResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          ProductShowcaseServiceCreateBatchResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'batchId')
+    ..aOB(2, _omitFieldNames ? '' : 'isDryRun')
+    ..aI(3, _omitFieldNames ? '' : 'totalItems')
+    ..aI(4, _omitFieldNames ? '' : 'validItems')
+    ..aI(5, _omitFieldNames ? '' : 'invalidItems')
+    ..aOS(6, _omitFieldNames ? '' : 'totalCreditsQuoted')
+    ..pPM<ProductShowcaseBatchItemResult>(7, _omitFieldNames ? '' : 'results',
+        subBuilder: ProductShowcaseBatchItemResult.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseServiceCreateBatchResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseServiceCreateBatchResponse copyWith(
+          void Function(ProductShowcaseServiceCreateBatchResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProductShowcaseServiceCreateBatchResponse))
+          as ProductShowcaseServiceCreateBatchResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProductShowcaseServiceCreateBatchResponse() / ProductShowcaseServiceCreateBatchResponse.new instead')
+  static ProductShowcaseServiceCreateBatchResponse create() =>
+      ProductShowcaseServiceCreateBatchResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProductShowcaseServiceCreateBatchResponse._();
+  @$core.override
+  ProductShowcaseServiceCreateBatchResponse createEmptyInstance() =>
+      ProductShowcaseServiceCreateBatchResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ProductShowcaseServiceCreateBatchResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ProductShowcaseServiceCreateBatchResponse>(
+          ProductShowcaseServiceCreateBatchResponse.$_createMessage);
+  static ProductShowcaseServiceCreateBatchResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get batchId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set batchId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasBatchId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearBatchId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.bool get isDryRun => $_getBF(1);
+  @$pb.TagNumber(2)
+  set isDryRun($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasIsDryRun() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearIsDryRun() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get totalItems => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set totalItems($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTotalItems() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTotalItems() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get validItems => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set validItems($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasValidItems() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearValidItems() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.int get invalidItems => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set invalidItems($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasInvalidItems() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearInvalidItems() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get totalCreditsQuoted => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set totalCreditsQuoted($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasTotalCreditsQuoted() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTotalCreditsQuoted() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $pb.PbList<ProductShowcaseBatchItemResult> get results => $_getList(6);
+}
+
+class ProductShowcaseServiceGetRequest extends $pb.GeneratedMessage {
+  factory ProductShowcaseServiceGetRequest({
+    $2.UUID? workspaceId,
+    $core.String? showcaseJobId,
+  }) {
+    final result = ProductShowcaseServiceGetRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (showcaseJobId != null) result.showcaseJobId = showcaseJobId;
+    return result;
+  }
+
+  ProductShowcaseServiceGetRequest._();
+
+  factory ProductShowcaseServiceGetRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseServiceGetRequest()..mergeFromBuffer(data, registry);
+  factory ProductShowcaseServiceGetRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseServiceGetRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProductShowcaseServiceGetRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ProductShowcaseServiceGetRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'showcaseJobId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseServiceGetRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseServiceGetRequest copyWith(
+          void Function(ProductShowcaseServiceGetRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as ProductShowcaseServiceGetRequest))
+          as ProductShowcaseServiceGetRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProductShowcaseServiceGetRequest() / ProductShowcaseServiceGetRequest.new instead')
+  static ProductShowcaseServiceGetRequest create() =>
+      ProductShowcaseServiceGetRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProductShowcaseServiceGetRequest._();
+  @$core.override
+  ProductShowcaseServiceGetRequest createEmptyInstance() =>
+      ProductShowcaseServiceGetRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ProductShowcaseServiceGetRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ProductShowcaseServiceGetRequest>(
+          ProductShowcaseServiceGetRequest.$_createMessage);
+  static ProductShowcaseServiceGetRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get showcaseJobId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set showcaseJobId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasShowcaseJobId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearShowcaseJobId() => $_clearField(2);
+}
+
+class ProductShowcaseServiceGetResponse extends $pb.GeneratedMessage {
+  factory ProductShowcaseServiceGetResponse({
+    ProductShowcaseJob? job,
+  }) {
+    final result = ProductShowcaseServiceGetResponse._();
+    if (job != null) result.job = job;
+    return result;
+  }
+
+  ProductShowcaseServiceGetResponse._();
+
+  factory ProductShowcaseServiceGetResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseServiceGetResponse()..mergeFromBuffer(data, registry);
+  factory ProductShowcaseServiceGetResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseServiceGetResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProductShowcaseServiceGetResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ProductShowcaseServiceGetResponse.$_createMessage)
+    ..aOM<ProductShowcaseJob>(1, _omitFieldNames ? '' : 'job',
+        subBuilder: ProductShowcaseJob.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseServiceGetResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseServiceGetResponse copyWith(
+          void Function(ProductShowcaseServiceGetResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProductShowcaseServiceGetResponse))
+          as ProductShowcaseServiceGetResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProductShowcaseServiceGetResponse() / ProductShowcaseServiceGetResponse.new instead')
+  static ProductShowcaseServiceGetResponse create() =>
+      ProductShowcaseServiceGetResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProductShowcaseServiceGetResponse._();
+  @$core.override
+  ProductShowcaseServiceGetResponse createEmptyInstance() =>
+      ProductShowcaseServiceGetResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ProductShowcaseServiceGetResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ProductShowcaseServiceGetResponse>(
+          ProductShowcaseServiceGetResponse.$_createMessage);
+  static ProductShowcaseServiceGetResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ProductShowcaseJob get job => $_getN(0);
+  @$pb.TagNumber(1)
+  set job(ProductShowcaseJob value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasJob() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearJob() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ProductShowcaseJob ensureJob() => $_ensure(0);
+}
+
+class ProductShowcaseServiceListRequest extends $pb.GeneratedMessage {
+  factory ProductShowcaseServiceListRequest({
+    $2.UUID? workspaceId,
+    $core.String? productId,
+    $core.String? batchId,
+    $core.int? limit,
+    $core.String? pageToken,
+  }) {
+    final result = ProductShowcaseServiceListRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (productId != null) result.productId = productId;
+    if (batchId != null) result.batchId = batchId;
+    if (limit != null) result.limit = limit;
+    if (pageToken != null) result.pageToken = pageToken;
+    return result;
+  }
+
+  ProductShowcaseServiceListRequest._();
+
+  factory ProductShowcaseServiceListRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseServiceListRequest()..mergeFromBuffer(data, registry);
+  factory ProductShowcaseServiceListRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseServiceListRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProductShowcaseServiceListRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ProductShowcaseServiceListRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'productId')
+    ..aOS(3, _omitFieldNames ? '' : 'batchId')
+    ..aI(4, _omitFieldNames ? '' : 'limit')
+    ..aOS(5, _omitFieldNames ? '' : 'pageToken')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseServiceListRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseServiceListRequest copyWith(
+          void Function(ProductShowcaseServiceListRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProductShowcaseServiceListRequest))
+          as ProductShowcaseServiceListRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProductShowcaseServiceListRequest() / ProductShowcaseServiceListRequest.new instead')
+  static ProductShowcaseServiceListRequest create() =>
+      ProductShowcaseServiceListRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProductShowcaseServiceListRequest._();
+  @$core.override
+  ProductShowcaseServiceListRequest createEmptyInstance() =>
+      ProductShowcaseServiceListRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ProductShowcaseServiceListRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ProductShowcaseServiceListRequest>(
+          ProductShowcaseServiceListRequest.$_createMessage);
+  static ProductShowcaseServiceListRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get productId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set productId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasProductId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearProductId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get batchId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set batchId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasBatchId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearBatchId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get limit => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set limit($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLimit() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLimit() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get pageToken => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set pageToken($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPageToken() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPageToken() => $_clearField(5);
+}
+
+class ProductShowcaseServiceListResponse extends $pb.GeneratedMessage {
+  factory ProductShowcaseServiceListResponse({
+    $core.Iterable<ProductShowcaseJob>? jobs,
+    $core.String? nextPageToken,
+  }) {
+    final result = ProductShowcaseServiceListResponse._();
+    if (jobs != null) result.jobs.addAll(jobs);
+    if (nextPageToken != null) result.nextPageToken = nextPageToken;
+    return result;
+  }
+
+  ProductShowcaseServiceListResponse._();
+
+  factory ProductShowcaseServiceListResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseServiceListResponse()..mergeFromBuffer(data, registry);
+  factory ProductShowcaseServiceListResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProductShowcaseServiceListResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProductShowcaseServiceListResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ProductShowcaseServiceListResponse.$_createMessage)
+    ..pPM<ProductShowcaseJob>(1, _omitFieldNames ? '' : 'jobs',
+        subBuilder: ProductShowcaseJob.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'nextPageToken')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseServiceListResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProductShowcaseServiceListResponse copyWith(
+          void Function(ProductShowcaseServiceListResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProductShowcaseServiceListResponse))
+          as ProductShowcaseServiceListResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProductShowcaseServiceListResponse() / ProductShowcaseServiceListResponse.new instead')
+  static ProductShowcaseServiceListResponse create() =>
+      ProductShowcaseServiceListResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProductShowcaseServiceListResponse._();
+  @$core.override
+  ProductShowcaseServiceListResponse createEmptyInstance() =>
+      ProductShowcaseServiceListResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ProductShowcaseServiceListResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ProductShowcaseServiceListResponse>(
+          ProductShowcaseServiceListResponse.$_createMessage);
+  static ProductShowcaseServiceListResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<ProductShowcaseJob> get jobs => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $core.String get nextPageToken => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set nextPageToken($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasNextPageToken() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearNextPageToken() => $_clearField(2);
+}
+
+class ScrapedProductData extends $pb.GeneratedMessage {
+  factory ScrapedProductData({
+    $core.String? name,
+    $core.String? price,
+    $core.String? currency,
+    $core.Iterable<$core.String>? images,
+    $core.String? description,
+    $core.Iterable<$core.String>? bulletPoints,
+    $core.Iterable<$core.String>? reviews,
+    LinkPlatform? platform,
+    $core.Iterable<MissingProductAttribute>? missingAttributes,
+    $core.String? summary,
+  }) {
+    final result = ScrapedProductData._();
+    if (name != null) result.name = name;
+    if (price != null) result.price = price;
+    if (currency != null) result.currency = currency;
+    if (images != null) result.images.addAll(images);
+    if (description != null) result.description = description;
+    if (bulletPoints != null) result.bulletPoints.addAll(bulletPoints);
+    if (reviews != null) result.reviews.addAll(reviews);
+    if (platform != null) result.platform = platform;
+    if (missingAttributes != null)
+      result.missingAttributes.addAll(missingAttributes);
+    if (summary != null) result.summary = summary;
+    return result;
+  }
+
+  ScrapedProductData._();
+
+  factory ScrapedProductData.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ScrapedProductData()..mergeFromBuffer(data, registry);
+  factory ScrapedProductData.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ScrapedProductData()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ScrapedProductData',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ScrapedProductData.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'name')
+    ..aOS(2, _omitFieldNames ? '' : 'price')
+    ..aOS(3, _omitFieldNames ? '' : 'currency')
+    ..pPS(4, _omitFieldNames ? '' : 'images')
+    ..aOS(5, _omitFieldNames ? '' : 'description')
+    ..pPS(6, _omitFieldNames ? '' : 'bulletPoints')
+    ..pPS(7, _omitFieldNames ? '' : 'reviews')
+    ..aE<LinkPlatform>(8, _omitFieldNames ? '' : 'platform',
+        enumValues: LinkPlatform.values)
+    ..pPM<MissingProductAttribute>(
+        9, _omitFieldNames ? '' : 'missingAttributes',
+        subBuilder: MissingProductAttribute.$_createMessage)
+    ..aOS(10, _omitFieldNames ? '' : 'summary')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ScrapedProductData clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ScrapedProductData copyWith(void Function(ScrapedProductData) updates) =>
+      super.copyWith((message) => updates(message as ScrapedProductData))
+          as ScrapedProductData;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ScrapedProductData() / ScrapedProductData.new instead')
+  static ScrapedProductData create() => ScrapedProductData._();
+  static $pb.GeneratedMessage $_createMessage() => ScrapedProductData._();
+  @$core.override
+  ScrapedProductData createEmptyInstance() => ScrapedProductData._();
+  @$core.pragma('dart2js:noInline')
+  static ScrapedProductData getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ScrapedProductData>(
+          ScrapedProductData.$_createMessage);
+  static ScrapedProductData? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get name => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set name($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearName() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get price => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set price($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPrice() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPrice() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get currency => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set currency($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCurrency() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCurrency() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $pb.PbList<$core.String> get images => $_getList(3);
+
+  @$pb.TagNumber(5)
+  $core.String get description => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set description($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasDescription() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearDescription() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.String> get bulletPoints => $_getList(5);
+
+  @$pb.TagNumber(7)
+  $pb.PbList<$core.String> get reviews => $_getList(6);
+
+  @$pb.TagNumber(8)
+  LinkPlatform get platform => $_getN(7);
+  @$pb.TagNumber(8)
+  set platform(LinkPlatform value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasPlatform() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearPlatform() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $pb.PbList<MissingProductAttribute> get missingAttributes => $_getList(8);
+
+  @$pb.TagNumber(10)
+  $core.String get summary => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set summary($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasSummary() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearSummary() => $_clearField(10);
+}
+
+class LinkToVideoJob extends $pb.GeneratedMessage {
+  factory LinkToVideoJob({
+    $core.String? ltvJobId,
+    $core.String? workspaceId,
+    $core.String? videoEditJobId,
+    $core.String? sourceUrl,
+    LinkPlatform? platformDetected,
+    ScrapedProductData? scrapedData,
+    ScriptTemplate? scriptTemplate,
+    $core.String? generatedScript,
+    $core.String? outputAssetId,
+    $core.String? characterId,
+    $core.String? status,
+    $core.String? creditsUsed,
+    $core.String? errorCode,
+    $core.String? errorMessage,
+    $1.Timestamp? createdAt,
+    $1.Timestamp? updatedAt,
+  }) {
+    final result = LinkToVideoJob._();
+    if (ltvJobId != null) result.ltvJobId = ltvJobId;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (videoEditJobId != null) result.videoEditJobId = videoEditJobId;
+    if (sourceUrl != null) result.sourceUrl = sourceUrl;
+    if (platformDetected != null) result.platformDetected = platformDetected;
+    if (scrapedData != null) result.scrapedData = scrapedData;
+    if (scriptTemplate != null) result.scriptTemplate = scriptTemplate;
+    if (generatedScript != null) result.generatedScript = generatedScript;
+    if (outputAssetId != null) result.outputAssetId = outputAssetId;
+    if (characterId != null) result.characterId = characterId;
+    if (status != null) result.status = status;
+    if (creditsUsed != null) result.creditsUsed = creditsUsed;
+    if (errorCode != null) result.errorCode = errorCode;
+    if (errorMessage != null) result.errorMessage = errorMessage;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    return result;
+  }
+
+  LinkToVideoJob._();
+
+  factory LinkToVideoJob.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LinkToVideoJob()..mergeFromBuffer(data, registry);
+  factory LinkToVideoJob.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LinkToVideoJob()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'LinkToVideoJob',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: LinkToVideoJob.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'ltvJobId')
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'videoEditJobId')
+    ..aOS(4, _omitFieldNames ? '' : 'sourceUrl')
+    ..aE<LinkPlatform>(5, _omitFieldNames ? '' : 'platformDetected',
+        enumValues: LinkPlatform.values)
+    ..aOM<ScrapedProductData>(6, _omitFieldNames ? '' : 'scrapedData',
+        subBuilder: ScrapedProductData.$_createMessage)
+    ..aE<ScriptTemplate>(7, _omitFieldNames ? '' : 'scriptTemplate',
+        enumValues: ScriptTemplate.values)
+    ..aOS(8, _omitFieldNames ? '' : 'generatedScript')
+    ..aOS(9, _omitFieldNames ? '' : 'outputAssetId')
+    ..aOS(10, _omitFieldNames ? '' : 'characterId')
+    ..aOS(11, _omitFieldNames ? '' : 'status')
+    ..aOS(12, _omitFieldNames ? '' : 'creditsUsed')
+    ..aOS(13, _omitFieldNames ? '' : 'errorCode')
+    ..aOS(14, _omitFieldNames ? '' : 'errorMessage')
+    ..aOM<$1.Timestamp>(15, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOM<$1.Timestamp>(16, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LinkToVideoJob clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LinkToVideoJob copyWith(void Function(LinkToVideoJob) updates) =>
+      super.copyWith((message) => updates(message as LinkToVideoJob))
+          as LinkToVideoJob;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use LinkToVideoJob() / LinkToVideoJob.new instead')
+  static LinkToVideoJob create() => LinkToVideoJob._();
+  static $pb.GeneratedMessage $_createMessage() => LinkToVideoJob._();
+  @$core.override
+  LinkToVideoJob createEmptyInstance() => LinkToVideoJob._();
+  @$core.pragma('dart2js:noInline')
+  static LinkToVideoJob getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<LinkToVideoJob>(
+          LinkToVideoJob.$_createMessage);
+  static LinkToVideoJob? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get ltvJobId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set ltvJobId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasLtvJobId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearLtvJobId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get videoEditJobId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set videoEditJobId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasVideoEditJobId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearVideoEditJobId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get sourceUrl => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set sourceUrl($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSourceUrl() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSourceUrl() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  LinkPlatform get platformDetected => $_getN(4);
+  @$pb.TagNumber(5)
+  set platformDetected(LinkPlatform value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPlatformDetected() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPlatformDetected() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  ScrapedProductData get scrapedData => $_getN(5);
+  @$pb.TagNumber(6)
+  set scrapedData(ScrapedProductData value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasScrapedData() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearScrapedData() => $_clearField(6);
+  @$pb.TagNumber(6)
+  ScrapedProductData ensureScrapedData() => $_ensure(5);
+
+  @$pb.TagNumber(7)
+  ScriptTemplate get scriptTemplate => $_getN(6);
+  @$pb.TagNumber(7)
+  set scriptTemplate(ScriptTemplate value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasScriptTemplate() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearScriptTemplate() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get generatedScript => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set generatedScript($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasGeneratedScript() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearGeneratedScript() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get outputAssetId => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set outputAssetId($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasOutputAssetId() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearOutputAssetId() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get characterId => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set characterId($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasCharacterId() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearCharacterId() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get status => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set status($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasStatus() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearStatus() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get creditsUsed => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set creditsUsed($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasCreditsUsed() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearCreditsUsed() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.String get errorCode => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set errorCode($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasErrorCode() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearErrorCode() => $_clearField(13);
+
+  @$pb.TagNumber(14)
+  $core.String get errorMessage => $_getSZ(13);
+  @$pb.TagNumber(14)
+  set errorMessage($core.String value) => $_setString(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasErrorMessage() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearErrorMessage() => $_clearField(14);
+
+  @$pb.TagNumber(15)
+  $1.Timestamp get createdAt => $_getN(14);
+  @$pb.TagNumber(15)
+  set createdAt($1.Timestamp value) => $_setField(15, value);
+  @$pb.TagNumber(15)
+  $core.bool hasCreatedAt() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearCreatedAt() => $_clearField(15);
+  @$pb.TagNumber(15)
+  $1.Timestamp ensureCreatedAt() => $_ensure(14);
+
+  @$pb.TagNumber(16)
+  $1.Timestamp get updatedAt => $_getN(15);
+  @$pb.TagNumber(16)
+  set updatedAt($1.Timestamp value) => $_setField(16, value);
+  @$pb.TagNumber(16)
+  $core.bool hasUpdatedAt() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearUpdatedAt() => $_clearField(16);
+  @$pb.TagNumber(16)
+  $1.Timestamp ensureUpdatedAt() => $_ensure(15);
+}
+
+class LinkToVideoServiceScrapeRequest extends $pb.GeneratedMessage {
+  factory LinkToVideoServiceScrapeRequest({
+    $2.CommandContext? context,
+    $core.String? url,
+  }) {
+    final result = LinkToVideoServiceScrapeRequest._();
+    if (context != null) result.context = context;
+    if (url != null) result.url = url;
+    return result;
+  }
+
+  LinkToVideoServiceScrapeRequest._();
+
+  factory LinkToVideoServiceScrapeRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LinkToVideoServiceScrapeRequest()..mergeFromBuffer(data, registry);
+  factory LinkToVideoServiceScrapeRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LinkToVideoServiceScrapeRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'LinkToVideoServiceScrapeRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: LinkToVideoServiceScrapeRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'url')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LinkToVideoServiceScrapeRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LinkToVideoServiceScrapeRequest copyWith(
+          void Function(LinkToVideoServiceScrapeRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as LinkToVideoServiceScrapeRequest))
+          as LinkToVideoServiceScrapeRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use LinkToVideoServiceScrapeRequest() / LinkToVideoServiceScrapeRequest.new instead')
+  static LinkToVideoServiceScrapeRequest create() =>
+      LinkToVideoServiceScrapeRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      LinkToVideoServiceScrapeRequest._();
+  @$core.override
+  LinkToVideoServiceScrapeRequest createEmptyInstance() =>
+      LinkToVideoServiceScrapeRequest._();
+  @$core.pragma('dart2js:noInline')
+  static LinkToVideoServiceScrapeRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<LinkToVideoServiceScrapeRequest>(
+          LinkToVideoServiceScrapeRequest.$_createMessage);
+  static LinkToVideoServiceScrapeRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get url => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set url($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasUrl() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearUrl() => $_clearField(2);
+}
+
+class LinkToVideoServiceScrapeResponse extends $pb.GeneratedMessage {
+  factory LinkToVideoServiceScrapeResponse({
+    $core.bool? success,
+    ScrapedProductData? data,
+    $core.String? errorCode,
+    $core.String? errorMessage,
+  }) {
+    final result = LinkToVideoServiceScrapeResponse._();
+    if (success != null) result.success = success;
+    if (data != null) result.data = data;
+    if (errorCode != null) result.errorCode = errorCode;
+    if (errorMessage != null) result.errorMessage = errorMessage;
+    return result;
+  }
+
+  LinkToVideoServiceScrapeResponse._();
+
+  factory LinkToVideoServiceScrapeResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LinkToVideoServiceScrapeResponse()..mergeFromBuffer(data, registry);
+  factory LinkToVideoServiceScrapeResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LinkToVideoServiceScrapeResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'LinkToVideoServiceScrapeResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: LinkToVideoServiceScrapeResponse.$_createMessage)
+    ..aOB(1, _omitFieldNames ? '' : 'success')
+    ..aOM<ScrapedProductData>(2, _omitFieldNames ? '' : 'data',
+        subBuilder: ScrapedProductData.$_createMessage)
+    ..aOS(3, _omitFieldNames ? '' : 'errorCode')
+    ..aOS(4, _omitFieldNames ? '' : 'errorMessage')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LinkToVideoServiceScrapeResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LinkToVideoServiceScrapeResponse copyWith(
+          void Function(LinkToVideoServiceScrapeResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as LinkToVideoServiceScrapeResponse))
+          as LinkToVideoServiceScrapeResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use LinkToVideoServiceScrapeResponse() / LinkToVideoServiceScrapeResponse.new instead')
+  static LinkToVideoServiceScrapeResponse create() =>
+      LinkToVideoServiceScrapeResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      LinkToVideoServiceScrapeResponse._();
+  @$core.override
+  LinkToVideoServiceScrapeResponse createEmptyInstance() =>
+      LinkToVideoServiceScrapeResponse._();
+  @$core.pragma('dart2js:noInline')
+  static LinkToVideoServiceScrapeResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<LinkToVideoServiceScrapeResponse>(
+          LinkToVideoServiceScrapeResponse.$_createMessage);
+  static LinkToVideoServiceScrapeResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get success => $_getBF(0);
+  @$pb.TagNumber(1)
+  set success($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  ScrapedProductData get data => $_getN(1);
+  @$pb.TagNumber(2)
+  set data(ScrapedProductData value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasData() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearData() => $_clearField(2);
+  @$pb.TagNumber(2)
+  ScrapedProductData ensureData() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $core.String get errorCode => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set errorCode($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasErrorCode() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearErrorCode() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get errorMessage => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set errorMessage($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasErrorMessage() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearErrorMessage() => $_clearField(4);
+}
+
+class LinkToVideoServiceGenerateRequest extends $pb.GeneratedMessage {
+  factory LinkToVideoServiceGenerateRequest({
+    $2.CommandContext? context,
+    $core.String? sourceUrl,
+    ScriptTemplate? scriptTemplate,
+    $core.String? customScript,
+    ScrapedProductData? overrideData,
+    $core.String? characterId,
+    $core.String? visualStyle,
+    $core.int? durationSeconds,
+    $core.String? quoteId,
+    $core.String? confirmedCredits,
+  }) {
+    final result = LinkToVideoServiceGenerateRequest._();
+    if (context != null) result.context = context;
+    if (sourceUrl != null) result.sourceUrl = sourceUrl;
+    if (scriptTemplate != null) result.scriptTemplate = scriptTemplate;
+    if (customScript != null) result.customScript = customScript;
+    if (overrideData != null) result.overrideData = overrideData;
+    if (characterId != null) result.characterId = characterId;
+    if (visualStyle != null) result.visualStyle = visualStyle;
+    if (durationSeconds != null) result.durationSeconds = durationSeconds;
+    if (quoteId != null) result.quoteId = quoteId;
+    if (confirmedCredits != null) result.confirmedCredits = confirmedCredits;
+    return result;
+  }
+
+  LinkToVideoServiceGenerateRequest._();
+
+  factory LinkToVideoServiceGenerateRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LinkToVideoServiceGenerateRequest()..mergeFromBuffer(data, registry);
+  factory LinkToVideoServiceGenerateRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LinkToVideoServiceGenerateRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'LinkToVideoServiceGenerateRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: LinkToVideoServiceGenerateRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'sourceUrl')
+    ..aE<ScriptTemplate>(3, _omitFieldNames ? '' : 'scriptTemplate',
+        enumValues: ScriptTemplate.values)
+    ..aOS(4, _omitFieldNames ? '' : 'customScript')
+    ..aOM<ScrapedProductData>(5, _omitFieldNames ? '' : 'overrideData',
+        subBuilder: ScrapedProductData.$_createMessage)
+    ..aOS(6, _omitFieldNames ? '' : 'characterId')
+    ..aOS(7, _omitFieldNames ? '' : 'visualStyle')
+    ..aI(8, _omitFieldNames ? '' : 'durationSeconds')
+    ..aOS(9, _omitFieldNames ? '' : 'quoteId')
+    ..aOS(10, _omitFieldNames ? '' : 'confirmedCredits')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LinkToVideoServiceGenerateRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LinkToVideoServiceGenerateRequest copyWith(
+          void Function(LinkToVideoServiceGenerateRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as LinkToVideoServiceGenerateRequest))
+          as LinkToVideoServiceGenerateRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use LinkToVideoServiceGenerateRequest() / LinkToVideoServiceGenerateRequest.new instead')
+  static LinkToVideoServiceGenerateRequest create() =>
+      LinkToVideoServiceGenerateRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      LinkToVideoServiceGenerateRequest._();
+  @$core.override
+  LinkToVideoServiceGenerateRequest createEmptyInstance() =>
+      LinkToVideoServiceGenerateRequest._();
+  @$core.pragma('dart2js:noInline')
+  static LinkToVideoServiceGenerateRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<LinkToVideoServiceGenerateRequest>(
+          LinkToVideoServiceGenerateRequest.$_createMessage);
+  static LinkToVideoServiceGenerateRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get sourceUrl => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set sourceUrl($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSourceUrl() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSourceUrl() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  ScriptTemplate get scriptTemplate => $_getN(2);
+  @$pb.TagNumber(3)
+  set scriptTemplate(ScriptTemplate value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasScriptTemplate() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearScriptTemplate() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get customScript => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set customScript($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCustomScript() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCustomScript() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  ScrapedProductData get overrideData => $_getN(4);
+  @$pb.TagNumber(5)
+  set overrideData(ScrapedProductData value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasOverrideData() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearOverrideData() => $_clearField(5);
+  @$pb.TagNumber(5)
+  ScrapedProductData ensureOverrideData() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  $core.String get characterId => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set characterId($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasCharacterId() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearCharacterId() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get visualStyle => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set visualStyle($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasVisualStyle() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearVisualStyle() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.int get durationSeconds => $_getIZ(7);
+  @$pb.TagNumber(8)
+  set durationSeconds($core.int value) => $_setSignedInt32(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasDurationSeconds() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearDurationSeconds() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get quoteId => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set quoteId($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasQuoteId() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearQuoteId() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get confirmedCredits => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set confirmedCredits($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasConfirmedCredits() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearConfirmedCredits() => $_clearField(10);
+}
+
+class LinkToVideoServiceGenerateResponse extends $pb.GeneratedMessage {
+  factory LinkToVideoServiceGenerateResponse({
+    LinkToVideoJob? job,
+    $core.String? creditsDeducted,
+  }) {
+    final result = LinkToVideoServiceGenerateResponse._();
+    if (job != null) result.job = job;
+    if (creditsDeducted != null) result.creditsDeducted = creditsDeducted;
+    return result;
+  }
+
+  LinkToVideoServiceGenerateResponse._();
+
+  factory LinkToVideoServiceGenerateResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LinkToVideoServiceGenerateResponse()..mergeFromBuffer(data, registry);
+  factory LinkToVideoServiceGenerateResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LinkToVideoServiceGenerateResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'LinkToVideoServiceGenerateResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: LinkToVideoServiceGenerateResponse.$_createMessage)
+    ..aOM<LinkToVideoJob>(1, _omitFieldNames ? '' : 'job',
+        subBuilder: LinkToVideoJob.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'creditsDeducted')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LinkToVideoServiceGenerateResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LinkToVideoServiceGenerateResponse copyWith(
+          void Function(LinkToVideoServiceGenerateResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as LinkToVideoServiceGenerateResponse))
+          as LinkToVideoServiceGenerateResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use LinkToVideoServiceGenerateResponse() / LinkToVideoServiceGenerateResponse.new instead')
+  static LinkToVideoServiceGenerateResponse create() =>
+      LinkToVideoServiceGenerateResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      LinkToVideoServiceGenerateResponse._();
+  @$core.override
+  LinkToVideoServiceGenerateResponse createEmptyInstance() =>
+      LinkToVideoServiceGenerateResponse._();
+  @$core.pragma('dart2js:noInline')
+  static LinkToVideoServiceGenerateResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<LinkToVideoServiceGenerateResponse>(
+          LinkToVideoServiceGenerateResponse.$_createMessage);
+  static LinkToVideoServiceGenerateResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  LinkToVideoJob get job => $_getN(0);
+  @$pb.TagNumber(1)
+  set job(LinkToVideoJob value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasJob() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearJob() => $_clearField(1);
+  @$pb.TagNumber(1)
+  LinkToVideoJob ensureJob() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get creditsDeducted => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set creditsDeducted($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCreditsDeducted() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCreditsDeducted() => $_clearField(2);
+}
+
+class LinkToVideoServiceGetRequest extends $pb.GeneratedMessage {
+  factory LinkToVideoServiceGetRequest({
+    $2.UUID? workspaceId,
+    $core.String? ltvJobId,
+  }) {
+    final result = LinkToVideoServiceGetRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (ltvJobId != null) result.ltvJobId = ltvJobId;
+    return result;
+  }
+
+  LinkToVideoServiceGetRequest._();
+
+  factory LinkToVideoServiceGetRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LinkToVideoServiceGetRequest()..mergeFromBuffer(data, registry);
+  factory LinkToVideoServiceGetRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LinkToVideoServiceGetRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'LinkToVideoServiceGetRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: LinkToVideoServiceGetRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'ltvJobId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LinkToVideoServiceGetRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LinkToVideoServiceGetRequest copyWith(
+          void Function(LinkToVideoServiceGetRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as LinkToVideoServiceGetRequest))
+          as LinkToVideoServiceGetRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use LinkToVideoServiceGetRequest() / LinkToVideoServiceGetRequest.new instead')
+  static LinkToVideoServiceGetRequest create() =>
+      LinkToVideoServiceGetRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      LinkToVideoServiceGetRequest._();
+  @$core.override
+  LinkToVideoServiceGetRequest createEmptyInstance() =>
+      LinkToVideoServiceGetRequest._();
+  @$core.pragma('dart2js:noInline')
+  static LinkToVideoServiceGetRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<LinkToVideoServiceGetRequest>(
+          LinkToVideoServiceGetRequest.$_createMessage);
+  static LinkToVideoServiceGetRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get ltvJobId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set ltvJobId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasLtvJobId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLtvJobId() => $_clearField(2);
+}
+
+class LinkToVideoServiceGetResponse extends $pb.GeneratedMessage {
+  factory LinkToVideoServiceGetResponse({
+    LinkToVideoJob? job,
+  }) {
+    final result = LinkToVideoServiceGetResponse._();
+    if (job != null) result.job = job;
+    return result;
+  }
+
+  LinkToVideoServiceGetResponse._();
+
+  factory LinkToVideoServiceGetResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LinkToVideoServiceGetResponse()..mergeFromBuffer(data, registry);
+  factory LinkToVideoServiceGetResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LinkToVideoServiceGetResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'LinkToVideoServiceGetResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: LinkToVideoServiceGetResponse.$_createMessage)
+    ..aOM<LinkToVideoJob>(1, _omitFieldNames ? '' : 'job',
+        subBuilder: LinkToVideoJob.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LinkToVideoServiceGetResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LinkToVideoServiceGetResponse copyWith(
+          void Function(LinkToVideoServiceGetResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as LinkToVideoServiceGetResponse))
+          as LinkToVideoServiceGetResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use LinkToVideoServiceGetResponse() / LinkToVideoServiceGetResponse.new instead')
+  static LinkToVideoServiceGetResponse create() =>
+      LinkToVideoServiceGetResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      LinkToVideoServiceGetResponse._();
+  @$core.override
+  LinkToVideoServiceGetResponse createEmptyInstance() =>
+      LinkToVideoServiceGetResponse._();
+  @$core.pragma('dart2js:noInline')
+  static LinkToVideoServiceGetResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<LinkToVideoServiceGetResponse>(
+          LinkToVideoServiceGetResponse.$_createMessage);
+  static LinkToVideoServiceGetResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  LinkToVideoJob get job => $_getN(0);
+  @$pb.TagNumber(1)
+  set job(LinkToVideoJob value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasJob() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearJob() => $_clearField(1);
+  @$pb.TagNumber(1)
+  LinkToVideoJob ensureJob() => $_ensure(0);
 }
 
 const $core.bool _omitFieldNames =

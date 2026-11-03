@@ -1760,7 +1760,7 @@ abstract class StylePackServiceBase extends $grpc.Service {
       $grpc.ServiceCall call, $0.StylePackServiceDeleteRequest request);
 }
 
-/// AIService manages AI style analysis, preview generation and quoting (api_endpoint_map.md §13, §14).
+/// AIService manages AI style analysis, preview generation, thumbnails and quoting (api_endpoint_map.md §13, §14, §15.1).
 @$pb.GrpcServiceName('creativanta.production.v1.AIService')
 class AIServiceClient extends $grpc.Client {
   /// The hostname for this service.
@@ -1796,6 +1796,13 @@ class AIServiceClient extends $grpc.Client {
     return $createUnaryCall(_$analyzeStyle, request, options: options);
   }
 
+  $grpc.ResponseFuture<$0.GenerateThumbnailsResponse> generateThumbnails(
+    $0.GenerateThumbnailsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$generateThumbnails, request, options: options);
+  }
+
   // method descriptors
 
   static final _$generateCharacterPreview = $grpc.ClientMethod<
@@ -1814,6 +1821,11 @@ class AIServiceClient extends $grpc.Client {
           '/creativanta.production.v1.AIService/AnalyzeStyle',
           ($0.AnalyzeStyleRequest value) => value.writeToBuffer(),
           $0.AnalyzeStyleResponse.fromBuffer);
+  static final _$generateThumbnails = $grpc.ClientMethod<
+          $0.GenerateThumbnailsRequest, $0.GenerateThumbnailsResponse>(
+      '/creativanta.production.v1.AIService/GenerateThumbnails',
+      ($0.GenerateThumbnailsRequest value) => value.writeToBuffer(),
+      $0.GenerateThumbnailsResponse.fromBuffer);
 }
 
 @$pb.GrpcServiceName('creativanta.production.v1.AIService')
@@ -1848,6 +1860,15 @@ abstract class AIServiceBase extends $grpc.Service {
             ($core.List<$core.int> value) =>
                 $0.AnalyzeStyleRequest.fromBuffer(value),
             ($0.AnalyzeStyleResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GenerateThumbnailsRequest,
+            $0.GenerateThumbnailsResponse>(
+        'GenerateThumbnails',
+        generateThumbnails_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GenerateThumbnailsRequest.fromBuffer(value),
+        ($0.GenerateThumbnailsResponse value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.GenerateCharacterPreviewResponse>
@@ -1876,4 +1897,285 @@ abstract class AIServiceBase extends $grpc.Service {
 
   $async.Future<$0.AnalyzeStyleResponse> analyzeStyle(
       $grpc.ServiceCall call, $0.AnalyzeStyleRequest request);
+
+  $async.Future<$0.GenerateThumbnailsResponse> generateThumbnails_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GenerateThumbnailsRequest> $request) async {
+    return generateThumbnails($call, await $request);
+  }
+
+  $async.Future<$0.GenerateThumbnailsResponse> generateThumbnails(
+      $grpc.ServiceCall call, $0.GenerateThumbnailsRequest request);
+}
+
+/// ProductShowcaseService manages AI product showcase video generation (api_endpoint_map.md §7.4).
+@$pb.GrpcServiceName('creativanta.production.v1.ProductShowcaseService')
+class ProductShowcaseServiceClient extends $grpc.Client {
+  /// The hostname for this service.
+  static const $core.String defaultHost = '';
+
+  /// OAuth scopes needed for the client.
+  static const $core.List<$core.String> oauthScopes = [
+    '',
+  ];
+
+  ProductShowcaseServiceClient(super.channel,
+      {super.options, super.interceptors});
+
+  $grpc.ResponseFuture<$0.ProductShowcaseServiceCreateResponse> create(
+    $0.ProductShowcaseServiceCreateRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$create, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ProductShowcaseServiceCreateBatchResponse>
+      createBatch(
+    $0.ProductShowcaseServiceCreateBatchRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$createBatch, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ProductShowcaseServiceGetResponse> get(
+    $0.ProductShowcaseServiceGetRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$get, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ProductShowcaseServiceListResponse> list(
+    $0.ProductShowcaseServiceListRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$list, request, options: options);
+  }
+
+  // method descriptors
+
+  static final _$create = $grpc.ClientMethod<
+          $0.ProductShowcaseServiceCreateRequest,
+          $0.ProductShowcaseServiceCreateResponse>(
+      '/creativanta.production.v1.ProductShowcaseService/Create',
+      ($0.ProductShowcaseServiceCreateRequest value) => value.writeToBuffer(),
+      $0.ProductShowcaseServiceCreateResponse.fromBuffer);
+  static final _$createBatch = $grpc.ClientMethod<
+          $0.ProductShowcaseServiceCreateBatchRequest,
+          $0.ProductShowcaseServiceCreateBatchResponse>(
+      '/creativanta.production.v1.ProductShowcaseService/CreateBatch',
+      ($0.ProductShowcaseServiceCreateBatchRequest value) =>
+          value.writeToBuffer(),
+      $0.ProductShowcaseServiceCreateBatchResponse.fromBuffer);
+  static final _$get = $grpc.ClientMethod<$0.ProductShowcaseServiceGetRequest,
+          $0.ProductShowcaseServiceGetResponse>(
+      '/creativanta.production.v1.ProductShowcaseService/Get',
+      ($0.ProductShowcaseServiceGetRequest value) => value.writeToBuffer(),
+      $0.ProductShowcaseServiceGetResponse.fromBuffer);
+  static final _$list = $grpc.ClientMethod<$0.ProductShowcaseServiceListRequest,
+          $0.ProductShowcaseServiceListResponse>(
+      '/creativanta.production.v1.ProductShowcaseService/List',
+      ($0.ProductShowcaseServiceListRequest value) => value.writeToBuffer(),
+      $0.ProductShowcaseServiceListResponse.fromBuffer);
+}
+
+@$pb.GrpcServiceName('creativanta.production.v1.ProductShowcaseService')
+abstract class ProductShowcaseServiceBase extends $grpc.Service {
+  $core.String get $name => 'creativanta.production.v1.ProductShowcaseService';
+
+  ProductShowcaseServiceBase() {
+    $addMethod($grpc.ServiceMethod<$0.ProductShowcaseServiceCreateRequest,
+            $0.ProductShowcaseServiceCreateResponse>(
+        'Create',
+        create_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ProductShowcaseServiceCreateRequest.fromBuffer(value),
+        ($0.ProductShowcaseServiceCreateResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ProductShowcaseServiceCreateBatchRequest,
+            $0.ProductShowcaseServiceCreateBatchResponse>(
+        'CreateBatch',
+        createBatch_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ProductShowcaseServiceCreateBatchRequest.fromBuffer(value),
+        ($0.ProductShowcaseServiceCreateBatchResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ProductShowcaseServiceGetRequest,
+            $0.ProductShowcaseServiceGetResponse>(
+        'Get',
+        get_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ProductShowcaseServiceGetRequest.fromBuffer(value),
+        ($0.ProductShowcaseServiceGetResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ProductShowcaseServiceListRequest,
+            $0.ProductShowcaseServiceListResponse>(
+        'List',
+        list_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ProductShowcaseServiceListRequest.fromBuffer(value),
+        ($0.ProductShowcaseServiceListResponse value) =>
+            value.writeToBuffer()));
+  }
+
+  $async.Future<$0.ProductShowcaseServiceCreateResponse> create_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ProductShowcaseServiceCreateRequest> $request) async {
+    return create($call, await $request);
+  }
+
+  $async.Future<$0.ProductShowcaseServiceCreateResponse> create(
+      $grpc.ServiceCall call, $0.ProductShowcaseServiceCreateRequest request);
+
+  $async.Future<$0.ProductShowcaseServiceCreateBatchResponse> createBatch_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ProductShowcaseServiceCreateBatchRequest>
+          $request) async {
+    return createBatch($call, await $request);
+  }
+
+  $async.Future<$0.ProductShowcaseServiceCreateBatchResponse> createBatch(
+      $grpc.ServiceCall call,
+      $0.ProductShowcaseServiceCreateBatchRequest request);
+
+  $async.Future<$0.ProductShowcaseServiceGetResponse> get_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ProductShowcaseServiceGetRequest> $request) async {
+    return get($call, await $request);
+  }
+
+  $async.Future<$0.ProductShowcaseServiceGetResponse> get(
+      $grpc.ServiceCall call, $0.ProductShowcaseServiceGetRequest request);
+
+  $async.Future<$0.ProductShowcaseServiceListResponse> list_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ProductShowcaseServiceListRequest> $request) async {
+    return list($call, await $request);
+  }
+
+  $async.Future<$0.ProductShowcaseServiceListResponse> list(
+      $grpc.ServiceCall call, $0.ProductShowcaseServiceListRequest request);
+}
+
+/// LinkToVideoService manages scraping and video ad generation from product links (api_endpoint_map.md §7.5).
+@$pb.GrpcServiceName('creativanta.production.v1.LinkToVideoService')
+class LinkToVideoServiceClient extends $grpc.Client {
+  /// The hostname for this service.
+  static const $core.String defaultHost = '';
+
+  /// OAuth scopes needed for the client.
+  static const $core.List<$core.String> oauthScopes = [
+    '',
+  ];
+
+  LinkToVideoServiceClient(super.channel, {super.options, super.interceptors});
+
+  $grpc.ResponseFuture<$0.LinkToVideoServiceScrapeResponse> scrape(
+    $0.LinkToVideoServiceScrapeRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$scrape, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.LinkToVideoServiceGenerateResponse> generate(
+    $0.LinkToVideoServiceGenerateRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$generate, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.LinkToVideoServiceGetResponse> get(
+    $0.LinkToVideoServiceGetRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$get, request, options: options);
+  }
+
+  // method descriptors
+
+  static final _$scrape = $grpc.ClientMethod<$0.LinkToVideoServiceScrapeRequest,
+          $0.LinkToVideoServiceScrapeResponse>(
+      '/creativanta.production.v1.LinkToVideoService/Scrape',
+      ($0.LinkToVideoServiceScrapeRequest value) => value.writeToBuffer(),
+      $0.LinkToVideoServiceScrapeResponse.fromBuffer);
+  static final _$generate = $grpc.ClientMethod<
+          $0.LinkToVideoServiceGenerateRequest,
+          $0.LinkToVideoServiceGenerateResponse>(
+      '/creativanta.production.v1.LinkToVideoService/Generate',
+      ($0.LinkToVideoServiceGenerateRequest value) => value.writeToBuffer(),
+      $0.LinkToVideoServiceGenerateResponse.fromBuffer);
+  static final _$get = $grpc.ClientMethod<$0.LinkToVideoServiceGetRequest,
+          $0.LinkToVideoServiceGetResponse>(
+      '/creativanta.production.v1.LinkToVideoService/Get',
+      ($0.LinkToVideoServiceGetRequest value) => value.writeToBuffer(),
+      $0.LinkToVideoServiceGetResponse.fromBuffer);
+}
+
+@$pb.GrpcServiceName('creativanta.production.v1.LinkToVideoService')
+abstract class LinkToVideoServiceBase extends $grpc.Service {
+  $core.String get $name => 'creativanta.production.v1.LinkToVideoService';
+
+  LinkToVideoServiceBase() {
+    $addMethod($grpc.ServiceMethod<$0.LinkToVideoServiceScrapeRequest,
+            $0.LinkToVideoServiceScrapeResponse>(
+        'Scrape',
+        scrape_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.LinkToVideoServiceScrapeRequest.fromBuffer(value),
+        ($0.LinkToVideoServiceScrapeResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.LinkToVideoServiceGenerateRequest,
+            $0.LinkToVideoServiceGenerateResponse>(
+        'Generate',
+        generate_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.LinkToVideoServiceGenerateRequest.fromBuffer(value),
+        ($0.LinkToVideoServiceGenerateResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.LinkToVideoServiceGetRequest,
+            $0.LinkToVideoServiceGetResponse>(
+        'Get',
+        get_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.LinkToVideoServiceGetRequest.fromBuffer(value),
+        ($0.LinkToVideoServiceGetResponse value) => value.writeToBuffer()));
+  }
+
+  $async.Future<$0.LinkToVideoServiceScrapeResponse> scrape_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.LinkToVideoServiceScrapeRequest> $request) async {
+    return scrape($call, await $request);
+  }
+
+  $async.Future<$0.LinkToVideoServiceScrapeResponse> scrape(
+      $grpc.ServiceCall call, $0.LinkToVideoServiceScrapeRequest request);
+
+  $async.Future<$0.LinkToVideoServiceGenerateResponse> generate_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.LinkToVideoServiceGenerateRequest> $request) async {
+    return generate($call, await $request);
+  }
+
+  $async.Future<$0.LinkToVideoServiceGenerateResponse> generate(
+      $grpc.ServiceCall call, $0.LinkToVideoServiceGenerateRequest request);
+
+  $async.Future<$0.LinkToVideoServiceGetResponse> get_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.LinkToVideoServiceGetRequest> $request) async {
+    return get($call, await $request);
+  }
+
+  $async.Future<$0.LinkToVideoServiceGetResponse> get(
+      $grpc.ServiceCall call, $0.LinkToVideoServiceGetRequest request);
 }
