@@ -90,4 +90,130 @@ describe('Production Studio Web - Acceptance Tests', () => {
 		const finalBalance = initialBalance - costCredits;
 		expect(finalBalance).toBe(20);
 	});
+
+	// =========================================================================
+	// P4-04 Acceptance Targets
+	// =========================================================================
+
+	it('P4-04 Target 1: One canonical similarity threshold (< 30.0%)', async () => {
+		const { validateRemixOriginality, CANONICAL_SIMILARITY_THRESHOLD } = await import('./index');
+
+		expect(CANONICAL_SIMILARITY_THRESHOLD).toBe(30.0);
+
+		// 29.9% must pass
+		const resPass = validateRemixOriginality(29.9);
+		expect(resPass.passed).toBe(true);
+		expect(resPass.similarityPercentage).toBe(29.9);
+		expect(resPass.originalityScore).toBeCloseTo(70.1, 1);
+		expect(resPass.actionableAlternatives.length).toBe(0);
+
+		// 30.0% must fail strictly
+		const resExact = validateRemixOriginality(30.0);
+		expect(resExact.passed).toBe(false);
+		expect(resExact.explanation).toContain('max 30%');
+		expect(resExact.actionableAlternatives.length).toBeGreaterThan(0);
+
+		// 45.0% must fail with actionable guidance
+		const resFail = validateRemixOriginality(45.0);
+		expect(resFail.passed).toBe(false);
+		expect(resFail.actionableAlternatives).toContain("Adjust to 'Loose Inspiration' fidelity");
+		expect(resFail.actionableAlternatives).toContain('Edit script manually');
+	});
+
+	it('P4-04 Target 2: No unlicensed media bypass (SAFE-2026-02)', async () => {
+		const { validateMultiMergeTimelineClient, getTierMaxInputs } = await import('./index');
+
+		// Tier limits
+		expect(getTierMaxInputs('free')).toBe(5);
+		expect(getTierMaxInputs('starter')).toBe(10);
+		expect(getTierMaxInputs('pro')).toBe(20);
+		expect(getTierMaxInputs('business')).toBe(50);
+
+		// Unlicensed copyrighted track without proof
+		const itemsWithCopyright = [
+			{
+				itemId: 'v1',
+				assetId: 'asset-video-1',
+				orderIndex: 0,
+				mediaType: 'video' as const,
+				title: 'Intro Video',
+				durationSeconds: 5.0
+			},
+			{
+				itemId: 'a1',
+				assetId: 'audio-sony-hit',
+				orderIndex: 1,
+				mediaType: 'audio' as const,
+				title: 'Pop Hit 2026',
+				durationSeconds: 10.0,
+				hasCopyrightHit: true,
+				licenseProofKey: '' // NO license proof!
+			}
+		];
+
+		const validationFailed = validateMultiMergeTimelineClient('pro', itemsWithCopyright);
+		expect(validationFailed.isValid).toBe(false);
+		expect(validationFailed.copyrightBlocks.length).toBe(1);
+		expect(validationFailed.copyrightBlocks[0].canBypassRisk).toBe(false);
+		expect(validationFailed.copyrightBlocks[0].warningMessage).toContain('cannot be bypassed by accepting risk');
+
+		// Licensed track with proof
+		const itemsWithLicense = [
+			{
+				itemId: 'v1',
+				assetId: 'asset-video-1',
+				orderIndex: 0,
+				mediaType: 'video' as const,
+				title: 'Intro Video',
+				durationSeconds: 5.0
+			},
+			{
+				itemId: 'a1',
+				assetId: 'audio-sony-hit',
+				orderIndex: 1,
+				mediaType: 'audio' as const,
+				title: 'Pop Hit 2026',
+				durationSeconds: 10.0,
+				hasCopyrightHit: true,
+				licenseProofKey: 'https://licensing.example.com/certs/AUTH-12345'
+			}
+		];
+
+		const validationPassed = validateMultiMergeTimelineClient('pro', itemsWithLicense);
+		expect(validationPassed.isValid).toBe(true);
+		expect(validationPassed.copyrightBlocks.length).toBe(0);
+
+		// Auto transitions
+		const itemsForTransitions = [
+			{ itemId: 'i1', assetId: 'img1', orderIndex: 0, mediaType: 'image' as const, title: 'I1', durationSeconds: 3 },
+			{ itemId: 'i2', assetId: 'img2', orderIndex: 1, mediaType: 'image' as const, title: 'I2', durationSeconds: 3 },
+			{ itemId: 'v1', assetId: 'vid1', orderIndex: 2, mediaType: 'video' as const, title: 'V1', durationSeconds: 5 },
+			{ itemId: 'v2', assetId: 'vid2', orderIndex: 3, mediaType: 'video' as const, title: 'V2', durationSeconds: 5 }
+		];
+		const transResult = validateMultiMergeTimelineClient('pro', itemsForTransitions, true);
+		expect(transResult.itemsWithTransitions[0].transitionToNext).toBe('ken_burns');
+		expect(transResult.itemsWithTransitions[1].transitionToNext).toBe('fade_in');
+		expect(transResult.itemsWithTransitions[2].transitionToNext).toBe('crossfade');
+	});
+
+	it('P4-04 Target 3: Foreign/DRM source has usable error and SSRF block', async () => {
+		const { validateReferenceUrlClient } = await import('./index');
+
+		// DRM URL
+		const drm = validateReferenceUrlClient('https://www.netflix.com/watch/81234567');
+		expect(drm.isValid).toBe(false);
+		expect(drm.isDRM).toBe(true);
+		expect(drm.actionableAdvice).toContain('Cannot access video at this URL. [Upload video file instead] or [Try different URL].');
+
+		// Geo-blocked URL
+		const geo = validateReferenceUrlClient('https://hulu.com/watch/geo-restricted');
+		expect(geo.isValid).toBe(false);
+		expect(geo.isGeoBlocked).toBe(true);
+		expect(geo.actionableAdvice).toContain('Cannot access video at this URL. [Upload video file instead] or [Try different URL].');
+
+		// SSRF internal URL
+		const ssrf = validateReferenceUrlClient('http://127.0.0.1:9090/admin');
+		expect(ssrf.isValid).toBe(false);
+		expect(ssrf.errorMessage).toContain('SSRF');
+	});
 });

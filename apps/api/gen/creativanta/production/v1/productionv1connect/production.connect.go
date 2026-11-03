@@ -25,6 +25,10 @@ const (
 	StudioServiceName = "creativanta.production.v1.StudioService"
 	// AssetServiceName is the fully-qualified name of the AssetService service.
 	AssetServiceName = "creativanta.production.v1.AssetService"
+	// RemixServiceName is the fully-qualified name of the RemixService service.
+	RemixServiceName = "creativanta.production.v1.RemixService"
+	// VideoEditJobServiceName is the fully-qualified name of the VideoEditJobService service.
+	VideoEditJobServiceName = "creativanta.production.v1.VideoEditJobService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -62,6 +66,29 @@ const (
 	AssetServicePromoteCanonicalProcedure = "/creativanta.production.v1.AssetService/PromoteCanonical"
 	// AssetServiceUploadProcedure is the fully-qualified name of the AssetService's Upload RPC.
 	AssetServiceUploadProcedure = "/creativanta.production.v1.AssetService/Upload"
+	// RemixServiceAnalyzeProcedure is the fully-qualified name of the RemixService's Analyze RPC.
+	RemixServiceAnalyzeProcedure = "/creativanta.production.v1.RemixService/Analyze"
+	// RemixServiceGetBlueprintProcedure is the fully-qualified name of the RemixService's GetBlueprint
+	// RPC.
+	RemixServiceGetBlueprintProcedure = "/creativanta.production.v1.RemixService/GetBlueprint"
+	// RemixServiceGenerateProcedure is the fully-qualified name of the RemixService's Generate RPC.
+	RemixServiceGenerateProcedure = "/creativanta.production.v1.RemixService/Generate"
+	// RemixServiceRegenerateProcedure is the fully-qualified name of the RemixService's Regenerate RPC.
+	RemixServiceRegenerateProcedure = "/creativanta.production.v1.RemixService/Regenerate"
+	// VideoEditJobServiceCreateProcedure is the fully-qualified name of the VideoEditJobService's
+	// Create RPC.
+	VideoEditJobServiceCreateProcedure = "/creativanta.production.v1.VideoEditJobService/Create"
+	// VideoEditJobServiceGetProcedure is the fully-qualified name of the VideoEditJobService's Get RPC.
+	VideoEditJobServiceGetProcedure = "/creativanta.production.v1.VideoEditJobService/Get"
+	// VideoEditJobServiceListProcedure is the fully-qualified name of the VideoEditJobService's List
+	// RPC.
+	VideoEditJobServiceListProcedure = "/creativanta.production.v1.VideoEditJobService/List"
+	// VideoEditJobServiceCancelProcedure is the fully-qualified name of the VideoEditJobService's
+	// Cancel RPC.
+	VideoEditJobServiceCancelProcedure = "/creativanta.production.v1.VideoEditJobService/Cancel"
+	// VideoEditJobServiceRetryProcedure is the fully-qualified name of the VideoEditJobService's Retry
+	// RPC.
+	VideoEditJobServiceRetryProcedure = "/creativanta.production.v1.VideoEditJobService/Retry"
 )
 
 // StudioServiceClient is a client for the creativanta.production.v1.StudioService service.
@@ -486,4 +513,347 @@ func (UnimplementedAssetServiceHandler) PromoteCanonical(context.Context, *conne
 
 func (UnimplementedAssetServiceHandler) Upload(context.Context, *connect.Request[v1.UploadRequest]) (*connect.Response[v1.UploadResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.AssetService.Upload is not implemented"))
+}
+
+// RemixServiceClient is a client for the creativanta.production.v1.RemixService service.
+type RemixServiceClient interface {
+	// Analyze extracts Creative DNA from reference video (Phase 1).
+	Analyze(context.Context, *connect.Request[v1.RemixServiceAnalyzeRequest]) (*connect.Response[v1.RemixServiceAnalyzeResponse], error)
+	// GetBlueprint retrieves Creative DNA blueprint and editable script.
+	GetBlueprint(context.Context, *connect.Request[v1.RemixServiceGetBlueprintRequest]) (*connect.Response[v1.RemixServiceGetBlueprintResponse], error)
+	// Generate recreates original remix with strict originality check (<30% similarity).
+	Generate(context.Context, *connect.Request[v1.RemixServiceGenerateRequest]) (*connect.Response[v1.RemixServiceGenerateResponse], error)
+	// Regenerate adjusts an individual scene or regenerated output.
+	Regenerate(context.Context, *connect.Request[v1.RemixServiceRegenerateRequest]) (*connect.Response[v1.RemixServiceRegenerateResponse], error)
+}
+
+// NewRemixServiceClient constructs a client for the creativanta.production.v1.RemixService service.
+// By default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped
+// responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewRemixServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) RemixServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	remixServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("RemixService").Methods()
+	return &remixServiceClient{
+		analyze: connect.NewClient[v1.RemixServiceAnalyzeRequest, v1.RemixServiceAnalyzeResponse](
+			httpClient,
+			baseURL+RemixServiceAnalyzeProcedure,
+			connect.WithSchema(remixServiceMethods.ByName("Analyze")),
+			connect.WithClientOptions(opts...),
+		),
+		getBlueprint: connect.NewClient[v1.RemixServiceGetBlueprintRequest, v1.RemixServiceGetBlueprintResponse](
+			httpClient,
+			baseURL+RemixServiceGetBlueprintProcedure,
+			connect.WithSchema(remixServiceMethods.ByName("GetBlueprint")),
+			connect.WithClientOptions(opts...),
+		),
+		generate: connect.NewClient[v1.RemixServiceGenerateRequest, v1.RemixServiceGenerateResponse](
+			httpClient,
+			baseURL+RemixServiceGenerateProcedure,
+			connect.WithSchema(remixServiceMethods.ByName("Generate")),
+			connect.WithClientOptions(opts...),
+		),
+		regenerate: connect.NewClient[v1.RemixServiceRegenerateRequest, v1.RemixServiceRegenerateResponse](
+			httpClient,
+			baseURL+RemixServiceRegenerateProcedure,
+			connect.WithSchema(remixServiceMethods.ByName("Regenerate")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// remixServiceClient implements RemixServiceClient.
+type remixServiceClient struct {
+	analyze      *connect.Client[v1.RemixServiceAnalyzeRequest, v1.RemixServiceAnalyzeResponse]
+	getBlueprint *connect.Client[v1.RemixServiceGetBlueprintRequest, v1.RemixServiceGetBlueprintResponse]
+	generate     *connect.Client[v1.RemixServiceGenerateRequest, v1.RemixServiceGenerateResponse]
+	regenerate   *connect.Client[v1.RemixServiceRegenerateRequest, v1.RemixServiceRegenerateResponse]
+}
+
+// Analyze calls creativanta.production.v1.RemixService.Analyze.
+func (c *remixServiceClient) Analyze(ctx context.Context, req *connect.Request[v1.RemixServiceAnalyzeRequest]) (*connect.Response[v1.RemixServiceAnalyzeResponse], error) {
+	return c.analyze.CallUnary(ctx, req)
+}
+
+// GetBlueprint calls creativanta.production.v1.RemixService.GetBlueprint.
+func (c *remixServiceClient) GetBlueprint(ctx context.Context, req *connect.Request[v1.RemixServiceGetBlueprintRequest]) (*connect.Response[v1.RemixServiceGetBlueprintResponse], error) {
+	return c.getBlueprint.CallUnary(ctx, req)
+}
+
+// Generate calls creativanta.production.v1.RemixService.Generate.
+func (c *remixServiceClient) Generate(ctx context.Context, req *connect.Request[v1.RemixServiceGenerateRequest]) (*connect.Response[v1.RemixServiceGenerateResponse], error) {
+	return c.generate.CallUnary(ctx, req)
+}
+
+// Regenerate calls creativanta.production.v1.RemixService.Regenerate.
+func (c *remixServiceClient) Regenerate(ctx context.Context, req *connect.Request[v1.RemixServiceRegenerateRequest]) (*connect.Response[v1.RemixServiceRegenerateResponse], error) {
+	return c.regenerate.CallUnary(ctx, req)
+}
+
+// RemixServiceHandler is an implementation of the creativanta.production.v1.RemixService service.
+type RemixServiceHandler interface {
+	// Analyze extracts Creative DNA from reference video (Phase 1).
+	Analyze(context.Context, *connect.Request[v1.RemixServiceAnalyzeRequest]) (*connect.Response[v1.RemixServiceAnalyzeResponse], error)
+	// GetBlueprint retrieves Creative DNA blueprint and editable script.
+	GetBlueprint(context.Context, *connect.Request[v1.RemixServiceGetBlueprintRequest]) (*connect.Response[v1.RemixServiceGetBlueprintResponse], error)
+	// Generate recreates original remix with strict originality check (<30% similarity).
+	Generate(context.Context, *connect.Request[v1.RemixServiceGenerateRequest]) (*connect.Response[v1.RemixServiceGenerateResponse], error)
+	// Regenerate adjusts an individual scene or regenerated output.
+	Regenerate(context.Context, *connect.Request[v1.RemixServiceRegenerateRequest]) (*connect.Response[v1.RemixServiceRegenerateResponse], error)
+}
+
+// NewRemixServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewRemixServiceHandler(svc RemixServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	remixServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("RemixService").Methods()
+	remixServiceAnalyzeHandler := connect.NewUnaryHandler(
+		RemixServiceAnalyzeProcedure,
+		svc.Analyze,
+		connect.WithSchema(remixServiceMethods.ByName("Analyze")),
+		connect.WithHandlerOptions(opts...),
+	)
+	remixServiceGetBlueprintHandler := connect.NewUnaryHandler(
+		RemixServiceGetBlueprintProcedure,
+		svc.GetBlueprint,
+		connect.WithSchema(remixServiceMethods.ByName("GetBlueprint")),
+		connect.WithHandlerOptions(opts...),
+	)
+	remixServiceGenerateHandler := connect.NewUnaryHandler(
+		RemixServiceGenerateProcedure,
+		svc.Generate,
+		connect.WithSchema(remixServiceMethods.ByName("Generate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	remixServiceRegenerateHandler := connect.NewUnaryHandler(
+		RemixServiceRegenerateProcedure,
+		svc.Regenerate,
+		connect.WithSchema(remixServiceMethods.ByName("Regenerate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.production.v1.RemixService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case RemixServiceAnalyzeProcedure:
+			remixServiceAnalyzeHandler.ServeHTTP(w, r)
+		case RemixServiceGetBlueprintProcedure:
+			remixServiceGetBlueprintHandler.ServeHTTP(w, r)
+		case RemixServiceGenerateProcedure:
+			remixServiceGenerateHandler.ServeHTTP(w, r)
+		case RemixServiceRegenerateProcedure:
+			remixServiceRegenerateHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedRemixServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedRemixServiceHandler struct{}
+
+func (UnimplementedRemixServiceHandler) Analyze(context.Context, *connect.Request[v1.RemixServiceAnalyzeRequest]) (*connect.Response[v1.RemixServiceAnalyzeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.RemixService.Analyze is not implemented"))
+}
+
+func (UnimplementedRemixServiceHandler) GetBlueprint(context.Context, *connect.Request[v1.RemixServiceGetBlueprintRequest]) (*connect.Response[v1.RemixServiceGetBlueprintResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.RemixService.GetBlueprint is not implemented"))
+}
+
+func (UnimplementedRemixServiceHandler) Generate(context.Context, *connect.Request[v1.RemixServiceGenerateRequest]) (*connect.Response[v1.RemixServiceGenerateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.RemixService.Generate is not implemented"))
+}
+
+func (UnimplementedRemixServiceHandler) Regenerate(context.Context, *connect.Request[v1.RemixServiceRegenerateRequest]) (*connect.Response[v1.RemixServiceRegenerateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.RemixService.Regenerate is not implemented"))
+}
+
+// VideoEditJobServiceClient is a client for the creativanta.production.v1.VideoEditJobService
+// service.
+type VideoEditJobServiceClient interface {
+	// Create starts a new production job (e.g. multi_merge, quick_edit).
+	Create(context.Context, *connect.Request[v1.VideoEditJobServiceCreateRequest]) (*connect.Response[v1.VideoEditJobServiceCreateResponse], error)
+	// Get retrieves job status and metadata.
+	Get(context.Context, *connect.Request[v1.VideoEditJobServiceGetRequest]) (*connect.Response[v1.VideoEditJobServiceGetResponse], error)
+	// List returns filtered production jobs for a workspace.
+	List(context.Context, *connect.Request[v1.VideoEditJobServiceListRequest]) (*connect.Response[v1.VideoEditJobServiceListResponse], error)
+	// Cancel cancels an in-flight video edit job and refunds unspent credits.
+	Cancel(context.Context, *connect.Request[v1.VideoEditJobServiceCancelRequest]) (*connect.Response[v1.VideoEditJobServiceCancelResponse], error)
+	// Retry retries a failed video edit job.
+	Retry(context.Context, *connect.Request[v1.VideoEditJobServiceRetryRequest]) (*connect.Response[v1.VideoEditJobServiceRetryResponse], error)
+}
+
+// NewVideoEditJobServiceClient constructs a client for the
+// creativanta.production.v1.VideoEditJobService service. By default, it uses the Connect protocol
+// with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To
+// use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb()
+// options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewVideoEditJobServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) VideoEditJobServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	videoEditJobServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("VideoEditJobService").Methods()
+	return &videoEditJobServiceClient{
+		create: connect.NewClient[v1.VideoEditJobServiceCreateRequest, v1.VideoEditJobServiceCreateResponse](
+			httpClient,
+			baseURL+VideoEditJobServiceCreateProcedure,
+			connect.WithSchema(videoEditJobServiceMethods.ByName("Create")),
+			connect.WithClientOptions(opts...),
+		),
+		get: connect.NewClient[v1.VideoEditJobServiceGetRequest, v1.VideoEditJobServiceGetResponse](
+			httpClient,
+			baseURL+VideoEditJobServiceGetProcedure,
+			connect.WithSchema(videoEditJobServiceMethods.ByName("Get")),
+			connect.WithClientOptions(opts...),
+		),
+		list: connect.NewClient[v1.VideoEditJobServiceListRequest, v1.VideoEditJobServiceListResponse](
+			httpClient,
+			baseURL+VideoEditJobServiceListProcedure,
+			connect.WithSchema(videoEditJobServiceMethods.ByName("List")),
+			connect.WithClientOptions(opts...),
+		),
+		cancel: connect.NewClient[v1.VideoEditJobServiceCancelRequest, v1.VideoEditJobServiceCancelResponse](
+			httpClient,
+			baseURL+VideoEditJobServiceCancelProcedure,
+			connect.WithSchema(videoEditJobServiceMethods.ByName("Cancel")),
+			connect.WithClientOptions(opts...),
+		),
+		retry: connect.NewClient[v1.VideoEditJobServiceRetryRequest, v1.VideoEditJobServiceRetryResponse](
+			httpClient,
+			baseURL+VideoEditJobServiceRetryProcedure,
+			connect.WithSchema(videoEditJobServiceMethods.ByName("Retry")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// videoEditJobServiceClient implements VideoEditJobServiceClient.
+type videoEditJobServiceClient struct {
+	create *connect.Client[v1.VideoEditJobServiceCreateRequest, v1.VideoEditJobServiceCreateResponse]
+	get    *connect.Client[v1.VideoEditJobServiceGetRequest, v1.VideoEditJobServiceGetResponse]
+	list   *connect.Client[v1.VideoEditJobServiceListRequest, v1.VideoEditJobServiceListResponse]
+	cancel *connect.Client[v1.VideoEditJobServiceCancelRequest, v1.VideoEditJobServiceCancelResponse]
+	retry  *connect.Client[v1.VideoEditJobServiceRetryRequest, v1.VideoEditJobServiceRetryResponse]
+}
+
+// Create calls creativanta.production.v1.VideoEditJobService.Create.
+func (c *videoEditJobServiceClient) Create(ctx context.Context, req *connect.Request[v1.VideoEditJobServiceCreateRequest]) (*connect.Response[v1.VideoEditJobServiceCreateResponse], error) {
+	return c.create.CallUnary(ctx, req)
+}
+
+// Get calls creativanta.production.v1.VideoEditJobService.Get.
+func (c *videoEditJobServiceClient) Get(ctx context.Context, req *connect.Request[v1.VideoEditJobServiceGetRequest]) (*connect.Response[v1.VideoEditJobServiceGetResponse], error) {
+	return c.get.CallUnary(ctx, req)
+}
+
+// List calls creativanta.production.v1.VideoEditJobService.List.
+func (c *videoEditJobServiceClient) List(ctx context.Context, req *connect.Request[v1.VideoEditJobServiceListRequest]) (*connect.Response[v1.VideoEditJobServiceListResponse], error) {
+	return c.list.CallUnary(ctx, req)
+}
+
+// Cancel calls creativanta.production.v1.VideoEditJobService.Cancel.
+func (c *videoEditJobServiceClient) Cancel(ctx context.Context, req *connect.Request[v1.VideoEditJobServiceCancelRequest]) (*connect.Response[v1.VideoEditJobServiceCancelResponse], error) {
+	return c.cancel.CallUnary(ctx, req)
+}
+
+// Retry calls creativanta.production.v1.VideoEditJobService.Retry.
+func (c *videoEditJobServiceClient) Retry(ctx context.Context, req *connect.Request[v1.VideoEditJobServiceRetryRequest]) (*connect.Response[v1.VideoEditJobServiceRetryResponse], error) {
+	return c.retry.CallUnary(ctx, req)
+}
+
+// VideoEditJobServiceHandler is an implementation of the
+// creativanta.production.v1.VideoEditJobService service.
+type VideoEditJobServiceHandler interface {
+	// Create starts a new production job (e.g. multi_merge, quick_edit).
+	Create(context.Context, *connect.Request[v1.VideoEditJobServiceCreateRequest]) (*connect.Response[v1.VideoEditJobServiceCreateResponse], error)
+	// Get retrieves job status and metadata.
+	Get(context.Context, *connect.Request[v1.VideoEditJobServiceGetRequest]) (*connect.Response[v1.VideoEditJobServiceGetResponse], error)
+	// List returns filtered production jobs for a workspace.
+	List(context.Context, *connect.Request[v1.VideoEditJobServiceListRequest]) (*connect.Response[v1.VideoEditJobServiceListResponse], error)
+	// Cancel cancels an in-flight video edit job and refunds unspent credits.
+	Cancel(context.Context, *connect.Request[v1.VideoEditJobServiceCancelRequest]) (*connect.Response[v1.VideoEditJobServiceCancelResponse], error)
+	// Retry retries a failed video edit job.
+	Retry(context.Context, *connect.Request[v1.VideoEditJobServiceRetryRequest]) (*connect.Response[v1.VideoEditJobServiceRetryResponse], error)
+}
+
+// NewVideoEditJobServiceHandler builds an HTTP handler from the service implementation. It returns
+// the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewVideoEditJobServiceHandler(svc VideoEditJobServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	videoEditJobServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("VideoEditJobService").Methods()
+	videoEditJobServiceCreateHandler := connect.NewUnaryHandler(
+		VideoEditJobServiceCreateProcedure,
+		svc.Create,
+		connect.WithSchema(videoEditJobServiceMethods.ByName("Create")),
+		connect.WithHandlerOptions(opts...),
+	)
+	videoEditJobServiceGetHandler := connect.NewUnaryHandler(
+		VideoEditJobServiceGetProcedure,
+		svc.Get,
+		connect.WithSchema(videoEditJobServiceMethods.ByName("Get")),
+		connect.WithHandlerOptions(opts...),
+	)
+	videoEditJobServiceListHandler := connect.NewUnaryHandler(
+		VideoEditJobServiceListProcedure,
+		svc.List,
+		connect.WithSchema(videoEditJobServiceMethods.ByName("List")),
+		connect.WithHandlerOptions(opts...),
+	)
+	videoEditJobServiceCancelHandler := connect.NewUnaryHandler(
+		VideoEditJobServiceCancelProcedure,
+		svc.Cancel,
+		connect.WithSchema(videoEditJobServiceMethods.ByName("Cancel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	videoEditJobServiceRetryHandler := connect.NewUnaryHandler(
+		VideoEditJobServiceRetryProcedure,
+		svc.Retry,
+		connect.WithSchema(videoEditJobServiceMethods.ByName("Retry")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.production.v1.VideoEditJobService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case VideoEditJobServiceCreateProcedure:
+			videoEditJobServiceCreateHandler.ServeHTTP(w, r)
+		case VideoEditJobServiceGetProcedure:
+			videoEditJobServiceGetHandler.ServeHTTP(w, r)
+		case VideoEditJobServiceListProcedure:
+			videoEditJobServiceListHandler.ServeHTTP(w, r)
+		case VideoEditJobServiceCancelProcedure:
+			videoEditJobServiceCancelHandler.ServeHTTP(w, r)
+		case VideoEditJobServiceRetryProcedure:
+			videoEditJobServiceRetryHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedVideoEditJobServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedVideoEditJobServiceHandler struct{}
+
+func (UnimplementedVideoEditJobServiceHandler) Create(context.Context, *connect.Request[v1.VideoEditJobServiceCreateRequest]) (*connect.Response[v1.VideoEditJobServiceCreateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.VideoEditJobService.Create is not implemented"))
+}
+
+func (UnimplementedVideoEditJobServiceHandler) Get(context.Context, *connect.Request[v1.VideoEditJobServiceGetRequest]) (*connect.Response[v1.VideoEditJobServiceGetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.VideoEditJobService.Get is not implemented"))
+}
+
+func (UnimplementedVideoEditJobServiceHandler) List(context.Context, *connect.Request[v1.VideoEditJobServiceListRequest]) (*connect.Response[v1.VideoEditJobServiceListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.VideoEditJobService.List is not implemented"))
+}
+
+func (UnimplementedVideoEditJobServiceHandler) Cancel(context.Context, *connect.Request[v1.VideoEditJobServiceCancelRequest]) (*connect.Response[v1.VideoEditJobServiceCancelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.VideoEditJobService.Cancel is not implemented"))
+}
+
+func (UnimplementedVideoEditJobServiceHandler) Retry(context.Context, *connect.Request[v1.VideoEditJobServiceRetryRequest]) (*connect.Response[v1.VideoEditJobServiceRetryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.VideoEditJobService.Retry is not implemented"))
 }

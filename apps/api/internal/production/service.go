@@ -41,6 +41,28 @@ type Service struct {
 
 var _ productionv1connect.StudioServiceHandler = (*Service)(nil)
 var _ productionv1connect.AssetServiceHandler = (*Service)(nil)
+var _ productionv1connect.RemixServiceHandler = (*RemixServiceServer)(nil)
+var _ productionv1connect.VideoEditJobServiceHandler = (*VideoEditJobServiceServer)(nil)
+
+// RemixServiceServer implements RemixService ConnectRPC handler.
+type RemixServiceServer struct {
+	svc *Service
+}
+
+// Remix returns the RemixServiceHandler.
+func (s *Service) Remix() productionv1connect.RemixServiceHandler {
+	return &RemixServiceServer{svc: s}
+}
+
+// VideoEditJobServiceServer implements VideoEditJobService ConnectRPC handler.
+type VideoEditJobServiceServer struct {
+	svc *Service
+}
+
+// VideoEditJob returns the VideoEditJobServiceHandler.
+func (s *Service) VideoEditJob() productionv1connect.VideoEditJobServiceHandler {
+	return &VideoEditJobServiceServer{svc: s}
+}
 
 // NewService creates a new Production service.
 func NewService(cfg ServiceConfig) *Service {

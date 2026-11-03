@@ -78,3 +78,80 @@ export interface AssetLineage {
 	costUSD: string;
 	continuityScore?: number;
 }
+
+export type FidelityLevel = 'match_1to1' | 'adapt' | 'loose';
+
+export interface CreativeDNA {
+	sceneCount: number;
+	hookType: string;
+	contentStructureJson: string;
+	pacingProfileJson: string;
+	visualStyleJson: string;
+	audioProfileJson: string;
+	transitionMapJson: string;
+	totalDurationSeconds: number;
+	engagementStructureJson: string;
+}
+
+export interface OriginalityCheckResult {
+	similarityPercentage: number;
+	canonicalThresholdPercentage: number; // 30.0%
+	originalityScore: number;
+	passed: boolean;
+	explanation: string;
+	actionableAlternatives: string[];
+}
+
+export interface RemixBlueprint {
+	blueprintId: string;
+	workspaceId: string;
+	referenceAssetId: string;
+	referenceUrl?: string;
+	referenceTranscript?: string;
+	outputAssetId?: string;
+	creativeDna: CreativeDNA;
+	remixScript: string;
+	fidelityLevel: FidelityLevel;
+	originalityScore: number;
+	similarityPercentage: number;
+	status: 'analyzing' | 'analyzed' | 'generating' | 'generated' | 'failed' | 'rejected';
+	rejectionReason?: string;
+	errorMessage?: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface CopyrightCheckResult {
+	mediaId: string;
+	mediaTitle: string;
+	isCopyrighted: boolean;
+	licenseVerified: boolean;
+	passed: boolean;
+	warningMessage?: string;
+	canBypassRisk: boolean; // Must always be false for hard copyright hits (SAFE-2026-02)
+}
+
+export interface MultiMergeTimelineItem {
+	itemId: string;
+	assetId: string;
+	orderIndex: number;
+	mediaType: 'video' | 'image' | 'audio';
+	title: string;
+	durationSeconds: number;
+	transitionToNext?: string;
+	transitionDurationSeconds?: number;
+	thumbnailUrl?: string;
+	licenseStatus?: 'licensed' | 'royalty_free' | 'copyrighted_unverified' | 'copyrighted_verified';
+	licenseProofKey?: string;
+	hasCopyrightHit?: boolean;
+}
+
+export interface MultiMergeSettings {
+	targetDurationSec: number;
+	autoTransitions: boolean;
+	musicAssetId?: string;
+	musicLicenseProof?: string;
+	aspectRatio: '9:16' | '16:9' | '1:1';
+	pacing: 'fast' | 'medium' | 'slow';
+}
+
