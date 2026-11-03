@@ -272,6 +272,17 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if err := ValidateCanonicalMigrationContract(m22); err != nil {
 		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v22: %v", err)
 	}
+
+	m23 := migrations[22]
+	if m23.Version != 23 {
+		t.Fatalf("expected version 23, got %d", m23.Version)
+	}
+	if len(m23.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v23, got %q", m23.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m23); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v23: %v", err)
+	}
 }
 
 func TestValidateCanonicalMigrationContractRejectsViolations(t *testing.T) {
@@ -431,8 +442,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 22 {
-		t.Fatalf("expected 22 applied migrations, got %d", len(applied))
+	if len(applied) != 23 {
+		t.Fatalf("expected 23 applied migrations, got %d", len(applied))
 	}
 	for i, v := range applied {
 		if v != int64(i+1) {
@@ -452,13 +463,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for all 22 migrations.
+	// Status reports Applied = true for all 23 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 22 {
-		t.Fatalf("expected status for 22 migrations, got %d", len(statuses))
+	if len(statuses) != 23 {
+		t.Fatalf("expected status for 23 migrations, got %d", len(statuses))
 	}
 	for i, s := range statuses {
 		if !s.Applied {
@@ -471,7 +482,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 22, then 21, then 20...
+	// Down with allowLocalRollback=true rolls back version 23, then 22, then 21, then 20...
+	rolled23, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v23 failed: %v", err)
+	}
+	if rolled23 != 23 {
+		t.Fatalf("expected rolled back version 23, got %d", rolled23)
+	}
 	rolled22, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v22 failed: %v", err)

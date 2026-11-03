@@ -1,0 +1,159 @@
+{
+  "task_id": "P4-05",
+  "phase": "P4",
+  "slice": "p4-05",
+  "title": "Showcase, Image/Link-to-Video và thumbnails",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "dc596bb4441a495d4509bd5abd8cb9ff2649c97e",
+  "feature_refs": [
+    "docs/02_features/production/ai_video_studio.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_endpoint_map.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/05_system/queue_retry_design.md",
+    "docs/05_system/ai_provider_guide.md"
+  ],
+  "requirement_ids": [
+    "M07-160bf209a32c-001",
+    "M07-d3527b7c2514-001",
+    "M07-fcf87cb891ad-001",
+    "M07-aa31a4f00b21-001",
+    "EC-M07-R01",
+    "DB-C-001",
+    "DB-H-001"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_studio_product_showcase.md",
+    "docs/03_screens/web/screen_web_studio_image_to_video.md",
+    "docs/03_screens/web/screen_web_studio_link_to_video.md",
+    "docs/03_screens/web/screen_web_studio_thumbnail.md"
+  ],
+  "screen_routes": [
+    "/studio/product-showcase",
+    "/studio/image-to-video",
+    "/studio/link-to-video",
+    "/studio/thumbnail"
+  ],
+  "event_types": [
+    "production.showcase.created",
+    "production.showcase.batch_created",
+    "production.link_to_video.scraped",
+    "production.link_to_video.generated",
+    "production.thumbnail.generated"
+  ],
+  "source_hashes": {
+    "infra/migrations/00023_p4_05_showcase_image_link_video_and_thumbnails.sql": "c7ef0334cb076a07e1a7198e93bec1cabad18e72e7d1de84fb383550d1de1f8b",
+    "protos/creativanta/production/v1/production.proto": "f33e2834eacab4166bdb7740d6da12260480587d24d89cb1084bc3f1e9e579e0",
+    "apps/api/internal/production/types.go": "656d6dc5a53ee762b45ea3b8626eccd23fd321df0ed6cf7b7cfebd6df04ae717",
+    "apps/api/internal/production/store.go": "a179e630d6a4954cc45b37377fe346bb0daec812c893c91eb9ec77389aa3ea4a",
+    "apps/api/internal/production/service.go": "06bacd09dacdb181668941a65d2f9f5707581538d5cdccf4a19c9d3238304b4d",
+    "apps/api/internal/production/showcase.go": "5ce335df2ceb5d218dce1e15996201a6dffb4962072b3eb4bee8da1d8607b1db",
+    "apps/api/internal/production/image_to_video.go": "568aadb1832c33c78c78979ebc66a630c1a87b4b0533f0cb826972ffaba913cb",
+    "apps/api/internal/production/link_to_video.go": "7f52cb0a7c2922c25e034bc5474102ed1684ce58dccf7a883fe1fc1eeb02f076",
+    "apps/api/internal/production/thumbnail.go": "3a4375070ecbe536ddaa7c1ba72c507caacf90329e236ca6dd1280507697a2b7",
+    "apps/api/internal/production/showcase_link_thumb_test.go": "c3559e78ca44bd03e1ace7cbd99ac71c211076e6a32298b75bc76a074240e38b",
+    "apps/api/internal/migrate/migrator_test.go": "559219f179f28184791af426bc26ed2548673aa0ffe9d9463be8f08a2fe24bd5",
+    "apps/web/src/lib/production/types.ts": "0003a0ccd95485a0327c35a6aea4d476f042374420e97c0d5bcc0443607d64ec",
+    "apps/web/src/lib/production/index.ts": "f05155147f230cda35880931b44410d9c8e11404f68d21ffd2c4c9a2fa1c98bc",
+    "apps/web/src/lib/production/showcase_link_thumb.ts": "995aafb861d0da3569cd28e40e4de04cabf939f2c85c13c573797fb5eb724bec",
+    "apps/web/src/lib/production/showcase_link_thumb.test.ts": "ffafc5431583316484f3776e81d3227cc592f4a8ae2e975751e62892db8798da",
+    "apps/web/src/routes/studio/product-showcase/+page.svelte": "29601a86dbf3be4706cb3c688cebeb232faf576c1a89581983f7e7cb2777e73e",
+    "apps/web/src/routes/studio/image-to-video/+page.svelte": "c4e57f0bf32c0a462aced66f4f9a89a8ceffe2b8af1dd343cd67404cc46366d9",
+    "apps/web/src/routes/studio/link-to-video/+page.svelte": "5ed6eba840eebc10fa26733ac8fc1430472ab2b7aa39c78e7c2b6131a689b099",
+    "apps/web/src/routes/studio/thumbnail/+page.svelte": "22d6c16592a6073a936e1ff1d1a356b76c35dfae3a829e5a8b3606bd492d2e6a"
+  },
+  "scope_items": [
+    "Database Migration 00023: Created product_showcase_jobs and link_to_video_jobs tables with workspace composite tenant keys, strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY), app_user and admin_user policies, composite foreign keys referencing workspaces, NUMERIC(18,6) decimal money columns, and reversible transactional down migration.",
+    "Acceptance Target 1 (All listed styles/options): EF-01 8 Showcase styles (lifestyle, studio_clean, unboxing, spin_360, exploded_view, macro_detail, comparison, ugc_hands_on); EF-02 6 motion styles (pan_zoom, orbit_3d, dolly_zoom, dynamic_action, fluid_morph, parallax_3d) + presets, durations 3-15s, loopable (+5 cr) and tier quotes (draft=5, standard=10, premium=25); EF-03 5 thumbnail templates and 5-factor mathematical CTR prediction breakdown (face 30%, text 25%, color 20%, composition 15%, trend 10%) with color-coded badges (>70% Green, 40-70% Yellow, <40% Red); EF-04 5 script templates (problem_solution, feature_roundup, unboxing_review, urgency_promo, story_driven).",
+    "Acceptance Target 2 (SSRF/unsafe source blocked): Validates and sanitizes URLs against loopback (127.0.0.1, localhost), RFC 1918 private IPv4 networks (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), cloud metadata (169.254.169.254), non-HTTP/HTTPS schemes, and DRM/geo-blocked streaming services with actionable error copy ('Cannot access video at this URL. [Upload video file instead] or [Try different URL].') and zero partial analysis (EC-M07-R01).",
+    "Acceptance Target 3 (Missing product attributes explained): Explains missing images (< 2 warn, < 8 for 360 spin blocks), missing description, missing price; batch mode validates up to 20 products with invalid row flagging (0 charge for invalid rows)."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: Go unit tests (showcase_link_thumb_test.go: TestAcceptanceTarget1_AllListedStylesAndOptions) and Vitest tests (showcase_link_thumb.test.ts) verify all 8 showcase styles, 6 motion styles, tier pricing, 5-factor mathematical CTR prediction formula, and 5 script templates.",
+    "Acceptance Target 2 Verified: Go unit tests (showcase_link_thumb_test.go: TestAcceptanceTarget2_SSRFAndUnsafeSourceBlocked) and Vitest tests verify SSRF blocking for RFC 1918, loopback, cloud metadata, and DRM detection with actionable copy per EC-M07-R01.",
+    "Acceptance Target 3 Verified: Go unit tests (showcase_link_thumb_test.go: TestAcceptanceTarget3_MissingProductAttributesExplained) and Vitest tests verify attribute warnings (< 2 images, missing desc/price), 360 spin blocking (< 8 images), and 20-product batch processing with zero charge for invalid rows.",
+    "Migration 00023 Verified: migrator_test.go passes all 23 migrations including 00023_p4_05_showcase_image_link_video_and_thumbnails.sql with bidirectional transactional tests and app_user RLS enforcement.",
+    "Protobuf Contracts Verified: check_proto.sh passes proto lint, code generation across 4 targets (Go, ConnectRPC, TypeScript, Dart), zero-drift verification, buf breaking backward compatibility against origin/main, Go vet/test, TypeScript vitest, and Dart test suites.",
+    "Quality Gates Verified: tooling/ci/check_d0.sh (docs & consistency), tooling/ci/check_go.sh (gofmt, vet, govulncheck, race detector), tooling/ci/check_node.sh (svelte-check, vite build, vitest tests, SSR smoke), and tooling/ci/check_flutter.sh (analyze fatal-infos/warnings, unit/widget tests) all pass."
+  ],
+  "rpc_contracts": [
+    "ProductShowcaseService/Create",
+    "ProductShowcaseService/CreateBatch",
+    "ProductShowcaseService/Get",
+    "ProductShowcaseService/List",
+    "LinkToVideoService/Scrape",
+    "LinkToVideoService/Generate",
+    "LinkToVideoService/Get",
+    "AIService/GenerateThumbnails"
+  ],
+  "migration_files": [
+    "infra/migrations/00023_p4_05_showcase_image_link_video_and_thumbnails.sql"
+  ],
+  "permission_keys": [
+    "asset:generate",
+    "asset:read"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-AI-PROVIDER-VIDEO",
+      "PENDING_PRODUCTION_KEY",
+      "Live AI video generation models (Veo, Kling, HeyGen) require cloud production keys; mock provider adapters with realistic latencies and failure responses verified."
+    ],
+    [
+      "EXT-GATE-CLERK-AUTH",
+      "PENDING_PRODUCTION_TENANT",
+      "Production Clerk instance and webhook signing credentials for live multi-tenant JWT validation."
+    ],
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "Migration 00023 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+    ]
+  ],
+  "checks": [
+    {
+      "command": "tooling/ci/check_d0.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence": "build/phase-P4/p4-05/evidence/check_d0.log"
+    },
+    {
+      "command": "tooling/ci/check_proto.sh verify",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence": "build/phase-P4/p4-05/evidence/check_proto.log"
+    },
+    {
+      "command": "tooling/ci/check_go.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence": "build/phase-P4/p4-05/evidence/check_go.log"
+    },
+    {
+      "command": "tooling/ci/check_node.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence": "build/phase-P4/p4-05/evidence/check_node.log"
+    },
+    {
+      "command": "tooling/ci/check_flutter.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence": "build/phase-P4/p4-05/evidence/check_flutter.log"
+    }
+  ],
+  "remaining_scope": [
+    "P4-06: Production Review & Final Approval — Mobile approval, revision requests, export package and compliance audit.",
+    "P4-07: Continuity OS Integration — Character and voice consistency across long-form video pipelines.",
+    "P4-08: AI Video Studio Final Phase Acceptance — End-to-end integration and provider performance verification."
+  ],
+  "decisions": [
+    "DEC-P4-05-01: Supported all 8 Showcase styles, 6 motion styles + presets, 5-factor mathematical CTR prediction breakdown formula (face 30%, text 25%, color 20%, composition 15%, trend 10%), and 5 script templates across ConnectRPC contracts, Go domain logic, and SvelteKit web UI.",
+    "DEC-P4-05-02: Enforced zero partial analysis and immediate rejection of DRM/geo-blocked URLs (EC-M07-R01) with actionable copy: 'Cannot access video at this URL. [Upload video file instead] or [Try different URL].'",
+    "DEC-P4-05-03: Explanatory attribute validation for product showcase and scraped URLs, with 360-spin requiring minimum 8 images, and batch mode processing up to 20 products with 0 credit deduction for invalid rows."
+  ]
+}

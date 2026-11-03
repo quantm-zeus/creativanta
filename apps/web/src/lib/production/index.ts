@@ -1,5 +1,6 @@
 export * from './types';
 export * from './clipfactory';
+export * from './showcase_link_thumb';
 export { default as BatchBudgetPreviewModal } from './BatchBudgetPreviewModal.svelte';
 export { default as ActiveJobsBanner } from './ActiveJobsBanner.svelte';
 export { default as LineageInspectionDrawer } from './LineageInspectionDrawer.svelte';
@@ -107,11 +108,42 @@ export const PRODUCTION_MODES: ProductionMode[] = [
 	{
 		id: 'thumbnail',
 		title: 'AI Thumbnail Creator',
-		description: 'Thiết kế ảnh bìa tỉ lệ click cao dựa trên dữ liệu ngành',
+		description: 'Thiết kế ảnh bìa tỉ lệ click cao dựa trên dữ liệu ngành và tính điểm CTR 5 nhân tố',
 		icon: '✨',
 		creditCost: 10,
 		durationSecs: 0,
-		route: '/studio'
+		route: '/studio/thumbnail',
+		badge: 'W026 · EF-03'
+	},
+	{
+		id: 'product_showcase',
+		title: 'AI Product Showcase',
+		description: 'Tạo video giới thiệu sản phẩm 8 phong cách chuẩn e-commerce từ ảnh',
+		icon: '🛍️',
+		creditCost: 10,
+		durationSecs: 15,
+		route: '/studio/product-showcase',
+		badge: 'W024 · EF-01'
+	},
+	{
+		id: 'image_to_video',
+		title: 'Image to Video Studio',
+		description: 'Biến ảnh tĩnh thành cảnh quay video sống động với 6 hiệu ứng chuyển động',
+		icon: '📸',
+		creditCost: 10,
+		durationSecs: 10,
+		route: '/studio/image-to-video',
+		badge: 'W035 · EF-02'
+	},
+	{
+		id: 'link_to_video',
+		title: 'Link to Video Studio',
+		description: 'Trích xuất tự động sản phẩm từ URL và tạo kịch bản 5 mẫu video viral',
+		icon: '🔗',
+		creditCost: 15,
+		durationSecs: 15,
+		route: '/studio/link-to-video',
+		badge: 'W036 · EF-04'
 	},
 	{
 		id: 'broll',

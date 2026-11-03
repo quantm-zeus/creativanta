@@ -43,6 +43,10 @@ const (
 	StylePackServiceName = "creativanta.production.v1.StylePackService"
 	// AIServiceName is the fully-qualified name of the AIService service.
 	AIServiceName = "creativanta.production.v1.AIService"
+	// ProductShowcaseServiceName is the fully-qualified name of the ProductShowcaseService service.
+	ProductShowcaseServiceName = "creativanta.production.v1.ProductShowcaseService"
+	// LinkToVideoServiceName is the fully-qualified name of the LinkToVideoService service.
+	LinkToVideoServiceName = "creativanta.production.v1.LinkToVideoService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -183,6 +187,29 @@ const (
 	AIServiceQuoteCharacterPreviewProcedure = "/creativanta.production.v1.AIService/QuoteCharacterPreview"
 	// AIServiceAnalyzeStyleProcedure is the fully-qualified name of the AIService's AnalyzeStyle RPC.
 	AIServiceAnalyzeStyleProcedure = "/creativanta.production.v1.AIService/AnalyzeStyle"
+	// AIServiceGenerateThumbnailsProcedure is the fully-qualified name of the AIService's
+	// GenerateThumbnails RPC.
+	AIServiceGenerateThumbnailsProcedure = "/creativanta.production.v1.AIService/GenerateThumbnails"
+	// ProductShowcaseServiceCreateProcedure is the fully-qualified name of the ProductShowcaseService's
+	// Create RPC.
+	ProductShowcaseServiceCreateProcedure = "/creativanta.production.v1.ProductShowcaseService/Create"
+	// ProductShowcaseServiceCreateBatchProcedure is the fully-qualified name of the
+	// ProductShowcaseService's CreateBatch RPC.
+	ProductShowcaseServiceCreateBatchProcedure = "/creativanta.production.v1.ProductShowcaseService/CreateBatch"
+	// ProductShowcaseServiceGetProcedure is the fully-qualified name of the ProductShowcaseService's
+	// Get RPC.
+	ProductShowcaseServiceGetProcedure = "/creativanta.production.v1.ProductShowcaseService/Get"
+	// ProductShowcaseServiceListProcedure is the fully-qualified name of the ProductShowcaseService's
+	// List RPC.
+	ProductShowcaseServiceListProcedure = "/creativanta.production.v1.ProductShowcaseService/List"
+	// LinkToVideoServiceScrapeProcedure is the fully-qualified name of the LinkToVideoService's Scrape
+	// RPC.
+	LinkToVideoServiceScrapeProcedure = "/creativanta.production.v1.LinkToVideoService/Scrape"
+	// LinkToVideoServiceGenerateProcedure is the fully-qualified name of the LinkToVideoService's
+	// Generate RPC.
+	LinkToVideoServiceGenerateProcedure = "/creativanta.production.v1.LinkToVideoService/Generate"
+	// LinkToVideoServiceGetProcedure is the fully-qualified name of the LinkToVideoService's Get RPC.
+	LinkToVideoServiceGetProcedure = "/creativanta.production.v1.LinkToVideoService/Get"
 )
 
 // StudioServiceClient is a client for the creativanta.production.v1.StudioService service.
@@ -1954,6 +1981,7 @@ type AIServiceClient interface {
 	GenerateCharacterPreview(context.Context, *connect.Request[v1.GenerateCharacterPreviewRequest]) (*connect.Response[v1.GenerateCharacterPreviewResponse], error)
 	QuoteCharacterPreview(context.Context, *connect.Request[v1.QuoteCharacterPreviewRequest]) (*connect.Response[v1.QuoteCharacterPreviewResponse], error)
 	AnalyzeStyle(context.Context, *connect.Request[v1.AnalyzeStyleRequest]) (*connect.Response[v1.AnalyzeStyleResponse], error)
+	GenerateThumbnails(context.Context, *connect.Request[v1.GenerateThumbnailsRequest]) (*connect.Response[v1.GenerateThumbnailsResponse], error)
 }
 
 // NewAIServiceClient constructs a client for the creativanta.production.v1.AIService service. By
@@ -1985,6 +2013,12 @@ func NewAIServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...c
 			connect.WithSchema(aIServiceMethods.ByName("AnalyzeStyle")),
 			connect.WithClientOptions(opts...),
 		),
+		generateThumbnails: connect.NewClient[v1.GenerateThumbnailsRequest, v1.GenerateThumbnailsResponse](
+			httpClient,
+			baseURL+AIServiceGenerateThumbnailsProcedure,
+			connect.WithSchema(aIServiceMethods.ByName("GenerateThumbnails")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -1993,6 +2027,7 @@ type aIServiceClient struct {
 	generateCharacterPreview *connect.Client[v1.GenerateCharacterPreviewRequest, v1.GenerateCharacterPreviewResponse]
 	quoteCharacterPreview    *connect.Client[v1.QuoteCharacterPreviewRequest, v1.QuoteCharacterPreviewResponse]
 	analyzeStyle             *connect.Client[v1.AnalyzeStyleRequest, v1.AnalyzeStyleResponse]
+	generateThumbnails       *connect.Client[v1.GenerateThumbnailsRequest, v1.GenerateThumbnailsResponse]
 }
 
 // GenerateCharacterPreview calls creativanta.production.v1.AIService.GenerateCharacterPreview.
@@ -2010,11 +2045,17 @@ func (c *aIServiceClient) AnalyzeStyle(ctx context.Context, req *connect.Request
 	return c.analyzeStyle.CallUnary(ctx, req)
 }
 
+// GenerateThumbnails calls creativanta.production.v1.AIService.GenerateThumbnails.
+func (c *aIServiceClient) GenerateThumbnails(ctx context.Context, req *connect.Request[v1.GenerateThumbnailsRequest]) (*connect.Response[v1.GenerateThumbnailsResponse], error) {
+	return c.generateThumbnails.CallUnary(ctx, req)
+}
+
 // AIServiceHandler is an implementation of the creativanta.production.v1.AIService service.
 type AIServiceHandler interface {
 	GenerateCharacterPreview(context.Context, *connect.Request[v1.GenerateCharacterPreviewRequest]) (*connect.Response[v1.GenerateCharacterPreviewResponse], error)
 	QuoteCharacterPreview(context.Context, *connect.Request[v1.QuoteCharacterPreviewRequest]) (*connect.Response[v1.QuoteCharacterPreviewResponse], error)
 	AnalyzeStyle(context.Context, *connect.Request[v1.AnalyzeStyleRequest]) (*connect.Response[v1.AnalyzeStyleResponse], error)
+	GenerateThumbnails(context.Context, *connect.Request[v1.GenerateThumbnailsRequest]) (*connect.Response[v1.GenerateThumbnailsResponse], error)
 }
 
 // NewAIServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -2042,6 +2083,12 @@ func NewAIServiceHandler(svc AIServiceHandler, opts ...connect.HandlerOption) (s
 		connect.WithSchema(aIServiceMethods.ByName("AnalyzeStyle")),
 		connect.WithHandlerOptions(opts...),
 	)
+	aIServiceGenerateThumbnailsHandler := connect.NewUnaryHandler(
+		AIServiceGenerateThumbnailsProcedure,
+		svc.GenerateThumbnails,
+		connect.WithSchema(aIServiceMethods.ByName("GenerateThumbnails")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/creativanta.production.v1.AIService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AIServiceGenerateCharacterPreviewProcedure:
@@ -2050,6 +2097,8 @@ func NewAIServiceHandler(svc AIServiceHandler, opts ...connect.HandlerOption) (s
 			aIServiceQuoteCharacterPreviewHandler.ServeHTTP(w, r)
 		case AIServiceAnalyzeStyleProcedure:
 			aIServiceAnalyzeStyleHandler.ServeHTTP(w, r)
+		case AIServiceGenerateThumbnailsProcedure:
+			aIServiceGenerateThumbnailsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -2069,4 +2118,284 @@ func (UnimplementedAIServiceHandler) QuoteCharacterPreview(context.Context, *con
 
 func (UnimplementedAIServiceHandler) AnalyzeStyle(context.Context, *connect.Request[v1.AnalyzeStyleRequest]) (*connect.Response[v1.AnalyzeStyleResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.AIService.AnalyzeStyle is not implemented"))
+}
+
+func (UnimplementedAIServiceHandler) GenerateThumbnails(context.Context, *connect.Request[v1.GenerateThumbnailsRequest]) (*connect.Response[v1.GenerateThumbnailsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.AIService.GenerateThumbnails is not implemented"))
+}
+
+// ProductShowcaseServiceClient is a client for the creativanta.production.v1.ProductShowcaseService
+// service.
+type ProductShowcaseServiceClient interface {
+	Create(context.Context, *connect.Request[v1.ProductShowcaseServiceCreateRequest]) (*connect.Response[v1.ProductShowcaseServiceCreateResponse], error)
+	CreateBatch(context.Context, *connect.Request[v1.ProductShowcaseServiceCreateBatchRequest]) (*connect.Response[v1.ProductShowcaseServiceCreateBatchResponse], error)
+	Get(context.Context, *connect.Request[v1.ProductShowcaseServiceGetRequest]) (*connect.Response[v1.ProductShowcaseServiceGetResponse], error)
+	List(context.Context, *connect.Request[v1.ProductShowcaseServiceListRequest]) (*connect.Response[v1.ProductShowcaseServiceListResponse], error)
+}
+
+// NewProductShowcaseServiceClient constructs a client for the
+// creativanta.production.v1.ProductShowcaseService service. By default, it uses the Connect
+// protocol with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed
+// requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
+// connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewProductShowcaseServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ProductShowcaseServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	productShowcaseServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("ProductShowcaseService").Methods()
+	return &productShowcaseServiceClient{
+		create: connect.NewClient[v1.ProductShowcaseServiceCreateRequest, v1.ProductShowcaseServiceCreateResponse](
+			httpClient,
+			baseURL+ProductShowcaseServiceCreateProcedure,
+			connect.WithSchema(productShowcaseServiceMethods.ByName("Create")),
+			connect.WithClientOptions(opts...),
+		),
+		createBatch: connect.NewClient[v1.ProductShowcaseServiceCreateBatchRequest, v1.ProductShowcaseServiceCreateBatchResponse](
+			httpClient,
+			baseURL+ProductShowcaseServiceCreateBatchProcedure,
+			connect.WithSchema(productShowcaseServiceMethods.ByName("CreateBatch")),
+			connect.WithClientOptions(opts...),
+		),
+		get: connect.NewClient[v1.ProductShowcaseServiceGetRequest, v1.ProductShowcaseServiceGetResponse](
+			httpClient,
+			baseURL+ProductShowcaseServiceGetProcedure,
+			connect.WithSchema(productShowcaseServiceMethods.ByName("Get")),
+			connect.WithClientOptions(opts...),
+		),
+		list: connect.NewClient[v1.ProductShowcaseServiceListRequest, v1.ProductShowcaseServiceListResponse](
+			httpClient,
+			baseURL+ProductShowcaseServiceListProcedure,
+			connect.WithSchema(productShowcaseServiceMethods.ByName("List")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// productShowcaseServiceClient implements ProductShowcaseServiceClient.
+type productShowcaseServiceClient struct {
+	create      *connect.Client[v1.ProductShowcaseServiceCreateRequest, v1.ProductShowcaseServiceCreateResponse]
+	createBatch *connect.Client[v1.ProductShowcaseServiceCreateBatchRequest, v1.ProductShowcaseServiceCreateBatchResponse]
+	get         *connect.Client[v1.ProductShowcaseServiceGetRequest, v1.ProductShowcaseServiceGetResponse]
+	list        *connect.Client[v1.ProductShowcaseServiceListRequest, v1.ProductShowcaseServiceListResponse]
+}
+
+// Create calls creativanta.production.v1.ProductShowcaseService.Create.
+func (c *productShowcaseServiceClient) Create(ctx context.Context, req *connect.Request[v1.ProductShowcaseServiceCreateRequest]) (*connect.Response[v1.ProductShowcaseServiceCreateResponse], error) {
+	return c.create.CallUnary(ctx, req)
+}
+
+// CreateBatch calls creativanta.production.v1.ProductShowcaseService.CreateBatch.
+func (c *productShowcaseServiceClient) CreateBatch(ctx context.Context, req *connect.Request[v1.ProductShowcaseServiceCreateBatchRequest]) (*connect.Response[v1.ProductShowcaseServiceCreateBatchResponse], error) {
+	return c.createBatch.CallUnary(ctx, req)
+}
+
+// Get calls creativanta.production.v1.ProductShowcaseService.Get.
+func (c *productShowcaseServiceClient) Get(ctx context.Context, req *connect.Request[v1.ProductShowcaseServiceGetRequest]) (*connect.Response[v1.ProductShowcaseServiceGetResponse], error) {
+	return c.get.CallUnary(ctx, req)
+}
+
+// List calls creativanta.production.v1.ProductShowcaseService.List.
+func (c *productShowcaseServiceClient) List(ctx context.Context, req *connect.Request[v1.ProductShowcaseServiceListRequest]) (*connect.Response[v1.ProductShowcaseServiceListResponse], error) {
+	return c.list.CallUnary(ctx, req)
+}
+
+// ProductShowcaseServiceHandler is an implementation of the
+// creativanta.production.v1.ProductShowcaseService service.
+type ProductShowcaseServiceHandler interface {
+	Create(context.Context, *connect.Request[v1.ProductShowcaseServiceCreateRequest]) (*connect.Response[v1.ProductShowcaseServiceCreateResponse], error)
+	CreateBatch(context.Context, *connect.Request[v1.ProductShowcaseServiceCreateBatchRequest]) (*connect.Response[v1.ProductShowcaseServiceCreateBatchResponse], error)
+	Get(context.Context, *connect.Request[v1.ProductShowcaseServiceGetRequest]) (*connect.Response[v1.ProductShowcaseServiceGetResponse], error)
+	List(context.Context, *connect.Request[v1.ProductShowcaseServiceListRequest]) (*connect.Response[v1.ProductShowcaseServiceListResponse], error)
+}
+
+// NewProductShowcaseServiceHandler builds an HTTP handler from the service implementation. It
+// returns the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewProductShowcaseServiceHandler(svc ProductShowcaseServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	productShowcaseServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("ProductShowcaseService").Methods()
+	productShowcaseServiceCreateHandler := connect.NewUnaryHandler(
+		ProductShowcaseServiceCreateProcedure,
+		svc.Create,
+		connect.WithSchema(productShowcaseServiceMethods.ByName("Create")),
+		connect.WithHandlerOptions(opts...),
+	)
+	productShowcaseServiceCreateBatchHandler := connect.NewUnaryHandler(
+		ProductShowcaseServiceCreateBatchProcedure,
+		svc.CreateBatch,
+		connect.WithSchema(productShowcaseServiceMethods.ByName("CreateBatch")),
+		connect.WithHandlerOptions(opts...),
+	)
+	productShowcaseServiceGetHandler := connect.NewUnaryHandler(
+		ProductShowcaseServiceGetProcedure,
+		svc.Get,
+		connect.WithSchema(productShowcaseServiceMethods.ByName("Get")),
+		connect.WithHandlerOptions(opts...),
+	)
+	productShowcaseServiceListHandler := connect.NewUnaryHandler(
+		ProductShowcaseServiceListProcedure,
+		svc.List,
+		connect.WithSchema(productShowcaseServiceMethods.ByName("List")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.production.v1.ProductShowcaseService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case ProductShowcaseServiceCreateProcedure:
+			productShowcaseServiceCreateHandler.ServeHTTP(w, r)
+		case ProductShowcaseServiceCreateBatchProcedure:
+			productShowcaseServiceCreateBatchHandler.ServeHTTP(w, r)
+		case ProductShowcaseServiceGetProcedure:
+			productShowcaseServiceGetHandler.ServeHTTP(w, r)
+		case ProductShowcaseServiceListProcedure:
+			productShowcaseServiceListHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedProductShowcaseServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedProductShowcaseServiceHandler struct{}
+
+func (UnimplementedProductShowcaseServiceHandler) Create(context.Context, *connect.Request[v1.ProductShowcaseServiceCreateRequest]) (*connect.Response[v1.ProductShowcaseServiceCreateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.ProductShowcaseService.Create is not implemented"))
+}
+
+func (UnimplementedProductShowcaseServiceHandler) CreateBatch(context.Context, *connect.Request[v1.ProductShowcaseServiceCreateBatchRequest]) (*connect.Response[v1.ProductShowcaseServiceCreateBatchResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.ProductShowcaseService.CreateBatch is not implemented"))
+}
+
+func (UnimplementedProductShowcaseServiceHandler) Get(context.Context, *connect.Request[v1.ProductShowcaseServiceGetRequest]) (*connect.Response[v1.ProductShowcaseServiceGetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.ProductShowcaseService.Get is not implemented"))
+}
+
+func (UnimplementedProductShowcaseServiceHandler) List(context.Context, *connect.Request[v1.ProductShowcaseServiceListRequest]) (*connect.Response[v1.ProductShowcaseServiceListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.ProductShowcaseService.List is not implemented"))
+}
+
+// LinkToVideoServiceClient is a client for the creativanta.production.v1.LinkToVideoService
+// service.
+type LinkToVideoServiceClient interface {
+	Scrape(context.Context, *connect.Request[v1.LinkToVideoServiceScrapeRequest]) (*connect.Response[v1.LinkToVideoServiceScrapeResponse], error)
+	Generate(context.Context, *connect.Request[v1.LinkToVideoServiceGenerateRequest]) (*connect.Response[v1.LinkToVideoServiceGenerateResponse], error)
+	Get(context.Context, *connect.Request[v1.LinkToVideoServiceGetRequest]) (*connect.Response[v1.LinkToVideoServiceGetResponse], error)
+}
+
+// NewLinkToVideoServiceClient constructs a client for the
+// creativanta.production.v1.LinkToVideoService service. By default, it uses the Connect protocol
+// with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To
+// use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb()
+// options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewLinkToVideoServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) LinkToVideoServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	linkToVideoServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("LinkToVideoService").Methods()
+	return &linkToVideoServiceClient{
+		scrape: connect.NewClient[v1.LinkToVideoServiceScrapeRequest, v1.LinkToVideoServiceScrapeResponse](
+			httpClient,
+			baseURL+LinkToVideoServiceScrapeProcedure,
+			connect.WithSchema(linkToVideoServiceMethods.ByName("Scrape")),
+			connect.WithClientOptions(opts...),
+		),
+		generate: connect.NewClient[v1.LinkToVideoServiceGenerateRequest, v1.LinkToVideoServiceGenerateResponse](
+			httpClient,
+			baseURL+LinkToVideoServiceGenerateProcedure,
+			connect.WithSchema(linkToVideoServiceMethods.ByName("Generate")),
+			connect.WithClientOptions(opts...),
+		),
+		get: connect.NewClient[v1.LinkToVideoServiceGetRequest, v1.LinkToVideoServiceGetResponse](
+			httpClient,
+			baseURL+LinkToVideoServiceGetProcedure,
+			connect.WithSchema(linkToVideoServiceMethods.ByName("Get")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// linkToVideoServiceClient implements LinkToVideoServiceClient.
+type linkToVideoServiceClient struct {
+	scrape   *connect.Client[v1.LinkToVideoServiceScrapeRequest, v1.LinkToVideoServiceScrapeResponse]
+	generate *connect.Client[v1.LinkToVideoServiceGenerateRequest, v1.LinkToVideoServiceGenerateResponse]
+	get      *connect.Client[v1.LinkToVideoServiceGetRequest, v1.LinkToVideoServiceGetResponse]
+}
+
+// Scrape calls creativanta.production.v1.LinkToVideoService.Scrape.
+func (c *linkToVideoServiceClient) Scrape(ctx context.Context, req *connect.Request[v1.LinkToVideoServiceScrapeRequest]) (*connect.Response[v1.LinkToVideoServiceScrapeResponse], error) {
+	return c.scrape.CallUnary(ctx, req)
+}
+
+// Generate calls creativanta.production.v1.LinkToVideoService.Generate.
+func (c *linkToVideoServiceClient) Generate(ctx context.Context, req *connect.Request[v1.LinkToVideoServiceGenerateRequest]) (*connect.Response[v1.LinkToVideoServiceGenerateResponse], error) {
+	return c.generate.CallUnary(ctx, req)
+}
+
+// Get calls creativanta.production.v1.LinkToVideoService.Get.
+func (c *linkToVideoServiceClient) Get(ctx context.Context, req *connect.Request[v1.LinkToVideoServiceGetRequest]) (*connect.Response[v1.LinkToVideoServiceGetResponse], error) {
+	return c.get.CallUnary(ctx, req)
+}
+
+// LinkToVideoServiceHandler is an implementation of the
+// creativanta.production.v1.LinkToVideoService service.
+type LinkToVideoServiceHandler interface {
+	Scrape(context.Context, *connect.Request[v1.LinkToVideoServiceScrapeRequest]) (*connect.Response[v1.LinkToVideoServiceScrapeResponse], error)
+	Generate(context.Context, *connect.Request[v1.LinkToVideoServiceGenerateRequest]) (*connect.Response[v1.LinkToVideoServiceGenerateResponse], error)
+	Get(context.Context, *connect.Request[v1.LinkToVideoServiceGetRequest]) (*connect.Response[v1.LinkToVideoServiceGetResponse], error)
+}
+
+// NewLinkToVideoServiceHandler builds an HTTP handler from the service implementation. It returns
+// the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewLinkToVideoServiceHandler(svc LinkToVideoServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	linkToVideoServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("LinkToVideoService").Methods()
+	linkToVideoServiceScrapeHandler := connect.NewUnaryHandler(
+		LinkToVideoServiceScrapeProcedure,
+		svc.Scrape,
+		connect.WithSchema(linkToVideoServiceMethods.ByName("Scrape")),
+		connect.WithHandlerOptions(opts...),
+	)
+	linkToVideoServiceGenerateHandler := connect.NewUnaryHandler(
+		LinkToVideoServiceGenerateProcedure,
+		svc.Generate,
+		connect.WithSchema(linkToVideoServiceMethods.ByName("Generate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	linkToVideoServiceGetHandler := connect.NewUnaryHandler(
+		LinkToVideoServiceGetProcedure,
+		svc.Get,
+		connect.WithSchema(linkToVideoServiceMethods.ByName("Get")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.production.v1.LinkToVideoService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case LinkToVideoServiceScrapeProcedure:
+			linkToVideoServiceScrapeHandler.ServeHTTP(w, r)
+		case LinkToVideoServiceGenerateProcedure:
+			linkToVideoServiceGenerateHandler.ServeHTTP(w, r)
+		case LinkToVideoServiceGetProcedure:
+			linkToVideoServiceGetHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedLinkToVideoServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedLinkToVideoServiceHandler struct{}
+
+func (UnimplementedLinkToVideoServiceHandler) Scrape(context.Context, *connect.Request[v1.LinkToVideoServiceScrapeRequest]) (*connect.Response[v1.LinkToVideoServiceScrapeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.LinkToVideoService.Scrape is not implemented"))
+}
+
+func (UnimplementedLinkToVideoServiceHandler) Generate(context.Context, *connect.Request[v1.LinkToVideoServiceGenerateRequest]) (*connect.Response[v1.LinkToVideoServiceGenerateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.LinkToVideoService.Generate is not implemented"))
+}
+
+func (UnimplementedLinkToVideoServiceHandler) Get(context.Context, *connect.Request[v1.LinkToVideoServiceGetRequest]) (*connect.Response[v1.LinkToVideoServiceGetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.LinkToVideoService.Get is not implemented"))
 }

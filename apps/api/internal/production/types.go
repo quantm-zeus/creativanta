@@ -50,6 +50,14 @@ var (
 	ErrVideoEditJobNotFound       = errors.New("production: video edit job not found")
 	ErrClipCollectionNotFound     = errors.New("production: clip collection not found")
 	ErrConcurrentJobLimitExceeded = errors.New("production: processing queue full for workspace tier (EC-M07-004)")
+	ErrSSRFBlocked                = errors.New("production: cannot access URL: host is private, loopback, or cloud metadata service (SSRF_BLOCKED)")
+	ErrInvalidURL                 = errors.New("production: invalid URL format: HTTP or HTTPS scheme required")
+	ErrShowcaseStyleInvalid       = errors.New("production: invalid showcase style")
+	ErrShowcaseImagesRequired     = errors.New("production: 360 spin style requires at least 8 product images")
+	ErrShowcaseJobNotFound        = errors.New("production: product showcase job not found")
+	ErrLinkToVideoJobNotFound     = errors.New("production: link to video job not found")
+	ErrScriptTemplateInvalid      = errors.New("production: invalid script template")
+	ErrMotionStyleInvalid         = errors.New("production: invalid motion style")
 )
 
 // CallerContext models authenticated caller context across production operations.
@@ -715,4 +723,42 @@ type ProductionConsentRecord struct {
 	Granted     bool
 	GrantedAt   *time.Time
 	RevokedAt   *time.Time
+}
+
+// ProductShowcaseJobRecord matches database_schema.md §22.4 product_showcase_jobs.
+type ProductShowcaseJobRecord struct {
+	ShowcaseJobID     string                `json:"showcase_job_id"`
+	WorkspaceID       string                `json:"workspace_id"`
+	VideoEditJobID    string                `json:"video_edit_job_id,omitempty"`
+	ProductID         string                `json:"product_id,omitempty"`
+	Style             string                `json:"style"`
+	CustomizationJSON string                `json:"customization_json"`
+	BatchID           string                `json:"batch_id,omitempty"`
+	OutputAssetID     string                `json:"output_asset_id,omitempty"`
+	CharacterID       string                `json:"character_id,omitempty"`
+	Status            string                `json:"status"` // queued, processing, completed, failed
+	CreditsUsed       tenantdb.ExactDecimal `json:"credits_used"`
+	WarningsJSON      string                `json:"warnings_json,omitempty"`
+	CreatedAt         time.Time             `json:"created_at"`
+	UpdatedAt         time.Time             `json:"updated_at"`
+}
+
+// LinkToVideoJobRecord matches database_schema.md §22.5 link_to_video_jobs.
+type LinkToVideoJobRecord struct {
+	LtvJobID         string                `json:"ltv_job_id"`
+	WorkspaceID      string                `json:"workspace_id"`
+	VideoEditJobID   string                `json:"video_edit_job_id,omitempty"`
+	SourceURL        string                `json:"source_url"`
+	PlatformDetected string                `json:"platform_detected"`
+	ScrapedDataJSON  string                `json:"scraped_data_json"`
+	ScriptTemplate   string                `json:"script_template"`
+	GeneratedScript  string                `json:"generated_script,omitempty"`
+	OutputAssetID    string                `json:"output_asset_id,omitempty"`
+	CharacterID      string                `json:"character_id,omitempty"`
+	Status           string                `json:"status"` // scraping, scripting, generating, completed, failed
+	CreditsUsed      tenantdb.ExactDecimal `json:"credits_used"`
+	ErrorCode        string                `json:"error_code,omitempty"`
+	ErrorMessage     string                `json:"error_message,omitempty"`
+	CreatedAt        time.Time             `json:"created_at"`
+	UpdatedAt        time.Time             `json:"updated_at"`
 }
