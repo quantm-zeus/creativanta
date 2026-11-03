@@ -201,4 +201,3 @@ export function calculateTranslationQuoteClient(
 		costPerLanguage: costPerLang
 	};
 }
-
