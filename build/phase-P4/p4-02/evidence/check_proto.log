@@ -1,0 +1,31 @@
+PROTO_SOURCE_LINT
+GENERATE_GO_TS_DART
+GO_COMPILE
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1/adminv1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1/commercev1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/content/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/content/v1/contentv1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/copilot/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/copilot/v1/copilotv1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/finance/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/finance/v1/financev1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/intelligence/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/intelligence/v1/intelligencev1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/production/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/production/v1/productionv1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1/transporttestv1connect	[no test files]
+all modules verified
+TS_COMPILE
+
+> @creativanta/shared-types@0.1.0 check /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-02/packages/shared-types
+> tsc --noEmit -p tsconfig.json
+
+DART_COMPILE
+Analyzing generated...
+No issues found!
+REJECT_GENERATED_CODE_DRIFT
+PROTO_4_TARGETS_PASS mode=verify
