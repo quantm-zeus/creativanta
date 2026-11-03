@@ -588,4 +588,3 @@ class RemixBlueprintModel {
 
   bool get hasTrendProvenance => trendId != null && trendId!.isNotEmpty;
 }
-

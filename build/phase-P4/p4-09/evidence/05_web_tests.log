@@ -49,4 +49,3 @@ stderr | src/lib/auth/auth.test.ts > P0-03 Web User-Facing Identity & Auth Store
       Tests  204 passed (204)
    Start at  18:04:28
    Duration  8.47s (transform 1.97s, setup 0ms, collect 4.88s, tests 463ms, environment 9ms, prepare 3.56s)
-

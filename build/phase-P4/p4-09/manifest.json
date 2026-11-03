@@ -67,7 +67,7 @@
     "apps/api/internal/production/production_integration_acceptance_test.go": "337a371330dfe47890fac9a3a565f965abda6934d20ddf0b86f2aeba6062b658",
     "apps/mobile/lib/generated/creativanta/production/v1/production.pb.dart": "91cf3e4197826e0bd8f52699fbf406137820a26aec0d3974f43d018a114d370f",
     "apps/mobile/lib/generated/creativanta/production/v1/production.pbjson.dart": "571f696aa7fa5102e774da6b887ac1b271d3b86d438420170f60179a4aebfaed",
-    "apps/mobile/lib/production/production_models.dart": "8a1ed6968d9ef583796a52df3dd5e73785704f1039c853dbff964c58e13d2a00",
+    "apps/mobile/lib/production/production_models.dart": "db8cd9896eda8248d762648437dcf741fd03833c2cb161df3d1de8250aacb145",
     "apps/mobile/test/production_integration_acceptance_test.dart": "1fad728b48d61ab97e937e8293b510e239a3f9712fba7012133b3afec460be44",
     "packages/shared-types/src/creativanta/production/v1/production_pb.ts": "c4ed48373a8448d5f54d2419e306b09aa7c98475b561d484318e059b73fd98ae",
     "apps/web/src/lib/production/types.ts": "8929e7609ea6118aafcc164463f47c0290742c3e01134934ab8013d0c121cdc5",
