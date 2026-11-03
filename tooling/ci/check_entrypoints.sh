@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # P0-01 must keep worker, outbox and migrate fail-closed before durable contracts ship.
 set -euo pipefail
+if [ -z "${TMPDIR:-}" ] && [ -d "$HOME/tmp" ]; then
+  export TMPDIR="$HOME/tmp"
+fi
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 DIR="$(mktemp -d)"
 trap 'rm -rf "$DIR"' EXIT

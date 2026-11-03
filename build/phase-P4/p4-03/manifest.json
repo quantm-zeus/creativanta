@@ -1,0 +1,204 @@
+{
+  "task_id": "P4-03",
+  "phase": "P4",
+  "slice": "p4-03",
+  "title": "Clip Factory",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "5d38c02863fe940c7ffbf42d076ae4cf74f34cf3",
+  "feature_refs": [
+    "docs/02_features/production/ai_video_studio.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_endpoint_map.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rbac_permission_matrix.md"
+  ],
+  "requirement_ids": [
+    "M07-16788db3d289-001",
+    "M07-3571dbe44e21-001"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_studio_clip_factory.md",
+    "docs/03_screens/mobile/screen_mobile_studio_clip_factory.md"
+  ],
+  "source_hashes": {
+    "infra/migrations/00022_p4_03_clip_factory_collections_and_variants.sql": "53ace9fe8e79c3aef78606e1c89954a5f49501aa9a29695d5b3e5d86b60c6993",
+    "protos/creativanta/production/v1/production.proto": "ab4c199b2981aa602d86bc44dc9a953c4da7ad5bc44558af1837f80a5fb8ff6b",
+    "apps/api/internal/migrate/migrator.go": "591b41d25a2f3b435cc11d09f836957bee70bc96f819a61a96b4834c3e37bc4e",
+    "apps/api/internal/migrate/migrator_test.go": "c1e3fb35b6a8701eb2a087cfd7fb8634c49762fcc7dc62d7d8cf9f0e50d3a893",
+    "apps/api/internal/production/types.go": "0c6d8f7decec6c4f85997b26d3cc95a84e4403f903d4fdea64f49914f9e04776",
+    "apps/api/internal/production/store.go": "79b47b233c75359cbf9905ca3ea68bda2065711bda800fc74cfeff9df1f89854",
+    "apps/api/internal/production/service.go": "ab37ee4451c11f07685b5132e9c09b248d6378ec23221579f65d080dea715910",
+    "apps/api/internal/production/clipfactory.go": "e58794002cb7e032f5edd0dedf4ceb9309fc70fbec66b90b8b70ad43fe3f042a",
+    "apps/api/internal/production/clipfactory_service.go": "623aee2ed62910f86c4a5a856b9c136abbfed41dcf8e6ab874b181107721f7cd",
+    "apps/api/internal/production/clipfactory_test.go": "55fb2da40a7571e83875cbf582e7f1d4b89776cb38358f083521e05aa6a0abab",
+    "apps/web/src/lib/production/clipfactory.ts": "7b4207406d79b63d4332bdb6f94b64ee7d4f1bab4bf9cf63b1a1815745267c50",
+    "apps/web/src/lib/production/clipfactory.test.ts": "6708ee23066bb1fceb1439d3c827854d9c18607f57709bc5cbd917be0645cf94",
+    "apps/web/src/lib/production/index.ts": "9dad9af25b16f12bbd72aa6717f6a21f8d0214d9c517eba2f459769feb54ef2e",
+    "apps/web/src/routes/studio/clip-factory/+page.svelte": "63a6cc7ac26209d9ac61e17facd274f805822aeb8ed2941ba8d3fd5cb3c673cc",
+    "apps/mobile/lib/production/clip_factory_models.dart": "a925c186153fe12074ea9b31e1e99df1b05e1403530e3885975b49fc13c06c88",
+    "apps/mobile/lib/ui/production/studio_clip_factory_view.dart": "bf17761723e1eb16e635f2d6f1d8293483a4c08d37dd96d09011593da3cce184",
+    "apps/mobile/test/clip_factory_acceptance_test.dart": "2e6e0e9fcbf504e030bfd6117ace2d622b84d0120d2c570e2ce9de03d3dbe974"
+  },
+  "scope_items": [
+    {
+      "source": "docs/02_features/production/ai_video_studio.md",
+      "heading": "Core Production Modes > Mode 2: Clip Factory (1→N)",
+      "requirement": "Acceptance Target 1: No speech uses visual path (EC-M07-C01). Video has no speech or is music-only -> falls back to visual scene detection + beat analysis. Hook strength uses visual hook pattern instead of speech analysis.",
+      "evidence": [
+        "apps/api/internal/production/clipfactory_test.go:TestClipFactory_AcceptanceTarget1_NoSpeechUsesVisualPath",
+        "apps/web/src/lib/production/clipfactory.test.ts:Acceptance Target 1: Falls back to visual scene detection and beat pattern when speech is absent",
+        "apps/mobile/test/clip_factory_acceptance_test.dart:Acceptance Target 1: Falls back to visual scene detection + beat analysis when speech is absent"
+      ]
+    },
+    {
+      "source": "docs/02_features/production/ai_video_studio.md",
+      "heading": "Core Production Modes > Mode 2: Clip Factory (1→N)",
+      "requirement": "Acceptance Target 2: Missing trend data labeled. Virality Score MUST use real trend data from M02/M03 (0.30*engagement + 0.25*hook + 0.20*pacing + 0.15*audio + 0.10*relevance). Scores without trend data carry explicit '⚠️ Pattern-only' badge and content relevance is zeroed.",
+      "evidence": [
+        "apps/api/internal/production/clipfactory_test.go:TestClipFactory_AcceptanceTarget2_MissingTrendDataLabeled",
+        "apps/web/src/lib/production/clipfactory.test.ts:Acceptance Target 2: Labels virality scores without trend data as '⚠️ Pattern-only' badge",
+        "apps/mobile/test/clip_factory_acceptance_test.dart:Acceptance Target 2: Labels virality score without trend data with '⚠️ Pattern-only' badge"
+      ]
+    },
+    {
+      "source": "docs/02_features/production/ai_video_studio.md",
+      "heading": "Core Production Modes > Mode 2: Clip Factory (1→N)",
+      "requirement": "Acceptance Target 3: Each clip has source lineage. Every clip asset carries ParentAssetID == sourceAssetID, derivative type 'clip', timecodes, score breakdown, variant info, -14.0 LUFS audio normalization compliance, and JSON lineage in lineage_refs.",
+      "evidence": [
+        "apps/api/internal/production/clipfactory_test.go:TestClipFactory_AcceptanceTarget3_EachClipHasSourceLineage",
+        "apps/web/src/lib/production/clipfactory.test.ts:Acceptance Target 3: Builds robust source lineage payload referencing parent asset and audio standard",
+        "apps/mobile/test/clip_factory_acceptance_test.dart:Acceptance Target 3: Builds source lineage payload referencing parent asset and -14.0 LUFS"
+      ]
+    },
+    {
+      "source": "docs/02_features/production/ai_video_studio.md",
+      "heading": "Core Production Modes > Mode 2: Clip Factory (1→N)",
+      "requirement": "Tier Concurrency Limits (EC-M07-004): Free: 1, Starter: 2, Pro: 5, Business: 10 concurrent clip extraction jobs. Over-limit requests queue gracefully and report queue position.",
+      "evidence": [
+        "apps/api/internal/production/clipfactory_test.go:TestClipFactory_ConcurrencyLimit_ECM07C04",
+        "apps/web/src/lib/production/clipfactory.test.ts:Enforces tier-based concurrent clip extraction limits",
+        "apps/mobile/test/clip_factory_acceptance_test.dart:Enforces tier-based concurrent clip extraction limits"
+      ]
+    }
+  ],
+  "contract_rpc_entries": [
+    {
+      "rpc": "ClipFactoryService/Analyze",
+      "proto_file": "protos/creativanta/production/v1/production.proto",
+      "request_type": "ClipFactoryServiceAnalyzeRequest",
+      "response_type": "ClipFactoryServiceAnalyzeResponse",
+      "permission_key": "production_job:manage",
+      "validation_tests": "apps/api/internal/production/clipfactory_test.go:TestClipFactory_RBACEnforcement",
+      "behavior_tests": "apps/api/internal/production/clipfactory_test.go:TestClipFactory_AcceptanceTarget1_NoSpeechUsesVisualPath"
+    },
+    {
+      "rpc": "ClipFactoryService/GetCollection",
+      "proto_file": "protos/creativanta/production/v1/production.proto",
+      "request_type": "ClipFactoryServiceGetCollectionRequest",
+      "response_type": "ClipFactoryServiceGetCollectionResponse",
+      "permission_key": "production_job:read",
+      "validation_tests": "apps/api/internal/production/clipfactory_test.go:TestClipFactory_AcceptanceTarget1_NoSpeechUsesVisualPath",
+      "behavior_tests": "apps/api/internal/production/clipfactory_test.go:TestClipFactory_AcceptanceTarget1_NoSpeechUsesVisualPath"
+    },
+    {
+      "rpc": "ClipFactoryService/ProcessClips",
+      "proto_file": "protos/creativanta/production/v1/production.proto",
+      "request_type": "ClipFactoryServiceProcessClipsRequest",
+      "response_type": "ClipFactoryServiceProcessClipsResponse",
+      "permission_key": "production_job:manage",
+      "validation_tests": "apps/api/internal/production/clipfactory_test.go:TestClipFactory_AcceptanceTarget3_EachClipHasSourceLineage",
+      "behavior_tests": "apps/api/internal/production/clipfactory_test.go:TestClipFactory_AcceptanceTarget3_EachClipHasSourceLineage"
+    }
+  ],
+  "migration_files": [
+    "infra/migrations/00022_p4_03_clip_factory_collections_and_variants.sql"
+  ],
+  "permission_keys": [
+    "production_job:manage",
+    "production_job:read",
+    "asset:read",
+    "asset:generate"
+  ],
+  "event_types": [
+    "production.clip_factory.analyzed",
+    "production.clip_factory.processed"
+  ],
+  "screen_routes": [
+    "/studio/clip-factory",
+    "StudioClipFactoryView"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-SCENE-DETECTOR",
+      "PENDING_PRODUCTION_VISION_WORKER",
+      "Live PySceneDetect / OpenCV worker cluster for high-bitrate multi-hour video scene boundary extraction. In-memory fallback and visual beat detection verified locally."
+    ],
+    [
+      "EXT-GATE-TREND-ENGINE-M02-M03",
+      "PENDING_PRODUCTION_FEED",
+      "Live TikTok/Reels trending audio & hashtag real-time pipeline from M02/M03. Missing trend data explicit fallback with '⚠️ Pattern-only' badge verified locally."
+    ],
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "Migration 00022 schema (clip_collections, clip_variants), composite foreign keys to assets and video_edit_jobs, RLS policies, and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+    ]
+  ],
+  "checks": [
+    {
+      "command": "bash tooling/ci/check_d0.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-03/evidence/check_d0.log",
+      "checked_at": "2026-11-03T15:14:30Z"
+    },
+    {
+      "command": "bash tooling/ci/check_proto.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-03/evidence/check_proto.log",
+      "checked_at": "2026-11-03T15:15:20Z"
+    },
+    {
+      "command": "bash tooling/ci/check_go.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-03/evidence/check_go.log",
+      "checked_at": "2026-11-03T15:16:12Z"
+    },
+    {
+      "command": "bash tooling/ci/check_node.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-03/evidence/check_node.log",
+      "checked_at": "2026-11-03T15:17:34Z"
+    },
+    {
+      "command": "bash tooling/ci/check_flutter.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-03/evidence/check_flutter.log",
+      "checked_at": "2026-11-03T15:18:44Z"
+    }
+  ],
+  "remaining_scope": [
+    {
+      "source": "docs/02_features/production/ai_video_studio.md",
+      "heading": "Core Production Modes > Mode 3: Multi-Merge (N→1)",
+      "target_task": "P4-04"
+    },
+    {
+      "source": "docs/02_features/production/ai_video_studio.md",
+      "heading": "Core Production Modes > Mode 4: AI Remix Studio (ref→new)",
+      "target_task": "P4-05"
+    },
+    {
+      "source": "docs/02_features/production/ai_video_studio.md",
+      "heading": "Core Production Modes > Mode 5: Sound & Translation (M10/M12)",
+      "target_task": "P4-06"
+    }
+  ],
+  "decisions": [
+    "ADR-P4-03-001: Implement visual scene and beat fallback (EC-M07-C01) using visual_beat_pattern analysis when video has no speech or transcript snippet is empty.",
+    "ADR-P4-03-002: Enforce explicit '⚠️ Pattern-only' badge and 0.0 content relevance weighting when trend data from M02/M03 is absent or unlinked.",
+    "ADR-P4-03-003: Enforce strict source lineage where every extracted clip asset maintains ParentAssetID == sourceAssetID, derivative_type 'clip', and EBU R128 (-14.0 LUFS) audio normalization compliance recorded in lineage_refs JSONB."
+  ]
+}

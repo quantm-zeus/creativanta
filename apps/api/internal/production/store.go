@@ -66,6 +66,14 @@ type Store interface {
 	GetSoundTrack(ctx context.Context, workspaceID, trackID string) (*SoundTrack, error)
 	ListSoundTracks(ctx context.Context, workspaceID, category, genre, mood string, limit, offset int) ([]*SoundTrack, int64, error)
 
+	// Clip Collections (§22.3, Mode 2, P4-03)
+	CreateClipCollection(ctx context.Context, col *ClipCollectionRecord) error
+	GetClipCollection(ctx context.Context, workspaceID, collectionID string) (*ClipCollectionRecord, error)
+	GetClipCollectionBySource(ctx context.Context, workspaceID, sourceAssetID string) (*ClipCollectionRecord, error)
+	UpdateClipCollection(ctx context.Context, col *ClipCollectionRecord) error
+	ListClipCollections(ctx context.Context, workspaceID string, limit, offset int) ([]*ClipCollectionRecord, int64, error)
+	CountActiveClipFactoryJobs(ctx context.Context, workspaceID string) (int, error)
+
 	// Style packs (EF-07, P4-07)
 	CreateStylePack(ctx context.Context, pack *StylePackRecord) error
 	GetStylePack(ctx context.Context, workspaceID, packID string) (*StylePackRecord, error)
@@ -89,42 +97,44 @@ type Store interface {
 
 // MemoryStore provides a thread-safe, tenant-isolated in-memory store for production.
 type MemoryStore struct {
-	mu           sync.RWMutex
-	assets       map[string]map[string]*Asset                     // workspaceID -> assetID -> Asset
-	jobs         map[string]map[string]*GenerationJob             // workspaceID -> jobID -> GenerationJob
-	uploads      map[string]map[string]*FileUpload                // workspaceID -> uploadID -> FileUpload
-	transcripts  map[string]map[string]*TranscriptRecord          // workspaceID -> transcriptID -> TranscriptRecord
-	drafts       map[string]map[string]*QuickEditDraftRecord      // workspaceID -> draftID -> QuickEditDraftRecord
-	sounds       map[string]map[string]*SoundTrackRecord          // workspaceID ("" for global) -> soundID -> SoundTrackRecord
-	blueprints   map[string]map[string]*RemixBlueprint            // workspaceID -> blueprintID -> RemixBlueprint
-	videoJobs    map[string]map[string]*VideoEditJobRecord        // workspaceID -> jobID -> VideoEditJobRecord
-	translations map[string]map[string]*TranslationJob            // workspaceID -> jobID -> TranslationJob
-	voiceClones  map[string]map[string]*VoiceCloneRecord          // workspaceID -> cloneID -> VoiceCloneRecord
-	soundTracks  map[string]map[string]*SoundTrack                // workspaceID -> trackID -> SoundTrack
-	stylePacks   map[string]map[string]*StylePackRecord           // workspaceID -> stylePackID -> StylePackRecord
-	violations   map[string]map[string]*ContinuityViolationRecord // workspaceID -> violationID -> ContinuityViolationRecord
-	characters   map[string]map[string]*ProductionCharacter       // workspaceID -> characterID -> ProductionCharacter
-	consents     map[string]map[string]*ProductionConsentRecord   // workspaceID -> consentID -> ProductionConsentRecord
+	mu              sync.RWMutex
+	assets          map[string]map[string]*Asset                     // workspaceID -> assetID -> Asset
+	jobs            map[string]map[string]*GenerationJob             // workspaceID -> jobID -> GenerationJob
+	uploads         map[string]map[string]*FileUpload                // workspaceID -> uploadID -> FileUpload
+	transcripts     map[string]map[string]*TranscriptRecord          // workspaceID -> transcriptID -> TranscriptRecord
+	drafts          map[string]map[string]*QuickEditDraftRecord      // workspaceID -> draftID -> QuickEditDraftRecord
+	sounds          map[string]map[string]*SoundTrackRecord          // workspaceID ("" for global) -> soundID -> SoundTrackRecord
+	blueprints      map[string]map[string]*RemixBlueprint            // workspaceID -> blueprintID -> RemixBlueprint
+	videoJobs       map[string]map[string]*VideoEditJobRecord        // workspaceID -> jobID -> VideoEditJobRecord
+	translations    map[string]map[string]*TranslationJob            // workspaceID -> jobID -> TranslationJob
+	voiceClones     map[string]map[string]*VoiceCloneRecord          // workspaceID -> cloneID -> VoiceCloneRecord
+	soundTracks     map[string]map[string]*SoundTrack                // workspaceID -> trackID -> SoundTrack
+	clipCollections map[string]map[string]*ClipCollectionRecord      // workspaceID -> collectionID -> ClipCollectionRecord
+	stylePacks      map[string]map[string]*StylePackRecord           // workspaceID -> stylePackID -> StylePackRecord
+	violations      map[string]map[string]*ContinuityViolationRecord // workspaceID -> violationID -> ContinuityViolationRecord
+	characters      map[string]map[string]*ProductionCharacter       // workspaceID -> characterID -> ProductionCharacter
+	consents        map[string]map[string]*ProductionConsentRecord   // workspaceID -> consentID -> ProductionConsentRecord
 }
 
 // NewMemoryStore constructs a new MemoryStore.
 func NewMemoryStore() *MemoryStore {
 	ms := &MemoryStore{
-		assets:       make(map[string]map[string]*Asset),
-		jobs:         make(map[string]map[string]*GenerationJob),
-		uploads:      make(map[string]map[string]*FileUpload),
-		transcripts:  make(map[string]map[string]*TranscriptRecord),
-		drafts:       make(map[string]map[string]*QuickEditDraftRecord),
-		sounds:       make(map[string]map[string]*SoundTrackRecord),
-		blueprints:   make(map[string]map[string]*RemixBlueprint),
-		videoJobs:    make(map[string]map[string]*VideoEditJobRecord),
-		translations: make(map[string]map[string]*TranslationJob),
-		voiceClones:  make(map[string]map[string]*VoiceCloneRecord),
-		soundTracks:  make(map[string]map[string]*SoundTrack),
-		stylePacks:   make(map[string]map[string]*StylePackRecord),
-		violations:   make(map[string]map[string]*ContinuityViolationRecord),
-		characters:   make(map[string]map[string]*ProductionCharacter),
-		consents:     make(map[string]map[string]*ProductionConsentRecord),
+		assets:          make(map[string]map[string]*Asset),
+		jobs:            make(map[string]map[string]*GenerationJob),
+		uploads:         make(map[string]map[string]*FileUpload),
+		transcripts:     make(map[string]map[string]*TranscriptRecord),
+		drafts:          make(map[string]map[string]*QuickEditDraftRecord),
+		sounds:          make(map[string]map[string]*SoundTrackRecord),
+		blueprints:      make(map[string]map[string]*RemixBlueprint),
+		videoJobs:       make(map[string]map[string]*VideoEditJobRecord),
+		translations:    make(map[string]map[string]*TranslationJob),
+		voiceClones:     make(map[string]map[string]*VoiceCloneRecord),
+		soundTracks:     make(map[string]map[string]*SoundTrack),
+		clipCollections: make(map[string]map[string]*ClipCollectionRecord),
+		stylePacks:      make(map[string]map[string]*StylePackRecord),
+		violations:      make(map[string]map[string]*ContinuityViolationRecord),
+		characters:      make(map[string]map[string]*ProductionCharacter),
+		consents:        make(map[string]map[string]*ProductionConsentRecord),
 	}
 	ms.initGlobalSoundLibrary()
 	return ms
@@ -1050,6 +1060,151 @@ func (s *MemoryStore) ListSoundTracks(ctx context.Context, workspaceID, category
 		end = len(matched)
 	}
 	return matched[offset:end], total, nil
+}
+
+// ----------------------------------------------------------------------------
+// Clip Collections (§22.3, Mode 2, P4-03)
+// ----------------------------------------------------------------------------
+
+func (s *MemoryStore) CreateClipCollection(ctx context.Context, col *ClipCollectionRecord) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.clipCollections[col.WorkspaceID] == nil {
+		s.clipCollections[col.WorkspaceID] = make(map[string]*ClipCollectionRecord)
+	}
+	cp := *col
+	if col.ClipData != nil {
+		cp.ClipData = make([]ClipDataRecord, len(col.ClipData))
+		copy(cp.ClipData, col.ClipData)
+	}
+	s.clipCollections[col.WorkspaceID][col.CollectionID] = &cp
+	return nil
+}
+
+func (s *MemoryStore) GetClipCollection(ctx context.Context, workspaceID, collectionID string) (*ClipCollectionRecord, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.clipCollections[workspaceID]
+	if ws == nil {
+		return nil, ErrClipCollectionNotFound
+	}
+	c, ok := ws[collectionID]
+	if !ok || c.DeletedAt != nil {
+		return nil, ErrClipCollectionNotFound
+	}
+	cp := *c
+	if c.ClipData != nil {
+		cp.ClipData = make([]ClipDataRecord, len(c.ClipData))
+		copy(cp.ClipData, c.ClipData)
+	}
+	return &cp, nil
+}
+
+func (s *MemoryStore) GetClipCollectionBySource(ctx context.Context, workspaceID, sourceAssetID string) (*ClipCollectionRecord, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.clipCollections[workspaceID]
+	if ws == nil {
+		return nil, ErrClipCollectionNotFound
+	}
+	for _, c := range ws {
+		if c.DeletedAt == nil && c.SourceAssetID == sourceAssetID {
+			cp := *c
+			if c.ClipData != nil {
+				cp.ClipData = make([]ClipDataRecord, len(c.ClipData))
+				copy(cp.ClipData, c.ClipData)
+			}
+			return &cp, nil
+		}
+	}
+	return nil, ErrClipCollectionNotFound
+}
+
+func (s *MemoryStore) UpdateClipCollection(ctx context.Context, col *ClipCollectionRecord) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ws := s.clipCollections[col.WorkspaceID]
+	if ws == nil {
+		return ErrClipCollectionNotFound
+	}
+	if _, ok := ws[col.CollectionID]; !ok {
+		return ErrClipCollectionNotFound
+	}
+	cp := *col
+	if col.ClipData != nil {
+		cp.ClipData = make([]ClipDataRecord, len(col.ClipData))
+		copy(cp.ClipData, col.ClipData)
+	}
+	ws[col.CollectionID] = &cp
+	return nil
+}
+
+func (s *MemoryStore) ListClipCollections(ctx context.Context, workspaceID string, limit, offset int) ([]*ClipCollectionRecord, int64, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.clipCollections[workspaceID]
+	if ws == nil {
+		return []*ClipCollectionRecord{}, 0, nil
+	}
+
+	var matched []*ClipCollectionRecord
+	for _, c := range ws {
+		if c.DeletedAt != nil {
+			continue
+		}
+		cp := *c
+		if c.ClipData != nil {
+			cp.ClipData = make([]ClipDataRecord, len(c.ClipData))
+			copy(cp.ClipData, c.ClipData)
+		}
+		matched = append(matched, &cp)
+	}
+
+	total := int64(len(matched))
+	if offset < 0 {
+		offset = 0
+	}
+	if offset >= len(matched) {
+		return []*ClipCollectionRecord{}, total, nil
+	}
+	end := offset + limit
+	if limit <= 0 || end > len(matched) {
+		end = len(matched)
+	}
+	return matched[offset:end], total, nil
+}
+
+func (s *MemoryStore) CountActiveClipFactoryJobs(ctx context.Context, workspaceID string) (int, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	count := 0
+	if ws := s.videoJobs[workspaceID]; ws != nil {
+		for _, j := range ws {
+			if j.DeletedAt != nil {
+				continue
+			}
+			if j.Mode == "clip_factory" && (j.Status == "queued" || j.Status == "processing") {
+				count++
+			}
+		}
+	}
+	if ws := s.clipCollections[workspaceID]; ws != nil {
+		for _, c := range ws {
+			if c.DeletedAt != nil {
+				continue
+			}
+			if c.Status == "analyzing" || c.Status == "processing" {
+				count++
+			}
+		}
+	}
+	return count, nil
 }
 
 // Style Pack Store Implementation

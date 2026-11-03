@@ -1170,6 +1170,155 @@ service VideoEditJobService {
 }
 
 // ============================================================================
+// Clip Factory Service Declarations (§7.3, M07 Mode 2, W023, M015)
+// ============================================================================
+
+// ViralityScoreBreakdown details the 5 components of Virality Score (0-100).
+// Sourced from docs/02_features/production/ai_video_studio.md §Mode 2.
+message ViralityScoreBreakdown {
+  double engagement_pattern_match = 1; // 30% weight: Trend Engine M02/M03 pattern match
+  double hook_strength = 2;            // 25% weight: first 3s analysis (speech or visual hook)
+  double pacing_score = 3;             // 20% weight: cuts/sec and energy curve
+  double audio_quality = 4;            // 15% weight: clarity, noise, music fit
+  double content_relevance = 5;        // 10% weight: topic trend score from M02/M03
+  bool has_trend_data = 6;             // false -> carries "⚠️ Pattern-only" badge per RULE
+  string badge = 7;                    // "⚠️ Pattern-only", "🔥 High Potential", "⭐ Recommended"
+  string hook_analysis_method = 8;     // "speech_asr" or "visual_beat_pattern" (EC-M07-C01)
+  double total_score = 9;              // 0.0 - 100.0 aggregated weighted score
+}
+
+// ClipProposal represents an AI-detected viral clip boundary proposal.
+message ClipProposal {
+  string clip_id = 1;
+  int32 clip_index = 2;
+  double start_s = 3;
+  double end_s = 4;
+  double duration_s = 5;
+  string title = 6;
+  double virality_score = 7;
+  ViralityScoreBreakdown virality_breakdown = 8;
+  bool selected = 9;
+  string hook_type = 10;               // "question", "shock", "story", "listicle", "contrast", "pov", "visual_hook"
+  string pacing_label = 11;            // "fast", "medium", "slow"
+  string script_snippet = 12;
+  bool is_visual_only_fallback = 13;   // true when no speech detected (EC-M07-C01)
+  bool has_trend_data = 14;            // true when real M02/M03 trend data present
+  string badge = 15;                   // "⚠️ Pattern-only" if missing trend data
+  repeated string key_moments = 16;
+  string source_asset_id = 17;
+  string thumbnail_url = 18;
+}
+
+// ClipCollection represents the collection of proposed clips for a source video (§22.3).
+message ClipCollection {
+  string collection_id = 1;
+  string workspace_id = 2;
+  string source_asset_id = 3;
+  string video_edit_job_id = 4;
+  int32 total_clips = 5;
+  repeated ClipProposal clips = 6;
+  string status = 7;                  // "analyzing", "proposed", "processing", "completed", "failed"
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  bool has_trend_data = 10;
+  bool is_visual_only = 11;
+  int32 queue_position = 12;
+}
+
+// ClipVariantConfig describes requested export variants for a clip.
+message ClipVariantConfig {
+  string clip_id = 1;
+  repeated string target_ratios = 2;    // "9:16", "16:9", "1:1"
+  bool subtitle_first = 3;
+  string cta_text = 4;
+  bool generate_highlight_reel = 5;
+  repeated string target_platforms = 6; // "tiktok", "reels", "shorts"
+}
+
+// ProcessedClipOutput represents a generated and post-produced clip variant asset.
+message ProcessedClipOutput {
+  string clip_id = 1;
+  string output_asset_id = 2;
+  string title = 3;
+  string aspect_ratio = 4;
+  string variant_type = 5;              // "standalone", "ratio_variant", "subtitle_first", "cta_variant", "highlight_reel"
+  string playback_url = 6;
+  string download_url = 7;
+  double virality_score = 8;
+  string badge = 9;
+  string lineage_json = 10;             // Full provenance with parent asset ID and timecodes
+  string credits_used = 11;             // NUMERIC(18,6) string format
+  string status = 12;
+}
+
+// ClipFactoryServiceAnalyzeRequest initiates clip analysis on a long video.
+message ClipFactoryServiceAnalyzeRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string source_asset_id = 2;
+  string video_url = 3;
+  double video_duration_s = 4;
+  bool force_visual_path = 5;
+  string trend_topic_id = 6;
+  bool has_mock_trend_data = 7;
+}
+
+// ClipFactoryServiceAnalyzeResponse returns the analyzed clip proposals.
+message ClipFactoryServiceAnalyzeResponse {
+  ClipCollection collection = 1;
+  string estimated_credits = 2;
+  int32 queue_position = 3;
+}
+
+// ClipFactoryServiceGetCollectionRequest retrieves a clip proposal collection.
+message ClipFactoryServiceGetCollectionRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string collection_id = 2;
+  string source_asset_id = 3;
+}
+
+// ClipFactoryServiceGetCollectionResponse returns the clip proposals.
+message ClipFactoryServiceGetCollectionResponse {
+  ClipCollection collection = 1;
+}
+
+// ClipFactoryServiceProcessClipsRequest initiates batch export of selected clips.
+message ClipFactoryServiceProcessClipsRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string collection_id = 2;
+  repeated string selected_clip_ids = 3;
+  repeated ClipVariantConfig variants = 4;
+  repeated string target_platforms = 5;
+}
+
+// ClipFactoryServiceProcessClipsResponse returns batch processing results.
+message ClipFactoryServiceProcessClipsResponse {
+  string video_edit_job_id = 1;
+  string status = 2;
+  int32 total_outputs = 3;
+  repeated ProcessedClipOutput outputs = 4;
+  string credits_deducted = 5;
+  int32 queue_position = 6;
+}
+
+// ClipFactoryService manages Mode 2: Clip Factory (1->N) AI Video Studio operations.
+// Canonical Source: docs/02_features/production/ai_video_studio.md §Mode 2
+//                   docs/04_contracts/api_endpoint_map.md §7.3
+//                   docs/04_contracts/rpc_permission_bindings.csv (rows 308-310)
+service ClipFactoryService {
+  // Analyze scans long video via scene/beat/ASR detection and proposes scored clips.
+  // RBAC: Editor+ (production_job:manage).
+  rpc Analyze(ClipFactoryServiceAnalyzeRequest) returns (ClipFactoryServiceAnalyzeResponse);
+
+  // GetCollection retrieves clip boundary proposals and virality scores.
+  // RBAC: Editor+ (production_job:read).
+  rpc GetCollection(ClipFactoryServiceGetCollectionRequest) returns (ClipFactoryServiceGetCollectionResponse);
+
+  // ProcessClips processes selected clips into platform variants and exports.
+  // RBAC: Editor+ (production_job:manage).
+  rpc ProcessClips(ClipFactoryServiceProcessClipsRequest) returns (ClipFactoryServiceProcessClipsResponse);
+}
+
+// ============================================================================
 // Style Learning, Character Preview & Drift QA (M07 EF-07 & M08)
 // ============================================================================
 

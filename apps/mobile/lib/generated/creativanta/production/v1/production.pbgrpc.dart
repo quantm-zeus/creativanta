@@ -1424,6 +1424,138 @@ abstract class VideoEditJobServiceBase extends $grpc.Service {
       $grpc.ServiceCall call, $0.VideoEditJobServiceRetryRequest request);
 }
 
+/// ClipFactoryService manages Mode 2: Clip Factory (1->N) AI Video Studio operations.
+/// Canonical Source: docs/02_features/production/ai_video_studio.md §Mode 2
+///                   docs/04_contracts/api_endpoint_map.md §7.3
+///                   docs/04_contracts/rpc_permission_bindings.csv (rows 308-310)
+@$pb.GrpcServiceName('creativanta.production.v1.ClipFactoryService')
+class ClipFactoryServiceClient extends $grpc.Client {
+  /// The hostname for this service.
+  static const $core.String defaultHost = '';
+
+  /// OAuth scopes needed for the client.
+  static const $core.List<$core.String> oauthScopes = [
+    '',
+  ];
+
+  ClipFactoryServiceClient(super.channel, {super.options, super.interceptors});
+
+  /// Analyze scans long video via scene/beat/ASR detection and proposes scored clips.
+  /// RBAC: Editor+ (production_job:manage).
+  $grpc.ResponseFuture<$0.ClipFactoryServiceAnalyzeResponse> analyze(
+    $0.ClipFactoryServiceAnalyzeRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$analyze, request, options: options);
+  }
+
+  /// GetCollection retrieves clip boundary proposals and virality scores.
+  /// RBAC: Editor+ (production_job:read).
+  $grpc.ResponseFuture<$0.ClipFactoryServiceGetCollectionResponse>
+      getCollection(
+    $0.ClipFactoryServiceGetCollectionRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getCollection, request, options: options);
+  }
+
+  /// ProcessClips processes selected clips into platform variants and exports.
+  /// RBAC: Editor+ (production_job:manage).
+  $grpc.ResponseFuture<$0.ClipFactoryServiceProcessClipsResponse> processClips(
+    $0.ClipFactoryServiceProcessClipsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$processClips, request, options: options);
+  }
+
+  // method descriptors
+
+  static final _$analyze = $grpc.ClientMethod<
+          $0.ClipFactoryServiceAnalyzeRequest,
+          $0.ClipFactoryServiceAnalyzeResponse>(
+      '/creativanta.production.v1.ClipFactoryService/Analyze',
+      ($0.ClipFactoryServiceAnalyzeRequest value) => value.writeToBuffer(),
+      $0.ClipFactoryServiceAnalyzeResponse.fromBuffer);
+  static final _$getCollection = $grpc.ClientMethod<
+          $0.ClipFactoryServiceGetCollectionRequest,
+          $0.ClipFactoryServiceGetCollectionResponse>(
+      '/creativanta.production.v1.ClipFactoryService/GetCollection',
+      ($0.ClipFactoryServiceGetCollectionRequest value) =>
+          value.writeToBuffer(),
+      $0.ClipFactoryServiceGetCollectionResponse.fromBuffer);
+  static final _$processClips = $grpc.ClientMethod<
+          $0.ClipFactoryServiceProcessClipsRequest,
+          $0.ClipFactoryServiceProcessClipsResponse>(
+      '/creativanta.production.v1.ClipFactoryService/ProcessClips',
+      ($0.ClipFactoryServiceProcessClipsRequest value) => value.writeToBuffer(),
+      $0.ClipFactoryServiceProcessClipsResponse.fromBuffer);
+}
+
+@$pb.GrpcServiceName('creativanta.production.v1.ClipFactoryService')
+abstract class ClipFactoryServiceBase extends $grpc.Service {
+  $core.String get $name => 'creativanta.production.v1.ClipFactoryService';
+
+  ClipFactoryServiceBase() {
+    $addMethod($grpc.ServiceMethod<$0.ClipFactoryServiceAnalyzeRequest,
+            $0.ClipFactoryServiceAnalyzeResponse>(
+        'Analyze',
+        analyze_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ClipFactoryServiceAnalyzeRequest.fromBuffer(value),
+        ($0.ClipFactoryServiceAnalyzeResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ClipFactoryServiceGetCollectionRequest,
+            $0.ClipFactoryServiceGetCollectionResponse>(
+        'GetCollection',
+        getCollection_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ClipFactoryServiceGetCollectionRequest.fromBuffer(value),
+        ($0.ClipFactoryServiceGetCollectionResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ClipFactoryServiceProcessClipsRequest,
+            $0.ClipFactoryServiceProcessClipsResponse>(
+        'ProcessClips',
+        processClips_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ClipFactoryServiceProcessClipsRequest.fromBuffer(value),
+        ($0.ClipFactoryServiceProcessClipsResponse value) =>
+            value.writeToBuffer()));
+  }
+
+  $async.Future<$0.ClipFactoryServiceAnalyzeResponse> analyze_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ClipFactoryServiceAnalyzeRequest> $request) async {
+    return analyze($call, await $request);
+  }
+
+  $async.Future<$0.ClipFactoryServiceAnalyzeResponse> analyze(
+      $grpc.ServiceCall call, $0.ClipFactoryServiceAnalyzeRequest request);
+
+  $async.Future<$0.ClipFactoryServiceGetCollectionResponse> getCollection_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ClipFactoryServiceGetCollectionRequest> $request) async {
+    return getCollection($call, await $request);
+  }
+
+  $async.Future<$0.ClipFactoryServiceGetCollectionResponse> getCollection(
+      $grpc.ServiceCall call,
+      $0.ClipFactoryServiceGetCollectionRequest request);
+
+  $async.Future<$0.ClipFactoryServiceProcessClipsResponse> processClips_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ClipFactoryServiceProcessClipsRequest> $request) async {
+    return processClips($call, await $request);
+  }
+
+  $async.Future<$0.ClipFactoryServiceProcessClipsResponse> processClips(
+      $grpc.ServiceCall call, $0.ClipFactoryServiceProcessClipsRequest request);
+}
+
 /// StylePackService manages learned editing styles (api_endpoint_map.md §7.7).
 @$pb.GrpcServiceName('creativanta.production.v1.StylePackService')
 class StylePackServiceClient extends $grpc.Client {

@@ -1,4 +1,5 @@
 export * from './types';
+export * from './clipfactory';
 export { default as BatchBudgetPreviewModal } from './BatchBudgetPreviewModal.svelte';
 export { default as ActiveJobsBanner } from './ActiveJobsBanner.svelte';
 export { default as LineageInspectionDrawer } from './LineageInspectionDrawer.svelte';
@@ -45,6 +46,16 @@ export const PRODUCTION_MODES: ProductionMode[] = [
 		creditCost: 40,
 		durationSecs: 15,
 		route: '/studio'
+	},
+	{
+		id: 'clip_factory',
+		title: 'Clip Factory (1→N)',
+		description: 'Phân tích video dài, tự động trích xuất các clip ngắn viral đa tỷ lệ và bọc CTA',
+		icon: '✂️',
+		creditCost: 15,
+		durationSecs: 60,
+		route: '/studio/clip-factory',
+		badge: 'W023'
 	},
 	{
 		id: 'avatar',

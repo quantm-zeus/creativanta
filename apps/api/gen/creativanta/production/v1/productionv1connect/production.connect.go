@@ -37,6 +37,8 @@ const (
 	RemixServiceName = "creativanta.production.v1.RemixService"
 	// VideoEditJobServiceName is the fully-qualified name of the VideoEditJobService service.
 	VideoEditJobServiceName = "creativanta.production.v1.VideoEditJobService"
+	// ClipFactoryServiceName is the fully-qualified name of the ClipFactoryService service.
+	ClipFactoryServiceName = "creativanta.production.v1.ClipFactoryService"
 	// StylePackServiceName is the fully-qualified name of the StylePackService service.
 	StylePackServiceName = "creativanta.production.v1.StylePackService"
 	// AIServiceName is the fully-qualified name of the AIService service.
@@ -151,6 +153,15 @@ const (
 	// VideoEditJobServiceRetryProcedure is the fully-qualified name of the VideoEditJobService's Retry
 	// RPC.
 	VideoEditJobServiceRetryProcedure = "/creativanta.production.v1.VideoEditJobService/Retry"
+	// ClipFactoryServiceAnalyzeProcedure is the fully-qualified name of the ClipFactoryService's
+	// Analyze RPC.
+	ClipFactoryServiceAnalyzeProcedure = "/creativanta.production.v1.ClipFactoryService/Analyze"
+	// ClipFactoryServiceGetCollectionProcedure is the fully-qualified name of the ClipFactoryService's
+	// GetCollection RPC.
+	ClipFactoryServiceGetCollectionProcedure = "/creativanta.production.v1.ClipFactoryService/GetCollection"
+	// ClipFactoryServiceProcessClipsProcedure is the fully-qualified name of the ClipFactoryService's
+	// ProcessClips RPC.
+	ClipFactoryServiceProcessClipsProcedure = "/creativanta.production.v1.ClipFactoryService/ProcessClips"
 	// StylePackServiceExtractProcedure is the fully-qualified name of the StylePackService's Extract
 	// RPC.
 	StylePackServiceExtractProcedure = "/creativanta.production.v1.StylePackService/Extract"
@@ -1598,6 +1609,143 @@ func (UnimplementedVideoEditJobServiceHandler) Cancel(context.Context, *connect.
 
 func (UnimplementedVideoEditJobServiceHandler) Retry(context.Context, *connect.Request[v1.VideoEditJobServiceRetryRequest]) (*connect.Response[v1.VideoEditJobServiceRetryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.VideoEditJobService.Retry is not implemented"))
+}
+
+// ClipFactoryServiceClient is a client for the creativanta.production.v1.ClipFactoryService
+// service.
+type ClipFactoryServiceClient interface {
+	// Analyze scans long video via scene/beat/ASR detection and proposes scored clips.
+	// RBAC: Editor+ (production_job:manage).
+	Analyze(context.Context, *connect.Request[v1.ClipFactoryServiceAnalyzeRequest]) (*connect.Response[v1.ClipFactoryServiceAnalyzeResponse], error)
+	// GetCollection retrieves clip boundary proposals and virality scores.
+	// RBAC: Editor+ (production_job:read).
+	GetCollection(context.Context, *connect.Request[v1.ClipFactoryServiceGetCollectionRequest]) (*connect.Response[v1.ClipFactoryServiceGetCollectionResponse], error)
+	// ProcessClips processes selected clips into platform variants and exports.
+	// RBAC: Editor+ (production_job:manage).
+	ProcessClips(context.Context, *connect.Request[v1.ClipFactoryServiceProcessClipsRequest]) (*connect.Response[v1.ClipFactoryServiceProcessClipsResponse], error)
+}
+
+// NewClipFactoryServiceClient constructs a client for the
+// creativanta.production.v1.ClipFactoryService service. By default, it uses the Connect protocol
+// with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To
+// use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb()
+// options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewClipFactoryServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ClipFactoryServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	clipFactoryServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("ClipFactoryService").Methods()
+	return &clipFactoryServiceClient{
+		analyze: connect.NewClient[v1.ClipFactoryServiceAnalyzeRequest, v1.ClipFactoryServiceAnalyzeResponse](
+			httpClient,
+			baseURL+ClipFactoryServiceAnalyzeProcedure,
+			connect.WithSchema(clipFactoryServiceMethods.ByName("Analyze")),
+			connect.WithClientOptions(opts...),
+		),
+		getCollection: connect.NewClient[v1.ClipFactoryServiceGetCollectionRequest, v1.ClipFactoryServiceGetCollectionResponse](
+			httpClient,
+			baseURL+ClipFactoryServiceGetCollectionProcedure,
+			connect.WithSchema(clipFactoryServiceMethods.ByName("GetCollection")),
+			connect.WithClientOptions(opts...),
+		),
+		processClips: connect.NewClient[v1.ClipFactoryServiceProcessClipsRequest, v1.ClipFactoryServiceProcessClipsResponse](
+			httpClient,
+			baseURL+ClipFactoryServiceProcessClipsProcedure,
+			connect.WithSchema(clipFactoryServiceMethods.ByName("ProcessClips")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// clipFactoryServiceClient implements ClipFactoryServiceClient.
+type clipFactoryServiceClient struct {
+	analyze       *connect.Client[v1.ClipFactoryServiceAnalyzeRequest, v1.ClipFactoryServiceAnalyzeResponse]
+	getCollection *connect.Client[v1.ClipFactoryServiceGetCollectionRequest, v1.ClipFactoryServiceGetCollectionResponse]
+	processClips  *connect.Client[v1.ClipFactoryServiceProcessClipsRequest, v1.ClipFactoryServiceProcessClipsResponse]
+}
+
+// Analyze calls creativanta.production.v1.ClipFactoryService.Analyze.
+func (c *clipFactoryServiceClient) Analyze(ctx context.Context, req *connect.Request[v1.ClipFactoryServiceAnalyzeRequest]) (*connect.Response[v1.ClipFactoryServiceAnalyzeResponse], error) {
+	return c.analyze.CallUnary(ctx, req)
+}
+
+// GetCollection calls creativanta.production.v1.ClipFactoryService.GetCollection.
+func (c *clipFactoryServiceClient) GetCollection(ctx context.Context, req *connect.Request[v1.ClipFactoryServiceGetCollectionRequest]) (*connect.Response[v1.ClipFactoryServiceGetCollectionResponse], error) {
+	return c.getCollection.CallUnary(ctx, req)
+}
+
+// ProcessClips calls creativanta.production.v1.ClipFactoryService.ProcessClips.
+func (c *clipFactoryServiceClient) ProcessClips(ctx context.Context, req *connect.Request[v1.ClipFactoryServiceProcessClipsRequest]) (*connect.Response[v1.ClipFactoryServiceProcessClipsResponse], error) {
+	return c.processClips.CallUnary(ctx, req)
+}
+
+// ClipFactoryServiceHandler is an implementation of the
+// creativanta.production.v1.ClipFactoryService service.
+type ClipFactoryServiceHandler interface {
+	// Analyze scans long video via scene/beat/ASR detection and proposes scored clips.
+	// RBAC: Editor+ (production_job:manage).
+	Analyze(context.Context, *connect.Request[v1.ClipFactoryServiceAnalyzeRequest]) (*connect.Response[v1.ClipFactoryServiceAnalyzeResponse], error)
+	// GetCollection retrieves clip boundary proposals and virality scores.
+	// RBAC: Editor+ (production_job:read).
+	GetCollection(context.Context, *connect.Request[v1.ClipFactoryServiceGetCollectionRequest]) (*connect.Response[v1.ClipFactoryServiceGetCollectionResponse], error)
+	// ProcessClips processes selected clips into platform variants and exports.
+	// RBAC: Editor+ (production_job:manage).
+	ProcessClips(context.Context, *connect.Request[v1.ClipFactoryServiceProcessClipsRequest]) (*connect.Response[v1.ClipFactoryServiceProcessClipsResponse], error)
+}
+
+// NewClipFactoryServiceHandler builds an HTTP handler from the service implementation. It returns
+// the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewClipFactoryServiceHandler(svc ClipFactoryServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	clipFactoryServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("ClipFactoryService").Methods()
+	clipFactoryServiceAnalyzeHandler := connect.NewUnaryHandler(
+		ClipFactoryServiceAnalyzeProcedure,
+		svc.Analyze,
+		connect.WithSchema(clipFactoryServiceMethods.ByName("Analyze")),
+		connect.WithHandlerOptions(opts...),
+	)
+	clipFactoryServiceGetCollectionHandler := connect.NewUnaryHandler(
+		ClipFactoryServiceGetCollectionProcedure,
+		svc.GetCollection,
+		connect.WithSchema(clipFactoryServiceMethods.ByName("GetCollection")),
+		connect.WithHandlerOptions(opts...),
+	)
+	clipFactoryServiceProcessClipsHandler := connect.NewUnaryHandler(
+		ClipFactoryServiceProcessClipsProcedure,
+		svc.ProcessClips,
+		connect.WithSchema(clipFactoryServiceMethods.ByName("ProcessClips")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.production.v1.ClipFactoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case ClipFactoryServiceAnalyzeProcedure:
+			clipFactoryServiceAnalyzeHandler.ServeHTTP(w, r)
+		case ClipFactoryServiceGetCollectionProcedure:
+			clipFactoryServiceGetCollectionHandler.ServeHTTP(w, r)
+		case ClipFactoryServiceProcessClipsProcedure:
+			clipFactoryServiceProcessClipsHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedClipFactoryServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedClipFactoryServiceHandler struct{}
+
+func (UnimplementedClipFactoryServiceHandler) Analyze(context.Context, *connect.Request[v1.ClipFactoryServiceAnalyzeRequest]) (*connect.Response[v1.ClipFactoryServiceAnalyzeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.ClipFactoryService.Analyze is not implemented"))
+}
+
+func (UnimplementedClipFactoryServiceHandler) GetCollection(context.Context, *connect.Request[v1.ClipFactoryServiceGetCollectionRequest]) (*connect.Response[v1.ClipFactoryServiceGetCollectionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.ClipFactoryService.GetCollection is not implemented"))
+}
+
+func (UnimplementedClipFactoryServiceHandler) ProcessClips(context.Context, *connect.Request[v1.ClipFactoryServiceProcessClipsRequest]) (*connect.Response[v1.ClipFactoryServiceProcessClipsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.ClipFactoryService.ProcessClips is not implemented"))
 }
 
 // StylePackServiceClient is a client for the creativanta.production.v1.StylePackService service.

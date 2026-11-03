@@ -12333,6 +12333,1545 @@ class VideoEditJobServiceRetryResponse extends $pb.GeneratedMessage {
   VideoEditJob ensureJob() => $_ensure(0);
 }
 
+/// ViralityScoreBreakdown details the 5 components of Virality Score (0-100).
+/// Sourced from docs/02_features/production/ai_video_studio.md §Mode 2.
+class ViralityScoreBreakdown extends $pb.GeneratedMessage {
+  factory ViralityScoreBreakdown({
+    $core.double? engagementPatternMatch,
+    $core.double? hookStrength,
+    $core.double? pacingScore,
+    $core.double? audioQuality,
+    $core.double? contentRelevance,
+    $core.bool? hasTrendData,
+    $core.String? badge,
+    $core.String? hookAnalysisMethod,
+    $core.double? totalScore,
+  }) {
+    final result = ViralityScoreBreakdown._();
+    if (engagementPatternMatch != null)
+      result.engagementPatternMatch = engagementPatternMatch;
+    if (hookStrength != null) result.hookStrength = hookStrength;
+    if (pacingScore != null) result.pacingScore = pacingScore;
+    if (audioQuality != null) result.audioQuality = audioQuality;
+    if (contentRelevance != null) result.contentRelevance = contentRelevance;
+    if (hasTrendData != null) result.hasTrendData = hasTrendData;
+    if (badge != null) result.badge = badge;
+    if (hookAnalysisMethod != null)
+      result.hookAnalysisMethod = hookAnalysisMethod;
+    if (totalScore != null) result.totalScore = totalScore;
+    return result;
+  }
+
+  ViralityScoreBreakdown._();
+
+  factory ViralityScoreBreakdown.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ViralityScoreBreakdown()..mergeFromBuffer(data, registry);
+  factory ViralityScoreBreakdown.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ViralityScoreBreakdown()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ViralityScoreBreakdown',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ViralityScoreBreakdown.$_createMessage)
+    ..aD(1, _omitFieldNames ? '' : 'engagementPatternMatch')
+    ..aD(2, _omitFieldNames ? '' : 'hookStrength')
+    ..aD(3, _omitFieldNames ? '' : 'pacingScore')
+    ..aD(4, _omitFieldNames ? '' : 'audioQuality')
+    ..aD(5, _omitFieldNames ? '' : 'contentRelevance')
+    ..aOB(6, _omitFieldNames ? '' : 'hasTrendData')
+    ..aOS(7, _omitFieldNames ? '' : 'badge')
+    ..aOS(8, _omitFieldNames ? '' : 'hookAnalysisMethod')
+    ..aD(9, _omitFieldNames ? '' : 'totalScore')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ViralityScoreBreakdown clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ViralityScoreBreakdown copyWith(
+          void Function(ViralityScoreBreakdown) updates) =>
+      super.copyWith((message) => updates(message as ViralityScoreBreakdown))
+          as ViralityScoreBreakdown;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ViralityScoreBreakdown() / ViralityScoreBreakdown.new instead')
+  static ViralityScoreBreakdown create() => ViralityScoreBreakdown._();
+  static $pb.GeneratedMessage $_createMessage() => ViralityScoreBreakdown._();
+  @$core.override
+  ViralityScoreBreakdown createEmptyInstance() => ViralityScoreBreakdown._();
+  @$core.pragma('dart2js:noInline')
+  static ViralityScoreBreakdown getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ViralityScoreBreakdown>(
+          ViralityScoreBreakdown.$_createMessage);
+  static ViralityScoreBreakdown? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.double get engagementPatternMatch => $_getN(0);
+  @$pb.TagNumber(1)
+  set engagementPatternMatch($core.double value) => $_setDouble(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasEngagementPatternMatch() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearEngagementPatternMatch() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.double get hookStrength => $_getN(1);
+  @$pb.TagNumber(2)
+  set hookStrength($core.double value) => $_setDouble(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasHookStrength() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearHookStrength() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get pacingScore => $_getN(2);
+  @$pb.TagNumber(3)
+  set pacingScore($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPacingScore() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPacingScore() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.double get audioQuality => $_getN(3);
+  @$pb.TagNumber(4)
+  set audioQuality($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasAudioQuality() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearAudioQuality() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.double get contentRelevance => $_getN(4);
+  @$pb.TagNumber(5)
+  set contentRelevance($core.double value) => $_setDouble(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasContentRelevance() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearContentRelevance() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.bool get hasTrendData => $_getBF(5);
+  @$pb.TagNumber(6)
+  set hasTrendData($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasHasTrendData() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearHasTrendData() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get badge => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set badge($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasBadge() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearBadge() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get hookAnalysisMethod => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set hookAnalysisMethod($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasHookAnalysisMethod() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearHookAnalysisMethod() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.double get totalScore => $_getN(8);
+  @$pb.TagNumber(9)
+  set totalScore($core.double value) => $_setDouble(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasTotalScore() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearTotalScore() => $_clearField(9);
+}
+
+/// ClipProposal represents an AI-detected viral clip boundary proposal.
+class ClipProposal extends $pb.GeneratedMessage {
+  factory ClipProposal({
+    $core.String? clipId,
+    $core.int? clipIndex,
+    $core.double? startS,
+    $core.double? endS,
+    $core.double? durationS,
+    $core.String? title,
+    $core.double? viralityScore,
+    ViralityScoreBreakdown? viralityBreakdown,
+    $core.bool? selected,
+    $core.String? hookType,
+    $core.String? pacingLabel,
+    $core.String? scriptSnippet,
+    $core.bool? isVisualOnlyFallback,
+    $core.bool? hasTrendData,
+    $core.String? badge,
+    $core.Iterable<$core.String>? keyMoments,
+    $core.String? sourceAssetId,
+    $core.String? thumbnailUrl,
+  }) {
+    final result = ClipProposal._();
+    if (clipId != null) result.clipId = clipId;
+    if (clipIndex != null) result.clipIndex = clipIndex;
+    if (startS != null) result.startS = startS;
+    if (endS != null) result.endS = endS;
+    if (durationS != null) result.durationS = durationS;
+    if (title != null) result.title = title;
+    if (viralityScore != null) result.viralityScore = viralityScore;
+    if (viralityBreakdown != null) result.viralityBreakdown = viralityBreakdown;
+    if (selected != null) result.selected = selected;
+    if (hookType != null) result.hookType = hookType;
+    if (pacingLabel != null) result.pacingLabel = pacingLabel;
+    if (scriptSnippet != null) result.scriptSnippet = scriptSnippet;
+    if (isVisualOnlyFallback != null)
+      result.isVisualOnlyFallback = isVisualOnlyFallback;
+    if (hasTrendData != null) result.hasTrendData = hasTrendData;
+    if (badge != null) result.badge = badge;
+    if (keyMoments != null) result.keyMoments.addAll(keyMoments);
+    if (sourceAssetId != null) result.sourceAssetId = sourceAssetId;
+    if (thumbnailUrl != null) result.thumbnailUrl = thumbnailUrl;
+    return result;
+  }
+
+  ClipProposal._();
+
+  factory ClipProposal.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClipProposal()..mergeFromBuffer(data, registry);
+  factory ClipProposal.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClipProposal()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClipProposal',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ClipProposal.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'clipId')
+    ..aI(2, _omitFieldNames ? '' : 'clipIndex')
+    ..aD(3, _omitFieldNames ? '' : 'startS')
+    ..aD(4, _omitFieldNames ? '' : 'endS')
+    ..aD(5, _omitFieldNames ? '' : 'durationS')
+    ..aOS(6, _omitFieldNames ? '' : 'title')
+    ..aD(7, _omitFieldNames ? '' : 'viralityScore')
+    ..aOM<ViralityScoreBreakdown>(8, _omitFieldNames ? '' : 'viralityBreakdown',
+        subBuilder: ViralityScoreBreakdown.$_createMessage)
+    ..aOB(9, _omitFieldNames ? '' : 'selected')
+    ..aOS(10, _omitFieldNames ? '' : 'hookType')
+    ..aOS(11, _omitFieldNames ? '' : 'pacingLabel')
+    ..aOS(12, _omitFieldNames ? '' : 'scriptSnippet')
+    ..aOB(13, _omitFieldNames ? '' : 'isVisualOnlyFallback')
+    ..aOB(14, _omitFieldNames ? '' : 'hasTrendData')
+    ..aOS(15, _omitFieldNames ? '' : 'badge')
+    ..pPS(16, _omitFieldNames ? '' : 'keyMoments')
+    ..aOS(17, _omitFieldNames ? '' : 'sourceAssetId')
+    ..aOS(18, _omitFieldNames ? '' : 'thumbnailUrl')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClipProposal clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClipProposal copyWith(void Function(ClipProposal) updates) =>
+      super.copyWith((message) => updates(message as ClipProposal))
+          as ClipProposal;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ClipProposal() / ClipProposal.new instead')
+  static ClipProposal create() => ClipProposal._();
+  static $pb.GeneratedMessage $_createMessage() => ClipProposal._();
+  @$core.override
+  ClipProposal createEmptyInstance() => ClipProposal._();
+  @$core.pragma('dart2js:noInline')
+  static ClipProposal getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ClipProposal>(
+          ClipProposal.$_createMessage);
+  static ClipProposal? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get clipId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set clipId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasClipId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearClipId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get clipIndex => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set clipIndex($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasClipIndex() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearClipIndex() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get startS => $_getN(2);
+  @$pb.TagNumber(3)
+  set startS($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasStartS() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearStartS() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.double get endS => $_getN(3);
+  @$pb.TagNumber(4)
+  set endS($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasEndS() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearEndS() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.double get durationS => $_getN(4);
+  @$pb.TagNumber(5)
+  set durationS($core.double value) => $_setDouble(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasDurationS() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearDurationS() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get title => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set title($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasTitle() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTitle() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.double get viralityScore => $_getN(6);
+  @$pb.TagNumber(7)
+  set viralityScore($core.double value) => $_setDouble(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasViralityScore() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearViralityScore() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  ViralityScoreBreakdown get viralityBreakdown => $_getN(7);
+  @$pb.TagNumber(8)
+  set viralityBreakdown(ViralityScoreBreakdown value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasViralityBreakdown() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearViralityBreakdown() => $_clearField(8);
+  @$pb.TagNumber(8)
+  ViralityScoreBreakdown ensureViralityBreakdown() => $_ensure(7);
+
+  @$pb.TagNumber(9)
+  $core.bool get selected => $_getBF(8);
+  @$pb.TagNumber(9)
+  set selected($core.bool value) => $_setBool(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasSelected() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearSelected() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get hookType => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set hookType($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasHookType() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearHookType() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get pacingLabel => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set pacingLabel($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasPacingLabel() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearPacingLabel() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get scriptSnippet => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set scriptSnippet($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasScriptSnippet() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearScriptSnippet() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.bool get isVisualOnlyFallback => $_getBF(12);
+  @$pb.TagNumber(13)
+  set isVisualOnlyFallback($core.bool value) => $_setBool(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasIsVisualOnlyFallback() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearIsVisualOnlyFallback() => $_clearField(13);
+
+  @$pb.TagNumber(14)
+  $core.bool get hasTrendData => $_getBF(13);
+  @$pb.TagNumber(14)
+  set hasTrendData($core.bool value) => $_setBool(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasHasTrendData() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearHasTrendData() => $_clearField(14);
+
+  @$pb.TagNumber(15)
+  $core.String get badge => $_getSZ(14);
+  @$pb.TagNumber(15)
+  set badge($core.String value) => $_setString(14, value);
+  @$pb.TagNumber(15)
+  $core.bool hasBadge() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearBadge() => $_clearField(15);
+
+  @$pb.TagNumber(16)
+  $pb.PbList<$core.String> get keyMoments => $_getList(15);
+
+  @$pb.TagNumber(17)
+  $core.String get sourceAssetId => $_getSZ(16);
+  @$pb.TagNumber(17)
+  set sourceAssetId($core.String value) => $_setString(16, value);
+  @$pb.TagNumber(17)
+  $core.bool hasSourceAssetId() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearSourceAssetId() => $_clearField(17);
+
+  @$pb.TagNumber(18)
+  $core.String get thumbnailUrl => $_getSZ(17);
+  @$pb.TagNumber(18)
+  set thumbnailUrl($core.String value) => $_setString(17, value);
+  @$pb.TagNumber(18)
+  $core.bool hasThumbnailUrl() => $_has(17);
+  @$pb.TagNumber(18)
+  void clearThumbnailUrl() => $_clearField(18);
+}
+
+/// ClipCollection represents the collection of proposed clips for a source video (§22.3).
+class ClipCollection extends $pb.GeneratedMessage {
+  factory ClipCollection({
+    $core.String? collectionId,
+    $core.String? workspaceId,
+    $core.String? sourceAssetId,
+    $core.String? videoEditJobId,
+    $core.int? totalClips,
+    $core.Iterable<ClipProposal>? clips,
+    $core.String? status,
+    $1.Timestamp? createdAt,
+    $1.Timestamp? updatedAt,
+    $core.bool? hasTrendData,
+    $core.bool? isVisualOnly,
+    $core.int? queuePosition,
+  }) {
+    final result = ClipCollection._();
+    if (collectionId != null) result.collectionId = collectionId;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (sourceAssetId != null) result.sourceAssetId = sourceAssetId;
+    if (videoEditJobId != null) result.videoEditJobId = videoEditJobId;
+    if (totalClips != null) result.totalClips = totalClips;
+    if (clips != null) result.clips.addAll(clips);
+    if (status != null) result.status = status;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    if (hasTrendData != null) result.hasTrendData = hasTrendData;
+    if (isVisualOnly != null) result.isVisualOnly = isVisualOnly;
+    if (queuePosition != null) result.queuePosition = queuePosition;
+    return result;
+  }
+
+  ClipCollection._();
+
+  factory ClipCollection.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClipCollection()..mergeFromBuffer(data, registry);
+  factory ClipCollection.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClipCollection()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClipCollection',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ClipCollection.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'collectionId')
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'sourceAssetId')
+    ..aOS(4, _omitFieldNames ? '' : 'videoEditJobId')
+    ..aI(5, _omitFieldNames ? '' : 'totalClips')
+    ..pPM<ClipProposal>(6, _omitFieldNames ? '' : 'clips',
+        subBuilder: ClipProposal.$_createMessage)
+    ..aOS(7, _omitFieldNames ? '' : 'status')
+    ..aOM<$1.Timestamp>(8, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOM<$1.Timestamp>(9, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOB(10, _omitFieldNames ? '' : 'hasTrendData')
+    ..aOB(11, _omitFieldNames ? '' : 'isVisualOnly')
+    ..aI(12, _omitFieldNames ? '' : 'queuePosition')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClipCollection clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClipCollection copyWith(void Function(ClipCollection) updates) =>
+      super.copyWith((message) => updates(message as ClipCollection))
+          as ClipCollection;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ClipCollection() / ClipCollection.new instead')
+  static ClipCollection create() => ClipCollection._();
+  static $pb.GeneratedMessage $_createMessage() => ClipCollection._();
+  @$core.override
+  ClipCollection createEmptyInstance() => ClipCollection._();
+  @$core.pragma('dart2js:noInline')
+  static ClipCollection getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ClipCollection>(
+          ClipCollection.$_createMessage);
+  static ClipCollection? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get collectionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set collectionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCollectionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCollectionId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get sourceAssetId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set sourceAssetId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSourceAssetId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSourceAssetId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get videoEditJobId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set videoEditJobId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasVideoEditJobId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearVideoEditJobId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.int get totalClips => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set totalClips($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasTotalClips() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearTotalClips() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<ClipProposal> get clips => $_getList(5);
+
+  @$pb.TagNumber(7)
+  $core.String get status => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set status($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasStatus() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearStatus() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $1.Timestamp get createdAt => $_getN(7);
+  @$pb.TagNumber(8)
+  set createdAt($1.Timestamp value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasCreatedAt() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearCreatedAt() => $_clearField(8);
+  @$pb.TagNumber(8)
+  $1.Timestamp ensureCreatedAt() => $_ensure(7);
+
+  @$pb.TagNumber(9)
+  $1.Timestamp get updatedAt => $_getN(8);
+  @$pb.TagNumber(9)
+  set updatedAt($1.Timestamp value) => $_setField(9, value);
+  @$pb.TagNumber(9)
+  $core.bool hasUpdatedAt() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearUpdatedAt() => $_clearField(9);
+  @$pb.TagNumber(9)
+  $1.Timestamp ensureUpdatedAt() => $_ensure(8);
+
+  @$pb.TagNumber(10)
+  $core.bool get hasTrendData => $_getBF(9);
+  @$pb.TagNumber(10)
+  set hasTrendData($core.bool value) => $_setBool(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasHasTrendData() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearHasTrendData() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.bool get isVisualOnly => $_getBF(10);
+  @$pb.TagNumber(11)
+  set isVisualOnly($core.bool value) => $_setBool(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasIsVisualOnly() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearIsVisualOnly() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.int get queuePosition => $_getIZ(11);
+  @$pb.TagNumber(12)
+  set queuePosition($core.int value) => $_setSignedInt32(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasQueuePosition() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearQueuePosition() => $_clearField(12);
+}
+
+/// ClipVariantConfig describes requested export variants for a clip.
+class ClipVariantConfig extends $pb.GeneratedMessage {
+  factory ClipVariantConfig({
+    $core.String? clipId,
+    $core.Iterable<$core.String>? targetRatios,
+    $core.bool? subtitleFirst,
+    $core.String? ctaText,
+    $core.bool? generateHighlightReel,
+    $core.Iterable<$core.String>? targetPlatforms,
+  }) {
+    final result = ClipVariantConfig._();
+    if (clipId != null) result.clipId = clipId;
+    if (targetRatios != null) result.targetRatios.addAll(targetRatios);
+    if (subtitleFirst != null) result.subtitleFirst = subtitleFirst;
+    if (ctaText != null) result.ctaText = ctaText;
+    if (generateHighlightReel != null)
+      result.generateHighlightReel = generateHighlightReel;
+    if (targetPlatforms != null) result.targetPlatforms.addAll(targetPlatforms);
+    return result;
+  }
+
+  ClipVariantConfig._();
+
+  factory ClipVariantConfig.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClipVariantConfig()..mergeFromBuffer(data, registry);
+  factory ClipVariantConfig.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClipVariantConfig()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClipVariantConfig',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ClipVariantConfig.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'clipId')
+    ..pPS(2, _omitFieldNames ? '' : 'targetRatios')
+    ..aOB(3, _omitFieldNames ? '' : 'subtitleFirst')
+    ..aOS(4, _omitFieldNames ? '' : 'ctaText')
+    ..aOB(5, _omitFieldNames ? '' : 'generateHighlightReel')
+    ..pPS(6, _omitFieldNames ? '' : 'targetPlatforms')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClipVariantConfig clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClipVariantConfig copyWith(void Function(ClipVariantConfig) updates) =>
+      super.copyWith((message) => updates(message as ClipVariantConfig))
+          as ClipVariantConfig;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ClipVariantConfig() / ClipVariantConfig.new instead')
+  static ClipVariantConfig create() => ClipVariantConfig._();
+  static $pb.GeneratedMessage $_createMessage() => ClipVariantConfig._();
+  @$core.override
+  ClipVariantConfig createEmptyInstance() => ClipVariantConfig._();
+  @$core.pragma('dart2js:noInline')
+  static ClipVariantConfig getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ClipVariantConfig>(
+          ClipVariantConfig.$_createMessage);
+  static ClipVariantConfig? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get clipId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set clipId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasClipId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearClipId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<$core.String> get targetRatios => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $core.bool get subtitleFirst => $_getBF(2);
+  @$pb.TagNumber(3)
+  set subtitleFirst($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSubtitleFirst() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSubtitleFirst() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get ctaText => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set ctaText($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCtaText() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCtaText() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get generateHighlightReel => $_getBF(4);
+  @$pb.TagNumber(5)
+  set generateHighlightReel($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasGenerateHighlightReel() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearGenerateHighlightReel() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.String> get targetPlatforms => $_getList(5);
+}
+
+/// ProcessedClipOutput represents a generated and post-produced clip variant asset.
+class ProcessedClipOutput extends $pb.GeneratedMessage {
+  factory ProcessedClipOutput({
+    $core.String? clipId,
+    $core.String? outputAssetId,
+    $core.String? title,
+    $core.String? aspectRatio,
+    $core.String? variantType,
+    $core.String? playbackUrl,
+    $core.String? downloadUrl,
+    $core.double? viralityScore,
+    $core.String? badge,
+    $core.String? lineageJson,
+    $core.String? creditsUsed,
+    $core.String? status,
+  }) {
+    final result = ProcessedClipOutput._();
+    if (clipId != null) result.clipId = clipId;
+    if (outputAssetId != null) result.outputAssetId = outputAssetId;
+    if (title != null) result.title = title;
+    if (aspectRatio != null) result.aspectRatio = aspectRatio;
+    if (variantType != null) result.variantType = variantType;
+    if (playbackUrl != null) result.playbackUrl = playbackUrl;
+    if (downloadUrl != null) result.downloadUrl = downloadUrl;
+    if (viralityScore != null) result.viralityScore = viralityScore;
+    if (badge != null) result.badge = badge;
+    if (lineageJson != null) result.lineageJson = lineageJson;
+    if (creditsUsed != null) result.creditsUsed = creditsUsed;
+    if (status != null) result.status = status;
+    return result;
+  }
+
+  ProcessedClipOutput._();
+
+  factory ProcessedClipOutput.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProcessedClipOutput()..mergeFromBuffer(data, registry);
+  factory ProcessedClipOutput.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProcessedClipOutput()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProcessedClipOutput',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ProcessedClipOutput.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'clipId')
+    ..aOS(2, _omitFieldNames ? '' : 'outputAssetId')
+    ..aOS(3, _omitFieldNames ? '' : 'title')
+    ..aOS(4, _omitFieldNames ? '' : 'aspectRatio')
+    ..aOS(5, _omitFieldNames ? '' : 'variantType')
+    ..aOS(6, _omitFieldNames ? '' : 'playbackUrl')
+    ..aOS(7, _omitFieldNames ? '' : 'downloadUrl')
+    ..aD(8, _omitFieldNames ? '' : 'viralityScore')
+    ..aOS(9, _omitFieldNames ? '' : 'badge')
+    ..aOS(10, _omitFieldNames ? '' : 'lineageJson')
+    ..aOS(11, _omitFieldNames ? '' : 'creditsUsed')
+    ..aOS(12, _omitFieldNames ? '' : 'status')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProcessedClipOutput clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProcessedClipOutput copyWith(void Function(ProcessedClipOutput) updates) =>
+      super.copyWith((message) => updates(message as ProcessedClipOutput))
+          as ProcessedClipOutput;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use ProcessedClipOutput() / ProcessedClipOutput.new instead')
+  static ProcessedClipOutput create() => ProcessedClipOutput._();
+  static $pb.GeneratedMessage $_createMessage() => ProcessedClipOutput._();
+  @$core.override
+  ProcessedClipOutput createEmptyInstance() => ProcessedClipOutput._();
+  @$core.pragma('dart2js:noInline')
+  static ProcessedClipOutput getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ProcessedClipOutput>(
+          ProcessedClipOutput.$_createMessage);
+  static ProcessedClipOutput? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get clipId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set clipId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasClipId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearClipId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get outputAssetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set outputAssetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasOutputAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearOutputAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get title => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set title($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTitle() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTitle() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get aspectRatio => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set aspectRatio($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasAspectRatio() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearAspectRatio() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get variantType => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set variantType($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasVariantType() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearVariantType() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get playbackUrl => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set playbackUrl($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasPlaybackUrl() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearPlaybackUrl() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get downloadUrl => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set downloadUrl($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasDownloadUrl() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearDownloadUrl() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.double get viralityScore => $_getN(7);
+  @$pb.TagNumber(8)
+  set viralityScore($core.double value) => $_setDouble(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasViralityScore() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearViralityScore() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get badge => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set badge($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasBadge() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearBadge() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get lineageJson => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set lineageJson($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasLineageJson() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearLineageJson() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get creditsUsed => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set creditsUsed($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasCreditsUsed() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearCreditsUsed() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get status => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set status($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasStatus() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearStatus() => $_clearField(12);
+}
+
+/// ClipFactoryServiceAnalyzeRequest initiates clip analysis on a long video.
+class ClipFactoryServiceAnalyzeRequest extends $pb.GeneratedMessage {
+  factory ClipFactoryServiceAnalyzeRequest({
+    $2.CommandContext? context,
+    $core.String? sourceAssetId,
+    $core.String? videoUrl,
+    $core.double? videoDurationS,
+    $core.bool? forceVisualPath,
+    $core.String? trendTopicId,
+    $core.bool? hasMockTrendData,
+  }) {
+    final result = ClipFactoryServiceAnalyzeRequest._();
+    if (context != null) result.context = context;
+    if (sourceAssetId != null) result.sourceAssetId = sourceAssetId;
+    if (videoUrl != null) result.videoUrl = videoUrl;
+    if (videoDurationS != null) result.videoDurationS = videoDurationS;
+    if (forceVisualPath != null) result.forceVisualPath = forceVisualPath;
+    if (trendTopicId != null) result.trendTopicId = trendTopicId;
+    if (hasMockTrendData != null) result.hasMockTrendData = hasMockTrendData;
+    return result;
+  }
+
+  ClipFactoryServiceAnalyzeRequest._();
+
+  factory ClipFactoryServiceAnalyzeRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClipFactoryServiceAnalyzeRequest()..mergeFromBuffer(data, registry);
+  factory ClipFactoryServiceAnalyzeRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClipFactoryServiceAnalyzeRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClipFactoryServiceAnalyzeRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ClipFactoryServiceAnalyzeRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'sourceAssetId')
+    ..aOS(3, _omitFieldNames ? '' : 'videoUrl')
+    ..aD(4, _omitFieldNames ? '' : 'videoDurationS')
+    ..aOB(5, _omitFieldNames ? '' : 'forceVisualPath')
+    ..aOS(6, _omitFieldNames ? '' : 'trendTopicId')
+    ..aOB(7, _omitFieldNames ? '' : 'hasMockTrendData')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClipFactoryServiceAnalyzeRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClipFactoryServiceAnalyzeRequest copyWith(
+          void Function(ClipFactoryServiceAnalyzeRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as ClipFactoryServiceAnalyzeRequest))
+          as ClipFactoryServiceAnalyzeRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ClipFactoryServiceAnalyzeRequest() / ClipFactoryServiceAnalyzeRequest.new instead')
+  static ClipFactoryServiceAnalyzeRequest create() =>
+      ClipFactoryServiceAnalyzeRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ClipFactoryServiceAnalyzeRequest._();
+  @$core.override
+  ClipFactoryServiceAnalyzeRequest createEmptyInstance() =>
+      ClipFactoryServiceAnalyzeRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ClipFactoryServiceAnalyzeRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ClipFactoryServiceAnalyzeRequest>(
+          ClipFactoryServiceAnalyzeRequest.$_createMessage);
+  static ClipFactoryServiceAnalyzeRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get sourceAssetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set sourceAssetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSourceAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSourceAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get videoUrl => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set videoUrl($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasVideoUrl() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearVideoUrl() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.double get videoDurationS => $_getN(3);
+  @$pb.TagNumber(4)
+  set videoDurationS($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasVideoDurationS() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearVideoDurationS() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get forceVisualPath => $_getBF(4);
+  @$pb.TagNumber(5)
+  set forceVisualPath($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasForceVisualPath() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearForceVisualPath() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get trendTopicId => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set trendTopicId($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasTrendTopicId() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTrendTopicId() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.bool get hasMockTrendData => $_getBF(6);
+  @$pb.TagNumber(7)
+  set hasMockTrendData($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasHasMockTrendData() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearHasMockTrendData() => $_clearField(7);
+}
+
+/// ClipFactoryServiceAnalyzeResponse returns the analyzed clip proposals.
+class ClipFactoryServiceAnalyzeResponse extends $pb.GeneratedMessage {
+  factory ClipFactoryServiceAnalyzeResponse({
+    ClipCollection? collection,
+    $core.String? estimatedCredits,
+    $core.int? queuePosition,
+  }) {
+    final result = ClipFactoryServiceAnalyzeResponse._();
+    if (collection != null) result.collection = collection;
+    if (estimatedCredits != null) result.estimatedCredits = estimatedCredits;
+    if (queuePosition != null) result.queuePosition = queuePosition;
+    return result;
+  }
+
+  ClipFactoryServiceAnalyzeResponse._();
+
+  factory ClipFactoryServiceAnalyzeResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClipFactoryServiceAnalyzeResponse()..mergeFromBuffer(data, registry);
+  factory ClipFactoryServiceAnalyzeResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClipFactoryServiceAnalyzeResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClipFactoryServiceAnalyzeResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ClipFactoryServiceAnalyzeResponse.$_createMessage)
+    ..aOM<ClipCollection>(1, _omitFieldNames ? '' : 'collection',
+        subBuilder: ClipCollection.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'estimatedCredits')
+    ..aI(3, _omitFieldNames ? '' : 'queuePosition')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClipFactoryServiceAnalyzeResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClipFactoryServiceAnalyzeResponse copyWith(
+          void Function(ClipFactoryServiceAnalyzeResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ClipFactoryServiceAnalyzeResponse))
+          as ClipFactoryServiceAnalyzeResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ClipFactoryServiceAnalyzeResponse() / ClipFactoryServiceAnalyzeResponse.new instead')
+  static ClipFactoryServiceAnalyzeResponse create() =>
+      ClipFactoryServiceAnalyzeResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ClipFactoryServiceAnalyzeResponse._();
+  @$core.override
+  ClipFactoryServiceAnalyzeResponse createEmptyInstance() =>
+      ClipFactoryServiceAnalyzeResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ClipFactoryServiceAnalyzeResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ClipFactoryServiceAnalyzeResponse>(
+          ClipFactoryServiceAnalyzeResponse.$_createMessage);
+  static ClipFactoryServiceAnalyzeResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ClipCollection get collection => $_getN(0);
+  @$pb.TagNumber(1)
+  set collection(ClipCollection value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCollection() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCollection() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ClipCollection ensureCollection() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get estimatedCredits => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set estimatedCredits($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasEstimatedCredits() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearEstimatedCredits() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get queuePosition => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set queuePosition($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasQueuePosition() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearQueuePosition() => $_clearField(3);
+}
+
+/// ClipFactoryServiceGetCollectionRequest retrieves a clip proposal collection.
+class ClipFactoryServiceGetCollectionRequest extends $pb.GeneratedMessage {
+  factory ClipFactoryServiceGetCollectionRequest({
+    $2.UUID? workspaceId,
+    $core.String? collectionId,
+    $core.String? sourceAssetId,
+  }) {
+    final result = ClipFactoryServiceGetCollectionRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (collectionId != null) result.collectionId = collectionId;
+    if (sourceAssetId != null) result.sourceAssetId = sourceAssetId;
+    return result;
+  }
+
+  ClipFactoryServiceGetCollectionRequest._();
+
+  factory ClipFactoryServiceGetCollectionRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClipFactoryServiceGetCollectionRequest()..mergeFromBuffer(data, registry);
+  factory ClipFactoryServiceGetCollectionRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClipFactoryServiceGetCollectionRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClipFactoryServiceGetCollectionRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          ClipFactoryServiceGetCollectionRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'collectionId')
+    ..aOS(3, _omitFieldNames ? '' : 'sourceAssetId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClipFactoryServiceGetCollectionRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClipFactoryServiceGetCollectionRequest copyWith(
+          void Function(ClipFactoryServiceGetCollectionRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ClipFactoryServiceGetCollectionRequest))
+          as ClipFactoryServiceGetCollectionRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ClipFactoryServiceGetCollectionRequest() / ClipFactoryServiceGetCollectionRequest.new instead')
+  static ClipFactoryServiceGetCollectionRequest create() =>
+      ClipFactoryServiceGetCollectionRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ClipFactoryServiceGetCollectionRequest._();
+  @$core.override
+  ClipFactoryServiceGetCollectionRequest createEmptyInstance() =>
+      ClipFactoryServiceGetCollectionRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ClipFactoryServiceGetCollectionRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ClipFactoryServiceGetCollectionRequest>(
+          ClipFactoryServiceGetCollectionRequest.$_createMessage);
+  static ClipFactoryServiceGetCollectionRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get collectionId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set collectionId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCollectionId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCollectionId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get sourceAssetId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set sourceAssetId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSourceAssetId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSourceAssetId() => $_clearField(3);
+}
+
+/// ClipFactoryServiceGetCollectionResponse returns the clip proposals.
+class ClipFactoryServiceGetCollectionResponse extends $pb.GeneratedMessage {
+  factory ClipFactoryServiceGetCollectionResponse({
+    ClipCollection? collection,
+  }) {
+    final result = ClipFactoryServiceGetCollectionResponse._();
+    if (collection != null) result.collection = collection;
+    return result;
+  }
+
+  ClipFactoryServiceGetCollectionResponse._();
+
+  factory ClipFactoryServiceGetCollectionResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClipFactoryServiceGetCollectionResponse()
+        ..mergeFromBuffer(data, registry);
+  factory ClipFactoryServiceGetCollectionResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClipFactoryServiceGetCollectionResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClipFactoryServiceGetCollectionResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          ClipFactoryServiceGetCollectionResponse.$_createMessage)
+    ..aOM<ClipCollection>(1, _omitFieldNames ? '' : 'collection',
+        subBuilder: ClipCollection.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClipFactoryServiceGetCollectionResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClipFactoryServiceGetCollectionResponse copyWith(
+          void Function(ClipFactoryServiceGetCollectionResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ClipFactoryServiceGetCollectionResponse))
+          as ClipFactoryServiceGetCollectionResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ClipFactoryServiceGetCollectionResponse() / ClipFactoryServiceGetCollectionResponse.new instead')
+  static ClipFactoryServiceGetCollectionResponse create() =>
+      ClipFactoryServiceGetCollectionResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ClipFactoryServiceGetCollectionResponse._();
+  @$core.override
+  ClipFactoryServiceGetCollectionResponse createEmptyInstance() =>
+      ClipFactoryServiceGetCollectionResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ClipFactoryServiceGetCollectionResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ClipFactoryServiceGetCollectionResponse>(
+          ClipFactoryServiceGetCollectionResponse.$_createMessage);
+  static ClipFactoryServiceGetCollectionResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ClipCollection get collection => $_getN(0);
+  @$pb.TagNumber(1)
+  set collection(ClipCollection value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCollection() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCollection() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ClipCollection ensureCollection() => $_ensure(0);
+}
+
+/// ClipFactoryServiceProcessClipsRequest initiates batch export of selected clips.
+class ClipFactoryServiceProcessClipsRequest extends $pb.GeneratedMessage {
+  factory ClipFactoryServiceProcessClipsRequest({
+    $2.CommandContext? context,
+    $core.String? collectionId,
+    $core.Iterable<$core.String>? selectedClipIds,
+    $core.Iterable<ClipVariantConfig>? variants,
+    $core.Iterable<$core.String>? targetPlatforms,
+  }) {
+    final result = ClipFactoryServiceProcessClipsRequest._();
+    if (context != null) result.context = context;
+    if (collectionId != null) result.collectionId = collectionId;
+    if (selectedClipIds != null) result.selectedClipIds.addAll(selectedClipIds);
+    if (variants != null) result.variants.addAll(variants);
+    if (targetPlatforms != null) result.targetPlatforms.addAll(targetPlatforms);
+    return result;
+  }
+
+  ClipFactoryServiceProcessClipsRequest._();
+
+  factory ClipFactoryServiceProcessClipsRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClipFactoryServiceProcessClipsRequest()..mergeFromBuffer(data, registry);
+  factory ClipFactoryServiceProcessClipsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClipFactoryServiceProcessClipsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClipFactoryServiceProcessClipsRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          ClipFactoryServiceProcessClipsRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'collectionId')
+    ..pPS(3, _omitFieldNames ? '' : 'selectedClipIds')
+    ..pPM<ClipVariantConfig>(4, _omitFieldNames ? '' : 'variants',
+        subBuilder: ClipVariantConfig.$_createMessage)
+    ..pPS(5, _omitFieldNames ? '' : 'targetPlatforms')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClipFactoryServiceProcessClipsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClipFactoryServiceProcessClipsRequest copyWith(
+          void Function(ClipFactoryServiceProcessClipsRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ClipFactoryServiceProcessClipsRequest))
+          as ClipFactoryServiceProcessClipsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ClipFactoryServiceProcessClipsRequest() / ClipFactoryServiceProcessClipsRequest.new instead')
+  static ClipFactoryServiceProcessClipsRequest create() =>
+      ClipFactoryServiceProcessClipsRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ClipFactoryServiceProcessClipsRequest._();
+  @$core.override
+  ClipFactoryServiceProcessClipsRequest createEmptyInstance() =>
+      ClipFactoryServiceProcessClipsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ClipFactoryServiceProcessClipsRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ClipFactoryServiceProcessClipsRequest>(
+          ClipFactoryServiceProcessClipsRequest.$_createMessage);
+  static ClipFactoryServiceProcessClipsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get collectionId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set collectionId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCollectionId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCollectionId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<$core.String> get selectedClipIds => $_getList(2);
+
+  @$pb.TagNumber(4)
+  $pb.PbList<ClipVariantConfig> get variants => $_getList(3);
+
+  @$pb.TagNumber(5)
+  $pb.PbList<$core.String> get targetPlatforms => $_getList(4);
+}
+
+/// ClipFactoryServiceProcessClipsResponse returns batch processing results.
+class ClipFactoryServiceProcessClipsResponse extends $pb.GeneratedMessage {
+  factory ClipFactoryServiceProcessClipsResponse({
+    $core.String? videoEditJobId,
+    $core.String? status,
+    $core.int? totalOutputs,
+    $core.Iterable<ProcessedClipOutput>? outputs,
+    $core.String? creditsDeducted,
+    $core.int? queuePosition,
+  }) {
+    final result = ClipFactoryServiceProcessClipsResponse._();
+    if (videoEditJobId != null) result.videoEditJobId = videoEditJobId;
+    if (status != null) result.status = status;
+    if (totalOutputs != null) result.totalOutputs = totalOutputs;
+    if (outputs != null) result.outputs.addAll(outputs);
+    if (creditsDeducted != null) result.creditsDeducted = creditsDeducted;
+    if (queuePosition != null) result.queuePosition = queuePosition;
+    return result;
+  }
+
+  ClipFactoryServiceProcessClipsResponse._();
+
+  factory ClipFactoryServiceProcessClipsResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClipFactoryServiceProcessClipsResponse()..mergeFromBuffer(data, registry);
+  factory ClipFactoryServiceProcessClipsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClipFactoryServiceProcessClipsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClipFactoryServiceProcessClipsResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          ClipFactoryServiceProcessClipsResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'videoEditJobId')
+    ..aOS(2, _omitFieldNames ? '' : 'status')
+    ..aI(3, _omitFieldNames ? '' : 'totalOutputs')
+    ..pPM<ProcessedClipOutput>(4, _omitFieldNames ? '' : 'outputs',
+        subBuilder: ProcessedClipOutput.$_createMessage)
+    ..aOS(5, _omitFieldNames ? '' : 'creditsDeducted')
+    ..aI(6, _omitFieldNames ? '' : 'queuePosition')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClipFactoryServiceProcessClipsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClipFactoryServiceProcessClipsResponse copyWith(
+          void Function(ClipFactoryServiceProcessClipsResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ClipFactoryServiceProcessClipsResponse))
+          as ClipFactoryServiceProcessClipsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ClipFactoryServiceProcessClipsResponse() / ClipFactoryServiceProcessClipsResponse.new instead')
+  static ClipFactoryServiceProcessClipsResponse create() =>
+      ClipFactoryServiceProcessClipsResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ClipFactoryServiceProcessClipsResponse._();
+  @$core.override
+  ClipFactoryServiceProcessClipsResponse createEmptyInstance() =>
+      ClipFactoryServiceProcessClipsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ClipFactoryServiceProcessClipsResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ClipFactoryServiceProcessClipsResponse>(
+          ClipFactoryServiceProcessClipsResponse.$_createMessage);
+  static ClipFactoryServiceProcessClipsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get videoEditJobId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set videoEditJobId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasVideoEditJobId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearVideoEditJobId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get status => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set status($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasStatus() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearStatus() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get totalOutputs => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set totalOutputs($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTotalOutputs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTotalOutputs() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $pb.PbList<ProcessedClipOutput> get outputs => $_getList(3);
+
+  @$pb.TagNumber(5)
+  $core.String get creditsDeducted => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set creditsDeducted($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasCreditsDeducted() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearCreditsDeducted() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.int get queuePosition => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set queuePosition($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasQueuePosition() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearQueuePosition() => $_clearField(6);
+}
+
 /// StyleElements captures 7 extracted styling parameters per screen W032 and M07 EF-07.
 class StyleElements extends $pb.GeneratedMessage {
   factory StyleElements({
