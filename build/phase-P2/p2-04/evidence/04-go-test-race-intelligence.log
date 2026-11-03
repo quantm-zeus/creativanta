@@ -1,0 +1,20 @@
+=== RUN   TestAcceptanceTarget1_EveryLiveSourceHasAccessEvidence
+--- PASS: TestAcceptanceTarget1_EveryLiveSourceHasAccessEvidence (0.00s)
+=== RUN   TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks
+=== RUN   TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks/conversion_target_idea
+=== RUN   TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks/conversion_target_script
+=== RUN   TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks/conversion_target_campaign
+=== RUN   TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks/conversion_target_live_plan
+--- PASS: TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks (0.00s)
+    --- PASS: TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks/conversion_target_idea (0.00s)
+    --- PASS: TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks/conversion_target_script (0.00s)
+    --- PASS: TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks/conversion_target_campaign (0.00s)
+    --- PASS: TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks/conversion_target_live_plan (0.00s)
+=== RUN   TestAcceptanceTarget3_EmptyDegradedAndAuditPaths
+--- PASS: TestAcceptanceTarget3_EmptyDegradedAndAuditPaths (0.00s)
+=== RUN   TestOperatingLoop_ZeroConnectorAuthorizedImportToOpportunity
+--- PASS: TestOperatingLoop_ZeroConnectorAuthorizedImportToOpportunity (0.00s)
+=== RUN   TestConcurrentIntelligenceOperationsNoRace
+--- PASS: TestConcurrentIntelligenceOperationsNoRace (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/intelligence	1.033s

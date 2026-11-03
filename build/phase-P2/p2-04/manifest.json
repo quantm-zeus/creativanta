@@ -1,0 +1,182 @@
+{
+  "task_id": "P2-04",
+  "phase": "P2",
+  "slice": "p2-04",
+  "title": "Intelligence acceptance và access proof",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "76dbf81",
+  "feature_refs": [
+    "docs/02_features/intelligence/trend_radar.md",
+    "docs/02_features/intelligence/competitor_intelligence.md",
+    "docs/02_features/intelligence/opportunity_board.md",
+    "docs/02_features/platform/capability_matrix.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_endpoint_map.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/05_system/queue_retry_design.md"
+  ],
+  "requirement_ids": [
+    "M02-001",
+    "M02-002",
+    "M02-003",
+    "M02-004",
+    "M02-005",
+    "M02-006",
+    "M02-007",
+    "M03-001",
+    "M03-002",
+    "M03-003",
+    "M03-004",
+    "M03-005",
+    "M03-006",
+    "M04-001",
+    "M04-002",
+    "M04-003",
+    "M04-004",
+    "M04-005",
+    "M04-006",
+    "M22-001",
+    "M22-002",
+    "M22-003",
+    "RULE-M02-001",
+    "RULE-M02-003",
+    "RULE-M02-004",
+    "RULE-M02-005",
+    "RULE-M02-006",
+    "RULE-M03-001",
+    "RULE-M03-002",
+    "RULE-M03-003",
+    "RULE-M03-004",
+    "RULE-M03-005",
+    "RULE-M04-001",
+    "RULE-M04-002",
+    "RULE-M04-003",
+    "RULE-M04-004",
+    "RULE-M04-005",
+    "RULE-M04-006",
+    "RULE-RULES24-001",
+    "RULE-RULES24-002",
+    "RULE-RULES24-004",
+    "EC-M02-001",
+    "EC-M03-001",
+    "EC-M04-003",
+    "SAFE-2026-01",
+    "SAFE-2026-02"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_intelligence_trend_radar.md",
+    "docs/03_screens/web/screen_web_intelligence_competitors.md",
+    "docs/03_screens/web/screen_web_intelligence_benchmarks.md",
+    "docs/03_screens/web/screen_web_intelligence_opportunity_board.md",
+    "docs/03_screens/web/screen_web_intelligence_opportunity_detail.md",
+    "docs/03_screens/web/screen_web_intelligence_opportunity_convert.md",
+    "docs/03_screens/web/screen_web_platform_connections.md"
+  ],
+  "source_hashes": {
+    "apps/api/internal/intelligence/types.go": "e2fc39f4d83261432cdfd7f67740d245e15bc60b886cda20e62d3ae61eaaa913",
+    "apps/api/internal/intelligence/service.go": "86cfb3629a6525748b41a5bdf773b37f3accd6d88507a68609ecc80a7729702d",
+    "apps/api/internal/intelligence/service_test.go": "8a63353b87fb5f24f0bb06f30e636e31bec30b8a87ce8a17b1b663e9ddc3bb41",
+    "apps/web/src/lib/intelligence/access_proof.ts": "c02b56ae1140d44238989b46659454738b41bdea115a6befbd8148d3fe6c15e6",
+    "apps/web/src/lib/intelligence/AccessEvidenceBadge.svelte": "2c3f8accae30c9437e5c575a9747bb00e0cf5c5d7fa66e55681395535d4fed07",
+    "apps/web/src/lib/intelligence/DownstreamGatingNotice.svelte": "e5b8835fe5b1fe86f57fe21b3ebb19f389547416db87277fa5eb6092cf5b8db0",
+    "apps/web/src/lib/intelligence/intelligence.test.ts": "3a8b6488c1ed28e02692d02af355245210b71c8ef8a0c17e6abb62987688ca1c",
+    "apps/web/src/routes/intelligence/opportunities/[id]/convert/+page.svelte": "e7d2539fa19e19349dfa1360085e1069b323cffcaa91d2a6eafa74785b91b270",
+    "apps/mobile/lib/intelligence/intelligence_models.dart": "218323682f8db85f4a38cd4e0b0d91feb2bf2be3680e94f1f2e95ad142410b61",
+    "apps/mobile/lib/ui/intelligence/access_proof_widget.dart": "ec79db0c417441011f873232ba2c2743f016d1e90f22a4b7823a9e398e2cdf3e",
+    "apps/mobile/test/intelligence_acceptance_test.dart": "c7f0d7e4a8c239d4890057fe85b4e33892cd5fe807e85e888c69d06ef28e03ac"
+  },
+  "scope_items": [
+    "Acceptance Target 1 (Every live source has access evidence): Verified that all live connector routes require active access verification evidence; unconfigured or unverified connectors fail closed (ErrUnverifiedLiveAccess) and never present synthetic/mock data as live observations; expired tokens (>90 days or past valid_until) transition to degraded mode with confidence downgrade, warning banner, and reconnect CTA.",
+    "Acceptance Target 2 (Future conversions remain assigned to later tasks): Downstream conversions from Opportunity (M04) to Idea (M05) and Script (M06) are assigned to Phase P3; conversions to Campaign (M14) and Live Plan (M17) are assigned to Phase P6; in Phase P2, conversions create linked drafts preserving bidirectional lineage and provenance, while execution attempts return ErrDownstreamActionGated.",
+    "Acceptance Target 3 (Empty/degraded/audit paths pass): Workspaces with 0 connected accounts present informative empty states with actionable onboarding CTAs (connect social accounts, manual CSV/import, Google Trends exploration); token expiration triggers degraded state indicators; 5-point intelligence audit report comprehensively validates RBAC permissions, tenant isolation, formula neutralization against CSV injection, optimistic concurrency (409 conflict detection), and alert storm batching.",
+    "Financial Non-Conflation Guarantee: Observational competitor prices, benchmark estimates, and opportunity profit projections are strictly forbidden from polluting M19 Operating Financial Ledger (ErrFinancialConflation).",
+    "Zero-Connector Operating Loop: Manual CSV / spreadsheet import operates end-to-end without requiring live connectors, neutralizing dangerous spreadsheet formula prefixes ('=', '+', '-', '@', '\\t', '\\r') and generating prioritized opportunities."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestAcceptanceTarget1_EveryLiveSourceHasAccessEvidence (Go -race), Vitest suite (web), and Flutter unit/widget tests confirm fail-closed behavior for unverified live sources, degraded state for expired tokens, and verified access evidence validation.",
+    "Acceptance Target 2 Verified: TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks (Go -race), Vitest suite (web), and Flutter tests confirm downstream gating for M05 (P3), M06 (P3), M14 (P6), and M17 (P6) with lineage preservation and draft linking.",
+    "Acceptance Target 3 Verified: TestAcceptanceTarget3_EmptyDegradedAndAuditPaths (Go -race), Vitest suite (web), and Flutter tests confirm empty state CTAs, degraded warnings, formula neutralization, and the 5-point audit report.",
+    "Zero-Connector Operating Loop Verified: TestOperatingLoop_ZeroConnectorAuthorizedImportToOpportunity (Go -race) confirms end-to-end import without connectors.",
+    "Concurrency & Thread-Safety Verified: TestConcurrentIntelligenceOperationsNoRace (Go -race) and mobile/web concurrency tests confirm zero data races under concurrent access.",
+    "D0 Invariant Gate Verified: check_d0.sh passes with 337 active markdown docs, 165 tables, 140 tenant tables, 1,188 RPC bindings.",
+    "Protobuf 4-Target Gate Verified: check_proto.sh passes Go, TypeScript, Dart codegen, drift check, buf backward compatibility, vet, and unit tests.",
+    "Go Backend Quality Gate Verified: check_go.sh passes gofmt, go mod verify, go vet, govulncheck, race detector, and fail-closed entrypoints.",
+    "Web & Admin Quality Gate Verified: check_node.sh passes svelte-check (0 errors/warnings), vite build (SSR bundle), 100 web tests, 6 admin tests, and SSR smoke.",
+    "Flutter Mobile Quality Gate Verified: check_flutter.sh passes flutter analyze (0 issues) and 94 tests."
+  ],
+  "rpc_contracts": [
+    "TrendService/ListTrends",
+    "TrendService/GetTrend",
+    "TrendService/SaveToWatchlist",
+    "TrendService/RemoveFromWatchlist",
+    "TrendService/CreateOpportunityFromTrend",
+    "CompetitorService/ListCompetitors",
+    "CompetitorService/GetCompetitor",
+    "CompetitorService/AddCompetitor",
+    "CompetitorService/UpdateCompetitor",
+    "CompetitorService/DeleteCompetitor",
+    "CompetitorService/ListCompetitorContent",
+    "OpportunityService/List",
+    "OpportunityService/Get",
+    "OpportunityService/Create",
+    "OpportunityService/UpdateState",
+    "OpportunityService/Assign",
+    "OpportunityService/Convert",
+    "OpportunityService/Save",
+    "OpportunityService/Dismiss",
+    "OpportunityService/GetTopDecisionOpportunities",
+    "CapabilityService/GetWorkspaceCapabilities",
+    "CapabilityService/VerifyActionAccess"
+  ],
+  "checks": [
+    {
+      "gate": "D0 Documentation Invariants",
+      "command": "PATH=\"/home/whaleorcale/.local/opt/creativanta/docs-venv/bin:$PATH\" bash tooling/ci/check_d0.sh",
+      "exit_code": 0,
+      "result": "PASS (active_markdown=337, tables=165, tenant_tables=140, rpc_bindings=1188, modules=31)"
+    },
+    {
+      "gate": "Protobuf 4-Target & Backward Compatibility",
+      "command": "PATH=\"/home/whaleorcale/.local/opt/creativanta/docs-venv/bin:/home/whaleorcale/go/bin:/home/whaleorcale/.local/opt/creativanta/buf-1.75.0:/home/whaleorcale/.local/opt/creativanta/proto-es/bin:/home/whaleorcale/.pub-cache/bin:$PATH\" bash tooling/ci/check_proto.sh verify",
+      "exit_code": 0,
+      "result": "PASS (Go, TS, Dart, buf breaking against origin/main, fixture isolation, transport unit tests)"
+    },
+    {
+      "gate": "Go Backend Quality Gate",
+      "command": "TMPDIR=/home/whaleorcale/go/tmp GOTMPDIR=/home/whaleorcale/go/tmp PATH=\"/home/whaleorcale/go/bin:/home/whaleorcale/.local/opt/creativanta/go1.27.3/bin:$PATH\" bash tooling/ci/check_go.sh",
+      "exit_code": 0,
+      "result": "PASS (gofmt, go mod verify, go vet, govulncheck, go test -race -count=1 ./..., check_entrypoints.sh)"
+    },
+    {
+      "gate": "Go Intelligence Race Tests",
+      "command": "cd apps/api && TMPDIR=/home/whaleorcale/go/tmp GOTMPDIR=/home/whaleorcale/go/tmp go test -v -race -count=1 ./internal/intelligence",
+      "exit_code": 0,
+      "result": "PASS (5 test suites, 0 data races detected)"
+    },
+    {
+      "gate": "Web & Admin Frontend Quality Gate",
+      "command": "PATH=\"/home/whaleorcale/.local/opt/creativanta/pnpm/bin:$PATH\" bash tooling/ci/check_node.sh",
+      "exit_code": 0,
+      "result": "PASS (apps/web 0 errors, apps/admin 0 errors, 106 vitest tests passed, SSR smoke 200 OK)"
+    },
+    {
+      "gate": "Flutter Mobile Quality Gate",
+      "command": "XDG_CONFIG_HOME=\"/home/whaleorcale/.flutter_config\" PATH=\"/home/whaleorcale/.local/opt/creativanta/flutter-3.47.9/bin:/home/whaleorcale/.pub-cache/bin:$PATH\" bash tooling/ci/check_flutter.sh",
+      "exit_code": 0,
+      "result": "PASS (flutter analyze 0 issues, 94 unit/widget tests passed)"
+    }
+  ],
+  "external_gates": [
+    "Production Clerk Authentication provider (tested locally via ClerkAuthProviderAdapter and mock test double)",
+    "Live PostgreSQL instance with RLS enforced (tested locally via in-memory tenant state and migrations runner)",
+    "External Platform APIs: TikTok Content Posting API, Meta Ads Library, Shopee Open Platform, YouTube Data v3 (fail-closed contract enforced; requires verified OAuth access proof; manual import available)"
+  ],
+  "remaining_scope": [
+    "Phase P3 (M05 Idea Board & M06 Script Studio): Implement full generation pipeline for ideas and scripts from converted opportunities",
+    "Phase P6 (M14 Campaign Hub & M17 Live Studio): Implement campaign orchestration and live studio execution from converted opportunities"
+  ]
+}
