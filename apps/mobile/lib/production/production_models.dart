@@ -95,6 +95,24 @@ const List<ProductionModeModel> kProductionModes = [
     durationSecs: 15,
   ),
   ProductionModeModel(
+    id: 'quick_edit',
+    title: 'Quick Edit',
+    description: 'Biên tập video qua chỉnh sửa văn bản transcript',
+    icon: '✂️',
+    creditCost: 10,
+    durationSecs: 30,
+    badge: 'M014',
+  ),
+  ProductionModeModel(
+    id: 'multi_merge',
+    title: 'Multi-Merge Studio',
+    description: 'Ghép nhiều video, hình ảnh và âm thanh thành video hoàn chỉnh',
+    icon: '🎞️',
+    creditCost: 25,
+    durationSecs: 60,
+    badge: 'M015',
+  ),
+  ProductionModeModel(
     id: 'batch_gen',
     title: 'Tạo hàng loạt (Batch)',
     description: 'Xử lý nhiều sản phẩm với kiểm duyệt ngân sách',
@@ -536,3 +554,38 @@ MultiMergeValidationResult validateMultiMergeTimeline(
     hasUnlicensedCopyrightBlock: hasCopyrightBlock,
   );
 }
+
+class RemixBlueprintModel {
+  final String blueprintId;
+  final String workspaceId;
+  final String referenceAssetId;
+  final String? referenceUrl;
+  final String? trendId;
+  final String? referenceTranscript;
+  final String remixScript;
+  final String fidelityLevel;
+  final double originalityScore;
+  final double similarityPercentage;
+  final String status;
+  final String? rejectionReason;
+  final DateTime createdAt;
+
+  const RemixBlueprintModel({
+    required this.blueprintId,
+    required this.workspaceId,
+    required this.referenceAssetId,
+    this.referenceUrl,
+    this.trendId,
+    this.referenceTranscript,
+    required this.remixScript,
+    required this.fidelityLevel,
+    required this.originalityScore,
+    required this.similarityPercentage,
+    required this.status,
+    this.rejectionReason,
+    required this.createdAt,
+  });
+
+  bool get hasTrendProvenance => trendId != null && trendId!.isNotEmpty;
+}
+

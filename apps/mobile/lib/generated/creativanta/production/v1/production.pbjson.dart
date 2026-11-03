@@ -403,6 +403,7 @@ const LineageItem$json = {
       '6': '.google.protobuf.Timestamp',
       '10': 'recordedAt'
     },
+    {'1': 'trend_id', '3': 9, '4': 1, '5': 9, '10': 'trendId'},
   ],
 };
 
@@ -414,7 +415,8 @@ final $typed_data.Uint8List lineageItemDescriptor = $convert.base64Decode(
     '9udGludWl0eVBhY2tJZHMSNgoXZ2VuZXJhdGlvbl9jb3N0X2NyZWRpdHMYBSABKAlSFWdlbmVy'
     'YXRpb25Db3N0Q3JlZGl0cxIuChNnZW5lcmF0aW9uX2Nvc3RfdXNkGAYgASgJUhFnZW5lcmF0aW'
     '9uQ29zdFVzZBImCg9wYXJlbnRfYXNzZXRfaWQYByABKAlSDXBhcmVudEFzc2V0SWQSOwoLcmVj'
-    'b3JkZWRfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgpyZWNvcmRlZEF0');
+    'b3JkZWRfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgpyZWNvcmRlZEF0Eh'
+    'kKCHRyZW5kX2lkGAkgASgJUgd0cmVuZElk');
 
 @$core.Deprecated('Use postProductionConfigDescriptor instead')
 const PostProductionConfig$json = {
@@ -3406,6 +3408,7 @@ const RemixBlueprint$json = {
       '6': '.google.protobuf.Timestamp',
       '10': 'updatedAt'
     },
+    {'1': 'trend_id', '3': 17, '4': 1, '5': 9, '10': 'trendId'},
   ],
 };
 
@@ -3425,7 +3428,7 @@ final $typed_data.Uint8List remixBlueprintDescriptor = $convert.base64Decode(
     'VqZWN0aW9uX3JlYXNvbhgNIAEoCVIPcmVqZWN0aW9uUmVhc29uEiMKDWVycm9yX21lc3NhZ2UY'
     'DiABKAlSDGVycm9yTWVzc2FnZRI5CgpjcmVhdGVkX2F0GA8gASgLMhouZ29vZ2xlLnByb3RvYn'
     'VmLlRpbWVzdGFtcFIJY3JlYXRlZEF0EjkKCnVwZGF0ZWRfYXQYECABKAsyGi5nb29nbGUucHJv'
-    'dG9idWYuVGltZXN0YW1wUgl1cGRhdGVkQXQ=');
+    'dG9idWYuVGltZXN0YW1wUgl1cGRhdGVkQXQSGQoIdHJlbmRfaWQYESABKAlSB3RyZW5kSWQ=');
 
 @$core.Deprecated('Use originalityCheckResultDescriptor instead')
 const OriginalityCheckResult$json = {
@@ -3735,6 +3738,7 @@ const RemixServiceAnalyzeRequest$json = {
     {'1': 'character_id', '3': 6, '4': 1, '5': 9, '10': 'characterId'},
     {'1': 'brand_pack_id', '3': 7, '4': 1, '5': 9, '10': 'brandPackId'},
     {'1': 'target_platforms', '3': 8, '4': 3, '5': 9, '10': 'targetPlatforms'},
+    {'1': 'trend_id', '3': 9, '4': 1, '5': 9, '10': 'trendId'},
   ],
 };
 
@@ -3747,7 +3751,7 @@ final $typed_data.Uint8List remixServiceAnalyzeRequestDescriptor = $convert.base
     'aW9uLnYxLkZpZGVsaXR5TGV2ZWxSDWZpZGVsaXR5TGV2ZWwSFAoFdG9waWMYBSABKAlSBXRvcG'
     'ljEiEKDGNoYXJhY3Rlcl9pZBgGIAEoCVILY2hhcmFjdGVySWQSIgoNYnJhbmRfcGFja19pZBgH'
     'IAEoCVILYnJhbmRQYWNrSWQSKQoQdGFyZ2V0X3BsYXRmb3JtcxgIIAMoCVIPdGFyZ2V0UGxhdG'
-    'Zvcm1z');
+    'Zvcm1zEhkKCHRyZW5kX2lkGAkgASgJUgd0cmVuZElk');
 
 @$core.Deprecated('Use remixServiceAnalyzeResponseDescriptor instead')
 const RemixServiceAnalyzeResponse$json = {

@@ -814,6 +814,22 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 		requiredRLSTables = []string{
 			"clip_collections",
 		}
+	case 25:
+		requiredFragments = []requiredFragment{
+			{"creator_progress table", "CREATE TABLE IF NOT EXISTS creator_progress"},
+			{"achievement_definitions table", "CREATE TABLE IF NOT EXISTS achievement_definitions"},
+			{"achievement_records table", "CREATE TABLE IF NOT EXISTS achievement_records"},
+			{"challenge_definitions table", "CREATE TABLE IF NOT EXISTS challenge_definitions"},
+			{"challenge_progress table", "CREATE TABLE IF NOT EXISTS challenge_progress"},
+			{"tenant_isolation policy on creator_progress", "CREATE POLICY tenant_isolation ON creator_progress"},
+			{"tenant_isolation policy on achievement_records", "CREATE POLICY tenant_isolation ON achievement_records"},
+			{"tenant_isolation policy on challenge_progress", "CREATE POLICY tenant_isolation ON challenge_progress"},
+		}
+		requiredRLSTables = []string{
+			"creator_progress",
+			"achievement_records",
+			"challenge_progress",
+		}
 	default:
 		return nil
 	}

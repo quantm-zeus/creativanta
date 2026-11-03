@@ -75,6 +75,7 @@ export interface AssetLineage {
 	storageUrl: string;
 	upstreamScriptId?: string;
 	upstreamCharacterId?: string;
+	trendId?: string;
 	costUSD: string;
 	continuityScore?: number;
 }
@@ -145,6 +146,7 @@ export interface RemixBlueprint {
 	referenceAssetId: string;
 	referenceUrl?: string;
 	referenceTranscript?: string;
+	trendId?: string;
 	outputAssetId?: string;
 	creativeDna: CreativeDNA;
 	remixScript: string;
