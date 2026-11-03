@@ -6,6 +6,7 @@
   import Navigation from '$lib/components/Navigation.svelte';
   import NotificationDrawer from '$lib/components/NotificationDrawer.svelte';
   import HelpDrawer from '$lib/components/HelpDrawer.svelte';
+  import CopilotSidebar from '$lib/copilot/CopilotSidebar.svelte';
   import { authStore } from '$lib/auth';
   import type { Snippet } from 'svelte';
 
@@ -34,7 +35,8 @@
     {/if}
   </main>
 
-  <!-- Global Slide-over Drawers for Scoped Notifications & Contextual Help -->
+  <!-- Global Slide-over Drawers for Scoped Notifications, Contextual Help & Copilot AI -->
   <NotificationDrawer />
   <HelpDrawer />
+  <CopilotSidebar />
 </div>

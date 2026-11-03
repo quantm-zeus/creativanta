@@ -1,0 +1,102 @@
+{
+  "task_id": "P3-04",
+  "phase": "P3",
+  "slice": "p3-04",
+  "title": "Copilot read/creative assistance",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "86890b0b83e6022e379a5c8c9a35e40e2d1d07c0",
+  "feature_refs": [
+    "docs/02_features/platform/copilot.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_endpoint_map.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/05_system/queue_retry_design.md"
+  ],
+  "requirement_ids": [
+    "copilot-3f042459bec9-001",
+    "copilot-1691000d1da8-001",
+    "copilot-1691000d1da8-002",
+    "copilot-1691000d1da8-003",
+    "copilot-1691000d1da8-004",
+    "copilot-1691000d1da8-005",
+    "copilot-1691000d1da8-006",
+    "copilot-1691000d1da8-007",
+    "copilot-1691000d1da8-008",
+    "copilot-6e925bee0453-001",
+    "copilot-478caf04d429-001",
+    "copilot-e91935ab5c53-001",
+    "copilot-9f62bef48bcd-001",
+    "copilot-f5aadf8f9191-001",
+    "copilot-3e90923886a6-001",
+    "copilot-43f37bed1415-001",
+    "copilot-60e4ceb92592-001",
+    "copilot-d518db3c05b3-001",
+    "copilot-4f0b63a6de38-001",
+    "copilot-db5dfea99a07-001",
+    "copilot-db5dfea99a07-002",
+    "copilot-db5dfea99a07-003",
+    "copilot-db5dfea99a07-004",
+    "copilot-db5dfea99a07-005",
+    "copilot-0a8d9df16598-001",
+    "copilot-e7f293000311-001",
+    "copilot-c52d6837a701-001",
+    "DB-C-001",
+    "DB-H-001"
+  ],
+  "screen_refs": [
+    "docs/03_screens/mobile/screen_mobile_copilot.md",
+    "docs/03_screens/web/screen_web_home_copilot_dialog.md"
+  ],
+  "source_hashes": {
+    "infra/migrations/00016_p3_04_copilot_sessions_and_assistance.sql": "d9623302980c462283925037d033918804234fd85c2da67bdaa81dc370be8cf2",
+    "protos/creativanta/copilot/v1/copilot.proto": "7026b2a663f6287ed638e26e85dccff3399f0767993b8bdb18f36ee7bcd9ff2e",
+    "apps/api/internal/copilot/types.go": "9795fc26caaa665d88bdb853b28f2333e9e4a0d0ddc015f449f3eea426e23d66",
+    "apps/api/internal/copilot/store.go": "03cbe988094e825c9f586030bb9ed43477016937529a1f60384e96158a15b939",
+    "apps/api/internal/copilot/service.go": "46cbb02a5af79c35836d53b2562118b934251275df5b26d9d52415fc7037fe35",
+    "apps/api/internal/copilot/service_test.go": "55a91c78ccb8d3eec5636b8aa1bb25823e9ea77ce61769e651b3a320b90a50d1",
+    "apps/api/internal/migrate/migrator.go": "36cb62182468176b2df041ef8bdf186756783a46f6bf5783f19116161299002e",
+    "apps/api/internal/migrate/migrator_test.go": "ae0a60be816c0e7b8f331dc49bfa2ee693bc191491e06503238144fef09d9cbe",
+    "apps/api/internal/rbac/phase_exposure_test.go": "79b0429d3462320832e82f9fe79c964a933a4ac9422c0a85b2d8354ddb1d6481",
+    "apps/web/src/lib/copilot/index.ts": "f7552d5e217de1cf4b95154cac63a61bed76e93508b530f548bf19cb908e8137",
+    "apps/web/src/lib/copilot/QuotePreviewCard.svelte": "db378c7b8d64ed8e5b2449018160839a3bc48c2e949f0b9185bfcd37dfe77780",
+    "apps/web/src/lib/copilot/CopilotMessageBubble.svelte": "90580d0aa50d78ce2b1cd0d2b75ff98d1be98128a6b3ad8acf4006d3d6a362da",
+    "apps/web/src/lib/copilot/CopilotSidebar.svelte": "c9345719985f8b708b47c19c930f8348a5794e61742be1d89bf0bbfe0570fe5b",
+    "apps/web/src/lib/copilot/copilot.test.ts": "7ad35c1509d5bdb15c43a30268557fba0f89cd1b329a5099b4cc720241b763ae",
+    "apps/web/src/lib/index.ts": "3ba856a008b2f570a1f73952bd18dd39b0307949f2304bdab6d0958a8d7eeba6",
+    "apps/web/src/routes/+layout.svelte": "2616cfd6011555583b392b3d0e3b8f750f830892aba4b283fb9a9090951689e0",
+    "apps/mobile/lib/copilot/copilot_models.dart": "2c2850598167ef19aa21eb7140a693e4217cd26b22b15a5e1d837fa64e722838",
+    "apps/mobile/lib/ui/copilot/copilot_view.dart": "b5400d4edda4fab8944f9dda03a8a587eec7f39183dcb7493dca53bdb06f2013",
+    "apps/mobile/test/copilot_test.dart": "3678bcb9e44622b807c8c45a8b6a69f62e99062c41573b5fd65f6063cc6f8fe2"
+  },
+  "scope_items": [
+    "Database Migration 00016: Created copilot_sessions table with composite workspace tenant foreign keys, PostgreSQL row-level security enabled and forced, narrow grants, indexes, and session state tracking.",
+    "Acceptance Target 1 (Contributor cannot delete product): Strict RBAC enforcement refusing product deletion commands when issued by Contributor or non-admin roles (refusal message: 'Bạn không có quyền xóa sản phẩm. Cần Admin+ role (product:delete).'), leaving workspace resources completely unaltered.",
+    "Acceptance Target 2 (Read query cannot expose finance): Read queries executed by callers lacking financial analytics/read permissions ('copilot:use_analytics', 'finance:read') redact or refuse financial data (refusal message: 'Bạn không có quyền truy cập dữ liệu tài chính của workspace.'), preventing exposure of workspace revenue and margins.",
+    "Acceptance Target 3 (Generated script needs quote confirmation): Creative script generation strictly enforces credit quote preview (5 credits via ai_credit_quotes) and requires user confirmation before initiating drafting in Script Lab (M06) and debiting credits.",
+    "Protobuf & Connect-Go Codegen: Defined creativanta.copilot.v1 CopilotService with 28 canonical RPCs mapped to rpc_permission_bindings.csv, achieving zero drift across Go, Connect-Go, TypeScript, and Dart targets.",
+    "Web Frontend (SvelteKit 5): Implemented CopilotSidebar (W008), CopilotMessageBubble, QuotePreviewCard, and client evaluation engine with reactive credit balance tracking and denial handling.",
+    "Mobile Frontend (Flutter): Implemented CopilotView (M060) with role switching, refusal badge display, credit quote preview card, and quick action chips passing all widget and unit test suites."
+  ],
+  "evidence_logs": [
+    "build/phase-P3/p3-04/evidence/01-check-d0.log",
+    "build/phase-P3/p3-04/evidence/02-check-proto.log",
+    "build/phase-P3/p3-04/evidence/03-check-go.log",
+    "build/phase-P3/p3-04/evidence/04-go-test-race-copilot-migrate.log",
+    "build/phase-P3/p3-04/evidence/05-check-node.log",
+    "build/phase-P3/p3-04/evidence/06-check-web-smoke.log",
+    "build/phase-P3/p3-04/evidence/07-check-flutter.log"
+  ],
+  "external_gates": [
+    "PostgreSQL 17.10 Live Database Container (CI pipeline validates live PostgreSQL migration, RLS enforcement, and AppUser isolation)",
+    "Clerk Production Identity / Real OAuth (unconfigured local environments fail-closed safely without live keys)",
+    "AI Provider Production Endpoint / LLM Inference (guarded by ai_credit_quotes preflight hold mechanism)"
+  ],
+  "remaining_scope": [
+    "P3-05: Publish Hub core, channel management, connector OAuth token rotation and scheduled posts"
+  ],
+  "notes": "Full vertical slice implemented for P3-04 (Copilot read/creative assistance). Contributor cannot delete product (Target 1), read queries cannot expose finance (Target 2), and script generation requires quote confirmation (Target 3). Zero codegen drift across Go, Connect-Go, TypeScript, and Dart. All 7 CI quality gates verified locally."
+}

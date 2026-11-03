@@ -15,3 +15,4 @@ export * from './auth';
 export * from './capability';
 export * from './script';
 export * from './continuity';
+export * from './copilot';
