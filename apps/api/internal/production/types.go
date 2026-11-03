@@ -58,6 +58,14 @@ var (
 	ErrLinkToVideoJobNotFound     = errors.New("production: link to video job not found")
 	ErrScriptTemplateInvalid      = errors.New("production: invalid script template")
 	ErrMotionStyleInvalid         = errors.New("production: invalid motion style")
+	ErrMissingLineage              = errors.New("production: missing source lineage. Cannot proceed to packaging/publish without source attribution (RULE-M09-001)")
+	ErrHardBlockCannotBeOverridden = errors.New("production: hard blocks cannot be workspace-overridden; requires correction or authorized false-positive clearance (RULE-M10-002, SAFE-2026-02)")
+	ErrOverrideReasonTooShort      = errors.New("production: override reason must be at least 10 characters (RULE-M10-002)")
+	ErrDerivativeNotFound          = errors.New("production: derivative asset not found")
+	ErrPackagingReportNotFound     = errors.New("production: packaging QA report not found")
+	ErrPresetNotFound              = errors.New("production: upload preset not found")
+	ErrExperimentNotFound          = errors.New("production: A/B experiment not found")
+	ErrBatchEmpty                  = errors.New("production: batch asset_ids cannot be empty")
 )
 
 // CallerContext models authenticated caller context across production operations.
@@ -761,4 +769,210 @@ type LinkToVideoJobRecord struct {
 	ErrorMessage     string                `json:"error_message,omitempty"`
 	CreatedAt        time.Time             `json:"created_at"`
 	UpdatedAt        time.Time             `json:"updated_at"`
+}
+
+
+// ----------------------------------------------------------------------------
+// P4-08: M09 Derivative Lifecycle & M10 Packaging QA Types
+// ----------------------------------------------------------------------------
+
+// DerivativeRecord models a child derivative asset (M09).
+type DerivativeRecord struct {
+	AssetID          string     `json:"asset_id"`
+	WorkspaceID      string     `json:"workspace_id"`
+	ParentAssetID    string     `json:"parent_asset_id"` // mandatory for derivatives (RULE-M09-001)
+	Title            string     `json:"title"`
+	DerivativeType   string     `json:"derivative_type"` // clip, variant, remix, repurpose, thumbnail
+	TargetChannel    string     `json:"target_channel"`  // tiktok, youtube_shorts, instagram_reels, facebook
+	AspectRatio      string     `json:"aspect_ratio"`
+	CTAVariant       string     `json:"cta_variant"`
+	SubtitleLanguage string     `json:"subtitle_language"`
+	DurationSeconds  float64    `json:"duration_seconds"`
+	Resolution       string     `json:"resolution"`
+	FileURL          string     `json:"file_url"`
+	QualityState     string     `json:"quality_state"`    // draft, review_required, approved, ready_for_packaging
+	GenerationState  string     `json:"generation_state"` // queued, generating, generated, failed, cancelled
+	Tags             []string   `json:"tags"`
+	Views            int64      `json:"views"`
+	EngagementRate   float64    `json:"engagement_rate"`
+	CTR              float64    `json:"ctr"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	DeletedAt        *time.Time `json:"deleted_at,omitempty"`
+}
+
+// BatchItemFailure holds failure details for an item in a bulk operation.
+type BatchItemFailure struct {
+	AssetID      string `json:"asset_id"`
+	ErrorCode    string `json:"error_code"`
+	ErrorMessage string `json:"error_message"`
+}
+
+// BatchTagResult holds the result of a batch tag operation (RULE-M09-002).
+type BatchTagResult struct {
+	TotalItems        int                `json:"total_items"`
+	SucceededCount    int                `json:"succeeded_count"`
+	FailedCount       int                `json:"failed_count"`
+	SucceededAssetIDs []string           `json:"succeeded_asset_ids"`
+	Failures          []BatchItemFailure `json:"failures"`
+	Summary           string             `json:"summary"`
+}
+
+// DerivativeLineageNode represents a node in the lineage inspection tree (RULE-M09-001, EC-M09-001).
+type DerivativeLineageNode struct {
+	AssetID         string                   `json:"asset_id"`
+	ParentAssetID   string                   `json:"parent_asset_id"`
+	Title           string                   `json:"title"`
+	DerivativeType  string                   `json:"derivative_type"`
+	AssetType       string                   `json:"asset_type"`
+	QualityState    string                   `json:"quality_state"`
+	Depth           int                      `json:"depth"`
+	Views           int64                    `json:"views"`
+	EngagementRate  float64                  `json:"engagement_rate"`
+	CTR             float64                  `json:"ctr"`
+	IsSourceDeleted bool                     `json:"is_source_deleted"`
+	Children        []*DerivativeLineageNode `json:"children"`
+}
+
+// DerivativeStats aggregates performance attribution across derivatives (RULE-M09-003).
+type DerivativeStats struct {
+	SourceAssetID             string              `json:"source_asset_id"`
+	TotalDerivatives          int                 `json:"total_derivatives"`
+	AggregateViews            int64               `json:"aggregate_views"`
+	AverageEngagementRate     float64             `json:"average_engagement_rate"`
+	AverageCTR                float64             `json:"average_ctr"`
+	TopPerformingDerivativeID string              `json:"top_performing_derivative_id"`
+	TopDerivatives            []*DerivativeRecord `json:"top_derivatives"`
+}
+
+// PackagingScoreComponent represents a weighted QA component (§3 RULE-M10-003).
+type PackagingScoreComponent struct {
+	ComponentName string  `json:"component_name"` // hook, title, caption, cta, disclosure, link
+	Score         float64 `json:"score"`          // 0-100
+	Weight        float64 `json:"weight"`         // 0.25, 0.20, etc.
+	Status        string  `json:"status"`         // pass, warning, blocked
+	Findings      string  `json:"findings"`
+	SuggestedFix  string  `json:"suggested_fix"`
+	IsHardBlocked bool    `json:"is_hard_blocked"` // non-overridable
+	CanOverride   bool    `json:"can_override"`
+}
+
+// ReadinessCheckItem represents a per-platform technical check (§5 RULE-M10-004).
+type ReadinessCheckItem struct {
+	CheckID       string `json:"check_id"`
+	Platform      string `json:"platform"`
+	CheckType     string `json:"check_type"`
+	Status        string `json:"status"` // pass, warning, blocked
+	CurrentValue  string `json:"current_value"`
+	RequiredValue string `json:"required_value"`
+	SuggestedFix  string `json:"suggested_fix"`
+	IsHardBlocked bool   `json:"is_hard_blocked"`
+	CanOverride   bool   `json:"can_override"`
+}
+
+// ComplianceScanDetail represents a compliance finding (§5 RULE-M10-005).
+type ComplianceScanDetail struct {
+	ScanID             string `json:"scan_id"`
+	Category           string `json:"category"`
+	Status             string `json:"status"` // pass, pass_with_warnings, review_required, blocked
+	FindingDescription string `json:"finding_description"`
+	MatchedWork        string `json:"matched_work"`
+	MatchConfidence    string `json:"match_confidence"`
+	IsHardBlocked      bool   `json:"is_hard_blocked"`
+	CanOverride        bool   `json:"can_override"`
+}
+
+// OverrideAuditRecord logs a Manager+ override (§2 RULE-M10-002, EC-M10-004).
+type OverrideAuditRecord struct {
+	OverrideID        string    `json:"override_id"`
+	CheckIDOrCategory string    `json:"check_id_or_category"`
+	OverriddenByUID   string    `json:"overridden_by_user_id"`
+	ActorRole         string    `json:"actor_role"`
+	Reason            string    `json:"reason"`
+	CreatedAt         time.Time `json:"created_at"`
+}
+
+// PackagingReport encapsulates the complete QA scorecard for an asset.
+type PackagingReport struct {
+	ReportID                string                     `json:"report_id"`
+	WorkspaceID             string                     `json:"workspace_id"`
+	AssetID                 string                     `json:"asset_id"`
+	PublishItemID           string                     `json:"publish_item_id"`
+	TargetPlatform          string                     `json:"target_platform"`
+	OverallPackagingScore   float64                    `json:"overall_packaging_score"` // 0-100
+	ScoreStatus             string                     `json:"score_status"`            // pass, below_recommended, critical
+	Components              []*PackagingScoreComponent `json:"components"`
+	ReadinessChecks         []*ReadinessCheckItem      `json:"readiness_checks"`
+	ComplianceDetails       []*ComplianceScanDetail    `json:"compliance_details"`
+	ComplianceOverallResult string                     `json:"compliance_overall_result"` // pass, pass_with_warnings, review_required, blocked
+	HasHardBlocks           bool                       `json:"has_hard_blocks"`
+	HardBlockReasons        []string                   `json:"hard_block_reasons"`
+	ReadyForPackaging       bool                       `json:"ready_for_packaging"`
+	ReadyToPublish          bool                       `json:"ready_to_publish"`
+	AppliedOverrides        []*OverrideAuditRecord     `json:"applied_overrides"`
+	CreatedAt               time.Time                  `json:"created_at"`
+	UpdatedAt               time.Time                  `json:"updated_at"`
+	DeletedAt               *time.Time                 `json:"deleted_at,omitempty"`
+}
+
+type PackagingQAItem = PackagingReport
+type OverrideRecord = OverrideAuditRecord
+
+// UploadPresetRecord models saved upload configurations (§A2).
+type UploadPresetRecord struct {
+	PresetID           string     `json:"preset_id"`
+	WorkspaceID        string     `json:"workspace_id"`
+	Name               string     `json:"name"`
+	TargetPlatform     string     `json:"target_platform"`
+	TargetFormat       string     `json:"target_format"`
+	HashtagTemplate    string     `json:"hashtag_template"`
+	DisclosureTemplate string     `json:"disclosure_template"`
+	CTATemplate        string     `json:"cta_template"`
+	DefaultAspectRatio string     `json:"default_aspect_ratio"`
+	CreatedBy          string     `json:"created_by"`
+	CreatedAt          time.Time  `json:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
+	DeletedAt          *time.Time `json:"deleted_at,omitempty"`
+}
+
+// ABExperimentRecord models A/B experiments (§22.9, RULE-M10-006).
+type ABExperimentRecord struct {
+	ExperimentID                  string     `json:"experiment_id"`
+	WorkspaceID                   string     `json:"workspace_id"`
+	SourceAssetID                 string     `json:"source_asset_id"`
+	Title                         string     `json:"title"`
+	Hypothesis                    string     `json:"hypothesis"`
+	VariantAssetIDs               []string   `json:"variant_asset_ids"`
+	VariantCount                  int        `json:"variant_count"`
+	TargetMetric                  string     `json:"target_metric"`
+	MinDurationHours              int        `json:"min_duration_hours"`
+	MinImpressionsPerVariant      int64      `json:"min_impressions_per_variant"`
+	AutoWinnerThresholdMultiplier float64    `json:"auto_winner_threshold_multiplier"`
+	Status                        string     `json:"status"`        // pending, running, completed, cancelled
+	ResultStatus                  string     `json:"result_status"` // pending, conclusive, inconclusive, scaled
+	WinnerAssetID                 string     `json:"winner_asset_id"`
+	IsObservational               bool       `json:"is_observational"`
+	InconclusiveReason            string     `json:"inconclusive_reason"`
+	StartedAt                     *time.Time `json:"started_at,omitempty"`
+	CompletedAt                   *time.Time `json:"completed_at,omitempty"`
+	CreatedAt                     time.Time  `json:"created_at"`
+	UpdatedAt                     time.Time  `json:"updated_at"`
+	DeletedAt                     *time.Time `json:"deleted_at,omitempty"`
+}
+
+// RepurposeJobRecord models batch repurposing jobs (§22.13).
+type RepurposeJobRecord struct {
+	RepurposeJobID string                `json:"repurpose_job_id"`
+	WorkspaceID    string                `json:"workspace_id"`
+	SourceAssetID  string                `json:"source_asset_id"`
+	PipelineConfig map[string]any        `json:"pipeline_config"`
+	OutputAssetIDs []string              `json:"output_asset_ids"`
+	Status         string                `json:"status"` // queued, processing, completed, partially_completed, failed
+	CreditsUsed    tenantdb.ExactDecimal `json:"credits_used"`
+	CreatedBy      string                `json:"created_by"`
+	StartedAt      *time.Time            `json:"started_at,omitempty"`
+	CompletedAt    *time.Time            `json:"completed_at,omitempty"`
+	CreatedAt      time.Time             `json:"created_at"`
+	UpdatedAt      time.Time             `json:"updated_at"`
+	DeletedAt      *time.Time            `json:"deleted_at,omitempty"`
 }

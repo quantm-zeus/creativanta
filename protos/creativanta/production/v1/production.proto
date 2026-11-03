@@ -1852,3 +1852,359 @@ service LinkToVideoService {
   rpc Generate(LinkToVideoServiceGenerateRequest) returns (LinkToVideoServiceGenerateResponse);
   rpc Get(LinkToVideoServiceGetRequest) returns (LinkToVideoServiceGetResponse);
 }
+
+// ============================================================================
+// P4-08: M09 Derivative Service & M10 Packaging QA
+// ============================================================================
+
+message DerivativeItem {
+  string asset_id = 1;
+  string parent_asset_id = 2;
+  string title = 3;
+  string derivative_type = 4; // clip, variant, remix, repurpose, thumbnail
+  string target_channel = 5;  // tiktok, youtube_shorts, instagram_reels, facebook
+  string aspect_ratio = 6;
+  string cta_variant = 7;
+  string subtitle_language = 8;
+  double duration_seconds = 9;
+  string resolution = 10;
+  string file_url = 11;
+  string quality_state = 12;
+  string generation_state = 13;
+  repeated string tags = 14;
+  int64 views = 15;
+  double engagement_rate = 16;
+  double ctr = 17;
+  google.protobuf.Timestamp created_at = 18;
+  google.protobuf.Timestamp updated_at = 19;
+}
+
+message BatchItemError {
+  string asset_id = 1;
+  string error_code = 2;
+  string error_message = 3;
+}
+
+message DerivativeLineageNode {
+  string asset_id = 1;
+  string parent_asset_id = 2;
+  string title = 3;
+  string derivative_type = 4;
+  string asset_type = 5;
+  string quality_state = 6;
+  int32 depth = 7;
+  int64 views = 8;
+  double engagement_rate = 9;
+  double ctr = 10;
+  bool is_source_deleted = 11;
+  repeated DerivativeLineageNode children = 12;
+}
+
+message DerivativeStats {
+  string source_asset_id = 1;
+  int32 total_derivatives = 2;
+  int64 aggregate_views = 3;
+  double average_engagement_rate = 4;
+  double average_ctr = 5;
+  string top_performing_derivative_id = 6;
+  repeated DerivativeItem top_derivatives = 7;
+}
+
+message DerivativeServiceListRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string source_asset_id = 2;
+  string derivative_type = 3;
+  string target_channel = 4;
+  string status = 5;
+  creativanta.common.v1.Pagination pagination = 6;
+}
+
+message DerivativeServiceListResponse {
+  repeated DerivativeItem derivatives = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message DerivativeServiceCreateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string parent_asset_id = 2;
+  string derivative_type = 3;
+  string target_channel = 4;
+  string aspect_ratio = 5;
+  string title = 6;
+  string cta_variant = 7;
+  string subtitle_language = 8;
+  repeated string tags = 9;
+  string prompt = 10;
+}
+
+message DerivativeServiceCreateResponse {
+  DerivativeItem derivative = 1;
+  string operation_id = 2;
+}
+
+message DerivativeServiceBatchTagRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  repeated string asset_ids = 2;
+  repeated string add_tags = 3;
+  repeated string remove_tags = 4;
+}
+
+message DerivativeServiceBatchTagResponse {
+  int32 total_items = 1;
+  int32 succeeded_count = 2;
+  int32 failed_count = 3;
+  repeated string succeeded_asset_ids = 4;
+  repeated BatchItemError failures = 5;
+  string summary = 6;
+}
+
+message DerivativeServiceGetLineageRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string asset_id = 2;
+}
+
+message DerivativeServiceGetLineageResponse {
+  DerivativeLineageNode root_source = 1;
+  DerivativeLineageNode target_node = 2;
+  repeated DerivativeLineageNode chain = 3;
+  bool has_lineage = 4;
+  string lineage_summary = 5;
+}
+
+message DerivativeServiceDeleteRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string asset_id = 2;
+}
+
+message DerivativeServiceDeleteResponse {
+  bool success = 1;
+  string asset_id = 2;
+}
+
+message DerivativeServicePromoteRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string asset_id = 2;
+}
+
+message DerivativeServicePromoteResponse {
+  DerivativeItem derivative = 1;
+  bool is_canonical = 2;
+}
+
+message DerivativeServiceGetStatsRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string source_asset_id = 2;
+}
+
+message DerivativeServiceGetStatsResponse {
+  DerivativeStats stats = 1;
+}
+
+// DerivativeService manages derivative lifecycles, organization, lineage and bulk operations (M09).
+service DerivativeService {
+  rpc List(DerivativeServiceListRequest) returns (DerivativeServiceListResponse);
+  rpc Create(DerivativeServiceCreateRequest) returns (DerivativeServiceCreateResponse);
+  rpc BatchTag(DerivativeServiceBatchTagRequest) returns (DerivativeServiceBatchTagResponse);
+  rpc GetLineage(DerivativeServiceGetLineageRequest) returns (DerivativeServiceGetLineageResponse);
+  rpc Delete(DerivativeServiceDeleteRequest) returns (DerivativeServiceDeleteResponse);
+  rpc Promote(DerivativeServicePromoteRequest) returns (DerivativeServicePromoteResponse);
+  rpc GetStats(DerivativeServiceGetStatsRequest) returns (DerivativeServiceGetStatsResponse);
+}
+
+// ----------------------------------------------------------------------------
+// Packaging QA Messages & Service (M10)
+// ----------------------------------------------------------------------------
+
+message PackagingScoreComponent {
+  string component_name = 1; // hook, title, caption, cta, disclosure, link
+  double score = 2;          // 0-100
+  double weight = 3;         // 0.25, 0.20, etc.
+  string status = 4;         // pass, warning, blocked
+  string findings = 5;
+  string suggested_fix = 6;
+  bool is_hard_blocked = 7;
+  bool can_override = 8;
+}
+
+message ReadinessCheckItem {
+  string check_id = 1;
+  string platform = 2; // tiktok, ig_reels, youtube, twitter
+  string check_type = 3; // duration, resolution, file_size, aspect_ratio, caption_length, hashtag_count, music_copyright
+  string status = 4; // pass, warning, blocked
+  string current_value = 5;
+  string required_value = 6;
+  string suggested_fix = 7;
+  bool is_hard_blocked = 8;
+  bool can_override = 9;
+}
+
+message ComplianceScanDetail {
+  string scan_id = 1;
+  string category = 2; // copyright, content_policy, platform_rules, shadowban_risk, consent
+  string status = 3; // pass, pass_with_warnings, review_required, blocked
+  string finding_description = 4;
+  string matched_work = 5;
+  string match_confidence = 6;
+  bool is_hard_blocked = 7;
+  bool can_override = 8;
+}
+
+message UploadPreset {
+  string preset_id = 1;
+  string name = 2;
+  string target_platform = 3;
+  string target_format = 4;
+  string hashtag_template = 5;
+  string disclosure_template = 6;
+  string cta_template = 7;
+  string default_aspect_ratio = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+message ABExperiment {
+  string experiment_id = 1;
+  string source_asset_id = 2;
+  string title = 3;
+  string hypothesis = 4;
+  repeated string variant_asset_ids = 5;
+  int32 variant_count = 6;
+  string target_metric = 7;
+  int32 min_duration_hours = 8;
+  int64 min_impressions_per_variant = 9;
+  double auto_winner_threshold_multiplier = 10;
+  string status = 11;
+  string result_status = 12;
+  string winner_asset_id = 13;
+  bool is_observational = 14;
+  string inconclusive_reason = 15;
+}
+
+message OverrideAuditRecord {
+  string override_id = 1;
+  string check_id_or_category = 2;
+  string overridden_by_user_id = 3;
+  string actor_role = 4;
+  string reason = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message PackagingReport {
+  string report_id = 1;
+  string asset_id = 2;
+  string publish_item_id = 3;
+  double overall_packaging_score = 4;
+  string score_status = 5; // pass, below_recommended, critical
+  repeated PackagingScoreComponent components = 6;
+  repeated ReadinessCheckItem readiness_checks = 7;
+  repeated ComplianceScanDetail compliance_details = 8;
+  string compliance_overall_result = 9; // pass, pass_with_warnings, review_required, blocked
+  bool has_hard_blocks = 10;
+  repeated string hard_block_reasons = 11;
+  bool ready_for_packaging = 12;
+  bool ready_to_publish = 13;
+  repeated OverrideAuditRecord applied_overrides = 14;
+  google.protobuf.Timestamp created_at = 15;
+}
+
+message PackagingServiceScoreRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string asset_id = 2;
+  string publish_item_id = 3;
+  string target_platform = 4;
+  string title = 5;
+  string caption = 6;
+  repeated string hashtags = 7;
+  string cta = 8;
+  string disclosure = 9;
+  string audio_track_id = 10;
+  string preset_id = 11;
+  bool is_commercial = 12;
+}
+
+message PackagingServiceScoreResponse {
+  PackagingReport report = 1;
+}
+
+message PackagingServiceScanComplianceRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string asset_id = 2;
+  string publish_item_id = 3;
+  string target_platform = 4;
+}
+
+message PackagingServiceScanComplianceResponse {
+  string compliance_scan_result = 1;
+  repeated ComplianceScanDetail details = 2;
+  bool has_hard_blocks = 3;
+}
+
+message PackagingServiceGetReportRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string asset_id = 2;
+  string publish_item_id = 3;
+}
+
+message PackagingServiceGetReportResponse {
+  PackagingReport report = 1;
+}
+
+message PackagingServiceBatchScoreRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  repeated string asset_ids = 2;
+  string target_platform = 3;
+}
+
+message PackagingServiceBatchScoreResponse {
+  int32 total_items = 1;
+  int32 scored_count = 2;
+  int32 failed_count = 3;
+  repeated PackagingReport reports = 4;
+  repeated BatchItemError failures = 5;
+}
+
+message PackagingServiceOverrideResultRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string asset_id = 2;
+  string publish_item_id = 3;
+  string check_id_or_category = 4;
+  string reason = 5; // must be >= 10 characters
+}
+
+message PackagingServiceOverrideResultResponse {
+  bool success = 1;
+  string message = 2;
+  PackagingReport updated_report = 3;
+}
+
+message PackagingServiceGetHistoryRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string asset_id = 2;
+  creativanta.common.v1.Pagination pagination = 3;
+}
+
+message PackagingServiceGetHistoryResponse {
+  repeated PackagingReport reports = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message PackagingServiceRunQARequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string asset_id = 2;
+  repeated string target_platforms = 3;
+  string preset_id = 4;
+}
+
+message PackagingServiceRunQAResponse {
+  PackagingReport report = 1;
+}
+
+// PackagingService manages pre-publish quality gates, scoring, compliance scans and presets (M10).
+service PackagingService {
+  rpc Score(PackagingServiceScoreRequest) returns (PackagingServiceScoreResponse);
+  rpc ScanCompliance(PackagingServiceScanComplianceRequest) returns (PackagingServiceScanComplianceResponse);
+  rpc GetReport(PackagingServiceGetReportRequest) returns (PackagingServiceGetReportResponse);
+  rpc BatchScore(PackagingServiceBatchScoreRequest) returns (PackagingServiceBatchScoreResponse);
+  rpc OverrideResult(PackagingServiceOverrideResultRequest) returns (PackagingServiceOverrideResultResponse);
+  rpc GetHistory(PackagingServiceGetHistoryRequest) returns (PackagingServiceGetHistoryResponse);
+  rpc RunQA(PackagingServiceRunQARequest) returns (PackagingServiceRunQAResponse);
+}

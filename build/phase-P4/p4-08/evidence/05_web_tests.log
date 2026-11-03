@@ -1,0 +1,14 @@
+
+> @creativanta/web@0.1.0 test /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-08/apps/web
+> vitest run run src/lib/production/derivative_packaging.test.ts
+
+
+ RUN  v3.0.7 /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-08/apps/web
+
+ ✓ src/lib/production/derivative_packaging.test.ts (7 tests) 17ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  17:05:53
+   Duration  590ms (transform 106ms, setup 0ms, collect 118ms, tests 17ms, environment 0ms, prepare 128ms)
+

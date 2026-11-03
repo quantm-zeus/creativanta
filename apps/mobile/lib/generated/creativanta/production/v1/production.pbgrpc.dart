@@ -2179,3 +2179,489 @@ abstract class LinkToVideoServiceBase extends $grpc.Service {
   $async.Future<$0.LinkToVideoServiceGetResponse> get(
       $grpc.ServiceCall call, $0.LinkToVideoServiceGetRequest request);
 }
+
+/// DerivativeService manages derivative lifecycles, organization, lineage and bulk operations (M09).
+@$pb.GrpcServiceName('creativanta.production.v1.DerivativeService')
+class DerivativeServiceClient extends $grpc.Client {
+  /// The hostname for this service.
+  static const $core.String defaultHost = '';
+
+  /// OAuth scopes needed for the client.
+  static const $core.List<$core.String> oauthScopes = [
+    '',
+  ];
+
+  DerivativeServiceClient(super.channel, {super.options, super.interceptors});
+
+  $grpc.ResponseFuture<$0.DerivativeServiceListResponse> list(
+    $0.DerivativeServiceListRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$list, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.DerivativeServiceCreateResponse> create(
+    $0.DerivativeServiceCreateRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$create, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.DerivativeServiceBatchTagResponse> batchTag(
+    $0.DerivativeServiceBatchTagRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$batchTag, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.DerivativeServiceGetLineageResponse> getLineage(
+    $0.DerivativeServiceGetLineageRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getLineage, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.DerivativeServiceDeleteResponse> delete(
+    $0.DerivativeServiceDeleteRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$delete, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.DerivativeServicePromoteResponse> promote(
+    $0.DerivativeServicePromoteRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$promote, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.DerivativeServiceGetStatsResponse> getStats(
+    $0.DerivativeServiceGetStatsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getStats, request, options: options);
+  }
+
+  // method descriptors
+
+  static final _$list = $grpc.ClientMethod<$0.DerivativeServiceListRequest,
+          $0.DerivativeServiceListResponse>(
+      '/creativanta.production.v1.DerivativeService/List',
+      ($0.DerivativeServiceListRequest value) => value.writeToBuffer(),
+      $0.DerivativeServiceListResponse.fromBuffer);
+  static final _$create = $grpc.ClientMethod<$0.DerivativeServiceCreateRequest,
+          $0.DerivativeServiceCreateResponse>(
+      '/creativanta.production.v1.DerivativeService/Create',
+      ($0.DerivativeServiceCreateRequest value) => value.writeToBuffer(),
+      $0.DerivativeServiceCreateResponse.fromBuffer);
+  static final _$batchTag = $grpc.ClientMethod<
+          $0.DerivativeServiceBatchTagRequest,
+          $0.DerivativeServiceBatchTagResponse>(
+      '/creativanta.production.v1.DerivativeService/BatchTag',
+      ($0.DerivativeServiceBatchTagRequest value) => value.writeToBuffer(),
+      $0.DerivativeServiceBatchTagResponse.fromBuffer);
+  static final _$getLineage = $grpc.ClientMethod<
+          $0.DerivativeServiceGetLineageRequest,
+          $0.DerivativeServiceGetLineageResponse>(
+      '/creativanta.production.v1.DerivativeService/GetLineage',
+      ($0.DerivativeServiceGetLineageRequest value) => value.writeToBuffer(),
+      $0.DerivativeServiceGetLineageResponse.fromBuffer);
+  static final _$delete = $grpc.ClientMethod<$0.DerivativeServiceDeleteRequest,
+          $0.DerivativeServiceDeleteResponse>(
+      '/creativanta.production.v1.DerivativeService/Delete',
+      ($0.DerivativeServiceDeleteRequest value) => value.writeToBuffer(),
+      $0.DerivativeServiceDeleteResponse.fromBuffer);
+  static final _$promote = $grpc.ClientMethod<
+          $0.DerivativeServicePromoteRequest,
+          $0.DerivativeServicePromoteResponse>(
+      '/creativanta.production.v1.DerivativeService/Promote',
+      ($0.DerivativeServicePromoteRequest value) => value.writeToBuffer(),
+      $0.DerivativeServicePromoteResponse.fromBuffer);
+  static final _$getStats = $grpc.ClientMethod<
+          $0.DerivativeServiceGetStatsRequest,
+          $0.DerivativeServiceGetStatsResponse>(
+      '/creativanta.production.v1.DerivativeService/GetStats',
+      ($0.DerivativeServiceGetStatsRequest value) => value.writeToBuffer(),
+      $0.DerivativeServiceGetStatsResponse.fromBuffer);
+}
+
+@$pb.GrpcServiceName('creativanta.production.v1.DerivativeService')
+abstract class DerivativeServiceBase extends $grpc.Service {
+  $core.String get $name => 'creativanta.production.v1.DerivativeService';
+
+  DerivativeServiceBase() {
+    $addMethod($grpc.ServiceMethod<$0.DerivativeServiceListRequest,
+            $0.DerivativeServiceListResponse>(
+        'List',
+        list_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.DerivativeServiceListRequest.fromBuffer(value),
+        ($0.DerivativeServiceListResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.DerivativeServiceCreateRequest,
+            $0.DerivativeServiceCreateResponse>(
+        'Create',
+        create_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.DerivativeServiceCreateRequest.fromBuffer(value),
+        ($0.DerivativeServiceCreateResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.DerivativeServiceBatchTagRequest,
+            $0.DerivativeServiceBatchTagResponse>(
+        'BatchTag',
+        batchTag_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.DerivativeServiceBatchTagRequest.fromBuffer(value),
+        ($0.DerivativeServiceBatchTagResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.DerivativeServiceGetLineageRequest,
+            $0.DerivativeServiceGetLineageResponse>(
+        'GetLineage',
+        getLineage_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.DerivativeServiceGetLineageRequest.fromBuffer(value),
+        ($0.DerivativeServiceGetLineageResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.DerivativeServiceDeleteRequest,
+            $0.DerivativeServiceDeleteResponse>(
+        'Delete',
+        delete_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.DerivativeServiceDeleteRequest.fromBuffer(value),
+        ($0.DerivativeServiceDeleteResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.DerivativeServicePromoteRequest,
+            $0.DerivativeServicePromoteResponse>(
+        'Promote',
+        promote_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.DerivativeServicePromoteRequest.fromBuffer(value),
+        ($0.DerivativeServicePromoteResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.DerivativeServiceGetStatsRequest,
+            $0.DerivativeServiceGetStatsResponse>(
+        'GetStats',
+        getStats_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.DerivativeServiceGetStatsRequest.fromBuffer(value),
+        ($0.DerivativeServiceGetStatsResponse value) => value.writeToBuffer()));
+  }
+
+  $async.Future<$0.DerivativeServiceListResponse> list_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.DerivativeServiceListRequest> $request) async {
+    return list($call, await $request);
+  }
+
+  $async.Future<$0.DerivativeServiceListResponse> list(
+      $grpc.ServiceCall call, $0.DerivativeServiceListRequest request);
+
+  $async.Future<$0.DerivativeServiceCreateResponse> create_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.DerivativeServiceCreateRequest> $request) async {
+    return create($call, await $request);
+  }
+
+  $async.Future<$0.DerivativeServiceCreateResponse> create(
+      $grpc.ServiceCall call, $0.DerivativeServiceCreateRequest request);
+
+  $async.Future<$0.DerivativeServiceBatchTagResponse> batchTag_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.DerivativeServiceBatchTagRequest> $request) async {
+    return batchTag($call, await $request);
+  }
+
+  $async.Future<$0.DerivativeServiceBatchTagResponse> batchTag(
+      $grpc.ServiceCall call, $0.DerivativeServiceBatchTagRequest request);
+
+  $async.Future<$0.DerivativeServiceGetLineageResponse> getLineage_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.DerivativeServiceGetLineageRequest> $request) async {
+    return getLineage($call, await $request);
+  }
+
+  $async.Future<$0.DerivativeServiceGetLineageResponse> getLineage(
+      $grpc.ServiceCall call, $0.DerivativeServiceGetLineageRequest request);
+
+  $async.Future<$0.DerivativeServiceDeleteResponse> delete_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.DerivativeServiceDeleteRequest> $request) async {
+    return delete($call, await $request);
+  }
+
+  $async.Future<$0.DerivativeServiceDeleteResponse> delete(
+      $grpc.ServiceCall call, $0.DerivativeServiceDeleteRequest request);
+
+  $async.Future<$0.DerivativeServicePromoteResponse> promote_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.DerivativeServicePromoteRequest> $request) async {
+    return promote($call, await $request);
+  }
+
+  $async.Future<$0.DerivativeServicePromoteResponse> promote(
+      $grpc.ServiceCall call, $0.DerivativeServicePromoteRequest request);
+
+  $async.Future<$0.DerivativeServiceGetStatsResponse> getStats_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.DerivativeServiceGetStatsRequest> $request) async {
+    return getStats($call, await $request);
+  }
+
+  $async.Future<$0.DerivativeServiceGetStatsResponse> getStats(
+      $grpc.ServiceCall call, $0.DerivativeServiceGetStatsRequest request);
+}
+
+/// PackagingService manages pre-publish quality gates, scoring, compliance scans and presets (M10).
+@$pb.GrpcServiceName('creativanta.production.v1.PackagingService')
+class PackagingServiceClient extends $grpc.Client {
+  /// The hostname for this service.
+  static const $core.String defaultHost = '';
+
+  /// OAuth scopes needed for the client.
+  static const $core.List<$core.String> oauthScopes = [
+    '',
+  ];
+
+  PackagingServiceClient(super.channel, {super.options, super.interceptors});
+
+  $grpc.ResponseFuture<$0.PackagingServiceScoreResponse> score(
+    $0.PackagingServiceScoreRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$score, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.PackagingServiceScanComplianceResponse>
+      scanCompliance(
+    $0.PackagingServiceScanComplianceRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$scanCompliance, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.PackagingServiceGetReportResponse> getReport(
+    $0.PackagingServiceGetReportRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getReport, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.PackagingServiceBatchScoreResponse> batchScore(
+    $0.PackagingServiceBatchScoreRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$batchScore, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.PackagingServiceOverrideResultResponse>
+      overrideResult(
+    $0.PackagingServiceOverrideResultRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$overrideResult, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.PackagingServiceGetHistoryResponse> getHistory(
+    $0.PackagingServiceGetHistoryRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getHistory, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.PackagingServiceRunQAResponse> runQA(
+    $0.PackagingServiceRunQARequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$runQA, request, options: options);
+  }
+
+  // method descriptors
+
+  static final _$score = $grpc.ClientMethod<$0.PackagingServiceScoreRequest,
+          $0.PackagingServiceScoreResponse>(
+      '/creativanta.production.v1.PackagingService/Score',
+      ($0.PackagingServiceScoreRequest value) => value.writeToBuffer(),
+      $0.PackagingServiceScoreResponse.fromBuffer);
+  static final _$scanCompliance = $grpc.ClientMethod<
+          $0.PackagingServiceScanComplianceRequest,
+          $0.PackagingServiceScanComplianceResponse>(
+      '/creativanta.production.v1.PackagingService/ScanCompliance',
+      ($0.PackagingServiceScanComplianceRequest value) => value.writeToBuffer(),
+      $0.PackagingServiceScanComplianceResponse.fromBuffer);
+  static final _$getReport = $grpc.ClientMethod<
+          $0.PackagingServiceGetReportRequest,
+          $0.PackagingServiceGetReportResponse>(
+      '/creativanta.production.v1.PackagingService/GetReport',
+      ($0.PackagingServiceGetReportRequest value) => value.writeToBuffer(),
+      $0.PackagingServiceGetReportResponse.fromBuffer);
+  static final _$batchScore = $grpc.ClientMethod<
+          $0.PackagingServiceBatchScoreRequest,
+          $0.PackagingServiceBatchScoreResponse>(
+      '/creativanta.production.v1.PackagingService/BatchScore',
+      ($0.PackagingServiceBatchScoreRequest value) => value.writeToBuffer(),
+      $0.PackagingServiceBatchScoreResponse.fromBuffer);
+  static final _$overrideResult = $grpc.ClientMethod<
+          $0.PackagingServiceOverrideResultRequest,
+          $0.PackagingServiceOverrideResultResponse>(
+      '/creativanta.production.v1.PackagingService/OverrideResult',
+      ($0.PackagingServiceOverrideResultRequest value) => value.writeToBuffer(),
+      $0.PackagingServiceOverrideResultResponse.fromBuffer);
+  static final _$getHistory = $grpc.ClientMethod<
+          $0.PackagingServiceGetHistoryRequest,
+          $0.PackagingServiceGetHistoryResponse>(
+      '/creativanta.production.v1.PackagingService/GetHistory',
+      ($0.PackagingServiceGetHistoryRequest value) => value.writeToBuffer(),
+      $0.PackagingServiceGetHistoryResponse.fromBuffer);
+  static final _$runQA = $grpc.ClientMethod<$0.PackagingServiceRunQARequest,
+          $0.PackagingServiceRunQAResponse>(
+      '/creativanta.production.v1.PackagingService/RunQA',
+      ($0.PackagingServiceRunQARequest value) => value.writeToBuffer(),
+      $0.PackagingServiceRunQAResponse.fromBuffer);
+}
+
+@$pb.GrpcServiceName('creativanta.production.v1.PackagingService')
+abstract class PackagingServiceBase extends $grpc.Service {
+  $core.String get $name => 'creativanta.production.v1.PackagingService';
+
+  PackagingServiceBase() {
+    $addMethod($grpc.ServiceMethod<$0.PackagingServiceScoreRequest,
+            $0.PackagingServiceScoreResponse>(
+        'Score',
+        score_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.PackagingServiceScoreRequest.fromBuffer(value),
+        ($0.PackagingServiceScoreResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.PackagingServiceScanComplianceRequest,
+            $0.PackagingServiceScanComplianceResponse>(
+        'ScanCompliance',
+        scanCompliance_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.PackagingServiceScanComplianceRequest.fromBuffer(value),
+        ($0.PackagingServiceScanComplianceResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.PackagingServiceGetReportRequest,
+            $0.PackagingServiceGetReportResponse>(
+        'GetReport',
+        getReport_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.PackagingServiceGetReportRequest.fromBuffer(value),
+        ($0.PackagingServiceGetReportResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.PackagingServiceBatchScoreRequest,
+            $0.PackagingServiceBatchScoreResponse>(
+        'BatchScore',
+        batchScore_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.PackagingServiceBatchScoreRequest.fromBuffer(value),
+        ($0.PackagingServiceBatchScoreResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.PackagingServiceOverrideResultRequest,
+            $0.PackagingServiceOverrideResultResponse>(
+        'OverrideResult',
+        overrideResult_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.PackagingServiceOverrideResultRequest.fromBuffer(value),
+        ($0.PackagingServiceOverrideResultResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.PackagingServiceGetHistoryRequest,
+            $0.PackagingServiceGetHistoryResponse>(
+        'GetHistory',
+        getHistory_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.PackagingServiceGetHistoryRequest.fromBuffer(value),
+        ($0.PackagingServiceGetHistoryResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.PackagingServiceRunQARequest,
+            $0.PackagingServiceRunQAResponse>(
+        'RunQA',
+        runQA_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.PackagingServiceRunQARequest.fromBuffer(value),
+        ($0.PackagingServiceRunQAResponse value) => value.writeToBuffer()));
+  }
+
+  $async.Future<$0.PackagingServiceScoreResponse> score_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.PackagingServiceScoreRequest> $request) async {
+    return score($call, await $request);
+  }
+
+  $async.Future<$0.PackagingServiceScoreResponse> score(
+      $grpc.ServiceCall call, $0.PackagingServiceScoreRequest request);
+
+  $async.Future<$0.PackagingServiceScanComplianceResponse> scanCompliance_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.PackagingServiceScanComplianceRequest> $request) async {
+    return scanCompliance($call, await $request);
+  }
+
+  $async.Future<$0.PackagingServiceScanComplianceResponse> scanCompliance(
+      $grpc.ServiceCall call, $0.PackagingServiceScanComplianceRequest request);
+
+  $async.Future<$0.PackagingServiceGetReportResponse> getReport_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.PackagingServiceGetReportRequest> $request) async {
+    return getReport($call, await $request);
+  }
+
+  $async.Future<$0.PackagingServiceGetReportResponse> getReport(
+      $grpc.ServiceCall call, $0.PackagingServiceGetReportRequest request);
+
+  $async.Future<$0.PackagingServiceBatchScoreResponse> batchScore_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.PackagingServiceBatchScoreRequest> $request) async {
+    return batchScore($call, await $request);
+  }
+
+  $async.Future<$0.PackagingServiceBatchScoreResponse> batchScore(
+      $grpc.ServiceCall call, $0.PackagingServiceBatchScoreRequest request);
+
+  $async.Future<$0.PackagingServiceOverrideResultResponse> overrideResult_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.PackagingServiceOverrideResultRequest> $request) async {
+    return overrideResult($call, await $request);
+  }
+
+  $async.Future<$0.PackagingServiceOverrideResultResponse> overrideResult(
+      $grpc.ServiceCall call, $0.PackagingServiceOverrideResultRequest request);
+
+  $async.Future<$0.PackagingServiceGetHistoryResponse> getHistory_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.PackagingServiceGetHistoryRequest> $request) async {
+    return getHistory($call, await $request);
+  }
+
+  $async.Future<$0.PackagingServiceGetHistoryResponse> getHistory(
+      $grpc.ServiceCall call, $0.PackagingServiceGetHistoryRequest request);
+
+  $async.Future<$0.PackagingServiceRunQAResponse> runQA_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.PackagingServiceRunQARequest> $request) async {
+    return runQA($call, await $request);
+  }
+
+  $async.Future<$0.PackagingServiceRunQAResponse> runQA(
+      $grpc.ServiceCall call, $0.PackagingServiceRunQARequest request);
+}

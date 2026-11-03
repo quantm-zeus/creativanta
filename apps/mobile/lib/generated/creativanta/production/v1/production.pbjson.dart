@@ -6408,3 +6408,1272 @@ final $typed_data.Uint8List linkToVideoServiceGetResponseDescriptor =
     $convert.base64Decode(
         'Ch1MaW5rVG9WaWRlb1NlcnZpY2VHZXRSZXNwb25zZRI7CgNqb2IYASABKAsyKS5jcmVhdGl2YW'
         '50YS5wcm9kdWN0aW9uLnYxLkxpbmtUb1ZpZGVvSm9iUgNqb2I=');
+
+@$core.Deprecated('Use derivativeItemDescriptor instead')
+const DerivativeItem$json = {
+  '1': 'DerivativeItem',
+  '2': [
+    {'1': 'asset_id', '3': 1, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'parent_asset_id', '3': 2, '4': 1, '5': 9, '10': 'parentAssetId'},
+    {'1': 'title', '3': 3, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'derivative_type', '3': 4, '4': 1, '5': 9, '10': 'derivativeType'},
+    {'1': 'target_channel', '3': 5, '4': 1, '5': 9, '10': 'targetChannel'},
+    {'1': 'aspect_ratio', '3': 6, '4': 1, '5': 9, '10': 'aspectRatio'},
+    {'1': 'cta_variant', '3': 7, '4': 1, '5': 9, '10': 'ctaVariant'},
+    {
+      '1': 'subtitle_language',
+      '3': 8,
+      '4': 1,
+      '5': 9,
+      '10': 'subtitleLanguage'
+    },
+    {'1': 'duration_seconds', '3': 9, '4': 1, '5': 1, '10': 'durationSeconds'},
+    {'1': 'resolution', '3': 10, '4': 1, '5': 9, '10': 'resolution'},
+    {'1': 'file_url', '3': 11, '4': 1, '5': 9, '10': 'fileUrl'},
+    {'1': 'quality_state', '3': 12, '4': 1, '5': 9, '10': 'qualityState'},
+    {'1': 'generation_state', '3': 13, '4': 1, '5': 9, '10': 'generationState'},
+    {'1': 'tags', '3': 14, '4': 3, '5': 9, '10': 'tags'},
+    {'1': 'views', '3': 15, '4': 1, '5': 3, '10': 'views'},
+    {'1': 'engagement_rate', '3': 16, '4': 1, '5': 1, '10': 'engagementRate'},
+    {'1': 'ctr', '3': 17, '4': 1, '5': 1, '10': 'ctr'},
+    {
+      '1': 'created_at',
+      '3': 18,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+    {
+      '1': 'updated_at',
+      '3': 19,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'updatedAt'
+    },
+  ],
+};
+
+/// Descriptor for `DerivativeItem`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List derivativeItemDescriptor = $convert.base64Decode(
+    'Cg5EZXJpdmF0aXZlSXRlbRIZCghhc3NldF9pZBgBIAEoCVIHYXNzZXRJZBImCg9wYXJlbnRfYX'
+    'NzZXRfaWQYAiABKAlSDXBhcmVudEFzc2V0SWQSFAoFdGl0bGUYAyABKAlSBXRpdGxlEicKD2Rl'
+    'cml2YXRpdmVfdHlwZRgEIAEoCVIOZGVyaXZhdGl2ZVR5cGUSJQoOdGFyZ2V0X2NoYW5uZWwYBS'
+    'ABKAlSDXRhcmdldENoYW5uZWwSIQoMYXNwZWN0X3JhdGlvGAYgASgJUgthc3BlY3RSYXRpbxIf'
+    'CgtjdGFfdmFyaWFudBgHIAEoCVIKY3RhVmFyaWFudBIrChFzdWJ0aXRsZV9sYW5ndWFnZRgIIA'
+    'EoCVIQc3VidGl0bGVMYW5ndWFnZRIpChBkdXJhdGlvbl9zZWNvbmRzGAkgASgBUg9kdXJhdGlv'
+    'blNlY29uZHMSHgoKcmVzb2x1dGlvbhgKIAEoCVIKcmVzb2x1dGlvbhIZCghmaWxlX3VybBgLIA'
+    'EoCVIHZmlsZVVybBIjCg1xdWFsaXR5X3N0YXRlGAwgASgJUgxxdWFsaXR5U3RhdGUSKQoQZ2Vu'
+    'ZXJhdGlvbl9zdGF0ZRgNIAEoCVIPZ2VuZXJhdGlvblN0YXRlEhIKBHRhZ3MYDiADKAlSBHRhZ3'
+    'MSFAoFdmlld3MYDyABKANSBXZpZXdzEicKD2VuZ2FnZW1lbnRfcmF0ZRgQIAEoAVIOZW5nYWdl'
+    'bWVudFJhdGUSEAoDY3RyGBEgASgBUgNjdHISOQoKY3JlYXRlZF9hdBgSIAEoCzIaLmdvb2dsZS'
+    '5wcm90b2J1Zi5UaW1lc3RhbXBSCWNyZWF0ZWRBdBI5Cgp1cGRhdGVkX2F0GBMgASgLMhouZ29v'
+    'Z2xlLnByb3RvYnVmLlRpbWVzdGFtcFIJdXBkYXRlZEF0');
+
+@$core.Deprecated('Use batchItemErrorDescriptor instead')
+const BatchItemError$json = {
+  '1': 'BatchItemError',
+  '2': [
+    {'1': 'asset_id', '3': 1, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'error_code', '3': 2, '4': 1, '5': 9, '10': 'errorCode'},
+    {'1': 'error_message', '3': 3, '4': 1, '5': 9, '10': 'errorMessage'},
+  ],
+};
+
+/// Descriptor for `BatchItemError`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List batchItemErrorDescriptor = $convert.base64Decode(
+    'Cg5CYXRjaEl0ZW1FcnJvchIZCghhc3NldF9pZBgBIAEoCVIHYXNzZXRJZBIdCgplcnJvcl9jb2'
+    'RlGAIgASgJUgllcnJvckNvZGUSIwoNZXJyb3JfbWVzc2FnZRgDIAEoCVIMZXJyb3JNZXNzYWdl');
+
+@$core.Deprecated('Use derivativeLineageNodeDescriptor instead')
+const DerivativeLineageNode$json = {
+  '1': 'DerivativeLineageNode',
+  '2': [
+    {'1': 'asset_id', '3': 1, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'parent_asset_id', '3': 2, '4': 1, '5': 9, '10': 'parentAssetId'},
+    {'1': 'title', '3': 3, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'derivative_type', '3': 4, '4': 1, '5': 9, '10': 'derivativeType'},
+    {'1': 'asset_type', '3': 5, '4': 1, '5': 9, '10': 'assetType'},
+    {'1': 'quality_state', '3': 6, '4': 1, '5': 9, '10': 'qualityState'},
+    {'1': 'depth', '3': 7, '4': 1, '5': 5, '10': 'depth'},
+    {'1': 'views', '3': 8, '4': 1, '5': 3, '10': 'views'},
+    {'1': 'engagement_rate', '3': 9, '4': 1, '5': 1, '10': 'engagementRate'},
+    {'1': 'ctr', '3': 10, '4': 1, '5': 1, '10': 'ctr'},
+    {
+      '1': 'is_source_deleted',
+      '3': 11,
+      '4': 1,
+      '5': 8,
+      '10': 'isSourceDeleted'
+    },
+    {
+      '1': 'children',
+      '3': 12,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.DerivativeLineageNode',
+      '10': 'children'
+    },
+  ],
+};
+
+/// Descriptor for `DerivativeLineageNode`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List derivativeLineageNodeDescriptor = $convert.base64Decode(
+    'ChVEZXJpdmF0aXZlTGluZWFnZU5vZGUSGQoIYXNzZXRfaWQYASABKAlSB2Fzc2V0SWQSJgoPcG'
+    'FyZW50X2Fzc2V0X2lkGAIgASgJUg1wYXJlbnRBc3NldElkEhQKBXRpdGxlGAMgASgJUgV0aXRs'
+    'ZRInCg9kZXJpdmF0aXZlX3R5cGUYBCABKAlSDmRlcml2YXRpdmVUeXBlEh0KCmFzc2V0X3R5cG'
+    'UYBSABKAlSCWFzc2V0VHlwZRIjCg1xdWFsaXR5X3N0YXRlGAYgASgJUgxxdWFsaXR5U3RhdGUS'
+    'FAoFZGVwdGgYByABKAVSBWRlcHRoEhQKBXZpZXdzGAggASgDUgV2aWV3cxInCg9lbmdhZ2VtZW'
+    '50X3JhdGUYCSABKAFSDmVuZ2FnZW1lbnRSYXRlEhAKA2N0chgKIAEoAVIDY3RyEioKEWlzX3Nv'
+    'dXJjZV9kZWxldGVkGAsgASgIUg9pc1NvdXJjZURlbGV0ZWQSTAoIY2hpbGRyZW4YDCADKAsyMC'
+    '5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLkRlcml2YXRpdmVMaW5lYWdlTm9kZVIIY2hpbGRy'
+    'ZW4=');
+
+@$core.Deprecated('Use derivativeStatsDescriptor instead')
+const DerivativeStats$json = {
+  '1': 'DerivativeStats',
+  '2': [
+    {'1': 'source_asset_id', '3': 1, '4': 1, '5': 9, '10': 'sourceAssetId'},
+    {
+      '1': 'total_derivatives',
+      '3': 2,
+      '4': 1,
+      '5': 5,
+      '10': 'totalDerivatives'
+    },
+    {'1': 'aggregate_views', '3': 3, '4': 1, '5': 3, '10': 'aggregateViews'},
+    {
+      '1': 'average_engagement_rate',
+      '3': 4,
+      '4': 1,
+      '5': 1,
+      '10': 'averageEngagementRate'
+    },
+    {'1': 'average_ctr', '3': 5, '4': 1, '5': 1, '10': 'averageCtr'},
+    {
+      '1': 'top_performing_derivative_id',
+      '3': 6,
+      '4': 1,
+      '5': 9,
+      '10': 'topPerformingDerivativeId'
+    },
+    {
+      '1': 'top_derivatives',
+      '3': 7,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.DerivativeItem',
+      '10': 'topDerivatives'
+    },
+  ],
+};
+
+/// Descriptor for `DerivativeStats`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List derivativeStatsDescriptor = $convert.base64Decode(
+    'Cg9EZXJpdmF0aXZlU3RhdHMSJgoPc291cmNlX2Fzc2V0X2lkGAEgASgJUg1zb3VyY2VBc3NldE'
+    'lkEisKEXRvdGFsX2Rlcml2YXRpdmVzGAIgASgFUhB0b3RhbERlcml2YXRpdmVzEicKD2FnZ3Jl'
+    'Z2F0ZV92aWV3cxgDIAEoA1IOYWdncmVnYXRlVmlld3MSNgoXYXZlcmFnZV9lbmdhZ2VtZW50X3'
+    'JhdGUYBCABKAFSFWF2ZXJhZ2VFbmdhZ2VtZW50UmF0ZRIfCgthdmVyYWdlX2N0chgFIAEoAVIK'
+    'YXZlcmFnZUN0chI/Chx0b3BfcGVyZm9ybWluZ19kZXJpdmF0aXZlX2lkGAYgASgJUhl0b3BQZX'
+    'Jmb3JtaW5nRGVyaXZhdGl2ZUlkElIKD3RvcF9kZXJpdmF0aXZlcxgHIAMoCzIpLmNyZWF0aXZh'
+    'bnRhLnByb2R1Y3Rpb24udjEuRGVyaXZhdGl2ZUl0ZW1SDnRvcERlcml2YXRpdmVz');
+
+@$core.Deprecated('Use derivativeServiceListRequestDescriptor instead')
+const DerivativeServiceListRequest$json = {
+  '1': 'DerivativeServiceListRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'source_asset_id', '3': 2, '4': 1, '5': 9, '10': 'sourceAssetId'},
+    {'1': 'derivative_type', '3': 3, '4': 1, '5': 9, '10': 'derivativeType'},
+    {'1': 'target_channel', '3': 4, '4': 1, '5': 9, '10': 'targetChannel'},
+    {'1': 'status', '3': 5, '4': 1, '5': 9, '10': 'status'},
+    {
+      '1': 'pagination',
+      '3': 6,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Pagination',
+      '10': 'pagination'
+    },
+  ],
+};
+
+/// Descriptor for `DerivativeServiceListRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List derivativeServiceListRequestDescriptor = $convert.base64Decode(
+    'ChxEZXJpdmF0aXZlU2VydmljZUxpc3RSZXF1ZXN0Ej4KDHdvcmtzcGFjZV9pZBgBIAEoCzIbLm'
+    'NyZWF0aXZhbnRhLmNvbW1vbi52MS5VVUlEUgt3b3Jrc3BhY2VJZBImCg9zb3VyY2VfYXNzZXRf'
+    'aWQYAiABKAlSDXNvdXJjZUFzc2V0SWQSJwoPZGVyaXZhdGl2ZV90eXBlGAMgASgJUg5kZXJpdm'
+    'F0aXZlVHlwZRIlCg50YXJnZXRfY2hhbm5lbBgEIAEoCVINdGFyZ2V0Q2hhbm5lbBIWCgZzdGF0'
+    'dXMYBSABKAlSBnN0YXR1cxJBCgpwYWdpbmF0aW9uGAYgASgLMiEuY3JlYXRpdmFudGEuY29tbW'
+    '9uLnYxLlBhZ2luYXRpb25SCnBhZ2luYXRpb24=');
+
+@$core.Deprecated('Use derivativeServiceListResponseDescriptor instead')
+const DerivativeServiceListResponse$json = {
+  '1': 'DerivativeServiceListResponse',
+  '2': [
+    {
+      '1': 'derivatives',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.DerivativeItem',
+      '10': 'derivatives'
+    },
+    {
+      '1': 'pagination',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.PaginatedResponse',
+      '10': 'pagination'
+    },
+  ],
+};
+
+/// Descriptor for `DerivativeServiceListResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List derivativeServiceListResponseDescriptor = $convert.base64Decode(
+    'Ch1EZXJpdmF0aXZlU2VydmljZUxpc3RSZXNwb25zZRJLCgtkZXJpdmF0aXZlcxgBIAMoCzIpLm'
+    'NyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuRGVyaXZhdGl2ZUl0ZW1SC2Rlcml2YXRpdmVzEkgK'
+    'CnBhZ2luYXRpb24YAiABKAsyKC5jcmVhdGl2YW50YS5jb21tb24udjEuUGFnaW5hdGVkUmVzcG'
+    '9uc2VSCnBhZ2luYXRpb24=');
+
+@$core.Deprecated('Use derivativeServiceCreateRequestDescriptor instead')
+const DerivativeServiceCreateRequest$json = {
+  '1': 'DerivativeServiceCreateRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'parent_asset_id', '3': 2, '4': 1, '5': 9, '10': 'parentAssetId'},
+    {'1': 'derivative_type', '3': 3, '4': 1, '5': 9, '10': 'derivativeType'},
+    {'1': 'target_channel', '3': 4, '4': 1, '5': 9, '10': 'targetChannel'},
+    {'1': 'aspect_ratio', '3': 5, '4': 1, '5': 9, '10': 'aspectRatio'},
+    {'1': 'title', '3': 6, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'cta_variant', '3': 7, '4': 1, '5': 9, '10': 'ctaVariant'},
+    {
+      '1': 'subtitle_language',
+      '3': 8,
+      '4': 1,
+      '5': 9,
+      '10': 'subtitleLanguage'
+    },
+    {'1': 'tags', '3': 9, '4': 3, '5': 9, '10': 'tags'},
+    {'1': 'prompt', '3': 10, '4': 1, '5': 9, '10': 'prompt'},
+  ],
+};
+
+/// Descriptor for `DerivativeServiceCreateRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List derivativeServiceCreateRequestDescriptor = $convert.base64Decode(
+    'Ch5EZXJpdmF0aXZlU2VydmljZUNyZWF0ZVJlcXVlc3QSPwoHY29udGV4dBgBIAEoCzIlLmNyZW'
+    'F0aXZhbnRhLmNvbW1vbi52MS5Db21tYW5kQ29udGV4dFIHY29udGV4dBImCg9wYXJlbnRfYXNz'
+    'ZXRfaWQYAiABKAlSDXBhcmVudEFzc2V0SWQSJwoPZGVyaXZhdGl2ZV90eXBlGAMgASgJUg5kZX'
+    'JpdmF0aXZlVHlwZRIlCg50YXJnZXRfY2hhbm5lbBgEIAEoCVINdGFyZ2V0Q2hhbm5lbBIhCgxh'
+    'c3BlY3RfcmF0aW8YBSABKAlSC2FzcGVjdFJhdGlvEhQKBXRpdGxlGAYgASgJUgV0aXRsZRIfCg'
+    'tjdGFfdmFyaWFudBgHIAEoCVIKY3RhVmFyaWFudBIrChFzdWJ0aXRsZV9sYW5ndWFnZRgIIAEo'
+    'CVIQc3VidGl0bGVMYW5ndWFnZRISCgR0YWdzGAkgAygJUgR0YWdzEhYKBnByb21wdBgKIAEoCV'
+    'IGcHJvbXB0');
+
+@$core.Deprecated('Use derivativeServiceCreateResponseDescriptor instead')
+const DerivativeServiceCreateResponse$json = {
+  '1': 'DerivativeServiceCreateResponse',
+  '2': [
+    {
+      '1': 'derivative',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.DerivativeItem',
+      '10': 'derivative'
+    },
+    {'1': 'operation_id', '3': 2, '4': 1, '5': 9, '10': 'operationId'},
+  ],
+};
+
+/// Descriptor for `DerivativeServiceCreateResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List derivativeServiceCreateResponseDescriptor =
+    $convert.base64Decode(
+        'Ch9EZXJpdmF0aXZlU2VydmljZUNyZWF0ZVJlc3BvbnNlEkkKCmRlcml2YXRpdmUYASABKAsyKS'
+        '5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLkRlcml2YXRpdmVJdGVtUgpkZXJpdmF0aXZlEiEK'
+        'DG9wZXJhdGlvbl9pZBgCIAEoCVILb3BlcmF0aW9uSWQ=');
+
+@$core.Deprecated('Use derivativeServiceBatchTagRequestDescriptor instead')
+const DerivativeServiceBatchTagRequest$json = {
+  '1': 'DerivativeServiceBatchTagRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'asset_ids', '3': 2, '4': 3, '5': 9, '10': 'assetIds'},
+    {'1': 'add_tags', '3': 3, '4': 3, '5': 9, '10': 'addTags'},
+    {'1': 'remove_tags', '3': 4, '4': 3, '5': 9, '10': 'removeTags'},
+  ],
+};
+
+/// Descriptor for `DerivativeServiceBatchTagRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List derivativeServiceBatchTagRequestDescriptor =
+    $convert.base64Decode(
+        'CiBEZXJpdmF0aXZlU2VydmljZUJhdGNoVGFnUmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3'
+        'JlYXRpdmFudGEuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EhsKCWFzc2V0X2lk'
+        'cxgCIAMoCVIIYXNzZXRJZHMSGQoIYWRkX3RhZ3MYAyADKAlSB2FkZFRhZ3MSHwoLcmVtb3ZlX3'
+        'RhZ3MYBCADKAlSCnJlbW92ZVRhZ3M=');
+
+@$core.Deprecated('Use derivativeServiceBatchTagResponseDescriptor instead')
+const DerivativeServiceBatchTagResponse$json = {
+  '1': 'DerivativeServiceBatchTagResponse',
+  '2': [
+    {'1': 'total_items', '3': 1, '4': 1, '5': 5, '10': 'totalItems'},
+    {'1': 'succeeded_count', '3': 2, '4': 1, '5': 5, '10': 'succeededCount'},
+    {'1': 'failed_count', '3': 3, '4': 1, '5': 5, '10': 'failedCount'},
+    {
+      '1': 'succeeded_asset_ids',
+      '3': 4,
+      '4': 3,
+      '5': 9,
+      '10': 'succeededAssetIds'
+    },
+    {
+      '1': 'failures',
+      '3': 5,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.BatchItemError',
+      '10': 'failures'
+    },
+    {'1': 'summary', '3': 6, '4': 1, '5': 9, '10': 'summary'},
+  ],
+};
+
+/// Descriptor for `DerivativeServiceBatchTagResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List derivativeServiceBatchTagResponseDescriptor = $convert.base64Decode(
+    'CiFEZXJpdmF0aXZlU2VydmljZUJhdGNoVGFnUmVzcG9uc2USHwoLdG90YWxfaXRlbXMYASABKA'
+    'VSCnRvdGFsSXRlbXMSJwoPc3VjY2VlZGVkX2NvdW50GAIgASgFUg5zdWNjZWVkZWRDb3VudBIh'
+    'CgxmYWlsZWRfY291bnQYAyABKAVSC2ZhaWxlZENvdW50Ei4KE3N1Y2NlZWRlZF9hc3NldF9pZH'
+    'MYBCADKAlSEXN1Y2NlZWRlZEFzc2V0SWRzEkUKCGZhaWx1cmVzGAUgAygLMikuY3JlYXRpdmFu'
+    'dGEucHJvZHVjdGlvbi52MS5CYXRjaEl0ZW1FcnJvclIIZmFpbHVyZXMSGAoHc3VtbWFyeRgGIA'
+    'EoCVIHc3VtbWFyeQ==');
+
+@$core.Deprecated('Use derivativeServiceGetLineageRequestDescriptor instead')
+const DerivativeServiceGetLineageRequest$json = {
+  '1': 'DerivativeServiceGetLineageRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'asset_id', '3': 2, '4': 1, '5': 9, '10': 'assetId'},
+  ],
+};
+
+/// Descriptor for `DerivativeServiceGetLineageRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List derivativeServiceGetLineageRequestDescriptor =
+    $convert.base64Decode(
+        'CiJEZXJpdmF0aXZlU2VydmljZUdldExpbmVhZ2VSZXF1ZXN0Ej4KDHdvcmtzcGFjZV9pZBgBIA'
+        'EoCzIbLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5VVUlEUgt3b3Jrc3BhY2VJZBIZCghhc3NldF9p'
+        'ZBgCIAEoCVIHYXNzZXRJZA==');
+
+@$core.Deprecated('Use derivativeServiceGetLineageResponseDescriptor instead')
+const DerivativeServiceGetLineageResponse$json = {
+  '1': 'DerivativeServiceGetLineageResponse',
+  '2': [
+    {
+      '1': 'root_source',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.DerivativeLineageNode',
+      '10': 'rootSource'
+    },
+    {
+      '1': 'target_node',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.DerivativeLineageNode',
+      '10': 'targetNode'
+    },
+    {
+      '1': 'chain',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.DerivativeLineageNode',
+      '10': 'chain'
+    },
+    {'1': 'has_lineage', '3': 4, '4': 1, '5': 8, '10': 'hasLineage'},
+    {'1': 'lineage_summary', '3': 5, '4': 1, '5': 9, '10': 'lineageSummary'},
+  ],
+};
+
+/// Descriptor for `DerivativeServiceGetLineageResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List derivativeServiceGetLineageResponseDescriptor = $convert.base64Decode(
+    'CiNEZXJpdmF0aXZlU2VydmljZUdldExpbmVhZ2VSZXNwb25zZRJRCgtyb290X3NvdXJjZRgBIA'
+    'EoCzIwLmNyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuRGVyaXZhdGl2ZUxpbmVhZ2VOb2RlUgpy'
+    'b290U291cmNlElEKC3RhcmdldF9ub2RlGAIgASgLMjAuY3JlYXRpdmFudGEucHJvZHVjdGlvbi'
+    '52MS5EZXJpdmF0aXZlTGluZWFnZU5vZGVSCnRhcmdldE5vZGUSRgoFY2hhaW4YAyADKAsyMC5j'
+    'cmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLkRlcml2YXRpdmVMaW5lYWdlTm9kZVIFY2hhaW4SHw'
+    'oLaGFzX2xpbmVhZ2UYBCABKAhSCmhhc0xpbmVhZ2USJwoPbGluZWFnZV9zdW1tYXJ5GAUgASgJ'
+    'Ug5saW5lYWdlU3VtbWFyeQ==');
+
+@$core.Deprecated('Use derivativeServiceDeleteRequestDescriptor instead')
+const DerivativeServiceDeleteRequest$json = {
+  '1': 'DerivativeServiceDeleteRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'asset_id', '3': 2, '4': 1, '5': 9, '10': 'assetId'},
+  ],
+};
+
+/// Descriptor for `DerivativeServiceDeleteRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List derivativeServiceDeleteRequestDescriptor =
+    $convert.base64Decode(
+        'Ch5EZXJpdmF0aXZlU2VydmljZURlbGV0ZVJlcXVlc3QSPwoHY29udGV4dBgBIAEoCzIlLmNyZW'
+        'F0aXZhbnRhLmNvbW1vbi52MS5Db21tYW5kQ29udGV4dFIHY29udGV4dBIZCghhc3NldF9pZBgC'
+        'IAEoCVIHYXNzZXRJZA==');
+
+@$core.Deprecated('Use derivativeServiceDeleteResponseDescriptor instead')
+const DerivativeServiceDeleteResponse$json = {
+  '1': 'DerivativeServiceDeleteResponse',
+  '2': [
+    {'1': 'success', '3': 1, '4': 1, '5': 8, '10': 'success'},
+    {'1': 'asset_id', '3': 2, '4': 1, '5': 9, '10': 'assetId'},
+  ],
+};
+
+/// Descriptor for `DerivativeServiceDeleteResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List derivativeServiceDeleteResponseDescriptor =
+    $convert.base64Decode(
+        'Ch9EZXJpdmF0aXZlU2VydmljZURlbGV0ZVJlc3BvbnNlEhgKB3N1Y2Nlc3MYASABKAhSB3N1Y2'
+        'Nlc3MSGQoIYXNzZXRfaWQYAiABKAlSB2Fzc2V0SWQ=');
+
+@$core.Deprecated('Use derivativeServicePromoteRequestDescriptor instead')
+const DerivativeServicePromoteRequest$json = {
+  '1': 'DerivativeServicePromoteRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'asset_id', '3': 2, '4': 1, '5': 9, '10': 'assetId'},
+  ],
+};
+
+/// Descriptor for `DerivativeServicePromoteRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List derivativeServicePromoteRequestDescriptor =
+    $convert.base64Decode(
+        'Ch9EZXJpdmF0aXZlU2VydmljZVByb21vdGVSZXF1ZXN0Ej8KB2NvbnRleHQYASABKAsyJS5jcm'
+        'VhdGl2YW50YS5jb21tb24udjEuQ29tbWFuZENvbnRleHRSB2NvbnRleHQSGQoIYXNzZXRfaWQY'
+        'AiABKAlSB2Fzc2V0SWQ=');
+
+@$core.Deprecated('Use derivativeServicePromoteResponseDescriptor instead')
+const DerivativeServicePromoteResponse$json = {
+  '1': 'DerivativeServicePromoteResponse',
+  '2': [
+    {
+      '1': 'derivative',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.DerivativeItem',
+      '10': 'derivative'
+    },
+    {'1': 'is_canonical', '3': 2, '4': 1, '5': 8, '10': 'isCanonical'},
+  ],
+};
+
+/// Descriptor for `DerivativeServicePromoteResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List derivativeServicePromoteResponseDescriptor =
+    $convert.base64Decode(
+        'CiBEZXJpdmF0aXZlU2VydmljZVByb21vdGVSZXNwb25zZRJJCgpkZXJpdmF0aXZlGAEgASgLMi'
+        'kuY3JlYXRpdmFudGEucHJvZHVjdGlvbi52MS5EZXJpdmF0aXZlSXRlbVIKZGVyaXZhdGl2ZRIh'
+        'Cgxpc19jYW5vbmljYWwYAiABKAhSC2lzQ2Fub25pY2Fs');
+
+@$core.Deprecated('Use derivativeServiceGetStatsRequestDescriptor instead')
+const DerivativeServiceGetStatsRequest$json = {
+  '1': 'DerivativeServiceGetStatsRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'source_asset_id', '3': 2, '4': 1, '5': 9, '10': 'sourceAssetId'},
+  ],
+};
+
+/// Descriptor for `DerivativeServiceGetStatsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List derivativeServiceGetStatsRequestDescriptor =
+    $convert.base64Decode(
+        'CiBEZXJpdmF0aXZlU2VydmljZUdldFN0YXRzUmVxdWVzdBI+Cgx3b3Jrc3BhY2VfaWQYASABKA'
+        'syGy5jcmVhdGl2YW50YS5jb21tb24udjEuVVVJRFILd29ya3NwYWNlSWQSJgoPc291cmNlX2Fz'
+        'c2V0X2lkGAIgASgJUg1zb3VyY2VBc3NldElk');
+
+@$core.Deprecated('Use derivativeServiceGetStatsResponseDescriptor instead')
+const DerivativeServiceGetStatsResponse$json = {
+  '1': 'DerivativeServiceGetStatsResponse',
+  '2': [
+    {
+      '1': 'stats',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.DerivativeStats',
+      '10': 'stats'
+    },
+  ],
+};
+
+/// Descriptor for `DerivativeServiceGetStatsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List derivativeServiceGetStatsResponseDescriptor =
+    $convert.base64Decode(
+        'CiFEZXJpdmF0aXZlU2VydmljZUdldFN0YXRzUmVzcG9uc2USQAoFc3RhdHMYASABKAsyKi5jcm'
+        'VhdGl2YW50YS5wcm9kdWN0aW9uLnYxLkRlcml2YXRpdmVTdGF0c1IFc3RhdHM=');
+
+@$core.Deprecated('Use packagingScoreComponentDescriptor instead')
+const PackagingScoreComponent$json = {
+  '1': 'PackagingScoreComponent',
+  '2': [
+    {'1': 'component_name', '3': 1, '4': 1, '5': 9, '10': 'componentName'},
+    {'1': 'score', '3': 2, '4': 1, '5': 1, '10': 'score'},
+    {'1': 'weight', '3': 3, '4': 1, '5': 1, '10': 'weight'},
+    {'1': 'status', '3': 4, '4': 1, '5': 9, '10': 'status'},
+    {'1': 'findings', '3': 5, '4': 1, '5': 9, '10': 'findings'},
+    {'1': 'suggested_fix', '3': 6, '4': 1, '5': 9, '10': 'suggestedFix'},
+    {'1': 'is_hard_blocked', '3': 7, '4': 1, '5': 8, '10': 'isHardBlocked'},
+    {'1': 'can_override', '3': 8, '4': 1, '5': 8, '10': 'canOverride'},
+  ],
+};
+
+/// Descriptor for `PackagingScoreComponent`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List packagingScoreComponentDescriptor = $convert.base64Decode(
+    'ChdQYWNrYWdpbmdTY29yZUNvbXBvbmVudBIlCg5jb21wb25lbnRfbmFtZRgBIAEoCVINY29tcG'
+    '9uZW50TmFtZRIUCgVzY29yZRgCIAEoAVIFc2NvcmUSFgoGd2VpZ2h0GAMgASgBUgZ3ZWlnaHQS'
+    'FgoGc3RhdHVzGAQgASgJUgZzdGF0dXMSGgoIZmluZGluZ3MYBSABKAlSCGZpbmRpbmdzEiMKDX'
+    'N1Z2dlc3RlZF9maXgYBiABKAlSDHN1Z2dlc3RlZEZpeBImCg9pc19oYXJkX2Jsb2NrZWQYByAB'
+    'KAhSDWlzSGFyZEJsb2NrZWQSIQoMY2FuX292ZXJyaWRlGAggASgIUgtjYW5PdmVycmlkZQ==');
+
+@$core.Deprecated('Use readinessCheckItemDescriptor instead')
+const ReadinessCheckItem$json = {
+  '1': 'ReadinessCheckItem',
+  '2': [
+    {'1': 'check_id', '3': 1, '4': 1, '5': 9, '10': 'checkId'},
+    {'1': 'platform', '3': 2, '4': 1, '5': 9, '10': 'platform'},
+    {'1': 'check_type', '3': 3, '4': 1, '5': 9, '10': 'checkType'},
+    {'1': 'status', '3': 4, '4': 1, '5': 9, '10': 'status'},
+    {'1': 'current_value', '3': 5, '4': 1, '5': 9, '10': 'currentValue'},
+    {'1': 'required_value', '3': 6, '4': 1, '5': 9, '10': 'requiredValue'},
+    {'1': 'suggested_fix', '3': 7, '4': 1, '5': 9, '10': 'suggestedFix'},
+    {'1': 'is_hard_blocked', '3': 8, '4': 1, '5': 8, '10': 'isHardBlocked'},
+    {'1': 'can_override', '3': 9, '4': 1, '5': 8, '10': 'canOverride'},
+  ],
+};
+
+/// Descriptor for `ReadinessCheckItem`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List readinessCheckItemDescriptor = $convert.base64Decode(
+    'ChJSZWFkaW5lc3NDaGVja0l0ZW0SGQoIY2hlY2tfaWQYASABKAlSB2NoZWNrSWQSGgoIcGxhdG'
+    'Zvcm0YAiABKAlSCHBsYXRmb3JtEh0KCmNoZWNrX3R5cGUYAyABKAlSCWNoZWNrVHlwZRIWCgZz'
+    'dGF0dXMYBCABKAlSBnN0YXR1cxIjCg1jdXJyZW50X3ZhbHVlGAUgASgJUgxjdXJyZW50VmFsdW'
+    'USJQoOcmVxdWlyZWRfdmFsdWUYBiABKAlSDXJlcXVpcmVkVmFsdWUSIwoNc3VnZ2VzdGVkX2Zp'
+    'eBgHIAEoCVIMc3VnZ2VzdGVkRml4EiYKD2lzX2hhcmRfYmxvY2tlZBgIIAEoCFINaXNIYXJkQm'
+    'xvY2tlZBIhCgxjYW5fb3ZlcnJpZGUYCSABKAhSC2Nhbk92ZXJyaWRl');
+
+@$core.Deprecated('Use complianceScanDetailDescriptor instead')
+const ComplianceScanDetail$json = {
+  '1': 'ComplianceScanDetail',
+  '2': [
+    {'1': 'scan_id', '3': 1, '4': 1, '5': 9, '10': 'scanId'},
+    {'1': 'category', '3': 2, '4': 1, '5': 9, '10': 'category'},
+    {'1': 'status', '3': 3, '4': 1, '5': 9, '10': 'status'},
+    {
+      '1': 'finding_description',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '10': 'findingDescription'
+    },
+    {'1': 'matched_work', '3': 5, '4': 1, '5': 9, '10': 'matchedWork'},
+    {'1': 'match_confidence', '3': 6, '4': 1, '5': 9, '10': 'matchConfidence'},
+    {'1': 'is_hard_blocked', '3': 7, '4': 1, '5': 8, '10': 'isHardBlocked'},
+    {'1': 'can_override', '3': 8, '4': 1, '5': 8, '10': 'canOverride'},
+  ],
+};
+
+/// Descriptor for `ComplianceScanDetail`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List complianceScanDetailDescriptor = $convert.base64Decode(
+    'ChRDb21wbGlhbmNlU2NhbkRldGFpbBIXCgdzY2FuX2lkGAEgASgJUgZzY2FuSWQSGgoIY2F0ZW'
+    'dvcnkYAiABKAlSCGNhdGVnb3J5EhYKBnN0YXR1cxgDIAEoCVIGc3RhdHVzEi8KE2ZpbmRpbmdf'
+    'ZGVzY3JpcHRpb24YBCABKAlSEmZpbmRpbmdEZXNjcmlwdGlvbhIhCgxtYXRjaGVkX3dvcmsYBS'
+    'ABKAlSC21hdGNoZWRXb3JrEikKEG1hdGNoX2NvbmZpZGVuY2UYBiABKAlSD21hdGNoQ29uZmlk'
+    'ZW5jZRImCg9pc19oYXJkX2Jsb2NrZWQYByABKAhSDWlzSGFyZEJsb2NrZWQSIQoMY2FuX292ZX'
+    'JyaWRlGAggASgIUgtjYW5PdmVycmlkZQ==');
+
+@$core.Deprecated('Use uploadPresetDescriptor instead')
+const UploadPreset$json = {
+  '1': 'UploadPreset',
+  '2': [
+    {'1': 'preset_id', '3': 1, '4': 1, '5': 9, '10': 'presetId'},
+    {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'target_platform', '3': 3, '4': 1, '5': 9, '10': 'targetPlatform'},
+    {'1': 'target_format', '3': 4, '4': 1, '5': 9, '10': 'targetFormat'},
+    {'1': 'hashtag_template', '3': 5, '4': 1, '5': 9, '10': 'hashtagTemplate'},
+    {
+      '1': 'disclosure_template',
+      '3': 6,
+      '4': 1,
+      '5': 9,
+      '10': 'disclosureTemplate'
+    },
+    {'1': 'cta_template', '3': 7, '4': 1, '5': 9, '10': 'ctaTemplate'},
+    {
+      '1': 'default_aspect_ratio',
+      '3': 8,
+      '4': 1,
+      '5': 9,
+      '10': 'defaultAspectRatio'
+    },
+    {
+      '1': 'created_at',
+      '3': 9,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+  ],
+};
+
+/// Descriptor for `UploadPreset`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List uploadPresetDescriptor = $convert.base64Decode(
+    'CgxVcGxvYWRQcmVzZXQSGwoJcHJlc2V0X2lkGAEgASgJUghwcmVzZXRJZBISCgRuYW1lGAIgAS'
+    'gJUgRuYW1lEicKD3RhcmdldF9wbGF0Zm9ybRgDIAEoCVIOdGFyZ2V0UGxhdGZvcm0SIwoNdGFy'
+    'Z2V0X2Zvcm1hdBgEIAEoCVIMdGFyZ2V0Rm9ybWF0EikKEGhhc2h0YWdfdGVtcGxhdGUYBSABKA'
+    'lSD2hhc2h0YWdUZW1wbGF0ZRIvChNkaXNjbG9zdXJlX3RlbXBsYXRlGAYgASgJUhJkaXNjbG9z'
+    'dXJlVGVtcGxhdGUSIQoMY3RhX3RlbXBsYXRlGAcgASgJUgtjdGFUZW1wbGF0ZRIwChRkZWZhdW'
+    'x0X2FzcGVjdF9yYXRpbxgIIAEoCVISZGVmYXVsdEFzcGVjdFJhdGlvEjkKCmNyZWF0ZWRfYXQY'
+    'CSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgljcmVhdGVkQXQ=');
+
+@$core.Deprecated('Use aBExperimentDescriptor instead')
+const ABExperiment$json = {
+  '1': 'ABExperiment',
+  '2': [
+    {'1': 'experiment_id', '3': 1, '4': 1, '5': 9, '10': 'experimentId'},
+    {'1': 'source_asset_id', '3': 2, '4': 1, '5': 9, '10': 'sourceAssetId'},
+    {'1': 'title', '3': 3, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'hypothesis', '3': 4, '4': 1, '5': 9, '10': 'hypothesis'},
+    {'1': 'variant_asset_ids', '3': 5, '4': 3, '5': 9, '10': 'variantAssetIds'},
+    {'1': 'variant_count', '3': 6, '4': 1, '5': 5, '10': 'variantCount'},
+    {'1': 'target_metric', '3': 7, '4': 1, '5': 9, '10': 'targetMetric'},
+    {
+      '1': 'min_duration_hours',
+      '3': 8,
+      '4': 1,
+      '5': 5,
+      '10': 'minDurationHours'
+    },
+    {
+      '1': 'min_impressions_per_variant',
+      '3': 9,
+      '4': 1,
+      '5': 3,
+      '10': 'minImpressionsPerVariant'
+    },
+    {
+      '1': 'auto_winner_threshold_multiplier',
+      '3': 10,
+      '4': 1,
+      '5': 1,
+      '10': 'autoWinnerThresholdMultiplier'
+    },
+    {'1': 'status', '3': 11, '4': 1, '5': 9, '10': 'status'},
+    {'1': 'result_status', '3': 12, '4': 1, '5': 9, '10': 'resultStatus'},
+    {'1': 'winner_asset_id', '3': 13, '4': 1, '5': 9, '10': 'winnerAssetId'},
+    {'1': 'is_observational', '3': 14, '4': 1, '5': 8, '10': 'isObservational'},
+    {
+      '1': 'inconclusive_reason',
+      '3': 15,
+      '4': 1,
+      '5': 9,
+      '10': 'inconclusiveReason'
+    },
+  ],
+};
+
+/// Descriptor for `ABExperiment`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List aBExperimentDescriptor = $convert.base64Decode(
+    'CgxBQkV4cGVyaW1lbnQSIwoNZXhwZXJpbWVudF9pZBgBIAEoCVIMZXhwZXJpbWVudElkEiYKD3'
+    'NvdXJjZV9hc3NldF9pZBgCIAEoCVINc291cmNlQXNzZXRJZBIUCgV0aXRsZRgDIAEoCVIFdGl0'
+    'bGUSHgoKaHlwb3RoZXNpcxgEIAEoCVIKaHlwb3RoZXNpcxIqChF2YXJpYW50X2Fzc2V0X2lkcx'
+    'gFIAMoCVIPdmFyaWFudEFzc2V0SWRzEiMKDXZhcmlhbnRfY291bnQYBiABKAVSDHZhcmlhbnRD'
+    'b3VudBIjCg10YXJnZXRfbWV0cmljGAcgASgJUgx0YXJnZXRNZXRyaWMSLAoSbWluX2R1cmF0aW'
+    '9uX2hvdXJzGAggASgFUhBtaW5EdXJhdGlvbkhvdXJzEj0KG21pbl9pbXByZXNzaW9uc19wZXJf'
+    'dmFyaWFudBgJIAEoA1IYbWluSW1wcmVzc2lvbnNQZXJWYXJpYW50EkcKIGF1dG9fd2lubmVyX3'
+    'RocmVzaG9sZF9tdWx0aXBsaWVyGAogASgBUh1hdXRvV2lubmVyVGhyZXNob2xkTXVsdGlwbGll'
+    'chIWCgZzdGF0dXMYCyABKAlSBnN0YXR1cxIjCg1yZXN1bHRfc3RhdHVzGAwgASgJUgxyZXN1bH'
+    'RTdGF0dXMSJgoPd2lubmVyX2Fzc2V0X2lkGA0gASgJUg13aW5uZXJBc3NldElkEikKEGlzX29i'
+    'c2VydmF0aW9uYWwYDiABKAhSD2lzT2JzZXJ2YXRpb25hbBIvChNpbmNvbmNsdXNpdmVfcmVhc2'
+    '9uGA8gASgJUhJpbmNvbmNsdXNpdmVSZWFzb24=');
+
+@$core.Deprecated('Use overrideAuditRecordDescriptor instead')
+const OverrideAuditRecord$json = {
+  '1': 'OverrideAuditRecord',
+  '2': [
+    {'1': 'override_id', '3': 1, '4': 1, '5': 9, '10': 'overrideId'},
+    {
+      '1': 'check_id_or_category',
+      '3': 2,
+      '4': 1,
+      '5': 9,
+      '10': 'checkIdOrCategory'
+    },
+    {
+      '1': 'overridden_by_user_id',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '10': 'overriddenByUserId'
+    },
+    {'1': 'actor_role', '3': 4, '4': 1, '5': 9, '10': 'actorRole'},
+    {'1': 'reason', '3': 5, '4': 1, '5': 9, '10': 'reason'},
+    {
+      '1': 'created_at',
+      '3': 6,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+  ],
+};
+
+/// Descriptor for `OverrideAuditRecord`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List overrideAuditRecordDescriptor = $convert.base64Decode(
+    'ChNPdmVycmlkZUF1ZGl0UmVjb3JkEh8KC292ZXJyaWRlX2lkGAEgASgJUgpvdmVycmlkZUlkEi'
+    '8KFGNoZWNrX2lkX29yX2NhdGVnb3J5GAIgASgJUhFjaGVja0lkT3JDYXRlZ29yeRIxChVvdmVy'
+    'cmlkZGVuX2J5X3VzZXJfaWQYAyABKAlSEm92ZXJyaWRkZW5CeVVzZXJJZBIdCgphY3Rvcl9yb2'
+    'xlGAQgASgJUglhY3RvclJvbGUSFgoGcmVhc29uGAUgASgJUgZyZWFzb24SOQoKY3JlYXRlZF9h'
+    'dBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSCWNyZWF0ZWRBdA==');
+
+@$core.Deprecated('Use packagingReportDescriptor instead')
+const PackagingReport$json = {
+  '1': 'PackagingReport',
+  '2': [
+    {'1': 'report_id', '3': 1, '4': 1, '5': 9, '10': 'reportId'},
+    {'1': 'asset_id', '3': 2, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'publish_item_id', '3': 3, '4': 1, '5': 9, '10': 'publishItemId'},
+    {
+      '1': 'overall_packaging_score',
+      '3': 4,
+      '4': 1,
+      '5': 1,
+      '10': 'overallPackagingScore'
+    },
+    {'1': 'score_status', '3': 5, '4': 1, '5': 9, '10': 'scoreStatus'},
+    {
+      '1': 'components',
+      '3': 6,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.PackagingScoreComponent',
+      '10': 'components'
+    },
+    {
+      '1': 'readiness_checks',
+      '3': 7,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.ReadinessCheckItem',
+      '10': 'readinessChecks'
+    },
+    {
+      '1': 'compliance_details',
+      '3': 8,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.ComplianceScanDetail',
+      '10': 'complianceDetails'
+    },
+    {
+      '1': 'compliance_overall_result',
+      '3': 9,
+      '4': 1,
+      '5': 9,
+      '10': 'complianceOverallResult'
+    },
+    {'1': 'has_hard_blocks', '3': 10, '4': 1, '5': 8, '10': 'hasHardBlocks'},
+    {
+      '1': 'hard_block_reasons',
+      '3': 11,
+      '4': 3,
+      '5': 9,
+      '10': 'hardBlockReasons'
+    },
+    {
+      '1': 'ready_for_packaging',
+      '3': 12,
+      '4': 1,
+      '5': 8,
+      '10': 'readyForPackaging'
+    },
+    {'1': 'ready_to_publish', '3': 13, '4': 1, '5': 8, '10': 'readyToPublish'},
+    {
+      '1': 'applied_overrides',
+      '3': 14,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.OverrideAuditRecord',
+      '10': 'appliedOverrides'
+    },
+    {
+      '1': 'created_at',
+      '3': 15,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+  ],
+};
+
+/// Descriptor for `PackagingReport`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List packagingReportDescriptor = $convert.base64Decode(
+    'Cg9QYWNrYWdpbmdSZXBvcnQSGwoJcmVwb3J0X2lkGAEgASgJUghyZXBvcnRJZBIZCghhc3NldF'
+    '9pZBgCIAEoCVIHYXNzZXRJZBImCg9wdWJsaXNoX2l0ZW1faWQYAyABKAlSDXB1Ymxpc2hJdGVt'
+    'SWQSNgoXb3ZlcmFsbF9wYWNrYWdpbmdfc2NvcmUYBCABKAFSFW92ZXJhbGxQYWNrYWdpbmdTY2'
+    '9yZRIhCgxzY29yZV9zdGF0dXMYBSABKAlSC3Njb3JlU3RhdHVzElIKCmNvbXBvbmVudHMYBiAD'
+    'KAsyMi5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlBhY2thZ2luZ1Njb3JlQ29tcG9uZW50Ug'
+    'pjb21wb25lbnRzElgKEHJlYWRpbmVzc19jaGVja3MYByADKAsyLS5jcmVhdGl2YW50YS5wcm9k'
+    'dWN0aW9uLnYxLlJlYWRpbmVzc0NoZWNrSXRlbVIPcmVhZGluZXNzQ2hlY2tzEl4KEmNvbXBsaW'
+    'FuY2VfZGV0YWlscxgIIAMoCzIvLmNyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuQ29tcGxpYW5j'
+    'ZVNjYW5EZXRhaWxSEWNvbXBsaWFuY2VEZXRhaWxzEjoKGWNvbXBsaWFuY2Vfb3ZlcmFsbF9yZX'
+    'N1bHQYCSABKAlSF2NvbXBsaWFuY2VPdmVyYWxsUmVzdWx0EiYKD2hhc19oYXJkX2Jsb2NrcxgK'
+    'IAEoCFINaGFzSGFyZEJsb2NrcxIsChJoYXJkX2Jsb2NrX3JlYXNvbnMYCyADKAlSEGhhcmRCbG'
+    '9ja1JlYXNvbnMSLgoTcmVhZHlfZm9yX3BhY2thZ2luZxgMIAEoCFIRcmVhZHlGb3JQYWNrYWdp'
+    'bmcSKAoQcmVhZHlfdG9fcHVibGlzaBgNIAEoCFIOcmVhZHlUb1B1Ymxpc2gSWwoRYXBwbGllZF'
+    '9vdmVycmlkZXMYDiADKAsyLi5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLk92ZXJyaWRlQXVk'
+    'aXRSZWNvcmRSEGFwcGxpZWRPdmVycmlkZXMSOQoKY3JlYXRlZF9hdBgPIAEoCzIaLmdvb2dsZS'
+    '5wcm90b2J1Zi5UaW1lc3RhbXBSCWNyZWF0ZWRBdA==');
+
+@$core.Deprecated('Use packagingServiceScoreRequestDescriptor instead')
+const PackagingServiceScoreRequest$json = {
+  '1': 'PackagingServiceScoreRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'asset_id', '3': 2, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'publish_item_id', '3': 3, '4': 1, '5': 9, '10': 'publishItemId'},
+    {'1': 'target_platform', '3': 4, '4': 1, '5': 9, '10': 'targetPlatform'},
+    {'1': 'title', '3': 5, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'caption', '3': 6, '4': 1, '5': 9, '10': 'caption'},
+    {'1': 'hashtags', '3': 7, '4': 3, '5': 9, '10': 'hashtags'},
+    {'1': 'cta', '3': 8, '4': 1, '5': 9, '10': 'cta'},
+    {'1': 'disclosure', '3': 9, '4': 1, '5': 9, '10': 'disclosure'},
+    {'1': 'audio_track_id', '3': 10, '4': 1, '5': 9, '10': 'audioTrackId'},
+    {'1': 'preset_id', '3': 11, '4': 1, '5': 9, '10': 'presetId'},
+    {'1': 'is_commercial', '3': 12, '4': 1, '5': 8, '10': 'isCommercial'},
+  ],
+};
+
+/// Descriptor for `PackagingServiceScoreRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List packagingServiceScoreRequestDescriptor = $convert.base64Decode(
+    'ChxQYWNrYWdpbmdTZXJ2aWNlU2NvcmVSZXF1ZXN0Ej8KB2NvbnRleHQYASABKAsyJS5jcmVhdG'
+    'l2YW50YS5jb21tb24udjEuQ29tbWFuZENvbnRleHRSB2NvbnRleHQSGQoIYXNzZXRfaWQYAiAB'
+    'KAlSB2Fzc2V0SWQSJgoPcHVibGlzaF9pdGVtX2lkGAMgASgJUg1wdWJsaXNoSXRlbUlkEicKD3'
+    'RhcmdldF9wbGF0Zm9ybRgEIAEoCVIOdGFyZ2V0UGxhdGZvcm0SFAoFdGl0bGUYBSABKAlSBXRp'
+    'dGxlEhgKB2NhcHRpb24YBiABKAlSB2NhcHRpb24SGgoIaGFzaHRhZ3MYByADKAlSCGhhc2h0YW'
+    'dzEhAKA2N0YRgIIAEoCVIDY3RhEh4KCmRpc2Nsb3N1cmUYCSABKAlSCmRpc2Nsb3N1cmUSJAoO'
+    'YXVkaW9fdHJhY2tfaWQYCiABKAlSDGF1ZGlvVHJhY2tJZBIbCglwcmVzZXRfaWQYCyABKAlSCH'
+    'ByZXNldElkEiMKDWlzX2NvbW1lcmNpYWwYDCABKAhSDGlzQ29tbWVyY2lhbA==');
+
+@$core.Deprecated('Use packagingServiceScoreResponseDescriptor instead')
+const PackagingServiceScoreResponse$json = {
+  '1': 'PackagingServiceScoreResponse',
+  '2': [
+    {
+      '1': 'report',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.PackagingReport',
+      '10': 'report'
+    },
+  ],
+};
+
+/// Descriptor for `PackagingServiceScoreResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List packagingServiceScoreResponseDescriptor =
+    $convert.base64Decode(
+        'Ch1QYWNrYWdpbmdTZXJ2aWNlU2NvcmVSZXNwb25zZRJCCgZyZXBvcnQYASABKAsyKi5jcmVhdG'
+        'l2YW50YS5wcm9kdWN0aW9uLnYxLlBhY2thZ2luZ1JlcG9ydFIGcmVwb3J0');
+
+@$core.Deprecated('Use packagingServiceScanComplianceRequestDescriptor instead')
+const PackagingServiceScanComplianceRequest$json = {
+  '1': 'PackagingServiceScanComplianceRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'asset_id', '3': 2, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'publish_item_id', '3': 3, '4': 1, '5': 9, '10': 'publishItemId'},
+    {'1': 'target_platform', '3': 4, '4': 1, '5': 9, '10': 'targetPlatform'},
+  ],
+};
+
+/// Descriptor for `PackagingServiceScanComplianceRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List packagingServiceScanComplianceRequestDescriptor =
+    $convert.base64Decode(
+        'CiVQYWNrYWdpbmdTZXJ2aWNlU2NhbkNvbXBsaWFuY2VSZXF1ZXN0Ej8KB2NvbnRleHQYASABKA'
+        'syJS5jcmVhdGl2YW50YS5jb21tb24udjEuQ29tbWFuZENvbnRleHRSB2NvbnRleHQSGQoIYXNz'
+        'ZXRfaWQYAiABKAlSB2Fzc2V0SWQSJgoPcHVibGlzaF9pdGVtX2lkGAMgASgJUg1wdWJsaXNoSX'
+        'RlbUlkEicKD3RhcmdldF9wbGF0Zm9ybRgEIAEoCVIOdGFyZ2V0UGxhdGZvcm0=');
+
+@$core
+    .Deprecated('Use packagingServiceScanComplianceResponseDescriptor instead')
+const PackagingServiceScanComplianceResponse$json = {
+  '1': 'PackagingServiceScanComplianceResponse',
+  '2': [
+    {
+      '1': 'compliance_scan_result',
+      '3': 1,
+      '4': 1,
+      '5': 9,
+      '10': 'complianceScanResult'
+    },
+    {
+      '1': 'details',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.ComplianceScanDetail',
+      '10': 'details'
+    },
+    {'1': 'has_hard_blocks', '3': 3, '4': 1, '5': 8, '10': 'hasHardBlocks'},
+  ],
+};
+
+/// Descriptor for `PackagingServiceScanComplianceResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List packagingServiceScanComplianceResponseDescriptor =
+    $convert.base64Decode(
+        'CiZQYWNrYWdpbmdTZXJ2aWNlU2NhbkNvbXBsaWFuY2VSZXNwb25zZRI0ChZjb21wbGlhbmNlX3'
+        'NjYW5fcmVzdWx0GAEgASgJUhRjb21wbGlhbmNlU2NhblJlc3VsdBJJCgdkZXRhaWxzGAIgAygL'
+        'Mi8uY3JlYXRpdmFudGEucHJvZHVjdGlvbi52MS5Db21wbGlhbmNlU2NhbkRldGFpbFIHZGV0YW'
+        'lscxImCg9oYXNfaGFyZF9ibG9ja3MYAyABKAhSDWhhc0hhcmRCbG9ja3M=');
+
+@$core.Deprecated('Use packagingServiceGetReportRequestDescriptor instead')
+const PackagingServiceGetReportRequest$json = {
+  '1': 'PackagingServiceGetReportRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'asset_id', '3': 2, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'publish_item_id', '3': 3, '4': 1, '5': 9, '10': 'publishItemId'},
+  ],
+};
+
+/// Descriptor for `PackagingServiceGetReportRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List packagingServiceGetReportRequestDescriptor =
+    $convert.base64Decode(
+        'CiBQYWNrYWdpbmdTZXJ2aWNlR2V0UmVwb3J0UmVxdWVzdBI+Cgx3b3Jrc3BhY2VfaWQYASABKA'
+        'syGy5jcmVhdGl2YW50YS5jb21tb24udjEuVVVJRFILd29ya3NwYWNlSWQSGQoIYXNzZXRfaWQY'
+        'AiABKAlSB2Fzc2V0SWQSJgoPcHVibGlzaF9pdGVtX2lkGAMgASgJUg1wdWJsaXNoSXRlbUlk');
+
+@$core.Deprecated('Use packagingServiceGetReportResponseDescriptor instead')
+const PackagingServiceGetReportResponse$json = {
+  '1': 'PackagingServiceGetReportResponse',
+  '2': [
+    {
+      '1': 'report',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.PackagingReport',
+      '10': 'report'
+    },
+  ],
+};
+
+/// Descriptor for `PackagingServiceGetReportResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List packagingServiceGetReportResponseDescriptor =
+    $convert.base64Decode(
+        'CiFQYWNrYWdpbmdTZXJ2aWNlR2V0UmVwb3J0UmVzcG9uc2USQgoGcmVwb3J0GAEgASgLMiouY3'
+        'JlYXRpdmFudGEucHJvZHVjdGlvbi52MS5QYWNrYWdpbmdSZXBvcnRSBnJlcG9ydA==');
+
+@$core.Deprecated('Use packagingServiceBatchScoreRequestDescriptor instead')
+const PackagingServiceBatchScoreRequest$json = {
+  '1': 'PackagingServiceBatchScoreRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'asset_ids', '3': 2, '4': 3, '5': 9, '10': 'assetIds'},
+    {'1': 'target_platform', '3': 3, '4': 1, '5': 9, '10': 'targetPlatform'},
+  ],
+};
+
+/// Descriptor for `PackagingServiceBatchScoreRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List packagingServiceBatchScoreRequestDescriptor =
+    $convert.base64Decode(
+        'CiFQYWNrYWdpbmdTZXJ2aWNlQmF0Y2hTY29yZVJlcXVlc3QSPwoHY29udGV4dBgBIAEoCzIlLm'
+        'NyZWF0aXZhbnRhLmNvbW1vbi52MS5Db21tYW5kQ29udGV4dFIHY29udGV4dBIbCglhc3NldF9p'
+        'ZHMYAiADKAlSCGFzc2V0SWRzEicKD3RhcmdldF9wbGF0Zm9ybRgDIAEoCVIOdGFyZ2V0UGxhdG'
+        'Zvcm0=');
+
+@$core.Deprecated('Use packagingServiceBatchScoreResponseDescriptor instead')
+const PackagingServiceBatchScoreResponse$json = {
+  '1': 'PackagingServiceBatchScoreResponse',
+  '2': [
+    {'1': 'total_items', '3': 1, '4': 1, '5': 5, '10': 'totalItems'},
+    {'1': 'scored_count', '3': 2, '4': 1, '5': 5, '10': 'scoredCount'},
+    {'1': 'failed_count', '3': 3, '4': 1, '5': 5, '10': 'failedCount'},
+    {
+      '1': 'reports',
+      '3': 4,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.PackagingReport',
+      '10': 'reports'
+    },
+    {
+      '1': 'failures',
+      '3': 5,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.BatchItemError',
+      '10': 'failures'
+    },
+  ],
+};
+
+/// Descriptor for `PackagingServiceBatchScoreResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List packagingServiceBatchScoreResponseDescriptor = $convert.base64Decode(
+    'CiJQYWNrYWdpbmdTZXJ2aWNlQmF0Y2hTY29yZVJlc3BvbnNlEh8KC3RvdGFsX2l0ZW1zGAEgAS'
+    'gFUgp0b3RhbEl0ZW1zEiEKDHNjb3JlZF9jb3VudBgCIAEoBVILc2NvcmVkQ291bnQSIQoMZmFp'
+    'bGVkX2NvdW50GAMgASgFUgtmYWlsZWRDb3VudBJECgdyZXBvcnRzGAQgAygLMiouY3JlYXRpdm'
+    'FudGEucHJvZHVjdGlvbi52MS5QYWNrYWdpbmdSZXBvcnRSB3JlcG9ydHMSRQoIZmFpbHVyZXMY'
+    'BSADKAsyKS5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLkJhdGNoSXRlbUVycm9yUghmYWlsdX'
+    'Jlcw==');
+
+@$core.Deprecated('Use packagingServiceOverrideResultRequestDescriptor instead')
+const PackagingServiceOverrideResultRequest$json = {
+  '1': 'PackagingServiceOverrideResultRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'asset_id', '3': 2, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'publish_item_id', '3': 3, '4': 1, '5': 9, '10': 'publishItemId'},
+    {
+      '1': 'check_id_or_category',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '10': 'checkIdOrCategory'
+    },
+    {'1': 'reason', '3': 5, '4': 1, '5': 9, '10': 'reason'},
+  ],
+};
+
+/// Descriptor for `PackagingServiceOverrideResultRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List packagingServiceOverrideResultRequestDescriptor =
+    $convert.base64Decode(
+        'CiVQYWNrYWdpbmdTZXJ2aWNlT3ZlcnJpZGVSZXN1bHRSZXF1ZXN0Ej8KB2NvbnRleHQYASABKA'
+        'syJS5jcmVhdGl2YW50YS5jb21tb24udjEuQ29tbWFuZENvbnRleHRSB2NvbnRleHQSGQoIYXNz'
+        'ZXRfaWQYAiABKAlSB2Fzc2V0SWQSJgoPcHVibGlzaF9pdGVtX2lkGAMgASgJUg1wdWJsaXNoSX'
+        'RlbUlkEi8KFGNoZWNrX2lkX29yX2NhdGVnb3J5GAQgASgJUhFjaGVja0lkT3JDYXRlZ29yeRIW'
+        'CgZyZWFzb24YBSABKAlSBnJlYXNvbg==');
+
+@$core
+    .Deprecated('Use packagingServiceOverrideResultResponseDescriptor instead')
+const PackagingServiceOverrideResultResponse$json = {
+  '1': 'PackagingServiceOverrideResultResponse',
+  '2': [
+    {'1': 'success', '3': 1, '4': 1, '5': 8, '10': 'success'},
+    {'1': 'message', '3': 2, '4': 1, '5': 9, '10': 'message'},
+    {
+      '1': 'updated_report',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.PackagingReport',
+      '10': 'updatedReport'
+    },
+  ],
+};
+
+/// Descriptor for `PackagingServiceOverrideResultResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List packagingServiceOverrideResultResponseDescriptor =
+    $convert.base64Decode(
+        'CiZQYWNrYWdpbmdTZXJ2aWNlT3ZlcnJpZGVSZXN1bHRSZXNwb25zZRIYCgdzdWNjZXNzGAEgAS'
+        'gIUgdzdWNjZXNzEhgKB21lc3NhZ2UYAiABKAlSB21lc3NhZ2USUQoOdXBkYXRlZF9yZXBvcnQY'
+        'AyABKAsyKi5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlBhY2thZ2luZ1JlcG9ydFINdXBkYX'
+        'RlZFJlcG9ydA==');
+
+@$core.Deprecated('Use packagingServiceGetHistoryRequestDescriptor instead')
+const PackagingServiceGetHistoryRequest$json = {
+  '1': 'PackagingServiceGetHistoryRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'asset_id', '3': 2, '4': 1, '5': 9, '10': 'assetId'},
+    {
+      '1': 'pagination',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Pagination',
+      '10': 'pagination'
+    },
+  ],
+};
+
+/// Descriptor for `PackagingServiceGetHistoryRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List packagingServiceGetHistoryRequestDescriptor =
+    $convert.base64Decode(
+        'CiFQYWNrYWdpbmdTZXJ2aWNlR2V0SGlzdG9yeVJlcXVlc3QSPgoMd29ya3NwYWNlX2lkGAEgAS'
+        'gLMhsuY3JlYXRpdmFudGEuY29tbW9uLnYxLlVVSURSC3dvcmtzcGFjZUlkEhkKCGFzc2V0X2lk'
+        'GAIgASgJUgdhc3NldElkEkEKCnBhZ2luYXRpb24YAyABKAsyIS5jcmVhdGl2YW50YS5jb21tb2'
+        '4udjEuUGFnaW5hdGlvblIKcGFnaW5hdGlvbg==');
+
+@$core.Deprecated('Use packagingServiceGetHistoryResponseDescriptor instead')
+const PackagingServiceGetHistoryResponse$json = {
+  '1': 'PackagingServiceGetHistoryResponse',
+  '2': [
+    {
+      '1': 'reports',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.PackagingReport',
+      '10': 'reports'
+    },
+    {
+      '1': 'pagination',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.PaginatedResponse',
+      '10': 'pagination'
+    },
+  ],
+};
+
+/// Descriptor for `PackagingServiceGetHistoryResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List packagingServiceGetHistoryResponseDescriptor =
+    $convert.base64Decode(
+        'CiJQYWNrYWdpbmdTZXJ2aWNlR2V0SGlzdG9yeVJlc3BvbnNlEkQKB3JlcG9ydHMYASADKAsyKi'
+        '5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlBhY2thZ2luZ1JlcG9ydFIHcmVwb3J0cxJICgpw'
+        'YWdpbmF0aW9uGAIgASgLMiguY3JlYXRpdmFudGEuY29tbW9uLnYxLlBhZ2luYXRlZFJlc3Bvbn'
+        'NlUgpwYWdpbmF0aW9u');
+
+@$core.Deprecated('Use packagingServiceRunQARequestDescriptor instead')
+const PackagingServiceRunQARequest$json = {
+  '1': 'PackagingServiceRunQARequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'asset_id', '3': 2, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'target_platforms', '3': 3, '4': 3, '5': 9, '10': 'targetPlatforms'},
+    {'1': 'preset_id', '3': 4, '4': 1, '5': 9, '10': 'presetId'},
+  ],
+};
+
+/// Descriptor for `PackagingServiceRunQARequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List packagingServiceRunQARequestDescriptor = $convert.base64Decode(
+    'ChxQYWNrYWdpbmdTZXJ2aWNlUnVuUUFSZXF1ZXN0Ej8KB2NvbnRleHQYASABKAsyJS5jcmVhdG'
+    'l2YW50YS5jb21tb24udjEuQ29tbWFuZENvbnRleHRSB2NvbnRleHQSGQoIYXNzZXRfaWQYAiAB'
+    'KAlSB2Fzc2V0SWQSKQoQdGFyZ2V0X3BsYXRmb3JtcxgDIAMoCVIPdGFyZ2V0UGxhdGZvcm1zEh'
+    'sKCXByZXNldF9pZBgEIAEoCVIIcHJlc2V0SWQ=');
+
+@$core.Deprecated('Use packagingServiceRunQAResponseDescriptor instead')
+const PackagingServiceRunQAResponse$json = {
+  '1': 'PackagingServiceRunQAResponse',
+  '2': [
+    {
+      '1': 'report',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.PackagingReport',
+      '10': 'report'
+    },
+  ],
+};
+
+/// Descriptor for `PackagingServiceRunQAResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List packagingServiceRunQAResponseDescriptor =
+    $convert.base64Decode(
+        'Ch1QYWNrYWdpbmdTZXJ2aWNlUnVuUUFSZXNwb25zZRJCCgZyZXBvcnQYASABKAsyKi5jcmVhdG'
+        'l2YW50YS5wcm9kdWN0aW9uLnYxLlBhY2thZ2luZ1JlcG9ydFIGcmVwb3J0');

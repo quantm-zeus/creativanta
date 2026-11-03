@@ -50,6 +50,8 @@ type Service struct {
 	DriftQA         *DriftQAManager
 	ProductShowcase *ProductShowcaseManager
 	LinkToVideo     *LinkToVideoManager
+	DerivativeMgr   *DerivativeManager
+	PackagingQAMgr  *PackagingQAManager
 }
 
 var _ productionv1connect.StudioServiceHandler = (*Service)(nil)
@@ -59,6 +61,18 @@ var _ productionv1connect.VideoEditJobServiceHandler = (*VideoEditJobServiceServ
 var _ productionv1connect.ClipFactoryServiceHandler = (*ClipFactoryServiceServer)(nil)
 var _ productionv1connect.ProductShowcaseServiceHandler = (*ProductShowcaseManager)(nil)
 var _ productionv1connect.LinkToVideoServiceHandler = (*LinkToVideoManager)(nil)
+var _ productionv1connect.DerivativeServiceHandler = (*DerivativeServiceServer)(nil)
+var _ productionv1connect.PackagingServiceHandler = (*PackagingServiceServer)(nil)
+
+// Derivative returns the DerivativeServiceHandler.
+func (s *Service) Derivative() productionv1connect.DerivativeServiceHandler {
+	return &DerivativeServiceServer{svc: s}
+}
+
+// Packaging returns the PackagingServiceHandler.
+func (s *Service) Packaging() productionv1connect.PackagingServiceHandler {
+	return &PackagingServiceServer{svc: s}
+}
 
 // RemixServiceServer implements RemixService ConnectRPC handler.
 type RemixServiceServer struct {
@@ -139,6 +153,8 @@ func NewService(cfg ServiceConfig) *Service {
 	svc.DriftQA = NewDriftQAManager(st, svc)
 	svc.ProductShowcase = NewProductShowcaseManager(st, svc)
 	svc.LinkToVideo = NewLinkToVideoManager(st, svc)
+	svc.DerivativeMgr = NewDerivativeManager(st)
+	svc.PackagingQAMgr = NewPackagingQAManager(st)
 	return svc
 }
 
