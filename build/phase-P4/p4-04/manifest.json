@@ -30,8 +30,21 @@
     "SAFE-2026-02"
   ],
   "screen_refs": [
-    "docs/03_screens/web/screen_web_studio_launcher.md",
-    "docs/03_screens/mobile/screen_mobile_studio_launcher.md"
+    "docs/03_screens/web/screen_web_studio_ai_remix.md",
+    "docs/03_screens/web/screen_web_studio_multi_merge.md",
+    "docs/03_screens/mobile/screen_mobile_studio_ai_remix.md"
+  ],
+  "screen_routes": [
+    "/studio/remix",
+    "/studio/multi-merge",
+    "mobile://studio/ai_remix"
+  ],
+  "event_types": [
+    "remix.completed",
+    "production.remix.analysis_started",
+    "production.remix.creative_dna_extracted",
+    "production.remix.generation_completed",
+    "production.remix.originality_checked"
   ],
   "source_hashes": {
     "infra/migrations/00018_p4_04_remix_blueprints_and_multimerge.sql": "fd8c88d73ccf0d9e9b888b0b334e961b308c503fb4c307be8796e7245262e819",
@@ -110,5 +123,48 @@
       "PENDING_CI_LIVE_POSTGRES",
       "Migration 00018 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
     ]
+  ],
+  "checks": [
+    {
+      "command": "tooling/ci/check_d0.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence": "build/phase-P4/p4-04/evidence/check_d0.log"
+    },
+    {
+      "command": "tooling/ci/check_proto.sh verify",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence": "build/phase-P4/p4-04/evidence/check_proto.log"
+    },
+    {
+      "command": "tooling/ci/check_go.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence": "build/phase-P4/p4-04/evidence/check_go.log"
+    },
+    {
+      "command": "tooling/ci/check_node.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence": "build/phase-P4/p4-04/evidence/check_node.log"
+    },
+    {
+      "command": "tooling/ci/check_flutter.sh",
+      "exit_code": 0,
+      "result": "PASS",
+      "evidence": "build/phase-P4/p4-04/evidence/check_flutter.log"
+    }
+  ],
+  "remaining_scope": [
+    "P4-05: Showcase, Image/Link-to-Video và thumbnails — EF01–04 production modes; product context, safe URL fetch and thumbnails.",
+    "P4-06: Production Review & Final Approval — Mobile approval, revision requests, export package and compliance audit.",
+    "P4-07: Continuity OS Integration — Character and voice consistency across long-form video pipelines.",
+    "P4-08: AI Video Studio Final Phase Acceptance — End-to-end integration and provider performance verification."
+  ],
+  "decisions": [
+    "DEC-P4-04-01: Canonical threshold strictly < 30.0% script similarity vs reference original. Replaced any legacy 70% threshold references per RULE-M07-003 and PRD §23.7.",
+    "DEC-P4-04-02: Non-bypassable copyright scan (SAFE-2026-02, RULE-M07-008, EC-M07-M01). Detected copyright violations cannot be bypassed by acknowledging risk without verified license proof.",
+    "DEC-P4-04-03: Zero partial analysis on DRM or geo-blocked source URLs (EC-M07-R01). Returns structured error with actionable user options."
   ]
 }
