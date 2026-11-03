@@ -184,6 +184,17 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if err := ValidateCanonicalMigrationContract(m14); err != nil {
 		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v14: %v", err)
 	}
+
+	m15 := migrations[14]
+	if m15.Version != 15 {
+		t.Fatalf("expected version 15, got %d", m15.Version)
+	}
+	if len(m15.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v15, got %q", m15.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m15); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v15: %v", err)
+	}
 }
 
 func TestValidateCanonicalMigrationContractRejectsViolations(t *testing.T) {
@@ -343,8 +354,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 14 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 || applied[3] != 4 || applied[4] != 5 || applied[5] != 6 || applied[6] != 7 || applied[7] != 8 || applied[8] != 9 || applied[9] != 10 || applied[10] != 11 || applied[11] != 12 || applied[12] != 13 || applied[13] != 14 {
-		t.Fatalf("expected versions [1..14] applied, got %v", applied)
+	if len(applied) != 15 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 || applied[3] != 4 || applied[4] != 5 || applied[5] != 6 || applied[6] != 7 || applied[7] != 8 || applied[8] != 9 || applied[9] != 10 || applied[10] != 11 || applied[11] != 12 || applied[12] != 13 || applied[13] != 14 || applied[14] != 15 {
+		t.Fatalf("expected versions [1..15] applied, got %v", applied)
 	}
 	if !runner.lastTx.committed || runner.lastTx.rolledBack {
 		t.Fatalf("expected transaction committed")
@@ -359,13 +370,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for all 14 migrations.
+	// Status reports Applied = true for all 15 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 14 || !statuses[0].Applied || !statuses[1].Applied || !statuses[2].Applied || !statuses[3].Applied || !statuses[4].Applied || !statuses[5].Applied || !statuses[6].Applied || !statuses[7].Applied || !statuses[8].Applied || !statuses[9].Applied || !statuses[10].Applied || !statuses[11].Applied || !statuses[12].Applied || !statuses[13].Applied {
-		t.Fatalf("expected status Applied=true for all 14 migrations, got %+v", statuses)
+	if len(statuses) != 15 || !statuses[0].Applied || !statuses[1].Applied || !statuses[2].Applied || !statuses[3].Applied || !statuses[4].Applied || !statuses[5].Applied || !statuses[6].Applied || !statuses[7].Applied || !statuses[8].Applied || !statuses[9].Applied || !statuses[10].Applied || !statuses[11].Applied || !statuses[12].Applied || !statuses[13].Applied || !statuses[14].Applied {
+		t.Fatalf("expected status Applied=true for all 15 migrations, got %+v", statuses)
 	}
 
 	// Down without allowLocalRollback fails closed.
@@ -373,7 +384,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 14, then 13, then 12, then 11, then 10, then 9, then 8, then 7, then 6, then 5, then 4, then 3, then 2, then 1.
+	// Down with allowLocalRollback=true rolls back version 15, then 14, then 13, then 12, then 11, then 10, then 9, then 8, then 7, then 6, then 5, then 4, then 3, then 2, then 1.
+	rolled15, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v15 failed: %v", err)
+	}
+	if rolled15 != 15 {
+		t.Fatalf("expected rolled back version 15, got %d", rolled15)
+	}
 	rolled14, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v14 failed: %v", err)
@@ -515,13 +533,16 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	_, _ = adminPool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
 	dir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 
-	// Apply migration Up, then Down fourteen times, then Up again to prove full Goose SQL repeatability.
+	// Apply migration Up, then Down fifteen times, then Up again to prove full Goose SQL repeatability.
 	applied, err := Up(ctx, adminPool, dir)
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 14 {
-		t.Fatalf("expected 14 applied migrations, got %v", applied)
+	if len(applied) != 15 {
+		t.Fatalf("expected 15 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v15 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v14 failed: %v", err)
@@ -1120,6 +1141,81 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("expected composite tenant FK to reject cross-tenant script_id on asset_briefs")
 	}
 	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_brief_fk`)
+
+	// P3-03: Continuity Packs, Characters & Consent RLS, FK, and Single Default checks
+	consentA := "33333333-3333-3333-3333-333333333303"
+	charA := "33333333-3333-3333-3333-333333333304"
+	charA2 := "33333333-3333-3333-3333-333333333305"
+	packA := "33333333-3333-3333-3333-333333333306"
+	if _, err := tx.Exec(ctx, `RESET ROLE`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO consent_records (consent_id, user_id, workspace_id, consent_type, version, granted)
+		VALUES ($1::uuid, $2::uuid, $3::uuid, 'digital_twin', '1.0', true)
+	`, consentA, userA, tenantA); err != nil {
+		t.Fatalf("seed consent_record failed: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO characters (character_id, workspace_id, name, character_type, consent_verified, consent_record_id, is_default, status)
+		VALUES ($1::uuid, $2::uuid, 'Default Persona A', 'digital_twin', true, $3::uuid, true, 'ready')
+	`, charA, tenantA, consentA); err != nil {
+		t.Fatalf("seed character failed: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO continuity_packs (pack_id, workspace_id, pack_type, name, character_id, status)
+		VALUES ($1::uuid, $2::uuid, 'character', 'Persona A Pack', $3::uuid, 'active')
+	`, packA, tenantA, charA); err != nil {
+		t.Fatalf("seed continuity_pack failed: %v", err)
+	}
+
+	if _, err := tx.Exec(ctx, `SET LOCAL ROLE app_user`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_user_id', $2, true)`, tenantB, userB); err != nil {
+		t.Fatal(err)
+	}
+	var charCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM characters WHERE character_id = $1::uuid`, charA).Scan(&charCount); err != nil {
+		t.Fatal(err)
+	}
+	if charCount != 0 {
+		t.Fatalf("characters RLS breach: Tenant B saw %d characters from Tenant A", charCount)
+	}
+	var packCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM continuity_packs WHERE pack_id = $1::uuid`, packA).Scan(&packCount); err != nil {
+		t.Fatal(err)
+	}
+	if packCount != 0 {
+		t.Fatalf("continuity_packs RLS breach: Tenant B saw %d packs from Tenant A", packCount)
+	}
+
+	// Cross-tenant composite FK write attack on continuity_packs denied:
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_pack_fk`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO continuity_packs (workspace_id, pack_type, name, character_id)
+		VALUES ($1::uuid, 'character', 'Cross Pack', $2::uuid)
+	`, tenantB, charA); err == nil {
+		t.Fatalf("expected composite tenant FK to reject cross-tenant character_id on continuity_packs")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_pack_fk`)
+
+	// Acceptance Target 3 constraint test: Second default character in same workspace is strictly rejected by DB
+	if _, err := tx.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_user_id', $2, true)`, tenantA, userA); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_second_default`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO characters (character_id, workspace_id, name, character_type, is_default, status)
+		VALUES ($1::uuid, $2::uuid, 'Second Default Persona', 'ai_generated', true, 'ready')
+	`, charA2, tenantA); err == nil {
+		t.Fatalf("expected unique constraint uq_characters_single_default to reject multiple default characters in workspace")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_second_default`)
 }
 
 // TestPostgresSeedTwiceIdempotency satisfies Acceptance Target 1:

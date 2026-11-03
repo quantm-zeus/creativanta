@@ -14,3 +14,4 @@ export { default as AuthStatus } from './components/AuthStatus.svelte';
 export * from './auth';
 export * from './capability';
 export * from './script';
+export * from './continuity';

@@ -723,6 +723,27 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 			"opportunities",
 			"opportunity_sources",
 		}
+	case 15:
+		requiredFragments = []requiredFragment{
+			{"consent_records table", "CREATE TABLE IF NOT EXISTS consent_records"},
+			{"characters table", "CREATE TABLE IF NOT EXISTS characters"},
+			{"continuity_packs table", "CREATE TABLE IF NOT EXISTS continuity_packs"},
+			{"continuity_pack_versions table", "CREATE TABLE IF NOT EXISTS continuity_pack_versions"},
+			{"single default character partial unique index", "CREATE UNIQUE INDEX IF NOT EXISTS uq_characters_single_default"},
+			{"composite tenant FK on characters -> consent_records", "fk_characters_consent_record_id_tenant"},
+			{"composite tenant FK on continuity_packs -> characters", "fk_continuity_packs_character_id_tenant"},
+			{"composite tenant FK on continuity_pack_versions -> continuity_packs", "fk_continuity_pack_versions_pack_id_tenant"},
+			{"tenant_isolation policy on characters", "CREATE POLICY tenant_isolation ON characters"},
+			{"admin_ops_scope policy on characters", "CREATE POLICY admin_ops_scope ON characters"},
+			{"tenant_isolation policy on continuity_packs", "CREATE POLICY tenant_isolation ON continuity_packs"},
+			{"admin_ops_scope policy on continuity_packs", "CREATE POLICY admin_ops_scope ON continuity_packs"},
+		}
+		requiredRLSTables = []string{
+			"consent_records",
+			"characters",
+			"continuity_packs",
+			"continuity_pack_versions",
+		}
 	default:
 		return nil
 	}

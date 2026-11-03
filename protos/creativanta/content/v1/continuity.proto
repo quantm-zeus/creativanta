@@ -1,0 +1,390 @@
+syntax = "proto3";
+
+package creativanta.content.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/content/v1;contentv1";
+
+// CharacterType denotes the category of character avatar per database_schema.md §7.1.
+enum CharacterType {
+  CHARACTER_TYPE_UNSPECIFIED = 0;
+  CHARACTER_TYPE_DIGITAL_TWIN = 1;
+  CHARACTER_TYPE_AI_GENERATED = 2;
+  CHARACTER_TYPE_STOCK = 3;
+}
+
+// CharacterStatus tracks the lifecycle status of a character per database_schema.md §7.1.
+enum CharacterStatus {
+  CHARACTER_STATUS_UNSPECIFIED = 0;
+  CHARACTER_STATUS_CREATING = 1;
+  CHARACTER_STATUS_READY = 2;
+  CHARACTER_STATUS_FAILED = 3;
+  CHARACTER_STATUS_ARCHIVED = 4;
+}
+
+// PackType denotes the category of continuity pack per database_schema.md §7.2.
+enum PackType {
+  PACK_TYPE_UNSPECIFIED = 0;
+  PACK_TYPE_CHARACTER = 1;
+  PACK_TYPE_BRAND = 2;
+  PACK_TYPE_VOICE = 3;
+  PACK_TYPE_STYLE = 4;
+  PACK_TYPE_LOOKBOOK = 5;
+  PACK_TYPE_SCENE_MEMORY = 6;
+}
+
+// PackStatus tracks the status of a continuity pack per database_schema.md §7.2.
+enum PackStatus {
+  PACK_STATUS_UNSPECIFIED = 0;
+  PACK_STATUS_DRAFT = 1;
+  PACK_STATUS_ACTIVE = 2;
+  PACK_STATUS_DEPRECATED = 3;
+  PACK_STATUS_RETIRED = 4;
+}
+
+// DriftSeverity defines the deviation tier of generated output against canonical references per RULE-M08-005.
+enum DriftSeverity {
+  DRIFT_SEVERITY_UNSPECIFIED = 0;
+  DRIFT_SEVERITY_NONE = 1;
+  DRIFT_SEVERITY_LOW = 2;
+  DRIFT_SEVERITY_MODERATE = 3;
+  DRIFT_SEVERITY_HIGH = 4;
+}
+
+// ConsentType defines the category of user or likeness consent per database_schema.md §18.3.
+enum ConsentType {
+  CONSENT_TYPE_UNSPECIFIED = 0;
+  CONSENT_TYPE_DIGITAL_TWIN = 1;
+  CONSENT_TYPE_VOICE_CLONE = 2;
+  CONSENT_TYPE_AI_PROCESSING = 3;
+  CONSENT_TYPE_TOS = 4;
+  CONSENT_TYPE_PRIVACY = 5;
+}
+
+// ApprovedReference represents a first-class canonical asset reference per RULE-M08-008.
+message ApprovedReference {
+  string reference_id = 1;
+  string pack_id = 2;
+  string asset_id = 3;
+  string script_id = 4;
+  string name = 5;
+  string media_url = 6;
+  string reference_type = 7; // headshot, full_body, voice_sample, style_keyframe
+  string source_context = 8;
+  string status = 9; // approved, review_required, superseded
+  google.protobuf.Timestamp created_at = 10;
+}
+
+// PackVersion stores an immutable point-in-time version of a continuity pack per RULE-M08-007.
+message PackVersion {
+  string version_id = 1;
+  string workspace_id = 2;
+  string pack_id = 3;
+  int32 version_index = 4;
+  string name = 5;
+  PackType pack_type = 6;
+  repeated ApprovedReference approved_references = 7;
+  string rules_summary = 8;
+  string settings_json = 9;
+  string allowed_use_scope_json = 10;
+  PackStatus status = 11;
+  string snapshot_reason = 12;
+  google.protobuf.Timestamp created_at = 13;
+}
+
+// ContinuityPack represents a canonical consistency pack per database_schema.md §7.2.
+message ContinuityPack {
+  string pack_id = 1;
+  string workspace_id = 2;
+  PackType pack_type = 3;
+  string name = 4;
+  string character_id = 5;
+  repeated ApprovedReference approved_references = 6;
+  string rules_summary = 7;
+  string settings_json = 8;
+  string allowed_use_scope_json = 9;
+  int32 version = 10;
+  string parent_pack_id = 11;
+  PackStatus status = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+}
+
+// ConsentRecord stores legally verified or granted consent per database_schema.md §18.3.
+message ConsentRecord {
+  string consent_id = 1;
+  string user_id = 2;
+  string workspace_id = 3;
+  string consent_type = 4;
+  string version = 5;
+  bool granted = 6;
+  google.protobuf.Timestamp granted_at = 7;
+  google.protobuf.Timestamp revoked_at = 8;
+  string ip_address = 9;
+  string user_agent = 10;
+  google.protobuf.Timestamp created_at = 11;
+}
+
+// Character represents an AI persona, digital twin, or stock avatar per database_schema.md §7.1.
+message Character {
+  string character_id = 1;
+  string workspace_id = 2;
+  string name = 3;
+  CharacterType character_type = 4;
+  string description = 5;
+  string reference_images_json = 6;
+  string voice_settings_json = 7;
+  string visual_settings_json = 8;
+  bool consent_verified = 9;
+  string consent_record_id = 10;
+  bool is_default = 11;
+  CharacterStatus status = 12;
+  string character_pack_id = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+}
+
+// CharacterService messages
+
+message CharacterServiceCreateRequest {
+  string workspace_id = 1;
+  string name = 2;
+  CharacterType character_type = 3;
+  string description = 4;
+  string reference_images_json = 5;
+  string voice_settings_json = 6;
+  string visual_settings_json = 7;
+  bool is_default = 8;
+  string consent_record_id = 9;
+  int32 wizard_step = 10; // 1: Type, 2: Profile, 3: Preview, 4: Save
+  bool preview_verified = 11;
+  string preview_video_url = 12;
+}
+
+message CharacterServiceCreateResponse {
+  Character character = 1;
+  ContinuityPack character_pack = 2;
+}
+
+message CharacterServiceGetRequest {
+  string workspace_id = 1;
+  string character_id = 2;
+}
+
+message CharacterServiceGetResponse {
+  Character character = 1;
+  ContinuityPack character_pack = 2;
+}
+
+message CharacterServiceListRequest {
+  string workspace_id = 1;
+  CharacterStatus status_filter = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message CharacterServiceListResponse {
+  repeated Character characters = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+  int32 active_character_count = 4;
+  int32 slot_quota = 5; // Free: 1, Starter: 2, Pro: 5, Business: 15, Enterprise: -1 (unlimited)
+}
+
+message CharacterServiceUpdateRequest {
+  string workspace_id = 1;
+  string character_id = 2;
+  string name = 3;
+  string description = 4;
+  string reference_images_json = 5;
+  string voice_settings_json = 6;
+  string visual_settings_json = 7;
+  bool is_default = 8;
+  CharacterStatus status = 9;
+}
+
+message CharacterServiceUpdateResponse {
+  Character character = 1;
+}
+
+message CharacterServiceDeleteRequest {
+  string workspace_id = 1;
+  string character_id = 2;
+  bool hard_delete = 3; // true for cleanup, false for archive
+}
+
+message CharacterServiceDeleteResponse {
+  bool success = 1;
+  CharacterStatus new_status = 2;
+}
+
+// ContinuityService messages
+
+message ContinuityServiceCreateRequest {
+  string workspace_id = 1;
+  PackType pack_type = 2;
+  string name = 3;
+  string character_id = 4;
+  repeated ApprovedReference approved_references = 5;
+  string rules_summary = 6;
+  string settings_json = 7;
+  string allowed_use_scope_json = 8;
+}
+
+message ContinuityServiceCreateResponse {
+  ContinuityPack pack = 1;
+}
+
+message ContinuityServiceGetRequest {
+  string workspace_id = 1;
+  string pack_id = 2;
+}
+
+message ContinuityServiceGetResponse {
+  ContinuityPack pack = 1;
+  repeated PackVersion version_history = 2;
+}
+
+message ContinuityServiceGetPackRequest {
+  string workspace_id = 1;
+  string pack_id = 2;
+}
+
+message ContinuityServiceGetPackResponse {
+  ContinuityPack pack = 1;
+  repeated PackVersion version_history = 2;
+}
+
+message ContinuityServiceUpdatePackRequest {
+  string workspace_id = 1;
+  string pack_id = 2;
+  string name = 3;
+  repeated ApprovedReference approved_references = 4;
+  string rules_summary = 5;
+  string settings_json = 6;
+  string allowed_use_scope_json = 7;
+  PackStatus status = 8;
+  string update_reason = 9;
+}
+
+message ContinuityServiceUpdatePackResponse {
+  ContinuityPack pack = 1;
+  PackVersion archived_version = 2;
+}
+
+message ContinuityServiceCloneRequest {
+  string workspace_id = 1;
+  string source_pack_id = 2;
+  string new_name = 3;
+}
+
+message ContinuityServiceCloneResponse {
+  ContinuityPack pack = 1;
+}
+
+message ContinuityServiceDeleteRequest {
+  string workspace_id = 1;
+  string pack_id = 2;
+}
+
+message ContinuityServiceDeleteResponse {
+  bool success = 1;
+}
+
+message ContinuityServiceGetUsageStatsRequest {
+  string workspace_id = 1;
+  string pack_id = 2;
+}
+
+message ContinuityServiceGetUsageStatsResponse {
+  string pack_id = 1;
+  int32 total_assets_generated = 2;
+  int32 drift_warnings_count = 3;
+  repeated string recent_asset_ids = 4;
+}
+
+message ContinuityServiceListBrandPacksRequest {
+  string workspace_id = 1;
+}
+
+message ContinuityServiceListBrandPacksResponse {
+  repeated ContinuityPack brand_packs = 1;
+}
+
+message ContinuityServiceListCharactersRequest {
+  string workspace_id = 1;
+  string pack_id = 2;
+}
+
+message ContinuityServiceListCharactersResponse {
+  repeated Character characters = 1;
+}
+
+message ContinuityServiceListVoicesRequest {
+  string workspace_id = 1;
+  string pack_id = 2;
+}
+
+message ContinuityServiceListVoicesResponse {
+  repeated ContinuityPack voice_packs = 1;
+}
+
+// ConsentService messages
+
+message ConsentServiceGrantRequest {
+  string user_id = 1;
+  string workspace_id = 2;
+  string consent_type = 3; // digital_twin, voice_clone, ai_processing, tos, privacy
+  string version = 4;
+  string source_footage_url = 5;
+  string consent_video_url = 6;
+  bool declaration_signed = 7;
+}
+
+message ConsentServiceGrantResponse {
+  ConsentRecord record = 1;
+  bool face_match_verified = 2;
+}
+
+message ConsentServiceRevokeRequest {
+  string user_id = 1;
+  string workspace_id = 2;
+  string consent_type = 3;
+  string reason = 4;
+}
+
+message ConsentServiceRevokeResponse {
+  bool success = 1;
+  ConsentRecord record = 2;
+  int32 characters_disabled_count = 3;
+}
+
+// CharacterService manages digital twins, AI personas, stock avatars, and wizard workflows (M08).
+service CharacterService {
+  rpc Create(CharacterServiceCreateRequest) returns (CharacterServiceCreateResponse);
+  rpc Get(CharacterServiceGetRequest) returns (CharacterServiceGetResponse);
+  rpc List(CharacterServiceListRequest) returns (CharacterServiceListResponse);
+  rpc Update(CharacterServiceUpdateRequest) returns (CharacterServiceUpdateResponse);
+  rpc Delete(CharacterServiceDeleteRequest) returns (CharacterServiceDeleteResponse);
+}
+
+// ContinuityService manages continuity packs, versioning, approved references, and pack usage (M08).
+service ContinuityService {
+  rpc Create(ContinuityServiceCreateRequest) returns (ContinuityServiceCreateResponse);
+  rpc Get(ContinuityServiceGetRequest) returns (ContinuityServiceGetResponse);
+  rpc GetPack(ContinuityServiceGetPackRequest) returns (ContinuityServiceGetPackResponse);
+  rpc UpdatePack(ContinuityServiceUpdatePackRequest) returns (ContinuityServiceUpdatePackResponse);
+  rpc Clone(ContinuityServiceCloneRequest) returns (ContinuityServiceCloneResponse);
+  rpc Delete(ContinuityServiceDeleteRequest) returns (ContinuityServiceDeleteResponse);
+  rpc GetUsageStats(ContinuityServiceGetUsageStatsRequest) returns (ContinuityServiceGetUsageStatsResponse);
+  rpc ListBrandPacks(ContinuityServiceListBrandPacksRequest) returns (ContinuityServiceListBrandPacksResponse);
+  rpc ListCharacters(ContinuityServiceListCharactersRequest) returns (ContinuityServiceListCharactersResponse);
+  rpc ListVoices(ContinuityServiceListVoicesRequest) returns (ContinuityServiceListVoicesResponse);
+}
+
+// ConsentService manages user and digital likeness consents and revocation (M08 / Compliance).
+service ConsentService {
+  rpc Grant(ConsentServiceGrantRequest) returns (ConsentServiceGrantResponse);
+  rpc Revoke(ConsentServiceRevokeRequest) returns (ConsentServiceRevokeResponse);
+}
