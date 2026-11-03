@@ -30,6 +30,7 @@ var allowedModules = map[string]bool{
 	"M04":  true, // Phase P2-03: Opportunity Board (M04)
 	"M05":  true, // Phase P3: Idea Engine (M05)
 	"M06":  true, // Phase P3-02: Script Lab (M06)
+	"M08":  true, // Phase P3-03: Continuity OS (M08)
 }
 
 // TestNoFuturePhaseRPCExposed satisfies Acceptance Target:
