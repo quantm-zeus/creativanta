@@ -513,6 +513,61 @@ func (VideoEditJobStatus) EnumDescriptor() ([]byte, []int) {
 	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{7}
 }
 
+type TranscriptAlignmentStatus int32
+
+const (
+	TranscriptAlignmentStatus_TRANSCRIPT_ALIGNMENT_STATUS_UNSPECIFIED     TranscriptAlignmentStatus = 0
+	TranscriptAlignmentStatus_TRANSCRIPT_ALIGNMENT_STATUS_AUTO_ALIGNED    TranscriptAlignmentStatus = 1
+	TranscriptAlignmentStatus_TRANSCRIPT_ALIGNMENT_STATUS_REPAIRED        TranscriptAlignmentStatus = 2
+	TranscriptAlignmentStatus_TRANSCRIPT_ALIGNMENT_STATUS_MANUAL_FALLBACK TranscriptAlignmentStatus = 3
+	TranscriptAlignmentStatus_TRANSCRIPT_ALIGNMENT_STATUS_FAILED          TranscriptAlignmentStatus = 4
+)
+
+// Enum value maps for TranscriptAlignmentStatus.
+var (
+	TranscriptAlignmentStatus_name = map[int32]string{
+		0: "TRANSCRIPT_ALIGNMENT_STATUS_UNSPECIFIED",
+		1: "TRANSCRIPT_ALIGNMENT_STATUS_AUTO_ALIGNED",
+		2: "TRANSCRIPT_ALIGNMENT_STATUS_REPAIRED",
+		3: "TRANSCRIPT_ALIGNMENT_STATUS_MANUAL_FALLBACK",
+		4: "TRANSCRIPT_ALIGNMENT_STATUS_FAILED",
+	}
+	TranscriptAlignmentStatus_value = map[string]int32{
+		"TRANSCRIPT_ALIGNMENT_STATUS_UNSPECIFIED":     0,
+		"TRANSCRIPT_ALIGNMENT_STATUS_AUTO_ALIGNED":    1,
+		"TRANSCRIPT_ALIGNMENT_STATUS_REPAIRED":        2,
+		"TRANSCRIPT_ALIGNMENT_STATUS_MANUAL_FALLBACK": 3,
+		"TRANSCRIPT_ALIGNMENT_STATUS_FAILED":          4,
+	}
+)
+
+func (x TranscriptAlignmentStatus) Enum() *TranscriptAlignmentStatus {
+	p := new(TranscriptAlignmentStatus)
+	*p = x
+	return p
+}
+
+func (x TranscriptAlignmentStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TranscriptAlignmentStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_creativanta_production_v1_production_proto_enumTypes[8].Descriptor()
+}
+
+func (TranscriptAlignmentStatus) Type() protoreflect.EnumType {
+	return &file_creativanta_production_v1_production_proto_enumTypes[8]
+}
+
+func (x TranscriptAlignmentStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TranscriptAlignmentStatus.Descriptor instead.
+func (TranscriptAlignmentStatus) EnumDescriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{8}
+}
+
 // ProductionModeInfo describes an available production mode for launcher screens.
 type ProductionModeInfo struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
@@ -3048,6 +3103,1170 @@ func (x *UploadResponse) GetAsset() *Asset {
 	return nil
 }
 
+type TranscriptWord struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WordId        string                 `protobuf:"bytes,1,opt,name=word_id,json=wordId,proto3" json:"word_id,omitempty"`
+	Text          string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	StartMs       int64                  `protobuf:"varint,3,opt,name=start_ms,json=startMs,proto3" json:"start_ms,omitempty"`
+	EndMs         int64                  `protobuf:"varint,4,opt,name=end_ms,json=endMs,proto3" json:"end_ms,omitempty"`
+	Confidence    float64                `protobuf:"fixed64,5,opt,name=confidence,proto3" json:"confidence,omitempty"`
+	IsFiller      bool                   `protobuf:"varint,6,opt,name=is_filler,json=isFiller,proto3" json:"is_filler,omitempty"`
+	FillerType    string                 `protobuf:"bytes,7,opt,name=filler_type,json=fillerType,proto3" json:"filler_type,omitempty"`
+	IsDeleted     bool                   `protobuf:"varint,8,opt,name=is_deleted,json=isDeleted,proto3" json:"is_deleted,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TranscriptWord) Reset() {
+	*x = TranscriptWord{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TranscriptWord) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TranscriptWord) ProtoMessage() {}
+
+func (x *TranscriptWord) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TranscriptWord.ProtoReflect.Descriptor instead.
+func (*TranscriptWord) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *TranscriptWord) GetWordId() string {
+	if x != nil {
+		return x.WordId
+	}
+	return ""
+}
+
+func (x *TranscriptWord) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *TranscriptWord) GetStartMs() int64 {
+	if x != nil {
+		return x.StartMs
+	}
+	return 0
+}
+
+func (x *TranscriptWord) GetEndMs() int64 {
+	if x != nil {
+		return x.EndMs
+	}
+	return 0
+}
+
+func (x *TranscriptWord) GetConfidence() float64 {
+	if x != nil {
+		return x.Confidence
+	}
+	return 0
+}
+
+func (x *TranscriptWord) GetIsFiller() bool {
+	if x != nil {
+		return x.IsFiller
+	}
+	return false
+}
+
+func (x *TranscriptWord) GetFillerType() string {
+	if x != nil {
+		return x.FillerType
+	}
+	return ""
+}
+
+func (x *TranscriptWord) GetIsDeleted() bool {
+	if x != nil {
+		return x.IsDeleted
+	}
+	return false
+}
+
+type TranscriptSegment struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SegmentId     string                 `protobuf:"bytes,1,opt,name=segment_id,json=segmentId,proto3" json:"segment_id,omitempty"`
+	StartMs       int64                  `protobuf:"varint,2,opt,name=start_ms,json=startMs,proto3" json:"start_ms,omitempty"`
+	EndMs         int64                  `protobuf:"varint,3,opt,name=end_ms,json=endMs,proto3" json:"end_ms,omitempty"`
+	Text          string                 `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
+	SpeakerId     string                 `protobuf:"bytes,5,opt,name=speaker_id,json=speakerId,proto3" json:"speaker_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TranscriptSegment) Reset() {
+	*x = TranscriptSegment{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TranscriptSegment) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TranscriptSegment) ProtoMessage() {}
+
+func (x *TranscriptSegment) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TranscriptSegment.ProtoReflect.Descriptor instead.
+func (*TranscriptSegment) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *TranscriptSegment) GetSegmentId() string {
+	if x != nil {
+		return x.SegmentId
+	}
+	return ""
+}
+
+func (x *TranscriptSegment) GetStartMs() int64 {
+	if x != nil {
+		return x.StartMs
+	}
+	return 0
+}
+
+func (x *TranscriptSegment) GetEndMs() int64 {
+	if x != nil {
+		return x.EndMs
+	}
+	return 0
+}
+
+func (x *TranscriptSegment) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *TranscriptSegment) GetSpeakerId() string {
+	if x != nil {
+		return x.SpeakerId
+	}
+	return ""
+}
+
+type Transcript struct {
+	state           protoimpl.MessageState    `protogen:"open.v1"`
+	TranscriptId    string                    `protobuf:"bytes,1,opt,name=transcript_id,json=transcriptId,proto3" json:"transcript_id,omitempty"`
+	WorkspaceId     *v1.UUID                  `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	AssetId         string                    `protobuf:"bytes,3,opt,name=asset_id,json=assetId,proto3" json:"asset_id,omitempty"`
+	Language        string                    `protobuf:"bytes,4,opt,name=language,proto3" json:"language,omitempty"`
+	RawText         string                    `protobuf:"bytes,5,opt,name=raw_text,json=rawText,proto3" json:"raw_text,omitempty"`
+	Words           []*TranscriptWord         `protobuf:"bytes,6,rep,name=words,proto3" json:"words,omitempty"`
+	Segments        []*TranscriptSegment      `protobuf:"bytes,7,rep,name=segments,proto3" json:"segments,omitempty"`
+	FillerCount     int32                     `protobuf:"varint,8,opt,name=filler_count,json=fillerCount,proto3" json:"filler_count,omitempty"`
+	PauseCount      int32                     `protobuf:"varint,9,opt,name=pause_count,json=pauseCount,proto3" json:"pause_count,omitempty"`
+	AlignmentStatus TranscriptAlignmentStatus `protobuf:"varint,10,opt,name=alignment_status,json=alignmentStatus,proto3,enum=creativanta.production.v1.TranscriptAlignmentStatus" json:"alignment_status,omitempty"`
+	AlignmentError  string                    `protobuf:"bytes,11,opt,name=alignment_error,json=alignmentError,proto3" json:"alignment_error,omitempty"`
+	CreatedAt       *timestamppb.Timestamp    `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt       *timestamppb.Timestamp    `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *Transcript) Reset() {
+	*x = Transcript{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Transcript) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Transcript) ProtoMessage() {}
+
+func (x *Transcript) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Transcript.ProtoReflect.Descriptor instead.
+func (*Transcript) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *Transcript) GetTranscriptId() string {
+	if x != nil {
+		return x.TranscriptId
+	}
+	return ""
+}
+
+func (x *Transcript) GetWorkspaceId() *v1.UUID {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *Transcript) GetAssetId() string {
+	if x != nil {
+		return x.AssetId
+	}
+	return ""
+}
+
+func (x *Transcript) GetLanguage() string {
+	if x != nil {
+		return x.Language
+	}
+	return ""
+}
+
+func (x *Transcript) GetRawText() string {
+	if x != nil {
+		return x.RawText
+	}
+	return ""
+}
+
+func (x *Transcript) GetWords() []*TranscriptWord {
+	if x != nil {
+		return x.Words
+	}
+	return nil
+}
+
+func (x *Transcript) GetSegments() []*TranscriptSegment {
+	if x != nil {
+		return x.Segments
+	}
+	return nil
+}
+
+func (x *Transcript) GetFillerCount() int32 {
+	if x != nil {
+		return x.FillerCount
+	}
+	return 0
+}
+
+func (x *Transcript) GetPauseCount() int32 {
+	if x != nil {
+		return x.PauseCount
+	}
+	return 0
+}
+
+func (x *Transcript) GetAlignmentStatus() TranscriptAlignmentStatus {
+	if x != nil {
+		return x.AlignmentStatus
+	}
+	return TranscriptAlignmentStatus_TRANSCRIPT_ALIGNMENT_STATUS_UNSPECIFIED
+}
+
+func (x *Transcript) GetAlignmentError() string {
+	if x != nil {
+		return x.AlignmentError
+	}
+	return ""
+}
+
+func (x *Transcript) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Transcript) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+type DeadPause struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StartMs       int64                  `protobuf:"varint,1,opt,name=start_ms,json=startMs,proto3" json:"start_ms,omitempty"`
+	EndMs         int64                  `protobuf:"varint,2,opt,name=end_ms,json=endMs,proto3" json:"end_ms,omitempty"`
+	DurationMs    int64                  `protobuf:"varint,3,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeadPause) Reset() {
+	*x = DeadPause{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeadPause) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeadPause) ProtoMessage() {}
+
+func (x *DeadPause) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeadPause.ProtoReflect.Descriptor instead.
+func (*DeadPause) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *DeadPause) GetStartMs() int64 {
+	if x != nil {
+		return x.StartMs
+	}
+	return 0
+}
+
+func (x *DeadPause) GetEndMs() int64 {
+	if x != nil {
+		return x.EndMs
+	}
+	return 0
+}
+
+func (x *DeadPause) GetDurationMs() int64 {
+	if x != nil {
+		return x.DurationMs
+	}
+	return 0
+}
+
+type TranscriptAnalysis struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	FillerCount          int32                  `protobuf:"varint,1,opt,name=filler_count,json=fillerCount,proto3" json:"filler_count,omitempty"`
+	PauseCount           int32                  `protobuf:"varint,2,opt,name=pause_count,json=pauseCount,proto3" json:"pause_count,omitempty"`
+	HookQualityScore     float64                `protobuf:"fixed64,3,opt,name=hook_quality_score,json=hookQualityScore,proto3" json:"hook_quality_score,omitempty"`
+	EstimatedTimeSavedMs int64                  `protobuf:"varint,4,opt,name=estimated_time_saved_ms,json=estimatedTimeSavedMs,proto3" json:"estimated_time_saved_ms,omitempty"`
+	FinalDurationMs      int64                  `protobuf:"varint,5,opt,name=final_duration_ms,json=finalDurationMs,proto3" json:"final_duration_ms,omitempty"`
+	DetectedFillers      []string               `protobuf:"bytes,6,rep,name=detected_fillers,json=detectedFillers,proto3" json:"detected_fillers,omitempty"`
+	DeadPauses           []*DeadPause           `protobuf:"bytes,7,rep,name=dead_pauses,json=deadPauses,proto3" json:"dead_pauses,omitempty"`
+	HookFeedback         string                 `protobuf:"bytes,8,opt,name=hook_feedback,json=hookFeedback,proto3" json:"hook_feedback,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *TranscriptAnalysis) Reset() {
+	*x = TranscriptAnalysis{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TranscriptAnalysis) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TranscriptAnalysis) ProtoMessage() {}
+
+func (x *TranscriptAnalysis) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TranscriptAnalysis.ProtoReflect.Descriptor instead.
+func (*TranscriptAnalysis) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *TranscriptAnalysis) GetFillerCount() int32 {
+	if x != nil {
+		return x.FillerCount
+	}
+	return 0
+}
+
+func (x *TranscriptAnalysis) GetPauseCount() int32 {
+	if x != nil {
+		return x.PauseCount
+	}
+	return 0
+}
+
+func (x *TranscriptAnalysis) GetHookQualityScore() float64 {
+	if x != nil {
+		return x.HookQualityScore
+	}
+	return 0
+}
+
+func (x *TranscriptAnalysis) GetEstimatedTimeSavedMs() int64 {
+	if x != nil {
+		return x.EstimatedTimeSavedMs
+	}
+	return 0
+}
+
+func (x *TranscriptAnalysis) GetFinalDurationMs() int64 {
+	if x != nil {
+		return x.FinalDurationMs
+	}
+	return 0
+}
+
+func (x *TranscriptAnalysis) GetDetectedFillers() []string {
+	if x != nil {
+		return x.DetectedFillers
+	}
+	return nil
+}
+
+func (x *TranscriptAnalysis) GetDeadPauses() []*DeadPause {
+	if x != nil {
+		return x.DeadPauses
+	}
+	return nil
+}
+
+func (x *TranscriptAnalysis) GetHookFeedback() string {
+	if x != nil {
+		return x.HookFeedback
+	}
+	return ""
+}
+
+type TranscriptCorrection struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WordId        string                 `protobuf:"bytes,1,opt,name=word_id,json=wordId,proto3" json:"word_id,omitempty"`
+	CorrectedText string                 `protobuf:"bytes,2,opt,name=corrected_text,json=correctedText,proto3" json:"corrected_text,omitempty"`
+	NewStartMs    int64                  `protobuf:"varint,3,opt,name=new_start_ms,json=newStartMs,proto3" json:"new_start_ms,omitempty"`
+	NewEndMs      int64                  `protobuf:"varint,4,opt,name=new_end_ms,json=newEndMs,proto3" json:"new_end_ms,omitempty"`
+	MarkCut       bool                   `protobuf:"varint,5,opt,name=mark_cut,json=markCut,proto3" json:"mark_cut,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TranscriptCorrection) Reset() {
+	*x = TranscriptCorrection{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TranscriptCorrection) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TranscriptCorrection) ProtoMessage() {}
+
+func (x *TranscriptCorrection) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TranscriptCorrection.ProtoReflect.Descriptor instead.
+func (*TranscriptCorrection) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *TranscriptCorrection) GetWordId() string {
+	if x != nil {
+		return x.WordId
+	}
+	return ""
+}
+
+func (x *TranscriptCorrection) GetCorrectedText() string {
+	if x != nil {
+		return x.CorrectedText
+	}
+	return ""
+}
+
+func (x *TranscriptCorrection) GetNewStartMs() int64 {
+	if x != nil {
+		return x.NewStartMs
+	}
+	return 0
+}
+
+func (x *TranscriptCorrection) GetNewEndMs() int64 {
+	if x != nil {
+		return x.NewEndMs
+	}
+	return 0
+}
+
+func (x *TranscriptCorrection) GetMarkCut() bool {
+	if x != nil {
+		return x.MarkCut
+	}
+	return false
+}
+
+type CutInterval struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StartMs       int64                  `protobuf:"varint,1,opt,name=start_ms,json=startMs,proto3" json:"start_ms,omitempty"`
+	EndMs         int64                  `protobuf:"varint,2,opt,name=end_ms,json=endMs,proto3" json:"end_ms,omitempty"`
+	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CutInterval) Reset() {
+	*x = CutInterval{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CutInterval) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CutInterval) ProtoMessage() {}
+
+func (x *CutInterval) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CutInterval.ProtoReflect.Descriptor instead.
+func (*CutInterval) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *CutInterval) GetStartMs() int64 {
+	if x != nil {
+		return x.StartMs
+	}
+	return 0
+}
+
+func (x *CutInterval) GetEndMs() int64 {
+	if x != nil {
+		return x.EndMs
+	}
+	return 0
+}
+
+func (x *CutInterval) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type QuickEditAddons struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	AutoCaptions     bool                   `protobuf:"varint,1,opt,name=auto_captions,json=autoCaptions,proto3" json:"auto_captions,omitempty"`
+	CaptionStyle     string                 `protobuf:"bytes,2,opt,name=caption_style,json=captionStyle,proto3" json:"caption_style,omitempty"`
+	AddHook          bool                   `protobuf:"varint,3,opt,name=add_hook,json=addHook,proto3" json:"add_hook,omitempty"`
+	HookId           string                 `protobuf:"bytes,4,opt,name=hook_id,json=hookId,proto3" json:"hook_id,omitempty"`
+	HookType         string                 `protobuf:"bytes,5,opt,name=hook_type,json=hookType,proto3" json:"hook_type,omitempty"`
+	BeatSync         bool                   `protobuf:"varint,6,opt,name=beat_sync,json=beatSync,proto3" json:"beat_sync,omitempty"`
+	SoundId          string                 `protobuf:"bytes,7,opt,name=sound_id,json=soundId,proto3" json:"sound_id,omitempty"`
+	BRoll            bool                   `protobuf:"varint,8,opt,name=b_roll,json=bRoll,proto3" json:"b_roll,omitempty"`
+	BRollScene       string                 `protobuf:"bytes,9,opt,name=b_roll_scene,json=bRollScene,proto3" json:"b_roll_scene,omitempty"`
+	PlatformPreset   string                 `protobuf:"bytes,10,opt,name=platform_preset,json=platformPreset,proto3" json:"platform_preset,omitempty"`
+	AudioEnhancement bool                   `protobuf:"varint,11,opt,name=audio_enhancement,json=audioEnhancement,proto3" json:"audio_enhancement,omitempty"`
+	TargetLufs       float64                `protobuf:"fixed64,12,opt,name=target_lufs,json=targetLufs,proto3" json:"target_lufs,omitempty"`
+	ReframeRatio     string                 `protobuf:"bytes,13,opt,name=reframe_ratio,json=reframeRatio,proto3" json:"reframe_ratio,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *QuickEditAddons) Reset() {
+	*x = QuickEditAddons{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QuickEditAddons) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QuickEditAddons) ProtoMessage() {}
+
+func (x *QuickEditAddons) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QuickEditAddons.ProtoReflect.Descriptor instead.
+func (*QuickEditAddons) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *QuickEditAddons) GetAutoCaptions() bool {
+	if x != nil {
+		return x.AutoCaptions
+	}
+	return false
+}
+
+func (x *QuickEditAddons) GetCaptionStyle() string {
+	if x != nil {
+		return x.CaptionStyle
+	}
+	return ""
+}
+
+func (x *QuickEditAddons) GetAddHook() bool {
+	if x != nil {
+		return x.AddHook
+	}
+	return false
+}
+
+func (x *QuickEditAddons) GetHookId() string {
+	if x != nil {
+		return x.HookId
+	}
+	return ""
+}
+
+func (x *QuickEditAddons) GetHookType() string {
+	if x != nil {
+		return x.HookType
+	}
+	return ""
+}
+
+func (x *QuickEditAddons) GetBeatSync() bool {
+	if x != nil {
+		return x.BeatSync
+	}
+	return false
+}
+
+func (x *QuickEditAddons) GetSoundId() string {
+	if x != nil {
+		return x.SoundId
+	}
+	return ""
+}
+
+func (x *QuickEditAddons) GetBRoll() bool {
+	if x != nil {
+		return x.BRoll
+	}
+	return false
+}
+
+func (x *QuickEditAddons) GetBRollScene() string {
+	if x != nil {
+		return x.BRollScene
+	}
+	return ""
+}
+
+func (x *QuickEditAddons) GetPlatformPreset() string {
+	if x != nil {
+		return x.PlatformPreset
+	}
+	return ""
+}
+
+func (x *QuickEditAddons) GetAudioEnhancement() bool {
+	if x != nil {
+		return x.AudioEnhancement
+	}
+	return false
+}
+
+func (x *QuickEditAddons) GetTargetLufs() float64 {
+	if x != nil {
+		return x.TargetLufs
+	}
+	return 0
+}
+
+func (x *QuickEditAddons) GetReframeRatio() string {
+	if x != nil {
+		return x.ReframeRatio
+	}
+	return ""
+}
+
+type QuickEditPlan struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	AssetId             string                 `protobuf:"bytes,1,opt,name=asset_id,json=assetId,proto3" json:"asset_id,omitempty"`
+	TranscriptId        string                 `protobuf:"bytes,2,opt,name=transcript_id,json=transcriptId,proto3" json:"transcript_id,omitempty"`
+	Cuts                []*CutInterval         `protobuf:"bytes,3,rep,name=cuts,proto3" json:"cuts,omitempty"`
+	Addons              *QuickEditAddons       `protobuf:"bytes,4,opt,name=addons,proto3" json:"addons,omitempty"`
+	EstimatedCredits    string                 `protobuf:"bytes,5,opt,name=estimated_credits,json=estimatedCredits,proto3" json:"estimated_credits,omitempty"`
+	BalanceAfterCredits string                 `protobuf:"bytes,6,opt,name=balance_after_credits,json=balanceAfterCredits,proto3" json:"balance_after_credits,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *QuickEditPlan) Reset() {
+	*x = QuickEditPlan{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QuickEditPlan) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QuickEditPlan) ProtoMessage() {}
+
+func (x *QuickEditPlan) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QuickEditPlan.ProtoReflect.Descriptor instead.
+func (*QuickEditPlan) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *QuickEditPlan) GetAssetId() string {
+	if x != nil {
+		return x.AssetId
+	}
+	return ""
+}
+
+func (x *QuickEditPlan) GetTranscriptId() string {
+	if x != nil {
+		return x.TranscriptId
+	}
+	return ""
+}
+
+func (x *QuickEditPlan) GetCuts() []*CutInterval {
+	if x != nil {
+		return x.Cuts
+	}
+	return nil
+}
+
+func (x *QuickEditPlan) GetAddons() *QuickEditAddons {
+	if x != nil {
+		return x.Addons
+	}
+	return nil
+}
+
+func (x *QuickEditPlan) GetEstimatedCredits() string {
+	if x != nil {
+		return x.EstimatedCredits
+	}
+	return ""
+}
+
+func (x *QuickEditPlan) GetBalanceAfterCredits() string {
+	if x != nil {
+		return x.BalanceAfterCredits
+	}
+	return ""
+}
+
+type QuickEditDraft struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	DraftId          string                 `protobuf:"bytes,1,opt,name=draft_id,json=draftId,proto3" json:"draft_id,omitempty"`
+	WorkspaceId      *v1.UUID               `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	AssetId          string                 `protobuf:"bytes,3,opt,name=asset_id,json=assetId,proto3" json:"asset_id,omitempty"`
+	TranscriptId     string                 `protobuf:"bytes,4,opt,name=transcript_id,json=transcriptId,proto3" json:"transcript_id,omitempty"`
+	Name             string                 `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	Cuts             []*CutInterval         `protobuf:"bytes,6,rep,name=cuts,proto3" json:"cuts,omitempty"`
+	Addons           *QuickEditAddons       `protobuf:"bytes,7,opt,name=addons,proto3" json:"addons,omitempty"`
+	EstimatedCredits string                 `protobuf:"bytes,8,opt,name=estimated_credits,json=estimatedCredits,proto3" json:"estimated_credits,omitempty"`
+	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt        *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *QuickEditDraft) Reset() {
+	*x = QuickEditDraft{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QuickEditDraft) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QuickEditDraft) ProtoMessage() {}
+
+func (x *QuickEditDraft) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QuickEditDraft.ProtoReflect.Descriptor instead.
+func (*QuickEditDraft) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *QuickEditDraft) GetDraftId() string {
+	if x != nil {
+		return x.DraftId
+	}
+	return ""
+}
+
+func (x *QuickEditDraft) GetWorkspaceId() *v1.UUID {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *QuickEditDraft) GetAssetId() string {
+	if x != nil {
+		return x.AssetId
+	}
+	return ""
+}
+
+func (x *QuickEditDraft) GetTranscriptId() string {
+	if x != nil {
+		return x.TranscriptId
+	}
+	return ""
+}
+
+func (x *QuickEditDraft) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *QuickEditDraft) GetCuts() []*CutInterval {
+	if x != nil {
+		return x.Cuts
+	}
+	return nil
+}
+
+func (x *QuickEditDraft) GetAddons() *QuickEditAddons {
+	if x != nil {
+		return x.Addons
+	}
+	return nil
+}
+
+func (x *QuickEditDraft) GetEstimatedCredits() string {
+	if x != nil {
+		return x.EstimatedCredits
+	}
+	return ""
+}
+
+func (x *QuickEditDraft) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *QuickEditDraft) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+type QuickEditServiceSaveDraftRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Context          *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	DraftId          string                 `protobuf:"bytes,2,opt,name=draft_id,json=draftId,proto3" json:"draft_id,omitempty"`
+	AssetId          string                 `protobuf:"bytes,3,opt,name=asset_id,json=assetId,proto3" json:"asset_id,omitempty"`
+	TranscriptId     string                 `protobuf:"bytes,4,opt,name=transcript_id,json=transcriptId,proto3" json:"transcript_id,omitempty"`
+	Name             string                 `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	Cuts             []*CutInterval         `protobuf:"bytes,6,rep,name=cuts,proto3" json:"cuts,omitempty"`
+	Addons           *QuickEditAddons       `protobuf:"bytes,7,opt,name=addons,proto3" json:"addons,omitempty"`
+	EstimatedCredits string                 `protobuf:"bytes,8,opt,name=estimated_credits,json=estimatedCredits,proto3" json:"estimated_credits,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *QuickEditServiceSaveDraftRequest) Reset() {
+	*x = QuickEditServiceSaveDraftRequest{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QuickEditServiceSaveDraftRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QuickEditServiceSaveDraftRequest) ProtoMessage() {}
+
+func (x *QuickEditServiceSaveDraftRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QuickEditServiceSaveDraftRequest.ProtoReflect.Descriptor instead.
+func (*QuickEditServiceSaveDraftRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *QuickEditServiceSaveDraftRequest) GetContext() *v1.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *QuickEditServiceSaveDraftRequest) GetDraftId() string {
+	if x != nil {
+		return x.DraftId
+	}
+	return ""
+}
+
+func (x *QuickEditServiceSaveDraftRequest) GetAssetId() string {
+	if x != nil {
+		return x.AssetId
+	}
+	return ""
+}
+
+func (x *QuickEditServiceSaveDraftRequest) GetTranscriptId() string {
+	if x != nil {
+		return x.TranscriptId
+	}
+	return ""
+}
+
+func (x *QuickEditServiceSaveDraftRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *QuickEditServiceSaveDraftRequest) GetCuts() []*CutInterval {
+	if x != nil {
+		return x.Cuts
+	}
+	return nil
+}
+
+func (x *QuickEditServiceSaveDraftRequest) GetAddons() *QuickEditAddons {
+	if x != nil {
+		return x.Addons
+	}
+	return nil
+}
+
+func (x *QuickEditServiceSaveDraftRequest) GetEstimatedCredits() string {
+	if x != nil {
+		return x.EstimatedCredits
+	}
+	return ""
+}
+
+type QuickEditServiceSaveDraftResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Draft         *QuickEditDraft        `protobuf:"bytes,1,opt,name=draft,proto3" json:"draft,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *QuickEditServiceSaveDraftResponse) Reset() {
+	*x = QuickEditServiceSaveDraftResponse{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QuickEditServiceSaveDraftResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QuickEditServiceSaveDraftResponse) ProtoMessage() {}
+
+func (x *QuickEditServiceSaveDraftResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QuickEditServiceSaveDraftResponse.ProtoReflect.Descriptor instead.
+func (*QuickEditServiceSaveDraftResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *QuickEditServiceSaveDraftResponse) GetDraft() *QuickEditDraft {
+	if x != nil {
+		return x.Draft
+	}
+	return nil
+}
+
+type BeatSyncGrid struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	Bpm                  int32                  `protobuf:"varint,1,opt,name=bpm,proto3" json:"bpm,omitempty"`
+	BeatTimestampsMs     []int64                `protobuf:"varint,2,rep,packed,name=beat_timestamps_ms,json=beatTimestampsMs,proto3" json:"beat_timestamps_ms,omitempty"`
+	DownbeatTimestampsMs []int64                `protobuf:"varint,3,rep,packed,name=downbeat_timestamps_ms,json=downbeatTimestampsMs,proto3" json:"downbeat_timestamps_ms,omitempty"`
+	Confidence           float64                `protobuf:"fixed64,4,opt,name=confidence,proto3" json:"confidence,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *BeatSyncGrid) Reset() {
+	*x = BeatSyncGrid{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BeatSyncGrid) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BeatSyncGrid) ProtoMessage() {}
+
+func (x *BeatSyncGrid) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BeatSyncGrid.ProtoReflect.Descriptor instead.
+func (*BeatSyncGrid) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *BeatSyncGrid) GetBpm() int32 {
+	if x != nil {
+		return x.Bpm
+	}
+	return 0
+}
+
+func (x *BeatSyncGrid) GetBeatTimestampsMs() []int64 {
+	if x != nil {
+		return x.BeatTimestampsMs
+	}
+	return nil
+}
+
+func (x *BeatSyncGrid) GetDownbeatTimestampsMs() []int64 {
+	if x != nil {
+		return x.DownbeatTimestampsMs
+	}
+	return nil
+}
+
+func (x *BeatSyncGrid) GetConfidence() float64 {
+	if x != nil {
+		return x.Confidence
+	}
+	return 0
+}
+
 // TranslationJob represents a multi-language localization job per database_schema.md §22.6.
 type TranslationJob struct {
 	state                     protoimpl.MessageState `protogen:"open.v1"`
@@ -3077,7 +4296,7 @@ type TranslationJob struct {
 
 func (x *TranslationJob) Reset() {
 	*x = TranslationJob{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[32]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3089,7 +4308,7 @@ func (x *TranslationJob) String() string {
 func (*TranslationJob) ProtoMessage() {}
 
 func (x *TranslationJob) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[32]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3102,7 +4321,7 @@ func (x *TranslationJob) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TranslationJob.ProtoReflect.Descriptor instead.
 func (*TranslationJob) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{32}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *TranslationJob) GetTranslationJobId() string {
@@ -3262,7 +4481,7 @@ type TranslationSegment struct {
 
 func (x *TranslationSegment) Reset() {
 	*x = TranslationSegment{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[33]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3274,7 +4493,7 @@ func (x *TranslationSegment) String() string {
 func (*TranslationSegment) ProtoMessage() {}
 
 func (x *TranslationSegment) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[33]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3287,7 +4506,7 @@ func (x *TranslationSegment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TranslationSegment.ProtoReflect.Descriptor instead.
 func (*TranslationSegment) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{33}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *TranslationSegment) GetSegmentId() string {
@@ -3366,7 +4585,7 @@ type TranslationServiceCreateRequest struct {
 
 func (x *TranslationServiceCreateRequest) Reset() {
 	*x = TranslationServiceCreateRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[34]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3378,7 +4597,7 @@ func (x *TranslationServiceCreateRequest) String() string {
 func (*TranslationServiceCreateRequest) ProtoMessage() {}
 
 func (x *TranslationServiceCreateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[34]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3391,7 +4610,7 @@ func (x *TranslationServiceCreateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TranslationServiceCreateRequest.ProtoReflect.Descriptor instead.
 func (*TranslationServiceCreateRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{34}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *TranslationServiceCreateRequest) GetContext() *v1.CommandContext {
@@ -3489,7 +4708,7 @@ type TranslationServiceCreateResponse struct {
 
 func (x *TranslationServiceCreateResponse) Reset() {
 	*x = TranslationServiceCreateResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[35]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3501,7 +4720,7 @@ func (x *TranslationServiceCreateResponse) String() string {
 func (*TranslationServiceCreateResponse) ProtoMessage() {}
 
 func (x *TranslationServiceCreateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[35]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3514,7 +4733,7 @@ func (x *TranslationServiceCreateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TranslationServiceCreateResponse.ProtoReflect.Descriptor instead.
 func (*TranslationServiceCreateResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{35}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *TranslationServiceCreateResponse) GetJob() *TranslationJob {
@@ -3548,7 +4767,7 @@ type TranslationServiceGetRequest struct {
 
 func (x *TranslationServiceGetRequest) Reset() {
 	*x = TranslationServiceGetRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[36]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3560,7 +4779,7 @@ func (x *TranslationServiceGetRequest) String() string {
 func (*TranslationServiceGetRequest) ProtoMessage() {}
 
 func (x *TranslationServiceGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[36]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3573,7 +4792,7 @@ func (x *TranslationServiceGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TranslationServiceGetRequest.ProtoReflect.Descriptor instead.
 func (*TranslationServiceGetRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{36}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *TranslationServiceGetRequest) GetWorkspaceId() *v1.UUID {
@@ -3601,7 +4820,7 @@ type TranslationServiceGetResponse struct {
 
 func (x *TranslationServiceGetResponse) Reset() {
 	*x = TranslationServiceGetResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[37]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3613,7 +4832,7 @@ func (x *TranslationServiceGetResponse) String() string {
 func (*TranslationServiceGetResponse) ProtoMessage() {}
 
 func (x *TranslationServiceGetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[37]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3626,7 +4845,7 @@ func (x *TranslationServiceGetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TranslationServiceGetResponse.ProtoReflect.Descriptor instead.
 func (*TranslationServiceGetResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{37}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *TranslationServiceGetResponse) GetJob() *TranslationJob {
@@ -3660,7 +4879,7 @@ type TranslationServiceListRequest struct {
 
 func (x *TranslationServiceListRequest) Reset() {
 	*x = TranslationServiceListRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[38]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3672,7 +4891,7 @@ func (x *TranslationServiceListRequest) String() string {
 func (*TranslationServiceListRequest) ProtoMessage() {}
 
 func (x *TranslationServiceListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[38]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3685,7 +4904,7 @@ func (x *TranslationServiceListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TranslationServiceListRequest.ProtoReflect.Descriptor instead.
 func (*TranslationServiceListRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{38}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *TranslationServiceListRequest) GetWorkspaceId() *v1.UUID {
@@ -3712,7 +4931,7 @@ type TranslationServiceListResponse struct {
 
 func (x *TranslationServiceListResponse) Reset() {
 	*x = TranslationServiceListResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[39]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3724,7 +4943,7 @@ func (x *TranslationServiceListResponse) String() string {
 func (*TranslationServiceListResponse) ProtoMessage() {}
 
 func (x *TranslationServiceListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[39]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3737,7 +4956,7 @@ func (x *TranslationServiceListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TranslationServiceListResponse.ProtoReflect.Descriptor instead.
 func (*TranslationServiceListResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{39}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *TranslationServiceListResponse) GetJobs() []*TranslationJob {
@@ -3777,7 +4996,7 @@ type SoundTrack struct {
 
 func (x *SoundTrack) Reset() {
 	*x = SoundTrack{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[40]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3789,7 +5008,7 @@ func (x *SoundTrack) String() string {
 func (*SoundTrack) ProtoMessage() {}
 
 func (x *SoundTrack) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[40]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3802,7 +5021,7 @@ func (x *SoundTrack) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SoundTrack.ProtoReflect.Descriptor instead.
 func (*SoundTrack) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{40}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *SoundTrack) GetTrackId() string {
@@ -3920,7 +5139,7 @@ type SoundStudioServiceGenerateMusicRequest struct {
 
 func (x *SoundStudioServiceGenerateMusicRequest) Reset() {
 	*x = SoundStudioServiceGenerateMusicRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[41]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3932,7 +5151,7 @@ func (x *SoundStudioServiceGenerateMusicRequest) String() string {
 func (*SoundStudioServiceGenerateMusicRequest) ProtoMessage() {}
 
 func (x *SoundStudioServiceGenerateMusicRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[41]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3945,7 +5164,7 @@ func (x *SoundStudioServiceGenerateMusicRequest) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use SoundStudioServiceGenerateMusicRequest.ProtoReflect.Descriptor instead.
 func (*SoundStudioServiceGenerateMusicRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{41}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *SoundStudioServiceGenerateMusicRequest) GetContext() *v1.CommandContext {
@@ -4022,7 +5241,7 @@ type SoundStudioServiceGenerateMusicResponse struct {
 
 func (x *SoundStudioServiceGenerateMusicResponse) Reset() {
 	*x = SoundStudioServiceGenerateMusicResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[42]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4034,7 +5253,7 @@ func (x *SoundStudioServiceGenerateMusicResponse) String() string {
 func (*SoundStudioServiceGenerateMusicResponse) ProtoMessage() {}
 
 func (x *SoundStudioServiceGenerateMusicResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[42]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4047,7 +5266,7 @@ func (x *SoundStudioServiceGenerateMusicResponse) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use SoundStudioServiceGenerateMusicResponse.ProtoReflect.Descriptor instead.
 func (*SoundStudioServiceGenerateMusicResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{42}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *SoundStudioServiceGenerateMusicResponse) GetTrack() *SoundTrack {
@@ -4085,7 +5304,7 @@ type SoundStudioServiceGenerateSFXRequest struct {
 
 func (x *SoundStudioServiceGenerateSFXRequest) Reset() {
 	*x = SoundStudioServiceGenerateSFXRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[43]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4097,7 +5316,7 @@ func (x *SoundStudioServiceGenerateSFXRequest) String() string {
 func (*SoundStudioServiceGenerateSFXRequest) ProtoMessage() {}
 
 func (x *SoundStudioServiceGenerateSFXRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[43]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4110,7 +5329,7 @@ func (x *SoundStudioServiceGenerateSFXRequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use SoundStudioServiceGenerateSFXRequest.ProtoReflect.Descriptor instead.
 func (*SoundStudioServiceGenerateSFXRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{43}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *SoundStudioServiceGenerateSFXRequest) GetContext() *v1.CommandContext {
@@ -4166,7 +5385,7 @@ type SoundStudioServiceGenerateSFXResponse struct {
 
 func (x *SoundStudioServiceGenerateSFXResponse) Reset() {
 	*x = SoundStudioServiceGenerateSFXResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[44]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4178,7 +5397,7 @@ func (x *SoundStudioServiceGenerateSFXResponse) String() string {
 func (*SoundStudioServiceGenerateSFXResponse) ProtoMessage() {}
 
 func (x *SoundStudioServiceGenerateSFXResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[44]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4191,7 +5410,7 @@ func (x *SoundStudioServiceGenerateSFXResponse) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use SoundStudioServiceGenerateSFXResponse.ProtoReflect.Descriptor instead.
 func (*SoundStudioServiceGenerateSFXResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{44}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *SoundStudioServiceGenerateSFXResponse) GetTrack() *SoundTrack {
@@ -4226,7 +5445,7 @@ type SoundStudioServiceAnalyzeBeatRequest struct {
 
 func (x *SoundStudioServiceAnalyzeBeatRequest) Reset() {
 	*x = SoundStudioServiceAnalyzeBeatRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[45]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4238,7 +5457,7 @@ func (x *SoundStudioServiceAnalyzeBeatRequest) String() string {
 func (*SoundStudioServiceAnalyzeBeatRequest) ProtoMessage() {}
 
 func (x *SoundStudioServiceAnalyzeBeatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[45]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4251,7 +5470,7 @@ func (x *SoundStudioServiceAnalyzeBeatRequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use SoundStudioServiceAnalyzeBeatRequest.ProtoReflect.Descriptor instead.
 func (*SoundStudioServiceAnalyzeBeatRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{45}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *SoundStudioServiceAnalyzeBeatRequest) GetWorkspaceId() *v1.UUID {
@@ -4288,7 +5507,7 @@ type SoundStudioServiceAnalyzeBeatResponse struct {
 
 func (x *SoundStudioServiceAnalyzeBeatResponse) Reset() {
 	*x = SoundStudioServiceAnalyzeBeatResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[46]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4300,7 +5519,7 @@ func (x *SoundStudioServiceAnalyzeBeatResponse) String() string {
 func (*SoundStudioServiceAnalyzeBeatResponse) ProtoMessage() {}
 
 func (x *SoundStudioServiceAnalyzeBeatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[46]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4313,7 +5532,7 @@ func (x *SoundStudioServiceAnalyzeBeatResponse) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use SoundStudioServiceAnalyzeBeatResponse.ProtoReflect.Descriptor instead.
 func (*SoundStudioServiceAnalyzeBeatResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{46}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *SoundStudioServiceAnalyzeBeatResponse) GetBpm() float64 {
@@ -4364,7 +5583,7 @@ type SoundStudioServiceListSoundLibraryRequest struct {
 
 func (x *SoundStudioServiceListSoundLibraryRequest) Reset() {
 	*x = SoundStudioServiceListSoundLibraryRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[47]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4376,7 +5595,7 @@ func (x *SoundStudioServiceListSoundLibraryRequest) String() string {
 func (*SoundStudioServiceListSoundLibraryRequest) ProtoMessage() {}
 
 func (x *SoundStudioServiceListSoundLibraryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[47]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4389,7 +5608,7 @@ func (x *SoundStudioServiceListSoundLibraryRequest) ProtoReflect() protoreflect.
 
 // Deprecated: Use SoundStudioServiceListSoundLibraryRequest.ProtoReflect.Descriptor instead.
 func (*SoundStudioServiceListSoundLibraryRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{47}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *SoundStudioServiceListSoundLibraryRequest) GetWorkspaceId() *v1.UUID {
@@ -4437,7 +5656,7 @@ type SoundStudioServiceListSoundLibraryResponse struct {
 
 func (x *SoundStudioServiceListSoundLibraryResponse) Reset() {
 	*x = SoundStudioServiceListSoundLibraryResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[48]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4449,7 +5668,7 @@ func (x *SoundStudioServiceListSoundLibraryResponse) String() string {
 func (*SoundStudioServiceListSoundLibraryResponse) ProtoMessage() {}
 
 func (x *SoundStudioServiceListSoundLibraryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[48]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4462,7 +5681,7 @@ func (x *SoundStudioServiceListSoundLibraryResponse) ProtoReflect() protoreflect
 
 // Deprecated: Use SoundStudioServiceListSoundLibraryResponse.ProtoReflect.Descriptor instead.
 func (*SoundStudioServiceListSoundLibraryResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{48}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *SoundStudioServiceListSoundLibraryResponse) GetTracks() []*SoundTrack {
@@ -4489,7 +5708,7 @@ type SoundStudioServiceGetSoundRequest struct {
 
 func (x *SoundStudioServiceGetSoundRequest) Reset() {
 	*x = SoundStudioServiceGetSoundRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[49]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4501,7 +5720,7 @@ func (x *SoundStudioServiceGetSoundRequest) String() string {
 func (*SoundStudioServiceGetSoundRequest) ProtoMessage() {}
 
 func (x *SoundStudioServiceGetSoundRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[49]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4514,7 +5733,7 @@ func (x *SoundStudioServiceGetSoundRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use SoundStudioServiceGetSoundRequest.ProtoReflect.Descriptor instead.
 func (*SoundStudioServiceGetSoundRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{49}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *SoundStudioServiceGetSoundRequest) GetWorkspaceId() *v1.UUID {
@@ -4540,7 +5759,7 @@ type SoundStudioServiceGetSoundResponse struct {
 
 func (x *SoundStudioServiceGetSoundResponse) Reset() {
 	*x = SoundStudioServiceGetSoundResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[50]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4552,7 +5771,7 @@ func (x *SoundStudioServiceGetSoundResponse) String() string {
 func (*SoundStudioServiceGetSoundResponse) ProtoMessage() {}
 
 func (x *SoundStudioServiceGetSoundResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[50]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4565,7 +5784,7 @@ func (x *SoundStudioServiceGetSoundResponse) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use SoundStudioServiceGetSoundResponse.ProtoReflect.Descriptor instead.
 func (*SoundStudioServiceGetSoundResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{50}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *SoundStudioServiceGetSoundResponse) GetTrack() *SoundTrack {
@@ -4587,7 +5806,7 @@ type SoundStudioServicePreviewSoundRequest struct {
 
 func (x *SoundStudioServicePreviewSoundRequest) Reset() {
 	*x = SoundStudioServicePreviewSoundRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[51]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4599,7 +5818,7 @@ func (x *SoundStudioServicePreviewSoundRequest) String() string {
 func (*SoundStudioServicePreviewSoundRequest) ProtoMessage() {}
 
 func (x *SoundStudioServicePreviewSoundRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[51]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4612,7 +5831,7 @@ func (x *SoundStudioServicePreviewSoundRequest) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use SoundStudioServicePreviewSoundRequest.ProtoReflect.Descriptor instead.
 func (*SoundStudioServicePreviewSoundRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{51}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *SoundStudioServicePreviewSoundRequest) GetWorkspaceId() *v1.UUID {
@@ -4654,7 +5873,7 @@ type SoundStudioServicePreviewSoundResponse struct {
 
 func (x *SoundStudioServicePreviewSoundResponse) Reset() {
 	*x = SoundStudioServicePreviewSoundResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[52]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4666,7 +5885,7 @@ func (x *SoundStudioServicePreviewSoundResponse) String() string {
 func (*SoundStudioServicePreviewSoundResponse) ProtoMessage() {}
 
 func (x *SoundStudioServicePreviewSoundResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[52]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4679,7 +5898,7 @@ func (x *SoundStudioServicePreviewSoundResponse) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use SoundStudioServicePreviewSoundResponse.ProtoReflect.Descriptor instead.
 func (*SoundStudioServicePreviewSoundResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{52}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *SoundStudioServicePreviewSoundResponse) GetPreviewUrl() string {
@@ -4725,7 +5944,7 @@ type VoiceCloneRecord struct {
 
 func (x *VoiceCloneRecord) Reset() {
 	*x = VoiceCloneRecord{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[53]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4737,7 +5956,7 @@ func (x *VoiceCloneRecord) String() string {
 func (*VoiceCloneRecord) ProtoMessage() {}
 
 func (x *VoiceCloneRecord) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[53]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4750,7 +5969,7 @@ func (x *VoiceCloneRecord) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VoiceCloneRecord.ProtoReflect.Descriptor instead.
 func (*VoiceCloneRecord) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{53}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *VoiceCloneRecord) GetVoiceCloneId() string {
@@ -4861,7 +6080,7 @@ type VoiceCloneServiceCreateRequest struct {
 
 func (x *VoiceCloneServiceCreateRequest) Reset() {
 	*x = VoiceCloneServiceCreateRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[54]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4873,7 +6092,7 @@ func (x *VoiceCloneServiceCreateRequest) String() string {
 func (*VoiceCloneServiceCreateRequest) ProtoMessage() {}
 
 func (x *VoiceCloneServiceCreateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[54]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4886,7 +6105,7 @@ func (x *VoiceCloneServiceCreateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VoiceCloneServiceCreateRequest.ProtoReflect.Descriptor instead.
 func (*VoiceCloneServiceCreateRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{54}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *VoiceCloneServiceCreateRequest) GetContext() *v1.CommandContext {
@@ -4965,7 +6184,7 @@ type VoiceCloneServiceCreateResponse struct {
 
 func (x *VoiceCloneServiceCreateResponse) Reset() {
 	*x = VoiceCloneServiceCreateResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[55]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4977,7 +6196,7 @@ func (x *VoiceCloneServiceCreateResponse) String() string {
 func (*VoiceCloneServiceCreateResponse) ProtoMessage() {}
 
 func (x *VoiceCloneServiceCreateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[55]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4990,7 +6209,7 @@ func (x *VoiceCloneServiceCreateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VoiceCloneServiceCreateResponse.ProtoReflect.Descriptor instead.
 func (*VoiceCloneServiceCreateResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{55}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *VoiceCloneServiceCreateResponse) GetRecord() *VoiceCloneRecord {
@@ -5038,7 +6257,7 @@ type VoiceCloneServiceGetRequest struct {
 
 func (x *VoiceCloneServiceGetRequest) Reset() {
 	*x = VoiceCloneServiceGetRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[56]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5050,7 +6269,7 @@ func (x *VoiceCloneServiceGetRequest) String() string {
 func (*VoiceCloneServiceGetRequest) ProtoMessage() {}
 
 func (x *VoiceCloneServiceGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[56]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5063,7 +6282,7 @@ func (x *VoiceCloneServiceGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VoiceCloneServiceGetRequest.ProtoReflect.Descriptor instead.
 func (*VoiceCloneServiceGetRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{56}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *VoiceCloneServiceGetRequest) GetWorkspaceId() *v1.UUID {
@@ -5089,7 +6308,7 @@ type VoiceCloneServiceGetResponse struct {
 
 func (x *VoiceCloneServiceGetResponse) Reset() {
 	*x = VoiceCloneServiceGetResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[57]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5101,7 +6320,7 @@ func (x *VoiceCloneServiceGetResponse) String() string {
 func (*VoiceCloneServiceGetResponse) ProtoMessage() {}
 
 func (x *VoiceCloneServiceGetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[57]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5114,7 +6333,7 @@ func (x *VoiceCloneServiceGetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VoiceCloneServiceGetResponse.ProtoReflect.Descriptor instead.
 func (*VoiceCloneServiceGetResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{57}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *VoiceCloneServiceGetResponse) GetRecord() *VoiceCloneRecord {
@@ -5135,7 +6354,7 @@ type VoiceCloneServiceListRequest struct {
 
 func (x *VoiceCloneServiceListRequest) Reset() {
 	*x = VoiceCloneServiceListRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[58]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5147,7 +6366,7 @@ func (x *VoiceCloneServiceListRequest) String() string {
 func (*VoiceCloneServiceListRequest) ProtoMessage() {}
 
 func (x *VoiceCloneServiceListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[58]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5160,7 +6379,7 @@ func (x *VoiceCloneServiceListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VoiceCloneServiceListRequest.ProtoReflect.Descriptor instead.
 func (*VoiceCloneServiceListRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{58}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *VoiceCloneServiceListRequest) GetWorkspaceId() *v1.UUID {
@@ -5194,7 +6413,7 @@ type VoiceCloneServiceListResponse struct {
 
 func (x *VoiceCloneServiceListResponse) Reset() {
 	*x = VoiceCloneServiceListResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[59]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5206,7 +6425,7 @@ func (x *VoiceCloneServiceListResponse) String() string {
 func (*VoiceCloneServiceListResponse) ProtoMessage() {}
 
 func (x *VoiceCloneServiceListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[59]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5219,7 +6438,7 @@ func (x *VoiceCloneServiceListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VoiceCloneServiceListResponse.ProtoReflect.Descriptor instead.
 func (*VoiceCloneServiceListResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{59}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *VoiceCloneServiceListResponse) GetRecords() []*VoiceCloneRecord {
@@ -5247,7 +6466,7 @@ type VoiceCloneServiceDeleteRequest struct {
 
 func (x *VoiceCloneServiceDeleteRequest) Reset() {
 	*x = VoiceCloneServiceDeleteRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[60]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5259,7 +6478,7 @@ func (x *VoiceCloneServiceDeleteRequest) String() string {
 func (*VoiceCloneServiceDeleteRequest) ProtoMessage() {}
 
 func (x *VoiceCloneServiceDeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[60]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5272,7 +6491,7 @@ func (x *VoiceCloneServiceDeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VoiceCloneServiceDeleteRequest.ProtoReflect.Descriptor instead.
 func (*VoiceCloneServiceDeleteRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{60}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *VoiceCloneServiceDeleteRequest) GetContext() *v1.CommandContext {
@@ -5307,7 +6526,7 @@ type VoiceCloneServiceDeleteResponse struct {
 
 func (x *VoiceCloneServiceDeleteResponse) Reset() {
 	*x = VoiceCloneServiceDeleteResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[61]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5319,7 +6538,7 @@ func (x *VoiceCloneServiceDeleteResponse) String() string {
 func (*VoiceCloneServiceDeleteResponse) ProtoMessage() {}
 
 func (x *VoiceCloneServiceDeleteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[61]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5332,7 +6551,7 @@ func (x *VoiceCloneServiceDeleteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VoiceCloneServiceDeleteResponse.ProtoReflect.Descriptor instead.
 func (*VoiceCloneServiceDeleteResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{61}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *VoiceCloneServiceDeleteResponse) GetSuccess() bool {
@@ -5372,7 +6591,7 @@ type VoiceCloneServiceGenerateVoiceoverRequest struct {
 
 func (x *VoiceCloneServiceGenerateVoiceoverRequest) Reset() {
 	*x = VoiceCloneServiceGenerateVoiceoverRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[62]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5384,7 +6603,7 @@ func (x *VoiceCloneServiceGenerateVoiceoverRequest) String() string {
 func (*VoiceCloneServiceGenerateVoiceoverRequest) ProtoMessage() {}
 
 func (x *VoiceCloneServiceGenerateVoiceoverRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[62]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5397,7 +6616,7 @@ func (x *VoiceCloneServiceGenerateVoiceoverRequest) ProtoReflect() protoreflect.
 
 // Deprecated: Use VoiceCloneServiceGenerateVoiceoverRequest.ProtoReflect.Descriptor instead.
 func (*VoiceCloneServiceGenerateVoiceoverRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{62}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *VoiceCloneServiceGenerateVoiceoverRequest) GetContext() *v1.CommandContext {
@@ -5468,7 +6687,7 @@ type VoiceCloneServiceGenerateVoiceoverResponse struct {
 
 func (x *VoiceCloneServiceGenerateVoiceoverResponse) Reset() {
 	*x = VoiceCloneServiceGenerateVoiceoverResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[63]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5480,7 +6699,7 @@ func (x *VoiceCloneServiceGenerateVoiceoverResponse) String() string {
 func (*VoiceCloneServiceGenerateVoiceoverResponse) ProtoMessage() {}
 
 func (x *VoiceCloneServiceGenerateVoiceoverResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[63]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5493,7 +6712,7 @@ func (x *VoiceCloneServiceGenerateVoiceoverResponse) ProtoReflect() protoreflect
 
 // Deprecated: Use VoiceCloneServiceGenerateVoiceoverResponse.ProtoReflect.Descriptor instead.
 func (*VoiceCloneServiceGenerateVoiceoverResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{63}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *VoiceCloneServiceGenerateVoiceoverResponse) GetAssetId() string {
@@ -5535,7 +6754,7 @@ type VoiceCloneServiceGetConsentStatusRequest struct {
 
 func (x *VoiceCloneServiceGetConsentStatusRequest) Reset() {
 	*x = VoiceCloneServiceGetConsentStatusRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[64]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5547,7 +6766,7 @@ func (x *VoiceCloneServiceGetConsentStatusRequest) String() string {
 func (*VoiceCloneServiceGetConsentStatusRequest) ProtoMessage() {}
 
 func (x *VoiceCloneServiceGetConsentStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[64]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5560,7 +6779,7 @@ func (x *VoiceCloneServiceGetConsentStatusRequest) ProtoReflect() protoreflect.M
 
 // Deprecated: Use VoiceCloneServiceGetConsentStatusRequest.ProtoReflect.Descriptor instead.
 func (*VoiceCloneServiceGetConsentStatusRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{64}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *VoiceCloneServiceGetConsentStatusRequest) GetWorkspaceId() *v1.UUID {
@@ -5598,7 +6817,7 @@ type VoiceCloneServiceGetConsentStatusResponse struct {
 
 func (x *VoiceCloneServiceGetConsentStatusResponse) Reset() {
 	*x = VoiceCloneServiceGetConsentStatusResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[65]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5610,7 +6829,7 @@ func (x *VoiceCloneServiceGetConsentStatusResponse) String() string {
 func (*VoiceCloneServiceGetConsentStatusResponse) ProtoMessage() {}
 
 func (x *VoiceCloneServiceGetConsentStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[65]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5623,7 +6842,7 @@ func (x *VoiceCloneServiceGetConsentStatusResponse) ProtoReflect() protoreflect.
 
 // Deprecated: Use VoiceCloneServiceGetConsentStatusResponse.ProtoReflect.Descriptor instead.
 func (*VoiceCloneServiceGetConsentStatusResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{65}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *VoiceCloneServiceGetConsentStatusResponse) GetConsentRecordId() string {
@@ -5686,7 +6905,7 @@ type CreativeDna struct {
 
 func (x *CreativeDna) Reset() {
 	*x = CreativeDna{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[66]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5698,7 +6917,7 @@ func (x *CreativeDna) String() string {
 func (*CreativeDna) ProtoMessage() {}
 
 func (x *CreativeDna) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[66]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5711,7 +6930,7 @@ func (x *CreativeDna) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreativeDna.ProtoReflect.Descriptor instead.
 func (*CreativeDna) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{66}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *CreativeDna) GetSceneCount() int32 {
@@ -5802,7 +7021,7 @@ type RemixBlueprint struct {
 
 func (x *RemixBlueprint) Reset() {
 	*x = RemixBlueprint{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[67]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5814,7 +7033,7 @@ func (x *RemixBlueprint) String() string {
 func (*RemixBlueprint) ProtoMessage() {}
 
 func (x *RemixBlueprint) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[67]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5827,7 +7046,7 @@ func (x *RemixBlueprint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemixBlueprint.ProtoReflect.Descriptor instead.
 func (*RemixBlueprint) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{67}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *RemixBlueprint) GetBlueprintId() string {
@@ -5957,7 +7176,7 @@ type OriginalityCheckResult struct {
 
 func (x *OriginalityCheckResult) Reset() {
 	*x = OriginalityCheckResult{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[68]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5969,7 +7188,7 @@ func (x *OriginalityCheckResult) String() string {
 func (*OriginalityCheckResult) ProtoMessage() {}
 
 func (x *OriginalityCheckResult) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[68]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5982,7 +7201,7 @@ func (x *OriginalityCheckResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OriginalityCheckResult.ProtoReflect.Descriptor instead.
 func (*OriginalityCheckResult) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{68}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *OriginalityCheckResult) GetSimilarityPercentage() float64 {
@@ -6047,7 +7266,7 @@ type CopyrightCheckResult struct {
 
 func (x *CopyrightCheckResult) Reset() {
 	*x = CopyrightCheckResult{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[69]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6059,7 +7278,7 @@ func (x *CopyrightCheckResult) String() string {
 func (*CopyrightCheckResult) ProtoMessage() {}
 
 func (x *CopyrightCheckResult) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[69]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6072,7 +7291,7 @@ func (x *CopyrightCheckResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CopyrightCheckResult.ProtoReflect.Descriptor instead.
 func (*CopyrightCheckResult) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{69}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *CopyrightCheckResult) GetMediaId() string {
@@ -6170,7 +7389,7 @@ type MultiMergeTimelineItem struct {
 
 func (x *MultiMergeTimelineItem) Reset() {
 	*x = MultiMergeTimelineItem{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[70]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6182,7 +7401,7 @@ func (x *MultiMergeTimelineItem) String() string {
 func (*MultiMergeTimelineItem) ProtoMessage() {}
 
 func (x *MultiMergeTimelineItem) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[70]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6195,7 +7414,7 @@ func (x *MultiMergeTimelineItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MultiMergeTimelineItem.ProtoReflect.Descriptor instead.
 func (*MultiMergeTimelineItem) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{70}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *MultiMergeTimelineItem) GetItemId() string {
@@ -6279,7 +7498,7 @@ type MultiMergeSettings struct {
 
 func (x *MultiMergeSettings) Reset() {
 	*x = MultiMergeSettings{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[71]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6291,7 +7510,7 @@ func (x *MultiMergeSettings) String() string {
 func (*MultiMergeSettings) ProtoMessage() {}
 
 func (x *MultiMergeSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[71]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6304,7 +7523,7 @@ func (x *MultiMergeSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MultiMergeSettings.ProtoReflect.Descriptor instead.
 func (*MultiMergeSettings) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{71}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *MultiMergeSettings) GetTargetDurationSeconds() float64 {
@@ -6398,7 +7617,7 @@ type VideoEditJob struct {
 
 func (x *VideoEditJob) Reset() {
 	*x = VideoEditJob{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[72]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6410,7 +7629,7 @@ func (x *VideoEditJob) String() string {
 func (*VideoEditJob) ProtoMessage() {}
 
 func (x *VideoEditJob) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[72]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6423,7 +7642,7 @@ func (x *VideoEditJob) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VideoEditJob.ProtoReflect.Descriptor instead.
 func (*VideoEditJob) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{72}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *VideoEditJob) GetJobId() string {
@@ -6578,7 +7797,7 @@ type RemixServiceAnalyzeRequest struct {
 
 func (x *RemixServiceAnalyzeRequest) Reset() {
 	*x = RemixServiceAnalyzeRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[73]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6590,7 +7809,7 @@ func (x *RemixServiceAnalyzeRequest) String() string {
 func (*RemixServiceAnalyzeRequest) ProtoMessage() {}
 
 func (x *RemixServiceAnalyzeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[73]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6603,7 +7822,7 @@ func (x *RemixServiceAnalyzeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemixServiceAnalyzeRequest.ProtoReflect.Descriptor instead.
 func (*RemixServiceAnalyzeRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{73}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *RemixServiceAnalyzeRequest) GetContext() *v1.CommandContext {
@@ -6672,7 +7891,7 @@ type RemixServiceAnalyzeResponse struct {
 
 func (x *RemixServiceAnalyzeResponse) Reset() {
 	*x = RemixServiceAnalyzeResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[74]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6684,7 +7903,7 @@ func (x *RemixServiceAnalyzeResponse) String() string {
 func (*RemixServiceAnalyzeResponse) ProtoMessage() {}
 
 func (x *RemixServiceAnalyzeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[74]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6697,7 +7916,7 @@ func (x *RemixServiceAnalyzeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemixServiceAnalyzeResponse.ProtoReflect.Descriptor instead.
 func (*RemixServiceAnalyzeResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{74}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *RemixServiceAnalyzeResponse) GetBlueprint() *RemixBlueprint {
@@ -6724,7 +7943,7 @@ type RemixServiceGetBlueprintRequest struct {
 
 func (x *RemixServiceGetBlueprintRequest) Reset() {
 	*x = RemixServiceGetBlueprintRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[75]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6736,7 +7955,7 @@ func (x *RemixServiceGetBlueprintRequest) String() string {
 func (*RemixServiceGetBlueprintRequest) ProtoMessage() {}
 
 func (x *RemixServiceGetBlueprintRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[75]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6749,7 +7968,7 @@ func (x *RemixServiceGetBlueprintRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemixServiceGetBlueprintRequest.ProtoReflect.Descriptor instead.
 func (*RemixServiceGetBlueprintRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{75}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *RemixServiceGetBlueprintRequest) GetWorkspaceId() *v1.UUID {
@@ -6775,7 +7994,7 @@ type RemixServiceGetBlueprintResponse struct {
 
 func (x *RemixServiceGetBlueprintResponse) Reset() {
 	*x = RemixServiceGetBlueprintResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[76]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6787,7 +8006,7 @@ func (x *RemixServiceGetBlueprintResponse) String() string {
 func (*RemixServiceGetBlueprintResponse) ProtoMessage() {}
 
 func (x *RemixServiceGetBlueprintResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[76]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6800,7 +8019,7 @@ func (x *RemixServiceGetBlueprintResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemixServiceGetBlueprintResponse.ProtoReflect.Descriptor instead.
 func (*RemixServiceGetBlueprintResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{76}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *RemixServiceGetBlueprintResponse) GetBlueprint() *RemixBlueprint {
@@ -6826,7 +8045,7 @@ type RemixServiceGenerateRequest struct {
 
 func (x *RemixServiceGenerateRequest) Reset() {
 	*x = RemixServiceGenerateRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[77]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6838,7 +8057,7 @@ func (x *RemixServiceGenerateRequest) String() string {
 func (*RemixServiceGenerateRequest) ProtoMessage() {}
 
 func (x *RemixServiceGenerateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[77]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6851,7 +8070,7 @@ func (x *RemixServiceGenerateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemixServiceGenerateRequest.ProtoReflect.Descriptor instead.
 func (*RemixServiceGenerateRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{77}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *RemixServiceGenerateRequest) GetContext() *v1.CommandContext {
@@ -6924,7 +8143,7 @@ type RemixServiceGenerateResponse struct {
 
 func (x *RemixServiceGenerateResponse) Reset() {
 	*x = RemixServiceGenerateResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[78]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6936,7 +8155,7 @@ func (x *RemixServiceGenerateResponse) String() string {
 func (*RemixServiceGenerateResponse) ProtoMessage() {}
 
 func (x *RemixServiceGenerateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[78]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6949,7 +8168,7 @@ func (x *RemixServiceGenerateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemixServiceGenerateResponse.ProtoReflect.Descriptor instead.
 func (*RemixServiceGenerateResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{78}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *RemixServiceGenerateResponse) GetBlueprint() *RemixBlueprint {
@@ -7007,7 +8226,7 @@ type RemixServiceRegenerateRequest struct {
 
 func (x *RemixServiceRegenerateRequest) Reset() {
 	*x = RemixServiceRegenerateRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[79]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7019,7 +8238,7 @@ func (x *RemixServiceRegenerateRequest) String() string {
 func (*RemixServiceRegenerateRequest) ProtoMessage() {}
 
 func (x *RemixServiceRegenerateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[79]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7032,7 +8251,7 @@ func (x *RemixServiceRegenerateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemixServiceRegenerateRequest.ProtoReflect.Descriptor instead.
 func (*RemixServiceRegenerateRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{79}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *RemixServiceRegenerateRequest) GetContext() *v1.CommandContext {
@@ -7082,7 +8301,7 @@ type RemixServiceRegenerateResponse struct {
 
 func (x *RemixServiceRegenerateResponse) Reset() {
 	*x = RemixServiceRegenerateResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[80]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7094,7 +8313,7 @@ func (x *RemixServiceRegenerateResponse) String() string {
 func (*RemixServiceRegenerateResponse) ProtoMessage() {}
 
 func (x *RemixServiceRegenerateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[80]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7107,7 +8326,7 @@ func (x *RemixServiceRegenerateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemixServiceRegenerateResponse.ProtoReflect.Descriptor instead.
 func (*RemixServiceRegenerateResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{80}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *RemixServiceRegenerateResponse) GetBlueprint() *RemixBlueprint {
@@ -7157,7 +8376,7 @@ type VideoEditJobServiceCreateRequest struct {
 
 func (x *VideoEditJobServiceCreateRequest) Reset() {
 	*x = VideoEditJobServiceCreateRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[81]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7169,7 +8388,7 @@ func (x *VideoEditJobServiceCreateRequest) String() string {
 func (*VideoEditJobServiceCreateRequest) ProtoMessage() {}
 
 func (x *VideoEditJobServiceCreateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[81]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7182,7 +8401,7 @@ func (x *VideoEditJobServiceCreateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VideoEditJobServiceCreateRequest.ProtoReflect.Descriptor instead.
 func (*VideoEditJobServiceCreateRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{81}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *VideoEditJobServiceCreateRequest) GetContext() *v1.CommandContext {
@@ -7253,7 +8472,7 @@ type VideoEditJobServiceCreateResponse struct {
 
 func (x *VideoEditJobServiceCreateResponse) Reset() {
 	*x = VideoEditJobServiceCreateResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[82]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7265,7 +8484,7 @@ func (x *VideoEditJobServiceCreateResponse) String() string {
 func (*VideoEditJobServiceCreateResponse) ProtoMessage() {}
 
 func (x *VideoEditJobServiceCreateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[82]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7278,7 +8497,7 @@ func (x *VideoEditJobServiceCreateResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use VideoEditJobServiceCreateResponse.ProtoReflect.Descriptor instead.
 func (*VideoEditJobServiceCreateResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{82}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{95}
 }
 
 func (x *VideoEditJobServiceCreateResponse) GetJob() *VideoEditJob {
@@ -7319,7 +8538,7 @@ type VideoEditJobServiceGetRequest struct {
 
 func (x *VideoEditJobServiceGetRequest) Reset() {
 	*x = VideoEditJobServiceGetRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[83]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7331,7 +8550,7 @@ func (x *VideoEditJobServiceGetRequest) String() string {
 func (*VideoEditJobServiceGetRequest) ProtoMessage() {}
 
 func (x *VideoEditJobServiceGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[83]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7344,7 +8563,7 @@ func (x *VideoEditJobServiceGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VideoEditJobServiceGetRequest.ProtoReflect.Descriptor instead.
 func (*VideoEditJobServiceGetRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{83}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *VideoEditJobServiceGetRequest) GetWorkspaceId() *v1.UUID {
@@ -7370,7 +8589,7 @@ type VideoEditJobServiceGetResponse struct {
 
 func (x *VideoEditJobServiceGetResponse) Reset() {
 	*x = VideoEditJobServiceGetResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[84]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7382,7 +8601,7 @@ func (x *VideoEditJobServiceGetResponse) String() string {
 func (*VideoEditJobServiceGetResponse) ProtoMessage() {}
 
 func (x *VideoEditJobServiceGetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[84]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7395,7 +8614,7 @@ func (x *VideoEditJobServiceGetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VideoEditJobServiceGetResponse.ProtoReflect.Descriptor instead.
 func (*VideoEditJobServiceGetResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{84}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *VideoEditJobServiceGetResponse) GetJob() *VideoEditJob {
@@ -7417,7 +8636,7 @@ type VideoEditJobServiceListRequest struct {
 
 func (x *VideoEditJobServiceListRequest) Reset() {
 	*x = VideoEditJobServiceListRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[85]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[98]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7429,7 +8648,7 @@ func (x *VideoEditJobServiceListRequest) String() string {
 func (*VideoEditJobServiceListRequest) ProtoMessage() {}
 
 func (x *VideoEditJobServiceListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[85]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[98]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7442,7 +8661,7 @@ func (x *VideoEditJobServiceListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VideoEditJobServiceListRequest.ProtoReflect.Descriptor instead.
 func (*VideoEditJobServiceListRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{85}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{98}
 }
 
 func (x *VideoEditJobServiceListRequest) GetWorkspaceId() *v1.UUID {
@@ -7483,7 +8702,7 @@ type VideoEditJobServiceListResponse struct {
 
 func (x *VideoEditJobServiceListResponse) Reset() {
 	*x = VideoEditJobServiceListResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[86]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[99]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7495,7 +8714,7 @@ func (x *VideoEditJobServiceListResponse) String() string {
 func (*VideoEditJobServiceListResponse) ProtoMessage() {}
 
 func (x *VideoEditJobServiceListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[86]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[99]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7508,7 +8727,7 @@ func (x *VideoEditJobServiceListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VideoEditJobServiceListResponse.ProtoReflect.Descriptor instead.
 func (*VideoEditJobServiceListResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{86}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{99}
 }
 
 func (x *VideoEditJobServiceListResponse) GetJobs() []*VideoEditJob {
@@ -7536,7 +8755,7 @@ type VideoEditJobServiceCancelRequest struct {
 
 func (x *VideoEditJobServiceCancelRequest) Reset() {
 	*x = VideoEditJobServiceCancelRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[87]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[100]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7548,7 +8767,7 @@ func (x *VideoEditJobServiceCancelRequest) String() string {
 func (*VideoEditJobServiceCancelRequest) ProtoMessage() {}
 
 func (x *VideoEditJobServiceCancelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[87]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[100]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7561,7 +8780,7 @@ func (x *VideoEditJobServiceCancelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VideoEditJobServiceCancelRequest.ProtoReflect.Descriptor instead.
 func (*VideoEditJobServiceCancelRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{87}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{100}
 }
 
 func (x *VideoEditJobServiceCancelRequest) GetContext() *v1.CommandContext {
@@ -7595,7 +8814,7 @@ type VideoEditJobServiceCancelResponse struct {
 
 func (x *VideoEditJobServiceCancelResponse) Reset() {
 	*x = VideoEditJobServiceCancelResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[88]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[101]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7607,7 +8826,7 @@ func (x *VideoEditJobServiceCancelResponse) String() string {
 func (*VideoEditJobServiceCancelResponse) ProtoMessage() {}
 
 func (x *VideoEditJobServiceCancelResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[88]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[101]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7620,7 +8839,7 @@ func (x *VideoEditJobServiceCancelResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use VideoEditJobServiceCancelResponse.ProtoReflect.Descriptor instead.
 func (*VideoEditJobServiceCancelResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{88}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{101}
 }
 
 func (x *VideoEditJobServiceCancelResponse) GetJob() *VideoEditJob {
@@ -7648,7 +8867,7 @@ type VideoEditJobServiceRetryRequest struct {
 
 func (x *VideoEditJobServiceRetryRequest) Reset() {
 	*x = VideoEditJobServiceRetryRequest{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[89]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[102]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7660,7 +8879,7 @@ func (x *VideoEditJobServiceRetryRequest) String() string {
 func (*VideoEditJobServiceRetryRequest) ProtoMessage() {}
 
 func (x *VideoEditJobServiceRetryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[89]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[102]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7673,7 +8892,7 @@ func (x *VideoEditJobServiceRetryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VideoEditJobServiceRetryRequest.ProtoReflect.Descriptor instead.
 func (*VideoEditJobServiceRetryRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{89}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{102}
 }
 
 func (x *VideoEditJobServiceRetryRequest) GetContext() *v1.CommandContext {
@@ -7706,7 +8925,7 @@ type VideoEditJobServiceRetryResponse struct {
 
 func (x *VideoEditJobServiceRetryResponse) Reset() {
 	*x = VideoEditJobServiceRetryResponse{}
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[90]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[103]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7718,7 +8937,7 @@ func (x *VideoEditJobServiceRetryResponse) String() string {
 func (*VideoEditJobServiceRetryResponse) ProtoMessage() {}
 
 func (x *VideoEditJobServiceRetryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_production_v1_production_proto_msgTypes[90]
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[103]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7731,7 +8950,7 @@ func (x *VideoEditJobServiceRetryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VideoEditJobServiceRetryResponse.ProtoReflect.Descriptor instead.
 func (*VideoEditJobServiceRetryResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{90}
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{103}
 }
 
 func (x *VideoEditJobServiceRetryResponse) GetJob() *VideoEditJob {
@@ -7984,7 +9203,131 @@ const file_creativanta_production_v1_production_proto_rawDesc = "" +
 	"\vstorage_url\x18\x02 \x01(\tR\n" +
 	"storageUrl\x12*\n" +
 	"\x11virus_scan_status\x18\x03 \x01(\tR\x0fvirusScanStatus\x126\n" +
-	"\x05asset\x18\x04 \x01(\v2 .creativanta.production.v1.AssetR\x05asset\"\xf1\n" +
+	"\x05asset\x18\x04 \x01(\v2 .creativanta.production.v1.AssetR\x05asset\"\xec\x01\n" +
+	"\x0eTranscriptWord\x12\x17\n" +
+	"\aword_id\x18\x01 \x01(\tR\x06wordId\x12\x12\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\x12\x19\n" +
+	"\bstart_ms\x18\x03 \x01(\x03R\astartMs\x12\x15\n" +
+	"\x06end_ms\x18\x04 \x01(\x03R\x05endMs\x12\x1e\n" +
+	"\n" +
+	"confidence\x18\x05 \x01(\x01R\n" +
+	"confidence\x12\x1b\n" +
+	"\tis_filler\x18\x06 \x01(\bR\bisFiller\x12\x1f\n" +
+	"\vfiller_type\x18\a \x01(\tR\n" +
+	"fillerType\x12\x1d\n" +
+	"\n" +
+	"is_deleted\x18\b \x01(\bR\tisDeleted\"\x97\x01\n" +
+	"\x11TranscriptSegment\x12\x1d\n" +
+	"\n" +
+	"segment_id\x18\x01 \x01(\tR\tsegmentId\x12\x19\n" +
+	"\bstart_ms\x18\x02 \x01(\x03R\astartMs\x12\x15\n" +
+	"\x06end_ms\x18\x03 \x01(\x03R\x05endMs\x12\x12\n" +
+	"\x04text\x18\x04 \x01(\tR\x04text\x12\x1d\n" +
+	"\n" +
+	"speaker_id\x18\x05 \x01(\tR\tspeakerId\"\x92\x05\n" +
+	"\n" +
+	"Transcript\x12#\n" +
+	"\rtranscript_id\x18\x01 \x01(\tR\ftranscriptId\x12>\n" +
+	"\fworkspace_id\x18\x02 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x12\x19\n" +
+	"\basset_id\x18\x03 \x01(\tR\aassetId\x12\x1a\n" +
+	"\blanguage\x18\x04 \x01(\tR\blanguage\x12\x19\n" +
+	"\braw_text\x18\x05 \x01(\tR\arawText\x12?\n" +
+	"\x05words\x18\x06 \x03(\v2).creativanta.production.v1.TranscriptWordR\x05words\x12H\n" +
+	"\bsegments\x18\a \x03(\v2,.creativanta.production.v1.TranscriptSegmentR\bsegments\x12!\n" +
+	"\ffiller_count\x18\b \x01(\x05R\vfillerCount\x12\x1f\n" +
+	"\vpause_count\x18\t \x01(\x05R\n" +
+	"pauseCount\x12_\n" +
+	"\x10alignment_status\x18\n" +
+	" \x01(\x0e24.creativanta.production.v1.TranscriptAlignmentStatusR\x0falignmentStatus\x12'\n" +
+	"\x0falignment_error\x18\v \x01(\tR\x0ealignmentError\x129\n" +
+	"\n" +
+	"created_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"^\n" +
+	"\tDeadPause\x12\x19\n" +
+	"\bstart_ms\x18\x01 \x01(\x03R\astartMs\x12\x15\n" +
+	"\x06end_ms\x18\x02 \x01(\x03R\x05endMs\x12\x1f\n" +
+	"\vduration_ms\x18\x03 \x01(\x03R\n" +
+	"durationMs\"\x80\x03\n" +
+	"\x12TranscriptAnalysis\x12!\n" +
+	"\ffiller_count\x18\x01 \x01(\x05R\vfillerCount\x12\x1f\n" +
+	"\vpause_count\x18\x02 \x01(\x05R\n" +
+	"pauseCount\x12,\n" +
+	"\x12hook_quality_score\x18\x03 \x01(\x01R\x10hookQualityScore\x125\n" +
+	"\x17estimated_time_saved_ms\x18\x04 \x01(\x03R\x14estimatedTimeSavedMs\x12*\n" +
+	"\x11final_duration_ms\x18\x05 \x01(\x03R\x0ffinalDurationMs\x12)\n" +
+	"\x10detected_fillers\x18\x06 \x03(\tR\x0fdetectedFillers\x12E\n" +
+	"\vdead_pauses\x18\a \x03(\v2$.creativanta.production.v1.DeadPauseR\n" +
+	"deadPauses\x12#\n" +
+	"\rhook_feedback\x18\b \x01(\tR\fhookFeedback\"\xb1\x01\n" +
+	"\x14TranscriptCorrection\x12\x17\n" +
+	"\aword_id\x18\x01 \x01(\tR\x06wordId\x12%\n" +
+	"\x0ecorrected_text\x18\x02 \x01(\tR\rcorrectedText\x12 \n" +
+	"\fnew_start_ms\x18\x03 \x01(\x03R\n" +
+	"newStartMs\x12\x1c\n" +
+	"\n" +
+	"new_end_ms\x18\x04 \x01(\x03R\bnewEndMs\x12\x19\n" +
+	"\bmark_cut\x18\x05 \x01(\bR\amarkCut\"W\n" +
+	"\vCutInterval\x12\x19\n" +
+	"\bstart_ms\x18\x01 \x01(\x03R\astartMs\x12\x15\n" +
+	"\x06end_ms\x18\x02 \x01(\x03R\x05endMs\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"\xb9\x03\n" +
+	"\x0fQuickEditAddons\x12#\n" +
+	"\rauto_captions\x18\x01 \x01(\bR\fautoCaptions\x12#\n" +
+	"\rcaption_style\x18\x02 \x01(\tR\fcaptionStyle\x12\x19\n" +
+	"\badd_hook\x18\x03 \x01(\bR\aaddHook\x12\x17\n" +
+	"\ahook_id\x18\x04 \x01(\tR\x06hookId\x12\x1b\n" +
+	"\thook_type\x18\x05 \x01(\tR\bhookType\x12\x1b\n" +
+	"\tbeat_sync\x18\x06 \x01(\bR\bbeatSync\x12\x19\n" +
+	"\bsound_id\x18\a \x01(\tR\asoundId\x12\x15\n" +
+	"\x06b_roll\x18\b \x01(\bR\x05bRoll\x12 \n" +
+	"\fb_roll_scene\x18\t \x01(\tR\n" +
+	"bRollScene\x12'\n" +
+	"\x0fplatform_preset\x18\n" +
+	" \x01(\tR\x0eplatformPreset\x12+\n" +
+	"\x11audio_enhancement\x18\v \x01(\bR\x10audioEnhancement\x12\x1f\n" +
+	"\vtarget_lufs\x18\f \x01(\x01R\n" +
+	"targetLufs\x12#\n" +
+	"\rreframe_ratio\x18\r \x01(\tR\freframeRatio\"\xb0\x02\n" +
+	"\rQuickEditPlan\x12\x19\n" +
+	"\basset_id\x18\x01 \x01(\tR\aassetId\x12#\n" +
+	"\rtranscript_id\x18\x02 \x01(\tR\ftranscriptId\x12:\n" +
+	"\x04cuts\x18\x03 \x03(\v2&.creativanta.production.v1.CutIntervalR\x04cuts\x12B\n" +
+	"\x06addons\x18\x04 \x01(\v2*.creativanta.production.v1.QuickEditAddonsR\x06addons\x12+\n" +
+	"\x11estimated_credits\x18\x05 \x01(\tR\x10estimatedCredits\x122\n" +
+	"\x15balance_after_credits\x18\x06 \x01(\tR\x13balanceAfterCredits\"\xe2\x03\n" +
+	"\x0eQuickEditDraft\x12\x19\n" +
+	"\bdraft_id\x18\x01 \x01(\tR\adraftId\x12>\n" +
+	"\fworkspace_id\x18\x02 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x12\x19\n" +
+	"\basset_id\x18\x03 \x01(\tR\aassetId\x12#\n" +
+	"\rtranscript_id\x18\x04 \x01(\tR\ftranscriptId\x12\x12\n" +
+	"\x04name\x18\x05 \x01(\tR\x04name\x12:\n" +
+	"\x04cuts\x18\x06 \x03(\v2&.creativanta.production.v1.CutIntervalR\x04cuts\x12B\n" +
+	"\x06addons\x18\a \x01(\v2*.creativanta.production.v1.QuickEditAddonsR\x06addons\x12+\n" +
+	"\x11estimated_credits\x18\b \x01(\tR\x10estimatedCredits\x129\n" +
+	"\n" +
+	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xff\x02\n" +
+	" QuickEditServiceSaveDraftRequest\x12?\n" +
+	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12\x19\n" +
+	"\bdraft_id\x18\x02 \x01(\tR\adraftId\x12\x19\n" +
+	"\basset_id\x18\x03 \x01(\tR\aassetId\x12#\n" +
+	"\rtranscript_id\x18\x04 \x01(\tR\ftranscriptId\x12\x12\n" +
+	"\x04name\x18\x05 \x01(\tR\x04name\x12:\n" +
+	"\x04cuts\x18\x06 \x03(\v2&.creativanta.production.v1.CutIntervalR\x04cuts\x12B\n" +
+	"\x06addons\x18\a \x01(\v2*.creativanta.production.v1.QuickEditAddonsR\x06addons\x12+\n" +
+	"\x11estimated_credits\x18\b \x01(\tR\x10estimatedCredits\"d\n" +
+	"!QuickEditServiceSaveDraftResponse\x12?\n" +
+	"\x05draft\x18\x01 \x01(\v2).creativanta.production.v1.QuickEditDraftR\x05draft\"\xa4\x01\n" +
+	"\fBeatSyncGrid\x12\x10\n" +
+	"\x03bpm\x18\x01 \x01(\x05R\x03bpm\x12,\n" +
+	"\x12beat_timestamps_ms\x18\x02 \x03(\x03R\x10beatTimestampsMs\x124\n" +
+	"\x16downbeat_timestamps_ms\x18\x03 \x03(\x03R\x14downbeatTimestampsMs\x12\x1e\n" +
+	"\n" +
+	"confidence\x18\x04 \x01(\x01R\n" +
+	"confidence\"\xf1\n" +
 	"\n" +
 	"\x0eTranslationJob\x12,\n" +
 	"\x12translation_job_id\x18\x01 \x01(\tR\x10translationJobId\x12!\n" +
@@ -8496,7 +9839,13 @@ const file_creativanta_production_v1_production_proto_rawDesc = "" +
 	"\x1fVIDEO_EDIT_JOB_STATUS_COMPLETED\x10\x03\x12-\n" +
 	")VIDEO_EDIT_JOB_STATUS_PARTIALLY_COMPLETED\x10\x04\x12 \n" +
 	"\x1cVIDEO_EDIT_JOB_STATUS_FAILED\x10\x05\x12#\n" +
-	"\x1fVIDEO_EDIT_JOB_STATUS_CANCELLED\x10\x062\x9d\x04\n" +
+	"\x1fVIDEO_EDIT_JOB_STATUS_CANCELLED\x10\x06*\xf9\x01\n" +
+	"\x19TranscriptAlignmentStatus\x12+\n" +
+	"'TRANSCRIPT_ALIGNMENT_STATUS_UNSPECIFIED\x10\x00\x12,\n" +
+	"(TRANSCRIPT_ALIGNMENT_STATUS_AUTO_ALIGNED\x10\x01\x12(\n" +
+	"$TRANSCRIPT_ALIGNMENT_STATUS_REPAIRED\x10\x02\x12/\n" +
+	"+TRANSCRIPT_ALIGNMENT_STATUS_MANUAL_FALLBACK\x10\x03\x12&\n" +
+	"\"TRANSCRIPT_ALIGNMENT_STATUS_FAILED\x10\x042\x9d\x04\n" +
 	"\rStudioService\x12c\n" +
 	"\bGetModes\x12*.creativanta.production.v1.GetModesRequest\x1a+.creativanta.production.v1.GetModesResponse\x12r\n" +
 	"\rGetActiveJobs\x12/.creativanta.production.v1.GetActiveJobsRequest\x1a0.creativanta.production.v1.GetActiveJobsResponse\x12x\n" +
@@ -8510,7 +9859,9 @@ const file_creativanta_production_v1_production_proto_rawDesc = "" +
 	"\x03Get\x12%.creativanta.production.v1.GetRequest\x1a&.creativanta.production.v1.GetResponse\x12`\n" +
 	"\aApprove\x12).creativanta.production.v1.ApproveRequest\x1a*.creativanta.production.v1.ApproveResponse\x12{\n" +
 	"\x10PromoteCanonical\x122.creativanta.production.v1.PromoteCanonicalRequest\x1a3.creativanta.production.v1.PromoteCanonicalResponse\x12]\n" +
-	"\x06Upload\x12(.creativanta.production.v1.UploadRequest\x1a).creativanta.production.v1.UploadResponse2\x8f\x03\n" +
+	"\x06Upload\x12(.creativanta.production.v1.UploadRequest\x1a).creativanta.production.v1.UploadResponse2\x9b\x01\n" +
+	"\x10QuickEditService\x12\x86\x01\n" +
+	"\tSaveDraft\x12;.creativanta.production.v1.QuickEditServiceSaveDraftRequest\x1a<.creativanta.production.v1.QuickEditServiceSaveDraftResponse2\x8f\x03\n" +
 	"\x12TranslationService\x12\x81\x01\n" +
 	"\x06Create\x12:.creativanta.production.v1.TranslationServiceCreateRequest\x1a;.creativanta.production.v1.TranslationServiceCreateResponse\x12x\n" +
 	"\x03Get\x127.creativanta.production.v1.TranslationServiceGetRequest\x1a8.creativanta.production.v1.TranslationServiceGetResponse\x12{\n" +
@@ -8554,8 +9905,8 @@ func file_creativanta_production_v1_production_proto_rawDescGZIP() []byte {
 	return file_creativanta_production_v1_production_proto_rawDescData
 }
 
-var file_creativanta_production_v1_production_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_creativanta_production_v1_production_proto_msgTypes = make([]protoimpl.MessageInfo, 97)
+var file_creativanta_production_v1_production_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
+var file_creativanta_production_v1_production_proto_msgTypes = make([]protoimpl.MessageInfo, 110)
 var file_creativanta_production_v1_production_proto_goTypes = []any{
 	(GenerationJobStatus)(0),                           // 0: creativanta.production.v1.GenerationJobStatus
 	(AssetGenerationState)(0),                          // 1: creativanta.production.v1.AssetGenerationState
@@ -8565,330 +9916,364 @@ var file_creativanta_production_v1_production_proto_goTypes = []any{
 	(FidelityLevel)(0),                                 // 5: creativanta.production.v1.FidelityLevel
 	(RemixStatus)(0),                                   // 6: creativanta.production.v1.RemixStatus
 	(VideoEditJobStatus)(0),                            // 7: creativanta.production.v1.VideoEditJobStatus
-	(*ProductionModeInfo)(nil),                         // 8: creativanta.production.v1.ProductionModeInfo
-	(*LineageItem)(nil),                                // 9: creativanta.production.v1.LineageItem
-	(*PostProductionConfig)(nil),                       // 10: creativanta.production.v1.PostProductionConfig
-	(*GenerationJob)(nil),                              // 11: creativanta.production.v1.GenerationJob
-	(*Asset)(nil),                                      // 12: creativanta.production.v1.Asset
-	(*BatchInputValidationItem)(nil),                   // 13: creativanta.production.v1.BatchInputValidationItem
-	(*BatchBudgetPreview)(nil),                         // 14: creativanta.production.v1.BatchBudgetPreview
-	(*GetModesRequest)(nil),                            // 15: creativanta.production.v1.GetModesRequest
-	(*GetModesResponse)(nil),                           // 16: creativanta.production.v1.GetModesResponse
-	(*GetActiveJobsRequest)(nil),                       // 17: creativanta.production.v1.GetActiveJobsRequest
-	(*GetActiveJobsResponse)(nil),                      // 18: creativanta.production.v1.GetActiveJobsResponse
-	(*GetRecentAssetsRequest)(nil),                     // 19: creativanta.production.v1.GetRecentAssetsRequest
-	(*GetRecentAssetsResponse)(nil),                    // 20: creativanta.production.v1.GetRecentAssetsResponse
-	(*CancelRequest)(nil),                              // 21: creativanta.production.v1.CancelRequest
-	(*CancelResponse)(nil),                             // 22: creativanta.production.v1.CancelResponse
-	(*RetryRequest)(nil),                               // 23: creativanta.production.v1.RetryRequest
-	(*RetryResponse)(nil),                              // 24: creativanta.production.v1.RetryResponse
-	(*BatchGenerationItem)(nil),                        // 25: creativanta.production.v1.BatchGenerationItem
-	(*GenerateRequest)(nil),                            // 26: creativanta.production.v1.GenerateRequest
-	(*GenerateResponse)(nil),                           // 27: creativanta.production.v1.GenerateResponse
-	(*GetStatusRequest)(nil),                           // 28: creativanta.production.v1.GetStatusRequest
-	(*GetStatusResponse)(nil),                          // 29: creativanta.production.v1.GetStatusResponse
-	(*ListRequest)(nil),                                // 30: creativanta.production.v1.ListRequest
-	(*ListResponse)(nil),                               // 31: creativanta.production.v1.ListResponse
-	(*GetRequest)(nil),                                 // 32: creativanta.production.v1.GetRequest
-	(*GetResponse)(nil),                                // 33: creativanta.production.v1.GetResponse
-	(*ApproveRequest)(nil),                             // 34: creativanta.production.v1.ApproveRequest
-	(*ApproveResponse)(nil),                            // 35: creativanta.production.v1.ApproveResponse
-	(*PromoteCanonicalRequest)(nil),                    // 36: creativanta.production.v1.PromoteCanonicalRequest
-	(*PromoteCanonicalResponse)(nil),                   // 37: creativanta.production.v1.PromoteCanonicalResponse
-	(*UploadRequest)(nil),                              // 38: creativanta.production.v1.UploadRequest
-	(*UploadResponse)(nil),                             // 39: creativanta.production.v1.UploadResponse
-	(*TranslationJob)(nil),                             // 40: creativanta.production.v1.TranslationJob
-	(*TranslationSegment)(nil),                         // 41: creativanta.production.v1.TranslationSegment
-	(*TranslationServiceCreateRequest)(nil),            // 42: creativanta.production.v1.TranslationServiceCreateRequest
-	(*TranslationServiceCreateResponse)(nil),           // 43: creativanta.production.v1.TranslationServiceCreateResponse
-	(*TranslationServiceGetRequest)(nil),               // 44: creativanta.production.v1.TranslationServiceGetRequest
-	(*TranslationServiceGetResponse)(nil),              // 45: creativanta.production.v1.TranslationServiceGetResponse
-	(*TranslationServiceListRequest)(nil),              // 46: creativanta.production.v1.TranslationServiceListRequest
-	(*TranslationServiceListResponse)(nil),             // 47: creativanta.production.v1.TranslationServiceListResponse
-	(*SoundTrack)(nil),                                 // 48: creativanta.production.v1.SoundTrack
-	(*SoundStudioServiceGenerateMusicRequest)(nil),     // 49: creativanta.production.v1.SoundStudioServiceGenerateMusicRequest
-	(*SoundStudioServiceGenerateMusicResponse)(nil),    // 50: creativanta.production.v1.SoundStudioServiceGenerateMusicResponse
-	(*SoundStudioServiceGenerateSFXRequest)(nil),       // 51: creativanta.production.v1.SoundStudioServiceGenerateSFXRequest
-	(*SoundStudioServiceGenerateSFXResponse)(nil),      // 52: creativanta.production.v1.SoundStudioServiceGenerateSFXResponse
-	(*SoundStudioServiceAnalyzeBeatRequest)(nil),       // 53: creativanta.production.v1.SoundStudioServiceAnalyzeBeatRequest
-	(*SoundStudioServiceAnalyzeBeatResponse)(nil),      // 54: creativanta.production.v1.SoundStudioServiceAnalyzeBeatResponse
-	(*SoundStudioServiceListSoundLibraryRequest)(nil),  // 55: creativanta.production.v1.SoundStudioServiceListSoundLibraryRequest
-	(*SoundStudioServiceListSoundLibraryResponse)(nil), // 56: creativanta.production.v1.SoundStudioServiceListSoundLibraryResponse
-	(*SoundStudioServiceGetSoundRequest)(nil),          // 57: creativanta.production.v1.SoundStudioServiceGetSoundRequest
-	(*SoundStudioServiceGetSoundResponse)(nil),         // 58: creativanta.production.v1.SoundStudioServiceGetSoundResponse
-	(*SoundStudioServicePreviewSoundRequest)(nil),      // 59: creativanta.production.v1.SoundStudioServicePreviewSoundRequest
-	(*SoundStudioServicePreviewSoundResponse)(nil),     // 60: creativanta.production.v1.SoundStudioServicePreviewSoundResponse
-	(*VoiceCloneRecord)(nil),                           // 61: creativanta.production.v1.VoiceCloneRecord
-	(*VoiceCloneServiceCreateRequest)(nil),             // 62: creativanta.production.v1.VoiceCloneServiceCreateRequest
-	(*VoiceCloneServiceCreateResponse)(nil),            // 63: creativanta.production.v1.VoiceCloneServiceCreateResponse
-	(*VoiceCloneServiceGetRequest)(nil),                // 64: creativanta.production.v1.VoiceCloneServiceGetRequest
-	(*VoiceCloneServiceGetResponse)(nil),               // 65: creativanta.production.v1.VoiceCloneServiceGetResponse
-	(*VoiceCloneServiceListRequest)(nil),               // 66: creativanta.production.v1.VoiceCloneServiceListRequest
-	(*VoiceCloneServiceListResponse)(nil),              // 67: creativanta.production.v1.VoiceCloneServiceListResponse
-	(*VoiceCloneServiceDeleteRequest)(nil),             // 68: creativanta.production.v1.VoiceCloneServiceDeleteRequest
-	(*VoiceCloneServiceDeleteResponse)(nil),            // 69: creativanta.production.v1.VoiceCloneServiceDeleteResponse
-	(*VoiceCloneServiceGenerateVoiceoverRequest)(nil),  // 70: creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverRequest
-	(*VoiceCloneServiceGenerateVoiceoverResponse)(nil), // 71: creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverResponse
-	(*VoiceCloneServiceGetConsentStatusRequest)(nil),   // 72: creativanta.production.v1.VoiceCloneServiceGetConsentStatusRequest
-	(*VoiceCloneServiceGetConsentStatusResponse)(nil),  // 73: creativanta.production.v1.VoiceCloneServiceGetConsentStatusResponse
-	(*CreativeDna)(nil),                                // 74: creativanta.production.v1.CreativeDna
-	(*RemixBlueprint)(nil),                             // 75: creativanta.production.v1.RemixBlueprint
-	(*OriginalityCheckResult)(nil),                     // 76: creativanta.production.v1.OriginalityCheckResult
-	(*CopyrightCheckResult)(nil),                       // 77: creativanta.production.v1.CopyrightCheckResult
-	(*MultiMergeTimelineItem)(nil),                     // 78: creativanta.production.v1.MultiMergeTimelineItem
-	(*MultiMergeSettings)(nil),                         // 79: creativanta.production.v1.MultiMergeSettings
-	(*VideoEditJob)(nil),                               // 80: creativanta.production.v1.VideoEditJob
-	(*RemixServiceAnalyzeRequest)(nil),                 // 81: creativanta.production.v1.RemixServiceAnalyzeRequest
-	(*RemixServiceAnalyzeResponse)(nil),                // 82: creativanta.production.v1.RemixServiceAnalyzeResponse
-	(*RemixServiceGetBlueprintRequest)(nil),            // 83: creativanta.production.v1.RemixServiceGetBlueprintRequest
-	(*RemixServiceGetBlueprintResponse)(nil),           // 84: creativanta.production.v1.RemixServiceGetBlueprintResponse
-	(*RemixServiceGenerateRequest)(nil),                // 85: creativanta.production.v1.RemixServiceGenerateRequest
-	(*RemixServiceGenerateResponse)(nil),               // 86: creativanta.production.v1.RemixServiceGenerateResponse
-	(*RemixServiceRegenerateRequest)(nil),              // 87: creativanta.production.v1.RemixServiceRegenerateRequest
-	(*RemixServiceRegenerateResponse)(nil),             // 88: creativanta.production.v1.RemixServiceRegenerateResponse
-	(*VideoEditJobServiceCreateRequest)(nil),           // 89: creativanta.production.v1.VideoEditJobServiceCreateRequest
-	(*VideoEditJobServiceCreateResponse)(nil),          // 90: creativanta.production.v1.VideoEditJobServiceCreateResponse
-	(*VideoEditJobServiceGetRequest)(nil),              // 91: creativanta.production.v1.VideoEditJobServiceGetRequest
-	(*VideoEditJobServiceGetResponse)(nil),             // 92: creativanta.production.v1.VideoEditJobServiceGetResponse
-	(*VideoEditJobServiceListRequest)(nil),             // 93: creativanta.production.v1.VideoEditJobServiceListRequest
-	(*VideoEditJobServiceListResponse)(nil),            // 94: creativanta.production.v1.VideoEditJobServiceListResponse
-	(*VideoEditJobServiceCancelRequest)(nil),           // 95: creativanta.production.v1.VideoEditJobServiceCancelRequest
-	(*VideoEditJobServiceCancelResponse)(nil),          // 96: creativanta.production.v1.VideoEditJobServiceCancelResponse
-	(*VideoEditJobServiceRetryRequest)(nil),            // 97: creativanta.production.v1.VideoEditJobServiceRetryRequest
-	(*VideoEditJobServiceRetryResponse)(nil),           // 98: creativanta.production.v1.VideoEditJobServiceRetryResponse
-	nil,                                                // 99: creativanta.production.v1.TranslationJob.PerLanguageStatusEntry
-	nil,                                                // 100: creativanta.production.v1.TranslationJob.OutputAssetIdsEntry
-	nil,                                                // 101: creativanta.production.v1.TranslationJob.QualityScoresEntry
-	nil,                                                // 102: creativanta.production.v1.TranslationJob.RepairNotesEntry
-	nil,                                                // 103: creativanta.production.v1.TranslationSegment.TranslationsEntry
-	nil,                                                // 104: creativanta.production.v1.TranslationServiceCreateRequest.CustomScriptCorrectionsEntry
-	(*timestamppb.Timestamp)(nil),                      // 105: google.protobuf.Timestamp
-	(*v1.UUID)(nil),                                    // 106: creativanta.common.v1.UUID
-	(*v1.Pagination)(nil),                              // 107: creativanta.common.v1.Pagination
-	(*v1.PaginatedResponse)(nil),                       // 108: creativanta.common.v1.PaginatedResponse
-	(*v1.CommandContext)(nil),                          // 109: creativanta.common.v1.CommandContext
+	(TranscriptAlignmentStatus)(0),                     // 8: creativanta.production.v1.TranscriptAlignmentStatus
+	(*ProductionModeInfo)(nil),                         // 9: creativanta.production.v1.ProductionModeInfo
+	(*LineageItem)(nil),                                // 10: creativanta.production.v1.LineageItem
+	(*PostProductionConfig)(nil),                       // 11: creativanta.production.v1.PostProductionConfig
+	(*GenerationJob)(nil),                              // 12: creativanta.production.v1.GenerationJob
+	(*Asset)(nil),                                      // 13: creativanta.production.v1.Asset
+	(*BatchInputValidationItem)(nil),                   // 14: creativanta.production.v1.BatchInputValidationItem
+	(*BatchBudgetPreview)(nil),                         // 15: creativanta.production.v1.BatchBudgetPreview
+	(*GetModesRequest)(nil),                            // 16: creativanta.production.v1.GetModesRequest
+	(*GetModesResponse)(nil),                           // 17: creativanta.production.v1.GetModesResponse
+	(*GetActiveJobsRequest)(nil),                       // 18: creativanta.production.v1.GetActiveJobsRequest
+	(*GetActiveJobsResponse)(nil),                      // 19: creativanta.production.v1.GetActiveJobsResponse
+	(*GetRecentAssetsRequest)(nil),                     // 20: creativanta.production.v1.GetRecentAssetsRequest
+	(*GetRecentAssetsResponse)(nil),                    // 21: creativanta.production.v1.GetRecentAssetsResponse
+	(*CancelRequest)(nil),                              // 22: creativanta.production.v1.CancelRequest
+	(*CancelResponse)(nil),                             // 23: creativanta.production.v1.CancelResponse
+	(*RetryRequest)(nil),                               // 24: creativanta.production.v1.RetryRequest
+	(*RetryResponse)(nil),                              // 25: creativanta.production.v1.RetryResponse
+	(*BatchGenerationItem)(nil),                        // 26: creativanta.production.v1.BatchGenerationItem
+	(*GenerateRequest)(nil),                            // 27: creativanta.production.v1.GenerateRequest
+	(*GenerateResponse)(nil),                           // 28: creativanta.production.v1.GenerateResponse
+	(*GetStatusRequest)(nil),                           // 29: creativanta.production.v1.GetStatusRequest
+	(*GetStatusResponse)(nil),                          // 30: creativanta.production.v1.GetStatusResponse
+	(*ListRequest)(nil),                                // 31: creativanta.production.v1.ListRequest
+	(*ListResponse)(nil),                               // 32: creativanta.production.v1.ListResponse
+	(*GetRequest)(nil),                                 // 33: creativanta.production.v1.GetRequest
+	(*GetResponse)(nil),                                // 34: creativanta.production.v1.GetResponse
+	(*ApproveRequest)(nil),                             // 35: creativanta.production.v1.ApproveRequest
+	(*ApproveResponse)(nil),                            // 36: creativanta.production.v1.ApproveResponse
+	(*PromoteCanonicalRequest)(nil),                    // 37: creativanta.production.v1.PromoteCanonicalRequest
+	(*PromoteCanonicalResponse)(nil),                   // 38: creativanta.production.v1.PromoteCanonicalResponse
+	(*UploadRequest)(nil),                              // 39: creativanta.production.v1.UploadRequest
+	(*UploadResponse)(nil),                             // 40: creativanta.production.v1.UploadResponse
+	(*TranscriptWord)(nil),                             // 41: creativanta.production.v1.TranscriptWord
+	(*TranscriptSegment)(nil),                          // 42: creativanta.production.v1.TranscriptSegment
+	(*Transcript)(nil),                                 // 43: creativanta.production.v1.Transcript
+	(*DeadPause)(nil),                                  // 44: creativanta.production.v1.DeadPause
+	(*TranscriptAnalysis)(nil),                         // 45: creativanta.production.v1.TranscriptAnalysis
+	(*TranscriptCorrection)(nil),                       // 46: creativanta.production.v1.TranscriptCorrection
+	(*CutInterval)(nil),                                // 47: creativanta.production.v1.CutInterval
+	(*QuickEditAddons)(nil),                            // 48: creativanta.production.v1.QuickEditAddons
+	(*QuickEditPlan)(nil),                              // 49: creativanta.production.v1.QuickEditPlan
+	(*QuickEditDraft)(nil),                             // 50: creativanta.production.v1.QuickEditDraft
+	(*QuickEditServiceSaveDraftRequest)(nil),           // 51: creativanta.production.v1.QuickEditServiceSaveDraftRequest
+	(*QuickEditServiceSaveDraftResponse)(nil),          // 52: creativanta.production.v1.QuickEditServiceSaveDraftResponse
+	(*BeatSyncGrid)(nil),                               // 53: creativanta.production.v1.BeatSyncGrid
+	(*TranslationJob)(nil),                             // 54: creativanta.production.v1.TranslationJob
+	(*TranslationSegment)(nil),                         // 55: creativanta.production.v1.TranslationSegment
+	(*TranslationServiceCreateRequest)(nil),            // 56: creativanta.production.v1.TranslationServiceCreateRequest
+	(*TranslationServiceCreateResponse)(nil),           // 57: creativanta.production.v1.TranslationServiceCreateResponse
+	(*TranslationServiceGetRequest)(nil),               // 58: creativanta.production.v1.TranslationServiceGetRequest
+	(*TranslationServiceGetResponse)(nil),              // 59: creativanta.production.v1.TranslationServiceGetResponse
+	(*TranslationServiceListRequest)(nil),              // 60: creativanta.production.v1.TranslationServiceListRequest
+	(*TranslationServiceListResponse)(nil),             // 61: creativanta.production.v1.TranslationServiceListResponse
+	(*SoundTrack)(nil),                                 // 62: creativanta.production.v1.SoundTrack
+	(*SoundStudioServiceGenerateMusicRequest)(nil),     // 63: creativanta.production.v1.SoundStudioServiceGenerateMusicRequest
+	(*SoundStudioServiceGenerateMusicResponse)(nil),    // 64: creativanta.production.v1.SoundStudioServiceGenerateMusicResponse
+	(*SoundStudioServiceGenerateSFXRequest)(nil),       // 65: creativanta.production.v1.SoundStudioServiceGenerateSFXRequest
+	(*SoundStudioServiceGenerateSFXResponse)(nil),      // 66: creativanta.production.v1.SoundStudioServiceGenerateSFXResponse
+	(*SoundStudioServiceAnalyzeBeatRequest)(nil),       // 67: creativanta.production.v1.SoundStudioServiceAnalyzeBeatRequest
+	(*SoundStudioServiceAnalyzeBeatResponse)(nil),      // 68: creativanta.production.v1.SoundStudioServiceAnalyzeBeatResponse
+	(*SoundStudioServiceListSoundLibraryRequest)(nil),  // 69: creativanta.production.v1.SoundStudioServiceListSoundLibraryRequest
+	(*SoundStudioServiceListSoundLibraryResponse)(nil), // 70: creativanta.production.v1.SoundStudioServiceListSoundLibraryResponse
+	(*SoundStudioServiceGetSoundRequest)(nil),          // 71: creativanta.production.v1.SoundStudioServiceGetSoundRequest
+	(*SoundStudioServiceGetSoundResponse)(nil),         // 72: creativanta.production.v1.SoundStudioServiceGetSoundResponse
+	(*SoundStudioServicePreviewSoundRequest)(nil),      // 73: creativanta.production.v1.SoundStudioServicePreviewSoundRequest
+	(*SoundStudioServicePreviewSoundResponse)(nil),     // 74: creativanta.production.v1.SoundStudioServicePreviewSoundResponse
+	(*VoiceCloneRecord)(nil),                           // 75: creativanta.production.v1.VoiceCloneRecord
+	(*VoiceCloneServiceCreateRequest)(nil),             // 76: creativanta.production.v1.VoiceCloneServiceCreateRequest
+	(*VoiceCloneServiceCreateResponse)(nil),            // 77: creativanta.production.v1.VoiceCloneServiceCreateResponse
+	(*VoiceCloneServiceGetRequest)(nil),                // 78: creativanta.production.v1.VoiceCloneServiceGetRequest
+	(*VoiceCloneServiceGetResponse)(nil),               // 79: creativanta.production.v1.VoiceCloneServiceGetResponse
+	(*VoiceCloneServiceListRequest)(nil),               // 80: creativanta.production.v1.VoiceCloneServiceListRequest
+	(*VoiceCloneServiceListResponse)(nil),              // 81: creativanta.production.v1.VoiceCloneServiceListResponse
+	(*VoiceCloneServiceDeleteRequest)(nil),             // 82: creativanta.production.v1.VoiceCloneServiceDeleteRequest
+	(*VoiceCloneServiceDeleteResponse)(nil),            // 83: creativanta.production.v1.VoiceCloneServiceDeleteResponse
+	(*VoiceCloneServiceGenerateVoiceoverRequest)(nil),  // 84: creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverRequest
+	(*VoiceCloneServiceGenerateVoiceoverResponse)(nil), // 85: creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverResponse
+	(*VoiceCloneServiceGetConsentStatusRequest)(nil),   // 86: creativanta.production.v1.VoiceCloneServiceGetConsentStatusRequest
+	(*VoiceCloneServiceGetConsentStatusResponse)(nil),  // 87: creativanta.production.v1.VoiceCloneServiceGetConsentStatusResponse
+	(*CreativeDna)(nil),                                // 88: creativanta.production.v1.CreativeDna
+	(*RemixBlueprint)(nil),                             // 89: creativanta.production.v1.RemixBlueprint
+	(*OriginalityCheckResult)(nil),                     // 90: creativanta.production.v1.OriginalityCheckResult
+	(*CopyrightCheckResult)(nil),                       // 91: creativanta.production.v1.CopyrightCheckResult
+	(*MultiMergeTimelineItem)(nil),                     // 92: creativanta.production.v1.MultiMergeTimelineItem
+	(*MultiMergeSettings)(nil),                         // 93: creativanta.production.v1.MultiMergeSettings
+	(*VideoEditJob)(nil),                               // 94: creativanta.production.v1.VideoEditJob
+	(*RemixServiceAnalyzeRequest)(nil),                 // 95: creativanta.production.v1.RemixServiceAnalyzeRequest
+	(*RemixServiceAnalyzeResponse)(nil),                // 96: creativanta.production.v1.RemixServiceAnalyzeResponse
+	(*RemixServiceGetBlueprintRequest)(nil),            // 97: creativanta.production.v1.RemixServiceGetBlueprintRequest
+	(*RemixServiceGetBlueprintResponse)(nil),           // 98: creativanta.production.v1.RemixServiceGetBlueprintResponse
+	(*RemixServiceGenerateRequest)(nil),                // 99: creativanta.production.v1.RemixServiceGenerateRequest
+	(*RemixServiceGenerateResponse)(nil),               // 100: creativanta.production.v1.RemixServiceGenerateResponse
+	(*RemixServiceRegenerateRequest)(nil),              // 101: creativanta.production.v1.RemixServiceRegenerateRequest
+	(*RemixServiceRegenerateResponse)(nil),             // 102: creativanta.production.v1.RemixServiceRegenerateResponse
+	(*VideoEditJobServiceCreateRequest)(nil),           // 103: creativanta.production.v1.VideoEditJobServiceCreateRequest
+	(*VideoEditJobServiceCreateResponse)(nil),          // 104: creativanta.production.v1.VideoEditJobServiceCreateResponse
+	(*VideoEditJobServiceGetRequest)(nil),              // 105: creativanta.production.v1.VideoEditJobServiceGetRequest
+	(*VideoEditJobServiceGetResponse)(nil),             // 106: creativanta.production.v1.VideoEditJobServiceGetResponse
+	(*VideoEditJobServiceListRequest)(nil),             // 107: creativanta.production.v1.VideoEditJobServiceListRequest
+	(*VideoEditJobServiceListResponse)(nil),            // 108: creativanta.production.v1.VideoEditJobServiceListResponse
+	(*VideoEditJobServiceCancelRequest)(nil),           // 109: creativanta.production.v1.VideoEditJobServiceCancelRequest
+	(*VideoEditJobServiceCancelResponse)(nil),          // 110: creativanta.production.v1.VideoEditJobServiceCancelResponse
+	(*VideoEditJobServiceRetryRequest)(nil),            // 111: creativanta.production.v1.VideoEditJobServiceRetryRequest
+	(*VideoEditJobServiceRetryResponse)(nil),           // 112: creativanta.production.v1.VideoEditJobServiceRetryResponse
+	nil,                                                // 113: creativanta.production.v1.TranslationJob.PerLanguageStatusEntry
+	nil,                                                // 114: creativanta.production.v1.TranslationJob.OutputAssetIdsEntry
+	nil,                                                // 115: creativanta.production.v1.TranslationJob.QualityScoresEntry
+	nil,                                                // 116: creativanta.production.v1.TranslationJob.RepairNotesEntry
+	nil,                                                // 117: creativanta.production.v1.TranslationSegment.TranslationsEntry
+	nil,                                                // 118: creativanta.production.v1.TranslationServiceCreateRequest.CustomScriptCorrectionsEntry
+	(*timestamppb.Timestamp)(nil),                      // 119: google.protobuf.Timestamp
+	(*v1.UUID)(nil),                                    // 120: creativanta.common.v1.UUID
+	(*v1.Pagination)(nil),                              // 121: creativanta.common.v1.Pagination
+	(*v1.PaginatedResponse)(nil),                       // 122: creativanta.common.v1.PaginatedResponse
+	(*v1.CommandContext)(nil),                          // 123: creativanta.common.v1.CommandContext
 }
 var file_creativanta_production_v1_production_proto_depIdxs = []int32{
 	4,   // 0: creativanta.production.v1.ProductionModeInfo.mode:type_name -> creativanta.production.v1.ProductionMode
-	105, // 1: creativanta.production.v1.LineageItem.recorded_at:type_name -> google.protobuf.Timestamp
+	119, // 1: creativanta.production.v1.LineageItem.recorded_at:type_name -> google.protobuf.Timestamp
 	3,   // 2: creativanta.production.v1.GenerationJob.pipeline_strategy:type_name -> creativanta.production.v1.PipelineStrategy
 	0,   // 3: creativanta.production.v1.GenerationJob.status:type_name -> creativanta.production.v1.GenerationJobStatus
-	105, // 4: creativanta.production.v1.GenerationJob.started_at:type_name -> google.protobuf.Timestamp
-	105, // 5: creativanta.production.v1.GenerationJob.completed_at:type_name -> google.protobuf.Timestamp
-	105, // 6: creativanta.production.v1.GenerationJob.created_at:type_name -> google.protobuf.Timestamp
-	105, // 7: creativanta.production.v1.GenerationJob.updated_at:type_name -> google.protobuf.Timestamp
+	119, // 4: creativanta.production.v1.GenerationJob.started_at:type_name -> google.protobuf.Timestamp
+	119, // 5: creativanta.production.v1.GenerationJob.completed_at:type_name -> google.protobuf.Timestamp
+	119, // 6: creativanta.production.v1.GenerationJob.created_at:type_name -> google.protobuf.Timestamp
+	119, // 7: creativanta.production.v1.GenerationJob.updated_at:type_name -> google.protobuf.Timestamp
 	1,   // 8: creativanta.production.v1.Asset.generation_state:type_name -> creativanta.production.v1.AssetGenerationState
 	2,   // 9: creativanta.production.v1.Asset.quality_state:type_name -> creativanta.production.v1.AssetQualityState
-	9,   // 10: creativanta.production.v1.Asset.lineage:type_name -> creativanta.production.v1.LineageItem
-	105, // 11: creativanta.production.v1.Asset.created_at:type_name -> google.protobuf.Timestamp
-	105, // 12: creativanta.production.v1.Asset.updated_at:type_name -> google.protobuf.Timestamp
-	13,  // 13: creativanta.production.v1.BatchBudgetPreview.items:type_name -> creativanta.production.v1.BatchInputValidationItem
-	105, // 14: creativanta.production.v1.BatchBudgetPreview.quote_expires_at:type_name -> google.protobuf.Timestamp
-	106, // 15: creativanta.production.v1.GetModesRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	8,   // 16: creativanta.production.v1.GetModesResponse.modes:type_name -> creativanta.production.v1.ProductionModeInfo
-	106, // 17: creativanta.production.v1.GetActiveJobsRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	107, // 18: creativanta.production.v1.GetActiveJobsRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	11,  // 19: creativanta.production.v1.GetActiveJobsResponse.jobs:type_name -> creativanta.production.v1.GenerationJob
-	108, // 20: creativanta.production.v1.GetActiveJobsResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	106, // 21: creativanta.production.v1.GetRecentAssetsRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	12,  // 22: creativanta.production.v1.GetRecentAssetsResponse.assets:type_name -> creativanta.production.v1.Asset
-	109, // 23: creativanta.production.v1.CancelRequest.context:type_name -> creativanta.common.v1.CommandContext
-	11,  // 24: creativanta.production.v1.CancelResponse.job:type_name -> creativanta.production.v1.GenerationJob
-	109, // 25: creativanta.production.v1.RetryRequest.context:type_name -> creativanta.common.v1.CommandContext
-	11,  // 26: creativanta.production.v1.RetryResponse.job:type_name -> creativanta.production.v1.GenerationJob
-	109, // 27: creativanta.production.v1.GenerateRequest.context:type_name -> creativanta.common.v1.CommandContext
+	10,  // 10: creativanta.production.v1.Asset.lineage:type_name -> creativanta.production.v1.LineageItem
+	119, // 11: creativanta.production.v1.Asset.created_at:type_name -> google.protobuf.Timestamp
+	119, // 12: creativanta.production.v1.Asset.updated_at:type_name -> google.protobuf.Timestamp
+	14,  // 13: creativanta.production.v1.BatchBudgetPreview.items:type_name -> creativanta.production.v1.BatchInputValidationItem
+	119, // 14: creativanta.production.v1.BatchBudgetPreview.quote_expires_at:type_name -> google.protobuf.Timestamp
+	120, // 15: creativanta.production.v1.GetModesRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	9,   // 16: creativanta.production.v1.GetModesResponse.modes:type_name -> creativanta.production.v1.ProductionModeInfo
+	120, // 17: creativanta.production.v1.GetActiveJobsRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	121, // 18: creativanta.production.v1.GetActiveJobsRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	12,  // 19: creativanta.production.v1.GetActiveJobsResponse.jobs:type_name -> creativanta.production.v1.GenerationJob
+	122, // 20: creativanta.production.v1.GetActiveJobsResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	120, // 21: creativanta.production.v1.GetRecentAssetsRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	13,  // 22: creativanta.production.v1.GetRecentAssetsResponse.assets:type_name -> creativanta.production.v1.Asset
+	123, // 23: creativanta.production.v1.CancelRequest.context:type_name -> creativanta.common.v1.CommandContext
+	12,  // 24: creativanta.production.v1.CancelResponse.job:type_name -> creativanta.production.v1.GenerationJob
+	123, // 25: creativanta.production.v1.RetryRequest.context:type_name -> creativanta.common.v1.CommandContext
+	12,  // 26: creativanta.production.v1.RetryResponse.job:type_name -> creativanta.production.v1.GenerationJob
+	123, // 27: creativanta.production.v1.GenerateRequest.context:type_name -> creativanta.common.v1.CommandContext
 	4,   // 28: creativanta.production.v1.GenerateRequest.mode:type_name -> creativanta.production.v1.ProductionMode
 	3,   // 29: creativanta.production.v1.GenerateRequest.pipeline_strategy:type_name -> creativanta.production.v1.PipelineStrategy
-	10,  // 30: creativanta.production.v1.GenerateRequest.post_production:type_name -> creativanta.production.v1.PostProductionConfig
-	25,  // 31: creativanta.production.v1.GenerateRequest.batch_items:type_name -> creativanta.production.v1.BatchGenerationItem
-	14,  // 32: creativanta.production.v1.GenerateResponse.budget_preview:type_name -> creativanta.production.v1.BatchBudgetPreview
-	11,  // 33: creativanta.production.v1.GenerateResponse.job:type_name -> creativanta.production.v1.GenerationJob
-	12,  // 34: creativanta.production.v1.GenerateResponse.asset:type_name -> creativanta.production.v1.Asset
-	11,  // 35: creativanta.production.v1.GenerateResponse.batch_jobs:type_name -> creativanta.production.v1.GenerationJob
-	12,  // 36: creativanta.production.v1.GenerateResponse.batch_assets:type_name -> creativanta.production.v1.Asset
-	106, // 37: creativanta.production.v1.GetStatusRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	11,  // 38: creativanta.production.v1.GetStatusResponse.job:type_name -> creativanta.production.v1.GenerationJob
-	12,  // 39: creativanta.production.v1.GetStatusResponse.asset:type_name -> creativanta.production.v1.Asset
-	106, // 40: creativanta.production.v1.ListRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	107, // 41: creativanta.production.v1.ListRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	12,  // 42: creativanta.production.v1.ListResponse.assets:type_name -> creativanta.production.v1.Asset
-	108, // 43: creativanta.production.v1.ListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	106, // 44: creativanta.production.v1.GetRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	12,  // 45: creativanta.production.v1.GetResponse.asset:type_name -> creativanta.production.v1.Asset
-	109, // 46: creativanta.production.v1.ApproveRequest.context:type_name -> creativanta.common.v1.CommandContext
-	12,  // 47: creativanta.production.v1.ApproveResponse.asset:type_name -> creativanta.production.v1.Asset
-	109, // 48: creativanta.production.v1.PromoteCanonicalRequest.context:type_name -> creativanta.common.v1.CommandContext
-	12,  // 49: creativanta.production.v1.PromoteCanonicalResponse.asset:type_name -> creativanta.production.v1.Asset
-	109, // 50: creativanta.production.v1.UploadRequest.context:type_name -> creativanta.common.v1.CommandContext
-	12,  // 51: creativanta.production.v1.UploadResponse.asset:type_name -> creativanta.production.v1.Asset
-	99,  // 52: creativanta.production.v1.TranslationJob.per_language_status:type_name -> creativanta.production.v1.TranslationJob.PerLanguageStatusEntry
-	100, // 53: creativanta.production.v1.TranslationJob.output_asset_ids:type_name -> creativanta.production.v1.TranslationJob.OutputAssetIdsEntry
-	101, // 54: creativanta.production.v1.TranslationJob.quality_scores:type_name -> creativanta.production.v1.TranslationJob.QualityScoresEntry
-	102, // 55: creativanta.production.v1.TranslationJob.repair_notes:type_name -> creativanta.production.v1.TranslationJob.RepairNotesEntry
-	105, // 56: creativanta.production.v1.TranslationJob.created_at:type_name -> google.protobuf.Timestamp
-	105, // 57: creativanta.production.v1.TranslationJob.updated_at:type_name -> google.protobuf.Timestamp
-	103, // 58: creativanta.production.v1.TranslationSegment.translations:type_name -> creativanta.production.v1.TranslationSegment.TranslationsEntry
-	109, // 59: creativanta.production.v1.TranslationServiceCreateRequest.context:type_name -> creativanta.common.v1.CommandContext
-	104, // 60: creativanta.production.v1.TranslationServiceCreateRequest.custom_script_corrections:type_name -> creativanta.production.v1.TranslationServiceCreateRequest.CustomScriptCorrectionsEntry
-	40,  // 61: creativanta.production.v1.TranslationServiceCreateResponse.job:type_name -> creativanta.production.v1.TranslationJob
-	106, // 62: creativanta.production.v1.TranslationServiceGetRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	40,  // 63: creativanta.production.v1.TranslationServiceGetResponse.job:type_name -> creativanta.production.v1.TranslationJob
-	12,  // 64: creativanta.production.v1.TranslationServiceGetResponse.output_assets:type_name -> creativanta.production.v1.Asset
-	41,  // 65: creativanta.production.v1.TranslationServiceGetResponse.segments:type_name -> creativanta.production.v1.TranslationSegment
-	106, // 66: creativanta.production.v1.TranslationServiceListRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	107, // 67: creativanta.production.v1.TranslationServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	40,  // 68: creativanta.production.v1.TranslationServiceListResponse.jobs:type_name -> creativanta.production.v1.TranslationJob
-	108, // 69: creativanta.production.v1.TranslationServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	105, // 70: creativanta.production.v1.SoundTrack.created_at:type_name -> google.protobuf.Timestamp
-	109, // 71: creativanta.production.v1.SoundStudioServiceGenerateMusicRequest.context:type_name -> creativanta.common.v1.CommandContext
-	48,  // 72: creativanta.production.v1.SoundStudioServiceGenerateMusicResponse.track:type_name -> creativanta.production.v1.SoundTrack
-	12,  // 73: creativanta.production.v1.SoundStudioServiceGenerateMusicResponse.asset:type_name -> creativanta.production.v1.Asset
-	109, // 74: creativanta.production.v1.SoundStudioServiceGenerateSFXRequest.context:type_name -> creativanta.common.v1.CommandContext
-	48,  // 75: creativanta.production.v1.SoundStudioServiceGenerateSFXResponse.track:type_name -> creativanta.production.v1.SoundTrack
-	12,  // 76: creativanta.production.v1.SoundStudioServiceGenerateSFXResponse.asset:type_name -> creativanta.production.v1.Asset
-	106, // 77: creativanta.production.v1.SoundStudioServiceAnalyzeBeatRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	106, // 78: creativanta.production.v1.SoundStudioServiceListSoundLibraryRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	107, // 79: creativanta.production.v1.SoundStudioServiceListSoundLibraryRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	48,  // 80: creativanta.production.v1.SoundStudioServiceListSoundLibraryResponse.tracks:type_name -> creativanta.production.v1.SoundTrack
-	108, // 81: creativanta.production.v1.SoundStudioServiceListSoundLibraryResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	106, // 82: creativanta.production.v1.SoundStudioServiceGetSoundRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	48,  // 83: creativanta.production.v1.SoundStudioServiceGetSoundResponse.track:type_name -> creativanta.production.v1.SoundTrack
-	106, // 84: creativanta.production.v1.SoundStudioServicePreviewSoundRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	105, // 85: creativanta.production.v1.VoiceCloneRecord.created_at:type_name -> google.protobuf.Timestamp
-	105, // 86: creativanta.production.v1.VoiceCloneRecord.updated_at:type_name -> google.protobuf.Timestamp
-	109, // 87: creativanta.production.v1.VoiceCloneServiceCreateRequest.context:type_name -> creativanta.common.v1.CommandContext
-	61,  // 88: creativanta.production.v1.VoiceCloneServiceCreateResponse.record:type_name -> creativanta.production.v1.VoiceCloneRecord
-	106, // 89: creativanta.production.v1.VoiceCloneServiceGetRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	61,  // 90: creativanta.production.v1.VoiceCloneServiceGetResponse.record:type_name -> creativanta.production.v1.VoiceCloneRecord
-	106, // 91: creativanta.production.v1.VoiceCloneServiceListRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	107, // 92: creativanta.production.v1.VoiceCloneServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	61,  // 93: creativanta.production.v1.VoiceCloneServiceListResponse.records:type_name -> creativanta.production.v1.VoiceCloneRecord
-	108, // 94: creativanta.production.v1.VoiceCloneServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	109, // 95: creativanta.production.v1.VoiceCloneServiceDeleteRequest.context:type_name -> creativanta.common.v1.CommandContext
-	109, // 96: creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverRequest.context:type_name -> creativanta.common.v1.CommandContext
-	106, // 97: creativanta.production.v1.VoiceCloneServiceGetConsentStatusRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	105, // 98: creativanta.production.v1.VoiceCloneServiceGetConsentStatusResponse.granted_at:type_name -> google.protobuf.Timestamp
-	105, // 99: creativanta.production.v1.VoiceCloneServiceGetConsentStatusResponse.revoked_at:type_name -> google.protobuf.Timestamp
-	74,  // 100: creativanta.production.v1.RemixBlueprint.creative_dna:type_name -> creativanta.production.v1.CreativeDna
-	5,   // 101: creativanta.production.v1.RemixBlueprint.fidelity_level:type_name -> creativanta.production.v1.FidelityLevel
-	6,   // 102: creativanta.production.v1.RemixBlueprint.status:type_name -> creativanta.production.v1.RemixStatus
-	105, // 103: creativanta.production.v1.RemixBlueprint.created_at:type_name -> google.protobuf.Timestamp
-	105, // 104: creativanta.production.v1.RemixBlueprint.updated_at:type_name -> google.protobuf.Timestamp
-	4,   // 105: creativanta.production.v1.VideoEditJob.mode:type_name -> creativanta.production.v1.ProductionMode
-	7,   // 106: creativanta.production.v1.VideoEditJob.status:type_name -> creativanta.production.v1.VideoEditJobStatus
-	105, // 107: creativanta.production.v1.VideoEditJob.started_at:type_name -> google.protobuf.Timestamp
-	105, // 108: creativanta.production.v1.VideoEditJob.completed_at:type_name -> google.protobuf.Timestamp
-	105, // 109: creativanta.production.v1.VideoEditJob.created_at:type_name -> google.protobuf.Timestamp
-	105, // 110: creativanta.production.v1.VideoEditJob.updated_at:type_name -> google.protobuf.Timestamp
-	109, // 111: creativanta.production.v1.RemixServiceAnalyzeRequest.context:type_name -> creativanta.common.v1.CommandContext
-	5,   // 112: creativanta.production.v1.RemixServiceAnalyzeRequest.fidelity_level:type_name -> creativanta.production.v1.FidelityLevel
-	75,  // 113: creativanta.production.v1.RemixServiceAnalyzeResponse.blueprint:type_name -> creativanta.production.v1.RemixBlueprint
-	106, // 114: creativanta.production.v1.RemixServiceGetBlueprintRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	75,  // 115: creativanta.production.v1.RemixServiceGetBlueprintResponse.blueprint:type_name -> creativanta.production.v1.RemixBlueprint
-	109, // 116: creativanta.production.v1.RemixServiceGenerateRequest.context:type_name -> creativanta.common.v1.CommandContext
-	5,   // 117: creativanta.production.v1.RemixServiceGenerateRequest.fidelity_level:type_name -> creativanta.production.v1.FidelityLevel
-	75,  // 118: creativanta.production.v1.RemixServiceGenerateResponse.blueprint:type_name -> creativanta.production.v1.RemixBlueprint
-	80,  // 119: creativanta.production.v1.RemixServiceGenerateResponse.job:type_name -> creativanta.production.v1.VideoEditJob
-	12,  // 120: creativanta.production.v1.RemixServiceGenerateResponse.asset:type_name -> creativanta.production.v1.Asset
-	76,  // 121: creativanta.production.v1.RemixServiceGenerateResponse.originality_check:type_name -> creativanta.production.v1.OriginalityCheckResult
-	109, // 122: creativanta.production.v1.RemixServiceRegenerateRequest.context:type_name -> creativanta.common.v1.CommandContext
-	75,  // 123: creativanta.production.v1.RemixServiceRegenerateResponse.blueprint:type_name -> creativanta.production.v1.RemixBlueprint
-	80,  // 124: creativanta.production.v1.RemixServiceRegenerateResponse.job:type_name -> creativanta.production.v1.VideoEditJob
-	109, // 125: creativanta.production.v1.VideoEditJobServiceCreateRequest.context:type_name -> creativanta.common.v1.CommandContext
-	4,   // 126: creativanta.production.v1.VideoEditJobServiceCreateRequest.mode:type_name -> creativanta.production.v1.ProductionMode
-	78,  // 127: creativanta.production.v1.VideoEditJobServiceCreateRequest.timeline_items:type_name -> creativanta.production.v1.MultiMergeTimelineItem
-	79,  // 128: creativanta.production.v1.VideoEditJobServiceCreateRequest.multimerge_settings:type_name -> creativanta.production.v1.MultiMergeSettings
-	80,  // 129: creativanta.production.v1.VideoEditJobServiceCreateResponse.job:type_name -> creativanta.production.v1.VideoEditJob
-	77,  // 130: creativanta.production.v1.VideoEditJobServiceCreateResponse.copyright_checks:type_name -> creativanta.production.v1.CopyrightCheckResult
-	106, // 131: creativanta.production.v1.VideoEditJobServiceGetRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	80,  // 132: creativanta.production.v1.VideoEditJobServiceGetResponse.job:type_name -> creativanta.production.v1.VideoEditJob
-	106, // 133: creativanta.production.v1.VideoEditJobServiceListRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	4,   // 134: creativanta.production.v1.VideoEditJobServiceListRequest.mode:type_name -> creativanta.production.v1.ProductionMode
-	7,   // 135: creativanta.production.v1.VideoEditJobServiceListRequest.status:type_name -> creativanta.production.v1.VideoEditJobStatus
-	107, // 136: creativanta.production.v1.VideoEditJobServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	80,  // 137: creativanta.production.v1.VideoEditJobServiceListResponse.jobs:type_name -> creativanta.production.v1.VideoEditJob
-	108, // 138: creativanta.production.v1.VideoEditJobServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	109, // 139: creativanta.production.v1.VideoEditJobServiceCancelRequest.context:type_name -> creativanta.common.v1.CommandContext
-	80,  // 140: creativanta.production.v1.VideoEditJobServiceCancelResponse.job:type_name -> creativanta.production.v1.VideoEditJob
-	109, // 141: creativanta.production.v1.VideoEditJobServiceRetryRequest.context:type_name -> creativanta.common.v1.CommandContext
-	80,  // 142: creativanta.production.v1.VideoEditJobServiceRetryResponse.job:type_name -> creativanta.production.v1.VideoEditJob
-	15,  // 143: creativanta.production.v1.StudioService.GetModes:input_type -> creativanta.production.v1.GetModesRequest
-	17,  // 144: creativanta.production.v1.StudioService.GetActiveJobs:input_type -> creativanta.production.v1.GetActiveJobsRequest
-	19,  // 145: creativanta.production.v1.StudioService.GetRecentAssets:input_type -> creativanta.production.v1.GetRecentAssetsRequest
-	21,  // 146: creativanta.production.v1.StudioService.Cancel:input_type -> creativanta.production.v1.CancelRequest
-	23,  // 147: creativanta.production.v1.StudioService.Retry:input_type -> creativanta.production.v1.RetryRequest
-	26,  // 148: creativanta.production.v1.AssetService.Generate:input_type -> creativanta.production.v1.GenerateRequest
-	28,  // 149: creativanta.production.v1.AssetService.GetStatus:input_type -> creativanta.production.v1.GetStatusRequest
-	30,  // 150: creativanta.production.v1.AssetService.List:input_type -> creativanta.production.v1.ListRequest
-	32,  // 151: creativanta.production.v1.AssetService.Get:input_type -> creativanta.production.v1.GetRequest
-	34,  // 152: creativanta.production.v1.AssetService.Approve:input_type -> creativanta.production.v1.ApproveRequest
-	36,  // 153: creativanta.production.v1.AssetService.PromoteCanonical:input_type -> creativanta.production.v1.PromoteCanonicalRequest
-	38,  // 154: creativanta.production.v1.AssetService.Upload:input_type -> creativanta.production.v1.UploadRequest
-	42,  // 155: creativanta.production.v1.TranslationService.Create:input_type -> creativanta.production.v1.TranslationServiceCreateRequest
-	44,  // 156: creativanta.production.v1.TranslationService.Get:input_type -> creativanta.production.v1.TranslationServiceGetRequest
-	46,  // 157: creativanta.production.v1.TranslationService.List:input_type -> creativanta.production.v1.TranslationServiceListRequest
-	49,  // 158: creativanta.production.v1.SoundStudioService.GenerateMusic:input_type -> creativanta.production.v1.SoundStudioServiceGenerateMusicRequest
-	51,  // 159: creativanta.production.v1.SoundStudioService.GenerateSFX:input_type -> creativanta.production.v1.SoundStudioServiceGenerateSFXRequest
-	53,  // 160: creativanta.production.v1.SoundStudioService.AnalyzeBeat:input_type -> creativanta.production.v1.SoundStudioServiceAnalyzeBeatRequest
-	55,  // 161: creativanta.production.v1.SoundStudioService.ListSoundLibrary:input_type -> creativanta.production.v1.SoundStudioServiceListSoundLibraryRequest
-	57,  // 162: creativanta.production.v1.SoundStudioService.GetSound:input_type -> creativanta.production.v1.SoundStudioServiceGetSoundRequest
-	59,  // 163: creativanta.production.v1.SoundStudioService.PreviewSound:input_type -> creativanta.production.v1.SoundStudioServicePreviewSoundRequest
-	62,  // 164: creativanta.production.v1.VoiceCloneService.Create:input_type -> creativanta.production.v1.VoiceCloneServiceCreateRequest
-	64,  // 165: creativanta.production.v1.VoiceCloneService.Get:input_type -> creativanta.production.v1.VoiceCloneServiceGetRequest
-	66,  // 166: creativanta.production.v1.VoiceCloneService.List:input_type -> creativanta.production.v1.VoiceCloneServiceListRequest
-	68,  // 167: creativanta.production.v1.VoiceCloneService.Delete:input_type -> creativanta.production.v1.VoiceCloneServiceDeleteRequest
-	70,  // 168: creativanta.production.v1.VoiceCloneService.GenerateVoiceover:input_type -> creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverRequest
-	72,  // 169: creativanta.production.v1.VoiceCloneService.GetConsentStatus:input_type -> creativanta.production.v1.VoiceCloneServiceGetConsentStatusRequest
-	81,  // 170: creativanta.production.v1.RemixService.Analyze:input_type -> creativanta.production.v1.RemixServiceAnalyzeRequest
-	83,  // 171: creativanta.production.v1.RemixService.GetBlueprint:input_type -> creativanta.production.v1.RemixServiceGetBlueprintRequest
-	85,  // 172: creativanta.production.v1.RemixService.Generate:input_type -> creativanta.production.v1.RemixServiceGenerateRequest
-	87,  // 173: creativanta.production.v1.RemixService.Regenerate:input_type -> creativanta.production.v1.RemixServiceRegenerateRequest
-	89,  // 174: creativanta.production.v1.VideoEditJobService.Create:input_type -> creativanta.production.v1.VideoEditJobServiceCreateRequest
-	91,  // 175: creativanta.production.v1.VideoEditJobService.Get:input_type -> creativanta.production.v1.VideoEditJobServiceGetRequest
-	93,  // 176: creativanta.production.v1.VideoEditJobService.List:input_type -> creativanta.production.v1.VideoEditJobServiceListRequest
-	95,  // 177: creativanta.production.v1.VideoEditJobService.Cancel:input_type -> creativanta.production.v1.VideoEditJobServiceCancelRequest
-	97,  // 178: creativanta.production.v1.VideoEditJobService.Retry:input_type -> creativanta.production.v1.VideoEditJobServiceRetryRequest
-	16,  // 179: creativanta.production.v1.StudioService.GetModes:output_type -> creativanta.production.v1.GetModesResponse
-	18,  // 180: creativanta.production.v1.StudioService.GetActiveJobs:output_type -> creativanta.production.v1.GetActiveJobsResponse
-	20,  // 181: creativanta.production.v1.StudioService.GetRecentAssets:output_type -> creativanta.production.v1.GetRecentAssetsResponse
-	22,  // 182: creativanta.production.v1.StudioService.Cancel:output_type -> creativanta.production.v1.CancelResponse
-	24,  // 183: creativanta.production.v1.StudioService.Retry:output_type -> creativanta.production.v1.RetryResponse
-	27,  // 184: creativanta.production.v1.AssetService.Generate:output_type -> creativanta.production.v1.GenerateResponse
-	29,  // 185: creativanta.production.v1.AssetService.GetStatus:output_type -> creativanta.production.v1.GetStatusResponse
-	31,  // 186: creativanta.production.v1.AssetService.List:output_type -> creativanta.production.v1.ListResponse
-	33,  // 187: creativanta.production.v1.AssetService.Get:output_type -> creativanta.production.v1.GetResponse
-	35,  // 188: creativanta.production.v1.AssetService.Approve:output_type -> creativanta.production.v1.ApproveResponse
-	37,  // 189: creativanta.production.v1.AssetService.PromoteCanonical:output_type -> creativanta.production.v1.PromoteCanonicalResponse
-	39,  // 190: creativanta.production.v1.AssetService.Upload:output_type -> creativanta.production.v1.UploadResponse
-	43,  // 191: creativanta.production.v1.TranslationService.Create:output_type -> creativanta.production.v1.TranslationServiceCreateResponse
-	45,  // 192: creativanta.production.v1.TranslationService.Get:output_type -> creativanta.production.v1.TranslationServiceGetResponse
-	47,  // 193: creativanta.production.v1.TranslationService.List:output_type -> creativanta.production.v1.TranslationServiceListResponse
-	50,  // 194: creativanta.production.v1.SoundStudioService.GenerateMusic:output_type -> creativanta.production.v1.SoundStudioServiceGenerateMusicResponse
-	52,  // 195: creativanta.production.v1.SoundStudioService.GenerateSFX:output_type -> creativanta.production.v1.SoundStudioServiceGenerateSFXResponse
-	54,  // 196: creativanta.production.v1.SoundStudioService.AnalyzeBeat:output_type -> creativanta.production.v1.SoundStudioServiceAnalyzeBeatResponse
-	56,  // 197: creativanta.production.v1.SoundStudioService.ListSoundLibrary:output_type -> creativanta.production.v1.SoundStudioServiceListSoundLibraryResponse
-	58,  // 198: creativanta.production.v1.SoundStudioService.GetSound:output_type -> creativanta.production.v1.SoundStudioServiceGetSoundResponse
-	60,  // 199: creativanta.production.v1.SoundStudioService.PreviewSound:output_type -> creativanta.production.v1.SoundStudioServicePreviewSoundResponse
-	63,  // 200: creativanta.production.v1.VoiceCloneService.Create:output_type -> creativanta.production.v1.VoiceCloneServiceCreateResponse
-	65,  // 201: creativanta.production.v1.VoiceCloneService.Get:output_type -> creativanta.production.v1.VoiceCloneServiceGetResponse
-	67,  // 202: creativanta.production.v1.VoiceCloneService.List:output_type -> creativanta.production.v1.VoiceCloneServiceListResponse
-	69,  // 203: creativanta.production.v1.VoiceCloneService.Delete:output_type -> creativanta.production.v1.VoiceCloneServiceDeleteResponse
-	71,  // 204: creativanta.production.v1.VoiceCloneService.GenerateVoiceover:output_type -> creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverResponse
-	73,  // 205: creativanta.production.v1.VoiceCloneService.GetConsentStatus:output_type -> creativanta.production.v1.VoiceCloneServiceGetConsentStatusResponse
-	82,  // 206: creativanta.production.v1.RemixService.Analyze:output_type -> creativanta.production.v1.RemixServiceAnalyzeResponse
-	84,  // 207: creativanta.production.v1.RemixService.GetBlueprint:output_type -> creativanta.production.v1.RemixServiceGetBlueprintResponse
-	86,  // 208: creativanta.production.v1.RemixService.Generate:output_type -> creativanta.production.v1.RemixServiceGenerateResponse
-	88,  // 209: creativanta.production.v1.RemixService.Regenerate:output_type -> creativanta.production.v1.RemixServiceRegenerateResponse
-	90,  // 210: creativanta.production.v1.VideoEditJobService.Create:output_type -> creativanta.production.v1.VideoEditJobServiceCreateResponse
-	92,  // 211: creativanta.production.v1.VideoEditJobService.Get:output_type -> creativanta.production.v1.VideoEditJobServiceGetResponse
-	94,  // 212: creativanta.production.v1.VideoEditJobService.List:output_type -> creativanta.production.v1.VideoEditJobServiceListResponse
-	96,  // 213: creativanta.production.v1.VideoEditJobService.Cancel:output_type -> creativanta.production.v1.VideoEditJobServiceCancelResponse
-	98,  // 214: creativanta.production.v1.VideoEditJobService.Retry:output_type -> creativanta.production.v1.VideoEditJobServiceRetryResponse
-	179, // [179:215] is the sub-list for method output_type
-	143, // [143:179] is the sub-list for method input_type
-	143, // [143:143] is the sub-list for extension type_name
-	143, // [143:143] is the sub-list for extension extendee
-	0,   // [0:143] is the sub-list for field type_name
+	11,  // 30: creativanta.production.v1.GenerateRequest.post_production:type_name -> creativanta.production.v1.PostProductionConfig
+	26,  // 31: creativanta.production.v1.GenerateRequest.batch_items:type_name -> creativanta.production.v1.BatchGenerationItem
+	15,  // 32: creativanta.production.v1.GenerateResponse.budget_preview:type_name -> creativanta.production.v1.BatchBudgetPreview
+	12,  // 33: creativanta.production.v1.GenerateResponse.job:type_name -> creativanta.production.v1.GenerationJob
+	13,  // 34: creativanta.production.v1.GenerateResponse.asset:type_name -> creativanta.production.v1.Asset
+	12,  // 35: creativanta.production.v1.GenerateResponse.batch_jobs:type_name -> creativanta.production.v1.GenerationJob
+	13,  // 36: creativanta.production.v1.GenerateResponse.batch_assets:type_name -> creativanta.production.v1.Asset
+	120, // 37: creativanta.production.v1.GetStatusRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	12,  // 38: creativanta.production.v1.GetStatusResponse.job:type_name -> creativanta.production.v1.GenerationJob
+	13,  // 39: creativanta.production.v1.GetStatusResponse.asset:type_name -> creativanta.production.v1.Asset
+	120, // 40: creativanta.production.v1.ListRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	121, // 41: creativanta.production.v1.ListRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	13,  // 42: creativanta.production.v1.ListResponse.assets:type_name -> creativanta.production.v1.Asset
+	122, // 43: creativanta.production.v1.ListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	120, // 44: creativanta.production.v1.GetRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	13,  // 45: creativanta.production.v1.GetResponse.asset:type_name -> creativanta.production.v1.Asset
+	123, // 46: creativanta.production.v1.ApproveRequest.context:type_name -> creativanta.common.v1.CommandContext
+	13,  // 47: creativanta.production.v1.ApproveResponse.asset:type_name -> creativanta.production.v1.Asset
+	123, // 48: creativanta.production.v1.PromoteCanonicalRequest.context:type_name -> creativanta.common.v1.CommandContext
+	13,  // 49: creativanta.production.v1.PromoteCanonicalResponse.asset:type_name -> creativanta.production.v1.Asset
+	123, // 50: creativanta.production.v1.UploadRequest.context:type_name -> creativanta.common.v1.CommandContext
+	13,  // 51: creativanta.production.v1.UploadResponse.asset:type_name -> creativanta.production.v1.Asset
+	120, // 52: creativanta.production.v1.Transcript.workspace_id:type_name -> creativanta.common.v1.UUID
+	41,  // 53: creativanta.production.v1.Transcript.words:type_name -> creativanta.production.v1.TranscriptWord
+	42,  // 54: creativanta.production.v1.Transcript.segments:type_name -> creativanta.production.v1.TranscriptSegment
+	8,   // 55: creativanta.production.v1.Transcript.alignment_status:type_name -> creativanta.production.v1.TranscriptAlignmentStatus
+	119, // 56: creativanta.production.v1.Transcript.created_at:type_name -> google.protobuf.Timestamp
+	119, // 57: creativanta.production.v1.Transcript.updated_at:type_name -> google.protobuf.Timestamp
+	44,  // 58: creativanta.production.v1.TranscriptAnalysis.dead_pauses:type_name -> creativanta.production.v1.DeadPause
+	47,  // 59: creativanta.production.v1.QuickEditPlan.cuts:type_name -> creativanta.production.v1.CutInterval
+	48,  // 60: creativanta.production.v1.QuickEditPlan.addons:type_name -> creativanta.production.v1.QuickEditAddons
+	120, // 61: creativanta.production.v1.QuickEditDraft.workspace_id:type_name -> creativanta.common.v1.UUID
+	47,  // 62: creativanta.production.v1.QuickEditDraft.cuts:type_name -> creativanta.production.v1.CutInterval
+	48,  // 63: creativanta.production.v1.QuickEditDraft.addons:type_name -> creativanta.production.v1.QuickEditAddons
+	119, // 64: creativanta.production.v1.QuickEditDraft.created_at:type_name -> google.protobuf.Timestamp
+	119, // 65: creativanta.production.v1.QuickEditDraft.updated_at:type_name -> google.protobuf.Timestamp
+	123, // 66: creativanta.production.v1.QuickEditServiceSaveDraftRequest.context:type_name -> creativanta.common.v1.CommandContext
+	47,  // 67: creativanta.production.v1.QuickEditServiceSaveDraftRequest.cuts:type_name -> creativanta.production.v1.CutInterval
+	48,  // 68: creativanta.production.v1.QuickEditServiceSaveDraftRequest.addons:type_name -> creativanta.production.v1.QuickEditAddons
+	50,  // 69: creativanta.production.v1.QuickEditServiceSaveDraftResponse.draft:type_name -> creativanta.production.v1.QuickEditDraft
+	113, // 70: creativanta.production.v1.TranslationJob.per_language_status:type_name -> creativanta.production.v1.TranslationJob.PerLanguageStatusEntry
+	114, // 71: creativanta.production.v1.TranslationJob.output_asset_ids:type_name -> creativanta.production.v1.TranslationJob.OutputAssetIdsEntry
+	115, // 72: creativanta.production.v1.TranslationJob.quality_scores:type_name -> creativanta.production.v1.TranslationJob.QualityScoresEntry
+	116, // 73: creativanta.production.v1.TranslationJob.repair_notes:type_name -> creativanta.production.v1.TranslationJob.RepairNotesEntry
+	119, // 74: creativanta.production.v1.TranslationJob.created_at:type_name -> google.protobuf.Timestamp
+	119, // 75: creativanta.production.v1.TranslationJob.updated_at:type_name -> google.protobuf.Timestamp
+	117, // 76: creativanta.production.v1.TranslationSegment.translations:type_name -> creativanta.production.v1.TranslationSegment.TranslationsEntry
+	123, // 77: creativanta.production.v1.TranslationServiceCreateRequest.context:type_name -> creativanta.common.v1.CommandContext
+	118, // 78: creativanta.production.v1.TranslationServiceCreateRequest.custom_script_corrections:type_name -> creativanta.production.v1.TranslationServiceCreateRequest.CustomScriptCorrectionsEntry
+	54,  // 79: creativanta.production.v1.TranslationServiceCreateResponse.job:type_name -> creativanta.production.v1.TranslationJob
+	120, // 80: creativanta.production.v1.TranslationServiceGetRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	54,  // 81: creativanta.production.v1.TranslationServiceGetResponse.job:type_name -> creativanta.production.v1.TranslationJob
+	13,  // 82: creativanta.production.v1.TranslationServiceGetResponse.output_assets:type_name -> creativanta.production.v1.Asset
+	55,  // 83: creativanta.production.v1.TranslationServiceGetResponse.segments:type_name -> creativanta.production.v1.TranslationSegment
+	120, // 84: creativanta.production.v1.TranslationServiceListRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	121, // 85: creativanta.production.v1.TranslationServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	54,  // 86: creativanta.production.v1.TranslationServiceListResponse.jobs:type_name -> creativanta.production.v1.TranslationJob
+	122, // 87: creativanta.production.v1.TranslationServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	119, // 88: creativanta.production.v1.SoundTrack.created_at:type_name -> google.protobuf.Timestamp
+	123, // 89: creativanta.production.v1.SoundStudioServiceGenerateMusicRequest.context:type_name -> creativanta.common.v1.CommandContext
+	62,  // 90: creativanta.production.v1.SoundStudioServiceGenerateMusicResponse.track:type_name -> creativanta.production.v1.SoundTrack
+	13,  // 91: creativanta.production.v1.SoundStudioServiceGenerateMusicResponse.asset:type_name -> creativanta.production.v1.Asset
+	123, // 92: creativanta.production.v1.SoundStudioServiceGenerateSFXRequest.context:type_name -> creativanta.common.v1.CommandContext
+	62,  // 93: creativanta.production.v1.SoundStudioServiceGenerateSFXResponse.track:type_name -> creativanta.production.v1.SoundTrack
+	13,  // 94: creativanta.production.v1.SoundStudioServiceGenerateSFXResponse.asset:type_name -> creativanta.production.v1.Asset
+	120, // 95: creativanta.production.v1.SoundStudioServiceAnalyzeBeatRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	120, // 96: creativanta.production.v1.SoundStudioServiceListSoundLibraryRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	121, // 97: creativanta.production.v1.SoundStudioServiceListSoundLibraryRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	62,  // 98: creativanta.production.v1.SoundStudioServiceListSoundLibraryResponse.tracks:type_name -> creativanta.production.v1.SoundTrack
+	122, // 99: creativanta.production.v1.SoundStudioServiceListSoundLibraryResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	120, // 100: creativanta.production.v1.SoundStudioServiceGetSoundRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	62,  // 101: creativanta.production.v1.SoundStudioServiceGetSoundResponse.track:type_name -> creativanta.production.v1.SoundTrack
+	120, // 102: creativanta.production.v1.SoundStudioServicePreviewSoundRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	119, // 103: creativanta.production.v1.VoiceCloneRecord.created_at:type_name -> google.protobuf.Timestamp
+	119, // 104: creativanta.production.v1.VoiceCloneRecord.updated_at:type_name -> google.protobuf.Timestamp
+	123, // 105: creativanta.production.v1.VoiceCloneServiceCreateRequest.context:type_name -> creativanta.common.v1.CommandContext
+	75,  // 106: creativanta.production.v1.VoiceCloneServiceCreateResponse.record:type_name -> creativanta.production.v1.VoiceCloneRecord
+	120, // 107: creativanta.production.v1.VoiceCloneServiceGetRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	75,  // 108: creativanta.production.v1.VoiceCloneServiceGetResponse.record:type_name -> creativanta.production.v1.VoiceCloneRecord
+	120, // 109: creativanta.production.v1.VoiceCloneServiceListRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	121, // 110: creativanta.production.v1.VoiceCloneServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	75,  // 111: creativanta.production.v1.VoiceCloneServiceListResponse.records:type_name -> creativanta.production.v1.VoiceCloneRecord
+	122, // 112: creativanta.production.v1.VoiceCloneServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	123, // 113: creativanta.production.v1.VoiceCloneServiceDeleteRequest.context:type_name -> creativanta.common.v1.CommandContext
+	123, // 114: creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverRequest.context:type_name -> creativanta.common.v1.CommandContext
+	120, // 115: creativanta.production.v1.VoiceCloneServiceGetConsentStatusRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	119, // 116: creativanta.production.v1.VoiceCloneServiceGetConsentStatusResponse.granted_at:type_name -> google.protobuf.Timestamp
+	119, // 117: creativanta.production.v1.VoiceCloneServiceGetConsentStatusResponse.revoked_at:type_name -> google.protobuf.Timestamp
+	88,  // 118: creativanta.production.v1.RemixBlueprint.creative_dna:type_name -> creativanta.production.v1.CreativeDna
+	5,   // 119: creativanta.production.v1.RemixBlueprint.fidelity_level:type_name -> creativanta.production.v1.FidelityLevel
+	6,   // 120: creativanta.production.v1.RemixBlueprint.status:type_name -> creativanta.production.v1.RemixStatus
+	119, // 121: creativanta.production.v1.RemixBlueprint.created_at:type_name -> google.protobuf.Timestamp
+	119, // 122: creativanta.production.v1.RemixBlueprint.updated_at:type_name -> google.protobuf.Timestamp
+	4,   // 123: creativanta.production.v1.VideoEditJob.mode:type_name -> creativanta.production.v1.ProductionMode
+	7,   // 124: creativanta.production.v1.VideoEditJob.status:type_name -> creativanta.production.v1.VideoEditJobStatus
+	119, // 125: creativanta.production.v1.VideoEditJob.started_at:type_name -> google.protobuf.Timestamp
+	119, // 126: creativanta.production.v1.VideoEditJob.completed_at:type_name -> google.protobuf.Timestamp
+	119, // 127: creativanta.production.v1.VideoEditJob.created_at:type_name -> google.protobuf.Timestamp
+	119, // 128: creativanta.production.v1.VideoEditJob.updated_at:type_name -> google.protobuf.Timestamp
+	123, // 129: creativanta.production.v1.RemixServiceAnalyzeRequest.context:type_name -> creativanta.common.v1.CommandContext
+	5,   // 130: creativanta.production.v1.RemixServiceAnalyzeRequest.fidelity_level:type_name -> creativanta.production.v1.FidelityLevel
+	89,  // 131: creativanta.production.v1.RemixServiceAnalyzeResponse.blueprint:type_name -> creativanta.production.v1.RemixBlueprint
+	120, // 132: creativanta.production.v1.RemixServiceGetBlueprintRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	89,  // 133: creativanta.production.v1.RemixServiceGetBlueprintResponse.blueprint:type_name -> creativanta.production.v1.RemixBlueprint
+	123, // 134: creativanta.production.v1.RemixServiceGenerateRequest.context:type_name -> creativanta.common.v1.CommandContext
+	5,   // 135: creativanta.production.v1.RemixServiceGenerateRequest.fidelity_level:type_name -> creativanta.production.v1.FidelityLevel
+	89,  // 136: creativanta.production.v1.RemixServiceGenerateResponse.blueprint:type_name -> creativanta.production.v1.RemixBlueprint
+	94,  // 137: creativanta.production.v1.RemixServiceGenerateResponse.job:type_name -> creativanta.production.v1.VideoEditJob
+	13,  // 138: creativanta.production.v1.RemixServiceGenerateResponse.asset:type_name -> creativanta.production.v1.Asset
+	90,  // 139: creativanta.production.v1.RemixServiceGenerateResponse.originality_check:type_name -> creativanta.production.v1.OriginalityCheckResult
+	123, // 140: creativanta.production.v1.RemixServiceRegenerateRequest.context:type_name -> creativanta.common.v1.CommandContext
+	89,  // 141: creativanta.production.v1.RemixServiceRegenerateResponse.blueprint:type_name -> creativanta.production.v1.RemixBlueprint
+	94,  // 142: creativanta.production.v1.RemixServiceRegenerateResponse.job:type_name -> creativanta.production.v1.VideoEditJob
+	123, // 143: creativanta.production.v1.VideoEditJobServiceCreateRequest.context:type_name -> creativanta.common.v1.CommandContext
+	4,   // 144: creativanta.production.v1.VideoEditJobServiceCreateRequest.mode:type_name -> creativanta.production.v1.ProductionMode
+	92,  // 145: creativanta.production.v1.VideoEditJobServiceCreateRequest.timeline_items:type_name -> creativanta.production.v1.MultiMergeTimelineItem
+	93,  // 146: creativanta.production.v1.VideoEditJobServiceCreateRequest.multimerge_settings:type_name -> creativanta.production.v1.MultiMergeSettings
+	94,  // 147: creativanta.production.v1.VideoEditJobServiceCreateResponse.job:type_name -> creativanta.production.v1.VideoEditJob
+	91,  // 148: creativanta.production.v1.VideoEditJobServiceCreateResponse.copyright_checks:type_name -> creativanta.production.v1.CopyrightCheckResult
+	120, // 149: creativanta.production.v1.VideoEditJobServiceGetRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	94,  // 150: creativanta.production.v1.VideoEditJobServiceGetResponse.job:type_name -> creativanta.production.v1.VideoEditJob
+	120, // 151: creativanta.production.v1.VideoEditJobServiceListRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	4,   // 152: creativanta.production.v1.VideoEditJobServiceListRequest.mode:type_name -> creativanta.production.v1.ProductionMode
+	7,   // 153: creativanta.production.v1.VideoEditJobServiceListRequest.status:type_name -> creativanta.production.v1.VideoEditJobStatus
+	121, // 154: creativanta.production.v1.VideoEditJobServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	94,  // 155: creativanta.production.v1.VideoEditJobServiceListResponse.jobs:type_name -> creativanta.production.v1.VideoEditJob
+	122, // 156: creativanta.production.v1.VideoEditJobServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	123, // 157: creativanta.production.v1.VideoEditJobServiceCancelRequest.context:type_name -> creativanta.common.v1.CommandContext
+	94,  // 158: creativanta.production.v1.VideoEditJobServiceCancelResponse.job:type_name -> creativanta.production.v1.VideoEditJob
+	123, // 159: creativanta.production.v1.VideoEditJobServiceRetryRequest.context:type_name -> creativanta.common.v1.CommandContext
+	94,  // 160: creativanta.production.v1.VideoEditJobServiceRetryResponse.job:type_name -> creativanta.production.v1.VideoEditJob
+	16,  // 161: creativanta.production.v1.StudioService.GetModes:input_type -> creativanta.production.v1.GetModesRequest
+	18,  // 162: creativanta.production.v1.StudioService.GetActiveJobs:input_type -> creativanta.production.v1.GetActiveJobsRequest
+	20,  // 163: creativanta.production.v1.StudioService.GetRecentAssets:input_type -> creativanta.production.v1.GetRecentAssetsRequest
+	22,  // 164: creativanta.production.v1.StudioService.Cancel:input_type -> creativanta.production.v1.CancelRequest
+	24,  // 165: creativanta.production.v1.StudioService.Retry:input_type -> creativanta.production.v1.RetryRequest
+	27,  // 166: creativanta.production.v1.AssetService.Generate:input_type -> creativanta.production.v1.GenerateRequest
+	29,  // 167: creativanta.production.v1.AssetService.GetStatus:input_type -> creativanta.production.v1.GetStatusRequest
+	31,  // 168: creativanta.production.v1.AssetService.List:input_type -> creativanta.production.v1.ListRequest
+	33,  // 169: creativanta.production.v1.AssetService.Get:input_type -> creativanta.production.v1.GetRequest
+	35,  // 170: creativanta.production.v1.AssetService.Approve:input_type -> creativanta.production.v1.ApproveRequest
+	37,  // 171: creativanta.production.v1.AssetService.PromoteCanonical:input_type -> creativanta.production.v1.PromoteCanonicalRequest
+	39,  // 172: creativanta.production.v1.AssetService.Upload:input_type -> creativanta.production.v1.UploadRequest
+	51,  // 173: creativanta.production.v1.QuickEditService.SaveDraft:input_type -> creativanta.production.v1.QuickEditServiceSaveDraftRequest
+	56,  // 174: creativanta.production.v1.TranslationService.Create:input_type -> creativanta.production.v1.TranslationServiceCreateRequest
+	58,  // 175: creativanta.production.v1.TranslationService.Get:input_type -> creativanta.production.v1.TranslationServiceGetRequest
+	60,  // 176: creativanta.production.v1.TranslationService.List:input_type -> creativanta.production.v1.TranslationServiceListRequest
+	63,  // 177: creativanta.production.v1.SoundStudioService.GenerateMusic:input_type -> creativanta.production.v1.SoundStudioServiceGenerateMusicRequest
+	65,  // 178: creativanta.production.v1.SoundStudioService.GenerateSFX:input_type -> creativanta.production.v1.SoundStudioServiceGenerateSFXRequest
+	67,  // 179: creativanta.production.v1.SoundStudioService.AnalyzeBeat:input_type -> creativanta.production.v1.SoundStudioServiceAnalyzeBeatRequest
+	69,  // 180: creativanta.production.v1.SoundStudioService.ListSoundLibrary:input_type -> creativanta.production.v1.SoundStudioServiceListSoundLibraryRequest
+	71,  // 181: creativanta.production.v1.SoundStudioService.GetSound:input_type -> creativanta.production.v1.SoundStudioServiceGetSoundRequest
+	73,  // 182: creativanta.production.v1.SoundStudioService.PreviewSound:input_type -> creativanta.production.v1.SoundStudioServicePreviewSoundRequest
+	76,  // 183: creativanta.production.v1.VoiceCloneService.Create:input_type -> creativanta.production.v1.VoiceCloneServiceCreateRequest
+	78,  // 184: creativanta.production.v1.VoiceCloneService.Get:input_type -> creativanta.production.v1.VoiceCloneServiceGetRequest
+	80,  // 185: creativanta.production.v1.VoiceCloneService.List:input_type -> creativanta.production.v1.VoiceCloneServiceListRequest
+	82,  // 186: creativanta.production.v1.VoiceCloneService.Delete:input_type -> creativanta.production.v1.VoiceCloneServiceDeleteRequest
+	84,  // 187: creativanta.production.v1.VoiceCloneService.GenerateVoiceover:input_type -> creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverRequest
+	86,  // 188: creativanta.production.v1.VoiceCloneService.GetConsentStatus:input_type -> creativanta.production.v1.VoiceCloneServiceGetConsentStatusRequest
+	95,  // 189: creativanta.production.v1.RemixService.Analyze:input_type -> creativanta.production.v1.RemixServiceAnalyzeRequest
+	97,  // 190: creativanta.production.v1.RemixService.GetBlueprint:input_type -> creativanta.production.v1.RemixServiceGetBlueprintRequest
+	99,  // 191: creativanta.production.v1.RemixService.Generate:input_type -> creativanta.production.v1.RemixServiceGenerateRequest
+	101, // 192: creativanta.production.v1.RemixService.Regenerate:input_type -> creativanta.production.v1.RemixServiceRegenerateRequest
+	103, // 193: creativanta.production.v1.VideoEditJobService.Create:input_type -> creativanta.production.v1.VideoEditJobServiceCreateRequest
+	105, // 194: creativanta.production.v1.VideoEditJobService.Get:input_type -> creativanta.production.v1.VideoEditJobServiceGetRequest
+	107, // 195: creativanta.production.v1.VideoEditJobService.List:input_type -> creativanta.production.v1.VideoEditJobServiceListRequest
+	109, // 196: creativanta.production.v1.VideoEditJobService.Cancel:input_type -> creativanta.production.v1.VideoEditJobServiceCancelRequest
+	111, // 197: creativanta.production.v1.VideoEditJobService.Retry:input_type -> creativanta.production.v1.VideoEditJobServiceRetryRequest
+	17,  // 198: creativanta.production.v1.StudioService.GetModes:output_type -> creativanta.production.v1.GetModesResponse
+	19,  // 199: creativanta.production.v1.StudioService.GetActiveJobs:output_type -> creativanta.production.v1.GetActiveJobsResponse
+	21,  // 200: creativanta.production.v1.StudioService.GetRecentAssets:output_type -> creativanta.production.v1.GetRecentAssetsResponse
+	23,  // 201: creativanta.production.v1.StudioService.Cancel:output_type -> creativanta.production.v1.CancelResponse
+	25,  // 202: creativanta.production.v1.StudioService.Retry:output_type -> creativanta.production.v1.RetryResponse
+	28,  // 203: creativanta.production.v1.AssetService.Generate:output_type -> creativanta.production.v1.GenerateResponse
+	30,  // 204: creativanta.production.v1.AssetService.GetStatus:output_type -> creativanta.production.v1.GetStatusResponse
+	32,  // 205: creativanta.production.v1.AssetService.List:output_type -> creativanta.production.v1.ListResponse
+	34,  // 206: creativanta.production.v1.AssetService.Get:output_type -> creativanta.production.v1.GetResponse
+	36,  // 207: creativanta.production.v1.AssetService.Approve:output_type -> creativanta.production.v1.ApproveResponse
+	38,  // 208: creativanta.production.v1.AssetService.PromoteCanonical:output_type -> creativanta.production.v1.PromoteCanonicalResponse
+	40,  // 209: creativanta.production.v1.AssetService.Upload:output_type -> creativanta.production.v1.UploadResponse
+	52,  // 210: creativanta.production.v1.QuickEditService.SaveDraft:output_type -> creativanta.production.v1.QuickEditServiceSaveDraftResponse
+	57,  // 211: creativanta.production.v1.TranslationService.Create:output_type -> creativanta.production.v1.TranslationServiceCreateResponse
+	59,  // 212: creativanta.production.v1.TranslationService.Get:output_type -> creativanta.production.v1.TranslationServiceGetResponse
+	61,  // 213: creativanta.production.v1.TranslationService.List:output_type -> creativanta.production.v1.TranslationServiceListResponse
+	64,  // 214: creativanta.production.v1.SoundStudioService.GenerateMusic:output_type -> creativanta.production.v1.SoundStudioServiceGenerateMusicResponse
+	66,  // 215: creativanta.production.v1.SoundStudioService.GenerateSFX:output_type -> creativanta.production.v1.SoundStudioServiceGenerateSFXResponse
+	68,  // 216: creativanta.production.v1.SoundStudioService.AnalyzeBeat:output_type -> creativanta.production.v1.SoundStudioServiceAnalyzeBeatResponse
+	70,  // 217: creativanta.production.v1.SoundStudioService.ListSoundLibrary:output_type -> creativanta.production.v1.SoundStudioServiceListSoundLibraryResponse
+	72,  // 218: creativanta.production.v1.SoundStudioService.GetSound:output_type -> creativanta.production.v1.SoundStudioServiceGetSoundResponse
+	74,  // 219: creativanta.production.v1.SoundStudioService.PreviewSound:output_type -> creativanta.production.v1.SoundStudioServicePreviewSoundResponse
+	77,  // 220: creativanta.production.v1.VoiceCloneService.Create:output_type -> creativanta.production.v1.VoiceCloneServiceCreateResponse
+	79,  // 221: creativanta.production.v1.VoiceCloneService.Get:output_type -> creativanta.production.v1.VoiceCloneServiceGetResponse
+	81,  // 222: creativanta.production.v1.VoiceCloneService.List:output_type -> creativanta.production.v1.VoiceCloneServiceListResponse
+	83,  // 223: creativanta.production.v1.VoiceCloneService.Delete:output_type -> creativanta.production.v1.VoiceCloneServiceDeleteResponse
+	85,  // 224: creativanta.production.v1.VoiceCloneService.GenerateVoiceover:output_type -> creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverResponse
+	87,  // 225: creativanta.production.v1.VoiceCloneService.GetConsentStatus:output_type -> creativanta.production.v1.VoiceCloneServiceGetConsentStatusResponse
+	96,  // 226: creativanta.production.v1.RemixService.Analyze:output_type -> creativanta.production.v1.RemixServiceAnalyzeResponse
+	98,  // 227: creativanta.production.v1.RemixService.GetBlueprint:output_type -> creativanta.production.v1.RemixServiceGetBlueprintResponse
+	100, // 228: creativanta.production.v1.RemixService.Generate:output_type -> creativanta.production.v1.RemixServiceGenerateResponse
+	102, // 229: creativanta.production.v1.RemixService.Regenerate:output_type -> creativanta.production.v1.RemixServiceRegenerateResponse
+	104, // 230: creativanta.production.v1.VideoEditJobService.Create:output_type -> creativanta.production.v1.VideoEditJobServiceCreateResponse
+	106, // 231: creativanta.production.v1.VideoEditJobService.Get:output_type -> creativanta.production.v1.VideoEditJobServiceGetResponse
+	108, // 232: creativanta.production.v1.VideoEditJobService.List:output_type -> creativanta.production.v1.VideoEditJobServiceListResponse
+	110, // 233: creativanta.production.v1.VideoEditJobService.Cancel:output_type -> creativanta.production.v1.VideoEditJobServiceCancelResponse
+	112, // 234: creativanta.production.v1.VideoEditJobService.Retry:output_type -> creativanta.production.v1.VideoEditJobServiceRetryResponse
+	198, // [198:235] is the sub-list for method output_type
+	161, // [161:198] is the sub-list for method input_type
+	161, // [161:161] is the sub-list for extension type_name
+	161, // [161:161] is the sub-list for extension extendee
+	0,   // [0:161] is the sub-list for field type_name
 }
 
 func init() { file_creativanta_production_v1_production_proto_init() }
@@ -8901,10 +10286,10 @@ func file_creativanta_production_v1_production_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_creativanta_production_v1_production_proto_rawDesc), len(file_creativanta_production_v1_production_proto_rawDesc)),
-			NumEnums:      8,
-			NumMessages:   97,
+			NumEnums:      9,
+			NumMessages:   110,
 			NumExtensions: 0,
-			NumServices:   7,
+			NumServices:   8,
 		},
 		GoTypes:           file_creativanta_production_v1_production_proto_goTypes,
 		DependencyIndexes: file_creativanta_production_v1_production_proto_depIdxs,

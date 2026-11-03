@@ -1,0 +1,248 @@
+{
+  "task_id": "P4-02",
+  "phase": "P4",
+  "slice": "p4-02",
+  "title": "Quick Edit",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "4a57f33d5d9b46180ed466f90046ca5e51d7ea2f",
+  "feature_refs": [
+    "docs/02_features/production/ai_video_studio.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_endpoint_map.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rbac_permission_matrix.md"
+  ],
+  "requirement_ids": [
+    "M07-42674f5ba469-001",
+    "M07-687f81eb3233-001"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_studio_quick_edit.md",
+    "docs/03_screens/mobile/screen_mobile_studio_quick_edit.md"
+  ],
+  "source_hashes": {
+    "infra/migrations/00020_p4_02_quick_edit_transcripts_and_sound_library.sql": "a83f6a79c13585ea162920a06737f83879309f8a876c2e85070ed2c6d727ef55",
+    "protos/creativanta/production/v1/production.proto": "333cff92ef45b2b72bda40b6c9cd0d93409ed778e40c84bfb848b0900e5d48e5",
+    "apps/api/internal/production/types.go": "3ef4e0d88a9dba834d5c025274342dc6f11c36c57867643d46e20b8ef08fb04a",
+    "apps/api/internal/production/store.go": "c1123bec8c0775759e9b7fccfdf9b3594b17dbdb85c04874721731b593c02171",
+    "apps/api/internal/production/quickedit_asr.go": "62981f113e745baeecc4f8671e24840f559d3047ab4f5644d020d1601f268b28",
+    "apps/api/internal/production/quickedit_cut_engine.go": "6761a1dc82d32333a82e4779afeb8bc0f52b034168a14488a7a06e28f6ecdad1",
+    "apps/api/internal/production/quickedit_enhancer.go": "c32ff9112d0a723b90be0c834005212b1405aee629a650ce74186a71e0275710",
+    "apps/api/internal/production/quickedit_service.go": "547b1c742972ec31826c1e1a4c699a54ea93d404e2b116ef5090c7a1f2d1a95d",
+    "apps/api/internal/production/quickedit_test.go": "95a12628c66d6e27de41c0165b184f9a53277bd3e2426503396962848941aebd",
+    "apps/web/src/lib/production/quickedit.ts": "8cd8d75f18370652aa4d95e5ca9049c14a6666de836df5288b98681eee4c780d",
+    "apps/web/src/lib/production/quickedit.test.ts": "f30da61b34989a2121d1be74f4184d5805757d5ce4fbda80adad831b212f1876",
+    "apps/web/src/routes/studio/quick-edit/+page.svelte": "d6f31ea5df8e24e43c09ac68e6ca3f74ef33167d4bee42380bfd46230469254c",
+    "apps/mobile/lib/production/quick_edit_models.dart": "bf347921ce409bc516aef49a9147ece774554873f567a1d17505f23f5c04cae6",
+    "apps/mobile/lib/ui/production/studio_quick_edit_view.dart": "391cc99afe27ed1409d2139169724101dec67f468852149a75faf36cfbd53159",
+    "apps/mobile/test/quick_edit_acceptance_test.dart": "6f3bfcc29a291114ecd41b67432d14583fcaadc909a72ad7f543eb162c01e919"
+  },
+  "scope_items": [
+    {
+      "source": "docs/02_features/production/ai_video_studio.md",
+      "heading": "Core Production Modes > Mode 1: Quick Edit (1→1)",
+      "requirement": "Acceptance Target 1: Poor ASR can be repaired (EC-M07-Q01). Detects Vietnamese filler words and dead pauses. Supports text and timestamp repairs with temporal consistency check. When temporal ordering fails, marks manual fallback mode with explicit notification: 'Auto-alignment failed. [Try segment mode] or [Manual cut].'",
+      "evidence": [
+        "apps/api/internal/production/quickedit_test.go:TestASRRepairAndFallback_AcceptanceTarget1",
+        "apps/web/src/lib/production/quickedit.test.ts:repairWordTranscript handles valid updates and triggers fallback on invalid alignment",
+        "apps/mobile/test/quick_edit_acceptance_test.dart:Acceptance Target 1: Detects Vietnamese fillers and supports ASR repair with fallback"
+      ]
+    },
+    {
+      "source": "docs/02_features/production/ai_video_studio.md",
+      "heading": "Core Production Modes > Mode 1: Quick Edit (1→1)",
+      "requirement": "Acceptance Target 2: Correct ratio/audio/subtitles. Auto-reframe crop calculation for 9:16 vertical, 16:9 landscape, and 1:1 square. Loudnorm audio normalization to -14.0 LUFS with EBU R128 compliance check. Animated subtitle styling filters (bounce, karaoke, highlight, typewriter). Librosa-style beat grid alignment. ACRCloud copyright fingerprint scanning with royalty-free alternatives.",
+      "evidence": [
+        "apps/api/internal/production/quickedit_test.go:TestAspectAudioSubtitlesBeatCopyright_AcceptanceTarget2",
+        "apps/web/src/lib/production/quickedit.test.ts:calculateQuickEditCredits accurately sums base and addon features",
+        "apps/mobile/test/quick_edit_acceptance_test.dart:Acceptance Target 2: Accurate credit calculation for base + add-ons"
+      ]
+    },
+    {
+      "source": "docs/02_features/production/ai_video_studio.md",
+      "heading": "Core Production Modes > Mode 1: Quick Edit (1→1)",
+      "requirement": "Acceptance Target 3: Deleted text maps to intended segment. Transcript word strikethrough deletion converts text edits to video cut segments. Adjacent cuts within coalesce threshold (80ms) are merged. Retained timeline segments are computed with verified zero drift across segments.",
+      "evidence": [
+        "apps/api/internal/production/quickedit_test.go:TestDeletedTextMappingAndZeroDrift_AcceptanceTarget3",
+        "apps/web/src/lib/production/quickedit.test.ts:buildCutIntervals coalesces adjacent cuts within 80ms threshold",
+        "apps/web/src/lib/production/quickedit.test.ts:computeRetainedTimeline calculates non-deleted segments with zero drift",
+        "apps/mobile/test/quick_edit_acceptance_test.dart:Acceptance Target 3: Strikethrough words map to cuts with adjacent coalescing and zero drift"
+      ]
+    }
+  ],
+  "rpc_contracts": [
+    {
+      "rpc": "QuickEditService/CreateTranscript",
+      "proto_file": "protos/creativanta/production/v1/production.proto",
+      "request_type": "CreateTranscriptRequest",
+      "response_type": "CreateTranscriptResponse",
+      "permission_key": "asset:generate",
+      "validation_tests": "apps/api/internal/production/quickedit_test.go:TestQuickEditServiceRPCs",
+      "behavior_tests": "apps/api/internal/production/quickedit_test.go:TestQuickEditServiceRPCs"
+    },
+    {
+      "rpc": "QuickEditService/GetTranscript",
+      "proto_file": "protos/creativanta/production/v1/production.proto",
+      "request_type": "GetTranscriptRequest",
+      "response_type": "GetTranscriptResponse",
+      "permission_key": "asset:read",
+      "validation_tests": "apps/api/internal/production/quickedit_test.go:TestQuickEditServiceRPCs",
+      "behavior_tests": "apps/api/internal/production/quickedit_test.go:TestQuickEditServiceRPCs"
+    },
+    {
+      "rpc": "QuickEditService/RepairTranscript",
+      "proto_file": "protos/creativanta/production/v1/production.proto",
+      "request_type": "RepairTranscriptRequest",
+      "response_type": "RepairTranscriptResponse",
+      "permission_key": "asset:update",
+      "validation_tests": "apps/api/internal/production/quickedit_test.go:TestASRRepairAndFallback_AcceptanceTarget1",
+      "behavior_tests": "apps/api/internal/production/quickedit_test.go:TestASRRepairAndFallback_AcceptanceTarget1"
+    },
+    {
+      "rpc": "QuickEditService/SaveDraft",
+      "proto_file": "protos/creativanta/production/v1/production.proto",
+      "request_type": "SaveQuickEditDraftRequest",
+      "response_type": "SaveQuickEditDraftResponse",
+      "permission_key": "asset:update",
+      "validation_tests": "apps/api/internal/production/quickedit_test.go:TestQuickEditServiceRPCs",
+      "behavior_tests": "apps/api/internal/production/quickedit_test.go:TestQuickEditServiceRPCs"
+    },
+    {
+      "rpc": "QuickEditService/GetDraft",
+      "proto_file": "protos/creativanta/production/v1/production.proto",
+      "request_type": "GetQuickEditDraftRequest",
+      "response_type": "GetQuickEditDraftResponse",
+      "permission_key": "asset:read",
+      "validation_tests": "apps/api/internal/production/quickedit_test.go:TestQuickEditServiceRPCs",
+      "behavior_tests": "apps/api/internal/production/quickedit_test.go:TestQuickEditServiceRPCs"
+    },
+    {
+      "rpc": "QuickEditService/SubmitQuickEdit",
+      "proto_file": "protos/creativanta/production/v1/production.proto",
+      "request_type": "SubmitQuickEditRequest",
+      "response_type": "SubmitQuickEditResponse",
+      "permission_key": "asset:generate",
+      "validation_tests": "apps/api/internal/production/quickedit_test.go:TestQuickEditServiceRPCs",
+      "behavior_tests": "apps/api/internal/production/quickedit_test.go:TestQuickEditServiceRPCs"
+    },
+    {
+      "rpc": "QuickEditService/GetSmartHooks",
+      "proto_file": "protos/creativanta/production/v1/production.proto",
+      "request_type": "GetSmartHooksRequest",
+      "response_type": "GetSmartHooksResponse",
+      "permission_key": "asset:read",
+      "validation_tests": "apps/api/internal/production/quickedit_test.go:TestQuickEditServiceRPCs",
+      "behavior_tests": "apps/api/internal/production/quickedit_test.go:TestQuickEditServiceRPCs"
+    },
+    {
+      "rpc": "SoundStudioService/ListSoundTracks",
+      "proto_file": "protos/creativanta/production/v1/production.proto",
+      "request_type": "ListSoundTracksRequest",
+      "response_type": "ListSoundTracksResponse",
+      "permission_key": "asset:read",
+      "validation_tests": "apps/api/internal/production/quickedit_test.go:TestQuickEditServiceRPCs",
+      "behavior_tests": "apps/api/internal/production/quickedit_test.go:TestQuickEditServiceRPCs"
+    },
+    {
+      "rpc": "SoundStudioService/ScanCopyright",
+      "proto_file": "protos/creativanta/production/v1/production.proto",
+      "request_type": "ScanCopyrightRequest",
+      "response_type": "ScanCopyrightResponse",
+      "permission_key": "asset:generate",
+      "validation_tests": "apps/api/internal/production/quickedit_test.go:TestAspectAudioSubtitlesBeatCopyright_AcceptanceTarget2",
+      "behavior_tests": "apps/api/internal/production/quickedit_test.go:TestAspectAudioSubtitlesBeatCopyright_AcceptanceTarget2"
+    }
+  ],
+  "migration_files": [
+    "infra/migrations/00020_p4_02_quick_edit_transcripts_and_sound_library.sql"
+  ],
+  "permission_keys": [
+    "asset:generate",
+    "asset:read",
+    "asset:update"
+  ],
+  "event_types": [
+    "production.transcript.created",
+    "production.transcript.repaired",
+    "production.quick_edit.submitted",
+    "production.copyright.scanned"
+  ],
+  "screen_routes": [
+    "/studio/quick-edit",
+    "StudioQuickEditView"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-ASR-WHISPER",
+      "PENDING_PRODUCTION_KEY",
+      "Production Whisper / Speech-to-Text provider credentials for live multi-lingual ASR. In-memory ASR engine with filler word detection and timecode alignment verified locally."
+    ],
+    [
+      "EXT-GATE-ACRCLOUD-AUDIO",
+      "PENDING_PRODUCTION_LICENSE",
+      "ACRCloud audio fingerprinting service key for commercial music detection. Local fingerprint hash matching and royalty-free catalog fallback verified locally."
+    ],
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "Migration 00020 schema (transcripts, transcript_words, quick_edit_drafts, sound_tracks), foreign keys, RLS policies, and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+    ]
+  ],
+  "checks": [
+    {
+      "command": "tooling/ci/check_d0.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-02/evidence/check_d0.log",
+      "checked_at": "2026-11-03T13:51:00Z"
+    },
+    {
+      "command": "tooling/ci/check_proto.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-02/evidence/check_proto.log",
+      "checked_at": "2026-11-03T13:52:22Z"
+    },
+    {
+      "command": "bash tooling/ci/check_go.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-02/evidence/check_go.log",
+      "checked_at": "2026-11-03T13:53:50Z"
+    },
+    {
+      "command": "bash tooling/ci/check_node.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-02/evidence/check_node.log",
+      "checked_at": "2026-11-03T13:55:46Z"
+    },
+    {
+      "command": "bash tooling/ci/check_flutter.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P4/p4-02/evidence/check_flutter.log",
+      "checked_at": "2026-11-03T13:57:23Z"
+    }
+  ],
+  "remaining_scope": [
+    {
+      "source": "docs/02_features/production/ai_video_studio.md",
+      "heading": "Core Production Modes > Mode 2: Clip Factory (1→N)",
+      "target_task": "P4-03"
+    },
+    {
+      "source": "docs/02_features/production/ai_video_studio.md",
+      "heading": "Core Production Modes > Mode 3: Multi-Merge (N→1)",
+      "target_task": "P4-04"
+    },
+    {
+      "source": "docs/02_features/production/ai_video_studio.md",
+      "heading": "Core Production Modes > Mode 4: AI Remix Studio (ref→new)",
+      "target_task": "P4-05"
+    }
+  ],
+  "decisions": [
+    "ADR-P4-02-001: Implement transcript-to-cut mapping with coalescing threshold of 80ms to avoid micro-stutters between closely adjacent deleted words/fillers.",
+    "ADR-P4-02-002: Enforce EBU R128 (-14.0 LUFS ± 2.5 LUFS) loudness target normalization filter for social platform audio compliance per RULE-M07-005.",
+    "ADR-P4-02-003: If ASR manual repair inverts word start/end timecodes, fail gracefully with EC-M07-Q01 exact fallback message: 'Auto-alignment failed. [Try segment mode] or [Manual cut].'"
+  ]
+}

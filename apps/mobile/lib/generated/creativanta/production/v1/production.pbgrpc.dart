@@ -412,6 +412,63 @@ abstract class AssetServiceBase extends $grpc.Service {
       $grpc.ServiceCall call, $0.UploadRequest request);
 }
 
+/// QuickEditService manages Quick Edit drafts and text-based timeline editing.
+@$pb.GrpcServiceName('creativanta.production.v1.QuickEditService')
+class QuickEditServiceClient extends $grpc.Client {
+  /// The hostname for this service.
+  static const $core.String defaultHost = '';
+
+  /// OAuth scopes needed for the client.
+  static const $core.List<$core.String> oauthScopes = [
+    '',
+  ];
+
+  QuickEditServiceClient(super.channel, {super.options, super.interceptors});
+
+  /// SaveDraft persists an in-progress quick edit draft.
+  $grpc.ResponseFuture<$0.QuickEditServiceSaveDraftResponse> saveDraft(
+    $0.QuickEditServiceSaveDraftRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$saveDraft, request, options: options);
+  }
+
+  // method descriptors
+
+  static final _$saveDraft = $grpc.ClientMethod<
+          $0.QuickEditServiceSaveDraftRequest,
+          $0.QuickEditServiceSaveDraftResponse>(
+      '/creativanta.production.v1.QuickEditService/SaveDraft',
+      ($0.QuickEditServiceSaveDraftRequest value) => value.writeToBuffer(),
+      $0.QuickEditServiceSaveDraftResponse.fromBuffer);
+}
+
+@$pb.GrpcServiceName('creativanta.production.v1.QuickEditService')
+abstract class QuickEditServiceBase extends $grpc.Service {
+  $core.String get $name => 'creativanta.production.v1.QuickEditService';
+
+  QuickEditServiceBase() {
+    $addMethod($grpc.ServiceMethod<$0.QuickEditServiceSaveDraftRequest,
+            $0.QuickEditServiceSaveDraftResponse>(
+        'SaveDraft',
+        saveDraft_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.QuickEditServiceSaveDraftRequest.fromBuffer(value),
+        ($0.QuickEditServiceSaveDraftResponse value) => value.writeToBuffer()));
+  }
+
+  $async.Future<$0.QuickEditServiceSaveDraftResponse> saveDraft_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.QuickEditServiceSaveDraftRequest> $request) async {
+    return saveDraft($call, await $request);
+  }
+
+  $async.Future<$0.QuickEditServiceSaveDraftResponse> saveDraft(
+      $grpc.ServiceCall call, $0.QuickEditServiceSaveDraftRequest request);
+}
+
 /// TranslationService manages AI video translation, lip-sync, cultural adaptation and localization (M07 EF-05).
 @$pb.GrpcServiceName('creativanta.production.v1.TranslationService')
 class TranslationServiceClient extends $grpc.Client {

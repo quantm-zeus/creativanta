@@ -3634,6 +3634,1652 @@ class UploadResponse extends $pb.GeneratedMessage {
   Asset ensureAsset() => $_ensure(3);
 }
 
+class TranscriptWord extends $pb.GeneratedMessage {
+  factory TranscriptWord({
+    $core.String? wordId,
+    $core.String? text,
+    $fixnum.Int64? startMs,
+    $fixnum.Int64? endMs,
+    $core.double? confidence,
+    $core.bool? isFiller,
+    $core.String? fillerType,
+    $core.bool? isDeleted,
+  }) {
+    final result = TranscriptWord._();
+    if (wordId != null) result.wordId = wordId;
+    if (text != null) result.text = text;
+    if (startMs != null) result.startMs = startMs;
+    if (endMs != null) result.endMs = endMs;
+    if (confidence != null) result.confidence = confidence;
+    if (isFiller != null) result.isFiller = isFiller;
+    if (fillerType != null) result.fillerType = fillerType;
+    if (isDeleted != null) result.isDeleted = isDeleted;
+    return result;
+  }
+
+  TranscriptWord._();
+
+  factory TranscriptWord.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranscriptWord()..mergeFromBuffer(data, registry);
+  factory TranscriptWord.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranscriptWord()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TranscriptWord',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: TranscriptWord.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'wordId')
+    ..aOS(2, _omitFieldNames ? '' : 'text')
+    ..aInt64(3, _omitFieldNames ? '' : 'startMs')
+    ..aInt64(4, _omitFieldNames ? '' : 'endMs')
+    ..aD(5, _omitFieldNames ? '' : 'confidence')
+    ..aOB(6, _omitFieldNames ? '' : 'isFiller')
+    ..aOS(7, _omitFieldNames ? '' : 'fillerType')
+    ..aOB(8, _omitFieldNames ? '' : 'isDeleted')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranscriptWord clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranscriptWord copyWith(void Function(TranscriptWord) updates) =>
+      super.copyWith((message) => updates(message as TranscriptWord))
+          as TranscriptWord;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use TranscriptWord() / TranscriptWord.new instead')
+  static TranscriptWord create() => TranscriptWord._();
+  static $pb.GeneratedMessage $_createMessage() => TranscriptWord._();
+  @$core.override
+  TranscriptWord createEmptyInstance() => TranscriptWord._();
+  @$core.pragma('dart2js:noInline')
+  static TranscriptWord getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<TranscriptWord>(
+          TranscriptWord.$_createMessage);
+  static TranscriptWord? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get wordId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set wordId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWordId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWordId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get text => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set text($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasText() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearText() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get startMs => $_getI64(2);
+  @$pb.TagNumber(3)
+  set startMs($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasStartMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearStartMs() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get endMs => $_getI64(3);
+  @$pb.TagNumber(4)
+  set endMs($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasEndMs() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearEndMs() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.double get confidence => $_getN(4);
+  @$pb.TagNumber(5)
+  set confidence($core.double value) => $_setDouble(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasConfidence() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearConfidence() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.bool get isFiller => $_getBF(5);
+  @$pb.TagNumber(6)
+  set isFiller($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasIsFiller() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearIsFiller() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get fillerType => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set fillerType($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasFillerType() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearFillerType() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.bool get isDeleted => $_getBF(7);
+  @$pb.TagNumber(8)
+  set isDeleted($core.bool value) => $_setBool(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasIsDeleted() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearIsDeleted() => $_clearField(8);
+}
+
+class TranscriptSegment extends $pb.GeneratedMessage {
+  factory TranscriptSegment({
+    $core.String? segmentId,
+    $fixnum.Int64? startMs,
+    $fixnum.Int64? endMs,
+    $core.String? text,
+    $core.String? speakerId,
+  }) {
+    final result = TranscriptSegment._();
+    if (segmentId != null) result.segmentId = segmentId;
+    if (startMs != null) result.startMs = startMs;
+    if (endMs != null) result.endMs = endMs;
+    if (text != null) result.text = text;
+    if (speakerId != null) result.speakerId = speakerId;
+    return result;
+  }
+
+  TranscriptSegment._();
+
+  factory TranscriptSegment.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranscriptSegment()..mergeFromBuffer(data, registry);
+  factory TranscriptSegment.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranscriptSegment()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TranscriptSegment',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: TranscriptSegment.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'segmentId')
+    ..aInt64(2, _omitFieldNames ? '' : 'startMs')
+    ..aInt64(3, _omitFieldNames ? '' : 'endMs')
+    ..aOS(4, _omitFieldNames ? '' : 'text')
+    ..aOS(5, _omitFieldNames ? '' : 'speakerId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranscriptSegment clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranscriptSegment copyWith(void Function(TranscriptSegment) updates) =>
+      super.copyWith((message) => updates(message as TranscriptSegment))
+          as TranscriptSegment;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use TranscriptSegment() / TranscriptSegment.new instead')
+  static TranscriptSegment create() => TranscriptSegment._();
+  static $pb.GeneratedMessage $_createMessage() => TranscriptSegment._();
+  @$core.override
+  TranscriptSegment createEmptyInstance() => TranscriptSegment._();
+  @$core.pragma('dart2js:noInline')
+  static TranscriptSegment getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<TranscriptSegment>(
+          TranscriptSegment.$_createMessage);
+  static TranscriptSegment? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get segmentId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set segmentId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSegmentId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSegmentId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get startMs => $_getI64(1);
+  @$pb.TagNumber(2)
+  set startMs($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasStartMs() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearStartMs() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get endMs => $_getI64(2);
+  @$pb.TagNumber(3)
+  set endMs($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasEndMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearEndMs() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get text => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set text($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasText() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearText() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get speakerId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set speakerId($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSpeakerId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSpeakerId() => $_clearField(5);
+}
+
+class Transcript extends $pb.GeneratedMessage {
+  factory Transcript({
+    $core.String? transcriptId,
+    $2.UUID? workspaceId,
+    $core.String? assetId,
+    $core.String? language,
+    $core.String? rawText,
+    $core.Iterable<TranscriptWord>? words,
+    $core.Iterable<TranscriptSegment>? segments,
+    $core.int? fillerCount,
+    $core.int? pauseCount,
+    TranscriptAlignmentStatus? alignmentStatus,
+    $core.String? alignmentError,
+    $1.Timestamp? createdAt,
+    $1.Timestamp? updatedAt,
+  }) {
+    final result = Transcript._();
+    if (transcriptId != null) result.transcriptId = transcriptId;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (assetId != null) result.assetId = assetId;
+    if (language != null) result.language = language;
+    if (rawText != null) result.rawText = rawText;
+    if (words != null) result.words.addAll(words);
+    if (segments != null) result.segments.addAll(segments);
+    if (fillerCount != null) result.fillerCount = fillerCount;
+    if (pauseCount != null) result.pauseCount = pauseCount;
+    if (alignmentStatus != null) result.alignmentStatus = alignmentStatus;
+    if (alignmentError != null) result.alignmentError = alignmentError;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    return result;
+  }
+
+  Transcript._();
+
+  factory Transcript.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Transcript()..mergeFromBuffer(data, registry);
+  factory Transcript.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Transcript()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'Transcript',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: Transcript.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'transcriptId')
+    ..aOM<$2.UUID>(2, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(3, _omitFieldNames ? '' : 'assetId')
+    ..aOS(4, _omitFieldNames ? '' : 'language')
+    ..aOS(5, _omitFieldNames ? '' : 'rawText')
+    ..pPM<TranscriptWord>(6, _omitFieldNames ? '' : 'words',
+        subBuilder: TranscriptWord.$_createMessage)
+    ..pPM<TranscriptSegment>(7, _omitFieldNames ? '' : 'segments',
+        subBuilder: TranscriptSegment.$_createMessage)
+    ..aI(8, _omitFieldNames ? '' : 'fillerCount')
+    ..aI(9, _omitFieldNames ? '' : 'pauseCount')
+    ..aE<TranscriptAlignmentStatus>(
+        10, _omitFieldNames ? '' : 'alignmentStatus',
+        enumValues: TranscriptAlignmentStatus.values)
+    ..aOS(11, _omitFieldNames ? '' : 'alignmentError')
+    ..aOM<$1.Timestamp>(12, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOM<$1.Timestamp>(13, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Transcript clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Transcript copyWith(void Function(Transcript) updates) =>
+      super.copyWith((message) => updates(message as Transcript)) as Transcript;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Transcript() / Transcript.new instead')
+  static Transcript create() => Transcript._();
+  static $pb.GeneratedMessage $_createMessage() => Transcript._();
+  @$core.override
+  Transcript createEmptyInstance() => Transcript._();
+  @$core.pragma('dart2js:noInline')
+  static Transcript getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Transcript>(Transcript.$_createMessage);
+  static Transcript? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get transcriptId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set transcriptId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTranscriptId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTranscriptId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $2.UUID get workspaceId => $_getN(1);
+  @$pb.TagNumber(2)
+  set workspaceId($2.UUID value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.UUID ensureWorkspaceId() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $core.String get assetId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set assetId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAssetId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAssetId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get language => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set language($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLanguage() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLanguage() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get rawText => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set rawText($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasRawText() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearRawText() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<TranscriptWord> get words => $_getList(5);
+
+  @$pb.TagNumber(7)
+  $pb.PbList<TranscriptSegment> get segments => $_getList(6);
+
+  @$pb.TagNumber(8)
+  $core.int get fillerCount => $_getIZ(7);
+  @$pb.TagNumber(8)
+  set fillerCount($core.int value) => $_setSignedInt32(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasFillerCount() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearFillerCount() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.int get pauseCount => $_getIZ(8);
+  @$pb.TagNumber(9)
+  set pauseCount($core.int value) => $_setSignedInt32(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasPauseCount() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearPauseCount() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  TranscriptAlignmentStatus get alignmentStatus => $_getN(9);
+  @$pb.TagNumber(10)
+  set alignmentStatus(TranscriptAlignmentStatus value) => $_setField(10, value);
+  @$pb.TagNumber(10)
+  $core.bool hasAlignmentStatus() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearAlignmentStatus() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get alignmentError => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set alignmentError($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasAlignmentError() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearAlignmentError() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $1.Timestamp get createdAt => $_getN(11);
+  @$pb.TagNumber(12)
+  set createdAt($1.Timestamp value) => $_setField(12, value);
+  @$pb.TagNumber(12)
+  $core.bool hasCreatedAt() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearCreatedAt() => $_clearField(12);
+  @$pb.TagNumber(12)
+  $1.Timestamp ensureCreatedAt() => $_ensure(11);
+
+  @$pb.TagNumber(13)
+  $1.Timestamp get updatedAt => $_getN(12);
+  @$pb.TagNumber(13)
+  set updatedAt($1.Timestamp value) => $_setField(13, value);
+  @$pb.TagNumber(13)
+  $core.bool hasUpdatedAt() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearUpdatedAt() => $_clearField(13);
+  @$pb.TagNumber(13)
+  $1.Timestamp ensureUpdatedAt() => $_ensure(12);
+}
+
+class DeadPause extends $pb.GeneratedMessage {
+  factory DeadPause({
+    $fixnum.Int64? startMs,
+    $fixnum.Int64? endMs,
+    $fixnum.Int64? durationMs,
+  }) {
+    final result = DeadPause._();
+    if (startMs != null) result.startMs = startMs;
+    if (endMs != null) result.endMs = endMs;
+    if (durationMs != null) result.durationMs = durationMs;
+    return result;
+  }
+
+  DeadPause._();
+
+  factory DeadPause.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeadPause()..mergeFromBuffer(data, registry);
+  factory DeadPause.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeadPause()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeadPause',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DeadPause.$_createMessage)
+    ..aInt64(1, _omitFieldNames ? '' : 'startMs')
+    ..aInt64(2, _omitFieldNames ? '' : 'endMs')
+    ..aInt64(3, _omitFieldNames ? '' : 'durationMs')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeadPause clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeadPause copyWith(void Function(DeadPause) updates) =>
+      super.copyWith((message) => updates(message as DeadPause)) as DeadPause;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use DeadPause() / DeadPause.new instead')
+  static DeadPause create() => DeadPause._();
+  static $pb.GeneratedMessage $_createMessage() => DeadPause._();
+  @$core.override
+  DeadPause createEmptyInstance() => DeadPause._();
+  @$core.pragma('dart2js:noInline')
+  static DeadPause getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeadPause>(DeadPause.$_createMessage);
+  static DeadPause? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $fixnum.Int64 get startMs => $_getI64(0);
+  @$pb.TagNumber(1)
+  set startMs($fixnum.Int64 value) => $_setInt64(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasStartMs() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearStartMs() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get endMs => $_getI64(1);
+  @$pb.TagNumber(2)
+  set endMs($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasEndMs() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearEndMs() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get durationMs => $_getI64(2);
+  @$pb.TagNumber(3)
+  set durationMs($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDurationMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDurationMs() => $_clearField(3);
+}
+
+class TranscriptAnalysis extends $pb.GeneratedMessage {
+  factory TranscriptAnalysis({
+    $core.int? fillerCount,
+    $core.int? pauseCount,
+    $core.double? hookQualityScore,
+    $fixnum.Int64? estimatedTimeSavedMs,
+    $fixnum.Int64? finalDurationMs,
+    $core.Iterable<$core.String>? detectedFillers,
+    $core.Iterable<DeadPause>? deadPauses,
+    $core.String? hookFeedback,
+  }) {
+    final result = TranscriptAnalysis._();
+    if (fillerCount != null) result.fillerCount = fillerCount;
+    if (pauseCount != null) result.pauseCount = pauseCount;
+    if (hookQualityScore != null) result.hookQualityScore = hookQualityScore;
+    if (estimatedTimeSavedMs != null)
+      result.estimatedTimeSavedMs = estimatedTimeSavedMs;
+    if (finalDurationMs != null) result.finalDurationMs = finalDurationMs;
+    if (detectedFillers != null) result.detectedFillers.addAll(detectedFillers);
+    if (deadPauses != null) result.deadPauses.addAll(deadPauses);
+    if (hookFeedback != null) result.hookFeedback = hookFeedback;
+    return result;
+  }
+
+  TranscriptAnalysis._();
+
+  factory TranscriptAnalysis.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranscriptAnalysis()..mergeFromBuffer(data, registry);
+  factory TranscriptAnalysis.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranscriptAnalysis()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TranscriptAnalysis',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: TranscriptAnalysis.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'fillerCount')
+    ..aI(2, _omitFieldNames ? '' : 'pauseCount')
+    ..aD(3, _omitFieldNames ? '' : 'hookQualityScore')
+    ..aInt64(4, _omitFieldNames ? '' : 'estimatedTimeSavedMs')
+    ..aInt64(5, _omitFieldNames ? '' : 'finalDurationMs')
+    ..pPS(6, _omitFieldNames ? '' : 'detectedFillers')
+    ..pPM<DeadPause>(7, _omitFieldNames ? '' : 'deadPauses',
+        subBuilder: DeadPause.$_createMessage)
+    ..aOS(8, _omitFieldNames ? '' : 'hookFeedback')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranscriptAnalysis clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranscriptAnalysis copyWith(void Function(TranscriptAnalysis) updates) =>
+      super.copyWith((message) => updates(message as TranscriptAnalysis))
+          as TranscriptAnalysis;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use TranscriptAnalysis() / TranscriptAnalysis.new instead')
+  static TranscriptAnalysis create() => TranscriptAnalysis._();
+  static $pb.GeneratedMessage $_createMessage() => TranscriptAnalysis._();
+  @$core.override
+  TranscriptAnalysis createEmptyInstance() => TranscriptAnalysis._();
+  @$core.pragma('dart2js:noInline')
+  static TranscriptAnalysis getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TranscriptAnalysis>(
+          TranscriptAnalysis.$_createMessage);
+  static TranscriptAnalysis? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get fillerCount => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set fillerCount($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasFillerCount() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearFillerCount() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get pauseCount => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set pauseCount($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPauseCount() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPauseCount() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get hookQualityScore => $_getN(2);
+  @$pb.TagNumber(3)
+  set hookQualityScore($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasHookQualityScore() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearHookQualityScore() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get estimatedTimeSavedMs => $_getI64(3);
+  @$pb.TagNumber(4)
+  set estimatedTimeSavedMs($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasEstimatedTimeSavedMs() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearEstimatedTimeSavedMs() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get finalDurationMs => $_getI64(4);
+  @$pb.TagNumber(5)
+  set finalDurationMs($fixnum.Int64 value) => $_setInt64(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasFinalDurationMs() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearFinalDurationMs() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.String> get detectedFillers => $_getList(5);
+
+  @$pb.TagNumber(7)
+  $pb.PbList<DeadPause> get deadPauses => $_getList(6);
+
+  @$pb.TagNumber(8)
+  $core.String get hookFeedback => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set hookFeedback($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasHookFeedback() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearHookFeedback() => $_clearField(8);
+}
+
+class TranscriptCorrection extends $pb.GeneratedMessage {
+  factory TranscriptCorrection({
+    $core.String? wordId,
+    $core.String? correctedText,
+    $fixnum.Int64? newStartMs,
+    $fixnum.Int64? newEndMs,
+    $core.bool? markCut,
+  }) {
+    final result = TranscriptCorrection._();
+    if (wordId != null) result.wordId = wordId;
+    if (correctedText != null) result.correctedText = correctedText;
+    if (newStartMs != null) result.newStartMs = newStartMs;
+    if (newEndMs != null) result.newEndMs = newEndMs;
+    if (markCut != null) result.markCut = markCut;
+    return result;
+  }
+
+  TranscriptCorrection._();
+
+  factory TranscriptCorrection.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranscriptCorrection()..mergeFromBuffer(data, registry);
+  factory TranscriptCorrection.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranscriptCorrection()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TranscriptCorrection',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: TranscriptCorrection.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'wordId')
+    ..aOS(2, _omitFieldNames ? '' : 'correctedText')
+    ..aInt64(3, _omitFieldNames ? '' : 'newStartMs')
+    ..aInt64(4, _omitFieldNames ? '' : 'newEndMs')
+    ..aOB(5, _omitFieldNames ? '' : 'markCut')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranscriptCorrection clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranscriptCorrection copyWith(void Function(TranscriptCorrection) updates) =>
+      super.copyWith((message) => updates(message as TranscriptCorrection))
+          as TranscriptCorrection;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use TranscriptCorrection() / TranscriptCorrection.new instead')
+  static TranscriptCorrection create() => TranscriptCorrection._();
+  static $pb.GeneratedMessage $_createMessage() => TranscriptCorrection._();
+  @$core.override
+  TranscriptCorrection createEmptyInstance() => TranscriptCorrection._();
+  @$core.pragma('dart2js:noInline')
+  static TranscriptCorrection getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TranscriptCorrection>(
+          TranscriptCorrection.$_createMessage);
+  static TranscriptCorrection? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get wordId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set wordId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWordId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWordId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get correctedText => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set correctedText($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCorrectedText() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCorrectedText() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get newStartMs => $_getI64(2);
+  @$pb.TagNumber(3)
+  set newStartMs($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasNewStartMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearNewStartMs() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get newEndMs => $_getI64(3);
+  @$pb.TagNumber(4)
+  set newEndMs($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasNewEndMs() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearNewEndMs() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get markCut => $_getBF(4);
+  @$pb.TagNumber(5)
+  set markCut($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasMarkCut() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearMarkCut() => $_clearField(5);
+}
+
+class CutInterval extends $pb.GeneratedMessage {
+  factory CutInterval({
+    $fixnum.Int64? startMs,
+    $fixnum.Int64? endMs,
+    $core.String? reason,
+  }) {
+    final result = CutInterval._();
+    if (startMs != null) result.startMs = startMs;
+    if (endMs != null) result.endMs = endMs;
+    if (reason != null) result.reason = reason;
+    return result;
+  }
+
+  CutInterval._();
+
+  factory CutInterval.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CutInterval()..mergeFromBuffer(data, registry);
+  factory CutInterval.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CutInterval()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CutInterval',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: CutInterval.$_createMessage)
+    ..aInt64(1, _omitFieldNames ? '' : 'startMs')
+    ..aInt64(2, _omitFieldNames ? '' : 'endMs')
+    ..aOS(3, _omitFieldNames ? '' : 'reason')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CutInterval clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CutInterval copyWith(void Function(CutInterval) updates) =>
+      super.copyWith((message) => updates(message as CutInterval))
+          as CutInterval;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use CutInterval() / CutInterval.new instead')
+  static CutInterval create() => CutInterval._();
+  static $pb.GeneratedMessage $_createMessage() => CutInterval._();
+  @$core.override
+  CutInterval createEmptyInstance() => CutInterval._();
+  @$core.pragma('dart2js:noInline')
+  static CutInterval getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<CutInterval>(
+          CutInterval.$_createMessage);
+  static CutInterval? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $fixnum.Int64 get startMs => $_getI64(0);
+  @$pb.TagNumber(1)
+  set startMs($fixnum.Int64 value) => $_setInt64(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasStartMs() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearStartMs() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get endMs => $_getI64(1);
+  @$pb.TagNumber(2)
+  set endMs($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasEndMs() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearEndMs() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get reason => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set reason($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasReason() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearReason() => $_clearField(3);
+}
+
+class QuickEditAddons extends $pb.GeneratedMessage {
+  factory QuickEditAddons({
+    $core.bool? autoCaptions,
+    $core.String? captionStyle,
+    $core.bool? addHook,
+    $core.String? hookId,
+    $core.String? hookType,
+    $core.bool? beatSync,
+    $core.String? soundId,
+    $core.bool? bRoll,
+    $core.String? bRollScene,
+    $core.String? platformPreset,
+    $core.bool? audioEnhancement,
+    $core.double? targetLufs,
+    $core.String? reframeRatio,
+  }) {
+    final result = QuickEditAddons._();
+    if (autoCaptions != null) result.autoCaptions = autoCaptions;
+    if (captionStyle != null) result.captionStyle = captionStyle;
+    if (addHook != null) result.addHook = addHook;
+    if (hookId != null) result.hookId = hookId;
+    if (hookType != null) result.hookType = hookType;
+    if (beatSync != null) result.beatSync = beatSync;
+    if (soundId != null) result.soundId = soundId;
+    if (bRoll != null) result.bRoll = bRoll;
+    if (bRollScene != null) result.bRollScene = bRollScene;
+    if (platformPreset != null) result.platformPreset = platformPreset;
+    if (audioEnhancement != null) result.audioEnhancement = audioEnhancement;
+    if (targetLufs != null) result.targetLufs = targetLufs;
+    if (reframeRatio != null) result.reframeRatio = reframeRatio;
+    return result;
+  }
+
+  QuickEditAddons._();
+
+  factory QuickEditAddons.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      QuickEditAddons()..mergeFromBuffer(data, registry);
+  factory QuickEditAddons.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      QuickEditAddons()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'QuickEditAddons',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: QuickEditAddons.$_createMessage)
+    ..aOB(1, _omitFieldNames ? '' : 'autoCaptions')
+    ..aOS(2, _omitFieldNames ? '' : 'captionStyle')
+    ..aOB(3, _omitFieldNames ? '' : 'addHook')
+    ..aOS(4, _omitFieldNames ? '' : 'hookId')
+    ..aOS(5, _omitFieldNames ? '' : 'hookType')
+    ..aOB(6, _omitFieldNames ? '' : 'beatSync')
+    ..aOS(7, _omitFieldNames ? '' : 'soundId')
+    ..aOB(8, _omitFieldNames ? '' : 'bRoll')
+    ..aOS(9, _omitFieldNames ? '' : 'bRollScene')
+    ..aOS(10, _omitFieldNames ? '' : 'platformPreset')
+    ..aOB(11, _omitFieldNames ? '' : 'audioEnhancement')
+    ..aD(12, _omitFieldNames ? '' : 'targetLufs')
+    ..aOS(13, _omitFieldNames ? '' : 'reframeRatio')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  QuickEditAddons clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  QuickEditAddons copyWith(void Function(QuickEditAddons) updates) =>
+      super.copyWith((message) => updates(message as QuickEditAddons))
+          as QuickEditAddons;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use QuickEditAddons() / QuickEditAddons.new instead')
+  static QuickEditAddons create() => QuickEditAddons._();
+  static $pb.GeneratedMessage $_createMessage() => QuickEditAddons._();
+  @$core.override
+  QuickEditAddons createEmptyInstance() => QuickEditAddons._();
+  @$core.pragma('dart2js:noInline')
+  static QuickEditAddons getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<QuickEditAddons>(
+          QuickEditAddons.$_createMessage);
+  static QuickEditAddons? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get autoCaptions => $_getBF(0);
+  @$pb.TagNumber(1)
+  set autoCaptions($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAutoCaptions() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAutoCaptions() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get captionStyle => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set captionStyle($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCaptionStyle() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCaptionStyle() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get addHook => $_getBF(2);
+  @$pb.TagNumber(3)
+  set addHook($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAddHook() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAddHook() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get hookId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set hookId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasHookId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearHookId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get hookType => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set hookType($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasHookType() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearHookType() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.bool get beatSync => $_getBF(5);
+  @$pb.TagNumber(6)
+  set beatSync($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasBeatSync() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearBeatSync() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get soundId => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set soundId($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasSoundId() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearSoundId() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.bool get bRoll => $_getBF(7);
+  @$pb.TagNumber(8)
+  set bRoll($core.bool value) => $_setBool(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasBRoll() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearBRoll() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get bRollScene => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set bRollScene($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasBRollScene() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearBRollScene() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get platformPreset => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set platformPreset($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasPlatformPreset() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearPlatformPreset() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.bool get audioEnhancement => $_getBF(10);
+  @$pb.TagNumber(11)
+  set audioEnhancement($core.bool value) => $_setBool(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasAudioEnhancement() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearAudioEnhancement() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.double get targetLufs => $_getN(11);
+  @$pb.TagNumber(12)
+  set targetLufs($core.double value) => $_setDouble(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasTargetLufs() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearTargetLufs() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.String get reframeRatio => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set reframeRatio($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasReframeRatio() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearReframeRatio() => $_clearField(13);
+}
+
+class QuickEditPlan extends $pb.GeneratedMessage {
+  factory QuickEditPlan({
+    $core.String? assetId,
+    $core.String? transcriptId,
+    $core.Iterable<CutInterval>? cuts,
+    QuickEditAddons? addons,
+    $core.String? estimatedCredits,
+    $core.String? balanceAfterCredits,
+  }) {
+    final result = QuickEditPlan._();
+    if (assetId != null) result.assetId = assetId;
+    if (transcriptId != null) result.transcriptId = transcriptId;
+    if (cuts != null) result.cuts.addAll(cuts);
+    if (addons != null) result.addons = addons;
+    if (estimatedCredits != null) result.estimatedCredits = estimatedCredits;
+    if (balanceAfterCredits != null)
+      result.balanceAfterCredits = balanceAfterCredits;
+    return result;
+  }
+
+  QuickEditPlan._();
+
+  factory QuickEditPlan.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      QuickEditPlan()..mergeFromBuffer(data, registry);
+  factory QuickEditPlan.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      QuickEditPlan()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'QuickEditPlan',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: QuickEditPlan.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'assetId')
+    ..aOS(2, _omitFieldNames ? '' : 'transcriptId')
+    ..pPM<CutInterval>(3, _omitFieldNames ? '' : 'cuts',
+        subBuilder: CutInterval.$_createMessage)
+    ..aOM<QuickEditAddons>(4, _omitFieldNames ? '' : 'addons',
+        subBuilder: QuickEditAddons.$_createMessage)
+    ..aOS(5, _omitFieldNames ? '' : 'estimatedCredits')
+    ..aOS(6, _omitFieldNames ? '' : 'balanceAfterCredits')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  QuickEditPlan clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  QuickEditPlan copyWith(void Function(QuickEditPlan) updates) =>
+      super.copyWith((message) => updates(message as QuickEditPlan))
+          as QuickEditPlan;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use QuickEditPlan() / QuickEditPlan.new instead')
+  static QuickEditPlan create() => QuickEditPlan._();
+  static $pb.GeneratedMessage $_createMessage() => QuickEditPlan._();
+  @$core.override
+  QuickEditPlan createEmptyInstance() => QuickEditPlan._();
+  @$core.pragma('dart2js:noInline')
+  static QuickEditPlan getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<QuickEditPlan>(
+          QuickEditPlan.$_createMessage);
+  static QuickEditPlan? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get assetId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set assetId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAssetId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAssetId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get transcriptId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set transcriptId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTranscriptId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTranscriptId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<CutInterval> get cuts => $_getList(2);
+
+  @$pb.TagNumber(4)
+  QuickEditAddons get addons => $_getN(3);
+  @$pb.TagNumber(4)
+  set addons(QuickEditAddons value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasAddons() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearAddons() => $_clearField(4);
+  @$pb.TagNumber(4)
+  QuickEditAddons ensureAddons() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  $core.String get estimatedCredits => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set estimatedCredits($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasEstimatedCredits() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearEstimatedCredits() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get balanceAfterCredits => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set balanceAfterCredits($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasBalanceAfterCredits() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearBalanceAfterCredits() => $_clearField(6);
+}
+
+class QuickEditDraft extends $pb.GeneratedMessage {
+  factory QuickEditDraft({
+    $core.String? draftId,
+    $2.UUID? workspaceId,
+    $core.String? assetId,
+    $core.String? transcriptId,
+    $core.String? name,
+    $core.Iterable<CutInterval>? cuts,
+    QuickEditAddons? addons,
+    $core.String? estimatedCredits,
+    $1.Timestamp? createdAt,
+    $1.Timestamp? updatedAt,
+  }) {
+    final result = QuickEditDraft._();
+    if (draftId != null) result.draftId = draftId;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (assetId != null) result.assetId = assetId;
+    if (transcriptId != null) result.transcriptId = transcriptId;
+    if (name != null) result.name = name;
+    if (cuts != null) result.cuts.addAll(cuts);
+    if (addons != null) result.addons = addons;
+    if (estimatedCredits != null) result.estimatedCredits = estimatedCredits;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    return result;
+  }
+
+  QuickEditDraft._();
+
+  factory QuickEditDraft.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      QuickEditDraft()..mergeFromBuffer(data, registry);
+  factory QuickEditDraft.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      QuickEditDraft()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'QuickEditDraft',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: QuickEditDraft.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'draftId')
+    ..aOM<$2.UUID>(2, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(3, _omitFieldNames ? '' : 'assetId')
+    ..aOS(4, _omitFieldNames ? '' : 'transcriptId')
+    ..aOS(5, _omitFieldNames ? '' : 'name')
+    ..pPM<CutInterval>(6, _omitFieldNames ? '' : 'cuts',
+        subBuilder: CutInterval.$_createMessage)
+    ..aOM<QuickEditAddons>(7, _omitFieldNames ? '' : 'addons',
+        subBuilder: QuickEditAddons.$_createMessage)
+    ..aOS(8, _omitFieldNames ? '' : 'estimatedCredits')
+    ..aOM<$1.Timestamp>(9, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOM<$1.Timestamp>(10, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  QuickEditDraft clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  QuickEditDraft copyWith(void Function(QuickEditDraft) updates) =>
+      super.copyWith((message) => updates(message as QuickEditDraft))
+          as QuickEditDraft;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use QuickEditDraft() / QuickEditDraft.new instead')
+  static QuickEditDraft create() => QuickEditDraft._();
+  static $pb.GeneratedMessage $_createMessage() => QuickEditDraft._();
+  @$core.override
+  QuickEditDraft createEmptyInstance() => QuickEditDraft._();
+  @$core.pragma('dart2js:noInline')
+  static QuickEditDraft getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<QuickEditDraft>(
+          QuickEditDraft.$_createMessage);
+  static QuickEditDraft? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get draftId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set draftId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDraftId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDraftId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $2.UUID get workspaceId => $_getN(1);
+  @$pb.TagNumber(2)
+  set workspaceId($2.UUID value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.UUID ensureWorkspaceId() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $core.String get assetId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set assetId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAssetId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAssetId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get transcriptId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set transcriptId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTranscriptId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTranscriptId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get name => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set name($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasName() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearName() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<CutInterval> get cuts => $_getList(5);
+
+  @$pb.TagNumber(7)
+  QuickEditAddons get addons => $_getN(6);
+  @$pb.TagNumber(7)
+  set addons(QuickEditAddons value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasAddons() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearAddons() => $_clearField(7);
+  @$pb.TagNumber(7)
+  QuickEditAddons ensureAddons() => $_ensure(6);
+
+  @$pb.TagNumber(8)
+  $core.String get estimatedCredits => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set estimatedCredits($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasEstimatedCredits() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearEstimatedCredits() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $1.Timestamp get createdAt => $_getN(8);
+  @$pb.TagNumber(9)
+  set createdAt($1.Timestamp value) => $_setField(9, value);
+  @$pb.TagNumber(9)
+  $core.bool hasCreatedAt() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearCreatedAt() => $_clearField(9);
+  @$pb.TagNumber(9)
+  $1.Timestamp ensureCreatedAt() => $_ensure(8);
+
+  @$pb.TagNumber(10)
+  $1.Timestamp get updatedAt => $_getN(9);
+  @$pb.TagNumber(10)
+  set updatedAt($1.Timestamp value) => $_setField(10, value);
+  @$pb.TagNumber(10)
+  $core.bool hasUpdatedAt() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearUpdatedAt() => $_clearField(10);
+  @$pb.TagNumber(10)
+  $1.Timestamp ensureUpdatedAt() => $_ensure(9);
+}
+
+class QuickEditServiceSaveDraftRequest extends $pb.GeneratedMessage {
+  factory QuickEditServiceSaveDraftRequest({
+    $2.CommandContext? context,
+    $core.String? draftId,
+    $core.String? assetId,
+    $core.String? transcriptId,
+    $core.String? name,
+    $core.Iterable<CutInterval>? cuts,
+    QuickEditAddons? addons,
+    $core.String? estimatedCredits,
+  }) {
+    final result = QuickEditServiceSaveDraftRequest._();
+    if (context != null) result.context = context;
+    if (draftId != null) result.draftId = draftId;
+    if (assetId != null) result.assetId = assetId;
+    if (transcriptId != null) result.transcriptId = transcriptId;
+    if (name != null) result.name = name;
+    if (cuts != null) result.cuts.addAll(cuts);
+    if (addons != null) result.addons = addons;
+    if (estimatedCredits != null) result.estimatedCredits = estimatedCredits;
+    return result;
+  }
+
+  QuickEditServiceSaveDraftRequest._();
+
+  factory QuickEditServiceSaveDraftRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      QuickEditServiceSaveDraftRequest()..mergeFromBuffer(data, registry);
+  factory QuickEditServiceSaveDraftRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      QuickEditServiceSaveDraftRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'QuickEditServiceSaveDraftRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: QuickEditServiceSaveDraftRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'draftId')
+    ..aOS(3, _omitFieldNames ? '' : 'assetId')
+    ..aOS(4, _omitFieldNames ? '' : 'transcriptId')
+    ..aOS(5, _omitFieldNames ? '' : 'name')
+    ..pPM<CutInterval>(6, _omitFieldNames ? '' : 'cuts',
+        subBuilder: CutInterval.$_createMessage)
+    ..aOM<QuickEditAddons>(7, _omitFieldNames ? '' : 'addons',
+        subBuilder: QuickEditAddons.$_createMessage)
+    ..aOS(8, _omitFieldNames ? '' : 'estimatedCredits')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  QuickEditServiceSaveDraftRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  QuickEditServiceSaveDraftRequest copyWith(
+          void Function(QuickEditServiceSaveDraftRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as QuickEditServiceSaveDraftRequest))
+          as QuickEditServiceSaveDraftRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use QuickEditServiceSaveDraftRequest() / QuickEditServiceSaveDraftRequest.new instead')
+  static QuickEditServiceSaveDraftRequest create() =>
+      QuickEditServiceSaveDraftRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      QuickEditServiceSaveDraftRequest._();
+  @$core.override
+  QuickEditServiceSaveDraftRequest createEmptyInstance() =>
+      QuickEditServiceSaveDraftRequest._();
+  @$core.pragma('dart2js:noInline')
+  static QuickEditServiceSaveDraftRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<QuickEditServiceSaveDraftRequest>(
+          QuickEditServiceSaveDraftRequest.$_createMessage);
+  static QuickEditServiceSaveDraftRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get draftId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set draftId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasDraftId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearDraftId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get assetId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set assetId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAssetId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAssetId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get transcriptId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set transcriptId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTranscriptId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTranscriptId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get name => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set name($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasName() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearName() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<CutInterval> get cuts => $_getList(5);
+
+  @$pb.TagNumber(7)
+  QuickEditAddons get addons => $_getN(6);
+  @$pb.TagNumber(7)
+  set addons(QuickEditAddons value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasAddons() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearAddons() => $_clearField(7);
+  @$pb.TagNumber(7)
+  QuickEditAddons ensureAddons() => $_ensure(6);
+
+  @$pb.TagNumber(8)
+  $core.String get estimatedCredits => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set estimatedCredits($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasEstimatedCredits() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearEstimatedCredits() => $_clearField(8);
+}
+
+class QuickEditServiceSaveDraftResponse extends $pb.GeneratedMessage {
+  factory QuickEditServiceSaveDraftResponse({
+    QuickEditDraft? draft,
+  }) {
+    final result = QuickEditServiceSaveDraftResponse._();
+    if (draft != null) result.draft = draft;
+    return result;
+  }
+
+  QuickEditServiceSaveDraftResponse._();
+
+  factory QuickEditServiceSaveDraftResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      QuickEditServiceSaveDraftResponse()..mergeFromBuffer(data, registry);
+  factory QuickEditServiceSaveDraftResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      QuickEditServiceSaveDraftResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'QuickEditServiceSaveDraftResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: QuickEditServiceSaveDraftResponse.$_createMessage)
+    ..aOM<QuickEditDraft>(1, _omitFieldNames ? '' : 'draft',
+        subBuilder: QuickEditDraft.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  QuickEditServiceSaveDraftResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  QuickEditServiceSaveDraftResponse copyWith(
+          void Function(QuickEditServiceSaveDraftResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as QuickEditServiceSaveDraftResponse))
+          as QuickEditServiceSaveDraftResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use QuickEditServiceSaveDraftResponse() / QuickEditServiceSaveDraftResponse.new instead')
+  static QuickEditServiceSaveDraftResponse create() =>
+      QuickEditServiceSaveDraftResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      QuickEditServiceSaveDraftResponse._();
+  @$core.override
+  QuickEditServiceSaveDraftResponse createEmptyInstance() =>
+      QuickEditServiceSaveDraftResponse._();
+  @$core.pragma('dart2js:noInline')
+  static QuickEditServiceSaveDraftResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<QuickEditServiceSaveDraftResponse>(
+          QuickEditServiceSaveDraftResponse.$_createMessage);
+  static QuickEditServiceSaveDraftResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  QuickEditDraft get draft => $_getN(0);
+  @$pb.TagNumber(1)
+  set draft(QuickEditDraft value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDraft() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDraft() => $_clearField(1);
+  @$pb.TagNumber(1)
+  QuickEditDraft ensureDraft() => $_ensure(0);
+}
+
+class BeatSyncGrid extends $pb.GeneratedMessage {
+  factory BeatSyncGrid({
+    $core.int? bpm,
+    $core.Iterable<$fixnum.Int64>? beatTimestampsMs,
+    $core.Iterable<$fixnum.Int64>? downbeatTimestampsMs,
+    $core.double? confidence,
+  }) {
+    final result = BeatSyncGrid._();
+    if (bpm != null) result.bpm = bpm;
+    if (beatTimestampsMs != null)
+      result.beatTimestampsMs.addAll(beatTimestampsMs);
+    if (downbeatTimestampsMs != null)
+      result.downbeatTimestampsMs.addAll(downbeatTimestampsMs);
+    if (confidence != null) result.confidence = confidence;
+    return result;
+  }
+
+  BeatSyncGrid._();
+
+  factory BeatSyncGrid.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BeatSyncGrid()..mergeFromBuffer(data, registry);
+  factory BeatSyncGrid.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BeatSyncGrid()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'BeatSyncGrid',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: BeatSyncGrid.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'bpm')
+    ..p<$fixnum.Int64>(
+        2, _omitFieldNames ? '' : 'beatTimestampsMs', $pb.PbFieldType.K6)
+    ..p<$fixnum.Int64>(
+        3, _omitFieldNames ? '' : 'downbeatTimestampsMs', $pb.PbFieldType.K6)
+    ..aD(4, _omitFieldNames ? '' : 'confidence')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BeatSyncGrid clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BeatSyncGrid copyWith(void Function(BeatSyncGrid) updates) =>
+      super.copyWith((message) => updates(message as BeatSyncGrid))
+          as BeatSyncGrid;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use BeatSyncGrid() / BeatSyncGrid.new instead')
+  static BeatSyncGrid create() => BeatSyncGrid._();
+  static $pb.GeneratedMessage $_createMessage() => BeatSyncGrid._();
+  @$core.override
+  BeatSyncGrid createEmptyInstance() => BeatSyncGrid._();
+  @$core.pragma('dart2js:noInline')
+  static BeatSyncGrid getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<BeatSyncGrid>(
+          BeatSyncGrid.$_createMessage);
+  static BeatSyncGrid? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get bpm => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set bpm($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasBpm() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearBpm() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<$fixnum.Int64> get beatTimestampsMs => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<$fixnum.Int64> get downbeatTimestampsMs => $_getList(2);
+
+  @$pb.TagNumber(4)
+  $core.double get confidence => $_getN(3);
+  @$pb.TagNumber(4)
+  set confidence($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasConfidence() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearConfidence() => $_clearField(4);
+}
+
 /// TranslationJob represents a multi-language localization job per database_schema.md §22.6.
 class TranslationJob extends $pb.GeneratedMessage {
   factory TranslationJob({

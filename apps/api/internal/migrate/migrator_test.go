@@ -398,8 +398,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 19 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 || applied[3] != 4 || applied[4] != 5 || applied[5] != 6 || applied[6] != 7 || applied[7] != 8 || applied[8] != 9 || applied[9] != 10 || applied[10] != 11 || applied[11] != 12 || applied[12] != 13 || applied[13] != 14 || applied[14] != 15 || applied[15] != 16 || applied[16] != 17 || applied[17] != 18 || applied[18] != 19 {
-		t.Fatalf("expected versions [1..19] applied, got %v", applied)
+	if len(applied) != 20 {
+		t.Fatalf("expected 20 applied migrations, got %d", len(applied))
+	}
+	for i, v := range applied {
+		if v != int64(i+1) {
+			t.Fatalf("expected version %d at index %d, got %d", i+1, i, v)
+		}
 	}
 	if !runner.lastTx.committed || runner.lastTx.rolledBack {
 		t.Fatalf("expected transaction committed")
@@ -414,13 +419,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for all 19 migrations.
+	// Status reports Applied = true for all 20 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 19 {
-		t.Fatalf("expected status for 19 migrations, got %d", len(statuses))
+	if len(statuses) != 20 {
+		t.Fatalf("expected status for 20 migrations, got %d", len(statuses))
 	}
 	for i, s := range statuses {
 		if !s.Applied {
@@ -433,7 +438,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 19, then 18, then 17, then 16...
+	// Down with allowLocalRollback=true rolls back version 20, then 19, then 18...
+	rolled20, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v20 failed: %v", err)
+	}
+	if rolled20 != 20 {
+		t.Fatalf("expected rolled back version 20, got %d", rolled20)
+	}
 	rolled19, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v19 failed: %v", err)
@@ -610,13 +622,16 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	_, _ = adminPool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
 	dir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 
-	// Apply migration Up, then Down nineteen times, then Up again to prove full Goose SQL repeatability.
+	// Apply migration Up, then Down twenty times, then Up again to prove full Goose SQL repeatability.
 	applied, err := Up(ctx, adminPool, dir)
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 19 {
-		t.Fatalf("expected 19 applied migrations, got %v", applied)
+	if len(applied) != 20 {
+		t.Fatalf("expected 20 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v20 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v19 failed: %v", err)
@@ -1357,6 +1372,97 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("expected composite tenant FK to reject cross-tenant asset_id on generation_jobs")
 	}
 	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_job_fk`)
+
+	// P4-02: Transcripts, Quick Edit Drafts & Sound Library RLS and Composite FK checks
+	transcriptA := "55555555-5555-4555-8555-555555555501"
+	draftA := "55555555-5555-4555-8555-555555555502"
+	soundCustomA := "55555555-5555-4555-8555-555555555503"
+
+	if _, err := tx.Exec(ctx, `RESET ROLE`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO transcripts (transcript_id, workspace_id, asset_id, language, raw_text, alignment_status)
+		VALUES ($1::uuid, $2::uuid, $3::uuid, 'vi', 'Hello world video A', 'auto_aligned')
+	`, transcriptA, tenantA, assetA); err != nil {
+		t.Fatalf("seed transcript failed: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO quick_edit_drafts (draft_id, workspace_id, asset_id, transcript_id, name, estimated_credits)
+		VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 'Draft A', 15.000000)
+	`, draftA, tenantA, assetA, transcriptA); err != nil {
+		t.Fatalf("seed quick_edit_draft failed: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO sound_library (sound_id, workspace_id, title, artist, genre, duration_seconds, audio_url)
+		VALUES ($1::uuid, $2::uuid, 'Tenant A Exclusive Track', 'Artist A', 'chill', 120.0, 'https://cdn.example.com/a.mp3')
+	`, soundCustomA, tenantA); err != nil {
+		t.Fatalf("seed tenant-specific sound failed: %v", err)
+	}
+
+	if _, err := tx.Exec(ctx, `SET LOCAL ROLE app_user`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_user_id', $2, true)`, tenantB, userB); err != nil {
+		t.Fatal(err)
+	}
+
+	var transcriptCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM transcripts WHERE transcript_id = $1::uuid`, transcriptA).Scan(&transcriptCount); err != nil {
+		t.Fatal(err)
+	}
+	if transcriptCount != 0 {
+		t.Fatalf("transcripts RLS breach: Tenant B saw %d transcripts from Tenant A", transcriptCount)
+	}
+
+	var draftCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM quick_edit_drafts WHERE draft_id = $1::uuid`, draftA).Scan(&draftCount); err != nil {
+		t.Fatal(err)
+	}
+	if draftCount != 0 {
+		t.Fatalf("quick_edit_drafts RLS breach: Tenant B saw %d drafts from Tenant A", draftCount)
+	}
+
+	var customSoundCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM sound_library WHERE sound_id = $1::uuid`, soundCustomA).Scan(&customSoundCount); err != nil {
+		t.Fatal(err)
+	}
+	if customSoundCount != 0 {
+		t.Fatalf("sound_library RLS breach: Tenant B saw %d workspace-specific sounds from Tenant A", customSoundCount)
+	}
+
+	// Global sounds (workspace_id IS NULL) must still be visible to Tenant B
+	var globalSoundCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM sound_library WHERE workspace_id IS NULL`).Scan(&globalSoundCount); err != nil {
+		t.Fatal(err)
+	}
+	if globalSoundCount < 6 {
+		t.Fatalf("expected at least 6 seeded global sounds visible to Tenant B, got %d", globalSoundCount)
+	}
+
+	// Cross-tenant composite FK write attack on transcripts denied (tenantB cannot bind to tenantA's assetA):
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_transcript_fk`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO transcripts (workspace_id, asset_id, language, raw_text)
+		VALUES ($1::uuid, $2::uuid, 'vi', 'Cross tenant attack')
+	`, tenantB, assetA); err == nil {
+		t.Fatalf("expected composite tenant FK to reject cross-tenant asset_id on transcripts")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_transcript_fk`)
+
+	// Cross-tenant composite FK write attack on quick_edit_drafts denied:
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_draft_fk`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO quick_edit_drafts (workspace_id, asset_id, transcript_id, name)
+		VALUES ($1::uuid, $2::uuid, $3::uuid, 'Cross draft attack')
+	`, tenantB, assetA, transcriptA); err == nil {
+		t.Fatalf("expected composite tenant FK to reject cross-tenant asset/transcript on quick_edit_drafts")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_draft_fk`)
 }
 
 // TestPostgresSeedTwiceIdempotency satisfies Acceptance Target 1:

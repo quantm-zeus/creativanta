@@ -754,6 +754,45 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 		requiredRLSTables = []string{
 			"copilot_sessions",
 		}
+	case 18:
+		requiredFragments = []requiredFragment{
+			{"remix_blueprints table", "CREATE TABLE IF NOT EXISTS remix_blueprints"},
+			{"composite tenant FK on remix_blueprints -> assets", "fk_remix_blueprints_reference_asset_id_tenant"},
+			{"tenant_isolation policy on remix_blueprints", "CREATE POLICY tenant_isolation ON remix_blueprints"},
+			{"admin_ops_scope policy on remix_blueprints", "CREATE POLICY admin_ops_scope ON remix_blueprints"},
+		}
+		requiredRLSTables = []string{
+			"remix_blueprints",
+		}
+	case 19:
+		requiredFragments = []requiredFragment{
+			{"translation_jobs table", "CREATE TABLE IF NOT EXISTS translation_jobs"},
+			{"voice_clone_records table", "CREATE TABLE IF NOT EXISTS voice_clone_records"},
+		}
+		requiredRLSTables = []string{
+			"translation_jobs",
+			"voice_clone_records",
+		}
+	case 20:
+		requiredFragments = []requiredFragment{
+			{"transcripts table", "CREATE TABLE IF NOT EXISTS transcripts"},
+			{"quick_edit_drafts table", "CREATE TABLE IF NOT EXISTS quick_edit_drafts"},
+			{"sound_library table", "CREATE TABLE IF NOT EXISTS sound_library"},
+			{"composite tenant FK on transcripts -> assets", "fk_transcripts_asset_tenant"},
+			{"composite tenant FK on quick_edit_drafts -> assets", "fk_quick_edit_drafts_asset_tenant"},
+			{"composite tenant FK on quick_edit_drafts -> transcripts", "fk_quick_edit_drafts_transcript_tenant"},
+			{"tenant_isolation policy on transcripts", "CREATE POLICY tenant_isolation ON transcripts"},
+			{"admin_ops_scope policy on transcripts", "CREATE POLICY admin_ops_scope ON transcripts"},
+			{"tenant_isolation policy on quick_edit_drafts", "CREATE POLICY tenant_isolation ON quick_edit_drafts"},
+			{"admin_ops_scope policy on quick_edit_drafts", "CREATE POLICY admin_ops_scope ON quick_edit_drafts"},
+			{"sound_library_select policy on sound_library", "CREATE POLICY sound_library_select ON sound_library"},
+			{"sound_library_modify policy on sound_library", "CREATE POLICY sound_library_modify ON sound_library"},
+		}
+		requiredRLSTables = []string{
+			"transcripts",
+			"quick_edit_drafts",
+			"sound_library",
+		}
 	default:
 		return nil
 	}
