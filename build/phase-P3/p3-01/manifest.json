@@ -1,0 +1,124 @@
+{
+  "task_id": "P3-01",
+  "phase": "P3",
+  "slice": "p3-01",
+  "title": "Ideas, hooks, dedup và mobile capture",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "2e7bf234c765916f9930be37c66ef4cac431de42",
+  "feature_refs": [
+    "docs/02_features/content/idea_engine.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_endpoint_map.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/05_system/queue_retry_design.md"
+  ],
+  "requirement_ids": [
+    "M05-bae5c6b9869b-001",
+    "M05-0403dbff5268-001",
+    "M05-790c46a35ec8-001",
+    "M05-790c46a35ec8-002",
+    "M05-790c46a35ec8-003",
+    "M05-790c46a35ec8-005",
+    "M05-3f400e736af9-001",
+    "M05-3c6e1afcf1a8-001",
+    "M05-2fd6d8bfd942-001",
+    "M05-d7251118744d-001",
+    "M05-283546f148db-001",
+    "M05-5609acdd101d-001",
+    "M05-875afbd877d3-001",
+    "M05-db46be9abeb6-001",
+    "DB-C-001",
+    "DB-H-001"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_content_idea_board.md",
+    "docs/03_screens/web/screen_web_content_idea_detail.md",
+    "docs/03_screens/mobile/screen_mobile_content_quick_capture.md",
+    "docs/03_screens/mobile/screen_mobile_content_idea_board.md"
+  ],
+  "source_hashes": {
+    "infra/migrations/00013_p3_01_ideas_hooks_and_deduplication.sql": "0d32b0e2771e8aad13766959be535b8272e9f3aa54e2d50a2b2844ff23251975",
+    "protos/creativanta/content/v1/idea.proto": "19652a73375ff45b9af936debe0b6a2d09a2700f99e4ca89172053cbace99671",
+    "apps/api/internal/idea/types.go": "9291ecf06408f2cbbc3b79cae38d7d8cb1f7bef3c47889728add4d29a4b7421d",
+    "apps/api/internal/idea/store.go": "137ba0b3f9a89c2bc3b9b5c164bdb02bb08e59766ac7bcf1409057eab5f6aa98",
+    "apps/api/internal/idea/service.go": "2580f2f58cb4c2b4d2d397530d466cd09dbca53932aee9860e99619309f896a1",
+    "apps/api/internal/idea/service_test.go": "4d48247961d2d2473b43b28be0ad295cfb27a754075885732ec7f2d0afc7c0ae",
+    "apps/api/internal/migrate/migrator_test.go": "8566d28c4993ec6024e76e9d2d1646e7adb77e3499167762e56e99fedf06f178",
+    "apps/api/internal/rbac/phase_exposure_test.go": "1c200bb7890f73352d1039c7dc79e49e9967bed618a653231fbc2f89fee1def0",
+    "apps/web/src/lib/idea/index.ts": "850c624f93cd2cbac81c57abd058df6d41d1511aeda50910dc3ec62acf1595d8",
+    "apps/web/src/lib/idea/DuplicateWarningBanner.svelte": "db7c70fc3fc60378c80be4f2e59cc0d96d6f95699b1089b9ea776db05d0e20c8",
+    "apps/web/src/lib/idea/SourceLineageBadge.svelte": "45d7c3e071984928f3f711bdbb693e0a26ed1aafdc97d4879a818255a0af81ba",
+    "apps/web/src/lib/idea/HookBankDrawer.svelte": "1d9134c04008b740704a4b6fe51db06c4bc3a977620d690eebf64c570608965f",
+    "apps/web/src/lib/idea/idea.test.ts": "f6002f7423a9fdeb000ce27e59a76ef0dac65b1d70edfe8366ba7b80182a4c81",
+    "apps/web/src/routes/ideas/+page.svelte": "787bf9c0f9c04a8d70e3496cd73d4f5dc07a0a8879964c5ecf83bd361745d820",
+    "apps/web/src/routes/ideas/new/+page.svelte": "8fa09787a602f580c50811dda0cb2895470cd4c34ea64cbd693da795dea64213",
+    "apps/web/src/routes/ideas/[id]/+page.svelte": "b6e44b19b79afb93bf9469306e44c9ebd442ab24dc4581ec124cb86c5efb4ada",
+    "apps/web/src/routes/sang-tao/+page.svelte": "2a6ea9a6ce9206f2f01be46d0e747c5990d714e5686258f11924db8c52be563b",
+    "apps/mobile/lib/content/idea_models.dart": "d95eac0bf1e7c9396962ef671018ace08b4ec9c3d6eb86e38f4047176959a009",
+    "apps/mobile/lib/ui/content/quick_capture_sheet.dart": "a6ef61fc6e92a50584ea33f71271e80b7077443f399bd78740a3321dcbcfaa3d",
+    "apps/mobile/lib/ui/content/idea_board_view.dart": "cb73618ed0ff56e8b82038bd531236cadfeb32e8d89c51813208235e363b19a6",
+    "apps/mobile/test/idea_engine_test.dart": "e556831fe246977251f3fb8d0c254662169a0ffa1a1429ded75c7ab3a09cb26e"
+  },
+  "scope_items": [
+    "Database Migration 00013: Extended ideas table with embedding_vector, source_class, confidence_band, and idx_ideas_workspace_status; created hooks table with workspace composite tenant key, tenant RLS isolation, foreign keys to ideas and workspaces, and narrow grants; reversible transactional down migration.",
+    "Acceptance Target 1 (Duplicate idea warns without silent merge): Semantic and lexical similarity calculation with >0.85 threshold. Returns duplicate warning with matched title and similarity score. Both user and client can inspect existing or proceed anyway, persisting distinct idea records without silent merging.",
+    "Acceptance Target 2 (Source lineage retained): Full provenance retention linking ideas to source objects (trend, opportunity, product, thread, comment_cluster, objection, offer, manual) via junction records. When source objects expire or are deleted, the lineage link is retained with an archive notice (EC-M05-002).",
+    "Acceptance Target 3 (Mobile title-only draft works): Quick capture supports title-only entry creating a draft idea without requiring description or suggested format. Automatic manual source attribution to creator (RULE-M05-001).",
+    "State Machine & Conversion: Enforced strict progression draft -> candidate -> selected -> converted | archived (RULE-M05-002). Guarded script conversion (EC-M05-004) requiring non-empty description and suggested_format before conversion.",
+    "Hook Bank Integration: Hook bank schema, protobuf contracts, and UI drawer component supporting question, shock, story, pov, listicle, and contrast hooks with effectiveness scores and source attribution (§6.3)."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestAcceptanceTarget1_DuplicateIdeaWarnsWithoutSilentMerge (Go -race), Vitest unit tests (web), and Flutter unit/widget tests confirm duplicate warning banner above 0.85 threshold and distinct record persistence.",
+    "Acceptance Target 2 Verified: TestAcceptanceTarget2_SourceLineageRetainedAcrossTypesAndExpiredSource (Go -race), Vitest suite (web), and Flutter tests confirm provenance retention across all 8 source types and archive notice preservation.",
+    "Acceptance Target 3 Verified: TestAcceptanceTarget3_MobileTitleOnlyDraftWorks (Go -race), Vitest suite (web), and Flutter QuickCaptureSheet widget tests confirm title-only capture into draft status with manual source attribution.",
+    "State Machine & Conversion Verified: TestRULE_M05_002_StateMachineProgression and TestEC_M05_004_ConversionRequiresRequiredFields verify state transition constraints and script conversion validation.",
+    "Migration 00013 Verified: TestLoadAndValidateCanonicalP004Migration and TestUpStatusDownTransactionalBehavior pass for all 13 migrations including 00013 up and down execution.",
+    "Four-Target Proto Codegen Verified: check_proto.sh passes lint, generate, drift check, buf breaking backward compatibility, Go vet/test, TypeScript vitest, Dart analyze/test.",
+    "Web & Mobile Surfaces Verified: check_node.sh (svelte-check 0/0, vite build, 114 web tests + 6 admin tests), check_web_smoke.sh (SSR HTTP 200 on /ideas), and check_flutter.sh (flutter analyze --fatal-infos --fatal-warnings + 102 tests) all pass."
+  ],
+  "rpc_contracts": [
+    "IdeaService/Create",
+    "IdeaService/List",
+    "IdeaService/Get",
+    "IdeaService/Update",
+    "IdeaService/Delete",
+    "IdeaService/UpdateStatus",
+    "IdeaService/Generate",
+    "IdeaService/Convert",
+    "IdeaService/Search",
+    "IdeaService/CreateFromTrend",
+    "IdeaService/ListMobile"
+  ],
+  "migration_files": [
+    "infra/migrations/00013_p3_01_ideas_hooks_and_deduplication.sql"
+  ],
+  "permission_keys": [
+    "idea:create",
+    "idea:read",
+    "idea:update",
+    "idea:delete",
+    "idea:convert",
+    "idea:generate"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-AI-PROVIDER-IDEA-ENRICHMENT",
+      "PENDING_PRODUCTION_KEY",
+      "Local mock enrichment and prompt templates verified; production AI video/idea generation provider requires production LLM API credentials."
+    ],
+    [
+      "EXT-GATE-CLERK-AUTH",
+      "PENDING_PRODUCTION_TENANT",
+      "Clerk production environment and live webhook signing secret gate."
+    ],
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "Migration 00013 SQL grammar, transactional up/down, and RLS policy contracts verified locally; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+    ]
+  ]
+}

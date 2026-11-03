@@ -321,8 +321,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 12 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 || applied[3] != 4 || applied[4] != 5 || applied[5] != 6 || applied[6] != 7 || applied[7] != 8 || applied[8] != 9 || applied[9] != 10 || applied[10] != 11 || applied[11] != 12 {
-		t.Fatalf("expected versions [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] applied, got %v", applied)
+	if len(applied) != 13 || applied[0] != 1 || applied[1] != 2 || applied[2] != 3 || applied[3] != 4 || applied[4] != 5 || applied[5] != 6 || applied[6] != 7 || applied[7] != 8 || applied[8] != 9 || applied[9] != 10 || applied[10] != 11 || applied[11] != 12 || applied[12] != 13 {
+		t.Fatalf("expected versions [1..13] applied, got %v", applied)
 	}
 	if !runner.lastTx.committed || runner.lastTx.rolledBack {
 		t.Fatalf("expected transaction committed")
@@ -337,13 +337,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for all 12 migrations.
+	// Status reports Applied = true for all 13 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 12 || !statuses[0].Applied || !statuses[1].Applied || !statuses[2].Applied || !statuses[3].Applied || !statuses[4].Applied || !statuses[5].Applied || !statuses[6].Applied || !statuses[7].Applied || !statuses[8].Applied || !statuses[9].Applied || !statuses[10].Applied || !statuses[11].Applied {
-		t.Fatalf("expected status Applied=true for all 12 migrations, got %+v", statuses)
+	if len(statuses) != 13 || !statuses[0].Applied || !statuses[1].Applied || !statuses[2].Applied || !statuses[3].Applied || !statuses[4].Applied || !statuses[5].Applied || !statuses[6].Applied || !statuses[7].Applied || !statuses[8].Applied || !statuses[9].Applied || !statuses[10].Applied || !statuses[11].Applied || !statuses[12].Applied {
+		t.Fatalf("expected status Applied=true for all 13 migrations, got %+v", statuses)
 	}
 
 	// Down without allowLocalRollback fails closed.
@@ -351,7 +351,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 12, then 11, then 10, then 9, then 8, then 7, then 6, then 5, then 4, then 3, then 2, then 1.
+	// Down with allowLocalRollback=true rolls back version 13, then 12, then 11, then 10, then 9, then 8, then 7, then 6, then 5, then 4, then 3, then 2, then 1.
+	rolled13, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v13 failed: %v", err)
+	}
+	if rolled13 != 13 {
+		t.Fatalf("expected rolled back version 13, got %d", rolled13)
+	}
 	rolled12, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v12 failed: %v", err)
