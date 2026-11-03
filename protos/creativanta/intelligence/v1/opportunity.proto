@@ -1,0 +1,215 @@
+syntax = "proto3";
+
+package creativanta.intelligence.v1;
+
+import "creativanta/intelligence/v1/trend.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/intelligence/v1;intelligencev1";
+
+// PriorityState defines canonical opportunity progression stages per database_schema.md §5.4.
+enum PriorityState {
+  PRIORITY_STATE_UNSPECIFIED = 0;
+  PRIORITY_STATE_DRAFT = 1;
+  PRIORITY_STATE_OPEN = 2;
+  PRIORITY_STATE_PRIORITIZED = 3;
+  PRIORITY_STATE_ASSIGNED = 4;
+  PRIORITY_STATE_IN_PROGRESS = 5;
+  PRIORITY_STATE_CONVERTED = 6;
+  PRIORITY_STATE_PARKED = 7;
+  PRIORITY_STATE_CLOSED_WON = 8;
+  PRIORITY_STATE_CLOSED_LOST = 9;
+}
+
+// ExpectedImpact defines impact estimation per database_schema.md §5.4.
+message ExpectedImpact {
+  int32 score = 1; // 1 to 100
+  string description = 2;
+  string revenue_estimate = 3;
+}
+
+// ExpectedEffort defines effort estimation per database_schema.md §5.4.
+message ExpectedEffort {
+  int32 score = 1; // 1 to 100
+  string description = 2;
+  string time_estimate = 3;
+}
+
+// EstimatedProfit defines expected profit estimation with confidence & source class per RULE-M04-005.
+message EstimatedProfit {
+  int64 amount_cents = 1;
+  string currency = 2;
+  ConfidenceBand confidence = 3;
+  SourceClass source_class = 4;
+  bool is_estimate = 5;
+  string explanation = 6;
+}
+
+// OpportunitySourceRef represents a provenance source link per RULE-M04-001 and EC-M04-001.
+message OpportunitySourceRef {
+  string source_type = 1; // trend, signal, competitor, product_opportunity, thread
+  string source_id = 2;
+  string source_name = 3;
+  string source_url = 4;
+  bool is_expired = 5;
+  string archive_notice = 6;
+}
+
+// Opportunity represents an actionable opportunity record per database_schema.md §5.4.
+message Opportunity {
+  string opportunity_id = 1;
+  string workspace_id = 2;
+  string opportunity_type = 3; // content, product, affiliate, live, campaign
+  string title = 4;
+  string summary = 5;
+  string why_it_matters = 6;
+  ExpectedImpact expected_impact = 7;
+  ExpectedEffort expected_effort = 8;
+  PriorityState priority_state = 9;
+  string priority_reason = 10;
+  string suggested_next_step = 11;
+  string owner_user_id = 12;
+  ConfidenceBand confidence = 13;
+  SourceClass source_class = 14;
+  string converted_to_type = 15;
+  string converted_to_id = 16;
+  repeated OpportunitySourceRef sources = 17;
+  google.protobuf.Timestamp created_at = 18;
+  google.protobuf.Timestamp updated_at = 19;
+  bool is_repairable = 20;
+  repeated string repair_reasons = 21;
+  EstimatedProfit estimated_profit = 22;
+  bool is_saved = 23;
+  bool is_dismissed = 24;
+  int32 overall_score = 25;
+}
+
+message OpportunityServiceListRequest {
+  string workspace_id = 1;
+  PriorityState priority_state = 2;
+  string opportunity_type = 3;
+  string owner_user_id = 4;
+  ConfidenceBand confidence = 5;
+  int32 page_size = 6;
+  string page_token = 7;
+}
+
+message OpportunityServiceListResponse {
+  repeated Opportunity opportunities = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+  float avg_score = 4;
+  int32 new_today_count = 5;
+}
+
+message OpportunityServiceGetRequest {
+  string workspace_id = 1;
+  string opportunity_id = 2;
+}
+
+message OpportunityServiceGetResponse {
+  Opportunity opportunity = 1;
+}
+
+message OpportunityServiceCreateRequest {
+  string workspace_id = 1;
+  string opportunity_type = 2;
+  string title = 3;
+  string summary = 4;
+  string why_it_matters = 5;
+  ExpectedImpact expected_impact = 6;
+  ExpectedEffort expected_effort = 7;
+  string priority_reason = 8;
+  ConfidenceBand confidence = 9;
+  repeated OpportunitySourceRef source_refs = 10;
+  string suggested_next_step = 11;
+}
+
+message OpportunityServiceCreateResponse {
+  Opportunity opportunity = 1;
+}
+
+message OpportunityServiceUpdateStateRequest {
+  string workspace_id = 1;
+  string opportunity_id = 2;
+  google.protobuf.Timestamp expected_updated_at = 3;
+  PriorityState new_state = 4;
+  string reason = 5;
+  ExpectedImpact expected_impact = 6;
+  ExpectedEffort expected_effort = 7;
+  string priority_reason = 8;
+  ConfidenceBand confidence = 9;
+}
+
+message OpportunityServiceUpdateStateResponse {
+  Opportunity opportunity = 1;
+}
+
+message OpportunityServiceAssignRequest {
+  string workspace_id = 1;
+  string opportunity_id = 2;
+  google.protobuf.Timestamp expected_updated_at = 3;
+  string owner_user_id = 4;
+}
+
+message OpportunityServiceAssignResponse {
+  Opportunity opportunity = 1;
+}
+
+message OpportunityServiceConvertRequest {
+  string workspace_id = 1;
+  string opportunity_id = 2;
+  google.protobuf.Timestamp expected_updated_at = 3;
+  string conversion_type = 4; // idea, script, campaign, live_plan
+  string title = 5;
+  string notes = 6;
+}
+
+message OpportunityServiceConvertResponse {
+  Opportunity opportunity = 1;
+  string converted_to_type = 2;
+  string converted_to_id = 3;
+  string target_route = 4;
+}
+
+message OpportunityServiceSaveRequest {
+  string workspace_id = 1;
+  string opportunity_id = 2;
+}
+
+message OpportunityServiceSaveResponse {
+  Opportunity opportunity = 1;
+}
+
+message OpportunityServiceDismissRequest {
+  string workspace_id = 1;
+  string opportunity_id = 2;
+  string reason = 3;
+}
+
+message OpportunityServiceDismissResponse {
+  Opportunity opportunity = 1;
+}
+
+message OpportunityServiceListRelatedRequest {
+  string workspace_id = 1;
+  string opportunity_id = 2;
+  int32 limit = 3;
+}
+
+message OpportunityServiceListRelatedResponse {
+  repeated Opportunity related_opportunities = 1;
+}
+
+// OpportunityService manages the opportunity lifecycle, scoring, ownership, and conversions (M04).
+service OpportunityService {
+  rpc List(OpportunityServiceListRequest) returns (OpportunityServiceListResponse);
+  rpc Get(OpportunityServiceGetRequest) returns (OpportunityServiceGetResponse);
+  rpc Create(OpportunityServiceCreateRequest) returns (OpportunityServiceCreateResponse);
+  rpc UpdateState(OpportunityServiceUpdateStateRequest) returns (OpportunityServiceUpdateStateResponse);
+  rpc Assign(OpportunityServiceAssignRequest) returns (OpportunityServiceAssignResponse);
+  rpc Convert(OpportunityServiceConvertRequest) returns (OpportunityServiceConvertResponse);
+  rpc Save(OpportunityServiceSaveRequest) returns (OpportunityServiceSaveResponse);
+  rpc Dismiss(OpportunityServiceDismissRequest) returns (OpportunityServiceDismissResponse);
+  rpc ListRelated(OpportunityServiceListRelatedRequest) returns (OpportunityServiceListRelatedResponse);
+}
