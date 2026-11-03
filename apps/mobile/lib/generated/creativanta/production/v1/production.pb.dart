@@ -3634,6 +3634,3937 @@ class UploadResponse extends $pb.GeneratedMessage {
   Asset ensureAsset() => $_ensure(3);
 }
 
+/// TranslationJob represents a multi-language localization job per database_schema.md §22.6.
+class TranslationJob extends $pb.GeneratedMessage {
+  factory TranslationJob({
+    $core.String? translationJobId,
+    $core.String? workspaceId,
+    $core.String? videoEditJobId,
+    $core.String? sourceAssetId,
+    $core.Iterable<$core.String>? targetLanguages,
+    $core.bool? lipSyncEnabled,
+    $core.bool? culturalAdaptationEnabled,
+    $core.bool? translateCaptions,
+    $core.bool? translateOverlays,
+    $core.String? voiceOption,
+    $core.String? voiceCloneId,
+    $core.Iterable<$core.MapEntry<$core.String, $core.String>>?
+        perLanguageStatus,
+    $core.Iterable<$core.MapEntry<$core.String, $core.String>>? outputAssetIds,
+    $core.String? totalCreditsUsed,
+    $core.String? status,
+    $core.Iterable<$core.MapEntry<$core.String, $core.double>>? qualityScores,
+    $core.Iterable<$core.MapEntry<$core.String, $core.String>>? repairNotes,
+    $core.String? quoteId,
+    $1.Timestamp? createdAt,
+    $1.Timestamp? updatedAt,
+  }) {
+    final result = TranslationJob._();
+    if (translationJobId != null) result.translationJobId = translationJobId;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (videoEditJobId != null) result.videoEditJobId = videoEditJobId;
+    if (sourceAssetId != null) result.sourceAssetId = sourceAssetId;
+    if (targetLanguages != null) result.targetLanguages.addAll(targetLanguages);
+    if (lipSyncEnabled != null) result.lipSyncEnabled = lipSyncEnabled;
+    if (culturalAdaptationEnabled != null)
+      result.culturalAdaptationEnabled = culturalAdaptationEnabled;
+    if (translateCaptions != null) result.translateCaptions = translateCaptions;
+    if (translateOverlays != null) result.translateOverlays = translateOverlays;
+    if (voiceOption != null) result.voiceOption = voiceOption;
+    if (voiceCloneId != null) result.voiceCloneId = voiceCloneId;
+    if (perLanguageStatus != null)
+      result.perLanguageStatus.addEntries(perLanguageStatus);
+    if (outputAssetIds != null)
+      result.outputAssetIds.addEntries(outputAssetIds);
+    if (totalCreditsUsed != null) result.totalCreditsUsed = totalCreditsUsed;
+    if (status != null) result.status = status;
+    if (qualityScores != null) result.qualityScores.addEntries(qualityScores);
+    if (repairNotes != null) result.repairNotes.addEntries(repairNotes);
+    if (quoteId != null) result.quoteId = quoteId;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    return result;
+  }
+
+  TranslationJob._();
+
+  factory TranslationJob.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranslationJob()..mergeFromBuffer(data, registry);
+  factory TranslationJob.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranslationJob()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TranslationJob',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: TranslationJob.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'translationJobId')
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'videoEditJobId')
+    ..aOS(4, _omitFieldNames ? '' : 'sourceAssetId')
+    ..pPS(5, _omitFieldNames ? '' : 'targetLanguages')
+    ..aOB(6, _omitFieldNames ? '' : 'lipSyncEnabled')
+    ..aOB(7, _omitFieldNames ? '' : 'culturalAdaptationEnabled')
+    ..aOB(8, _omitFieldNames ? '' : 'translateCaptions')
+    ..aOB(9, _omitFieldNames ? '' : 'translateOverlays')
+    ..aOS(10, _omitFieldNames ? '' : 'voiceOption')
+    ..aOS(11, _omitFieldNames ? '' : 'voiceCloneId')
+    ..m<$core.String, $core.String>(
+        12, _omitFieldNames ? '' : 'perLanguageStatus',
+        entryClassName: 'TranslationJob.PerLanguageStatusEntry',
+        keyFieldType: $pb.PbFieldType.OS,
+        valueFieldType: $pb.PbFieldType.OS,
+        packageName: const $pb.PackageName('creativanta.production.v1'))
+    ..m<$core.String, $core.String>(13, _omitFieldNames ? '' : 'outputAssetIds',
+        entryClassName: 'TranslationJob.OutputAssetIdsEntry',
+        keyFieldType: $pb.PbFieldType.OS,
+        valueFieldType: $pb.PbFieldType.OS,
+        packageName: const $pb.PackageName('creativanta.production.v1'))
+    ..aOS(14, _omitFieldNames ? '' : 'totalCreditsUsed')
+    ..aOS(15, _omitFieldNames ? '' : 'status')
+    ..m<$core.String, $core.double>(16, _omitFieldNames ? '' : 'qualityScores',
+        entryClassName: 'TranslationJob.QualityScoresEntry',
+        keyFieldType: $pb.PbFieldType.OS,
+        valueFieldType: $pb.PbFieldType.OD,
+        packageName: const $pb.PackageName('creativanta.production.v1'))
+    ..m<$core.String, $core.String>(17, _omitFieldNames ? '' : 'repairNotes',
+        entryClassName: 'TranslationJob.RepairNotesEntry',
+        keyFieldType: $pb.PbFieldType.OS,
+        valueFieldType: $pb.PbFieldType.OS,
+        packageName: const $pb.PackageName('creativanta.production.v1'))
+    ..aOS(18, _omitFieldNames ? '' : 'quoteId')
+    ..aOM<$1.Timestamp>(19, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOM<$1.Timestamp>(20, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslationJob clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslationJob copyWith(void Function(TranslationJob) updates) =>
+      super.copyWith((message) => updates(message as TranslationJob))
+          as TranslationJob;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use TranslationJob() / TranslationJob.new instead')
+  static TranslationJob create() => TranslationJob._();
+  static $pb.GeneratedMessage $_createMessage() => TranslationJob._();
+  @$core.override
+  TranslationJob createEmptyInstance() => TranslationJob._();
+  @$core.pragma('dart2js:noInline')
+  static TranslationJob getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<TranslationJob>(
+          TranslationJob.$_createMessage);
+  static TranslationJob? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get translationJobId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set translationJobId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTranslationJobId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTranslationJobId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get videoEditJobId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set videoEditJobId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasVideoEditJobId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearVideoEditJobId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get sourceAssetId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set sourceAssetId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSourceAssetId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSourceAssetId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $pb.PbList<$core.String> get targetLanguages => $_getList(4);
+
+  @$pb.TagNumber(6)
+  $core.bool get lipSyncEnabled => $_getBF(5);
+  @$pb.TagNumber(6)
+  set lipSyncEnabled($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasLipSyncEnabled() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearLipSyncEnabled() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.bool get culturalAdaptationEnabled => $_getBF(6);
+  @$pb.TagNumber(7)
+  set culturalAdaptationEnabled($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasCulturalAdaptationEnabled() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearCulturalAdaptationEnabled() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.bool get translateCaptions => $_getBF(7);
+  @$pb.TagNumber(8)
+  set translateCaptions($core.bool value) => $_setBool(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasTranslateCaptions() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearTranslateCaptions() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.bool get translateOverlays => $_getBF(8);
+  @$pb.TagNumber(9)
+  set translateOverlays($core.bool value) => $_setBool(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasTranslateOverlays() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearTranslateOverlays() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get voiceOption => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set voiceOption($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasVoiceOption() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearVoiceOption() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get voiceCloneId => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set voiceCloneId($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasVoiceCloneId() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearVoiceCloneId() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $pb.PbMap<$core.String, $core.String> get perLanguageStatus => $_getMap(11);
+
+  @$pb.TagNumber(13)
+  $pb.PbMap<$core.String, $core.String> get outputAssetIds => $_getMap(12);
+
+  @$pb.TagNumber(14)
+  $core.String get totalCreditsUsed => $_getSZ(13);
+  @$pb.TagNumber(14)
+  set totalCreditsUsed($core.String value) => $_setString(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasTotalCreditsUsed() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearTotalCreditsUsed() => $_clearField(14);
+
+  @$pb.TagNumber(15)
+  $core.String get status => $_getSZ(14);
+  @$pb.TagNumber(15)
+  set status($core.String value) => $_setString(14, value);
+  @$pb.TagNumber(15)
+  $core.bool hasStatus() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearStatus() => $_clearField(15);
+
+  @$pb.TagNumber(16)
+  $pb.PbMap<$core.String, $core.double> get qualityScores => $_getMap(15);
+
+  @$pb.TagNumber(17)
+  $pb.PbMap<$core.String, $core.String> get repairNotes => $_getMap(16);
+
+  @$pb.TagNumber(18)
+  $core.String get quoteId => $_getSZ(17);
+  @$pb.TagNumber(18)
+  set quoteId($core.String value) => $_setString(17, value);
+  @$pb.TagNumber(18)
+  $core.bool hasQuoteId() => $_has(17);
+  @$pb.TagNumber(18)
+  void clearQuoteId() => $_clearField(18);
+
+  @$pb.TagNumber(19)
+  $1.Timestamp get createdAt => $_getN(18);
+  @$pb.TagNumber(19)
+  set createdAt($1.Timestamp value) => $_setField(19, value);
+  @$pb.TagNumber(19)
+  $core.bool hasCreatedAt() => $_has(18);
+  @$pb.TagNumber(19)
+  void clearCreatedAt() => $_clearField(19);
+  @$pb.TagNumber(19)
+  $1.Timestamp ensureCreatedAt() => $_ensure(18);
+
+  @$pb.TagNumber(20)
+  $1.Timestamp get updatedAt => $_getN(19);
+  @$pb.TagNumber(20)
+  set updatedAt($1.Timestamp value) => $_setField(20, value);
+  @$pb.TagNumber(20)
+  $core.bool hasUpdatedAt() => $_has(19);
+  @$pb.TagNumber(20)
+  void clearUpdatedAt() => $_clearField(20);
+  @$pb.TagNumber(20)
+  $1.Timestamp ensureUpdatedAt() => $_ensure(19);
+}
+
+/// TranslationSegment represents a timecoded speech segment with quality scoring and repair state.
+class TranslationSegment extends $pb.GeneratedMessage {
+  factory TranslationSegment({
+    $core.String? segmentId,
+    $core.double? startTimeS,
+    $core.double? endTimeS,
+    $core.String? sourceText,
+    $core.Iterable<$core.MapEntry<$core.String, $core.String>>? translations,
+    $core.double? qualityScore,
+    $core.bool? needsRepair,
+    $core.String? repairReason,
+  }) {
+    final result = TranslationSegment._();
+    if (segmentId != null) result.segmentId = segmentId;
+    if (startTimeS != null) result.startTimeS = startTimeS;
+    if (endTimeS != null) result.endTimeS = endTimeS;
+    if (sourceText != null) result.sourceText = sourceText;
+    if (translations != null) result.translations.addEntries(translations);
+    if (qualityScore != null) result.qualityScore = qualityScore;
+    if (needsRepair != null) result.needsRepair = needsRepair;
+    if (repairReason != null) result.repairReason = repairReason;
+    return result;
+  }
+
+  TranslationSegment._();
+
+  factory TranslationSegment.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranslationSegment()..mergeFromBuffer(data, registry);
+  factory TranslationSegment.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranslationSegment()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TranslationSegment',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: TranslationSegment.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'segmentId')
+    ..aD(2, _omitFieldNames ? '' : 'startTimeS')
+    ..aD(3, _omitFieldNames ? '' : 'endTimeS')
+    ..aOS(4, _omitFieldNames ? '' : 'sourceText')
+    ..m<$core.String, $core.String>(5, _omitFieldNames ? '' : 'translations',
+        entryClassName: 'TranslationSegment.TranslationsEntry',
+        keyFieldType: $pb.PbFieldType.OS,
+        valueFieldType: $pb.PbFieldType.OS,
+        packageName: const $pb.PackageName('creativanta.production.v1'))
+    ..aD(6, _omitFieldNames ? '' : 'qualityScore')
+    ..aOB(7, _omitFieldNames ? '' : 'needsRepair')
+    ..aOS(8, _omitFieldNames ? '' : 'repairReason')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslationSegment clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslationSegment copyWith(void Function(TranslationSegment) updates) =>
+      super.copyWith((message) => updates(message as TranslationSegment))
+          as TranslationSegment;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use TranslationSegment() / TranslationSegment.new instead')
+  static TranslationSegment create() => TranslationSegment._();
+  static $pb.GeneratedMessage $_createMessage() => TranslationSegment._();
+  @$core.override
+  TranslationSegment createEmptyInstance() => TranslationSegment._();
+  @$core.pragma('dart2js:noInline')
+  static TranslationSegment getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TranslationSegment>(
+          TranslationSegment.$_createMessage);
+  static TranslationSegment? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get segmentId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set segmentId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSegmentId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSegmentId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.double get startTimeS => $_getN(1);
+  @$pb.TagNumber(2)
+  set startTimeS($core.double value) => $_setDouble(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasStartTimeS() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearStartTimeS() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get endTimeS => $_getN(2);
+  @$pb.TagNumber(3)
+  set endTimeS($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasEndTimeS() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearEndTimeS() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get sourceText => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set sourceText($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSourceText() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSourceText() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $pb.PbMap<$core.String, $core.String> get translations => $_getMap(4);
+
+  @$pb.TagNumber(6)
+  $core.double get qualityScore => $_getN(5);
+  @$pb.TagNumber(6)
+  set qualityScore($core.double value) => $_setDouble(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasQualityScore() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearQualityScore() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.bool get needsRepair => $_getBF(6);
+  @$pb.TagNumber(7)
+  set needsRepair($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasNeedsRepair() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearNeedsRepair() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get repairReason => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set repairReason($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasRepairReason() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearRepairReason() => $_clearField(8);
+}
+
+class TranslationServiceCreateRequest extends $pb.GeneratedMessage {
+  factory TranslationServiceCreateRequest({
+    $2.CommandContext? context,
+    $core.String? sourceAssetId,
+    $core.Iterable<$core.String>? targetLanguages,
+    $core.bool? lipSyncEnabled,
+    $core.bool? culturalAdaptationEnabled,
+    $core.bool? translateCaptions,
+    $core.bool? translateOverlays,
+    $core.String? voiceOption,
+    $core.String? voiceCloneId,
+    $core.String? quoteId,
+    $core.String? confirmedCredits,
+    $core.Iterable<$core.MapEntry<$core.String, $core.String>>?
+        customScriptCorrections,
+  }) {
+    final result = TranslationServiceCreateRequest._();
+    if (context != null) result.context = context;
+    if (sourceAssetId != null) result.sourceAssetId = sourceAssetId;
+    if (targetLanguages != null) result.targetLanguages.addAll(targetLanguages);
+    if (lipSyncEnabled != null) result.lipSyncEnabled = lipSyncEnabled;
+    if (culturalAdaptationEnabled != null)
+      result.culturalAdaptationEnabled = culturalAdaptationEnabled;
+    if (translateCaptions != null) result.translateCaptions = translateCaptions;
+    if (translateOverlays != null) result.translateOverlays = translateOverlays;
+    if (voiceOption != null) result.voiceOption = voiceOption;
+    if (voiceCloneId != null) result.voiceCloneId = voiceCloneId;
+    if (quoteId != null) result.quoteId = quoteId;
+    if (confirmedCredits != null) result.confirmedCredits = confirmedCredits;
+    if (customScriptCorrections != null)
+      result.customScriptCorrections.addEntries(customScriptCorrections);
+    return result;
+  }
+
+  TranslationServiceCreateRequest._();
+
+  factory TranslationServiceCreateRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranslationServiceCreateRequest()..mergeFromBuffer(data, registry);
+  factory TranslationServiceCreateRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranslationServiceCreateRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TranslationServiceCreateRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: TranslationServiceCreateRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'sourceAssetId')
+    ..pPS(3, _omitFieldNames ? '' : 'targetLanguages')
+    ..aOB(4, _omitFieldNames ? '' : 'lipSyncEnabled')
+    ..aOB(5, _omitFieldNames ? '' : 'culturalAdaptationEnabled')
+    ..aOB(6, _omitFieldNames ? '' : 'translateCaptions')
+    ..aOB(7, _omitFieldNames ? '' : 'translateOverlays')
+    ..aOS(8, _omitFieldNames ? '' : 'voiceOption')
+    ..aOS(9, _omitFieldNames ? '' : 'voiceCloneId')
+    ..aOS(10, _omitFieldNames ? '' : 'quoteId')
+    ..aOS(11, _omitFieldNames ? '' : 'confirmedCredits')
+    ..m<$core.String, $core.String>(
+        12, _omitFieldNames ? '' : 'customScriptCorrections',
+        entryClassName:
+            'TranslationServiceCreateRequest.CustomScriptCorrectionsEntry',
+        keyFieldType: $pb.PbFieldType.OS,
+        valueFieldType: $pb.PbFieldType.OS,
+        packageName: const $pb.PackageName('creativanta.production.v1'))
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslationServiceCreateRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslationServiceCreateRequest copyWith(
+          void Function(TranslationServiceCreateRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as TranslationServiceCreateRequest))
+          as TranslationServiceCreateRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use TranslationServiceCreateRequest() / TranslationServiceCreateRequest.new instead')
+  static TranslationServiceCreateRequest create() =>
+      TranslationServiceCreateRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      TranslationServiceCreateRequest._();
+  @$core.override
+  TranslationServiceCreateRequest createEmptyInstance() =>
+      TranslationServiceCreateRequest._();
+  @$core.pragma('dart2js:noInline')
+  static TranslationServiceCreateRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TranslationServiceCreateRequest>(
+          TranslationServiceCreateRequest.$_createMessage);
+  static TranslationServiceCreateRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get sourceAssetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set sourceAssetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSourceAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSourceAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<$core.String> get targetLanguages => $_getList(2);
+
+  @$pb.TagNumber(4)
+  $core.bool get lipSyncEnabled => $_getBF(3);
+  @$pb.TagNumber(4)
+  set lipSyncEnabled($core.bool value) => $_setBool(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLipSyncEnabled() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLipSyncEnabled() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get culturalAdaptationEnabled => $_getBF(4);
+  @$pb.TagNumber(5)
+  set culturalAdaptationEnabled($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasCulturalAdaptationEnabled() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearCulturalAdaptationEnabled() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.bool get translateCaptions => $_getBF(5);
+  @$pb.TagNumber(6)
+  set translateCaptions($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasTranslateCaptions() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTranslateCaptions() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.bool get translateOverlays => $_getBF(6);
+  @$pb.TagNumber(7)
+  set translateOverlays($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasTranslateOverlays() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearTranslateOverlays() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get voiceOption => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set voiceOption($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasVoiceOption() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearVoiceOption() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get voiceCloneId => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set voiceCloneId($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasVoiceCloneId() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearVoiceCloneId() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get quoteId => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set quoteId($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasQuoteId() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearQuoteId() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get confirmedCredits => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set confirmedCredits($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasConfirmedCredits() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearConfirmedCredits() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $pb.PbMap<$core.String, $core.String> get customScriptCorrections =>
+      $_getMap(11);
+}
+
+class TranslationServiceCreateResponse extends $pb.GeneratedMessage {
+  factory TranslationServiceCreateResponse({
+    TranslationJob? job,
+    $core.String? creditsReserved,
+    $core.double? discountAppliedPct,
+  }) {
+    final result = TranslationServiceCreateResponse._();
+    if (job != null) result.job = job;
+    if (creditsReserved != null) result.creditsReserved = creditsReserved;
+    if (discountAppliedPct != null)
+      result.discountAppliedPct = discountAppliedPct;
+    return result;
+  }
+
+  TranslationServiceCreateResponse._();
+
+  factory TranslationServiceCreateResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranslationServiceCreateResponse()..mergeFromBuffer(data, registry);
+  factory TranslationServiceCreateResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranslationServiceCreateResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TranslationServiceCreateResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: TranslationServiceCreateResponse.$_createMessage)
+    ..aOM<TranslationJob>(1, _omitFieldNames ? '' : 'job',
+        subBuilder: TranslationJob.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'creditsReserved')
+    ..aD(3, _omitFieldNames ? '' : 'discountAppliedPct')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslationServiceCreateResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslationServiceCreateResponse copyWith(
+          void Function(TranslationServiceCreateResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as TranslationServiceCreateResponse))
+          as TranslationServiceCreateResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use TranslationServiceCreateResponse() / TranslationServiceCreateResponse.new instead')
+  static TranslationServiceCreateResponse create() =>
+      TranslationServiceCreateResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      TranslationServiceCreateResponse._();
+  @$core.override
+  TranslationServiceCreateResponse createEmptyInstance() =>
+      TranslationServiceCreateResponse._();
+  @$core.pragma('dart2js:noInline')
+  static TranslationServiceCreateResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TranslationServiceCreateResponse>(
+          TranslationServiceCreateResponse.$_createMessage);
+  static TranslationServiceCreateResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  TranslationJob get job => $_getN(0);
+  @$pb.TagNumber(1)
+  set job(TranslationJob value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasJob() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearJob() => $_clearField(1);
+  @$pb.TagNumber(1)
+  TranslationJob ensureJob() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get creditsReserved => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set creditsReserved($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCreditsReserved() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCreditsReserved() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get discountAppliedPct => $_getN(2);
+  @$pb.TagNumber(3)
+  set discountAppliedPct($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDiscountAppliedPct() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDiscountAppliedPct() => $_clearField(3);
+}
+
+class TranslationServiceGetRequest extends $pb.GeneratedMessage {
+  factory TranslationServiceGetRequest({
+    $2.UUID? workspaceId,
+    $core.String? translationJobId,
+  }) {
+    final result = TranslationServiceGetRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (translationJobId != null) result.translationJobId = translationJobId;
+    return result;
+  }
+
+  TranslationServiceGetRequest._();
+
+  factory TranslationServiceGetRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranslationServiceGetRequest()..mergeFromBuffer(data, registry);
+  factory TranslationServiceGetRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranslationServiceGetRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TranslationServiceGetRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: TranslationServiceGetRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'translationJobId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslationServiceGetRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslationServiceGetRequest copyWith(
+          void Function(TranslationServiceGetRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as TranslationServiceGetRequest))
+          as TranslationServiceGetRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use TranslationServiceGetRequest() / TranslationServiceGetRequest.new instead')
+  static TranslationServiceGetRequest create() =>
+      TranslationServiceGetRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      TranslationServiceGetRequest._();
+  @$core.override
+  TranslationServiceGetRequest createEmptyInstance() =>
+      TranslationServiceGetRequest._();
+  @$core.pragma('dart2js:noInline')
+  static TranslationServiceGetRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TranslationServiceGetRequest>(
+          TranslationServiceGetRequest.$_createMessage);
+  static TranslationServiceGetRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get translationJobId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set translationJobId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTranslationJobId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTranslationJobId() => $_clearField(2);
+}
+
+class TranslationServiceGetResponse extends $pb.GeneratedMessage {
+  factory TranslationServiceGetResponse({
+    TranslationJob? job,
+    $core.Iterable<Asset>? outputAssets,
+    $core.Iterable<TranslationSegment>? segments,
+  }) {
+    final result = TranslationServiceGetResponse._();
+    if (job != null) result.job = job;
+    if (outputAssets != null) result.outputAssets.addAll(outputAssets);
+    if (segments != null) result.segments.addAll(segments);
+    return result;
+  }
+
+  TranslationServiceGetResponse._();
+
+  factory TranslationServiceGetResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranslationServiceGetResponse()..mergeFromBuffer(data, registry);
+  factory TranslationServiceGetResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranslationServiceGetResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TranslationServiceGetResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: TranslationServiceGetResponse.$_createMessage)
+    ..aOM<TranslationJob>(1, _omitFieldNames ? '' : 'job',
+        subBuilder: TranslationJob.$_createMessage)
+    ..pPM<Asset>(2, _omitFieldNames ? '' : 'outputAssets',
+        subBuilder: Asset.$_createMessage)
+    ..pPM<TranslationSegment>(3, _omitFieldNames ? '' : 'segments',
+        subBuilder: TranslationSegment.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslationServiceGetResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslationServiceGetResponse copyWith(
+          void Function(TranslationServiceGetResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as TranslationServiceGetResponse))
+          as TranslationServiceGetResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use TranslationServiceGetResponse() / TranslationServiceGetResponse.new instead')
+  static TranslationServiceGetResponse create() =>
+      TranslationServiceGetResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      TranslationServiceGetResponse._();
+  @$core.override
+  TranslationServiceGetResponse createEmptyInstance() =>
+      TranslationServiceGetResponse._();
+  @$core.pragma('dart2js:noInline')
+  static TranslationServiceGetResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TranslationServiceGetResponse>(
+          TranslationServiceGetResponse.$_createMessage);
+  static TranslationServiceGetResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  TranslationJob get job => $_getN(0);
+  @$pb.TagNumber(1)
+  set job(TranslationJob value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasJob() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearJob() => $_clearField(1);
+  @$pb.TagNumber(1)
+  TranslationJob ensureJob() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<Asset> get outputAssets => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<TranslationSegment> get segments => $_getList(2);
+}
+
+class TranslationServiceListRequest extends $pb.GeneratedMessage {
+  factory TranslationServiceListRequest({
+    $2.UUID? workspaceId,
+    $2.Pagination? pagination,
+  }) {
+    final result = TranslationServiceListRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  TranslationServiceListRequest._();
+
+  factory TranslationServiceListRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranslationServiceListRequest()..mergeFromBuffer(data, registry);
+  factory TranslationServiceListRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranslationServiceListRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TranslationServiceListRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: TranslationServiceListRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOM<$2.Pagination>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.Pagination.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslationServiceListRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslationServiceListRequest copyWith(
+          void Function(TranslationServiceListRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as TranslationServiceListRequest))
+          as TranslationServiceListRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use TranslationServiceListRequest() / TranslationServiceListRequest.new instead')
+  static TranslationServiceListRequest create() =>
+      TranslationServiceListRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      TranslationServiceListRequest._();
+  @$core.override
+  TranslationServiceListRequest createEmptyInstance() =>
+      TranslationServiceListRequest._();
+  @$core.pragma('dart2js:noInline')
+  static TranslationServiceListRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TranslationServiceListRequest>(
+          TranslationServiceListRequest.$_createMessage);
+  static TranslationServiceListRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $2.Pagination get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($2.Pagination value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.Pagination ensurePagination() => $_ensure(1);
+}
+
+class TranslationServiceListResponse extends $pb.GeneratedMessage {
+  factory TranslationServiceListResponse({
+    $core.Iterable<TranslationJob>? jobs,
+    $2.PaginatedResponse? pagination,
+  }) {
+    final result = TranslationServiceListResponse._();
+    if (jobs != null) result.jobs.addAll(jobs);
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  TranslationServiceListResponse._();
+
+  factory TranslationServiceListResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranslationServiceListResponse()..mergeFromBuffer(data, registry);
+  factory TranslationServiceListResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TranslationServiceListResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TranslationServiceListResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: TranslationServiceListResponse.$_createMessage)
+    ..pPM<TranslationJob>(1, _omitFieldNames ? '' : 'jobs',
+        subBuilder: TranslationJob.$_createMessage)
+    ..aOM<$2.PaginatedResponse>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.PaginatedResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslationServiceListResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslationServiceListResponse copyWith(
+          void Function(TranslationServiceListResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as TranslationServiceListResponse))
+          as TranslationServiceListResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use TranslationServiceListResponse() / TranslationServiceListResponse.new instead')
+  static TranslationServiceListResponse create() =>
+      TranslationServiceListResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      TranslationServiceListResponse._();
+  @$core.override
+  TranslationServiceListResponse createEmptyInstance() =>
+      TranslationServiceListResponse._();
+  @$core.pragma('dart2js:noInline')
+  static TranslationServiceListResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TranslationServiceListResponse>(
+          TranslationServiceListResponse.$_createMessage);
+  static TranslationServiceListResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<TranslationJob> get jobs => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($2.PaginatedResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse ensurePagination() => $_ensure(1);
+}
+
+/// SoundTrack represents an audio or sound design asset with verified licensing metadata.
+class SoundTrack extends $pb.GeneratedMessage {
+  factory SoundTrack({
+    $core.String? trackId,
+    $core.String? workspaceId,
+    $core.String? title,
+    $core.String? category,
+    $core.String? genre,
+    $core.String? mood,
+    $core.int? bpm,
+    $core.double? durationSeconds,
+    $core.String? fileUrl,
+    $core.String? licenseType,
+    $core.String? licenseId,
+    $core.bool? isVerifiedLicense,
+    $core.Iterable<$core.double>? waveformPeaks,
+    $1.Timestamp? createdAt,
+  }) {
+    final result = SoundTrack._();
+    if (trackId != null) result.trackId = trackId;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (title != null) result.title = title;
+    if (category != null) result.category = category;
+    if (genre != null) result.genre = genre;
+    if (mood != null) result.mood = mood;
+    if (bpm != null) result.bpm = bpm;
+    if (durationSeconds != null) result.durationSeconds = durationSeconds;
+    if (fileUrl != null) result.fileUrl = fileUrl;
+    if (licenseType != null) result.licenseType = licenseType;
+    if (licenseId != null) result.licenseId = licenseId;
+    if (isVerifiedLicense != null) result.isVerifiedLicense = isVerifiedLicense;
+    if (waveformPeaks != null) result.waveformPeaks.addAll(waveformPeaks);
+    if (createdAt != null) result.createdAt = createdAt;
+    return result;
+  }
+
+  SoundTrack._();
+
+  factory SoundTrack.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundTrack()..mergeFromBuffer(data, registry);
+  factory SoundTrack.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundTrack()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SoundTrack',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: SoundTrack.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'trackId')
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'title')
+    ..aOS(4, _omitFieldNames ? '' : 'category')
+    ..aOS(5, _omitFieldNames ? '' : 'genre')
+    ..aOS(6, _omitFieldNames ? '' : 'mood')
+    ..aI(7, _omitFieldNames ? '' : 'bpm')
+    ..aD(8, _omitFieldNames ? '' : 'durationSeconds')
+    ..aOS(9, _omitFieldNames ? '' : 'fileUrl')
+    ..aOS(10, _omitFieldNames ? '' : 'licenseType')
+    ..aOS(11, _omitFieldNames ? '' : 'licenseId')
+    ..aOB(12, _omitFieldNames ? '' : 'isVerifiedLicense')
+    ..p<$core.double>(
+        13, _omitFieldNames ? '' : 'waveformPeaks', $pb.PbFieldType.KF)
+    ..aOM<$1.Timestamp>(14, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundTrack clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundTrack copyWith(void Function(SoundTrack) updates) =>
+      super.copyWith((message) => updates(message as SoundTrack)) as SoundTrack;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SoundTrack() / SoundTrack.new instead')
+  static SoundTrack create() => SoundTrack._();
+  static $pb.GeneratedMessage $_createMessage() => SoundTrack._();
+  @$core.override
+  SoundTrack createEmptyInstance() => SoundTrack._();
+  @$core.pragma('dart2js:noInline')
+  static SoundTrack getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SoundTrack>(SoundTrack.$_createMessage);
+  static SoundTrack? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get trackId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set trackId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTrackId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTrackId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get title => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set title($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTitle() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTitle() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get category => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set category($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCategory() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCategory() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get genre => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set genre($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasGenre() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearGenre() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get mood => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set mood($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasMood() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearMood() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.int get bpm => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set bpm($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasBpm() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearBpm() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.double get durationSeconds => $_getN(7);
+  @$pb.TagNumber(8)
+  set durationSeconds($core.double value) => $_setDouble(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasDurationSeconds() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearDurationSeconds() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get fileUrl => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set fileUrl($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasFileUrl() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearFileUrl() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get licenseType => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set licenseType($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasLicenseType() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearLicenseType() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get licenseId => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set licenseId($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasLicenseId() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearLicenseId() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.bool get isVerifiedLicense => $_getBF(11);
+  @$pb.TagNumber(12)
+  set isVerifiedLicense($core.bool value) => $_setBool(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasIsVerifiedLicense() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearIsVerifiedLicense() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $pb.PbList<$core.double> get waveformPeaks => $_getList(12);
+
+  @$pb.TagNumber(14)
+  $1.Timestamp get createdAt => $_getN(13);
+  @$pb.TagNumber(14)
+  set createdAt($1.Timestamp value) => $_setField(14, value);
+  @$pb.TagNumber(14)
+  $core.bool hasCreatedAt() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearCreatedAt() => $_clearField(14);
+  @$pb.TagNumber(14)
+  $1.Timestamp ensureCreatedAt() => $_ensure(13);
+}
+
+class SoundStudioServiceGenerateMusicRequest extends $pb.GeneratedMessage {
+  factory SoundStudioServiceGenerateMusicRequest({
+    $2.CommandContext? context,
+    $core.String? prompt,
+    $core.String? genre,
+    $core.String? mood,
+    $core.int? bpm,
+    $core.int? durationSeconds,
+    $core.String? licenseType,
+    $core.String? quoteId,
+    $core.String? confirmedCredits,
+  }) {
+    final result = SoundStudioServiceGenerateMusicRequest._();
+    if (context != null) result.context = context;
+    if (prompt != null) result.prompt = prompt;
+    if (genre != null) result.genre = genre;
+    if (mood != null) result.mood = mood;
+    if (bpm != null) result.bpm = bpm;
+    if (durationSeconds != null) result.durationSeconds = durationSeconds;
+    if (licenseType != null) result.licenseType = licenseType;
+    if (quoteId != null) result.quoteId = quoteId;
+    if (confirmedCredits != null) result.confirmedCredits = confirmedCredits;
+    return result;
+  }
+
+  SoundStudioServiceGenerateMusicRequest._();
+
+  factory SoundStudioServiceGenerateMusicRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceGenerateMusicRequest()..mergeFromBuffer(data, registry);
+  factory SoundStudioServiceGenerateMusicRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceGenerateMusicRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SoundStudioServiceGenerateMusicRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          SoundStudioServiceGenerateMusicRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'prompt')
+    ..aOS(3, _omitFieldNames ? '' : 'genre')
+    ..aOS(4, _omitFieldNames ? '' : 'mood')
+    ..aI(5, _omitFieldNames ? '' : 'bpm')
+    ..aI(6, _omitFieldNames ? '' : 'durationSeconds')
+    ..aOS(7, _omitFieldNames ? '' : 'licenseType')
+    ..aOS(8, _omitFieldNames ? '' : 'quoteId')
+    ..aOS(9, _omitFieldNames ? '' : 'confirmedCredits')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceGenerateMusicRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceGenerateMusicRequest copyWith(
+          void Function(SoundStudioServiceGenerateMusicRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as SoundStudioServiceGenerateMusicRequest))
+          as SoundStudioServiceGenerateMusicRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SoundStudioServiceGenerateMusicRequest() / SoundStudioServiceGenerateMusicRequest.new instead')
+  static SoundStudioServiceGenerateMusicRequest create() =>
+      SoundStudioServiceGenerateMusicRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      SoundStudioServiceGenerateMusicRequest._();
+  @$core.override
+  SoundStudioServiceGenerateMusicRequest createEmptyInstance() =>
+      SoundStudioServiceGenerateMusicRequest._();
+  @$core.pragma('dart2js:noInline')
+  static SoundStudioServiceGenerateMusicRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              SoundStudioServiceGenerateMusicRequest>(
+          SoundStudioServiceGenerateMusicRequest.$_createMessage);
+  static SoundStudioServiceGenerateMusicRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get prompt => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set prompt($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPrompt() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPrompt() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get genre => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set genre($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasGenre() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearGenre() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get mood => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set mood($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasMood() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearMood() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.int get bpm => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set bpm($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasBpm() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearBpm() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.int get durationSeconds => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set durationSeconds($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasDurationSeconds() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearDurationSeconds() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get licenseType => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set licenseType($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasLicenseType() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearLicenseType() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get quoteId => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set quoteId($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasQuoteId() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearQuoteId() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get confirmedCredits => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set confirmedCredits($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasConfirmedCredits() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearConfirmedCredits() => $_clearField(9);
+}
+
+class SoundStudioServiceGenerateMusicResponse extends $pb.GeneratedMessage {
+  factory SoundStudioServiceGenerateMusicResponse({
+    SoundTrack? track,
+    Asset? asset,
+    $core.String? creditsDeducted,
+  }) {
+    final result = SoundStudioServiceGenerateMusicResponse._();
+    if (track != null) result.track = track;
+    if (asset != null) result.asset = asset;
+    if (creditsDeducted != null) result.creditsDeducted = creditsDeducted;
+    return result;
+  }
+
+  SoundStudioServiceGenerateMusicResponse._();
+
+  factory SoundStudioServiceGenerateMusicResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceGenerateMusicResponse()
+        ..mergeFromBuffer(data, registry);
+  factory SoundStudioServiceGenerateMusicResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceGenerateMusicResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SoundStudioServiceGenerateMusicResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          SoundStudioServiceGenerateMusicResponse.$_createMessage)
+    ..aOM<SoundTrack>(1, _omitFieldNames ? '' : 'track',
+        subBuilder: SoundTrack.$_createMessage)
+    ..aOM<Asset>(2, _omitFieldNames ? '' : 'asset',
+        subBuilder: Asset.$_createMessage)
+    ..aOS(3, _omitFieldNames ? '' : 'creditsDeducted')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceGenerateMusicResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceGenerateMusicResponse copyWith(
+          void Function(SoundStudioServiceGenerateMusicResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as SoundStudioServiceGenerateMusicResponse))
+          as SoundStudioServiceGenerateMusicResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SoundStudioServiceGenerateMusicResponse() / SoundStudioServiceGenerateMusicResponse.new instead')
+  static SoundStudioServiceGenerateMusicResponse create() =>
+      SoundStudioServiceGenerateMusicResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      SoundStudioServiceGenerateMusicResponse._();
+  @$core.override
+  SoundStudioServiceGenerateMusicResponse createEmptyInstance() =>
+      SoundStudioServiceGenerateMusicResponse._();
+  @$core.pragma('dart2js:noInline')
+  static SoundStudioServiceGenerateMusicResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              SoundStudioServiceGenerateMusicResponse>(
+          SoundStudioServiceGenerateMusicResponse.$_createMessage);
+  static SoundStudioServiceGenerateMusicResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  SoundTrack get track => $_getN(0);
+  @$pb.TagNumber(1)
+  set track(SoundTrack value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTrack() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTrack() => $_clearField(1);
+  @$pb.TagNumber(1)
+  SoundTrack ensureTrack() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  Asset get asset => $_getN(1);
+  @$pb.TagNumber(2)
+  set asset(Asset value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAsset() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAsset() => $_clearField(2);
+  @$pb.TagNumber(2)
+  Asset ensureAsset() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $core.String get creditsDeducted => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set creditsDeducted($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCreditsDeducted() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCreditsDeducted() => $_clearField(3);
+}
+
+class SoundStudioServiceGenerateSFXRequest extends $pb.GeneratedMessage {
+  factory SoundStudioServiceGenerateSFXRequest({
+    $2.CommandContext? context,
+    $core.String? prompt,
+    $core.String? category,
+    $core.double? durationSeconds,
+    $core.String? quoteId,
+    $core.String? confirmedCredits,
+  }) {
+    final result = SoundStudioServiceGenerateSFXRequest._();
+    if (context != null) result.context = context;
+    if (prompt != null) result.prompt = prompt;
+    if (category != null) result.category = category;
+    if (durationSeconds != null) result.durationSeconds = durationSeconds;
+    if (quoteId != null) result.quoteId = quoteId;
+    if (confirmedCredits != null) result.confirmedCredits = confirmedCredits;
+    return result;
+  }
+
+  SoundStudioServiceGenerateSFXRequest._();
+
+  factory SoundStudioServiceGenerateSFXRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceGenerateSFXRequest()..mergeFromBuffer(data, registry);
+  factory SoundStudioServiceGenerateSFXRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceGenerateSFXRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SoundStudioServiceGenerateSFXRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: SoundStudioServiceGenerateSFXRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'prompt')
+    ..aOS(3, _omitFieldNames ? '' : 'category')
+    ..aD(4, _omitFieldNames ? '' : 'durationSeconds')
+    ..aOS(5, _omitFieldNames ? '' : 'quoteId')
+    ..aOS(6, _omitFieldNames ? '' : 'confirmedCredits')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceGenerateSFXRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceGenerateSFXRequest copyWith(
+          void Function(SoundStudioServiceGenerateSFXRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as SoundStudioServiceGenerateSFXRequest))
+          as SoundStudioServiceGenerateSFXRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SoundStudioServiceGenerateSFXRequest() / SoundStudioServiceGenerateSFXRequest.new instead')
+  static SoundStudioServiceGenerateSFXRequest create() =>
+      SoundStudioServiceGenerateSFXRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      SoundStudioServiceGenerateSFXRequest._();
+  @$core.override
+  SoundStudioServiceGenerateSFXRequest createEmptyInstance() =>
+      SoundStudioServiceGenerateSFXRequest._();
+  @$core.pragma('dart2js:noInline')
+  static SoundStudioServiceGenerateSFXRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              SoundStudioServiceGenerateSFXRequest>(
+          SoundStudioServiceGenerateSFXRequest.$_createMessage);
+  static SoundStudioServiceGenerateSFXRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get prompt => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set prompt($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPrompt() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPrompt() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get category => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set category($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCategory() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCategory() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.double get durationSeconds => $_getN(3);
+  @$pb.TagNumber(4)
+  set durationSeconds($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasDurationSeconds() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDurationSeconds() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get quoteId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set quoteId($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasQuoteId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearQuoteId() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get confirmedCredits => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set confirmedCredits($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasConfirmedCredits() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearConfirmedCredits() => $_clearField(6);
+}
+
+class SoundStudioServiceGenerateSFXResponse extends $pb.GeneratedMessage {
+  factory SoundStudioServiceGenerateSFXResponse({
+    SoundTrack? track,
+    Asset? asset,
+    $core.String? creditsDeducted,
+  }) {
+    final result = SoundStudioServiceGenerateSFXResponse._();
+    if (track != null) result.track = track;
+    if (asset != null) result.asset = asset;
+    if (creditsDeducted != null) result.creditsDeducted = creditsDeducted;
+    return result;
+  }
+
+  SoundStudioServiceGenerateSFXResponse._();
+
+  factory SoundStudioServiceGenerateSFXResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceGenerateSFXResponse()..mergeFromBuffer(data, registry);
+  factory SoundStudioServiceGenerateSFXResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceGenerateSFXResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SoundStudioServiceGenerateSFXResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          SoundStudioServiceGenerateSFXResponse.$_createMessage)
+    ..aOM<SoundTrack>(1, _omitFieldNames ? '' : 'track',
+        subBuilder: SoundTrack.$_createMessage)
+    ..aOM<Asset>(2, _omitFieldNames ? '' : 'asset',
+        subBuilder: Asset.$_createMessage)
+    ..aOS(3, _omitFieldNames ? '' : 'creditsDeducted')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceGenerateSFXResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceGenerateSFXResponse copyWith(
+          void Function(SoundStudioServiceGenerateSFXResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as SoundStudioServiceGenerateSFXResponse))
+          as SoundStudioServiceGenerateSFXResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SoundStudioServiceGenerateSFXResponse() / SoundStudioServiceGenerateSFXResponse.new instead')
+  static SoundStudioServiceGenerateSFXResponse create() =>
+      SoundStudioServiceGenerateSFXResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      SoundStudioServiceGenerateSFXResponse._();
+  @$core.override
+  SoundStudioServiceGenerateSFXResponse createEmptyInstance() =>
+      SoundStudioServiceGenerateSFXResponse._();
+  @$core.pragma('dart2js:noInline')
+  static SoundStudioServiceGenerateSFXResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              SoundStudioServiceGenerateSFXResponse>(
+          SoundStudioServiceGenerateSFXResponse.$_createMessage);
+  static SoundStudioServiceGenerateSFXResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  SoundTrack get track => $_getN(0);
+  @$pb.TagNumber(1)
+  set track(SoundTrack value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTrack() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTrack() => $_clearField(1);
+  @$pb.TagNumber(1)
+  SoundTrack ensureTrack() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  Asset get asset => $_getN(1);
+  @$pb.TagNumber(2)
+  set asset(Asset value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAsset() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAsset() => $_clearField(2);
+  @$pb.TagNumber(2)
+  Asset ensureAsset() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $core.String get creditsDeducted => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set creditsDeducted($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCreditsDeducted() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCreditsDeducted() => $_clearField(3);
+}
+
+class SoundStudioServiceAnalyzeBeatRequest extends $pb.GeneratedMessage {
+  factory SoundStudioServiceAnalyzeBeatRequest({
+    $2.UUID? workspaceId,
+    $core.String? audioAssetId,
+    $core.String? audioUrl,
+  }) {
+    final result = SoundStudioServiceAnalyzeBeatRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (audioAssetId != null) result.audioAssetId = audioAssetId;
+    if (audioUrl != null) result.audioUrl = audioUrl;
+    return result;
+  }
+
+  SoundStudioServiceAnalyzeBeatRequest._();
+
+  factory SoundStudioServiceAnalyzeBeatRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceAnalyzeBeatRequest()..mergeFromBuffer(data, registry);
+  factory SoundStudioServiceAnalyzeBeatRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceAnalyzeBeatRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SoundStudioServiceAnalyzeBeatRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: SoundStudioServiceAnalyzeBeatRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'audioAssetId')
+    ..aOS(3, _omitFieldNames ? '' : 'audioUrl')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceAnalyzeBeatRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceAnalyzeBeatRequest copyWith(
+          void Function(SoundStudioServiceAnalyzeBeatRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as SoundStudioServiceAnalyzeBeatRequest))
+          as SoundStudioServiceAnalyzeBeatRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SoundStudioServiceAnalyzeBeatRequest() / SoundStudioServiceAnalyzeBeatRequest.new instead')
+  static SoundStudioServiceAnalyzeBeatRequest create() =>
+      SoundStudioServiceAnalyzeBeatRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      SoundStudioServiceAnalyzeBeatRequest._();
+  @$core.override
+  SoundStudioServiceAnalyzeBeatRequest createEmptyInstance() =>
+      SoundStudioServiceAnalyzeBeatRequest._();
+  @$core.pragma('dart2js:noInline')
+  static SoundStudioServiceAnalyzeBeatRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              SoundStudioServiceAnalyzeBeatRequest>(
+          SoundStudioServiceAnalyzeBeatRequest.$_createMessage);
+  static SoundStudioServiceAnalyzeBeatRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get audioAssetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set audioAssetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAudioAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAudioAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get audioUrl => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set audioUrl($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAudioUrl() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAudioUrl() => $_clearField(3);
+}
+
+class SoundStudioServiceAnalyzeBeatResponse extends $pb.GeneratedMessage {
+  factory SoundStudioServiceAnalyzeBeatResponse({
+    $core.double? bpm,
+    $core.Iterable<$fixnum.Int64>? beatTimestampsMs,
+    $core.Iterable<$fixnum.Int64>? downbeatTimestampsMs,
+    $core.double? tempoConfidence,
+    $core.Iterable<$fixnum.Int64>? suggestedCutPointsMs,
+  }) {
+    final result = SoundStudioServiceAnalyzeBeatResponse._();
+    if (bpm != null) result.bpm = bpm;
+    if (beatTimestampsMs != null)
+      result.beatTimestampsMs.addAll(beatTimestampsMs);
+    if (downbeatTimestampsMs != null)
+      result.downbeatTimestampsMs.addAll(downbeatTimestampsMs);
+    if (tempoConfidence != null) result.tempoConfidence = tempoConfidence;
+    if (suggestedCutPointsMs != null)
+      result.suggestedCutPointsMs.addAll(suggestedCutPointsMs);
+    return result;
+  }
+
+  SoundStudioServiceAnalyzeBeatResponse._();
+
+  factory SoundStudioServiceAnalyzeBeatResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceAnalyzeBeatResponse()..mergeFromBuffer(data, registry);
+  factory SoundStudioServiceAnalyzeBeatResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceAnalyzeBeatResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SoundStudioServiceAnalyzeBeatResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          SoundStudioServiceAnalyzeBeatResponse.$_createMessage)
+    ..aD(1, _omitFieldNames ? '' : 'bpm')
+    ..p<$fixnum.Int64>(
+        2, _omitFieldNames ? '' : 'beatTimestampsMs', $pb.PbFieldType.K6)
+    ..p<$fixnum.Int64>(
+        3, _omitFieldNames ? '' : 'downbeatTimestampsMs', $pb.PbFieldType.K6)
+    ..aD(4, _omitFieldNames ? '' : 'tempoConfidence')
+    ..p<$fixnum.Int64>(
+        5, _omitFieldNames ? '' : 'suggestedCutPointsMs', $pb.PbFieldType.K6)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceAnalyzeBeatResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceAnalyzeBeatResponse copyWith(
+          void Function(SoundStudioServiceAnalyzeBeatResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as SoundStudioServiceAnalyzeBeatResponse))
+          as SoundStudioServiceAnalyzeBeatResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SoundStudioServiceAnalyzeBeatResponse() / SoundStudioServiceAnalyzeBeatResponse.new instead')
+  static SoundStudioServiceAnalyzeBeatResponse create() =>
+      SoundStudioServiceAnalyzeBeatResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      SoundStudioServiceAnalyzeBeatResponse._();
+  @$core.override
+  SoundStudioServiceAnalyzeBeatResponse createEmptyInstance() =>
+      SoundStudioServiceAnalyzeBeatResponse._();
+  @$core.pragma('dart2js:noInline')
+  static SoundStudioServiceAnalyzeBeatResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              SoundStudioServiceAnalyzeBeatResponse>(
+          SoundStudioServiceAnalyzeBeatResponse.$_createMessage);
+  static SoundStudioServiceAnalyzeBeatResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.double get bpm => $_getN(0);
+  @$pb.TagNumber(1)
+  set bpm($core.double value) => $_setDouble(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasBpm() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearBpm() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<$fixnum.Int64> get beatTimestampsMs => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<$fixnum.Int64> get downbeatTimestampsMs => $_getList(2);
+
+  @$pb.TagNumber(4)
+  $core.double get tempoConfidence => $_getN(3);
+  @$pb.TagNumber(4)
+  set tempoConfidence($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTempoConfidence() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTempoConfidence() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $pb.PbList<$fixnum.Int64> get suggestedCutPointsMs => $_getList(4);
+}
+
+class SoundStudioServiceListSoundLibraryRequest extends $pb.GeneratedMessage {
+  factory SoundStudioServiceListSoundLibraryRequest({
+    $2.UUID? workspaceId,
+    $core.String? category,
+    $core.String? genre,
+    $core.String? mood,
+    $2.Pagination? pagination,
+  }) {
+    final result = SoundStudioServiceListSoundLibraryRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (category != null) result.category = category;
+    if (genre != null) result.genre = genre;
+    if (mood != null) result.mood = mood;
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  SoundStudioServiceListSoundLibraryRequest._();
+
+  factory SoundStudioServiceListSoundLibraryRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceListSoundLibraryRequest()
+        ..mergeFromBuffer(data, registry);
+  factory SoundStudioServiceListSoundLibraryRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceListSoundLibraryRequest()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SoundStudioServiceListSoundLibraryRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          SoundStudioServiceListSoundLibraryRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'category')
+    ..aOS(3, _omitFieldNames ? '' : 'genre')
+    ..aOS(4, _omitFieldNames ? '' : 'mood')
+    ..aOM<$2.Pagination>(5, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.Pagination.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceListSoundLibraryRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceListSoundLibraryRequest copyWith(
+          void Function(SoundStudioServiceListSoundLibraryRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as SoundStudioServiceListSoundLibraryRequest))
+          as SoundStudioServiceListSoundLibraryRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SoundStudioServiceListSoundLibraryRequest() / SoundStudioServiceListSoundLibraryRequest.new instead')
+  static SoundStudioServiceListSoundLibraryRequest create() =>
+      SoundStudioServiceListSoundLibraryRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      SoundStudioServiceListSoundLibraryRequest._();
+  @$core.override
+  SoundStudioServiceListSoundLibraryRequest createEmptyInstance() =>
+      SoundStudioServiceListSoundLibraryRequest._();
+  @$core.pragma('dart2js:noInline')
+  static SoundStudioServiceListSoundLibraryRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              SoundStudioServiceListSoundLibraryRequest>(
+          SoundStudioServiceListSoundLibraryRequest.$_createMessage);
+  static SoundStudioServiceListSoundLibraryRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get category => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set category($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCategory() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCategory() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get genre => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set genre($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasGenre() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearGenre() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get mood => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set mood($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasMood() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearMood() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $2.Pagination get pagination => $_getN(4);
+  @$pb.TagNumber(5)
+  set pagination($2.Pagination value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPagination() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPagination() => $_clearField(5);
+  @$pb.TagNumber(5)
+  $2.Pagination ensurePagination() => $_ensure(4);
+}
+
+class SoundStudioServiceListSoundLibraryResponse extends $pb.GeneratedMessage {
+  factory SoundStudioServiceListSoundLibraryResponse({
+    $core.Iterable<SoundTrack>? tracks,
+    $2.PaginatedResponse? pagination,
+  }) {
+    final result = SoundStudioServiceListSoundLibraryResponse._();
+    if (tracks != null) result.tracks.addAll(tracks);
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  SoundStudioServiceListSoundLibraryResponse._();
+
+  factory SoundStudioServiceListSoundLibraryResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceListSoundLibraryResponse()
+        ..mergeFromBuffer(data, registry);
+  factory SoundStudioServiceListSoundLibraryResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceListSoundLibraryResponse()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SoundStudioServiceListSoundLibraryResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          SoundStudioServiceListSoundLibraryResponse.$_createMessage)
+    ..pPM<SoundTrack>(1, _omitFieldNames ? '' : 'tracks',
+        subBuilder: SoundTrack.$_createMessage)
+    ..aOM<$2.PaginatedResponse>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.PaginatedResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceListSoundLibraryResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceListSoundLibraryResponse copyWith(
+          void Function(SoundStudioServiceListSoundLibraryResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as SoundStudioServiceListSoundLibraryResponse))
+          as SoundStudioServiceListSoundLibraryResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SoundStudioServiceListSoundLibraryResponse() / SoundStudioServiceListSoundLibraryResponse.new instead')
+  static SoundStudioServiceListSoundLibraryResponse create() =>
+      SoundStudioServiceListSoundLibraryResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      SoundStudioServiceListSoundLibraryResponse._();
+  @$core.override
+  SoundStudioServiceListSoundLibraryResponse createEmptyInstance() =>
+      SoundStudioServiceListSoundLibraryResponse._();
+  @$core.pragma('dart2js:noInline')
+  static SoundStudioServiceListSoundLibraryResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              SoundStudioServiceListSoundLibraryResponse>(
+          SoundStudioServiceListSoundLibraryResponse.$_createMessage);
+  static SoundStudioServiceListSoundLibraryResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<SoundTrack> get tracks => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($2.PaginatedResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse ensurePagination() => $_ensure(1);
+}
+
+class SoundStudioServiceGetSoundRequest extends $pb.GeneratedMessage {
+  factory SoundStudioServiceGetSoundRequest({
+    $2.UUID? workspaceId,
+    $core.String? assetId,
+  }) {
+    final result = SoundStudioServiceGetSoundRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (assetId != null) result.assetId = assetId;
+    return result;
+  }
+
+  SoundStudioServiceGetSoundRequest._();
+
+  factory SoundStudioServiceGetSoundRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceGetSoundRequest()..mergeFromBuffer(data, registry);
+  factory SoundStudioServiceGetSoundRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceGetSoundRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SoundStudioServiceGetSoundRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: SoundStudioServiceGetSoundRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'assetId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceGetSoundRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceGetSoundRequest copyWith(
+          void Function(SoundStudioServiceGetSoundRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as SoundStudioServiceGetSoundRequest))
+          as SoundStudioServiceGetSoundRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SoundStudioServiceGetSoundRequest() / SoundStudioServiceGetSoundRequest.new instead')
+  static SoundStudioServiceGetSoundRequest create() =>
+      SoundStudioServiceGetSoundRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      SoundStudioServiceGetSoundRequest._();
+  @$core.override
+  SoundStudioServiceGetSoundRequest createEmptyInstance() =>
+      SoundStudioServiceGetSoundRequest._();
+  @$core.pragma('dart2js:noInline')
+  static SoundStudioServiceGetSoundRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SoundStudioServiceGetSoundRequest>(
+          SoundStudioServiceGetSoundRequest.$_createMessage);
+  static SoundStudioServiceGetSoundRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get assetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set assetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAssetId() => $_clearField(2);
+}
+
+class SoundStudioServiceGetSoundResponse extends $pb.GeneratedMessage {
+  factory SoundStudioServiceGetSoundResponse({
+    SoundTrack? track,
+  }) {
+    final result = SoundStudioServiceGetSoundResponse._();
+    if (track != null) result.track = track;
+    return result;
+  }
+
+  SoundStudioServiceGetSoundResponse._();
+
+  factory SoundStudioServiceGetSoundResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceGetSoundResponse()..mergeFromBuffer(data, registry);
+  factory SoundStudioServiceGetSoundResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServiceGetSoundResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SoundStudioServiceGetSoundResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: SoundStudioServiceGetSoundResponse.$_createMessage)
+    ..aOM<SoundTrack>(1, _omitFieldNames ? '' : 'track',
+        subBuilder: SoundTrack.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceGetSoundResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServiceGetSoundResponse copyWith(
+          void Function(SoundStudioServiceGetSoundResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as SoundStudioServiceGetSoundResponse))
+          as SoundStudioServiceGetSoundResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SoundStudioServiceGetSoundResponse() / SoundStudioServiceGetSoundResponse.new instead')
+  static SoundStudioServiceGetSoundResponse create() =>
+      SoundStudioServiceGetSoundResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      SoundStudioServiceGetSoundResponse._();
+  @$core.override
+  SoundStudioServiceGetSoundResponse createEmptyInstance() =>
+      SoundStudioServiceGetSoundResponse._();
+  @$core.pragma('dart2js:noInline')
+  static SoundStudioServiceGetSoundResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SoundStudioServiceGetSoundResponse>(
+          SoundStudioServiceGetSoundResponse.$_createMessage);
+  static SoundStudioServiceGetSoundResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  SoundTrack get track => $_getN(0);
+  @$pb.TagNumber(1)
+  set track(SoundTrack value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTrack() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTrack() => $_clearField(1);
+  @$pb.TagNumber(1)
+  SoundTrack ensureTrack() => $_ensure(0);
+}
+
+class SoundStudioServicePreviewSoundRequest extends $pb.GeneratedMessage {
+  factory SoundStudioServicePreviewSoundRequest({
+    $2.UUID? workspaceId,
+    $core.String? trackId,
+    $core.int? previewStartMs,
+    $core.int? previewDurationMs,
+  }) {
+    final result = SoundStudioServicePreviewSoundRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (trackId != null) result.trackId = trackId;
+    if (previewStartMs != null) result.previewStartMs = previewStartMs;
+    if (previewDurationMs != null) result.previewDurationMs = previewDurationMs;
+    return result;
+  }
+
+  SoundStudioServicePreviewSoundRequest._();
+
+  factory SoundStudioServicePreviewSoundRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServicePreviewSoundRequest()..mergeFromBuffer(data, registry);
+  factory SoundStudioServicePreviewSoundRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServicePreviewSoundRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SoundStudioServicePreviewSoundRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          SoundStudioServicePreviewSoundRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'trackId')
+    ..aI(3, _omitFieldNames ? '' : 'previewStartMs')
+    ..aI(4, _omitFieldNames ? '' : 'previewDurationMs')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServicePreviewSoundRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServicePreviewSoundRequest copyWith(
+          void Function(SoundStudioServicePreviewSoundRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as SoundStudioServicePreviewSoundRequest))
+          as SoundStudioServicePreviewSoundRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SoundStudioServicePreviewSoundRequest() / SoundStudioServicePreviewSoundRequest.new instead')
+  static SoundStudioServicePreviewSoundRequest create() =>
+      SoundStudioServicePreviewSoundRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      SoundStudioServicePreviewSoundRequest._();
+  @$core.override
+  SoundStudioServicePreviewSoundRequest createEmptyInstance() =>
+      SoundStudioServicePreviewSoundRequest._();
+  @$core.pragma('dart2js:noInline')
+  static SoundStudioServicePreviewSoundRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              SoundStudioServicePreviewSoundRequest>(
+          SoundStudioServicePreviewSoundRequest.$_createMessage);
+  static SoundStudioServicePreviewSoundRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get trackId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set trackId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTrackId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTrackId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get previewStartMs => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set previewStartMs($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPreviewStartMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPreviewStartMs() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get previewDurationMs => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set previewDurationMs($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPreviewDurationMs() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPreviewDurationMs() => $_clearField(4);
+}
+
+class SoundStudioServicePreviewSoundResponse extends $pb.GeneratedMessage {
+  factory SoundStudioServicePreviewSoundResponse({
+    $core.String? previewUrl,
+    $core.Iterable<$core.double>? waveformPeaks,
+    $core.bool? isFree,
+  }) {
+    final result = SoundStudioServicePreviewSoundResponse._();
+    if (previewUrl != null) result.previewUrl = previewUrl;
+    if (waveformPeaks != null) result.waveformPeaks.addAll(waveformPeaks);
+    if (isFree != null) result.isFree = isFree;
+    return result;
+  }
+
+  SoundStudioServicePreviewSoundResponse._();
+
+  factory SoundStudioServicePreviewSoundResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServicePreviewSoundResponse()..mergeFromBuffer(data, registry);
+  factory SoundStudioServicePreviewSoundResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SoundStudioServicePreviewSoundResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SoundStudioServicePreviewSoundResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          SoundStudioServicePreviewSoundResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'previewUrl')
+    ..p<$core.double>(
+        2, _omitFieldNames ? '' : 'waveformPeaks', $pb.PbFieldType.KF)
+    ..aOB(3, _omitFieldNames ? '' : 'isFree')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServicePreviewSoundResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SoundStudioServicePreviewSoundResponse copyWith(
+          void Function(SoundStudioServicePreviewSoundResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as SoundStudioServicePreviewSoundResponse))
+          as SoundStudioServicePreviewSoundResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SoundStudioServicePreviewSoundResponse() / SoundStudioServicePreviewSoundResponse.new instead')
+  static SoundStudioServicePreviewSoundResponse create() =>
+      SoundStudioServicePreviewSoundResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      SoundStudioServicePreviewSoundResponse._();
+  @$core.override
+  SoundStudioServicePreviewSoundResponse createEmptyInstance() =>
+      SoundStudioServicePreviewSoundResponse._();
+  @$core.pragma('dart2js:noInline')
+  static SoundStudioServicePreviewSoundResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              SoundStudioServicePreviewSoundResponse>(
+          SoundStudioServicePreviewSoundResponse.$_createMessage);
+  static SoundStudioServicePreviewSoundResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get previewUrl => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set previewUrl($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPreviewUrl() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPreviewUrl() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<$core.double> get waveformPeaks => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $core.bool get isFree => $_getBF(2);
+  @$pb.TagNumber(3)
+  set isFree($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasIsFree() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearIsFree() => $_clearField(3);
+}
+
+/// VoiceCloneRecord represents a cloned voice profile linked to characters and consent records per database_schema.md §22.12.
+class VoiceCloneRecord extends $pb.GeneratedMessage {
+  factory VoiceCloneRecord({
+    $core.String? voiceCloneId,
+    $core.String? workspaceId,
+    $core.String? characterId,
+    $core.String? provider,
+    $core.String? providerVoiceId,
+    $core.String? voiceName,
+    $core.Iterable<$core.String>? sampleAudioUrls,
+    $core.String? cloneStatus,
+    $core.String? consentRecordId,
+    $core.double? qualityScore,
+    $core.bool? repairApplied,
+    $1.Timestamp? createdAt,
+    $1.Timestamp? updatedAt,
+  }) {
+    final result = VoiceCloneRecord._();
+    if (voiceCloneId != null) result.voiceCloneId = voiceCloneId;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (characterId != null) result.characterId = characterId;
+    if (provider != null) result.provider = provider;
+    if (providerVoiceId != null) result.providerVoiceId = providerVoiceId;
+    if (voiceName != null) result.voiceName = voiceName;
+    if (sampleAudioUrls != null) result.sampleAudioUrls.addAll(sampleAudioUrls);
+    if (cloneStatus != null) result.cloneStatus = cloneStatus;
+    if (consentRecordId != null) result.consentRecordId = consentRecordId;
+    if (qualityScore != null) result.qualityScore = qualityScore;
+    if (repairApplied != null) result.repairApplied = repairApplied;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    return result;
+  }
+
+  VoiceCloneRecord._();
+
+  factory VoiceCloneRecord.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneRecord()..mergeFromBuffer(data, registry);
+  factory VoiceCloneRecord.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneRecord()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'VoiceCloneRecord',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: VoiceCloneRecord.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'voiceCloneId')
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'characterId')
+    ..aOS(4, _omitFieldNames ? '' : 'provider')
+    ..aOS(5, _omitFieldNames ? '' : 'providerVoiceId')
+    ..aOS(6, _omitFieldNames ? '' : 'voiceName')
+    ..pPS(7, _omitFieldNames ? '' : 'sampleAudioUrls')
+    ..aOS(8, _omitFieldNames ? '' : 'cloneStatus')
+    ..aOS(9, _omitFieldNames ? '' : 'consentRecordId')
+    ..aD(10, _omitFieldNames ? '' : 'qualityScore')
+    ..aOB(11, _omitFieldNames ? '' : 'repairApplied')
+    ..aOM<$1.Timestamp>(12, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOM<$1.Timestamp>(13, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneRecord clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneRecord copyWith(void Function(VoiceCloneRecord) updates) =>
+      super.copyWith((message) => updates(message as VoiceCloneRecord))
+          as VoiceCloneRecord;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use VoiceCloneRecord() / VoiceCloneRecord.new instead')
+  static VoiceCloneRecord create() => VoiceCloneRecord._();
+  static $pb.GeneratedMessage $_createMessage() => VoiceCloneRecord._();
+  @$core.override
+  VoiceCloneRecord createEmptyInstance() => VoiceCloneRecord._();
+  @$core.pragma('dart2js:noInline')
+  static VoiceCloneRecord getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<VoiceCloneRecord>(
+          VoiceCloneRecord.$_createMessage);
+  static VoiceCloneRecord? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get voiceCloneId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set voiceCloneId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasVoiceCloneId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearVoiceCloneId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get characterId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set characterId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCharacterId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCharacterId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get provider => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set provider($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasProvider() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearProvider() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get providerVoiceId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set providerVoiceId($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasProviderVoiceId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearProviderVoiceId() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get voiceName => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set voiceName($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasVoiceName() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearVoiceName() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $pb.PbList<$core.String> get sampleAudioUrls => $_getList(6);
+
+  @$pb.TagNumber(8)
+  $core.String get cloneStatus => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set cloneStatus($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasCloneStatus() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearCloneStatus() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get consentRecordId => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set consentRecordId($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasConsentRecordId() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearConsentRecordId() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.double get qualityScore => $_getN(9);
+  @$pb.TagNumber(10)
+  set qualityScore($core.double value) => $_setDouble(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasQualityScore() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearQualityScore() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.bool get repairApplied => $_getBF(10);
+  @$pb.TagNumber(11)
+  set repairApplied($core.bool value) => $_setBool(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasRepairApplied() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearRepairApplied() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $1.Timestamp get createdAt => $_getN(11);
+  @$pb.TagNumber(12)
+  set createdAt($1.Timestamp value) => $_setField(12, value);
+  @$pb.TagNumber(12)
+  $core.bool hasCreatedAt() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearCreatedAt() => $_clearField(12);
+  @$pb.TagNumber(12)
+  $1.Timestamp ensureCreatedAt() => $_ensure(11);
+
+  @$pb.TagNumber(13)
+  $1.Timestamp get updatedAt => $_getN(12);
+  @$pb.TagNumber(13)
+  set updatedAt($1.Timestamp value) => $_setField(13, value);
+  @$pb.TagNumber(13)
+  $core.bool hasUpdatedAt() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearUpdatedAt() => $_clearField(13);
+  @$pb.TagNumber(13)
+  $1.Timestamp ensureUpdatedAt() => $_ensure(12);
+}
+
+class VoiceCloneServiceCreateRequest extends $pb.GeneratedMessage {
+  factory VoiceCloneServiceCreateRequest({
+    $2.CommandContext? context,
+    $core.String? characterId,
+    $core.String? name,
+    $core.Iterable<$core.String>? sampleAudioUrls,
+    $core.bool? consentConfirmed,
+    $core.String? consentRecordId,
+    $core.String? language,
+    $core.String? quoteId,
+    $core.String? confirmedCredits,
+  }) {
+    final result = VoiceCloneServiceCreateRequest._();
+    if (context != null) result.context = context;
+    if (characterId != null) result.characterId = characterId;
+    if (name != null) result.name = name;
+    if (sampleAudioUrls != null) result.sampleAudioUrls.addAll(sampleAudioUrls);
+    if (consentConfirmed != null) result.consentConfirmed = consentConfirmed;
+    if (consentRecordId != null) result.consentRecordId = consentRecordId;
+    if (language != null) result.language = language;
+    if (quoteId != null) result.quoteId = quoteId;
+    if (confirmedCredits != null) result.confirmedCredits = confirmedCredits;
+    return result;
+  }
+
+  VoiceCloneServiceCreateRequest._();
+
+  factory VoiceCloneServiceCreateRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceCreateRequest()..mergeFromBuffer(data, registry);
+  factory VoiceCloneServiceCreateRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceCreateRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'VoiceCloneServiceCreateRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: VoiceCloneServiceCreateRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'characterId')
+    ..aOS(3, _omitFieldNames ? '' : 'name')
+    ..pPS(4, _omitFieldNames ? '' : 'sampleAudioUrls')
+    ..aOB(5, _omitFieldNames ? '' : 'consentConfirmed')
+    ..aOS(6, _omitFieldNames ? '' : 'consentRecordId')
+    ..aOS(7, _omitFieldNames ? '' : 'language')
+    ..aOS(8, _omitFieldNames ? '' : 'quoteId')
+    ..aOS(9, _omitFieldNames ? '' : 'confirmedCredits')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceCreateRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceCreateRequest copyWith(
+          void Function(VoiceCloneServiceCreateRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as VoiceCloneServiceCreateRequest))
+          as VoiceCloneServiceCreateRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use VoiceCloneServiceCreateRequest() / VoiceCloneServiceCreateRequest.new instead')
+  static VoiceCloneServiceCreateRequest create() =>
+      VoiceCloneServiceCreateRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      VoiceCloneServiceCreateRequest._();
+  @$core.override
+  VoiceCloneServiceCreateRequest createEmptyInstance() =>
+      VoiceCloneServiceCreateRequest._();
+  @$core.pragma('dart2js:noInline')
+  static VoiceCloneServiceCreateRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<VoiceCloneServiceCreateRequest>(
+          VoiceCloneServiceCreateRequest.$_createMessage);
+  static VoiceCloneServiceCreateRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get characterId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set characterId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCharacterId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCharacterId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get name => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set name($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasName() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearName() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $pb.PbList<$core.String> get sampleAudioUrls => $_getList(3);
+
+  @$pb.TagNumber(5)
+  $core.bool get consentConfirmed => $_getBF(4);
+  @$pb.TagNumber(5)
+  set consentConfirmed($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasConsentConfirmed() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearConsentConfirmed() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get consentRecordId => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set consentRecordId($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasConsentRecordId() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearConsentRecordId() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get language => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set language($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasLanguage() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearLanguage() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get quoteId => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set quoteId($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasQuoteId() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearQuoteId() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get confirmedCredits => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set confirmedCredits($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasConfirmedCredits() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearConfirmedCredits() => $_clearField(9);
+}
+
+class VoiceCloneServiceCreateResponse extends $pb.GeneratedMessage {
+  factory VoiceCloneServiceCreateResponse({
+    VoiceCloneRecord? record,
+    $core.String? status,
+    $core.int? estimatedDurationS,
+    $core.String? creditsReserved,
+    $core.String? consentStatus,
+  }) {
+    final result = VoiceCloneServiceCreateResponse._();
+    if (record != null) result.record = record;
+    if (status != null) result.status = status;
+    if (estimatedDurationS != null)
+      result.estimatedDurationS = estimatedDurationS;
+    if (creditsReserved != null) result.creditsReserved = creditsReserved;
+    if (consentStatus != null) result.consentStatus = consentStatus;
+    return result;
+  }
+
+  VoiceCloneServiceCreateResponse._();
+
+  factory VoiceCloneServiceCreateResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceCreateResponse()..mergeFromBuffer(data, registry);
+  factory VoiceCloneServiceCreateResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceCreateResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'VoiceCloneServiceCreateResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: VoiceCloneServiceCreateResponse.$_createMessage)
+    ..aOM<VoiceCloneRecord>(1, _omitFieldNames ? '' : 'record',
+        subBuilder: VoiceCloneRecord.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'status')
+    ..aI(3, _omitFieldNames ? '' : 'estimatedDurationS')
+    ..aOS(4, _omitFieldNames ? '' : 'creditsReserved')
+    ..aOS(5, _omitFieldNames ? '' : 'consentStatus')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceCreateResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceCreateResponse copyWith(
+          void Function(VoiceCloneServiceCreateResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as VoiceCloneServiceCreateResponse))
+          as VoiceCloneServiceCreateResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use VoiceCloneServiceCreateResponse() / VoiceCloneServiceCreateResponse.new instead')
+  static VoiceCloneServiceCreateResponse create() =>
+      VoiceCloneServiceCreateResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      VoiceCloneServiceCreateResponse._();
+  @$core.override
+  VoiceCloneServiceCreateResponse createEmptyInstance() =>
+      VoiceCloneServiceCreateResponse._();
+  @$core.pragma('dart2js:noInline')
+  static VoiceCloneServiceCreateResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<VoiceCloneServiceCreateResponse>(
+          VoiceCloneServiceCreateResponse.$_createMessage);
+  static VoiceCloneServiceCreateResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  VoiceCloneRecord get record => $_getN(0);
+  @$pb.TagNumber(1)
+  set record(VoiceCloneRecord value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRecord() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRecord() => $_clearField(1);
+  @$pb.TagNumber(1)
+  VoiceCloneRecord ensureRecord() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get status => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set status($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasStatus() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearStatus() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get estimatedDurationS => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set estimatedDurationS($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasEstimatedDurationS() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearEstimatedDurationS() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get creditsReserved => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set creditsReserved($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCreditsReserved() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCreditsReserved() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get consentStatus => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set consentStatus($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasConsentStatus() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearConsentStatus() => $_clearField(5);
+}
+
+class VoiceCloneServiceGetRequest extends $pb.GeneratedMessage {
+  factory VoiceCloneServiceGetRequest({
+    $2.UUID? workspaceId,
+    $core.String? voiceCloneId,
+  }) {
+    final result = VoiceCloneServiceGetRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (voiceCloneId != null) result.voiceCloneId = voiceCloneId;
+    return result;
+  }
+
+  VoiceCloneServiceGetRequest._();
+
+  factory VoiceCloneServiceGetRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceGetRequest()..mergeFromBuffer(data, registry);
+  factory VoiceCloneServiceGetRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceGetRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'VoiceCloneServiceGetRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: VoiceCloneServiceGetRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'voiceCloneId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceGetRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceGetRequest copyWith(
+          void Function(VoiceCloneServiceGetRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as VoiceCloneServiceGetRequest))
+          as VoiceCloneServiceGetRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use VoiceCloneServiceGetRequest() / VoiceCloneServiceGetRequest.new instead')
+  static VoiceCloneServiceGetRequest create() =>
+      VoiceCloneServiceGetRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      VoiceCloneServiceGetRequest._();
+  @$core.override
+  VoiceCloneServiceGetRequest createEmptyInstance() =>
+      VoiceCloneServiceGetRequest._();
+  @$core.pragma('dart2js:noInline')
+  static VoiceCloneServiceGetRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<VoiceCloneServiceGetRequest>(
+          VoiceCloneServiceGetRequest.$_createMessage);
+  static VoiceCloneServiceGetRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get voiceCloneId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set voiceCloneId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasVoiceCloneId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearVoiceCloneId() => $_clearField(2);
+}
+
+class VoiceCloneServiceGetResponse extends $pb.GeneratedMessage {
+  factory VoiceCloneServiceGetResponse({
+    VoiceCloneRecord? record,
+  }) {
+    final result = VoiceCloneServiceGetResponse._();
+    if (record != null) result.record = record;
+    return result;
+  }
+
+  VoiceCloneServiceGetResponse._();
+
+  factory VoiceCloneServiceGetResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceGetResponse()..mergeFromBuffer(data, registry);
+  factory VoiceCloneServiceGetResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceGetResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'VoiceCloneServiceGetResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: VoiceCloneServiceGetResponse.$_createMessage)
+    ..aOM<VoiceCloneRecord>(1, _omitFieldNames ? '' : 'record',
+        subBuilder: VoiceCloneRecord.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceGetResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceGetResponse copyWith(
+          void Function(VoiceCloneServiceGetResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as VoiceCloneServiceGetResponse))
+          as VoiceCloneServiceGetResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use VoiceCloneServiceGetResponse() / VoiceCloneServiceGetResponse.new instead')
+  static VoiceCloneServiceGetResponse create() =>
+      VoiceCloneServiceGetResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      VoiceCloneServiceGetResponse._();
+  @$core.override
+  VoiceCloneServiceGetResponse createEmptyInstance() =>
+      VoiceCloneServiceGetResponse._();
+  @$core.pragma('dart2js:noInline')
+  static VoiceCloneServiceGetResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<VoiceCloneServiceGetResponse>(
+          VoiceCloneServiceGetResponse.$_createMessage);
+  static VoiceCloneServiceGetResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  VoiceCloneRecord get record => $_getN(0);
+  @$pb.TagNumber(1)
+  set record(VoiceCloneRecord value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRecord() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRecord() => $_clearField(1);
+  @$pb.TagNumber(1)
+  VoiceCloneRecord ensureRecord() => $_ensure(0);
+}
+
+class VoiceCloneServiceListRequest extends $pb.GeneratedMessage {
+  factory VoiceCloneServiceListRequest({
+    $2.UUID? workspaceId,
+    $core.String? characterId,
+    $2.Pagination? pagination,
+  }) {
+    final result = VoiceCloneServiceListRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (characterId != null) result.characterId = characterId;
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  VoiceCloneServiceListRequest._();
+
+  factory VoiceCloneServiceListRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceListRequest()..mergeFromBuffer(data, registry);
+  factory VoiceCloneServiceListRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceListRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'VoiceCloneServiceListRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: VoiceCloneServiceListRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'characterId')
+    ..aOM<$2.Pagination>(3, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.Pagination.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceListRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceListRequest copyWith(
+          void Function(VoiceCloneServiceListRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as VoiceCloneServiceListRequest))
+          as VoiceCloneServiceListRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use VoiceCloneServiceListRequest() / VoiceCloneServiceListRequest.new instead')
+  static VoiceCloneServiceListRequest create() =>
+      VoiceCloneServiceListRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      VoiceCloneServiceListRequest._();
+  @$core.override
+  VoiceCloneServiceListRequest createEmptyInstance() =>
+      VoiceCloneServiceListRequest._();
+  @$core.pragma('dart2js:noInline')
+  static VoiceCloneServiceListRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<VoiceCloneServiceListRequest>(
+          VoiceCloneServiceListRequest.$_createMessage);
+  static VoiceCloneServiceListRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get characterId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set characterId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCharacterId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCharacterId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $2.Pagination get pagination => $_getN(2);
+  @$pb.TagNumber(3)
+  set pagination($2.Pagination value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPagination() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPagination() => $_clearField(3);
+  @$pb.TagNumber(3)
+  $2.Pagination ensurePagination() => $_ensure(2);
+}
+
+class VoiceCloneServiceListResponse extends $pb.GeneratedMessage {
+  factory VoiceCloneServiceListResponse({
+    $core.Iterable<VoiceCloneRecord>? records,
+    $2.PaginatedResponse? pagination,
+  }) {
+    final result = VoiceCloneServiceListResponse._();
+    if (records != null) result.records.addAll(records);
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  VoiceCloneServiceListResponse._();
+
+  factory VoiceCloneServiceListResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceListResponse()..mergeFromBuffer(data, registry);
+  factory VoiceCloneServiceListResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceListResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'VoiceCloneServiceListResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: VoiceCloneServiceListResponse.$_createMessage)
+    ..pPM<VoiceCloneRecord>(1, _omitFieldNames ? '' : 'records',
+        subBuilder: VoiceCloneRecord.$_createMessage)
+    ..aOM<$2.PaginatedResponse>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.PaginatedResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceListResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceListResponse copyWith(
+          void Function(VoiceCloneServiceListResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as VoiceCloneServiceListResponse))
+          as VoiceCloneServiceListResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use VoiceCloneServiceListResponse() / VoiceCloneServiceListResponse.new instead')
+  static VoiceCloneServiceListResponse create() =>
+      VoiceCloneServiceListResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      VoiceCloneServiceListResponse._();
+  @$core.override
+  VoiceCloneServiceListResponse createEmptyInstance() =>
+      VoiceCloneServiceListResponse._();
+  @$core.pragma('dart2js:noInline')
+  static VoiceCloneServiceListResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<VoiceCloneServiceListResponse>(
+          VoiceCloneServiceListResponse.$_createMessage);
+  static VoiceCloneServiceListResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<VoiceCloneRecord> get records => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($2.PaginatedResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse ensurePagination() => $_ensure(1);
+}
+
+class VoiceCloneServiceDeleteRequest extends $pb.GeneratedMessage {
+  factory VoiceCloneServiceDeleteRequest({
+    $2.CommandContext? context,
+    $core.String? voiceCloneId,
+    $core.bool? revokeConsent,
+  }) {
+    final result = VoiceCloneServiceDeleteRequest._();
+    if (context != null) result.context = context;
+    if (voiceCloneId != null) result.voiceCloneId = voiceCloneId;
+    if (revokeConsent != null) result.revokeConsent = revokeConsent;
+    return result;
+  }
+
+  VoiceCloneServiceDeleteRequest._();
+
+  factory VoiceCloneServiceDeleteRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceDeleteRequest()..mergeFromBuffer(data, registry);
+  factory VoiceCloneServiceDeleteRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceDeleteRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'VoiceCloneServiceDeleteRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: VoiceCloneServiceDeleteRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'voiceCloneId')
+    ..aOB(3, _omitFieldNames ? '' : 'revokeConsent')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceDeleteRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceDeleteRequest copyWith(
+          void Function(VoiceCloneServiceDeleteRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as VoiceCloneServiceDeleteRequest))
+          as VoiceCloneServiceDeleteRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use VoiceCloneServiceDeleteRequest() / VoiceCloneServiceDeleteRequest.new instead')
+  static VoiceCloneServiceDeleteRequest create() =>
+      VoiceCloneServiceDeleteRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      VoiceCloneServiceDeleteRequest._();
+  @$core.override
+  VoiceCloneServiceDeleteRequest createEmptyInstance() =>
+      VoiceCloneServiceDeleteRequest._();
+  @$core.pragma('dart2js:noInline')
+  static VoiceCloneServiceDeleteRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<VoiceCloneServiceDeleteRequest>(
+          VoiceCloneServiceDeleteRequest.$_createMessage);
+  static VoiceCloneServiceDeleteRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get voiceCloneId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set voiceCloneId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasVoiceCloneId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearVoiceCloneId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get revokeConsent => $_getBF(2);
+  @$pb.TagNumber(3)
+  set revokeConsent($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasRevokeConsent() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRevokeConsent() => $_clearField(3);
+}
+
+class VoiceCloneServiceDeleteResponse extends $pb.GeneratedMessage {
+  factory VoiceCloneServiceDeleteResponse({
+    $core.bool? success,
+    $core.String? message,
+    $core.bool? consentRevoked,
+  }) {
+    final result = VoiceCloneServiceDeleteResponse._();
+    if (success != null) result.success = success;
+    if (message != null) result.message = message;
+    if (consentRevoked != null) result.consentRevoked = consentRevoked;
+    return result;
+  }
+
+  VoiceCloneServiceDeleteResponse._();
+
+  factory VoiceCloneServiceDeleteResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceDeleteResponse()..mergeFromBuffer(data, registry);
+  factory VoiceCloneServiceDeleteResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceDeleteResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'VoiceCloneServiceDeleteResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: VoiceCloneServiceDeleteResponse.$_createMessage)
+    ..aOB(1, _omitFieldNames ? '' : 'success')
+    ..aOS(2, _omitFieldNames ? '' : 'message')
+    ..aOB(3, _omitFieldNames ? '' : 'consentRevoked')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceDeleteResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceDeleteResponse copyWith(
+          void Function(VoiceCloneServiceDeleteResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as VoiceCloneServiceDeleteResponse))
+          as VoiceCloneServiceDeleteResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use VoiceCloneServiceDeleteResponse() / VoiceCloneServiceDeleteResponse.new instead')
+  static VoiceCloneServiceDeleteResponse create() =>
+      VoiceCloneServiceDeleteResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      VoiceCloneServiceDeleteResponse._();
+  @$core.override
+  VoiceCloneServiceDeleteResponse createEmptyInstance() =>
+      VoiceCloneServiceDeleteResponse._();
+  @$core.pragma('dart2js:noInline')
+  static VoiceCloneServiceDeleteResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<VoiceCloneServiceDeleteResponse>(
+          VoiceCloneServiceDeleteResponse.$_createMessage);
+  static VoiceCloneServiceDeleteResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get success => $_getBF(0);
+  @$pb.TagNumber(1)
+  set success($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get message => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set message($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasMessage() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearMessage() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get consentRevoked => $_getBF(2);
+  @$pb.TagNumber(3)
+  set consentRevoked($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasConsentRevoked() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearConsentRevoked() => $_clearField(3);
+}
+
+class VoiceCloneServiceGenerateVoiceoverRequest extends $pb.GeneratedMessage {
+  factory VoiceCloneServiceGenerateVoiceoverRequest({
+    $2.CommandContext? context,
+    $core.String? voiceCloneId,
+    $core.String? text,
+    $core.String? language,
+    $core.double? speed,
+    $core.double? pitch,
+    $core.String? quoteId,
+    $core.String? confirmedCredits,
+  }) {
+    final result = VoiceCloneServiceGenerateVoiceoverRequest._();
+    if (context != null) result.context = context;
+    if (voiceCloneId != null) result.voiceCloneId = voiceCloneId;
+    if (text != null) result.text = text;
+    if (language != null) result.language = language;
+    if (speed != null) result.speed = speed;
+    if (pitch != null) result.pitch = pitch;
+    if (quoteId != null) result.quoteId = quoteId;
+    if (confirmedCredits != null) result.confirmedCredits = confirmedCredits;
+    return result;
+  }
+
+  VoiceCloneServiceGenerateVoiceoverRequest._();
+
+  factory VoiceCloneServiceGenerateVoiceoverRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceGenerateVoiceoverRequest()
+        ..mergeFromBuffer(data, registry);
+  factory VoiceCloneServiceGenerateVoiceoverRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceGenerateVoiceoverRequest()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'VoiceCloneServiceGenerateVoiceoverRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          VoiceCloneServiceGenerateVoiceoverRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'voiceCloneId')
+    ..aOS(3, _omitFieldNames ? '' : 'text')
+    ..aOS(4, _omitFieldNames ? '' : 'language')
+    ..aD(5, _omitFieldNames ? '' : 'speed')
+    ..aD(6, _omitFieldNames ? '' : 'pitch')
+    ..aOS(7, _omitFieldNames ? '' : 'quoteId')
+    ..aOS(8, _omitFieldNames ? '' : 'confirmedCredits')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceGenerateVoiceoverRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceGenerateVoiceoverRequest copyWith(
+          void Function(VoiceCloneServiceGenerateVoiceoverRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as VoiceCloneServiceGenerateVoiceoverRequest))
+          as VoiceCloneServiceGenerateVoiceoverRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use VoiceCloneServiceGenerateVoiceoverRequest() / VoiceCloneServiceGenerateVoiceoverRequest.new instead')
+  static VoiceCloneServiceGenerateVoiceoverRequest create() =>
+      VoiceCloneServiceGenerateVoiceoverRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      VoiceCloneServiceGenerateVoiceoverRequest._();
+  @$core.override
+  VoiceCloneServiceGenerateVoiceoverRequest createEmptyInstance() =>
+      VoiceCloneServiceGenerateVoiceoverRequest._();
+  @$core.pragma('dart2js:noInline')
+  static VoiceCloneServiceGenerateVoiceoverRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              VoiceCloneServiceGenerateVoiceoverRequest>(
+          VoiceCloneServiceGenerateVoiceoverRequest.$_createMessage);
+  static VoiceCloneServiceGenerateVoiceoverRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get voiceCloneId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set voiceCloneId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasVoiceCloneId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearVoiceCloneId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get text => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set text($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasText() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearText() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get language => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set language($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLanguage() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLanguage() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.double get speed => $_getN(4);
+  @$pb.TagNumber(5)
+  set speed($core.double value) => $_setDouble(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSpeed() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSpeed() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.double get pitch => $_getN(5);
+  @$pb.TagNumber(6)
+  set pitch($core.double value) => $_setDouble(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasPitch() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearPitch() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get quoteId => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set quoteId($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasQuoteId() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearQuoteId() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get confirmedCredits => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set confirmedCredits($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasConfirmedCredits() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearConfirmedCredits() => $_clearField(8);
+}
+
+class VoiceCloneServiceGenerateVoiceoverResponse extends $pb.GeneratedMessage {
+  factory VoiceCloneServiceGenerateVoiceoverResponse({
+    $core.String? assetId,
+    $core.String? audioUrl,
+    $core.double? durationSeconds,
+    $core.String? creditsUsed,
+  }) {
+    final result = VoiceCloneServiceGenerateVoiceoverResponse._();
+    if (assetId != null) result.assetId = assetId;
+    if (audioUrl != null) result.audioUrl = audioUrl;
+    if (durationSeconds != null) result.durationSeconds = durationSeconds;
+    if (creditsUsed != null) result.creditsUsed = creditsUsed;
+    return result;
+  }
+
+  VoiceCloneServiceGenerateVoiceoverResponse._();
+
+  factory VoiceCloneServiceGenerateVoiceoverResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceGenerateVoiceoverResponse()
+        ..mergeFromBuffer(data, registry);
+  factory VoiceCloneServiceGenerateVoiceoverResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceGenerateVoiceoverResponse()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'VoiceCloneServiceGenerateVoiceoverResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          VoiceCloneServiceGenerateVoiceoverResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'assetId')
+    ..aOS(2, _omitFieldNames ? '' : 'audioUrl')
+    ..aD(3, _omitFieldNames ? '' : 'durationSeconds')
+    ..aOS(4, _omitFieldNames ? '' : 'creditsUsed')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceGenerateVoiceoverResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceGenerateVoiceoverResponse copyWith(
+          void Function(VoiceCloneServiceGenerateVoiceoverResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as VoiceCloneServiceGenerateVoiceoverResponse))
+          as VoiceCloneServiceGenerateVoiceoverResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use VoiceCloneServiceGenerateVoiceoverResponse() / VoiceCloneServiceGenerateVoiceoverResponse.new instead')
+  static VoiceCloneServiceGenerateVoiceoverResponse create() =>
+      VoiceCloneServiceGenerateVoiceoverResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      VoiceCloneServiceGenerateVoiceoverResponse._();
+  @$core.override
+  VoiceCloneServiceGenerateVoiceoverResponse createEmptyInstance() =>
+      VoiceCloneServiceGenerateVoiceoverResponse._();
+  @$core.pragma('dart2js:noInline')
+  static VoiceCloneServiceGenerateVoiceoverResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              VoiceCloneServiceGenerateVoiceoverResponse>(
+          VoiceCloneServiceGenerateVoiceoverResponse.$_createMessage);
+  static VoiceCloneServiceGenerateVoiceoverResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get assetId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set assetId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAssetId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAssetId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get audioUrl => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set audioUrl($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAudioUrl() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAudioUrl() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get durationSeconds => $_getN(2);
+  @$pb.TagNumber(3)
+  set durationSeconds($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDurationSeconds() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDurationSeconds() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get creditsUsed => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set creditsUsed($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCreditsUsed() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCreditsUsed() => $_clearField(4);
+}
+
+class VoiceCloneServiceGetConsentStatusRequest extends $pb.GeneratedMessage {
+  factory VoiceCloneServiceGetConsentStatusRequest({
+    $2.UUID? workspaceId,
+    $core.String? voiceCloneId,
+    $core.String? characterId,
+  }) {
+    final result = VoiceCloneServiceGetConsentStatusRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (voiceCloneId != null) result.voiceCloneId = voiceCloneId;
+    if (characterId != null) result.characterId = characterId;
+    return result;
+  }
+
+  VoiceCloneServiceGetConsentStatusRequest._();
+
+  factory VoiceCloneServiceGetConsentStatusRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceGetConsentStatusRequest()
+        ..mergeFromBuffer(data, registry);
+  factory VoiceCloneServiceGetConsentStatusRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceGetConsentStatusRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'VoiceCloneServiceGetConsentStatusRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          VoiceCloneServiceGetConsentStatusRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'voiceCloneId')
+    ..aOS(3, _omitFieldNames ? '' : 'characterId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceGetConsentStatusRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceGetConsentStatusRequest copyWith(
+          void Function(VoiceCloneServiceGetConsentStatusRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as VoiceCloneServiceGetConsentStatusRequest))
+          as VoiceCloneServiceGetConsentStatusRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use VoiceCloneServiceGetConsentStatusRequest() / VoiceCloneServiceGetConsentStatusRequest.new instead')
+  static VoiceCloneServiceGetConsentStatusRequest create() =>
+      VoiceCloneServiceGetConsentStatusRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      VoiceCloneServiceGetConsentStatusRequest._();
+  @$core.override
+  VoiceCloneServiceGetConsentStatusRequest createEmptyInstance() =>
+      VoiceCloneServiceGetConsentStatusRequest._();
+  @$core.pragma('dart2js:noInline')
+  static VoiceCloneServiceGetConsentStatusRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              VoiceCloneServiceGetConsentStatusRequest>(
+          VoiceCloneServiceGetConsentStatusRequest.$_createMessage);
+  static VoiceCloneServiceGetConsentStatusRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get voiceCloneId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set voiceCloneId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasVoiceCloneId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearVoiceCloneId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get characterId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set characterId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCharacterId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCharacterId() => $_clearField(3);
+}
+
+class VoiceCloneServiceGetConsentStatusResponse extends $pb.GeneratedMessage {
+  factory VoiceCloneServiceGetConsentStatusResponse({
+    $core.String? consentRecordId,
+    $core.String? consentStatus,
+    $1.Timestamp? grantedAt,
+    $1.Timestamp? revokedAt,
+    $core.String? declarationText,
+    $core.bool? isValidForGeneration,
+  }) {
+    final result = VoiceCloneServiceGetConsentStatusResponse._();
+    if (consentRecordId != null) result.consentRecordId = consentRecordId;
+    if (consentStatus != null) result.consentStatus = consentStatus;
+    if (grantedAt != null) result.grantedAt = grantedAt;
+    if (revokedAt != null) result.revokedAt = revokedAt;
+    if (declarationText != null) result.declarationText = declarationText;
+    if (isValidForGeneration != null)
+      result.isValidForGeneration = isValidForGeneration;
+    return result;
+  }
+
+  VoiceCloneServiceGetConsentStatusResponse._();
+
+  factory VoiceCloneServiceGetConsentStatusResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceGetConsentStatusResponse()
+        ..mergeFromBuffer(data, registry);
+  factory VoiceCloneServiceGetConsentStatusResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VoiceCloneServiceGetConsentStatusResponse()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'VoiceCloneServiceGetConsentStatusResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          VoiceCloneServiceGetConsentStatusResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'consentRecordId')
+    ..aOS(2, _omitFieldNames ? '' : 'consentStatus')
+    ..aOM<$1.Timestamp>(3, _omitFieldNames ? '' : 'grantedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOM<$1.Timestamp>(4, _omitFieldNames ? '' : 'revokedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOS(5, _omitFieldNames ? '' : 'declarationText')
+    ..aOB(6, _omitFieldNames ? '' : 'isValidForGeneration')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceGetConsentStatusResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VoiceCloneServiceGetConsentStatusResponse copyWith(
+          void Function(VoiceCloneServiceGetConsentStatusResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as VoiceCloneServiceGetConsentStatusResponse))
+          as VoiceCloneServiceGetConsentStatusResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use VoiceCloneServiceGetConsentStatusResponse() / VoiceCloneServiceGetConsentStatusResponse.new instead')
+  static VoiceCloneServiceGetConsentStatusResponse create() =>
+      VoiceCloneServiceGetConsentStatusResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      VoiceCloneServiceGetConsentStatusResponse._();
+  @$core.override
+  VoiceCloneServiceGetConsentStatusResponse createEmptyInstance() =>
+      VoiceCloneServiceGetConsentStatusResponse._();
+  @$core.pragma('dart2js:noInline')
+  static VoiceCloneServiceGetConsentStatusResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              VoiceCloneServiceGetConsentStatusResponse>(
+          VoiceCloneServiceGetConsentStatusResponse.$_createMessage);
+  static VoiceCloneServiceGetConsentStatusResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get consentRecordId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set consentRecordId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasConsentRecordId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearConsentRecordId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get consentStatus => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set consentStatus($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasConsentStatus() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearConsentStatus() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $1.Timestamp get grantedAt => $_getN(2);
+  @$pb.TagNumber(3)
+  set grantedAt($1.Timestamp value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasGrantedAt() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearGrantedAt() => $_clearField(3);
+  @$pb.TagNumber(3)
+  $1.Timestamp ensureGrantedAt() => $_ensure(2);
+
+  @$pb.TagNumber(4)
+  $1.Timestamp get revokedAt => $_getN(3);
+  @$pb.TagNumber(4)
+  set revokedAt($1.Timestamp value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasRevokedAt() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearRevokedAt() => $_clearField(4);
+  @$pb.TagNumber(4)
+  $1.Timestamp ensureRevokedAt() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  $core.String get declarationText => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set declarationText($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasDeclarationText() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearDeclarationText() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.bool get isValidForGeneration => $_getBF(5);
+  @$pb.TagNumber(6)
+  set isValidForGeneration($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasIsValidForGeneration() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearIsValidForGeneration() => $_clearField(6);
+}
+
 /// CreativeDna holds 8-layer video analysis output per Mode 4 (ai_video_studio.md §Mode 4).
 class CreativeDna extends $pb.GeneratedMessage {
   factory CreativeDna({

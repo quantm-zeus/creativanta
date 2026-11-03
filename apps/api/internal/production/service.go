@@ -37,6 +37,9 @@ type Service struct {
 	postProd    *PostProductionExecutor
 	balances    map[string]tenantdb.ExactDecimal // workspaceID -> available credits
 	mockRefunds map[string]tenantdb.ExactDecimal // jobID -> refunded credits
+	VoiceClone  *VoiceCloneManager
+	SoundStudio *SoundStudioManager
+	Translation *TranslationManager
 }
 
 var _ productionv1connect.StudioServiceHandler = (*Service)(nil)
@@ -88,7 +91,7 @@ func NewService(cfg ServiceConfig) *Service {
 		bal[k] = v
 	}
 
-	return &Service{
+	svc := &Service{
 		store:       st,
 		router:      NewPipelineRouter(prim, fall),
 		budgetCalc:  NewBudgetCalculator(),
@@ -96,6 +99,10 @@ func NewService(cfg ServiceConfig) *Service {
 		balances:    bal,
 		mockRefunds: make(map[string]tenantdb.ExactDecimal),
 	}
+	svc.VoiceClone = NewVoiceCloneManager(st, svc)
+	svc.SoundStudio = NewSoundStudioManager(st, svc)
+	svc.Translation = NewTranslationManager(st, svc, svc.VoiceClone)
+	return svc
 }
 
 // SetWorkspaceBalance overrides the simulated credit balance for a workspace.
