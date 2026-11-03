@@ -1,0 +1,467 @@
+syntax = "proto3";
+
+package creativanta.content.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/content/v1;contentv1";
+
+// ScriptLifecycleState tracks script creation progression per database_schema.md §6.4.
+enum ScriptLifecycleState {
+  SCRIPT_LIFECYCLE_STATE_UNSPECIFIED = 0;
+  SCRIPT_LIFECYCLE_STATE_DRAFT = 1;
+  SCRIPT_LIFECYCLE_STATE_IN_REVIEW = 2;
+  SCRIPT_LIFECYCLE_STATE_APPROVED = 3;
+  SCRIPT_LIFECYCLE_STATE_REVISION_REQUIRED = 4;
+  SCRIPT_LIFECYCLE_STATE_READY_FOR_PRODUCTION = 5;
+  SCRIPT_LIFECYCLE_STATE_ARCHIVED = 6;
+}
+
+// ScriptApprovalState tracks independent approval review state per database_schema.md §6.4.
+enum ScriptApprovalState {
+  SCRIPT_APPROVAL_STATE_UNSPECIFIED = 0;
+  SCRIPT_APPROVAL_STATE_NOT_SUBMITTED = 1;
+  SCRIPT_APPROVAL_STATE_PENDING_APPROVAL = 2;
+  SCRIPT_APPROVAL_STATE_APPROVED = 3;
+  SCRIPT_APPROVAL_STATE_REJECTED = 4;
+}
+
+// AssetBriefStatus tracks the readiness of the production Asset Brief per database_schema.md §6.5.
+enum AssetBriefStatus {
+  ASSET_BRIEF_STATUS_UNSPECIFIED = 0;
+  ASSET_BRIEF_STATUS_DRAFT = 1;
+  ASSET_BRIEF_STATUS_READY = 2;
+  ASSET_BRIEF_STATUS_LOCKED = 3;
+  ASSET_BRIEF_STATUS_SUPERSEDED = 4;
+}
+
+// Shot represents a single visual/audio camera shot inside a scene per database_schema.md §6.6.
+message Shot {
+  string shot_id = 1;
+  string scene_id = 2;
+  string workspace_id = 3;
+  int32 shot_index = 4;
+  string shot_type = 5; // close_up, medium_shot, wide_shot, b_roll, screen_record
+  string description = 6;
+  int32 duration_seconds = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+// Scene represents a structured scene block with notes and duration target per database_schema.md §6.6.
+message Scene {
+  string scene_id = 1;
+  string script_id = 2;
+  string workspace_id = 3;
+  int32 scene_index = 4;
+  string description = 5;
+  string content = 6;
+  int32 duration_seconds = 7;
+  string visual_notes = 8;
+  string audio_notes = 9;
+  repeated Shot shot_list = 10;
+  google.protobuf.Timestamp created_at = 11;
+}
+
+// CtaBlock represents a Call-To-Action element embedded in the script.
+message CtaBlock {
+  string cta_id = 1;
+  string text = 2;
+  string button_text = 3;
+  string destination_url = 4;
+  string cta_type = 5; // link, purchase, subscribe, follow
+}
+
+// DisclosureBlock represents legal / platform disclosure requirements (RULE-M06-007).
+message DisclosureBlock {
+  string disclosure_id = 1;
+  string text = 2;
+  string platform = 3; // tiktok, youtube, reels, shopee
+  bool is_dismissed = 4;
+  string dismissed_by = 5;
+  google.protobuf.Timestamp dismissed_at = 6;
+  string dismissal_reason = 7;
+}
+
+// PublishTargetProfile represents target social platform configurations.
+message PublishTargetProfile {
+  string platform = 1; // tiktok, youtube, instagram, facebook, shopee
+  string format = 2;   // 9:16, 16:9, 1:1
+  string account_id = 3;
+}
+
+// AssetBrief represents production instructions feeding AI Video Studio (M07) per database_schema.md §6.5.
+message AssetBrief {
+  string asset_brief_id = 1;
+  string workspace_id = 2;
+  string script_id = 3;
+  string output_type = 4; // video, image, audio, mixed
+  string target_format = 5; // 9:16, 16:9, 1:1
+  int32 target_duration_seconds = 6;
+  repeated string target_platforms = 7;
+  string continuity_requirements_json = 8; // character packs, voice profiles
+  string brand_voice_requirements_json = 9; // tone, vocabulary, pacing
+  string production_instructions = 10;
+  AssetBriefStatus status = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+// ScriptVersion stores historical snapshot for compare and restore per Alternate Flow A3.
+message ScriptVersion {
+  string version_id = 1;
+  string workspace_id = 2;
+  string script_id = 3;
+  int32 version_index = 4;
+  string title = 5;
+  repeated Scene scenes = 6;
+  repeated CtaBlock cta_blocks = 7;
+  repeated DisclosureBlock disclosure_blocks = 8;
+  int32 duration_target_seconds = 9;
+  ScriptLifecycleState lifecycle_state = 10;
+  ScriptApprovalState approval_state = 11;
+  string snapshot_reason = 12;
+  string created_by = 13;
+  google.protobuf.Timestamp created_at = 14;
+}
+
+// ScriptReviewComment represents inline collaborator/reviewer feedback.
+message ScriptReviewComment {
+  string comment_id = 1;
+  string script_id = 2;
+  string user_id = 3;
+  string author_name = 4;
+  string content = 5;
+  int32 scene_index = 6;
+  bool is_resolved = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+// Script represents the central structured authoring and approval object (M06) per database_schema.md §6.4.
+message Script {
+  string script_id = 1;
+  string workspace_id = 2;
+  string idea_id = 3;
+  string source_idea_title = 4; // Populated from idea lookup for UI provenance
+  string title = 5;
+  string format_type = 6; // short_form, long_form, live, review, tutorial
+  repeated Scene scenes = 7;
+  repeated CtaBlock cta_blocks = 8;
+  repeated DisclosureBlock disclosure_blocks = 9;
+  int32 duration_target_seconds = 10;
+  ScriptLifecycleState lifecycle_state = 11;
+  ScriptApprovalState approval_state = 12;
+  repeated PublishTargetProfile publish_target_profiles = 13;
+  repeated string continuity_refs = 14;
+  repeated string offer_product_hooks = 15;
+  string rejection_reason = 16;
+  int32 version_index = 17;
+  string created_by = 18;
+  string approved_by = 19;
+  google.protobuf.Timestamp created_at = 20;
+  google.protobuf.Timestamp updated_at = 21;
+}
+
+// --- Request / Response Messages ---
+
+message ScriptServiceCreateRequest {
+  string workspace_id = 1;
+  string idea_id = 2;
+  string title = 3;
+  string format_type = 4;
+  repeated Scene scenes = 5;
+  repeated CtaBlock cta_blocks = 6;
+  repeated DisclosureBlock disclosure_blocks = 7;
+  int32 duration_target_seconds = 8;
+  repeated PublishTargetProfile publish_target_profiles = 9;
+  repeated string continuity_refs = 10;
+  repeated string offer_product_hooks = 11;
+}
+
+message ScriptServiceCreateResponse {
+  Script script = 1;
+  bool disclosure_recommended = 2;
+  string disclosure_suggestion_text = 3;
+}
+
+message ScriptServiceGetRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+}
+
+message ScriptServiceGetResponse {
+  Script script = 1;
+  AssetBrief asset_brief = 2;
+}
+
+message ScriptServiceUpdateRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+  string title = 3;
+  string format_type = 4;
+  repeated Scene scenes = 5;
+  repeated CtaBlock cta_blocks = 6;
+  repeated DisclosureBlock disclosure_blocks = 7;
+  int32 duration_target_seconds = 8;
+  repeated PublishTargetProfile publish_target_profiles = 9;
+  repeated string continuity_refs = 10;
+  repeated string offer_product_hooks = 11;
+  int32 expected_version = 12; // Optimistic concurrency control
+}
+
+message ScriptServiceUpdateResponse {
+  Script script = 1;
+}
+
+message ScriptServiceSubmitApprovalRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+  int32 expected_version = 3;
+  string reviewer_id = 4;
+}
+
+message ScriptServiceSubmitApprovalResponse {
+  Script script = 1;
+  string approval_request_id = 2;
+}
+
+message ScriptServiceApproveRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+  int32 expected_version = 3; // Stale approval detection (EC-M06-003)
+  google.protobuf.Timestamp reviewer_snapshot_time = 4;
+}
+
+message ScriptServiceApproveResponse {
+  Script script = 1;
+  google.protobuf.Timestamp approved_at = 2;
+}
+
+message ScriptServiceRejectRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+  string rejection_reason = 3; // Must be >= 10 chars (RULE-M06-002, EC-M06-002)
+  int32 expected_version = 4; // Stale rejection detection
+  google.protobuf.Timestamp reviewer_snapshot_time = 5;
+}
+
+message ScriptServiceRejectResponse {
+  Script script = 1;
+}
+
+message ScriptServiceListRequest {
+  string workspace_id = 1;
+  ScriptLifecycleState lifecycle_state = 2;
+  ScriptApprovalState approval_state = 3;
+  string idea_id = 4;
+  int32 limit = 5;
+  string page_token = 6;
+}
+
+message ScriptServiceListResponse {
+  repeated Script scripts = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+
+message ScriptServiceDeleteRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+}
+
+message ScriptServiceDeleteResponse {
+  bool success = 1;
+}
+
+message ScriptServiceDuplicateRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+  string target_platform = 3; // tiktok, youtube, reels (channel rewrite)
+  string new_format_type = 4;  // long_form, short_form
+  int32 adjusted_duration_seconds = 5;
+  string new_title = 6;
+}
+
+message ScriptServiceDuplicateResponse {
+  Script duplicated_script = 1;
+}
+
+message ScriptServiceGetStatsRequest {
+  string workspace_id = 1;
+}
+
+message ScriptServiceGetStatsResponse {
+  int32 total_scripts = 1;
+  int32 draft_count = 2;
+  int32 pending_approval_count = 3;
+  int32 approved_count = 4;
+  int32 ready_for_production_count = 5;
+  int32 archived_count = 6;
+}
+
+message ScriptServiceGetBriefRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+  bool create_if_missing = 3;
+  string output_type = 4;
+  string target_format = 5;
+  int32 target_duration_seconds = 6;
+  string continuity_requirements_json = 7;
+  string brand_voice_requirements_json = 8;
+  string production_instructions = 9;
+}
+
+message ScriptServiceGetBriefResponse {
+  AssetBrief asset_brief = 1;
+  bool ready_for_production = 2;
+}
+
+message ScriptServiceGetReviewRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+}
+
+message ScriptServiceGetReviewResponse {
+  string script_id = 1;
+  ScriptApprovalState approval_state = 2;
+  string rejection_reason = 3;
+  string approved_by = 4;
+  repeated ScriptReviewComment comments = 5;
+}
+
+message ScriptServiceSubmitReviewRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+  string review_notes = 3;
+}
+
+message ScriptServiceSubmitReviewResponse {
+  bool success = 1;
+}
+
+message ScriptServiceRequestChangesRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+  string feedback = 3; // >= 10 chars
+  int32 expected_version = 4;
+}
+
+message ScriptServiceRequestChangesResponse {
+  Script script = 1;
+}
+
+message ScriptServiceAddSectionRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+  Scene scene = 3;
+}
+
+message ScriptServiceAddSectionResponse {
+  Script script = 1;
+}
+
+message ScriptServiceUpdateSectionRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+  Scene scene = 3;
+}
+
+message ScriptServiceUpdateSectionResponse {
+  Script script = 1;
+}
+
+message ScriptServiceDeleteSectionRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+  string scene_id = 3;
+}
+
+message ScriptServiceDeleteSectionResponse {
+  Script script = 1;
+}
+
+message ScriptServiceReorderSectionsRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+  repeated string scene_ids_in_order = 3;
+}
+
+message ScriptServiceReorderSectionsResponse {
+  Script script = 1;
+}
+
+message ScriptServiceAddCommentRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+  string content = 3;
+  int32 scene_index = 4;
+}
+
+message ScriptServiceAddCommentResponse {
+  ScriptReviewComment comment = 1;
+}
+
+message ScriptServiceResolveCommentRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+  string comment_id = 3;
+}
+
+message ScriptServiceResolveCommentResponse {
+  bool success = 1;
+}
+
+message ScriptServiceGetVersionRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+  int32 version_index = 3;
+}
+
+message ScriptServiceGetVersionResponse {
+  ScriptVersion version = 1;
+}
+
+message ScriptServiceListVersionsRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+}
+
+message ScriptServiceListVersionsResponse {
+  repeated ScriptVersion versions = 1;
+}
+
+message ScriptServiceRestoreVersionRequest {
+  string workspace_id = 1;
+  string script_id = 2;
+  int32 version_index = 3;
+}
+
+message ScriptServiceRestoreVersionResponse {
+  Script script = 1;
+}
+
+// ScriptService manages script authoring, approval workflows, version compare, and asset brief conversion (M06).
+service ScriptService {
+  rpc Create(ScriptServiceCreateRequest) returns (ScriptServiceCreateResponse);
+  rpc Get(ScriptServiceGetRequest) returns (ScriptServiceGetResponse);
+  rpc Update(ScriptServiceUpdateRequest) returns (ScriptServiceUpdateResponse);
+  rpc SubmitApproval(ScriptServiceSubmitApprovalRequest) returns (ScriptServiceSubmitApprovalResponse);
+  rpc Approve(ScriptServiceApproveRequest) returns (ScriptServiceApproveResponse);
+  rpc Reject(ScriptServiceRejectRequest) returns (ScriptServiceRejectResponse);
+  rpc List(ScriptServiceListRequest) returns (ScriptServiceListResponse);
+  rpc Delete(ScriptServiceDeleteRequest) returns (ScriptServiceDeleteResponse);
+  rpc Duplicate(ScriptServiceDuplicateRequest) returns (ScriptServiceDuplicateResponse);
+  rpc GetStats(ScriptServiceGetStatsRequest) returns (ScriptServiceGetStatsResponse);
+  rpc GetBrief(ScriptServiceGetBriefRequest) returns (ScriptServiceGetBriefResponse);
+  rpc GetReview(ScriptServiceGetReviewRequest) returns (ScriptServiceGetReviewResponse);
+  rpc SubmitReview(ScriptServiceSubmitReviewRequest) returns (ScriptServiceSubmitReviewResponse);
+  rpc RequestChanges(ScriptServiceRequestChangesRequest) returns (ScriptServiceRequestChangesResponse);
+  rpc AddSection(ScriptServiceAddSectionRequest) returns (ScriptServiceAddSectionResponse);
+  rpc UpdateSection(ScriptServiceUpdateSectionRequest) returns (ScriptServiceUpdateSectionResponse);
+  rpc DeleteSection(ScriptServiceDeleteSectionRequest) returns (ScriptServiceDeleteSectionResponse);
+  rpc ReorderSections(ScriptServiceReorderSectionsRequest) returns (ScriptServiceReorderSectionsResponse);
+  rpc AddComment(ScriptServiceAddCommentRequest) returns (ScriptServiceAddCommentResponse);
+  rpc ResolveComment(ScriptServiceResolveCommentRequest) returns (ScriptServiceResolveCommentResponse);
+  rpc GetVersion(ScriptServiceGetVersionRequest) returns (ScriptServiceGetVersionResponse);
+  rpc ListVersions(ScriptServiceListVersionsRequest) returns (ScriptServiceListVersionsResponse);
+  rpc RestoreVersion(ScriptServiceRestoreVersionRequest) returns (ScriptServiceRestoreVersionResponse);
+}

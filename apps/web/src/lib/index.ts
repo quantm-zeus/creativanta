@@ -13,3 +13,4 @@ export { default as UnavailableNotice } from './components/UnavailableNotice.sve
 export { default as AuthStatus } from './components/AuthStatus.svelte';
 export * from './auth';
 export * from './capability';
+export * from './script';
