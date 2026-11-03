@@ -9,9 +9,10 @@ import (
 
 // PackagingQAManager implements M10 Packaging QA / Upload Copilot / Experiment Lab.
 // Canonical Sources: docs/02_features/production/packaging_qa.md
-//                    docs/04_contracts/rpc_permission_bindings.csv (rows 244-250)
-//                    docs/04_contracts/database_schema.md (§8.1, §22.9)
-//                    docs/00_index/OPEN_BLOCKERS.md (SAFE-2026-02)
+//
+//	docs/04_contracts/rpc_permission_bindings.csv (rows 244-250)
+//	docs/04_contracts/database_schema.md (§8.1, §22.9)
+//	docs/00_index/OPEN_BLOCKERS.md (SAFE-2026-02)
 type PackagingQAManager struct {
 	store Store
 }

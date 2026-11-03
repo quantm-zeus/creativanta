@@ -563,22 +563,22 @@ func TestABExperimentInconclusiveUnderEvidenceThreshold(t *testing.T) {
 
 	// Case 1: Under 1000 impressions -> Inconclusive
 	dLowA := &DerivativeRecord{
-		AssetID:        "deriv-low-a",
-		WorkspaceID:    "ws-test-01",
-		Title:          "Low Variant A",
-		Views:          400,
-		CTR:            0.05,
-		CreatedAt:      time.Now().UTC(),
-		UpdatedAt:      time.Now().UTC(),
+		AssetID:     "deriv-low-a",
+		WorkspaceID: "ws-test-01",
+		Title:       "Low Variant A",
+		Views:       400,
+		CTR:         0.05,
+		CreatedAt:   time.Now().UTC(),
+		UpdatedAt:   time.Now().UTC(),
 	}
 	dLowB := &DerivativeRecord{
-		AssetID:        "deriv-low-b",
-		WorkspaceID:    "ws-test-01",
-		Title:          "Low Variant B",
-		Views:          450,
-		CTR:            0.08,
-		CreatedAt:      time.Now().UTC(),
-		UpdatedAt:      time.Now().UTC(),
+		AssetID:     "deriv-low-b",
+		WorkspaceID: "ws-test-01",
+		Title:       "Low Variant B",
+		Views:       450,
+		CTR:         0.08,
+		CreatedAt:   time.Now().UTC(),
+		UpdatedAt:   time.Now().UTC(),
 	}
 	_ = st.SaveDerivative(ctx, dLowA)
 	_ = st.SaveDerivative(ctx, dLowB)
@@ -612,22 +612,22 @@ func TestABExperimentInconclusiveUnderEvidenceThreshold(t *testing.T) {
 
 	// Case 2: Over 1000 impressions with clear statistical lift -> Conclusive winner
 	dHighA := &DerivativeRecord{
-		AssetID:        "deriv-high-a",
-		WorkspaceID:    "ws-test-01",
-		Title:          "High Variant A",
-		Views:          2000,
-		CTR:            0.05,
-		CreatedAt:      time.Now().UTC(),
-		UpdatedAt:      time.Now().UTC(),
+		AssetID:     "deriv-high-a",
+		WorkspaceID: "ws-test-01",
+		Title:       "High Variant A",
+		Views:       2000,
+		CTR:         0.05,
+		CreatedAt:   time.Now().UTC(),
+		UpdatedAt:   time.Now().UTC(),
 	}
 	dHighB := &DerivativeRecord{
-		AssetID:        "deriv-high-b",
-		WorkspaceID:    "ws-test-01",
-		Title:          "High Variant B",
-		Views:          2200,
-		CTR:            0.10, // 100% lift
-		CreatedAt:      time.Now().UTC(),
-		UpdatedAt:      time.Now().UTC(),
+		AssetID:     "deriv-high-b",
+		WorkspaceID: "ws-test-01",
+		Title:       "High Variant B",
+		Views:       2200,
+		CTR:         0.10, // 100% lift
+		CreatedAt:   time.Now().UTC(),
+		UpdatedAt:   time.Now().UTC(),
 	}
 	_ = st.SaveDerivative(ctx, dHighA)
 	_ = st.SaveDerivative(ctx, dHighB)

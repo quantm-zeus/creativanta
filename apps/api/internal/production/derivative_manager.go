@@ -18,8 +18,9 @@ func newUUID() string {
 
 // DerivativeManager implements M09 Asset Derivative Manager / Repurpose Hub.
 // Canonical Sources: docs/02_features/production/asset_derivatives.md
-//                    docs/04_contracts/rpc_permission_bindings.csv (rows 237-243)
-//                    docs/04_contracts/domain_event_catalog.md (§5)
+//
+//	docs/04_contracts/rpc_permission_bindings.csv (rows 237-243)
+//	docs/04_contracts/domain_event_catalog.md (§5)
 type DerivativeManager struct {
 	store Store
 }
@@ -328,21 +329,21 @@ func (m *DerivativeManager) Promote(ctx context.Context, caller CallerContext, a
 // HandleClipExtracted auto-ingests extracted clips from M07 within 5s per RULE-M09-005.
 func (m *DerivativeManager) HandleClipExtracted(ctx context.Context, workspaceID, sourceAssetID, clipAssetID, title string, clipIndex int) (*DerivativeRecord, error) {
 	record := &DerivativeRecord{
-		AssetID:          clipAssetID,
-		WorkspaceID:      workspaceID,
-		ParentAssetID:    sourceAssetID,
-		Title:            title,
-		DerivativeType:   "clip",
-		TargetChannel:    "tiktok",
-		AspectRatio:      "9:16",
-		DurationSeconds:  15.0,
-		Resolution:       "1080x1920",
-		FileURL:          fmt.Sprintf("https://cdn.creativanta.test/clips/%s.mp4", clipAssetID),
-		QualityState:     "draft",
-		GenerationState:  "generated",
-		Tags:             []string{"auto-clip", fmt.Sprintf("clip-%d", clipIndex)},
-		CreatedAt:        time.Now().UTC(),
-		UpdatedAt:        time.Now().UTC(),
+		AssetID:         clipAssetID,
+		WorkspaceID:     workspaceID,
+		ParentAssetID:   sourceAssetID,
+		Title:           title,
+		DerivativeType:  "clip",
+		TargetChannel:   "tiktok",
+		AspectRatio:     "9:16",
+		DurationSeconds: 15.0,
+		Resolution:      "1080x1920",
+		FileURL:         fmt.Sprintf("https://cdn.creativanta.test/clips/%s.mp4", clipAssetID),
+		QualityState:    "draft",
+		GenerationState: "generated",
+		Tags:            []string{"auto-clip", fmt.Sprintf("clip-%d", clipIndex)},
+		CreatedAt:       time.Now().UTC(),
+		UpdatedAt:       time.Now().UTC(),
 	}
 	if err := m.store.SaveDerivative(ctx, record); err != nil {
 		return nil, err

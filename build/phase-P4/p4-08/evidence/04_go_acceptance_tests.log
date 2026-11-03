@@ -24,64 +24,14 @@
 --- PASS: TestAcceptanceTarget3_HardBlocksCannotBeWorkspaceOverridden (0.00s)
 === RUN   TestLineageTreeInspectionAndSourceDeletion
 --- PASS: TestLineageTreeInspectionAndSourceDeletion (0.00s)
-=== RUN   TestDerivativePerformanceStatsAggregation
---- PASS: TestDerivativePerformanceStatsAggregation (0.00s)
 === RUN   TestABExperimentInconclusiveUnderEvidenceThreshold
 --- PASS: TestABExperimentInconclusiveUnderEvidenceThreshold (0.00s)
-=== RUN   TestConnectRPC_DerivativeAndPackagingHandlers
---- PASS: TestConnectRPC_DerivativeAndPackagingHandlers (0.00s)
 === RUN   TestAcceptanceTarget1_ConsentRequired
 --- PASS: TestAcceptanceTarget1_ConsentRequired (0.00s)
 === RUN   TestAcceptanceTarget2_LanguageVoiceQualityRepair
 --- PASS: TestAcceptanceTarget2_LanguageVoiceQualityRepair (0.00s)
 === RUN   TestAcceptanceTarget3_LicensedInputAndMeasuredQuote
 --- PASS: TestAcceptanceTarget3_LicensedInputAndMeasuredQuote (0.00s)
-=== RUN   TestRemixOriginality_OneCanonicalThreshold
---- PASS: TestRemixOriginality_OneCanonicalThreshold (0.00s)
-=== RUN   TestRemixOriginality_PassBelow30Percent
---- PASS: TestRemixOriginality_PassBelow30Percent (0.00s)
-=== RUN   TestRemixOriginality_BlockAtOrAbove30Percent
---- PASS: TestRemixOriginality_BlockAtOrAbove30Percent (0.00s)
-=== RUN   TestRemixOriginality_ExactBoundary
---- PASS: TestRemixOriginality_ExactBoundary (0.00s)
-=== RUN   TestMultiMerge_UnlicensedCopyrightBlocked
---- PASS: TestMultiMerge_UnlicensedCopyrightBlocked (0.00s)
-=== RUN   TestMultiMerge_LicensedAudioAllowed
---- PASS: TestMultiMerge_LicensedAudioAllowed (0.00s)
-=== RUN   TestMultiMerge_TierLimits
---- PASS: TestMultiMerge_TierLimits (0.00s)
-=== RUN   TestMultiMerge_AutoTransitions
---- PASS: TestMultiMerge_AutoTransitions (0.00s)
-=== RUN   TestRemix_DRMProtectedURLError
---- PASS: TestRemix_DRMProtectedURLError (0.00s)
-=== RUN   TestRemix_GeoBlockedURLError
---- PASS: TestRemix_GeoBlockedURLError (0.00s)
-=== RUN   TestRemix_SSRFPrevention
---- PASS: TestRemix_SSRFPrevention (0.00s)
-=== RUN   TestVideoEditJob_LifecycleAndCancelRefund
---- PASS: TestVideoEditJob_LifecycleAndCancelRefund (0.00s)
-=== RUN   TestASRRepairAndFallback_AcceptanceTarget1
---- PASS: TestASRRepairAndFallback_AcceptanceTarget1 (0.00s)
-=== RUN   TestAspectAudioSubtitlesBeatCopyright_AcceptanceTarget2
---- PASS: TestAspectAudioSubtitlesBeatCopyright_AcceptanceTarget2 (0.00s)
-=== RUN   TestDeletedTextMappingAndZeroDrift_AcceptanceTarget3
---- PASS: TestDeletedTextMappingAndZeroDrift_AcceptanceTarget3 (0.00s)
-=== RUN   TestQuickEditServiceAndHooks
---- PASS: TestQuickEditServiceAndHooks (0.00s)
-=== RUN   TestQuickEditConcurrency
---- PASS: TestQuickEditConcurrency (0.00s)
-=== RUN   TestCancelAndRecovery
---- PASS: TestCancelAndRecovery (0.00s)
-=== RUN   TestFallbackNoDoubleCharge
---- PASS: TestFallbackNoDoubleCharge (0.00s)
-=== RUN   TestBudgetPreviewAndPartialBatchValidation
---- PASS: TestBudgetPreviewAndPartialBatchValidation (0.00s)
-=== RUN   TestFFmpegAllowlistAndSecurity
---- PASS: TestFFmpegAllowlistAndSecurity (0.00s)
-=== RUN   TestRBACPermissionEnforcement
---- PASS: TestRBACPermissionEnforcement (0.00s)
-=== RUN   TestUploadSafety
---- PASS: TestUploadSafety (0.00s)
 === RUN   TestAcceptanceTarget1_AllListedStylesAndOptions
 === RUN   TestAcceptanceTarget1_AllListedStylesAndOptions/EF-01:_All_8_Showcase_styles_supported_with_credit_quotes
 === RUN   TestAcceptanceTarget1_AllListedStylesAndOptions/EF-02:_Image-to-Video_6_motion_styles_+_presets,_durations_3-15s,_loop_and_tiers
@@ -106,35 +56,5 @@
     --- PASS: TestAcceptanceTarget3_MissingProductAttributesExplained/Showcase:_Missing_photos,_360_spin_with_<_8_images,_and_missing_description (0.00s)
     --- PASS: TestAcceptanceTarget3_MissingProductAttributesExplained/Batch_Mode:_20-product_batch_with_1_invalid_row_allows_confirming_valid_rows_only (0.00s)
     --- PASS: TestAcceptanceTarget3_MissingProductAttributesExplained/Link-to-Video:_Scraped_product_missing_attributes_explanation (0.00s)
-=== RUN   TestShowcaseAndLinkToVideoPermissionsAndIsolation
-=== RUN   TestShowcaseAndLinkToVideoPermissionsAndIsolation/Viewer_role_cannot_create_showcase_(Editor+_required)
-=== RUN   TestShowcaseAndLinkToVideoPermissionsAndIsolation/Viewer_role_cannot_scrape_link-to-video_(Editor+_required)
-=== RUN   TestShowcaseAndLinkToVideoPermissionsAndIsolation/Cross-tenant_isolation:_Cannot_read_jobs_from_another_workspace
---- PASS: TestShowcaseAndLinkToVideoPermissionsAndIsolation (0.00s)
-    --- PASS: TestShowcaseAndLinkToVideoPermissionsAndIsolation/Viewer_role_cannot_create_showcase_(Editor+_required) (0.00s)
-    --- PASS: TestShowcaseAndLinkToVideoPermissionsAndIsolation/Viewer_role_cannot_scrape_link-to-video_(Editor+_required) (0.00s)
-    --- PASS: TestShowcaseAndLinkToVideoPermissionsAndIsolation/Cross-tenant_isolation:_Cannot_read_jobs_from_another_workspace (0.00s)
 PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/production	1.074s
-=== RUN   TestLoadAndValidateCanonicalP004Migration
---- PASS: TestLoadAndValidateCanonicalP004Migration (0.48s)
-=== RUN   TestValidateCanonicalMigrationContractRejectsViolations
-=== RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_GRANT_ALL
-=== RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_FLOAT_or_REAL_on_money_or_credit_column_(DB-H-001)
-=== RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_FORCE_ROW_LEVEL_SECURITY_on_junction_table
-=== RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_composite_tenant_FK
---- PASS: TestValidateCanonicalMigrationContractRejectsViolations (0.44s)
-    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_GRANT_ALL (0.03s)
-    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_FLOAT_or_REAL_on_money_or_credit_column_(DB-H-001) (0.13s)
-    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_FORCE_ROW_LEVEL_SECURITY_on_junction_table (0.13s)
-    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_composite_tenant_FK (0.13s)
-=== RUN   TestUpStatusDownTransactionalBehavior
---- PASS: TestUpStatusDownTransactionalBehavior (2.47s)
-=== RUN   TestPostgresLiveMigrationAndAppUserRLS
-    migrator_test.go:692: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL 17.10 migration & RLS suite executes in CI
---- SKIP: TestPostgresLiveMigrationAndAppUserRLS (0.00s)
-=== RUN   TestPostgresSeedTwiceIdempotency
-    migrator_test.go:1570: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL seed twice idempotency suite executes in CI
---- SKIP: TestPostgresSeedTwiceIdempotency (0.00s)
-PASS
-ok  	github.com/quantm-zeus/creativanta/apps/api/internal/migrate	(cached)
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/production	1.081s
