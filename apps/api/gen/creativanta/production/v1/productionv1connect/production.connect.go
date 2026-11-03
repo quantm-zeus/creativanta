@@ -25,6 +25,8 @@ const (
 	StudioServiceName = "creativanta.production.v1.StudioService"
 	// AssetServiceName is the fully-qualified name of the AssetService service.
 	AssetServiceName = "creativanta.production.v1.AssetService"
+	// QuickEditServiceName is the fully-qualified name of the QuickEditService service.
+	QuickEditServiceName = "creativanta.production.v1.QuickEditService"
 	// TranslationServiceName is the fully-qualified name of the TranslationService service.
 	TranslationServiceName = "creativanta.production.v1.TranslationService"
 	// SoundStudioServiceName is the fully-qualified name of the SoundStudioService service.
@@ -82,6 +84,9 @@ const (
 	// AssetServiceOverrideDriftViolationProcedure is the fully-qualified name of the AssetService's
 	// OverrideDriftViolation RPC.
 	AssetServiceOverrideDriftViolationProcedure = "/creativanta.production.v1.AssetService/OverrideDriftViolation"
+	// QuickEditServiceSaveDraftProcedure is the fully-qualified name of the QuickEditService's
+	// SaveDraft RPC.
+	QuickEditServiceSaveDraftProcedure = "/creativanta.production.v1.QuickEditService/SaveDraft"
 	// TranslationServiceCreateProcedure is the fully-qualified name of the TranslationService's Create
 	// RPC.
 	TranslationServiceCreateProcedure = "/creativanta.production.v1.TranslationService/Create"
@@ -647,6 +652,79 @@ func (UnimplementedAssetServiceHandler) EvaluateDrift(context.Context, *connect.
 
 func (UnimplementedAssetServiceHandler) OverrideDriftViolation(context.Context, *connect.Request[v1.OverrideDriftViolationRequest]) (*connect.Response[v1.OverrideDriftViolationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.AssetService.OverrideDriftViolation is not implemented"))
+}
+
+// QuickEditServiceClient is a client for the creativanta.production.v1.QuickEditService service.
+type QuickEditServiceClient interface {
+	// SaveDraft persists an in-progress quick edit draft.
+	SaveDraft(context.Context, *connect.Request[v1.QuickEditServiceSaveDraftRequest]) (*connect.Response[v1.QuickEditServiceSaveDraftResponse], error)
+}
+
+// NewQuickEditServiceClient constructs a client for the creativanta.production.v1.QuickEditService
+// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
+// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
+// the connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewQuickEditServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) QuickEditServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	quickEditServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("QuickEditService").Methods()
+	return &quickEditServiceClient{
+		saveDraft: connect.NewClient[v1.QuickEditServiceSaveDraftRequest, v1.QuickEditServiceSaveDraftResponse](
+			httpClient,
+			baseURL+QuickEditServiceSaveDraftProcedure,
+			connect.WithSchema(quickEditServiceMethods.ByName("SaveDraft")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// quickEditServiceClient implements QuickEditServiceClient.
+type quickEditServiceClient struct {
+	saveDraft *connect.Client[v1.QuickEditServiceSaveDraftRequest, v1.QuickEditServiceSaveDraftResponse]
+}
+
+// SaveDraft calls creativanta.production.v1.QuickEditService.SaveDraft.
+func (c *quickEditServiceClient) SaveDraft(ctx context.Context, req *connect.Request[v1.QuickEditServiceSaveDraftRequest]) (*connect.Response[v1.QuickEditServiceSaveDraftResponse], error) {
+	return c.saveDraft.CallUnary(ctx, req)
+}
+
+// QuickEditServiceHandler is an implementation of the creativanta.production.v1.QuickEditService
+// service.
+type QuickEditServiceHandler interface {
+	// SaveDraft persists an in-progress quick edit draft.
+	SaveDraft(context.Context, *connect.Request[v1.QuickEditServiceSaveDraftRequest]) (*connect.Response[v1.QuickEditServiceSaveDraftResponse], error)
+}
+
+// NewQuickEditServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewQuickEditServiceHandler(svc QuickEditServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	quickEditServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("QuickEditService").Methods()
+	quickEditServiceSaveDraftHandler := connect.NewUnaryHandler(
+		QuickEditServiceSaveDraftProcedure,
+		svc.SaveDraft,
+		connect.WithSchema(quickEditServiceMethods.ByName("SaveDraft")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.production.v1.QuickEditService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case QuickEditServiceSaveDraftProcedure:
+			quickEditServiceSaveDraftHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedQuickEditServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedQuickEditServiceHandler struct{}
+
+func (UnimplementedQuickEditServiceHandler) SaveDraft(context.Context, *connect.Request[v1.QuickEditServiceSaveDraftRequest]) (*connect.Response[v1.QuickEditServiceSaveDraftResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.QuickEditService.SaveDraft is not implemented"))
 }
 
 // TranslationServiceClient is a client for the creativanta.production.v1.TranslationService

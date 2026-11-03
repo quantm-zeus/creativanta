@@ -35,6 +35,9 @@ type Service struct {
 	router      *PipelineRouter
 	budgetCalc  *BudgetCalculator
 	postProd    *PostProductionExecutor
+	asrEngine   *ASREngine
+	cutEngine   *CutEngine
+	enhancer    *EnhancerEngine
 	balances    map[string]tenantdb.ExactDecimal // workspaceID -> available credits
 	mockRefunds map[string]tenantdb.ExactDecimal // jobID -> refunded credits
 	events      []DomainEvent
@@ -100,6 +103,9 @@ func NewService(cfg ServiceConfig) *Service {
 		router:      NewPipelineRouter(prim, fall),
 		budgetCalc:  NewBudgetCalculator(),
 		postProd:    pp,
+		asrEngine:   NewASREngine(),
+		cutEngine:   NewCutEngine(80),
+		enhancer:    NewEnhancerEngine(st),
 		balances:    bal,
 		mockRefunds: make(map[string]tenantdb.ExactDecimal),
 	}
@@ -110,6 +116,21 @@ func NewService(cfg ServiceConfig) *Service {
 	svc.AIService = NewAIOpsManager(st, svc)
 	svc.DriftQA = NewDriftQAManager(st, svc)
 	return svc
+}
+
+// ASREngine returns the configured ASREngine.
+func (s *Service) ASREngine() *ASREngine {
+	return s.asrEngine
+}
+
+// CutEngine returns the configured CutEngine.
+func (s *Service) CutEngine() *CutEngine {
+	return s.cutEngine
+}
+
+// EnhancerEngine returns the configured EnhancerEngine.
+func (s *Service) EnhancerEngine() *EnhancerEngine {
+	return s.enhancer
 }
 
 // SetWorkspaceBalance overrides the simulated credit balance for a workspace.

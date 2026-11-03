@@ -432,6 +432,151 @@ service AssetService {
 }
 
 // ============================================================================
+// Quick Edit Data Types & Services (M07 Mode 1)
+// ============================================================================
+
+enum TranscriptAlignmentStatus {
+  TRANSCRIPT_ALIGNMENT_STATUS_UNSPECIFIED = 0;
+  TRANSCRIPT_ALIGNMENT_STATUS_AUTO_ALIGNED = 1;
+  TRANSCRIPT_ALIGNMENT_STATUS_REPAIRED = 2;
+  TRANSCRIPT_ALIGNMENT_STATUS_MANUAL_FALLBACK = 3;
+  TRANSCRIPT_ALIGNMENT_STATUS_FAILED = 4;
+}
+
+message TranscriptWord {
+  string word_id = 1;
+  string text = 2;
+  int64 start_ms = 3;
+  int64 end_ms = 4;
+  double confidence = 5;
+  bool is_filler = 6;
+  string filler_type = 7;
+  bool is_deleted = 8;
+}
+
+message TranscriptSegment {
+  string segment_id = 1;
+  int64 start_ms = 2;
+  int64 end_ms = 3;
+  string text = 4;
+  string speaker_id = 5;
+}
+
+message Transcript {
+  string transcript_id = 1;
+  creativanta.common.v1.UUID workspace_id = 2;
+  string asset_id = 3;
+  string language = 4;
+  string raw_text = 5;
+  repeated TranscriptWord words = 6;
+  repeated TranscriptSegment segments = 7;
+  int32 filler_count = 8;
+  int32 pause_count = 9;
+  TranscriptAlignmentStatus alignment_status = 10;
+  string alignment_error = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+message DeadPause {
+  int64 start_ms = 1;
+  int64 end_ms = 2;
+  int64 duration_ms = 3;
+}
+
+message TranscriptAnalysis {
+  int32 filler_count = 1;
+  int32 pause_count = 2;
+  double hook_quality_score = 3;
+  int64 estimated_time_saved_ms = 4;
+  int64 final_duration_ms = 5;
+  repeated string detected_fillers = 6;
+  repeated DeadPause dead_pauses = 7;
+  string hook_feedback = 8;
+}
+
+message TranscriptCorrection {
+  string word_id = 1;
+  string corrected_text = 2;
+  int64 new_start_ms = 3;
+  int64 new_end_ms = 4;
+  bool mark_cut = 5;
+}
+
+message CutInterval {
+  int64 start_ms = 1;
+  int64 end_ms = 2;
+  string reason = 3;
+}
+
+message QuickEditAddons {
+  bool auto_captions = 1;
+  string caption_style = 2;
+  bool add_hook = 3;
+  string hook_id = 4;
+  string hook_type = 5;
+  bool beat_sync = 6;
+  string sound_id = 7;
+  bool b_roll = 8;
+  string b_roll_scene = 9;
+  string platform_preset = 10;
+  bool audio_enhancement = 11;
+  double target_lufs = 12;
+  string reframe_ratio = 13;
+}
+
+message QuickEditPlan {
+  string asset_id = 1;
+  string transcript_id = 2;
+  repeated CutInterval cuts = 3;
+  QuickEditAddons addons = 4;
+  string estimated_credits = 5;
+  string balance_after_credits = 6;
+}
+
+message QuickEditDraft {
+  string draft_id = 1;
+  creativanta.common.v1.UUID workspace_id = 2;
+  string asset_id = 3;
+  string transcript_id = 4;
+  string name = 5;
+  repeated CutInterval cuts = 6;
+  QuickEditAddons addons = 7;
+  string estimated_credits = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+message QuickEditServiceSaveDraftRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string draft_id = 2;
+  string asset_id = 3;
+  string transcript_id = 4;
+  string name = 5;
+  repeated CutInterval cuts = 6;
+  QuickEditAddons addons = 7;
+  string estimated_credits = 8;
+}
+
+message QuickEditServiceSaveDraftResponse {
+  QuickEditDraft draft = 1;
+}
+
+message BeatSyncGrid {
+  int32 bpm = 1;
+  repeated int64 beat_timestamps_ms = 2;
+  repeated int64 downbeat_timestamps_ms = 3;
+  double confidence = 4;
+}
+
+// QuickEditService manages Quick Edit drafts and text-based timeline editing.
+service QuickEditService {
+  // SaveDraft persists an in-progress quick edit draft.
+  rpc SaveDraft(QuickEditServiceSaveDraftRequest) returns (QuickEditServiceSaveDraftResponse);
+}
+
+
+// ============================================================================
 // Translation & Localization Messages (M07 EF-05)
 // ============================================================================
 

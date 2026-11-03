@@ -190,6 +190,26 @@ final $typed_data.Uint8List videoEditJobStatusDescriptor = $convert.base64Decode
     'RU9fRURJVF9KT0JfU1RBVFVTX0ZBSUxFRBAFEiMKH1ZJREVPX0VESVRfSk9CX1NUQVRVU19DQU'
     '5DRUxMRUQQBg==');
 
+@$core.Deprecated('Use transcriptAlignmentStatusDescriptor instead')
+const TranscriptAlignmentStatus$json = {
+  '1': 'TranscriptAlignmentStatus',
+  '2': [
+    {'1': 'TRANSCRIPT_ALIGNMENT_STATUS_UNSPECIFIED', '2': 0},
+    {'1': 'TRANSCRIPT_ALIGNMENT_STATUS_AUTO_ALIGNED', '2': 1},
+    {'1': 'TRANSCRIPT_ALIGNMENT_STATUS_REPAIRED', '2': 2},
+    {'1': 'TRANSCRIPT_ALIGNMENT_STATUS_MANUAL_FALLBACK', '2': 3},
+    {'1': 'TRANSCRIPT_ALIGNMENT_STATUS_FAILED', '2': 4},
+  ],
+};
+
+/// Descriptor for `TranscriptAlignmentStatus`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List transcriptAlignmentStatusDescriptor = $convert.base64Decode(
+    'ChlUcmFuc2NyaXB0QWxpZ25tZW50U3RhdHVzEisKJ1RSQU5TQ1JJUFRfQUxJR05NRU5UX1NUQV'
+    'RVU19VTlNQRUNJRklFRBAAEiwKKFRSQU5TQ1JJUFRfQUxJR05NRU5UX1NUQVRVU19BVVRPX0FM'
+    'SUdORUQQARIoCiRUUkFOU0NSSVBUX0FMSUdOTUVOVF9TVEFUVVNfUkVQQUlSRUQQAhIvCitUUk'
+    'FOU0NSSVBUX0FMSUdOTUVOVF9TVEFUVVNfTUFOVUFMX0ZBTExCQUNLEAMSJgoiVFJBTlNDUklQ'
+    'VF9BTElHTk1FTlRfU1RBVFVTX0ZBSUxFRBAE');
+
 @$core.Deprecated('Use productionModeInfoDescriptor instead')
 const ProductionModeInfo$json = {
   '1': 'ProductionModeInfo',
@@ -1379,6 +1399,474 @@ final $typed_data.Uint8List uploadResponseDescriptor = $convert.base64Decode(
     'VfdXJsGAIgASgJUgpzdG9yYWdlVXJsEioKEXZpcnVzX3NjYW5fc3RhdHVzGAMgASgJUg92aXJ1'
     'c1NjYW5TdGF0dXMSNgoFYXNzZXQYBCABKAsyIC5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLk'
     'Fzc2V0UgVhc3NldA==');
+
+@$core.Deprecated('Use transcriptWordDescriptor instead')
+const TranscriptWord$json = {
+  '1': 'TranscriptWord',
+  '2': [
+    {'1': 'word_id', '3': 1, '4': 1, '5': 9, '10': 'wordId'},
+    {'1': 'text', '3': 2, '4': 1, '5': 9, '10': 'text'},
+    {'1': 'start_ms', '3': 3, '4': 1, '5': 3, '10': 'startMs'},
+    {'1': 'end_ms', '3': 4, '4': 1, '5': 3, '10': 'endMs'},
+    {'1': 'confidence', '3': 5, '4': 1, '5': 1, '10': 'confidence'},
+    {'1': 'is_filler', '3': 6, '4': 1, '5': 8, '10': 'isFiller'},
+    {'1': 'filler_type', '3': 7, '4': 1, '5': 9, '10': 'fillerType'},
+    {'1': 'is_deleted', '3': 8, '4': 1, '5': 8, '10': 'isDeleted'},
+  ],
+};
+
+/// Descriptor for `TranscriptWord`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List transcriptWordDescriptor = $convert.base64Decode(
+    'Cg5UcmFuc2NyaXB0V29yZBIXCgd3b3JkX2lkGAEgASgJUgZ3b3JkSWQSEgoEdGV4dBgCIAEoCV'
+    'IEdGV4dBIZCghzdGFydF9tcxgDIAEoA1IHc3RhcnRNcxIVCgZlbmRfbXMYBCABKANSBWVuZE1z'
+    'Eh4KCmNvbmZpZGVuY2UYBSABKAFSCmNvbmZpZGVuY2USGwoJaXNfZmlsbGVyGAYgASgIUghpc0'
+    'ZpbGxlchIfCgtmaWxsZXJfdHlwZRgHIAEoCVIKZmlsbGVyVHlwZRIdCgppc19kZWxldGVkGAgg'
+    'ASgIUglpc0RlbGV0ZWQ=');
+
+@$core.Deprecated('Use transcriptSegmentDescriptor instead')
+const TranscriptSegment$json = {
+  '1': 'TranscriptSegment',
+  '2': [
+    {'1': 'segment_id', '3': 1, '4': 1, '5': 9, '10': 'segmentId'},
+    {'1': 'start_ms', '3': 2, '4': 1, '5': 3, '10': 'startMs'},
+    {'1': 'end_ms', '3': 3, '4': 1, '5': 3, '10': 'endMs'},
+    {'1': 'text', '3': 4, '4': 1, '5': 9, '10': 'text'},
+    {'1': 'speaker_id', '3': 5, '4': 1, '5': 9, '10': 'speakerId'},
+  ],
+};
+
+/// Descriptor for `TranscriptSegment`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List transcriptSegmentDescriptor = $convert.base64Decode(
+    'ChFUcmFuc2NyaXB0U2VnbWVudBIdCgpzZWdtZW50X2lkGAEgASgJUglzZWdtZW50SWQSGQoIc3'
+    'RhcnRfbXMYAiABKANSB3N0YXJ0TXMSFQoGZW5kX21zGAMgASgDUgVlbmRNcxISCgR0ZXh0GAQg'
+    'ASgJUgR0ZXh0Eh0KCnNwZWFrZXJfaWQYBSABKAlSCXNwZWFrZXJJZA==');
+
+@$core.Deprecated('Use transcriptDescriptor instead')
+const Transcript$json = {
+  '1': 'Transcript',
+  '2': [
+    {'1': 'transcript_id', '3': 1, '4': 1, '5': 9, '10': 'transcriptId'},
+    {
+      '1': 'workspace_id',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'asset_id', '3': 3, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'language', '3': 4, '4': 1, '5': 9, '10': 'language'},
+    {'1': 'raw_text', '3': 5, '4': 1, '5': 9, '10': 'rawText'},
+    {
+      '1': 'words',
+      '3': 6,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.TranscriptWord',
+      '10': 'words'
+    },
+    {
+      '1': 'segments',
+      '3': 7,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.TranscriptSegment',
+      '10': 'segments'
+    },
+    {'1': 'filler_count', '3': 8, '4': 1, '5': 5, '10': 'fillerCount'},
+    {'1': 'pause_count', '3': 9, '4': 1, '5': 5, '10': 'pauseCount'},
+    {
+      '1': 'alignment_status',
+      '3': 10,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.production.v1.TranscriptAlignmentStatus',
+      '10': 'alignmentStatus'
+    },
+    {'1': 'alignment_error', '3': 11, '4': 1, '5': 9, '10': 'alignmentError'},
+    {
+      '1': 'created_at',
+      '3': 12,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+    {
+      '1': 'updated_at',
+      '3': 13,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'updatedAt'
+    },
+  ],
+};
+
+/// Descriptor for `Transcript`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List transcriptDescriptor = $convert.base64Decode(
+    'CgpUcmFuc2NyaXB0EiMKDXRyYW5zY3JpcHRfaWQYASABKAlSDHRyYW5zY3JpcHRJZBI+Cgx3b3'
+    'Jrc3BhY2VfaWQYAiABKAsyGy5jcmVhdGl2YW50YS5jb21tb24udjEuVVVJRFILd29ya3NwYWNl'
+    'SWQSGQoIYXNzZXRfaWQYAyABKAlSB2Fzc2V0SWQSGgoIbGFuZ3VhZ2UYBCABKAlSCGxhbmd1YW'
+    'dlEhkKCHJhd190ZXh0GAUgASgJUgdyYXdUZXh0Ej8KBXdvcmRzGAYgAygLMikuY3JlYXRpdmFu'
+    'dGEucHJvZHVjdGlvbi52MS5UcmFuc2NyaXB0V29yZFIFd29yZHMSSAoIc2VnbWVudHMYByADKA'
+    'syLC5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlRyYW5zY3JpcHRTZWdtZW50UghzZWdtZW50'
+    'cxIhCgxmaWxsZXJfY291bnQYCCABKAVSC2ZpbGxlckNvdW50Eh8KC3BhdXNlX2NvdW50GAkgAS'
+    'gFUgpwYXVzZUNvdW50El8KEGFsaWdubWVudF9zdGF0dXMYCiABKA4yNC5jcmVhdGl2YW50YS5w'
+    'cm9kdWN0aW9uLnYxLlRyYW5zY3JpcHRBbGlnbm1lbnRTdGF0dXNSD2FsaWdubWVudFN0YXR1cx'
+    'InCg9hbGlnbm1lbnRfZXJyb3IYCyABKAlSDmFsaWdubWVudEVycm9yEjkKCmNyZWF0ZWRfYXQY'
+    'DCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgljcmVhdGVkQXQSOQoKdXBkYXRlZF'
+    '9hdBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSCXVwZGF0ZWRBdA==');
+
+@$core.Deprecated('Use deadPauseDescriptor instead')
+const DeadPause$json = {
+  '1': 'DeadPause',
+  '2': [
+    {'1': 'start_ms', '3': 1, '4': 1, '5': 3, '10': 'startMs'},
+    {'1': 'end_ms', '3': 2, '4': 1, '5': 3, '10': 'endMs'},
+    {'1': 'duration_ms', '3': 3, '4': 1, '5': 3, '10': 'durationMs'},
+  ],
+};
+
+/// Descriptor for `DeadPause`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deadPauseDescriptor = $convert.base64Decode(
+    'CglEZWFkUGF1c2USGQoIc3RhcnRfbXMYASABKANSB3N0YXJ0TXMSFQoGZW5kX21zGAIgASgDUg'
+    'VlbmRNcxIfCgtkdXJhdGlvbl9tcxgDIAEoA1IKZHVyYXRpb25Ncw==');
+
+@$core.Deprecated('Use transcriptAnalysisDescriptor instead')
+const TranscriptAnalysis$json = {
+  '1': 'TranscriptAnalysis',
+  '2': [
+    {'1': 'filler_count', '3': 1, '4': 1, '5': 5, '10': 'fillerCount'},
+    {'1': 'pause_count', '3': 2, '4': 1, '5': 5, '10': 'pauseCount'},
+    {
+      '1': 'hook_quality_score',
+      '3': 3,
+      '4': 1,
+      '5': 1,
+      '10': 'hookQualityScore'
+    },
+    {
+      '1': 'estimated_time_saved_ms',
+      '3': 4,
+      '4': 1,
+      '5': 3,
+      '10': 'estimatedTimeSavedMs'
+    },
+    {'1': 'final_duration_ms', '3': 5, '4': 1, '5': 3, '10': 'finalDurationMs'},
+    {'1': 'detected_fillers', '3': 6, '4': 3, '5': 9, '10': 'detectedFillers'},
+    {
+      '1': 'dead_pauses',
+      '3': 7,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.DeadPause',
+      '10': 'deadPauses'
+    },
+    {'1': 'hook_feedback', '3': 8, '4': 1, '5': 9, '10': 'hookFeedback'},
+  ],
+};
+
+/// Descriptor for `TranscriptAnalysis`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List transcriptAnalysisDescriptor = $convert.base64Decode(
+    'ChJUcmFuc2NyaXB0QW5hbHlzaXMSIQoMZmlsbGVyX2NvdW50GAEgASgFUgtmaWxsZXJDb3VudB'
+    'IfCgtwYXVzZV9jb3VudBgCIAEoBVIKcGF1c2VDb3VudBIsChJob29rX3F1YWxpdHlfc2NvcmUY'
+    'AyABKAFSEGhvb2tRdWFsaXR5U2NvcmUSNQoXZXN0aW1hdGVkX3RpbWVfc2F2ZWRfbXMYBCABKA'
+    'NSFGVzdGltYXRlZFRpbWVTYXZlZE1zEioKEWZpbmFsX2R1cmF0aW9uX21zGAUgASgDUg9maW5h'
+    'bER1cmF0aW9uTXMSKQoQZGV0ZWN0ZWRfZmlsbGVycxgGIAMoCVIPZGV0ZWN0ZWRGaWxsZXJzEk'
+    'UKC2RlYWRfcGF1c2VzGAcgAygLMiQuY3JlYXRpdmFudGEucHJvZHVjdGlvbi52MS5EZWFkUGF1'
+    'c2VSCmRlYWRQYXVzZXMSIwoNaG9va19mZWVkYmFjaxgIIAEoCVIMaG9va0ZlZWRiYWNr');
+
+@$core.Deprecated('Use transcriptCorrectionDescriptor instead')
+const TranscriptCorrection$json = {
+  '1': 'TranscriptCorrection',
+  '2': [
+    {'1': 'word_id', '3': 1, '4': 1, '5': 9, '10': 'wordId'},
+    {'1': 'corrected_text', '3': 2, '4': 1, '5': 9, '10': 'correctedText'},
+    {'1': 'new_start_ms', '3': 3, '4': 1, '5': 3, '10': 'newStartMs'},
+    {'1': 'new_end_ms', '3': 4, '4': 1, '5': 3, '10': 'newEndMs'},
+    {'1': 'mark_cut', '3': 5, '4': 1, '5': 8, '10': 'markCut'},
+  ],
+};
+
+/// Descriptor for `TranscriptCorrection`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List transcriptCorrectionDescriptor = $convert.base64Decode(
+    'ChRUcmFuc2NyaXB0Q29ycmVjdGlvbhIXCgd3b3JkX2lkGAEgASgJUgZ3b3JkSWQSJQoOY29ycm'
+    'VjdGVkX3RleHQYAiABKAlSDWNvcnJlY3RlZFRleHQSIAoMbmV3X3N0YXJ0X21zGAMgASgDUgpu'
+    'ZXdTdGFydE1zEhwKCm5ld19lbmRfbXMYBCABKANSCG5ld0VuZE1zEhkKCG1hcmtfY3V0GAUgAS'
+    'gIUgdtYXJrQ3V0');
+
+@$core.Deprecated('Use cutIntervalDescriptor instead')
+const CutInterval$json = {
+  '1': 'CutInterval',
+  '2': [
+    {'1': 'start_ms', '3': 1, '4': 1, '5': 3, '10': 'startMs'},
+    {'1': 'end_ms', '3': 2, '4': 1, '5': 3, '10': 'endMs'},
+    {'1': 'reason', '3': 3, '4': 1, '5': 9, '10': 'reason'},
+  ],
+};
+
+/// Descriptor for `CutInterval`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List cutIntervalDescriptor = $convert.base64Decode(
+    'CgtDdXRJbnRlcnZhbBIZCghzdGFydF9tcxgBIAEoA1IHc3RhcnRNcxIVCgZlbmRfbXMYAiABKA'
+    'NSBWVuZE1zEhYKBnJlYXNvbhgDIAEoCVIGcmVhc29u');
+
+@$core.Deprecated('Use quickEditAddonsDescriptor instead')
+const QuickEditAddons$json = {
+  '1': 'QuickEditAddons',
+  '2': [
+    {'1': 'auto_captions', '3': 1, '4': 1, '5': 8, '10': 'autoCaptions'},
+    {'1': 'caption_style', '3': 2, '4': 1, '5': 9, '10': 'captionStyle'},
+    {'1': 'add_hook', '3': 3, '4': 1, '5': 8, '10': 'addHook'},
+    {'1': 'hook_id', '3': 4, '4': 1, '5': 9, '10': 'hookId'},
+    {'1': 'hook_type', '3': 5, '4': 1, '5': 9, '10': 'hookType'},
+    {'1': 'beat_sync', '3': 6, '4': 1, '5': 8, '10': 'beatSync'},
+    {'1': 'sound_id', '3': 7, '4': 1, '5': 9, '10': 'soundId'},
+    {'1': 'b_roll', '3': 8, '4': 1, '5': 8, '10': 'bRoll'},
+    {'1': 'b_roll_scene', '3': 9, '4': 1, '5': 9, '10': 'bRollScene'},
+    {'1': 'platform_preset', '3': 10, '4': 1, '5': 9, '10': 'platformPreset'},
+    {
+      '1': 'audio_enhancement',
+      '3': 11,
+      '4': 1,
+      '5': 8,
+      '10': 'audioEnhancement'
+    },
+    {'1': 'target_lufs', '3': 12, '4': 1, '5': 1, '10': 'targetLufs'},
+    {'1': 'reframe_ratio', '3': 13, '4': 1, '5': 9, '10': 'reframeRatio'},
+  ],
+};
+
+/// Descriptor for `QuickEditAddons`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List quickEditAddonsDescriptor = $convert.base64Decode(
+    'Cg9RdWlja0VkaXRBZGRvbnMSIwoNYXV0b19jYXB0aW9ucxgBIAEoCFIMYXV0b0NhcHRpb25zEi'
+    'MKDWNhcHRpb25fc3R5bGUYAiABKAlSDGNhcHRpb25TdHlsZRIZCghhZGRfaG9vaxgDIAEoCFIH'
+    'YWRkSG9vaxIXCgdob29rX2lkGAQgASgJUgZob29rSWQSGwoJaG9va190eXBlGAUgASgJUghob2'
+    '9rVHlwZRIbCgliZWF0X3N5bmMYBiABKAhSCGJlYXRTeW5jEhkKCHNvdW5kX2lkGAcgASgJUgdz'
+    'b3VuZElkEhUKBmJfcm9sbBgIIAEoCFIFYlJvbGwSIAoMYl9yb2xsX3NjZW5lGAkgASgJUgpiUm'
+    '9sbFNjZW5lEicKD3BsYXRmb3JtX3ByZXNldBgKIAEoCVIOcGxhdGZvcm1QcmVzZXQSKwoRYXVk'
+    'aW9fZW5oYW5jZW1lbnQYCyABKAhSEGF1ZGlvRW5oYW5jZW1lbnQSHwoLdGFyZ2V0X2x1ZnMYDC'
+    'ABKAFSCnRhcmdldEx1ZnMSIwoNcmVmcmFtZV9yYXRpbxgNIAEoCVIMcmVmcmFtZVJhdGlv');
+
+@$core.Deprecated('Use quickEditPlanDescriptor instead')
+const QuickEditPlan$json = {
+  '1': 'QuickEditPlan',
+  '2': [
+    {'1': 'asset_id', '3': 1, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'transcript_id', '3': 2, '4': 1, '5': 9, '10': 'transcriptId'},
+    {
+      '1': 'cuts',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.CutInterval',
+      '10': 'cuts'
+    },
+    {
+      '1': 'addons',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.QuickEditAddons',
+      '10': 'addons'
+    },
+    {
+      '1': 'estimated_credits',
+      '3': 5,
+      '4': 1,
+      '5': 9,
+      '10': 'estimatedCredits'
+    },
+    {
+      '1': 'balance_after_credits',
+      '3': 6,
+      '4': 1,
+      '5': 9,
+      '10': 'balanceAfterCredits'
+    },
+  ],
+};
+
+/// Descriptor for `QuickEditPlan`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List quickEditPlanDescriptor = $convert.base64Decode(
+    'Cg1RdWlja0VkaXRQbGFuEhkKCGFzc2V0X2lkGAEgASgJUgdhc3NldElkEiMKDXRyYW5zY3JpcH'
+    'RfaWQYAiABKAlSDHRyYW5zY3JpcHRJZBI6CgRjdXRzGAMgAygLMiYuY3JlYXRpdmFudGEucHJv'
+    'ZHVjdGlvbi52MS5DdXRJbnRlcnZhbFIEY3V0cxJCCgZhZGRvbnMYBCABKAsyKi5jcmVhdGl2YW'
+    '50YS5wcm9kdWN0aW9uLnYxLlF1aWNrRWRpdEFkZG9uc1IGYWRkb25zEisKEWVzdGltYXRlZF9j'
+    'cmVkaXRzGAUgASgJUhBlc3RpbWF0ZWRDcmVkaXRzEjIKFWJhbGFuY2VfYWZ0ZXJfY3JlZGl0cx'
+    'gGIAEoCVITYmFsYW5jZUFmdGVyQ3JlZGl0cw==');
+
+@$core.Deprecated('Use quickEditDraftDescriptor instead')
+const QuickEditDraft$json = {
+  '1': 'QuickEditDraft',
+  '2': [
+    {'1': 'draft_id', '3': 1, '4': 1, '5': 9, '10': 'draftId'},
+    {
+      '1': 'workspace_id',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'asset_id', '3': 3, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'transcript_id', '3': 4, '4': 1, '5': 9, '10': 'transcriptId'},
+    {'1': 'name', '3': 5, '4': 1, '5': 9, '10': 'name'},
+    {
+      '1': 'cuts',
+      '3': 6,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.CutInterval',
+      '10': 'cuts'
+    },
+    {
+      '1': 'addons',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.QuickEditAddons',
+      '10': 'addons'
+    },
+    {
+      '1': 'estimated_credits',
+      '3': 8,
+      '4': 1,
+      '5': 9,
+      '10': 'estimatedCredits'
+    },
+    {
+      '1': 'created_at',
+      '3': 9,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+    {
+      '1': 'updated_at',
+      '3': 10,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'updatedAt'
+    },
+  ],
+};
+
+/// Descriptor for `QuickEditDraft`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List quickEditDraftDescriptor = $convert.base64Decode(
+    'Cg5RdWlja0VkaXREcmFmdBIZCghkcmFmdF9pZBgBIAEoCVIHZHJhZnRJZBI+Cgx3b3Jrc3BhY2'
+    'VfaWQYAiABKAsyGy5jcmVhdGl2YW50YS5jb21tb24udjEuVVVJRFILd29ya3NwYWNlSWQSGQoI'
+    'YXNzZXRfaWQYAyABKAlSB2Fzc2V0SWQSIwoNdHJhbnNjcmlwdF9pZBgEIAEoCVIMdHJhbnNjcm'
+    'lwdElkEhIKBG5hbWUYBSABKAlSBG5hbWUSOgoEY3V0cxgGIAMoCzImLmNyZWF0aXZhbnRhLnBy'
+    'b2R1Y3Rpb24udjEuQ3V0SW50ZXJ2YWxSBGN1dHMSQgoGYWRkb25zGAcgASgLMiouY3JlYXRpdm'
+    'FudGEucHJvZHVjdGlvbi52MS5RdWlja0VkaXRBZGRvbnNSBmFkZG9ucxIrChFlc3RpbWF0ZWRf'
+    'Y3JlZGl0cxgIIAEoCVIQZXN0aW1hdGVkQ3JlZGl0cxI5CgpjcmVhdGVkX2F0GAkgASgLMhouZ2'
+    '9vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcFIJY3JlYXRlZEF0EjkKCnVwZGF0ZWRfYXQYCiABKAsy'
+    'Gi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgl1cGRhdGVkQXQ=');
+
+@$core.Deprecated('Use quickEditServiceSaveDraftRequestDescriptor instead')
+const QuickEditServiceSaveDraftRequest$json = {
+  '1': 'QuickEditServiceSaveDraftRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'draft_id', '3': 2, '4': 1, '5': 9, '10': 'draftId'},
+    {'1': 'asset_id', '3': 3, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'transcript_id', '3': 4, '4': 1, '5': 9, '10': 'transcriptId'},
+    {'1': 'name', '3': 5, '4': 1, '5': 9, '10': 'name'},
+    {
+      '1': 'cuts',
+      '3': 6,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.CutInterval',
+      '10': 'cuts'
+    },
+    {
+      '1': 'addons',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.QuickEditAddons',
+      '10': 'addons'
+    },
+    {
+      '1': 'estimated_credits',
+      '3': 8,
+      '4': 1,
+      '5': 9,
+      '10': 'estimatedCredits'
+    },
+  ],
+};
+
+/// Descriptor for `QuickEditServiceSaveDraftRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List quickEditServiceSaveDraftRequestDescriptor = $convert.base64Decode(
+    'CiBRdWlja0VkaXRTZXJ2aWNlU2F2ZURyYWZ0UmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3'
+    'JlYXRpdmFudGEuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EhkKCGRyYWZ0X2lk'
+    'GAIgASgJUgdkcmFmdElkEhkKCGFzc2V0X2lkGAMgASgJUgdhc3NldElkEiMKDXRyYW5zY3JpcH'
+    'RfaWQYBCABKAlSDHRyYW5zY3JpcHRJZBISCgRuYW1lGAUgASgJUgRuYW1lEjoKBGN1dHMYBiAD'
+    'KAsyJi5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLkN1dEludGVydmFsUgRjdXRzEkIKBmFkZG'
+    '9ucxgHIAEoCzIqLmNyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuUXVpY2tFZGl0QWRkb25zUgZh'
+    'ZGRvbnMSKwoRZXN0aW1hdGVkX2NyZWRpdHMYCCABKAlSEGVzdGltYXRlZENyZWRpdHM=');
+
+@$core.Deprecated('Use quickEditServiceSaveDraftResponseDescriptor instead')
+const QuickEditServiceSaveDraftResponse$json = {
+  '1': 'QuickEditServiceSaveDraftResponse',
+  '2': [
+    {
+      '1': 'draft',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.QuickEditDraft',
+      '10': 'draft'
+    },
+  ],
+};
+
+/// Descriptor for `QuickEditServiceSaveDraftResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List quickEditServiceSaveDraftResponseDescriptor =
+    $convert.base64Decode(
+        'CiFRdWlja0VkaXRTZXJ2aWNlU2F2ZURyYWZ0UmVzcG9uc2USPwoFZHJhZnQYASABKAsyKS5jcm'
+        'VhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlF1aWNrRWRpdERyYWZ0UgVkcmFmdA==');
+
+@$core.Deprecated('Use beatSyncGridDescriptor instead')
+const BeatSyncGrid$json = {
+  '1': 'BeatSyncGrid',
+  '2': [
+    {'1': 'bpm', '3': 1, '4': 1, '5': 5, '10': 'bpm'},
+    {
+      '1': 'beat_timestamps_ms',
+      '3': 2,
+      '4': 3,
+      '5': 3,
+      '10': 'beatTimestampsMs'
+    },
+    {
+      '1': 'downbeat_timestamps_ms',
+      '3': 3,
+      '4': 3,
+      '5': 3,
+      '10': 'downbeatTimestampsMs'
+    },
+    {'1': 'confidence', '3': 4, '4': 1, '5': 1, '10': 'confidence'},
+  ],
+};
+
+/// Descriptor for `BeatSyncGrid`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List beatSyncGridDescriptor = $convert.base64Decode(
+    'CgxCZWF0U3luY0dyaWQSEAoDYnBtGAEgASgFUgNicG0SLAoSYmVhdF90aW1lc3RhbXBzX21zGA'
+    'IgAygDUhBiZWF0VGltZXN0YW1wc01zEjQKFmRvd25iZWF0X3RpbWVzdGFtcHNfbXMYAyADKANS'
+    'FGRvd25iZWF0VGltZXN0YW1wc01zEh4KCmNvbmZpZGVuY2UYBCABKAFSCmNvbmZpZGVuY2U=');
 
 @$core.Deprecated('Use translationJobDescriptor instead')
 const TranslationJob$json = {
