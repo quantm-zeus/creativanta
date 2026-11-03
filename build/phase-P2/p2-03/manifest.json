@@ -1,0 +1,88 @@
+{
+  "task_id": "P2-03",
+  "phase": "P2",
+  "slice": "p2-03",
+  "title": "Opportunity prioritization và ownership",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "1289036",
+  "feature_refs": [
+    "docs/02_features/intelligence/opportunity_board.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_endpoint_map.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/05_system/queue_retry_design.md"
+  ],
+  "requirement_ids": [
+    "M04-001",
+    "M04-002",
+    "M04-003",
+    "M04-004",
+    "M04-005",
+    "M04-006",
+    "RULE-M04-001",
+    "RULE-M04-002",
+    "RULE-M04-003",
+    "RULE-M04-004",
+    "RULE-M04-005",
+    "RULE-M04-006",
+    "EC-M04-003",
+    "DB-C-001",
+    "DB-H-001"
+  ],
+  "screen_refs": [
+    "docs/03_screens/web/screen_web_intelligence_opportunity_board.md",
+    "docs/03_screens/web/screen_web_intelligence_opportunity_detail.md",
+    "docs/03_screens/web/screen_web_intelligence_opportunity_convert.md"
+  ],
+  "source_hashes": {
+    "infra/migrations/00012_p2_03_opportunities_prioritization_and_ownership.sql": "bd2cfbed0a51b6f42568fbe7ed3da0a85ed566df07f9345553eb4761e66d6dc2",
+    "protos/creativanta/intelligence/v1/opportunity.proto": "f8bcd7d29f913d1b2a6a2f5d770109a71d9d22e281708d4c1ac9dce3fcd56b82",
+    "apps/api/internal/migrate/migrator.go": "3f9b32dfb5a79408782a901f9afe56231e7422a637275059fdb7fafa1a0f0b79",
+    "apps/api/internal/migrate/migrator_test.go": "2a6b460e2d36f8f48eecd2693f8d526ed4fa88078053694dc16b8d622e56d566",
+    "apps/api/internal/rbac/phase_exposure_test.go": "301da4344a84ee64a6a338089ffce10beacdac297110427a95a07e630ecbae47",
+    "apps/api/internal/opportunity/service.go": "73b4656dc7bbd5df3881de3f1efcf6230b4d1e73aad7c5193b01cb362dfb66de",
+    "apps/api/internal/opportunity/service_test.go": "99e6f43b69f52b96861ff5c762e98e3444288824aac58ae988d512815bedccc9",
+    "apps/web/src/lib/opportunity/index.ts": "8c27b5659e39807bdf05f1cabbc80c095886f7e314337964d22dd8704a209406",
+    "apps/web/src/lib/opportunity/opportunity.test.ts": "9ff579a5f54b1204ad661a081543548844e002a13313aca69cb683a4cbf263fc",
+    "apps/web/src/routes/intelligence/opportunities/+page.svelte": "390e74ed05a753ba9d80c4a5fb7443045140636e627a0d1e764c4812f4a9d0a5",
+    "apps/web/src/routes/intelligence/opportunities/[id]/+page.svelte": "cfcbe293f5b23788dd8f924986328daa6ee4bf2e600cd91826b732dd4b6988fa",
+    "apps/web/src/routes/intelligence/opportunities/[id]/convert/+page.svelte": "2d1608e84b9c2c400e3b7082dfddc929be87760e6b6c5c345b5a3fde1d32fee0",
+    "apps/mobile/lib/opportunity/opportunity_models.dart": "8570da6f083cc9c695e63292ba10eb0f8a5d3ed13db4d05209ab3b66c412ca8c",
+    "apps/mobile/lib/ui/opportunity/opportunity_board_view.dart": "6d8a2b5448c88aa66b3975173ed19c93932c87822df9e12be64ba181df9add3b",
+    "apps/mobile/test/opportunity_test.dart": "688f5b01cdbc68cd4a556414c0256c64f863d188fd4ef6915f4df80ec5a3ddba"
+  },
+  "scope_items": [
+    "Database Migration 00012: Added summary, why_it_matters, expected_impact, expected_effort, priority_state, priority_reason, suggested_next_step, and owner_user_id columns to opportunities table; added check constraints for priority_state ('draft','open','prioritized','assigned','in_progress','converted','parked','closed_won','closed_lost') and non-empty owner when assigned; created idx_opportunities_tenant_priority_score composite index; reinforced RLS policies and table grants; reversible transactional down migration.",
+    "Acceptance Target 1 (Unassigned open items remain repairable): Open/prioritized items awaiting assignment display an assign prompt, missing priority justifications display repair warnings, and items can be repaired via update/assign without data loss or becoming stuck.",
+    "Acceptance Target 2 (Concurrent assign/convert conflicts): Optimistic concurrency control via expected_updated_at timestamps strictly detects and rejects concurrent modifications with 409 FailedPrecondition (EC-M04-003); canonical state machine enforces sequential progression draft->open->prioritized->assigned->in_progress->converted->closed_won/lost.",
+    "Acceptance Target 3 (No orphan opportunity): Every opportunity MUST map to at least one provenance source (trend, signal, competitor, product, thread) in opportunity_sources (RULE-M04-001); orphan creation is strictly forbidden.",
+    "RULE-M04-005 (Financial Non-Conflation): Profit estimations carry confidence band, source_class=ESTIMATED, is_estimate=true, and explicit explanations to prevent conflation with finalized financial ledger accounting.",
+    "Home Intelligence Decision Integration: Top decision opportunities exposed for M01 dashboard cards sorted by overallScore with tenant isolation.",
+    "Web & Mobile Surfaces: Implemented SvelteKit routes (/intelligence/opportunities, /[id], /[id]/convert) and Flutter OpportunityBoardView with reactive repair banners, score chips, and conversion wizard."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestAcceptanceTarget1_UnassignedOpenItemsRemainRepairable (Go -race), Vitest suite (web), and Flutter unit/widget tests confirm repairable flags, missing justification detection, and repair flows.",
+    "Acceptance Target 2 Verified: TestAcceptanceTarget2_ConcurrentAssignConvertConflicts (Go -race), Vitest suite (web), and Flutter tests confirm optimistic locking rejects stale convert/assign with 409 FailedPrecondition.",
+    "Acceptance Target 3 Verified: TestAcceptanceTarget3_NoOrphanOpportunity (Go -race), Vitest suite, and Flutter tests confirm orphan opportunity creation rejection on empty sources.",
+    "Migration 00012 Verified: migrator_test.go passes all 12 migrations up/status/down verification cleanly.",
+    "Four-Target Proto Codegen Verified: check_proto.sh passes lint, generate, drift check, buf breaking backward compatibility, Go vet/test, TypeScript vitest, Dart analyze/test.",
+    "Go Backend Quality Gate Verified: check_go.sh passes gofmt, go mod verify, go vet, govulncheck, go test -race -count=1 ./..., and fail-closed entrypoints.",
+    "Flutter Mobile Quality Gate Verified: check_flutter.sh passes flutter analyze --fatal-infos --fatal-warnings and 85 mobile tests.",
+    "Web & Admin Quality Gate Verified: check_node.sh and check_web_smoke.sh pass svelte-check, vite build, vitest, and SSR smoke."
+  ],
+  "rpc_contracts": [
+    "OpportunityService/List",
+    "OpportunityService/Get",
+    "OpportunityService/Create",
+    "OpportunityService/UpdateState",
+    "OpportunityService/Assign",
+    "OpportunityService/Convert",
+    "OpportunityService/Save",
+    "OpportunityService/Dismiss",
+    "OpportunityService/GetTopDecisionOpportunities"
+  ]
+}

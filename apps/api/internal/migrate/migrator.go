@@ -705,6 +705,24 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 		requiredRLSTables = []string{
 			"benchmark_snapshots",
 		}
+	case 12:
+		requiredFragments = []requiredFragment{
+			{"opportunities summary column", "ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS summary"},
+			{"opportunities why_it_matters column", "ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS why_it_matters"},
+			{"opportunities expected_impact column", "ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS expected_impact"},
+			{"opportunities expected_effort column", "ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS expected_effort"},
+			{"opportunities priority_state column", "ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS priority_state"},
+			{"opportunities priority_reason column", "ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS priority_reason"},
+			{"opportunities suggested_next_step column", "ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS suggested_next_step"},
+			{"opportunities owner_user_id column", "ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS owner_user_id"},
+			{"opportunities priority_state check constraint", "chk_opportunities_priority_state"},
+			{"admin_ops_scope policy on opportunities", "CREATE POLICY admin_ops_scope ON opportunities"},
+			{"admin_ops_scope policy on opportunity_sources", "CREATE POLICY admin_ops_scope ON opportunity_sources"},
+		}
+		requiredRLSTables = []string{
+			"opportunities",
+			"opportunity_sources",
+		}
 	default:
 		return nil
 	}
