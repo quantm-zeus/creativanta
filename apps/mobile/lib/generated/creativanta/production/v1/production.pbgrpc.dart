@@ -411,3 +411,266 @@ abstract class AssetServiceBase extends $grpc.Service {
   $async.Future<$0.UploadResponse> upload(
       $grpc.ServiceCall call, $0.UploadRequest request);
 }
+
+/// QuickEditService manages Quick Edit drafts and text-based timeline editing.
+@$pb.GrpcServiceName('creativanta.production.v1.QuickEditService')
+class QuickEditServiceClient extends $grpc.Client {
+  /// The hostname for this service.
+  static const $core.String defaultHost = '';
+
+  /// OAuth scopes needed for the client.
+  static const $core.List<$core.String> oauthScopes = [
+    '',
+  ];
+
+  QuickEditServiceClient(super.channel, {super.options, super.interceptors});
+
+  /// SaveDraft persists an in-progress quick edit draft.
+  $grpc.ResponseFuture<$0.QuickEditServiceSaveDraftResponse> saveDraft(
+    $0.QuickEditServiceSaveDraftRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$saveDraft, request, options: options);
+  }
+
+  // method descriptors
+
+  static final _$saveDraft = $grpc.ClientMethod<
+          $0.QuickEditServiceSaveDraftRequest,
+          $0.QuickEditServiceSaveDraftResponse>(
+      '/creativanta.production.v1.QuickEditService/SaveDraft',
+      ($0.QuickEditServiceSaveDraftRequest value) => value.writeToBuffer(),
+      $0.QuickEditServiceSaveDraftResponse.fromBuffer);
+}
+
+@$pb.GrpcServiceName('creativanta.production.v1.QuickEditService')
+abstract class QuickEditServiceBase extends $grpc.Service {
+  $core.String get $name => 'creativanta.production.v1.QuickEditService';
+
+  QuickEditServiceBase() {
+    $addMethod($grpc.ServiceMethod<$0.QuickEditServiceSaveDraftRequest,
+            $0.QuickEditServiceSaveDraftResponse>(
+        'SaveDraft',
+        saveDraft_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.QuickEditServiceSaveDraftRequest.fromBuffer(value),
+        ($0.QuickEditServiceSaveDraftResponse value) => value.writeToBuffer()));
+  }
+
+  $async.Future<$0.QuickEditServiceSaveDraftResponse> saveDraft_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.QuickEditServiceSaveDraftRequest> $request) async {
+    return saveDraft($call, await $request);
+  }
+
+  $async.Future<$0.QuickEditServiceSaveDraftResponse> saveDraft(
+      $grpc.ServiceCall call, $0.QuickEditServiceSaveDraftRequest request);
+}
+
+/// SoundStudioService provides music generation, sound effects, beat analysis and sound library access.
+@$pb.GrpcServiceName('creativanta.production.v1.SoundStudioService')
+class SoundStudioServiceClient extends $grpc.Client {
+  /// The hostname for this service.
+  static const $core.String defaultHost = '';
+
+  /// OAuth scopes needed for the client.
+  static const $core.List<$core.String> oauthScopes = [
+    '',
+  ];
+
+  SoundStudioServiceClient(super.channel, {super.options, super.interceptors});
+
+  /// GenerateMusic generates a background music track based on prompt and tempo.
+  $grpc.ResponseFuture<$0.GenerateMusicResponse> generateMusic(
+    $0.GenerateMusicRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$generateMusic, request, options: options);
+  }
+
+  /// GenerateSFX generates contextual sound effects.
+  $grpc.ResponseFuture<$0.GenerateSFXResponse> generateSFX(
+    $0.GenerateSFXRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$generateSFX, request, options: options);
+  }
+
+  /// AnalyzeBeat detects tempo and downbeat timestamps for timeline beat-sync.
+  $grpc.ResponseFuture<$0.AnalyzeBeatResponse> analyzeBeat(
+    $0.AnalyzeBeatRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$analyzeBeat, request, options: options);
+  }
+
+  /// ListSoundLibrary lists royalty-free tracks and tenant-owned audio assets.
+  $grpc.ResponseFuture<$0.ListSoundLibraryResponse> listSoundLibrary(
+    $0.ListSoundLibraryRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$listSoundLibrary, request, options: options);
+  }
+
+  /// GetSound retrieves a single sound track with copyright clearance details.
+  $grpc.ResponseFuture<$0.GetSoundResponse> getSound(
+    $0.GetSoundRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getSound, request, options: options);
+  }
+
+  /// PreviewSound generates or retrieves a short sample preview of a track.
+  $grpc.ResponseFuture<$0.PreviewSoundResponse> previewSound(
+    $0.PreviewSoundRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$previewSound, request, options: options);
+  }
+
+  // method descriptors
+
+  static final _$generateMusic =
+      $grpc.ClientMethod<$0.GenerateMusicRequest, $0.GenerateMusicResponse>(
+          '/creativanta.production.v1.SoundStudioService/GenerateMusic',
+          ($0.GenerateMusicRequest value) => value.writeToBuffer(),
+          $0.GenerateMusicResponse.fromBuffer);
+  static final _$generateSFX =
+      $grpc.ClientMethod<$0.GenerateSFXRequest, $0.GenerateSFXResponse>(
+          '/creativanta.production.v1.SoundStudioService/GenerateSFX',
+          ($0.GenerateSFXRequest value) => value.writeToBuffer(),
+          $0.GenerateSFXResponse.fromBuffer);
+  static final _$analyzeBeat =
+      $grpc.ClientMethod<$0.AnalyzeBeatRequest, $0.AnalyzeBeatResponse>(
+          '/creativanta.production.v1.SoundStudioService/AnalyzeBeat',
+          ($0.AnalyzeBeatRequest value) => value.writeToBuffer(),
+          $0.AnalyzeBeatResponse.fromBuffer);
+  static final _$listSoundLibrary = $grpc.ClientMethod<
+          $0.ListSoundLibraryRequest, $0.ListSoundLibraryResponse>(
+      '/creativanta.production.v1.SoundStudioService/ListSoundLibrary',
+      ($0.ListSoundLibraryRequest value) => value.writeToBuffer(),
+      $0.ListSoundLibraryResponse.fromBuffer);
+  static final _$getSound =
+      $grpc.ClientMethod<$0.GetSoundRequest, $0.GetSoundResponse>(
+          '/creativanta.production.v1.SoundStudioService/GetSound',
+          ($0.GetSoundRequest value) => value.writeToBuffer(),
+          $0.GetSoundResponse.fromBuffer);
+  static final _$previewSound =
+      $grpc.ClientMethod<$0.PreviewSoundRequest, $0.PreviewSoundResponse>(
+          '/creativanta.production.v1.SoundStudioService/PreviewSound',
+          ($0.PreviewSoundRequest value) => value.writeToBuffer(),
+          $0.PreviewSoundResponse.fromBuffer);
+}
+
+@$pb.GrpcServiceName('creativanta.production.v1.SoundStudioService')
+abstract class SoundStudioServiceBase extends $grpc.Service {
+  $core.String get $name => 'creativanta.production.v1.SoundStudioService';
+
+  SoundStudioServiceBase() {
+    $addMethod(
+        $grpc.ServiceMethod<$0.GenerateMusicRequest, $0.GenerateMusicResponse>(
+            'GenerateMusic',
+            generateMusic_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.GenerateMusicRequest.fromBuffer(value),
+            ($0.GenerateMusicResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.GenerateSFXRequest, $0.GenerateSFXResponse>(
+            'GenerateSFX',
+            generateSFX_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.GenerateSFXRequest.fromBuffer(value),
+            ($0.GenerateSFXResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.AnalyzeBeatRequest, $0.AnalyzeBeatResponse>(
+            'AnalyzeBeat',
+            analyzeBeat_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.AnalyzeBeatRequest.fromBuffer(value),
+            ($0.AnalyzeBeatResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ListSoundLibraryRequest,
+            $0.ListSoundLibraryResponse>(
+        'ListSoundLibrary',
+        listSoundLibrary_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ListSoundLibraryRequest.fromBuffer(value),
+        ($0.ListSoundLibraryResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetSoundRequest, $0.GetSoundResponse>(
+        'GetSound',
+        getSound_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.GetSoundRequest.fromBuffer(value),
+        ($0.GetSoundResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.PreviewSoundRequest, $0.PreviewSoundResponse>(
+            'PreviewSound',
+            previewSound_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.PreviewSoundRequest.fromBuffer(value),
+            ($0.PreviewSoundResponse value) => value.writeToBuffer()));
+  }
+
+  $async.Future<$0.GenerateMusicResponse> generateMusic_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GenerateMusicRequest> $request) async {
+    return generateMusic($call, await $request);
+  }
+
+  $async.Future<$0.GenerateMusicResponse> generateMusic(
+      $grpc.ServiceCall call, $0.GenerateMusicRequest request);
+
+  $async.Future<$0.GenerateSFXResponse> generateSFX_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.GenerateSFXRequest> $request) async {
+    return generateSFX($call, await $request);
+  }
+
+  $async.Future<$0.GenerateSFXResponse> generateSFX(
+      $grpc.ServiceCall call, $0.GenerateSFXRequest request);
+
+  $async.Future<$0.AnalyzeBeatResponse> analyzeBeat_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.AnalyzeBeatRequest> $request) async {
+    return analyzeBeat($call, await $request);
+  }
+
+  $async.Future<$0.AnalyzeBeatResponse> analyzeBeat(
+      $grpc.ServiceCall call, $0.AnalyzeBeatRequest request);
+
+  $async.Future<$0.ListSoundLibraryResponse> listSoundLibrary_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ListSoundLibraryRequest> $request) async {
+    return listSoundLibrary($call, await $request);
+  }
+
+  $async.Future<$0.ListSoundLibraryResponse> listSoundLibrary(
+      $grpc.ServiceCall call, $0.ListSoundLibraryRequest request);
+
+  $async.Future<$0.GetSoundResponse> getSound_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.GetSoundRequest> $request) async {
+    return getSound($call, await $request);
+  }
+
+  $async.Future<$0.GetSoundResponse> getSound(
+      $grpc.ServiceCall call, $0.GetSoundRequest request);
+
+  $async.Future<$0.PreviewSoundResponse> previewSound_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.PreviewSoundRequest> $request) async {
+    return previewSound($call, await $request);
+  }
+
+  $async.Future<$0.PreviewSoundResponse> previewSound(
+      $grpc.ServiceCall call, $0.PreviewSoundRequest request);
+}

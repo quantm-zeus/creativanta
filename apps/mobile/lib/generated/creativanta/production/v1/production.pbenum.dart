@@ -216,5 +216,40 @@ class ProductionMode extends $pb.ProtobufEnum {
   const ProductionMode._(super.value, super.name);
 }
 
+class TranscriptAlignmentStatus extends $pb.ProtobufEnum {
+  static const TranscriptAlignmentStatus
+      TRANSCRIPT_ALIGNMENT_STATUS_UNSPECIFIED = TranscriptAlignmentStatus._(
+          0, _omitEnumNames ? '' : 'TRANSCRIPT_ALIGNMENT_STATUS_UNSPECIFIED');
+  static const TranscriptAlignmentStatus
+      TRANSCRIPT_ALIGNMENT_STATUS_AUTO_ALIGNED = TranscriptAlignmentStatus._(
+          1, _omitEnumNames ? '' : 'TRANSCRIPT_ALIGNMENT_STATUS_AUTO_ALIGNED');
+  static const TranscriptAlignmentStatus TRANSCRIPT_ALIGNMENT_STATUS_REPAIRED =
+      TranscriptAlignmentStatus._(
+          2, _omitEnumNames ? '' : 'TRANSCRIPT_ALIGNMENT_STATUS_REPAIRED');
+  static const TranscriptAlignmentStatus
+      TRANSCRIPT_ALIGNMENT_STATUS_MANUAL_FALLBACK = TranscriptAlignmentStatus._(
+          3,
+          _omitEnumNames ? '' : 'TRANSCRIPT_ALIGNMENT_STATUS_MANUAL_FALLBACK');
+  static const TranscriptAlignmentStatus TRANSCRIPT_ALIGNMENT_STATUS_FAILED =
+      TranscriptAlignmentStatus._(
+          4, _omitEnumNames ? '' : 'TRANSCRIPT_ALIGNMENT_STATUS_FAILED');
+
+  static const $core.List<TranscriptAlignmentStatus> values =
+      <TranscriptAlignmentStatus>[
+    TRANSCRIPT_ALIGNMENT_STATUS_UNSPECIFIED,
+    TRANSCRIPT_ALIGNMENT_STATUS_AUTO_ALIGNED,
+    TRANSCRIPT_ALIGNMENT_STATUS_REPAIRED,
+    TRANSCRIPT_ALIGNMENT_STATUS_MANUAL_FALLBACK,
+    TRANSCRIPT_ALIGNMENT_STATUS_FAILED,
+  ];
+
+  static final $core.List<TranscriptAlignmentStatus?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 4);
+  static TranscriptAlignmentStatus? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const TranscriptAlignmentStatus._(super.value, super.name);
+}
+
 const $core.bool _omitEnumNames =
     $core.bool.fromEnvironment('protobuf.omit_enum_names');

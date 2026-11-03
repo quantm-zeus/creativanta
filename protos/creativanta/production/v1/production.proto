@@ -391,3 +391,262 @@ service AssetService {
   // Upload uploads a source asset safely with MIME and virus scan checks.
   rpc Upload(UploadRequest) returns (UploadResponse);
 }
+
+// ============================================================================
+// Quick Edit Data Types & Services (M07 Mode 1)
+// ============================================================================
+
+enum TranscriptAlignmentStatus {
+  TRANSCRIPT_ALIGNMENT_STATUS_UNSPECIFIED = 0;
+  TRANSCRIPT_ALIGNMENT_STATUS_AUTO_ALIGNED = 1;
+  TRANSCRIPT_ALIGNMENT_STATUS_REPAIRED = 2;
+  TRANSCRIPT_ALIGNMENT_STATUS_MANUAL_FALLBACK = 3;
+  TRANSCRIPT_ALIGNMENT_STATUS_FAILED = 4;
+}
+
+message TranscriptWord {
+  string word_id = 1;
+  string text = 2;
+  int64 start_ms = 3;
+  int64 end_ms = 4;
+  double confidence = 5;
+  bool is_filler = 6;
+  string filler_type = 7;
+  bool is_deleted = 8;
+}
+
+message TranscriptSegment {
+  string segment_id = 1;
+  int64 start_ms = 2;
+  int64 end_ms = 3;
+  string text = 4;
+  string speaker_id = 5;
+}
+
+message Transcript {
+  string transcript_id = 1;
+  creativanta.common.v1.UUID workspace_id = 2;
+  string asset_id = 3;
+  string language = 4;
+  string raw_text = 5;
+  repeated TranscriptWord words = 6;
+  repeated TranscriptSegment segments = 7;
+  int32 filler_count = 8;
+  int32 pause_count = 9;
+  TranscriptAlignmentStatus alignment_status = 10;
+  string alignment_error = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+message DeadPause {
+  int64 start_ms = 1;
+  int64 end_ms = 2;
+  int64 duration_ms = 3;
+}
+
+message TranscriptAnalysis {
+  int32 filler_count = 1;
+  int32 pause_count = 2;
+  double hook_quality_score = 3;
+  int64 estimated_time_saved_ms = 4;
+  int64 final_duration_ms = 5;
+  repeated string detected_fillers = 6;
+  repeated DeadPause dead_pauses = 7;
+  string hook_feedback = 8;
+}
+
+message TranscriptCorrection {
+  string word_id = 1;
+  string corrected_text = 2;
+  int64 new_start_ms = 3;
+  int64 new_end_ms = 4;
+  bool mark_cut = 5;
+}
+
+message CutInterval {
+  int64 start_ms = 1;
+  int64 end_ms = 2;
+  string reason = 3;
+}
+
+message QuickEditAddons {
+  bool auto_captions = 1;
+  string caption_style = 2;
+  bool add_hook = 3;
+  string hook_id = 4;
+  string hook_type = 5;
+  bool beat_sync = 6;
+  string sound_id = 7;
+  bool b_roll = 8;
+  string b_roll_scene = 9;
+  string platform_preset = 10;
+  bool audio_enhancement = 11;
+  double target_lufs = 12;
+  string reframe_ratio = 13;
+}
+
+message QuickEditPlan {
+  string asset_id = 1;
+  string transcript_id = 2;
+  repeated CutInterval cuts = 3;
+  QuickEditAddons addons = 4;
+  string estimated_credits = 5;
+  string balance_after_credits = 6;
+}
+
+message QuickEditDraft {
+  string draft_id = 1;
+  creativanta.common.v1.UUID workspace_id = 2;
+  string asset_id = 3;
+  string transcript_id = 4;
+  string name = 5;
+  repeated CutInterval cuts = 6;
+  QuickEditAddons addons = 7;
+  string estimated_credits = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+message QuickEditServiceSaveDraftRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string draft_id = 2;
+  string asset_id = 3;
+  string transcript_id = 4;
+  string name = 5;
+  repeated CutInterval cuts = 6;
+  QuickEditAddons addons = 7;
+  string estimated_credits = 8;
+}
+
+message QuickEditServiceSaveDraftResponse {
+  QuickEditDraft draft = 1;
+}
+
+// QuickEditService manages Quick Edit drafts and text-based timeline editing.
+service QuickEditService {
+  // SaveDraft persists an in-progress quick edit draft.
+  rpc SaveDraft(QuickEditServiceSaveDraftRequest) returns (QuickEditServiceSaveDraftResponse);
+}
+
+// ============================================================================
+// Sound Studio Data Types & Services (M07 EF-06)
+// ============================================================================
+
+message SoundTrack {
+  string sound_id = 1;
+  creativanta.common.v1.UUID workspace_id = 2;
+  string title = 3;
+  string artist = 4;
+  string genre = 5;
+  int32 bpm = 6;
+  double duration_seconds = 7;
+  string audio_url = 8;
+  bool is_royalty_free = 9;
+  bool acrcloud_cleared = 10;
+  string license_type = 11;
+  repeated string tags = 12;
+}
+
+message BeatSyncGrid {
+  int32 bpm = 1;
+  repeated int64 beat_timestamps_ms = 2;
+  repeated int64 downbeat_timestamps_ms = 3;
+  double confidence = 4;
+}
+
+message CopyrightScanResult {
+  bool is_copyrighted = 1;
+  string matched_track = 2;
+  string matched_artist = 3;
+  bool clearance_allowed = 4;
+  string scan_provider = 5;
+  repeated SoundTrack suggested_alternatives = 6;
+}
+
+message GenerateMusicRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string prompt = 2;
+  string genre = 3;
+  int32 bpm = 4;
+  double duration_seconds = 5;
+}
+
+message GenerateMusicResponse {
+  SoundTrack sound = 1;
+  GenerationJob job = 2;
+}
+
+message GenerateSFXRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string prompt = 2;
+  double duration_seconds = 3;
+}
+
+message GenerateSFXResponse {
+  SoundTrack sound = 1;
+  GenerationJob job = 2;
+}
+
+message AnalyzeBeatRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string sound_id = 2;
+  string audio_url = 3;
+}
+
+message AnalyzeBeatResponse {
+  BeatSyncGrid grid = 1;
+}
+
+message ListSoundLibraryRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string genre = 2;
+  bool royalty_free_only = 3;
+  creativanta.common.v1.Pagination pagination = 4;
+}
+
+message ListSoundLibraryResponse {
+  repeated SoundTrack sounds = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message GetSoundRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string sound_id = 2;
+}
+
+message GetSoundResponse {
+  SoundTrack sound = 1;
+}
+
+message PreviewSoundRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string sound_id = 2;
+  double preview_duration_seconds = 3;
+}
+
+message PreviewSoundResponse {
+  string preview_url = 1;
+  double preview_duration_seconds = 2;
+}
+
+// SoundStudioService provides music generation, sound effects, beat analysis and sound library access.
+service SoundStudioService {
+  // GenerateMusic generates a background music track based on prompt and tempo.
+  rpc GenerateMusic(GenerateMusicRequest) returns (GenerateMusicResponse);
+
+  // GenerateSFX generates contextual sound effects.
+  rpc GenerateSFX(GenerateSFXRequest) returns (GenerateSFXResponse);
+
+  // AnalyzeBeat detects tempo and downbeat timestamps for timeline beat-sync.
+  rpc AnalyzeBeat(AnalyzeBeatRequest) returns (AnalyzeBeatResponse);
+
+  // ListSoundLibrary lists royalty-free tracks and tenant-owned audio assets.
+  rpc ListSoundLibrary(ListSoundLibraryRequest) returns (ListSoundLibraryResponse);
+
+  // GetSound retrieves a single sound track with copyright clearance details.
+  rpc GetSound(GetSoundRequest) returns (GetSoundResponse);
+
+  // PreviewSound generates or retrieves a short sample preview of a track.
+  rpc PreviewSound(PreviewSoundRequest) returns (PreviewSoundResponse);
+}
