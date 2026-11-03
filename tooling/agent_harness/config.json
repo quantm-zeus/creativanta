@@ -1,0 +1,18 @@
+{
+  "repository": "/home/whaleorcale/evergreen/worktrees/creativanta-autonomous/repo",
+  "worktrees": "/home/whaleorcale/evergreen/worktrees/creativanta-autonomous",
+  "state_dir": "/var/lib/creativanta-harness",
+  "staging_branch": "staging",
+  "max_concurrent": 2,
+  "interval_seconds": 25,
+  "max_agent_minutes": 45,
+  "max_iterations_per_task": 6,
+  "max_runs_per_24h": 0,
+  "max_retries": 4,
+  "continue_on_local_evidence": true,
+  "paused": false,
+  "models": {
+    "complex": "gemini-4-argon-high",
+    "regular": "gemini-3.8-flash-high"
+  }
+}

@@ -1,0 +1,36 @@
+services:
+  scheduler:
+    build: .
+    image: creativanta-harness:1
+    container_name: creativanta-agy-supervisor
+    user: "1001:1002"
+    init: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 240
+    mem_limit: 7g
+    cpus: 3.0
+    environment:
+      HOME: /home/whaleorcale
+      XDG_CONFIG_HOME: /home/whaleorcale/.config
+      GIT_TERMINAL_PROMPT: "0"
+      NODE_OPTIONS: "--max-old-space-size=2048"
+    volumes:
+      - ./:/opt/harness:ro
+      - ./data:/var/lib/creativanta-harness:rw
+      - /home/whaleorcale/evergreen/worktrees/creativanta-autonomous:/home/whaleorcale/evergreen/worktrees/creativanta-autonomous:rw
+      - /home/whaleorcale/.local/bin/agy:/usr/local/bin/agy:ro
+      - /usr/bin/node:/usr/local/bin/node:ro
+      - /home/whaleorcale/.local/opt/creativanta:/home/whaleorcale/.local/opt/creativanta:rw
+      - /home/whaleorcale/.gemini/antigravity-cli:/home/whaleorcale/.gemini/antigravity-cli:rw
+      - /home/whaleorcale/.gemini/config:/home/whaleorcale/.gemini/config:ro
+      - /home/whaleorcale/.ssh:/home/whaleorcale/.ssh:ro
+      - /home/whaleorcale/.config/gh:/home/whaleorcale/.config/gh:ro
+      - /home/whaleorcale/.gitconfig:/home/whaleorcale/.gitconfig:ro
+      - /home/whaleorcale/.pub-cache:/home/whaleorcale/.pub-cache:rw
+      - /home/whaleorcale/.npm:/home/whaleorcale/.npm:rw
+    tmpfs:
+      - /tmp:rw,size=1g,mode=1777
