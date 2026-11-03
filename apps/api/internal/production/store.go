@@ -37,6 +37,15 @@ type Store interface {
 	CreateSoundTrack(ctx context.Context, track *SoundTrackRecord) error
 	GetSoundTrack(ctx context.Context, workspaceID, soundID string) (*SoundTrackRecord, error)
 	ListSoundTracks(ctx context.Context, workspaceID, genre string, royaltyFreeOnly bool, limit, offset int) ([]*SoundTrackRecord, int64, error)
+
+	CreateRemixBlueprint(ctx context.Context, bp *RemixBlueprint) error
+	GetRemixBlueprint(ctx context.Context, workspaceID, blueprintID string) (*RemixBlueprint, error)
+	UpdateRemixBlueprint(ctx context.Context, bp *RemixBlueprint) error
+
+	CreateVideoEditJob(ctx context.Context, job *VideoEditJobRecord) error
+	GetVideoEditJob(ctx context.Context, workspaceID, jobID string) (*VideoEditJobRecord, error)
+	ListVideoEditJobs(ctx context.Context, workspaceID, mode, status string, limit, offset int) ([]*VideoEditJobRecord, int64, error)
+	UpdateVideoEditJob(ctx context.Context, job *VideoEditJobRecord) error
 }
 
 // MemoryStore provides a thread-safe, tenant-isolated in-memory store for production.
@@ -48,6 +57,8 @@ type MemoryStore struct {
 	transcripts map[string]map[string]*TranscriptRecord     // workspaceID -> transcriptID -> TranscriptRecord
 	drafts      map[string]map[string]*QuickEditDraftRecord // workspaceID -> draftID -> QuickEditDraftRecord
 	sounds      map[string]map[string]*SoundTrackRecord     // workspaceID ("" for global) -> soundID -> SoundTrackRecord
+	blueprints  map[string]map[string]*RemixBlueprint     // workspaceID -> blueprintID -> RemixBlueprint
+	videoJobs   map[string]map[string]*VideoEditJobRecord // workspaceID -> jobID -> VideoEditJobRecord
 }
 
 // NewMemoryStore constructs a new MemoryStore.
@@ -59,6 +70,8 @@ func NewMemoryStore() *MemoryStore {
 		transcripts: make(map[string]map[string]*TranscriptRecord),
 		drafts:      make(map[string]map[string]*QuickEditDraftRecord),
 		sounds:      make(map[string]map[string]*SoundTrackRecord),
+		blueprints:  make(map[string]map[string]*RemixBlueprint),
+		videoJobs:   make(map[string]map[string]*VideoEditJobRecord),
 	}
 	ms.initGlobalSoundLibrary()
 	return ms
@@ -580,4 +593,128 @@ func (s *MemoryStore) ListSoundTracks(ctx context.Context, workspaceID, genre st
 	}
 
 	return all[offset:end], total, nil
+}
+
+func (s *MemoryStore) CreateRemixBlueprint(ctx context.Context, bp *RemixBlueprint) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.blueprints[bp.WorkspaceID] == nil {
+		s.blueprints[bp.WorkspaceID] = make(map[string]*RemixBlueprint)
+	}
+	cp := *bp
+	s.blueprints[bp.WorkspaceID][bp.BlueprintID] = &cp
+	return nil
+}
+
+func (s *MemoryStore) GetRemixBlueprint(ctx context.Context, workspaceID, blueprintID string) (*RemixBlueprint, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.blueprints[workspaceID]
+	if ws == nil {
+		return nil, ErrBlueprintNotFound
+	}
+	bp, ok := ws[blueprintID]
+	if !ok || bp.DeletedAt != nil {
+		return nil, ErrBlueprintNotFound
+	}
+	cp := *bp
+	return &cp, nil
+}
+
+func (s *MemoryStore) UpdateRemixBlueprint(ctx context.Context, bp *RemixBlueprint) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ws := s.blueprints[bp.WorkspaceID]
+	if ws == nil || ws[bp.BlueprintID] == nil {
+		return ErrBlueprintNotFound
+	}
+	cp := *bp
+	cp.UpdatedAt = time.Now().UTC()
+	ws[bp.BlueprintID] = &cp
+	return nil
+}
+
+func (s *MemoryStore) CreateVideoEditJob(ctx context.Context, job *VideoEditJobRecord) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.videoJobs[job.WorkspaceID] == nil {
+		s.videoJobs[job.WorkspaceID] = make(map[string]*VideoEditJobRecord)
+	}
+	cp := *job
+	s.videoJobs[job.WorkspaceID][job.JobID] = &cp
+	return nil
+}
+
+func (s *MemoryStore) GetVideoEditJob(ctx context.Context, workspaceID, jobID string) (*VideoEditJobRecord, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.videoJobs[workspaceID]
+	if ws == nil {
+		return nil, ErrVideoEditJobNotFound
+	}
+	j, ok := ws[jobID]
+	if !ok || j.DeletedAt != nil {
+		return nil, ErrVideoEditJobNotFound
+	}
+	cp := *j
+	return &cp, nil
+}
+
+func (s *MemoryStore) ListVideoEditJobs(ctx context.Context, workspaceID, mode, status string, limit, offset int) ([]*VideoEditJobRecord, int64, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.videoJobs[workspaceID]
+	if ws == nil {
+		return []*VideoEditJobRecord{}, 0, nil
+	}
+
+	var matched []*VideoEditJobRecord
+	for _, j := range ws {
+		if j.DeletedAt != nil {
+			continue
+		}
+		if mode != "" && j.Mode != mode {
+			continue
+		}
+		if status != "" && j.Status != status {
+			continue
+		}
+		cp := *j
+		matched = append(matched, &cp)
+	}
+
+	total := int64(len(matched))
+	if offset < 0 {
+		offset = 0
+	}
+	if offset >= len(matched) {
+		return []*VideoEditJobRecord{}, total, nil
+	}
+
+	end := offset + limit
+	if limit <= 0 || end > len(matched) {
+		end = len(matched)
+	}
+
+	return matched[offset:end], total, nil
+}
+
+func (s *MemoryStore) UpdateVideoEditJob(ctx context.Context, job *VideoEditJobRecord) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ws := s.videoJobs[job.WorkspaceID]
+	if ws == nil || ws[job.JobID] == nil {
+		return ErrVideoEditJobNotFound
+	}
+	cp := *job
+	cp.UpdatedAt = time.Now().UTC()
+	ws[job.JobID] = &cp
+	return nil
 }

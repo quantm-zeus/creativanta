@@ -756,6 +756,16 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 		}
 	case 18:
 		requiredFragments = []requiredFragment{
+			{"remix_blueprints table", "CREATE TABLE IF NOT EXISTS remix_blueprints"},
+			{"composite tenant FK on remix_blueprints -> assets", "fk_remix_blueprints_reference_asset_id_tenant"},
+			{"tenant_isolation policy on remix_blueprints", "CREATE POLICY tenant_isolation ON remix_blueprints"},
+			{"admin_ops_scope policy on remix_blueprints", "CREATE POLICY admin_ops_scope ON remix_blueprints"},
+		}
+		requiredRLSTables = []string{
+			"remix_blueprints",
+		}
+	case 19:
+		requiredFragments = []requiredFragment{
 			{"transcripts table", "CREATE TABLE IF NOT EXISTS transcripts"},
 			{"quick_edit_drafts table", "CREATE TABLE IF NOT EXISTS quick_edit_drafts"},
 			{"sound_library table", "CREATE TABLE IF NOT EXISTS sound_library"},

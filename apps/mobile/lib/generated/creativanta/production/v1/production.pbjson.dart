@@ -129,6 +129,67 @@ final $typed_data.Uint8List productionModeDescriptor = $convert.base64Decode(
     '8QChIgChxQUk9EVUNUSU9OX01PREVfU09VTkRfU1RVRElPEAsSIgoeUFJPRFVDVElPTl9NT0RF'
     'X1NUWUxFX0xFQVJOSU5HEAw=');
 
+@$core.Deprecated('Use fidelityLevelDescriptor instead')
+const FidelityLevel$json = {
+  '1': 'FidelityLevel',
+  '2': [
+    {'1': 'FIDELITY_LEVEL_UNSPECIFIED', '2': 0},
+    {'1': 'FIDELITY_LEVEL_MATCH_1TO1', '2': 1},
+    {'1': 'FIDELITY_LEVEL_ADAPT', '2': 2},
+    {'1': 'FIDELITY_LEVEL_LOOSE', '2': 3},
+  ],
+};
+
+/// Descriptor for `FidelityLevel`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List fidelityLevelDescriptor = $convert.base64Decode(
+    'Cg1GaWRlbGl0eUxldmVsEh4KGkZJREVMSVRZX0xFVkVMX1VOU1BFQ0lGSUVEEAASHQoZRklERU'
+    'xJVFlfTEVWRUxfTUFUQ0hfMVRPMRABEhgKFEZJREVMSVRZX0xFVkVMX0FEQVBUEAISGAoURklE'
+    'RUxJVFlfTEVWRUxfTE9PU0UQAw==');
+
+@$core.Deprecated('Use remixStatusDescriptor instead')
+const RemixStatus$json = {
+  '1': 'RemixStatus',
+  '2': [
+    {'1': 'REMIX_STATUS_UNSPECIFIED', '2': 0},
+    {'1': 'REMIX_STATUS_ANALYZING', '2': 1},
+    {'1': 'REMIX_STATUS_ANALYZED', '2': 2},
+    {'1': 'REMIX_STATUS_GENERATING', '2': 3},
+    {'1': 'REMIX_STATUS_GENERATED', '2': 4},
+    {'1': 'REMIX_STATUS_FAILED', '2': 5},
+    {'1': 'REMIX_STATUS_REJECTED', '2': 6},
+  ],
+};
+
+/// Descriptor for `RemixStatus`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List remixStatusDescriptor = $convert.base64Decode(
+    'CgtSZW1peFN0YXR1cxIcChhSRU1JWF9TVEFUVVNfVU5TUEVDSUZJRUQQABIaChZSRU1JWF9TVE'
+    'FUVVNfQU5BTFlaSU5HEAESGQoVUkVNSVhfU1RBVFVTX0FOQUxZWkVEEAISGwoXUkVNSVhfU1RB'
+    'VFVTX0dFTkVSQVRJTkcQAxIaChZSRU1JWF9TVEFUVVNfR0VORVJBVEVEEAQSFwoTUkVNSVhfU1'
+    'RBVFVTX0ZBSUxFRBAFEhkKFVJFTUlYX1NUQVRVU19SRUpFQ1RFRBAG');
+
+@$core.Deprecated('Use videoEditJobStatusDescriptor instead')
+const VideoEditJobStatus$json = {
+  '1': 'VideoEditJobStatus',
+  '2': [
+    {'1': 'VIDEO_EDIT_JOB_STATUS_UNSPECIFIED', '2': 0},
+    {'1': 'VIDEO_EDIT_JOB_STATUS_QUEUED', '2': 1},
+    {'1': 'VIDEO_EDIT_JOB_STATUS_PROCESSING', '2': 2},
+    {'1': 'VIDEO_EDIT_JOB_STATUS_COMPLETED', '2': 3},
+    {'1': 'VIDEO_EDIT_JOB_STATUS_PARTIALLY_COMPLETED', '2': 4},
+    {'1': 'VIDEO_EDIT_JOB_STATUS_FAILED', '2': 5},
+    {'1': 'VIDEO_EDIT_JOB_STATUS_CANCELLED', '2': 6},
+  ],
+};
+
+/// Descriptor for `VideoEditJobStatus`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List videoEditJobStatusDescriptor = $convert.base64Decode(
+    'ChJWaWRlb0VkaXRKb2JTdGF0dXMSJQohVklERU9fRURJVF9KT0JfU1RBVFVTX1VOU1BFQ0lGSU'
+    'VEEAASIAocVklERU9fRURJVF9KT0JfU1RBVFVTX1FVRVVFRBABEiQKIFZJREVPX0VESVRfSk9C'
+    'X1NUQVRVU19QUk9DRVNTSU5HEAISIwofVklERU9fRURJVF9KT0JfU1RBVFVTX0NPTVBMRVRFRB'
+    'ADEi0KKVZJREVPX0VESVRfSk9CX1NUQVRVU19QQVJUSUFMTFlfQ09NUExFVEVEEAQSIAocVklE'
+    'RU9fRURJVF9KT0JfU1RBVFVTX0ZBSUxFRBAFEiMKH1ZJREVPX0VESVRfSk9CX1NUQVRVU19DQU'
+    '5DRUxMRUQQBg==');
+
 @$core.Deprecated('Use transcriptAlignmentStatusDescriptor instead')
 const TranscriptAlignmentStatus$json = {
   '1': 'TranscriptAlignmentStatus',
@@ -2169,3 +2230,1021 @@ final $typed_data.Uint8List previewSoundResponseDescriptor = $convert.base64Deco
     'ChRQcmV2aWV3U291bmRSZXNwb25zZRIfCgtwcmV2aWV3X3VybBgBIAEoCVIKcHJldmlld1VybB'
     'I4ChhwcmV2aWV3X2R1cmF0aW9uX3NlY29uZHMYAiABKAFSFnByZXZpZXdEdXJhdGlvblNlY29u'
     'ZHM=');
+
+@$core.Deprecated('Use creativeDnaDescriptor instead')
+const CreativeDna$json = {
+  '1': 'CreativeDna',
+  '2': [
+    {'1': 'scene_count', '3': 1, '4': 1, '5': 5, '10': 'sceneCount'},
+    {'1': 'hook_type', '3': 2, '4': 1, '5': 9, '10': 'hookType'},
+    {
+      '1': 'content_structure_json',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '10': 'contentStructureJson'
+    },
+    {
+      '1': 'pacing_profile_json',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '10': 'pacingProfileJson'
+    },
+    {'1': 'visual_style_json', '3': 5, '4': 1, '5': 9, '10': 'visualStyleJson'},
+    {
+      '1': 'audio_profile_json',
+      '3': 6,
+      '4': 1,
+      '5': 9,
+      '10': 'audioProfileJson'
+    },
+    {
+      '1': 'transition_map_json',
+      '3': 7,
+      '4': 1,
+      '5': 9,
+      '10': 'transitionMapJson'
+    },
+    {
+      '1': 'total_duration_seconds',
+      '3': 8,
+      '4': 1,
+      '5': 1,
+      '10': 'totalDurationSeconds'
+    },
+    {
+      '1': 'engagement_structure_json',
+      '3': 9,
+      '4': 1,
+      '5': 9,
+      '10': 'engagementStructureJson'
+    },
+  ],
+};
+
+/// Descriptor for `CreativeDna`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List creativeDnaDescriptor = $convert.base64Decode(
+    'CgtDcmVhdGl2ZURuYRIfCgtzY2VuZV9jb3VudBgBIAEoBVIKc2NlbmVDb3VudBIbCglob29rX3'
+    'R5cGUYAiABKAlSCGhvb2tUeXBlEjQKFmNvbnRlbnRfc3RydWN0dXJlX2pzb24YAyABKAlSFGNv'
+    'bnRlbnRTdHJ1Y3R1cmVKc29uEi4KE3BhY2luZ19wcm9maWxlX2pzb24YBCABKAlSEXBhY2luZ1'
+    'Byb2ZpbGVKc29uEioKEXZpc3VhbF9zdHlsZV9qc29uGAUgASgJUg92aXN1YWxTdHlsZUpzb24S'
+    'LAoSYXVkaW9fcHJvZmlsZV9qc29uGAYgASgJUhBhdWRpb1Byb2ZpbGVKc29uEi4KE3RyYW5zaX'
+    'Rpb25fbWFwX2pzb24YByABKAlSEXRyYW5zaXRpb25NYXBKc29uEjQKFnRvdGFsX2R1cmF0aW9u'
+    'X3NlY29uZHMYCCABKAFSFHRvdGFsRHVyYXRpb25TZWNvbmRzEjoKGWVuZ2FnZW1lbnRfc3RydW'
+    'N0dXJlX2pzb24YCSABKAlSF2VuZ2FnZW1lbnRTdHJ1Y3R1cmVKc29u');
+
+@$core.Deprecated('Use remixBlueprintDescriptor instead')
+const RemixBlueprint$json = {
+  '1': 'RemixBlueprint',
+  '2': [
+    {'1': 'blueprint_id', '3': 1, '4': 1, '5': 9, '10': 'blueprintId'},
+    {'1': 'workspace_id', '3': 2, '4': 1, '5': 9, '10': 'workspaceId'},
+    {
+      '1': 'reference_asset_id',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '10': 'referenceAssetId'
+    },
+    {'1': 'reference_url', '3': 4, '4': 1, '5': 9, '10': 'referenceUrl'},
+    {'1': 'output_asset_id', '3': 5, '4': 1, '5': 9, '10': 'outputAssetId'},
+    {'1': 'video_edit_job_id', '3': 6, '4': 1, '5': 9, '10': 'videoEditJobId'},
+    {
+      '1': 'creative_dna',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.CreativeDna',
+      '10': 'creativeDna'
+    },
+    {'1': 'remix_script', '3': 8, '4': 1, '5': 9, '10': 'remixScript'},
+    {
+      '1': 'fidelity_level',
+      '3': 9,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.production.v1.FidelityLevel',
+      '10': 'fidelityLevel'
+    },
+    {
+      '1': 'originality_score',
+      '3': 10,
+      '4': 1,
+      '5': 1,
+      '10': 'originalityScore'
+    },
+    {
+      '1': 'similarity_percentage',
+      '3': 11,
+      '4': 1,
+      '5': 1,
+      '10': 'similarityPercentage'
+    },
+    {
+      '1': 'status',
+      '3': 12,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.production.v1.RemixStatus',
+      '10': 'status'
+    },
+    {'1': 'rejection_reason', '3': 13, '4': 1, '5': 9, '10': 'rejectionReason'},
+    {'1': 'error_message', '3': 14, '4': 1, '5': 9, '10': 'errorMessage'},
+    {
+      '1': 'created_at',
+      '3': 15,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+    {
+      '1': 'updated_at',
+      '3': 16,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'updatedAt'
+    },
+  ],
+};
+
+/// Descriptor for `RemixBlueprint`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List remixBlueprintDescriptor = $convert.base64Decode(
+    'Cg5SZW1peEJsdWVwcmludBIhCgxibHVlcHJpbnRfaWQYASABKAlSC2JsdWVwcmludElkEiEKDH'
+    'dvcmtzcGFjZV9pZBgCIAEoCVILd29ya3NwYWNlSWQSLAoScmVmZXJlbmNlX2Fzc2V0X2lkGAMg'
+    'ASgJUhByZWZlcmVuY2VBc3NldElkEiMKDXJlZmVyZW5jZV91cmwYBCABKAlSDHJlZmVyZW5jZV'
+    'VybBImCg9vdXRwdXRfYXNzZXRfaWQYBSABKAlSDW91dHB1dEFzc2V0SWQSKQoRdmlkZW9fZWRp'
+    'dF9qb2JfaWQYBiABKAlSDnZpZGVvRWRpdEpvYklkEkkKDGNyZWF0aXZlX2RuYRgHIAEoCzImLm'
+    'NyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuQ3JlYXRpdmVEbmFSC2NyZWF0aXZlRG5hEiEKDHJl'
+    'bWl4X3NjcmlwdBgIIAEoCVILcmVtaXhTY3JpcHQSTwoOZmlkZWxpdHlfbGV2ZWwYCSABKA4yKC'
+    '5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLkZpZGVsaXR5TGV2ZWxSDWZpZGVsaXR5TGV2ZWwS'
+    'KwoRb3JpZ2luYWxpdHlfc2NvcmUYCiABKAFSEG9yaWdpbmFsaXR5U2NvcmUSMwoVc2ltaWxhcm'
+    'l0eV9wZXJjZW50YWdlGAsgASgBUhRzaW1pbGFyaXR5UGVyY2VudGFnZRI+CgZzdGF0dXMYDCAB'
+    'KA4yJi5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlJlbWl4U3RhdHVzUgZzdGF0dXMSKQoQcm'
+    'VqZWN0aW9uX3JlYXNvbhgNIAEoCVIPcmVqZWN0aW9uUmVhc29uEiMKDWVycm9yX21lc3NhZ2UY'
+    'DiABKAlSDGVycm9yTWVzc2FnZRI5CgpjcmVhdGVkX2F0GA8gASgLMhouZ29vZ2xlLnByb3RvYn'
+    'VmLlRpbWVzdGFtcFIJY3JlYXRlZEF0EjkKCnVwZGF0ZWRfYXQYECABKAsyGi5nb29nbGUucHJv'
+    'dG9idWYuVGltZXN0YW1wUgl1cGRhdGVkQXQ=');
+
+@$core.Deprecated('Use originalityCheckResultDescriptor instead')
+const OriginalityCheckResult$json = {
+  '1': 'OriginalityCheckResult',
+  '2': [
+    {
+      '1': 'similarity_percentage',
+      '3': 1,
+      '4': 1,
+      '5': 1,
+      '10': 'similarityPercentage'
+    },
+    {
+      '1': 'canonical_threshold_percentage',
+      '3': 2,
+      '4': 1,
+      '5': 1,
+      '10': 'canonicalThresholdPercentage'
+    },
+    {
+      '1': 'originality_score',
+      '3': 3,
+      '4': 1,
+      '5': 1,
+      '10': 'originalityScore'
+    },
+    {'1': 'passed', '3': 4, '4': 1, '5': 8, '10': 'passed'},
+    {'1': 'explanation', '3': 5, '4': 1, '5': 9, '10': 'explanation'},
+    {
+      '1': 'actionable_alternatives',
+      '3': 6,
+      '4': 3,
+      '5': 9,
+      '10': 'actionableAlternatives'
+    },
+  ],
+};
+
+/// Descriptor for `OriginalityCheckResult`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List originalityCheckResultDescriptor = $convert.base64Decode(
+    'ChZPcmlnaW5hbGl0eUNoZWNrUmVzdWx0EjMKFXNpbWlsYXJpdHlfcGVyY2VudGFnZRgBIAEoAV'
+    'IUc2ltaWxhcml0eVBlcmNlbnRhZ2USRAoeY2Fub25pY2FsX3RocmVzaG9sZF9wZXJjZW50YWdl'
+    'GAIgASgBUhxjYW5vbmljYWxUaHJlc2hvbGRQZXJjZW50YWdlEisKEW9yaWdpbmFsaXR5X3Njb3'
+    'JlGAMgASgBUhBvcmlnaW5hbGl0eVNjb3JlEhYKBnBhc3NlZBgEIAEoCFIGcGFzc2VkEiAKC2V4'
+    'cGxhbmF0aW9uGAUgASgJUgtleHBsYW5hdGlvbhI3ChdhY3Rpb25hYmxlX2FsdGVybmF0aXZlcx'
+    'gGIAMoCVIWYWN0aW9uYWJsZUFsdGVybmF0aXZlcw==');
+
+@$core.Deprecated('Use copyrightCheckResultDescriptor instead')
+const CopyrightCheckResult$json = {
+  '1': 'CopyrightCheckResult',
+  '2': [
+    {'1': 'media_id', '3': 1, '4': 1, '5': 9, '10': 'mediaId'},
+    {'1': 'media_title', '3': 2, '4': 1, '5': 9, '10': 'mediaTitle'},
+    {'1': 'is_copyrighted', '3': 3, '4': 1, '5': 8, '10': 'isCopyrighted'},
+    {
+      '1': 'detected_song_title',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '10': 'detectedSongTitle'
+    },
+    {'1': 'detected_artist', '3': 5, '4': 1, '5': 9, '10': 'detectedArtist'},
+    {'1': 'license_verified', '3': 6, '4': 1, '5': 8, '10': 'licenseVerified'},
+    {'1': 'license_key', '3': 7, '4': 1, '5': 9, '10': 'licenseKey'},
+    {'1': 'passed', '3': 8, '4': 1, '5': 8, '10': 'passed'},
+    {'1': 'can_bypass_risk', '3': 9, '4': 1, '5': 8, '10': 'canBypassRisk'},
+    {'1': 'warning_message', '3': 10, '4': 1, '5': 9, '10': 'warningMessage'},
+    {
+      '1': 'actionable_options',
+      '3': 11,
+      '4': 3,
+      '5': 9,
+      '10': 'actionableOptions'
+    },
+  ],
+};
+
+/// Descriptor for `CopyrightCheckResult`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List copyrightCheckResultDescriptor = $convert.base64Decode(
+    'ChRDb3B5cmlnaHRDaGVja1Jlc3VsdBIZCghtZWRpYV9pZBgBIAEoCVIHbWVkaWFJZBIfCgttZW'
+    'RpYV90aXRsZRgCIAEoCVIKbWVkaWFUaXRsZRIlCg5pc19jb3B5cmlnaHRlZBgDIAEoCFINaXND'
+    'b3B5cmlnaHRlZBIuChNkZXRlY3RlZF9zb25nX3RpdGxlGAQgASgJUhFkZXRlY3RlZFNvbmdUaX'
+    'RsZRInCg9kZXRlY3RlZF9hcnRpc3QYBSABKAlSDmRldGVjdGVkQXJ0aXN0EikKEGxpY2Vuc2Vf'
+    'dmVyaWZpZWQYBiABKAhSD2xpY2Vuc2VWZXJpZmllZBIfCgtsaWNlbnNlX2tleRgHIAEoCVIKbG'
+    'ljZW5zZUtleRIWCgZwYXNzZWQYCCABKAhSBnBhc3NlZBImCg9jYW5fYnlwYXNzX3Jpc2sYCSAB'
+    'KAhSDWNhbkJ5cGFzc1Jpc2sSJwoPd2FybmluZ19tZXNzYWdlGAogASgJUg53YXJuaW5nTWVzc2'
+    'FnZRItChJhY3Rpb25hYmxlX29wdGlvbnMYCyADKAlSEWFjdGlvbmFibGVPcHRpb25z');
+
+@$core.Deprecated('Use multiMergeTimelineItemDescriptor instead')
+const MultiMergeTimelineItem$json = {
+  '1': 'MultiMergeTimelineItem',
+  '2': [
+    {'1': 'item_id', '3': 1, '4': 1, '5': 9, '10': 'itemId'},
+    {'1': 'asset_id', '3': 2, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'order_index', '3': 3, '4': 1, '5': 5, '10': 'orderIndex'},
+    {'1': 'duration_seconds', '3': 4, '4': 1, '5': 1, '10': 'durationSeconds'},
+    {'1': 'media_type', '3': 5, '4': 1, '5': 9, '10': 'mediaType'},
+    {
+      '1': 'transition_to_next',
+      '3': 6,
+      '4': 1,
+      '5': 9,
+      '10': 'transitionToNext'
+    },
+    {
+      '1': 'transition_duration_seconds',
+      '3': 7,
+      '4': 1,
+      '5': 1,
+      '10': 'transitionDurationSeconds'
+    },
+    {'1': 'license_status', '3': 8, '4': 1, '5': 9, '10': 'licenseStatus'},
+    {'1': 'license_proof_key', '3': 9, '4': 1, '5': 9, '10': 'licenseProofKey'},
+  ],
+};
+
+/// Descriptor for `MultiMergeTimelineItem`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List multiMergeTimelineItemDescriptor = $convert.base64Decode(
+    'ChZNdWx0aU1lcmdlVGltZWxpbmVJdGVtEhcKB2l0ZW1faWQYASABKAlSBml0ZW1JZBIZCghhc3'
+    'NldF9pZBgCIAEoCVIHYXNzZXRJZBIfCgtvcmRlcl9pbmRleBgDIAEoBVIKb3JkZXJJbmRleBIp'
+    'ChBkdXJhdGlvbl9zZWNvbmRzGAQgASgBUg9kdXJhdGlvblNlY29uZHMSHQoKbWVkaWFfdHlwZR'
+    'gFIAEoCVIJbWVkaWFUeXBlEiwKEnRyYW5zaXRpb25fdG9fbmV4dBgGIAEoCVIQdHJhbnNpdGlv'
+    'blRvTmV4dBI+Cht0cmFuc2l0aW9uX2R1cmF0aW9uX3NlY29uZHMYByABKAFSGXRyYW5zaXRpb2'
+    '5EdXJhdGlvblNlY29uZHMSJQoObGljZW5zZV9zdGF0dXMYCCABKAlSDWxpY2Vuc2VTdGF0dXMS'
+    'KgoRbGljZW5zZV9wcm9vZl9rZXkYCSABKAlSD2xpY2Vuc2VQcm9vZktleQ==');
+
+@$core.Deprecated('Use multiMergeSettingsDescriptor instead')
+const MultiMergeSettings$json = {
+  '1': 'MultiMergeSettings',
+  '2': [
+    {
+      '1': 'target_duration_seconds',
+      '3': 1,
+      '4': 1,
+      '5': 1,
+      '10': 'targetDurationSeconds'
+    },
+    {'1': 'auto_transitions', '3': 2, '4': 1, '5': 8, '10': 'autoTransitions'},
+    {'1': 'voice_over_type', '3': 3, '4': 1, '5': 9, '10': 'voiceOverType'},
+    {
+      '1': 'voice_over_character_id',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '10': 'voiceOverCharacterId'
+    },
+    {'1': 'music_source', '3': 5, '4': 1, '5': 9, '10': 'musicSource'},
+    {'1': 'music_asset_id', '3': 6, '4': 1, '5': 9, '10': 'musicAssetId'},
+    {
+      '1': 'music_license_proof',
+      '3': 7,
+      '4': 1,
+      '5': 9,
+      '10': 'musicLicenseProof'
+    },
+    {'1': 'aspect_ratio', '3': 8, '4': 1, '5': 9, '10': 'aspectRatio'},
+    {'1': 'pacing', '3': 9, '4': 1, '5': 9, '10': 'pacing'},
+  ],
+};
+
+/// Descriptor for `MultiMergeSettings`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List multiMergeSettingsDescriptor = $convert.base64Decode(
+    'ChJNdWx0aU1lcmdlU2V0dGluZ3MSNgoXdGFyZ2V0X2R1cmF0aW9uX3NlY29uZHMYASABKAFSFX'
+    'RhcmdldER1cmF0aW9uU2Vjb25kcxIpChBhdXRvX3RyYW5zaXRpb25zGAIgASgIUg9hdXRvVHJh'
+    'bnNpdGlvbnMSJgoPdm9pY2Vfb3Zlcl90eXBlGAMgASgJUg12b2ljZU92ZXJUeXBlEjUKF3ZvaW'
+    'NlX292ZXJfY2hhcmFjdGVyX2lkGAQgASgJUhR2b2ljZU92ZXJDaGFyYWN0ZXJJZBIhCgxtdXNp'
+    'Y19zb3VyY2UYBSABKAlSC211c2ljU291cmNlEiQKDm11c2ljX2Fzc2V0X2lkGAYgASgJUgxtdX'
+    'NpY0Fzc2V0SWQSLgoTbXVzaWNfbGljZW5zZV9wcm9vZhgHIAEoCVIRbXVzaWNMaWNlbnNlUHJv'
+    'b2YSIQoMYXNwZWN0X3JhdGlvGAggASgJUgthc3BlY3RSYXRpbxIWCgZwYWNpbmcYCSABKAlSBn'
+    'BhY2luZw==');
+
+@$core.Deprecated('Use videoEditJobDescriptor instead')
+const VideoEditJob$json = {
+  '1': 'VideoEditJob',
+  '2': [
+    {'1': 'job_id', '3': 1, '4': 1, '5': 9, '10': 'jobId'},
+    {'1': 'workspace_id', '3': 2, '4': 1, '5': 9, '10': 'workspaceId'},
+    {
+      '1': 'mode',
+      '3': 3,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.production.v1.ProductionMode',
+      '10': 'mode'
+    },
+    {'1': 'source_asset_ids', '3': 4, '4': 3, '5': 9, '10': 'sourceAssetIds'},
+    {'1': 'output_asset_ids', '3': 5, '4': 3, '5': 9, '10': 'outputAssetIds'},
+    {'1': 'generation_job_id', '3': 6, '4': 1, '5': 9, '10': 'generationJobId'},
+    {'1': 'character_id', '3': 7, '4': 1, '5': 9, '10': 'characterId'},
+    {'1': 'brand_pack_id', '3': 8, '4': 1, '5': 9, '10': 'brandPackId'},
+    {
+      '1': 'status',
+      '3': 9,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.production.v1.VideoEditJobStatus',
+      '10': 'status'
+    },
+    {
+      '1': 'input_params_json',
+      '3': 10,
+      '4': 1,
+      '5': 9,
+      '10': 'inputParamsJson'
+    },
+    {
+      '1': 'output_metadata_json',
+      '3': 11,
+      '4': 1,
+      '5': 9,
+      '10': 'outputMetadataJson'
+    },
+    {
+      '1': 'credits_estimated',
+      '3': 12,
+      '4': 1,
+      '5': 9,
+      '10': 'creditsEstimated'
+    },
+    {'1': 'credits_used', '3': 13, '4': 1, '5': 9, '10': 'creditsUsed'},
+    {'1': 'actual_cost_usd', '3': 14, '4': 1, '5': 9, '10': 'actualCostUsd'},
+    {'1': 'error_message', '3': 15, '4': 1, '5': 9, '10': 'errorMessage'},
+    {
+      '1': 'started_at',
+      '3': 16,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'startedAt'
+    },
+    {
+      '1': 'completed_at',
+      '3': 17,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'completedAt'
+    },
+    {
+      '1': 'created_at',
+      '3': 18,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+    {
+      '1': 'updated_at',
+      '3': 19,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'updatedAt'
+    },
+  ],
+};
+
+/// Descriptor for `VideoEditJob`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List videoEditJobDescriptor = $convert.base64Decode(
+    'CgxWaWRlb0VkaXRKb2ISFQoGam9iX2lkGAEgASgJUgVqb2JJZBIhCgx3b3Jrc3BhY2VfaWQYAi'
+    'ABKAlSC3dvcmtzcGFjZUlkEj0KBG1vZGUYAyABKA4yKS5jcmVhdGl2YW50YS5wcm9kdWN0aW9u'
+    'LnYxLlByb2R1Y3Rpb25Nb2RlUgRtb2RlEigKEHNvdXJjZV9hc3NldF9pZHMYBCADKAlSDnNvdX'
+    'JjZUFzc2V0SWRzEigKEG91dHB1dF9hc3NldF9pZHMYBSADKAlSDm91dHB1dEFzc2V0SWRzEioK'
+    'EWdlbmVyYXRpb25fam9iX2lkGAYgASgJUg9nZW5lcmF0aW9uSm9iSWQSIQoMY2hhcmFjdGVyX2'
+    'lkGAcgASgJUgtjaGFyYWN0ZXJJZBIiCg1icmFuZF9wYWNrX2lkGAggASgJUgticmFuZFBhY2tJ'
+    'ZBJFCgZzdGF0dXMYCSABKA4yLS5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlZpZGVvRWRpdE'
+    'pvYlN0YXR1c1IGc3RhdHVzEioKEWlucHV0X3BhcmFtc19qc29uGAogASgJUg9pbnB1dFBhcmFt'
+    'c0pzb24SMAoUb3V0cHV0X21ldGFkYXRhX2pzb24YCyABKAlSEm91dHB1dE1ldGFkYXRhSnNvbh'
+    'IrChFjcmVkaXRzX2VzdGltYXRlZBgMIAEoCVIQY3JlZGl0c0VzdGltYXRlZBIhCgxjcmVkaXRz'
+    'X3VzZWQYDSABKAlSC2NyZWRpdHNVc2VkEiYKD2FjdHVhbF9jb3N0X3VzZBgOIAEoCVINYWN0dW'
+    'FsQ29zdFVzZBIjCg1lcnJvcl9tZXNzYWdlGA8gASgJUgxlcnJvck1lc3NhZ2USOQoKc3RhcnRl'
+    'ZF9hdBgQIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSCXN0YXJ0ZWRBdBI9Cgxjb2'
+    '1wbGV0ZWRfYXQYESABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgtjb21wbGV0ZWRB'
+    'dBI5CgpjcmVhdGVkX2F0GBIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcFIJY3JlYX'
+    'RlZEF0EjkKCnVwZGF0ZWRfYXQYEyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgl1'
+    'cGRhdGVkQXQ=');
+
+@$core.Deprecated('Use remixServiceAnalyzeRequestDescriptor instead')
+const RemixServiceAnalyzeRequest$json = {
+  '1': 'RemixServiceAnalyzeRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {
+      '1': 'reference_asset_id',
+      '3': 2,
+      '4': 1,
+      '5': 9,
+      '10': 'referenceAssetId'
+    },
+    {'1': 'reference_url', '3': 3, '4': 1, '5': 9, '10': 'referenceUrl'},
+    {
+      '1': 'fidelity_level',
+      '3': 4,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.production.v1.FidelityLevel',
+      '10': 'fidelityLevel'
+    },
+    {'1': 'topic', '3': 5, '4': 1, '5': 9, '10': 'topic'},
+    {'1': 'character_id', '3': 6, '4': 1, '5': 9, '10': 'characterId'},
+    {'1': 'brand_pack_id', '3': 7, '4': 1, '5': 9, '10': 'brandPackId'},
+    {'1': 'target_platforms', '3': 8, '4': 3, '5': 9, '10': 'targetPlatforms'},
+  ],
+};
+
+/// Descriptor for `RemixServiceAnalyzeRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List remixServiceAnalyzeRequestDescriptor = $convert.base64Decode(
+    'ChpSZW1peFNlcnZpY2VBbmFseXplUmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3JlYXRpdm'
+    'FudGEuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EiwKEnJlZmVyZW5jZV9hc3Nl'
+    'dF9pZBgCIAEoCVIQcmVmZXJlbmNlQXNzZXRJZBIjCg1yZWZlcmVuY2VfdXJsGAMgASgJUgxyZW'
+    'ZlcmVuY2VVcmwSTwoOZmlkZWxpdHlfbGV2ZWwYBCABKA4yKC5jcmVhdGl2YW50YS5wcm9kdWN0'
+    'aW9uLnYxLkZpZGVsaXR5TGV2ZWxSDWZpZGVsaXR5TGV2ZWwSFAoFdG9waWMYBSABKAlSBXRvcG'
+    'ljEiEKDGNoYXJhY3Rlcl9pZBgGIAEoCVILY2hhcmFjdGVySWQSIgoNYnJhbmRfcGFja19pZBgH'
+    'IAEoCVILYnJhbmRQYWNrSWQSKQoQdGFyZ2V0X3BsYXRmb3JtcxgIIAMoCVIPdGFyZ2V0UGxhdG'
+    'Zvcm1z');
+
+@$core.Deprecated('Use remixServiceAnalyzeResponseDescriptor instead')
+const RemixServiceAnalyzeResponse$json = {
+  '1': 'RemixServiceAnalyzeResponse',
+  '2': [
+    {
+      '1': 'blueprint',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.RemixBlueprint',
+      '10': 'blueprint'
+    },
+    {'1': 'credits_deducted', '3': 2, '4': 1, '5': 9, '10': 'creditsDeducted'},
+  ],
+};
+
+/// Descriptor for `RemixServiceAnalyzeResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List remixServiceAnalyzeResponseDescriptor =
+    $convert.base64Decode(
+        'ChtSZW1peFNlcnZpY2VBbmFseXplUmVzcG9uc2USRwoJYmx1ZXByaW50GAEgASgLMikuY3JlYX'
+        'RpdmFudGEucHJvZHVjdGlvbi52MS5SZW1peEJsdWVwcmludFIJYmx1ZXByaW50EikKEGNyZWRp'
+        'dHNfZGVkdWN0ZWQYAiABKAlSD2NyZWRpdHNEZWR1Y3RlZA==');
+
+@$core.Deprecated('Use remixServiceGetBlueprintRequestDescriptor instead')
+const RemixServiceGetBlueprintRequest$json = {
+  '1': 'RemixServiceGetBlueprintRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'blueprint_id', '3': 2, '4': 1, '5': 9, '10': 'blueprintId'},
+  ],
+};
+
+/// Descriptor for `RemixServiceGetBlueprintRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List remixServiceGetBlueprintRequestDescriptor =
+    $convert.base64Decode(
+        'Ch9SZW1peFNlcnZpY2VHZXRCbHVlcHJpbnRSZXF1ZXN0Ej4KDHdvcmtzcGFjZV9pZBgBIAEoCz'
+        'IbLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5VVUlEUgt3b3Jrc3BhY2VJZBIhCgxibHVlcHJpbnRf'
+        'aWQYAiABKAlSC2JsdWVwcmludElk');
+
+@$core.Deprecated('Use remixServiceGetBlueprintResponseDescriptor instead')
+const RemixServiceGetBlueprintResponse$json = {
+  '1': 'RemixServiceGetBlueprintResponse',
+  '2': [
+    {
+      '1': 'blueprint',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.RemixBlueprint',
+      '10': 'blueprint'
+    },
+  ],
+};
+
+/// Descriptor for `RemixServiceGetBlueprintResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List remixServiceGetBlueprintResponseDescriptor =
+    $convert.base64Decode(
+        'CiBSZW1peFNlcnZpY2VHZXRCbHVlcHJpbnRSZXNwb25zZRJHCglibHVlcHJpbnQYASABKAsyKS'
+        '5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlJlbWl4Qmx1ZXByaW50UglibHVlcHJpbnQ=');
+
+@$core.Deprecated('Use remixServiceGenerateRequestDescriptor instead')
+const RemixServiceGenerateRequest$json = {
+  '1': 'RemixServiceGenerateRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'blueprint_id', '3': 2, '4': 1, '5': 9, '10': 'blueprintId'},
+    {'1': 'edited_script', '3': 3, '4': 1, '5': 9, '10': 'editedScript'},
+    {
+      '1': 'fidelity_level',
+      '3': 4,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.production.v1.FidelityLevel',
+      '10': 'fidelityLevel'
+    },
+    {'1': 'topic', '3': 5, '4': 1, '5': 9, '10': 'topic'},
+    {'1': 'character_id', '3': 6, '4': 1, '5': 9, '10': 'characterId'},
+    {'1': 'brand_pack_id', '3': 7, '4': 1, '5': 9, '10': 'brandPackId'},
+    {'1': 'dry_run', '3': 8, '4': 1, '5': 8, '10': 'dryRun'},
+  ],
+};
+
+/// Descriptor for `RemixServiceGenerateRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List remixServiceGenerateRequestDescriptor = $convert.base64Decode(
+    'ChtSZW1peFNlcnZpY2VHZW5lcmF0ZVJlcXVlc3QSPwoHY29udGV4dBgBIAEoCzIlLmNyZWF0aX'
+    'ZhbnRhLmNvbW1vbi52MS5Db21tYW5kQ29udGV4dFIHY29udGV4dBIhCgxibHVlcHJpbnRfaWQY'
+    'AiABKAlSC2JsdWVwcmludElkEiMKDWVkaXRlZF9zY3JpcHQYAyABKAlSDGVkaXRlZFNjcmlwdB'
+    'JPCg5maWRlbGl0eV9sZXZlbBgEIAEoDjIoLmNyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuRmlk'
+    'ZWxpdHlMZXZlbFINZmlkZWxpdHlMZXZlbBIUCgV0b3BpYxgFIAEoCVIFdG9waWMSIQoMY2hhcm'
+    'FjdGVyX2lkGAYgASgJUgtjaGFyYWN0ZXJJZBIiCg1icmFuZF9wYWNrX2lkGAcgASgJUgticmFu'
+    'ZFBhY2tJZBIXCgdkcnlfcnVuGAggASgIUgZkcnlSdW4=');
+
+@$core.Deprecated('Use remixServiceGenerateResponseDescriptor instead')
+const RemixServiceGenerateResponse$json = {
+  '1': 'RemixServiceGenerateResponse',
+  '2': [
+    {
+      '1': 'blueprint',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.RemixBlueprint',
+      '10': 'blueprint'
+    },
+    {
+      '1': 'job',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.VideoEditJob',
+      '10': 'job'
+    },
+    {
+      '1': 'asset',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.Asset',
+      '10': 'asset'
+    },
+    {
+      '1': 'originality_check',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.OriginalityCheckResult',
+      '10': 'originalityCheck'
+    },
+    {'1': 'credits_deducted', '3': 5, '4': 1, '5': 9, '10': 'creditsDeducted'},
+    {'1': 'is_dry_run', '3': 6, '4': 1, '5': 8, '10': 'isDryRun'},
+  ],
+};
+
+/// Descriptor for `RemixServiceGenerateResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List remixServiceGenerateResponseDescriptor = $convert.base64Decode(
+    'ChxSZW1peFNlcnZpY2VHZW5lcmF0ZVJlc3BvbnNlEkcKCWJsdWVwcmludBgBIAEoCzIpLmNyZW'
+    'F0aXZhbnRhLnByb2R1Y3Rpb24udjEuUmVtaXhCbHVlcHJpbnRSCWJsdWVwcmludBI5CgNqb2IY'
+    'AiABKAsyJy5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlZpZGVvRWRpdEpvYlIDam9iEjYKBW'
+    'Fzc2V0GAMgASgLMiAuY3JlYXRpdmFudGEucHJvZHVjdGlvbi52MS5Bc3NldFIFYXNzZXQSXgoR'
+    'b3JpZ2luYWxpdHlfY2hlY2sYBCABKAsyMS5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLk9yaW'
+    'dpbmFsaXR5Q2hlY2tSZXN1bHRSEG9yaWdpbmFsaXR5Q2hlY2sSKQoQY3JlZGl0c19kZWR1Y3Rl'
+    'ZBgFIAEoCVIPY3JlZGl0c0RlZHVjdGVkEhwKCmlzX2RyeV9ydW4YBiABKAhSCGlzRHJ5UnVu');
+
+@$core.Deprecated('Use remixServiceRegenerateRequestDescriptor instead')
+const RemixServiceRegenerateRequest$json = {
+  '1': 'RemixServiceRegenerateRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'blueprint_id', '3': 2, '4': 1, '5': 9, '10': 'blueprintId'},
+    {'1': 'scene_index', '3': 3, '4': 1, '5': 5, '10': 'sceneIndex'},
+    {'1': 'script_segment', '3': 4, '4': 1, '5': 9, '10': 'scriptSegment'},
+    {
+      '1': 'visual_prompt_override',
+      '3': 5,
+      '4': 1,
+      '5': 9,
+      '10': 'visualPromptOverride'
+    },
+  ],
+};
+
+/// Descriptor for `RemixServiceRegenerateRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List remixServiceRegenerateRequestDescriptor = $convert.base64Decode(
+    'Ch1SZW1peFNlcnZpY2VSZWdlbmVyYXRlUmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3JlYX'
+    'RpdmFudGEuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EiEKDGJsdWVwcmludF9p'
+    'ZBgCIAEoCVILYmx1ZXByaW50SWQSHwoLc2NlbmVfaW5kZXgYAyABKAVSCnNjZW5lSW5kZXgSJQ'
+    'oOc2NyaXB0X3NlZ21lbnQYBCABKAlSDXNjcmlwdFNlZ21lbnQSNAoWdmlzdWFsX3Byb21wdF9v'
+    'dmVycmlkZRgFIAEoCVIUdmlzdWFsUHJvbXB0T3ZlcnJpZGU=');
+
+@$core.Deprecated('Use remixServiceRegenerateResponseDescriptor instead')
+const RemixServiceRegenerateResponse$json = {
+  '1': 'RemixServiceRegenerateResponse',
+  '2': [
+    {
+      '1': 'blueprint',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.RemixBlueprint',
+      '10': 'blueprint'
+    },
+    {
+      '1': 'job',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.VideoEditJob',
+      '10': 'job'
+    },
+    {'1': 'scene_index', '3': 3, '4': 1, '5': 5, '10': 'sceneIndex'},
+    {'1': 'credits_deducted', '3': 4, '4': 1, '5': 9, '10': 'creditsDeducted'},
+  ],
+};
+
+/// Descriptor for `RemixServiceRegenerateResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List remixServiceRegenerateResponseDescriptor = $convert.base64Decode(
+    'Ch5SZW1peFNlcnZpY2VSZWdlbmVyYXRlUmVzcG9uc2USRwoJYmx1ZXByaW50GAEgASgLMikuY3'
+    'JlYXRpdmFudGEucHJvZHVjdGlvbi52MS5SZW1peEJsdWVwcmludFIJYmx1ZXByaW50EjkKA2pv'
+    'YhgCIAEoCzInLmNyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuVmlkZW9FZGl0Sm9iUgNqb2ISHw'
+    'oLc2NlbmVfaW5kZXgYAyABKAVSCnNjZW5lSW5kZXgSKQoQY3JlZGl0c19kZWR1Y3RlZBgEIAEo'
+    'CVIPY3JlZGl0c0RlZHVjdGVk');
+
+@$core.Deprecated('Use videoEditJobServiceCreateRequestDescriptor instead')
+const VideoEditJobServiceCreateRequest$json = {
+  '1': 'VideoEditJobServiceCreateRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {
+      '1': 'mode',
+      '3': 2,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.production.v1.ProductionMode',
+      '10': 'mode'
+    },
+    {'1': 'source_asset_ids', '3': 3, '4': 3, '5': 9, '10': 'sourceAssetIds'},
+    {'1': 'character_id', '3': 4, '4': 1, '5': 9, '10': 'characterId'},
+    {'1': 'brand_pack_id', '3': 5, '4': 1, '5': 9, '10': 'brandPackId'},
+    {
+      '1': 'timeline_items',
+      '3': 6,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.MultiMergeTimelineItem',
+      '10': 'timelineItems'
+    },
+    {
+      '1': 'multimerge_settings',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.MultiMergeSettings',
+      '10': 'multimergeSettings'
+    },
+    {'1': 'dry_run', '3': 8, '4': 1, '5': 8, '10': 'dryRun'},
+  ],
+};
+
+/// Descriptor for `VideoEditJobServiceCreateRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List videoEditJobServiceCreateRequestDescriptor = $convert.base64Decode(
+    'CiBWaWRlb0VkaXRKb2JTZXJ2aWNlQ3JlYXRlUmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3'
+    'JlYXRpdmFudGEuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0Ej0KBG1vZGUYAiAB'
+    'KA4yKS5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlByb2R1Y3Rpb25Nb2RlUgRtb2RlEigKEH'
+    'NvdXJjZV9hc3NldF9pZHMYAyADKAlSDnNvdXJjZUFzc2V0SWRzEiEKDGNoYXJhY3Rlcl9pZBgE'
+    'IAEoCVILY2hhcmFjdGVySWQSIgoNYnJhbmRfcGFja19pZBgFIAEoCVILYnJhbmRQYWNrSWQSWA'
+    'oOdGltZWxpbmVfaXRlbXMYBiADKAsyMS5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLk11bHRp'
+    'TWVyZ2VUaW1lbGluZUl0ZW1SDXRpbWVsaW5lSXRlbXMSXgoTbXVsdGltZXJnZV9zZXR0aW5ncx'
+    'gHIAEoCzItLmNyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuTXVsdGlNZXJnZVNldHRpbmdzUhJt'
+    'dWx0aW1lcmdlU2V0dGluZ3MSFwoHZHJ5X3J1bhgIIAEoCFIGZHJ5UnVu');
+
+@$core.Deprecated('Use videoEditJobServiceCreateResponseDescriptor instead')
+const VideoEditJobServiceCreateResponse$json = {
+  '1': 'VideoEditJobServiceCreateResponse',
+  '2': [
+    {
+      '1': 'job',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.VideoEditJob',
+      '10': 'job'
+    },
+    {
+      '1': 'credits_estimated',
+      '3': 2,
+      '4': 1,
+      '5': 9,
+      '10': 'creditsEstimated'
+    },
+    {'1': 'is_dry_run', '3': 3, '4': 1, '5': 8, '10': 'isDryRun'},
+    {
+      '1': 'copyright_checks',
+      '3': 4,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.CopyrightCheckResult',
+      '10': 'copyrightChecks'
+    },
+  ],
+};
+
+/// Descriptor for `VideoEditJobServiceCreateResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List videoEditJobServiceCreateResponseDescriptor = $convert.base64Decode(
+    'CiFWaWRlb0VkaXRKb2JTZXJ2aWNlQ3JlYXRlUmVzcG9uc2USOQoDam9iGAEgASgLMicuY3JlYX'
+    'RpdmFudGEucHJvZHVjdGlvbi52MS5WaWRlb0VkaXRKb2JSA2pvYhIrChFjcmVkaXRzX2VzdGlt'
+    'YXRlZBgCIAEoCVIQY3JlZGl0c0VzdGltYXRlZBIcCgppc19kcnlfcnVuGAMgASgIUghpc0RyeV'
+    'J1bhJaChBjb3B5cmlnaHRfY2hlY2tzGAQgAygLMi8uY3JlYXRpdmFudGEucHJvZHVjdGlvbi52'
+    'MS5Db3B5cmlnaHRDaGVja1Jlc3VsdFIPY29weXJpZ2h0Q2hlY2tz');
+
+@$core.Deprecated('Use videoEditJobServiceGetRequestDescriptor instead')
+const VideoEditJobServiceGetRequest$json = {
+  '1': 'VideoEditJobServiceGetRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'job_id', '3': 2, '4': 1, '5': 9, '10': 'jobId'},
+  ],
+};
+
+/// Descriptor for `VideoEditJobServiceGetRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List videoEditJobServiceGetRequestDescriptor =
+    $convert.base64Decode(
+        'Ch1WaWRlb0VkaXRKb2JTZXJ2aWNlR2V0UmVxdWVzdBI+Cgx3b3Jrc3BhY2VfaWQYASABKAsyGy'
+        '5jcmVhdGl2YW50YS5jb21tb24udjEuVVVJRFILd29ya3NwYWNlSWQSFQoGam9iX2lkGAIgASgJ'
+        'UgVqb2JJZA==');
+
+@$core.Deprecated('Use videoEditJobServiceGetResponseDescriptor instead')
+const VideoEditJobServiceGetResponse$json = {
+  '1': 'VideoEditJobServiceGetResponse',
+  '2': [
+    {
+      '1': 'job',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.VideoEditJob',
+      '10': 'job'
+    },
+  ],
+};
+
+/// Descriptor for `VideoEditJobServiceGetResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List videoEditJobServiceGetResponseDescriptor =
+    $convert.base64Decode(
+        'Ch5WaWRlb0VkaXRKb2JTZXJ2aWNlR2V0UmVzcG9uc2USOQoDam9iGAEgASgLMicuY3JlYXRpdm'
+        'FudGEucHJvZHVjdGlvbi52MS5WaWRlb0VkaXRKb2JSA2pvYg==');
+
+@$core.Deprecated('Use videoEditJobServiceListRequestDescriptor instead')
+const VideoEditJobServiceListRequest$json = {
+  '1': 'VideoEditJobServiceListRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {
+      '1': 'mode',
+      '3': 2,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.production.v1.ProductionMode',
+      '10': 'mode'
+    },
+    {
+      '1': 'status',
+      '3': 3,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.production.v1.VideoEditJobStatus',
+      '10': 'status'
+    },
+    {
+      '1': 'pagination',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Pagination',
+      '10': 'pagination'
+    },
+  ],
+};
+
+/// Descriptor for `VideoEditJobServiceListRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List videoEditJobServiceListRequestDescriptor = $convert.base64Decode(
+    'Ch5WaWRlb0VkaXRKb2JTZXJ2aWNlTGlzdFJlcXVlc3QSPgoMd29ya3NwYWNlX2lkGAEgASgLMh'
+    'suY3JlYXRpdmFudGEuY29tbW9uLnYxLlVVSURSC3dvcmtzcGFjZUlkEj0KBG1vZGUYAiABKA4y'
+    'KS5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlByb2R1Y3Rpb25Nb2RlUgRtb2RlEkUKBnN0YX'
+    'R1cxgDIAEoDjItLmNyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuVmlkZW9FZGl0Sm9iU3RhdHVz'
+    'UgZzdGF0dXMSQQoKcGFnaW5hdGlvbhgEIAEoCzIhLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5QYW'
+    'dpbmF0aW9uUgpwYWdpbmF0aW9u');
+
+@$core.Deprecated('Use videoEditJobServiceListResponseDescriptor instead')
+const VideoEditJobServiceListResponse$json = {
+  '1': 'VideoEditJobServiceListResponse',
+  '2': [
+    {
+      '1': 'jobs',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.VideoEditJob',
+      '10': 'jobs'
+    },
+    {
+      '1': 'pagination',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.PaginatedResponse',
+      '10': 'pagination'
+    },
+  ],
+};
+
+/// Descriptor for `VideoEditJobServiceListResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List videoEditJobServiceListResponseDescriptor =
+    $convert.base64Decode(
+        'Ch9WaWRlb0VkaXRKb2JTZXJ2aWNlTGlzdFJlc3BvbnNlEjsKBGpvYnMYASADKAsyJy5jcmVhdG'
+        'l2YW50YS5wcm9kdWN0aW9uLnYxLlZpZGVvRWRpdEpvYlIEam9icxJICgpwYWdpbmF0aW9uGAIg'
+        'ASgLMiguY3JlYXRpdmFudGEuY29tbW9uLnYxLlBhZ2luYXRlZFJlc3BvbnNlUgpwYWdpbmF0aW'
+        '9u');
+
+@$core.Deprecated('Use videoEditJobServiceCancelRequestDescriptor instead')
+const VideoEditJobServiceCancelRequest$json = {
+  '1': 'VideoEditJobServiceCancelRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'job_id', '3': 2, '4': 1, '5': 9, '10': 'jobId'},
+    {'1': 'reason', '3': 3, '4': 1, '5': 9, '10': 'reason'},
+  ],
+};
+
+/// Descriptor for `VideoEditJobServiceCancelRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List videoEditJobServiceCancelRequestDescriptor =
+    $convert.base64Decode(
+        'CiBWaWRlb0VkaXRKb2JTZXJ2aWNlQ2FuY2VsUmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3'
+        'JlYXRpdmFudGEuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EhUKBmpvYl9pZBgC'
+        'IAEoCVIFam9iSWQSFgoGcmVhc29uGAMgASgJUgZyZWFzb24=');
+
+@$core.Deprecated('Use videoEditJobServiceCancelResponseDescriptor instead')
+const VideoEditJobServiceCancelResponse$json = {
+  '1': 'VideoEditJobServiceCancelResponse',
+  '2': [
+    {
+      '1': 'job',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.VideoEditJob',
+      '10': 'job'
+    },
+    {'1': 'credits_refunded', '3': 2, '4': 1, '5': 9, '10': 'creditsRefunded'},
+  ],
+};
+
+/// Descriptor for `VideoEditJobServiceCancelResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List videoEditJobServiceCancelResponseDescriptor =
+    $convert.base64Decode(
+        'CiFWaWRlb0VkaXRKb2JTZXJ2aWNlQ2FuY2VsUmVzcG9uc2USOQoDam9iGAEgASgLMicuY3JlYX'
+        'RpdmFudGEucHJvZHVjdGlvbi52MS5WaWRlb0VkaXRKb2JSA2pvYhIpChBjcmVkaXRzX3JlZnVu'
+        'ZGVkGAIgASgJUg9jcmVkaXRzUmVmdW5kZWQ=');
+
+@$core.Deprecated('Use videoEditJobServiceRetryRequestDescriptor instead')
+const VideoEditJobServiceRetryRequest$json = {
+  '1': 'VideoEditJobServiceRetryRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'job_id', '3': 2, '4': 1, '5': 9, '10': 'jobId'},
+    {
+      '1': 'fallback_provider',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '10': 'fallbackProvider'
+    },
+  ],
+};
+
+/// Descriptor for `VideoEditJobServiceRetryRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List videoEditJobServiceRetryRequestDescriptor =
+    $convert.base64Decode(
+        'Ch9WaWRlb0VkaXRKb2JTZXJ2aWNlUmV0cnlSZXF1ZXN0Ej8KB2NvbnRleHQYASABKAsyJS5jcm'
+        'VhdGl2YW50YS5jb21tb24udjEuQ29tbWFuZENvbnRleHRSB2NvbnRleHQSFQoGam9iX2lkGAIg'
+        'ASgJUgVqb2JJZBIrChFmYWxsYmFja19wcm92aWRlchgDIAEoCVIQZmFsbGJhY2tQcm92aWRlcg'
+        '==');
+
+@$core.Deprecated('Use videoEditJobServiceRetryResponseDescriptor instead')
+const VideoEditJobServiceRetryResponse$json = {
+  '1': 'VideoEditJobServiceRetryResponse',
+  '2': [
+    {
+      '1': 'job',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.VideoEditJob',
+      '10': 'job'
+    },
+  ],
+};
+
+/// Descriptor for `VideoEditJobServiceRetryResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List videoEditJobServiceRetryResponseDescriptor =
+    $convert.base64Decode(
+        'CiBWaWRlb0VkaXRKb2JTZXJ2aWNlUmV0cnlSZXNwb25zZRI5CgNqb2IYASABKAsyJy5jcmVhdG'
+        'l2YW50YS5wcm9kdWN0aW9uLnYxLlZpZGVvRWRpdEpvYlIDam9i');

@@ -24,10 +24,10 @@
     "docs/03_screens/mobile/screen_mobile_studio_quick_edit.md"
   ],
   "source_hashes": {
-    "infra/migrations/00018_p4_02_quick_edit_transcripts_and_sound_library.sql": "a83f6a79c13585ea162920a06737f83879309f8a876c2e85070ed2c6d727ef55",
-    "protos/creativanta/production/v1/production.proto": "0f21e19880f87aa1560fe6c98d5c8e114b2381c9598b4c78493ea2253e3d2603",
-    "apps/api/internal/production/types.go": "3ecbfd52af4c4fda0d14df955824b1005e00bfd00ad9517e33c5a593d969f57d",
-    "apps/api/internal/production/store.go": "406a407e3763292e2d609ccd346cea9f4d3211ddaae111c22d48430a48417fbd",
+    "infra/migrations/00019_p4_02_quick_edit_transcripts_and_sound_library.sql": "a83f6a79c13585ea162920a06737f83879309f8a876c2e85070ed2c6d727ef55",
+    "protos/creativanta/production/v1/production.proto": "63348e2a93c0629bee3a39463bcec154f8d92bbc5522f1400160fd2f562a55a9",
+    "apps/api/internal/production/types.go": "8034db684b4893486ba374cd49b1f13ffe40eaccfd8270c244665499bd593749",
+    "apps/api/internal/production/store.go": "1ca848a6b441f4d30c20d1abb02621a71435ecfa527a4ae3537329a395098261",
     "apps/api/internal/production/quickedit_asr.go": "62981f113e745baeecc4f8671e24840f559d3047ab4f5644d020d1601f268b28",
     "apps/api/internal/production/quickedit_cut_engine.go": "6761a1dc82d32333a82e4779afeb8bc0f52b034168a14488a7a06e28f6ecdad1",
     "apps/api/internal/production/quickedit_enhancer.go": "c32ff9112d0a723b90be0c834005212b1405aee629a650ce74186a71e0275710",
@@ -157,7 +157,7 @@
     }
   ],
   "migration_files": [
-    "infra/migrations/00018_p4_02_quick_edit_transcripts_and_sound_library.sql"
+    "infra/migrations/00019_p4_02_quick_edit_transcripts_and_sound_library.sql"
   ],
   "permission_keys": [
     "asset:generate",
@@ -188,7 +188,7 @@
     [
       "EXT-GATE-POSTGRES-LIVE-RLS",
       "PENDING_CI_LIVE_POSTGRES",
-      "Migration 00018 schema (transcripts, transcript_words, quick_edit_drafts, sound_tracks), foreign keys, RLS policies, and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+      "Migration 00019 schema (transcripts, transcript_words, quick_edit_drafts, sound_tracks), foreign keys, RLS policies, and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
     ]
   ],
   "checks": [

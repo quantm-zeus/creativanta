@@ -216,6 +216,109 @@ class ProductionMode extends $pb.ProtobufEnum {
   const ProductionMode._(super.value, super.name);
 }
 
+/// FidelityLevel represents fidelity options for AI remix recreation (Pack 04 §9.5).
+class FidelityLevel extends $pb.ProtobufEnum {
+  static const FidelityLevel FIDELITY_LEVEL_UNSPECIFIED =
+      FidelityLevel._(0, _omitEnumNames ? '' : 'FIDELITY_LEVEL_UNSPECIFIED');
+  static const FidelityLevel FIDELITY_LEVEL_MATCH_1TO1 =
+      FidelityLevel._(1, _omitEnumNames ? '' : 'FIDELITY_LEVEL_MATCH_1TO1');
+  static const FidelityLevel FIDELITY_LEVEL_ADAPT =
+      FidelityLevel._(2, _omitEnumNames ? '' : 'FIDELITY_LEVEL_ADAPT');
+  static const FidelityLevel FIDELITY_LEVEL_LOOSE =
+      FidelityLevel._(3, _omitEnumNames ? '' : 'FIDELITY_LEVEL_LOOSE');
+
+  static const $core.List<FidelityLevel> values = <FidelityLevel>[
+    FIDELITY_LEVEL_UNSPECIFIED,
+    FIDELITY_LEVEL_MATCH_1TO1,
+    FIDELITY_LEVEL_ADAPT,
+    FIDELITY_LEVEL_LOOSE,
+  ];
+
+  static final $core.List<FidelityLevel?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 3);
+  static FidelityLevel? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const FidelityLevel._(super.value, super.name);
+}
+
+/// RemixStatus represents blueprint progression status (database_schema.md §22.2).
+class RemixStatus extends $pb.ProtobufEnum {
+  static const RemixStatus REMIX_STATUS_UNSPECIFIED =
+      RemixStatus._(0, _omitEnumNames ? '' : 'REMIX_STATUS_UNSPECIFIED');
+  static const RemixStatus REMIX_STATUS_ANALYZING =
+      RemixStatus._(1, _omitEnumNames ? '' : 'REMIX_STATUS_ANALYZING');
+  static const RemixStatus REMIX_STATUS_ANALYZED =
+      RemixStatus._(2, _omitEnumNames ? '' : 'REMIX_STATUS_ANALYZED');
+  static const RemixStatus REMIX_STATUS_GENERATING =
+      RemixStatus._(3, _omitEnumNames ? '' : 'REMIX_STATUS_GENERATING');
+  static const RemixStatus REMIX_STATUS_GENERATED =
+      RemixStatus._(4, _omitEnumNames ? '' : 'REMIX_STATUS_GENERATED');
+  static const RemixStatus REMIX_STATUS_FAILED =
+      RemixStatus._(5, _omitEnumNames ? '' : 'REMIX_STATUS_FAILED');
+  static const RemixStatus REMIX_STATUS_REJECTED =
+      RemixStatus._(6, _omitEnumNames ? '' : 'REMIX_STATUS_REJECTED');
+
+  static const $core.List<RemixStatus> values = <RemixStatus>[
+    REMIX_STATUS_UNSPECIFIED,
+    REMIX_STATUS_ANALYZING,
+    REMIX_STATUS_ANALYZED,
+    REMIX_STATUS_GENERATING,
+    REMIX_STATUS_GENERATED,
+    REMIX_STATUS_FAILED,
+    REMIX_STATUS_REJECTED,
+  ];
+
+  static final $core.List<RemixStatus?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 6);
+  static RemixStatus? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const RemixStatus._(super.value, super.name);
+}
+
+/// VideoEditJobStatus represents status of video edit jobs (database_schema.md §22.1).
+class VideoEditJobStatus extends $pb.ProtobufEnum {
+  static const VideoEditJobStatus VIDEO_EDIT_JOB_STATUS_UNSPECIFIED =
+      VideoEditJobStatus._(
+          0, _omitEnumNames ? '' : 'VIDEO_EDIT_JOB_STATUS_UNSPECIFIED');
+  static const VideoEditJobStatus VIDEO_EDIT_JOB_STATUS_QUEUED =
+      VideoEditJobStatus._(
+          1, _omitEnumNames ? '' : 'VIDEO_EDIT_JOB_STATUS_QUEUED');
+  static const VideoEditJobStatus VIDEO_EDIT_JOB_STATUS_PROCESSING =
+      VideoEditJobStatus._(
+          2, _omitEnumNames ? '' : 'VIDEO_EDIT_JOB_STATUS_PROCESSING');
+  static const VideoEditJobStatus VIDEO_EDIT_JOB_STATUS_COMPLETED =
+      VideoEditJobStatus._(
+          3, _omitEnumNames ? '' : 'VIDEO_EDIT_JOB_STATUS_COMPLETED');
+  static const VideoEditJobStatus VIDEO_EDIT_JOB_STATUS_PARTIALLY_COMPLETED =
+      VideoEditJobStatus._(
+          4, _omitEnumNames ? '' : 'VIDEO_EDIT_JOB_STATUS_PARTIALLY_COMPLETED');
+  static const VideoEditJobStatus VIDEO_EDIT_JOB_STATUS_FAILED =
+      VideoEditJobStatus._(
+          5, _omitEnumNames ? '' : 'VIDEO_EDIT_JOB_STATUS_FAILED');
+  static const VideoEditJobStatus VIDEO_EDIT_JOB_STATUS_CANCELLED =
+      VideoEditJobStatus._(
+          6, _omitEnumNames ? '' : 'VIDEO_EDIT_JOB_STATUS_CANCELLED');
+
+  static const $core.List<VideoEditJobStatus> values = <VideoEditJobStatus>[
+    VIDEO_EDIT_JOB_STATUS_UNSPECIFIED,
+    VIDEO_EDIT_JOB_STATUS_QUEUED,
+    VIDEO_EDIT_JOB_STATUS_PROCESSING,
+    VIDEO_EDIT_JOB_STATUS_COMPLETED,
+    VIDEO_EDIT_JOB_STATUS_PARTIALLY_COMPLETED,
+    VIDEO_EDIT_JOB_STATUS_FAILED,
+    VIDEO_EDIT_JOB_STATUS_CANCELLED,
+  ];
+
+  static final $core.List<VideoEditJobStatus?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 6);
+  static VideoEditJobStatus? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const VideoEditJobStatus._(super.value, super.name);
+}
+
 class TranscriptAlignmentStatus extends $pb.ProtobufEnum {
   static const TranscriptAlignmentStatus
       TRANSCRIPT_ALIGNMENT_STATUS_UNSPECIFIED = TranscriptAlignmentStatus._(
