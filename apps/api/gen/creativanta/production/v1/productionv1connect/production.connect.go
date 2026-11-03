@@ -25,6 +25,12 @@ const (
 	StudioServiceName = "creativanta.production.v1.StudioService"
 	// AssetServiceName is the fully-qualified name of the AssetService service.
 	AssetServiceName = "creativanta.production.v1.AssetService"
+	// TranslationServiceName is the fully-qualified name of the TranslationService service.
+	TranslationServiceName = "creativanta.production.v1.TranslationService"
+	// SoundStudioServiceName is the fully-qualified name of the SoundStudioService service.
+	SoundStudioServiceName = "creativanta.production.v1.SoundStudioService"
+	// VoiceCloneServiceName is the fully-qualified name of the VoiceCloneService service.
+	VoiceCloneServiceName = "creativanta.production.v1.VoiceCloneService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -62,6 +68,47 @@ const (
 	AssetServicePromoteCanonicalProcedure = "/creativanta.production.v1.AssetService/PromoteCanonical"
 	// AssetServiceUploadProcedure is the fully-qualified name of the AssetService's Upload RPC.
 	AssetServiceUploadProcedure = "/creativanta.production.v1.AssetService/Upload"
+	// TranslationServiceCreateProcedure is the fully-qualified name of the TranslationService's Create
+	// RPC.
+	TranslationServiceCreateProcedure = "/creativanta.production.v1.TranslationService/Create"
+	// TranslationServiceGetProcedure is the fully-qualified name of the TranslationService's Get RPC.
+	TranslationServiceGetProcedure = "/creativanta.production.v1.TranslationService/Get"
+	// TranslationServiceListProcedure is the fully-qualified name of the TranslationService's List RPC.
+	TranslationServiceListProcedure = "/creativanta.production.v1.TranslationService/List"
+	// SoundStudioServiceGenerateMusicProcedure is the fully-qualified name of the SoundStudioService's
+	// GenerateMusic RPC.
+	SoundStudioServiceGenerateMusicProcedure = "/creativanta.production.v1.SoundStudioService/GenerateMusic"
+	// SoundStudioServiceGenerateSFXProcedure is the fully-qualified name of the SoundStudioService's
+	// GenerateSFX RPC.
+	SoundStudioServiceGenerateSFXProcedure = "/creativanta.production.v1.SoundStudioService/GenerateSFX"
+	// SoundStudioServiceAnalyzeBeatProcedure is the fully-qualified name of the SoundStudioService's
+	// AnalyzeBeat RPC.
+	SoundStudioServiceAnalyzeBeatProcedure = "/creativanta.production.v1.SoundStudioService/AnalyzeBeat"
+	// SoundStudioServiceListSoundLibraryProcedure is the fully-qualified name of the
+	// SoundStudioService's ListSoundLibrary RPC.
+	SoundStudioServiceListSoundLibraryProcedure = "/creativanta.production.v1.SoundStudioService/ListSoundLibrary"
+	// SoundStudioServiceGetSoundProcedure is the fully-qualified name of the SoundStudioService's
+	// GetSound RPC.
+	SoundStudioServiceGetSoundProcedure = "/creativanta.production.v1.SoundStudioService/GetSound"
+	// SoundStudioServicePreviewSoundProcedure is the fully-qualified name of the SoundStudioService's
+	// PreviewSound RPC.
+	SoundStudioServicePreviewSoundProcedure = "/creativanta.production.v1.SoundStudioService/PreviewSound"
+	// VoiceCloneServiceCreateProcedure is the fully-qualified name of the VoiceCloneService's Create
+	// RPC.
+	VoiceCloneServiceCreateProcedure = "/creativanta.production.v1.VoiceCloneService/Create"
+	// VoiceCloneServiceGetProcedure is the fully-qualified name of the VoiceCloneService's Get RPC.
+	VoiceCloneServiceGetProcedure = "/creativanta.production.v1.VoiceCloneService/Get"
+	// VoiceCloneServiceListProcedure is the fully-qualified name of the VoiceCloneService's List RPC.
+	VoiceCloneServiceListProcedure = "/creativanta.production.v1.VoiceCloneService/List"
+	// VoiceCloneServiceDeleteProcedure is the fully-qualified name of the VoiceCloneService's Delete
+	// RPC.
+	VoiceCloneServiceDeleteProcedure = "/creativanta.production.v1.VoiceCloneService/Delete"
+	// VoiceCloneServiceGenerateVoiceoverProcedure is the fully-qualified name of the
+	// VoiceCloneService's GenerateVoiceover RPC.
+	VoiceCloneServiceGenerateVoiceoverProcedure = "/creativanta.production.v1.VoiceCloneService/GenerateVoiceover"
+	// VoiceCloneServiceGetConsentStatusProcedure is the fully-qualified name of the VoiceCloneService's
+	// GetConsentStatus RPC.
+	VoiceCloneServiceGetConsentStatusProcedure = "/creativanta.production.v1.VoiceCloneService/GetConsentStatus"
 )
 
 // StudioServiceClient is a client for the creativanta.production.v1.StudioService service.
@@ -486,4 +533,534 @@ func (UnimplementedAssetServiceHandler) PromoteCanonical(context.Context, *conne
 
 func (UnimplementedAssetServiceHandler) Upload(context.Context, *connect.Request[v1.UploadRequest]) (*connect.Response[v1.UploadResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.AssetService.Upload is not implemented"))
+}
+
+// TranslationServiceClient is a client for the creativanta.production.v1.TranslationService
+// service.
+type TranslationServiceClient interface {
+	Create(context.Context, *connect.Request[v1.TranslationServiceCreateRequest]) (*connect.Response[v1.TranslationServiceCreateResponse], error)
+	Get(context.Context, *connect.Request[v1.TranslationServiceGetRequest]) (*connect.Response[v1.TranslationServiceGetResponse], error)
+	List(context.Context, *connect.Request[v1.TranslationServiceListRequest]) (*connect.Response[v1.TranslationServiceListResponse], error)
+}
+
+// NewTranslationServiceClient constructs a client for the
+// creativanta.production.v1.TranslationService service. By default, it uses the Connect protocol
+// with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To
+// use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb()
+// options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewTranslationServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) TranslationServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	translationServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("TranslationService").Methods()
+	return &translationServiceClient{
+		create: connect.NewClient[v1.TranslationServiceCreateRequest, v1.TranslationServiceCreateResponse](
+			httpClient,
+			baseURL+TranslationServiceCreateProcedure,
+			connect.WithSchema(translationServiceMethods.ByName("Create")),
+			connect.WithClientOptions(opts...),
+		),
+		get: connect.NewClient[v1.TranslationServiceGetRequest, v1.TranslationServiceGetResponse](
+			httpClient,
+			baseURL+TranslationServiceGetProcedure,
+			connect.WithSchema(translationServiceMethods.ByName("Get")),
+			connect.WithClientOptions(opts...),
+		),
+		list: connect.NewClient[v1.TranslationServiceListRequest, v1.TranslationServiceListResponse](
+			httpClient,
+			baseURL+TranslationServiceListProcedure,
+			connect.WithSchema(translationServiceMethods.ByName("List")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// translationServiceClient implements TranslationServiceClient.
+type translationServiceClient struct {
+	create *connect.Client[v1.TranslationServiceCreateRequest, v1.TranslationServiceCreateResponse]
+	get    *connect.Client[v1.TranslationServiceGetRequest, v1.TranslationServiceGetResponse]
+	list   *connect.Client[v1.TranslationServiceListRequest, v1.TranslationServiceListResponse]
+}
+
+// Create calls creativanta.production.v1.TranslationService.Create.
+func (c *translationServiceClient) Create(ctx context.Context, req *connect.Request[v1.TranslationServiceCreateRequest]) (*connect.Response[v1.TranslationServiceCreateResponse], error) {
+	return c.create.CallUnary(ctx, req)
+}
+
+// Get calls creativanta.production.v1.TranslationService.Get.
+func (c *translationServiceClient) Get(ctx context.Context, req *connect.Request[v1.TranslationServiceGetRequest]) (*connect.Response[v1.TranslationServiceGetResponse], error) {
+	return c.get.CallUnary(ctx, req)
+}
+
+// List calls creativanta.production.v1.TranslationService.List.
+func (c *translationServiceClient) List(ctx context.Context, req *connect.Request[v1.TranslationServiceListRequest]) (*connect.Response[v1.TranslationServiceListResponse], error) {
+	return c.list.CallUnary(ctx, req)
+}
+
+// TranslationServiceHandler is an implementation of the
+// creativanta.production.v1.TranslationService service.
+type TranslationServiceHandler interface {
+	Create(context.Context, *connect.Request[v1.TranslationServiceCreateRequest]) (*connect.Response[v1.TranslationServiceCreateResponse], error)
+	Get(context.Context, *connect.Request[v1.TranslationServiceGetRequest]) (*connect.Response[v1.TranslationServiceGetResponse], error)
+	List(context.Context, *connect.Request[v1.TranslationServiceListRequest]) (*connect.Response[v1.TranslationServiceListResponse], error)
+}
+
+// NewTranslationServiceHandler builds an HTTP handler from the service implementation. It returns
+// the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewTranslationServiceHandler(svc TranslationServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	translationServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("TranslationService").Methods()
+	translationServiceCreateHandler := connect.NewUnaryHandler(
+		TranslationServiceCreateProcedure,
+		svc.Create,
+		connect.WithSchema(translationServiceMethods.ByName("Create")),
+		connect.WithHandlerOptions(opts...),
+	)
+	translationServiceGetHandler := connect.NewUnaryHandler(
+		TranslationServiceGetProcedure,
+		svc.Get,
+		connect.WithSchema(translationServiceMethods.ByName("Get")),
+		connect.WithHandlerOptions(opts...),
+	)
+	translationServiceListHandler := connect.NewUnaryHandler(
+		TranslationServiceListProcedure,
+		svc.List,
+		connect.WithSchema(translationServiceMethods.ByName("List")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.production.v1.TranslationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case TranslationServiceCreateProcedure:
+			translationServiceCreateHandler.ServeHTTP(w, r)
+		case TranslationServiceGetProcedure:
+			translationServiceGetHandler.ServeHTTP(w, r)
+		case TranslationServiceListProcedure:
+			translationServiceListHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedTranslationServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedTranslationServiceHandler struct{}
+
+func (UnimplementedTranslationServiceHandler) Create(context.Context, *connect.Request[v1.TranslationServiceCreateRequest]) (*connect.Response[v1.TranslationServiceCreateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.TranslationService.Create is not implemented"))
+}
+
+func (UnimplementedTranslationServiceHandler) Get(context.Context, *connect.Request[v1.TranslationServiceGetRequest]) (*connect.Response[v1.TranslationServiceGetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.TranslationService.Get is not implemented"))
+}
+
+func (UnimplementedTranslationServiceHandler) List(context.Context, *connect.Request[v1.TranslationServiceListRequest]) (*connect.Response[v1.TranslationServiceListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.TranslationService.List is not implemented"))
+}
+
+// SoundStudioServiceClient is a client for the creativanta.production.v1.SoundStudioService
+// service.
+type SoundStudioServiceClient interface {
+	GenerateMusic(context.Context, *connect.Request[v1.SoundStudioServiceGenerateMusicRequest]) (*connect.Response[v1.SoundStudioServiceGenerateMusicResponse], error)
+	GenerateSFX(context.Context, *connect.Request[v1.SoundStudioServiceGenerateSFXRequest]) (*connect.Response[v1.SoundStudioServiceGenerateSFXResponse], error)
+	AnalyzeBeat(context.Context, *connect.Request[v1.SoundStudioServiceAnalyzeBeatRequest]) (*connect.Response[v1.SoundStudioServiceAnalyzeBeatResponse], error)
+	ListSoundLibrary(context.Context, *connect.Request[v1.SoundStudioServiceListSoundLibraryRequest]) (*connect.Response[v1.SoundStudioServiceListSoundLibraryResponse], error)
+	GetSound(context.Context, *connect.Request[v1.SoundStudioServiceGetSoundRequest]) (*connect.Response[v1.SoundStudioServiceGetSoundResponse], error)
+	PreviewSound(context.Context, *connect.Request[v1.SoundStudioServicePreviewSoundRequest]) (*connect.Response[v1.SoundStudioServicePreviewSoundResponse], error)
+}
+
+// NewSoundStudioServiceClient constructs a client for the
+// creativanta.production.v1.SoundStudioService service. By default, it uses the Connect protocol
+// with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To
+// use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb()
+// options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewSoundStudioServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SoundStudioServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	soundStudioServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("SoundStudioService").Methods()
+	return &soundStudioServiceClient{
+		generateMusic: connect.NewClient[v1.SoundStudioServiceGenerateMusicRequest, v1.SoundStudioServiceGenerateMusicResponse](
+			httpClient,
+			baseURL+SoundStudioServiceGenerateMusicProcedure,
+			connect.WithSchema(soundStudioServiceMethods.ByName("GenerateMusic")),
+			connect.WithClientOptions(opts...),
+		),
+		generateSFX: connect.NewClient[v1.SoundStudioServiceGenerateSFXRequest, v1.SoundStudioServiceGenerateSFXResponse](
+			httpClient,
+			baseURL+SoundStudioServiceGenerateSFXProcedure,
+			connect.WithSchema(soundStudioServiceMethods.ByName("GenerateSFX")),
+			connect.WithClientOptions(opts...),
+		),
+		analyzeBeat: connect.NewClient[v1.SoundStudioServiceAnalyzeBeatRequest, v1.SoundStudioServiceAnalyzeBeatResponse](
+			httpClient,
+			baseURL+SoundStudioServiceAnalyzeBeatProcedure,
+			connect.WithSchema(soundStudioServiceMethods.ByName("AnalyzeBeat")),
+			connect.WithClientOptions(opts...),
+		),
+		listSoundLibrary: connect.NewClient[v1.SoundStudioServiceListSoundLibraryRequest, v1.SoundStudioServiceListSoundLibraryResponse](
+			httpClient,
+			baseURL+SoundStudioServiceListSoundLibraryProcedure,
+			connect.WithSchema(soundStudioServiceMethods.ByName("ListSoundLibrary")),
+			connect.WithClientOptions(opts...),
+		),
+		getSound: connect.NewClient[v1.SoundStudioServiceGetSoundRequest, v1.SoundStudioServiceGetSoundResponse](
+			httpClient,
+			baseURL+SoundStudioServiceGetSoundProcedure,
+			connect.WithSchema(soundStudioServiceMethods.ByName("GetSound")),
+			connect.WithClientOptions(opts...),
+		),
+		previewSound: connect.NewClient[v1.SoundStudioServicePreviewSoundRequest, v1.SoundStudioServicePreviewSoundResponse](
+			httpClient,
+			baseURL+SoundStudioServicePreviewSoundProcedure,
+			connect.WithSchema(soundStudioServiceMethods.ByName("PreviewSound")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// soundStudioServiceClient implements SoundStudioServiceClient.
+type soundStudioServiceClient struct {
+	generateMusic    *connect.Client[v1.SoundStudioServiceGenerateMusicRequest, v1.SoundStudioServiceGenerateMusicResponse]
+	generateSFX      *connect.Client[v1.SoundStudioServiceGenerateSFXRequest, v1.SoundStudioServiceGenerateSFXResponse]
+	analyzeBeat      *connect.Client[v1.SoundStudioServiceAnalyzeBeatRequest, v1.SoundStudioServiceAnalyzeBeatResponse]
+	listSoundLibrary *connect.Client[v1.SoundStudioServiceListSoundLibraryRequest, v1.SoundStudioServiceListSoundLibraryResponse]
+	getSound         *connect.Client[v1.SoundStudioServiceGetSoundRequest, v1.SoundStudioServiceGetSoundResponse]
+	previewSound     *connect.Client[v1.SoundStudioServicePreviewSoundRequest, v1.SoundStudioServicePreviewSoundResponse]
+}
+
+// GenerateMusic calls creativanta.production.v1.SoundStudioService.GenerateMusic.
+func (c *soundStudioServiceClient) GenerateMusic(ctx context.Context, req *connect.Request[v1.SoundStudioServiceGenerateMusicRequest]) (*connect.Response[v1.SoundStudioServiceGenerateMusicResponse], error) {
+	return c.generateMusic.CallUnary(ctx, req)
+}
+
+// GenerateSFX calls creativanta.production.v1.SoundStudioService.GenerateSFX.
+func (c *soundStudioServiceClient) GenerateSFX(ctx context.Context, req *connect.Request[v1.SoundStudioServiceGenerateSFXRequest]) (*connect.Response[v1.SoundStudioServiceGenerateSFXResponse], error) {
+	return c.generateSFX.CallUnary(ctx, req)
+}
+
+// AnalyzeBeat calls creativanta.production.v1.SoundStudioService.AnalyzeBeat.
+func (c *soundStudioServiceClient) AnalyzeBeat(ctx context.Context, req *connect.Request[v1.SoundStudioServiceAnalyzeBeatRequest]) (*connect.Response[v1.SoundStudioServiceAnalyzeBeatResponse], error) {
+	return c.analyzeBeat.CallUnary(ctx, req)
+}
+
+// ListSoundLibrary calls creativanta.production.v1.SoundStudioService.ListSoundLibrary.
+func (c *soundStudioServiceClient) ListSoundLibrary(ctx context.Context, req *connect.Request[v1.SoundStudioServiceListSoundLibraryRequest]) (*connect.Response[v1.SoundStudioServiceListSoundLibraryResponse], error) {
+	return c.listSoundLibrary.CallUnary(ctx, req)
+}
+
+// GetSound calls creativanta.production.v1.SoundStudioService.GetSound.
+func (c *soundStudioServiceClient) GetSound(ctx context.Context, req *connect.Request[v1.SoundStudioServiceGetSoundRequest]) (*connect.Response[v1.SoundStudioServiceGetSoundResponse], error) {
+	return c.getSound.CallUnary(ctx, req)
+}
+
+// PreviewSound calls creativanta.production.v1.SoundStudioService.PreviewSound.
+func (c *soundStudioServiceClient) PreviewSound(ctx context.Context, req *connect.Request[v1.SoundStudioServicePreviewSoundRequest]) (*connect.Response[v1.SoundStudioServicePreviewSoundResponse], error) {
+	return c.previewSound.CallUnary(ctx, req)
+}
+
+// SoundStudioServiceHandler is an implementation of the
+// creativanta.production.v1.SoundStudioService service.
+type SoundStudioServiceHandler interface {
+	GenerateMusic(context.Context, *connect.Request[v1.SoundStudioServiceGenerateMusicRequest]) (*connect.Response[v1.SoundStudioServiceGenerateMusicResponse], error)
+	GenerateSFX(context.Context, *connect.Request[v1.SoundStudioServiceGenerateSFXRequest]) (*connect.Response[v1.SoundStudioServiceGenerateSFXResponse], error)
+	AnalyzeBeat(context.Context, *connect.Request[v1.SoundStudioServiceAnalyzeBeatRequest]) (*connect.Response[v1.SoundStudioServiceAnalyzeBeatResponse], error)
+	ListSoundLibrary(context.Context, *connect.Request[v1.SoundStudioServiceListSoundLibraryRequest]) (*connect.Response[v1.SoundStudioServiceListSoundLibraryResponse], error)
+	GetSound(context.Context, *connect.Request[v1.SoundStudioServiceGetSoundRequest]) (*connect.Response[v1.SoundStudioServiceGetSoundResponse], error)
+	PreviewSound(context.Context, *connect.Request[v1.SoundStudioServicePreviewSoundRequest]) (*connect.Response[v1.SoundStudioServicePreviewSoundResponse], error)
+}
+
+// NewSoundStudioServiceHandler builds an HTTP handler from the service implementation. It returns
+// the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewSoundStudioServiceHandler(svc SoundStudioServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	soundStudioServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("SoundStudioService").Methods()
+	soundStudioServiceGenerateMusicHandler := connect.NewUnaryHandler(
+		SoundStudioServiceGenerateMusicProcedure,
+		svc.GenerateMusic,
+		connect.WithSchema(soundStudioServiceMethods.ByName("GenerateMusic")),
+		connect.WithHandlerOptions(opts...),
+	)
+	soundStudioServiceGenerateSFXHandler := connect.NewUnaryHandler(
+		SoundStudioServiceGenerateSFXProcedure,
+		svc.GenerateSFX,
+		connect.WithSchema(soundStudioServiceMethods.ByName("GenerateSFX")),
+		connect.WithHandlerOptions(opts...),
+	)
+	soundStudioServiceAnalyzeBeatHandler := connect.NewUnaryHandler(
+		SoundStudioServiceAnalyzeBeatProcedure,
+		svc.AnalyzeBeat,
+		connect.WithSchema(soundStudioServiceMethods.ByName("AnalyzeBeat")),
+		connect.WithHandlerOptions(opts...),
+	)
+	soundStudioServiceListSoundLibraryHandler := connect.NewUnaryHandler(
+		SoundStudioServiceListSoundLibraryProcedure,
+		svc.ListSoundLibrary,
+		connect.WithSchema(soundStudioServiceMethods.ByName("ListSoundLibrary")),
+		connect.WithHandlerOptions(opts...),
+	)
+	soundStudioServiceGetSoundHandler := connect.NewUnaryHandler(
+		SoundStudioServiceGetSoundProcedure,
+		svc.GetSound,
+		connect.WithSchema(soundStudioServiceMethods.ByName("GetSound")),
+		connect.WithHandlerOptions(opts...),
+	)
+	soundStudioServicePreviewSoundHandler := connect.NewUnaryHandler(
+		SoundStudioServicePreviewSoundProcedure,
+		svc.PreviewSound,
+		connect.WithSchema(soundStudioServiceMethods.ByName("PreviewSound")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.production.v1.SoundStudioService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case SoundStudioServiceGenerateMusicProcedure:
+			soundStudioServiceGenerateMusicHandler.ServeHTTP(w, r)
+		case SoundStudioServiceGenerateSFXProcedure:
+			soundStudioServiceGenerateSFXHandler.ServeHTTP(w, r)
+		case SoundStudioServiceAnalyzeBeatProcedure:
+			soundStudioServiceAnalyzeBeatHandler.ServeHTTP(w, r)
+		case SoundStudioServiceListSoundLibraryProcedure:
+			soundStudioServiceListSoundLibraryHandler.ServeHTTP(w, r)
+		case SoundStudioServiceGetSoundProcedure:
+			soundStudioServiceGetSoundHandler.ServeHTTP(w, r)
+		case SoundStudioServicePreviewSoundProcedure:
+			soundStudioServicePreviewSoundHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedSoundStudioServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedSoundStudioServiceHandler struct{}
+
+func (UnimplementedSoundStudioServiceHandler) GenerateMusic(context.Context, *connect.Request[v1.SoundStudioServiceGenerateMusicRequest]) (*connect.Response[v1.SoundStudioServiceGenerateMusicResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.SoundStudioService.GenerateMusic is not implemented"))
+}
+
+func (UnimplementedSoundStudioServiceHandler) GenerateSFX(context.Context, *connect.Request[v1.SoundStudioServiceGenerateSFXRequest]) (*connect.Response[v1.SoundStudioServiceGenerateSFXResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.SoundStudioService.GenerateSFX is not implemented"))
+}
+
+func (UnimplementedSoundStudioServiceHandler) AnalyzeBeat(context.Context, *connect.Request[v1.SoundStudioServiceAnalyzeBeatRequest]) (*connect.Response[v1.SoundStudioServiceAnalyzeBeatResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.SoundStudioService.AnalyzeBeat is not implemented"))
+}
+
+func (UnimplementedSoundStudioServiceHandler) ListSoundLibrary(context.Context, *connect.Request[v1.SoundStudioServiceListSoundLibraryRequest]) (*connect.Response[v1.SoundStudioServiceListSoundLibraryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.SoundStudioService.ListSoundLibrary is not implemented"))
+}
+
+func (UnimplementedSoundStudioServiceHandler) GetSound(context.Context, *connect.Request[v1.SoundStudioServiceGetSoundRequest]) (*connect.Response[v1.SoundStudioServiceGetSoundResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.SoundStudioService.GetSound is not implemented"))
+}
+
+func (UnimplementedSoundStudioServiceHandler) PreviewSound(context.Context, *connect.Request[v1.SoundStudioServicePreviewSoundRequest]) (*connect.Response[v1.SoundStudioServicePreviewSoundResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.SoundStudioService.PreviewSound is not implemented"))
+}
+
+// VoiceCloneServiceClient is a client for the creativanta.production.v1.VoiceCloneService service.
+type VoiceCloneServiceClient interface {
+	Create(context.Context, *connect.Request[v1.VoiceCloneServiceCreateRequest]) (*connect.Response[v1.VoiceCloneServiceCreateResponse], error)
+	Get(context.Context, *connect.Request[v1.VoiceCloneServiceGetRequest]) (*connect.Response[v1.VoiceCloneServiceGetResponse], error)
+	List(context.Context, *connect.Request[v1.VoiceCloneServiceListRequest]) (*connect.Response[v1.VoiceCloneServiceListResponse], error)
+	Delete(context.Context, *connect.Request[v1.VoiceCloneServiceDeleteRequest]) (*connect.Response[v1.VoiceCloneServiceDeleteResponse], error)
+	GenerateVoiceover(context.Context, *connect.Request[v1.VoiceCloneServiceGenerateVoiceoverRequest]) (*connect.Response[v1.VoiceCloneServiceGenerateVoiceoverResponse], error)
+	GetConsentStatus(context.Context, *connect.Request[v1.VoiceCloneServiceGetConsentStatusRequest]) (*connect.Response[v1.VoiceCloneServiceGetConsentStatusResponse], error)
+}
+
+// NewVoiceCloneServiceClient constructs a client for the
+// creativanta.production.v1.VoiceCloneService service. By default, it uses the Connect protocol
+// with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To
+// use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb()
+// options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewVoiceCloneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) VoiceCloneServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	voiceCloneServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("VoiceCloneService").Methods()
+	return &voiceCloneServiceClient{
+		create: connect.NewClient[v1.VoiceCloneServiceCreateRequest, v1.VoiceCloneServiceCreateResponse](
+			httpClient,
+			baseURL+VoiceCloneServiceCreateProcedure,
+			connect.WithSchema(voiceCloneServiceMethods.ByName("Create")),
+			connect.WithClientOptions(opts...),
+		),
+		get: connect.NewClient[v1.VoiceCloneServiceGetRequest, v1.VoiceCloneServiceGetResponse](
+			httpClient,
+			baseURL+VoiceCloneServiceGetProcedure,
+			connect.WithSchema(voiceCloneServiceMethods.ByName("Get")),
+			connect.WithClientOptions(opts...),
+		),
+		list: connect.NewClient[v1.VoiceCloneServiceListRequest, v1.VoiceCloneServiceListResponse](
+			httpClient,
+			baseURL+VoiceCloneServiceListProcedure,
+			connect.WithSchema(voiceCloneServiceMethods.ByName("List")),
+			connect.WithClientOptions(opts...),
+		),
+		delete: connect.NewClient[v1.VoiceCloneServiceDeleteRequest, v1.VoiceCloneServiceDeleteResponse](
+			httpClient,
+			baseURL+VoiceCloneServiceDeleteProcedure,
+			connect.WithSchema(voiceCloneServiceMethods.ByName("Delete")),
+			connect.WithClientOptions(opts...),
+		),
+		generateVoiceover: connect.NewClient[v1.VoiceCloneServiceGenerateVoiceoverRequest, v1.VoiceCloneServiceGenerateVoiceoverResponse](
+			httpClient,
+			baseURL+VoiceCloneServiceGenerateVoiceoverProcedure,
+			connect.WithSchema(voiceCloneServiceMethods.ByName("GenerateVoiceover")),
+			connect.WithClientOptions(opts...),
+		),
+		getConsentStatus: connect.NewClient[v1.VoiceCloneServiceGetConsentStatusRequest, v1.VoiceCloneServiceGetConsentStatusResponse](
+			httpClient,
+			baseURL+VoiceCloneServiceGetConsentStatusProcedure,
+			connect.WithSchema(voiceCloneServiceMethods.ByName("GetConsentStatus")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// voiceCloneServiceClient implements VoiceCloneServiceClient.
+type voiceCloneServiceClient struct {
+	create            *connect.Client[v1.VoiceCloneServiceCreateRequest, v1.VoiceCloneServiceCreateResponse]
+	get               *connect.Client[v1.VoiceCloneServiceGetRequest, v1.VoiceCloneServiceGetResponse]
+	list              *connect.Client[v1.VoiceCloneServiceListRequest, v1.VoiceCloneServiceListResponse]
+	delete            *connect.Client[v1.VoiceCloneServiceDeleteRequest, v1.VoiceCloneServiceDeleteResponse]
+	generateVoiceover *connect.Client[v1.VoiceCloneServiceGenerateVoiceoverRequest, v1.VoiceCloneServiceGenerateVoiceoverResponse]
+	getConsentStatus  *connect.Client[v1.VoiceCloneServiceGetConsentStatusRequest, v1.VoiceCloneServiceGetConsentStatusResponse]
+}
+
+// Create calls creativanta.production.v1.VoiceCloneService.Create.
+func (c *voiceCloneServiceClient) Create(ctx context.Context, req *connect.Request[v1.VoiceCloneServiceCreateRequest]) (*connect.Response[v1.VoiceCloneServiceCreateResponse], error) {
+	return c.create.CallUnary(ctx, req)
+}
+
+// Get calls creativanta.production.v1.VoiceCloneService.Get.
+func (c *voiceCloneServiceClient) Get(ctx context.Context, req *connect.Request[v1.VoiceCloneServiceGetRequest]) (*connect.Response[v1.VoiceCloneServiceGetResponse], error) {
+	return c.get.CallUnary(ctx, req)
+}
+
+// List calls creativanta.production.v1.VoiceCloneService.List.
+func (c *voiceCloneServiceClient) List(ctx context.Context, req *connect.Request[v1.VoiceCloneServiceListRequest]) (*connect.Response[v1.VoiceCloneServiceListResponse], error) {
+	return c.list.CallUnary(ctx, req)
+}
+
+// Delete calls creativanta.production.v1.VoiceCloneService.Delete.
+func (c *voiceCloneServiceClient) Delete(ctx context.Context, req *connect.Request[v1.VoiceCloneServiceDeleteRequest]) (*connect.Response[v1.VoiceCloneServiceDeleteResponse], error) {
+	return c.delete.CallUnary(ctx, req)
+}
+
+// GenerateVoiceover calls creativanta.production.v1.VoiceCloneService.GenerateVoiceover.
+func (c *voiceCloneServiceClient) GenerateVoiceover(ctx context.Context, req *connect.Request[v1.VoiceCloneServiceGenerateVoiceoverRequest]) (*connect.Response[v1.VoiceCloneServiceGenerateVoiceoverResponse], error) {
+	return c.generateVoiceover.CallUnary(ctx, req)
+}
+
+// GetConsentStatus calls creativanta.production.v1.VoiceCloneService.GetConsentStatus.
+func (c *voiceCloneServiceClient) GetConsentStatus(ctx context.Context, req *connect.Request[v1.VoiceCloneServiceGetConsentStatusRequest]) (*connect.Response[v1.VoiceCloneServiceGetConsentStatusResponse], error) {
+	return c.getConsentStatus.CallUnary(ctx, req)
+}
+
+// VoiceCloneServiceHandler is an implementation of the creativanta.production.v1.VoiceCloneService
+// service.
+type VoiceCloneServiceHandler interface {
+	Create(context.Context, *connect.Request[v1.VoiceCloneServiceCreateRequest]) (*connect.Response[v1.VoiceCloneServiceCreateResponse], error)
+	Get(context.Context, *connect.Request[v1.VoiceCloneServiceGetRequest]) (*connect.Response[v1.VoiceCloneServiceGetResponse], error)
+	List(context.Context, *connect.Request[v1.VoiceCloneServiceListRequest]) (*connect.Response[v1.VoiceCloneServiceListResponse], error)
+	Delete(context.Context, *connect.Request[v1.VoiceCloneServiceDeleteRequest]) (*connect.Response[v1.VoiceCloneServiceDeleteResponse], error)
+	GenerateVoiceover(context.Context, *connect.Request[v1.VoiceCloneServiceGenerateVoiceoverRequest]) (*connect.Response[v1.VoiceCloneServiceGenerateVoiceoverResponse], error)
+	GetConsentStatus(context.Context, *connect.Request[v1.VoiceCloneServiceGetConsentStatusRequest]) (*connect.Response[v1.VoiceCloneServiceGetConsentStatusResponse], error)
+}
+
+// NewVoiceCloneServiceHandler builds an HTTP handler from the service implementation. It returns
+// the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewVoiceCloneServiceHandler(svc VoiceCloneServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	voiceCloneServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("VoiceCloneService").Methods()
+	voiceCloneServiceCreateHandler := connect.NewUnaryHandler(
+		VoiceCloneServiceCreateProcedure,
+		svc.Create,
+		connect.WithSchema(voiceCloneServiceMethods.ByName("Create")),
+		connect.WithHandlerOptions(opts...),
+	)
+	voiceCloneServiceGetHandler := connect.NewUnaryHandler(
+		VoiceCloneServiceGetProcedure,
+		svc.Get,
+		connect.WithSchema(voiceCloneServiceMethods.ByName("Get")),
+		connect.WithHandlerOptions(opts...),
+	)
+	voiceCloneServiceListHandler := connect.NewUnaryHandler(
+		VoiceCloneServiceListProcedure,
+		svc.List,
+		connect.WithSchema(voiceCloneServiceMethods.ByName("List")),
+		connect.WithHandlerOptions(opts...),
+	)
+	voiceCloneServiceDeleteHandler := connect.NewUnaryHandler(
+		VoiceCloneServiceDeleteProcedure,
+		svc.Delete,
+		connect.WithSchema(voiceCloneServiceMethods.ByName("Delete")),
+		connect.WithHandlerOptions(opts...),
+	)
+	voiceCloneServiceGenerateVoiceoverHandler := connect.NewUnaryHandler(
+		VoiceCloneServiceGenerateVoiceoverProcedure,
+		svc.GenerateVoiceover,
+		connect.WithSchema(voiceCloneServiceMethods.ByName("GenerateVoiceover")),
+		connect.WithHandlerOptions(opts...),
+	)
+	voiceCloneServiceGetConsentStatusHandler := connect.NewUnaryHandler(
+		VoiceCloneServiceGetConsentStatusProcedure,
+		svc.GetConsentStatus,
+		connect.WithSchema(voiceCloneServiceMethods.ByName("GetConsentStatus")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.production.v1.VoiceCloneService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case VoiceCloneServiceCreateProcedure:
+			voiceCloneServiceCreateHandler.ServeHTTP(w, r)
+		case VoiceCloneServiceGetProcedure:
+			voiceCloneServiceGetHandler.ServeHTTP(w, r)
+		case VoiceCloneServiceListProcedure:
+			voiceCloneServiceListHandler.ServeHTTP(w, r)
+		case VoiceCloneServiceDeleteProcedure:
+			voiceCloneServiceDeleteHandler.ServeHTTP(w, r)
+		case VoiceCloneServiceGenerateVoiceoverProcedure:
+			voiceCloneServiceGenerateVoiceoverHandler.ServeHTTP(w, r)
+		case VoiceCloneServiceGetConsentStatusProcedure:
+			voiceCloneServiceGetConsentStatusHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedVoiceCloneServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedVoiceCloneServiceHandler struct{}
+
+func (UnimplementedVoiceCloneServiceHandler) Create(context.Context, *connect.Request[v1.VoiceCloneServiceCreateRequest]) (*connect.Response[v1.VoiceCloneServiceCreateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.VoiceCloneService.Create is not implemented"))
+}
+
+func (UnimplementedVoiceCloneServiceHandler) Get(context.Context, *connect.Request[v1.VoiceCloneServiceGetRequest]) (*connect.Response[v1.VoiceCloneServiceGetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.VoiceCloneService.Get is not implemented"))
+}
+
+func (UnimplementedVoiceCloneServiceHandler) List(context.Context, *connect.Request[v1.VoiceCloneServiceListRequest]) (*connect.Response[v1.VoiceCloneServiceListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.VoiceCloneService.List is not implemented"))
+}
+
+func (UnimplementedVoiceCloneServiceHandler) Delete(context.Context, *connect.Request[v1.VoiceCloneServiceDeleteRequest]) (*connect.Response[v1.VoiceCloneServiceDeleteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.VoiceCloneService.Delete is not implemented"))
+}
+
+func (UnimplementedVoiceCloneServiceHandler) GenerateVoiceover(context.Context, *connect.Request[v1.VoiceCloneServiceGenerateVoiceoverRequest]) (*connect.Response[v1.VoiceCloneServiceGenerateVoiceoverResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.VoiceCloneService.GenerateVoiceover is not implemented"))
+}
+
+func (UnimplementedVoiceCloneServiceHandler) GetConsentStatus(context.Context, *connect.Request[v1.VoiceCloneServiceGetConsentStatusRequest]) (*connect.Response[v1.VoiceCloneServiceGetConsentStatusResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.VoiceCloneService.GetConsentStatus is not implemented"))
 }

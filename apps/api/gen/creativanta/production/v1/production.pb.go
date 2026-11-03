@@ -2871,6 +2871,2626 @@ func (x *UploadResponse) GetAsset() *Asset {
 	return nil
 }
 
+// TranslationJob represents a multi-language localization job per database_schema.md §22.6.
+type TranslationJob struct {
+	state                     protoimpl.MessageState `protogen:"open.v1"`
+	TranslationJobId          string                 `protobuf:"bytes,1,opt,name=translation_job_id,json=translationJobId,proto3" json:"translation_job_id,omitempty"`
+	WorkspaceId               string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	VideoEditJobId            string                 `protobuf:"bytes,3,opt,name=video_edit_job_id,json=videoEditJobId,proto3" json:"video_edit_job_id,omitempty"`
+	SourceAssetId             string                 `protobuf:"bytes,4,opt,name=source_asset_id,json=sourceAssetId,proto3" json:"source_asset_id,omitempty"`
+	TargetLanguages           []string               `protobuf:"bytes,5,rep,name=target_languages,json=targetLanguages,proto3" json:"target_languages,omitempty"`
+	LipSyncEnabled            bool                   `protobuf:"varint,6,opt,name=lip_sync_enabled,json=lipSyncEnabled,proto3" json:"lip_sync_enabled,omitempty"`
+	CulturalAdaptationEnabled bool                   `protobuf:"varint,7,opt,name=cultural_adaptation_enabled,json=culturalAdaptationEnabled,proto3" json:"cultural_adaptation_enabled,omitempty"`
+	TranslateCaptions         bool                   `protobuf:"varint,8,opt,name=translate_captions,json=translateCaptions,proto3" json:"translate_captions,omitempty"`
+	TranslateOverlays         bool                   `protobuf:"varint,9,opt,name=translate_overlays,json=translateOverlays,proto3" json:"translate_overlays,omitempty"`
+	VoiceOption               string                 `protobuf:"bytes,10,opt,name=voice_option,json=voiceOption,proto3" json:"voice_option,omitempty"`
+	VoiceCloneId              string                 `protobuf:"bytes,11,opt,name=voice_clone_id,json=voiceCloneId,proto3" json:"voice_clone_id,omitempty"`
+	PerLanguageStatus         map[string]string      `protobuf:"bytes,12,rep,name=per_language_status,json=perLanguageStatus,proto3" json:"per_language_status,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	OutputAssetIds            map[string]string      `protobuf:"bytes,13,rep,name=output_asset_ids,json=outputAssetIds,proto3" json:"output_asset_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	TotalCreditsUsed          string                 `protobuf:"bytes,14,opt,name=total_credits_used,json=totalCreditsUsed,proto3" json:"total_credits_used,omitempty"`
+	Status                    string                 `protobuf:"bytes,15,opt,name=status,proto3" json:"status,omitempty"`
+	QualityScores             map[string]float64     `protobuf:"bytes,16,rep,name=quality_scores,json=qualityScores,proto3" json:"quality_scores,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
+	RepairNotes               map[string]string      `protobuf:"bytes,17,rep,name=repair_notes,json=repairNotes,proto3" json:"repair_notes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	QuoteId                   string                 `protobuf:"bytes,18,opt,name=quote_id,json=quoteId,proto3" json:"quote_id,omitempty"`
+	CreatedAt                 *timestamppb.Timestamp `protobuf:"bytes,19,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt                 *timestamppb.Timestamp `protobuf:"bytes,20,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *TranslationJob) Reset() {
+	*x = TranslationJob{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TranslationJob) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TranslationJob) ProtoMessage() {}
+
+func (x *TranslationJob) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TranslationJob.ProtoReflect.Descriptor instead.
+func (*TranslationJob) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *TranslationJob) GetTranslationJobId() string {
+	if x != nil {
+		return x.TranslationJobId
+	}
+	return ""
+}
+
+func (x *TranslationJob) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *TranslationJob) GetVideoEditJobId() string {
+	if x != nil {
+		return x.VideoEditJobId
+	}
+	return ""
+}
+
+func (x *TranslationJob) GetSourceAssetId() string {
+	if x != nil {
+		return x.SourceAssetId
+	}
+	return ""
+}
+
+func (x *TranslationJob) GetTargetLanguages() []string {
+	if x != nil {
+		return x.TargetLanguages
+	}
+	return nil
+}
+
+func (x *TranslationJob) GetLipSyncEnabled() bool {
+	if x != nil {
+		return x.LipSyncEnabled
+	}
+	return false
+}
+
+func (x *TranslationJob) GetCulturalAdaptationEnabled() bool {
+	if x != nil {
+		return x.CulturalAdaptationEnabled
+	}
+	return false
+}
+
+func (x *TranslationJob) GetTranslateCaptions() bool {
+	if x != nil {
+		return x.TranslateCaptions
+	}
+	return false
+}
+
+func (x *TranslationJob) GetTranslateOverlays() bool {
+	if x != nil {
+		return x.TranslateOverlays
+	}
+	return false
+}
+
+func (x *TranslationJob) GetVoiceOption() string {
+	if x != nil {
+		return x.VoiceOption
+	}
+	return ""
+}
+
+func (x *TranslationJob) GetVoiceCloneId() string {
+	if x != nil {
+		return x.VoiceCloneId
+	}
+	return ""
+}
+
+func (x *TranslationJob) GetPerLanguageStatus() map[string]string {
+	if x != nil {
+		return x.PerLanguageStatus
+	}
+	return nil
+}
+
+func (x *TranslationJob) GetOutputAssetIds() map[string]string {
+	if x != nil {
+		return x.OutputAssetIds
+	}
+	return nil
+}
+
+func (x *TranslationJob) GetTotalCreditsUsed() string {
+	if x != nil {
+		return x.TotalCreditsUsed
+	}
+	return ""
+}
+
+func (x *TranslationJob) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *TranslationJob) GetQualityScores() map[string]float64 {
+	if x != nil {
+		return x.QualityScores
+	}
+	return nil
+}
+
+func (x *TranslationJob) GetRepairNotes() map[string]string {
+	if x != nil {
+		return x.RepairNotes
+	}
+	return nil
+}
+
+func (x *TranslationJob) GetQuoteId() string {
+	if x != nil {
+		return x.QuoteId
+	}
+	return ""
+}
+
+func (x *TranslationJob) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *TranslationJob) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+// TranslationSegment represents a timecoded speech segment with quality scoring and repair state.
+type TranslationSegment struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SegmentId     string                 `protobuf:"bytes,1,opt,name=segment_id,json=segmentId,proto3" json:"segment_id,omitempty"`
+	StartTimeS    float64                `protobuf:"fixed64,2,opt,name=start_time_s,json=startTimeS,proto3" json:"start_time_s,omitempty"`
+	EndTimeS      float64                `protobuf:"fixed64,3,opt,name=end_time_s,json=endTimeS,proto3" json:"end_time_s,omitempty"`
+	SourceText    string                 `protobuf:"bytes,4,opt,name=source_text,json=sourceText,proto3" json:"source_text,omitempty"`
+	Translations  map[string]string      `protobuf:"bytes,5,rep,name=translations,proto3" json:"translations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	QualityScore  float64                `protobuf:"fixed64,6,opt,name=quality_score,json=qualityScore,proto3" json:"quality_score,omitempty"`
+	NeedsRepair   bool                   `protobuf:"varint,7,opt,name=needs_repair,json=needsRepair,proto3" json:"needs_repair,omitempty"`
+	RepairReason  string                 `protobuf:"bytes,8,opt,name=repair_reason,json=repairReason,proto3" json:"repair_reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TranslationSegment) Reset() {
+	*x = TranslationSegment{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TranslationSegment) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TranslationSegment) ProtoMessage() {}
+
+func (x *TranslationSegment) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TranslationSegment.ProtoReflect.Descriptor instead.
+func (*TranslationSegment) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *TranslationSegment) GetSegmentId() string {
+	if x != nil {
+		return x.SegmentId
+	}
+	return ""
+}
+
+func (x *TranslationSegment) GetStartTimeS() float64 {
+	if x != nil {
+		return x.StartTimeS
+	}
+	return 0
+}
+
+func (x *TranslationSegment) GetEndTimeS() float64 {
+	if x != nil {
+		return x.EndTimeS
+	}
+	return 0
+}
+
+func (x *TranslationSegment) GetSourceText() string {
+	if x != nil {
+		return x.SourceText
+	}
+	return ""
+}
+
+func (x *TranslationSegment) GetTranslations() map[string]string {
+	if x != nil {
+		return x.Translations
+	}
+	return nil
+}
+
+func (x *TranslationSegment) GetQualityScore() float64 {
+	if x != nil {
+		return x.QualityScore
+	}
+	return 0
+}
+
+func (x *TranslationSegment) GetNeedsRepair() bool {
+	if x != nil {
+		return x.NeedsRepair
+	}
+	return false
+}
+
+func (x *TranslationSegment) GetRepairReason() string {
+	if x != nil {
+		return x.RepairReason
+	}
+	return ""
+}
+
+type TranslationServiceCreateRequest struct {
+	state                     protoimpl.MessageState `protogen:"open.v1"`
+	Context                   *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	SourceAssetId             string                 `protobuf:"bytes,2,opt,name=source_asset_id,json=sourceAssetId,proto3" json:"source_asset_id,omitempty"`
+	TargetLanguages           []string               `protobuf:"bytes,3,rep,name=target_languages,json=targetLanguages,proto3" json:"target_languages,omitempty"`
+	LipSyncEnabled            bool                   `protobuf:"varint,4,opt,name=lip_sync_enabled,json=lipSyncEnabled,proto3" json:"lip_sync_enabled,omitempty"`
+	CulturalAdaptationEnabled bool                   `protobuf:"varint,5,opt,name=cultural_adaptation_enabled,json=culturalAdaptationEnabled,proto3" json:"cultural_adaptation_enabled,omitempty"`
+	TranslateCaptions         bool                   `protobuf:"varint,6,opt,name=translate_captions,json=translateCaptions,proto3" json:"translate_captions,omitempty"`
+	TranslateOverlays         bool                   `protobuf:"varint,7,opt,name=translate_overlays,json=translateOverlays,proto3" json:"translate_overlays,omitempty"`
+	VoiceOption               string                 `protobuf:"bytes,8,opt,name=voice_option,json=voiceOption,proto3" json:"voice_option,omitempty"`
+	VoiceCloneId              string                 `protobuf:"bytes,9,opt,name=voice_clone_id,json=voiceCloneId,proto3" json:"voice_clone_id,omitempty"`
+	QuoteId                   string                 `protobuf:"bytes,10,opt,name=quote_id,json=quoteId,proto3" json:"quote_id,omitempty"`
+	ConfirmedCredits          string                 `protobuf:"bytes,11,opt,name=confirmed_credits,json=confirmedCredits,proto3" json:"confirmed_credits,omitempty"`
+	CustomScriptCorrections   map[string]string      `protobuf:"bytes,12,rep,name=custom_script_corrections,json=customScriptCorrections,proto3" json:"custom_script_corrections,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *TranslationServiceCreateRequest) Reset() {
+	*x = TranslationServiceCreateRequest{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TranslationServiceCreateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TranslationServiceCreateRequest) ProtoMessage() {}
+
+func (x *TranslationServiceCreateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TranslationServiceCreateRequest.ProtoReflect.Descriptor instead.
+func (*TranslationServiceCreateRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *TranslationServiceCreateRequest) GetContext() *v1.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *TranslationServiceCreateRequest) GetSourceAssetId() string {
+	if x != nil {
+		return x.SourceAssetId
+	}
+	return ""
+}
+
+func (x *TranslationServiceCreateRequest) GetTargetLanguages() []string {
+	if x != nil {
+		return x.TargetLanguages
+	}
+	return nil
+}
+
+func (x *TranslationServiceCreateRequest) GetLipSyncEnabled() bool {
+	if x != nil {
+		return x.LipSyncEnabled
+	}
+	return false
+}
+
+func (x *TranslationServiceCreateRequest) GetCulturalAdaptationEnabled() bool {
+	if x != nil {
+		return x.CulturalAdaptationEnabled
+	}
+	return false
+}
+
+func (x *TranslationServiceCreateRequest) GetTranslateCaptions() bool {
+	if x != nil {
+		return x.TranslateCaptions
+	}
+	return false
+}
+
+func (x *TranslationServiceCreateRequest) GetTranslateOverlays() bool {
+	if x != nil {
+		return x.TranslateOverlays
+	}
+	return false
+}
+
+func (x *TranslationServiceCreateRequest) GetVoiceOption() string {
+	if x != nil {
+		return x.VoiceOption
+	}
+	return ""
+}
+
+func (x *TranslationServiceCreateRequest) GetVoiceCloneId() string {
+	if x != nil {
+		return x.VoiceCloneId
+	}
+	return ""
+}
+
+func (x *TranslationServiceCreateRequest) GetQuoteId() string {
+	if x != nil {
+		return x.QuoteId
+	}
+	return ""
+}
+
+func (x *TranslationServiceCreateRequest) GetConfirmedCredits() string {
+	if x != nil {
+		return x.ConfirmedCredits
+	}
+	return ""
+}
+
+func (x *TranslationServiceCreateRequest) GetCustomScriptCorrections() map[string]string {
+	if x != nil {
+		return x.CustomScriptCorrections
+	}
+	return nil
+}
+
+type TranslationServiceCreateResponse struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Job                *TranslationJob        `protobuf:"bytes,1,opt,name=job,proto3" json:"job,omitempty"`
+	CreditsReserved    string                 `protobuf:"bytes,2,opt,name=credits_reserved,json=creditsReserved,proto3" json:"credits_reserved,omitempty"`
+	DiscountAppliedPct float64                `protobuf:"fixed64,3,opt,name=discount_applied_pct,json=discountAppliedPct,proto3" json:"discount_applied_pct,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *TranslationServiceCreateResponse) Reset() {
+	*x = TranslationServiceCreateResponse{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TranslationServiceCreateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TranslationServiceCreateResponse) ProtoMessage() {}
+
+func (x *TranslationServiceCreateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TranslationServiceCreateResponse.ProtoReflect.Descriptor instead.
+func (*TranslationServiceCreateResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *TranslationServiceCreateResponse) GetJob() *TranslationJob {
+	if x != nil {
+		return x.Job
+	}
+	return nil
+}
+
+func (x *TranslationServiceCreateResponse) GetCreditsReserved() string {
+	if x != nil {
+		return x.CreditsReserved
+	}
+	return ""
+}
+
+func (x *TranslationServiceCreateResponse) GetDiscountAppliedPct() float64 {
+	if x != nil {
+		return x.DiscountAppliedPct
+	}
+	return 0
+}
+
+type TranslationServiceGetRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId      *v1.UUID               `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	TranslationJobId string                 `protobuf:"bytes,2,opt,name=translation_job_id,json=translationJobId,proto3" json:"translation_job_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *TranslationServiceGetRequest) Reset() {
+	*x = TranslationServiceGetRequest{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TranslationServiceGetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TranslationServiceGetRequest) ProtoMessage() {}
+
+func (x *TranslationServiceGetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TranslationServiceGetRequest.ProtoReflect.Descriptor instead.
+func (*TranslationServiceGetRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *TranslationServiceGetRequest) GetWorkspaceId() *v1.UUID {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *TranslationServiceGetRequest) GetTranslationJobId() string {
+	if x != nil {
+		return x.TranslationJobId
+	}
+	return ""
+}
+
+type TranslationServiceGetResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Job           *TranslationJob        `protobuf:"bytes,1,opt,name=job,proto3" json:"job,omitempty"`
+	OutputAssets  []*Asset               `protobuf:"bytes,2,rep,name=output_assets,json=outputAssets,proto3" json:"output_assets,omitempty"`
+	Segments      []*TranslationSegment  `protobuf:"bytes,3,rep,name=segments,proto3" json:"segments,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TranslationServiceGetResponse) Reset() {
+	*x = TranslationServiceGetResponse{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TranslationServiceGetResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TranslationServiceGetResponse) ProtoMessage() {}
+
+func (x *TranslationServiceGetResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TranslationServiceGetResponse.ProtoReflect.Descriptor instead.
+func (*TranslationServiceGetResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *TranslationServiceGetResponse) GetJob() *TranslationJob {
+	if x != nil {
+		return x.Job
+	}
+	return nil
+}
+
+func (x *TranslationServiceGetResponse) GetOutputAssets() []*Asset {
+	if x != nil {
+		return x.OutputAssets
+	}
+	return nil
+}
+
+func (x *TranslationServiceGetResponse) GetSegments() []*TranslationSegment {
+	if x != nil {
+		return x.Segments
+	}
+	return nil
+}
+
+type TranslationServiceListRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId   *v1.UUID               `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	Pagination    *v1.Pagination         `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TranslationServiceListRequest) Reset() {
+	*x = TranslationServiceListRequest{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TranslationServiceListRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TranslationServiceListRequest) ProtoMessage() {}
+
+func (x *TranslationServiceListRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TranslationServiceListRequest.ProtoReflect.Descriptor instead.
+func (*TranslationServiceListRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *TranslationServiceListRequest) GetWorkspaceId() *v1.UUID {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *TranslationServiceListRequest) GetPagination() *v1.Pagination {
+	if x != nil {
+		return x.Pagination
+	}
+	return nil
+}
+
+type TranslationServiceListResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Jobs          []*TranslationJob      `protobuf:"bytes,1,rep,name=jobs,proto3" json:"jobs,omitempty"`
+	Pagination    *v1.PaginatedResponse  `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TranslationServiceListResponse) Reset() {
+	*x = TranslationServiceListResponse{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TranslationServiceListResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TranslationServiceListResponse) ProtoMessage() {}
+
+func (x *TranslationServiceListResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TranslationServiceListResponse.ProtoReflect.Descriptor instead.
+func (*TranslationServiceListResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *TranslationServiceListResponse) GetJobs() []*TranslationJob {
+	if x != nil {
+		return x.Jobs
+	}
+	return nil
+}
+
+func (x *TranslationServiceListResponse) GetPagination() *v1.PaginatedResponse {
+	if x != nil {
+		return x.Pagination
+	}
+	return nil
+}
+
+// SoundTrack represents an audio or sound design asset with verified licensing metadata.
+type SoundTrack struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	TrackId           string                 `protobuf:"bytes,1,opt,name=track_id,json=trackId,proto3" json:"track_id,omitempty"`
+	WorkspaceId       string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	Title             string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	Category          string                 `protobuf:"bytes,4,opt,name=category,proto3" json:"category,omitempty"` // music, sfx, ambient
+	Genre             string                 `protobuf:"bytes,5,opt,name=genre,proto3" json:"genre,omitempty"`
+	Mood              string                 `protobuf:"bytes,6,opt,name=mood,proto3" json:"mood,omitempty"`
+	Bpm               int32                  `protobuf:"varint,7,opt,name=bpm,proto3" json:"bpm,omitempty"`
+	DurationSeconds   float64                `protobuf:"fixed64,8,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
+	FileUrl           string                 `protobuf:"bytes,9,opt,name=file_url,json=fileUrl,proto3" json:"file_url,omitempty"`
+	LicenseType       string                 `protobuf:"bytes,10,opt,name=license_type,json=licenseType,proto3" json:"license_type,omitempty"` // commercial_royalty_free, licensed_library, user_uploaded
+	LicenseId         string                 `protobuf:"bytes,11,opt,name=license_id,json=licenseId,proto3" json:"license_id,omitempty"`
+	IsVerifiedLicense bool                   `protobuf:"varint,12,opt,name=is_verified_license,json=isVerifiedLicense,proto3" json:"is_verified_license,omitempty"`
+	WaveformPeaks     []float32              `protobuf:"fixed32,13,rep,packed,name=waveform_peaks,json=waveformPeaks,proto3" json:"waveform_peaks,omitempty"`
+	CreatedAt         *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *SoundTrack) Reset() {
+	*x = SoundTrack{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SoundTrack) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SoundTrack) ProtoMessage() {}
+
+func (x *SoundTrack) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SoundTrack.ProtoReflect.Descriptor instead.
+func (*SoundTrack) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *SoundTrack) GetTrackId() string {
+	if x != nil {
+		return x.TrackId
+	}
+	return ""
+}
+
+func (x *SoundTrack) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *SoundTrack) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *SoundTrack) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
+}
+
+func (x *SoundTrack) GetGenre() string {
+	if x != nil {
+		return x.Genre
+	}
+	return ""
+}
+
+func (x *SoundTrack) GetMood() string {
+	if x != nil {
+		return x.Mood
+	}
+	return ""
+}
+
+func (x *SoundTrack) GetBpm() int32 {
+	if x != nil {
+		return x.Bpm
+	}
+	return 0
+}
+
+func (x *SoundTrack) GetDurationSeconds() float64 {
+	if x != nil {
+		return x.DurationSeconds
+	}
+	return 0
+}
+
+func (x *SoundTrack) GetFileUrl() string {
+	if x != nil {
+		return x.FileUrl
+	}
+	return ""
+}
+
+func (x *SoundTrack) GetLicenseType() string {
+	if x != nil {
+		return x.LicenseType
+	}
+	return ""
+}
+
+func (x *SoundTrack) GetLicenseId() string {
+	if x != nil {
+		return x.LicenseId
+	}
+	return ""
+}
+
+func (x *SoundTrack) GetIsVerifiedLicense() bool {
+	if x != nil {
+		return x.IsVerifiedLicense
+	}
+	return false
+}
+
+func (x *SoundTrack) GetWaveformPeaks() []float32 {
+	if x != nil {
+		return x.WaveformPeaks
+	}
+	return nil
+}
+
+func (x *SoundTrack) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+type SoundStudioServiceGenerateMusicRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Context          *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	Prompt           string                 `protobuf:"bytes,2,opt,name=prompt,proto3" json:"prompt,omitempty"`
+	Genre            string                 `protobuf:"bytes,3,opt,name=genre,proto3" json:"genre,omitempty"`
+	Mood             string                 `protobuf:"bytes,4,opt,name=mood,proto3" json:"mood,omitempty"`
+	Bpm              int32                  `protobuf:"varint,5,opt,name=bpm,proto3" json:"bpm,omitempty"`
+	DurationSeconds  int32                  `protobuf:"varint,6,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
+	LicenseType      string                 `protobuf:"bytes,7,opt,name=license_type,json=licenseType,proto3" json:"license_type,omitempty"`
+	QuoteId          string                 `protobuf:"bytes,8,opt,name=quote_id,json=quoteId,proto3" json:"quote_id,omitempty"`
+	ConfirmedCredits string                 `protobuf:"bytes,9,opt,name=confirmed_credits,json=confirmedCredits,proto3" json:"confirmed_credits,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *SoundStudioServiceGenerateMusicRequest) Reset() {
+	*x = SoundStudioServiceGenerateMusicRequest{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SoundStudioServiceGenerateMusicRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SoundStudioServiceGenerateMusicRequest) ProtoMessage() {}
+
+func (x *SoundStudioServiceGenerateMusicRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SoundStudioServiceGenerateMusicRequest.ProtoReflect.Descriptor instead.
+func (*SoundStudioServiceGenerateMusicRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *SoundStudioServiceGenerateMusicRequest) GetContext() *v1.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *SoundStudioServiceGenerateMusicRequest) GetPrompt() string {
+	if x != nil {
+		return x.Prompt
+	}
+	return ""
+}
+
+func (x *SoundStudioServiceGenerateMusicRequest) GetGenre() string {
+	if x != nil {
+		return x.Genre
+	}
+	return ""
+}
+
+func (x *SoundStudioServiceGenerateMusicRequest) GetMood() string {
+	if x != nil {
+		return x.Mood
+	}
+	return ""
+}
+
+func (x *SoundStudioServiceGenerateMusicRequest) GetBpm() int32 {
+	if x != nil {
+		return x.Bpm
+	}
+	return 0
+}
+
+func (x *SoundStudioServiceGenerateMusicRequest) GetDurationSeconds() int32 {
+	if x != nil {
+		return x.DurationSeconds
+	}
+	return 0
+}
+
+func (x *SoundStudioServiceGenerateMusicRequest) GetLicenseType() string {
+	if x != nil {
+		return x.LicenseType
+	}
+	return ""
+}
+
+func (x *SoundStudioServiceGenerateMusicRequest) GetQuoteId() string {
+	if x != nil {
+		return x.QuoteId
+	}
+	return ""
+}
+
+func (x *SoundStudioServiceGenerateMusicRequest) GetConfirmedCredits() string {
+	if x != nil {
+		return x.ConfirmedCredits
+	}
+	return ""
+}
+
+type SoundStudioServiceGenerateMusicResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Track           *SoundTrack            `protobuf:"bytes,1,opt,name=track,proto3" json:"track,omitempty"`
+	Asset           *Asset                 `protobuf:"bytes,2,opt,name=asset,proto3" json:"asset,omitempty"`
+	CreditsDeducted string                 `protobuf:"bytes,3,opt,name=credits_deducted,json=creditsDeducted,proto3" json:"credits_deducted,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *SoundStudioServiceGenerateMusicResponse) Reset() {
+	*x = SoundStudioServiceGenerateMusicResponse{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SoundStudioServiceGenerateMusicResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SoundStudioServiceGenerateMusicResponse) ProtoMessage() {}
+
+func (x *SoundStudioServiceGenerateMusicResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SoundStudioServiceGenerateMusicResponse.ProtoReflect.Descriptor instead.
+func (*SoundStudioServiceGenerateMusicResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *SoundStudioServiceGenerateMusicResponse) GetTrack() *SoundTrack {
+	if x != nil {
+		return x.Track
+	}
+	return nil
+}
+
+func (x *SoundStudioServiceGenerateMusicResponse) GetAsset() *Asset {
+	if x != nil {
+		return x.Asset
+	}
+	return nil
+}
+
+func (x *SoundStudioServiceGenerateMusicResponse) GetCreditsDeducted() string {
+	if x != nil {
+		return x.CreditsDeducted
+	}
+	return ""
+}
+
+type SoundStudioServiceGenerateSFXRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Context          *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	Prompt           string                 `protobuf:"bytes,2,opt,name=prompt,proto3" json:"prompt,omitempty"`
+	Category         string                 `protobuf:"bytes,3,opt,name=category,proto3" json:"category,omitempty"`
+	DurationSeconds  float64                `protobuf:"fixed64,4,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
+	QuoteId          string                 `protobuf:"bytes,5,opt,name=quote_id,json=quoteId,proto3" json:"quote_id,omitempty"`
+	ConfirmedCredits string                 `protobuf:"bytes,6,opt,name=confirmed_credits,json=confirmedCredits,proto3" json:"confirmed_credits,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *SoundStudioServiceGenerateSFXRequest) Reset() {
+	*x = SoundStudioServiceGenerateSFXRequest{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SoundStudioServiceGenerateSFXRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SoundStudioServiceGenerateSFXRequest) ProtoMessage() {}
+
+func (x *SoundStudioServiceGenerateSFXRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SoundStudioServiceGenerateSFXRequest.ProtoReflect.Descriptor instead.
+func (*SoundStudioServiceGenerateSFXRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *SoundStudioServiceGenerateSFXRequest) GetContext() *v1.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *SoundStudioServiceGenerateSFXRequest) GetPrompt() string {
+	if x != nil {
+		return x.Prompt
+	}
+	return ""
+}
+
+func (x *SoundStudioServiceGenerateSFXRequest) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
+}
+
+func (x *SoundStudioServiceGenerateSFXRequest) GetDurationSeconds() float64 {
+	if x != nil {
+		return x.DurationSeconds
+	}
+	return 0
+}
+
+func (x *SoundStudioServiceGenerateSFXRequest) GetQuoteId() string {
+	if x != nil {
+		return x.QuoteId
+	}
+	return ""
+}
+
+func (x *SoundStudioServiceGenerateSFXRequest) GetConfirmedCredits() string {
+	if x != nil {
+		return x.ConfirmedCredits
+	}
+	return ""
+}
+
+type SoundStudioServiceGenerateSFXResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Track           *SoundTrack            `protobuf:"bytes,1,opt,name=track,proto3" json:"track,omitempty"`
+	Asset           *Asset                 `protobuf:"bytes,2,opt,name=asset,proto3" json:"asset,omitempty"`
+	CreditsDeducted string                 `protobuf:"bytes,3,opt,name=credits_deducted,json=creditsDeducted,proto3" json:"credits_deducted,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *SoundStudioServiceGenerateSFXResponse) Reset() {
+	*x = SoundStudioServiceGenerateSFXResponse{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SoundStudioServiceGenerateSFXResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SoundStudioServiceGenerateSFXResponse) ProtoMessage() {}
+
+func (x *SoundStudioServiceGenerateSFXResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SoundStudioServiceGenerateSFXResponse.ProtoReflect.Descriptor instead.
+func (*SoundStudioServiceGenerateSFXResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *SoundStudioServiceGenerateSFXResponse) GetTrack() *SoundTrack {
+	if x != nil {
+		return x.Track
+	}
+	return nil
+}
+
+func (x *SoundStudioServiceGenerateSFXResponse) GetAsset() *Asset {
+	if x != nil {
+		return x.Asset
+	}
+	return nil
+}
+
+func (x *SoundStudioServiceGenerateSFXResponse) GetCreditsDeducted() string {
+	if x != nil {
+		return x.CreditsDeducted
+	}
+	return ""
+}
+
+type SoundStudioServiceAnalyzeBeatRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId   *v1.UUID               `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	AudioAssetId  string                 `protobuf:"bytes,2,opt,name=audio_asset_id,json=audioAssetId,proto3" json:"audio_asset_id,omitempty"`
+	AudioUrl      string                 `protobuf:"bytes,3,opt,name=audio_url,json=audioUrl,proto3" json:"audio_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SoundStudioServiceAnalyzeBeatRequest) Reset() {
+	*x = SoundStudioServiceAnalyzeBeatRequest{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SoundStudioServiceAnalyzeBeatRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SoundStudioServiceAnalyzeBeatRequest) ProtoMessage() {}
+
+func (x *SoundStudioServiceAnalyzeBeatRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SoundStudioServiceAnalyzeBeatRequest.ProtoReflect.Descriptor instead.
+func (*SoundStudioServiceAnalyzeBeatRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *SoundStudioServiceAnalyzeBeatRequest) GetWorkspaceId() *v1.UUID {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *SoundStudioServiceAnalyzeBeatRequest) GetAudioAssetId() string {
+	if x != nil {
+		return x.AudioAssetId
+	}
+	return ""
+}
+
+func (x *SoundStudioServiceAnalyzeBeatRequest) GetAudioUrl() string {
+	if x != nil {
+		return x.AudioUrl
+	}
+	return ""
+}
+
+type SoundStudioServiceAnalyzeBeatResponse struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	Bpm                  float64                `protobuf:"fixed64,1,opt,name=bpm,proto3" json:"bpm,omitempty"`
+	BeatTimestampsMs     []int64                `protobuf:"varint,2,rep,packed,name=beat_timestamps_ms,json=beatTimestampsMs,proto3" json:"beat_timestamps_ms,omitempty"`
+	DownbeatTimestampsMs []int64                `protobuf:"varint,3,rep,packed,name=downbeat_timestamps_ms,json=downbeatTimestampsMs,proto3" json:"downbeat_timestamps_ms,omitempty"`
+	TempoConfidence      float64                `protobuf:"fixed64,4,opt,name=tempo_confidence,json=tempoConfidence,proto3" json:"tempo_confidence,omitempty"`
+	SuggestedCutPointsMs []int64                `protobuf:"varint,5,rep,packed,name=suggested_cut_points_ms,json=suggestedCutPointsMs,proto3" json:"suggested_cut_points_ms,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *SoundStudioServiceAnalyzeBeatResponse) Reset() {
+	*x = SoundStudioServiceAnalyzeBeatResponse{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SoundStudioServiceAnalyzeBeatResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SoundStudioServiceAnalyzeBeatResponse) ProtoMessage() {}
+
+func (x *SoundStudioServiceAnalyzeBeatResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SoundStudioServiceAnalyzeBeatResponse.ProtoReflect.Descriptor instead.
+func (*SoundStudioServiceAnalyzeBeatResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *SoundStudioServiceAnalyzeBeatResponse) GetBpm() float64 {
+	if x != nil {
+		return x.Bpm
+	}
+	return 0
+}
+
+func (x *SoundStudioServiceAnalyzeBeatResponse) GetBeatTimestampsMs() []int64 {
+	if x != nil {
+		return x.BeatTimestampsMs
+	}
+	return nil
+}
+
+func (x *SoundStudioServiceAnalyzeBeatResponse) GetDownbeatTimestampsMs() []int64 {
+	if x != nil {
+		return x.DownbeatTimestampsMs
+	}
+	return nil
+}
+
+func (x *SoundStudioServiceAnalyzeBeatResponse) GetTempoConfidence() float64 {
+	if x != nil {
+		return x.TempoConfidence
+	}
+	return 0
+}
+
+func (x *SoundStudioServiceAnalyzeBeatResponse) GetSuggestedCutPointsMs() []int64 {
+	if x != nil {
+		return x.SuggestedCutPointsMs
+	}
+	return nil
+}
+
+type SoundStudioServiceListSoundLibraryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId   *v1.UUID               `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	Category      string                 `protobuf:"bytes,2,opt,name=category,proto3" json:"category,omitempty"`
+	Genre         string                 `protobuf:"bytes,3,opt,name=genre,proto3" json:"genre,omitempty"`
+	Mood          string                 `protobuf:"bytes,4,opt,name=mood,proto3" json:"mood,omitempty"`
+	Pagination    *v1.Pagination         `protobuf:"bytes,5,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SoundStudioServiceListSoundLibraryRequest) Reset() {
+	*x = SoundStudioServiceListSoundLibraryRequest{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SoundStudioServiceListSoundLibraryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SoundStudioServiceListSoundLibraryRequest) ProtoMessage() {}
+
+func (x *SoundStudioServiceListSoundLibraryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SoundStudioServiceListSoundLibraryRequest.ProtoReflect.Descriptor instead.
+func (*SoundStudioServiceListSoundLibraryRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *SoundStudioServiceListSoundLibraryRequest) GetWorkspaceId() *v1.UUID {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *SoundStudioServiceListSoundLibraryRequest) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
+}
+
+func (x *SoundStudioServiceListSoundLibraryRequest) GetGenre() string {
+	if x != nil {
+		return x.Genre
+	}
+	return ""
+}
+
+func (x *SoundStudioServiceListSoundLibraryRequest) GetMood() string {
+	if x != nil {
+		return x.Mood
+	}
+	return ""
+}
+
+func (x *SoundStudioServiceListSoundLibraryRequest) GetPagination() *v1.Pagination {
+	if x != nil {
+		return x.Pagination
+	}
+	return nil
+}
+
+type SoundStudioServiceListSoundLibraryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tracks        []*SoundTrack          `protobuf:"bytes,1,rep,name=tracks,proto3" json:"tracks,omitempty"`
+	Pagination    *v1.PaginatedResponse  `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SoundStudioServiceListSoundLibraryResponse) Reset() {
+	*x = SoundStudioServiceListSoundLibraryResponse{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[48]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SoundStudioServiceListSoundLibraryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SoundStudioServiceListSoundLibraryResponse) ProtoMessage() {}
+
+func (x *SoundStudioServiceListSoundLibraryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[48]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SoundStudioServiceListSoundLibraryResponse.ProtoReflect.Descriptor instead.
+func (*SoundStudioServiceListSoundLibraryResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{48}
+}
+
+func (x *SoundStudioServiceListSoundLibraryResponse) GetTracks() []*SoundTrack {
+	if x != nil {
+		return x.Tracks
+	}
+	return nil
+}
+
+func (x *SoundStudioServiceListSoundLibraryResponse) GetPagination() *v1.PaginatedResponse {
+	if x != nil {
+		return x.Pagination
+	}
+	return nil
+}
+
+type SoundStudioServiceGetSoundRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId   *v1.UUID               `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	AssetId       string                 `protobuf:"bytes,2,opt,name=asset_id,json=assetId,proto3" json:"asset_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SoundStudioServiceGetSoundRequest) Reset() {
+	*x = SoundStudioServiceGetSoundRequest{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[49]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SoundStudioServiceGetSoundRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SoundStudioServiceGetSoundRequest) ProtoMessage() {}
+
+func (x *SoundStudioServiceGetSoundRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[49]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SoundStudioServiceGetSoundRequest.ProtoReflect.Descriptor instead.
+func (*SoundStudioServiceGetSoundRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{49}
+}
+
+func (x *SoundStudioServiceGetSoundRequest) GetWorkspaceId() *v1.UUID {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *SoundStudioServiceGetSoundRequest) GetAssetId() string {
+	if x != nil {
+		return x.AssetId
+	}
+	return ""
+}
+
+type SoundStudioServiceGetSoundResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Track         *SoundTrack            `protobuf:"bytes,1,opt,name=track,proto3" json:"track,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SoundStudioServiceGetSoundResponse) Reset() {
+	*x = SoundStudioServiceGetSoundResponse{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[50]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SoundStudioServiceGetSoundResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SoundStudioServiceGetSoundResponse) ProtoMessage() {}
+
+func (x *SoundStudioServiceGetSoundResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[50]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SoundStudioServiceGetSoundResponse.ProtoReflect.Descriptor instead.
+func (*SoundStudioServiceGetSoundResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *SoundStudioServiceGetSoundResponse) GetTrack() *SoundTrack {
+	if x != nil {
+		return x.Track
+	}
+	return nil
+}
+
+type SoundStudioServicePreviewSoundRequest struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId       *v1.UUID               `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	TrackId           string                 `protobuf:"bytes,2,opt,name=track_id,json=trackId,proto3" json:"track_id,omitempty"`
+	PreviewStartMs    int32                  `protobuf:"varint,3,opt,name=preview_start_ms,json=previewStartMs,proto3" json:"preview_start_ms,omitempty"`
+	PreviewDurationMs int32                  `protobuf:"varint,4,opt,name=preview_duration_ms,json=previewDurationMs,proto3" json:"preview_duration_ms,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *SoundStudioServicePreviewSoundRequest) Reset() {
+	*x = SoundStudioServicePreviewSoundRequest{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[51]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SoundStudioServicePreviewSoundRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SoundStudioServicePreviewSoundRequest) ProtoMessage() {}
+
+func (x *SoundStudioServicePreviewSoundRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[51]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SoundStudioServicePreviewSoundRequest.ProtoReflect.Descriptor instead.
+func (*SoundStudioServicePreviewSoundRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{51}
+}
+
+func (x *SoundStudioServicePreviewSoundRequest) GetWorkspaceId() *v1.UUID {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *SoundStudioServicePreviewSoundRequest) GetTrackId() string {
+	if x != nil {
+		return x.TrackId
+	}
+	return ""
+}
+
+func (x *SoundStudioServicePreviewSoundRequest) GetPreviewStartMs() int32 {
+	if x != nil {
+		return x.PreviewStartMs
+	}
+	return 0
+}
+
+func (x *SoundStudioServicePreviewSoundRequest) GetPreviewDurationMs() int32 {
+	if x != nil {
+		return x.PreviewDurationMs
+	}
+	return 0
+}
+
+type SoundStudioServicePreviewSoundResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PreviewUrl    string                 `protobuf:"bytes,1,opt,name=preview_url,json=previewUrl,proto3" json:"preview_url,omitempty"`
+	WaveformPeaks []float32              `protobuf:"fixed32,2,rep,packed,name=waveform_peaks,json=waveformPeaks,proto3" json:"waveform_peaks,omitempty"`
+	IsFree        bool                   `protobuf:"varint,3,opt,name=is_free,json=isFree,proto3" json:"is_free,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SoundStudioServicePreviewSoundResponse) Reset() {
+	*x = SoundStudioServicePreviewSoundResponse{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[52]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SoundStudioServicePreviewSoundResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SoundStudioServicePreviewSoundResponse) ProtoMessage() {}
+
+func (x *SoundStudioServicePreviewSoundResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[52]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SoundStudioServicePreviewSoundResponse.ProtoReflect.Descriptor instead.
+func (*SoundStudioServicePreviewSoundResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{52}
+}
+
+func (x *SoundStudioServicePreviewSoundResponse) GetPreviewUrl() string {
+	if x != nil {
+		return x.PreviewUrl
+	}
+	return ""
+}
+
+func (x *SoundStudioServicePreviewSoundResponse) GetWaveformPeaks() []float32 {
+	if x != nil {
+		return x.WaveformPeaks
+	}
+	return nil
+}
+
+func (x *SoundStudioServicePreviewSoundResponse) GetIsFree() bool {
+	if x != nil {
+		return x.IsFree
+	}
+	return false
+}
+
+// VoiceCloneRecord represents a cloned voice profile linked to characters and consent records per database_schema.md §22.12.
+type VoiceCloneRecord struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	VoiceCloneId    string                 `protobuf:"bytes,1,opt,name=voice_clone_id,json=voiceCloneId,proto3" json:"voice_clone_id,omitempty"`
+	WorkspaceId     string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	CharacterId     string                 `protobuf:"bytes,3,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	Provider        string                 `protobuf:"bytes,4,opt,name=provider,proto3" json:"provider,omitempty"`
+	ProviderVoiceId string                 `protobuf:"bytes,5,opt,name=provider_voice_id,json=providerVoiceId,proto3" json:"provider_voice_id,omitempty"`
+	VoiceName       string                 `protobuf:"bytes,6,opt,name=voice_name,json=voiceName,proto3" json:"voice_name,omitempty"`
+	SampleAudioUrls []string               `protobuf:"bytes,7,rep,name=sample_audio_urls,json=sampleAudioUrls,proto3" json:"sample_audio_urls,omitempty"`
+	CloneStatus     string                 `protobuf:"bytes,8,opt,name=clone_status,json=cloneStatus,proto3" json:"clone_status,omitempty"`
+	ConsentRecordId string                 `protobuf:"bytes,9,opt,name=consent_record_id,json=consentRecordId,proto3" json:"consent_record_id,omitempty"`
+	QualityScore    float64                `protobuf:"fixed64,10,opt,name=quality_score,json=qualityScore,proto3" json:"quality_score,omitempty"`
+	RepairApplied   bool                   `protobuf:"varint,11,opt,name=repair_applied,json=repairApplied,proto3" json:"repair_applied,omitempty"`
+	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt       *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *VoiceCloneRecord) Reset() {
+	*x = VoiceCloneRecord{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[53]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VoiceCloneRecord) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VoiceCloneRecord) ProtoMessage() {}
+
+func (x *VoiceCloneRecord) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[53]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VoiceCloneRecord.ProtoReflect.Descriptor instead.
+func (*VoiceCloneRecord) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{53}
+}
+
+func (x *VoiceCloneRecord) GetVoiceCloneId() string {
+	if x != nil {
+		return x.VoiceCloneId
+	}
+	return ""
+}
+
+func (x *VoiceCloneRecord) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *VoiceCloneRecord) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *VoiceCloneRecord) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *VoiceCloneRecord) GetProviderVoiceId() string {
+	if x != nil {
+		return x.ProviderVoiceId
+	}
+	return ""
+}
+
+func (x *VoiceCloneRecord) GetVoiceName() string {
+	if x != nil {
+		return x.VoiceName
+	}
+	return ""
+}
+
+func (x *VoiceCloneRecord) GetSampleAudioUrls() []string {
+	if x != nil {
+		return x.SampleAudioUrls
+	}
+	return nil
+}
+
+func (x *VoiceCloneRecord) GetCloneStatus() string {
+	if x != nil {
+		return x.CloneStatus
+	}
+	return ""
+}
+
+func (x *VoiceCloneRecord) GetConsentRecordId() string {
+	if x != nil {
+		return x.ConsentRecordId
+	}
+	return ""
+}
+
+func (x *VoiceCloneRecord) GetQualityScore() float64 {
+	if x != nil {
+		return x.QualityScore
+	}
+	return 0
+}
+
+func (x *VoiceCloneRecord) GetRepairApplied() bool {
+	if x != nil {
+		return x.RepairApplied
+	}
+	return false
+}
+
+func (x *VoiceCloneRecord) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *VoiceCloneRecord) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+type VoiceCloneServiceCreateRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Context          *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	CharacterId      string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	Name             string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	SampleAudioUrls  []string               `protobuf:"bytes,4,rep,name=sample_audio_urls,json=sampleAudioUrls,proto3" json:"sample_audio_urls,omitempty"`
+	ConsentConfirmed bool                   `protobuf:"varint,5,opt,name=consent_confirmed,json=consentConfirmed,proto3" json:"consent_confirmed,omitempty"`
+	ConsentRecordId  string                 `protobuf:"bytes,6,opt,name=consent_record_id,json=consentRecordId,proto3" json:"consent_record_id,omitempty"`
+	Language         string                 `protobuf:"bytes,7,opt,name=language,proto3" json:"language,omitempty"`
+	QuoteId          string                 `protobuf:"bytes,8,opt,name=quote_id,json=quoteId,proto3" json:"quote_id,omitempty"`
+	ConfirmedCredits string                 `protobuf:"bytes,9,opt,name=confirmed_credits,json=confirmedCredits,proto3" json:"confirmed_credits,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *VoiceCloneServiceCreateRequest) Reset() {
+	*x = VoiceCloneServiceCreateRequest{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[54]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VoiceCloneServiceCreateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VoiceCloneServiceCreateRequest) ProtoMessage() {}
+
+func (x *VoiceCloneServiceCreateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[54]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VoiceCloneServiceCreateRequest.ProtoReflect.Descriptor instead.
+func (*VoiceCloneServiceCreateRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{54}
+}
+
+func (x *VoiceCloneServiceCreateRequest) GetContext() *v1.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *VoiceCloneServiceCreateRequest) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceCreateRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceCreateRequest) GetSampleAudioUrls() []string {
+	if x != nil {
+		return x.SampleAudioUrls
+	}
+	return nil
+}
+
+func (x *VoiceCloneServiceCreateRequest) GetConsentConfirmed() bool {
+	if x != nil {
+		return x.ConsentConfirmed
+	}
+	return false
+}
+
+func (x *VoiceCloneServiceCreateRequest) GetConsentRecordId() string {
+	if x != nil {
+		return x.ConsentRecordId
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceCreateRequest) GetLanguage() string {
+	if x != nil {
+		return x.Language
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceCreateRequest) GetQuoteId() string {
+	if x != nil {
+		return x.QuoteId
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceCreateRequest) GetConfirmedCredits() string {
+	if x != nil {
+		return x.ConfirmedCredits
+	}
+	return ""
+}
+
+type VoiceCloneServiceCreateResponse struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Record             *VoiceCloneRecord      `protobuf:"bytes,1,opt,name=record,proto3" json:"record,omitempty"`
+	Status             string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	EstimatedDurationS int32                  `protobuf:"varint,3,opt,name=estimated_duration_s,json=estimatedDurationS,proto3" json:"estimated_duration_s,omitempty"`
+	CreditsReserved    string                 `protobuf:"bytes,4,opt,name=credits_reserved,json=creditsReserved,proto3" json:"credits_reserved,omitempty"`
+	ConsentStatus      string                 `protobuf:"bytes,5,opt,name=consent_status,json=consentStatus,proto3" json:"consent_status,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *VoiceCloneServiceCreateResponse) Reset() {
+	*x = VoiceCloneServiceCreateResponse{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[55]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VoiceCloneServiceCreateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VoiceCloneServiceCreateResponse) ProtoMessage() {}
+
+func (x *VoiceCloneServiceCreateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[55]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VoiceCloneServiceCreateResponse.ProtoReflect.Descriptor instead.
+func (*VoiceCloneServiceCreateResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{55}
+}
+
+func (x *VoiceCloneServiceCreateResponse) GetRecord() *VoiceCloneRecord {
+	if x != nil {
+		return x.Record
+	}
+	return nil
+}
+
+func (x *VoiceCloneServiceCreateResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceCreateResponse) GetEstimatedDurationS() int32 {
+	if x != nil {
+		return x.EstimatedDurationS
+	}
+	return 0
+}
+
+func (x *VoiceCloneServiceCreateResponse) GetCreditsReserved() string {
+	if x != nil {
+		return x.CreditsReserved
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceCreateResponse) GetConsentStatus() string {
+	if x != nil {
+		return x.ConsentStatus
+	}
+	return ""
+}
+
+type VoiceCloneServiceGetRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId   *v1.UUID               `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	VoiceCloneId  string                 `protobuf:"bytes,2,opt,name=voice_clone_id,json=voiceCloneId,proto3" json:"voice_clone_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VoiceCloneServiceGetRequest) Reset() {
+	*x = VoiceCloneServiceGetRequest{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[56]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VoiceCloneServiceGetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VoiceCloneServiceGetRequest) ProtoMessage() {}
+
+func (x *VoiceCloneServiceGetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[56]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VoiceCloneServiceGetRequest.ProtoReflect.Descriptor instead.
+func (*VoiceCloneServiceGetRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{56}
+}
+
+func (x *VoiceCloneServiceGetRequest) GetWorkspaceId() *v1.UUID {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *VoiceCloneServiceGetRequest) GetVoiceCloneId() string {
+	if x != nil {
+		return x.VoiceCloneId
+	}
+	return ""
+}
+
+type VoiceCloneServiceGetResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Record        *VoiceCloneRecord      `protobuf:"bytes,1,opt,name=record,proto3" json:"record,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VoiceCloneServiceGetResponse) Reset() {
+	*x = VoiceCloneServiceGetResponse{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[57]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VoiceCloneServiceGetResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VoiceCloneServiceGetResponse) ProtoMessage() {}
+
+func (x *VoiceCloneServiceGetResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[57]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VoiceCloneServiceGetResponse.ProtoReflect.Descriptor instead.
+func (*VoiceCloneServiceGetResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{57}
+}
+
+func (x *VoiceCloneServiceGetResponse) GetRecord() *VoiceCloneRecord {
+	if x != nil {
+		return x.Record
+	}
+	return nil
+}
+
+type VoiceCloneServiceListRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId   *v1.UUID               `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	CharacterId   string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	Pagination    *v1.Pagination         `protobuf:"bytes,3,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VoiceCloneServiceListRequest) Reset() {
+	*x = VoiceCloneServiceListRequest{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[58]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VoiceCloneServiceListRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VoiceCloneServiceListRequest) ProtoMessage() {}
+
+func (x *VoiceCloneServiceListRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[58]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VoiceCloneServiceListRequest.ProtoReflect.Descriptor instead.
+func (*VoiceCloneServiceListRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{58}
+}
+
+func (x *VoiceCloneServiceListRequest) GetWorkspaceId() *v1.UUID {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *VoiceCloneServiceListRequest) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceListRequest) GetPagination() *v1.Pagination {
+	if x != nil {
+		return x.Pagination
+	}
+	return nil
+}
+
+type VoiceCloneServiceListResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Records       []*VoiceCloneRecord    `protobuf:"bytes,1,rep,name=records,proto3" json:"records,omitempty"`
+	Pagination    *v1.PaginatedResponse  `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VoiceCloneServiceListResponse) Reset() {
+	*x = VoiceCloneServiceListResponse{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[59]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VoiceCloneServiceListResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VoiceCloneServiceListResponse) ProtoMessage() {}
+
+func (x *VoiceCloneServiceListResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[59]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VoiceCloneServiceListResponse.ProtoReflect.Descriptor instead.
+func (*VoiceCloneServiceListResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{59}
+}
+
+func (x *VoiceCloneServiceListResponse) GetRecords() []*VoiceCloneRecord {
+	if x != nil {
+		return x.Records
+	}
+	return nil
+}
+
+func (x *VoiceCloneServiceListResponse) GetPagination() *v1.PaginatedResponse {
+	if x != nil {
+		return x.Pagination
+	}
+	return nil
+}
+
+type VoiceCloneServiceDeleteRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	VoiceCloneId  string                 `protobuf:"bytes,2,opt,name=voice_clone_id,json=voiceCloneId,proto3" json:"voice_clone_id,omitempty"`
+	RevokeConsent bool                   `protobuf:"varint,3,opt,name=revoke_consent,json=revokeConsent,proto3" json:"revoke_consent,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VoiceCloneServiceDeleteRequest) Reset() {
+	*x = VoiceCloneServiceDeleteRequest{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[60]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VoiceCloneServiceDeleteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VoiceCloneServiceDeleteRequest) ProtoMessage() {}
+
+func (x *VoiceCloneServiceDeleteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[60]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VoiceCloneServiceDeleteRequest.ProtoReflect.Descriptor instead.
+func (*VoiceCloneServiceDeleteRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{60}
+}
+
+func (x *VoiceCloneServiceDeleteRequest) GetContext() *v1.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *VoiceCloneServiceDeleteRequest) GetVoiceCloneId() string {
+	if x != nil {
+		return x.VoiceCloneId
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceDeleteRequest) GetRevokeConsent() bool {
+	if x != nil {
+		return x.RevokeConsent
+	}
+	return false
+}
+
+type VoiceCloneServiceDeleteResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Success        bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message        string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	ConsentRevoked bool                   `protobuf:"varint,3,opt,name=consent_revoked,json=consentRevoked,proto3" json:"consent_revoked,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *VoiceCloneServiceDeleteResponse) Reset() {
+	*x = VoiceCloneServiceDeleteResponse{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[61]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VoiceCloneServiceDeleteResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VoiceCloneServiceDeleteResponse) ProtoMessage() {}
+
+func (x *VoiceCloneServiceDeleteResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[61]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VoiceCloneServiceDeleteResponse.ProtoReflect.Descriptor instead.
+func (*VoiceCloneServiceDeleteResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{61}
+}
+
+func (x *VoiceCloneServiceDeleteResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *VoiceCloneServiceDeleteResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceDeleteResponse) GetConsentRevoked() bool {
+	if x != nil {
+		return x.ConsentRevoked
+	}
+	return false
+}
+
+type VoiceCloneServiceGenerateVoiceoverRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Context          *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	VoiceCloneId     string                 `protobuf:"bytes,2,opt,name=voice_clone_id,json=voiceCloneId,proto3" json:"voice_clone_id,omitempty"`
+	Text             string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
+	Language         string                 `protobuf:"bytes,4,opt,name=language,proto3" json:"language,omitempty"`
+	Speed            float64                `protobuf:"fixed64,5,opt,name=speed,proto3" json:"speed,omitempty"`
+	Pitch            float64                `protobuf:"fixed64,6,opt,name=pitch,proto3" json:"pitch,omitempty"`
+	QuoteId          string                 `protobuf:"bytes,7,opt,name=quote_id,json=quoteId,proto3" json:"quote_id,omitempty"`
+	ConfirmedCredits string                 `protobuf:"bytes,8,opt,name=confirmed_credits,json=confirmedCredits,proto3" json:"confirmed_credits,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *VoiceCloneServiceGenerateVoiceoverRequest) Reset() {
+	*x = VoiceCloneServiceGenerateVoiceoverRequest{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[62]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VoiceCloneServiceGenerateVoiceoverRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VoiceCloneServiceGenerateVoiceoverRequest) ProtoMessage() {}
+
+func (x *VoiceCloneServiceGenerateVoiceoverRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[62]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VoiceCloneServiceGenerateVoiceoverRequest.ProtoReflect.Descriptor instead.
+func (*VoiceCloneServiceGenerateVoiceoverRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{62}
+}
+
+func (x *VoiceCloneServiceGenerateVoiceoverRequest) GetContext() *v1.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *VoiceCloneServiceGenerateVoiceoverRequest) GetVoiceCloneId() string {
+	if x != nil {
+		return x.VoiceCloneId
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceGenerateVoiceoverRequest) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceGenerateVoiceoverRequest) GetLanguage() string {
+	if x != nil {
+		return x.Language
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceGenerateVoiceoverRequest) GetSpeed() float64 {
+	if x != nil {
+		return x.Speed
+	}
+	return 0
+}
+
+func (x *VoiceCloneServiceGenerateVoiceoverRequest) GetPitch() float64 {
+	if x != nil {
+		return x.Pitch
+	}
+	return 0
+}
+
+func (x *VoiceCloneServiceGenerateVoiceoverRequest) GetQuoteId() string {
+	if x != nil {
+		return x.QuoteId
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceGenerateVoiceoverRequest) GetConfirmedCredits() string {
+	if x != nil {
+		return x.ConfirmedCredits
+	}
+	return ""
+}
+
+type VoiceCloneServiceGenerateVoiceoverResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	AssetId         string                 `protobuf:"bytes,1,opt,name=asset_id,json=assetId,proto3" json:"asset_id,omitempty"`
+	AudioUrl        string                 `protobuf:"bytes,2,opt,name=audio_url,json=audioUrl,proto3" json:"audio_url,omitempty"`
+	DurationSeconds float64                `protobuf:"fixed64,3,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
+	CreditsUsed     string                 `protobuf:"bytes,4,opt,name=credits_used,json=creditsUsed,proto3" json:"credits_used,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *VoiceCloneServiceGenerateVoiceoverResponse) Reset() {
+	*x = VoiceCloneServiceGenerateVoiceoverResponse{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[63]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VoiceCloneServiceGenerateVoiceoverResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VoiceCloneServiceGenerateVoiceoverResponse) ProtoMessage() {}
+
+func (x *VoiceCloneServiceGenerateVoiceoverResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[63]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VoiceCloneServiceGenerateVoiceoverResponse.ProtoReflect.Descriptor instead.
+func (*VoiceCloneServiceGenerateVoiceoverResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{63}
+}
+
+func (x *VoiceCloneServiceGenerateVoiceoverResponse) GetAssetId() string {
+	if x != nil {
+		return x.AssetId
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceGenerateVoiceoverResponse) GetAudioUrl() string {
+	if x != nil {
+		return x.AudioUrl
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceGenerateVoiceoverResponse) GetDurationSeconds() float64 {
+	if x != nil {
+		return x.DurationSeconds
+	}
+	return 0
+}
+
+func (x *VoiceCloneServiceGenerateVoiceoverResponse) GetCreditsUsed() string {
+	if x != nil {
+		return x.CreditsUsed
+	}
+	return ""
+}
+
+type VoiceCloneServiceGetConsentStatusRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId   *v1.UUID               `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	VoiceCloneId  string                 `protobuf:"bytes,2,opt,name=voice_clone_id,json=voiceCloneId,proto3" json:"voice_clone_id,omitempty"`
+	CharacterId   string                 `protobuf:"bytes,3,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VoiceCloneServiceGetConsentStatusRequest) Reset() {
+	*x = VoiceCloneServiceGetConsentStatusRequest{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[64]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VoiceCloneServiceGetConsentStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VoiceCloneServiceGetConsentStatusRequest) ProtoMessage() {}
+
+func (x *VoiceCloneServiceGetConsentStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[64]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VoiceCloneServiceGetConsentStatusRequest.ProtoReflect.Descriptor instead.
+func (*VoiceCloneServiceGetConsentStatusRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{64}
+}
+
+func (x *VoiceCloneServiceGetConsentStatusRequest) GetWorkspaceId() *v1.UUID {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *VoiceCloneServiceGetConsentStatusRequest) GetVoiceCloneId() string {
+	if x != nil {
+		return x.VoiceCloneId
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceGetConsentStatusRequest) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+type VoiceCloneServiceGetConsentStatusResponse struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	ConsentRecordId      string                 `protobuf:"bytes,1,opt,name=consent_record_id,json=consentRecordId,proto3" json:"consent_record_id,omitempty"`
+	ConsentStatus        string                 `protobuf:"bytes,2,opt,name=consent_status,json=consentStatus,proto3" json:"consent_status,omitempty"`
+	GrantedAt            *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=granted_at,json=grantedAt,proto3" json:"granted_at,omitempty"`
+	RevokedAt            *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=revoked_at,json=revokedAt,proto3" json:"revoked_at,omitempty"`
+	DeclarationText      string                 `protobuf:"bytes,5,opt,name=declaration_text,json=declarationText,proto3" json:"declaration_text,omitempty"`
+	IsValidForGeneration bool                   `protobuf:"varint,6,opt,name=is_valid_for_generation,json=isValidForGeneration,proto3" json:"is_valid_for_generation,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *VoiceCloneServiceGetConsentStatusResponse) Reset() {
+	*x = VoiceCloneServiceGetConsentStatusResponse{}
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[65]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VoiceCloneServiceGetConsentStatusResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VoiceCloneServiceGetConsentStatusResponse) ProtoMessage() {}
+
+func (x *VoiceCloneServiceGetConsentStatusResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_production_v1_production_proto_msgTypes[65]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VoiceCloneServiceGetConsentStatusResponse.ProtoReflect.Descriptor instead.
+func (*VoiceCloneServiceGetConsentStatusResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_production_v1_production_proto_rawDescGZIP(), []int{65}
+}
+
+func (x *VoiceCloneServiceGetConsentStatusResponse) GetConsentRecordId() string {
+	if x != nil {
+		return x.ConsentRecordId
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceGetConsentStatusResponse) GetConsentStatus() string {
+	if x != nil {
+		return x.ConsentStatus
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceGetConsentStatusResponse) GetGrantedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.GrantedAt
+	}
+	return nil
+}
+
+func (x *VoiceCloneServiceGetConsentStatusResponse) GetRevokedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.RevokedAt
+	}
+	return nil
+}
+
+func (x *VoiceCloneServiceGetConsentStatusResponse) GetDeclarationText() string {
+	if x != nil {
+		return x.DeclarationText
+	}
+	return ""
+}
+
+func (x *VoiceCloneServiceGetConsentStatusResponse) GetIsValidForGeneration() bool {
+	if x != nil {
+		return x.IsValidForGeneration
+	}
+	return false
+}
+
 var File_creativanta_production_v1_production_proto protoreflect.FileDescriptor
 
 const file_creativanta_production_v1_production_proto_rawDesc = "" +
@@ -3114,7 +5734,265 @@ const file_creativanta_production_v1_production_proto_rawDesc = "" +
 	"\vstorage_url\x18\x02 \x01(\tR\n" +
 	"storageUrl\x12*\n" +
 	"\x11virus_scan_status\x18\x03 \x01(\tR\x0fvirusScanStatus\x126\n" +
-	"\x05asset\x18\x04 \x01(\v2 .creativanta.production.v1.AssetR\x05asset*\xf0\x01\n" +
+	"\x05asset\x18\x04 \x01(\v2 .creativanta.production.v1.AssetR\x05asset\"\xf1\n" +
+	"\n" +
+	"\x0eTranslationJob\x12,\n" +
+	"\x12translation_job_id\x18\x01 \x01(\tR\x10translationJobId\x12!\n" +
+	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12)\n" +
+	"\x11video_edit_job_id\x18\x03 \x01(\tR\x0evideoEditJobId\x12&\n" +
+	"\x0fsource_asset_id\x18\x04 \x01(\tR\rsourceAssetId\x12)\n" +
+	"\x10target_languages\x18\x05 \x03(\tR\x0ftargetLanguages\x12(\n" +
+	"\x10lip_sync_enabled\x18\x06 \x01(\bR\x0elipSyncEnabled\x12>\n" +
+	"\x1bcultural_adaptation_enabled\x18\a \x01(\bR\x19culturalAdaptationEnabled\x12-\n" +
+	"\x12translate_captions\x18\b \x01(\bR\x11translateCaptions\x12-\n" +
+	"\x12translate_overlays\x18\t \x01(\bR\x11translateOverlays\x12!\n" +
+	"\fvoice_option\x18\n" +
+	" \x01(\tR\vvoiceOption\x12$\n" +
+	"\x0evoice_clone_id\x18\v \x01(\tR\fvoiceCloneId\x12p\n" +
+	"\x13per_language_status\x18\f \x03(\v2@.creativanta.production.v1.TranslationJob.PerLanguageStatusEntryR\x11perLanguageStatus\x12g\n" +
+	"\x10output_asset_ids\x18\r \x03(\v2=.creativanta.production.v1.TranslationJob.OutputAssetIdsEntryR\x0eoutputAssetIds\x12,\n" +
+	"\x12total_credits_used\x18\x0e \x01(\tR\x10totalCreditsUsed\x12\x16\n" +
+	"\x06status\x18\x0f \x01(\tR\x06status\x12c\n" +
+	"\x0equality_scores\x18\x10 \x03(\v2<.creativanta.production.v1.TranslationJob.QualityScoresEntryR\rqualityScores\x12]\n" +
+	"\frepair_notes\x18\x11 \x03(\v2:.creativanta.production.v1.TranslationJob.RepairNotesEntryR\vrepairNotes\x12\x19\n" +
+	"\bquote_id\x18\x12 \x01(\tR\aquoteId\x129\n" +
+	"\n" +
+	"created_at\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\x14 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x1aD\n" +
+	"\x16PerLanguageStatusEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aA\n" +
+	"\x13OutputAssetIdsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a@\n" +
+	"\x12QualityScoresEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\x1a>\n" +
+	"\x10RepairNotesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa7\x03\n" +
+	"\x12TranslationSegment\x12\x1d\n" +
+	"\n" +
+	"segment_id\x18\x01 \x01(\tR\tsegmentId\x12 \n" +
+	"\fstart_time_s\x18\x02 \x01(\x01R\n" +
+	"startTimeS\x12\x1c\n" +
+	"\n" +
+	"end_time_s\x18\x03 \x01(\x01R\bendTimeS\x12\x1f\n" +
+	"\vsource_text\x18\x04 \x01(\tR\n" +
+	"sourceText\x12c\n" +
+	"\ftranslations\x18\x05 \x03(\v2?.creativanta.production.v1.TranslationSegment.TranslationsEntryR\ftranslations\x12#\n" +
+	"\rquality_score\x18\x06 \x01(\x01R\fqualityScore\x12!\n" +
+	"\fneeds_repair\x18\a \x01(\bR\vneedsRepair\x12#\n" +
+	"\rrepair_reason\x18\b \x01(\tR\frepairReason\x1a?\n" +
+	"\x11TranslationsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xf0\x05\n" +
+	"\x1fTranslationServiceCreateRequest\x12?\n" +
+	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12&\n" +
+	"\x0fsource_asset_id\x18\x02 \x01(\tR\rsourceAssetId\x12)\n" +
+	"\x10target_languages\x18\x03 \x03(\tR\x0ftargetLanguages\x12(\n" +
+	"\x10lip_sync_enabled\x18\x04 \x01(\bR\x0elipSyncEnabled\x12>\n" +
+	"\x1bcultural_adaptation_enabled\x18\x05 \x01(\bR\x19culturalAdaptationEnabled\x12-\n" +
+	"\x12translate_captions\x18\x06 \x01(\bR\x11translateCaptions\x12-\n" +
+	"\x12translate_overlays\x18\a \x01(\bR\x11translateOverlays\x12!\n" +
+	"\fvoice_option\x18\b \x01(\tR\vvoiceOption\x12$\n" +
+	"\x0evoice_clone_id\x18\t \x01(\tR\fvoiceCloneId\x12\x19\n" +
+	"\bquote_id\x18\n" +
+	" \x01(\tR\aquoteId\x12+\n" +
+	"\x11confirmed_credits\x18\v \x01(\tR\x10confirmedCredits\x12\x93\x01\n" +
+	"\x19custom_script_corrections\x18\f \x03(\v2W.creativanta.production.v1.TranslationServiceCreateRequest.CustomScriptCorrectionsEntryR\x17customScriptCorrections\x1aJ\n" +
+	"\x1cCustomScriptCorrectionsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xbc\x01\n" +
+	" TranslationServiceCreateResponse\x12;\n" +
+	"\x03job\x18\x01 \x01(\v2).creativanta.production.v1.TranslationJobR\x03job\x12)\n" +
+	"\x10credits_reserved\x18\x02 \x01(\tR\x0fcreditsReserved\x120\n" +
+	"\x14discount_applied_pct\x18\x03 \x01(\x01R\x12discountAppliedPct\"\x8c\x01\n" +
+	"\x1cTranslationServiceGetRequest\x12>\n" +
+	"\fworkspace_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x12,\n" +
+	"\x12translation_job_id\x18\x02 \x01(\tR\x10translationJobId\"\xee\x01\n" +
+	"\x1dTranslationServiceGetResponse\x12;\n" +
+	"\x03job\x18\x01 \x01(\v2).creativanta.production.v1.TranslationJobR\x03job\x12E\n" +
+	"\routput_assets\x18\x02 \x03(\v2 .creativanta.production.v1.AssetR\foutputAssets\x12I\n" +
+	"\bsegments\x18\x03 \x03(\v2-.creativanta.production.v1.TranslationSegmentR\bsegments\"\xa2\x01\n" +
+	"\x1dTranslationServiceListRequest\x12>\n" +
+	"\fworkspace_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x12A\n" +
+	"\n" +
+	"pagination\x18\x02 \x01(\v2!.creativanta.common.v1.PaginationR\n" +
+	"pagination\"\xa9\x01\n" +
+	"\x1eTranslationServiceListResponse\x12=\n" +
+	"\x04jobs\x18\x01 \x03(\v2).creativanta.production.v1.TranslationJobR\x04jobs\x12H\n" +
+	"\n" +
+	"pagination\x18\x02 \x01(\v2(.creativanta.common.v1.PaginatedResponseR\n" +
+	"pagination\"\xd2\x03\n" +
+	"\n" +
+	"SoundTrack\x12\x19\n" +
+	"\btrack_id\x18\x01 \x01(\tR\atrackId\x12!\n" +
+	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x14\n" +
+	"\x05title\x18\x03 \x01(\tR\x05title\x12\x1a\n" +
+	"\bcategory\x18\x04 \x01(\tR\bcategory\x12\x14\n" +
+	"\x05genre\x18\x05 \x01(\tR\x05genre\x12\x12\n" +
+	"\x04mood\x18\x06 \x01(\tR\x04mood\x12\x10\n" +
+	"\x03bpm\x18\a \x01(\x05R\x03bpm\x12)\n" +
+	"\x10duration_seconds\x18\b \x01(\x01R\x0fdurationSeconds\x12\x19\n" +
+	"\bfile_url\x18\t \x01(\tR\afileUrl\x12!\n" +
+	"\flicense_type\x18\n" +
+	" \x01(\tR\vlicenseType\x12\x1d\n" +
+	"\n" +
+	"license_id\x18\v \x01(\tR\tlicenseId\x12.\n" +
+	"\x13is_verified_license\x18\f \x01(\bR\x11isVerifiedLicense\x12%\n" +
+	"\x0ewaveform_peaks\x18\r \x03(\x02R\rwaveformPeaks\x129\n" +
+	"\n" +
+	"created_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xd3\x02\n" +
+	"&SoundStudioServiceGenerateMusicRequest\x12?\n" +
+	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12\x16\n" +
+	"\x06prompt\x18\x02 \x01(\tR\x06prompt\x12\x14\n" +
+	"\x05genre\x18\x03 \x01(\tR\x05genre\x12\x12\n" +
+	"\x04mood\x18\x04 \x01(\tR\x04mood\x12\x10\n" +
+	"\x03bpm\x18\x05 \x01(\x05R\x03bpm\x12)\n" +
+	"\x10duration_seconds\x18\x06 \x01(\x05R\x0fdurationSeconds\x12!\n" +
+	"\flicense_type\x18\a \x01(\tR\vlicenseType\x12\x19\n" +
+	"\bquote_id\x18\b \x01(\tR\aquoteId\x12+\n" +
+	"\x11confirmed_credits\x18\t \x01(\tR\x10confirmedCredits\"\xc9\x01\n" +
+	"'SoundStudioServiceGenerateMusicResponse\x12;\n" +
+	"\x05track\x18\x01 \x01(\v2%.creativanta.production.v1.SoundTrackR\x05track\x126\n" +
+	"\x05asset\x18\x02 \x01(\v2 .creativanta.production.v1.AssetR\x05asset\x12)\n" +
+	"\x10credits_deducted\x18\x03 \x01(\tR\x0fcreditsDeducted\"\x8e\x02\n" +
+	"$SoundStudioServiceGenerateSFXRequest\x12?\n" +
+	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12\x16\n" +
+	"\x06prompt\x18\x02 \x01(\tR\x06prompt\x12\x1a\n" +
+	"\bcategory\x18\x03 \x01(\tR\bcategory\x12)\n" +
+	"\x10duration_seconds\x18\x04 \x01(\x01R\x0fdurationSeconds\x12\x19\n" +
+	"\bquote_id\x18\x05 \x01(\tR\aquoteId\x12+\n" +
+	"\x11confirmed_credits\x18\x06 \x01(\tR\x10confirmedCredits\"\xc7\x01\n" +
+	"%SoundStudioServiceGenerateSFXResponse\x12;\n" +
+	"\x05track\x18\x01 \x01(\v2%.creativanta.production.v1.SoundTrackR\x05track\x126\n" +
+	"\x05asset\x18\x02 \x01(\v2 .creativanta.production.v1.AssetR\x05asset\x12)\n" +
+	"\x10credits_deducted\x18\x03 \x01(\tR\x0fcreditsDeducted\"\xa9\x01\n" +
+	"$SoundStudioServiceAnalyzeBeatRequest\x12>\n" +
+	"\fworkspace_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x12$\n" +
+	"\x0eaudio_asset_id\x18\x02 \x01(\tR\faudioAssetId\x12\x1b\n" +
+	"\taudio_url\x18\x03 \x01(\tR\baudioUrl\"\xff\x01\n" +
+	"%SoundStudioServiceAnalyzeBeatResponse\x12\x10\n" +
+	"\x03bpm\x18\x01 \x01(\x01R\x03bpm\x12,\n" +
+	"\x12beat_timestamps_ms\x18\x02 \x03(\x03R\x10beatTimestampsMs\x124\n" +
+	"\x16downbeat_timestamps_ms\x18\x03 \x03(\x03R\x14downbeatTimestampsMs\x12)\n" +
+	"\x10tempo_confidence\x18\x04 \x01(\x01R\x0ftempoConfidence\x125\n" +
+	"\x17suggested_cut_points_ms\x18\x05 \x03(\x03R\x14suggestedCutPointsMs\"\xf4\x01\n" +
+	")SoundStudioServiceListSoundLibraryRequest\x12>\n" +
+	"\fworkspace_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x12\x1a\n" +
+	"\bcategory\x18\x02 \x01(\tR\bcategory\x12\x14\n" +
+	"\x05genre\x18\x03 \x01(\tR\x05genre\x12\x12\n" +
+	"\x04mood\x18\x04 \x01(\tR\x04mood\x12A\n" +
+	"\n" +
+	"pagination\x18\x05 \x01(\v2!.creativanta.common.v1.PaginationR\n" +
+	"pagination\"\xb5\x01\n" +
+	"*SoundStudioServiceListSoundLibraryResponse\x12=\n" +
+	"\x06tracks\x18\x01 \x03(\v2%.creativanta.production.v1.SoundTrackR\x06tracks\x12H\n" +
+	"\n" +
+	"pagination\x18\x02 \x01(\v2(.creativanta.common.v1.PaginatedResponseR\n" +
+	"pagination\"~\n" +
+	"!SoundStudioServiceGetSoundRequest\x12>\n" +
+	"\fworkspace_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x12\x19\n" +
+	"\basset_id\x18\x02 \x01(\tR\aassetId\"a\n" +
+	"\"SoundStudioServiceGetSoundResponse\x12;\n" +
+	"\x05track\x18\x01 \x01(\v2%.creativanta.production.v1.SoundTrackR\x05track\"\xdc\x01\n" +
+	"%SoundStudioServicePreviewSoundRequest\x12>\n" +
+	"\fworkspace_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x12\x19\n" +
+	"\btrack_id\x18\x02 \x01(\tR\atrackId\x12(\n" +
+	"\x10preview_start_ms\x18\x03 \x01(\x05R\x0epreviewStartMs\x12.\n" +
+	"\x13preview_duration_ms\x18\x04 \x01(\x05R\x11previewDurationMs\"\x89\x01\n" +
+	"&SoundStudioServicePreviewSoundResponse\x12\x1f\n" +
+	"\vpreview_url\x18\x01 \x01(\tR\n" +
+	"previewUrl\x12%\n" +
+	"\x0ewaveform_peaks\x18\x02 \x03(\x02R\rwaveformPeaks\x12\x17\n" +
+	"\ais_free\x18\x03 \x01(\bR\x06isFree\"\xa2\x04\n" +
+	"\x10VoiceCloneRecord\x12$\n" +
+	"\x0evoice_clone_id\x18\x01 \x01(\tR\fvoiceCloneId\x12!\n" +
+	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12!\n" +
+	"\fcharacter_id\x18\x03 \x01(\tR\vcharacterId\x12\x1a\n" +
+	"\bprovider\x18\x04 \x01(\tR\bprovider\x12*\n" +
+	"\x11provider_voice_id\x18\x05 \x01(\tR\x0fproviderVoiceId\x12\x1d\n" +
+	"\n" +
+	"voice_name\x18\x06 \x01(\tR\tvoiceName\x12*\n" +
+	"\x11sample_audio_urls\x18\a \x03(\tR\x0fsampleAudioUrls\x12!\n" +
+	"\fclone_status\x18\b \x01(\tR\vcloneStatus\x12*\n" +
+	"\x11consent_record_id\x18\t \x01(\tR\x0fconsentRecordId\x12#\n" +
+	"\rquality_score\x18\n" +
+	" \x01(\x01R\fqualityScore\x12%\n" +
+	"\x0erepair_applied\x18\v \x01(\bR\rrepairApplied\x129\n" +
+	"\n" +
+	"created_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x81\x03\n" +
+	"\x1eVoiceCloneServiceCreateRequest\x12?\n" +
+	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12*\n" +
+	"\x11sample_audio_urls\x18\x04 \x03(\tR\x0fsampleAudioUrls\x12+\n" +
+	"\x11consent_confirmed\x18\x05 \x01(\bR\x10consentConfirmed\x12*\n" +
+	"\x11consent_record_id\x18\x06 \x01(\tR\x0fconsentRecordId\x12\x1a\n" +
+	"\blanguage\x18\a \x01(\tR\blanguage\x12\x19\n" +
+	"\bquote_id\x18\b \x01(\tR\aquoteId\x12+\n" +
+	"\x11confirmed_credits\x18\t \x01(\tR\x10confirmedCredits\"\x82\x02\n" +
+	"\x1fVoiceCloneServiceCreateResponse\x12C\n" +
+	"\x06record\x18\x01 \x01(\v2+.creativanta.production.v1.VoiceCloneRecordR\x06record\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x120\n" +
+	"\x14estimated_duration_s\x18\x03 \x01(\x05R\x12estimatedDurationS\x12)\n" +
+	"\x10credits_reserved\x18\x04 \x01(\tR\x0fcreditsReserved\x12%\n" +
+	"\x0econsent_status\x18\x05 \x01(\tR\rconsentStatus\"\x83\x01\n" +
+	"\x1bVoiceCloneServiceGetRequest\x12>\n" +
+	"\fworkspace_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x12$\n" +
+	"\x0evoice_clone_id\x18\x02 \x01(\tR\fvoiceCloneId\"c\n" +
+	"\x1cVoiceCloneServiceGetResponse\x12C\n" +
+	"\x06record\x18\x01 \x01(\v2+.creativanta.production.v1.VoiceCloneRecordR\x06record\"\xc4\x01\n" +
+	"\x1cVoiceCloneServiceListRequest\x12>\n" +
+	"\fworkspace_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12A\n" +
+	"\n" +
+	"pagination\x18\x03 \x01(\v2!.creativanta.common.v1.PaginationR\n" +
+	"pagination\"\xb0\x01\n" +
+	"\x1dVoiceCloneServiceListResponse\x12E\n" +
+	"\arecords\x18\x01 \x03(\v2+.creativanta.production.v1.VoiceCloneRecordR\arecords\x12H\n" +
+	"\n" +
+	"pagination\x18\x02 \x01(\v2(.creativanta.common.v1.PaginatedResponseR\n" +
+	"pagination\"\xae\x01\n" +
+	"\x1eVoiceCloneServiceDeleteRequest\x12?\n" +
+	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12$\n" +
+	"\x0evoice_clone_id\x18\x02 \x01(\tR\fvoiceCloneId\x12%\n" +
+	"\x0erevoke_consent\x18\x03 \x01(\bR\rrevokeConsent\"~\n" +
+	"\x1fVoiceCloneServiceDeleteResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12'\n" +
+	"\x0fconsent_revoked\x18\x03 \x01(\bR\x0econsentRevoked\"\xb6\x02\n" +
+	")VoiceCloneServiceGenerateVoiceoverRequest\x12?\n" +
+	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12$\n" +
+	"\x0evoice_clone_id\x18\x02 \x01(\tR\fvoiceCloneId\x12\x12\n" +
+	"\x04text\x18\x03 \x01(\tR\x04text\x12\x1a\n" +
+	"\blanguage\x18\x04 \x01(\tR\blanguage\x12\x14\n" +
+	"\x05speed\x18\x05 \x01(\x01R\x05speed\x12\x14\n" +
+	"\x05pitch\x18\x06 \x01(\x01R\x05pitch\x12\x19\n" +
+	"\bquote_id\x18\a \x01(\tR\aquoteId\x12+\n" +
+	"\x11confirmed_credits\x18\b \x01(\tR\x10confirmedCredits\"\xb2\x01\n" +
+	"*VoiceCloneServiceGenerateVoiceoverResponse\x12\x19\n" +
+	"\basset_id\x18\x01 \x01(\tR\aassetId\x12\x1b\n" +
+	"\taudio_url\x18\x02 \x01(\tR\baudioUrl\x12)\n" +
+	"\x10duration_seconds\x18\x03 \x01(\x01R\x0fdurationSeconds\x12!\n" +
+	"\fcredits_used\x18\x04 \x01(\tR\vcreditsUsed\"\xb3\x01\n" +
+	"(VoiceCloneServiceGetConsentStatusRequest\x12>\n" +
+	"\fworkspace_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x12$\n" +
+	"\x0evoice_clone_id\x18\x02 \x01(\tR\fvoiceCloneId\x12!\n" +
+	"\fcharacter_id\x18\x03 \x01(\tR\vcharacterId\"\xd6\x02\n" +
+	")VoiceCloneServiceGetConsentStatusResponse\x12*\n" +
+	"\x11consent_record_id\x18\x01 \x01(\tR\x0fconsentRecordId\x12%\n" +
+	"\x0econsent_status\x18\x02 \x01(\tR\rconsentStatus\x129\n" +
+	"\n" +
+	"granted_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tgrantedAt\x129\n" +
+	"\n" +
+	"revoked_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\trevokedAt\x12)\n" +
+	"\x10declaration_text\x18\x05 \x01(\tR\x0fdeclarationText\x125\n" +
+	"\x17is_valid_for_generation\x18\x06 \x01(\bR\x14isValidForGeneration*\xf0\x01\n" +
 	"\x13GenerationJobStatus\x12%\n" +
 	"!GENERATION_JOB_STATUS_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cGENERATION_JOB_STATUS_QUEUED\x10\x01\x12$\n" +
@@ -3170,7 +6048,25 @@ const file_creativanta_production_v1_production_proto_rawDesc = "" +
 	"\x03Get\x12%.creativanta.production.v1.GetRequest\x1a&.creativanta.production.v1.GetResponse\x12`\n" +
 	"\aApprove\x12).creativanta.production.v1.ApproveRequest\x1a*.creativanta.production.v1.ApproveResponse\x12{\n" +
 	"\x10PromoteCanonical\x122.creativanta.production.v1.PromoteCanonicalRequest\x1a3.creativanta.production.v1.PromoteCanonicalResponse\x12]\n" +
-	"\x06Upload\x12(.creativanta.production.v1.UploadRequest\x1a).creativanta.production.v1.UploadResponseBXZVgithub.com/quantm-zeus/creativanta/apps/api/gen/creativanta/production/v1;productionv1b\x06proto3"
+	"\x06Upload\x12(.creativanta.production.v1.UploadRequest\x1a).creativanta.production.v1.UploadResponse2\x8f\x03\n" +
+	"\x12TranslationService\x12\x81\x01\n" +
+	"\x06Create\x12:.creativanta.production.v1.TranslationServiceCreateRequest\x1a;.creativanta.production.v1.TranslationServiceCreateResponse\x12x\n" +
+	"\x03Get\x127.creativanta.production.v1.TranslationServiceGetRequest\x1a8.creativanta.production.v1.TranslationServiceGetResponse\x12{\n" +
+	"\x04List\x128.creativanta.production.v1.TranslationServiceListRequest\x1a9.creativanta.production.v1.TranslationServiceListResponse2\x95\a\n" +
+	"\x12SoundStudioService\x12\x96\x01\n" +
+	"\rGenerateMusic\x12A.creativanta.production.v1.SoundStudioServiceGenerateMusicRequest\x1aB.creativanta.production.v1.SoundStudioServiceGenerateMusicResponse\x12\x90\x01\n" +
+	"\vGenerateSFX\x12?.creativanta.production.v1.SoundStudioServiceGenerateSFXRequest\x1a@.creativanta.production.v1.SoundStudioServiceGenerateSFXResponse\x12\x90\x01\n" +
+	"\vAnalyzeBeat\x12?.creativanta.production.v1.SoundStudioServiceAnalyzeBeatRequest\x1a@.creativanta.production.v1.SoundStudioServiceAnalyzeBeatResponse\x12\x9f\x01\n" +
+	"\x10ListSoundLibrary\x12D.creativanta.production.v1.SoundStudioServiceListSoundLibraryRequest\x1aE.creativanta.production.v1.SoundStudioServiceListSoundLibraryResponse\x12\x87\x01\n" +
+	"\bGetSound\x12<.creativanta.production.v1.SoundStudioServiceGetSoundRequest\x1a=.creativanta.production.v1.SoundStudioServiceGetSoundResponse\x12\x93\x01\n" +
+	"\fPreviewSound\x12@.creativanta.production.v1.SoundStudioServicePreviewSoundRequest\x1aA.creativanta.production.v1.SoundStudioServicePreviewSoundResponse2\xcb\x06\n" +
+	"\x11VoiceCloneService\x12\x7f\n" +
+	"\x06Create\x129.creativanta.production.v1.VoiceCloneServiceCreateRequest\x1a:.creativanta.production.v1.VoiceCloneServiceCreateResponse\x12v\n" +
+	"\x03Get\x126.creativanta.production.v1.VoiceCloneServiceGetRequest\x1a7.creativanta.production.v1.VoiceCloneServiceGetResponse\x12y\n" +
+	"\x04List\x127.creativanta.production.v1.VoiceCloneServiceListRequest\x1a8.creativanta.production.v1.VoiceCloneServiceListResponse\x12\x7f\n" +
+	"\x06Delete\x129.creativanta.production.v1.VoiceCloneServiceDeleteRequest\x1a:.creativanta.production.v1.VoiceCloneServiceDeleteResponse\x12\xa0\x01\n" +
+	"\x11GenerateVoiceover\x12D.creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverRequest\x1aE.creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverResponse\x12\x9d\x01\n" +
+	"\x10GetConsentStatus\x12C.creativanta.production.v1.VoiceCloneServiceGetConsentStatusRequest\x1aD.creativanta.production.v1.VoiceCloneServiceGetConsentStatusResponseBXZVgithub.com/quantm-zeus/creativanta/apps/api/gen/creativanta/production/v1;productionv1b\x06proto3"
 
 var (
 	file_creativanta_production_v1_production_proto_rawDescOnce sync.Once
@@ -3185,133 +6081,251 @@ func file_creativanta_production_v1_production_proto_rawDescGZIP() []byte {
 }
 
 var file_creativanta_production_v1_production_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_creativanta_production_v1_production_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
+var file_creativanta_production_v1_production_proto_msgTypes = make([]protoimpl.MessageInfo, 72)
 var file_creativanta_production_v1_production_proto_goTypes = []any{
-	(GenerationJobStatus)(0),         // 0: creativanta.production.v1.GenerationJobStatus
-	(AssetGenerationState)(0),        // 1: creativanta.production.v1.AssetGenerationState
-	(AssetQualityState)(0),           // 2: creativanta.production.v1.AssetQualityState
-	(PipelineStrategy)(0),            // 3: creativanta.production.v1.PipelineStrategy
-	(ProductionMode)(0),              // 4: creativanta.production.v1.ProductionMode
-	(*ProductionModeInfo)(nil),       // 5: creativanta.production.v1.ProductionModeInfo
-	(*LineageItem)(nil),              // 6: creativanta.production.v1.LineageItem
-	(*PostProductionConfig)(nil),     // 7: creativanta.production.v1.PostProductionConfig
-	(*GenerationJob)(nil),            // 8: creativanta.production.v1.GenerationJob
-	(*Asset)(nil),                    // 9: creativanta.production.v1.Asset
-	(*BatchInputValidationItem)(nil), // 10: creativanta.production.v1.BatchInputValidationItem
-	(*BatchBudgetPreview)(nil),       // 11: creativanta.production.v1.BatchBudgetPreview
-	(*GetModesRequest)(nil),          // 12: creativanta.production.v1.GetModesRequest
-	(*GetModesResponse)(nil),         // 13: creativanta.production.v1.GetModesResponse
-	(*GetActiveJobsRequest)(nil),     // 14: creativanta.production.v1.GetActiveJobsRequest
-	(*GetActiveJobsResponse)(nil),    // 15: creativanta.production.v1.GetActiveJobsResponse
-	(*GetRecentAssetsRequest)(nil),   // 16: creativanta.production.v1.GetRecentAssetsRequest
-	(*GetRecentAssetsResponse)(nil),  // 17: creativanta.production.v1.GetRecentAssetsResponse
-	(*CancelRequest)(nil),            // 18: creativanta.production.v1.CancelRequest
-	(*CancelResponse)(nil),           // 19: creativanta.production.v1.CancelResponse
-	(*RetryRequest)(nil),             // 20: creativanta.production.v1.RetryRequest
-	(*RetryResponse)(nil),            // 21: creativanta.production.v1.RetryResponse
-	(*BatchGenerationItem)(nil),      // 22: creativanta.production.v1.BatchGenerationItem
-	(*GenerateRequest)(nil),          // 23: creativanta.production.v1.GenerateRequest
-	(*GenerateResponse)(nil),         // 24: creativanta.production.v1.GenerateResponse
-	(*GetStatusRequest)(nil),         // 25: creativanta.production.v1.GetStatusRequest
-	(*GetStatusResponse)(nil),        // 26: creativanta.production.v1.GetStatusResponse
-	(*ListRequest)(nil),              // 27: creativanta.production.v1.ListRequest
-	(*ListResponse)(nil),             // 28: creativanta.production.v1.ListResponse
-	(*GetRequest)(nil),               // 29: creativanta.production.v1.GetRequest
-	(*GetResponse)(nil),              // 30: creativanta.production.v1.GetResponse
-	(*ApproveRequest)(nil),           // 31: creativanta.production.v1.ApproveRequest
-	(*ApproveResponse)(nil),          // 32: creativanta.production.v1.ApproveResponse
-	(*PromoteCanonicalRequest)(nil),  // 33: creativanta.production.v1.PromoteCanonicalRequest
-	(*PromoteCanonicalResponse)(nil), // 34: creativanta.production.v1.PromoteCanonicalResponse
-	(*UploadRequest)(nil),            // 35: creativanta.production.v1.UploadRequest
-	(*UploadResponse)(nil),           // 36: creativanta.production.v1.UploadResponse
-	(*timestamppb.Timestamp)(nil),    // 37: google.protobuf.Timestamp
-	(*v1.UUID)(nil),                  // 38: creativanta.common.v1.UUID
-	(*v1.Pagination)(nil),            // 39: creativanta.common.v1.Pagination
-	(*v1.PaginatedResponse)(nil),     // 40: creativanta.common.v1.PaginatedResponse
-	(*v1.CommandContext)(nil),        // 41: creativanta.common.v1.CommandContext
+	(GenerationJobStatus)(0),                           // 0: creativanta.production.v1.GenerationJobStatus
+	(AssetGenerationState)(0),                          // 1: creativanta.production.v1.AssetGenerationState
+	(AssetQualityState)(0),                             // 2: creativanta.production.v1.AssetQualityState
+	(PipelineStrategy)(0),                              // 3: creativanta.production.v1.PipelineStrategy
+	(ProductionMode)(0),                                // 4: creativanta.production.v1.ProductionMode
+	(*ProductionModeInfo)(nil),                         // 5: creativanta.production.v1.ProductionModeInfo
+	(*LineageItem)(nil),                                // 6: creativanta.production.v1.LineageItem
+	(*PostProductionConfig)(nil),                       // 7: creativanta.production.v1.PostProductionConfig
+	(*GenerationJob)(nil),                              // 8: creativanta.production.v1.GenerationJob
+	(*Asset)(nil),                                      // 9: creativanta.production.v1.Asset
+	(*BatchInputValidationItem)(nil),                   // 10: creativanta.production.v1.BatchInputValidationItem
+	(*BatchBudgetPreview)(nil),                         // 11: creativanta.production.v1.BatchBudgetPreview
+	(*GetModesRequest)(nil),                            // 12: creativanta.production.v1.GetModesRequest
+	(*GetModesResponse)(nil),                           // 13: creativanta.production.v1.GetModesResponse
+	(*GetActiveJobsRequest)(nil),                       // 14: creativanta.production.v1.GetActiveJobsRequest
+	(*GetActiveJobsResponse)(nil),                      // 15: creativanta.production.v1.GetActiveJobsResponse
+	(*GetRecentAssetsRequest)(nil),                     // 16: creativanta.production.v1.GetRecentAssetsRequest
+	(*GetRecentAssetsResponse)(nil),                    // 17: creativanta.production.v1.GetRecentAssetsResponse
+	(*CancelRequest)(nil),                              // 18: creativanta.production.v1.CancelRequest
+	(*CancelResponse)(nil),                             // 19: creativanta.production.v1.CancelResponse
+	(*RetryRequest)(nil),                               // 20: creativanta.production.v1.RetryRequest
+	(*RetryResponse)(nil),                              // 21: creativanta.production.v1.RetryResponse
+	(*BatchGenerationItem)(nil),                        // 22: creativanta.production.v1.BatchGenerationItem
+	(*GenerateRequest)(nil),                            // 23: creativanta.production.v1.GenerateRequest
+	(*GenerateResponse)(nil),                           // 24: creativanta.production.v1.GenerateResponse
+	(*GetStatusRequest)(nil),                           // 25: creativanta.production.v1.GetStatusRequest
+	(*GetStatusResponse)(nil),                          // 26: creativanta.production.v1.GetStatusResponse
+	(*ListRequest)(nil),                                // 27: creativanta.production.v1.ListRequest
+	(*ListResponse)(nil),                               // 28: creativanta.production.v1.ListResponse
+	(*GetRequest)(nil),                                 // 29: creativanta.production.v1.GetRequest
+	(*GetResponse)(nil),                                // 30: creativanta.production.v1.GetResponse
+	(*ApproveRequest)(nil),                             // 31: creativanta.production.v1.ApproveRequest
+	(*ApproveResponse)(nil),                            // 32: creativanta.production.v1.ApproveResponse
+	(*PromoteCanonicalRequest)(nil),                    // 33: creativanta.production.v1.PromoteCanonicalRequest
+	(*PromoteCanonicalResponse)(nil),                   // 34: creativanta.production.v1.PromoteCanonicalResponse
+	(*UploadRequest)(nil),                              // 35: creativanta.production.v1.UploadRequest
+	(*UploadResponse)(nil),                             // 36: creativanta.production.v1.UploadResponse
+	(*TranslationJob)(nil),                             // 37: creativanta.production.v1.TranslationJob
+	(*TranslationSegment)(nil),                         // 38: creativanta.production.v1.TranslationSegment
+	(*TranslationServiceCreateRequest)(nil),            // 39: creativanta.production.v1.TranslationServiceCreateRequest
+	(*TranslationServiceCreateResponse)(nil),           // 40: creativanta.production.v1.TranslationServiceCreateResponse
+	(*TranslationServiceGetRequest)(nil),               // 41: creativanta.production.v1.TranslationServiceGetRequest
+	(*TranslationServiceGetResponse)(nil),              // 42: creativanta.production.v1.TranslationServiceGetResponse
+	(*TranslationServiceListRequest)(nil),              // 43: creativanta.production.v1.TranslationServiceListRequest
+	(*TranslationServiceListResponse)(nil),             // 44: creativanta.production.v1.TranslationServiceListResponse
+	(*SoundTrack)(nil),                                 // 45: creativanta.production.v1.SoundTrack
+	(*SoundStudioServiceGenerateMusicRequest)(nil),     // 46: creativanta.production.v1.SoundStudioServiceGenerateMusicRequest
+	(*SoundStudioServiceGenerateMusicResponse)(nil),    // 47: creativanta.production.v1.SoundStudioServiceGenerateMusicResponse
+	(*SoundStudioServiceGenerateSFXRequest)(nil),       // 48: creativanta.production.v1.SoundStudioServiceGenerateSFXRequest
+	(*SoundStudioServiceGenerateSFXResponse)(nil),      // 49: creativanta.production.v1.SoundStudioServiceGenerateSFXResponse
+	(*SoundStudioServiceAnalyzeBeatRequest)(nil),       // 50: creativanta.production.v1.SoundStudioServiceAnalyzeBeatRequest
+	(*SoundStudioServiceAnalyzeBeatResponse)(nil),      // 51: creativanta.production.v1.SoundStudioServiceAnalyzeBeatResponse
+	(*SoundStudioServiceListSoundLibraryRequest)(nil),  // 52: creativanta.production.v1.SoundStudioServiceListSoundLibraryRequest
+	(*SoundStudioServiceListSoundLibraryResponse)(nil), // 53: creativanta.production.v1.SoundStudioServiceListSoundLibraryResponse
+	(*SoundStudioServiceGetSoundRequest)(nil),          // 54: creativanta.production.v1.SoundStudioServiceGetSoundRequest
+	(*SoundStudioServiceGetSoundResponse)(nil),         // 55: creativanta.production.v1.SoundStudioServiceGetSoundResponse
+	(*SoundStudioServicePreviewSoundRequest)(nil),      // 56: creativanta.production.v1.SoundStudioServicePreviewSoundRequest
+	(*SoundStudioServicePreviewSoundResponse)(nil),     // 57: creativanta.production.v1.SoundStudioServicePreviewSoundResponse
+	(*VoiceCloneRecord)(nil),                           // 58: creativanta.production.v1.VoiceCloneRecord
+	(*VoiceCloneServiceCreateRequest)(nil),             // 59: creativanta.production.v1.VoiceCloneServiceCreateRequest
+	(*VoiceCloneServiceCreateResponse)(nil),            // 60: creativanta.production.v1.VoiceCloneServiceCreateResponse
+	(*VoiceCloneServiceGetRequest)(nil),                // 61: creativanta.production.v1.VoiceCloneServiceGetRequest
+	(*VoiceCloneServiceGetResponse)(nil),               // 62: creativanta.production.v1.VoiceCloneServiceGetResponse
+	(*VoiceCloneServiceListRequest)(nil),               // 63: creativanta.production.v1.VoiceCloneServiceListRequest
+	(*VoiceCloneServiceListResponse)(nil),              // 64: creativanta.production.v1.VoiceCloneServiceListResponse
+	(*VoiceCloneServiceDeleteRequest)(nil),             // 65: creativanta.production.v1.VoiceCloneServiceDeleteRequest
+	(*VoiceCloneServiceDeleteResponse)(nil),            // 66: creativanta.production.v1.VoiceCloneServiceDeleteResponse
+	(*VoiceCloneServiceGenerateVoiceoverRequest)(nil),  // 67: creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverRequest
+	(*VoiceCloneServiceGenerateVoiceoverResponse)(nil), // 68: creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverResponse
+	(*VoiceCloneServiceGetConsentStatusRequest)(nil),   // 69: creativanta.production.v1.VoiceCloneServiceGetConsentStatusRequest
+	(*VoiceCloneServiceGetConsentStatusResponse)(nil),  // 70: creativanta.production.v1.VoiceCloneServiceGetConsentStatusResponse
+	nil,                           // 71: creativanta.production.v1.TranslationJob.PerLanguageStatusEntry
+	nil,                           // 72: creativanta.production.v1.TranslationJob.OutputAssetIdsEntry
+	nil,                           // 73: creativanta.production.v1.TranslationJob.QualityScoresEntry
+	nil,                           // 74: creativanta.production.v1.TranslationJob.RepairNotesEntry
+	nil,                           // 75: creativanta.production.v1.TranslationSegment.TranslationsEntry
+	nil,                           // 76: creativanta.production.v1.TranslationServiceCreateRequest.CustomScriptCorrectionsEntry
+	(*timestamppb.Timestamp)(nil), // 77: google.protobuf.Timestamp
+	(*v1.UUID)(nil),               // 78: creativanta.common.v1.UUID
+	(*v1.Pagination)(nil),         // 79: creativanta.common.v1.Pagination
+	(*v1.PaginatedResponse)(nil),  // 80: creativanta.common.v1.PaginatedResponse
+	(*v1.CommandContext)(nil),     // 81: creativanta.common.v1.CommandContext
 }
 var file_creativanta_production_v1_production_proto_depIdxs = []int32{
-	4,  // 0: creativanta.production.v1.ProductionModeInfo.mode:type_name -> creativanta.production.v1.ProductionMode
-	37, // 1: creativanta.production.v1.LineageItem.recorded_at:type_name -> google.protobuf.Timestamp
-	3,  // 2: creativanta.production.v1.GenerationJob.pipeline_strategy:type_name -> creativanta.production.v1.PipelineStrategy
-	0,  // 3: creativanta.production.v1.GenerationJob.status:type_name -> creativanta.production.v1.GenerationJobStatus
-	37, // 4: creativanta.production.v1.GenerationJob.started_at:type_name -> google.protobuf.Timestamp
-	37, // 5: creativanta.production.v1.GenerationJob.completed_at:type_name -> google.protobuf.Timestamp
-	37, // 6: creativanta.production.v1.GenerationJob.created_at:type_name -> google.protobuf.Timestamp
-	37, // 7: creativanta.production.v1.GenerationJob.updated_at:type_name -> google.protobuf.Timestamp
-	1,  // 8: creativanta.production.v1.Asset.generation_state:type_name -> creativanta.production.v1.AssetGenerationState
-	2,  // 9: creativanta.production.v1.Asset.quality_state:type_name -> creativanta.production.v1.AssetQualityState
-	6,  // 10: creativanta.production.v1.Asset.lineage:type_name -> creativanta.production.v1.LineageItem
-	37, // 11: creativanta.production.v1.Asset.created_at:type_name -> google.protobuf.Timestamp
-	37, // 12: creativanta.production.v1.Asset.updated_at:type_name -> google.protobuf.Timestamp
-	10, // 13: creativanta.production.v1.BatchBudgetPreview.items:type_name -> creativanta.production.v1.BatchInputValidationItem
-	37, // 14: creativanta.production.v1.BatchBudgetPreview.quote_expires_at:type_name -> google.protobuf.Timestamp
-	38, // 15: creativanta.production.v1.GetModesRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	5,  // 16: creativanta.production.v1.GetModesResponse.modes:type_name -> creativanta.production.v1.ProductionModeInfo
-	38, // 17: creativanta.production.v1.GetActiveJobsRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	39, // 18: creativanta.production.v1.GetActiveJobsRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	8,  // 19: creativanta.production.v1.GetActiveJobsResponse.jobs:type_name -> creativanta.production.v1.GenerationJob
-	40, // 20: creativanta.production.v1.GetActiveJobsResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	38, // 21: creativanta.production.v1.GetRecentAssetsRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	9,  // 22: creativanta.production.v1.GetRecentAssetsResponse.assets:type_name -> creativanta.production.v1.Asset
-	41, // 23: creativanta.production.v1.CancelRequest.context:type_name -> creativanta.common.v1.CommandContext
-	8,  // 24: creativanta.production.v1.CancelResponse.job:type_name -> creativanta.production.v1.GenerationJob
-	41, // 25: creativanta.production.v1.RetryRequest.context:type_name -> creativanta.common.v1.CommandContext
-	8,  // 26: creativanta.production.v1.RetryResponse.job:type_name -> creativanta.production.v1.GenerationJob
-	41, // 27: creativanta.production.v1.GenerateRequest.context:type_name -> creativanta.common.v1.CommandContext
-	4,  // 28: creativanta.production.v1.GenerateRequest.mode:type_name -> creativanta.production.v1.ProductionMode
-	3,  // 29: creativanta.production.v1.GenerateRequest.pipeline_strategy:type_name -> creativanta.production.v1.PipelineStrategy
-	7,  // 30: creativanta.production.v1.GenerateRequest.post_production:type_name -> creativanta.production.v1.PostProductionConfig
-	22, // 31: creativanta.production.v1.GenerateRequest.batch_items:type_name -> creativanta.production.v1.BatchGenerationItem
-	11, // 32: creativanta.production.v1.GenerateResponse.budget_preview:type_name -> creativanta.production.v1.BatchBudgetPreview
-	8,  // 33: creativanta.production.v1.GenerateResponse.job:type_name -> creativanta.production.v1.GenerationJob
-	9,  // 34: creativanta.production.v1.GenerateResponse.asset:type_name -> creativanta.production.v1.Asset
-	8,  // 35: creativanta.production.v1.GenerateResponse.batch_jobs:type_name -> creativanta.production.v1.GenerationJob
-	9,  // 36: creativanta.production.v1.GenerateResponse.batch_assets:type_name -> creativanta.production.v1.Asset
-	38, // 37: creativanta.production.v1.GetStatusRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	8,  // 38: creativanta.production.v1.GetStatusResponse.job:type_name -> creativanta.production.v1.GenerationJob
-	9,  // 39: creativanta.production.v1.GetStatusResponse.asset:type_name -> creativanta.production.v1.Asset
-	38, // 40: creativanta.production.v1.ListRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	39, // 41: creativanta.production.v1.ListRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	9,  // 42: creativanta.production.v1.ListResponse.assets:type_name -> creativanta.production.v1.Asset
-	40, // 43: creativanta.production.v1.ListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	38, // 44: creativanta.production.v1.GetRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	9,  // 45: creativanta.production.v1.GetResponse.asset:type_name -> creativanta.production.v1.Asset
-	41, // 46: creativanta.production.v1.ApproveRequest.context:type_name -> creativanta.common.v1.CommandContext
-	9,  // 47: creativanta.production.v1.ApproveResponse.asset:type_name -> creativanta.production.v1.Asset
-	41, // 48: creativanta.production.v1.PromoteCanonicalRequest.context:type_name -> creativanta.common.v1.CommandContext
-	9,  // 49: creativanta.production.v1.PromoteCanonicalResponse.asset:type_name -> creativanta.production.v1.Asset
-	41, // 50: creativanta.production.v1.UploadRequest.context:type_name -> creativanta.common.v1.CommandContext
-	9,  // 51: creativanta.production.v1.UploadResponse.asset:type_name -> creativanta.production.v1.Asset
-	12, // 52: creativanta.production.v1.StudioService.GetModes:input_type -> creativanta.production.v1.GetModesRequest
-	14, // 53: creativanta.production.v1.StudioService.GetActiveJobs:input_type -> creativanta.production.v1.GetActiveJobsRequest
-	16, // 54: creativanta.production.v1.StudioService.GetRecentAssets:input_type -> creativanta.production.v1.GetRecentAssetsRequest
-	18, // 55: creativanta.production.v1.StudioService.Cancel:input_type -> creativanta.production.v1.CancelRequest
-	20, // 56: creativanta.production.v1.StudioService.Retry:input_type -> creativanta.production.v1.RetryRequest
-	23, // 57: creativanta.production.v1.AssetService.Generate:input_type -> creativanta.production.v1.GenerateRequest
-	25, // 58: creativanta.production.v1.AssetService.GetStatus:input_type -> creativanta.production.v1.GetStatusRequest
-	27, // 59: creativanta.production.v1.AssetService.List:input_type -> creativanta.production.v1.ListRequest
-	29, // 60: creativanta.production.v1.AssetService.Get:input_type -> creativanta.production.v1.GetRequest
-	31, // 61: creativanta.production.v1.AssetService.Approve:input_type -> creativanta.production.v1.ApproveRequest
-	33, // 62: creativanta.production.v1.AssetService.PromoteCanonical:input_type -> creativanta.production.v1.PromoteCanonicalRequest
-	35, // 63: creativanta.production.v1.AssetService.Upload:input_type -> creativanta.production.v1.UploadRequest
-	13, // 64: creativanta.production.v1.StudioService.GetModes:output_type -> creativanta.production.v1.GetModesResponse
-	15, // 65: creativanta.production.v1.StudioService.GetActiveJobs:output_type -> creativanta.production.v1.GetActiveJobsResponse
-	17, // 66: creativanta.production.v1.StudioService.GetRecentAssets:output_type -> creativanta.production.v1.GetRecentAssetsResponse
-	19, // 67: creativanta.production.v1.StudioService.Cancel:output_type -> creativanta.production.v1.CancelResponse
-	21, // 68: creativanta.production.v1.StudioService.Retry:output_type -> creativanta.production.v1.RetryResponse
-	24, // 69: creativanta.production.v1.AssetService.Generate:output_type -> creativanta.production.v1.GenerateResponse
-	26, // 70: creativanta.production.v1.AssetService.GetStatus:output_type -> creativanta.production.v1.GetStatusResponse
-	28, // 71: creativanta.production.v1.AssetService.List:output_type -> creativanta.production.v1.ListResponse
-	30, // 72: creativanta.production.v1.AssetService.Get:output_type -> creativanta.production.v1.GetResponse
-	32, // 73: creativanta.production.v1.AssetService.Approve:output_type -> creativanta.production.v1.ApproveResponse
-	34, // 74: creativanta.production.v1.AssetService.PromoteCanonical:output_type -> creativanta.production.v1.PromoteCanonicalResponse
-	36, // 75: creativanta.production.v1.AssetService.Upload:output_type -> creativanta.production.v1.UploadResponse
-	64, // [64:76] is the sub-list for method output_type
-	52, // [52:64] is the sub-list for method input_type
-	52, // [52:52] is the sub-list for extension type_name
-	52, // [52:52] is the sub-list for extension extendee
-	0,  // [0:52] is the sub-list for field type_name
+	4,   // 0: creativanta.production.v1.ProductionModeInfo.mode:type_name -> creativanta.production.v1.ProductionMode
+	77,  // 1: creativanta.production.v1.LineageItem.recorded_at:type_name -> google.protobuf.Timestamp
+	3,   // 2: creativanta.production.v1.GenerationJob.pipeline_strategy:type_name -> creativanta.production.v1.PipelineStrategy
+	0,   // 3: creativanta.production.v1.GenerationJob.status:type_name -> creativanta.production.v1.GenerationJobStatus
+	77,  // 4: creativanta.production.v1.GenerationJob.started_at:type_name -> google.protobuf.Timestamp
+	77,  // 5: creativanta.production.v1.GenerationJob.completed_at:type_name -> google.protobuf.Timestamp
+	77,  // 6: creativanta.production.v1.GenerationJob.created_at:type_name -> google.protobuf.Timestamp
+	77,  // 7: creativanta.production.v1.GenerationJob.updated_at:type_name -> google.protobuf.Timestamp
+	1,   // 8: creativanta.production.v1.Asset.generation_state:type_name -> creativanta.production.v1.AssetGenerationState
+	2,   // 9: creativanta.production.v1.Asset.quality_state:type_name -> creativanta.production.v1.AssetQualityState
+	6,   // 10: creativanta.production.v1.Asset.lineage:type_name -> creativanta.production.v1.LineageItem
+	77,  // 11: creativanta.production.v1.Asset.created_at:type_name -> google.protobuf.Timestamp
+	77,  // 12: creativanta.production.v1.Asset.updated_at:type_name -> google.protobuf.Timestamp
+	10,  // 13: creativanta.production.v1.BatchBudgetPreview.items:type_name -> creativanta.production.v1.BatchInputValidationItem
+	77,  // 14: creativanta.production.v1.BatchBudgetPreview.quote_expires_at:type_name -> google.protobuf.Timestamp
+	78,  // 15: creativanta.production.v1.GetModesRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	5,   // 16: creativanta.production.v1.GetModesResponse.modes:type_name -> creativanta.production.v1.ProductionModeInfo
+	78,  // 17: creativanta.production.v1.GetActiveJobsRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	79,  // 18: creativanta.production.v1.GetActiveJobsRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	8,   // 19: creativanta.production.v1.GetActiveJobsResponse.jobs:type_name -> creativanta.production.v1.GenerationJob
+	80,  // 20: creativanta.production.v1.GetActiveJobsResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	78,  // 21: creativanta.production.v1.GetRecentAssetsRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	9,   // 22: creativanta.production.v1.GetRecentAssetsResponse.assets:type_name -> creativanta.production.v1.Asset
+	81,  // 23: creativanta.production.v1.CancelRequest.context:type_name -> creativanta.common.v1.CommandContext
+	8,   // 24: creativanta.production.v1.CancelResponse.job:type_name -> creativanta.production.v1.GenerationJob
+	81,  // 25: creativanta.production.v1.RetryRequest.context:type_name -> creativanta.common.v1.CommandContext
+	8,   // 26: creativanta.production.v1.RetryResponse.job:type_name -> creativanta.production.v1.GenerationJob
+	81,  // 27: creativanta.production.v1.GenerateRequest.context:type_name -> creativanta.common.v1.CommandContext
+	4,   // 28: creativanta.production.v1.GenerateRequest.mode:type_name -> creativanta.production.v1.ProductionMode
+	3,   // 29: creativanta.production.v1.GenerateRequest.pipeline_strategy:type_name -> creativanta.production.v1.PipelineStrategy
+	7,   // 30: creativanta.production.v1.GenerateRequest.post_production:type_name -> creativanta.production.v1.PostProductionConfig
+	22,  // 31: creativanta.production.v1.GenerateRequest.batch_items:type_name -> creativanta.production.v1.BatchGenerationItem
+	11,  // 32: creativanta.production.v1.GenerateResponse.budget_preview:type_name -> creativanta.production.v1.BatchBudgetPreview
+	8,   // 33: creativanta.production.v1.GenerateResponse.job:type_name -> creativanta.production.v1.GenerationJob
+	9,   // 34: creativanta.production.v1.GenerateResponse.asset:type_name -> creativanta.production.v1.Asset
+	8,   // 35: creativanta.production.v1.GenerateResponse.batch_jobs:type_name -> creativanta.production.v1.GenerationJob
+	9,   // 36: creativanta.production.v1.GenerateResponse.batch_assets:type_name -> creativanta.production.v1.Asset
+	78,  // 37: creativanta.production.v1.GetStatusRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	8,   // 38: creativanta.production.v1.GetStatusResponse.job:type_name -> creativanta.production.v1.GenerationJob
+	9,   // 39: creativanta.production.v1.GetStatusResponse.asset:type_name -> creativanta.production.v1.Asset
+	78,  // 40: creativanta.production.v1.ListRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	79,  // 41: creativanta.production.v1.ListRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	9,   // 42: creativanta.production.v1.ListResponse.assets:type_name -> creativanta.production.v1.Asset
+	80,  // 43: creativanta.production.v1.ListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	78,  // 44: creativanta.production.v1.GetRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	9,   // 45: creativanta.production.v1.GetResponse.asset:type_name -> creativanta.production.v1.Asset
+	81,  // 46: creativanta.production.v1.ApproveRequest.context:type_name -> creativanta.common.v1.CommandContext
+	9,   // 47: creativanta.production.v1.ApproveResponse.asset:type_name -> creativanta.production.v1.Asset
+	81,  // 48: creativanta.production.v1.PromoteCanonicalRequest.context:type_name -> creativanta.common.v1.CommandContext
+	9,   // 49: creativanta.production.v1.PromoteCanonicalResponse.asset:type_name -> creativanta.production.v1.Asset
+	81,  // 50: creativanta.production.v1.UploadRequest.context:type_name -> creativanta.common.v1.CommandContext
+	9,   // 51: creativanta.production.v1.UploadResponse.asset:type_name -> creativanta.production.v1.Asset
+	71,  // 52: creativanta.production.v1.TranslationJob.per_language_status:type_name -> creativanta.production.v1.TranslationJob.PerLanguageStatusEntry
+	72,  // 53: creativanta.production.v1.TranslationJob.output_asset_ids:type_name -> creativanta.production.v1.TranslationJob.OutputAssetIdsEntry
+	73,  // 54: creativanta.production.v1.TranslationJob.quality_scores:type_name -> creativanta.production.v1.TranslationJob.QualityScoresEntry
+	74,  // 55: creativanta.production.v1.TranslationJob.repair_notes:type_name -> creativanta.production.v1.TranslationJob.RepairNotesEntry
+	77,  // 56: creativanta.production.v1.TranslationJob.created_at:type_name -> google.protobuf.Timestamp
+	77,  // 57: creativanta.production.v1.TranslationJob.updated_at:type_name -> google.protobuf.Timestamp
+	75,  // 58: creativanta.production.v1.TranslationSegment.translations:type_name -> creativanta.production.v1.TranslationSegment.TranslationsEntry
+	81,  // 59: creativanta.production.v1.TranslationServiceCreateRequest.context:type_name -> creativanta.common.v1.CommandContext
+	76,  // 60: creativanta.production.v1.TranslationServiceCreateRequest.custom_script_corrections:type_name -> creativanta.production.v1.TranslationServiceCreateRequest.CustomScriptCorrectionsEntry
+	37,  // 61: creativanta.production.v1.TranslationServiceCreateResponse.job:type_name -> creativanta.production.v1.TranslationJob
+	78,  // 62: creativanta.production.v1.TranslationServiceGetRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	37,  // 63: creativanta.production.v1.TranslationServiceGetResponse.job:type_name -> creativanta.production.v1.TranslationJob
+	9,   // 64: creativanta.production.v1.TranslationServiceGetResponse.output_assets:type_name -> creativanta.production.v1.Asset
+	38,  // 65: creativanta.production.v1.TranslationServiceGetResponse.segments:type_name -> creativanta.production.v1.TranslationSegment
+	78,  // 66: creativanta.production.v1.TranslationServiceListRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	79,  // 67: creativanta.production.v1.TranslationServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	37,  // 68: creativanta.production.v1.TranslationServiceListResponse.jobs:type_name -> creativanta.production.v1.TranslationJob
+	80,  // 69: creativanta.production.v1.TranslationServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	77,  // 70: creativanta.production.v1.SoundTrack.created_at:type_name -> google.protobuf.Timestamp
+	81,  // 71: creativanta.production.v1.SoundStudioServiceGenerateMusicRequest.context:type_name -> creativanta.common.v1.CommandContext
+	45,  // 72: creativanta.production.v1.SoundStudioServiceGenerateMusicResponse.track:type_name -> creativanta.production.v1.SoundTrack
+	9,   // 73: creativanta.production.v1.SoundStudioServiceGenerateMusicResponse.asset:type_name -> creativanta.production.v1.Asset
+	81,  // 74: creativanta.production.v1.SoundStudioServiceGenerateSFXRequest.context:type_name -> creativanta.common.v1.CommandContext
+	45,  // 75: creativanta.production.v1.SoundStudioServiceGenerateSFXResponse.track:type_name -> creativanta.production.v1.SoundTrack
+	9,   // 76: creativanta.production.v1.SoundStudioServiceGenerateSFXResponse.asset:type_name -> creativanta.production.v1.Asset
+	78,  // 77: creativanta.production.v1.SoundStudioServiceAnalyzeBeatRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	78,  // 78: creativanta.production.v1.SoundStudioServiceListSoundLibraryRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	79,  // 79: creativanta.production.v1.SoundStudioServiceListSoundLibraryRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	45,  // 80: creativanta.production.v1.SoundStudioServiceListSoundLibraryResponse.tracks:type_name -> creativanta.production.v1.SoundTrack
+	80,  // 81: creativanta.production.v1.SoundStudioServiceListSoundLibraryResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	78,  // 82: creativanta.production.v1.SoundStudioServiceGetSoundRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	45,  // 83: creativanta.production.v1.SoundStudioServiceGetSoundResponse.track:type_name -> creativanta.production.v1.SoundTrack
+	78,  // 84: creativanta.production.v1.SoundStudioServicePreviewSoundRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	77,  // 85: creativanta.production.v1.VoiceCloneRecord.created_at:type_name -> google.protobuf.Timestamp
+	77,  // 86: creativanta.production.v1.VoiceCloneRecord.updated_at:type_name -> google.protobuf.Timestamp
+	81,  // 87: creativanta.production.v1.VoiceCloneServiceCreateRequest.context:type_name -> creativanta.common.v1.CommandContext
+	58,  // 88: creativanta.production.v1.VoiceCloneServiceCreateResponse.record:type_name -> creativanta.production.v1.VoiceCloneRecord
+	78,  // 89: creativanta.production.v1.VoiceCloneServiceGetRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	58,  // 90: creativanta.production.v1.VoiceCloneServiceGetResponse.record:type_name -> creativanta.production.v1.VoiceCloneRecord
+	78,  // 91: creativanta.production.v1.VoiceCloneServiceListRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	79,  // 92: creativanta.production.v1.VoiceCloneServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	58,  // 93: creativanta.production.v1.VoiceCloneServiceListResponse.records:type_name -> creativanta.production.v1.VoiceCloneRecord
+	80,  // 94: creativanta.production.v1.VoiceCloneServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	81,  // 95: creativanta.production.v1.VoiceCloneServiceDeleteRequest.context:type_name -> creativanta.common.v1.CommandContext
+	81,  // 96: creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverRequest.context:type_name -> creativanta.common.v1.CommandContext
+	78,  // 97: creativanta.production.v1.VoiceCloneServiceGetConsentStatusRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	77,  // 98: creativanta.production.v1.VoiceCloneServiceGetConsentStatusResponse.granted_at:type_name -> google.protobuf.Timestamp
+	77,  // 99: creativanta.production.v1.VoiceCloneServiceGetConsentStatusResponse.revoked_at:type_name -> google.protobuf.Timestamp
+	12,  // 100: creativanta.production.v1.StudioService.GetModes:input_type -> creativanta.production.v1.GetModesRequest
+	14,  // 101: creativanta.production.v1.StudioService.GetActiveJobs:input_type -> creativanta.production.v1.GetActiveJobsRequest
+	16,  // 102: creativanta.production.v1.StudioService.GetRecentAssets:input_type -> creativanta.production.v1.GetRecentAssetsRequest
+	18,  // 103: creativanta.production.v1.StudioService.Cancel:input_type -> creativanta.production.v1.CancelRequest
+	20,  // 104: creativanta.production.v1.StudioService.Retry:input_type -> creativanta.production.v1.RetryRequest
+	23,  // 105: creativanta.production.v1.AssetService.Generate:input_type -> creativanta.production.v1.GenerateRequest
+	25,  // 106: creativanta.production.v1.AssetService.GetStatus:input_type -> creativanta.production.v1.GetStatusRequest
+	27,  // 107: creativanta.production.v1.AssetService.List:input_type -> creativanta.production.v1.ListRequest
+	29,  // 108: creativanta.production.v1.AssetService.Get:input_type -> creativanta.production.v1.GetRequest
+	31,  // 109: creativanta.production.v1.AssetService.Approve:input_type -> creativanta.production.v1.ApproveRequest
+	33,  // 110: creativanta.production.v1.AssetService.PromoteCanonical:input_type -> creativanta.production.v1.PromoteCanonicalRequest
+	35,  // 111: creativanta.production.v1.AssetService.Upload:input_type -> creativanta.production.v1.UploadRequest
+	39,  // 112: creativanta.production.v1.TranslationService.Create:input_type -> creativanta.production.v1.TranslationServiceCreateRequest
+	41,  // 113: creativanta.production.v1.TranslationService.Get:input_type -> creativanta.production.v1.TranslationServiceGetRequest
+	43,  // 114: creativanta.production.v1.TranslationService.List:input_type -> creativanta.production.v1.TranslationServiceListRequest
+	46,  // 115: creativanta.production.v1.SoundStudioService.GenerateMusic:input_type -> creativanta.production.v1.SoundStudioServiceGenerateMusicRequest
+	48,  // 116: creativanta.production.v1.SoundStudioService.GenerateSFX:input_type -> creativanta.production.v1.SoundStudioServiceGenerateSFXRequest
+	50,  // 117: creativanta.production.v1.SoundStudioService.AnalyzeBeat:input_type -> creativanta.production.v1.SoundStudioServiceAnalyzeBeatRequest
+	52,  // 118: creativanta.production.v1.SoundStudioService.ListSoundLibrary:input_type -> creativanta.production.v1.SoundStudioServiceListSoundLibraryRequest
+	54,  // 119: creativanta.production.v1.SoundStudioService.GetSound:input_type -> creativanta.production.v1.SoundStudioServiceGetSoundRequest
+	56,  // 120: creativanta.production.v1.SoundStudioService.PreviewSound:input_type -> creativanta.production.v1.SoundStudioServicePreviewSoundRequest
+	59,  // 121: creativanta.production.v1.VoiceCloneService.Create:input_type -> creativanta.production.v1.VoiceCloneServiceCreateRequest
+	61,  // 122: creativanta.production.v1.VoiceCloneService.Get:input_type -> creativanta.production.v1.VoiceCloneServiceGetRequest
+	63,  // 123: creativanta.production.v1.VoiceCloneService.List:input_type -> creativanta.production.v1.VoiceCloneServiceListRequest
+	65,  // 124: creativanta.production.v1.VoiceCloneService.Delete:input_type -> creativanta.production.v1.VoiceCloneServiceDeleteRequest
+	67,  // 125: creativanta.production.v1.VoiceCloneService.GenerateVoiceover:input_type -> creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverRequest
+	69,  // 126: creativanta.production.v1.VoiceCloneService.GetConsentStatus:input_type -> creativanta.production.v1.VoiceCloneServiceGetConsentStatusRequest
+	13,  // 127: creativanta.production.v1.StudioService.GetModes:output_type -> creativanta.production.v1.GetModesResponse
+	15,  // 128: creativanta.production.v1.StudioService.GetActiveJobs:output_type -> creativanta.production.v1.GetActiveJobsResponse
+	17,  // 129: creativanta.production.v1.StudioService.GetRecentAssets:output_type -> creativanta.production.v1.GetRecentAssetsResponse
+	19,  // 130: creativanta.production.v1.StudioService.Cancel:output_type -> creativanta.production.v1.CancelResponse
+	21,  // 131: creativanta.production.v1.StudioService.Retry:output_type -> creativanta.production.v1.RetryResponse
+	24,  // 132: creativanta.production.v1.AssetService.Generate:output_type -> creativanta.production.v1.GenerateResponse
+	26,  // 133: creativanta.production.v1.AssetService.GetStatus:output_type -> creativanta.production.v1.GetStatusResponse
+	28,  // 134: creativanta.production.v1.AssetService.List:output_type -> creativanta.production.v1.ListResponse
+	30,  // 135: creativanta.production.v1.AssetService.Get:output_type -> creativanta.production.v1.GetResponse
+	32,  // 136: creativanta.production.v1.AssetService.Approve:output_type -> creativanta.production.v1.ApproveResponse
+	34,  // 137: creativanta.production.v1.AssetService.PromoteCanonical:output_type -> creativanta.production.v1.PromoteCanonicalResponse
+	36,  // 138: creativanta.production.v1.AssetService.Upload:output_type -> creativanta.production.v1.UploadResponse
+	40,  // 139: creativanta.production.v1.TranslationService.Create:output_type -> creativanta.production.v1.TranslationServiceCreateResponse
+	42,  // 140: creativanta.production.v1.TranslationService.Get:output_type -> creativanta.production.v1.TranslationServiceGetResponse
+	44,  // 141: creativanta.production.v1.TranslationService.List:output_type -> creativanta.production.v1.TranslationServiceListResponse
+	47,  // 142: creativanta.production.v1.SoundStudioService.GenerateMusic:output_type -> creativanta.production.v1.SoundStudioServiceGenerateMusicResponse
+	49,  // 143: creativanta.production.v1.SoundStudioService.GenerateSFX:output_type -> creativanta.production.v1.SoundStudioServiceGenerateSFXResponse
+	51,  // 144: creativanta.production.v1.SoundStudioService.AnalyzeBeat:output_type -> creativanta.production.v1.SoundStudioServiceAnalyzeBeatResponse
+	53,  // 145: creativanta.production.v1.SoundStudioService.ListSoundLibrary:output_type -> creativanta.production.v1.SoundStudioServiceListSoundLibraryResponse
+	55,  // 146: creativanta.production.v1.SoundStudioService.GetSound:output_type -> creativanta.production.v1.SoundStudioServiceGetSoundResponse
+	57,  // 147: creativanta.production.v1.SoundStudioService.PreviewSound:output_type -> creativanta.production.v1.SoundStudioServicePreviewSoundResponse
+	60,  // 148: creativanta.production.v1.VoiceCloneService.Create:output_type -> creativanta.production.v1.VoiceCloneServiceCreateResponse
+	62,  // 149: creativanta.production.v1.VoiceCloneService.Get:output_type -> creativanta.production.v1.VoiceCloneServiceGetResponse
+	64,  // 150: creativanta.production.v1.VoiceCloneService.List:output_type -> creativanta.production.v1.VoiceCloneServiceListResponse
+	66,  // 151: creativanta.production.v1.VoiceCloneService.Delete:output_type -> creativanta.production.v1.VoiceCloneServiceDeleteResponse
+	68,  // 152: creativanta.production.v1.VoiceCloneService.GenerateVoiceover:output_type -> creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverResponse
+	70,  // 153: creativanta.production.v1.VoiceCloneService.GetConsentStatus:output_type -> creativanta.production.v1.VoiceCloneServiceGetConsentStatusResponse
+	127, // [127:154] is the sub-list for method output_type
+	100, // [100:127] is the sub-list for method input_type
+	100, // [100:100] is the sub-list for extension type_name
+	100, // [100:100] is the sub-list for extension extendee
+	0,   // [0:100] is the sub-list for field type_name
 }
 
 func init() { file_creativanta_production_v1_production_proto_init() }
@@ -3325,9 +6339,9 @@ func file_creativanta_production_v1_production_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_creativanta_production_v1_production_proto_rawDesc), len(file_creativanta_production_v1_production_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   32,
+			NumMessages:   72,
 			NumExtensions: 0,
-			NumServices:   2,
+			NumServices:   5,
 		},
 		GoTypes:           file_creativanta_production_v1_production_proto_goTypes,
 		DependencyIndexes: file_creativanta_production_v1_production_proto_depIdxs,

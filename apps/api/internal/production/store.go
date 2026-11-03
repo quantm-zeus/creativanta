@@ -25,22 +25,46 @@ type Store interface {
 
 	CreateUpload(ctx context.Context, upload *FileUpload) error
 	GetUpload(ctx context.Context, workspaceID, uploadID string) (*FileUpload, error)
+
+	// Translation jobs (§22.6, EF-05)
+	CreateTranslationJob(ctx context.Context, job *TranslationJob) error
+	GetTranslationJob(ctx context.Context, workspaceID, jobID string) (*TranslationJob, error)
+	UpdateTranslationJob(ctx context.Context, job *TranslationJob) error
+	ListTranslationJobs(ctx context.Context, workspaceID string, limit, offset int) ([]*TranslationJob, int64, error)
+
+	// Voice clones (§22.12, M08)
+	CreateVoiceClone(ctx context.Context, record *VoiceCloneRecord) error
+	GetVoiceClone(ctx context.Context, workspaceID, cloneID string) (*VoiceCloneRecord, error)
+	UpdateVoiceClone(ctx context.Context, record *VoiceCloneRecord) error
+	DeleteVoiceClone(ctx context.Context, workspaceID, cloneID string) error
+	ListVoiceClones(ctx context.Context, workspaceID, characterID string, limit, offset int) ([]*VoiceCloneRecord, int64, error)
+
+	// Sound tracks (EF-06)
+	CreateSoundTrack(ctx context.Context, track *SoundTrack) error
+	GetSoundTrack(ctx context.Context, workspaceID, trackID string) (*SoundTrack, error)
+	ListSoundTracks(ctx context.Context, workspaceID, category, genre, mood string, limit, offset int) ([]*SoundTrack, int64, error)
 }
 
 // MemoryStore provides a thread-safe, tenant-isolated in-memory store for production.
 type MemoryStore struct {
-	mu      sync.RWMutex
-	assets  map[string]map[string]*Asset         // workspaceID -> assetID -> Asset
-	jobs    map[string]map[string]*GenerationJob // workspaceID -> jobID -> GenerationJob
-	uploads map[string]map[string]*FileUpload    // workspaceID -> uploadID -> FileUpload
+	mu           sync.RWMutex
+	assets       map[string]map[string]*Asset            // workspaceID -> assetID -> Asset
+	jobs         map[string]map[string]*GenerationJob    // workspaceID -> jobID -> GenerationJob
+	uploads      map[string]map[string]*FileUpload       // workspaceID -> uploadID -> FileUpload
+	translations map[string]map[string]*TranslationJob   // workspaceID -> jobID -> TranslationJob
+	voiceClones  map[string]map[string]*VoiceCloneRecord // workspaceID -> cloneID -> VoiceCloneRecord
+	soundTracks  map[string]map[string]*SoundTrack       // workspaceID -> trackID -> SoundTrack
 }
 
 // NewMemoryStore constructs a new MemoryStore.
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		assets:  make(map[string]map[string]*Asset),
-		jobs:    make(map[string]map[string]*GenerationJob),
-		uploads: make(map[string]map[string]*FileUpload),
+		assets:       make(map[string]map[string]*Asset),
+		jobs:         make(map[string]map[string]*GenerationJob),
+		uploads:      make(map[string]map[string]*FileUpload),
+		translations: make(map[string]map[string]*TranslationJob),
+		voiceClones:  make(map[string]map[string]*VoiceCloneRecord),
+		soundTracks:  make(map[string]map[string]*SoundTrack),
 	}
 }
 
@@ -288,4 +312,237 @@ func (s *MemoryStore) GetUpload(ctx context.Context, workspaceID, uploadID strin
 	}
 	cp := *u
 	return &cp, nil
+}
+
+// ----------------------------------------------------------------------------
+// Translation Jobs implementation
+// ----------------------------------------------------------------------------
+
+func (s *MemoryStore) CreateTranslationJob(ctx context.Context, job *TranslationJob) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.translations[job.WorkspaceID] == nil {
+		s.translations[job.WorkspaceID] = make(map[string]*TranslationJob)
+	}
+	cp := *job
+	s.translations[job.WorkspaceID][job.TranslationJobID] = &cp
+	return nil
+}
+
+func (s *MemoryStore) GetTranslationJob(ctx context.Context, workspaceID, jobID string) (*TranslationJob, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.translations[workspaceID]
+	if ws == nil {
+		return nil, fmt.Errorf("translation job %q not found in workspace %q", jobID, workspaceID)
+	}
+	j, ok := ws[jobID]
+	if !ok || j.DeletedAt != nil {
+		return nil, fmt.Errorf("translation job %q not found in workspace %q", jobID, workspaceID)
+	}
+	cp := *j
+	return &cp, nil
+}
+
+func (s *MemoryStore) UpdateTranslationJob(ctx context.Context, job *TranslationJob) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ws := s.translations[job.WorkspaceID]
+	if ws == nil || ws[job.TranslationJobID] == nil {
+		return fmt.Errorf("translation job %q not found in workspace %q", job.TranslationJobID, job.WorkspaceID)
+	}
+	cp := *job
+	cp.UpdatedAt = time.Now().UTC()
+	ws[job.TranslationJobID] = &cp
+	return nil
+}
+
+func (s *MemoryStore) ListTranslationJobs(ctx context.Context, workspaceID string, limit, offset int) ([]*TranslationJob, int64, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.translations[workspaceID]
+	if ws == nil {
+		return []*TranslationJob{}, 0, nil
+	}
+
+	var matched []*TranslationJob
+	for _, j := range ws {
+		if j.DeletedAt != nil {
+			continue
+		}
+		cp := *j
+		matched = append(matched, &cp)
+	}
+
+	total := int64(len(matched))
+	if offset >= len(matched) {
+		return []*TranslationJob{}, total, nil
+	}
+	end := offset + limit
+	if limit <= 0 || end > len(matched) {
+		end = len(matched)
+	}
+	return matched[offset:end], total, nil
+}
+
+// ----------------------------------------------------------------------------
+// Voice Clones implementation
+// ----------------------------------------------------------------------------
+
+func (s *MemoryStore) CreateVoiceClone(ctx context.Context, record *VoiceCloneRecord) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.voiceClones[record.WorkspaceID] == nil {
+		s.voiceClones[record.WorkspaceID] = make(map[string]*VoiceCloneRecord)
+	}
+	cp := *record
+	s.voiceClones[record.WorkspaceID][record.VoiceCloneID] = &cp
+	return nil
+}
+
+func (s *MemoryStore) GetVoiceClone(ctx context.Context, workspaceID, cloneID string) (*VoiceCloneRecord, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.voiceClones[workspaceID]
+	if ws == nil {
+		return nil, fmt.Errorf("voice clone %q not found in workspace %q", cloneID, workspaceID)
+	}
+	vc, ok := ws[cloneID]
+	if !ok || vc.CloneStatus == "revoked" {
+		return nil, fmt.Errorf("voice clone %q not found or revoked in workspace %q", cloneID, workspaceID)
+	}
+	cp := *vc
+	return &cp, nil
+}
+
+func (s *MemoryStore) UpdateVoiceClone(ctx context.Context, record *VoiceCloneRecord) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ws := s.voiceClones[record.WorkspaceID]
+	if ws == nil || ws[record.VoiceCloneID] == nil {
+		return fmt.Errorf("voice clone %q not found in workspace %q", record.VoiceCloneID, record.WorkspaceID)
+	}
+	cp := *record
+	cp.UpdatedAt = time.Now().UTC()
+	ws[record.VoiceCloneID] = &cp
+	return nil
+}
+
+func (s *MemoryStore) DeleteVoiceClone(ctx context.Context, workspaceID, cloneID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ws := s.voiceClones[workspaceID]
+	if ws == nil || ws[cloneID] == nil {
+		return fmt.Errorf("voice clone %q not found in workspace %q", cloneID, workspaceID)
+	}
+	ws[cloneID].CloneStatus = "revoked"
+	ws[cloneID].UpdatedAt = time.Now().UTC()
+	return nil
+}
+
+func (s *MemoryStore) ListVoiceClones(ctx context.Context, workspaceID, characterID string, limit, offset int) ([]*VoiceCloneRecord, int64, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.voiceClones[workspaceID]
+	if ws == nil {
+		return []*VoiceCloneRecord{}, 0, nil
+	}
+
+	var matched []*VoiceCloneRecord
+	for _, vc := range ws {
+		if vc.CloneStatus == "revoked" {
+			continue
+		}
+		if characterID != "" && vc.CharacterID != characterID {
+			continue
+		}
+		cp := *vc
+		matched = append(matched, &cp)
+	}
+
+	total := int64(len(matched))
+	if offset >= len(matched) {
+		return []*VoiceCloneRecord{}, total, nil
+	}
+	end := offset + limit
+	if limit <= 0 || end > len(matched) {
+		end = len(matched)
+	}
+	return matched[offset:end], total, nil
+}
+
+// ----------------------------------------------------------------------------
+// Sound Tracks implementation
+// ----------------------------------------------------------------------------
+
+func (s *MemoryStore) CreateSoundTrack(ctx context.Context, track *SoundTrack) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.soundTracks[track.WorkspaceID] == nil {
+		s.soundTracks[track.WorkspaceID] = make(map[string]*SoundTrack)
+	}
+	cp := *track
+	s.soundTracks[track.WorkspaceID][track.TrackID] = &cp
+	return nil
+}
+
+func (s *MemoryStore) GetSoundTrack(ctx context.Context, workspaceID, trackID string) (*SoundTrack, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.soundTracks[workspaceID]
+	if ws == nil {
+		return nil, fmt.Errorf("sound track %q not found in workspace %q", trackID, workspaceID)
+	}
+	tr, ok := ws[trackID]
+	if !ok {
+		return nil, fmt.Errorf("sound track %q not found in workspace %q", trackID, workspaceID)
+	}
+	cp := *tr
+	return &cp, nil
+}
+
+func (s *MemoryStore) ListSoundTracks(ctx context.Context, workspaceID, category, genre, mood string, limit, offset int) ([]*SoundTrack, int64, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ws := s.soundTracks[workspaceID]
+	if ws == nil {
+		return []*SoundTrack{}, 0, nil
+	}
+
+	var matched []*SoundTrack
+	for _, tr := range ws {
+		if category != "" && tr.Category != category {
+			continue
+		}
+		if genre != "" && tr.Genre != genre {
+			continue
+		}
+		if mood != "" && tr.Mood != mood {
+			continue
+		}
+		cp := *tr
+		matched = append(matched, &cp)
+	}
+
+	total := int64(len(matched))
+	if offset >= len(matched) {
+		return []*SoundTrack{}, total, nil
+	}
+	end := offset + limit
+	if limit <= 0 || end > len(matched) {
+		end = len(matched)
+	}
+	return matched[offset:end], total, nil
 }

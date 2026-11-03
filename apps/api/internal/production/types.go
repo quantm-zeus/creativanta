@@ -30,6 +30,11 @@ var (
 	ErrScriptSimilarityExceeded = errors.New("production: remix script similarity exceeds 30% threshold (RULE-M07-003)")
 	ErrCircuitBreakerOpen       = errors.New("production: provider circuit breaker open due to consecutive failures")
 	ErrInvalidBatchRow          = errors.New("production: invalid batch input row")
+	ErrConsentRequired          = errors.New("production: consent verification required before voice clone can be created or used (RULE-M08-002)")
+	ErrConsentRevoked           = errors.New("production: consent for voice likeness was revoked; cannot generate voiceover")
+	ErrTierGateBlocked          = errors.New("production: voice clone requires Pro tier or above (TIER_GATE_BLOCKED)")
+	ErrLicensedInputRequired    = errors.New("production: valid commercial license or verified copyright ownership required (SAFE-2026-02)")
+	ErrQualityRepairRequired    = errors.New("production: audio clarity or translation quality below acceptable threshold; repair required")
 )
 
 // CallerContext models authenticated caller context across production operations.
@@ -193,4 +198,76 @@ type BatchBudgetPreviewResult struct {
 	CurrentAvailableCredits tenantdb.ExactDecimal      `json:"current_available_credits"`
 	QuoteID                 string                     `json:"quote_id"`
 	QuoteExpiresAt          time.Time                  `json:"quote_expires_at"`
+}
+
+// TranslationJob represents a multi-language localization record (§22.6).
+type TranslationJob struct {
+	TranslationJobID          string                `json:"translation_job_id"`
+	WorkspaceID               string                `json:"workspace_id"`
+	VideoEditJobID            string                `json:"video_edit_job_id,omitempty"`
+	SourceAssetID             string                `json:"source_asset_id"`
+	TargetLanguages           []string              `json:"target_languages"`
+	LipSyncEnabled            bool                  `json:"lip_sync_enabled"`
+	CulturalAdaptationEnabled bool                  `json:"cultural_adaptation_enabled"`
+	TranslateCaptions         bool                  `json:"translate_captions"`
+	TranslateOverlays         bool                  `json:"translate_overlays"`
+	VoiceOption               string                `json:"voice_option"`
+	VoiceCloneID              string                `json:"voice_clone_id,omitempty"`
+	PerLanguageStatus         map[string]string     `json:"per_language_status"`
+	OutputAssetIDs            map[string]string     `json:"output_asset_ids"`
+	TotalCreditsUsed          tenantdb.ExactDecimal `json:"total_credits_used"`
+	Status                    string                `json:"status"` // queued, processing, partially_completed, completed, failed, cancelled
+	QualityScores             map[string]float64    `json:"quality_scores"`
+	RepairNotes               map[string]string     `json:"repair_notes"`
+	QuoteID                   string                `json:"quote_id,omitempty"`
+	CreatedAt                 time.Time             `json:"created_at"`
+	UpdatedAt                 time.Time             `json:"updated_at"`
+	DeletedAt                 *time.Time            `json:"deleted_at,omitempty"`
+}
+
+// TranslationSegment represents a timed dialogue segment.
+type TranslationSegment struct {
+	SegmentID    string            `json:"segment_id"`
+	StartTimeS   float64           `json:"start_time_s"`
+	EndTimeS     float64           `json:"end_time_s"`
+	SourceText   string            `json:"source_text"`
+	Translations map[string]string `json:"translations"`
+	QualityScore float64           `json:"quality_score"`
+	NeedsRepair  bool              `json:"needs_repair"`
+	RepairReason string            `json:"repair_reason,omitempty"`
+}
+
+// SoundTrack represents an audio sound track with licensing metadata (§EF-06).
+type SoundTrack struct {
+	TrackID           string    `json:"track_id"`
+	WorkspaceID       string    `json:"workspace_id"`
+	Title             string    `json:"title"`
+	Category          string    `json:"category"` // music, sfx, ambient
+	Genre             string    `json:"genre"`
+	Mood              string    `json:"mood"`
+	BPM               int       `json:"bpm"`
+	DurationSeconds   float64   `json:"duration_seconds"`
+	FileURL           string    `json:"file_url"`
+	LicenseType       string    `json:"license_type"` // commercial_royalty_free, licensed_library, user_uploaded
+	LicenseID         string    `json:"license_id"`
+	IsVerifiedLicense bool      `json:"is_verified_license"`
+	WaveformPeaks     []float32 `json:"waveform_peaks"`
+	CreatedAt         time.Time `json:"created_at"`
+}
+
+// VoiceCloneRecord represents a voice clone likeness record linked to characters and consent (§22.12).
+type VoiceCloneRecord struct {
+	VoiceCloneID    string    `json:"voice_clone_id"`
+	WorkspaceID     string    `json:"workspace_id"`
+	CharacterID     string    `json:"character_id"`
+	Provider        string    `json:"provider"`
+	ProviderVoiceID string    `json:"provider_voice_id"`
+	VoiceName       string    `json:"voice_name"`
+	SampleAudioURLs []string  `json:"sample_audio_urls"`
+	CloneStatus     string    `json:"clone_status"` // pending, processing, ready, failed, revoked
+	ConsentRecordID string    `json:"consent_record_id,omitempty"`
+	QualityScore    float64   `json:"quality_score"`
+	RepairApplied   bool      `json:"repair_applied"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
