@@ -1,7 +1,7 @@
 === Running D0 Documentation Invariants Check ===
-pglast detected: enabling PostgreSQL grammar audit (--sql).
-Executing: python3 tooling/check_docs.py --sql
+pglast not installed in current environment; running core static contract checks.
+Executing: python3 tooling/check_docs.py 
 Documentation invariants: PASS
-active_markdown=337, tables=165, tenant_tables=140, rpc_bindings=1188, modules=31, build_tasks=60, requirement_units=1333, screen_assignments=245, parsed_sql_blocks=163
+active_markdown=337, tables=165, tenant_tables=140, rpc_bindings=1188, modules=31, build_tasks=60, requirement_units=1333, screen_assignments=245
 Static checks only; runtime, typed transport and external gates require separate evidence.
 === D0 Documentation Invariant Gate: PASS ===

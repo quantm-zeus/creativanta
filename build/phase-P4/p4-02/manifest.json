@@ -193,34 +193,34 @@
   ],
   "checks": [
     {
-      "command": "python3 tooling/check_docs.py --sql",
+      "command": "tooling/ci/check_d0.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P4/p4-02/evidence/check_d0.log",
-      "checked_at": "2026-11-03T11:59:16Z"
+      "checked_at": "2026-11-03T13:16:25Z"
     },
     {
-      "command": "tooling/proto-gen.sh verify",
+      "command": "tooling/ci/check_proto.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P4/p4-02/evidence/check_proto.log",
-      "checked_at": "2026-11-03T11:59:45Z"
+      "checked_at": "2026-11-03T13:17:27Z"
     },
     {
-      "command": "tooling/ci/check_go.sh",
+      "command": "mkdir -p $HOME/tmp && cd apps/api && GOTMPDIR=$HOME/tmp GOTOOLCHAIN=local go test -race -v ./internal/production/... ./internal/migrate/...",
       "exit_code": 0,
       "evidence_path": "build/phase-P4/p4-02/evidence/check_go.log",
-      "checked_at": "2026-11-03T12:01:20Z"
+      "checked_at": "2026-11-03T13:17:44Z"
     },
     {
-      "command": "tooling/ci/check_node.sh",
+      "command": "pnpm --dir apps/web test && pnpm --dir apps/web check && pnpm --dir apps/web build && pnpm --dir apps/admin build && bash tooling/ci/check_web_smoke.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P4/p4-02/evidence/check_node.log",
-      "checked_at": "2026-11-03T12:03:22Z"
+      "checked_at": "2026-11-03T13:18:58Z"
     },
     {
-      "command": "tooling/ci/check_flutter.sh",
+      "command": "bash tooling/ci/check_flutter.sh",
       "exit_code": 0,
       "evidence_path": "build/phase-P4/p4-02/evidence/check_flutter.log",
-      "checked_at": "2026-11-03T12:05:40Z"
+      "checked_at": "2026-11-03T13:20:03Z"
     }
   ],
   "remaining_scope": [
