@@ -461,13 +461,16 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	_, _ = adminPool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
 	dir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 
-	// Apply migration Up, then Down ten times, then Up again to prove full Goose SQL repeatability.
+	// Apply migration Up, then Down eleven times, then Up again to prove full Goose SQL repeatability.
 	applied, err := Up(ctx, adminPool, dir)
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 10 {
-		t.Fatalf("expected 10 applied migrations, got %v", applied)
+	if len(applied) != 11 {
+		t.Fatalf("expected 11 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v11 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v10 failed: %v", err)
@@ -565,6 +568,12 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 
 		INSERT INTO watchlist_alert_logs (alert_log_id, workspace_id, watchlist_id, trend_id, alert_fingerprint, cooldown_until) VALUES
 		  ('aaaaaaaa-2222-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-1111-4aaa-8aaa-aaaaaaaaaaaa', '33333333-3333-4333-8333-333333333333', 'fp_a', NOW() + INTERVAL '1 hour');
+
+		INSERT INTO competitor_entities (competitor_id, workspace_id, name, platform, external_handle) VALUES
+		  ('aaaaaaaa-3333-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Competitor A', 'tiktok', '@competitor_a');
+
+		INSERT INTO benchmark_snapshots (snapshot_id, workspace_id, competitor_id, snapshot_type, source_class, confidence) VALUES
+		  ('aaaaaaaa-4444-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'aaaaaaaa-3333-4aaa-8aaa-aaaaaaaaaaaa', 'benchmark', 'inferred', 'high');
 	`
 	if _, err := adminPool.Exec(ctx, seedSQL); err != nil {
 		t.Fatalf("seedSQL failed: %v", err)
@@ -616,6 +625,22 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("watchlist_alert_logs RLS breach: Tenant B saw %d alert logs from Tenant A", visibleAlertLogs)
 	}
 
+	var visibleCompetitors int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM competitor_entities WHERE workspace_id = $1::uuid`, tenantA).Scan(&visibleCompetitors); err != nil {
+		t.Fatal(err)
+	}
+	if visibleCompetitors != 0 {
+		t.Fatalf("competitor_entities RLS breach: Tenant B saw %d competitors from Tenant A", visibleCompetitors)
+	}
+
+	var visibleBenchmarks int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM benchmark_snapshots WHERE workspace_id = $1::uuid`, tenantA).Scan(&visibleBenchmarks); err != nil {
+		t.Fatal(err)
+	}
+	if visibleBenchmarks != 0 {
+		t.Fatalf("benchmark_snapshots RLS breach: Tenant B saw %d benchmarks from Tenant A", visibleBenchmarks)
+	}
+
 	// Test 2: Cross-tenant composite FK write attack on trend_signals and external_effects denied!
 	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_junction`); err != nil {
 		t.Fatal(err)
@@ -649,6 +674,28 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("expected fk_external_effects_connected_account_id_tenant to reject cross-tenant connected_account_id")
 	}
 	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_effect_fk`)
+
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_benchmark_fk`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO benchmark_snapshots (snapshot_id, workspace_id, competitor_id, snapshot_type, source_class, confidence)
+		VALUES (gen_random_uuid(), $1::uuid, 'aaaaaaaa-3333-4aaa-8aaa-aaaaaaaaaaaa'::uuid, 'benchmark', 'inferred', 'medium')
+	`, tenantB); err == nil {
+		t.Fatalf("expected fk_benchmark_snapshots_competitor_id_tenant to reject cross-tenant competitor_id link")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_benchmark_fk`)
+
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_benchmark_rls`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO benchmark_snapshots (snapshot_id, workspace_id, snapshot_type, source_class, confidence)
+		VALUES (gen_random_uuid(), $1::uuid, 'benchmark', 'inferred', 'low')
+	`, tenantA); err == nil {
+		t.Fatalf("expected RLS WITH CHECK to reject Tenant B inserting benchmark_snapshots with workspace_id=Tenant A")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_benchmark_rls`)
 
 	// Test 3: Switch to Tenant A as app_user -> verify support_ticket_messages hides is_internal_note = true!
 	if _, err := tx.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_user_id', $2, true)`, tenantA, userA); err != nil {

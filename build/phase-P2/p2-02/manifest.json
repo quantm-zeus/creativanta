@@ -35,7 +35,8 @@
   "source_hashes": {
     "infra/migrations/00011_p2_02_competitor_entities_and_benchmark_snapshots.sql": "cd20cff5d662abd8dbbe647c67cf2a512a5678c1d82d0da229c7a139d2100ca7",
     "protos/creativanta/intelligence/v1/competitor.proto": "5a4ad865be98881f27ba4422138a3df92b1b98159d62986f3db111cb26a2f22e",
-    "apps/api/internal/migrate/migrator_test.go": "71ccdc7f1f062fc5d67e6594c3e4e7fb92feff14656772daafb58ca303027bc3",
+    "apps/api/internal/migrate/migrator.go": "2e381daa0744fe5de9d0be0c57c133dbf13450bc572a8430d8e06fbd2020e8e8",
+    "apps/api/internal/migrate/migrator_test.go": "95f7bbb96e23863c76417b6a21aae51abb5a6b4cfd616b1c2be93874f80e000e",
     "apps/api/internal/rbac/phase_exposure_test.go": "6866006c727c56ed4ade317db14102a00eedcb3e0273ded009bcee13351f2354",
     "apps/api/internal/competitor/service.go": "9f8887b896ab41a13628cb4f63370c85bd77192547a5f1407ea94d9fdd5bd3ba",
     "apps/api/internal/competitor/service_test.go": "bc00cc3624c64dd7717785e1d799dcd3b1282a66fa58b212605e134fe46628a4",

@@ -692,6 +692,19 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 			"watchlists",
 			"watchlist_alert_logs",
 		}
+	case 11:
+		requiredFragments = []requiredFragment{
+			{"competitor_entities platform column", "ALTER TABLE competitor_entities ADD COLUMN IF NOT EXISTS platform"},
+			{"competitor_entities external_handle column", "ALTER TABLE competitor_entities ADD COLUMN IF NOT EXISTS external_handle"},
+			{"benchmark_snapshots table", "CREATE TABLE IF NOT EXISTS benchmark_snapshots"},
+			{"unique tenant PK on benchmark_snapshots", "uq_benchmark_snapshots_tenant_pk"},
+			{"composite tenant FK on benchmark_snapshots", "fk_benchmark_snapshots_competitor_id_tenant"},
+			{"tenant_isolation policy on benchmark_snapshots", "CREATE POLICY tenant_isolation ON benchmark_snapshots"},
+			{"admin_ops_scope policy on benchmark_snapshots", "CREATE POLICY admin_ops_scope ON benchmark_snapshots"},
+		}
+		requiredRLSTables = []string{
+			"benchmark_snapshots",
+		}
 	default:
 		return nil
 	}
