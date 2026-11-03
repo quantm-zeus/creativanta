@@ -40,6 +40,7 @@ type Service struct {
 	enhancer    *EnhancerEngine
 	balances    map[string]tenantdb.ExactDecimal // workspaceID -> available credits
 	mockRefunds map[string]tenantdb.ExactDecimal // jobID -> refunded credits
+	clipFactory *ClipFactoryEngine
 	VoiceClone  *VoiceCloneManager
 	SoundStudio *SoundStudioManager
 	Translation *TranslationManager
@@ -49,6 +50,7 @@ var _ productionv1connect.StudioServiceHandler = (*Service)(nil)
 var _ productionv1connect.AssetServiceHandler = (*Service)(nil)
 var _ productionv1connect.RemixServiceHandler = (*RemixServiceServer)(nil)
 var _ productionv1connect.VideoEditJobServiceHandler = (*VideoEditJobServiceServer)(nil)
+var _ productionv1connect.ClipFactoryServiceHandler = (*ClipFactoryServiceServer)(nil)
 
 // RemixServiceServer implements RemixService ConnectRPC handler.
 type RemixServiceServer struct {
@@ -68,6 +70,11 @@ type VideoEditJobServiceServer struct {
 // VideoEditJob returns the VideoEditJobServiceHandler.
 func (s *Service) VideoEditJob() productionv1connect.VideoEditJobServiceHandler {
 	return &VideoEditJobServiceServer{svc: s}
+}
+
+// ClipFactory returns the ClipFactoryServiceHandler.
+func (s *Service) ClipFactory() productionv1connect.ClipFactoryServiceHandler {
+	return &ClipFactoryServiceServer{svc: s}
 }
 
 // NewService creates a new Production service.
@@ -102,6 +109,7 @@ func NewService(cfg ServiceConfig) *Service {
 		asrEngine:   NewASREngine(),
 		cutEngine:   NewCutEngine(80),
 		enhancer:    NewEnhancerEngine(st),
+		clipFactory: NewClipFactoryEngine(NewASREngine(), pp),
 		balances:    bal,
 		mockRefunds: make(map[string]tenantdb.ExactDecimal),
 	}
@@ -124,6 +132,11 @@ func (s *Service) CutEngine() *CutEngine {
 // EnhancerEngine returns the configured EnhancerEngine.
 func (s *Service) EnhancerEngine() *EnhancerEngine {
 	return s.enhancer
+}
+
+// ClipFactoryEngine returns the configured ClipFactoryEngine.
+func (s *Service) ClipFactoryEngine() *ClipFactoryEngine {
+	return s.clipFactory
 }
 
 // SetWorkspaceBalance overrides the simulated credit balance for a workspace.

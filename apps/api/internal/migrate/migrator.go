@@ -793,6 +793,17 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 			"quick_edit_drafts",
 			"sound_library",
 		}
+	case 21:
+		requiredFragments = []requiredFragment{
+			{"clip_collections table", "CREATE TABLE IF NOT EXISTS clip_collections"},
+			{"composite tenant FK on clip_collections -> assets", "fk_clip_collections_source_asset_id_tenant"},
+			{"composite tenant FK on clip_collections -> video_edit_jobs", "fk_clip_collections_video_edit_job_id_tenant"},
+			{"tenant_isolation policy on clip_collections", "CREATE POLICY tenant_isolation ON clip_collections"},
+			{"admin_ops_scope policy on clip_collections", "CREATE POLICY admin_ops_scope ON clip_collections"},
+		}
+		requiredRLSTables = []string{
+			"clip_collections",
+		}
 	default:
 		return nil
 	}

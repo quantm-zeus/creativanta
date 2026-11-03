@@ -11,43 +11,45 @@ import (
 )
 
 var (
-	ErrUnauthenticated          = errors.New("production: unauthenticated request")
-	ErrCrossTenantDenied        = errors.New("production: cross-tenant access strictly forbidden")
-	ErrPermissionDenied         = errors.New("production: caller role is not authorized for this operation")
-	ErrJobNotFound              = errors.New("production: generation job not found")
-	ErrAssetNotFound            = errors.New("production: asset not found")
-	ErrCannotCancelCompletedJob = errors.New("production: cannot cancel already completed or failed job")
-	ErrInsufficientCredits      = errors.New("production: insufficient credit balance for estimated generation cost (EC-M07-002)")
-	ErrQuoteExpiredOrInvalid    = errors.New("production: credit quote is expired, stale, or does not match parameters (BILLING_CONFLICT_002)")
-	ErrPaidRetryExceedsQuote    = errors.New("production: paid retry/fallback exceeds confirmed bounded quote plan; new quote required (BILLING_CONFLICT_002)")
-	ErrDisallowedFFmpegArg      = errors.New("production: FFmpeg argument is not in security allowlist")
-	ErrOutputValidationFailed   = errors.New("production: post-production output validation failed (audio normalization/resolution/streams)")
-	ErrExecutionTimeout         = errors.New("production: worker execution exceeded time limit")
-	ErrProcessTerminated        = errors.New("production: process group was terminated")
-	ErrFileTooLarge             = errors.New("production: uploaded file exceeds size limit")
-	ErrDisallowedMimeType       = errors.New("production: mime type is not supported")
-	ErrInfectedFile             = errors.New("production: virus scan detected infected payload")
-	ErrScriptSimilarityExceeded = errors.New("production: remix script similarity exceeds 30% threshold (RULE-M07-003)")
-	ErrCircuitBreakerOpen       = errors.New("production: provider circuit breaker open due to consecutive failures")
-	ErrInvalidBatchRow          = errors.New("production: invalid batch input row")
-	ErrTranscriptNotFound       = errors.New("production: transcript not found")
-	ErrDraftNotFound            = errors.New("production: quick edit draft not found")
-	ErrSoundNotFound            = errors.New("production: sound track not found")
-	ErrAlignmentFailed          = errors.New("production: auto-alignment failed. [Try segment mode] or [Manual cut]")
-	ErrCopyrightViolation       = errors.New("production: music detected as copyrighted without commercial license clearance (EC-M07-M01)")
-	ErrConsentRequired          = errors.New("production: consent verification required before voice clone can be created or used (RULE-M08-002)")
-	ErrConsentRevoked           = errors.New("production: consent for voice likeness was revoked; cannot generate voiceover")
-	ErrTierGateBlocked          = errors.New("production: voice clone requires Pro tier or above (TIER_GATE_BLOCKED)")
-	ErrLicensedInputRequired    = errors.New("production: valid commercial license or verified copyright ownership required (SAFE-2026-02)")
-	ErrQualityRepairRequired    = errors.New("production: audio clarity or translation quality below acceptable threshold; repair required")
-	ErrDRMProtected             = errors.New("production: cannot access video at this URL: content is DRM protected (EC-M07-R01)")
-	ErrGeoBlocked               = errors.New("production: cannot access video at this URL: content is geo-blocked (EC-M07-R01)")
-	ErrUnlicensedMediaBlocked   = errors.New("production: unlicensed copyrighted media detected; bypass not permitted (RULE-M07-008, SAFE-2026-02)")
-	ErrInvalidReferenceURL      = errors.New("production: invalid reference video URL or SSRF attempt detected")
-	ErrMultiMergeLimitExceeded  = errors.New("production: media input count exceeds workspace tier limit")
-	ErrSingleMediaNotAllowed    = errors.New("production: multi-merge requires at least 2 media files")
-	ErrBlueprintNotFound        = errors.New("production: remix blueprint not found")
-	ErrVideoEditJobNotFound     = errors.New("production: video edit job not found")
+	ErrUnauthenticated            = errors.New("production: unauthenticated request")
+	ErrCrossTenantDenied          = errors.New("production: cross-tenant access strictly forbidden")
+	ErrPermissionDenied           = errors.New("production: caller role is not authorized for this operation")
+	ErrJobNotFound                = errors.New("production: generation job not found")
+	ErrAssetNotFound              = errors.New("production: asset not found")
+	ErrCannotCancelCompletedJob   = errors.New("production: cannot cancel already completed or failed job")
+	ErrInsufficientCredits        = errors.New("production: insufficient credit balance for estimated generation cost (EC-M07-002)")
+	ErrQuoteExpiredOrInvalid      = errors.New("production: credit quote is expired, stale, or does not match parameters (BILLING_CONFLICT_002)")
+	ErrPaidRetryExceedsQuote      = errors.New("production: paid retry/fallback exceeds confirmed bounded quote plan; new quote required (BILLING_CONFLICT_002)")
+	ErrDisallowedFFmpegArg        = errors.New("production: FFmpeg argument is not in security allowlist")
+	ErrOutputValidationFailed     = errors.New("production: post-production output validation failed (audio normalization/resolution/streams)")
+	ErrExecutionTimeout           = errors.New("production: worker execution exceeded time limit")
+	ErrProcessTerminated          = errors.New("production: process group was terminated")
+	ErrFileTooLarge               = errors.New("production: uploaded file exceeds size limit")
+	ErrDisallowedMimeType         = errors.New("production: mime type is not supported")
+	ErrInfectedFile               = errors.New("production: virus scan detected infected payload")
+	ErrScriptSimilarityExceeded   = errors.New("production: remix script similarity exceeds 30% threshold (RULE-M07-003)")
+	ErrCircuitBreakerOpen         = errors.New("production: provider circuit breaker open due to consecutive failures")
+	ErrInvalidBatchRow            = errors.New("production: invalid batch input row")
+	ErrTranscriptNotFound         = errors.New("production: transcript not found")
+	ErrDraftNotFound              = errors.New("production: quick edit draft not found")
+	ErrSoundNotFound              = errors.New("production: sound track not found")
+	ErrAlignmentFailed            = errors.New("production: auto-alignment failed. [Try segment mode] or [Manual cut]")
+	ErrCopyrightViolation         = errors.New("production: music detected as copyrighted without commercial license clearance (EC-M07-M01)")
+	ErrConsentRequired            = errors.New("production: consent verification required before voice clone can be created or used (RULE-M08-002)")
+	ErrConsentRevoked             = errors.New("production: consent for voice likeness was revoked; cannot generate voiceover")
+	ErrTierGateBlocked            = errors.New("production: voice clone requires Pro tier or above (TIER_GATE_BLOCKED)")
+	ErrLicensedInputRequired      = errors.New("production: valid commercial license or verified copyright ownership required (SAFE-2026-02)")
+	ErrQualityRepairRequired      = errors.New("production: audio clarity or translation quality below acceptable threshold; repair required")
+	ErrDRMProtected               = errors.New("production: cannot access video at this URL: content is DRM protected (EC-M07-R01)")
+	ErrGeoBlocked                 = errors.New("production: cannot access video at this URL: content is geo-blocked (EC-M07-R01)")
+	ErrUnlicensedMediaBlocked     = errors.New("production: unlicensed copyrighted media detected; bypass not permitted (RULE-M07-008, SAFE-2026-02)")
+	ErrInvalidReferenceURL        = errors.New("production: invalid reference video URL or SSRF attempt detected")
+	ErrMultiMergeLimitExceeded    = errors.New("production: media input count exceeds workspace tier limit")
+	ErrSingleMediaNotAllowed      = errors.New("production: multi-merge requires at least 2 media files")
+	ErrBlueprintNotFound          = errors.New("production: remix blueprint not found")
+	ErrVideoEditJobNotFound       = errors.New("production: video edit job not found")
+	ErrClipCollectionNotFound     = errors.New("production: clip collection not found")
+	ErrConcurrentJobLimitExceeded = errors.New("production: processing queue full for workspace tier (EC-M07-004)")
 )
 
 // CallerContext models authenticated caller context across production operations.
@@ -546,4 +548,55 @@ type VideoEditJobRecord struct {
 	CreatedAt          time.Time             `json:"created_at"`
 	UpdatedAt          time.Time             `json:"updated_at"`
 	DeletedAt          *time.Time            `json:"deleted_at,omitempty"`
+}
+
+// ViralityBreakdownRecord stores the 5 components of virality scoring (§Mode 2).
+type ViralityBreakdownRecord struct {
+	EngagementPatternMatch float64 `json:"engagement_pattern_match"` // 30% weight
+	HookStrength           float64 `json:"hook_strength"`            // 25% weight
+	PacingScore            float64 `json:"pacing_score"`             // 20% weight
+	AudioQuality           float64 `json:"audio_quality"`            // 15% weight
+	ContentRelevance       float64 `json:"content_relevance"`        // 10% weight
+	HasTrendData           bool    `json:"has_trend_data"`           // false -> badge="⚠️ Pattern-only"
+	Badge                  string  `json:"badge"`
+	HookAnalysisMethod     string  `json:"hook_analysis_method"` // "speech_asr" | "visual_beat_pattern"
+	TotalScore             float64 `json:"total_score"`          // 0-100
+}
+
+// ClipDataRecord represents an individual clip proposal inside clip_collections.clip_data (§22.3).
+type ClipDataRecord struct {
+	ClipID               string                  `json:"clip_id"`
+	ClipIndex            int                     `json:"clip_index"`
+	StartS               float64                 `json:"start_s"`
+	EndS                 float64                 `json:"end_s"`
+	DurationS            float64                 `json:"duration_s"`
+	Title                string                  `json:"title"`
+	ViralityScore        float64                 `json:"virality_score"`
+	Selected             bool                    `json:"selected"`
+	HookType             string                  `json:"hook_type"`
+	PacingLabel          string                  `json:"pacing_label"`
+	ScriptSnippet        string                  `json:"script_snippet"`
+	IsVisualOnlyFallback bool                    `json:"is_visual_only_fallback"`
+	HasTrendData         bool                    `json:"has_trend_data"`
+	Badge                string                  `json:"badge"`
+	Highlights           []string                `json:"highlights,omitempty"`
+	Breakdown            ViralityBreakdownRecord `json:"breakdown"`
+	SourceAssetID        string                  `json:"source_asset_id"`
+	ThumbnailURL         string                  `json:"thumbnail_url,omitempty"`
+}
+
+// ClipCollectionRecord represents a row in clip_collections (§22.3).
+type ClipCollectionRecord struct {
+	CollectionID   string           `json:"collection_id"`
+	WorkspaceID    string           `json:"workspace_id"`
+	SourceAssetID  string           `json:"source_asset_id"`
+	VideoEditJobID string           `json:"video_edit_job_id,omitempty"`
+	TotalClips     int              `json:"total_clips"`
+	ClipData       []ClipDataRecord `json:"clip_data"`
+	Status         string           `json:"status"` // analyzing, proposed, processing, completed, failed
+	HasTrendData   bool             `json:"has_trend_data"`
+	IsVisualOnly   bool             `json:"is_visual_only"`
+	CreatedAt      time.Time        `json:"created_at"`
+	UpdatedAt      time.Time        `json:"updated_at"`
+	DeletedAt      *time.Time       `json:"deleted_at,omitempty"`
 }

@@ -4152,3 +4152,393 @@ final $typed_data.Uint8List videoEditJobServiceRetryResponseDescriptor =
     $convert.base64Decode(
         'CiBWaWRlb0VkaXRKb2JTZXJ2aWNlUmV0cnlSZXNwb25zZRI5CgNqb2IYASABKAsyJy5jcmVhdG'
         'l2YW50YS5wcm9kdWN0aW9uLnYxLlZpZGVvRWRpdEpvYlIDam9i');
+
+@$core.Deprecated('Use viralityScoreBreakdownDescriptor instead')
+const ViralityScoreBreakdown$json = {
+  '1': 'ViralityScoreBreakdown',
+  '2': [
+    {
+      '1': 'engagement_pattern_match',
+      '3': 1,
+      '4': 1,
+      '5': 1,
+      '10': 'engagementPatternMatch'
+    },
+    {'1': 'hook_strength', '3': 2, '4': 1, '5': 1, '10': 'hookStrength'},
+    {'1': 'pacing_score', '3': 3, '4': 1, '5': 1, '10': 'pacingScore'},
+    {'1': 'audio_quality', '3': 4, '4': 1, '5': 1, '10': 'audioQuality'},
+    {
+      '1': 'content_relevance',
+      '3': 5,
+      '4': 1,
+      '5': 1,
+      '10': 'contentRelevance'
+    },
+    {'1': 'has_trend_data', '3': 6, '4': 1, '5': 8, '10': 'hasTrendData'},
+    {'1': 'badge', '3': 7, '4': 1, '5': 9, '10': 'badge'},
+    {
+      '1': 'hook_analysis_method',
+      '3': 8,
+      '4': 1,
+      '5': 9,
+      '10': 'hookAnalysisMethod'
+    },
+    {'1': 'total_score', '3': 9, '4': 1, '5': 1, '10': 'totalScore'},
+  ],
+};
+
+/// Descriptor for `ViralityScoreBreakdown`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List viralityScoreBreakdownDescriptor = $convert.base64Decode(
+    'ChZWaXJhbGl0eVNjb3JlQnJlYWtkb3duEjgKGGVuZ2FnZW1lbnRfcGF0dGVybl9tYXRjaBgBIA'
+    'EoAVIWZW5nYWdlbWVudFBhdHRlcm5NYXRjaBIjCg1ob29rX3N0cmVuZ3RoGAIgASgBUgxob29r'
+    'U3RyZW5ndGgSIQoMcGFjaW5nX3Njb3JlGAMgASgBUgtwYWNpbmdTY29yZRIjCg1hdWRpb19xdW'
+    'FsaXR5GAQgASgBUgxhdWRpb1F1YWxpdHkSKwoRY29udGVudF9yZWxldmFuY2UYBSABKAFSEGNv'
+    'bnRlbnRSZWxldmFuY2USJAoOaGFzX3RyZW5kX2RhdGEYBiABKAhSDGhhc1RyZW5kRGF0YRIUCg'
+    'ViYWRnZRgHIAEoCVIFYmFkZ2USMAoUaG9va19hbmFseXNpc19tZXRob2QYCCABKAlSEmhvb2tB'
+    'bmFseXNpc01ldGhvZBIfCgt0b3RhbF9zY29yZRgJIAEoAVIKdG90YWxTY29yZQ==');
+
+@$core.Deprecated('Use clipProposalDescriptor instead')
+const ClipProposal$json = {
+  '1': 'ClipProposal',
+  '2': [
+    {'1': 'clip_id', '3': 1, '4': 1, '5': 9, '10': 'clipId'},
+    {'1': 'clip_index', '3': 2, '4': 1, '5': 5, '10': 'clipIndex'},
+    {'1': 'start_s', '3': 3, '4': 1, '5': 1, '10': 'startS'},
+    {'1': 'end_s', '3': 4, '4': 1, '5': 1, '10': 'endS'},
+    {'1': 'duration_s', '3': 5, '4': 1, '5': 1, '10': 'durationS'},
+    {'1': 'title', '3': 6, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'virality_score', '3': 7, '4': 1, '5': 1, '10': 'viralityScore'},
+    {
+      '1': 'virality_breakdown',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.ViralityScoreBreakdown',
+      '10': 'viralityBreakdown'
+    },
+    {'1': 'selected', '3': 9, '4': 1, '5': 8, '10': 'selected'},
+    {'1': 'hook_type', '3': 10, '4': 1, '5': 9, '10': 'hookType'},
+    {'1': 'pacing_label', '3': 11, '4': 1, '5': 9, '10': 'pacingLabel'},
+    {'1': 'script_snippet', '3': 12, '4': 1, '5': 9, '10': 'scriptSnippet'},
+    {
+      '1': 'is_visual_only_fallback',
+      '3': 13,
+      '4': 1,
+      '5': 8,
+      '10': 'isVisualOnlyFallback'
+    },
+    {'1': 'has_trend_data', '3': 14, '4': 1, '5': 8, '10': 'hasTrendData'},
+    {'1': 'badge', '3': 15, '4': 1, '5': 9, '10': 'badge'},
+    {'1': 'key_moments', '3': 16, '4': 3, '5': 9, '10': 'keyMoments'},
+    {'1': 'source_asset_id', '3': 17, '4': 1, '5': 9, '10': 'sourceAssetId'},
+    {'1': 'thumbnail_url', '3': 18, '4': 1, '5': 9, '10': 'thumbnailUrl'},
+  ],
+};
+
+/// Descriptor for `ClipProposal`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clipProposalDescriptor = $convert.base64Decode(
+    'CgxDbGlwUHJvcG9zYWwSFwoHY2xpcF9pZBgBIAEoCVIGY2xpcElkEh0KCmNsaXBfaW5kZXgYAi'
+    'ABKAVSCWNsaXBJbmRleBIXCgdzdGFydF9zGAMgASgBUgZzdGFydFMSEwoFZW5kX3MYBCABKAFS'
+    'BGVuZFMSHQoKZHVyYXRpb25fcxgFIAEoAVIJZHVyYXRpb25TEhQKBXRpdGxlGAYgASgJUgV0aX'
+    'RsZRIlCg52aXJhbGl0eV9zY29yZRgHIAEoAVINdmlyYWxpdHlTY29yZRJgChJ2aXJhbGl0eV9i'
+    'cmVha2Rvd24YCCABKAsyMS5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlZpcmFsaXR5U2Nvcm'
+    'VCcmVha2Rvd25SEXZpcmFsaXR5QnJlYWtkb3duEhoKCHNlbGVjdGVkGAkgASgIUghzZWxlY3Rl'
+    'ZBIbCglob29rX3R5cGUYCiABKAlSCGhvb2tUeXBlEiEKDHBhY2luZ19sYWJlbBgLIAEoCVILcG'
+    'FjaW5nTGFiZWwSJQoOc2NyaXB0X3NuaXBwZXQYDCABKAlSDXNjcmlwdFNuaXBwZXQSNQoXaXNf'
+    'dmlzdWFsX29ubHlfZmFsbGJhY2sYDSABKAhSFGlzVmlzdWFsT25seUZhbGxiYWNrEiQKDmhhc1'
+    '90cmVuZF9kYXRhGA4gASgIUgxoYXNUcmVuZERhdGESFAoFYmFkZ2UYDyABKAlSBWJhZGdlEh8K'
+    'C2tleV9tb21lbnRzGBAgAygJUgprZXlNb21lbnRzEiYKD3NvdXJjZV9hc3NldF9pZBgRIAEoCV'
+    'INc291cmNlQXNzZXRJZBIjCg10aHVtYm5haWxfdXJsGBIgASgJUgx0aHVtYm5haWxVcmw=');
+
+@$core.Deprecated('Use clipCollectionDescriptor instead')
+const ClipCollection$json = {
+  '1': 'ClipCollection',
+  '2': [
+    {'1': 'collection_id', '3': 1, '4': 1, '5': 9, '10': 'collectionId'},
+    {'1': 'workspace_id', '3': 2, '4': 1, '5': 9, '10': 'workspaceId'},
+    {'1': 'source_asset_id', '3': 3, '4': 1, '5': 9, '10': 'sourceAssetId'},
+    {'1': 'video_edit_job_id', '3': 4, '4': 1, '5': 9, '10': 'videoEditJobId'},
+    {'1': 'total_clips', '3': 5, '4': 1, '5': 5, '10': 'totalClips'},
+    {
+      '1': 'clips',
+      '3': 6,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.ClipProposal',
+      '10': 'clips'
+    },
+    {'1': 'status', '3': 7, '4': 1, '5': 9, '10': 'status'},
+    {
+      '1': 'created_at',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+    {
+      '1': 'updated_at',
+      '3': 9,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'updatedAt'
+    },
+    {'1': 'has_trend_data', '3': 10, '4': 1, '5': 8, '10': 'hasTrendData'},
+    {'1': 'is_visual_only', '3': 11, '4': 1, '5': 8, '10': 'isVisualOnly'},
+    {'1': 'queue_position', '3': 12, '4': 1, '5': 5, '10': 'queuePosition'},
+  ],
+};
+
+/// Descriptor for `ClipCollection`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clipCollectionDescriptor = $convert.base64Decode(
+    'Cg5DbGlwQ29sbGVjdGlvbhIjCg1jb2xsZWN0aW9uX2lkGAEgASgJUgxjb2xsZWN0aW9uSWQSIQ'
+    'oMd29ya3NwYWNlX2lkGAIgASgJUgt3b3Jrc3BhY2VJZBImCg9zb3VyY2VfYXNzZXRfaWQYAyAB'
+    'KAlSDXNvdXJjZUFzc2V0SWQSKQoRdmlkZW9fZWRpdF9qb2JfaWQYBCABKAlSDnZpZGVvRWRpdE'
+    'pvYklkEh8KC3RvdGFsX2NsaXBzGAUgASgFUgp0b3RhbENsaXBzEj0KBWNsaXBzGAYgAygLMicu'
+    'Y3JlYXRpdmFudGEucHJvZHVjdGlvbi52MS5DbGlwUHJvcG9zYWxSBWNsaXBzEhYKBnN0YXR1cx'
+    'gHIAEoCVIGc3RhdHVzEjkKCmNyZWF0ZWRfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGlt'
+    'ZXN0YW1wUgljcmVhdGVkQXQSOQoKdXBkYXRlZF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi'
+    '5UaW1lc3RhbXBSCXVwZGF0ZWRBdBIkCg5oYXNfdHJlbmRfZGF0YRgKIAEoCFIMaGFzVHJlbmRE'
+    'YXRhEiQKDmlzX3Zpc3VhbF9vbmx5GAsgASgIUgxpc1Zpc3VhbE9ubHkSJQoOcXVldWVfcG9zaX'
+    'Rpb24YDCABKAVSDXF1ZXVlUG9zaXRpb24=');
+
+@$core.Deprecated('Use clipVariantConfigDescriptor instead')
+const ClipVariantConfig$json = {
+  '1': 'ClipVariantConfig',
+  '2': [
+    {'1': 'clip_id', '3': 1, '4': 1, '5': 9, '10': 'clipId'},
+    {'1': 'target_ratios', '3': 2, '4': 3, '5': 9, '10': 'targetRatios'},
+    {'1': 'subtitle_first', '3': 3, '4': 1, '5': 8, '10': 'subtitleFirst'},
+    {'1': 'cta_text', '3': 4, '4': 1, '5': 9, '10': 'ctaText'},
+    {
+      '1': 'generate_highlight_reel',
+      '3': 5,
+      '4': 1,
+      '5': 8,
+      '10': 'generateHighlightReel'
+    },
+    {'1': 'target_platforms', '3': 6, '4': 3, '5': 9, '10': 'targetPlatforms'},
+  ],
+};
+
+/// Descriptor for `ClipVariantConfig`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clipVariantConfigDescriptor = $convert.base64Decode(
+    'ChFDbGlwVmFyaWFudENvbmZpZxIXCgdjbGlwX2lkGAEgASgJUgZjbGlwSWQSIwoNdGFyZ2V0X3'
+    'JhdGlvcxgCIAMoCVIMdGFyZ2V0UmF0aW9zEiUKDnN1YnRpdGxlX2ZpcnN0GAMgASgIUg1zdWJ0'
+    'aXRsZUZpcnN0EhkKCGN0YV90ZXh0GAQgASgJUgdjdGFUZXh0EjYKF2dlbmVyYXRlX2hpZ2hsaW'
+    'dodF9yZWVsGAUgASgIUhVnZW5lcmF0ZUhpZ2hsaWdodFJlZWwSKQoQdGFyZ2V0X3BsYXRmb3Jt'
+    'cxgGIAMoCVIPdGFyZ2V0UGxhdGZvcm1z');
+
+@$core.Deprecated('Use processedClipOutputDescriptor instead')
+const ProcessedClipOutput$json = {
+  '1': 'ProcessedClipOutput',
+  '2': [
+    {'1': 'clip_id', '3': 1, '4': 1, '5': 9, '10': 'clipId'},
+    {'1': 'output_asset_id', '3': 2, '4': 1, '5': 9, '10': 'outputAssetId'},
+    {'1': 'title', '3': 3, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'aspect_ratio', '3': 4, '4': 1, '5': 9, '10': 'aspectRatio'},
+    {'1': 'variant_type', '3': 5, '4': 1, '5': 9, '10': 'variantType'},
+    {'1': 'playback_url', '3': 6, '4': 1, '5': 9, '10': 'playbackUrl'},
+    {'1': 'download_url', '3': 7, '4': 1, '5': 9, '10': 'downloadUrl'},
+    {'1': 'virality_score', '3': 8, '4': 1, '5': 1, '10': 'viralityScore'},
+    {'1': 'badge', '3': 9, '4': 1, '5': 9, '10': 'badge'},
+    {'1': 'lineage_json', '3': 10, '4': 1, '5': 9, '10': 'lineageJson'},
+    {'1': 'credits_used', '3': 11, '4': 1, '5': 9, '10': 'creditsUsed'},
+    {'1': 'status', '3': 12, '4': 1, '5': 9, '10': 'status'},
+  ],
+};
+
+/// Descriptor for `ProcessedClipOutput`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List processedClipOutputDescriptor = $convert.base64Decode(
+    'ChNQcm9jZXNzZWRDbGlwT3V0cHV0EhcKB2NsaXBfaWQYASABKAlSBmNsaXBJZBImCg9vdXRwdX'
+    'RfYXNzZXRfaWQYAiABKAlSDW91dHB1dEFzc2V0SWQSFAoFdGl0bGUYAyABKAlSBXRpdGxlEiEK'
+    'DGFzcGVjdF9yYXRpbxgEIAEoCVILYXNwZWN0UmF0aW8SIQoMdmFyaWFudF90eXBlGAUgASgJUg'
+    't2YXJpYW50VHlwZRIhCgxwbGF5YmFja191cmwYBiABKAlSC3BsYXliYWNrVXJsEiEKDGRvd25s'
+    'b2FkX3VybBgHIAEoCVILZG93bmxvYWRVcmwSJQoOdmlyYWxpdHlfc2NvcmUYCCABKAFSDXZpcm'
+    'FsaXR5U2NvcmUSFAoFYmFkZ2UYCSABKAlSBWJhZGdlEiEKDGxpbmVhZ2VfanNvbhgKIAEoCVIL'
+    'bGluZWFnZUpzb24SIQoMY3JlZGl0c191c2VkGAsgASgJUgtjcmVkaXRzVXNlZBIWCgZzdGF0dX'
+    'MYDCABKAlSBnN0YXR1cw==');
+
+@$core.Deprecated('Use clipFactoryServiceAnalyzeRequestDescriptor instead')
+const ClipFactoryServiceAnalyzeRequest$json = {
+  '1': 'ClipFactoryServiceAnalyzeRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'source_asset_id', '3': 2, '4': 1, '5': 9, '10': 'sourceAssetId'},
+    {'1': 'video_url', '3': 3, '4': 1, '5': 9, '10': 'videoUrl'},
+    {'1': 'video_duration_s', '3': 4, '4': 1, '5': 1, '10': 'videoDurationS'},
+    {'1': 'force_visual_path', '3': 5, '4': 1, '5': 8, '10': 'forceVisualPath'},
+    {'1': 'trend_topic_id', '3': 6, '4': 1, '5': 9, '10': 'trendTopicId'},
+    {
+      '1': 'has_mock_trend_data',
+      '3': 7,
+      '4': 1,
+      '5': 8,
+      '10': 'hasMockTrendData'
+    },
+  ],
+};
+
+/// Descriptor for `ClipFactoryServiceAnalyzeRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clipFactoryServiceAnalyzeRequestDescriptor = $convert.base64Decode(
+    'CiBDbGlwRmFjdG9yeVNlcnZpY2VBbmFseXplUmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3'
+    'JlYXRpdmFudGEuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EiYKD3NvdXJjZV9h'
+    'c3NldF9pZBgCIAEoCVINc291cmNlQXNzZXRJZBIbCgl2aWRlb191cmwYAyABKAlSCHZpZGVvVX'
+    'JsEigKEHZpZGVvX2R1cmF0aW9uX3MYBCABKAFSDnZpZGVvRHVyYXRpb25TEioKEWZvcmNlX3Zp'
+    'c3VhbF9wYXRoGAUgASgIUg9mb3JjZVZpc3VhbFBhdGgSJAoOdHJlbmRfdG9waWNfaWQYBiABKA'
+    'lSDHRyZW5kVG9waWNJZBItChNoYXNfbW9ja190cmVuZF9kYXRhGAcgASgIUhBoYXNNb2NrVHJl'
+    'bmREYXRh');
+
+@$core.Deprecated('Use clipFactoryServiceAnalyzeResponseDescriptor instead')
+const ClipFactoryServiceAnalyzeResponse$json = {
+  '1': 'ClipFactoryServiceAnalyzeResponse',
+  '2': [
+    {
+      '1': 'collection',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.ClipCollection',
+      '10': 'collection'
+    },
+    {
+      '1': 'estimated_credits',
+      '3': 2,
+      '4': 1,
+      '5': 9,
+      '10': 'estimatedCredits'
+    },
+    {'1': 'queue_position', '3': 3, '4': 1, '5': 5, '10': 'queuePosition'},
+  ],
+};
+
+/// Descriptor for `ClipFactoryServiceAnalyzeResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clipFactoryServiceAnalyzeResponseDescriptor =
+    $convert.base64Decode(
+        'CiFDbGlwRmFjdG9yeVNlcnZpY2VBbmFseXplUmVzcG9uc2USSQoKY29sbGVjdGlvbhgBIAEoCz'
+        'IpLmNyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuQ2xpcENvbGxlY3Rpb25SCmNvbGxlY3Rpb24S'
+        'KwoRZXN0aW1hdGVkX2NyZWRpdHMYAiABKAlSEGVzdGltYXRlZENyZWRpdHMSJQoOcXVldWVfcG'
+        '9zaXRpb24YAyABKAVSDXF1ZXVlUG9zaXRpb24=');
+
+@$core
+    .Deprecated('Use clipFactoryServiceGetCollectionRequestDescriptor instead')
+const ClipFactoryServiceGetCollectionRequest$json = {
+  '1': 'ClipFactoryServiceGetCollectionRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'collection_id', '3': 2, '4': 1, '5': 9, '10': 'collectionId'},
+    {'1': 'source_asset_id', '3': 3, '4': 1, '5': 9, '10': 'sourceAssetId'},
+  ],
+};
+
+/// Descriptor for `ClipFactoryServiceGetCollectionRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clipFactoryServiceGetCollectionRequestDescriptor =
+    $convert.base64Decode(
+        'CiZDbGlwRmFjdG9yeVNlcnZpY2VHZXRDb2xsZWN0aW9uUmVxdWVzdBI+Cgx3b3Jrc3BhY2VfaW'
+        'QYASABKAsyGy5jcmVhdGl2YW50YS5jb21tb24udjEuVVVJRFILd29ya3NwYWNlSWQSIwoNY29s'
+        'bGVjdGlvbl9pZBgCIAEoCVIMY29sbGVjdGlvbklkEiYKD3NvdXJjZV9hc3NldF9pZBgDIAEoCV'
+        'INc291cmNlQXNzZXRJZA==');
+
+@$core
+    .Deprecated('Use clipFactoryServiceGetCollectionResponseDescriptor instead')
+const ClipFactoryServiceGetCollectionResponse$json = {
+  '1': 'ClipFactoryServiceGetCollectionResponse',
+  '2': [
+    {
+      '1': 'collection',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.ClipCollection',
+      '10': 'collection'
+    },
+  ],
+};
+
+/// Descriptor for `ClipFactoryServiceGetCollectionResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clipFactoryServiceGetCollectionResponseDescriptor =
+    $convert.base64Decode(
+        'CidDbGlwRmFjdG9yeVNlcnZpY2VHZXRDb2xsZWN0aW9uUmVzcG9uc2USSQoKY29sbGVjdGlvbh'
+        'gBIAEoCzIpLmNyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuQ2xpcENvbGxlY3Rpb25SCmNvbGxl'
+        'Y3Rpb24=');
+
+@$core.Deprecated('Use clipFactoryServiceProcessClipsRequestDescriptor instead')
+const ClipFactoryServiceProcessClipsRequest$json = {
+  '1': 'ClipFactoryServiceProcessClipsRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'collection_id', '3': 2, '4': 1, '5': 9, '10': 'collectionId'},
+    {'1': 'selected_clip_ids', '3': 3, '4': 3, '5': 9, '10': 'selectedClipIds'},
+    {
+      '1': 'variants',
+      '3': 4,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.ClipVariantConfig',
+      '10': 'variants'
+    },
+    {'1': 'target_platforms', '3': 5, '4': 3, '5': 9, '10': 'targetPlatforms'},
+  ],
+};
+
+/// Descriptor for `ClipFactoryServiceProcessClipsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clipFactoryServiceProcessClipsRequestDescriptor = $convert.base64Decode(
+    'CiVDbGlwRmFjdG9yeVNlcnZpY2VQcm9jZXNzQ2xpcHNSZXF1ZXN0Ej8KB2NvbnRleHQYASABKA'
+    'syJS5jcmVhdGl2YW50YS5jb21tb24udjEuQ29tbWFuZENvbnRleHRSB2NvbnRleHQSIwoNY29s'
+    'bGVjdGlvbl9pZBgCIAEoCVIMY29sbGVjdGlvbklkEioKEXNlbGVjdGVkX2NsaXBfaWRzGAMgAy'
+    'gJUg9zZWxlY3RlZENsaXBJZHMSSAoIdmFyaWFudHMYBCADKAsyLC5jcmVhdGl2YW50YS5wcm9k'
+    'dWN0aW9uLnYxLkNsaXBWYXJpYW50Q29uZmlnUgh2YXJpYW50cxIpChB0YXJnZXRfcGxhdGZvcm'
+    '1zGAUgAygJUg90YXJnZXRQbGF0Zm9ybXM=');
+
+@$core
+    .Deprecated('Use clipFactoryServiceProcessClipsResponseDescriptor instead')
+const ClipFactoryServiceProcessClipsResponse$json = {
+  '1': 'ClipFactoryServiceProcessClipsResponse',
+  '2': [
+    {'1': 'video_edit_job_id', '3': 1, '4': 1, '5': 9, '10': 'videoEditJobId'},
+    {'1': 'status', '3': 2, '4': 1, '5': 9, '10': 'status'},
+    {'1': 'total_outputs', '3': 3, '4': 1, '5': 5, '10': 'totalOutputs'},
+    {
+      '1': 'outputs',
+      '3': 4,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.ProcessedClipOutput',
+      '10': 'outputs'
+    },
+    {'1': 'credits_deducted', '3': 5, '4': 1, '5': 9, '10': 'creditsDeducted'},
+    {'1': 'queue_position', '3': 6, '4': 1, '5': 5, '10': 'queuePosition'},
+  ],
+};
+
+/// Descriptor for `ClipFactoryServiceProcessClipsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clipFactoryServiceProcessClipsResponseDescriptor =
+    $convert.base64Decode(
+        'CiZDbGlwRmFjdG9yeVNlcnZpY2VQcm9jZXNzQ2xpcHNSZXNwb25zZRIpChF2aWRlb19lZGl0X2'
+        'pvYl9pZBgBIAEoCVIOdmlkZW9FZGl0Sm9iSWQSFgoGc3RhdHVzGAIgASgJUgZzdGF0dXMSIwoN'
+        'dG90YWxfb3V0cHV0cxgDIAEoBVIMdG90YWxPdXRwdXRzEkgKB291dHB1dHMYBCADKAsyLi5jcm'
+        'VhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlByb2Nlc3NlZENsaXBPdXRwdXRSB291dHB1dHMSKQoQ'
+        'Y3JlZGl0c19kZWR1Y3RlZBgFIAEoCVIPY3JlZGl0c0RlZHVjdGVkEiUKDnF1ZXVlX3Bvc2l0aW'
+        '9uGAYgASgFUg1xdWV1ZVBvc2l0aW9u');
