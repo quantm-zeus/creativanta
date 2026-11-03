@@ -795,6 +795,16 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 		}
 	case 21:
 		requiredFragments = []requiredFragment{
+			{"style_packs table", "CREATE TABLE IF NOT EXISTS style_packs"},
+			{"composite tenant FK on style_packs -> assets", "fk_style_packs_source_asset_id_tenant"},
+			{"tenant_isolation policy on style_packs", "CREATE POLICY tenant_isolation ON style_packs"},
+			{"admin_ops_scope policy on style_packs", "CREATE POLICY admin_ops_scope ON style_packs"},
+		}
+		requiredRLSTables = []string{
+			"style_packs",
+		}
+	case 22:
+		requiredFragments = []requiredFragment{
 			{"clip_collections table", "CREATE TABLE IF NOT EXISTS clip_collections"},
 			{"composite tenant FK on clip_collections -> assets", "fk_clip_collections_source_asset_id_tenant"},
 			{"composite tenant FK on clip_collections -> video_edit_jobs", "fk_clip_collections_video_edit_job_id_tenant"},

@@ -19,6 +19,16 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
+if [ -z "${GOTMPDIR:-}" ] && [ -d "$HOME/tmp" ]; then
+  export GOTMPDIR="$HOME/tmp"
+fi
+if [ -z "${TMPDIR:-}" ] && [ -d "$HOME/tmp" ]; then
+  export TMPDIR="$HOME/tmp"
+fi
+if [ -d "$HOME/go/bin" ] && [[ ":$PATH:" != *":$HOME/go/bin:"* ]]; then
+  export PATH="$HOME/go/bin:$PATH"
+fi
+
 cd "${REPO_ROOT}"
 
 echo "=== Go Backend Quality Gate ==="

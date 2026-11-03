@@ -1,0 +1,13 @@
+
+> @creativanta/web@0.1.0 test /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/web
+> vitest run src/lib/production/continuity_drift.test.ts
+
+
+ RUN  v3.0.7 /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p4-07/apps/web
+
+ ✓ src/lib/production/continuity_drift.test.ts (10 tests) 10ms
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  14:30:16
+   Duration  1.64s (transform 928ms, setup 0ms, collect 1.23s, tests 10ms, environment 0ms, prepare 101ms)

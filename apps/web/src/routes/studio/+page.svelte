@@ -215,12 +215,20 @@
 								/ {mode.durationSecs}s
 							{/if}
 						</span>
-						<button
-							type="button"
-							on:click={triggerBatchPreview}
-							class="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-blue-600 text-gray-200 hover:text-white transition-colors">
-							Khởi tạo →
-						</button>
+						{#if mode.route && mode.route !== '/studio'}
+							<a
+								href={mode.route}
+								class="text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+								Mở công cụ →
+							</a>
+						{:else}
+							<button
+								type="button"
+								on:click={triggerBatchPreview}
+								class="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-blue-600 text-gray-200 hover:text-white transition-colors">
+								Khởi tạo →
+							</button>
+						{/if}
 					</div>
 				</div>
 			{/each}

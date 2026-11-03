@@ -186,6 +186,9 @@ message Asset {
   string derivative_type = 24;
   google.protobuf.Timestamp created_at = 25;
   google.protobuf.Timestamp updated_at = 26;
+  float drift_score = 27;
+  string drift_severity = 28;
+  string drift_details_json = 29;
 }
 
 // BatchInputValidationItem evaluates single row in a batch (RULE-M07-006 & Section 28).
@@ -420,6 +423,12 @@ service AssetService {
 
   // Upload uploads a source asset safely with MIME and virus scan checks.
   rpc Upload(UploadRequest) returns (UploadResponse);
+
+  // EvaluateDrift evaluates asset drift against canonical references and blocks high drift (QA).
+  rpc EvaluateDrift(EvaluateDriftRequest) returns (EvaluateDriftResponse);
+
+  // OverrideDriftViolation resolves a blocking drift violation with manager justification.
+  rpc OverrideDriftViolation(OverrideDriftViolationRequest) returns (OverrideDriftViolationResponse);
 }
 
 // ============================================================================
@@ -1307,4 +1316,196 @@ service ClipFactoryService {
   // ProcessClips processes selected clips into platform variants and exports.
   // RBAC: Editor+ (production_job:manage).
   rpc ProcessClips(ClipFactoryServiceProcessClipsRequest) returns (ClipFactoryServiceProcessClipsResponse);
+}
+
+// ============================================================================
+// Style Learning, Character Preview & Drift QA (M07 EF-07 & M08)
+// ============================================================================
+
+// StyleElements captures 7 extracted styling parameters per screen W032 and M07 EF-07.
+message StyleElements {
+  string color_palette = 1;
+  string cut_pacing = 2;
+  string text_style = 3;
+  string music_style = 4;
+  string transitions = 5;
+  string hook_pattern = 6;
+  string visual_mood = 7;
+  int32 avg_cut_duration_ms = 8;
+  repeated string color_palette_hex = 9;
+}
+
+// StylePack represents a learned editing style pack per database_schema.md §22.7.
+message StylePack {
+  string style_pack_id = 1;
+  creativanta.common.v1.UUID workspace_id = 2;
+  string name = 3;
+  string source_asset_id = 4;
+  string extracted_style_json = 5;
+  bool is_active = 6;
+  string continuity_pack_id = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message StylePackServiceExtractRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  repeated string source_asset_ids = 2;
+}
+
+message StylePackServiceExtractResponse {
+  StyleElements elements = 1;
+  string credits_used = 2;
+  string extracted_style_json = 3;
+}
+
+message StylePackServiceCreateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string name = 2;
+  string source_asset_id = 3;
+  string extracted_style_json = 4;
+  bool link_to_continuity_pack = 5;
+}
+
+message StylePackServiceCreateResponse {
+  StylePack style_pack = 1;
+  string continuity_pack_id = 2;
+}
+
+message StylePackServiceGetRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string style_pack_id = 2;
+}
+
+message StylePackServiceGetResponse {
+  StylePack style_pack = 1;
+  StyleElements elements = 2;
+}
+
+message StylePackServiceListRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+message StylePackServiceListResponse {
+  repeated StylePack style_packs = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message StylePackServiceApplyRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string style_pack_id = 2;
+  string target_job_id = 3;
+  string target_mode = 4;
+}
+
+message StylePackServiceApplyResponse {
+  bool success = 1;
+  string message = 2;
+  string style_pack_id = 3;
+  string target_job_id = 4;
+}
+
+message StylePackServiceDeleteRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string style_pack_id = 2;
+}
+
+message StylePackServiceDeleteResponse {
+  bool success = 1;
+}
+
+// AIService Request/Response Messages
+message GenerateCharacterPreviewRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string character_id = 2;
+  string visual_prompt = 3;
+  string voice_sample_url = 4;
+  string aspect_ratio = 5;
+  int32 duration_seconds = 6;
+}
+
+message GenerateCharacterPreviewResponse {
+  string preview_asset_id = 1;
+  string preview_url = 2;
+  int32 duration_seconds = 3;
+  string credits_used = 4;
+  bool verified = 5;
+  string character_id = 6;
+}
+
+message QuoteCharacterPreviewRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string character_id = 2;
+  int32 duration_seconds = 3;
+}
+
+message QuoteCharacterPreviewResponse {
+  string quote_id = 1;
+  string credits_required = 2;
+  int32 duration_seconds = 3;
+  string provider = 4;
+  bool can_afford = 5;
+}
+
+message AnalyzeStyleRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  repeated string asset_ids = 2;
+}
+
+message AnalyzeStyleResponse {
+  StyleElements style_elements = 1;
+  string credits_used = 2;
+}
+
+// Drift QA Messages
+message DriftEvaluationResult {
+  string asset_id = 1;
+  string pack_id = 2;
+  int32 pack_version = 3;
+  float drift_score = 4;
+  string drift_severity = 5;
+  bool is_blocked = 6;
+  repeated string violation_reasons = 7;
+  string details_json = 8;
+  string violation_id = 9;
+}
+
+message EvaluateDriftRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string asset_id = 2;
+  string pack_id = 3;
+}
+
+message EvaluateDriftResponse {
+  DriftEvaluationResult result = 1;
+}
+
+message OverrideDriftViolationRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string violation_id = 2;
+  string override_reason = 3;
+}
+
+message OverrideDriftViolationResponse {
+  bool resolved = 1;
+  string asset_id = 2;
+  string new_quality_state = 3;
+}
+
+// StylePackService manages learned editing styles (api_endpoint_map.md §7.7).
+service StylePackService {
+  rpc Extract(StylePackServiceExtractRequest) returns (StylePackServiceExtractResponse);
+  rpc Create(StylePackServiceCreateRequest) returns (StylePackServiceCreateResponse);
+  rpc Get(StylePackServiceGetRequest) returns (StylePackServiceGetResponse);
+  rpc List(StylePackServiceListRequest) returns (StylePackServiceListResponse);
+  rpc Apply(StylePackServiceApplyRequest) returns (StylePackServiceApplyResponse);
+  rpc Delete(StylePackServiceDeleteRequest) returns (StylePackServiceDeleteResponse);
+}
+
+// AIService manages AI style analysis, preview generation and quoting (api_endpoint_map.md §13, §14).
+service AIService {
+  rpc GenerateCharacterPreview(GenerateCharacterPreviewRequest) returns (GenerateCharacterPreviewResponse);
+  rpc QuoteCharacterPreview(QuoteCharacterPreviewRequest) returns (QuoteCharacterPreviewResponse);
+  rpc AnalyzeStyle(AnalyzeStyleRequest) returns (AnalyzeStyleResponse);
 }

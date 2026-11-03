@@ -841,6 +841,9 @@ class Asset extends $pb.GeneratedMessage {
     $core.String? derivativeType,
     $1.Timestamp? createdAt,
     $1.Timestamp? updatedAt,
+    $core.double? driftScore,
+    $core.String? driftSeverity,
+    $core.String? driftDetailsJson,
   }) {
     final result = Asset._();
     if (assetId != null) result.assetId = assetId;
@@ -872,6 +875,9 @@ class Asset extends $pb.GeneratedMessage {
     if (derivativeType != null) result.derivativeType = derivativeType;
     if (createdAt != null) result.createdAt = createdAt;
     if (updatedAt != null) result.updatedAt = updatedAt;
+    if (driftScore != null) result.driftScore = driftScore;
+    if (driftSeverity != null) result.driftSeverity = driftSeverity;
+    if (driftDetailsJson != null) result.driftDetailsJson = driftDetailsJson;
     return result;
   }
 
@@ -920,6 +926,9 @@ class Asset extends $pb.GeneratedMessage {
         subBuilder: $1.Timestamp.$_createMessage)
     ..aOM<$1.Timestamp>(26, _omitFieldNames ? '' : 'updatedAt',
         subBuilder: $1.Timestamp.$_createMessage)
+    ..aD(27, _omitFieldNames ? '' : 'driftScore', fieldType: $pb.PbFieldType.OF)
+    ..aOS(28, _omitFieldNames ? '' : 'driftSeverity')
+    ..aOS(29, _omitFieldNames ? '' : 'driftDetailsJson')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1167,6 +1176,33 @@ class Asset extends $pb.GeneratedMessage {
   void clearUpdatedAt() => $_clearField(26);
   @$pb.TagNumber(26)
   $1.Timestamp ensureUpdatedAt() => $_ensure(25);
+
+  @$pb.TagNumber(27)
+  $core.double get driftScore => $_getN(26);
+  @$pb.TagNumber(27)
+  set driftScore($core.double value) => $_setFloat(26, value);
+  @$pb.TagNumber(27)
+  $core.bool hasDriftScore() => $_has(26);
+  @$pb.TagNumber(27)
+  void clearDriftScore() => $_clearField(27);
+
+  @$pb.TagNumber(28)
+  $core.String get driftSeverity => $_getSZ(27);
+  @$pb.TagNumber(28)
+  set driftSeverity($core.String value) => $_setString(27, value);
+  @$pb.TagNumber(28)
+  $core.bool hasDriftSeverity() => $_has(27);
+  @$pb.TagNumber(28)
+  void clearDriftSeverity() => $_clearField(28);
+
+  @$pb.TagNumber(29)
+  $core.String get driftDetailsJson => $_getSZ(28);
+  @$pb.TagNumber(29)
+  set driftDetailsJson($core.String value) => $_setString(28, value);
+  @$pb.TagNumber(29)
+  $core.bool hasDriftDetailsJson() => $_has(28);
+  @$pb.TagNumber(29)
+  void clearDriftDetailsJson() => $_clearField(29);
 }
 
 /// BatchInputValidationItem evaluates single row in a batch (RULE-M07-006 & Section 28).
@@ -13834,6 +13870,2419 @@ class ClipFactoryServiceProcessClipsResponse extends $pb.GeneratedMessage {
   $core.bool hasQueuePosition() => $_has(5);
   @$pb.TagNumber(6)
   void clearQueuePosition() => $_clearField(6);
+}
+
+/// StyleElements captures 7 extracted styling parameters per screen W032 and M07 EF-07.
+class StyleElements extends $pb.GeneratedMessage {
+  factory StyleElements({
+    $core.String? colorPalette,
+    $core.String? cutPacing,
+    $core.String? textStyle,
+    $core.String? musicStyle,
+    $core.String? transitions,
+    $core.String? hookPattern,
+    $core.String? visualMood,
+    $core.int? avgCutDurationMs,
+    $core.Iterable<$core.String>? colorPaletteHex,
+  }) {
+    final result = StyleElements._();
+    if (colorPalette != null) result.colorPalette = colorPalette;
+    if (cutPacing != null) result.cutPacing = cutPacing;
+    if (textStyle != null) result.textStyle = textStyle;
+    if (musicStyle != null) result.musicStyle = musicStyle;
+    if (transitions != null) result.transitions = transitions;
+    if (hookPattern != null) result.hookPattern = hookPattern;
+    if (visualMood != null) result.visualMood = visualMood;
+    if (avgCutDurationMs != null) result.avgCutDurationMs = avgCutDurationMs;
+    if (colorPaletteHex != null) result.colorPaletteHex.addAll(colorPaletteHex);
+    return result;
+  }
+
+  StyleElements._();
+
+  factory StyleElements.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StyleElements()..mergeFromBuffer(data, registry);
+  factory StyleElements.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StyleElements()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StyleElements',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: StyleElements.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'colorPalette')
+    ..aOS(2, _omitFieldNames ? '' : 'cutPacing')
+    ..aOS(3, _omitFieldNames ? '' : 'textStyle')
+    ..aOS(4, _omitFieldNames ? '' : 'musicStyle')
+    ..aOS(5, _omitFieldNames ? '' : 'transitions')
+    ..aOS(6, _omitFieldNames ? '' : 'hookPattern')
+    ..aOS(7, _omitFieldNames ? '' : 'visualMood')
+    ..aI(8, _omitFieldNames ? '' : 'avgCutDurationMs')
+    ..pPS(9, _omitFieldNames ? '' : 'colorPaletteHex')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StyleElements clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StyleElements copyWith(void Function(StyleElements) updates) =>
+      super.copyWith((message) => updates(message as StyleElements))
+          as StyleElements;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use StyleElements() / StyleElements.new instead')
+  static StyleElements create() => StyleElements._();
+  static $pb.GeneratedMessage $_createMessage() => StyleElements._();
+  @$core.override
+  StyleElements createEmptyInstance() => StyleElements._();
+  @$core.pragma('dart2js:noInline')
+  static StyleElements getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<StyleElements>(
+          StyleElements.$_createMessage);
+  static StyleElements? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get colorPalette => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set colorPalette($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasColorPalette() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearColorPalette() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get cutPacing => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set cutPacing($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCutPacing() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCutPacing() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get textStyle => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set textStyle($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTextStyle() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTextStyle() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get musicStyle => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set musicStyle($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasMusicStyle() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearMusicStyle() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get transitions => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set transitions($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasTransitions() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearTransitions() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get hookPattern => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set hookPattern($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasHookPattern() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearHookPattern() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get visualMood => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set visualMood($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasVisualMood() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearVisualMood() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.int get avgCutDurationMs => $_getIZ(7);
+  @$pb.TagNumber(8)
+  set avgCutDurationMs($core.int value) => $_setSignedInt32(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasAvgCutDurationMs() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearAvgCutDurationMs() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $pb.PbList<$core.String> get colorPaletteHex => $_getList(8);
+}
+
+/// StylePack represents a learned editing style pack per database_schema.md §22.7.
+class StylePack extends $pb.GeneratedMessage {
+  factory StylePack({
+    $core.String? stylePackId,
+    $2.UUID? workspaceId,
+    $core.String? name,
+    $core.String? sourceAssetId,
+    $core.String? extractedStyleJson,
+    $core.bool? isActive,
+    $core.String? continuityPackId,
+    $1.Timestamp? createdAt,
+    $1.Timestamp? updatedAt,
+  }) {
+    final result = StylePack._();
+    if (stylePackId != null) result.stylePackId = stylePackId;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (name != null) result.name = name;
+    if (sourceAssetId != null) result.sourceAssetId = sourceAssetId;
+    if (extractedStyleJson != null)
+      result.extractedStyleJson = extractedStyleJson;
+    if (isActive != null) result.isActive = isActive;
+    if (continuityPackId != null) result.continuityPackId = continuityPackId;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    return result;
+  }
+
+  StylePack._();
+
+  factory StylePack.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePack()..mergeFromBuffer(data, registry);
+  factory StylePack.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePack()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StylePack',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: StylePack.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'stylePackId')
+    ..aOM<$2.UUID>(2, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(3, _omitFieldNames ? '' : 'name')
+    ..aOS(4, _omitFieldNames ? '' : 'sourceAssetId')
+    ..aOS(5, _omitFieldNames ? '' : 'extractedStyleJson')
+    ..aOB(6, _omitFieldNames ? '' : 'isActive')
+    ..aOS(7, _omitFieldNames ? '' : 'continuityPackId')
+    ..aOM<$1.Timestamp>(8, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOM<$1.Timestamp>(9, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePack clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePack copyWith(void Function(StylePack) updates) =>
+      super.copyWith((message) => updates(message as StylePack)) as StylePack;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use StylePack() / StylePack.new instead')
+  static StylePack create() => StylePack._();
+  static $pb.GeneratedMessage $_createMessage() => StylePack._();
+  @$core.override
+  StylePack createEmptyInstance() => StylePack._();
+  @$core.pragma('dart2js:noInline')
+  static StylePack getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StylePack>(StylePack.$_createMessage);
+  static StylePack? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get stylePackId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set stylePackId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasStylePackId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearStylePackId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $2.UUID get workspaceId => $_getN(1);
+  @$pb.TagNumber(2)
+  set workspaceId($2.UUID value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.UUID ensureWorkspaceId() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $core.String get name => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set name($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasName() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearName() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get sourceAssetId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set sourceAssetId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSourceAssetId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSourceAssetId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get extractedStyleJson => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set extractedStyleJson($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasExtractedStyleJson() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearExtractedStyleJson() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.bool get isActive => $_getBF(5);
+  @$pb.TagNumber(6)
+  set isActive($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasIsActive() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearIsActive() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get continuityPackId => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set continuityPackId($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasContinuityPackId() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearContinuityPackId() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $1.Timestamp get createdAt => $_getN(7);
+  @$pb.TagNumber(8)
+  set createdAt($1.Timestamp value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasCreatedAt() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearCreatedAt() => $_clearField(8);
+  @$pb.TagNumber(8)
+  $1.Timestamp ensureCreatedAt() => $_ensure(7);
+
+  @$pb.TagNumber(9)
+  $1.Timestamp get updatedAt => $_getN(8);
+  @$pb.TagNumber(9)
+  set updatedAt($1.Timestamp value) => $_setField(9, value);
+  @$pb.TagNumber(9)
+  $core.bool hasUpdatedAt() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearUpdatedAt() => $_clearField(9);
+  @$pb.TagNumber(9)
+  $1.Timestamp ensureUpdatedAt() => $_ensure(8);
+}
+
+class StylePackServiceExtractRequest extends $pb.GeneratedMessage {
+  factory StylePackServiceExtractRequest({
+    $2.CommandContext? context,
+    $core.Iterable<$core.String>? sourceAssetIds,
+  }) {
+    final result = StylePackServiceExtractRequest._();
+    if (context != null) result.context = context;
+    if (sourceAssetIds != null) result.sourceAssetIds.addAll(sourceAssetIds);
+    return result;
+  }
+
+  StylePackServiceExtractRequest._();
+
+  factory StylePackServiceExtractRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceExtractRequest()..mergeFromBuffer(data, registry);
+  factory StylePackServiceExtractRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceExtractRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StylePackServiceExtractRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: StylePackServiceExtractRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..pPS(2, _omitFieldNames ? '' : 'sourceAssetIds')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceExtractRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceExtractRequest copyWith(
+          void Function(StylePackServiceExtractRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as StylePackServiceExtractRequest))
+          as StylePackServiceExtractRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StylePackServiceExtractRequest() / StylePackServiceExtractRequest.new instead')
+  static StylePackServiceExtractRequest create() =>
+      StylePackServiceExtractRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StylePackServiceExtractRequest._();
+  @$core.override
+  StylePackServiceExtractRequest createEmptyInstance() =>
+      StylePackServiceExtractRequest._();
+  @$core.pragma('dart2js:noInline')
+  static StylePackServiceExtractRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StylePackServiceExtractRequest>(
+          StylePackServiceExtractRequest.$_createMessage);
+  static StylePackServiceExtractRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<$core.String> get sourceAssetIds => $_getList(1);
+}
+
+class StylePackServiceExtractResponse extends $pb.GeneratedMessage {
+  factory StylePackServiceExtractResponse({
+    StyleElements? elements,
+    $core.String? creditsUsed,
+    $core.String? extractedStyleJson,
+  }) {
+    final result = StylePackServiceExtractResponse._();
+    if (elements != null) result.elements = elements;
+    if (creditsUsed != null) result.creditsUsed = creditsUsed;
+    if (extractedStyleJson != null)
+      result.extractedStyleJson = extractedStyleJson;
+    return result;
+  }
+
+  StylePackServiceExtractResponse._();
+
+  factory StylePackServiceExtractResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceExtractResponse()..mergeFromBuffer(data, registry);
+  factory StylePackServiceExtractResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceExtractResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StylePackServiceExtractResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: StylePackServiceExtractResponse.$_createMessage)
+    ..aOM<StyleElements>(1, _omitFieldNames ? '' : 'elements',
+        subBuilder: StyleElements.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'creditsUsed')
+    ..aOS(3, _omitFieldNames ? '' : 'extractedStyleJson')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceExtractResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceExtractResponse copyWith(
+          void Function(StylePackServiceExtractResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as StylePackServiceExtractResponse))
+          as StylePackServiceExtractResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StylePackServiceExtractResponse() / StylePackServiceExtractResponse.new instead')
+  static StylePackServiceExtractResponse create() =>
+      StylePackServiceExtractResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StylePackServiceExtractResponse._();
+  @$core.override
+  StylePackServiceExtractResponse createEmptyInstance() =>
+      StylePackServiceExtractResponse._();
+  @$core.pragma('dart2js:noInline')
+  static StylePackServiceExtractResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StylePackServiceExtractResponse>(
+          StylePackServiceExtractResponse.$_createMessage);
+  static StylePackServiceExtractResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  StyleElements get elements => $_getN(0);
+  @$pb.TagNumber(1)
+  set elements(StyleElements value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasElements() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearElements() => $_clearField(1);
+  @$pb.TagNumber(1)
+  StyleElements ensureElements() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get creditsUsed => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set creditsUsed($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCreditsUsed() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCreditsUsed() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get extractedStyleJson => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set extractedStyleJson($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasExtractedStyleJson() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearExtractedStyleJson() => $_clearField(3);
+}
+
+class StylePackServiceCreateRequest extends $pb.GeneratedMessage {
+  factory StylePackServiceCreateRequest({
+    $2.CommandContext? context,
+    $core.String? name,
+    $core.String? sourceAssetId,
+    $core.String? extractedStyleJson,
+    $core.bool? linkToContinuityPack,
+  }) {
+    final result = StylePackServiceCreateRequest._();
+    if (context != null) result.context = context;
+    if (name != null) result.name = name;
+    if (sourceAssetId != null) result.sourceAssetId = sourceAssetId;
+    if (extractedStyleJson != null)
+      result.extractedStyleJson = extractedStyleJson;
+    if (linkToContinuityPack != null)
+      result.linkToContinuityPack = linkToContinuityPack;
+    return result;
+  }
+
+  StylePackServiceCreateRequest._();
+
+  factory StylePackServiceCreateRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceCreateRequest()..mergeFromBuffer(data, registry);
+  factory StylePackServiceCreateRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceCreateRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StylePackServiceCreateRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: StylePackServiceCreateRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..aOS(3, _omitFieldNames ? '' : 'sourceAssetId')
+    ..aOS(4, _omitFieldNames ? '' : 'extractedStyleJson')
+    ..aOB(5, _omitFieldNames ? '' : 'linkToContinuityPack')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceCreateRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceCreateRequest copyWith(
+          void Function(StylePackServiceCreateRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as StylePackServiceCreateRequest))
+          as StylePackServiceCreateRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StylePackServiceCreateRequest() / StylePackServiceCreateRequest.new instead')
+  static StylePackServiceCreateRequest create() =>
+      StylePackServiceCreateRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StylePackServiceCreateRequest._();
+  @$core.override
+  StylePackServiceCreateRequest createEmptyInstance() =>
+      StylePackServiceCreateRequest._();
+  @$core.pragma('dart2js:noInline')
+  static StylePackServiceCreateRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StylePackServiceCreateRequest>(
+          StylePackServiceCreateRequest.$_createMessage);
+  static StylePackServiceCreateRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get sourceAssetId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set sourceAssetId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSourceAssetId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSourceAssetId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get extractedStyleJson => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set extractedStyleJson($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasExtractedStyleJson() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearExtractedStyleJson() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get linkToContinuityPack => $_getBF(4);
+  @$pb.TagNumber(5)
+  set linkToContinuityPack($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLinkToContinuityPack() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLinkToContinuityPack() => $_clearField(5);
+}
+
+class StylePackServiceCreateResponse extends $pb.GeneratedMessage {
+  factory StylePackServiceCreateResponse({
+    StylePack? stylePack,
+    $core.String? continuityPackId,
+  }) {
+    final result = StylePackServiceCreateResponse._();
+    if (stylePack != null) result.stylePack = stylePack;
+    if (continuityPackId != null) result.continuityPackId = continuityPackId;
+    return result;
+  }
+
+  StylePackServiceCreateResponse._();
+
+  factory StylePackServiceCreateResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceCreateResponse()..mergeFromBuffer(data, registry);
+  factory StylePackServiceCreateResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceCreateResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StylePackServiceCreateResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: StylePackServiceCreateResponse.$_createMessage)
+    ..aOM<StylePack>(1, _omitFieldNames ? '' : 'stylePack',
+        subBuilder: StylePack.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'continuityPackId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceCreateResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceCreateResponse copyWith(
+          void Function(StylePackServiceCreateResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as StylePackServiceCreateResponse))
+          as StylePackServiceCreateResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StylePackServiceCreateResponse() / StylePackServiceCreateResponse.new instead')
+  static StylePackServiceCreateResponse create() =>
+      StylePackServiceCreateResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StylePackServiceCreateResponse._();
+  @$core.override
+  StylePackServiceCreateResponse createEmptyInstance() =>
+      StylePackServiceCreateResponse._();
+  @$core.pragma('dart2js:noInline')
+  static StylePackServiceCreateResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StylePackServiceCreateResponse>(
+          StylePackServiceCreateResponse.$_createMessage);
+  static StylePackServiceCreateResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  StylePack get stylePack => $_getN(0);
+  @$pb.TagNumber(1)
+  set stylePack(StylePack value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasStylePack() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearStylePack() => $_clearField(1);
+  @$pb.TagNumber(1)
+  StylePack ensureStylePack() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get continuityPackId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set continuityPackId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasContinuityPackId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearContinuityPackId() => $_clearField(2);
+}
+
+class StylePackServiceGetRequest extends $pb.GeneratedMessage {
+  factory StylePackServiceGetRequest({
+    $2.UUID? workspaceId,
+    $core.String? stylePackId,
+  }) {
+    final result = StylePackServiceGetRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (stylePackId != null) result.stylePackId = stylePackId;
+    return result;
+  }
+
+  StylePackServiceGetRequest._();
+
+  factory StylePackServiceGetRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceGetRequest()..mergeFromBuffer(data, registry);
+  factory StylePackServiceGetRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceGetRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StylePackServiceGetRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: StylePackServiceGetRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'stylePackId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceGetRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceGetRequest copyWith(
+          void Function(StylePackServiceGetRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as StylePackServiceGetRequest))
+          as StylePackServiceGetRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StylePackServiceGetRequest() / StylePackServiceGetRequest.new instead')
+  static StylePackServiceGetRequest create() => StylePackServiceGetRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StylePackServiceGetRequest._();
+  @$core.override
+  StylePackServiceGetRequest createEmptyInstance() =>
+      StylePackServiceGetRequest._();
+  @$core.pragma('dart2js:noInline')
+  static StylePackServiceGetRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StylePackServiceGetRequest>(
+          StylePackServiceGetRequest.$_createMessage);
+  static StylePackServiceGetRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get stylePackId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set stylePackId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasStylePackId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearStylePackId() => $_clearField(2);
+}
+
+class StylePackServiceGetResponse extends $pb.GeneratedMessage {
+  factory StylePackServiceGetResponse({
+    StylePack? stylePack,
+    StyleElements? elements,
+  }) {
+    final result = StylePackServiceGetResponse._();
+    if (stylePack != null) result.stylePack = stylePack;
+    if (elements != null) result.elements = elements;
+    return result;
+  }
+
+  StylePackServiceGetResponse._();
+
+  factory StylePackServiceGetResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceGetResponse()..mergeFromBuffer(data, registry);
+  factory StylePackServiceGetResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceGetResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StylePackServiceGetResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: StylePackServiceGetResponse.$_createMessage)
+    ..aOM<StylePack>(1, _omitFieldNames ? '' : 'stylePack',
+        subBuilder: StylePack.$_createMessage)
+    ..aOM<StyleElements>(2, _omitFieldNames ? '' : 'elements',
+        subBuilder: StyleElements.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceGetResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceGetResponse copyWith(
+          void Function(StylePackServiceGetResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as StylePackServiceGetResponse))
+          as StylePackServiceGetResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StylePackServiceGetResponse() / StylePackServiceGetResponse.new instead')
+  static StylePackServiceGetResponse create() =>
+      StylePackServiceGetResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StylePackServiceGetResponse._();
+  @$core.override
+  StylePackServiceGetResponse createEmptyInstance() =>
+      StylePackServiceGetResponse._();
+  @$core.pragma('dart2js:noInline')
+  static StylePackServiceGetResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StylePackServiceGetResponse>(
+          StylePackServiceGetResponse.$_createMessage);
+  static StylePackServiceGetResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  StylePack get stylePack => $_getN(0);
+  @$pb.TagNumber(1)
+  set stylePack(StylePack value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasStylePack() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearStylePack() => $_clearField(1);
+  @$pb.TagNumber(1)
+  StylePack ensureStylePack() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  StyleElements get elements => $_getN(1);
+  @$pb.TagNumber(2)
+  set elements(StyleElements value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasElements() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearElements() => $_clearField(2);
+  @$pb.TagNumber(2)
+  StyleElements ensureElements() => $_ensure(1);
+}
+
+class StylePackServiceListRequest extends $pb.GeneratedMessage {
+  factory StylePackServiceListRequest({
+    $2.UUID? workspaceId,
+    $2.Pagination? pagination,
+  }) {
+    final result = StylePackServiceListRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  StylePackServiceListRequest._();
+
+  factory StylePackServiceListRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceListRequest()..mergeFromBuffer(data, registry);
+  factory StylePackServiceListRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceListRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StylePackServiceListRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: StylePackServiceListRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOM<$2.Pagination>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.Pagination.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceListRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceListRequest copyWith(
+          void Function(StylePackServiceListRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as StylePackServiceListRequest))
+          as StylePackServiceListRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StylePackServiceListRequest() / StylePackServiceListRequest.new instead')
+  static StylePackServiceListRequest create() =>
+      StylePackServiceListRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StylePackServiceListRequest._();
+  @$core.override
+  StylePackServiceListRequest createEmptyInstance() =>
+      StylePackServiceListRequest._();
+  @$core.pragma('dart2js:noInline')
+  static StylePackServiceListRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StylePackServiceListRequest>(
+          StylePackServiceListRequest.$_createMessage);
+  static StylePackServiceListRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $2.Pagination get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($2.Pagination value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.Pagination ensurePagination() => $_ensure(1);
+}
+
+class StylePackServiceListResponse extends $pb.GeneratedMessage {
+  factory StylePackServiceListResponse({
+    $core.Iterable<StylePack>? stylePacks,
+    $2.PaginatedResponse? pagination,
+  }) {
+    final result = StylePackServiceListResponse._();
+    if (stylePacks != null) result.stylePacks.addAll(stylePacks);
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  StylePackServiceListResponse._();
+
+  factory StylePackServiceListResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceListResponse()..mergeFromBuffer(data, registry);
+  factory StylePackServiceListResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceListResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StylePackServiceListResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: StylePackServiceListResponse.$_createMessage)
+    ..pPM<StylePack>(1, _omitFieldNames ? '' : 'stylePacks',
+        subBuilder: StylePack.$_createMessage)
+    ..aOM<$2.PaginatedResponse>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.PaginatedResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceListResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceListResponse copyWith(
+          void Function(StylePackServiceListResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as StylePackServiceListResponse))
+          as StylePackServiceListResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StylePackServiceListResponse() / StylePackServiceListResponse.new instead')
+  static StylePackServiceListResponse create() =>
+      StylePackServiceListResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StylePackServiceListResponse._();
+  @$core.override
+  StylePackServiceListResponse createEmptyInstance() =>
+      StylePackServiceListResponse._();
+  @$core.pragma('dart2js:noInline')
+  static StylePackServiceListResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StylePackServiceListResponse>(
+          StylePackServiceListResponse.$_createMessage);
+  static StylePackServiceListResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<StylePack> get stylePacks => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($2.PaginatedResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse ensurePagination() => $_ensure(1);
+}
+
+class StylePackServiceApplyRequest extends $pb.GeneratedMessage {
+  factory StylePackServiceApplyRequest({
+    $2.CommandContext? context,
+    $core.String? stylePackId,
+    $core.String? targetJobId,
+    $core.String? targetMode,
+  }) {
+    final result = StylePackServiceApplyRequest._();
+    if (context != null) result.context = context;
+    if (stylePackId != null) result.stylePackId = stylePackId;
+    if (targetJobId != null) result.targetJobId = targetJobId;
+    if (targetMode != null) result.targetMode = targetMode;
+    return result;
+  }
+
+  StylePackServiceApplyRequest._();
+
+  factory StylePackServiceApplyRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceApplyRequest()..mergeFromBuffer(data, registry);
+  factory StylePackServiceApplyRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceApplyRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StylePackServiceApplyRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: StylePackServiceApplyRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'stylePackId')
+    ..aOS(3, _omitFieldNames ? '' : 'targetJobId')
+    ..aOS(4, _omitFieldNames ? '' : 'targetMode')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceApplyRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceApplyRequest copyWith(
+          void Function(StylePackServiceApplyRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as StylePackServiceApplyRequest))
+          as StylePackServiceApplyRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StylePackServiceApplyRequest() / StylePackServiceApplyRequest.new instead')
+  static StylePackServiceApplyRequest create() =>
+      StylePackServiceApplyRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StylePackServiceApplyRequest._();
+  @$core.override
+  StylePackServiceApplyRequest createEmptyInstance() =>
+      StylePackServiceApplyRequest._();
+  @$core.pragma('dart2js:noInline')
+  static StylePackServiceApplyRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StylePackServiceApplyRequest>(
+          StylePackServiceApplyRequest.$_createMessage);
+  static StylePackServiceApplyRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get stylePackId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set stylePackId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasStylePackId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearStylePackId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get targetJobId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set targetJobId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTargetJobId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTargetJobId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get targetMode => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set targetMode($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTargetMode() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTargetMode() => $_clearField(4);
+}
+
+class StylePackServiceApplyResponse extends $pb.GeneratedMessage {
+  factory StylePackServiceApplyResponse({
+    $core.bool? success,
+    $core.String? message,
+    $core.String? stylePackId,
+    $core.String? targetJobId,
+  }) {
+    final result = StylePackServiceApplyResponse._();
+    if (success != null) result.success = success;
+    if (message != null) result.message = message;
+    if (stylePackId != null) result.stylePackId = stylePackId;
+    if (targetJobId != null) result.targetJobId = targetJobId;
+    return result;
+  }
+
+  StylePackServiceApplyResponse._();
+
+  factory StylePackServiceApplyResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceApplyResponse()..mergeFromBuffer(data, registry);
+  factory StylePackServiceApplyResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceApplyResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StylePackServiceApplyResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: StylePackServiceApplyResponse.$_createMessage)
+    ..aOB(1, _omitFieldNames ? '' : 'success')
+    ..aOS(2, _omitFieldNames ? '' : 'message')
+    ..aOS(3, _omitFieldNames ? '' : 'stylePackId')
+    ..aOS(4, _omitFieldNames ? '' : 'targetJobId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceApplyResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceApplyResponse copyWith(
+          void Function(StylePackServiceApplyResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as StylePackServiceApplyResponse))
+          as StylePackServiceApplyResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StylePackServiceApplyResponse() / StylePackServiceApplyResponse.new instead')
+  static StylePackServiceApplyResponse create() =>
+      StylePackServiceApplyResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StylePackServiceApplyResponse._();
+  @$core.override
+  StylePackServiceApplyResponse createEmptyInstance() =>
+      StylePackServiceApplyResponse._();
+  @$core.pragma('dart2js:noInline')
+  static StylePackServiceApplyResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StylePackServiceApplyResponse>(
+          StylePackServiceApplyResponse.$_createMessage);
+  static StylePackServiceApplyResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get success => $_getBF(0);
+  @$pb.TagNumber(1)
+  set success($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get message => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set message($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasMessage() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearMessage() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get stylePackId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set stylePackId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasStylePackId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearStylePackId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get targetJobId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set targetJobId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTargetJobId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTargetJobId() => $_clearField(4);
+}
+
+class StylePackServiceDeleteRequest extends $pb.GeneratedMessage {
+  factory StylePackServiceDeleteRequest({
+    $2.CommandContext? context,
+    $core.String? stylePackId,
+  }) {
+    final result = StylePackServiceDeleteRequest._();
+    if (context != null) result.context = context;
+    if (stylePackId != null) result.stylePackId = stylePackId;
+    return result;
+  }
+
+  StylePackServiceDeleteRequest._();
+
+  factory StylePackServiceDeleteRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceDeleteRequest()..mergeFromBuffer(data, registry);
+  factory StylePackServiceDeleteRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceDeleteRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StylePackServiceDeleteRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: StylePackServiceDeleteRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'stylePackId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceDeleteRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceDeleteRequest copyWith(
+          void Function(StylePackServiceDeleteRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as StylePackServiceDeleteRequest))
+          as StylePackServiceDeleteRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StylePackServiceDeleteRequest() / StylePackServiceDeleteRequest.new instead')
+  static StylePackServiceDeleteRequest create() =>
+      StylePackServiceDeleteRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StylePackServiceDeleteRequest._();
+  @$core.override
+  StylePackServiceDeleteRequest createEmptyInstance() =>
+      StylePackServiceDeleteRequest._();
+  @$core.pragma('dart2js:noInline')
+  static StylePackServiceDeleteRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StylePackServiceDeleteRequest>(
+          StylePackServiceDeleteRequest.$_createMessage);
+  static StylePackServiceDeleteRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get stylePackId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set stylePackId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasStylePackId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearStylePackId() => $_clearField(2);
+}
+
+class StylePackServiceDeleteResponse extends $pb.GeneratedMessage {
+  factory StylePackServiceDeleteResponse({
+    $core.bool? success,
+  }) {
+    final result = StylePackServiceDeleteResponse._();
+    if (success != null) result.success = success;
+    return result;
+  }
+
+  StylePackServiceDeleteResponse._();
+
+  factory StylePackServiceDeleteResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceDeleteResponse()..mergeFromBuffer(data, registry);
+  factory StylePackServiceDeleteResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StylePackServiceDeleteResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StylePackServiceDeleteResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: StylePackServiceDeleteResponse.$_createMessage)
+    ..aOB(1, _omitFieldNames ? '' : 'success')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceDeleteResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StylePackServiceDeleteResponse copyWith(
+          void Function(StylePackServiceDeleteResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as StylePackServiceDeleteResponse))
+          as StylePackServiceDeleteResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StylePackServiceDeleteResponse() / StylePackServiceDeleteResponse.new instead')
+  static StylePackServiceDeleteResponse create() =>
+      StylePackServiceDeleteResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StylePackServiceDeleteResponse._();
+  @$core.override
+  StylePackServiceDeleteResponse createEmptyInstance() =>
+      StylePackServiceDeleteResponse._();
+  @$core.pragma('dart2js:noInline')
+  static StylePackServiceDeleteResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StylePackServiceDeleteResponse>(
+          StylePackServiceDeleteResponse.$_createMessage);
+  static StylePackServiceDeleteResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get success => $_getBF(0);
+  @$pb.TagNumber(1)
+  set success($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+}
+
+/// AIService Request/Response Messages
+class GenerateCharacterPreviewRequest extends $pb.GeneratedMessage {
+  factory GenerateCharacterPreviewRequest({
+    $2.CommandContext? context,
+    $core.String? characterId,
+    $core.String? visualPrompt,
+    $core.String? voiceSampleUrl,
+    $core.String? aspectRatio,
+    $core.int? durationSeconds,
+  }) {
+    final result = GenerateCharacterPreviewRequest._();
+    if (context != null) result.context = context;
+    if (characterId != null) result.characterId = characterId;
+    if (visualPrompt != null) result.visualPrompt = visualPrompt;
+    if (voiceSampleUrl != null) result.voiceSampleUrl = voiceSampleUrl;
+    if (aspectRatio != null) result.aspectRatio = aspectRatio;
+    if (durationSeconds != null) result.durationSeconds = durationSeconds;
+    return result;
+  }
+
+  GenerateCharacterPreviewRequest._();
+
+  factory GenerateCharacterPreviewRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GenerateCharacterPreviewRequest()..mergeFromBuffer(data, registry);
+  factory GenerateCharacterPreviewRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GenerateCharacterPreviewRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GenerateCharacterPreviewRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: GenerateCharacterPreviewRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'characterId')
+    ..aOS(3, _omitFieldNames ? '' : 'visualPrompt')
+    ..aOS(4, _omitFieldNames ? '' : 'voiceSampleUrl')
+    ..aOS(5, _omitFieldNames ? '' : 'aspectRatio')
+    ..aI(6, _omitFieldNames ? '' : 'durationSeconds')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GenerateCharacterPreviewRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GenerateCharacterPreviewRequest copyWith(
+          void Function(GenerateCharacterPreviewRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as GenerateCharacterPreviewRequest))
+          as GenerateCharacterPreviewRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GenerateCharacterPreviewRequest() / GenerateCharacterPreviewRequest.new instead')
+  static GenerateCharacterPreviewRequest create() =>
+      GenerateCharacterPreviewRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      GenerateCharacterPreviewRequest._();
+  @$core.override
+  GenerateCharacterPreviewRequest createEmptyInstance() =>
+      GenerateCharacterPreviewRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GenerateCharacterPreviewRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GenerateCharacterPreviewRequest>(
+          GenerateCharacterPreviewRequest.$_createMessage);
+  static GenerateCharacterPreviewRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get characterId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set characterId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCharacterId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCharacterId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get visualPrompt => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set visualPrompt($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasVisualPrompt() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearVisualPrompt() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get voiceSampleUrl => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set voiceSampleUrl($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasVoiceSampleUrl() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearVoiceSampleUrl() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get aspectRatio => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set aspectRatio($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasAspectRatio() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearAspectRatio() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.int get durationSeconds => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set durationSeconds($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasDurationSeconds() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearDurationSeconds() => $_clearField(6);
+}
+
+class GenerateCharacterPreviewResponse extends $pb.GeneratedMessage {
+  factory GenerateCharacterPreviewResponse({
+    $core.String? previewAssetId,
+    $core.String? previewUrl,
+    $core.int? durationSeconds,
+    $core.String? creditsUsed,
+    $core.bool? verified,
+    $core.String? characterId,
+  }) {
+    final result = GenerateCharacterPreviewResponse._();
+    if (previewAssetId != null) result.previewAssetId = previewAssetId;
+    if (previewUrl != null) result.previewUrl = previewUrl;
+    if (durationSeconds != null) result.durationSeconds = durationSeconds;
+    if (creditsUsed != null) result.creditsUsed = creditsUsed;
+    if (verified != null) result.verified = verified;
+    if (characterId != null) result.characterId = characterId;
+    return result;
+  }
+
+  GenerateCharacterPreviewResponse._();
+
+  factory GenerateCharacterPreviewResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GenerateCharacterPreviewResponse()..mergeFromBuffer(data, registry);
+  factory GenerateCharacterPreviewResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GenerateCharacterPreviewResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GenerateCharacterPreviewResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: GenerateCharacterPreviewResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'previewAssetId')
+    ..aOS(2, _omitFieldNames ? '' : 'previewUrl')
+    ..aI(3, _omitFieldNames ? '' : 'durationSeconds')
+    ..aOS(4, _omitFieldNames ? '' : 'creditsUsed')
+    ..aOB(5, _omitFieldNames ? '' : 'verified')
+    ..aOS(6, _omitFieldNames ? '' : 'characterId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GenerateCharacterPreviewResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GenerateCharacterPreviewResponse copyWith(
+          void Function(GenerateCharacterPreviewResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as GenerateCharacterPreviewResponse))
+          as GenerateCharacterPreviewResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GenerateCharacterPreviewResponse() / GenerateCharacterPreviewResponse.new instead')
+  static GenerateCharacterPreviewResponse create() =>
+      GenerateCharacterPreviewResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      GenerateCharacterPreviewResponse._();
+  @$core.override
+  GenerateCharacterPreviewResponse createEmptyInstance() =>
+      GenerateCharacterPreviewResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GenerateCharacterPreviewResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GenerateCharacterPreviewResponse>(
+          GenerateCharacterPreviewResponse.$_createMessage);
+  static GenerateCharacterPreviewResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get previewAssetId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set previewAssetId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPreviewAssetId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPreviewAssetId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get previewUrl => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set previewUrl($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPreviewUrl() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPreviewUrl() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get durationSeconds => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set durationSeconds($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDurationSeconds() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDurationSeconds() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get creditsUsed => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set creditsUsed($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCreditsUsed() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCreditsUsed() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get verified => $_getBF(4);
+  @$pb.TagNumber(5)
+  set verified($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasVerified() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearVerified() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get characterId => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set characterId($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasCharacterId() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearCharacterId() => $_clearField(6);
+}
+
+class QuoteCharacterPreviewRequest extends $pb.GeneratedMessage {
+  factory QuoteCharacterPreviewRequest({
+    $2.UUID? workspaceId,
+    $core.String? characterId,
+    $core.int? durationSeconds,
+  }) {
+    final result = QuoteCharacterPreviewRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (characterId != null) result.characterId = characterId;
+    if (durationSeconds != null) result.durationSeconds = durationSeconds;
+    return result;
+  }
+
+  QuoteCharacterPreviewRequest._();
+
+  factory QuoteCharacterPreviewRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      QuoteCharacterPreviewRequest()..mergeFromBuffer(data, registry);
+  factory QuoteCharacterPreviewRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      QuoteCharacterPreviewRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'QuoteCharacterPreviewRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: QuoteCharacterPreviewRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'characterId')
+    ..aI(3, _omitFieldNames ? '' : 'durationSeconds')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  QuoteCharacterPreviewRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  QuoteCharacterPreviewRequest copyWith(
+          void Function(QuoteCharacterPreviewRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as QuoteCharacterPreviewRequest))
+          as QuoteCharacterPreviewRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use QuoteCharacterPreviewRequest() / QuoteCharacterPreviewRequest.new instead')
+  static QuoteCharacterPreviewRequest create() =>
+      QuoteCharacterPreviewRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      QuoteCharacterPreviewRequest._();
+  @$core.override
+  QuoteCharacterPreviewRequest createEmptyInstance() =>
+      QuoteCharacterPreviewRequest._();
+  @$core.pragma('dart2js:noInline')
+  static QuoteCharacterPreviewRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<QuoteCharacterPreviewRequest>(
+          QuoteCharacterPreviewRequest.$_createMessage);
+  static QuoteCharacterPreviewRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get characterId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set characterId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCharacterId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCharacterId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get durationSeconds => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set durationSeconds($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDurationSeconds() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDurationSeconds() => $_clearField(3);
+}
+
+class QuoteCharacterPreviewResponse extends $pb.GeneratedMessage {
+  factory QuoteCharacterPreviewResponse({
+    $core.String? quoteId,
+    $core.String? creditsRequired,
+    $core.int? durationSeconds,
+    $core.String? provider,
+    $core.bool? canAfford,
+  }) {
+    final result = QuoteCharacterPreviewResponse._();
+    if (quoteId != null) result.quoteId = quoteId;
+    if (creditsRequired != null) result.creditsRequired = creditsRequired;
+    if (durationSeconds != null) result.durationSeconds = durationSeconds;
+    if (provider != null) result.provider = provider;
+    if (canAfford != null) result.canAfford = canAfford;
+    return result;
+  }
+
+  QuoteCharacterPreviewResponse._();
+
+  factory QuoteCharacterPreviewResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      QuoteCharacterPreviewResponse()..mergeFromBuffer(data, registry);
+  factory QuoteCharacterPreviewResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      QuoteCharacterPreviewResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'QuoteCharacterPreviewResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: QuoteCharacterPreviewResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'quoteId')
+    ..aOS(2, _omitFieldNames ? '' : 'creditsRequired')
+    ..aI(3, _omitFieldNames ? '' : 'durationSeconds')
+    ..aOS(4, _omitFieldNames ? '' : 'provider')
+    ..aOB(5, _omitFieldNames ? '' : 'canAfford')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  QuoteCharacterPreviewResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  QuoteCharacterPreviewResponse copyWith(
+          void Function(QuoteCharacterPreviewResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as QuoteCharacterPreviewResponse))
+          as QuoteCharacterPreviewResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use QuoteCharacterPreviewResponse() / QuoteCharacterPreviewResponse.new instead')
+  static QuoteCharacterPreviewResponse create() =>
+      QuoteCharacterPreviewResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      QuoteCharacterPreviewResponse._();
+  @$core.override
+  QuoteCharacterPreviewResponse createEmptyInstance() =>
+      QuoteCharacterPreviewResponse._();
+  @$core.pragma('dart2js:noInline')
+  static QuoteCharacterPreviewResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<QuoteCharacterPreviewResponse>(
+          QuoteCharacterPreviewResponse.$_createMessage);
+  static QuoteCharacterPreviewResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get quoteId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set quoteId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasQuoteId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearQuoteId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get creditsRequired => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set creditsRequired($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCreditsRequired() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCreditsRequired() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get durationSeconds => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set durationSeconds($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDurationSeconds() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDurationSeconds() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get provider => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set provider($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasProvider() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearProvider() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get canAfford => $_getBF(4);
+  @$pb.TagNumber(5)
+  set canAfford($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasCanAfford() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearCanAfford() => $_clearField(5);
+}
+
+class AnalyzeStyleRequest extends $pb.GeneratedMessage {
+  factory AnalyzeStyleRequest({
+    $2.CommandContext? context,
+    $core.Iterable<$core.String>? assetIds,
+  }) {
+    final result = AnalyzeStyleRequest._();
+    if (context != null) result.context = context;
+    if (assetIds != null) result.assetIds.addAll(assetIds);
+    return result;
+  }
+
+  AnalyzeStyleRequest._();
+
+  factory AnalyzeStyleRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AnalyzeStyleRequest()..mergeFromBuffer(data, registry);
+  factory AnalyzeStyleRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AnalyzeStyleRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AnalyzeStyleRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: AnalyzeStyleRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..pPS(2, _omitFieldNames ? '' : 'assetIds')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AnalyzeStyleRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AnalyzeStyleRequest copyWith(void Function(AnalyzeStyleRequest) updates) =>
+      super.copyWith((message) => updates(message as AnalyzeStyleRequest))
+          as AnalyzeStyleRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use AnalyzeStyleRequest() / AnalyzeStyleRequest.new instead')
+  static AnalyzeStyleRequest create() => AnalyzeStyleRequest._();
+  static $pb.GeneratedMessage $_createMessage() => AnalyzeStyleRequest._();
+  @$core.override
+  AnalyzeStyleRequest createEmptyInstance() => AnalyzeStyleRequest._();
+  @$core.pragma('dart2js:noInline')
+  static AnalyzeStyleRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AnalyzeStyleRequest>(
+          AnalyzeStyleRequest.$_createMessage);
+  static AnalyzeStyleRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<$core.String> get assetIds => $_getList(1);
+}
+
+class AnalyzeStyleResponse extends $pb.GeneratedMessage {
+  factory AnalyzeStyleResponse({
+    StyleElements? styleElements,
+    $core.String? creditsUsed,
+  }) {
+    final result = AnalyzeStyleResponse._();
+    if (styleElements != null) result.styleElements = styleElements;
+    if (creditsUsed != null) result.creditsUsed = creditsUsed;
+    return result;
+  }
+
+  AnalyzeStyleResponse._();
+
+  factory AnalyzeStyleResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AnalyzeStyleResponse()..mergeFromBuffer(data, registry);
+  factory AnalyzeStyleResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AnalyzeStyleResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AnalyzeStyleResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: AnalyzeStyleResponse.$_createMessage)
+    ..aOM<StyleElements>(1, _omitFieldNames ? '' : 'styleElements',
+        subBuilder: StyleElements.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'creditsUsed')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AnalyzeStyleResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AnalyzeStyleResponse copyWith(void Function(AnalyzeStyleResponse) updates) =>
+      super.copyWith((message) => updates(message as AnalyzeStyleResponse))
+          as AnalyzeStyleResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use AnalyzeStyleResponse() / AnalyzeStyleResponse.new instead')
+  static AnalyzeStyleResponse create() => AnalyzeStyleResponse._();
+  static $pb.GeneratedMessage $_createMessage() => AnalyzeStyleResponse._();
+  @$core.override
+  AnalyzeStyleResponse createEmptyInstance() => AnalyzeStyleResponse._();
+  @$core.pragma('dart2js:noInline')
+  static AnalyzeStyleResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AnalyzeStyleResponse>(
+          AnalyzeStyleResponse.$_createMessage);
+  static AnalyzeStyleResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  StyleElements get styleElements => $_getN(0);
+  @$pb.TagNumber(1)
+  set styleElements(StyleElements value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasStyleElements() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearStyleElements() => $_clearField(1);
+  @$pb.TagNumber(1)
+  StyleElements ensureStyleElements() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get creditsUsed => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set creditsUsed($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCreditsUsed() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCreditsUsed() => $_clearField(2);
+}
+
+/// Drift QA Messages
+class DriftEvaluationResult extends $pb.GeneratedMessage {
+  factory DriftEvaluationResult({
+    $core.String? assetId,
+    $core.String? packId,
+    $core.int? packVersion,
+    $core.double? driftScore,
+    $core.String? driftSeverity,
+    $core.bool? isBlocked,
+    $core.Iterable<$core.String>? violationReasons,
+    $core.String? detailsJson,
+    $core.String? violationId,
+  }) {
+    final result = DriftEvaluationResult._();
+    if (assetId != null) result.assetId = assetId;
+    if (packId != null) result.packId = packId;
+    if (packVersion != null) result.packVersion = packVersion;
+    if (driftScore != null) result.driftScore = driftScore;
+    if (driftSeverity != null) result.driftSeverity = driftSeverity;
+    if (isBlocked != null) result.isBlocked = isBlocked;
+    if (violationReasons != null)
+      result.violationReasons.addAll(violationReasons);
+    if (detailsJson != null) result.detailsJson = detailsJson;
+    if (violationId != null) result.violationId = violationId;
+    return result;
+  }
+
+  DriftEvaluationResult._();
+
+  factory DriftEvaluationResult.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DriftEvaluationResult()..mergeFromBuffer(data, registry);
+  factory DriftEvaluationResult.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DriftEvaluationResult()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DriftEvaluationResult',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: DriftEvaluationResult.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'assetId')
+    ..aOS(2, _omitFieldNames ? '' : 'packId')
+    ..aI(3, _omitFieldNames ? '' : 'packVersion')
+    ..aD(4, _omitFieldNames ? '' : 'driftScore', fieldType: $pb.PbFieldType.OF)
+    ..aOS(5, _omitFieldNames ? '' : 'driftSeverity')
+    ..aOB(6, _omitFieldNames ? '' : 'isBlocked')
+    ..pPS(7, _omitFieldNames ? '' : 'violationReasons')
+    ..aOS(8, _omitFieldNames ? '' : 'detailsJson')
+    ..aOS(9, _omitFieldNames ? '' : 'violationId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DriftEvaluationResult clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DriftEvaluationResult copyWith(
+          void Function(DriftEvaluationResult) updates) =>
+      super.copyWith((message) => updates(message as DriftEvaluationResult))
+          as DriftEvaluationResult;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DriftEvaluationResult() / DriftEvaluationResult.new instead')
+  static DriftEvaluationResult create() => DriftEvaluationResult._();
+  static $pb.GeneratedMessage $_createMessage() => DriftEvaluationResult._();
+  @$core.override
+  DriftEvaluationResult createEmptyInstance() => DriftEvaluationResult._();
+  @$core.pragma('dart2js:noInline')
+  static DriftEvaluationResult getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DriftEvaluationResult>(
+          DriftEvaluationResult.$_createMessage);
+  static DriftEvaluationResult? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get assetId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set assetId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAssetId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAssetId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get packId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set packId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPackId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPackId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get packVersion => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set packVersion($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPackVersion() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPackVersion() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.double get driftScore => $_getN(3);
+  @$pb.TagNumber(4)
+  set driftScore($core.double value) => $_setFloat(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasDriftScore() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDriftScore() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get driftSeverity => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set driftSeverity($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasDriftSeverity() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearDriftSeverity() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.bool get isBlocked => $_getBF(5);
+  @$pb.TagNumber(6)
+  set isBlocked($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasIsBlocked() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearIsBlocked() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $pb.PbList<$core.String> get violationReasons => $_getList(6);
+
+  @$pb.TagNumber(8)
+  $core.String get detailsJson => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set detailsJson($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasDetailsJson() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearDetailsJson() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get violationId => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set violationId($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasViolationId() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearViolationId() => $_clearField(9);
+}
+
+class EvaluateDriftRequest extends $pb.GeneratedMessage {
+  factory EvaluateDriftRequest({
+    $2.CommandContext? context,
+    $core.String? assetId,
+    $core.String? packId,
+  }) {
+    final result = EvaluateDriftRequest._();
+    if (context != null) result.context = context;
+    if (assetId != null) result.assetId = assetId;
+    if (packId != null) result.packId = packId;
+    return result;
+  }
+
+  EvaluateDriftRequest._();
+
+  factory EvaluateDriftRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EvaluateDriftRequest()..mergeFromBuffer(data, registry);
+  factory EvaluateDriftRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EvaluateDriftRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'EvaluateDriftRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: EvaluateDriftRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'assetId')
+    ..aOS(3, _omitFieldNames ? '' : 'packId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EvaluateDriftRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EvaluateDriftRequest copyWith(void Function(EvaluateDriftRequest) updates) =>
+      super.copyWith((message) => updates(message as EvaluateDriftRequest))
+          as EvaluateDriftRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use EvaluateDriftRequest() / EvaluateDriftRequest.new instead')
+  static EvaluateDriftRequest create() => EvaluateDriftRequest._();
+  static $pb.GeneratedMessage $_createMessage() => EvaluateDriftRequest._();
+  @$core.override
+  EvaluateDriftRequest createEmptyInstance() => EvaluateDriftRequest._();
+  @$core.pragma('dart2js:noInline')
+  static EvaluateDriftRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<EvaluateDriftRequest>(
+          EvaluateDriftRequest.$_createMessage);
+  static EvaluateDriftRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get assetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set assetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get packId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set packId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPackId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPackId() => $_clearField(3);
+}
+
+class EvaluateDriftResponse extends $pb.GeneratedMessage {
+  factory EvaluateDriftResponse({
+    DriftEvaluationResult? result,
+  }) {
+    final result$ = EvaluateDriftResponse._();
+    if (result != null) result$.result = result;
+    return result$;
+  }
+
+  EvaluateDriftResponse._();
+
+  factory EvaluateDriftResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EvaluateDriftResponse()..mergeFromBuffer(data, registry);
+  factory EvaluateDriftResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EvaluateDriftResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'EvaluateDriftResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: EvaluateDriftResponse.$_createMessage)
+    ..aOM<DriftEvaluationResult>(1, _omitFieldNames ? '' : 'result',
+        subBuilder: DriftEvaluationResult.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EvaluateDriftResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EvaluateDriftResponse copyWith(
+          void Function(EvaluateDriftResponse) updates) =>
+      super.copyWith((message) => updates(message as EvaluateDriftResponse))
+          as EvaluateDriftResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use EvaluateDriftResponse() / EvaluateDriftResponse.new instead')
+  static EvaluateDriftResponse create() => EvaluateDriftResponse._();
+  static $pb.GeneratedMessage $_createMessage() => EvaluateDriftResponse._();
+  @$core.override
+  EvaluateDriftResponse createEmptyInstance() => EvaluateDriftResponse._();
+  @$core.pragma('dart2js:noInline')
+  static EvaluateDriftResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<EvaluateDriftResponse>(
+          EvaluateDriftResponse.$_createMessage);
+  static EvaluateDriftResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  DriftEvaluationResult get result => $_getN(0);
+  @$pb.TagNumber(1)
+  set result(DriftEvaluationResult value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasResult() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearResult() => $_clearField(1);
+  @$pb.TagNumber(1)
+  DriftEvaluationResult ensureResult() => $_ensure(0);
+}
+
+class OverrideDriftViolationRequest extends $pb.GeneratedMessage {
+  factory OverrideDriftViolationRequest({
+    $2.CommandContext? context,
+    $core.String? violationId,
+    $core.String? overrideReason,
+  }) {
+    final result = OverrideDriftViolationRequest._();
+    if (context != null) result.context = context;
+    if (violationId != null) result.violationId = violationId;
+    if (overrideReason != null) result.overrideReason = overrideReason;
+    return result;
+  }
+
+  OverrideDriftViolationRequest._();
+
+  factory OverrideDriftViolationRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      OverrideDriftViolationRequest()..mergeFromBuffer(data, registry);
+  factory OverrideDriftViolationRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      OverrideDriftViolationRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'OverrideDriftViolationRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: OverrideDriftViolationRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'violationId')
+    ..aOS(3, _omitFieldNames ? '' : 'overrideReason')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OverrideDriftViolationRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OverrideDriftViolationRequest copyWith(
+          void Function(OverrideDriftViolationRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as OverrideDriftViolationRequest))
+          as OverrideDriftViolationRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use OverrideDriftViolationRequest() / OverrideDriftViolationRequest.new instead')
+  static OverrideDriftViolationRequest create() =>
+      OverrideDriftViolationRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      OverrideDriftViolationRequest._();
+  @$core.override
+  OverrideDriftViolationRequest createEmptyInstance() =>
+      OverrideDriftViolationRequest._();
+  @$core.pragma('dart2js:noInline')
+  static OverrideDriftViolationRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<OverrideDriftViolationRequest>(
+          OverrideDriftViolationRequest.$_createMessage);
+  static OverrideDriftViolationRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get violationId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set violationId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasViolationId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearViolationId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get overrideReason => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set overrideReason($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasOverrideReason() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearOverrideReason() => $_clearField(3);
+}
+
+class OverrideDriftViolationResponse extends $pb.GeneratedMessage {
+  factory OverrideDriftViolationResponse({
+    $core.bool? resolved,
+    $core.String? assetId,
+    $core.String? newQualityState,
+  }) {
+    final result = OverrideDriftViolationResponse._();
+    if (resolved != null) result.resolved = resolved;
+    if (assetId != null) result.assetId = assetId;
+    if (newQualityState != null) result.newQualityState = newQualityState;
+    return result;
+  }
+
+  OverrideDriftViolationResponse._();
+
+  factory OverrideDriftViolationResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      OverrideDriftViolationResponse()..mergeFromBuffer(data, registry);
+  factory OverrideDriftViolationResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      OverrideDriftViolationResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'OverrideDriftViolationResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: OverrideDriftViolationResponse.$_createMessage)
+    ..aOB(1, _omitFieldNames ? '' : 'resolved')
+    ..aOS(2, _omitFieldNames ? '' : 'assetId')
+    ..aOS(3, _omitFieldNames ? '' : 'newQualityState')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OverrideDriftViolationResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OverrideDriftViolationResponse copyWith(
+          void Function(OverrideDriftViolationResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as OverrideDriftViolationResponse))
+          as OverrideDriftViolationResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use OverrideDriftViolationResponse() / OverrideDriftViolationResponse.new instead')
+  static OverrideDriftViolationResponse create() =>
+      OverrideDriftViolationResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      OverrideDriftViolationResponse._();
+  @$core.override
+  OverrideDriftViolationResponse createEmptyInstance() =>
+      OverrideDriftViolationResponse._();
+  @$core.pragma('dart2js:noInline')
+  static OverrideDriftViolationResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<OverrideDriftViolationResponse>(
+          OverrideDriftViolationResponse.$_createMessage);
+  static OverrideDriftViolationResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get resolved => $_getBF(0);
+  @$pb.TagNumber(1)
+  set resolved($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasResolved() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearResolved() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get assetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set assetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get newQualityState => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set newQualityState($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasNewQualityState() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearNewQualityState() => $_clearField(3);
 }
 
 const $core.bool _omitFieldNames =

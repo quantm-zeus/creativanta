@@ -18,7 +18,7 @@ for surface in web admin; do
   test -f "$ROOT/apps/$surface/build/index.js" || { echo "FAIL missing $surface SSR build" >&2; exit 1; }
   if [[ "$surface" == web ]]; then
     port="${CV_WEB_SMOKE_PORT:-18440}"
-    routes=(/ /kham-pha /sang-tao /xuat-ban /kinh-doanh /intelligence/competitors /intelligence/benchmarks /ideas /scripts /studio /studio/queue /studio/quick-edit /studio/sound /studio/translate /studio/clip-factory)
+    routes=(/ /kham-pha /sang-tao /xuat-ban /kinh-doanh /intelligence/competitors /intelligence/benchmarks /ideas /scripts /studio /studio/queue /studio/quick-edit /studio/sound /studio/translate /studio/clip-factory /studio/style-learning)
     marker='Creativanta'
   else
     port="${CV_ADMIN_SMOKE_PORT:-18441}"

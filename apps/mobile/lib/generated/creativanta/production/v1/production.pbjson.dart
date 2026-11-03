@@ -544,6 +544,15 @@ const Asset$json = {
       '6': '.google.protobuf.Timestamp',
       '10': 'updatedAt'
     },
+    {'1': 'drift_score', '3': 27, '4': 1, '5': 2, '10': 'driftScore'},
+    {'1': 'drift_severity', '3': 28, '4': 1, '5': 9, '10': 'driftSeverity'},
+    {
+      '1': 'drift_details_json',
+      '3': 29,
+      '4': 1,
+      '5': 9,
+      '10': 'driftDetailsJson'
+    },
   ],
 };
 
@@ -569,7 +578,10 @@ final $typed_data.Uint8List assetDescriptor = $convert.base64Decode(
     'gJUhBnZW5lcmF0aW9uUHJvbXB0EiYKD3BhcmVudF9hc3NldF9pZBgXIAEoCVINcGFyZW50QXNz'
     'ZXRJZBInCg9kZXJpdmF0aXZlX3R5cGUYGCABKAlSDmRlcml2YXRpdmVUeXBlEjkKCmNyZWF0ZW'
     'RfYXQYGSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgljcmVhdGVkQXQSOQoKdXBk'
-    'YXRlZF9hdBgaIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSCXVwZGF0ZWRBdA==');
+    'YXRlZF9hdBgaIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSCXVwZGF0ZWRBdBIfCg'
+    'tkcmlmdF9zY29yZRgbIAEoAlIKZHJpZnRTY29yZRIlCg5kcmlmdF9zZXZlcml0eRgcIAEoCVIN'
+    'ZHJpZnRTZXZlcml0eRIsChJkcmlmdF9kZXRhaWxzX2pzb24YHSABKAlSEGRyaWZ0RGV0YWlsc0'
+    'pzb24=');
 
 @$core.Deprecated('Use batchInputValidationItemDescriptor instead')
 const BatchInputValidationItem$json = {
@@ -4542,3 +4554,662 @@ final $typed_data.Uint8List clipFactoryServiceProcessClipsResponseDescriptor =
         'VhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlByb2Nlc3NlZENsaXBPdXRwdXRSB291dHB1dHMSKQoQ'
         'Y3JlZGl0c19kZWR1Y3RlZBgFIAEoCVIPY3JlZGl0c0RlZHVjdGVkEiUKDnF1ZXVlX3Bvc2l0aW'
         '9uGAYgASgFUg1xdWV1ZVBvc2l0aW9u');
+
+@$core.Deprecated('Use styleElementsDescriptor instead')
+const StyleElements$json = {
+  '1': 'StyleElements',
+  '2': [
+    {'1': 'color_palette', '3': 1, '4': 1, '5': 9, '10': 'colorPalette'},
+    {'1': 'cut_pacing', '3': 2, '4': 1, '5': 9, '10': 'cutPacing'},
+    {'1': 'text_style', '3': 3, '4': 1, '5': 9, '10': 'textStyle'},
+    {'1': 'music_style', '3': 4, '4': 1, '5': 9, '10': 'musicStyle'},
+    {'1': 'transitions', '3': 5, '4': 1, '5': 9, '10': 'transitions'},
+    {'1': 'hook_pattern', '3': 6, '4': 1, '5': 9, '10': 'hookPattern'},
+    {'1': 'visual_mood', '3': 7, '4': 1, '5': 9, '10': 'visualMood'},
+    {
+      '1': 'avg_cut_duration_ms',
+      '3': 8,
+      '4': 1,
+      '5': 5,
+      '10': 'avgCutDurationMs'
+    },
+    {'1': 'color_palette_hex', '3': 9, '4': 3, '5': 9, '10': 'colorPaletteHex'},
+  ],
+};
+
+/// Descriptor for `StyleElements`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List styleElementsDescriptor = $convert.base64Decode(
+    'Cg1TdHlsZUVsZW1lbnRzEiMKDWNvbG9yX3BhbGV0dGUYASABKAlSDGNvbG9yUGFsZXR0ZRIdCg'
+    'pjdXRfcGFjaW5nGAIgASgJUgljdXRQYWNpbmcSHQoKdGV4dF9zdHlsZRgDIAEoCVIJdGV4dFN0'
+    'eWxlEh8KC211c2ljX3N0eWxlGAQgASgJUgptdXNpY1N0eWxlEiAKC3RyYW5zaXRpb25zGAUgAS'
+    'gJUgt0cmFuc2l0aW9ucxIhCgxob29rX3BhdHRlcm4YBiABKAlSC2hvb2tQYXR0ZXJuEh8KC3Zp'
+    'c3VhbF9tb29kGAcgASgJUgp2aXN1YWxNb29kEi0KE2F2Z19jdXRfZHVyYXRpb25fbXMYCCABKA'
+    'VSEGF2Z0N1dER1cmF0aW9uTXMSKgoRY29sb3JfcGFsZXR0ZV9oZXgYCSADKAlSD2NvbG9yUGFs'
+    'ZXR0ZUhleA==');
+
+@$core.Deprecated('Use stylePackDescriptor instead')
+const StylePack$json = {
+  '1': 'StylePack',
+  '2': [
+    {'1': 'style_pack_id', '3': 1, '4': 1, '5': 9, '10': 'stylePackId'},
+    {
+      '1': 'workspace_id',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'name', '3': 3, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'source_asset_id', '3': 4, '4': 1, '5': 9, '10': 'sourceAssetId'},
+    {
+      '1': 'extracted_style_json',
+      '3': 5,
+      '4': 1,
+      '5': 9,
+      '10': 'extractedStyleJson'
+    },
+    {'1': 'is_active', '3': 6, '4': 1, '5': 8, '10': 'isActive'},
+    {
+      '1': 'continuity_pack_id',
+      '3': 7,
+      '4': 1,
+      '5': 9,
+      '10': 'continuityPackId'
+    },
+    {
+      '1': 'created_at',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+    {
+      '1': 'updated_at',
+      '3': 9,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'updatedAt'
+    },
+  ],
+};
+
+/// Descriptor for `StylePack`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stylePackDescriptor = $convert.base64Decode(
+    'CglTdHlsZVBhY2sSIgoNc3R5bGVfcGFja19pZBgBIAEoCVILc3R5bGVQYWNrSWQSPgoMd29ya3'
+    'NwYWNlX2lkGAIgASgLMhsuY3JlYXRpdmFudGEuY29tbW9uLnYxLlVVSURSC3dvcmtzcGFjZUlk'
+    'EhIKBG5hbWUYAyABKAlSBG5hbWUSJgoPc291cmNlX2Fzc2V0X2lkGAQgASgJUg1zb3VyY2VBc3'
+    'NldElkEjAKFGV4dHJhY3RlZF9zdHlsZV9qc29uGAUgASgJUhJleHRyYWN0ZWRTdHlsZUpzb24S'
+    'GwoJaXNfYWN0aXZlGAYgASgIUghpc0FjdGl2ZRIsChJjb250aW51aXR5X3BhY2tfaWQYByABKA'
+    'lSEGNvbnRpbnVpdHlQYWNrSWQSOQoKY3JlYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1'
+    'Zi5UaW1lc3RhbXBSCWNyZWF0ZWRBdBI5Cgp1cGRhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3'
+    'RvYnVmLlRpbWVzdGFtcFIJdXBkYXRlZEF0');
+
+@$core.Deprecated('Use stylePackServiceExtractRequestDescriptor instead')
+const StylePackServiceExtractRequest$json = {
+  '1': 'StylePackServiceExtractRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'source_asset_ids', '3': 2, '4': 3, '5': 9, '10': 'sourceAssetIds'},
+  ],
+};
+
+/// Descriptor for `StylePackServiceExtractRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stylePackServiceExtractRequestDescriptor =
+    $convert.base64Decode(
+        'Ch5TdHlsZVBhY2tTZXJ2aWNlRXh0cmFjdFJlcXVlc3QSPwoHY29udGV4dBgBIAEoCzIlLmNyZW'
+        'F0aXZhbnRhLmNvbW1vbi52MS5Db21tYW5kQ29udGV4dFIHY29udGV4dBIoChBzb3VyY2VfYXNz'
+        'ZXRfaWRzGAIgAygJUg5zb3VyY2VBc3NldElkcw==');
+
+@$core.Deprecated('Use stylePackServiceExtractResponseDescriptor instead')
+const StylePackServiceExtractResponse$json = {
+  '1': 'StylePackServiceExtractResponse',
+  '2': [
+    {
+      '1': 'elements',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.StyleElements',
+      '10': 'elements'
+    },
+    {'1': 'credits_used', '3': 2, '4': 1, '5': 9, '10': 'creditsUsed'},
+    {
+      '1': 'extracted_style_json',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '10': 'extractedStyleJson'
+    },
+  ],
+};
+
+/// Descriptor for `StylePackServiceExtractResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stylePackServiceExtractResponseDescriptor =
+    $convert.base64Decode(
+        'Ch9TdHlsZVBhY2tTZXJ2aWNlRXh0cmFjdFJlc3BvbnNlEkQKCGVsZW1lbnRzGAEgASgLMiguY3'
+        'JlYXRpdmFudGEucHJvZHVjdGlvbi52MS5TdHlsZUVsZW1lbnRzUghlbGVtZW50cxIhCgxjcmVk'
+        'aXRzX3VzZWQYAiABKAlSC2NyZWRpdHNVc2VkEjAKFGV4dHJhY3RlZF9zdHlsZV9qc29uGAMgAS'
+        'gJUhJleHRyYWN0ZWRTdHlsZUpzb24=');
+
+@$core.Deprecated('Use stylePackServiceCreateRequestDescriptor instead')
+const StylePackServiceCreateRequest$json = {
+  '1': 'StylePackServiceCreateRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'source_asset_id', '3': 3, '4': 1, '5': 9, '10': 'sourceAssetId'},
+    {
+      '1': 'extracted_style_json',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '10': 'extractedStyleJson'
+    },
+    {
+      '1': 'link_to_continuity_pack',
+      '3': 5,
+      '4': 1,
+      '5': 8,
+      '10': 'linkToContinuityPack'
+    },
+  ],
+};
+
+/// Descriptor for `StylePackServiceCreateRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stylePackServiceCreateRequestDescriptor = $convert.base64Decode(
+    'Ch1TdHlsZVBhY2tTZXJ2aWNlQ3JlYXRlUmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3JlYX'
+    'RpdmFudGEuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EhIKBG5hbWUYAiABKAlS'
+    'BG5hbWUSJgoPc291cmNlX2Fzc2V0X2lkGAMgASgJUg1zb3VyY2VBc3NldElkEjAKFGV4dHJhY3'
+    'RlZF9zdHlsZV9qc29uGAQgASgJUhJleHRyYWN0ZWRTdHlsZUpzb24SNQoXbGlua190b19jb250'
+    'aW51aXR5X3BhY2sYBSABKAhSFGxpbmtUb0NvbnRpbnVpdHlQYWNr');
+
+@$core.Deprecated('Use stylePackServiceCreateResponseDescriptor instead')
+const StylePackServiceCreateResponse$json = {
+  '1': 'StylePackServiceCreateResponse',
+  '2': [
+    {
+      '1': 'style_pack',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.StylePack',
+      '10': 'stylePack'
+    },
+    {
+      '1': 'continuity_pack_id',
+      '3': 2,
+      '4': 1,
+      '5': 9,
+      '10': 'continuityPackId'
+    },
+  ],
+};
+
+/// Descriptor for `StylePackServiceCreateResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stylePackServiceCreateResponseDescriptor =
+    $convert.base64Decode(
+        'Ch5TdHlsZVBhY2tTZXJ2aWNlQ3JlYXRlUmVzcG9uc2USQwoKc3R5bGVfcGFjaxgBIAEoCzIkLm'
+        'NyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuU3R5bGVQYWNrUglzdHlsZVBhY2sSLAoSY29udGlu'
+        'dWl0eV9wYWNrX2lkGAIgASgJUhBjb250aW51aXR5UGFja0lk');
+
+@$core.Deprecated('Use stylePackServiceGetRequestDescriptor instead')
+const StylePackServiceGetRequest$json = {
+  '1': 'StylePackServiceGetRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'style_pack_id', '3': 2, '4': 1, '5': 9, '10': 'stylePackId'},
+  ],
+};
+
+/// Descriptor for `StylePackServiceGetRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stylePackServiceGetRequestDescriptor =
+    $convert.base64Decode(
+        'ChpTdHlsZVBhY2tTZXJ2aWNlR2V0UmVxdWVzdBI+Cgx3b3Jrc3BhY2VfaWQYASABKAsyGy5jcm'
+        'VhdGl2YW50YS5jb21tb24udjEuVVVJRFILd29ya3NwYWNlSWQSIgoNc3R5bGVfcGFja19pZBgC'
+        'IAEoCVILc3R5bGVQYWNrSWQ=');
+
+@$core.Deprecated('Use stylePackServiceGetResponseDescriptor instead')
+const StylePackServiceGetResponse$json = {
+  '1': 'StylePackServiceGetResponse',
+  '2': [
+    {
+      '1': 'style_pack',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.StylePack',
+      '10': 'stylePack'
+    },
+    {
+      '1': 'elements',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.StyleElements',
+      '10': 'elements'
+    },
+  ],
+};
+
+/// Descriptor for `StylePackServiceGetResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stylePackServiceGetResponseDescriptor = $convert.base64Decode(
+    'ChtTdHlsZVBhY2tTZXJ2aWNlR2V0UmVzcG9uc2USQwoKc3R5bGVfcGFjaxgBIAEoCzIkLmNyZW'
+    'F0aXZhbnRhLnByb2R1Y3Rpb24udjEuU3R5bGVQYWNrUglzdHlsZVBhY2sSRAoIZWxlbWVudHMY'
+    'AiABKAsyKC5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlN0eWxlRWxlbWVudHNSCGVsZW1lbn'
+    'Rz');
+
+@$core.Deprecated('Use stylePackServiceListRequestDescriptor instead')
+const StylePackServiceListRequest$json = {
+  '1': 'StylePackServiceListRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {
+      '1': 'pagination',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Pagination',
+      '10': 'pagination'
+    },
+  ],
+};
+
+/// Descriptor for `StylePackServiceListRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stylePackServiceListRequestDescriptor =
+    $convert.base64Decode(
+        'ChtTdHlsZVBhY2tTZXJ2aWNlTGlzdFJlcXVlc3QSPgoMd29ya3NwYWNlX2lkGAEgASgLMhsuY3'
+        'JlYXRpdmFudGEuY29tbW9uLnYxLlVVSURSC3dvcmtzcGFjZUlkEkEKCnBhZ2luYXRpb24YAiAB'
+        'KAsyIS5jcmVhdGl2YW50YS5jb21tb24udjEuUGFnaW5hdGlvblIKcGFnaW5hdGlvbg==');
+
+@$core.Deprecated('Use stylePackServiceListResponseDescriptor instead')
+const StylePackServiceListResponse$json = {
+  '1': 'StylePackServiceListResponse',
+  '2': [
+    {
+      '1': 'style_packs',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.StylePack',
+      '10': 'stylePacks'
+    },
+    {
+      '1': 'pagination',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.PaginatedResponse',
+      '10': 'pagination'
+    },
+  ],
+};
+
+/// Descriptor for `StylePackServiceListResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stylePackServiceListResponseDescriptor = $convert.base64Decode(
+    'ChxTdHlsZVBhY2tTZXJ2aWNlTGlzdFJlc3BvbnNlEkUKC3N0eWxlX3BhY2tzGAEgAygLMiQuY3'
+    'JlYXRpdmFudGEucHJvZHVjdGlvbi52MS5TdHlsZVBhY2tSCnN0eWxlUGFja3MSSAoKcGFnaW5h'
+    'dGlvbhgCIAEoCzIoLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5QYWdpbmF0ZWRSZXNwb25zZVIKcG'
+    'FnaW5hdGlvbg==');
+
+@$core.Deprecated('Use stylePackServiceApplyRequestDescriptor instead')
+const StylePackServiceApplyRequest$json = {
+  '1': 'StylePackServiceApplyRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'style_pack_id', '3': 2, '4': 1, '5': 9, '10': 'stylePackId'},
+    {'1': 'target_job_id', '3': 3, '4': 1, '5': 9, '10': 'targetJobId'},
+    {'1': 'target_mode', '3': 4, '4': 1, '5': 9, '10': 'targetMode'},
+  ],
+};
+
+/// Descriptor for `StylePackServiceApplyRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stylePackServiceApplyRequestDescriptor = $convert.base64Decode(
+    'ChxTdHlsZVBhY2tTZXJ2aWNlQXBwbHlSZXF1ZXN0Ej8KB2NvbnRleHQYASABKAsyJS5jcmVhdG'
+    'l2YW50YS5jb21tb24udjEuQ29tbWFuZENvbnRleHRSB2NvbnRleHQSIgoNc3R5bGVfcGFja19p'
+    'ZBgCIAEoCVILc3R5bGVQYWNrSWQSIgoNdGFyZ2V0X2pvYl9pZBgDIAEoCVILdGFyZ2V0Sm9iSW'
+    'QSHwoLdGFyZ2V0X21vZGUYBCABKAlSCnRhcmdldE1vZGU=');
+
+@$core.Deprecated('Use stylePackServiceApplyResponseDescriptor instead')
+const StylePackServiceApplyResponse$json = {
+  '1': 'StylePackServiceApplyResponse',
+  '2': [
+    {'1': 'success', '3': 1, '4': 1, '5': 8, '10': 'success'},
+    {'1': 'message', '3': 2, '4': 1, '5': 9, '10': 'message'},
+    {'1': 'style_pack_id', '3': 3, '4': 1, '5': 9, '10': 'stylePackId'},
+    {'1': 'target_job_id', '3': 4, '4': 1, '5': 9, '10': 'targetJobId'},
+  ],
+};
+
+/// Descriptor for `StylePackServiceApplyResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stylePackServiceApplyResponseDescriptor =
+    $convert.base64Decode(
+        'Ch1TdHlsZVBhY2tTZXJ2aWNlQXBwbHlSZXNwb25zZRIYCgdzdWNjZXNzGAEgASgIUgdzdWNjZX'
+        'NzEhgKB21lc3NhZ2UYAiABKAlSB21lc3NhZ2USIgoNc3R5bGVfcGFja19pZBgDIAEoCVILc3R5'
+        'bGVQYWNrSWQSIgoNdGFyZ2V0X2pvYl9pZBgEIAEoCVILdGFyZ2V0Sm9iSWQ=');
+
+@$core.Deprecated('Use stylePackServiceDeleteRequestDescriptor instead')
+const StylePackServiceDeleteRequest$json = {
+  '1': 'StylePackServiceDeleteRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'style_pack_id', '3': 2, '4': 1, '5': 9, '10': 'stylePackId'},
+  ],
+};
+
+/// Descriptor for `StylePackServiceDeleteRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stylePackServiceDeleteRequestDescriptor =
+    $convert.base64Decode(
+        'Ch1TdHlsZVBhY2tTZXJ2aWNlRGVsZXRlUmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3JlYX'
+        'RpdmFudGEuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EiIKDXN0eWxlX3BhY2tf'
+        'aWQYAiABKAlSC3N0eWxlUGFja0lk');
+
+@$core.Deprecated('Use stylePackServiceDeleteResponseDescriptor instead')
+const StylePackServiceDeleteResponse$json = {
+  '1': 'StylePackServiceDeleteResponse',
+  '2': [
+    {'1': 'success', '3': 1, '4': 1, '5': 8, '10': 'success'},
+  ],
+};
+
+/// Descriptor for `StylePackServiceDeleteResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stylePackServiceDeleteResponseDescriptor =
+    $convert.base64Decode(
+        'Ch5TdHlsZVBhY2tTZXJ2aWNlRGVsZXRlUmVzcG9uc2USGAoHc3VjY2VzcxgBIAEoCFIHc3VjY2'
+        'Vzcw==');
+
+@$core.Deprecated('Use generateCharacterPreviewRequestDescriptor instead')
+const GenerateCharacterPreviewRequest$json = {
+  '1': 'GenerateCharacterPreviewRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'character_id', '3': 2, '4': 1, '5': 9, '10': 'characterId'},
+    {'1': 'visual_prompt', '3': 3, '4': 1, '5': 9, '10': 'visualPrompt'},
+    {'1': 'voice_sample_url', '3': 4, '4': 1, '5': 9, '10': 'voiceSampleUrl'},
+    {'1': 'aspect_ratio', '3': 5, '4': 1, '5': 9, '10': 'aspectRatio'},
+    {'1': 'duration_seconds', '3': 6, '4': 1, '5': 5, '10': 'durationSeconds'},
+  ],
+};
+
+/// Descriptor for `GenerateCharacterPreviewRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List generateCharacterPreviewRequestDescriptor = $convert.base64Decode(
+    'Ch9HZW5lcmF0ZUNoYXJhY3RlclByZXZpZXdSZXF1ZXN0Ej8KB2NvbnRleHQYASABKAsyJS5jcm'
+    'VhdGl2YW50YS5jb21tb24udjEuQ29tbWFuZENvbnRleHRSB2NvbnRleHQSIQoMY2hhcmFjdGVy'
+    'X2lkGAIgASgJUgtjaGFyYWN0ZXJJZBIjCg12aXN1YWxfcHJvbXB0GAMgASgJUgx2aXN1YWxQcm'
+    '9tcHQSKAoQdm9pY2Vfc2FtcGxlX3VybBgEIAEoCVIOdm9pY2VTYW1wbGVVcmwSIQoMYXNwZWN0'
+    'X3JhdGlvGAUgASgJUgthc3BlY3RSYXRpbxIpChBkdXJhdGlvbl9zZWNvbmRzGAYgASgFUg9kdX'
+    'JhdGlvblNlY29uZHM=');
+
+@$core.Deprecated('Use generateCharacterPreviewResponseDescriptor instead')
+const GenerateCharacterPreviewResponse$json = {
+  '1': 'GenerateCharacterPreviewResponse',
+  '2': [
+    {'1': 'preview_asset_id', '3': 1, '4': 1, '5': 9, '10': 'previewAssetId'},
+    {'1': 'preview_url', '3': 2, '4': 1, '5': 9, '10': 'previewUrl'},
+    {'1': 'duration_seconds', '3': 3, '4': 1, '5': 5, '10': 'durationSeconds'},
+    {'1': 'credits_used', '3': 4, '4': 1, '5': 9, '10': 'creditsUsed'},
+    {'1': 'verified', '3': 5, '4': 1, '5': 8, '10': 'verified'},
+    {'1': 'character_id', '3': 6, '4': 1, '5': 9, '10': 'characterId'},
+  ],
+};
+
+/// Descriptor for `GenerateCharacterPreviewResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List generateCharacterPreviewResponseDescriptor = $convert.base64Decode(
+    'CiBHZW5lcmF0ZUNoYXJhY3RlclByZXZpZXdSZXNwb25zZRIoChBwcmV2aWV3X2Fzc2V0X2lkGA'
+    'EgASgJUg5wcmV2aWV3QXNzZXRJZBIfCgtwcmV2aWV3X3VybBgCIAEoCVIKcHJldmlld1VybBIp'
+    'ChBkdXJhdGlvbl9zZWNvbmRzGAMgASgFUg9kdXJhdGlvblNlY29uZHMSIQoMY3JlZGl0c191c2'
+    'VkGAQgASgJUgtjcmVkaXRzVXNlZBIaCgh2ZXJpZmllZBgFIAEoCFIIdmVyaWZpZWQSIQoMY2hh'
+    'cmFjdGVyX2lkGAYgASgJUgtjaGFyYWN0ZXJJZA==');
+
+@$core.Deprecated('Use quoteCharacterPreviewRequestDescriptor instead')
+const QuoteCharacterPreviewRequest$json = {
+  '1': 'QuoteCharacterPreviewRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'character_id', '3': 2, '4': 1, '5': 9, '10': 'characterId'},
+    {'1': 'duration_seconds', '3': 3, '4': 1, '5': 5, '10': 'durationSeconds'},
+  ],
+};
+
+/// Descriptor for `QuoteCharacterPreviewRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List quoteCharacterPreviewRequestDescriptor = $convert.base64Decode(
+    'ChxRdW90ZUNoYXJhY3RlclByZXZpZXdSZXF1ZXN0Ej4KDHdvcmtzcGFjZV9pZBgBIAEoCzIbLm'
+    'NyZWF0aXZhbnRhLmNvbW1vbi52MS5VVUlEUgt3b3Jrc3BhY2VJZBIhCgxjaGFyYWN0ZXJfaWQY'
+    'AiABKAlSC2NoYXJhY3RlcklkEikKEGR1cmF0aW9uX3NlY29uZHMYAyABKAVSD2R1cmF0aW9uU2'
+    'Vjb25kcw==');
+
+@$core.Deprecated('Use quoteCharacterPreviewResponseDescriptor instead')
+const QuoteCharacterPreviewResponse$json = {
+  '1': 'QuoteCharacterPreviewResponse',
+  '2': [
+    {'1': 'quote_id', '3': 1, '4': 1, '5': 9, '10': 'quoteId'},
+    {'1': 'credits_required', '3': 2, '4': 1, '5': 9, '10': 'creditsRequired'},
+    {'1': 'duration_seconds', '3': 3, '4': 1, '5': 5, '10': 'durationSeconds'},
+    {'1': 'provider', '3': 4, '4': 1, '5': 9, '10': 'provider'},
+    {'1': 'can_afford', '3': 5, '4': 1, '5': 8, '10': 'canAfford'},
+  ],
+};
+
+/// Descriptor for `QuoteCharacterPreviewResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List quoteCharacterPreviewResponseDescriptor = $convert.base64Decode(
+    'Ch1RdW90ZUNoYXJhY3RlclByZXZpZXdSZXNwb25zZRIZCghxdW90ZV9pZBgBIAEoCVIHcXVvdG'
+    'VJZBIpChBjcmVkaXRzX3JlcXVpcmVkGAIgASgJUg9jcmVkaXRzUmVxdWlyZWQSKQoQZHVyYXRp'
+    'b25fc2Vjb25kcxgDIAEoBVIPZHVyYXRpb25TZWNvbmRzEhoKCHByb3ZpZGVyGAQgASgJUghwcm'
+    '92aWRlchIdCgpjYW5fYWZmb3JkGAUgASgIUgljYW5BZmZvcmQ=');
+
+@$core.Deprecated('Use analyzeStyleRequestDescriptor instead')
+const AnalyzeStyleRequest$json = {
+  '1': 'AnalyzeStyleRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'asset_ids', '3': 2, '4': 3, '5': 9, '10': 'assetIds'},
+  ],
+};
+
+/// Descriptor for `AnalyzeStyleRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List analyzeStyleRequestDescriptor = $convert.base64Decode(
+    'ChNBbmFseXplU3R5bGVSZXF1ZXN0Ej8KB2NvbnRleHQYASABKAsyJS5jcmVhdGl2YW50YS5jb2'
+    '1tb24udjEuQ29tbWFuZENvbnRleHRSB2NvbnRleHQSGwoJYXNzZXRfaWRzGAIgAygJUghhc3Nl'
+    'dElkcw==');
+
+@$core.Deprecated('Use analyzeStyleResponseDescriptor instead')
+const AnalyzeStyleResponse$json = {
+  '1': 'AnalyzeStyleResponse',
+  '2': [
+    {
+      '1': 'style_elements',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.StyleElements',
+      '10': 'styleElements'
+    },
+    {'1': 'credits_used', '3': 2, '4': 1, '5': 9, '10': 'creditsUsed'},
+  ],
+};
+
+/// Descriptor for `AnalyzeStyleResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List analyzeStyleResponseDescriptor = $convert.base64Decode(
+    'ChRBbmFseXplU3R5bGVSZXNwb25zZRJPCg5zdHlsZV9lbGVtZW50cxgBIAEoCzIoLmNyZWF0aX'
+    'ZhbnRhLnByb2R1Y3Rpb24udjEuU3R5bGVFbGVtZW50c1INc3R5bGVFbGVtZW50cxIhCgxjcmVk'
+    'aXRzX3VzZWQYAiABKAlSC2NyZWRpdHNVc2Vk');
+
+@$core.Deprecated('Use driftEvaluationResultDescriptor instead')
+const DriftEvaluationResult$json = {
+  '1': 'DriftEvaluationResult',
+  '2': [
+    {'1': 'asset_id', '3': 1, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'pack_id', '3': 2, '4': 1, '5': 9, '10': 'packId'},
+    {'1': 'pack_version', '3': 3, '4': 1, '5': 5, '10': 'packVersion'},
+    {'1': 'drift_score', '3': 4, '4': 1, '5': 2, '10': 'driftScore'},
+    {'1': 'drift_severity', '3': 5, '4': 1, '5': 9, '10': 'driftSeverity'},
+    {'1': 'is_blocked', '3': 6, '4': 1, '5': 8, '10': 'isBlocked'},
+    {
+      '1': 'violation_reasons',
+      '3': 7,
+      '4': 3,
+      '5': 9,
+      '10': 'violationReasons'
+    },
+    {'1': 'details_json', '3': 8, '4': 1, '5': 9, '10': 'detailsJson'},
+    {'1': 'violation_id', '3': 9, '4': 1, '5': 9, '10': 'violationId'},
+  ],
+};
+
+/// Descriptor for `DriftEvaluationResult`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List driftEvaluationResultDescriptor = $convert.base64Decode(
+    'ChVEcmlmdEV2YWx1YXRpb25SZXN1bHQSGQoIYXNzZXRfaWQYASABKAlSB2Fzc2V0SWQSFwoHcG'
+    'Fja19pZBgCIAEoCVIGcGFja0lkEiEKDHBhY2tfdmVyc2lvbhgDIAEoBVILcGFja1ZlcnNpb24S'
+    'HwoLZHJpZnRfc2NvcmUYBCABKAJSCmRyaWZ0U2NvcmUSJQoOZHJpZnRfc2V2ZXJpdHkYBSABKA'
+    'lSDWRyaWZ0U2V2ZXJpdHkSHQoKaXNfYmxvY2tlZBgGIAEoCFIJaXNCbG9ja2VkEisKEXZpb2xh'
+    'dGlvbl9yZWFzb25zGAcgAygJUhB2aW9sYXRpb25SZWFzb25zEiEKDGRldGFpbHNfanNvbhgIIA'
+    'EoCVILZGV0YWlsc0pzb24SIQoMdmlvbGF0aW9uX2lkGAkgASgJUgt2aW9sYXRpb25JZA==');
+
+@$core.Deprecated('Use evaluateDriftRequestDescriptor instead')
+const EvaluateDriftRequest$json = {
+  '1': 'EvaluateDriftRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'asset_id', '3': 2, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'pack_id', '3': 3, '4': 1, '5': 9, '10': 'packId'},
+  ],
+};
+
+/// Descriptor for `EvaluateDriftRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List evaluateDriftRequestDescriptor = $convert.base64Decode(
+    'ChRFdmFsdWF0ZURyaWZ0UmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3JlYXRpdmFudGEuY2'
+    '9tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EhkKCGFzc2V0X2lkGAIgASgJUgdhc3Nl'
+    'dElkEhcKB3BhY2tfaWQYAyABKAlSBnBhY2tJZA==');
+
+@$core.Deprecated('Use evaluateDriftResponseDescriptor instead')
+const EvaluateDriftResponse$json = {
+  '1': 'EvaluateDriftResponse',
+  '2': [
+    {
+      '1': 'result',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.DriftEvaluationResult',
+      '10': 'result'
+    },
+  ],
+};
+
+/// Descriptor for `EvaluateDriftResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List evaluateDriftResponseDescriptor = $convert.base64Decode(
+    'ChVFdmFsdWF0ZURyaWZ0UmVzcG9uc2USSAoGcmVzdWx0GAEgASgLMjAuY3JlYXRpdmFudGEucH'
+    'JvZHVjdGlvbi52MS5EcmlmdEV2YWx1YXRpb25SZXN1bHRSBnJlc3VsdA==');
+
+@$core.Deprecated('Use overrideDriftViolationRequestDescriptor instead')
+const OverrideDriftViolationRequest$json = {
+  '1': 'OverrideDriftViolationRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'violation_id', '3': 2, '4': 1, '5': 9, '10': 'violationId'},
+    {'1': 'override_reason', '3': 3, '4': 1, '5': 9, '10': 'overrideReason'},
+  ],
+};
+
+/// Descriptor for `OverrideDriftViolationRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List overrideDriftViolationRequestDescriptor = $convert.base64Decode(
+    'Ch1PdmVycmlkZURyaWZ0VmlvbGF0aW9uUmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3JlYX'
+    'RpdmFudGEuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EiEKDHZpb2xhdGlvbl9p'
+    'ZBgCIAEoCVILdmlvbGF0aW9uSWQSJwoPb3ZlcnJpZGVfcmVhc29uGAMgASgJUg5vdmVycmlkZV'
+    'JlYXNvbg==');
+
+@$core.Deprecated('Use overrideDriftViolationResponseDescriptor instead')
+const OverrideDriftViolationResponse$json = {
+  '1': 'OverrideDriftViolationResponse',
+  '2': [
+    {'1': 'resolved', '3': 1, '4': 1, '5': 8, '10': 'resolved'},
+    {'1': 'asset_id', '3': 2, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'new_quality_state', '3': 3, '4': 1, '5': 9, '10': 'newQualityState'},
+  ],
+};
+
+/// Descriptor for `OverrideDriftViolationResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List overrideDriftViolationResponseDescriptor =
+    $convert.base64Decode(
+        'Ch5PdmVycmlkZURyaWZ0VmlvbGF0aW9uUmVzcG9uc2USGgoIcmVzb2x2ZWQYASABKAhSCHJlc2'
+        '9sdmVkEhkKCGFzc2V0X2lkGAIgASgJUgdhc3NldElkEioKEW5ld19xdWFsaXR5X3N0YXRlGAMg'
+        'ASgJUg9uZXdRdWFsaXR5U3RhdGU=');
