@@ -46,22 +46,22 @@ type ServiceConfig struct {
 
 // Service implements publishv1connect.PublishServiceHandler.
 type Service struct {
-	mu              sync.RWMutex
-	items           map[string]*PublishItem     // itemID -> item
-	jobs            map[string]*PublishJob      // jobID -> job
-	logs            []*PublishLog               // append-only immutable logs
-	posts           map[string]*ChannelPost     // postID -> post
-	effects         map[string]*ExternalEffect  // opKey -> effect
-	pausedAccounts  map[string]bool             // accountID -> isPaused
-	events          []DomainEvent               // recorded outbox events
-	recentDispatches []time.Time                // sliding window for fairness/jitter calculation
-	workspaceDispatches map[string][]time.Time  // workspaceID -> recent timestamps
-	connectors      map[string]PlatformConnector
-	capEvaluator    CapabilityEvaluator
-	accountLookup   ConnectedAccountLookup
-	approvalChecker ApprovalPolicyChecker
-	jitterConfig    JitterConfig
-	nowFn           func() time.Time
+	mu                  sync.RWMutex
+	items               map[string]*PublishItem    // itemID -> item
+	jobs                map[string]*PublishJob     // jobID -> job
+	logs                []*PublishLog              // append-only immutable logs
+	posts               map[string]*ChannelPost    // postID -> post
+	effects             map[string]*ExternalEffect // opKey -> effect
+	pausedAccounts      map[string]bool            // accountID -> isPaused
+	events              []DomainEvent              // recorded outbox events
+	recentDispatches    []time.Time                // sliding window for fairness/jitter calculation
+	workspaceDispatches map[string][]time.Time     // workspaceID -> recent timestamps
+	connectors          map[string]PlatformConnector
+	capEvaluator        CapabilityEvaluator
+	accountLookup       ConnectedAccountLookup
+	approvalChecker     ApprovalPolicyChecker
+	jitterConfig        JitterConfig
+	nowFn               func() time.Time
 }
 
 var _ publishv1connect.PublishServiceHandler = (*Service)(nil)
@@ -144,12 +144,12 @@ func (s *Service) Events() []DomainEvent {
 func (s *Service) ResolveCapability(workspaceID, platform string) *publishv1.PlatformCapabilitySummary {
 	p := strings.ToLower(platform)
 	summary := &publishv1.PlatformCapabilitySummary{
-		Platform:         p,
-		CapabilityState:  publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_MANUAL,
-		ConnectorState:   "connected",
-		RequiredScopes:   []string{"publish"},
-		Executable:       true,
-		PolicySummary:    "Xuất bản nội dung lên nền tảng",
+		Platform:        p,
+		CapabilityState: publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_MANUAL,
+		ConnectorState:  "connected",
+		RequiredScopes:  []string{"publish"},
+		Executable:      true,
+		PolicySummary:   "Xuất bản nội dung lên nền tảng",
 	}
 
 	if s.capEvaluator != nil {
@@ -493,16 +493,16 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 
 		// Write immutable failed log
 		log := &PublishLog{
-			PublishLogID:   NewID(),
-			WorkspaceID:    item.WorkspaceID,
-			PublishJobID:   job.PublishJobID,
-			PublishItemID:  item.PublishItemID,
-			AttemptedAt:    now,
-			FailedAt:       &item.UpdatedAt,
-			ExecutionPath:  PathNativeAPI,
-			ResultStatus:   ResultFailed,
-			ErrorCode:      ErrorCodeAuthRevoked,
-			ErrorMessage:   "Tài khoản kết nối bị thu hồi quyền truy cập (auth_revoked). Vui lòng kết nối lại tài khoản.",
+			PublishLogID:  NewID(),
+			WorkspaceID:   item.WorkspaceID,
+			PublishJobID:  job.PublishJobID,
+			PublishItemID: item.PublishItemID,
+			AttemptedAt:   now,
+			FailedAt:      &item.UpdatedAt,
+			ExecutionPath: PathNativeAPI,
+			ResultStatus:  ResultFailed,
+			ErrorCode:     ErrorCodeAuthRevoked,
+			ErrorMessage:  "Tài khoản kết nối bị thu hồi quyền truy cập (auth_revoked). Vui lòng kết nối lại tài khoản.",
 		}
 		s.logs = append(s.logs, log)
 
@@ -542,9 +542,9 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 		// Keep in executing or pending reconciliation; NEVER blindly mark failed or publish without proof
 		job.LifecycleState = StateExecuting
 		job.LastExecutionSummary = map[string]any{
-			"status":                 "unknown_submit",
+			"status":                  "unknown_submit",
 			"requires_reconciliation": true,
-			"provider_request_id":    effect.ProviderRequestID,
+			"provider_request_id":     effect.ProviderRequestID,
 		}
 		job.UpdatedAt = s.nowFn()
 
@@ -553,15 +553,15 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 
 		// Write timeout log
 		log := &PublishLog{
-			PublishLogID:   NewID(),
-			WorkspaceID:    item.WorkspaceID,
-			PublishJobID:   job.PublishJobID,
-			PublishItemID:  item.PublishItemID,
-			AttemptedAt:    now,
-			ExecutionPath:  PathNativeAPI,
-			ResultStatus:   ResultTimeout,
-			ErrorCode:      ErrorCodeUnknownSubmit,
-			ErrorMessage:   "Kết quả đăng bài chưa xác định do mất kết nối/timeout. Cần đối soát (reconcile) trước khi thử lại.",
+			PublishLogID:  NewID(),
+			WorkspaceID:   item.WorkspaceID,
+			PublishJobID:  job.PublishJobID,
+			PublishItemID: item.PublishItemID,
+			AttemptedAt:   now,
+			ExecutionPath: PathNativeAPI,
+			ResultStatus:  ResultTimeout,
+			ErrorCode:     ErrorCodeUnknownSubmit,
+			ErrorMessage:  "Kết quả đăng bài chưa xác định do mất kết nối/timeout. Cần đối soát (reconcile) trước khi thử lại.",
 		}
 		s.logs = append(s.logs, log)
 
@@ -591,16 +591,16 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 		}
 
 		log := &PublishLog{
-			PublishLogID:   NewID(),
-			WorkspaceID:    item.WorkspaceID,
-			PublishJobID:   job.PublishJobID,
-			PublishItemID:  item.PublishItemID,
-			AttemptedAt:    now,
-			FailedAt:       &item.UpdatedAt,
-			ExecutionPath:  PathNativeAPI,
-			ResultStatus:   ResultFailed,
-			ErrorCode:      "publish_api_error",
-			ErrorMessage:   errMsg,
+			PublishLogID:  NewID(),
+			WorkspaceID:   item.WorkspaceID,
+			PublishJobID:  job.PublishJobID,
+			PublishItemID: item.PublishItemID,
+			AttemptedAt:   now,
+			FailedAt:      &item.UpdatedAt,
+			ExecutionPath: PathNativeAPI,
+			ResultStatus:  ResultFailed,
+			ErrorCode:     "publish_api_error",
+			ErrorMessage:  errMsg,
 		}
 		s.logs = append(s.logs, log)
 
@@ -1141,7 +1141,7 @@ func (s *Service) GetDiagnostics(ctx context.Context, req *connect.Request[publi
 		ErrorMessage:         errMsg,
 		RepairRecommendation: repairRec,
 		CanReconnect:         isAuthRevoked,
-		CanManualFallback:   true,
+		CanManualFallback:    true,
 		CanRetry:             !isAuthRevoked,
 		CapabilitySummary:    capSummary,
 	}), nil

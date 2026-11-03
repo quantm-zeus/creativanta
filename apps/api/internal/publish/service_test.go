@@ -16,13 +16,13 @@ import (
 
 // MockConnector implements PlatformConnector for tests.
 type MockConnector struct {
-	platform           string
-	publishOutcome     string // success, failed, unknown, auth_revoked
-	reconcileOutcome   string // confirmed_published, confirmed_not_published, still_unknown
-	publishCalls       int
-	reconcileCalls     int
-	publishedPostID    string
-	publishedPostURL   string
+	platform         string
+	publishOutcome   string // success, failed, unknown, auth_revoked
+	reconcileOutcome string // confirmed_published, confirmed_not_published, still_unknown
+	publishCalls     int
+	reconcileCalls   int
+	publishedPostID  string
+	publishedPostURL string
 }
 
 func (m *MockConnector) Platform() string {
