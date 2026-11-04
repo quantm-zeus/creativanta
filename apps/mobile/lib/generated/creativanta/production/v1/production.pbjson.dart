@@ -7178,6 +7178,64 @@ final $typed_data.Uint8List uploadPresetDescriptor = $convert.base64Decode(
     'x0X2FzcGVjdF9yYXRpbxgIIAEoCVISZGVmYXVsdEFzcGVjdFJhdGlvEjkKCmNyZWF0ZWRfYXQY'
     'CSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgljcmVhdGVkQXQ=');
 
+@$core.Deprecated('Use aBVariantDescriptor instead')
+const ABVariant$json = {
+  '1': 'ABVariant',
+  '2': [
+    {'1': 'variant_id', '3': 1, '4': 1, '5': 9, '10': 'variantId'},
+    {'1': 'asset_id', '3': 2, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'publish_item_id', '3': 3, '4': 1, '5': 9, '10': 'publishItemId'},
+    {'1': 'variant_type', '3': 4, '4': 1, '5': 9, '10': 'variantType'},
+    {'1': 'variant_label', '3': 5, '4': 1, '5': 9, '10': 'variantLabel'},
+    {'1': 'impressions', '3': 6, '4': 1, '5': 3, '10': 'impressions'},
+    {'1': 'views', '3': 7, '4': 1, '5': 3, '10': 'views'},
+    {'1': 'clicks', '3': 8, '4': 1, '5': 3, '10': 'clicks'},
+    {'1': 'ctr', '3': 9, '4': 1, '5': 1, '10': 'ctr'},
+    {'1': 'conversions', '3': 10, '4': 1, '5': 3, '10': 'conversions'},
+    {'1': 'engagement_rate', '3': 11, '4': 1, '5': 1, '10': 'engagementRate'},
+  ],
+};
+
+/// Descriptor for `ABVariant`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List aBVariantDescriptor = $convert.base64Decode(
+    'CglBQlZhcmlhbnQSHQoKdmFyaWFudF9pZBgBIAEoCVIJdmFyaWFudElkEhkKCGFzc2V0X2lkGA'
+    'IgASgJUgdhc3NldElkEiYKD3B1Ymxpc2hfaXRlbV9pZBgDIAEoCVINcHVibGlzaEl0ZW1JZBIh'
+    'Cgx2YXJpYW50X3R5cGUYBCABKAlSC3ZhcmlhbnRUeXBlEiMKDXZhcmlhbnRfbGFiZWwYBSABKA'
+    'lSDHZhcmlhbnRMYWJlbBIgCgtpbXByZXNzaW9ucxgGIAEoA1ILaW1wcmVzc2lvbnMSFAoFdmll'
+    'd3MYByABKANSBXZpZXdzEhYKBmNsaWNrcxgIIAEoA1IGY2xpY2tzEhAKA2N0chgJIAEoAVIDY3'
+    'RyEiAKC2NvbnZlcnNpb25zGAogASgDUgtjb252ZXJzaW9ucxInCg9lbmdhZ2VtZW50X3JhdGUY'
+    'CyABKAFSDmVuZ2FnZW1lbnRSYXRl');
+
+@$core.Deprecated('Use autoWinnerCriteriaDescriptor instead')
+const AutoWinnerCriteria$json = {
+  '1': 'AutoWinnerCriteria',
+  '2': [
+    {'1': 'metric', '3': 1, '4': 1, '5': 9, '10': 'metric'},
+    {
+      '1': 'threshold_multiplier',
+      '3': 2,
+      '4': 1,
+      '5': 1,
+      '10': 'thresholdMultiplier'
+    },
+    {
+      '1': 'min_duration_hours',
+      '3': 3,
+      '4': 1,
+      '5': 5,
+      '10': 'minDurationHours'
+    },
+    {'1': 'min_impressions', '3': 4, '4': 1, '5': 3, '10': 'minImpressions'},
+  ],
+};
+
+/// Descriptor for `AutoWinnerCriteria`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List autoWinnerCriteriaDescriptor = $convert.base64Decode(
+    'ChJBdXRvV2lubmVyQ3JpdGVyaWESFgoGbWV0cmljGAEgASgJUgZtZXRyaWMSMQoUdGhyZXNob2'
+    'xkX211bHRpcGxpZXIYAiABKAFSE3RocmVzaG9sZE11bHRpcGxpZXISLAoSbWluX2R1cmF0aW9u'
+    'X2hvdXJzGAMgASgFUhBtaW5EdXJhdGlvbkhvdXJzEicKD21pbl9pbXByZXNzaW9ucxgEIAEoA1'
+    'IObWluSW1wcmVzc2lvbnM=');
+
 @$core.Deprecated('Use aBExperimentDescriptor instead')
 const ABExperiment$json = {
   '1': 'ABExperiment',
@@ -7221,6 +7279,54 @@ const ABExperiment$json = {
       '5': 9,
       '10': 'inconclusiveReason'
     },
+    {
+      '1': 'variants',
+      '3': 16,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.ABVariant',
+      '10': 'variants'
+    },
+    {
+      '1': 'criteria',
+      '3': 17,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.AutoWinnerCriteria',
+      '10': 'criteria'
+    },
+    {
+      '1': 'started_at',
+      '3': 18,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'startedAt'
+    },
+    {
+      '1': 'completed_at',
+      '3': 19,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'completedAt'
+    },
+    {
+      '1': 'created_at',
+      '3': 20,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+    {
+      '1': 'updated_at',
+      '3': 21,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'updatedAt'
+    },
   ],
 };
 
@@ -7237,7 +7343,14 @@ final $typed_data.Uint8List aBExperimentDescriptor = $convert.base64Decode(
     'chIWCgZzdGF0dXMYCyABKAlSBnN0YXR1cxIjCg1yZXN1bHRfc3RhdHVzGAwgASgJUgxyZXN1bH'
     'RTdGF0dXMSJgoPd2lubmVyX2Fzc2V0X2lkGA0gASgJUg13aW5uZXJBc3NldElkEikKEGlzX29i'
     'c2VydmF0aW9uYWwYDiABKAhSD2lzT2JzZXJ2YXRpb25hbBIvChNpbmNvbmNsdXNpdmVfcmVhc2'
-    '9uGA8gASgJUhJpbmNvbmNsdXNpdmVSZWFzb24=');
+    '9uGA8gASgJUhJpbmNvbmNsdXNpdmVSZWFzb24SQAoIdmFyaWFudHMYECADKAsyJC5jcmVhdGl2'
+    'YW50YS5wcm9kdWN0aW9uLnYxLkFCVmFyaWFudFIIdmFyaWFudHMSSQoIY3JpdGVyaWEYESABKA'
+    'syLS5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLkF1dG9XaW5uZXJDcml0ZXJpYVIIY3JpdGVy'
+    'aWESOQoKc3RhcnRlZF9hdBgSIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSCXN0YX'
+    'J0ZWRBdBI9Cgxjb21wbGV0ZWRfYXQYEyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1w'
+    'Ugtjb21wbGV0ZWRBdBI5CgpjcmVhdGVkX2F0GBQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbW'
+    'VzdGFtcFIJY3JlYXRlZEF0EjkKCnVwZGF0ZWRfYXQYFSABKAsyGi5nb29nbGUucHJvdG9idWYu'
+    'VGltZXN0YW1wUgl1cGRhdGVkQXQ=');
 
 @$core.Deprecated('Use overrideAuditRecordDescriptor instead')
 const OverrideAuditRecord$json = {
@@ -7768,3 +7881,923 @@ final $typed_data.Uint8List packagingServiceRunQAResponseDescriptor =
     $convert.base64Decode(
         'Ch1QYWNrYWdpbmdTZXJ2aWNlUnVuUUFSZXNwb25zZRJCCgZyZXBvcnQYASABKAsyKi5jcmVhdG'
         'l2YW50YS5wcm9kdWN0aW9uLnYxLlBhY2thZ2luZ1JlcG9ydFIGcmVwb3J0');
+
+@$core.Deprecated('Use aBTestServiceCreateRequestDescriptor instead')
+const ABTestServiceCreateRequest$json = {
+  '1': 'ABTestServiceCreateRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'source_asset_id', '3': 2, '4': 1, '5': 9, '10': 'sourceAssetId'},
+    {'1': 'title', '3': 3, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'hypothesis', '3': 4, '4': 1, '5': 9, '10': 'hypothesis'},
+    {'1': 'variant_asset_ids', '3': 5, '4': 3, '5': 9, '10': 'variantAssetIds'},
+    {'1': 'target_metric', '3': 6, '4': 1, '5': 9, '10': 'targetMetric'},
+    {
+      '1': 'min_duration_hours',
+      '3': 7,
+      '4': 1,
+      '5': 5,
+      '10': 'minDurationHours'
+    },
+    {
+      '1': 'min_impressions_per_variant',
+      '3': 8,
+      '4': 1,
+      '5': 3,
+      '10': 'minImpressionsPerVariant'
+    },
+    {
+      '1': 'auto_winner_threshold_multiplier',
+      '3': 9,
+      '4': 1,
+      '5': 1,
+      '10': 'autoWinnerThresholdMultiplier'
+    },
+    {
+      '1': 'variants',
+      '3': 10,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.ABVariant',
+      '10': 'variants'
+    },
+  ],
+};
+
+/// Descriptor for `ABTestServiceCreateRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List aBTestServiceCreateRequestDescriptor = $convert.base64Decode(
+    'ChpBQlRlc3RTZXJ2aWNlQ3JlYXRlUmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3JlYXRpdm'
+    'FudGEuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EiYKD3NvdXJjZV9hc3NldF9p'
+    'ZBgCIAEoCVINc291cmNlQXNzZXRJZBIUCgV0aXRsZRgDIAEoCVIFdGl0bGUSHgoKaHlwb3RoZX'
+    'NpcxgEIAEoCVIKaHlwb3RoZXNpcxIqChF2YXJpYW50X2Fzc2V0X2lkcxgFIAMoCVIPdmFyaWFu'
+    'dEFzc2V0SWRzEiMKDXRhcmdldF9tZXRyaWMYBiABKAlSDHRhcmdldE1ldHJpYxIsChJtaW5fZH'
+    'VyYXRpb25faG91cnMYByABKAVSEG1pbkR1cmF0aW9uSG91cnMSPQobbWluX2ltcHJlc3Npb25z'
+    'X3Blcl92YXJpYW50GAggASgDUhhtaW5JbXByZXNzaW9uc1BlclZhcmlhbnQSRwogYXV0b193aW'
+    '5uZXJfdGhyZXNob2xkX211bHRpcGxpZXIYCSABKAFSHWF1dG9XaW5uZXJUaHJlc2hvbGRNdWx0'
+    'aXBsaWVyEkAKCHZhcmlhbnRzGAogAygLMiQuY3JlYXRpdmFudGEucHJvZHVjdGlvbi52MS5BQl'
+    'ZhcmlhbnRSCHZhcmlhbnRz');
+
+@$core.Deprecated('Use aBTestServiceCreateResponseDescriptor instead')
+const ABTestServiceCreateResponse$json = {
+  '1': 'ABTestServiceCreateResponse',
+  '2': [
+    {
+      '1': 'experiment',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.ABExperiment',
+      '10': 'experiment'
+    },
+  ],
+};
+
+/// Descriptor for `ABTestServiceCreateResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List aBTestServiceCreateResponseDescriptor =
+    $convert.base64Decode(
+        'ChtBQlRlc3RTZXJ2aWNlQ3JlYXRlUmVzcG9uc2USRwoKZXhwZXJpbWVudBgBIAEoCzInLmNyZW'
+        'F0aXZhbnRhLnByb2R1Y3Rpb24udjEuQUJFeHBlcmltZW50UgpleHBlcmltZW50');
+
+@$core.Deprecated('Use aBTestServiceGetRequestDescriptor instead')
+const ABTestServiceGetRequest$json = {
+  '1': 'ABTestServiceGetRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'experiment_id', '3': 2, '4': 1, '5': 9, '10': 'experimentId'},
+  ],
+};
+
+/// Descriptor for `ABTestServiceGetRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List aBTestServiceGetRequestDescriptor = $convert.base64Decode(
+    'ChdBQlRlc3RTZXJ2aWNlR2V0UmVxdWVzdBI+Cgx3b3Jrc3BhY2VfaWQYASABKAsyGy5jcmVhdG'
+    'l2YW50YS5jb21tb24udjEuVVVJRFILd29ya3NwYWNlSWQSIwoNZXhwZXJpbWVudF9pZBgCIAEo'
+    'CVIMZXhwZXJpbWVudElk');
+
+@$core.Deprecated('Use aBTestServiceGetResponseDescriptor instead')
+const ABTestServiceGetResponse$json = {
+  '1': 'ABTestServiceGetResponse',
+  '2': [
+    {
+      '1': 'experiment',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.ABExperiment',
+      '10': 'experiment'
+    },
+  ],
+};
+
+/// Descriptor for `ABTestServiceGetResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List aBTestServiceGetResponseDescriptor =
+    $convert.base64Decode(
+        'ChhBQlRlc3RTZXJ2aWNlR2V0UmVzcG9uc2USRwoKZXhwZXJpbWVudBgBIAEoCzInLmNyZWF0aX'
+        'ZhbnRhLnByb2R1Y3Rpb24udjEuQUJFeHBlcmltZW50UgpleHBlcmltZW50');
+
+@$core.Deprecated('Use aBTestServiceListRequestDescriptor instead')
+const ABTestServiceListRequest$json = {
+  '1': 'ABTestServiceListRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'source_asset_id', '3': 2, '4': 1, '5': 9, '10': 'sourceAssetId'},
+    {'1': 'status', '3': 3, '4': 1, '5': 9, '10': 'status'},
+    {
+      '1': 'pagination',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Pagination',
+      '10': 'pagination'
+    },
+  ],
+};
+
+/// Descriptor for `ABTestServiceListRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List aBTestServiceListRequestDescriptor = $convert.base64Decode(
+    'ChhBQlRlc3RTZXJ2aWNlTGlzdFJlcXVlc3QSPgoMd29ya3NwYWNlX2lkGAEgASgLMhsuY3JlYX'
+    'RpdmFudGEuY29tbW9uLnYxLlVVSURSC3dvcmtzcGFjZUlkEiYKD3NvdXJjZV9hc3NldF9pZBgC'
+    'IAEoCVINc291cmNlQXNzZXRJZBIWCgZzdGF0dXMYAyABKAlSBnN0YXR1cxJBCgpwYWdpbmF0aW'
+    '9uGAQgASgLMiEuY3JlYXRpdmFudGEuY29tbW9uLnYxLlBhZ2luYXRpb25SCnBhZ2luYXRpb24=');
+
+@$core.Deprecated('Use aBTestServiceListResponseDescriptor instead')
+const ABTestServiceListResponse$json = {
+  '1': 'ABTestServiceListResponse',
+  '2': [
+    {
+      '1': 'experiments',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.ABExperiment',
+      '10': 'experiments'
+    },
+    {
+      '1': 'pagination',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.PaginatedResponse',
+      '10': 'pagination'
+    },
+  ],
+};
+
+/// Descriptor for `ABTestServiceListResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List aBTestServiceListResponseDescriptor = $convert.base64Decode(
+    'ChlBQlRlc3RTZXJ2aWNlTGlzdFJlc3BvbnNlEkkKC2V4cGVyaW1lbnRzGAEgAygLMicuY3JlYX'
+    'RpdmFudGEucHJvZHVjdGlvbi52MS5BQkV4cGVyaW1lbnRSC2V4cGVyaW1lbnRzEkgKCnBhZ2lu'
+    'YXRpb24YAiABKAsyKC5jcmVhdGl2YW50YS5jb21tb24udjEuUGFnaW5hdGVkUmVzcG9uc2VSCn'
+    'BhZ2luYXRpb24=');
+
+@$core.Deprecated('Use aBTestServiceDeclareWinnerRequestDescriptor instead')
+const ABTestServiceDeclareWinnerRequest$json = {
+  '1': 'ABTestServiceDeclareWinnerRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'experiment_id', '3': 2, '4': 1, '5': 9, '10': 'experimentId'},
+    {'1': 'winner_asset_id', '3': 3, '4': 1, '5': 9, '10': 'winnerAssetId'},
+    {'1': 'reason', '3': 4, '4': 1, '5': 9, '10': 'reason'},
+  ],
+};
+
+/// Descriptor for `ABTestServiceDeclareWinnerRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List aBTestServiceDeclareWinnerRequestDescriptor =
+    $convert.base64Decode(
+        'CiFBQlRlc3RTZXJ2aWNlRGVjbGFyZVdpbm5lclJlcXVlc3QSPwoHY29udGV4dBgBIAEoCzIlLm'
+        'NyZWF0aXZhbnRhLmNvbW1vbi52MS5Db21tYW5kQ29udGV4dFIHY29udGV4dBIjCg1leHBlcmlt'
+        'ZW50X2lkGAIgASgJUgxleHBlcmltZW50SWQSJgoPd2lubmVyX2Fzc2V0X2lkGAMgASgJUg13aW'
+        '5uZXJBc3NldElkEhYKBnJlYXNvbhgEIAEoCVIGcmVhc29u');
+
+@$core.Deprecated('Use aBTestServiceDeclareWinnerResponseDescriptor instead')
+const ABTestServiceDeclareWinnerResponse$json = {
+  '1': 'ABTestServiceDeclareWinnerResponse',
+  '2': [
+    {
+      '1': 'experiment',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.ABExperiment',
+      '10': 'experiment'
+    },
+    {
+      '1': 'observational_label_retained',
+      '3': 2,
+      '4': 1,
+      '5': 8,
+      '10': 'observationalLabelRetained'
+    },
+  ],
+};
+
+/// Descriptor for `ABTestServiceDeclareWinnerResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List aBTestServiceDeclareWinnerResponseDescriptor =
+    $convert.base64Decode(
+        'CiJBQlRlc3RTZXJ2aWNlRGVjbGFyZVdpbm5lclJlc3BvbnNlEkcKCmV4cGVyaW1lbnQYASABKA'
+        'syJy5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLkFCRXhwZXJpbWVudFIKZXhwZXJpbWVudBJA'
+        'ChxvYnNlcnZhdGlvbmFsX2xhYmVsX3JldGFpbmVkGAIgASgIUhpvYnNlcnZhdGlvbmFsTGFiZW'
+        'xSZXRhaW5lZA==');
+
+@$core.Deprecated('Use aBTestServiceCancelRequestDescriptor instead')
+const ABTestServiceCancelRequest$json = {
+  '1': 'ABTestServiceCancelRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'experiment_id', '3': 2, '4': 1, '5': 9, '10': 'experimentId'},
+    {'1': 'reason', '3': 3, '4': 1, '5': 9, '10': 'reason'},
+  ],
+};
+
+/// Descriptor for `ABTestServiceCancelRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List aBTestServiceCancelRequestDescriptor =
+    $convert.base64Decode(
+        'ChpBQlRlc3RTZXJ2aWNlQ2FuY2VsUmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3JlYXRpdm'
+        'FudGEuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EiMKDWV4cGVyaW1lbnRfaWQY'
+        'AiABKAlSDGV4cGVyaW1lbnRJZBIWCgZyZWFzb24YAyABKAlSBnJlYXNvbg==');
+
+@$core.Deprecated('Use aBTestServiceCancelResponseDescriptor instead')
+const ABTestServiceCancelResponse$json = {
+  '1': 'ABTestServiceCancelResponse',
+  '2': [
+    {
+      '1': 'experiment',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.ABExperiment',
+      '10': 'experiment'
+    },
+    {'1': 'success', '3': 2, '4': 1, '5': 8, '10': 'success'},
+  ],
+};
+
+/// Descriptor for `ABTestServiceCancelResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List aBTestServiceCancelResponseDescriptor =
+    $convert.base64Decode(
+        'ChtBQlRlc3RTZXJ2aWNlQ2FuY2VsUmVzcG9uc2USRwoKZXhwZXJpbWVudBgBIAEoCzInLmNyZW'
+        'F0aXZhbnRhLnByb2R1Y3Rpb24udjEuQUJFeHBlcmltZW50UgpleHBlcmltZW50EhgKB3N1Y2Nl'
+        'c3MYAiABKAhSB3N1Y2Nlc3M=');
+
+@$core.Deprecated('Use aBTestServiceEvaluateTestRequestDescriptor instead')
+const ABTestServiceEvaluateTestRequest$json = {
+  '1': 'ABTestServiceEvaluateTestRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'experiment_id', '3': 2, '4': 1, '5': 9, '10': 'experimentId'},
+  ],
+};
+
+/// Descriptor for `ABTestServiceEvaluateTestRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List aBTestServiceEvaluateTestRequestDescriptor =
+    $convert.base64Decode(
+        'CiBBQlRlc3RTZXJ2aWNlRXZhbHVhdGVUZXN0UmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3'
+        'JlYXRpdmFudGEuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EiMKDWV4cGVyaW1l'
+        'bnRfaWQYAiABKAlSDGV4cGVyaW1lbnRJZA==');
+
+@$core.Deprecated('Use aBTestServiceEvaluateTestResponseDescriptor instead')
+const ABTestServiceEvaluateTestResponse$json = {
+  '1': 'ABTestServiceEvaluateTestResponse',
+  '2': [
+    {
+      '1': 'experiment',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.ABExperiment',
+      '10': 'experiment'
+    },
+    {'1': 'is_conclusive', '3': 2, '4': 1, '5': 8, '10': 'isConclusive'},
+    {'1': 'is_observational', '3': 3, '4': 1, '5': 8, '10': 'isObservational'},
+    {'1': 'winner_asset_id', '3': 4, '4': 1, '5': 9, '10': 'winnerAssetId'},
+    {
+      '1': 'evaluation_summary',
+      '3': 5,
+      '4': 1,
+      '5': 9,
+      '10': 'evaluationSummary'
+    },
+  ],
+};
+
+/// Descriptor for `ABTestServiceEvaluateTestResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List aBTestServiceEvaluateTestResponseDescriptor = $convert.base64Decode(
+    'CiFBQlRlc3RTZXJ2aWNlRXZhbHVhdGVUZXN0UmVzcG9uc2USRwoKZXhwZXJpbWVudBgBIAEoCz'
+    'InLmNyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuQUJFeHBlcmltZW50UgpleHBlcmltZW50EiMK'
+    'DWlzX2NvbmNsdXNpdmUYAiABKAhSDGlzQ29uY2x1c2l2ZRIpChBpc19vYnNlcnZhdGlvbmFsGA'
+    'MgASgIUg9pc09ic2VydmF0aW9uYWwSJgoPd2lubmVyX2Fzc2V0X2lkGAQgASgJUg13aW5uZXJB'
+    'c3NldElkEi0KEmV2YWx1YXRpb25fc3VtbWFyeRgFIAEoCVIRZXZhbHVhdGlvblN1bW1hcnk=');
+
+@$core.Deprecated('Use aBTestServiceGetMetricsRequestDescriptor instead')
+const ABTestServiceGetMetricsRequest$json = {
+  '1': 'ABTestServiceGetMetricsRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'experiment_id', '3': 2, '4': 1, '5': 9, '10': 'experimentId'},
+  ],
+};
+
+/// Descriptor for `ABTestServiceGetMetricsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List aBTestServiceGetMetricsRequestDescriptor =
+    $convert.base64Decode(
+        'Ch5BQlRlc3RTZXJ2aWNlR2V0TWV0cmljc1JlcXVlc3QSPgoMd29ya3NwYWNlX2lkGAEgASgLMh'
+        'suY3JlYXRpdmFudGEuY29tbW9uLnYxLlVVSURSC3dvcmtzcGFjZUlkEiMKDWV4cGVyaW1lbnRf'
+        'aWQYAiABKAlSDGV4cGVyaW1lbnRJZA==');
+
+@$core.Deprecated('Use aBTestServiceGetMetricsResponseDescriptor instead')
+const ABTestServiceGetMetricsResponse$json = {
+  '1': 'ABTestServiceGetMetricsResponse',
+  '2': [
+    {'1': 'experiment_id', '3': 1, '4': 1, '5': 9, '10': 'experimentId'},
+    {
+      '1': 'variants',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.ABVariant',
+      '10': 'variants'
+    },
+    {
+      '1': 'leading_variant_id',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '10': 'leadingVariantId'
+    },
+    {'1': 'is_observational', '3': 4, '4': 1, '5': 8, '10': 'isObservational'},
+    {
+      '1': 'has_sufficient_exposure',
+      '3': 5,
+      '4': 1,
+      '5': 8,
+      '10': 'hasSufficientExposure'
+    },
+  ],
+};
+
+/// Descriptor for `ABTestServiceGetMetricsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List aBTestServiceGetMetricsResponseDescriptor = $convert.base64Decode(
+    'Ch9BQlRlc3RTZXJ2aWNlR2V0TWV0cmljc1Jlc3BvbnNlEiMKDWV4cGVyaW1lbnRfaWQYASABKA'
+    'lSDGV4cGVyaW1lbnRJZBJACgh2YXJpYW50cxgCIAMoCzIkLmNyZWF0aXZhbnRhLnByb2R1Y3Rp'
+    'b24udjEuQUJWYXJpYW50Ugh2YXJpYW50cxIsChJsZWFkaW5nX3ZhcmlhbnRfaWQYAyABKAlSEG'
+    'xlYWRpbmdWYXJpYW50SWQSKQoQaXNfb2JzZXJ2YXRpb25hbBgEIAEoCFIPaXNPYnNlcnZhdGlv'
+    'bmFsEjYKF2hhc19zdWZmaWNpZW50X2V4cG9zdXJlGAUgASgIUhVoYXNTdWZmaWNpZW50RXhwb3'
+    'N1cmU=');
+
+@$core.Deprecated('Use performanceInsightDescriptor instead')
+const PerformanceInsight$json = {
+  '1': 'PerformanceInsight',
+  '2': [
+    {'1': 'insight_id', '3': 1, '4': 1, '5': 9, '10': 'insightId'},
+    {'1': 'title', '3': 2, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'description', '3': 3, '4': 1, '5': 9, '10': 'description'},
+    {'1': 'category', '3': 4, '4': 1, '5': 9, '10': 'category'},
+    {'1': 'impact_level', '3': 5, '4': 1, '5': 9, '10': 'impactLevel'},
+    {'1': 'effort_level', '3': 6, '4': 1, '5': 9, '10': 'effortLevel'},
+    {'1': 'suggested_action', '3': 7, '4': 1, '5': 9, '10': 'suggestedAction'},
+    {'1': 'target_asset_id', '3': 8, '4': 1, '5': 9, '10': 'targetAssetId'},
+    {'1': 'is_observational', '3': 9, '4': 1, '5': 8, '10': 'isObservational'},
+  ],
+};
+
+/// Descriptor for `PerformanceInsight`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List performanceInsightDescriptor = $convert.base64Decode(
+    'ChJQZXJmb3JtYW5jZUluc2lnaHQSHQoKaW5zaWdodF9pZBgBIAEoCVIJaW5zaWdodElkEhQKBX'
+    'RpdGxlGAIgASgJUgV0aXRsZRIgCgtkZXNjcmlwdGlvbhgDIAEoCVILZGVzY3JpcHRpb24SGgoI'
+    'Y2F0ZWdvcnkYBCABKAlSCGNhdGVnb3J5EiEKDGltcGFjdF9sZXZlbBgFIAEoCVILaW1wYWN0TG'
+    'V2ZWwSIQoMZWZmb3J0X2xldmVsGAYgASgJUgtlZmZvcnRMZXZlbBIpChBzdWdnZXN0ZWRfYWN0'
+    'aW9uGAcgASgJUg9zdWdnZXN0ZWRBY3Rpb24SJgoPdGFyZ2V0X2Fzc2V0X2lkGAggASgJUg10YX'
+    'JnZXRBc3NldElkEikKEGlzX29ic2VydmF0aW9uYWwYCSABKAhSD2lzT2JzZXJ2YXRpb25hbA==');
+
+@$core.Deprecated('Use videoScorecardDescriptor instead')
+const VideoScorecard$json = {
+  '1': 'VideoScorecard',
+  '2': [
+    {'1': 'asset_id', '3': 1, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'title', '3': 2, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'packaging_score', '3': 3, '4': 1, '5': 1, '10': 'packagingScore'},
+    {'1': 'hook_score', '3': 4, '4': 1, '5': 1, '10': 'hookScore'},
+    {'1': 'retention_rate_3s', '3': 5, '4': 1, '5': 1, '10': 'retentionRate3s'},
+    {'1': 'completion_rate', '3': 6, '4': 1, '5': 1, '10': 'completionRate'},
+    {'1': 'engagement_rate', '3': 7, '4': 1, '5': 1, '10': 'engagementRate'},
+    {'1': 'views', '3': 8, '4': 1, '5': 3, '10': 'views'},
+    {'1': 'likes', '3': 9, '4': 1, '5': 3, '10': 'likes'},
+    {'1': 'comments', '3': 10, '4': 1, '5': 3, '10': 'comments'},
+    {'1': 'shares', '3': 11, '4': 1, '5': 3, '10': 'shares'},
+    {'1': 'grade', '3': 12, '4': 1, '5': 9, '10': 'grade'},
+    {'1': 'strengths', '3': 13, '4': 3, '5': 9, '10': 'strengths'},
+    {'1': 'drop_off_points', '3': 14, '4': 3, '5': 9, '10': 'dropOffPoints'},
+    {'1': 'improvement_tips', '3': 15, '4': 3, '5': 9, '10': 'improvementTips'},
+    {'1': 'is_observational', '3': 16, '4': 1, '5': 8, '10': 'isObservational'},
+    {
+      '1': 'observational_notice',
+      '3': 17,
+      '4': 1,
+      '5': 9,
+      '10': 'observationalNotice'
+    },
+  ],
+};
+
+/// Descriptor for `VideoScorecard`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List videoScorecardDescriptor = $convert.base64Decode(
+    'Cg5WaWRlb1Njb3JlY2FyZBIZCghhc3NldF9pZBgBIAEoCVIHYXNzZXRJZBIUCgV0aXRsZRgCIA'
+    'EoCVIFdGl0bGUSJwoPcGFja2FnaW5nX3Njb3JlGAMgASgBUg5wYWNrYWdpbmdTY29yZRIdCgpo'
+    'b29rX3Njb3JlGAQgASgBUglob29rU2NvcmUSKgoRcmV0ZW50aW9uX3JhdGVfM3MYBSABKAFSD3'
+    'JldGVudGlvblJhdGUzcxInCg9jb21wbGV0aW9uX3JhdGUYBiABKAFSDmNvbXBsZXRpb25SYXRl'
+    'EicKD2VuZ2FnZW1lbnRfcmF0ZRgHIAEoAVIOZW5nYWdlbWVudFJhdGUSFAoFdmlld3MYCCABKA'
+    'NSBXZpZXdzEhQKBWxpa2VzGAkgASgDUgVsaWtlcxIaCghjb21tZW50cxgKIAEoA1IIY29tbWVu'
+    'dHMSFgoGc2hhcmVzGAsgASgDUgZzaGFyZXMSFAoFZ3JhZGUYDCABKAlSBWdyYWRlEhwKCXN0cm'
+    'VuZ3RocxgNIAMoCVIJc3RyZW5ndGhzEiYKD2Ryb3Bfb2ZmX3BvaW50cxgOIAMoCVINZHJvcE9m'
+    'ZlBvaW50cxIpChBpbXByb3ZlbWVudF90aXBzGA8gAygJUg9pbXByb3ZlbWVudFRpcHMSKQoQaX'
+    'Nfb2JzZXJ2YXRpb25hbBgQIAEoCFIPaXNPYnNlcnZhdGlvbmFsEjEKFG9ic2VydmF0aW9uYWxf'
+    'bm90aWNlGBEgASgJUhNvYnNlcnZhdGlvbmFsTm90aWNl');
+
+@$core.Deprecated('Use improvementItemDescriptor instead')
+const ImprovementItem$json = {
+  '1': 'ImprovementItem',
+  '2': [
+    {'1': 'item_id', '3': 1, '4': 1, '5': 9, '10': 'itemId'},
+    {'1': 'title', '3': 2, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'description', '3': 3, '4': 1, '5': 9, '10': 'description'},
+    {
+      '1': 'format_recommendation',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '10': 'formatRecommendation'
+    },
+    {'1': 'sound_suggestion', '3': 5, '4': 1, '5': 9, '10': 'soundSuggestion'},
+    {'1': 'impact', '3': 6, '4': 1, '5': 9, '10': 'impact'},
+    {'1': 'effort', '3': 7, '4': 1, '5': 9, '10': 'effort'},
+    {'1': 'action_cta', '3': 8, '4': 1, '5': 9, '10': 'actionCta'},
+  ],
+};
+
+/// Descriptor for `ImprovementItem`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List improvementItemDescriptor = $convert.base64Decode(
+    'Cg9JbXByb3ZlbWVudEl0ZW0SFwoHaXRlbV9pZBgBIAEoCVIGaXRlbUlkEhQKBXRpdGxlGAIgAS'
+    'gJUgV0aXRsZRIgCgtkZXNjcmlwdGlvbhgDIAEoCVILZGVzY3JpcHRpb24SMwoVZm9ybWF0X3Jl'
+    'Y29tbWVuZGF0aW9uGAQgASgJUhRmb3JtYXRSZWNvbW1lbmRhdGlvbhIpChBzb3VuZF9zdWdnZX'
+    'N0aW9uGAUgASgJUg9zb3VuZFN1Z2dlc3Rpb24SFgoGaW1wYWN0GAYgASgJUgZpbXBhY3QSFgoG'
+    'ZWZmb3J0GAcgASgJUgZlZmZvcnQSHQoKYWN0aW9uX2N0YRgIIAEoCVIJYWN0aW9uQ3Rh');
+
+@$core.Deprecated('Use improvementPlanDescriptor instead')
+const ImprovementPlan$json = {
+  '1': 'ImprovementPlan',
+  '2': [
+    {'1': 'plan_id', '3': 1, '4': 1, '5': 9, '10': 'planId'},
+    {'1': 'workspace_id', '3': 2, '4': 1, '5': 9, '10': 'workspaceId'},
+    {'1': 'period', '3': 3, '4': 1, '5': 9, '10': 'period'},
+    {'1': 'current_score', '3': 4, '4': 1, '5': 1, '10': 'currentScore'},
+    {'1': 'previous_score', '3': 5, '4': 1, '5': 1, '10': 'previousScore'},
+    {'1': 'score_change', '3': 6, '4': 1, '5': 1, '10': 'scoreChange'},
+    {'1': 'best_post_title', '3': 7, '4': 1, '5': 9, '10': 'bestPostTitle'},
+    {'1': 'best_post_er', '3': 8, '4': 1, '5': 1, '10': 'bestPostEr'},
+    {'1': 'worst_post_title', '3': 9, '4': 1, '5': 9, '10': 'worstPostTitle'},
+    {'1': 'worst_post_er', '3': 10, '4': 1, '5': 1, '10': 'worstPostEr'},
+    {
+      '1': 'action_items',
+      '3': 11,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.ImprovementItem',
+      '10': 'actionItems'
+    },
+    {'1': 'is_observational', '3': 12, '4': 1, '5': 8, '10': 'isObservational'},
+    {
+      '1': 'observational_notice',
+      '3': 13,
+      '4': 1,
+      '5': 9,
+      '10': 'observationalNotice'
+    },
+  ],
+};
+
+/// Descriptor for `ImprovementPlan`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List improvementPlanDescriptor = $convert.base64Decode(
+    'Cg9JbXByb3ZlbWVudFBsYW4SFwoHcGxhbl9pZBgBIAEoCVIGcGxhbklkEiEKDHdvcmtzcGFjZV'
+    '9pZBgCIAEoCVILd29ya3NwYWNlSWQSFgoGcGVyaW9kGAMgASgJUgZwZXJpb2QSIwoNY3VycmVu'
+    'dF9zY29yZRgEIAEoAVIMY3VycmVudFNjb3JlEiUKDnByZXZpb3VzX3Njb3JlGAUgASgBUg1wcm'
+    'V2aW91c1Njb3JlEiEKDHNjb3JlX2NoYW5nZRgGIAEoAVILc2NvcmVDaGFuZ2USJgoPYmVzdF9w'
+    'b3N0X3RpdGxlGAcgASgJUg1iZXN0UG9zdFRpdGxlEiAKDGJlc3RfcG9zdF9lchgIIAEoAVIKYm'
+    'VzdFBvc3RFchIoChB3b3JzdF9wb3N0X3RpdGxlGAkgASgJUg53b3JzdFBvc3RUaXRsZRIiCg13'
+    'b3JzdF9wb3N0X2VyGAogASgBUgt3b3JzdFBvc3RFchJNCgxhY3Rpb25faXRlbXMYCyADKAsyKi'
+    '5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLkltcHJvdmVtZW50SXRlbVILYWN0aW9uSXRlbXMS'
+    'KQoQaXNfb2JzZXJ2YXRpb25hbBgMIAEoCFIPaXNPYnNlcnZhdGlvbmFsEjEKFG9ic2VydmF0aW'
+    '9uYWxfbm90aWNlGA0gASgJUhNvYnNlcnZhdGlvbmFsTm90aWNl');
+
+@$core.Deprecated('Use industryBenchmarkDescriptor instead')
+const IndustryBenchmark$json = {
+  '1': 'IndustryBenchmark',
+  '2': [
+    {'1': 'benchmark_id', '3': 1, '4': 1, '5': 9, '10': 'benchmarkId'},
+    {'1': 'platform', '3': 2, '4': 1, '5': 9, '10': 'platform'},
+    {'1': 'niche', '3': 3, '4': 1, '5': 9, '10': 'niche'},
+    {
+      '1': 'avg_engagement_rate',
+      '3': 4,
+      '4': 1,
+      '5': 1,
+      '10': 'avgEngagementRate'
+    },
+    {'1': 'avg_3s_retention', '3': 5, '4': 1, '5': 1, '10': 'avg3sRetention'},
+    {
+      '1': 'avg_completion_rate',
+      '3': 6,
+      '4': 1,
+      '5': 1,
+      '10': 'avgCompletionRate'
+    },
+    {'1': 'avg_ctr', '3': 7, '4': 1, '5': 1, '10': 'avgCtr'},
+    {'1': 'sample_size', '3': 8, '4': 1, '5': 5, '10': 'sampleSize'},
+    {'1': 'is_observational', '3': 9, '4': 1, '5': 8, '10': 'isObservational'},
+  ],
+};
+
+/// Descriptor for `IndustryBenchmark`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List industryBenchmarkDescriptor = $convert.base64Decode(
+    'ChFJbmR1c3RyeUJlbmNobWFyaxIhCgxiZW5jaG1hcmtfaWQYASABKAlSC2JlbmNobWFya0lkEh'
+    'oKCHBsYXRmb3JtGAIgASgJUghwbGF0Zm9ybRIUCgVuaWNoZRgDIAEoCVIFbmljaGUSLgoTYXZn'
+    'X2VuZ2FnZW1lbnRfcmF0ZRgEIAEoAVIRYXZnRW5nYWdlbWVudFJhdGUSKAoQYXZnXzNzX3JldG'
+    'VudGlvbhgFIAEoAVIOYXZnM3NSZXRlbnRpb24SLgoTYXZnX2NvbXBsZXRpb25fcmF0ZRgGIAEo'
+    'AVIRYXZnQ29tcGxldGlvblJhdGUSFwoHYXZnX2N0chgHIAEoAVIGYXZnQ3RyEh8KC3NhbXBsZV'
+    '9zaXplGAggASgFUgpzYW1wbGVTaXplEikKEGlzX29ic2VydmF0aW9uYWwYCSABKAhSD2lzT2Jz'
+    'ZXJ2YXRpb25hbA==');
+
+@$core.Deprecated('Use industryComparisonDescriptor instead')
+const IndustryComparison$json = {
+  '1': 'IndustryComparison',
+  '2': [
+    {'1': 'platform', '3': 1, '4': 1, '5': 9, '10': 'platform'},
+    {'1': 'niche', '3': 2, '4': 1, '5': 9, '10': 'niche'},
+    {
+      '1': 'workspace_engagement_rate',
+      '3': 3,
+      '4': 1,
+      '5': 1,
+      '10': 'workspaceEngagementRate'
+    },
+    {
+      '1': 'industry_avg_engagement_rate',
+      '3': 4,
+      '4': 1,
+      '5': 1,
+      '10': 'industryAvgEngagementRate'
+    },
+    {'1': 'er_delta_percent', '3': 5, '4': 1, '5': 1, '10': 'erDeltaPercent'},
+    {
+      '1': 'workspace_3s_retention',
+      '3': 6,
+      '4': 1,
+      '5': 1,
+      '10': 'workspace3sRetention'
+    },
+    {
+      '1': 'industry_avg_3s_retention',
+      '3': 7,
+      '4': 1,
+      '5': 1,
+      '10': 'industryAvg3sRetention'
+    },
+    {
+      '1': 'retention_delta_percent',
+      '3': 8,
+      '4': 1,
+      '5': 1,
+      '10': 'retentionDeltaPercent'
+    },
+    {'1': 'percentile_rank', '3': 9, '4': 1, '5': 9, '10': 'percentileRank'},
+    {'1': 'summary', '3': 10, '4': 1, '5': 9, '10': 'summary'},
+    {'1': 'is_observational', '3': 11, '4': 1, '5': 8, '10': 'isObservational'},
+    {
+      '1': 'observational_notice',
+      '3': 12,
+      '4': 1,
+      '5': 9,
+      '10': 'observationalNotice'
+    },
+  ],
+};
+
+/// Descriptor for `IndustryComparison`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List industryComparisonDescriptor = $convert.base64Decode(
+    'ChJJbmR1c3RyeUNvbXBhcmlzb24SGgoIcGxhdGZvcm0YASABKAlSCHBsYXRmb3JtEhQKBW5pY2'
+    'hlGAIgASgJUgVuaWNoZRI6Chl3b3Jrc3BhY2VfZW5nYWdlbWVudF9yYXRlGAMgASgBUhd3b3Jr'
+    'c3BhY2VFbmdhZ2VtZW50UmF0ZRI/ChxpbmR1c3RyeV9hdmdfZW5nYWdlbWVudF9yYXRlGAQgAS'
+    'gBUhlpbmR1c3RyeUF2Z0VuZ2FnZW1lbnRSYXRlEigKEGVyX2RlbHRhX3BlcmNlbnQYBSABKAFS'
+    'DmVyRGVsdGFQZXJjZW50EjQKFndvcmtzcGFjZV8zc19yZXRlbnRpb24YBiABKAFSFHdvcmtzcG'
+    'FjZTNzUmV0ZW50aW9uEjkKGWluZHVzdHJ5X2F2Z18zc19yZXRlbnRpb24YByABKAFSFmluZHVz'
+    'dHJ5QXZnM3NSZXRlbnRpb24SNgoXcmV0ZW50aW9uX2RlbHRhX3BlcmNlbnQYCCABKAFSFXJldG'
+    'VudGlvbkRlbHRhUGVyY2VudBInCg9wZXJjZW50aWxlX3JhbmsYCSABKAlSDnBlcmNlbnRpbGVS'
+    'YW5rEhgKB3N1bW1hcnkYCiABKAlSB3N1bW1hcnkSKQoQaXNfb2JzZXJ2YXRpb25hbBgLIAEoCF'
+    'IPaXNPYnNlcnZhdGlvbmFsEjEKFG9ic2VydmF0aW9uYWxfbm90aWNlGAwgASgJUhNvYnNlcnZh'
+    'dGlvbmFsTm90aWNl');
+
+@$core.Deprecated(
+    'Use performanceCoachServiceGetInsightsRequestDescriptor instead')
+const PerformanceCoachServiceGetInsightsRequest$json = {
+  '1': 'PerformanceCoachServiceGetInsightsRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'target_channel', '3': 2, '4': 1, '5': 9, '10': 'targetChannel'},
+    {'1': 'limit', '3': 3, '4': 1, '5': 5, '10': 'limit'},
+  ],
+};
+
+/// Descriptor for `PerformanceCoachServiceGetInsightsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List
+    performanceCoachServiceGetInsightsRequestDescriptor = $convert.base64Decode(
+        'CilQZXJmb3JtYW5jZUNvYWNoU2VydmljZUdldEluc2lnaHRzUmVxdWVzdBI+Cgx3b3Jrc3BhY2'
+        'VfaWQYASABKAsyGy5jcmVhdGl2YW50YS5jb21tb24udjEuVVVJRFILd29ya3NwYWNlSWQSJQoO'
+        'dGFyZ2V0X2NoYW5uZWwYAiABKAlSDXRhcmdldENoYW5uZWwSFAoFbGltaXQYAyABKAVSBWxpbW'
+        'l0');
+
+@$core.Deprecated(
+    'Use performanceCoachServiceGetInsightsResponseDescriptor instead')
+const PerformanceCoachServiceGetInsightsResponse$json = {
+  '1': 'PerformanceCoachServiceGetInsightsResponse',
+  '2': [
+    {
+      '1': 'insights',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.PerformanceInsight',
+      '10': 'insights'
+    },
+    {'1': 'is_observational', '3': 2, '4': 1, '5': 8, '10': 'isObservational'},
+    {
+      '1': 'observational_notice',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '10': 'observationalNotice'
+    },
+  ],
+};
+
+/// Descriptor for `PerformanceCoachServiceGetInsightsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List
+    performanceCoachServiceGetInsightsResponseDescriptor =
+    $convert.base64Decode(
+        'CipQZXJmb3JtYW5jZUNvYWNoU2VydmljZUdldEluc2lnaHRzUmVzcG9uc2USSQoIaW5zaWdodH'
+        'MYASADKAsyLS5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLlBlcmZvcm1hbmNlSW5zaWdodFII'
+        'aW5zaWdodHMSKQoQaXNfb2JzZXJ2YXRpb25hbBgCIAEoCFIPaXNPYnNlcnZhdGlvbmFsEjEKFG'
+        '9ic2VydmF0aW9uYWxfbm90aWNlGAMgASgJUhNvYnNlcnZhdGlvbmFsTm90aWNl');
+
+@$core.Deprecated(
+    'Use performanceCoachServiceGetVideoScorecardRequestDescriptor instead')
+const PerformanceCoachServiceGetVideoScorecardRequest$json = {
+  '1': 'PerformanceCoachServiceGetVideoScorecardRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'asset_id', '3': 2, '4': 1, '5': 9, '10': 'assetId'},
+  ],
+};
+
+/// Descriptor for `PerformanceCoachServiceGetVideoScorecardRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List
+    performanceCoachServiceGetVideoScorecardRequestDescriptor =
+    $convert.base64Decode(
+        'Ci9QZXJmb3JtYW5jZUNvYWNoU2VydmljZUdldFZpZGVvU2NvcmVjYXJkUmVxdWVzdBI+Cgx3b3'
+        'Jrc3BhY2VfaWQYASABKAsyGy5jcmVhdGl2YW50YS5jb21tb24udjEuVVVJRFILd29ya3NwYWNl'
+        'SWQSGQoIYXNzZXRfaWQYAiABKAlSB2Fzc2V0SWQ=');
+
+@$core.Deprecated(
+    'Use performanceCoachServiceGetVideoScorecardResponseDescriptor instead')
+const PerformanceCoachServiceGetVideoScorecardResponse$json = {
+  '1': 'PerformanceCoachServiceGetVideoScorecardResponse',
+  '2': [
+    {
+      '1': 'scorecard',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.VideoScorecard',
+      '10': 'scorecard'
+    },
+  ],
+};
+
+/// Descriptor for `PerformanceCoachServiceGetVideoScorecardResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List
+    performanceCoachServiceGetVideoScorecardResponseDescriptor =
+    $convert.base64Decode(
+        'CjBQZXJmb3JtYW5jZUNvYWNoU2VydmljZUdldFZpZGVvU2NvcmVjYXJkUmVzcG9uc2USRwoJc2'
+        'NvcmVjYXJkGAEgASgLMikuY3JlYXRpdmFudGEucHJvZHVjdGlvbi52MS5WaWRlb1Njb3JlY2Fy'
+        'ZFIJc2NvcmVjYXJk');
+
+@$core.Deprecated(
+    'Use performanceCoachServiceGetImprovementPlanRequestDescriptor instead')
+const PerformanceCoachServiceGetImprovementPlanRequest$json = {
+  '1': 'PerformanceCoachServiceGetImprovementPlanRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'timeframe', '3': 2, '4': 1, '5': 9, '10': 'timeframe'},
+  ],
+};
+
+/// Descriptor for `PerformanceCoachServiceGetImprovementPlanRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List
+    performanceCoachServiceGetImprovementPlanRequestDescriptor =
+    $convert.base64Decode(
+        'CjBQZXJmb3JtYW5jZUNvYWNoU2VydmljZUdldEltcHJvdmVtZW50UGxhblJlcXVlc3QSPwoHY2'
+        '9udGV4dBgBIAEoCzIlLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5Db21tYW5kQ29udGV4dFIHY29u'
+        'dGV4dBIcCgl0aW1lZnJhbWUYAiABKAlSCXRpbWVmcmFtZQ==');
+
+@$core.Deprecated(
+    'Use performanceCoachServiceGetImprovementPlanResponseDescriptor instead')
+const PerformanceCoachServiceGetImprovementPlanResponse$json = {
+  '1': 'PerformanceCoachServiceGetImprovementPlanResponse',
+  '2': [
+    {
+      '1': 'plan',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.ImprovementPlan',
+      '10': 'plan'
+    },
+  ],
+};
+
+/// Descriptor for `PerformanceCoachServiceGetImprovementPlanResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List
+    performanceCoachServiceGetImprovementPlanResponseDescriptor =
+    $convert.base64Decode(
+        'CjFQZXJmb3JtYW5jZUNvYWNoU2VydmljZUdldEltcHJvdmVtZW50UGxhblJlc3BvbnNlEj4KBH'
+        'BsYW4YASABKAsyKi5jcmVhdGl2YW50YS5wcm9kdWN0aW9uLnYxLkltcHJvdmVtZW50UGxhblIE'
+        'cGxhbg==');
+
+@$core.Deprecated(
+    'Use performanceCoachServiceListBenchmarksRequestDescriptor instead')
+const PerformanceCoachServiceListBenchmarksRequest$json = {
+  '1': 'PerformanceCoachServiceListBenchmarksRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'platform', '3': 2, '4': 1, '5': 9, '10': 'platform'},
+    {'1': 'niche', '3': 3, '4': 1, '5': 9, '10': 'niche'},
+  ],
+};
+
+/// Descriptor for `PerformanceCoachServiceListBenchmarksRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List
+    performanceCoachServiceListBenchmarksRequestDescriptor =
+    $convert.base64Decode(
+        'CixQZXJmb3JtYW5jZUNvYWNoU2VydmljZUxpc3RCZW5jaG1hcmtzUmVxdWVzdBI+Cgx3b3Jrc3'
+        'BhY2VfaWQYASABKAsyGy5jcmVhdGl2YW50YS5jb21tb24udjEuVVVJRFILd29ya3NwYWNlSWQS'
+        'GgoIcGxhdGZvcm0YAiABKAlSCHBsYXRmb3JtEhQKBW5pY2hlGAMgASgJUgVuaWNoZQ==');
+
+@$core.Deprecated(
+    'Use performanceCoachServiceListBenchmarksResponseDescriptor instead')
+const PerformanceCoachServiceListBenchmarksResponse$json = {
+  '1': 'PerformanceCoachServiceListBenchmarksResponse',
+  '2': [
+    {
+      '1': 'benchmarks',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.production.v1.IndustryBenchmark',
+      '10': 'benchmarks'
+    },
+    {'1': 'is_observational', '3': 2, '4': 1, '5': 8, '10': 'isObservational'},
+  ],
+};
+
+/// Descriptor for `PerformanceCoachServiceListBenchmarksResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List
+    performanceCoachServiceListBenchmarksResponseDescriptor =
+    $convert.base64Decode(
+        'Ci1QZXJmb3JtYW5jZUNvYWNoU2VydmljZUxpc3RCZW5jaG1hcmtzUmVzcG9uc2USTAoKYmVuY2'
+        'htYXJrcxgBIAMoCzIsLmNyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuSW5kdXN0cnlCZW5jaG1h'
+        'cmtSCmJlbmNobWFya3MSKQoQaXNfb2JzZXJ2YXRpb25hbBgCIAEoCFIPaXNPYnNlcnZhdGlvbm'
+        'Fs');
+
+@$core.Deprecated(
+    'Use performanceCoachServiceCompareToIndustryRequestDescriptor instead')
+const PerformanceCoachServiceCompareToIndustryRequest$json = {
+  '1': 'PerformanceCoachServiceCompareToIndustryRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'platform', '3': 2, '4': 1, '5': 9, '10': 'platform'},
+    {'1': 'niche', '3': 3, '4': 1, '5': 9, '10': 'niche'},
+  ],
+};
+
+/// Descriptor for `PerformanceCoachServiceCompareToIndustryRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List
+    performanceCoachServiceCompareToIndustryRequestDescriptor =
+    $convert.base64Decode(
+        'Ci9QZXJmb3JtYW5jZUNvYWNoU2VydmljZUNvbXBhcmVUb0luZHVzdHJ5UmVxdWVzdBI+Cgx3b3'
+        'Jrc3BhY2VfaWQYASABKAsyGy5jcmVhdGl2YW50YS5jb21tb24udjEuVVVJRFILd29ya3NwYWNl'
+        'SWQSGgoIcGxhdGZvcm0YAiABKAlSCHBsYXRmb3JtEhQKBW5pY2hlGAMgASgJUgVuaWNoZQ==');
+
+@$core.Deprecated(
+    'Use performanceCoachServiceCompareToIndustryResponseDescriptor instead')
+const PerformanceCoachServiceCompareToIndustryResponse$json = {
+  '1': 'PerformanceCoachServiceCompareToIndustryResponse',
+  '2': [
+    {
+      '1': 'comparison',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.production.v1.IndustryComparison',
+      '10': 'comparison'
+    },
+  ],
+};
+
+/// Descriptor for `PerformanceCoachServiceCompareToIndustryResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List
+    performanceCoachServiceCompareToIndustryResponseDescriptor =
+    $convert.base64Decode(
+        'CjBQZXJmb3JtYW5jZUNvYWNoU2VydmljZUNvbXBhcmVUb0luZHVzdHJ5UmVzcG9uc2USTQoKY2'
+        '9tcGFyaXNvbhgBIAEoCzItLmNyZWF0aXZhbnRhLnByb2R1Y3Rpb24udjEuSW5kdXN0cnlDb21w'
+        'YXJpc29uUgpjb21wYXJpc29u');

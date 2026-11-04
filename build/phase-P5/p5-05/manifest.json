@@ -1,0 +1,97 @@
+{
+  "task_id": "P5-05",
+  "phase": "P5",
+  "slice": "p5-05",
+  "title": "Experiment Lab và Performance Coach",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "ef1fd621bc9664780b9326c54c73e0d9a9cbf486",
+  "feature_refs": [
+    "docs/02_features/production/ai_video_studio.md",
+    "docs/02_features/production/packaging_qa.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_behavior_contracts.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/03_screens/web/screen_web_studio_ab_testing.md",
+    "docs/03_screens/mobile/screen_mobile_performance_coach.md"
+  ],
+  "requirement_ids": [
+    "EF-09-PERFORMANCE-COACH",
+    "EF-10-EXPERIMENT-LAB",
+    "M11-SCALING-GATES"
+  ],
+  "source_files": {
+    "protos/creativanta/production/v1/production.proto": "f0f5f8518d5f81fca4da8ecc88606f39e4fee06301f111602f39b531a7da6180",
+    "apps/api/gen/creativanta/production/v1/production.pb.go": "1796d3aaf5575f299b50ce34573640b82d5bd55cdaf63f97bdcdcf1e4b5c389e",
+    "apps/api/gen/creativanta/production/v1/productionv1connect/production.connect.go": "33b8c6e48b85c172607c0f0b72291ca8ccda3191795bb2c969b2132aa7f117b5",
+    "packages/shared-types/src/creativanta/production/v1/production_pb.ts": "2f9077cd09b6f37b0fe17d3cc6f109e48fc1b100f87f3107f1cf080e26709942",
+    "apps/mobile/lib/generated/creativanta/production/v1/production.pb.dart": "efab0ac2ccd38f26ecb9b13cd8a846ad553df831fdcda9d75dc1c700cc93b9ce",
+    "apps/mobile/lib/generated/creativanta/production/v1/production.pbgrpc.dart": "53ef606b78862ec257aa2757a4a9981c040677fd7408cfe674c29a97a3c82873",
+    "apps/mobile/lib/generated/creativanta/production/v1/production.pbjson.dart": "0cd2597bfac4fbb559f89e11edb298db605887f349b2852806f40d0d69a481a9",
+    "apps/api/internal/production/types.go": "c8f872c81369bb62c22990fcbb6a79eb069eb2ceb15f7f218ab9d45140aa54b2",
+    "apps/api/internal/production/types_coach_experiment.go": "0c0f0f5462076c4bb36c60846dca5d0c3a38f5457075714d20b579894c2567cf",
+    "apps/api/internal/production/packaging_qa_manager.go": "12b6cea61b13d44b2ca2fcbe39dc29c925607304bfd030d3ae5e01f165afd5af",
+    "apps/api/internal/production/ab_test_manager.go": "c1ec73f7f2327b2f103331085a945a0619c629391c0056650e03233ab7d85a1a",
+    "apps/api/internal/production/performance_coach_manager.go": "ed2ca324f18b18a0a01863f801216b9c0bcfd86c97bdade9afbadd9e23b2c7e3",
+    "apps/api/internal/production/service.go": "92081b9b08b9f159934ff83cee6d6b6b305fed28de821992b6b87ed1a042ff46",
+    "apps/api/internal/production/service_abtest.go": "76e3b4d26c984315587c951e7dfce0411f51c0f765dcaddc7b14cfeda129c28c",
+    "apps/api/internal/production/service_coach.go": "ab98ae1b295be57177746bb46a4c7894bf016e8e3ab097e607be6045d1b34b67",
+    "apps/api/internal/production/ab_test_coach_test.go": "bfd5adf9066b2977312bf68e2a1456c5de231479056d17d0c3c2a2e778280d5f",
+    "apps/web/src/lib/production/ab_test_coach.ts": "34b208a325b56c3b59833da3332ed7e29e67b971c50896fdb84b0b82caae23c1",
+    "apps/web/src/routes/studio/ab-test/+page.svelte": "e8912e51c6ad57690224128e10d1d68fa5a886a61bf1d723c02d7da5608224a9",
+    "apps/web/src/lib/production/ab_test_coach.test.ts": "30e0b71809207c3d480019faeeb48c848cba50bf4de6645bd8c80c6f8349b754",
+    "apps/mobile/lib/production/ab_test_coach_models.dart": "91412c37d2b83380e2957cf5d211e947e5a4d1113bc19d021d3cac943a862640",
+    "apps/mobile/lib/ui/production/performance_coach_view.dart": "67acae649ec451724d721c8e67dd7669d67e6e92faaebe53cde42b55bbc61404",
+    "apps/mobile/test/ab_test_coach_acceptance_test.dart": "e4cfe039fe2309cf66c0f853a3a3a7b769e534edae897a1ac9da08d3db96c2dd"
+  },
+  "scope_items": [
+    "Acceptance Target 1 (Low exposure → inconclusive): Implemented canonical exposure bounds (<1,000 impressions/views per variant, <48h duration, zero views, or missing denominator) in Go, Web, and Mobile. Experiments evaluated below threshold yield status='completed', result_status='inconclusive', winner_asset_id='' (or null), confidence_level=0.0, is_observational=true, and automated winner scaling is blocked.",
+    "Acceptance Target 2 (Observational label retained): Organic comparisons, coaching insights, scorecards, and conclusive experiment winners retain is_observational=true with standard notice ('Observational recommendation - not causal proof or guaranteed revenue uplift.') across Go, Web (W027), and Mobile (M039).",
+    "Acceptance Target 3 (Scaling rechecks M11 gates): Automated scaling of conclusive experiment winners rechecks all four fresh M11 gates: Gate 1 Permission (publish:execute / Editor+), Gate 2 Platform Capability (connector active and supported), Gate 3 Policy Compliance (Packaging QA scan free of hard blocks), Gate 4 Duplicate-post cooldown (24h cooldown window). Rechecked and verified across Go, Web, and Mobile."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestABExperiment_AcceptanceTarget1_LowExposureInconclusive in Go, Web Vitest, and Flutter test suite confirm low exposure yields completed/inconclusive with empty winner and retained observational flag.",
+    "Acceptance Target 2 Verified: TestPerformanceCoach_AcceptanceTarget2_ObservationalLabelRetained in Go, Web Vitest, and Flutter test suite confirm all coaching scorecards, benchmark comparisons, and conclusive experiment winners strictly maintain is_observational=true and the canonical observational notice.",
+    "Acceptance Target 3 Verified: TestABExperiment_AcceptanceTarget3_ScalingRechecksM11Gates in Go, Web Vitest, and Flutter test suite confirm independent enforcement of all 4 scaling gates (permission, capability, policy, cooldown).",
+    "Screen Implementation Verified: Web Screen W027 (Studio A/B Testing Engine at /studio/ab-test) and Mobile Screen M039 (Performance Coach View at /analytics/coach) implemented with exact wireframes, observational badges, scorecards, and interactive controls.",
+    "Full CI Quality Gates Verified: check_d0.sh (PASS), check_proto.sh (PASS with 0 breaking changes against origin/main), check_go.sh (PASS with race detector, gofmt, go vet, govulncheck 0 vulnerabilities, fail-closed entrypoints), check_node.sh (PASS with svelte-check 0 warnings/0 errors, vite build, vitest 31 test files / 250 tests passed, real SSR smoke), and check_flutter.sh (PASS with flutter analyze 0 issues, 212 tests passed)."
+  ],
+  "rpc_contracts": [
+    "ABTestService/Create",
+    "ABTestService/Get",
+    "ABTestService/List",
+    "ABTestService/DeclareWinner",
+    "ABTestService/Cancel",
+    "ABTestService/EvaluateTest",
+    "ABTestService/GetMetrics",
+    "PerformanceCoachService/GetInsights",
+    "PerformanceCoachService/GetVideoScorecard",
+    "PerformanceCoachService/GetImprovementPlan",
+    "PerformanceCoachService/ListBenchmarks",
+    "PerformanceCoachService/CompareToIndustry"
+  ],
+  "permission_keys": [
+    "experiment:create",
+    "experiment:read",
+    "experiment:declare_winner",
+    "experiment:cancel",
+    "experiment:evaluate",
+    "coach:read",
+    "coach:benchmark",
+    "publish:execute"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-PLATFORM-METRICS-API",
+      "PENDING_APP_REVIEW",
+      "Native TikTok/Instagram/YouTube insight metrics and conversion tracking APIs require verified production app review; evaluated via domain models and bounded fixtures."
+    ],
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "PostgreSQL schema §22.9 ab_test_experiments JSONB fields, variants, criteria, and composite keys verified in local test suite; multi-tenant live database verification executes in CI."
+    ]
+  ]
+}

@@ -2665,3 +2665,457 @@ abstract class PackagingServiceBase extends $grpc.Service {
   $async.Future<$0.PackagingServiceRunQAResponse> runQA(
       $grpc.ServiceCall call, $0.PackagingServiceRunQARequest request);
 }
+
+/// ABTestService manages A/B testing experiments, variant tracking, metrics and winner selection (M07 EF-10, M10).
+@$pb.GrpcServiceName('creativanta.production.v1.ABTestService')
+class ABTestServiceClient extends $grpc.Client {
+  /// The hostname for this service.
+  static const $core.String defaultHost = '';
+
+  /// OAuth scopes needed for the client.
+  static const $core.List<$core.String> oauthScopes = [
+    '',
+  ];
+
+  ABTestServiceClient(super.channel, {super.options, super.interceptors});
+
+  $grpc.ResponseFuture<$0.ABTestServiceCreateResponse> create(
+    $0.ABTestServiceCreateRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$create, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ABTestServiceGetResponse> get(
+    $0.ABTestServiceGetRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$get, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ABTestServiceListResponse> list(
+    $0.ABTestServiceListRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$list, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ABTestServiceDeclareWinnerResponse> declareWinner(
+    $0.ABTestServiceDeclareWinnerRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$declareWinner, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ABTestServiceCancelResponse> cancel(
+    $0.ABTestServiceCancelRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$cancel, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ABTestServiceEvaluateTestResponse> evaluateTest(
+    $0.ABTestServiceEvaluateTestRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$evaluateTest, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ABTestServiceGetMetricsResponse> getMetrics(
+    $0.ABTestServiceGetMetricsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getMetrics, request, options: options);
+  }
+
+  // method descriptors
+
+  static final _$create = $grpc.ClientMethod<$0.ABTestServiceCreateRequest,
+          $0.ABTestServiceCreateResponse>(
+      '/creativanta.production.v1.ABTestService/Create',
+      ($0.ABTestServiceCreateRequest value) => value.writeToBuffer(),
+      $0.ABTestServiceCreateResponse.fromBuffer);
+  static final _$get = $grpc.ClientMethod<$0.ABTestServiceGetRequest,
+          $0.ABTestServiceGetResponse>(
+      '/creativanta.production.v1.ABTestService/Get',
+      ($0.ABTestServiceGetRequest value) => value.writeToBuffer(),
+      $0.ABTestServiceGetResponse.fromBuffer);
+  static final _$list = $grpc.ClientMethod<$0.ABTestServiceListRequest,
+          $0.ABTestServiceListResponse>(
+      '/creativanta.production.v1.ABTestService/List',
+      ($0.ABTestServiceListRequest value) => value.writeToBuffer(),
+      $0.ABTestServiceListResponse.fromBuffer);
+  static final _$declareWinner = $grpc.ClientMethod<
+          $0.ABTestServiceDeclareWinnerRequest,
+          $0.ABTestServiceDeclareWinnerResponse>(
+      '/creativanta.production.v1.ABTestService/DeclareWinner',
+      ($0.ABTestServiceDeclareWinnerRequest value) => value.writeToBuffer(),
+      $0.ABTestServiceDeclareWinnerResponse.fromBuffer);
+  static final _$cancel = $grpc.ClientMethod<$0.ABTestServiceCancelRequest,
+          $0.ABTestServiceCancelResponse>(
+      '/creativanta.production.v1.ABTestService/Cancel',
+      ($0.ABTestServiceCancelRequest value) => value.writeToBuffer(),
+      $0.ABTestServiceCancelResponse.fromBuffer);
+  static final _$evaluateTest = $grpc.ClientMethod<
+          $0.ABTestServiceEvaluateTestRequest,
+          $0.ABTestServiceEvaluateTestResponse>(
+      '/creativanta.production.v1.ABTestService/EvaluateTest',
+      ($0.ABTestServiceEvaluateTestRequest value) => value.writeToBuffer(),
+      $0.ABTestServiceEvaluateTestResponse.fromBuffer);
+  static final _$getMetrics = $grpc.ClientMethod<
+          $0.ABTestServiceGetMetricsRequest,
+          $0.ABTestServiceGetMetricsResponse>(
+      '/creativanta.production.v1.ABTestService/GetMetrics',
+      ($0.ABTestServiceGetMetricsRequest value) => value.writeToBuffer(),
+      $0.ABTestServiceGetMetricsResponse.fromBuffer);
+}
+
+@$pb.GrpcServiceName('creativanta.production.v1.ABTestService')
+abstract class ABTestServiceBase extends $grpc.Service {
+  $core.String get $name => 'creativanta.production.v1.ABTestService';
+
+  ABTestServiceBase() {
+    $addMethod($grpc.ServiceMethod<$0.ABTestServiceCreateRequest,
+            $0.ABTestServiceCreateResponse>(
+        'Create',
+        create_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ABTestServiceCreateRequest.fromBuffer(value),
+        ($0.ABTestServiceCreateResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ABTestServiceGetRequest,
+            $0.ABTestServiceGetResponse>(
+        'Get',
+        get_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ABTestServiceGetRequest.fromBuffer(value),
+        ($0.ABTestServiceGetResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ABTestServiceListRequest,
+            $0.ABTestServiceListResponse>(
+        'List',
+        list_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ABTestServiceListRequest.fromBuffer(value),
+        ($0.ABTestServiceListResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ABTestServiceDeclareWinnerRequest,
+            $0.ABTestServiceDeclareWinnerResponse>(
+        'DeclareWinner',
+        declareWinner_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ABTestServiceDeclareWinnerRequest.fromBuffer(value),
+        ($0.ABTestServiceDeclareWinnerResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ABTestServiceCancelRequest,
+            $0.ABTestServiceCancelResponse>(
+        'Cancel',
+        cancel_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ABTestServiceCancelRequest.fromBuffer(value),
+        ($0.ABTestServiceCancelResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ABTestServiceEvaluateTestRequest,
+            $0.ABTestServiceEvaluateTestResponse>(
+        'EvaluateTest',
+        evaluateTest_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ABTestServiceEvaluateTestRequest.fromBuffer(value),
+        ($0.ABTestServiceEvaluateTestResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ABTestServiceGetMetricsRequest,
+            $0.ABTestServiceGetMetricsResponse>(
+        'GetMetrics',
+        getMetrics_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ABTestServiceGetMetricsRequest.fromBuffer(value),
+        ($0.ABTestServiceGetMetricsResponse value) => value.writeToBuffer()));
+  }
+
+  $async.Future<$0.ABTestServiceCreateResponse> create_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ABTestServiceCreateRequest> $request) async {
+    return create($call, await $request);
+  }
+
+  $async.Future<$0.ABTestServiceCreateResponse> create(
+      $grpc.ServiceCall call, $0.ABTestServiceCreateRequest request);
+
+  $async.Future<$0.ABTestServiceGetResponse> get_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.ABTestServiceGetRequest> $request) async {
+    return get($call, await $request);
+  }
+
+  $async.Future<$0.ABTestServiceGetResponse> get(
+      $grpc.ServiceCall call, $0.ABTestServiceGetRequest request);
+
+  $async.Future<$0.ABTestServiceListResponse> list_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.ABTestServiceListRequest> $request) async {
+    return list($call, await $request);
+  }
+
+  $async.Future<$0.ABTestServiceListResponse> list(
+      $grpc.ServiceCall call, $0.ABTestServiceListRequest request);
+
+  $async.Future<$0.ABTestServiceDeclareWinnerResponse> declareWinner_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ABTestServiceDeclareWinnerRequest> $request) async {
+    return declareWinner($call, await $request);
+  }
+
+  $async.Future<$0.ABTestServiceDeclareWinnerResponse> declareWinner(
+      $grpc.ServiceCall call, $0.ABTestServiceDeclareWinnerRequest request);
+
+  $async.Future<$0.ABTestServiceCancelResponse> cancel_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ABTestServiceCancelRequest> $request) async {
+    return cancel($call, await $request);
+  }
+
+  $async.Future<$0.ABTestServiceCancelResponse> cancel(
+      $grpc.ServiceCall call, $0.ABTestServiceCancelRequest request);
+
+  $async.Future<$0.ABTestServiceEvaluateTestResponse> evaluateTest_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ABTestServiceEvaluateTestRequest> $request) async {
+    return evaluateTest($call, await $request);
+  }
+
+  $async.Future<$0.ABTestServiceEvaluateTestResponse> evaluateTest(
+      $grpc.ServiceCall call, $0.ABTestServiceEvaluateTestRequest request);
+
+  $async.Future<$0.ABTestServiceGetMetricsResponse> getMetrics_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ABTestServiceGetMetricsRequest> $request) async {
+    return getMetrics($call, await $request);
+  }
+
+  $async.Future<$0.ABTestServiceGetMetricsResponse> getMetrics(
+      $grpc.ServiceCall call, $0.ABTestServiceGetMetricsRequest request);
+}
+
+/// PerformanceCoachService provides AI-powered post-publish analysis, scorecards, and coaching (M07 EF-09).
+@$pb.GrpcServiceName('creativanta.production.v1.PerformanceCoachService')
+class PerformanceCoachServiceClient extends $grpc.Client {
+  /// The hostname for this service.
+  static const $core.String defaultHost = '';
+
+  /// OAuth scopes needed for the client.
+  static const $core.List<$core.String> oauthScopes = [
+    '',
+  ];
+
+  PerformanceCoachServiceClient(super.channel,
+      {super.options, super.interceptors});
+
+  $grpc.ResponseFuture<$0.PerformanceCoachServiceGetInsightsResponse>
+      getInsights(
+    $0.PerformanceCoachServiceGetInsightsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getInsights, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.PerformanceCoachServiceGetVideoScorecardResponse>
+      getVideoScorecard(
+    $0.PerformanceCoachServiceGetVideoScorecardRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getVideoScorecard, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.PerformanceCoachServiceGetImprovementPlanResponse>
+      getImprovementPlan(
+    $0.PerformanceCoachServiceGetImprovementPlanRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getImprovementPlan, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.PerformanceCoachServiceListBenchmarksResponse>
+      listBenchmarks(
+    $0.PerformanceCoachServiceListBenchmarksRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$listBenchmarks, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.PerformanceCoachServiceCompareToIndustryResponse>
+      compareToIndustry(
+    $0.PerformanceCoachServiceCompareToIndustryRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$compareToIndustry, request, options: options);
+  }
+
+  // method descriptors
+
+  static final _$getInsights = $grpc.ClientMethod<
+          $0.PerformanceCoachServiceGetInsightsRequest,
+          $0.PerformanceCoachServiceGetInsightsResponse>(
+      '/creativanta.production.v1.PerformanceCoachService/GetInsights',
+      ($0.PerformanceCoachServiceGetInsightsRequest value) =>
+          value.writeToBuffer(),
+      $0.PerformanceCoachServiceGetInsightsResponse.fromBuffer);
+  static final _$getVideoScorecard = $grpc.ClientMethod<
+          $0.PerformanceCoachServiceGetVideoScorecardRequest,
+          $0.PerformanceCoachServiceGetVideoScorecardResponse>(
+      '/creativanta.production.v1.PerformanceCoachService/GetVideoScorecard',
+      ($0.PerformanceCoachServiceGetVideoScorecardRequest value) =>
+          value.writeToBuffer(),
+      $0.PerformanceCoachServiceGetVideoScorecardResponse.fromBuffer);
+  static final _$getImprovementPlan = $grpc.ClientMethod<
+          $0.PerformanceCoachServiceGetImprovementPlanRequest,
+          $0.PerformanceCoachServiceGetImprovementPlanResponse>(
+      '/creativanta.production.v1.PerformanceCoachService/GetImprovementPlan',
+      ($0.PerformanceCoachServiceGetImprovementPlanRequest value) =>
+          value.writeToBuffer(),
+      $0.PerformanceCoachServiceGetImprovementPlanResponse.fromBuffer);
+  static final _$listBenchmarks = $grpc.ClientMethod<
+          $0.PerformanceCoachServiceListBenchmarksRequest,
+          $0.PerformanceCoachServiceListBenchmarksResponse>(
+      '/creativanta.production.v1.PerformanceCoachService/ListBenchmarks',
+      ($0.PerformanceCoachServiceListBenchmarksRequest value) =>
+          value.writeToBuffer(),
+      $0.PerformanceCoachServiceListBenchmarksResponse.fromBuffer);
+  static final _$compareToIndustry = $grpc.ClientMethod<
+          $0.PerformanceCoachServiceCompareToIndustryRequest,
+          $0.PerformanceCoachServiceCompareToIndustryResponse>(
+      '/creativanta.production.v1.PerformanceCoachService/CompareToIndustry',
+      ($0.PerformanceCoachServiceCompareToIndustryRequest value) =>
+          value.writeToBuffer(),
+      $0.PerformanceCoachServiceCompareToIndustryResponse.fromBuffer);
+}
+
+@$pb.GrpcServiceName('creativanta.production.v1.PerformanceCoachService')
+abstract class PerformanceCoachServiceBase extends $grpc.Service {
+  $core.String get $name => 'creativanta.production.v1.PerformanceCoachService';
+
+  PerformanceCoachServiceBase() {
+    $addMethod($grpc.ServiceMethod<$0.PerformanceCoachServiceGetInsightsRequest,
+            $0.PerformanceCoachServiceGetInsightsResponse>(
+        'GetInsights',
+        getInsights_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.PerformanceCoachServiceGetInsightsRequest.fromBuffer(value),
+        ($0.PerformanceCoachServiceGetInsightsResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<
+            $0.PerformanceCoachServiceGetVideoScorecardRequest,
+            $0.PerformanceCoachServiceGetVideoScorecardResponse>(
+        'GetVideoScorecard',
+        getVideoScorecard_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.PerformanceCoachServiceGetVideoScorecardRequest.fromBuffer(
+                value),
+        ($0.PerformanceCoachServiceGetVideoScorecardResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<
+            $0.PerformanceCoachServiceGetImprovementPlanRequest,
+            $0.PerformanceCoachServiceGetImprovementPlanResponse>(
+        'GetImprovementPlan',
+        getImprovementPlan_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.PerformanceCoachServiceGetImprovementPlanRequest.fromBuffer(
+                value),
+        ($0.PerformanceCoachServiceGetImprovementPlanResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<
+            $0.PerformanceCoachServiceListBenchmarksRequest,
+            $0.PerformanceCoachServiceListBenchmarksResponse>(
+        'ListBenchmarks',
+        listBenchmarks_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.PerformanceCoachServiceListBenchmarksRequest.fromBuffer(value),
+        ($0.PerformanceCoachServiceListBenchmarksResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<
+            $0.PerformanceCoachServiceCompareToIndustryRequest,
+            $0.PerformanceCoachServiceCompareToIndustryResponse>(
+        'CompareToIndustry',
+        compareToIndustry_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.PerformanceCoachServiceCompareToIndustryRequest.fromBuffer(
+                value),
+        ($0.PerformanceCoachServiceCompareToIndustryResponse value) =>
+            value.writeToBuffer()));
+  }
+
+  $async.Future<$0.PerformanceCoachServiceGetInsightsResponse> getInsights_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.PerformanceCoachServiceGetInsightsRequest>
+          $request) async {
+    return getInsights($call, await $request);
+  }
+
+  $async.Future<$0.PerformanceCoachServiceGetInsightsResponse> getInsights(
+      $grpc.ServiceCall call,
+      $0.PerformanceCoachServiceGetInsightsRequest request);
+
+  $async.Future<$0.PerformanceCoachServiceGetVideoScorecardResponse>
+      getVideoScorecard_Pre(
+          $grpc.ServiceCall $call,
+          $async.Future<$0.PerformanceCoachServiceGetVideoScorecardRequest>
+              $request) async {
+    return getVideoScorecard($call, await $request);
+  }
+
+  $async.Future<$0.PerformanceCoachServiceGetVideoScorecardResponse>
+      getVideoScorecard($grpc.ServiceCall call,
+          $0.PerformanceCoachServiceGetVideoScorecardRequest request);
+
+  $async.Future<$0.PerformanceCoachServiceGetImprovementPlanResponse>
+      getImprovementPlan_Pre(
+          $grpc.ServiceCall $call,
+          $async.Future<$0.PerformanceCoachServiceGetImprovementPlanRequest>
+              $request) async {
+    return getImprovementPlan($call, await $request);
+  }
+
+  $async.Future<$0.PerformanceCoachServiceGetImprovementPlanResponse>
+      getImprovementPlan($grpc.ServiceCall call,
+          $0.PerformanceCoachServiceGetImprovementPlanRequest request);
+
+  $async.Future<$0.PerformanceCoachServiceListBenchmarksResponse>
+      listBenchmarks_Pre(
+          $grpc.ServiceCall $call,
+          $async.Future<$0.PerformanceCoachServiceListBenchmarksRequest>
+              $request) async {
+    return listBenchmarks($call, await $request);
+  }
+
+  $async.Future<$0.PerformanceCoachServiceListBenchmarksResponse>
+      listBenchmarks($grpc.ServiceCall call,
+          $0.PerformanceCoachServiceListBenchmarksRequest request);
+
+  $async.Future<$0.PerformanceCoachServiceCompareToIndustryResponse>
+      compareToIndustry_Pre(
+          $grpc.ServiceCall $call,
+          $async.Future<$0.PerformanceCoachServiceCompareToIndustryRequest>
+              $request) async {
+    return compareToIndustry($call, await $request);
+  }
+
+  $async.Future<$0.PerformanceCoachServiceCompareToIndustryResponse>
+      compareToIndustry($grpc.ServiceCall call,
+          $0.PerformanceCoachServiceCompareToIndustryRequest request);
+}

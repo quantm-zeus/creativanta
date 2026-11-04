@@ -1,0 +1,42 @@
+=== RUN   TestABExperiment_AcceptanceTarget1_LowExposureInconclusive
+=== RUN   TestABExperiment_AcceptanceTarget1_LowExposureInconclusive/three_variants_with_20_impressions_each_after_72h_->_inconclusive_(packaging_qa.md)
+=== RUN   TestABExperiment_AcceptanceTarget1_LowExposureInconclusive/zero_exposure_/_missing_denominator_safely_produces_inconclusive_without_divide_by_zero
+=== RUN   TestABExperiment_AcceptanceTarget1_LowExposureInconclusive/adequate_exposure_with_statistically_significant_lift_identifies_winner_and_retains_observational_label
+=== RUN   TestABExperiment_AcceptanceTarget1_LowExposureInconclusive/adequate_exposure_but_lift_below_threshold_multiplier_->_inconclusive
+--- PASS: TestABExperiment_AcceptanceTarget1_LowExposureInconclusive (0.00s)
+    --- PASS: TestABExperiment_AcceptanceTarget1_LowExposureInconclusive/three_variants_with_20_impressions_each_after_72h_->_inconclusive_(packaging_qa.md) (0.00s)
+    --- PASS: TestABExperiment_AcceptanceTarget1_LowExposureInconclusive/zero_exposure_/_missing_denominator_safely_produces_inconclusive_without_divide_by_zero (0.00s)
+    --- PASS: TestABExperiment_AcceptanceTarget1_LowExposureInconclusive/adequate_exposure_with_statistically_significant_lift_identifies_winner_and_retains_observational_label (0.00s)
+    --- PASS: TestABExperiment_AcceptanceTarget1_LowExposureInconclusive/adequate_exposure_but_lift_below_threshold_multiplier_->_inconclusive (0.00s)
+=== RUN   TestPerformanceCoach_AcceptanceTarget2_ObservationalLabelRetained
+=== RUN   TestPerformanceCoach_AcceptanceTarget2_ObservationalLabelRetained/PerformanceCoach_GetInsights_retains_observational_label_and_notice
+=== RUN   TestPerformanceCoach_AcceptanceTarget2_ObservationalLabelRetained/PerformanceCoach_GetVideoScorecard_retains_observational_label
+=== RUN   TestPerformanceCoach_AcceptanceTarget2_ObservationalLabelRetained/PerformanceCoach_GetImprovementPlan_retains_observational_label
+=== RUN   TestPerformanceCoach_AcceptanceTarget2_ObservationalLabelRetained/PerformanceCoach_ListBenchmarks_and_CompareToIndustry_retain_observational_label
+=== RUN   TestPerformanceCoach_AcceptanceTarget2_ObservationalLabelRetained/Manual_DeclareWinner_retains_observational_label
+--- PASS: TestPerformanceCoach_AcceptanceTarget2_ObservationalLabelRetained (0.00s)
+    --- PASS: TestPerformanceCoach_AcceptanceTarget2_ObservationalLabelRetained/PerformanceCoach_GetInsights_retains_observational_label_and_notice (0.00s)
+    --- PASS: TestPerformanceCoach_AcceptanceTarget2_ObservationalLabelRetained/PerformanceCoach_GetVideoScorecard_retains_observational_label (0.00s)
+    --- PASS: TestPerformanceCoach_AcceptanceTarget2_ObservationalLabelRetained/PerformanceCoach_GetImprovementPlan_retains_observational_label (0.00s)
+    --- PASS: TestPerformanceCoach_AcceptanceTarget2_ObservationalLabelRetained/PerformanceCoach_ListBenchmarks_and_CompareToIndustry_retain_observational_label (0.00s)
+    --- PASS: TestPerformanceCoach_AcceptanceTarget2_ObservationalLabelRetained/Manual_DeclareWinner_retains_observational_label (0.00s)
+=== RUN   TestABExperiment_AcceptanceTarget3_ScalingRechecksM11Gates
+=== RUN   TestABExperiment_AcceptanceTarget3_ScalingRechecksM11Gates/Gate_1_failure:_Caller_lacks_publish_permission_(Contributor_role)_->_scaling_denied
+=== RUN   TestABExperiment_AcceptanceTarget3_ScalingRechecksM11Gates/Gate_2_failure:_Target_platform_capability_is_degraded/revoked_->_scaling_denied
+=== RUN   TestABExperiment_AcceptanceTarget3_ScalingRechecksM11Gates/Gate_3_failure:_Packaging_QA_compliance_has_hard_blocks_->_scaling_denied
+=== RUN   TestABExperiment_AcceptanceTarget3_ScalingRechecksM11Gates/Gate_4_failure:_Identical_asset_already_published_within_24h_cooldown_->_scaling_denied
+=== RUN   TestABExperiment_AcceptanceTarget3_ScalingRechecksM11Gates/All_4_M11_Gates_Pass:_Scaling_succeeds_and_sets_result_status_=_scaled
+--- PASS: TestABExperiment_AcceptanceTarget3_ScalingRechecksM11Gates (0.00s)
+    --- PASS: TestABExperiment_AcceptanceTarget3_ScalingRechecksM11Gates/Gate_1_failure:_Caller_lacks_publish_permission_(Contributor_role)_->_scaling_denied (0.00s)
+    --- PASS: TestABExperiment_AcceptanceTarget3_ScalingRechecksM11Gates/Gate_2_failure:_Target_platform_capability_is_degraded/revoked_->_scaling_denied (0.00s)
+    --- PASS: TestABExperiment_AcceptanceTarget3_ScalingRechecksM11Gates/Gate_3_failure:_Packaging_QA_compliance_has_hard_blocks_->_scaling_denied (0.00s)
+    --- PASS: TestABExperiment_AcceptanceTarget3_ScalingRechecksM11Gates/Gate_4_failure:_Identical_asset_already_published_within_24h_cooldown_->_scaling_denied (0.00s)
+    --- PASS: TestABExperiment_AcceptanceTarget3_ScalingRechecksM11Gates/All_4_M11_Gates_Pass:_Scaling_succeeds_and_sets_result_status_=_scaled (0.00s)
+=== RUN   TestABTestAndCoach_ConnectRPCEndpoints
+=== RUN   TestABTestAndCoach_ConnectRPCEndpoints/ABTestService_ConnectRPC_handler_create,_list,_evaluate,_and_metrics
+=== RUN   TestABTestAndCoach_ConnectRPCEndpoints/PerformanceCoachService_ConnectRPC_handler_all_5_endpoints
+--- PASS: TestABTestAndCoach_ConnectRPCEndpoints (0.00s)
+    --- PASS: TestABTestAndCoach_ConnectRPCEndpoints/ABTestService_ConnectRPC_handler_create,_list,_evaluate,_and_metrics (0.00s)
+    --- PASS: TestABTestAndCoach_ConnectRPCEndpoints/PerformanceCoachService_ConnectRPC_handler_all_5_endpoints (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/production	1.053s

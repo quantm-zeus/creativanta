@@ -428,7 +428,9 @@ func (m *PackagingQAManager) EvaluateABExperiment(ctx context.Context, caller Ca
 	if allMeetImpressions && topAssetID != "" && (secondCTR == 0 || (topCTR/secondCTR) >= multiplier) {
 		exp.ResultStatus = "conclusive"
 		exp.WinnerAssetID = topAssetID
-		exp.IsObservational = false
+		// Observational label retained (API behavior §7, packaging_qa.md):
+		// Organic comparisons must retain their observational label rather than claiming causal proof.
+		exp.IsObservational = true
 		exp.InconclusiveReason = ""
 	} else {
 		exp.ResultStatus = "inconclusive"

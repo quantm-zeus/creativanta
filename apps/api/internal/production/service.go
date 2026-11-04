@@ -52,6 +52,8 @@ type Service struct {
 	LinkToVideo     *LinkToVideoManager
 	DerivativeMgr   *DerivativeManager
 	PackagingQAMgr  *PackagingQAManager
+	ABTestMgr       *ABTestManager
+	CoachMgr        *PerformanceCoachManager
 	Gamification    *GamificationHook
 }
 
@@ -64,6 +66,18 @@ var _ productionv1connect.ProductShowcaseServiceHandler = (*ProductShowcaseManag
 var _ productionv1connect.LinkToVideoServiceHandler = (*LinkToVideoManager)(nil)
 var _ productionv1connect.DerivativeServiceHandler = (*DerivativeServiceServer)(nil)
 var _ productionv1connect.PackagingServiceHandler = (*PackagingServiceServer)(nil)
+var _ productionv1connect.ABTestServiceHandler = (*ABTestServiceServer)(nil)
+var _ productionv1connect.PerformanceCoachServiceHandler = (*PerformanceCoachServiceServer)(nil)
+
+// ABTest returns the ABTestServiceHandler.
+func (s *Service) ABTest() productionv1connect.ABTestServiceHandler {
+	return &ABTestServiceServer{svc: s}
+}
+
+// PerformanceCoach returns the PerformanceCoachServiceHandler.
+func (s *Service) PerformanceCoach() productionv1connect.PerformanceCoachServiceHandler {
+	return &PerformanceCoachServiceServer{svc: s}
+}
 
 // Derivative returns the DerivativeServiceHandler.
 func (s *Service) Derivative() productionv1connect.DerivativeServiceHandler {
@@ -156,6 +170,8 @@ func NewService(cfg ServiceConfig) *Service {
 	svc.LinkToVideo = NewLinkToVideoManager(st, svc)
 	svc.DerivativeMgr = NewDerivativeManager(st)
 	svc.PackagingQAMgr = NewPackagingQAManager(st)
+	svc.ABTestMgr = NewABTestManager(st, svc.PackagingQAMgr, nil)
+	svc.CoachMgr = NewPerformanceCoachManager(st)
 	svc.Gamification = NewGamificationHook(svc)
 	return svc
 }
