@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -85,6 +86,8 @@ type StoredArticle struct {
 	UnhelpfulVotes       int32
 	ViewCount            int32
 	LastReviewedAt       time.Time
+	LastReviewedBy       string
+	ReviewNotes          string
 	PublishedAt          *time.Time
 	ArchivedAt           *time.Time
 	Versions             []StoredArticleVersion
@@ -116,15 +119,47 @@ type Store struct {
 	categories map[string]*StoredCategory
 	articles   map[string]*StoredArticle
 	ratings    map[string]*StoredRating
+
+	// Beta program (§4)
+	betaEnrollments    map[string]*BetaEnrollmentRecord
+	workspaceBetaFlags map[string][]string
+	betaFeedbacks      []*BetaFeedbackRecord
+
+	// Public Status Page & Incidents (§5)
+	statusComponents   map[string]*MonitoredComponent
+	statusIncidents    map[string]*IncidentRecord
+	statusSubscribers  map[string]*StatusSubscriberRecord
+	incidentDispatches []*IncidentNotificationDispatch
+
+	// Customer Support Desk (§7, §17.8-§17.9)
+	supportTickets  map[string]*SupportTicket
+	supportMessages map[string][]*SupportMessage
+
+	// Changelog & Announcements (§3, §17.7)
+	changelogEntries       []*ChangelogEntry
+	announcements          map[string]*SystemAnnouncement
+	announcementDismissals map[string]bool
 }
 
 func newStore() *Store {
 	st := &Store{
-		categories: make(map[string]*StoredCategory),
-		articles:   make(map[string]*StoredArticle),
-		ratings:    make(map[string]*StoredRating),
+		categories:             make(map[string]*StoredCategory),
+		articles:               make(map[string]*StoredArticle),
+		ratings:                make(map[string]*StoredRating),
+		betaEnrollments:        make(map[string]*BetaEnrollmentRecord),
+		workspaceBetaFlags:     make(map[string][]string),
+		statusComponents:       make(map[string]*MonitoredComponent),
+		statusIncidents:        make(map[string]*IncidentRecord),
+		statusSubscribers:      make(map[string]*StatusSubscriberRecord),
+		supportTickets:         make(map[string]*SupportTicket),
+		supportMessages:        make(map[string][]*SupportMessage),
+		announcements:          make(map[string]*SystemAnnouncement),
+		announcementDismissals: make(map[string]bool),
 	}
 	st.seedCanonicalKB()
+	st.seedCanonicalStatusComponents()
+	st.seedCanonicalChangelog()
+	st.seedCanonicalAnnouncements()
 	return st
 }
 
@@ -244,6 +279,193 @@ func (st *Store) seedCanonicalKB() {
 	st.articles[art1.ArticleID] = art1
 	st.articles[art2.ArticleID] = art2
 	st.articles[art3.ArticleID] = art3
+
+	// Article 4: Low-rating article (<60% helpful) to verify quality queue (§2.4)
+	art4 := &StoredArticle{
+		ArticleID:            "art-m13-inventory-sync",
+		CategoryID:           catCommerce.CategoryID,
+		Slug:                 "dong-bo-kho-shopee-tiktok",
+		Locale:               "vi-VN",
+		Title:                "Đồng bộ tồn kho đa kênh Shopee và TikTok Shop",
+		Summary:              "Cách xử lý đồng bộ tồn kho tự động.",
+		BodyMarkdown:         "## Đồng bộ tồn kho\nHướng dẫn cơ bản.",
+		Status:               adminv1.KBArticleStatus_KB_ARTICLE_STATUS_PUBLISHED,
+		ArticleType:          adminv1.KBArticleType_KB_ARTICLE_TYPE_HOW_TO,
+		TargetModules:        []string{"M13"},
+		TargetOperatorModes:  []string{"seller"},
+		Tags:                 []string{"inventory", "sync", "m13"},
+		EstimatedReadMinutes: 2,
+		HelpfulVotes:         2,
+		UnhelpfulVotes:       8, // 2 / 10 = 20% helpful (< 60% threshold!)
+		ViewCount:            150,
+		LastReviewedAt:       now.Add(-10 * 24 * time.Hour),
+		PublishedAt:          &pubTime,
+	}
+	st.articles[art4.ArticleID] = art4
+}
+
+func (st *Store) seedCanonicalStatusComponents() {
+	now := time.Now().UTC()
+	components := []*MonitoredComponent{
+		{
+			ComponentID:      "web_app",
+			Name:             "Web Application (SvelteKit)",
+			CheckIntervalSec: 30,
+			Status:           "operational",
+			LatencyMs:        42,
+			LastCheckAt:      now,
+			Description:      "SvelteKit Web frontend interface",
+		},
+		{
+			ComponentID:      "mobile_backend",
+			Name:             "Mobile Backend (API Endpoints)",
+			CheckIntervalSec: 30,
+			Status:           "operational",
+			LatencyMs:        38,
+			LastCheckAt:      now,
+			Description:      "API Gateway and mobile client endpoints",
+		},
+		{
+			ComponentID:      "public_api",
+			Name:             "Public Developer API",
+			CheckIntervalSec: 30,
+			Status:           "operational",
+			LatencyMs:        55,
+			LastCheckAt:      now,
+			Description:      "Public REST and ConnectRPC endpoints",
+		},
+		{
+			ComponentID:      "database",
+			Name:             "PostgreSQL Database",
+			CheckIntervalSec: 30,
+			Status:           "operational",
+			LatencyMs:        12,
+			LastCheckAt:      now,
+			Description:      "PostgreSQL 17 tenant database clusters",
+		},
+		{
+			ComponentID:      "ai_services",
+			Name:             "AI Services (Generation Endpoints)",
+			CheckIntervalSec: 60,
+			Status:           "operational",
+			LatencyMs:        190,
+			LastCheckAt:      now,
+			Description:      "AI text, image, and video studio pipelines",
+		},
+		{
+			ComponentID:      "platform_connectors",
+			Name:             "Platform Connectors (TikTok, Shopee, etc.)",
+			CheckIntervalSec: 60,
+			Status:           "operational",
+			LatencyMs:        85,
+			LastCheckAt:      now,
+			Description:      "E-commerce & social platform sync connectors",
+		},
+		{
+			ComponentID:      "payment_processing",
+			Name:             "Payment Processing (Stripe)",
+			CheckIntervalSec: 60,
+			Status:           "operational",
+			LatencyMs:        115,
+			LastCheckAt:      now,
+			Description:      "Subscription billing and credit pack checkout",
+		},
+		{
+			ComponentID:      "notification_delivery",
+			Name:             "Notification Delivery (Email / SMS)",
+			CheckIntervalSec: 120,
+			Status:           "operational",
+			LatencyMs:        60,
+			LastCheckAt:      now,
+			Description:      "In-app, push, and email notification queues",
+		},
+	}
+
+	for _, c := range components {
+		st.statusComponents[c.ComponentID] = c
+	}
+}
+
+func (st *Store) seedCanonicalChangelog() {
+	now := time.Now().UTC()
+	entries := []*ChangelogEntry{
+		{
+			EntryID:         "chg-2026-11-04",
+			Date:            "2026-11-04",
+			Title:           "Hệ thống Hỗ trợ khách hàng, Changelog & Beta Program (P8-04)",
+			Category:        "Feature",
+			AffectedModules: []string{"M01", "M23", "help"},
+			Description:     "Triển khai hoàn chỉnh Trung tâm trợ giúp theo ngữ cảnh, quy trình kiểm duyệt bài viết cũ >90 ngày, chương trình Beta với 50 credits một lần và trang trạng thái công khai bảo vệ quyền riêng tư người theo dõi.",
+			Impact:          "Người dùng tất cả các gói có tài nguyên tự phục vụ; người dùng Starter+ có quyền tham gia Beta.",
+			PublishedAt:     now,
+		},
+		{
+			EntryID:         "chg-2026-10-30",
+			Date:            "2026-10-30",
+			Title:           "Chuyển đổi Backend sang Go & Kiến trúc ConnectRPC",
+			Category:        "Improvement",
+			AffectedModules: []string{"M01", "M07", "M13", "M19", "M22"},
+			Description:     "Nâng cấp toàn bộ tầng xử lý API và Worker sang Go với độ ổn định cao và độ trễ P95 giảm 45%.",
+			Impact:          "Toàn bộ tài khoản và hoạt động trên hệ sinh thái.",
+			PublishedAt:     now.Add(-5 * 24 * time.Hour),
+		},
+	}
+	st.changelogEntries = entries
+}
+
+func (st *Store) seedCanonicalAnnouncements() {
+	now := time.Now().UTC()
+	endsIn30Days := now.Add(30 * 24 * time.Hour)
+
+	ann1 := &SystemAnnouncement{
+		AnnouncementID: "ann-beta-pro-launch",
+		Title:          "Chương trình Beta: Thử nghiệm tính năng Continuity Video OS",
+		Body:           "Gói tính cách nhất quán cho video bán hàng đã sẵn sàng cho thành viên Pro và Business.",
+		Type:           "feature_launch",
+		DisplayMode:    "modal",
+		Priority:       3,
+		TargetPlans:    []string{"pro", "business", "enterprise"},
+		TargetModes:    []string{"creator", "seller"},
+		TargetLocales:  []string{"vi-vn"},
+		StartsAt:       now.Add(-2 * time.Hour),
+		EndsAt:         &endsIn30Days,
+		IsDismissible:  true,
+		CreatedAt:      now,
+	}
+
+	ann2 := &SystemAnnouncement{
+		AnnouncementID: "ann-platform-speed",
+		Title:          "Tăng tốc độ xuất bản đa kênh",
+		Body:           "Thời gian tải và phân phối video tới TikTok Shop, Shopee và YouTube Shorts đã nhanh hơn 2x.",
+		Type:           "improvement",
+		DisplayMode:    "banner",
+		Priority:       2,
+		TargetPlans:    nil, // all tiers
+		TargetModes:    nil, // all modes
+		TargetLocales:  nil,
+		StartsAt:       now.Add(-1 * time.Hour),
+		EndsAt:         &endsIn30Days,
+		IsDismissible:  true,
+		CreatedAt:      now,
+	}
+
+	ann3 := &SystemAnnouncement{
+		AnnouncementID: "ann-breaking-api-v1",
+		Title:          "Thay đổi bắt buộc: Cập nhật xác thực Public API",
+		Body:           "Enterprise API keys cần được xoay vòng trước ngày 15/11/2026 để duy trì kết nối.",
+		Type:           "breaking_change",
+		DisplayMode:    "blocking_modal",
+		Priority:       4,
+		TargetPlans:    []string{"enterprise"},
+		StartsAt:       now.Add(-10 * time.Minute),
+		EndsAt:         &endsIn30Days,
+		IsDismissible:  false,
+		CreatedAt:      now,
+	}
+
+	st.announcements[ann1.AnnouncementID] = ann1
+	st.announcements[ann2.AnnouncementID] = ann2
+	st.announcements[ann3.AnnouncementID] = ann3
 }
 
 // Service implements user-facing KBServiceHandler.
@@ -940,6 +1162,208 @@ func (s *AdminService) ListStaleArticles(
 			HasMore: false,
 		},
 	}), nil
+}
+
+// ReviewArticle marks a KB article as reviewed, updating last_reviewed_at to now,
+// setting reviewer admin ID and review notes, appending a version entry, and clearing stale status.
+func (s *AdminService) ReviewArticle(
+	ctx context.Context,
+	articleID, reviewNotes string,
+) (*StoredArticle, error) {
+	admin, err := s.validateAdminCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(articleID) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
+	}
+
+	s.store.mu.Lock()
+	defer s.store.mu.Unlock()
+
+	art, exists := s.store.articles[articleID]
+	if !exists {
+		return nil, connect.NewError(connect.CodeNotFound, ErrArticleNotFound)
+	}
+
+	now := time.Now().UTC()
+	art.LastReviewedAt = now
+	art.LastReviewedBy = admin.UserID
+	art.ReviewNotes = strings.TrimSpace(reviewNotes)
+
+	art.Versions = append(art.Versions, StoredArticleVersion{
+		VersionNumber: int32(len(art.Versions) + 1),
+		Title:         art.Title,
+		Summary:       art.Summary,
+		BodyMarkdown:  art.BodyMarkdown,
+		ChangeNote:    fmt.Sprintf("Reviewed by %s: %s", admin.UserID, art.ReviewNotes),
+		CreatedAt:     now,
+	})
+
+	return art, nil
+}
+
+// QualityQueueItem models an article needing rewrite due to low helpfulness (<60% helpful).
+type QualityQueueItem struct {
+	Article        *StoredArticle
+	HelpfulRatio   float64
+	TotalVotes     int32
+	PriorityReason string
+}
+
+// ListQualityQueue lists articles with helpfulness ratio below threshold (default 60%).
+func (s *AdminService) ListQualityQueue(
+	ctx context.Context,
+	minVotes int32,
+	maxHelpfulRatio float64,
+) ([]QualityQueueItem, error) {
+	if _, err := s.validateAdminCaller(ctx); err != nil {
+		return nil, err
+	}
+	if minVotes <= 0 {
+		minVotes = 3
+	}
+	if maxHelpfulRatio <= 0 {
+		maxHelpfulRatio = 0.60
+	}
+
+	s.store.mu.RLock()
+	defer s.store.mu.RUnlock()
+
+	var queue []QualityQueueItem
+	for _, art := range s.store.articles {
+		total := art.HelpfulVotes + art.UnhelpfulVotes
+		if total >= minVotes {
+			ratio := float64(art.HelpfulVotes) / float64(total)
+			if ratio < maxHelpfulRatio {
+				queue = append(queue, QualityQueueItem{
+					Article:        art,
+					HelpfulRatio:   ratio,
+					TotalVotes:     total,
+					PriorityReason: fmt.Sprintf("Helpful rating %.1f%% below %.0f%% threshold", ratio*100, maxHelpfulRatio*100),
+				})
+			}
+		}
+	}
+
+	sort.Slice(queue, func(i, j int) bool {
+		return queue[i].HelpfulRatio < queue[j].HelpfulRatio
+	})
+
+	return queue, nil
+}
+
+// GetVersionHistory retrieves the version history for an article.
+func (s *AdminService) GetVersionHistory(
+	ctx context.Context,
+	articleID string,
+) ([]StoredArticleVersion, error) {
+	if _, err := s.validateAdminCaller(ctx); err != nil {
+		return nil, err
+	}
+	s.store.mu.RLock()
+	defer s.store.mu.RUnlock()
+
+	art, exists := s.store.articles[articleID]
+	if !exists {
+		return nil, connect.NewError(connect.CodeNotFound, ErrArticleNotFound)
+	}
+
+	res := make([]StoredArticleVersion, len(art.Versions))
+	copy(res, art.Versions)
+	return res, nil
+}
+
+// ContextualHelpResponse holds targeted help for in-app contextual assistance (§2.5).
+type ContextualHelpResponse struct {
+	Module             string
+	OperatorMode       string
+	Route              string
+	PrimaryArticle     *adminv1.KBArticleSummary
+	SuggestedArticles  []*adminv1.KBArticleSummary
+	EmptyStateGuide    string
+	TroubleshootingTip string
+}
+
+// GetContextualHelp returns targeted articles for an in-app feature context (e.g. M07 AI Video Studio).
+func (s *Service) GetContextualHelp(
+	ctx context.Context,
+	module, operatorMode, route string,
+) (*ContextualHelpResponse, error) {
+	s.store.mu.RLock()
+	defer s.store.mu.RUnlock()
+
+	cleanMod := strings.ToUpper(strings.TrimSpace(module))
+	cleanMode := strings.ToLower(strings.TrimSpace(operatorMode))
+	now := time.Now().UTC()
+
+	var matched []*adminv1.KBArticleSummary
+	for _, a := range s.store.articles {
+		if a.Status != adminv1.KBArticleStatus_KB_ARTICLE_STATUS_PUBLISHED {
+			continue
+		}
+		modMatch := false
+		for _, m := range a.TargetModules {
+			if strings.ToUpper(m) == cleanMod {
+				modMatch = true
+				break
+			}
+		}
+		if cleanMod != "" && !modMatch {
+			continue
+		}
+
+		if cleanMode != "" && len(a.TargetOperatorModes) > 0 {
+			modeMatch := false
+			for _, om := range a.TargetOperatorModes {
+				if strings.ToLower(om) == cleanMode {
+					modeMatch = true
+					break
+				}
+			}
+			if !modeMatch {
+				continue
+			}
+		}
+
+		isStale := now.Sub(a.LastReviewedAt) > 90*24*time.Hour
+		matched = append(matched, &adminv1.KBArticleSummary{
+			ArticleId:            &commonv1.UUID{Value: a.ArticleID},
+			CategoryId:           &commonv1.UUID{Value: a.CategoryID},
+			Slug:                 a.Slug,
+			Locale:               a.Locale,
+			Title:                a.Title,
+			Summary:              a.Summary,
+			Status:               a.Status,
+			ArticleType:          a.ArticleType,
+			TargetModules:        a.TargetModules,
+			TargetOperatorModes:  a.TargetOperatorModes,
+			Tags:                 a.Tags,
+			EstimatedReadMinutes: a.EstimatedReadMinutes,
+			HelpfulVotes:         a.HelpfulVotes,
+			UnhelpfulVotes:       a.UnhelpfulVotes,
+			ViewCount:            a.ViewCount,
+			LastReviewedAt:       timestamppb.New(a.LastReviewedAt),
+			IsStaleForReview:     isStale,
+		})
+	}
+
+	resp := &ContextualHelpResponse{
+		Module:             cleanMod,
+		OperatorMode:       cleanMode,
+		Route:              route,
+		EmptyStateGuide:    fmt.Sprintf("Chưa có dữ liệu cho %s. Bắt đầu bằng cách làm theo hướng dẫn 5 bước.", cleanMod),
+		TroubleshootingTip: "Gặp sự cố kết nối? Kiểm tra trạng thái token trong Cài đặt > Kết nối.",
+	}
+
+	if len(matched) > 0 {
+		resp.PrimaryArticle = matched[0]
+		if len(matched) > 1 {
+			resp.SuggestedArticles = matched[1:]
+		}
+	}
+
+	return resp, nil
 }
 
 func generateUUID() string {

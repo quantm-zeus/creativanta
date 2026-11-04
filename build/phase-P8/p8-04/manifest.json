@@ -1,0 +1,134 @@
+{
+  "task_id": "P8-04",
+  "phase": "P8",
+  "slice": "P8-04",
+  "title": "Help, changelog, beta, status và support",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "modules": [
+    "help"
+  ],
+  "feature_refs": [
+    "docs/02_features/platform/help_center.md",
+    "docs/01_business/legal_compliance.md"
+  ],
+  "migration_files": [
+    "infra/migrations/00042_p8_04_help_center_beta_status_and_support_slas.sql"
+  ],
+  "rpc_contracts": [
+    "creativanta.platform.v1.HelpCenterService",
+    "creativanta.platform.v1.BetaProgramService",
+    "creativanta.platform.v1.StatusPageService",
+    "creativanta.platform.v1.SupportTicketService"
+  ],
+  "permission_keys": [
+    "kb:read",
+    "kb:author",
+    "kb:review",
+    "beta:enroll",
+    "beta:feedback",
+    "status:read",
+    "status:subscribe",
+    "support:ticket:create",
+    "support:ticket:reply",
+    "support:ticket:view"
+  ],
+  "event_types": [
+    "help.article_viewed",
+    "help.article_rated",
+    "help.article_reviewed",
+    "help.article_stale_flagged",
+    "beta.enrolled",
+    "beta.credits_granted",
+    "beta.opted_out",
+    "beta.feedback_submitted",
+    "beta.graduated",
+    "status.incident_created",
+    "status.incident_updated",
+    "status.subscribed",
+    "support.ticket_created",
+    "support.ticket_replied",
+    "support.sla_breached",
+    "support.ticket_resolved"
+  ],
+  "screen_routes": [
+    "/support",
+    "/support/articles/[slug]",
+    "/status",
+    "/settings/beta",
+    "mobile://help-sheet",
+    "mobile://support"
+  ],
+  "source_files": {
+    "infra/migrations/00042_p8_04_help_center_beta_status_and_support_slas.sql": "ec4e28b016d36e13220be5b12b7e790939411670af792a3e0a7ca49da654d2db",
+    "apps/api/internal/migrate/migrator_test.go": "9556a7f5d6ed8a303f251083a569fa7413274251ad614203c03a2370bf1820b7",
+    "apps/api/internal/help/service.go": "ab4131a14345d9f752e8a89b99734bae05c1d6dffeae2faa81d1ce95e0ce8cc0",
+    "apps/api/internal/help/service_test.go": "ee25f45997b113ae6d51c6f9e8849d09519b9ea8bd7822ce26db324c1f773604",
+    "apps/api/internal/help/beta.go": "0d0caaab2d4f9b88f529e941e67a030949c29f40da579dbd88bd0a469023844d",
+    "apps/api/internal/help/status.go": "fabc4a61127ca4f078e707e32624eacdc2913f7a414ab9e7b97eeb6c7a06376a",
+    "apps/api/internal/help/support.go": "61f88ab1459cbcc8a483b1f329110ce202027e30cc02bf04f5b114702a4bf6d4",
+    "apps/api/internal/help/changelog.go": "50371f5f5c65555f0a18eac461b49ae58ce0b53b769567486c4a620fd192e33f",
+    "apps/web/src/lib/help/store.ts": "60b7e30ac415940b32f60b9ee4e14d31a9fe2e5266fc2fed48b77a01732b5890",
+    "apps/web/src/lib/help/help.test.ts": "f510153b5653e7d5ee24ec9441c57cbc89bc4b833aff304c5d82b14cbc155de5",
+    "apps/web/src/routes/support/+page.svelte": "f18ec4ea6038d525ad928ded5a8e663feb253db6c5482614667828cfedcea624",
+    "apps/web/src/routes/support/articles/[slug]/+page.svelte": "8ce57f4f3639fa487e2b4496b79025ade2258f0fdbfe3295fc2cd4d3cd98c2cc",
+    "apps/web/src/routes/status/+page.svelte": "d09bb22ce63858dfc531775bb6b0294a4cddc433d5361c5161857f98bc519611",
+    "apps/web/src/routes/settings/beta/+page.svelte": "a9534372fb3b5195e5d064312df31d45db6b9d78db7c454e4e0ed45fbabaa8ba",
+    "apps/mobile/lib/support/support_models.dart": "6885274f502591272e18c59fb897a8fd124377bc4c6255a3f857d5ddbb97405b",
+    "apps/mobile/test/support_test.dart": "6bd2a8ad48bb2db7c1c414bf8b91958b12da846831f418a12ed6b197f4fdbdbe"
+  },
+  "scope_items": [
+    {
+      "id": "stale-article-review",
+      "title": "Articles unreviewed for >90 days flagged stale, low-rating (<60% helpful) rewrite queue, reviewer notes & timestamp logged in version history, contextual help mapped by module M01-M23",
+      "status": "IMPLEMENTED_LOCAL_TESTED"
+    },
+    {
+      "id": "beta-grant-once",
+      "title": "Beta program enrollment restricted to paid tiers (Starter+; Free rejected), 50 bonus credits awarded exactly once per workspace, re-enrollment activates feature flags with 0 bonus credits, graduation criteria (stability >= 14d, >=80% positive feedback, 0 bugs)",
+      "status": "IMPLEMENTED_LOCAL_TESTED"
+    },
+    {
+      "id": "incident-notifications-subscription-privacy",
+      "title": "8 monitored status components (§5.1), incident severity SLAs (P0 15m/30m/48h post-mortem, P1 30m/1h/5d, P2 4h/end-of-day), public status endpoint guarantees subscriber privacy (never exposes contact details, only aggregate counts, management via secret privacy token), notification dispatch without cross-subscriber leakage",
+      "status": "IMPLEMENTED_LOCAL_TESTED"
+    },
+    {
+      "id": "support-slas-and-isolation",
+      "title": "Support SLAs per legal_compliance.md §7.2 (Free 48h/120h, Starter 24h/72h, Pro 8h/24h, Business 2h/8h, Enterprise 1h/4h), SLA breach detection emitting support.sla_breached, strict isolation filtering internal notes from workspace callers",
+      "status": "IMPLEMENTED_LOCAL_TESTED"
+    },
+    {
+      "id": "announcements-changelog",
+      "title": "In-app announcements with session frequency limiting (max 1 per session), persistent dismissal, and formatted changelog",
+      "status": "IMPLEMENTED_LOCAL_TESTED"
+    }
+  ],
+  "verified_sub_slices": [
+    "PostgreSQL migration 00042 adding review metadata columns to kb_articles, beta_enrollments and beta_feedbacks with RLS + FORCE ROW LEVEL SECURITY, global status_subscribers with privacy hashing, and announcement_dismissals with tenant isolation",
+    "Go help service with 90-day stale article detection, <60% helpfulness quality rewrite queue, Ops review audit log with version history, and contextual help by module",
+    "Go beta service with paid tier gate, 50 bonus credit grant-once logic, 0 credits on re-enrollment, and graduation evaluation criteria",
+    "Go status service with 8 monitored components, P0/P1/P2 incident SLAs, strict subscriber privacy preventing PII/webhook leakage on public endpoints, and tokenized unsubscriptions",
+    "Go support service with canonical legal SLAs (Free 48h/120h, Starter 24h/72h, Pro 8h/24h, Business 2h/8h, Enterprise 1h/4h), SLA breach detection, and strict internal note isolation",
+    "Go changelog and in-app announcement service with session frequency capping and priority-ranked targeting",
+    "Web help & support store with reactive Svelte stores, stale article detection, beta grant once state, status component latency, support SLA calculation, and internal note filtering",
+    "Web UI routes for Support Center (/support), Article Viewer (/support/articles/[slug]), Public Status (/status), and Beta Program Settings (/settings/beta)",
+    "Mobile support models and Flutter tests verifying SLA calculations, breach detection, internal note sanitation, beta grant once, and status subscription privacy"
+  ],
+  "evidence": {
+    "go_test": "PASS (cd apps/api && GOTMPDIR=/home/whaleorcale/tmp go test -race ./internal/help/... ./internal/migrate/...)",
+    "web_test": "PASS (pnpm --filter @creativanta/web test: 45 test files, 398 tests passed)",
+    "web_build": "PASS (pnpm --filter @creativanta/web build)",
+    "admin_test": "PASS (pnpm --filter @creativanta/admin test: 1 file, 9 tests passed)",
+    "flutter_test": "PASS (cd apps/mobile && flutter test test/support_test.dart: 5 tests passed)",
+    "docs_check": "PASS (python3 tooling/check_docs.py: active_markdown=337, tables=165, tenant_tables=140, rpc_bindings=1188, modules=31, build_tasks=60, requirement_units=1333, screen_assignments=245)"
+  },
+  "external_gates": [
+    "External email delivery provider (Resend/SendGrid) for production status incident emails",
+    "External webhook dispatcher for status updates to subscriber webhooks",
+    "External Clerk authentication provider (tested via mock adapters in local suite)",
+    "Production database migrations execution in staging/prod environment"
+  ],
+  "remaining_scope": []
+}

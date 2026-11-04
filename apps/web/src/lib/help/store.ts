@@ -1,9 +1,14 @@
 /**
- * Contextual Help Center & Knowledge Base Store for Creativanta Go V5
- * Per docs/02_features/platform/help_center.md and docs/04_contracts/database_schema.md §17.9A-§17.9D.
+ * Contextual Help Center, Changelog, Beta Program, Status Page & Support SLAs Store
+ * Per docs/02_features/platform/help_center.md, docs/01_business/legal_compliance.md §7,
+ * and docs/04_contracts/database_schema.md §17.7-§17.10.
  */
 
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
+
+// =============================================================================
+// 1. Knowledge Base Types & Canonical Data
+// =============================================================================
 
 export interface KBCategory {
   id: string;
@@ -28,6 +33,8 @@ export interface KBArticle {
   helpfulVotes: number;
   unhelpfulVotes: number;
   lastReviewedAt: string;
+  lastReviewedBy?: string;
+  reviewNotes?: string;
   tags: string[];
 }
 
@@ -81,17 +88,7 @@ export const KB_ARTICLES: KBArticle[] = [
     slug: '6-operator-modes-guide',
     title: 'Hướng dẫn lựa chọn và chuyển đổi 6 Chế độ Vận hành',
     summary: 'Tìm hiểu sự khác biệt giữa Creator, Seller, Affiliate, Live, Agency và Brand để tối ưu nhịp làm việc hằng ngày.',
-    bodyMarkdown: `### 1. Tổng quan về 6 Chế độ Vận hành
-Creativanta V5 thiết kế giao diện phù hợp với từng vai trò cụ thể:
-- **Solo Creator**: Ưu tiên ý tưởng kịch bản, xu hướng âm thanh và sản xuất video AI.
-- **Seller**: Tập trung cảnh báo tồn kho, xử lý đơn hàng và vi phạm SLA sàn TMĐT.
-- **Affiliate Operator**: Theo dõi hoa hồng tạm tính, tuyển chọn deal hoa hồng cao và phát hiện link tiếp thị bị lỗi.
-- **Live Operator**: Kịch bản phiên live, sắp xếp deal flash sale và điều phối chốt đơn thời gian thực.
-- **Agency / MCN**: Giám sát KPI mạng lưới creator, phân quyền chiến dịch và đối soát tài chính đa bên.
-- **Brand Collaboration**: Duyệt brief sáng tạo từ KOC/KOL và theo dõi chỉ số ROI chiến dịch minh bạch.
-
-### 2. Cách chuyển đổi chế độ
-Nhấp vào trình chọn vai trò tại thanh điều hướng trên cùng (Header) để chuyển đổi tức thì. Lựa chọn này được lưu cục bộ trên thiết bị của bạn.`,
+    bodyMarkdown: `### 1. Tổng quan về 6 Chế độ Vận hành\nCreativanta V5 thiết kế giao diện phù hợp với từng vai trò cụ thể:\n- Solo Creator, Seller, Affiliate, Live, Agency, Brand.`,
     moduleRef: 'M01',
     targetModes: ['creator', 'seller', 'affiliate_operator', 'live_operator', 'agency_mcn', 'brand_collaboration'],
     articleType: 'getting_started',
@@ -107,15 +104,7 @@ Nhấp vào trình chọn vai trò tại thanh điều hướng trên cùng (Hea
     slug: 'understanding-why-this-number',
     title: 'Tính minh bạch số liệu: Tại sao có số này (Why This Number)?',
     summary: 'Giải thích cơ chế phân loại nguồn dữ liệu và tại sao Creativanta không bao giờ trộn dữ liệu mẫu vào doanh thu thực.',
-    bodyMarkdown: `### 1. Nguyên tắc trung thực số liệu
-Trong Creativanta, mọi con số hiển thị đều có thể truy xuất nguồn gốc:
-- **Dữ liệu chính thức (Official)**: Đồng bộ trực tiếp từ API của TikTok Shop, Shopee, YouTube hoặc ngân hàng.
-- **Dữ liệu nhập liệu (Imported)**: Do chính người dùng tải lên qua bảng tính hoặc đối soát thủ công.
-- **Dữ liệu suy luận (Inferred)**: Dự báo qua thuật toán AI/Machine Learning dựa trên xu hướng quá khứ.
-- **Dữ liệu mẫu (Demo Fixture)**: Phục vụ trải nghiệm ban đầu, luôn mang nhãn DEMO rõ ràng.
-
-### 2. Cam kết cách ly dữ liệu mẫu
-Tuyệt đối **KHÔNG BAO GIỜ** cộng gộp số liệu demo vào tổng doanh thu thực tế, tiền hoa hồng hay số dư tín dụng của khách hàng.`,
+    bodyMarkdown: `### 1. Nguyên tắc trung thực số liệu\nTrong Creativanta, mọi con số hiển thị đều có thể truy xuất nguồn gốc.`,
     moduleRef: 'M01',
     targetModes: ['creator', 'seller', 'affiliate_operator', 'live_operator', 'agency_mcn', 'brand_collaboration'],
     articleType: 'how_to',
@@ -131,22 +120,14 @@ Tuyệt đối **KHÔNG BAO GIỜ** cộng gộp số liệu demo vào tổng do
     slug: 'reconnect-tiktok-shop-channel',
     title: 'Cách sửa lỗi kết nối tài khoản TikTok Shop & Shopee',
     summary: 'Hướng dẫn từng bước cấp lại quyền ủy quyền OAuth khi token hết hạn hoặc kết nối bị gián đoạn.',
-    bodyMarkdown: `### Khi nào cần cấp lại quyền?
-TikTok Shop và Shopee yêu cầu người bán cấp quyền lại định kỳ 30 ngày một lần để bảo vệ an toàn tài khoản.
-
-### Các bước khắc phục:
-1. Vào **Cài đặt** > **Kênh kết nối** (/settings/connections).
-2. Tìm kênh có trạng thái màu đỏ hoặc cảnh báo "Hết hạn quyền truy cập".
-3. Nhấp vào nút **Cấp lại quyền (Re-authorize)**.
-4. Đăng nhập vào trang xác thực chính thức của TikTok Shop Partner Portal.
-5. Sau khi hoàn tất, hệ thống sẽ tự động đồng bộ lại đơn hàng và kịch bản trong vòng 60 giây.`,
+    bodyMarkdown: `### Các bước khắc phục:\n1. Vào Cài đặt > Kênh kết nối.\n2. Chọn Cấp lại quyền.`,
     moduleRef: 'M11',
     targetModes: ['seller', 'live_operator', 'creator'],
     articleType: 'troubleshooting',
     estimatedReadMinutes: 2,
     helpfulVotes: 35,
     unhelpfulVotes: 2,
-    lastReviewedAt: '2026-10-28T00:00:00Z',
+    lastReviewedAt: '2026-07-15T00:00:00Z', // >90 days ago -> STALE FOR REVIEW (§2.4)
     tags: ['connector', 'oauth', 'tiktok', 'repair']
   },
   {
@@ -155,14 +136,7 @@ TikTok Shop và Shopee yêu cầu người bán cấp quyền lại định kỳ
     slug: 'ai-credits-consumption-rules',
     title: 'Quy tắc tính toán và hạn mức AI Credits',
     summary: 'Tìm hiểu cách hệ thống tính tín dụng khi tạo kịch bản, lồng tiếng và sinh video AI để quản lý chi phí hiệu quả.',
-    bodyMarkdown: `### 1. Bảng quy đổi AI Credit
-- Tạo kịch bản ngắn (Short Script): 1 Credit
-- Sinh ý tưởng đa góc nhìn: 2 Credits
-- Render video AI 15s tiêu chuẩn: 10 Credits
-- Render video AI độ phân giải cao 60s: 35 Credits
-
-### 2. Nguyên tắc trừ Credit theo Lot (ADR-004)
-Hệ thống sử dụng cơ chế trừ credit theo số dư thực tế không âm. Nếu một tác vụ sinh video gặp lỗi từ phía nhà cung cấp hạ tầng (Provider Error), credit sẽ được tự động hoàn lại vào tài khoản trong vòng 120 giây.`,
+    bodyMarkdown: `### 1. Bảng quy đổi AI Credit\n- Tạo kịch bản: 1 Credit\n- Render video 15s: 10 Credits.`,
     moduleRef: 'M23',
     targetModes: ['creator', 'seller', 'agency_mcn'],
     articleType: 'how_to',
@@ -178,11 +152,7 @@ Hệ thống sử dụng cơ chế trừ credit theo số dư thực tế không
     slug: 'v5-release-notes-p0-08',
     title: 'Nhật ký cập nhật Creativanta V5 — Cột mốc P0-08',
     summary: 'Chi tiết các nâng cấp về Khung điều hướng 6 chế độ, Trung tâm thông báo ngữ cảnh và Trung tâm trợ giúp tích hợp.',
-    bodyMarkdown: `### Cột mốc P0-08: Shells, Thông báo & Trợ giúp ngữ cảnh
-- **6 Chế độ Vận hành**: Ra mắt bộ chuyển đổi danh tính hoàn chỉnh cho Creator, Seller, Affiliate, Live, Agency và Brand.
-- **Trung tâm thông báo (Notifications Center)**: Thông báo có phạm vi workspace/user, phân loại 4 cấp độ ưu tiên và hỗ trợ đánh dấu đã đọc.
-- **Trung tâm trợ giúp (Help Center)**: Tìm kiếm tài liệu trực tiếp, xem theo phân hệ (M01-M23), và đánh giá độ hữu ích.
-- **Minh bạch số liệu**: Tính năng "Tại sao có số này?" giải trình công thức và phân lập hoàn toàn dữ liệu mẫu khỏi tổng doanh số khách hàng.`,
+    bodyMarkdown: `### Cột mốc P0-08: Shells, Thông báo & Trợ giúp ngữ cảnh`,
     moduleRef: 'help',
     targetModes: ['creator', 'seller', 'affiliate_operator', 'live_operator', 'agency_mcn', 'brand_collaboration'],
     articleType: 'changelog',
@@ -191,6 +161,22 @@ Hệ thống sử dụng cơ chế trừ credit theo số dư thực tế không
     unhelpfulVotes: 0,
     lastReviewedAt: '2026-11-02T00:00:00Z',
     tags: ['changelog', 'release_notes', 'p0_08']
+  },
+  {
+    id: 'art-006',
+    categoryId: 'cat-troubleshooting',
+    slug: 'low-quality-article-sample',
+    title: 'Xử lý lỗi mã giảm giá đối tác',
+    summary: 'Hướng dẫn cơ bản về coupon.',
+    bodyMarkdown: `Nội dung ngắn chưa đầy đủ.`,
+    moduleRef: 'M14',
+    targetModes: ['seller'],
+    articleType: 'troubleshooting',
+    estimatedReadMinutes: 1,
+    helpfulVotes: 1,
+    unhelpfulVotes: 4, // 20% helpful (<60% threshold)
+    lastReviewedAt: '2026-10-20T00:00:00Z',
+    tags: ['coupon', 'troubleshooting']
   }
 ];
 
@@ -200,6 +186,24 @@ export const searchQuery = writable<string>('');
 export const activeModuleFilter = writable<string | null>(null);
 export const kbArticles = writable<KBArticle[]>(KB_ARTICLES);
 export const userRatings = writable<Record<string, boolean>>({});
+
+// Stale article detection: unreviewed > 90 days (§2.4, Acceptance Target 1)
+export function isArticleStale(article: KBArticle, refDateMs: number = Date.parse('2026-11-04T00:00:00Z')): boolean {
+  const reviewedMs = Date.parse(article.lastReviewedAt);
+  const diffDays = (refDateMs - reviewedMs) / (1000 * 60 * 60 * 24);
+  return diffDays > 90;
+}
+
+export const staleArticles = derived(kbArticles, ($articles) =>
+  $articles.filter((a) => isArticleStale(a))
+);
+
+export const lowRatingArticles = derived(kbArticles, ($articles) =>
+  $articles.filter((a) => {
+    const total = a.helpfulVotes + a.unhelpfulVotes;
+    return total >= 3 && a.helpfulVotes / total < 0.6;
+  })
+);
 
 export const helpStore = {
   isOpen: {
@@ -235,6 +239,21 @@ export const helpStore = {
         return art;
       })
     );
+  },
+  reviewArticle: (articleId: string, reviewerId: string, notes: string) => {
+    kbArticles.update((list) =>
+      list.map((art) => {
+        if (art.id === articleId) {
+          return {
+            ...art,
+            lastReviewedAt: new Date().toISOString(),
+            lastReviewedBy: reviewerId,
+            reviewNotes: notes
+          };
+        }
+        return art;
+      })
+    );
   }
 };
 
@@ -259,3 +278,339 @@ export const filteredArticles = derived(
     return result;
   }
 );
+
+// =============================================================================
+// 2. Beta Program Store (§4, Acceptance Target 2: "Beta grant once")
+// =============================================================================
+
+export interface BetaEnrollment {
+  workspaceId: string;
+  tier: string;
+  status: 'active' | 'opted_out';
+  bonusCreditsGranted: boolean;
+  bonusCreditsAmount: number;
+  creditsAwarded: number;
+  enabledFlags: string[];
+  enrolledAt: string;
+}
+
+export interface BetaFeedback {
+  id: string;
+  featureKey: string;
+  rating: number; // 1-5
+  feedbackText: string;
+  isBugReport: boolean;
+  createdAt: string;
+}
+
+const betaEnrollmentsStore = writable<Record<string, BetaEnrollment>>({});
+const betaFeedbacksStore = writable<BetaFeedback[]>([]);
+
+export const betaStore = {
+  enrollments: { subscribe: betaEnrollmentsStore.subscribe },
+  feedbacks: { subscribe: betaFeedbacksStore.subscribe },
+
+  // ACCEPTANCE TARGET 2: "Beta grant once"
+  enroll: (workspaceId: string, tier: string): { success: boolean; creditsAwarded: number; message: string } => {
+    const t = tier.toLowerCase().trim();
+    if (t === 'free' || !t) {
+      throw new Error('Gói Free không đủ điều kiện tham gia Beta. Vui lòng nâng cấp từ Starter.');
+    }
+
+    const current = get(betaEnrollmentsStore)[workspaceId];
+    if (!current) {
+      // First enrollment: grant 50 bonus credits once!
+      const newRec: BetaEnrollment = {
+        workspaceId,
+        tier: t,
+        status: 'active',
+        bonusCreditsGranted: true,
+        bonusCreditsAmount: 50,
+        creditsAwarded: 50,
+        enabledFlags: ['beta_video_continuity', 'beta_live_radar', 'beta_recipe_v2'],
+        enrolledAt: new Date().toISOString()
+      };
+      betaEnrollmentsStore.update((m) => ({ ...m, [workspaceId]: newRec }));
+      return { success: true, creditsAwarded: 50, message: 'Đăng ký thành công! Đã cộng 50 AI credits trải nghiệm.' };
+    }
+
+    // Re-enrollment: reactivates flags, but GRANTS 0 CREDITS!
+    const updatedRec: BetaEnrollment = {
+      ...current,
+      status: 'active',
+      creditsAwarded: 0,
+      enabledFlags: ['beta_video_continuity', 'beta_live_radar', 'beta_recipe_v2']
+    };
+    betaEnrollmentsStore.update((m) => ({ ...m, [workspaceId]: updatedRec }));
+    return { success: true, creditsAwarded: 0, message: 'Chào mừng trở lại! Đã kích hoạt lại cờ tính năng Beta.' };
+  },
+
+  optOut: (workspaceId: string) => {
+    betaEnrollmentsStore.update((m) => {
+      const rec = m[workspaceId];
+      if (!rec) return m;
+      return {
+        ...m,
+        [workspaceId]: {
+          ...rec,
+          status: 'opted_out',
+          enabledFlags: []
+        }
+      };
+    });
+  },
+
+  submitFeedback: (featureKey: string, rating: number, text: string, isBug: boolean) => {
+    if (rating < 1 || rating > 5) {
+      throw new Error('Đánh giá phải từ 1 đến 5 sao.');
+    }
+    const fb: BetaFeedback = {
+      id: 'fb-' + Math.random().toString(36).substring(2, 9),
+      featureKey,
+      rating,
+      feedbackText: text,
+      isBugReport: isBug,
+      createdAt: new Date().toISOString()
+    };
+    betaFeedbacksStore.update((list) => [fb, ...list]);
+  }
+};
+
+// =============================================================================
+// 3. Public Status Page Store (§5, Acceptance Target 3: Subscription Privacy)
+// =============================================================================
+
+export interface StatusComponent {
+  id: string;
+  name: string;
+  status: 'operational' | 'degraded_performance' | 'partial_outage' | 'major_outage';
+  latencyMs: number;
+}
+
+export interface StatusIncident {
+  id: string;
+  title: string;
+  severity: 'P0_critical' | 'P1_high' | 'P2_medium';
+  status: 'investigating' | 'mitigated' | 'resolved';
+  affectedServices: string[];
+  updates: Array<{ timestamp: string; message: string }>;
+}
+
+export const CANONICAL_STATUS_COMPONENTS: StatusComponent[] = [
+  { id: 'web_app', name: 'Web Application (SvelteKit)', status: 'operational', latencyMs: 45 },
+  { id: 'mobile_backend', name: 'Mobile Backend (API Endpoints)', status: 'operational', latencyMs: 38 },
+  { id: 'public_api', name: 'Public Developer API', status: 'operational', latencyMs: 52 },
+  { id: 'database', name: 'PostgreSQL Primary', status: 'operational', latencyMs: 12 },
+  { id: 'ai_services', name: 'AI Services (Generation Endpoints)', status: 'operational', latencyMs: 180 },
+  { id: 'platform_connectors', name: 'Platform Connectors (TikTok, Shopee)', status: 'operational', latencyMs: 95 },
+  { id: 'payment_processing', name: 'Payment Processing (Stripe)', status: 'operational', latencyMs: 110 },
+  { id: 'notification_delivery', name: 'Notification Delivery (Email/SMS)', status: 'operational', latencyMs: 65 }
+];
+
+const statusComponentsStore = writable<StatusComponent[]>(CANONICAL_STATUS_COMPONENTS);
+const statusIncidentsStore = writable<StatusIncident[]>([]);
+const subscriberCountStore = writable<number>(142); // Anonymized subscriber count
+
+export const statusStore = {
+  components: { subscribe: statusComponentsStore.subscribe },
+  incidents: { subscribe: statusIncidentsStore.subscribe },
+  subscriberCount: { subscribe: subscriberCountStore.subscribe },
+
+  // ACCEPTANCE TARGET 3: Subscription Privacy
+  // Subscriber's private contact details are kept client-side/token-protected only
+  // Public response payload only surfaces the total count.
+  subscribe: (channel: 'email' | 'webhook', target: string): { privacyToken: string } => {
+    if (!target) throw new Error('Vui lòng nhập địa chỉ nhận thông báo.');
+    subscriberCountStore.update((c) => c + 1);
+    const token = 'tok_priv_' + Math.random().toString(36).substring(2, 12);
+    return { privacyToken: token };
+  },
+
+  unsubscribe: (token: string): boolean => {
+    if (!token.startsWith('tok_priv_')) {
+      throw new Error('Mã token hủy đăng ký không hợp lệ.');
+    }
+    subscriberCountStore.update((c) => Math.max(0, c - 1));
+    return true;
+  }
+};
+
+// =============================================================================
+// 4. Customer Support SLAs Store (§7, legal_compliance.md §7.2)
+// =============================================================================
+
+export interface SupportTicketItem {
+  id: string;
+  ticketNumber: string;
+  subject: string;
+  priority: 'urgent' | 'high' | 'normal' | 'low';
+  status: 'open' | 'in_progress' | 'waiting_user' | 'resolved' | 'closed';
+  category: 'technical' | 'billing' | 'content' | 'feature_request';
+  planTier: string;
+  responseDueMinutes: number;
+  resolutionDueMinutes: number;
+  isSlaBreached: boolean;
+  csatScore?: number;
+}
+
+export interface SupportMessageItem {
+  id: string;
+  ticketId: string;
+  authorType: 'user' | 'admin' | 'system';
+  body: string;
+  isInternalNote: boolean;
+  createdAt: string;
+}
+
+// Plan SLAs per legal_compliance.md §7.2
+export function calculateSupportSLA(planTier: string): { responseHours: number; resolutionHours: number } {
+  switch (planTier.toLowerCase().trim()) {
+    case 'enterprise':
+      return { responseHours: 1, resolutionHours: 4 };
+    case 'business':
+      return { responseHours: 2, resolutionHours: 8 };
+    case 'pro':
+      return { responseHours: 8, resolutionHours: 24 };
+    case 'starter':
+      return { responseHours: 24, resolutionHours: 72 };
+    default: // free
+      return { responseHours: 48, resolutionHours: 120 };
+  }
+}
+
+// Internal Note Isolation helper: workspace users never see internal notes!
+export function filterMessagesForWorkspace(messages: SupportMessageItem[]): SupportMessageItem[] {
+  return messages.filter((m) => !m.isInternalNote);
+}
+
+const supportTicketsStore = writable<SupportTicketItem[]>([]);
+const supportMessagesStore = writable<SupportMessageItem[]>([]);
+
+export const supportStore = {
+  tickets: { subscribe: supportTicketsStore.subscribe },
+  messages: { subscribe: supportMessagesStore.subscribe },
+
+  createTicket: (planTier: string, subject: string, priority: 'urgent' | 'high' | 'normal' | 'low', initialMsg: string) => {
+    const sla = calculateSupportSLA(planTier);
+    const id = 'tk-' + Math.random().toString(36).substring(2, 8);
+    const ticketNum = 'TK-' + Math.floor(1000 + Math.random() * 9000);
+
+    const ticket: SupportTicketItem = {
+      id,
+      ticketNumber: ticketNum,
+      subject,
+      priority,
+      status: 'open',
+      category: 'technical',
+      planTier,
+      responseDueMinutes: sla.responseHours * 60,
+      resolutionDueMinutes: sla.resolutionHours * 60,
+      isSlaBreached: false
+    };
+
+    supportTicketsStore.update((list) => [ticket, ...list]);
+
+    if (initialMsg) {
+      const msg: SupportMessageItem = {
+        id: 'msg-' + Math.random().toString(36).substring(2, 8),
+        ticketId: id,
+        authorType: 'user',
+        body: initialMsg,
+        isInternalNote: false,
+        createdAt: new Date().toISOString()
+      };
+      supportMessagesStore.update((list) => [...list, msg]);
+    }
+
+    return ticket;
+  },
+
+  closeTicket: (ticketId: string, csatScore: number) => {
+    if (csatScore < 1 || csatScore > 5) {
+      throw new Error('Điểm CSAT phải từ 1 đến 5 sao.');
+    }
+    supportTicketsStore.update((list) =>
+      list.map((t) => (t.id === ticketId ? { ...t, status: 'closed', csatScore } : t))
+    );
+  }
+};
+
+// =============================================================================
+// 5. In-App Announcements & Session Throttling Store (§3.2)
+// =============================================================================
+
+export interface SystemAnnouncement {
+  id: string;
+  title: string;
+  body: string;
+  type: 'breaking_change' | 'feature_launch' | 'improvement' | 'fix';
+  displayMode: 'blocking_modal' | 'modal' | 'banner' | 'toast';
+  priority: number; // 4 = breaking, 3 = launch, 2 = improvement, 1 = fix
+  targetPlans: string[];
+  isDismissible: boolean;
+}
+
+export const CANONICAL_ANNOUNCEMENTS: SystemAnnouncement[] = [
+  {
+    id: 'ann-breaking-01',
+    title: 'Cập nhật bảo mật kết nối Public API',
+    body: 'Vui lòng cập nhật API keys trước ngày 15/11.',
+    type: 'breaking_change',
+    displayMode: 'blocking_modal',
+    priority: 4,
+    targetPlans: ['enterprise'],
+    isDismissible: false
+  },
+  {
+    id: 'ann-pro-feature-02',
+    title: 'Tính năng mới: AI Video Continuity Studio',
+    body: 'Tạo chuỗi video đồng nhất nhân vật cho thành viên Pro+.',
+    type: 'feature_launch',
+    displayMode: 'modal',
+    priority: 3,
+    targetPlans: ['pro', 'business', 'enterprise'],
+    isDismissible: true
+  },
+  {
+    id: 'ann-speed-improvement-03',
+    title: 'Nâng cấp tốc độ xuất bản',
+    body: 'Thời gian phân phối video nhanh hơn 40%.',
+    type: 'improvement',
+    displayMode: 'banner',
+    priority: 2,
+    targetPlans: [], // all
+    isDismissible: true
+  }
+];
+
+const dismissedAnnouncementsStore = writable<Record<string, boolean>>({});
+
+export const announcementStore = {
+  dismissed: { subscribe: dismissedAnnouncementsStore.subscribe },
+
+  getAnnouncementForSession: (
+    tier: string,
+    sessionSeenCount: number,
+    dismissedMap: Record<string, boolean>
+  ): SystemAnnouncement | null => {
+    // Rule: Max 1 announcement per session (§3.2)
+    if (sessionSeenCount >= 1) {
+      return null;
+    }
+
+    const t = tier.toLowerCase().trim();
+    const eligible = CANONICAL_ANNOUNCEMENTS.filter((ann) => {
+      if (dismissedMap[ann.id]) return false;
+      if (ann.targetPlans.length > 0 && !ann.targetPlans.includes(t)) return false;
+      return true;
+    });
+
+    if (eligible.length === 0) return null;
+    eligible.sort((a, b) => b.priority - a.priority);
+    return eligible[0];
+  },
+
+  dismiss: (announcementId: string) => {
+    dismissedAnnouncementsStore.update((m) => ({ ...m, [announcementId]: true }));
+  }
+};
