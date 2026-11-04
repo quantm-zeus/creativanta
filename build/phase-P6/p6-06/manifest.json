@@ -1,0 +1,117 @@
+{
+  "task_id": "P6-06",
+  "phase": "P6",
+  "slice": "p6-06",
+  "title": "Seeding CRM và costs/outcomes",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "131caa32873ae207a56f613cf1ea904de3253970",
+  "feature_refs": [
+    "docs/02_features/commerce/seeding_crm.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/04_contracts/financial_computation_contract.md",
+    "docs/05_system/queue_retry_design.md"
+  ],
+  "requirement_ids": [
+    "RULE-M18-001",
+    "RULE-M18-002",
+    "RULE-M18-003",
+    "RULE-M18-004",
+    "RULE-M18-005",
+    "RULE-M18-006",
+    "EC-M18-001",
+    "EC-M18-002",
+    "EC-M18-003",
+    "EC-M18-004"
+  ],
+  "source_files": {
+    "infra/migrations/00034_p6_06_seeding_sample_requests_and_shipments.sql": "84b0e161bd52598237f98905324b89e460524a3c83d5802b6f5749491d5eb135",
+    "protos/creativanta/commerce/v1/seeding.proto": "e568184af596c7f0447a59e900e99cfab4f90f1029577eb6a208436cafa0d0b5",
+    "apps/api/internal/seeding/errors.go": "aca0a3e5cbd494ce2ed7bb6465c3ad9f93b4a58232502bb354bf28dc291d47fb",
+    "apps/api/internal/seeding/model.go": "a55fef51641b1e6a87028686114e57662fa8cafbad650e4b3c457aac9a04918d",
+    "apps/api/internal/seeding/store.go": "533c094bf927e2046a3e03a73e1b2a4523774ab485dba31ab9298cf71656f275",
+    "apps/api/internal/seeding/service.go": "077f0a5eed924c7fca7dab01c3bfa8a0409321cbad6a49ae1ba021b7124ffa97",
+    "apps/api/internal/seeding/handler.go": "8d36058b824030be8cfffcb804b969655c21a01a591c0063cb1f07cf7de4ca28",
+    "apps/api/internal/seeding/seeding_test.go": "15c29fc8edebf6345b1774f1f35a83a27fe41865a847b2adb928740a538d4846",
+    "apps/api/internal/seeding/handler_test.go": "e895d908a91b592fe3c234f2a5a0299b82df8f82a949303c3382aa8545f93aef",
+    "apps/api/internal/seeding/seeding_postgres_test.go": "3de1c64ac9cb1ee739c02a7e4597e7b2190ff4f150145424482605c0a94c281a",
+    "apps/api/internal/migrate/migrator_test.go": "05683cfd01cb0291f5cd34152dcc816e05605d1844c4b19981e680d713f4e983",
+    "apps/api/internal/rbac/phase_exposure_test.go": "8de284a50dce7da0923bbdab18e83f59d3fe89e99f37f8a833d51d69f105f52d",
+    "apps/web/src/lib/commerce/seeding.ts": "0812023e4b34c376ccbf650b9da4f326fb9d2aa171850da5ea3ac73db1d46699",
+    "apps/web/src/lib/commerce/seeding.test.ts": "a7243ee2129e91594cce6b09abe5b9034eb72b6cc1a7051e1965414efd4a0534",
+    "apps/web/src/lib/commerce/index.ts": "a329fc64d1b739788f1c3b052c6224a4d57353317337c627e2b7a74f0886424d",
+    "apps/web/src/routes/seeding/requests/+page.svelte": "035af5497b1cb244423fd4c0c1f6fd92ea35ee599b6f459135a9eb589489e878",
+    "apps/web/src/routes/seeding/campaigns/+page.svelte": "bd220efd1dc30968c620c1aa311cb46c4bebdbc58f19bd5db96a5878fe4ea3ae",
+    "apps/mobile/lib/commerce/seeding_models.dart": "3cf558c4d16912b5953639d557a7b26a5c06bda674696147a1847ee4e75b7517",
+    "apps/mobile/lib/ui/commerce/seeding_view.dart": "2bc60f35102c43e72f24be68c71a471132b46b38894a84f307968ff16047f059",
+    "apps/mobile/test/seeding_acceptance_test.dart": "ef3c61091f98f15c66d6f1c09a8915861e8b28a17609bb196c5b4c8567ee5d28"
+  },
+  "scope_items": [
+    "Database Migration 00034: Created sample_requests (§19.10) and sample_shipments (§19.10) tables with composite workspace tenant keys, strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY), check constraints, and narrow role-based grants.",
+    "Acceptance Target 1 (Request/shipment/outcome states separate): Request lifecycle (status: requested/approved/declined/fulfilled/cancelled), shipment logistics (status: preparing/shipped/delivered/lost/returned/closed), business outcome (outcome_status: pending/logged), and post-delivery follow-up (follow_up_status: pending_followup/contacted/responded/no_response) operate as orthogonal state machines. Marking delivery fulfills logistics while outcome remains pending.",
+    "Acceptance Target 2 (Missing outcome not definitive zero): Delivered samples without creator content or without traceable conversions qualify as pending outcomes rather than definitive zero revenue or failed seedings. System tags data provenance classes (official/imported/inferred/estimated/unreconciled) and qualifies overall confidence level (RULE-M18-002, RULE-M18-003).",
+    "Acceptance Target 3 (Replay no duplicate sample cost): Approval creates provisional M19 cost_item (COGS * quantity) with source_class=estimated. Shipment updates existing cost item in-place with actual shipping cost (source_class=imported). Idempotent approval/shipment replay avoids duplicate cost item creation.",
+    "Domain Rules & Edge Cases: EC-M18-001 (sample delivered but no creator response preserves pending outcome), EC-M18-002 (unlinked content cannot be official, tagged imported/inferred), EC-M18-003 (missing product COGS defaults to zero with confidence reason warning), EC-M18-004 (duplicate request detection for creator x product).",
+    "Web & Mobile Surfaces: Screen W111 Web Seeding Campaign Dashboard, Screen W112 Web Seeding Requests & Pipeline, Screen M056 Mobile Seeding CRM View."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestTarget1_OrthogonalStateMachines (Go -race), Vitest web test suite (seeding.test.ts), and Flutter mobile test suite (seeding_acceptance_test.dart) confirm strict orthogonality of request, shipment, outcome, and follow-up states.",
+    "Acceptance Target 2 Verified: TestTarget2_MissingOutcomeNotDefinitiveZero (Go -race), Vitest web test suite, and Flutter test suite confirm delivered samples without content are qualified as pending and not counted as zero revenue.",
+    "Acceptance Target 3 Verified: TestTarget3_ReplayNoDuplicateSampleCost (Go -race with memory store), Vitest web idempotency test, and Flutter mobile cost evaluation confirm idempotent cost item upsert and zero duplicate costs on replay.",
+    "Edge Cases EC-M18-001 to EC-M18-004 Verified: Unit tests in Go and Flutter cover unresponsive creators, unlinked content downgrade, missing product COGS defaults, and duplicate request detection.",
+    "Migration 00034 Verified: Migrator test suite (migrator_test.go) passes all 34 migrations up, status verification, and clean down transactional reversal.",
+    "Four-Target Proto Codegen Verified: check_proto.sh passes lint, generate, drift check, buf breaking backward compatibility, Go vet/test, TypeScript vitest, and Dart test suites.",
+    "Web & Mobile Surfaces Verified: Vitest web test suite (35 files, 287 tests passing), svelte-check (0 errors, 0 warnings), Vite production build (adapter-node ✔ done), and Flutter test suite (236 tests passing, flutter analyze 0 issues) all pass."
+  ],
+  "rpc_contracts": [
+    "SeedingService/CreateSample",
+    "SeedingService/Get",
+    "SeedingService/List",
+    "SeedingService/Approve",
+    "SeedingService/Ship",
+    "SeedingService/TrackDelivery",
+    "SeedingService/GetReport",
+    "SeedingService/CreateCampaign",
+    "SeedingService/ListCampaigns",
+    "SeedingService/UpdateCampaign",
+    "SeedingService/MarkReceived",
+    "SeedingService/SendReminder",
+    "SeedingService/DuplicateCampaign",
+    "SeedingService/Launch",
+    "SeedingService/LinkContent",
+    "SampleService/Create",
+    "SampleService/List",
+    "SampleService/Approve",
+    "SampleService/Decline",
+    "SampleService/Cancel"
+  ],
+  "migration_files": [
+    "infra/migrations/00034_p6_06_seeding_sample_requests_and_shipments.sql"
+  ],
+  "permission_keys": [
+    "commerce:manage_seeding",
+    "commerce:approve_sample",
+    "commerce:read_seeding"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "Migration 00034 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+    ],
+    [
+      "EXT-GATE-COMMERCE-SHIPPING-CARRIERS",
+      "PENDING_EXTERNAL_PROVIDER_APPROVAL",
+      "Production shipment tracking integrates with external SEA carriers (GHTK, GHN, ViettelPost, SPX); shipment tracking state machine verified locally."
+    ],
+    [
+      "EXT-GATE-COMMERCE-CREATOR-PLATFORMS",
+      "PENDING_EXTERNAL_PROVIDER_APPROVAL",
+      "Automated outcome detection integrates with TikTok and Meta graph APIs; manual outcome logging and confidence qualification verified locally."
+    ]
+  ]
+}

@@ -1,0 +1,679 @@
+syntax = "proto3";
+
+package creativanta.commerce.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1;commercev1";
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+// Logistics/request lifecycle per RULE-M18-001 & §19.10
+enum SampleRequestStatus {
+  SAMPLE_REQUEST_STATUS_UNSPECIFIED = 0;
+  SAMPLE_REQUEST_STATUS_REQUESTED = 1;
+  SAMPLE_REQUEST_STATUS_APPROVED = 2;
+  SAMPLE_REQUEST_STATUS_DECLINED = 3;
+  SAMPLE_REQUEST_STATUS_FULFILLED = 4;
+  SAMPLE_REQUEST_STATUS_CANCELLED = 5;
+}
+
+// Physical shipment lifecycle per §19.10
+enum SampleShipmentStatus {
+  SAMPLE_SHIPMENT_STATUS_UNSPECIFIED = 0;
+  SAMPLE_SHIPMENT_STATUS_PREPARING = 1;
+  SAMPLE_SHIPMENT_STATUS_SHIPPED = 2;
+  SAMPLE_SHIPMENT_STATUS_DELIVERED = 3;
+  SAMPLE_SHIPMENT_STATUS_LOST = 4;
+  SAMPLE_SHIPMENT_STATUS_RETURNED = 5;
+  SAMPLE_SHIPMENT_STATUS_CLOSED = 6;
+}
+
+// Business outcome state (orthogonal to logistics status per RULE-M18-003)
+enum SampleOutcomeStatus {
+  SAMPLE_OUTCOME_STATUS_UNSPECIFIED = 0;
+  SAMPLE_OUTCOME_STATUS_PENDING = 1;
+  SAMPLE_OUTCOME_STATUS_LOGGED = 2;
+}
+
+// Post-delivery communication state per RULE-M18-006
+enum FollowUpStatus {
+  FOLLOW_UP_STATUS_UNSPECIFIED = 0;
+  FOLLOW_UP_STATUS_PENDING_FOLLOWUP = 1;
+  FOLLOW_UP_STATUS_CONTACTED = 2;
+  FOLLOW_UP_STATUS_RESPONDED = 3;
+  FOLLOW_UP_STATUS_NO_RESPONSE = 4;
+}
+
+// Data provenance class per PRD §15.1 and RULE-M18-002
+enum SeedingSourceClass {
+  SEEDING_SOURCE_CLASS_UNSPECIFIED = 0;
+  SEEDING_SOURCE_CLASS_OFFICIAL = 1;
+  SEEDING_SOURCE_CLASS_IMPORTED = 2;
+  SEEDING_SOURCE_CLASS_INFERRED = 3;
+  SEEDING_SOURCE_CLASS_ESTIMATED = 4;
+  SEEDING_SOURCE_CLASS_UNRECONCILED = 5;
+}
+
+// Confidence band per financial computation contract §3
+enum SeedingConfidenceLevel {
+  SEEDING_CONFIDENCE_LEVEL_UNSPECIFIED = 0;
+  SEEDING_CONFIDENCE_LEVEL_HIGH = 1;
+  SEEDING_CONFIDENCE_LEVEL_MEDIUM = 2;
+  SEEDING_CONFIDENCE_LEVEL_LOW = 3;
+}
+
+// ============================================================================
+// Core Entities & DTOs
+// ============================================================================
+
+message ShippingAddress {
+  string name = 1;
+  string phone = 2;
+  string address_line_1 = 3;
+  string address_line_2 = 4;
+  string city = 5;
+  string postal_code = 6;
+  string country = 7;
+}
+
+message SampleOutcome {
+  string content_url = 1;
+  string content_type = 2; // e.g. "tiktok_video", "instagram_reel", "youtube_short"
+  string publish_item_id = 3;
+  int64 impressions = 4;
+  int64 views = 5;
+  int64 engagements = 6;
+  int64 conversions_count = 7;
+  string attributable_revenue = 8; // exact decimal string
+  string currency = 9;
+  SeedingSourceClass source_class = 10;
+  SeedingConfidenceLevel confidence_level = 11;
+  string confidence_reason = 12;
+  string notes = 13;
+  google.protobuf.Timestamp logged_at = 14;
+}
+
+message SampleShipment {
+  string shipment_id = 1;
+  string request_id = 2;
+  string workspace_id = 3;
+  string tracking_number = 4;
+  string carrier = 5;
+  string shipping_cost = 6; // exact decimal string
+  google.protobuf.Timestamp shipped_at = 7;
+  google.protobuf.Timestamp delivered_at = 8;
+  SampleShipmentStatus status = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message SampleRequest {
+  string request_id = 1;
+  string workspace_id = 2;
+  string campaign_id = 3;
+  string product_id = 4;
+  string creator_entity_id = 5;
+  SampleRequestStatus status = 6;
+  int32 quantity = 7;
+  SampleOutcomeStatus outcome_status = 8;
+  SampleOutcome outcome = 9;
+  FollowUpStatus follow_up_status = 10;
+  ShippingAddress shipping_address = 11;
+  string content_requirements = 12;
+  string deadline = 13;
+  string decline_reason = 14;
+  string notes = 15;
+  string product_title = 16;
+  string product_cogs = 17; // exact decimal string per unit
+  string creator_name = 18;
+  string creator_handle = 19;
+  string creator_avatar_url = 20;
+  int64 creator_followers = 21;
+  string creator_platform = 22;
+  SampleShipment shipment = 23;
+  google.protobuf.Timestamp created_at = 24;
+  google.protobuf.Timestamp updated_at = 25;
+}
+
+message SeedingCampaign {
+  string campaign_id = 1;
+  string workspace_id = 2;
+  string title = 3;
+  string objective = 4;
+  string status = 5; // planned, ready, live, paused, completed, cancelled
+  string start_date = 6;
+  string end_date = 7;
+  string budget = 8;
+  string budget_currency = 9;
+  repeated string related_product_ids = 10;
+  int32 total_requests = 11;
+  int32 shipped_count = 12;
+  int32 published_count = 13;
+  string total_cost = 14;
+  string attributed_revenue = 15;
+  google.protobuf.Timestamp created_at = 16;
+  google.protobuf.Timestamp updated_at = 17;
+}
+
+message SeedingReport {
+  string campaign_id = 1;
+  string workspace_id = 2;
+  int32 total_samples_requested = 3;
+  int32 total_samples_approved = 4;
+  int32 total_samples_shipped = 5;
+  int32 total_samples_delivered = 6;
+  int32 outcomes_logged_count = 7;
+  int32 pending_outcomes_count = 8;
+  string outcome_coverage_rate = 9; // e.g. "80.00%"
+  string total_cogs = 10;
+  string total_shipping = 11;
+  string total_cost = 12;
+  string attributable_revenue = 13;
+  string roi_percentage = 14;
+  SeedingConfidenceLevel overall_confidence = 15;
+  string confidence_notes = 16;
+  string currency = 17;
+  bool is_missing_outcome_pending = 18;
+}
+
+// ============================================================================
+// SeedingService Messages
+// ============================================================================
+
+message SeedingServiceCreateSampleRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string campaign_id = 3;
+  string product_id = 4;
+  string creator_entity_id = 5;
+  int32 quantity = 6;
+  ShippingAddress shipping_address = 7;
+  string content_requirements = 8;
+  string deadline = 9;
+  string notes = 10;
+}
+
+message SeedingServiceCreateSampleResponse {
+  SampleRequest sample_request = 1;
+  bool already_existed = 2;
+}
+
+message SeedingServiceGetRequest {
+  string workspace_id = 1;
+  string request_id = 2;
+}
+
+message SeedingServiceGetResponse {
+  SampleRequest sample_request = 1;
+}
+
+message SeedingServiceListRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  string product_id = 3;
+  string creator_entity_id = 4;
+  SampleRequestStatus status = 5;
+  SampleOutcomeStatus outcome_status = 6;
+  FollowUpStatus follow_up_status = 7;
+  int32 limit = 8;
+  int32 offset = 9;
+}
+
+message SeedingServiceListResponse {
+  repeated SampleRequest sample_requests = 1;
+  int64 total_count = 2;
+  int32 requested_count = 3;
+  int32 approved_count = 4;
+  int32 shipped_count = 5;
+  int32 received_count = 6;
+  int32 review_published_count = 7;
+}
+
+message SeedingServiceApproveRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string request_id = 3;
+}
+
+message SeedingServiceApproveResponse {
+  SampleRequest sample_request = 1;
+  string cost_item_id = 2;
+  string cost_amount = 3;
+  string currency = 4;
+  bool replayed = 5;
+}
+
+message SeedingServiceShipRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string request_id = 3;
+  string carrier = 4;
+  string tracking_number = 5;
+  string shipping_cost = 6; // exact decimal string
+}
+
+message SeedingServiceShipResponse {
+  SampleRequest sample_request = 1;
+  SampleShipment shipment = 2;
+  string total_updated_cost = 3;
+  bool replayed = 4;
+}
+
+message SeedingServiceTrackDeliveryRequest {
+  string workspace_id = 1;
+  string shipment_id = 2;
+}
+
+message SeedingServiceTrackDeliveryResponse {
+  SampleShipment shipment = 1;
+  string carrier_status = 2;
+  google.protobuf.Timestamp estimated_delivery = 3;
+}
+
+message SeedingServiceGetReportRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+}
+
+message SeedingServiceGetReportResponse {
+  SeedingReport report = 1;
+}
+
+message SeedingServiceCreateCampaignRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string title = 3;
+  string objective = 4;
+  string start_date = 5;
+  string end_date = 6;
+  string budget = 7;
+  string budget_currency = 8;
+  repeated string related_product_ids = 9;
+}
+
+message SeedingServiceCreateCampaignResponse {
+  SeedingCampaign campaign = 1;
+}
+
+message SeedingServiceListCampaignsRequest {
+  string workspace_id = 1;
+  string status = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message SeedingServiceListCampaignsResponse {
+  repeated SeedingCampaign campaigns = 1;
+  int64 total_count = 2;
+}
+
+message SeedingServiceCreateAssignmentRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  string creator_entity_id = 3;
+  string product_id = 4;
+  string notes = 5;
+}
+
+message SeedingServiceCreateAssignmentResponse {
+  string assignment_id = 1;
+  SampleRequest sample_request = 2;
+}
+
+message SeedingServiceRemoveAssignmentRequest {
+  string workspace_id = 1;
+  string assignment_id = 2;
+}
+
+message SeedingServiceRemoveAssignmentResponse {
+  bool success = 1;
+}
+
+message SeedingServiceListAssignmentsRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message SeedingServiceListAssignmentsResponse {
+  repeated SampleRequest assignments = 1;
+  int64 total_count = 2;
+}
+
+message SeedingServiceListRequestsRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  SampleRequestStatus status = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+}
+
+message SeedingServiceListRequestsResponse {
+  repeated SampleRequest sample_requests = 1;
+  int64 total_count = 2;
+}
+
+message SeedingServiceMarkReceivedRequest {
+  string workspace_id = 1;
+  string request_id = 2;
+}
+
+message SeedingServiceMarkReceivedResponse {
+  SampleRequest sample_request = 1;
+  SampleShipment shipment = 2;
+}
+
+message SeedingServiceMarkShippedRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string request_id = 3;
+  string carrier = 4;
+  string tracking_number = 5;
+  string shipping_cost = 6;
+}
+
+message SeedingServiceMarkShippedResponse {
+  SampleRequest sample_request = 1;
+  SampleShipment shipment = 2;
+}
+
+message SeedingServiceSendReminderRequest {
+  string workspace_id = 1;
+  string request_id = 2;
+  string message = 3;
+}
+
+message SeedingServiceSendReminderResponse {
+  string request_id = 1;
+  FollowUpStatus follow_up_status = 2;
+  google.protobuf.Timestamp reminder_sent_at = 3;
+}
+
+message SeedingServiceUpdateStatusRequest {
+  string workspace_id = 1;
+  string request_id = 2;
+  SampleRequestStatus new_status = 3;
+  string notes = 4;
+}
+
+message SeedingServiceUpdateStatusResponse {
+  SampleRequest sample_request = 1;
+}
+
+message SeedingServiceDuplicateRequest {
+  string workspace_id = 1;
+  string request_id = 2;
+}
+
+message SeedingServiceDuplicateResponse {
+  SampleRequest new_request = 1;
+}
+
+message SeedingServiceDuplicateCampaignRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+}
+
+message SeedingServiceDuplicateCampaignResponse {
+  SeedingCampaign new_campaign = 1;
+}
+
+message SeedingServiceLaunchRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+}
+
+message SeedingServiceLaunchResponse {
+  SeedingCampaign campaign = 1;
+}
+
+message SeedingServiceLinkContentRequest {
+  string workspace_id = 1;
+  string request_id = 2;
+  string content_url = 3;
+  string content_type = 4;
+  string publish_item_id = 5;
+  int64 impressions = 6;
+  int64 views = 7;
+  int64 engagements = 8;
+  int64 conversions_count = 9;
+  string attributable_revenue = 10;
+  string currency = 11;
+  SeedingSourceClass source_class = 12;
+  SeedingConfidenceLevel confidence_level = 13;
+  string confidence_reason = 14;
+  string notes = 15;
+}
+
+message SeedingServiceLinkContentResponse {
+  SampleRequest sample_request = 1;
+  SampleOutcome outcome = 2;
+}
+
+// ============================================================================
+// SampleService Messages
+// ============================================================================
+
+message SampleServiceCreateRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string campaign_id = 3;
+  string product_id = 4;
+  string creator_entity_id = 5;
+  int32 quantity = 6;
+  ShippingAddress shipping_address = 7;
+  string content_requirements = 8;
+  string deadline = 9;
+  string notes = 10;
+}
+
+message SampleServiceCreateResponse {
+  SampleRequest sample_request = 1;
+}
+
+message SampleServiceListRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message SampleServiceListResponse {
+  repeated SampleRequest sample_requests = 1;
+  int64 total_count = 2;
+}
+
+message SampleServiceApproveRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string request_id = 3;
+}
+
+message SampleServiceApproveResponse {
+  SampleRequest sample_request = 1;
+}
+
+message SampleServiceDeclineRequest {
+  string workspace_id = 1;
+  string request_id = 2;
+  string reason = 3;
+}
+
+message SampleServiceDeclineResponse {
+  SampleRequest sample_request = 1;
+}
+
+message SampleServiceCancelRequest {
+  string workspace_id = 1;
+  string request_id = 2;
+  string reason = 3;
+}
+
+message SampleServiceCancelResponse {
+  SampleRequest sample_request = 1;
+}
+
+message SampleServiceMarkShippedRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string request_id = 3;
+  string carrier = 4;
+  string tracking_number = 5;
+  string shipping_cost = 6;
+}
+
+message SampleServiceMarkShippedResponse {
+  SampleRequest sample_request = 1;
+  SampleShipment shipment = 2;
+}
+
+message SampleServiceMarkReceivedRequest {
+  string workspace_id = 1;
+  string request_id = 2;
+}
+
+message SampleServiceMarkReceivedResponse {
+  SampleRequest sample_request = 1;
+  SampleShipment shipment = 2;
+}
+
+message SampleServiceUpdateStatusRequest {
+  string workspace_id = 1;
+  string request_id = 2;
+  SampleRequestStatus new_status = 3;
+  string notes = 4;
+}
+
+message SampleServiceUpdateStatusResponse {
+  SampleRequest sample_request = 1;
+}
+
+message SampleServiceGetSummaryRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+}
+
+message SampleServiceGetSummaryResponse {
+  SeedingReport report = 1;
+}
+
+message SampleServiceGetStatsRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+}
+
+message SampleServiceGetStatsResponse {
+  int32 requested_count = 1;
+  int32 approved_count = 2;
+  int32 shipped_count = 3;
+  int32 received_count = 4;
+  int32 review_published_count = 5;
+  int32 overdue_count = 6;
+  string total_cost = 7;
+  string review_rate = 8;
+}
+
+message SampleServiceLinkReviewRequest {
+  string workspace_id = 1;
+  string request_id = 2;
+  string review_url = 3;
+  string platform = 4;
+}
+
+message SampleServiceLinkReviewResponse {
+  SampleRequest sample_request = 1;
+}
+
+message SampleServiceRateCreatorRequest {
+  string workspace_id = 1;
+  string creator_entity_id = 2;
+  int32 rating = 3; // 1-5
+  string feedback = 4;
+}
+
+message SampleServiceRateCreatorResponse {
+  bool success = 1;
+}
+
+message SampleServiceGetReviewRevenueRequest {
+  string workspace_id = 1;
+  string request_id = 2;
+}
+
+message SampleServiceGetReviewRevenueResponse {
+  string attributable_revenue = 1;
+  string currency = 2;
+  SeedingSourceClass source_class = 3;
+}
+
+message SampleServiceExtendDeadlineRequest {
+  string workspace_id = 1;
+  string request_id = 2;
+  string new_deadline = 3;
+  string reason = 4;
+}
+
+message SampleServiceExtendDeadlineResponse {
+  SampleRequest sample_request = 1;
+}
+
+message SampleServiceExportReportRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  string format = 3; // "csv", "json"
+}
+
+message SampleServiceExportReportResponse {
+  string file_url = 1;
+  string content = 2;
+}
+
+// ============================================================================
+// Service Declarations
+// ============================================================================
+
+service SeedingService {
+  rpc CreateSample(SeedingServiceCreateSampleRequest) returns (SeedingServiceCreateSampleResponse);
+  rpc Get(SeedingServiceGetRequest) returns (SeedingServiceGetResponse);
+  rpc List(SeedingServiceListRequest) returns (SeedingServiceListResponse);
+  rpc Approve(SeedingServiceApproveRequest) returns (SeedingServiceApproveResponse);
+  rpc Ship(SeedingServiceShipRequest) returns (SeedingServiceShipResponse);
+  rpc TrackDelivery(SeedingServiceTrackDeliveryRequest) returns (SeedingServiceTrackDeliveryResponse);
+  rpc GetReport(SeedingServiceGetReportRequest) returns (SeedingServiceGetReportResponse);
+  rpc CreateCampaign(SeedingServiceCreateCampaignRequest) returns (SeedingServiceCreateCampaignResponse);
+  rpc ListCampaigns(SeedingServiceListCampaignsRequest) returns (SeedingServiceListCampaignsResponse);
+  rpc CreateAssignment(SeedingServiceCreateAssignmentRequest) returns (SeedingServiceCreateAssignmentResponse);
+  rpc RemoveAssignment(SeedingServiceRemoveAssignmentRequest) returns (SeedingServiceRemoveAssignmentResponse);
+  rpc ListAssignments(SeedingServiceListAssignmentsRequest) returns (SeedingServiceListAssignmentsResponse);
+  rpc ListRequests(SeedingServiceListRequestsRequest) returns (SeedingServiceListRequestsResponse);
+  rpc MarkReceived(SeedingServiceMarkReceivedRequest) returns (SeedingServiceMarkReceivedResponse);
+  rpc MarkShipped(SeedingServiceMarkShippedRequest) returns (SeedingServiceMarkShippedResponse);
+  rpc SendReminder(SeedingServiceSendReminderRequest) returns (SeedingServiceSendReminderResponse);
+  rpc UpdateStatus(SeedingServiceUpdateStatusRequest) returns (SeedingServiceUpdateStatusResponse);
+  rpc Duplicate(SeedingServiceDuplicateRequest) returns (SeedingServiceDuplicateResponse);
+  rpc DuplicateCampaign(SeedingServiceDuplicateCampaignRequest) returns (SeedingServiceDuplicateCampaignResponse);
+  rpc Launch(SeedingServiceLaunchRequest) returns (SeedingServiceLaunchResponse);
+  rpc LinkContent(SeedingServiceLinkContentRequest) returns (SeedingServiceLinkContentResponse);
+}
+
+service SampleService {
+  rpc Create(SampleServiceCreateRequest) returns (SampleServiceCreateResponse);
+  rpc List(SampleServiceListRequest) returns (SampleServiceListResponse);
+  rpc Approve(SampleServiceApproveRequest) returns (SampleServiceApproveResponse);
+  rpc Decline(SampleServiceDeclineRequest) returns (SampleServiceDeclineResponse);
+  rpc Cancel(SampleServiceCancelRequest) returns (SampleServiceCancelResponse);
+  rpc MarkShipped(SampleServiceMarkShippedRequest) returns (SampleServiceMarkShippedResponse);
+  rpc MarkReceived(SampleServiceMarkReceivedRequest) returns (SampleServiceMarkReceivedResponse);
+  rpc UpdateStatus(SampleServiceUpdateStatusRequest) returns (SampleServiceUpdateStatusResponse);
+  rpc GetSummary(SampleServiceGetSummaryRequest) returns (SampleServiceGetSummaryResponse);
+  rpc GetStats(SampleServiceGetStatsRequest) returns (SampleServiceGetStatsResponse);
+  rpc LinkReview(SampleServiceLinkReviewRequest) returns (SampleServiceLinkReviewResponse);
+  rpc RateCreator(SampleServiceRateCreatorRequest) returns (SampleServiceRateCreatorResponse);
+  rpc GetReviewRevenue(SampleServiceGetReviewRevenueRequest) returns (SampleServiceGetReviewRevenueResponse);
+  rpc ExtendDeadline(SampleServiceExtendDeadlineRequest) returns (SampleServiceExtendDeadlineResponse);
+  rpc ExportReport(SampleServiceExportReportRequest) returns (SampleServiceExportReportResponse);
+}
