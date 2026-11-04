@@ -530,8 +530,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 30 {
-		t.Fatalf("expected 30 applied migrations, got %d", len(applied))
+	if len(applied) != 31 {
+		t.Fatalf("expected 31 applied migrations, got %d", len(applied))
 	}
 	for i, v := range applied {
 		if v != int64(i+1) {
