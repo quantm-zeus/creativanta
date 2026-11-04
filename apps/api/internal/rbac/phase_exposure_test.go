@@ -38,6 +38,7 @@ var allowedModules = map[string]bool{
 	"M12":     true, // Phase P5-02: Unified Inbox & Engagement Center (M12)
 	"S16":     true, // Phase P5-03: Creator Pro Tools (S16)
 	"M14":     true, // Phase P6-01: Monetization OS (M14)
+	"M16":     true, // Phase P6-03: In-Product Affiliate Network (M16)
 }
 
 // TestNoFuturePhaseRPCExposed satisfies Acceptance Target:
