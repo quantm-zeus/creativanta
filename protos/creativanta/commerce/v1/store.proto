@@ -1,0 +1,599 @@
+syntax = "proto3";
+
+package creativanta.commerce.v1;
+
+import "creativanta/common/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1;commercev1";
+
+// ----------------------------------------------------------------------------
+// Enums
+// ----------------------------------------------------------------------------
+
+enum StorePageStatus {
+  STORE_PAGE_STATUS_UNSPECIFIED = 0;
+  STORE_PAGE_STATUS_DRAFT = 1;
+  STORE_PAGE_STATUS_PUBLISHED = 2;
+  STORE_PAGE_STATUS_HIDDEN = 3;
+  STORE_PAGE_STATUS_RETIRED = 4;
+}
+
+enum MembershipPlanStatus {
+  MEMBERSHIP_PLAN_STATUS_UNSPECIFIED = 0;
+  MEMBERSHIP_PLAN_STATUS_DRAFT = 1;
+  MEMBERSHIP_PLAN_STATUS_ACTIVE = 2;
+  MEMBERSHIP_PLAN_STATUS_HIDDEN = 3;
+  MEMBERSHIP_PLAN_STATUS_PAUSED = 4;
+  MEMBERSHIP_PLAN_STATUS_RETIRED = 5;
+}
+
+enum MembershipSubscriptionStatus {
+  MEMBERSHIP_SUBSCRIPTION_STATUS_UNSPECIFIED = 0;
+  MEMBERSHIP_SUBSCRIPTION_STATUS_ACTIVE = 1;
+  MEMBERSHIP_SUBSCRIPTION_STATUS_CANCELLED = 2;
+  MEMBERSHIP_SUBSCRIPTION_STATUS_EXPIRED = 3;
+}
+
+enum DeliveryType {
+  DELIVERY_TYPE_UNSPECIFIED = 0;
+  DELIVERY_TYPE_DOWNLOAD_LINK = 1;
+  DELIVERY_TYPE_LICENSE_KEY = 2;
+  DELIVERY_TYPE_ACCESS_GRANT = 3;
+}
+
+enum DeliveryStatus {
+  DELIVERY_STATUS_UNSPECIFIED = 0;
+  DELIVERY_STATUS_PENDING = 1;
+  DELIVERY_STATUS_DELIVERED = 2;
+  DELIVERY_STATUS_REVOKED = 3;
+}
+
+// ----------------------------------------------------------------------------
+// Domain Messages
+// ----------------------------------------------------------------------------
+
+message StorePage {
+  string store_page_id = 1;
+  string workspace_id = 2;
+  string title = 3;
+  string slug = 4;
+  string description = 5;
+  string layout_json = 6;
+  string theme_overrides_json = 7;
+  StorePageStatus status = 8;
+  string custom_domain = 9;
+  string seo_config_json = 10;
+  string widget_config_json = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+  google.protobuf.Timestamp deleted_at = 14;
+}
+
+message StoreTheme {
+  string theme_id = 1;
+  string name = 2;
+  string primary_color = 3;
+  string font_family = 4;
+  string border_radius = 5;
+  bool is_default = 6;
+}
+
+message PageStats {
+  string store_page_id = 1;
+  int64 views = 2;
+  int64 orders = 3;
+  double conversion_rate = 4;
+  string revenue = 5; // exact decimal NUMERIC(18,6)
+  string currency = 6;
+}
+
+message MembershipPlan {
+  string plan_id = 1;
+  string workspace_id = 2;
+  string title = 3;
+  string description = 4;
+  string price = 5; // exact decimal NUMERIC(18,6)
+  string currency = 6;
+  string billing_interval = 7; // monthly, quarterly, yearly
+  string benefits_json = 8;
+  string entitlement_config_json = 9; // creator-store content/feature/support entitlements, NOT SaaS workspace privileges
+  MembershipPlanStatus status = 10;
+  int32 subscriber_count = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+  google.protobuf.Timestamp deleted_at = 14;
+}
+
+message MembershipSubscription {
+  string membership_id = 1;
+  string workspace_id = 2;
+  string plan_id = 3;
+  string customer_entity_id = 4;
+  MembershipSubscriptionStatus status = 5;
+  string provider_subscription_id = 6;
+  google.protobuf.Timestamp current_period_start = 7;
+  google.protobuf.Timestamp current_period_end = 8;
+  string entitlement_snapshot_json = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message BundleItem {
+  string bundle_id = 1;
+  string product_id = 2;
+  int32 quantity = 3;
+  string product_title = 4;
+  int32 available_stock = 5;
+}
+
+message Bundle {
+  string bundle_id = 1;
+  string workspace_id = 2;
+  string title = 3;
+  string offer_id = 4;
+  string bundle_price = 5; // exact decimal NUMERIC(18,6)
+  double discount_pct = 6;
+  string status = 7;
+  repeated BundleItem items = 8;
+  bool is_available = 9;
+  string unavailable_reason = 10;
+  google.protobuf.Timestamp created_at = 11;
+}
+
+message DigitalDelivery {
+  string delivery_id = 1;
+  string workspace_id = 2;
+  string order_id = 3;
+  string customer_entity_id = 4;
+  string product_id = 5;
+  string offer_id = 6;
+  DeliveryType delivery_type = 7;
+  string entitlement_payload_json = 8;
+  DeliveryStatus status = 9;
+  string idempotency_key = 10;
+  int32 download_count = 11;
+  int32 max_downloads = 12;
+  google.protobuf.Timestamp expires_at = 13;
+  google.protobuf.Timestamp created_at = 14;
+}
+
+message BuyerEntitlements {
+  string customer_entity_id = 1;
+  string workspace_id = 2;
+  repeated string accessible_content_ids = 3;
+  double discount_pct = 4;
+  bool has_priority_dm = 5;
+  repeated DigitalDelivery deliveries = 6;
+  repeated MembershipSubscription active_subscriptions = 7;
+}
+
+// ----------------------------------------------------------------------------
+// Request / Response Messages: StoreService
+// ----------------------------------------------------------------------------
+
+message StoreServiceCreatePageRequest {
+  string workspace_id = 1;
+  string title = 2;
+  string slug = 3;
+  string description = 4;
+  string layout_json = 5;
+  string theme_overrides_json = 6;
+  string custom_domain = 7;
+  string seo_config_json = 8;
+  string widget_config_json = 9;
+  creativanta.common.v1.CommandContext command_context = 10;
+}
+
+message StoreServiceCreatePageResponse {
+  StorePage page = 1;
+}
+
+message StoreServiceGetRequest {
+  string workspace_id = 1;
+  string store_page_id = 2;
+  string slug = 3;
+}
+
+message StoreServiceGetResponse {
+  StorePage page = 1;
+  repeated Bundle featured_bundles = 2;
+}
+
+message StoreServiceGetPageRequest {
+  string workspace_id = 1;
+  string store_page_id = 2;
+  string slug = 3;
+}
+
+message StoreServiceGetPageResponse {
+  StorePage page = 1;
+  repeated Bundle featured_bundles = 2;
+}
+
+message StoreServiceListRequest {
+  string workspace_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+  StorePageStatus status_filter = 4;
+}
+
+message StoreServiceListResponse {
+  repeated StorePage pages = 1;
+  string next_page_token = 2;
+  int64 total_count = 3;
+}
+
+message StoreServiceListPagesRequest {
+  string workspace_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+  StorePageStatus status_filter = 4;
+}
+
+message StoreServiceListPagesResponse {
+  repeated StorePage pages = 1;
+  string next_page_token = 2;
+  int64 total_count = 3;
+}
+
+message StoreServiceUpdatePageRequest {
+  string workspace_id = 1;
+  string store_page_id = 2;
+  string title = 3;
+  string slug = 4;
+  string description = 5;
+  string layout_json = 6;
+  string theme_overrides_json = 7;
+  string custom_domain = 8;
+  string seo_config_json = 9;
+  string widget_config_json = 10;
+  creativanta.common.v1.CommandContext command_context = 11;
+}
+
+message StoreServiceUpdatePageResponse {
+  StorePage page = 1;
+}
+
+message StoreServicePublishPageRequest {
+  string workspace_id = 1;
+  string store_page_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message StoreServicePublishPageResponse {
+  StorePage page = 1;
+  string public_url = 2;
+}
+
+message StoreServicePublishRequest {
+  string workspace_id = 1;
+  string store_page_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message StoreServicePublishResponse {
+  StorePage page = 1;
+  string public_url = 2;
+}
+
+message StoreServiceUnpublishRequest {
+  string workspace_id = 1;
+  string store_page_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message StoreServiceUnpublishResponse {
+  StorePage page = 1;
+}
+
+message StoreServiceDeletePageRequest {
+  string workspace_id = 1;
+  string store_page_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message StoreServiceDeletePageResponse {
+  bool success = 1;
+}
+
+message StoreServiceDuplicatePageRequest {
+  string workspace_id = 1;
+  string store_page_id = 2;
+  string new_title = 3;
+  string new_slug = 4;
+  creativanta.common.v1.CommandContext command_context = 5;
+}
+
+message StoreServiceDuplicatePageResponse {
+  StorePage page = 1;
+}
+
+message StoreServiceGetThemesRequest {
+  string workspace_id = 1;
+}
+
+message StoreServiceGetThemesResponse {
+  repeated StoreTheme themes = 1;
+}
+
+message StoreServiceGetPageStatsRequest {
+  string workspace_id = 1;
+  string store_page_id = 2;
+}
+
+message StoreServiceGetPageStatsResponse {
+  PageStats stats = 1;
+}
+
+message StoreServiceCheckoutRequest {
+  string workspace_id = 1;
+  string customer_entity_id = 2;
+  string idempotency_key = 3;
+  string payment_intent_id = 4;
+  string offer_id = 5;
+  string bundle_id = 6;
+  string membership_plan_id = 7;
+  repeated string product_ids = 8;
+  string order_amount = 9; // exact decimal NUMERIC(18,6)
+  string currency = 10;
+  creativanta.common.v1.CommandContext command_context = 11;
+}
+
+message StoreServiceCheckoutResponse {
+  bool success = 1;
+  string order_id = 2;
+  string status = 3;
+  repeated DigitalDelivery deliveries = 4;
+  MembershipSubscription subscription = 5;
+  bool is_replayed = 6;
+}
+
+message StoreServiceGetBuyerEntitlementsRequest {
+  string workspace_id = 1;
+  string customer_entity_id = 2;
+}
+
+message StoreServiceGetBuyerEntitlementsResponse {
+  BuyerEntitlements entitlements = 1;
+}
+
+// ----------------------------------------------------------------------------
+// Request / Response Messages: MembershipService
+// ----------------------------------------------------------------------------
+
+message MembershipServiceCreatePlanRequest {
+  string workspace_id = 1;
+  string title = 2;
+  string description = 3;
+  string price = 4; // exact decimal NUMERIC(18,6)
+  string currency = 5;
+  string billing_interval = 6;
+  string benefits_json = 7;
+  string entitlement_config_json = 8;
+  creativanta.common.v1.CommandContext command_context = 9;
+}
+
+message MembershipServiceCreatePlanResponse {
+  MembershipPlan plan = 1;
+}
+
+message MembershipServiceGetPlanRequest {
+  string workspace_id = 1;
+  string plan_id = 2;
+}
+
+message MembershipServiceGetPlanResponse {
+  MembershipPlan plan = 1;
+}
+
+message MembershipServiceListPlansRequest {
+  string workspace_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+  MembershipPlanStatus status_filter = 4;
+}
+
+message MembershipServiceListPlansResponse {
+  repeated MembershipPlan plans = 1;
+  string next_page_token = 2;
+  int64 total_count = 3;
+}
+
+message MembershipServiceUpdatePlanRequest {
+  string workspace_id = 1;
+  string plan_id = 2;
+  string title = 3;
+  string description = 4;
+  string price = 5; // exact decimal NUMERIC(18,6)
+  string currency = 6;
+  string billing_interval = 7;
+  string benefits_json = 8;
+  string entitlement_config_json = 9;
+  creativanta.common.v1.CommandContext command_context = 10;
+}
+
+message MembershipServiceUpdatePlanResponse {
+  MembershipPlan plan = 1;
+}
+
+message MembershipServiceDuplicatePlanRequest {
+  string workspace_id = 1;
+  string plan_id = 2;
+  string new_title = 3;
+  creativanta.common.v1.CommandContext command_context = 4;
+}
+
+message MembershipServiceDuplicatePlanResponse {
+  MembershipPlan plan = 1;
+}
+
+message MembershipServiceDeleteRequest {
+  string workspace_id = 1;
+  string plan_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message MembershipServiceDeleteResponse {
+  bool success = 1;
+}
+
+message MembershipServiceArchiveRequest {
+  string workspace_id = 1;
+  string plan_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message MembershipServiceArchiveResponse {
+  MembershipPlan plan = 1;
+}
+
+message MembershipServicePublishRequest {
+  string workspace_id = 1;
+  string plan_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message MembershipServicePublishResponse {
+  MembershipPlan plan = 1;
+}
+
+message MembershipServicePauseRequest {
+  string workspace_id = 1;
+  string plan_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message MembershipServicePauseResponse {
+  MembershipPlan plan = 1;
+}
+
+message MembershipServiceResumeRequest {
+  string workspace_id = 1;
+  string plan_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message MembershipServiceResumeResponse {
+  MembershipPlan plan = 1;
+}
+
+message MembershipServiceGetMRRSummaryRequest {
+  string workspace_id = 1;
+}
+
+message MembershipServiceGetMRRSummaryResponse {
+  string current_mrr = 1; // exact decimal NUMERIC(18,6)
+  string currency = 2;
+  int32 active_subscribers = 3;
+  double churn_rate = 4;
+  string average_ltv = 5; // exact decimal NUMERIC(18,6)
+  double trial_conversion_rate = 6;
+}
+
+message MembershipServiceGetMRRTrendRequest {
+  string workspace_id = 1;
+  int32 months = 2;
+}
+
+message MRRMonthPoint {
+  string month_label = 1;
+  string mrr = 2; // exact decimal NUMERIC(18,6)
+  int32 subscribers = 3;
+}
+
+message MembershipServiceGetMRRTrendResponse {
+  repeated MRRMonthPoint trend_points = 1;
+}
+
+// ----------------------------------------------------------------------------
+// Request / Response Messages: BundleService
+// ----------------------------------------------------------------------------
+
+message BundleServiceCreateBundleRequest {
+  string workspace_id = 1;
+  string title = 2;
+  string offer_id = 3;
+  string bundle_price = 4; // exact decimal NUMERIC(18,6)
+  double discount_pct = 5;
+  repeated BundleItem items = 6;
+  creativanta.common.v1.CommandContext command_context = 7;
+}
+
+message BundleServiceCreateBundleResponse {
+  Bundle bundle = 1;
+}
+
+message BundleServiceGetBundleRequest {
+  string workspace_id = 1;
+  string bundle_id = 2;
+}
+
+message BundleServiceGetBundleResponse {
+  Bundle bundle = 1;
+}
+
+message BundleServiceListBundlesRequest {
+  string workspace_id = 1;
+}
+
+message BundleServiceListBundlesResponse {
+  repeated Bundle bundles = 1;
+}
+
+message BundleServiceCheckBundleStockRequest {
+  string workspace_id = 1;
+  string bundle_id = 2;
+  int32 requested_quantity = 3;
+}
+
+message BundleServiceCheckBundleStockResponse {
+  string bundle_id = 1;
+  bool is_available = 2;
+  string reason = 3;
+  repeated BundleItem stock_breakdown = 4;
+}
+
+// ----------------------------------------------------------------------------
+// Services
+// ----------------------------------------------------------------------------
+
+service StoreService {
+  rpc CreatePage(StoreServiceCreatePageRequest) returns (StoreServiceCreatePageResponse);
+  rpc Get(StoreServiceGetRequest) returns (StoreServiceGetResponse);
+  rpc GetPage(StoreServiceGetPageRequest) returns (StoreServiceGetPageResponse);
+  rpc List(StoreServiceListRequest) returns (StoreServiceListResponse);
+  rpc ListPages(StoreServiceListPagesRequest) returns (StoreServiceListPagesResponse);
+  rpc UpdatePage(StoreServiceUpdatePageRequest) returns (StoreServiceUpdatePageResponse);
+  rpc PublishPage(StoreServicePublishPageRequest) returns (StoreServicePublishPageResponse);
+  rpc Publish(StoreServicePublishRequest) returns (StoreServicePublishResponse);
+  rpc Unpublish(StoreServiceUnpublishRequest) returns (StoreServiceUnpublishResponse);
+  rpc DeletePage(StoreServiceDeletePageRequest) returns (StoreServiceDeletePageResponse);
+  rpc DuplicatePage(StoreServiceDuplicatePageRequest) returns (StoreServiceDuplicatePageResponse);
+  rpc GetThemes(StoreServiceGetThemesRequest) returns (StoreServiceGetThemesResponse);
+  rpc GetPageStats(StoreServiceGetPageStatsRequest) returns (StoreServiceGetPageStatsResponse);
+  rpc Checkout(StoreServiceCheckoutRequest) returns (StoreServiceCheckoutResponse);
+  rpc GetBuyerEntitlements(StoreServiceGetBuyerEntitlementsRequest) returns (StoreServiceGetBuyerEntitlementsResponse);
+}
+
+service MembershipService {
+  rpc CreatePlan(MembershipServiceCreatePlanRequest) returns (MembershipServiceCreatePlanResponse);
+  rpc GetPlan(MembershipServiceGetPlanRequest) returns (MembershipServiceGetPlanResponse);
+  rpc ListPlans(MembershipServiceListPlansRequest) returns (MembershipServiceListPlansResponse);
+  rpc UpdatePlan(MembershipServiceUpdatePlanRequest) returns (MembershipServiceUpdatePlanResponse);
+  rpc DuplicatePlan(MembershipServiceDuplicatePlanRequest) returns (MembershipServiceDuplicatePlanResponse);
+  rpc Delete(MembershipServiceDeleteRequest) returns (MembershipServiceDeleteResponse);
+  rpc Archive(MembershipServiceArchiveRequest) returns (MembershipServiceArchiveResponse);
+  rpc Publish(MembershipServicePublishRequest) returns (MembershipServicePublishResponse);
+  rpc Pause(MembershipServicePauseRequest) returns (MembershipServicePauseResponse);
+  rpc Resume(MembershipServiceResumeRequest) returns (MembershipServiceResumeResponse);
+  rpc GetMRRSummary(MembershipServiceGetMRRSummaryRequest) returns (MembershipServiceGetMRRSummaryResponse);
+  rpc GetMRRTrend(MembershipServiceGetMRRTrendRequest) returns (MembershipServiceGetMRRTrendResponse);
+}
+
+service BundleService {
+  rpc CreateBundle(BundleServiceCreateBundleRequest) returns (BundleServiceCreateBundleResponse);
+  rpc GetBundle(BundleServiceGetBundleRequest) returns (BundleServiceGetBundleResponse);
+  rpc ListBundles(BundleServiceListBundlesRequest) returns (BundleServiceListBundlesResponse);
+  rpc CheckBundleStock(BundleServiceCheckBundleStockRequest) returns (BundleServiceCheckBundleStockResponse);
+}
