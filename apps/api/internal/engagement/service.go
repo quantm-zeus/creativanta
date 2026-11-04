@@ -14,6 +14,8 @@ import (
 	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
 	engagementv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/engagement/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/engagement/v1/engagementv1connect"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/conversion"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 )
 
 // ConnectedAccount represents a connected social media account in a workspace.
@@ -46,6 +48,14 @@ type Service struct {
 	events       []DomainEvent                  // append-only outbox domain events
 	inboundTimes map[string][]time.Time         // workspaceID -> []timestamp for rate calculation
 	slaFired     map[string]map[string]bool     // threadID -> eventType -> bool
+	lineageStore conversion.LineageStore
+}
+
+// SetLineageStore sets the shared conversion lineage store for M12 conversions.
+func (s *Service) SetLineageStore(ls conversion.LineageStore) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lineageStore = ls
 }
 
 // NewService creates a new engagement Service instance.
@@ -1536,7 +1546,7 @@ func (s *Service) RepairRevokedAccount(ctx context.Context, req *connect.Request
 }
 
 // ============================================================================
-// Downstream Conversion Helpers (RULE-M12-005)
+// Downstream Conversion Helpers (RULE-M12-005, P6-08)
 // ============================================================================
 
 // ConvertToIdea converts a thread into a content idea (M05 link).
@@ -1550,14 +1560,42 @@ func (s *Service) ConvertToIdea(ctx context.Context, workspaceID, threadID, idea
 	}
 
 	t.RelatedObjectRefs = append(t.RelatedObjectRefs, RelatedObjectRef{
-		Type:  "idea",
-		ID:    ideaID,
-		Label: "Ý tưởng nội dung (M05)",
+		Type:         "idea",
+		ID:           ideaID,
+		Label:        "Ý tưởng nội dung (M05)",
+		TaskRef:      "P6-08",
+		Phase:        "P6",
+		IsP6Deferred: false,
+		Status:       "converted",
 	})
 	if ValidateStatusTransition(t.Status, StatusConvertedToTask) {
 		t.Status = StatusConvertedToTask
 	}
-	t.UpdatedAt = s.clock()
+	now := s.clock()
+	t.UpdatedAt = now
+
+	if s.lineageStore != nil {
+		_ = s.lineageStore.SaveLineage(ctx, conversion.LineageRecord{
+			ConversionID:   ideaID,
+			WorkspaceID:    workspaceID,
+			SourceType:     conversion.SourceTypeThread,
+			SourceID:       threadID,
+			TargetType:     conversion.TargetType("idea"),
+			TargetID:       ideaID,
+			ConvertedBy:    t.OwnerUserID,
+			Status:         "completed",
+			LineageDepth:   1,
+			RootSourceType: "thread",
+			RootSourceID:   threadID,
+			Metadata: map[string]any{
+				"thread_type": t.ThreadType,
+				"intent":      t.Intent,
+			},
+			CreatedAt: now,
+			UpdatedAt: now,
+		})
+	}
+
 	return nil
 }
 
@@ -1583,7 +1621,30 @@ func (s *Service) ConvertToBrandDeal(ctx context.Context, workspaceID, threadID,
 	if ValidateStatusTransition(t.Status, StatusConvertedToTask) {
 		t.Status = StatusConvertedToTask
 	}
-	t.UpdatedAt = s.clock()
+	now := s.clock()
+	t.UpdatedAt = now
+
+	if s.lineageStore != nil {
+		_ = s.lineageStore.SaveLineage(ctx, conversion.LineageRecord{
+			ConversionID:   dealID,
+			WorkspaceID:    workspaceID,
+			SourceType:     conversion.SourceTypeThread,
+			SourceID:       threadID,
+			TargetType:     conversion.TargetTypeDeal,
+			TargetID:       dealID,
+			ConvertedBy:    t.OwnerUserID,
+			Status:         "completed",
+			LineageDepth:   1,
+			RootSourceType: "thread",
+			RootSourceID:   threadID,
+			Metadata: map[string]any{
+				"thread_type": t.ThreadType,
+				"intent":      t.Intent,
+			},
+			CreatedAt: now,
+			UpdatedAt: now,
+		})
+	}
 
 	s.recordEventLocked(EventSponsorInquiryDetected, "thread", threadID, workspaceID, map[string]interface{}{
 		"thread_id":   threadID,
@@ -1618,7 +1679,30 @@ func (s *Service) ConvertToSampleRequest(ctx context.Context, workspaceID, threa
 	if ValidateStatusTransition(t.Status, StatusConvertedToTask) {
 		t.Status = StatusConvertedToTask
 	}
-	t.UpdatedAt = s.clock()
+	now := s.clock()
+	t.UpdatedAt = now
+
+	if s.lineageStore != nil {
+		_ = s.lineageStore.SaveLineage(ctx, conversion.LineageRecord{
+			ConversionID:   sampleID,
+			WorkspaceID:    workspaceID,
+			SourceType:     conversion.SourceTypeThread,
+			SourceID:       threadID,
+			TargetType:     conversion.TargetTypeSeeding,
+			TargetID:       sampleID,
+			ConvertedBy:    t.OwnerUserID,
+			Status:         "completed",
+			LineageDepth:   1,
+			RootSourceType: "thread",
+			RootSourceID:   threadID,
+			Metadata: map[string]any{
+				"thread_type": t.ThreadType,
+				"intent":      t.Intent,
+			},
+			CreatedAt: now,
+			UpdatedAt: now,
+		})
+	}
 
 	s.recordEventLocked(EventSampleRequestCreated, "thread", threadID, workspaceID, map[string]interface{}{
 		"thread_id":   threadID,
@@ -1653,7 +1737,30 @@ func (s *Service) ConvertToOffer(ctx context.Context, workspaceID, threadID, off
 	if ValidateStatusTransition(t.Status, StatusConvertedToTask) {
 		t.Status = StatusConvertedToTask
 	}
-	t.UpdatedAt = s.clock()
+	now := s.clock()
+	t.UpdatedAt = now
+
+	if s.lineageStore != nil {
+		_ = s.lineageStore.SaveLineage(ctx, conversion.LineageRecord{
+			ConversionID:   offerID,
+			WorkspaceID:    workspaceID,
+			SourceType:     conversion.SourceTypeThread,
+			SourceID:       threadID,
+			TargetType:     conversion.TargetTypeOffer,
+			TargetID:       offerID,
+			ConvertedBy:    t.OwnerUserID,
+			Status:         "completed",
+			LineageDepth:   1,
+			RootSourceType: "thread",
+			RootSourceID:   threadID,
+			Metadata: map[string]any{
+				"thread_type": t.ThreadType,
+				"intent":      t.Intent,
+			},
+			CreatedAt: now,
+			UpdatedAt: now,
+		})
+	}
 
 	s.recordEventLocked("offer.created", "thread", threadID, workspaceID, map[string]interface{}{
 		"thread_id":   threadID,
@@ -1664,6 +1771,161 @@ func (s *Service) ConvertToOffer(ctx context.Context, workspaceID, threadID, off
 	})
 
 	return nil
+}
+
+// ConvertToCampaign converts a thread to a coordination campaign (M14 link, Phase P6-08).
+func (s *Service) ConvertToCampaign(ctx context.Context, workspaceID, threadID, campaignID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	t, ok := s.threads[threadID]
+	if !ok || t.WorkspaceID != workspaceID {
+		return ErrThreadNotFound
+	}
+
+	t.RelatedObjectRefs = append(t.RelatedObjectRefs, RelatedObjectRef{
+		Type:         "campaign",
+		ID:           campaignID,
+		Label:        "Chiến dịch phối hợp (M14)",
+		TaskRef:      "P6-08",
+		Phase:        "P6",
+		IsP6Deferred: false,
+		Status:       "converted",
+	})
+	if ValidateStatusTransition(t.Status, StatusConvertedToTask) {
+		t.Status = StatusConvertedToTask
+	}
+	now := s.clock()
+	t.UpdatedAt = now
+
+	if s.lineageStore != nil {
+		_ = s.lineageStore.SaveLineage(ctx, conversion.LineageRecord{
+			ConversionID:   campaignID,
+			WorkspaceID:    workspaceID,
+			SourceType:     conversion.SourceTypeThread,
+			SourceID:       threadID,
+			TargetType:     conversion.TargetTypeCampaign,
+			TargetID:       campaignID,
+			ConvertedBy:    t.OwnerUserID,
+			Status:         "completed",
+			LineageDepth:   1,
+			RootSourceType: "thread",
+			RootSourceID:   threadID,
+			Metadata: map[string]any{
+				"thread_type": t.ThreadType,
+				"intent":      t.Intent,
+			},
+			CreatedAt: now,
+			UpdatedAt: now,
+		})
+	}
+
+	s.recordEventLocked("campaign.started", "thread", threadID, workspaceID, map[string]interface{}{
+		"thread_id":   threadID,
+		"campaign_id": campaignID,
+		"task_ref":    "P6-08",
+		"phase":       "P6",
+	})
+
+	return nil
+}
+
+// ConvertToLiveSession converts a thread to a Live Commerce session (M17 link, Phase P6-08).
+func (s *Service) ConvertToLiveSession(ctx context.Context, workspaceID, threadID, sessionID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	t, ok := s.threads[threadID]
+	if !ok || t.WorkspaceID != workspaceID {
+		return ErrThreadNotFound
+	}
+
+	t.RelatedObjectRefs = append(t.RelatedObjectRefs, RelatedObjectRef{
+		Type:         "live_session",
+		ID:           sessionID,
+		Label:        "Phiên livestream thương mại (M17)",
+		TaskRef:      "P6-08",
+		Phase:        "P6",
+		IsP6Deferred: false,
+		Status:       "converted",
+	})
+	if ValidateStatusTransition(t.Status, StatusConvertedToTask) {
+		t.Status = StatusConvertedToTask
+	}
+	now := s.clock()
+	t.UpdatedAt = now
+
+	if s.lineageStore != nil {
+		_ = s.lineageStore.SaveLineage(ctx, conversion.LineageRecord{
+			ConversionID:   sessionID,
+			WorkspaceID:    workspaceID,
+			SourceType:     conversion.SourceTypeThread,
+			SourceID:       threadID,
+			TargetType:     conversion.TargetTypeLive,
+			TargetID:       sessionID,
+			ConvertedBy:    t.OwnerUserID,
+			Status:         "completed",
+			LineageDepth:   1,
+			RootSourceType: "thread",
+			RootSourceID:   threadID,
+			Metadata: map[string]any{
+				"thread_type": t.ThreadType,
+				"intent":      t.Intent,
+			},
+			CreatedAt: now,
+			UpdatedAt: now,
+		})
+	}
+
+	s.recordEventLocked("live.session_started", "thread", threadID, workspaceID, map[string]interface{}{
+		"thread_id":  threadID,
+		"session_id": sessionID,
+		"task_ref":   "P6-08",
+		"phase":      "P6",
+	})
+
+	return nil
+}
+
+// ConvertThreadWithPermissionCheck rechecks both thread triage permission AND target domain permission (P6-08).
+func (s *Service) ConvertThreadWithPermissionCheck(ctx context.Context, caller conversion.CallerContext, threadID string, targetType conversion.TargetType, targetID string) error {
+	if caller.UserID == "" || caller.WorkspaceID == "" {
+		return conversion.ErrUnauthenticated
+	}
+
+	// 1. Check Source Permission (thread:triage)
+	if err := rbac.CheckWorkspacePermission("thread:triage", rbac.PolicyContext{
+		ActorUserID: caller.UserID,
+		WorkspaceID: caller.WorkspaceID,
+		Role:        caller.WorkspaceRole,
+	}); err != nil {
+		return fmt.Errorf("%w: role %q lacks thread:triage: %v", conversion.ErrPermissionDenied, caller.WorkspaceRole, err)
+	}
+
+	// 2. ACCEPTANCE TARGET 1: Recheck Target Permission
+	targetPerm := conversion.RequiredTargetPermission(targetType)
+	if err := rbac.CheckWorkspacePermission(targetPerm, rbac.PolicyContext{
+		ActorUserID: caller.UserID,
+		WorkspaceID: caller.WorkspaceID,
+		Role:        caller.WorkspaceRole,
+	}); err != nil {
+		return fmt.Errorf("%w: role %q lacks target permission %q for target %q: %v", conversion.ErrTargetPermissionDenied, caller.WorkspaceRole, targetPerm, targetType, err)
+	}
+
+	switch targetType {
+	case conversion.TargetTypeCampaign:
+		return s.ConvertToCampaign(ctx, caller.WorkspaceID, threadID, targetID)
+	case conversion.TargetTypeLive:
+		return s.ConvertToLiveSession(ctx, caller.WorkspaceID, threadID, targetID)
+	case conversion.TargetTypeOffer:
+		return s.ConvertToOffer(ctx, caller.WorkspaceID, threadID, targetID)
+	case conversion.TargetTypeSeeding:
+		return s.ConvertToSampleRequest(ctx, caller.WorkspaceID, threadID, targetID)
+	case conversion.TargetTypeDeal:
+		return s.ConvertToBrandDeal(ctx, caller.WorkspaceID, threadID, targetID)
+	default:
+		return fmt.Errorf("%w: %s", conversion.ErrInvalidTargetType, targetType)
+	}
 }
 
 // ============================================================================

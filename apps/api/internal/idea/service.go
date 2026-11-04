@@ -13,23 +13,34 @@ import (
 	contentv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/content/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/content/v1/contentv1connect"
 	intelligencev1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/intelligence/v1"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/conversion"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type ServiceConfig struct {
-	Store Store
+	Store        Store
+	LineageStore conversion.LineageStore
 }
 
 type Service struct {
-	store Store
+	store        Store
+	lineageStore conversion.LineageStore
 }
 
 func NewService(cfg ServiceConfig) *Service {
 	if cfg.Store == nil {
 		cfg.Store = NewMemoryStore()
 	}
-	return &Service{store: cfg.Store}
+	return &Service{
+		store:        cfg.Store,
+		lineageStore: cfg.LineageStore,
+	}
+}
+
+// SetLineageStore sets or updates the shared conversion lineage store.
+func (s *Service) SetLineageStore(ls conversion.LineageStore) {
+	s.lineageStore = ls
 }
 
 var _ contentv1connect.IdeaServiceHandler = (*Service)(nil)
@@ -560,6 +571,33 @@ func (s *Service) Convert(ctx context.Context, req *connect.Request[contentv1.Id
 		return nil, connect.NewError(connect.CodePermissionDenied, err)
 	}
 
+	targetType := strings.ToLower(strings.TrimSpace(req.Msg.ConversionType))
+	if targetType == "" {
+		targetType = "script"
+	}
+	var targetPerm string
+	switch targetType {
+	case "script":
+		targetPerm = "script:create"
+	case "campaign":
+		targetPerm = "campaign:manage"
+	case "live", "live_plan", "live_session":
+		targetPerm = "live:manage"
+	case "offer":
+		targetPerm = "offer:manage"
+	case "seeding", "sample_request":
+		targetPerm = "sample:manage"
+	case "deal", "brand_deal":
+		targetPerm = "brand_deal:manage"
+	default:
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid conversion_type %q; supported: script, campaign, live, offer, seeding, deal", targetType))
+	}
+
+	// ACCEPTANCE TARGET 1: Recheck target permission
+	if err := checkPerm(caller, targetPerm); err != nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("conversion to %s requires target permission %s (caller role: %s): %w", targetType, targetPerm, caller.WorkspaceRole, err))
+	}
+
 	idea, err := s.store.GetIdea(ctx, caller.WorkspaceID, req.Msg.IdeaId)
 	if err != nil {
 		if errors.Is(err, ErrIdeaNotFound) {
@@ -581,34 +619,56 @@ func (s *Service) Convert(ctx context.Context, req *connect.Request[contentv1.Id
 	}
 
 	now := time.Now().UTC()
-	scriptID := generateDeterministicUUID(caller.WorkspaceID, idea.IdeaID+":script", now)
+	targetID := generateDeterministicUUID(caller.WorkspaceID, idea.IdeaID+":"+targetType, now)
 
 	idea.Status = contentv1.IdeaStatus_IDEA_STATUS_CONVERTED
-	idea.ConvertedToType = "script"
-	idea.ConvertedToID = scriptID
+	idea.ConvertedToType = targetType
+	idea.ConvertedToID = targetID
 	idea.UpdatedAt = now
 
 	if err := s.store.UpdateIdea(ctx, *idea); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// RULE-M05-003: Emit idea.converted with {idea_id, to_type: 'script', to_id}
+	// Persist shared lineage if lineage store is configured
+	if s.lineageStore != nil {
+		_ = s.lineageStore.SaveLineage(ctx, conversion.LineageRecord{
+			ConversionID:   targetID,
+			WorkspaceID:    caller.WorkspaceID,
+			SourceType:     conversion.SourceTypeIdea,
+			SourceID:       idea.IdeaID,
+			TargetType:     conversion.TargetType(targetType),
+			TargetID:       targetID,
+			ConvertedBy:    caller.UserID,
+			Status:         "completed",
+			LineageDepth:   1,
+			RootSourceType: "idea",
+			RootSourceID:   idea.IdeaID,
+			Metadata: map[string]any{
+				"title": idea.Title,
+			},
+			CreatedAt: now,
+			UpdatedAt: now,
+		})
+	}
+
+	// RULE-M05-003: Emit idea.converted with {idea_id, to_type, to_id}
 	s.store.RecordEvent(DomainEvent{
 		EventType:   "idea.converted",
 		WorkspaceID: caller.WorkspaceID,
 		Payload: map[string]any{
 			"idea_id": idea.IdeaID,
-			"to_type": "script",
-			"to_id":   scriptID,
+			"to_type": targetType,
+			"to_id":   targetID,
 		},
 		OccurredAt: now,
 	})
 
 	return connect.NewResponse(&contentv1.IdeaServiceConvertResponse{
 		Idea:            mapToProtoIdea(*idea),
-		ConvertedToType: "script",
-		ConvertedToId:   scriptID,
-		ScriptId:        scriptID,
+		ConvertedToType: targetType,
+		ConvertedToId:   targetID,
+		ScriptId:        targetID,
 	}), nil
 }
 

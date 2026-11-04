@@ -403,6 +403,17 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if err := ValidateCanonicalMigrationContract(m34); err != nil {
 		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v34: %v", err)
 	}
+
+	m35 := migrations[34]
+	if m35.Version != 35 {
+		t.Fatalf("expected version 35, got %d", m35.Version)
+	}
+	if len(m35.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v35, got %q", m35.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m35); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v35: %v", err)
+	}
 }
 
 func TestValidateCanonicalMigrationContractRejectsViolations(t *testing.T) {
@@ -562,8 +573,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 34 {
-		t.Fatalf("expected 34 applied migrations, got %d", len(applied))
+	if len(applied) != 35 {
+		t.Fatalf("expected 35 applied migrations, got %d", len(applied))
 	}
 	for i, v := range applied {
 		if v != int64(i+1) {
@@ -583,13 +594,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for all 34 migrations.
+	// Status reports Applied = true for all 35 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 34 {
-		t.Fatalf("expected status for 34 migrations, got %d", len(statuses))
+	if len(statuses) != 35 {
+		t.Fatalf("expected status for 35 migrations, got %d", len(statuses))
 	}
 	for i, s := range statuses {
 		if !s.Applied {
@@ -602,7 +613,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 34, then 33, then 32, then 31, then 30, then 29, then 28, then 27, then 26, then 25...
+	// Down with allowLocalRollback=true rolls back version 35, then 34, then 33, then 32, then 31, then 30, then 29, then 28, then 27, then 26, then 25...
+	rolled35, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v35 failed: %v", err)
+	}
+	if rolled35 != 35 {
+		t.Fatalf("expected rolled back version 35, got %d", rolled35)
+	}
 	rolled34, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v34 failed: %v", err)
@@ -889,8 +907,11 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 34 {
-		t.Fatalf("expected 34 applied migrations, got %v", applied)
+	if len(applied) != 35 {
+		t.Fatalf("expected 35 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v35 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v34 failed: %v", err)
