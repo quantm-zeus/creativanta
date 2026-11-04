@@ -1,0 +1,108 @@
+{
+  "task_id": "P6-05",
+  "phase": "P6",
+  "slice": "p6-05",
+  "title": "Live War Room và post-live highlights",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "2ce30cd68a556d10f274cb36f4dc9e47fe26815e",
+  "feature_refs": [
+    "docs/02_features/commerce/live_war_room.md",
+    "docs/02_features/production/asset_derivatives.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/05_system/queue_retry_design.md"
+  ],
+  "requirement_ids": [
+    "RULE-M17-001",
+    "RULE-M17-002",
+    "RULE-M17-003",
+    "RULE-M17-004",
+    "RULE-M17-005",
+    "RULE-M17-006",
+    "EC-M17-001",
+    "EC-M17-002",
+    "EC-M17-003"
+  ],
+  "source_files": {
+    "infra/migrations/00032_p6_05_live_commerce_war_room_and_highlights.sql": "cf6a52297026ef56aa9e46a56052006a650ce1478d9a90c0c61ec8b322732b08",
+    "protos/creativanta/commerce/v1/live.proto": "b4fb939845830bd18d1242e569e7665af8806e5f3ac8a98fa3b3bb780b278158",
+    "apps/api/internal/livecommerce/errors.go": "072edffc24994daf430c7ecec4659c246edb5ec141f4ea7533f6c2f9589da173",
+    "apps/api/internal/livecommerce/model.go": "160eb3b221ad61633b115d366b214178c231ddfff680f35028ce6fad7bf405b2",
+    "apps/api/internal/livecommerce/store.go": "3018a4ea0f264fa3d909085d3680f4cf1229f1c76396963035ab0d5d63109f31",
+    "apps/api/internal/livecommerce/service.go": "e9c2385a7e0a74a20a280cf6650785b30602efe2c4e7d498b592fc0418693777",
+    "apps/api/internal/livecommerce/handler.go": "7bed3fe16d152f6028a4110b93aae8848c631fb3c6def08918a89528e354a779",
+    "apps/api/internal/livecommerce/livecommerce_test.go": "a559c8465940f53dfb67207536e82d8910e5967d5efac04efdce560321decbb8",
+    "apps/api/internal/livecommerce/handler_test.go": "09c0949c1f7777bd7fc90dbe8e71298ff291024ec742f37a48a88e36b6562fb1",
+    "apps/api/internal/livecommerce/livecommerce_postgres_test.go": "949bb3fca34034bfde691fa10ae661ef077bafbb7e3fab20fe891df363762856",
+    "apps/api/internal/migrate/migrator_test.go": "2c5f312e895d3874e58e32c5283349006b3dad3698ae450649989531f3bc7dc9",
+    "apps/api/internal/rbac/phase_exposure_test.go": "d8572ffc200f06fa08ef386c6ed5d4019ef3fb40e200019391b5eee2ab39a133",
+    "apps/web/src/lib/commerce/live_war_room.ts": "a86ecbc5aab236ac3102ee4090c1dc5ac364a0d6b3789001619e1859547de11b",
+    "apps/web/src/lib/commerce/live_war_room.test.ts": "31207b323dbc4ae1f9d7aeafc11fd7644201d6c9f5ebbc5e5f0846bd51967899",
+    "apps/web/src/lib/commerce/index.ts": "ea3a895b2a8fbdfec366713bfe5d76e5a37a0cf526c5b6243acb6e63a10fac7a",
+    "apps/web/src/routes/live/[id]/war-room/+page.svelte": "ced2b2a79fc11cdc1d56bd3c726a689e953ef6824384c556d2e2d3a327a7c0d9",
+    "apps/web/src/routes/live/[id]/summary/+page.svelte": "1775e048d0ee0ab0ff48a03d829edbb220486c49ab8cdc25ebb5788bffb5ea35",
+    "apps/mobile/lib/commerce/live_war_room_models.dart": "3ff7a91923d6fb7bc5eb6d00634e4d4072cf59af459c30a7927035fe49345b69",
+    "apps/mobile/lib/ui/commerce/live_war_room_view.dart": "d647a3231f473b4fa35eb0c2804c6c0abb556e63f6bce828e4b2d1a3639bb665",
+    "apps/mobile/test/live_war_room_acceptance_test.dart": "6a7f36f71c33caa913ccc7833d2c2d335e7643f071cef8f0de11f5df023b1ade"
+  },
+  "scope_items": [
+    "Database Migration 00032: Created live_sessions (§12.1), live_segments, cue_cards, highlights tables with composite workspace tenant keys, strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY), check constraints, and narrow role-based grants.",
+    "Acceptance Target 1 (Reconnect does not duplicate commands): Reconnecting clients retransmitting command tokens or idempotency keys receive cached responses (is_duplicate: true) without duplicating cue cards, highlights, offer pins, or triggering duplicate state transitions.",
+    "Acceptance Target 2 (M07 extracts, M09 registers clips): Marked highlights extract timeframes via M07 extraction bridge and auto-register derivative clips into M09 with parent lineage (parent_asset_id, derivative_type='clip') and link highlights.asset_id back to the source live session.",
+    "Acceptance Target 3 (Revenue traceable and labeled): Live orders linked via orders.live_session_id form a verifiable bidirectional lineage chain Session -> Product -> Offer -> Order -> Revenue, producing immutable post-live proof summaries with source_class='live_attributed' using exact non-float arithmetic (NUMERIC(18,6) and BigInt micros).",
+    "Run-of-Show and Cues: JSONB run-of-show segment array supports pre-planning and dynamic live adjustment; cue cards trigger on target offsets with linked products and promotional offers.",
+    "Web and Mobile War Room Surfaces: Screen W109 Web Live War Room command center with CSR real-time triage, Screen W110 Post-Live Proof Summary, and Screen M055 Mobile Live War Room view."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestReconnectDoesNotDuplicateCommands (Go -race), Vitest web test suite, and Flutter test suite confirm deduplication of retransmitted commands with cached responses.",
+    "Acceptance Target 2 Verified: TestM07ExtractsAndM09RegistersClips (Go -race), Vitest web test suite, and Flutter test suite confirm M07 extraction simulation and M09 derivative registration linking back to parent asset.",
+    "Acceptance Target 3 Verified: TestRevenueTraceableAndLabeled (Go -race), Vitest web test suite, and Flutter test suite confirm exact non-float revenue calculations and proof summary generation labeled live_attributed.",
+    "Lifecycle & Negative Transitions: TestLifecycleTransitionsAndTenantIsolation and TestLiveCommerceHandler_NegativePaths confirm strict state machine enforcement (planned -> live -> paused -> ended -> post_live_processing -> closed) and cross-tenant isolation.",
+    "Migration 00032 Verified: Migrator test suite (migrator_test.go) passes all 32 migrations up, status verification, and clean down transactional reversal.",
+    "Four-Target Proto Codegen Verified: check_proto.sh passes lint, generate, drift check, buf breaking backward compatibility, Go vet/test, TypeScript vitest, and Dart test suites.",
+    "Web & Mobile Surfaces Verified: Vitest web test suite, svelte-check (0 errors, 0 warnings), Vite production build (adapter-node ✔ done), real SSR smoke tests, and Flutter test suite (flutter analyze 0 issues) all pass."
+  ],
+  "rpc_contracts": [
+    "LiveCommerceService/CreateSession",
+    "LiveCommerceService/GetSession",
+    "LiveCommerceService/ListSessions",
+    "LiveCommerceService/StartSession",
+    "LiveCommerceService/EndSession",
+    "LiveCommerceService/PauseSession",
+    "LiveCommerceService/ResumeSession",
+    "LiveCommerceService/AddCue",
+    "LiveCommerceService/RemoveCue",
+    "LiveCommerceService/TriggerCue",
+    "LiveCommerceService/HighlightProduct",
+    "LiveCommerceService/GetAnalytics",
+    "LiveCommerceService/UpdateRunOfShow",
+    "LiveCommerceService/CreateHighlight",
+    "LiveCommerceService/ExtractHighlights",
+    "LiveCommerceService/GetProofSummary"
+  ],
+  "migration_files": [
+    "infra/migrations/00032_p6_05_live_commerce_war_room_and_highlights.sql"
+  ],
+  "permission_keys": [
+    "live:manage",
+    "live:read",
+    "derivative:manage",
+    "asset:read"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "Migration 00032 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+    ],
+    [
+      "EXT-GATE-COMMERCE-WEBSOCKET-STREAM",
+      "PENDING_EXTERNAL_PROVIDER_APPROVAL",
+      "Production live streaming integrates with external streaming CDNs/platforms (TikTok Live, Shopee Live); live war room command center, cue card orchestration, and post-live processing verified locally."
+    ]
+  ]
+}

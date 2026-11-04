@@ -1,0 +1,380 @@
+syntax = "proto3";
+
+package creativanta.commerce.v1;
+
+import "creativanta/common/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1;commercev1";
+
+// LiveSessionStatus tracks the canonical state machine of a live session.
+// RULE-M17-001: planned -> ready -> live -> paused -> ended -> post_live_processing -> closed.
+enum LiveSessionStatus {
+  LIVE_SESSION_STATUS_UNSPECIFIED = 0;
+  LIVE_SESSION_STATUS_PLANNED = 1;
+  LIVE_SESSION_STATUS_READY = 2;
+  LIVE_SESSION_STATUS_LIVE = 3;
+  LIVE_SESSION_STATUS_PAUSED = 4;
+  LIVE_SESSION_STATUS_ENDED = 5;
+  LIVE_SESSION_STATUS_POST_LIVE_PROCESSING = 6;
+  LIVE_SESSION_STATUS_CLOSED = 7;
+}
+
+// CueCardStatus tracks operational state of cue prompts.
+enum CueCardStatus {
+  CUE_CARD_STATUS_UNSPECIFIED = 0;
+  CUE_CARD_STATUS_PENDING = 1;
+  CUE_CARD_STATUS_ACTIVE = 2;
+  CUE_CARD_STATUS_USED = 3;
+  CUE_CARD_STATUS_SKIPPED = 4;
+}
+
+// RunOfShowItem represents an ordered segment in the live session script.
+// database_schema.md §25.2
+message RunOfShowItem {
+  int32 time_offset_min = 1;
+  string type = 2; // product_pin, poll, giveaway, cta, break, talking_point
+  string title = 3;
+  string product_id = 4;
+  string offer_id = 5;
+  string notes = 6;
+  int32 duration_min = 7;
+  bool executed = 8;
+  google.protobuf.Timestamp executed_at = 9;
+  repeated string cue_card_ids = 10;
+}
+
+// LiveMetricsSnapshot captures real-time and post-live performance metrics.
+// database_schema.md §25.2
+message LiveMetricsSnapshot {
+  int64 peak_viewers = 1;
+  int64 avg_viewers = 2;
+  int64 total_viewers = 3;
+  int64 total_comments = 4;
+  int64 total_likes = 5;
+  int64 total_shares = 6;
+  int32 products_shown = 7;
+  int64 orders_during_live = 8;
+  creativanta.common.v1.Money revenue_during_live = 9;
+  double engagement_rate = 10;
+}
+
+// LiveSession corresponds to database_schema.md §12.1 live_sessions.
+message LiveSession {
+  string session_id = 1;
+  string workspace_id = 2;
+  string title = 3;
+  string platform = 4;
+  string connected_account_id = 5;
+  LiveSessionStatus status = 6;
+  google.protobuf.Timestamp planned_start_at = 7;
+  google.protobuf.Timestamp actual_start_at = 8;
+  google.protobuf.Timestamp actual_end_at = 9;
+  repeated RunOfShowItem run_of_show = 10;
+  LiveMetricsSnapshot metrics_snapshot = 11;
+  map<string, string> metadata = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+}
+
+// CueCard corresponds to database_schema.md §19.9B cue_cards.
+message CueCard {
+  string cue_card_id = 1;
+  string session_id = 2;
+  string workspace_id = 3;
+  string segment_id = 4;
+  string cue_type = 5; // product_highlight, talking_point, price_drop, giveaway, qa_prompt, cta, transition
+  string title = 6;
+  string body = 7;
+  string pinned_product_id = 8;
+  string pinned_offer_id = 9;
+  int32 display_order = 10;
+  google.protobuf.Timestamp triggered_at = 11;
+  CueCardStatus status = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+}
+
+// Highlight corresponds to database_schema.md §19.9C highlights.
+message Highlight {
+  string highlight_id = 1;
+  string session_id = 2;
+  string workspace_id = 3;
+  string title = 4;
+  int32 start_offset_seconds = 5;
+  int32 end_offset_seconds = 6;
+  string highlight_type = 7; // viral_moment, product_demo, best_sale, audience_peak, key_announcement, engagement_spike, conversion_moment, objection_handling, custom
+  bool auto_detected = 8;
+  string asset_id = 9; // extracted clip derivative in M09
+  double engagement_score = 10;
+  string notes = 11;
+  string pinned_offer_id = 12;
+  string pinned_product_id = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+}
+
+// TraceableOrderLink represents a traceable revenue chain link:
+// Live Session -> Product -> Offer -> Order -> Revenue.
+message TraceableOrderLink {
+  string order_id = 1;
+  string product_id = 2;
+  string offer_id = 3;
+  string customer_id = 4;
+  creativanta.common.v1.Money amount = 5;
+  google.protobuf.Timestamp created_at = 6;
+  string reconciliation_state = 7;
+}
+
+// PostLiveProofSummary represents the post-live proof document (RULE-M17-003, RULE-M17-004).
+message PostLiveProofSummary {
+  string summary_id = 1;
+  string session_id = 2;
+  string workspace_id = 3;
+  string session_title = 4;
+  string platform = 5;
+  LiveMetricsSnapshot metrics = 6;
+  repeated Highlight highlights = 7;
+  repeated string extracted_clip_asset_ids = 8;
+  repeated TraceableOrderLink orders = 9;
+  creativanta.common.v1.Money total_revenue = 10;
+  string source_class = 11; // "live_attributed"
+  string proof_bundle_id = 12;
+  google.protobuf.Timestamp generated_at = 13;
+}
+
+// CommentTriageItem represents high-priority audience interaction during live.
+message CommentTriageItem {
+  string comment_id = 1;
+  string session_id = 2;
+  string author = 3;
+  string text = 4;
+  string intent = 5; // purchase_intent, objection, question, praise
+  bool is_priority = 6;
+  google.protobuf.Timestamp timestamp = 7;
+}
+
+// Request and Response messages for LiveCommerceService RPCs
+
+message LiveCommerceServiceCreateSessionRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string title = 2;
+  string platform = 3;
+  string connected_account_id = 4;
+  google.protobuf.Timestamp planned_start_at = 5;
+  repeated RunOfShowItem run_of_show = 6;
+  map<string, string> metadata = 7;
+}
+
+message LiveCommerceServiceCreateSessionResponse {
+  LiveSession session = 1;
+  bool is_duplicate = 2;
+}
+
+message LiveCommerceServiceGetRequest {
+  string session_id = 1;
+  string workspace_id = 2;
+}
+
+message LiveCommerceServiceGetResponse {
+  LiveSession session = 1;
+  repeated CueCard cue_cards = 2;
+  repeated Highlight highlights = 3;
+}
+
+message LiveCommerceServiceListRequest {
+  string workspace_id = 1;
+  string status = 2;
+  string platform = 3;
+  creativanta.common.v1.Pagination pagination = 4;
+}
+
+message LiveCommerceServiceListResponse {
+  repeated LiveSession sessions = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message LiveCommerceServiceStartSessionRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string session_id = 2;
+}
+
+message LiveCommerceServiceStartSessionResponse {
+  LiveSession session = 1;
+  bool is_duplicate = 2;
+}
+
+message LiveCommerceServiceEndSessionRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string session_id = 2;
+}
+
+message LiveCommerceServiceEndSessionResponse {
+  LiveSession session = 1;
+  PostLiveProofSummary summary = 2;
+  bool is_duplicate = 3;
+}
+
+message LiveCommerceServicePauseSessionRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string session_id = 2;
+}
+
+message LiveCommerceServicePauseSessionResponse {
+  LiveSession session = 1;
+  bool is_duplicate = 2;
+}
+
+message LiveCommerceServiceResumeSessionRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string session_id = 2;
+}
+
+message LiveCommerceServiceResumeSessionResponse {
+  LiveSession session = 1;
+  bool is_duplicate = 2;
+}
+
+message LiveCommerceServiceAddCueRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string session_id = 2;
+  string cue_type = 3;
+  string title = 4;
+  string body = 5;
+  string pinned_product_id = 6;
+  string pinned_offer_id = 7;
+  int32 display_order = 8;
+}
+
+message LiveCommerceServiceAddCueResponse {
+  CueCard cue_card = 1;
+  bool is_duplicate = 2;
+}
+
+message LiveCommerceServiceRemoveCueRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string session_id = 2;
+  string cue_card_id = 3;
+}
+
+message LiveCommerceServiceRemoveCueResponse {
+  bool success = 1;
+}
+
+message LiveCommerceServiceTriggerCueRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string session_id = 2;
+  string cue_card_id = 3;
+}
+
+message LiveCommerceServiceTriggerCueResponse {
+  CueCard cue_card = 1;
+  bool is_duplicate = 2;
+}
+
+message LiveCommerceServiceHighlightProductRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string session_id = 2;
+  string product_id = 3;
+  string offer_id = 4;
+  bool is_pinned = 5;
+  int32 active_time_offset_seconds = 6;
+}
+
+message LiveCommerceServiceHighlightProductResponse {
+  string session_id = 1;
+  string pinned_product_id = 2;
+  string pinned_offer_id = 3;
+  bool is_pinned = 4;
+  bool is_duplicate = 5;
+}
+
+message LiveCommerceServiceGetAnalyticsRequest {
+  string session_id = 1;
+  string workspace_id = 2;
+}
+
+message LiveCommerceServiceGetAnalyticsResponse {
+  string session_id = 1;
+  LiveMetricsSnapshot metrics = 2;
+  int64 orders_count = 3;
+  creativanta.common.v1.Money total_revenue = 4;
+  repeated TraceableOrderLink traceable_orders = 5;
+}
+
+message LiveCommerceServiceUpdateRunOfShowRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string session_id = 2;
+  repeated RunOfShowItem items = 3;
+}
+
+message LiveCommerceServiceUpdateRunOfShowResponse {
+  LiveSession session = 1;
+  bool is_duplicate = 2;
+}
+
+message LiveCommerceServiceCreateHighlightRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string session_id = 2;
+  string title = 3;
+  int32 start_offset_seconds = 4;
+  int32 end_offset_seconds = 5;
+  string highlight_type = 6;
+  string notes = 7;
+  string pinned_offer_id = 8;
+  string pinned_product_id = 9;
+  bool auto_detected = 10;
+  double engagement_score = 11;
+}
+
+message LiveCommerceServiceCreateHighlightResponse {
+  Highlight highlight = 1;
+  bool is_duplicate = 2;
+}
+
+message LiveCommerceServiceExtractHighlightsRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string session_id = 2;
+  string source_asset_id = 3; // Source recording asset ID in M07
+  repeated string highlight_ids = 4; // empty to extract all highlights
+}
+
+message LiveCommerceServiceExtractHighlightsResponse {
+  string session_id = 1;
+  int32 extracted_count = 2;
+  repeated Highlight updated_highlights = 3;
+  repeated string registered_derivative_asset_ids = 4;
+  bool is_duplicate = 5;
+}
+
+message LiveCommerceServiceGetProofSummaryRequest {
+  string session_id = 1;
+  string workspace_id = 2;
+}
+
+message LiveCommerceServiceGetProofSummaryResponse {
+  PostLiveProofSummary summary = 1;
+}
+
+// LiveCommerceService provides real-time live commerce orchestration (M17).
+// Canonical Sources: docs/02_features/commerce/live_war_room.md
+//                    docs/04_contracts/api_endpoint_map.md §2.8.3
+//                    docs/04_contracts/rpc_permission_bindings.csv
+service LiveCommerceService {
+  rpc CreateSession(LiveCommerceServiceCreateSessionRequest) returns (LiveCommerceServiceCreateSessionResponse);
+  rpc Get(LiveCommerceServiceGetRequest) returns (LiveCommerceServiceGetResponse);
+  rpc List(LiveCommerceServiceListRequest) returns (LiveCommerceServiceListResponse);
+  rpc StartSession(LiveCommerceServiceStartSessionRequest) returns (LiveCommerceServiceStartSessionResponse);
+  rpc EndSession(LiveCommerceServiceEndSessionRequest) returns (LiveCommerceServiceEndSessionResponse);
+  rpc PauseSession(LiveCommerceServicePauseSessionRequest) returns (LiveCommerceServicePauseSessionResponse);
+  rpc ResumeSession(LiveCommerceServiceResumeSessionRequest) returns (LiveCommerceServiceResumeSessionResponse);
+  rpc AddCue(LiveCommerceServiceAddCueRequest) returns (LiveCommerceServiceAddCueResponse);
+  rpc RemoveCue(LiveCommerceServiceRemoveCueRequest) returns (LiveCommerceServiceRemoveCueResponse);
+  rpc TriggerCue(LiveCommerceServiceTriggerCueRequest) returns (LiveCommerceServiceTriggerCueResponse);
+  rpc HighlightProduct(LiveCommerceServiceHighlightProductRequest) returns (LiveCommerceServiceHighlightProductResponse);
+  rpc GetAnalytics(LiveCommerceServiceGetAnalyticsRequest) returns (LiveCommerceServiceGetAnalyticsResponse);
+  rpc UpdateRunOfShow(LiveCommerceServiceUpdateRunOfShowRequest) returns (LiveCommerceServiceUpdateRunOfShowResponse);
+  rpc CreateHighlight(LiveCommerceServiceCreateHighlightRequest) returns (LiveCommerceServiceCreateHighlightResponse);
+  rpc ExtractHighlights(LiveCommerceServiceExtractHighlightsRequest) returns (LiveCommerceServiceExtractHighlightsResponse);
+  rpc GetProofSummary(LiveCommerceServiceGetProofSummaryRequest) returns (LiveCommerceServiceGetProofSummaryResponse);
+}
