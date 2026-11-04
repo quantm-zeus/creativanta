@@ -33,6 +33,7 @@ var allowedModules = map[string]bool{
 	"M08":     true, // Phase P3-03: Continuity OS (M08)
 	"copilot": true, // Phase P3-04: Copilot Operations Assistant (copilot)
 	"M07":     true, // Phase P4-01: AI Video Studio & Production (M07)
+	"M11":     true, // Phase P5-01: Publish Hub (M11)
 }
 
 // TestNoFuturePhaseRPCExposed satisfies Acceptance Target:

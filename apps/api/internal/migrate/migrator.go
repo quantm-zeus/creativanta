@@ -830,6 +830,28 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 			"achievement_records",
 			"challenge_progress",
 		}
+	case 26:
+		requiredFragments = []requiredFragment{
+			{"publish_items table", "CREATE TABLE IF NOT EXISTS publish_items"},
+			{"publish_jobs table", "CREATE TABLE IF NOT EXISTS publish_jobs"},
+			{"publish_logs table", "CREATE TABLE IF NOT EXISTS publish_logs"},
+			{"channel_posts table", "CREATE TABLE IF NOT EXISTS channel_posts"},
+			{"composite tenant FK on publish_jobs -> publish_items", "fk_publish_jobs_publish_item_id_tenant"},
+			{"composite tenant FK on publish_logs -> publish_items", "fk_publish_logs_publish_item_id_tenant"},
+			{"composite tenant FK on publish_logs -> publish_jobs", "fk_publish_logs_publish_job_id_tenant"},
+			{"composite tenant FK on channel_posts -> publish_items", "fk_channel_posts_publish_item_id_tenant"},
+			{"composite tenant FK on channel_posts -> connected_accounts", "fk_channel_posts_connected_account_id_tenant"},
+			{"tenant_isolation policy on publish_items", "CREATE POLICY tenant_isolation ON publish_items"},
+			{"tenant_isolation policy on publish_jobs", "CREATE POLICY tenant_isolation ON publish_jobs"},
+			{"tenant_isolation policy on publish_logs", "CREATE POLICY tenant_isolation ON publish_logs"},
+			{"tenant_isolation policy on channel_posts", "CREATE POLICY tenant_isolation ON channel_posts"},
+		}
+		requiredRLSTables = []string{
+			"publish_items",
+			"publish_jobs",
+			"publish_logs",
+			"channel_posts",
+		}
 	default:
 		return nil
 	}

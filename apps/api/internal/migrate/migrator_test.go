@@ -305,6 +305,17 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if err := ValidateCanonicalMigrationContract(m25); err != nil {
 		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v25: %v", err)
 	}
+
+	m26 := migrations[25]
+	if m26.Version != 26 {
+		t.Fatalf("expected version 26, got %d", m26.Version)
+	}
+	if len(m26.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v26, got %q", m26.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m26); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v26: %v", err)
+	}
 }
 
 func TestValidateCanonicalMigrationContractRejectsViolations(t *testing.T) {
@@ -464,8 +475,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 25 {
-		t.Fatalf("expected 25 applied migrations, got %d", len(applied))
+	if len(applied) != 26 {
+		t.Fatalf("expected 26 applied migrations, got %d", len(applied))
 	}
 	for i, v := range applied {
 		if v != int64(i+1) {
@@ -485,13 +496,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for all 25 migrations.
+	// Status reports Applied = true for all 26 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 25 {
-		t.Fatalf("expected status for 25 migrations, got %d", len(statuses))
+	if len(statuses) != 26 {
+		t.Fatalf("expected status for 26 migrations, got %d", len(statuses))
 	}
 	for i, s := range statuses {
 		if !s.Applied {
@@ -504,7 +515,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 25, then 24, then 23...
+	// Down with allowLocalRollback=true rolls back version 26, then 25, then 24...
+	rolled26, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v26 failed: %v", err)
+	}
+	if rolled26 != 26 {
+		t.Fatalf("expected rolled back version 26, got %d", rolled26)
+	}
 	rolled25, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v25 failed: %v", err)
@@ -728,8 +746,11 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 25 {
-		t.Fatalf("expected 25 applied migrations, got %v", applied)
+	if len(applied) != 26 {
+		t.Fatalf("expected 26 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v26 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v25 failed: %v", err)
@@ -1579,6 +1600,68 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("expected composite tenant FK to reject cross-tenant asset/transcript on quick_edit_drafts")
 	}
 	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_draft_fk`)
+
+	// P5-01: publish_items, publish_jobs, publish_logs RLS and composite FK isolation:
+	const (
+		pubItemA = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1"
+		pubJobA  = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee2"
+		pubLogA  = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee3"
+	)
+	if _, err := tx.Exec(ctx, `
+		SET LOCAL app.current_tenant_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+		SET LOCAL app.current_user_id = '11111111-1111-4111-8111-111111111111';
+		INSERT INTO publish_items (publish_item_id, workspace_id, target_platform, title, lifecycle_state)
+		VALUES ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid, 'tiktok', 'TikTok Video 1', 'scheduled');
+		INSERT INTO publish_jobs (publish_job_id, workspace_id, publish_item_id, lifecycle_state)
+		VALUES ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee2'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid, 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1'::uuid, 'queued');
+		INSERT INTO publish_logs (publish_log_id, workspace_id, publish_job_id, publish_item_id, result_status, execution_path)
+		VALUES ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee3'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid, 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee2'::uuid, 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1'::uuid, 'success', 'native_api');
+	`); err != nil {
+		t.Fatalf("failed to insert Tenant A publish fixtures: %v", err)
+	}
+
+	// Switch to Tenant B and assert RLS isolation across publish tables:
+	if _, err := tx.Exec(ctx, `
+		SET LOCAL app.current_tenant_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+		SET LOCAL app.current_user_id = '22222222-2222-4222-8222-222222222222';
+	`); err != nil {
+		t.Fatal(err)
+	}
+	var pubItemCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM publish_items WHERE publish_item_id = $1::uuid`, pubItemA).Scan(&pubItemCount); err != nil {
+		t.Fatal(err)
+	}
+	if pubItemCount != 0 {
+		t.Fatalf("publish_items RLS breach: Tenant B saw %d items from Tenant A", pubItemCount)
+	}
+
+	var pubJobCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM publish_jobs WHERE publish_job_id = $1::uuid`, pubJobA).Scan(&pubJobCount); err != nil {
+		t.Fatal(err)
+	}
+	if pubJobCount != 0 {
+		t.Fatalf("publish_jobs RLS breach: Tenant B saw %d jobs from Tenant A", pubJobCount)
+	}
+
+	var pubLogCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM publish_logs WHERE publish_log_id = $1::uuid`, pubLogA).Scan(&pubLogCount); err != nil {
+		t.Fatal(err)
+	}
+	if pubLogCount != 0 {
+		t.Fatalf("publish_logs RLS breach: Tenant B saw %d logs from Tenant A", pubLogCount)
+	}
+
+	// Cross-tenant composite FK attack: Tenant B cannot create publish_job for Tenant A's publish_item:
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_pub_job_fk`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO publish_jobs (workspace_id, publish_item_id, lifecycle_state)
+		VALUES ($1::uuid, $2::uuid, 'queued')
+	`, tenantB, pubItemA); err == nil {
+		t.Fatalf("expected composite tenant FK to reject cross-tenant publish_item_id on publish_jobs")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_pub_job_fk`)
 }
 
 // TestPostgresSeedTwiceIdempotency satisfies Acceptance Target 1:
