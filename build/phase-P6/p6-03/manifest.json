@@ -6,7 +6,7 @@
   "status": "LOCAL_IMPLEMENTED",
   "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
   "acceptance_status": "PENDING",
-  "baseline_commit": "073f3951291e97d57dda6287566422413a817ca5",
+  "baseline_commit": "544d7f834a574dc05ccc18bd88b151699ab1ac7d",
   "feature_refs": [
     "docs/02_features/commerce/affiliate_network.md",
     "docs/02_features/finance/operating_ledger.md",
@@ -28,7 +28,7 @@
     "M16-LEDGER-CREATOR-SELLER-DISTINCTION"
   ],
   "source_files": {
-    "infra/migrations/00030_p6_03_affiliate_links_attributions_and_payouts.sql": "45e06785f77ff078ebe6a77215cb7a80a40c7378bba61cdf668ce5439f5083fa",
+    "infra/migrations/00031_p6_03_affiliate_links_attributions_and_payouts.sql": "45e06785f77ff078ebe6a77215cb7a80a40c7378bba61cdf668ce5439f5083fa",
     "protos/creativanta/commerce/v1/affiliate.proto": "382145113475195c756ac9a459531f50a805eef92c6cac0342b2930709b84a8a",
     "apps/api/internal/affiliate/model.go": "8b9fc1e8a1f43d2529a2958f5cf7b30f0c8ba3a4eedb99b2728f98dcfdeef71d",
     "apps/api/internal/affiliate/errors.go": "1705fc506f38c9567957e634c683e826259891c8b940796238af9d707f00d80f",
@@ -47,7 +47,7 @@
     "apps/mobile/test/affiliate_acceptance_test.dart": "a128ba61c65f23016ad23582445ef971d9c2793ed66f51d31f6dfd2381366545"
   },
   "scope_items": [
-    "Database Migration 00030: Created affiliate_links, creator_assignments, affiliate_attributions, affiliate_commissions, affiliate_payouts, affiliate_statements, affiliate_statement_items, link_health_records tables with composite tenant keys (uq_*_tenant_pk), strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY), check constraints, and narrow role-based grants.",
+    "Database Migration 00031: Created affiliate_links, creator_assignments, affiliate_attributions, affiliate_commissions, affiliate_payouts, affiliate_statements, affiliate_statement_items, link_health_records tables with composite tenant keys (uq_*_tenant_pk), strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY), check constraints, and narrow role-based grants.",
     "Acceptance Target 1 (Creator income distinct from seller expense): When workspace economic role is creator, affiliate commission earned is recognized as income/revenue; seller COGS is never deducted. When role is seller, affiliate commission paid is recorded as an expense deduction from gross profit.",
     "Acceptance Target 2 (Ambiguous attribution labeled): Multi-touch conversions (direct visit after click or cross-device) are explicitly labeled with source_class = 'inferred' and confidence = 'medium' (or 'low' for >=3 touches) with explanatory note ('Multiple touch points detected — last click rule applied.'). Single connected platform click is source_class = 'official' with high confidence.",
     "Acceptance Target 3 (Broken link repair): Health monitor flags broken/out-of-stock links with link_status = 'broken', calculates estimated_revenue_impact, suggests replacement products, and emits affiliate.link_health.broken. The repair workflow updates the destination URL and replacement product, safely restoring healthy status while strictly barring reactivation of permanently revoked links.",
@@ -60,7 +60,7 @@
     "Acceptance Target 2 Verified: TestAcceptanceTarget2_AmbiguousAttributionLabeled (Go -race), Vitest web test suite, and Flutter test suite confirm multi-touch conversions are labeled as inferred with medium/low confidence and explanation note.",
     "Acceptance Target 3 Verified: TestAcceptanceTarget3_BrokenLinkRepair (Go -race), Vitest web test suite, and Flutter test suite confirm broken link repair restores healthy status while permanently revoked links are strictly barred from repair.",
     "Creator Assignments, Statements, Clawbacks & Payouts Verified: TestCreatorAssignmentsAndCoupons, TestAffiliateStatementImportAndReconciliation, TestPayoutBatchAndProofGeneration, TestCommissionClawbackFlow, and TestAffiliateConnectRPCHandlers pass cleanly with Go race detector.",
-    "Migration 00030 Verified: Migrator test suite (migrator_test.go) passes all 30 migrations up, status verification, and clean down transactional reversal.",
+    "Migration 00031 Verified: Migrator test suite (migrator_test.go) passes all 31 migrations up, status verification, and clean down transactional reversal.",
     "Proto Codegen & Static Invariants Verified: Buf lint passes with 0 errors; TypeScript shared types compile cleanly; Dart analyze passes with 0 issues; check_d0 static documentation invariant gate passes.",
     "Web & Mobile Surfaces Verified: Vitest web test suite (8 tests passing), svelte-check (0 errors, 0 warnings), Vite production build (adapter-node ✔ done), and Flutter test suite (4 tests passing, flutter analyze 0 issues) all pass."
   ],
@@ -90,7 +90,7 @@
     "LinkHealthService/GetLinkHealthSummary"
   ],
   "migration_files": [
-    "infra/migrations/00030_p6_03_affiliate_links_attributions_and_payouts.sql"
+    "infra/migrations/00031_p6_03_affiliate_links_attributions_and_payouts.sql"
   ],
   "permission_keys": [
     "commerce:manage_affiliates",
@@ -102,7 +102,7 @@
     [
       "EXT-GATE-POSTGRES-LIVE-RLS",
       "PENDING_CI_LIVE_POSTGRES",
-      "Migration 00030 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+      "Migration 00031 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
     ],
     [
       "EXT-GATE-COMMERCE-AFFILIATE-NETWORKS",
