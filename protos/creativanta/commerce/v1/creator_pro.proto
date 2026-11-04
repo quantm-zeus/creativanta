@@ -1,0 +1,877 @@
+syntax = "proto3";
+
+package creativanta.commerce.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1;commercev1";
+
+// Canonical brand deal lifecycle per M16 / S16.
+enum BrandDealStatus {
+  BRAND_DEAL_STATUS_UNSPECIFIED = 0;
+  BRAND_DEAL_STATUS_NEGOTIATING = 1;
+  BRAND_DEAL_STATUS_AGREED = 2;
+  BRAND_DEAL_STATUS_IN_PROGRESS = 3;
+  BRAND_DEAL_STATUS_DELIVERED = 4;
+  BRAND_DEAL_STATUS_PAID = 5;
+  BRAND_DEAL_STATUS_COMPLETED = 6;
+  BRAND_DEAL_STATUS_CANCELLED = 7;
+}
+
+// Deal type classification.
+enum BrandDealType {
+  BRAND_DEAL_TYPE_UNSPECIFIED = 0;
+  BRAND_DEAL_TYPE_SPONSORED_POST = 1;
+  BRAND_DEAL_TYPE_PRODUCT_REVIEW = 2;
+  BRAND_DEAL_TYPE_AMBASSADOR = 3;
+  BRAND_DEAL_TYPE_AFFILIATE = 4;
+  BRAND_DEAL_TYPE_CUSTOM = 5;
+}
+
+// Link in bio item type classification.
+enum LinkType {
+  LINK_TYPE_UNSPECIFIED = 0;
+  LINK_TYPE_URL = 1;
+  LINK_TYPE_PRODUCT = 2;
+  LINK_TYPE_VIDEO = 3;
+  LINK_TYPE_SOCIAL = 4;
+  LINK_TYPE_DOWNLOAD = 5;
+  LINK_TYPE_EMAIL = 6;
+}
+
+// Link in bio page status.
+enum LinkInBioPageStatus {
+  LINK_IN_BIO_PAGE_STATUS_UNSPECIFIED = 0;
+  LINK_IN_BIO_PAGE_STATUS_ACTIVE = 1;
+  LINK_IN_BIO_PAGE_STATUS_SUSPENDED = 2;
+  LINK_IN_BIO_PAGE_STATUS_ARCHIVED = 3;
+}
+
+// Link security scan and threat detection status.
+enum LinkSecurityScanStatus {
+  LINK_SECURITY_SCAN_STATUS_UNSPECIFIED = 0;
+  LINK_SECURITY_SCAN_STATUS_SAFE = 1;
+  LINK_SECURITY_SCAN_STATUS_SUSPICIOUS = 2;
+  LINK_SECURITY_SCAN_STATUS_PHISHING = 3;
+  LINK_SECURITY_SCAN_STATUS_MALWARE = 4;
+  LINK_SECURITY_SCAN_STATUS_BLOCKED = 5;
+}
+
+// Media kit directory opt-in status.
+enum MediaKitDirectoryStatus {
+  MEDIA_KIT_DIRECTORY_STATUS_UNSPECIFIED = 0;
+  MEDIA_KIT_DIRECTORY_STATUS_HIDDEN = 1;
+  MEDIA_KIT_DIRECTORY_STATUS_PENDING_REVIEW = 2;
+  MEDIA_KIT_DIRECTORY_STATUS_PUBLISHED = 3;
+}
+
+// Tax report export period.
+enum TaxReportPeriod {
+  TAX_REPORT_PERIOD_UNSPECIFIED = 0;
+  TAX_REPORT_PERIOD_MONTHLY = 1;
+  TAX_REPORT_PERIOD_QUARTERLY = 2;
+  TAX_REPORT_PERIOD_YEARLY = 3;
+}
+
+// Tax report export format.
+enum TaxReportFormat {
+  TAX_REPORT_FORMAT_UNSPECIFIED = 0;
+  TAX_REPORT_FORMAT_PDF = 1;
+  TAX_REPORT_FORMAT_XLSX = 2;
+  TAX_REPORT_FORMAT_CSV = 3;
+}
+
+// Canonical LinkInBioPage model.
+message LinkInBioPage {
+  string page_id = 1;
+  string workspace_id = 2;
+  string slug = 3;
+  string title = 4;
+  string bio = 5;
+  string avatar_url = 6;
+  string theme = 7;
+  string custom_css = 8;
+  string custom_domain = 9;
+  bool custom_domain_verified = 10;
+  bool analytics_enabled = 11;
+  int32 total_views = 12;
+  LinkInBioPageStatus status = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+  repeated LinkItem items = 16;
+}
+
+// Canonical LinkItem model.
+message LinkItem {
+  string link_item_id = 1;
+  string page_id = 2;
+  string workspace_id = 3;
+  LinkType link_type = 4;
+  string label = 5;
+  string url = 6;
+  string icon = 7;
+  string thumbnail_url = 8;
+  int32 position = 9;
+  int32 clicks = 10;
+  bool is_active = 11;
+  LinkSecurityScanStatus scan_status = 12;
+  bool phishing_detected = 13;
+  string scan_threat_details = 14;
+  google.protobuf.Timestamp created_at = 15;
+}
+
+// Link click and engagement analytics summary.
+message LinkInBioAnalytics {
+  string page_id = 1;
+  string workspace_id = 2;
+  int32 total_views = 3;
+  int32 total_clicks = 4;
+  double click_through_rate = 5;
+  repeated LinkItemMetric item_metrics = 6;
+}
+
+// Item-level performance metric.
+message LinkItemMetric {
+  string link_item_id = 1;
+  string label = 2;
+  string url = 3;
+  int32 clicks = 4;
+  int32 conversions = 5;
+  double revenue = 6;
+}
+
+// Canonical MediaKit model.
+message MediaKit {
+  string media_kit_id = 1;
+  string workspace_id = 2;
+  string template = 3;
+  string sections_json = 4;
+  string brand_profile_id = 5;
+  string share_url = 6;
+  bool directory_opt_in = 7;
+  MediaKitDirectoryStatus directory_status = 8;
+  string directory_profile_json = 9;
+  google.protobuf.Timestamp directory_consented_at = 10;
+  google.protobuf.Timestamp last_generated_at = 11;
+  double generation_credits_used = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+}
+
+// Canonical RateCard model.
+message RateCard {
+  string rate_card_id = 1;
+  string workspace_id = 2;
+  string currency = 3;
+  string custom_note = 4;
+  google.protobuf.Timestamp ai_suggested_at = 5;
+  repeated RateCardItem items = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// Canonical RateCardItem model.
+message RateCardItem {
+  string item_id = 1;
+  string rate_card_id = 2;
+  string workspace_id = 3;
+  string service_type = 4;
+  double price_min = 5;
+  double price_max = 6;
+  double ai_suggested_price = 7;
+  string description = 8;
+  string delivery_time = 9;
+  int32 position = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// Canonical BrandDeal model.
+message BrandDeal {
+  string deal_id = 1;
+  string workspace_id = 2;
+  string brand_name = 3;
+  string contact_email = 4;
+  BrandDealType deal_type = 5;
+  double value = 6;
+  string currency = 7;
+  BrandDealStatus status = 8;
+  string deadline = 9;
+  string deliverables = 10;
+  repeated string contract_evidence_ids = 11;
+  string inquiry_thread_id = 12;
+  string notes = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+}
+
+// Pipeline summary stats for brand deals.
+message BrandDealPipelineStats {
+  string workspace_id = 1;
+  int32 negotiating_count = 2;
+  int32 agreed_count = 3;
+  int32 in_progress_count = 4;
+  int32 delivered_count = 5;
+  int32 paid_count = 6;
+  int32 completed_count = 7;
+  int32 cancelled_count = 8;
+  double total_active_value = 9;
+  double total_completed_value = 10;
+  string currency = 11;
+}
+
+// Content ROI metric item with Zero-view RPM undefined representation.
+message ContentROIMetric {
+  string content_id = 1;
+  string title = 2;
+  string platform = 3;
+  int64 views = 4;
+  int64 engagement = 5;
+  int64 link_clicks = 6;
+  int64 orders_attributed = 7;
+  double revenue_attributed = 8;
+  double cost_to_produce = 9;
+  double roi_percentage = 10;
+  double rpm = 11;
+  // Crucial: Acceptance Target 3 - Zero-view RPM undefined.
+  bool rpm_is_undefined = 12;
+  string production_mode = 13;
+  bool is_derivative = 14;
+  string source_content_id = 15;
+  int32 derivative_count = 16;
+  double derivative_total_revenue = 17;
+  google.protobuf.Timestamp published_at = 18;
+}
+
+// RPM trend point over time.
+message RPMTrendPoint {
+  string period_label = 1;
+  string platform = 2;
+  double rpm = 3;
+  bool rpm_is_undefined = 4;
+  int64 views = 5;
+  double revenue = 6;
+  double change_percent = 7;
+  bool drop_alert_triggered = 8;
+}
+
+// Tax report summary per platform, source and expenses.
+message TaxReportSummary {
+  string report_id = 1;
+  string workspace_id = 2;
+  TaxReportPeriod period = 3;
+  int32 year = 4;
+  int32 period_number = 5;
+  double total_revenue = 6;
+  double affiliate_revenue = 7;
+  double sponsorship_revenue = 8;
+  double product_sales_revenue = 9;
+  double ai_credit_expenses = 10;
+  double subscription_expenses = 11;
+  double net_income_before_tax = 12;
+  string currency = 13;
+  TaxReportFormat format = 14;
+  string download_url = 15;
+  google.protobuf.Timestamp generated_at = 16;
+}
+
+// ----------------------------------------------------------------------------
+// Request / Response Messages
+// ----------------------------------------------------------------------------
+
+message CreatePageRequest {
+  string workspace_id = 1;
+  string slug = 2;
+  string title = 3;
+  string bio = 4;
+  string avatar_url = 5;
+  string theme = 6;
+}
+
+message CreatePageResponse {
+  LinkInBioPage page = 1;
+}
+
+message GetPageRequest {
+  string workspace_id = 1;
+  string page_id = 2;
+  string slug = 3;
+}
+
+message GetPageResponse {
+  LinkInBioPage page = 1;
+}
+
+message UpdatePageRequest {
+  string workspace_id = 1;
+  string page_id = 2;
+  string title = 3;
+  string bio = 4;
+  string avatar_url = 5;
+  string theme = 6;
+  string custom_css = 7;
+  string custom_domain = 8;
+}
+
+message UpdatePageResponse {
+  LinkInBioPage page = 1;
+}
+
+message LinkInBioServiceSaveRequest {
+  string workspace_id = 1;
+  string page_id = 2;
+  string title = 3;
+  string bio = 4;
+  repeated LinkItem items = 5;
+}
+
+message LinkInBioServiceSaveResponse {
+  LinkInBioPage page = 1;
+}
+
+message GetAnalyticsRequest {
+  string workspace_id = 1;
+  string page_id = 2;
+  int32 lookback_days = 3;
+}
+
+message GetAnalyticsResponse {
+  LinkInBioAnalytics analytics = 1;
+}
+
+message LinkInBioServiceReorderRequest {
+  string workspace_id = 1;
+  string page_id = 2;
+  repeated string item_ids_in_order = 3;
+}
+
+message LinkInBioServiceReorderResponse {
+  repeated LinkItem items = 1;
+}
+
+message ToggleLinkRequest {
+  string workspace_id = 1;
+  string link_item_id = 2;
+  bool is_active = 3;
+}
+
+message ToggleLinkResponse {
+  LinkItem item = 1;
+}
+
+message UpdateThemeRequest {
+  string workspace_id = 1;
+  string page_id = 2;
+  string theme = 3;
+  string custom_css = 4;
+}
+
+message UpdateThemeResponse {
+  LinkInBioPage page = 1;
+}
+
+message ScanLinkRequest {
+  string workspace_id = 1;
+  string url = 2;
+}
+
+message ScanLinkResponse {
+  string url = 1;
+  LinkSecurityScanStatus scan_status = 2;
+  bool phishing_detected = 3;
+  string threat_details = 4;
+  bool can_be_published = 5;
+}
+
+message ReportLinkRequest {
+  string workspace_id = 1;
+  string link_item_id = 2;
+  string reason = 3;
+  string reporter_email = 4;
+}
+
+message ReportLinkResponse {
+  bool accepted = 1;
+  string incident_id = 2;
+}
+
+message VerifyCustomDomainRequest {
+  string workspace_id = 1;
+  string page_id = 2;
+  string custom_domain = 3;
+}
+
+message VerifyCustomDomainResponse {
+  bool verified = 1;
+  string status_message = 2;
+  bool ssl_provisioned = 3;
+}
+
+message MediaKitServiceGenerateRequest {
+  string workspace_id = 1;
+  string template = 2;
+  string brand_profile_id = 3;
+}
+
+message MediaKitServiceGenerateResponse {
+  MediaKit media_kit = 1;
+}
+
+message MediaKitServiceGetRequest {
+  string workspace_id = 1;
+  string media_kit_id = 2;
+}
+
+message MediaKitServiceGetResponse {
+  MediaKit media_kit = 1;
+}
+
+message GetKitRequest {
+  string workspace_id = 1;
+  string media_kit_id = 2;
+}
+
+message GetKitResponse {
+  MediaKit media_kit = 1;
+}
+
+message MediaKitServiceExportRequest {
+  string workspace_id = 1;
+  string media_kit_id = 2;
+  string format = 3;
+}
+
+message MediaKitServiceExportResponse {
+  string export_url = 1;
+  string file_name = 2;
+}
+
+message SetDirectoryProfileRequest {
+  string workspace_id = 1;
+  string media_kit_id = 2;
+  bool directory_opt_in = 3;
+  string directory_profile_json = 4;
+}
+
+message SetDirectoryProfileResponse {
+  MediaKit media_kit = 1;
+}
+
+message RateCardServiceCreateRequest {
+  string workspace_id = 1;
+  string currency = 2;
+  string custom_note = 3;
+  repeated RateCardItem items = 4;
+}
+
+message RateCardServiceCreateResponse {
+  RateCard rate_card = 1;
+}
+
+message GetRateCardRequest {
+  string workspace_id = 1;
+  string rate_card_id = 2;
+}
+
+message GetRateCardResponse {
+  RateCard rate_card = 1;
+}
+
+message RateCardServiceListRequest {
+  string workspace_id = 1;
+}
+
+message RateCardServiceListResponse {
+  repeated RateCard rate_cards = 1;
+}
+
+message RateCardServiceSaveRequest {
+  string workspace_id = 1;
+  string rate_card_id = 2;
+  string currency = 3;
+  string custom_note = 4;
+  repeated RateCardItem items = 5;
+}
+
+message RateCardServiceSaveResponse {
+  RateCard rate_card = 1;
+}
+
+message RateCardServiceDeleteItemRequest {
+  string workspace_id = 1;
+  string item_id = 2;
+}
+
+message RateCardServiceDeleteItemResponse {
+  bool deleted = 1;
+}
+
+message RateCardServiceReorderRequest {
+  string workspace_id = 1;
+  string rate_card_id = 2;
+  repeated string item_ids_in_order = 3;
+}
+
+message RateCardServiceReorderResponse {
+  repeated RateCardItem items = 1;
+}
+
+message CompareScopeRequest {
+  string workspace_id = 1;
+  string service_type = 2;
+}
+
+message CompareScopeResponse {
+  string service_type = 1;
+  double benchmark_min = 2;
+  double benchmark_avg = 3;
+  double benchmark_max = 4;
+  string currency = 5;
+}
+
+message RateCardServiceAISuggestRequest {
+  string workspace_id = 1;
+  string platform = 2;
+  string service_type = 3;
+}
+
+message RateCardServiceAISuggestResponse {
+  double suggested_price = 1;
+  double price_range_low = 2;
+  double price_range_high = 3;
+  string rationale = 4;
+  string currency = 5;
+}
+
+message BrandDealServiceCreateRequest {
+  string workspace_id = 1;
+  string brand_name = 2;
+  string contact_email = 3;
+  BrandDealType deal_type = 4;
+  double value = 5;
+  string currency = 6;
+  string deadline = 7;
+  string deliverables = 8;
+  string inquiry_thread_id = 9;
+  string notes = 10;
+}
+
+message BrandDealServiceCreateResponse {
+  BrandDeal deal = 1;
+}
+
+message BrandDealServiceUpdateStatusRequest {
+  string workspace_id = 1;
+  string deal_id = 2;
+  BrandDealStatus target_status = 3;
+  string cancellation_reason = 4;
+  bool requires_financial_reversal = 5;
+}
+
+message BrandDealServiceUpdateStatusResponse {
+  BrandDeal deal = 1;
+}
+
+message BrandDealServiceListRequest {
+  string workspace_id = 1;
+  BrandDealStatus status_filter = 2;
+}
+
+message BrandDealServiceListResponse {
+  repeated BrandDeal deals = 1;
+}
+
+message ListDealsRequest {
+  string workspace_id = 1;
+  BrandDealStatus status_filter = 2;
+}
+
+message ListDealsResponse {
+  repeated BrandDeal deals = 1;
+}
+
+message ListPartnershipsRequest {
+  string workspace_id = 1;
+}
+
+message ListPartnershipsResponse {
+  repeated BrandDeal partnerships = 1;
+}
+
+message GetPipelineStatsRequest {
+  string workspace_id = 1;
+}
+
+message GetPipelineStatsResponse {
+  BrandDealPipelineStats stats = 1;
+}
+
+message BrandDealServiceGetSummaryRequest {
+  string workspace_id = 1;
+  string deal_id = 2;
+}
+
+message BrandDealServiceGetSummaryResponse {
+  BrandDeal deal = 1;
+}
+
+message UpdateDeliverableRequest {
+  string workspace_id = 1;
+  string deal_id = 2;
+  string deliverables = 3;
+  string proof_publish_item_id = 4;
+}
+
+message UpdateDeliverableResponse {
+  BrandDeal deal = 1;
+}
+
+message UpdatePaymentRequest {
+  string workspace_id = 1;
+  string deal_id = 2;
+  double amount_paid = 3;
+  string settlement_reference = 4;
+}
+
+message UpdatePaymentResponse {
+  BrandDeal deal = 1;
+}
+
+message ListContractTemplatesRequest {
+  string workspace_id = 1;
+}
+
+message ContractTemplate {
+  string template_id = 1;
+  string title = 2;
+  string description = 3;
+  string default_terms = 4;
+}
+
+message ListContractTemplatesResponse {
+  repeated ContractTemplate templates = 1;
+}
+
+message AttachContractRequest {
+  string workspace_id = 1;
+  string deal_id = 2;
+  string evidence_id = 3;
+}
+
+message AttachContractResponse {
+  BrandDeal deal = 1;
+}
+
+message ListInquiriesRequest {
+  string workspace_id = 1;
+}
+
+message SponsorInquiry {
+  string inquiry_id = 1;
+  string workspace_id = 2;
+  string brand_name = 3;
+  string contact_email = 4;
+  string message = 5;
+  double estimated_budget = 6;
+  string status = 7;
+  string thread_id = 8;
+  google.protobuf.Timestamp received_at = 9;
+}
+
+message ListInquiriesResponse {
+  repeated SponsorInquiry inquiries = 1;
+}
+
+message SponsorInquiryServiceAcceptRequest {
+  string workspace_id = 1;
+  string inquiry_id = 2;
+  string deal_type = 3;
+  double agreed_value = 4;
+}
+
+message SponsorInquiryServiceAcceptResponse {
+  SponsorInquiry inquiry = 1;
+  BrandDeal deal = 2;
+}
+
+message SponsorInquiryServiceDeclineRequest {
+  string workspace_id = 1;
+  string inquiry_id = 2;
+  string reason = 3;
+}
+
+message SponsorInquiryServiceDeclineResponse {
+  SponsorInquiry inquiry = 1;
+}
+
+message SponsorInquiryServiceFlagRequest {
+  string workspace_id = 1;
+  string inquiry_id = 2;
+  string flag_reason = 3;
+}
+
+message SponsorInquiryServiceFlagResponse {
+  SponsorInquiry inquiry = 1;
+}
+
+message SponsorInquiryServiceGetStatsRequest {
+  string workspace_id = 1;
+}
+
+message SponsorInquiryServiceGetStatsResponse {
+  int32 total_inquiries = 1;
+  int32 pending_inquiries = 2;
+  int32 converted_inquiries = 3;
+  int32 declined_inquiries = 4;
+}
+
+message SponsorInquiryServiceSubmitRequest {
+  string workspace_id = 1;
+  string brand_name = 2;
+  string contact_email = 3;
+  string message = 4;
+  double proposed_budget = 5;
+}
+
+message SponsorInquiryServiceSubmitResponse {
+  bool accepted = 1;
+  string inquiry_id = 2;
+}
+
+message GetPerContentRequest {
+  string workspace_id = 1;
+  string platform = 2;
+  int32 lookback_days = 3;
+}
+
+message GetPerContentResponse {
+  repeated ContentROIMetric metrics = 1;
+}
+
+message GetRPMTrendsRequest {
+  string workspace_id = 1;
+  string platform = 2;
+  int32 periods = 3;
+}
+
+message GetRPMTrendsResponse {
+  repeated RPMTrendPoint trend_points = 1;
+  double average_rpm = 2;
+  bool alert_active = 3;
+}
+
+message GetROIRequest {
+  string workspace_id = 1;
+  string content_id = 2;
+}
+
+message GetROIResponse {
+  ContentROIMetric metric = 1;
+}
+
+message GetTopPerformersRequest {
+  string workspace_id = 1;
+  string sort_by = 2; // revenue, rpm, roi
+  int32 limit = 3;
+}
+
+message GetTopPerformersResponse {
+  repeated ContentROIMetric top_performers = 1;
+}
+
+message TaxReportServiceGetReportRequest {
+  string workspace_id = 1;
+  TaxReportPeriod period = 2;
+  int32 year = 3;
+  int32 period_number = 4;
+}
+
+message TaxReportServiceGetReportResponse {
+  TaxReportSummary summary = 1;
+}
+
+message ExportTaxReportRequest {
+  string workspace_id = 1;
+  TaxReportPeriod period = 2;
+  int32 year = 3;
+  int32 period_number = 4;
+  TaxReportFormat format = 5;
+}
+
+message ExportTaxReportResponse {
+  TaxReportSummary summary = 1;
+  bytes report_data = 2;
+  string file_name = 3;
+}
+
+// ----------------------------------------------------------------------------
+// Services
+// ----------------------------------------------------------------------------
+
+service LinkInBioService {
+  rpc CreatePage(CreatePageRequest) returns (CreatePageResponse);
+  rpc GetPage(GetPageRequest) returns (GetPageResponse);
+  rpc UpdatePage(UpdatePageRequest) returns (UpdatePageResponse);
+  rpc Save(LinkInBioServiceSaveRequest) returns (LinkInBioServiceSaveResponse);
+  rpc GetAnalytics(GetAnalyticsRequest) returns (GetAnalyticsResponse);
+  rpc Reorder(LinkInBioServiceReorderRequest) returns (LinkInBioServiceReorderResponse);
+  rpc ToggleLink(ToggleLinkRequest) returns (ToggleLinkResponse);
+  rpc UpdateTheme(UpdateThemeRequest) returns (UpdateThemeResponse);
+  rpc ScanLink(ScanLinkRequest) returns (ScanLinkResponse);
+  rpc ReportLink(ReportLinkRequest) returns (ReportLinkResponse);
+  rpc VerifyCustomDomain(VerifyCustomDomainRequest) returns (VerifyCustomDomainResponse);
+}
+
+service MediaKitService {
+  rpc Generate(MediaKitServiceGenerateRequest) returns (MediaKitServiceGenerateResponse);
+  rpc Get(MediaKitServiceGetRequest) returns (MediaKitServiceGetResponse);
+  rpc GetKit(GetKitRequest) returns (GetKitResponse);
+  rpc Export(MediaKitServiceExportRequest) returns (MediaKitServiceExportResponse);
+  rpc SetDirectoryProfile(SetDirectoryProfileRequest) returns (SetDirectoryProfileResponse);
+}
+
+service RateCardService {
+  rpc Create(RateCardServiceCreateRequest) returns (RateCardServiceCreateResponse);
+  rpc GetRateCard(GetRateCardRequest) returns (GetRateCardResponse);
+  rpc List(RateCardServiceListRequest) returns (RateCardServiceListResponse);
+  rpc Save(RateCardServiceSaveRequest) returns (RateCardServiceSaveResponse);
+  rpc DeleteItem(RateCardServiceDeleteItemRequest) returns (RateCardServiceDeleteItemResponse);
+  rpc Reorder(RateCardServiceReorderRequest) returns (RateCardServiceReorderResponse);
+  rpc CompareScope(CompareScopeRequest) returns (CompareScopeResponse);
+  rpc AISuggest(RateCardServiceAISuggestRequest) returns (RateCardServiceAISuggestResponse);
+}
+
+service BrandDealService {
+  rpc Create(BrandDealServiceCreateRequest) returns (BrandDealServiceCreateResponse);
+  rpc UpdateStatus(BrandDealServiceUpdateStatusRequest) returns (BrandDealServiceUpdateStatusResponse);
+  rpc List(BrandDealServiceListRequest) returns (BrandDealServiceListResponse);
+  rpc ListDeals(ListDealsRequest) returns (ListDealsResponse);
+  rpc ListPartnerships(ListPartnershipsRequest) returns (ListPartnershipsResponse);
+  rpc GetPipelineStats(GetPipelineStatsRequest) returns (GetPipelineStatsResponse);
+  rpc GetSummary(BrandDealServiceGetSummaryRequest) returns (BrandDealServiceGetSummaryResponse);
+  rpc UpdateDeliverable(UpdateDeliverableRequest) returns (UpdateDeliverableResponse);
+  rpc UpdatePayment(UpdatePaymentRequest) returns (UpdatePaymentResponse);
+  rpc ListContractTemplates(ListContractTemplatesRequest) returns (ListContractTemplatesResponse);
+  rpc AttachContract(AttachContractRequest) returns (AttachContractResponse);
+}
+
+service SponsorInquiryService {
+  rpc ListInquiries(ListInquiriesRequest) returns (ListInquiriesResponse);
+  rpc Accept(SponsorInquiryServiceAcceptRequest) returns (SponsorInquiryServiceAcceptResponse);
+  rpc Decline(SponsorInquiryServiceDeclineRequest) returns (SponsorInquiryServiceDeclineResponse);
+  rpc Flag(SponsorInquiryServiceFlagRequest) returns (SponsorInquiryServiceFlagResponse);
+  rpc GetStats(SponsorInquiryServiceGetStatsRequest) returns (SponsorInquiryServiceGetStatsResponse);
+  rpc Submit(SponsorInquiryServiceSubmitRequest) returns (SponsorInquiryServiceSubmitResponse);
+}
+
+service RevenueTrackerService {
+  rpc GetPerContent(GetPerContentRequest) returns (GetPerContentResponse);
+  rpc GetRPMTrends(GetRPMTrendsRequest) returns (GetRPMTrendsResponse);
+  rpc GetROI(GetROIRequest) returns (GetROIResponse);
+  rpc GetTopPerformers(GetTopPerformersRequest) returns (GetTopPerformersResponse);
+}
+
+service TaxReportService {
+  rpc GetReport(TaxReportServiceGetReportRequest) returns (TaxReportServiceGetReportResponse);
+  rpc ExportTaxReport(ExportTaxReportRequest) returns (ExportTaxReportResponse);
+}
