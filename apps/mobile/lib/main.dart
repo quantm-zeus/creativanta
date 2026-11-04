@@ -8,6 +8,7 @@ import 'package:creativanta_mobile/ui/auth/sign_in_screen.dart';
 import 'package:creativanta_mobile/ui/auth/workspace_switcher_sheet.dart';
 import 'package:creativanta_mobile/ui/notification/notification_sheet.dart';
 import 'package:creativanta_mobile/ui/help/help_sheet.dart';
+import 'package:creativanta_mobile/ui/home/home_dashboard_view.dart';
 import 'package:creativanta_mobile/ui/home/why_number_sheet.dart';
 import 'package:creativanta_mobile/ui/trend/trend_radar_view.dart';
 
@@ -989,6 +990,25 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(height: 16),
+                HomeDashboardView(
+                  activeMode: activeMode,
+                  onOpenModePicker: _openOperatorModeSheet,
+                  onSwitchMode: (mode) async {
+                    await _adapter.switchOperatorMode(mode);
+                    if (mounted) setState(() {});
+                  },
+                  onNavigateToRoute: (route) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Chuyển hướng đến $route'),
+                        behavior: SnackBarBehavior.floating,
+                        duration: const Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                  initialUiState: _uiState,
                 ),
               ],
               const SizedBox(height: 22),

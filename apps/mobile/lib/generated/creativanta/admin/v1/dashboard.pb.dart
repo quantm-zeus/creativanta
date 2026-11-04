@@ -391,6 +391,7 @@ class OnboardingChecklist extends $pb.GeneratedMessage {
     $core.int? completedCount,
     $core.int? totalSteps,
     $core.bool? isClosedLoopComplete,
+    $core.bool? isFirstValueComplete,
   }) {
     final result = OnboardingChecklist._();
     if (steps != null) result.steps.addAll(steps);
@@ -398,6 +399,8 @@ class OnboardingChecklist extends $pb.GeneratedMessage {
     if (totalSteps != null) result.totalSteps = totalSteps;
     if (isClosedLoopComplete != null)
       result.isClosedLoopComplete = isClosedLoopComplete;
+    if (isFirstValueComplete != null)
+      result.isFirstValueComplete = isFirstValueComplete;
     return result;
   }
 
@@ -420,6 +423,7 @@ class OnboardingChecklist extends $pb.GeneratedMessage {
     ..aI(2, _omitFieldNames ? '' : 'completedCount')
     ..aI(3, _omitFieldNames ? '' : 'totalSteps')
     ..aOB(4, _omitFieldNames ? '' : 'isClosedLoopComplete')
+    ..aOB(5, _omitFieldNames ? '' : 'isFirstValueComplete')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -474,6 +478,15 @@ class OnboardingChecklist extends $pb.GeneratedMessage {
   $core.bool hasIsClosedLoopComplete() => $_has(3);
   @$pb.TagNumber(4)
   void clearIsClosedLoopComplete() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get isFirstValueComplete => $_getBF(4);
+  @$pb.TagNumber(5)
+  set isFirstValueComplete($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasIsFirstValueComplete() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearIsFirstValueComplete() => $_clearField(5);
 }
 
 class WhyThisNumberDetails extends $pb.GeneratedMessage {

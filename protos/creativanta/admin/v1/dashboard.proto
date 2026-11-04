@@ -74,6 +74,7 @@ message OnboardingChecklist {
   int32 completed_count = 2;
   int32 total_steps = 3;
   bool is_closed_loop_complete = 4;
+  bool is_first_value_complete = 5;
 }
 
 message WhyThisNumberDetails {

@@ -79,6 +79,7 @@ func TestSixModeIdentitiesRetained(t *testing.T) {
 
 func TestUnbuiltActionUnavailableWithExplanation(t *testing.T) {
 	svc := home.NewService(nil)
+	svc.SetPhase("P0")
 	ctx := context.Background()
 
 	// Get decision cards for Seller mode
@@ -244,6 +245,7 @@ func TestOnboardingChecklistProgress(t *testing.T) {
 
 func TestP105NoConnectorRequiredForAuthorizedImportAndDataRepair(t *testing.T) {
 	svc := home.NewService(nil)
+	svc.SetPhase("P1")
 	now := time.Date(2026, 11, 2, 8, 0, 0, 0, time.UTC)
 
 	ownerCtx := home.WithCallerContext(context.Background(), home.CallerContext{
@@ -758,5 +760,487 @@ func TestP105PilotMeasurementsRecordActualUnknowns(t *testing.T) {
 		report.NetUnitEconomics.UnknownComponentCounts["cogs"] != 1 ||
 		report.NetUnitEconomics.UnknownComponentCounts["shipping_costs"] != 1 {
 		t.Fatalf("expected NetUnitEconomics to record unknown cogs=1 and shipping_costs=1, got %+v", report.NetUnitEconomics)
+	}
+}
+
+// -----------------------------------------------------------------------------
+// P8-01 Acceptance Suite: Six-Mode Home, Parity & Onboarding Completion
+// -----------------------------------------------------------------------------
+
+func TestP801AcceptanceTarget1_AllSixModePriorities(t *testing.T) {
+	svc := home.NewService(nil)
+	ctx := context.Background()
+
+	type modeTestCase struct {
+		mode            adminv1.OperatorModeId
+		name            string
+		expectedLen     int
+		expectedCardIds []string
+		expectedRoutes  []string
+		expectedModules []string
+	}
+
+	testCases := []modeTestCase{
+		{
+			mode:        adminv1.OperatorModeId_OPERATOR_MODE_ID_CREATOR,
+			name:        "Creator Mode",
+			expectedLen: 7,
+			expectedCardIds: []string{
+				"card-creator-trend",
+				"card-creator-ideas",
+				"card-creator-script",
+				"card-creator-publish",
+				"card-creator-comments",
+				"card-creator-earnings",
+				"card-creator-repair",
+			},
+			expectedRoutes: []string{
+				"/kham-pha",
+				"/ideas",
+				"/scripts",
+				"/xuat-ban",
+				"/inbox",
+				"/finance",
+				"/settings/diagnostics",
+			},
+			expectedModules: []string{"M02", "M05", "M06", "M11", "M12", "M19", "M22"},
+		},
+		{
+			mode:        adminv1.OperatorModeId_OPERATOR_MODE_ID_SELLER,
+			name:        "Seller Mode",
+			expectedLen: 5,
+			expectedCardIds: []string{
+				"card-seller-orders",
+				"card-seller-revenue",
+				"card-seller-stock",
+				"card-seller-profit",
+				"card-seller-messages",
+			},
+			expectedRoutes: []string{
+				"/kinh-doanh",
+				"/finance",
+				"/kinh-doanh",
+				"/finance",
+				"/inbox",
+			},
+			expectedModules: []string{"M13", "M19", "M13", "M19", "M12"},
+		},
+		{
+			mode:        adminv1.OperatorModeId_OPERATOR_MODE_ID_AFFILIATE_OPERATOR,
+			name:        "Affiliate Operator Mode",
+			expectedLen: 5,
+			expectedCardIds: []string{
+				"card-affiliate-links",
+				"card-affiliate-opportunities",
+				"card-affiliate-offers",
+				"card-affiliate-coupons",
+				"card-affiliate-attribution",
+			},
+			expectedRoutes: []string{
+				"/affiliates",
+				"/kham-pha",
+				"/offers",
+				"/coupons",
+				"/attribution",
+			},
+			expectedModules: []string{"M16", "M04", "M14", "M14", "M16"},
+		},
+		{
+			mode:        adminv1.OperatorModeId_OPERATOR_MODE_ID_LIVE_OPERATOR,
+			name:        "Live Operator Mode",
+			expectedLen: 5,
+			expectedCardIds: []string{
+				"card-live-readiness",
+				"card-live-cue",
+				"card-live-offers",
+				"card-live-comments",
+				"card-live-highlights",
+			},
+			expectedRoutes: []string{
+				"/live",
+				"/live",
+				"/offers",
+				"/inbox",
+				"/studio",
+			},
+			expectedModules: []string{"M17", "M17", "M14", "M12", "M09"},
+		},
+		{
+			mode:        adminv1.OperatorModeId_OPERATOR_MODE_ID_AGENCY_MCN,
+			name:        "Agency / MCN Mode",
+			expectedLen: 5,
+			expectedCardIds: []string{
+				"card-agency-approvals",
+				"card-agency-diagnostics",
+				"card-agency-creators",
+				"card-agency-deliverables",
+				"card-agency-reports",
+			},
+			expectedRoutes: []string{
+				"/workflows",
+				"/settings/diagnostics",
+				"/workspaces",
+				"/campaigns",
+				"/creator-pro",
+			},
+			expectedModules: []string{"M20", "M22", "M22", "M14", "S16"},
+		},
+		{
+			mode:        adminv1.OperatorModeId_OPERATOR_MODE_ID_BRAND_COLLABORATION,
+			name:        "Brand Collaboration Mode",
+			expectedLen: 5,
+			expectedCardIds: []string{
+				"card-brand-inquiries",
+				"card-brand-deliverables",
+				"card-brand-proof",
+				"card-brand-invoices",
+				"card-brand-evidence",
+			},
+			expectedRoutes: []string{
+				"/creator-pro",
+				"/xuat-ban",
+				"/seeding",
+				"/finance",
+				"/attribution",
+			},
+			expectedModules: []string{"S16", "M11", "M18", "M19", "M16"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := svc.GetDecisionCards(ctx, connect.NewRequest(&adminv1.GetDecisionCardsRequest{
+				WorkspaceId:  &commonv1.UUID{Value: testWorkspaceID},
+				OperatorMode: tc.mode,
+			}))
+			if err != nil {
+				t.Fatalf("GetDecisionCards failed for %s: %v", tc.name, err)
+			}
+			cards := resp.Msg.Cards
+			if len(cards) != tc.expectedLen {
+				t.Fatalf("%s: expected %d cards, got %d", tc.name, tc.expectedLen, len(cards))
+			}
+
+			for i, card := range cards {
+				// Verify card identity and ordering
+				expectedID := tc.expectedCardIds[i]
+				if card.CardId != expectedID {
+					t.Errorf("%s rank %d: expected card %s, got %s", tc.name, i+1, expectedID, card.CardId)
+				}
+
+				// Verify priority rank is strictly 1-indexed and ascending
+				if card.PriorityRank != int32(i+1) {
+					t.Errorf("%s rank %d: expected PriorityRank=%d, got %d", tc.name, i+1, i+1, card.PriorityRank)
+				}
+
+				// Verify Action is Available in P8
+				if !card.IsActionAvailable {
+					t.Errorf("%s card %s must be IsActionAvailable=true in P8", tc.name, card.CardId)
+				}
+				if card.UnavailableReason != "" {
+					t.Errorf("%s card %s must have empty UnavailableReason in P8, got %q", tc.name, card.CardId, card.UnavailableReason)
+				}
+
+				// Verify CTA and Route
+				if card.PrimaryCtaLabel == "" {
+					t.Errorf("%s card %s missing PrimaryCtaLabel (RULE-M01-001 violation)", tc.name, card.CardId)
+				}
+				expectedRoute := tc.expectedRoutes[i]
+				if card.PrimaryCtaRoute != expectedRoute {
+					t.Errorf("%s card %s: expected route %s, got %s", tc.name, card.CardId, expectedRoute, card.PrimaryCtaRoute)
+				}
+
+				// Verify WhyThisMatters explanation
+				if card.WhyThisMatters == "" {
+					t.Errorf("%s card %s missing WhyThisMatters (RULE-M01-003 violation)", tc.name, card.CardId)
+				}
+
+				// Verify module reference
+				expectedMod := tc.expectedModules[i]
+				if card.ModuleRef != expectedMod {
+					t.Errorf("%s card %s: expected ModuleRef %s, got %s", tc.name, card.CardId, expectedMod, card.ModuleRef)
+				}
+			}
+		})
+	}
+}
+
+func TestP801AcceptanceTarget2_FirstValueAndFullLoopCompletionDistinct(t *testing.T) {
+	svc := home.NewService(nil)
+	userCtx := home.WithCallerContext(context.Background(), home.CallerContext{
+		UserID:        "user_p8_onboarding",
+		WorkspaceID:   testWorkspaceID,
+		WorkspaceRole: "owner",
+	})
+
+	// 1. Initial State: 0/5 completed
+	homeResp, err := svc.GetMobileHome(userCtx, connect.NewRequest(&adminv1.GetMobileHomeRequest{
+		WorkspaceId: &commonv1.UUID{Value: testWorkspaceID},
+		ActiveMode:  adminv1.OperatorModeId_OPERATOR_MODE_ID_CREATOR,
+	}))
+	if err != nil {
+		t.Fatalf("GetMobileHome failed: %v", err)
+	}
+	chk := homeResp.Msg.Onboarding
+	if chk.CompletedCount != 0 {
+		t.Fatalf("expected initial CompletedCount=0, got %d", chk.CompletedCount)
+	}
+	if chk.IsFirstValueComplete {
+		t.Fatalf("expected initial IsFirstValueComplete=false")
+	}
+	if chk.IsClosedLoopComplete {
+		t.Fatalf("expected initial IsClosedLoopComplete=false")
+	}
+	// Verify all 5 steps are available in P8
+	for _, step := range chk.Steps {
+		if !step.IsAvailable {
+			t.Fatalf("step %d (%s) must be IsAvailable=true in P8", step.StepNumber, step.StepKey)
+		}
+	}
+
+	// 2. Complete Step 1: Connect Account or Import Data
+	// Invariant: Completing step 1 achieves FIRST VALUE, but does NOT complete the FULL LOOP!
+	step1Resp, err := svc.CompleteOnboardingStep(userCtx, connect.NewRequest(&adminv1.CompleteOnboardingStepRequest{
+		WorkspaceId: &commonv1.UUID{Value: testWorkspaceID},
+		StepNumber:  1,
+	}))
+	if err != nil {
+		t.Fatalf("CompleteOnboardingStep 1 failed: %v", err)
+	}
+	chk1 := step1Resp.Msg.UpdatedChecklist
+	if chk1.CompletedCount != 1 {
+		t.Fatalf("expected CompletedCount=1 after step 1, got %d", chk1.CompletedCount)
+	}
+	if !chk1.IsFirstValueComplete {
+		t.Fatalf("ACCEPTANCE TARGET 2 VIOLATION: step 1 completed must set IsFirstValueComplete=true")
+	}
+	if chk1.IsClosedLoopComplete {
+		t.Fatalf("ACCEPTANCE TARGET 2 VIOLATION: step 1 completion must NOT set IsClosedLoopComplete=true! Full loop requires all 5 steps.")
+	}
+
+	// 3. Complete Step 2: Select Offer
+	step2Resp, err := svc.CompleteOnboardingStep(userCtx, connect.NewRequest(&adminv1.CompleteOnboardingStepRequest{
+		WorkspaceId: &commonv1.UUID{Value: testWorkspaceID},
+		StepNumber:  2,
+	}))
+	if err != nil {
+		t.Fatalf("CompleteOnboardingStep 2 failed: %v", err)
+	}
+	chk2 := step2Resp.Msg.UpdatedChecklist
+	if chk2.CompletedCount != 2 || !chk2.IsFirstValueComplete || chk2.IsClosedLoopComplete {
+		t.Fatalf("step 2 progress mismatch: count=%d first=%v closed=%v", chk2.CompletedCount, chk2.IsFirstValueComplete, chk2.IsClosedLoopComplete)
+	}
+
+	// 4. Complete Step 3: Create AI Content (M06/M07) — P8 unlocked!
+	step3Resp, err := svc.CompleteOnboardingStep(userCtx, connect.NewRequest(&adminv1.CompleteOnboardingStepRequest{
+		WorkspaceId: &commonv1.UUID{Value: testWorkspaceID},
+		StepNumber:  3,
+	}))
+	if err != nil {
+		t.Fatalf("CompleteOnboardingStep 3 should succeed in P8: %v", err)
+	}
+	chk3 := step3Resp.Msg.UpdatedChecklist
+	if chk3.CompletedCount != 3 || chk3.IsClosedLoopComplete {
+		t.Fatalf("step 3 progress mismatch: count=%d closed=%v", chk3.CompletedCount, chk3.IsClosedLoopComplete)
+	}
+
+	// 5. Complete Step 4: Publish (M11) — P8 unlocked!
+	step4Resp, err := svc.CompleteOnboardingStep(userCtx, connect.NewRequest(&adminv1.CompleteOnboardingStepRequest{
+		WorkspaceId: &commonv1.UUID{Value: testWorkspaceID},
+		StepNumber:  4,
+	}))
+	if err != nil {
+		t.Fatalf("CompleteOnboardingStep 4 should succeed in P8: %v", err)
+	}
+	chk4 := step4Resp.Msg.UpdatedChecklist
+	if chk4.CompletedCount != 4 || chk4.IsClosedLoopComplete {
+		t.Fatalf("step 4 progress mismatch: count=%d closed=%v", chk4.CompletedCount, chk4.IsClosedLoopComplete)
+	}
+
+	// 6. Complete Step 5: Track Outcome (M19) — FULL LOOP COMPLETION!
+	step5Resp, err := svc.CompleteOnboardingStep(userCtx, connect.NewRequest(&adminv1.CompleteOnboardingStepRequest{
+		WorkspaceId: &commonv1.UUID{Value: testWorkspaceID},
+		StepNumber:  5,
+	}))
+	if err != nil {
+		t.Fatalf("CompleteOnboardingStep 5 failed: %v", err)
+	}
+	chk5 := step5Resp.Msg.UpdatedChecklist
+	if chk5.CompletedCount != 5 {
+		t.Fatalf("expected 5/5 completed steps, got %d", chk5.CompletedCount)
+	}
+	if !chk5.IsFirstValueComplete {
+		t.Fatalf("expected IsFirstValueComplete=true")
+	}
+	if !chk5.IsClosedLoopComplete {
+		t.Fatalf("ACCEPTANCE TARGET 2 VIOLATION: all 5 steps complete must set IsClosedLoopComplete=true!")
+	}
+
+	// 7. Negative & denial cases:
+	// Out-of-bounds step number <1 or >5
+	if _, err := svc.CompleteOnboardingStep(userCtx, connect.NewRequest(&adminv1.CompleteOnboardingStepRequest{
+		WorkspaceId: &commonv1.UUID{Value: testWorkspaceID},
+		StepNumber:  0,
+	})); err == nil {
+		t.Fatalf("expected step 0 to fail with InvalidArgument")
+	}
+	if _, err := svc.CompleteOnboardingStep(userCtx, connect.NewRequest(&adminv1.CompleteOnboardingStepRequest{
+		WorkspaceId: &commonv1.UUID{Value: testWorkspaceID},
+		StepNumber:  6,
+	})); err == nil {
+		t.Fatalf("expected step 6 to fail with InvalidArgument")
+	}
+	// Missing workspace ID
+	if _, err := svc.CompleteOnboardingStep(userCtx, connect.NewRequest(&adminv1.CompleteOnboardingStepRequest{
+		StepNumber: 1,
+	})); err == nil {
+		t.Fatalf("expected missing workspace_id to fail")
+	}
+}
+
+func TestP801AcceptanceTarget3_SharedUIStatesAndRouteMappings(t *testing.T) {
+	svc := home.NewService(nil)
+	ctx := context.Background()
+
+	// 1. Verify 5 canonical UI states are defined in adminv1.UIStateType
+	states := []adminv1.UIStateType{
+		adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+		adminv1.UIStateType_UI_STATE_TYPE_LOADING,
+		adminv1.UIStateType_UI_STATE_TYPE_EMPTY,
+		adminv1.UIStateType_UI_STATE_TYPE_ERROR,
+		adminv1.UIStateType_UI_STATE_TYPE_REPAIR,
+	}
+	for _, s := range states {
+		if s == adminv1.UIStateType_UI_STATE_TYPE_UNSPECIFIED {
+			t.Errorf("unspecified UI state encountered")
+		}
+	}
+
+	// 2. Verify all mapped routes exist across decision cards in 6 modes
+	validRoutePrefixes := []string{
+		"/kham-pha",
+		"/ideas",
+		"/scripts",
+		"/studio",
+		"/xuat-ban",
+		"/inbox",
+		"/kinh-doanh",
+		"/finance",
+		"/affiliates",
+		"/offers",
+		"/coupons",
+		"/attribution",
+		"/live",
+		"/workflows",
+		"/creator-pro",
+		"/workspaces",
+		"/campaigns",
+		"/seeding",
+		"/settings/diagnostics",
+	}
+
+	for _, mode := range []adminv1.OperatorModeId{
+		adminv1.OperatorModeId_OPERATOR_MODE_ID_CREATOR,
+		adminv1.OperatorModeId_OPERATOR_MODE_ID_SELLER,
+		adminv1.OperatorModeId_OPERATOR_MODE_ID_AFFILIATE_OPERATOR,
+		adminv1.OperatorModeId_OPERATOR_MODE_ID_LIVE_OPERATOR,
+		adminv1.OperatorModeId_OPERATOR_MODE_ID_AGENCY_MCN,
+		adminv1.OperatorModeId_OPERATOR_MODE_ID_BRAND_COLLABORATION,
+	} {
+		resp, err := svc.GetDecisionCards(ctx, connect.NewRequest(&adminv1.GetDecisionCardsRequest{
+			WorkspaceId:  &commonv1.UUID{Value: testWorkspaceID},
+			OperatorMode: mode,
+		}))
+		if err != nil {
+			t.Fatalf("GetDecisionCards for mode %v failed: %v", mode, err)
+		}
+		for _, card := range resp.Msg.Cards {
+			matched := false
+			for _, prefix := range validRoutePrefixes {
+				if card.PrimaryCtaRoute == prefix {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				t.Errorf("card %s has unmapped primary_cta_route: %s", card.CardId, card.PrimaryCtaRoute)
+			}
+		}
+	}
+
+	// 3. Test Data Repair gap rendering with UIStateType = REPAIR
+	importReq := home.AuthorizedImportRequest{
+		WorkspaceID:            testWorkspaceID,
+		ConnectedAccountsCount: 0,
+		ProductsCount:          1,
+		OrdersCount:            1,
+		CostsCount:             1,
+		SettlementsCount:       0,
+		GrossRevenueCents:      150000,
+		KnownCostsCents:        20000,
+		Currency:               "VND",
+		RepairGaps: []home.DataRepairGap{
+			{
+				GapID:       "gap-cogs-unmatched",
+				GapKind:     "missing_cogs",
+				Title:       "Thiếu giá vốn hàng bán (COGS)",
+				Reason:      "SKU-REPAIR-1 chưa có hóa đơn chứng từ giá vốn đầu vào.",
+				RepairCTA:   "Cập nhật hóa đơn chi phí",
+				RepairRoute: "/kinh-doanh",
+				AmountCents: 50000,
+				Currency:    "VND",
+				Resolved:    false,
+			},
+		},
+		IsDemoFixture: false,
+		ImportedAt:    time.Now().UTC(),
+	}
+	_, err := svc.IngestAuthorizedImport(ctx, importReq)
+	if err != nil {
+		t.Fatalf("IngestAuthorizedImport failed: %v", err)
+	}
+
+	// Fetch cards as Manager: should include the repair card with state REPAIR
+	managerCardsResp, err := svc.GetDecisionCards(ctx, connect.NewRequest(&adminv1.GetDecisionCardsRequest{
+		WorkspaceId:  &commonv1.UUID{Value: testWorkspaceID},
+		OperatorMode: adminv1.OperatorModeId_OPERATOR_MODE_ID_SELLER,
+	}))
+	if err != nil {
+		t.Fatalf("GetDecisionCards failed: %v", err)
+	}
+
+	foundRepairCard := false
+	for _, c := range managerCardsResp.Msg.Cards {
+		if c.CardFamily == "data_repair" {
+			foundRepairCard = true
+			if c.StateType != adminv1.UIStateType_UI_STATE_TYPE_REPAIR {
+				t.Errorf("expected repair card to have StateType=REPAIR, got %v", c.StateType)
+			}
+			if c.PrimaryCtaRoute != "/kinh-doanh" {
+				t.Errorf("expected repair route /kinh-doanh, got %s", c.PrimaryCtaRoute)
+			}
+		}
+	}
+	if !foundRepairCard {
+		t.Fatalf("expected data repair card to be surfaced in decision cards")
+	}
+
+	// Fetch cards as Viewer: financial and repair cards MUST be redacted (RBAC security check)
+	viewerCtx := home.WithCallerContext(ctx, home.CallerContext{
+		UserID:        "user_viewer_safe",
+		WorkspaceID:   testWorkspaceID,
+		WorkspaceRole: "viewer",
+	})
+	viewerCardsResp, err := svc.GetDecisionCards(viewerCtx, connect.NewRequest(&adminv1.GetDecisionCardsRequest{
+		WorkspaceId:  &commonv1.UUID{Value: testWorkspaceID},
+		OperatorMode: adminv1.OperatorModeId_OPERATOR_MODE_ID_SELLER,
+	}))
+	if err != nil {
+		t.Fatalf("GetDecisionCards as viewer failed: %v", err)
+	}
+	for _, c := range viewerCardsResp.Msg.Cards {
+		if c.CardFamily == "data_repair" || c.ModuleRef == "M19" {
+			t.Fatalf("SECURITY VIOLATION: viewer was exposed to financial or repair card %s!", c.CardId)
+		}
 	}
 }

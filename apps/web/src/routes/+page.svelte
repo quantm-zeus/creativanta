@@ -6,6 +6,12 @@
   import { modeStore, type OperatorModeId } from '$lib/constants/modes';
   import { helpStore } from '$lib/help/store';
   import { evaluateMorningBriefSchedule, evaluateP1PilotCohort } from '$lib/p1_first_value';
+  import {
+    MODE_DECISION_CARDS,
+    CANONICAL_ONBOARDING_STEPS,
+    evaluateOnboardingState,
+    type WebDecisionCard
+  } from '$lib/home/decision_engine';
 
   let briefTimezone = $state<'Asia/Ho_Chi_Minh' | 'America/New_York'>('Asia/Ho_Chi_Minh');
   let briefSchedule = $derived(
@@ -47,22 +53,22 @@
 
   let selectedBreakdown = $state<MetricBreakdown | null>(null);
 
-  // Onboarding steps progress
-  let onboardingSteps = $state([
-    { id: 'step-1', label: '1. Chọn vai trò vận hành phù hợp (6 chế độ)', completed: true },
-    { id: 'step-2', label: '2. Kết nối kênh TikTok Shop / Shopee', completed: false },
-    { id: 'step-3', label: '3. Khám phá 3 xu hướng ngành hàng nổi bật', completed: false },
-    { id: 'step-4', label: '4. Tạo kịch bản video AI đầu tiên', completed: false },
-    { id: 'step-5', label: '5. Cài đặt thông báo SLA và nhịp việc', completed: false }
-  ]);
+  // Canonical 5-step onboarding state (Acceptance Target 2)
+  let completedStepNumbers = $state<number[]>([1]);
+  let onboardingProgress = $derived(evaluateOnboardingState(completedStepNumbers));
 
-  let completedStepsCount = $derived(onboardingSteps.filter((s) => s.completed).length);
-
-  function toggleOnboardingStep(id: string) {
-    onboardingSteps = onboardingSteps.map((s) =>
-      s.id === id ? { ...s, completed: !s.completed } : s
-    );
+  function toggleStep(stepNum: number) {
+    if (completedStepNumbers.includes(stepNum)) {
+      completedStepNumbers = completedStepNumbers.filter((n) => n !== stepNum);
+    } else {
+      completedStepNumbers = [...completedStepNumbers, stepNum].sort((a, b) => a - b);
+    }
   }
+
+  // Active mode decision cards (Acceptance Target 1: All 6 Modes)
+  let activeDecisionCards = $derived(
+    MODE_DECISION_CARDS[currentMode] || MODE_DECISION_CARDS.creator
+  );
 
   // Pre-configured "Why This Number" breakdowns
   const BREAKDOWNS: Record<string, MetricBreakdown> = {
@@ -296,38 +302,59 @@
     </div>
   {/if}
 
-  <!-- Onboarding 5-Step Checklist (M01 Pack 01 §S05.1) -->
+  <!-- Onboarding 5-Step Checklist (Target 2: First-Value & Full-Loop Completion Distinct) -->
   <div class="rounded-xl border border-[#e7e2d7] bg-[#ffffff] p-5 shadow-xs">
-    <div class="flex items-center justify-between border-b border-[#f4f0e8] pb-3 mb-3">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-[#f4f0e8] pb-3 mb-3 gap-2">
       <div>
-        <h3 class="text-sm font-bold text-[#242924]">
-          Lộ trình làm quen hệ thống (5 Bước khởi đầu)
-        </h3>
+        <div class="flex items-center gap-2">
+          <h3 class="text-sm font-bold text-[#242924]">
+            Lộ trình làm quen hệ thống (5 Bước vận hành chuẩn)
+          </h3>
+          {#if onboardingProgress.isClosedLoopComplete}
+            <span class="rounded bg-[#274333] px-2 py-0.5 text-[10px] font-bold text-[#ffffff] uppercase tracking-wider">
+              🎉 Chu trình khép kín hoàn tất
+            </span>
+          {:else if onboardingProgress.isFirstValueComplete}
+            <span class="rounded bg-[#eaf4ed] px-2 py-0.5 text-[10px] font-bold text-[#274333] uppercase tracking-wider border border-[#274333]/30">
+              🌟 First-Value đạt được
+            </span>
+          {/if}
+        </div>
         <span class="text-xs text-[#616c63]">
-          Tiến độ: {completedStepsCount}/5 bước hoàn tất
+          Tiến độ: {onboardingProgress.completedCount}/5 bước hoàn tất
+          {#if !onboardingProgress.isFirstValueComplete}
+            · Hoàn thành Bước 1 để kích hoạt First-Value
+          {:else if !onboardingProgress.isClosedLoopComplete}
+            · Hoàn thành cả 5 bước để khép kín chu trình
+          {/if}
         </span>
       </div>
-      <div class="w-32 bg-[#f4f0e8] rounded-full h-2 overflow-hidden">
+      <div class="w-36 bg-[#f4f0e8] rounded-full h-2.5 overflow-hidden">
         <div
           class="bg-[#274333] h-full transition-all duration-300"
-          style="width: {(completedStepsCount / 5) * 100}%"
+          style="width: {(onboardingProgress.completedCount / 5) * 100}%"
         ></div>
       </div>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-      {#each onboardingSteps as step}
+      {#each onboardingProgress.steps as step}
         <button
           type="button"
-          onclick={() => toggleOnboardingStep(step.id)}
-          class="flex items-center gap-2.5 rounded-lg border p-2.5 text-left text-xs transition-colors {step.completed ? 'border-[#274333]/20 bg-[#fbf9f5] text-[#274333]' : 'border-[#e7e2d7] bg-[#ffffff] text-[#616c63] hover:border-[#274333]'}"
+          onclick={() => toggleStep(step.stepNumber)}
+          class="flex items-start gap-2.5 rounded-lg border p-2.5 text-left text-xs transition-colors {step.isCompleted ? 'border-[#274333]/30 bg-[#fbf9f5] text-[#274333]' : 'border-[#e7e2d7] bg-[#ffffff] text-[#616c63] hover:border-[#274333]'}"
         >
-          <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full {step.completed ? 'bg-[#274333] text-[#ffffff]' : 'border border-[#e7e2d7] text-transparent'}">
+          <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full mt-0.5 {step.isCompleted ? 'bg-[#274333] text-[#ffffff]' : 'border border-[#e7e2d7] text-transparent'}">
             ✓
           </span>
-          <span class="font-medium {step.completed ? 'line-through opacity-80' : ''}">
-            {step.label}
-          </span>
+          <div class="space-y-0.5">
+            <span class="font-semibold block {step.isCompleted ? 'line-through opacity-80' : 'text-[#242924]'}">
+              {step.title}
+            </span>
+            <span class="text-[11px] text-[#616c63] line-clamp-2">
+              {step.description}
+            </span>
+          </div>
         </button>
       {/each}
     </div>
@@ -438,114 +465,53 @@
       </div>
     </div>
 
-    <!-- Mode-Specific Decision Grid -->
+    <!-- Mode-Specific Decision Grid (Acceptance Target 1: All 6 Modes) -->
     <div class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-      <!-- Card 1: Mode Core Priority -->
-      <JobCard
-        title="Quyết định trọng tâm ({modeDef.shortLabel})"
-        moduleTag={modeDef.primaryModule}
-        description={modeDef.priorityBrief}
-      >
-        <div class="space-y-3">
-          <div class="rounded bg-[#fbf9f5] p-3 border border-[#e7e2d7]">
-            <span class="text-[11px] font-semibold text-[#274333] uppercase tracking-wider block">
-              Gợi ý hành động tiếp theo
-            </span>
-            <p class="text-xs text-[#242924] mt-1 font-medium">
-              {#if currentMode === 'creator'}
-                Render 2 video AI từ kịch bản top xu hướng tiêu dùng nhanh.
-              {:else if currentMode === 'seller'}
-                Xác nhận 12 đơn hàng Shopee trước 16:00 để tránh điểm phạt SLA.
-              {:else if currentMode === 'affiliate_operator'}
-                Thay thế 1 link affiliate Shopee bị lỗi 404 bằng deal hoa hồng 18%.
-              {:else if currentMode === 'live_operator'}
-                Xếp lại thứ tự 8 deal flash sale cho phiên live 20:00 tối nay.
-              {:else if currentMode === 'agency_mcn'}
-                Gửi nhắc nhở nghiệm thu KPI cho 5 creator giai đoạn 1.
+      {#each activeDecisionCards as card}
+        <JobCard
+          title={`#${card.priorityRank} ${card.title}`}
+          moduleTag={card.moduleRef}
+          description={card.description}
+        >
+          <div class="space-y-3">
+            <div class="rounded bg-[#fbf9f5] p-3 border border-[#e7e2d7]">
+              <div class="flex items-center justify-between text-[10px] text-[#616c63] mb-1">
+                <span class="font-semibold uppercase tracking-wider text-[#274333]">
+                  Nguồn: {card.dataSource} ({card.confidence})
+                </span>
+                <span class="font-mono text-[#616c63]">Ưu tiên #{card.priorityRank}</span>
+              </div>
+              <p class="text-xs text-[#242924] font-medium">
+                {card.whyThisMatters}
+              </p>
+            </div>
+
+            <!-- Primary Action CTA (Target 1: Actionable in P8) -->
+            <div class="space-y-1">
+              {#if card.isActionAvailable}
+                <a
+                  href={card.primaryCtaRoute}
+                  class="flex items-center justify-center w-full rounded-md bg-[#274333] py-2 px-3 text-xs font-semibold text-[#ffffff] hover:bg-[#1f3629] transition-colors text-center"
+                >
+                  {card.primaryCtaLabel} →
+                </a>
               {:else}
-                Duyệt 6 kịch bản video từ KOC trước 15:00 để kịp lịch phát sóng.
+                <button
+                  type="button"
+                  disabled
+                  title={card.unavailableReason}
+                  class="w-full cursor-not-allowed rounded-md bg-[#e7e2d7] py-2 px-3 text-xs font-medium text-[#616c63] transition-colors"
+                >
+                  {card.primaryCtaLabel} (Khóa an toàn)
+                </button>
+                <span class="text-[10px] text-[#616c63] block text-center">
+                  {card.unavailableReason}
+                </span>
               {/if}
-            </p>
+            </div>
           </div>
-
-          <!-- Unbuilt Action Button with Explanation (Target 2) -->
-          <div class="space-y-1">
-            <button
-              type="button"
-              disabled
-              title="Chức năng thuộc Module {modeDef.primaryModule} (Giai đoạn P1) — Hiện tại chưa kết nối backend live"
-              class="w-full cursor-not-allowed rounded-md bg-[#e7e2d7] py-2 px-3 text-xs font-medium text-[#616c63] transition-colors"
-            >
-              Thực thi hành động (Chưa kết nối live)
-            </button>
-            <span class="text-[10px] text-[#616c63] block text-center">
-              Khóa an toàn: Module {modeDef.primaryModule} chưa kết nối connector sàn
-            </span>
-          </div>
-        </div>
-      </JobCard>
-
-      <!-- Card 2: Operating Pulse & SLA -->
-      <JobCard
-        title="Nhịp vận hành & SLA (M12/M19)"
-        moduleTag="M12/M19"
-        description="Giám sát cảnh báo SLA phản hồi khách hàng và phát hiện bất thường tài chính."
-      >
-        <div class="space-y-3">
-          <div class="flex items-center justify-between text-xs py-1 border-b border-[#f4f0e8]">
-            <span class="text-[#616c63]">Đơn chờ xử lý:</span>
-            <span class="font-mono font-semibold text-[#242924]">3 đơn (Cảnh báo SLA)</span>
-          </div>
-          <div class="flex items-center justify-between text-xs py-1 border-b border-[#f4f0e8]">
-            <span class="text-[#616c63]">Thời hạn phản hồi còn lại:</span>
-            <span class="font-mono font-semibold text-[#d94a31]">02:14:30</span>
-          </div>
-
-          <div class="space-y-1">
-            <button
-              type="button"
-              disabled
-              class="w-full cursor-not-allowed rounded-md bg-[#e7e2d7] py-2 px-3 text-xs font-medium text-[#616c63]"
-            >
-              Mở hàng đợi phản hồi (Chưa khả dụng)
-            </button>
-            <span class="text-[10px] text-[#616c63] block text-center">
-              Yêu cầu quyền Order Management (M19)
-            </span>
-          </div>
-        </div>
-      </JobCard>
-
-      <!-- Card 3: AI Credit Quota (M23) -->
-      <JobCard
-        title="Hạn mức AI Credit (M23)"
-        moduleTag="M23"
-        description="Quản lý và đối soát số dư lot tín dụng sử dụng cho các tác vụ AI Studio."
-      >
-        <div class="space-y-3">
-          <div class="flex items-center justify-between text-xs py-1 border-b border-[#f4f0e8]">
-            <span class="text-[#616c63]">Credit khả dụng:</span>
-            <span class="font-mono font-bold text-[#274333]">150 Credits</span>
-          </div>
-          <div class="flex items-center justify-between text-xs py-1 border-b border-[#f4f0e8]">
-            <span class="text-[#616c63]">Số dư lot kế toán:</span>
-            <span class="font-mono text-[#616c63]">Lot #2026-P0</span>
-          </div>
-
-          <div class="space-y-1">
-            <button
-              type="button"
-              disabled
-              class="w-full cursor-not-allowed rounded-md bg-[#e7e2d7] py-2 px-3 text-xs font-medium text-[#616c63]"
-            >
-              Nạp thêm tín dụng (Cổng thanh toán tắt)
-            </button>
-            <span class="text-[10px] text-[#616c63] block text-center">
-              Bảo vệ: Tuyệt đối không giả lập giao dịch tiền tệ
-            </span>
-          </div>
-        </div>
-      </JobCard>
+        </JobCard>
+      {/each}
     </div>
   {/if}
 
