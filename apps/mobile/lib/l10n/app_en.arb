@@ -1,0 +1,15 @@
+{
+  "@@locale": "en",
+  "shared_shell_skip_to_content": "Skip to main content",
+  "shared_shell_nav_primary_label": "Creativanta primary navigation",
+  "home_dashboard_title_default": "Daily Action Command Center",
+  "home_dashboard_cta_create_post": "Create new post",
+  "production_studio_button_generate": "Generate AI video",
+  "publish_hub_status_published": "Published",
+  "publish_hub_status_scheduled": "Scheduled",
+  "publish_hub_status_failed": "Publish failed",
+  "billing_credits_balance_label": "AI credit balance",
+  "admin_rehearsal_restore_title": "Backup Restore & Failing Business Smoke Rehearsal",
+  "admin_rehearsal_provider_title": "Provider Rate Card & Legal Evidence Freshness Gate",
+  "admin_rehearsal_privacy_title": "Multi-Tenant RLS Isolation, SSRF & GDPR/PDPA Compliance"
+}

@@ -101,6 +101,8 @@ var (
 	ErrInvalidInput = errors.New("internaladmin: invalid input (SYSTEM_INVALID_001)")
 	// ErrIdempotencyConflict is returned when an idempotency key is reused with a different request payload.
 	ErrIdempotencyConflict = errors.New("internaladmin: idempotency key reused with different payload (SYSTEM_CONFLICT_001)")
+	// ErrConcurrentImpersonationConflict is returned when another admin already has an active impersonation session for the same target user (EC-M23-003).
+	ErrConcurrentImpersonationConflict = errors.New("internaladmin: concurrent impersonation blocked — target user already has an active impersonation session (ADMIN_CONFLICT_001)")
 )
 
 // RiskBand represents the normalized 0-100 moderation risk band from moderation_rules_engine.md.
@@ -289,6 +291,8 @@ type ImpersonationSessionRecord struct {
 // InternalAuditLogRecord mirrors the canonical internal_audit_logs table (§15 of database_schema.md).
 type InternalAuditLogRecord struct {
 	AuditID           string
+	SequenceNumber    int64
+	EntryHash         string
 	AdminID           string
 	AdminRole         string
 	Action            string
@@ -551,6 +555,17 @@ type Service struct {
 	dlqItems          map[string]*DLQItemRecord
 	operationalHealth OperationalHealthRecord
 	businessMetrics   BusinessMetricsRecord
+
+	// P8-08 Compliance, Audit Sequence, Override Frequency, and Rehearsal state
+	dsrRequests         map[string]*DataSubjectRequestRecord
+	breachNotifications map[string]*BreachNotificationRecord
+	dpaActivities       map[string]*DataProcessingActivityRecord
+	restoreRehearsals   map[string]*BackupRestoreRehearsalRecord
+	overrideTimestamps  map[string][]time.Time
+	auditSequenceCursor int64
+	auditReadOnlyLocked bool
+	activeSlot          string
+	activeSlotDigest    string
 }
 
 var (
@@ -565,23 +580,30 @@ var (
 func NewService(bindings *rbac.Registry) *Service {
 	now := time.Now().UTC()
 	return &Service{
-		Bindings:          bindings,
-		Now:               func() time.Time { return time.Now().UTC() },
-		IDGenerator:       randomUUIDv4,
-		adminsByID:        make(map[string]*InternalAdminRecord),
-		adminsByEmail:     make(map[string]*InternalAdminRecord),
-		sessionsByToken:   make(map[string]*AdminSessionRecord),
-		sessionsByID:      make(map[string]*AdminSessionRecord),
-		impersonations:    make(map[string]*ImpersonationSessionRecord),
-		moderationCases:   make(map[string]*ModerationCaseRecord),
-		featureFlags:      make(map[string]*FeatureFlagRecord),
-		idempotency:       make(map[string]cachedAdminCommand),
-		moderationAppeals: make(map[string]*ModerationAppealRecord),
-		supportTickets:    make(map[string]*SupportTicketRecord),
-		supportMessages:   make(map[string][]*SupportTicketMessageRecord),
-		fraudCases:        make(map[string]*FraudCaseRecord),
-		backgroundJobs:    make(map[string]*BackgroundJobRecord),
-		dlqItems:          make(map[string]*DLQItemRecord),
+		Bindings:            bindings,
+		Now:                 func() time.Time { return time.Now().UTC() },
+		IDGenerator:         randomUUIDv4,
+		adminsByID:          make(map[string]*InternalAdminRecord),
+		adminsByEmail:       make(map[string]*InternalAdminRecord),
+		sessionsByToken:     make(map[string]*AdminSessionRecord),
+		sessionsByID:        make(map[string]*AdminSessionRecord),
+		impersonations:      make(map[string]*ImpersonationSessionRecord),
+		moderationCases:     make(map[string]*ModerationCaseRecord),
+		featureFlags:        make(map[string]*FeatureFlagRecord),
+		idempotency:         make(map[string]cachedAdminCommand),
+		moderationAppeals:   make(map[string]*ModerationAppealRecord),
+		supportTickets:      make(map[string]*SupportTicketRecord),
+		supportMessages:     make(map[string][]*SupportTicketMessageRecord),
+		fraudCases:          make(map[string]*FraudCaseRecord),
+		backgroundJobs:      make(map[string]*BackgroundJobRecord),
+		dlqItems:            make(map[string]*DLQItemRecord),
+		dsrRequests:         make(map[string]*DataSubjectRequestRecord),
+		breachNotifications: make(map[string]*BreachNotificationRecord),
+		dpaActivities:       make(map[string]*DataProcessingActivityRecord),
+		restoreRehearsals:   make(map[string]*BackupRestoreRehearsalRecord),
+		overrideTimestamps:  make(map[string][]time.Time),
+		activeSlot:          "blue",
+		activeSlotDigest:    "sha256:1111111111111111111111111111111111111111111111111111111111111111",
 		operationalHealth: OperationalHealthRecord{
 			SystemUptimePct:      99.98,
 			ErrorRatePct:         0.04,
@@ -1006,6 +1028,12 @@ func (s *Service) Impersonate(
 	}
 
 	now := s.Now()
+	for _, existing := range s.impersonations {
+		if existing.TargetUserID == targetUserID && existing.EndedAt == nil && now.Before(existing.ExpiresAt) {
+			s.mu.Unlock()
+			return nil, toAdminConnectError(ErrConcurrentImpersonationConflict)
+		}
+	}
 	impID := s.IDGenerator()
 	expiresAt := now.Add(ImpersonationSessionTTL)
 	imp := &ImpersonationSessionRecord{
@@ -1103,6 +1131,14 @@ func (s *Service) EndImpersonation(
 	reason := strings.TrimSpace(req.Msg.GetReason())
 	if reason == "" {
 		reason = "Session ended by admin"
+	}
+	if actor, ok := AdminActorFromContext(ctx); ok && actor.SupportTicketID == "" {
+		s.mu.Lock()
+		if existing, exists := s.impersonations[impID]; exists && existing.SupportTicketID != "" {
+			actor.SupportTicketID = existing.SupportTicketID
+			ctx = WithAdminActor(ctx, actor)
+		}
+		s.mu.Unlock()
 	}
 	if _, _, err := s.authorizeAdminRPC(ctx, "AdminAuthService/EndImpersonation", reason); err != nil {
 		return nil, toAdminConnectError(err)
@@ -2685,7 +2721,7 @@ func toAdminConnectError(err error) error {
 		return connect.NewError(connect.CodePermissionDenied, err)
 	case errors.Is(err, ErrCaseNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
-	case errors.Is(err, ErrIdempotencyConflict):
+	case errors.Is(err, ErrIdempotencyConflict), errors.Is(err, ErrConcurrentImpersonationConflict):
 		return connect.NewError(connect.CodeAlreadyExists, err)
 	case errors.Is(err, ErrInvalidInput):
 		return connect.NewError(connect.CodeInvalidArgument, err)

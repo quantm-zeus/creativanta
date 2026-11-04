@@ -63,4 +63,28 @@ if ! grep -q 'FAIL /readyz' "$LOG"; then
   cat "$LOG" >&2
   exit 1
 fi
-echo 'NEGATIVE_TESTS_PASS: pipeline, assertion, anti-mask, bad readiness correctly fail'
+
+# P8-08 Backup/Restore Checksum & Tamper Rejection Rehearsal (runbook.md §10.3)
+REHEARSAL_DIR="$(mktemp -d)"
+SNAP_FILE="$REHEARSAL_DIR/creativanta_rehearsal.snapshot.json"
+printf '{"snapshot_id":"p808-ci","workspaces":2,"ledger_debit_micro":15000000000,"ledger_credit_micro":15000000000}\n' >"$SNAP_FILE"
+(
+  cd "$REHEARSAL_DIR"
+  sha256sum "creativanta_rehearsal.snapshot.json" >"creativanta_rehearsal.snapshot.json.sha256"
+  sha256sum -c "creativanta_rehearsal.snapshot.json.sha256" >/dev/null
+)
+printf '{"snapshot_id":"p808-ci","tampered":true}\n' >"$SNAP_FILE"
+set +e
+(
+  cd "$REHEARSAL_DIR"
+  sha256sum -c "creativanta_rehearsal.snapshot.json.sha256" >/dev/null 2>&1
+)
+tamper_rc=$?
+set -e
+rm -rf "$REHEARSAL_DIR"
+if [[ "$tamper_rc" == 0 ]]; then
+  echo 'FAIL: tampered backup snapshot passed sha256sum verification' >&2
+  exit 1
+fi
+
+echo 'NEGATIVE_TESTS_PASS: pipeline, assertion, anti-mask, bad readiness, and tampered restore checksum correctly fail'

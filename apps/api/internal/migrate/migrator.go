@@ -889,6 +889,18 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 			"chargebacks",
 			"performance_reports",
 		}
+	case 46:
+		requiredFragments = []requiredFragment{
+			{"data_subject_requests table", "CREATE TABLE IF NOT EXISTS data_subject_requests"},
+			{"breach_notifications table", "CREATE TABLE IF NOT EXISTS breach_notifications"},
+			{"data_processing_activities table", "CREATE TABLE IF NOT EXISTS data_processing_activities"},
+			{"backup_restore_rehearsals table", "CREATE TABLE IF NOT EXISTS backup_restore_rehearsals"},
+			{"tenant_isolation policy on data_subject_requests", "CREATE POLICY tenant_isolation ON data_subject_requests"},
+			{"admin_ops_scope policy on data_subject_requests", "CREATE POLICY admin_ops_scope ON data_subject_requests"},
+		}
+		requiredRLSTables = []string{
+			"data_subject_requests",
+		}
 	default:
 		return nil
 	}

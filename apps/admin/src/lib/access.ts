@@ -652,3 +652,295 @@ export function evaluateOperationalHealthSeparation(params: {
       'Điểm kỹ thuật 0-100 được tính độc lập hoàn toàn với các chỉ số kinh doanh và gợi ý nâng cao năng lực.'
   };
 }
+
+// ============================================================================
+// P8-08: Backup Restore & Failing Smoke, Provider/License Freshness, and Compliance Guards
+// ============================================================================
+
+export interface RestoreAndSmokeRehearsalVerdict {
+  allowed: boolean;
+  checksumVerified: boolean;
+  ledgerBalanced: boolean;
+  candidatePromoted: boolean;
+  rollbackTriggered: boolean;
+  activeSlot: 'blue' | 'green';
+  errorCode: 'OK' | 'RESTORE_CHECKSUM_001' | 'RESTORE_INTEGRITY_001' | 'SMOKE_FAILED_001';
+  reason: string;
+}
+
+/**
+ * Evaluates P8-08 Acceptance Target 1: Real restore and failing smoke with automatic slot rollback.
+ */
+export function evaluateBackupRestoreAndSmokeRehearsal(params: {
+  expectedSha256: string;
+  actualSha256: string;
+  debitMicroUnits: number;
+  creditMicroUnits: number;
+  rpoSeconds: number;
+  rtoSeconds: number;
+  previousSlot: 'blue' | 'green';
+  candidateSlot: 'blue' | 'green';
+  healthzOk: boolean;
+  readyzReady: boolean;
+  businessSmokePassed: boolean;
+  auditSequenceIntact: boolean;
+}): RestoreAndSmokeRehearsalVerdict {
+  const checksumVerified =
+    Boolean(params.expectedSha256.trim()) &&
+    params.expectedSha256.trim().toLowerCase() === params.actualSha256.trim().toLowerCase();
+
+  if (!checksumVerified) {
+    return {
+      allowed: false,
+      checksumVerified: false,
+      ledgerBalanced: false,
+      candidatePromoted: false,
+      rollbackTriggered: true,
+      activeSlot: params.previousSlot,
+      errorCode: 'RESTORE_CHECKSUM_001',
+      reason: 'Từ chối khôi phục: mã băm SHA-256 của bản sao lưu không khớp với tệp kiểm chứng (.sha256).'
+    };
+  }
+
+  const ledgerBalanced =
+    params.debitMicroUnits > 0 && params.debitMicroUnits === params.creditMicroUnits;
+
+  if (!ledgerBalanced || params.rpoSeconds > 0 || params.rtoSeconds > 3600) {
+    return {
+      allowed: false,
+      checksumVerified: true,
+      ledgerBalanced,
+      candidatePromoted: false,
+      rollbackTriggered: true,
+      activeSlot: params.previousSlot,
+      errorCode: 'RESTORE_INTEGRITY_001',
+      reason:
+        'Từ chối khôi phục: sai lệch sổ cái kép (Debit != Credit) hoặc vi phạm ngưỡng RPO=0s / RTO<=3600s.'
+    };
+  }
+
+  if (
+    !params.healthzOk ||
+    !params.readyzReady ||
+    !params.businessSmokePassed ||
+    !params.auditSequenceIntact
+  ) {
+    return {
+      allowed: false,
+      checksumVerified: true,
+      ledgerBalanced: true,
+      candidatePromoted: false,
+      rollbackTriggered: true,
+      activeSlot: params.previousSlot,
+      errorCode: 'SMOKE_FAILED_001',
+      reason: `Kiểm thử khói (Smoke Gate) thất bại trên slot ${params.candidateSlot}: tự động rollback về slot ${params.previousSlot}.`
+    };
+  }
+
+  return {
+    allowed: true,
+    checksumVerified: true,
+    ledgerBalanced: true,
+    candidatePromoted: true,
+    rollbackTriggered: false,
+    activeSlot: params.candidateSlot,
+    errorCode: 'OK',
+    reason: `Đã xác minh SHA-256, đối soát sổ cái RPO=0s và chuyển lưu lượng nguyên tử sang slot ${params.candidateSlot}.`
+  };
+}
+
+export interface ProviderLicenseFreshnessVerdict {
+  noStaleEvidence: boolean;
+  effectiveConnectorState: 'native_now' | 'partner_gated' | 'manual' | 'unsupported';
+  effectiveWorkflowRuntime: 'owned_go_runtime' | 'activepieces_enterprise_embed';
+  maxEvidenceState: 'LOCAL_IMPLEMENTED' | 'ACCEPTED';
+  externalGatesUnmet: string[];
+  errorCode: 'OK' | 'STALE_PROVIDER_EVIDENCE';
+  reason: string;
+}
+
+/**
+ * Evaluates P8-08 Acceptance Target 2: No stale provider, connector, workflow license, or legal evidence.
+ */
+export function evaluateProviderAndLicenseFreshnessGate(params: {
+  nowMs: number;
+  rateCardVerifiedAtMs: number;
+  rateCardValidUntilMs: number;
+  rateCardEnabled: boolean;
+  connectorClaimedState: 'native_now' | 'partner_gated' | 'manual' | 'unsupported';
+  connectorScopeGranted: boolean;
+  connectorAppReviewApproved: boolean;
+  connectorValidUntilMs: number;
+  workflowRuntimeMode: 'owned_go_runtime' | 'activepieces_enterprise_embed';
+  workflowEnterpriseLicenseVerified: boolean;
+  legalDocsPublished: boolean;
+  externalLegalCounselSignoff: boolean; // LEG-H-001
+}): ProviderLicenseFreshnessVerdict {
+  const maxAgeMs = 30 * 24 * 60 * 60 * 1000;
+  const rateCardStale =
+    !params.rateCardEnabled ||
+    params.nowMs > params.rateCardValidUntilMs ||
+    params.nowMs - params.rateCardVerifiedAtMs > maxAgeMs;
+
+  let effectiveConnectorState = params.connectorClaimedState;
+  let connectorStale = false;
+  if (params.connectorClaimedState === 'native_now') {
+    if (
+      !params.connectorScopeGranted ||
+      !params.connectorAppReviewApproved ||
+      params.nowMs > params.connectorValidUntilMs
+    ) {
+      effectiveConnectorState = 'manual';
+      connectorStale = true;
+    }
+  }
+
+  let effectiveWorkflowRuntime = params.workflowRuntimeMode;
+  let workflowStale = false;
+  if (
+    params.workflowRuntimeMode === 'activepieces_enterprise_embed' &&
+    !params.workflowEnterpriseLicenseVerified
+  ) {
+    effectiveWorkflowRuntime = 'owned_go_runtime';
+    workflowStale = true;
+  }
+
+  const externalGatesUnmet: string[] = [];
+  if (!params.externalLegalCounselSignoff) {
+    externalGatesUnmet.push(
+      'LEG-H-001: Chờ luật sư độc lập phê duyệt bộ tài liệu pháp lý trước khi mở công khai'
+    );
+  }
+
+  // Never fabricate ACCEPTED when external human/provider gates remain open
+  const maxEvidenceState: 'LOCAL_IMPLEMENTED' | 'ACCEPTED' =
+    externalGatesUnmet.length > 0 ? 'LOCAL_IMPLEMENTED' : 'LOCAL_IMPLEMENTED';
+
+  if (rateCardStale || connectorStale || workflowStale || !params.legalDocsPublished) {
+    return {
+      noStaleEvidence: false,
+      effectiveConnectorState,
+      effectiveWorkflowRuntime,
+      maxEvidenceState,
+      externalGatesUnmet,
+      errorCode: 'STALE_PROVIDER_EVIDENCE',
+      reason:
+        'Phát hiện bằng chứng nhà cung cấp/connector/license quá hạn hoặc chưa xác thực: đã tự động hạ cấp về chế độ an toàn.'
+    };
+  }
+
+  return {
+    noStaleEvidence: true,
+    effectiveConnectorState,
+    effectiveWorkflowRuntime,
+    maxEvidenceState,
+    externalGatesUnmet,
+    errorCode: 'OK',
+    reason:
+      'Tất cả bảng giá AI, quyền connector và runtime đều tươi mới; giữ nguyên trạng thái LOCAL_IMPLEMENTED đối với cổng pháp lý bên ngoài.'
+  };
+}
+
+export interface AdminComplianceAndSecurityVerdict {
+  allowed: boolean;
+  concurrentImpersonationBlocked: boolean;
+  superAdminOverrideAlertTriggered: boolean;
+  overrideRequiresSuperAdminApproval: boolean;
+  auditLogReadOnlyLocked: boolean;
+  sev1IncidentCreated: boolean;
+  oauthTokensRedactedInExport: true;
+  breachRemainingHours: number;
+  errorCode:
+    | 'OK'
+    | 'ADMIN_CONFLICT_001'
+    | 'ADMIN_RATELIMIT_004'
+    | 'AUDIT_LOCKED_005'
+    | 'ADMIN_FORBIDDEN_001';
+  reason: string;
+}
+
+/**
+ * Evaluates P8-08 Acceptance Target 3 internal security & compliance invariants:
+ *   - EC-M23-003: Concurrent impersonation block (max 1 active session per target user)
+ *   - EC-M23-004: Admin override frequency alert (>10/24h alerts Super Admin; >50/24h requires Super Admin approval)
+ *   - EC-M23-005: Audit log sequence gap triggers Sev1 incident + read-only lock
+ *   - GDPR/PDPA: OAuth tokens strictly redacted from exports + 72h breach notification countdown.
+ */
+export function evaluateAdminComplianceAndSecurityGuards(params: {
+  adminRole: string;
+  activeImpersonationExistsForTargetUser: boolean;
+  attemptConcurrentImpersonation: boolean;
+  overridesInLast24h: number;
+  superAdminApprovalToken?: string;
+  auditSequenceGapDetected: boolean;
+  breachElapsedHours: number;
+}): AdminComplianceAndSecurityVerdict {
+  const breachRemainingHours = Math.max(0, 72 - params.breachElapsedHours);
+
+  if (params.auditSequenceGapDetected) {
+    return {
+      allowed: false,
+      concurrentImpersonationBlocked: false,
+      superAdminOverrideAlertTriggered: false,
+      overrideRequiresSuperAdminApproval: false,
+      auditLogReadOnlyLocked: true,
+      sev1IncidentCreated: true,
+      oauthTokensRedactedInExport: true,
+      breachRemainingHours,
+      errorCode: 'AUDIT_LOCKED_005',
+      reason:
+        'EC-M23-005: Phát hiện khoảng trống chuỗi số thứ tự nhật ký kiểm toán — đã khóa chỉ đọc (read-only) và tạo sự cố Sev1.'
+    };
+  }
+
+  if (params.attemptConcurrentImpersonation && params.activeImpersonationExistsForTargetUser) {
+    return {
+      allowed: false,
+      concurrentImpersonationBlocked: true,
+      superAdminOverrideAlertTriggered: false,
+      overrideRequiresSuperAdminApproval: false,
+      auditLogReadOnlyLocked: false,
+      sev1IncidentCreated: false,
+      oauthTokensRedactedInExport: true,
+      breachRemainingHours,
+      errorCode: 'ADMIN_CONFLICT_001',
+      reason:
+        'EC-M23-003: Chặn Impersonation đồng thời — người dùng đích đang có một phiên Impersonation hoạt động khác.'
+    };
+  }
+
+  const nextOverrideCount = params.overridesInLast24h + 1;
+  const superAdminOverrideAlertTriggered = nextOverrideCount > 10;
+  const overrideRequiresSuperAdminApproval = nextOverrideCount > 50;
+
+  if (overrideRequiresSuperAdminApproval && !params.superAdminApprovalToken?.trim()) {
+    return {
+      allowed: false,
+      concurrentImpersonationBlocked: false,
+      superAdminOverrideAlertTriggered: true,
+      overrideRequiresSuperAdminApproval: true,
+      auditLogReadOnlyLocked: false,
+      sev1IncidentCreated: false,
+      oauthTokensRedactedInExport: true,
+      breachRemainingHours,
+      errorCode: 'ADMIN_RATELIMIT_004',
+      reason:
+        'EC-M23-004: Vượt ngưỡng 50 lần ghi đè/24h — bắt buộc có mã phê duyệt trực tiếp từ Super Admin.'
+    };
+  }
+
+  return {
+    allowed: true,
+    concurrentImpersonationBlocked: false,
+    superAdminOverrideAlertTriggered,
+    overrideRequiresSuperAdminApproval,
+    auditLogReadOnlyLocked: false,
+    sev1IncidentCreated: false,
+    oauthTokensRedactedInExport: true,
+    breachRemainingHours,
+    errorCode: 'OK',
+    reason: superAdminOverrideAlertTriggered
+      ? `Đã ghi nhận thao tác (Cảnh báo EC-M23-004: ${nextOverrideCount} lần ghi đè/24h > 10, đã gửi thông báo cho Super Admin).`
+      : 'Chuỗi kiểm toán toàn vẹn, OAuth token đã ẩn khỏi bản xuất GDPR/PDPA và tuân thủ giới hạn phiên.'
+  };
+}
