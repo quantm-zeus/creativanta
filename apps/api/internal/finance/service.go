@@ -77,6 +77,10 @@ func (s *Service) AttributionEngine() *AttributionEngine {
 	return s.attributionEngine
 }
 
+func (s *Service) Store() Store {
+	return s.store
+}
+
 // RecordOrderPosting recognizes completed orders into financial_postings or tracks pending orders.
 // Per financial computation contract §1:
 // - Revenue is recognized once when an order becomes completed; recognized_at is source completion timestamp.
@@ -309,6 +313,7 @@ func (s *Service) RecordOrderCorrection(
 }
 
 // RecordRefundPosting creates a negative refund posting without netting original revenue (F02).
+// Enforces idempotency: duplicate refund callbacks or replays do not create duplicate refund postings (Acceptance Target 3).
 func (s *Service) RecordRefundPosting(
 	ctx context.Context,
 	workspaceID, refundID, orderID string,
@@ -317,6 +322,12 @@ func (s *Service) RecordRefundPosting(
 	sourceClass, confidence string,
 	fx ExchangeRateSnapshot,
 ) error {
+	// Idempotency check: if refund posting already recorded, do not duplicate
+	existing, err := s.store.FindPostingByOrigin(ctx, workspaceID, "refund", refundID, ComponentRefund)
+	if err == nil && existing != nil {
+		return nil // Idempotent no-op
+	}
+
 	baseRefund, err := ComputeBaseAmount(refundAmount, fx)
 	if err != nil {
 		return err
@@ -340,7 +351,10 @@ func (s *Service) RecordRefundPosting(
 	if s.attributionEngine != nil {
 		s.attributionEngine.RecordRefundDeduction(orderID, baseRefund)
 	}
-	return s.store.CreatePosting(ctx, posting)
+	if err := s.store.CreatePosting(ctx, posting); err != nil && !errors.Is(err, ErrDuplicatePosting) {
+		return err
+	}
+	return nil
 }
 
 // CreateCostItem creates a cost item and posts to financial ledger if recorded/reconciled.

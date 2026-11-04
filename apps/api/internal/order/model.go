@@ -10,17 +10,19 @@ import (
 
 // Domain Errors
 var (
-	ErrOrderNotFound           = errors.New("order not found")
-	ErrRefundNotFound          = errors.New("refund not found")
-	ErrReturnNotFound          = errors.New("return not found")
-	ErrInvalidOrderTransition  = errors.New("invalid order lifecycle transition")
-	ErrInvalidRefundTransition = errors.New("invalid refund lifecycle transition")
-	ErrInvalidReturnTransition = errors.New("invalid return lifecycle transition")
-	ErrRefundExceedsOrderTotal = errors.New("refund amount exceeds refundable order balance")
-	ErrInvalidAmount           = errors.New("amount must be strictly positive")
-	ErrOrderAlreadyExists      = errors.New("order already exists")
-	ErrInvalidInput            = errors.New("invalid input data")
-	ErrMissingTenant           = errors.New("missing tenant workspace context")
+	ErrOrderNotFound              = errors.New("order not found")
+	ErrRefundNotFound             = errors.New("refund not found")
+	ErrReturnNotFound             = errors.New("return not found")
+	ErrInvalidOrderTransition     = errors.New("invalid order lifecycle transition")
+	ErrInvalidRefundTransition    = errors.New("invalid refund lifecycle transition")
+	ErrInvalidReturnTransition    = errors.New("invalid return lifecycle transition")
+	ErrRefundExceedsOrderTotal    = errors.New("refund amount exceeds refundable order balance")
+	ErrReturnExceedsOrderQuantity = errors.New("return item quantity exceeds ordered quantity")
+	ErrReturnAlreadyProcessed     = errors.New("return already closed or rejected")
+	ErrInvalidAmount              = errors.New("amount must be strictly positive")
+	ErrOrderAlreadyExists         = errors.New("order already exists")
+	ErrInvalidInput               = errors.New("invalid input data")
+	ErrMissingTenant              = errors.New("missing tenant workspace context")
 )
 
 type SourceClass string
@@ -109,6 +111,44 @@ func CanTransitionOrder(from, to LifecycleState) bool {
 		return true // Idempotent same-state
 	}
 	allowed, ok := validOrderTransitions[from]
+	if !ok {
+		return false
+	}
+	return allowed[to]
+}
+
+// Valid return lifecycle state transitions per DB Schema §19.6.
+var validReturnTransitions = map[ReturnState]map[ReturnState]bool{
+	ReturnInitiated: {
+		ReturnApproved: true,
+		ReturnRejected: true,
+	},
+	ReturnApproved: {
+		ReturnShippedBack: true,
+		ReturnReceived:    true,
+		ReturnRejected:    true,
+	},
+	ReturnShippedBack: {
+		ReturnReceived: true,
+		ReturnRejected: true,
+	},
+	ReturnReceived: {
+		ReturnInspected: true,
+		ReturnClosed:    true,
+	},
+	ReturnInspected: {
+		ReturnClosed:   true,
+		ReturnRejected: true,
+	},
+	ReturnClosed:   {}, // Terminal state
+	ReturnRejected: {}, // Terminal state
+}
+
+func CanTransitionReturn(from, to ReturnState) bool {
+	if from == to {
+		return true // Idempotent same-state
+	}
+	allowed, ok := validReturnTransitions[from]
 	if !ok {
 		return false
 	}
