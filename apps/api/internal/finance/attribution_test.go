@@ -137,7 +137,7 @@ func TestAttribution_Target1_OrderNetCapacityExceeded(t *testing.T) {
 		WorkspaceID:       wsID,
 		GrossRevenue:      tenantdb.MustParseExactDecimal("100000.000000"),
 		RefundDeduction:   tenantdb.MustParseExactDecimal("20000.000000"), // 20k refunded!
-		NetRevenue:        tenantdb.MustParseExactDecimal("80000.000000"),  // Net capacity is 80k
+		NetRevenue:        tenantdb.MustParseExactDecimal("80000.000000"), // Net capacity is 80k
 		Currency:          "VND",
 		SourceClass:       finance.SourceClassOfficial,
 		Confidence:        finance.ConfidenceHigh,
