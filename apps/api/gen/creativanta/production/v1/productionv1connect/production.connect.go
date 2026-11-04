@@ -51,6 +51,10 @@ const (
 	DerivativeServiceName = "creativanta.production.v1.DerivativeService"
 	// PackagingServiceName is the fully-qualified name of the PackagingService service.
 	PackagingServiceName = "creativanta.production.v1.PackagingService"
+	// ABTestServiceName is the fully-qualified name of the ABTestService service.
+	ABTestServiceName = "creativanta.production.v1.ABTestService"
+	// PerformanceCoachServiceName is the fully-qualified name of the PerformanceCoachService service.
+	PerformanceCoachServiceName = "creativanta.production.v1.PerformanceCoachService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -253,6 +257,38 @@ const (
 	PackagingServiceGetHistoryProcedure = "/creativanta.production.v1.PackagingService/GetHistory"
 	// PackagingServiceRunQAProcedure is the fully-qualified name of the PackagingService's RunQA RPC.
 	PackagingServiceRunQAProcedure = "/creativanta.production.v1.PackagingService/RunQA"
+	// ABTestServiceCreateProcedure is the fully-qualified name of the ABTestService's Create RPC.
+	ABTestServiceCreateProcedure = "/creativanta.production.v1.ABTestService/Create"
+	// ABTestServiceGetProcedure is the fully-qualified name of the ABTestService's Get RPC.
+	ABTestServiceGetProcedure = "/creativanta.production.v1.ABTestService/Get"
+	// ABTestServiceListProcedure is the fully-qualified name of the ABTestService's List RPC.
+	ABTestServiceListProcedure = "/creativanta.production.v1.ABTestService/List"
+	// ABTestServiceDeclareWinnerProcedure is the fully-qualified name of the ABTestService's
+	// DeclareWinner RPC.
+	ABTestServiceDeclareWinnerProcedure = "/creativanta.production.v1.ABTestService/DeclareWinner"
+	// ABTestServiceCancelProcedure is the fully-qualified name of the ABTestService's Cancel RPC.
+	ABTestServiceCancelProcedure = "/creativanta.production.v1.ABTestService/Cancel"
+	// ABTestServiceEvaluateTestProcedure is the fully-qualified name of the ABTestService's
+	// EvaluateTest RPC.
+	ABTestServiceEvaluateTestProcedure = "/creativanta.production.v1.ABTestService/EvaluateTest"
+	// ABTestServiceGetMetricsProcedure is the fully-qualified name of the ABTestService's GetMetrics
+	// RPC.
+	ABTestServiceGetMetricsProcedure = "/creativanta.production.v1.ABTestService/GetMetrics"
+	// PerformanceCoachServiceGetInsightsProcedure is the fully-qualified name of the
+	// PerformanceCoachService's GetInsights RPC.
+	PerformanceCoachServiceGetInsightsProcedure = "/creativanta.production.v1.PerformanceCoachService/GetInsights"
+	// PerformanceCoachServiceGetVideoScorecardProcedure is the fully-qualified name of the
+	// PerformanceCoachService's GetVideoScorecard RPC.
+	PerformanceCoachServiceGetVideoScorecardProcedure = "/creativanta.production.v1.PerformanceCoachService/GetVideoScorecard"
+	// PerformanceCoachServiceGetImprovementPlanProcedure is the fully-qualified name of the
+	// PerformanceCoachService's GetImprovementPlan RPC.
+	PerformanceCoachServiceGetImprovementPlanProcedure = "/creativanta.production.v1.PerformanceCoachService/GetImprovementPlan"
+	// PerformanceCoachServiceListBenchmarksProcedure is the fully-qualified name of the
+	// PerformanceCoachService's ListBenchmarks RPC.
+	PerformanceCoachServiceListBenchmarksProcedure = "/creativanta.production.v1.PerformanceCoachService/ListBenchmarks"
+	// PerformanceCoachServiceCompareToIndustryProcedure is the fully-qualified name of the
+	// PerformanceCoachService's CompareToIndustry RPC.
+	PerformanceCoachServiceCompareToIndustryProcedure = "/creativanta.production.v1.PerformanceCoachService/CompareToIndustry"
 )
 
 // StudioServiceClient is a client for the creativanta.production.v1.StudioService service.
@@ -2896,4 +2932,407 @@ func (UnimplementedPackagingServiceHandler) GetHistory(context.Context, *connect
 
 func (UnimplementedPackagingServiceHandler) RunQA(context.Context, *connect.Request[v1.PackagingServiceRunQARequest]) (*connect.Response[v1.PackagingServiceRunQAResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.PackagingService.RunQA is not implemented"))
+}
+
+// ABTestServiceClient is a client for the creativanta.production.v1.ABTestService service.
+type ABTestServiceClient interface {
+	Create(context.Context, *connect.Request[v1.ABTestServiceCreateRequest]) (*connect.Response[v1.ABTestServiceCreateResponse], error)
+	Get(context.Context, *connect.Request[v1.ABTestServiceGetRequest]) (*connect.Response[v1.ABTestServiceGetResponse], error)
+	List(context.Context, *connect.Request[v1.ABTestServiceListRequest]) (*connect.Response[v1.ABTestServiceListResponse], error)
+	DeclareWinner(context.Context, *connect.Request[v1.ABTestServiceDeclareWinnerRequest]) (*connect.Response[v1.ABTestServiceDeclareWinnerResponse], error)
+	Cancel(context.Context, *connect.Request[v1.ABTestServiceCancelRequest]) (*connect.Response[v1.ABTestServiceCancelResponse], error)
+	EvaluateTest(context.Context, *connect.Request[v1.ABTestServiceEvaluateTestRequest]) (*connect.Response[v1.ABTestServiceEvaluateTestResponse], error)
+	GetMetrics(context.Context, *connect.Request[v1.ABTestServiceGetMetricsRequest]) (*connect.Response[v1.ABTestServiceGetMetricsResponse], error)
+}
+
+// NewABTestServiceClient constructs a client for the creativanta.production.v1.ABTestService
+// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
+// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
+// the connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewABTestServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ABTestServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	aBTestServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("ABTestService").Methods()
+	return &aBTestServiceClient{
+		create: connect.NewClient[v1.ABTestServiceCreateRequest, v1.ABTestServiceCreateResponse](
+			httpClient,
+			baseURL+ABTestServiceCreateProcedure,
+			connect.WithSchema(aBTestServiceMethods.ByName("Create")),
+			connect.WithClientOptions(opts...),
+		),
+		get: connect.NewClient[v1.ABTestServiceGetRequest, v1.ABTestServiceGetResponse](
+			httpClient,
+			baseURL+ABTestServiceGetProcedure,
+			connect.WithSchema(aBTestServiceMethods.ByName("Get")),
+			connect.WithClientOptions(opts...),
+		),
+		list: connect.NewClient[v1.ABTestServiceListRequest, v1.ABTestServiceListResponse](
+			httpClient,
+			baseURL+ABTestServiceListProcedure,
+			connect.WithSchema(aBTestServiceMethods.ByName("List")),
+			connect.WithClientOptions(opts...),
+		),
+		declareWinner: connect.NewClient[v1.ABTestServiceDeclareWinnerRequest, v1.ABTestServiceDeclareWinnerResponse](
+			httpClient,
+			baseURL+ABTestServiceDeclareWinnerProcedure,
+			connect.WithSchema(aBTestServiceMethods.ByName("DeclareWinner")),
+			connect.WithClientOptions(opts...),
+		),
+		cancel: connect.NewClient[v1.ABTestServiceCancelRequest, v1.ABTestServiceCancelResponse](
+			httpClient,
+			baseURL+ABTestServiceCancelProcedure,
+			connect.WithSchema(aBTestServiceMethods.ByName("Cancel")),
+			connect.WithClientOptions(opts...),
+		),
+		evaluateTest: connect.NewClient[v1.ABTestServiceEvaluateTestRequest, v1.ABTestServiceEvaluateTestResponse](
+			httpClient,
+			baseURL+ABTestServiceEvaluateTestProcedure,
+			connect.WithSchema(aBTestServiceMethods.ByName("EvaluateTest")),
+			connect.WithClientOptions(opts...),
+		),
+		getMetrics: connect.NewClient[v1.ABTestServiceGetMetricsRequest, v1.ABTestServiceGetMetricsResponse](
+			httpClient,
+			baseURL+ABTestServiceGetMetricsProcedure,
+			connect.WithSchema(aBTestServiceMethods.ByName("GetMetrics")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// aBTestServiceClient implements ABTestServiceClient.
+type aBTestServiceClient struct {
+	create        *connect.Client[v1.ABTestServiceCreateRequest, v1.ABTestServiceCreateResponse]
+	get           *connect.Client[v1.ABTestServiceGetRequest, v1.ABTestServiceGetResponse]
+	list          *connect.Client[v1.ABTestServiceListRequest, v1.ABTestServiceListResponse]
+	declareWinner *connect.Client[v1.ABTestServiceDeclareWinnerRequest, v1.ABTestServiceDeclareWinnerResponse]
+	cancel        *connect.Client[v1.ABTestServiceCancelRequest, v1.ABTestServiceCancelResponse]
+	evaluateTest  *connect.Client[v1.ABTestServiceEvaluateTestRequest, v1.ABTestServiceEvaluateTestResponse]
+	getMetrics    *connect.Client[v1.ABTestServiceGetMetricsRequest, v1.ABTestServiceGetMetricsResponse]
+}
+
+// Create calls creativanta.production.v1.ABTestService.Create.
+func (c *aBTestServiceClient) Create(ctx context.Context, req *connect.Request[v1.ABTestServiceCreateRequest]) (*connect.Response[v1.ABTestServiceCreateResponse], error) {
+	return c.create.CallUnary(ctx, req)
+}
+
+// Get calls creativanta.production.v1.ABTestService.Get.
+func (c *aBTestServiceClient) Get(ctx context.Context, req *connect.Request[v1.ABTestServiceGetRequest]) (*connect.Response[v1.ABTestServiceGetResponse], error) {
+	return c.get.CallUnary(ctx, req)
+}
+
+// List calls creativanta.production.v1.ABTestService.List.
+func (c *aBTestServiceClient) List(ctx context.Context, req *connect.Request[v1.ABTestServiceListRequest]) (*connect.Response[v1.ABTestServiceListResponse], error) {
+	return c.list.CallUnary(ctx, req)
+}
+
+// DeclareWinner calls creativanta.production.v1.ABTestService.DeclareWinner.
+func (c *aBTestServiceClient) DeclareWinner(ctx context.Context, req *connect.Request[v1.ABTestServiceDeclareWinnerRequest]) (*connect.Response[v1.ABTestServiceDeclareWinnerResponse], error) {
+	return c.declareWinner.CallUnary(ctx, req)
+}
+
+// Cancel calls creativanta.production.v1.ABTestService.Cancel.
+func (c *aBTestServiceClient) Cancel(ctx context.Context, req *connect.Request[v1.ABTestServiceCancelRequest]) (*connect.Response[v1.ABTestServiceCancelResponse], error) {
+	return c.cancel.CallUnary(ctx, req)
+}
+
+// EvaluateTest calls creativanta.production.v1.ABTestService.EvaluateTest.
+func (c *aBTestServiceClient) EvaluateTest(ctx context.Context, req *connect.Request[v1.ABTestServiceEvaluateTestRequest]) (*connect.Response[v1.ABTestServiceEvaluateTestResponse], error) {
+	return c.evaluateTest.CallUnary(ctx, req)
+}
+
+// GetMetrics calls creativanta.production.v1.ABTestService.GetMetrics.
+func (c *aBTestServiceClient) GetMetrics(ctx context.Context, req *connect.Request[v1.ABTestServiceGetMetricsRequest]) (*connect.Response[v1.ABTestServiceGetMetricsResponse], error) {
+	return c.getMetrics.CallUnary(ctx, req)
+}
+
+// ABTestServiceHandler is an implementation of the creativanta.production.v1.ABTestService service.
+type ABTestServiceHandler interface {
+	Create(context.Context, *connect.Request[v1.ABTestServiceCreateRequest]) (*connect.Response[v1.ABTestServiceCreateResponse], error)
+	Get(context.Context, *connect.Request[v1.ABTestServiceGetRequest]) (*connect.Response[v1.ABTestServiceGetResponse], error)
+	List(context.Context, *connect.Request[v1.ABTestServiceListRequest]) (*connect.Response[v1.ABTestServiceListResponse], error)
+	DeclareWinner(context.Context, *connect.Request[v1.ABTestServiceDeclareWinnerRequest]) (*connect.Response[v1.ABTestServiceDeclareWinnerResponse], error)
+	Cancel(context.Context, *connect.Request[v1.ABTestServiceCancelRequest]) (*connect.Response[v1.ABTestServiceCancelResponse], error)
+	EvaluateTest(context.Context, *connect.Request[v1.ABTestServiceEvaluateTestRequest]) (*connect.Response[v1.ABTestServiceEvaluateTestResponse], error)
+	GetMetrics(context.Context, *connect.Request[v1.ABTestServiceGetMetricsRequest]) (*connect.Response[v1.ABTestServiceGetMetricsResponse], error)
+}
+
+// NewABTestServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewABTestServiceHandler(svc ABTestServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	aBTestServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("ABTestService").Methods()
+	aBTestServiceCreateHandler := connect.NewUnaryHandler(
+		ABTestServiceCreateProcedure,
+		svc.Create,
+		connect.WithSchema(aBTestServiceMethods.ByName("Create")),
+		connect.WithHandlerOptions(opts...),
+	)
+	aBTestServiceGetHandler := connect.NewUnaryHandler(
+		ABTestServiceGetProcedure,
+		svc.Get,
+		connect.WithSchema(aBTestServiceMethods.ByName("Get")),
+		connect.WithHandlerOptions(opts...),
+	)
+	aBTestServiceListHandler := connect.NewUnaryHandler(
+		ABTestServiceListProcedure,
+		svc.List,
+		connect.WithSchema(aBTestServiceMethods.ByName("List")),
+		connect.WithHandlerOptions(opts...),
+	)
+	aBTestServiceDeclareWinnerHandler := connect.NewUnaryHandler(
+		ABTestServiceDeclareWinnerProcedure,
+		svc.DeclareWinner,
+		connect.WithSchema(aBTestServiceMethods.ByName("DeclareWinner")),
+		connect.WithHandlerOptions(opts...),
+	)
+	aBTestServiceCancelHandler := connect.NewUnaryHandler(
+		ABTestServiceCancelProcedure,
+		svc.Cancel,
+		connect.WithSchema(aBTestServiceMethods.ByName("Cancel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	aBTestServiceEvaluateTestHandler := connect.NewUnaryHandler(
+		ABTestServiceEvaluateTestProcedure,
+		svc.EvaluateTest,
+		connect.WithSchema(aBTestServiceMethods.ByName("EvaluateTest")),
+		connect.WithHandlerOptions(opts...),
+	)
+	aBTestServiceGetMetricsHandler := connect.NewUnaryHandler(
+		ABTestServiceGetMetricsProcedure,
+		svc.GetMetrics,
+		connect.WithSchema(aBTestServiceMethods.ByName("GetMetrics")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.production.v1.ABTestService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case ABTestServiceCreateProcedure:
+			aBTestServiceCreateHandler.ServeHTTP(w, r)
+		case ABTestServiceGetProcedure:
+			aBTestServiceGetHandler.ServeHTTP(w, r)
+		case ABTestServiceListProcedure:
+			aBTestServiceListHandler.ServeHTTP(w, r)
+		case ABTestServiceDeclareWinnerProcedure:
+			aBTestServiceDeclareWinnerHandler.ServeHTTP(w, r)
+		case ABTestServiceCancelProcedure:
+			aBTestServiceCancelHandler.ServeHTTP(w, r)
+		case ABTestServiceEvaluateTestProcedure:
+			aBTestServiceEvaluateTestHandler.ServeHTTP(w, r)
+		case ABTestServiceGetMetricsProcedure:
+			aBTestServiceGetMetricsHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedABTestServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedABTestServiceHandler struct{}
+
+func (UnimplementedABTestServiceHandler) Create(context.Context, *connect.Request[v1.ABTestServiceCreateRequest]) (*connect.Response[v1.ABTestServiceCreateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.ABTestService.Create is not implemented"))
+}
+
+func (UnimplementedABTestServiceHandler) Get(context.Context, *connect.Request[v1.ABTestServiceGetRequest]) (*connect.Response[v1.ABTestServiceGetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.ABTestService.Get is not implemented"))
+}
+
+func (UnimplementedABTestServiceHandler) List(context.Context, *connect.Request[v1.ABTestServiceListRequest]) (*connect.Response[v1.ABTestServiceListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.ABTestService.List is not implemented"))
+}
+
+func (UnimplementedABTestServiceHandler) DeclareWinner(context.Context, *connect.Request[v1.ABTestServiceDeclareWinnerRequest]) (*connect.Response[v1.ABTestServiceDeclareWinnerResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.ABTestService.DeclareWinner is not implemented"))
+}
+
+func (UnimplementedABTestServiceHandler) Cancel(context.Context, *connect.Request[v1.ABTestServiceCancelRequest]) (*connect.Response[v1.ABTestServiceCancelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.ABTestService.Cancel is not implemented"))
+}
+
+func (UnimplementedABTestServiceHandler) EvaluateTest(context.Context, *connect.Request[v1.ABTestServiceEvaluateTestRequest]) (*connect.Response[v1.ABTestServiceEvaluateTestResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.ABTestService.EvaluateTest is not implemented"))
+}
+
+func (UnimplementedABTestServiceHandler) GetMetrics(context.Context, *connect.Request[v1.ABTestServiceGetMetricsRequest]) (*connect.Response[v1.ABTestServiceGetMetricsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.ABTestService.GetMetrics is not implemented"))
+}
+
+// PerformanceCoachServiceClient is a client for the
+// creativanta.production.v1.PerformanceCoachService service.
+type PerformanceCoachServiceClient interface {
+	GetInsights(context.Context, *connect.Request[v1.PerformanceCoachServiceGetInsightsRequest]) (*connect.Response[v1.PerformanceCoachServiceGetInsightsResponse], error)
+	GetVideoScorecard(context.Context, *connect.Request[v1.PerformanceCoachServiceGetVideoScorecardRequest]) (*connect.Response[v1.PerformanceCoachServiceGetVideoScorecardResponse], error)
+	GetImprovementPlan(context.Context, *connect.Request[v1.PerformanceCoachServiceGetImprovementPlanRequest]) (*connect.Response[v1.PerformanceCoachServiceGetImprovementPlanResponse], error)
+	ListBenchmarks(context.Context, *connect.Request[v1.PerformanceCoachServiceListBenchmarksRequest]) (*connect.Response[v1.PerformanceCoachServiceListBenchmarksResponse], error)
+	CompareToIndustry(context.Context, *connect.Request[v1.PerformanceCoachServiceCompareToIndustryRequest]) (*connect.Response[v1.PerformanceCoachServiceCompareToIndustryResponse], error)
+}
+
+// NewPerformanceCoachServiceClient constructs a client for the
+// creativanta.production.v1.PerformanceCoachService service. By default, it uses the Connect
+// protocol with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed
+// requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
+// connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewPerformanceCoachServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) PerformanceCoachServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	performanceCoachServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("PerformanceCoachService").Methods()
+	return &performanceCoachServiceClient{
+		getInsights: connect.NewClient[v1.PerformanceCoachServiceGetInsightsRequest, v1.PerformanceCoachServiceGetInsightsResponse](
+			httpClient,
+			baseURL+PerformanceCoachServiceGetInsightsProcedure,
+			connect.WithSchema(performanceCoachServiceMethods.ByName("GetInsights")),
+			connect.WithClientOptions(opts...),
+		),
+		getVideoScorecard: connect.NewClient[v1.PerformanceCoachServiceGetVideoScorecardRequest, v1.PerformanceCoachServiceGetVideoScorecardResponse](
+			httpClient,
+			baseURL+PerformanceCoachServiceGetVideoScorecardProcedure,
+			connect.WithSchema(performanceCoachServiceMethods.ByName("GetVideoScorecard")),
+			connect.WithClientOptions(opts...),
+		),
+		getImprovementPlan: connect.NewClient[v1.PerformanceCoachServiceGetImprovementPlanRequest, v1.PerformanceCoachServiceGetImprovementPlanResponse](
+			httpClient,
+			baseURL+PerformanceCoachServiceGetImprovementPlanProcedure,
+			connect.WithSchema(performanceCoachServiceMethods.ByName("GetImprovementPlan")),
+			connect.WithClientOptions(opts...),
+		),
+		listBenchmarks: connect.NewClient[v1.PerformanceCoachServiceListBenchmarksRequest, v1.PerformanceCoachServiceListBenchmarksResponse](
+			httpClient,
+			baseURL+PerformanceCoachServiceListBenchmarksProcedure,
+			connect.WithSchema(performanceCoachServiceMethods.ByName("ListBenchmarks")),
+			connect.WithClientOptions(opts...),
+		),
+		compareToIndustry: connect.NewClient[v1.PerformanceCoachServiceCompareToIndustryRequest, v1.PerformanceCoachServiceCompareToIndustryResponse](
+			httpClient,
+			baseURL+PerformanceCoachServiceCompareToIndustryProcedure,
+			connect.WithSchema(performanceCoachServiceMethods.ByName("CompareToIndustry")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// performanceCoachServiceClient implements PerformanceCoachServiceClient.
+type performanceCoachServiceClient struct {
+	getInsights        *connect.Client[v1.PerformanceCoachServiceGetInsightsRequest, v1.PerformanceCoachServiceGetInsightsResponse]
+	getVideoScorecard  *connect.Client[v1.PerformanceCoachServiceGetVideoScorecardRequest, v1.PerformanceCoachServiceGetVideoScorecardResponse]
+	getImprovementPlan *connect.Client[v1.PerformanceCoachServiceGetImprovementPlanRequest, v1.PerformanceCoachServiceGetImprovementPlanResponse]
+	listBenchmarks     *connect.Client[v1.PerformanceCoachServiceListBenchmarksRequest, v1.PerformanceCoachServiceListBenchmarksResponse]
+	compareToIndustry  *connect.Client[v1.PerformanceCoachServiceCompareToIndustryRequest, v1.PerformanceCoachServiceCompareToIndustryResponse]
+}
+
+// GetInsights calls creativanta.production.v1.PerformanceCoachService.GetInsights.
+func (c *performanceCoachServiceClient) GetInsights(ctx context.Context, req *connect.Request[v1.PerformanceCoachServiceGetInsightsRequest]) (*connect.Response[v1.PerformanceCoachServiceGetInsightsResponse], error) {
+	return c.getInsights.CallUnary(ctx, req)
+}
+
+// GetVideoScorecard calls creativanta.production.v1.PerformanceCoachService.GetVideoScorecard.
+func (c *performanceCoachServiceClient) GetVideoScorecard(ctx context.Context, req *connect.Request[v1.PerformanceCoachServiceGetVideoScorecardRequest]) (*connect.Response[v1.PerformanceCoachServiceGetVideoScorecardResponse], error) {
+	return c.getVideoScorecard.CallUnary(ctx, req)
+}
+
+// GetImprovementPlan calls creativanta.production.v1.PerformanceCoachService.GetImprovementPlan.
+func (c *performanceCoachServiceClient) GetImprovementPlan(ctx context.Context, req *connect.Request[v1.PerformanceCoachServiceGetImprovementPlanRequest]) (*connect.Response[v1.PerformanceCoachServiceGetImprovementPlanResponse], error) {
+	return c.getImprovementPlan.CallUnary(ctx, req)
+}
+
+// ListBenchmarks calls creativanta.production.v1.PerformanceCoachService.ListBenchmarks.
+func (c *performanceCoachServiceClient) ListBenchmarks(ctx context.Context, req *connect.Request[v1.PerformanceCoachServiceListBenchmarksRequest]) (*connect.Response[v1.PerformanceCoachServiceListBenchmarksResponse], error) {
+	return c.listBenchmarks.CallUnary(ctx, req)
+}
+
+// CompareToIndustry calls creativanta.production.v1.PerformanceCoachService.CompareToIndustry.
+func (c *performanceCoachServiceClient) CompareToIndustry(ctx context.Context, req *connect.Request[v1.PerformanceCoachServiceCompareToIndustryRequest]) (*connect.Response[v1.PerformanceCoachServiceCompareToIndustryResponse], error) {
+	return c.compareToIndustry.CallUnary(ctx, req)
+}
+
+// PerformanceCoachServiceHandler is an implementation of the
+// creativanta.production.v1.PerformanceCoachService service.
+type PerformanceCoachServiceHandler interface {
+	GetInsights(context.Context, *connect.Request[v1.PerformanceCoachServiceGetInsightsRequest]) (*connect.Response[v1.PerformanceCoachServiceGetInsightsResponse], error)
+	GetVideoScorecard(context.Context, *connect.Request[v1.PerformanceCoachServiceGetVideoScorecardRequest]) (*connect.Response[v1.PerformanceCoachServiceGetVideoScorecardResponse], error)
+	GetImprovementPlan(context.Context, *connect.Request[v1.PerformanceCoachServiceGetImprovementPlanRequest]) (*connect.Response[v1.PerformanceCoachServiceGetImprovementPlanResponse], error)
+	ListBenchmarks(context.Context, *connect.Request[v1.PerformanceCoachServiceListBenchmarksRequest]) (*connect.Response[v1.PerformanceCoachServiceListBenchmarksResponse], error)
+	CompareToIndustry(context.Context, *connect.Request[v1.PerformanceCoachServiceCompareToIndustryRequest]) (*connect.Response[v1.PerformanceCoachServiceCompareToIndustryResponse], error)
+}
+
+// NewPerformanceCoachServiceHandler builds an HTTP handler from the service implementation. It
+// returns the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewPerformanceCoachServiceHandler(svc PerformanceCoachServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	performanceCoachServiceMethods := v1.File_creativanta_production_v1_production_proto.Services().ByName("PerformanceCoachService").Methods()
+	performanceCoachServiceGetInsightsHandler := connect.NewUnaryHandler(
+		PerformanceCoachServiceGetInsightsProcedure,
+		svc.GetInsights,
+		connect.WithSchema(performanceCoachServiceMethods.ByName("GetInsights")),
+		connect.WithHandlerOptions(opts...),
+	)
+	performanceCoachServiceGetVideoScorecardHandler := connect.NewUnaryHandler(
+		PerformanceCoachServiceGetVideoScorecardProcedure,
+		svc.GetVideoScorecard,
+		connect.WithSchema(performanceCoachServiceMethods.ByName("GetVideoScorecard")),
+		connect.WithHandlerOptions(opts...),
+	)
+	performanceCoachServiceGetImprovementPlanHandler := connect.NewUnaryHandler(
+		PerformanceCoachServiceGetImprovementPlanProcedure,
+		svc.GetImprovementPlan,
+		connect.WithSchema(performanceCoachServiceMethods.ByName("GetImprovementPlan")),
+		connect.WithHandlerOptions(opts...),
+	)
+	performanceCoachServiceListBenchmarksHandler := connect.NewUnaryHandler(
+		PerformanceCoachServiceListBenchmarksProcedure,
+		svc.ListBenchmarks,
+		connect.WithSchema(performanceCoachServiceMethods.ByName("ListBenchmarks")),
+		connect.WithHandlerOptions(opts...),
+	)
+	performanceCoachServiceCompareToIndustryHandler := connect.NewUnaryHandler(
+		PerformanceCoachServiceCompareToIndustryProcedure,
+		svc.CompareToIndustry,
+		connect.WithSchema(performanceCoachServiceMethods.ByName("CompareToIndustry")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.production.v1.PerformanceCoachService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case PerformanceCoachServiceGetInsightsProcedure:
+			performanceCoachServiceGetInsightsHandler.ServeHTTP(w, r)
+		case PerformanceCoachServiceGetVideoScorecardProcedure:
+			performanceCoachServiceGetVideoScorecardHandler.ServeHTTP(w, r)
+		case PerformanceCoachServiceGetImprovementPlanProcedure:
+			performanceCoachServiceGetImprovementPlanHandler.ServeHTTP(w, r)
+		case PerformanceCoachServiceListBenchmarksProcedure:
+			performanceCoachServiceListBenchmarksHandler.ServeHTTP(w, r)
+		case PerformanceCoachServiceCompareToIndustryProcedure:
+			performanceCoachServiceCompareToIndustryHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedPerformanceCoachServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedPerformanceCoachServiceHandler struct{}
+
+func (UnimplementedPerformanceCoachServiceHandler) GetInsights(context.Context, *connect.Request[v1.PerformanceCoachServiceGetInsightsRequest]) (*connect.Response[v1.PerformanceCoachServiceGetInsightsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.PerformanceCoachService.GetInsights is not implemented"))
+}
+
+func (UnimplementedPerformanceCoachServiceHandler) GetVideoScorecard(context.Context, *connect.Request[v1.PerformanceCoachServiceGetVideoScorecardRequest]) (*connect.Response[v1.PerformanceCoachServiceGetVideoScorecardResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.PerformanceCoachService.GetVideoScorecard is not implemented"))
+}
+
+func (UnimplementedPerformanceCoachServiceHandler) GetImprovementPlan(context.Context, *connect.Request[v1.PerformanceCoachServiceGetImprovementPlanRequest]) (*connect.Response[v1.PerformanceCoachServiceGetImprovementPlanResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.PerformanceCoachService.GetImprovementPlan is not implemented"))
+}
+
+func (UnimplementedPerformanceCoachServiceHandler) ListBenchmarks(context.Context, *connect.Request[v1.PerformanceCoachServiceListBenchmarksRequest]) (*connect.Response[v1.PerformanceCoachServiceListBenchmarksResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.PerformanceCoachService.ListBenchmarks is not implemented"))
+}
+
+func (UnimplementedPerformanceCoachServiceHandler) CompareToIndustry(context.Context, *connect.Request[v1.PerformanceCoachServiceCompareToIndustryRequest]) (*connect.Response[v1.PerformanceCoachServiceCompareToIndustryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.production.v1.PerformanceCoachService.CompareToIndustry is not implemented"))
 }

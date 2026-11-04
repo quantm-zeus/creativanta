@@ -1,0 +1,13 @@
+
+> @creativanta/web@0.1.0 test /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p5-05/apps/web
+> vitest run src/lib/production/ab_test_coach.test.ts
+
+
+ RUN  v3.0.7 /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p5-05/apps/web
+
+ ✓ src/lib/production/ab_test_coach.test.ts (10 tests) 17ms
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  05:47:56
+   Duration  615ms (transform 99ms, setup 0ms, collect 113ms, tests 17ms, environment 0ms, prepare 118ms)

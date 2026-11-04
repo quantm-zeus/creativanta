@@ -22655,6 +22655,277 @@ class UploadPreset extends $pb.GeneratedMessage {
   $1.Timestamp ensureCreatedAt() => $_ensure(8);
 }
 
+class ABVariant extends $pb.GeneratedMessage {
+  factory ABVariant({
+    $core.String? variantId,
+    $core.String? assetId,
+    $core.String? publishItemId,
+    $core.String? variantType,
+    $core.String? variantLabel,
+    $fixnum.Int64? impressions,
+    $fixnum.Int64? views,
+    $fixnum.Int64? clicks,
+    $core.double? ctr,
+    $fixnum.Int64? conversions,
+    $core.double? engagementRate,
+  }) {
+    final result = ABVariant._();
+    if (variantId != null) result.variantId = variantId;
+    if (assetId != null) result.assetId = assetId;
+    if (publishItemId != null) result.publishItemId = publishItemId;
+    if (variantType != null) result.variantType = variantType;
+    if (variantLabel != null) result.variantLabel = variantLabel;
+    if (impressions != null) result.impressions = impressions;
+    if (views != null) result.views = views;
+    if (clicks != null) result.clicks = clicks;
+    if (ctr != null) result.ctr = ctr;
+    if (conversions != null) result.conversions = conversions;
+    if (engagementRate != null) result.engagementRate = engagementRate;
+    return result;
+  }
+
+  ABVariant._();
+
+  factory ABVariant.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABVariant()..mergeFromBuffer(data, registry);
+  factory ABVariant.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABVariant()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ABVariant',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ABVariant.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'variantId')
+    ..aOS(2, _omitFieldNames ? '' : 'assetId')
+    ..aOS(3, _omitFieldNames ? '' : 'publishItemId')
+    ..aOS(4, _omitFieldNames ? '' : 'variantType')
+    ..aOS(5, _omitFieldNames ? '' : 'variantLabel')
+    ..aInt64(6, _omitFieldNames ? '' : 'impressions')
+    ..aInt64(7, _omitFieldNames ? '' : 'views')
+    ..aInt64(8, _omitFieldNames ? '' : 'clicks')
+    ..aD(9, _omitFieldNames ? '' : 'ctr')
+    ..aInt64(10, _omitFieldNames ? '' : 'conversions')
+    ..aD(11, _omitFieldNames ? '' : 'engagementRate')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABVariant clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABVariant copyWith(void Function(ABVariant) updates) =>
+      super.copyWith((message) => updates(message as ABVariant)) as ABVariant;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ABVariant() / ABVariant.new instead')
+  static ABVariant create() => ABVariant._();
+  static $pb.GeneratedMessage $_createMessage() => ABVariant._();
+  @$core.override
+  ABVariant createEmptyInstance() => ABVariant._();
+  @$core.pragma('dart2js:noInline')
+  static ABVariant getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ABVariant>(ABVariant.$_createMessage);
+  static ABVariant? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get variantId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set variantId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasVariantId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearVariantId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get assetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set assetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get publishItemId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set publishItemId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPublishItemId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPublishItemId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get variantType => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set variantType($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasVariantType() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearVariantType() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get variantLabel => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set variantLabel($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasVariantLabel() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearVariantLabel() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $fixnum.Int64 get impressions => $_getI64(5);
+  @$pb.TagNumber(6)
+  set impressions($fixnum.Int64 value) => $_setInt64(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasImpressions() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearImpressions() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $fixnum.Int64 get views => $_getI64(6);
+  @$pb.TagNumber(7)
+  set views($fixnum.Int64 value) => $_setInt64(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasViews() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearViews() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $fixnum.Int64 get clicks => $_getI64(7);
+  @$pb.TagNumber(8)
+  set clicks($fixnum.Int64 value) => $_setInt64(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasClicks() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearClicks() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.double get ctr => $_getN(8);
+  @$pb.TagNumber(9)
+  set ctr($core.double value) => $_setDouble(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasCtr() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearCtr() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $fixnum.Int64 get conversions => $_getI64(9);
+  @$pb.TagNumber(10)
+  set conversions($fixnum.Int64 value) => $_setInt64(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasConversions() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearConversions() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.double get engagementRate => $_getN(10);
+  @$pb.TagNumber(11)
+  set engagementRate($core.double value) => $_setDouble(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasEngagementRate() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearEngagementRate() => $_clearField(11);
+}
+
+class AutoWinnerCriteria extends $pb.GeneratedMessage {
+  factory AutoWinnerCriteria({
+    $core.String? metric,
+    $core.double? thresholdMultiplier,
+    $core.int? minDurationHours,
+    $fixnum.Int64? minImpressions,
+  }) {
+    final result = AutoWinnerCriteria._();
+    if (metric != null) result.metric = metric;
+    if (thresholdMultiplier != null)
+      result.thresholdMultiplier = thresholdMultiplier;
+    if (minDurationHours != null) result.minDurationHours = minDurationHours;
+    if (minImpressions != null) result.minImpressions = minImpressions;
+    return result;
+  }
+
+  AutoWinnerCriteria._();
+
+  factory AutoWinnerCriteria.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AutoWinnerCriteria()..mergeFromBuffer(data, registry);
+  factory AutoWinnerCriteria.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AutoWinnerCriteria()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AutoWinnerCriteria',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: AutoWinnerCriteria.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'metric')
+    ..aD(2, _omitFieldNames ? '' : 'thresholdMultiplier')
+    ..aI(3, _omitFieldNames ? '' : 'minDurationHours')
+    ..aInt64(4, _omitFieldNames ? '' : 'minImpressions')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AutoWinnerCriteria clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AutoWinnerCriteria copyWith(void Function(AutoWinnerCriteria) updates) =>
+      super.copyWith((message) => updates(message as AutoWinnerCriteria))
+          as AutoWinnerCriteria;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use AutoWinnerCriteria() / AutoWinnerCriteria.new instead')
+  static AutoWinnerCriteria create() => AutoWinnerCriteria._();
+  static $pb.GeneratedMessage $_createMessage() => AutoWinnerCriteria._();
+  @$core.override
+  AutoWinnerCriteria createEmptyInstance() => AutoWinnerCriteria._();
+  @$core.pragma('dart2js:noInline')
+  static AutoWinnerCriteria getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AutoWinnerCriteria>(
+          AutoWinnerCriteria.$_createMessage);
+  static AutoWinnerCriteria? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get metric => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set metric($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasMetric() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearMetric() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.double get thresholdMultiplier => $_getN(1);
+  @$pb.TagNumber(2)
+  set thresholdMultiplier($core.double value) => $_setDouble(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasThresholdMultiplier() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearThresholdMultiplier() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get minDurationHours => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set minDurationHours($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasMinDurationHours() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearMinDurationHours() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get minImpressions => $_getI64(3);
+  @$pb.TagNumber(4)
+  set minImpressions($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasMinImpressions() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearMinImpressions() => $_clearField(4);
+}
+
 class ABExperiment extends $pb.GeneratedMessage {
   factory ABExperiment({
     $core.String? experimentId,
@@ -22672,6 +22943,12 @@ class ABExperiment extends $pb.GeneratedMessage {
     $core.String? winnerAssetId,
     $core.bool? isObservational,
     $core.String? inconclusiveReason,
+    $core.Iterable<ABVariant>? variants,
+    AutoWinnerCriteria? criteria,
+    $1.Timestamp? startedAt,
+    $1.Timestamp? completedAt,
+    $1.Timestamp? createdAt,
+    $1.Timestamp? updatedAt,
   }) {
     final result = ABExperiment._();
     if (experimentId != null) result.experimentId = experimentId;
@@ -22692,6 +22969,12 @@ class ABExperiment extends $pb.GeneratedMessage {
     if (isObservational != null) result.isObservational = isObservational;
     if (inconclusiveReason != null)
       result.inconclusiveReason = inconclusiveReason;
+    if (variants != null) result.variants.addAll(variants);
+    if (criteria != null) result.criteria = criteria;
+    if (startedAt != null) result.startedAt = startedAt;
+    if (completedAt != null) result.completedAt = completedAt;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (updatedAt != null) result.updatedAt = updatedAt;
     return result;
   }
 
@@ -22724,6 +23007,18 @@ class ABExperiment extends $pb.GeneratedMessage {
     ..aOS(13, _omitFieldNames ? '' : 'winnerAssetId')
     ..aOB(14, _omitFieldNames ? '' : 'isObservational')
     ..aOS(15, _omitFieldNames ? '' : 'inconclusiveReason')
+    ..pPM<ABVariant>(16, _omitFieldNames ? '' : 'variants',
+        subBuilder: ABVariant.$_createMessage)
+    ..aOM<AutoWinnerCriteria>(17, _omitFieldNames ? '' : 'criteria',
+        subBuilder: AutoWinnerCriteria.$_createMessage)
+    ..aOM<$1.Timestamp>(18, _omitFieldNames ? '' : 'startedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOM<$1.Timestamp>(19, _omitFieldNames ? '' : 'completedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOM<$1.Timestamp>(20, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOM<$1.Timestamp>(21, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -22877,6 +23172,64 @@ class ABExperiment extends $pb.GeneratedMessage {
   $core.bool hasInconclusiveReason() => $_has(14);
   @$pb.TagNumber(15)
   void clearInconclusiveReason() => $_clearField(15);
+
+  @$pb.TagNumber(16)
+  $pb.PbList<ABVariant> get variants => $_getList(15);
+
+  @$pb.TagNumber(17)
+  AutoWinnerCriteria get criteria => $_getN(16);
+  @$pb.TagNumber(17)
+  set criteria(AutoWinnerCriteria value) => $_setField(17, value);
+  @$pb.TagNumber(17)
+  $core.bool hasCriteria() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearCriteria() => $_clearField(17);
+  @$pb.TagNumber(17)
+  AutoWinnerCriteria ensureCriteria() => $_ensure(16);
+
+  @$pb.TagNumber(18)
+  $1.Timestamp get startedAt => $_getN(17);
+  @$pb.TagNumber(18)
+  set startedAt($1.Timestamp value) => $_setField(18, value);
+  @$pb.TagNumber(18)
+  $core.bool hasStartedAt() => $_has(17);
+  @$pb.TagNumber(18)
+  void clearStartedAt() => $_clearField(18);
+  @$pb.TagNumber(18)
+  $1.Timestamp ensureStartedAt() => $_ensure(17);
+
+  @$pb.TagNumber(19)
+  $1.Timestamp get completedAt => $_getN(18);
+  @$pb.TagNumber(19)
+  set completedAt($1.Timestamp value) => $_setField(19, value);
+  @$pb.TagNumber(19)
+  $core.bool hasCompletedAt() => $_has(18);
+  @$pb.TagNumber(19)
+  void clearCompletedAt() => $_clearField(19);
+  @$pb.TagNumber(19)
+  $1.Timestamp ensureCompletedAt() => $_ensure(18);
+
+  @$pb.TagNumber(20)
+  $1.Timestamp get createdAt => $_getN(19);
+  @$pb.TagNumber(20)
+  set createdAt($1.Timestamp value) => $_setField(20, value);
+  @$pb.TagNumber(20)
+  $core.bool hasCreatedAt() => $_has(19);
+  @$pb.TagNumber(20)
+  void clearCreatedAt() => $_clearField(20);
+  @$pb.TagNumber(20)
+  $1.Timestamp ensureCreatedAt() => $_ensure(19);
+
+  @$pb.TagNumber(21)
+  $1.Timestamp get updatedAt => $_getN(20);
+  @$pb.TagNumber(21)
+  set updatedAt($1.Timestamp value) => $_setField(21, value);
+  @$pb.TagNumber(21)
+  $core.bool hasUpdatedAt() => $_has(20);
+  @$pb.TagNumber(21)
+  void clearUpdatedAt() => $_clearField(21);
+  @$pb.TagNumber(21)
+  $1.Timestamp ensureUpdatedAt() => $_ensure(20);
 }
 
 class OverrideAuditRecord extends $pb.GeneratedMessage {
@@ -24556,6 +24909,3245 @@ class PackagingServiceRunQAResponse extends $pb.GeneratedMessage {
   void clearReport() => $_clearField(1);
   @$pb.TagNumber(1)
   PackagingReport ensureReport() => $_ensure(0);
+}
+
+class ABTestServiceCreateRequest extends $pb.GeneratedMessage {
+  factory ABTestServiceCreateRequest({
+    $2.CommandContext? context,
+    $core.String? sourceAssetId,
+    $core.String? title,
+    $core.String? hypothesis,
+    $core.Iterable<$core.String>? variantAssetIds,
+    $core.String? targetMetric,
+    $core.int? minDurationHours,
+    $fixnum.Int64? minImpressionsPerVariant,
+    $core.double? autoWinnerThresholdMultiplier,
+    $core.Iterable<ABVariant>? variants,
+  }) {
+    final result = ABTestServiceCreateRequest._();
+    if (context != null) result.context = context;
+    if (sourceAssetId != null) result.sourceAssetId = sourceAssetId;
+    if (title != null) result.title = title;
+    if (hypothesis != null) result.hypothesis = hypothesis;
+    if (variantAssetIds != null) result.variantAssetIds.addAll(variantAssetIds);
+    if (targetMetric != null) result.targetMetric = targetMetric;
+    if (minDurationHours != null) result.minDurationHours = minDurationHours;
+    if (minImpressionsPerVariant != null)
+      result.minImpressionsPerVariant = minImpressionsPerVariant;
+    if (autoWinnerThresholdMultiplier != null)
+      result.autoWinnerThresholdMultiplier = autoWinnerThresholdMultiplier;
+    if (variants != null) result.variants.addAll(variants);
+    return result;
+  }
+
+  ABTestServiceCreateRequest._();
+
+  factory ABTestServiceCreateRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceCreateRequest()..mergeFromBuffer(data, registry);
+  factory ABTestServiceCreateRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceCreateRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ABTestServiceCreateRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ABTestServiceCreateRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'sourceAssetId')
+    ..aOS(3, _omitFieldNames ? '' : 'title')
+    ..aOS(4, _omitFieldNames ? '' : 'hypothesis')
+    ..pPS(5, _omitFieldNames ? '' : 'variantAssetIds')
+    ..aOS(6, _omitFieldNames ? '' : 'targetMetric')
+    ..aI(7, _omitFieldNames ? '' : 'minDurationHours')
+    ..aInt64(8, _omitFieldNames ? '' : 'minImpressionsPerVariant')
+    ..aD(9, _omitFieldNames ? '' : 'autoWinnerThresholdMultiplier')
+    ..pPM<ABVariant>(10, _omitFieldNames ? '' : 'variants',
+        subBuilder: ABVariant.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceCreateRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceCreateRequest copyWith(
+          void Function(ABTestServiceCreateRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as ABTestServiceCreateRequest))
+          as ABTestServiceCreateRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ABTestServiceCreateRequest() / ABTestServiceCreateRequest.new instead')
+  static ABTestServiceCreateRequest create() => ABTestServiceCreateRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ABTestServiceCreateRequest._();
+  @$core.override
+  ABTestServiceCreateRequest createEmptyInstance() =>
+      ABTestServiceCreateRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ABTestServiceCreateRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ABTestServiceCreateRequest>(
+          ABTestServiceCreateRequest.$_createMessage);
+  static ABTestServiceCreateRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get sourceAssetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set sourceAssetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSourceAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSourceAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get title => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set title($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTitle() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTitle() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get hypothesis => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set hypothesis($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasHypothesis() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearHypothesis() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $pb.PbList<$core.String> get variantAssetIds => $_getList(4);
+
+  @$pb.TagNumber(6)
+  $core.String get targetMetric => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set targetMetric($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasTargetMetric() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTargetMetric() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.int get minDurationHours => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set minDurationHours($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasMinDurationHours() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearMinDurationHours() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $fixnum.Int64 get minImpressionsPerVariant => $_getI64(7);
+  @$pb.TagNumber(8)
+  set minImpressionsPerVariant($fixnum.Int64 value) => $_setInt64(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasMinImpressionsPerVariant() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearMinImpressionsPerVariant() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.double get autoWinnerThresholdMultiplier => $_getN(8);
+  @$pb.TagNumber(9)
+  set autoWinnerThresholdMultiplier($core.double value) =>
+      $_setDouble(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasAutoWinnerThresholdMultiplier() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearAutoWinnerThresholdMultiplier() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $pb.PbList<ABVariant> get variants => $_getList(9);
+}
+
+class ABTestServiceCreateResponse extends $pb.GeneratedMessage {
+  factory ABTestServiceCreateResponse({
+    ABExperiment? experiment,
+  }) {
+    final result = ABTestServiceCreateResponse._();
+    if (experiment != null) result.experiment = experiment;
+    return result;
+  }
+
+  ABTestServiceCreateResponse._();
+
+  factory ABTestServiceCreateResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceCreateResponse()..mergeFromBuffer(data, registry);
+  factory ABTestServiceCreateResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceCreateResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ABTestServiceCreateResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ABTestServiceCreateResponse.$_createMessage)
+    ..aOM<ABExperiment>(1, _omitFieldNames ? '' : 'experiment',
+        subBuilder: ABExperiment.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceCreateResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceCreateResponse copyWith(
+          void Function(ABTestServiceCreateResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as ABTestServiceCreateResponse))
+          as ABTestServiceCreateResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ABTestServiceCreateResponse() / ABTestServiceCreateResponse.new instead')
+  static ABTestServiceCreateResponse create() =>
+      ABTestServiceCreateResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ABTestServiceCreateResponse._();
+  @$core.override
+  ABTestServiceCreateResponse createEmptyInstance() =>
+      ABTestServiceCreateResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ABTestServiceCreateResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ABTestServiceCreateResponse>(
+          ABTestServiceCreateResponse.$_createMessage);
+  static ABTestServiceCreateResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ABExperiment get experiment => $_getN(0);
+  @$pb.TagNumber(1)
+  set experiment(ABExperiment value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasExperiment() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearExperiment() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ABExperiment ensureExperiment() => $_ensure(0);
+}
+
+class ABTestServiceGetRequest extends $pb.GeneratedMessage {
+  factory ABTestServiceGetRequest({
+    $2.UUID? workspaceId,
+    $core.String? experimentId,
+  }) {
+    final result = ABTestServiceGetRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (experimentId != null) result.experimentId = experimentId;
+    return result;
+  }
+
+  ABTestServiceGetRequest._();
+
+  factory ABTestServiceGetRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceGetRequest()..mergeFromBuffer(data, registry);
+  factory ABTestServiceGetRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceGetRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ABTestServiceGetRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ABTestServiceGetRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'experimentId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceGetRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceGetRequest copyWith(
+          void Function(ABTestServiceGetRequest) updates) =>
+      super.copyWith((message) => updates(message as ABTestServiceGetRequest))
+          as ABTestServiceGetRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ABTestServiceGetRequest() / ABTestServiceGetRequest.new instead')
+  static ABTestServiceGetRequest create() => ABTestServiceGetRequest._();
+  static $pb.GeneratedMessage $_createMessage() => ABTestServiceGetRequest._();
+  @$core.override
+  ABTestServiceGetRequest createEmptyInstance() => ABTestServiceGetRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ABTestServiceGetRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ABTestServiceGetRequest>(
+          ABTestServiceGetRequest.$_createMessage);
+  static ABTestServiceGetRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get experimentId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set experimentId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasExperimentId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearExperimentId() => $_clearField(2);
+}
+
+class ABTestServiceGetResponse extends $pb.GeneratedMessage {
+  factory ABTestServiceGetResponse({
+    ABExperiment? experiment,
+  }) {
+    final result = ABTestServiceGetResponse._();
+    if (experiment != null) result.experiment = experiment;
+    return result;
+  }
+
+  ABTestServiceGetResponse._();
+
+  factory ABTestServiceGetResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceGetResponse()..mergeFromBuffer(data, registry);
+  factory ABTestServiceGetResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceGetResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ABTestServiceGetResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ABTestServiceGetResponse.$_createMessage)
+    ..aOM<ABExperiment>(1, _omitFieldNames ? '' : 'experiment',
+        subBuilder: ABExperiment.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceGetResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceGetResponse copyWith(
+          void Function(ABTestServiceGetResponse) updates) =>
+      super.copyWith((message) => updates(message as ABTestServiceGetResponse))
+          as ABTestServiceGetResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ABTestServiceGetResponse() / ABTestServiceGetResponse.new instead')
+  static ABTestServiceGetResponse create() => ABTestServiceGetResponse._();
+  static $pb.GeneratedMessage $_createMessage() => ABTestServiceGetResponse._();
+  @$core.override
+  ABTestServiceGetResponse createEmptyInstance() =>
+      ABTestServiceGetResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ABTestServiceGetResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ABTestServiceGetResponse>(
+          ABTestServiceGetResponse.$_createMessage);
+  static ABTestServiceGetResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ABExperiment get experiment => $_getN(0);
+  @$pb.TagNumber(1)
+  set experiment(ABExperiment value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasExperiment() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearExperiment() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ABExperiment ensureExperiment() => $_ensure(0);
+}
+
+class ABTestServiceListRequest extends $pb.GeneratedMessage {
+  factory ABTestServiceListRequest({
+    $2.UUID? workspaceId,
+    $core.String? sourceAssetId,
+    $core.String? status,
+    $2.Pagination? pagination,
+  }) {
+    final result = ABTestServiceListRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (sourceAssetId != null) result.sourceAssetId = sourceAssetId;
+    if (status != null) result.status = status;
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  ABTestServiceListRequest._();
+
+  factory ABTestServiceListRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceListRequest()..mergeFromBuffer(data, registry);
+  factory ABTestServiceListRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceListRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ABTestServiceListRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ABTestServiceListRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'sourceAssetId')
+    ..aOS(3, _omitFieldNames ? '' : 'status')
+    ..aOM<$2.Pagination>(4, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.Pagination.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceListRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceListRequest copyWith(
+          void Function(ABTestServiceListRequest) updates) =>
+      super.copyWith((message) => updates(message as ABTestServiceListRequest))
+          as ABTestServiceListRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ABTestServiceListRequest() / ABTestServiceListRequest.new instead')
+  static ABTestServiceListRequest create() => ABTestServiceListRequest._();
+  static $pb.GeneratedMessage $_createMessage() => ABTestServiceListRequest._();
+  @$core.override
+  ABTestServiceListRequest createEmptyInstance() =>
+      ABTestServiceListRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ABTestServiceListRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ABTestServiceListRequest>(
+          ABTestServiceListRequest.$_createMessage);
+  static ABTestServiceListRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get sourceAssetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set sourceAssetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSourceAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSourceAssetId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get status => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set status($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasStatus() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearStatus() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $2.Pagination get pagination => $_getN(3);
+  @$pb.TagNumber(4)
+  set pagination($2.Pagination value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPagination() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPagination() => $_clearField(4);
+  @$pb.TagNumber(4)
+  $2.Pagination ensurePagination() => $_ensure(3);
+}
+
+class ABTestServiceListResponse extends $pb.GeneratedMessage {
+  factory ABTestServiceListResponse({
+    $core.Iterable<ABExperiment>? experiments,
+    $2.PaginatedResponse? pagination,
+  }) {
+    final result = ABTestServiceListResponse._();
+    if (experiments != null) result.experiments.addAll(experiments);
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  ABTestServiceListResponse._();
+
+  factory ABTestServiceListResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceListResponse()..mergeFromBuffer(data, registry);
+  factory ABTestServiceListResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceListResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ABTestServiceListResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ABTestServiceListResponse.$_createMessage)
+    ..pPM<ABExperiment>(1, _omitFieldNames ? '' : 'experiments',
+        subBuilder: ABExperiment.$_createMessage)
+    ..aOM<$2.PaginatedResponse>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.PaginatedResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceListResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceListResponse copyWith(
+          void Function(ABTestServiceListResponse) updates) =>
+      super.copyWith((message) => updates(message as ABTestServiceListResponse))
+          as ABTestServiceListResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ABTestServiceListResponse() / ABTestServiceListResponse.new instead')
+  static ABTestServiceListResponse create() => ABTestServiceListResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ABTestServiceListResponse._();
+  @$core.override
+  ABTestServiceListResponse createEmptyInstance() =>
+      ABTestServiceListResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ABTestServiceListResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ABTestServiceListResponse>(
+          ABTestServiceListResponse.$_createMessage);
+  static ABTestServiceListResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<ABExperiment> get experiments => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($2.PaginatedResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.PaginatedResponse ensurePagination() => $_ensure(1);
+}
+
+class ABTestServiceDeclareWinnerRequest extends $pb.GeneratedMessage {
+  factory ABTestServiceDeclareWinnerRequest({
+    $2.CommandContext? context,
+    $core.String? experimentId,
+    $core.String? winnerAssetId,
+    $core.String? reason,
+  }) {
+    final result = ABTestServiceDeclareWinnerRequest._();
+    if (context != null) result.context = context;
+    if (experimentId != null) result.experimentId = experimentId;
+    if (winnerAssetId != null) result.winnerAssetId = winnerAssetId;
+    if (reason != null) result.reason = reason;
+    return result;
+  }
+
+  ABTestServiceDeclareWinnerRequest._();
+
+  factory ABTestServiceDeclareWinnerRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceDeclareWinnerRequest()..mergeFromBuffer(data, registry);
+  factory ABTestServiceDeclareWinnerRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceDeclareWinnerRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ABTestServiceDeclareWinnerRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ABTestServiceDeclareWinnerRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'experimentId')
+    ..aOS(3, _omitFieldNames ? '' : 'winnerAssetId')
+    ..aOS(4, _omitFieldNames ? '' : 'reason')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceDeclareWinnerRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceDeclareWinnerRequest copyWith(
+          void Function(ABTestServiceDeclareWinnerRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ABTestServiceDeclareWinnerRequest))
+          as ABTestServiceDeclareWinnerRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ABTestServiceDeclareWinnerRequest() / ABTestServiceDeclareWinnerRequest.new instead')
+  static ABTestServiceDeclareWinnerRequest create() =>
+      ABTestServiceDeclareWinnerRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ABTestServiceDeclareWinnerRequest._();
+  @$core.override
+  ABTestServiceDeclareWinnerRequest createEmptyInstance() =>
+      ABTestServiceDeclareWinnerRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ABTestServiceDeclareWinnerRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ABTestServiceDeclareWinnerRequest>(
+          ABTestServiceDeclareWinnerRequest.$_createMessage);
+  static ABTestServiceDeclareWinnerRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get experimentId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set experimentId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasExperimentId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearExperimentId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get winnerAssetId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set winnerAssetId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasWinnerAssetId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearWinnerAssetId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get reason => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set reason($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasReason() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearReason() => $_clearField(4);
+}
+
+class ABTestServiceDeclareWinnerResponse extends $pb.GeneratedMessage {
+  factory ABTestServiceDeclareWinnerResponse({
+    ABExperiment? experiment,
+    $core.bool? observationalLabelRetained,
+  }) {
+    final result = ABTestServiceDeclareWinnerResponse._();
+    if (experiment != null) result.experiment = experiment;
+    if (observationalLabelRetained != null)
+      result.observationalLabelRetained = observationalLabelRetained;
+    return result;
+  }
+
+  ABTestServiceDeclareWinnerResponse._();
+
+  factory ABTestServiceDeclareWinnerResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceDeclareWinnerResponse()..mergeFromBuffer(data, registry);
+  factory ABTestServiceDeclareWinnerResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceDeclareWinnerResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ABTestServiceDeclareWinnerResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ABTestServiceDeclareWinnerResponse.$_createMessage)
+    ..aOM<ABExperiment>(1, _omitFieldNames ? '' : 'experiment',
+        subBuilder: ABExperiment.$_createMessage)
+    ..aOB(2, _omitFieldNames ? '' : 'observationalLabelRetained')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceDeclareWinnerResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceDeclareWinnerResponse copyWith(
+          void Function(ABTestServiceDeclareWinnerResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ABTestServiceDeclareWinnerResponse))
+          as ABTestServiceDeclareWinnerResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ABTestServiceDeclareWinnerResponse() / ABTestServiceDeclareWinnerResponse.new instead')
+  static ABTestServiceDeclareWinnerResponse create() =>
+      ABTestServiceDeclareWinnerResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ABTestServiceDeclareWinnerResponse._();
+  @$core.override
+  ABTestServiceDeclareWinnerResponse createEmptyInstance() =>
+      ABTestServiceDeclareWinnerResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ABTestServiceDeclareWinnerResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ABTestServiceDeclareWinnerResponse>(
+          ABTestServiceDeclareWinnerResponse.$_createMessage);
+  static ABTestServiceDeclareWinnerResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ABExperiment get experiment => $_getN(0);
+  @$pb.TagNumber(1)
+  set experiment(ABExperiment value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasExperiment() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearExperiment() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ABExperiment ensureExperiment() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.bool get observationalLabelRetained => $_getBF(1);
+  @$pb.TagNumber(2)
+  set observationalLabelRetained($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasObservationalLabelRetained() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearObservationalLabelRetained() => $_clearField(2);
+}
+
+class ABTestServiceCancelRequest extends $pb.GeneratedMessage {
+  factory ABTestServiceCancelRequest({
+    $2.CommandContext? context,
+    $core.String? experimentId,
+    $core.String? reason,
+  }) {
+    final result = ABTestServiceCancelRequest._();
+    if (context != null) result.context = context;
+    if (experimentId != null) result.experimentId = experimentId;
+    if (reason != null) result.reason = reason;
+    return result;
+  }
+
+  ABTestServiceCancelRequest._();
+
+  factory ABTestServiceCancelRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceCancelRequest()..mergeFromBuffer(data, registry);
+  factory ABTestServiceCancelRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceCancelRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ABTestServiceCancelRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ABTestServiceCancelRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'experimentId')
+    ..aOS(3, _omitFieldNames ? '' : 'reason')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceCancelRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceCancelRequest copyWith(
+          void Function(ABTestServiceCancelRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as ABTestServiceCancelRequest))
+          as ABTestServiceCancelRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ABTestServiceCancelRequest() / ABTestServiceCancelRequest.new instead')
+  static ABTestServiceCancelRequest create() => ABTestServiceCancelRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ABTestServiceCancelRequest._();
+  @$core.override
+  ABTestServiceCancelRequest createEmptyInstance() =>
+      ABTestServiceCancelRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ABTestServiceCancelRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ABTestServiceCancelRequest>(
+          ABTestServiceCancelRequest.$_createMessage);
+  static ABTestServiceCancelRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get experimentId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set experimentId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasExperimentId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearExperimentId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get reason => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set reason($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasReason() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearReason() => $_clearField(3);
+}
+
+class ABTestServiceCancelResponse extends $pb.GeneratedMessage {
+  factory ABTestServiceCancelResponse({
+    ABExperiment? experiment,
+    $core.bool? success,
+  }) {
+    final result = ABTestServiceCancelResponse._();
+    if (experiment != null) result.experiment = experiment;
+    if (success != null) result.success = success;
+    return result;
+  }
+
+  ABTestServiceCancelResponse._();
+
+  factory ABTestServiceCancelResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceCancelResponse()..mergeFromBuffer(data, registry);
+  factory ABTestServiceCancelResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceCancelResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ABTestServiceCancelResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ABTestServiceCancelResponse.$_createMessage)
+    ..aOM<ABExperiment>(1, _omitFieldNames ? '' : 'experiment',
+        subBuilder: ABExperiment.$_createMessage)
+    ..aOB(2, _omitFieldNames ? '' : 'success')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceCancelResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceCancelResponse copyWith(
+          void Function(ABTestServiceCancelResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as ABTestServiceCancelResponse))
+          as ABTestServiceCancelResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ABTestServiceCancelResponse() / ABTestServiceCancelResponse.new instead')
+  static ABTestServiceCancelResponse create() =>
+      ABTestServiceCancelResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ABTestServiceCancelResponse._();
+  @$core.override
+  ABTestServiceCancelResponse createEmptyInstance() =>
+      ABTestServiceCancelResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ABTestServiceCancelResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ABTestServiceCancelResponse>(
+          ABTestServiceCancelResponse.$_createMessage);
+  static ABTestServiceCancelResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ABExperiment get experiment => $_getN(0);
+  @$pb.TagNumber(1)
+  set experiment(ABExperiment value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasExperiment() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearExperiment() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ABExperiment ensureExperiment() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.bool get success => $_getBF(1);
+  @$pb.TagNumber(2)
+  set success($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSuccess() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSuccess() => $_clearField(2);
+}
+
+class ABTestServiceEvaluateTestRequest extends $pb.GeneratedMessage {
+  factory ABTestServiceEvaluateTestRequest({
+    $2.CommandContext? context,
+    $core.String? experimentId,
+  }) {
+    final result = ABTestServiceEvaluateTestRequest._();
+    if (context != null) result.context = context;
+    if (experimentId != null) result.experimentId = experimentId;
+    return result;
+  }
+
+  ABTestServiceEvaluateTestRequest._();
+
+  factory ABTestServiceEvaluateTestRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceEvaluateTestRequest()..mergeFromBuffer(data, registry);
+  factory ABTestServiceEvaluateTestRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceEvaluateTestRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ABTestServiceEvaluateTestRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ABTestServiceEvaluateTestRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'experimentId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceEvaluateTestRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceEvaluateTestRequest copyWith(
+          void Function(ABTestServiceEvaluateTestRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as ABTestServiceEvaluateTestRequest))
+          as ABTestServiceEvaluateTestRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ABTestServiceEvaluateTestRequest() / ABTestServiceEvaluateTestRequest.new instead')
+  static ABTestServiceEvaluateTestRequest create() =>
+      ABTestServiceEvaluateTestRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ABTestServiceEvaluateTestRequest._();
+  @$core.override
+  ABTestServiceEvaluateTestRequest createEmptyInstance() =>
+      ABTestServiceEvaluateTestRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ABTestServiceEvaluateTestRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ABTestServiceEvaluateTestRequest>(
+          ABTestServiceEvaluateTestRequest.$_createMessage);
+  static ABTestServiceEvaluateTestRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get experimentId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set experimentId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasExperimentId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearExperimentId() => $_clearField(2);
+}
+
+class ABTestServiceEvaluateTestResponse extends $pb.GeneratedMessage {
+  factory ABTestServiceEvaluateTestResponse({
+    ABExperiment? experiment,
+    $core.bool? isConclusive,
+    $core.bool? isObservational,
+    $core.String? winnerAssetId,
+    $core.String? evaluationSummary,
+  }) {
+    final result = ABTestServiceEvaluateTestResponse._();
+    if (experiment != null) result.experiment = experiment;
+    if (isConclusive != null) result.isConclusive = isConclusive;
+    if (isObservational != null) result.isObservational = isObservational;
+    if (winnerAssetId != null) result.winnerAssetId = winnerAssetId;
+    if (evaluationSummary != null) result.evaluationSummary = evaluationSummary;
+    return result;
+  }
+
+  ABTestServiceEvaluateTestResponse._();
+
+  factory ABTestServiceEvaluateTestResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceEvaluateTestResponse()..mergeFromBuffer(data, registry);
+  factory ABTestServiceEvaluateTestResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceEvaluateTestResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ABTestServiceEvaluateTestResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ABTestServiceEvaluateTestResponse.$_createMessage)
+    ..aOM<ABExperiment>(1, _omitFieldNames ? '' : 'experiment',
+        subBuilder: ABExperiment.$_createMessage)
+    ..aOB(2, _omitFieldNames ? '' : 'isConclusive')
+    ..aOB(3, _omitFieldNames ? '' : 'isObservational')
+    ..aOS(4, _omitFieldNames ? '' : 'winnerAssetId')
+    ..aOS(5, _omitFieldNames ? '' : 'evaluationSummary')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceEvaluateTestResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceEvaluateTestResponse copyWith(
+          void Function(ABTestServiceEvaluateTestResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ABTestServiceEvaluateTestResponse))
+          as ABTestServiceEvaluateTestResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ABTestServiceEvaluateTestResponse() / ABTestServiceEvaluateTestResponse.new instead')
+  static ABTestServiceEvaluateTestResponse create() =>
+      ABTestServiceEvaluateTestResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ABTestServiceEvaluateTestResponse._();
+  @$core.override
+  ABTestServiceEvaluateTestResponse createEmptyInstance() =>
+      ABTestServiceEvaluateTestResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ABTestServiceEvaluateTestResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ABTestServiceEvaluateTestResponse>(
+          ABTestServiceEvaluateTestResponse.$_createMessage);
+  static ABTestServiceEvaluateTestResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ABExperiment get experiment => $_getN(0);
+  @$pb.TagNumber(1)
+  set experiment(ABExperiment value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasExperiment() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearExperiment() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ABExperiment ensureExperiment() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.bool get isConclusive => $_getBF(1);
+  @$pb.TagNumber(2)
+  set isConclusive($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasIsConclusive() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearIsConclusive() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get isObservational => $_getBF(2);
+  @$pb.TagNumber(3)
+  set isObservational($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasIsObservational() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearIsObservational() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get winnerAssetId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set winnerAssetId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasWinnerAssetId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearWinnerAssetId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get evaluationSummary => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set evaluationSummary($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasEvaluationSummary() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearEvaluationSummary() => $_clearField(5);
+}
+
+class ABTestServiceGetMetricsRequest extends $pb.GeneratedMessage {
+  factory ABTestServiceGetMetricsRequest({
+    $2.UUID? workspaceId,
+    $core.String? experimentId,
+  }) {
+    final result = ABTestServiceGetMetricsRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (experimentId != null) result.experimentId = experimentId;
+    return result;
+  }
+
+  ABTestServiceGetMetricsRequest._();
+
+  factory ABTestServiceGetMetricsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceGetMetricsRequest()..mergeFromBuffer(data, registry);
+  factory ABTestServiceGetMetricsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceGetMetricsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ABTestServiceGetMetricsRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ABTestServiceGetMetricsRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'experimentId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceGetMetricsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceGetMetricsRequest copyWith(
+          void Function(ABTestServiceGetMetricsRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as ABTestServiceGetMetricsRequest))
+          as ABTestServiceGetMetricsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ABTestServiceGetMetricsRequest() / ABTestServiceGetMetricsRequest.new instead')
+  static ABTestServiceGetMetricsRequest create() =>
+      ABTestServiceGetMetricsRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ABTestServiceGetMetricsRequest._();
+  @$core.override
+  ABTestServiceGetMetricsRequest createEmptyInstance() =>
+      ABTestServiceGetMetricsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ABTestServiceGetMetricsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ABTestServiceGetMetricsRequest>(
+          ABTestServiceGetMetricsRequest.$_createMessage);
+  static ABTestServiceGetMetricsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get experimentId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set experimentId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasExperimentId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearExperimentId() => $_clearField(2);
+}
+
+class ABTestServiceGetMetricsResponse extends $pb.GeneratedMessage {
+  factory ABTestServiceGetMetricsResponse({
+    $core.String? experimentId,
+    $core.Iterable<ABVariant>? variants,
+    $core.String? leadingVariantId,
+    $core.bool? isObservational,
+    $core.bool? hasSufficientExposure,
+  }) {
+    final result = ABTestServiceGetMetricsResponse._();
+    if (experimentId != null) result.experimentId = experimentId;
+    if (variants != null) result.variants.addAll(variants);
+    if (leadingVariantId != null) result.leadingVariantId = leadingVariantId;
+    if (isObservational != null) result.isObservational = isObservational;
+    if (hasSufficientExposure != null)
+      result.hasSufficientExposure = hasSufficientExposure;
+    return result;
+  }
+
+  ABTestServiceGetMetricsResponse._();
+
+  factory ABTestServiceGetMetricsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceGetMetricsResponse()..mergeFromBuffer(data, registry);
+  factory ABTestServiceGetMetricsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ABTestServiceGetMetricsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ABTestServiceGetMetricsResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ABTestServiceGetMetricsResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'experimentId')
+    ..pPM<ABVariant>(2, _omitFieldNames ? '' : 'variants',
+        subBuilder: ABVariant.$_createMessage)
+    ..aOS(3, _omitFieldNames ? '' : 'leadingVariantId')
+    ..aOB(4, _omitFieldNames ? '' : 'isObservational')
+    ..aOB(5, _omitFieldNames ? '' : 'hasSufficientExposure')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceGetMetricsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ABTestServiceGetMetricsResponse copyWith(
+          void Function(ABTestServiceGetMetricsResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as ABTestServiceGetMetricsResponse))
+          as ABTestServiceGetMetricsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ABTestServiceGetMetricsResponse() / ABTestServiceGetMetricsResponse.new instead')
+  static ABTestServiceGetMetricsResponse create() =>
+      ABTestServiceGetMetricsResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ABTestServiceGetMetricsResponse._();
+  @$core.override
+  ABTestServiceGetMetricsResponse createEmptyInstance() =>
+      ABTestServiceGetMetricsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ABTestServiceGetMetricsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ABTestServiceGetMetricsResponse>(
+          ABTestServiceGetMetricsResponse.$_createMessage);
+  static ABTestServiceGetMetricsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get experimentId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set experimentId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasExperimentId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearExperimentId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<ABVariant> get variants => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $core.String get leadingVariantId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set leadingVariantId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasLeadingVariantId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearLeadingVariantId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.bool get isObservational => $_getBF(3);
+  @$pb.TagNumber(4)
+  set isObservational($core.bool value) => $_setBool(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasIsObservational() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearIsObservational() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get hasSufficientExposure => $_getBF(4);
+  @$pb.TagNumber(5)
+  set hasSufficientExposure($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasHasSufficientExposure() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearHasSufficientExposure() => $_clearField(5);
+}
+
+class PerformanceInsight extends $pb.GeneratedMessage {
+  factory PerformanceInsight({
+    $core.String? insightId,
+    $core.String? title,
+    $core.String? description,
+    $core.String? category,
+    $core.String? impactLevel,
+    $core.String? effortLevel,
+    $core.String? suggestedAction,
+    $core.String? targetAssetId,
+    $core.bool? isObservational,
+  }) {
+    final result = PerformanceInsight._();
+    if (insightId != null) result.insightId = insightId;
+    if (title != null) result.title = title;
+    if (description != null) result.description = description;
+    if (category != null) result.category = category;
+    if (impactLevel != null) result.impactLevel = impactLevel;
+    if (effortLevel != null) result.effortLevel = effortLevel;
+    if (suggestedAction != null) result.suggestedAction = suggestedAction;
+    if (targetAssetId != null) result.targetAssetId = targetAssetId;
+    if (isObservational != null) result.isObservational = isObservational;
+    return result;
+  }
+
+  PerformanceInsight._();
+
+  factory PerformanceInsight.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceInsight()..mergeFromBuffer(data, registry);
+  factory PerformanceInsight.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceInsight()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PerformanceInsight',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: PerformanceInsight.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'insightId')
+    ..aOS(2, _omitFieldNames ? '' : 'title')
+    ..aOS(3, _omitFieldNames ? '' : 'description')
+    ..aOS(4, _omitFieldNames ? '' : 'category')
+    ..aOS(5, _omitFieldNames ? '' : 'impactLevel')
+    ..aOS(6, _omitFieldNames ? '' : 'effortLevel')
+    ..aOS(7, _omitFieldNames ? '' : 'suggestedAction')
+    ..aOS(8, _omitFieldNames ? '' : 'targetAssetId')
+    ..aOB(9, _omitFieldNames ? '' : 'isObservational')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceInsight clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceInsight copyWith(void Function(PerformanceInsight) updates) =>
+      super.copyWith((message) => updates(message as PerformanceInsight))
+          as PerformanceInsight;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use PerformanceInsight() / PerformanceInsight.new instead')
+  static PerformanceInsight create() => PerformanceInsight._();
+  static $pb.GeneratedMessage $_createMessage() => PerformanceInsight._();
+  @$core.override
+  PerformanceInsight createEmptyInstance() => PerformanceInsight._();
+  @$core.pragma('dart2js:noInline')
+  static PerformanceInsight getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PerformanceInsight>(
+          PerformanceInsight.$_createMessage);
+  static PerformanceInsight? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get insightId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set insightId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasInsightId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearInsightId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get title => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set title($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTitle() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTitle() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get description => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set description($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDescription() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDescription() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get category => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set category($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCategory() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCategory() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get impactLevel => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set impactLevel($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasImpactLevel() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearImpactLevel() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get effortLevel => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set effortLevel($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasEffortLevel() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearEffortLevel() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get suggestedAction => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set suggestedAction($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasSuggestedAction() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearSuggestedAction() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get targetAssetId => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set targetAssetId($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasTargetAssetId() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearTargetAssetId() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.bool get isObservational => $_getBF(8);
+  @$pb.TagNumber(9)
+  set isObservational($core.bool value) => $_setBool(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasIsObservational() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearIsObservational() => $_clearField(9);
+}
+
+class VideoScorecard extends $pb.GeneratedMessage {
+  factory VideoScorecard({
+    $core.String? assetId,
+    $core.String? title,
+    $core.double? packagingScore,
+    $core.double? hookScore,
+    $core.double? retentionRate3s,
+    $core.double? completionRate,
+    $core.double? engagementRate,
+    $fixnum.Int64? views,
+    $fixnum.Int64? likes,
+    $fixnum.Int64? comments,
+    $fixnum.Int64? shares,
+    $core.String? grade,
+    $core.Iterable<$core.String>? strengths,
+    $core.Iterable<$core.String>? dropOffPoints,
+    $core.Iterable<$core.String>? improvementTips,
+    $core.bool? isObservational,
+    $core.String? observationalNotice,
+  }) {
+    final result = VideoScorecard._();
+    if (assetId != null) result.assetId = assetId;
+    if (title != null) result.title = title;
+    if (packagingScore != null) result.packagingScore = packagingScore;
+    if (hookScore != null) result.hookScore = hookScore;
+    if (retentionRate3s != null) result.retentionRate3s = retentionRate3s;
+    if (completionRate != null) result.completionRate = completionRate;
+    if (engagementRate != null) result.engagementRate = engagementRate;
+    if (views != null) result.views = views;
+    if (likes != null) result.likes = likes;
+    if (comments != null) result.comments = comments;
+    if (shares != null) result.shares = shares;
+    if (grade != null) result.grade = grade;
+    if (strengths != null) result.strengths.addAll(strengths);
+    if (dropOffPoints != null) result.dropOffPoints.addAll(dropOffPoints);
+    if (improvementTips != null) result.improvementTips.addAll(improvementTips);
+    if (isObservational != null) result.isObservational = isObservational;
+    if (observationalNotice != null)
+      result.observationalNotice = observationalNotice;
+    return result;
+  }
+
+  VideoScorecard._();
+
+  factory VideoScorecard.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VideoScorecard()..mergeFromBuffer(data, registry);
+  factory VideoScorecard.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VideoScorecard()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'VideoScorecard',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: VideoScorecard.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'assetId')
+    ..aOS(2, _omitFieldNames ? '' : 'title')
+    ..aD(3, _omitFieldNames ? '' : 'packagingScore')
+    ..aD(4, _omitFieldNames ? '' : 'hookScore')
+    ..aD(5, _omitFieldNames ? '' : 'retentionRate3s',
+        protoName: 'retention_rate_3s')
+    ..aD(6, _omitFieldNames ? '' : 'completionRate')
+    ..aD(7, _omitFieldNames ? '' : 'engagementRate')
+    ..aInt64(8, _omitFieldNames ? '' : 'views')
+    ..aInt64(9, _omitFieldNames ? '' : 'likes')
+    ..aInt64(10, _omitFieldNames ? '' : 'comments')
+    ..aInt64(11, _omitFieldNames ? '' : 'shares')
+    ..aOS(12, _omitFieldNames ? '' : 'grade')
+    ..pPS(13, _omitFieldNames ? '' : 'strengths')
+    ..pPS(14, _omitFieldNames ? '' : 'dropOffPoints')
+    ..pPS(15, _omitFieldNames ? '' : 'improvementTips')
+    ..aOB(16, _omitFieldNames ? '' : 'isObservational')
+    ..aOS(17, _omitFieldNames ? '' : 'observationalNotice')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VideoScorecard clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VideoScorecard copyWith(void Function(VideoScorecard) updates) =>
+      super.copyWith((message) => updates(message as VideoScorecard))
+          as VideoScorecard;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use VideoScorecard() / VideoScorecard.new instead')
+  static VideoScorecard create() => VideoScorecard._();
+  static $pb.GeneratedMessage $_createMessage() => VideoScorecard._();
+  @$core.override
+  VideoScorecard createEmptyInstance() => VideoScorecard._();
+  @$core.pragma('dart2js:noInline')
+  static VideoScorecard getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<VideoScorecard>(
+          VideoScorecard.$_createMessage);
+  static VideoScorecard? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get assetId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set assetId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAssetId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAssetId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get title => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set title($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTitle() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTitle() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get packagingScore => $_getN(2);
+  @$pb.TagNumber(3)
+  set packagingScore($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPackagingScore() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPackagingScore() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.double get hookScore => $_getN(3);
+  @$pb.TagNumber(4)
+  set hookScore($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasHookScore() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearHookScore() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.double get retentionRate3s => $_getN(4);
+  @$pb.TagNumber(5)
+  set retentionRate3s($core.double value) => $_setDouble(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasRetentionRate3s() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearRetentionRate3s() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.double get completionRate => $_getN(5);
+  @$pb.TagNumber(6)
+  set completionRate($core.double value) => $_setDouble(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasCompletionRate() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearCompletionRate() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.double get engagementRate => $_getN(6);
+  @$pb.TagNumber(7)
+  set engagementRate($core.double value) => $_setDouble(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasEngagementRate() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearEngagementRate() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $fixnum.Int64 get views => $_getI64(7);
+  @$pb.TagNumber(8)
+  set views($fixnum.Int64 value) => $_setInt64(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasViews() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearViews() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $fixnum.Int64 get likes => $_getI64(8);
+  @$pb.TagNumber(9)
+  set likes($fixnum.Int64 value) => $_setInt64(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasLikes() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearLikes() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $fixnum.Int64 get comments => $_getI64(9);
+  @$pb.TagNumber(10)
+  set comments($fixnum.Int64 value) => $_setInt64(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasComments() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearComments() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $fixnum.Int64 get shares => $_getI64(10);
+  @$pb.TagNumber(11)
+  set shares($fixnum.Int64 value) => $_setInt64(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasShares() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearShares() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get grade => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set grade($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasGrade() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearGrade() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $pb.PbList<$core.String> get strengths => $_getList(12);
+
+  @$pb.TagNumber(14)
+  $pb.PbList<$core.String> get dropOffPoints => $_getList(13);
+
+  @$pb.TagNumber(15)
+  $pb.PbList<$core.String> get improvementTips => $_getList(14);
+
+  @$pb.TagNumber(16)
+  $core.bool get isObservational => $_getBF(15);
+  @$pb.TagNumber(16)
+  set isObservational($core.bool value) => $_setBool(15, value);
+  @$pb.TagNumber(16)
+  $core.bool hasIsObservational() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearIsObservational() => $_clearField(16);
+
+  @$pb.TagNumber(17)
+  $core.String get observationalNotice => $_getSZ(16);
+  @$pb.TagNumber(17)
+  set observationalNotice($core.String value) => $_setString(16, value);
+  @$pb.TagNumber(17)
+  $core.bool hasObservationalNotice() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearObservationalNotice() => $_clearField(17);
+}
+
+class ImprovementItem extends $pb.GeneratedMessage {
+  factory ImprovementItem({
+    $core.String? itemId,
+    $core.String? title,
+    $core.String? description,
+    $core.String? formatRecommendation,
+    $core.String? soundSuggestion,
+    $core.String? impact,
+    $core.String? effort,
+    $core.String? actionCta,
+  }) {
+    final result = ImprovementItem._();
+    if (itemId != null) result.itemId = itemId;
+    if (title != null) result.title = title;
+    if (description != null) result.description = description;
+    if (formatRecommendation != null)
+      result.formatRecommendation = formatRecommendation;
+    if (soundSuggestion != null) result.soundSuggestion = soundSuggestion;
+    if (impact != null) result.impact = impact;
+    if (effort != null) result.effort = effort;
+    if (actionCta != null) result.actionCta = actionCta;
+    return result;
+  }
+
+  ImprovementItem._();
+
+  factory ImprovementItem.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ImprovementItem()..mergeFromBuffer(data, registry);
+  factory ImprovementItem.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ImprovementItem()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ImprovementItem',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ImprovementItem.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'itemId')
+    ..aOS(2, _omitFieldNames ? '' : 'title')
+    ..aOS(3, _omitFieldNames ? '' : 'description')
+    ..aOS(4, _omitFieldNames ? '' : 'formatRecommendation')
+    ..aOS(5, _omitFieldNames ? '' : 'soundSuggestion')
+    ..aOS(6, _omitFieldNames ? '' : 'impact')
+    ..aOS(7, _omitFieldNames ? '' : 'effort')
+    ..aOS(8, _omitFieldNames ? '' : 'actionCta')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ImprovementItem clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ImprovementItem copyWith(void Function(ImprovementItem) updates) =>
+      super.copyWith((message) => updates(message as ImprovementItem))
+          as ImprovementItem;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ImprovementItem() / ImprovementItem.new instead')
+  static ImprovementItem create() => ImprovementItem._();
+  static $pb.GeneratedMessage $_createMessage() => ImprovementItem._();
+  @$core.override
+  ImprovementItem createEmptyInstance() => ImprovementItem._();
+  @$core.pragma('dart2js:noInline')
+  static ImprovementItem getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ImprovementItem>(
+          ImprovementItem.$_createMessage);
+  static ImprovementItem? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get itemId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set itemId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasItemId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearItemId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get title => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set title($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTitle() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTitle() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get description => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set description($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDescription() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDescription() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get formatRecommendation => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set formatRecommendation($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasFormatRecommendation() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearFormatRecommendation() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get soundSuggestion => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set soundSuggestion($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSoundSuggestion() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSoundSuggestion() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get impact => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set impact($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasImpact() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearImpact() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get effort => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set effort($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasEffort() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearEffort() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get actionCta => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set actionCta($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasActionCta() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearActionCta() => $_clearField(8);
+}
+
+class ImprovementPlan extends $pb.GeneratedMessage {
+  factory ImprovementPlan({
+    $core.String? planId,
+    $core.String? workspaceId,
+    $core.String? period,
+    $core.double? currentScore,
+    $core.double? previousScore,
+    $core.double? scoreChange,
+    $core.String? bestPostTitle,
+    $core.double? bestPostEr,
+    $core.String? worstPostTitle,
+    $core.double? worstPostEr,
+    $core.Iterable<ImprovementItem>? actionItems,
+    $core.bool? isObservational,
+    $core.String? observationalNotice,
+  }) {
+    final result = ImprovementPlan._();
+    if (planId != null) result.planId = planId;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (period != null) result.period = period;
+    if (currentScore != null) result.currentScore = currentScore;
+    if (previousScore != null) result.previousScore = previousScore;
+    if (scoreChange != null) result.scoreChange = scoreChange;
+    if (bestPostTitle != null) result.bestPostTitle = bestPostTitle;
+    if (bestPostEr != null) result.bestPostEr = bestPostEr;
+    if (worstPostTitle != null) result.worstPostTitle = worstPostTitle;
+    if (worstPostEr != null) result.worstPostEr = worstPostEr;
+    if (actionItems != null) result.actionItems.addAll(actionItems);
+    if (isObservational != null) result.isObservational = isObservational;
+    if (observationalNotice != null)
+      result.observationalNotice = observationalNotice;
+    return result;
+  }
+
+  ImprovementPlan._();
+
+  factory ImprovementPlan.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ImprovementPlan()..mergeFromBuffer(data, registry);
+  factory ImprovementPlan.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ImprovementPlan()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ImprovementPlan',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: ImprovementPlan.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'planId')
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'period')
+    ..aD(4, _omitFieldNames ? '' : 'currentScore')
+    ..aD(5, _omitFieldNames ? '' : 'previousScore')
+    ..aD(6, _omitFieldNames ? '' : 'scoreChange')
+    ..aOS(7, _omitFieldNames ? '' : 'bestPostTitle')
+    ..aD(8, _omitFieldNames ? '' : 'bestPostEr')
+    ..aOS(9, _omitFieldNames ? '' : 'worstPostTitle')
+    ..aD(10, _omitFieldNames ? '' : 'worstPostEr')
+    ..pPM<ImprovementItem>(11, _omitFieldNames ? '' : 'actionItems',
+        subBuilder: ImprovementItem.$_createMessage)
+    ..aOB(12, _omitFieldNames ? '' : 'isObservational')
+    ..aOS(13, _omitFieldNames ? '' : 'observationalNotice')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ImprovementPlan clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ImprovementPlan copyWith(void Function(ImprovementPlan) updates) =>
+      super.copyWith((message) => updates(message as ImprovementPlan))
+          as ImprovementPlan;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ImprovementPlan() / ImprovementPlan.new instead')
+  static ImprovementPlan create() => ImprovementPlan._();
+  static $pb.GeneratedMessage $_createMessage() => ImprovementPlan._();
+  @$core.override
+  ImprovementPlan createEmptyInstance() => ImprovementPlan._();
+  @$core.pragma('dart2js:noInline')
+  static ImprovementPlan getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ImprovementPlan>(
+          ImprovementPlan.$_createMessage);
+  static ImprovementPlan? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get planId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set planId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPlanId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPlanId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get period => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set period($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPeriod() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPeriod() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.double get currentScore => $_getN(3);
+  @$pb.TagNumber(4)
+  set currentScore($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCurrentScore() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCurrentScore() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.double get previousScore => $_getN(4);
+  @$pb.TagNumber(5)
+  set previousScore($core.double value) => $_setDouble(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPreviousScore() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPreviousScore() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.double get scoreChange => $_getN(5);
+  @$pb.TagNumber(6)
+  set scoreChange($core.double value) => $_setDouble(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasScoreChange() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearScoreChange() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get bestPostTitle => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set bestPostTitle($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasBestPostTitle() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearBestPostTitle() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.double get bestPostEr => $_getN(7);
+  @$pb.TagNumber(8)
+  set bestPostEr($core.double value) => $_setDouble(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasBestPostEr() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearBestPostEr() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get worstPostTitle => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set worstPostTitle($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasWorstPostTitle() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearWorstPostTitle() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.double get worstPostEr => $_getN(9);
+  @$pb.TagNumber(10)
+  set worstPostEr($core.double value) => $_setDouble(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasWorstPostEr() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearWorstPostEr() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $pb.PbList<ImprovementItem> get actionItems => $_getList(10);
+
+  @$pb.TagNumber(12)
+  $core.bool get isObservational => $_getBF(11);
+  @$pb.TagNumber(12)
+  set isObservational($core.bool value) => $_setBool(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasIsObservational() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearIsObservational() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.String get observationalNotice => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set observationalNotice($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasObservationalNotice() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearObservationalNotice() => $_clearField(13);
+}
+
+class IndustryBenchmark extends $pb.GeneratedMessage {
+  factory IndustryBenchmark({
+    $core.String? benchmarkId,
+    $core.String? platform,
+    $core.String? niche,
+    $core.double? avgEngagementRate,
+    $core.double? avg3sRetention,
+    $core.double? avgCompletionRate,
+    $core.double? avgCtr,
+    $core.int? sampleSize,
+    $core.bool? isObservational,
+  }) {
+    final result = IndustryBenchmark._();
+    if (benchmarkId != null) result.benchmarkId = benchmarkId;
+    if (platform != null) result.platform = platform;
+    if (niche != null) result.niche = niche;
+    if (avgEngagementRate != null) result.avgEngagementRate = avgEngagementRate;
+    if (avg3sRetention != null) result.avg3sRetention = avg3sRetention;
+    if (avgCompletionRate != null) result.avgCompletionRate = avgCompletionRate;
+    if (avgCtr != null) result.avgCtr = avgCtr;
+    if (sampleSize != null) result.sampleSize = sampleSize;
+    if (isObservational != null) result.isObservational = isObservational;
+    return result;
+  }
+
+  IndustryBenchmark._();
+
+  factory IndustryBenchmark.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      IndustryBenchmark()..mergeFromBuffer(data, registry);
+  factory IndustryBenchmark.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      IndustryBenchmark()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'IndustryBenchmark',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: IndustryBenchmark.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'benchmarkId')
+    ..aOS(2, _omitFieldNames ? '' : 'platform')
+    ..aOS(3, _omitFieldNames ? '' : 'niche')
+    ..aD(4, _omitFieldNames ? '' : 'avgEngagementRate')
+    ..aD(5, _omitFieldNames ? '' : 'avg3sRetention',
+        protoName: 'avg_3s_retention')
+    ..aD(6, _omitFieldNames ? '' : 'avgCompletionRate')
+    ..aD(7, _omitFieldNames ? '' : 'avgCtr')
+    ..aI(8, _omitFieldNames ? '' : 'sampleSize')
+    ..aOB(9, _omitFieldNames ? '' : 'isObservational')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  IndustryBenchmark clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  IndustryBenchmark copyWith(void Function(IndustryBenchmark) updates) =>
+      super.copyWith((message) => updates(message as IndustryBenchmark))
+          as IndustryBenchmark;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use IndustryBenchmark() / IndustryBenchmark.new instead')
+  static IndustryBenchmark create() => IndustryBenchmark._();
+  static $pb.GeneratedMessage $_createMessage() => IndustryBenchmark._();
+  @$core.override
+  IndustryBenchmark createEmptyInstance() => IndustryBenchmark._();
+  @$core.pragma('dart2js:noInline')
+  static IndustryBenchmark getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<IndustryBenchmark>(
+          IndustryBenchmark.$_createMessage);
+  static IndustryBenchmark? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get benchmarkId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set benchmarkId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasBenchmarkId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearBenchmarkId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get platform => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set platform($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPlatform() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPlatform() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get niche => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set niche($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasNiche() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearNiche() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.double get avgEngagementRate => $_getN(3);
+  @$pb.TagNumber(4)
+  set avgEngagementRate($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasAvgEngagementRate() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearAvgEngagementRate() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.double get avg3sRetention => $_getN(4);
+  @$pb.TagNumber(5)
+  set avg3sRetention($core.double value) => $_setDouble(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasAvg3sRetention() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearAvg3sRetention() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.double get avgCompletionRate => $_getN(5);
+  @$pb.TagNumber(6)
+  set avgCompletionRate($core.double value) => $_setDouble(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasAvgCompletionRate() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAvgCompletionRate() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.double get avgCtr => $_getN(6);
+  @$pb.TagNumber(7)
+  set avgCtr($core.double value) => $_setDouble(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasAvgCtr() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearAvgCtr() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.int get sampleSize => $_getIZ(7);
+  @$pb.TagNumber(8)
+  set sampleSize($core.int value) => $_setSignedInt32(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasSampleSize() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearSampleSize() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.bool get isObservational => $_getBF(8);
+  @$pb.TagNumber(9)
+  set isObservational($core.bool value) => $_setBool(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasIsObservational() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearIsObservational() => $_clearField(9);
+}
+
+class IndustryComparison extends $pb.GeneratedMessage {
+  factory IndustryComparison({
+    $core.String? platform,
+    $core.String? niche,
+    $core.double? workspaceEngagementRate,
+    $core.double? industryAvgEngagementRate,
+    $core.double? erDeltaPercent,
+    $core.double? workspace3sRetention,
+    $core.double? industryAvg3sRetention,
+    $core.double? retentionDeltaPercent,
+    $core.String? percentileRank,
+    $core.String? summary,
+    $core.bool? isObservational,
+    $core.String? observationalNotice,
+  }) {
+    final result = IndustryComparison._();
+    if (platform != null) result.platform = platform;
+    if (niche != null) result.niche = niche;
+    if (workspaceEngagementRate != null)
+      result.workspaceEngagementRate = workspaceEngagementRate;
+    if (industryAvgEngagementRate != null)
+      result.industryAvgEngagementRate = industryAvgEngagementRate;
+    if (erDeltaPercent != null) result.erDeltaPercent = erDeltaPercent;
+    if (workspace3sRetention != null)
+      result.workspace3sRetention = workspace3sRetention;
+    if (industryAvg3sRetention != null)
+      result.industryAvg3sRetention = industryAvg3sRetention;
+    if (retentionDeltaPercent != null)
+      result.retentionDeltaPercent = retentionDeltaPercent;
+    if (percentileRank != null) result.percentileRank = percentileRank;
+    if (summary != null) result.summary = summary;
+    if (isObservational != null) result.isObservational = isObservational;
+    if (observationalNotice != null)
+      result.observationalNotice = observationalNotice;
+    return result;
+  }
+
+  IndustryComparison._();
+
+  factory IndustryComparison.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      IndustryComparison()..mergeFromBuffer(data, registry);
+  factory IndustryComparison.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      IndustryComparison()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'IndustryComparison',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance: IndustryComparison.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'platform')
+    ..aOS(2, _omitFieldNames ? '' : 'niche')
+    ..aD(3, _omitFieldNames ? '' : 'workspaceEngagementRate')
+    ..aD(4, _omitFieldNames ? '' : 'industryAvgEngagementRate')
+    ..aD(5, _omitFieldNames ? '' : 'erDeltaPercent')
+    ..aD(6, _omitFieldNames ? '' : 'workspace3sRetention',
+        protoName: 'workspace_3s_retention')
+    ..aD(7, _omitFieldNames ? '' : 'industryAvg3sRetention',
+        protoName: 'industry_avg_3s_retention')
+    ..aD(8, _omitFieldNames ? '' : 'retentionDeltaPercent')
+    ..aOS(9, _omitFieldNames ? '' : 'percentileRank')
+    ..aOS(10, _omitFieldNames ? '' : 'summary')
+    ..aOB(11, _omitFieldNames ? '' : 'isObservational')
+    ..aOS(12, _omitFieldNames ? '' : 'observationalNotice')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  IndustryComparison clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  IndustryComparison copyWith(void Function(IndustryComparison) updates) =>
+      super.copyWith((message) => updates(message as IndustryComparison))
+          as IndustryComparison;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use IndustryComparison() / IndustryComparison.new instead')
+  static IndustryComparison create() => IndustryComparison._();
+  static $pb.GeneratedMessage $_createMessage() => IndustryComparison._();
+  @$core.override
+  IndustryComparison createEmptyInstance() => IndustryComparison._();
+  @$core.pragma('dart2js:noInline')
+  static IndustryComparison getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<IndustryComparison>(
+          IndustryComparison.$_createMessage);
+  static IndustryComparison? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get platform => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set platform($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPlatform() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPlatform() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get niche => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set niche($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasNiche() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearNiche() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get workspaceEngagementRate => $_getN(2);
+  @$pb.TagNumber(3)
+  set workspaceEngagementRate($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasWorkspaceEngagementRate() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearWorkspaceEngagementRate() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.double get industryAvgEngagementRate => $_getN(3);
+  @$pb.TagNumber(4)
+  set industryAvgEngagementRate($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasIndustryAvgEngagementRate() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearIndustryAvgEngagementRate() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.double get erDeltaPercent => $_getN(4);
+  @$pb.TagNumber(5)
+  set erDeltaPercent($core.double value) => $_setDouble(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasErDeltaPercent() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearErDeltaPercent() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.double get workspace3sRetention => $_getN(5);
+  @$pb.TagNumber(6)
+  set workspace3sRetention($core.double value) => $_setDouble(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasWorkspace3sRetention() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearWorkspace3sRetention() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.double get industryAvg3sRetention => $_getN(6);
+  @$pb.TagNumber(7)
+  set industryAvg3sRetention($core.double value) => $_setDouble(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasIndustryAvg3sRetention() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearIndustryAvg3sRetention() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.double get retentionDeltaPercent => $_getN(7);
+  @$pb.TagNumber(8)
+  set retentionDeltaPercent($core.double value) => $_setDouble(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasRetentionDeltaPercent() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearRetentionDeltaPercent() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get percentileRank => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set percentileRank($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasPercentileRank() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearPercentileRank() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get summary => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set summary($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasSummary() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearSummary() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.bool get isObservational => $_getBF(10);
+  @$pb.TagNumber(11)
+  set isObservational($core.bool value) => $_setBool(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasIsObservational() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearIsObservational() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get observationalNotice => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set observationalNotice($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasObservationalNotice() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearObservationalNotice() => $_clearField(12);
+}
+
+class PerformanceCoachServiceGetInsightsRequest extends $pb.GeneratedMessage {
+  factory PerformanceCoachServiceGetInsightsRequest({
+    $2.UUID? workspaceId,
+    $core.String? targetChannel,
+    $core.int? limit,
+  }) {
+    final result = PerformanceCoachServiceGetInsightsRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (targetChannel != null) result.targetChannel = targetChannel;
+    if (limit != null) result.limit = limit;
+    return result;
+  }
+
+  PerformanceCoachServiceGetInsightsRequest._();
+
+  factory PerformanceCoachServiceGetInsightsRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceGetInsightsRequest()
+        ..mergeFromBuffer(data, registry);
+  factory PerformanceCoachServiceGetInsightsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceGetInsightsRequest()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PerformanceCoachServiceGetInsightsRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          PerformanceCoachServiceGetInsightsRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'targetChannel')
+    ..aI(3, _omitFieldNames ? '' : 'limit')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceGetInsightsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceGetInsightsRequest copyWith(
+          void Function(PerformanceCoachServiceGetInsightsRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as PerformanceCoachServiceGetInsightsRequest))
+          as PerformanceCoachServiceGetInsightsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PerformanceCoachServiceGetInsightsRequest() / PerformanceCoachServiceGetInsightsRequest.new instead')
+  static PerformanceCoachServiceGetInsightsRequest create() =>
+      PerformanceCoachServiceGetInsightsRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PerformanceCoachServiceGetInsightsRequest._();
+  @$core.override
+  PerformanceCoachServiceGetInsightsRequest createEmptyInstance() =>
+      PerformanceCoachServiceGetInsightsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static PerformanceCoachServiceGetInsightsRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              PerformanceCoachServiceGetInsightsRequest>(
+          PerformanceCoachServiceGetInsightsRequest.$_createMessage);
+  static PerformanceCoachServiceGetInsightsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get targetChannel => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set targetChannel($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTargetChannel() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTargetChannel() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get limit => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set limit($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasLimit() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearLimit() => $_clearField(3);
+}
+
+class PerformanceCoachServiceGetInsightsResponse extends $pb.GeneratedMessage {
+  factory PerformanceCoachServiceGetInsightsResponse({
+    $core.Iterable<PerformanceInsight>? insights,
+    $core.bool? isObservational,
+    $core.String? observationalNotice,
+  }) {
+    final result = PerformanceCoachServiceGetInsightsResponse._();
+    if (insights != null) result.insights.addAll(insights);
+    if (isObservational != null) result.isObservational = isObservational;
+    if (observationalNotice != null)
+      result.observationalNotice = observationalNotice;
+    return result;
+  }
+
+  PerformanceCoachServiceGetInsightsResponse._();
+
+  factory PerformanceCoachServiceGetInsightsResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceGetInsightsResponse()
+        ..mergeFromBuffer(data, registry);
+  factory PerformanceCoachServiceGetInsightsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceGetInsightsResponse()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PerformanceCoachServiceGetInsightsResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          PerformanceCoachServiceGetInsightsResponse.$_createMessage)
+    ..pPM<PerformanceInsight>(1, _omitFieldNames ? '' : 'insights',
+        subBuilder: PerformanceInsight.$_createMessage)
+    ..aOB(2, _omitFieldNames ? '' : 'isObservational')
+    ..aOS(3, _omitFieldNames ? '' : 'observationalNotice')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceGetInsightsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceGetInsightsResponse copyWith(
+          void Function(PerformanceCoachServiceGetInsightsResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as PerformanceCoachServiceGetInsightsResponse))
+          as PerformanceCoachServiceGetInsightsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PerformanceCoachServiceGetInsightsResponse() / PerformanceCoachServiceGetInsightsResponse.new instead')
+  static PerformanceCoachServiceGetInsightsResponse create() =>
+      PerformanceCoachServiceGetInsightsResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PerformanceCoachServiceGetInsightsResponse._();
+  @$core.override
+  PerformanceCoachServiceGetInsightsResponse createEmptyInstance() =>
+      PerformanceCoachServiceGetInsightsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static PerformanceCoachServiceGetInsightsResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              PerformanceCoachServiceGetInsightsResponse>(
+          PerformanceCoachServiceGetInsightsResponse.$_createMessage);
+  static PerformanceCoachServiceGetInsightsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<PerformanceInsight> get insights => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $core.bool get isObservational => $_getBF(1);
+  @$pb.TagNumber(2)
+  set isObservational($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasIsObservational() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearIsObservational() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get observationalNotice => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set observationalNotice($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasObservationalNotice() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearObservationalNotice() => $_clearField(3);
+}
+
+class PerformanceCoachServiceGetVideoScorecardRequest
+    extends $pb.GeneratedMessage {
+  factory PerformanceCoachServiceGetVideoScorecardRequest({
+    $2.UUID? workspaceId,
+    $core.String? assetId,
+  }) {
+    final result = PerformanceCoachServiceGetVideoScorecardRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (assetId != null) result.assetId = assetId;
+    return result;
+  }
+
+  PerformanceCoachServiceGetVideoScorecardRequest._();
+
+  factory PerformanceCoachServiceGetVideoScorecardRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceGetVideoScorecardRequest()
+        ..mergeFromBuffer(data, registry);
+  factory PerformanceCoachServiceGetVideoScorecardRequest.fromJson(
+          $core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceGetVideoScorecardRequest()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames
+          ? ''
+          : 'PerformanceCoachServiceGetVideoScorecardRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          PerformanceCoachServiceGetVideoScorecardRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'assetId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceGetVideoScorecardRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceGetVideoScorecardRequest copyWith(
+          void Function(PerformanceCoachServiceGetVideoScorecardRequest)
+              updates) =>
+      super.copyWith((message) => updates(
+              message as PerformanceCoachServiceGetVideoScorecardRequest))
+          as PerformanceCoachServiceGetVideoScorecardRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PerformanceCoachServiceGetVideoScorecardRequest() / PerformanceCoachServiceGetVideoScorecardRequest.new instead')
+  static PerformanceCoachServiceGetVideoScorecardRequest create() =>
+      PerformanceCoachServiceGetVideoScorecardRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PerformanceCoachServiceGetVideoScorecardRequest._();
+  @$core.override
+  PerformanceCoachServiceGetVideoScorecardRequest createEmptyInstance() =>
+      PerformanceCoachServiceGetVideoScorecardRequest._();
+  @$core.pragma('dart2js:noInline')
+  static PerformanceCoachServiceGetVideoScorecardRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              PerformanceCoachServiceGetVideoScorecardRequest>(
+          PerformanceCoachServiceGetVideoScorecardRequest.$_createMessage);
+  static PerformanceCoachServiceGetVideoScorecardRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get assetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set assetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAssetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAssetId() => $_clearField(2);
+}
+
+class PerformanceCoachServiceGetVideoScorecardResponse
+    extends $pb.GeneratedMessage {
+  factory PerformanceCoachServiceGetVideoScorecardResponse({
+    VideoScorecard? scorecard,
+  }) {
+    final result = PerformanceCoachServiceGetVideoScorecardResponse._();
+    if (scorecard != null) result.scorecard = scorecard;
+    return result;
+  }
+
+  PerformanceCoachServiceGetVideoScorecardResponse._();
+
+  factory PerformanceCoachServiceGetVideoScorecardResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceGetVideoScorecardResponse()
+        ..mergeFromBuffer(data, registry);
+  factory PerformanceCoachServiceGetVideoScorecardResponse.fromJson(
+          $core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceGetVideoScorecardResponse()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames
+          ? ''
+          : 'PerformanceCoachServiceGetVideoScorecardResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          PerformanceCoachServiceGetVideoScorecardResponse.$_createMessage)
+    ..aOM<VideoScorecard>(1, _omitFieldNames ? '' : 'scorecard',
+        subBuilder: VideoScorecard.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceGetVideoScorecardResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceGetVideoScorecardResponse copyWith(
+          void Function(PerformanceCoachServiceGetVideoScorecardResponse)
+              updates) =>
+      super.copyWith((message) => updates(
+              message as PerformanceCoachServiceGetVideoScorecardResponse))
+          as PerformanceCoachServiceGetVideoScorecardResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PerformanceCoachServiceGetVideoScorecardResponse() / PerformanceCoachServiceGetVideoScorecardResponse.new instead')
+  static PerformanceCoachServiceGetVideoScorecardResponse create() =>
+      PerformanceCoachServiceGetVideoScorecardResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PerformanceCoachServiceGetVideoScorecardResponse._();
+  @$core.override
+  PerformanceCoachServiceGetVideoScorecardResponse createEmptyInstance() =>
+      PerformanceCoachServiceGetVideoScorecardResponse._();
+  @$core.pragma('dart2js:noInline')
+  static PerformanceCoachServiceGetVideoScorecardResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              PerformanceCoachServiceGetVideoScorecardResponse>(
+          PerformanceCoachServiceGetVideoScorecardResponse.$_createMessage);
+  static PerformanceCoachServiceGetVideoScorecardResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  VideoScorecard get scorecard => $_getN(0);
+  @$pb.TagNumber(1)
+  set scorecard(VideoScorecard value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasScorecard() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearScorecard() => $_clearField(1);
+  @$pb.TagNumber(1)
+  VideoScorecard ensureScorecard() => $_ensure(0);
+}
+
+class PerformanceCoachServiceGetImprovementPlanRequest
+    extends $pb.GeneratedMessage {
+  factory PerformanceCoachServiceGetImprovementPlanRequest({
+    $2.CommandContext? context,
+    $core.String? timeframe,
+  }) {
+    final result = PerformanceCoachServiceGetImprovementPlanRequest._();
+    if (context != null) result.context = context;
+    if (timeframe != null) result.timeframe = timeframe;
+    return result;
+  }
+
+  PerformanceCoachServiceGetImprovementPlanRequest._();
+
+  factory PerformanceCoachServiceGetImprovementPlanRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceGetImprovementPlanRequest()
+        ..mergeFromBuffer(data, registry);
+  factory PerformanceCoachServiceGetImprovementPlanRequest.fromJson(
+          $core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceGetImprovementPlanRequest()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames
+          ? ''
+          : 'PerformanceCoachServiceGetImprovementPlanRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          PerformanceCoachServiceGetImprovementPlanRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'timeframe')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceGetImprovementPlanRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceGetImprovementPlanRequest copyWith(
+          void Function(PerformanceCoachServiceGetImprovementPlanRequest)
+              updates) =>
+      super.copyWith((message) => updates(
+              message as PerformanceCoachServiceGetImprovementPlanRequest))
+          as PerformanceCoachServiceGetImprovementPlanRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PerformanceCoachServiceGetImprovementPlanRequest() / PerformanceCoachServiceGetImprovementPlanRequest.new instead')
+  static PerformanceCoachServiceGetImprovementPlanRequest create() =>
+      PerformanceCoachServiceGetImprovementPlanRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PerformanceCoachServiceGetImprovementPlanRequest._();
+  @$core.override
+  PerformanceCoachServiceGetImprovementPlanRequest createEmptyInstance() =>
+      PerformanceCoachServiceGetImprovementPlanRequest._();
+  @$core.pragma('dart2js:noInline')
+  static PerformanceCoachServiceGetImprovementPlanRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              PerformanceCoachServiceGetImprovementPlanRequest>(
+          PerformanceCoachServiceGetImprovementPlanRequest.$_createMessage);
+  static PerformanceCoachServiceGetImprovementPlanRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get timeframe => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set timeframe($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTimeframe() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTimeframe() => $_clearField(2);
+}
+
+class PerformanceCoachServiceGetImprovementPlanResponse
+    extends $pb.GeneratedMessage {
+  factory PerformanceCoachServiceGetImprovementPlanResponse({
+    ImprovementPlan? plan,
+  }) {
+    final result = PerformanceCoachServiceGetImprovementPlanResponse._();
+    if (plan != null) result.plan = plan;
+    return result;
+  }
+
+  PerformanceCoachServiceGetImprovementPlanResponse._();
+
+  factory PerformanceCoachServiceGetImprovementPlanResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceGetImprovementPlanResponse()
+        ..mergeFromBuffer(data, registry);
+  factory PerformanceCoachServiceGetImprovementPlanResponse.fromJson(
+          $core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceGetImprovementPlanResponse()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames
+          ? ''
+          : 'PerformanceCoachServiceGetImprovementPlanResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          PerformanceCoachServiceGetImprovementPlanResponse.$_createMessage)
+    ..aOM<ImprovementPlan>(1, _omitFieldNames ? '' : 'plan',
+        subBuilder: ImprovementPlan.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceGetImprovementPlanResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceGetImprovementPlanResponse copyWith(
+          void Function(PerformanceCoachServiceGetImprovementPlanResponse)
+              updates) =>
+      super.copyWith((message) => updates(
+              message as PerformanceCoachServiceGetImprovementPlanResponse))
+          as PerformanceCoachServiceGetImprovementPlanResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PerformanceCoachServiceGetImprovementPlanResponse() / PerformanceCoachServiceGetImprovementPlanResponse.new instead')
+  static PerformanceCoachServiceGetImprovementPlanResponse create() =>
+      PerformanceCoachServiceGetImprovementPlanResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PerformanceCoachServiceGetImprovementPlanResponse._();
+  @$core.override
+  PerformanceCoachServiceGetImprovementPlanResponse createEmptyInstance() =>
+      PerformanceCoachServiceGetImprovementPlanResponse._();
+  @$core.pragma('dart2js:noInline')
+  static PerformanceCoachServiceGetImprovementPlanResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              PerformanceCoachServiceGetImprovementPlanResponse>(
+          PerformanceCoachServiceGetImprovementPlanResponse.$_createMessage);
+  static PerformanceCoachServiceGetImprovementPlanResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ImprovementPlan get plan => $_getN(0);
+  @$pb.TagNumber(1)
+  set plan(ImprovementPlan value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPlan() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPlan() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ImprovementPlan ensurePlan() => $_ensure(0);
+}
+
+class PerformanceCoachServiceListBenchmarksRequest
+    extends $pb.GeneratedMessage {
+  factory PerformanceCoachServiceListBenchmarksRequest({
+    $2.UUID? workspaceId,
+    $core.String? platform,
+    $core.String? niche,
+  }) {
+    final result = PerformanceCoachServiceListBenchmarksRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (platform != null) result.platform = platform;
+    if (niche != null) result.niche = niche;
+    return result;
+  }
+
+  PerformanceCoachServiceListBenchmarksRequest._();
+
+  factory PerformanceCoachServiceListBenchmarksRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceListBenchmarksRequest()
+        ..mergeFromBuffer(data, registry);
+  factory PerformanceCoachServiceListBenchmarksRequest.fromJson(
+          $core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceListBenchmarksRequest()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PerformanceCoachServiceListBenchmarksRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          PerformanceCoachServiceListBenchmarksRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'platform')
+    ..aOS(3, _omitFieldNames ? '' : 'niche')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceListBenchmarksRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceListBenchmarksRequest copyWith(
+          void Function(PerformanceCoachServiceListBenchmarksRequest)
+              updates) =>
+      super.copyWith((message) =>
+              updates(message as PerformanceCoachServiceListBenchmarksRequest))
+          as PerformanceCoachServiceListBenchmarksRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PerformanceCoachServiceListBenchmarksRequest() / PerformanceCoachServiceListBenchmarksRequest.new instead')
+  static PerformanceCoachServiceListBenchmarksRequest create() =>
+      PerformanceCoachServiceListBenchmarksRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PerformanceCoachServiceListBenchmarksRequest._();
+  @$core.override
+  PerformanceCoachServiceListBenchmarksRequest createEmptyInstance() =>
+      PerformanceCoachServiceListBenchmarksRequest._();
+  @$core.pragma('dart2js:noInline')
+  static PerformanceCoachServiceListBenchmarksRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              PerformanceCoachServiceListBenchmarksRequest>(
+          PerformanceCoachServiceListBenchmarksRequest.$_createMessage);
+  static PerformanceCoachServiceListBenchmarksRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get platform => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set platform($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPlatform() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPlatform() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get niche => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set niche($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasNiche() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearNiche() => $_clearField(3);
+}
+
+class PerformanceCoachServiceListBenchmarksResponse
+    extends $pb.GeneratedMessage {
+  factory PerformanceCoachServiceListBenchmarksResponse({
+    $core.Iterable<IndustryBenchmark>? benchmarks,
+    $core.bool? isObservational,
+  }) {
+    final result = PerformanceCoachServiceListBenchmarksResponse._();
+    if (benchmarks != null) result.benchmarks.addAll(benchmarks);
+    if (isObservational != null) result.isObservational = isObservational;
+    return result;
+  }
+
+  PerformanceCoachServiceListBenchmarksResponse._();
+
+  factory PerformanceCoachServiceListBenchmarksResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceListBenchmarksResponse()
+        ..mergeFromBuffer(data, registry);
+  factory PerformanceCoachServiceListBenchmarksResponse.fromJson(
+          $core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceListBenchmarksResponse()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PerformanceCoachServiceListBenchmarksResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          PerformanceCoachServiceListBenchmarksResponse.$_createMessage)
+    ..pPM<IndustryBenchmark>(1, _omitFieldNames ? '' : 'benchmarks',
+        subBuilder: IndustryBenchmark.$_createMessage)
+    ..aOB(2, _omitFieldNames ? '' : 'isObservational')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceListBenchmarksResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceListBenchmarksResponse copyWith(
+          void Function(PerformanceCoachServiceListBenchmarksResponse)
+              updates) =>
+      super.copyWith((message) =>
+              updates(message as PerformanceCoachServiceListBenchmarksResponse))
+          as PerformanceCoachServiceListBenchmarksResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PerformanceCoachServiceListBenchmarksResponse() / PerformanceCoachServiceListBenchmarksResponse.new instead')
+  static PerformanceCoachServiceListBenchmarksResponse create() =>
+      PerformanceCoachServiceListBenchmarksResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PerformanceCoachServiceListBenchmarksResponse._();
+  @$core.override
+  PerformanceCoachServiceListBenchmarksResponse createEmptyInstance() =>
+      PerformanceCoachServiceListBenchmarksResponse._();
+  @$core.pragma('dart2js:noInline')
+  static PerformanceCoachServiceListBenchmarksResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              PerformanceCoachServiceListBenchmarksResponse>(
+          PerformanceCoachServiceListBenchmarksResponse.$_createMessage);
+  static PerformanceCoachServiceListBenchmarksResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<IndustryBenchmark> get benchmarks => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $core.bool get isObservational => $_getBF(1);
+  @$pb.TagNumber(2)
+  set isObservational($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasIsObservational() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearIsObservational() => $_clearField(2);
+}
+
+class PerformanceCoachServiceCompareToIndustryRequest
+    extends $pb.GeneratedMessage {
+  factory PerformanceCoachServiceCompareToIndustryRequest({
+    $2.UUID? workspaceId,
+    $core.String? platform,
+    $core.String? niche,
+  }) {
+    final result = PerformanceCoachServiceCompareToIndustryRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (platform != null) result.platform = platform;
+    if (niche != null) result.niche = niche;
+    return result;
+  }
+
+  PerformanceCoachServiceCompareToIndustryRequest._();
+
+  factory PerformanceCoachServiceCompareToIndustryRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceCompareToIndustryRequest()
+        ..mergeFromBuffer(data, registry);
+  factory PerformanceCoachServiceCompareToIndustryRequest.fromJson(
+          $core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceCompareToIndustryRequest()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames
+          ? ''
+          : 'PerformanceCoachServiceCompareToIndustryRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          PerformanceCoachServiceCompareToIndustryRequest.$_createMessage)
+    ..aOM<$2.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $2.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'platform')
+    ..aOS(3, _omitFieldNames ? '' : 'niche')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceCompareToIndustryRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceCompareToIndustryRequest copyWith(
+          void Function(PerformanceCoachServiceCompareToIndustryRequest)
+              updates) =>
+      super.copyWith((message) => updates(
+              message as PerformanceCoachServiceCompareToIndustryRequest))
+          as PerformanceCoachServiceCompareToIndustryRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PerformanceCoachServiceCompareToIndustryRequest() / PerformanceCoachServiceCompareToIndustryRequest.new instead')
+  static PerformanceCoachServiceCompareToIndustryRequest create() =>
+      PerformanceCoachServiceCompareToIndustryRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PerformanceCoachServiceCompareToIndustryRequest._();
+  @$core.override
+  PerformanceCoachServiceCompareToIndustryRequest createEmptyInstance() =>
+      PerformanceCoachServiceCompareToIndustryRequest._();
+  @$core.pragma('dart2js:noInline')
+  static PerformanceCoachServiceCompareToIndustryRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              PerformanceCoachServiceCompareToIndustryRequest>(
+          PerformanceCoachServiceCompareToIndustryRequest.$_createMessage);
+  static PerformanceCoachServiceCompareToIndustryRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($2.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get platform => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set platform($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPlatform() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPlatform() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get niche => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set niche($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasNiche() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearNiche() => $_clearField(3);
+}
+
+class PerformanceCoachServiceCompareToIndustryResponse
+    extends $pb.GeneratedMessage {
+  factory PerformanceCoachServiceCompareToIndustryResponse({
+    IndustryComparison? comparison,
+  }) {
+    final result = PerformanceCoachServiceCompareToIndustryResponse._();
+    if (comparison != null) result.comparison = comparison;
+    return result;
+  }
+
+  PerformanceCoachServiceCompareToIndustryResponse._();
+
+  factory PerformanceCoachServiceCompareToIndustryResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceCompareToIndustryResponse()
+        ..mergeFromBuffer(data, registry);
+  factory PerformanceCoachServiceCompareToIndustryResponse.fromJson(
+          $core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PerformanceCoachServiceCompareToIndustryResponse()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames
+          ? ''
+          : 'PerformanceCoachServiceCompareToIndustryResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.production.v1'),
+      createEmptyInstance:
+          PerformanceCoachServiceCompareToIndustryResponse.$_createMessage)
+    ..aOM<IndustryComparison>(1, _omitFieldNames ? '' : 'comparison',
+        subBuilder: IndustryComparison.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceCompareToIndustryResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PerformanceCoachServiceCompareToIndustryResponse copyWith(
+          void Function(PerformanceCoachServiceCompareToIndustryResponse)
+              updates) =>
+      super.copyWith((message) => updates(
+              message as PerformanceCoachServiceCompareToIndustryResponse))
+          as PerformanceCoachServiceCompareToIndustryResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PerformanceCoachServiceCompareToIndustryResponse() / PerformanceCoachServiceCompareToIndustryResponse.new instead')
+  static PerformanceCoachServiceCompareToIndustryResponse create() =>
+      PerformanceCoachServiceCompareToIndustryResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PerformanceCoachServiceCompareToIndustryResponse._();
+  @$core.override
+  PerformanceCoachServiceCompareToIndustryResponse createEmptyInstance() =>
+      PerformanceCoachServiceCompareToIndustryResponse._();
+  @$core.pragma('dart2js:noInline')
+  static PerformanceCoachServiceCompareToIndustryResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              PerformanceCoachServiceCompareToIndustryResponse>(
+          PerformanceCoachServiceCompareToIndustryResponse.$_createMessage);
+  static PerformanceCoachServiceCompareToIndustryResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  IndustryComparison get comparison => $_getN(0);
+  @$pb.TagNumber(1)
+  set comparison(IndustryComparison value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasComparison() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearComparison() => $_clearField(1);
+  @$pb.TagNumber(1)
+  IndustryComparison ensureComparison() => $_ensure(0);
 }
 
 const $core.bool _omitFieldNames =

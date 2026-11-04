@@ -956,27 +956,29 @@ type UploadPresetRecord struct {
 
 // ABExperimentRecord models A/B experiments (§22.9, RULE-M10-006).
 type ABExperimentRecord struct {
-	ExperimentID                  string     `json:"experiment_id"`
-	WorkspaceID                   string     `json:"workspace_id"`
-	SourceAssetID                 string     `json:"source_asset_id"`
-	Title                         string     `json:"title"`
-	Hypothesis                    string     `json:"hypothesis"`
-	VariantAssetIDs               []string   `json:"variant_asset_ids"`
-	VariantCount                  int        `json:"variant_count"`
-	TargetMetric                  string     `json:"target_metric"`
-	MinDurationHours              int        `json:"min_duration_hours"`
-	MinImpressionsPerVariant      int64      `json:"min_impressions_per_variant"`
-	AutoWinnerThresholdMultiplier float64    `json:"auto_winner_threshold_multiplier"`
-	Status                        string     `json:"status"`        // pending, running, completed, cancelled
-	ResultStatus                  string     `json:"result_status"` // pending, conclusive, inconclusive, scaled
-	WinnerAssetID                 string     `json:"winner_asset_id"`
-	IsObservational               bool       `json:"is_observational"`
-	InconclusiveReason            string     `json:"inconclusive_reason"`
-	StartedAt                     *time.Time `json:"started_at,omitempty"`
-	CompletedAt                   *time.Time `json:"completed_at,omitempty"`
-	CreatedAt                     time.Time  `json:"created_at"`
-	UpdatedAt                     time.Time  `json:"updated_at"`
-	DeletedAt                     *time.Time `json:"deleted_at,omitempty"`
+	ExperimentID                  string                    `json:"experiment_id"`
+	WorkspaceID                   string                    `json:"workspace_id"`
+	SourceAssetID                 string                    `json:"source_asset_id"`
+	Title                         string                    `json:"title"`
+	Hypothesis                    string                    `json:"hypothesis"`
+	VariantAssetIDs               []string                  `json:"variant_asset_ids"`
+	VariantCount                  int                       `json:"variant_count"`
+	TargetMetric                  string                    `json:"target_metric"`
+	MinDurationHours              int                       `json:"min_duration_hours"`
+	MinImpressionsPerVariant      int64                     `json:"min_impressions_per_variant"`
+	AutoWinnerThresholdMultiplier float64                   `json:"auto_winner_threshold_multiplier"`
+	Status                        string                    `json:"status"`        // pending, running, completed, cancelled
+	ResultStatus                  string                    `json:"result_status"` // pending, conclusive, inconclusive, scaled
+	WinnerAssetID                 string                    `json:"winner_asset_id"`
+	IsObservational               bool                      `json:"is_observational"`
+	InconclusiveReason            string                    `json:"inconclusive_reason"`
+	Variants                      []*ABVariantRecord        `json:"variants,omitempty"`
+	Criteria                      *AutoWinnerCriteriaRecord `json:"criteria,omitempty"`
+	StartedAt                     *time.Time                `json:"started_at,omitempty"`
+	CompletedAt                   *time.Time                `json:"completed_at,omitempty"`
+	CreatedAt                     time.Time                 `json:"created_at"`
+	UpdatedAt                     time.Time                 `json:"updated_at"`
+	DeletedAt                     *time.Time                `json:"deleted_at,omitempty"`
 }
 
 // RepurposeJobRecord models batch repurposing jobs (§22.13).

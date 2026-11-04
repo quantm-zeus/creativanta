@@ -2082,6 +2082,27 @@ message UploadPreset {
   google.protobuf.Timestamp created_at = 9;
 }
 
+message ABVariant {
+  string variant_id = 1;
+  string asset_id = 2;
+  string publish_item_id = 3;
+  string variant_type = 4; // 'thumbnail' | 'title' | 'hook' | 'cta' | 'music' | 'full_video'
+  string variant_label = 5; // e.g., "A", "B", "Control"
+  int64 impressions = 6;
+  int64 views = 7;
+  int64 clicks = 8;
+  double ctr = 9;
+  int64 conversions = 10;
+  double engagement_rate = 11;
+}
+
+message AutoWinnerCriteria {
+  string metric = 1; // 'views' | 'engagement_rate' | 'click_through' | 'watch_time'
+  double threshold_multiplier = 2; // e.g., 1.2 or 1.5
+  int32 min_duration_hours = 3; // e.g., 48
+  int64 min_impressions = 4; // default 1000
+}
+
 message ABExperiment {
   string experiment_id = 1;
   string source_asset_id = 2;
@@ -2098,6 +2119,12 @@ message ABExperiment {
   string winner_asset_id = 13;
   bool is_observational = 14;
   string inconclusive_reason = 15;
+  repeated ABVariant variants = 16;
+  AutoWinnerCriteria criteria = 17;
+  google.protobuf.Timestamp started_at = 18;
+  google.protobuf.Timestamp completed_at = 19;
+  google.protobuf.Timestamp created_at = 20;
+  google.protobuf.Timestamp updated_at = 21;
 }
 
 message OverrideAuditRecord {
@@ -2228,4 +2255,260 @@ service PackagingService {
   rpc OverrideResult(PackagingServiceOverrideResultRequest) returns (PackagingServiceOverrideResultResponse);
   rpc GetHistory(PackagingServiceGetHistoryRequest) returns (PackagingServiceGetHistoryResponse);
   rpc RunQA(PackagingServiceRunQARequest) returns (PackagingServiceRunQAResponse);
+}
+
+// ----------------------------------------------------------------------------
+// A/B Test Service Messages (M07 EF-10, M10 §7.8, §20.1)
+// ----------------------------------------------------------------------------
+
+message ABTestServiceCreateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string source_asset_id = 2;
+  string title = 3;
+  string hypothesis = 4;
+  repeated string variant_asset_ids = 5;
+  string target_metric = 6;
+  int32 min_duration_hours = 7;
+  int64 min_impressions_per_variant = 8;
+  double auto_winner_threshold_multiplier = 9;
+  repeated ABVariant variants = 10;
+}
+
+message ABTestServiceCreateResponse {
+  ABExperiment experiment = 1;
+}
+
+message ABTestServiceGetRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string experiment_id = 2;
+}
+
+message ABTestServiceGetResponse {
+  ABExperiment experiment = 1;
+}
+
+message ABTestServiceListRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string source_asset_id = 2;
+  string status = 3;
+  creativanta.common.v1.Pagination pagination = 4;
+}
+
+message ABTestServiceListResponse {
+  repeated ABExperiment experiments = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message ABTestServiceDeclareWinnerRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string experiment_id = 2;
+  string winner_asset_id = 3;
+  string reason = 4;
+}
+
+message ABTestServiceDeclareWinnerResponse {
+  ABExperiment experiment = 1;
+  bool observational_label_retained = 2;
+}
+
+message ABTestServiceCancelRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string experiment_id = 2;
+  string reason = 3;
+}
+
+message ABTestServiceCancelResponse {
+  ABExperiment experiment = 1;
+  bool success = 2;
+}
+
+message ABTestServiceEvaluateTestRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string experiment_id = 2;
+}
+
+message ABTestServiceEvaluateTestResponse {
+  ABExperiment experiment = 1;
+  bool is_conclusive = 2;
+  bool is_observational = 3;
+  string winner_asset_id = 4;
+  string evaluation_summary = 5;
+}
+
+message ABTestServiceGetMetricsRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string experiment_id = 2;
+}
+
+message ABTestServiceGetMetricsResponse {
+  string experiment_id = 1;
+  repeated ABVariant variants = 2;
+  string leading_variant_id = 3;
+  bool is_observational = 4;
+  bool has_sufficient_exposure = 5;
+}
+
+// ----------------------------------------------------------------------------
+// Performance Coach Service Messages (M07 EF-09 §2.8.8)
+// ----------------------------------------------------------------------------
+
+message PerformanceInsight {
+  string insight_id = 1;
+  string title = 2;
+  string description = 3;
+  string category = 4; // hook, retention, engagement, format, timing, sound
+  string impact_level = 5; // high, medium, low
+  string effort_level = 6; // low, medium, high
+  string suggested_action = 7;
+  string target_asset_id = 8;
+  bool is_observational = 9;
+}
+
+message VideoScorecard {
+  string asset_id = 1;
+  string title = 2;
+  double packaging_score = 3;
+  double hook_score = 4;
+  double retention_rate_3s = 5;
+  double completion_rate = 6;
+  double engagement_rate = 7;
+  int64 views = 8;
+  int64 likes = 9;
+  int64 comments = 10;
+  int64 shares = 11;
+  string grade = 12; // A+, A, B, C, D
+  repeated string strengths = 13;
+  repeated string drop_off_points = 14;
+  repeated string improvement_tips = 15;
+  bool is_observational = 16;
+  string observational_notice = 17;
+}
+
+message ImprovementItem {
+  string item_id = 1;
+  string title = 2;
+  string description = 3;
+  string format_recommendation = 4;
+  string sound_suggestion = 5;
+  string impact = 6; // High, Medium, Low
+  string effort = 7; // Low, Medium, High
+  string action_cta = 8;
+}
+
+message ImprovementPlan {
+  string plan_id = 1;
+  string workspace_id = 2;
+  string period = 3; // e.g. "weekly_2026_w44"
+  double current_score = 4;
+  double previous_score = 5;
+  double score_change = 6;
+  string best_post_title = 7;
+  double best_post_er = 8;
+  string worst_post_title = 9;
+  double worst_post_er = 10;
+  repeated ImprovementItem action_items = 11;
+  bool is_observational = 12;
+  string observational_notice = 13;
+}
+
+message IndustryBenchmark {
+  string benchmark_id = 1;
+  string platform = 2; // tiktok, instagram, youtube, shopee
+  string niche = 3; // beauty, tech, fashion, food
+  double avg_engagement_rate = 4;
+  double avg_3s_retention = 5;
+  double avg_completion_rate = 6;
+  double avg_ctr = 7;
+  int32 sample_size = 8;
+  bool is_observational = 9;
+}
+
+message IndustryComparison {
+  string platform = 1;
+  string niche = 2;
+  double workspace_engagement_rate = 3;
+  double industry_avg_engagement_rate = 4;
+  double er_delta_percent = 5;
+  double workspace_3s_retention = 6;
+  double industry_avg_3s_retention = 7;
+  double retention_delta_percent = 8;
+  string percentile_rank = 9; // e.g. "Top 15%"
+  string summary = 10;
+  bool is_observational = 11;
+  string observational_notice = 12;
+}
+
+message PerformanceCoachServiceGetInsightsRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string target_channel = 2;
+  int32 limit = 3;
+}
+
+message PerformanceCoachServiceGetInsightsResponse {
+  repeated PerformanceInsight insights = 1;
+  bool is_observational = 2;
+  string observational_notice = 3;
+}
+
+message PerformanceCoachServiceGetVideoScorecardRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string asset_id = 2;
+}
+
+message PerformanceCoachServiceGetVideoScorecardResponse {
+  VideoScorecard scorecard = 1;
+}
+
+message PerformanceCoachServiceGetImprovementPlanRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string timeframe = 2; // "7d", "30d"
+}
+
+message PerformanceCoachServiceGetImprovementPlanResponse {
+  ImprovementPlan plan = 1;
+}
+
+message PerformanceCoachServiceListBenchmarksRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string platform = 2;
+  string niche = 3;
+}
+
+message PerformanceCoachServiceListBenchmarksResponse {
+  repeated IndustryBenchmark benchmarks = 1;
+  bool is_observational = 2;
+}
+
+message PerformanceCoachServiceCompareToIndustryRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string platform = 2;
+  string niche = 3;
+}
+
+message PerformanceCoachServiceCompareToIndustryResponse {
+  IndustryComparison comparison = 1;
+}
+
+// ----------------------------------------------------------------------------
+// Service Definitions
+// ----------------------------------------------------------------------------
+
+// ABTestService manages A/B testing experiments, variant tracking, metrics and winner selection (M07 EF-10, M10).
+service ABTestService {
+  rpc Create(ABTestServiceCreateRequest) returns (ABTestServiceCreateResponse);
+  rpc Get(ABTestServiceGetRequest) returns (ABTestServiceGetResponse);
+  rpc List(ABTestServiceListRequest) returns (ABTestServiceListResponse);
+  rpc DeclareWinner(ABTestServiceDeclareWinnerRequest) returns (ABTestServiceDeclareWinnerResponse);
+  rpc Cancel(ABTestServiceCancelRequest) returns (ABTestServiceCancelResponse);
+  rpc EvaluateTest(ABTestServiceEvaluateTestRequest) returns (ABTestServiceEvaluateTestResponse);
+  rpc GetMetrics(ABTestServiceGetMetricsRequest) returns (ABTestServiceGetMetricsResponse);
+}
+
+// PerformanceCoachService provides AI-powered post-publish analysis, scorecards, and coaching (M07 EF-09).
+service PerformanceCoachService {
+  rpc GetInsights(PerformanceCoachServiceGetInsightsRequest) returns (PerformanceCoachServiceGetInsightsResponse);
+  rpc GetVideoScorecard(PerformanceCoachServiceGetVideoScorecardRequest) returns (PerformanceCoachServiceGetVideoScorecardResponse);
+  rpc GetImprovementPlan(PerformanceCoachServiceGetImprovementPlanRequest) returns (PerformanceCoachServiceGetImprovementPlanResponse);
+  rpc ListBenchmarks(PerformanceCoachServiceListBenchmarksRequest) returns (PerformanceCoachServiceListBenchmarksResponse);
+  rpc CompareToIndustry(PerformanceCoachServiceCompareToIndustryRequest) returns (PerformanceCoachServiceCompareToIndustryResponse);
 }
