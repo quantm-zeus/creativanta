@@ -118,6 +118,54 @@ describe('P0-07 M22 Capability Verification Registry & Health Score', () => {
     expect(degraded.recommendedActions.length).toBeGreaterThan(0);
   });
 
+  it('evaluates all 5 PRD §36B proactive coaching cards without altering the technical score', () => {
+    const baseMetrics = {
+      availabilityPct: 99.5,
+      errorRatePct: 0.2,
+      latencyP95Ms: 180,
+      rateLimitRemainingPct: 95
+    };
+
+    // Pure technical score without coaching input
+    const pureTechnical = computeCompositeHealthScore(baseMetrics);
+
+    // Provide all 5 PRD §36B proactive coaching trigger inputs
+    const withCoaching = computeCompositeHealthScore({
+      ...baseMetrics,
+      shopResponseRateNumerator: 75,
+      shopResponseRateDenom: 100, // 75% < 90%
+      listingQualityNumerator: 68,
+      listingQualityDenom: 100,   // 68% < 80%
+      delayedFulfillmentCount: 4,  // > 0
+      engagementDropPct: 35,      // > 20%
+      connectorAuthExpiresInDays: 2 // <= 3 days
+    });
+
+    // Invariant: Technical composite score is identical!
+    expect(withCoaching.overallScore).toBe(pureTechnical.overallScore);
+    expect(withCoaching.availabilityScore).toBe(pureTechnical.availabilityScore);
+    expect(withCoaching.errorRateScore).toBe(pureTechnical.errorRateScore);
+    expect(withCoaching.latencyScore).toBe(pureTechnical.latencyScore);
+    expect(withCoaching.rateLimitScore).toBe(pureTechnical.rateLimitScore);
+    expect(withCoaching.statusBand).toBe('healthy');
+
+    // All 5 coaching cards are generated with appropriate CTAs
+    expect(withCoaching.proactiveCoachingCards).toHaveLength(5);
+    const cardRules = withCoaching.proactiveCoachingCards.map((c) => c.rule);
+    expect(cardRules).toContain('shop_response_rate_low');
+    expect(cardRules).toContain('listing_quality_low');
+    expect(cardRules).toContain('fulfillment_delayed');
+    expect(cardRules).toContain('engagement_drop_detected');
+    expect(cardRules).toContain('connector_auth_expiring_soon');
+
+    const cardCtas = withCoaching.proactiveCoachingCards.map((c) => c.actionCta);
+    expect(cardCtas).toContain('/inbox');
+    expect(cardCtas).toContain('/store');
+    expect(cardCtas).toContain('/orders');
+    expect(cardCtas).toContain('/attribution');
+    expect(cardCtas).toContain('/settings/connections');
+  });
+
   it('enforces read-only impersonation on connector mutations even for Owner role', () => {
     expect(evaluateConnectorMutationAccess('owner', 'disconnect', false).allowed).toBe(true);
     expect(evaluateConnectorMutationAccess('owner', 'disconnect', true).allowed).toBe(false);

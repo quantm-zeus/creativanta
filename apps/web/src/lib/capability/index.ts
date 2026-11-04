@@ -439,11 +439,28 @@ export function evaluateActionCapability(
   };
 }
 
+export interface ProactiveCoachingCard {
+  id: string;
+  rule: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  title: string;
+  summary: string;
+  actionCta: string;
+}
+
 export interface HealthMetricsInput {
   availabilityPct: number;
   errorRatePct: number;
   latencyP95Ms: number;
   rateLimitRemainingPct: number;
+  // PRD §36B proactive coaching metrics
+  shopResponseRateNumerator?: number;
+  shopResponseRateDenom?: number;
+  listingQualityNumerator?: number;
+  listingQualityDenom?: number;
+  delayedFulfillmentCount?: number;
+  engagementDropPct?: number;
+  connectorAuthExpiresInDays?: number;
 }
 
 export interface HealthScoreSummary {
@@ -455,6 +472,7 @@ export interface HealthScoreSummary {
   statusBand: 'healthy' | 'degraded' | 'critical';
   proactiveCoachingAlert: boolean;
   recommendedActions: string[];
+  proactiveCoachingCards: ProactiveCoachingCard[];
 }
 
 function clamp100(val: number): number {
@@ -468,6 +486,8 @@ function clamp100(val: number): number {
  *   - 20% Latency P95
  *   - 15% Rate Limit Headroom
  * Triggers a proactive coaching alert when overallScore < 80.
+ * Invariant: Proactive coaching cards (PRD §36B) are surfaced without mutating
+ * the technical composite health score.
  */
 export function computeCompositeHealthScore(metrics: HealthMetricsInput): HealthScoreSummary {
   const availabilityScore = clamp100(metrics.availabilityPct);
@@ -510,6 +530,92 @@ export function computeCompositeHealthScore(metrics: HealthMetricsInput): Health
     }
   }
 
+  // PRD §36B proactive coaching cards evaluation
+  const proactiveCoachingCards: ProactiveCoachingCard[] = [];
+
+  // Rule 1: Shop response rate < 90%
+  if (
+    metrics.shopResponseRateDenom !== undefined &&
+    metrics.shopResponseRateDenom > 0 &&
+    metrics.shopResponseRateNumerator !== undefined
+  ) {
+    const rate = (metrics.shopResponseRateNumerator * 100) / metrics.shopResponseRateDenom;
+    if (rate < 90) {
+      proactiveCoachingCards.push({
+        id: 'coach-shop-response',
+        rule: 'shop_response_rate_low',
+        severity: 'medium',
+        title: 'Tỷ lệ phản hồi tin nhắn khách hàng thấp (<90%)',
+        summary:
+          'Tỷ lệ phản hồi khách hàng trong 15 phút thấp. Khách hàng dễ hủy đơn nếu không được hỗ trợ kịp thời.',
+        actionCta: '/inbox'
+      });
+    }
+  }
+
+  // Rule 2: Listing quality < 80%
+  if (
+    metrics.listingQualityDenom !== undefined &&
+    metrics.listingQualityDenom > 0 &&
+    metrics.listingQualityNumerator !== undefined
+  ) {
+    const quality = (metrics.listingQualityNumerator * 100) / metrics.listingQualityDenom;
+    if (quality < 80) {
+      proactiveCoachingCards.push({
+        id: 'coach-listing-quality',
+        rule: 'listing_quality_low',
+        severity: 'medium',
+        title: 'Chất lượng danh sách sản phẩm chưa đạt chuẩn (<80%)',
+        summary:
+          'Thiếu video mô tả hoặc hình ảnh chưa chuẩn kích thước sàn. Cải thiện để tăng tỷ lệ chuyển đổi.',
+        actionCta: '/store'
+      });
+    }
+  }
+
+  // Rule 3: Delayed fulfillment count > 0
+  if (metrics.delayedFulfillmentCount !== undefined && metrics.delayedFulfillmentCount > 0) {
+    proactiveCoachingCards.push({
+      id: 'coach-fulfillment-delay',
+      rule: 'fulfillment_delayed',
+      severity: 'high',
+      title: `Có ${metrics.delayedFulfillmentCount} đơn hàng bị chậm xử lý quá 24h`,
+      summary:
+        'Đơn hàng tồn đọng quá 24h có nguy cơ bị sàn phạt hoặc người mua hủy đơn tự động.',
+      actionCta: '/orders'
+    });
+  }
+
+  // Rule 4: Engagement drop > 20%
+  if (metrics.engagementDropPct !== undefined && metrics.engagementDropPct > 20) {
+    proactiveCoachingCards.push({
+      id: 'coach-engagement-drop',
+      rule: 'engagement_drop_detected',
+      severity: 'medium',
+      title: `Tương tác giảm ${metrics.engagementDropPct}% so với kỳ trước`,
+      summary:
+        'Lượng xem hoặc tương tác giảm hơn 20% so với tuần trước. Hãy áp dụng mẫu nội dung thịnh hành.',
+      actionCta: '/attribution'
+    });
+  }
+
+  // Rule 5: Connector auth expires in <= 3 days
+  if (
+    metrics.connectorAuthExpiresInDays !== undefined &&
+    metrics.connectorAuthExpiresInDays >= 0 &&
+    metrics.connectorAuthExpiresInDays <= 3
+  ) {
+    proactiveCoachingCards.push({
+      id: 'coach-connector-expiring',
+      rule: 'connector_auth_expiring_soon',
+      severity: 'high',
+      title: `Ủy quyền kênh kết nối sẽ hết hạn sau ${metrics.connectorAuthExpiresInDays} ngày`,
+      summary:
+        'Phiên kết nối mạng xã hội/sàn TMĐT sẽ hết hạn trong vòng 3 ngày tới. Cần gia hạn ngay để không gián đoạn xuất bản.',
+      actionCta: '/settings/connections'
+    });
+  }
+
   return {
     overallScore,
     availabilityScore,
@@ -518,7 +624,8 @@ export function computeCompositeHealthScore(metrics: HealthMetricsInput): Health
     rateLimitScore,
     statusBand,
     proactiveCoachingAlert: overallScore < 80,
-    recommendedActions
+    recommendedActions,
+    proactiveCoachingCards
   };
 }
 

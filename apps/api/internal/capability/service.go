@@ -207,13 +207,18 @@ type ConnectedAccountRecord struct {
 // HealthMetricsInput supplies raw telemetry for computing the composite 0-100 health score (RULE-M22-003)
 // and optional proactive business coaching cards (PRD §36B).
 type HealthMetricsInput struct {
-	AvailabilityPct       float64 // weight 40%
-	ErrorRatePct          float64 // weight 25% (lower error rate -> higher score)
-	LatencyP95Ms          float64 // weight 20%
-	RateLimitRemainingPct float64 // weight 15%
-	ShopResponseNumerator int64   // optional business coaching metric (PRD §36B)
-	ShopResponseDenom     int64
-	BusinessWindowLabel   string
+	AvailabilityPct            float64 // weight 40%
+	ErrorRatePct               float64 // weight 25% (lower error rate -> higher score)
+	LatencyP95Ms               float64 // weight 20%
+	RateLimitRemainingPct      float64 // weight 15%
+	ShopResponseNumerator      int64   // optional business coaching metric (PRD §36B)
+	ShopResponseDenom          int64
+	ListingQualityNumerator    int64 // listing quality < 80%
+	ListingQualityDenom        int64
+	DelayedFulfillmentCount    int32   // fulfillment delay > 24h
+	EngagementDropPct          float64 // engagement drop > 20%
+	ConnectorAuthExpiresInDays int32   // auth expiring in <= 3 days
+	BusinessWindowLabel        string
 }
 
 // EvaluationResult holds the resolved capability state and verification metadata for a platform action.
@@ -708,6 +713,7 @@ func ComputeHealthScore(
 	}
 
 	var coaching []*adminv1.ProactiveCoachingCard
+	// Rule 1 (PRD §36B): Shop response rate < 90% -> alert + CTA [Mở Inbox]
 	if input.ShopResponseDenom > 0 {
 		ratePct := (float64(input.ShopResponseNumerator) / float64(input.ShopResponseDenom)) * 100.0
 		if ratePct < 90.0 {
@@ -724,7 +730,7 @@ func ComputeHealthScore(
 				Denominator:    input.ShopResponseDenom,
 				WindowLabel:    win,
 				Message: fmt.Sprintf(
-					"Tỷ lệ phản hồi khách hàng của gian hàng đạt %s (%d/%d trong %s), thấp hơn ngưỡng khuyến nghị 90%%.",
+					"Tỷ lệ phản hồi khách hàng của gian hàng đạt %s (%d/%d trong %s), thấp hơn ngưỡng khuyến nghị 90%%. [Mở Inbox]",
 					obs, input.ShopResponseNumerator, input.ShopResponseDenom, win,
 				),
 				RecommendedActions: []string{
@@ -733,6 +739,94 @@ func ComputeHealthScore(
 				},
 			})
 		}
+	}
+
+	// Rule 2 (PRD §36B): Listing quality < 80% -> alert + CTA [Sửa sản phẩm]
+	if input.ListingQualityDenom > 0 {
+		qualPct := (float64(input.ListingQualityNumerator) / float64(input.ListingQualityDenom)) * 100.0
+		if qualPct < 80.0 {
+			win := strings.TrimSpace(input.BusinessWindowLabel)
+			if win == "" {
+				win = "30d"
+			}
+			obs := fmt.Sprintf("%.0f%%", math.Round(qualPct))
+			coaching = append(coaching, &adminv1.ProactiveCoachingCard{
+				MetricKey:      "listing_quality",
+				ObservedValue:  obs,
+				ThresholdValue: "80%",
+				Numerator:      input.ListingQualityNumerator,
+				Denominator:    input.ListingQualityDenom,
+				WindowLabel:    win,
+				Message: fmt.Sprintf(
+					"Điểm chất lượng niêm yết sản phẩm đạt %s (%d/%d đạt chuẩn trong %s), thấp hơn ngưỡng 80%%. [Sửa sản phẩm]",
+					obs, input.ListingQualityNumerator, input.ListingQualityDenom, win,
+				),
+				RecommendedActions: []string{
+					"Bổ sung thuộc tính sản phẩm và mô tả chuẩn SEO trong Product Hub (M13)",
+					"Tạo video showcase sản phẩm độ phân giải cao bằng AI Video Studio (M07)",
+				},
+			})
+		}
+	}
+
+	// Rule 3 (PRD §36B): Order fulfillment delay -> alert + CTA [Xem đơn hàng]
+	if input.DelayedFulfillmentCount > 0 {
+		coaching = append(coaching, &adminv1.ProactiveCoachingCard{
+			MetricKey:      "fulfillment_delay",
+			ObservedValue:  fmt.Sprintf("%d", input.DelayedFulfillmentCount),
+			ThresholdValue: "0",
+			Numerator:      int64(input.DelayedFulfillmentCount),
+			Denominator:    int64(input.DelayedFulfillmentCount),
+			WindowLabel:    "24h",
+			Message: fmt.Sprintf(
+				"%d đơn hàng chưa xử lý quá 24h — nguy cơ bị sàn phạt tỷ lệ giao trễ. [Xem đơn hàng]",
+				input.DelayedFulfillmentCount,
+			),
+			RecommendedActions: []string{
+				"In phiếu đóng gói và bàn giao đối tác vận chuyển trong Product Hub (M13)",
+				"Tự động cập nhật tồn kho sàn qua Workflow Studio (M20)",
+			},
+		})
+	}
+
+	// Rule 4 (PRD §36B): Engagement rate drop > 20% -> alert + CTA [Xem phân tích]
+	if input.EngagementDropPct > 20.0 {
+		coaching = append(coaching, &adminv1.ProactiveCoachingCard{
+			MetricKey:      "engagement_drop",
+			ObservedValue:  fmt.Sprintf("-%.0f%%", input.EngagementDropPct),
+			ThresholdValue: "-20%",
+			Numerator:      int64(input.EngagementDropPct),
+			Denominator:    100,
+			WindowLabel:    "7d",
+			Message: fmt.Sprintf(
+				"Tương tác kênh %s giảm %.0f%% tuần này so với tuần trước. [Xem phân tích]",
+				platform, input.EngagementDropPct,
+			),
+			RecommendedActions: []string{
+				"Phân tích nội dung thịnh hành và đối thủ cạnh tranh bằng M03 Research",
+				"Sản xuất kịch bản và hook bắt trend mới từ M06 Script Lab",
+			},
+		})
+	}
+
+	// Rule 5 (PRD §36B): Connector auth expiring in <= 3 days -> alert + CTA [Gia hạn]
+	if input.ConnectorAuthExpiresInDays > 0 && input.ConnectorAuthExpiresInDays <= 3 {
+		coaching = append(coaching, &adminv1.ProactiveCoachingCard{
+			MetricKey:      "connector_auth_expiring",
+			ObservedValue:  fmt.Sprintf("%d ngày", input.ConnectorAuthExpiresInDays),
+			ThresholdValue: "3 ngày",
+			Numerator:      int64(input.ConnectorAuthExpiresInDays),
+			Denominator:    3,
+			WindowLabel:    "realtime",
+			Message: fmt.Sprintf(
+				"Kết nối %s hết hạn trong %d ngày — cần gia hạn ủy quyền token. [Gia hạn]",
+				platform, input.ConnectorAuthExpiresInDays,
+			),
+			RecommendedActions: []string{
+				"Mở Cài đặt kết nối (M22) và xác thực lại token OAuth sàn",
+				"Kiểm tra danh sách quyền (scopes) trước khi phiên làm việc gián đoạn",
+			},
+		})
 	}
 
 	return &adminv1.PlatformHealthScoreCard{

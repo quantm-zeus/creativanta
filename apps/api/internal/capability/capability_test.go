@@ -432,3 +432,91 @@ func TestCompositeHealthScoresProactiveCoachingTokenRedactionAndImpersonationRea
 		t.Fatalf("expected CodeAborted on idempotency conflict, got %v", conflictErr)
 	}
 }
+
+func TestPlatformHealthScoreProactiveCoachingFiveRulesAndSeparation(t *testing.T) {
+	now := time.Date(2026, 11, 4, 15, 0, 0, 0, time.UTC)
+
+	// 1. Calculate pure technical health card (healthy: 100% avail, 0% err, 100ms lat, 90% rate limit)
+	pureTechCard := ComputeHealthScore("score-pure-tech", "acc-1", "tiktok", HealthMetricsInput{
+		AvailabilityPct:       100.0,
+		ErrorRatePct:          0.0,
+		LatencyP95Ms:          100.0,
+		RateLimitRemainingPct: 90.0,
+	}, now)
+
+	if pureTechCard.GetOverallScore() != 99 || pureTechCard.GetStatusBand() != "healthy" {
+		t.Fatalf("expected pure tech score 99 (healthy), got score=%d band=%s", pureTechCard.GetOverallScore(), pureTechCard.GetStatusBand())
+	}
+	if len(pureTechCard.GetCoachingCards()) != 0 {
+		t.Fatalf("expected 0 coaching cards when business metrics are empty, got %d", len(pureTechCard.GetCoachingCards()))
+	}
+
+	// 2. Calculate card with identical technical health metrics PLUS all 5 PRD §36B proactive coaching metrics firing
+	coachedCard := ComputeHealthScore("score-coached", "acc-1", "tiktok", HealthMetricsInput{
+		AvailabilityPct:            100.0,
+		ErrorRatePct:               0.0,
+		LatencyP95Ms:               100.0,
+		RateLimitRemainingPct:      90.0,
+		ShopResponseNumerator:      88,
+		ShopResponseDenom:          100, // 88% < 90%
+		ListingQualityNumerator:    72,
+		ListingQualityDenom:        100,  // 72% < 80%
+		DelayedFulfillmentCount:    5,    // 5 orders > 24h
+		EngagementDropPct:          25.0, // 25% drop > 20%
+		ConnectorAuthExpiresInDays: 2,    // 2 days <= 3 days
+		BusinessWindowLabel:        "7d",
+	}, now)
+
+	// 3. Technical health MUST remain strictly identical to pure tech card (RULE-M22-003 & PRD §36B line 207)
+	if coachedCard.GetOverallScore() != pureTechCard.GetOverallScore() {
+		t.Fatalf("CRITICAL CONTRACT VIOLATION: Business metrics altered overall technical score! %d vs %d", coachedCard.GetOverallScore(), pureTechCard.GetOverallScore())
+	}
+	if coachedCard.GetAvailabilityScore() != pureTechCard.GetAvailabilityScore() ||
+		coachedCard.GetErrorRateScore() != pureTechCard.GetErrorRateScore() ||
+		coachedCard.GetLatencyScore() != pureTechCard.GetLatencyScore() ||
+		coachedCard.GetRateLimitScore() != pureTechCard.GetRateLimitScore() ||
+		coachedCard.GetStatusBand() != pureTechCard.GetStatusBand() {
+		t.Fatalf("CRITICAL CONTRACT VIOLATION: Technical dimensions changed when business coaching was evaluated!")
+	}
+
+	// 4. Verify all 5 proactive coaching cards are present with correct thresholds and actionable recommendations
+	cards := coachedCard.GetCoachingCards()
+	if len(cards) != 5 {
+		t.Fatalf("expected 5 proactive coaching cards, got %d", len(cards))
+	}
+
+	cardMap := make(map[string]*adminv1.ProactiveCoachingCard)
+	for _, c := range cards {
+		cardMap[c.GetMetricKey()] = c
+	}
+
+	// Rule 1: shop_response_rate
+	c1, ok := cardMap["shop_response_rate"]
+	if !ok || c1.GetObservedValue() != "88%" || c1.GetThresholdValue() != "90%" || !strings.Contains(c1.GetMessage(), "Inbox") {
+		t.Fatalf("Rule 1 shop_response_rate verification failed: %+v", c1)
+	}
+
+	// Rule 2: listing_quality
+	c2, ok := cardMap["listing_quality"]
+	if !ok || c2.GetObservedValue() != "72%" || c2.GetThresholdValue() != "80%" || !strings.Contains(c2.GetMessage(), "Sửa sản phẩm") {
+		t.Fatalf("Rule 2 listing_quality verification failed: %+v", c2)
+	}
+
+	// Rule 3: fulfillment_delay
+	c3, ok := cardMap["fulfillment_delay"]
+	if !ok || c3.GetObservedValue() != "5" || c3.GetThresholdValue() != "0" || !strings.Contains(c3.GetMessage(), "Xem đơn hàng") {
+		t.Fatalf("Rule 3 fulfillment_delay verification failed: %+v", c3)
+	}
+
+	// Rule 4: engagement_drop
+	c4, ok := cardMap["engagement_drop"]
+	if !ok || c4.GetObservedValue() != "-25%" || c4.GetThresholdValue() != "-20%" || !strings.Contains(c4.GetMessage(), "Xem phân tích") {
+		t.Fatalf("Rule 4 engagement_drop verification failed: %+v", c4)
+	}
+
+	// Rule 5: connector_auth_expiring
+	c5, ok := cardMap["connector_auth_expiring"]
+	if !ok || c5.GetObservedValue() != "2 ngày" || c5.GetThresholdValue() != "3 ngày" || !strings.Contains(c5.GetMessage(), "Gia hạn") {
+		t.Fatalf("Rule 5 connector_auth_expiring verification failed: %+v", c5)
+	}
+}

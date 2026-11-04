@@ -2,9 +2,12 @@
   import {
     canAccessAdmin,
     evaluateAdminListenerAccess,
+    evaluateAppealReviewAction,
     evaluateImpersonationAction,
     evaluateKillSwitchToggle,
-    evaluateModerationDecision
+    evaluateModerationDecision,
+    evaluateOperationalHealthSeparation,
+    evaluateSupportTicketAccess
   } from '$lib/access';
 
   const nowMs = Date.parse('2026-11-02T09:00:00Z');
@@ -13,6 +16,28 @@
   let mfaVerified = $state(true);
   let impersonationAction = $state<'read_query' | 'mutating_command'>('mutating_command');
   let killSwitchReason = $state('Sự cố khẩn cấp TikTok API INC-2026-042');
+
+  // P8-03: Appeal Audit State
+  let appealCategory = $state('phishing_malware');
+  let appealResolution = $state<'upheld' | 'overturned'>('overturned');
+  let appealEvidenceRef = $state('https://security.creativanta.internal/ev/FP-2026-8812.pdf');
+  let appealJustification = $state('Tên miền đối tác được xác thực qua báo cáo bảo mật bên thứ ba');
+  let appealAdminRole = $state('content_admin');
+
+  // P8-03: Support Desk State
+  let supportViewerRole = $state('owner');
+  let isInternalAdminCaller = $state(false);
+
+  // P8-03: Operational Health State
+  let availabilityPct = $state(99.9);
+  let errorRatePct = $state(0.08);
+  let p95LatencyMs = $state(180);
+  let rateLimitUsagePct = $state(60);
+  let shopResponseRatePct = $state(85);
+  let listingQualityPct = $state(75);
+  let delayedFulfillmentCount = $state(2);
+  let engagementDropPct = $state(25);
+  let connectorAuthExpiresInDays = $state(2);
 
   const listenerVerdict = $derived(
     evaluateAdminListenerAccess(
@@ -59,6 +84,52 @@
       mfaVerified,
       flagKey: 'kill_switch:tiktok',
       auditReason: killSwitchReason
+    })
+  );
+
+  const appealVerdict = $derived(
+    evaluateAppealReviewAction({
+      adminRole: appealAdminRole,
+      adminLinkedUserId: 'user-admin-99',
+      appealedByUserId: 'user-app-creator-1',
+      category: appealCategory,
+      resolution: appealResolution,
+      resolutionNotes: 'Đánh giá hồ sơ khiếu nại kiểm duyệt P8-03',
+      evidenceRef: appealEvidenceRef,
+      falsePositiveJustification: appealJustification
+    })
+  );
+
+  const sampleSupportMessages = [
+    { id: 'm-1', senderRole: 'creator', internalOnly: false, content: 'Tài khoản không kết nối được TikTok Shop.' },
+    { id: 'm-2', senderRole: 'support_admin', internalOnly: true, content: 'Ghi chú nội bộ: Phát hiện lỗi 401 token OAuth quá hạn. Cần tech_admin kiểm tra key rotation.' },
+    { id: 'm-3', senderRole: 'support_admin', internalOnly: false, content: 'Chúng tôi đang kiểm tra phiên kết nối của bạn và sẽ phản hồi trong 2 giờ.' }
+  ];
+
+  const supportVerdict = $derived(
+    evaluateSupportTicketAccess({
+      callerRole: supportViewerRole,
+      isInternalAdmin: isInternalAdminCaller,
+      messages: sampleSupportMessages
+    })
+  );
+
+  const healthSeparation = $derived(
+    evaluateOperationalHealthSeparation({
+      availabilityPct,
+      errorRatePct,
+      p95LatencyMs,
+      rateLimitUsagePct,
+      mrrCents: 45000000,
+      activeWorkspaces: 1240,
+      churnRatePct: 0.8,
+      coachingInputs: {
+        shopResponseRatePct,
+        listingQualityPct,
+        delayedFulfillmentCount,
+        engagementDropPct,
+        connectorAuthExpiresInDays
+      }
     })
   );
 </script>
@@ -183,6 +254,130 @@
         <p class="font-semibold {killSwitchVerdict.allowed ? 'text-emerald-700' : 'text-[#b44833]'}">
           {killSwitchVerdict.reason}
         </p>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-[#e8e5dc] bg-white p-6">
+      <h3 class="text-sm font-bold text-[#242924]">
+        5. Xử lý Kháng cáo Kiểm duyệt &amp; False-Positive Hard-Block (P8-03 · SAFE-2026-02)
+      </h3>
+      <div class="mt-3 space-y-2 text-xs">
+        <div class="grid grid-cols-2 gap-2">
+          <label class="block">
+            <span class="font-semibold">Vai trò xem xét:</span>
+            <select
+              bind:value={appealAdminRole}
+              class="mt-1 w-full rounded-lg border border-[#d6d1c4] bg-white px-2 py-1"
+            >
+              <option value="content_admin">Content Admin (Cho phép)</option>
+              <option value="super_admin">Super Admin (Cho phép)</option>
+              <option value="ops_admin">Ops Admin (Bị từ chối)</option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="font-semibold">Quyết định xử lý:</span>
+            <select
+              bind:value={appealResolution}
+              class="mt-1 w-full rounded-lg border border-[#d6d1c4] bg-white px-2 py-1"
+            >
+              <option value="overturned">Chấp thuận khiếu nại (Overturned)</option>
+              <option value="upheld">Bác bỏ khiếu nại (Upheld)</option>
+            </select>
+          </label>
+        </div>
+        <label class="block">
+          <span class="font-semibold">Danh mục vi phạm:</span>
+          <select
+            bind:value={appealCategory}
+            class="mt-1 w-full rounded-lg border border-[#d6d1c4] bg-white px-2 py-1"
+          >
+            <option value="phishing_malware">phishing_malware (Hard-block)</option>
+            <option value="revoked_clone_consent">revoked_clone_consent (Hard-block)</option>
+            <option value="medical_claim_warning">medical_claim_warning (Tiêu chuẩn)</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="font-semibold">Đường dẫn bằng chứng kiểm toán (Bắt buộc cho Hard-block):</span>
+          <input
+            type="text"
+            bind:value={appealEvidenceRef}
+            class="mt-1 w-full rounded-lg border border-[#d6d1c4] bg-white px-2 py-1"
+          />
+        </label>
+        <label class="block">
+          <span class="font-semibold">Giải trình sai lệch (False-positive justification):</span>
+          <input
+            type="text"
+            bind:value={appealJustification}
+            class="mt-1 w-full rounded-lg border border-[#d6d1c4] bg-white px-2 py-1"
+          />
+        </label>
+        <p class="mt-2 font-semibold {appealVerdict.allowed ? 'text-emerald-700' : 'text-[#b44833]'}">
+          [{appealVerdict.errorCode}{appealVerdict.falsePositiveCleared ? ' · FP_CLEARED' : ''}] {appealVerdict.reason}
+        </p>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-[#e8e5dc] bg-white p-6">
+      <h3 class="text-sm font-bold text-[#242924]">
+        6. Phân tách Ghi chú Nội bộ Hỗ trợ Support Desk (P8-03 · RULE-S26-003)
+      </h3>
+      <div class="mt-3 space-y-2 text-xs">
+        <div class="flex gap-4 items-center">
+          <label class="flex items-center gap-1.5">
+            <input type="radio" bind:group={isInternalAdminCaller} value={false} />
+            <span>Người dùng Creator (Ẩn ghi chú nội bộ)</span>
+          </label>
+          <label class="flex items-center gap-1.5">
+            <input type="radio" bind:group={isInternalAdminCaller} value={true} />
+            <span>Support Admin Nội bộ (Hiện đầy đủ)</span>
+          </label>
+        </div>
+        <p class="font-medium text-[#7d837b]">{supportVerdict.reason}</p>
+        <div class="mt-2 space-y-1.5 border border-[#e8e5dc] rounded-lg p-2.5 bg-[#fdfdfa]">
+          {#each supportVerdict.visibleMessages as msg}
+            <div class="p-2 rounded {msg.internalOnly ? 'bg-amber-50 border border-amber-200' : 'bg-white border border-[#e8e5dc]'}">
+              <span class="font-semibold uppercase tracking-wider text-[10px] {msg.internalOnly ? 'text-amber-800' : 'text-slate-600'}">
+                {msg.senderRole} {msg.internalOnly ? '[GHI CHÚ NỘI BỘ]' : ''}
+              </span>
+              <p class="mt-0.5 text-xs text-[#242924]">{msg.content}</p>
+            </div>
+          {/each}
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-[#e8e5dc] bg-white p-6 md:col-span-2">
+      <h3 class="text-sm font-bold text-[#242924]">
+        7. Sức khỏe Vận hành Độc lập &amp; Huấn luyện Năng lực Chủ động (P8-03 · PRD §36B)
+      </h3>
+      <div class="mt-3 grid gap-4 md:grid-cols-2 text-xs">
+        <div class="space-y-2 rounded-xl border border-[#e8e5dc] bg-[#faf9f5] p-4">
+          <h4 class="font-bold text-[#242924]">Chỉ số Kỹ thuật Vận hành (Composite 0-100)</h4>
+          <p class="text-[#7d837b]">Công thức: 40% Khả dụng + 25% Tỷ lệ lỗi + 20% Độ trễ + 15% Rate Limit</p>
+          <div class="mt-2 text-2xl font-black {healthSeparation.technicalStatus === 'healthy' ? 'text-emerald-700' : 'text-amber-600'}">
+            {healthSeparation.technicalScore} / 100 [{healthSeparation.technicalStatus.toUpperCase()}]
+          </div>
+          <p class="text-[11px] text-emerald-800 font-medium">✓ Độc lập hoàn toàn với MRR ($450,000), Workspaces (1,240), Churn (0.8%)</p>
+        </div>
+
+        <div class="space-y-2 rounded-xl border border-[#e8e5dc] bg-[#faf9f5] p-4">
+          <h4 class="font-bold text-[#242924]">Thẻ Huấn luyện Năng lực Chủ động ({healthSeparation.coachingCount} phát hiện)</h4>
+          <p class="text-[#7d837b]">Các khuyến nghị hành động không can thiệp vào quyền kỹ thuật hay điểm vận hành.</p>
+          <div class="space-y-1.5 mt-2">
+            {#each healthSeparation.coachingCards as card}
+              <div class="flex items-center justify-between rounded bg-white p-2 border border-[#e8e5dc]">
+                <div>
+                  <span class="font-semibold text-slate-800">{card.title}</span>
+                  <span class="block text-[10px] text-slate-400 font-mono">{card.rule}</span>
+                </div>
+                <a href={card.targetCta} class="px-2 py-1 text-[11px] font-semibold bg-[#242924] text-white rounded hover:bg-[#3d443d]">
+                  Xử lý ({card.targetCta})
+                </a>
+              </div>
+            {/each}
+          </div>
+        </div>
       </div>
     </div>
   </div>

@@ -1,0 +1,140 @@
+{
+  "task_id": "P8-03",
+  "phase": "P8",
+  "slice": "P8-03",
+  "title": "Internal admin, ops và capability completion",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "modules": [
+    "S26",
+    "M22"
+  ],
+  "feature_refs": [
+    "docs/02_features/platform/internal_admin.md",
+    "docs/02_features/platform/capability_matrix.md",
+    "docs/06_quality_ops/moderation_rules_engine.md"
+  ],
+  "migration_files": [
+    "infra/migrations/00041_p8_03_admin_ops_appeals_and_proactive_coaching.sql"
+  ],
+  "rpc_contracts": [
+    "creativanta.admin.v1.AdminModerationService",
+    "creativanta.admin.v1.AdminSupportService",
+    "creativanta.admin.v1.AdminFraudService",
+    "creativanta.admin.v1.AdminJobService",
+    "creativanta.admin.v1.AdminOpsAnalyticsService",
+    "creativanta.admin.v1.CapabilityService"
+  ],
+  "permission_keys": [
+    "admin:access",
+    "admin:moderation:manage",
+    "admin:moderation:appeal",
+    "admin:impersonate",
+    "admin:support:manage",
+    "admin:fraud:manage",
+    "admin:job:manage",
+    "admin:analytics:view",
+    "admin:feature_flag:toggle",
+    "account:read",
+    "account:connect",
+    "account:disconnect"
+  ],
+  "event_types": [
+    "moderation.appeal.submitted",
+    "moderation.appeal.reviewed",
+    "moderation.hard_block.cleared",
+    "support.ticket.created",
+    "support.ticket.updated",
+    "fraud.case.escalated",
+    "fraud.action.executed",
+    "job.dlq.retried",
+    "job.dlq.purged",
+    "coaching.snapshot.recorded"
+  ],
+  "screen_routes": [
+    "/ (apps/admin isolated listener)",
+    "/settings/capabilities",
+    "/settings/connections",
+    "mobile://M058/capability-matrix"
+  ],
+  "source_files": {
+    "infra/migrations/00041_p8_03_admin_ops_appeals_and_proactive_coaching.sql": "6b4e161686327912fad99830e5d196450add8a0ac8a4e75fd6833433b0a5b182",
+    "apps/api/internal/migrate/migrator_test.go": "882373d947956ef3e6c9f26d4f4ca50057242d2a5e6d176d4dd9e80367cb7de5",
+    "apps/api/internal/internaladmin/service.go": "e676e424feece5138d8683ae7c3625ceba5aa6ae8dcc5789140bc4b3c7b08b5e",
+    "apps/api/internal/internaladmin/internaladmin_test.go": "4cec5f93d1b40af6489fae19d3705d3bcf34d0539a687885e5b9cbacb99ed080",
+    "apps/api/internal/capability/service.go": "82d8fd714f67490f55f3324f92ca7efb27b83bde8f1e72965ef64054f136f007",
+    "apps/api/internal/capability/capability_test.go": "578c5eef3b4020bbbd3d5a1df0d9428d70ea8f7226422b7735a409baa38fabf8",
+    "apps/admin/src/lib/access.ts": "3212eeb4e5cd6c91e39479285db9539e91c57002ef1cd6bdca68e4e127106817",
+    "apps/admin/src/lib/access.test.ts": "069a566f48e70720fbb0a75837e58d9e9cc83343a3d8dde44736472b5a119567",
+    "apps/admin/src/routes/+page.svelte": "426ea3f9ca26133be5584fd528d4cb316123cfcb939612bdf719072d6ed27a12",
+    "apps/web/src/lib/capability/index.ts": "1e076318d6f7e2bc9f1ce4b6c31af49f10f59959a003aff628986e2af9e0d86e",
+    "apps/web/src/lib/capability/capability.test.ts": "2c8af4c81469eef2d4aa5ad532d59c61523d53a7628aea50ce06438695115682",
+    "apps/web/src/routes/settings/connections/+page.svelte": "441fe7049d1d57894ba76e567799906511fd61f2380beb3c3bce056f450ce4b6",
+    "apps/mobile/lib/capability/capability_models.dart": "4dd39f073fcc33e41b04fa5c80a0b25b89891c60c6f3e1a6f2988b6bda752e39",
+    "apps/mobile/test/capability_test.dart": "e11a516fe1b936128c278882df98f66ab25d6a608137d3c190e723f12ca5b4cd"
+  },
+  "scope_items": [
+    {
+      "id": "privileged-role-boundaries",
+      "title": "Strict isolation of 8 internal admin roles from workspace roles, ModeAdminAPI reject guard for workspace callers, 30-min auto-expiring read-only impersonation, and EC-S26-002 self-review prevention",
+      "status": "IMPLEMENTED_LOCAL_TESTED"
+    },
+    {
+      "id": "hard-block-appeal-audit",
+      "title": "SAFE-2026-02 non-overridable hard-blocks, packaging override rejection, user appeal lifecycle, and false-positive clearance requiring audited evidence reference & justification with immutable audit logging",
+      "status": "IMPLEMENTED_LOCAL_TESTED"
+    },
+    {
+      "id": "technical-health-distinct-from-business",
+      "title": "Composite 0-100 technical health score (40% availability, 25% error rate, 20% latency, 15% rate limit) strictly segregated from commercial indicators (MRR, active workspaces, churn), with 5 PRD §36B proactive capability coaching rules surfacing actionable CTAs without altering technical capability state",
+      "status": "IMPLEMENTED_LOCAL_TESTED"
+    }
+  ],
+  "verified_sub_slices": [
+    "PostgreSQL migration 00041 adding appeal audit columns to moderation_cases, creating moderation_appeals and proactive_coaching_snapshots with RLS + FORCE ROW LEVEL SECURITY and narrow app_user/admin_user grants",
+    "Internal Admin privileged role boundary enforcement across all 8 roles, rejection of workspace roles on ModeAdminAPI, 30-minute read-only impersonation limit, and EC-S26-002 self-review prevention",
+    "SAFE-2026-02 hard-block appeal lifecycle with audited false-positive clearance requiring explicit evidence reference and justification",
+    "Support Desk tooling with strict isolation preventing internal notes from leaking to creator/workspace callers",
+    "Fraud case management with RULE-S26-007 48-hour auto-escalation, credit freezing, and account suspension",
+    "Background job and dead-letter queue (DLQ) inspection, retry, and purge controls with audit logging",
+    "Platform composite technical health score calculation (40/25/20/15) decoupled from commercial indicators (MRR, workspaces, churn)",
+    "PRD §36B proactive capability coaching rules (shop response rate, listing quality, fulfillment delay, engagement drop, connector auth expiration) surfacing actionable CTAs across backend, web, admin, and mobile",
+    "Admin UI (+page.svelte) interactive panels for Appeals & false-positive clearance, Support internal notes boundary, Kill switch, and Health vs Business separation",
+    "Web (/settings/connections) proactive coaching drawer with direct action CTAs and technical health score decoupling",
+    "Mobile (capability_models.dart, capability_test.dart) support for composite health score and all 5 proactive coaching cards"
+  ],
+  "checks": [
+    {
+      "command": "python3 tooling/check_docs.py",
+      "result": "PASS (exit 0)"
+    },
+    {
+      "command": "cd apps/api && test -z \"$(gofmt -l .)\" && go vet ./...",
+      "result": "PASS (exit 0)"
+    },
+    {
+      "command": "cd apps/api && GOTMPDIR=/home/whaleorcale/tmp go test -race -count=1 ./internal/internaladmin/... ./internal/capability/... ./internal/migrate/...",
+      "result": "PASS (exit 0)"
+    },
+    {
+      "command": "pnpm --dir apps/admin test && pnpm --dir apps/admin check",
+      "result": "PASS (exit 0)"
+    },
+    {
+      "command": "pnpm --dir apps/web test src/lib/capability/capability.test.ts && pnpm --dir apps/web check",
+      "result": "PASS (exit 0)"
+    },
+    {
+      "command": "cd apps/mobile && XDG_CONFIG_HOME=$HOME/.flutter_config flutter test test/capability_test.dart && XDG_CONFIG_HOME=$HOME/.flutter_config flutter analyze lib/capability/ test/capability_test.dart",
+      "result": "PASS (exit 0)"
+    }
+  ],
+  "external_gates": [
+    "Production Tailscale/WireGuard VPN mesh infrastructure for isolated Admin listener network access (PRIV-2026-02)",
+    "Production RFC 6238 TOTP MFA provider and backup recovery codes for internal admin operators",
+    "Production external domain validation service for false-positive clearance audit evidence storage",
+    "Production TikTok / Shopee / Meta partner developer portal app audit approvals and OAuth client secrets"
+  ],
+  "remaining_scope": []
+}
