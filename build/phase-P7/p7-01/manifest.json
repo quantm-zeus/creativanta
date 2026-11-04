@@ -1,0 +1,67 @@
+{
+  "task_id": "P7-01",
+  "phase": "P7",
+  "slice": "p7-01",
+  "title": "Workflow builder và complete node model",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "feature_refs": [
+    "docs/02_features/automation/workflow_studio.md",
+    "docs/05_system/runtime_workflow.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/03_screens/web/screen_web_workflow_builder.md"
+  ],
+  "source_files": {
+    "infra/migrations/00036_p7_01_workflows_and_complete_node_model.sql": "4942c603daed594162c4282032003302b5f3759c31af7dff202535108f25a899",
+    "protos/creativanta/automation/v1/workflow.proto": "2052596b1553887446b95447514bd40ca70d3f8901cf6167eef712052741f558",
+    "apps/api/internal/workflow/model.go": "b6dc767c31e83abde15b7a4e26a61e501d4e5edd3d5abc8f6b2b5215436a9521",
+    "apps/api/internal/workflow/errors.go": "f093fcaccf6c435d24bbdf436888cb60e4c86de03368172f0a71299c4c6d7acd",
+    "apps/api/internal/workflow/validation.go": "45e377e99bd1f2e2108a8ab4fdaab917a6ec4eec6f23858fa2cae3f3e17ccfa9",
+    "apps/api/internal/workflow/adapter.go": "507eb2111cc240b52163cb8a1cacb2f265c2fe764213ba1f47b77b78ab335a34",
+    "apps/api/internal/workflow/versioning.go": "dac09e149edaeca243934976765d0c20f4568d0a72fb2f8c89472e7669f6b533",
+    "apps/api/internal/workflow/import_export.go": "d5603d46a1d0d4777464ac1fce41abe3c980d1848e13824c18ad43ea16796f09",
+    "apps/api/internal/workflow/store.go": "d2eb9bc26bee13173df979a8925ae7a346f7adaf3e629ffdb69444f235a59b47",
+    "apps/api/internal/workflow/service.go": "25e12b0777e1c53c72e019cd274a77c41cb06eb0ffd604f959efc4e16f476608",
+    "apps/api/internal/workflow/handler.go": "eb16ef6c8b1093ea9f58124b8113c6b9ceaa7cbdf911edd6730e93a22d3e2668",
+    "apps/api/internal/workflow/workflow_test.go": "ccef3bc7138f02ae0c6d7ce709fef0545395495ebd35db8d70c61932e4adc5d1",
+    "apps/web/src/lib/workflow/types.ts": "fcca0da16558ebf9b10f361e14a0538257f03d815befe347724a131bdbeac8f9",
+    "apps/web/src/lib/workflow/validation.ts": "b8a586ed0f0e4b6a67bcb9fbbd24df10b70fa4d617f948d6d3896b005d70e312",
+    "apps/web/src/lib/workflow/workflow.test.ts": "7c696cf336d295901a554e6be55d6da5b1f0bb63a0e09642f07c6ce9c691c8ad",
+    "apps/web/src/routes/workflows/+page.svelte": "25e414955a9e8ffe14620ce42298a6c4caf057e46414b0f02d1f89ee14f7ee25",
+    "apps/web/src/routes/workflows/[id]/+page.svelte": "13fd64b931ede560648f6e39099b5fe09f56e8d31cdb7a0db215e3f84effdda3",
+    "apps/mobile/lib/automation/workflow_models.dart": "ea072ee5be69871d2b1679f2973c0879afe4b9f5f5c2eb9b1ec9c83edc7afcc7",
+    "apps/mobile/lib/ui/automation/workflow_builder_view.dart": "52931ec63d7e4eca6c45333f382c2b5d2afecafe54145448efd8df7fe3859c35",
+    "apps/mobile/test/workflow_builder_test.dart": "cd3a27a3cc3cb2fb4b407dcf07d78210cdff066e919ba6cfd940e26b2ee0543f"
+  },
+  "scope_items": [
+    "Database Migration 00036: Created workflows (§12.2), workflow_runs (§12.3), and workflow_run_steps (§12.3A) tables with workspace composite tenant keys, strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY), check constraints, and role grants.",
+    "Target 1 (Cycle / unbounded graph rejected): DFS 3-color cycle detection algorithm extracts and rejects back-edges (self-loops, 2-node cycles, 3-node cycles, complex branching loops); unbounded graph limit <= 100 nodes enforced; reachability from root trigger and path termination to terminal nodes validated; condition branches strictly validated; declarative transforms enforced (no eval); security audit rejects credentials and raw SQL.",
+    "Target 2 (Every node type round trip): Full support for all 10 canonical node types (trigger, condition, transform, action, approval, wait, fallback, diagnostics, handoff, terminal) and 4 trigger types (event, schedule, manual, webhook) across Go domain models, database schema, protobuf wire definitions, SvelteKit web canvas, and Flutter mobile views.",
+    "Target 3 (No embedding license assumed): Owned workflow builder and runtime engine is the first-class default (RequiresLicense=false, IsEntitled=true); Activepieces adapter operates as optional secondary plugin and fails closed when unentitled (RequiresLicense=true, IsEntitled=false); zero commercial license key assumed.",
+    "Target 4 (Versioning & Portable Export/Import): Monotonic integer versioning with optimistic concurrency conflict detection (ErrVersionMismatch); §27.4 portable export/import round-trip with schema versioning, tenant license notices, and UUID regeneration.",
+    "Target 5 (RBAC and Transport Security): Complete 21-RPC WorkflowService implementation with rpc_permission_bindings.csv enforcement, tenant boundary validation, and role authorization."
+  ],
+  "verified_sub_slices": [
+    "Target 1 Verified: Go unit test suite (workflow_test.go), Vitest web test suite (workflow.test.ts), and Flutter test suite (workflow_builder_test.dart) confirm cycle rejection, unbounded graph rejection, unreachable node rejection, and security violation detection.",
+    "Target 2 Verified: TestEveryNodeType_RoundTripAndSimulation (Go -race) confirms 10-node serialization, storage, retrieval, and dry-run execution with positive estimated credit calculation; TypeScript and Dart round trips verify wire parity.",
+    "Target 3 Verified: TestAdapterEntitlement_ZeroLicenseAssumed (Go -race) confirms OwnedWorkflowEngine entitlement and ActivepiecesAdapter fail-closed behavior.",
+    "Target 4 Verified: TestVersioningAndOptimisticConcurrency, TestPortableExportImport_RoundTrip, and TestCloneWorkflow pass with optimistic version bump and conflict rejection.",
+    "Target 5 Verified: TestRBACPermissionChecks and TestConnectRPCHandler confirm 21 ConnectRPC operations and denial for unauthorized viewer roles.",
+    "Concurrency Verified: TestConcurrentWorkflowOperations executes 50 concurrent workflow operations across 10 workers with go test -race (0 data races detected).",
+    "Toolchain Verified: check_d0.sh PASS (163 SQL blocks valid), check_proto.sh PASS (Go/TS/Dart 4-target verify and race tests clean), svelte-check PASS (0 errors, 0 warnings), vitest PASS (7 web tests passing), svelte build PASS (SSR and static bundles compiled), flutter analyze PASS (0 issues), flutter test PASS (5 mobile tests passing)."
+  ],
+  "external_gates": [
+    {
+      "gate_id": "EXT-GATE-ACTIVEPIECES-COMMERCIAL-LICENSE",
+      "status": "NOT_ASSUMED_BYPASS_USING_OWNED_ENGINE",
+      "description": "Activepieces Enterprise requires external commercial licensing. Creativanta implements an owned native canvas and execution engine as first-class baseline per architecture spec, eliminating external license dependency."
+    }
+  ],
+  "remaining_scope": [
+    "Real-time websocket telemetry streaming for multi-hour long-running workflow steps (P7-03)",
+    "External developer webhook outgoing webhook queue dispatchers (P7-04)"
+  ]
+}

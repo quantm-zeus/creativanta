@@ -1,0 +1,565 @@
+syntax = "proto3";
+
+package creativanta.automation.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/automation/v1;automationv1";
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+// WorkflowStatus defines canonical lifecycle states per database_schema.md §12.2 and workflow_studio.md RULE-M20-001.
+enum WorkflowStatus {
+  WORKFLOW_STATUS_UNSPECIFIED = 0;
+  WORKFLOW_STATUS_DRAFT = 1;
+  WORKFLOW_STATUS_ACTIVE = 2;
+  WORKFLOW_STATUS_PAUSED = 3;
+  WORKFLOW_STATUS_ERROR = 4;
+  WORKFLOW_STATUS_ARCHIVED = 5;
+}
+
+// WorkflowRunStatus defines runtime run lifecycle states per database_schema.md §12.3 and workflow_studio.md.
+enum WorkflowRunStatus {
+  WORKFLOW_RUN_STATUS_UNSPECIFIED = 0;
+  WORKFLOW_RUN_STATUS_QUEUED = 1;
+  WORKFLOW_RUN_STATUS_RUNNING = 2;
+  WORKFLOW_RUN_STATUS_WAITING_APPROVAL = 3;
+  WORKFLOW_RUN_STATUS_WAITING_EXTERNAL_CONDITION = 4;
+  WORKFLOW_RUN_STATUS_SUCCEEDED = 5;
+  WORKFLOW_RUN_STATUS_PARTIALLY_SUCCEEDED = 6;
+  WORKFLOW_RUN_STATUS_FAILED = 7;
+  WORKFLOW_RUN_STATUS_CANCELLED = 8;
+  WORKFLOW_RUN_STATUS_REQUIRES_MANUAL_INTERVENTION = 9;
+}
+
+// NodeType defines all 10 canonical workflow node types per database_schema.md §12.3A and runtime_workflow.md §4.2.
+enum NodeType {
+  NODE_TYPE_UNSPECIFIED = 0;
+  NODE_TYPE_TRIGGER = 1;
+  NODE_TYPE_CONDITION = 2;
+  NODE_TYPE_TRANSFORM = 3;
+  NODE_TYPE_ACTION = 4;
+  NODE_TYPE_APPROVAL = 5;
+  NODE_TYPE_WAIT = 6;
+  NODE_TYPE_FALLBACK = 7;
+  NODE_TYPE_DIAGNOSTICS = 8;
+  NODE_TYPE_HANDOFF = 9;
+  NODE_TYPE_TERMINAL = 10;
+}
+
+// TriggerType defines supported trigger types per database_schema.md §25.4.
+enum TriggerType {
+  TRIGGER_TYPE_UNSPECIFIED = 0;
+  TRIGGER_TYPE_EVENT = 1;
+  TRIGGER_TYPE_SCHEDULE = 2;
+  TRIGGER_TYPE_MANUAL = 3;
+  TRIGGER_TYPE_WEBHOOK = 4;
+}
+
+// EdgeBranch defines branching condition labels per database_schema.md §25.7.
+enum EdgeBranch {
+  EDGE_BRANCH_UNSPECIFIED = 0;
+  EDGE_BRANCH_SUCCESS = 1;
+  EDGE_BRANCH_FAILURE = 2;
+  EDGE_BRANCH_TRUE = 3;
+  EDGE_BRANCH_FALSE = 4;
+}
+
+// ============================================================================
+// Graph & Node Config Models
+// ============================================================================
+
+message TriggerFilter {
+  string field = 1;
+  string operator = 2; // eq, neq, gt, gte, lt, lte, in, contains, exists, matches
+  string value_json = 3;
+}
+
+message TriggerConfig {
+  TriggerType type = 1;
+  string event_type = 2;       // for event triggers
+  string cron_expression = 3;   // for schedule triggers
+  string webhook_path = 4;      // for webhook triggers
+  repeated TriggerFilter filters = 5;
+}
+
+message TriggerNodeConfig {
+  TriggerConfig config = 1;
+}
+
+message ConditionNodeConfig {
+  string field = 1;
+  string operator = 2; // eq, neq, gt, gte, lt, lte, in, contains, exists, matches
+  string value_json = 3;
+}
+
+message TransformMapping {
+  string target_field = 1;
+  string source_field = 2;
+  string default_value = 3;
+  string template = 4;
+}
+
+message TransformNodeConfig {
+  repeated TransformMapping mappings = 1;
+}
+
+message ActionNodeConfig {
+  string rpc_name = 1;
+  string input_json = 2;
+  int32 timeout_seconds = 3;
+  int32 max_retries = 4;
+  int32 backoff_seconds = 5;
+}
+
+message ApprovalNodeConfig {
+  repeated string approver_ids = 1;
+  int32 required_approvals = 2;
+  int64 expires_at_duration_seconds = 3;
+  string auto_action_on_timeout = 4; // reject, fallback, fail
+}
+
+message WaitNodeConfig {
+  string wait_type = 1; // duration, until_timestamp, external_condition
+  int64 duration_seconds = 2;
+  string resume_condition = 3;
+  string until_timestamp = 4;
+}
+
+message FallbackNodeConfig {
+  string fallback_node_id = 1;
+  string reason_template = 2;
+  string log_level = 3; // info, warning, error
+}
+
+message DiagnosticsNodeConfig {
+  string severity = 1; // info, warning, error, critical
+  string user_message = 2;
+  string operator_message = 3;
+  string recommended_next_step = 4;
+}
+
+message HandoffNodeConfig {
+  string target_user_id = 1;
+  string target_role = 2;
+  string context_note = 3;
+}
+
+message TerminalNodeConfig {
+  string outcome = 1; // succeeded, partially_succeeded, failed, cancelled
+  string result_template = 2;
+}
+
+message WorkflowNode {
+  string node_id = 1;
+  NodeType node_type = 2;
+  string title = 3;
+  string description = 4;
+  oneof config {
+    TriggerNodeConfig trigger_config = 5;
+    ConditionNodeConfig condition_config = 6;
+    TransformNodeConfig transform_config = 7;
+    ActionNodeConfig action_config = 8;
+    ApprovalNodeConfig approval_config = 9;
+    WaitNodeConfig wait_config = 10;
+    FallbackNodeConfig fallback_config = 11;
+    DiagnosticsNodeConfig diagnostics_config = 12;
+    HandoffNodeConfig handoff_config = 13;
+    TerminalNodeConfig terminal_config = 14;
+  }
+  string raw_config_json = 15;
+}
+
+message WorkflowEdge {
+  string from_node_id = 1;
+  string to_node_id = 2;
+  EdgeBranch branch = 3;
+}
+
+message WorkflowGraph {
+  int32 schema_version = 1;
+  repeated WorkflowNode nodes = 2;
+  repeated WorkflowEdge edges = 3;
+}
+
+// ============================================================================
+// Core Domain Entities
+// ============================================================================
+
+message Workflow {
+  string workflow_id = 1;
+  string workspace_id = 2;
+  string title = 3;
+  string description = 4;
+  string workflow_type = 5; // custom, recipe_installed, agent
+  WorkflowStatus status = 6;
+  int32 version = 7;
+  TriggerConfig trigger_config = 8;
+  WorkflowGraph action_chain = 9;
+  string action_chain_json = 10;
+  string approval_requirements_json = 11;
+  string activepieces_flow_id = 12;
+  bool tier_limit_check = 13;
+  int32 run_count = 14;
+  string created_by = 15;
+  google.protobuf.Timestamp created_at = 16;
+  google.protobuf.Timestamp updated_at = 17;
+}
+
+message WorkflowSummary {
+  string workflow_id = 1;
+  string workspace_id = 2;
+  string title = 3;
+  string workflow_type = 4;
+  WorkflowStatus status = 5;
+  int32 version = 6;
+  TriggerType trigger_type = 7;
+  int32 node_count = 8;
+  int32 run_count = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message WorkflowRun {
+  string run_id = 1;
+  string workspace_id = 2;
+  string workflow_id = 3;
+  WorkflowRunStatus status = 4;
+  string current_node = 5;
+  string trigger_event_json = 6;
+  string result_summary_json = 7;
+  string execution_log_json = 8;
+  string affected_object_refs_json = 9;
+  string side_effects_summary_json = 10;
+  string activepieces_run_id = 11;
+  google.protobuf.Timestamp started_at = 12;
+  google.protobuf.Timestamp completed_at = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+}
+
+message WorkflowRunStep {
+  string step_id = 1;
+  string workspace_id = 2;
+  string run_id = 3;
+  string node_id = 4;
+  NodeType node_type = 5;
+  int32 step_order = 6;
+  string status = 7;
+  string input_snapshot_json = 8;
+  string output_snapshot_json = 9;
+  string diagnostics_ref = 10;
+  string side_effect_refs_json = 11;
+  google.protobuf.Timestamp started_at = 12;
+  google.protobuf.Timestamp completed_at = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+}
+
+message PortableWorkflowPayload {
+  int32 schema_version = 1;
+  string title = 2;
+  string description = 3;
+  string workflow_type = 4;
+  TriggerConfig trigger_config = 5;
+  WorkflowGraph graph = 6;
+  string license_notice = 7;
+  string parameters_json = 8;
+}
+
+// ============================================================================
+// Service Requests & Responses
+// ============================================================================
+
+message WorkflowServiceCreateRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string title = 3;
+  string description = 4;
+  string workflow_type = 5; // custom, recipe_installed, agent
+  TriggerConfig trigger_config = 6;
+  WorkflowGraph action_chain = 7;
+  string approval_requirements_json = 8;
+}
+
+message WorkflowServiceCreateResponse {
+  string id = 1;
+  string workspace_id = 2;
+  string title = 3;
+  string status = 4;
+  int32 node_count = 5;
+  int32 version = 6;
+  google.protobuf.Timestamp created_at = 7;
+  Workflow workflow = 8;
+}
+
+message WorkflowServiceGetRequest {
+  string workspace_id = 1;
+  string workflow_id = 2;
+}
+
+message WorkflowServiceGetResponse {
+  Workflow workflow = 1;
+}
+
+message WorkflowServiceListRequest {
+  string workspace_id = 1;
+  string status = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message WorkflowServiceListResponse {
+  repeated WorkflowSummary workflows = 1;
+  int32 total_count = 2;
+}
+
+message WorkflowServiceUpdateRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string workflow_id = 3;
+  string title = 4;
+  string description = 5;
+  TriggerConfig trigger_config = 6;
+  WorkflowGraph action_chain = 7;
+  string approval_requirements_json = 8;
+  int32 expected_version = 9;
+}
+
+message WorkflowServiceUpdateResponse {
+  Workflow workflow = 1;
+}
+
+message WorkflowServiceActivateRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string workflow_id = 3;
+}
+
+message WorkflowServiceActivateResponse {
+  Workflow workflow = 1;
+}
+
+message WorkflowServiceDeactivateRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string workflow_id = 3;
+}
+
+message WorkflowServiceDeactivateResponse {
+  Workflow workflow = 1;
+}
+
+message WorkflowServiceRunRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string workflow_id = 3;
+  string trigger_context_json = 4;
+}
+
+message WorkflowServiceRunResponse {
+  string run_id = 1;
+  string workflow_id = 2;
+  string status = 3;
+  string current_node = 4;
+  google.protobuf.Timestamp created_at = 5;
+  WorkflowRun run = 6;
+}
+
+message WorkflowServiceGetRunDetailRequest {
+  string workspace_id = 1;
+  string run_id = 2;
+}
+
+message WorkflowServiceGetRunDetailResponse {
+  WorkflowRun run = 1;
+  repeated WorkflowRunStep steps = 2;
+}
+
+message WorkflowServiceGetRunLogsRequest {
+  string workspace_id = 1;
+  string run_id = 2;
+}
+
+message WorkflowServiceGetRunLogsResponse {
+  string execution_log_json = 1;
+  repeated WorkflowRunStep steps = 2;
+}
+
+message WorkflowServiceListRunsRequest {
+  string workspace_id = 1;
+  string workflow_id = 2;
+  string status = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+}
+
+message WorkflowServiceListRunsResponse {
+  repeated WorkflowRun runs = 1;
+  int32 total_count = 2;
+}
+
+message WorkflowServiceCloneRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string workflow_id = 3;
+  string new_title = 4;
+}
+
+message WorkflowServiceCloneResponse {
+  Workflow workflow = 1;
+}
+
+message WorkflowServiceExportRequest {
+  string workspace_id = 1;
+  string workflow_id = 2;
+}
+
+message WorkflowServiceExportResponse {
+  PortableWorkflowPayload payload = 1;
+  string payload_json = 2;
+}
+
+message WorkflowServiceImportRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string payload_json = 3;
+  PortableWorkflowPayload payload = 4;
+}
+
+message WorkflowServiceImportResponse {
+  Workflow workflow = 1;
+}
+
+message WorkflowServiceTestRequest {
+  string workspace_id = 1;
+  string workflow_id = 2;
+  WorkflowGraph draft_graph = 3;
+  string sample_context_json = 4;
+}
+
+message WorkflowServiceTestStepResult {
+  string node_id = 1;
+  NodeType node_type = 2;
+  string status = 3; // simulated_success, simulated_skipped, simulated_failure
+  string simulated_output_json = 4;
+  string diagnostic_message = 5;
+  double estimated_credits = 6;
+}
+
+message WorkflowServiceTestResponse {
+  bool success = 1;
+  repeated WorkflowServiceTestStepResult step_results = 2;
+  double total_estimated_credits = 3;
+  string simulation_summary = 4;
+}
+
+message WorkflowServiceGetRunStatsRequest {
+  string workspace_id = 1;
+  string workflow_id = 2;
+}
+
+message WorkflowServiceGetRunStatsResponse {
+  int32 total_runs = 1;
+  int32 successful_runs = 2;
+  int32 failed_runs = 3;
+  int32 pending_approvals = 4;
+  double avg_duration_seconds = 5;
+}
+
+message WorkflowServiceCancelRunRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string run_id = 3;
+  string reason = 4;
+}
+
+message WorkflowServiceCancelRunResponse {
+  WorkflowRun run = 1;
+}
+
+message WorkflowServiceRetryRunRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string run_id = 3;
+  string repair_context_json = 4;
+}
+
+message WorkflowServiceRetryRunResponse {
+  WorkflowRun run = 1;
+}
+
+message WorkflowServiceDismissRunRequest {
+  string workspace_id = 1;
+  string run_id = 2;
+  string dismissal_reason = 3;
+}
+
+message WorkflowServiceDismissRunResponse {
+  bool dismissed = 1;
+}
+
+message WorkflowServiceSkipStepRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string run_id = 3;
+  string node_id = 4;
+  string reason = 5;
+}
+
+message WorkflowServiceSkipStepResponse {
+  WorkflowRunStep step = 1;
+}
+
+message WorkflowServiceProvideInputRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string run_id = 3;
+  string node_id = 4;
+  string input_json = 5;
+}
+
+message WorkflowServiceProvideInputResponse {
+  WorkflowRunStep step = 1;
+}
+
+message WorkflowServiceExportRunsRequest {
+  string workspace_id = 1;
+  string workflow_id = 2;
+  string format = 3; // csv, json
+}
+
+message WorkflowServiceExportRunsResponse {
+  string file_url = 1;
+  string content = 2;
+}
+
+// ============================================================================
+// WorkflowService Declaration
+// ============================================================================
+
+service WorkflowService {
+  rpc Create(WorkflowServiceCreateRequest) returns (WorkflowServiceCreateResponse);
+  rpc Get(WorkflowServiceGetRequest) returns (WorkflowServiceGetResponse);
+  rpc List(WorkflowServiceListRequest) returns (WorkflowServiceListResponse);
+  rpc Update(WorkflowServiceUpdateRequest) returns (WorkflowServiceUpdateResponse);
+  rpc Activate(WorkflowServiceActivateRequest) returns (WorkflowServiceActivateResponse);
+  rpc Deactivate(WorkflowServiceDeactivateRequest) returns (WorkflowServiceDeactivateResponse);
+  rpc Run(WorkflowServiceRunRequest) returns (WorkflowServiceRunResponse);
+  rpc GetRunDetail(WorkflowServiceGetRunDetailRequest) returns (WorkflowServiceGetRunDetailResponse);
+  rpc GetRunLogs(WorkflowServiceGetRunLogsRequest) returns (WorkflowServiceGetRunLogsResponse);
+  rpc ListRuns(WorkflowServiceListRunsRequest) returns (WorkflowServiceListRunsResponse);
+  rpc Clone(WorkflowServiceCloneRequest) returns (WorkflowServiceCloneResponse);
+  rpc Export(WorkflowServiceExportRequest) returns (WorkflowServiceExportResponse);
+  rpc Import(WorkflowServiceImportRequest) returns (WorkflowServiceImportResponse);
+  rpc Test(WorkflowServiceTestRequest) returns (WorkflowServiceTestResponse);
+  rpc GetRunStats(WorkflowServiceGetRunStatsRequest) returns (WorkflowServiceGetRunStatsResponse);
+  rpc CancelRun(WorkflowServiceCancelRunRequest) returns (WorkflowServiceCancelRunResponse);
+  rpc RetryRun(WorkflowServiceRetryRunRequest) returns (WorkflowServiceRetryRunResponse);
+  rpc DismissRun(WorkflowServiceDismissRunRequest) returns (WorkflowServiceDismissRunResponse);
+  rpc SkipStep(WorkflowServiceSkipStepRequest) returns (WorkflowServiceSkipStepResponse);
+  rpc ProvideInput(WorkflowServiceProvideInputRequest) returns (WorkflowServiceProvideInputResponse);
+  rpc ExportRuns(WorkflowServiceExportRunsRequest) returns (WorkflowServiceExportRunsResponse);
+}
