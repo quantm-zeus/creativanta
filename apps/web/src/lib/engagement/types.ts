@@ -57,6 +57,17 @@ export interface ConnectedAccount {
   isRevoked: boolean;
 }
 
+export interface RelatedObjectRef {
+  type: string;
+  id: string;
+  sourceEventId?: string;
+  url?: string;
+  taskRef?: string;
+  phase?: string;
+  isP6Deferred?: boolean;
+  status?: string;
+}
+
 export interface Thread {
   id: string;
   workspaceId: string;
@@ -81,7 +92,7 @@ export interface Thread {
   ghostStatus: GhostStatus;
   throttleState: SurgeThrottleState;
   accountRevoked: boolean;
-  relatedObjectRefs: string[];
+  relatedObjectRefs: RelatedObjectRef[];
   createdAt: string; // ISO-8601
   updatedAt: string; // ISO-8601
 }
@@ -129,6 +140,9 @@ export interface FollowUpTask {
   dueAt: string | null; // ISO-8601
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
   outcomeSummary?: string;
+  taskRef?: string;
+  phase?: string;
+  isP6Deferred?: boolean;
   createdAt: string;
   updatedAt: string;
 }

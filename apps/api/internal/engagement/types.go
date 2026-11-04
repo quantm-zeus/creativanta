@@ -144,9 +144,13 @@ type DomainEvent struct {
 
 // RelatedObjectRef links a thread to downstream business objects (RULE-M12-005).
 type RelatedObjectRef struct {
-	Type  string `json:"type"` // "idea", "brand_deal", "sample_request", "offer", "follow_up_task"
-	ID    string `json:"id"`
-	Label string `json:"label,omitempty"`
+	Type         string `json:"type"` // "idea", "brand_deal", "sample_request", "offer", "follow_up_task"
+	ID           string `json:"id"`
+	Label        string `json:"label,omitempty"`
+	TaskRef      string `json:"task_ref,omitempty"`       // e.g. "P6-01", "P6-09"
+	Phase        string `json:"phase,omitempty"`          // e.g. "P6"
+	IsP6Deferred bool   `json:"is_p6_deferred,omitempty"` // true for commerce/seeding operations scheduled for P6
+	Status       string `json:"status,omitempty"`         // e.g. "pending_p6_delivery"
 }
 
 // ReplyIdentity represents the color-coded sender badge in multi-account compose (RULE-M12-006).
@@ -244,6 +248,9 @@ type FollowUpTask struct {
 	DueAt            *time.Time
 	Status           string
 	OutcomeSummary   string
+	TaskRef          string
+	Phase            string
+	IsP6Deferred     bool
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	DeletedAt        *time.Time

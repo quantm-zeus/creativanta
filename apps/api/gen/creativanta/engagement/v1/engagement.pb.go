@@ -684,6 +684,10 @@ type RelatedObjectRef struct {
 	Type          string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
 	Label         string                 `protobuf:"bytes,3,opt,name=label,proto3" json:"label,omitempty"`
+	TaskRef       string                 `protobuf:"bytes,4,opt,name=task_ref,json=taskRef,proto3" json:"task_ref,omitempty"`
+	Phase         string                 `protobuf:"bytes,5,opt,name=phase,proto3" json:"phase,omitempty"`
+	IsP6Deferred  bool                   `protobuf:"varint,6,opt,name=is_p6_deferred,json=isP6Deferred,proto3" json:"is_p6_deferred,omitempty"`
+	Status        string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -735,6 +739,34 @@ func (x *RelatedObjectRef) GetId() string {
 func (x *RelatedObjectRef) GetLabel() string {
 	if x != nil {
 		return x.Label
+	}
+	return ""
+}
+
+func (x *RelatedObjectRef) GetTaskRef() string {
+	if x != nil {
+		return x.TaskRef
+	}
+	return ""
+}
+
+func (x *RelatedObjectRef) GetPhase() string {
+	if x != nil {
+		return x.Phase
+	}
+	return ""
+}
+
+func (x *RelatedObjectRef) GetIsP6Deferred() bool {
+	if x != nil {
+		return x.IsP6Deferred
+	}
+	return false
+}
+
+func (x *RelatedObjectRef) GetStatus() string {
+	if x != nil {
+		return x.Status
 	}
 	return ""
 }
@@ -1374,8 +1406,11 @@ type FollowUpTask struct {
 	DueAt            *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=due_at,json=dueAt,proto3" json:"due_at,omitempty"`
 	Status           FollowUpTaskStatus     `protobuf:"varint,11,opt,name=status,proto3,enum=creativanta.engagement.v1.FollowUpTaskStatus" json:"status,omitempty"`
 	OutcomeSummary   string                 `protobuf:"bytes,12,opt,name=outcome_summary,json=outcomeSummary,proto3" json:"outcome_summary,omitempty"`
-	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt        *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	TaskRef          string                 `protobuf:"bytes,13,opt,name=task_ref,json=taskRef,proto3" json:"task_ref,omitempty"`
+	Phase            string                 `protobuf:"bytes,14,opt,name=phase,proto3" json:"phase,omitempty"`
+	IsP6Deferred     bool                   `protobuf:"varint,15,opt,name=is_p6_deferred,json=isP6Deferred,proto3" json:"is_p6_deferred,omitempty"`
+	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt        *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -1492,6 +1527,27 @@ func (x *FollowUpTask) GetOutcomeSummary() string {
 		return x.OutcomeSummary
 	}
 	return ""
+}
+
+func (x *FollowUpTask) GetTaskRef() string {
+	if x != nil {
+		return x.TaskRef
+	}
+	return ""
+}
+
+func (x *FollowUpTask) GetPhase() string {
+	if x != nil {
+		return x.Phase
+	}
+	return ""
+}
+
+func (x *FollowUpTask) GetIsP6Deferred() bool {
+	if x != nil {
+		return x.IsP6Deferred
+	}
+	return false
 }
 
 func (x *FollowUpTask) GetCreatedAt() *timestamppb.Timestamp {
@@ -5687,11 +5743,15 @@ var File_creativanta_engagement_v1_engagement_proto protoreflect.FileDescriptor
 
 const file_creativanta_engagement_v1_engagement_proto_rawDesc = "" +
 	"\n" +
-	"*creativanta/engagement/v1/engagement.proto\x12\x19creativanta.engagement.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a!creativanta/common/v1/types.proto\"L\n" +
+	"*creativanta/engagement/v1/engagement.proto\x12\x19creativanta.engagement.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a!creativanta/common/v1/types.proto\"\xbb\x01\n" +
 	"\x10RelatedObjectRef\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12\x14\n" +
-	"\x05label\x18\x03 \x01(\tR\x05label\"\xcc\x01\n" +
+	"\x05label\x18\x03 \x01(\tR\x05label\x12\x19\n" +
+	"\btask_ref\x18\x04 \x01(\tR\ataskRef\x12\x14\n" +
+	"\x05phase\x18\x05 \x01(\tR\x05phase\x12$\n" +
+	"\x0eis_p6_deferred\x18\x06 \x01(\bR\fisP6Deferred\x12\x16\n" +
+	"\x06status\x18\a \x01(\tR\x06status\"\xcc\x01\n" +
 	"\rReplyIdentity\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12\x1a\n" +
@@ -5771,7 +5831,7 @@ const file_creativanta_engagement_v1_engagement_proto_rawDesc = "" +
 	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
 	"updated_at\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xe4\x04\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xbb\x05\n" +
 	"\fFollowUpTask\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12(\n" +
@@ -5785,11 +5845,14 @@ const file_creativanta_engagement_v1_engagement_proto_rawDesc = "" +
 	"\x06due_at\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\x05dueAt\x12E\n" +
 	"\x06status\x18\v \x01(\x0e2-.creativanta.engagement.v1.FollowUpTaskStatusR\x06status\x12'\n" +
-	"\x0foutcome_summary\x18\f \x01(\tR\x0eoutcomeSummary\x129\n" +
+	"\x0foutcome_summary\x18\f \x01(\tR\x0eoutcomeSummary\x12\x19\n" +
+	"\btask_ref\x18\r \x01(\tR\ataskRef\x12\x14\n" +
+	"\x05phase\x18\x0e \x01(\tR\x05phase\x12$\n" +
+	"\x0eis_p6_deferred\x18\x0f \x01(\bR\fisP6Deferred\x129\n" +
 	"\n" +
-	"created_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"created_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x94\x03\n" +
+	"updated_at\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x94\x03\n" +
 	"\x18EngagementThrottleStatus\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12/\n" +
 	"\x14current_rate_per_min\x18\x02 \x01(\x05R\x11currentRatePerMin\x12L\n" +

@@ -342,3 +342,147 @@ export function validateComposeCanSend(
     windowRemainingMs: windowEval.remainingMs
   };
 }
+
+/**
+ * Target 3: Converts a thread intent into a Sample Request task linked to P6 Seeding CRM (P6-09).
+ * Preserves P6 task link and deferral status without faking completion.
+ */
+export function convertToSampleRequest(
+  thread: Thread,
+  sampleRequestId: string,
+  nowIso: string = new Date().toISOString()
+): { thread: Thread; task: FollowUpTask } {
+  const updatedThread: Thread = {
+    ...thread,
+    status: 'converted_to_task',
+    relatedObjectRefs: [
+      ...thread.relatedObjectRefs,
+      {
+        type: 'sample_request',
+        id: sampleRequestId,
+        taskRef: 'P6-09',
+        phase: 'P6',
+        isP6Deferred: true,
+        status: 'pending_p6_delivery'
+      }
+    ],
+    updatedAt: nowIso
+  };
+
+  const task: FollowUpTask = {
+    id: `task_${Math.random().toString(36).substring(2, 11)}`,
+    workspaceId: thread.workspaceId,
+    sourceThreadId: thread.id,
+    sourceObjectType: 'sample_request',
+    sourceObjectId: sampleRequestId,
+    assignedUserId: thread.ownerUserId || 'unassigned',
+    taskType: 'sample_request',
+    title: `Fulfill sample request for thread ${thread.id}`,
+    description: `Sample request converted from inbound thread ${thread.id}. Awaiting P6 delivery execution.`,
+    dueAt: null,
+    status: 'pending',
+    taskRef: 'P6-09',
+    phase: 'P6',
+    isP6Deferred: true,
+    createdAt: nowIso,
+    updatedAt: nowIso
+  };
+
+  return { thread: updatedThread, task };
+}
+
+/**
+ * Target 3: Converts a thread intent into a Brand Deal task linked to P6 Brand Deals (P6-09).
+ * Preserves P6 task link and deferral status without faking completion.
+ */
+export function convertToBrandDeal(
+  thread: Thread,
+  brandDealId: string,
+  nowIso: string = new Date().toISOString()
+): { thread: Thread; task: FollowUpTask } {
+  const updatedThread: Thread = {
+    ...thread,
+    status: 'converted_to_task',
+    relatedObjectRefs: [
+      ...thread.relatedObjectRefs,
+      {
+        type: 'brand_deal',
+        id: brandDealId,
+        taskRef: 'P6-09',
+        phase: 'P6',
+        isP6Deferred: true,
+        status: 'pending_p6_delivery'
+      }
+    ],
+    updatedAt: nowIso
+  };
+
+  const task: FollowUpTask = {
+    id: `task_${Math.random().toString(36).substring(2, 11)}`,
+    workspaceId: thread.workspaceId,
+    sourceThreadId: thread.id,
+    sourceObjectType: 'brand_deal',
+    sourceObjectId: brandDealId,
+    assignedUserId: thread.ownerUserId || 'unassigned',
+    taskType: 'brand_deal',
+    title: `Follow up brand collaboration deal for thread ${thread.id}`,
+    description: `Brand collaboration converted from inbound thread ${thread.id}. Awaiting P6 delivery execution.`,
+    dueAt: null,
+    status: 'pending',
+    taskRef: 'P6-09',
+    phase: 'P6',
+    isP6Deferred: true,
+    createdAt: nowIso,
+    updatedAt: nowIso
+  };
+
+  return { thread: updatedThread, task };
+}
+
+/**
+ * Target 3: Converts a thread intent into an Offer task linked to P6 Monetization OS (P6-01).
+ * Preserves P6 task link and deferral status without faking completion.
+ */
+export function convertToOffer(
+  thread: Thread,
+  offerId: string,
+  nowIso: string = new Date().toISOString()
+): { thread: Thread; task: FollowUpTask } {
+  const updatedThread: Thread = {
+    ...thread,
+    status: 'converted_to_task',
+    relatedObjectRefs: [
+      ...thread.relatedObjectRefs,
+      {
+        type: 'offer',
+        id: offerId,
+        taskRef: 'P6-01',
+        phase: 'P6',
+        isP6Deferred: true,
+        status: 'pending_p6_delivery'
+      }
+    ],
+    updatedAt: nowIso
+  };
+
+  const task: FollowUpTask = {
+    id: `task_${Math.random().toString(36).substring(2, 11)}`,
+    workspaceId: thread.workspaceId,
+    sourceThreadId: thread.id,
+    sourceObjectType: 'offer',
+    sourceObjectId: offerId,
+    assignedUserId: thread.ownerUserId || 'unassigned',
+    taskType: 'offer',
+    title: `Provide exclusive offer for thread ${thread.id}`,
+    description: `Offer/coupon converted from inbound thread ${thread.id}. Awaiting P6 delivery execution.`,
+    dueAt: null,
+    status: 'pending',
+    taskRef: 'P6-01',
+    phase: 'P6',
+    isP6Deferred: true,
+    createdAt: nowIso,
+    updatedAt: nowIso
+  };
+
+  return { thread: updatedThread, task };
+}

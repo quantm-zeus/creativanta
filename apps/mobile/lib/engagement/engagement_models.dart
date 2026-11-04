@@ -59,6 +59,29 @@ class ConnectedAccountModel {
   final bool isRevoked;
 }
 
+/// Mobile domain model for RelatedObjectRef linking thread to downstream business objects (RULE-M12-005).
+class RelatedObjectRefModel {
+  const RelatedObjectRefModel({
+    required this.type,
+    required this.id,
+    this.sourceEventId,
+    this.url,
+    this.taskRef,
+    this.phase,
+    this.isP6Deferred = false,
+    this.status,
+  });
+
+  final String type;
+  final String id;
+  final String? sourceEventId;
+  final String? url;
+  final String? taskRef;
+  final String? phase;
+  final bool isP6Deferred;
+  final String? status;
+}
+
 /// Mobile domain model for Thread (database_schema.md §9.2).
 class ThreadModel {
   const ThreadModel({
@@ -113,7 +136,7 @@ class ThreadModel {
   final String ghostStatus; // 'active' | 'deleted_by_user' | 'restricted_by_platform' | 'permanently_removed'
   final String throttleState; // 'NORMAL' | 'THROTTLED' | 'CIRCUIT_BREAKER'
   final bool accountRevoked;
-  final List<String> relatedObjectRefs;
+  final List<RelatedObjectRefModel> relatedObjectRefs;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -158,7 +181,7 @@ class ThreadModel {
     String? ghostStatus,
     String? throttleState,
     bool? accountRevoked,
-    List<String>? relatedObjectRefs,
+    List<RelatedObjectRefModel>? relatedObjectRefs,
     DateTime? updatedAt,
   }) {
     return ThreadModel(
@@ -268,6 +291,9 @@ class FollowUpTaskModel {
     this.dueAt,
     required this.status,
     this.outcomeSummary = '',
+    this.taskRef,
+    this.phase,
+    this.isP6Deferred = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -284,6 +310,9 @@ class FollowUpTaskModel {
   final DateTime? dueAt;
   final String status;
   final String outcomeSummary;
+  final String? taskRef;
+  final String? phase;
+  final bool isP6Deferred;
   final DateTime createdAt;
   final DateTime updatedAt;
 }

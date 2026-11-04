@@ -1,6 +1,7 @@
 package publish
 
 import (
+	"context"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -222,12 +223,7 @@ type PlatformConnector interface {
 }
 
 // Context wrapper alias for interface definition
-type contextContext = interface {
-	Deadline() (deadline time.Time, ok bool)
-	Done() <-chan struct{}
-	Err() error
-	Value(key any) any
-}
+type contextContext = context.Context
 
 // ConnectorPublishResult is the direct result from a platform submission.
 type ConnectorPublishResult struct {

@@ -1,0 +1,89 @@
+{
+  "task_id": "P5-04",
+  "phase": "P5",
+  "slice": "p5-04",
+  "title": "Distribution/engagement acceptance",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "a7d0480b06b3e839e9a263dd4944d18fa2fba5e7",
+  "feature_refs": [
+    "docs/02_features/publish/publish_hub.md",
+    "docs/02_features/engagement/unified_inbox.md",
+    "docs/02_features/platform/capability_matrix.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md"
+  ],
+  "requirement_ids": [
+    "M11-DISTRIBUTION-ENGAGEMENT-LOOP",
+    "M12-ENGAGEMENT-P6-RETAINED-LINKS",
+    "M22-CAPABILITY-ROUTING-REPLAY-PROTECTION"
+  ],
+  "source_files": {
+    "protos/creativanta/engagement/v1/engagement.proto": "e76fd01609e8f74bddd7662db5c4ba7db1c73ea64724ceba24fa6244b099b5a6",
+    "apps/api/gen/creativanta/engagement/v1/engagement.pb.go": "796f884a6e138920ef77a214e8e3429a5b8a41ea58f3d8a0c57b4c9c02deb785",
+    "packages/shared-types/src/creativanta/engagement/v1/engagement_pb.ts": "3b648a0882f5b96db90e6e148274bc49843666d87e6021fcb60a2c00330eb95a",
+    "apps/mobile/lib/generated/creativanta/engagement/v1/engagement.pb.dart": "d23e6dcf76850b089031fcaad0b5f5262fb5558d28ce20ea5b2f680887194f55",
+    "apps/mobile/lib/generated/creativanta/engagement/v1/engagement.pbjson.dart": "2dab8018a922a2c46ab1e3eb91670a708842b4e2197befc03e1936809dad94bb",
+    "apps/api/internal/engagement/types.go": "f6d17552312094888967802bb13868d2d7593ba45c71b28ebe63363f33f8751b",
+    "apps/api/internal/engagement/service.go": "be2fa3890d28bd921020355787111be4a731c65bdbdb5dffe7eb5e1d96a647ba",
+    "apps/api/internal/publish/service.go": "4d99a2d6d1e9c8d58189ba2b450b7336748c47dfecdfb386c12c8fe9169ead42",
+    "apps/api/internal/publish/types.go": "7f49b81ab70797ecfd5cfe020cf755a7e1515572930ac6320e0f71eda734d67a",
+    "apps/api/internal/publish/publish_inbox_loop_test.go": "13d0d9545a48e641eeab422774c8fd52ffd354aa9b14172dd31cf4a6b9581bdc",
+    "apps/web/src/lib/engagement/types.ts": "ac50871328658ac95496ebbb9a198ea4a7352052f7979a13c7accd83206f828e",
+    "apps/web/src/lib/engagement/engagement_service.ts": "b21341077ab902de15f64385cb6e00347994552ee5236d8335ae98ac7f0f1ada",
+    "apps/web/src/lib/publish/publish_inbox_loop.test.ts": "44c00e981aea10584b940a33e26edbd07c27e9bb8dad22a78738b1142613abb9",
+    "apps/mobile/lib/engagement/engagement_models.dart": "597e6d1da03de8fff79bda7c038ed86954141757d294f3740f8e790903dba40f",
+    "apps/mobile/lib/engagement/engagement_service.dart": "f1b14860941f170869c0fdfb48402af268ae0be57a94ea0fe3ed7ab116cbb220",
+    "apps/mobile/test/publish_inbox_loop_acceptance_test.dart": "3f17ad6a373b16c779d9f4e4e39e63cc92ffd5a62d289be49062637431f0df51"
+  },
+  "scope_items": [
+    "Acceptance Target 1 (Five acceptance paths): Implemented and verified all five acceptance paths across Go, Web, and Mobile: Path 1 Happy Path (native API publish loops to unified inbox with valid 24h reply compose), Path 2 Degraded Path (manual fallback package generation, operator proof upload with graph retention, and degraded inbox notes), Path 3 Missing Data Path (validation rejects missing proof evidence or expired window without state corruption), Path 4 Broken Path (credential revocation pauses queued jobs targeting that account, ghost message WHAT-WHY-NEXT blocks replies), and Path 5 Audit Path (immutable publish logs with evidence reference, operator ID, and domain outbox event stream).",
+    "Acceptance Target 2 (Replay with one external result): Execute publish job idempotency ensures repeated calls with identical idempotency key or on already-published items return the existing external post ID, URL, log, and channel post without calling the external platform adapter a second time or creating duplicate log records. Webhook delivery deduplication (IngestInboundMessageWithExternalID) prevents duplicate thread message increments on repeated webhook deliveries.",
+    "Acceptance Target 3 (Commerce/seeding actions retain P6 task links): Upstream engagement thread conversions to downstream business objects (ConvertToSampleRequest, ConvertToBrandDeal, ConvertToOffer) retain explicit P6 task links (P6-09 for seeding/brand deals, P6-01 for monetization/offers) with task_ref, phase='P6', is_p6_deferred=true, and status='pending_p6_delivery' in related_object_refs and FollowUpTask without claiming local completion of P6 delivery."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestPublishInboxLoop_Path1_HappyPath, Path2_DegradedPath, Path3_MissingDataPath, Path4_BrokenPath, and Path5_AuditPath pass in Go with -race, in Vitest for Web, and in Flutter for Mobile.",
+    "Acceptance Target 2 Verified: TestPublishInboxLoop_Target2_ReplayWithOneExternalResult verifies single connector dispatch on execution replays and idempotent webhook deduplication; verified in Go, Vitest, and Flutter.",
+    "Acceptance Target 3 Verified: TestPublishInboxLoop_Target3_CommerceSeedingRetainP6TaskLinks verifies P6 task links (P6-01, P6-09), deferred delivery flags, and follow-up task preservation across Go, Web, and Mobile.",
+    "Four-Target Proto Codegen Verified: check_proto.sh passes lint, 4-target codegen, zero drift check, zero buf breaking against origin/main, Go vet/test, TypeScript vitest, and Dart test suites.",
+    "Full CI Quality Gates Verified: check_d0.sh, check_proto.sh, check_go.sh (all packages with race detector), check_node.sh (svelte-check, build, vitest 30 test files, real SSR smoke), and check_flutter.sh (analyze 0 issues, 201 tests passing) all pass cleanly."
+  ],
+  "rpc_contracts": [
+    "PublishService/CreateItem",
+    "PublishService/Execute",
+    "PublishService/ExportManualPackage",
+    "PublishService/SubmitManualProof",
+    "ThreadService/IngestInboundMessage",
+    "ThreadService/Reply",
+    "ThreadService/HandleGhostMessage",
+    "FollowUpService/Create"
+  ],
+  "permission_keys": [
+    "publish:create",
+    "publish:execute",
+    "publish:manual_proof",
+    "inbox:read",
+    "inbox:reply",
+    "task:create"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-TIKTOK-OPEN-API",
+      "PENDING_APP_REVIEW",
+      "TikTok Content Posting and Webhook APIs require approved Developer App credentials; verified via mock platform adapter and manual export flow."
+    ],
+    [
+      "EXT-GATE-META-GRAPH-API",
+      "PENDING_APP_REVIEW",
+      "Instagram Content Publishing and Webhook subscriptions require Meta App Review; verified via mock adapter and manual proof flow."
+    ],
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "PostgreSQL composite keys, RLS policies, and immutable logs verified in local test suite; multi-tenant live database verification executes in CI."
+    ]
+  ]
+}
