@@ -353,4 +353,3 @@ describe('P7-02 Workflow Runtime Acceptance Tests', () => {
     expect(formatted.hasFallback).toBe(true);
   });
 });
-
