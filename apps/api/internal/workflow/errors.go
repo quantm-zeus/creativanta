@@ -1,0 +1,31 @@
+package workflow
+
+import "errors"
+
+var (
+	ErrWorkflowNotFound        = errors.New("workflow: not found")
+	ErrWorkflowRunNotFound     = errors.New("workflow_run: not found")
+	ErrInvalidWorkflowState    = errors.New("workflow: invalid lifecycle state transition")
+	ErrInvalidRunState         = errors.New("workflow_run: invalid run state transition")
+	ErrVersionMismatch         = errors.New("workflow: optimistic concurrency version mismatch")
+	ErrCycleDetected           = errors.New("workflow: cycle detected in graph")
+	ErrUnboundedGraph          = errors.New("workflow: unbounded graph or limits exceeded")
+	ErrInvalidGraphStructure   = errors.New("workflow: invalid graph structure")
+	ErrInvalidNodeConfig       = errors.New("workflow: invalid node configuration")
+	ErrMissingTriggerNode      = errors.New("workflow: graph must contain exactly one root trigger node")
+	ErrMissingTerminalNode     = errors.New("workflow: graph must contain at least one terminal node")
+	ErrInvalidEdge             = errors.New("workflow: edge references non-existent node")
+	ErrSelfLoopDetected        = errors.New("workflow: self-loop edge is forbidden")
+	ErrNodeCountExceeded       = errors.New("workflow: node count exceeds maximum allowed limit (100)")
+	ErrDisconnectedComponent   = errors.New("workflow: disconnected or unreachable node detected")
+	ErrNoPathToTerminal        = errors.New("workflow: non-terminal node has no path to terminal")
+	ErrActivepiecesUnentitled  = errors.New("workflow: Activepieces Enterprise license is not entitled; use owned workflow engine")
+	ErrMissingRequiredApprover = errors.New("workflow: approval node requires at least one approver")
+	ErrSecurityViolation       = errors.New("workflow: node config contains forbidden credentials or raw SQL queries")
+	ErrUnauthorized            = errors.New("workflow: unauthorized role or insufficient permissions")
+	ErrEmptyGraph              = errors.New("workflow: action chain graph cannot be empty")
+	ErrInvalidTriggerType      = errors.New("workflow: invalid trigger type")
+	ErrInvalidNodeType         = errors.New("workflow: invalid node type")
+	ErrInvalidBranch           = errors.New("workflow: invalid edge branch for node type")
+	ErrArbitraryCodeForbidden  = errors.New("workflow: arbitrary code execution in transform is forbidden")
+)
