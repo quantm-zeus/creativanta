@@ -1,0 +1,67 @@
+{
+  "task_id": "P7-03",
+  "phase": "P7",
+  "slice": "p7-03",
+  "title": "Recipe marketplace và governance",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "feature_refs": [
+    "docs/02_features/automation/recipe_agent_center.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/03_screens/web/screen_web_workflow_recipes.md",
+    "docs/03_screens/mobile/screen_mobile_recipes.md"
+  ],
+  "source_files": {
+    "apps/api/internal/recipe/capability.go": "d3d6aa4bed902cc8458189fce9c8643c4dbc0e299ec9f24ce3a2ce890e314111",
+    "apps/api/internal/recipe/handler.go": "ba072102182821b9742d8e1316c4fa47b3175478ac7e1cfaed2a96ce89e1c3af",
+    "apps/api/internal/recipe/recipe_test.go": "d312ae379ac60084fa7c319ce71434c8398b8bc76ac4490dc2d530fb1648fb14",
+    "apps/api/internal/recipe/service.go": "2b8c321f4e57b602491b731bb200e18b2c573509f0ce881a183ac3503f9bb06d",
+    "apps/api/internal/recipe/store.go": "563e8214e800131aeb6ba415171b26525864bd25141be74fc4f59677a5d7d222",
+    "apps/api/internal/recipe/types.go": "d7f0d52c5b42aa0b13083c37e6f85c56b7c5955344a4dac7e7f1b971b4a30f6e",
+    "apps/api/internal/workflow/handler.go": "6bb06110f72e19ab7f59101e97abea47db58f515ac0fbdd467db72cb3e71aa9c",
+    "apps/api/internal/migrate/migrator_test.go": "af29a3548b0833ce8965c0eb06af221bed1844f240b31c2f16e40043c88bffd9",
+    "apps/api/internal/rbac/phase_exposure_test.go": "e0a420fbf7c7bc37084f617b4d878d073fd8c81aff7c22469fc35b0a7d35d62f",
+    "infra/migrations/00037_p7_03_recipe_marketplace_templates_and_governance.sql": "8d15321371bb897e8a0646a0037ee205aee904b3d43b9b77a928a254cc34da22",
+    "protos/creativanta/automation/v1/recipe.proto": "abf71e975fa11ced8db9dbc3c2d3a35f1b5585b1b530874667601629873b4fdd",
+    "apps/web/src/lib/workflow/recipe.ts": "9fdc28fee09e152101303b4b50fdd2c683e883351b8553ba0999dd2fb2c919cc",
+    "apps/web/src/lib/workflow/recipe.test.ts": "638012d50b8c8bf10e4a55cac68d2cb9d2a5232431f27d8be456d29b0a90c546",
+    "apps/web/src/routes/workflows/templates/+page.svelte": "f32e089876eeb45519679992d357882cc55f400793cc568d9328388a2228dae8",
+    "apps/mobile/lib/automation/recipe_models.dart": "7d56a6ec98e6a4ef886b7ca0034b82aa80bb6456a37f9e9ab45dcb039b40c3d0",
+    "apps/mobile/lib/automation/recipe_templates_view.dart": "37e7b9d25b00d3ab9ced4f1fd5b8797b1bf98c1b18b87237cca8ce15f2a5ed06",
+    "apps/mobile/test/recipe_marketplace_test.dart": "ae9b69875595ddce4a53172e95ded7314e87c38c8511ef1f3ab4d49a674a0f1a"
+  },
+  "scope_items": [
+    "Target 1 (Install preserves canonical graph): When a recipe is installed, it instantiates an editable canonical M20 workflow object with the recipe's triggers, conditions, and actions. Substituted parameters replace declared placeholders; the workflow is not a locked black box and is fully editable via M20 Workflow Builder.",
+    "Target 2 (Missing capability explained): When a recipe requires capabilities not available in the workspace, installation is blocked with a structured user-facing diagnostic explaining the exact connector, missing action, root cause, and direct resolution URL.",
+    "Target 3 (Tenant/system template isolation): Published system recipes (workspace_id == null) are globally visible but read-only. Private tenant recipes are strictly isolated via RLS and tenant validation, preventing cross-tenant discovery or tampering.",
+    "Review & Rating System: Enables 1-5 star reviews, textual feedback, and incremental average rating aggregation per recipe template.",
+    "Governance Submission & 48h Takedown (Pack 06 S22): Implements creator recipe submission for review (3-day SLA), admin review/approval, and 48-hour DMCA / policy takedown lifecycle while preserving installed instances.",
+    "Revenue Share (RULE-M21-006): Exact 70/30 creator/platform split and 7-day refund window using NUMERIC(18,6) decimal precision (no floating-point arithmetic)."
+  ],
+  "verified_sub_slices": [
+    "Target 1 Verified: TestTarget1_InstallPreservesCanonicalGraph in internal/recipe passes with go test -race; confirms canonical workflow creation and parameter substitution.",
+    "Target 2 Verified: TestTarget2_MissingCapabilityExplained in internal/recipe passes with go test -race; confirms structured user-facing diagnostic.",
+    "Target 3 Verified: TestTarget3_TenantAndSystemTemplateIsolation in internal/recipe passes with go test -race; confirms system recipe read-only rules and cross-tenant denial.",
+    "Review & Rating Verified: TestReviewAndRating_FullLifecycle in internal/recipe passes with go test -race.",
+    "Governance & Takedown Verified: TestGovernance_SubmissionAnd48hTakedown in internal/recipe passes with go test -race.",
+    "Revenue Share 70/30 Verified: TestRevenueShare_70_30SplitAnd7DayRefund in internal/recipe passes with go test -race.",
+    "ConnectRPC Handlers Verified: TestConnectRPCHandlers_FullSurface in internal/recipe passes with go test -race.",
+    "Concurrency & Race Detector: TestConcurrentRecipeOperations_RaceDetector passes with go test -race (0 data races detected).",
+    "Web Vitest Suite: 4 tests pass in apps/web/src/lib/workflow/recipe.test.ts (total web suite: 42 files, 353 tests pass).",
+    "Mobile Flutter Suite: 4 tests pass in apps/mobile/test/recipe_marketplace_test.dart (total mobile suite: 287 tests pass, flutter analyze clean).",
+    "Full CI Suite: check_d0.sh PASS, check_proto.sh verify PASS, check_go.sh PASS, check_node.sh PASS, check_flutter.sh PASS."
+  ],
+  "external_gates": [
+    {
+      "gate_id": "EXT-GATE-MARKETPLACE-PAYMENT-SETTLEMENT",
+      "status": "LOCAL_ENGINE_COMPUTATION_READY",
+      "description": "70/30 revenue share split and 7-day refund window are computed and validated with exact decimal arithmetic. Real merchant payout dispatch relies on Stripe/external payment provider settlement webhooks."
+    }
+  ],
+  "remaining_scope": [
+    "P7-04: Agent runtime, Video Agent và Copilot actions (agent planning, bounded memory, execution lifecycle, agent_runs)"
+  ]
+}

@@ -21,7 +21,7 @@ func TestTarget2_CorrectingFeesPreserveProof(t *testing.T) {
 	const skuID = "sku-fee-item-1"
 	const orderID = "order-fee-proof-01"
 
-	_ = invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 10, time.Now().Add(-1*time.Hour))
+	_ = invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 10, baseHarnessTime.Add(-1*time.Hour))
 
 	// 1. Ingest order with initial estimated fee breakdown
 	initialFees := order.FeeBreakdown{
