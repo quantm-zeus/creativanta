@@ -23,6 +23,8 @@ const _ = connect.IsAtLeastVersion1_13_0
 const (
 	// AdminBillingServiceName is the fully-qualified name of the AdminBillingService service.
 	AdminBillingServiceName = "creativanta.admin.v1.AdminBillingService"
+	// DataServiceName is the fully-qualified name of the DataService service.
+	DataServiceName = "creativanta.admin.v1.DataService"
 	// CreditServiceName is the fully-qualified name of the CreditService service.
 	CreditServiceName = "creativanta.admin.v1.CreditService"
 	// BillingServiceName is the fully-qualified name of the BillingService service.
@@ -40,6 +42,9 @@ const (
 	// AdminBillingServiceGetBillingSummaryProcedure is the fully-qualified name of the
 	// AdminBillingService's GetBillingSummary RPC.
 	AdminBillingServiceGetBillingSummaryProcedure = "/creativanta.admin.v1.AdminBillingService/GetBillingSummary"
+	// AdminBillingServiceListSubscriptionsProcedure is the fully-qualified name of the
+	// AdminBillingService's ListSubscriptions RPC.
+	AdminBillingServiceListSubscriptionsProcedure = "/creativanta.admin.v1.AdminBillingService/ListSubscriptions"
 	// AdminBillingServiceGetCreditBalanceProcedure is the fully-qualified name of the
 	// AdminBillingService's GetCreditBalance RPC.
 	AdminBillingServiceGetCreditBalanceProcedure = "/creativanta.admin.v1.AdminBillingService/GetCreditBalance"
@@ -55,15 +60,33 @@ const (
 	// AdminBillingServiceCancelSubscriptionProcedure is the fully-qualified name of the
 	// AdminBillingService's CancelSubscription RPC.
 	AdminBillingServiceCancelSubscriptionProcedure = "/creativanta.admin.v1.AdminBillingService/CancelSubscription"
+	// AdminBillingServiceGetUsageReportProcedure is the fully-qualified name of the
+	// AdminBillingService's GetUsageReport RPC.
+	AdminBillingServiceGetUsageReportProcedure = "/creativanta.admin.v1.AdminBillingService/GetUsageReport"
+	// AdminBillingServiceGetInvoiceHistoryProcedure is the fully-qualified name of the
+	// AdminBillingService's GetInvoiceHistory RPC.
+	AdminBillingServiceGetInvoiceHistoryProcedure = "/creativanta.admin.v1.AdminBillingService/GetInvoiceHistory"
+	// AdminBillingServiceDownloadInvoiceProcedure is the fully-qualified name of the
+	// AdminBillingService's DownloadInvoice RPC.
+	AdminBillingServiceDownloadInvoiceProcedure = "/creativanta.admin.v1.AdminBillingService/DownloadInvoice"
 	// AdminBillingServiceUpdatePaymentMethodProcedure is the fully-qualified name of the
 	// AdminBillingService's UpdatePaymentMethod RPC.
 	AdminBillingServiceUpdatePaymentMethodProcedure = "/creativanta.admin.v1.AdminBillingService/UpdatePaymentMethod"
 	// AdminBillingServiceGetPaymentMethodProcedure is the fully-qualified name of the
 	// AdminBillingService's GetPaymentMethod RPC.
 	AdminBillingServiceGetPaymentMethodProcedure = "/creativanta.admin.v1.AdminBillingService/GetPaymentMethod"
+	// AdminBillingServiceListBillingEventsProcedure is the fully-qualified name of the
+	// AdminBillingService's ListBillingEvents RPC.
+	AdminBillingServiceListBillingEventsProcedure = "/creativanta.admin.v1.AdminBillingService/ListBillingEvents"
 	// AdminBillingServiceEstimateCostProcedure is the fully-qualified name of the AdminBillingService's
 	// EstimateCost RPC.
 	AdminBillingServiceEstimateCostProcedure = "/creativanta.admin.v1.AdminBillingService/EstimateCost"
+	// DataServiceRequestExportProcedure is the fully-qualified name of the DataService's RequestExport
+	// RPC.
+	DataServiceRequestExportProcedure = "/creativanta.admin.v1.DataService/RequestExport"
+	// DataServiceGetExportUrlProcedure is the fully-qualified name of the DataService's GetExportUrl
+	// RPC.
+	DataServiceGetExportUrlProcedure = "/creativanta.admin.v1.DataService/GetExportUrl"
 	// CreditServiceGetBalanceProcedure is the fully-qualified name of the CreditService's GetBalance
 	// RPC.
 	CreditServiceGetBalanceProcedure = "/creativanta.admin.v1.CreditService/GetBalance"
@@ -128,13 +151,18 @@ const (
 // AdminBillingServiceClient is a client for the creativanta.admin.v1.AdminBillingService service.
 type AdminBillingServiceClient interface {
 	GetBillingSummary(context.Context, *connect.Request[v1.GetBillingSummaryRequest]) (*connect.Response[v1.GetBillingSummaryResponse], error)
+	ListSubscriptions(context.Context, *connect.Request[v1.ListSubscriptionsRequest]) (*connect.Response[v1.ListSubscriptionsResponse], error)
 	GetCreditBalance(context.Context, *connect.Request[v1.GetCreditBalanceRequest]) (*connect.Response[v1.GetCreditBalanceResponse], error)
 	GetCreditLedger(context.Context, *connect.Request[v1.GetCreditLedgerRequest]) (*connect.Response[v1.GetCreditLedgerResponse], error)
 	PurchaseCredits(context.Context, *connect.Request[v1.PurchaseCreditsRequest]) (*connect.Response[v1.PurchaseCreditsResponse], error)
 	ChangePlan(context.Context, *connect.Request[v1.ChangePlanRequest]) (*connect.Response[v1.ChangePlanResponse], error)
 	CancelSubscription(context.Context, *connect.Request[v1.CancelSubscriptionRequest]) (*connect.Response[v1.CancelSubscriptionResponse], error)
+	GetUsageReport(context.Context, *connect.Request[v1.GetUsageReportRequest]) (*connect.Response[v1.GetUsageReportResponse], error)
+	GetInvoiceHistory(context.Context, *connect.Request[v1.GetInvoiceHistoryRequest]) (*connect.Response[v1.GetInvoiceHistoryResponse], error)
+	DownloadInvoice(context.Context, *connect.Request[v1.DownloadInvoiceRequest]) (*connect.Response[v1.DownloadInvoiceResponse], error)
 	UpdatePaymentMethod(context.Context, *connect.Request[v1.UpdatePaymentMethodRequest]) (*connect.Response[v1.UpdatePaymentMethodResponse], error)
 	GetPaymentMethod(context.Context, *connect.Request[v1.GetPaymentMethodRequest]) (*connect.Response[v1.GetPaymentMethodResponse], error)
+	ListBillingEvents(context.Context, *connect.Request[v1.ListBillingEventsRequest]) (*connect.Response[v1.ListBillingEventsResponse], error)
 	EstimateCost(context.Context, *connect.Request[v1.EstimateCostRequest]) (*connect.Response[v1.EstimateCostResponse], error)
 }
 
@@ -153,6 +181,12 @@ func NewAdminBillingServiceClient(httpClient connect.HTTPClient, baseURL string,
 			httpClient,
 			baseURL+AdminBillingServiceGetBillingSummaryProcedure,
 			connect.WithSchema(adminBillingServiceMethods.ByName("GetBillingSummary")),
+			connect.WithClientOptions(opts...),
+		),
+		listSubscriptions: connect.NewClient[v1.ListSubscriptionsRequest, v1.ListSubscriptionsResponse](
+			httpClient,
+			baseURL+AdminBillingServiceListSubscriptionsProcedure,
+			connect.WithSchema(adminBillingServiceMethods.ByName("ListSubscriptions")),
 			connect.WithClientOptions(opts...),
 		),
 		getCreditBalance: connect.NewClient[v1.GetCreditBalanceRequest, v1.GetCreditBalanceResponse](
@@ -185,6 +219,24 @@ func NewAdminBillingServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(adminBillingServiceMethods.ByName("CancelSubscription")),
 			connect.WithClientOptions(opts...),
 		),
+		getUsageReport: connect.NewClient[v1.GetUsageReportRequest, v1.GetUsageReportResponse](
+			httpClient,
+			baseURL+AdminBillingServiceGetUsageReportProcedure,
+			connect.WithSchema(adminBillingServiceMethods.ByName("GetUsageReport")),
+			connect.WithClientOptions(opts...),
+		),
+		getInvoiceHistory: connect.NewClient[v1.GetInvoiceHistoryRequest, v1.GetInvoiceHistoryResponse](
+			httpClient,
+			baseURL+AdminBillingServiceGetInvoiceHistoryProcedure,
+			connect.WithSchema(adminBillingServiceMethods.ByName("GetInvoiceHistory")),
+			connect.WithClientOptions(opts...),
+		),
+		downloadInvoice: connect.NewClient[v1.DownloadInvoiceRequest, v1.DownloadInvoiceResponse](
+			httpClient,
+			baseURL+AdminBillingServiceDownloadInvoiceProcedure,
+			connect.WithSchema(adminBillingServiceMethods.ByName("DownloadInvoice")),
+			connect.WithClientOptions(opts...),
+		),
 		updatePaymentMethod: connect.NewClient[v1.UpdatePaymentMethodRequest, v1.UpdatePaymentMethodResponse](
 			httpClient,
 			baseURL+AdminBillingServiceUpdatePaymentMethodProcedure,
@@ -195,6 +247,12 @@ func NewAdminBillingServiceClient(httpClient connect.HTTPClient, baseURL string,
 			httpClient,
 			baseURL+AdminBillingServiceGetPaymentMethodProcedure,
 			connect.WithSchema(adminBillingServiceMethods.ByName("GetPaymentMethod")),
+			connect.WithClientOptions(opts...),
+		),
+		listBillingEvents: connect.NewClient[v1.ListBillingEventsRequest, v1.ListBillingEventsResponse](
+			httpClient,
+			baseURL+AdminBillingServiceListBillingEventsProcedure,
+			connect.WithSchema(adminBillingServiceMethods.ByName("ListBillingEvents")),
 			connect.WithClientOptions(opts...),
 		),
 		estimateCost: connect.NewClient[v1.EstimateCostRequest, v1.EstimateCostResponse](
@@ -209,19 +267,29 @@ func NewAdminBillingServiceClient(httpClient connect.HTTPClient, baseURL string,
 // adminBillingServiceClient implements AdminBillingServiceClient.
 type adminBillingServiceClient struct {
 	getBillingSummary   *connect.Client[v1.GetBillingSummaryRequest, v1.GetBillingSummaryResponse]
+	listSubscriptions   *connect.Client[v1.ListSubscriptionsRequest, v1.ListSubscriptionsResponse]
 	getCreditBalance    *connect.Client[v1.GetCreditBalanceRequest, v1.GetCreditBalanceResponse]
 	getCreditLedger     *connect.Client[v1.GetCreditLedgerRequest, v1.GetCreditLedgerResponse]
 	purchaseCredits     *connect.Client[v1.PurchaseCreditsRequest, v1.PurchaseCreditsResponse]
 	changePlan          *connect.Client[v1.ChangePlanRequest, v1.ChangePlanResponse]
 	cancelSubscription  *connect.Client[v1.CancelSubscriptionRequest, v1.CancelSubscriptionResponse]
+	getUsageReport      *connect.Client[v1.GetUsageReportRequest, v1.GetUsageReportResponse]
+	getInvoiceHistory   *connect.Client[v1.GetInvoiceHistoryRequest, v1.GetInvoiceHistoryResponse]
+	downloadInvoice     *connect.Client[v1.DownloadInvoiceRequest, v1.DownloadInvoiceResponse]
 	updatePaymentMethod *connect.Client[v1.UpdatePaymentMethodRequest, v1.UpdatePaymentMethodResponse]
 	getPaymentMethod    *connect.Client[v1.GetPaymentMethodRequest, v1.GetPaymentMethodResponse]
+	listBillingEvents   *connect.Client[v1.ListBillingEventsRequest, v1.ListBillingEventsResponse]
 	estimateCost        *connect.Client[v1.EstimateCostRequest, v1.EstimateCostResponse]
 }
 
 // GetBillingSummary calls creativanta.admin.v1.AdminBillingService.GetBillingSummary.
 func (c *adminBillingServiceClient) GetBillingSummary(ctx context.Context, req *connect.Request[v1.GetBillingSummaryRequest]) (*connect.Response[v1.GetBillingSummaryResponse], error) {
 	return c.getBillingSummary.CallUnary(ctx, req)
+}
+
+// ListSubscriptions calls creativanta.admin.v1.AdminBillingService.ListSubscriptions.
+func (c *adminBillingServiceClient) ListSubscriptions(ctx context.Context, req *connect.Request[v1.ListSubscriptionsRequest]) (*connect.Response[v1.ListSubscriptionsResponse], error) {
+	return c.listSubscriptions.CallUnary(ctx, req)
 }
 
 // GetCreditBalance calls creativanta.admin.v1.AdminBillingService.GetCreditBalance.
@@ -249,6 +317,21 @@ func (c *adminBillingServiceClient) CancelSubscription(ctx context.Context, req 
 	return c.cancelSubscription.CallUnary(ctx, req)
 }
 
+// GetUsageReport calls creativanta.admin.v1.AdminBillingService.GetUsageReport.
+func (c *adminBillingServiceClient) GetUsageReport(ctx context.Context, req *connect.Request[v1.GetUsageReportRequest]) (*connect.Response[v1.GetUsageReportResponse], error) {
+	return c.getUsageReport.CallUnary(ctx, req)
+}
+
+// GetInvoiceHistory calls creativanta.admin.v1.AdminBillingService.GetInvoiceHistory.
+func (c *adminBillingServiceClient) GetInvoiceHistory(ctx context.Context, req *connect.Request[v1.GetInvoiceHistoryRequest]) (*connect.Response[v1.GetInvoiceHistoryResponse], error) {
+	return c.getInvoiceHistory.CallUnary(ctx, req)
+}
+
+// DownloadInvoice calls creativanta.admin.v1.AdminBillingService.DownloadInvoice.
+func (c *adminBillingServiceClient) DownloadInvoice(ctx context.Context, req *connect.Request[v1.DownloadInvoiceRequest]) (*connect.Response[v1.DownloadInvoiceResponse], error) {
+	return c.downloadInvoice.CallUnary(ctx, req)
+}
+
 // UpdatePaymentMethod calls creativanta.admin.v1.AdminBillingService.UpdatePaymentMethod.
 func (c *adminBillingServiceClient) UpdatePaymentMethod(ctx context.Context, req *connect.Request[v1.UpdatePaymentMethodRequest]) (*connect.Response[v1.UpdatePaymentMethodResponse], error) {
 	return c.updatePaymentMethod.CallUnary(ctx, req)
@@ -257,6 +340,11 @@ func (c *adminBillingServiceClient) UpdatePaymentMethod(ctx context.Context, req
 // GetPaymentMethod calls creativanta.admin.v1.AdminBillingService.GetPaymentMethod.
 func (c *adminBillingServiceClient) GetPaymentMethod(ctx context.Context, req *connect.Request[v1.GetPaymentMethodRequest]) (*connect.Response[v1.GetPaymentMethodResponse], error) {
 	return c.getPaymentMethod.CallUnary(ctx, req)
+}
+
+// ListBillingEvents calls creativanta.admin.v1.AdminBillingService.ListBillingEvents.
+func (c *adminBillingServiceClient) ListBillingEvents(ctx context.Context, req *connect.Request[v1.ListBillingEventsRequest]) (*connect.Response[v1.ListBillingEventsResponse], error) {
+	return c.listBillingEvents.CallUnary(ctx, req)
 }
 
 // EstimateCost calls creativanta.admin.v1.AdminBillingService.EstimateCost.
@@ -268,13 +356,18 @@ func (c *adminBillingServiceClient) EstimateCost(ctx context.Context, req *conne
 // service.
 type AdminBillingServiceHandler interface {
 	GetBillingSummary(context.Context, *connect.Request[v1.GetBillingSummaryRequest]) (*connect.Response[v1.GetBillingSummaryResponse], error)
+	ListSubscriptions(context.Context, *connect.Request[v1.ListSubscriptionsRequest]) (*connect.Response[v1.ListSubscriptionsResponse], error)
 	GetCreditBalance(context.Context, *connect.Request[v1.GetCreditBalanceRequest]) (*connect.Response[v1.GetCreditBalanceResponse], error)
 	GetCreditLedger(context.Context, *connect.Request[v1.GetCreditLedgerRequest]) (*connect.Response[v1.GetCreditLedgerResponse], error)
 	PurchaseCredits(context.Context, *connect.Request[v1.PurchaseCreditsRequest]) (*connect.Response[v1.PurchaseCreditsResponse], error)
 	ChangePlan(context.Context, *connect.Request[v1.ChangePlanRequest]) (*connect.Response[v1.ChangePlanResponse], error)
 	CancelSubscription(context.Context, *connect.Request[v1.CancelSubscriptionRequest]) (*connect.Response[v1.CancelSubscriptionResponse], error)
+	GetUsageReport(context.Context, *connect.Request[v1.GetUsageReportRequest]) (*connect.Response[v1.GetUsageReportResponse], error)
+	GetInvoiceHistory(context.Context, *connect.Request[v1.GetInvoiceHistoryRequest]) (*connect.Response[v1.GetInvoiceHistoryResponse], error)
+	DownloadInvoice(context.Context, *connect.Request[v1.DownloadInvoiceRequest]) (*connect.Response[v1.DownloadInvoiceResponse], error)
 	UpdatePaymentMethod(context.Context, *connect.Request[v1.UpdatePaymentMethodRequest]) (*connect.Response[v1.UpdatePaymentMethodResponse], error)
 	GetPaymentMethod(context.Context, *connect.Request[v1.GetPaymentMethodRequest]) (*connect.Response[v1.GetPaymentMethodResponse], error)
+	ListBillingEvents(context.Context, *connect.Request[v1.ListBillingEventsRequest]) (*connect.Response[v1.ListBillingEventsResponse], error)
 	EstimateCost(context.Context, *connect.Request[v1.EstimateCostRequest]) (*connect.Response[v1.EstimateCostResponse], error)
 }
 
@@ -289,6 +382,12 @@ func NewAdminBillingServiceHandler(svc AdminBillingServiceHandler, opts ...conne
 		AdminBillingServiceGetBillingSummaryProcedure,
 		svc.GetBillingSummary,
 		connect.WithSchema(adminBillingServiceMethods.ByName("GetBillingSummary")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminBillingServiceListSubscriptionsHandler := connect.NewUnaryHandler(
+		AdminBillingServiceListSubscriptionsProcedure,
+		svc.ListSubscriptions,
+		connect.WithSchema(adminBillingServiceMethods.ByName("ListSubscriptions")),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminBillingServiceGetCreditBalanceHandler := connect.NewUnaryHandler(
@@ -321,6 +420,24 @@ func NewAdminBillingServiceHandler(svc AdminBillingServiceHandler, opts ...conne
 		connect.WithSchema(adminBillingServiceMethods.ByName("CancelSubscription")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminBillingServiceGetUsageReportHandler := connect.NewUnaryHandler(
+		AdminBillingServiceGetUsageReportProcedure,
+		svc.GetUsageReport,
+		connect.WithSchema(adminBillingServiceMethods.ByName("GetUsageReport")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminBillingServiceGetInvoiceHistoryHandler := connect.NewUnaryHandler(
+		AdminBillingServiceGetInvoiceHistoryProcedure,
+		svc.GetInvoiceHistory,
+		connect.WithSchema(adminBillingServiceMethods.ByName("GetInvoiceHistory")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminBillingServiceDownloadInvoiceHandler := connect.NewUnaryHandler(
+		AdminBillingServiceDownloadInvoiceProcedure,
+		svc.DownloadInvoice,
+		connect.WithSchema(adminBillingServiceMethods.ByName("DownloadInvoice")),
+		connect.WithHandlerOptions(opts...),
+	)
 	adminBillingServiceUpdatePaymentMethodHandler := connect.NewUnaryHandler(
 		AdminBillingServiceUpdatePaymentMethodProcedure,
 		svc.UpdatePaymentMethod,
@@ -333,6 +450,12 @@ func NewAdminBillingServiceHandler(svc AdminBillingServiceHandler, opts ...conne
 		connect.WithSchema(adminBillingServiceMethods.ByName("GetPaymentMethod")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminBillingServiceListBillingEventsHandler := connect.NewUnaryHandler(
+		AdminBillingServiceListBillingEventsProcedure,
+		svc.ListBillingEvents,
+		connect.WithSchema(adminBillingServiceMethods.ByName("ListBillingEvents")),
+		connect.WithHandlerOptions(opts...),
+	)
 	adminBillingServiceEstimateCostHandler := connect.NewUnaryHandler(
 		AdminBillingServiceEstimateCostProcedure,
 		svc.EstimateCost,
@@ -343,6 +466,8 @@ func NewAdminBillingServiceHandler(svc AdminBillingServiceHandler, opts ...conne
 		switch r.URL.Path {
 		case AdminBillingServiceGetBillingSummaryProcedure:
 			adminBillingServiceGetBillingSummaryHandler.ServeHTTP(w, r)
+		case AdminBillingServiceListSubscriptionsProcedure:
+			adminBillingServiceListSubscriptionsHandler.ServeHTTP(w, r)
 		case AdminBillingServiceGetCreditBalanceProcedure:
 			adminBillingServiceGetCreditBalanceHandler.ServeHTTP(w, r)
 		case AdminBillingServiceGetCreditLedgerProcedure:
@@ -353,10 +478,18 @@ func NewAdminBillingServiceHandler(svc AdminBillingServiceHandler, opts ...conne
 			adminBillingServiceChangePlanHandler.ServeHTTP(w, r)
 		case AdminBillingServiceCancelSubscriptionProcedure:
 			adminBillingServiceCancelSubscriptionHandler.ServeHTTP(w, r)
+		case AdminBillingServiceGetUsageReportProcedure:
+			adminBillingServiceGetUsageReportHandler.ServeHTTP(w, r)
+		case AdminBillingServiceGetInvoiceHistoryProcedure:
+			adminBillingServiceGetInvoiceHistoryHandler.ServeHTTP(w, r)
+		case AdminBillingServiceDownloadInvoiceProcedure:
+			adminBillingServiceDownloadInvoiceHandler.ServeHTTP(w, r)
 		case AdminBillingServiceUpdatePaymentMethodProcedure:
 			adminBillingServiceUpdatePaymentMethodHandler.ServeHTTP(w, r)
 		case AdminBillingServiceGetPaymentMethodProcedure:
 			adminBillingServiceGetPaymentMethodHandler.ServeHTTP(w, r)
+		case AdminBillingServiceListBillingEventsProcedure:
+			adminBillingServiceListBillingEventsHandler.ServeHTTP(w, r)
 		case AdminBillingServiceEstimateCostProcedure:
 			adminBillingServiceEstimateCostHandler.ServeHTTP(w, r)
 		default:
@@ -370,6 +503,10 @@ type UnimplementedAdminBillingServiceHandler struct{}
 
 func (UnimplementedAdminBillingServiceHandler) GetBillingSummary(context.Context, *connect.Request[v1.GetBillingSummaryRequest]) (*connect.Response[v1.GetBillingSummaryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.admin.v1.AdminBillingService.GetBillingSummary is not implemented"))
+}
+
+func (UnimplementedAdminBillingServiceHandler) ListSubscriptions(context.Context, *connect.Request[v1.ListSubscriptionsRequest]) (*connect.Response[v1.ListSubscriptionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.admin.v1.AdminBillingService.ListSubscriptions is not implemented"))
 }
 
 func (UnimplementedAdminBillingServiceHandler) GetCreditBalance(context.Context, *connect.Request[v1.GetCreditBalanceRequest]) (*connect.Response[v1.GetCreditBalanceResponse], error) {
@@ -392,6 +529,18 @@ func (UnimplementedAdminBillingServiceHandler) CancelSubscription(context.Contex
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.admin.v1.AdminBillingService.CancelSubscription is not implemented"))
 }
 
+func (UnimplementedAdminBillingServiceHandler) GetUsageReport(context.Context, *connect.Request[v1.GetUsageReportRequest]) (*connect.Response[v1.GetUsageReportResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.admin.v1.AdminBillingService.GetUsageReport is not implemented"))
+}
+
+func (UnimplementedAdminBillingServiceHandler) GetInvoiceHistory(context.Context, *connect.Request[v1.GetInvoiceHistoryRequest]) (*connect.Response[v1.GetInvoiceHistoryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.admin.v1.AdminBillingService.GetInvoiceHistory is not implemented"))
+}
+
+func (UnimplementedAdminBillingServiceHandler) DownloadInvoice(context.Context, *connect.Request[v1.DownloadInvoiceRequest]) (*connect.Response[v1.DownloadInvoiceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.admin.v1.AdminBillingService.DownloadInvoice is not implemented"))
+}
+
 func (UnimplementedAdminBillingServiceHandler) UpdatePaymentMethod(context.Context, *connect.Request[v1.UpdatePaymentMethodRequest]) (*connect.Response[v1.UpdatePaymentMethodResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.admin.v1.AdminBillingService.UpdatePaymentMethod is not implemented"))
 }
@@ -400,8 +549,108 @@ func (UnimplementedAdminBillingServiceHandler) GetPaymentMethod(context.Context,
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.admin.v1.AdminBillingService.GetPaymentMethod is not implemented"))
 }
 
+func (UnimplementedAdminBillingServiceHandler) ListBillingEvents(context.Context, *connect.Request[v1.ListBillingEventsRequest]) (*connect.Response[v1.ListBillingEventsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.admin.v1.AdminBillingService.ListBillingEvents is not implemented"))
+}
+
 func (UnimplementedAdminBillingServiceHandler) EstimateCost(context.Context, *connect.Request[v1.EstimateCostRequest]) (*connect.Response[v1.EstimateCostResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.admin.v1.AdminBillingService.EstimateCost is not implemented"))
+}
+
+// DataServiceClient is a client for the creativanta.admin.v1.DataService service.
+type DataServiceClient interface {
+	RequestExport(context.Context, *connect.Request[v1.RequestExportRequest]) (*connect.Response[v1.RequestExportResponse], error)
+	GetExportUrl(context.Context, *connect.Request[v1.GetExportUrlRequest]) (*connect.Response[v1.GetExportUrlResponse], error)
+}
+
+// NewDataServiceClient constructs a client for the creativanta.admin.v1.DataService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewDataServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) DataServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	dataServiceMethods := v1.File_creativanta_admin_v1_billing_proto.Services().ByName("DataService").Methods()
+	return &dataServiceClient{
+		requestExport: connect.NewClient[v1.RequestExportRequest, v1.RequestExportResponse](
+			httpClient,
+			baseURL+DataServiceRequestExportProcedure,
+			connect.WithSchema(dataServiceMethods.ByName("RequestExport")),
+			connect.WithClientOptions(opts...),
+		),
+		getExportUrl: connect.NewClient[v1.GetExportUrlRequest, v1.GetExportUrlResponse](
+			httpClient,
+			baseURL+DataServiceGetExportUrlProcedure,
+			connect.WithSchema(dataServiceMethods.ByName("GetExportUrl")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// dataServiceClient implements DataServiceClient.
+type dataServiceClient struct {
+	requestExport *connect.Client[v1.RequestExportRequest, v1.RequestExportResponse]
+	getExportUrl  *connect.Client[v1.GetExportUrlRequest, v1.GetExportUrlResponse]
+}
+
+// RequestExport calls creativanta.admin.v1.DataService.RequestExport.
+func (c *dataServiceClient) RequestExport(ctx context.Context, req *connect.Request[v1.RequestExportRequest]) (*connect.Response[v1.RequestExportResponse], error) {
+	return c.requestExport.CallUnary(ctx, req)
+}
+
+// GetExportUrl calls creativanta.admin.v1.DataService.GetExportUrl.
+func (c *dataServiceClient) GetExportUrl(ctx context.Context, req *connect.Request[v1.GetExportUrlRequest]) (*connect.Response[v1.GetExportUrlResponse], error) {
+	return c.getExportUrl.CallUnary(ctx, req)
+}
+
+// DataServiceHandler is an implementation of the creativanta.admin.v1.DataService service.
+type DataServiceHandler interface {
+	RequestExport(context.Context, *connect.Request[v1.RequestExportRequest]) (*connect.Response[v1.RequestExportResponse], error)
+	GetExportUrl(context.Context, *connect.Request[v1.GetExportUrlRequest]) (*connect.Response[v1.GetExportUrlResponse], error)
+}
+
+// NewDataServiceHandler builds an HTTP handler from the service implementation. It returns the path
+// on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewDataServiceHandler(svc DataServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	dataServiceMethods := v1.File_creativanta_admin_v1_billing_proto.Services().ByName("DataService").Methods()
+	dataServiceRequestExportHandler := connect.NewUnaryHandler(
+		DataServiceRequestExportProcedure,
+		svc.RequestExport,
+		connect.WithSchema(dataServiceMethods.ByName("RequestExport")),
+		connect.WithHandlerOptions(opts...),
+	)
+	dataServiceGetExportUrlHandler := connect.NewUnaryHandler(
+		DataServiceGetExportUrlProcedure,
+		svc.GetExportUrl,
+		connect.WithSchema(dataServiceMethods.ByName("GetExportUrl")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.admin.v1.DataService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case DataServiceRequestExportProcedure:
+			dataServiceRequestExportHandler.ServeHTTP(w, r)
+		case DataServiceGetExportUrlProcedure:
+			dataServiceGetExportUrlHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedDataServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedDataServiceHandler struct{}
+
+func (UnimplementedDataServiceHandler) RequestExport(context.Context, *connect.Request[v1.RequestExportRequest]) (*connect.Response[v1.RequestExportResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.admin.v1.DataService.RequestExport is not implemented"))
+}
+
+func (UnimplementedDataServiceHandler) GetExportUrl(context.Context, *connect.Request[v1.GetExportUrlRequest]) (*connect.Response[v1.GetExportUrlResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.admin.v1.DataService.GetExportUrl is not implemented"))
 }
 
 // CreditServiceClient is a client for the creativanta.admin.v1.CreditService service.

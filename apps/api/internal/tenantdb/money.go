@@ -53,6 +53,72 @@ func ZeroDecimal() ExactDecimal {
 	return ExactDecimal{micros: big.NewInt(0)}
 }
 
+// NewExactDecimalFromInt64 constructs an ExactDecimal from a whole int64 value.
+func NewExactDecimalFromInt64(v int64) ExactDecimal {
+	return ExactDecimal{micros: new(big.Int).Mul(big.NewInt(v), tenPow6)}
+}
+
+// Neg returns -d.
+func (d ExactDecimal) Neg() ExactDecimal {
+	if d.micros == nil || d.micros.Sign() == 0 {
+		return ZeroDecimal()
+	}
+	return ExactDecimal{micros: new(big.Int).Neg(d.micros)}
+}
+
+// Mul multiplies two ExactDecimals with round-half-up at 6 decimal places.
+func (d ExactDecimal) Mul(other ExactDecimal) (ExactDecimal, error) {
+	a := big.NewInt(0)
+	if d.micros != nil {
+		a.Set(d.micros)
+	}
+	b := big.NewInt(0)
+	if other.micros != nil {
+		b.Set(other.micros)
+	}
+	prod := new(big.Int).Mul(a, b)
+	neg := prod.Sign() < 0
+	absProd := new(big.Int).Abs(prod)
+	quo, rem := new(big.Int).QuoRem(absProd, tenPow6, new(big.Int))
+	if new(big.Int).Mul(rem, big.NewInt(2)).Cmp(tenPow6) >= 0 {
+		quo.Add(quo, big.NewInt(1))
+	}
+	if neg && quo.Sign() != 0 {
+		quo.Neg(quo)
+	}
+	return FromPgNumeric(pgtype.Numeric{Int: quo, Exp: -MaxDecimalScale, Valid: true})
+}
+
+// QuoRoundHalfUp divides d by divisor with round-half-up at 6 decimal places.
+func (d ExactDecimal) QuoRoundHalfUp(divisor ExactDecimal) (ExactDecimal, error) {
+	b := big.NewInt(0)
+	if divisor.micros != nil {
+		b.Set(divisor.micros)
+	}
+	if b.Sign() == 0 {
+		return ExactDecimal{}, fmt.Errorf("%w: division by zero", ErrInvalidDecimal)
+	}
+	a := big.NewInt(0)
+	if d.micros != nil {
+		a.Set(d.micros)
+	}
+	if a.Sign() == 0 {
+		return ZeroDecimal(), nil
+	}
+	neg := (a.Sign() < 0) != (b.Sign() < 0)
+	absA := new(big.Int).Abs(a)
+	absB := new(big.Int).Abs(b)
+	scaledNum := new(big.Int).Mul(absA, tenPow6)
+	quo, rem := new(big.Int).QuoRem(scaledNum, absB, new(big.Int))
+	if new(big.Int).Mul(rem, big.NewInt(2)).Cmp(absB) >= 0 {
+		quo.Add(quo, big.NewInt(1))
+	}
+	if neg && quo.Sign() != 0 {
+		quo.Neg(quo)
+	}
+	return FromPgNumeric(pgtype.Numeric{Int: quo, Exp: -MaxDecimalScale, Valid: true})
+}
+
 // ParseExactDecimal parses a canonical base-10 decimal string into an ExactDecimal
 // with precision <= 18 and scale <= 6, rejecting exponent notation, NaN, Inf, and whitespace.
 func ParseExactDecimal(raw string) (ExactDecimal, error) {

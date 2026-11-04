@@ -3887,6 +3887,2086 @@ class ProfitServiceRefreshSnapshotResponse extends $pb.GeneratedMessage {
   ProfitSnapshot ensureSnapshot() => $_ensure(0);
 }
 
+/// Financial Report Line Item (W087 & P8-02 Complete Financial Reports)
+class FinancialReportLineItem extends $pb.GeneratedMessage {
+  factory FinancialReportLineItem({
+    $core.String? key,
+    $core.String? label,
+    $2.Money? amount,
+    $core.String? pctOfRevenue,
+    $2.SourceClass? sourceClass,
+    $2.ConfidenceBand? confidence,
+    $core.bool? isSubtotal,
+  }) {
+    final result = FinancialReportLineItem._();
+    if (key != null) result.key = key;
+    if (label != null) result.label = label;
+    if (amount != null) result.amount = amount;
+    if (pctOfRevenue != null) result.pctOfRevenue = pctOfRevenue;
+    if (sourceClass != null) result.sourceClass = sourceClass;
+    if (confidence != null) result.confidence = confidence;
+    if (isSubtotal != null) result.isSubtotal = isSubtotal;
+    return result;
+  }
+
+  FinancialReportLineItem._();
+
+  factory FinancialReportLineItem.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      FinancialReportLineItem()..mergeFromBuffer(data, registry);
+  factory FinancialReportLineItem.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      FinancialReportLineItem()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'FinancialReportLineItem',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: FinancialReportLineItem.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'key')
+    ..aOS(2, _omitFieldNames ? '' : 'label')
+    ..aOM<$2.Money>(3, _omitFieldNames ? '' : 'amount',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOS(4, _omitFieldNames ? '' : 'pctOfRevenue')
+    ..aE<$2.SourceClass>(5, _omitFieldNames ? '' : 'sourceClass',
+        enumValues: $2.SourceClass.values)
+    ..aE<$2.ConfidenceBand>(6, _omitFieldNames ? '' : 'confidence',
+        enumValues: $2.ConfidenceBand.values)
+    ..aOB(7, _omitFieldNames ? '' : 'isSubtotal')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  FinancialReportLineItem clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  FinancialReportLineItem copyWith(
+          void Function(FinancialReportLineItem) updates) =>
+      super.copyWith((message) => updates(message as FinancialReportLineItem))
+          as FinancialReportLineItem;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use FinancialReportLineItem() / FinancialReportLineItem.new instead')
+  static FinancialReportLineItem create() => FinancialReportLineItem._();
+  static $pb.GeneratedMessage $_createMessage() => FinancialReportLineItem._();
+  @$core.override
+  FinancialReportLineItem createEmptyInstance() => FinancialReportLineItem._();
+  @$core.pragma('dart2js:noInline')
+  static FinancialReportLineItem getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<FinancialReportLineItem>(
+          FinancialReportLineItem.$_createMessage);
+  static FinancialReportLineItem? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get key => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set key($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasKey() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearKey() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get label => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set label($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasLabel() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLabel() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $2.Money get amount => $_getN(2);
+  @$pb.TagNumber(3)
+  set amount($2.Money value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAmount() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAmount() => $_clearField(3);
+  @$pb.TagNumber(3)
+  $2.Money ensureAmount() => $_ensure(2);
+
+  @$pb.TagNumber(4)
+  $core.String get pctOfRevenue => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set pctOfRevenue($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPctOfRevenue() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPctOfRevenue() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $2.SourceClass get sourceClass => $_getN(4);
+  @$pb.TagNumber(5)
+  set sourceClass($2.SourceClass value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSourceClass() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSourceClass() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $2.ConfidenceBand get confidence => $_getN(5);
+  @$pb.TagNumber(6)
+  set confidence($2.ConfidenceBand value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasConfidence() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearConfidence() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.bool get isSubtotal => $_getBF(6);
+  @$pb.TagNumber(7)
+  set isSubtotal($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasIsSubtotal() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearIsSubtotal() => $_clearField(7);
+}
+
+/// Measured Cohort & Unit Economics (analytics_event_taxonomy.md §6 & product_strategy_validation.md §5)
+class CohortEconomicsSummary extends $pb.GeneratedMessage {
+  factory CohortEconomicsSummary({
+    $core.String? cohortId,
+    $core.String? observationWindow,
+    $fixnum.Int64? eligibleWorkspacesCount,
+    $fixnum.Int64? censoredWorkspacesCount,
+    $fixnum.Int64? excludedDemoTestInternalCount,
+    $core.String? medianFirstValueSeconds,
+    $fixnum.Int64? weeklyProofedOperatingLoops,
+    $core.String? weeklyOperatorRetentionPct,
+    $core.String? medianRepairBurdenSeconds,
+    $core.bool? isRepairTimeUnknown,
+    $fixnum.Int64? unresolvedRequiredComponentsCount,
+    $core.String? usableProductionYieldPct,
+    $fixnum.Int64? acceptedOutputsCount,
+    $fixnum.Int64? terminalGenerationAttemptsCount,
+    $2.Money? costPerAcceptedOutput,
+    $core.bool? isCostPerAcceptedOutputUndefined,
+    $2.Money? recognizedRevenue,
+    $2.Money? allocatedProviderCost,
+    $2.Money? allocatedComputeStorageCost,
+    $2.Money? allocatedPaymentRefundSupportCost,
+    $2.Money? netUnitEconomics,
+    $core.String? allocationMethod,
+    $fixnum.Int64? unknownCostItemsCount,
+  }) {
+    final result = CohortEconomicsSummary._();
+    if (cohortId != null) result.cohortId = cohortId;
+    if (observationWindow != null) result.observationWindow = observationWindow;
+    if (eligibleWorkspacesCount != null)
+      result.eligibleWorkspacesCount = eligibleWorkspacesCount;
+    if (censoredWorkspacesCount != null)
+      result.censoredWorkspacesCount = censoredWorkspacesCount;
+    if (excludedDemoTestInternalCount != null)
+      result.excludedDemoTestInternalCount = excludedDemoTestInternalCount;
+    if (medianFirstValueSeconds != null)
+      result.medianFirstValueSeconds = medianFirstValueSeconds;
+    if (weeklyProofedOperatingLoops != null)
+      result.weeklyProofedOperatingLoops = weeklyProofedOperatingLoops;
+    if (weeklyOperatorRetentionPct != null)
+      result.weeklyOperatorRetentionPct = weeklyOperatorRetentionPct;
+    if (medianRepairBurdenSeconds != null)
+      result.medianRepairBurdenSeconds = medianRepairBurdenSeconds;
+    if (isRepairTimeUnknown != null)
+      result.isRepairTimeUnknown = isRepairTimeUnknown;
+    if (unresolvedRequiredComponentsCount != null)
+      result.unresolvedRequiredComponentsCount =
+          unresolvedRequiredComponentsCount;
+    if (usableProductionYieldPct != null)
+      result.usableProductionYieldPct = usableProductionYieldPct;
+    if (acceptedOutputsCount != null)
+      result.acceptedOutputsCount = acceptedOutputsCount;
+    if (terminalGenerationAttemptsCount != null)
+      result.terminalGenerationAttemptsCount = terminalGenerationAttemptsCount;
+    if (costPerAcceptedOutput != null)
+      result.costPerAcceptedOutput = costPerAcceptedOutput;
+    if (isCostPerAcceptedOutputUndefined != null)
+      result.isCostPerAcceptedOutputUndefined =
+          isCostPerAcceptedOutputUndefined;
+    if (recognizedRevenue != null) result.recognizedRevenue = recognizedRevenue;
+    if (allocatedProviderCost != null)
+      result.allocatedProviderCost = allocatedProviderCost;
+    if (allocatedComputeStorageCost != null)
+      result.allocatedComputeStorageCost = allocatedComputeStorageCost;
+    if (allocatedPaymentRefundSupportCost != null)
+      result.allocatedPaymentRefundSupportCost =
+          allocatedPaymentRefundSupportCost;
+    if (netUnitEconomics != null) result.netUnitEconomics = netUnitEconomics;
+    if (allocationMethod != null) result.allocationMethod = allocationMethod;
+    if (unknownCostItemsCount != null)
+      result.unknownCostItemsCount = unknownCostItemsCount;
+    return result;
+  }
+
+  CohortEconomicsSummary._();
+
+  factory CohortEconomicsSummary.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CohortEconomicsSummary()..mergeFromBuffer(data, registry);
+  factory CohortEconomicsSummary.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CohortEconomicsSummary()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CohortEconomicsSummary',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: CohortEconomicsSummary.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'cohortId')
+    ..aOS(2, _omitFieldNames ? '' : 'observationWindow')
+    ..aInt64(3, _omitFieldNames ? '' : 'eligibleWorkspacesCount')
+    ..aInt64(4, _omitFieldNames ? '' : 'censoredWorkspacesCount')
+    ..aInt64(5, _omitFieldNames ? '' : 'excludedDemoTestInternalCount')
+    ..aOS(6, _omitFieldNames ? '' : 'medianFirstValueSeconds')
+    ..aInt64(7, _omitFieldNames ? '' : 'weeklyProofedOperatingLoops')
+    ..aOS(8, _omitFieldNames ? '' : 'weeklyOperatorRetentionPct')
+    ..aOS(9, _omitFieldNames ? '' : 'medianRepairBurdenSeconds')
+    ..aOB(10, _omitFieldNames ? '' : 'isRepairTimeUnknown')
+    ..aInt64(11, _omitFieldNames ? '' : 'unresolvedRequiredComponentsCount')
+    ..aOS(12, _omitFieldNames ? '' : 'usableProductionYieldPct')
+    ..aInt64(13, _omitFieldNames ? '' : 'acceptedOutputsCount')
+    ..aInt64(14, _omitFieldNames ? '' : 'terminalGenerationAttemptsCount')
+    ..aOM<$2.Money>(15, _omitFieldNames ? '' : 'costPerAcceptedOutput',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOB(16, _omitFieldNames ? '' : 'isCostPerAcceptedOutputUndefined')
+    ..aOM<$2.Money>(17, _omitFieldNames ? '' : 'recognizedRevenue',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOM<$2.Money>(18, _omitFieldNames ? '' : 'allocatedProviderCost',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOM<$2.Money>(19, _omitFieldNames ? '' : 'allocatedComputeStorageCost',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOM<$2.Money>(
+        20, _omitFieldNames ? '' : 'allocatedPaymentRefundSupportCost',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOM<$2.Money>(21, _omitFieldNames ? '' : 'netUnitEconomics',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOS(22, _omitFieldNames ? '' : 'allocationMethod')
+    ..aInt64(23, _omitFieldNames ? '' : 'unknownCostItemsCount')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CohortEconomicsSummary clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CohortEconomicsSummary copyWith(
+          void Function(CohortEconomicsSummary) updates) =>
+      super.copyWith((message) => updates(message as CohortEconomicsSummary))
+          as CohortEconomicsSummary;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use CohortEconomicsSummary() / CohortEconomicsSummary.new instead')
+  static CohortEconomicsSummary create() => CohortEconomicsSummary._();
+  static $pb.GeneratedMessage $_createMessage() => CohortEconomicsSummary._();
+  @$core.override
+  CohortEconomicsSummary createEmptyInstance() => CohortEconomicsSummary._();
+  @$core.pragma('dart2js:noInline')
+  static CohortEconomicsSummary getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CohortEconomicsSummary>(
+          CohortEconomicsSummary.$_createMessage);
+  static CohortEconomicsSummary? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get cohortId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set cohortId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCohortId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCohortId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get observationWindow => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set observationWindow($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasObservationWindow() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearObservationWindow() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get eligibleWorkspacesCount => $_getI64(2);
+  @$pb.TagNumber(3)
+  set eligibleWorkspacesCount($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasEligibleWorkspacesCount() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearEligibleWorkspacesCount() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get censoredWorkspacesCount => $_getI64(3);
+  @$pb.TagNumber(4)
+  set censoredWorkspacesCount($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCensoredWorkspacesCount() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCensoredWorkspacesCount() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get excludedDemoTestInternalCount => $_getI64(4);
+  @$pb.TagNumber(5)
+  set excludedDemoTestInternalCount($fixnum.Int64 value) =>
+      $_setInt64(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasExcludedDemoTestInternalCount() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearExcludedDemoTestInternalCount() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get medianFirstValueSeconds => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set medianFirstValueSeconds($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasMedianFirstValueSeconds() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearMedianFirstValueSeconds() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $fixnum.Int64 get weeklyProofedOperatingLoops => $_getI64(6);
+  @$pb.TagNumber(7)
+  set weeklyProofedOperatingLoops($fixnum.Int64 value) => $_setInt64(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasWeeklyProofedOperatingLoops() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearWeeklyProofedOperatingLoops() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get weeklyOperatorRetentionPct => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set weeklyOperatorRetentionPct($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasWeeklyOperatorRetentionPct() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearWeeklyOperatorRetentionPct() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get medianRepairBurdenSeconds => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set medianRepairBurdenSeconds($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasMedianRepairBurdenSeconds() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearMedianRepairBurdenSeconds() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.bool get isRepairTimeUnknown => $_getBF(9);
+  @$pb.TagNumber(10)
+  set isRepairTimeUnknown($core.bool value) => $_setBool(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasIsRepairTimeUnknown() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearIsRepairTimeUnknown() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $fixnum.Int64 get unresolvedRequiredComponentsCount => $_getI64(10);
+  @$pb.TagNumber(11)
+  set unresolvedRequiredComponentsCount($fixnum.Int64 value) =>
+      $_setInt64(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasUnresolvedRequiredComponentsCount() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearUnresolvedRequiredComponentsCount() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get usableProductionYieldPct => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set usableProductionYieldPct($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasUsableProductionYieldPct() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearUsableProductionYieldPct() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $fixnum.Int64 get acceptedOutputsCount => $_getI64(12);
+  @$pb.TagNumber(13)
+  set acceptedOutputsCount($fixnum.Int64 value) => $_setInt64(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasAcceptedOutputsCount() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearAcceptedOutputsCount() => $_clearField(13);
+
+  @$pb.TagNumber(14)
+  $fixnum.Int64 get terminalGenerationAttemptsCount => $_getI64(13);
+  @$pb.TagNumber(14)
+  set terminalGenerationAttemptsCount($fixnum.Int64 value) =>
+      $_setInt64(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasTerminalGenerationAttemptsCount() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearTerminalGenerationAttemptsCount() => $_clearField(14);
+
+  @$pb.TagNumber(15)
+  $2.Money get costPerAcceptedOutput => $_getN(14);
+  @$pb.TagNumber(15)
+  set costPerAcceptedOutput($2.Money value) => $_setField(15, value);
+  @$pb.TagNumber(15)
+  $core.bool hasCostPerAcceptedOutput() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearCostPerAcceptedOutput() => $_clearField(15);
+  @$pb.TagNumber(15)
+  $2.Money ensureCostPerAcceptedOutput() => $_ensure(14);
+
+  @$pb.TagNumber(16)
+  $core.bool get isCostPerAcceptedOutputUndefined => $_getBF(15);
+  @$pb.TagNumber(16)
+  set isCostPerAcceptedOutputUndefined($core.bool value) =>
+      $_setBool(15, value);
+  @$pb.TagNumber(16)
+  $core.bool hasIsCostPerAcceptedOutputUndefined() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearIsCostPerAcceptedOutputUndefined() => $_clearField(16);
+
+  @$pb.TagNumber(17)
+  $2.Money get recognizedRevenue => $_getN(16);
+  @$pb.TagNumber(17)
+  set recognizedRevenue($2.Money value) => $_setField(17, value);
+  @$pb.TagNumber(17)
+  $core.bool hasRecognizedRevenue() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearRecognizedRevenue() => $_clearField(17);
+  @$pb.TagNumber(17)
+  $2.Money ensureRecognizedRevenue() => $_ensure(16);
+
+  @$pb.TagNumber(18)
+  $2.Money get allocatedProviderCost => $_getN(17);
+  @$pb.TagNumber(18)
+  set allocatedProviderCost($2.Money value) => $_setField(18, value);
+  @$pb.TagNumber(18)
+  $core.bool hasAllocatedProviderCost() => $_has(17);
+  @$pb.TagNumber(18)
+  void clearAllocatedProviderCost() => $_clearField(18);
+  @$pb.TagNumber(18)
+  $2.Money ensureAllocatedProviderCost() => $_ensure(17);
+
+  @$pb.TagNumber(19)
+  $2.Money get allocatedComputeStorageCost => $_getN(18);
+  @$pb.TagNumber(19)
+  set allocatedComputeStorageCost($2.Money value) => $_setField(19, value);
+  @$pb.TagNumber(19)
+  $core.bool hasAllocatedComputeStorageCost() => $_has(18);
+  @$pb.TagNumber(19)
+  void clearAllocatedComputeStorageCost() => $_clearField(19);
+  @$pb.TagNumber(19)
+  $2.Money ensureAllocatedComputeStorageCost() => $_ensure(18);
+
+  @$pb.TagNumber(20)
+  $2.Money get allocatedPaymentRefundSupportCost => $_getN(19);
+  @$pb.TagNumber(20)
+  set allocatedPaymentRefundSupportCost($2.Money value) =>
+      $_setField(20, value);
+  @$pb.TagNumber(20)
+  $core.bool hasAllocatedPaymentRefundSupportCost() => $_has(19);
+  @$pb.TagNumber(20)
+  void clearAllocatedPaymentRefundSupportCost() => $_clearField(20);
+  @$pb.TagNumber(20)
+  $2.Money ensureAllocatedPaymentRefundSupportCost() => $_ensure(19);
+
+  @$pb.TagNumber(21)
+  $2.Money get netUnitEconomics => $_getN(20);
+  @$pb.TagNumber(21)
+  set netUnitEconomics($2.Money value) => $_setField(21, value);
+  @$pb.TagNumber(21)
+  $core.bool hasNetUnitEconomics() => $_has(20);
+  @$pb.TagNumber(21)
+  void clearNetUnitEconomics() => $_clearField(21);
+  @$pb.TagNumber(21)
+  $2.Money ensureNetUnitEconomics() => $_ensure(20);
+
+  @$pb.TagNumber(22)
+  $core.String get allocationMethod => $_getSZ(21);
+  @$pb.TagNumber(22)
+  set allocationMethod($core.String value) => $_setString(21, value);
+  @$pb.TagNumber(22)
+  $core.bool hasAllocationMethod() => $_has(21);
+  @$pb.TagNumber(22)
+  void clearAllocationMethod() => $_clearField(22);
+
+  @$pb.TagNumber(23)
+  $fixnum.Int64 get unknownCostItemsCount => $_getI64(22);
+  @$pb.TagNumber(23)
+  set unknownCostItemsCount($fixnum.Int64 value) => $_setInt64(22, value);
+  @$pb.TagNumber(23)
+  $core.bool hasUnknownCostItemsCount() => $_has(22);
+  @$pb.TagNumber(23)
+  void clearUnknownCostItemsCount() => $_clearField(23);
+}
+
+/// Generated Financial Report (W087 & P8-02)
+class FinancialReport extends $pb.GeneratedMessage {
+  factory FinancialReport({
+    $core.String? reportId,
+    $core.String? workspaceId,
+    $core.String? reportType,
+    $core.String? periodStart,
+    $core.String? periodEnd,
+    $core.String? groupBy,
+    $core.String? currency,
+    $core.Iterable<FinancialReportLineItem>? lineItems,
+    ProfitSnapshot? snapshot,
+    $core.String? reconciledCoveragePct,
+    $core.bool? lowTrustWarning,
+    $core.String? taxDisclaimer,
+    CohortEconomicsSummary? cohortEconomics,
+    $1.Timestamp? generatedAt,
+  }) {
+    final result = FinancialReport._();
+    if (reportId != null) result.reportId = reportId;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (reportType != null) result.reportType = reportType;
+    if (periodStart != null) result.periodStart = periodStart;
+    if (periodEnd != null) result.periodEnd = periodEnd;
+    if (groupBy != null) result.groupBy = groupBy;
+    if (currency != null) result.currency = currency;
+    if (lineItems != null) result.lineItems.addAll(lineItems);
+    if (snapshot != null) result.snapshot = snapshot;
+    if (reconciledCoveragePct != null)
+      result.reconciledCoveragePct = reconciledCoveragePct;
+    if (lowTrustWarning != null) result.lowTrustWarning = lowTrustWarning;
+    if (taxDisclaimer != null) result.taxDisclaimer = taxDisclaimer;
+    if (cohortEconomics != null) result.cohortEconomics = cohortEconomics;
+    if (generatedAt != null) result.generatedAt = generatedAt;
+    return result;
+  }
+
+  FinancialReport._();
+
+  factory FinancialReport.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      FinancialReport()..mergeFromBuffer(data, registry);
+  factory FinancialReport.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      FinancialReport()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'FinancialReport',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: FinancialReport.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'reportId')
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'reportType')
+    ..aOS(4, _omitFieldNames ? '' : 'periodStart')
+    ..aOS(5, _omitFieldNames ? '' : 'periodEnd')
+    ..aOS(6, _omitFieldNames ? '' : 'groupBy')
+    ..aOS(7, _omitFieldNames ? '' : 'currency')
+    ..pPM<FinancialReportLineItem>(8, _omitFieldNames ? '' : 'lineItems',
+        subBuilder: FinancialReportLineItem.$_createMessage)
+    ..aOM<ProfitSnapshot>(9, _omitFieldNames ? '' : 'snapshot',
+        subBuilder: ProfitSnapshot.$_createMessage)
+    ..aOS(10, _omitFieldNames ? '' : 'reconciledCoveragePct')
+    ..aOB(11, _omitFieldNames ? '' : 'lowTrustWarning')
+    ..aOS(12, _omitFieldNames ? '' : 'taxDisclaimer')
+    ..aOM<CohortEconomicsSummary>(13, _omitFieldNames ? '' : 'cohortEconomics',
+        subBuilder: CohortEconomicsSummary.$_createMessage)
+    ..aOM<$1.Timestamp>(14, _omitFieldNames ? '' : 'generatedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  FinancialReport clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  FinancialReport copyWith(void Function(FinancialReport) updates) =>
+      super.copyWith((message) => updates(message as FinancialReport))
+          as FinancialReport;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FinancialReport() / FinancialReport.new instead')
+  static FinancialReport create() => FinancialReport._();
+  static $pb.GeneratedMessage $_createMessage() => FinancialReport._();
+  @$core.override
+  FinancialReport createEmptyInstance() => FinancialReport._();
+  @$core.pragma('dart2js:noInline')
+  static FinancialReport getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FinancialReport>(
+          FinancialReport.$_createMessage);
+  static FinancialReport? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get reportId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set reportId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasReportId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearReportId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get reportType => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set reportType($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasReportType() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearReportType() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get periodStart => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set periodStart($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPeriodStart() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPeriodStart() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get periodEnd => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set periodEnd($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPeriodEnd() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPeriodEnd() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get groupBy => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set groupBy($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasGroupBy() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearGroupBy() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get currency => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set currency($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasCurrency() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearCurrency() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $pb.PbList<FinancialReportLineItem> get lineItems => $_getList(7);
+
+  @$pb.TagNumber(9)
+  ProfitSnapshot get snapshot => $_getN(8);
+  @$pb.TagNumber(9)
+  set snapshot(ProfitSnapshot value) => $_setField(9, value);
+  @$pb.TagNumber(9)
+  $core.bool hasSnapshot() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearSnapshot() => $_clearField(9);
+  @$pb.TagNumber(9)
+  ProfitSnapshot ensureSnapshot() => $_ensure(8);
+
+  @$pb.TagNumber(10)
+  $core.String get reconciledCoveragePct => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set reconciledCoveragePct($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasReconciledCoveragePct() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearReconciledCoveragePct() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.bool get lowTrustWarning => $_getBF(10);
+  @$pb.TagNumber(11)
+  set lowTrustWarning($core.bool value) => $_setBool(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasLowTrustWarning() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearLowTrustWarning() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get taxDisclaimer => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set taxDisclaimer($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasTaxDisclaimer() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearTaxDisclaimer() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  CohortEconomicsSummary get cohortEconomics => $_getN(12);
+  @$pb.TagNumber(13)
+  set cohortEconomics(CohortEconomicsSummary value) => $_setField(13, value);
+  @$pb.TagNumber(13)
+  $core.bool hasCohortEconomics() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearCohortEconomics() => $_clearField(13);
+  @$pb.TagNumber(13)
+  CohortEconomicsSummary ensureCohortEconomics() => $_ensure(12);
+
+  @$pb.TagNumber(14)
+  $1.Timestamp get generatedAt => $_getN(13);
+  @$pb.TagNumber(14)
+  set generatedAt($1.Timestamp value) => $_setField(14, value);
+  @$pb.TagNumber(14)
+  $core.bool hasGeneratedAt() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearGeneratedAt() => $_clearField(14);
+  @$pb.TagNumber(14)
+  $1.Timestamp ensureGeneratedAt() => $_ensure(13);
+}
+
+class ReportTemplateSummary extends $pb.GeneratedMessage {
+  factory ReportTemplateSummary({
+    $core.String? templateCode,
+    $core.String? title,
+    $core.String? description,
+  }) {
+    final result = ReportTemplateSummary._();
+    if (templateCode != null) result.templateCode = templateCode;
+    if (title != null) result.title = title;
+    if (description != null) result.description = description;
+    return result;
+  }
+
+  ReportTemplateSummary._();
+
+  factory ReportTemplateSummary.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReportTemplateSummary()..mergeFromBuffer(data, registry);
+  factory ReportTemplateSummary.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReportTemplateSummary()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReportTemplateSummary',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ReportTemplateSummary.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'templateCode')
+    ..aOS(2, _omitFieldNames ? '' : 'title')
+    ..aOS(3, _omitFieldNames ? '' : 'description')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportTemplateSummary clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportTemplateSummary copyWith(
+          void Function(ReportTemplateSummary) updates) =>
+      super.copyWith((message) => updates(message as ReportTemplateSummary))
+          as ReportTemplateSummary;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReportTemplateSummary() / ReportTemplateSummary.new instead')
+  static ReportTemplateSummary create() => ReportTemplateSummary._();
+  static $pb.GeneratedMessage $_createMessage() => ReportTemplateSummary._();
+  @$core.override
+  ReportTemplateSummary createEmptyInstance() => ReportTemplateSummary._();
+  @$core.pragma('dart2js:noInline')
+  static ReportTemplateSummary getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReportTemplateSummary>(
+          ReportTemplateSummary.$_createMessage);
+  static ReportTemplateSummary? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get templateCode => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set templateCode($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTemplateCode() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTemplateCode() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get title => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set title($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTitle() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTitle() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get description => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set description($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDescription() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDescription() => $_clearField(3);
+}
+
+class ProfitServiceGenerateReportRequest extends $pb.GeneratedMessage {
+  factory ProfitServiceGenerateReportRequest({
+    $2.CommandContext? context,
+    $core.String? workspaceId,
+    $core.String? reportType,
+    $core.String? periodStart,
+    $core.String? periodEnd,
+    $core.String? groupBy,
+    $core.String? platformFilter,
+    $core.String? productIdFilter,
+    $core.Iterable<$core.String>? includedSourceClasses,
+  }) {
+    final result = ProfitServiceGenerateReportRequest._();
+    if (context != null) result.context = context;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (reportType != null) result.reportType = reportType;
+    if (periodStart != null) result.periodStart = periodStart;
+    if (periodEnd != null) result.periodEnd = periodEnd;
+    if (groupBy != null) result.groupBy = groupBy;
+    if (platformFilter != null) result.platformFilter = platformFilter;
+    if (productIdFilter != null) result.productIdFilter = productIdFilter;
+    if (includedSourceClasses != null)
+      result.includedSourceClasses.addAll(includedSourceClasses);
+    return result;
+  }
+
+  ProfitServiceGenerateReportRequest._();
+
+  factory ProfitServiceGenerateReportRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceGenerateReportRequest()..mergeFromBuffer(data, registry);
+  factory ProfitServiceGenerateReportRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceGenerateReportRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProfitServiceGenerateReportRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ProfitServiceGenerateReportRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'reportType')
+    ..aOS(4, _omitFieldNames ? '' : 'periodStart')
+    ..aOS(5, _omitFieldNames ? '' : 'periodEnd')
+    ..aOS(6, _omitFieldNames ? '' : 'groupBy')
+    ..aOS(7, _omitFieldNames ? '' : 'platformFilter')
+    ..aOS(8, _omitFieldNames ? '' : 'productIdFilter')
+    ..pPS(9, _omitFieldNames ? '' : 'includedSourceClasses')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceGenerateReportRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceGenerateReportRequest copyWith(
+          void Function(ProfitServiceGenerateReportRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProfitServiceGenerateReportRequest))
+          as ProfitServiceGenerateReportRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProfitServiceGenerateReportRequest() / ProfitServiceGenerateReportRequest.new instead')
+  static ProfitServiceGenerateReportRequest create() =>
+      ProfitServiceGenerateReportRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProfitServiceGenerateReportRequest._();
+  @$core.override
+  ProfitServiceGenerateReportRequest createEmptyInstance() =>
+      ProfitServiceGenerateReportRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ProfitServiceGenerateReportRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ProfitServiceGenerateReportRequest>(
+          ProfitServiceGenerateReportRequest.$_createMessage);
+  static ProfitServiceGenerateReportRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get reportType => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set reportType($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasReportType() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearReportType() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get periodStart => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set periodStart($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPeriodStart() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPeriodStart() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get periodEnd => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set periodEnd($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPeriodEnd() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPeriodEnd() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get groupBy => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set groupBy($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasGroupBy() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearGroupBy() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get platformFilter => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set platformFilter($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasPlatformFilter() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearPlatformFilter() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get productIdFilter => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set productIdFilter($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasProductIdFilter() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearProductIdFilter() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $pb.PbList<$core.String> get includedSourceClasses => $_getList(8);
+}
+
+class ProfitServiceGenerateReportResponse extends $pb.GeneratedMessage {
+  factory ProfitServiceGenerateReportResponse({
+    FinancialReport? report,
+  }) {
+    final result = ProfitServiceGenerateReportResponse._();
+    if (report != null) result.report = report;
+    return result;
+  }
+
+  ProfitServiceGenerateReportResponse._();
+
+  factory ProfitServiceGenerateReportResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceGenerateReportResponse()..mergeFromBuffer(data, registry);
+  factory ProfitServiceGenerateReportResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceGenerateReportResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProfitServiceGenerateReportResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ProfitServiceGenerateReportResponse.$_createMessage)
+    ..aOM<FinancialReport>(1, _omitFieldNames ? '' : 'report',
+        subBuilder: FinancialReport.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceGenerateReportResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceGenerateReportResponse copyWith(
+          void Function(ProfitServiceGenerateReportResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProfitServiceGenerateReportResponse))
+          as ProfitServiceGenerateReportResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProfitServiceGenerateReportResponse() / ProfitServiceGenerateReportResponse.new instead')
+  static ProfitServiceGenerateReportResponse create() =>
+      ProfitServiceGenerateReportResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProfitServiceGenerateReportResponse._();
+  @$core.override
+  ProfitServiceGenerateReportResponse createEmptyInstance() =>
+      ProfitServiceGenerateReportResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ProfitServiceGenerateReportResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ProfitServiceGenerateReportResponse>(
+          ProfitServiceGenerateReportResponse.$_createMessage);
+  static ProfitServiceGenerateReportResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  FinancialReport get report => $_getN(0);
+  @$pb.TagNumber(1)
+  set report(FinancialReport value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasReport() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearReport() => $_clearField(1);
+  @$pb.TagNumber(1)
+  FinancialReport ensureReport() => $_ensure(0);
+}
+
+class ProfitServiceExportReportRequest extends $pb.GeneratedMessage {
+  factory ProfitServiceExportReportRequest({
+    $2.CommandContext? context,
+    $core.String? workspaceId,
+    $core.String? reportId,
+    $core.String? reportType,
+    $core.String? format,
+    $core.String? periodStart,
+    $core.String? periodEnd,
+    $core.String? subscriptionTier,
+  }) {
+    final result = ProfitServiceExportReportRequest._();
+    if (context != null) result.context = context;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (reportId != null) result.reportId = reportId;
+    if (reportType != null) result.reportType = reportType;
+    if (format != null) result.format = format;
+    if (periodStart != null) result.periodStart = periodStart;
+    if (periodEnd != null) result.periodEnd = periodEnd;
+    if (subscriptionTier != null) result.subscriptionTier = subscriptionTier;
+    return result;
+  }
+
+  ProfitServiceExportReportRequest._();
+
+  factory ProfitServiceExportReportRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceExportReportRequest()..mergeFromBuffer(data, registry);
+  factory ProfitServiceExportReportRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceExportReportRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProfitServiceExportReportRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ProfitServiceExportReportRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'reportId')
+    ..aOS(4, _omitFieldNames ? '' : 'reportType')
+    ..aOS(5, _omitFieldNames ? '' : 'format')
+    ..aOS(6, _omitFieldNames ? '' : 'periodStart')
+    ..aOS(7, _omitFieldNames ? '' : 'periodEnd')
+    ..aOS(8, _omitFieldNames ? '' : 'subscriptionTier')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceExportReportRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceExportReportRequest copyWith(
+          void Function(ProfitServiceExportReportRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as ProfitServiceExportReportRequest))
+          as ProfitServiceExportReportRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProfitServiceExportReportRequest() / ProfitServiceExportReportRequest.new instead')
+  static ProfitServiceExportReportRequest create() =>
+      ProfitServiceExportReportRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProfitServiceExportReportRequest._();
+  @$core.override
+  ProfitServiceExportReportRequest createEmptyInstance() =>
+      ProfitServiceExportReportRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ProfitServiceExportReportRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ProfitServiceExportReportRequest>(
+          ProfitServiceExportReportRequest.$_createMessage);
+  static ProfitServiceExportReportRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get reportId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set reportId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasReportId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearReportId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get reportType => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set reportType($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasReportType() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearReportType() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get format => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set format($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasFormat() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearFormat() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get periodStart => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set periodStart($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasPeriodStart() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearPeriodStart() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get periodEnd => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set periodEnd($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasPeriodEnd() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearPeriodEnd() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get subscriptionTier => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set subscriptionTier($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasSubscriptionTier() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearSubscriptionTier() => $_clearField(8);
+}
+
+class ProfitServiceExportReportResponse extends $pb.GeneratedMessage {
+  factory ProfitServiceExportReportResponse({
+    $core.String? exportId,
+    $core.String? format,
+    $core.String? fileUrl,
+    $core.String? contentHashSha512,
+    $core.int? monthlyExportsUsed,
+    $core.int? monthlyExportsLimit,
+    FinancialReport? report,
+  }) {
+    final result = ProfitServiceExportReportResponse._();
+    if (exportId != null) result.exportId = exportId;
+    if (format != null) result.format = format;
+    if (fileUrl != null) result.fileUrl = fileUrl;
+    if (contentHashSha512 != null) result.contentHashSha512 = contentHashSha512;
+    if (monthlyExportsUsed != null)
+      result.monthlyExportsUsed = monthlyExportsUsed;
+    if (monthlyExportsLimit != null)
+      result.monthlyExportsLimit = monthlyExportsLimit;
+    if (report != null) result.report = report;
+    return result;
+  }
+
+  ProfitServiceExportReportResponse._();
+
+  factory ProfitServiceExportReportResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceExportReportResponse()..mergeFromBuffer(data, registry);
+  factory ProfitServiceExportReportResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceExportReportResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProfitServiceExportReportResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ProfitServiceExportReportResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'exportId')
+    ..aOS(2, _omitFieldNames ? '' : 'format')
+    ..aOS(3, _omitFieldNames ? '' : 'fileUrl')
+    ..aOS(4, _omitFieldNames ? '' : 'contentHashSha512')
+    ..aI(5, _omitFieldNames ? '' : 'monthlyExportsUsed')
+    ..aI(6, _omitFieldNames ? '' : 'monthlyExportsLimit')
+    ..aOM<FinancialReport>(7, _omitFieldNames ? '' : 'report',
+        subBuilder: FinancialReport.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceExportReportResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceExportReportResponse copyWith(
+          void Function(ProfitServiceExportReportResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProfitServiceExportReportResponse))
+          as ProfitServiceExportReportResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProfitServiceExportReportResponse() / ProfitServiceExportReportResponse.new instead')
+  static ProfitServiceExportReportResponse create() =>
+      ProfitServiceExportReportResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProfitServiceExportReportResponse._();
+  @$core.override
+  ProfitServiceExportReportResponse createEmptyInstance() =>
+      ProfitServiceExportReportResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ProfitServiceExportReportResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ProfitServiceExportReportResponse>(
+          ProfitServiceExportReportResponse.$_createMessage);
+  static ProfitServiceExportReportResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get exportId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set exportId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasExportId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearExportId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get format => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set format($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFormat() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFormat() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get fileUrl => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set fileUrl($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasFileUrl() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearFileUrl() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get contentHashSha512 => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set contentHashSha512($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasContentHashSha512() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearContentHashSha512() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.int get monthlyExportsUsed => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set monthlyExportsUsed($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasMonthlyExportsUsed() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearMonthlyExportsUsed() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.int get monthlyExportsLimit => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set monthlyExportsLimit($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasMonthlyExportsLimit() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearMonthlyExportsLimit() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  FinancialReport get report => $_getN(6);
+  @$pb.TagNumber(7)
+  set report(FinancialReport value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasReport() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearReport() => $_clearField(7);
+  @$pb.TagNumber(7)
+  FinancialReport ensureReport() => $_ensure(6);
+}
+
+class ProfitServiceExportTaxReportRequest extends $pb.GeneratedMessage {
+  factory ProfitServiceExportTaxReportRequest({
+    $2.CommandContext? context,
+    $core.String? workspaceId,
+    $core.String? periodStart,
+    $core.String? periodEnd,
+    $core.String? format,
+    $core.String? taxRegion,
+    $core.String? subscriptionTier,
+  }) {
+    final result = ProfitServiceExportTaxReportRequest._();
+    if (context != null) result.context = context;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (periodStart != null) result.periodStart = periodStart;
+    if (periodEnd != null) result.periodEnd = periodEnd;
+    if (format != null) result.format = format;
+    if (taxRegion != null) result.taxRegion = taxRegion;
+    if (subscriptionTier != null) result.subscriptionTier = subscriptionTier;
+    return result;
+  }
+
+  ProfitServiceExportTaxReportRequest._();
+
+  factory ProfitServiceExportTaxReportRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceExportTaxReportRequest()..mergeFromBuffer(data, registry);
+  factory ProfitServiceExportTaxReportRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceExportTaxReportRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProfitServiceExportTaxReportRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ProfitServiceExportTaxReportRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'periodStart')
+    ..aOS(4, _omitFieldNames ? '' : 'periodEnd')
+    ..aOS(5, _omitFieldNames ? '' : 'format')
+    ..aOS(6, _omitFieldNames ? '' : 'taxRegion')
+    ..aOS(7, _omitFieldNames ? '' : 'subscriptionTier')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceExportTaxReportRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceExportTaxReportRequest copyWith(
+          void Function(ProfitServiceExportTaxReportRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProfitServiceExportTaxReportRequest))
+          as ProfitServiceExportTaxReportRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProfitServiceExportTaxReportRequest() / ProfitServiceExportTaxReportRequest.new instead')
+  static ProfitServiceExportTaxReportRequest create() =>
+      ProfitServiceExportTaxReportRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProfitServiceExportTaxReportRequest._();
+  @$core.override
+  ProfitServiceExportTaxReportRequest createEmptyInstance() =>
+      ProfitServiceExportTaxReportRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ProfitServiceExportTaxReportRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ProfitServiceExportTaxReportRequest>(
+          ProfitServiceExportTaxReportRequest.$_createMessage);
+  static ProfitServiceExportTaxReportRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get periodStart => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set periodStart($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPeriodStart() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPeriodStart() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get periodEnd => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set periodEnd($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPeriodEnd() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPeriodEnd() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get format => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set format($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasFormat() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearFormat() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get taxRegion => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set taxRegion($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasTaxRegion() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTaxRegion() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get subscriptionTier => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set subscriptionTier($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasSubscriptionTier() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearSubscriptionTier() => $_clearField(7);
+}
+
+class ProfitServiceExportTaxReportResponse extends $pb.GeneratedMessage {
+  factory ProfitServiceExportTaxReportResponse({
+    $core.String? exportId,
+    $core.String? format,
+    $core.String? fileUrl,
+    $core.String? taxResponsibilityMode,
+    $core.String? taxDisclaimer,
+    $core.String? contentHashSha512,
+    FinancialReport? report,
+  }) {
+    final result = ProfitServiceExportTaxReportResponse._();
+    if (exportId != null) result.exportId = exportId;
+    if (format != null) result.format = format;
+    if (fileUrl != null) result.fileUrl = fileUrl;
+    if (taxResponsibilityMode != null)
+      result.taxResponsibilityMode = taxResponsibilityMode;
+    if (taxDisclaimer != null) result.taxDisclaimer = taxDisclaimer;
+    if (contentHashSha512 != null) result.contentHashSha512 = contentHashSha512;
+    if (report != null) result.report = report;
+    return result;
+  }
+
+  ProfitServiceExportTaxReportResponse._();
+
+  factory ProfitServiceExportTaxReportResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceExportTaxReportResponse()..mergeFromBuffer(data, registry);
+  factory ProfitServiceExportTaxReportResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceExportTaxReportResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProfitServiceExportTaxReportResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ProfitServiceExportTaxReportResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'exportId')
+    ..aOS(2, _omitFieldNames ? '' : 'format')
+    ..aOS(3, _omitFieldNames ? '' : 'fileUrl')
+    ..aOS(4, _omitFieldNames ? '' : 'taxResponsibilityMode')
+    ..aOS(5, _omitFieldNames ? '' : 'taxDisclaimer')
+    ..aOS(6, _omitFieldNames ? '' : 'contentHashSha512')
+    ..aOM<FinancialReport>(7, _omitFieldNames ? '' : 'report',
+        subBuilder: FinancialReport.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceExportTaxReportResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceExportTaxReportResponse copyWith(
+          void Function(ProfitServiceExportTaxReportResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProfitServiceExportTaxReportResponse))
+          as ProfitServiceExportTaxReportResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProfitServiceExportTaxReportResponse() / ProfitServiceExportTaxReportResponse.new instead')
+  static ProfitServiceExportTaxReportResponse create() =>
+      ProfitServiceExportTaxReportResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProfitServiceExportTaxReportResponse._();
+  @$core.override
+  ProfitServiceExportTaxReportResponse createEmptyInstance() =>
+      ProfitServiceExportTaxReportResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ProfitServiceExportTaxReportResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ProfitServiceExportTaxReportResponse>(
+          ProfitServiceExportTaxReportResponse.$_createMessage);
+  static ProfitServiceExportTaxReportResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get exportId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set exportId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasExportId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearExportId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get format => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set format($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFormat() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFormat() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get fileUrl => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set fileUrl($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasFileUrl() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearFileUrl() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get taxResponsibilityMode => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set taxResponsibilityMode($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTaxResponsibilityMode() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTaxResponsibilityMode() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get taxDisclaimer => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set taxDisclaimer($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasTaxDisclaimer() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearTaxDisclaimer() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get contentHashSha512 => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set contentHashSha512($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasContentHashSha512() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearContentHashSha512() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  FinancialReport get report => $_getN(6);
+  @$pb.TagNumber(7)
+  set report(FinancialReport value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasReport() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearReport() => $_clearField(7);
+  @$pb.TagNumber(7)
+  FinancialReport ensureReport() => $_ensure(6);
+}
+
+class ProfitServiceExportToSheetsRequest extends $pb.GeneratedMessage {
+  factory ProfitServiceExportToSheetsRequest({
+    $2.CommandContext? context,
+    $core.String? workspaceId,
+    $core.String? reportId,
+    $core.String? spreadsheetTitle,
+    $core.String? subscriptionTier,
+  }) {
+    final result = ProfitServiceExportToSheetsRequest._();
+    if (context != null) result.context = context;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (reportId != null) result.reportId = reportId;
+    if (spreadsheetTitle != null) result.spreadsheetTitle = spreadsheetTitle;
+    if (subscriptionTier != null) result.subscriptionTier = subscriptionTier;
+    return result;
+  }
+
+  ProfitServiceExportToSheetsRequest._();
+
+  factory ProfitServiceExportToSheetsRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceExportToSheetsRequest()..mergeFromBuffer(data, registry);
+  factory ProfitServiceExportToSheetsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceExportToSheetsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProfitServiceExportToSheetsRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ProfitServiceExportToSheetsRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'reportId')
+    ..aOS(4, _omitFieldNames ? '' : 'spreadsheetTitle')
+    ..aOS(5, _omitFieldNames ? '' : 'subscriptionTier')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceExportToSheetsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceExportToSheetsRequest copyWith(
+          void Function(ProfitServiceExportToSheetsRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProfitServiceExportToSheetsRequest))
+          as ProfitServiceExportToSheetsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProfitServiceExportToSheetsRequest() / ProfitServiceExportToSheetsRequest.new instead')
+  static ProfitServiceExportToSheetsRequest create() =>
+      ProfitServiceExportToSheetsRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProfitServiceExportToSheetsRequest._();
+  @$core.override
+  ProfitServiceExportToSheetsRequest createEmptyInstance() =>
+      ProfitServiceExportToSheetsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ProfitServiceExportToSheetsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ProfitServiceExportToSheetsRequest>(
+          ProfitServiceExportToSheetsRequest.$_createMessage);
+  static ProfitServiceExportToSheetsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get reportId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set reportId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasReportId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearReportId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get spreadsheetTitle => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set spreadsheetTitle($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSpreadsheetTitle() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSpreadsheetTitle() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get subscriptionTier => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set subscriptionTier($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSubscriptionTier() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSubscriptionTier() => $_clearField(5);
+}
+
+class ProfitServiceExportToSheetsResponse extends $pb.GeneratedMessage {
+  factory ProfitServiceExportToSheetsResponse({
+    $core.String? exportId,
+    $core.String? spreadsheetUrl,
+    $core.String? status,
+  }) {
+    final result = ProfitServiceExportToSheetsResponse._();
+    if (exportId != null) result.exportId = exportId;
+    if (spreadsheetUrl != null) result.spreadsheetUrl = spreadsheetUrl;
+    if (status != null) result.status = status;
+    return result;
+  }
+
+  ProfitServiceExportToSheetsResponse._();
+
+  factory ProfitServiceExportToSheetsResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceExportToSheetsResponse()..mergeFromBuffer(data, registry);
+  factory ProfitServiceExportToSheetsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceExportToSheetsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProfitServiceExportToSheetsResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ProfitServiceExportToSheetsResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'exportId')
+    ..aOS(2, _omitFieldNames ? '' : 'spreadsheetUrl')
+    ..aOS(3, _omitFieldNames ? '' : 'status')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceExportToSheetsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceExportToSheetsResponse copyWith(
+          void Function(ProfitServiceExportToSheetsResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProfitServiceExportToSheetsResponse))
+          as ProfitServiceExportToSheetsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProfitServiceExportToSheetsResponse() / ProfitServiceExportToSheetsResponse.new instead')
+  static ProfitServiceExportToSheetsResponse create() =>
+      ProfitServiceExportToSheetsResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProfitServiceExportToSheetsResponse._();
+  @$core.override
+  ProfitServiceExportToSheetsResponse createEmptyInstance() =>
+      ProfitServiceExportToSheetsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ProfitServiceExportToSheetsResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ProfitServiceExportToSheetsResponse>(
+          ProfitServiceExportToSheetsResponse.$_createMessage);
+  static ProfitServiceExportToSheetsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get exportId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set exportId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasExportId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearExportId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get spreadsheetUrl => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set spreadsheetUrl($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSpreadsheetUrl() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSpreadsheetUrl() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get status => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set status($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasStatus() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearStatus() => $_clearField(3);
+}
+
+class ProfitServiceGetReportTemplatesRequest extends $pb.GeneratedMessage {
+  factory ProfitServiceGetReportTemplatesRequest({
+    $core.String? workspaceId,
+  }) {
+    final result = ProfitServiceGetReportTemplatesRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    return result;
+  }
+
+  ProfitServiceGetReportTemplatesRequest._();
+
+  factory ProfitServiceGetReportTemplatesRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceGetReportTemplatesRequest()..mergeFromBuffer(data, registry);
+  factory ProfitServiceGetReportTemplatesRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceGetReportTemplatesRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProfitServiceGetReportTemplatesRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance:
+          ProfitServiceGetReportTemplatesRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'workspaceId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceGetReportTemplatesRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceGetReportTemplatesRequest copyWith(
+          void Function(ProfitServiceGetReportTemplatesRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProfitServiceGetReportTemplatesRequest))
+          as ProfitServiceGetReportTemplatesRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProfitServiceGetReportTemplatesRequest() / ProfitServiceGetReportTemplatesRequest.new instead')
+  static ProfitServiceGetReportTemplatesRequest create() =>
+      ProfitServiceGetReportTemplatesRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProfitServiceGetReportTemplatesRequest._();
+  @$core.override
+  ProfitServiceGetReportTemplatesRequest createEmptyInstance() =>
+      ProfitServiceGetReportTemplatesRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ProfitServiceGetReportTemplatesRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ProfitServiceGetReportTemplatesRequest>(
+          ProfitServiceGetReportTemplatesRequest.$_createMessage);
+  static ProfitServiceGetReportTemplatesRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get workspaceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set workspaceId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+}
+
+class ProfitServiceGetReportTemplatesResponse extends $pb.GeneratedMessage {
+  factory ProfitServiceGetReportTemplatesResponse({
+    $core.Iterable<ReportTemplateSummary>? templates,
+  }) {
+    final result = ProfitServiceGetReportTemplatesResponse._();
+    if (templates != null) result.templates.addAll(templates);
+    return result;
+  }
+
+  ProfitServiceGetReportTemplatesResponse._();
+
+  factory ProfitServiceGetReportTemplatesResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceGetReportTemplatesResponse()
+        ..mergeFromBuffer(data, registry);
+  factory ProfitServiceGetReportTemplatesResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceGetReportTemplatesResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProfitServiceGetReportTemplatesResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance:
+          ProfitServiceGetReportTemplatesResponse.$_createMessage)
+    ..pPM<ReportTemplateSummary>(1, _omitFieldNames ? '' : 'templates',
+        subBuilder: ReportTemplateSummary.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceGetReportTemplatesResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceGetReportTemplatesResponse copyWith(
+          void Function(ProfitServiceGetReportTemplatesResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProfitServiceGetReportTemplatesResponse))
+          as ProfitServiceGetReportTemplatesResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProfitServiceGetReportTemplatesResponse() / ProfitServiceGetReportTemplatesResponse.new instead')
+  static ProfitServiceGetReportTemplatesResponse create() =>
+      ProfitServiceGetReportTemplatesResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProfitServiceGetReportTemplatesResponse._();
+  @$core.override
+  ProfitServiceGetReportTemplatesResponse createEmptyInstance() =>
+      ProfitServiceGetReportTemplatesResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ProfitServiceGetReportTemplatesResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ProfitServiceGetReportTemplatesResponse>(
+          ProfitServiceGetReportTemplatesResponse.$_createMessage);
+  static ProfitServiceGetReportTemplatesResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<ReportTemplateSummary> get templates => $_getList(0);
+}
+
+class ProfitServiceGetSavedReportsRequest extends $pb.GeneratedMessage {
+  factory ProfitServiceGetSavedReportsRequest({
+    $core.String? workspaceId,
+  }) {
+    final result = ProfitServiceGetSavedReportsRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    return result;
+  }
+
+  ProfitServiceGetSavedReportsRequest._();
+
+  factory ProfitServiceGetSavedReportsRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceGetSavedReportsRequest()..mergeFromBuffer(data, registry);
+  factory ProfitServiceGetSavedReportsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceGetSavedReportsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProfitServiceGetSavedReportsRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ProfitServiceGetSavedReportsRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'workspaceId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceGetSavedReportsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceGetSavedReportsRequest copyWith(
+          void Function(ProfitServiceGetSavedReportsRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProfitServiceGetSavedReportsRequest))
+          as ProfitServiceGetSavedReportsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProfitServiceGetSavedReportsRequest() / ProfitServiceGetSavedReportsRequest.new instead')
+  static ProfitServiceGetSavedReportsRequest create() =>
+      ProfitServiceGetSavedReportsRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProfitServiceGetSavedReportsRequest._();
+  @$core.override
+  ProfitServiceGetSavedReportsRequest createEmptyInstance() =>
+      ProfitServiceGetSavedReportsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ProfitServiceGetSavedReportsRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ProfitServiceGetSavedReportsRequest>(
+          ProfitServiceGetSavedReportsRequest.$_createMessage);
+  static ProfitServiceGetSavedReportsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get workspaceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set workspaceId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+}
+
+class ProfitServiceGetSavedReportsResponse extends $pb.GeneratedMessage {
+  factory ProfitServiceGetSavedReportsResponse({
+    $core.Iterable<FinancialReport>? reports,
+  }) {
+    final result = ProfitServiceGetSavedReportsResponse._();
+    if (reports != null) result.reports.addAll(reports);
+    return result;
+  }
+
+  ProfitServiceGetSavedReportsResponse._();
+
+  factory ProfitServiceGetSavedReportsResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceGetSavedReportsResponse()..mergeFromBuffer(data, registry);
+  factory ProfitServiceGetSavedReportsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProfitServiceGetSavedReportsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProfitServiceGetSavedReportsResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ProfitServiceGetSavedReportsResponse.$_createMessage)
+    ..pPM<FinancialReport>(1, _omitFieldNames ? '' : 'reports',
+        subBuilder: FinancialReport.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceGetSavedReportsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProfitServiceGetSavedReportsResponse copyWith(
+          void Function(ProfitServiceGetSavedReportsResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProfitServiceGetSavedReportsResponse))
+          as ProfitServiceGetSavedReportsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProfitServiceGetSavedReportsResponse() / ProfitServiceGetSavedReportsResponse.new instead')
+  static ProfitServiceGetSavedReportsResponse create() =>
+      ProfitServiceGetSavedReportsResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProfitServiceGetSavedReportsResponse._();
+  @$core.override
+  ProfitServiceGetSavedReportsResponse createEmptyInstance() =>
+      ProfitServiceGetSavedReportsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ProfitServiceGetSavedReportsResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ProfitServiceGetSavedReportsResponse>(
+          ProfitServiceGetSavedReportsResponse.$_createMessage);
+  static ProfitServiceGetSavedReportsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<FinancialReport> get reports => $_getList(0);
+}
+
 /// SettlementService/Import
 class SettlementLineInput extends $pb.GeneratedMessage {
   factory SettlementLineInput({

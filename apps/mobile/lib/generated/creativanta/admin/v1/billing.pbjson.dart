@@ -545,6 +545,22 @@ const AddonCatalogEntry$json = {
       '10': 'monthlyPriceVnd'
     },
     {'1': 'eligible_tiers', '3': 5, '4': 3, '5': 9, '10': 'eligibleTiers'},
+    {
+      '1': 'annual_price_usd',
+      '3': 6,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'annualPriceUsd'
+    },
+    {
+      '1': 'annual_price_vnd',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'annualPriceVnd'
+    },
   ],
 };
 
@@ -554,7 +570,41 @@ final $typed_data.Uint8List addonCatalogEntryDescriptor = $convert.base64Decode(
     'lzcGxheV9uYW1lGAIgASgJUgtkaXNwbGF5TmFtZRJIChFtb250aGx5X3ByaWNlX3VzZBgDIAEo'
     'CzIcLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5Nb25leVIPbW9udGhseVByaWNlVXNkEkgKEW1vbn'
     'RobHlfcHJpY2Vfdm5kGAQgASgLMhwuY3JlYXRpdmFudGEuY29tbW9uLnYxLk1vbmV5Ug9tb250'
-    'aGx5UHJpY2VWbmQSJQoOZWxpZ2libGVfdGllcnMYBSADKAlSDWVsaWdpYmxlVGllcnM=');
+    'aGx5UHJpY2VWbmQSJQoOZWxpZ2libGVfdGllcnMYBSADKAlSDWVsaWdpYmxlVGllcnMSRgoQYW'
+    '5udWFsX3ByaWNlX3VzZBgGIAEoCzIcLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5Nb25leVIOYW5u'
+    'dWFsUHJpY2VVc2QSRgoQYW5udWFsX3ByaWNlX3ZuZBgHIAEoCzIcLmNyZWF0aXZhbnRhLmNvbW'
+    '1vbi52MS5Nb25leVIOYW5udWFsUHJpY2VWbmQ=');
+
+@$core.Deprecated('Use paymentMethodAccessGateDescriptor instead')
+const PaymentMethodAccessGate$json = {
+  '1': 'PaymentMethodAccessGate',
+  '2': [
+    {'1': 'method_type', '3': 1, '4': 1, '5': 9, '10': 'methodType'},
+    {'1': 'display_name', '3': 2, '4': 1, '5': 9, '10': 'displayName'},
+    {'1': 'provider_code', '3': 3, '4': 1, '5': 9, '10': 'providerCode'},
+    {'1': 'capability_state', '3': 4, '4': 1, '5': 9, '10': 'capabilityState'},
+    {'1': 'access_granted', '3': 5, '4': 1, '5': 8, '10': 'accessGranted'},
+    {'1': 'eligible_tiers', '3': 6, '4': 3, '5': 9, '10': 'eligibleTiers'},
+    {
+      '1': 'supported_currencies',
+      '3': 7,
+      '4': 3,
+      '5': 9,
+      '10': 'supportedCurrencies'
+    },
+    {'1': 'gate_reason', '3': 8, '4': 1, '5': 9, '10': 'gateReason'},
+  ],
+};
+
+/// Descriptor for `PaymentMethodAccessGate`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List paymentMethodAccessGateDescriptor = $convert.base64Decode(
+    'ChdQYXltZW50TWV0aG9kQWNjZXNzR2F0ZRIfCgttZXRob2RfdHlwZRgBIAEoCVIKbWV0aG9kVH'
+    'lwZRIhCgxkaXNwbGF5X25hbWUYAiABKAlSC2Rpc3BsYXlOYW1lEiMKDXByb3ZpZGVyX2NvZGUY'
+    'AyABKAlSDHByb3ZpZGVyQ29kZRIpChBjYXBhYmlsaXR5X3N0YXRlGAQgASgJUg9jYXBhYmlsaX'
+    'R5U3RhdGUSJQoOYWNjZXNzX2dyYW50ZWQYBSABKAhSDWFjY2Vzc0dyYW50ZWQSJQoOZWxpZ2li'
+    'bGVfdGllcnMYBiADKAlSDWVsaWdpYmxlVGllcnMSMQoUc3VwcG9ydGVkX2N1cnJlbmNpZXMYBy'
+    'ADKAlSE3N1cHBvcnRlZEN1cnJlbmNpZXMSHwoLZ2F0ZV9yZWFzb24YCCABKAlSCmdhdGVSZWFz'
+    'b24=');
 
 @$core.Deprecated('Use subscriptionSummaryDescriptor instead')
 const SubscriptionSummary$json = {
@@ -626,6 +676,78 @@ const SubscriptionSummary$json = {
       '10': 'canceledAt'
     },
     {'1': 'addons', '3': 11, '4': 3, '5': 9, '10': 'addons'},
+    {
+      '1': 'scheduled_addon_removals',
+      '3': 12,
+      '4': 3,
+      '5': 9,
+      '10': 'scheduledAddonRemovals'
+    },
+    {
+      '1': 'trial_ends_at',
+      '3': 13,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'trialEndsAt'
+    },
+    {'1': 'dunning_day', '3': 14, '4': 1, '5': 5, '10': 'dunningDay'},
+    {'1': 'dunning_attempt', '3': 15, '4': 1, '5': 5, '10': 'dunningAttempt'},
+    {
+      '1': 'grace_period_ends_at',
+      '3': 16,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'gracePeriodEndsAt'
+    },
+    {'1': 'read_only_mode', '3': 17, '4': 1, '5': 8, '10': 'readOnlyMode'},
+    {'1': 'read_only_reason', '3': 18, '4': 1, '5': 9, '10': 'readOnlyReason'},
+    {'1': 'retention_phase', '3': 19, '4': 1, '5': 9, '10': 'retentionPhase'},
+    {
+      '1': 'retention_offer_applied',
+      '3': 20,
+      '4': 1,
+      '5': 8,
+      '10': 'retentionOfferApplied'
+    },
+    {
+      '1': 'paused_at',
+      '3': 21,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'pausedAt'
+    },
+    {
+      '1': 'pause_auto_resumes_at',
+      '3': 22,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'pauseAutoResumesAt'
+    },
+    {
+      '1': 'overage_terms_accepted',
+      '3': 23,
+      '4': 1,
+      '5': 8,
+      '10': 'overageTermsAccepted'
+    },
+    {
+      '1': 'overage_used_credits',
+      '3': 24,
+      '4': 1,
+      '5': 9,
+      '10': 'overageUsedCredits'
+    },
+    {
+      '1': 'preserved_purchased_credits',
+      '3': 25,
+      '4': 1,
+      '5': 9,
+      '10': 'preservedPurchasedCredits'
+    },
   ],
 };
 
@@ -642,7 +764,20 @@ final $typed_data.Uint8List subscriptionSummaryDescriptor = $convert.base64Decod
     'MhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcFIQY3VycmVudFBlcmlvZEVuZBIvChRjYW5jZW'
     'xfYXRfcGVyaW9kX2VuZBgJIAEoCFIRY2FuY2VsQXRQZXJpb2RFbmQSOwoLY2FuY2VsZWRfYXQY'
     'CiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgpjYW5jZWxlZEF0EhYKBmFkZG9ucx'
-    'gLIAMoCVIGYWRkb25z');
+    'gLIAMoCVIGYWRkb25zEjgKGHNjaGVkdWxlZF9hZGRvbl9yZW1vdmFscxgMIAMoCVIWc2NoZWR1'
+    'bGVkQWRkb25SZW1vdmFscxI+Cg10cmlhbF9lbmRzX2F0GA0gASgLMhouZ29vZ2xlLnByb3RvYn'
+    'VmLlRpbWVzdGFtcFILdHJpYWxFbmRzQXQSHwoLZHVubmluZ19kYXkYDiABKAVSCmR1bm5pbmdE'
+    'YXkSJwoPZHVubmluZ19hdHRlbXB0GA8gASgFUg5kdW5uaW5nQXR0ZW1wdBJLChRncmFjZV9wZX'
+    'Jpb2RfZW5kc19hdBgQIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSEWdyYWNlUGVy'
+    'aW9kRW5kc0F0EiQKDnJlYWRfb25seV9tb2RlGBEgASgIUgxyZWFkT25seU1vZGUSKAoQcmVhZF'
+    '9vbmx5X3JlYXNvbhgSIAEoCVIOcmVhZE9ubHlSZWFzb24SJwoPcmV0ZW50aW9uX3BoYXNlGBMg'
+    'ASgJUg5yZXRlbnRpb25QaGFzZRI2ChdyZXRlbnRpb25fb2ZmZXJfYXBwbGllZBgUIAEoCFIVcm'
+    'V0ZW50aW9uT2ZmZXJBcHBsaWVkEjcKCXBhdXNlZF9hdBgVIAEoCzIaLmdvb2dsZS5wcm90b2J1'
+    'Zi5UaW1lc3RhbXBSCHBhdXNlZEF0Ek0KFXBhdXNlX2F1dG9fcmVzdW1lc19hdBgWIAEoCzIaLm'
+    'dvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSEnBhdXNlQXV0b1Jlc3VtZXNBdBI0ChZvdmVyYWdl'
+    'X3Rlcm1zX2FjY2VwdGVkGBcgASgIUhRvdmVyYWdlVGVybXNBY2NlcHRlZBIwChRvdmVyYWdlX3'
+    'VzZWRfY3JlZGl0cxgYIAEoCVISb3ZlcmFnZVVzZWRDcmVkaXRzEj4KG3ByZXNlcnZlZF9wdXJj'
+    'aGFzZWRfY3JlZGl0cxgZIAEoCVIZcHJlc2VydmVkUHVyY2hhc2VkQ3JlZGl0cw==');
 
 @$core.Deprecated('Use paymentMethodSummaryDescriptor instead')
 const PaymentMethodSummary$json = {
@@ -669,6 +804,15 @@ const PaymentMethodSummary$json = {
     {'1': 'card_exp_month', '3': 6, '4': 1, '5': 5, '10': 'cardExpMonth'},
     {'1': 'card_exp_year', '3': 7, '4': 1, '5': 5, '10': 'cardExpYear'},
     {'1': 'is_default', '3': 8, '4': 1, '5': 8, '10': 'isDefault'},
+    {
+      '1': 'access_gate_status',
+      '3': 9,
+      '4': 1,
+      '5': 9,
+      '10': 'accessGateStatus'
+    },
+    {'1': 'billing_name', '3': 10, '4': 1, '5': 9, '10': 'billingName'},
+    {'1': 'billing_email', '3': 11, '4': 1, '5': 9, '10': 'billingEmail'},
   ],
 };
 
@@ -680,7 +824,9 @@ final $typed_data.Uint8List paymentMethodSummaryDescriptor = $convert.base64Deco
     'IEdHlwZRIdCgpjYXJkX2JyYW5kGAQgASgJUgljYXJkQnJhbmQSHQoKY2FyZF9sYXN0NBgFIAEo'
     'CVIJY2FyZExhc3Q0EiQKDmNhcmRfZXhwX21vbnRoGAYgASgFUgxjYXJkRXhwTW9udGgSIgoNY2'
     'FyZF9leHBfeWVhchgHIAEoBVILY2FyZEV4cFllYXISHQoKaXNfZGVmYXVsdBgIIAEoCFIJaXNE'
-    'ZWZhdWx0');
+    'ZWZhdWx0EiwKEmFjY2Vzc19nYXRlX3N0YXR1cxgJIAEoCVIQYWNjZXNzR2F0ZVN0YXR1cxIhCg'
+    'xiaWxsaW5nX25hbWUYCiABKAlSC2JpbGxpbmdOYW1lEiMKDWJpbGxpbmdfZW1haWwYCyABKAlS'
+    'DGJpbGxpbmdFbWFpbA==');
 
 @$core.Deprecated('Use invoiceSummaryDescriptor instead')
 const InvoiceSummary$json = {
@@ -1113,6 +1259,15 @@ const ChangePlanRequest$json = {
     {'1': 'billing_interval', '3': 3, '4': 1, '5': 9, '10': 'billingInterval'},
     {'1': 'currency', '3': 4, '4': 1, '5': 9, '10': 'currency'},
     {'1': 'addons', '3': 5, '4': 3, '5': 9, '10': 'addons'},
+    {'1': 'remove_addons', '3': 6, '4': 3, '5': 9, '10': 'removeAddons'},
+    {
+      '1': 'accept_overage_terms',
+      '3': 7,
+      '4': 1,
+      '5': 8,
+      '10': 'acceptOverageTerms'
+    },
+    {'1': 'start_trial', '3': 8, '4': 1, '5': 8, '10': 'startTrial'},
   ],
 };
 
@@ -1121,7 +1276,9 @@ final $typed_data.Uint8List changePlanRequestDescriptor = $convert.base64Decode(
     'ChFDaGFuZ2VQbGFuUmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3JlYXRpdmFudGEuY29tbW'
     '9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0Eh8KC3RhcmdldF9wbGFuGAIgASgJUgp0YXJn'
     'ZXRQbGFuEikKEGJpbGxpbmdfaW50ZXJ2YWwYAyABKAlSD2JpbGxpbmdJbnRlcnZhbBIaCghjdX'
-    'JyZW5jeRgEIAEoCVIIY3VycmVuY3kSFgoGYWRkb25zGAUgAygJUgZhZGRvbnM=');
+    'JyZW5jeRgEIAEoCVIIY3VycmVuY3kSFgoGYWRkb25zGAUgAygJUgZhZGRvbnMSIwoNcmVtb3Zl'
+    'X2FkZG9ucxgGIAMoCVIMcmVtb3ZlQWRkb25zEjAKFGFjY2VwdF9vdmVyYWdlX3Rlcm1zGAcgAS'
+    'gIUhJhY2NlcHRPdmVyYWdlVGVybXMSHwoLc3RhcnRfdHJpYWwYCCABKAhSCnN0YXJ0VHJpYWw=');
 
 @$core.Deprecated('Use changePlanResponseDescriptor instead')
 const ChangePlanResponse$json = {
@@ -1144,6 +1301,21 @@ const ChangePlanResponse$json = {
       '10': 'checkoutSessionId'
     },
     {'1': 'checkout_url', '3': 4, '4': 1, '5': 9, '10': 'checkoutUrl'},
+    {
+      '1': 'prorated_addon_charge',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'proratedAddonCharge'
+    },
+    {
+      '1': 'scheduled_addon_removals',
+      '3': 6,
+      '4': 3,
+      '5': 9,
+      '10': 'scheduledAddonRemovals'
+    },
   ],
 };
 
@@ -1152,7 +1324,10 @@ final $typed_data.Uint8List changePlanResponseDescriptor = $convert.base64Decode
     'ChJDaGFuZ2VQbGFuUmVzcG9uc2USTQoMc3Vic2NyaXB0aW9uGAEgASgLMikuY3JlYXRpdmFudG'
     'EuYWRtaW4udjEuU3Vic2NyaXB0aW9uU3VtbWFyeVIMc3Vic2NyaXB0aW9uEiUKDmVmZmVjdGl2'
     'ZV9tb2RlGAIgASgJUg1lZmZlY3RpdmVNb2RlEi4KE2NoZWNrb3V0X3Nlc3Npb25faWQYAyABKA'
-    'lSEWNoZWNrb3V0U2Vzc2lvbklkEiEKDGNoZWNrb3V0X3VybBgEIAEoCVILY2hlY2tvdXRVcmw=');
+    'lSEWNoZWNrb3V0U2Vzc2lvbklkEiEKDGNoZWNrb3V0X3VybBgEIAEoCVILY2hlY2tvdXRVcmwS'
+    'UAoVcHJvcmF0ZWRfYWRkb25fY2hhcmdlGAUgASgLMhwuY3JlYXRpdmFudGEuY29tbW9uLnYxLk'
+    '1vbmV5UhNwcm9yYXRlZEFkZG9uQ2hhcmdlEjgKGHNjaGVkdWxlZF9hZGRvbl9yZW1vdmFscxgG'
+    'IAMoCVIWc2NoZWR1bGVkQWRkb25SZW1vdmFscw==');
 
 @$core.Deprecated('Use cancelSubscriptionRequestDescriptor instead')
 const CancelSubscriptionRequest$json = {
@@ -1175,6 +1350,14 @@ const CancelSubscriptionRequest$json = {
     },
     {'1': 'pause_instead', '3': 3, '4': 1, '5': 8, '10': 'pauseInstead'},
     {'1': 'pause_months', '3': 4, '4': 1, '5': 5, '10': 'pauseMonths'},
+    {
+      '1': 'accept_retention_offer',
+      '3': 5,
+      '4': 1,
+      '5': 8,
+      '10': 'acceptRetentionOffer'
+    },
+    {'1': 'pause_days', '3': 6, '4': 1, '5': 5, '10': 'pauseDays'},
   ],
 };
 
@@ -1183,7 +1366,9 @@ final $typed_data.Uint8List cancelSubscriptionRequestDescriptor = $convert.base6
     'ChlDYW5jZWxTdWJzY3JpcHRpb25SZXF1ZXN0Ej8KB2NvbnRleHQYASABKAsyJS5jcmVhdGl2YW'
     '50YS5jb21tb24udjEuQ29tbWFuZENvbnRleHRSB2NvbnRleHQSLwoTY2FuY2VsbGF0aW9uX3Jl'
     'YXNvbhgCIAEoCVISY2FuY2VsbGF0aW9uUmVhc29uEiMKDXBhdXNlX2luc3RlYWQYAyABKAhSDH'
-    'BhdXNlSW5zdGVhZBIhCgxwYXVzZV9tb250aHMYBCABKAVSC3BhdXNlTW9udGhz');
+    'BhdXNlSW5zdGVhZBIhCgxwYXVzZV9tb250aHMYBCABKAVSC3BhdXNlTW9udGhzEjQKFmFjY2Vw'
+    'dF9yZXRlbnRpb25fb2ZmZXIYBSABKAhSFGFjY2VwdFJldGVudGlvbk9mZmVyEh0KCnBhdXNlX2'
+    'RheXMYBiABKAVSCXBhdXNlRGF5cw==');
 
 @$core.Deprecated('Use cancelSubscriptionResponseDescriptor instead')
 const CancelSubscriptionResponse$json = {
@@ -1197,14 +1382,39 @@ const CancelSubscriptionResponse$json = {
       '6': '.creativanta.admin.v1.SubscriptionSummary',
       '10': 'subscription'
     },
+    {
+      '1': 'retention_offer_applied',
+      '3': 2,
+      '4': 1,
+      '5': 8,
+      '10': 'retentionOfferApplied'
+    },
+    {
+      '1': 'retention_discount_pct',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '10': 'retentionDiscountPct'
+    },
+    {
+      '1': 'retention_discount_months',
+      '3': 4,
+      '4': 1,
+      '5': 5,
+      '10': 'retentionDiscountMonths'
+    },
+    {'1': 'retention_phase', '3': 5, '4': 1, '5': 9, '10': 'retentionPhase'},
   ],
 };
 
 /// Descriptor for `CancelSubscriptionResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List cancelSubscriptionResponseDescriptor =
-    $convert.base64Decode(
-        'ChpDYW5jZWxTdWJzY3JpcHRpb25SZXNwb25zZRJNCgxzdWJzY3JpcHRpb24YASABKAsyKS5jcm'
-        'VhdGl2YW50YS5hZG1pbi52MS5TdWJzY3JpcHRpb25TdW1tYXJ5UgxzdWJzY3JpcHRpb24=');
+final $typed_data.Uint8List cancelSubscriptionResponseDescriptor = $convert.base64Decode(
+    'ChpDYW5jZWxTdWJzY3JpcHRpb25SZXNwb25zZRJNCgxzdWJzY3JpcHRpb24YASABKAsyKS5jcm'
+    'VhdGl2YW50YS5hZG1pbi52MS5TdWJzY3JpcHRpb25TdW1tYXJ5UgxzdWJzY3JpcHRpb24SNgoX'
+    'cmV0ZW50aW9uX29mZmVyX2FwcGxpZWQYAiABKAhSFXJldGVudGlvbk9mZmVyQXBwbGllZBI0Ch'
+    'ZyZXRlbnRpb25fZGlzY291bnRfcGN0GAMgASgJUhRyZXRlbnRpb25EaXNjb3VudFBjdBI6Chly'
+    'ZXRlbnRpb25fZGlzY291bnRfbW9udGhzGAQgASgFUhdyZXRlbnRpb25EaXNjb3VudE1vbnRocx'
+    'InCg9yZXRlbnRpb25fcGhhc2UYBSABKAlSDnJldGVudGlvblBoYXNl');
 
 @$core.Deprecated('Use updatePaymentMethodRequestDescriptor instead')
 const UpdatePaymentMethodRequest$json = {
@@ -1227,6 +1437,9 @@ const UpdatePaymentMethodRequest$json = {
     },
     {'1': 'set_default', '3': 3, '4': 1, '5': 8, '10': 'setDefault'},
     {'1': 'remove', '3': 4, '4': 1, '5': 8, '10': 'remove'},
+    {'1': 'method_type', '3': 5, '4': 1, '5': 9, '10': 'methodType'},
+    {'1': 'billing_name', '3': 6, '4': 1, '5': 9, '10': 'billingName'},
+    {'1': 'billing_email', '3': 7, '4': 1, '5': 9, '10': 'billingEmail'},
   ],
 };
 
@@ -1235,7 +1448,9 @@ final $typed_data.Uint8List updatePaymentMethodRequestDescriptor = $convert.base
     'ChpVcGRhdGVQYXltZW50TWV0aG9kUmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3JlYXRpdm'
     'FudGEuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EjcKGHN0cmlwZV9wYXltZW50'
     'X21ldGhvZF9pZBgCIAEoCVIVc3RyaXBlUGF5bWVudE1ldGhvZElkEh8KC3NldF9kZWZhdWx0GA'
-    'MgASgIUgpzZXREZWZhdWx0EhYKBnJlbW92ZRgEIAEoCFIGcmVtb3Zl');
+    'MgASgIUgpzZXREZWZhdWx0EhYKBnJlbW92ZRgEIAEoCFIGcmVtb3ZlEh8KC21ldGhvZF90eXBl'
+    'GAUgASgJUgptZXRob2RUeXBlEiEKDGJpbGxpbmdfbmFtZRgGIAEoCVILYmlsbGluZ05hbWUSIw'
+    'oNYmlsbGluZ19lbWFpbBgHIAEoCVIMYmlsbGluZ0VtYWls');
 
 @$core.Deprecated('Use updatePaymentMethodResponseDescriptor instead')
 const UpdatePaymentMethodResponse$json = {
@@ -1257,6 +1472,14 @@ const UpdatePaymentMethodResponse$json = {
       '6': '.creativanta.admin.v1.PaymentMethodSummary',
       '10': 'paymentMethods'
     },
+    {
+      '1': 'method_access_gates',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.admin.v1.PaymentMethodAccessGate',
+      '10': 'methodAccessGates'
+    },
   ],
 };
 
@@ -1265,7 +1488,9 @@ final $typed_data.Uint8List updatePaymentMethodResponseDescriptor = $convert.bas
     'ChtVcGRhdGVQYXltZW50TWV0aG9kUmVzcG9uc2USUQoOcGF5bWVudF9tZXRob2QYASABKAsyKi'
     '5jcmVhdGl2YW50YS5hZG1pbi52MS5QYXltZW50TWV0aG9kU3VtbWFyeVINcGF5bWVudE1ldGhv'
     'ZBJTCg9wYXltZW50X21ldGhvZHMYAiADKAsyKi5jcmVhdGl2YW50YS5hZG1pbi52MS5QYXltZW'
-    '50TWV0aG9kU3VtbWFyeVIOcGF5bWVudE1ldGhvZHM=');
+    '50TWV0aG9kU3VtbWFyeVIOcGF5bWVudE1ldGhvZHMSXQoTbWV0aG9kX2FjY2Vzc19nYXRlcxgD'
+    'IAMoCzItLmNyZWF0aXZhbnRhLmFkbWluLnYxLlBheW1lbnRNZXRob2RBY2Nlc3NHYXRlUhFtZX'
+    'Rob2RBY2Nlc3NHYXRlcw==');
 
 @$core.Deprecated('Use getPaymentMethodRequestDescriptor instead')
 const GetPaymentMethodRequest$json = {
@@ -1308,6 +1533,14 @@ const GetPaymentMethodResponse$json = {
       '6': '.creativanta.admin.v1.PaymentMethodSummary',
       '10': 'paymentMethods'
     },
+    {
+      '1': 'method_access_gates',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.admin.v1.PaymentMethodAccessGate',
+      '10': 'methodAccessGates'
+    },
   ],
 };
 
@@ -1316,7 +1549,571 @@ final $typed_data.Uint8List getPaymentMethodResponseDescriptor = $convert.base64
     'ChhHZXRQYXltZW50TWV0aG9kUmVzcG9uc2USYAoWZGVmYXVsdF9wYXltZW50X21ldGhvZBgBIA'
     'EoCzIqLmNyZWF0aXZhbnRhLmFkbWluLnYxLlBheW1lbnRNZXRob2RTdW1tYXJ5UhRkZWZhdWx0'
     'UGF5bWVudE1ldGhvZBJTCg9wYXltZW50X21ldGhvZHMYAiADKAsyKi5jcmVhdGl2YW50YS5hZG'
-    '1pbi52MS5QYXltZW50TWV0aG9kU3VtbWFyeVIOcGF5bWVudE1ldGhvZHM=');
+    '1pbi52MS5QYXltZW50TWV0aG9kU3VtbWFyeVIOcGF5bWVudE1ldGhvZHMSXQoTbWV0aG9kX2Fj'
+    'Y2Vzc19nYXRlcxgDIAMoCzItLmNyZWF0aXZhbnRhLmFkbWluLnYxLlBheW1lbnRNZXRob2RBY2'
+    'Nlc3NHYXRlUhFtZXRob2RBY2Nlc3NHYXRlcw==');
+
+@$core.Deprecated('Use listSubscriptionsRequestDescriptor instead')
+const ListSubscriptionsRequest$json = {
+  '1': 'ListSubscriptionsRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {
+      '1': 'pagination',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Pagination',
+      '10': 'pagination'
+    },
+  ],
+};
+
+/// Descriptor for `ListSubscriptionsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listSubscriptionsRequestDescriptor = $convert.base64Decode(
+    'ChhMaXN0U3Vic2NyaXB0aW9uc1JlcXVlc3QSPgoMd29ya3NwYWNlX2lkGAEgASgLMhsuY3JlYX'
+    'RpdmFudGEuY29tbW9uLnYxLlVVSURSC3dvcmtzcGFjZUlkEkEKCnBhZ2luYXRpb24YAiABKAsy'
+    'IS5jcmVhdGl2YW50YS5jb21tb24udjEuUGFnaW5hdGlvblIKcGFnaW5hdGlvbg==');
+
+@$core.Deprecated('Use listSubscriptionsResponseDescriptor instead')
+const ListSubscriptionsResponse$json = {
+  '1': 'ListSubscriptionsResponse',
+  '2': [
+    {
+      '1': 'subscriptions',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.admin.v1.SubscriptionSummary',
+      '10': 'subscriptions'
+    },
+    {
+      '1': 'page_info',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.PaginatedResponse',
+      '10': 'pageInfo'
+    },
+  ],
+};
+
+/// Descriptor for `ListSubscriptionsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listSubscriptionsResponseDescriptor = $convert.base64Decode(
+    'ChlMaXN0U3Vic2NyaXB0aW9uc1Jlc3BvbnNlEk8KDXN1YnNjcmlwdGlvbnMYASADKAsyKS5jcm'
+    'VhdGl2YW50YS5hZG1pbi52MS5TdWJzY3JpcHRpb25TdW1tYXJ5Ug1zdWJzY3JpcHRpb25zEkUK'
+    'CXBhZ2VfaW5mbxgCIAEoCzIoLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5QYWdpbmF0ZWRSZXNwb2'
+    '5zZVIIcGFnZUluZm8=');
+
+@$core.Deprecated('Use billingEventEntryDescriptor instead')
+const BillingEventEntry$json = {
+  '1': 'BillingEventEntry',
+  '2': [
+    {
+      '1': 'billing_event_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'billingEventId'
+    },
+    {
+      '1': 'workspace_id',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'event_type', '3': 3, '4': 1, '5': 9, '10': 'eventType'},
+    {'1': 'stripe_event_id', '3': 4, '4': 1, '5': 9, '10': 'stripeEventId'},
+    {
+      '1': 'amount',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'amount'
+    },
+    {
+      '1': 'subscription_tier',
+      '3': 6,
+      '4': 1,
+      '5': 9,
+      '10': 'subscriptionTier'
+    },
+    {'1': 'credits_change', '3': 7, '4': 1, '5': 9, '10': 'creditsChange'},
+    {'1': 'description', '3': 8, '4': 1, '5': 9, '10': 'description'},
+    {'1': 'metadata_json', '3': 9, '4': 1, '5': 9, '10': 'metadataJson'},
+    {
+      '1': 'created_at',
+      '3': 10,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+  ],
+};
+
+/// Descriptor for `BillingEventEntry`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List billingEventEntryDescriptor = $convert.base64Decode(
+    'ChFCaWxsaW5nRXZlbnRFbnRyeRJFChBiaWxsaW5nX2V2ZW50X2lkGAEgASgLMhsuY3JlYXRpdm'
+    'FudGEuY29tbW9uLnYxLlVVSURSDmJpbGxpbmdFdmVudElkEj4KDHdvcmtzcGFjZV9pZBgCIAEo'
+    'CzIbLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5VVUlEUgt3b3Jrc3BhY2VJZBIdCgpldmVudF90eX'
+    'BlGAMgASgJUglldmVudFR5cGUSJgoPc3RyaXBlX2V2ZW50X2lkGAQgASgJUg1zdHJpcGVFdmVu'
+    'dElkEjQKBmFtb3VudBgFIAEoCzIcLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5Nb25leVIGYW1vdW'
+    '50EisKEXN1YnNjcmlwdGlvbl90aWVyGAYgASgJUhBzdWJzY3JpcHRpb25UaWVyEiUKDmNyZWRp'
+    'dHNfY2hhbmdlGAcgASgJUg1jcmVkaXRzQ2hhbmdlEiAKC2Rlc2NyaXB0aW9uGAggASgJUgtkZX'
+    'NjcmlwdGlvbhIjCg1tZXRhZGF0YV9qc29uGAkgASgJUgxtZXRhZGF0YUpzb24SOQoKY3JlYXRl'
+    'ZF9hdBgKIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSCWNyZWF0ZWRBdA==');
+
+@$core.Deprecated('Use listBillingEventsRequestDescriptor instead')
+const ListBillingEventsRequest$json = {
+  '1': 'ListBillingEventsRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {
+      '1': 'pagination',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Pagination',
+      '10': 'pagination'
+    },
+    {'1': 'event_type_filter', '3': 3, '4': 1, '5': 9, '10': 'eventTypeFilter'},
+  ],
+};
+
+/// Descriptor for `ListBillingEventsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listBillingEventsRequestDescriptor = $convert.base64Decode(
+    'ChhMaXN0QmlsbGluZ0V2ZW50c1JlcXVlc3QSPgoMd29ya3NwYWNlX2lkGAEgASgLMhsuY3JlYX'
+    'RpdmFudGEuY29tbW9uLnYxLlVVSURSC3dvcmtzcGFjZUlkEkEKCnBhZ2luYXRpb24YAiABKAsy'
+    'IS5jcmVhdGl2YW50YS5jb21tb24udjEuUGFnaW5hdGlvblIKcGFnaW5hdGlvbhIqChFldmVudF'
+    '90eXBlX2ZpbHRlchgDIAEoCVIPZXZlbnRUeXBlRmlsdGVy');
+
+@$core.Deprecated('Use listBillingEventsResponseDescriptor instead')
+const ListBillingEventsResponse$json = {
+  '1': 'ListBillingEventsResponse',
+  '2': [
+    {
+      '1': 'events',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.admin.v1.BillingEventEntry',
+      '10': 'events'
+    },
+    {
+      '1': 'page_info',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.PaginatedResponse',
+      '10': 'pageInfo'
+    },
+  ],
+};
+
+/// Descriptor for `ListBillingEventsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listBillingEventsResponseDescriptor = $convert.base64Decode(
+    'ChlMaXN0QmlsbGluZ0V2ZW50c1Jlc3BvbnNlEj8KBmV2ZW50cxgBIAMoCzInLmNyZWF0aXZhbn'
+    'RhLmFkbWluLnYxLkJpbGxpbmdFdmVudEVudHJ5UgZldmVudHMSRQoJcGFnZV9pbmZvGAIgASgL'
+    'MiguY3JlYXRpdmFudGEuY29tbW9uLnYxLlBhZ2luYXRlZFJlc3BvbnNlUghwYWdlSW5mbw==');
+
+@$core.Deprecated('Use getInvoiceHistoryRequestDescriptor instead')
+const GetInvoiceHistoryRequest$json = {
+  '1': 'GetInvoiceHistoryRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {
+      '1': 'pagination',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Pagination',
+      '10': 'pagination'
+    },
+  ],
+};
+
+/// Descriptor for `GetInvoiceHistoryRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getInvoiceHistoryRequestDescriptor = $convert.base64Decode(
+    'ChhHZXRJbnZvaWNlSGlzdG9yeVJlcXVlc3QSPgoMd29ya3NwYWNlX2lkGAEgASgLMhsuY3JlYX'
+    'RpdmFudGEuY29tbW9uLnYxLlVVSURSC3dvcmtzcGFjZUlkEkEKCnBhZ2luYXRpb24YAiABKAsy'
+    'IS5jcmVhdGl2YW50YS5jb21tb24udjEuUGFnaW5hdGlvblIKcGFnaW5hdGlvbg==');
+
+@$core.Deprecated('Use getInvoiceHistoryResponseDescriptor instead')
+const GetInvoiceHistoryResponse$json = {
+  '1': 'GetInvoiceHistoryResponse',
+  '2': [
+    {
+      '1': 'invoices',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.admin.v1.InvoiceSummary',
+      '10': 'invoices'
+    },
+    {
+      '1': 'page_info',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.PaginatedResponse',
+      '10': 'pageInfo'
+    },
+  ],
+};
+
+/// Descriptor for `GetInvoiceHistoryResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getInvoiceHistoryResponseDescriptor = $convert.base64Decode(
+    'ChlHZXRJbnZvaWNlSGlzdG9yeVJlc3BvbnNlEkAKCGludm9pY2VzGAEgAygLMiQuY3JlYXRpdm'
+    'FudGEuYWRtaW4udjEuSW52b2ljZVN1bW1hcnlSCGludm9pY2VzEkUKCXBhZ2VfaW5mbxgCIAEo'
+    'CzIoLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5QYWdpbmF0ZWRSZXNwb25zZVIIcGFnZUluZm8=');
+
+@$core.Deprecated('Use downloadInvoiceRequestDescriptor instead')
+const DownloadInvoiceRequest$json = {
+  '1': 'DownloadInvoiceRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {
+      '1': 'invoice_id',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'invoiceId'
+    },
+  ],
+};
+
+/// Descriptor for `DownloadInvoiceRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List downloadInvoiceRequestDescriptor = $convert.base64Decode(
+    'ChZEb3dubG9hZEludm9pY2VSZXF1ZXN0Ej8KB2NvbnRleHQYASABKAsyJS5jcmVhdGl2YW50YS'
+    '5jb21tb24udjEuQ29tbWFuZENvbnRleHRSB2NvbnRleHQSOgoKaW52b2ljZV9pZBgCIAEoCzIb'
+    'LmNyZWF0aXZhbnRhLmNvbW1vbi52MS5VVUlEUglpbnZvaWNlSWQ=');
+
+@$core.Deprecated('Use downloadInvoiceResponseDescriptor instead')
+const DownloadInvoiceResponse$json = {
+  '1': 'DownloadInvoiceResponse',
+  '2': [
+    {'1': 'invoice_pdf_url', '3': 1, '4': 1, '5': 9, '10': 'invoicePdfUrl'},
+    {
+      '1': 'hosted_invoice_url',
+      '3': 2,
+      '4': 1,
+      '5': 9,
+      '10': 'hostedInvoiceUrl'
+    },
+    {
+      '1': 'invoice',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.admin.v1.InvoiceSummary',
+      '10': 'invoice'
+    },
+  ],
+};
+
+/// Descriptor for `DownloadInvoiceResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List downloadInvoiceResponseDescriptor = $convert.base64Decode(
+    'ChdEb3dubG9hZEludm9pY2VSZXNwb25zZRImCg9pbnZvaWNlX3BkZl91cmwYASABKAlSDWludm'
+    '9pY2VQZGZVcmwSLAoSaG9zdGVkX2ludm9pY2VfdXJsGAIgASgJUhBob3N0ZWRJbnZvaWNlVXJs'
+    'Ej4KB2ludm9pY2UYAyABKAsyJC5jcmVhdGl2YW50YS5hZG1pbi52MS5JbnZvaWNlU3VtbWFyeV'
+    'IHaW52b2ljZQ==');
+
+@$core.Deprecated('Use getUsageReportRequestDescriptor instead')
+const GetUsageReportRequest$json = {
+  '1': 'GetUsageReportRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {'1': 'period_start', '3': 2, '4': 1, '5': 9, '10': 'periodStart'},
+    {'1': 'period_end', '3': 3, '4': 1, '5': 9, '10': 'periodEnd'},
+  ],
+};
+
+/// Descriptor for `GetUsageReportRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getUsageReportRequestDescriptor = $convert.base64Decode(
+    'ChVHZXRVc2FnZVJlcG9ydFJlcXVlc3QSPgoMd29ya3NwYWNlX2lkGAEgASgLMhsuY3JlYXRpdm'
+    'FudGEuY29tbW9uLnYxLlVVSURSC3dvcmtzcGFjZUlkEiEKDHBlcmlvZF9zdGFydBgCIAEoCVIL'
+    'cGVyaW9kU3RhcnQSHQoKcGVyaW9kX2VuZBgDIAEoCVIJcGVyaW9kRW5k');
+
+@$core.Deprecated('Use getUsageReportResponseDescriptor instead')
+const GetUsageReportResponse$json = {
+  '1': 'GetUsageReportResponse',
+  '2': [
+    {
+      '1': 'balance',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.admin.v1.CreditBalance',
+      '10': 'balance'
+    },
+    {
+      '1': 'breakdown',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.admin.v1.OperationUsageBreakdown',
+      '10': 'breakdown'
+    },
+    {
+      '1': 'overage_credits_used',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '10': 'overageCreditsUsed'
+    },
+    {
+      '1': 'overage_limit_credits',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '10': 'overageLimitCredits'
+    },
+    {
+      '1': 'overage_charge_usd',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'overageChargeUsd'
+    },
+    {
+      '1': 'triggered_threshold_alerts',
+      '3': 6,
+      '4': 3,
+      '5': 9,
+      '10': 'triggeredThresholdAlerts'
+    },
+  ],
+};
+
+/// Descriptor for `GetUsageReportResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getUsageReportResponseDescriptor = $convert.base64Decode(
+    'ChZHZXRVc2FnZVJlcG9ydFJlc3BvbnNlEj0KB2JhbGFuY2UYASABKAsyIy5jcmVhdGl2YW50YS'
+    '5hZG1pbi52MS5DcmVkaXRCYWxhbmNlUgdiYWxhbmNlEksKCWJyZWFrZG93bhgCIAMoCzItLmNy'
+    'ZWF0aXZhbnRhLmFkbWluLnYxLk9wZXJhdGlvblVzYWdlQnJlYWtkb3duUglicmVha2Rvd24SMA'
+    'oUb3ZlcmFnZV9jcmVkaXRzX3VzZWQYAyABKAlSEm92ZXJhZ2VDcmVkaXRzVXNlZBIyChVvdmVy'
+    'YWdlX2xpbWl0X2NyZWRpdHMYBCABKAlSE292ZXJhZ2VMaW1pdENyZWRpdHMSSgoSb3ZlcmFnZV'
+    '9jaGFyZ2VfdXNkGAUgASgLMhwuY3JlYXRpdmFudGEuY29tbW9uLnYxLk1vbmV5UhBvdmVyYWdl'
+    'Q2hhcmdlVXNkEjwKGnRyaWdnZXJlZF90aHJlc2hvbGRfYWxlcnRzGAYgAygJUhh0cmlnZ2VyZW'
+    'RUaHJlc2hvbGRBbGVydHM=');
+
+@$core.Deprecated('Use dataExportJobSummaryDescriptor instead')
+const DataExportJobSummary$json = {
+  '1': 'DataExportJobSummary',
+  '2': [
+    {
+      '1': 'export_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'exportId'
+    },
+    {
+      '1': 'workspace_id',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {
+      '1': 'user_id',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'userId'
+    },
+    {'1': 'export_type', '3': 4, '4': 1, '5': 9, '10': 'exportType'},
+    {'1': 'format', '3': 5, '4': 1, '5': 9, '10': 'format'},
+    {'1': 'status', '3': 6, '4': 1, '5': 9, '10': 'status'},
+    {'1': 'progress_pct', '3': 7, '4': 1, '5': 5, '10': 'progressPct'},
+    {'1': 'file_url', '3': 8, '4': 1, '5': 9, '10': 'fileUrl'},
+    {'1': 'file_size_bytes', '3': 9, '4': 1, '5': 3, '10': 'fileSizeBytes'},
+    {
+      '1': 'content_hash_sha512',
+      '3': 10,
+      '4': 1,
+      '5': 9,
+      '10': 'contentHashSha512'
+    },
+    {
+      '1': 'expires_at',
+      '3': 11,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'expiresAt'
+    },
+    {
+      '1': 'completed_at',
+      '3': 12,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'completedAt'
+    },
+    {
+      '1': 'created_at',
+      '3': 13,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+  ],
+};
+
+/// Descriptor for `DataExportJobSummary`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List dataExportJobSummaryDescriptor = $convert.base64Decode(
+    'ChREYXRhRXhwb3J0Sm9iU3VtbWFyeRI4CglleHBvcnRfaWQYASABKAsyGy5jcmVhdGl2YW50YS'
+    '5jb21tb24udjEuVVVJRFIIZXhwb3J0SWQSPgoMd29ya3NwYWNlX2lkGAIgASgLMhsuY3JlYXRp'
+    'dmFudGEuY29tbW9uLnYxLlVVSURSC3dvcmtzcGFjZUlkEjQKB3VzZXJfaWQYAyABKAsyGy5jcm'
+    'VhdGl2YW50YS5jb21tb24udjEuVVVJRFIGdXNlcklkEh8KC2V4cG9ydF90eXBlGAQgASgJUgpl'
+    'eHBvcnRUeXBlEhYKBmZvcm1hdBgFIAEoCVIGZm9ybWF0EhYKBnN0YXR1cxgGIAEoCVIGc3RhdH'
+    'VzEiEKDHByb2dyZXNzX3BjdBgHIAEoBVILcHJvZ3Jlc3NQY3QSGQoIZmlsZV91cmwYCCABKAlS'
+    'B2ZpbGVVcmwSJgoPZmlsZV9zaXplX2J5dGVzGAkgASgDUg1maWxlU2l6ZUJ5dGVzEi4KE2Nvbn'
+    'RlbnRfaGFzaF9zaGE1MTIYCiABKAlSEWNvbnRlbnRIYXNoU2hhNTEyEjkKCmV4cGlyZXNfYXQY'
+    'CyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUglleHBpcmVzQXQSPQoMY29tcGxldG'
+    'VkX2F0GAwgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcFILY29tcGxldGVkQXQSOQoK'
+    'Y3JlYXRlZF9hdBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSCWNyZWF0ZWRBdA'
+    '==');
+
+@$core.Deprecated('Use requestExportRequestDescriptor instead')
+const RequestExportRequest$json = {
+  '1': 'RequestExportRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'export_type', '3': 2, '4': 1, '5': 9, '10': 'exportType'},
+    {'1': 'format', '3': 3, '4': 1, '5': 9, '10': 'format'},
+  ],
+};
+
+/// Descriptor for `RequestExportRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List requestExportRequestDescriptor = $convert.base64Decode(
+    'ChRSZXF1ZXN0RXhwb3J0UmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3JlYXRpdmFudGEuY2'
+    '9tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0Eh8KC2V4cG9ydF90eXBlGAIgASgJUgpl'
+    'eHBvcnRUeXBlEhYKBmZvcm1hdBgDIAEoCVIGZm9ybWF0');
+
+@$core.Deprecated('Use requestExportResponseDescriptor instead')
+const RequestExportResponse$json = {
+  '1': 'RequestExportResponse',
+  '2': [
+    {
+      '1': 'export_job',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.admin.v1.DataExportJobSummary',
+      '10': 'exportJob'
+    },
+  ],
+};
+
+/// Descriptor for `RequestExportResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List requestExportResponseDescriptor = $convert.base64Decode(
+    'ChVSZXF1ZXN0RXhwb3J0UmVzcG9uc2USSQoKZXhwb3J0X2pvYhgBIAEoCzIqLmNyZWF0aXZhbn'
+    'RhLmFkbWluLnYxLkRhdGFFeHBvcnRKb2JTdW1tYXJ5UglleHBvcnRKb2I=');
+
+@$core.Deprecated('Use getExportUrlRequestDescriptor instead')
+const GetExportUrlRequest$json = {
+  '1': 'GetExportUrlRequest',
+  '2': [
+    {
+      '1': 'workspace_id',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'workspaceId'
+    },
+    {
+      '1': 'export_id',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.UUID',
+      '10': 'exportId'
+    },
+  ],
+};
+
+/// Descriptor for `GetExportUrlRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getExportUrlRequestDescriptor = $convert.base64Decode(
+    'ChNHZXRFeHBvcnRVcmxSZXF1ZXN0Ej4KDHdvcmtzcGFjZV9pZBgBIAEoCzIbLmNyZWF0aXZhbn'
+    'RhLmNvbW1vbi52MS5VVUlEUgt3b3Jrc3BhY2VJZBI4CglleHBvcnRfaWQYAiABKAsyGy5jcmVh'
+    'dGl2YW50YS5jb21tb24udjEuVVVJRFIIZXhwb3J0SWQ=');
+
+@$core.Deprecated('Use getExportUrlResponseDescriptor instead')
+const GetExportUrlResponse$json = {
+  '1': 'GetExportUrlResponse',
+  '2': [
+    {
+      '1': 'export_job',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.admin.v1.DataExportJobSummary',
+      '10': 'exportJob'
+    },
+    {'1': 'download_url', '3': 2, '4': 1, '5': 9, '10': 'downloadUrl'},
+  ],
+};
+
+/// Descriptor for `GetExportUrlResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getExportUrlResponseDescriptor = $convert.base64Decode(
+    'ChRHZXRFeHBvcnRVcmxSZXNwb25zZRJJCgpleHBvcnRfam9iGAEgASgLMiouY3JlYXRpdmFudG'
+    'EuYWRtaW4udjEuRGF0YUV4cG9ydEpvYlN1bW1hcnlSCWV4cG9ydEpvYhIhCgxkb3dubG9hZF91'
+    'cmwYAiABKAlSC2Rvd25sb2FkVXJs');
 
 @$core.Deprecated('Use estimateCostRequestDescriptor instead')
 const EstimateCostRequest$json = {

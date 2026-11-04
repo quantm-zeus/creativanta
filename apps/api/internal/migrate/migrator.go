@@ -867,6 +867,28 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 			"content_attribution_records",
 			"channel_post_metrics",
 		}
+	case 40:
+		requiredFragments = []requiredFragment{
+			{"export_jobs table", "CREATE TABLE IF NOT EXISTS export_jobs"},
+			{"referral_records table", "CREATE TABLE IF NOT EXISTS referral_records"},
+			{"api_call_logs table", "CREATE TABLE IF NOT EXISTS api_call_logs"},
+			{"chargebacks table", "CREATE TABLE IF NOT EXISTS chargebacks"},
+			{"platform_fee_schedules table", "CREATE TABLE IF NOT EXISTS platform_fee_schedules"},
+			{"performance_reports table", "CREATE TABLE IF NOT EXISTS performance_reports"},
+			{"composite tenant FK on chargebacks -> orders", "fk_chargebacks_order_id_tenant"},
+			{"tenant_isolation policy on export_jobs", "CREATE POLICY tenant_isolation ON export_jobs"},
+			{"tenant_isolation policy on referral_records", "CREATE POLICY tenant_isolation ON referral_records"},
+			{"tenant_isolation policy on api_call_logs", "CREATE POLICY tenant_isolation ON api_call_logs"},
+			{"tenant_isolation policy on chargebacks", "CREATE POLICY tenant_isolation ON chargebacks"},
+			{"tenant_isolation policy on performance_reports", "CREATE POLICY tenant_isolation ON performance_reports"},
+		}
+		requiredRLSTables = []string{
+			"export_jobs",
+			"referral_records",
+			"api_call_logs",
+			"chargebacks",
+			"performance_reports",
+		}
 	default:
 		return nil
 	}

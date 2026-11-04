@@ -2887,6 +2887,1369 @@ func (x *ProfitServiceRefreshSnapshotResponse) GetSnapshot() *ProfitSnapshot {
 	return nil
 }
 
+// Financial Report Line Item (W087 & P8-02 Complete Financial Reports)
+type FinancialReportLineItem struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Label         string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
+	Amount        *v1.Money              `protobuf:"bytes,3,opt,name=amount,proto3" json:"amount,omitempty"`
+	PctOfRevenue  string                 `protobuf:"bytes,4,opt,name=pct_of_revenue,json=pctOfRevenue,proto3" json:"pct_of_revenue,omitempty"`
+	SourceClass   v1.SourceClass         `protobuf:"varint,5,opt,name=source_class,json=sourceClass,proto3,enum=creativanta.common.v1.SourceClass" json:"source_class,omitempty"`
+	Confidence    v1.ConfidenceBand      `protobuf:"varint,6,opt,name=confidence,proto3,enum=creativanta.common.v1.ConfidenceBand" json:"confidence,omitempty"`
+	IsSubtotal    bool                   `protobuf:"varint,7,opt,name=is_subtotal,json=isSubtotal,proto3" json:"is_subtotal,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FinancialReportLineItem) Reset() {
+	*x = FinancialReportLineItem{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FinancialReportLineItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FinancialReportLineItem) ProtoMessage() {}
+
+func (x *FinancialReportLineItem) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FinancialReportLineItem.ProtoReflect.Descriptor instead.
+func (*FinancialReportLineItem) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *FinancialReportLineItem) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *FinancialReportLineItem) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *FinancialReportLineItem) GetAmount() *v1.Money {
+	if x != nil {
+		return x.Amount
+	}
+	return nil
+}
+
+func (x *FinancialReportLineItem) GetPctOfRevenue() string {
+	if x != nil {
+		return x.PctOfRevenue
+	}
+	return ""
+}
+
+func (x *FinancialReportLineItem) GetSourceClass() v1.SourceClass {
+	if x != nil {
+		return x.SourceClass
+	}
+	return v1.SourceClass(0)
+}
+
+func (x *FinancialReportLineItem) GetConfidence() v1.ConfidenceBand {
+	if x != nil {
+		return x.Confidence
+	}
+	return v1.ConfidenceBand(0)
+}
+
+func (x *FinancialReportLineItem) GetIsSubtotal() bool {
+	if x != nil {
+		return x.IsSubtotal
+	}
+	return false
+}
+
+// Measured Cohort & Unit Economics (analytics_event_taxonomy.md §6 & product_strategy_validation.md §5)
+type CohortEconomicsSummary struct {
+	state                             protoimpl.MessageState `protogen:"open.v1"`
+	CohortId                          string                 `protobuf:"bytes,1,opt,name=cohort_id,json=cohortId,proto3" json:"cohort_id,omitempty"`
+	ObservationWindow                 string                 `protobuf:"bytes,2,opt,name=observation_window,json=observationWindow,proto3" json:"observation_window,omitempty"`
+	EligibleWorkspacesCount           int64                  `protobuf:"varint,3,opt,name=eligible_workspaces_count,json=eligibleWorkspacesCount,proto3" json:"eligible_workspaces_count,omitempty"`
+	CensoredWorkspacesCount           int64                  `protobuf:"varint,4,opt,name=censored_workspaces_count,json=censoredWorkspacesCount,proto3" json:"censored_workspaces_count,omitempty"`
+	ExcludedDemoTestInternalCount     int64                  `protobuf:"varint,5,opt,name=excluded_demo_test_internal_count,json=excludedDemoTestInternalCount,proto3" json:"excluded_demo_test_internal_count,omitempty"`
+	MedianFirstValueSeconds           string                 `protobuf:"bytes,6,opt,name=median_first_value_seconds,json=medianFirstValueSeconds,proto3" json:"median_first_value_seconds,omitempty"`
+	WeeklyProofedOperatingLoops       int64                  `protobuf:"varint,7,opt,name=weekly_proofed_operating_loops,json=weeklyProofedOperatingLoops,proto3" json:"weekly_proofed_operating_loops,omitempty"`
+	WeeklyOperatorRetentionPct        string                 `protobuf:"bytes,8,opt,name=weekly_operator_retention_pct,json=weeklyOperatorRetentionPct,proto3" json:"weekly_operator_retention_pct,omitempty"`
+	MedianRepairBurdenSeconds         string                 `protobuf:"bytes,9,opt,name=median_repair_burden_seconds,json=medianRepairBurdenSeconds,proto3" json:"median_repair_burden_seconds,omitempty"`
+	IsRepairTimeUnknown               bool                   `protobuf:"varint,10,opt,name=is_repair_time_unknown,json=isRepairTimeUnknown,proto3" json:"is_repair_time_unknown,omitempty"`
+	UnresolvedRequiredComponentsCount int64                  `protobuf:"varint,11,opt,name=unresolved_required_components_count,json=unresolvedRequiredComponentsCount,proto3" json:"unresolved_required_components_count,omitempty"`
+	UsableProductionYieldPct          string                 `protobuf:"bytes,12,opt,name=usable_production_yield_pct,json=usableProductionYieldPct,proto3" json:"usable_production_yield_pct,omitempty"`
+	AcceptedOutputsCount              int64                  `protobuf:"varint,13,opt,name=accepted_outputs_count,json=acceptedOutputsCount,proto3" json:"accepted_outputs_count,omitempty"`
+	TerminalGenerationAttemptsCount   int64                  `protobuf:"varint,14,opt,name=terminal_generation_attempts_count,json=terminalGenerationAttemptsCount,proto3" json:"terminal_generation_attempts_count,omitempty"`
+	CostPerAcceptedOutput             *v1.Money              `protobuf:"bytes,15,opt,name=cost_per_accepted_output,json=costPerAcceptedOutput,proto3" json:"cost_per_accepted_output,omitempty"`
+	IsCostPerAcceptedOutputUndefined  bool                   `protobuf:"varint,16,opt,name=is_cost_per_accepted_output_undefined,json=isCostPerAcceptedOutputUndefined,proto3" json:"is_cost_per_accepted_output_undefined,omitempty"`
+	RecognizedRevenue                 *v1.Money              `protobuf:"bytes,17,opt,name=recognized_revenue,json=recognizedRevenue,proto3" json:"recognized_revenue,omitempty"`
+	AllocatedProviderCost             *v1.Money              `protobuf:"bytes,18,opt,name=allocated_provider_cost,json=allocatedProviderCost,proto3" json:"allocated_provider_cost,omitempty"`
+	AllocatedComputeStorageCost       *v1.Money              `protobuf:"bytes,19,opt,name=allocated_compute_storage_cost,json=allocatedComputeStorageCost,proto3" json:"allocated_compute_storage_cost,omitempty"`
+	AllocatedPaymentRefundSupportCost *v1.Money              `protobuf:"bytes,20,opt,name=allocated_payment_refund_support_cost,json=allocatedPaymentRefundSupportCost,proto3" json:"allocated_payment_refund_support_cost,omitempty"`
+	NetUnitEconomics                  *v1.Money              `protobuf:"bytes,21,opt,name=net_unit_economics,json=netUnitEconomics,proto3" json:"net_unit_economics,omitempty"`
+	AllocationMethod                  string                 `protobuf:"bytes,22,opt,name=allocation_method,json=allocationMethod,proto3" json:"allocation_method,omitempty"`
+	UnknownCostItemsCount             int64                  `protobuf:"varint,23,opt,name=unknown_cost_items_count,json=unknownCostItemsCount,proto3" json:"unknown_cost_items_count,omitempty"`
+	unknownFields                     protoimpl.UnknownFields
+	sizeCache                         protoimpl.SizeCache
+}
+
+func (x *CohortEconomicsSummary) Reset() {
+	*x = CohortEconomicsSummary{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CohortEconomicsSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CohortEconomicsSummary) ProtoMessage() {}
+
+func (x *CohortEconomicsSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CohortEconomicsSummary.ProtoReflect.Descriptor instead.
+func (*CohortEconomicsSummary) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *CohortEconomicsSummary) GetCohortId() string {
+	if x != nil {
+		return x.CohortId
+	}
+	return ""
+}
+
+func (x *CohortEconomicsSummary) GetObservationWindow() string {
+	if x != nil {
+		return x.ObservationWindow
+	}
+	return ""
+}
+
+func (x *CohortEconomicsSummary) GetEligibleWorkspacesCount() int64 {
+	if x != nil {
+		return x.EligibleWorkspacesCount
+	}
+	return 0
+}
+
+func (x *CohortEconomicsSummary) GetCensoredWorkspacesCount() int64 {
+	if x != nil {
+		return x.CensoredWorkspacesCount
+	}
+	return 0
+}
+
+func (x *CohortEconomicsSummary) GetExcludedDemoTestInternalCount() int64 {
+	if x != nil {
+		return x.ExcludedDemoTestInternalCount
+	}
+	return 0
+}
+
+func (x *CohortEconomicsSummary) GetMedianFirstValueSeconds() string {
+	if x != nil {
+		return x.MedianFirstValueSeconds
+	}
+	return ""
+}
+
+func (x *CohortEconomicsSummary) GetWeeklyProofedOperatingLoops() int64 {
+	if x != nil {
+		return x.WeeklyProofedOperatingLoops
+	}
+	return 0
+}
+
+func (x *CohortEconomicsSummary) GetWeeklyOperatorRetentionPct() string {
+	if x != nil {
+		return x.WeeklyOperatorRetentionPct
+	}
+	return ""
+}
+
+func (x *CohortEconomicsSummary) GetMedianRepairBurdenSeconds() string {
+	if x != nil {
+		return x.MedianRepairBurdenSeconds
+	}
+	return ""
+}
+
+func (x *CohortEconomicsSummary) GetIsRepairTimeUnknown() bool {
+	if x != nil {
+		return x.IsRepairTimeUnknown
+	}
+	return false
+}
+
+func (x *CohortEconomicsSummary) GetUnresolvedRequiredComponentsCount() int64 {
+	if x != nil {
+		return x.UnresolvedRequiredComponentsCount
+	}
+	return 0
+}
+
+func (x *CohortEconomicsSummary) GetUsableProductionYieldPct() string {
+	if x != nil {
+		return x.UsableProductionYieldPct
+	}
+	return ""
+}
+
+func (x *CohortEconomicsSummary) GetAcceptedOutputsCount() int64 {
+	if x != nil {
+		return x.AcceptedOutputsCount
+	}
+	return 0
+}
+
+func (x *CohortEconomicsSummary) GetTerminalGenerationAttemptsCount() int64 {
+	if x != nil {
+		return x.TerminalGenerationAttemptsCount
+	}
+	return 0
+}
+
+func (x *CohortEconomicsSummary) GetCostPerAcceptedOutput() *v1.Money {
+	if x != nil {
+		return x.CostPerAcceptedOutput
+	}
+	return nil
+}
+
+func (x *CohortEconomicsSummary) GetIsCostPerAcceptedOutputUndefined() bool {
+	if x != nil {
+		return x.IsCostPerAcceptedOutputUndefined
+	}
+	return false
+}
+
+func (x *CohortEconomicsSummary) GetRecognizedRevenue() *v1.Money {
+	if x != nil {
+		return x.RecognizedRevenue
+	}
+	return nil
+}
+
+func (x *CohortEconomicsSummary) GetAllocatedProviderCost() *v1.Money {
+	if x != nil {
+		return x.AllocatedProviderCost
+	}
+	return nil
+}
+
+func (x *CohortEconomicsSummary) GetAllocatedComputeStorageCost() *v1.Money {
+	if x != nil {
+		return x.AllocatedComputeStorageCost
+	}
+	return nil
+}
+
+func (x *CohortEconomicsSummary) GetAllocatedPaymentRefundSupportCost() *v1.Money {
+	if x != nil {
+		return x.AllocatedPaymentRefundSupportCost
+	}
+	return nil
+}
+
+func (x *CohortEconomicsSummary) GetNetUnitEconomics() *v1.Money {
+	if x != nil {
+		return x.NetUnitEconomics
+	}
+	return nil
+}
+
+func (x *CohortEconomicsSummary) GetAllocationMethod() string {
+	if x != nil {
+		return x.AllocationMethod
+	}
+	return ""
+}
+
+func (x *CohortEconomicsSummary) GetUnknownCostItemsCount() int64 {
+	if x != nil {
+		return x.UnknownCostItemsCount
+	}
+	return 0
+}
+
+// Generated Financial Report (W087 & P8-02)
+type FinancialReport struct {
+	state                 protoimpl.MessageState     `protogen:"open.v1"`
+	ReportId              string                     `protobuf:"bytes,1,opt,name=report_id,json=reportId,proto3" json:"report_id,omitempty"`
+	WorkspaceId           string                     `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	ReportType            string                     `protobuf:"bytes,3,opt,name=report_type,json=reportType,proto3" json:"report_type,omitempty"` // pnl_statement, revenue_by_channel, cost_analysis, margin_trend, tax_summary, product_pnl
+	PeriodStart           string                     `protobuf:"bytes,4,opt,name=period_start,json=periodStart,proto3" json:"period_start,omitempty"`
+	PeriodEnd             string                     `protobuf:"bytes,5,opt,name=period_end,json=periodEnd,proto3" json:"period_end,omitempty"`
+	GroupBy               string                     `protobuf:"bytes,6,opt,name=group_by,json=groupBy,proto3" json:"group_by,omitempty"` // daily, weekly, monthly, quarterly
+	Currency              string                     `protobuf:"bytes,7,opt,name=currency,proto3" json:"currency,omitempty"`
+	LineItems             []*FinancialReportLineItem `protobuf:"bytes,8,rep,name=line_items,json=lineItems,proto3" json:"line_items,omitempty"`
+	Snapshot              *ProfitSnapshot            `protobuf:"bytes,9,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
+	ReconciledCoveragePct string                     `protobuf:"bytes,10,opt,name=reconciled_coverage_pct,json=reconciledCoveragePct,proto3" json:"reconciled_coverage_pct,omitempty"`
+	LowTrustWarning       bool                       `protobuf:"varint,11,opt,name=low_trust_warning,json=lowTrustWarning,proto3" json:"low_trust_warning,omitempty"`
+	TaxDisclaimer         string                     `protobuf:"bytes,12,opt,name=tax_disclaimer,json=taxDisclaimer,proto3" json:"tax_disclaimer,omitempty"` // BIZ-007 creator_responsible disclaimer
+	CohortEconomics       *CohortEconomicsSummary    `protobuf:"bytes,13,opt,name=cohort_economics,json=cohortEconomics,proto3" json:"cohort_economics,omitempty"`
+	GeneratedAt           *timestamppb.Timestamp     `protobuf:"bytes,14,opt,name=generated_at,json=generatedAt,proto3" json:"generated_at,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *FinancialReport) Reset() {
+	*x = FinancialReport{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FinancialReport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FinancialReport) ProtoMessage() {}
+
+func (x *FinancialReport) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FinancialReport.ProtoReflect.Descriptor instead.
+func (*FinancialReport) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *FinancialReport) GetReportId() string {
+	if x != nil {
+		return x.ReportId
+	}
+	return ""
+}
+
+func (x *FinancialReport) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *FinancialReport) GetReportType() string {
+	if x != nil {
+		return x.ReportType
+	}
+	return ""
+}
+
+func (x *FinancialReport) GetPeriodStart() string {
+	if x != nil {
+		return x.PeriodStart
+	}
+	return ""
+}
+
+func (x *FinancialReport) GetPeriodEnd() string {
+	if x != nil {
+		return x.PeriodEnd
+	}
+	return ""
+}
+
+func (x *FinancialReport) GetGroupBy() string {
+	if x != nil {
+		return x.GroupBy
+	}
+	return ""
+}
+
+func (x *FinancialReport) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *FinancialReport) GetLineItems() []*FinancialReportLineItem {
+	if x != nil {
+		return x.LineItems
+	}
+	return nil
+}
+
+func (x *FinancialReport) GetSnapshot() *ProfitSnapshot {
+	if x != nil {
+		return x.Snapshot
+	}
+	return nil
+}
+
+func (x *FinancialReport) GetReconciledCoveragePct() string {
+	if x != nil {
+		return x.ReconciledCoveragePct
+	}
+	return ""
+}
+
+func (x *FinancialReport) GetLowTrustWarning() bool {
+	if x != nil {
+		return x.LowTrustWarning
+	}
+	return false
+}
+
+func (x *FinancialReport) GetTaxDisclaimer() string {
+	if x != nil {
+		return x.TaxDisclaimer
+	}
+	return ""
+}
+
+func (x *FinancialReport) GetCohortEconomics() *CohortEconomicsSummary {
+	if x != nil {
+		return x.CohortEconomics
+	}
+	return nil
+}
+
+func (x *FinancialReport) GetGeneratedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.GeneratedAt
+	}
+	return nil
+}
+
+type ReportTemplateSummary struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TemplateCode  string                 `protobuf:"bytes,1,opt,name=template_code,json=templateCode,proto3" json:"template_code,omitempty"`
+	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportTemplateSummary) Reset() {
+	*x = ReportTemplateSummary{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportTemplateSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportTemplateSummary) ProtoMessage() {}
+
+func (x *ReportTemplateSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportTemplateSummary.ProtoReflect.Descriptor instead.
+func (*ReportTemplateSummary) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *ReportTemplateSummary) GetTemplateCode() string {
+	if x != nil {
+		return x.TemplateCode
+	}
+	return ""
+}
+
+func (x *ReportTemplateSummary) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *ReportTemplateSummary) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+type ProfitServiceGenerateReportRequest struct {
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	Context               *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	WorkspaceId           string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	ReportType            string                 `protobuf:"bytes,3,opt,name=report_type,json=reportType,proto3" json:"report_type,omitempty"`
+	PeriodStart           string                 `protobuf:"bytes,4,opt,name=period_start,json=periodStart,proto3" json:"period_start,omitempty"`
+	PeriodEnd             string                 `protobuf:"bytes,5,opt,name=period_end,json=periodEnd,proto3" json:"period_end,omitempty"`
+	GroupBy               string                 `protobuf:"bytes,6,opt,name=group_by,json=groupBy,proto3" json:"group_by,omitempty"`
+	PlatformFilter        string                 `protobuf:"bytes,7,opt,name=platform_filter,json=platformFilter,proto3" json:"platform_filter,omitempty"`
+	ProductIdFilter       string                 `protobuf:"bytes,8,opt,name=product_id_filter,json=productIdFilter,proto3" json:"product_id_filter,omitempty"`
+	IncludedSourceClasses []string               `protobuf:"bytes,9,rep,name=included_source_classes,json=includedSourceClasses,proto3" json:"included_source_classes,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *ProfitServiceGenerateReportRequest) Reset() {
+	*x = ProfitServiceGenerateReportRequest{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProfitServiceGenerateReportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProfitServiceGenerateReportRequest) ProtoMessage() {}
+
+func (x *ProfitServiceGenerateReportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProfitServiceGenerateReportRequest.ProtoReflect.Descriptor instead.
+func (*ProfitServiceGenerateReportRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *ProfitServiceGenerateReportRequest) GetContext() *v1.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *ProfitServiceGenerateReportRequest) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *ProfitServiceGenerateReportRequest) GetReportType() string {
+	if x != nil {
+		return x.ReportType
+	}
+	return ""
+}
+
+func (x *ProfitServiceGenerateReportRequest) GetPeriodStart() string {
+	if x != nil {
+		return x.PeriodStart
+	}
+	return ""
+}
+
+func (x *ProfitServiceGenerateReportRequest) GetPeriodEnd() string {
+	if x != nil {
+		return x.PeriodEnd
+	}
+	return ""
+}
+
+func (x *ProfitServiceGenerateReportRequest) GetGroupBy() string {
+	if x != nil {
+		return x.GroupBy
+	}
+	return ""
+}
+
+func (x *ProfitServiceGenerateReportRequest) GetPlatformFilter() string {
+	if x != nil {
+		return x.PlatformFilter
+	}
+	return ""
+}
+
+func (x *ProfitServiceGenerateReportRequest) GetProductIdFilter() string {
+	if x != nil {
+		return x.ProductIdFilter
+	}
+	return ""
+}
+
+func (x *ProfitServiceGenerateReportRequest) GetIncludedSourceClasses() []string {
+	if x != nil {
+		return x.IncludedSourceClasses
+	}
+	return nil
+}
+
+type ProfitServiceGenerateReportResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Report        *FinancialReport       `protobuf:"bytes,1,opt,name=report,proto3" json:"report,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProfitServiceGenerateReportResponse) Reset() {
+	*x = ProfitServiceGenerateReportResponse{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProfitServiceGenerateReportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProfitServiceGenerateReportResponse) ProtoMessage() {}
+
+func (x *ProfitServiceGenerateReportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProfitServiceGenerateReportResponse.ProtoReflect.Descriptor instead.
+func (*ProfitServiceGenerateReportResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *ProfitServiceGenerateReportResponse) GetReport() *FinancialReport {
+	if x != nil {
+		return x.Report
+	}
+	return nil
+}
+
+type ProfitServiceExportReportRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Context          *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	WorkspaceId      string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	ReportId         string                 `protobuf:"bytes,3,opt,name=report_id,json=reportId,proto3" json:"report_id,omitempty"`
+	ReportType       string                 `protobuf:"bytes,4,opt,name=report_type,json=reportType,proto3" json:"report_type,omitempty"`
+	Format           string                 `protobuf:"bytes,5,opt,name=format,proto3" json:"format,omitempty"` // csv, pdf, xlsx, json
+	PeriodStart      string                 `protobuf:"bytes,6,opt,name=period_start,json=periodStart,proto3" json:"period_start,omitempty"`
+	PeriodEnd        string                 `protobuf:"bytes,7,opt,name=period_end,json=periodEnd,proto3" json:"period_end,omitempty"`
+	SubscriptionTier string                 `protobuf:"bytes,8,opt,name=subscription_tier,json=subscriptionTier,proto3" json:"subscription_tier,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ProfitServiceExportReportRequest) Reset() {
+	*x = ProfitServiceExportReportRequest{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProfitServiceExportReportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProfitServiceExportReportRequest) ProtoMessage() {}
+
+func (x *ProfitServiceExportReportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProfitServiceExportReportRequest.ProtoReflect.Descriptor instead.
+func (*ProfitServiceExportReportRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *ProfitServiceExportReportRequest) GetContext() *v1.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *ProfitServiceExportReportRequest) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportReportRequest) GetReportId() string {
+	if x != nil {
+		return x.ReportId
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportReportRequest) GetReportType() string {
+	if x != nil {
+		return x.ReportType
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportReportRequest) GetFormat() string {
+	if x != nil {
+		return x.Format
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportReportRequest) GetPeriodStart() string {
+	if x != nil {
+		return x.PeriodStart
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportReportRequest) GetPeriodEnd() string {
+	if x != nil {
+		return x.PeriodEnd
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportReportRequest) GetSubscriptionTier() string {
+	if x != nil {
+		return x.SubscriptionTier
+	}
+	return ""
+}
+
+type ProfitServiceExportReportResponse struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	ExportId            string                 `protobuf:"bytes,1,opt,name=export_id,json=exportId,proto3" json:"export_id,omitempty"`
+	Format              string                 `protobuf:"bytes,2,opt,name=format,proto3" json:"format,omitempty"`
+	FileUrl             string                 `protobuf:"bytes,3,opt,name=file_url,json=fileUrl,proto3" json:"file_url,omitempty"`
+	ContentHashSha512   string                 `protobuf:"bytes,4,opt,name=content_hash_sha512,json=contentHashSha512,proto3" json:"content_hash_sha512,omitempty"`
+	MonthlyExportsUsed  int32                  `protobuf:"varint,5,opt,name=monthly_exports_used,json=monthlyExportsUsed,proto3" json:"monthly_exports_used,omitempty"`
+	MonthlyExportsLimit int32                  `protobuf:"varint,6,opt,name=monthly_exports_limit,json=monthlyExportsLimit,proto3" json:"monthly_exports_limit,omitempty"` // -1 for unlimited
+	Report              *FinancialReport       `protobuf:"bytes,7,opt,name=report,proto3" json:"report,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *ProfitServiceExportReportResponse) Reset() {
+	*x = ProfitServiceExportReportResponse{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProfitServiceExportReportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProfitServiceExportReportResponse) ProtoMessage() {}
+
+func (x *ProfitServiceExportReportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProfitServiceExportReportResponse.ProtoReflect.Descriptor instead.
+func (*ProfitServiceExportReportResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *ProfitServiceExportReportResponse) GetExportId() string {
+	if x != nil {
+		return x.ExportId
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportReportResponse) GetFormat() string {
+	if x != nil {
+		return x.Format
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportReportResponse) GetFileUrl() string {
+	if x != nil {
+		return x.FileUrl
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportReportResponse) GetContentHashSha512() string {
+	if x != nil {
+		return x.ContentHashSha512
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportReportResponse) GetMonthlyExportsUsed() int32 {
+	if x != nil {
+		return x.MonthlyExportsUsed
+	}
+	return 0
+}
+
+func (x *ProfitServiceExportReportResponse) GetMonthlyExportsLimit() int32 {
+	if x != nil {
+		return x.MonthlyExportsLimit
+	}
+	return 0
+}
+
+func (x *ProfitServiceExportReportResponse) GetReport() *FinancialReport {
+	if x != nil {
+		return x.Report
+	}
+	return nil
+}
+
+type ProfitServiceExportTaxReportRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Context          *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	WorkspaceId      string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	PeriodStart      string                 `protobuf:"bytes,3,opt,name=period_start,json=periodStart,proto3" json:"period_start,omitempty"`
+	PeriodEnd        string                 `protobuf:"bytes,4,opt,name=period_end,json=periodEnd,proto3" json:"period_end,omitempty"`
+	Format           string                 `protobuf:"bytes,5,opt,name=format,proto3" json:"format,omitempty"`
+	TaxRegion        string                 `protobuf:"bytes,6,opt,name=tax_region,json=taxRegion,proto3" json:"tax_region,omitempty"`
+	SubscriptionTier string                 `protobuf:"bytes,7,opt,name=subscription_tier,json=subscriptionTier,proto3" json:"subscription_tier,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ProfitServiceExportTaxReportRequest) Reset() {
+	*x = ProfitServiceExportTaxReportRequest{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProfitServiceExportTaxReportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProfitServiceExportTaxReportRequest) ProtoMessage() {}
+
+func (x *ProfitServiceExportTaxReportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProfitServiceExportTaxReportRequest.ProtoReflect.Descriptor instead.
+func (*ProfitServiceExportTaxReportRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *ProfitServiceExportTaxReportRequest) GetContext() *v1.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *ProfitServiceExportTaxReportRequest) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportTaxReportRequest) GetPeriodStart() string {
+	if x != nil {
+		return x.PeriodStart
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportTaxReportRequest) GetPeriodEnd() string {
+	if x != nil {
+		return x.PeriodEnd
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportTaxReportRequest) GetFormat() string {
+	if x != nil {
+		return x.Format
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportTaxReportRequest) GetTaxRegion() string {
+	if x != nil {
+		return x.TaxRegion
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportTaxReportRequest) GetSubscriptionTier() string {
+	if x != nil {
+		return x.SubscriptionTier
+	}
+	return ""
+}
+
+type ProfitServiceExportTaxReportResponse struct {
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	ExportId              string                 `protobuf:"bytes,1,opt,name=export_id,json=exportId,proto3" json:"export_id,omitempty"`
+	Format                string                 `protobuf:"bytes,2,opt,name=format,proto3" json:"format,omitempty"`
+	FileUrl               string                 `protobuf:"bytes,3,opt,name=file_url,json=fileUrl,proto3" json:"file_url,omitempty"`
+	TaxResponsibilityMode string                 `protobuf:"bytes,4,opt,name=tax_responsibility_mode,json=taxResponsibilityMode,proto3" json:"tax_responsibility_mode,omitempty"` // creator_responsible (BIZ-007)
+	TaxDisclaimer         string                 `protobuf:"bytes,5,opt,name=tax_disclaimer,json=taxDisclaimer,proto3" json:"tax_disclaimer,omitempty"`
+	ContentHashSha512     string                 `protobuf:"bytes,6,opt,name=content_hash_sha512,json=contentHashSha512,proto3" json:"content_hash_sha512,omitempty"`
+	Report                *FinancialReport       `protobuf:"bytes,7,opt,name=report,proto3" json:"report,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *ProfitServiceExportTaxReportResponse) Reset() {
+	*x = ProfitServiceExportTaxReportResponse{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProfitServiceExportTaxReportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProfitServiceExportTaxReportResponse) ProtoMessage() {}
+
+func (x *ProfitServiceExportTaxReportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProfitServiceExportTaxReportResponse.ProtoReflect.Descriptor instead.
+func (*ProfitServiceExportTaxReportResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *ProfitServiceExportTaxReportResponse) GetExportId() string {
+	if x != nil {
+		return x.ExportId
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportTaxReportResponse) GetFormat() string {
+	if x != nil {
+		return x.Format
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportTaxReportResponse) GetFileUrl() string {
+	if x != nil {
+		return x.FileUrl
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportTaxReportResponse) GetTaxResponsibilityMode() string {
+	if x != nil {
+		return x.TaxResponsibilityMode
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportTaxReportResponse) GetTaxDisclaimer() string {
+	if x != nil {
+		return x.TaxDisclaimer
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportTaxReportResponse) GetContentHashSha512() string {
+	if x != nil {
+		return x.ContentHashSha512
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportTaxReportResponse) GetReport() *FinancialReport {
+	if x != nil {
+		return x.Report
+	}
+	return nil
+}
+
+type ProfitServiceExportToSheetsRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Context          *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	WorkspaceId      string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	ReportId         string                 `protobuf:"bytes,3,opt,name=report_id,json=reportId,proto3" json:"report_id,omitempty"`
+	SpreadsheetTitle string                 `protobuf:"bytes,4,opt,name=spreadsheet_title,json=spreadsheetTitle,proto3" json:"spreadsheet_title,omitempty"`
+	SubscriptionTier string                 `protobuf:"bytes,5,opt,name=subscription_tier,json=subscriptionTier,proto3" json:"subscription_tier,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ProfitServiceExportToSheetsRequest) Reset() {
+	*x = ProfitServiceExportToSheetsRequest{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProfitServiceExportToSheetsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProfitServiceExportToSheetsRequest) ProtoMessage() {}
+
+func (x *ProfitServiceExportToSheetsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProfitServiceExportToSheetsRequest.ProtoReflect.Descriptor instead.
+func (*ProfitServiceExportToSheetsRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *ProfitServiceExportToSheetsRequest) GetContext() *v1.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *ProfitServiceExportToSheetsRequest) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportToSheetsRequest) GetReportId() string {
+	if x != nil {
+		return x.ReportId
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportToSheetsRequest) GetSpreadsheetTitle() string {
+	if x != nil {
+		return x.SpreadsheetTitle
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportToSheetsRequest) GetSubscriptionTier() string {
+	if x != nil {
+		return x.SubscriptionTier
+	}
+	return ""
+}
+
+type ProfitServiceExportToSheetsResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	ExportId       string                 `protobuf:"bytes,1,opt,name=export_id,json=exportId,proto3" json:"export_id,omitempty"`
+	SpreadsheetUrl string                 `protobuf:"bytes,2,opt,name=spreadsheet_url,json=spreadsheetUrl,proto3" json:"spreadsheet_url,omitempty"`
+	Status         string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ProfitServiceExportToSheetsResponse) Reset() {
+	*x = ProfitServiceExportToSheetsResponse{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProfitServiceExportToSheetsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProfitServiceExportToSheetsResponse) ProtoMessage() {}
+
+func (x *ProfitServiceExportToSheetsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProfitServiceExportToSheetsResponse.ProtoReflect.Descriptor instead.
+func (*ProfitServiceExportToSheetsResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *ProfitServiceExportToSheetsResponse) GetExportId() string {
+	if x != nil {
+		return x.ExportId
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportToSheetsResponse) GetSpreadsheetUrl() string {
+	if x != nil {
+		return x.SpreadsheetUrl
+	}
+	return ""
+}
+
+func (x *ProfitServiceExportToSheetsResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+type ProfitServiceGetReportTemplatesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId   string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProfitServiceGetReportTemplatesRequest) Reset() {
+	*x = ProfitServiceGetReportTemplatesRequest{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProfitServiceGetReportTemplatesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProfitServiceGetReportTemplatesRequest) ProtoMessage() {}
+
+func (x *ProfitServiceGetReportTemplatesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProfitServiceGetReportTemplatesRequest.ProtoReflect.Descriptor instead.
+func (*ProfitServiceGetReportTemplatesRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *ProfitServiceGetReportTemplatesRequest) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+type ProfitServiceGetReportTemplatesResponse struct {
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	Templates     []*ReportTemplateSummary `protobuf:"bytes,1,rep,name=templates,proto3" json:"templates,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProfitServiceGetReportTemplatesResponse) Reset() {
+	*x = ProfitServiceGetReportTemplatesResponse{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProfitServiceGetReportTemplatesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProfitServiceGetReportTemplatesResponse) ProtoMessage() {}
+
+func (x *ProfitServiceGetReportTemplatesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProfitServiceGetReportTemplatesResponse.ProtoReflect.Descriptor instead.
+func (*ProfitServiceGetReportTemplatesResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *ProfitServiceGetReportTemplatesResponse) GetTemplates() []*ReportTemplateSummary {
+	if x != nil {
+		return x.Templates
+	}
+	return nil
+}
+
+type ProfitServiceGetSavedReportsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId   string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProfitServiceGetSavedReportsRequest) Reset() {
+	*x = ProfitServiceGetSavedReportsRequest{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProfitServiceGetSavedReportsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProfitServiceGetSavedReportsRequest) ProtoMessage() {}
+
+func (x *ProfitServiceGetSavedReportsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProfitServiceGetSavedReportsRequest.ProtoReflect.Descriptor instead.
+func (*ProfitServiceGetSavedReportsRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *ProfitServiceGetSavedReportsRequest) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+type ProfitServiceGetSavedReportsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Reports       []*FinancialReport     `protobuf:"bytes,1,rep,name=reports,proto3" json:"reports,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProfitServiceGetSavedReportsResponse) Reset() {
+	*x = ProfitServiceGetSavedReportsResponse{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProfitServiceGetSavedReportsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProfitServiceGetSavedReportsResponse) ProtoMessage() {}
+
+func (x *ProfitServiceGetSavedReportsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProfitServiceGetSavedReportsResponse.ProtoReflect.Descriptor instead.
+func (*ProfitServiceGetSavedReportsResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *ProfitServiceGetSavedReportsResponse) GetReports() []*FinancialReport {
+	if x != nil {
+		return x.Reports
+	}
+	return nil
+}
+
 // SettlementService/Import
 type SettlementLineInput struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
@@ -2902,7 +4265,7 @@ type SettlementLineInput struct {
 
 func (x *SettlementLineInput) Reset() {
 	*x = SettlementLineInput{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[24]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2914,7 +4277,7 @@ func (x *SettlementLineInput) String() string {
 func (*SettlementLineInput) ProtoMessage() {}
 
 func (x *SettlementLineInput) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[24]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2927,7 +4290,7 @@ func (x *SettlementLineInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementLineInput.ProtoReflect.Descriptor instead.
 func (*SettlementLineInput) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{24}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *SettlementLineInput) GetExternalLineId() string {
@@ -2992,7 +4355,7 @@ type SettlementServiceImportRequest struct {
 
 func (x *SettlementServiceImportRequest) Reset() {
 	*x = SettlementServiceImportRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[25]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3004,7 +4367,7 @@ func (x *SettlementServiceImportRequest) String() string {
 func (*SettlementServiceImportRequest) ProtoMessage() {}
 
 func (x *SettlementServiceImportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[25]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3017,7 +4380,7 @@ func (x *SettlementServiceImportRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementServiceImportRequest.ProtoReflect.Descriptor instead.
 func (*SettlementServiceImportRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{25}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *SettlementServiceImportRequest) GetContext() *v1.CommandContext {
@@ -3115,7 +4478,7 @@ type SettlementServiceImportResponse struct {
 
 func (x *SettlementServiceImportResponse) Reset() {
 	*x = SettlementServiceImportResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[26]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3127,7 +4490,7 @@ func (x *SettlementServiceImportResponse) String() string {
 func (*SettlementServiceImportResponse) ProtoMessage() {}
 
 func (x *SettlementServiceImportResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[26]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3140,7 +4503,7 @@ func (x *SettlementServiceImportResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementServiceImportResponse.ProtoReflect.Descriptor instead.
 func (*SettlementServiceImportResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{26}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *SettlementServiceImportResponse) GetSettlement() *Settlement {
@@ -3178,7 +4541,7 @@ type SettlementServiceListRequest struct {
 
 func (x *SettlementServiceListRequest) Reset() {
 	*x = SettlementServiceListRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[27]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3190,7 +4553,7 @@ func (x *SettlementServiceListRequest) String() string {
 func (*SettlementServiceListRequest) ProtoMessage() {}
 
 func (x *SettlementServiceListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[27]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3203,7 +4566,7 @@ func (x *SettlementServiceListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementServiceListRequest.ProtoReflect.Descriptor instead.
 func (*SettlementServiceListRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{27}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *SettlementServiceListRequest) GetWorkspaceId() string {
@@ -3251,7 +4614,7 @@ type SettlementServiceListResponse struct {
 
 func (x *SettlementServiceListResponse) Reset() {
 	*x = SettlementServiceListResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[28]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3263,7 +4626,7 @@ func (x *SettlementServiceListResponse) String() string {
 func (*SettlementServiceListResponse) ProtoMessage() {}
 
 func (x *SettlementServiceListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[28]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3276,7 +4639,7 @@ func (x *SettlementServiceListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementServiceListResponse.ProtoReflect.Descriptor instead.
 func (*SettlementServiceListResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{28}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *SettlementServiceListResponse) GetSettlements() []*Settlement {
@@ -3304,7 +4667,7 @@ type SettlementServiceGetRequest struct {
 
 func (x *SettlementServiceGetRequest) Reset() {
 	*x = SettlementServiceGetRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[29]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3316,7 +4679,7 @@ func (x *SettlementServiceGetRequest) String() string {
 func (*SettlementServiceGetRequest) ProtoMessage() {}
 
 func (x *SettlementServiceGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[29]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3329,7 +4692,7 @@ func (x *SettlementServiceGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementServiceGetRequest.ProtoReflect.Descriptor instead.
 func (*SettlementServiceGetRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{29}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *SettlementServiceGetRequest) GetWorkspaceId() string {
@@ -3355,7 +4718,7 @@ type SettlementServiceGetResponse struct {
 
 func (x *SettlementServiceGetResponse) Reset() {
 	*x = SettlementServiceGetResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[30]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3367,7 +4730,7 @@ func (x *SettlementServiceGetResponse) String() string {
 func (*SettlementServiceGetResponse) ProtoMessage() {}
 
 func (x *SettlementServiceGetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[30]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3380,7 +4743,7 @@ func (x *SettlementServiceGetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementServiceGetResponse.ProtoReflect.Descriptor instead.
 func (*SettlementServiceGetResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{30}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *SettlementServiceGetResponse) GetSettlement() *Settlement {
@@ -3410,7 +4773,7 @@ type CostServiceCreateRequest struct {
 
 func (x *CostServiceCreateRequest) Reset() {
 	*x = CostServiceCreateRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[31]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3422,7 +4785,7 @@ func (x *CostServiceCreateRequest) String() string {
 func (*CostServiceCreateRequest) ProtoMessage() {}
 
 func (x *CostServiceCreateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[31]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3435,7 +4798,7 @@ func (x *CostServiceCreateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CostServiceCreateRequest.ProtoReflect.Descriptor instead.
 func (*CostServiceCreateRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{31}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *CostServiceCreateRequest) GetContext() *v1.CommandContext {
@@ -3524,7 +4887,7 @@ type CostServiceCreateResponse struct {
 
 func (x *CostServiceCreateResponse) Reset() {
 	*x = CostServiceCreateResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[32]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3536,7 +4899,7 @@ func (x *CostServiceCreateResponse) String() string {
 func (*CostServiceCreateResponse) ProtoMessage() {}
 
 func (x *CostServiceCreateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[32]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3549,7 +4912,7 @@ func (x *CostServiceCreateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CostServiceCreateResponse.ProtoReflect.Descriptor instead.
 func (*CostServiceCreateResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{32}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *CostServiceCreateResponse) GetCostItem() *CostItem {
@@ -3575,7 +4938,7 @@ type CostServiceListRequest struct {
 
 func (x *CostServiceListRequest) Reset() {
 	*x = CostServiceListRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[33]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3587,7 +4950,7 @@ func (x *CostServiceListRequest) String() string {
 func (*CostServiceListRequest) ProtoMessage() {}
 
 func (x *CostServiceListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[33]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3600,7 +4963,7 @@ func (x *CostServiceListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CostServiceListRequest.ProtoReflect.Descriptor instead.
 func (*CostServiceListRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{33}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *CostServiceListRequest) GetWorkspaceId() string {
@@ -3662,7 +5025,7 @@ type CostServiceListResponse struct {
 
 func (x *CostServiceListResponse) Reset() {
 	*x = CostServiceListResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[34]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3674,7 +5037,7 @@ func (x *CostServiceListResponse) String() string {
 func (*CostServiceListResponse) ProtoMessage() {}
 
 func (x *CostServiceListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[34]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3687,7 +5050,7 @@ func (x *CostServiceListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CostServiceListResponse.ProtoReflect.Descriptor instead.
 func (*CostServiceListResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{34}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *CostServiceListResponse) GetCostItems() []*CostItem {
@@ -3721,7 +5084,7 @@ type CostServiceUpdateRequest struct {
 
 func (x *CostServiceUpdateRequest) Reset() {
 	*x = CostServiceUpdateRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[35]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3733,7 +5096,7 @@ func (x *CostServiceUpdateRequest) String() string {
 func (*CostServiceUpdateRequest) ProtoMessage() {}
 
 func (x *CostServiceUpdateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[35]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3746,7 +5109,7 @@ func (x *CostServiceUpdateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CostServiceUpdateRequest.ProtoReflect.Descriptor instead.
 func (*CostServiceUpdateRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{35}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *CostServiceUpdateRequest) GetContext() *v1.CommandContext {
@@ -3814,7 +5177,7 @@ type CostServiceUpdateResponse struct {
 
 func (x *CostServiceUpdateResponse) Reset() {
 	*x = CostServiceUpdateResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[36]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3826,7 +5189,7 @@ func (x *CostServiceUpdateResponse) String() string {
 func (*CostServiceUpdateResponse) ProtoMessage() {}
 
 func (x *CostServiceUpdateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[36]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3839,7 +5202,7 @@ func (x *CostServiceUpdateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CostServiceUpdateResponse.ProtoReflect.Descriptor instead.
 func (*CostServiceUpdateResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{36}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *CostServiceUpdateResponse) GetCostItem() *CostItem {
@@ -3861,7 +5224,7 @@ type CostServiceDeleteRequest struct {
 
 func (x *CostServiceDeleteRequest) Reset() {
 	*x = CostServiceDeleteRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[37]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3873,7 +5236,7 @@ func (x *CostServiceDeleteRequest) String() string {
 func (*CostServiceDeleteRequest) ProtoMessage() {}
 
 func (x *CostServiceDeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[37]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3886,7 +5249,7 @@ func (x *CostServiceDeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CostServiceDeleteRequest.ProtoReflect.Descriptor instead.
 func (*CostServiceDeleteRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{37}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *CostServiceDeleteRequest) GetContext() *v1.CommandContext {
@@ -3919,7 +5282,7 @@ type CostServiceDeleteResponse struct {
 
 func (x *CostServiceDeleteResponse) Reset() {
 	*x = CostServiceDeleteResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[38]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3931,7 +5294,7 @@ func (x *CostServiceDeleteResponse) String() string {
 func (*CostServiceDeleteResponse) ProtoMessage() {}
 
 func (x *CostServiceDeleteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[38]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3944,7 +5307,7 @@ func (x *CostServiceDeleteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CostServiceDeleteResponse.ProtoReflect.Descriptor instead.
 func (*CostServiceDeleteResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{38}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *CostServiceDeleteResponse) GetSuccess() bool {
@@ -3970,7 +5333,7 @@ type ReconciliationServiceQueueRequest struct {
 
 func (x *ReconciliationServiceQueueRequest) Reset() {
 	*x = ReconciliationServiceQueueRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[39]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3982,7 +5345,7 @@ func (x *ReconciliationServiceQueueRequest) String() string {
 func (*ReconciliationServiceQueueRequest) ProtoMessage() {}
 
 func (x *ReconciliationServiceQueueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[39]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3995,7 +5358,7 @@ func (x *ReconciliationServiceQueueRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use ReconciliationServiceQueueRequest.ProtoReflect.Descriptor instead.
 func (*ReconciliationServiceQueueRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{39}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *ReconciliationServiceQueueRequest) GetContext() *v1.CommandContext {
@@ -4063,7 +5426,7 @@ type ReconciliationServiceQueueResponse struct {
 
 func (x *ReconciliationServiceQueueResponse) Reset() {
 	*x = ReconciliationServiceQueueResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[40]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4075,7 +5438,7 @@ func (x *ReconciliationServiceQueueResponse) String() string {
 func (*ReconciliationServiceQueueResponse) ProtoMessage() {}
 
 func (x *ReconciliationServiceQueueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[40]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4088,7 +5451,7 @@ func (x *ReconciliationServiceQueueResponse) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use ReconciliationServiceQueueResponse.ProtoReflect.Descriptor instead.
 func (*ReconciliationServiceQueueResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{40}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *ReconciliationServiceQueueResponse) GetRecord() *ReconciliationRecord {
@@ -4113,7 +5476,7 @@ type ReconciliationServiceMatchRequest struct {
 
 func (x *ReconciliationServiceMatchRequest) Reset() {
 	*x = ReconciliationServiceMatchRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[41]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4125,7 +5488,7 @@ func (x *ReconciliationServiceMatchRequest) String() string {
 func (*ReconciliationServiceMatchRequest) ProtoMessage() {}
 
 func (x *ReconciliationServiceMatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[41]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4138,7 +5501,7 @@ func (x *ReconciliationServiceMatchRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use ReconciliationServiceMatchRequest.ProtoReflect.Descriptor instead.
 func (*ReconciliationServiceMatchRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{41}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *ReconciliationServiceMatchRequest) GetContext() *v1.CommandContext {
@@ -4205,7 +5568,7 @@ type ReconciliationServiceMatchResponse struct {
 
 func (x *ReconciliationServiceMatchResponse) Reset() {
 	*x = ReconciliationServiceMatchResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[42]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4217,7 +5580,7 @@ func (x *ReconciliationServiceMatchResponse) String() string {
 func (*ReconciliationServiceMatchResponse) ProtoMessage() {}
 
 func (x *ReconciliationServiceMatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[42]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4230,7 +5593,7 @@ func (x *ReconciliationServiceMatchResponse) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use ReconciliationServiceMatchResponse.ProtoReflect.Descriptor instead.
 func (*ReconciliationServiceMatchResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{42}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *ReconciliationServiceMatchResponse) GetSuccess() bool {
@@ -4297,7 +5660,7 @@ type ReconciliationServiceManualMatchRequest struct {
 
 func (x *ReconciliationServiceManualMatchRequest) Reset() {
 	*x = ReconciliationServiceManualMatchRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[43]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4309,7 +5672,7 @@ func (x *ReconciliationServiceManualMatchRequest) String() string {
 func (*ReconciliationServiceManualMatchRequest) ProtoMessage() {}
 
 func (x *ReconciliationServiceManualMatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[43]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4322,7 +5685,7 @@ func (x *ReconciliationServiceManualMatchRequest) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use ReconciliationServiceManualMatchRequest.ProtoReflect.Descriptor instead.
 func (*ReconciliationServiceManualMatchRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{43}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *ReconciliationServiceManualMatchRequest) GetContext() *v1.CommandContext {
@@ -4389,7 +5752,7 @@ type ReconciliationServiceManualMatchResponse struct {
 
 func (x *ReconciliationServiceManualMatchResponse) Reset() {
 	*x = ReconciliationServiceManualMatchResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[44]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4401,7 +5764,7 @@ func (x *ReconciliationServiceManualMatchResponse) String() string {
 func (*ReconciliationServiceManualMatchResponse) ProtoMessage() {}
 
 func (x *ReconciliationServiceManualMatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[44]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4414,7 +5777,7 @@ func (x *ReconciliationServiceManualMatchResponse) ProtoReflect() protoreflect.M
 
 // Deprecated: Use ReconciliationServiceManualMatchResponse.ProtoReflect.Descriptor instead.
 func (*ReconciliationServiceManualMatchResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{44}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *ReconciliationServiceManualMatchResponse) GetSuccess() bool {
@@ -4480,7 +5843,7 @@ type ReconciliationServiceOverrideRequest struct {
 
 func (x *ReconciliationServiceOverrideRequest) Reset() {
 	*x = ReconciliationServiceOverrideRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[45]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4492,7 +5855,7 @@ func (x *ReconciliationServiceOverrideRequest) String() string {
 func (*ReconciliationServiceOverrideRequest) ProtoMessage() {}
 
 func (x *ReconciliationServiceOverrideRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[45]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4505,7 +5868,7 @@ func (x *ReconciliationServiceOverrideRequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use ReconciliationServiceOverrideRequest.ProtoReflect.Descriptor instead.
 func (*ReconciliationServiceOverrideRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{45}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *ReconciliationServiceOverrideRequest) GetContext() *v1.CommandContext {
@@ -4559,7 +5922,7 @@ type ReconciliationServiceOverrideResponse struct {
 
 func (x *ReconciliationServiceOverrideResponse) Reset() {
 	*x = ReconciliationServiceOverrideResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[46]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4571,7 +5934,7 @@ func (x *ReconciliationServiceOverrideResponse) String() string {
 func (*ReconciliationServiceOverrideResponse) ProtoMessage() {}
 
 func (x *ReconciliationServiceOverrideResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[46]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4584,7 +5947,7 @@ func (x *ReconciliationServiceOverrideResponse) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use ReconciliationServiceOverrideResponse.ProtoReflect.Descriptor instead.
 func (*ReconciliationServiceOverrideResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{46}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *ReconciliationServiceOverrideResponse) GetRecord() *ReconciliationRecord {
@@ -4604,7 +5967,7 @@ type ReconciliationServiceGetRecordRequest struct {
 
 func (x *ReconciliationServiceGetRecordRequest) Reset() {
 	*x = ReconciliationServiceGetRecordRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[47]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4616,7 +5979,7 @@ func (x *ReconciliationServiceGetRecordRequest) String() string {
 func (*ReconciliationServiceGetRecordRequest) ProtoMessage() {}
 
 func (x *ReconciliationServiceGetRecordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[47]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4629,7 +5992,7 @@ func (x *ReconciliationServiceGetRecordRequest) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use ReconciliationServiceGetRecordRequest.ProtoReflect.Descriptor instead.
 func (*ReconciliationServiceGetRecordRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{47}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *ReconciliationServiceGetRecordRequest) GetWorkspaceId() string {
@@ -4656,7 +6019,7 @@ type ReconciliationServiceGetRecordResponse struct {
 
 func (x *ReconciliationServiceGetRecordResponse) Reset() {
 	*x = ReconciliationServiceGetRecordResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[48]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4668,7 +6031,7 @@ func (x *ReconciliationServiceGetRecordResponse) String() string {
 func (*ReconciliationServiceGetRecordResponse) ProtoMessage() {}
 
 func (x *ReconciliationServiceGetRecordResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[48]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4681,7 +6044,7 @@ func (x *ReconciliationServiceGetRecordResponse) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use ReconciliationServiceGetRecordResponse.ProtoReflect.Descriptor instead.
 func (*ReconciliationServiceGetRecordResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{48}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *ReconciliationServiceGetRecordResponse) GetRecord() *ReconciliationRecord {
@@ -4711,7 +6074,7 @@ type ReconciliationServiceListRecordsRequest struct {
 
 func (x *ReconciliationServiceListRecordsRequest) Reset() {
 	*x = ReconciliationServiceListRecordsRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[49]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4723,7 +6086,7 @@ func (x *ReconciliationServiceListRecordsRequest) String() string {
 func (*ReconciliationServiceListRecordsRequest) ProtoMessage() {}
 
 func (x *ReconciliationServiceListRecordsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[49]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4736,7 +6099,7 @@ func (x *ReconciliationServiceListRecordsRequest) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use ReconciliationServiceListRecordsRequest.ProtoReflect.Descriptor instead.
 func (*ReconciliationServiceListRecordsRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{49}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *ReconciliationServiceListRecordsRequest) GetWorkspaceId() string {
@@ -4784,7 +6147,7 @@ type ReconciliationServiceListRecordsResponse struct {
 
 func (x *ReconciliationServiceListRecordsResponse) Reset() {
 	*x = ReconciliationServiceListRecordsResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[50]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4796,7 +6159,7 @@ func (x *ReconciliationServiceListRecordsResponse) String() string {
 func (*ReconciliationServiceListRecordsResponse) ProtoMessage() {}
 
 func (x *ReconciliationServiceListRecordsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[50]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4809,7 +6172,7 @@ func (x *ReconciliationServiceListRecordsResponse) ProtoReflect() protoreflect.M
 
 // Deprecated: Use ReconciliationServiceListRecordsResponse.ProtoReflect.Descriptor instead.
 func (*ReconciliationServiceListRecordsResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{50}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *ReconciliationServiceListRecordsResponse) GetRecords() []*ReconciliationRecord {
@@ -4841,7 +6204,7 @@ type ReconciliationServiceListPendingRequest struct {
 
 func (x *ReconciliationServiceListPendingRequest) Reset() {
 	*x = ReconciliationServiceListPendingRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[51]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4853,7 +6216,7 @@ func (x *ReconciliationServiceListPendingRequest) String() string {
 func (*ReconciliationServiceListPendingRequest) ProtoMessage() {}
 
 func (x *ReconciliationServiceListPendingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[51]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4866,7 +6229,7 @@ func (x *ReconciliationServiceListPendingRequest) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use ReconciliationServiceListPendingRequest.ProtoReflect.Descriptor instead.
 func (*ReconciliationServiceListPendingRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{51}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *ReconciliationServiceListPendingRequest) GetWorkspaceId() string {
@@ -4931,7 +6294,7 @@ type ReconciliationServiceListPendingResponse struct {
 
 func (x *ReconciliationServiceListPendingResponse) Reset() {
 	*x = ReconciliationServiceListPendingResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[52]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4943,7 +6306,7 @@ func (x *ReconciliationServiceListPendingResponse) String() string {
 func (*ReconciliationServiceListPendingResponse) ProtoMessage() {}
 
 func (x *ReconciliationServiceListPendingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[52]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4956,7 +6319,7 @@ func (x *ReconciliationServiceListPendingResponse) ProtoReflect() protoreflect.M
 
 // Deprecated: Use ReconciliationServiceListPendingResponse.ProtoReflect.Descriptor instead.
 func (*ReconciliationServiceListPendingResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{52}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *ReconciliationServiceListPendingResponse) GetItems() []*DataGapItem {
@@ -5011,7 +6374,7 @@ type EvidenceServiceSubmitRequest struct {
 
 func (x *EvidenceServiceSubmitRequest) Reset() {
 	*x = EvidenceServiceSubmitRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[53]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5023,7 +6386,7 @@ func (x *EvidenceServiceSubmitRequest) String() string {
 func (*EvidenceServiceSubmitRequest) ProtoMessage() {}
 
 func (x *EvidenceServiceSubmitRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[53]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5036,7 +6399,7 @@ func (x *EvidenceServiceSubmitRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvidenceServiceSubmitRequest.ProtoReflect.Descriptor instead.
 func (*EvidenceServiceSubmitRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{53}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *EvidenceServiceSubmitRequest) GetContext() *v1.CommandContext {
@@ -5111,7 +6474,7 @@ type EvidenceServiceSubmitResponse struct {
 
 func (x *EvidenceServiceSubmitResponse) Reset() {
 	*x = EvidenceServiceSubmitResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[54]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5123,7 +6486,7 @@ func (x *EvidenceServiceSubmitResponse) String() string {
 func (*EvidenceServiceSubmitResponse) ProtoMessage() {}
 
 func (x *EvidenceServiceSubmitResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[54]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5136,7 +6499,7 @@ func (x *EvidenceServiceSubmitResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvidenceServiceSubmitResponse.ProtoReflect.Descriptor instead.
 func (*EvidenceServiceSubmitResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{54}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *EvidenceServiceSubmitResponse) GetEvidence() *EvidenceObject {
@@ -5156,7 +6519,7 @@ type EvidenceServiceGetRequest struct {
 
 func (x *EvidenceServiceGetRequest) Reset() {
 	*x = EvidenceServiceGetRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[55]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5168,7 +6531,7 @@ func (x *EvidenceServiceGetRequest) String() string {
 func (*EvidenceServiceGetRequest) ProtoMessage() {}
 
 func (x *EvidenceServiceGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[55]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5181,7 +6544,7 @@ func (x *EvidenceServiceGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvidenceServiceGetRequest.ProtoReflect.Descriptor instead.
 func (*EvidenceServiceGetRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{55}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *EvidenceServiceGetRequest) GetWorkspaceId() string {
@@ -5207,7 +6570,7 @@ type EvidenceServiceGetResponse struct {
 
 func (x *EvidenceServiceGetResponse) Reset() {
 	*x = EvidenceServiceGetResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[56]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5219,7 +6582,7 @@ func (x *EvidenceServiceGetResponse) String() string {
 func (*EvidenceServiceGetResponse) ProtoMessage() {}
 
 func (x *EvidenceServiceGetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[56]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5232,7 +6595,7 @@ func (x *EvidenceServiceGetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvidenceServiceGetResponse.ProtoReflect.Descriptor instead.
 func (*EvidenceServiceGetResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{56}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *EvidenceServiceGetResponse) GetEvidence() *EvidenceObject {
@@ -5254,7 +6617,7 @@ type EvidenceServiceListRequest struct {
 
 func (x *EvidenceServiceListRequest) Reset() {
 	*x = EvidenceServiceListRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[57]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5266,7 +6629,7 @@ func (x *EvidenceServiceListRequest) String() string {
 func (*EvidenceServiceListRequest) ProtoMessage() {}
 
 func (x *EvidenceServiceListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[57]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5279,7 +6642,7 @@ func (x *EvidenceServiceListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvidenceServiceListRequest.ProtoReflect.Descriptor instead.
 func (*EvidenceServiceListRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{57}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *EvidenceServiceListRequest) GetWorkspaceId() string {
@@ -5320,7 +6683,7 @@ type EvidenceServiceListResponse struct {
 
 func (x *EvidenceServiceListResponse) Reset() {
 	*x = EvidenceServiceListResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[58]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5332,7 +6695,7 @@ func (x *EvidenceServiceListResponse) String() string {
 func (*EvidenceServiceListResponse) ProtoMessage() {}
 
 func (x *EvidenceServiceListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[58]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5345,7 +6708,7 @@ func (x *EvidenceServiceListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvidenceServiceListResponse.ProtoReflect.Descriptor instead.
 func (*EvidenceServiceListResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{58}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *EvidenceServiceListResponse) GetItems() []*EvidenceObject {
@@ -5378,7 +6741,7 @@ type ProofServiceAssembleRequest struct {
 
 func (x *ProofServiceAssembleRequest) Reset() {
 	*x = ProofServiceAssembleRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[59]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5390,7 +6753,7 @@ func (x *ProofServiceAssembleRequest) String() string {
 func (*ProofServiceAssembleRequest) ProtoMessage() {}
 
 func (x *ProofServiceAssembleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[59]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5403,7 +6766,7 @@ func (x *ProofServiceAssembleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProofServiceAssembleRequest.ProtoReflect.Descriptor instead.
 func (*ProofServiceAssembleRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{59}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *ProofServiceAssembleRequest) GetContext() *v1.CommandContext {
@@ -5471,7 +6834,7 @@ type ProofServiceAssembleResponse struct {
 
 func (x *ProofServiceAssembleResponse) Reset() {
 	*x = ProofServiceAssembleResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[60]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5483,7 +6846,7 @@ func (x *ProofServiceAssembleResponse) String() string {
 func (*ProofServiceAssembleResponse) ProtoMessage() {}
 
 func (x *ProofServiceAssembleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[60]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5496,7 +6859,7 @@ func (x *ProofServiceAssembleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProofServiceAssembleResponse.ProtoReflect.Descriptor instead.
 func (*ProofServiceAssembleResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{60}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *ProofServiceAssembleResponse) GetProofBundle() *ProofBundle {
@@ -5516,7 +6879,7 @@ type ProofServiceGetRequest struct {
 
 func (x *ProofServiceGetRequest) Reset() {
 	*x = ProofServiceGetRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[61]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5528,7 +6891,7 @@ func (x *ProofServiceGetRequest) String() string {
 func (*ProofServiceGetRequest) ProtoMessage() {}
 
 func (x *ProofServiceGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[61]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5541,7 +6904,7 @@ func (x *ProofServiceGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProofServiceGetRequest.ProtoReflect.Descriptor instead.
 func (*ProofServiceGetRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{61}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *ProofServiceGetRequest) GetWorkspaceId() string {
@@ -5567,7 +6930,7 @@ type ProofServiceGetResponse struct {
 
 func (x *ProofServiceGetResponse) Reset() {
 	*x = ProofServiceGetResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[62]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5579,7 +6942,7 @@ func (x *ProofServiceGetResponse) String() string {
 func (*ProofServiceGetResponse) ProtoMessage() {}
 
 func (x *ProofServiceGetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[62]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5592,7 +6955,7 @@ func (x *ProofServiceGetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProofServiceGetResponse.ProtoReflect.Descriptor instead.
 func (*ProofServiceGetResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{62}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *ProofServiceGetResponse) GetProofBundle() *ProofBundle {
@@ -5613,7 +6976,7 @@ type ProofServiceListRequest struct {
 
 func (x *ProofServiceListRequest) Reset() {
 	*x = ProofServiceListRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[63]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5625,7 +6988,7 @@ func (x *ProofServiceListRequest) String() string {
 func (*ProofServiceListRequest) ProtoMessage() {}
 
 func (x *ProofServiceListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[63]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5638,7 +7001,7 @@ func (x *ProofServiceListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProofServiceListRequest.ProtoReflect.Descriptor instead.
 func (*ProofServiceListRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{63}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *ProofServiceListRequest) GetWorkspaceId() string {
@@ -5672,7 +7035,7 @@ type ProofServiceListResponse struct {
 
 func (x *ProofServiceListResponse) Reset() {
 	*x = ProofServiceListResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[64]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5684,7 +7047,7 @@ func (x *ProofServiceListResponse) String() string {
 func (*ProofServiceListResponse) ProtoMessage() {}
 
 func (x *ProofServiceListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[64]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5697,7 +7060,7 @@ func (x *ProofServiceListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProofServiceListResponse.ProtoReflect.Descriptor instead.
 func (*ProofServiceListResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{64}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *ProofServiceListResponse) GetProofBundles() []*ProofBundle {
@@ -5735,7 +7098,7 @@ type ContentAttributionRecord struct {
 
 func (x *ContentAttributionRecord) Reset() {
 	*x = ContentAttributionRecord{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[65]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5747,7 +7110,7 @@ func (x *ContentAttributionRecord) String() string {
 func (*ContentAttributionRecord) ProtoMessage() {}
 
 func (x *ContentAttributionRecord) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[65]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5760,7 +7123,7 @@ func (x *ContentAttributionRecord) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContentAttributionRecord.ProtoReflect.Descriptor instead.
 func (*ContentAttributionRecord) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{65}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *ContentAttributionRecord) GetAttributionId() string {
@@ -5882,7 +7245,7 @@ type ContentRevenueAttribution struct {
 
 func (x *ContentRevenueAttribution) Reset() {
 	*x = ContentRevenueAttribution{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[66]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5894,7 +7257,7 @@ func (x *ContentRevenueAttribution) String() string {
 func (*ContentRevenueAttribution) ProtoMessage() {}
 
 func (x *ContentRevenueAttribution) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[66]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5907,7 +7270,7 @@ func (x *ContentRevenueAttribution) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContentRevenueAttribution.ProtoReflect.Descriptor instead.
 func (*ContentRevenueAttribution) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{66}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *ContentRevenueAttribution) GetContentId() string {
@@ -6067,7 +7430,7 @@ type WorkspaceRevenueDeduplicationSummary struct {
 
 func (x *WorkspaceRevenueDeduplicationSummary) Reset() {
 	*x = WorkspaceRevenueDeduplicationSummary{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[67]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6079,7 +7442,7 @@ func (x *WorkspaceRevenueDeduplicationSummary) String() string {
 func (*WorkspaceRevenueDeduplicationSummary) ProtoMessage() {}
 
 func (x *WorkspaceRevenueDeduplicationSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[67]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6092,7 +7455,7 @@ func (x *WorkspaceRevenueDeduplicationSummary) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use WorkspaceRevenueDeduplicationSummary.ProtoReflect.Descriptor instead.
 func (*WorkspaceRevenueDeduplicationSummary) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{67}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *WorkspaceRevenueDeduplicationSummary) GetWorkspaceId() string {
@@ -6170,7 +7533,7 @@ type ContentRevenueServiceGetAttributionRequest struct {
 
 func (x *ContentRevenueServiceGetAttributionRequest) Reset() {
 	*x = ContentRevenueServiceGetAttributionRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[68]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6182,7 +7545,7 @@ func (x *ContentRevenueServiceGetAttributionRequest) String() string {
 func (*ContentRevenueServiceGetAttributionRequest) ProtoMessage() {}
 
 func (x *ContentRevenueServiceGetAttributionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[68]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6195,7 +7558,7 @@ func (x *ContentRevenueServiceGetAttributionRequest) ProtoReflect() protoreflect
 
 // Deprecated: Use ContentRevenueServiceGetAttributionRequest.ProtoReflect.Descriptor instead.
 func (*ContentRevenueServiceGetAttributionRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{68}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *ContentRevenueServiceGetAttributionRequest) GetWorkspaceId() string {
@@ -6237,7 +7600,7 @@ type ContentRevenueServiceGetAttributionResponse struct {
 
 func (x *ContentRevenueServiceGetAttributionResponse) Reset() {
 	*x = ContentRevenueServiceGetAttributionResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[69]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6249,7 +7612,7 @@ func (x *ContentRevenueServiceGetAttributionResponse) String() string {
 func (*ContentRevenueServiceGetAttributionResponse) ProtoMessage() {}
 
 func (x *ContentRevenueServiceGetAttributionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[69]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6262,7 +7625,7 @@ func (x *ContentRevenueServiceGetAttributionResponse) ProtoReflect() protoreflec
 
 // Deprecated: Use ContentRevenueServiceGetAttributionResponse.ProtoReflect.Descriptor instead.
 func (*ContentRevenueServiceGetAttributionResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{69}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *ContentRevenueServiceGetAttributionResponse) GetAttribution() *ContentRevenueAttribution {
@@ -6298,7 +7661,7 @@ type AttributionServiceGetByContentRequest struct {
 
 func (x *AttributionServiceGetByContentRequest) Reset() {
 	*x = AttributionServiceGetByContentRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[70]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6310,7 +7673,7 @@ func (x *AttributionServiceGetByContentRequest) String() string {
 func (*AttributionServiceGetByContentRequest) ProtoMessage() {}
 
 func (x *AttributionServiceGetByContentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[70]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6323,7 +7686,7 @@ func (x *AttributionServiceGetByContentRequest) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use AttributionServiceGetByContentRequest.ProtoReflect.Descriptor instead.
 func (*AttributionServiceGetByContentRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{70}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *AttributionServiceGetByContentRequest) GetWorkspaceId() string {
@@ -6369,7 +7732,7 @@ type ContentAttributionSummary struct {
 
 func (x *ContentAttributionSummary) Reset() {
 	*x = ContentAttributionSummary{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[71]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6381,7 +7744,7 @@ func (x *ContentAttributionSummary) String() string {
 func (*ContentAttributionSummary) ProtoMessage() {}
 
 func (x *ContentAttributionSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[71]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6394,7 +7757,7 @@ func (x *ContentAttributionSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContentAttributionSummary.ProtoReflect.Descriptor instead.
 func (*ContentAttributionSummary) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{71}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *ContentAttributionSummary) GetPublishItemId() string {
@@ -6457,7 +7820,7 @@ type AttributionServiceGetByContentResponse struct {
 
 func (x *AttributionServiceGetByContentResponse) Reset() {
 	*x = AttributionServiceGetByContentResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[72]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6469,7 +7832,7 @@ func (x *AttributionServiceGetByContentResponse) String() string {
 func (*AttributionServiceGetByContentResponse) ProtoMessage() {}
 
 func (x *AttributionServiceGetByContentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[72]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6482,7 +7845,7 @@ func (x *AttributionServiceGetByContentResponse) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use AttributionServiceGetByContentResponse.ProtoReflect.Descriptor instead.
 func (*AttributionServiceGetByContentResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{72}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *AttributionServiceGetByContentResponse) GetRecords() []*ContentAttributionRecord {
@@ -6526,7 +7889,7 @@ type AttributionServiceRecordAttributionRequest struct {
 
 func (x *AttributionServiceRecordAttributionRequest) Reset() {
 	*x = AttributionServiceRecordAttributionRequest{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[73]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6538,7 +7901,7 @@ func (x *AttributionServiceRecordAttributionRequest) String() string {
 func (*AttributionServiceRecordAttributionRequest) ProtoMessage() {}
 
 func (x *AttributionServiceRecordAttributionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[73]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6551,7 +7914,7 @@ func (x *AttributionServiceRecordAttributionRequest) ProtoReflect() protoreflect
 
 // Deprecated: Use AttributionServiceRecordAttributionRequest.ProtoReflect.Descriptor instead.
 func (*AttributionServiceRecordAttributionRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{73}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *AttributionServiceRecordAttributionRequest) GetContext() *v1.CommandContext {
@@ -6651,7 +8014,7 @@ type AttributionServiceRecordAttributionResponse struct {
 
 func (x *AttributionServiceRecordAttributionResponse) Reset() {
 	*x = AttributionServiceRecordAttributionResponse{}
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[74]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6663,7 +8026,7 @@ func (x *AttributionServiceRecordAttributionResponse) String() string {
 func (*AttributionServiceRecordAttributionResponse) ProtoMessage() {}
 
 func (x *AttributionServiceRecordAttributionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[74]
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6676,7 +8039,7 @@ func (x *AttributionServiceRecordAttributionResponse) ProtoReflect() protoreflec
 
 // Deprecated: Use AttributionServiceRecordAttributionResponse.ProtoReflect.Descriptor instead.
 func (*AttributionServiceRecordAttributionResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{74}
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *AttributionServiceRecordAttributionResponse) GetRecord() *ContentAttributionRecord {
@@ -7024,7 +8387,135 @@ const file_creativanta_finance_v1_finance_proto_rawDesc = "" +
 	"\n" +
 	"period_end\x18\x06 \x01(\tR\tperiodEnd\"j\n" +
 	"$ProfitServiceRefreshSnapshotResponse\x12B\n" +
-	"\bsnapshot\x18\x01 \x01(\v2&.creativanta.finance.v1.ProfitSnapshotR\bsnapshot\"\xe9\x02\n" +
+	"\bsnapshot\x18\x01 \x01(\v2&.creativanta.finance.v1.ProfitSnapshotR\bsnapshot\"\xcc\x02\n" +
+	"\x17FinancialReportLineItem\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05label\x18\x02 \x01(\tR\x05label\x124\n" +
+	"\x06amount\x18\x03 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x06amount\x12$\n" +
+	"\x0epct_of_revenue\x18\x04 \x01(\tR\fpctOfRevenue\x12E\n" +
+	"\fsource_class\x18\x05 \x01(\x0e2\".creativanta.common.v1.SourceClassR\vsourceClass\x12E\n" +
+	"\n" +
+	"confidence\x18\x06 \x01(\x0e2%.creativanta.common.v1.ConfidenceBandR\n" +
+	"confidence\x12\x1f\n" +
+	"\vis_subtotal\x18\a \x01(\bR\n" +
+	"isSubtotal\"\xc4\f\n" +
+	"\x16CohortEconomicsSummary\x12\x1b\n" +
+	"\tcohort_id\x18\x01 \x01(\tR\bcohortId\x12-\n" +
+	"\x12observation_window\x18\x02 \x01(\tR\x11observationWindow\x12:\n" +
+	"\x19eligible_workspaces_count\x18\x03 \x01(\x03R\x17eligibleWorkspacesCount\x12:\n" +
+	"\x19censored_workspaces_count\x18\x04 \x01(\x03R\x17censoredWorkspacesCount\x12H\n" +
+	"!excluded_demo_test_internal_count\x18\x05 \x01(\x03R\x1dexcludedDemoTestInternalCount\x12;\n" +
+	"\x1amedian_first_value_seconds\x18\x06 \x01(\tR\x17medianFirstValueSeconds\x12C\n" +
+	"\x1eweekly_proofed_operating_loops\x18\a \x01(\x03R\x1bweeklyProofedOperatingLoops\x12A\n" +
+	"\x1dweekly_operator_retention_pct\x18\b \x01(\tR\x1aweeklyOperatorRetentionPct\x12?\n" +
+	"\x1cmedian_repair_burden_seconds\x18\t \x01(\tR\x19medianRepairBurdenSeconds\x123\n" +
+	"\x16is_repair_time_unknown\x18\n" +
+	" \x01(\bR\x13isRepairTimeUnknown\x12O\n" +
+	"$unresolved_required_components_count\x18\v \x01(\x03R!unresolvedRequiredComponentsCount\x12=\n" +
+	"\x1busable_production_yield_pct\x18\f \x01(\tR\x18usableProductionYieldPct\x124\n" +
+	"\x16accepted_outputs_count\x18\r \x01(\x03R\x14acceptedOutputsCount\x12K\n" +
+	"\"terminal_generation_attempts_count\x18\x0e \x01(\x03R\x1fterminalGenerationAttemptsCount\x12U\n" +
+	"\x18cost_per_accepted_output\x18\x0f \x01(\v2\x1c.creativanta.common.v1.MoneyR\x15costPerAcceptedOutput\x12O\n" +
+	"%is_cost_per_accepted_output_undefined\x18\x10 \x01(\bR isCostPerAcceptedOutputUndefined\x12K\n" +
+	"\x12recognized_revenue\x18\x11 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x11recognizedRevenue\x12T\n" +
+	"\x17allocated_provider_cost\x18\x12 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x15allocatedProviderCost\x12a\n" +
+	"\x1eallocated_compute_storage_cost\x18\x13 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x1ballocatedComputeStorageCost\x12n\n" +
+	"%allocated_payment_refund_support_cost\x18\x14 \x01(\v2\x1c.creativanta.common.v1.MoneyR!allocatedPaymentRefundSupportCost\x12J\n" +
+	"\x12net_unit_economics\x18\x15 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x10netUnitEconomics\x12+\n" +
+	"\x11allocation_method\x18\x16 \x01(\tR\x10allocationMethod\x127\n" +
+	"\x18unknown_cost_items_count\x18\x17 \x01(\x03R\x15unknownCostItemsCount\"\xa4\x05\n" +
+	"\x0fFinancialReport\x12\x1b\n" +
+	"\treport_id\x18\x01 \x01(\tR\breportId\x12!\n" +
+	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x1f\n" +
+	"\vreport_type\x18\x03 \x01(\tR\n" +
+	"reportType\x12!\n" +
+	"\fperiod_start\x18\x04 \x01(\tR\vperiodStart\x12\x1d\n" +
+	"\n" +
+	"period_end\x18\x05 \x01(\tR\tperiodEnd\x12\x19\n" +
+	"\bgroup_by\x18\x06 \x01(\tR\agroupBy\x12\x1a\n" +
+	"\bcurrency\x18\a \x01(\tR\bcurrency\x12N\n" +
+	"\n" +
+	"line_items\x18\b \x03(\v2/.creativanta.finance.v1.FinancialReportLineItemR\tlineItems\x12B\n" +
+	"\bsnapshot\x18\t \x01(\v2&.creativanta.finance.v1.ProfitSnapshotR\bsnapshot\x126\n" +
+	"\x17reconciled_coverage_pct\x18\n" +
+	" \x01(\tR\x15reconciledCoveragePct\x12*\n" +
+	"\x11low_trust_warning\x18\v \x01(\bR\x0flowTrustWarning\x12%\n" +
+	"\x0etax_disclaimer\x18\f \x01(\tR\rtaxDisclaimer\x12Y\n" +
+	"\x10cohort_economics\x18\r \x01(\v2..creativanta.finance.v1.CohortEconomicsSummaryR\x0fcohortEconomics\x12=\n" +
+	"\fgenerated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAt\"t\n" +
+	"\x15ReportTemplateSummary\x12#\n" +
+	"\rtemplate_code\x18\x01 \x01(\tR\ftemplateCode\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\"\x93\x03\n" +
+	"\"ProfitServiceGenerateReportRequest\x12?\n" +
+	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12!\n" +
+	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x1f\n" +
+	"\vreport_type\x18\x03 \x01(\tR\n" +
+	"reportType\x12!\n" +
+	"\fperiod_start\x18\x04 \x01(\tR\vperiodStart\x12\x1d\n" +
+	"\n" +
+	"period_end\x18\x05 \x01(\tR\tperiodEnd\x12\x19\n" +
+	"\bgroup_by\x18\x06 \x01(\tR\agroupBy\x12'\n" +
+	"\x0fplatform_filter\x18\a \x01(\tR\x0eplatformFilter\x12*\n" +
+	"\x11product_id_filter\x18\b \x01(\tR\x0fproductIdFilter\x126\n" +
+	"\x17included_source_classes\x18\t \x03(\tR\x15includedSourceClasses\"f\n" +
+	"#ProfitServiceGenerateReportResponse\x12?\n" +
+	"\x06report\x18\x01 \x01(\v2'.creativanta.finance.v1.FinancialReportR\x06report\"\xcb\x02\n" +
+	" ProfitServiceExportReportRequest\x12?\n" +
+	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12!\n" +
+	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x1b\n" +
+	"\treport_id\x18\x03 \x01(\tR\breportId\x12\x1f\n" +
+	"\vreport_type\x18\x04 \x01(\tR\n" +
+	"reportType\x12\x16\n" +
+	"\x06format\x18\x05 \x01(\tR\x06format\x12!\n" +
+	"\fperiod_start\x18\x06 \x01(\tR\vperiodStart\x12\x1d\n" +
+	"\n" +
+	"period_end\x18\a \x01(\tR\tperiodEnd\x12+\n" +
+	"\x11subscription_tier\x18\b \x01(\tR\x10subscriptionTier\"\xca\x02\n" +
+	"!ProfitServiceExportReportResponse\x12\x1b\n" +
+	"\texport_id\x18\x01 \x01(\tR\bexportId\x12\x16\n" +
+	"\x06format\x18\x02 \x01(\tR\x06format\x12\x19\n" +
+	"\bfile_url\x18\x03 \x01(\tR\afileUrl\x12.\n" +
+	"\x13content_hash_sha512\x18\x04 \x01(\tR\x11contentHashSha512\x120\n" +
+	"\x14monthly_exports_used\x18\x05 \x01(\x05R\x12monthlyExportsUsed\x122\n" +
+	"\x15monthly_exports_limit\x18\x06 \x01(\x05R\x13monthlyExportsLimit\x12?\n" +
+	"\x06report\x18\a \x01(\v2'.creativanta.finance.v1.FinancialReportR\x06report\"\xaf\x02\n" +
+	"#ProfitServiceExportTaxReportRequest\x12?\n" +
+	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12!\n" +
+	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12!\n" +
+	"\fperiod_start\x18\x03 \x01(\tR\vperiodStart\x12\x1d\n" +
+	"\n" +
+	"period_end\x18\x04 \x01(\tR\tperiodEnd\x12\x16\n" +
+	"\x06format\x18\x05 \x01(\tR\x06format\x12\x1d\n" +
+	"\n" +
+	"tax_region\x18\x06 \x01(\tR\ttaxRegion\x12+\n" +
+	"\x11subscription_tier\x18\a \x01(\tR\x10subscriptionTier\"\xc6\x02\n" +
+	"$ProfitServiceExportTaxReportResponse\x12\x1b\n" +
+	"\texport_id\x18\x01 \x01(\tR\bexportId\x12\x16\n" +
+	"\x06format\x18\x02 \x01(\tR\x06format\x12\x19\n" +
+	"\bfile_url\x18\x03 \x01(\tR\afileUrl\x126\n" +
+	"\x17tax_responsibility_mode\x18\x04 \x01(\tR\x15taxResponsibilityMode\x12%\n" +
+	"\x0etax_disclaimer\x18\x05 \x01(\tR\rtaxDisclaimer\x12.\n" +
+	"\x13content_hash_sha512\x18\x06 \x01(\tR\x11contentHashSha512\x12?\n" +
+	"\x06report\x18\a \x01(\v2'.creativanta.finance.v1.FinancialReportR\x06report\"\xff\x01\n" +
+	"\"ProfitServiceExportToSheetsRequest\x12?\n" +
+	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12!\n" +
+	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x1b\n" +
+	"\treport_id\x18\x03 \x01(\tR\breportId\x12+\n" +
+	"\x11spreadsheet_title\x18\x04 \x01(\tR\x10spreadsheetTitle\x12+\n" +
+	"\x11subscription_tier\x18\x05 \x01(\tR\x10subscriptionTier\"\x83\x01\n" +
+	"#ProfitServiceExportToSheetsResponse\x12\x1b\n" +
+	"\texport_id\x18\x01 \x01(\tR\bexportId\x12'\n" +
+	"\x0fspreadsheet_url\x18\x02 \x01(\tR\x0espreadsheetUrl\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\"K\n" +
+	"&ProfitServiceGetReportTemplatesRequest\x12!\n" +
+	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\"v\n" +
+	"'ProfitServiceGetReportTemplatesResponse\x12K\n" +
+	"\ttemplates\x18\x01 \x03(\v2-.creativanta.finance.v1.ReportTemplateSummaryR\ttemplates\"H\n" +
+	"#ProfitServiceGetSavedReportsRequest\x12!\n" +
+	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\"i\n" +
+	"$ProfitServiceGetSavedReportsResponse\x12A\n" +
+	"\areports\x18\x01 \x03(\v2'.creativanta.finance.v1.FinancialReportR\areports\"\xe9\x02\n" +
 	"\x13SettlementLineInput\x12(\n" +
 	"\x10external_line_id\x18\x01 \x01(\tR\x0eexternalLineId\x12*\n" +
 	"\x11external_order_id\x18\x02 \x01(\tR\x0fexternalOrderId\x12?\n" +
@@ -7440,14 +8931,20 @@ const file_creativanta_finance_v1_finance_proto_rawDesc = "" +
 	"\x1bVERIFICATION_STATUS_PENDING\x10\x01\x12 \n" +
 	"\x1cVERIFICATION_STATUS_VERIFIED\x10\x02\x12!\n" +
 	"\x1dVERIFICATION_STATUS_RE_VERIFY\x10\x03\x12\x1e\n" +
-	"\x1aVERIFICATION_STATUS_FAILED\x10\x042\xa2\x05\n" +
+	"\x1aVERIFICATION_STATUS_FAILED\x10\x042\xf6\v\n" +
 	"\rProfitService\x12}\n" +
 	"\n" +
 	"GetSummary\x126.creativanta.finance.v1.ProfitServiceGetSummaryRequest\x1a7.creativanta.finance.v1.ProfitServiceGetSummaryResponse\x12z\n" +
 	"\tDrillDown\x125.creativanta.finance.v1.ProfitServiceDrillDownRequest\x1a6.creativanta.finance.v1.ProfitServiceDrillDownResponse\x12\x83\x01\n" +
 	"\fGetAnomalies\x128.creativanta.finance.v1.ProfitServiceGetAnomaliesRequest\x1a9.creativanta.finance.v1.ProfitServiceGetAnomaliesResponse\x12\x80\x01\n" +
 	"\vGetSnapshot\x127.creativanta.finance.v1.ProfitServiceGetSnapshotRequest\x1a8.creativanta.finance.v1.ProfitServiceGetSnapshotResponse\x12\x8c\x01\n" +
-	"\x0fRefreshSnapshot\x12;.creativanta.finance.v1.ProfitServiceRefreshSnapshotRequest\x1a<.creativanta.finance.v1.ProfitServiceRefreshSnapshotResponse2\xf5\x02\n" +
+	"\x0fRefreshSnapshot\x12;.creativanta.finance.v1.ProfitServiceRefreshSnapshotRequest\x1a<.creativanta.finance.v1.ProfitServiceRefreshSnapshotResponse\x12\x89\x01\n" +
+	"\x0eGenerateReport\x12:.creativanta.finance.v1.ProfitServiceGenerateReportRequest\x1a;.creativanta.finance.v1.ProfitServiceGenerateReportResponse\x12\x83\x01\n" +
+	"\fExportReport\x128.creativanta.finance.v1.ProfitServiceExportReportRequest\x1a9.creativanta.finance.v1.ProfitServiceExportReportResponse\x12\x8c\x01\n" +
+	"\x0fExportTaxReport\x12;.creativanta.finance.v1.ProfitServiceExportTaxReportRequest\x1a<.creativanta.finance.v1.ProfitServiceExportTaxReportResponse\x12\x89\x01\n" +
+	"\x0eExportToSheets\x12:.creativanta.finance.v1.ProfitServiceExportToSheetsRequest\x1a;.creativanta.finance.v1.ProfitServiceExportToSheetsResponse\x12\x95\x01\n" +
+	"\x12GetReportTemplates\x12>.creativanta.finance.v1.ProfitServiceGetReportTemplatesRequest\x1a?.creativanta.finance.v1.ProfitServiceGetReportTemplatesResponse\x12\x8c\x01\n" +
+	"\x0fGetSavedReports\x12;.creativanta.finance.v1.ProfitServiceGetSavedReportsRequest\x1a<.creativanta.finance.v1.ProfitServiceGetSavedReportsResponse2\xf5\x02\n" +
 	"\x11SettlementService\x12y\n" +
 	"\x06Import\x126.creativanta.finance.v1.SettlementServiceImportRequest\x1a7.creativanta.finance.v1.SettlementServiceImportResponse\x12s\n" +
 	"\x04List\x124.creativanta.finance.v1.SettlementServiceListRequest\x1a5.creativanta.finance.v1.SettlementServiceListResponse\x12p\n" +
@@ -7492,7 +8989,7 @@ func file_creativanta_finance_v1_finance_proto_rawDescGZIP() []byte {
 }
 
 var file_creativanta_finance_v1_finance_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_creativanta_finance_v1_finance_proto_msgTypes = make([]protoimpl.MessageInfo, 78)
+var file_creativanta_finance_v1_finance_proto_msgTypes = make([]protoimpl.MessageInfo, 94)
 var file_creativanta_finance_v1_finance_proto_goTypes = []any{
 	(FinancialComponent)(0),                             // 0: creativanta.finance.v1.FinancialComponent
 	(ReconciliationState)(0),                            // 1: creativanta.finance.v1.ReconciliationState
@@ -7523,311 +9020,361 @@ var file_creativanta_finance_v1_finance_proto_goTypes = []any{
 	(*ProfitServiceGetSnapshotResponse)(nil),            // 26: creativanta.finance.v1.ProfitServiceGetSnapshotResponse
 	(*ProfitServiceRefreshSnapshotRequest)(nil),         // 27: creativanta.finance.v1.ProfitServiceRefreshSnapshotRequest
 	(*ProfitServiceRefreshSnapshotResponse)(nil),        // 28: creativanta.finance.v1.ProfitServiceRefreshSnapshotResponse
-	(*SettlementLineInput)(nil),                         // 29: creativanta.finance.v1.SettlementLineInput
-	(*SettlementServiceImportRequest)(nil),              // 30: creativanta.finance.v1.SettlementServiceImportRequest
-	(*SettlementServiceImportResponse)(nil),             // 31: creativanta.finance.v1.SettlementServiceImportResponse
-	(*SettlementServiceListRequest)(nil),                // 32: creativanta.finance.v1.SettlementServiceListRequest
-	(*SettlementServiceListResponse)(nil),               // 33: creativanta.finance.v1.SettlementServiceListResponse
-	(*SettlementServiceGetRequest)(nil),                 // 34: creativanta.finance.v1.SettlementServiceGetRequest
-	(*SettlementServiceGetResponse)(nil),                // 35: creativanta.finance.v1.SettlementServiceGetResponse
-	(*CostServiceCreateRequest)(nil),                    // 36: creativanta.finance.v1.CostServiceCreateRequest
-	(*CostServiceCreateResponse)(nil),                   // 37: creativanta.finance.v1.CostServiceCreateResponse
-	(*CostServiceListRequest)(nil),                      // 38: creativanta.finance.v1.CostServiceListRequest
-	(*CostServiceListResponse)(nil),                     // 39: creativanta.finance.v1.CostServiceListResponse
-	(*CostServiceUpdateRequest)(nil),                    // 40: creativanta.finance.v1.CostServiceUpdateRequest
-	(*CostServiceUpdateResponse)(nil),                   // 41: creativanta.finance.v1.CostServiceUpdateResponse
-	(*CostServiceDeleteRequest)(nil),                    // 42: creativanta.finance.v1.CostServiceDeleteRequest
-	(*CostServiceDeleteResponse)(nil),                   // 43: creativanta.finance.v1.CostServiceDeleteResponse
-	(*ReconciliationServiceQueueRequest)(nil),           // 44: creativanta.finance.v1.ReconciliationServiceQueueRequest
-	(*ReconciliationServiceQueueResponse)(nil),          // 45: creativanta.finance.v1.ReconciliationServiceQueueResponse
-	(*ReconciliationServiceMatchRequest)(nil),           // 46: creativanta.finance.v1.ReconciliationServiceMatchRequest
-	(*ReconciliationServiceMatchResponse)(nil),          // 47: creativanta.finance.v1.ReconciliationServiceMatchResponse
-	(*ReconciliationServiceManualMatchRequest)(nil),     // 48: creativanta.finance.v1.ReconciliationServiceManualMatchRequest
-	(*ReconciliationServiceManualMatchResponse)(nil),    // 49: creativanta.finance.v1.ReconciliationServiceManualMatchResponse
-	(*ReconciliationServiceOverrideRequest)(nil),        // 50: creativanta.finance.v1.ReconciliationServiceOverrideRequest
-	(*ReconciliationServiceOverrideResponse)(nil),       // 51: creativanta.finance.v1.ReconciliationServiceOverrideResponse
-	(*ReconciliationServiceGetRecordRequest)(nil),       // 52: creativanta.finance.v1.ReconciliationServiceGetRecordRequest
-	(*ReconciliationServiceGetRecordResponse)(nil),      // 53: creativanta.finance.v1.ReconciliationServiceGetRecordResponse
-	(*ReconciliationServiceListRecordsRequest)(nil),     // 54: creativanta.finance.v1.ReconciliationServiceListRecordsRequest
-	(*ReconciliationServiceListRecordsResponse)(nil),    // 55: creativanta.finance.v1.ReconciliationServiceListRecordsResponse
-	(*ReconciliationServiceListPendingRequest)(nil),     // 56: creativanta.finance.v1.ReconciliationServiceListPendingRequest
-	(*ReconciliationServiceListPendingResponse)(nil),    // 57: creativanta.finance.v1.ReconciliationServiceListPendingResponse
-	(*EvidenceServiceSubmitRequest)(nil),                // 58: creativanta.finance.v1.EvidenceServiceSubmitRequest
-	(*EvidenceServiceSubmitResponse)(nil),               // 59: creativanta.finance.v1.EvidenceServiceSubmitResponse
-	(*EvidenceServiceGetRequest)(nil),                   // 60: creativanta.finance.v1.EvidenceServiceGetRequest
-	(*EvidenceServiceGetResponse)(nil),                  // 61: creativanta.finance.v1.EvidenceServiceGetResponse
-	(*EvidenceServiceListRequest)(nil),                  // 62: creativanta.finance.v1.EvidenceServiceListRequest
-	(*EvidenceServiceListResponse)(nil),                 // 63: creativanta.finance.v1.EvidenceServiceListResponse
-	(*ProofServiceAssembleRequest)(nil),                 // 64: creativanta.finance.v1.ProofServiceAssembleRequest
-	(*ProofServiceAssembleResponse)(nil),                // 65: creativanta.finance.v1.ProofServiceAssembleResponse
-	(*ProofServiceGetRequest)(nil),                      // 66: creativanta.finance.v1.ProofServiceGetRequest
-	(*ProofServiceGetResponse)(nil),                     // 67: creativanta.finance.v1.ProofServiceGetResponse
-	(*ProofServiceListRequest)(nil),                     // 68: creativanta.finance.v1.ProofServiceListRequest
-	(*ProofServiceListResponse)(nil),                    // 69: creativanta.finance.v1.ProofServiceListResponse
-	(*ContentAttributionRecord)(nil),                    // 70: creativanta.finance.v1.ContentAttributionRecord
-	(*ContentRevenueAttribution)(nil),                   // 71: creativanta.finance.v1.ContentRevenueAttribution
-	(*WorkspaceRevenueDeduplicationSummary)(nil),        // 72: creativanta.finance.v1.WorkspaceRevenueDeduplicationSummary
-	(*ContentRevenueServiceGetAttributionRequest)(nil),  // 73: creativanta.finance.v1.ContentRevenueServiceGetAttributionRequest
-	(*ContentRevenueServiceGetAttributionResponse)(nil), // 74: creativanta.finance.v1.ContentRevenueServiceGetAttributionResponse
-	(*AttributionServiceGetByContentRequest)(nil),       // 75: creativanta.finance.v1.AttributionServiceGetByContentRequest
-	(*ContentAttributionSummary)(nil),                   // 76: creativanta.finance.v1.ContentAttributionSummary
-	(*AttributionServiceGetByContentResponse)(nil),      // 77: creativanta.finance.v1.AttributionServiceGetByContentResponse
-	(*AttributionServiceRecordAttributionRequest)(nil),  // 78: creativanta.finance.v1.AttributionServiceRecordAttributionRequest
-	(*AttributionServiceRecordAttributionResponse)(nil), // 79: creativanta.finance.v1.AttributionServiceRecordAttributionResponse
-	nil,                           // 80: creativanta.finance.v1.ProfitServiceGetSummaryResponse.ComponentBreakdownEntry
-	nil,                           // 81: creativanta.finance.v1.ProfitServiceGetSummaryResponse.SourceClassPercentagesEntry
-	nil,                           // 82: creativanta.finance.v1.ContentRevenueAttribution.SourceClassPercentagesEntry
-	(*timestamppb.Timestamp)(nil), // 83: google.protobuf.Timestamp
-	(v1.SourceClass)(0),           // 84: creativanta.common.v1.SourceClass
-	(*v1.Money)(nil),              // 85: creativanta.common.v1.Money
-	(v1.ConfidenceBand)(0),        // 86: creativanta.common.v1.ConfidenceBand
-	(*v1.CommandContext)(nil),     // 87: creativanta.common.v1.CommandContext
-	(*v1.Pagination)(nil),         // 88: creativanta.common.v1.Pagination
-	(*v1.PaginatedResponse)(nil),  // 89: creativanta.common.v1.PaginatedResponse
+	(*FinancialReportLineItem)(nil),                     // 29: creativanta.finance.v1.FinancialReportLineItem
+	(*CohortEconomicsSummary)(nil),                      // 30: creativanta.finance.v1.CohortEconomicsSummary
+	(*FinancialReport)(nil),                             // 31: creativanta.finance.v1.FinancialReport
+	(*ReportTemplateSummary)(nil),                       // 32: creativanta.finance.v1.ReportTemplateSummary
+	(*ProfitServiceGenerateReportRequest)(nil),          // 33: creativanta.finance.v1.ProfitServiceGenerateReportRequest
+	(*ProfitServiceGenerateReportResponse)(nil),         // 34: creativanta.finance.v1.ProfitServiceGenerateReportResponse
+	(*ProfitServiceExportReportRequest)(nil),            // 35: creativanta.finance.v1.ProfitServiceExportReportRequest
+	(*ProfitServiceExportReportResponse)(nil),           // 36: creativanta.finance.v1.ProfitServiceExportReportResponse
+	(*ProfitServiceExportTaxReportRequest)(nil),         // 37: creativanta.finance.v1.ProfitServiceExportTaxReportRequest
+	(*ProfitServiceExportTaxReportResponse)(nil),        // 38: creativanta.finance.v1.ProfitServiceExportTaxReportResponse
+	(*ProfitServiceExportToSheetsRequest)(nil),          // 39: creativanta.finance.v1.ProfitServiceExportToSheetsRequest
+	(*ProfitServiceExportToSheetsResponse)(nil),         // 40: creativanta.finance.v1.ProfitServiceExportToSheetsResponse
+	(*ProfitServiceGetReportTemplatesRequest)(nil),      // 41: creativanta.finance.v1.ProfitServiceGetReportTemplatesRequest
+	(*ProfitServiceGetReportTemplatesResponse)(nil),     // 42: creativanta.finance.v1.ProfitServiceGetReportTemplatesResponse
+	(*ProfitServiceGetSavedReportsRequest)(nil),         // 43: creativanta.finance.v1.ProfitServiceGetSavedReportsRequest
+	(*ProfitServiceGetSavedReportsResponse)(nil),        // 44: creativanta.finance.v1.ProfitServiceGetSavedReportsResponse
+	(*SettlementLineInput)(nil),                         // 45: creativanta.finance.v1.SettlementLineInput
+	(*SettlementServiceImportRequest)(nil),              // 46: creativanta.finance.v1.SettlementServiceImportRequest
+	(*SettlementServiceImportResponse)(nil),             // 47: creativanta.finance.v1.SettlementServiceImportResponse
+	(*SettlementServiceListRequest)(nil),                // 48: creativanta.finance.v1.SettlementServiceListRequest
+	(*SettlementServiceListResponse)(nil),               // 49: creativanta.finance.v1.SettlementServiceListResponse
+	(*SettlementServiceGetRequest)(nil),                 // 50: creativanta.finance.v1.SettlementServiceGetRequest
+	(*SettlementServiceGetResponse)(nil),                // 51: creativanta.finance.v1.SettlementServiceGetResponse
+	(*CostServiceCreateRequest)(nil),                    // 52: creativanta.finance.v1.CostServiceCreateRequest
+	(*CostServiceCreateResponse)(nil),                   // 53: creativanta.finance.v1.CostServiceCreateResponse
+	(*CostServiceListRequest)(nil),                      // 54: creativanta.finance.v1.CostServiceListRequest
+	(*CostServiceListResponse)(nil),                     // 55: creativanta.finance.v1.CostServiceListResponse
+	(*CostServiceUpdateRequest)(nil),                    // 56: creativanta.finance.v1.CostServiceUpdateRequest
+	(*CostServiceUpdateResponse)(nil),                   // 57: creativanta.finance.v1.CostServiceUpdateResponse
+	(*CostServiceDeleteRequest)(nil),                    // 58: creativanta.finance.v1.CostServiceDeleteRequest
+	(*CostServiceDeleteResponse)(nil),                   // 59: creativanta.finance.v1.CostServiceDeleteResponse
+	(*ReconciliationServiceQueueRequest)(nil),           // 60: creativanta.finance.v1.ReconciliationServiceQueueRequest
+	(*ReconciliationServiceQueueResponse)(nil),          // 61: creativanta.finance.v1.ReconciliationServiceQueueResponse
+	(*ReconciliationServiceMatchRequest)(nil),           // 62: creativanta.finance.v1.ReconciliationServiceMatchRequest
+	(*ReconciliationServiceMatchResponse)(nil),          // 63: creativanta.finance.v1.ReconciliationServiceMatchResponse
+	(*ReconciliationServiceManualMatchRequest)(nil),     // 64: creativanta.finance.v1.ReconciliationServiceManualMatchRequest
+	(*ReconciliationServiceManualMatchResponse)(nil),    // 65: creativanta.finance.v1.ReconciliationServiceManualMatchResponse
+	(*ReconciliationServiceOverrideRequest)(nil),        // 66: creativanta.finance.v1.ReconciliationServiceOverrideRequest
+	(*ReconciliationServiceOverrideResponse)(nil),       // 67: creativanta.finance.v1.ReconciliationServiceOverrideResponse
+	(*ReconciliationServiceGetRecordRequest)(nil),       // 68: creativanta.finance.v1.ReconciliationServiceGetRecordRequest
+	(*ReconciliationServiceGetRecordResponse)(nil),      // 69: creativanta.finance.v1.ReconciliationServiceGetRecordResponse
+	(*ReconciliationServiceListRecordsRequest)(nil),     // 70: creativanta.finance.v1.ReconciliationServiceListRecordsRequest
+	(*ReconciliationServiceListRecordsResponse)(nil),    // 71: creativanta.finance.v1.ReconciliationServiceListRecordsResponse
+	(*ReconciliationServiceListPendingRequest)(nil),     // 72: creativanta.finance.v1.ReconciliationServiceListPendingRequest
+	(*ReconciliationServiceListPendingResponse)(nil),    // 73: creativanta.finance.v1.ReconciliationServiceListPendingResponse
+	(*EvidenceServiceSubmitRequest)(nil),                // 74: creativanta.finance.v1.EvidenceServiceSubmitRequest
+	(*EvidenceServiceSubmitResponse)(nil),               // 75: creativanta.finance.v1.EvidenceServiceSubmitResponse
+	(*EvidenceServiceGetRequest)(nil),                   // 76: creativanta.finance.v1.EvidenceServiceGetRequest
+	(*EvidenceServiceGetResponse)(nil),                  // 77: creativanta.finance.v1.EvidenceServiceGetResponse
+	(*EvidenceServiceListRequest)(nil),                  // 78: creativanta.finance.v1.EvidenceServiceListRequest
+	(*EvidenceServiceListResponse)(nil),                 // 79: creativanta.finance.v1.EvidenceServiceListResponse
+	(*ProofServiceAssembleRequest)(nil),                 // 80: creativanta.finance.v1.ProofServiceAssembleRequest
+	(*ProofServiceAssembleResponse)(nil),                // 81: creativanta.finance.v1.ProofServiceAssembleResponse
+	(*ProofServiceGetRequest)(nil),                      // 82: creativanta.finance.v1.ProofServiceGetRequest
+	(*ProofServiceGetResponse)(nil),                     // 83: creativanta.finance.v1.ProofServiceGetResponse
+	(*ProofServiceListRequest)(nil),                     // 84: creativanta.finance.v1.ProofServiceListRequest
+	(*ProofServiceListResponse)(nil),                    // 85: creativanta.finance.v1.ProofServiceListResponse
+	(*ContentAttributionRecord)(nil),                    // 86: creativanta.finance.v1.ContentAttributionRecord
+	(*ContentRevenueAttribution)(nil),                   // 87: creativanta.finance.v1.ContentRevenueAttribution
+	(*WorkspaceRevenueDeduplicationSummary)(nil),        // 88: creativanta.finance.v1.WorkspaceRevenueDeduplicationSummary
+	(*ContentRevenueServiceGetAttributionRequest)(nil),  // 89: creativanta.finance.v1.ContentRevenueServiceGetAttributionRequest
+	(*ContentRevenueServiceGetAttributionResponse)(nil), // 90: creativanta.finance.v1.ContentRevenueServiceGetAttributionResponse
+	(*AttributionServiceGetByContentRequest)(nil),       // 91: creativanta.finance.v1.AttributionServiceGetByContentRequest
+	(*ContentAttributionSummary)(nil),                   // 92: creativanta.finance.v1.ContentAttributionSummary
+	(*AttributionServiceGetByContentResponse)(nil),      // 93: creativanta.finance.v1.AttributionServiceGetByContentResponse
+	(*AttributionServiceRecordAttributionRequest)(nil),  // 94: creativanta.finance.v1.AttributionServiceRecordAttributionRequest
+	(*AttributionServiceRecordAttributionResponse)(nil), // 95: creativanta.finance.v1.AttributionServiceRecordAttributionResponse
+	nil,                           // 96: creativanta.finance.v1.ProfitServiceGetSummaryResponse.ComponentBreakdownEntry
+	nil,                           // 97: creativanta.finance.v1.ProfitServiceGetSummaryResponse.SourceClassPercentagesEntry
+	nil,                           // 98: creativanta.finance.v1.ContentRevenueAttribution.SourceClassPercentagesEntry
+	(*timestamppb.Timestamp)(nil), // 99: google.protobuf.Timestamp
+	(v1.SourceClass)(0),           // 100: creativanta.common.v1.SourceClass
+	(*v1.Money)(nil),              // 101: creativanta.common.v1.Money
+	(v1.ConfidenceBand)(0),        // 102: creativanta.common.v1.ConfidenceBand
+	(*v1.CommandContext)(nil),     // 103: creativanta.common.v1.CommandContext
+	(*v1.Pagination)(nil),         // 104: creativanta.common.v1.Pagination
+	(*v1.PaginatedResponse)(nil),  // 105: creativanta.common.v1.PaginatedResponse
 }
 var file_creativanta_finance_v1_finance_proto_depIdxs = []int32{
-	83,  // 0: creativanta.finance.v1.ExchangeRateSnapshot.captured_at:type_name -> google.protobuf.Timestamp
-	83,  // 1: creativanta.finance.v1.ExchangeRateSnapshot.effective_at:type_name -> google.protobuf.Timestamp
-	84,  // 2: creativanta.finance.v1.ExchangeRateSnapshot.source_class:type_name -> creativanta.common.v1.SourceClass
+	99,  // 0: creativanta.finance.v1.ExchangeRateSnapshot.captured_at:type_name -> google.protobuf.Timestamp
+	99,  // 1: creativanta.finance.v1.ExchangeRateSnapshot.effective_at:type_name -> google.protobuf.Timestamp
+	100, // 2: creativanta.finance.v1.ExchangeRateSnapshot.source_class:type_name -> creativanta.common.v1.SourceClass
 	0,   // 3: creativanta.finance.v1.FinancialPosting.component:type_name -> creativanta.finance.v1.FinancialComponent
-	85,  // 4: creativanta.finance.v1.FinancialPosting.amount:type_name -> creativanta.common.v1.Money
-	84,  // 5: creativanta.finance.v1.FinancialPosting.source_class:type_name -> creativanta.common.v1.SourceClass
-	86,  // 6: creativanta.finance.v1.FinancialPosting.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	101, // 4: creativanta.finance.v1.FinancialPosting.amount:type_name -> creativanta.common.v1.Money
+	100, // 5: creativanta.finance.v1.FinancialPosting.source_class:type_name -> creativanta.common.v1.SourceClass
+	102, // 6: creativanta.finance.v1.FinancialPosting.confidence:type_name -> creativanta.common.v1.ConfidenceBand
 	6,   // 7: creativanta.finance.v1.FinancialPosting.exchange_rate:type_name -> creativanta.finance.v1.ExchangeRateSnapshot
-	83,  // 8: creativanta.finance.v1.FinancialPosting.effective_at:type_name -> google.protobuf.Timestamp
-	83,  // 9: creativanta.finance.v1.FinancialPosting.created_at:type_name -> google.protobuf.Timestamp
-	85,  // 10: creativanta.finance.v1.CostItem.amount:type_name -> creativanta.common.v1.Money
-	84,  // 11: creativanta.finance.v1.CostItem.source_class:type_name -> creativanta.common.v1.SourceClass
+	99,  // 8: creativanta.finance.v1.FinancialPosting.effective_at:type_name -> google.protobuf.Timestamp
+	99,  // 9: creativanta.finance.v1.FinancialPosting.created_at:type_name -> google.protobuf.Timestamp
+	101, // 10: creativanta.finance.v1.CostItem.amount:type_name -> creativanta.common.v1.Money
+	100, // 11: creativanta.finance.v1.CostItem.source_class:type_name -> creativanta.common.v1.SourceClass
 	3,   // 12: creativanta.finance.v1.CostItem.cost_state:type_name -> creativanta.finance.v1.CostState
-	83,  // 13: creativanta.finance.v1.CostItem.created_at:type_name -> google.protobuf.Timestamp
-	83,  // 14: creativanta.finance.v1.CostItem.updated_at:type_name -> google.protobuf.Timestamp
-	85,  // 15: creativanta.finance.v1.SettlementLine.gross_amount:type_name -> creativanta.common.v1.Money
-	85,  // 16: creativanta.finance.v1.SettlementLine.fee_amount:type_name -> creativanta.common.v1.Money
-	85,  // 17: creativanta.finance.v1.SettlementLine.refund_amount:type_name -> creativanta.common.v1.Money
-	85,  // 18: creativanta.finance.v1.SettlementLine.net_amount:type_name -> creativanta.common.v1.Money
-	85,  // 19: creativanta.finance.v1.SettlementLine.matched_amount:type_name -> creativanta.common.v1.Money
+	99,  // 13: creativanta.finance.v1.CostItem.created_at:type_name -> google.protobuf.Timestamp
+	99,  // 14: creativanta.finance.v1.CostItem.updated_at:type_name -> google.protobuf.Timestamp
+	101, // 15: creativanta.finance.v1.SettlementLine.gross_amount:type_name -> creativanta.common.v1.Money
+	101, // 16: creativanta.finance.v1.SettlementLine.fee_amount:type_name -> creativanta.common.v1.Money
+	101, // 17: creativanta.finance.v1.SettlementLine.refund_amount:type_name -> creativanta.common.v1.Money
+	101, // 18: creativanta.finance.v1.SettlementLine.net_amount:type_name -> creativanta.common.v1.Money
+	101, // 19: creativanta.finance.v1.SettlementLine.matched_amount:type_name -> creativanta.common.v1.Money
 	1,   // 20: creativanta.finance.v1.SettlementLine.reconciliation_state:type_name -> creativanta.finance.v1.ReconciliationState
-	83,  // 21: creativanta.finance.v1.SettlementLine.created_at:type_name -> google.protobuf.Timestamp
-	84,  // 22: creativanta.finance.v1.Settlement.source_class:type_name -> creativanta.common.v1.SourceClass
+	99,  // 21: creativanta.finance.v1.SettlementLine.created_at:type_name -> google.protobuf.Timestamp
+	100, // 22: creativanta.finance.v1.Settlement.source_class:type_name -> creativanta.common.v1.SourceClass
 	6,   // 23: creativanta.finance.v1.Settlement.exchange_rate:type_name -> creativanta.finance.v1.ExchangeRateSnapshot
-	85,  // 24: creativanta.finance.v1.Settlement.gross_amount:type_name -> creativanta.common.v1.Money
-	85,  // 25: creativanta.finance.v1.Settlement.net_amount:type_name -> creativanta.common.v1.Money
+	101, // 24: creativanta.finance.v1.Settlement.gross_amount:type_name -> creativanta.common.v1.Money
+	101, // 25: creativanta.finance.v1.Settlement.net_amount:type_name -> creativanta.common.v1.Money
 	2,   // 26: creativanta.finance.v1.Settlement.settlement_state:type_name -> creativanta.finance.v1.SettlementState
 	1,   // 27: creativanta.finance.v1.Settlement.reconciliation_state:type_name -> creativanta.finance.v1.ReconciliationState
-	83,  // 28: creativanta.finance.v1.Settlement.created_at:type_name -> google.protobuf.Timestamp
-	83,  // 29: creativanta.finance.v1.Settlement.updated_at:type_name -> google.protobuf.Timestamp
+	99,  // 28: creativanta.finance.v1.Settlement.created_at:type_name -> google.protobuf.Timestamp
+	99,  // 29: creativanta.finance.v1.Settlement.updated_at:type_name -> google.protobuf.Timestamp
 	9,   // 30: creativanta.finance.v1.Settlement.lines:type_name -> creativanta.finance.v1.SettlementLine
-	85,  // 31: creativanta.finance.v1.ProfitSnapshot.gross_revenue:type_name -> creativanta.common.v1.Money
-	85,  // 32: creativanta.finance.v1.ProfitSnapshot.platform_fees:type_name -> creativanta.common.v1.Money
-	85,  // 33: creativanta.finance.v1.ProfitSnapshot.shipping_costs:type_name -> creativanta.common.v1.Money
-	85,  // 34: creativanta.finance.v1.ProfitSnapshot.affiliate_commissions:type_name -> creativanta.common.v1.Money
-	85,  // 35: creativanta.finance.v1.ProfitSnapshot.refund_deductions:type_name -> creativanta.common.v1.Money
-	85,  // 36: creativanta.finance.v1.ProfitSnapshot.cogs:type_name -> creativanta.common.v1.Money
-	85,  // 37: creativanta.finance.v1.ProfitSnapshot.ads_spend:type_name -> creativanta.common.v1.Money
-	85,  // 38: creativanta.finance.v1.ProfitSnapshot.ai_credit_costs:type_name -> creativanta.common.v1.Money
-	85,  // 39: creativanta.finance.v1.ProfitSnapshot.seeding_costs:type_name -> creativanta.common.v1.Money
-	85,  // 40: creativanta.finance.v1.ProfitSnapshot.other_costs:type_name -> creativanta.common.v1.Money
-	85,  // 41: creativanta.finance.v1.ProfitSnapshot.net_profit:type_name -> creativanta.common.v1.Money
-	86,  // 42: creativanta.finance.v1.ProfitSnapshot.confidence:type_name -> creativanta.common.v1.ConfidenceBand
-	83,  // 43: creativanta.finance.v1.ProfitSnapshot.freshness_at:type_name -> google.protobuf.Timestamp
-	83,  // 44: creativanta.finance.v1.ProfitSnapshot.created_at:type_name -> google.protobuf.Timestamp
-	85,  // 45: creativanta.finance.v1.ProfitSnapshot.pending_revenue:type_name -> creativanta.common.v1.Money
-	85,  // 46: creativanta.finance.v1.ProfitSnapshot.unreconciled_amount:type_name -> creativanta.common.v1.Money
-	85,  // 47: creativanta.finance.v1.ProfitAnomaly.expected_amount:type_name -> creativanta.common.v1.Money
-	85,  // 48: creativanta.finance.v1.ProfitAnomaly.actual_amount:type_name -> creativanta.common.v1.Money
-	83,  // 49: creativanta.finance.v1.ProfitAnomaly.detected_at:type_name -> google.protobuf.Timestamp
-	85,  // 50: creativanta.finance.v1.ReconciliationRecord.matched_amount:type_name -> creativanta.common.v1.Money
-	85,  // 51: creativanta.finance.v1.ReconciliationRecord.discrepancy_amount:type_name -> creativanta.common.v1.Money
+	101, // 31: creativanta.finance.v1.ProfitSnapshot.gross_revenue:type_name -> creativanta.common.v1.Money
+	101, // 32: creativanta.finance.v1.ProfitSnapshot.platform_fees:type_name -> creativanta.common.v1.Money
+	101, // 33: creativanta.finance.v1.ProfitSnapshot.shipping_costs:type_name -> creativanta.common.v1.Money
+	101, // 34: creativanta.finance.v1.ProfitSnapshot.affiliate_commissions:type_name -> creativanta.common.v1.Money
+	101, // 35: creativanta.finance.v1.ProfitSnapshot.refund_deductions:type_name -> creativanta.common.v1.Money
+	101, // 36: creativanta.finance.v1.ProfitSnapshot.cogs:type_name -> creativanta.common.v1.Money
+	101, // 37: creativanta.finance.v1.ProfitSnapshot.ads_spend:type_name -> creativanta.common.v1.Money
+	101, // 38: creativanta.finance.v1.ProfitSnapshot.ai_credit_costs:type_name -> creativanta.common.v1.Money
+	101, // 39: creativanta.finance.v1.ProfitSnapshot.seeding_costs:type_name -> creativanta.common.v1.Money
+	101, // 40: creativanta.finance.v1.ProfitSnapshot.other_costs:type_name -> creativanta.common.v1.Money
+	101, // 41: creativanta.finance.v1.ProfitSnapshot.net_profit:type_name -> creativanta.common.v1.Money
+	102, // 42: creativanta.finance.v1.ProfitSnapshot.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	99,  // 43: creativanta.finance.v1.ProfitSnapshot.freshness_at:type_name -> google.protobuf.Timestamp
+	99,  // 44: creativanta.finance.v1.ProfitSnapshot.created_at:type_name -> google.protobuf.Timestamp
+	101, // 45: creativanta.finance.v1.ProfitSnapshot.pending_revenue:type_name -> creativanta.common.v1.Money
+	101, // 46: creativanta.finance.v1.ProfitSnapshot.unreconciled_amount:type_name -> creativanta.common.v1.Money
+	101, // 47: creativanta.finance.v1.ProfitAnomaly.expected_amount:type_name -> creativanta.common.v1.Money
+	101, // 48: creativanta.finance.v1.ProfitAnomaly.actual_amount:type_name -> creativanta.common.v1.Money
+	99,  // 49: creativanta.finance.v1.ProfitAnomaly.detected_at:type_name -> google.protobuf.Timestamp
+	101, // 50: creativanta.finance.v1.ReconciliationRecord.matched_amount:type_name -> creativanta.common.v1.Money
+	101, // 51: creativanta.finance.v1.ReconciliationRecord.discrepancy_amount:type_name -> creativanta.common.v1.Money
 	1,   // 52: creativanta.finance.v1.ReconciliationRecord.reconciliation_state:type_name -> creativanta.finance.v1.ReconciliationState
-	83,  // 53: creativanta.finance.v1.ReconciliationRecord.override_at:type_name -> google.protobuf.Timestamp
-	83,  // 54: creativanta.finance.v1.ReconciliationRecord.created_at:type_name -> google.protobuf.Timestamp
-	83,  // 55: creativanta.finance.v1.ReconciliationRecord.updated_at:type_name -> google.protobuf.Timestamp
-	85,  // 56: creativanta.finance.v1.ReconciliationMatch.allocated_amount:type_name -> creativanta.common.v1.Money
-	83,  // 57: creativanta.finance.v1.ReconciliationMatch.created_at:type_name -> google.protobuf.Timestamp
-	83,  // 58: creativanta.finance.v1.EvidenceObject.collected_at:type_name -> google.protobuf.Timestamp
+	99,  // 53: creativanta.finance.v1.ReconciliationRecord.override_at:type_name -> google.protobuf.Timestamp
+	99,  // 54: creativanta.finance.v1.ReconciliationRecord.created_at:type_name -> google.protobuf.Timestamp
+	99,  // 55: creativanta.finance.v1.ReconciliationRecord.updated_at:type_name -> google.protobuf.Timestamp
+	101, // 56: creativanta.finance.v1.ReconciliationMatch.allocated_amount:type_name -> creativanta.common.v1.Money
+	99,  // 57: creativanta.finance.v1.ReconciliationMatch.created_at:type_name -> google.protobuf.Timestamp
+	99,  // 58: creativanta.finance.v1.EvidenceObject.collected_at:type_name -> google.protobuf.Timestamp
 	4,   // 59: creativanta.finance.v1.EvidenceObject.verification_status:type_name -> creativanta.finance.v1.VerificationStatus
 	5,   // 60: creativanta.finance.v1.EvidenceObject.related_object_refs:type_name -> creativanta.finance.v1.ObjectRef
-	83,  // 61: creativanta.finance.v1.EvidenceObject.created_at:type_name -> google.protobuf.Timestamp
-	86,  // 62: creativanta.finance.v1.ProofBundle.confidence:type_name -> creativanta.common.v1.ConfidenceBand
-	83,  // 63: creativanta.finance.v1.ProofBundle.created_at:type_name -> google.protobuf.Timestamp
-	83,  // 64: creativanta.finance.v1.ProofBundle.updated_at:type_name -> google.protobuf.Timestamp
-	85,  // 65: creativanta.finance.v1.DataGapItem.monetary_amount:type_name -> creativanta.common.v1.Money
-	83,  // 66: creativanta.finance.v1.DataGapItem.unresolved_since:type_name -> google.protobuf.Timestamp
+	99,  // 61: creativanta.finance.v1.EvidenceObject.created_at:type_name -> google.protobuf.Timestamp
+	102, // 62: creativanta.finance.v1.ProofBundle.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	99,  // 63: creativanta.finance.v1.ProofBundle.created_at:type_name -> google.protobuf.Timestamp
+	99,  // 64: creativanta.finance.v1.ProofBundle.updated_at:type_name -> google.protobuf.Timestamp
+	101, // 65: creativanta.finance.v1.DataGapItem.monetary_amount:type_name -> creativanta.common.v1.Money
+	99,  // 66: creativanta.finance.v1.DataGapItem.unresolved_since:type_name -> google.protobuf.Timestamp
 	11,  // 67: creativanta.finance.v1.ProfitServiceGetSummaryResponse.snapshot:type_name -> creativanta.finance.v1.ProfitSnapshot
-	80,  // 68: creativanta.finance.v1.ProfitServiceGetSummaryResponse.component_breakdown:type_name -> creativanta.finance.v1.ProfitServiceGetSummaryResponse.ComponentBreakdownEntry
-	81,  // 69: creativanta.finance.v1.ProfitServiceGetSummaryResponse.source_class_percentages:type_name -> creativanta.finance.v1.ProfitServiceGetSummaryResponse.SourceClassPercentagesEntry
-	85,  // 70: creativanta.finance.v1.ProfitDrillDownItem.revenue:type_name -> creativanta.common.v1.Money
-	85,  // 71: creativanta.finance.v1.ProfitDrillDownItem.costs:type_name -> creativanta.common.v1.Money
-	85,  // 72: creativanta.finance.v1.ProfitDrillDownItem.net_profit:type_name -> creativanta.common.v1.Money
-	86,  // 73: creativanta.finance.v1.ProfitDrillDownItem.confidence:type_name -> creativanta.common.v1.ConfidenceBand
-	84,  // 74: creativanta.finance.v1.ProfitDrillDownItem.primary_source_class:type_name -> creativanta.common.v1.SourceClass
+	96,  // 68: creativanta.finance.v1.ProfitServiceGetSummaryResponse.component_breakdown:type_name -> creativanta.finance.v1.ProfitServiceGetSummaryResponse.ComponentBreakdownEntry
+	97,  // 69: creativanta.finance.v1.ProfitServiceGetSummaryResponse.source_class_percentages:type_name -> creativanta.finance.v1.ProfitServiceGetSummaryResponse.SourceClassPercentagesEntry
+	101, // 70: creativanta.finance.v1.ProfitDrillDownItem.revenue:type_name -> creativanta.common.v1.Money
+	101, // 71: creativanta.finance.v1.ProfitDrillDownItem.costs:type_name -> creativanta.common.v1.Money
+	101, // 72: creativanta.finance.v1.ProfitDrillDownItem.net_profit:type_name -> creativanta.common.v1.Money
+	102, // 73: creativanta.finance.v1.ProfitDrillDownItem.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	100, // 74: creativanta.finance.v1.ProfitDrillDownItem.primary_source_class:type_name -> creativanta.common.v1.SourceClass
 	21,  // 75: creativanta.finance.v1.ProfitServiceDrillDownResponse.items:type_name -> creativanta.finance.v1.ProfitDrillDownItem
 	12,  // 76: creativanta.finance.v1.ProfitServiceGetAnomaliesResponse.anomalies:type_name -> creativanta.finance.v1.ProfitAnomaly
 	11,  // 77: creativanta.finance.v1.ProfitServiceGetSnapshotResponse.snapshot:type_name -> creativanta.finance.v1.ProfitSnapshot
-	87,  // 78: creativanta.finance.v1.ProfitServiceRefreshSnapshotRequest.context:type_name -> creativanta.common.v1.CommandContext
+	103, // 78: creativanta.finance.v1.ProfitServiceRefreshSnapshotRequest.context:type_name -> creativanta.common.v1.CommandContext
 	11,  // 79: creativanta.finance.v1.ProfitServiceRefreshSnapshotResponse.snapshot:type_name -> creativanta.finance.v1.ProfitSnapshot
-	85,  // 80: creativanta.finance.v1.SettlementLineInput.gross_amount:type_name -> creativanta.common.v1.Money
-	85,  // 81: creativanta.finance.v1.SettlementLineInput.fee_amount:type_name -> creativanta.common.v1.Money
-	85,  // 82: creativanta.finance.v1.SettlementLineInput.refund_amount:type_name -> creativanta.common.v1.Money
-	85,  // 83: creativanta.finance.v1.SettlementLineInput.net_amount:type_name -> creativanta.common.v1.Money
-	87,  // 84: creativanta.finance.v1.SettlementServiceImportRequest.context:type_name -> creativanta.common.v1.CommandContext
-	85,  // 85: creativanta.finance.v1.SettlementServiceImportRequest.gross_amount:type_name -> creativanta.common.v1.Money
-	85,  // 86: creativanta.finance.v1.SettlementServiceImportRequest.net_amount:type_name -> creativanta.common.v1.Money
-	29,  // 87: creativanta.finance.v1.SettlementServiceImportRequest.lines:type_name -> creativanta.finance.v1.SettlementLineInput
-	6,   // 88: creativanta.finance.v1.SettlementServiceImportRequest.exchange_rate:type_name -> creativanta.finance.v1.ExchangeRateSnapshot
-	10,  // 89: creativanta.finance.v1.SettlementServiceImportResponse.settlement:type_name -> creativanta.finance.v1.Settlement
-	88,  // 90: creativanta.finance.v1.SettlementServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	2,   // 91: creativanta.finance.v1.SettlementServiceListRequest.settlement_state:type_name -> creativanta.finance.v1.SettlementState
-	1,   // 92: creativanta.finance.v1.SettlementServiceListRequest.reconciliation_state:type_name -> creativanta.finance.v1.ReconciliationState
-	10,  // 93: creativanta.finance.v1.SettlementServiceListResponse.settlements:type_name -> creativanta.finance.v1.Settlement
-	89,  // 94: creativanta.finance.v1.SettlementServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	10,  // 95: creativanta.finance.v1.SettlementServiceGetResponse.settlement:type_name -> creativanta.finance.v1.Settlement
-	87,  // 96: creativanta.finance.v1.CostServiceCreateRequest.context:type_name -> creativanta.common.v1.CommandContext
-	85,  // 97: creativanta.finance.v1.CostServiceCreateRequest.amount:type_name -> creativanta.common.v1.Money
-	84,  // 98: creativanta.finance.v1.CostServiceCreateRequest.source_class:type_name -> creativanta.common.v1.SourceClass
-	8,   // 99: creativanta.finance.v1.CostServiceCreateResponse.cost_item:type_name -> creativanta.finance.v1.CostItem
-	88,  // 100: creativanta.finance.v1.CostServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	8,   // 101: creativanta.finance.v1.CostServiceListResponse.cost_items:type_name -> creativanta.finance.v1.CostItem
-	89,  // 102: creativanta.finance.v1.CostServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	87,  // 103: creativanta.finance.v1.CostServiceUpdateRequest.context:type_name -> creativanta.common.v1.CommandContext
-	85,  // 104: creativanta.finance.v1.CostServiceUpdateRequest.amount:type_name -> creativanta.common.v1.Money
-	84,  // 105: creativanta.finance.v1.CostServiceUpdateRequest.source_class:type_name -> creativanta.common.v1.SourceClass
-	3,   // 106: creativanta.finance.v1.CostServiceUpdateRequest.cost_state:type_name -> creativanta.finance.v1.CostState
-	8,   // 107: creativanta.finance.v1.CostServiceUpdateResponse.cost_item:type_name -> creativanta.finance.v1.CostItem
-	87,  // 108: creativanta.finance.v1.CostServiceDeleteRequest.context:type_name -> creativanta.common.v1.CommandContext
-	87,  // 109: creativanta.finance.v1.ReconciliationServiceQueueRequest.context:type_name -> creativanta.common.v1.CommandContext
-	13,  // 110: creativanta.finance.v1.ReconciliationServiceQueueResponse.record:type_name -> creativanta.finance.v1.ReconciliationRecord
-	87,  // 111: creativanta.finance.v1.ReconciliationServiceMatchRequest.context:type_name -> creativanta.common.v1.CommandContext
-	85,  // 112: creativanta.finance.v1.ReconciliationServiceMatchRequest.allocation_amount:type_name -> creativanta.common.v1.Money
-	9,   // 113: creativanta.finance.v1.ReconciliationServiceMatchResponse.line:type_name -> creativanta.finance.v1.SettlementLine
-	1,   // 114: creativanta.finance.v1.ReconciliationServiceMatchResponse.order_reconciliation_state:type_name -> creativanta.finance.v1.ReconciliationState
-	85,  // 115: creativanta.finance.v1.ReconciliationServiceMatchResponse.line_remaining_capacity:type_name -> creativanta.common.v1.Money
-	85,  // 116: creativanta.finance.v1.ReconciliationServiceMatchResponse.order_remaining_capacity:type_name -> creativanta.common.v1.Money
-	13,  // 117: creativanta.finance.v1.ReconciliationServiceMatchResponse.record:type_name -> creativanta.finance.v1.ReconciliationRecord
-	14,  // 118: creativanta.finance.v1.ReconciliationServiceMatchResponse.match:type_name -> creativanta.finance.v1.ReconciliationMatch
-	87,  // 119: creativanta.finance.v1.ReconciliationServiceManualMatchRequest.context:type_name -> creativanta.common.v1.CommandContext
-	85,  // 120: creativanta.finance.v1.ReconciliationServiceManualMatchRequest.allocation_amount:type_name -> creativanta.common.v1.Money
-	9,   // 121: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.line:type_name -> creativanta.finance.v1.SettlementLine
-	1,   // 122: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.order_reconciliation_state:type_name -> creativanta.finance.v1.ReconciliationState
-	85,  // 123: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.line_remaining_capacity:type_name -> creativanta.common.v1.Money
-	85,  // 124: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.order_remaining_capacity:type_name -> creativanta.common.v1.Money
-	13,  // 125: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.record:type_name -> creativanta.finance.v1.ReconciliationRecord
-	14,  // 126: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.match:type_name -> creativanta.finance.v1.ReconciliationMatch
-	87,  // 127: creativanta.finance.v1.ReconciliationServiceOverrideRequest.context:type_name -> creativanta.common.v1.CommandContext
-	13,  // 128: creativanta.finance.v1.ReconciliationServiceOverrideResponse.record:type_name -> creativanta.finance.v1.ReconciliationRecord
-	13,  // 129: creativanta.finance.v1.ReconciliationServiceGetRecordResponse.record:type_name -> creativanta.finance.v1.ReconciliationRecord
-	14,  // 130: creativanta.finance.v1.ReconciliationServiceGetRecordResponse.matches:type_name -> creativanta.finance.v1.ReconciliationMatch
-	88,  // 131: creativanta.finance.v1.ReconciliationServiceListRecordsRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	1,   // 132: creativanta.finance.v1.ReconciliationServiceListRecordsRequest.reconciliation_state:type_name -> creativanta.finance.v1.ReconciliationState
-	13,  // 133: creativanta.finance.v1.ReconciliationServiceListRecordsResponse.records:type_name -> creativanta.finance.v1.ReconciliationRecord
-	89,  // 134: creativanta.finance.v1.ReconciliationServiceListRecordsResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	88,  // 135: creativanta.finance.v1.ReconciliationServiceListPendingRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	17,  // 136: creativanta.finance.v1.ReconciliationServiceListPendingResponse.items:type_name -> creativanta.finance.v1.DataGapItem
-	89,  // 137: creativanta.finance.v1.ReconciliationServiceListPendingResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	85,  // 138: creativanta.finance.v1.ReconciliationServiceListPendingResponse.total_unreconciled_amount:type_name -> creativanta.common.v1.Money
-	87,  // 139: creativanta.finance.v1.EvidenceServiceSubmitRequest.context:type_name -> creativanta.common.v1.CommandContext
-	5,   // 140: creativanta.finance.v1.EvidenceServiceSubmitRequest.related_object_refs:type_name -> creativanta.finance.v1.ObjectRef
-	15,  // 141: creativanta.finance.v1.EvidenceServiceSubmitResponse.evidence:type_name -> creativanta.finance.v1.EvidenceObject
-	15,  // 142: creativanta.finance.v1.EvidenceServiceGetResponse.evidence:type_name -> creativanta.finance.v1.EvidenceObject
-	88,  // 143: creativanta.finance.v1.EvidenceServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	15,  // 144: creativanta.finance.v1.EvidenceServiceListResponse.items:type_name -> creativanta.finance.v1.EvidenceObject
-	89,  // 145: creativanta.finance.v1.EvidenceServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	87,  // 146: creativanta.finance.v1.ProofServiceAssembleRequest.context:type_name -> creativanta.common.v1.CommandContext
-	86,  // 147: creativanta.finance.v1.ProofServiceAssembleRequest.confidence:type_name -> creativanta.common.v1.ConfidenceBand
-	16,  // 148: creativanta.finance.v1.ProofServiceAssembleResponse.proof_bundle:type_name -> creativanta.finance.v1.ProofBundle
-	16,  // 149: creativanta.finance.v1.ProofServiceGetResponse.proof_bundle:type_name -> creativanta.finance.v1.ProofBundle
-	88,  // 150: creativanta.finance.v1.ProofServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	16,  // 151: creativanta.finance.v1.ProofServiceListResponse.proof_bundles:type_name -> creativanta.finance.v1.ProofBundle
-	89,  // 152: creativanta.finance.v1.ProofServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	85,  // 153: creativanta.finance.v1.ContentAttributionRecord.revenue_attributed:type_name -> creativanta.common.v1.Money
-	84,  // 154: creativanta.finance.v1.ContentAttributionRecord.source_class:type_name -> creativanta.common.v1.SourceClass
-	86,  // 155: creativanta.finance.v1.ContentAttributionRecord.confidence:type_name -> creativanta.common.v1.ConfidenceBand
-	83,  // 156: creativanta.finance.v1.ContentAttributionRecord.created_at:type_name -> google.protobuf.Timestamp
-	85,  // 157: creativanta.finance.v1.ContentRevenueAttribution.attributed_revenue:type_name -> creativanta.common.v1.Money
-	86,  // 158: creativanta.finance.v1.ContentRevenueAttribution.confidence:type_name -> creativanta.common.v1.ConfidenceBand
-	82,  // 159: creativanta.finance.v1.ContentRevenueAttribution.source_class_percentages:type_name -> creativanta.finance.v1.ContentRevenueAttribution.SourceClassPercentagesEntry
-	85,  // 160: creativanta.finance.v1.WorkspaceRevenueDeduplicationSummary.canonical_workspace_revenue:type_name -> creativanta.common.v1.Money
-	85,  // 161: creativanta.finance.v1.WorkspaceRevenueDeduplicationSummary.sum_attribution_lines:type_name -> creativanta.common.v1.Money
-	86,  // 162: creativanta.finance.v1.WorkspaceRevenueDeduplicationSummary.aggregate_confidence:type_name -> creativanta.common.v1.ConfidenceBand
-	71,  // 163: creativanta.finance.v1.ContentRevenueServiceGetAttributionResponse.attribution:type_name -> creativanta.finance.v1.ContentRevenueAttribution
-	70,  // 164: creativanta.finance.v1.ContentRevenueServiceGetAttributionResponse.attribution_records:type_name -> creativanta.finance.v1.ContentAttributionRecord
-	72,  // 165: creativanta.finance.v1.ContentRevenueServiceGetAttributionResponse.workspace_summary:type_name -> creativanta.finance.v1.WorkspaceRevenueDeduplicationSummary
-	88,  // 166: creativanta.finance.v1.AttributionServiceGetByContentRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	85,  // 167: creativanta.finance.v1.ContentAttributionSummary.total_attributed_revenue:type_name -> creativanta.common.v1.Money
-	85,  // 168: creativanta.finance.v1.ContentAttributionSummary.canonical_order_revenue:type_name -> creativanta.common.v1.Money
-	86,  // 169: creativanta.finance.v1.ContentAttributionSummary.confidence:type_name -> creativanta.common.v1.ConfidenceBand
-	70,  // 170: creativanta.finance.v1.AttributionServiceGetByContentResponse.records:type_name -> creativanta.finance.v1.ContentAttributionRecord
-	76,  // 171: creativanta.finance.v1.AttributionServiceGetByContentResponse.summary:type_name -> creativanta.finance.v1.ContentAttributionSummary
-	89,  // 172: creativanta.finance.v1.AttributionServiceGetByContentResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	87,  // 173: creativanta.finance.v1.AttributionServiceRecordAttributionRequest.context:type_name -> creativanta.common.v1.CommandContext
-	85,  // 174: creativanta.finance.v1.AttributionServiceRecordAttributionRequest.revenue_attributed:type_name -> creativanta.common.v1.Money
-	84,  // 175: creativanta.finance.v1.AttributionServiceRecordAttributionRequest.source_class:type_name -> creativanta.common.v1.SourceClass
-	86,  // 176: creativanta.finance.v1.AttributionServiceRecordAttributionRequest.confidence:type_name -> creativanta.common.v1.ConfidenceBand
-	70,  // 177: creativanta.finance.v1.AttributionServiceRecordAttributionResponse.record:type_name -> creativanta.finance.v1.ContentAttributionRecord
-	85,  // 178: creativanta.finance.v1.AttributionServiceRecordAttributionResponse.order_total_revenue:type_name -> creativanta.common.v1.Money
-	85,  // 179: creativanta.finance.v1.AttributionServiceRecordAttributionResponse.order_allocated_revenue:type_name -> creativanta.common.v1.Money
-	85,  // 180: creativanta.finance.v1.AttributionServiceRecordAttributionResponse.order_remaining_capacity:type_name -> creativanta.common.v1.Money
-	18,  // 181: creativanta.finance.v1.ProfitService.GetSummary:input_type -> creativanta.finance.v1.ProfitServiceGetSummaryRequest
-	20,  // 182: creativanta.finance.v1.ProfitService.DrillDown:input_type -> creativanta.finance.v1.ProfitServiceDrillDownRequest
-	23,  // 183: creativanta.finance.v1.ProfitService.GetAnomalies:input_type -> creativanta.finance.v1.ProfitServiceGetAnomaliesRequest
-	25,  // 184: creativanta.finance.v1.ProfitService.GetSnapshot:input_type -> creativanta.finance.v1.ProfitServiceGetSnapshotRequest
-	27,  // 185: creativanta.finance.v1.ProfitService.RefreshSnapshot:input_type -> creativanta.finance.v1.ProfitServiceRefreshSnapshotRequest
-	30,  // 186: creativanta.finance.v1.SettlementService.Import:input_type -> creativanta.finance.v1.SettlementServiceImportRequest
-	32,  // 187: creativanta.finance.v1.SettlementService.List:input_type -> creativanta.finance.v1.SettlementServiceListRequest
-	34,  // 188: creativanta.finance.v1.SettlementService.Get:input_type -> creativanta.finance.v1.SettlementServiceGetRequest
-	36,  // 189: creativanta.finance.v1.CostService.Create:input_type -> creativanta.finance.v1.CostServiceCreateRequest
-	38,  // 190: creativanta.finance.v1.CostService.List:input_type -> creativanta.finance.v1.CostServiceListRequest
-	40,  // 191: creativanta.finance.v1.CostService.Update:input_type -> creativanta.finance.v1.CostServiceUpdateRequest
-	42,  // 192: creativanta.finance.v1.CostService.Delete:input_type -> creativanta.finance.v1.CostServiceDeleteRequest
-	44,  // 193: creativanta.finance.v1.ReconciliationService.Queue:input_type -> creativanta.finance.v1.ReconciliationServiceQueueRequest
-	46,  // 194: creativanta.finance.v1.ReconciliationService.Match:input_type -> creativanta.finance.v1.ReconciliationServiceMatchRequest
-	48,  // 195: creativanta.finance.v1.ReconciliationService.ManualMatch:input_type -> creativanta.finance.v1.ReconciliationServiceManualMatchRequest
-	50,  // 196: creativanta.finance.v1.ReconciliationService.Override:input_type -> creativanta.finance.v1.ReconciliationServiceOverrideRequest
-	52,  // 197: creativanta.finance.v1.ReconciliationService.GetRecord:input_type -> creativanta.finance.v1.ReconciliationServiceGetRecordRequest
-	54,  // 198: creativanta.finance.v1.ReconciliationService.ListRecords:input_type -> creativanta.finance.v1.ReconciliationServiceListRecordsRequest
-	56,  // 199: creativanta.finance.v1.ReconciliationService.ListPending:input_type -> creativanta.finance.v1.ReconciliationServiceListPendingRequest
-	58,  // 200: creativanta.finance.v1.EvidenceService.Submit:input_type -> creativanta.finance.v1.EvidenceServiceSubmitRequest
-	60,  // 201: creativanta.finance.v1.EvidenceService.Get:input_type -> creativanta.finance.v1.EvidenceServiceGetRequest
-	62,  // 202: creativanta.finance.v1.EvidenceService.List:input_type -> creativanta.finance.v1.EvidenceServiceListRequest
-	64,  // 203: creativanta.finance.v1.ProofService.Assemble:input_type -> creativanta.finance.v1.ProofServiceAssembleRequest
-	66,  // 204: creativanta.finance.v1.ProofService.Get:input_type -> creativanta.finance.v1.ProofServiceGetRequest
-	68,  // 205: creativanta.finance.v1.ProofService.List:input_type -> creativanta.finance.v1.ProofServiceListRequest
-	73,  // 206: creativanta.finance.v1.ContentRevenueService.GetAttribution:input_type -> creativanta.finance.v1.ContentRevenueServiceGetAttributionRequest
-	75,  // 207: creativanta.finance.v1.AttributionService.GetByContent:input_type -> creativanta.finance.v1.AttributionServiceGetByContentRequest
-	78,  // 208: creativanta.finance.v1.AttributionService.RecordAttribution:input_type -> creativanta.finance.v1.AttributionServiceRecordAttributionRequest
-	19,  // 209: creativanta.finance.v1.ProfitService.GetSummary:output_type -> creativanta.finance.v1.ProfitServiceGetSummaryResponse
-	22,  // 210: creativanta.finance.v1.ProfitService.DrillDown:output_type -> creativanta.finance.v1.ProfitServiceDrillDownResponse
-	24,  // 211: creativanta.finance.v1.ProfitService.GetAnomalies:output_type -> creativanta.finance.v1.ProfitServiceGetAnomaliesResponse
-	26,  // 212: creativanta.finance.v1.ProfitService.GetSnapshot:output_type -> creativanta.finance.v1.ProfitServiceGetSnapshotResponse
-	28,  // 213: creativanta.finance.v1.ProfitService.RefreshSnapshot:output_type -> creativanta.finance.v1.ProfitServiceRefreshSnapshotResponse
-	31,  // 214: creativanta.finance.v1.SettlementService.Import:output_type -> creativanta.finance.v1.SettlementServiceImportResponse
-	33,  // 215: creativanta.finance.v1.SettlementService.List:output_type -> creativanta.finance.v1.SettlementServiceListResponse
-	35,  // 216: creativanta.finance.v1.SettlementService.Get:output_type -> creativanta.finance.v1.SettlementServiceGetResponse
-	37,  // 217: creativanta.finance.v1.CostService.Create:output_type -> creativanta.finance.v1.CostServiceCreateResponse
-	39,  // 218: creativanta.finance.v1.CostService.List:output_type -> creativanta.finance.v1.CostServiceListResponse
-	41,  // 219: creativanta.finance.v1.CostService.Update:output_type -> creativanta.finance.v1.CostServiceUpdateResponse
-	43,  // 220: creativanta.finance.v1.CostService.Delete:output_type -> creativanta.finance.v1.CostServiceDeleteResponse
-	45,  // 221: creativanta.finance.v1.ReconciliationService.Queue:output_type -> creativanta.finance.v1.ReconciliationServiceQueueResponse
-	47,  // 222: creativanta.finance.v1.ReconciliationService.Match:output_type -> creativanta.finance.v1.ReconciliationServiceMatchResponse
-	49,  // 223: creativanta.finance.v1.ReconciliationService.ManualMatch:output_type -> creativanta.finance.v1.ReconciliationServiceManualMatchResponse
-	51,  // 224: creativanta.finance.v1.ReconciliationService.Override:output_type -> creativanta.finance.v1.ReconciliationServiceOverrideResponse
-	53,  // 225: creativanta.finance.v1.ReconciliationService.GetRecord:output_type -> creativanta.finance.v1.ReconciliationServiceGetRecordResponse
-	55,  // 226: creativanta.finance.v1.ReconciliationService.ListRecords:output_type -> creativanta.finance.v1.ReconciliationServiceListRecordsResponse
-	57,  // 227: creativanta.finance.v1.ReconciliationService.ListPending:output_type -> creativanta.finance.v1.ReconciliationServiceListPendingResponse
-	59,  // 228: creativanta.finance.v1.EvidenceService.Submit:output_type -> creativanta.finance.v1.EvidenceServiceSubmitResponse
-	61,  // 229: creativanta.finance.v1.EvidenceService.Get:output_type -> creativanta.finance.v1.EvidenceServiceGetResponse
-	63,  // 230: creativanta.finance.v1.EvidenceService.List:output_type -> creativanta.finance.v1.EvidenceServiceListResponse
-	65,  // 231: creativanta.finance.v1.ProofService.Assemble:output_type -> creativanta.finance.v1.ProofServiceAssembleResponse
-	67,  // 232: creativanta.finance.v1.ProofService.Get:output_type -> creativanta.finance.v1.ProofServiceGetResponse
-	69,  // 233: creativanta.finance.v1.ProofService.List:output_type -> creativanta.finance.v1.ProofServiceListResponse
-	74,  // 234: creativanta.finance.v1.ContentRevenueService.GetAttribution:output_type -> creativanta.finance.v1.ContentRevenueServiceGetAttributionResponse
-	77,  // 235: creativanta.finance.v1.AttributionService.GetByContent:output_type -> creativanta.finance.v1.AttributionServiceGetByContentResponse
-	79,  // 236: creativanta.finance.v1.AttributionService.RecordAttribution:output_type -> creativanta.finance.v1.AttributionServiceRecordAttributionResponse
-	209, // [209:237] is the sub-list for method output_type
-	181, // [181:209] is the sub-list for method input_type
-	181, // [181:181] is the sub-list for extension type_name
-	181, // [181:181] is the sub-list for extension extendee
-	0,   // [0:181] is the sub-list for field type_name
+	101, // 80: creativanta.finance.v1.FinancialReportLineItem.amount:type_name -> creativanta.common.v1.Money
+	100, // 81: creativanta.finance.v1.FinancialReportLineItem.source_class:type_name -> creativanta.common.v1.SourceClass
+	102, // 82: creativanta.finance.v1.FinancialReportLineItem.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	101, // 83: creativanta.finance.v1.CohortEconomicsSummary.cost_per_accepted_output:type_name -> creativanta.common.v1.Money
+	101, // 84: creativanta.finance.v1.CohortEconomicsSummary.recognized_revenue:type_name -> creativanta.common.v1.Money
+	101, // 85: creativanta.finance.v1.CohortEconomicsSummary.allocated_provider_cost:type_name -> creativanta.common.v1.Money
+	101, // 86: creativanta.finance.v1.CohortEconomicsSummary.allocated_compute_storage_cost:type_name -> creativanta.common.v1.Money
+	101, // 87: creativanta.finance.v1.CohortEconomicsSummary.allocated_payment_refund_support_cost:type_name -> creativanta.common.v1.Money
+	101, // 88: creativanta.finance.v1.CohortEconomicsSummary.net_unit_economics:type_name -> creativanta.common.v1.Money
+	29,  // 89: creativanta.finance.v1.FinancialReport.line_items:type_name -> creativanta.finance.v1.FinancialReportLineItem
+	11,  // 90: creativanta.finance.v1.FinancialReport.snapshot:type_name -> creativanta.finance.v1.ProfitSnapshot
+	30,  // 91: creativanta.finance.v1.FinancialReport.cohort_economics:type_name -> creativanta.finance.v1.CohortEconomicsSummary
+	99,  // 92: creativanta.finance.v1.FinancialReport.generated_at:type_name -> google.protobuf.Timestamp
+	103, // 93: creativanta.finance.v1.ProfitServiceGenerateReportRequest.context:type_name -> creativanta.common.v1.CommandContext
+	31,  // 94: creativanta.finance.v1.ProfitServiceGenerateReportResponse.report:type_name -> creativanta.finance.v1.FinancialReport
+	103, // 95: creativanta.finance.v1.ProfitServiceExportReportRequest.context:type_name -> creativanta.common.v1.CommandContext
+	31,  // 96: creativanta.finance.v1.ProfitServiceExportReportResponse.report:type_name -> creativanta.finance.v1.FinancialReport
+	103, // 97: creativanta.finance.v1.ProfitServiceExportTaxReportRequest.context:type_name -> creativanta.common.v1.CommandContext
+	31,  // 98: creativanta.finance.v1.ProfitServiceExportTaxReportResponse.report:type_name -> creativanta.finance.v1.FinancialReport
+	103, // 99: creativanta.finance.v1.ProfitServiceExportToSheetsRequest.context:type_name -> creativanta.common.v1.CommandContext
+	32,  // 100: creativanta.finance.v1.ProfitServiceGetReportTemplatesResponse.templates:type_name -> creativanta.finance.v1.ReportTemplateSummary
+	31,  // 101: creativanta.finance.v1.ProfitServiceGetSavedReportsResponse.reports:type_name -> creativanta.finance.v1.FinancialReport
+	101, // 102: creativanta.finance.v1.SettlementLineInput.gross_amount:type_name -> creativanta.common.v1.Money
+	101, // 103: creativanta.finance.v1.SettlementLineInput.fee_amount:type_name -> creativanta.common.v1.Money
+	101, // 104: creativanta.finance.v1.SettlementLineInput.refund_amount:type_name -> creativanta.common.v1.Money
+	101, // 105: creativanta.finance.v1.SettlementLineInput.net_amount:type_name -> creativanta.common.v1.Money
+	103, // 106: creativanta.finance.v1.SettlementServiceImportRequest.context:type_name -> creativanta.common.v1.CommandContext
+	101, // 107: creativanta.finance.v1.SettlementServiceImportRequest.gross_amount:type_name -> creativanta.common.v1.Money
+	101, // 108: creativanta.finance.v1.SettlementServiceImportRequest.net_amount:type_name -> creativanta.common.v1.Money
+	45,  // 109: creativanta.finance.v1.SettlementServiceImportRequest.lines:type_name -> creativanta.finance.v1.SettlementLineInput
+	6,   // 110: creativanta.finance.v1.SettlementServiceImportRequest.exchange_rate:type_name -> creativanta.finance.v1.ExchangeRateSnapshot
+	10,  // 111: creativanta.finance.v1.SettlementServiceImportResponse.settlement:type_name -> creativanta.finance.v1.Settlement
+	104, // 112: creativanta.finance.v1.SettlementServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	2,   // 113: creativanta.finance.v1.SettlementServiceListRequest.settlement_state:type_name -> creativanta.finance.v1.SettlementState
+	1,   // 114: creativanta.finance.v1.SettlementServiceListRequest.reconciliation_state:type_name -> creativanta.finance.v1.ReconciliationState
+	10,  // 115: creativanta.finance.v1.SettlementServiceListResponse.settlements:type_name -> creativanta.finance.v1.Settlement
+	105, // 116: creativanta.finance.v1.SettlementServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	10,  // 117: creativanta.finance.v1.SettlementServiceGetResponse.settlement:type_name -> creativanta.finance.v1.Settlement
+	103, // 118: creativanta.finance.v1.CostServiceCreateRequest.context:type_name -> creativanta.common.v1.CommandContext
+	101, // 119: creativanta.finance.v1.CostServiceCreateRequest.amount:type_name -> creativanta.common.v1.Money
+	100, // 120: creativanta.finance.v1.CostServiceCreateRequest.source_class:type_name -> creativanta.common.v1.SourceClass
+	8,   // 121: creativanta.finance.v1.CostServiceCreateResponse.cost_item:type_name -> creativanta.finance.v1.CostItem
+	104, // 122: creativanta.finance.v1.CostServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	8,   // 123: creativanta.finance.v1.CostServiceListResponse.cost_items:type_name -> creativanta.finance.v1.CostItem
+	105, // 124: creativanta.finance.v1.CostServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	103, // 125: creativanta.finance.v1.CostServiceUpdateRequest.context:type_name -> creativanta.common.v1.CommandContext
+	101, // 126: creativanta.finance.v1.CostServiceUpdateRequest.amount:type_name -> creativanta.common.v1.Money
+	100, // 127: creativanta.finance.v1.CostServiceUpdateRequest.source_class:type_name -> creativanta.common.v1.SourceClass
+	3,   // 128: creativanta.finance.v1.CostServiceUpdateRequest.cost_state:type_name -> creativanta.finance.v1.CostState
+	8,   // 129: creativanta.finance.v1.CostServiceUpdateResponse.cost_item:type_name -> creativanta.finance.v1.CostItem
+	103, // 130: creativanta.finance.v1.CostServiceDeleteRequest.context:type_name -> creativanta.common.v1.CommandContext
+	103, // 131: creativanta.finance.v1.ReconciliationServiceQueueRequest.context:type_name -> creativanta.common.v1.CommandContext
+	13,  // 132: creativanta.finance.v1.ReconciliationServiceQueueResponse.record:type_name -> creativanta.finance.v1.ReconciliationRecord
+	103, // 133: creativanta.finance.v1.ReconciliationServiceMatchRequest.context:type_name -> creativanta.common.v1.CommandContext
+	101, // 134: creativanta.finance.v1.ReconciliationServiceMatchRequest.allocation_amount:type_name -> creativanta.common.v1.Money
+	9,   // 135: creativanta.finance.v1.ReconciliationServiceMatchResponse.line:type_name -> creativanta.finance.v1.SettlementLine
+	1,   // 136: creativanta.finance.v1.ReconciliationServiceMatchResponse.order_reconciliation_state:type_name -> creativanta.finance.v1.ReconciliationState
+	101, // 137: creativanta.finance.v1.ReconciliationServiceMatchResponse.line_remaining_capacity:type_name -> creativanta.common.v1.Money
+	101, // 138: creativanta.finance.v1.ReconciliationServiceMatchResponse.order_remaining_capacity:type_name -> creativanta.common.v1.Money
+	13,  // 139: creativanta.finance.v1.ReconciliationServiceMatchResponse.record:type_name -> creativanta.finance.v1.ReconciliationRecord
+	14,  // 140: creativanta.finance.v1.ReconciliationServiceMatchResponse.match:type_name -> creativanta.finance.v1.ReconciliationMatch
+	103, // 141: creativanta.finance.v1.ReconciliationServiceManualMatchRequest.context:type_name -> creativanta.common.v1.CommandContext
+	101, // 142: creativanta.finance.v1.ReconciliationServiceManualMatchRequest.allocation_amount:type_name -> creativanta.common.v1.Money
+	9,   // 143: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.line:type_name -> creativanta.finance.v1.SettlementLine
+	1,   // 144: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.order_reconciliation_state:type_name -> creativanta.finance.v1.ReconciliationState
+	101, // 145: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.line_remaining_capacity:type_name -> creativanta.common.v1.Money
+	101, // 146: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.order_remaining_capacity:type_name -> creativanta.common.v1.Money
+	13,  // 147: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.record:type_name -> creativanta.finance.v1.ReconciliationRecord
+	14,  // 148: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.match:type_name -> creativanta.finance.v1.ReconciliationMatch
+	103, // 149: creativanta.finance.v1.ReconciliationServiceOverrideRequest.context:type_name -> creativanta.common.v1.CommandContext
+	13,  // 150: creativanta.finance.v1.ReconciliationServiceOverrideResponse.record:type_name -> creativanta.finance.v1.ReconciliationRecord
+	13,  // 151: creativanta.finance.v1.ReconciliationServiceGetRecordResponse.record:type_name -> creativanta.finance.v1.ReconciliationRecord
+	14,  // 152: creativanta.finance.v1.ReconciliationServiceGetRecordResponse.matches:type_name -> creativanta.finance.v1.ReconciliationMatch
+	104, // 153: creativanta.finance.v1.ReconciliationServiceListRecordsRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	1,   // 154: creativanta.finance.v1.ReconciliationServiceListRecordsRequest.reconciliation_state:type_name -> creativanta.finance.v1.ReconciliationState
+	13,  // 155: creativanta.finance.v1.ReconciliationServiceListRecordsResponse.records:type_name -> creativanta.finance.v1.ReconciliationRecord
+	105, // 156: creativanta.finance.v1.ReconciliationServiceListRecordsResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	104, // 157: creativanta.finance.v1.ReconciliationServiceListPendingRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	17,  // 158: creativanta.finance.v1.ReconciliationServiceListPendingResponse.items:type_name -> creativanta.finance.v1.DataGapItem
+	105, // 159: creativanta.finance.v1.ReconciliationServiceListPendingResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	101, // 160: creativanta.finance.v1.ReconciliationServiceListPendingResponse.total_unreconciled_amount:type_name -> creativanta.common.v1.Money
+	103, // 161: creativanta.finance.v1.EvidenceServiceSubmitRequest.context:type_name -> creativanta.common.v1.CommandContext
+	5,   // 162: creativanta.finance.v1.EvidenceServiceSubmitRequest.related_object_refs:type_name -> creativanta.finance.v1.ObjectRef
+	15,  // 163: creativanta.finance.v1.EvidenceServiceSubmitResponse.evidence:type_name -> creativanta.finance.v1.EvidenceObject
+	15,  // 164: creativanta.finance.v1.EvidenceServiceGetResponse.evidence:type_name -> creativanta.finance.v1.EvidenceObject
+	104, // 165: creativanta.finance.v1.EvidenceServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	15,  // 166: creativanta.finance.v1.EvidenceServiceListResponse.items:type_name -> creativanta.finance.v1.EvidenceObject
+	105, // 167: creativanta.finance.v1.EvidenceServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	103, // 168: creativanta.finance.v1.ProofServiceAssembleRequest.context:type_name -> creativanta.common.v1.CommandContext
+	102, // 169: creativanta.finance.v1.ProofServiceAssembleRequest.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	16,  // 170: creativanta.finance.v1.ProofServiceAssembleResponse.proof_bundle:type_name -> creativanta.finance.v1.ProofBundle
+	16,  // 171: creativanta.finance.v1.ProofServiceGetResponse.proof_bundle:type_name -> creativanta.finance.v1.ProofBundle
+	104, // 172: creativanta.finance.v1.ProofServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	16,  // 173: creativanta.finance.v1.ProofServiceListResponse.proof_bundles:type_name -> creativanta.finance.v1.ProofBundle
+	105, // 174: creativanta.finance.v1.ProofServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	101, // 175: creativanta.finance.v1.ContentAttributionRecord.revenue_attributed:type_name -> creativanta.common.v1.Money
+	100, // 176: creativanta.finance.v1.ContentAttributionRecord.source_class:type_name -> creativanta.common.v1.SourceClass
+	102, // 177: creativanta.finance.v1.ContentAttributionRecord.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	99,  // 178: creativanta.finance.v1.ContentAttributionRecord.created_at:type_name -> google.protobuf.Timestamp
+	101, // 179: creativanta.finance.v1.ContentRevenueAttribution.attributed_revenue:type_name -> creativanta.common.v1.Money
+	102, // 180: creativanta.finance.v1.ContentRevenueAttribution.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	98,  // 181: creativanta.finance.v1.ContentRevenueAttribution.source_class_percentages:type_name -> creativanta.finance.v1.ContentRevenueAttribution.SourceClassPercentagesEntry
+	101, // 182: creativanta.finance.v1.WorkspaceRevenueDeduplicationSummary.canonical_workspace_revenue:type_name -> creativanta.common.v1.Money
+	101, // 183: creativanta.finance.v1.WorkspaceRevenueDeduplicationSummary.sum_attribution_lines:type_name -> creativanta.common.v1.Money
+	102, // 184: creativanta.finance.v1.WorkspaceRevenueDeduplicationSummary.aggregate_confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	87,  // 185: creativanta.finance.v1.ContentRevenueServiceGetAttributionResponse.attribution:type_name -> creativanta.finance.v1.ContentRevenueAttribution
+	86,  // 186: creativanta.finance.v1.ContentRevenueServiceGetAttributionResponse.attribution_records:type_name -> creativanta.finance.v1.ContentAttributionRecord
+	88,  // 187: creativanta.finance.v1.ContentRevenueServiceGetAttributionResponse.workspace_summary:type_name -> creativanta.finance.v1.WorkspaceRevenueDeduplicationSummary
+	104, // 188: creativanta.finance.v1.AttributionServiceGetByContentRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	101, // 189: creativanta.finance.v1.ContentAttributionSummary.total_attributed_revenue:type_name -> creativanta.common.v1.Money
+	101, // 190: creativanta.finance.v1.ContentAttributionSummary.canonical_order_revenue:type_name -> creativanta.common.v1.Money
+	102, // 191: creativanta.finance.v1.ContentAttributionSummary.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	86,  // 192: creativanta.finance.v1.AttributionServiceGetByContentResponse.records:type_name -> creativanta.finance.v1.ContentAttributionRecord
+	92,  // 193: creativanta.finance.v1.AttributionServiceGetByContentResponse.summary:type_name -> creativanta.finance.v1.ContentAttributionSummary
+	105, // 194: creativanta.finance.v1.AttributionServiceGetByContentResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	103, // 195: creativanta.finance.v1.AttributionServiceRecordAttributionRequest.context:type_name -> creativanta.common.v1.CommandContext
+	101, // 196: creativanta.finance.v1.AttributionServiceRecordAttributionRequest.revenue_attributed:type_name -> creativanta.common.v1.Money
+	100, // 197: creativanta.finance.v1.AttributionServiceRecordAttributionRequest.source_class:type_name -> creativanta.common.v1.SourceClass
+	102, // 198: creativanta.finance.v1.AttributionServiceRecordAttributionRequest.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	86,  // 199: creativanta.finance.v1.AttributionServiceRecordAttributionResponse.record:type_name -> creativanta.finance.v1.ContentAttributionRecord
+	101, // 200: creativanta.finance.v1.AttributionServiceRecordAttributionResponse.order_total_revenue:type_name -> creativanta.common.v1.Money
+	101, // 201: creativanta.finance.v1.AttributionServiceRecordAttributionResponse.order_allocated_revenue:type_name -> creativanta.common.v1.Money
+	101, // 202: creativanta.finance.v1.AttributionServiceRecordAttributionResponse.order_remaining_capacity:type_name -> creativanta.common.v1.Money
+	18,  // 203: creativanta.finance.v1.ProfitService.GetSummary:input_type -> creativanta.finance.v1.ProfitServiceGetSummaryRequest
+	20,  // 204: creativanta.finance.v1.ProfitService.DrillDown:input_type -> creativanta.finance.v1.ProfitServiceDrillDownRequest
+	23,  // 205: creativanta.finance.v1.ProfitService.GetAnomalies:input_type -> creativanta.finance.v1.ProfitServiceGetAnomaliesRequest
+	25,  // 206: creativanta.finance.v1.ProfitService.GetSnapshot:input_type -> creativanta.finance.v1.ProfitServiceGetSnapshotRequest
+	27,  // 207: creativanta.finance.v1.ProfitService.RefreshSnapshot:input_type -> creativanta.finance.v1.ProfitServiceRefreshSnapshotRequest
+	33,  // 208: creativanta.finance.v1.ProfitService.GenerateReport:input_type -> creativanta.finance.v1.ProfitServiceGenerateReportRequest
+	35,  // 209: creativanta.finance.v1.ProfitService.ExportReport:input_type -> creativanta.finance.v1.ProfitServiceExportReportRequest
+	37,  // 210: creativanta.finance.v1.ProfitService.ExportTaxReport:input_type -> creativanta.finance.v1.ProfitServiceExportTaxReportRequest
+	39,  // 211: creativanta.finance.v1.ProfitService.ExportToSheets:input_type -> creativanta.finance.v1.ProfitServiceExportToSheetsRequest
+	41,  // 212: creativanta.finance.v1.ProfitService.GetReportTemplates:input_type -> creativanta.finance.v1.ProfitServiceGetReportTemplatesRequest
+	43,  // 213: creativanta.finance.v1.ProfitService.GetSavedReports:input_type -> creativanta.finance.v1.ProfitServiceGetSavedReportsRequest
+	46,  // 214: creativanta.finance.v1.SettlementService.Import:input_type -> creativanta.finance.v1.SettlementServiceImportRequest
+	48,  // 215: creativanta.finance.v1.SettlementService.List:input_type -> creativanta.finance.v1.SettlementServiceListRequest
+	50,  // 216: creativanta.finance.v1.SettlementService.Get:input_type -> creativanta.finance.v1.SettlementServiceGetRequest
+	52,  // 217: creativanta.finance.v1.CostService.Create:input_type -> creativanta.finance.v1.CostServiceCreateRequest
+	54,  // 218: creativanta.finance.v1.CostService.List:input_type -> creativanta.finance.v1.CostServiceListRequest
+	56,  // 219: creativanta.finance.v1.CostService.Update:input_type -> creativanta.finance.v1.CostServiceUpdateRequest
+	58,  // 220: creativanta.finance.v1.CostService.Delete:input_type -> creativanta.finance.v1.CostServiceDeleteRequest
+	60,  // 221: creativanta.finance.v1.ReconciliationService.Queue:input_type -> creativanta.finance.v1.ReconciliationServiceQueueRequest
+	62,  // 222: creativanta.finance.v1.ReconciliationService.Match:input_type -> creativanta.finance.v1.ReconciliationServiceMatchRequest
+	64,  // 223: creativanta.finance.v1.ReconciliationService.ManualMatch:input_type -> creativanta.finance.v1.ReconciliationServiceManualMatchRequest
+	66,  // 224: creativanta.finance.v1.ReconciliationService.Override:input_type -> creativanta.finance.v1.ReconciliationServiceOverrideRequest
+	68,  // 225: creativanta.finance.v1.ReconciliationService.GetRecord:input_type -> creativanta.finance.v1.ReconciliationServiceGetRecordRequest
+	70,  // 226: creativanta.finance.v1.ReconciliationService.ListRecords:input_type -> creativanta.finance.v1.ReconciliationServiceListRecordsRequest
+	72,  // 227: creativanta.finance.v1.ReconciliationService.ListPending:input_type -> creativanta.finance.v1.ReconciliationServiceListPendingRequest
+	74,  // 228: creativanta.finance.v1.EvidenceService.Submit:input_type -> creativanta.finance.v1.EvidenceServiceSubmitRequest
+	76,  // 229: creativanta.finance.v1.EvidenceService.Get:input_type -> creativanta.finance.v1.EvidenceServiceGetRequest
+	78,  // 230: creativanta.finance.v1.EvidenceService.List:input_type -> creativanta.finance.v1.EvidenceServiceListRequest
+	80,  // 231: creativanta.finance.v1.ProofService.Assemble:input_type -> creativanta.finance.v1.ProofServiceAssembleRequest
+	82,  // 232: creativanta.finance.v1.ProofService.Get:input_type -> creativanta.finance.v1.ProofServiceGetRequest
+	84,  // 233: creativanta.finance.v1.ProofService.List:input_type -> creativanta.finance.v1.ProofServiceListRequest
+	89,  // 234: creativanta.finance.v1.ContentRevenueService.GetAttribution:input_type -> creativanta.finance.v1.ContentRevenueServiceGetAttributionRequest
+	91,  // 235: creativanta.finance.v1.AttributionService.GetByContent:input_type -> creativanta.finance.v1.AttributionServiceGetByContentRequest
+	94,  // 236: creativanta.finance.v1.AttributionService.RecordAttribution:input_type -> creativanta.finance.v1.AttributionServiceRecordAttributionRequest
+	19,  // 237: creativanta.finance.v1.ProfitService.GetSummary:output_type -> creativanta.finance.v1.ProfitServiceGetSummaryResponse
+	22,  // 238: creativanta.finance.v1.ProfitService.DrillDown:output_type -> creativanta.finance.v1.ProfitServiceDrillDownResponse
+	24,  // 239: creativanta.finance.v1.ProfitService.GetAnomalies:output_type -> creativanta.finance.v1.ProfitServiceGetAnomaliesResponse
+	26,  // 240: creativanta.finance.v1.ProfitService.GetSnapshot:output_type -> creativanta.finance.v1.ProfitServiceGetSnapshotResponse
+	28,  // 241: creativanta.finance.v1.ProfitService.RefreshSnapshot:output_type -> creativanta.finance.v1.ProfitServiceRefreshSnapshotResponse
+	34,  // 242: creativanta.finance.v1.ProfitService.GenerateReport:output_type -> creativanta.finance.v1.ProfitServiceGenerateReportResponse
+	36,  // 243: creativanta.finance.v1.ProfitService.ExportReport:output_type -> creativanta.finance.v1.ProfitServiceExportReportResponse
+	38,  // 244: creativanta.finance.v1.ProfitService.ExportTaxReport:output_type -> creativanta.finance.v1.ProfitServiceExportTaxReportResponse
+	40,  // 245: creativanta.finance.v1.ProfitService.ExportToSheets:output_type -> creativanta.finance.v1.ProfitServiceExportToSheetsResponse
+	42,  // 246: creativanta.finance.v1.ProfitService.GetReportTemplates:output_type -> creativanta.finance.v1.ProfitServiceGetReportTemplatesResponse
+	44,  // 247: creativanta.finance.v1.ProfitService.GetSavedReports:output_type -> creativanta.finance.v1.ProfitServiceGetSavedReportsResponse
+	47,  // 248: creativanta.finance.v1.SettlementService.Import:output_type -> creativanta.finance.v1.SettlementServiceImportResponse
+	49,  // 249: creativanta.finance.v1.SettlementService.List:output_type -> creativanta.finance.v1.SettlementServiceListResponse
+	51,  // 250: creativanta.finance.v1.SettlementService.Get:output_type -> creativanta.finance.v1.SettlementServiceGetResponse
+	53,  // 251: creativanta.finance.v1.CostService.Create:output_type -> creativanta.finance.v1.CostServiceCreateResponse
+	55,  // 252: creativanta.finance.v1.CostService.List:output_type -> creativanta.finance.v1.CostServiceListResponse
+	57,  // 253: creativanta.finance.v1.CostService.Update:output_type -> creativanta.finance.v1.CostServiceUpdateResponse
+	59,  // 254: creativanta.finance.v1.CostService.Delete:output_type -> creativanta.finance.v1.CostServiceDeleteResponse
+	61,  // 255: creativanta.finance.v1.ReconciliationService.Queue:output_type -> creativanta.finance.v1.ReconciliationServiceQueueResponse
+	63,  // 256: creativanta.finance.v1.ReconciliationService.Match:output_type -> creativanta.finance.v1.ReconciliationServiceMatchResponse
+	65,  // 257: creativanta.finance.v1.ReconciliationService.ManualMatch:output_type -> creativanta.finance.v1.ReconciliationServiceManualMatchResponse
+	67,  // 258: creativanta.finance.v1.ReconciliationService.Override:output_type -> creativanta.finance.v1.ReconciliationServiceOverrideResponse
+	69,  // 259: creativanta.finance.v1.ReconciliationService.GetRecord:output_type -> creativanta.finance.v1.ReconciliationServiceGetRecordResponse
+	71,  // 260: creativanta.finance.v1.ReconciliationService.ListRecords:output_type -> creativanta.finance.v1.ReconciliationServiceListRecordsResponse
+	73,  // 261: creativanta.finance.v1.ReconciliationService.ListPending:output_type -> creativanta.finance.v1.ReconciliationServiceListPendingResponse
+	75,  // 262: creativanta.finance.v1.EvidenceService.Submit:output_type -> creativanta.finance.v1.EvidenceServiceSubmitResponse
+	77,  // 263: creativanta.finance.v1.EvidenceService.Get:output_type -> creativanta.finance.v1.EvidenceServiceGetResponse
+	79,  // 264: creativanta.finance.v1.EvidenceService.List:output_type -> creativanta.finance.v1.EvidenceServiceListResponse
+	81,  // 265: creativanta.finance.v1.ProofService.Assemble:output_type -> creativanta.finance.v1.ProofServiceAssembleResponse
+	83,  // 266: creativanta.finance.v1.ProofService.Get:output_type -> creativanta.finance.v1.ProofServiceGetResponse
+	85,  // 267: creativanta.finance.v1.ProofService.List:output_type -> creativanta.finance.v1.ProofServiceListResponse
+	90,  // 268: creativanta.finance.v1.ContentRevenueService.GetAttribution:output_type -> creativanta.finance.v1.ContentRevenueServiceGetAttributionResponse
+	93,  // 269: creativanta.finance.v1.AttributionService.GetByContent:output_type -> creativanta.finance.v1.AttributionServiceGetByContentResponse
+	95,  // 270: creativanta.finance.v1.AttributionService.RecordAttribution:output_type -> creativanta.finance.v1.AttributionServiceRecordAttributionResponse
+	237, // [237:271] is the sub-list for method output_type
+	203, // [203:237] is the sub-list for method input_type
+	203, // [203:203] is the sub-list for extension type_name
+	203, // [203:203] is the sub-list for extension extendee
+	0,   // [0:203] is the sub-list for field type_name
 }
 
 func init() { file_creativanta_finance_v1_finance_proto_init() }
@@ -7841,7 +9388,7 @@ func file_creativanta_finance_v1_finance_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_creativanta_finance_v1_finance_proto_rawDesc), len(file_creativanta_finance_v1_finance_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   78,
+			NumMessages:   94,
 			NumExtensions: 0,
 			NumServices:   8,
 		},

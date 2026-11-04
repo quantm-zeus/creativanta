@@ -1,0 +1,167 @@
+{
+  "task_id": "P8-02",
+  "phase": "P8",
+  "slice": "P8-02",
+  "title": "Full billing, reporting, retention và cost economics",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "modules": [
+    "M23",
+    "M19"
+  ],
+  "feature_refs": [
+    "docs/02_features/platform/reporting_admin_billing.md",
+    "docs/02_features/finance/operating_ledger.md",
+    "docs/01_business/pricing_and_credits.md",
+    "docs/04_contracts/credit_accounting_contract.md",
+    "docs/04_contracts/financial_computation_contract.md"
+  ],
+  "migration_files": [
+    "infra/migrations/00040_p8_02_billing_retention_exports_and_cohort_economics.sql"
+  ],
+  "rpc_contracts": [
+    "creativanta.admin.v1.AdminBillingService",
+    "creativanta.admin.v1.BillingService",
+    "creativanta.admin.v1.CreditService",
+    "creativanta.admin.v1.DataService",
+    "creativanta.finance.v1.ProfitService"
+  ],
+  "permission_keys": [
+    "workspace:billing:read",
+    "workspace:billing:manage",
+    "credits:view_balance",
+    "credits:top_up",
+    "workspace:settings:manage",
+    "workspace:delete",
+    "finance:read",
+    "finance:export"
+  ],
+  "event_types": [
+    "billing.subscription.created",
+    "billing.subscription.upgraded",
+    "billing.subscription.downgraded",
+    "billing.subscription.canceled",
+    "billing.subscription.paused",
+    "billing.subscription.resumed",
+    "billing.subscription.trial_started",
+    "billing.subscription.trial_ending_soon",
+    "billing.subscription.trial_converted",
+    "billing.subscription.trial_expired",
+    "billing.payment.succeeded",
+    "billing.payment.failed",
+    "billing.dunning.step_advanced",
+    "billing.dunning.grace_entered",
+    "billing.dunning.auto_downgraded",
+    "billing.retention.quarantine_entered",
+    "billing.retention.soft_deleted",
+    "billing.retention.restored",
+    "billing.retention.hard_erased"
+  ],
+  "screen_routes": [
+    "/settings/billing",
+    "/settings/data-export",
+    "/finance/reports",
+    "mobile://M045/subscription-management",
+    "mobile://M061/billing-credit-usage"
+  ],
+  "source_files": {
+    "protos/creativanta/admin/v1/billing.proto": "edbbb83567ae834cf4740b1f6e15498e672318ae93cef9620bbe578c9c7a9462",
+    "protos/creativanta/finance/v1/finance.proto": "c52503a7ed17073cacba8bfc2236aae6a066364b07a52272ea12ebd229bdb4d3",
+    "apps/api/gen/creativanta/admin/v1/billing.pb.go": "da8aa175b16a1deb7ee13ea015ab5e2bffffb7e649992256ebbdf56bc37e6b54",
+    "apps/api/gen/creativanta/admin/v1/adminv1connect/billing.connect.go": "ffcb81b048316746ececd75b239e478cdfac7d9649223cfb56c576378cfa687d",
+    "apps/api/gen/creativanta/finance/v1/finance.pb.go": "72b35f42c03c0ea32d7d54a5aa63429082efa194cb2a0bde93ff70f23e09803c",
+    "apps/api/gen/creativanta/finance/v1/financev1connect/finance.connect.go": "39334369c070b3745b012979805df46d6aaecfad59d2e4a1954893eb173c000c",
+    "packages/shared-types/src/creativanta/admin/v1/billing_pb.ts": "2161ba2c6420e960805249525ba093921e37198cf3f95afa34ead0f41aa071fb",
+    "packages/shared-types/src/creativanta/finance/v1/finance_pb.ts": "75117e1a6303e7250366086fd13a26769328aa89423197a1bf11ec2c84d92090",
+    "apps/mobile/lib/generated/creativanta/admin/v1/billing.pb.dart": "2ed0f6319ceb6a4dae5fb2d6714fe3e4a1af096813714d9f8e688aed11350336",
+    "apps/mobile/lib/generated/creativanta/admin/v1/billing.pbgrpc.dart": "ab886c33ee5aa765257ddbeef4f7237b228859d9f3f151c66eb03cbdcccd0809",
+    "apps/mobile/lib/generated/creativanta/admin/v1/billing.pbjson.dart": "4ccb436d3914d3c4dde40ddf525db997a30f4435741c8c7085b2c2dd83b5a6b4",
+    "apps/mobile/lib/generated/creativanta/finance/v1/finance.pb.dart": "0c6030fa89df0cf76712057016df82f988391df64a7d2b634a4c1ffd0f51371e",
+    "apps/mobile/lib/generated/creativanta/finance/v1/finance.pbgrpc.dart": "3b12c1e1bf4ae81dfeb7157611c7d94ee04db054a52b32c2fdbce683d3fde359",
+    "apps/mobile/lib/generated/creativanta/finance/v1/finance.pbjson.dart": "19987df287e1889908ef4e04832c0352eac70a42ac788e190e512f01d733f716",
+    "infra/migrations/00040_p8_02_billing_retention_exports_and_cohort_economics.sql": "30c168040d1ab0beef1bc994c8a49e0a8c58621883aa50152c807938bfb211e2",
+    "apps/api/internal/migrate/migrator.go": "2371b12d37db1cd6beb5a0c13057ad7a533ac9169b8f38c5a20731dcea3a2b74",
+    "apps/api/internal/migrate/migrator_test.go": "16bf5938a49e8916fb3bb85764dbdcff68cf22002e0b740a524742b9f5ee3e11",
+    "apps/api/internal/tenantdb/money.go": "3111649995fb13597da883105e19efa01f33525072001c1ba31c3106a3564251",
+    "apps/api/internal/billing/lifecycle.go": "7770742762ff64a8a51362775ac79573d3309b4438fdaf646f7c891134dc3e8e",
+    "apps/api/internal/billing/service.go": "91a94a71d76249cd55e682b9fa0d79c9dd49cdb2d364d0ae219412ccafc4996e",
+    "apps/api/internal/billing/pricebook.go": "d5902e5de33f34dd8ffbb35e46d2ad6e42cf8f688cc145e4142165552f93dfee",
+    "apps/api/internal/billing/ledger.go": "ef3dd616fdb8b6ae5b98f5d1e6ae4dd2187aa7abfd54e36e01e72e2dd34f563d",
+    "apps/api/internal/billing/billing_test.go": "74f096cbde2290f3cb6f39e3ac79375bfee1380be1d2bfbaa7b8f807db97b978",
+    "apps/api/internal/finance/reports_and_economics.go": "86f155c0461b8341e575afd0a823514af5fde6268c395b94e190e66502c3c215",
+    "apps/api/internal/finance/handler.go": "8d498ce8bf1fbfbee6fa9a7e3e320b90b24bde4b7d1a159a0c672d87092d8c83",
+    "apps/api/internal/finance/model.go": "fe1d640e966d85a147b0c047f97c1c82aa865c978f3f84175ac5b81d089ff68d",
+    "apps/api/internal/finance/service_test.go": "213d9e82b01903592188537ceb9870b5a153809accdf685e58a4c20f836773ee",
+    "apps/web/src/lib/billing/index.ts": "4d18d2aba121c7215f98630d3b9eb83e7dec43d8d1ed4cdd4b7afdb7581b8960",
+    "apps/web/src/lib/billing/billing.test.ts": "99f728192ab81a1d98f6e87ee1e6fb0651a674f158ce4dfd93d9d01c2646485c",
+    "apps/web/src/routes/settings/billing/+page.svelte": "fbf4d92fa11ba7357da07f0a878b5902e0cb39a54456b12be5f5c83b434fe96c",
+    "apps/mobile/lib/billing/billing_models.dart": "b3ae182aaa354e01f4ca6619a0c2e9b34e4c89a61964a9d7a19c0e8e147979da",
+    "apps/mobile/lib/ui/billing/billing_screen.dart": "3de22b0f92d553cecb9f0656a32e00158e153790e58cd17f60b40515e228a5a5",
+    "apps/mobile/test/billing_test.dart": "71a0514da68cb1342064451ac23a3059196284b6f9e968793c3af5e3e560332e"
+  },
+  "scope_items": [
+    {
+      "id": "cancellation-differs-from-dunning",
+      "title": "Cancellation differs from dunning across trial, pause, dunning (Day 0/1/3/7/14 -> Free auto-downgrade), and voluntary cancellation (Phase 1 0-30d read-only quarantine, Phase 2 30-90d soft-delete, Phase 3 90d+ hard erase)",
+      "status": "IMPLEMENTED_LOCAL_TESTED"
+    },
+    {
+      "id": "purchased-credits-preserved",
+      "title": "Purchased credits preserved across monthly cycle resets, dunning auto-downgrade to Free, subscription pause/resume, and Phase 1/2 quarantine/restore; all 6 payment methods behind access gates, 4 Starter+ add-ons with mid-cycle proration, and Overage Mode toggle",
+      "status": "IMPLEMENTED_LOCAL_TESTED"
+    },
+    {
+      "id": "restore-export-erase-evidence",
+      "title": "Restore, export (JSON/CSV/ZIP with 7-day signed R2 URL and SHA-512 checksum), and Right-to-Erasure cryptographic evidence with EC-M23-002 multi-member owner guard and 7y/5y/3y anonymized financial/audit retention",
+      "status": "IMPLEMENTED_LOCAL_TESTED"
+    },
+    {
+      "id": "measured-cohort-economics",
+      "title": "Measured cohort economics (all 7 canonical metrics: Gross Margin %, NRR %, Blended CAC, LTV, LTV:CAC, CAC Payback Months, AI Cost per Active Workspace) and complete financial/tax reports with BIZ-007 disclaimer and tier export limits",
+      "status": "IMPLEMENTED_LOCAL_TESTED"
+    }
+  ],
+  "verified_sub_slices": [
+    "PostgreSQL migration 00040 for export_jobs, referral_records, api_call_logs, chargebacks, platform_fee_schedules, and performance_reports with RLS + FORCE ROW LEVEL SECURITY and narrow role grants",
+    "Payment method access gates across Stripe Card, MoMo Wallet, ZaloPay, VNPay QR/ATM, PayPal, and Bank Transfer (Enterprise Annual) plus EC-M23-001 last payment method guard",
+    "Starter+ add-on purchase/detach with exact mid-cycle proration (NUMERIC(18,6) / BigInt micro-units) and Overage Mode opt-in toggle",
+    "14-day Pro trial lifecycle (1 per email/card fingerprint, 100 trial credits, Day-12 warning, Day-14 conversion or Free downgrade) and subscription pause (1-3 months, max once/year, $5/mo retention)",
+    "Dunning retry schedule (Day 0, +24h, +72h, +168h, Day 7-14 read-only grace, Day 14 auto-downgrade to Free) strictly distinct from voluntary cancellation 30/60/90-day retention phases",
+    "DataService export/restore/erase flows with SHA-512 evidence, 7-day export URL TTL, EC-M23-002 multi-member deletion guard, and 7y/5y/3y anonymized retention",
+    "ProfitService financial reports, tax export with BIZ-007 creator_responsible disclaimer, tier export limits (Free=0, Starter=5/mo, Pro+=unlimited), and all 7 canonical cohort economics metrics",
+    "Web (/settings/billing) and Mobile (M045/M061) interactive billing, retention, export/erase, and cohort economics labs"
+  ],
+  "checks": [
+    {
+      "command": "python3 tooling/check_docs.py",
+      "result": "PASS (exit 0)"
+    },
+    {
+      "command": "cd apps/api && test -z \"$(gofmt -l .)\" && go vet ./...",
+      "result": "PASS (exit 0)"
+    },
+    {
+      "command": "cd apps/api && go test -race -count=1 ./internal/billing/... ./internal/finance/... ./internal/migrate/... ./internal/tenantdb/...",
+      "result": "PASS (exit 0)"
+    },
+    {
+      "command": "bash tooling/ci/check_node.sh",
+      "result": "PASS (exit 0)"
+    },
+    {
+      "command": "cd apps/mobile && flutter analyze --fatal-infos --fatal-warnings lib/billing/billing_models.dart lib/ui/billing/billing_screen.dart test/billing_test.dart && flutter test test/billing_test.dart",
+      "result": "PASS (exit 0)"
+    }
+  ],
+  "external_gates": [
+    "Live Stripe production webhook & billing portal credentials (Phase 1)",
+    "Live MoMo Wallet, ZaloPay, VNPay QR/ATM, PayPal, and Enterprise Bank Transfer production merchant credentials (Phase 2/3 behind access gates)",
+    "Live Cloudflare R2 bucket credentials for 7-day signed data export archive downloads and hard-delete object purge",
+    "TaxJar / Avalara automated tax calculation integration gated on PMF (> $50K MRR or > 500 US/EU customers per BIZ-007)",
+    "External legal counsel sign-off for Terms of Service, Privacy Policy, and Refund & Dispute Policy (LEG-H-001)"
+  ],
+  "remaining_scope": [
+    "P8-03: Internal admin, ops và capability completion"
+  ]
+}

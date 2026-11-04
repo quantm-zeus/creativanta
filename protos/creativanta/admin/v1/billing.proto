@@ -144,9 +144,23 @@ message AddonCatalogEntry {
   creativanta.common.v1.Money monthly_price_usd = 3;
   creativanta.common.v1.Money monthly_price_vnd = 4;
   repeated string eligible_tiers = 5;
+  creativanta.common.v1.Money annual_price_usd = 6;
+  creativanta.common.v1.Money annual_price_vnd = 7;
 }
 
-// Subscription summary projection (§19.1).
+// Payment method access gate descriptor (P8-02 all payment methods behind access gates).
+message PaymentMethodAccessGate {
+  string method_type = 1; // card, bank_transfer, momo, zalopay, vnpay, paypal
+  string display_name = 2;
+  string provider_code = 3; // stripe, manual_bank_transfer, momo_gateway, zalopay_gateway, vnpay_gateway, paypal_gateway
+  string capability_state = 4; // EXECUTABLE, READ_ONLY_PARTIAL, SETUP_REQUIRED, COMING_SOON
+  bool access_granted = 5;
+  repeated string eligible_tiers = 6;
+  repeated string supported_currencies = 7;
+  string gate_reason = 8;
+}
+
+// Subscription summary projection (§19.1 & P8-02 trial/dunning/pause/cancellation retention).
 message SubscriptionSummary {
   creativanta.common.v1.UUID subscription_id = 1;
   creativanta.common.v1.UUID workspace_id = 2;
@@ -159,6 +173,20 @@ message SubscriptionSummary {
   bool cancel_at_period_end = 9;
   google.protobuf.Timestamp canceled_at = 10;
   repeated string addons = 11;
+  repeated string scheduled_addon_removals = 12;
+  google.protobuf.Timestamp trial_ends_at = 13;
+  int32 dunning_day = 14;
+  int32 dunning_attempt = 15;
+  google.protobuf.Timestamp grace_period_ends_at = 16;
+  bool read_only_mode = 17;
+  string read_only_reason = 18;
+  string retention_phase = 19; // active, trialing, dunning_retry, dunning_grace_read_only, dunning_downgraded_free, paused_read_only, cancel_scheduled, phase_1_read_only_quarantine, phase_2_soft_delete, phase_3_hard_deleted
+  bool retention_offer_applied = 20;
+  google.protobuf.Timestamp paused_at = 21;
+  google.protobuf.Timestamp pause_auto_resumes_at = 22;
+  bool overage_terms_accepted = 23;
+  string overage_used_credits = 24;
+  string preserved_purchased_credits = 25;
 }
 
 // Payment method summary projection (§19.1C).
@@ -171,6 +199,9 @@ message PaymentMethodSummary {
   int32 card_exp_month = 6;
   int32 card_exp_year = 7;
   bool is_default = 8;
+  string access_gate_status = 9;
+  string billing_name = 10;
+  string billing_email = 11;
 }
 
 // Invoice summary projection (§19.1B).
@@ -263,6 +294,9 @@ message ChangePlanRequest {
   string billing_interval = 3;
   string currency = 4;
   repeated string addons = 5;
+  repeated string remove_addons = 6;
+  bool accept_overage_terms = 7;
+  bool start_trial = 8;
 }
 
 message ChangePlanResponse {
@@ -270,6 +304,8 @@ message ChangePlanResponse {
   string effective_mode = 2;
   string checkout_session_id = 3;
   string checkout_url = 4;
+  creativanta.common.v1.Money prorated_addon_charge = 5;
+  repeated string scheduled_addon_removals = 6;
 }
 
 message CancelSubscriptionRequest {
@@ -277,10 +313,16 @@ message CancelSubscriptionRequest {
   string cancellation_reason = 2;
   bool pause_instead = 3;
   int32 pause_months = 4;
+  bool accept_retention_offer = 5;
+  int32 pause_days = 6;
 }
 
 message CancelSubscriptionResponse {
   SubscriptionSummary subscription = 1;
+  bool retention_offer_applied = 2;
+  string retention_discount_pct = 3;
+  int32 retention_discount_months = 4;
+  string retention_phase = 5;
 }
 
 message UpdatePaymentMethodRequest {
@@ -288,11 +330,15 @@ message UpdatePaymentMethodRequest {
   string stripe_payment_method_id = 2;
   bool set_default = 3;
   bool remove = 4;
+  string method_type = 5;
+  string billing_name = 6;
+  string billing_email = 7;
 }
 
 message UpdatePaymentMethodResponse {
   PaymentMethodSummary payment_method = 1;
   repeated PaymentMethodSummary payment_methods = 2;
+  repeated PaymentMethodAccessGate method_access_gates = 3;
 }
 
 message GetPaymentMethodRequest {
@@ -302,6 +348,114 @@ message GetPaymentMethodRequest {
 message GetPaymentMethodResponse {
   PaymentMethodSummary default_payment_method = 1;
   repeated PaymentMethodSummary payment_methods = 2;
+  repeated PaymentMethodAccessGate method_access_gates = 3;
+}
+
+message ListSubscriptionsRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+message ListSubscriptionsResponse {
+  repeated SubscriptionSummary subscriptions = 1;
+  creativanta.common.v1.PaginatedResponse page_info = 2;
+}
+
+message BillingEventEntry {
+  creativanta.common.v1.UUID billing_event_id = 1;
+  creativanta.common.v1.UUID workspace_id = 2;
+  string event_type = 3;
+  string stripe_event_id = 4;
+  creativanta.common.v1.Money amount = 5;
+  string subscription_tier = 6;
+  string credits_change = 7;
+  string description = 8;
+  string metadata_json = 9;
+  google.protobuf.Timestamp created_at = 10;
+}
+
+message ListBillingEventsRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+  string event_type_filter = 3;
+}
+
+message ListBillingEventsResponse {
+  repeated BillingEventEntry events = 1;
+  creativanta.common.v1.PaginatedResponse page_info = 2;
+}
+
+message GetInvoiceHistoryRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.Pagination pagination = 2;
+}
+
+message GetInvoiceHistoryResponse {
+  repeated InvoiceSummary invoices = 1;
+  creativanta.common.v1.PaginatedResponse page_info = 2;
+}
+
+message DownloadInvoiceRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  creativanta.common.v1.UUID invoice_id = 2;
+}
+
+message DownloadInvoiceResponse {
+  string invoice_pdf_url = 1;
+  string hosted_invoice_url = 2;
+  InvoiceSummary invoice = 3;
+}
+
+message GetUsageReportRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string period_start = 2;
+  string period_end = 3;
+}
+
+message GetUsageReportResponse {
+  CreditBalance balance = 1;
+  repeated OperationUsageBreakdown breakdown = 2;
+  string overage_credits_used = 3;
+  string overage_limit_credits = 4;
+  creativanta.common.v1.Money overage_charge_usd = 5;
+  repeated string triggered_threshold_alerts = 6; // "80_pct", "95_pct", "100_pct", "110_pct_hard_cap"
+}
+
+// Data Export & Retention Evidence Messages (P8-02 Acceptance Target #3)
+message DataExportJobSummary {
+  creativanta.common.v1.UUID export_id = 1;
+  creativanta.common.v1.UUID workspace_id = 2;
+  creativanta.common.v1.UUID user_id = 3;
+  string export_type = 4; // gdpr_export, data_export, tax_report, analytics_export
+  string format = 5; // json, csv, zip, pdf, xlsx
+  string status = 6; // queued, processing, completed, failed, expired
+  int32 progress_pct = 7;
+  string file_url = 8;
+  int64 file_size_bytes = 9;
+  string content_hash_sha512 = 10;
+  google.protobuf.Timestamp expires_at = 11;
+  google.protobuf.Timestamp completed_at = 12;
+  google.protobuf.Timestamp created_at = 13;
+}
+
+message RequestExportRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string export_type = 2;
+  string format = 3;
+}
+
+message RequestExportResponse {
+  DataExportJobSummary export_job = 1;
+}
+
+message GetExportUrlRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  creativanta.common.v1.UUID export_id = 2;
+}
+
+message GetExportUrlResponse {
+  DataExportJobSummary export_job = 1;
+  string download_url = 2;
 }
 
 message EstimateCostRequest {
@@ -534,14 +688,24 @@ message ApplyRetentionDiscountResponse {
 
 service AdminBillingService {
   rpc GetBillingSummary(GetBillingSummaryRequest) returns (GetBillingSummaryResponse);
+  rpc ListSubscriptions(ListSubscriptionsRequest) returns (ListSubscriptionsResponse);
   rpc GetCreditBalance(GetCreditBalanceRequest) returns (GetCreditBalanceResponse);
   rpc GetCreditLedger(GetCreditLedgerRequest) returns (GetCreditLedgerResponse);
   rpc PurchaseCredits(PurchaseCreditsRequest) returns (PurchaseCreditsResponse);
   rpc ChangePlan(ChangePlanRequest) returns (ChangePlanResponse);
   rpc CancelSubscription(CancelSubscriptionRequest) returns (CancelSubscriptionResponse);
+  rpc GetUsageReport(GetUsageReportRequest) returns (GetUsageReportResponse);
+  rpc GetInvoiceHistory(GetInvoiceHistoryRequest) returns (GetInvoiceHistoryResponse);
+  rpc DownloadInvoice(DownloadInvoiceRequest) returns (DownloadInvoiceResponse);
   rpc UpdatePaymentMethod(UpdatePaymentMethodRequest) returns (UpdatePaymentMethodResponse);
   rpc GetPaymentMethod(GetPaymentMethodRequest) returns (GetPaymentMethodResponse);
+  rpc ListBillingEvents(ListBillingEventsRequest) returns (ListBillingEventsResponse);
   rpc EstimateCost(EstimateCostRequest) returns (EstimateCostResponse);
+}
+
+service DataService {
+  rpc RequestExport(RequestExportRequest) returns (RequestExportResponse);
+  rpc GetExportUrl(GetExportUrlRequest) returns (GetExportUrlResponse);
 }
 
 service CreditService {

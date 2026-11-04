@@ -263,25 +263,47 @@ type BillingEventRecord struct {
 
 // WorkspaceBillingState holds a workspace's complete credit & billing state inside a store transaction.
 type WorkspaceBillingState struct {
-	WorkspaceID       string
-	SubscriptionTier  string
-	SeatsUsed         int32
-	ChannelsUsed      int32
-	StorageUsedGB     int32
-	AutoRefill        *adminv1.AutoRefillConfig
-	Subscription      *tenantdb.SubscriptionRow
-	PaymentMethods    []tenantdb.PaymentMethodRow
-	Invoices          []tenantdb.InvoiceRow
-	Quotes            map[string]tenantdb.CreditQuoteRow
-	Lots              []tenantdb.CreditLotRow
-	Reservations      map[string]tenantdb.CreditReservationRow
-	Allocations       map[string][]tenantdb.CreditReservationAllocationRow
-	Transactions      []tenantdb.CreditTransactionRow
-	BillingEvents     []BillingEventRecord
-	OutboxEvents      []EmittedEvent
-	LateResultReports []LateResultReport
-	ProcessedWebhooks map[string]time.Time
-	CheckoutSessions  map[string]*CheckoutSessionRecord
+	WorkspaceID               string
+	SubscriptionTier          string
+	SeatsUsed                 int32
+	ChannelsUsed              int32
+	StorageUsedGB             int32
+	AutoRefill                *adminv1.AutoRefillConfig
+	Subscription              *tenantdb.SubscriptionRow
+	PaymentMethods            []tenantdb.PaymentMethodRow
+	Invoices                  []tenantdb.InvoiceRow
+	Quotes                    map[string]tenantdb.CreditQuoteRow
+	Lots                      []tenantdb.CreditLotRow
+	Reservations              map[string]tenantdb.CreditReservationRow
+	Allocations               map[string][]tenantdb.CreditReservationAllocationRow
+	Transactions              []tenantdb.CreditTransactionRow
+	BillingEvents             []BillingEventRecord
+	OutboxEvents              []EmittedEvent
+	LateResultReports         []LateResultReport
+	ProcessedWebhooks         map[string]time.Time
+	CheckoutSessions          map[string]*CheckoutSessionRecord
+	ReadOnlyMode              bool
+	ReadOnlyReason            string
+	RetentionPhase            string
+	DunningDay                int32
+	DunningAttempt            int32
+	GracePeriodEndsAt         *time.Time
+	TrialEndsAt               *time.Time
+	TrialConsumed             bool
+	RetentionOfferApplied     bool
+	RetentionOfferDiscountPct string
+	RetentionOfferMonths      int32
+	PausedAt                  *time.Time
+	PauseAutoResumesAt        *time.Time
+	PauseDay83Notified        bool
+	ScheduledAddonRemovals    []string
+	OverageTermsAccepted      bool
+	OverageUsedCredits        tenantdb.ExactDecimal
+	EnabledPaymentMethodGates map[string]bool
+	ExportJobs                []DataExportJobRecord
+	LifecycleEvidences        []RetentionLifecycleEvidence
+	SoftDeletedAt             *time.Time
+	HardDeletedAt             *time.Time
 }
 
 // CheckoutSessionRecord tracks a billing or credit pack checkout session.
@@ -397,6 +419,9 @@ func cloneWorkspaceState(src *WorkspaceBillingState) *WorkspaceBillingState {
 	}
 	if dst.CheckoutSessions == nil {
 		dst.CheckoutSessions = make(map[string]*CheckoutSessionRecord)
+	}
+	if dst.EnabledPaymentMethodGates == nil {
+		dst.EnabledPaymentMethodGates = make(map[string]bool)
 	}
 	return &dst
 }
@@ -699,6 +724,13 @@ func (e *Engine) Reserve(req ReserveRequest) (ReserveResult, error) {
 			}
 		}
 
+		// 1b. Enforce read-only / quarantine / soft-delete / hard-delete access gate:
+		// During dunning grace (Day 7–14), subscription pause, or post-cancellation quarantine/soft-delete,
+		// credit spending is blocked while purchased credit lots are preserved intact (Acceptance Target #2).
+		if st.ReadOnlyMode || st.RetentionPhase == "phase_2_soft_delete" || st.RetentionPhase == "phase_3_hard_deleted" {
+			return ErrWorkspaceReadOnlyOrSuspended
+		}
+
 		// 2. Validate quote existence, expiry, request_hash, and confirmed_credits.
 		quote, ok := st.Quotes[req.QuoteID]
 		if !ok {
@@ -776,7 +808,42 @@ func (e *Engine) Reserve(req ReserveRequest) (ReserveResult, error) {
 		}
 
 		if !needed.IsZero() {
-			return ErrInsufficientCredits
+			// Check if Business/Enterprise authorized overage (BIZ-002: up to 110% of monthly allocation
+			// when valid payment method is on file AND overage terms are accepted) can cover the remainder.
+			tier, ok := LookupTier(st.SubscriptionTier)
+			if ok && tier.OverageEligible && st.OverageTermsAccepted && len(st.PaymentMethods) > 0 {
+				maxOverage, err := tier.MonthlyCredits.Mul(tenantdb.MustParseExactDecimal("0.10"))
+				if err == nil {
+					candidateOverage, err := st.OverageUsedCredits.Add(needed)
+					if err == nil && candidateOverage.Cmp(maxOverage) <= 0 {
+						overageLotID := e.store.nextUUID("39000000")
+						overageLot := tenantdb.CreditLotRow{
+							LotID:            overageLotID,
+							WorkspaceID:      req.WorkspaceID,
+							SourceType:       SourceOverage,
+							GrantedCredits:   needed,
+							RemainingCredits: needed,
+							ReservedCredits:  needed,
+							ExpiresAt:        nil,
+							ExternalGrantKey: "overage:" + resID,
+							CreatedAt:        now.UTC(),
+						}
+						st.Lots = append(st.Lots, overageLot)
+						st.OverageUsedCredits = candidateOverage
+						allocations = append(allocations, tenantdb.CreditReservationAllocationRow{
+							AllocationID:  e.store.nextUUID("60000000"),
+							WorkspaceID:   req.WorkspaceID,
+							ReservationID: resID,
+							LotID:         overageLotID,
+							Credits:       needed,
+						})
+						needed = tenantdb.ZeroDecimal()
+					}
+				}
+			}
+			if !needed.IsZero() {
+				return ErrInsufficientCredits
+			}
 		}
 
 		resRow := tenantdb.CreditReservationRow{
@@ -1518,7 +1585,22 @@ func (e *Engine) RunCycleBoundary(req CycleBoundaryRequest) (CycleBoundaryResult
 		if st.Subscription != nil {
 			st.Subscription.CurrentPeriodStart = now.UTC()
 			st.Subscription.CurrentPeriodEnd = nextExp
+			if len(st.ScheduledAddonRemovals) > 0 {
+				removeSet := make(map[string]bool, len(st.ScheduledAddonRemovals))
+				for _, r := range st.ScheduledAddonRemovals {
+					removeSet[r] = true
+				}
+				var kept []string
+				for _, a := range st.Subscription.Addons {
+					if !removeSet[a] {
+						kept = append(kept, a)
+					}
+				}
+				st.Subscription.Addons = kept
+				st.ScheduledAddonRemovals = nil
+			}
 		}
+		st.OverageUsedCredits = tenantdb.ZeroDecimal()
 
 		st.OutboxEvents = append(st.OutboxEvents, EmittedEvent{
 			EventType:      EventCreditsMonthlyReset,

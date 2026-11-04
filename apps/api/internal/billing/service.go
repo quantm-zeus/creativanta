@@ -323,6 +323,18 @@ func (s *Service) ChangePlan(ctx context.Context, req *adminv1.ChangePlanRequest
 	if req.GetContext().GetWorkspaceId() != nil {
 		wsID = req.GetContext().GetWorkspaceId().GetValue()
 	}
+	if req.GetStartTrial() {
+		subSummary, err := s.StartProTrial(ctx, wsID)
+		if err != nil {
+			return nil, err
+		}
+		return &adminv1.ChangePlanResponse{
+			Subscription:      subSummary,
+			EffectiveMode:     "trial_started_14d",
+			CheckoutSessionId: "cs_trial_" + req.GetContext().GetIdempotencyKey(),
+		}, nil
+	}
+
 	pctx, err := s.requirePermission(ctx, "AdminBillingService/ChangePlan", wsID)
 	if err != nil {
 		return nil, err
@@ -389,6 +401,10 @@ func (s *Service) ChangePlan(ctx context.Context, req *adminv1.ChangePlanRequest
 			}
 		}
 
+		if req.GetAcceptOverageTerms() {
+			st.OverageTermsAccepted = true
+		}
+
 		amount := targetTier.MonthlyPriceUSD
 		if curr == "USD" && interval == "annual" {
 			amount = targetTier.AnnualPriceUSD
@@ -404,14 +420,61 @@ func (s *Service) ChangePlan(ctx context.Context, req *adminv1.ChangePlanRequest
 		}
 
 		subID := "90000000-0000-4000-8000-000000000001"
+		periodStart := now
 		periodEnd := now.Add(30 * 24 * time.Hour)
 		if interval == "annual" {
 			periodEnd = now.Add(365 * 24 * time.Hour)
 		}
+		var existingAddons []string
 		if st.Subscription != nil {
 			subID = st.Subscription.SubscriptionID
-			if effectiveMode == "end_of_period" && !st.Subscription.CurrentPeriodEnd.IsZero() {
+			existingAddons = append(existingAddons, st.Subscription.Addons...)
+			if !st.Subscription.CurrentPeriodStart.IsZero() && !st.Subscription.CurrentPeriodEnd.IsZero() && st.Subscription.CurrentPeriodEnd.After(now) {
+				periodStart = st.Subscription.CurrentPeriodStart
 				periodEnd = st.Subscription.CurrentPeriodEnd
+			}
+		}
+
+		// Compute mid-cycle proration for newly added add-ons (pricing_and_credits.md §1.2).
+		existingAddonSet := make(map[string]bool, len(existingAddons))
+		for _, a := range existingAddons {
+			existingAddonSet[a] = true
+		}
+		totalDays := int(periodEnd.Sub(periodStart).Hours() / 24)
+		if totalDays <= 0 {
+			totalDays = 30
+		}
+		remainingDays := int(periodEnd.Sub(now).Hours() / 24)
+		if remainingDays <= 0 {
+			remainingDays = totalDays
+		}
+		proratedAddonTotal := tenantdb.ZeroDecimal()
+		mergedAddons := append([]string{}, existingAddons...)
+		for _, addonCode := range req.GetAddons() {
+			if !existingAddonSet[addonCode] {
+				mergedAddons = append(mergedAddons, addonCode)
+				existingAddonSet[addonCode] = true
+				if addonSpec, aOK := LookupAddon(addonCode); aOK {
+					prorated, pErr := ComputeAddonProration(addonSpec, interval, curr, remainingDays, totalDays)
+					if pErr == nil {
+						proratedAddonTotal, _ = proratedAddonTotal.Add(prorated)
+					}
+				}
+			}
+		}
+
+		// Schedule add-on removals for the next billing cycle (pricing_and_credits.md §1.2:
+		// removed add-ons remain active until current_period_end, no partial refund).
+		if len(req.GetRemoveAddons()) > 0 {
+			schedSet := make(map[string]bool, len(st.ScheduledAddonRemovals))
+			for _, r := range st.ScheduledAddonRemovals {
+				schedSet[r] = true
+			}
+			for _, rem := range req.GetRemoveAddons() {
+				if !schedSet[rem] {
+					st.ScheduledAddonRemovals = append(st.ScheduledAddonRemovals, rem)
+					schedSet[rem] = true
+				}
 			}
 		}
 
@@ -426,10 +489,10 @@ func (s *Service) ChangePlan(ctx context.Context, req *adminv1.ChangePlanRequest
 			Status:             "active",
 			Amount:             amount,
 			Currency:           curr,
-			CurrentPeriodStart: now,
+			CurrentPeriodStart: periodStart,
 			CurrentPeriodEnd:   periodEnd,
 			CancelAtPeriodEnd:  false,
-			Addons:             append([]string{}, req.GetAddons()...),
+			Addons:             mergedAddons,
 			CreatedAt:          now,
 			UpdatedAt:          now,
 		}
@@ -441,17 +504,20 @@ func (s *Service) ChangePlan(ctx context.Context, req *adminv1.ChangePlanRequest
 			AggregateID:    subID,
 			IdempotencyKey: "evt:plan_change:" + req.GetContext().GetIdempotencyKey(),
 			Payload: map[string]any{
-				"previous_plan":  currentTier.TierCode,
-				"target_plan":    targetTier.TierCode,
-				"effective_mode": effectiveMode,
+				"previous_plan":         currentTier.TierCode,
+				"target_plan":           targetTier.TierCode,
+				"effective_mode":        effectiveMode,
+				"prorated_addon_charge": proratedAddonTotal.String(),
 			},
 			CreatedAt: now,
 		})
 
 		resp = &adminv1.ChangePlanResponse{
-			Subscription:      subscriptionRowToProto(*st.Subscription),
-			EffectiveMode:     effectiveMode,
-			CheckoutSessionId: "cs_plan_" + req.GetContext().GetIdempotencyKey(),
+			Subscription:           subscriptionStateToProto(st),
+			EffectiveMode:          effectiveMode,
+			CheckoutSessionId:      "cs_plan_" + req.GetContext().GetIdempotencyKey(),
+			ProratedAddonCharge:    &commonv1.Money{Amount: proratedAddonTotal.String(), Currency: curr},
+			ScheduledAddonRemovals: append([]string{}, st.ScheduledAddonRemovals...),
 		}
 		return nil
 	})
@@ -469,18 +535,25 @@ func (s *Service) CancelSubscription(ctx context.Context, req *adminv1.CancelSub
 		return nil, err
 	}
 	now := s.clock()
-	var subSummary *adminv1.SubscriptionSummary
+	var resp *adminv1.CancelSubscriptionResponse
 	err = s.engine.store.WithWorkspaceTx(pctx.WorkspaceID, func(st *WorkspaceBillingState) error {
 		tier, ok := LookupTier(st.SubscriptionTier)
 		if !ok {
 			tier, _ = LookupTier("free")
 		}
+		if req.GetAcceptRetentionOffer() && st.RetentionOfferApplied {
+			return ErrRetentionOfferAlreadyUsed
+		}
 		if req.GetPauseInstead() {
 			if !tier.PauseEligible {
 				return ErrPlanFeatureNotAllowed
 			}
-			if req.GetPauseMonths() < 1 || req.GetPauseMonths() > 3 {
-				return fmt.Errorf("%w: pause_months must be between 1 and 3", ErrInvalidBillingInput)
+			pauseDays := req.GetPauseDays()
+			if pauseDays == 0 && req.GetPauseMonths() > 0 {
+				pauseDays = req.GetPauseMonths() * 30
+			}
+			if pauseDays < 1 || pauseDays > 90 {
+				return fmt.Errorf("%w: pause duration must be between 1 and 90 days (1 to 3 months)", ErrInvalidBillingInput)
 			}
 		}
 
@@ -499,12 +572,43 @@ func (s *Service) CancelSubscription(ctx context.Context, req *adminv1.CancelSub
 			}
 		}
 
-		if req.GetPauseInstead() {
+		if req.GetAcceptRetentionOffer() {
+			// Apply 30% discount for 3 months (max 1 per workspace lifetime; reporting_admin_billing.md §5).
+			st.RetentionOfferApplied = true
+			st.RetentionOfferDiscountPct = "30"
+			st.RetentionOfferMonths = 3
+			discounted, dErr := st.Subscription.Amount.Mul(tenantdb.MustParseExactDecimal("0.70"))
+			if dErr == nil {
+				st.Subscription.Amount = discounted
+			}
+			st.Subscription.Status = "active"
+			st.Subscription.CancelAtPeriodEnd = false
+			st.Subscription.CanceledAt = nil
+			st.RetentionPhase = RetentionPhaseActive
+		} else if req.GetPauseInstead() {
+			pauseDays := req.GetPauseDays()
+			if pauseDays == 0 {
+				pauseDays = req.GetPauseMonths() * 30
+			}
+			t := now.UTC()
+			resumeAt := t.Add(time.Duration(pauseDays) * 24 * time.Hour)
 			st.Subscription.Status = "paused"
+			st.PausedAt = &t
+			st.PauseAutoResumesAt = &resumeAt
+			st.ReadOnlyMode = true
+			st.ReadOnlyReason = "subscription_paused"
+			st.RetentionPhase = "paused_read_only"
 		} else {
+			// Voluntary cancellation: subscription remains active until current_period_end (cancel_scheduled).
+			// Unlike dunning (which enters read-only grace at Day 7 and downgrades to Free at Day 14),
+			// voluntary cancellation keeps full paid tier features active until current_period_end,
+			// and then enters the 30d/60d/90d retention quarantine schedule (Acceptance Target #1).
 			st.Subscription.CancelAtPeriodEnd = true
 			t := now
 			st.Subscription.CanceledAt = &t
+			st.ReadOnlyMode = false
+			st.ReadOnlyReason = ""
+			st.RetentionPhase = "cancel_scheduled"
 			st.OutboxEvents = append(st.OutboxEvents, EmittedEvent{
 				EventType:      EventBillingSubscriptionCancel,
 				WorkspaceID:    pctx.WorkspaceID,
@@ -519,17 +623,26 @@ func (s *Service) CancelSubscription(ctx context.Context, req *adminv1.CancelSub
 			})
 		}
 		st.Subscription.UpdatedAt = now
-		subSummary = subscriptionRowToProto(*st.Subscription)
+		subSummary := subscriptionStateToProto(st)
+		resp = &adminv1.CancelSubscriptionResponse{
+			Subscription:            subSummary,
+			RetentionOfferApplied:   st.RetentionOfferApplied,
+			RetentionDiscountPct:    st.RetentionOfferDiscountPct,
+			RetentionDiscountMonths: st.RetentionOfferMonths,
+			RetentionPhase:          st.RetentionPhase,
+		}
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	return &adminv1.CancelSubscriptionResponse{Subscription: subSummary}, nil
+	return resp, nil
 }
 
 // UpdatePaymentMethod implements AdminBillingService/UpdatePaymentMethod (workspace:billing:manage, Owner-only).
-// Enforces EC-M23-001: blocks removing the last payment method while on an active paid plan (BILLING_CONFLICT_001).
+// Enforces:
+//   - Payment method access gates (card enabled by default; bank_transfer, momo, zalopay, vnpay, paypal behind access gates).
+//   - EC-M23-001: blocks removing the last payment method while on an active paid plan (BILLING_CONFLICT_001).
 func (s *Service) UpdatePaymentMethod(ctx context.Context, req *adminv1.UpdatePaymentMethodRequest) (*adminv1.UpdatePaymentMethodResponse, error) {
 	wsID := ""
 	if req.GetContext().GetWorkspaceId() != nil {
@@ -564,9 +677,16 @@ func (s *Service) UpdatePaymentMethod(ctx context.Context, req *adminv1.UpdatePa
 			}
 			st.PaymentMethods = remaining
 			resp = &adminv1.UpdatePaymentMethodResponse{
-				PaymentMethods: paymentMethodsToProto(st.PaymentMethods),
+				PaymentMethods:    paymentMethodsToProto(st.PaymentMethods),
+				MethodAccessGates: evaluatePaymentMethodGatesOnState(st),
 			}
 			return nil
+		}
+
+		// Validate payment method access gate before adding or updating.
+		gateSpec, gateErr := isPaymentMethodAllowedOnState(st, req.GetMethodType())
+		if gateErr != nil {
+			return gateErr
 		}
 
 		// Add or set default payment method.
@@ -594,12 +714,16 @@ func (s *Service) UpdatePaymentMethod(ctx context.Context, req *adminv1.UpdatePa
 			if len(pmStripeID) >= 4 {
 				last4 = pmStripeID[len(pmStripeID)-4:]
 			}
+			brand := "visa"
+			if gateSpec.MethodType != "card" {
+				brand = gateSpec.MethodType
+			}
 			newPM := tenantdb.PaymentMethodRow{
 				PaymentMethodID:       s.engine.store.nextUUID("91000000"),
 				WorkspaceID:           pctx.WorkspaceID,
 				StripePaymentMethodID: pmStripeID,
-				Type:                  "card",
-				CardBrand:             "visa",
+				Type:                  gateSpec.MethodType,
+				CardBrand:             brand,
 				CardLast4:             last4,
 				CardExpMonth:          12,
 				CardExpYear:           2029,
@@ -610,9 +734,39 @@ func (s *Service) UpdatePaymentMethod(ctx context.Context, req *adminv1.UpdatePa
 			st.PaymentMethods = append(st.PaymentMethods, newPM)
 			target = &st.PaymentMethods[len(st.PaymentMethods)-1]
 		}
+		pmProto := paymentMethodRowToProto(*target)
+		pmProto.AccessGateStatus = "granted"
+		pmProto.BillingName = req.GetBillingName()
+		pmProto.BillingEmail = req.GetBillingEmail()
 		resp = &adminv1.UpdatePaymentMethodResponse{
-			PaymentMethod:  paymentMethodRowToProto(*target),
-			PaymentMethods: paymentMethodsToProto(st.PaymentMethods),
+			PaymentMethod:     pmProto,
+			PaymentMethods:    paymentMethodsToProto(st.PaymentMethods),
+			MethodAccessGates: evaluatePaymentMethodGatesOnState(st),
+		}
+		return nil
+	})
+	return resp, err
+}
+
+// GetPaymentMethod implements AdminBillingService/GetPaymentMethod (workspace:billing:read).
+func (s *Service) GetPaymentMethod(ctx context.Context, req *adminv1.GetPaymentMethodRequest) (*adminv1.GetPaymentMethodResponse, error) {
+	pctx, err := s.requirePermission(ctx, "AdminBillingService/GetPaymentMethod", req.GetWorkspaceId().GetValue())
+	if err != nil {
+		return nil, err
+	}
+	var resp *adminv1.GetPaymentMethodResponse
+	err = s.engine.store.WithWorkspaceTx(pctx.WorkspaceID, func(st *WorkspaceBillingState) error {
+		var defPM *adminv1.PaymentMethodSummary
+		for _, pm := range st.PaymentMethods {
+			if pm.IsDefault {
+				defPM = paymentMethodRowToProto(pm)
+				break
+			}
+		}
+		resp = &adminv1.GetPaymentMethodResponse{
+			DefaultPaymentMethod: defPM,
+			PaymentMethods:       paymentMethodsToProto(st.PaymentMethods),
+			MethodAccessGates:    evaluatePaymentMethodGatesOnState(st),
 		}
 		return nil
 	})
@@ -1089,7 +1243,7 @@ func (s *Service) GetBillingSummary(ctx context.Context, req *adminv1.GetBilling
 		bal := computeBalanceFromState(st, now)
 		var subProto *adminv1.SubscriptionSummary
 		if st.Subscription != nil {
-			subProto = subscriptionRowToProto(*st.Subscription)
+			subProto = subscriptionStateToProto(st)
 		}
 		var defPM *adminv1.PaymentMethodSummary
 		for _, pm := range st.PaymentMethods {
@@ -1146,6 +1300,185 @@ func (s *Service) GetCreditLedger(ctx context.Context, req *adminv1.GetCreditLed
 	}, nil
 }
 
+// ListSubscriptions implements AdminBillingService/ListSubscriptions (workspace:billing:read).
+func (s *Service) ListSubscriptions(ctx context.Context, req *adminv1.ListSubscriptionsRequest) (*adminv1.ListSubscriptionsResponse, error) {
+	pctx, err := s.requirePermission(ctx, "AdminBillingService/ListSubscriptions", req.GetWorkspaceId().GetValue())
+	if err != nil {
+		return nil, err
+	}
+	var subs []*adminv1.SubscriptionSummary
+	err = s.engine.store.WithWorkspaceTx(pctx.WorkspaceID, func(st *WorkspaceBillingState) error {
+		if st.Subscription != nil {
+			subs = append(subs, subscriptionStateToProto(st))
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	total := int64(len(subs))
+	return &adminv1.ListSubscriptionsResponse{
+		Subscriptions: subs,
+		PageInfo: &commonv1.PaginatedResponse{
+			TotalCount: &total,
+			HasMore:    false,
+		},
+	}, nil
+}
+
+// GetUsageReport implements AdminBillingService/GetUsageReport (workspace:billing:read).
+func (s *Service) GetUsageReport(ctx context.Context, req *adminv1.GetUsageReportRequest) (*adminv1.GetUsageReportResponse, error) {
+	pctx, err := s.requirePermission(ctx, "AdminBillingService/GetUsageReport", req.GetWorkspaceId().GetValue())
+	if err != nil {
+		return nil, err
+	}
+	now := s.clock()
+	var resp *adminv1.GetUsageReportResponse
+	err = s.engine.store.WithWorkspaceTx(pctx.WorkspaceID, func(st *WorkspaceBillingState) error {
+		tierSpec, ok := LookupTier(st.SubscriptionTier)
+		if !ok {
+			tierSpec, _ = LookupTier("free")
+		}
+		bal := computeBalanceFromState(st, now)
+		byOp := make(map[string]tenantdb.ExactDecimal)
+		countsByOp := make(map[string]int64)
+		for _, tx := range st.Transactions {
+			if tx.CreditsDelta.IsNegative() && tx.OperationType != "credit_expiration" {
+				pos, _ := tenantdb.ZeroDecimal().Sub(tx.CreditsDelta)
+				byOp[tx.OperationType], _ = byOp[tx.OperationType].Add(pos)
+				countsByOp[tx.OperationType]++
+			}
+		}
+		breakdown := make([]*adminv1.OperationUsageBreakdown, 0, len(byOp))
+		for op, cred := range byOp {
+			breakdown = append(breakdown, &adminv1.OperationUsageBreakdown{
+				OperationType:  op,
+				CreditsUsed:    cred.String(),
+				OperationCount: countsByOp[op],
+			})
+		}
+		maxOverage := tenantdb.ZeroDecimal()
+		if tierSpec.OverageEligible {
+			maxOverage, _ = tierSpec.MonthlyCredits.Mul(tenantdb.MustParseExactDecimal("0.10"))
+		}
+		overageUSD, _ := st.OverageUsedCredits.Mul(tenantdb.MustParseExactDecimal("0.025"))
+		var alerts []string
+		if !st.OverageUsedCredits.IsZero() {
+			alerts = append(alerts, "100_pct")
+			if !maxOverage.IsZero() && st.OverageUsedCredits.Cmp(maxOverage) >= 0 {
+				alerts = append(alerts, "110_pct_hard_cap")
+			}
+		}
+		resp = &adminv1.GetUsageReportResponse{
+			Balance:                  bal.ToProto(),
+			Breakdown:                breakdown,
+			OverageCreditsUsed:       st.OverageUsedCredits.String(),
+			OverageLimitCredits:      maxOverage.String(),
+			OverageChargeUsd:         &commonv1.Money{Amount: overageUSD.String(), Currency: "USD"},
+			TriggeredThresholdAlerts: alerts,
+		}
+		return nil
+	})
+	return resp, err
+}
+
+// GetInvoiceHistory implements AdminBillingService/GetInvoiceHistory (workspace:billing:read).
+func (s *Service) GetInvoiceHistory(ctx context.Context, req *adminv1.GetInvoiceHistoryRequest) (*adminv1.GetInvoiceHistoryResponse, error) {
+	pctx, err := s.requirePermission(ctx, "AdminBillingService/GetInvoiceHistory", req.GetWorkspaceId().GetValue())
+	if err != nil {
+		return nil, err
+	}
+	var invs []*adminv1.InvoiceSummary
+	err = s.engine.store.WithWorkspaceTx(pctx.WorkspaceID, func(st *WorkspaceBillingState) error {
+		for _, inv := range st.Invoices {
+			invs = append(invs, invoiceRowToProto(inv))
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	total := int64(len(invs))
+	return &adminv1.GetInvoiceHistoryResponse{
+		Invoices: invs,
+		PageInfo: &commonv1.PaginatedResponse{
+			TotalCount: &total,
+			HasMore:    false,
+		},
+	}, nil
+}
+
+// DownloadInvoice implements AdminBillingService/DownloadInvoice (workspace:billing:read).
+func (s *Service) DownloadInvoice(ctx context.Context, req *adminv1.DownloadInvoiceRequest) (*adminv1.DownloadInvoiceResponse, error) {
+	wsID := ""
+	if req.GetContext().GetWorkspaceId() != nil {
+		wsID = req.GetContext().GetWorkspaceId().GetValue()
+	}
+	pctx, err := s.requirePermission(ctx, "AdminBillingService/DownloadInvoice", wsID)
+	if err != nil {
+		return nil, err
+	}
+	targetID := req.GetInvoiceId().GetValue()
+	var found *tenantdb.InvoiceRow
+	err = s.engine.store.WithWorkspaceTx(pctx.WorkspaceID, func(st *WorkspaceBillingState) error {
+		for idx := range st.Invoices {
+			if st.Invoices[idx].InvoiceID == targetID {
+				cp := st.Invoices[idx]
+				found = &cp
+				return nil
+			}
+		}
+		return fmt.Errorf("%w: invoice %q not found", ErrInvalidBillingInput, targetID)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &adminv1.DownloadInvoiceResponse{
+		Invoice:          invoiceRowToProto(*found),
+		InvoicePdfUrl:    found.InvoicePDFURL,
+		HostedInvoiceUrl: found.HostedInvoiceURL,
+	}, nil
+}
+
+// ListBillingEvents implements AdminBillingService/ListBillingEvents (workspace:billing:read).
+func (s *Service) ListBillingEvents(ctx context.Context, req *adminv1.ListBillingEventsRequest) (*adminv1.ListBillingEventsResponse, error) {
+	pctx, err := s.requirePermission(ctx, "AdminBillingService/ListBillingEvents", req.GetWorkspaceId().GetValue())
+	if err != nil {
+		return nil, err
+	}
+	var events []*adminv1.BillingEventEntry
+	err = s.engine.store.WithWorkspaceTx(pctx.WorkspaceID, func(st *WorkspaceBillingState) error {
+		for _, ev := range st.BillingEvents {
+			if req.GetEventTypeFilter() != "" && ev.EventType != req.GetEventTypeFilter() {
+				continue
+			}
+			events = append(events, &adminv1.BillingEventEntry{
+				BillingEventId:   &commonv1.UUID{Value: ev.BillingEventID},
+				WorkspaceId:      &commonv1.UUID{Value: ev.WorkspaceID},
+				EventType:        ev.EventType,
+				StripeEventId:    ev.StripeEventID,
+				Amount:           &commonv1.Money{Amount: ev.Amount.String(), Currency: ev.Currency},
+				SubscriptionTier: ev.SubscriptionTier,
+				CreditsChange:    ev.CreditsChange.String(),
+				Description:      ev.Description,
+				CreatedAt:        timestamppb.New(ev.CreatedAt),
+			})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	total := int64(len(events))
+	return &adminv1.ListBillingEventsResponse{
+		Events: events,
+		PageInfo: &commonv1.PaginatedResponse{
+			TotalCount: &total,
+			HasMore:    false,
+		},
+	}, nil
+}
+
 func hasDefaultPM(pms []tenantdb.PaymentMethodRow) bool {
 	for _, pm := range pms {
 		if pm.IsDefault {
@@ -1153,6 +1486,40 @@ func hasDefaultPM(pms []tenantdb.PaymentMethodRow) bool {
 		}
 	}
 	return false
+}
+
+func subscriptionStateToProto(st *WorkspaceBillingState) *adminv1.SubscriptionSummary {
+	if st.Subscription == nil {
+		return nil
+	}
+	summary := subscriptionRowToProto(*st.Subscription)
+	if st.TrialEndsAt != nil {
+		summary.TrialEndsAt = timestamppb.New(*st.TrialEndsAt)
+	}
+	if st.PausedAt != nil {
+		summary.PausedAt = timestamppb.New(*st.PausedAt)
+	}
+	if st.PauseAutoResumesAt != nil {
+		summary.PauseAutoResumesAt = timestamppb.New(*st.PauseAutoResumesAt)
+	}
+	if st.GracePeriodEndsAt != nil {
+		summary.GracePeriodEndsAt = timestamppb.New(*st.GracePeriodEndsAt)
+	}
+	summary.DunningDay = st.DunningDay
+	summary.DunningAttempt = st.DunningAttempt
+	summary.ReadOnlyMode = st.ReadOnlyMode
+	summary.ReadOnlyReason = st.ReadOnlyReason
+	phase := st.RetentionPhase
+	if phase == "" {
+		phase = RetentionPhaseActive
+	}
+	summary.RetentionPhase = phase
+	summary.RetentionOfferApplied = st.RetentionOfferApplied
+	summary.ScheduledAddonRemovals = append([]string{}, st.ScheduledAddonRemovals...)
+	summary.OverageTermsAccepted = st.OverageTermsAccepted
+	summary.OverageUsedCredits = st.OverageUsedCredits.String()
+	summary.PreservedPurchasedCredits = sumPreservedPurchasedCredits(st).String()
+	return summary
 }
 
 func subscriptionRowToProto(row tenantdb.SubscriptionRow) *adminv1.SubscriptionSummary {

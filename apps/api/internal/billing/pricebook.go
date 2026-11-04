@@ -115,8 +115,22 @@ type AddonSpec struct {
 	AddonCode       string
 	DisplayName     string
 	MonthlyPriceUSD tenantdb.ExactDecimal
+	AnnualPriceUSD  tenantdb.ExactDecimal
 	MonthlyPriceVND tenantdb.ExactDecimal
+	AnnualPriceVND  tenantdb.ExactDecimal
 	EligibleTiers   []string
+}
+
+// PaymentMethodGateSpec defines the canonical access gate for a payment method (P8-02).
+type PaymentMethodGateSpec struct {
+	MethodType          string
+	DisplayName         string
+	ProviderCode        string
+	CapabilityState     string // EXECUTABLE, SETUP_REQUIRED, COMING_SOON
+	DefaultAccessGated  bool   // true if requires explicit verified gateway access grant
+	EligibleTiers       []string
+	SupportedCurrencies []string
+	GateReason          string
 }
 
 var canonicalTiers = []TierSpec{
@@ -242,29 +256,100 @@ var canonicalAddons = []AddonSpec{
 		AddonCode:       "commerce_intelligence",
 		DisplayName:     "Commerce Intelligence Add-on",
 		MonthlyPriceUSD: tenantdb.MustParseExactDecimal("39"),
+		AnnualPriceUSD:  tenantdb.MustParseExactDecimal("390"),
 		MonthlyPriceVND: tenantdb.MustParseExactDecimal("999000"),
-		EligibleTiers:   []string{"pro", "business", "enterprise"},
+		AnnualPriceVND:  tenantdb.MustParseExactDecimal("9990000"),
+		EligibleTiers:   []string{"starter", "pro", "business", "enterprise"},
 	},
 	{
 		AddonCode:       "continuity_pro",
 		DisplayName:     "Continuity Pro Add-on",
 		MonthlyPriceUSD: tenantdb.MustParseExactDecimal("29"),
+		AnnualPriceUSD:  tenantdb.MustParseExactDecimal("290"),
 		MonthlyPriceVND: tenantdb.MustParseExactDecimal("749000"),
-		EligibleTiers:   []string{"pro", "business", "enterprise"},
+		AnnualPriceVND:  tenantdb.MustParseExactDecimal("7490000"),
+		EligibleTiers:   []string{"starter", "pro", "business", "enterprise"},
 	},
 	{
 		AddonCode:       "advanced_profit",
 		DisplayName:     "Advanced Profit & Attribution Add-on",
 		MonthlyPriceUSD: tenantdb.MustParseExactDecimal("79"),
+		AnnualPriceUSD:  tenantdb.MustParseExactDecimal("790"),
 		MonthlyPriceVND: tenantdb.MustParseExactDecimal("1999000"),
-		EligibleTiers:   []string{"pro", "business", "enterprise"},
+		AnnualPriceVND:  tenantdb.MustParseExactDecimal("19990000"),
+		EligibleTiers:   []string{"starter", "pro", "business", "enterprise"},
 	},
 	{
 		AddonCode:       "workflow_agent_pro",
 		DisplayName:     "Workflow & Agent Pro Add-on",
 		MonthlyPriceUSD: tenantdb.MustParseExactDecimal("59"),
+		AnnualPriceUSD:  tenantdb.MustParseExactDecimal("590"),
 		MonthlyPriceVND: tenantdb.MustParseExactDecimal("1499000"),
-		EligibleTiers:   []string{"pro", "business", "enterprise"},
+		AnnualPriceVND:  tenantdb.MustParseExactDecimal("14990000"),
+		EligibleTiers:   []string{"starter", "pro", "business", "enterprise"},
+	},
+}
+
+var canonicalPaymentMethodGates = []PaymentMethodGateSpec{
+	{
+		MethodType:          "card",
+		DisplayName:         "Thẻ Quốc tế (Visa / Mastercard / JCB via Stripe)",
+		ProviderCode:        "stripe",
+		CapabilityState:     "EXECUTABLE",
+		DefaultAccessGated:  false,
+		EligibleTiers:       []string{"free", "starter", "pro", "business", "enterprise"},
+		SupportedCurrencies: []string{"USD", "VND"},
+		GateReason:          "Verified Stripe card rail active for all tiers.",
+	},
+	{
+		MethodType:          "bank_transfer",
+		DisplayName:         "Chuyển khoản Ngân hàng (VietQR / Wire Transfer)",
+		ProviderCode:        "manual_bank_transfer",
+		CapabilityState:     "SETUP_REQUIRED",
+		DefaultAccessGated:  true,
+		EligibleTiers:       []string{"business", "enterprise"},
+		SupportedCurrencies: []string{"USD", "VND"},
+		GateReason:          "Requires verified Business/Enterprise invoice & bank reconciliation access gate.",
+	},
+	{
+		MethodType:          "momo",
+		DisplayName:         "Ví MoMo (MoMo E-Wallet)",
+		ProviderCode:        "momo_gateway",
+		CapabilityState:     "SETUP_REQUIRED",
+		DefaultAccessGated:  true,
+		EligibleTiers:       []string{"starter", "pro", "business", "enterprise"},
+		SupportedCurrencies: []string{"VND"},
+		GateReason:          "Gated behind verified MoMo merchant webhook & signature access gate.",
+	},
+	{
+		MethodType:          "zalopay",
+		DisplayName:         "Ví ZaloPay",
+		ProviderCode:        "zalopay_gateway",
+		CapabilityState:     "SETUP_REQUIRED",
+		DefaultAccessGated:  true,
+		EligibleTiers:       []string{"starter", "pro", "business", "enterprise"},
+		SupportedCurrencies: []string{"VND"},
+		GateReason:          "Gated behind verified ZaloPay merchant callback access gate.",
+	},
+	{
+		MethodType:          "vnpay",
+		DisplayName:         "Cổng VNPay QR / ATM Nội địa",
+		ProviderCode:        "vnpay_gateway",
+		CapabilityState:     "SETUP_REQUIRED",
+		DefaultAccessGated:  true,
+		EligibleTiers:       []string{"starter", "pro", "business", "enterprise"},
+		SupportedCurrencies: []string{"VND"},
+		GateReason:          "Gated behind verified VNPay IPN secret & terminal access gate.",
+	},
+	{
+		MethodType:          "paypal",
+		DisplayName:         "PayPal International",
+		ProviderCode:        "paypal_gateway",
+		CapabilityState:     "SETUP_REQUIRED",
+		DefaultAccessGated:  true,
+		EligibleTiers:       []string{"starter", "pro", "business", "enterprise"},
+		SupportedCurrencies: []string{"USD"},
+		GateReason:          "Gated behind verified PayPal webhook certificate access gate.",
 	},
 }
 
@@ -384,7 +469,73 @@ func (a AddonSpec) ToProtoAddonCatalogEntry() *adminv1.AddonCatalogEntry {
 			Currency: "VND",
 		},
 		EligibleTiers: append([]string{}, a.EligibleTiers...),
+		AnnualPriceUsd: &commonv1.Money{
+			Amount:   a.AnnualPriceUSD.String(),
+			Currency: "USD",
+		},
+		AnnualPriceVnd: &commonv1.Money{
+			Amount:   a.AnnualPriceVND.String(),
+			Currency: "VND",
+		},
 	}
+}
+
+// LookupPaymentMethodGate returns the canonical PaymentMethodGateSpec for methodType.
+func LookupPaymentMethodGate(methodType string) (PaymentMethodGateSpec, bool) {
+	normalized := strings.ToLower(strings.TrimSpace(methodType))
+	if normalized == "" {
+		normalized = "card"
+	}
+	for _, g := range canonicalPaymentMethodGates {
+		if g.MethodType == normalized {
+			return g, true
+		}
+	}
+	return PaymentMethodGateSpec{}, false
+}
+
+// ListPaymentMethodGates returns a copy of all 6 canonical payment method access gates.
+func ListPaymentMethodGates() []PaymentMethodGateSpec {
+	out := make([]PaymentMethodGateSpec, len(canonicalPaymentMethodGates))
+	copy(out, canonicalPaymentMethodGates)
+	return out
+}
+
+// ComputeAddonProration computes the exact mid-cycle prorated charge for an add-on
+// based on the subscription's billing interval ("monthly" or "yearly"), currency ("USD" or "VND"),
+// and remaining days in the current billing period (pricing_and_credits.md §4).
+func ComputeAddonProration(addon AddonSpec, billingInterval string, currency string, remainingDays int, totalCycleDays int) (tenantdb.ExactDecimal, error) {
+	if totalCycleDays <= 0 {
+		totalCycleDays = 30
+	}
+	if remainingDays <= 0 {
+		return tenantdb.ZeroDecimal(), nil
+	}
+	if remainingDays > totalCycleDays {
+		remainingDays = totalCycleDays
+	}
+
+	isAnnual := strings.EqualFold(strings.TrimSpace(billingInterval), "yearly") ||
+		strings.EqualFold(strings.TrimSpace(billingInterval), "annual")
+	isVND := strings.EqualFold(strings.TrimSpace(currency), "VND")
+
+	var fullPrice tenantdb.ExactDecimal
+	switch {
+	case isAnnual && isVND:
+		fullPrice = addon.AnnualPriceVND
+	case isAnnual && !isVND:
+		fullPrice = addon.AnnualPriceUSD
+	case !isAnnual && isVND:
+		fullPrice = addon.MonthlyPriceVND
+	default:
+		fullPrice = addon.MonthlyPriceUSD
+	}
+
+	num, err := fullPrice.Mul(tenantdb.NewExactDecimalFromInt64(int64(remainingDays)))
+	if err != nil {
+		return tenantdb.ZeroDecimal(), err
+	}
+	return num.QuoRoundHalfUp(tenantdb.NewExactDecimalFromInt64(int64(totalCycleDays)))
 }
 
 // ProviderRateCard represents a verified provider rate card (§26.1).

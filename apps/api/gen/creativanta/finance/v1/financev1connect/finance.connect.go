@@ -61,6 +61,24 @@ const (
 	// ProfitServiceRefreshSnapshotProcedure is the fully-qualified name of the ProfitService's
 	// RefreshSnapshot RPC.
 	ProfitServiceRefreshSnapshotProcedure = "/creativanta.finance.v1.ProfitService/RefreshSnapshot"
+	// ProfitServiceGenerateReportProcedure is the fully-qualified name of the ProfitService's
+	// GenerateReport RPC.
+	ProfitServiceGenerateReportProcedure = "/creativanta.finance.v1.ProfitService/GenerateReport"
+	// ProfitServiceExportReportProcedure is the fully-qualified name of the ProfitService's
+	// ExportReport RPC.
+	ProfitServiceExportReportProcedure = "/creativanta.finance.v1.ProfitService/ExportReport"
+	// ProfitServiceExportTaxReportProcedure is the fully-qualified name of the ProfitService's
+	// ExportTaxReport RPC.
+	ProfitServiceExportTaxReportProcedure = "/creativanta.finance.v1.ProfitService/ExportTaxReport"
+	// ProfitServiceExportToSheetsProcedure is the fully-qualified name of the ProfitService's
+	// ExportToSheets RPC.
+	ProfitServiceExportToSheetsProcedure = "/creativanta.finance.v1.ProfitService/ExportToSheets"
+	// ProfitServiceGetReportTemplatesProcedure is the fully-qualified name of the ProfitService's
+	// GetReportTemplates RPC.
+	ProfitServiceGetReportTemplatesProcedure = "/creativanta.finance.v1.ProfitService/GetReportTemplates"
+	// ProfitServiceGetSavedReportsProcedure is the fully-qualified name of the ProfitService's
+	// GetSavedReports RPC.
+	ProfitServiceGetSavedReportsProcedure = "/creativanta.finance.v1.ProfitService/GetSavedReports"
 	// SettlementServiceImportProcedure is the fully-qualified name of the SettlementService's Import
 	// RPC.
 	SettlementServiceImportProcedure = "/creativanta.finance.v1.SettlementService/Import"
@@ -127,6 +145,12 @@ type ProfitServiceClient interface {
 	GetAnomalies(context.Context, *connect.Request[v1.ProfitServiceGetAnomaliesRequest]) (*connect.Response[v1.ProfitServiceGetAnomaliesResponse], error)
 	GetSnapshot(context.Context, *connect.Request[v1.ProfitServiceGetSnapshotRequest]) (*connect.Response[v1.ProfitServiceGetSnapshotResponse], error)
 	RefreshSnapshot(context.Context, *connect.Request[v1.ProfitServiceRefreshSnapshotRequest]) (*connect.Response[v1.ProfitServiceRefreshSnapshotResponse], error)
+	GenerateReport(context.Context, *connect.Request[v1.ProfitServiceGenerateReportRequest]) (*connect.Response[v1.ProfitServiceGenerateReportResponse], error)
+	ExportReport(context.Context, *connect.Request[v1.ProfitServiceExportReportRequest]) (*connect.Response[v1.ProfitServiceExportReportResponse], error)
+	ExportTaxReport(context.Context, *connect.Request[v1.ProfitServiceExportTaxReportRequest]) (*connect.Response[v1.ProfitServiceExportTaxReportResponse], error)
+	ExportToSheets(context.Context, *connect.Request[v1.ProfitServiceExportToSheetsRequest]) (*connect.Response[v1.ProfitServiceExportToSheetsResponse], error)
+	GetReportTemplates(context.Context, *connect.Request[v1.ProfitServiceGetReportTemplatesRequest]) (*connect.Response[v1.ProfitServiceGetReportTemplatesResponse], error)
+	GetSavedReports(context.Context, *connect.Request[v1.ProfitServiceGetSavedReportsRequest]) (*connect.Response[v1.ProfitServiceGetSavedReportsResponse], error)
 }
 
 // NewProfitServiceClient constructs a client for the creativanta.finance.v1.ProfitService service.
@@ -170,16 +194,58 @@ func NewProfitServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(profitServiceMethods.ByName("RefreshSnapshot")),
 			connect.WithClientOptions(opts...),
 		),
+		generateReport: connect.NewClient[v1.ProfitServiceGenerateReportRequest, v1.ProfitServiceGenerateReportResponse](
+			httpClient,
+			baseURL+ProfitServiceGenerateReportProcedure,
+			connect.WithSchema(profitServiceMethods.ByName("GenerateReport")),
+			connect.WithClientOptions(opts...),
+		),
+		exportReport: connect.NewClient[v1.ProfitServiceExportReportRequest, v1.ProfitServiceExportReportResponse](
+			httpClient,
+			baseURL+ProfitServiceExportReportProcedure,
+			connect.WithSchema(profitServiceMethods.ByName("ExportReport")),
+			connect.WithClientOptions(opts...),
+		),
+		exportTaxReport: connect.NewClient[v1.ProfitServiceExportTaxReportRequest, v1.ProfitServiceExportTaxReportResponse](
+			httpClient,
+			baseURL+ProfitServiceExportTaxReportProcedure,
+			connect.WithSchema(profitServiceMethods.ByName("ExportTaxReport")),
+			connect.WithClientOptions(opts...),
+		),
+		exportToSheets: connect.NewClient[v1.ProfitServiceExportToSheetsRequest, v1.ProfitServiceExportToSheetsResponse](
+			httpClient,
+			baseURL+ProfitServiceExportToSheetsProcedure,
+			connect.WithSchema(profitServiceMethods.ByName("ExportToSheets")),
+			connect.WithClientOptions(opts...),
+		),
+		getReportTemplates: connect.NewClient[v1.ProfitServiceGetReportTemplatesRequest, v1.ProfitServiceGetReportTemplatesResponse](
+			httpClient,
+			baseURL+ProfitServiceGetReportTemplatesProcedure,
+			connect.WithSchema(profitServiceMethods.ByName("GetReportTemplates")),
+			connect.WithClientOptions(opts...),
+		),
+		getSavedReports: connect.NewClient[v1.ProfitServiceGetSavedReportsRequest, v1.ProfitServiceGetSavedReportsResponse](
+			httpClient,
+			baseURL+ProfitServiceGetSavedReportsProcedure,
+			connect.WithSchema(profitServiceMethods.ByName("GetSavedReports")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // profitServiceClient implements ProfitServiceClient.
 type profitServiceClient struct {
-	getSummary      *connect.Client[v1.ProfitServiceGetSummaryRequest, v1.ProfitServiceGetSummaryResponse]
-	drillDown       *connect.Client[v1.ProfitServiceDrillDownRequest, v1.ProfitServiceDrillDownResponse]
-	getAnomalies    *connect.Client[v1.ProfitServiceGetAnomaliesRequest, v1.ProfitServiceGetAnomaliesResponse]
-	getSnapshot     *connect.Client[v1.ProfitServiceGetSnapshotRequest, v1.ProfitServiceGetSnapshotResponse]
-	refreshSnapshot *connect.Client[v1.ProfitServiceRefreshSnapshotRequest, v1.ProfitServiceRefreshSnapshotResponse]
+	getSummary         *connect.Client[v1.ProfitServiceGetSummaryRequest, v1.ProfitServiceGetSummaryResponse]
+	drillDown          *connect.Client[v1.ProfitServiceDrillDownRequest, v1.ProfitServiceDrillDownResponse]
+	getAnomalies       *connect.Client[v1.ProfitServiceGetAnomaliesRequest, v1.ProfitServiceGetAnomaliesResponse]
+	getSnapshot        *connect.Client[v1.ProfitServiceGetSnapshotRequest, v1.ProfitServiceGetSnapshotResponse]
+	refreshSnapshot    *connect.Client[v1.ProfitServiceRefreshSnapshotRequest, v1.ProfitServiceRefreshSnapshotResponse]
+	generateReport     *connect.Client[v1.ProfitServiceGenerateReportRequest, v1.ProfitServiceGenerateReportResponse]
+	exportReport       *connect.Client[v1.ProfitServiceExportReportRequest, v1.ProfitServiceExportReportResponse]
+	exportTaxReport    *connect.Client[v1.ProfitServiceExportTaxReportRequest, v1.ProfitServiceExportTaxReportResponse]
+	exportToSheets     *connect.Client[v1.ProfitServiceExportToSheetsRequest, v1.ProfitServiceExportToSheetsResponse]
+	getReportTemplates *connect.Client[v1.ProfitServiceGetReportTemplatesRequest, v1.ProfitServiceGetReportTemplatesResponse]
+	getSavedReports    *connect.Client[v1.ProfitServiceGetSavedReportsRequest, v1.ProfitServiceGetSavedReportsResponse]
 }
 
 // GetSummary calls creativanta.finance.v1.ProfitService.GetSummary.
@@ -207,6 +273,36 @@ func (c *profitServiceClient) RefreshSnapshot(ctx context.Context, req *connect.
 	return c.refreshSnapshot.CallUnary(ctx, req)
 }
 
+// GenerateReport calls creativanta.finance.v1.ProfitService.GenerateReport.
+func (c *profitServiceClient) GenerateReport(ctx context.Context, req *connect.Request[v1.ProfitServiceGenerateReportRequest]) (*connect.Response[v1.ProfitServiceGenerateReportResponse], error) {
+	return c.generateReport.CallUnary(ctx, req)
+}
+
+// ExportReport calls creativanta.finance.v1.ProfitService.ExportReport.
+func (c *profitServiceClient) ExportReport(ctx context.Context, req *connect.Request[v1.ProfitServiceExportReportRequest]) (*connect.Response[v1.ProfitServiceExportReportResponse], error) {
+	return c.exportReport.CallUnary(ctx, req)
+}
+
+// ExportTaxReport calls creativanta.finance.v1.ProfitService.ExportTaxReport.
+func (c *profitServiceClient) ExportTaxReport(ctx context.Context, req *connect.Request[v1.ProfitServiceExportTaxReportRequest]) (*connect.Response[v1.ProfitServiceExportTaxReportResponse], error) {
+	return c.exportTaxReport.CallUnary(ctx, req)
+}
+
+// ExportToSheets calls creativanta.finance.v1.ProfitService.ExportToSheets.
+func (c *profitServiceClient) ExportToSheets(ctx context.Context, req *connect.Request[v1.ProfitServiceExportToSheetsRequest]) (*connect.Response[v1.ProfitServiceExportToSheetsResponse], error) {
+	return c.exportToSheets.CallUnary(ctx, req)
+}
+
+// GetReportTemplates calls creativanta.finance.v1.ProfitService.GetReportTemplates.
+func (c *profitServiceClient) GetReportTemplates(ctx context.Context, req *connect.Request[v1.ProfitServiceGetReportTemplatesRequest]) (*connect.Response[v1.ProfitServiceGetReportTemplatesResponse], error) {
+	return c.getReportTemplates.CallUnary(ctx, req)
+}
+
+// GetSavedReports calls creativanta.finance.v1.ProfitService.GetSavedReports.
+func (c *profitServiceClient) GetSavedReports(ctx context.Context, req *connect.Request[v1.ProfitServiceGetSavedReportsRequest]) (*connect.Response[v1.ProfitServiceGetSavedReportsResponse], error) {
+	return c.getSavedReports.CallUnary(ctx, req)
+}
+
 // ProfitServiceHandler is an implementation of the creativanta.finance.v1.ProfitService service.
 type ProfitServiceHandler interface {
 	GetSummary(context.Context, *connect.Request[v1.ProfitServiceGetSummaryRequest]) (*connect.Response[v1.ProfitServiceGetSummaryResponse], error)
@@ -214,6 +310,12 @@ type ProfitServiceHandler interface {
 	GetAnomalies(context.Context, *connect.Request[v1.ProfitServiceGetAnomaliesRequest]) (*connect.Response[v1.ProfitServiceGetAnomaliesResponse], error)
 	GetSnapshot(context.Context, *connect.Request[v1.ProfitServiceGetSnapshotRequest]) (*connect.Response[v1.ProfitServiceGetSnapshotResponse], error)
 	RefreshSnapshot(context.Context, *connect.Request[v1.ProfitServiceRefreshSnapshotRequest]) (*connect.Response[v1.ProfitServiceRefreshSnapshotResponse], error)
+	GenerateReport(context.Context, *connect.Request[v1.ProfitServiceGenerateReportRequest]) (*connect.Response[v1.ProfitServiceGenerateReportResponse], error)
+	ExportReport(context.Context, *connect.Request[v1.ProfitServiceExportReportRequest]) (*connect.Response[v1.ProfitServiceExportReportResponse], error)
+	ExportTaxReport(context.Context, *connect.Request[v1.ProfitServiceExportTaxReportRequest]) (*connect.Response[v1.ProfitServiceExportTaxReportResponse], error)
+	ExportToSheets(context.Context, *connect.Request[v1.ProfitServiceExportToSheetsRequest]) (*connect.Response[v1.ProfitServiceExportToSheetsResponse], error)
+	GetReportTemplates(context.Context, *connect.Request[v1.ProfitServiceGetReportTemplatesRequest]) (*connect.Response[v1.ProfitServiceGetReportTemplatesResponse], error)
+	GetSavedReports(context.Context, *connect.Request[v1.ProfitServiceGetSavedReportsRequest]) (*connect.Response[v1.ProfitServiceGetSavedReportsResponse], error)
 }
 
 // NewProfitServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -253,6 +355,42 @@ func NewProfitServiceHandler(svc ProfitServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(profitServiceMethods.ByName("RefreshSnapshot")),
 		connect.WithHandlerOptions(opts...),
 	)
+	profitServiceGenerateReportHandler := connect.NewUnaryHandler(
+		ProfitServiceGenerateReportProcedure,
+		svc.GenerateReport,
+		connect.WithSchema(profitServiceMethods.ByName("GenerateReport")),
+		connect.WithHandlerOptions(opts...),
+	)
+	profitServiceExportReportHandler := connect.NewUnaryHandler(
+		ProfitServiceExportReportProcedure,
+		svc.ExportReport,
+		connect.WithSchema(profitServiceMethods.ByName("ExportReport")),
+		connect.WithHandlerOptions(opts...),
+	)
+	profitServiceExportTaxReportHandler := connect.NewUnaryHandler(
+		ProfitServiceExportTaxReportProcedure,
+		svc.ExportTaxReport,
+		connect.WithSchema(profitServiceMethods.ByName("ExportTaxReport")),
+		connect.WithHandlerOptions(opts...),
+	)
+	profitServiceExportToSheetsHandler := connect.NewUnaryHandler(
+		ProfitServiceExportToSheetsProcedure,
+		svc.ExportToSheets,
+		connect.WithSchema(profitServiceMethods.ByName("ExportToSheets")),
+		connect.WithHandlerOptions(opts...),
+	)
+	profitServiceGetReportTemplatesHandler := connect.NewUnaryHandler(
+		ProfitServiceGetReportTemplatesProcedure,
+		svc.GetReportTemplates,
+		connect.WithSchema(profitServiceMethods.ByName("GetReportTemplates")),
+		connect.WithHandlerOptions(opts...),
+	)
+	profitServiceGetSavedReportsHandler := connect.NewUnaryHandler(
+		ProfitServiceGetSavedReportsProcedure,
+		svc.GetSavedReports,
+		connect.WithSchema(profitServiceMethods.ByName("GetSavedReports")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/creativanta.finance.v1.ProfitService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProfitServiceGetSummaryProcedure:
@@ -265,6 +403,18 @@ func NewProfitServiceHandler(svc ProfitServiceHandler, opts ...connect.HandlerOp
 			profitServiceGetSnapshotHandler.ServeHTTP(w, r)
 		case ProfitServiceRefreshSnapshotProcedure:
 			profitServiceRefreshSnapshotHandler.ServeHTTP(w, r)
+		case ProfitServiceGenerateReportProcedure:
+			profitServiceGenerateReportHandler.ServeHTTP(w, r)
+		case ProfitServiceExportReportProcedure:
+			profitServiceExportReportHandler.ServeHTTP(w, r)
+		case ProfitServiceExportTaxReportProcedure:
+			profitServiceExportTaxReportHandler.ServeHTTP(w, r)
+		case ProfitServiceExportToSheetsProcedure:
+			profitServiceExportToSheetsHandler.ServeHTTP(w, r)
+		case ProfitServiceGetReportTemplatesProcedure:
+			profitServiceGetReportTemplatesHandler.ServeHTTP(w, r)
+		case ProfitServiceGetSavedReportsProcedure:
+			profitServiceGetSavedReportsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -292,6 +442,30 @@ func (UnimplementedProfitServiceHandler) GetSnapshot(context.Context, *connect.R
 
 func (UnimplementedProfitServiceHandler) RefreshSnapshot(context.Context, *connect.Request[v1.ProfitServiceRefreshSnapshotRequest]) (*connect.Response[v1.ProfitServiceRefreshSnapshotResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ProfitService.RefreshSnapshot is not implemented"))
+}
+
+func (UnimplementedProfitServiceHandler) GenerateReport(context.Context, *connect.Request[v1.ProfitServiceGenerateReportRequest]) (*connect.Response[v1.ProfitServiceGenerateReportResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ProfitService.GenerateReport is not implemented"))
+}
+
+func (UnimplementedProfitServiceHandler) ExportReport(context.Context, *connect.Request[v1.ProfitServiceExportReportRequest]) (*connect.Response[v1.ProfitServiceExportReportResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ProfitService.ExportReport is not implemented"))
+}
+
+func (UnimplementedProfitServiceHandler) ExportTaxReport(context.Context, *connect.Request[v1.ProfitServiceExportTaxReportRequest]) (*connect.Response[v1.ProfitServiceExportTaxReportResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ProfitService.ExportTaxReport is not implemented"))
+}
+
+func (UnimplementedProfitServiceHandler) ExportToSheets(context.Context, *connect.Request[v1.ProfitServiceExportToSheetsRequest]) (*connect.Response[v1.ProfitServiceExportToSheetsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ProfitService.ExportToSheets is not implemented"))
+}
+
+func (UnimplementedProfitServiceHandler) GetReportTemplates(context.Context, *connect.Request[v1.ProfitServiceGetReportTemplatesRequest]) (*connect.Response[v1.ProfitServiceGetReportTemplatesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ProfitService.GetReportTemplates is not implemented"))
+}
+
+func (UnimplementedProfitServiceHandler) GetSavedReports(context.Context, *connect.Request[v1.ProfitServiceGetSavedReportsRequest]) (*connect.Response[v1.ProfitServiceGetSavedReportsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ProfitService.GetSavedReports is not implemented"))
 }
 
 // SettlementServiceClient is a client for the creativanta.finance.v1.SettlementService service.

@@ -432,6 +432,257 @@ func (h *ProfitHandler) RefreshSnapshot(ctx context.Context, req *connect.Reques
 	}), nil
 }
 
+func toProtoCohortEconomics(ce *CohortEconomicsSummary) *financev1.CohortEconomicsSummary {
+	if ce == nil {
+		return nil
+	}
+	costPerAccepted, _ := ce.CostPerAcceptedOutput.ToProtoMoney(ce.Currency, false)
+	recRev, _ := ce.RecognizedRevenue.ToProtoMoney(ce.Currency, true)
+	provCost, _ := ce.AllocatedProviderCost.ToProtoMoney(ce.Currency, false)
+	compCost, _ := ce.AllocatedComputeStorageCost.ToProtoMoney(ce.Currency, false)
+	payCost, _ := ce.AllocatedPaymentRefundSupportCost.ToProtoMoney(ce.Currency, false)
+	netEcon, _ := ce.NetUnitEconomics.ToProtoMoney(ce.Currency, true)
+	return &financev1.CohortEconomicsSummary{
+		CohortId:                          ce.CohortID,
+		ObservationWindow:                 ce.ObservationWindow,
+		EligibleWorkspacesCount:           ce.EligibleWorkspacesCount,
+		CensoredWorkspacesCount:           ce.CensoredWorkspacesCount,
+		ExcludedDemoTestInternalCount:     ce.ExcludedDemoTestInternalCount,
+		MedianFirstValueSeconds:           ce.MedianFirstValueSeconds,
+		WeeklyProofedOperatingLoops:       ce.WeeklyProofedOperatingLoops,
+		WeeklyOperatorRetentionPct:        ce.WeeklyOperatorRetentionPct,
+		MedianRepairBurdenSeconds:         ce.MedianRepairBurdenSeconds,
+		IsRepairTimeUnknown:               ce.IsRepairTimeUnknown,
+		UnresolvedRequiredComponentsCount: ce.UnresolvedRequiredComponentsCount,
+		UsableProductionYieldPct:          ce.UsableProductionYieldPct,
+		AcceptedOutputsCount:              ce.AcceptedOutputsCount,
+		TerminalGenerationAttemptsCount:   ce.TerminalGenerationAttemptsCount,
+		CostPerAcceptedOutput:             costPerAccepted,
+		IsCostPerAcceptedOutputUndefined:  ce.IsCostPerAcceptedOutputUndefined,
+		RecognizedRevenue:                 recRev,
+		AllocatedProviderCost:             provCost,
+		AllocatedComputeStorageCost:       compCost,
+		AllocatedPaymentRefundSupportCost: payCost,
+		NetUnitEconomics:                  netEcon,
+		AllocationMethod:                  ce.AllocationMethod,
+		UnknownCostItemsCount:             ce.UnknownCostItemsCount,
+	}
+}
+
+func toProtoFinancialReport(r *FinancialReport) *financev1.FinancialReport {
+	if r == nil {
+		return nil
+	}
+	var lines []*financev1.FinancialReportLineItem
+	for _, li := range r.LineItems {
+		amtMoney, _ := li.Amount.ToProtoMoney(li.Currency, true)
+		lines = append(lines, &financev1.FinancialReportLineItem{
+			Key:          li.Key,
+			Label:        li.Label,
+			Amount:       amtMoney,
+			PctOfRevenue: li.PctOfRevenue,
+			SourceClass:  toProtoSourceClass(li.SourceClass),
+			Confidence:   toProtoConfidenceBand(li.Confidence),
+			IsSubtotal:   li.IsSubtotal,
+		})
+	}
+	return &financev1.FinancialReport{
+		ReportId:              r.ReportID,
+		WorkspaceId:           r.WorkspaceID,
+		ReportType:            r.ReportType,
+		PeriodStart:           r.PeriodStart,
+		PeriodEnd:             r.PeriodEnd,
+		GroupBy:               r.GroupBy,
+		Currency:              r.Currency,
+		LineItems:             lines,
+		Snapshot:              toProtoSnapshot(r.Snapshot),
+		ReconciledCoveragePct: r.ReconciledCoveragePct,
+		LowTrustWarning:       r.LowTrustWarning,
+		TaxDisclaimer:         r.TaxDisclaimer,
+		CohortEconomics:       toProtoCohortEconomics(r.CohortEconomics),
+		GeneratedAt:           timestamppb.New(r.GeneratedAt),
+	}
+}
+
+func (h *ProfitHandler) GenerateReport(ctx context.Context, req *connect.Request[financev1.ProfitServiceGenerateReportRequest]) (*connect.Response[financev1.ProfitServiceGenerateReportResponse], error) {
+	wsID := req.Msg.WorkspaceId
+	if wsID == "" {
+		resolved, err := resolveTenantContext(ctx, req.Msg.Context)
+		if err != nil {
+			return nil, err
+		}
+		wsID = resolved
+	}
+	rep, err := h.service.GenerateFinancialReport(
+		ctx,
+		wsID,
+		req.Msg.ReportType,
+		req.Msg.PeriodStart,
+		req.Msg.PeriodEnd,
+		req.Msg.GroupBy,
+		nil,
+	)
+	if err != nil {
+		if errors.Is(err, ErrInvalidReportPeriod) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&financev1.ProfitServiceGenerateReportResponse{
+		Report: toProtoFinancialReport(rep),
+	}), nil
+}
+
+func (h *ProfitHandler) ExportReport(ctx context.Context, req *connect.Request[financev1.ProfitServiceExportReportRequest]) (*connect.Response[financev1.ProfitServiceExportReportResponse], error) {
+	wsID := req.Msg.WorkspaceId
+	if wsID == "" {
+		resolved, err := resolveTenantContext(ctx, req.Msg.Context)
+		if err != nil {
+			return nil, err
+		}
+		wsID = resolved
+	}
+	res, err := h.service.ExportFinancialReport(
+		ctx,
+		wsID,
+		req.Msg.ReportType,
+		req.Msg.Format,
+		req.Msg.PeriodStart,
+		req.Msg.PeriodEnd,
+		req.Msg.SubscriptionTier,
+		false,
+	)
+	if err != nil {
+		if errors.Is(err, ErrReportExportTierForbidden) {
+			return nil, connect.NewError(connect.CodePermissionDenied, err)
+		}
+		if errors.Is(err, ErrReportExportQuotaExceeded) {
+			return nil, connect.NewError(connect.CodeResourceExhausted, err)
+		}
+		if errors.Is(err, ErrInvalidReportPeriod) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&financev1.ProfitServiceExportReportResponse{
+		ExportId:            res.ExportID,
+		Format:              res.Format,
+		FileUrl:             res.FileURL,
+		ContentHashSha512:   res.ContentHashSHA512,
+		MonthlyExportsUsed:  int32(res.MonthlyExportsUsed),
+		MonthlyExportsLimit: int32(res.MonthlyExportsLimit),
+		Report:              toProtoFinancialReport(res.Report),
+	}), nil
+}
+
+func (h *ProfitHandler) ExportTaxReport(ctx context.Context, req *connect.Request[financev1.ProfitServiceExportTaxReportRequest]) (*connect.Response[financev1.ProfitServiceExportTaxReportResponse], error) {
+	wsID := req.Msg.WorkspaceId
+	if wsID == "" {
+		resolved, err := resolveTenantContext(ctx, req.Msg.Context)
+		if err != nil {
+			return nil, err
+		}
+		wsID = resolved
+	}
+	res, err := h.service.ExportFinancialReport(
+		ctx,
+		wsID,
+		"tax_summary",
+		req.Msg.Format,
+		req.Msg.PeriodStart,
+		req.Msg.PeriodEnd,
+		req.Msg.SubscriptionTier,
+		true,
+	)
+	if err != nil {
+		if errors.Is(err, ErrReportExportTierForbidden) {
+			return nil, connect.NewError(connect.CodePermissionDenied, err)
+		}
+		if errors.Is(err, ErrReportExportQuotaExceeded) {
+			return nil, connect.NewError(connect.CodeResourceExhausted, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&financev1.ProfitServiceExportTaxReportResponse{
+		ExportId:              res.ExportID,
+		Format:                res.Format,
+		FileUrl:               res.FileURL,
+		TaxResponsibilityMode: res.TaxResponsibilityMode,
+		TaxDisclaimer:         res.TaxDisclaimer,
+		ContentHashSha512:     res.ContentHashSHA512,
+		Report:                toProtoFinancialReport(res.Report),
+	}), nil
+}
+
+func (h *ProfitHandler) ExportToSheets(ctx context.Context, req *connect.Request[financev1.ProfitServiceExportToSheetsRequest]) (*connect.Response[financev1.ProfitServiceExportToSheetsResponse], error) {
+	wsID := req.Msg.WorkspaceId
+	if wsID == "" {
+		resolved, err := resolveTenantContext(ctx, req.Msg.Context)
+		if err != nil {
+			return nil, err
+		}
+		wsID = resolved
+	}
+	res, err := h.service.ExportFinancialReport(
+		ctx,
+		wsID,
+		"pnl_statement",
+		"sheets",
+		"",
+		"",
+		req.Msg.SubscriptionTier,
+		false,
+	)
+	if err != nil {
+		if errors.Is(err, ErrReportExportTierForbidden) {
+			return nil, connect.NewError(connect.CodePermissionDenied, err)
+		}
+		if errors.Is(err, ErrReportExportQuotaExceeded) {
+			return nil, connect.NewError(connect.CodeResourceExhausted, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&financev1.ProfitServiceExportToSheetsResponse{
+		ExportId:       res.ExportID,
+		SpreadsheetUrl: fmt.Sprintf("https://docs.google.com/spreadsheets/d/%s", res.ExportID),
+		Status:         "completed",
+	}), nil
+}
+
+func (h *ProfitHandler) GetReportTemplates(ctx context.Context, req *connect.Request[financev1.ProfitServiceGetReportTemplatesRequest]) (*connect.Response[financev1.ProfitServiceGetReportTemplatesResponse], error) {
+	templates := h.service.GetCanonicalReportTemplates()
+	var protoTemplates []*financev1.ReportTemplateSummary
+	for _, t := range templates {
+		protoTemplates = append(protoTemplates, &financev1.ReportTemplateSummary{
+			TemplateCode: t.TemplateCode,
+			Title:        t.Title,
+			Description:  t.Description,
+		})
+	}
+	return connect.NewResponse(&financev1.ProfitServiceGetReportTemplatesResponse{
+		Templates: protoTemplates,
+	}), nil
+}
+
+func (h *ProfitHandler) GetSavedReports(ctx context.Context, req *connect.Request[financev1.ProfitServiceGetSavedReportsRequest]) (*connect.Response[financev1.ProfitServiceGetSavedReportsResponse], error) {
+	wsID := req.Msg.WorkspaceId
+	if wsID == "" {
+		resolved, err := resolveTenantContext(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		wsID = resolved
+	}
+	saved := h.service.ListSavedFinancialReports(wsID)
+	var protoReports []*financev1.FinancialReport
+	for i := range saved {
+		protoReports = append(protoReports, toProtoFinancialReport(&saved[i]))
+	}
+	return connect.NewResponse(&financev1.ProfitServiceGetSavedReportsResponse{
+		Reports: protoReports,
+	}), nil
+}
+
 // ============================================================================
 // SettlementService Handler
 // ============================================================================

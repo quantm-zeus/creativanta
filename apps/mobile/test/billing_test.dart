@@ -112,6 +112,120 @@ void main() {
 
       expect(find.text('Thanh toán & Credits (M061)'), findsOneWidget);
       expect(find.textContaining('Khả dụng sau giữ chỗ: 2'), findsOneWidget);
+      expect(find.textContaining('Credits đã mua bảo toàn: 500'), findsOneWidget);
+    });
+
+    test('P8-02 Mobile targets: payment gates, add-on proration, cancellation != dunning, purchased credits preserved, SHA-512 evidence, and cohort economics', () {
+      // Payment method access gates
+      expect(
+        evaluateMobilePaymentMethodGate(
+          methodType: 'card',
+          subscriptionTier: 'starter',
+        ).allowed,
+        isTrue,
+      );
+      expect(
+        evaluateMobilePaymentMethodGate(
+          methodType: 'momo',
+          subscriptionTier: 'pro',
+        ).allowed,
+        isFalse,
+      );
+      expect(
+        evaluateMobilePaymentMethodGate(
+          methodType: 'momo',
+          subscriptionTier: 'pro',
+          grantedGates: const <String>['momo'],
+        ).allowed,
+        isTrue,
+      );
+      expect(
+        evaluateMobilePaymentMethodGate(
+          methodType: 'bank_transfer',
+          subscriptionTier: 'starter',
+          grantedGates: const <String>['bank_transfer'],
+        ).allowed,
+        isFalse,
+      );
+      expect(
+        evaluateMobilePaymentMethodGate(
+          methodType: 'bank_transfer',
+          subscriptionTier: 'business',
+          grantedGates: const <String>['bank_transfer'],
+        ).allowed,
+        isTrue,
+      );
+
+      // Mid-cycle add-on proration ($39 for 15/30 days = $19.5)
+      expect(
+        computeMobileAddonProration(
+          basePrice: '39',
+          remainingDays: 15,
+          totalCycleDays: 30,
+        ),
+        '19.5',
+      );
+
+      // Cancellation differs from Dunning & purchased credits preserved
+      final dunningDay14 = evaluateMobileRetentionLifecycle(
+        scenario: 'dunning_downgrade_day_14',
+        paidTier: 'pro',
+        purchasedCredits: '500',
+      );
+      final cancelPhase1 = evaluateMobileRetentionLifecycle(
+        scenario: 'cancel_phase_1_quarantine_0_30d',
+        paidTier: 'pro',
+        purchasedCredits: '500',
+      );
+      expect(dunningDay14.effectiveTier, 'free');
+      expect(dunningDay14.readOnlyMode, isFalse);
+      expect(dunningDay14.preservedPurchasedCredits, '500');
+      expect(cancelPhase1.subscriptionStatus, 'canceled');
+      expect(cancelPhase1.retentionPhase, 'read_only_quarantine_0_30d');
+      expect(cancelPhase1.readOnlyMode, isTrue);
+      expect(cancelPhase1.preservedPurchasedCredits, '500');
+
+      // Restore/export/erase SHA-512 evidence & EC-M23-002 multi-member deletion guard
+      final blockedErase = evaluateMobileEraseRestoreEvidence(
+        actionType: 'erase_right_to_erasure',
+        workspaceId: '00000000-0000-4000-8000-000000000001',
+        activeMemberCount: 3,
+        ownershipTransferredOrMembersRemoved: false,
+        purchasedCredits: '250',
+      );
+      expect(blockedErase.allowed, isFalse);
+      expect(blockedErase.errorCode, 'BILLING_CONFLICT_002');
+
+      final phase1Restore = evaluateMobileEraseRestoreEvidence(
+        actionType: 'restore_phase_1',
+        workspaceId: '00000000-0000-4000-8000-000000000001',
+        activeMemberCount: 1,
+        ownershipTransferredOrMembersRemoved: true,
+        purchasedCredits: '250',
+      );
+      expect(phase1Restore.allowed, isTrue);
+      expect(phase1Restore.evidenceSha512Hex.length, 128);
+      expect(phase1Restore.preservedPurchasedCredits, '250');
+
+      // Measured cohort economics
+      final cohort = computeMobileCohortEconomics(
+        activeWorkspaces: 100,
+        totalRevenueUsd: '10000',
+        totalCogsUsd: '3000',
+        aiProviderCostUsd: '2000',
+        startingMrrUsd: '8000',
+        endingRetainedMrrUsd: '8800',
+        salesAndMarketingSpendUsd: '2800',
+        newPaidWorkspacesAcquired: 20,
+        monthlyLogoChurnRatePct: '5',
+      );
+      expect(cohort.grossMarginPct, '70');
+      expect(cohort.netRevenueRetentionPct, '110');
+      expect(cohort.blendedCacUsd, '140');
+      expect(cohort.ltvUsd, '1400');
+      expect(cohort.ltvToCacRatio, '10');
+      expect(cohort.cacPaybackMonths, '2');
+      expect(cohort.aiCostPerActiveWorkspaceUsd, '20');
     });
   });
 }
