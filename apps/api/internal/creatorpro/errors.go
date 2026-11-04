@@ -32,11 +32,11 @@ var (
 	ErrPermissionDenied     = errors.New("creatorpro: permission denied for requested operator mode and role")
 
 	// P8-07 Expansion errors
-	ErrStaleVersion         = errors.New("creatorpro: deal was modified concurrently; please refresh before updating status")
-	ErrCreatorUnavailable   = errors.New("creatorpro: creator is currently unavailable for sponsorships")
-	ErrContractImmutable    = errors.New("creatorpro: contract evidence content is immutable; cannot overwrite existing version")
-	ErrCrossTenantEvidence  = errors.New("creatorpro: contract evidence must belong to the same tenant workspace")
-	ErrInquiryRateLimited   = errors.New("creatorpro: inquiry rate limit reached (max 5/hour); try again later")
+	ErrStaleVersion        = errors.New("creatorpro: deal was modified concurrently; please refresh before updating status")
+	ErrCreatorUnavailable  = errors.New("creatorpro: creator is currently unavailable for sponsorships")
+	ErrContractImmutable   = errors.New("creatorpro: contract evidence content is immutable; cannot overwrite existing version")
+	ErrCrossTenantEvidence = errors.New("creatorpro: contract evidence must belong to the same tenant workspace")
+	ErrInquiryRateLimited  = errors.New("creatorpro: inquiry rate limit reached (max 5/hour); try again later")
 )
 
 // MapErrorToConnect translates creatorpro domain errors to standard ConnectRPC codes.

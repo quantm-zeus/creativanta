@@ -208,13 +208,13 @@ func TestAcceptanceTarget3_SponsorCannotReadPrivateWorkspace(t *testing.T) {
 
 	t.Run("Sponsor inquiry resolves published target server-side without leaking workspace", func(t *testing.T) {
 		submitResp, err := inquiryHandler.Submit(ctx, connect.NewRequest(&v1.SponsorInquiryServiceSubmitRequest{
-			MediaKitId:      "kit-published-public",
-			BrandName:        "Global Beverage Co",
-			ContactEmail:    "partner@globalbev.com",
-			Message:         "Chúng tôi muốn tài trợ video TikTok cho sản phẩm mới.",
-			ProposedBudget:  20000000.0,
-			ChallengeToken:  "challenge_token_verified",
-			IdempotencyKey:  "idem_inquiry_001",
+			MediaKitId:     "kit-published-public",
+			BrandName:      "Global Beverage Co",
+			ContactEmail:   "partner@globalbev.com",
+			Message:        "Chúng tôi muốn tài trợ video TikTok cho sản phẩm mới.",
+			ProposedBudget: 20000000.0,
+			ChallengeToken: "challenge_token_verified",
+			IdempotencyKey: "idem_inquiry_001",
 		}))
 		if err != nil {
 			t.Fatalf("Submit inquiry failed: %v", err)
@@ -244,7 +244,7 @@ func TestAcceptanceTarget3_SponsorCannotReadPrivateWorkspace(t *testing.T) {
 	t.Run("Sponsor inquiry targeting hidden/unknown kit fails closed with generic unavailable", func(t *testing.T) {
 		_, err := inquiryHandler.Submit(ctx, connect.NewRequest(&v1.SponsorInquiryServiceSubmitRequest{
 			MediaKitId:     "kit-hidden-draft",
-			BrandName:       "Spam Bot",
+			BrandName:      "Spam Bot",
 			ContactEmail:   "spam@bot.com",
 			Message:        "Inquiry to private kit",
 			ProposedBudget: 1000.0,
@@ -385,15 +385,15 @@ func TestDealKanban_OptimisticConcurrencyConflict(t *testing.T) {
 
 	initialTime := time.Date(2026, 4, 10, 10, 0, 0, 0, time.UTC)
 	deal := &BrandDeal{
-		DealID:       dealID,
-		WorkspaceID:  wsID,
-		BrandName:    "Kanban Sponsor",
-		DealType:     BrandDealTypeSponsoredPost,
-		Value:        15000000.0,
-		Currency:     "VND",
-		Status:       BrandDealStatusNegotiating,
-		UpdatedAt:    initialTime,
-		Version:      1,
+		DealID:      dealID,
+		WorkspaceID: wsID,
+		BrandName:   "Kanban Sponsor",
+		DealType:    BrandDealTypeSponsoredPost,
+		Value:       15000000.0,
+		Currency:    "VND",
+		Status:      BrandDealStatusNegotiating,
+		UpdatedAt:   initialTime,
+		Version:     1,
 	}
 	_ = store.CreateBrandDeal(ctx, deal)
 

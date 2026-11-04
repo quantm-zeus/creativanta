@@ -692,15 +692,15 @@ func (s *Service) SetAlerts(ctx context.Context, req *connect.Request[intelligen
 	}
 
 	comp.AlertConfig = StoredAlertConfig{
-		Enabled:             cfg.Enabled,
-		Metric:              cfg.Metric.String(),
-		Threshold:           cfg.Threshold,
-		Direction:           cfg.Direction.String(),
-		MinIntervalMinutes:  minInterval,
-		SourceStatus:        srcStatus,
-		SourceStatusReason:  srcReason,
-		RecoveryLatched:     cfg.RecoveryLatched,
-		InsufficientData:    cfg.InsufficientData,
+		Enabled:            cfg.Enabled,
+		Metric:             cfg.Metric.String(),
+		Threshold:          cfg.Threshold,
+		Direction:          cfg.Direction.String(),
+		MinIntervalMinutes: minInterval,
+		SourceStatus:       srcStatus,
+		SourceStatusReason: srcReason,
+		RecoveryLatched:    cfg.RecoveryLatched,
+		InsufficientData:   cfg.InsufficientData,
 	}
 	comp.UpdatedAt = time.Now()
 
