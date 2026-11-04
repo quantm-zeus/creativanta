@@ -1,0 +1,436 @@
+/**
+ * Creativanta Developer Platform & Public API Client Module (S24)
+ * Canonical Sources:
+ *  - docs/02_features/platform/public_api.md (RULE-S24-001..006, EC-S24-001..003)
+ *  - docs/04_contracts/database_schema.md (§18.4, §18.4A, §18.4B)
+ *  - docs/04_contracts/domain_event_catalog.md (§21.2)
+ *  - docs/00_index/ACCEPTANCE_TESTS.md (AC-S24-001, AC-S24-002)
+ */
+
+import { writable, derived, get } from 'svelte/store';
+
+export type APIKeyStatus = 'active' | 'rotating' | 'suspended' | 'revoked' | 'expired';
+export type WebhookStatus = 'active' | 'suspended' | 'revoked';
+
+export interface APIKey {
+  apiKeyId: string;
+  workspaceId: string;
+  keyPrefix: string;
+  name: string;
+  scopes: string[];
+  status: APIKeyStatus;
+  logicalKeyId: string;
+  replacedByKeyId?: string;
+  rotationGraceEndsAt?: string; // ISO string
+  lastUsedAt?: string;
+  requestCount: number;
+  rateLimitOverride?: number;
+  expiresAt: string;
+  createdBy: string;
+  secretKey?: string; // Only populated on creation or rotation
+}
+
+export interface WebhookSubscription {
+  subscriptionId: string;
+  workspaceId: string;
+  apiKeyId?: string;
+  targetUrl: string;
+  eventTypes: string[];
+  status: WebhookStatus;
+  consecutiveFailureCount: number;
+  lastDeliveryAt?: string;
+  lastError?: string;
+  signingSecret?: string;
+}
+
+export interface WebhookDeliveryRecord {
+  deliveryId: string;
+  workspaceId: string;
+  subscriptionId: string;
+  eventType: string;
+  targetUrl: string;
+  statusCode: number;
+  attemptNumber: number;
+  deliveryStatus: 'delivered' | 'retrying' | 'failed' | 'replayed';
+  errorMessage?: string;
+  signature: string;
+  isReplay: boolean;
+  deliveredAt: string;
+}
+
+export interface DailyUsage {
+  date: string;
+  readRequests: number;
+  writeRequests: number;
+  error4xxCount: number;
+  error5xxCount: number;
+  outboundWebhookDeliveries: number;
+  billableAICredits: number;
+}
+
+export interface UsageSummary {
+  monthRequests: number;
+  monthlyQuota: number;
+  readRateLimitRPM: number;
+  writeRateLimitRPM: number;
+  billableAICreditsUsed: number;
+}
+
+// 13 canonical S24 webhook-eligible events (§21.2)
+export const ELIGIBLE_WEBHOOK_EVENTS = [
+  'content.published',
+  'content.publish_failed',
+  'order.created',
+  'order.updated',
+  'refund.completed',
+  'engagement.thread_created',
+  'asset.ready',
+  'workflow.completed',
+  'billing.plan_changed',
+  'billing.credits_exhausted',
+  'brand_deal.updated',
+  'live.ended',
+  'gamification.achievement'
+] as const;
+
+export const TIER_KEY_CAPS: Record<string, number> = {
+  starter: 3,
+  pro: 10,
+  business: 25,
+  enterprise: 100
+};
+
+export const TIER_MONTHLY_QUOTAS: Record<string, number> = {
+  starter: 10000,
+  pro: 100000,
+  business: 1000000,
+  enterprise: 10000000
+};
+
+export const DEFAULT_READ_RATE_LIMIT_RPM = 100;
+export const DEFAULT_WRITE_RATE_LIMIT_RPM = 30;
+
+export class PermissionDeniedError extends Error {
+  code = 403;
+  constructor(message: string) {
+    super(message);
+    this.name = 'PermissionDeniedError';
+  }
+}
+
+export class RateLimitExceededError extends Error {
+  code = 429;
+  retryAfter: number;
+  constructor(message: string, retryAfter: number) {
+    super(message);
+    this.name = 'RateLimitExceededError';
+    this.retryAfter = retryAfter;
+  }
+}
+
+export class KeyExpiredError extends Error {
+  code = 401;
+  constructor(message: string) {
+    super(message);
+    this.name = 'KeyExpiredError';
+  }
+}
+
+/**
+ * Checks if scopes list is strictly read-only (no mutating permissions).
+ */
+export function isReadOnlyScopes(scopes: string[]): boolean {
+  return !scopes.some(
+    (s) =>
+      s.startsWith('write:') ||
+      s.includes('manage') ||
+      s.includes('delete') ||
+      s === '*:*' ||
+      s === '*' ||
+      s === 'write:all'
+  );
+}
+
+/**
+ * Evaluates whether an API key in a given tier can execute a mutating operation.
+ * Invariant Target 1: Read-only key cannot mutate (Starter is also strictly read-only mode).
+ */
+export function canMutate(tier: string, scopes: string[]): boolean {
+  if (tier.toLowerCase() === 'starter') {
+    return false;
+  }
+  return !isReadOnlyScopes(scopes);
+}
+
+/**
+ * Validates whether an API key is authenticated and within 24h rotation grace window.
+ */
+export function evaluateKeyAuthentication(
+  key: APIKey,
+  now: Date = new Date()
+): { valid: boolean; reason?: string } {
+  if (key.status === 'revoked') {
+    return { valid: false, reason: 'api key has been revoked' };
+  }
+  if (key.status === 'suspended') {
+    return { valid: false, reason: 'api key is suspended' };
+  }
+  if (key.status === 'expired') {
+    return { valid: false, reason: 'api key has expired' };
+  }
+
+  const nowMs = now.getTime();
+  if (key.status === 'rotating') {
+    if (key.rotationGraceEndsAt) {
+      const graceEndMs = new Date(key.rotationGraceEndsAt).getTime();
+      if (nowMs > graceEndMs) {
+        return {
+          valid: false,
+          reason: 'key has been rotated and 24h grace period ended; use new key'
+        };
+      }
+    }
+    return { valid: true };
+  }
+
+  if (key.status === 'active') {
+    const expireMs = new Date(key.expiresAt).getTime();
+    if (nowMs > expireMs) {
+      return { valid: false, reason: 'api key has expired' };
+    }
+    return { valid: true };
+  }
+
+  return { valid: false, reason: 'unknown status' };
+}
+
+/**
+ * Developer State Store
+ */
+export interface DeveloperState {
+  workspaceId: string;
+  tier: string;
+  keys: APIKey[];
+  webhooks: WebhookSubscription[];
+  deliveries: WebhookDeliveryRecord[];
+  dailyUsage: DailyUsage[];
+  summary: UsageSummary;
+}
+
+function createDeveloperStore(initialTier: string = 'pro') {
+  const initialState: DeveloperState = {
+    workspaceId: '22222222-2222-2222-2222-222222222201',
+    tier: initialTier,
+    keys: [],
+    webhooks: [],
+    deliveries: [],
+    dailyUsage: [],
+    summary: {
+      monthRequests: 0,
+      monthlyQuota: TIER_MONTHLY_QUOTAS[initialTier] || 100000,
+      readRateLimitRPM: DEFAULT_READ_RATE_LIMIT_RPM,
+      writeRateLimitRPM: DEFAULT_WRITE_RATE_LIMIT_RPM,
+      billableAICreditsUsed: 0
+    }
+  };
+
+  const { subscribe, set, update } = writable<DeveloperState>(initialState);
+
+  return {
+    subscribe,
+    setTier: (tier: string) => {
+      update((s) => ({
+        ...s,
+        tier: tier.toLowerCase(),
+        summary: {
+          ...s.summary,
+          monthlyQuota: TIER_MONTHLY_QUOTAS[tier.toLowerCase()] || 100000
+        }
+      }));
+    },
+    createKey: (name: string, scopes: string[]) => {
+      const current = get({ subscribe });
+      const cap = TIER_KEY_CAPS[current.tier] || 3;
+      const activeCount = current.keys.filter(
+        (k) => k.status === 'active' || k.status === 'rotating'
+      ).length;
+
+      if (activeCount >= cap) {
+        throw new Error(
+          `Workspace tier ${current.tier} allows a maximum of ${cap} active keys`
+        );
+      }
+
+      if (current.tier === 'starter' && !isReadOnlyScopes(scopes)) {
+        throw new PermissionDeniedError(
+          'Starter tier is restricted to read-only API access mode'
+        );
+      }
+
+      const id = 'ak_' + Math.random().toString(36).substring(2, 10);
+      const rawSecret = 'ca_live_' + Math.random().toString(16).substring(2) + Math.random().toString(16).substring(2);
+      const prefix = rawSecret.substring(0, 10);
+      const now = new Date();
+      const expires = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+
+      const newKey: APIKey = {
+        apiKeyId: id,
+        workspaceId: current.workspaceId,
+        keyPrefix: prefix,
+        name,
+        scopes,
+        status: 'active',
+        logicalKeyId: id,
+        requestCount: 0,
+        expiresAt: expires.toISOString(),
+        createdBy: 'usr_admin',
+        secretKey: rawSecret
+      };
+
+      update((s) => ({
+        ...s,
+        keys: [...s.keys, newKey]
+      }));
+
+      return { key: newKey, rawSecret };
+    },
+    rotateKey: (apiKeyId: string) => {
+      const current = get({ subscribe });
+      const existing = current.keys.find((k) => k.apiKeyId === apiKeyId);
+      if (!existing) {
+        throw new Error('API key not found');
+      }
+      if (existing.status === 'revoked') {
+        throw new Error('Cannot rotate a revoked key');
+      }
+
+      const now = new Date();
+      const graceEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const newKeyId = 'ak_' + Math.random().toString(36).substring(2, 10);
+      const newRawSecret = 'ca_live_' + Math.random().toString(16).substring(2) + Math.random().toString(16).substring(2);
+      const newPrefix = newRawSecret.substring(0, 10);
+
+      const rotatedNewKey: APIKey = {
+        apiKeyId: newKeyId,
+        workspaceId: existing.workspaceId,
+        keyPrefix: newPrefix,
+        name: existing.name + ' (Rotated)',
+        scopes: existing.scopes,
+        status: 'active',
+        logicalKeyId: existing.logicalKeyId,
+        requestCount: 0,
+        expiresAt: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+        createdBy: existing.createdBy,
+        secretKey: newRawSecret
+      };
+
+      update((s) => {
+        const updatedKeys = s.keys.map((k) => {
+          if (k.apiKeyId === apiKeyId) {
+            return {
+              ...k,
+              status: 'rotating' as APIKeyStatus,
+              replacedByKeyId: newKeyId,
+              rotationGraceEndsAt: graceEnd.toISOString()
+            };
+          }
+          return k;
+        });
+        return {
+          ...s,
+          keys: [...updatedKeys, rotatedNewKey]
+        };
+      });
+
+      return {
+        oldKeyId: apiKeyId,
+        newKey: rotatedNewKey,
+        newSecret: newRawSecret,
+        graceEndsAt: graceEnd.toISOString()
+      };
+    },
+    revokeKey: (apiKeyId: string) => {
+      update((s) => ({
+        ...s,
+        keys: s.keys.map((k) =>
+          k.apiKeyId === apiKeyId ? { ...k, status: 'revoked' as APIKeyStatus } : k
+        )
+      }));
+    },
+    executeApiCall: (keyId: string, isMutation: boolean, aiCredits: number = 0) => {
+      const current = get({ subscribe });
+      const key = current.keys.find((k) => k.apiKeyId === keyId);
+      if (!key) {
+        throw new Error('API key not found');
+      }
+
+      const auth = evaluateKeyAuthentication(key);
+      if (!auth.valid) {
+        throw new KeyExpiredError(auth.reason || 'Authentication failed');
+      }
+
+      // Target 1 Invariant: Read-only key cannot mutate!
+      if (isMutation && !canMutate(current.tier, key.scopes)) {
+        throw new PermissionDeniedError(
+          'Read-only API key cannot execute mutating operation'
+        );
+      }
+
+      update((s) => ({
+        ...s,
+        keys: s.keys.map((k) =>
+          k.apiKeyId === keyId ? { ...k, requestCount: k.requestCount + 1 } : k
+        ),
+        summary: {
+          ...s.summary,
+          monthRequests: s.summary.monthRequests + 1,
+          billableAICreditsUsed: s.summary.billableAICreditsUsed + aiCredits
+        }
+      }));
+      return { success: true };
+    },
+    createWebhook: (targetUrl: string, eventTypes: string[]) => {
+      const subId = 'wh_' + Math.random().toString(36).substring(2, 10);
+      const secret = 'whsec_' + Math.random().toString(16).substring(2);
+
+      const sub: WebhookSubscription = {
+        subscriptionId: subId,
+        workspaceId: get({ subscribe }).workspaceId,
+        targetUrl,
+        eventTypes,
+        status: 'active',
+        consecutiveFailureCount: 0,
+        signingSecret: secret
+      };
+
+      update((s) => ({
+        ...s,
+        webhooks: [...s.webhooks, sub]
+      }));
+
+      return { subscription: sub, secret };
+    },
+    recordWebhookOutcome: (subscriptionId: string, success: boolean, errMsg?: string) => {
+      update((s) => ({
+        ...s,
+        webhooks: s.webhooks.map((sub) => {
+          if (sub.subscriptionId === subscriptionId) {
+            const nextFailures = success ? 0 : sub.consecutiveFailureCount + 1;
+            const nextStatus: WebhookStatus = nextFailures >= 100 ? 'suspended' : sub.status;
+            return {
+              ...sub,
+              consecutiveFailureCount: nextFailures,
+              status: nextStatus,
+              lastError: success ? undefined : errMsg,
+              lastDeliveryAt: new Date().toISOString()
+            };
+          }
+          return sub;
+        })
+      }));
+    },
+    reset: () => set(initialState)
+  };
+}
+
+export const developerStore = createDeveloperStore();
