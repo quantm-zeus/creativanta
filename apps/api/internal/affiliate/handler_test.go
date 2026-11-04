@@ -139,9 +139,9 @@ func TestAffiliateConnectRPCHandlers(t *testing.T) {
 
 	// 8. Health check and repair
 	healthCheckResp, err := healthHandler.RunHealthCheck(ctx, connect.NewRequest(&commercev1.RunHealthCheckRequest{
-		WorkspaceId:             wsID,
-		AffiliateLinkId:         linkID,
-		SimulatedHttpStatus:     500,
+		WorkspaceId:            wsID,
+		AffiliateLinkId:        linkID,
+		SimulatedHttpStatus:    500,
 		SimulatedProductStatus: "out_of_stock",
 	}))
 	if err != nil || !healthCheckResp.Msg.HealthDegraded {

@@ -859,19 +859,19 @@ func (s *Service) RepairBrokenLink(ctx context.Context, wsID, linkID, newURL, re
 
 	zeroImpact, _ := tenantdb.ParseExactDecimal("0.000000")
 	hr := &LinkHealthRecord{
-		HealthID:                       newUUID(),
-		WorkspaceID:                    wsID,
-		AffiliateLinkID:                linkID,
-		HTTPStatus:                     200,
-		ProductStatus:                  "available",
-		CommissionStatus:               "active",
-		LinkStatus:                     HealthStatusHealthy,
-		SuggestedAction:                "Link repaired successfully",
-		CheckedAt:                      now,
-		AlertSent:                      false,
-		EstimatedRevenueImpact:         zeroImpact,
+		HealthID:                      newUUID(),
+		WorkspaceID:                   wsID,
+		AffiliateLinkID:               linkID,
+		HTTPStatus:                    200,
+		ProductStatus:                 "available",
+		CommissionStatus:              "active",
+		LinkStatus:                    HealthStatusHealthy,
+		SuggestedAction:               "Link repaired successfully",
+		CheckedAt:                     now,
+		AlertSent:                     false,
+		EstimatedRevenueImpact:        zeroImpact,
 		SuggestedReplacementProductID: &replProdID,
-		CreatedAt:                      now,
+		CreatedAt:                     now,
 	}
 	_ = s.store.CreateHealthRecord(ctx, hr)
 
