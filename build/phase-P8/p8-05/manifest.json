@@ -1,0 +1,64 @@
+{
+  "task_id": "P8-05",
+  "phase": "P8",
+  "slice": "p8-05",
+  "title": "Referral, commissions và anti-fraud",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "feature_refs": [
+    "docs/02_features/platform/referral_growth.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/03_screens/web/screen_web_settings_referral.md",
+    "docs/03_screens/mobile/screen_mobile_referral.md"
+  ],
+  "source_files": {
+    "protos/creativanta/platform/v1/referral.proto": "d874d55e2e698954190dedcd0c8fa31d5177441b28eff265a06c78cf03baaf69",
+    "apps/api/gen/creativanta/platform/v1/referral.pb.go": "bfdeb2e158ef875d48fe43ec9a2e210948889f164b5db599afe255a0baa52ebc",
+    "apps/api/gen/creativanta/platform/v1/platformv1connect/referral.connect.go": "ab13bcb97d7fb6630534e3a62c1887ebb7f412ae0b59c03aefab94295ee65266",
+    "infra/migrations/00042_p8_05_referral_commissions_and_anti_fraud.sql": "2711b2b17bfb1053c63a9c15f3b6e841d5d7c5c702add83fa4a91dab28715b8e",
+    "apps/api/internal/migrate/migrator_test.go": "9556a7f5d6ed8a303f251083a569fa7413274251ad614203c03a2370bf1820b7",
+    "apps/api/internal/rbac/phase_exposure_test.go": "dc4f7ebf7280c499abbe9f51b4266aed56c1f1914746f7e86ba1328325052202",
+    "apps/api/internal/referral/model.go": "2180841d19090060a62091866320b183af502ae8b7122bffc5436c12e4f3630a",
+    "apps/api/internal/referral/store.go": "c625e9137e425298335b5df9812e6fa6f777b458abb3666e0ea17106280cf6e6",
+    "apps/api/internal/referral/engine.go": "f398af5f6a6acd1857e4fc16b6e585cc111a069032cc222076148569de59e6bf",
+    "apps/api/internal/referral/service.go": "a6c8e728120bcf070881e9ba4eac2886f75a7409d1f165f7c087e3beb8bcba25",
+    "apps/api/internal/referral/referral_test.go": "565720c38055368ab311475c7bf7439bf835d806ba3051efd8264aed46bdb389",
+    "packages/shared-types/src/creativanta/platform/v1/referral_pb.ts": "2ce91131155501eb5909c430c9847e96918da5e43ff794dc1ca4f63a50e7a22e",
+    "apps/web/src/lib/referral/index.ts": "af373235253916bcdc9b199a294468c98cb904c43ac05f18ff06308d781f0668",
+    "apps/web/src/lib/referral/referral.test.ts": "439213a7d0c728294514975b32eaaf4012f40bb1a12028410c6baa22836f249e",
+    "apps/web/src/routes/settings/referral/+page.svelte": "e2712fb3fe049282821a3d06c8c76e065d9683b16128c65a4b497875847f5d1b",
+    "apps/mobile/lib/generated/creativanta/platform/v1/referral.pb.dart": "74f4e956bde8aed8696b5a5e997551457f1492e3ef661e799bb4b19099e44499",
+    "apps/mobile/lib/generated/creativanta/platform/v1/referral.pbenum.dart": "a5c168eaccf218d409da40d8833f35da6e3fe07572c4fa12e7e33e7f0d3e744e",
+    "apps/mobile/lib/generated/creativanta/platform/v1/referral.pbgrpc.dart": "fb1f4ee728ef149538cab37abf41a2a400af250a6e2381fab14c6480cec6535e",
+    "apps/mobile/lib/generated/creativanta/platform/v1/referral.pbjson.dart": "b8d9a57d2e7d50bd0083531134a7c48239512b3b07c7d6c534986fd50c4491a2",
+    "apps/mobile/lib/referral/referral_models.dart": "85bee3e41e49bed4f9d1112caf594f7720f29e378a5883ba5312eadcbe226286",
+    "apps/mobile/lib/ui/referral/referral_screen.dart": "70f2e7a31c4699f96b2e643d80566ac9cb90673887937ef2415c98b944bc43f1",
+    "apps/mobile/test/referral_test.dart": "c232bb4629e3411f531b027450d9cec646a336f8769431b499f661f339af778a"
+  },
+  "scope_items": [
+    "Target 1 (No immediate qualified reward on pending payment): Settlement engine checks payment status ('paid' required) and hold periods. When payment status is pending, unpaid, or failed, status is held in 'pending' and zero credits are awarded.",
+    "Target 2 (Self-referral held for review): Anti-fraud engine evaluates 4 identity signals (workspace ID matching, user ID matching, client IP address matching, and device fingerprint matching). When any match occurs, fraud_check_passed is set to false, status transitions to 'fraud_flagged', zero credits are awarded, and an audit event is logged for admin review.",
+    "Target 3 (Replay/refund reverses once): Chargeback and refund reversals are strictly idempotent. The first refund transitions a rewarded referral to 'revoked' and debits credits. Subsequent refund replays return the existing revoked record and emit idempotent skipped events with zero duplicate debits.",
+    "Referral Tiers & Progression: Full 4-tier progression (Bronze 1.0x, Silver 1.5x at 5 referrals, Gold 2.0x at 15 referrals, Platinum 3.0x + 10% recurring commissions at 30 referrals).",
+    "Promotional Service: Promo code redemption engine supporting active/expired windows, max redemption limits, multi-use vs single-use codes, and credit granting with audit logging.",
+    "Viral Prompts & Growth Funnel: Growth prompt trigger evaluation on key actions (export, publish, win) with rate-limiting, and funnel conversion calculation (clicks -> signups -> paid conversions)."
+  ],
+  "verified_sub_slices": [
+    "Go Backend Unit & Concurrency Tests: apps/api/internal/referral/referral_test.go passes all 9 suites with -race: TestTarget1_NoImmediateQualifiedRewardOnPendingPayment, TestTarget2_SelfReferralHeldForReview, TestTarget3_ReplayRefundReversesOnce, TestReferralTiersAndRecurringCommissions, TestGrowthFunnelAnalytics, TestPromotionalCodeRedemption, TestGrowthTriggerPrompts, TestConnectRPCDashboardRoundtrip, TestConcurrentSettlementAndReversalRaceSafety.",
+    "Migration & Schema Tests: infra/migrations/00042_p8_05_referral_commissions_and_anti_fraud.sql passes forward and rollback migration cycle; migrator_test.go updated and passed with -race; RBAC phase_exposure_test.go passes with -race.",
+    "Web Vitest & Svelte Check: apps/web/src/lib/referral/referral.test.ts passes all 19 tests; full web test suite (46 files, 402 tests) passes cleanly; svelte-check reports 0 errors and 0 warnings; vite build succeeds cleanly.",
+    "Mobile Flutter Tests & Analyzer: apps/mobile/test/referral_test.dart passes all 6 tests; flutter analyze lib/referral lib/ui/referral test/referral_test.dart reports 0 issues.",
+    "Documentation Invariants: tooling/check_docs.py reports PASS with all active markdown, tables, and RPC bindings verified."
+  ],
+  "external_gates": [
+    {
+      "gate_id": "EXT-GATE-PAYMENT-GATEWAY-WEBHOOKS",
+      "status": "LOCAL_ENGINE_COMPUTATION_READY",
+      "description": "Referral settlement and refund reversal engines operate deterministically with local event payloads. Live production auto-qualification requires Stripe/payment gateway webhook secret integration."
+    }
+  ],
+  "remaining_scope": []
+}
