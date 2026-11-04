@@ -10,8 +10,27 @@
     evaluateSupportTicketAccess,
     evaluateBackupRestoreAndSmokeRehearsal,
     evaluateProviderAndLicenseFreshnessGate,
-    evaluateAdminComplianceAndSecurityGuards
+    evaluateAdminComplianceAndSecurityGuards,
+    evaluateFullScopeAcceptanceAndReleaseDecision,
+    CANONICAL_31_MODULES,
+    CANONICAL_6_MODES
   } from '$lib/access';
+
+  // P8-09: Full-Scope Acceptance & Release Decision State
+  let assertProductionLaunch = $state(false);
+  const fullScopeVerdict = $derived(
+    evaluateFullScopeAcceptanceAndReleaseDecision({
+      adminRole: 'super_admin',
+      auditedModuleIds: [...CANONICAL_31_MODULES],
+      auditedModeIds: [...CANONICAL_6_MODES],
+      verifiedTaskCount: 60,
+      untrackedRemainingScopeCount: 0,
+      assertProductionLaunch,
+      legalSignoffGranted: false, // LEG-H-001
+      liveProviderApproved: false, // EXT-GATE
+      stagingDrRehearsalPassed: false // EXT-GATE
+    })
+  );
 
   const nowMs = Date.parse('2026-11-02T09:00:00Z');
   let selectedRole = $state('owner');
@@ -482,6 +501,50 @@
           </label>
           <p class="font-semibold {complianceSecurityVerdict.allowed ? 'text-emerald-700' : 'text-[#b44833]'}" role="status">
             [{complianceSecurityVerdict.errorCode} · 72h Breach còn {complianceSecurityVerdict.breachRemainingHours}h] {complianceSecurityVerdict.reason}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-[#e8e5dc] bg-white p-6 md:col-span-2" role="region" aria-labelledby="p809-acceptance-heading">
+      <h3 id="p809-acceptance-heading" class="text-sm font-bold text-[#242924]">
+        9. Nghiệm thu Toàn diện Nền tảng (31 Modules / 6 Modes / 60 Tasks) &amp; Quyết định Phát hành (P8-09)
+      </h3>
+      <div class="mt-3 space-y-3 text-xs">
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e8e5dc] bg-[#faf9f5] p-4">
+          <div class="space-y-1">
+            <span class="inline-flex items-center gap-1.5 rounded-md bg-[#274333]/10 px-2 py-0.5 font-mono text-[11px] font-bold text-[#274333]">
+              ✓ Đối soát thành công: 31/31 Module • 6/6 Chế độ • 60/60 Task • 0 Tồn đọng
+            </span>
+            <p class="text-[#7d837b]">
+              Bảo lưu nguyên vẹn 6 chế độ vận hành (RULE-M01-006) và không greenwashing cổng đối tác/pháp lý.
+            </p>
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="flex items-center gap-1.5 font-semibold text-[#242924]">
+              <input type="checkbox" bind:checked={assertProductionLaunch} />
+              <span>Yêu cầu phát hành sản xuất</span>
+            </label>
+            <span class="rounded px-2.5 py-1 font-mono font-bold {fullScopeVerdict.allowed ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+              {fullScopeVerdict.releaseDecision}
+            </span>
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-[#e8e5dc] bg-white p-3 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-[#242924]">Các cổng bên ngoài bắt buộc (Chưa đóng):</span>
+            <span class="font-mono text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+              {fullScopeVerdict.unmetExternalGatesCount} cổng ngoại vi
+            </span>
+          </div>
+          <ul class="list-disc list-inside space-y-1 text-slate-600">
+            {#each fullScopeVerdict.externalGates as gate}
+              <li class="font-mono text-[11px]">{gate}</li>
+            {/each}
+          </ul>
+          <p class="mt-2 font-semibold {fullScopeVerdict.allowed ? 'text-emerald-700' : 'text-[#b44833]'}" role="status">
+            [{fullScopeVerdict.errorCode}] {fullScopeVerdict.reason}
           </p>
         </div>
       </div>

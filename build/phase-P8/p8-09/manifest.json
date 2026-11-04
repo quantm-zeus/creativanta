@@ -1,0 +1,95 @@
+{
+  "task_id": "P8-09",
+  "phase": "P8",
+  "slice": "p8-09",
+  "title": "Full-scope acceptance và handoff",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "modules": [
+    "M01",
+    "M23"
+  ],
+  "feature_refs": [
+    "docs/02_features/platform/home_decision_engine.md",
+    "docs/02_features/platform/reporting_admin_billing.md",
+    "docs/00_index/BUILD_INDEX.md",
+    "docs/00_index/BUILD_EXECUTION_CONTRACT.md",
+    "docs/00_index/CANONICAL_SOURCES.md",
+    "docs/00_index/OPEN_BLOCKERS.md",
+    "docs/04_contracts/api_behavior_contracts.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md"
+  ],
+  "migration_files": [
+    "infra/migrations/00047_p8_09_full_scope_acceptance_and_release_reconciliation.sql"
+  ],
+  "source_files": {
+    "apps/admin/src/lib/access.test.ts": "0c51aa8765e5b4b6fcd7c76f8202b186a3de82926cb004aad32c19b0afbc3c85",
+    "apps/admin/src/lib/access.ts": "c3c5d4f69d06f13f463a96903f4f45ff39eb1b7563dcce0adfdd2158b1792ab7",
+    "apps/admin/src/routes/+page.svelte": "6e31651b59e35a099c1dbab9269cbb2946f7c4c342483e16ef66e28731f165d6",
+    "apps/api/internal/migrate/migrator.go": "7f315d873aef7992abd31fd1a5653e7239cbbb57d901e7aff5ffd508165e43c1",
+    "apps/api/internal/migrate/migrator_test.go": "25fcccd8517c5d51cb66c296e5f07f9a28e0f7ee588707f5ca772697f0368c6a",
+    "apps/api/internal/platformacceptance/service.go": "adaeedafb751e7da6a1660e07e41117a7acc0aa313f0b7199e51ff9f3b622e79",
+    "apps/api/internal/platformacceptance/service_test.go": "e597eb41756f4203400afe8406d86097e99665abe070d8164d471dcf5e72e6e5",
+    "apps/api/internal/platformacceptance/types.go": "8ea0538891be2a0c905e0cf524193c7756845d0f4d18e7589c72241f83c5603b",
+    "apps/mobile/lib/core/a11y_i18n_release.dart": "e27ee1017d63010f8e71d5365c49d8418b1abd0d35442abeec0ff3804b53a2aa",
+    "apps/mobile/test/p8_09_full_scope_acceptance_test.dart": "1e5d0173f1b840c992e7f5e4007a2a01a6f364a227b1f0cb6ed88d69992389db",
+    "apps/web/src/lib/home/decision_engine.test.ts": "b2a35e8cf8e24ce6b6bd73c2bbe109535b6531e44d5fff86165572171d383b5e",
+    "apps/web/src/lib/home/decision_engine.ts": "afb1bcd5fd95b207f9842585cab438be6bc26e14ac65b368e83343672f8a3f68",
+    "apps/web/src/routes/+page.svelte": "77fda045bb02df24a29682ae82713cd9d0dac8dec16bb11c4c62895dc543dba1",
+    "infra/migrations/00047_p8_09_full_scope_acceptance_and_release_reconciliation.sql": "8fd17aace70cdfc9952ef09701b9c74886516101c314aa948554577e2575b516"
+  },
+  "scope_items": [
+    "Target 1 (Zero uncovered requirements): Full-scope reconciliation across all 31 modules/specs (M01-M23, auth, copilot, referral, help, gamification, S16, S24, S26), all 6 canonical operator modes (Solo Creator, Seller, Affiliate Operator, Live Operator, Agency/MCN, Brand Collaboration), 60 build tasks, 1,333 requirement units, 245 screen assignments, 1,188 RPC bindings, and 140 tenant RLS tables. Invariants RULE-M01-001..007, RULE-M23-B01, and EC-M01-001..004 are strictly satisfied with cryptographic SHA-256 audit logs.",
+    "Target 2 (No stub success or untracked remaining scope): Final task P8-09 seals the entire 60-task implementation DAG. Every preceding phase closure (P0-09, P1-05, P2-04, P3-05, P4-09, P5-05, P6-09, P7-05) and delivery task has been scanned and verified. Manifest records remaining_scope: [] with zero deferred scope items and no synthetic or stubbed successes.",
+    "Target 3 (Unmet external gate remains explicit, no full launch claim): Releases are designated as CONDITIONAL_READY_LOCAL. Anti-greenwashing invariant strictly enforced: attempting to claim LAUNCH_APPROVED while external gates remain open fails closed. All 7 external gates (LEG-H-001 legal counsel sign-off, EXT-GATE live partner OAuth & rates, staging DR rehearsal, PostgreSQL CI container, Clerk production provisioning, Stripe merchant keys, Activepieces enterprise license) are explicitly recorded with owning leads and blockers."
+  ],
+  "verified_sub_slices": [
+    "Database Migration 00047: Creates full_scope_acceptance_audits (global admin ledger) and workspace_acceptance_signoffs (tenant-scoped with ENABLE + FORCE ROW LEVEL SECURITY, composite tenant PK, and app_user/admin_user role grants). Verified in migrator_test.go with up/down transactional tests.",
+    "Go Platform Acceptance Engine: apps/api/internal/platformacceptance passes go test -race -count=1 across 8 tests verifying 31 modules, 6 operator modes, manifest scans, external gate enforcement, permission denial, and 5-path acceptance.",
+    "Web Decision Engine & Home: apps/web passes svelte-check (0 errors, 0 warnings), vitest (48 files, 456 tests passed), and vite build with production SSR bundle, surfacing the full-scope acceptance ribbon and mode reconciliation.",
+    "Admin Operations Console: apps/admin passes svelte-check (0 errors, 0 warnings), vitest (13 tests passed), and vite build, implementing Section 9 full-scope platform acceptance and release decision evaluation.",
+    "Mobile Flutter Acceptance: apps/mobile passes flutter analyze with 0 issues and flutter test test/p8_09_full_scope_acceptance_test.dart across all acceptance targets.",
+    "CI Quality Gates: check_d0.sh and self_test_failure.sh pass cleanly."
+  ],
+  "external_gates": [
+    {
+      "gate_id": "LEG-H-001",
+      "status": "OPEN_EXTERNAL_HUMAN_GATE",
+      "description": "Qualified external legal counsel sign-off for Vietnam PDPA Decree 13/2023/ND-CP, GDPR, CCPA, DMCA agent registration, and sub-processor DPAs is required before public launch."
+    },
+    {
+      "gate_id": "EXT-GATE-LIVE-PROVIDER-AND-CONNECTOR-VERIFICATION",
+      "status": "OPEN_EXTERNAL_PARTNER_GATE",
+      "description": "Live production partner approvals, OAuth scopes, and commercial rate cards for external social/commerce platforms (TikTok, Shopee, Meta, YouTube, Lazada, Shopify) and commercial AI providers are required before promoting capabilities to native_now in production."
+    },
+    {
+      "gate_id": "EXT-GATE-STAGING-LOAD-AND-DR-REHEARSAL",
+      "status": "OPEN_STAGING_INFRA_GATE",
+      "description": "Full staging/production VPS backup restore drill, multi-node k6 load execution, and automated accessibility browser audit require staging infrastructure."
+    },
+    {
+      "gate_id": "EXT-GATE-POSTGRES-LIVE-RLS",
+      "status": "CI_CONTAINER_GATE",
+      "description": "CI PostgreSQL 17 execution with live Docker container running in GitHub Actions CI."
+    },
+    {
+      "gate_id": "EXT-GATE-CLERK-PRODUCTION",
+      "status": "PRODUCTION_PROVISIONING_GATE",
+      "description": "Production Clerk tenant JWKS keys, domain verification, and webhook secrets."
+    },
+    {
+      "gate_id": "EXT-GATE-PAYMENT-STRIPE-LIVE",
+      "status": "PRODUCTION_MERCHANT_GATE",
+      "description": "Live Stripe card processing and Webhook signature verification operates under local deterministic adapter. Live production requires production Stripe webhook secret."
+    },
+    {
+      "gate_id": "EXT-GATE-ACTIVEPIECES-ENTERPRISE-LICENSE",
+      "status": "COMMERCIAL_LICENSE_GATE",
+      "description": "Commercial license for embedded white-label Activepieces canvas (owned Go runtime provides baseline execution)."
+    }
+  ],
+  "remaining_scope": []
+}

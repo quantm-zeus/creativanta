@@ -944,3 +944,164 @@ export function evaluateAdminComplianceAndSecurityGuards(params: {
       : 'Chuỗi kiểm toán toàn vẹn, OAuth token đã ẩn khỏi bản xuất GDPR/PDPA và tuân thủ giới hạn phiên.'
   };
 }
+
+// ============================================================================
+// P8-09: Full-Scope Acceptance & Release Decision Engine
+// ============================================================================
+
+export const CANONICAL_31_MODULES = [
+  'M01', 'M02', 'M03', 'M04', 'M05', 'M06', 'M07', 'M08', 'M09', 'M10',
+  'M11', 'M12', 'M13', 'M14', 'M15', 'M16', 'M17', 'M18', 'M19', 'M20',
+  'M21', 'M22', 'M23', 'auth', 'copilot', 'referral', 'help', 'gamification',
+  'S16', 'S24', 'S26'
+] as const;
+
+export const CANONICAL_6_MODES = [
+  'creator',
+  'seller',
+  'affiliate_operator',
+  'live_operator',
+  'agency_mcn',
+  'brand_collaboration'
+] as const;
+
+export interface FullScopeReleaseDecisionVerdict {
+  allowed: boolean;
+  totalModules: number;
+  allModulesVerified: boolean;
+  totalOperatorModes: number;
+  allModesVerified: boolean;
+  totalTasks: number;
+  allTasksVerified: boolean;
+  zeroUntrackedScope: boolean;
+  unmetExternalGatesCount: number;
+  externalGates: string[];
+  releaseDecision: 'CONDITIONAL_READY_LOCAL' | 'RELEASE_BLOCKED' | 'LAUNCH_APPROVED';
+  productionLaunchApproved: boolean;
+  errorCode: 'OK' | 'RELEASE_BLOCKED_SCOPE' | 'EXTERNAL_GATES_OPEN' | 'ADMIN_FORBIDDEN_001';
+  reason: string;
+}
+
+/**
+ * Evaluates P8-09 Acceptance Target 1, 2, and 3:
+ *   - Target 1: Reconciles all 31 modules and 6 operator modes without omissions.
+ *   - Target 2: Verifies 60 tasks with zero untracked remaining scope.
+ *   - Target 3: Strictly blocks full launch claims while external gates remain open,
+ *     approving local release readiness as CONDITIONAL_READY_LOCAL.
+ */
+export function evaluateFullScopeAcceptanceAndReleaseDecision(params: {
+  adminRole?: string;
+  isSuperAdmin?: boolean;
+  auditedModuleIds: string[];
+  auditedModeIds: string[];
+  verifiedTaskCount: number;
+  untrackedRemainingScopeCount: number;
+  assertProductionLaunch: boolean;
+  legalSignoffGranted: boolean;
+  liveProviderApproved: boolean;
+  stagingDrRehearsalPassed: boolean;
+}): FullScopeReleaseDecisionVerdict {
+  const authorizedRoles = ['super_admin', 'ops_admin', 'auditor', 'tech_admin'];
+  const isAuthorized =
+    params.isSuperAdmin || (params.adminRole && authorizedRoles.includes(params.adminRole));
+
+  if (!isAuthorized) {
+    return {
+      allowed: false,
+      totalModules: params.auditedModuleIds.length,
+      allModulesVerified: false,
+      totalOperatorModes: params.auditedModeIds.length,
+      allModesVerified: false,
+      totalTasks: params.verifiedTaskCount,
+      allTasksVerified: false,
+      zeroUntrackedScope: false,
+      unmetExternalGatesCount: 0,
+      externalGates: [],
+      releaseDecision: 'RELEASE_BLOCKED',
+      productionLaunchApproved: false,
+      errorCode: 'ADMIN_FORBIDDEN_001',
+      reason: `Vai trò ${params.adminRole ?? 'khách'} không có thẩm quyền ký duyệt nghiệm thu toàn diện nền tảng.`
+    };
+  }
+
+  // Audit 31 modules
+  const auditedModSet = new Set(params.auditedModuleIds);
+  const allModulesVerified = CANONICAL_31_MODULES.every((m) => auditedModSet.has(m));
+
+  // Audit 6 operator modes
+  const auditedModeSet = new Set(params.auditedModeIds);
+  const allModesVerified = CANONICAL_6_MODES.every((m) => auditedModeSet.has(m));
+
+  // Audit task count and remaining scope
+  const allTasksVerified = params.verifiedTaskCount >= 60;
+  const zeroUntrackedScope = params.untrackedRemainingScopeCount === 0;
+
+  // External gates evaluation
+  const externalGates: string[] = [];
+  if (!params.legalSignoffGranted) {
+    externalGates.push('LEG-H-001: Ký duyệt pháp lý độc lập (PDPA/GDPR/DMCA)');
+  }
+  if (!params.liveProviderApproved) {
+    externalGates.push('EXT-GATE-LIVE-PROVIDER: Phê duyệt từ đối tác TikTok/Shopee/Meta/YouTube và AI');
+  }
+  if (!params.stagingDrRehearsalPassed) {
+    externalGates.push('EXT-GATE-STAGING-DR: Rehearsal DR và k6 multi-node trên VPS staging');
+  }
+
+  if (!allModulesVerified || !allModesVerified || !allTasksVerified || !zeroUntrackedScope) {
+    return {
+      allowed: false,
+      totalModules: params.auditedModuleIds.length,
+      allModulesVerified,
+      totalOperatorModes: params.auditedModeIds.length,
+      allModesVerified,
+      totalTasks: params.verifiedTaskCount,
+      allTasksVerified,
+      zeroUntrackedScope,
+      unmetExternalGatesCount: externalGates.length,
+      externalGates,
+      releaseDecision: 'RELEASE_BLOCKED',
+      productionLaunchApproved: false,
+      errorCode: 'RELEASE_BLOCKED_SCOPE',
+      reason: 'Nghiệm thu bị chặn: thiếu module/mode/task hoặc còn tồn đọng phạm vi chưa giải quyết.'
+    };
+  }
+
+  // Anti-greenwashing: Never claim production launch approved if external gates open
+  if (params.assertProductionLaunch && externalGates.length > 0) {
+    return {
+      allowed: false,
+      totalModules: 31,
+      allModulesVerified: true,
+      totalOperatorModes: 6,
+      allModesVerified: true,
+      totalTasks: 60,
+      allTasksVerified: true,
+      zeroUntrackedScope: true,
+      unmetExternalGatesCount: externalGates.length,
+      externalGates,
+      releaseDecision: 'RELEASE_BLOCKED',
+      productionLaunchApproved: false,
+      errorCode: 'EXTERNAL_GATES_OPEN',
+      reason: `Không thể tuyên bố phát hành sản xuất khi còn ${externalGates.length} cổng đối tác/pháp lý/hạ tầng chưa đóng.`
+    };
+  }
+
+  return {
+    allowed: true,
+    totalModules: 31,
+    allModulesVerified: true,
+    totalOperatorModes: 6,
+    allModesVerified: true,
+    totalTasks: 60,
+    allTasksVerified: true,
+    zeroUntrackedScope: true,
+    unmetExternalGatesCount: externalGates.length,
+    externalGates,
+    releaseDecision: 'CONDITIONAL_READY_LOCAL',
+    productionLaunchApproved: false,
+    errorCode: 'OK',
+    reason:
+      'Toàn bộ 31 module, 6 chế độ vận hành và 60 tác vụ đã được nghiệm thu với bằng chứng kiểm thử đạt chuẩn. Sẵn sàng phát hành môi trường nội bộ/local (CONDITIONAL_READY_LOCAL).'
+  };
+}

@@ -901,6 +901,16 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 		requiredRLSTables = []string{
 			"data_subject_requests",
 		}
+	case 47:
+		requiredFragments = []requiredFragment{
+			{"full_scope_acceptance_audits table", "CREATE TABLE IF NOT EXISTS full_scope_acceptance_audits"},
+			{"workspace_acceptance_signoffs table", "CREATE TABLE IF NOT EXISTS workspace_acceptance_signoffs"},
+			{"tenant_isolation policy on workspace_acceptance_signoffs", "CREATE POLICY tenant_isolation ON workspace_acceptance_signoffs"},
+			{"admin_ops_scope policy on workspace_acceptance_signoffs", "CREATE POLICY admin_ops_scope ON workspace_acceptance_signoffs"},
+		}
+		requiredRLSTables = []string{
+			"workspace_acceptance_signoffs",
+		}
 	default:
 		return nil
 	}

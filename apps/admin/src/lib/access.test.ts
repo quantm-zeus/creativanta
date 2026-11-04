@@ -14,6 +14,9 @@ import {
   evaluateBackupRestoreAndSmokeRehearsal,
   evaluateProviderAndLicenseFreshnessGate,
   evaluateAdminComplianceAndSecurityGuards,
+  evaluateFullScopeAcceptanceAndReleaseDecision,
+  CANONICAL_31_MODULES,
+  CANONICAL_6_MODES,
   isArticleStale,
   type VerifiedAdminSession
 } from './access';
@@ -501,5 +504,91 @@ describe('P0-01 / P0-07 Internal Admin Isolation, Impersonation, Moderation & Ki
     expect(seqGap.auditLogReadOnlyLocked).toBe(true);
     expect(seqGap.sev1IncidentCreated).toBe(true);
     expect(seqGap.errorCode).toBe('AUDIT_LOCKED_005');
+  });
+
+  it('enforces P8-09: full-scope acceptance, 31 modules, 6 operator modes, zero untracked scope, and explicit external gates', () => {
+    // 1. Happy path: all 31 modules, 6 modes, 60 tasks, 0 untracked scope -> CONDITIONAL_READY_LOCAL
+    const fullScopeVerdict = evaluateFullScopeAcceptanceAndReleaseDecision({
+      adminRole: 'super_admin',
+      auditedModuleIds: [...CANONICAL_31_MODULES],
+      auditedModeIds: [...CANONICAL_6_MODES],
+      verifiedTaskCount: 60,
+      untrackedRemainingScopeCount: 0,
+      assertProductionLaunch: false,
+      legalSignoffGranted: false, // LEG-H-001 open
+      liveProviderApproved: false, // EXT-GATE open
+      stagingDrRehearsalPassed: false // EXT-GATE open
+    });
+    expect(fullScopeVerdict.allowed).toBe(true);
+    expect(fullScopeVerdict.allModulesVerified).toBe(true);
+    expect(fullScopeVerdict.allModesVerified).toBe(true);
+    expect(fullScopeVerdict.allTasksVerified).toBe(true);
+    expect(fullScopeVerdict.zeroUntrackedScope).toBe(true);
+    expect(fullScopeVerdict.releaseDecision).toBe('CONDITIONAL_READY_LOCAL');
+    expect(fullScopeVerdict.productionLaunchApproved).toBe(false);
+    expect(fullScopeVerdict.unmetExternalGatesCount).toBe(3);
+    expect(fullScopeVerdict.externalGates).toHaveLength(3);
+
+    // 2. Missing module or missing operator mode blocks release
+    const missingModuleVerdict = evaluateFullScopeAcceptanceAndReleaseDecision({
+      adminRole: 'super_admin',
+      auditedModuleIds: CANONICAL_31_MODULES.slice(0, 30), // missing 1 module
+      auditedModeIds: [...CANONICAL_6_MODES],
+      verifiedTaskCount: 60,
+      untrackedRemainingScopeCount: 0,
+      assertProductionLaunch: false,
+      legalSignoffGranted: false,
+      liveProviderApproved: false,
+      stagingDrRehearsalPassed: false
+    });
+    expect(missingModuleVerdict.allowed).toBe(false);
+    expect(missingModuleVerdict.errorCode).toBe('RELEASE_BLOCKED_SCOPE');
+    expect(missingModuleVerdict.releaseDecision).toBe('RELEASE_BLOCKED');
+
+    // 3. Untracked remaining scope (> 0) blocks release
+    const untrackedScopeVerdict = evaluateFullScopeAcceptanceAndReleaseDecision({
+      adminRole: 'super_admin',
+      auditedModuleIds: [...CANONICAL_31_MODULES],
+      auditedModeIds: [...CANONICAL_6_MODES],
+      verifiedTaskCount: 60,
+      untrackedRemainingScopeCount: 2, // untracked scope exists
+      assertProductionLaunch: false,
+      legalSignoffGranted: false,
+      liveProviderApproved: false,
+      stagingDrRehearsalPassed: false
+    });
+    expect(untrackedScopeVerdict.allowed).toBe(false);
+    expect(untrackedScopeVerdict.errorCode).toBe('RELEASE_BLOCKED_SCOPE');
+
+    // 4. Fake production launch assertion while external gates open fails closed
+    const fakeLaunchVerdict = evaluateFullScopeAcceptanceAndReleaseDecision({
+      adminRole: 'super_admin',
+      auditedModuleIds: [...CANONICAL_31_MODULES],
+      auditedModeIds: [...CANONICAL_6_MODES],
+      verifiedTaskCount: 60,
+      untrackedRemainingScopeCount: 0,
+      assertProductionLaunch: true, // asserting production launch!
+      legalSignoffGranted: false,
+      liveProviderApproved: false,
+      stagingDrRehearsalPassed: false
+    });
+    expect(fakeLaunchVerdict.allowed).toBe(false);
+    expect(fakeLaunchVerdict.errorCode).toBe('EXTERNAL_GATES_OPEN');
+    expect(fakeLaunchVerdict.productionLaunchApproved).toBe(false);
+
+    // 5. Unauthorized role denied
+    const unauthorizedVerdict = evaluateFullScopeAcceptanceAndReleaseDecision({
+      adminRole: 'content_admin',
+      auditedModuleIds: [...CANONICAL_31_MODULES],
+      auditedModeIds: [...CANONICAL_6_MODES],
+      verifiedTaskCount: 60,
+      untrackedRemainingScopeCount: 0,
+      assertProductionLaunch: false,
+      legalSignoffGranted: false,
+      liveProviderApproved: false,
+      stagingDrRehearsalPassed: false
+    });
+    expect(unauthorizedVerdict.allowed).toBe(false);
+    expect(unauthorizedVerdict.errorCode).toBe('ADMIN_FORBIDDEN_001');
   });
 });

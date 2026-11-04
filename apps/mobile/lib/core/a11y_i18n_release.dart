@@ -189,3 +189,78 @@ class MobileReleaseRehearsalEvaluator {
     return true;
   }
 }
+
+/// P8-09: Mobile Full-Scope Acceptance & Release Decision Engine
+class MobileFullScopeAcceptanceEvaluator {
+  static const int canonicalModuleCount = 31;
+  static const int canonicalModeCount = 6;
+  static const int canonicalTaskCount = 60;
+
+  static const List<String> canonicalModes = [
+    'creator',
+    'seller',
+    'affiliate_operator',
+    'live_operator',
+    'agency_mcn',
+    'brand_collaboration',
+  ];
+
+  static Map<String, dynamic> evaluateFullScopeRelease({
+    required int verifiedModuleCount,
+    required List<String> verifiedModes,
+    required int verifiedTaskCount,
+    required int untrackedRemainingScopeCount,
+    required bool legalSignoffGranted,
+    required bool liveProviderApproved,
+    required bool stagingDrRehearsalPassed,
+    required bool assertProductionLaunch,
+  }) {
+    final modulesOk = verifiedModuleCount == canonicalModuleCount;
+    final modesOk = verifiedModes.length == canonicalModeCount &&
+        canonicalModes.every((m) => verifiedModes.contains(m));
+    final tasksOk = verifiedTaskCount >= canonicalTaskCount;
+    final zeroUntracked = untrackedRemainingScopeCount == 0;
+
+    final openGates = <String>[];
+    if (!legalSignoffGranted) {
+      openGates.add('LEG-H-001: Legal counsel sign-off');
+    }
+    if (!liveProviderApproved) {
+      openGates.add('EXT-GATE-LIVE-PROVIDER: Platform & AI partner approvals');
+    }
+    if (!stagingDrRehearsalPassed) {
+      openGates.add('EXT-GATE-STAGING-DR: Multi-node DR drill on staging');
+    }
+
+    if (!modulesOk || !modesOk || !tasksOk || !zeroUntracked) {
+      return {
+        'allowed': false,
+        'releaseDecision': 'RELEASE_BLOCKED',
+        'productionLaunchApproved': false,
+        'zeroUntrackedScope': zeroUntracked,
+        'openGates': openGates,
+        'reason': 'Uncovered requirements or untracked remaining scope found.',
+      };
+    }
+
+    if (assertProductionLaunch && openGates.isNotEmpty) {
+      return {
+        'allowed': false,
+        'releaseDecision': 'RELEASE_BLOCKED',
+        'productionLaunchApproved': false,
+        'zeroUntrackedScope': true,
+        'openGates': openGates,
+        'reason': 'Cannot assert production launch while external gates remain open.',
+      };
+    }
+
+    return {
+      'allowed': true,
+      'releaseDecision': 'CONDITIONAL_READY_LOCAL',
+      'productionLaunchApproved': false,
+      'zeroUntrackedScope': true,
+      'openGates': openGates,
+      'reason': 'All 31 modules, 6 modes, and 60 tasks verified. Ready for local release.',
+    };
+  }
+}

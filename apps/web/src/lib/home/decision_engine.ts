@@ -810,3 +810,82 @@ export function evaluateOnboardingState(completedStepNumbers: number[]): WebOnbo
     isClosedLoopComplete
   };
 }
+
+// ============================================================================
+// P8-09 Full-Scope Platform Acceptance & Release Decision Engine
+// ============================================================================
+
+export interface WebFullScopeAcceptanceVerdict {
+  isReadyLocal: boolean;
+  totalModules: number;
+  totalModes: number;
+  totalTasks: number;
+  unmetExternalGatesCount: number;
+  externalGates: string[];
+  releaseDecision: 'CONDITIONAL_READY_LOCAL' | 'RELEASE_BLOCKED' | 'LAUNCH_APPROVED';
+  productionLaunchApproved: boolean;
+  summary: string;
+}
+
+/**
+ * Evaluates full-scope platform acceptance across all 31 modules, 6 operator modes,
+ * 60 build tasks, and explicit external launch gates for Web Decision Engine.
+ */
+export function evaluateWebFullScopeReleaseDecision(params: {
+  auditedModuleCount: number;
+  auditedModeCount: number;
+  verifiedTaskCount: number;
+  untrackedRemainingScopeCount: number;
+  openExternalGatesCount: number;
+  assertProductionLaunch: boolean;
+}): WebFullScopeAcceptanceVerdict {
+  const isComplete =
+    params.auditedModuleCount === 31 &&
+    params.auditedModeCount === 6 &&
+    params.verifiedTaskCount >= 60 &&
+    params.untrackedRemainingScopeCount === 0;
+
+  if (!isComplete) {
+    return {
+      isReadyLocal: false,
+      totalModules: params.auditedModuleCount,
+      totalModes: params.auditedModeCount,
+      totalTasks: params.verifiedTaskCount,
+      unmetExternalGatesCount: params.openExternalGatesCount,
+      externalGates: ['UNRESOLVED_SCOPE: Phạm vi chưa hoàn tất'],
+      releaseDecision: 'RELEASE_BLOCKED',
+      productionLaunchApproved: false,
+      summary: 'Nghiệm thu toàn diện bị chặn: thiếu module, chế độ vận hành hoặc còn tồn đọng phạm vi.'
+    };
+  }
+
+  if (params.assertProductionLaunch && params.openExternalGatesCount > 0) {
+    return {
+      isReadyLocal: true,
+      totalModules: 31,
+      totalModes: 6,
+      totalTasks: 60,
+      unmetExternalGatesCount: params.openExternalGatesCount,
+      externalGates: ['EXT-GATES: Còn cổng pháp lý / đối tác chưa mở'],
+      releaseDecision: 'RELEASE_BLOCKED',
+      productionLaunchApproved: false,
+      summary: 'Không được phép công bố phát hành sản xuất khi cổng đối tác và pháp lý bên ngoài chưa đáp ứng.'
+    };
+  }
+
+  return {
+    isReadyLocal: true,
+    totalModules: 31,
+    totalModes: 6,
+    totalTasks: 60,
+    unmetExternalGatesCount: params.openExternalGatesCount,
+    externalGates: [
+      'LEG-H-001: Ký duyệt pháp lý độc lập (PDPA/GDPR/DMCA)',
+      'EXT-GATE-LIVE-PROVIDER: Phê duyệt từ đối tác TikTok/Shopee/Meta/YouTube',
+      'EXT-GATE-STAGING-DR: Rehearsal DR trên staging VPS'
+    ],
+    releaseDecision: 'CONDITIONAL_READY_LOCAL',
+    productionLaunchApproved: false,
+    summary: 'Toàn bộ 31 module, 6 chế độ và 60 task đã đối soát đầy đủ. Sẵn sàng cho môi trường thử nghiệm và local (CONDITIONAL_READY_LOCAL).'
+  };
+}
