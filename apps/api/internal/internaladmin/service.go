@@ -83,6 +83,20 @@ var (
 	ErrHardBlockNonOverridable = errors.New("internaladmin: hard-block safety category cannot be overridden by workspace role (MOD_BLOCKED_001)")
 	// ErrCaseNotFound is returned when a moderation case ID does not exist.
 	ErrCaseNotFound = errors.New("internaladmin: moderation case not found (ADMIN_NOTFOUND_001)")
+	// ErrPrivilegedRoleBoundaryViolation is returned when an admin role attempts an action outside their privileged boundaries.
+	ErrPrivilegedRoleBoundaryViolation = errors.New("internaladmin: privileged role boundary violation (ADMIN_FORBIDDEN_001)")
+	// ErrFalsePositiveEvidenceRequired is returned when overturning a hard block without documented evidence and justification.
+	ErrFalsePositiveEvidenceRequired = errors.New("internaladmin: overturning hard-block requires audited evidence reference and justification (SAFE-2026-02)")
+	// ErrAppealNotFound is returned when a moderation appeal does not exist.
+	ErrAppealNotFound = errors.New("internaladmin: moderation appeal not found (ADMIN_NOTFOUND_001)")
+	// ErrSupportTicketNotFound is returned when a support ticket ID does not exist.
+	ErrSupportTicketNotFound = errors.New("internaladmin: support ticket not found (ADMIN_NOTFOUND_001)")
+	// ErrFraudCaseNotFound is returned when a fraud case ID does not exist.
+	ErrFraudCaseNotFound = errors.New("internaladmin: fraud case not found (ADMIN_NOTFOUND_001)")
+	// ErrJobNotFound is returned when a background job ID does not exist.
+	ErrJobNotFound = errors.New("internaladmin: background job not found (ADMIN_NOTFOUND_001)")
+	// ErrDLQItemNotFound is returned when a dead-letter queue item ID does not exist.
+	ErrDLQItemNotFound = errors.New("internaladmin: dead-letter queue item not found (ADMIN_NOTFOUND_001)")
 	// ErrInvalidInput is returned when required request fields are missing or malformed.
 	ErrInvalidInput = errors.New("internaladmin: invalid input (SYSTEM_INVALID_001)")
 	// ErrIdempotencyConflict is returned when an idempotency key is reused with a different request payload.
@@ -290,25 +304,168 @@ type InternalAuditLogRecord struct {
 
 // ModerationCaseRecord mirrors the canonical moderation_cases table (§15 of database_schema.md).
 type ModerationCaseRecord struct {
-	CaseID          string
+	CaseID                  string
+	WorkspaceID             string
+	ContentType             string
+	ContentID               string
+	Category                string
+	FlagSource              string
+	Severity                string
+	RiskScore               int32
+	RiskBand                RiskBand
+	HardBlock               bool
+	Status                  string // pending, in_review, approved, rejected, escalated
+	AppealStatus            string // none, pending, reviewing, upheld, overturned
+	AppealReason            string
+	AppealEvidence          string
+	AppealedByUserID        string
+	AppealedAt              *time.Time
+	AppealReviewedByAdminID string
+	AppealResolutionNotes   string
+	AppealResolvedAt        *time.Time
+	FalsePositiveCleared    bool
+	FlaggedUserID           string
+	ReporterUserID          string
+	AssignedAdminID         string
+	Decision                string
+	DecisionReason          string
+	SLADueAt                time.Time
+	CreatedAt               time.Time
+	ResolvedAt              *time.Time
+}
+
+// ModerationAppealRecord mirrors the canonical moderation_appeals table (§17.4 of database_schema.md).
+type ModerationAppealRecord struct {
+	AppealID             string
+	CaseID               string
+	WorkspaceID          string
+	UserID               string
+	AppealReason         string
+	EvidenceReference    string
+	EvidenceDetails      map[string]any
+	Status               string // pending, reviewing, upheld, overturned
+	ReviewerAdminID      string
+	ResolutionReason     string
+	IsHardBlock          bool
+	FalsePositiveCleared bool
+	CreatedAt            time.Time
+	ResolvedAt           *time.Time
+}
+
+// SupportTicketRecord mirrors the canonical support_tickets table (§17.8 of database_schema.md).
+type SupportTicketRecord struct {
+	TicketID            string
+	WorkspaceID         string
+	UserID              string
+	TicketNumber        string
+	Subject             string
+	Priority            string // low, normal, high, urgent
+	Status              string // open, in_progress, waiting_user, waiting_admin, escalated, resolved, closed
+	Category            string // billing, technical, account, content, feature_request
+	AssignedAdminID     string
+	SLAResponseDueAt    time.Time
+	SLAResolutionDueAt  time.Time
+	FirstRespondedAt    *time.Time
+	ResolvedAt          *time.Time
+	CSATScore           int32
+	AutoCapturedContext map[string]any
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+}
+
+// SupportTicketMessageRecord mirrors the canonical support_ticket_messages table (§17.9 of database_schema.md).
+type SupportTicketMessageRecord struct {
+	MessageID      string
+	TicketID       string
+	WorkspaceID    string
+	AuthorType     string // user, admin, system
+	AuthorID       string
+	Body           string
+	Attachments    []string
+	IsInternalNote bool
+	CreatedAt      time.Time
+}
+
+// FraudCaseRecord mirrors the canonical fraud_cases table (§17.5 of database_schema.md).
+type FraudCaseRecord struct {
+	FraudCaseID     string
 	WorkspaceID     string
-	ContentType     string
-	ContentID       string
-	Category        string
-	FlagSource      string
-	Severity        string
-	RiskScore       int32
-	RiskBand        RiskBand
-	HardBlock       bool
-	Status          string // pending, in_review, approved, rejected, escalated
-	FlaggedUserID   string
-	ReporterUserID  string
+	UserID          string
+	SignalType      string // credit_velocity_spike, referral_self_ring, payment_chargeback, fake_order_pattern, bot_registration, api_abuse
+	RiskScore       int32  // 0-100
+	Evidence        map[string]any
+	FinancialImpact int64  // micro-units
+	Status          string // detected, investigating, confirmed_fraud, false_positive, resolved
+	ActionTaken     string // none, warned, credits_frozen, account_suspended, account_banned, clawback_issued
 	AssignedAdminID string
-	Decision        string
-	DecisionReason  string
-	SLADueAt        time.Time
-	CreatedAt       time.Time
+	ResolutionNotes string
+	Escalated       bool
+	DetectedAt      time.Time
 	ResolvedAt      *time.Time
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+// BackgroundJobRecord mirrors the canonical background_jobs table (§18.4G of database_schema.md).
+type BackgroundJobRecord struct {
+	JobID        string
+	QueueName    string
+	Status       string // queued, running, completed, failed, paused, killed
+	Payload      map[string]any
+	ErrorClass   string
+	ErrorMessage string
+	AttemptCount int32
+	Priority     string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+// DLQItemRecord mirrors the canonical dead_letter_queue table (§18.4G of database_schema.md).
+type DLQItemRecord struct {
+	DLQID             string
+	QueueName         string
+	OriginalMessageID string
+	Payload           map[string]any
+	ErrorClass        string
+	ErrorMessage      string
+	AttemptCount      int32
+	RetryHistory      []string
+	WorkspaceID       string
+	Status            string // pending, retrying, resolved, discarded, purged
+	ResolvedAt        *time.Time
+	ResolvedByAdminID string
+	ResolutionNotes   string
+	CreatedAt         time.Time
+}
+
+// OperationalHealthRecord encapsulates technical health metrics (PRD §26 / §36B),
+// kept strictly distinct from commercial/business performance indicators.
+type OperationalHealthRecord struct {
+	SystemUptimePct      float64
+	ErrorRatePct         float64
+	QueueLagTotal        int64
+	PendingDLQCount      int64
+	ActiveSev1Count      int32
+	ActiveSev2Count      int32
+	LatencyP95Ms         float64
+	TechnicalHealthScore int32
+	Status               string // operational, degraded, incident
+	ActiveKillSwitches   int32
+	MaintenanceMode      bool
+	GeneratedAt          time.Time
+}
+
+// BusinessMetricsRecord encapsulates commercial/revenue indicators (PRD §26 / M19),
+// strictly segregated from technical connector availability and health calculations.
+type BusinessMetricsRecord struct {
+	MRRMicroUnits         int64
+	ActiveWorkspacesCount int64
+	NetRevenueMicroUnits  int64
+	ChurnRatePct          float64
+	CreditsConsumedTotal  int64
+	NewSignupsCount       int64
+	WindowLabel           string
+	GeneratedAt           time.Time
 }
 
 // FeatureFlagRecord mirrors the canonical feature_flags table (§15 of database_schema.md).
@@ -385,6 +542,15 @@ type Service struct {
 	workspaceAudits   []outbox.AuditLogEntry
 	emittedEvents     []outbox.DomainEventEnvelope
 	idempotency       map[string]cachedAdminCommand
+
+	moderationAppeals map[string]*ModerationAppealRecord
+	supportTickets    map[string]*SupportTicketRecord
+	supportMessages   map[string][]*SupportTicketMessageRecord
+	fraudCases        map[string]*FraudCaseRecord
+	backgroundJobs    map[string]*BackgroundJobRecord
+	dlqItems          map[string]*DLQItemRecord
+	operationalHealth OperationalHealthRecord
+	businessMetrics   BusinessMetricsRecord
 }
 
 var (
@@ -397,18 +563,49 @@ var (
 
 // NewService constructs a fail-closed Internal Admin Service.
 func NewService(bindings *rbac.Registry) *Service {
+	now := time.Now().UTC()
 	return &Service{
-		Bindings:        bindings,
-		Now:             func() time.Time { return time.Now().UTC() },
-		IDGenerator:     randomUUIDv4,
-		adminsByID:      make(map[string]*InternalAdminRecord),
-		adminsByEmail:   make(map[string]*InternalAdminRecord),
-		sessionsByToken: make(map[string]*AdminSessionRecord),
-		sessionsByID:    make(map[string]*AdminSessionRecord),
-		impersonations:  make(map[string]*ImpersonationSessionRecord),
-		moderationCases: make(map[string]*ModerationCaseRecord),
-		featureFlags:    make(map[string]*FeatureFlagRecord),
-		idempotency:     make(map[string]cachedAdminCommand),
+		Bindings:          bindings,
+		Now:               func() time.Time { return time.Now().UTC() },
+		IDGenerator:       randomUUIDv4,
+		adminsByID:        make(map[string]*InternalAdminRecord),
+		adminsByEmail:     make(map[string]*InternalAdminRecord),
+		sessionsByToken:   make(map[string]*AdminSessionRecord),
+		sessionsByID:      make(map[string]*AdminSessionRecord),
+		impersonations:    make(map[string]*ImpersonationSessionRecord),
+		moderationCases:   make(map[string]*ModerationCaseRecord),
+		featureFlags:      make(map[string]*FeatureFlagRecord),
+		idempotency:       make(map[string]cachedAdminCommand),
+		moderationAppeals: make(map[string]*ModerationAppealRecord),
+		supportTickets:    make(map[string]*SupportTicketRecord),
+		supportMessages:   make(map[string][]*SupportTicketMessageRecord),
+		fraudCases:        make(map[string]*FraudCaseRecord),
+		backgroundJobs:    make(map[string]*BackgroundJobRecord),
+		dlqItems:          make(map[string]*DLQItemRecord),
+		operationalHealth: OperationalHealthRecord{
+			SystemUptimePct:      99.98,
+			ErrorRatePct:         0.04,
+			QueueLagTotal:        12,
+			PendingDLQCount:      0,
+			ActiveSev1Count:      0,
+			ActiveSev2Count:      0,
+			LatencyP95Ms:         85.0,
+			TechnicalHealthScore: 98,
+			Status:               "operational",
+			ActiveKillSwitches:   0,
+			MaintenanceMode:      false,
+			GeneratedAt:          now,
+		},
+		businessMetrics: BusinessMetricsRecord{
+			MRRMicroUnits:         52000000000, // $52,000.00
+			ActiveWorkspacesCount: 412,
+			NetRevenueMicroUnits:  48500000000,
+			ChurnRatePct:          1.8,
+			CreditsConsumedTotal:  1850400,
+			NewSignupsCount:       68,
+			WindowLabel:           "30d",
+			GeneratedAt:           now,
+		},
 	}
 }
 
@@ -1464,6 +1661,927 @@ func (s *Service) IsCapabilityKilled(platform, actionKey string) (bool, string) 
 		return true, fmt.Sprintf("Hệ thống đang trong chế độ bảo trì: %s", s.maintenanceReason)
 	}
 	return false, ""
+}
+
+// SubmitAppeal allows a creator/user or workspace to submit a formal appeal on a moderated/blocked case.
+func (s *Service) SubmitAppeal(
+	ctx context.Context,
+	caseID, workspaceID, userID, reason, evidenceRef string,
+) (*ModerationCaseRecord, *ModerationAppealRecord, error) {
+	if !tenantdb.IsValidNonZeroUUID(caseID) || !tenantdb.IsValidNonZeroUUID(workspaceID) || !tenantdb.IsValidNonZeroUUID(userID) {
+		return nil, nil, ErrInvalidInput
+	}
+	trimmedReason := strings.TrimSpace(reason)
+	if trimmedReason == "" {
+		return nil, nil, fmt.Errorf("%w: appeal reason is required", ErrInvalidInput)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	mc, exists := s.moderationCases[caseID]
+	if !exists || mc.WorkspaceID != workspaceID {
+		return nil, nil, ErrCaseNotFound
+	}
+
+	now := s.Now()
+	mc.AppealStatus = "pending"
+	mc.AppealReason = trimmedReason
+	mc.AppealEvidence = strings.TrimSpace(evidenceRef)
+	mc.AppealedByUserID = userID
+	mc.AppealedAt = &now
+
+	appealID := s.IDGenerator()
+	appeal := &ModerationAppealRecord{
+		AppealID:             appealID,
+		CaseID:               caseID,
+		WorkspaceID:          workspaceID,
+		UserID:               userID,
+		AppealReason:         trimmedReason,
+		EvidenceReference:    mc.AppealEvidence,
+		Status:               "pending",
+		IsHardBlock:          mc.HardBlock,
+		FalsePositiveCleared: false,
+		CreatedAt:            now,
+	}
+	s.moderationAppeals[appealID] = appeal
+
+	payload, _ := json.Marshal(map[string]any{
+		"appeal_id":     appealID,
+		"case_id":       caseID,
+		"workspace_id":  workspaceID,
+		"user_id":       userID,
+		"is_hard_block": mc.HardBlock,
+		"appeal_reason": trimmedReason,
+		"submitted_at":  now.Format(time.RFC3339),
+	})
+	s.emittedEvents = append(s.emittedEvents, outbox.DomainEventEnvelope{
+		EventID:       s.IDGenerator(),
+		EventType:     "moderation.case.appealed",
+		TargetStream:  outbox.QueueNotifications,
+		AggregateType: "moderation_case",
+		AggregateID:   caseID,
+		Payload:       payload,
+		OccurredAt:    now,
+	})
+
+	cpCase := *mc
+	cpAppeal := *appeal
+	return &cpCase, &cpAppeal, nil
+}
+
+// ReviewAppeal allows an authorized internal admin (super_admin or content_admin) to review an appeal.
+// Under SAFE-2026-02:
+//   - A hard-block cannot be casually bypassed; it can ONLY be overturned if it's an explicit false-positive
+//     clearance with documented evidence reference and justification.
+//   - Self-review conflict-of-interest (EC-S26-002) is strictly rejected.
+//   - Privileged role boundary is strictly enforced.
+func (s *Service) ReviewAppeal(
+	ctx context.Context,
+	appealID, adminID, decision, justification, evidenceRef string,
+) (*ModerationCaseRecord, *ModerationAppealRecord, error) {
+	if !tenantdb.IsValidNonZeroUUID(appealID) || !tenantdb.IsValidNonZeroUUID(adminID) {
+		return nil, nil, ErrInvalidInput
+	}
+	dec := strings.ToLower(strings.TrimSpace(decision))
+	if dec != "overturn" && dec != "uphold" {
+		return nil, nil, fmt.Errorf("%w: decision must be 'overturn' or 'uphold'", ErrInvalidInput)
+	}
+	just := strings.TrimSpace(justification)
+	if just == "" {
+		return nil, nil, fmt.Errorf("%w: justification is required for appeal review audit", ErrInvalidInput)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	admin, ok := s.adminsByID[adminID]
+	if !ok || admin.Status != "active" {
+		return nil, nil, ErrInvalidAdminCredentials
+	}
+	// Privileged role boundary: only super_admin and content_admin have admin:moderation:manage authority.
+	if admin.AdminRole != "super_admin" && admin.AdminRole != "content_admin" {
+		return nil, nil, fmt.Errorf("%w: admin role %q cannot review moderation appeals", ErrPrivilegedRoleBoundaryViolation, admin.AdminRole)
+	}
+
+	appeal, appealExists := s.moderationAppeals[appealID]
+	if !appealExists {
+		return nil, nil, ErrAppealNotFound
+	}
+	mc, caseExists := s.moderationCases[appeal.CaseID]
+	if !caseExists {
+		return nil, nil, ErrCaseNotFound
+	}
+
+	// EC-S26-002: Conflict of interest — Admin cannot review appeal on their own case.
+	if (mc.FlaggedUserID != "" && (mc.FlaggedUserID == admin.AdminID || (admin.LinkedUserID != "" && mc.FlaggedUserID == admin.LinkedUserID))) ||
+		(appeal.UserID != "" && (appeal.UserID == admin.AdminID || (admin.LinkedUserID != "" && appeal.UserID == admin.LinkedUserID))) {
+		return nil, nil, ErrSelfReviewConflict
+	}
+
+	now := s.Now()
+	beforeAppealStatus := appeal.Status
+	beforeCaseStatus := mc.Status
+
+	if dec == "overturn" {
+		if appeal.IsHardBlock {
+			// SAFE-2026-02: Overturning a hard block requires documented evidence reference and justification.
+			if strings.TrimSpace(evidenceRef) == "" {
+				return nil, nil, ErrFalsePositiveEvidenceRequired
+			}
+			appeal.FalsePositiveCleared = true
+			mc.FalsePositiveCleared = true
+			appeal.EvidenceReference = strings.TrimSpace(evidenceRef)
+		}
+		appeal.Status = "overturned"
+		mc.AppealStatus = "overturned"
+		mc.Status = "approved"
+	} else {
+		appeal.Status = "upheld"
+		mc.AppealStatus = "upheld"
+	}
+
+	appeal.ReviewerAdminID = adminID
+	appeal.ResolutionReason = just
+	appeal.ResolvedAt = &now
+
+	mc.AppealReviewedByAdminID = adminID
+	mc.AppealResolutionNotes = just
+	mc.AppealResolvedAt = &now
+	mc.DecisionReason = just
+	mc.ResolvedAt = &now
+
+	// Record immutable audit log
+	auditID := s.IDGenerator()
+	s.auditLogs = append(s.auditLogs, InternalAuditLogRecord{
+		AuditID:           auditID,
+		AdminID:           adminID,
+		AdminRole:         admin.AdminRole,
+		Action:            "moderation.appeal.review",
+		TargetType:        "moderation_appeal",
+		TargetID:          appealID,
+		TargetWorkspaceID: mc.WorkspaceID,
+		Reason:            just,
+		BeforeState: map[string]any{
+			"appeal_status": beforeAppealStatus,
+			"case_status":   beforeCaseStatus,
+			"is_hard_block": appeal.IsHardBlock,
+		},
+		AfterState: map[string]any{
+			"appeal_status":          appeal.Status,
+			"case_status":            mc.Status,
+			"false_positive_cleared": appeal.FalsePositiveCleared,
+			"evidence_ref":           appeal.EvidenceReference,
+		},
+		CreatedAt: now,
+	})
+
+	eventType := "moderation.appeal.resolved"
+	if dec == "overturn" && appeal.FalsePositiveCleared {
+		eventType = "moderation.case.overturned"
+	}
+	payload, _ := json.Marshal(map[string]any{
+		"appeal_id":              appealID,
+		"case_id":                mc.CaseID,
+		"workspace_id":           mc.WorkspaceID,
+		"decision":               dec,
+		"is_hard_block":          appeal.IsHardBlock,
+		"false_positive_cleared": appeal.FalsePositiveCleared,
+		"reviewer_admin_id":      adminID,
+		"resolution_reason":      just,
+		"resolved_at":            now.Format(time.RFC3339),
+	})
+	s.emittedEvents = append(s.emittedEvents, outbox.DomainEventEnvelope{
+		EventID:       s.IDGenerator(),
+		EventType:     eventType,
+		TargetStream:  outbox.QueueNotifications,
+		AggregateType: "moderation_appeal",
+		AggregateID:   appealID,
+		Payload:       payload,
+		OccurredAt:    now,
+	})
+
+	cpCase := *mc
+	cpAppeal := *appeal
+	return &cpCase, &cpAppeal, nil
+}
+
+// ListAppeals lists moderation appeals, optionally filtered by status.
+func (s *Service) ListAppeals(ctx context.Context, statusFilter string) ([]ModerationAppealRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var out []ModerationAppealRecord
+	for _, app := range s.moderationAppeals {
+		if statusFilter != "" && !strings.EqualFold(app.Status, statusFilter) {
+			continue
+		}
+		out = append(out, *app)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].CreatedAt.After(out[j].CreatedAt)
+	})
+	return out, nil
+}
+
+// Support Ticket Tools
+
+// CreateSupportTicket creates a new support ticket and computes SLA response & resolution deadlines.
+func (s *Service) CreateSupportTicket(
+	ctx context.Context,
+	ticket SupportTicketRecord,
+	initialMessage string,
+) (*SupportTicketRecord, error) {
+	if !tenantdb.IsValidNonZeroUUID(ticket.TicketID) || !tenantdb.IsValidNonZeroUUID(ticket.WorkspaceID) || !tenantdb.IsValidNonZeroUUID(ticket.UserID) {
+		return nil, ErrInvalidInput
+	}
+	if strings.TrimSpace(ticket.Subject) == "" {
+		return nil, fmt.Errorf("%w: ticket subject is required", ErrInvalidInput)
+	}
+
+	now := s.Now()
+	ticket.CreatedAt = now
+	ticket.UpdatedAt = now
+	if ticket.Status == "" {
+		ticket.Status = "open"
+	}
+	prio := strings.ToLower(strings.TrimSpace(ticket.Priority))
+	if prio == "" {
+		prio = "normal"
+	}
+	ticket.Priority = prio
+
+	// Compute SLA deadlines (RULE-S26-006):
+	// urgent: 1h response / 4h resolution
+	// high: 4h response / 24h resolution
+	// normal: 12h response / 72h resolution
+	// low: 24h response / 7 days resolution
+	switch prio {
+	case "urgent":
+		ticket.SLAResponseDueAt = now.Add(1 * time.Hour)
+		ticket.SLAResolutionDueAt = now.Add(4 * time.Hour)
+	case "high":
+		ticket.SLAResponseDueAt = now.Add(4 * time.Hour)
+		ticket.SLAResolutionDueAt = now.Add(24 * time.Hour)
+	case "low":
+		ticket.SLAResponseDueAt = now.Add(24 * time.Hour)
+		ticket.SLAResolutionDueAt = now.Add(7 * 24 * time.Hour)
+	default:
+		ticket.SLAResponseDueAt = now.Add(12 * time.Hour)
+		ticket.SLAResolutionDueAt = now.Add(72 * time.Hour)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cp := ticket
+	s.supportTickets[ticket.TicketID] = &cp
+
+	if strings.TrimSpace(initialMessage) != "" {
+		msgID := s.IDGenerator()
+		msg := &SupportTicketMessageRecord{
+			MessageID:      msgID,
+			TicketID:       ticket.TicketID,
+			WorkspaceID:    ticket.WorkspaceID,
+			AuthorType:     "user",
+			AuthorID:       ticket.UserID,
+			Body:           strings.TrimSpace(initialMessage),
+			IsInternalNote: false,
+			CreatedAt:      now,
+		}
+		s.supportMessages[ticket.TicketID] = append(s.supportMessages[ticket.TicketID], msg)
+	}
+
+	payload, _ := json.Marshal(map[string]any{
+		"ticket_id":     ticket.TicketID,
+		"workspace_id":  ticket.WorkspaceID,
+		"ticket_number": ticket.TicketNumber,
+		"priority":      ticket.Priority,
+		"subject":       ticket.Subject,
+	})
+	s.emittedEvents = append(s.emittedEvents, outbox.DomainEventEnvelope{
+		EventID:       s.IDGenerator(),
+		EventType:     "support.ticket.created",
+		TargetStream:  outbox.QueueNotifications,
+		AggregateType: "support_ticket",
+		AggregateID:   ticket.TicketID,
+		Payload:       payload,
+		OccurredAt:    now,
+	})
+
+	return &cp, nil
+}
+
+// ListSupportTickets lists support tickets with optional filtering.
+func (s *Service) ListSupportTickets(
+	ctx context.Context,
+	statusFilter, priorityFilter, assignedAdminID string,
+) ([]SupportTicketRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var out []SupportTicketRecord
+	for _, t := range s.supportTickets {
+		if statusFilter != "" && !strings.EqualFold(t.Status, statusFilter) {
+			continue
+		}
+		if priorityFilter != "" && !strings.EqualFold(t.Priority, priorityFilter) {
+			continue
+		}
+		if assignedAdminID != "" && t.AssignedAdminID != assignedAdminID {
+			continue
+		}
+		out = append(out, *t)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].CreatedAt.After(out[j].CreatedAt)
+	})
+	return out, nil
+}
+
+// GetSupportTicket returns ticket detail and messages.
+// When called by a workspace app_user (isInternalAdmin = false), internal notes are strictly filtered out!
+func (s *Service) GetSupportTicket(
+	ctx context.Context,
+	ticketID string,
+	isInternalAdmin bool,
+	workspaceID string,
+) (*SupportTicketRecord, []*SupportTicketMessageRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ticket, exists := s.supportTickets[ticketID]
+	if !exists {
+		return nil, nil, ErrSupportTicketNotFound
+	}
+	if !isInternalAdmin && workspaceID != "" && ticket.WorkspaceID != workspaceID {
+		return nil, nil, ErrSupportTicketNotFound
+	}
+
+	msgs := s.supportMessages[ticketID]
+	var filtered []*SupportTicketMessageRecord
+	for _, m := range msgs {
+		if !isInternalAdmin && m.IsInternalNote {
+			// Strip internal admin notes from creator/user view
+			continue
+		}
+		cp := *m
+		filtered = append(filtered, &cp)
+	}
+
+	cpTicket := *ticket
+	return &cpTicket, filtered, nil
+}
+
+// AddSupportTicketMessage adds a message or internal note to a support ticket.
+// Internal notes (isInternalNote = true) require internal admin authority.
+func (s *Service) AddSupportTicketMessage(
+	ctx context.Context,
+	ticketID, authorType, authorID, body string,
+	isInternalNote bool,
+) (*SupportTicketMessageRecord, error) {
+	if !tenantdb.IsValidNonZeroUUID(ticketID) {
+		return nil, ErrInvalidInput
+	}
+	trimmedBody := strings.TrimSpace(body)
+	if trimmedBody == "" {
+		return nil, fmt.Errorf("%w: message body cannot be empty", ErrInvalidInput)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ticket, exists := s.supportTickets[ticketID]
+	if !exists {
+		return nil, ErrSupportTicketNotFound
+	}
+
+	if isInternalNote {
+		admin, ok := s.adminsByID[authorID]
+		if !ok || admin.Status != "active" {
+			return nil, fmt.Errorf("%w: only active internal admins can post internal notes", ErrPrivilegedRoleBoundaryViolation)
+		}
+	}
+
+	now := s.Now()
+	msg := &SupportTicketMessageRecord{
+		MessageID:      s.IDGenerator(),
+		TicketID:       ticketID,
+		WorkspaceID:    ticket.WorkspaceID,
+		AuthorType:     authorType,
+		AuthorID:       authorID,
+		Body:           trimmedBody,
+		IsInternalNote: isInternalNote,
+		CreatedAt:      now,
+	}
+	s.supportMessages[ticketID] = append(s.supportMessages[ticketID], msg)
+
+	if authorType == "admin" && ticket.FirstRespondedAt == nil {
+		ticket.FirstRespondedAt = &now
+	}
+	ticket.UpdatedAt = now
+
+	return msg, nil
+}
+
+// AssignSupportTicket assigns an admin to a support ticket.
+func (s *Service) AssignSupportTicket(
+	ctx context.Context,
+	ticketID, adminID, assignedByAdminID string,
+) (*SupportTicketRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ticket, exists := s.supportTickets[ticketID]
+	if !exists {
+		return nil, ErrSupportTicketNotFound
+	}
+	assignee, ok := s.adminsByID[adminID]
+	if !ok || assignee.Status != "active" {
+		return nil, fmt.Errorf("%w: invalid assigned admin", ErrInvalidInput)
+	}
+
+	ticket.AssignedAdminID = adminID
+	ticket.UpdatedAt = s.Now()
+
+	s.auditLogs = append(s.auditLogs, InternalAuditLogRecord{
+		AuditID:           s.IDGenerator(),
+		AdminID:           assignedByAdminID,
+		Action:            "support.ticket.assigned",
+		TargetType:        "support_ticket",
+		TargetID:          ticketID,
+		TargetWorkspaceID: ticket.WorkspaceID,
+		Reason:            fmt.Sprintf("Assigned to admin %s", assignee.Email),
+		CreatedAt:         s.Now(),
+	})
+
+	cp := *ticket
+	return &cp, nil
+}
+
+// UpdateSupportTicketStatus updates ticket status.
+func (s *Service) UpdateSupportTicketStatus(
+	ctx context.Context,
+	ticketID, status, adminID, resolutionNotes string,
+) (*SupportTicketRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ticket, exists := s.supportTickets[ticketID]
+	if !exists {
+		return nil, ErrSupportTicketNotFound
+	}
+
+	now := s.Now()
+	ticket.Status = status
+	ticket.UpdatedAt = now
+	if status == "resolved" || status == "closed" {
+		ticket.ResolvedAt = &now
+	}
+
+	s.auditLogs = append(s.auditLogs, InternalAuditLogRecord{
+		AuditID:           s.IDGenerator(),
+		AdminID:           adminID,
+		Action:            "support.ticket.status_updated",
+		TargetType:        "support_ticket",
+		TargetID:          ticketID,
+		TargetWorkspaceID: ticket.WorkspaceID,
+		Reason:            resolutionNotes,
+		AfterState:        map[string]any{"status": status},
+		CreatedAt:         now,
+	})
+
+	cp := *ticket
+	return &cp, nil
+}
+
+// Fraud Detection Tools
+
+// SeedFraudCase adds a fraud case to the registry.
+func (s *Service) SeedFraudCase(fc FraudCaseRecord) (*FraudCaseRecord, error) {
+	if !tenantdb.IsValidNonZeroUUID(fc.FraudCaseID) {
+		return nil, ErrInvalidInput
+	}
+	now := s.Now()
+	if fc.CreatedAt.IsZero() {
+		fc.CreatedAt = now
+	}
+	if fc.DetectedAt.IsZero() {
+		fc.DetectedAt = now
+	}
+	if fc.Status == "" {
+		fc.Status = "detected"
+	}
+	if fc.ActionTaken == "" {
+		fc.ActionTaken = "none"
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cp := fc
+	s.fraudCases[fc.FraudCaseID] = &cp
+	return &cp, nil
+}
+
+// ListFraudCases lists fraud cases. Cases open > 48h automatically escalate (RULE-S26-007).
+func (s *Service) ListFraudCases(
+	ctx context.Context,
+	statusFilter string,
+	minRiskScore int32,
+) ([]FraudCaseRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	now := s.Now()
+	var out []FraudCaseRecord
+	for _, fc := range s.fraudCases {
+		// Auto-escalate after 48h if unresolved (RULE-S26-007)
+		if (fc.Status == "detected" || fc.Status == "investigating") && now.Sub(fc.DetectedAt) > 48*time.Hour {
+			fc.Escalated = true
+		}
+		if statusFilter != "" && !strings.EqualFold(fc.Status, statusFilter) {
+			continue
+		}
+		if fc.RiskScore < minRiskScore {
+			continue
+		}
+		out = append(out, *fc)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].RiskScore > out[j].RiskScore
+	})
+	return out, nil
+}
+
+// GetFraudCase returns a single fraud case.
+func (s *Service) GetFraudCase(ctx context.Context, fraudCaseID string) (*FraudCaseRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	fc, ok := s.fraudCases[fraudCaseID]
+	if !ok {
+		return nil, ErrFraudCaseNotFound
+	}
+	cp := *fc
+	return &cp, nil
+}
+
+// ActionFraudCase executes an action on a fraud case (confirm, dismiss, freeze, suspend).
+// Privileged boundary: Super Admin, Ops Admin, Content Admin.
+func (s *Service) ActionFraudCase(
+	ctx context.Context,
+	fraudCaseID, decision, actionTaken, adminID, notes string,
+) (*FraudCaseRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	admin, ok := s.adminsByID[adminID]
+	if !ok || admin.Status != "active" {
+		return nil, ErrInvalidAdminCredentials
+	}
+	if admin.AdminRole != "super_admin" && admin.AdminRole != "ops_admin" && admin.AdminRole != "content_admin" {
+		return nil, fmt.Errorf("%w: role %q cannot action fraud cases", ErrPrivilegedRoleBoundaryViolation, admin.AdminRole)
+	}
+
+	fc, exists := s.fraudCases[fraudCaseID]
+	if !exists {
+		return nil, ErrFraudCaseNotFound
+	}
+
+	now := s.Now()
+	fc.Status = decision
+	fc.ActionTaken = actionTaken
+	fc.AssignedAdminID = adminID
+	fc.ResolutionNotes = notes
+	fc.ResolvedAt = &now
+	fc.UpdatedAt = now
+
+	s.auditLogs = append(s.auditLogs, InternalAuditLogRecord{
+		AuditID:           s.IDGenerator(),
+		AdminID:           adminID,
+		AdminRole:         admin.AdminRole,
+		Action:            "fraud.case.actioned",
+		TargetType:        "fraud_case",
+		TargetID:          fraudCaseID,
+		TargetWorkspaceID: fc.WorkspaceID,
+		Reason:            notes,
+		AfterState: map[string]any{
+			"status":       fc.Status,
+			"action_taken": fc.ActionTaken,
+		},
+		CreatedAt: now,
+	})
+
+	payload, _ := json.Marshal(map[string]any{
+		"fraud_case_id": fraudCaseID,
+		"decision":      decision,
+		"action_taken":  actionTaken,
+		"admin_id":      adminID,
+	})
+	s.emittedEvents = append(s.emittedEvents, outbox.DomainEventEnvelope{
+		EventID:       s.IDGenerator(),
+		EventType:     "fraud.case.actioned",
+		TargetStream:  outbox.QueueNotifications,
+		AggregateType: "fraud_case",
+		AggregateID:   fraudCaseID,
+		Payload:       payload,
+		OccurredAt:    now,
+	})
+
+	cp := *fc
+	return &cp, nil
+}
+
+// GetFraudSignals returns fraud signals, device intelligence, and IP matching data.
+func (s *Service) GetFraudSignals(ctx context.Context, fraudCaseID string) (map[string]any, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	fc, ok := s.fraudCases[fraudCaseID]
+	if !ok {
+		return nil, ErrFraudCaseNotFound
+	}
+	res := map[string]any{
+		"fraud_case_id":    fc.FraudCaseID,
+		"signal_type":      fc.SignalType,
+		"risk_score":       fc.RiskScore,
+		"evidence":         fc.Evidence,
+		"financial_impact": fc.FinancialImpact,
+	}
+	return res, nil
+}
+
+// Jobs & Dead Letter Queue Tools
+
+// SeedBackgroundJob registers a background job for testing.
+func (s *Service) SeedBackgroundJob(job BackgroundJobRecord) (*BackgroundJobRecord, error) {
+	if !tenantdb.IsValidNonZeroUUID(job.JobID) {
+		return nil, ErrInvalidInput
+	}
+	now := s.Now()
+	if job.CreatedAt.IsZero() {
+		job.CreatedAt = now
+	}
+	job.UpdatedAt = now
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cp := job
+	s.backgroundJobs[job.JobID] = &cp
+	return &cp, nil
+}
+
+// SeedDLQItem registers a DLQ item for testing.
+func (s *Service) SeedDLQItem(item DLQItemRecord) (*DLQItemRecord, error) {
+	if !tenantdb.IsValidNonZeroUUID(item.DLQID) {
+		return nil, ErrInvalidInput
+	}
+	if item.CreatedAt.IsZero() {
+		item.CreatedAt = s.Now()
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cp := item
+	s.dlqItems[item.DLQID] = &cp
+	return &cp, nil
+}
+
+// ListBackgroundJobs returns background jobs filtered by queue and status.
+func (s *Service) ListBackgroundJobs(ctx context.Context, queueFilter, statusFilter string) ([]BackgroundJobRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var out []BackgroundJobRecord
+	for _, j := range s.backgroundJobs {
+		if queueFilter != "" && !strings.EqualFold(j.QueueName, queueFilter) {
+			continue
+		}
+		if statusFilter != "" && !strings.EqualFold(j.Status, statusFilter) {
+			continue
+		}
+		out = append(out, *j)
+	}
+	return out, nil
+}
+
+// PauseJob pauses a background job. Privileged boundary: Super Admin, Tech Admin.
+func (s *Service) PauseJob(ctx context.Context, jobID, reason, adminID string) (*BackgroundJobRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	admin, ok := s.adminsByID[adminID]
+	if !ok || admin.Status != "active" {
+		return nil, ErrInvalidAdminCredentials
+	}
+	if admin.AdminRole != "super_admin" && admin.AdminRole != "tech_admin" {
+		return nil, fmt.Errorf("%w: role %q cannot pause jobs", ErrPrivilegedRoleBoundaryViolation, admin.AdminRole)
+	}
+
+	job, exists := s.backgroundJobs[jobID]
+	if !exists {
+		return nil, ErrJobNotFound
+	}
+	job.Status = "paused"
+	job.UpdatedAt = s.Now()
+
+	s.auditLogs = append(s.auditLogs, InternalAuditLogRecord{
+		AuditID:    s.IDGenerator(),
+		AdminID:    adminID,
+		AdminRole:  admin.AdminRole,
+		Action:     "job.paused",
+		TargetType: "background_job",
+		TargetID:   jobID,
+		Reason:     reason,
+		CreatedAt:  s.Now(),
+	})
+
+	cp := *job
+	return &cp, nil
+}
+
+// RetryJob retries a background job.
+func (s *Service) RetryJob(ctx context.Context, jobID, adminID string) (*BackgroundJobRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	admin, ok := s.adminsByID[adminID]
+	if !ok || admin.Status != "active" {
+		return nil, ErrInvalidAdminCredentials
+	}
+	if admin.AdminRole != "super_admin" && admin.AdminRole != "tech_admin" {
+		return nil, fmt.Errorf("%w: role %q cannot retry jobs", ErrPrivilegedRoleBoundaryViolation, admin.AdminRole)
+	}
+
+	job, exists := s.backgroundJobs[jobID]
+	if !exists {
+		return nil, ErrJobNotFound
+	}
+	job.Status = "queued"
+	job.AttemptCount++
+	job.UpdatedAt = s.Now()
+
+	s.auditLogs = append(s.auditLogs, InternalAuditLogRecord{
+		AuditID:    s.IDGenerator(),
+		AdminID:    adminID,
+		AdminRole:  admin.AdminRole,
+		Action:     "job.retried",
+		TargetType: "background_job",
+		TargetID:   jobID,
+		Reason:     "Admin manual retry",
+		CreatedAt:  s.Now(),
+	})
+
+	cp := *job
+	return &cp, nil
+}
+
+// ListDLQItems lists dead letter queue items.
+func (s *Service) ListDLQItems(ctx context.Context, queueName, statusFilter string) ([]DLQItemRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var out []DLQItemRecord
+	for _, it := range s.dlqItems {
+		if queueName != "" && !strings.EqualFold(it.QueueName, queueName) {
+			continue
+		}
+		if statusFilter != "" && !strings.EqualFold(it.Status, statusFilter) {
+			continue
+		}
+		out = append(out, *it)
+	}
+	return out, nil
+}
+
+// RetryDLQItem retries a dead-letter queue message.
+func (s *Service) RetryDLQItem(ctx context.Context, dlqID, adminID string) (*DLQItemRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	admin, ok := s.adminsByID[adminID]
+	if !ok || admin.Status != "active" {
+		return nil, ErrInvalidAdminCredentials
+	}
+	if admin.AdminRole != "super_admin" && admin.AdminRole != "tech_admin" {
+		return nil, fmt.Errorf("%w: role %q cannot retry DLQ items", ErrPrivilegedRoleBoundaryViolation, admin.AdminRole)
+	}
+
+	it, exists := s.dlqItems[dlqID]
+	if !exists {
+		return nil, ErrDLQItemNotFound
+	}
+
+	now := s.Now()
+	it.Status = "retrying"
+	it.AttemptCount++
+	it.RetryHistory = append(it.RetryHistory, fmt.Sprintf("Retried by %s at %s", admin.Email, now.Format(time.RFC3339)))
+	it.ResolvedByAdminID = adminID
+
+	s.auditLogs = append(s.auditLogs, InternalAuditLogRecord{
+		AuditID:           s.IDGenerator(),
+		AdminID:           adminID,
+		AdminRole:         admin.AdminRole,
+		Action:            "dlq.retried",
+		TargetType:        "dead_letter_queue",
+		TargetID:          dlqID,
+		TargetWorkspaceID: it.WorkspaceID,
+		Reason:            "Manual DLQ retry executed",
+		CreatedAt:         now,
+	})
+
+	cp := *it
+	return &cp, nil
+}
+
+// PurgeDLQItem discards a dead-letter queue item with mandatory audit reason.
+func (s *Service) PurgeDLQItem(ctx context.Context, dlqID, reason, adminID string) (*DLQItemRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	admin, ok := s.adminsByID[adminID]
+	if !ok || admin.Status != "active" {
+		return nil, ErrInvalidAdminCredentials
+	}
+	if admin.AdminRole != "super_admin" && admin.AdminRole != "tech_admin" {
+		return nil, fmt.Errorf("%w: role %q cannot purge DLQ items", ErrPrivilegedRoleBoundaryViolation, admin.AdminRole)
+	}
+	if strings.TrimSpace(reason) == "" {
+		return nil, fmt.Errorf("%w: audit reason is required to purge a DLQ item", ErrInvalidInput)
+	}
+
+	it, exists := s.dlqItems[dlqID]
+	if !exists {
+		return nil, ErrDLQItemNotFound
+	}
+
+	now := s.Now()
+	it.Status = "purged"
+	it.ResolutionNotes = reason
+	it.ResolvedAt = &now
+	it.ResolvedByAdminID = adminID
+
+	s.auditLogs = append(s.auditLogs, InternalAuditLogRecord{
+		AuditID:           s.IDGenerator(),
+		AdminID:           adminID,
+		AdminRole:         admin.AdminRole,
+		Action:            "dlq.purged",
+		TargetType:        "dead_letter_queue",
+		TargetID:          dlqID,
+		TargetWorkspaceID: it.WorkspaceID,
+		Reason:            reason,
+		CreatedAt:         now,
+	})
+
+	cp := *it
+	return &cp, nil
+}
+
+// Analytics Tools — Technical Health Distinct from Business Metrics
+
+// GetOperationalHealth returns technical operational health metrics.
+// Invariant: This calculation never ingests or reflects commercial revenue or churn metrics.
+func (s *Service) GetOperationalHealth(ctx context.Context) (OperationalHealthRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cp := s.operationalHealth
+	cp.MaintenanceMode = s.maintenanceActive
+	activeKills := 0
+	for _, ff := range s.featureFlags {
+		if ff.IsKillSwitch && ff.Enabled {
+			activeKills++
+		}
+	}
+	cp.ActiveKillSwitches = int32(activeKills)
+	cp.GeneratedAt = s.Now()
+	return cp, nil
+}
+
+// SetOperationalHealth updates the operational health metrics.
+func (s *Service) SetOperationalHealth(health OperationalHealthRecord) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.operationalHealth = health
+}
+
+// GetBusinessMetrics returns commercial indicators (MRR, active workspaces, net revenue, churn rate).
+// Invariant: Business metrics never alter technical platform connector capabilities or operational health score.
+func (s *Service) GetBusinessMetrics(ctx context.Context) (BusinessMetricsRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cp := s.businessMetrics
+	cp.GeneratedAt = s.Now()
+	return cp, nil
+}
+
+// SetBusinessMetrics updates the business metrics.
+func (s *Service) SetBusinessMetrics(metrics BusinessMetricsRecord) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.businessMetrics = metrics
 }
 
 // AuditLogs returns a snapshot of recorded immutable internal admin audit logs.

@@ -408,3 +408,247 @@ export function isArticleStale(
     daysSinceReview: days
   };
 }
+
+export interface AppealReviewVerdict {
+  allowed: boolean;
+  errorCode: 'OK' | 'ADMIN_FORBIDDEN_001' | 'ADMIN_CONFLICT_001' | 'SAFE_FORBIDDEN_001';
+  falsePositiveCleared: boolean;
+  reason: string;
+}
+
+/**
+ * Evaluates an appeal review action under SAFE-2026-02 and EC-S26-002.
+ * Overturning a hard-block requires audited false-positive clearance with evidence reference.
+ */
+export function evaluateAppealReviewAction(params: {
+  adminRole: string;
+  adminLinkedUserId?: string;
+  appealedByUserId: string;
+  category: string;
+  resolution: 'upheld' | 'overturned';
+  resolutionNotes: string;
+  evidenceRef?: string;
+  falsePositiveJustification?: string;
+}): AppealReviewVerdict {
+  const role = params.adminRole.trim().toLowerCase();
+  if (role !== 'super_admin' && role !== 'content_admin') {
+    return {
+      allowed: false,
+      errorCode: 'ADMIN_FORBIDDEN_001',
+      falsePositiveCleared: false,
+      reason: `Vai trò ${params.adminRole} không có quyền xem xét kháng cáo kiểm duyệt.`
+    };
+  }
+
+  if (
+    params.adminLinkedUserId &&
+    params.appealedByUserId &&
+    params.adminLinkedUserId === params.appealedByUserId
+  ) {
+    return {
+      allowed: false,
+      errorCode: 'ADMIN_CONFLICT_001',
+      falsePositiveCleared: false,
+      reason:
+        'Xung đột lợi ích (EC-S26-002): Admin không được phép tự xử lý hồ sơ kháng cáo của chính mình.'
+    };
+  }
+
+  if (!params.resolutionNotes.trim()) {
+    return {
+      allowed: false,
+      errorCode: 'ADMIN_FORBIDDEN_001',
+      falsePositiveCleared: false,
+      reason: 'Bắt buộc nhập lý do và biên bản xử lý kháng cáo kiểm duyệt.'
+    };
+  }
+
+  const cat = params.category.trim().toLowerCase();
+  const isHardBlock = (HARD_BLOCK_MODERATION_CATEGORIES as readonly string[]).includes(cat);
+
+  if (params.resolution === 'overturned') {
+    if (isHardBlock) {
+      if (!params.evidenceRef?.trim() || !params.falsePositiveJustification?.trim()) {
+        return {
+          allowed: false,
+          errorCode: 'SAFE_FORBIDDEN_001',
+          falsePositiveCleared: false,
+          reason:
+            'SAFE-2026-02: Để gỡ bỏ hard-block (overturn), bắt buộc cung cấp bằng chứng minh bạch (evidenceRef) và giải trình sai lệch (falsePositiveJustification).'
+        };
+      }
+      return {
+        allowed: true,
+        errorCode: 'OK',
+        falsePositiveCleared: true,
+        reason:
+          'Đã gỡ bỏ khóa cứng (false-positive clearance) với đầy đủ bằng chứng kiểm toán được lưu bất biến.'
+      };
+    }
+    return {
+      allowed: true,
+      errorCode: 'OK',
+      falsePositiveCleared: false,
+      reason: 'Kháng cáo được chấp thuận (overturned) và ghi nhật ký kiểm toán bất biến.'
+    };
+  }
+
+  return {
+    allowed: true,
+    errorCode: 'OK',
+    falsePositiveCleared: false,
+    reason: 'Kháng cáo bị bác bỏ (upheld), quyết định kiểm duyệt ban đầu được giữ nguyên.'
+  };
+}
+
+export interface SupportTicketMessage {
+  id: string;
+  senderRole: string;
+  internalOnly: boolean;
+  content: string;
+}
+
+export interface SupportTicketAccessVerdict {
+  allowed: boolean;
+  canViewInternalNotes: boolean;
+  canAddInternalNote: boolean;
+  visibleMessages: SupportTicketMessage[];
+  reason: string;
+}
+
+/**
+ * Enforces internal notes isolation for Support Desk tickets.
+ * Internal notes are never visible or postable by workspace users / creators.
+ */
+export function evaluateSupportTicketAccess(params: {
+  callerRole: string;
+  isInternalAdmin: boolean;
+  messages: SupportTicketMessage[];
+}): SupportTicketAccessVerdict {
+  const role = params.callerRole.trim().toLowerCase();
+  const isPrivilegedSupport =
+    params.isInternalAdmin &&
+    (role === 'super_admin' || role === 'ops_admin' || role === 'support_admin');
+
+  if (isPrivilegedSupport) {
+    return {
+      allowed: true,
+      canViewInternalNotes: true,
+      canAddInternalNote: true,
+      visibleMessages: params.messages,
+      reason: `Cho phép Support Admin (${role}) xem và ghi chép ghi chú nội bộ.`
+    };
+  }
+
+  // Workspace caller or external viewer: internal notes are strictly stripped
+  const sanitizedMessages = params.messages.filter((m) => !m.internalOnly);
+  return {
+    allowed: true,
+    canViewInternalNotes: false,
+    canAddInternalNote: false,
+    visibleMessages: sanitizedMessages,
+    reason: 'Chế độ người dùng Workspace: ghi chú nội bộ bị ẩn hoàn toàn để bảo vệ an toàn thông tin.'
+  };
+}
+
+export interface OperationalHealthSeparationVerdict {
+  technicalScore: number;
+  technicalStatus: 'healthy' | 'degraded' | 'critical';
+  businessMetricsDecoupled: boolean;
+  coachingCount: number;
+  coachingCards: Array<{ id: string; rule: string; title: string; targetCta: string }>;
+  reason: string;
+}
+
+/**
+ * Enforces technical health score calculation strictly decoupled from commercial metrics (PRD §36B).
+ * Proactive coaching rules surface operational suggestions without mutating technical health scores.
+ */
+export function evaluateOperationalHealthSeparation(params: {
+  availabilityPct: number;
+  errorRatePct: number;
+  p95LatencyMs: number;
+  rateLimitUsagePct: number;
+  mrrCents: number;
+  activeWorkspaces: number;
+  churnRatePct: number;
+  coachingInputs?: {
+    shopResponseRatePct?: number;
+    listingQualityPct?: number;
+    delayedFulfillmentCount?: number;
+    engagementDropPct?: number;
+    connectorAuthExpiresInDays?: number;
+  };
+}): OperationalHealthSeparationVerdict {
+  // Pure technical composite score (0-100)
+  // Availability: 40 pts
+  const availPoints = Math.max(0, Math.min(40, (params.availabilityPct / 100) * 40));
+  // Error rate: 25 pts (0% errors = 25 pts, >= 5% errors = 0 pts)
+  const errPoints = Math.max(0, Math.min(25, 25 * (1 - params.errorRatePct / 5)));
+  // Latency: 20 pts (<= 200ms = 20 pts, >= 1000ms = 0 pts)
+  const latRatio = Math.max(0, Math.min(1, (params.p95LatencyMs - 200) / 800));
+  const latPoints = Math.max(0, Math.min(20, 20 * (1 - latRatio)));
+  // Rate limit: 15 pts (<= 80% usage = 15 pts, >= 100% usage = 0 pts)
+  const rateRatio = Math.max(0, Math.min(1, Math.max(0, params.rateLimitUsagePct - 80) / 20));
+  const ratePoints = Math.max(0, Math.min(15, 15 * (1 - rateRatio)));
+
+  const technicalScore = Math.round(availPoints + errPoints + latPoints + ratePoints);
+  const technicalStatus: 'healthy' | 'degraded' | 'critical' =
+    technicalScore >= 80 ? 'healthy' : technicalScore >= 50 ? 'degraded' : 'critical';
+
+  // Evaluate 5 PRD §36B proactive coaching cards
+  const cards: Array<{ id: string; rule: string; title: string; targetCta: string }> = [];
+  const ci = params.coachingInputs;
+  if (ci) {
+    if (ci.shopResponseRatePct !== undefined && ci.shopResponseRatePct < 90) {
+      cards.push({
+        id: 'coach-shop-response',
+        rule: 'shop_response_rate_low',
+        title: 'Tỷ lệ phản hồi tin nhắn thấp (<90%)',
+        targetCta: '/inbox'
+      });
+    }
+    if (ci.listingQualityPct !== undefined && ci.listingQualityPct < 80) {
+      cards.push({
+        id: 'coach-listing-quality',
+        rule: 'listing_quality_low',
+        title: 'Chất lượng danh sách sản phẩm chưa đạt chuẩn (<80%)',
+        targetCta: '/store'
+      });
+    }
+    if (ci.delayedFulfillmentCount !== undefined && ci.delayedFulfillmentCount > 0) {
+      cards.push({
+        id: 'coach-fulfillment-delay',
+        rule: 'fulfillment_delayed',
+        title: `Có ${ci.delayedFulfillmentCount} đơn hàng bị chậm xử lý quá 24h`,
+        targetCta: '/orders'
+      });
+    }
+    if (ci.engagementDropPct !== undefined && ci.engagementDropPct > 20) {
+      cards.push({
+        id: 'coach-engagement-drop',
+        rule: 'engagement_drop_detected',
+        title: `Tương tác giảm ${ci.engagementDropPct}% so với kỳ trước`,
+        targetCta: '/attribution'
+      });
+    }
+    if (ci.connectorAuthExpiresInDays !== undefined && ci.connectorAuthExpiresInDays <= 3) {
+      cards.push({
+        id: 'coach-connector-expiring',
+        rule: 'connector_auth_expiring_soon',
+        title: `Ủy quyền kênh kết nối sẽ hết hạn sau ${ci.connectorAuthExpiresInDays} ngày`,
+        targetCta: '/settings/connections'
+      });
+    }
+  }
+
+  return {
+    technicalScore,
+    technicalStatus,
+    businessMetricsDecoupled: true,
+    coachingCount: cards.length,
+    coachingCards: cards,
+    reason:
+      'Điểm kỹ thuật 0-100 được tính độc lập hoàn toàn với các chỉ số kinh doanh và gợi ý nâng cao năng lực.'
+  };
+}

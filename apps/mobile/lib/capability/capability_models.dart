@@ -224,3 +224,100 @@ int computeMobileCompositeHealthScore({
       (rateLimitScore.clamp(0, 100) * 0.15);
   return weighted.round().clamp(0, 100);
 }
+
+/// PRD §36B proactive capability coaching card representation on Mobile.
+class MobileProactiveCoachingCard {
+  const MobileProactiveCoachingCard({
+    required this.id,
+    required this.rule,
+    required this.severity,
+    required this.titleVi,
+    required this.summaryVi,
+    required this.actionCta,
+  });
+
+  final String id;
+  final String rule;
+  final String severity;
+  final String titleVi;
+  final String summaryVi;
+  final String actionCta;
+}
+
+/// Evaluates 5 PRD §36B proactive coaching cards for Mobile.
+/// Invariant: Coaching suggestions NEVER modify the composite technical health score
+/// or grant capability execution bypasses.
+List<MobileProactiveCoachingCard> evaluateMobileProactiveCoaching({
+  double? shopResponseRatePct,
+  double? listingQualityPct,
+  int? delayedFulfillmentCount,
+  double? engagementDropPct,
+  int? connectorAuthExpiresInDays,
+}) {
+  final cards = <MobileProactiveCoachingCard>[];
+
+  if (shopResponseRatePct != null && shopResponseRatePct < 90.0) {
+    cards.add(const MobileProactiveCoachingCard(
+      id: 'coach-shop-response',
+      rule: 'shop_response_rate_low',
+      severity: 'medium',
+      titleVi: 'Tỷ lệ phản hồi tin nhắn khách hàng thấp (<90%)',
+      summaryVi:
+          'Tỷ lệ phản hồi khách hàng trong 15 phút thấp. Khách hàng dễ hủy đơn nếu không được hỗ trợ kịp thời.',
+      actionCta: '/inbox',
+    ));
+  }
+
+  if (listingQualityPct != null && listingQualityPct < 80.0) {
+    cards.add(const MobileProactiveCoachingCard(
+      id: 'coach-listing-quality',
+      rule: 'listing_quality_low',
+      severity: 'medium',
+      titleVi: 'Chất lượng danh sách sản phẩm chưa đạt chuẩn (<80%)',
+      summaryVi:
+          'Thiếu video mô tả hoặc hình ảnh chưa chuẩn kích thước sàn. Cải thiện để tăng tỷ lệ chuyển đổi.',
+      actionCta: '/store',
+    ));
+  }
+
+  if (delayedFulfillmentCount != null && delayedFulfillmentCount > 0) {
+    cards.add(MobileProactiveCoachingCard(
+      id: 'coach-fulfillment-delay',
+      rule: 'fulfillment_delayed',
+      severity: 'high',
+      titleVi: 'Có $delayedFulfillmentCount đơn hàng bị chậm xử lý quá 24h',
+      summaryVi:
+          'Đơn hàng tồn đọng quá 24h có nguy cơ bị sàn phạt hoặc người mua hủy đơn tự động.',
+      actionCta: '/orders',
+    ));
+  }
+
+  if (engagementDropPct != null && engagementDropPct > 20.0) {
+    cards.add(MobileProactiveCoachingCard(
+      id: 'coach-engagement-drop',
+      rule: 'engagement_drop_detected',
+      severity: 'medium',
+      titleVi: 'Tương tác giảm ${engagementDropPct.round()}% so với kỳ trước',
+      summaryVi:
+          'Lượng xem hoặc tương tác giảm hơn 20% so với tuần trước. Hãy áp dụng mẫu nội dung thịnh hành.',
+      actionCta: '/attribution',
+    ));
+  }
+
+  if (connectorAuthExpiresInDays != null &&
+      connectorAuthExpiresInDays <= 3 &&
+      connectorAuthExpiresInDays >= 0) {
+    cards.add(MobileProactiveCoachingCard(
+      id: 'coach-connector-expiring',
+      rule: 'connector_auth_expiring_soon',
+      severity: 'high',
+      titleVi:
+          'Ủy quyền kênh kết nối sẽ hết hạn sau $connectorAuthExpiresInDays ngày',
+      summaryVi:
+          'Phiên kết nối mạng xã hội/sàn TMĐT sẽ hết hạn trong vòng 3 ngày tới. Cần gia hạn ngay để không gián đoạn xuất bản.',
+      actionCta: '/settings/connections',
+    ));
+  }
+
+  return cards;
+}

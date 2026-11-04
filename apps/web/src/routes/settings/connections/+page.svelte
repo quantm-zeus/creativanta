@@ -14,12 +14,28 @@
   let rateLimitRemainingPct = $state(42);
   let scopeInput = $state('video.publish, video.upload, user.info.basic');
 
+  // P8-03 PRD §36B Proactive Coaching Input Signals
+  let shopResponseRateNumerator = $state(82);
+  let shopResponseRateDenom = $state(100);
+  let listingQualityNumerator = $state(74);
+  let listingQualityDenom = $state(100);
+  let delayedFulfillmentCount = $state(3);
+  let engagementDropPct = $state(26);
+  let connectorAuthExpiresInDays = $state(2);
+
   const healthSummary = $derived(
     computeCompositeHealthScore({
       availabilityPct,
       errorRatePct,
       latencyP95Ms,
-      rateLimitRemainingPct
+      rateLimitRemainingPct,
+      shopResponseRateNumerator,
+      shopResponseRateDenom,
+      listingQualityNumerator,
+      listingQualityDenom,
+      delayedFulfillmentCount,
+      engagementDropPct,
+      connectorAuthExpiresInDays
     })
   );
 
@@ -166,4 +182,48 @@
       </div>
     </div>
   </div>
+
+  {#if healthSummary.proactiveCoachingCards.length > 0}
+    <div class="mt-8 rounded-2xl border border-[#e8e5dc] bg-white p-6">
+      <div class="flex items-center justify-between border-b border-[#eeeae0] pb-4">
+        <div>
+          <h2 class="text-base font-bold text-[#242924]">
+            Huấn luyện Năng lực Chủ động (PRD §36B Proactive Coaching)
+          </h2>
+          <p class="mt-1 text-xs text-[#5d635b]">
+            Hệ thống phát hiện {healthSummary.proactiveCoachingCards.length} cơ hội cải thiện năng lực kinh doanh &amp; vận hành.
+            Các thẻ gợi ý này hoàn toàn độc lập với điểm kỹ thuật 40/25/20/15.
+          </p>
+        </div>
+        <span class="rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 text-xs font-bold text-indigo-700">
+          {healthSummary.proactiveCoachingCards.length} THẺ HUẤN LUYỆN
+        </span>
+      </div>
+
+      <div class="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {#each healthSummary.proactiveCoachingCards as card (card.id)}
+          <div class="rounded-xl border border-[#e8e5dc] bg-[#faf8f2] p-4 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono uppercase tracking-wider text-slate-500">{card.rule}</span>
+                <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded {card.severity === 'high' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}">
+                  {card.severity}
+                </span>
+              </div>
+              <h3 class="mt-2 text-sm font-bold text-[#242924]">{card.title}</h3>
+              <p class="mt-1 text-xs leading-5 text-[#5d635b]">{card.summary}</p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-[#eeeae0] flex justify-end">
+              <a
+                href={card.actionCta}
+                class="rounded-lg bg-[#242924] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#3f463f]"
+              >
+                Khắc phục ngay ({card.actionCta}) →
+              </a>
+            </div>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {/if}
 </div>

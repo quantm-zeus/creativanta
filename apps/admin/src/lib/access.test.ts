@@ -4,9 +4,12 @@ import {
   CANONICAL_WORKSPACE_ROLES,
   canAccessAdmin,
   evaluateAdminListenerAccess,
+  evaluateAppealReviewAction,
   evaluateImpersonationAction,
   evaluateKillSwitchToggle,
   evaluateModerationDecision,
+  evaluateOperationalHealthSeparation,
+  evaluateSupportTicketAccess,
   evaluateKBAdminAccess,
   isArticleStale,
   type VerifiedAdminSession
@@ -205,5 +208,138 @@ describe('P0-01 / P0-07 Internal Admin Isolation, Impersonation, Moderation & Ki
     expect(isArticleStale(freshIso, nowMs).isStale).toBe(false);
     expect(isArticleStale(staleIso, nowMs).isStale).toBe(true);
     expect(isArticleStale(staleIso, nowMs).daysSinceReview).toBe(95);
+  });
+
+  it('enforces P8-03 moderation appeal audit and SAFE-2026-02 false-positive clearance rules', () => {
+    // 1. Role boundary: ops_admin cannot review moderation appeals
+    const unauthorized = evaluateAppealReviewAction({
+      adminRole: 'ops_admin',
+      appealedByUserId: 'user-app-1',
+      category: 'medical_claim_warning',
+      resolution: 'overturned',
+      resolutionNotes: 'Approved'
+    });
+    expect(unauthorized.allowed).toBe(false);
+    expect(unauthorized.errorCode).toBe('ADMIN_FORBIDDEN_001');
+
+    // 2. Conflict of interest EC-S26-002: admin cannot review their own appeal
+    const conflict = evaluateAppealReviewAction({
+      adminRole: 'content_admin',
+      adminLinkedUserId: 'user-admin-1',
+      appealedByUserId: 'user-admin-1',
+      category: 'medical_claim_warning',
+      resolution: 'overturned',
+      resolutionNotes: 'Self appeal'
+    });
+    expect(conflict.allowed).toBe(false);
+    expect(conflict.errorCode).toBe('ADMIN_CONFLICT_001');
+
+    // 3. SAFE-2026-02: Overturning hard-block requires evidenceRef and falsePositiveJustification
+    const hardBlockWithoutEvidence = evaluateAppealReviewAction({
+      adminRole: 'content_admin',
+      adminLinkedUserId: 'user-admin-2',
+      appealedByUserId: 'user-app-1',
+      category: 'phishing_malware',
+      resolution: 'overturned',
+      resolutionNotes: 'User said it was fine'
+    });
+    expect(hardBlockWithoutEvidence.allowed).toBe(false);
+    expect(hardBlockWithoutEvidence.errorCode).toBe('SAFE_FORBIDDEN_001');
+
+    // 4. Overturning hard-block with complete false-positive clearance evidence succeeds
+    const validOverturnHardBlock = evaluateAppealReviewAction({
+      adminRole: 'content_admin',
+      adminLinkedUserId: 'user-admin-2',
+      appealedByUserId: 'user-app-1',
+      category: 'phishing_malware',
+      resolution: 'overturned',
+      resolutionNotes: 'Audited external domain validation report confirms legitimate partner checkout portal',
+      evidenceRef: 'https://security.creativanta.internal/ev/FP-2026-8812.pdf',
+      falsePositiveJustification: 'Vendor domain was mistakenly flagged by upstream heuristic signature #4092'
+    });
+    expect(validOverturnHardBlock.allowed).toBe(true);
+    expect(validOverturnHardBlock.falsePositiveCleared).toBe(true);
+
+    // 5. Normal appeal upheld
+    const validUpheld = evaluateAppealReviewAction({
+      adminRole: 'super_admin',
+      appealedByUserId: 'user-app-1',
+      category: 'unlicensed_rights_violation',
+      resolution: 'upheld',
+      resolutionNotes: 'Confirmed copyright infringement on uploaded audio asset'
+    });
+    expect(validUpheld.allowed).toBe(true);
+    expect(validUpheld.falsePositiveCleared).toBe(false);
+  });
+
+  it('enforces P8-03 Support Desk internal note isolation from workspace roles', () => {
+    const messages = [
+      { id: 'm-1', senderRole: 'customer', internalOnly: false, content: 'Cannot connect TikTok shop' },
+      { id: 'm-2', senderRole: 'support_admin', internalOnly: true, content: 'User token revoked due to suspected replay attack. Escalating to tech admin.' },
+      { id: 'm-3', senderRole: 'support_admin', internalOnly: false, content: 'We are investigating your connection issue.' }
+    ];
+
+    // Workspace owner caller: internal note is stripped completely
+    const workspaceView = evaluateSupportTicketAccess({
+      callerRole: 'owner',
+      isInternalAdmin: false,
+      messages
+    });
+    expect(workspaceView.canViewInternalNotes).toBe(false);
+    expect(workspaceView.canAddInternalNote).toBe(false);
+    expect(workspaceView.visibleMessages).toHaveLength(2);
+    expect(workspaceView.visibleMessages.some((m) => m.internalOnly)).toBe(false);
+
+    // Support admin caller: sees all messages including internal note
+    const adminView = evaluateSupportTicketAccess({
+      callerRole: 'support_admin',
+      isInternalAdmin: true,
+      messages
+    });
+    expect(adminView.canViewInternalNotes).toBe(true);
+    expect(adminView.canAddInternalNote).toBe(true);
+    expect(adminView.visibleMessages).toHaveLength(3);
+    expect(adminView.visibleMessages.some((m) => m.internalOnly)).toBe(true);
+  });
+
+  it('enforces technical health score separation from business metrics and evaluates 5 proactive coaching rules', () => {
+    const verdict = evaluateOperationalHealthSeparation({
+      availabilityPct: 99.9,
+      errorRatePct: 0.1,
+      p95LatencyMs: 150,
+      rateLimitUsagePct: 65,
+      mrrCents: 12500000,
+      activeWorkspaces: 850,
+      churnRatePct: 1.2,
+      coachingInputs: {
+        shopResponseRatePct: 82, // triggers rule 1 (< 90%)
+        listingQualityPct: 75,   // triggers rule 2 (< 80%)
+        delayedFulfillmentCount: 3, // triggers rule 3 (> 0)
+        engagementDropPct: 28,  // triggers rule 4 (> 20%)
+        connectorAuthExpiresInDays: 2 // triggers rule 5 (<= 3 days)
+      }
+    });
+
+    // Technical score is healthy and near maximum
+    expect(verdict.technicalScore).toBeGreaterThanOrEqual(95);
+    expect(verdict.technicalStatus).toBe('healthy');
+    expect(verdict.businessMetricsDecoupled).toBe(true);
+
+    // All 5 PRD §36B proactive coaching cards are generated
+    expect(verdict.coachingCount).toBe(5);
+    expect(verdict.coachingCards.map((c) => c.rule)).toEqual([
+      'shop_response_rate_low',
+      'listing_quality_low',
+      'fulfillment_delayed',
+      'engagement_drop_detected',
+      'connector_auth_expiring_soon'
+    ]);
+    expect(verdict.coachingCards.map((c) => c.targetCta)).toEqual([
+      '/inbox',
+      '/store',
+      '/orders',
+      '/attribution',
+      '/settings/connections'
+    ]);
   });
 });
