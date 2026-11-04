@@ -39,6 +39,10 @@ func NewService(store Store, sink EventSink, clock func() time.Time) *Service {
 	}
 }
 
+func (s *Service) Store() Store {
+	return s.store
+}
+
 func (s *Service) emitEvent(ctx context.Context, eventType, aggregateType, aggregateID, workspaceID string, payload any) {
 	if s.eventSink == nil {
 		return
@@ -194,6 +198,9 @@ func (s *Service) FulfillReservation(
 			}
 
 			if r.Status != ResHeld {
+				if r.Status == ResExpired {
+					return fmt.Errorf("%w: reservation %s in status expired", ErrReservationExpired, r.ReservationID)
+				}
 				return fmt.Errorf("%w: reservation %s in status %s", ErrReservationConflict, r.ReservationID, r.Status)
 			}
 

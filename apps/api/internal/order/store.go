@@ -37,6 +37,7 @@ type Store interface {
 	FindOrderByExternalID(ctx context.Context, workspaceID, platform, externalOrderID, connectedAccountID string) (*Order, error)
 	FindOrderByImportFingerprint(ctx context.Context, workspaceID, fingerprint string) (*Order, error)
 	UpdateOrderStatus(ctx context.Context, workspaceID, orderID string, state LifecycleState, refundedAmount *tenantdb.ExactDecimal) error
+	UpdateOrder(ctx context.Context, o *Order) error
 	ListOrders(ctx context.Context, workspaceID string, filter OrderFilter, limit, offset int) ([]*Order, int64, error)
 
 	CreateRefund(ctx context.Context, r *Refund) error
@@ -203,6 +204,23 @@ func (m *MemoryStore) UpdateOrderStatus(_ context.Context, workspaceID, orderID 
 		o.Metadata["refunded_amount"] = refundedAmount.Fixed6String()
 	}
 	o.UpdatedAt = time.Now().UTC()
+	return nil
+}
+
+func (m *MemoryStore) UpdateOrder(_ context.Context, o *Order) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	key := o.WorkspaceID + ":" + o.OrderID
+	if _, exists := m.orders[key]; !exists {
+		return ErrOrderNotFound
+	}
+	if o.Metadata == nil {
+		o.Metadata = make(map[string]any)
+	}
+	o.Metadata["refunded_amount"] = o.RefundedAmount.Fixed6String()
+	o.UpdatedAt = time.Now().UTC()
+	m.orders[key] = cloneOrder(o)
 	return nil
 }
 
@@ -621,6 +639,49 @@ func (s *PostgresStore) UpdateOrderStatus(ctx context.Context, workspaceID, orde
 	}
 
 	tag, err := s.pool.Exec(ctx, q, args...)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrOrderNotFound
+	}
+	return nil
+}
+
+func (s *PostgresStore) UpdateOrder(ctx context.Context, o *Order) error {
+	feeJSON, err := json.Marshal(o.FeeBreakdown)
+	if err != nil {
+		feeJSON = []byte("{}")
+	}
+	itemsJSON, err := json.Marshal(o.Items)
+	if err != nil {
+		itemsJSON = []byte("[]")
+	}
+	metaJSON, err := json.Marshal(o.Metadata)
+	if err != nil {
+		metaJSON = []byte("{}")
+	}
+
+	const q = `
+		UPDATE orders
+		SET lifecycle_state = $1,
+		    fee_breakdown = $2,
+		    items = $3,
+		    amount = $4,
+		    metadata = jsonb_set(COALESCE($5::jsonb, '{}'::jsonb), '{refunded_amount}', to_jsonb($6::text)),
+		    updated_at = NOW()
+		WHERE workspace_id = $7 AND order_id = $8 AND deleted_at IS NULL;
+	`
+	tag, err := s.pool.Exec(ctx, q,
+		string(o.LifecycleState),
+		feeJSON,
+		itemsJSON,
+		o.Amount.ToPgNumeric(),
+		metaJSON,
+		o.RefundedAmount.Fixed6String(),
+		o.WorkspaceID,
+		o.OrderID,
+	)
 	if err != nil {
 		return err
 	}

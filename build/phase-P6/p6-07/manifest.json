@@ -1,0 +1,117 @@
+{
+  "task_id": "P6-07",
+  "phase": "P6",
+  "slice": "p6-07",
+  "title": "Fulfillment/refund and finance adapters",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "c838e04f4080bc08962f1b2ba3b537a7057ee8a9",
+  "feature_refs": [
+    "docs/02_features/commerce/product_hub.md",
+    "docs/02_features/finance/operating_ledger.md",
+    "docs/04_contracts/inventory_computation_contract.md",
+    "docs/04_contracts/financial_computation_contract.md",
+    "docs/04_contracts/connector_specs.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md"
+  ],
+  "requirement_ids": [
+    "RULE-M13-001",
+    "RULE-M13-002",
+    "RULE-M13-003",
+    "RULE-M13-004",
+    "RULE-M13-005",
+    "RULE-M13-006",
+    "RULE-M19-001",
+    "RULE-M19-002",
+    "RULE-M19-003",
+    "RULE-M19-004",
+    "RULE-M19-005",
+    "RULE-M19-006",
+    "I01",
+    "I02",
+    "I03",
+    "I04",
+    "I05",
+    "I06",
+    "I07",
+    "I08",
+    "I09",
+    "I10",
+    "F01",
+    "F02",
+    "F03",
+    "F04",
+    "F05",
+    "F06",
+    "F07",
+    "F08",
+    "F09"
+  ],
+  "source_files": {
+    "apps/api/internal/order/model.go": "73831f11c221f2e00571ca4e6203182abc5eb78464a2615d52ed5eec434b3349",
+    "apps/api/internal/order/store.go": "d370be03e4ae822d64786e997b42a691fc8d206125b80e949d05d0fe82c6b07a",
+    "apps/api/internal/order/service.go": "c002bd2f39c1840331e91ad69ea17933496ba8a9d72e9e0cf561f8c5076182f5",
+    "apps/api/internal/inventory/service.go": "6bec803a515ca6560f364760f4531e182ad3cd0f0efce1360c82e04026c8d90c",
+    "apps/api/internal/finance/service.go": "1a6b1d2b4bf2e0ea097dd9f8fd9782e5ba50a65eaed8c4d57830011c1d988425",
+    "apps/api/internal/commerceadapter/types.go": "305654a4b221f265190f6f7b626497dbb549087728ee2bdb8963fd53a8a91948",
+    "apps/api/internal/commerceadapter/service.go": "3c90f3fd179433799337f488ee13e24fbdb5a813c12a79c169d899b19c02ee14",
+    "apps/api/internal/commerceadapter/tiktok.go": "15d64f487090da6eb397556605b71a3ba7a9fccb8dc9fc68be0e00afd0a6d8a5",
+    "apps/api/internal/commerceadapter/shopee.go": "3f2aeca65001632e5d0a6a409d2e13f5ee34b35dfadc0a278f89c2d6a0cbf1b2",
+    "apps/api/internal/commerceadapter/lazada.go": "5634eaef72638fca5a529e0a8c5ad288ec6af2f3831e1ce745d6defd63e92e4d",
+    "apps/api/internal/commerceadapter/stripe.go": "3eea88e031434e1b9ec166aca3f79d13f650ec3719c7594233a99f1d7257dbb0",
+    "apps/api/internal/commerceadapter/adapters_test.go": "fb3e9e5317d7a7c460f06ac643ae5284d958e9cd37ea6d751873647c0dba4126",
+    "apps/api/internal/commerceadapter/correcting_fees_test.go": "705a7520952623de8e397ebb6cd96f6a3e4b934ddc9076cc441dd1b7270888c7",
+    "apps/api/internal/commerceadapter/no_double_refund_restock_test.go": "dfef1cdb73c724082ff691c9db060dccef609fae92520483b45a89c76856fa8b",
+    "apps/api/internal/commerceadapter/payment_races_test.go": "4246e01533a54675a0db0f50374383f31dae5852a0d0e99070ce210f04543fe6",
+    "apps/web/src/lib/commerce/fulfillment_adapters.ts": "28bc19bf6b3add52998e25cfa398c866d179b11b01e53d0f7760de35b6ae8ff8",
+    "apps/web/src/lib/commerce/fulfillment_adapters.test.ts": "32415681f0560d5ae5e3023683e560fd035e8baf3e132cfc81491f7390b121d7",
+    "apps/web/src/lib/commerce/index.ts": "0808fa044619cd91d4ddecfa8a57a68345b360b3359c34803a5a585ddbf0c846",
+    "apps/mobile/lib/commerce/fulfillment_adapter_models.dart": "53df4e41d6b8fb59136c29f49ff50725b67c28e197fbe8a985623a253808066e",
+    "apps/mobile/test/fulfillment_adapters_acceptance_test.dart": "0eb48a3913c798c2283468715a2b1c00fc573c47b22c9832eee0922b72bf55a9"
+  },
+  "scope_items": [
+    "Acceptance Target 1 (I01–I10 plus payment races): Built adapters for TikTok Shop, Shopee, Lazada, and Stripe with HMAC-SHA256 signature verification, webhook ingestion, returns, refunds, settlements, and polling delta computation. Handled reservation expiry racing payment confirmation with late recovery when sellable stock exists and fail-closed rejection when stock is exhausted, preventing overselling. Concurrent payment webhooks execute idempotently with atomic row locking.",
+    "Acceptance Target 2 (Correcting fees preserve proof - F06): Built UpdateFeeBreakdown and RecordOrderCorrection appending reversal postings pointing to previous posting IDs via reversal_of, followed by v2 corrected fee postings. Gross revenue remains immutable while fee modifications update net profit in the M19 Operating Ledger.",
+    "Acceptance Target 3 (No double refund/restock): Enforced physical return and money refund orthogonality (RULE-M13-006). Validated cumulative returned quantity <= purchased line quantity and cumulative refund <= captured order amount. Idempotent return receipt and refund approval replay without duplicate inventory movements or ledger postings.",
+    "Web & Mobile Support: Built TypeScript and Dart client models, exact micros decimal arithmetic, boundary validators, platform capability evaluators, and polling delta helpers."
+  ],
+  "verified_sub_slices": [
+    "Commerce Adapters Suite Verified: 11 tests in internal/commerceadapter (TestTikTokAdapter_OrderReturnRefundSettlement, TestShopeeAdapter_OrderAndReturn, TestLazadaAdapter_OrderAndReturn, TestStripeAdapter_PaymentIntentAndRefund, TestPlatformStockSync_DeltaCalculation, TestPlatformCapability_VerifiedVsManualFallback, TestTarget2_CorrectingFeesPreserveProof, TestTarget3_NoDoubleRefundOrRestock, TestPaymentRace_ExpiryRacesPaymentConfirmation, TestPaymentRace_LatePaymentRecoveryStockAvailable, TestPaymentRace_LatePaymentFailsWhenStockExhausted, TestPaymentRace_ConcurrentWebhooksIdempotent, TestPaymentRace_PaymentRacesCancellation) pass with -race.",
+    "Order, Inventory, and Finance Suites Verified: Full test suite in internal/order, internal/inventory (including I01-I10), and internal/finance (including F01-F09) pass with -race.",
+    "Go Code Quality: gofmt -w and go vet ./internal/... executed cleanly with 0 errors.",
+    "Web Client Suite Verified: Vitest web test suite passes with 38 test files and 314 tests passing, including fulfillment_adapters.test.ts (11 tests). svelte-check passes with 0 errors, 0 warnings. vite build passes cleanly.",
+    "Mobile Client Suite Verified: flutter test passes fulfillment_adapters_acceptance_test.dart (5 test cases). flutter analyze reports 0 issues.",
+    "Documentation Invariants: python3 tooling/check_docs.py reports PASS across all 337 active markdown files, 165 tables, 140 tenant tables, 1188 rpc bindings, and 60 build tasks."
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "PostgreSQL RLS suite executes in GitHub CI against live multi-tenant cluster."
+    ],
+    [
+      "EXT-GATE-PLATFORM-TIKTOK-PARTNER",
+      "PENDING_EXTERNAL_PROVIDER_APPROVAL",
+      "Direct TikTok Shop API integration uses partner app credentials; HMAC-SHA256 signature verification and payload mappers verified locally."
+    ],
+    [
+      "EXT-GATE-PLATFORM-SHOPEE-PARTNER",
+      "PENDING_EXTERNAL_PROVIDER_APPROVAL",
+      "Direct Shopee Open Platform integration uses partner app credentials; HMAC-SHA256 signature verification and payload mappers verified locally."
+    ],
+    [
+      "EXT-GATE-PLATFORM-LAZADA-PARTNER",
+      "PENDING_EXTERNAL_PROVIDER_APPROVAL",
+      "Direct Lazada Open Platform integration uses app credentials; HMAC-SHA256 signature verification and payload mappers verified locally."
+    ],
+    [
+      "EXT-GATE-PLATFORM-STRIPE-LIVE",
+      "PENDING_EXTERNAL_PROVIDER_APPROVAL",
+      "Live Stripe webhook ingestion uses live endpoint secrets; timestamped HMAC-SHA256 signature verification verified locally."
+    ]
+  ]
+}
