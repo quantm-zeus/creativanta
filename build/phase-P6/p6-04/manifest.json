@@ -6,7 +6,7 @@
   "status": "LOCAL_IMPLEMENTED",
   "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
   "acceptance_status": "PENDING",
-  "baseline_commit": "2ce30cdb1ab493146da48615e30f4a9c6d6ec8a7",
+  "baseline_commit": "0e7e85718dfad973dcf06c3a165df9d43ecbb8df",
   "feature_refs": [
     "docs/02_features/commerce/creator_pro_tools.md",
     "docs/02_features/commerce/affiliate_network.md",
@@ -65,15 +65,15 @@
     "S16-2f6ce428f755-001"
   ],
   "source_files": {
-    "infra/migrations/00032_p6_04_creator_pro_link_in_bio_media_kits_deals.sql": "a55da2d80cd421f4eb592129960c1d8a5d26f99280d64fc034f87c428fa515c3",
+    "infra/migrations/00033_p6_04_creator_pro_link_in_bio_media_kits_deals.sql": "a55da2d80cd421f4eb592129960c1d8a5d26f99280d64fc034f87c428fa515c3",
     "protos/creativanta/commerce/v1/creator_pro.proto": "850ed53f9f18720b1798743c8fc1adc4591f97a0a65fead1fa1b64c377c3ad7a",
     "apps/api/internal/creatorpro/errors.go": "5a93669145ea5f35d459d3a3b730c08ad3ff1edd972b41ea35643a0d4e669dc2",
     "apps/api/internal/creatorpro/handler.go": "d48d1676d149933da24bd0a215ea4cc5a6bbd1b27a7bfd47939b14841635d5cc",
     "apps/api/internal/creatorpro/handler_test.go": "393d75e36a58b9324a4dc9136429b013082d532eaee791e787412640b7114b81",
-    "apps/api/internal/creatorpro/model.go": "8a0af7d18edf4397f0e295b80a25a936b246e54dce67cff80d2ed1ab2f78b21f",
+    "apps/api/internal/creatorpro/model.go": "e9d8cc5dbd916c0021af9d679437ba9d5258ec6f565e317797a0ab842f35f529",
     "apps/api/internal/creatorpro/service.go": "c6b441f6e93450b74c55149b11cbe1a1386477e2973d9d7bf72fc568b298b9ec",
     "apps/api/internal/creatorpro/service_test.go": "a1b18566a72e9feffd5b72eaca208b05e3bd526a7978f0d64fbae04e75b48092",
-    "apps/api/internal/creatorpro/store.go": "0f53cb477271ecff2531f25b2d591322f947ca4fe0bdc477b935968beb8cf6c3",
+    "apps/api/internal/creatorpro/store.go": "60c6a415f4e5b7f53c082c06dfb5219d7f5eb234043eed644b715383a7164f24",
     "apps/web/src/lib/commerce/creator_pro.ts": "2dafe93e7573a7f870a6b49a15910dbfa0de5abd8e3fc2fe16d84abc6c235826",
     "apps/web/src/lib/commerce/creator_pro.test.ts": "bedfcd690be4842c5f1d44b3135236663ed26db277c1da255040807156c89db8",
     "apps/web/src/routes/creator-pro/+page.svelte": "25c42ae73494113ceebafcc3cfb99614eaf5e1a032007de6ed2f92c802348152",
@@ -82,7 +82,7 @@
     "apps/mobile/test/creator_pro_acceptance_test.dart": "03ef3c20c3a67faa21cc23d0638faf38d451f977ffe1d739a1d8421ff85f9c72"
   },
   "scope_items": [
-    "Database Migration 00032: Created link_in_bio_pages, link_items, media_kits, rate_cards, rate_card_items, brand_deals tables with composite tenant keys (uq_*_tenant_pk), tenant foreign keys, strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY), check constraints, and role-based app_user/admin_user grants.",
+    "Database Migration 00033: Created link_in_bio_pages, link_items, media_kits, rate_cards, rate_card_items, brand_deals tables with composite tenant keys (uq_*_tenant_pk), tenant foreign keys, strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY), check constraints, and role-based app_user/admin_user grants.",
     "Acceptance Target 1 (Canonical deal lifecycle): Implemented canonical 6-state progression (negotiating -> agreed -> in_progress -> delivered -> paid -> completed) plus cancellation. Skipping states is rejected. Cancellation requires a non-empty reason. Cancelling after paid status strictly requires audited financial reversal confirmation. Completed deals are strictly terminal. Sponsor inquiries convert smoothly into canonical negotiating brand deals.",
     "Acceptance Target 2 (Phishing cannot be acknowledged away): Link security engine scans all URL destinations against threat intelligence. Any confirmed phishing or malware URL is hard-blocked from being published or set active; no creator AUP acknowledgment can override or publish a phishing URL. Enforced daily creation throttle of max 20 links/day/workspace with audit event logging.",
     "Acceptance Target 3 (Zero-view RPM undefined): Revenue Per Content RPM calculation strictly returns undefined/null when views == 0 rather than false 0.0 or NaN. Evaluates RPM trend comparisons with >20% decline trigger alerts. Rolls up derivative performance to source content accurately.",
@@ -94,7 +94,7 @@
     "Acceptance Target 2 Verified: TestAcceptanceTarget2_PhishingCannotBeAcknowledgedAway and TestAcceptanceTarget2_DailyLinkThrottle in Go (-race), Vitest creator_pro.test.ts, and Flutter creator_pro_acceptance_test.dart confirm non-overridable phishing publishing blocks and daily 20-link workspace throttles.",
     "Acceptance Target 3 Verified: TestAcceptanceTarget3_ZeroViewRPMUndefined and TestAcceptanceTarget3_RPMTrendAndDropAlert in Go (-race), Vitest creator_pro.test.ts, and Flutter creator_pro_acceptance_test.dart confirm RPM undefined when views=0, derivative roll-up, and >20% decline notification alerts.",
     "Acceptance Target 4 Verified: TestAcceptanceTarget4_AllSixModesCanReachEntitledTools in Go (-race), Vitest creator_pro.test.ts, and Flutter creator_pro_acceptance_test.dart confirm that all six operator modes can access entitled tools without artificial dead ends.",
-    "Migration 00032 Verified: TestLoadAndValidateCanonicalP004Migration and TestUpStatusDownTransactionalBehavior in migrator_test.go verify clean up, status check, and down rollback for all 32 migrations.",
+    "Migration 00033 Verified: TestLoadAndValidateCanonicalP004Migration and TestUpStatusDownTransactionalBehavior in migrator_test.go verify clean up, status check, and down rollback for all 33 migrations.",
     "Proto Codegen & Static Invariants: Buf lint and verify mode pass with 0 drift across Go, TS, and Dart. TypeScript shared types compile cleanly without emit errors.",
     "Web & Mobile Quality Gates: Svelte-check found 0 errors and 0 warnings, Vite production build succeeded, SSR smoke passed all routes including /creator-pro (HTTP 200), Flutter analyze found 0 issues, and all Flutter tests passed."
   ],
@@ -148,7 +148,7 @@
     "TaxReportService/ExportTaxReport"
   ],
   "migration_files": [
-    "infra/migrations/00032_p6_04_creator_pro_link_in_bio_media_kits_deals.sql"
+    "infra/migrations/00033_p6_04_creator_pro_link_in_bio_media_kits_deals.sql"
   ],
   "permission_keys": [
     "link_in_bio:manage",

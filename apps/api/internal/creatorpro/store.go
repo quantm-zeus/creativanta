@@ -542,6 +542,9 @@ func (m *MemoryStore) SaveContentMetric(ctx context.Context, workspaceID string,
 	defer m.mu.Unlock()
 
 	cp := *metric
+	if cp.WorkspaceID == "" {
+		cp.WorkspaceID = workspaceID
+	}
 	m.metrics[metric.ContentID] = &cp
 	return nil
 }
@@ -552,10 +555,16 @@ func (m *MemoryStore) GetContentMetrics(ctx context.Context, workspaceID, platfo
 
 	res := make([]ContentROIMetric, 0)
 	for _, met := range m.metrics {
+		if met.WorkspaceID != "" && met.WorkspaceID != workspaceID {
+			continue
+		}
 		if platform == "" || strings.EqualFold(met.Platform, platform) {
 			res = append(res, *met)
 		}
 	}
+	sort.Slice(res, func(i, j int) bool {
+		return res[i].PublishedAt.Before(res[j].PublishedAt)
+	})
 	return res, nil
 }
 

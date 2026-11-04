@@ -278,6 +278,7 @@ type SponsorInquiry struct {
 }
 
 type ContentROIMetric struct {
+	WorkspaceID       string  `json:"workspace_id,omitempty"`
 	ContentID         string  `json:"content_id"`
 	Title             string  `json:"title"`
 	Platform          string  `json:"platform"`
