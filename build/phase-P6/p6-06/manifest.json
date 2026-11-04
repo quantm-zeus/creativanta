@@ -6,7 +6,7 @@
   "status": "LOCAL_IMPLEMENTED",
   "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
   "acceptance_status": "PENDING",
-  "baseline_commit": "0e7e8578c14edec9e46a2f615df44746a42d63dd",
+  "baseline_commit": "131caa32873ae207a56f613cf1ea904de3253970",
   "feature_refs": [
     "docs/02_features/commerce/seeding_crm.md",
     "docs/04_contracts/database_schema.md",
@@ -29,7 +29,7 @@
     "EC-M18-004"
   ],
   "source_files": {
-    "infra/migrations/00033_p6_06_seeding_sample_requests_and_shipments.sql": "84b0e161bd52598237f98905324b89e460524a3c83d5802b6f5749491d5eb135",
+    "infra/migrations/00034_p6_06_seeding_sample_requests_and_shipments.sql": "84b0e161bd52598237f98905324b89e460524a3c83d5802b6f5749491d5eb135",
     "protos/creativanta/commerce/v1/seeding.proto": "e568184af596c7f0447a59e900e99cfab4f90f1029577eb6a208436cafa0d0b5",
     "apps/api/internal/seeding/errors.go": "aca0a3e5cbd494ce2ed7bb6465c3ad9f93b4a58232502bb354bf28dc291d47fb",
     "apps/api/internal/seeding/model.go": "a55fef51641b1e6a87028686114e57662fa8cafbad650e4b3c457aac9a04918d",
@@ -39,11 +39,11 @@
     "apps/api/internal/seeding/seeding_test.go": "15c29fc8edebf6345b1774f1f35a83a27fe41865a847b2adb928740a538d4846",
     "apps/api/internal/seeding/handler_test.go": "e895d908a91b592fe3c234f2a5a0299b82df8f82a949303c3382aa8545f93aef",
     "apps/api/internal/seeding/seeding_postgres_test.go": "3de1c64ac9cb1ee739c02a7e4597e7b2190ff4f150145424482605c0a94c281a",
-    "apps/api/internal/migrate/migrator_test.go": "55fa5ddb58c9cdf2e8bd3f275f31b18c06a127f722f91ab6654f059f342599d7",
+    "apps/api/internal/migrate/migrator_test.go": "05683cfd01cb0291f5cd34152dcc816e05605d1844c4b19981e680d713f4e983",
     "apps/api/internal/rbac/phase_exposure_test.go": "8de284a50dce7da0923bbdab18e83f59d3fe89e99f37f8a833d51d69f105f52d",
     "apps/web/src/lib/commerce/seeding.ts": "0812023e4b34c376ccbf650b9da4f326fb9d2aa171850da5ea3ac73db1d46699",
     "apps/web/src/lib/commerce/seeding.test.ts": "a7243ee2129e91594cce6b09abe5b9034eb72b6cc1a7051e1965414efd4a0534",
-    "apps/web/src/lib/commerce/index.ts": "417761288ae852f49e0ffc39d2d4db70da8afbb7a6aa8a7e42801a60e4ff383a",
+    "apps/web/src/lib/commerce/index.ts": "a329fc64d1b739788f1c3b052c6224a4d57353317337c627e2b7a74f0886424d",
     "apps/web/src/routes/seeding/requests/+page.svelte": "035af5497b1cb244423fd4c0c1f6fd92ea35ee599b6f459135a9eb589489e878",
     "apps/web/src/routes/seeding/campaigns/+page.svelte": "bd220efd1dc30968c620c1aa311cb46c4bebdbc58f19bd5db96a5878fe4ea3ae",
     "apps/mobile/lib/commerce/seeding_models.dart": "3cf558c4d16912b5953639d557a7b26a5c06bda674696147a1847ee4e75b7517",
@@ -51,7 +51,7 @@
     "apps/mobile/test/seeding_acceptance_test.dart": "ef3c61091f98f15c66d6f1c09a8915861e8b28a17609bb196c5b4c8567ee5d28"
   },
   "scope_items": [
-    "Database Migration 00033: Created sample_requests (§19.10) and sample_shipments (§19.10) tables with composite workspace tenant keys, strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY), check constraints, and narrow role-based grants.",
+    "Database Migration 00034: Created sample_requests (§19.10) and sample_shipments (§19.10) tables with composite workspace tenant keys, strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY), check constraints, and narrow role-based grants.",
     "Acceptance Target 1 (Request/shipment/outcome states separate): Request lifecycle (status: requested/approved/declined/fulfilled/cancelled), shipment logistics (status: preparing/shipped/delivered/lost/returned/closed), business outcome (outcome_status: pending/logged), and post-delivery follow-up (follow_up_status: pending_followup/contacted/responded/no_response) operate as orthogonal state machines. Marking delivery fulfills logistics while outcome remains pending.",
     "Acceptance Target 2 (Missing outcome not definitive zero): Delivered samples without creator content or without traceable conversions qualify as pending outcomes rather than definitive zero revenue or failed seedings. System tags data provenance classes (official/imported/inferred/estimated/unreconciled) and qualifies overall confidence level (RULE-M18-002, RULE-M18-003).",
     "Acceptance Target 3 (Replay no duplicate sample cost): Approval creates provisional M19 cost_item (COGS * quantity) with source_class=estimated. Shipment updates existing cost item in-place with actual shipping cost (source_class=imported). Idempotent approval/shipment replay avoids duplicate cost item creation.",
@@ -63,7 +63,7 @@
     "Acceptance Target 2 Verified: TestTarget2_MissingOutcomeNotDefinitiveZero (Go -race), Vitest web test suite, and Flutter test suite confirm delivered samples without content are qualified as pending and not counted as zero revenue.",
     "Acceptance Target 3 Verified: TestTarget3_ReplayNoDuplicateSampleCost (Go -race with memory store), Vitest web idempotency test, and Flutter mobile cost evaluation confirm idempotent cost item upsert and zero duplicate costs on replay.",
     "Edge Cases EC-M18-001 to EC-M18-004 Verified: Unit tests in Go and Flutter cover unresponsive creators, unlinked content downgrade, missing product COGS defaults, and duplicate request detection.",
-    "Migration 00033 Verified: Migrator test suite (migrator_test.go) passes all 33 migrations up, status verification, and clean down transactional reversal.",
+    "Migration 00034 Verified: Migrator test suite (migrator_test.go) passes all 34 migrations up, status verification, and clean down transactional reversal.",
     "Four-Target Proto Codegen Verified: check_proto.sh passes lint, generate, drift check, buf breaking backward compatibility, Go vet/test, TypeScript vitest, and Dart test suites.",
     "Web & Mobile Surfaces Verified: Vitest web test suite (35 files, 287 tests passing), svelte-check (0 errors, 0 warnings), Vite production build (adapter-node ✔ done), and Flutter test suite (236 tests passing, flutter analyze 0 issues) all pass."
   ],
@@ -90,7 +90,7 @@
     "SampleService/Cancel"
   ],
   "migration_files": [
-    "infra/migrations/00033_p6_06_seeding_sample_requests_and_shipments.sql"
+    "infra/migrations/00034_p6_06_seeding_sample_requests_and_shipments.sql"
   ],
   "permission_keys": [
     "commerce:manage_seeding",
@@ -101,7 +101,7 @@
     [
       "EXT-GATE-POSTGRES-LIVE-RLS",
       "PENDING_CI_LIVE_POSTGRES",
-      "Migration 00033 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+      "Migration 00034 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
     ],
     [
       "EXT-GATE-COMMERCE-SHIPPING-CARRIERS",
