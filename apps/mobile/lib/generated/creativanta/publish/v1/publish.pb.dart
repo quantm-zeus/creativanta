@@ -779,6 +779,202 @@ class PublishLog extends $pb.GeneratedMessage {
   void clearErrorMessage() => $_clearField(18);
 }
 
+/// ChannelPostMetrics captures engagement and view metrics with denominator tracking.
+class ChannelPostMetrics extends $pb.GeneratedMessage {
+  factory ChannelPostMetrics({
+    $fixnum.Int64? views,
+    $fixnum.Int64? likes,
+    $fixnum.Int64? comments,
+    $fixnum.Int64? shares,
+    $fixnum.Int64? saves,
+    $fixnum.Int64? clicks,
+    $core.bool? isViewsUnknown,
+    $core.bool? isClicksUnknown,
+    $core.String? unknownReason,
+    $2.SourceClass? sourceClass,
+    $2.ConfidenceBand? confidence,
+    $1.Timestamp? capturedAt,
+  }) {
+    final result = ChannelPostMetrics._();
+    if (views != null) result.views = views;
+    if (likes != null) result.likes = likes;
+    if (comments != null) result.comments = comments;
+    if (shares != null) result.shares = shares;
+    if (saves != null) result.saves = saves;
+    if (clicks != null) result.clicks = clicks;
+    if (isViewsUnknown != null) result.isViewsUnknown = isViewsUnknown;
+    if (isClicksUnknown != null) result.isClicksUnknown = isClicksUnknown;
+    if (unknownReason != null) result.unknownReason = unknownReason;
+    if (sourceClass != null) result.sourceClass = sourceClass;
+    if (confidence != null) result.confidence = confidence;
+    if (capturedAt != null) result.capturedAt = capturedAt;
+    return result;
+  }
+
+  ChannelPostMetrics._();
+
+  factory ChannelPostMetrics.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ChannelPostMetrics()..mergeFromBuffer(data, registry);
+  factory ChannelPostMetrics.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ChannelPostMetrics()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ChannelPostMetrics',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.publish.v1'),
+      createEmptyInstance: ChannelPostMetrics.$_createMessage)
+    ..aInt64(1, _omitFieldNames ? '' : 'views')
+    ..aInt64(2, _omitFieldNames ? '' : 'likes')
+    ..aInt64(3, _omitFieldNames ? '' : 'comments')
+    ..aInt64(4, _omitFieldNames ? '' : 'shares')
+    ..aInt64(5, _omitFieldNames ? '' : 'saves')
+    ..aInt64(6, _omitFieldNames ? '' : 'clicks')
+    ..aOB(7, _omitFieldNames ? '' : 'isViewsUnknown')
+    ..aOB(8, _omitFieldNames ? '' : 'isClicksUnknown')
+    ..aOS(9, _omitFieldNames ? '' : 'unknownReason')
+    ..aE<$2.SourceClass>(10, _omitFieldNames ? '' : 'sourceClass',
+        enumValues: $2.SourceClass.values)
+    ..aE<$2.ConfidenceBand>(11, _omitFieldNames ? '' : 'confidence',
+        enumValues: $2.ConfidenceBand.values)
+    ..aOM<$1.Timestamp>(12, _omitFieldNames ? '' : 'capturedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ChannelPostMetrics clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ChannelPostMetrics copyWith(void Function(ChannelPostMetrics) updates) =>
+      super.copyWith((message) => updates(message as ChannelPostMetrics))
+          as ChannelPostMetrics;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ChannelPostMetrics() / ChannelPostMetrics.new instead')
+  static ChannelPostMetrics create() => ChannelPostMetrics._();
+  static $pb.GeneratedMessage $_createMessage() => ChannelPostMetrics._();
+  @$core.override
+  ChannelPostMetrics createEmptyInstance() => ChannelPostMetrics._();
+  @$core.pragma('dart2js:noInline')
+  static ChannelPostMetrics getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ChannelPostMetrics>(
+          ChannelPostMetrics.$_createMessage);
+  static ChannelPostMetrics? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $fixnum.Int64 get views => $_getI64(0);
+  @$pb.TagNumber(1)
+  set views($fixnum.Int64 value) => $_setInt64(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasViews() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearViews() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get likes => $_getI64(1);
+  @$pb.TagNumber(2)
+  set likes($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasLikes() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLikes() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get comments => $_getI64(2);
+  @$pb.TagNumber(3)
+  set comments($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasComments() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearComments() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get shares => $_getI64(3);
+  @$pb.TagNumber(4)
+  set shares($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasShares() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearShares() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get saves => $_getI64(4);
+  @$pb.TagNumber(5)
+  set saves($fixnum.Int64 value) => $_setInt64(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSaves() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSaves() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $fixnum.Int64 get clicks => $_getI64(5);
+  @$pb.TagNumber(6)
+  set clicks($fixnum.Int64 value) => $_setInt64(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasClicks() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearClicks() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.bool get isViewsUnknown => $_getBF(6);
+  @$pb.TagNumber(7)
+  set isViewsUnknown($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasIsViewsUnknown() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearIsViewsUnknown() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.bool get isClicksUnknown => $_getBF(7);
+  @$pb.TagNumber(8)
+  set isClicksUnknown($core.bool value) => $_setBool(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasIsClicksUnknown() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearIsClicksUnknown() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get unknownReason => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set unknownReason($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasUnknownReason() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearUnknownReason() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $2.SourceClass get sourceClass => $_getN(9);
+  @$pb.TagNumber(10)
+  set sourceClass($2.SourceClass value) => $_setField(10, value);
+  @$pb.TagNumber(10)
+  $core.bool hasSourceClass() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearSourceClass() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $2.ConfidenceBand get confidence => $_getN(10);
+  @$pb.TagNumber(11)
+  set confidence($2.ConfidenceBand value) => $_setField(11, value);
+  @$pb.TagNumber(11)
+  $core.bool hasConfidence() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearConfidence() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $1.Timestamp get capturedAt => $_getN(11);
+  @$pb.TagNumber(12)
+  set capturedAt($1.Timestamp value) => $_setField(12, value);
+  @$pb.TagNumber(12)
+  $core.bool hasCapturedAt() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearCapturedAt() => $_clearField(12);
+  @$pb.TagNumber(12)
+  $1.Timestamp ensureCapturedAt() => $_ensure(11);
+}
+
 /// ChannelPost represents a post tracked on an external platform after publishing.
 class ChannelPost extends $pb.GeneratedMessage {
   factory ChannelPost({
@@ -793,6 +989,9 @@ class ChannelPost extends $pb.GeneratedMessage {
     $1.Timestamp? syncedAt,
     $1.Timestamp? createdAt,
     $1.Timestamp? updatedAt,
+    ChannelPostMetrics? metrics,
+    $2.SourceClass? sourceClass,
+    $2.ConfidenceBand? confidence,
   }) {
     final result = ChannelPost._();
     if (channelPostId != null) result.channelPostId = channelPostId;
@@ -807,6 +1006,9 @@ class ChannelPost extends $pb.GeneratedMessage {
     if (syncedAt != null) result.syncedAt = syncedAt;
     if (createdAt != null) result.createdAt = createdAt;
     if (updatedAt != null) result.updatedAt = updatedAt;
+    if (metrics != null) result.metrics = metrics;
+    if (sourceClass != null) result.sourceClass = sourceClass;
+    if (confidence != null) result.confidence = confidence;
     return result;
   }
 
@@ -838,6 +1040,12 @@ class ChannelPost extends $pb.GeneratedMessage {
         subBuilder: $1.Timestamp.$_createMessage)
     ..aOM<$1.Timestamp>(11, _omitFieldNames ? '' : 'updatedAt',
         subBuilder: $1.Timestamp.$_createMessage)
+    ..aOM<ChannelPostMetrics>(12, _omitFieldNames ? '' : 'metrics',
+        subBuilder: ChannelPostMetrics.$_createMessage)
+    ..aE<$2.SourceClass>(13, _omitFieldNames ? '' : 'sourceClass',
+        enumValues: $2.SourceClass.values)
+    ..aE<$2.ConfidenceBand>(14, _omitFieldNames ? '' : 'confidence',
+        enumValues: $2.ConfidenceBand.values)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -966,6 +1174,35 @@ class ChannelPost extends $pb.GeneratedMessage {
   void clearUpdatedAt() => $_clearField(11);
   @$pb.TagNumber(11)
   $1.Timestamp ensureUpdatedAt() => $_ensure(10);
+
+  @$pb.TagNumber(12)
+  ChannelPostMetrics get metrics => $_getN(11);
+  @$pb.TagNumber(12)
+  set metrics(ChannelPostMetrics value) => $_setField(12, value);
+  @$pb.TagNumber(12)
+  $core.bool hasMetrics() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearMetrics() => $_clearField(12);
+  @$pb.TagNumber(12)
+  ChannelPostMetrics ensureMetrics() => $_ensure(11);
+
+  @$pb.TagNumber(13)
+  $2.SourceClass get sourceClass => $_getN(12);
+  @$pb.TagNumber(13)
+  set sourceClass($2.SourceClass value) => $_setField(13, value);
+  @$pb.TagNumber(13)
+  $core.bool hasSourceClass() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearSourceClass() => $_clearField(13);
+
+  @$pb.TagNumber(14)
+  $2.ConfidenceBand get confidence => $_getN(13);
+  @$pb.TagNumber(14)
+  set confidence($2.ConfidenceBand value) => $_setField(14, value);
+  @$pb.TagNumber(14)
+  $core.bool hasConfidence() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearConfidence() => $_clearField(14);
 }
 
 /// PlatformCapabilitySummary provides pre-publish capability awareness (RULE-M11-001).
@@ -7139,6 +7376,317 @@ class UntagProductResponse extends $pb.GeneratedMessage {
   void clearItem() => $_clearField(1);
   @$pb.TagNumber(1)
   PublishItem ensureItem() => $_ensure(0);
+}
+
+class SyncPostMetricsRequest extends $pb.GeneratedMessage {
+  factory SyncPostMetricsRequest({
+    $2.CommandContext? context,
+    $core.String? workspaceId,
+    $core.String? channelPostId,
+    $fixnum.Int64? views,
+    $fixnum.Int64? likes,
+    $fixnum.Int64? comments,
+    $fixnum.Int64? shares,
+    $fixnum.Int64? saves,
+    $fixnum.Int64? clicks,
+    $core.bool? isViewsUnknown,
+    $core.bool? isClicksUnknown,
+    $core.String? unknownReason,
+    $2.SourceClass? sourceClass,
+    $2.ConfidenceBand? confidence,
+  }) {
+    final result = SyncPostMetricsRequest._();
+    if (context != null) result.context = context;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (channelPostId != null) result.channelPostId = channelPostId;
+    if (views != null) result.views = views;
+    if (likes != null) result.likes = likes;
+    if (comments != null) result.comments = comments;
+    if (shares != null) result.shares = shares;
+    if (saves != null) result.saves = saves;
+    if (clicks != null) result.clicks = clicks;
+    if (isViewsUnknown != null) result.isViewsUnknown = isViewsUnknown;
+    if (isClicksUnknown != null) result.isClicksUnknown = isClicksUnknown;
+    if (unknownReason != null) result.unknownReason = unknownReason;
+    if (sourceClass != null) result.sourceClass = sourceClass;
+    if (confidence != null) result.confidence = confidence;
+    return result;
+  }
+
+  SyncPostMetricsRequest._();
+
+  factory SyncPostMetricsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SyncPostMetricsRequest()..mergeFromBuffer(data, registry);
+  factory SyncPostMetricsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SyncPostMetricsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SyncPostMetricsRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.publish.v1'),
+      createEmptyInstance: SyncPostMetricsRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'channelPostId')
+    ..aInt64(4, _omitFieldNames ? '' : 'views')
+    ..aInt64(5, _omitFieldNames ? '' : 'likes')
+    ..aInt64(6, _omitFieldNames ? '' : 'comments')
+    ..aInt64(7, _omitFieldNames ? '' : 'shares')
+    ..aInt64(8, _omitFieldNames ? '' : 'saves')
+    ..aInt64(9, _omitFieldNames ? '' : 'clicks')
+    ..aOB(10, _omitFieldNames ? '' : 'isViewsUnknown')
+    ..aOB(11, _omitFieldNames ? '' : 'isClicksUnknown')
+    ..aOS(12, _omitFieldNames ? '' : 'unknownReason')
+    ..aE<$2.SourceClass>(13, _omitFieldNames ? '' : 'sourceClass',
+        enumValues: $2.SourceClass.values)
+    ..aE<$2.ConfidenceBand>(14, _omitFieldNames ? '' : 'confidence',
+        enumValues: $2.ConfidenceBand.values)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SyncPostMetricsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SyncPostMetricsRequest copyWith(
+          void Function(SyncPostMetricsRequest) updates) =>
+      super.copyWith((message) => updates(message as SyncPostMetricsRequest))
+          as SyncPostMetricsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SyncPostMetricsRequest() / SyncPostMetricsRequest.new instead')
+  static SyncPostMetricsRequest create() => SyncPostMetricsRequest._();
+  static $pb.GeneratedMessage $_createMessage() => SyncPostMetricsRequest._();
+  @$core.override
+  SyncPostMetricsRequest createEmptyInstance() => SyncPostMetricsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static SyncPostMetricsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SyncPostMetricsRequest>(
+          SyncPostMetricsRequest.$_createMessage);
+  static SyncPostMetricsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get channelPostId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set channelPostId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasChannelPostId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearChannelPostId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get views => $_getI64(3);
+  @$pb.TagNumber(4)
+  set views($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasViews() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearViews() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get likes => $_getI64(4);
+  @$pb.TagNumber(5)
+  set likes($fixnum.Int64 value) => $_setInt64(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLikes() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLikes() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $fixnum.Int64 get comments => $_getI64(5);
+  @$pb.TagNumber(6)
+  set comments($fixnum.Int64 value) => $_setInt64(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasComments() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearComments() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $fixnum.Int64 get shares => $_getI64(6);
+  @$pb.TagNumber(7)
+  set shares($fixnum.Int64 value) => $_setInt64(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasShares() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearShares() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $fixnum.Int64 get saves => $_getI64(7);
+  @$pb.TagNumber(8)
+  set saves($fixnum.Int64 value) => $_setInt64(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasSaves() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearSaves() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $fixnum.Int64 get clicks => $_getI64(8);
+  @$pb.TagNumber(9)
+  set clicks($fixnum.Int64 value) => $_setInt64(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasClicks() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearClicks() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.bool get isViewsUnknown => $_getBF(9);
+  @$pb.TagNumber(10)
+  set isViewsUnknown($core.bool value) => $_setBool(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasIsViewsUnknown() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearIsViewsUnknown() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.bool get isClicksUnknown => $_getBF(10);
+  @$pb.TagNumber(11)
+  set isClicksUnknown($core.bool value) => $_setBool(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasIsClicksUnknown() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearIsClicksUnknown() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get unknownReason => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set unknownReason($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasUnknownReason() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearUnknownReason() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $2.SourceClass get sourceClass => $_getN(12);
+  @$pb.TagNumber(13)
+  set sourceClass($2.SourceClass value) => $_setField(13, value);
+  @$pb.TagNumber(13)
+  $core.bool hasSourceClass() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearSourceClass() => $_clearField(13);
+
+  @$pb.TagNumber(14)
+  $2.ConfidenceBand get confidence => $_getN(13);
+  @$pb.TagNumber(14)
+  set confidence($2.ConfidenceBand value) => $_setField(14, value);
+  @$pb.TagNumber(14)
+  $core.bool hasConfidence() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearConfidence() => $_clearField(14);
+}
+
+class SyncPostMetricsResponse extends $pb.GeneratedMessage {
+  factory SyncPostMetricsResponse({
+    ChannelPost? post,
+    ChannelPostMetrics? metrics,
+    $core.bool? updated,
+  }) {
+    final result = SyncPostMetricsResponse._();
+    if (post != null) result.post = post;
+    if (metrics != null) result.metrics = metrics;
+    if (updated != null) result.updated = updated;
+    return result;
+  }
+
+  SyncPostMetricsResponse._();
+
+  factory SyncPostMetricsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SyncPostMetricsResponse()..mergeFromBuffer(data, registry);
+  factory SyncPostMetricsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SyncPostMetricsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SyncPostMetricsResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.publish.v1'),
+      createEmptyInstance: SyncPostMetricsResponse.$_createMessage)
+    ..aOM<ChannelPost>(1, _omitFieldNames ? '' : 'post',
+        subBuilder: ChannelPost.$_createMessage)
+    ..aOM<ChannelPostMetrics>(2, _omitFieldNames ? '' : 'metrics',
+        subBuilder: ChannelPostMetrics.$_createMessage)
+    ..aOB(3, _omitFieldNames ? '' : 'updated')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SyncPostMetricsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SyncPostMetricsResponse copyWith(
+          void Function(SyncPostMetricsResponse) updates) =>
+      super.copyWith((message) => updates(message as SyncPostMetricsResponse))
+          as SyncPostMetricsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SyncPostMetricsResponse() / SyncPostMetricsResponse.new instead')
+  static SyncPostMetricsResponse create() => SyncPostMetricsResponse._();
+  static $pb.GeneratedMessage $_createMessage() => SyncPostMetricsResponse._();
+  @$core.override
+  SyncPostMetricsResponse createEmptyInstance() => SyncPostMetricsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static SyncPostMetricsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SyncPostMetricsResponse>(
+          SyncPostMetricsResponse.$_createMessage);
+  static SyncPostMetricsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ChannelPost get post => $_getN(0);
+  @$pb.TagNumber(1)
+  set post(ChannelPost value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPost() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPost() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ChannelPost ensurePost() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  ChannelPostMetrics get metrics => $_getN(1);
+  @$pb.TagNumber(2)
+  set metrics(ChannelPostMetrics value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasMetrics() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearMetrics() => $_clearField(2);
+  @$pb.TagNumber(2)
+  ChannelPostMetrics ensureMetrics() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $core.bool get updated => $_getBF(2);
+  @$pb.TagNumber(3)
+  set updated($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasUpdated() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearUpdated() => $_clearField(3);
 }
 
 const $core.bool _omitFieldNames =

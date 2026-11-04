@@ -5714,6 +5714,1006 @@ func (x *ProofServiceListResponse) GetPagination() *v1.PaginatedResponse {
 	return nil
 }
 
+type ContentAttributionRecord struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	AttributionId     string                 `protobuf:"bytes,1,opt,name=attribution_id,json=attributionId,proto3" json:"attribution_id,omitempty"`
+	WorkspaceId       string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	PublishItemId     string                 `protobuf:"bytes,3,opt,name=publish_item_id,json=publishItemId,proto3" json:"publish_item_id,omitempty"`
+	ChannelPostId     string                 `protobuf:"bytes,4,opt,name=channel_post_id,json=channelPostId,proto3" json:"channel_post_id,omitempty"`
+	OrderId           string                 `protobuf:"bytes,5,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	AttributionType   string                 `protobuf:"bytes,6,opt,name=attribution_type,json=attributionType,proto3" json:"attribution_type,omitempty"` // direct_click, utm_match, affiliate, organic
+	RevenueAttributed *v1.Money              `protobuf:"bytes,7,opt,name=revenue_attributed,json=revenueAttributed,proto3" json:"revenue_attributed,omitempty"`
+	SourceClass       v1.SourceClass         `protobuf:"varint,8,opt,name=source_class,json=sourceClass,proto3,enum=creativanta.common.v1.SourceClass" json:"source_class,omitempty"`
+	Confidence        v1.ConfidenceBand      `protobuf:"varint,9,opt,name=confidence,proto3,enum=creativanta.common.v1.ConfidenceBand" json:"confidence,omitempty"`
+	UtmSource         string                 `protobuf:"bytes,10,opt,name=utm_source,json=utmSource,proto3" json:"utm_source,omitempty"`
+	UtmMedium         string                 `protobuf:"bytes,11,opt,name=utm_medium,json=utmMedium,proto3" json:"utm_medium,omitempty"`
+	UtmCampaign       string                 `protobuf:"bytes,12,opt,name=utm_campaign,json=utmCampaign,proto3" json:"utm_campaign,omitempty"`
+	CreatedAt         *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *ContentAttributionRecord) Reset() {
+	*x = ContentAttributionRecord{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[65]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ContentAttributionRecord) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ContentAttributionRecord) ProtoMessage() {}
+
+func (x *ContentAttributionRecord) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[65]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ContentAttributionRecord.ProtoReflect.Descriptor instead.
+func (*ContentAttributionRecord) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{65}
+}
+
+func (x *ContentAttributionRecord) GetAttributionId() string {
+	if x != nil {
+		return x.AttributionId
+	}
+	return ""
+}
+
+func (x *ContentAttributionRecord) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *ContentAttributionRecord) GetPublishItemId() string {
+	if x != nil {
+		return x.PublishItemId
+	}
+	return ""
+}
+
+func (x *ContentAttributionRecord) GetChannelPostId() string {
+	if x != nil {
+		return x.ChannelPostId
+	}
+	return ""
+}
+
+func (x *ContentAttributionRecord) GetOrderId() string {
+	if x != nil {
+		return x.OrderId
+	}
+	return ""
+}
+
+func (x *ContentAttributionRecord) GetAttributionType() string {
+	if x != nil {
+		return x.AttributionType
+	}
+	return ""
+}
+
+func (x *ContentAttributionRecord) GetRevenueAttributed() *v1.Money {
+	if x != nil {
+		return x.RevenueAttributed
+	}
+	return nil
+}
+
+func (x *ContentAttributionRecord) GetSourceClass() v1.SourceClass {
+	if x != nil {
+		return x.SourceClass
+	}
+	return v1.SourceClass(0)
+}
+
+func (x *ContentAttributionRecord) GetConfidence() v1.ConfidenceBand {
+	if x != nil {
+		return x.Confidence
+	}
+	return v1.ConfidenceBand(0)
+}
+
+func (x *ContentAttributionRecord) GetUtmSource() string {
+	if x != nil {
+		return x.UtmSource
+	}
+	return ""
+}
+
+func (x *ContentAttributionRecord) GetUtmMedium() string {
+	if x != nil {
+		return x.UtmMedium
+	}
+	return ""
+}
+
+func (x *ContentAttributionRecord) GetUtmCampaign() string {
+	if x != nil {
+		return x.UtmCampaign
+	}
+	return ""
+}
+
+func (x *ContentAttributionRecord) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+type ContentRevenueAttribution struct {
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	ContentId               string                 `protobuf:"bytes,1,opt,name=content_id,json=contentId,proto3" json:"content_id,omitempty"`
+	PublishItemId           string                 `protobuf:"bytes,2,opt,name=publish_item_id,json=publishItemId,proto3" json:"publish_item_id,omitempty"`
+	AssetId                 string                 `protobuf:"bytes,3,opt,name=asset_id,json=assetId,proto3" json:"asset_id,omitempty"`
+	Title                   string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
+	DirectOrderCount        int64                  `protobuf:"varint,5,opt,name=direct_order_count,json=directOrderCount,proto3" json:"direct_order_count,omitempty"`
+	AttributedRevenue       *v1.Money              `protobuf:"bytes,6,opt,name=attributed_revenue,json=attributedRevenue,proto3" json:"attributed_revenue,omitempty"`
+	Views                   int64                  `protobuf:"varint,7,opt,name=views,proto3" json:"views,omitempty"`
+	Clicks                  int64                  `protobuf:"varint,8,opt,name=clicks,proto3" json:"clicks,omitempty"`
+	IsViewsUnknown          bool                   `protobuf:"varint,9,opt,name=is_views_unknown,json=isViewsUnknown,proto3" json:"is_views_unknown,omitempty"`
+	IsClicksUnknown         bool                   `protobuf:"varint,10,opt,name=is_clicks_unknown,json=isClicksUnknown,proto3" json:"is_clicks_unknown,omitempty"`
+	UnknownReason           string                 `protobuf:"bytes,11,opt,name=unknown_reason,json=unknownReason,proto3" json:"unknown_reason,omitempty"`
+	Rpm                     string                 `protobuf:"bytes,12,opt,name=rpm,proto3" json:"rpm,omitempty"`
+	IsRpmUnknown            bool                   `protobuf:"varint,13,opt,name=is_rpm_unknown,json=isRpmUnknown,proto3" json:"is_rpm_unknown,omitempty"`
+	Ctr                     string                 `protobuf:"bytes,14,opt,name=ctr,proto3" json:"ctr,omitempty"`
+	IsCtrUnknown            bool                   `protobuf:"varint,15,opt,name=is_ctr_unknown,json=isCtrUnknown,proto3" json:"is_ctr_unknown,omitempty"`
+	ConversionRate          string                 `protobuf:"bytes,16,opt,name=conversion_rate,json=conversionRate,proto3" json:"conversion_rate,omitempty"`
+	IsConversionRateUnknown bool                   `protobuf:"varint,17,opt,name=is_conversion_rate_unknown,json=isConversionRateUnknown,proto3" json:"is_conversion_rate_unknown,omitempty"`
+	Confidence              v1.ConfidenceBand      `protobuf:"varint,18,opt,name=confidence,proto3,enum=creativanta.common.v1.ConfidenceBand" json:"confidence,omitempty"`
+	SourceClassPercentages  map[string]float64     `protobuf:"bytes,19,rep,name=source_class_percentages,json=sourceClassPercentages,proto3" json:"source_class_percentages,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
+	Status                  string                 `protobuf:"bytes,20,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *ContentRevenueAttribution) Reset() {
+	*x = ContentRevenueAttribution{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[66]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ContentRevenueAttribution) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ContentRevenueAttribution) ProtoMessage() {}
+
+func (x *ContentRevenueAttribution) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[66]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ContentRevenueAttribution.ProtoReflect.Descriptor instead.
+func (*ContentRevenueAttribution) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{66}
+}
+
+func (x *ContentRevenueAttribution) GetContentId() string {
+	if x != nil {
+		return x.ContentId
+	}
+	return ""
+}
+
+func (x *ContentRevenueAttribution) GetPublishItemId() string {
+	if x != nil {
+		return x.PublishItemId
+	}
+	return ""
+}
+
+func (x *ContentRevenueAttribution) GetAssetId() string {
+	if x != nil {
+		return x.AssetId
+	}
+	return ""
+}
+
+func (x *ContentRevenueAttribution) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *ContentRevenueAttribution) GetDirectOrderCount() int64 {
+	if x != nil {
+		return x.DirectOrderCount
+	}
+	return 0
+}
+
+func (x *ContentRevenueAttribution) GetAttributedRevenue() *v1.Money {
+	if x != nil {
+		return x.AttributedRevenue
+	}
+	return nil
+}
+
+func (x *ContentRevenueAttribution) GetViews() int64 {
+	if x != nil {
+		return x.Views
+	}
+	return 0
+}
+
+func (x *ContentRevenueAttribution) GetClicks() int64 {
+	if x != nil {
+		return x.Clicks
+	}
+	return 0
+}
+
+func (x *ContentRevenueAttribution) GetIsViewsUnknown() bool {
+	if x != nil {
+		return x.IsViewsUnknown
+	}
+	return false
+}
+
+func (x *ContentRevenueAttribution) GetIsClicksUnknown() bool {
+	if x != nil {
+		return x.IsClicksUnknown
+	}
+	return false
+}
+
+func (x *ContentRevenueAttribution) GetUnknownReason() string {
+	if x != nil {
+		return x.UnknownReason
+	}
+	return ""
+}
+
+func (x *ContentRevenueAttribution) GetRpm() string {
+	if x != nil {
+		return x.Rpm
+	}
+	return ""
+}
+
+func (x *ContentRevenueAttribution) GetIsRpmUnknown() bool {
+	if x != nil {
+		return x.IsRpmUnknown
+	}
+	return false
+}
+
+func (x *ContentRevenueAttribution) GetCtr() string {
+	if x != nil {
+		return x.Ctr
+	}
+	return ""
+}
+
+func (x *ContentRevenueAttribution) GetIsCtrUnknown() bool {
+	if x != nil {
+		return x.IsCtrUnknown
+	}
+	return false
+}
+
+func (x *ContentRevenueAttribution) GetConversionRate() string {
+	if x != nil {
+		return x.ConversionRate
+	}
+	return ""
+}
+
+func (x *ContentRevenueAttribution) GetIsConversionRateUnknown() bool {
+	if x != nil {
+		return x.IsConversionRateUnknown
+	}
+	return false
+}
+
+func (x *ContentRevenueAttribution) GetConfidence() v1.ConfidenceBand {
+	if x != nil {
+		return x.Confidence
+	}
+	return v1.ConfidenceBand(0)
+}
+
+func (x *ContentRevenueAttribution) GetSourceClassPercentages() map[string]float64 {
+	if x != nil {
+		return x.SourceClassPercentages
+	}
+	return nil
+}
+
+func (x *ContentRevenueAttribution) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+type WorkspaceRevenueDeduplicationSummary struct {
+	state                       protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId                 string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	TotalOrdersAttributed       int64                  `protobuf:"varint,2,opt,name=total_orders_attributed,json=totalOrdersAttributed,proto3" json:"total_orders_attributed,omitempty"`
+	UniqueOrdersCounted         int64                  `protobuf:"varint,3,opt,name=unique_orders_counted,json=uniqueOrdersCounted,proto3" json:"unique_orders_counted,omitempty"`
+	CanonicalWorkspaceRevenue   *v1.Money              `protobuf:"bytes,4,opt,name=canonical_workspace_revenue,json=canonicalWorkspaceRevenue,proto3" json:"canonical_workspace_revenue,omitempty"`
+	SumAttributionLines         *v1.Money              `protobuf:"bytes,5,opt,name=sum_attribution_lines,json=sumAttributionLines,proto3" json:"sum_attribution_lines,omitempty"`
+	IsRevenueCountedOnce        bool                   `protobuf:"varint,6,opt,name=is_revenue_counted_once,json=isRevenueCountedOnce,proto3" json:"is_revenue_counted_once,omitempty"`
+	AggregateConfidence         v1.ConfidenceBand      `protobuf:"varint,7,opt,name=aggregate_confidence,json=aggregateConfidence,proto3,enum=creativanta.common.v1.ConfidenceBand" json:"aggregate_confidence,omitempty"`
+	IncludesEstimatedOrImported bool                   `protobuf:"varint,8,opt,name=includes_estimated_or_imported,json=includesEstimatedOrImported,proto3" json:"includes_estimated_or_imported,omitempty"`
+	CaveatMessage               string                 `protobuf:"bytes,9,opt,name=caveat_message,json=caveatMessage,proto3" json:"caveat_message,omitempty"`
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
+}
+
+func (x *WorkspaceRevenueDeduplicationSummary) Reset() {
+	*x = WorkspaceRevenueDeduplicationSummary{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[67]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkspaceRevenueDeduplicationSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkspaceRevenueDeduplicationSummary) ProtoMessage() {}
+
+func (x *WorkspaceRevenueDeduplicationSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[67]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkspaceRevenueDeduplicationSummary.ProtoReflect.Descriptor instead.
+func (*WorkspaceRevenueDeduplicationSummary) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{67}
+}
+
+func (x *WorkspaceRevenueDeduplicationSummary) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *WorkspaceRevenueDeduplicationSummary) GetTotalOrdersAttributed() int64 {
+	if x != nil {
+		return x.TotalOrdersAttributed
+	}
+	return 0
+}
+
+func (x *WorkspaceRevenueDeduplicationSummary) GetUniqueOrdersCounted() int64 {
+	if x != nil {
+		return x.UniqueOrdersCounted
+	}
+	return 0
+}
+
+func (x *WorkspaceRevenueDeduplicationSummary) GetCanonicalWorkspaceRevenue() *v1.Money {
+	if x != nil {
+		return x.CanonicalWorkspaceRevenue
+	}
+	return nil
+}
+
+func (x *WorkspaceRevenueDeduplicationSummary) GetSumAttributionLines() *v1.Money {
+	if x != nil {
+		return x.SumAttributionLines
+	}
+	return nil
+}
+
+func (x *WorkspaceRevenueDeduplicationSummary) GetIsRevenueCountedOnce() bool {
+	if x != nil {
+		return x.IsRevenueCountedOnce
+	}
+	return false
+}
+
+func (x *WorkspaceRevenueDeduplicationSummary) GetAggregateConfidence() v1.ConfidenceBand {
+	if x != nil {
+		return x.AggregateConfidence
+	}
+	return v1.ConfidenceBand(0)
+}
+
+func (x *WorkspaceRevenueDeduplicationSummary) GetIncludesEstimatedOrImported() bool {
+	if x != nil {
+		return x.IncludesEstimatedOrImported
+	}
+	return false
+}
+
+func (x *WorkspaceRevenueDeduplicationSummary) GetCaveatMessage() string {
+	if x != nil {
+		return x.CaveatMessage
+	}
+	return ""
+}
+
+type ContentRevenueServiceGetAttributionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId   string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	ContentId     string                 `protobuf:"bytes,2,opt,name=content_id,json=contentId,proto3" json:"content_id,omitempty"`
+	PeriodStart   string                 `protobuf:"bytes,3,opt,name=period_start,json=periodStart,proto3" json:"period_start,omitempty"`
+	PeriodEnd     string                 `protobuf:"bytes,4,opt,name=period_end,json=periodEnd,proto3" json:"period_end,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ContentRevenueServiceGetAttributionRequest) Reset() {
+	*x = ContentRevenueServiceGetAttributionRequest{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[68]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ContentRevenueServiceGetAttributionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ContentRevenueServiceGetAttributionRequest) ProtoMessage() {}
+
+func (x *ContentRevenueServiceGetAttributionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[68]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ContentRevenueServiceGetAttributionRequest.ProtoReflect.Descriptor instead.
+func (*ContentRevenueServiceGetAttributionRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{68}
+}
+
+func (x *ContentRevenueServiceGetAttributionRequest) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *ContentRevenueServiceGetAttributionRequest) GetContentId() string {
+	if x != nil {
+		return x.ContentId
+	}
+	return ""
+}
+
+func (x *ContentRevenueServiceGetAttributionRequest) GetPeriodStart() string {
+	if x != nil {
+		return x.PeriodStart
+	}
+	return ""
+}
+
+func (x *ContentRevenueServiceGetAttributionRequest) GetPeriodEnd() string {
+	if x != nil {
+		return x.PeriodEnd
+	}
+	return ""
+}
+
+type ContentRevenueServiceGetAttributionResponse struct {
+	state              protoimpl.MessageState                `protogen:"open.v1"`
+	Attribution        *ContentRevenueAttribution            `protobuf:"bytes,1,opt,name=attribution,proto3" json:"attribution,omitempty"`
+	AttributionRecords []*ContentAttributionRecord           `protobuf:"bytes,2,rep,name=attribution_records,json=attributionRecords,proto3" json:"attribution_records,omitempty"`
+	WorkspaceSummary   *WorkspaceRevenueDeduplicationSummary `protobuf:"bytes,3,opt,name=workspace_summary,json=workspaceSummary,proto3" json:"workspace_summary,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *ContentRevenueServiceGetAttributionResponse) Reset() {
+	*x = ContentRevenueServiceGetAttributionResponse{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[69]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ContentRevenueServiceGetAttributionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ContentRevenueServiceGetAttributionResponse) ProtoMessage() {}
+
+func (x *ContentRevenueServiceGetAttributionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[69]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ContentRevenueServiceGetAttributionResponse.ProtoReflect.Descriptor instead.
+func (*ContentRevenueServiceGetAttributionResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{69}
+}
+
+func (x *ContentRevenueServiceGetAttributionResponse) GetAttribution() *ContentRevenueAttribution {
+	if x != nil {
+		return x.Attribution
+	}
+	return nil
+}
+
+func (x *ContentRevenueServiceGetAttributionResponse) GetAttributionRecords() []*ContentAttributionRecord {
+	if x != nil {
+		return x.AttributionRecords
+	}
+	return nil
+}
+
+func (x *ContentRevenueServiceGetAttributionResponse) GetWorkspaceSummary() *WorkspaceRevenueDeduplicationSummary {
+	if x != nil {
+		return x.WorkspaceSummary
+	}
+	return nil
+}
+
+type AttributionServiceGetByContentRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId   string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	PublishItemId string                 `protobuf:"bytes,2,opt,name=publish_item_id,json=publishItemId,proto3" json:"publish_item_id,omitempty"`
+	ChannelPostId string                 `protobuf:"bytes,3,opt,name=channel_post_id,json=channelPostId,proto3" json:"channel_post_id,omitempty"`
+	Pagination    *v1.Pagination         `protobuf:"bytes,4,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AttributionServiceGetByContentRequest) Reset() {
+	*x = AttributionServiceGetByContentRequest{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[70]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AttributionServiceGetByContentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AttributionServiceGetByContentRequest) ProtoMessage() {}
+
+func (x *AttributionServiceGetByContentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[70]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AttributionServiceGetByContentRequest.ProtoReflect.Descriptor instead.
+func (*AttributionServiceGetByContentRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{70}
+}
+
+func (x *AttributionServiceGetByContentRequest) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *AttributionServiceGetByContentRequest) GetPublishItemId() string {
+	if x != nil {
+		return x.PublishItemId
+	}
+	return ""
+}
+
+func (x *AttributionServiceGetByContentRequest) GetChannelPostId() string {
+	if x != nil {
+		return x.ChannelPostId
+	}
+	return ""
+}
+
+func (x *AttributionServiceGetByContentRequest) GetPagination() *v1.Pagination {
+	if x != nil {
+		return x.Pagination
+	}
+	return nil
+}
+
+type ContentAttributionSummary struct {
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	PublishItemId          string                 `protobuf:"bytes,1,opt,name=publish_item_id,json=publishItemId,proto3" json:"publish_item_id,omitempty"`
+	TotalRecords           int64                  `protobuf:"varint,2,opt,name=total_records,json=totalRecords,proto3" json:"total_records,omitempty"`
+	UniqueOrders           int64                  `protobuf:"varint,3,opt,name=unique_orders,json=uniqueOrders,proto3" json:"unique_orders,omitempty"`
+	TotalAttributedRevenue *v1.Money              `protobuf:"bytes,4,opt,name=total_attributed_revenue,json=totalAttributedRevenue,proto3" json:"total_attributed_revenue,omitempty"`
+	CanonicalOrderRevenue  *v1.Money              `protobuf:"bytes,5,opt,name=canonical_order_revenue,json=canonicalOrderRevenue,proto3" json:"canonical_order_revenue,omitempty"`
+	Confidence             v1.ConfidenceBand      `protobuf:"varint,6,opt,name=confidence,proto3,enum=creativanta.common.v1.ConfidenceBand" json:"confidence,omitempty"`
+	SourceClassMixSummary  string                 `protobuf:"bytes,7,opt,name=source_class_mix_summary,json=sourceClassMixSummary,proto3" json:"source_class_mix_summary,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *ContentAttributionSummary) Reset() {
+	*x = ContentAttributionSummary{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[71]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ContentAttributionSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ContentAttributionSummary) ProtoMessage() {}
+
+func (x *ContentAttributionSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[71]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ContentAttributionSummary.ProtoReflect.Descriptor instead.
+func (*ContentAttributionSummary) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{71}
+}
+
+func (x *ContentAttributionSummary) GetPublishItemId() string {
+	if x != nil {
+		return x.PublishItemId
+	}
+	return ""
+}
+
+func (x *ContentAttributionSummary) GetTotalRecords() int64 {
+	if x != nil {
+		return x.TotalRecords
+	}
+	return 0
+}
+
+func (x *ContentAttributionSummary) GetUniqueOrders() int64 {
+	if x != nil {
+		return x.UniqueOrders
+	}
+	return 0
+}
+
+func (x *ContentAttributionSummary) GetTotalAttributedRevenue() *v1.Money {
+	if x != nil {
+		return x.TotalAttributedRevenue
+	}
+	return nil
+}
+
+func (x *ContentAttributionSummary) GetCanonicalOrderRevenue() *v1.Money {
+	if x != nil {
+		return x.CanonicalOrderRevenue
+	}
+	return nil
+}
+
+func (x *ContentAttributionSummary) GetConfidence() v1.ConfidenceBand {
+	if x != nil {
+		return x.Confidence
+	}
+	return v1.ConfidenceBand(0)
+}
+
+func (x *ContentAttributionSummary) GetSourceClassMixSummary() string {
+	if x != nil {
+		return x.SourceClassMixSummary
+	}
+	return ""
+}
+
+type AttributionServiceGetByContentResponse struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	Records       []*ContentAttributionRecord `protobuf:"bytes,1,rep,name=records,proto3" json:"records,omitempty"`
+	Summary       *ContentAttributionSummary  `protobuf:"bytes,2,opt,name=summary,proto3" json:"summary,omitempty"`
+	Pagination    *v1.PaginatedResponse       `protobuf:"bytes,3,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AttributionServiceGetByContentResponse) Reset() {
+	*x = AttributionServiceGetByContentResponse{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[72]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AttributionServiceGetByContentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AttributionServiceGetByContentResponse) ProtoMessage() {}
+
+func (x *AttributionServiceGetByContentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[72]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AttributionServiceGetByContentResponse.ProtoReflect.Descriptor instead.
+func (*AttributionServiceGetByContentResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{72}
+}
+
+func (x *AttributionServiceGetByContentResponse) GetRecords() []*ContentAttributionRecord {
+	if x != nil {
+		return x.Records
+	}
+	return nil
+}
+
+func (x *AttributionServiceGetByContentResponse) GetSummary() *ContentAttributionSummary {
+	if x != nil {
+		return x.Summary
+	}
+	return nil
+}
+
+func (x *AttributionServiceGetByContentResponse) GetPagination() *v1.PaginatedResponse {
+	if x != nil {
+		return x.Pagination
+	}
+	return nil
+}
+
+type AttributionServiceRecordAttributionRequest struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Context           *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	WorkspaceId       string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	PublishItemId     string                 `protobuf:"bytes,3,opt,name=publish_item_id,json=publishItemId,proto3" json:"publish_item_id,omitempty"`
+	ChannelPostId     string                 `protobuf:"bytes,4,opt,name=channel_post_id,json=channelPostId,proto3" json:"channel_post_id,omitempty"`
+	OrderId           string                 `protobuf:"bytes,5,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	AttributionType   string                 `protobuf:"bytes,6,opt,name=attribution_type,json=attributionType,proto3" json:"attribution_type,omitempty"`
+	RevenueAttributed *v1.Money              `protobuf:"bytes,7,opt,name=revenue_attributed,json=revenueAttributed,proto3" json:"revenue_attributed,omitempty"`
+	SourceClass       v1.SourceClass         `protobuf:"varint,8,opt,name=source_class,json=sourceClass,proto3,enum=creativanta.common.v1.SourceClass" json:"source_class,omitempty"`
+	Confidence        v1.ConfidenceBand      `protobuf:"varint,9,opt,name=confidence,proto3,enum=creativanta.common.v1.ConfidenceBand" json:"confidence,omitempty"`
+	UtmSource         string                 `protobuf:"bytes,10,opt,name=utm_source,json=utmSource,proto3" json:"utm_source,omitempty"`
+	UtmMedium         string                 `protobuf:"bytes,11,opt,name=utm_medium,json=utmMedium,proto3" json:"utm_medium,omitempty"`
+	UtmCampaign       string                 `protobuf:"bytes,12,opt,name=utm_campaign,json=utmCampaign,proto3" json:"utm_campaign,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AttributionServiceRecordAttributionRequest) Reset() {
+	*x = AttributionServiceRecordAttributionRequest{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[73]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AttributionServiceRecordAttributionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AttributionServiceRecordAttributionRequest) ProtoMessage() {}
+
+func (x *AttributionServiceRecordAttributionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[73]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AttributionServiceRecordAttributionRequest.ProtoReflect.Descriptor instead.
+func (*AttributionServiceRecordAttributionRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{73}
+}
+
+func (x *AttributionServiceRecordAttributionRequest) GetContext() *v1.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *AttributionServiceRecordAttributionRequest) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *AttributionServiceRecordAttributionRequest) GetPublishItemId() string {
+	if x != nil {
+		return x.PublishItemId
+	}
+	return ""
+}
+
+func (x *AttributionServiceRecordAttributionRequest) GetChannelPostId() string {
+	if x != nil {
+		return x.ChannelPostId
+	}
+	return ""
+}
+
+func (x *AttributionServiceRecordAttributionRequest) GetOrderId() string {
+	if x != nil {
+		return x.OrderId
+	}
+	return ""
+}
+
+func (x *AttributionServiceRecordAttributionRequest) GetAttributionType() string {
+	if x != nil {
+		return x.AttributionType
+	}
+	return ""
+}
+
+func (x *AttributionServiceRecordAttributionRequest) GetRevenueAttributed() *v1.Money {
+	if x != nil {
+		return x.RevenueAttributed
+	}
+	return nil
+}
+
+func (x *AttributionServiceRecordAttributionRequest) GetSourceClass() v1.SourceClass {
+	if x != nil {
+		return x.SourceClass
+	}
+	return v1.SourceClass(0)
+}
+
+func (x *AttributionServiceRecordAttributionRequest) GetConfidence() v1.ConfidenceBand {
+	if x != nil {
+		return x.Confidence
+	}
+	return v1.ConfidenceBand(0)
+}
+
+func (x *AttributionServiceRecordAttributionRequest) GetUtmSource() string {
+	if x != nil {
+		return x.UtmSource
+	}
+	return ""
+}
+
+func (x *AttributionServiceRecordAttributionRequest) GetUtmMedium() string {
+	if x != nil {
+		return x.UtmMedium
+	}
+	return ""
+}
+
+func (x *AttributionServiceRecordAttributionRequest) GetUtmCampaign() string {
+	if x != nil {
+		return x.UtmCampaign
+	}
+	return ""
+}
+
+type AttributionServiceRecordAttributionResponse struct {
+	state                  protoimpl.MessageState    `protogen:"open.v1"`
+	Record                 *ContentAttributionRecord `protobuf:"bytes,1,opt,name=record,proto3" json:"record,omitempty"`
+	OrderRecognized        bool                      `protobuf:"varint,2,opt,name=order_recognized,json=orderRecognized,proto3" json:"order_recognized,omitempty"`
+	OrderTotalRevenue      *v1.Money                 `protobuf:"bytes,3,opt,name=order_total_revenue,json=orderTotalRevenue,proto3" json:"order_total_revenue,omitempty"`
+	OrderAllocatedRevenue  *v1.Money                 `protobuf:"bytes,4,opt,name=order_allocated_revenue,json=orderAllocatedRevenue,proto3" json:"order_allocated_revenue,omitempty"`
+	OrderRemainingCapacity *v1.Money                 `protobuf:"bytes,5,opt,name=order_remaining_capacity,json=orderRemainingCapacity,proto3" json:"order_remaining_capacity,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *AttributionServiceRecordAttributionResponse) Reset() {
+	*x = AttributionServiceRecordAttributionResponse{}
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[74]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AttributionServiceRecordAttributionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AttributionServiceRecordAttributionResponse) ProtoMessage() {}
+
+func (x *AttributionServiceRecordAttributionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_finance_v1_finance_proto_msgTypes[74]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AttributionServiceRecordAttributionResponse.ProtoReflect.Descriptor instead.
+func (*AttributionServiceRecordAttributionResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_finance_v1_finance_proto_rawDescGZIP(), []int{74}
+}
+
+func (x *AttributionServiceRecordAttributionResponse) GetRecord() *ContentAttributionRecord {
+	if x != nil {
+		return x.Record
+	}
+	return nil
+}
+
+func (x *AttributionServiceRecordAttributionResponse) GetOrderRecognized() bool {
+	if x != nil {
+		return x.OrderRecognized
+	}
+	return false
+}
+
+func (x *AttributionServiceRecordAttributionResponse) GetOrderTotalRevenue() *v1.Money {
+	if x != nil {
+		return x.OrderTotalRevenue
+	}
+	return nil
+}
+
+func (x *AttributionServiceRecordAttributionResponse) GetOrderAllocatedRevenue() *v1.Money {
+	if x != nil {
+		return x.OrderAllocatedRevenue
+	}
+	return nil
+}
+
+func (x *AttributionServiceRecordAttributionResponse) GetOrderRemainingCapacity() *v1.Money {
+	if x != nil {
+		return x.OrderRemainingCapacity
+	}
+	return nil
+}
+
 var File_creativanta_finance_v1_finance_proto protoreflect.FileDescriptor
 
 const file_creativanta_finance_v1_finance_proto_rawDesc = "" +
@@ -6283,7 +7283,123 @@ const file_creativanta_finance_v1_finance_proto_rawDesc = "" +
 	"\rproof_bundles\x18\x01 \x03(\v2#.creativanta.finance.v1.ProofBundleR\fproofBundles\x12H\n" +
 	"\n" +
 	"pagination\x18\x02 \x01(\v2(.creativanta.common.v1.PaginatedResponseR\n" +
-	"pagination*\x8b\x03\n" +
+	"pagination\"\xf1\x04\n" +
+	"\x18ContentAttributionRecord\x12%\n" +
+	"\x0eattribution_id\x18\x01 \x01(\tR\rattributionId\x12!\n" +
+	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12&\n" +
+	"\x0fpublish_item_id\x18\x03 \x01(\tR\rpublishItemId\x12&\n" +
+	"\x0fchannel_post_id\x18\x04 \x01(\tR\rchannelPostId\x12\x19\n" +
+	"\border_id\x18\x05 \x01(\tR\aorderId\x12)\n" +
+	"\x10attribution_type\x18\x06 \x01(\tR\x0fattributionType\x12K\n" +
+	"\x12revenue_attributed\x18\a \x01(\v2\x1c.creativanta.common.v1.MoneyR\x11revenueAttributed\x12E\n" +
+	"\fsource_class\x18\b \x01(\x0e2\".creativanta.common.v1.SourceClassR\vsourceClass\x12E\n" +
+	"\n" +
+	"confidence\x18\t \x01(\x0e2%.creativanta.common.v1.ConfidenceBandR\n" +
+	"confidence\x12\x1d\n" +
+	"\n" +
+	"utm_source\x18\n" +
+	" \x01(\tR\tutmSource\x12\x1d\n" +
+	"\n" +
+	"utm_medium\x18\v \x01(\tR\tutmMedium\x12!\n" +
+	"\futm_campaign\x18\f \x01(\tR\vutmCampaign\x129\n" +
+	"\n" +
+	"created_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xc3\a\n" +
+	"\x19ContentRevenueAttribution\x12\x1d\n" +
+	"\n" +
+	"content_id\x18\x01 \x01(\tR\tcontentId\x12&\n" +
+	"\x0fpublish_item_id\x18\x02 \x01(\tR\rpublishItemId\x12\x19\n" +
+	"\basset_id\x18\x03 \x01(\tR\aassetId\x12\x14\n" +
+	"\x05title\x18\x04 \x01(\tR\x05title\x12,\n" +
+	"\x12direct_order_count\x18\x05 \x01(\x03R\x10directOrderCount\x12K\n" +
+	"\x12attributed_revenue\x18\x06 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x11attributedRevenue\x12\x14\n" +
+	"\x05views\x18\a \x01(\x03R\x05views\x12\x16\n" +
+	"\x06clicks\x18\b \x01(\x03R\x06clicks\x12(\n" +
+	"\x10is_views_unknown\x18\t \x01(\bR\x0eisViewsUnknown\x12*\n" +
+	"\x11is_clicks_unknown\x18\n" +
+	" \x01(\bR\x0fisClicksUnknown\x12%\n" +
+	"\x0eunknown_reason\x18\v \x01(\tR\runknownReason\x12\x10\n" +
+	"\x03rpm\x18\f \x01(\tR\x03rpm\x12$\n" +
+	"\x0eis_rpm_unknown\x18\r \x01(\bR\fisRpmUnknown\x12\x10\n" +
+	"\x03ctr\x18\x0e \x01(\tR\x03ctr\x12$\n" +
+	"\x0eis_ctr_unknown\x18\x0f \x01(\bR\fisCtrUnknown\x12'\n" +
+	"\x0fconversion_rate\x18\x10 \x01(\tR\x0econversionRate\x12;\n" +
+	"\x1ais_conversion_rate_unknown\x18\x11 \x01(\bR\x17isConversionRateUnknown\x12E\n" +
+	"\n" +
+	"confidence\x18\x12 \x01(\x0e2%.creativanta.common.v1.ConfidenceBandR\n" +
+	"confidence\x12\x87\x01\n" +
+	"\x18source_class_percentages\x18\x13 \x03(\v2M.creativanta.finance.v1.ContentRevenueAttribution.SourceClassPercentagesEntryR\x16sourceClassPercentages\x12\x16\n" +
+	"\x06status\x18\x14 \x01(\tR\x06status\x1aI\n" +
+	"\x1bSourceClassPercentagesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\"\xe2\x04\n" +
+	"$WorkspaceRevenueDeduplicationSummary\x12!\n" +
+	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x126\n" +
+	"\x17total_orders_attributed\x18\x02 \x01(\x03R\x15totalOrdersAttributed\x122\n" +
+	"\x15unique_orders_counted\x18\x03 \x01(\x03R\x13uniqueOrdersCounted\x12\\\n" +
+	"\x1bcanonical_workspace_revenue\x18\x04 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x19canonicalWorkspaceRevenue\x12P\n" +
+	"\x15sum_attribution_lines\x18\x05 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x13sumAttributionLines\x125\n" +
+	"\x17is_revenue_counted_once\x18\x06 \x01(\bR\x14isRevenueCountedOnce\x12X\n" +
+	"\x14aggregate_confidence\x18\a \x01(\x0e2%.creativanta.common.v1.ConfidenceBandR\x13aggregateConfidence\x12C\n" +
+	"\x1eincludes_estimated_or_imported\x18\b \x01(\bR\x1bincludesEstimatedOrImported\x12%\n" +
+	"\x0ecaveat_message\x18\t \x01(\tR\rcaveatMessage\"\xb0\x01\n" +
+	"*ContentRevenueServiceGetAttributionRequest\x12!\n" +
+	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x1d\n" +
+	"\n" +
+	"content_id\x18\x02 \x01(\tR\tcontentId\x12!\n" +
+	"\fperiod_start\x18\x03 \x01(\tR\vperiodStart\x12\x1d\n" +
+	"\n" +
+	"period_end\x18\x04 \x01(\tR\tperiodEnd\"\xd0\x02\n" +
+	"+ContentRevenueServiceGetAttributionResponse\x12S\n" +
+	"\vattribution\x18\x01 \x01(\v21.creativanta.finance.v1.ContentRevenueAttributionR\vattribution\x12a\n" +
+	"\x13attribution_records\x18\x02 \x03(\v20.creativanta.finance.v1.ContentAttributionRecordR\x12attributionRecords\x12i\n" +
+	"\x11workspace_summary\x18\x03 \x01(\v2<.creativanta.finance.v1.WorkspaceRevenueDeduplicationSummaryR\x10workspaceSummary\"\xdd\x01\n" +
+	"%AttributionServiceGetByContentRequest\x12!\n" +
+	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12&\n" +
+	"\x0fpublish_item_id\x18\x02 \x01(\tR\rpublishItemId\x12&\n" +
+	"\x0fchannel_post_id\x18\x03 \x01(\tR\rchannelPostId\x12A\n" +
+	"\n" +
+	"pagination\x18\x04 \x01(\v2!.creativanta.common.v1.PaginationR\n" +
+	"pagination\"\xbb\x03\n" +
+	"\x19ContentAttributionSummary\x12&\n" +
+	"\x0fpublish_item_id\x18\x01 \x01(\tR\rpublishItemId\x12#\n" +
+	"\rtotal_records\x18\x02 \x01(\x03R\ftotalRecords\x12#\n" +
+	"\runique_orders\x18\x03 \x01(\x03R\funiqueOrders\x12V\n" +
+	"\x18total_attributed_revenue\x18\x04 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x16totalAttributedRevenue\x12T\n" +
+	"\x17canonical_order_revenue\x18\x05 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x15canonicalOrderRevenue\x12E\n" +
+	"\n" +
+	"confidence\x18\x06 \x01(\x0e2%.creativanta.common.v1.ConfidenceBandR\n" +
+	"confidence\x127\n" +
+	"\x18source_class_mix_summary\x18\a \x01(\tR\x15sourceClassMixSummary\"\x8b\x02\n" +
+	"&AttributionServiceGetByContentResponse\x12J\n" +
+	"\arecords\x18\x01 \x03(\v20.creativanta.finance.v1.ContentAttributionRecordR\arecords\x12K\n" +
+	"\asummary\x18\x02 \x01(\v21.creativanta.finance.v1.ContentAttributionSummaryR\asummary\x12H\n" +
+	"\n" +
+	"pagination\x18\x03 \x01(\v2(.creativanta.common.v1.PaginatedResponseR\n" +
+	"pagination\"\xe2\x04\n" +
+	"*AttributionServiceRecordAttributionRequest\x12?\n" +
+	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12!\n" +
+	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12&\n" +
+	"\x0fpublish_item_id\x18\x03 \x01(\tR\rpublishItemId\x12&\n" +
+	"\x0fchannel_post_id\x18\x04 \x01(\tR\rchannelPostId\x12\x19\n" +
+	"\border_id\x18\x05 \x01(\tR\aorderId\x12)\n" +
+	"\x10attribution_type\x18\x06 \x01(\tR\x0fattributionType\x12K\n" +
+	"\x12revenue_attributed\x18\a \x01(\v2\x1c.creativanta.common.v1.MoneyR\x11revenueAttributed\x12E\n" +
+	"\fsource_class\x18\b \x01(\x0e2\".creativanta.common.v1.SourceClassR\vsourceClass\x12E\n" +
+	"\n" +
+	"confidence\x18\t \x01(\x0e2%.creativanta.common.v1.ConfidenceBandR\n" +
+	"confidence\x12\x1d\n" +
+	"\n" +
+	"utm_source\x18\n" +
+	" \x01(\tR\tutmSource\x12\x1d\n" +
+	"\n" +
+	"utm_medium\x18\v \x01(\tR\tutmMedium\x12!\n" +
+	"\futm_campaign\x18\f \x01(\tR\vutmCampaign\"\x9e\x03\n" +
+	"+AttributionServiceRecordAttributionResponse\x12H\n" +
+	"\x06record\x18\x01 \x01(\v20.creativanta.finance.v1.ContentAttributionRecordR\x06record\x12)\n" +
+	"\x10order_recognized\x18\x02 \x01(\bR\x0forderRecognized\x12L\n" +
+	"\x13order_total_revenue\x18\x03 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x11orderTotalRevenue\x12T\n" +
+	"\x17order_allocated_revenue\x18\x04 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x15orderAllocatedRevenue\x12V\n" +
+	"\x18order_remaining_capacity\x18\x05 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x16orderRemainingCapacity*\x8b\x03\n" +
 	"\x12FinancialComponent\x12#\n" +
 	"\x1fFINANCIAL_COMPONENT_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bFINANCIAL_COMPONENT_REVENUE\x10\x01\x12$\n" +
@@ -6356,7 +7472,12 @@ const file_creativanta_finance_v1_finance_proto_rawDesc = "" +
 	"\fProofService\x12u\n" +
 	"\bAssemble\x123.creativanta.finance.v1.ProofServiceAssembleRequest\x1a4.creativanta.finance.v1.ProofServiceAssembleResponse\x12f\n" +
 	"\x03Get\x12..creativanta.finance.v1.ProofServiceGetRequest\x1a/.creativanta.finance.v1.ProofServiceGetResponse\x12i\n" +
-	"\x04List\x12/.creativanta.finance.v1.ProofServiceListRequest\x1a0.creativanta.finance.v1.ProofServiceListResponseBRZPgithub.com/quantm-zeus/creativanta/apps/api/gen/creativanta/finance/v1;financev1b\x06proto3"
+	"\x04List\x12/.creativanta.finance.v1.ProofServiceListRequest\x1a0.creativanta.finance.v1.ProofServiceListResponse2\xb3\x01\n" +
+	"\x15ContentRevenueService\x12\x99\x01\n" +
+	"\x0eGetAttribution\x12B.creativanta.finance.v1.ContentRevenueServiceGetAttributionRequest\x1aC.creativanta.finance.v1.ContentRevenueServiceGetAttributionResponse2\xc3\x02\n" +
+	"\x12AttributionService\x12\x8d\x01\n" +
+	"\fGetByContent\x12=.creativanta.finance.v1.AttributionServiceGetByContentRequest\x1a>.creativanta.finance.v1.AttributionServiceGetByContentResponse\x12\x9c\x01\n" +
+	"\x11RecordAttribution\x12B.creativanta.finance.v1.AttributionServiceRecordAttributionRequest\x1aC.creativanta.finance.v1.AttributionServiceRecordAttributionResponseBRZPgithub.com/quantm-zeus/creativanta/apps/api/gen/creativanta/finance/v1;financev1b\x06proto3"
 
 var (
 	file_creativanta_finance_v1_finance_proto_rawDescOnce sync.Once
@@ -6371,297 +7492,342 @@ func file_creativanta_finance_v1_finance_proto_rawDescGZIP() []byte {
 }
 
 var file_creativanta_finance_v1_finance_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_creativanta_finance_v1_finance_proto_msgTypes = make([]protoimpl.MessageInfo, 67)
+var file_creativanta_finance_v1_finance_proto_msgTypes = make([]protoimpl.MessageInfo, 78)
 var file_creativanta_finance_v1_finance_proto_goTypes = []any{
-	(FinancialComponent)(0),                          // 0: creativanta.finance.v1.FinancialComponent
-	(ReconciliationState)(0),                         // 1: creativanta.finance.v1.ReconciliationState
-	(SettlementState)(0),                             // 2: creativanta.finance.v1.SettlementState
-	(CostState)(0),                                   // 3: creativanta.finance.v1.CostState
-	(VerificationStatus)(0),                          // 4: creativanta.finance.v1.VerificationStatus
-	(*ObjectRef)(nil),                                // 5: creativanta.finance.v1.ObjectRef
-	(*ExchangeRateSnapshot)(nil),                     // 6: creativanta.finance.v1.ExchangeRateSnapshot
-	(*FinancialPosting)(nil),                         // 7: creativanta.finance.v1.FinancialPosting
-	(*CostItem)(nil),                                 // 8: creativanta.finance.v1.CostItem
-	(*SettlementLine)(nil),                           // 9: creativanta.finance.v1.SettlementLine
-	(*Settlement)(nil),                               // 10: creativanta.finance.v1.Settlement
-	(*ProfitSnapshot)(nil),                           // 11: creativanta.finance.v1.ProfitSnapshot
-	(*ProfitAnomaly)(nil),                            // 12: creativanta.finance.v1.ProfitAnomaly
-	(*ReconciliationRecord)(nil),                     // 13: creativanta.finance.v1.ReconciliationRecord
-	(*ReconciliationMatch)(nil),                      // 14: creativanta.finance.v1.ReconciliationMatch
-	(*EvidenceObject)(nil),                           // 15: creativanta.finance.v1.EvidenceObject
-	(*ProofBundle)(nil),                              // 16: creativanta.finance.v1.ProofBundle
-	(*DataGapItem)(nil),                              // 17: creativanta.finance.v1.DataGapItem
-	(*ProfitServiceGetSummaryRequest)(nil),           // 18: creativanta.finance.v1.ProfitServiceGetSummaryRequest
-	(*ProfitServiceGetSummaryResponse)(nil),          // 19: creativanta.finance.v1.ProfitServiceGetSummaryResponse
-	(*ProfitServiceDrillDownRequest)(nil),            // 20: creativanta.finance.v1.ProfitServiceDrillDownRequest
-	(*ProfitDrillDownItem)(nil),                      // 21: creativanta.finance.v1.ProfitDrillDownItem
-	(*ProfitServiceDrillDownResponse)(nil),           // 22: creativanta.finance.v1.ProfitServiceDrillDownResponse
-	(*ProfitServiceGetAnomaliesRequest)(nil),         // 23: creativanta.finance.v1.ProfitServiceGetAnomaliesRequest
-	(*ProfitServiceGetAnomaliesResponse)(nil),        // 24: creativanta.finance.v1.ProfitServiceGetAnomaliesResponse
-	(*ProfitServiceGetSnapshotRequest)(nil),          // 25: creativanta.finance.v1.ProfitServiceGetSnapshotRequest
-	(*ProfitServiceGetSnapshotResponse)(nil),         // 26: creativanta.finance.v1.ProfitServiceGetSnapshotResponse
-	(*ProfitServiceRefreshSnapshotRequest)(nil),      // 27: creativanta.finance.v1.ProfitServiceRefreshSnapshotRequest
-	(*ProfitServiceRefreshSnapshotResponse)(nil),     // 28: creativanta.finance.v1.ProfitServiceRefreshSnapshotResponse
-	(*SettlementLineInput)(nil),                      // 29: creativanta.finance.v1.SettlementLineInput
-	(*SettlementServiceImportRequest)(nil),           // 30: creativanta.finance.v1.SettlementServiceImportRequest
-	(*SettlementServiceImportResponse)(nil),          // 31: creativanta.finance.v1.SettlementServiceImportResponse
-	(*SettlementServiceListRequest)(nil),             // 32: creativanta.finance.v1.SettlementServiceListRequest
-	(*SettlementServiceListResponse)(nil),            // 33: creativanta.finance.v1.SettlementServiceListResponse
-	(*SettlementServiceGetRequest)(nil),              // 34: creativanta.finance.v1.SettlementServiceGetRequest
-	(*SettlementServiceGetResponse)(nil),             // 35: creativanta.finance.v1.SettlementServiceGetResponse
-	(*CostServiceCreateRequest)(nil),                 // 36: creativanta.finance.v1.CostServiceCreateRequest
-	(*CostServiceCreateResponse)(nil),                // 37: creativanta.finance.v1.CostServiceCreateResponse
-	(*CostServiceListRequest)(nil),                   // 38: creativanta.finance.v1.CostServiceListRequest
-	(*CostServiceListResponse)(nil),                  // 39: creativanta.finance.v1.CostServiceListResponse
-	(*CostServiceUpdateRequest)(nil),                 // 40: creativanta.finance.v1.CostServiceUpdateRequest
-	(*CostServiceUpdateResponse)(nil),                // 41: creativanta.finance.v1.CostServiceUpdateResponse
-	(*CostServiceDeleteRequest)(nil),                 // 42: creativanta.finance.v1.CostServiceDeleteRequest
-	(*CostServiceDeleteResponse)(nil),                // 43: creativanta.finance.v1.CostServiceDeleteResponse
-	(*ReconciliationServiceQueueRequest)(nil),        // 44: creativanta.finance.v1.ReconciliationServiceQueueRequest
-	(*ReconciliationServiceQueueResponse)(nil),       // 45: creativanta.finance.v1.ReconciliationServiceQueueResponse
-	(*ReconciliationServiceMatchRequest)(nil),        // 46: creativanta.finance.v1.ReconciliationServiceMatchRequest
-	(*ReconciliationServiceMatchResponse)(nil),       // 47: creativanta.finance.v1.ReconciliationServiceMatchResponse
-	(*ReconciliationServiceManualMatchRequest)(nil),  // 48: creativanta.finance.v1.ReconciliationServiceManualMatchRequest
-	(*ReconciliationServiceManualMatchResponse)(nil), // 49: creativanta.finance.v1.ReconciliationServiceManualMatchResponse
-	(*ReconciliationServiceOverrideRequest)(nil),     // 50: creativanta.finance.v1.ReconciliationServiceOverrideRequest
-	(*ReconciliationServiceOverrideResponse)(nil),    // 51: creativanta.finance.v1.ReconciliationServiceOverrideResponse
-	(*ReconciliationServiceGetRecordRequest)(nil),    // 52: creativanta.finance.v1.ReconciliationServiceGetRecordRequest
-	(*ReconciliationServiceGetRecordResponse)(nil),   // 53: creativanta.finance.v1.ReconciliationServiceGetRecordResponse
-	(*ReconciliationServiceListRecordsRequest)(nil),  // 54: creativanta.finance.v1.ReconciliationServiceListRecordsRequest
-	(*ReconciliationServiceListRecordsResponse)(nil), // 55: creativanta.finance.v1.ReconciliationServiceListRecordsResponse
-	(*ReconciliationServiceListPendingRequest)(nil),  // 56: creativanta.finance.v1.ReconciliationServiceListPendingRequest
-	(*ReconciliationServiceListPendingResponse)(nil), // 57: creativanta.finance.v1.ReconciliationServiceListPendingResponse
-	(*EvidenceServiceSubmitRequest)(nil),             // 58: creativanta.finance.v1.EvidenceServiceSubmitRequest
-	(*EvidenceServiceSubmitResponse)(nil),            // 59: creativanta.finance.v1.EvidenceServiceSubmitResponse
-	(*EvidenceServiceGetRequest)(nil),                // 60: creativanta.finance.v1.EvidenceServiceGetRequest
-	(*EvidenceServiceGetResponse)(nil),               // 61: creativanta.finance.v1.EvidenceServiceGetResponse
-	(*EvidenceServiceListRequest)(nil),               // 62: creativanta.finance.v1.EvidenceServiceListRequest
-	(*EvidenceServiceListResponse)(nil),              // 63: creativanta.finance.v1.EvidenceServiceListResponse
-	(*ProofServiceAssembleRequest)(nil),              // 64: creativanta.finance.v1.ProofServiceAssembleRequest
-	(*ProofServiceAssembleResponse)(nil),             // 65: creativanta.finance.v1.ProofServiceAssembleResponse
-	(*ProofServiceGetRequest)(nil),                   // 66: creativanta.finance.v1.ProofServiceGetRequest
-	(*ProofServiceGetResponse)(nil),                  // 67: creativanta.finance.v1.ProofServiceGetResponse
-	(*ProofServiceListRequest)(nil),                  // 68: creativanta.finance.v1.ProofServiceListRequest
-	(*ProofServiceListResponse)(nil),                 // 69: creativanta.finance.v1.ProofServiceListResponse
-	nil,                                              // 70: creativanta.finance.v1.ProfitServiceGetSummaryResponse.ComponentBreakdownEntry
-	nil,                                              // 71: creativanta.finance.v1.ProfitServiceGetSummaryResponse.SourceClassPercentagesEntry
-	(*timestamppb.Timestamp)(nil),                    // 72: google.protobuf.Timestamp
-	(v1.SourceClass)(0),                              // 73: creativanta.common.v1.SourceClass
-	(*v1.Money)(nil),                                 // 74: creativanta.common.v1.Money
-	(v1.ConfidenceBand)(0),                           // 75: creativanta.common.v1.ConfidenceBand
-	(*v1.CommandContext)(nil),                        // 76: creativanta.common.v1.CommandContext
-	(*v1.Pagination)(nil),                            // 77: creativanta.common.v1.Pagination
-	(*v1.PaginatedResponse)(nil),                     // 78: creativanta.common.v1.PaginatedResponse
+	(FinancialComponent)(0),                             // 0: creativanta.finance.v1.FinancialComponent
+	(ReconciliationState)(0),                            // 1: creativanta.finance.v1.ReconciliationState
+	(SettlementState)(0),                                // 2: creativanta.finance.v1.SettlementState
+	(CostState)(0),                                      // 3: creativanta.finance.v1.CostState
+	(VerificationStatus)(0),                             // 4: creativanta.finance.v1.VerificationStatus
+	(*ObjectRef)(nil),                                   // 5: creativanta.finance.v1.ObjectRef
+	(*ExchangeRateSnapshot)(nil),                        // 6: creativanta.finance.v1.ExchangeRateSnapshot
+	(*FinancialPosting)(nil),                            // 7: creativanta.finance.v1.FinancialPosting
+	(*CostItem)(nil),                                    // 8: creativanta.finance.v1.CostItem
+	(*SettlementLine)(nil),                              // 9: creativanta.finance.v1.SettlementLine
+	(*Settlement)(nil),                                  // 10: creativanta.finance.v1.Settlement
+	(*ProfitSnapshot)(nil),                              // 11: creativanta.finance.v1.ProfitSnapshot
+	(*ProfitAnomaly)(nil),                               // 12: creativanta.finance.v1.ProfitAnomaly
+	(*ReconciliationRecord)(nil),                        // 13: creativanta.finance.v1.ReconciliationRecord
+	(*ReconciliationMatch)(nil),                         // 14: creativanta.finance.v1.ReconciliationMatch
+	(*EvidenceObject)(nil),                              // 15: creativanta.finance.v1.EvidenceObject
+	(*ProofBundle)(nil),                                 // 16: creativanta.finance.v1.ProofBundle
+	(*DataGapItem)(nil),                                 // 17: creativanta.finance.v1.DataGapItem
+	(*ProfitServiceGetSummaryRequest)(nil),              // 18: creativanta.finance.v1.ProfitServiceGetSummaryRequest
+	(*ProfitServiceGetSummaryResponse)(nil),             // 19: creativanta.finance.v1.ProfitServiceGetSummaryResponse
+	(*ProfitServiceDrillDownRequest)(nil),               // 20: creativanta.finance.v1.ProfitServiceDrillDownRequest
+	(*ProfitDrillDownItem)(nil),                         // 21: creativanta.finance.v1.ProfitDrillDownItem
+	(*ProfitServiceDrillDownResponse)(nil),              // 22: creativanta.finance.v1.ProfitServiceDrillDownResponse
+	(*ProfitServiceGetAnomaliesRequest)(nil),            // 23: creativanta.finance.v1.ProfitServiceGetAnomaliesRequest
+	(*ProfitServiceGetAnomaliesResponse)(nil),           // 24: creativanta.finance.v1.ProfitServiceGetAnomaliesResponse
+	(*ProfitServiceGetSnapshotRequest)(nil),             // 25: creativanta.finance.v1.ProfitServiceGetSnapshotRequest
+	(*ProfitServiceGetSnapshotResponse)(nil),            // 26: creativanta.finance.v1.ProfitServiceGetSnapshotResponse
+	(*ProfitServiceRefreshSnapshotRequest)(nil),         // 27: creativanta.finance.v1.ProfitServiceRefreshSnapshotRequest
+	(*ProfitServiceRefreshSnapshotResponse)(nil),        // 28: creativanta.finance.v1.ProfitServiceRefreshSnapshotResponse
+	(*SettlementLineInput)(nil),                         // 29: creativanta.finance.v1.SettlementLineInput
+	(*SettlementServiceImportRequest)(nil),              // 30: creativanta.finance.v1.SettlementServiceImportRequest
+	(*SettlementServiceImportResponse)(nil),             // 31: creativanta.finance.v1.SettlementServiceImportResponse
+	(*SettlementServiceListRequest)(nil),                // 32: creativanta.finance.v1.SettlementServiceListRequest
+	(*SettlementServiceListResponse)(nil),               // 33: creativanta.finance.v1.SettlementServiceListResponse
+	(*SettlementServiceGetRequest)(nil),                 // 34: creativanta.finance.v1.SettlementServiceGetRequest
+	(*SettlementServiceGetResponse)(nil),                // 35: creativanta.finance.v1.SettlementServiceGetResponse
+	(*CostServiceCreateRequest)(nil),                    // 36: creativanta.finance.v1.CostServiceCreateRequest
+	(*CostServiceCreateResponse)(nil),                   // 37: creativanta.finance.v1.CostServiceCreateResponse
+	(*CostServiceListRequest)(nil),                      // 38: creativanta.finance.v1.CostServiceListRequest
+	(*CostServiceListResponse)(nil),                     // 39: creativanta.finance.v1.CostServiceListResponse
+	(*CostServiceUpdateRequest)(nil),                    // 40: creativanta.finance.v1.CostServiceUpdateRequest
+	(*CostServiceUpdateResponse)(nil),                   // 41: creativanta.finance.v1.CostServiceUpdateResponse
+	(*CostServiceDeleteRequest)(nil),                    // 42: creativanta.finance.v1.CostServiceDeleteRequest
+	(*CostServiceDeleteResponse)(nil),                   // 43: creativanta.finance.v1.CostServiceDeleteResponse
+	(*ReconciliationServiceQueueRequest)(nil),           // 44: creativanta.finance.v1.ReconciliationServiceQueueRequest
+	(*ReconciliationServiceQueueResponse)(nil),          // 45: creativanta.finance.v1.ReconciliationServiceQueueResponse
+	(*ReconciliationServiceMatchRequest)(nil),           // 46: creativanta.finance.v1.ReconciliationServiceMatchRequest
+	(*ReconciliationServiceMatchResponse)(nil),          // 47: creativanta.finance.v1.ReconciliationServiceMatchResponse
+	(*ReconciliationServiceManualMatchRequest)(nil),     // 48: creativanta.finance.v1.ReconciliationServiceManualMatchRequest
+	(*ReconciliationServiceManualMatchResponse)(nil),    // 49: creativanta.finance.v1.ReconciliationServiceManualMatchResponse
+	(*ReconciliationServiceOverrideRequest)(nil),        // 50: creativanta.finance.v1.ReconciliationServiceOverrideRequest
+	(*ReconciliationServiceOverrideResponse)(nil),       // 51: creativanta.finance.v1.ReconciliationServiceOverrideResponse
+	(*ReconciliationServiceGetRecordRequest)(nil),       // 52: creativanta.finance.v1.ReconciliationServiceGetRecordRequest
+	(*ReconciliationServiceGetRecordResponse)(nil),      // 53: creativanta.finance.v1.ReconciliationServiceGetRecordResponse
+	(*ReconciliationServiceListRecordsRequest)(nil),     // 54: creativanta.finance.v1.ReconciliationServiceListRecordsRequest
+	(*ReconciliationServiceListRecordsResponse)(nil),    // 55: creativanta.finance.v1.ReconciliationServiceListRecordsResponse
+	(*ReconciliationServiceListPendingRequest)(nil),     // 56: creativanta.finance.v1.ReconciliationServiceListPendingRequest
+	(*ReconciliationServiceListPendingResponse)(nil),    // 57: creativanta.finance.v1.ReconciliationServiceListPendingResponse
+	(*EvidenceServiceSubmitRequest)(nil),                // 58: creativanta.finance.v1.EvidenceServiceSubmitRequest
+	(*EvidenceServiceSubmitResponse)(nil),               // 59: creativanta.finance.v1.EvidenceServiceSubmitResponse
+	(*EvidenceServiceGetRequest)(nil),                   // 60: creativanta.finance.v1.EvidenceServiceGetRequest
+	(*EvidenceServiceGetResponse)(nil),                  // 61: creativanta.finance.v1.EvidenceServiceGetResponse
+	(*EvidenceServiceListRequest)(nil),                  // 62: creativanta.finance.v1.EvidenceServiceListRequest
+	(*EvidenceServiceListResponse)(nil),                 // 63: creativanta.finance.v1.EvidenceServiceListResponse
+	(*ProofServiceAssembleRequest)(nil),                 // 64: creativanta.finance.v1.ProofServiceAssembleRequest
+	(*ProofServiceAssembleResponse)(nil),                // 65: creativanta.finance.v1.ProofServiceAssembleResponse
+	(*ProofServiceGetRequest)(nil),                      // 66: creativanta.finance.v1.ProofServiceGetRequest
+	(*ProofServiceGetResponse)(nil),                     // 67: creativanta.finance.v1.ProofServiceGetResponse
+	(*ProofServiceListRequest)(nil),                     // 68: creativanta.finance.v1.ProofServiceListRequest
+	(*ProofServiceListResponse)(nil),                    // 69: creativanta.finance.v1.ProofServiceListResponse
+	(*ContentAttributionRecord)(nil),                    // 70: creativanta.finance.v1.ContentAttributionRecord
+	(*ContentRevenueAttribution)(nil),                   // 71: creativanta.finance.v1.ContentRevenueAttribution
+	(*WorkspaceRevenueDeduplicationSummary)(nil),        // 72: creativanta.finance.v1.WorkspaceRevenueDeduplicationSummary
+	(*ContentRevenueServiceGetAttributionRequest)(nil),  // 73: creativanta.finance.v1.ContentRevenueServiceGetAttributionRequest
+	(*ContentRevenueServiceGetAttributionResponse)(nil), // 74: creativanta.finance.v1.ContentRevenueServiceGetAttributionResponse
+	(*AttributionServiceGetByContentRequest)(nil),       // 75: creativanta.finance.v1.AttributionServiceGetByContentRequest
+	(*ContentAttributionSummary)(nil),                   // 76: creativanta.finance.v1.ContentAttributionSummary
+	(*AttributionServiceGetByContentResponse)(nil),      // 77: creativanta.finance.v1.AttributionServiceGetByContentResponse
+	(*AttributionServiceRecordAttributionRequest)(nil),  // 78: creativanta.finance.v1.AttributionServiceRecordAttributionRequest
+	(*AttributionServiceRecordAttributionResponse)(nil), // 79: creativanta.finance.v1.AttributionServiceRecordAttributionResponse
+	nil,                           // 80: creativanta.finance.v1.ProfitServiceGetSummaryResponse.ComponentBreakdownEntry
+	nil,                           // 81: creativanta.finance.v1.ProfitServiceGetSummaryResponse.SourceClassPercentagesEntry
+	nil,                           // 82: creativanta.finance.v1.ContentRevenueAttribution.SourceClassPercentagesEntry
+	(*timestamppb.Timestamp)(nil), // 83: google.protobuf.Timestamp
+	(v1.SourceClass)(0),           // 84: creativanta.common.v1.SourceClass
+	(*v1.Money)(nil),              // 85: creativanta.common.v1.Money
+	(v1.ConfidenceBand)(0),        // 86: creativanta.common.v1.ConfidenceBand
+	(*v1.CommandContext)(nil),     // 87: creativanta.common.v1.CommandContext
+	(*v1.Pagination)(nil),         // 88: creativanta.common.v1.Pagination
+	(*v1.PaginatedResponse)(nil),  // 89: creativanta.common.v1.PaginatedResponse
 }
 var file_creativanta_finance_v1_finance_proto_depIdxs = []int32{
-	72,  // 0: creativanta.finance.v1.ExchangeRateSnapshot.captured_at:type_name -> google.protobuf.Timestamp
-	72,  // 1: creativanta.finance.v1.ExchangeRateSnapshot.effective_at:type_name -> google.protobuf.Timestamp
-	73,  // 2: creativanta.finance.v1.ExchangeRateSnapshot.source_class:type_name -> creativanta.common.v1.SourceClass
+	83,  // 0: creativanta.finance.v1.ExchangeRateSnapshot.captured_at:type_name -> google.protobuf.Timestamp
+	83,  // 1: creativanta.finance.v1.ExchangeRateSnapshot.effective_at:type_name -> google.protobuf.Timestamp
+	84,  // 2: creativanta.finance.v1.ExchangeRateSnapshot.source_class:type_name -> creativanta.common.v1.SourceClass
 	0,   // 3: creativanta.finance.v1.FinancialPosting.component:type_name -> creativanta.finance.v1.FinancialComponent
-	74,  // 4: creativanta.finance.v1.FinancialPosting.amount:type_name -> creativanta.common.v1.Money
-	73,  // 5: creativanta.finance.v1.FinancialPosting.source_class:type_name -> creativanta.common.v1.SourceClass
-	75,  // 6: creativanta.finance.v1.FinancialPosting.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	85,  // 4: creativanta.finance.v1.FinancialPosting.amount:type_name -> creativanta.common.v1.Money
+	84,  // 5: creativanta.finance.v1.FinancialPosting.source_class:type_name -> creativanta.common.v1.SourceClass
+	86,  // 6: creativanta.finance.v1.FinancialPosting.confidence:type_name -> creativanta.common.v1.ConfidenceBand
 	6,   // 7: creativanta.finance.v1.FinancialPosting.exchange_rate:type_name -> creativanta.finance.v1.ExchangeRateSnapshot
-	72,  // 8: creativanta.finance.v1.FinancialPosting.effective_at:type_name -> google.protobuf.Timestamp
-	72,  // 9: creativanta.finance.v1.FinancialPosting.created_at:type_name -> google.protobuf.Timestamp
-	74,  // 10: creativanta.finance.v1.CostItem.amount:type_name -> creativanta.common.v1.Money
-	73,  // 11: creativanta.finance.v1.CostItem.source_class:type_name -> creativanta.common.v1.SourceClass
+	83,  // 8: creativanta.finance.v1.FinancialPosting.effective_at:type_name -> google.protobuf.Timestamp
+	83,  // 9: creativanta.finance.v1.FinancialPosting.created_at:type_name -> google.protobuf.Timestamp
+	85,  // 10: creativanta.finance.v1.CostItem.amount:type_name -> creativanta.common.v1.Money
+	84,  // 11: creativanta.finance.v1.CostItem.source_class:type_name -> creativanta.common.v1.SourceClass
 	3,   // 12: creativanta.finance.v1.CostItem.cost_state:type_name -> creativanta.finance.v1.CostState
-	72,  // 13: creativanta.finance.v1.CostItem.created_at:type_name -> google.protobuf.Timestamp
-	72,  // 14: creativanta.finance.v1.CostItem.updated_at:type_name -> google.protobuf.Timestamp
-	74,  // 15: creativanta.finance.v1.SettlementLine.gross_amount:type_name -> creativanta.common.v1.Money
-	74,  // 16: creativanta.finance.v1.SettlementLine.fee_amount:type_name -> creativanta.common.v1.Money
-	74,  // 17: creativanta.finance.v1.SettlementLine.refund_amount:type_name -> creativanta.common.v1.Money
-	74,  // 18: creativanta.finance.v1.SettlementLine.net_amount:type_name -> creativanta.common.v1.Money
-	74,  // 19: creativanta.finance.v1.SettlementLine.matched_amount:type_name -> creativanta.common.v1.Money
+	83,  // 13: creativanta.finance.v1.CostItem.created_at:type_name -> google.protobuf.Timestamp
+	83,  // 14: creativanta.finance.v1.CostItem.updated_at:type_name -> google.protobuf.Timestamp
+	85,  // 15: creativanta.finance.v1.SettlementLine.gross_amount:type_name -> creativanta.common.v1.Money
+	85,  // 16: creativanta.finance.v1.SettlementLine.fee_amount:type_name -> creativanta.common.v1.Money
+	85,  // 17: creativanta.finance.v1.SettlementLine.refund_amount:type_name -> creativanta.common.v1.Money
+	85,  // 18: creativanta.finance.v1.SettlementLine.net_amount:type_name -> creativanta.common.v1.Money
+	85,  // 19: creativanta.finance.v1.SettlementLine.matched_amount:type_name -> creativanta.common.v1.Money
 	1,   // 20: creativanta.finance.v1.SettlementLine.reconciliation_state:type_name -> creativanta.finance.v1.ReconciliationState
-	72,  // 21: creativanta.finance.v1.SettlementLine.created_at:type_name -> google.protobuf.Timestamp
-	73,  // 22: creativanta.finance.v1.Settlement.source_class:type_name -> creativanta.common.v1.SourceClass
+	83,  // 21: creativanta.finance.v1.SettlementLine.created_at:type_name -> google.protobuf.Timestamp
+	84,  // 22: creativanta.finance.v1.Settlement.source_class:type_name -> creativanta.common.v1.SourceClass
 	6,   // 23: creativanta.finance.v1.Settlement.exchange_rate:type_name -> creativanta.finance.v1.ExchangeRateSnapshot
-	74,  // 24: creativanta.finance.v1.Settlement.gross_amount:type_name -> creativanta.common.v1.Money
-	74,  // 25: creativanta.finance.v1.Settlement.net_amount:type_name -> creativanta.common.v1.Money
+	85,  // 24: creativanta.finance.v1.Settlement.gross_amount:type_name -> creativanta.common.v1.Money
+	85,  // 25: creativanta.finance.v1.Settlement.net_amount:type_name -> creativanta.common.v1.Money
 	2,   // 26: creativanta.finance.v1.Settlement.settlement_state:type_name -> creativanta.finance.v1.SettlementState
 	1,   // 27: creativanta.finance.v1.Settlement.reconciliation_state:type_name -> creativanta.finance.v1.ReconciliationState
-	72,  // 28: creativanta.finance.v1.Settlement.created_at:type_name -> google.protobuf.Timestamp
-	72,  // 29: creativanta.finance.v1.Settlement.updated_at:type_name -> google.protobuf.Timestamp
+	83,  // 28: creativanta.finance.v1.Settlement.created_at:type_name -> google.protobuf.Timestamp
+	83,  // 29: creativanta.finance.v1.Settlement.updated_at:type_name -> google.protobuf.Timestamp
 	9,   // 30: creativanta.finance.v1.Settlement.lines:type_name -> creativanta.finance.v1.SettlementLine
-	74,  // 31: creativanta.finance.v1.ProfitSnapshot.gross_revenue:type_name -> creativanta.common.v1.Money
-	74,  // 32: creativanta.finance.v1.ProfitSnapshot.platform_fees:type_name -> creativanta.common.v1.Money
-	74,  // 33: creativanta.finance.v1.ProfitSnapshot.shipping_costs:type_name -> creativanta.common.v1.Money
-	74,  // 34: creativanta.finance.v1.ProfitSnapshot.affiliate_commissions:type_name -> creativanta.common.v1.Money
-	74,  // 35: creativanta.finance.v1.ProfitSnapshot.refund_deductions:type_name -> creativanta.common.v1.Money
-	74,  // 36: creativanta.finance.v1.ProfitSnapshot.cogs:type_name -> creativanta.common.v1.Money
-	74,  // 37: creativanta.finance.v1.ProfitSnapshot.ads_spend:type_name -> creativanta.common.v1.Money
-	74,  // 38: creativanta.finance.v1.ProfitSnapshot.ai_credit_costs:type_name -> creativanta.common.v1.Money
-	74,  // 39: creativanta.finance.v1.ProfitSnapshot.seeding_costs:type_name -> creativanta.common.v1.Money
-	74,  // 40: creativanta.finance.v1.ProfitSnapshot.other_costs:type_name -> creativanta.common.v1.Money
-	74,  // 41: creativanta.finance.v1.ProfitSnapshot.net_profit:type_name -> creativanta.common.v1.Money
-	75,  // 42: creativanta.finance.v1.ProfitSnapshot.confidence:type_name -> creativanta.common.v1.ConfidenceBand
-	72,  // 43: creativanta.finance.v1.ProfitSnapshot.freshness_at:type_name -> google.protobuf.Timestamp
-	72,  // 44: creativanta.finance.v1.ProfitSnapshot.created_at:type_name -> google.protobuf.Timestamp
-	74,  // 45: creativanta.finance.v1.ProfitSnapshot.pending_revenue:type_name -> creativanta.common.v1.Money
-	74,  // 46: creativanta.finance.v1.ProfitSnapshot.unreconciled_amount:type_name -> creativanta.common.v1.Money
-	74,  // 47: creativanta.finance.v1.ProfitAnomaly.expected_amount:type_name -> creativanta.common.v1.Money
-	74,  // 48: creativanta.finance.v1.ProfitAnomaly.actual_amount:type_name -> creativanta.common.v1.Money
-	72,  // 49: creativanta.finance.v1.ProfitAnomaly.detected_at:type_name -> google.protobuf.Timestamp
-	74,  // 50: creativanta.finance.v1.ReconciliationRecord.matched_amount:type_name -> creativanta.common.v1.Money
-	74,  // 51: creativanta.finance.v1.ReconciliationRecord.discrepancy_amount:type_name -> creativanta.common.v1.Money
+	85,  // 31: creativanta.finance.v1.ProfitSnapshot.gross_revenue:type_name -> creativanta.common.v1.Money
+	85,  // 32: creativanta.finance.v1.ProfitSnapshot.platform_fees:type_name -> creativanta.common.v1.Money
+	85,  // 33: creativanta.finance.v1.ProfitSnapshot.shipping_costs:type_name -> creativanta.common.v1.Money
+	85,  // 34: creativanta.finance.v1.ProfitSnapshot.affiliate_commissions:type_name -> creativanta.common.v1.Money
+	85,  // 35: creativanta.finance.v1.ProfitSnapshot.refund_deductions:type_name -> creativanta.common.v1.Money
+	85,  // 36: creativanta.finance.v1.ProfitSnapshot.cogs:type_name -> creativanta.common.v1.Money
+	85,  // 37: creativanta.finance.v1.ProfitSnapshot.ads_spend:type_name -> creativanta.common.v1.Money
+	85,  // 38: creativanta.finance.v1.ProfitSnapshot.ai_credit_costs:type_name -> creativanta.common.v1.Money
+	85,  // 39: creativanta.finance.v1.ProfitSnapshot.seeding_costs:type_name -> creativanta.common.v1.Money
+	85,  // 40: creativanta.finance.v1.ProfitSnapshot.other_costs:type_name -> creativanta.common.v1.Money
+	85,  // 41: creativanta.finance.v1.ProfitSnapshot.net_profit:type_name -> creativanta.common.v1.Money
+	86,  // 42: creativanta.finance.v1.ProfitSnapshot.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	83,  // 43: creativanta.finance.v1.ProfitSnapshot.freshness_at:type_name -> google.protobuf.Timestamp
+	83,  // 44: creativanta.finance.v1.ProfitSnapshot.created_at:type_name -> google.protobuf.Timestamp
+	85,  // 45: creativanta.finance.v1.ProfitSnapshot.pending_revenue:type_name -> creativanta.common.v1.Money
+	85,  // 46: creativanta.finance.v1.ProfitSnapshot.unreconciled_amount:type_name -> creativanta.common.v1.Money
+	85,  // 47: creativanta.finance.v1.ProfitAnomaly.expected_amount:type_name -> creativanta.common.v1.Money
+	85,  // 48: creativanta.finance.v1.ProfitAnomaly.actual_amount:type_name -> creativanta.common.v1.Money
+	83,  // 49: creativanta.finance.v1.ProfitAnomaly.detected_at:type_name -> google.protobuf.Timestamp
+	85,  // 50: creativanta.finance.v1.ReconciliationRecord.matched_amount:type_name -> creativanta.common.v1.Money
+	85,  // 51: creativanta.finance.v1.ReconciliationRecord.discrepancy_amount:type_name -> creativanta.common.v1.Money
 	1,   // 52: creativanta.finance.v1.ReconciliationRecord.reconciliation_state:type_name -> creativanta.finance.v1.ReconciliationState
-	72,  // 53: creativanta.finance.v1.ReconciliationRecord.override_at:type_name -> google.protobuf.Timestamp
-	72,  // 54: creativanta.finance.v1.ReconciliationRecord.created_at:type_name -> google.protobuf.Timestamp
-	72,  // 55: creativanta.finance.v1.ReconciliationRecord.updated_at:type_name -> google.protobuf.Timestamp
-	74,  // 56: creativanta.finance.v1.ReconciliationMatch.allocated_amount:type_name -> creativanta.common.v1.Money
-	72,  // 57: creativanta.finance.v1.ReconciliationMatch.created_at:type_name -> google.protobuf.Timestamp
-	72,  // 58: creativanta.finance.v1.EvidenceObject.collected_at:type_name -> google.protobuf.Timestamp
+	83,  // 53: creativanta.finance.v1.ReconciliationRecord.override_at:type_name -> google.protobuf.Timestamp
+	83,  // 54: creativanta.finance.v1.ReconciliationRecord.created_at:type_name -> google.protobuf.Timestamp
+	83,  // 55: creativanta.finance.v1.ReconciliationRecord.updated_at:type_name -> google.protobuf.Timestamp
+	85,  // 56: creativanta.finance.v1.ReconciliationMatch.allocated_amount:type_name -> creativanta.common.v1.Money
+	83,  // 57: creativanta.finance.v1.ReconciliationMatch.created_at:type_name -> google.protobuf.Timestamp
+	83,  // 58: creativanta.finance.v1.EvidenceObject.collected_at:type_name -> google.protobuf.Timestamp
 	4,   // 59: creativanta.finance.v1.EvidenceObject.verification_status:type_name -> creativanta.finance.v1.VerificationStatus
 	5,   // 60: creativanta.finance.v1.EvidenceObject.related_object_refs:type_name -> creativanta.finance.v1.ObjectRef
-	72,  // 61: creativanta.finance.v1.EvidenceObject.created_at:type_name -> google.protobuf.Timestamp
-	75,  // 62: creativanta.finance.v1.ProofBundle.confidence:type_name -> creativanta.common.v1.ConfidenceBand
-	72,  // 63: creativanta.finance.v1.ProofBundle.created_at:type_name -> google.protobuf.Timestamp
-	72,  // 64: creativanta.finance.v1.ProofBundle.updated_at:type_name -> google.protobuf.Timestamp
-	74,  // 65: creativanta.finance.v1.DataGapItem.monetary_amount:type_name -> creativanta.common.v1.Money
-	72,  // 66: creativanta.finance.v1.DataGapItem.unresolved_since:type_name -> google.protobuf.Timestamp
+	83,  // 61: creativanta.finance.v1.EvidenceObject.created_at:type_name -> google.protobuf.Timestamp
+	86,  // 62: creativanta.finance.v1.ProofBundle.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	83,  // 63: creativanta.finance.v1.ProofBundle.created_at:type_name -> google.protobuf.Timestamp
+	83,  // 64: creativanta.finance.v1.ProofBundle.updated_at:type_name -> google.protobuf.Timestamp
+	85,  // 65: creativanta.finance.v1.DataGapItem.monetary_amount:type_name -> creativanta.common.v1.Money
+	83,  // 66: creativanta.finance.v1.DataGapItem.unresolved_since:type_name -> google.protobuf.Timestamp
 	11,  // 67: creativanta.finance.v1.ProfitServiceGetSummaryResponse.snapshot:type_name -> creativanta.finance.v1.ProfitSnapshot
-	70,  // 68: creativanta.finance.v1.ProfitServiceGetSummaryResponse.component_breakdown:type_name -> creativanta.finance.v1.ProfitServiceGetSummaryResponse.ComponentBreakdownEntry
-	71,  // 69: creativanta.finance.v1.ProfitServiceGetSummaryResponse.source_class_percentages:type_name -> creativanta.finance.v1.ProfitServiceGetSummaryResponse.SourceClassPercentagesEntry
-	74,  // 70: creativanta.finance.v1.ProfitDrillDownItem.revenue:type_name -> creativanta.common.v1.Money
-	74,  // 71: creativanta.finance.v1.ProfitDrillDownItem.costs:type_name -> creativanta.common.v1.Money
-	74,  // 72: creativanta.finance.v1.ProfitDrillDownItem.net_profit:type_name -> creativanta.common.v1.Money
-	75,  // 73: creativanta.finance.v1.ProfitDrillDownItem.confidence:type_name -> creativanta.common.v1.ConfidenceBand
-	73,  // 74: creativanta.finance.v1.ProfitDrillDownItem.primary_source_class:type_name -> creativanta.common.v1.SourceClass
+	80,  // 68: creativanta.finance.v1.ProfitServiceGetSummaryResponse.component_breakdown:type_name -> creativanta.finance.v1.ProfitServiceGetSummaryResponse.ComponentBreakdownEntry
+	81,  // 69: creativanta.finance.v1.ProfitServiceGetSummaryResponse.source_class_percentages:type_name -> creativanta.finance.v1.ProfitServiceGetSummaryResponse.SourceClassPercentagesEntry
+	85,  // 70: creativanta.finance.v1.ProfitDrillDownItem.revenue:type_name -> creativanta.common.v1.Money
+	85,  // 71: creativanta.finance.v1.ProfitDrillDownItem.costs:type_name -> creativanta.common.v1.Money
+	85,  // 72: creativanta.finance.v1.ProfitDrillDownItem.net_profit:type_name -> creativanta.common.v1.Money
+	86,  // 73: creativanta.finance.v1.ProfitDrillDownItem.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	84,  // 74: creativanta.finance.v1.ProfitDrillDownItem.primary_source_class:type_name -> creativanta.common.v1.SourceClass
 	21,  // 75: creativanta.finance.v1.ProfitServiceDrillDownResponse.items:type_name -> creativanta.finance.v1.ProfitDrillDownItem
 	12,  // 76: creativanta.finance.v1.ProfitServiceGetAnomaliesResponse.anomalies:type_name -> creativanta.finance.v1.ProfitAnomaly
 	11,  // 77: creativanta.finance.v1.ProfitServiceGetSnapshotResponse.snapshot:type_name -> creativanta.finance.v1.ProfitSnapshot
-	76,  // 78: creativanta.finance.v1.ProfitServiceRefreshSnapshotRequest.context:type_name -> creativanta.common.v1.CommandContext
+	87,  // 78: creativanta.finance.v1.ProfitServiceRefreshSnapshotRequest.context:type_name -> creativanta.common.v1.CommandContext
 	11,  // 79: creativanta.finance.v1.ProfitServiceRefreshSnapshotResponse.snapshot:type_name -> creativanta.finance.v1.ProfitSnapshot
-	74,  // 80: creativanta.finance.v1.SettlementLineInput.gross_amount:type_name -> creativanta.common.v1.Money
-	74,  // 81: creativanta.finance.v1.SettlementLineInput.fee_amount:type_name -> creativanta.common.v1.Money
-	74,  // 82: creativanta.finance.v1.SettlementLineInput.refund_amount:type_name -> creativanta.common.v1.Money
-	74,  // 83: creativanta.finance.v1.SettlementLineInput.net_amount:type_name -> creativanta.common.v1.Money
-	76,  // 84: creativanta.finance.v1.SettlementServiceImportRequest.context:type_name -> creativanta.common.v1.CommandContext
-	74,  // 85: creativanta.finance.v1.SettlementServiceImportRequest.gross_amount:type_name -> creativanta.common.v1.Money
-	74,  // 86: creativanta.finance.v1.SettlementServiceImportRequest.net_amount:type_name -> creativanta.common.v1.Money
+	85,  // 80: creativanta.finance.v1.SettlementLineInput.gross_amount:type_name -> creativanta.common.v1.Money
+	85,  // 81: creativanta.finance.v1.SettlementLineInput.fee_amount:type_name -> creativanta.common.v1.Money
+	85,  // 82: creativanta.finance.v1.SettlementLineInput.refund_amount:type_name -> creativanta.common.v1.Money
+	85,  // 83: creativanta.finance.v1.SettlementLineInput.net_amount:type_name -> creativanta.common.v1.Money
+	87,  // 84: creativanta.finance.v1.SettlementServiceImportRequest.context:type_name -> creativanta.common.v1.CommandContext
+	85,  // 85: creativanta.finance.v1.SettlementServiceImportRequest.gross_amount:type_name -> creativanta.common.v1.Money
+	85,  // 86: creativanta.finance.v1.SettlementServiceImportRequest.net_amount:type_name -> creativanta.common.v1.Money
 	29,  // 87: creativanta.finance.v1.SettlementServiceImportRequest.lines:type_name -> creativanta.finance.v1.SettlementLineInput
 	6,   // 88: creativanta.finance.v1.SettlementServiceImportRequest.exchange_rate:type_name -> creativanta.finance.v1.ExchangeRateSnapshot
 	10,  // 89: creativanta.finance.v1.SettlementServiceImportResponse.settlement:type_name -> creativanta.finance.v1.Settlement
-	77,  // 90: creativanta.finance.v1.SettlementServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	88,  // 90: creativanta.finance.v1.SettlementServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
 	2,   // 91: creativanta.finance.v1.SettlementServiceListRequest.settlement_state:type_name -> creativanta.finance.v1.SettlementState
 	1,   // 92: creativanta.finance.v1.SettlementServiceListRequest.reconciliation_state:type_name -> creativanta.finance.v1.ReconciliationState
 	10,  // 93: creativanta.finance.v1.SettlementServiceListResponse.settlements:type_name -> creativanta.finance.v1.Settlement
-	78,  // 94: creativanta.finance.v1.SettlementServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	89,  // 94: creativanta.finance.v1.SettlementServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
 	10,  // 95: creativanta.finance.v1.SettlementServiceGetResponse.settlement:type_name -> creativanta.finance.v1.Settlement
-	76,  // 96: creativanta.finance.v1.CostServiceCreateRequest.context:type_name -> creativanta.common.v1.CommandContext
-	74,  // 97: creativanta.finance.v1.CostServiceCreateRequest.amount:type_name -> creativanta.common.v1.Money
-	73,  // 98: creativanta.finance.v1.CostServiceCreateRequest.source_class:type_name -> creativanta.common.v1.SourceClass
+	87,  // 96: creativanta.finance.v1.CostServiceCreateRequest.context:type_name -> creativanta.common.v1.CommandContext
+	85,  // 97: creativanta.finance.v1.CostServiceCreateRequest.amount:type_name -> creativanta.common.v1.Money
+	84,  // 98: creativanta.finance.v1.CostServiceCreateRequest.source_class:type_name -> creativanta.common.v1.SourceClass
 	8,   // 99: creativanta.finance.v1.CostServiceCreateResponse.cost_item:type_name -> creativanta.finance.v1.CostItem
-	77,  // 100: creativanta.finance.v1.CostServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	88,  // 100: creativanta.finance.v1.CostServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
 	8,   // 101: creativanta.finance.v1.CostServiceListResponse.cost_items:type_name -> creativanta.finance.v1.CostItem
-	78,  // 102: creativanta.finance.v1.CostServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	76,  // 103: creativanta.finance.v1.CostServiceUpdateRequest.context:type_name -> creativanta.common.v1.CommandContext
-	74,  // 104: creativanta.finance.v1.CostServiceUpdateRequest.amount:type_name -> creativanta.common.v1.Money
-	73,  // 105: creativanta.finance.v1.CostServiceUpdateRequest.source_class:type_name -> creativanta.common.v1.SourceClass
+	89,  // 102: creativanta.finance.v1.CostServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	87,  // 103: creativanta.finance.v1.CostServiceUpdateRequest.context:type_name -> creativanta.common.v1.CommandContext
+	85,  // 104: creativanta.finance.v1.CostServiceUpdateRequest.amount:type_name -> creativanta.common.v1.Money
+	84,  // 105: creativanta.finance.v1.CostServiceUpdateRequest.source_class:type_name -> creativanta.common.v1.SourceClass
 	3,   // 106: creativanta.finance.v1.CostServiceUpdateRequest.cost_state:type_name -> creativanta.finance.v1.CostState
 	8,   // 107: creativanta.finance.v1.CostServiceUpdateResponse.cost_item:type_name -> creativanta.finance.v1.CostItem
-	76,  // 108: creativanta.finance.v1.CostServiceDeleteRequest.context:type_name -> creativanta.common.v1.CommandContext
-	76,  // 109: creativanta.finance.v1.ReconciliationServiceQueueRequest.context:type_name -> creativanta.common.v1.CommandContext
+	87,  // 108: creativanta.finance.v1.CostServiceDeleteRequest.context:type_name -> creativanta.common.v1.CommandContext
+	87,  // 109: creativanta.finance.v1.ReconciliationServiceQueueRequest.context:type_name -> creativanta.common.v1.CommandContext
 	13,  // 110: creativanta.finance.v1.ReconciliationServiceQueueResponse.record:type_name -> creativanta.finance.v1.ReconciliationRecord
-	76,  // 111: creativanta.finance.v1.ReconciliationServiceMatchRequest.context:type_name -> creativanta.common.v1.CommandContext
-	74,  // 112: creativanta.finance.v1.ReconciliationServiceMatchRequest.allocation_amount:type_name -> creativanta.common.v1.Money
+	87,  // 111: creativanta.finance.v1.ReconciliationServiceMatchRequest.context:type_name -> creativanta.common.v1.CommandContext
+	85,  // 112: creativanta.finance.v1.ReconciliationServiceMatchRequest.allocation_amount:type_name -> creativanta.common.v1.Money
 	9,   // 113: creativanta.finance.v1.ReconciliationServiceMatchResponse.line:type_name -> creativanta.finance.v1.SettlementLine
 	1,   // 114: creativanta.finance.v1.ReconciliationServiceMatchResponse.order_reconciliation_state:type_name -> creativanta.finance.v1.ReconciliationState
-	74,  // 115: creativanta.finance.v1.ReconciliationServiceMatchResponse.line_remaining_capacity:type_name -> creativanta.common.v1.Money
-	74,  // 116: creativanta.finance.v1.ReconciliationServiceMatchResponse.order_remaining_capacity:type_name -> creativanta.common.v1.Money
+	85,  // 115: creativanta.finance.v1.ReconciliationServiceMatchResponse.line_remaining_capacity:type_name -> creativanta.common.v1.Money
+	85,  // 116: creativanta.finance.v1.ReconciliationServiceMatchResponse.order_remaining_capacity:type_name -> creativanta.common.v1.Money
 	13,  // 117: creativanta.finance.v1.ReconciliationServiceMatchResponse.record:type_name -> creativanta.finance.v1.ReconciliationRecord
 	14,  // 118: creativanta.finance.v1.ReconciliationServiceMatchResponse.match:type_name -> creativanta.finance.v1.ReconciliationMatch
-	76,  // 119: creativanta.finance.v1.ReconciliationServiceManualMatchRequest.context:type_name -> creativanta.common.v1.CommandContext
-	74,  // 120: creativanta.finance.v1.ReconciliationServiceManualMatchRequest.allocation_amount:type_name -> creativanta.common.v1.Money
+	87,  // 119: creativanta.finance.v1.ReconciliationServiceManualMatchRequest.context:type_name -> creativanta.common.v1.CommandContext
+	85,  // 120: creativanta.finance.v1.ReconciliationServiceManualMatchRequest.allocation_amount:type_name -> creativanta.common.v1.Money
 	9,   // 121: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.line:type_name -> creativanta.finance.v1.SettlementLine
 	1,   // 122: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.order_reconciliation_state:type_name -> creativanta.finance.v1.ReconciliationState
-	74,  // 123: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.line_remaining_capacity:type_name -> creativanta.common.v1.Money
-	74,  // 124: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.order_remaining_capacity:type_name -> creativanta.common.v1.Money
+	85,  // 123: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.line_remaining_capacity:type_name -> creativanta.common.v1.Money
+	85,  // 124: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.order_remaining_capacity:type_name -> creativanta.common.v1.Money
 	13,  // 125: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.record:type_name -> creativanta.finance.v1.ReconciliationRecord
 	14,  // 126: creativanta.finance.v1.ReconciliationServiceManualMatchResponse.match:type_name -> creativanta.finance.v1.ReconciliationMatch
-	76,  // 127: creativanta.finance.v1.ReconciliationServiceOverrideRequest.context:type_name -> creativanta.common.v1.CommandContext
+	87,  // 127: creativanta.finance.v1.ReconciliationServiceOverrideRequest.context:type_name -> creativanta.common.v1.CommandContext
 	13,  // 128: creativanta.finance.v1.ReconciliationServiceOverrideResponse.record:type_name -> creativanta.finance.v1.ReconciliationRecord
 	13,  // 129: creativanta.finance.v1.ReconciliationServiceGetRecordResponse.record:type_name -> creativanta.finance.v1.ReconciliationRecord
 	14,  // 130: creativanta.finance.v1.ReconciliationServiceGetRecordResponse.matches:type_name -> creativanta.finance.v1.ReconciliationMatch
-	77,  // 131: creativanta.finance.v1.ReconciliationServiceListRecordsRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	88,  // 131: creativanta.finance.v1.ReconciliationServiceListRecordsRequest.pagination:type_name -> creativanta.common.v1.Pagination
 	1,   // 132: creativanta.finance.v1.ReconciliationServiceListRecordsRequest.reconciliation_state:type_name -> creativanta.finance.v1.ReconciliationState
 	13,  // 133: creativanta.finance.v1.ReconciliationServiceListRecordsResponse.records:type_name -> creativanta.finance.v1.ReconciliationRecord
-	78,  // 134: creativanta.finance.v1.ReconciliationServiceListRecordsResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	77,  // 135: creativanta.finance.v1.ReconciliationServiceListPendingRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	89,  // 134: creativanta.finance.v1.ReconciliationServiceListRecordsResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	88,  // 135: creativanta.finance.v1.ReconciliationServiceListPendingRequest.pagination:type_name -> creativanta.common.v1.Pagination
 	17,  // 136: creativanta.finance.v1.ReconciliationServiceListPendingResponse.items:type_name -> creativanta.finance.v1.DataGapItem
-	78,  // 137: creativanta.finance.v1.ReconciliationServiceListPendingResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	74,  // 138: creativanta.finance.v1.ReconciliationServiceListPendingResponse.total_unreconciled_amount:type_name -> creativanta.common.v1.Money
-	76,  // 139: creativanta.finance.v1.EvidenceServiceSubmitRequest.context:type_name -> creativanta.common.v1.CommandContext
+	89,  // 137: creativanta.finance.v1.ReconciliationServiceListPendingResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	85,  // 138: creativanta.finance.v1.ReconciliationServiceListPendingResponse.total_unreconciled_amount:type_name -> creativanta.common.v1.Money
+	87,  // 139: creativanta.finance.v1.EvidenceServiceSubmitRequest.context:type_name -> creativanta.common.v1.CommandContext
 	5,   // 140: creativanta.finance.v1.EvidenceServiceSubmitRequest.related_object_refs:type_name -> creativanta.finance.v1.ObjectRef
 	15,  // 141: creativanta.finance.v1.EvidenceServiceSubmitResponse.evidence:type_name -> creativanta.finance.v1.EvidenceObject
 	15,  // 142: creativanta.finance.v1.EvidenceServiceGetResponse.evidence:type_name -> creativanta.finance.v1.EvidenceObject
-	77,  // 143: creativanta.finance.v1.EvidenceServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	88,  // 143: creativanta.finance.v1.EvidenceServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
 	15,  // 144: creativanta.finance.v1.EvidenceServiceListResponse.items:type_name -> creativanta.finance.v1.EvidenceObject
-	78,  // 145: creativanta.finance.v1.EvidenceServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	76,  // 146: creativanta.finance.v1.ProofServiceAssembleRequest.context:type_name -> creativanta.common.v1.CommandContext
-	75,  // 147: creativanta.finance.v1.ProofServiceAssembleRequest.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	89,  // 145: creativanta.finance.v1.EvidenceServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	87,  // 146: creativanta.finance.v1.ProofServiceAssembleRequest.context:type_name -> creativanta.common.v1.CommandContext
+	86,  // 147: creativanta.finance.v1.ProofServiceAssembleRequest.confidence:type_name -> creativanta.common.v1.ConfidenceBand
 	16,  // 148: creativanta.finance.v1.ProofServiceAssembleResponse.proof_bundle:type_name -> creativanta.finance.v1.ProofBundle
 	16,  // 149: creativanta.finance.v1.ProofServiceGetResponse.proof_bundle:type_name -> creativanta.finance.v1.ProofBundle
-	77,  // 150: creativanta.finance.v1.ProofServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	88,  // 150: creativanta.finance.v1.ProofServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
 	16,  // 151: creativanta.finance.v1.ProofServiceListResponse.proof_bundles:type_name -> creativanta.finance.v1.ProofBundle
-	78,  // 152: creativanta.finance.v1.ProofServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	18,  // 153: creativanta.finance.v1.ProfitService.GetSummary:input_type -> creativanta.finance.v1.ProfitServiceGetSummaryRequest
-	20,  // 154: creativanta.finance.v1.ProfitService.DrillDown:input_type -> creativanta.finance.v1.ProfitServiceDrillDownRequest
-	23,  // 155: creativanta.finance.v1.ProfitService.GetAnomalies:input_type -> creativanta.finance.v1.ProfitServiceGetAnomaliesRequest
-	25,  // 156: creativanta.finance.v1.ProfitService.GetSnapshot:input_type -> creativanta.finance.v1.ProfitServiceGetSnapshotRequest
-	27,  // 157: creativanta.finance.v1.ProfitService.RefreshSnapshot:input_type -> creativanta.finance.v1.ProfitServiceRefreshSnapshotRequest
-	30,  // 158: creativanta.finance.v1.SettlementService.Import:input_type -> creativanta.finance.v1.SettlementServiceImportRequest
-	32,  // 159: creativanta.finance.v1.SettlementService.List:input_type -> creativanta.finance.v1.SettlementServiceListRequest
-	34,  // 160: creativanta.finance.v1.SettlementService.Get:input_type -> creativanta.finance.v1.SettlementServiceGetRequest
-	36,  // 161: creativanta.finance.v1.CostService.Create:input_type -> creativanta.finance.v1.CostServiceCreateRequest
-	38,  // 162: creativanta.finance.v1.CostService.List:input_type -> creativanta.finance.v1.CostServiceListRequest
-	40,  // 163: creativanta.finance.v1.CostService.Update:input_type -> creativanta.finance.v1.CostServiceUpdateRequest
-	42,  // 164: creativanta.finance.v1.CostService.Delete:input_type -> creativanta.finance.v1.CostServiceDeleteRequest
-	44,  // 165: creativanta.finance.v1.ReconciliationService.Queue:input_type -> creativanta.finance.v1.ReconciliationServiceQueueRequest
-	46,  // 166: creativanta.finance.v1.ReconciliationService.Match:input_type -> creativanta.finance.v1.ReconciliationServiceMatchRequest
-	48,  // 167: creativanta.finance.v1.ReconciliationService.ManualMatch:input_type -> creativanta.finance.v1.ReconciliationServiceManualMatchRequest
-	50,  // 168: creativanta.finance.v1.ReconciliationService.Override:input_type -> creativanta.finance.v1.ReconciliationServiceOverrideRequest
-	52,  // 169: creativanta.finance.v1.ReconciliationService.GetRecord:input_type -> creativanta.finance.v1.ReconciliationServiceGetRecordRequest
-	54,  // 170: creativanta.finance.v1.ReconciliationService.ListRecords:input_type -> creativanta.finance.v1.ReconciliationServiceListRecordsRequest
-	56,  // 171: creativanta.finance.v1.ReconciliationService.ListPending:input_type -> creativanta.finance.v1.ReconciliationServiceListPendingRequest
-	58,  // 172: creativanta.finance.v1.EvidenceService.Submit:input_type -> creativanta.finance.v1.EvidenceServiceSubmitRequest
-	60,  // 173: creativanta.finance.v1.EvidenceService.Get:input_type -> creativanta.finance.v1.EvidenceServiceGetRequest
-	62,  // 174: creativanta.finance.v1.EvidenceService.List:input_type -> creativanta.finance.v1.EvidenceServiceListRequest
-	64,  // 175: creativanta.finance.v1.ProofService.Assemble:input_type -> creativanta.finance.v1.ProofServiceAssembleRequest
-	66,  // 176: creativanta.finance.v1.ProofService.Get:input_type -> creativanta.finance.v1.ProofServiceGetRequest
-	68,  // 177: creativanta.finance.v1.ProofService.List:input_type -> creativanta.finance.v1.ProofServiceListRequest
-	19,  // 178: creativanta.finance.v1.ProfitService.GetSummary:output_type -> creativanta.finance.v1.ProfitServiceGetSummaryResponse
-	22,  // 179: creativanta.finance.v1.ProfitService.DrillDown:output_type -> creativanta.finance.v1.ProfitServiceDrillDownResponse
-	24,  // 180: creativanta.finance.v1.ProfitService.GetAnomalies:output_type -> creativanta.finance.v1.ProfitServiceGetAnomaliesResponse
-	26,  // 181: creativanta.finance.v1.ProfitService.GetSnapshot:output_type -> creativanta.finance.v1.ProfitServiceGetSnapshotResponse
-	28,  // 182: creativanta.finance.v1.ProfitService.RefreshSnapshot:output_type -> creativanta.finance.v1.ProfitServiceRefreshSnapshotResponse
-	31,  // 183: creativanta.finance.v1.SettlementService.Import:output_type -> creativanta.finance.v1.SettlementServiceImportResponse
-	33,  // 184: creativanta.finance.v1.SettlementService.List:output_type -> creativanta.finance.v1.SettlementServiceListResponse
-	35,  // 185: creativanta.finance.v1.SettlementService.Get:output_type -> creativanta.finance.v1.SettlementServiceGetResponse
-	37,  // 186: creativanta.finance.v1.CostService.Create:output_type -> creativanta.finance.v1.CostServiceCreateResponse
-	39,  // 187: creativanta.finance.v1.CostService.List:output_type -> creativanta.finance.v1.CostServiceListResponse
-	41,  // 188: creativanta.finance.v1.CostService.Update:output_type -> creativanta.finance.v1.CostServiceUpdateResponse
-	43,  // 189: creativanta.finance.v1.CostService.Delete:output_type -> creativanta.finance.v1.CostServiceDeleteResponse
-	45,  // 190: creativanta.finance.v1.ReconciliationService.Queue:output_type -> creativanta.finance.v1.ReconciliationServiceQueueResponse
-	47,  // 191: creativanta.finance.v1.ReconciliationService.Match:output_type -> creativanta.finance.v1.ReconciliationServiceMatchResponse
-	49,  // 192: creativanta.finance.v1.ReconciliationService.ManualMatch:output_type -> creativanta.finance.v1.ReconciliationServiceManualMatchResponse
-	51,  // 193: creativanta.finance.v1.ReconciliationService.Override:output_type -> creativanta.finance.v1.ReconciliationServiceOverrideResponse
-	53,  // 194: creativanta.finance.v1.ReconciliationService.GetRecord:output_type -> creativanta.finance.v1.ReconciliationServiceGetRecordResponse
-	55,  // 195: creativanta.finance.v1.ReconciliationService.ListRecords:output_type -> creativanta.finance.v1.ReconciliationServiceListRecordsResponse
-	57,  // 196: creativanta.finance.v1.ReconciliationService.ListPending:output_type -> creativanta.finance.v1.ReconciliationServiceListPendingResponse
-	59,  // 197: creativanta.finance.v1.EvidenceService.Submit:output_type -> creativanta.finance.v1.EvidenceServiceSubmitResponse
-	61,  // 198: creativanta.finance.v1.EvidenceService.Get:output_type -> creativanta.finance.v1.EvidenceServiceGetResponse
-	63,  // 199: creativanta.finance.v1.EvidenceService.List:output_type -> creativanta.finance.v1.EvidenceServiceListResponse
-	65,  // 200: creativanta.finance.v1.ProofService.Assemble:output_type -> creativanta.finance.v1.ProofServiceAssembleResponse
-	67,  // 201: creativanta.finance.v1.ProofService.Get:output_type -> creativanta.finance.v1.ProofServiceGetResponse
-	69,  // 202: creativanta.finance.v1.ProofService.List:output_type -> creativanta.finance.v1.ProofServiceListResponse
-	178, // [178:203] is the sub-list for method output_type
-	153, // [153:178] is the sub-list for method input_type
-	153, // [153:153] is the sub-list for extension type_name
-	153, // [153:153] is the sub-list for extension extendee
-	0,   // [0:153] is the sub-list for field type_name
+	89,  // 152: creativanta.finance.v1.ProofServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	85,  // 153: creativanta.finance.v1.ContentAttributionRecord.revenue_attributed:type_name -> creativanta.common.v1.Money
+	84,  // 154: creativanta.finance.v1.ContentAttributionRecord.source_class:type_name -> creativanta.common.v1.SourceClass
+	86,  // 155: creativanta.finance.v1.ContentAttributionRecord.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	83,  // 156: creativanta.finance.v1.ContentAttributionRecord.created_at:type_name -> google.protobuf.Timestamp
+	85,  // 157: creativanta.finance.v1.ContentRevenueAttribution.attributed_revenue:type_name -> creativanta.common.v1.Money
+	86,  // 158: creativanta.finance.v1.ContentRevenueAttribution.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	82,  // 159: creativanta.finance.v1.ContentRevenueAttribution.source_class_percentages:type_name -> creativanta.finance.v1.ContentRevenueAttribution.SourceClassPercentagesEntry
+	85,  // 160: creativanta.finance.v1.WorkspaceRevenueDeduplicationSummary.canonical_workspace_revenue:type_name -> creativanta.common.v1.Money
+	85,  // 161: creativanta.finance.v1.WorkspaceRevenueDeduplicationSummary.sum_attribution_lines:type_name -> creativanta.common.v1.Money
+	86,  // 162: creativanta.finance.v1.WorkspaceRevenueDeduplicationSummary.aggregate_confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	71,  // 163: creativanta.finance.v1.ContentRevenueServiceGetAttributionResponse.attribution:type_name -> creativanta.finance.v1.ContentRevenueAttribution
+	70,  // 164: creativanta.finance.v1.ContentRevenueServiceGetAttributionResponse.attribution_records:type_name -> creativanta.finance.v1.ContentAttributionRecord
+	72,  // 165: creativanta.finance.v1.ContentRevenueServiceGetAttributionResponse.workspace_summary:type_name -> creativanta.finance.v1.WorkspaceRevenueDeduplicationSummary
+	88,  // 166: creativanta.finance.v1.AttributionServiceGetByContentRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	85,  // 167: creativanta.finance.v1.ContentAttributionSummary.total_attributed_revenue:type_name -> creativanta.common.v1.Money
+	85,  // 168: creativanta.finance.v1.ContentAttributionSummary.canonical_order_revenue:type_name -> creativanta.common.v1.Money
+	86,  // 169: creativanta.finance.v1.ContentAttributionSummary.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	70,  // 170: creativanta.finance.v1.AttributionServiceGetByContentResponse.records:type_name -> creativanta.finance.v1.ContentAttributionRecord
+	76,  // 171: creativanta.finance.v1.AttributionServiceGetByContentResponse.summary:type_name -> creativanta.finance.v1.ContentAttributionSummary
+	89,  // 172: creativanta.finance.v1.AttributionServiceGetByContentResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	87,  // 173: creativanta.finance.v1.AttributionServiceRecordAttributionRequest.context:type_name -> creativanta.common.v1.CommandContext
+	85,  // 174: creativanta.finance.v1.AttributionServiceRecordAttributionRequest.revenue_attributed:type_name -> creativanta.common.v1.Money
+	84,  // 175: creativanta.finance.v1.AttributionServiceRecordAttributionRequest.source_class:type_name -> creativanta.common.v1.SourceClass
+	86,  // 176: creativanta.finance.v1.AttributionServiceRecordAttributionRequest.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	70,  // 177: creativanta.finance.v1.AttributionServiceRecordAttributionResponse.record:type_name -> creativanta.finance.v1.ContentAttributionRecord
+	85,  // 178: creativanta.finance.v1.AttributionServiceRecordAttributionResponse.order_total_revenue:type_name -> creativanta.common.v1.Money
+	85,  // 179: creativanta.finance.v1.AttributionServiceRecordAttributionResponse.order_allocated_revenue:type_name -> creativanta.common.v1.Money
+	85,  // 180: creativanta.finance.v1.AttributionServiceRecordAttributionResponse.order_remaining_capacity:type_name -> creativanta.common.v1.Money
+	18,  // 181: creativanta.finance.v1.ProfitService.GetSummary:input_type -> creativanta.finance.v1.ProfitServiceGetSummaryRequest
+	20,  // 182: creativanta.finance.v1.ProfitService.DrillDown:input_type -> creativanta.finance.v1.ProfitServiceDrillDownRequest
+	23,  // 183: creativanta.finance.v1.ProfitService.GetAnomalies:input_type -> creativanta.finance.v1.ProfitServiceGetAnomaliesRequest
+	25,  // 184: creativanta.finance.v1.ProfitService.GetSnapshot:input_type -> creativanta.finance.v1.ProfitServiceGetSnapshotRequest
+	27,  // 185: creativanta.finance.v1.ProfitService.RefreshSnapshot:input_type -> creativanta.finance.v1.ProfitServiceRefreshSnapshotRequest
+	30,  // 186: creativanta.finance.v1.SettlementService.Import:input_type -> creativanta.finance.v1.SettlementServiceImportRequest
+	32,  // 187: creativanta.finance.v1.SettlementService.List:input_type -> creativanta.finance.v1.SettlementServiceListRequest
+	34,  // 188: creativanta.finance.v1.SettlementService.Get:input_type -> creativanta.finance.v1.SettlementServiceGetRequest
+	36,  // 189: creativanta.finance.v1.CostService.Create:input_type -> creativanta.finance.v1.CostServiceCreateRequest
+	38,  // 190: creativanta.finance.v1.CostService.List:input_type -> creativanta.finance.v1.CostServiceListRequest
+	40,  // 191: creativanta.finance.v1.CostService.Update:input_type -> creativanta.finance.v1.CostServiceUpdateRequest
+	42,  // 192: creativanta.finance.v1.CostService.Delete:input_type -> creativanta.finance.v1.CostServiceDeleteRequest
+	44,  // 193: creativanta.finance.v1.ReconciliationService.Queue:input_type -> creativanta.finance.v1.ReconciliationServiceQueueRequest
+	46,  // 194: creativanta.finance.v1.ReconciliationService.Match:input_type -> creativanta.finance.v1.ReconciliationServiceMatchRequest
+	48,  // 195: creativanta.finance.v1.ReconciliationService.ManualMatch:input_type -> creativanta.finance.v1.ReconciliationServiceManualMatchRequest
+	50,  // 196: creativanta.finance.v1.ReconciliationService.Override:input_type -> creativanta.finance.v1.ReconciliationServiceOverrideRequest
+	52,  // 197: creativanta.finance.v1.ReconciliationService.GetRecord:input_type -> creativanta.finance.v1.ReconciliationServiceGetRecordRequest
+	54,  // 198: creativanta.finance.v1.ReconciliationService.ListRecords:input_type -> creativanta.finance.v1.ReconciliationServiceListRecordsRequest
+	56,  // 199: creativanta.finance.v1.ReconciliationService.ListPending:input_type -> creativanta.finance.v1.ReconciliationServiceListPendingRequest
+	58,  // 200: creativanta.finance.v1.EvidenceService.Submit:input_type -> creativanta.finance.v1.EvidenceServiceSubmitRequest
+	60,  // 201: creativanta.finance.v1.EvidenceService.Get:input_type -> creativanta.finance.v1.EvidenceServiceGetRequest
+	62,  // 202: creativanta.finance.v1.EvidenceService.List:input_type -> creativanta.finance.v1.EvidenceServiceListRequest
+	64,  // 203: creativanta.finance.v1.ProofService.Assemble:input_type -> creativanta.finance.v1.ProofServiceAssembleRequest
+	66,  // 204: creativanta.finance.v1.ProofService.Get:input_type -> creativanta.finance.v1.ProofServiceGetRequest
+	68,  // 205: creativanta.finance.v1.ProofService.List:input_type -> creativanta.finance.v1.ProofServiceListRequest
+	73,  // 206: creativanta.finance.v1.ContentRevenueService.GetAttribution:input_type -> creativanta.finance.v1.ContentRevenueServiceGetAttributionRequest
+	75,  // 207: creativanta.finance.v1.AttributionService.GetByContent:input_type -> creativanta.finance.v1.AttributionServiceGetByContentRequest
+	78,  // 208: creativanta.finance.v1.AttributionService.RecordAttribution:input_type -> creativanta.finance.v1.AttributionServiceRecordAttributionRequest
+	19,  // 209: creativanta.finance.v1.ProfitService.GetSummary:output_type -> creativanta.finance.v1.ProfitServiceGetSummaryResponse
+	22,  // 210: creativanta.finance.v1.ProfitService.DrillDown:output_type -> creativanta.finance.v1.ProfitServiceDrillDownResponse
+	24,  // 211: creativanta.finance.v1.ProfitService.GetAnomalies:output_type -> creativanta.finance.v1.ProfitServiceGetAnomaliesResponse
+	26,  // 212: creativanta.finance.v1.ProfitService.GetSnapshot:output_type -> creativanta.finance.v1.ProfitServiceGetSnapshotResponse
+	28,  // 213: creativanta.finance.v1.ProfitService.RefreshSnapshot:output_type -> creativanta.finance.v1.ProfitServiceRefreshSnapshotResponse
+	31,  // 214: creativanta.finance.v1.SettlementService.Import:output_type -> creativanta.finance.v1.SettlementServiceImportResponse
+	33,  // 215: creativanta.finance.v1.SettlementService.List:output_type -> creativanta.finance.v1.SettlementServiceListResponse
+	35,  // 216: creativanta.finance.v1.SettlementService.Get:output_type -> creativanta.finance.v1.SettlementServiceGetResponse
+	37,  // 217: creativanta.finance.v1.CostService.Create:output_type -> creativanta.finance.v1.CostServiceCreateResponse
+	39,  // 218: creativanta.finance.v1.CostService.List:output_type -> creativanta.finance.v1.CostServiceListResponse
+	41,  // 219: creativanta.finance.v1.CostService.Update:output_type -> creativanta.finance.v1.CostServiceUpdateResponse
+	43,  // 220: creativanta.finance.v1.CostService.Delete:output_type -> creativanta.finance.v1.CostServiceDeleteResponse
+	45,  // 221: creativanta.finance.v1.ReconciliationService.Queue:output_type -> creativanta.finance.v1.ReconciliationServiceQueueResponse
+	47,  // 222: creativanta.finance.v1.ReconciliationService.Match:output_type -> creativanta.finance.v1.ReconciliationServiceMatchResponse
+	49,  // 223: creativanta.finance.v1.ReconciliationService.ManualMatch:output_type -> creativanta.finance.v1.ReconciliationServiceManualMatchResponse
+	51,  // 224: creativanta.finance.v1.ReconciliationService.Override:output_type -> creativanta.finance.v1.ReconciliationServiceOverrideResponse
+	53,  // 225: creativanta.finance.v1.ReconciliationService.GetRecord:output_type -> creativanta.finance.v1.ReconciliationServiceGetRecordResponse
+	55,  // 226: creativanta.finance.v1.ReconciliationService.ListRecords:output_type -> creativanta.finance.v1.ReconciliationServiceListRecordsResponse
+	57,  // 227: creativanta.finance.v1.ReconciliationService.ListPending:output_type -> creativanta.finance.v1.ReconciliationServiceListPendingResponse
+	59,  // 228: creativanta.finance.v1.EvidenceService.Submit:output_type -> creativanta.finance.v1.EvidenceServiceSubmitResponse
+	61,  // 229: creativanta.finance.v1.EvidenceService.Get:output_type -> creativanta.finance.v1.EvidenceServiceGetResponse
+	63,  // 230: creativanta.finance.v1.EvidenceService.List:output_type -> creativanta.finance.v1.EvidenceServiceListResponse
+	65,  // 231: creativanta.finance.v1.ProofService.Assemble:output_type -> creativanta.finance.v1.ProofServiceAssembleResponse
+	67,  // 232: creativanta.finance.v1.ProofService.Get:output_type -> creativanta.finance.v1.ProofServiceGetResponse
+	69,  // 233: creativanta.finance.v1.ProofService.List:output_type -> creativanta.finance.v1.ProofServiceListResponse
+	74,  // 234: creativanta.finance.v1.ContentRevenueService.GetAttribution:output_type -> creativanta.finance.v1.ContentRevenueServiceGetAttributionResponse
+	77,  // 235: creativanta.finance.v1.AttributionService.GetByContent:output_type -> creativanta.finance.v1.AttributionServiceGetByContentResponse
+	79,  // 236: creativanta.finance.v1.AttributionService.RecordAttribution:output_type -> creativanta.finance.v1.AttributionServiceRecordAttributionResponse
+	209, // [209:237] is the sub-list for method output_type
+	181, // [181:209] is the sub-list for method input_type
+	181, // [181:181] is the sub-list for extension type_name
+	181, // [181:181] is the sub-list for extension extendee
+	0,   // [0:181] is the sub-list for field type_name
 }
 
 func init() { file_creativanta_finance_v1_finance_proto_init() }
@@ -6675,9 +7841,9 @@ func file_creativanta_finance_v1_finance_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_creativanta_finance_v1_finance_proto_rawDesc), len(file_creativanta_finance_v1_finance_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   67,
+			NumMessages:   78,
 			NumExtensions: 0,
-			NumServices:   6,
+			NumServices:   8,
 		},
 		GoTypes:           file_creativanta_finance_v1_finance_proto_goTypes,
 		DependencyIndexes: file_creativanta_finance_v1_finance_proto_depIdxs,

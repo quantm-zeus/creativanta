@@ -19867,6 +19867,13 @@ class DerivativeItem extends $pb.GeneratedMessage {
     $core.double? ctr,
     $1.Timestamp? createdAt,
     $1.Timestamp? updatedAt,
+    $2.Money? attributedRevenue,
+    $fixnum.Int64? ordersCount,
+    $core.String? rpm,
+    $core.bool? isRpmUnknown,
+    $core.String? unknownReason,
+    $2.SourceClass? sourceClass,
+    $2.ConfidenceBand? confidence,
   }) {
     final result = DerivativeItem._();
     if (assetId != null) result.assetId = assetId;
@@ -19888,6 +19895,13 @@ class DerivativeItem extends $pb.GeneratedMessage {
     if (ctr != null) result.ctr = ctr;
     if (createdAt != null) result.createdAt = createdAt;
     if (updatedAt != null) result.updatedAt = updatedAt;
+    if (attributedRevenue != null) result.attributedRevenue = attributedRevenue;
+    if (ordersCount != null) result.ordersCount = ordersCount;
+    if (rpm != null) result.rpm = rpm;
+    if (isRpmUnknown != null) result.isRpmUnknown = isRpmUnknown;
+    if (unknownReason != null) result.unknownReason = unknownReason;
+    if (sourceClass != null) result.sourceClass = sourceClass;
+    if (confidence != null) result.confidence = confidence;
     return result;
   }
 
@@ -19926,6 +19940,16 @@ class DerivativeItem extends $pb.GeneratedMessage {
         subBuilder: $1.Timestamp.$_createMessage)
     ..aOM<$1.Timestamp>(19, _omitFieldNames ? '' : 'updatedAt',
         subBuilder: $1.Timestamp.$_createMessage)
+    ..aOM<$2.Money>(20, _omitFieldNames ? '' : 'attributedRevenue',
+        subBuilder: $2.Money.$_createMessage)
+    ..aInt64(21, _omitFieldNames ? '' : 'ordersCount')
+    ..aOS(22, _omitFieldNames ? '' : 'rpm')
+    ..aOB(23, _omitFieldNames ? '' : 'isRpmUnknown')
+    ..aOS(24, _omitFieldNames ? '' : 'unknownReason')
+    ..aE<$2.SourceClass>(25, _omitFieldNames ? '' : 'sourceClass',
+        enumValues: $2.SourceClass.values)
+    ..aE<$2.ConfidenceBand>(26, _omitFieldNames ? '' : 'confidence',
+        enumValues: $2.ConfidenceBand.values)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -20118,6 +20142,71 @@ class DerivativeItem extends $pb.GeneratedMessage {
   void clearUpdatedAt() => $_clearField(19);
   @$pb.TagNumber(19)
   $1.Timestamp ensureUpdatedAt() => $_ensure(18);
+
+  @$pb.TagNumber(20)
+  $2.Money get attributedRevenue => $_getN(19);
+  @$pb.TagNumber(20)
+  set attributedRevenue($2.Money value) => $_setField(20, value);
+  @$pb.TagNumber(20)
+  $core.bool hasAttributedRevenue() => $_has(19);
+  @$pb.TagNumber(20)
+  void clearAttributedRevenue() => $_clearField(20);
+  @$pb.TagNumber(20)
+  $2.Money ensureAttributedRevenue() => $_ensure(19);
+
+  @$pb.TagNumber(21)
+  $fixnum.Int64 get ordersCount => $_getI64(20);
+  @$pb.TagNumber(21)
+  set ordersCount($fixnum.Int64 value) => $_setInt64(20, value);
+  @$pb.TagNumber(21)
+  $core.bool hasOrdersCount() => $_has(20);
+  @$pb.TagNumber(21)
+  void clearOrdersCount() => $_clearField(21);
+
+  @$pb.TagNumber(22)
+  $core.String get rpm => $_getSZ(21);
+  @$pb.TagNumber(22)
+  set rpm($core.String value) => $_setString(21, value);
+  @$pb.TagNumber(22)
+  $core.bool hasRpm() => $_has(21);
+  @$pb.TagNumber(22)
+  void clearRpm() => $_clearField(22);
+
+  @$pb.TagNumber(23)
+  $core.bool get isRpmUnknown => $_getBF(22);
+  @$pb.TagNumber(23)
+  set isRpmUnknown($core.bool value) => $_setBool(22, value);
+  @$pb.TagNumber(23)
+  $core.bool hasIsRpmUnknown() => $_has(22);
+  @$pb.TagNumber(23)
+  void clearIsRpmUnknown() => $_clearField(23);
+
+  @$pb.TagNumber(24)
+  $core.String get unknownReason => $_getSZ(23);
+  @$pb.TagNumber(24)
+  set unknownReason($core.String value) => $_setString(23, value);
+  @$pb.TagNumber(24)
+  $core.bool hasUnknownReason() => $_has(23);
+  @$pb.TagNumber(24)
+  void clearUnknownReason() => $_clearField(24);
+
+  @$pb.TagNumber(25)
+  $2.SourceClass get sourceClass => $_getN(24);
+  @$pb.TagNumber(25)
+  set sourceClass($2.SourceClass value) => $_setField(25, value);
+  @$pb.TagNumber(25)
+  $core.bool hasSourceClass() => $_has(24);
+  @$pb.TagNumber(25)
+  void clearSourceClass() => $_clearField(25);
+
+  @$pb.TagNumber(26)
+  $2.ConfidenceBand get confidence => $_getN(25);
+  @$pb.TagNumber(26)
+  set confidence($2.ConfidenceBand value) => $_setField(26, value);
+  @$pb.TagNumber(26)
+  $core.bool hasConfidence() => $_has(25);
+  @$pb.TagNumber(26)
+  void clearConfidence() => $_clearField(26);
 }
 
 class BatchItemError extends $pb.GeneratedMessage {
@@ -20398,6 +20487,17 @@ class DerivativeStats extends $pb.GeneratedMessage {
     $core.double? averageCtr,
     $core.String? topPerformingDerivativeId,
     $core.Iterable<DerivativeItem>? topDerivatives,
+    $core.bool? isViewsUnknown,
+    $core.bool? isEngagementRateUnknown,
+    $core.bool? isCtrUnknown,
+    $core.String? unknownReason,
+    $core.String? selectionStatus,
+    $2.Money? aggregateRevenue,
+    $fixnum.Int64? totalOrdersAttributed,
+    $fixnum.Int64? uniqueOrdersCounted,
+    $2.ConfidenceBand? confidence,
+    $core.String? averageRpm,
+    $core.bool? isRpmUnknown,
   }) {
     final result = DerivativeStats._();
     if (sourceAssetId != null) result.sourceAssetId = sourceAssetId;
@@ -20409,6 +20509,20 @@ class DerivativeStats extends $pb.GeneratedMessage {
     if (topPerformingDerivativeId != null)
       result.topPerformingDerivativeId = topPerformingDerivativeId;
     if (topDerivatives != null) result.topDerivatives.addAll(topDerivatives);
+    if (isViewsUnknown != null) result.isViewsUnknown = isViewsUnknown;
+    if (isEngagementRateUnknown != null)
+      result.isEngagementRateUnknown = isEngagementRateUnknown;
+    if (isCtrUnknown != null) result.isCtrUnknown = isCtrUnknown;
+    if (unknownReason != null) result.unknownReason = unknownReason;
+    if (selectionStatus != null) result.selectionStatus = selectionStatus;
+    if (aggregateRevenue != null) result.aggregateRevenue = aggregateRevenue;
+    if (totalOrdersAttributed != null)
+      result.totalOrdersAttributed = totalOrdersAttributed;
+    if (uniqueOrdersCounted != null)
+      result.uniqueOrdersCounted = uniqueOrdersCounted;
+    if (confidence != null) result.confidence = confidence;
+    if (averageRpm != null) result.averageRpm = averageRpm;
+    if (isRpmUnknown != null) result.isRpmUnknown = isRpmUnknown;
     return result;
   }
 
@@ -20434,6 +20548,19 @@ class DerivativeStats extends $pb.GeneratedMessage {
     ..aOS(6, _omitFieldNames ? '' : 'topPerformingDerivativeId')
     ..pPM<DerivativeItem>(7, _omitFieldNames ? '' : 'topDerivatives',
         subBuilder: DerivativeItem.$_createMessage)
+    ..aOB(8, _omitFieldNames ? '' : 'isViewsUnknown')
+    ..aOB(9, _omitFieldNames ? '' : 'isEngagementRateUnknown')
+    ..aOB(10, _omitFieldNames ? '' : 'isCtrUnknown')
+    ..aOS(11, _omitFieldNames ? '' : 'unknownReason')
+    ..aOS(12, _omitFieldNames ? '' : 'selectionStatus')
+    ..aOM<$2.Money>(13, _omitFieldNames ? '' : 'aggregateRevenue',
+        subBuilder: $2.Money.$_createMessage)
+    ..aInt64(14, _omitFieldNames ? '' : 'totalOrdersAttributed')
+    ..aInt64(15, _omitFieldNames ? '' : 'uniqueOrdersCounted')
+    ..aE<$2.ConfidenceBand>(16, _omitFieldNames ? '' : 'confidence',
+        enumValues: $2.ConfidenceBand.values)
+    ..aOS(17, _omitFieldNames ? '' : 'averageRpm')
+    ..aOB(18, _omitFieldNames ? '' : 'isRpmUnknown')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -20514,6 +20641,107 @@ class DerivativeStats extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(7)
   $pb.PbList<DerivativeItem> get topDerivatives => $_getList(6);
+
+  @$pb.TagNumber(8)
+  $core.bool get isViewsUnknown => $_getBF(7);
+  @$pb.TagNumber(8)
+  set isViewsUnknown($core.bool value) => $_setBool(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasIsViewsUnknown() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearIsViewsUnknown() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.bool get isEngagementRateUnknown => $_getBF(8);
+  @$pb.TagNumber(9)
+  set isEngagementRateUnknown($core.bool value) => $_setBool(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasIsEngagementRateUnknown() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearIsEngagementRateUnknown() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.bool get isCtrUnknown => $_getBF(9);
+  @$pb.TagNumber(10)
+  set isCtrUnknown($core.bool value) => $_setBool(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasIsCtrUnknown() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearIsCtrUnknown() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get unknownReason => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set unknownReason($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasUnknownReason() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearUnknownReason() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get selectionStatus => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set selectionStatus($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasSelectionStatus() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearSelectionStatus() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $2.Money get aggregateRevenue => $_getN(12);
+  @$pb.TagNumber(13)
+  set aggregateRevenue($2.Money value) => $_setField(13, value);
+  @$pb.TagNumber(13)
+  $core.bool hasAggregateRevenue() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearAggregateRevenue() => $_clearField(13);
+  @$pb.TagNumber(13)
+  $2.Money ensureAggregateRevenue() => $_ensure(12);
+
+  @$pb.TagNumber(14)
+  $fixnum.Int64 get totalOrdersAttributed => $_getI64(13);
+  @$pb.TagNumber(14)
+  set totalOrdersAttributed($fixnum.Int64 value) => $_setInt64(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasTotalOrdersAttributed() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearTotalOrdersAttributed() => $_clearField(14);
+
+  @$pb.TagNumber(15)
+  $fixnum.Int64 get uniqueOrdersCounted => $_getI64(14);
+  @$pb.TagNumber(15)
+  set uniqueOrdersCounted($fixnum.Int64 value) => $_setInt64(14, value);
+  @$pb.TagNumber(15)
+  $core.bool hasUniqueOrdersCounted() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearUniqueOrdersCounted() => $_clearField(15);
+
+  @$pb.TagNumber(16)
+  $2.ConfidenceBand get confidence => $_getN(15);
+  @$pb.TagNumber(16)
+  set confidence($2.ConfidenceBand value) => $_setField(16, value);
+  @$pb.TagNumber(16)
+  $core.bool hasConfidence() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearConfidence() => $_clearField(16);
+
+  @$pb.TagNumber(17)
+  $core.String get averageRpm => $_getSZ(16);
+  @$pb.TagNumber(17)
+  set averageRpm($core.String value) => $_setString(16, value);
+  @$pb.TagNumber(17)
+  $core.bool hasAverageRpm() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearAverageRpm() => $_clearField(17);
+
+  @$pb.TagNumber(18)
+  $core.bool get isRpmUnknown => $_getBF(17);
+  @$pb.TagNumber(18)
+  set isRpmUnknown($core.bool value) => $_setBool(17, value);
+  @$pb.TagNumber(18)
+  $core.bool hasIsRpmUnknown() => $_has(17);
+  @$pb.TagNumber(18)
+  void clearIsRpmUnknown() => $_clearField(18);
 }
 
 class DerivativeServiceListRequest extends $pb.GeneratedMessage {

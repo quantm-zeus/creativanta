@@ -1,0 +1,41 @@
+
+> @creativanta/web@0.1.0 test /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p5-03/apps/web
+> vitest run
+
+
+ RUN  v3.0.7 /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p5-03/apps/web
+
+ ✓ src/lib/trend/trend.test.ts (11 tests) 27ms
+ ✓ src/lib/idea/idea.test.ts (14 tests) 22ms
+ ✓ src/lib/auth/auth.test.ts (17 tests) 56ms
+ ✓ src/lib/p1_first_value/p1_first_value.test.ts (4 tests) 51ms
+ ✓ src/lib/competitor/competitor.test.ts (11 tests) 59ms
+ ✓ src/lib/production/production.test.ts (8 tests) 21ms
+ ✓ src/lib/script/script.test.ts (15 tests) 12ms
+ ✓ src/lib/attribution/attribution.test.ts (8 tests) 13ms
+ ✓ src/lib/engagement/engagement.test.ts (10 tests) 14ms
+ ✓ src/lib/production/derivative_packaging.test.ts (7 tests) 16ms
+ ✓ src/lib/copilot/copilot.test.ts (17 tests) 14ms
+ ✓ src/lib/production/showcase_link_thumb.test.ts (9 tests) 15ms
+ ✓ src/lib/publish/publish.test.ts (9 tests) 35ms
+ ✓ src/lib/opportunity/opportunity.test.ts (13 tests) 17ms
+ ✓ src/lib/production/quickedit.test.ts (3 tests) 8ms
+ ✓ src/lib/intelligence/intelligence.test.ts (12 tests) 18ms
+ ✓ src/lib/content/content.test.ts (6 tests) 9ms
+ ✓ src/lib/capability/capability.test.ts (4 tests) 13ms
+ ✓ src/lib/production/clipfactory.test.ts (4 tests) 43ms
+ ✓ src/lib/billing/billing.test.ts (5 tests) 22ms
+ ✓ src/lib/production/continuity_drift.test.ts (10 tests) 14ms
+ ✓ src/lib/continuity/continuity.test.ts (9 tests) 10ms
+ ✓ src/lib/diagnostics/diagnostics.test.ts (5 tests) 9ms
+ ✓ src/lib/production/sound_translation.test.ts (2 tests) 6ms
+ ✓ src/lib/help/help.test.ts (4 tests) 8ms
+ ✓ src/lib/notification/notification.test.ts (6 tests) 10ms
+ ✓ src/lib/constants/modes.test.ts (3 tests) 11ms
+ ✓ src/lib/constants/routes.test.ts (3 tests) 10ms
+ ✓ src/lib/constants/navigation.test.ts (2 tests) 6ms
+
+ Test Files  29 passed (29)
+      Tests  231 passed (231)
+   Start at  04:13:51
+   Duration  9.96s (transform 2.67s, setup 0ms, collect 5.62s, tests 570ms, environment 10ms, prepare 4.01s)

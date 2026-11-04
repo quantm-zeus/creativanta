@@ -938,3 +938,160 @@ abstract class ProofServiceBase extends $grpc.Service {
   $async.Future<$0.ProofServiceListResponse> list(
       $grpc.ServiceCall call, $0.ProofServiceListRequest request);
 }
+
+@$pb.GrpcServiceName('creativanta.finance.v1.ContentRevenueService')
+class ContentRevenueServiceClient extends $grpc.Client {
+  /// The hostname for this service.
+  static const $core.String defaultHost = '';
+
+  /// OAuth scopes needed for the client.
+  static const $core.List<$core.String> oauthScopes = [
+    '',
+  ];
+
+  ContentRevenueServiceClient(super.channel,
+      {super.options, super.interceptors});
+
+  $grpc.ResponseFuture<$0.ContentRevenueServiceGetAttributionResponse>
+      getAttribution(
+    $0.ContentRevenueServiceGetAttributionRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getAttribution, request, options: options);
+  }
+
+  // method descriptors
+
+  static final _$getAttribution = $grpc.ClientMethod<
+          $0.ContentRevenueServiceGetAttributionRequest,
+          $0.ContentRevenueServiceGetAttributionResponse>(
+      '/creativanta.finance.v1.ContentRevenueService/GetAttribution',
+      ($0.ContentRevenueServiceGetAttributionRequest value) =>
+          value.writeToBuffer(),
+      $0.ContentRevenueServiceGetAttributionResponse.fromBuffer);
+}
+
+@$pb.GrpcServiceName('creativanta.finance.v1.ContentRevenueService')
+abstract class ContentRevenueServiceBase extends $grpc.Service {
+  $core.String get $name => 'creativanta.finance.v1.ContentRevenueService';
+
+  ContentRevenueServiceBase() {
+    $addMethod($grpc.ServiceMethod<
+            $0.ContentRevenueServiceGetAttributionRequest,
+            $0.ContentRevenueServiceGetAttributionResponse>(
+        'GetAttribution',
+        getAttribution_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ContentRevenueServiceGetAttributionRequest.fromBuffer(value),
+        ($0.ContentRevenueServiceGetAttributionResponse value) =>
+            value.writeToBuffer()));
+  }
+
+  $async.Future<$0.ContentRevenueServiceGetAttributionResponse>
+      getAttribution_Pre(
+          $grpc.ServiceCall $call,
+          $async.Future<$0.ContentRevenueServiceGetAttributionRequest>
+              $request) async {
+    return getAttribution($call, await $request);
+  }
+
+  $async.Future<$0.ContentRevenueServiceGetAttributionResponse> getAttribution(
+      $grpc.ServiceCall call,
+      $0.ContentRevenueServiceGetAttributionRequest request);
+}
+
+@$pb.GrpcServiceName('creativanta.finance.v1.AttributionService')
+class AttributionServiceClient extends $grpc.Client {
+  /// The hostname for this service.
+  static const $core.String defaultHost = '';
+
+  /// OAuth scopes needed for the client.
+  static const $core.List<$core.String> oauthScopes = [
+    '',
+  ];
+
+  AttributionServiceClient(super.channel, {super.options, super.interceptors});
+
+  $grpc.ResponseFuture<$0.AttributionServiceGetByContentResponse> getByContent(
+    $0.AttributionServiceGetByContentRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getByContent, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.AttributionServiceRecordAttributionResponse>
+      recordAttribution(
+    $0.AttributionServiceRecordAttributionRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$recordAttribution, request, options: options);
+  }
+
+  // method descriptors
+
+  static final _$getByContent = $grpc.ClientMethod<
+          $0.AttributionServiceGetByContentRequest,
+          $0.AttributionServiceGetByContentResponse>(
+      '/creativanta.finance.v1.AttributionService/GetByContent',
+      ($0.AttributionServiceGetByContentRequest value) => value.writeToBuffer(),
+      $0.AttributionServiceGetByContentResponse.fromBuffer);
+  static final _$recordAttribution = $grpc.ClientMethod<
+          $0.AttributionServiceRecordAttributionRequest,
+          $0.AttributionServiceRecordAttributionResponse>(
+      '/creativanta.finance.v1.AttributionService/RecordAttribution',
+      ($0.AttributionServiceRecordAttributionRequest value) =>
+          value.writeToBuffer(),
+      $0.AttributionServiceRecordAttributionResponse.fromBuffer);
+}
+
+@$pb.GrpcServiceName('creativanta.finance.v1.AttributionService')
+abstract class AttributionServiceBase extends $grpc.Service {
+  $core.String get $name => 'creativanta.finance.v1.AttributionService';
+
+  AttributionServiceBase() {
+    $addMethod($grpc.ServiceMethod<$0.AttributionServiceGetByContentRequest,
+            $0.AttributionServiceGetByContentResponse>(
+        'GetByContent',
+        getByContent_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.AttributionServiceGetByContentRequest.fromBuffer(value),
+        ($0.AttributionServiceGetByContentResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<
+            $0.AttributionServiceRecordAttributionRequest,
+            $0.AttributionServiceRecordAttributionResponse>(
+        'RecordAttribution',
+        recordAttribution_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.AttributionServiceRecordAttributionRequest.fromBuffer(value),
+        ($0.AttributionServiceRecordAttributionResponse value) =>
+            value.writeToBuffer()));
+  }
+
+  $async.Future<$0.AttributionServiceGetByContentResponse> getByContent_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.AttributionServiceGetByContentRequest> $request) async {
+    return getByContent($call, await $request);
+  }
+
+  $async.Future<$0.AttributionServiceGetByContentResponse> getByContent(
+      $grpc.ServiceCall call, $0.AttributionServiceGetByContentRequest request);
+
+  $async.Future<$0.AttributionServiceRecordAttributionResponse>
+      recordAttribution_Pre(
+          $grpc.ServiceCall $call,
+          $async.Future<$0.AttributionServiceRecordAttributionRequest>
+              $request) async {
+    return recordAttribution($call, await $request);
+  }
+
+  $async.Future<$0.AttributionServiceRecordAttributionResponse>
+      recordAttribution($grpc.ServiceCall call,
+          $0.AttributionServiceRecordAttributionRequest request);
+}

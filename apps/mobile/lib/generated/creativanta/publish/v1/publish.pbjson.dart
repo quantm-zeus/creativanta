@@ -442,6 +442,58 @@ final $typed_data.Uint8List publishLogDescriptor = $convert.base64Decode(
     'Vycm9yX2NvZGUYESABKAlSCWVycm9yQ29kZRIjCg1lcnJvcl9tZXNzYWdlGBIgASgJUgxlcnJv'
     'ck1lc3NhZ2U=');
 
+@$core.Deprecated('Use channelPostMetricsDescriptor instead')
+const ChannelPostMetrics$json = {
+  '1': 'ChannelPostMetrics',
+  '2': [
+    {'1': 'views', '3': 1, '4': 1, '5': 3, '10': 'views'},
+    {'1': 'likes', '3': 2, '4': 1, '5': 3, '10': 'likes'},
+    {'1': 'comments', '3': 3, '4': 1, '5': 3, '10': 'comments'},
+    {'1': 'shares', '3': 4, '4': 1, '5': 3, '10': 'shares'},
+    {'1': 'saves', '3': 5, '4': 1, '5': 3, '10': 'saves'},
+    {'1': 'clicks', '3': 6, '4': 1, '5': 3, '10': 'clicks'},
+    {'1': 'is_views_unknown', '3': 7, '4': 1, '5': 8, '10': 'isViewsUnknown'},
+    {'1': 'is_clicks_unknown', '3': 8, '4': 1, '5': 8, '10': 'isClicksUnknown'},
+    {'1': 'unknown_reason', '3': 9, '4': 1, '5': 9, '10': 'unknownReason'},
+    {
+      '1': 'source_class',
+      '3': 10,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.common.v1.SourceClass',
+      '10': 'sourceClass'
+    },
+    {
+      '1': 'confidence',
+      '3': 11,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.common.v1.ConfidenceBand',
+      '10': 'confidence'
+    },
+    {
+      '1': 'captured_at',
+      '3': 12,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'capturedAt'
+    },
+  ],
+};
+
+/// Descriptor for `ChannelPostMetrics`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List channelPostMetricsDescriptor = $convert.base64Decode(
+    'ChJDaGFubmVsUG9zdE1ldHJpY3MSFAoFdmlld3MYASABKANSBXZpZXdzEhQKBWxpa2VzGAIgAS'
+    'gDUgVsaWtlcxIaCghjb21tZW50cxgDIAEoA1IIY29tbWVudHMSFgoGc2hhcmVzGAQgASgDUgZz'
+    'aGFyZXMSFAoFc2F2ZXMYBSABKANSBXNhdmVzEhYKBmNsaWNrcxgGIAEoA1IGY2xpY2tzEigKEG'
+    'lzX3ZpZXdzX3Vua25vd24YByABKAhSDmlzVmlld3NVbmtub3duEioKEWlzX2NsaWNrc191bmtu'
+    'b3duGAggASgIUg9pc0NsaWNrc1Vua25vd24SJQoOdW5rbm93bl9yZWFzb24YCSABKAlSDXVua2'
+    '5vd25SZWFzb24SRQoMc291cmNlX2NsYXNzGAogASgOMiIuY3JlYXRpdmFudGEuY29tbW9uLnYx'
+    'LlNvdXJjZUNsYXNzUgtzb3VyY2VDbGFzcxJFCgpjb25maWRlbmNlGAsgASgOMiUuY3JlYXRpdm'
+    'FudGEuY29tbW9uLnYxLkNvbmZpZGVuY2VCYW5kUgpjb25maWRlbmNlEjsKC2NhcHR1cmVkX2F0'
+    'GAwgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcFIKY2FwdHVyZWRBdA==');
+
 @$core.Deprecated('Use channelPostDescriptor instead')
 const ChannelPost$json = {
   '1': 'ChannelPost',
@@ -490,6 +542,30 @@ const ChannelPost$json = {
       '6': '.google.protobuf.Timestamp',
       '10': 'updatedAt'
     },
+    {
+      '1': 'metrics',
+      '3': 12,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.publish.v1.ChannelPostMetrics',
+      '10': 'metrics'
+    },
+    {
+      '1': 'source_class',
+      '3': 13,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.common.v1.SourceClass',
+      '10': 'sourceClass'
+    },
+    {
+      '1': 'confidence',
+      '3': 14,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.common.v1.ConfidenceBand',
+      '10': 'confidence'
+    },
   ],
 };
 
@@ -504,7 +580,10 @@ final $typed_data.Uint8List channelPostDescriptor = $convert.base64Decode(
     'Y2VkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcFIIc3luY2VkQXQSOQoKY3'
     'JlYXRlZF9hdBgKIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSCWNyZWF0ZWRBdBI5'
     'Cgp1cGRhdGVkX2F0GAsgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcFIJdXBkYXRlZE'
-    'F0');
+    'F0EkQKB21ldHJpY3MYDCABKAsyKi5jcmVhdGl2YW50YS5wdWJsaXNoLnYxLkNoYW5uZWxQb3N0'
+    'TWV0cmljc1IHbWV0cmljcxJFCgxzb3VyY2VfY2xhc3MYDSABKA4yIi5jcmVhdGl2YW50YS5jb2'
+    '1tb24udjEuU291cmNlQ2xhc3NSC3NvdXJjZUNsYXNzEkUKCmNvbmZpZGVuY2UYDiABKA4yJS5j'
+    'cmVhdGl2YW50YS5jb21tb24udjEuQ29uZmlkZW5jZUJhbmRSCmNvbmZpZGVuY2U=');
 
 @$core.Deprecated('Use platformCapabilitySummaryDescriptor instead')
 const PlatformCapabilitySummary$json = {
@@ -2488,3 +2567,96 @@ const UntagProductResponse$json = {
 final $typed_data.Uint8List untagProductResponseDescriptor = $convert.base64Decode(
     'ChRVbnRhZ1Byb2R1Y3RSZXNwb25zZRI3CgRpdGVtGAEgASgLMiMuY3JlYXRpdmFudGEucHVibG'
     'lzaC52MS5QdWJsaXNoSXRlbVIEaXRlbQ==');
+
+@$core.Deprecated('Use syncPostMetricsRequestDescriptor instead')
+const SyncPostMetricsRequest$json = {
+  '1': 'SyncPostMetricsRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'workspace_id', '3': 2, '4': 1, '5': 9, '10': 'workspaceId'},
+    {'1': 'channel_post_id', '3': 3, '4': 1, '5': 9, '10': 'channelPostId'},
+    {'1': 'views', '3': 4, '4': 1, '5': 3, '10': 'views'},
+    {'1': 'likes', '3': 5, '4': 1, '5': 3, '10': 'likes'},
+    {'1': 'comments', '3': 6, '4': 1, '5': 3, '10': 'comments'},
+    {'1': 'shares', '3': 7, '4': 1, '5': 3, '10': 'shares'},
+    {'1': 'saves', '3': 8, '4': 1, '5': 3, '10': 'saves'},
+    {'1': 'clicks', '3': 9, '4': 1, '5': 3, '10': 'clicks'},
+    {'1': 'is_views_unknown', '3': 10, '4': 1, '5': 8, '10': 'isViewsUnknown'},
+    {
+      '1': 'is_clicks_unknown',
+      '3': 11,
+      '4': 1,
+      '5': 8,
+      '10': 'isClicksUnknown'
+    },
+    {'1': 'unknown_reason', '3': 12, '4': 1, '5': 9, '10': 'unknownReason'},
+    {
+      '1': 'source_class',
+      '3': 13,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.common.v1.SourceClass',
+      '10': 'sourceClass'
+    },
+    {
+      '1': 'confidence',
+      '3': 14,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.common.v1.ConfidenceBand',
+      '10': 'confidence'
+    },
+  ],
+};
+
+/// Descriptor for `SyncPostMetricsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List syncPostMetricsRequestDescriptor = $convert.base64Decode(
+    'ChZTeW5jUG9zdE1ldHJpY3NSZXF1ZXN0Ej8KB2NvbnRleHQYASABKAsyJS5jcmVhdGl2YW50YS'
+    '5jb21tb24udjEuQ29tbWFuZENvbnRleHRSB2NvbnRleHQSIQoMd29ya3NwYWNlX2lkGAIgASgJ'
+    'Ugt3b3Jrc3BhY2VJZBImCg9jaGFubmVsX3Bvc3RfaWQYAyABKAlSDWNoYW5uZWxQb3N0SWQSFA'
+    'oFdmlld3MYBCABKANSBXZpZXdzEhQKBWxpa2VzGAUgASgDUgVsaWtlcxIaCghjb21tZW50cxgG'
+    'IAEoA1IIY29tbWVudHMSFgoGc2hhcmVzGAcgASgDUgZzaGFyZXMSFAoFc2F2ZXMYCCABKANSBX'
+    'NhdmVzEhYKBmNsaWNrcxgJIAEoA1IGY2xpY2tzEigKEGlzX3ZpZXdzX3Vua25vd24YCiABKAhS'
+    'DmlzVmlld3NVbmtub3duEioKEWlzX2NsaWNrc191bmtub3duGAsgASgIUg9pc0NsaWNrc1Vua2'
+    '5vd24SJQoOdW5rbm93bl9yZWFzb24YDCABKAlSDXVua25vd25SZWFzb24SRQoMc291cmNlX2Ns'
+    'YXNzGA0gASgOMiIuY3JlYXRpdmFudGEuY29tbW9uLnYxLlNvdXJjZUNsYXNzUgtzb3VyY2VDbG'
+    'FzcxJFCgpjb25maWRlbmNlGA4gASgOMiUuY3JlYXRpdmFudGEuY29tbW9uLnYxLkNvbmZpZGVu'
+    'Y2VCYW5kUgpjb25maWRlbmNl');
+
+@$core.Deprecated('Use syncPostMetricsResponseDescriptor instead')
+const SyncPostMetricsResponse$json = {
+  '1': 'SyncPostMetricsResponse',
+  '2': [
+    {
+      '1': 'post',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.publish.v1.ChannelPost',
+      '10': 'post'
+    },
+    {
+      '1': 'metrics',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.publish.v1.ChannelPostMetrics',
+      '10': 'metrics'
+    },
+    {'1': 'updated', '3': 3, '4': 1, '5': 8, '10': 'updated'},
+  ],
+};
+
+/// Descriptor for `SyncPostMetricsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List syncPostMetricsResponseDescriptor = $convert.base64Decode(
+    'ChdTeW5jUG9zdE1ldHJpY3NSZXNwb25zZRI3CgRwb3N0GAEgASgLMiMuY3JlYXRpdmFudGEucH'
+    'VibGlzaC52MS5DaGFubmVsUG9zdFIEcG9zdBJECgdtZXRyaWNzGAIgASgLMiouY3JlYXRpdmFu'
+    'dGEucHVibGlzaC52MS5DaGFubmVsUG9zdE1ldHJpY3NSB21ldHJpY3MSGAoHdXBkYXRlZBgDIA'
+    'EoCFIHdXBkYXRlZA==');

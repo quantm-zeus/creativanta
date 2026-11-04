@@ -53,6 +53,7 @@ type Service struct {
 	// Internal tracker for orders with missing COGS
 	missingCOGSOrders map[string]bool
 	pendingOrders     map[string]OrderPostingInput
+	attributionEngine *AttributionEngine
 }
 
 func NewService(store Store, eventSink EventSink, clock func() time.Time) *Service {
@@ -65,7 +66,15 @@ func NewService(store Store, eventSink EventSink, clock func() time.Time) *Servi
 		clock:             clock,
 		missingCOGSOrders: make(map[string]bool),
 		pendingOrders:     make(map[string]OrderPostingInput),
+		attributionEngine: NewAttributionEngine(),
 	}
+}
+
+func (s *Service) AttributionEngine() *AttributionEngine {
+	if s.attributionEngine == nil {
+		s.attributionEngine = NewAttributionEngine()
+	}
+	return s.attributionEngine
 }
 
 // RecordOrderPosting recognizes completed orders into financial_postings or tracks pending orders.
@@ -117,6 +126,20 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 	if err := s.store.CreatePosting(ctx, revPosting); err != nil && err != ErrDuplicatePosting {
 		return err
 	}
+
+	// Seed canonical order in attribution engine for revenue attribution and deduplication
+	s.AttributionEngine().SeedCanonicalOrder(CanonicalOrderRecord{
+		OrderID:           input.OrderID,
+		WorkspaceID:       input.WorkspaceID,
+		GrossRevenue:      baseRevenue,
+		RefundDeduction:   tenantdb.ZeroDecimal(),
+		NetRevenue:        baseRevenue,
+		Currency:          input.Currency,
+		SourceClass:       input.SourceClass,
+		Confidence:        input.Confidence,
+		LifecycleState:    input.LifecycleState,
+		IsRecognizedOrder: true,
+	})
 
 	// 2. Post Platform Fee (negative) if present
 	if !input.FeeAmount.IsZero() {
@@ -313,6 +336,9 @@ func (s *Service) RecordRefundPosting(
 		ExchangeRateSnapshot: fx,
 		EffectiveAt:          s.clock(),
 		CreatedAt:            s.clock(),
+	}
+	if s.attributionEngine != nil {
+		s.attributionEngine.RecordRefundDeduction(orderID, baseRefund)
 	}
 	return s.store.CreatePosting(ctx, posting)
 }

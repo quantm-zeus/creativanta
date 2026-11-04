@@ -33,6 +33,10 @@ const (
 	EvidenceServiceName = "creativanta.finance.v1.EvidenceService"
 	// ProofServiceName is the fully-qualified name of the ProofService service.
 	ProofServiceName = "creativanta.finance.v1.ProofService"
+	// ContentRevenueServiceName is the fully-qualified name of the ContentRevenueService service.
+	ContentRevenueServiceName = "creativanta.finance.v1.ContentRevenueService"
+	// AttributionServiceName is the fully-qualified name of the AttributionService service.
+	AttributionServiceName = "creativanta.finance.v1.AttributionService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -105,6 +109,15 @@ const (
 	ProofServiceGetProcedure = "/creativanta.finance.v1.ProofService/Get"
 	// ProofServiceListProcedure is the fully-qualified name of the ProofService's List RPC.
 	ProofServiceListProcedure = "/creativanta.finance.v1.ProofService/List"
+	// ContentRevenueServiceGetAttributionProcedure is the fully-qualified name of the
+	// ContentRevenueService's GetAttribution RPC.
+	ContentRevenueServiceGetAttributionProcedure = "/creativanta.finance.v1.ContentRevenueService/GetAttribution"
+	// AttributionServiceGetByContentProcedure is the fully-qualified name of the AttributionService's
+	// GetByContent RPC.
+	AttributionServiceGetByContentProcedure = "/creativanta.finance.v1.AttributionService/GetByContent"
+	// AttributionServiceRecordAttributionProcedure is the fully-qualified name of the
+	// AttributionService's RecordAttribution RPC.
+	AttributionServiceRecordAttributionProcedure = "/creativanta.finance.v1.AttributionService/RecordAttribution"
 )
 
 // ProfitServiceClient is a client for the creativanta.finance.v1.ProfitService service.
@@ -1024,4 +1037,174 @@ func (UnimplementedProofServiceHandler) Get(context.Context, *connect.Request[v1
 
 func (UnimplementedProofServiceHandler) List(context.Context, *connect.Request[v1.ProofServiceListRequest]) (*connect.Response[v1.ProofServiceListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ProofService.List is not implemented"))
+}
+
+// ContentRevenueServiceClient is a client for the creativanta.finance.v1.ContentRevenueService
+// service.
+type ContentRevenueServiceClient interface {
+	GetAttribution(context.Context, *connect.Request[v1.ContentRevenueServiceGetAttributionRequest]) (*connect.Response[v1.ContentRevenueServiceGetAttributionResponse], error)
+}
+
+// NewContentRevenueServiceClient constructs a client for the
+// creativanta.finance.v1.ContentRevenueService service. By default, it uses the Connect protocol
+// with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To
+// use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb()
+// options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewContentRevenueServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ContentRevenueServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	contentRevenueServiceMethods := v1.File_creativanta_finance_v1_finance_proto.Services().ByName("ContentRevenueService").Methods()
+	return &contentRevenueServiceClient{
+		getAttribution: connect.NewClient[v1.ContentRevenueServiceGetAttributionRequest, v1.ContentRevenueServiceGetAttributionResponse](
+			httpClient,
+			baseURL+ContentRevenueServiceGetAttributionProcedure,
+			connect.WithSchema(contentRevenueServiceMethods.ByName("GetAttribution")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// contentRevenueServiceClient implements ContentRevenueServiceClient.
+type contentRevenueServiceClient struct {
+	getAttribution *connect.Client[v1.ContentRevenueServiceGetAttributionRequest, v1.ContentRevenueServiceGetAttributionResponse]
+}
+
+// GetAttribution calls creativanta.finance.v1.ContentRevenueService.GetAttribution.
+func (c *contentRevenueServiceClient) GetAttribution(ctx context.Context, req *connect.Request[v1.ContentRevenueServiceGetAttributionRequest]) (*connect.Response[v1.ContentRevenueServiceGetAttributionResponse], error) {
+	return c.getAttribution.CallUnary(ctx, req)
+}
+
+// ContentRevenueServiceHandler is an implementation of the
+// creativanta.finance.v1.ContentRevenueService service.
+type ContentRevenueServiceHandler interface {
+	GetAttribution(context.Context, *connect.Request[v1.ContentRevenueServiceGetAttributionRequest]) (*connect.Response[v1.ContentRevenueServiceGetAttributionResponse], error)
+}
+
+// NewContentRevenueServiceHandler builds an HTTP handler from the service implementation. It
+// returns the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewContentRevenueServiceHandler(svc ContentRevenueServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	contentRevenueServiceMethods := v1.File_creativanta_finance_v1_finance_proto.Services().ByName("ContentRevenueService").Methods()
+	contentRevenueServiceGetAttributionHandler := connect.NewUnaryHandler(
+		ContentRevenueServiceGetAttributionProcedure,
+		svc.GetAttribution,
+		connect.WithSchema(contentRevenueServiceMethods.ByName("GetAttribution")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.finance.v1.ContentRevenueService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case ContentRevenueServiceGetAttributionProcedure:
+			contentRevenueServiceGetAttributionHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedContentRevenueServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedContentRevenueServiceHandler struct{}
+
+func (UnimplementedContentRevenueServiceHandler) GetAttribution(context.Context, *connect.Request[v1.ContentRevenueServiceGetAttributionRequest]) (*connect.Response[v1.ContentRevenueServiceGetAttributionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.ContentRevenueService.GetAttribution is not implemented"))
+}
+
+// AttributionServiceClient is a client for the creativanta.finance.v1.AttributionService service.
+type AttributionServiceClient interface {
+	GetByContent(context.Context, *connect.Request[v1.AttributionServiceGetByContentRequest]) (*connect.Response[v1.AttributionServiceGetByContentResponse], error)
+	RecordAttribution(context.Context, *connect.Request[v1.AttributionServiceRecordAttributionRequest]) (*connect.Response[v1.AttributionServiceRecordAttributionResponse], error)
+}
+
+// NewAttributionServiceClient constructs a client for the creativanta.finance.v1.AttributionService
+// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
+// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
+// the connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewAttributionServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AttributionServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	attributionServiceMethods := v1.File_creativanta_finance_v1_finance_proto.Services().ByName("AttributionService").Methods()
+	return &attributionServiceClient{
+		getByContent: connect.NewClient[v1.AttributionServiceGetByContentRequest, v1.AttributionServiceGetByContentResponse](
+			httpClient,
+			baseURL+AttributionServiceGetByContentProcedure,
+			connect.WithSchema(attributionServiceMethods.ByName("GetByContent")),
+			connect.WithClientOptions(opts...),
+		),
+		recordAttribution: connect.NewClient[v1.AttributionServiceRecordAttributionRequest, v1.AttributionServiceRecordAttributionResponse](
+			httpClient,
+			baseURL+AttributionServiceRecordAttributionProcedure,
+			connect.WithSchema(attributionServiceMethods.ByName("RecordAttribution")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// attributionServiceClient implements AttributionServiceClient.
+type attributionServiceClient struct {
+	getByContent      *connect.Client[v1.AttributionServiceGetByContentRequest, v1.AttributionServiceGetByContentResponse]
+	recordAttribution *connect.Client[v1.AttributionServiceRecordAttributionRequest, v1.AttributionServiceRecordAttributionResponse]
+}
+
+// GetByContent calls creativanta.finance.v1.AttributionService.GetByContent.
+func (c *attributionServiceClient) GetByContent(ctx context.Context, req *connect.Request[v1.AttributionServiceGetByContentRequest]) (*connect.Response[v1.AttributionServiceGetByContentResponse], error) {
+	return c.getByContent.CallUnary(ctx, req)
+}
+
+// RecordAttribution calls creativanta.finance.v1.AttributionService.RecordAttribution.
+func (c *attributionServiceClient) RecordAttribution(ctx context.Context, req *connect.Request[v1.AttributionServiceRecordAttributionRequest]) (*connect.Response[v1.AttributionServiceRecordAttributionResponse], error) {
+	return c.recordAttribution.CallUnary(ctx, req)
+}
+
+// AttributionServiceHandler is an implementation of the creativanta.finance.v1.AttributionService
+// service.
+type AttributionServiceHandler interface {
+	GetByContent(context.Context, *connect.Request[v1.AttributionServiceGetByContentRequest]) (*connect.Response[v1.AttributionServiceGetByContentResponse], error)
+	RecordAttribution(context.Context, *connect.Request[v1.AttributionServiceRecordAttributionRequest]) (*connect.Response[v1.AttributionServiceRecordAttributionResponse], error)
+}
+
+// NewAttributionServiceHandler builds an HTTP handler from the service implementation. It returns
+// the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewAttributionServiceHandler(svc AttributionServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	attributionServiceMethods := v1.File_creativanta_finance_v1_finance_proto.Services().ByName("AttributionService").Methods()
+	attributionServiceGetByContentHandler := connect.NewUnaryHandler(
+		AttributionServiceGetByContentProcedure,
+		svc.GetByContent,
+		connect.WithSchema(attributionServiceMethods.ByName("GetByContent")),
+		connect.WithHandlerOptions(opts...),
+	)
+	attributionServiceRecordAttributionHandler := connect.NewUnaryHandler(
+		AttributionServiceRecordAttributionProcedure,
+		svc.RecordAttribution,
+		connect.WithSchema(attributionServiceMethods.ByName("RecordAttribution")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.finance.v1.AttributionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case AttributionServiceGetByContentProcedure:
+			attributionServiceGetByContentHandler.ServeHTTP(w, r)
+		case AttributionServiceRecordAttributionProcedure:
+			attributionServiceRecordAttributionHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedAttributionServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedAttributionServiceHandler struct{}
+
+func (UnimplementedAttributionServiceHandler) GetByContent(context.Context, *connect.Request[v1.AttributionServiceGetByContentRequest]) (*connect.Response[v1.AttributionServiceGetByContentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.AttributionService.GetByContent is not implemented"))
+}
+
+func (UnimplementedAttributionServiceHandler) RecordAttribution(context.Context, *connect.Request[v1.AttributionServiceRecordAttributionRequest]) (*connect.Response[v1.AttributionServiceRecordAttributionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.finance.v1.AttributionService.RecordAttribution is not implemented"))
 }

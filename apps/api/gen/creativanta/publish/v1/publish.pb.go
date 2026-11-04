@@ -959,6 +959,139 @@ func (x *PublishLog) GetErrorMessage() string {
 	return ""
 }
 
+// ChannelPostMetrics captures engagement and view metrics with denominator tracking.
+type ChannelPostMetrics struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Views           int64                  `protobuf:"varint,1,opt,name=views,proto3" json:"views,omitempty"`
+	Likes           int64                  `protobuf:"varint,2,opt,name=likes,proto3" json:"likes,omitempty"`
+	Comments        int64                  `protobuf:"varint,3,opt,name=comments,proto3" json:"comments,omitempty"`
+	Shares          int64                  `protobuf:"varint,4,opt,name=shares,proto3" json:"shares,omitempty"`
+	Saves           int64                  `protobuf:"varint,5,opt,name=saves,proto3" json:"saves,omitempty"`
+	Clicks          int64                  `protobuf:"varint,6,opt,name=clicks,proto3" json:"clicks,omitempty"`
+	IsViewsUnknown  bool                   `protobuf:"varint,7,opt,name=is_views_unknown,json=isViewsUnknown,proto3" json:"is_views_unknown,omitempty"`
+	IsClicksUnknown bool                   `protobuf:"varint,8,opt,name=is_clicks_unknown,json=isClicksUnknown,proto3" json:"is_clicks_unknown,omitempty"`
+	UnknownReason   string                 `protobuf:"bytes,9,opt,name=unknown_reason,json=unknownReason,proto3" json:"unknown_reason,omitempty"`
+	SourceClass     v1.SourceClass         `protobuf:"varint,10,opt,name=source_class,json=sourceClass,proto3,enum=creativanta.common.v1.SourceClass" json:"source_class,omitempty"`
+	Confidence      v1.ConfidenceBand      `protobuf:"varint,11,opt,name=confidence,proto3,enum=creativanta.common.v1.ConfidenceBand" json:"confidence,omitempty"`
+	CapturedAt      *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=captured_at,json=capturedAt,proto3" json:"captured_at,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ChannelPostMetrics) Reset() {
+	*x = ChannelPostMetrics{}
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChannelPostMetrics) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChannelPostMetrics) ProtoMessage() {}
+
+func (x *ChannelPostMetrics) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChannelPostMetrics.ProtoReflect.Descriptor instead.
+func (*ChannelPostMetrics) Descriptor() ([]byte, []int) {
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ChannelPostMetrics) GetViews() int64 {
+	if x != nil {
+		return x.Views
+	}
+	return 0
+}
+
+func (x *ChannelPostMetrics) GetLikes() int64 {
+	if x != nil {
+		return x.Likes
+	}
+	return 0
+}
+
+func (x *ChannelPostMetrics) GetComments() int64 {
+	if x != nil {
+		return x.Comments
+	}
+	return 0
+}
+
+func (x *ChannelPostMetrics) GetShares() int64 {
+	if x != nil {
+		return x.Shares
+	}
+	return 0
+}
+
+func (x *ChannelPostMetrics) GetSaves() int64 {
+	if x != nil {
+		return x.Saves
+	}
+	return 0
+}
+
+func (x *ChannelPostMetrics) GetClicks() int64 {
+	if x != nil {
+		return x.Clicks
+	}
+	return 0
+}
+
+func (x *ChannelPostMetrics) GetIsViewsUnknown() bool {
+	if x != nil {
+		return x.IsViewsUnknown
+	}
+	return false
+}
+
+func (x *ChannelPostMetrics) GetIsClicksUnknown() bool {
+	if x != nil {
+		return x.IsClicksUnknown
+	}
+	return false
+}
+
+func (x *ChannelPostMetrics) GetUnknownReason() string {
+	if x != nil {
+		return x.UnknownReason
+	}
+	return ""
+}
+
+func (x *ChannelPostMetrics) GetSourceClass() v1.SourceClass {
+	if x != nil {
+		return x.SourceClass
+	}
+	return v1.SourceClass(0)
+}
+
+func (x *ChannelPostMetrics) GetConfidence() v1.ConfidenceBand {
+	if x != nil {
+		return x.Confidence
+	}
+	return v1.ConfidenceBand(0)
+}
+
+func (x *ChannelPostMetrics) GetCapturedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CapturedAt
+	}
+	return nil
+}
+
 // ChannelPost represents a post tracked on an external platform after publishing.
 type ChannelPost struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
@@ -973,13 +1106,16 @@ type ChannelPost struct {
 	SyncedAt           *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=synced_at,json=syncedAt,proto3" json:"synced_at,omitempty"`
 	CreatedAt          *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt          *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Metrics            *ChannelPostMetrics    `protobuf:"bytes,12,opt,name=metrics,proto3" json:"metrics,omitempty"`
+	SourceClass        v1.SourceClass         `protobuf:"varint,13,opt,name=source_class,json=sourceClass,proto3,enum=creativanta.common.v1.SourceClass" json:"source_class,omitempty"`
+	Confidence         v1.ConfidenceBand      `protobuf:"varint,14,opt,name=confidence,proto3,enum=creativanta.common.v1.ConfidenceBand" json:"confidence,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ChannelPost) Reset() {
 	*x = ChannelPost{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[3]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -991,7 +1127,7 @@ func (x *ChannelPost) String() string {
 func (*ChannelPost) ProtoMessage() {}
 
 func (x *ChannelPost) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[3]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1004,7 +1140,7 @@ func (x *ChannelPost) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChannelPost.ProtoReflect.Descriptor instead.
 func (*ChannelPost) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{3}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ChannelPost) GetChannelPostId() string {
@@ -1084,6 +1220,27 @@ func (x *ChannelPost) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *ChannelPost) GetMetrics() *ChannelPostMetrics {
+	if x != nil {
+		return x.Metrics
+	}
+	return nil
+}
+
+func (x *ChannelPost) GetSourceClass() v1.SourceClass {
+	if x != nil {
+		return x.SourceClass
+	}
+	return v1.SourceClass(0)
+}
+
+func (x *ChannelPost) GetConfidence() v1.ConfidenceBand {
+	if x != nil {
+		return x.Confidence
+	}
+	return v1.ConfidenceBand(0)
+}
+
 // PlatformCapabilitySummary provides pre-publish capability awareness (RULE-M11-001).
 type PlatformCapabilitySummary struct {
 	state                  protoimpl.MessageState `protogen:"open.v1"`
@@ -1101,7 +1258,7 @@ type PlatformCapabilitySummary struct {
 
 func (x *PlatformCapabilitySummary) Reset() {
 	*x = PlatformCapabilitySummary{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[4]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1113,7 +1270,7 @@ func (x *PlatformCapabilitySummary) String() string {
 func (*PlatformCapabilitySummary) ProtoMessage() {}
 
 func (x *PlatformCapabilitySummary) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[4]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1126,7 +1283,7 @@ func (x *PlatformCapabilitySummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlatformCapabilitySummary.ProtoReflect.Descriptor instead.
 func (*PlatformCapabilitySummary) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{4}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *PlatformCapabilitySummary) GetPlatform() string {
@@ -1202,7 +1359,7 @@ type ManualExportPackage struct {
 
 func (x *ManualExportPackage) Reset() {
 	*x = ManualExportPackage{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[5]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1214,7 +1371,7 @@ func (x *ManualExportPackage) String() string {
 func (*ManualExportPackage) ProtoMessage() {}
 
 func (x *ManualExportPackage) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[5]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1227,7 +1384,7 @@ func (x *ManualExportPackage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ManualExportPackage.ProtoReflect.Descriptor instead.
 func (*ManualExportPackage) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{5}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ManualExportPackage) GetPublishItemId() string {
@@ -1305,7 +1462,7 @@ type CreateItemRequest struct {
 
 func (x *CreateItemRequest) Reset() {
 	*x = CreateItemRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[6]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1317,7 +1474,7 @@ func (x *CreateItemRequest) String() string {
 func (*CreateItemRequest) ProtoMessage() {}
 
 func (x *CreateItemRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[6]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1330,7 +1487,7 @@ func (x *CreateItemRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateItemRequest.ProtoReflect.Descriptor instead.
 func (*CreateItemRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{6}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CreateItemRequest) GetContext() *v1.CommandContext {
@@ -1413,7 +1570,7 @@ type CreateItemResponse struct {
 
 func (x *CreateItemResponse) Reset() {
 	*x = CreateItemResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[7]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1425,7 +1582,7 @@ func (x *CreateItemResponse) String() string {
 func (*CreateItemResponse) ProtoMessage() {}
 
 func (x *CreateItemResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[7]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1438,7 +1595,7 @@ func (x *CreateItemResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateItemResponse.ProtoReflect.Descriptor instead.
 func (*CreateItemResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{7}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *CreateItemResponse) GetItem() *PublishItem {
@@ -1467,7 +1624,7 @@ type ScheduleRequest struct {
 
 func (x *ScheduleRequest) Reset() {
 	*x = ScheduleRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[8]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1479,7 +1636,7 @@ func (x *ScheduleRequest) String() string {
 func (*ScheduleRequest) ProtoMessage() {}
 
 func (x *ScheduleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[8]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1492,7 +1649,7 @@ func (x *ScheduleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleRequest.ProtoReflect.Descriptor instead.
 func (*ScheduleRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{8}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ScheduleRequest) GetContext() *v1.CommandContext {
@@ -1528,7 +1685,7 @@ type ScheduleResponse struct {
 
 func (x *ScheduleResponse) Reset() {
 	*x = ScheduleResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[9]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1540,7 +1697,7 @@ func (x *ScheduleResponse) String() string {
 func (*ScheduleResponse) ProtoMessage() {}
 
 func (x *ScheduleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[9]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1553,7 +1710,7 @@ func (x *ScheduleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleResponse.ProtoReflect.Descriptor instead.
 func (*ScheduleResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{9}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ScheduleResponse) GetItem() *PublishItem {
@@ -1596,7 +1753,7 @@ type ExecuteRequest struct {
 
 func (x *ExecuteRequest) Reset() {
 	*x = ExecuteRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[10]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1608,7 +1765,7 @@ func (x *ExecuteRequest) String() string {
 func (*ExecuteRequest) ProtoMessage() {}
 
 func (x *ExecuteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[10]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1621,7 +1778,7 @@ func (x *ExecuteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecuteRequest.ProtoReflect.Descriptor instead.
 func (*ExecuteRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{10}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ExecuteRequest) GetContext() *v1.CommandContext {
@@ -1657,7 +1814,7 @@ type ExecuteResponse struct {
 
 func (x *ExecuteResponse) Reset() {
 	*x = ExecuteResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[11]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1669,7 +1826,7 @@ func (x *ExecuteResponse) String() string {
 func (*ExecuteResponse) ProtoMessage() {}
 
 func (x *ExecuteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[11]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1682,7 +1839,7 @@ func (x *ExecuteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecuteResponse.ProtoReflect.Descriptor instead.
 func (*ExecuteResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{11}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ExecuteResponse) GetItem() *PublishItem {
@@ -1725,7 +1882,7 @@ type RetryRequest struct {
 
 func (x *RetryRequest) Reset() {
 	*x = RetryRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[12]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1737,7 +1894,7 @@ func (x *RetryRequest) String() string {
 func (*RetryRequest) ProtoMessage() {}
 
 func (x *RetryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[12]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1750,7 +1907,7 @@ func (x *RetryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetryRequest.ProtoReflect.Descriptor instead.
 func (*RetryRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{12}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *RetryRequest) GetContext() *v1.CommandContext {
@@ -1784,7 +1941,7 @@ type RetryResponse struct {
 
 func (x *RetryResponse) Reset() {
 	*x = RetryResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[13]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1796,7 +1953,7 @@ func (x *RetryResponse) String() string {
 func (*RetryResponse) ProtoMessage() {}
 
 func (x *RetryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[13]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1809,7 +1966,7 @@ func (x *RetryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetryResponse.ProtoReflect.Descriptor instead.
 func (*RetryResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{13}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *RetryResponse) GetItem() *PublishItem {
@@ -1838,7 +1995,7 @@ type CancelRequest struct {
 
 func (x *CancelRequest) Reset() {
 	*x = CancelRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[14]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1850,7 +2007,7 @@ func (x *CancelRequest) String() string {
 func (*CancelRequest) ProtoMessage() {}
 
 func (x *CancelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[14]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1863,7 +2020,7 @@ func (x *CancelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelRequest.ProtoReflect.Descriptor instead.
 func (*CancelRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{14}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *CancelRequest) GetContext() *v1.CommandContext {
@@ -1897,7 +2054,7 @@ type CancelResponse struct {
 
 func (x *CancelResponse) Reset() {
 	*x = CancelResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[15]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1909,7 +2066,7 @@ func (x *CancelResponse) String() string {
 func (*CancelResponse) ProtoMessage() {}
 
 func (x *CancelResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[15]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1922,7 +2079,7 @@ func (x *CancelResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelResponse.ProtoReflect.Descriptor instead.
 func (*CancelResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{15}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *CancelResponse) GetItem() *PublishItem {
@@ -1951,7 +2108,7 @@ type ListQueueRequest struct {
 
 func (x *ListQueueRequest) Reset() {
 	*x = ListQueueRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[16]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1963,7 +2120,7 @@ func (x *ListQueueRequest) String() string {
 func (*ListQueueRequest) ProtoMessage() {}
 
 func (x *ListQueueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[16]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1976,7 +2133,7 @@ func (x *ListQueueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListQueueRequest.ProtoReflect.Descriptor instead.
 func (*ListQueueRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{16}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ListQueueRequest) GetWorkspaceId() string {
@@ -2011,7 +2168,7 @@ type ListQueueResponse struct {
 
 func (x *ListQueueResponse) Reset() {
 	*x = ListQueueResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[17]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2023,7 +2180,7 @@ func (x *ListQueueResponse) String() string {
 func (*ListQueueResponse) ProtoMessage() {}
 
 func (x *ListQueueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[17]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2036,7 +2193,7 @@ func (x *ListQueueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListQueueResponse.ProtoReflect.Descriptor instead.
 func (*ListQueueResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{17}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ListQueueResponse) GetItems() []*PublishItem {
@@ -2071,7 +2228,7 @@ type GetLogsRequest struct {
 
 func (x *GetLogsRequest) Reset() {
 	*x = GetLogsRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[18]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2083,7 +2240,7 @@ func (x *GetLogsRequest) String() string {
 func (*GetLogsRequest) ProtoMessage() {}
 
 func (x *GetLogsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[18]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2096,7 +2253,7 @@ func (x *GetLogsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLogsRequest.ProtoReflect.Descriptor instead.
 func (*GetLogsRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{18}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *GetLogsRequest) GetPublishItemId() string {
@@ -2123,7 +2280,7 @@ type GetLogsResponse struct {
 
 func (x *GetLogsResponse) Reset() {
 	*x = GetLogsResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[19]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2135,7 +2292,7 @@ func (x *GetLogsResponse) String() string {
 func (*GetLogsResponse) ProtoMessage() {}
 
 func (x *GetLogsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[19]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2148,7 +2305,7 @@ func (x *GetLogsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLogsResponse.ProtoReflect.Descriptor instead.
 func (*GetLogsResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{19}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GetLogsResponse) GetLogs() []*PublishLog {
@@ -2175,7 +2332,7 @@ type GetDiagnosticsRequest struct {
 
 func (x *GetDiagnosticsRequest) Reset() {
 	*x = GetDiagnosticsRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[20]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2187,7 +2344,7 @@ func (x *GetDiagnosticsRequest) String() string {
 func (*GetDiagnosticsRequest) ProtoMessage() {}
 
 func (x *GetDiagnosticsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[20]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2200,7 +2357,7 @@ func (x *GetDiagnosticsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiagnosticsRequest.ProtoReflect.Descriptor instead.
 func (*GetDiagnosticsRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{20}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *GetDiagnosticsRequest) GetPublishItemId() string {
@@ -2227,7 +2384,7 @@ type GetDiagnosticsResponse struct {
 
 func (x *GetDiagnosticsResponse) Reset() {
 	*x = GetDiagnosticsResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[21]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2239,7 +2396,7 @@ func (x *GetDiagnosticsResponse) String() string {
 func (*GetDiagnosticsResponse) ProtoMessage() {}
 
 func (x *GetDiagnosticsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[21]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2252,7 +2409,7 @@ func (x *GetDiagnosticsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiagnosticsResponse.ProtoReflect.Descriptor instead.
 func (*GetDiagnosticsResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{21}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *GetDiagnosticsResponse) GetPublishItemId() string {
@@ -2332,7 +2489,7 @@ type SubmitManualProofRequest struct {
 
 func (x *SubmitManualProofRequest) Reset() {
 	*x = SubmitManualProofRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[22]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2344,7 +2501,7 @@ func (x *SubmitManualProofRequest) String() string {
 func (*SubmitManualProofRequest) ProtoMessage() {}
 
 func (x *SubmitManualProofRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[22]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2357,7 +2514,7 @@ func (x *SubmitManualProofRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitManualProofRequest.ProtoReflect.Descriptor instead.
 func (*SubmitManualProofRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{22}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *SubmitManualProofRequest) GetContext() *v1.CommandContext {
@@ -2407,7 +2564,7 @@ type SubmitManualProofResponse struct {
 
 func (x *SubmitManualProofResponse) Reset() {
 	*x = SubmitManualProofResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[23]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2419,7 +2576,7 @@ func (x *SubmitManualProofResponse) String() string {
 func (*SubmitManualProofResponse) ProtoMessage() {}
 
 func (x *SubmitManualProofResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[23]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2432,7 +2589,7 @@ func (x *SubmitManualProofResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitManualProofResponse.ProtoReflect.Descriptor instead.
 func (*SubmitManualProofResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{23}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *SubmitManualProofResponse) GetItem() *PublishItem {
@@ -2476,7 +2633,7 @@ type ReconcilePublishRequest struct {
 
 func (x *ReconcilePublishRequest) Reset() {
 	*x = ReconcilePublishRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[24]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2488,7 +2645,7 @@ func (x *ReconcilePublishRequest) String() string {
 func (*ReconcilePublishRequest) ProtoMessage() {}
 
 func (x *ReconcilePublishRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[24]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2501,7 +2658,7 @@ func (x *ReconcilePublishRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReconcilePublishRequest.ProtoReflect.Descriptor instead.
 func (*ReconcilePublishRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{24}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ReconcilePublishRequest) GetContext() *v1.CommandContext {
@@ -2545,7 +2702,7 @@ type ReconcilePublishResponse struct {
 
 func (x *ReconcilePublishResponse) Reset() {
 	*x = ReconcilePublishResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[25]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2557,7 +2714,7 @@ func (x *ReconcilePublishResponse) String() string {
 func (*ReconcilePublishResponse) ProtoMessage() {}
 
 func (x *ReconcilePublishResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[25]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2570,7 +2727,7 @@ func (x *ReconcilePublishResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReconcilePublishResponse.ProtoReflect.Descriptor instead.
 func (*ReconcilePublishResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{25}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ReconcilePublishResponse) GetItem() *PublishItem {
@@ -2618,7 +2775,7 @@ type ExportManualPackageRequest struct {
 
 func (x *ExportManualPackageRequest) Reset() {
 	*x = ExportManualPackageRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[26]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2630,7 +2787,7 @@ func (x *ExportManualPackageRequest) String() string {
 func (*ExportManualPackageRequest) ProtoMessage() {}
 
 func (x *ExportManualPackageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[26]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2643,7 +2800,7 @@ func (x *ExportManualPackageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExportManualPackageRequest.ProtoReflect.Descriptor instead.
 func (*ExportManualPackageRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{26}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ExportManualPackageRequest) GetPublishItemId() string {
@@ -2662,7 +2819,7 @@ type ExportManualPackageResponse struct {
 
 func (x *ExportManualPackageResponse) Reset() {
 	*x = ExportManualPackageResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[27]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2674,7 +2831,7 @@ func (x *ExportManualPackageResponse) String() string {
 func (*ExportManualPackageResponse) ProtoMessage() {}
 
 func (x *ExportManualPackageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[27]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2687,7 +2844,7 @@ func (x *ExportManualPackageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExportManualPackageResponse.ProtoReflect.Descriptor instead.
 func (*ExportManualPackageResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{27}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ExportManualPackageResponse) GetPackage() *ManualExportPackage {
@@ -2709,7 +2866,7 @@ type PauseQueueRequest struct {
 
 func (x *PauseQueueRequest) Reset() {
 	*x = PauseQueueRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[28]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2721,7 +2878,7 @@ func (x *PauseQueueRequest) String() string {
 func (*PauseQueueRequest) ProtoMessage() {}
 
 func (x *PauseQueueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[28]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2734,7 +2891,7 @@ func (x *PauseQueueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PauseQueueRequest.ProtoReflect.Descriptor instead.
 func (*PauseQueueRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{28}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *PauseQueueRequest) GetContext() *v1.CommandContext {
@@ -2768,7 +2925,7 @@ type PauseQueueResponse struct {
 
 func (x *PauseQueueResponse) Reset() {
 	*x = PauseQueueResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[29]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2780,7 +2937,7 @@ func (x *PauseQueueResponse) String() string {
 func (*PauseQueueResponse) ProtoMessage() {}
 
 func (x *PauseQueueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[29]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2793,7 +2950,7 @@ func (x *PauseQueueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PauseQueueResponse.ProtoReflect.Descriptor instead.
 func (*PauseQueueResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{29}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *PauseQueueResponse) GetPausedJobsCount() int32 {
@@ -2820,7 +2977,7 @@ type GetRequest struct {
 
 func (x *GetRequest) Reset() {
 	*x = GetRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[30]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2832,7 +2989,7 @@ func (x *GetRequest) String() string {
 func (*GetRequest) ProtoMessage() {}
 
 func (x *GetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[30]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2845,7 +3002,7 @@ func (x *GetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRequest.ProtoReflect.Descriptor instead.
 func (*GetRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{30}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *GetRequest) GetPublishItemId() string {
@@ -2865,7 +3022,7 @@ type GetResponse struct {
 
 func (x *GetResponse) Reset() {
 	*x = GetResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[31]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2877,7 +3034,7 @@ func (x *GetResponse) String() string {
 func (*GetResponse) ProtoMessage() {}
 
 func (x *GetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[31]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2890,7 +3047,7 @@ func (x *GetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetResponse.ProtoReflect.Descriptor instead.
 func (*GetResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{31}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *GetResponse) GetItem() *PublishItem {
@@ -2917,7 +3074,7 @@ type ListRequest struct {
 
 func (x *ListRequest) Reset() {
 	*x = ListRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[32]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2929,7 +3086,7 @@ func (x *ListRequest) String() string {
 func (*ListRequest) ProtoMessage() {}
 
 func (x *ListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[32]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2942,7 +3099,7 @@ func (x *ListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRequest.ProtoReflect.Descriptor instead.
 func (*ListRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{32}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ListRequest) GetWorkspaceId() string {
@@ -2969,7 +3126,7 @@ type ListResponse struct {
 
 func (x *ListResponse) Reset() {
 	*x = ListResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[33]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2981,7 +3138,7 @@ func (x *ListResponse) String() string {
 func (*ListResponse) ProtoMessage() {}
 
 func (x *ListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[33]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2994,7 +3151,7 @@ func (x *ListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListResponse.ProtoReflect.Descriptor instead.
 func (*ListResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{33}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ListResponse) GetItems() []*PublishItem {
@@ -3020,7 +3177,7 @@ type GetDraftRequest struct {
 
 func (x *GetDraftRequest) Reset() {
 	*x = GetDraftRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[34]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3032,7 +3189,7 @@ func (x *GetDraftRequest) String() string {
 func (*GetDraftRequest) ProtoMessage() {}
 
 func (x *GetDraftRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[34]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3045,7 +3202,7 @@ func (x *GetDraftRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDraftRequest.ProtoReflect.Descriptor instead.
 func (*GetDraftRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{34}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *GetDraftRequest) GetDraftId() string {
@@ -3064,7 +3221,7 @@ type GetDraftResponse struct {
 
 func (x *GetDraftResponse) Reset() {
 	*x = GetDraftResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[35]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3076,7 +3233,7 @@ func (x *GetDraftResponse) String() string {
 func (*GetDraftResponse) ProtoMessage() {}
 
 func (x *GetDraftResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[35]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3089,7 +3246,7 @@ func (x *GetDraftResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDraftResponse.ProtoReflect.Descriptor instead.
 func (*GetDraftResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{35}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *GetDraftResponse) GetItem() *PublishItem {
@@ -3109,7 +3266,7 @@ type SaveDraftRequest struct {
 
 func (x *SaveDraftRequest) Reset() {
 	*x = SaveDraftRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[36]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3121,7 +3278,7 @@ func (x *SaveDraftRequest) String() string {
 func (*SaveDraftRequest) ProtoMessage() {}
 
 func (x *SaveDraftRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[36]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3134,7 +3291,7 @@ func (x *SaveDraftRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveDraftRequest.ProtoReflect.Descriptor instead.
 func (*SaveDraftRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{36}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *SaveDraftRequest) GetContext() *v1.CommandContext {
@@ -3160,7 +3317,7 @@ type SaveDraftResponse struct {
 
 func (x *SaveDraftResponse) Reset() {
 	*x = SaveDraftResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[37]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3172,7 +3329,7 @@ func (x *SaveDraftResponse) String() string {
 func (*SaveDraftResponse) ProtoMessage() {}
 
 func (x *SaveDraftResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[37]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3185,7 +3342,7 @@ func (x *SaveDraftResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveDraftResponse.ProtoReflect.Descriptor instead.
 func (*SaveDraftResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{37}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *SaveDraftResponse) GetItem() *PublishItem {
@@ -3208,7 +3365,7 @@ type UpdateDraftRequest struct {
 
 func (x *UpdateDraftRequest) Reset() {
 	*x = UpdateDraftRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[38]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3220,7 +3377,7 @@ func (x *UpdateDraftRequest) String() string {
 func (*UpdateDraftRequest) ProtoMessage() {}
 
 func (x *UpdateDraftRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[38]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3233,7 +3390,7 @@ func (x *UpdateDraftRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateDraftRequest.ProtoReflect.Descriptor instead.
 func (*UpdateDraftRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{38}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *UpdateDraftRequest) GetContext() *v1.CommandContext {
@@ -3280,7 +3437,7 @@ type UpdateDraftResponse struct {
 
 func (x *UpdateDraftResponse) Reset() {
 	*x = UpdateDraftResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[39]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3292,7 +3449,7 @@ func (x *UpdateDraftResponse) String() string {
 func (*UpdateDraftResponse) ProtoMessage() {}
 
 func (x *UpdateDraftResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[39]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3305,7 +3462,7 @@ func (x *UpdateDraftResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateDraftResponse.ProtoReflect.Descriptor instead.
 func (*UpdateDraftResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{39}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *UpdateDraftResponse) GetItem() *PublishItem {
@@ -3325,7 +3482,7 @@ type ListDraftsRequest struct {
 
 func (x *ListDraftsRequest) Reset() {
 	*x = ListDraftsRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[40]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3337,7 +3494,7 @@ func (x *ListDraftsRequest) String() string {
 func (*ListDraftsRequest) ProtoMessage() {}
 
 func (x *ListDraftsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[40]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3350,7 +3507,7 @@ func (x *ListDraftsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDraftsRequest.ProtoReflect.Descriptor instead.
 func (*ListDraftsRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{40}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *ListDraftsRequest) GetWorkspaceId() string {
@@ -3377,7 +3534,7 @@ type ListDraftsResponse struct {
 
 func (x *ListDraftsResponse) Reset() {
 	*x = ListDraftsResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[41]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3389,7 +3546,7 @@ func (x *ListDraftsResponse) String() string {
 func (*ListDraftsResponse) ProtoMessage() {}
 
 func (x *ListDraftsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[41]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3402,7 +3559,7 @@ func (x *ListDraftsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDraftsResponse.ProtoReflect.Descriptor instead.
 func (*ListDraftsResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{41}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *ListDraftsResponse) GetDrafts() []*PublishItem {
@@ -3429,7 +3586,7 @@ type PublishNowRequest struct {
 
 func (x *PublishNowRequest) Reset() {
 	*x = PublishNowRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[42]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3441,7 +3598,7 @@ func (x *PublishNowRequest) String() string {
 func (*PublishNowRequest) ProtoMessage() {}
 
 func (x *PublishNowRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[42]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3454,7 +3611,7 @@ func (x *PublishNowRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishNowRequest.ProtoReflect.Descriptor instead.
 func (*PublishNowRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{42}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *PublishNowRequest) GetContext() *v1.CommandContext {
@@ -3481,7 +3638,7 @@ type PublishNowResponse struct {
 
 func (x *PublishNowResponse) Reset() {
 	*x = PublishNowResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[43]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3493,7 +3650,7 @@ func (x *PublishNowResponse) String() string {
 func (*PublishNowResponse) ProtoMessage() {}
 
 func (x *PublishNowResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[43]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3506,7 +3663,7 @@ func (x *PublishNowResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishNowResponse.ProtoReflect.Descriptor instead.
 func (*PublishNowResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{43}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *PublishNowResponse) GetItem() *PublishItem {
@@ -3534,7 +3691,7 @@ type RescheduleRequest struct {
 
 func (x *RescheduleRequest) Reset() {
 	*x = RescheduleRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[44]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3546,7 +3703,7 @@ func (x *RescheduleRequest) String() string {
 func (*RescheduleRequest) ProtoMessage() {}
 
 func (x *RescheduleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[44]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3559,7 +3716,7 @@ func (x *RescheduleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RescheduleRequest.ProtoReflect.Descriptor instead.
 func (*RescheduleRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{44}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *RescheduleRequest) GetContext() *v1.CommandContext {
@@ -3592,7 +3749,7 @@ type RescheduleResponse struct {
 
 func (x *RescheduleResponse) Reset() {
 	*x = RescheduleResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[45]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3604,7 +3761,7 @@ func (x *RescheduleResponse) String() string {
 func (*RescheduleResponse) ProtoMessage() {}
 
 func (x *RescheduleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[45]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3617,7 +3774,7 @@ func (x *RescheduleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RescheduleResponse.ProtoReflect.Descriptor instead.
 func (*RescheduleResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{45}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *RescheduleResponse) GetItem() *PublishItem {
@@ -3637,7 +3794,7 @@ type DeleteRequest struct {
 
 func (x *DeleteRequest) Reset() {
 	*x = DeleteRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[46]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3649,7 +3806,7 @@ func (x *DeleteRequest) String() string {
 func (*DeleteRequest) ProtoMessage() {}
 
 func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[46]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3662,7 +3819,7 @@ func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRequest.ProtoReflect.Descriptor instead.
 func (*DeleteRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{46}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *DeleteRequest) GetContext() *v1.CommandContext {
@@ -3688,7 +3845,7 @@ type DeleteResponse struct {
 
 func (x *DeleteResponse) Reset() {
 	*x = DeleteResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[47]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3700,7 +3857,7 @@ func (x *DeleteResponse) String() string {
 func (*DeleteResponse) ProtoMessage() {}
 
 func (x *DeleteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[47]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3713,7 +3870,7 @@ func (x *DeleteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteResponse.ProtoReflect.Descriptor instead.
 func (*DeleteResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{47}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *DeleteResponse) GetDeleted() bool {
@@ -3733,7 +3890,7 @@ type DuplicateRequest struct {
 
 func (x *DuplicateRequest) Reset() {
 	*x = DuplicateRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[48]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3745,7 +3902,7 @@ func (x *DuplicateRequest) String() string {
 func (*DuplicateRequest) ProtoMessage() {}
 
 func (x *DuplicateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[48]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3758,7 +3915,7 @@ func (x *DuplicateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DuplicateRequest.ProtoReflect.Descriptor instead.
 func (*DuplicateRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{48}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *DuplicateRequest) GetContext() *v1.CommandContext {
@@ -3784,7 +3941,7 @@ type DuplicateResponse struct {
 
 func (x *DuplicateResponse) Reset() {
 	*x = DuplicateResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[49]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3796,7 +3953,7 @@ func (x *DuplicateResponse) String() string {
 func (*DuplicateResponse) ProtoMessage() {}
 
 func (x *DuplicateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[49]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3809,7 +3966,7 @@ func (x *DuplicateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DuplicateResponse.ProtoReflect.Descriptor instead.
 func (*DuplicateResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{49}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *DuplicateResponse) GetItem() *PublishItem {
@@ -3829,7 +3986,7 @@ type PauseRequest struct {
 
 func (x *PauseRequest) Reset() {
 	*x = PauseRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[50]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3841,7 +3998,7 @@ func (x *PauseRequest) String() string {
 func (*PauseRequest) ProtoMessage() {}
 
 func (x *PauseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[50]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3854,7 +4011,7 @@ func (x *PauseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PauseRequest.ProtoReflect.Descriptor instead.
 func (*PauseRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{50}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *PauseRequest) GetContext() *v1.CommandContext {
@@ -3880,7 +4037,7 @@ type PauseResponse struct {
 
 func (x *PauseResponse) Reset() {
 	*x = PauseResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[51]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3892,7 +4049,7 @@ func (x *PauseResponse) String() string {
 func (*PauseResponse) ProtoMessage() {}
 
 func (x *PauseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[51]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3905,7 +4062,7 @@ func (x *PauseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PauseResponse.ProtoReflect.Descriptor instead.
 func (*PauseResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{51}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *PauseResponse) GetItem() *PublishItem {
@@ -3926,7 +4083,7 @@ type CheckCompatibilityRequest struct {
 
 func (x *CheckCompatibilityRequest) Reset() {
 	*x = CheckCompatibilityRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[52]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3938,7 +4095,7 @@ func (x *CheckCompatibilityRequest) String() string {
 func (*CheckCompatibilityRequest) ProtoMessage() {}
 
 func (x *CheckCompatibilityRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[52]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3951,7 +4108,7 @@ func (x *CheckCompatibilityRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckCompatibilityRequest.ProtoReflect.Descriptor instead.
 func (*CheckCompatibilityRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{52}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *CheckCompatibilityRequest) GetTargetPlatform() string {
@@ -3986,7 +4143,7 @@ type CheckCompatibilityResponse struct {
 
 func (x *CheckCompatibilityResponse) Reset() {
 	*x = CheckCompatibilityResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[53]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3998,7 +4155,7 @@ func (x *CheckCompatibilityResponse) String() string {
 func (*CheckCompatibilityResponse) ProtoMessage() {}
 
 func (x *CheckCompatibilityResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[53]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4011,7 +4168,7 @@ func (x *CheckCompatibilityResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckCompatibilityResponse.ProtoReflect.Descriptor instead.
 func (*CheckCompatibilityResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{53}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *CheckCompatibilityResponse) GetCapabilitySummary() *PlatformCapabilitySummary {
@@ -4048,7 +4205,7 @@ type UpdateMetadataRequest struct {
 
 func (x *UpdateMetadataRequest) Reset() {
 	*x = UpdateMetadataRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[54]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4060,7 +4217,7 @@ func (x *UpdateMetadataRequest) String() string {
 func (*UpdateMetadataRequest) ProtoMessage() {}
 
 func (x *UpdateMetadataRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[54]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4073,7 +4230,7 @@ func (x *UpdateMetadataRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMetadataRequest.ProtoReflect.Descriptor instead.
 func (*UpdateMetadataRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{54}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *UpdateMetadataRequest) GetContext() *v1.CommandContext {
@@ -4120,7 +4277,7 @@ type UpdateMetadataResponse struct {
 
 func (x *UpdateMetadataResponse) Reset() {
 	*x = UpdateMetadataResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[55]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4132,7 +4289,7 @@ func (x *UpdateMetadataResponse) String() string {
 func (*UpdateMetadataResponse) ProtoMessage() {}
 
 func (x *UpdateMetadataResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[55]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4145,7 +4302,7 @@ func (x *UpdateMetadataResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMetadataResponse.ProtoReflect.Descriptor instead.
 func (*UpdateMetadataResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{55}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *UpdateMetadataResponse) GetItem() *PublishItem {
@@ -4166,7 +4323,7 @@ type GetCalendarRequest struct {
 
 func (x *GetCalendarRequest) Reset() {
 	*x = GetCalendarRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[56]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4178,7 +4335,7 @@ func (x *GetCalendarRequest) String() string {
 func (*GetCalendarRequest) ProtoMessage() {}
 
 func (x *GetCalendarRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[56]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4191,7 +4348,7 @@ func (x *GetCalendarRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCalendarRequest.ProtoReflect.Descriptor instead.
 func (*GetCalendarRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{56}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *GetCalendarRequest) GetWorkspaceId() string {
@@ -4226,7 +4383,7 @@ type CalendarEntry struct {
 
 func (x *CalendarEntry) Reset() {
 	*x = CalendarEntry{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[57]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4238,7 +4395,7 @@ func (x *CalendarEntry) String() string {
 func (*CalendarEntry) ProtoMessage() {}
 
 func (x *CalendarEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[57]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4251,7 +4408,7 @@ func (x *CalendarEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CalendarEntry.ProtoReflect.Descriptor instead.
 func (*CalendarEntry) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{57}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *CalendarEntry) GetItem() *PublishItem {
@@ -4284,7 +4441,7 @@ type GetCalendarResponse struct {
 
 func (x *GetCalendarResponse) Reset() {
 	*x = GetCalendarResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[58]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4296,7 +4453,7 @@ func (x *GetCalendarResponse) String() string {
 func (*GetCalendarResponse) ProtoMessage() {}
 
 func (x *GetCalendarResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[58]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4309,7 +4466,7 @@ func (x *GetCalendarResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCalendarResponse.ProtoReflect.Descriptor instead.
 func (*GetCalendarResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{58}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *GetCalendarResponse) GetEntries() []*CalendarEntry {
@@ -4331,7 +4488,7 @@ type ListByDateRangeRequest struct {
 
 func (x *ListByDateRangeRequest) Reset() {
 	*x = ListByDateRangeRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[59]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4343,7 +4500,7 @@ func (x *ListByDateRangeRequest) String() string {
 func (*ListByDateRangeRequest) ProtoMessage() {}
 
 func (x *ListByDateRangeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[59]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4356,7 +4513,7 @@ func (x *ListByDateRangeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListByDateRangeRequest.ProtoReflect.Descriptor instead.
 func (*ListByDateRangeRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{59}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *ListByDateRangeRequest) GetWorkspaceId() string {
@@ -4397,7 +4554,7 @@ type ListByDateRangeResponse struct {
 
 func (x *ListByDateRangeResponse) Reset() {
 	*x = ListByDateRangeResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[60]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4409,7 +4566,7 @@ func (x *ListByDateRangeResponse) String() string {
 func (*ListByDateRangeResponse) ProtoMessage() {}
 
 func (x *ListByDateRangeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[60]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4422,7 +4579,7 @@ func (x *ListByDateRangeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListByDateRangeResponse.ProtoReflect.Descriptor instead.
 func (*ListByDateRangeResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{60}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *ListByDateRangeResponse) GetItems() []*PublishItem {
@@ -4449,7 +4606,7 @@ type ListUpcomingRequest struct {
 
 func (x *ListUpcomingRequest) Reset() {
 	*x = ListUpcomingRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[61]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4461,7 +4618,7 @@ func (x *ListUpcomingRequest) String() string {
 func (*ListUpcomingRequest) ProtoMessage() {}
 
 func (x *ListUpcomingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[61]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4474,7 +4631,7 @@ func (x *ListUpcomingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUpcomingRequest.ProtoReflect.Descriptor instead.
 func (*ListUpcomingRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{61}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *ListUpcomingRequest) GetWorkspaceId() string {
@@ -4500,7 +4657,7 @@ type ListUpcomingResponse struct {
 
 func (x *ListUpcomingResponse) Reset() {
 	*x = ListUpcomingResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[62]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4512,7 +4669,7 @@ func (x *ListUpcomingResponse) String() string {
 func (*ListUpcomingResponse) ProtoMessage() {}
 
 func (x *ListUpcomingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[62]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4525,7 +4682,7 @@ func (x *ListUpcomingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUpcomingResponse.ProtoReflect.Descriptor instead.
 func (*ListUpcomingResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{62}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *ListUpcomingResponse) GetItems() []*PublishItem {
@@ -4545,7 +4702,7 @@ type ListPublishedRequest struct {
 
 func (x *ListPublishedRequest) Reset() {
 	*x = ListPublishedRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[63]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4557,7 +4714,7 @@ func (x *ListPublishedRequest) String() string {
 func (*ListPublishedRequest) ProtoMessage() {}
 
 func (x *ListPublishedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[63]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4570,7 +4727,7 @@ func (x *ListPublishedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPublishedRequest.ProtoReflect.Descriptor instead.
 func (*ListPublishedRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{63}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *ListPublishedRequest) GetWorkspaceId() string {
@@ -4597,7 +4754,7 @@ type ListPublishedResponse struct {
 
 func (x *ListPublishedResponse) Reset() {
 	*x = ListPublishedResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[64]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4609,7 +4766,7 @@ func (x *ListPublishedResponse) String() string {
 func (*ListPublishedResponse) ProtoMessage() {}
 
 func (x *ListPublishedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[64]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4622,7 +4779,7 @@ func (x *ListPublishedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPublishedResponse.ProtoReflect.Descriptor instead.
 func (*ListPublishedResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{64}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *ListPublishedResponse) GetItems() []*PublishItem {
@@ -4649,7 +4806,7 @@ type ListPostsRequest struct {
 
 func (x *ListPostsRequest) Reset() {
 	*x = ListPostsRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[65]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4661,7 +4818,7 @@ func (x *ListPostsRequest) String() string {
 func (*ListPostsRequest) ProtoMessage() {}
 
 func (x *ListPostsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[65]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4674,7 +4831,7 @@ func (x *ListPostsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPostsRequest.ProtoReflect.Descriptor instead.
 func (*ListPostsRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{65}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *ListPostsRequest) GetWorkspaceId() string {
@@ -4701,7 +4858,7 @@ type ListPostsResponse struct {
 
 func (x *ListPostsResponse) Reset() {
 	*x = ListPostsResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[66]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4713,7 +4870,7 @@ func (x *ListPostsResponse) String() string {
 func (*ListPostsResponse) ProtoMessage() {}
 
 func (x *ListPostsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[66]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4726,7 +4883,7 @@ func (x *ListPostsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPostsResponse.ProtoReflect.Descriptor instead.
 func (*ListPostsResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{66}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *ListPostsResponse) GetPosts() []*ChannelPost {
@@ -4752,7 +4909,7 @@ type GetPlatformStatusRequest struct {
 
 func (x *GetPlatformStatusRequest) Reset() {
 	*x = GetPlatformStatusRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[67]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4764,7 +4921,7 @@ func (x *GetPlatformStatusRequest) String() string {
 func (*GetPlatformStatusRequest) ProtoMessage() {}
 
 func (x *GetPlatformStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[67]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4777,7 +4934,7 @@ func (x *GetPlatformStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPlatformStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetPlatformStatusRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{67}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *GetPlatformStatusRequest) GetPlatform() string {
@@ -4796,7 +4953,7 @@ type GetPlatformStatusResponse struct {
 
 func (x *GetPlatformStatusResponse) Reset() {
 	*x = GetPlatformStatusResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[68]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4808,7 +4965,7 @@ func (x *GetPlatformStatusResponse) String() string {
 func (*GetPlatformStatusResponse) ProtoMessage() {}
 
 func (x *GetPlatformStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[68]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4821,7 +4978,7 @@ func (x *GetPlatformStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPlatformStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetPlatformStatusResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{68}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *GetPlatformStatusResponse) GetStatus() *PlatformCapabilitySummary {
@@ -4840,7 +4997,7 @@ type GetCrossPostInsightsRequest struct {
 
 func (x *GetCrossPostInsightsRequest) Reset() {
 	*x = GetCrossPostInsightsRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[69]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4852,7 +5009,7 @@ func (x *GetCrossPostInsightsRequest) String() string {
 func (*GetCrossPostInsightsRequest) ProtoMessage() {}
 
 func (x *GetCrossPostInsightsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[69]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4865,7 +5022,7 @@ func (x *GetCrossPostInsightsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCrossPostInsightsRequest.ProtoReflect.Descriptor instead.
 func (*GetCrossPostInsightsRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{69}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *GetCrossPostInsightsRequest) GetPublishItemId() string {
@@ -4887,7 +5044,7 @@ type GetCrossPostInsightsResponse struct {
 
 func (x *GetCrossPostInsightsResponse) Reset() {
 	*x = GetCrossPostInsightsResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[70]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4899,7 +5056,7 @@ func (x *GetCrossPostInsightsResponse) String() string {
 func (*GetCrossPostInsightsResponse) ProtoMessage() {}
 
 func (x *GetCrossPostInsightsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[70]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4912,7 +5069,7 @@ func (x *GetCrossPostInsightsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCrossPostInsightsResponse.ProtoReflect.Descriptor instead.
 func (*GetCrossPostInsightsResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{70}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *GetCrossPostInsightsResponse) GetPublishItemId() string {
@@ -4953,7 +5110,7 @@ type PublishVariantsRequest struct {
 
 func (x *PublishVariantsRequest) Reset() {
 	*x = PublishVariantsRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[71]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4965,7 +5122,7 @@ func (x *PublishVariantsRequest) String() string {
 func (*PublishVariantsRequest) ProtoMessage() {}
 
 func (x *PublishVariantsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[71]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4978,7 +5135,7 @@ func (x *PublishVariantsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishVariantsRequest.ProtoReflect.Descriptor instead.
 func (*PublishVariantsRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{71}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *PublishVariantsRequest) GetContext() *v1.CommandContext {
@@ -5005,7 +5162,7 @@ type PublishVariantsResponse struct {
 
 func (x *PublishVariantsResponse) Reset() {
 	*x = PublishVariantsResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[72]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5017,7 +5174,7 @@ func (x *PublishVariantsResponse) String() string {
 func (*PublishVariantsResponse) ProtoMessage() {}
 
 func (x *PublishVariantsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[72]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5030,7 +5187,7 @@ func (x *PublishVariantsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishVariantsResponse.ProtoReflect.Descriptor instead.
 func (*PublishVariantsResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{72}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *PublishVariantsResponse) GetItems() []*PublishItem {
@@ -5057,7 +5214,7 @@ type HoldScheduleRequest struct {
 
 func (x *HoldScheduleRequest) Reset() {
 	*x = HoldScheduleRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[73]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5069,7 +5226,7 @@ func (x *HoldScheduleRequest) String() string {
 func (*HoldScheduleRequest) ProtoMessage() {}
 
 func (x *HoldScheduleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[73]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5082,7 +5239,7 @@ func (x *HoldScheduleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HoldScheduleRequest.ProtoReflect.Descriptor instead.
 func (*HoldScheduleRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{73}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *HoldScheduleRequest) GetContext() *v1.CommandContext {
@@ -5108,7 +5265,7 @@ type HoldScheduleResponse struct {
 
 func (x *HoldScheduleResponse) Reset() {
 	*x = HoldScheduleResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[74]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5120,7 +5277,7 @@ func (x *HoldScheduleResponse) String() string {
 func (*HoldScheduleResponse) ProtoMessage() {}
 
 func (x *HoldScheduleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[74]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5133,7 +5290,7 @@ func (x *HoldScheduleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HoldScheduleResponse.ProtoReflect.Descriptor instead.
 func (*HoldScheduleResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{74}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *HoldScheduleResponse) GetItem() *PublishItem {
@@ -5154,7 +5311,7 @@ type ScheduleRetryRequest struct {
 
 func (x *ScheduleRetryRequest) Reset() {
 	*x = ScheduleRetryRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[75]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5166,7 +5323,7 @@ func (x *ScheduleRetryRequest) String() string {
 func (*ScheduleRetryRequest) ProtoMessage() {}
 
 func (x *ScheduleRetryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[75]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5179,7 +5336,7 @@ func (x *ScheduleRetryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleRetryRequest.ProtoReflect.Descriptor instead.
 func (*ScheduleRetryRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{75}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *ScheduleRetryRequest) GetContext() *v1.CommandContext {
@@ -5212,7 +5369,7 @@ type ScheduleRetryResponse struct {
 
 func (x *ScheduleRetryResponse) Reset() {
 	*x = ScheduleRetryResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[76]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5224,7 +5381,7 @@ func (x *ScheduleRetryResponse) String() string {
 func (*ScheduleRetryResponse) ProtoMessage() {}
 
 func (x *ScheduleRetryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[76]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5237,7 +5394,7 @@ func (x *ScheduleRetryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleRetryResponse.ProtoReflect.Descriptor instead.
 func (*ScheduleRetryResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{76}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *ScheduleRetryResponse) GetItem() *PublishItem {
@@ -5258,7 +5415,7 @@ type TagProductRequest struct {
 
 func (x *TagProductRequest) Reset() {
 	*x = TagProductRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[77]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5270,7 +5427,7 @@ func (x *TagProductRequest) String() string {
 func (*TagProductRequest) ProtoMessage() {}
 
 func (x *TagProductRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[77]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5283,7 +5440,7 @@ func (x *TagProductRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TagProductRequest.ProtoReflect.Descriptor instead.
 func (*TagProductRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{77}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *TagProductRequest) GetContext() *v1.CommandContext {
@@ -5316,7 +5473,7 @@ type TagProductResponse struct {
 
 func (x *TagProductResponse) Reset() {
 	*x = TagProductResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[78]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5328,7 +5485,7 @@ func (x *TagProductResponse) String() string {
 func (*TagProductResponse) ProtoMessage() {}
 
 func (x *TagProductResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[78]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5341,7 +5498,7 @@ func (x *TagProductResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TagProductResponse.ProtoReflect.Descriptor instead.
 func (*TagProductResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{78}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *TagProductResponse) GetItem() *PublishItem {
@@ -5362,7 +5519,7 @@ type UntagProductRequest struct {
 
 func (x *UntagProductRequest) Reset() {
 	*x = UntagProductRequest{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[79]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5374,7 +5531,7 @@ func (x *UntagProductRequest) String() string {
 func (*UntagProductRequest) ProtoMessage() {}
 
 func (x *UntagProductRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[79]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5387,7 +5544,7 @@ func (x *UntagProductRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UntagProductRequest.ProtoReflect.Descriptor instead.
 func (*UntagProductRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{79}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *UntagProductRequest) GetContext() *v1.CommandContext {
@@ -5420,7 +5577,7 @@ type UntagProductResponse struct {
 
 func (x *UntagProductResponse) Reset() {
 	*x = UntagProductResponse{}
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[80]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5432,7 +5589,7 @@ func (x *UntagProductResponse) String() string {
 func (*UntagProductResponse) ProtoMessage() {}
 
 func (x *UntagProductResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[80]
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5445,7 +5602,7 @@ func (x *UntagProductResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UntagProductResponse.ProtoReflect.Descriptor instead.
 func (*UntagProductResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{80}
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *UntagProductResponse) GetItem() *PublishItem {
@@ -5453,6 +5610,214 @@ func (x *UntagProductResponse) GetItem() *PublishItem {
 		return x.Item
 	}
 	return nil
+}
+
+type SyncPostMetricsRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Context         *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	WorkspaceId     string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	ChannelPostId   string                 `protobuf:"bytes,3,opt,name=channel_post_id,json=channelPostId,proto3" json:"channel_post_id,omitempty"`
+	Views           int64                  `protobuf:"varint,4,opt,name=views,proto3" json:"views,omitempty"`
+	Likes           int64                  `protobuf:"varint,5,opt,name=likes,proto3" json:"likes,omitempty"`
+	Comments        int64                  `protobuf:"varint,6,opt,name=comments,proto3" json:"comments,omitempty"`
+	Shares          int64                  `protobuf:"varint,7,opt,name=shares,proto3" json:"shares,omitempty"`
+	Saves           int64                  `protobuf:"varint,8,opt,name=saves,proto3" json:"saves,omitempty"`
+	Clicks          int64                  `protobuf:"varint,9,opt,name=clicks,proto3" json:"clicks,omitempty"`
+	IsViewsUnknown  bool                   `protobuf:"varint,10,opt,name=is_views_unknown,json=isViewsUnknown,proto3" json:"is_views_unknown,omitempty"`
+	IsClicksUnknown bool                   `protobuf:"varint,11,opt,name=is_clicks_unknown,json=isClicksUnknown,proto3" json:"is_clicks_unknown,omitempty"`
+	UnknownReason   string                 `protobuf:"bytes,12,opt,name=unknown_reason,json=unknownReason,proto3" json:"unknown_reason,omitempty"`
+	SourceClass     v1.SourceClass         `protobuf:"varint,13,opt,name=source_class,json=sourceClass,proto3,enum=creativanta.common.v1.SourceClass" json:"source_class,omitempty"`
+	Confidence      v1.ConfidenceBand      `protobuf:"varint,14,opt,name=confidence,proto3,enum=creativanta.common.v1.ConfidenceBand" json:"confidence,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *SyncPostMetricsRequest) Reset() {
+	*x = SyncPostMetricsRequest{}
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[82]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SyncPostMetricsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SyncPostMetricsRequest) ProtoMessage() {}
+
+func (x *SyncPostMetricsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[82]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SyncPostMetricsRequest.ProtoReflect.Descriptor instead.
+func (*SyncPostMetricsRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{82}
+}
+
+func (x *SyncPostMetricsRequest) GetContext() *v1.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *SyncPostMetricsRequest) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *SyncPostMetricsRequest) GetChannelPostId() string {
+	if x != nil {
+		return x.ChannelPostId
+	}
+	return ""
+}
+
+func (x *SyncPostMetricsRequest) GetViews() int64 {
+	if x != nil {
+		return x.Views
+	}
+	return 0
+}
+
+func (x *SyncPostMetricsRequest) GetLikes() int64 {
+	if x != nil {
+		return x.Likes
+	}
+	return 0
+}
+
+func (x *SyncPostMetricsRequest) GetComments() int64 {
+	if x != nil {
+		return x.Comments
+	}
+	return 0
+}
+
+func (x *SyncPostMetricsRequest) GetShares() int64 {
+	if x != nil {
+		return x.Shares
+	}
+	return 0
+}
+
+func (x *SyncPostMetricsRequest) GetSaves() int64 {
+	if x != nil {
+		return x.Saves
+	}
+	return 0
+}
+
+func (x *SyncPostMetricsRequest) GetClicks() int64 {
+	if x != nil {
+		return x.Clicks
+	}
+	return 0
+}
+
+func (x *SyncPostMetricsRequest) GetIsViewsUnknown() bool {
+	if x != nil {
+		return x.IsViewsUnknown
+	}
+	return false
+}
+
+func (x *SyncPostMetricsRequest) GetIsClicksUnknown() bool {
+	if x != nil {
+		return x.IsClicksUnknown
+	}
+	return false
+}
+
+func (x *SyncPostMetricsRequest) GetUnknownReason() string {
+	if x != nil {
+		return x.UnknownReason
+	}
+	return ""
+}
+
+func (x *SyncPostMetricsRequest) GetSourceClass() v1.SourceClass {
+	if x != nil {
+		return x.SourceClass
+	}
+	return v1.SourceClass(0)
+}
+
+func (x *SyncPostMetricsRequest) GetConfidence() v1.ConfidenceBand {
+	if x != nil {
+		return x.Confidence
+	}
+	return v1.ConfidenceBand(0)
+}
+
+type SyncPostMetricsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Post          *ChannelPost           `protobuf:"bytes,1,opt,name=post,proto3" json:"post,omitempty"`
+	Metrics       *ChannelPostMetrics    `protobuf:"bytes,2,opt,name=metrics,proto3" json:"metrics,omitempty"`
+	Updated       bool                   `protobuf:"varint,3,opt,name=updated,proto3" json:"updated,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SyncPostMetricsResponse) Reset() {
+	*x = SyncPostMetricsResponse{}
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[83]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SyncPostMetricsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SyncPostMetricsResponse) ProtoMessage() {}
+
+func (x *SyncPostMetricsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_publish_v1_publish_proto_msgTypes[83]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SyncPostMetricsResponse.ProtoReflect.Descriptor instead.
+func (*SyncPostMetricsResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_publish_v1_publish_proto_rawDescGZIP(), []int{83}
+}
+
+func (x *SyncPostMetricsResponse) GetPost() *ChannelPost {
+	if x != nil {
+		return x.Post
+	}
+	return nil
+}
+
+func (x *SyncPostMetricsResponse) GetMetrics() *ChannelPostMetrics {
+	if x != nil {
+		return x.Metrics
+	}
+	return nil
+}
+
+func (x *SyncPostMetricsResponse) GetUpdated() bool {
+	if x != nil {
+		return x.Updated
+	}
+	return false
 }
 
 var File_creativanta_publish_v1_publish_proto protoreflect.FileDescriptor
@@ -5525,7 +5890,24 @@ const file_creativanta_publish_v1_publish_proto_rawDesc = "" +
 	"\fevidence_ref\x18\x10 \x01(\tR\vevidenceRef\x12\x1d\n" +
 	"\n" +
 	"error_code\x18\x11 \x01(\tR\terrorCode\x12#\n" +
-	"\rerror_message\x18\x12 \x01(\tR\ferrorMessage\"\xf5\x03\n" +
+	"\rerror_message\x18\x12 \x01(\tR\ferrorMessage\"\xea\x03\n" +
+	"\x12ChannelPostMetrics\x12\x14\n" +
+	"\x05views\x18\x01 \x01(\x03R\x05views\x12\x14\n" +
+	"\x05likes\x18\x02 \x01(\x03R\x05likes\x12\x1a\n" +
+	"\bcomments\x18\x03 \x01(\x03R\bcomments\x12\x16\n" +
+	"\x06shares\x18\x04 \x01(\x03R\x06shares\x12\x14\n" +
+	"\x05saves\x18\x05 \x01(\x03R\x05saves\x12\x16\n" +
+	"\x06clicks\x18\x06 \x01(\x03R\x06clicks\x12(\n" +
+	"\x10is_views_unknown\x18\a \x01(\bR\x0eisViewsUnknown\x12*\n" +
+	"\x11is_clicks_unknown\x18\b \x01(\bR\x0fisClicksUnknown\x12%\n" +
+	"\x0eunknown_reason\x18\t \x01(\tR\runknownReason\x12E\n" +
+	"\fsource_class\x18\n" +
+	" \x01(\x0e2\".creativanta.common.v1.SourceClassR\vsourceClass\x12E\n" +
+	"\n" +
+	"confidence\x18\v \x01(\x0e2%.creativanta.common.v1.ConfidenceBandR\n" +
+	"confidence\x12;\n" +
+	"\vcaptured_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"capturedAt\"\xc9\x05\n" +
 	"\vChannelPost\x12&\n" +
 	"\x0fchannel_post_id\x18\x01 \x01(\tR\rchannelPostId\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12&\n" +
@@ -5540,7 +5922,12 @@ const file_creativanta_publish_v1_publish_proto_rawDesc = "" +
 	"created_at\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x9a\x03\n" +
+	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12D\n" +
+	"\ametrics\x18\f \x01(\v2*.creativanta.publish.v1.ChannelPostMetricsR\ametrics\x12E\n" +
+	"\fsource_class\x18\r \x01(\x0e2\".creativanta.common.v1.SourceClassR\vsourceClass\x12E\n" +
+	"\n" +
+	"confidence\x18\x0e \x01(\x0e2%.creativanta.common.v1.ConfidenceBandR\n" +
+	"confidence\"\x9a\x03\n" +
 	"\x19PlatformCapabilitySummary\x12\x1a\n" +
 	"\bplatform\x18\x01 \x01(\tR\bplatform\x12Y\n" +
 	"\x10capability_state\x18\x02 \x01(\x0e2..creativanta.publish.v1.PublishCapabilityStateR\x0fcapabilityState\x12'\n" +
@@ -5859,7 +6246,29 @@ const file_creativanta_publish_v1_publish_proto_rawDesc = "" +
 	"\n" +
 	"product_id\x18\x03 \x01(\tR\tproductId\"O\n" +
 	"\x14UntagProductResponse\x127\n" +
-	"\x04item\x18\x01 \x01(\v2#.creativanta.publish.v1.PublishItemR\x04item*\x8e\x01\n" +
+	"\x04item\x18\x01 \x01(\v2#.creativanta.publish.v1.PublishItemR\x04item\"\xbd\x04\n" +
+	"\x16SyncPostMetricsRequest\x12?\n" +
+	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12!\n" +
+	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12&\n" +
+	"\x0fchannel_post_id\x18\x03 \x01(\tR\rchannelPostId\x12\x14\n" +
+	"\x05views\x18\x04 \x01(\x03R\x05views\x12\x14\n" +
+	"\x05likes\x18\x05 \x01(\x03R\x05likes\x12\x1a\n" +
+	"\bcomments\x18\x06 \x01(\x03R\bcomments\x12\x16\n" +
+	"\x06shares\x18\a \x01(\x03R\x06shares\x12\x14\n" +
+	"\x05saves\x18\b \x01(\x03R\x05saves\x12\x16\n" +
+	"\x06clicks\x18\t \x01(\x03R\x06clicks\x12(\n" +
+	"\x10is_views_unknown\x18\n" +
+	" \x01(\bR\x0eisViewsUnknown\x12*\n" +
+	"\x11is_clicks_unknown\x18\v \x01(\bR\x0fisClicksUnknown\x12%\n" +
+	"\x0eunknown_reason\x18\f \x01(\tR\runknownReason\x12E\n" +
+	"\fsource_class\x18\r \x01(\x0e2\".creativanta.common.v1.SourceClassR\vsourceClass\x12E\n" +
+	"\n" +
+	"confidence\x18\x0e \x01(\x0e2%.creativanta.common.v1.ConfidenceBandR\n" +
+	"confidence\"\xb2\x01\n" +
+	"\x17SyncPostMetricsResponse\x127\n" +
+	"\x04post\x18\x01 \x01(\v2#.creativanta.publish.v1.ChannelPostR\x04post\x12D\n" +
+	"\ametrics\x18\x02 \x01(\v2*.creativanta.publish.v1.ChannelPostMetricsR\ametrics\x12\x18\n" +
+	"\aupdated\x18\x03 \x01(\bR\aupdated*\x8e\x01\n" +
 	"\vPublishMode\x12\x1c\n" +
 	"\x18PUBLISH_MODE_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13PUBLISH_MODE_DIRECT\x10\x01\x12\x16\n" +
@@ -5913,7 +6322,7 @@ const file_creativanta_publish_v1_publish_proto_rawDesc = "" +
 	"\"PUBLISH_CAPABILITY_STATE_READ_ONLY\x10\x02\x12#\n" +
 	"\x1fPUBLISH_CAPABILITY_STATE_MANUAL\x10\x03\x12%\n" +
 	"!PUBLISH_CAPABILITY_STATE_DEGRADED\x10\x04\x12(\n" +
-	"$PUBLISH_CAPABILITY_STATE_UNSUPPORTED\x10\x052\x90\x1e\n" +
+	"$PUBLISH_CAPABILITY_STATE_UNSUPPORTED\x10\x052\x84\x1f\n" +
 	"\x0ePublishService\x12c\n" +
 	"\n" +
 	"CreateItem\x12).creativanta.publish.v1.CreateItemRequest\x1a*.creativanta.publish.v1.CreateItemResponse\x12]\n" +
@@ -5928,7 +6337,8 @@ const file_creativanta_publish_v1_publish_proto_rawDesc = "" +
 	"\x10ReconcilePublish\x12/.creativanta.publish.v1.ReconcilePublishRequest\x1a0.creativanta.publish.v1.ReconcilePublishResponse\x12~\n" +
 	"\x13ExportManualPackage\x122.creativanta.publish.v1.ExportManualPackageRequest\x1a3.creativanta.publish.v1.ExportManualPackageResponse\x12c\n" +
 	"\n" +
-	"PauseQueue\x12).creativanta.publish.v1.PauseQueueRequest\x1a*.creativanta.publish.v1.PauseQueueResponse\x12N\n" +
+	"PauseQueue\x12).creativanta.publish.v1.PauseQueueRequest\x1a*.creativanta.publish.v1.PauseQueueResponse\x12r\n" +
+	"\x0fSyncPostMetrics\x12..creativanta.publish.v1.SyncPostMetricsRequest\x1a/.creativanta.publish.v1.SyncPostMetricsResponse\x12N\n" +
 	"\x03Get\x12\".creativanta.publish.v1.GetRequest\x1a#.creativanta.publish.v1.GetResponse\x12Q\n" +
 	"\x04List\x12#.creativanta.publish.v1.ListRequest\x1a$.creativanta.publish.v1.ListResponse\x12]\n" +
 	"\bGetDraft\x12'.creativanta.publish.v1.GetDraftRequest\x1a(.creativanta.publish.v1.GetDraftResponse\x12`\n" +
@@ -5972,7 +6382,7 @@ func file_creativanta_publish_v1_publish_proto_rawDescGZIP() []byte {
 }
 
 var file_creativanta_publish_v1_publish_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_creativanta_publish_v1_publish_proto_msgTypes = make([]protoimpl.MessageInfo, 81)
+var file_creativanta_publish_v1_publish_proto_msgTypes = make([]protoimpl.MessageInfo, 84)
 var file_creativanta_publish_v1_publish_proto_goTypes = []any{
 	(PublishMode)(0),                     // 0: creativanta.publish.v1.PublishMode
 	(PublishItemLifecycleState)(0),       // 1: creativanta.publish.v1.PublishItemLifecycleState
@@ -5984,288 +6394,306 @@ var file_creativanta_publish_v1_publish_proto_goTypes = []any{
 	(*PublishItem)(nil),                  // 7: creativanta.publish.v1.PublishItem
 	(*PublishJob)(nil),                   // 8: creativanta.publish.v1.PublishJob
 	(*PublishLog)(nil),                   // 9: creativanta.publish.v1.PublishLog
-	(*ChannelPost)(nil),                  // 10: creativanta.publish.v1.ChannelPost
-	(*PlatformCapabilitySummary)(nil),    // 11: creativanta.publish.v1.PlatformCapabilitySummary
-	(*ManualExportPackage)(nil),          // 12: creativanta.publish.v1.ManualExportPackage
-	(*CreateItemRequest)(nil),            // 13: creativanta.publish.v1.CreateItemRequest
-	(*CreateItemResponse)(nil),           // 14: creativanta.publish.v1.CreateItemResponse
-	(*ScheduleRequest)(nil),              // 15: creativanta.publish.v1.ScheduleRequest
-	(*ScheduleResponse)(nil),             // 16: creativanta.publish.v1.ScheduleResponse
-	(*ExecuteRequest)(nil),               // 17: creativanta.publish.v1.ExecuteRequest
-	(*ExecuteResponse)(nil),              // 18: creativanta.publish.v1.ExecuteResponse
-	(*RetryRequest)(nil),                 // 19: creativanta.publish.v1.RetryRequest
-	(*RetryResponse)(nil),                // 20: creativanta.publish.v1.RetryResponse
-	(*CancelRequest)(nil),                // 21: creativanta.publish.v1.CancelRequest
-	(*CancelResponse)(nil),               // 22: creativanta.publish.v1.CancelResponse
-	(*ListQueueRequest)(nil),             // 23: creativanta.publish.v1.ListQueueRequest
-	(*ListQueueResponse)(nil),            // 24: creativanta.publish.v1.ListQueueResponse
-	(*GetLogsRequest)(nil),               // 25: creativanta.publish.v1.GetLogsRequest
-	(*GetLogsResponse)(nil),              // 26: creativanta.publish.v1.GetLogsResponse
-	(*GetDiagnosticsRequest)(nil),        // 27: creativanta.publish.v1.GetDiagnosticsRequest
-	(*GetDiagnosticsResponse)(nil),       // 28: creativanta.publish.v1.GetDiagnosticsResponse
-	(*SubmitManualProofRequest)(nil),     // 29: creativanta.publish.v1.SubmitManualProofRequest
-	(*SubmitManualProofResponse)(nil),    // 30: creativanta.publish.v1.SubmitManualProofResponse
-	(*ReconcilePublishRequest)(nil),      // 31: creativanta.publish.v1.ReconcilePublishRequest
-	(*ReconcilePublishResponse)(nil),     // 32: creativanta.publish.v1.ReconcilePublishResponse
-	(*ExportManualPackageRequest)(nil),   // 33: creativanta.publish.v1.ExportManualPackageRequest
-	(*ExportManualPackageResponse)(nil),  // 34: creativanta.publish.v1.ExportManualPackageResponse
-	(*PauseQueueRequest)(nil),            // 35: creativanta.publish.v1.PauseQueueRequest
-	(*PauseQueueResponse)(nil),           // 36: creativanta.publish.v1.PauseQueueResponse
-	(*GetRequest)(nil),                   // 37: creativanta.publish.v1.GetRequest
-	(*GetResponse)(nil),                  // 38: creativanta.publish.v1.GetResponse
-	(*ListRequest)(nil),                  // 39: creativanta.publish.v1.ListRequest
-	(*ListResponse)(nil),                 // 40: creativanta.publish.v1.ListResponse
-	(*GetDraftRequest)(nil),              // 41: creativanta.publish.v1.GetDraftRequest
-	(*GetDraftResponse)(nil),             // 42: creativanta.publish.v1.GetDraftResponse
-	(*SaveDraftRequest)(nil),             // 43: creativanta.publish.v1.SaveDraftRequest
-	(*SaveDraftResponse)(nil),            // 44: creativanta.publish.v1.SaveDraftResponse
-	(*UpdateDraftRequest)(nil),           // 45: creativanta.publish.v1.UpdateDraftRequest
-	(*UpdateDraftResponse)(nil),          // 46: creativanta.publish.v1.UpdateDraftResponse
-	(*ListDraftsRequest)(nil),            // 47: creativanta.publish.v1.ListDraftsRequest
-	(*ListDraftsResponse)(nil),           // 48: creativanta.publish.v1.ListDraftsResponse
-	(*PublishNowRequest)(nil),            // 49: creativanta.publish.v1.PublishNowRequest
-	(*PublishNowResponse)(nil),           // 50: creativanta.publish.v1.PublishNowResponse
-	(*RescheduleRequest)(nil),            // 51: creativanta.publish.v1.RescheduleRequest
-	(*RescheduleResponse)(nil),           // 52: creativanta.publish.v1.RescheduleResponse
-	(*DeleteRequest)(nil),                // 53: creativanta.publish.v1.DeleteRequest
-	(*DeleteResponse)(nil),               // 54: creativanta.publish.v1.DeleteResponse
-	(*DuplicateRequest)(nil),             // 55: creativanta.publish.v1.DuplicateRequest
-	(*DuplicateResponse)(nil),            // 56: creativanta.publish.v1.DuplicateResponse
-	(*PauseRequest)(nil),                 // 57: creativanta.publish.v1.PauseRequest
-	(*PauseResponse)(nil),                // 58: creativanta.publish.v1.PauseResponse
-	(*CheckCompatibilityRequest)(nil),    // 59: creativanta.publish.v1.CheckCompatibilityRequest
-	(*CheckCompatibilityResponse)(nil),   // 60: creativanta.publish.v1.CheckCompatibilityResponse
-	(*UpdateMetadataRequest)(nil),        // 61: creativanta.publish.v1.UpdateMetadataRequest
-	(*UpdateMetadataResponse)(nil),       // 62: creativanta.publish.v1.UpdateMetadataResponse
-	(*GetCalendarRequest)(nil),           // 63: creativanta.publish.v1.GetCalendarRequest
-	(*CalendarEntry)(nil),                // 64: creativanta.publish.v1.CalendarEntry
-	(*GetCalendarResponse)(nil),          // 65: creativanta.publish.v1.GetCalendarResponse
-	(*ListByDateRangeRequest)(nil),       // 66: creativanta.publish.v1.ListByDateRangeRequest
-	(*ListByDateRangeResponse)(nil),      // 67: creativanta.publish.v1.ListByDateRangeResponse
-	(*ListUpcomingRequest)(nil),          // 68: creativanta.publish.v1.ListUpcomingRequest
-	(*ListUpcomingResponse)(nil),         // 69: creativanta.publish.v1.ListUpcomingResponse
-	(*ListPublishedRequest)(nil),         // 70: creativanta.publish.v1.ListPublishedRequest
-	(*ListPublishedResponse)(nil),        // 71: creativanta.publish.v1.ListPublishedResponse
-	(*ListPostsRequest)(nil),             // 72: creativanta.publish.v1.ListPostsRequest
-	(*ListPostsResponse)(nil),            // 73: creativanta.publish.v1.ListPostsResponse
-	(*GetPlatformStatusRequest)(nil),     // 74: creativanta.publish.v1.GetPlatformStatusRequest
-	(*GetPlatformStatusResponse)(nil),    // 75: creativanta.publish.v1.GetPlatformStatusResponse
-	(*GetCrossPostInsightsRequest)(nil),  // 76: creativanta.publish.v1.GetCrossPostInsightsRequest
-	(*GetCrossPostInsightsResponse)(nil), // 77: creativanta.publish.v1.GetCrossPostInsightsResponse
-	(*PublishVariantsRequest)(nil),       // 78: creativanta.publish.v1.PublishVariantsRequest
-	(*PublishVariantsResponse)(nil),      // 79: creativanta.publish.v1.PublishVariantsResponse
-	(*HoldScheduleRequest)(nil),          // 80: creativanta.publish.v1.HoldScheduleRequest
-	(*HoldScheduleResponse)(nil),         // 81: creativanta.publish.v1.HoldScheduleResponse
-	(*ScheduleRetryRequest)(nil),         // 82: creativanta.publish.v1.ScheduleRetryRequest
-	(*ScheduleRetryResponse)(nil),        // 83: creativanta.publish.v1.ScheduleRetryResponse
-	(*TagProductRequest)(nil),            // 84: creativanta.publish.v1.TagProductRequest
-	(*TagProductResponse)(nil),           // 85: creativanta.publish.v1.TagProductResponse
-	(*UntagProductRequest)(nil),          // 86: creativanta.publish.v1.UntagProductRequest
-	(*UntagProductResponse)(nil),         // 87: creativanta.publish.v1.UntagProductResponse
-	(*timestamppb.Timestamp)(nil),        // 88: google.protobuf.Timestamp
-	(v1.OperatorMode)(0),                 // 89: creativanta.common.v1.OperatorMode
-	(*v1.CommandContext)(nil),            // 90: creativanta.common.v1.CommandContext
-	(*v1.Pagination)(nil),                // 91: creativanta.common.v1.Pagination
-	(*v1.PaginatedResponse)(nil),         // 92: creativanta.common.v1.PaginatedResponse
+	(*ChannelPostMetrics)(nil),           // 10: creativanta.publish.v1.ChannelPostMetrics
+	(*ChannelPost)(nil),                  // 11: creativanta.publish.v1.ChannelPost
+	(*PlatformCapabilitySummary)(nil),    // 12: creativanta.publish.v1.PlatformCapabilitySummary
+	(*ManualExportPackage)(nil),          // 13: creativanta.publish.v1.ManualExportPackage
+	(*CreateItemRequest)(nil),            // 14: creativanta.publish.v1.CreateItemRequest
+	(*CreateItemResponse)(nil),           // 15: creativanta.publish.v1.CreateItemResponse
+	(*ScheduleRequest)(nil),              // 16: creativanta.publish.v1.ScheduleRequest
+	(*ScheduleResponse)(nil),             // 17: creativanta.publish.v1.ScheduleResponse
+	(*ExecuteRequest)(nil),               // 18: creativanta.publish.v1.ExecuteRequest
+	(*ExecuteResponse)(nil),              // 19: creativanta.publish.v1.ExecuteResponse
+	(*RetryRequest)(nil),                 // 20: creativanta.publish.v1.RetryRequest
+	(*RetryResponse)(nil),                // 21: creativanta.publish.v1.RetryResponse
+	(*CancelRequest)(nil),                // 22: creativanta.publish.v1.CancelRequest
+	(*CancelResponse)(nil),               // 23: creativanta.publish.v1.CancelResponse
+	(*ListQueueRequest)(nil),             // 24: creativanta.publish.v1.ListQueueRequest
+	(*ListQueueResponse)(nil),            // 25: creativanta.publish.v1.ListQueueResponse
+	(*GetLogsRequest)(nil),               // 26: creativanta.publish.v1.GetLogsRequest
+	(*GetLogsResponse)(nil),              // 27: creativanta.publish.v1.GetLogsResponse
+	(*GetDiagnosticsRequest)(nil),        // 28: creativanta.publish.v1.GetDiagnosticsRequest
+	(*GetDiagnosticsResponse)(nil),       // 29: creativanta.publish.v1.GetDiagnosticsResponse
+	(*SubmitManualProofRequest)(nil),     // 30: creativanta.publish.v1.SubmitManualProofRequest
+	(*SubmitManualProofResponse)(nil),    // 31: creativanta.publish.v1.SubmitManualProofResponse
+	(*ReconcilePublishRequest)(nil),      // 32: creativanta.publish.v1.ReconcilePublishRequest
+	(*ReconcilePublishResponse)(nil),     // 33: creativanta.publish.v1.ReconcilePublishResponse
+	(*ExportManualPackageRequest)(nil),   // 34: creativanta.publish.v1.ExportManualPackageRequest
+	(*ExportManualPackageResponse)(nil),  // 35: creativanta.publish.v1.ExportManualPackageResponse
+	(*PauseQueueRequest)(nil),            // 36: creativanta.publish.v1.PauseQueueRequest
+	(*PauseQueueResponse)(nil),           // 37: creativanta.publish.v1.PauseQueueResponse
+	(*GetRequest)(nil),                   // 38: creativanta.publish.v1.GetRequest
+	(*GetResponse)(nil),                  // 39: creativanta.publish.v1.GetResponse
+	(*ListRequest)(nil),                  // 40: creativanta.publish.v1.ListRequest
+	(*ListResponse)(nil),                 // 41: creativanta.publish.v1.ListResponse
+	(*GetDraftRequest)(nil),              // 42: creativanta.publish.v1.GetDraftRequest
+	(*GetDraftResponse)(nil),             // 43: creativanta.publish.v1.GetDraftResponse
+	(*SaveDraftRequest)(nil),             // 44: creativanta.publish.v1.SaveDraftRequest
+	(*SaveDraftResponse)(nil),            // 45: creativanta.publish.v1.SaveDraftResponse
+	(*UpdateDraftRequest)(nil),           // 46: creativanta.publish.v1.UpdateDraftRequest
+	(*UpdateDraftResponse)(nil),          // 47: creativanta.publish.v1.UpdateDraftResponse
+	(*ListDraftsRequest)(nil),            // 48: creativanta.publish.v1.ListDraftsRequest
+	(*ListDraftsResponse)(nil),           // 49: creativanta.publish.v1.ListDraftsResponse
+	(*PublishNowRequest)(nil),            // 50: creativanta.publish.v1.PublishNowRequest
+	(*PublishNowResponse)(nil),           // 51: creativanta.publish.v1.PublishNowResponse
+	(*RescheduleRequest)(nil),            // 52: creativanta.publish.v1.RescheduleRequest
+	(*RescheduleResponse)(nil),           // 53: creativanta.publish.v1.RescheduleResponse
+	(*DeleteRequest)(nil),                // 54: creativanta.publish.v1.DeleteRequest
+	(*DeleteResponse)(nil),               // 55: creativanta.publish.v1.DeleteResponse
+	(*DuplicateRequest)(nil),             // 56: creativanta.publish.v1.DuplicateRequest
+	(*DuplicateResponse)(nil),            // 57: creativanta.publish.v1.DuplicateResponse
+	(*PauseRequest)(nil),                 // 58: creativanta.publish.v1.PauseRequest
+	(*PauseResponse)(nil),                // 59: creativanta.publish.v1.PauseResponse
+	(*CheckCompatibilityRequest)(nil),    // 60: creativanta.publish.v1.CheckCompatibilityRequest
+	(*CheckCompatibilityResponse)(nil),   // 61: creativanta.publish.v1.CheckCompatibilityResponse
+	(*UpdateMetadataRequest)(nil),        // 62: creativanta.publish.v1.UpdateMetadataRequest
+	(*UpdateMetadataResponse)(nil),       // 63: creativanta.publish.v1.UpdateMetadataResponse
+	(*GetCalendarRequest)(nil),           // 64: creativanta.publish.v1.GetCalendarRequest
+	(*CalendarEntry)(nil),                // 65: creativanta.publish.v1.CalendarEntry
+	(*GetCalendarResponse)(nil),          // 66: creativanta.publish.v1.GetCalendarResponse
+	(*ListByDateRangeRequest)(nil),       // 67: creativanta.publish.v1.ListByDateRangeRequest
+	(*ListByDateRangeResponse)(nil),      // 68: creativanta.publish.v1.ListByDateRangeResponse
+	(*ListUpcomingRequest)(nil),          // 69: creativanta.publish.v1.ListUpcomingRequest
+	(*ListUpcomingResponse)(nil),         // 70: creativanta.publish.v1.ListUpcomingResponse
+	(*ListPublishedRequest)(nil),         // 71: creativanta.publish.v1.ListPublishedRequest
+	(*ListPublishedResponse)(nil),        // 72: creativanta.publish.v1.ListPublishedResponse
+	(*ListPostsRequest)(nil),             // 73: creativanta.publish.v1.ListPostsRequest
+	(*ListPostsResponse)(nil),            // 74: creativanta.publish.v1.ListPostsResponse
+	(*GetPlatformStatusRequest)(nil),     // 75: creativanta.publish.v1.GetPlatformStatusRequest
+	(*GetPlatformStatusResponse)(nil),    // 76: creativanta.publish.v1.GetPlatformStatusResponse
+	(*GetCrossPostInsightsRequest)(nil),  // 77: creativanta.publish.v1.GetCrossPostInsightsRequest
+	(*GetCrossPostInsightsResponse)(nil), // 78: creativanta.publish.v1.GetCrossPostInsightsResponse
+	(*PublishVariantsRequest)(nil),       // 79: creativanta.publish.v1.PublishVariantsRequest
+	(*PublishVariantsResponse)(nil),      // 80: creativanta.publish.v1.PublishVariantsResponse
+	(*HoldScheduleRequest)(nil),          // 81: creativanta.publish.v1.HoldScheduleRequest
+	(*HoldScheduleResponse)(nil),         // 82: creativanta.publish.v1.HoldScheduleResponse
+	(*ScheduleRetryRequest)(nil),         // 83: creativanta.publish.v1.ScheduleRetryRequest
+	(*ScheduleRetryResponse)(nil),        // 84: creativanta.publish.v1.ScheduleRetryResponse
+	(*TagProductRequest)(nil),            // 85: creativanta.publish.v1.TagProductRequest
+	(*TagProductResponse)(nil),           // 86: creativanta.publish.v1.TagProductResponse
+	(*UntagProductRequest)(nil),          // 87: creativanta.publish.v1.UntagProductRequest
+	(*UntagProductResponse)(nil),         // 88: creativanta.publish.v1.UntagProductResponse
+	(*SyncPostMetricsRequest)(nil),       // 89: creativanta.publish.v1.SyncPostMetricsRequest
+	(*SyncPostMetricsResponse)(nil),      // 90: creativanta.publish.v1.SyncPostMetricsResponse
+	(*timestamppb.Timestamp)(nil),        // 91: google.protobuf.Timestamp
+	(v1.OperatorMode)(0),                 // 92: creativanta.common.v1.OperatorMode
+	(v1.SourceClass)(0),                  // 93: creativanta.common.v1.SourceClass
+	(v1.ConfidenceBand)(0),               // 94: creativanta.common.v1.ConfidenceBand
+	(*v1.CommandContext)(nil),            // 95: creativanta.common.v1.CommandContext
+	(*v1.Pagination)(nil),                // 96: creativanta.common.v1.Pagination
+	(*v1.PaginatedResponse)(nil),         // 97: creativanta.common.v1.PaginatedResponse
 }
 var file_creativanta_publish_v1_publish_proto_depIdxs = []int32{
 	0,   // 0: creativanta.publish.v1.PublishItem.publish_mode:type_name -> creativanta.publish.v1.PublishMode
-	88,  // 1: creativanta.publish.v1.PublishItem.schedule_at:type_name -> google.protobuf.Timestamp
+	91,  // 1: creativanta.publish.v1.PublishItem.schedule_at:type_name -> google.protobuf.Timestamp
 	1,   // 2: creativanta.publish.v1.PublishItem.lifecycle_state:type_name -> creativanta.publish.v1.PublishItemLifecycleState
 	5,   // 3: creativanta.publish.v1.PublishItem.diagnostics_state:type_name -> creativanta.publish.v1.DiagnosticsState
-	88,  // 4: creativanta.publish.v1.PublishItem.created_at:type_name -> google.protobuf.Timestamp
-	88,  // 5: creativanta.publish.v1.PublishItem.updated_at:type_name -> google.protobuf.Timestamp
+	91,  // 4: creativanta.publish.v1.PublishItem.created_at:type_name -> google.protobuf.Timestamp
+	91,  // 5: creativanta.publish.v1.PublishItem.updated_at:type_name -> google.protobuf.Timestamp
 	2,   // 6: creativanta.publish.v1.PublishJob.lifecycle_state:type_name -> creativanta.publish.v1.PublishJobLifecycleState
-	88,  // 7: creativanta.publish.v1.PublishJob.created_at:type_name -> google.protobuf.Timestamp
-	88,  // 8: creativanta.publish.v1.PublishJob.updated_at:type_name -> google.protobuf.Timestamp
-	88,  // 9: creativanta.publish.v1.PublishLog.attempted_at:type_name -> google.protobuf.Timestamp
-	88,  // 10: creativanta.publish.v1.PublishLog.completed_at:type_name -> google.protobuf.Timestamp
-	88,  // 11: creativanta.publish.v1.PublishLog.failed_at:type_name -> google.protobuf.Timestamp
-	89,  // 12: creativanta.publish.v1.PublishLog.acting_mode:type_name -> creativanta.common.v1.OperatorMode
+	91,  // 7: creativanta.publish.v1.PublishJob.created_at:type_name -> google.protobuf.Timestamp
+	91,  // 8: creativanta.publish.v1.PublishJob.updated_at:type_name -> google.protobuf.Timestamp
+	91,  // 9: creativanta.publish.v1.PublishLog.attempted_at:type_name -> google.protobuf.Timestamp
+	91,  // 10: creativanta.publish.v1.PublishLog.completed_at:type_name -> google.protobuf.Timestamp
+	91,  // 11: creativanta.publish.v1.PublishLog.failed_at:type_name -> google.protobuf.Timestamp
+	92,  // 12: creativanta.publish.v1.PublishLog.acting_mode:type_name -> creativanta.common.v1.OperatorMode
 	4,   // 13: creativanta.publish.v1.PublishLog.execution_path:type_name -> creativanta.publish.v1.ExecutionPath
 	3,   // 14: creativanta.publish.v1.PublishLog.result_status:type_name -> creativanta.publish.v1.PublishResultStatus
-	88,  // 15: creativanta.publish.v1.ChannelPost.synced_at:type_name -> google.protobuf.Timestamp
-	88,  // 16: creativanta.publish.v1.ChannelPost.created_at:type_name -> google.protobuf.Timestamp
-	88,  // 17: creativanta.publish.v1.ChannelPost.updated_at:type_name -> google.protobuf.Timestamp
-	6,   // 18: creativanta.publish.v1.PlatformCapabilitySummary.capability_state:type_name -> creativanta.publish.v1.PublishCapabilityState
-	90,  // 19: creativanta.publish.v1.CreateItemRequest.context:type_name -> creativanta.common.v1.CommandContext
-	0,   // 20: creativanta.publish.v1.CreateItemRequest.publish_mode:type_name -> creativanta.publish.v1.PublishMode
-	88,  // 21: creativanta.publish.v1.CreateItemRequest.schedule_at:type_name -> google.protobuf.Timestamp
-	7,   // 22: creativanta.publish.v1.CreateItemResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	11,  // 23: creativanta.publish.v1.CreateItemResponse.capability_summary:type_name -> creativanta.publish.v1.PlatformCapabilitySummary
-	90,  // 24: creativanta.publish.v1.ScheduleRequest.context:type_name -> creativanta.common.v1.CommandContext
-	88,  // 25: creativanta.publish.v1.ScheduleRequest.scheduled_at:type_name -> google.protobuf.Timestamp
-	7,   // 26: creativanta.publish.v1.ScheduleResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	8,   // 27: creativanta.publish.v1.ScheduleResponse.job:type_name -> creativanta.publish.v1.PublishJob
-	88,  // 28: creativanta.publish.v1.ScheduleResponse.scheduled_at:type_name -> google.protobuf.Timestamp
-	90,  // 29: creativanta.publish.v1.ExecuteRequest.context:type_name -> creativanta.common.v1.CommandContext
-	7,   // 30: creativanta.publish.v1.ExecuteResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	8,   // 31: creativanta.publish.v1.ExecuteResponse.job:type_name -> creativanta.publish.v1.PublishJob
-	9,   // 32: creativanta.publish.v1.ExecuteResponse.log:type_name -> creativanta.publish.v1.PublishLog
-	10,  // 33: creativanta.publish.v1.ExecuteResponse.channel_post:type_name -> creativanta.publish.v1.ChannelPost
-	90,  // 34: creativanta.publish.v1.RetryRequest.context:type_name -> creativanta.common.v1.CommandContext
-	7,   // 35: creativanta.publish.v1.RetryResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	8,   // 36: creativanta.publish.v1.RetryResponse.job:type_name -> creativanta.publish.v1.PublishJob
-	90,  // 37: creativanta.publish.v1.CancelRequest.context:type_name -> creativanta.common.v1.CommandContext
-	7,   // 38: creativanta.publish.v1.CancelResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	1,   // 39: creativanta.publish.v1.ListQueueRequest.state_filter:type_name -> creativanta.publish.v1.PublishItemLifecycleState
-	91,  // 40: creativanta.publish.v1.ListQueueRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	7,   // 41: creativanta.publish.v1.ListQueueResponse.items:type_name -> creativanta.publish.v1.PublishItem
-	8,   // 42: creativanta.publish.v1.ListQueueResponse.jobs:type_name -> creativanta.publish.v1.PublishJob
-	92,  // 43: creativanta.publish.v1.ListQueueResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	91,  // 44: creativanta.publish.v1.GetLogsRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	9,   // 45: creativanta.publish.v1.GetLogsResponse.logs:type_name -> creativanta.publish.v1.PublishLog
-	92,  // 46: creativanta.publish.v1.GetLogsResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	5,   // 47: creativanta.publish.v1.GetDiagnosticsResponse.diagnostics_state:type_name -> creativanta.publish.v1.DiagnosticsState
-	11,  // 48: creativanta.publish.v1.GetDiagnosticsResponse.capability_summary:type_name -> creativanta.publish.v1.PlatformCapabilitySummary
-	90,  // 49: creativanta.publish.v1.SubmitManualProofRequest.context:type_name -> creativanta.common.v1.CommandContext
-	7,   // 50: creativanta.publish.v1.SubmitManualProofResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	9,   // 51: creativanta.publish.v1.SubmitManualProofResponse.log:type_name -> creativanta.publish.v1.PublishLog
-	10,  // 52: creativanta.publish.v1.SubmitManualProofResponse.channel_post:type_name -> creativanta.publish.v1.ChannelPost
-	90,  // 53: creativanta.publish.v1.ReconcilePublishRequest.context:type_name -> creativanta.common.v1.CommandContext
-	7,   // 54: creativanta.publish.v1.ReconcilePublishResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	8,   // 55: creativanta.publish.v1.ReconcilePublishResponse.job:type_name -> creativanta.publish.v1.PublishJob
-	9,   // 56: creativanta.publish.v1.ReconcilePublishResponse.log:type_name -> creativanta.publish.v1.PublishLog
-	12,  // 57: creativanta.publish.v1.ExportManualPackageResponse.package:type_name -> creativanta.publish.v1.ManualExportPackage
-	90,  // 58: creativanta.publish.v1.PauseQueueRequest.context:type_name -> creativanta.common.v1.CommandContext
-	7,   // 59: creativanta.publish.v1.GetResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	11,  // 60: creativanta.publish.v1.GetResponse.capability_summary:type_name -> creativanta.publish.v1.PlatformCapabilitySummary
-	91,  // 61: creativanta.publish.v1.ListRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	7,   // 62: creativanta.publish.v1.ListResponse.items:type_name -> creativanta.publish.v1.PublishItem
-	92,  // 63: creativanta.publish.v1.ListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	7,   // 64: creativanta.publish.v1.GetDraftResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	90,  // 65: creativanta.publish.v1.SaveDraftRequest.context:type_name -> creativanta.common.v1.CommandContext
-	7,   // 66: creativanta.publish.v1.SaveDraftRequest.item:type_name -> creativanta.publish.v1.PublishItem
-	7,   // 67: creativanta.publish.v1.SaveDraftResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	90,  // 68: creativanta.publish.v1.UpdateDraftRequest.context:type_name -> creativanta.common.v1.CommandContext
-	7,   // 69: creativanta.publish.v1.UpdateDraftResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	91,  // 70: creativanta.publish.v1.ListDraftsRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	7,   // 71: creativanta.publish.v1.ListDraftsResponse.drafts:type_name -> creativanta.publish.v1.PublishItem
-	92,  // 72: creativanta.publish.v1.ListDraftsResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	90,  // 73: creativanta.publish.v1.PublishNowRequest.context:type_name -> creativanta.common.v1.CommandContext
-	7,   // 74: creativanta.publish.v1.PublishNowResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	8,   // 75: creativanta.publish.v1.PublishNowResponse.job:type_name -> creativanta.publish.v1.PublishJob
-	90,  // 76: creativanta.publish.v1.RescheduleRequest.context:type_name -> creativanta.common.v1.CommandContext
-	88,  // 77: creativanta.publish.v1.RescheduleRequest.new_schedule_at:type_name -> google.protobuf.Timestamp
-	7,   // 78: creativanta.publish.v1.RescheduleResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	90,  // 79: creativanta.publish.v1.DeleteRequest.context:type_name -> creativanta.common.v1.CommandContext
-	90,  // 80: creativanta.publish.v1.DuplicateRequest.context:type_name -> creativanta.common.v1.CommandContext
-	7,   // 81: creativanta.publish.v1.DuplicateResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	90,  // 82: creativanta.publish.v1.PauseRequest.context:type_name -> creativanta.common.v1.CommandContext
-	7,   // 83: creativanta.publish.v1.PauseResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	11,  // 84: creativanta.publish.v1.CheckCompatibilityResponse.capability_summary:type_name -> creativanta.publish.v1.PlatformCapabilitySummary
-	90,  // 85: creativanta.publish.v1.UpdateMetadataRequest.context:type_name -> creativanta.common.v1.CommandContext
-	7,   // 86: creativanta.publish.v1.UpdateMetadataResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	88,  // 87: creativanta.publish.v1.GetCalendarRequest.start_date:type_name -> google.protobuf.Timestamp
-	88,  // 88: creativanta.publish.v1.GetCalendarRequest.end_date:type_name -> google.protobuf.Timestamp
-	7,   // 89: creativanta.publish.v1.CalendarEntry.item:type_name -> creativanta.publish.v1.PublishItem
-	88,  // 90: creativanta.publish.v1.CalendarEntry.scheduled_time:type_name -> google.protobuf.Timestamp
-	64,  // 91: creativanta.publish.v1.GetCalendarResponse.entries:type_name -> creativanta.publish.v1.CalendarEntry
-	88,  // 92: creativanta.publish.v1.ListByDateRangeRequest.start_date:type_name -> google.protobuf.Timestamp
-	88,  // 93: creativanta.publish.v1.ListByDateRangeRequest.end_date:type_name -> google.protobuf.Timestamp
-	91,  // 94: creativanta.publish.v1.ListByDateRangeRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	7,   // 95: creativanta.publish.v1.ListByDateRangeResponse.items:type_name -> creativanta.publish.v1.PublishItem
-	92,  // 96: creativanta.publish.v1.ListByDateRangeResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	7,   // 97: creativanta.publish.v1.ListUpcomingResponse.items:type_name -> creativanta.publish.v1.PublishItem
-	91,  // 98: creativanta.publish.v1.ListPublishedRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	7,   // 99: creativanta.publish.v1.ListPublishedResponse.items:type_name -> creativanta.publish.v1.PublishItem
-	92,  // 100: creativanta.publish.v1.ListPublishedResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	91,  // 101: creativanta.publish.v1.ListPostsRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	10,  // 102: creativanta.publish.v1.ListPostsResponse.posts:type_name -> creativanta.publish.v1.ChannelPost
-	92,  // 103: creativanta.publish.v1.ListPostsResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	11,  // 104: creativanta.publish.v1.GetPlatformStatusResponse.status:type_name -> creativanta.publish.v1.PlatformCapabilitySummary
-	10,  // 105: creativanta.publish.v1.GetCrossPostInsightsResponse.posts:type_name -> creativanta.publish.v1.ChannelPost
-	90,  // 106: creativanta.publish.v1.PublishVariantsRequest.context:type_name -> creativanta.common.v1.CommandContext
-	7,   // 107: creativanta.publish.v1.PublishVariantsResponse.items:type_name -> creativanta.publish.v1.PublishItem
-	8,   // 108: creativanta.publish.v1.PublishVariantsResponse.jobs:type_name -> creativanta.publish.v1.PublishJob
-	90,  // 109: creativanta.publish.v1.HoldScheduleRequest.context:type_name -> creativanta.common.v1.CommandContext
-	7,   // 110: creativanta.publish.v1.HoldScheduleResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	90,  // 111: creativanta.publish.v1.ScheduleRetryRequest.context:type_name -> creativanta.common.v1.CommandContext
-	88,  // 112: creativanta.publish.v1.ScheduleRetryRequest.retry_at:type_name -> google.protobuf.Timestamp
-	7,   // 113: creativanta.publish.v1.ScheduleRetryResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	90,  // 114: creativanta.publish.v1.TagProductRequest.context:type_name -> creativanta.common.v1.CommandContext
-	7,   // 115: creativanta.publish.v1.TagProductResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	90,  // 116: creativanta.publish.v1.UntagProductRequest.context:type_name -> creativanta.common.v1.CommandContext
-	7,   // 117: creativanta.publish.v1.UntagProductResponse.item:type_name -> creativanta.publish.v1.PublishItem
-	13,  // 118: creativanta.publish.v1.PublishService.CreateItem:input_type -> creativanta.publish.v1.CreateItemRequest
-	15,  // 119: creativanta.publish.v1.PublishService.Schedule:input_type -> creativanta.publish.v1.ScheduleRequest
-	17,  // 120: creativanta.publish.v1.PublishService.Execute:input_type -> creativanta.publish.v1.ExecuteRequest
-	19,  // 121: creativanta.publish.v1.PublishService.Retry:input_type -> creativanta.publish.v1.RetryRequest
-	21,  // 122: creativanta.publish.v1.PublishService.Cancel:input_type -> creativanta.publish.v1.CancelRequest
-	23,  // 123: creativanta.publish.v1.PublishService.ListQueue:input_type -> creativanta.publish.v1.ListQueueRequest
-	25,  // 124: creativanta.publish.v1.PublishService.GetLogs:input_type -> creativanta.publish.v1.GetLogsRequest
-	27,  // 125: creativanta.publish.v1.PublishService.GetDiagnostics:input_type -> creativanta.publish.v1.GetDiagnosticsRequest
-	29,  // 126: creativanta.publish.v1.PublishService.SubmitManualProof:input_type -> creativanta.publish.v1.SubmitManualProofRequest
-	31,  // 127: creativanta.publish.v1.PublishService.ReconcilePublish:input_type -> creativanta.publish.v1.ReconcilePublishRequest
-	33,  // 128: creativanta.publish.v1.PublishService.ExportManualPackage:input_type -> creativanta.publish.v1.ExportManualPackageRequest
-	35,  // 129: creativanta.publish.v1.PublishService.PauseQueue:input_type -> creativanta.publish.v1.PauseQueueRequest
-	37,  // 130: creativanta.publish.v1.PublishService.Get:input_type -> creativanta.publish.v1.GetRequest
-	39,  // 131: creativanta.publish.v1.PublishService.List:input_type -> creativanta.publish.v1.ListRequest
-	41,  // 132: creativanta.publish.v1.PublishService.GetDraft:input_type -> creativanta.publish.v1.GetDraftRequest
-	43,  // 133: creativanta.publish.v1.PublishService.SaveDraft:input_type -> creativanta.publish.v1.SaveDraftRequest
-	45,  // 134: creativanta.publish.v1.PublishService.UpdateDraft:input_type -> creativanta.publish.v1.UpdateDraftRequest
-	47,  // 135: creativanta.publish.v1.PublishService.ListDrafts:input_type -> creativanta.publish.v1.ListDraftsRequest
-	49,  // 136: creativanta.publish.v1.PublishService.PublishNow:input_type -> creativanta.publish.v1.PublishNowRequest
-	51,  // 137: creativanta.publish.v1.PublishService.Reschedule:input_type -> creativanta.publish.v1.RescheduleRequest
-	53,  // 138: creativanta.publish.v1.PublishService.Delete:input_type -> creativanta.publish.v1.DeleteRequest
-	55,  // 139: creativanta.publish.v1.PublishService.Duplicate:input_type -> creativanta.publish.v1.DuplicateRequest
-	57,  // 140: creativanta.publish.v1.PublishService.Pause:input_type -> creativanta.publish.v1.PauseRequest
-	59,  // 141: creativanta.publish.v1.PublishService.CheckCompatibility:input_type -> creativanta.publish.v1.CheckCompatibilityRequest
-	61,  // 142: creativanta.publish.v1.PublishService.UpdateMetadata:input_type -> creativanta.publish.v1.UpdateMetadataRequest
-	63,  // 143: creativanta.publish.v1.PublishService.GetCalendar:input_type -> creativanta.publish.v1.GetCalendarRequest
-	66,  // 144: creativanta.publish.v1.PublishService.ListByDateRange:input_type -> creativanta.publish.v1.ListByDateRangeRequest
-	68,  // 145: creativanta.publish.v1.PublishService.ListUpcoming:input_type -> creativanta.publish.v1.ListUpcomingRequest
-	70,  // 146: creativanta.publish.v1.PublishService.ListPublished:input_type -> creativanta.publish.v1.ListPublishedRequest
-	72,  // 147: creativanta.publish.v1.PublishService.ListPosts:input_type -> creativanta.publish.v1.ListPostsRequest
-	74,  // 148: creativanta.publish.v1.PublishService.GetPlatformStatus:input_type -> creativanta.publish.v1.GetPlatformStatusRequest
-	76,  // 149: creativanta.publish.v1.PublishService.GetCrossPostInsights:input_type -> creativanta.publish.v1.GetCrossPostInsightsRequest
-	78,  // 150: creativanta.publish.v1.PublishService.PublishVariants:input_type -> creativanta.publish.v1.PublishVariantsRequest
-	80,  // 151: creativanta.publish.v1.PublishService.HoldSchedule:input_type -> creativanta.publish.v1.HoldScheduleRequest
-	82,  // 152: creativanta.publish.v1.PublishService.ScheduleRetry:input_type -> creativanta.publish.v1.ScheduleRetryRequest
-	84,  // 153: creativanta.publish.v1.PublishService.TagProduct:input_type -> creativanta.publish.v1.TagProductRequest
-	86,  // 154: creativanta.publish.v1.PublishService.UntagProduct:input_type -> creativanta.publish.v1.UntagProductRequest
-	14,  // 155: creativanta.publish.v1.PublishService.CreateItem:output_type -> creativanta.publish.v1.CreateItemResponse
-	16,  // 156: creativanta.publish.v1.PublishService.Schedule:output_type -> creativanta.publish.v1.ScheduleResponse
-	18,  // 157: creativanta.publish.v1.PublishService.Execute:output_type -> creativanta.publish.v1.ExecuteResponse
-	20,  // 158: creativanta.publish.v1.PublishService.Retry:output_type -> creativanta.publish.v1.RetryResponse
-	22,  // 159: creativanta.publish.v1.PublishService.Cancel:output_type -> creativanta.publish.v1.CancelResponse
-	24,  // 160: creativanta.publish.v1.PublishService.ListQueue:output_type -> creativanta.publish.v1.ListQueueResponse
-	26,  // 161: creativanta.publish.v1.PublishService.GetLogs:output_type -> creativanta.publish.v1.GetLogsResponse
-	28,  // 162: creativanta.publish.v1.PublishService.GetDiagnostics:output_type -> creativanta.publish.v1.GetDiagnosticsResponse
-	30,  // 163: creativanta.publish.v1.PublishService.SubmitManualProof:output_type -> creativanta.publish.v1.SubmitManualProofResponse
-	32,  // 164: creativanta.publish.v1.PublishService.ReconcilePublish:output_type -> creativanta.publish.v1.ReconcilePublishResponse
-	34,  // 165: creativanta.publish.v1.PublishService.ExportManualPackage:output_type -> creativanta.publish.v1.ExportManualPackageResponse
-	36,  // 166: creativanta.publish.v1.PublishService.PauseQueue:output_type -> creativanta.publish.v1.PauseQueueResponse
-	38,  // 167: creativanta.publish.v1.PublishService.Get:output_type -> creativanta.publish.v1.GetResponse
-	40,  // 168: creativanta.publish.v1.PublishService.List:output_type -> creativanta.publish.v1.ListResponse
-	42,  // 169: creativanta.publish.v1.PublishService.GetDraft:output_type -> creativanta.publish.v1.GetDraftResponse
-	44,  // 170: creativanta.publish.v1.PublishService.SaveDraft:output_type -> creativanta.publish.v1.SaveDraftResponse
-	46,  // 171: creativanta.publish.v1.PublishService.UpdateDraft:output_type -> creativanta.publish.v1.UpdateDraftResponse
-	48,  // 172: creativanta.publish.v1.PublishService.ListDrafts:output_type -> creativanta.publish.v1.ListDraftsResponse
-	50,  // 173: creativanta.publish.v1.PublishService.PublishNow:output_type -> creativanta.publish.v1.PublishNowResponse
-	52,  // 174: creativanta.publish.v1.PublishService.Reschedule:output_type -> creativanta.publish.v1.RescheduleResponse
-	54,  // 175: creativanta.publish.v1.PublishService.Delete:output_type -> creativanta.publish.v1.DeleteResponse
-	56,  // 176: creativanta.publish.v1.PublishService.Duplicate:output_type -> creativanta.publish.v1.DuplicateResponse
-	58,  // 177: creativanta.publish.v1.PublishService.Pause:output_type -> creativanta.publish.v1.PauseResponse
-	60,  // 178: creativanta.publish.v1.PublishService.CheckCompatibility:output_type -> creativanta.publish.v1.CheckCompatibilityResponse
-	62,  // 179: creativanta.publish.v1.PublishService.UpdateMetadata:output_type -> creativanta.publish.v1.UpdateMetadataResponse
-	65,  // 180: creativanta.publish.v1.PublishService.GetCalendar:output_type -> creativanta.publish.v1.GetCalendarResponse
-	67,  // 181: creativanta.publish.v1.PublishService.ListByDateRange:output_type -> creativanta.publish.v1.ListByDateRangeResponse
-	69,  // 182: creativanta.publish.v1.PublishService.ListUpcoming:output_type -> creativanta.publish.v1.ListUpcomingResponse
-	71,  // 183: creativanta.publish.v1.PublishService.ListPublished:output_type -> creativanta.publish.v1.ListPublishedResponse
-	73,  // 184: creativanta.publish.v1.PublishService.ListPosts:output_type -> creativanta.publish.v1.ListPostsResponse
-	75,  // 185: creativanta.publish.v1.PublishService.GetPlatformStatus:output_type -> creativanta.publish.v1.GetPlatformStatusResponse
-	77,  // 186: creativanta.publish.v1.PublishService.GetCrossPostInsights:output_type -> creativanta.publish.v1.GetCrossPostInsightsResponse
-	79,  // 187: creativanta.publish.v1.PublishService.PublishVariants:output_type -> creativanta.publish.v1.PublishVariantsResponse
-	81,  // 188: creativanta.publish.v1.PublishService.HoldSchedule:output_type -> creativanta.publish.v1.HoldScheduleResponse
-	83,  // 189: creativanta.publish.v1.PublishService.ScheduleRetry:output_type -> creativanta.publish.v1.ScheduleRetryResponse
-	85,  // 190: creativanta.publish.v1.PublishService.TagProduct:output_type -> creativanta.publish.v1.TagProductResponse
-	87,  // 191: creativanta.publish.v1.PublishService.UntagProduct:output_type -> creativanta.publish.v1.UntagProductResponse
-	155, // [155:192] is the sub-list for method output_type
-	118, // [118:155] is the sub-list for method input_type
-	118, // [118:118] is the sub-list for extension type_name
-	118, // [118:118] is the sub-list for extension extendee
-	0,   // [0:118] is the sub-list for field type_name
+	93,  // 15: creativanta.publish.v1.ChannelPostMetrics.source_class:type_name -> creativanta.common.v1.SourceClass
+	94,  // 16: creativanta.publish.v1.ChannelPostMetrics.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	91,  // 17: creativanta.publish.v1.ChannelPostMetrics.captured_at:type_name -> google.protobuf.Timestamp
+	91,  // 18: creativanta.publish.v1.ChannelPost.synced_at:type_name -> google.protobuf.Timestamp
+	91,  // 19: creativanta.publish.v1.ChannelPost.created_at:type_name -> google.protobuf.Timestamp
+	91,  // 20: creativanta.publish.v1.ChannelPost.updated_at:type_name -> google.protobuf.Timestamp
+	10,  // 21: creativanta.publish.v1.ChannelPost.metrics:type_name -> creativanta.publish.v1.ChannelPostMetrics
+	93,  // 22: creativanta.publish.v1.ChannelPost.source_class:type_name -> creativanta.common.v1.SourceClass
+	94,  // 23: creativanta.publish.v1.ChannelPost.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	6,   // 24: creativanta.publish.v1.PlatformCapabilitySummary.capability_state:type_name -> creativanta.publish.v1.PublishCapabilityState
+	95,  // 25: creativanta.publish.v1.CreateItemRequest.context:type_name -> creativanta.common.v1.CommandContext
+	0,   // 26: creativanta.publish.v1.CreateItemRequest.publish_mode:type_name -> creativanta.publish.v1.PublishMode
+	91,  // 27: creativanta.publish.v1.CreateItemRequest.schedule_at:type_name -> google.protobuf.Timestamp
+	7,   // 28: creativanta.publish.v1.CreateItemResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	12,  // 29: creativanta.publish.v1.CreateItemResponse.capability_summary:type_name -> creativanta.publish.v1.PlatformCapabilitySummary
+	95,  // 30: creativanta.publish.v1.ScheduleRequest.context:type_name -> creativanta.common.v1.CommandContext
+	91,  // 31: creativanta.publish.v1.ScheduleRequest.scheduled_at:type_name -> google.protobuf.Timestamp
+	7,   // 32: creativanta.publish.v1.ScheduleResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	8,   // 33: creativanta.publish.v1.ScheduleResponse.job:type_name -> creativanta.publish.v1.PublishJob
+	91,  // 34: creativanta.publish.v1.ScheduleResponse.scheduled_at:type_name -> google.protobuf.Timestamp
+	95,  // 35: creativanta.publish.v1.ExecuteRequest.context:type_name -> creativanta.common.v1.CommandContext
+	7,   // 36: creativanta.publish.v1.ExecuteResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	8,   // 37: creativanta.publish.v1.ExecuteResponse.job:type_name -> creativanta.publish.v1.PublishJob
+	9,   // 38: creativanta.publish.v1.ExecuteResponse.log:type_name -> creativanta.publish.v1.PublishLog
+	11,  // 39: creativanta.publish.v1.ExecuteResponse.channel_post:type_name -> creativanta.publish.v1.ChannelPost
+	95,  // 40: creativanta.publish.v1.RetryRequest.context:type_name -> creativanta.common.v1.CommandContext
+	7,   // 41: creativanta.publish.v1.RetryResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	8,   // 42: creativanta.publish.v1.RetryResponse.job:type_name -> creativanta.publish.v1.PublishJob
+	95,  // 43: creativanta.publish.v1.CancelRequest.context:type_name -> creativanta.common.v1.CommandContext
+	7,   // 44: creativanta.publish.v1.CancelResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	1,   // 45: creativanta.publish.v1.ListQueueRequest.state_filter:type_name -> creativanta.publish.v1.PublishItemLifecycleState
+	96,  // 46: creativanta.publish.v1.ListQueueRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	7,   // 47: creativanta.publish.v1.ListQueueResponse.items:type_name -> creativanta.publish.v1.PublishItem
+	8,   // 48: creativanta.publish.v1.ListQueueResponse.jobs:type_name -> creativanta.publish.v1.PublishJob
+	97,  // 49: creativanta.publish.v1.ListQueueResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	96,  // 50: creativanta.publish.v1.GetLogsRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	9,   // 51: creativanta.publish.v1.GetLogsResponse.logs:type_name -> creativanta.publish.v1.PublishLog
+	97,  // 52: creativanta.publish.v1.GetLogsResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	5,   // 53: creativanta.publish.v1.GetDiagnosticsResponse.diagnostics_state:type_name -> creativanta.publish.v1.DiagnosticsState
+	12,  // 54: creativanta.publish.v1.GetDiagnosticsResponse.capability_summary:type_name -> creativanta.publish.v1.PlatformCapabilitySummary
+	95,  // 55: creativanta.publish.v1.SubmitManualProofRequest.context:type_name -> creativanta.common.v1.CommandContext
+	7,   // 56: creativanta.publish.v1.SubmitManualProofResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	9,   // 57: creativanta.publish.v1.SubmitManualProofResponse.log:type_name -> creativanta.publish.v1.PublishLog
+	11,  // 58: creativanta.publish.v1.SubmitManualProofResponse.channel_post:type_name -> creativanta.publish.v1.ChannelPost
+	95,  // 59: creativanta.publish.v1.ReconcilePublishRequest.context:type_name -> creativanta.common.v1.CommandContext
+	7,   // 60: creativanta.publish.v1.ReconcilePublishResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	8,   // 61: creativanta.publish.v1.ReconcilePublishResponse.job:type_name -> creativanta.publish.v1.PublishJob
+	9,   // 62: creativanta.publish.v1.ReconcilePublishResponse.log:type_name -> creativanta.publish.v1.PublishLog
+	13,  // 63: creativanta.publish.v1.ExportManualPackageResponse.package:type_name -> creativanta.publish.v1.ManualExportPackage
+	95,  // 64: creativanta.publish.v1.PauseQueueRequest.context:type_name -> creativanta.common.v1.CommandContext
+	7,   // 65: creativanta.publish.v1.GetResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	12,  // 66: creativanta.publish.v1.GetResponse.capability_summary:type_name -> creativanta.publish.v1.PlatformCapabilitySummary
+	96,  // 67: creativanta.publish.v1.ListRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	7,   // 68: creativanta.publish.v1.ListResponse.items:type_name -> creativanta.publish.v1.PublishItem
+	97,  // 69: creativanta.publish.v1.ListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	7,   // 70: creativanta.publish.v1.GetDraftResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	95,  // 71: creativanta.publish.v1.SaveDraftRequest.context:type_name -> creativanta.common.v1.CommandContext
+	7,   // 72: creativanta.publish.v1.SaveDraftRequest.item:type_name -> creativanta.publish.v1.PublishItem
+	7,   // 73: creativanta.publish.v1.SaveDraftResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	95,  // 74: creativanta.publish.v1.UpdateDraftRequest.context:type_name -> creativanta.common.v1.CommandContext
+	7,   // 75: creativanta.publish.v1.UpdateDraftResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	96,  // 76: creativanta.publish.v1.ListDraftsRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	7,   // 77: creativanta.publish.v1.ListDraftsResponse.drafts:type_name -> creativanta.publish.v1.PublishItem
+	97,  // 78: creativanta.publish.v1.ListDraftsResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	95,  // 79: creativanta.publish.v1.PublishNowRequest.context:type_name -> creativanta.common.v1.CommandContext
+	7,   // 80: creativanta.publish.v1.PublishNowResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	8,   // 81: creativanta.publish.v1.PublishNowResponse.job:type_name -> creativanta.publish.v1.PublishJob
+	95,  // 82: creativanta.publish.v1.RescheduleRequest.context:type_name -> creativanta.common.v1.CommandContext
+	91,  // 83: creativanta.publish.v1.RescheduleRequest.new_schedule_at:type_name -> google.protobuf.Timestamp
+	7,   // 84: creativanta.publish.v1.RescheduleResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	95,  // 85: creativanta.publish.v1.DeleteRequest.context:type_name -> creativanta.common.v1.CommandContext
+	95,  // 86: creativanta.publish.v1.DuplicateRequest.context:type_name -> creativanta.common.v1.CommandContext
+	7,   // 87: creativanta.publish.v1.DuplicateResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	95,  // 88: creativanta.publish.v1.PauseRequest.context:type_name -> creativanta.common.v1.CommandContext
+	7,   // 89: creativanta.publish.v1.PauseResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	12,  // 90: creativanta.publish.v1.CheckCompatibilityResponse.capability_summary:type_name -> creativanta.publish.v1.PlatformCapabilitySummary
+	95,  // 91: creativanta.publish.v1.UpdateMetadataRequest.context:type_name -> creativanta.common.v1.CommandContext
+	7,   // 92: creativanta.publish.v1.UpdateMetadataResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	91,  // 93: creativanta.publish.v1.GetCalendarRequest.start_date:type_name -> google.protobuf.Timestamp
+	91,  // 94: creativanta.publish.v1.GetCalendarRequest.end_date:type_name -> google.protobuf.Timestamp
+	7,   // 95: creativanta.publish.v1.CalendarEntry.item:type_name -> creativanta.publish.v1.PublishItem
+	91,  // 96: creativanta.publish.v1.CalendarEntry.scheduled_time:type_name -> google.protobuf.Timestamp
+	65,  // 97: creativanta.publish.v1.GetCalendarResponse.entries:type_name -> creativanta.publish.v1.CalendarEntry
+	91,  // 98: creativanta.publish.v1.ListByDateRangeRequest.start_date:type_name -> google.protobuf.Timestamp
+	91,  // 99: creativanta.publish.v1.ListByDateRangeRequest.end_date:type_name -> google.protobuf.Timestamp
+	96,  // 100: creativanta.publish.v1.ListByDateRangeRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	7,   // 101: creativanta.publish.v1.ListByDateRangeResponse.items:type_name -> creativanta.publish.v1.PublishItem
+	97,  // 102: creativanta.publish.v1.ListByDateRangeResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	7,   // 103: creativanta.publish.v1.ListUpcomingResponse.items:type_name -> creativanta.publish.v1.PublishItem
+	96,  // 104: creativanta.publish.v1.ListPublishedRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	7,   // 105: creativanta.publish.v1.ListPublishedResponse.items:type_name -> creativanta.publish.v1.PublishItem
+	97,  // 106: creativanta.publish.v1.ListPublishedResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	96,  // 107: creativanta.publish.v1.ListPostsRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	11,  // 108: creativanta.publish.v1.ListPostsResponse.posts:type_name -> creativanta.publish.v1.ChannelPost
+	97,  // 109: creativanta.publish.v1.ListPostsResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	12,  // 110: creativanta.publish.v1.GetPlatformStatusResponse.status:type_name -> creativanta.publish.v1.PlatformCapabilitySummary
+	11,  // 111: creativanta.publish.v1.GetCrossPostInsightsResponse.posts:type_name -> creativanta.publish.v1.ChannelPost
+	95,  // 112: creativanta.publish.v1.PublishVariantsRequest.context:type_name -> creativanta.common.v1.CommandContext
+	7,   // 113: creativanta.publish.v1.PublishVariantsResponse.items:type_name -> creativanta.publish.v1.PublishItem
+	8,   // 114: creativanta.publish.v1.PublishVariantsResponse.jobs:type_name -> creativanta.publish.v1.PublishJob
+	95,  // 115: creativanta.publish.v1.HoldScheduleRequest.context:type_name -> creativanta.common.v1.CommandContext
+	7,   // 116: creativanta.publish.v1.HoldScheduleResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	95,  // 117: creativanta.publish.v1.ScheduleRetryRequest.context:type_name -> creativanta.common.v1.CommandContext
+	91,  // 118: creativanta.publish.v1.ScheduleRetryRequest.retry_at:type_name -> google.protobuf.Timestamp
+	7,   // 119: creativanta.publish.v1.ScheduleRetryResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	95,  // 120: creativanta.publish.v1.TagProductRequest.context:type_name -> creativanta.common.v1.CommandContext
+	7,   // 121: creativanta.publish.v1.TagProductResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	95,  // 122: creativanta.publish.v1.UntagProductRequest.context:type_name -> creativanta.common.v1.CommandContext
+	7,   // 123: creativanta.publish.v1.UntagProductResponse.item:type_name -> creativanta.publish.v1.PublishItem
+	95,  // 124: creativanta.publish.v1.SyncPostMetricsRequest.context:type_name -> creativanta.common.v1.CommandContext
+	93,  // 125: creativanta.publish.v1.SyncPostMetricsRequest.source_class:type_name -> creativanta.common.v1.SourceClass
+	94,  // 126: creativanta.publish.v1.SyncPostMetricsRequest.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	11,  // 127: creativanta.publish.v1.SyncPostMetricsResponse.post:type_name -> creativanta.publish.v1.ChannelPost
+	10,  // 128: creativanta.publish.v1.SyncPostMetricsResponse.metrics:type_name -> creativanta.publish.v1.ChannelPostMetrics
+	14,  // 129: creativanta.publish.v1.PublishService.CreateItem:input_type -> creativanta.publish.v1.CreateItemRequest
+	16,  // 130: creativanta.publish.v1.PublishService.Schedule:input_type -> creativanta.publish.v1.ScheduleRequest
+	18,  // 131: creativanta.publish.v1.PublishService.Execute:input_type -> creativanta.publish.v1.ExecuteRequest
+	20,  // 132: creativanta.publish.v1.PublishService.Retry:input_type -> creativanta.publish.v1.RetryRequest
+	22,  // 133: creativanta.publish.v1.PublishService.Cancel:input_type -> creativanta.publish.v1.CancelRequest
+	24,  // 134: creativanta.publish.v1.PublishService.ListQueue:input_type -> creativanta.publish.v1.ListQueueRequest
+	26,  // 135: creativanta.publish.v1.PublishService.GetLogs:input_type -> creativanta.publish.v1.GetLogsRequest
+	28,  // 136: creativanta.publish.v1.PublishService.GetDiagnostics:input_type -> creativanta.publish.v1.GetDiagnosticsRequest
+	30,  // 137: creativanta.publish.v1.PublishService.SubmitManualProof:input_type -> creativanta.publish.v1.SubmitManualProofRequest
+	32,  // 138: creativanta.publish.v1.PublishService.ReconcilePublish:input_type -> creativanta.publish.v1.ReconcilePublishRequest
+	34,  // 139: creativanta.publish.v1.PublishService.ExportManualPackage:input_type -> creativanta.publish.v1.ExportManualPackageRequest
+	36,  // 140: creativanta.publish.v1.PublishService.PauseQueue:input_type -> creativanta.publish.v1.PauseQueueRequest
+	89,  // 141: creativanta.publish.v1.PublishService.SyncPostMetrics:input_type -> creativanta.publish.v1.SyncPostMetricsRequest
+	38,  // 142: creativanta.publish.v1.PublishService.Get:input_type -> creativanta.publish.v1.GetRequest
+	40,  // 143: creativanta.publish.v1.PublishService.List:input_type -> creativanta.publish.v1.ListRequest
+	42,  // 144: creativanta.publish.v1.PublishService.GetDraft:input_type -> creativanta.publish.v1.GetDraftRequest
+	44,  // 145: creativanta.publish.v1.PublishService.SaveDraft:input_type -> creativanta.publish.v1.SaveDraftRequest
+	46,  // 146: creativanta.publish.v1.PublishService.UpdateDraft:input_type -> creativanta.publish.v1.UpdateDraftRequest
+	48,  // 147: creativanta.publish.v1.PublishService.ListDrafts:input_type -> creativanta.publish.v1.ListDraftsRequest
+	50,  // 148: creativanta.publish.v1.PublishService.PublishNow:input_type -> creativanta.publish.v1.PublishNowRequest
+	52,  // 149: creativanta.publish.v1.PublishService.Reschedule:input_type -> creativanta.publish.v1.RescheduleRequest
+	54,  // 150: creativanta.publish.v1.PublishService.Delete:input_type -> creativanta.publish.v1.DeleteRequest
+	56,  // 151: creativanta.publish.v1.PublishService.Duplicate:input_type -> creativanta.publish.v1.DuplicateRequest
+	58,  // 152: creativanta.publish.v1.PublishService.Pause:input_type -> creativanta.publish.v1.PauseRequest
+	60,  // 153: creativanta.publish.v1.PublishService.CheckCompatibility:input_type -> creativanta.publish.v1.CheckCompatibilityRequest
+	62,  // 154: creativanta.publish.v1.PublishService.UpdateMetadata:input_type -> creativanta.publish.v1.UpdateMetadataRequest
+	64,  // 155: creativanta.publish.v1.PublishService.GetCalendar:input_type -> creativanta.publish.v1.GetCalendarRequest
+	67,  // 156: creativanta.publish.v1.PublishService.ListByDateRange:input_type -> creativanta.publish.v1.ListByDateRangeRequest
+	69,  // 157: creativanta.publish.v1.PublishService.ListUpcoming:input_type -> creativanta.publish.v1.ListUpcomingRequest
+	71,  // 158: creativanta.publish.v1.PublishService.ListPublished:input_type -> creativanta.publish.v1.ListPublishedRequest
+	73,  // 159: creativanta.publish.v1.PublishService.ListPosts:input_type -> creativanta.publish.v1.ListPostsRequest
+	75,  // 160: creativanta.publish.v1.PublishService.GetPlatformStatus:input_type -> creativanta.publish.v1.GetPlatformStatusRequest
+	77,  // 161: creativanta.publish.v1.PublishService.GetCrossPostInsights:input_type -> creativanta.publish.v1.GetCrossPostInsightsRequest
+	79,  // 162: creativanta.publish.v1.PublishService.PublishVariants:input_type -> creativanta.publish.v1.PublishVariantsRequest
+	81,  // 163: creativanta.publish.v1.PublishService.HoldSchedule:input_type -> creativanta.publish.v1.HoldScheduleRequest
+	83,  // 164: creativanta.publish.v1.PublishService.ScheduleRetry:input_type -> creativanta.publish.v1.ScheduleRetryRequest
+	85,  // 165: creativanta.publish.v1.PublishService.TagProduct:input_type -> creativanta.publish.v1.TagProductRequest
+	87,  // 166: creativanta.publish.v1.PublishService.UntagProduct:input_type -> creativanta.publish.v1.UntagProductRequest
+	15,  // 167: creativanta.publish.v1.PublishService.CreateItem:output_type -> creativanta.publish.v1.CreateItemResponse
+	17,  // 168: creativanta.publish.v1.PublishService.Schedule:output_type -> creativanta.publish.v1.ScheduleResponse
+	19,  // 169: creativanta.publish.v1.PublishService.Execute:output_type -> creativanta.publish.v1.ExecuteResponse
+	21,  // 170: creativanta.publish.v1.PublishService.Retry:output_type -> creativanta.publish.v1.RetryResponse
+	23,  // 171: creativanta.publish.v1.PublishService.Cancel:output_type -> creativanta.publish.v1.CancelResponse
+	25,  // 172: creativanta.publish.v1.PublishService.ListQueue:output_type -> creativanta.publish.v1.ListQueueResponse
+	27,  // 173: creativanta.publish.v1.PublishService.GetLogs:output_type -> creativanta.publish.v1.GetLogsResponse
+	29,  // 174: creativanta.publish.v1.PublishService.GetDiagnostics:output_type -> creativanta.publish.v1.GetDiagnosticsResponse
+	31,  // 175: creativanta.publish.v1.PublishService.SubmitManualProof:output_type -> creativanta.publish.v1.SubmitManualProofResponse
+	33,  // 176: creativanta.publish.v1.PublishService.ReconcilePublish:output_type -> creativanta.publish.v1.ReconcilePublishResponse
+	35,  // 177: creativanta.publish.v1.PublishService.ExportManualPackage:output_type -> creativanta.publish.v1.ExportManualPackageResponse
+	37,  // 178: creativanta.publish.v1.PublishService.PauseQueue:output_type -> creativanta.publish.v1.PauseQueueResponse
+	90,  // 179: creativanta.publish.v1.PublishService.SyncPostMetrics:output_type -> creativanta.publish.v1.SyncPostMetricsResponse
+	39,  // 180: creativanta.publish.v1.PublishService.Get:output_type -> creativanta.publish.v1.GetResponse
+	41,  // 181: creativanta.publish.v1.PublishService.List:output_type -> creativanta.publish.v1.ListResponse
+	43,  // 182: creativanta.publish.v1.PublishService.GetDraft:output_type -> creativanta.publish.v1.GetDraftResponse
+	45,  // 183: creativanta.publish.v1.PublishService.SaveDraft:output_type -> creativanta.publish.v1.SaveDraftResponse
+	47,  // 184: creativanta.publish.v1.PublishService.UpdateDraft:output_type -> creativanta.publish.v1.UpdateDraftResponse
+	49,  // 185: creativanta.publish.v1.PublishService.ListDrafts:output_type -> creativanta.publish.v1.ListDraftsResponse
+	51,  // 186: creativanta.publish.v1.PublishService.PublishNow:output_type -> creativanta.publish.v1.PublishNowResponse
+	53,  // 187: creativanta.publish.v1.PublishService.Reschedule:output_type -> creativanta.publish.v1.RescheduleResponse
+	55,  // 188: creativanta.publish.v1.PublishService.Delete:output_type -> creativanta.publish.v1.DeleteResponse
+	57,  // 189: creativanta.publish.v1.PublishService.Duplicate:output_type -> creativanta.publish.v1.DuplicateResponse
+	59,  // 190: creativanta.publish.v1.PublishService.Pause:output_type -> creativanta.publish.v1.PauseResponse
+	61,  // 191: creativanta.publish.v1.PublishService.CheckCompatibility:output_type -> creativanta.publish.v1.CheckCompatibilityResponse
+	63,  // 192: creativanta.publish.v1.PublishService.UpdateMetadata:output_type -> creativanta.publish.v1.UpdateMetadataResponse
+	66,  // 193: creativanta.publish.v1.PublishService.GetCalendar:output_type -> creativanta.publish.v1.GetCalendarResponse
+	68,  // 194: creativanta.publish.v1.PublishService.ListByDateRange:output_type -> creativanta.publish.v1.ListByDateRangeResponse
+	70,  // 195: creativanta.publish.v1.PublishService.ListUpcoming:output_type -> creativanta.publish.v1.ListUpcomingResponse
+	72,  // 196: creativanta.publish.v1.PublishService.ListPublished:output_type -> creativanta.publish.v1.ListPublishedResponse
+	74,  // 197: creativanta.publish.v1.PublishService.ListPosts:output_type -> creativanta.publish.v1.ListPostsResponse
+	76,  // 198: creativanta.publish.v1.PublishService.GetPlatformStatus:output_type -> creativanta.publish.v1.GetPlatformStatusResponse
+	78,  // 199: creativanta.publish.v1.PublishService.GetCrossPostInsights:output_type -> creativanta.publish.v1.GetCrossPostInsightsResponse
+	80,  // 200: creativanta.publish.v1.PublishService.PublishVariants:output_type -> creativanta.publish.v1.PublishVariantsResponse
+	82,  // 201: creativanta.publish.v1.PublishService.HoldSchedule:output_type -> creativanta.publish.v1.HoldScheduleResponse
+	84,  // 202: creativanta.publish.v1.PublishService.ScheduleRetry:output_type -> creativanta.publish.v1.ScheduleRetryResponse
+	86,  // 203: creativanta.publish.v1.PublishService.TagProduct:output_type -> creativanta.publish.v1.TagProductResponse
+	88,  // 204: creativanta.publish.v1.PublishService.UntagProduct:output_type -> creativanta.publish.v1.UntagProductResponse
+	167, // [167:205] is the sub-list for method output_type
+	129, // [129:167] is the sub-list for method input_type
+	129, // [129:129] is the sub-list for extension type_name
+	129, // [129:129] is the sub-list for extension extendee
+	0,   // [0:129] is the sub-list for field type_name
 }
 
 func init() { file_creativanta_publish_v1_publish_proto_init() }
@@ -6279,7 +6707,7 @@ func file_creativanta_publish_v1_publish_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_creativanta_publish_v1_publish_proto_rawDesc), len(file_creativanta_publish_v1_publish_proto_rawDesc)),
 			NumEnums:      7,
-			NumMessages:   81,
+			NumMessages:   84,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

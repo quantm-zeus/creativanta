@@ -2863,3 +2863,540 @@ final $typed_data.Uint8List proofServiceListResponseDescriptor = $convert.base64
     'F0aXZhbnRhLmZpbmFuY2UudjEuUHJvb2ZCdW5kbGVSDHByb29mQnVuZGxlcxJICgpwYWdpbmF0'
     'aW9uGAIgASgLMiguY3JlYXRpdmFudGEuY29tbW9uLnYxLlBhZ2luYXRlZFJlc3BvbnNlUgpwYW'
     'dpbmF0aW9u');
+
+@$core.Deprecated('Use contentAttributionRecordDescriptor instead')
+const ContentAttributionRecord$json = {
+  '1': 'ContentAttributionRecord',
+  '2': [
+    {'1': 'attribution_id', '3': 1, '4': 1, '5': 9, '10': 'attributionId'},
+    {'1': 'workspace_id', '3': 2, '4': 1, '5': 9, '10': 'workspaceId'},
+    {'1': 'publish_item_id', '3': 3, '4': 1, '5': 9, '10': 'publishItemId'},
+    {'1': 'channel_post_id', '3': 4, '4': 1, '5': 9, '10': 'channelPostId'},
+    {'1': 'order_id', '3': 5, '4': 1, '5': 9, '10': 'orderId'},
+    {'1': 'attribution_type', '3': 6, '4': 1, '5': 9, '10': 'attributionType'},
+    {
+      '1': 'revenue_attributed',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'revenueAttributed'
+    },
+    {
+      '1': 'source_class',
+      '3': 8,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.common.v1.SourceClass',
+      '10': 'sourceClass'
+    },
+    {
+      '1': 'confidence',
+      '3': 9,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.common.v1.ConfidenceBand',
+      '10': 'confidence'
+    },
+    {'1': 'utm_source', '3': 10, '4': 1, '5': 9, '10': 'utmSource'},
+    {'1': 'utm_medium', '3': 11, '4': 1, '5': 9, '10': 'utmMedium'},
+    {'1': 'utm_campaign', '3': 12, '4': 1, '5': 9, '10': 'utmCampaign'},
+    {
+      '1': 'created_at',
+      '3': 13,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+  ],
+};
+
+/// Descriptor for `ContentAttributionRecord`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List contentAttributionRecordDescriptor = $convert.base64Decode(
+    'ChhDb250ZW50QXR0cmlidXRpb25SZWNvcmQSJQoOYXR0cmlidXRpb25faWQYASABKAlSDWF0dH'
+    'JpYnV0aW9uSWQSIQoMd29ya3NwYWNlX2lkGAIgASgJUgt3b3Jrc3BhY2VJZBImCg9wdWJsaXNo'
+    'X2l0ZW1faWQYAyABKAlSDXB1Ymxpc2hJdGVtSWQSJgoPY2hhbm5lbF9wb3N0X2lkGAQgASgJUg'
+    '1jaGFubmVsUG9zdElkEhkKCG9yZGVyX2lkGAUgASgJUgdvcmRlcklkEikKEGF0dHJpYnV0aW9u'
+    'X3R5cGUYBiABKAlSD2F0dHJpYnV0aW9uVHlwZRJLChJyZXZlbnVlX2F0dHJpYnV0ZWQYByABKA'
+    'syHC5jcmVhdGl2YW50YS5jb21tb24udjEuTW9uZXlSEXJldmVudWVBdHRyaWJ1dGVkEkUKDHNv'
+    'dXJjZV9jbGFzcxgIIAEoDjIiLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5Tb3VyY2VDbGFzc1ILc2'
+    '91cmNlQ2xhc3MSRQoKY29uZmlkZW5jZRgJIAEoDjIlLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5D'
+    'b25maWRlbmNlQmFuZFIKY29uZmlkZW5jZRIdCgp1dG1fc291cmNlGAogASgJUgl1dG1Tb3VyY2'
+    'USHQoKdXRtX21lZGl1bRgLIAEoCVIJdXRtTWVkaXVtEiEKDHV0bV9jYW1wYWlnbhgMIAEoCVIL'
+    'dXRtQ2FtcGFpZ24SOQoKY3JlYXRlZF9hdBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3'
+    'RhbXBSCWNyZWF0ZWRBdA==');
+
+@$core.Deprecated('Use contentRevenueAttributionDescriptor instead')
+const ContentRevenueAttribution$json = {
+  '1': 'ContentRevenueAttribution',
+  '2': [
+    {'1': 'content_id', '3': 1, '4': 1, '5': 9, '10': 'contentId'},
+    {'1': 'publish_item_id', '3': 2, '4': 1, '5': 9, '10': 'publishItemId'},
+    {'1': 'asset_id', '3': 3, '4': 1, '5': 9, '10': 'assetId'},
+    {'1': 'title', '3': 4, '4': 1, '5': 9, '10': 'title'},
+    {
+      '1': 'direct_order_count',
+      '3': 5,
+      '4': 1,
+      '5': 3,
+      '10': 'directOrderCount'
+    },
+    {
+      '1': 'attributed_revenue',
+      '3': 6,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'attributedRevenue'
+    },
+    {'1': 'views', '3': 7, '4': 1, '5': 3, '10': 'views'},
+    {'1': 'clicks', '3': 8, '4': 1, '5': 3, '10': 'clicks'},
+    {'1': 'is_views_unknown', '3': 9, '4': 1, '5': 8, '10': 'isViewsUnknown'},
+    {
+      '1': 'is_clicks_unknown',
+      '3': 10,
+      '4': 1,
+      '5': 8,
+      '10': 'isClicksUnknown'
+    },
+    {'1': 'unknown_reason', '3': 11, '4': 1, '5': 9, '10': 'unknownReason'},
+    {'1': 'rpm', '3': 12, '4': 1, '5': 9, '10': 'rpm'},
+    {'1': 'is_rpm_unknown', '3': 13, '4': 1, '5': 8, '10': 'isRpmUnknown'},
+    {'1': 'ctr', '3': 14, '4': 1, '5': 9, '10': 'ctr'},
+    {'1': 'is_ctr_unknown', '3': 15, '4': 1, '5': 8, '10': 'isCtrUnknown'},
+    {'1': 'conversion_rate', '3': 16, '4': 1, '5': 9, '10': 'conversionRate'},
+    {
+      '1': 'is_conversion_rate_unknown',
+      '3': 17,
+      '4': 1,
+      '5': 8,
+      '10': 'isConversionRateUnknown'
+    },
+    {
+      '1': 'confidence',
+      '3': 18,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.common.v1.ConfidenceBand',
+      '10': 'confidence'
+    },
+    {
+      '1': 'source_class_percentages',
+      '3': 19,
+      '4': 3,
+      '5': 11,
+      '6':
+          '.creativanta.finance.v1.ContentRevenueAttribution.SourceClassPercentagesEntry',
+      '10': 'sourceClassPercentages'
+    },
+    {'1': 'status', '3': 20, '4': 1, '5': 9, '10': 'status'},
+  ],
+  '3': [ContentRevenueAttribution_SourceClassPercentagesEntry$json],
+};
+
+@$core.Deprecated('Use contentRevenueAttributionDescriptor instead')
+const ContentRevenueAttribution_SourceClassPercentagesEntry$json = {
+  '1': 'SourceClassPercentagesEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 1, '10': 'value'},
+  ],
+  '7': {'7': true},
+};
+
+/// Descriptor for `ContentRevenueAttribution`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List contentRevenueAttributionDescriptor = $convert.base64Decode(
+    'ChlDb250ZW50UmV2ZW51ZUF0dHJpYnV0aW9uEh0KCmNvbnRlbnRfaWQYASABKAlSCWNvbnRlbn'
+    'RJZBImCg9wdWJsaXNoX2l0ZW1faWQYAiABKAlSDXB1Ymxpc2hJdGVtSWQSGQoIYXNzZXRfaWQY'
+    'AyABKAlSB2Fzc2V0SWQSFAoFdGl0bGUYBCABKAlSBXRpdGxlEiwKEmRpcmVjdF9vcmRlcl9jb3'
+    'VudBgFIAEoA1IQZGlyZWN0T3JkZXJDb3VudBJLChJhdHRyaWJ1dGVkX3JldmVudWUYBiABKAsy'
+    'HC5jcmVhdGl2YW50YS5jb21tb24udjEuTW9uZXlSEWF0dHJpYnV0ZWRSZXZlbnVlEhQKBXZpZX'
+    'dzGAcgASgDUgV2aWV3cxIWCgZjbGlja3MYCCABKANSBmNsaWNrcxIoChBpc192aWV3c191bmtu'
+    'b3duGAkgASgIUg5pc1ZpZXdzVW5rbm93bhIqChFpc19jbGlja3NfdW5rbm93bhgKIAEoCFIPaX'
+    'NDbGlja3NVbmtub3duEiUKDnVua25vd25fcmVhc29uGAsgASgJUg11bmtub3duUmVhc29uEhAK'
+    'A3JwbRgMIAEoCVIDcnBtEiQKDmlzX3JwbV91bmtub3duGA0gASgIUgxpc1JwbVVua25vd24SEA'
+    'oDY3RyGA4gASgJUgNjdHISJAoOaXNfY3RyX3Vua25vd24YDyABKAhSDGlzQ3RyVW5rbm93bhIn'
+    'Cg9jb252ZXJzaW9uX3JhdGUYECABKAlSDmNvbnZlcnNpb25SYXRlEjsKGmlzX2NvbnZlcnNpb2'
+    '5fcmF0ZV91bmtub3duGBEgASgIUhdpc0NvbnZlcnNpb25SYXRlVW5rbm93bhJFCgpjb25maWRl'
+    'bmNlGBIgASgOMiUuY3JlYXRpdmFudGEuY29tbW9uLnYxLkNvbmZpZGVuY2VCYW5kUgpjb25maW'
+    'RlbmNlEocBChhzb3VyY2VfY2xhc3NfcGVyY2VudGFnZXMYEyADKAsyTS5jcmVhdGl2YW50YS5m'
+    'aW5hbmNlLnYxLkNvbnRlbnRSZXZlbnVlQXR0cmlidXRpb24uU291cmNlQ2xhc3NQZXJjZW50YW'
+    'dlc0VudHJ5UhZzb3VyY2VDbGFzc1BlcmNlbnRhZ2VzEhYKBnN0YXR1cxgUIAEoCVIGc3RhdHVz'
+    'GkkKG1NvdXJjZUNsYXNzUGVyY2VudGFnZXNFbnRyeRIQCgNrZXkYASABKAlSA2tleRIUCgV2YW'
+    'x1ZRgCIAEoAVIFdmFsdWU6AjgB');
+
+@$core.Deprecated('Use workspaceRevenueDeduplicationSummaryDescriptor instead')
+const WorkspaceRevenueDeduplicationSummary$json = {
+  '1': 'WorkspaceRevenueDeduplicationSummary',
+  '2': [
+    {'1': 'workspace_id', '3': 1, '4': 1, '5': 9, '10': 'workspaceId'},
+    {
+      '1': 'total_orders_attributed',
+      '3': 2,
+      '4': 1,
+      '5': 3,
+      '10': 'totalOrdersAttributed'
+    },
+    {
+      '1': 'unique_orders_counted',
+      '3': 3,
+      '4': 1,
+      '5': 3,
+      '10': 'uniqueOrdersCounted'
+    },
+    {
+      '1': 'canonical_workspace_revenue',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'canonicalWorkspaceRevenue'
+    },
+    {
+      '1': 'sum_attribution_lines',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'sumAttributionLines'
+    },
+    {
+      '1': 'is_revenue_counted_once',
+      '3': 6,
+      '4': 1,
+      '5': 8,
+      '10': 'isRevenueCountedOnce'
+    },
+    {
+      '1': 'aggregate_confidence',
+      '3': 7,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.common.v1.ConfidenceBand',
+      '10': 'aggregateConfidence'
+    },
+    {
+      '1': 'includes_estimated_or_imported',
+      '3': 8,
+      '4': 1,
+      '5': 8,
+      '10': 'includesEstimatedOrImported'
+    },
+    {'1': 'caveat_message', '3': 9, '4': 1, '5': 9, '10': 'caveatMessage'},
+  ],
+};
+
+/// Descriptor for `WorkspaceRevenueDeduplicationSummary`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List workspaceRevenueDeduplicationSummaryDescriptor = $convert.base64Decode(
+    'CiRXb3Jrc3BhY2VSZXZlbnVlRGVkdXBsaWNhdGlvblN1bW1hcnkSIQoMd29ya3NwYWNlX2lkGA'
+    'EgASgJUgt3b3Jrc3BhY2VJZBI2Chd0b3RhbF9vcmRlcnNfYXR0cmlidXRlZBgCIAEoA1IVdG90'
+    'YWxPcmRlcnNBdHRyaWJ1dGVkEjIKFXVuaXF1ZV9vcmRlcnNfY291bnRlZBgDIAEoA1ITdW5pcX'
+    'VlT3JkZXJzQ291bnRlZBJcChtjYW5vbmljYWxfd29ya3NwYWNlX3JldmVudWUYBCABKAsyHC5j'
+    'cmVhdGl2YW50YS5jb21tb24udjEuTW9uZXlSGWNhbm9uaWNhbFdvcmtzcGFjZVJldmVudWUSUA'
+    'oVc3VtX2F0dHJpYnV0aW9uX2xpbmVzGAUgASgLMhwuY3JlYXRpdmFudGEuY29tbW9uLnYxLk1v'
+    'bmV5UhNzdW1BdHRyaWJ1dGlvbkxpbmVzEjUKF2lzX3JldmVudWVfY291bnRlZF9vbmNlGAYgAS'
+    'gIUhRpc1JldmVudWVDb3VudGVkT25jZRJYChRhZ2dyZWdhdGVfY29uZmlkZW5jZRgHIAEoDjIl'
+    'LmNyZWF0aXZhbnRhLmNvbW1vbi52MS5Db25maWRlbmNlQmFuZFITYWdncmVnYXRlQ29uZmlkZW'
+    '5jZRJDCh5pbmNsdWRlc19lc3RpbWF0ZWRfb3JfaW1wb3J0ZWQYCCABKAhSG2luY2x1ZGVzRXN0'
+    'aW1hdGVkT3JJbXBvcnRlZBIlCg5jYXZlYXRfbWVzc2FnZRgJIAEoCVINY2F2ZWF0TWVzc2FnZQ'
+    '==');
+
+@$core.Deprecated(
+    'Use contentRevenueServiceGetAttributionRequestDescriptor instead')
+const ContentRevenueServiceGetAttributionRequest$json = {
+  '1': 'ContentRevenueServiceGetAttributionRequest',
+  '2': [
+    {'1': 'workspace_id', '3': 1, '4': 1, '5': 9, '10': 'workspaceId'},
+    {'1': 'content_id', '3': 2, '4': 1, '5': 9, '10': 'contentId'},
+    {'1': 'period_start', '3': 3, '4': 1, '5': 9, '10': 'periodStart'},
+    {'1': 'period_end', '3': 4, '4': 1, '5': 9, '10': 'periodEnd'},
+  ],
+};
+
+/// Descriptor for `ContentRevenueServiceGetAttributionRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List
+    contentRevenueServiceGetAttributionRequestDescriptor =
+    $convert.base64Decode(
+        'CipDb250ZW50UmV2ZW51ZVNlcnZpY2VHZXRBdHRyaWJ1dGlvblJlcXVlc3QSIQoMd29ya3NwYW'
+        'NlX2lkGAEgASgJUgt3b3Jrc3BhY2VJZBIdCgpjb250ZW50X2lkGAIgASgJUgljb250ZW50SWQS'
+        'IQoMcGVyaW9kX3N0YXJ0GAMgASgJUgtwZXJpb2RTdGFydBIdCgpwZXJpb2RfZW5kGAQgASgJUg'
+        'lwZXJpb2RFbmQ=');
+
+@$core.Deprecated(
+    'Use contentRevenueServiceGetAttributionResponseDescriptor instead')
+const ContentRevenueServiceGetAttributionResponse$json = {
+  '1': 'ContentRevenueServiceGetAttributionResponse',
+  '2': [
+    {
+      '1': 'attribution',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.finance.v1.ContentRevenueAttribution',
+      '10': 'attribution'
+    },
+    {
+      '1': 'attribution_records',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.finance.v1.ContentAttributionRecord',
+      '10': 'attributionRecords'
+    },
+    {
+      '1': 'workspace_summary',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.finance.v1.WorkspaceRevenueDeduplicationSummary',
+      '10': 'workspaceSummary'
+    },
+  ],
+};
+
+/// Descriptor for `ContentRevenueServiceGetAttributionResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List
+    contentRevenueServiceGetAttributionResponseDescriptor =
+    $convert.base64Decode(
+        'CitDb250ZW50UmV2ZW51ZVNlcnZpY2VHZXRBdHRyaWJ1dGlvblJlc3BvbnNlElMKC2F0dHJpYn'
+        'V0aW9uGAEgASgLMjEuY3JlYXRpdmFudGEuZmluYW5jZS52MS5Db250ZW50UmV2ZW51ZUF0dHJp'
+        'YnV0aW9uUgthdHRyaWJ1dGlvbhJhChNhdHRyaWJ1dGlvbl9yZWNvcmRzGAIgAygLMjAuY3JlYX'
+        'RpdmFudGEuZmluYW5jZS52MS5Db250ZW50QXR0cmlidXRpb25SZWNvcmRSEmF0dHJpYnV0aW9u'
+        'UmVjb3JkcxJpChF3b3Jrc3BhY2Vfc3VtbWFyeRgDIAEoCzI8LmNyZWF0aXZhbnRhLmZpbmFuY2'
+        'UudjEuV29ya3NwYWNlUmV2ZW51ZURlZHVwbGljYXRpb25TdW1tYXJ5UhB3b3Jrc3BhY2VTdW1t'
+        'YXJ5');
+
+@$core.Deprecated('Use attributionServiceGetByContentRequestDescriptor instead')
+const AttributionServiceGetByContentRequest$json = {
+  '1': 'AttributionServiceGetByContentRequest',
+  '2': [
+    {'1': 'workspace_id', '3': 1, '4': 1, '5': 9, '10': 'workspaceId'},
+    {'1': 'publish_item_id', '3': 2, '4': 1, '5': 9, '10': 'publishItemId'},
+    {'1': 'channel_post_id', '3': 3, '4': 1, '5': 9, '10': 'channelPostId'},
+    {
+      '1': 'pagination',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Pagination',
+      '10': 'pagination'
+    },
+  ],
+};
+
+/// Descriptor for `AttributionServiceGetByContentRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List attributionServiceGetByContentRequestDescriptor =
+    $convert.base64Decode(
+        'CiVBdHRyaWJ1dGlvblNlcnZpY2VHZXRCeUNvbnRlbnRSZXF1ZXN0EiEKDHdvcmtzcGFjZV9pZB'
+        'gBIAEoCVILd29ya3NwYWNlSWQSJgoPcHVibGlzaF9pdGVtX2lkGAIgASgJUg1wdWJsaXNoSXRl'
+        'bUlkEiYKD2NoYW5uZWxfcG9zdF9pZBgDIAEoCVINY2hhbm5lbFBvc3RJZBJBCgpwYWdpbmF0aW'
+        '9uGAQgASgLMiEuY3JlYXRpdmFudGEuY29tbW9uLnYxLlBhZ2luYXRpb25SCnBhZ2luYXRpb24=');
+
+@$core.Deprecated('Use contentAttributionSummaryDescriptor instead')
+const ContentAttributionSummary$json = {
+  '1': 'ContentAttributionSummary',
+  '2': [
+    {'1': 'publish_item_id', '3': 1, '4': 1, '5': 9, '10': 'publishItemId'},
+    {'1': 'total_records', '3': 2, '4': 1, '5': 3, '10': 'totalRecords'},
+    {'1': 'unique_orders', '3': 3, '4': 1, '5': 3, '10': 'uniqueOrders'},
+    {
+      '1': 'total_attributed_revenue',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'totalAttributedRevenue'
+    },
+    {
+      '1': 'canonical_order_revenue',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'canonicalOrderRevenue'
+    },
+    {
+      '1': 'confidence',
+      '3': 6,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.common.v1.ConfidenceBand',
+      '10': 'confidence'
+    },
+    {
+      '1': 'source_class_mix_summary',
+      '3': 7,
+      '4': 1,
+      '5': 9,
+      '10': 'sourceClassMixSummary'
+    },
+  ],
+};
+
+/// Descriptor for `ContentAttributionSummary`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List contentAttributionSummaryDescriptor = $convert.base64Decode(
+    'ChlDb250ZW50QXR0cmlidXRpb25TdW1tYXJ5EiYKD3B1Ymxpc2hfaXRlbV9pZBgBIAEoCVINcH'
+    'VibGlzaEl0ZW1JZBIjCg10b3RhbF9yZWNvcmRzGAIgASgDUgx0b3RhbFJlY29yZHMSIwoNdW5p'
+    'cXVlX29yZGVycxgDIAEoA1IMdW5pcXVlT3JkZXJzElYKGHRvdGFsX2F0dHJpYnV0ZWRfcmV2ZW'
+    '51ZRgEIAEoCzIcLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5Nb25leVIWdG90YWxBdHRyaWJ1dGVk'
+    'UmV2ZW51ZRJUChdjYW5vbmljYWxfb3JkZXJfcmV2ZW51ZRgFIAEoCzIcLmNyZWF0aXZhbnRhLm'
+    'NvbW1vbi52MS5Nb25leVIVY2Fub25pY2FsT3JkZXJSZXZlbnVlEkUKCmNvbmZpZGVuY2UYBiAB'
+    'KA4yJS5jcmVhdGl2YW50YS5jb21tb24udjEuQ29uZmlkZW5jZUJhbmRSCmNvbmZpZGVuY2USNw'
+    'oYc291cmNlX2NsYXNzX21peF9zdW1tYXJ5GAcgASgJUhVzb3VyY2VDbGFzc01peFN1bW1hcnk=');
+
+@$core
+    .Deprecated('Use attributionServiceGetByContentResponseDescriptor instead')
+const AttributionServiceGetByContentResponse$json = {
+  '1': 'AttributionServiceGetByContentResponse',
+  '2': [
+    {
+      '1': 'records',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.finance.v1.ContentAttributionRecord',
+      '10': 'records'
+    },
+    {
+      '1': 'summary',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.finance.v1.ContentAttributionSummary',
+      '10': 'summary'
+    },
+    {
+      '1': 'pagination',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.PaginatedResponse',
+      '10': 'pagination'
+    },
+  ],
+};
+
+/// Descriptor for `AttributionServiceGetByContentResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List attributionServiceGetByContentResponseDescriptor =
+    $convert.base64Decode(
+        'CiZBdHRyaWJ1dGlvblNlcnZpY2VHZXRCeUNvbnRlbnRSZXNwb25zZRJKCgdyZWNvcmRzGAEgAy'
+        'gLMjAuY3JlYXRpdmFudGEuZmluYW5jZS52MS5Db250ZW50QXR0cmlidXRpb25SZWNvcmRSB3Jl'
+        'Y29yZHMSSwoHc3VtbWFyeRgCIAEoCzIxLmNyZWF0aXZhbnRhLmZpbmFuY2UudjEuQ29udGVudE'
+        'F0dHJpYnV0aW9uU3VtbWFyeVIHc3VtbWFyeRJICgpwYWdpbmF0aW9uGAMgASgLMiguY3JlYXRp'
+        'dmFudGEuY29tbW9uLnYxLlBhZ2luYXRlZFJlc3BvbnNlUgpwYWdpbmF0aW9u');
+
+@$core.Deprecated(
+    'Use attributionServiceRecordAttributionRequestDescriptor instead')
+const AttributionServiceRecordAttributionRequest$json = {
+  '1': 'AttributionServiceRecordAttributionRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'workspace_id', '3': 2, '4': 1, '5': 9, '10': 'workspaceId'},
+    {'1': 'publish_item_id', '3': 3, '4': 1, '5': 9, '10': 'publishItemId'},
+    {'1': 'channel_post_id', '3': 4, '4': 1, '5': 9, '10': 'channelPostId'},
+    {'1': 'order_id', '3': 5, '4': 1, '5': 9, '10': 'orderId'},
+    {'1': 'attribution_type', '3': 6, '4': 1, '5': 9, '10': 'attributionType'},
+    {
+      '1': 'revenue_attributed',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'revenueAttributed'
+    },
+    {
+      '1': 'source_class',
+      '3': 8,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.common.v1.SourceClass',
+      '10': 'sourceClass'
+    },
+    {
+      '1': 'confidence',
+      '3': 9,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.common.v1.ConfidenceBand',
+      '10': 'confidence'
+    },
+    {'1': 'utm_source', '3': 10, '4': 1, '5': 9, '10': 'utmSource'},
+    {'1': 'utm_medium', '3': 11, '4': 1, '5': 9, '10': 'utmMedium'},
+    {'1': 'utm_campaign', '3': 12, '4': 1, '5': 9, '10': 'utmCampaign'},
+  ],
+};
+
+/// Descriptor for `AttributionServiceRecordAttributionRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List attributionServiceRecordAttributionRequestDescriptor = $convert.base64Decode(
+    'CipBdHRyaWJ1dGlvblNlcnZpY2VSZWNvcmRBdHRyaWJ1dGlvblJlcXVlc3QSPwoHY29udGV4dB'
+    'gBIAEoCzIlLmNyZWF0aXZhbnRhLmNvbW1vbi52MS5Db21tYW5kQ29udGV4dFIHY29udGV4dBIh'
+    'Cgx3b3Jrc3BhY2VfaWQYAiABKAlSC3dvcmtzcGFjZUlkEiYKD3B1Ymxpc2hfaXRlbV9pZBgDIA'
+    'EoCVINcHVibGlzaEl0ZW1JZBImCg9jaGFubmVsX3Bvc3RfaWQYBCABKAlSDWNoYW5uZWxQb3N0'
+    'SWQSGQoIb3JkZXJfaWQYBSABKAlSB29yZGVySWQSKQoQYXR0cmlidXRpb25fdHlwZRgGIAEoCV'
+    'IPYXR0cmlidXRpb25UeXBlEksKEnJldmVudWVfYXR0cmlidXRlZBgHIAEoCzIcLmNyZWF0aXZh'
+    'bnRhLmNvbW1vbi52MS5Nb25leVIRcmV2ZW51ZUF0dHJpYnV0ZWQSRQoMc291cmNlX2NsYXNzGA'
+    'ggASgOMiIuY3JlYXRpdmFudGEuY29tbW9uLnYxLlNvdXJjZUNsYXNzUgtzb3VyY2VDbGFzcxJF'
+    'Cgpjb25maWRlbmNlGAkgASgOMiUuY3JlYXRpdmFudGEuY29tbW9uLnYxLkNvbmZpZGVuY2VCYW'
+    '5kUgpjb25maWRlbmNlEh0KCnV0bV9zb3VyY2UYCiABKAlSCXV0bVNvdXJjZRIdCgp1dG1fbWVk'
+    'aXVtGAsgASgJUgl1dG1NZWRpdW0SIQoMdXRtX2NhbXBhaWduGAwgASgJUgt1dG1DYW1wYWlnbg'
+    '==');
+
+@$core.Deprecated(
+    'Use attributionServiceRecordAttributionResponseDescriptor instead')
+const AttributionServiceRecordAttributionResponse$json = {
+  '1': 'AttributionServiceRecordAttributionResponse',
+  '2': [
+    {
+      '1': 'record',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.finance.v1.ContentAttributionRecord',
+      '10': 'record'
+    },
+    {'1': 'order_recognized', '3': 2, '4': 1, '5': 8, '10': 'orderRecognized'},
+    {
+      '1': 'order_total_revenue',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'orderTotalRevenue'
+    },
+    {
+      '1': 'order_allocated_revenue',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'orderAllocatedRevenue'
+    },
+    {
+      '1': 'order_remaining_capacity',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'orderRemainingCapacity'
+    },
+  ],
+};
+
+/// Descriptor for `AttributionServiceRecordAttributionResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List attributionServiceRecordAttributionResponseDescriptor = $convert.base64Decode(
+    'CitBdHRyaWJ1dGlvblNlcnZpY2VSZWNvcmRBdHRyaWJ1dGlvblJlc3BvbnNlEkgKBnJlY29yZB'
+    'gBIAEoCzIwLmNyZWF0aXZhbnRhLmZpbmFuY2UudjEuQ29udGVudEF0dHJpYnV0aW9uUmVjb3Jk'
+    'UgZyZWNvcmQSKQoQb3JkZXJfcmVjb2duaXplZBgCIAEoCFIPb3JkZXJSZWNvZ25pemVkEkwKE2'
+    '9yZGVyX3RvdGFsX3JldmVudWUYAyABKAsyHC5jcmVhdGl2YW50YS5jb21tb24udjEuTW9uZXlS'
+    'EW9yZGVyVG90YWxSZXZlbnVlElQKF29yZGVyX2FsbG9jYXRlZF9yZXZlbnVlGAQgASgLMhwuY3'
+    'JlYXRpdmFudGEuY29tbW9uLnYxLk1vbmV5UhVvcmRlckFsbG9jYXRlZFJldmVudWUSVgoYb3Jk'
+    'ZXJfcmVtYWluaW5nX2NhcGFjaXR5GAUgASgLMhwuY3JlYXRpdmFudGEuY29tbW9uLnYxLk1vbm'
+    'V5UhZvcmRlclJlbWFpbmluZ0NhcGFjaXR5');
