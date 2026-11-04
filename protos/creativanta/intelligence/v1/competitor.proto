@@ -22,6 +22,14 @@ enum AlertMetric {
   ALERT_METRIC_OBSERVED_PRICE = 3;
 }
 
+// MonitoringSourceStatus indicates source connection health and collection path per M03.
+enum MonitoringSourceStatus {
+  MONITORING_SOURCE_STATUS_UNSPECIFIED = 0;
+  MONITORING_SOURCE_STATUS_ACTIVE = 1;
+  MONITORING_SOURCE_STATUS_PAUSED = 2;
+  MONITORING_SOURCE_STATUS_IMPORT_REQUIRED = 3;
+}
+
 // AlertConfig defines per-competitor alert subscriptions per database_schema.md §27.3.
 message AlertConfig {
   bool enabled = 1;
@@ -29,6 +37,12 @@ message AlertConfig {
   double threshold = 3;
   AlertDirection direction = 4;
   int32 min_interval_minutes = 5;
+  MonitoringSourceStatus source_status = 6;
+  string source_status_reason = 7;
+  google.protobuf.Timestamp last_alert_at = 8;
+  string last_alert_snapshot_id = 9;
+  bool recovery_latched = 10;
+  bool insufficient_data = 11;
 }
 
 // CompetitorEntity represents a tracked competitor entity per database_schema.md §5.6.

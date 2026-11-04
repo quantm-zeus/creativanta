@@ -454,3 +454,128 @@ export function filterAndSearchCompetitors(
     return true;
   });
 }
+
+// ----------------------------------------------------------------------------
+// P8-07: Continuous Monitoring Alerts & Source Status (Acceptance Target 1)
+// ----------------------------------------------------------------------------
+
+export type MonitoringSourceStatus = 'ACTIVE' | 'PAUSED' | 'IMPORT_REQUIRED';
+
+export interface ContinuousAlertConfig {
+  competitorId: string;
+  metric: string;
+  thresholdPercent: number;
+  sourceStatus: MonitoringSourceStatus;
+  sourceStatusReason?: string;
+  recoveryLatched: boolean;
+  lastAlertAt?: string;
+  lastAlertSnapshotId?: string;
+  insufficientData: boolean;
+}
+
+export interface ContinuousAlertEvaluationResult {
+  alertTriggered: boolean;
+  sourceStatus: MonitoringSourceStatus;
+  sourceStatusReason?: string;
+  recoveryLatched: boolean;
+  insufficientData: boolean;
+  changePercent: number;
+  reason?: string;
+  newSnapshotId?: string;
+}
+
+/**
+ * Evaluates continuous monitoring alert for competitor metric.
+ * Acceptance Target 1:
+ * - When source access is unavailable: pauses monitoring and routes to import path,
+ *   preserving historical snapshots without emitting false drops.
+ * - When denominator is missing or zero: marks insufficient data instead of false alarm.
+ * - Deduplicates on identical snapshot.
+ * - Latches drop notification until recovery back above threshold.
+ */
+export function evaluateContinuousMonitoringAlert(
+  config: ContinuousAlertConfig,
+  previousValue: number | null | undefined,
+  currentValue: number | null | undefined,
+  currentSnapshotId: string,
+  sourceAvailable: boolean
+): ContinuousAlertEvaluationResult {
+  // Acceptance Target 1: No source access -> paused/import path
+  if (!sourceAvailable) {
+    return {
+      alertTriggered: false,
+      sourceStatus: 'PAUSED',
+      sourceStatusReason: 'Source access unavailable; monitoring paused until reconnected or manual export imported',
+      recoveryLatched: config.recoveryLatched,
+      insufficientData: false,
+      changePercent: 0,
+      reason: 'Monitoring paused due to missing platform connector access'
+    };
+  }
+
+  // Missing or zero denominator check
+  if (
+    previousValue === null ||
+    previousValue === undefined ||
+    previousValue <= 0 ||
+    currentValue === null ||
+    currentValue === undefined
+  ) {
+    return {
+      alertTriggered: false,
+      sourceStatus: 'ACTIVE',
+      recoveryLatched: config.recoveryLatched,
+      insufficientData: true,
+      changePercent: 0,
+      reason: 'Insufficient data for denominator; alert suppressed'
+    };
+  }
+
+  // Deduplication check: identical snapshot
+  if (config.lastAlertSnapshotId && config.lastAlertSnapshotId === currentSnapshotId) {
+    return {
+      alertTriggered: false,
+      sourceStatus: 'ACTIVE',
+      recoveryLatched: config.recoveryLatched,
+      insufficientData: false,
+      changePercent: 0,
+      reason: 'Alert already recorded for this snapshot'
+    };
+  }
+
+  const changePercent = ((currentValue - previousValue) / previousValue) * 100;
+  const isDrop = changePercent <= -config.thresholdPercent;
+
+  if (isDrop) {
+    if (config.recoveryLatched) {
+      return {
+        alertTriggered: false,
+        sourceStatus: 'ACTIVE',
+        recoveryLatched: true,
+        insufficientData: false,
+        changePercent: Math.round(changePercent * 100) / 100,
+        reason: 'Alert suppressed by recovery latch'
+      };
+    }
+
+    return {
+      alertTriggered: true,
+      sourceStatus: 'ACTIVE',
+      recoveryLatched: true,
+      insufficientData: false,
+      changePercent: Math.round(changePercent * 100) / 100,
+      reason: `Significant metric drop detected: ${changePercent.toFixed(1)}% (threshold: ${config.thresholdPercent}%)`,
+      newSnapshotId: currentSnapshotId
+    };
+  }
+
+  // Metric recovered above threshold: reset latch
+  return {
+    alertTriggered: false,
+    sourceStatus: 'ACTIVE',
+    recoveryLatched: false,
+    insufficientData: false,
+    changePercent: Math.round(changePercent * 100) / 100,
+    reason: 'Metric within acceptable range'
+  };
+}

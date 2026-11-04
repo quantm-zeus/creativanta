@@ -163,3 +163,121 @@ String formatCompactNumber(int number) {
   }
   return number.toString();
 }
+
+// ----------------------------------------------------------------------------
+// P8-07: Continuous Monitoring Alerts & Source Status (Acceptance Target 1)
+// ----------------------------------------------------------------------------
+
+enum MobileMonitoringSourceStatus {
+  active,
+  paused,
+  importRequired,
+}
+
+class ContinuousMonitoringAlertEvaluation {
+  const ContinuousMonitoringAlertEvaluation({
+    required this.alertTriggered,
+    required this.sourceStatus,
+    this.sourceStatusReason,
+    required this.recoveryLatched,
+    required this.insufficientData,
+    required this.changePercent,
+    this.reason,
+    this.newSnapshotId,
+  });
+
+  final bool alertTriggered;
+  final MobileMonitoringSourceStatus sourceStatus;
+  final String? sourceStatusReason;
+  final bool recoveryLatched;
+  final bool insufficientData;
+  final double changePercent;
+  final String? reason;
+  final String? newSnapshotId;
+}
+
+/// Evaluates competitor monitoring alert continuous check.
+/// Target 1: No source access -> paused/import path, preserving snapshots without false alarms.
+ContinuousMonitoringAlertEvaluation evaluateContinuousAlert({
+  required String competitorId,
+  required double thresholdPercent,
+  required double? previousValue,
+  required double? currentValue,
+  required String currentSnapshotId,
+  String? lastAlertSnapshotId,
+  bool recoveryLatched = false,
+  required bool sourceAvailable,
+}) {
+  // Target 1: No source access -> paused/import path
+  if (!sourceAvailable) {
+    return ContinuousMonitoringAlertEvaluation(
+      alertTriggered: false,
+      sourceStatus: MobileMonitoringSourceStatus.paused,
+      sourceStatusReason: 'Source access unavailable; monitoring paused until reconnected or manual export imported',
+      recoveryLatched: recoveryLatched,
+      insufficientData: false,
+      changePercent: 0.0,
+      reason: 'Monitoring paused due to missing source access',
+    );
+  }
+
+  // Missing or zero denominator check
+  if (previousValue == null || previousValue <= 0.0 || currentValue == null) {
+    return ContinuousMonitoringAlertEvaluation(
+      alertTriggered: false,
+      sourceStatus: MobileMonitoringSourceStatus.active,
+      recoveryLatched: recoveryLatched,
+      insufficientData: true,
+      changePercent: 0.0,
+      reason: 'Insufficient data for denominator; alert suppressed',
+    );
+  }
+
+  // Deduplication check on identical snapshot
+  if (lastAlertSnapshotId != null && lastAlertSnapshotId == currentSnapshotId) {
+    return ContinuousMonitoringAlertEvaluation(
+      alertTriggered: false,
+      sourceStatus: MobileMonitoringSourceStatus.active,
+      recoveryLatched: recoveryLatched,
+      insufficientData: false,
+      changePercent: 0.0,
+      reason: 'Alert already recorded for this snapshot',
+    );
+  }
+
+  final changePercent = ((currentValue - previousValue) / previousValue) * 100.0;
+  final isDrop = changePercent <= -thresholdPercent;
+
+  if (isDrop) {
+    if (recoveryLatched) {
+      return ContinuousMonitoringAlertEvaluation(
+        alertTriggered: false,
+        sourceStatus: MobileMonitoringSourceStatus.active,
+        recoveryLatched: true,
+        insufficientData: false,
+        changePercent: changePercent,
+        reason: 'Alert suppressed by recovery latch',
+      );
+    }
+
+    return ContinuousMonitoringAlertEvaluation(
+      alertTriggered: true,
+      sourceStatus: MobileMonitoringSourceStatus.active,
+      recoveryLatched: true,
+      insufficientData: false,
+      changePercent: changePercent,
+      reason: 'Significant metric drop detected: ${changePercent.toStringAsFixed(1)}%',
+      newSnapshotId: currentSnapshotId,
+    );
+  }
+
+  // Recovered back above threshold
+  return ContinuousMonitoringAlertEvaluation(
+    alertTriggered: false,
+    sourceStatus: MobileMonitoringSourceStatus.active,
+    recoveryLatched: false,
+    insufficientData: false,
+    changePercent: changePercent,
+    reason: 'Metric within acceptable range',
+  );
+}

@@ -4757,12 +4757,193 @@ class MediaKitServiceExportResponse extends $pb.GeneratedMessage {
   void clearFileName() => $_clearField(2);
 }
 
+/// Public rate card item for public directory profile snapshot per database_schema.md §27.2.
+class PublicRateItem extends $pb.GeneratedMessage {
+  factory PublicRateItem({
+    $core.String? serviceType,
+    $core.String? amount,
+    $core.String? currency,
+  }) {
+    final result = PublicRateItem._();
+    if (serviceType != null) result.serviceType = serviceType;
+    if (amount != null) result.amount = amount;
+    if (currency != null) result.currency = currency;
+    return result;
+  }
+
+  PublicRateItem._();
+
+  factory PublicRateItem.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PublicRateItem()..mergeFromBuffer(data, registry);
+  factory PublicRateItem.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PublicRateItem()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PublicRateItem',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.commerce.v1'),
+      createEmptyInstance: PublicRateItem.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'serviceType')
+    ..aOS(2, _omitFieldNames ? '' : 'amount')
+    ..aOS(3, _omitFieldNames ? '' : 'currency')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PublicRateItem clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PublicRateItem copyWith(void Function(PublicRateItem) updates) =>
+      super.copyWith((message) => updates(message as PublicRateItem))
+          as PublicRateItem;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use PublicRateItem() / PublicRateItem.new instead')
+  static PublicRateItem create() => PublicRateItem._();
+  static $pb.GeneratedMessage $_createMessage() => PublicRateItem._();
+  @$core.override
+  PublicRateItem createEmptyInstance() => PublicRateItem._();
+  @$core.pragma('dart2js:noInline')
+  static PublicRateItem getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<PublicRateItem>(
+          PublicRateItem.$_createMessage);
+  static PublicRateItem? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get serviceType => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set serviceType($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasServiceType() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearServiceType() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get amount => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set amount($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAmount() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAmount() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get currency => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set currency($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCurrency() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCurrency() => $_clearField(3);
+}
+
+/// Consented public creator profile snapshot per database_schema.md §27.2.
+class PublicCreatorProfile extends $pb.GeneratedMessage {
+  factory PublicCreatorProfile({
+    $core.String? displayName,
+    $core.String? bio,
+    $core.Iterable<$core.String>? categories,
+    $core.Iterable<$core.String>? languages,
+    $core.Iterable<$core.String>? portfolioUrls,
+    $core.Iterable<PublicRateItem>? publicRates,
+  }) {
+    final result = PublicCreatorProfile._();
+    if (displayName != null) result.displayName = displayName;
+    if (bio != null) result.bio = bio;
+    if (categories != null) result.categories.addAll(categories);
+    if (languages != null) result.languages.addAll(languages);
+    if (portfolioUrls != null) result.portfolioUrls.addAll(portfolioUrls);
+    if (publicRates != null) result.publicRates.addAll(publicRates);
+    return result;
+  }
+
+  PublicCreatorProfile._();
+
+  factory PublicCreatorProfile.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PublicCreatorProfile()..mergeFromBuffer(data, registry);
+  factory PublicCreatorProfile.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PublicCreatorProfile()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PublicCreatorProfile',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.commerce.v1'),
+      createEmptyInstance: PublicCreatorProfile.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'displayName')
+    ..aOS(2, _omitFieldNames ? '' : 'bio')
+    ..pPS(3, _omitFieldNames ? '' : 'categories')
+    ..pPS(4, _omitFieldNames ? '' : 'languages')
+    ..pPS(5, _omitFieldNames ? '' : 'portfolioUrls')
+    ..pPM<PublicRateItem>(6, _omitFieldNames ? '' : 'publicRates',
+        subBuilder: PublicRateItem.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PublicCreatorProfile clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PublicCreatorProfile copyWith(void Function(PublicCreatorProfile) updates) =>
+      super.copyWith((message) => updates(message as PublicCreatorProfile))
+          as PublicCreatorProfile;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PublicCreatorProfile() / PublicCreatorProfile.new instead')
+  static PublicCreatorProfile create() => PublicCreatorProfile._();
+  static $pb.GeneratedMessage $_createMessage() => PublicCreatorProfile._();
+  @$core.override
+  PublicCreatorProfile createEmptyInstance() => PublicCreatorProfile._();
+  @$core.pragma('dart2js:noInline')
+  static PublicCreatorProfile getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PublicCreatorProfile>(
+          PublicCreatorProfile.$_createMessage);
+  static PublicCreatorProfile? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get displayName => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set displayName($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDisplayName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDisplayName() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get bio => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set bio($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasBio() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearBio() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<$core.String> get categories => $_getList(2);
+
+  @$pb.TagNumber(4)
+  $pb.PbList<$core.String> get languages => $_getList(3);
+
+  @$pb.TagNumber(5)
+  $pb.PbList<$core.String> get portfolioUrls => $_getList(4);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<PublicRateItem> get publicRates => $_getList(5);
+}
+
 class SetDirectoryProfileRequest extends $pb.GeneratedMessage {
   factory SetDirectoryProfileRequest({
     $core.String? workspaceId,
     $core.String? mediaKitId,
     $core.bool? directoryOptIn,
     $core.String? directoryProfileJson,
+    PublicCreatorProfile? profile,
   }) {
     final result = SetDirectoryProfileRequest._();
     if (workspaceId != null) result.workspaceId = workspaceId;
@@ -4770,6 +4951,7 @@ class SetDirectoryProfileRequest extends $pb.GeneratedMessage {
     if (directoryOptIn != null) result.directoryOptIn = directoryOptIn;
     if (directoryProfileJson != null)
       result.directoryProfileJson = directoryProfileJson;
+    if (profile != null) result.profile = profile;
     return result;
   }
 
@@ -4791,6 +4973,8 @@ class SetDirectoryProfileRequest extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'mediaKitId')
     ..aOB(3, _omitFieldNames ? '' : 'directoryOptIn')
     ..aOS(4, _omitFieldNames ? '' : 'directoryProfileJson')
+    ..aOM<PublicCreatorProfile>(5, _omitFieldNames ? '' : 'profile',
+        subBuilder: PublicCreatorProfile.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -4855,14 +5039,29 @@ class SetDirectoryProfileRequest extends $pb.GeneratedMessage {
   $core.bool hasDirectoryProfileJson() => $_has(3);
   @$pb.TagNumber(4)
   void clearDirectoryProfileJson() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  PublicCreatorProfile get profile => $_getN(4);
+  @$pb.TagNumber(5)
+  set profile(PublicCreatorProfile value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasProfile() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearProfile() => $_clearField(5);
+  @$pb.TagNumber(5)
+  PublicCreatorProfile ensureProfile() => $_ensure(4);
 }
 
 class SetDirectoryProfileResponse extends $pb.GeneratedMessage {
   factory SetDirectoryProfileResponse({
     MediaKit? mediaKit,
+    $core.String? mediaKitId,
+    MediaKitDirectoryStatus? directoryStatus,
   }) {
     final result = SetDirectoryProfileResponse._();
     if (mediaKit != null) result.mediaKit = mediaKit;
+    if (mediaKitId != null) result.mediaKitId = mediaKitId;
+    if (directoryStatus != null) result.directoryStatus = directoryStatus;
     return result;
   }
 
@@ -4882,6 +5081,9 @@ class SetDirectoryProfileResponse extends $pb.GeneratedMessage {
       createEmptyInstance: SetDirectoryProfileResponse.$_createMessage)
     ..aOM<MediaKit>(1, _omitFieldNames ? '' : 'mediaKit',
         subBuilder: MediaKit.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'mediaKitId')
+    ..aE<MediaKitDirectoryStatus>(3, _omitFieldNames ? '' : 'directoryStatus',
+        enumValues: MediaKitDirectoryStatus.values)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -4922,6 +5124,24 @@ class SetDirectoryProfileResponse extends $pb.GeneratedMessage {
   void clearMediaKit() => $_clearField(1);
   @$pb.TagNumber(1)
   MediaKit ensureMediaKit() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get mediaKitId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set mediaKitId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasMediaKitId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearMediaKitId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  MediaKitDirectoryStatus get directoryStatus => $_getN(2);
+  @$pb.TagNumber(3)
+  set directoryStatus(MediaKitDirectoryStatus value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDirectoryStatus() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDirectoryStatus() => $_clearField(3);
 }
 
 class RateCardServiceCreateRequest extends $pb.GeneratedMessage {
@@ -6422,6 +6642,8 @@ class BrandDealServiceUpdateStatusRequest extends $pb.GeneratedMessage {
     BrandDealStatus? targetStatus,
     $core.String? cancellationReason,
     $core.bool? requiresFinancialReversal,
+    $1.Timestamp? expectedUpdatedAt,
+    $core.String? idempotencyKey,
   }) {
     final result = BrandDealServiceUpdateStatusRequest._();
     if (workspaceId != null) result.workspaceId = workspaceId;
@@ -6431,6 +6653,8 @@ class BrandDealServiceUpdateStatusRequest extends $pb.GeneratedMessage {
       result.cancellationReason = cancellationReason;
     if (requiresFinancialReversal != null)
       result.requiresFinancialReversal = requiresFinancialReversal;
+    if (expectedUpdatedAt != null) result.expectedUpdatedAt = expectedUpdatedAt;
+    if (idempotencyKey != null) result.idempotencyKey = idempotencyKey;
     return result;
   }
 
@@ -6455,6 +6679,9 @@ class BrandDealServiceUpdateStatusRequest extends $pb.GeneratedMessage {
         enumValues: BrandDealStatus.values)
     ..aOS(4, _omitFieldNames ? '' : 'cancellationReason')
     ..aOB(5, _omitFieldNames ? '' : 'requiresFinancialReversal')
+    ..aOM<$1.Timestamp>(6, _omitFieldNames ? '' : 'expectedUpdatedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOS(7, _omitFieldNames ? '' : 'idempotencyKey')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -6530,6 +6757,26 @@ class BrandDealServiceUpdateStatusRequest extends $pb.GeneratedMessage {
   $core.bool hasRequiresFinancialReversal() => $_has(4);
   @$pb.TagNumber(5)
   void clearRequiresFinancialReversal() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $1.Timestamp get expectedUpdatedAt => $_getN(5);
+  @$pb.TagNumber(6)
+  set expectedUpdatedAt($1.Timestamp value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasExpectedUpdatedAt() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearExpectedUpdatedAt() => $_clearField(6);
+  @$pb.TagNumber(6)
+  $1.Timestamp ensureExpectedUpdatedAt() => $_ensure(5);
+
+  @$pb.TagNumber(7)
+  $core.String get idempotencyKey => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set idempotencyKey($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasIdempotencyKey() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearIdempotencyKey() => $_clearField(7);
 }
 
 class BrandDealServiceUpdateStatusResponse extends $pb.GeneratedMessage {
@@ -7638,12 +7885,20 @@ class ContractTemplate extends $pb.GeneratedMessage {
     $core.String? title,
     $core.String? description,
     $core.String? defaultTerms,
+    $core.String? version,
+    $core.String? sourceArticleId,
+    $core.String? bodyMarkdown,
+    $core.String? disclaimer,
   }) {
     final result = ContractTemplate._();
     if (templateId != null) result.templateId = templateId;
     if (title != null) result.title = title;
     if (description != null) result.description = description;
     if (defaultTerms != null) result.defaultTerms = defaultTerms;
+    if (version != null) result.version = version;
+    if (sourceArticleId != null) result.sourceArticleId = sourceArticleId;
+    if (bodyMarkdown != null) result.bodyMarkdown = bodyMarkdown;
+    if (disclaimer != null) result.disclaimer = disclaimer;
     return result;
   }
 
@@ -7665,6 +7920,10 @@ class ContractTemplate extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'title')
     ..aOS(3, _omitFieldNames ? '' : 'description')
     ..aOS(4, _omitFieldNames ? '' : 'defaultTerms')
+    ..aOS(5, _omitFieldNames ? '' : 'version')
+    ..aOS(6, _omitFieldNames ? '' : 'sourceArticleId')
+    ..aOS(7, _omitFieldNames ? '' : 'bodyMarkdown')
+    ..aOS(8, _omitFieldNames ? '' : 'disclaimer')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -7724,14 +7983,52 @@ class ContractTemplate extends $pb.GeneratedMessage {
   $core.bool hasDefaultTerms() => $_has(3);
   @$pb.TagNumber(4)
   void clearDefaultTerms() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get version => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set version($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasVersion() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearVersion() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get sourceArticleId => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set sourceArticleId($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSourceArticleId() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSourceArticleId() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get bodyMarkdown => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set bodyMarkdown($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasBodyMarkdown() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearBodyMarkdown() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get disclaimer => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set disclaimer($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasDisclaimer() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearDisclaimer() => $_clearField(8);
 }
 
 class ListContractTemplatesResponse extends $pb.GeneratedMessage {
   factory ListContractTemplatesResponse({
     $core.Iterable<ContractTemplate>? templates,
+    $core.String? disclaimer,
   }) {
     final result = ListContractTemplatesResponse._();
     if (templates != null) result.templates.addAll(templates);
+    if (disclaimer != null) result.disclaimer = disclaimer;
     return result;
   }
 
@@ -7751,6 +8048,7 @@ class ListContractTemplatesResponse extends $pb.GeneratedMessage {
       createEmptyInstance: ListContractTemplatesResponse.$_createMessage)
     ..pPM<ContractTemplate>(1, _omitFieldNames ? '' : 'templates',
         subBuilder: ContractTemplate.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'disclaimer')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -7783,6 +8081,15 @@ class ListContractTemplatesResponse extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(1)
   $pb.PbList<ContractTemplate> get templates => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $core.String get disclaimer => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set disclaimer($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasDisclaimer() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearDisclaimer() => $_clearField(2);
 }
 
 class AttachContractRequest extends $pb.GeneratedMessage {
@@ -8881,6 +9188,9 @@ class SponsorInquiryServiceSubmitRequest extends $pb.GeneratedMessage {
     $core.String? contactEmail,
     $core.String? message,
     $core.double? proposedBudget,
+    $core.String? mediaKitId,
+    $core.String? challengeToken,
+    $core.String? idempotencyKey,
   }) {
     final result = SponsorInquiryServiceSubmitRequest._();
     if (workspaceId != null) result.workspaceId = workspaceId;
@@ -8888,6 +9198,9 @@ class SponsorInquiryServiceSubmitRequest extends $pb.GeneratedMessage {
     if (contactEmail != null) result.contactEmail = contactEmail;
     if (message != null) result.message = message;
     if (proposedBudget != null) result.proposedBudget = proposedBudget;
+    if (mediaKitId != null) result.mediaKitId = mediaKitId;
+    if (challengeToken != null) result.challengeToken = challengeToken;
+    if (idempotencyKey != null) result.idempotencyKey = idempotencyKey;
     return result;
   }
 
@@ -8911,6 +9224,9 @@ class SponsorInquiryServiceSubmitRequest extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'contactEmail')
     ..aOS(4, _omitFieldNames ? '' : 'message')
     ..aD(5, _omitFieldNames ? '' : 'proposedBudget')
+    ..aOS(6, _omitFieldNames ? '' : 'mediaKitId')
+    ..aOS(7, _omitFieldNames ? '' : 'challengeToken')
+    ..aOS(8, _omitFieldNames ? '' : 'idempotencyKey')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -8985,16 +9301,47 @@ class SponsorInquiryServiceSubmitRequest extends $pb.GeneratedMessage {
   $core.bool hasProposedBudget() => $_has(4);
   @$pb.TagNumber(5)
   void clearProposedBudget() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get mediaKitId => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set mediaKitId($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasMediaKitId() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearMediaKitId() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get challengeToken => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set challengeToken($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasChallengeToken() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearChallengeToken() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get idempotencyKey => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set idempotencyKey($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasIdempotencyKey() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearIdempotencyKey() => $_clearField(8);
 }
 
 class SponsorInquiryServiceSubmitResponse extends $pb.GeneratedMessage {
   factory SponsorInquiryServiceSubmitResponse({
     $core.bool? accepted,
     $core.String? inquiryId,
+    $core.String? submissionReceipt,
+    $core.String? status,
   }) {
     final result = SponsorInquiryServiceSubmitResponse._();
     if (accepted != null) result.accepted = accepted;
     if (inquiryId != null) result.inquiryId = inquiryId;
+    if (submissionReceipt != null) result.submissionReceipt = submissionReceipt;
+    if (status != null) result.status = status;
     return result;
   }
 
@@ -9015,6 +9362,8 @@ class SponsorInquiryServiceSubmitResponse extends $pb.GeneratedMessage {
       createEmptyInstance: SponsorInquiryServiceSubmitResponse.$_createMessage)
     ..aOB(1, _omitFieldNames ? '' : 'accepted')
     ..aOS(2, _omitFieldNames ? '' : 'inquiryId')
+    ..aOS(3, _omitFieldNames ? '' : 'submissionReceipt')
+    ..aOS(4, _omitFieldNames ? '' : 'status')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -9063,6 +9412,24 @@ class SponsorInquiryServiceSubmitResponse extends $pb.GeneratedMessage {
   $core.bool hasInquiryId() => $_has(1);
   @$pb.TagNumber(2)
   void clearInquiryId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get submissionReceipt => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set submissionReceipt($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSubmissionReceipt() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSubmissionReceipt() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get status => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set status($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasStatus() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearStatus() => $_clearField(4);
 }
 
 class GetPerContentRequest extends $pb.GeneratedMessage {
@@ -10001,6 +10368,429 @@ class ExportTaxReportResponse extends $pb.GeneratedMessage {
   $core.bool hasFileName() => $_has(2);
   @$pb.TagNumber(3)
   void clearFileName() => $_clearField(3);
+}
+
+class CreatorDirectoryEntry extends $pb.GeneratedMessage {
+  factory CreatorDirectoryEntry({
+    $core.String? mediaKitId,
+    PublicCreatorProfile? profile,
+    $1.Timestamp? publishedAt,
+  }) {
+    final result = CreatorDirectoryEntry._();
+    if (mediaKitId != null) result.mediaKitId = mediaKitId;
+    if (profile != null) result.profile = profile;
+    if (publishedAt != null) result.publishedAt = publishedAt;
+    return result;
+  }
+
+  CreatorDirectoryEntry._();
+
+  factory CreatorDirectoryEntry.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CreatorDirectoryEntry()..mergeFromBuffer(data, registry);
+  factory CreatorDirectoryEntry.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CreatorDirectoryEntry()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CreatorDirectoryEntry',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.commerce.v1'),
+      createEmptyInstance: CreatorDirectoryEntry.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'mediaKitId')
+    ..aOM<PublicCreatorProfile>(2, _omitFieldNames ? '' : 'profile',
+        subBuilder: PublicCreatorProfile.$_createMessage)
+    ..aOM<$1.Timestamp>(3, _omitFieldNames ? '' : 'publishedAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CreatorDirectoryEntry clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CreatorDirectoryEntry copyWith(
+          void Function(CreatorDirectoryEntry) updates) =>
+      super.copyWith((message) => updates(message as CreatorDirectoryEntry))
+          as CreatorDirectoryEntry;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use CreatorDirectoryEntry() / CreatorDirectoryEntry.new instead')
+  static CreatorDirectoryEntry create() => CreatorDirectoryEntry._();
+  static $pb.GeneratedMessage $_createMessage() => CreatorDirectoryEntry._();
+  @$core.override
+  CreatorDirectoryEntry createEmptyInstance() => CreatorDirectoryEntry._();
+  @$core.pragma('dart2js:noInline')
+  static CreatorDirectoryEntry getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CreatorDirectoryEntry>(
+          CreatorDirectoryEntry.$_createMessage);
+  static CreatorDirectoryEntry? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get mediaKitId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set mediaKitId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasMediaKitId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearMediaKitId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  PublicCreatorProfile get profile => $_getN(1);
+  @$pb.TagNumber(2)
+  set profile(PublicCreatorProfile value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasProfile() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearProfile() => $_clearField(2);
+  @$pb.TagNumber(2)
+  PublicCreatorProfile ensureProfile() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $1.Timestamp get publishedAt => $_getN(2);
+  @$pb.TagNumber(3)
+  set publishedAt($1.Timestamp value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPublishedAt() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPublishedAt() => $_clearField(3);
+  @$pb.TagNumber(3)
+  $1.Timestamp ensurePublishedAt() => $_ensure(2);
+}
+
+class CreatorDirectoryServiceSearchRequest extends $pb.GeneratedMessage {
+  factory CreatorDirectoryServiceSearchRequest({
+    $core.String? query,
+    $core.Iterable<$core.String>? categories,
+    $core.Iterable<$core.String>? languages,
+    $core.int? pageSize,
+    $core.String? pageToken,
+  }) {
+    final result = CreatorDirectoryServiceSearchRequest._();
+    if (query != null) result.query = query;
+    if (categories != null) result.categories.addAll(categories);
+    if (languages != null) result.languages.addAll(languages);
+    if (pageSize != null) result.pageSize = pageSize;
+    if (pageToken != null) result.pageToken = pageToken;
+    return result;
+  }
+
+  CreatorDirectoryServiceSearchRequest._();
+
+  factory CreatorDirectoryServiceSearchRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CreatorDirectoryServiceSearchRequest()..mergeFromBuffer(data, registry);
+  factory CreatorDirectoryServiceSearchRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CreatorDirectoryServiceSearchRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CreatorDirectoryServiceSearchRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.commerce.v1'),
+      createEmptyInstance: CreatorDirectoryServiceSearchRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'query')
+    ..pPS(2, _omitFieldNames ? '' : 'categories')
+    ..pPS(3, _omitFieldNames ? '' : 'languages')
+    ..aI(4, _omitFieldNames ? '' : 'pageSize')
+    ..aOS(5, _omitFieldNames ? '' : 'pageToken')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CreatorDirectoryServiceSearchRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CreatorDirectoryServiceSearchRequest copyWith(
+          void Function(CreatorDirectoryServiceSearchRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as CreatorDirectoryServiceSearchRequest))
+          as CreatorDirectoryServiceSearchRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use CreatorDirectoryServiceSearchRequest() / CreatorDirectoryServiceSearchRequest.new instead')
+  static CreatorDirectoryServiceSearchRequest create() =>
+      CreatorDirectoryServiceSearchRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      CreatorDirectoryServiceSearchRequest._();
+  @$core.override
+  CreatorDirectoryServiceSearchRequest createEmptyInstance() =>
+      CreatorDirectoryServiceSearchRequest._();
+  @$core.pragma('dart2js:noInline')
+  static CreatorDirectoryServiceSearchRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              CreatorDirectoryServiceSearchRequest>(
+          CreatorDirectoryServiceSearchRequest.$_createMessage);
+  static CreatorDirectoryServiceSearchRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get query => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set query($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasQuery() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearQuery() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<$core.String> get categories => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<$core.String> get languages => $_getList(2);
+
+  @$pb.TagNumber(4)
+  $core.int get pageSize => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set pageSize($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPageSize() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPageSize() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get pageToken => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set pageToken($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPageToken() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPageToken() => $_clearField(5);
+}
+
+class CreatorDirectoryServiceSearchResponse extends $pb.GeneratedMessage {
+  factory CreatorDirectoryServiceSearchResponse({
+    $core.Iterable<CreatorDirectoryEntry>? entries,
+    $core.String? nextPageToken,
+    $core.bool? hasMore,
+    $fixnum.Int64? totalCount,
+  }) {
+    final result = CreatorDirectoryServiceSearchResponse._();
+    if (entries != null) result.entries.addAll(entries);
+    if (nextPageToken != null) result.nextPageToken = nextPageToken;
+    if (hasMore != null) result.hasMore = hasMore;
+    if (totalCount != null) result.totalCount = totalCount;
+    return result;
+  }
+
+  CreatorDirectoryServiceSearchResponse._();
+
+  factory CreatorDirectoryServiceSearchResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CreatorDirectoryServiceSearchResponse()..mergeFromBuffer(data, registry);
+  factory CreatorDirectoryServiceSearchResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CreatorDirectoryServiceSearchResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CreatorDirectoryServiceSearchResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.commerce.v1'),
+      createEmptyInstance:
+          CreatorDirectoryServiceSearchResponse.$_createMessage)
+    ..pPM<CreatorDirectoryEntry>(1, _omitFieldNames ? '' : 'entries',
+        subBuilder: CreatorDirectoryEntry.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'nextPageToken')
+    ..aOB(3, _omitFieldNames ? '' : 'hasMore')
+    ..aInt64(4, _omitFieldNames ? '' : 'totalCount')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CreatorDirectoryServiceSearchResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CreatorDirectoryServiceSearchResponse copyWith(
+          void Function(CreatorDirectoryServiceSearchResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as CreatorDirectoryServiceSearchResponse))
+          as CreatorDirectoryServiceSearchResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use CreatorDirectoryServiceSearchResponse() / CreatorDirectoryServiceSearchResponse.new instead')
+  static CreatorDirectoryServiceSearchResponse create() =>
+      CreatorDirectoryServiceSearchResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      CreatorDirectoryServiceSearchResponse._();
+  @$core.override
+  CreatorDirectoryServiceSearchResponse createEmptyInstance() =>
+      CreatorDirectoryServiceSearchResponse._();
+  @$core.pragma('dart2js:noInline')
+  static CreatorDirectoryServiceSearchResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              CreatorDirectoryServiceSearchResponse>(
+          CreatorDirectoryServiceSearchResponse.$_createMessage);
+  static CreatorDirectoryServiceSearchResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<CreatorDirectoryEntry> get entries => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $core.String get nextPageToken => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set nextPageToken($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasNextPageToken() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearNextPageToken() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get hasMore => $_getBF(2);
+  @$pb.TagNumber(3)
+  set hasMore($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasHasMore() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearHasMore() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get totalCount => $_getI64(3);
+  @$pb.TagNumber(4)
+  set totalCount($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTotalCount() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTotalCount() => $_clearField(4);
+}
+
+class CreatorDirectoryServiceGetRequest extends $pb.GeneratedMessage {
+  factory CreatorDirectoryServiceGetRequest({
+    $core.String? mediaKitId,
+  }) {
+    final result = CreatorDirectoryServiceGetRequest._();
+    if (mediaKitId != null) result.mediaKitId = mediaKitId;
+    return result;
+  }
+
+  CreatorDirectoryServiceGetRequest._();
+
+  factory CreatorDirectoryServiceGetRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CreatorDirectoryServiceGetRequest()..mergeFromBuffer(data, registry);
+  factory CreatorDirectoryServiceGetRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CreatorDirectoryServiceGetRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CreatorDirectoryServiceGetRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.commerce.v1'),
+      createEmptyInstance: CreatorDirectoryServiceGetRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'mediaKitId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CreatorDirectoryServiceGetRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CreatorDirectoryServiceGetRequest copyWith(
+          void Function(CreatorDirectoryServiceGetRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as CreatorDirectoryServiceGetRequest))
+          as CreatorDirectoryServiceGetRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use CreatorDirectoryServiceGetRequest() / CreatorDirectoryServiceGetRequest.new instead')
+  static CreatorDirectoryServiceGetRequest create() =>
+      CreatorDirectoryServiceGetRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      CreatorDirectoryServiceGetRequest._();
+  @$core.override
+  CreatorDirectoryServiceGetRequest createEmptyInstance() =>
+      CreatorDirectoryServiceGetRequest._();
+  @$core.pragma('dart2js:noInline')
+  static CreatorDirectoryServiceGetRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CreatorDirectoryServiceGetRequest>(
+          CreatorDirectoryServiceGetRequest.$_createMessage);
+  static CreatorDirectoryServiceGetRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get mediaKitId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set mediaKitId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasMediaKitId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearMediaKitId() => $_clearField(1);
+}
+
+class CreatorDirectoryServiceGetResponse extends $pb.GeneratedMessage {
+  factory CreatorDirectoryServiceGetResponse({
+    CreatorDirectoryEntry? entry,
+  }) {
+    final result = CreatorDirectoryServiceGetResponse._();
+    if (entry != null) result.entry = entry;
+    return result;
+  }
+
+  CreatorDirectoryServiceGetResponse._();
+
+  factory CreatorDirectoryServiceGetResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CreatorDirectoryServiceGetResponse()..mergeFromBuffer(data, registry);
+  factory CreatorDirectoryServiceGetResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CreatorDirectoryServiceGetResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CreatorDirectoryServiceGetResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.commerce.v1'),
+      createEmptyInstance: CreatorDirectoryServiceGetResponse.$_createMessage)
+    ..aOM<CreatorDirectoryEntry>(1, _omitFieldNames ? '' : 'entry',
+        subBuilder: CreatorDirectoryEntry.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CreatorDirectoryServiceGetResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CreatorDirectoryServiceGetResponse copyWith(
+          void Function(CreatorDirectoryServiceGetResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as CreatorDirectoryServiceGetResponse))
+          as CreatorDirectoryServiceGetResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use CreatorDirectoryServiceGetResponse() / CreatorDirectoryServiceGetResponse.new instead')
+  static CreatorDirectoryServiceGetResponse create() =>
+      CreatorDirectoryServiceGetResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      CreatorDirectoryServiceGetResponse._();
+  @$core.override
+  CreatorDirectoryServiceGetResponse createEmptyInstance() =>
+      CreatorDirectoryServiceGetResponse._();
+  @$core.pragma('dart2js:noInline')
+  static CreatorDirectoryServiceGetResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CreatorDirectoryServiceGetResponse>(
+          CreatorDirectoryServiceGetResponse.$_createMessage);
+  static CreatorDirectoryServiceGetResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  CreatorDirectoryEntry get entry => $_getN(0);
+  @$pb.TagNumber(1)
+  set entry(CreatorDirectoryEntry value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasEntry() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearEntry() => $_clearField(1);
+  @$pb.TagNumber(1)
+  CreatorDirectoryEntry ensureEntry() => $_ensure(0);
 }
 
 const $core.bool _omitFieldNames =

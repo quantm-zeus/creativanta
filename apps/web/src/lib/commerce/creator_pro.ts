@@ -454,3 +454,293 @@ export function isToolEntitledForMode(mode: WorkspaceMode, tool: CreatorProTool)
 export function getEntitledTools(mode: WorkspaceMode): readonly CreatorProTool[] {
   return MODE_ENTITLED_TOOLS[mode] || [];
 }
+
+// ----------------------------------------------------------------------------
+// P8-07: Deal Kanban & Optimistic Concurrency
+// ----------------------------------------------------------------------------
+
+export interface KanbanColumn {
+  status: BrandDealStatus;
+  title: string;
+  deals: BrandDeal[];
+}
+
+export const KANBAN_STAGES: readonly { status: BrandDealStatus; label: string }[] = [
+  { status: 'negotiating', label: 'Đàm phán (Negotiating)' },
+  { status: 'agreed', label: 'Đã thống nhất (Agreed)' },
+  { status: 'in_progress', label: 'Đang triển khai (In Progress)' },
+  { status: 'delivered', label: 'Đã bàn giao (Delivered)' },
+  { status: 'paid', label: 'Đã thanh toán (Paid)' },
+  { status: 'completed', label: 'Hoàn tất (Completed)' }
+] as const;
+
+export function organizeDealsIntoKanban(deals: BrandDeal[]): KanbanColumn[] {
+  const map: Record<BrandDealStatus, BrandDeal[]> = {
+    negotiating: [],
+    agreed: [],
+    in_progress: [],
+    delivered: [],
+    paid: [],
+    completed: [],
+    cancelled: []
+  };
+
+  for (const d of deals) {
+    if (map[d.status]) {
+      map[d.status].push(d);
+    }
+  }
+
+  return KANBAN_STAGES.map((s) => ({
+    status: s.status,
+    title: s.label,
+    deals: map[s.status].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+  }));
+}
+
+export function validateOptimisticKanbanMove(
+  deal: BrandDeal,
+  expectedUpdatedAt: string,
+  targetStatus: BrandDealStatus
+): { valid: boolean; error?: string } {
+  // Stale version check
+  if (deal.updatedAt !== expectedUpdatedAt) {
+    return {
+      valid: false,
+      error: 'Deal was modified concurrently by another session; please refresh before updating status'
+    };
+  }
+
+  // Canonical transition check
+  return validateDealTransition(deal.status, targetStatus);
+}
+
+// ----------------------------------------------------------------------------
+// P8-07: Immutable Contract Templates & Attachments
+// ----------------------------------------------------------------------------
+
+export interface ContractTemplate {
+  templateId: string;
+  title: string;
+  dealType: BrandDealType;
+  version: number;
+  sourceArticleId: string;
+  bodyMarkdown: string;
+  disclaimer: string;
+}
+
+export const STANDARD_CONTRACT_TEMPLATES: readonly ContractTemplate[] = [
+  {
+    templateId: 'tmpl-sponsored-post-v1',
+    title: 'Hợp đồng Dịch vụ Quảng cáo / Sponsored Post Agreement',
+    dealType: 'sponsored_post',
+    version: 1,
+    sourceArticleId: 'art-legal-sp-01',
+    bodyMarkdown: '# HỢP ĐỒNG HỢP TÁC QUẢNG CÁO\n\nĐiều 1: Phạm vi công việc và nội dung đăng tải...',
+    disclaimer: 'Bản thảo hợp đồng mẫu mang tính chất tham khảo kỹ thuật, không cấu thành tư vấn pháp lý chuyên nghiệp.'
+  },
+  {
+    templateId: 'tmpl-affiliate-collab-v1',
+    title: 'Thỏa thuận Phân phối Tiếp thị Liên kết / Affiliate Agreement',
+    dealType: 'affiliate_collab',
+    version: 1,
+    sourceArticleId: 'art-legal-aff-01',
+    bodyMarkdown: '# THỎA THUẬN TIẾP THỊ LIÊN KẾT\n\nĐiều 1: Tỷ lệ hoa hồng và cơ chế đối soát UTM...',
+    disclaimer: 'Bản thảo hợp đồng mẫu mang tính chất tham khảo kỹ thuật, không cấu thành tư vấn pháp lý chuyên nghiệp.'
+  },
+  {
+    templateId: 'tmpl-ugc-creation-v1',
+    title: 'Hợp đồng Sản xuất Nội dung UGC / UGC Production Agreement',
+    dealType: 'ugc_creation',
+    version: 1,
+    sourceArticleId: 'art-legal-ugc-01',
+    bodyMarkdown: '# HỢP ĐỒNG SẢN XUẤT NỘI DUNG THƯƠNG HIỆU (UGC)\n\nĐiều 1: Quyền tác giả và bản quyền sử dụng nội dung...',
+    disclaimer: 'Bản thảo hợp đồng mẫu mang tính chất tham khảo kỹ thuật, không cấu thành tư vấn pháp lý chuyên nghiệp.'
+  }
+];
+
+export function attachContractToDeal(
+  deal: BrandDeal,
+  evidenceId: string
+): { success: boolean; deal?: BrandDeal; error?: string } {
+  // Acceptance Target 4: Contract versions immutable (append-only evidence IDs)
+  if (!evidenceId || evidenceId.trim() === '') {
+    return { success: false, error: 'Evidence ID cannot be empty' };
+  }
+
+  if (deal.contractEvidenceIds.includes(evidenceId)) {
+    return {
+      success: false,
+      error: 'Contract version evidence is immutable; cannot overwrite or re-attach identical snapshot evidence'
+    };
+  }
+
+  const updatedDeal: BrandDeal = {
+    ...deal,
+    contractEvidenceIds: [...deal.contractEvidenceIds, evidenceId],
+    updatedAt: new Date().toISOString()
+  };
+
+  return { success: true, deal: updatedDeal };
+}
+
+// ----------------------------------------------------------------------------
+// P8-07: Public Creator Directory & Sponsor Inquiries (Opt-In & Privacy)
+// ----------------------------------------------------------------------------
+
+export interface PublicRateItem {
+  serviceType: string;
+  priceMin: number;
+  priceMax: number;
+  currency: string;
+  deliveryDays: number;
+  description?: string;
+}
+
+export interface PublicCreatorProfile {
+  creatorName: string;
+  headline: string;
+  bio: string;
+  avatarUrl?: string;
+  categories: string[];
+  languages: string[];
+  publicRates: PublicRateItem[];
+  socialMetrics: SocialPlatformMetric[];
+  directoryStatus: 'published' | 'hidden';
+  directoryOptIn: boolean;
+}
+
+export interface CreatorDirectoryEntry {
+  mediaKitId: string;
+  profile: PublicCreatorProfile;
+  verifiedBadge: boolean;
+  lastActiveAt: string;
+}
+
+export interface DirectoryFilterCriteria {
+  query?: string;
+  category?: string;
+  language?: string;
+}
+
+/**
+ * Filters the public creator directory.
+ * Acceptance Target 2: Opt-out removes public snapshot immediately!
+ * Acceptance Target 3: Only public projection is exposed.
+ */
+export function filterCreatorDirectory(
+  entries: CreatorDirectoryEntry[],
+  filters?: DirectoryFilterCriteria
+): CreatorDirectoryEntry[] {
+  const query = (filters?.query || '').trim().toLowerCase();
+  const cat = (filters?.category || '').trim().toLowerCase();
+  const lang = (filters?.language || '').trim().toLowerCase();
+
+  return entries.filter((entry) => {
+    // Acceptance Target 2: Strict check on opt-in and published status
+    if (!entry.profile.directoryOptIn || entry.profile.directoryStatus !== 'published') {
+      return false;
+    }
+
+    if (cat && cat !== 'all') {
+      const matchCat = entry.profile.categories.some((c) => c.toLowerCase().includes(cat));
+      if (!matchCat) return false;
+    }
+
+    if (lang && lang !== 'all') {
+      const matchLang = entry.profile.languages.some((l) => l.toLowerCase() === lang);
+      if (!matchLang) return false;
+    }
+
+    if (query) {
+      const matchName = entry.profile.creatorName.toLowerCase().includes(query);
+      const matchHeadline = entry.profile.headline.toLowerCase().includes(query);
+      const matchBio = entry.profile.bio.toLowerCase().includes(query);
+      return matchName || matchHeadline || matchBio;
+    }
+
+    return true;
+  });
+}
+
+/**
+ * Retrieves a single creator directory profile.
+ * Fails closed (returns null) if the creator has opted out or is hidden.
+ */
+export function getCreatorDirectoryProfile(
+  entries: CreatorDirectoryEntry[],
+  mediaKitId: string
+): CreatorDirectoryEntry | null {
+  const entry = entries.find((e) => e.mediaKitId === mediaKitId);
+  if (!entry) return null;
+
+  // Acceptance Target 2: Immediate opt-out enforcement
+  if (!entry.profile.directoryOptIn || entry.profile.directoryStatus !== 'published') {
+    return null;
+  }
+
+  return entry;
+}
+
+export interface SponsorInquirySubmission {
+  mediaKitId: string;
+  brandName: string;
+  contactEmail: string;
+  message: string;
+  estimatedBudget: number;
+  currency?: string;
+  challengeToken?: string;
+  idempotencyKey?: string;
+}
+
+export interface SponsorInquiryReceipt {
+  receiptId: string;
+  mediaKitId: string;
+  brandName: string;
+  status: 'received';
+  submittedAt: string;
+  disclaimer: string;
+}
+
+/**
+ * Submits an inquiry to a published creator in the directory.
+ * Fails closed if the creator is opted out / hidden.
+ * Generates an opaque receipt without exposing private workspace details.
+ */
+export function submitSponsorInquiry(
+  entry: CreatorDirectoryEntry | null,
+  inquiry: SponsorInquirySubmission
+): { success: boolean; receipt?: SponsorInquiryReceipt; error?: string } {
+  // Check target availability
+  if (!entry || !entry.profile.directoryOptIn || entry.profile.directoryStatus !== 'published') {
+    return {
+      success: false,
+      error: 'Creator is currently unavailable for sponsorships or has opted out of the directory'
+    };
+  }
+
+  // Validate form inputs
+  if (!inquiry.brandName || inquiry.brandName.trim() === '') {
+    return { success: false, error: 'Brand name is required' };
+  }
+  if (!inquiry.contactEmail || !inquiry.contactEmail.includes('@')) {
+    return { success: false, error: 'Valid business email is required' };
+  }
+  if (!inquiry.message || inquiry.message.trim().length < 10) {
+    return { success: false, error: 'Message must be at least 10 characters' };
+  }
+  if (!inquiry.estimatedBudget || inquiry.estimatedBudget <= 0) {
+    return { success: false, error: 'Estimated budget must be greater than zero' };
+  }
+
+  const receipt: SponsorInquiryReceipt = {
+    receiptId: `rcpt-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+    mediaKitId: entry.mediaKitId,
+    brandName: inquiry.brandName.trim(),
+    status: 'received',
+    submittedAt: new Date().toISOString(),
+    disclaimer: 'Inquiry delivery receipt; submission does not constitute binding contract acceptance by creator.'
+  };
+
+  return { success: true, receipt };
+}

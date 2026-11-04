@@ -233,5 +233,127 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('RPM: 20000.0 VND'), findsOneWidget);
     });
+
+    // ------------------------------------------------------------------------
+    // P8-07 Deliverable: Deal Kanban & Optimistic CAS
+    // ------------------------------------------------------------------------
+    test('P8-07 Kanban: Optimistic CAS checks reject concurrent stale status updates', () {
+      const currentStatus = MobileBrandDealStatus.negotiating;
+      const originalUpdatedAt = '2026-11-04T10:00:00Z';
+
+      // Matching version: passes
+      final validRes = validateOptimisticKanbanMove(
+        currentStatus: currentStatus,
+        targetStatus: MobileBrandDealStatus.agreed,
+        currentUpdatedAt: originalUpdatedAt,
+        expectedUpdatedAt: originalUpdatedAt,
+      );
+      expect(validRes.isValid, isTrue);
+
+      // Stale version: rejected
+      final staleRes = validateOptimisticKanbanMove(
+        currentStatus: currentStatus,
+        targetStatus: MobileBrandDealStatus.agreed,
+        currentUpdatedAt: '2026-11-04T10:05:00Z', // changed concurrently
+        expectedUpdatedAt: originalUpdatedAt,
+      );
+      expect(staleRes.isValid, isFalse);
+      expect(staleRes.errorMessage, contains('modified concurrently'));
+    });
+
+    // ------------------------------------------------------------------------
+    // P8-07 Target 4: Contract Versions Immutable
+    // ------------------------------------------------------------------------
+    test('P8-07 Target 4: Contract versions immutable (append-only evidence IDs)', () {
+      final current = ['ev-tmpl-v1'];
+
+      // Appending new version succeeds
+      final res1 = attachContractEvidence(
+        currentEvidenceIds: current,
+        newEvidenceId: 'ev-tmpl-v2',
+      );
+      expect(res1.isSuccess, isTrue);
+      expect(res1.updatedEvidenceIds, equals(['ev-tmpl-v1', 'ev-tmpl-v2']));
+
+      // Attempting to overwrite / re-attach existing version fails
+      final resDuplicate = attachContractEvidence(
+        currentEvidenceIds: current,
+        newEvidenceId: 'ev-tmpl-v1',
+      );
+      expect(resDuplicate.isSuccess, isFalse);
+      expect(resDuplicate.errorMessage, contains('immutable'));
+
+      // Empty evidence ID fails
+      final resEmpty = attachContractEvidence(
+        currentEvidenceIds: current,
+        newEvidenceId: '   ',
+      );
+      expect(resEmpty.isSuccess, isFalse);
+      expect(resEmpty.errorMessage, contains('cannot be empty'));
+    });
+
+    // ------------------------------------------------------------------------
+    // P8-07 Targets 2 & 3: Creator Directory Opt-In & Sponsor Inquiries
+    // ------------------------------------------------------------------------
+    test('P8-07 Targets 2 & 3: Opt-out removes profile immediately & inquiries fail closed', () {
+      final catalog = [
+        const MobileCreatorDirectoryEntry(
+          mediaKitId: 'mk-published-01',
+          creatorName: 'Lan Anh Skincare',
+          headline: 'Beauty Reviewer',
+          bio: 'Chuyên gia mỹ phẩm',
+          categories: ['beauty', 'skincare'],
+          languages: ['vi'],
+          publicRates: [],
+          directoryOptIn: true,
+          directoryStatus: 'published',
+        ),
+        const MobileCreatorDirectoryEntry(
+          mediaKitId: 'mk-opted-out-02',
+          creatorName: 'Tech Host',
+          headline: 'Tech Gadgets',
+          bio: 'Reviewer công nghệ',
+          categories: ['tech'],
+          languages: ['vi'],
+          publicRates: [],
+          directoryOptIn: false,
+          directoryStatus: 'hidden',
+        ),
+      ];
+
+      // Target 2: Filter removes opted-out profile immediately
+      final publicResults = filterMobileCreatorDirectory(entries: catalog);
+      expect(publicResults.length, equals(1));
+      expect(publicResults.first.mediaKitId, equals('mk-published-01'));
+
+      // Direct lookup of opted-out profile returns null
+      final hiddenLookup = getMobileCreatorDirectoryProfile(
+        entries: catalog,
+        mediaKitId: 'mk-opted-out-02',
+      );
+      expect(hiddenLookup, isNull);
+
+      // Sponsor Inquiry succeeds on published creator
+      final validInquiry = submitMobileSponsorInquiry(
+        creator: publicResults.first,
+        brandName: 'Cosmetics Vietnam',
+        contactEmail: 'partner@cosmetics.vn',
+        message: 'Chúng tôi muốn đề xuất hợp tác làm video ngắn.',
+        estimatedBudgetMicros: BigInt.from(10000000000000), // 10M VND
+      );
+      expect(validInquiry.isSuccess, isTrue);
+      expect(validInquiry.receiptId, startsWith('rcpt-mobile-'));
+
+      // Sponsor Inquiry fails closed on opted-out creator
+      final blockedInquiry = submitMobileSponsorInquiry(
+        creator: catalog[1], // opted out
+        brandName: 'Brand X',
+        contactEmail: 'x@brand.com',
+        message: 'Đề xuất hợp tác tài trợ...',
+        estimatedBudgetMicros: BigInt.from(5000000000000),
+      );
+      expect(blockedInquiry.isSuccess, isFalse);
+      expect(blockedInquiry.errorMessage, contains('unavailable'));
+    });
   });
 }

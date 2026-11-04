@@ -2,6 +2,8 @@ package creatorpro
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -31,6 +33,15 @@ type Store interface {
 	// Media Kits
 	SaveMediaKit(ctx context.Context, kit *MediaKit) error
 	GetMediaKit(ctx context.Context, workspaceID, mediaKitID string) (*MediaKit, error)
+	FindMediaKitByID(ctx context.Context, mediaKitID string) (*MediaKit, error)
+
+	// Creator Directory (Public & Consented per §27.2)
+	SearchDirectory(ctx context.Context, query string, categories, languages []string, limit int, pageToken string) ([]CreatorDirectoryEntry, string, bool, int64, error)
+	GetDirectoryEntry(ctx context.Context, mediaKitID string) (*CreatorDirectoryEntry, error)
+
+	// Contract Templates & Evidence
+	ListContractTemplates(ctx context.Context) ([]ContractTemplate, error)
+	GetContractTemplate(ctx context.Context, templateID string) (*ContractTemplate, error)
 
 	// Rate Cards & Items
 	CreateRateCard(ctx context.Context, card *RateCard) error
@@ -321,6 +332,208 @@ func (m *MemoryStore) GetMediaKit(ctx context.Context, workspaceID, mediaKitID s
 	}
 	cp := *k
 	return &cp, nil
+}
+
+func (m *MemoryStore) FindMediaKitByID(ctx context.Context, mediaKitID string) (*MediaKit, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	k, ok := m.mediaKits[mediaKitID]
+	if !ok || k.DeletedAt != nil {
+		return nil, ErrMediaKitNotFound
+	}
+	cp := *k
+	return &cp, nil
+}
+
+func (m *MemoryStore) SearchDirectory(ctx context.Context, query string, categories, languages []string, limit int, pageToken string) ([]CreatorDirectoryEntry, string, bool, int64, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 20 {
+		limit = 20
+	}
+
+	normQuery := strings.ToLower(strings.TrimSpace(query))
+	var entries []CreatorDirectoryEntry
+
+	for _, k := range m.mediaKits {
+		// Strict public projection invariant: only explicitly opted in and published kits
+		if k.DeletedAt != nil || !k.DirectoryOptIn || k.DirectoryStatus != MediaKitDirectoryStatusPublished {
+			continue
+		}
+
+		var profile PublicCreatorProfile
+		if k.DirectoryProfileJSON != "" {
+			_ = json.Unmarshal([]byte(k.DirectoryProfileJSON), &profile)
+		}
+		if profile.DisplayName == "" {
+			continue
+		}
+
+		// Filter query
+		if normQuery != "" {
+			match := strings.Contains(strings.ToLower(profile.DisplayName), normQuery) ||
+				strings.Contains(strings.ToLower(profile.Bio), normQuery)
+			if !match {
+				for _, cat := range profile.Categories {
+					if strings.Contains(strings.ToLower(cat), normQuery) {
+						match = true
+						break
+					}
+				}
+			}
+			if !match {
+				continue
+			}
+		}
+
+		// Filter categories
+		if len(categories) > 0 {
+			catMatch := false
+			for _, reqCat := range categories {
+				for _, pCat := range profile.Categories {
+					if strings.EqualFold(reqCat, pCat) {
+						catMatch = true
+						break
+					}
+				}
+				if catMatch {
+					break
+				}
+			}
+			if !catMatch {
+				continue
+			}
+		}
+
+		// Filter languages
+		if len(languages) > 0 {
+			langMatch := false
+			for _, reqLang := range languages {
+				for _, pLang := range profile.Languages {
+					if strings.EqualFold(reqLang, pLang) {
+						langMatch = true
+						break
+					}
+				}
+				if langMatch {
+					break
+				}
+			}
+			if !langMatch {
+				continue
+			}
+		}
+
+		pubAt := k.UpdatedAt
+		if k.DirectoryConsentedAt != nil {
+			pubAt = *k.DirectoryConsentedAt
+		}
+		entries = append(entries, CreatorDirectoryEntry{
+			MediaKitID:  k.MediaKitID,
+			Profile:     profile,
+			PublishedAt: pubAt,
+		})
+	}
+
+	// Sort deterministically
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].MediaKitID < entries[j].MediaKitID
+	})
+
+	totalCount := int64(len(entries))
+	startIdx := 0
+	if pageToken != "" {
+		for i, e := range entries {
+			if e.MediaKitID > pageToken {
+				startIdx = i
+				break
+			}
+			if i == len(entries)-1 {
+				startIdx = len(entries)
+			}
+		}
+	}
+
+	endIdx := startIdx + limit
+	hasMore := false
+	var nextToken string
+	if endIdx < len(entries) {
+		hasMore = true
+		nextToken = entries[endIdx-1].MediaKitID
+	} else {
+		endIdx = len(entries)
+	}
+
+	pageEntries := entries[startIdx:endIdx]
+	return pageEntries, nextToken, hasMore, totalCount, nil
+}
+
+func (m *MemoryStore) GetDirectoryEntry(ctx context.Context, mediaKitID string) (*CreatorDirectoryEntry, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	k, ok := m.mediaKits[mediaKitID]
+	if !ok || k.DeletedAt != nil || !k.DirectoryOptIn || k.DirectoryStatus != MediaKitDirectoryStatusPublished {
+		return nil, ErrCreatorUnavailable
+	}
+
+	var profile PublicCreatorProfile
+	if k.DirectoryProfileJSON != "" {
+		_ = json.Unmarshal([]byte(k.DirectoryProfileJSON), &profile)
+	}
+
+	pubAt := k.UpdatedAt
+	if k.DirectoryConsentedAt != nil {
+		pubAt = *k.DirectoryConsentedAt
+	}
+
+	return &CreatorDirectoryEntry{
+		MediaKitID:  k.MediaKitID,
+		Profile:     profile,
+		PublishedAt: pubAt,
+	}, nil
+}
+
+var DefaultContractTemplates = []ContractTemplate{
+	{
+		TemplateID:      "tmpl-standard-sponsored",
+		Title:           "Standard Sponsored Video Agreement",
+		Description:     "Standard 1-video deliverable with 30-day usage rights.",
+		DefaultTerms:    "50% upfront deposit, 50% upon delivery. 1 revision included.",
+		Version:         "1.0.0",
+		SourceArticleID: "kb-art-contract-001",
+		BodyMarkdown:    "## Hợp đồng tài trợ video tiêu chuẩn\n\n1. Phạm vi công việc: 01 video TikTok/Reels thời lượng 60s.\n2. Quyền sử dụng hình ảnh: 30 ngày trên các kênh chính thức của Nhãn hàng.\n3. Thanh toán: Tạm ứng 50% khi ký hợp đồng, 50% còn lại trong vòng 7 ngày làm việc sau khi nghiệm thu video.\n4. Sửa đổi: Tối đa 01 lần chỉnh sửa kịch bản và 01 lần chỉnh sửa hậu kỳ trước khi đăng tải chính thức.",
+		Disclaimer:      "Tài liệu mẫu mang tính chất tham khảo dự thảo hợp đồng. Creativanta không cung cấp tư vấn pháp lý hay dịch vụ chữ ký số điện tử. Vui lòng tham khảo ý kiến luật sư trước khi ký kết.",
+	},
+	{
+		TemplateID:      "tmpl-brand-ambassador",
+		Title:           "Brand Ambassador Agreement (3-month)",
+		Description:     "Recurring deliverables with exclusivity clause.",
+		DefaultTerms:    "Monthly retainer payable on 1st of month. Category exclusivity.",
+		Version:         "1.1.0",
+		SourceArticleID: "kb-art-contract-002",
+		BodyMarkdown:    "## Thỏa thuận đại sứ thương hiệu 3 tháng\n\n1. Thời hạn: 03 tháng kể từ ngày ký.\n2. Hạng mục bàn giao: 02 bài đăng/tháng kèm 04 story tương tác.\n3. Độc quyền ngành hàng: Bên được tài trợ cam kết không quảng bá sản phẩm cạnh tranh trực tiếp trong thời hạn thỏa thuận.\n4. Thù lao: Chi trả định kỳ vào ngày 01 hàng tháng.",
+		Disclaimer:      "Tài liệu mẫu mang tính chất tham khảo dự thảo hợp đồng. Creativanta không cung cấp tư vấn pháp lý hay dịch vụ chữ ký số điện tử. Vui lòng tham khảo ý kiến luật sư trước khi ký kết.",
+	},
+}
+
+func (m *MemoryStore) ListContractTemplates(ctx context.Context) ([]ContractTemplate, error) {
+	return DefaultContractTemplates, nil
+}
+
+func (m *MemoryStore) GetContractTemplate(ctx context.Context, templateID string) (*ContractTemplate, error) {
+	for _, tmpl := range DefaultContractTemplates {
+		if tmpl.TemplateID == templateID {
+			cp := tmpl
+			return &cp, nil
+		}
+	}
+	return nil, errors.New("contract template not found")
 }
 
 // ----------------------------------------------------------------------------

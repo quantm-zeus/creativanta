@@ -63,5 +63,36 @@ class AlertMetric extends $pb.ProtobufEnum {
   const AlertMetric._(super.value, super.name);
 }
 
+/// MonitoringSourceStatus indicates source connection health and collection path per M03.
+class MonitoringSourceStatus extends $pb.ProtobufEnum {
+  static const MonitoringSourceStatus MONITORING_SOURCE_STATUS_UNSPECIFIED =
+      MonitoringSourceStatus._(
+          0, _omitEnumNames ? '' : 'MONITORING_SOURCE_STATUS_UNSPECIFIED');
+  static const MonitoringSourceStatus MONITORING_SOURCE_STATUS_ACTIVE =
+      MonitoringSourceStatus._(
+          1, _omitEnumNames ? '' : 'MONITORING_SOURCE_STATUS_ACTIVE');
+  static const MonitoringSourceStatus MONITORING_SOURCE_STATUS_PAUSED =
+      MonitoringSourceStatus._(
+          2, _omitEnumNames ? '' : 'MONITORING_SOURCE_STATUS_PAUSED');
+  static const MonitoringSourceStatus MONITORING_SOURCE_STATUS_IMPORT_REQUIRED =
+      MonitoringSourceStatus._(
+          3, _omitEnumNames ? '' : 'MONITORING_SOURCE_STATUS_IMPORT_REQUIRED');
+
+  static const $core.List<MonitoringSourceStatus> values =
+      <MonitoringSourceStatus>[
+    MONITORING_SOURCE_STATUS_UNSPECIFIED,
+    MONITORING_SOURCE_STATUS_ACTIVE,
+    MONITORING_SOURCE_STATUS_PAUSED,
+    MONITORING_SOURCE_STATUS_IMPORT_REQUIRED,
+  ];
+
+  static final $core.List<MonitoringSourceStatus?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 3);
+  static MonitoringSourceStatus? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const MonitoringSourceStatus._(super.value, super.name);
+}
+
 const $core.bool _omitEnumNames =
     $core.bool.fromEnvironment('protobuf.omit_enum_names');

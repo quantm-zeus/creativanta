@@ -125,16 +125,75 @@ func (AlertMetric) EnumDescriptor() ([]byte, []int) {
 	return file_creativanta_intelligence_v1_competitor_proto_rawDescGZIP(), []int{1}
 }
 
+// MonitoringSourceStatus indicates source connection health and collection path per M03.
+type MonitoringSourceStatus int32
+
+const (
+	MonitoringSourceStatus_MONITORING_SOURCE_STATUS_UNSPECIFIED     MonitoringSourceStatus = 0
+	MonitoringSourceStatus_MONITORING_SOURCE_STATUS_ACTIVE          MonitoringSourceStatus = 1
+	MonitoringSourceStatus_MONITORING_SOURCE_STATUS_PAUSED          MonitoringSourceStatus = 2
+	MonitoringSourceStatus_MONITORING_SOURCE_STATUS_IMPORT_REQUIRED MonitoringSourceStatus = 3
+)
+
+// Enum value maps for MonitoringSourceStatus.
+var (
+	MonitoringSourceStatus_name = map[int32]string{
+		0: "MONITORING_SOURCE_STATUS_UNSPECIFIED",
+		1: "MONITORING_SOURCE_STATUS_ACTIVE",
+		2: "MONITORING_SOURCE_STATUS_PAUSED",
+		3: "MONITORING_SOURCE_STATUS_IMPORT_REQUIRED",
+	}
+	MonitoringSourceStatus_value = map[string]int32{
+		"MONITORING_SOURCE_STATUS_UNSPECIFIED":     0,
+		"MONITORING_SOURCE_STATUS_ACTIVE":          1,
+		"MONITORING_SOURCE_STATUS_PAUSED":          2,
+		"MONITORING_SOURCE_STATUS_IMPORT_REQUIRED": 3,
+	}
+)
+
+func (x MonitoringSourceStatus) Enum() *MonitoringSourceStatus {
+	p := new(MonitoringSourceStatus)
+	*p = x
+	return p
+}
+
+func (x MonitoringSourceStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (MonitoringSourceStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_creativanta_intelligence_v1_competitor_proto_enumTypes[2].Descriptor()
+}
+
+func (MonitoringSourceStatus) Type() protoreflect.EnumType {
+	return &file_creativanta_intelligence_v1_competitor_proto_enumTypes[2]
+}
+
+func (x MonitoringSourceStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use MonitoringSourceStatus.Descriptor instead.
+func (MonitoringSourceStatus) EnumDescriptor() ([]byte, []int) {
+	return file_creativanta_intelligence_v1_competitor_proto_rawDescGZIP(), []int{2}
+}
+
 // AlertConfig defines per-competitor alert subscriptions per database_schema.md §27.3.
 type AlertConfig struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	Enabled            bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	Metric             AlertMetric            `protobuf:"varint,2,opt,name=metric,proto3,enum=creativanta.intelligence.v1.AlertMetric" json:"metric,omitempty"`
-	Threshold          float64                `protobuf:"fixed64,3,opt,name=threshold,proto3" json:"threshold,omitempty"`
-	Direction          AlertDirection         `protobuf:"varint,4,opt,name=direction,proto3,enum=creativanta.intelligence.v1.AlertDirection" json:"direction,omitempty"`
-	MinIntervalMinutes int32                  `protobuf:"varint,5,opt,name=min_interval_minutes,json=minIntervalMinutes,proto3" json:"min_interval_minutes,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Enabled             bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	Metric              AlertMetric            `protobuf:"varint,2,opt,name=metric,proto3,enum=creativanta.intelligence.v1.AlertMetric" json:"metric,omitempty"`
+	Threshold           float64                `protobuf:"fixed64,3,opt,name=threshold,proto3" json:"threshold,omitempty"`
+	Direction           AlertDirection         `protobuf:"varint,4,opt,name=direction,proto3,enum=creativanta.intelligence.v1.AlertDirection" json:"direction,omitempty"`
+	MinIntervalMinutes  int32                  `protobuf:"varint,5,opt,name=min_interval_minutes,json=minIntervalMinutes,proto3" json:"min_interval_minutes,omitempty"`
+	SourceStatus        MonitoringSourceStatus `protobuf:"varint,6,opt,name=source_status,json=sourceStatus,proto3,enum=creativanta.intelligence.v1.MonitoringSourceStatus" json:"source_status,omitempty"`
+	SourceStatusReason  string                 `protobuf:"bytes,7,opt,name=source_status_reason,json=sourceStatusReason,proto3" json:"source_status_reason,omitempty"`
+	LastAlertAt         *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=last_alert_at,json=lastAlertAt,proto3" json:"last_alert_at,omitempty"`
+	LastAlertSnapshotId string                 `protobuf:"bytes,9,opt,name=last_alert_snapshot_id,json=lastAlertSnapshotId,proto3" json:"last_alert_snapshot_id,omitempty"`
+	RecoveryLatched     bool                   `protobuf:"varint,10,opt,name=recovery_latched,json=recoveryLatched,proto3" json:"recovery_latched,omitempty"`
+	InsufficientData    bool                   `protobuf:"varint,11,opt,name=insufficient_data,json=insufficientData,proto3" json:"insufficient_data,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AlertConfig) Reset() {
@@ -200,6 +259,48 @@ func (x *AlertConfig) GetMinIntervalMinutes() int32 {
 		return x.MinIntervalMinutes
 	}
 	return 0
+}
+
+func (x *AlertConfig) GetSourceStatus() MonitoringSourceStatus {
+	if x != nil {
+		return x.SourceStatus
+	}
+	return MonitoringSourceStatus_MONITORING_SOURCE_STATUS_UNSPECIFIED
+}
+
+func (x *AlertConfig) GetSourceStatusReason() string {
+	if x != nil {
+		return x.SourceStatusReason
+	}
+	return ""
+}
+
+func (x *AlertConfig) GetLastAlertAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastAlertAt
+	}
+	return nil
+}
+
+func (x *AlertConfig) GetLastAlertSnapshotId() string {
+	if x != nil {
+		return x.LastAlertSnapshotId
+	}
+	return ""
+}
+
+func (x *AlertConfig) GetRecoveryLatched() bool {
+	if x != nil {
+		return x.RecoveryLatched
+	}
+	return false
+}
+
+func (x *AlertConfig) GetInsufficientData() bool {
+	if x != nil {
+		return x.InsufficientData
+	}
+	return false
 }
 
 // CompetitorEntity represents a tracked competitor entity per database_schema.md §5.6.
@@ -2960,13 +3061,20 @@ var File_creativanta_intelligence_v1_competitor_proto protoreflect.FileDescripto
 
 const file_creativanta_intelligence_v1_competitor_proto_rawDesc = "" +
 	"\n" +
-	",creativanta/intelligence/v1/competitor.proto\x12\x1bcreativanta.intelligence.v1\x1a'creativanta/intelligence/v1/trend.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x84\x02\n" +
+	",creativanta/intelligence/v1/competitor.proto\x12\x1bcreativanta.intelligence.v1\x1a'creativanta/intelligence/v1/trend.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xdd\x04\n" +
 	"\vAlertConfig\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12@\n" +
 	"\x06metric\x18\x02 \x01(\x0e2(.creativanta.intelligence.v1.AlertMetricR\x06metric\x12\x1c\n" +
 	"\tthreshold\x18\x03 \x01(\x01R\tthreshold\x12I\n" +
 	"\tdirection\x18\x04 \x01(\x0e2+.creativanta.intelligence.v1.AlertDirectionR\tdirection\x120\n" +
-	"\x14min_interval_minutes\x18\x05 \x01(\x05R\x12minIntervalMinutes\"\xd3\x06\n" +
+	"\x14min_interval_minutes\x18\x05 \x01(\x05R\x12minIntervalMinutes\x12X\n" +
+	"\rsource_status\x18\x06 \x01(\x0e23.creativanta.intelligence.v1.MonitoringSourceStatusR\fsourceStatus\x120\n" +
+	"\x14source_status_reason\x18\a \x01(\tR\x12sourceStatusReason\x12>\n" +
+	"\rlast_alert_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\vlastAlertAt\x123\n" +
+	"\x16last_alert_snapshot_id\x18\t \x01(\tR\x13lastAlertSnapshotId\x12)\n" +
+	"\x10recovery_latched\x18\n" +
+	" \x01(\bR\x0frecoveryLatched\x12+\n" +
+	"\x11insufficient_data\x18\v \x01(\bR\x10insufficientData\"\xd3\x06\n" +
 	"\x10CompetitorEntity\x12#\n" +
 	"\rcompetitor_id\x18\x01 \x01(\tR\fcompetitorId\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x12\n" +
@@ -3237,7 +3345,12 @@ const file_creativanta_intelligence_v1_competitor_proto_rawDesc = "" +
 	"\x18ALERT_METRIC_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cALERT_METRIC_ENGAGEMENT_RATE\x10\x01\x12\x1f\n" +
 	"\x1bALERT_METRIC_POST_FREQUENCY\x10\x02\x12\x1f\n" +
-	"\x1bALERT_METRIC_OBSERVED_PRICE\x10\x032\xfc\a\n" +
+	"\x1bALERT_METRIC_OBSERVED_PRICE\x10\x03*\xba\x01\n" +
+	"\x16MonitoringSourceStatus\x12(\n" +
+	"$MONITORING_SOURCE_STATUS_UNSPECIFIED\x10\x00\x12#\n" +
+	"\x1fMONITORING_SOURCE_STATUS_ACTIVE\x10\x01\x12#\n" +
+	"\x1fMONITORING_SOURCE_STATUS_PAUSED\x10\x02\x12,\n" +
+	"(MONITORING_SOURCE_STATUS_IMPORT_REQUIRED\x10\x032\xfc\a\n" +
 	"\x11CompetitorService\x12}\n" +
 	"\x04List\x129.creativanta.intelligence.v1.CompetitorServiceListRequest\x1a:.creativanta.intelligence.v1.CompetitorServiceListResponse\x12z\n" +
 	"\x03Add\x128.creativanta.intelligence.v1.CompetitorServiceAddRequest\x1a9.creativanta.intelligence.v1.CompetitorServiceAddResponse\x12\x83\x01\n" +
@@ -3263,116 +3376,119 @@ func file_creativanta_intelligence_v1_competitor_proto_rawDescGZIP() []byte {
 	return file_creativanta_intelligence_v1_competitor_proto_rawDescData
 }
 
-var file_creativanta_intelligence_v1_competitor_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_creativanta_intelligence_v1_competitor_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_creativanta_intelligence_v1_competitor_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
 var file_creativanta_intelligence_v1_competitor_proto_goTypes = []any{
 	(AlertDirection)(0),                     // 0: creativanta.intelligence.v1.AlertDirection
 	(AlertMetric)(0),                        // 1: creativanta.intelligence.v1.AlertMetric
-	(*AlertConfig)(nil),                     // 2: creativanta.intelligence.v1.AlertConfig
-	(*CompetitorEntity)(nil),                // 3: creativanta.intelligence.v1.CompetitorEntity
-	(*CompetitorSuggestion)(nil),            // 4: creativanta.intelligence.v1.CompetitorSuggestion
-	(*WhyExplanation)(nil),                  // 5: creativanta.intelligence.v1.WhyExplanation
-	(*BenchmarkMetrics)(nil),                // 6: creativanta.intelligence.v1.BenchmarkMetrics
-	(*BenchmarkSnapshot)(nil),               // 7: creativanta.intelligence.v1.BenchmarkSnapshot
-	(*WhiteSpaceGap)(nil),                   // 8: creativanta.intelligence.v1.WhiteSpaceGap
-	(*PricingComparisonItem)(nil),           // 9: creativanta.intelligence.v1.PricingComparisonItem
-	(*FormatComparisonItem)(nil),            // 10: creativanta.intelligence.v1.FormatComparisonItem
-	(*FinancialNonConflationNotice)(nil),    // 11: creativanta.intelligence.v1.FinancialNonConflationNotice
-	(*EntityBenchmarkScore)(nil),            // 12: creativanta.intelligence.v1.EntityBenchmarkScore
-	(*BenchmarkComparison)(nil),             // 13: creativanta.intelligence.v1.BenchmarkComparison
-	(*BenchmarkDataPoint)(nil),              // 14: creativanta.intelligence.v1.BenchmarkDataPoint
-	(*TimeSeriesSeries)(nil),                // 15: creativanta.intelligence.v1.TimeSeriesSeries
-	(*CompetitorPreview)(nil),               // 16: creativanta.intelligence.v1.CompetitorPreview
-	(*CompetitorServiceListRequest)(nil),    // 17: creativanta.intelligence.v1.CompetitorServiceListRequest
-	(*CompetitorServiceListResponse)(nil),   // 18: creativanta.intelligence.v1.CompetitorServiceListResponse
-	(*CompetitorServiceAddRequest)(nil),     // 19: creativanta.intelligence.v1.CompetitorServiceAddRequest
-	(*CompetitorServiceAddResponse)(nil),    // 20: creativanta.intelligence.v1.CompetitorServiceAddResponse
-	(*CompetitorServiceRemoveRequest)(nil),  // 21: creativanta.intelligence.v1.CompetitorServiceRemoveRequest
-	(*CompetitorServiceRemoveResponse)(nil), // 22: creativanta.intelligence.v1.CompetitorServiceRemoveResponse
-	(*GetSuggestionsRequest)(nil),           // 23: creativanta.intelligence.v1.GetSuggestionsRequest
-	(*GetSuggestionsResponse)(nil),          // 24: creativanta.intelligence.v1.GetSuggestionsResponse
-	(*DismissSuggestionRequest)(nil),        // 25: creativanta.intelligence.v1.DismissSuggestionRequest
-	(*DismissSuggestionResponse)(nil),       // 26: creativanta.intelligence.v1.DismissSuggestionResponse
-	(*SetAlertsRequest)(nil),                // 27: creativanta.intelligence.v1.SetAlertsRequest
-	(*SetAlertsResponse)(nil),               // 28: creativanta.intelligence.v1.SetAlertsResponse
-	(*ValidateHandleRequest)(nil),           // 29: creativanta.intelligence.v1.ValidateHandleRequest
-	(*ValidateHandleResponse)(nil),          // 30: creativanta.intelligence.v1.ValidateHandleResponse
-	(*AnalyzeBenchmarkRequest)(nil),         // 31: creativanta.intelligence.v1.AnalyzeBenchmarkRequest
-	(*AnalyzeBenchmarkResponse)(nil),        // 32: creativanta.intelligence.v1.AnalyzeBenchmarkResponse
-	(*BenchmarkServiceCompareRequest)(nil),  // 33: creativanta.intelligence.v1.BenchmarkServiceCompareRequest
-	(*BenchmarkServiceCompareResponse)(nil), // 34: creativanta.intelligence.v1.BenchmarkServiceCompareResponse
-	(*GetTimeSeriesRequest)(nil),            // 35: creativanta.intelligence.v1.GetTimeSeriesRequest
-	(*GetTimeSeriesResponse)(nil),           // 36: creativanta.intelligence.v1.GetTimeSeriesResponse
-	nil,                                     // 37: creativanta.intelligence.v1.BenchmarkMetrics.FormatDistributionEntry
-	(*timestamppb.Timestamp)(nil),           // 38: google.protobuf.Timestamp
-	(SourceClass)(0),                        // 39: creativanta.intelligence.v1.SourceClass
-	(ConfidenceBand)(0),                     // 40: creativanta.intelligence.v1.ConfidenceBand
+	(MonitoringSourceStatus)(0),             // 2: creativanta.intelligence.v1.MonitoringSourceStatus
+	(*AlertConfig)(nil),                     // 3: creativanta.intelligence.v1.AlertConfig
+	(*CompetitorEntity)(nil),                // 4: creativanta.intelligence.v1.CompetitorEntity
+	(*CompetitorSuggestion)(nil),            // 5: creativanta.intelligence.v1.CompetitorSuggestion
+	(*WhyExplanation)(nil),                  // 6: creativanta.intelligence.v1.WhyExplanation
+	(*BenchmarkMetrics)(nil),                // 7: creativanta.intelligence.v1.BenchmarkMetrics
+	(*BenchmarkSnapshot)(nil),               // 8: creativanta.intelligence.v1.BenchmarkSnapshot
+	(*WhiteSpaceGap)(nil),                   // 9: creativanta.intelligence.v1.WhiteSpaceGap
+	(*PricingComparisonItem)(nil),           // 10: creativanta.intelligence.v1.PricingComparisonItem
+	(*FormatComparisonItem)(nil),            // 11: creativanta.intelligence.v1.FormatComparisonItem
+	(*FinancialNonConflationNotice)(nil),    // 12: creativanta.intelligence.v1.FinancialNonConflationNotice
+	(*EntityBenchmarkScore)(nil),            // 13: creativanta.intelligence.v1.EntityBenchmarkScore
+	(*BenchmarkComparison)(nil),             // 14: creativanta.intelligence.v1.BenchmarkComparison
+	(*BenchmarkDataPoint)(nil),              // 15: creativanta.intelligence.v1.BenchmarkDataPoint
+	(*TimeSeriesSeries)(nil),                // 16: creativanta.intelligence.v1.TimeSeriesSeries
+	(*CompetitorPreview)(nil),               // 17: creativanta.intelligence.v1.CompetitorPreview
+	(*CompetitorServiceListRequest)(nil),    // 18: creativanta.intelligence.v1.CompetitorServiceListRequest
+	(*CompetitorServiceListResponse)(nil),   // 19: creativanta.intelligence.v1.CompetitorServiceListResponse
+	(*CompetitorServiceAddRequest)(nil),     // 20: creativanta.intelligence.v1.CompetitorServiceAddRequest
+	(*CompetitorServiceAddResponse)(nil),    // 21: creativanta.intelligence.v1.CompetitorServiceAddResponse
+	(*CompetitorServiceRemoveRequest)(nil),  // 22: creativanta.intelligence.v1.CompetitorServiceRemoveRequest
+	(*CompetitorServiceRemoveResponse)(nil), // 23: creativanta.intelligence.v1.CompetitorServiceRemoveResponse
+	(*GetSuggestionsRequest)(nil),           // 24: creativanta.intelligence.v1.GetSuggestionsRequest
+	(*GetSuggestionsResponse)(nil),          // 25: creativanta.intelligence.v1.GetSuggestionsResponse
+	(*DismissSuggestionRequest)(nil),        // 26: creativanta.intelligence.v1.DismissSuggestionRequest
+	(*DismissSuggestionResponse)(nil),       // 27: creativanta.intelligence.v1.DismissSuggestionResponse
+	(*SetAlertsRequest)(nil),                // 28: creativanta.intelligence.v1.SetAlertsRequest
+	(*SetAlertsResponse)(nil),               // 29: creativanta.intelligence.v1.SetAlertsResponse
+	(*ValidateHandleRequest)(nil),           // 30: creativanta.intelligence.v1.ValidateHandleRequest
+	(*ValidateHandleResponse)(nil),          // 31: creativanta.intelligence.v1.ValidateHandleResponse
+	(*AnalyzeBenchmarkRequest)(nil),         // 32: creativanta.intelligence.v1.AnalyzeBenchmarkRequest
+	(*AnalyzeBenchmarkResponse)(nil),        // 33: creativanta.intelligence.v1.AnalyzeBenchmarkResponse
+	(*BenchmarkServiceCompareRequest)(nil),  // 34: creativanta.intelligence.v1.BenchmarkServiceCompareRequest
+	(*BenchmarkServiceCompareResponse)(nil), // 35: creativanta.intelligence.v1.BenchmarkServiceCompareResponse
+	(*GetTimeSeriesRequest)(nil),            // 36: creativanta.intelligence.v1.GetTimeSeriesRequest
+	(*GetTimeSeriesResponse)(nil),           // 37: creativanta.intelligence.v1.GetTimeSeriesResponse
+	nil,                                     // 38: creativanta.intelligence.v1.BenchmarkMetrics.FormatDistributionEntry
+	(*timestamppb.Timestamp)(nil),           // 39: google.protobuf.Timestamp
+	(SourceClass)(0),                        // 40: creativanta.intelligence.v1.SourceClass
+	(ConfidenceBand)(0),                     // 41: creativanta.intelligence.v1.ConfidenceBand
 }
 var file_creativanta_intelligence_v1_competitor_proto_depIdxs = []int32{
 	1,  // 0: creativanta.intelligence.v1.AlertConfig.metric:type_name -> creativanta.intelligence.v1.AlertMetric
 	0,  // 1: creativanta.intelligence.v1.AlertConfig.direction:type_name -> creativanta.intelligence.v1.AlertDirection
-	38, // 2: creativanta.intelligence.v1.CompetitorEntity.last_post_at:type_name -> google.protobuf.Timestamp
-	38, // 3: creativanta.intelligence.v1.CompetitorEntity.created_at:type_name -> google.protobuf.Timestamp
-	38, // 4: creativanta.intelligence.v1.CompetitorEntity.updated_at:type_name -> google.protobuf.Timestamp
-	2,  // 5: creativanta.intelligence.v1.CompetitorEntity.alert_config:type_name -> creativanta.intelligence.v1.AlertConfig
-	37, // 6: creativanta.intelligence.v1.BenchmarkMetrics.format_distribution:type_name -> creativanta.intelligence.v1.BenchmarkMetrics.FormatDistributionEntry
-	6,  // 7: creativanta.intelligence.v1.BenchmarkSnapshot.metrics:type_name -> creativanta.intelligence.v1.BenchmarkMetrics
-	39, // 8: creativanta.intelligence.v1.BenchmarkSnapshot.source_class:type_name -> creativanta.intelligence.v1.SourceClass
-	40, // 9: creativanta.intelligence.v1.BenchmarkSnapshot.confidence:type_name -> creativanta.intelligence.v1.ConfidenceBand
-	38, // 10: creativanta.intelligence.v1.BenchmarkSnapshot.captured_at:type_name -> google.protobuf.Timestamp
-	38, // 11: creativanta.intelligence.v1.BenchmarkSnapshot.created_at:type_name -> google.protobuf.Timestamp
-	5,  // 12: creativanta.intelligence.v1.BenchmarkSnapshot.why_explanation:type_name -> creativanta.intelligence.v1.WhyExplanation
-	39, // 13: creativanta.intelligence.v1.WhiteSpaceGap.source_class:type_name -> creativanta.intelligence.v1.SourceClass
-	40, // 14: creativanta.intelligence.v1.WhiteSpaceGap.confidence:type_name -> creativanta.intelligence.v1.ConfidenceBand
-	5,  // 15: creativanta.intelligence.v1.WhiteSpaceGap.why_explanation:type_name -> creativanta.intelligence.v1.WhyExplanation
-	39, // 16: creativanta.intelligence.v1.PricingComparisonItem.source_class:type_name -> creativanta.intelligence.v1.SourceClass
-	39, // 17: creativanta.intelligence.v1.FormatComparisonItem.source_class:type_name -> creativanta.intelligence.v1.SourceClass
-	40, // 18: creativanta.intelligence.v1.FormatComparisonItem.confidence:type_name -> creativanta.intelligence.v1.ConfidenceBand
-	12, // 19: creativanta.intelligence.v1.BenchmarkComparison.entities:type_name -> creativanta.intelligence.v1.EntityBenchmarkScore
-	12, // 20: creativanta.intelligence.v1.BenchmarkComparison.market_average:type_name -> creativanta.intelligence.v1.EntityBenchmarkScore
-	11, // 21: creativanta.intelligence.v1.BenchmarkComparison.revenue_metric_guard:type_name -> creativanta.intelligence.v1.FinancialNonConflationNotice
-	39, // 22: creativanta.intelligence.v1.BenchmarkComparison.insight_source_class:type_name -> creativanta.intelligence.v1.SourceClass
-	40, // 23: creativanta.intelligence.v1.BenchmarkComparison.insight_confidence:type_name -> creativanta.intelligence.v1.ConfidenceBand
-	5,  // 24: creativanta.intelligence.v1.BenchmarkComparison.insight_why:type_name -> creativanta.intelligence.v1.WhyExplanation
-	38, // 25: creativanta.intelligence.v1.BenchmarkDataPoint.timestamp:type_name -> google.protobuf.Timestamp
-	14, // 26: creativanta.intelligence.v1.TimeSeriesSeries.points:type_name -> creativanta.intelligence.v1.BenchmarkDataPoint
-	3,  // 27: creativanta.intelligence.v1.CompetitorServiceListResponse.competitors:type_name -> creativanta.intelligence.v1.CompetitorEntity
-	3,  // 28: creativanta.intelligence.v1.CompetitorServiceAddResponse.competitor:type_name -> creativanta.intelligence.v1.CompetitorEntity
-	4,  // 29: creativanta.intelligence.v1.GetSuggestionsResponse.suggestions:type_name -> creativanta.intelligence.v1.CompetitorSuggestion
-	2,  // 30: creativanta.intelligence.v1.SetAlertsRequest.alert_config:type_name -> creativanta.intelligence.v1.AlertConfig
-	2,  // 31: creativanta.intelligence.v1.SetAlertsResponse.alert_config:type_name -> creativanta.intelligence.v1.AlertConfig
-	16, // 32: creativanta.intelligence.v1.ValidateHandleResponse.preview:type_name -> creativanta.intelligence.v1.CompetitorPreview
-	7,  // 33: creativanta.intelligence.v1.AnalyzeBenchmarkResponse.snapshot:type_name -> creativanta.intelligence.v1.BenchmarkSnapshot
-	8,  // 34: creativanta.intelligence.v1.AnalyzeBenchmarkResponse.white_space_gaps:type_name -> creativanta.intelligence.v1.WhiteSpaceGap
-	9,  // 35: creativanta.intelligence.v1.AnalyzeBenchmarkResponse.pricing_comparisons:type_name -> creativanta.intelligence.v1.PricingComparisonItem
-	10, // 36: creativanta.intelligence.v1.AnalyzeBenchmarkResponse.format_comparisons:type_name -> creativanta.intelligence.v1.FormatComparisonItem
-	13, // 37: creativanta.intelligence.v1.BenchmarkServiceCompareResponse.comparison:type_name -> creativanta.intelligence.v1.BenchmarkComparison
-	15, // 38: creativanta.intelligence.v1.GetTimeSeriesResponse.series:type_name -> creativanta.intelligence.v1.TimeSeriesSeries
-	17, // 39: creativanta.intelligence.v1.CompetitorService.List:input_type -> creativanta.intelligence.v1.CompetitorServiceListRequest
-	19, // 40: creativanta.intelligence.v1.CompetitorService.Add:input_type -> creativanta.intelligence.v1.CompetitorServiceAddRequest
-	21, // 41: creativanta.intelligence.v1.CompetitorService.Remove:input_type -> creativanta.intelligence.v1.CompetitorServiceRemoveRequest
-	23, // 42: creativanta.intelligence.v1.CompetitorService.GetSuggestions:input_type -> creativanta.intelligence.v1.GetSuggestionsRequest
-	25, // 43: creativanta.intelligence.v1.CompetitorService.DismissSuggestion:input_type -> creativanta.intelligence.v1.DismissSuggestionRequest
-	27, // 44: creativanta.intelligence.v1.CompetitorService.SetAlerts:input_type -> creativanta.intelligence.v1.SetAlertsRequest
-	29, // 45: creativanta.intelligence.v1.CompetitorService.ValidateHandle:input_type -> creativanta.intelligence.v1.ValidateHandleRequest
-	31, // 46: creativanta.intelligence.v1.CompetitorService.AnalyzeBenchmark:input_type -> creativanta.intelligence.v1.AnalyzeBenchmarkRequest
-	33, // 47: creativanta.intelligence.v1.BenchmarkService.Compare:input_type -> creativanta.intelligence.v1.BenchmarkServiceCompareRequest
-	35, // 48: creativanta.intelligence.v1.BenchmarkService.GetTimeSeries:input_type -> creativanta.intelligence.v1.GetTimeSeriesRequest
-	18, // 49: creativanta.intelligence.v1.CompetitorService.List:output_type -> creativanta.intelligence.v1.CompetitorServiceListResponse
-	20, // 50: creativanta.intelligence.v1.CompetitorService.Add:output_type -> creativanta.intelligence.v1.CompetitorServiceAddResponse
-	22, // 51: creativanta.intelligence.v1.CompetitorService.Remove:output_type -> creativanta.intelligence.v1.CompetitorServiceRemoveResponse
-	24, // 52: creativanta.intelligence.v1.CompetitorService.GetSuggestions:output_type -> creativanta.intelligence.v1.GetSuggestionsResponse
-	26, // 53: creativanta.intelligence.v1.CompetitorService.DismissSuggestion:output_type -> creativanta.intelligence.v1.DismissSuggestionResponse
-	28, // 54: creativanta.intelligence.v1.CompetitorService.SetAlerts:output_type -> creativanta.intelligence.v1.SetAlertsResponse
-	30, // 55: creativanta.intelligence.v1.CompetitorService.ValidateHandle:output_type -> creativanta.intelligence.v1.ValidateHandleResponse
-	32, // 56: creativanta.intelligence.v1.CompetitorService.AnalyzeBenchmark:output_type -> creativanta.intelligence.v1.AnalyzeBenchmarkResponse
-	34, // 57: creativanta.intelligence.v1.BenchmarkService.Compare:output_type -> creativanta.intelligence.v1.BenchmarkServiceCompareResponse
-	36, // 58: creativanta.intelligence.v1.BenchmarkService.GetTimeSeries:output_type -> creativanta.intelligence.v1.GetTimeSeriesResponse
-	49, // [49:59] is the sub-list for method output_type
-	39, // [39:49] is the sub-list for method input_type
-	39, // [39:39] is the sub-list for extension type_name
-	39, // [39:39] is the sub-list for extension extendee
-	0,  // [0:39] is the sub-list for field type_name
+	2,  // 2: creativanta.intelligence.v1.AlertConfig.source_status:type_name -> creativanta.intelligence.v1.MonitoringSourceStatus
+	39, // 3: creativanta.intelligence.v1.AlertConfig.last_alert_at:type_name -> google.protobuf.Timestamp
+	39, // 4: creativanta.intelligence.v1.CompetitorEntity.last_post_at:type_name -> google.protobuf.Timestamp
+	39, // 5: creativanta.intelligence.v1.CompetitorEntity.created_at:type_name -> google.protobuf.Timestamp
+	39, // 6: creativanta.intelligence.v1.CompetitorEntity.updated_at:type_name -> google.protobuf.Timestamp
+	3,  // 7: creativanta.intelligence.v1.CompetitorEntity.alert_config:type_name -> creativanta.intelligence.v1.AlertConfig
+	38, // 8: creativanta.intelligence.v1.BenchmarkMetrics.format_distribution:type_name -> creativanta.intelligence.v1.BenchmarkMetrics.FormatDistributionEntry
+	7,  // 9: creativanta.intelligence.v1.BenchmarkSnapshot.metrics:type_name -> creativanta.intelligence.v1.BenchmarkMetrics
+	40, // 10: creativanta.intelligence.v1.BenchmarkSnapshot.source_class:type_name -> creativanta.intelligence.v1.SourceClass
+	41, // 11: creativanta.intelligence.v1.BenchmarkSnapshot.confidence:type_name -> creativanta.intelligence.v1.ConfidenceBand
+	39, // 12: creativanta.intelligence.v1.BenchmarkSnapshot.captured_at:type_name -> google.protobuf.Timestamp
+	39, // 13: creativanta.intelligence.v1.BenchmarkSnapshot.created_at:type_name -> google.protobuf.Timestamp
+	6,  // 14: creativanta.intelligence.v1.BenchmarkSnapshot.why_explanation:type_name -> creativanta.intelligence.v1.WhyExplanation
+	40, // 15: creativanta.intelligence.v1.WhiteSpaceGap.source_class:type_name -> creativanta.intelligence.v1.SourceClass
+	41, // 16: creativanta.intelligence.v1.WhiteSpaceGap.confidence:type_name -> creativanta.intelligence.v1.ConfidenceBand
+	6,  // 17: creativanta.intelligence.v1.WhiteSpaceGap.why_explanation:type_name -> creativanta.intelligence.v1.WhyExplanation
+	40, // 18: creativanta.intelligence.v1.PricingComparisonItem.source_class:type_name -> creativanta.intelligence.v1.SourceClass
+	40, // 19: creativanta.intelligence.v1.FormatComparisonItem.source_class:type_name -> creativanta.intelligence.v1.SourceClass
+	41, // 20: creativanta.intelligence.v1.FormatComparisonItem.confidence:type_name -> creativanta.intelligence.v1.ConfidenceBand
+	13, // 21: creativanta.intelligence.v1.BenchmarkComparison.entities:type_name -> creativanta.intelligence.v1.EntityBenchmarkScore
+	13, // 22: creativanta.intelligence.v1.BenchmarkComparison.market_average:type_name -> creativanta.intelligence.v1.EntityBenchmarkScore
+	12, // 23: creativanta.intelligence.v1.BenchmarkComparison.revenue_metric_guard:type_name -> creativanta.intelligence.v1.FinancialNonConflationNotice
+	40, // 24: creativanta.intelligence.v1.BenchmarkComparison.insight_source_class:type_name -> creativanta.intelligence.v1.SourceClass
+	41, // 25: creativanta.intelligence.v1.BenchmarkComparison.insight_confidence:type_name -> creativanta.intelligence.v1.ConfidenceBand
+	6,  // 26: creativanta.intelligence.v1.BenchmarkComparison.insight_why:type_name -> creativanta.intelligence.v1.WhyExplanation
+	39, // 27: creativanta.intelligence.v1.BenchmarkDataPoint.timestamp:type_name -> google.protobuf.Timestamp
+	15, // 28: creativanta.intelligence.v1.TimeSeriesSeries.points:type_name -> creativanta.intelligence.v1.BenchmarkDataPoint
+	4,  // 29: creativanta.intelligence.v1.CompetitorServiceListResponse.competitors:type_name -> creativanta.intelligence.v1.CompetitorEntity
+	4,  // 30: creativanta.intelligence.v1.CompetitorServiceAddResponse.competitor:type_name -> creativanta.intelligence.v1.CompetitorEntity
+	5,  // 31: creativanta.intelligence.v1.GetSuggestionsResponse.suggestions:type_name -> creativanta.intelligence.v1.CompetitorSuggestion
+	3,  // 32: creativanta.intelligence.v1.SetAlertsRequest.alert_config:type_name -> creativanta.intelligence.v1.AlertConfig
+	3,  // 33: creativanta.intelligence.v1.SetAlertsResponse.alert_config:type_name -> creativanta.intelligence.v1.AlertConfig
+	17, // 34: creativanta.intelligence.v1.ValidateHandleResponse.preview:type_name -> creativanta.intelligence.v1.CompetitorPreview
+	8,  // 35: creativanta.intelligence.v1.AnalyzeBenchmarkResponse.snapshot:type_name -> creativanta.intelligence.v1.BenchmarkSnapshot
+	9,  // 36: creativanta.intelligence.v1.AnalyzeBenchmarkResponse.white_space_gaps:type_name -> creativanta.intelligence.v1.WhiteSpaceGap
+	10, // 37: creativanta.intelligence.v1.AnalyzeBenchmarkResponse.pricing_comparisons:type_name -> creativanta.intelligence.v1.PricingComparisonItem
+	11, // 38: creativanta.intelligence.v1.AnalyzeBenchmarkResponse.format_comparisons:type_name -> creativanta.intelligence.v1.FormatComparisonItem
+	14, // 39: creativanta.intelligence.v1.BenchmarkServiceCompareResponse.comparison:type_name -> creativanta.intelligence.v1.BenchmarkComparison
+	16, // 40: creativanta.intelligence.v1.GetTimeSeriesResponse.series:type_name -> creativanta.intelligence.v1.TimeSeriesSeries
+	18, // 41: creativanta.intelligence.v1.CompetitorService.List:input_type -> creativanta.intelligence.v1.CompetitorServiceListRequest
+	20, // 42: creativanta.intelligence.v1.CompetitorService.Add:input_type -> creativanta.intelligence.v1.CompetitorServiceAddRequest
+	22, // 43: creativanta.intelligence.v1.CompetitorService.Remove:input_type -> creativanta.intelligence.v1.CompetitorServiceRemoveRequest
+	24, // 44: creativanta.intelligence.v1.CompetitorService.GetSuggestions:input_type -> creativanta.intelligence.v1.GetSuggestionsRequest
+	26, // 45: creativanta.intelligence.v1.CompetitorService.DismissSuggestion:input_type -> creativanta.intelligence.v1.DismissSuggestionRequest
+	28, // 46: creativanta.intelligence.v1.CompetitorService.SetAlerts:input_type -> creativanta.intelligence.v1.SetAlertsRequest
+	30, // 47: creativanta.intelligence.v1.CompetitorService.ValidateHandle:input_type -> creativanta.intelligence.v1.ValidateHandleRequest
+	32, // 48: creativanta.intelligence.v1.CompetitorService.AnalyzeBenchmark:input_type -> creativanta.intelligence.v1.AnalyzeBenchmarkRequest
+	34, // 49: creativanta.intelligence.v1.BenchmarkService.Compare:input_type -> creativanta.intelligence.v1.BenchmarkServiceCompareRequest
+	36, // 50: creativanta.intelligence.v1.BenchmarkService.GetTimeSeries:input_type -> creativanta.intelligence.v1.GetTimeSeriesRequest
+	19, // 51: creativanta.intelligence.v1.CompetitorService.List:output_type -> creativanta.intelligence.v1.CompetitorServiceListResponse
+	21, // 52: creativanta.intelligence.v1.CompetitorService.Add:output_type -> creativanta.intelligence.v1.CompetitorServiceAddResponse
+	23, // 53: creativanta.intelligence.v1.CompetitorService.Remove:output_type -> creativanta.intelligence.v1.CompetitorServiceRemoveResponse
+	25, // 54: creativanta.intelligence.v1.CompetitorService.GetSuggestions:output_type -> creativanta.intelligence.v1.GetSuggestionsResponse
+	27, // 55: creativanta.intelligence.v1.CompetitorService.DismissSuggestion:output_type -> creativanta.intelligence.v1.DismissSuggestionResponse
+	29, // 56: creativanta.intelligence.v1.CompetitorService.SetAlerts:output_type -> creativanta.intelligence.v1.SetAlertsResponse
+	31, // 57: creativanta.intelligence.v1.CompetitorService.ValidateHandle:output_type -> creativanta.intelligence.v1.ValidateHandleResponse
+	33, // 58: creativanta.intelligence.v1.CompetitorService.AnalyzeBenchmark:output_type -> creativanta.intelligence.v1.AnalyzeBenchmarkResponse
+	35, // 59: creativanta.intelligence.v1.BenchmarkService.Compare:output_type -> creativanta.intelligence.v1.BenchmarkServiceCompareResponse
+	37, // 60: creativanta.intelligence.v1.BenchmarkService.GetTimeSeries:output_type -> creativanta.intelligence.v1.GetTimeSeriesResponse
+	51, // [51:61] is the sub-list for method output_type
+	41, // [41:51] is the sub-list for method input_type
+	41, // [41:41] is the sub-list for extension type_name
+	41, // [41:41] is the sub-list for extension extendee
+	0,  // [0:41] is the sub-list for field type_name
 }
 
 func init() { file_creativanta_intelligence_v1_competitor_proto_init() }
@@ -3386,7 +3502,7 @@ func file_creativanta_intelligence_v1_competitor_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_creativanta_intelligence_v1_competitor_proto_rawDesc), len(file_creativanta_intelligence_v1_competitor_proto_rawDesc)),
-			NumEnums:      2,
+			NumEnums:      3,
 			NumMessages:   36,
 			NumExtensions: 0,
 			NumServices:   2,

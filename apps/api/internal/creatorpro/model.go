@@ -246,9 +246,47 @@ type BrandDeal struct {
 	Notes                   string          `json:"notes,omitempty"`
 	CancellationReason      string          `json:"cancellation_reason,omitempty"`
 	FinancialReversalLogged bool            `json:"financial_reversal_logged,omitempty"`
+	KanbanOrder             int32           `json:"kanban_order"`
+	Version                 int32           `json:"version"`
 	CreatedAt               time.Time       `json:"created_at"`
 	UpdatedAt               time.Time       `json:"updated_at"`
 	DeletedAt               *time.Time      `json:"deleted_at,omitempty"`
+}
+
+// ----------------------------------------------------------------------------
+// Creator Directory & Contract Template Models (database_schema.md §27.2)
+// ----------------------------------------------------------------------------
+
+type PublicRateItem struct {
+	ServiceType string `json:"service_type"`
+	Amount      string `json:"amount"`
+	Currency    string `json:"currency"`
+}
+
+type PublicCreatorProfile struct {
+	DisplayName   string           `json:"display_name"`
+	Bio           string           `json:"bio"`
+	Categories    []string         `json:"categories"`
+	Languages     []string         `json:"languages"`
+	PortfolioURLs []string         `json:"portfolio_urls"`
+	PublicRates   []PublicRateItem `json:"public_rates"`
+}
+
+type CreatorDirectoryEntry struct {
+	MediaKitID  string               `json:"media_kit_id"`
+	Profile     PublicCreatorProfile `json:"profile"`
+	PublishedAt time.Time            `json:"published_at"`
+}
+
+type ContractTemplate struct {
+	TemplateID      string `json:"template_id"`
+	Title           string `json:"title"`
+	Description     string `json:"description"`
+	DefaultTerms    string `json:"default_terms"`
+	Version         string `json:"version"`
+	SourceArticleID string `json:"source_article_id"`
+	BodyMarkdown    string `json:"body_markdown"`
+	Disclaimer      string `json:"disclaimer"`
 }
 
 type BrandDealPipelineStats struct {

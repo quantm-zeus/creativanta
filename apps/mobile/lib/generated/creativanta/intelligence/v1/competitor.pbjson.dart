@@ -47,6 +47,24 @@ final $typed_data.Uint8List alertMetricDescriptor = $convert.base64Decode(
     'RSSUNfRU5HQUdFTUVOVF9SQVRFEAESHwobQUxFUlRfTUVUUklDX1BPU1RfRlJFUVVFTkNZEAIS'
     'HwobQUxFUlRfTUVUUklDX09CU0VSVkVEX1BSSUNFEAM=');
 
+@$core.Deprecated('Use monitoringSourceStatusDescriptor instead')
+const MonitoringSourceStatus$json = {
+  '1': 'MonitoringSourceStatus',
+  '2': [
+    {'1': 'MONITORING_SOURCE_STATUS_UNSPECIFIED', '2': 0},
+    {'1': 'MONITORING_SOURCE_STATUS_ACTIVE', '2': 1},
+    {'1': 'MONITORING_SOURCE_STATUS_PAUSED', '2': 2},
+    {'1': 'MONITORING_SOURCE_STATUS_IMPORT_REQUIRED', '2': 3},
+  ],
+};
+
+/// Descriptor for `MonitoringSourceStatus`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List monitoringSourceStatusDescriptor = $convert.base64Decode(
+    'ChZNb25pdG9yaW5nU291cmNlU3RhdHVzEigKJE1PTklUT1JJTkdfU09VUkNFX1NUQVRVU19VTl'
+    'NQRUNJRklFRBAAEiMKH01PTklUT1JJTkdfU09VUkNFX1NUQVRVU19BQ1RJVkUQARIjCh9NT05J'
+    'VE9SSU5HX1NPVVJDRV9TVEFUVVNfUEFVU0VEEAISLAooTU9OSVRPUklOR19TT1VSQ0VfU1RBVF'
+    'VTX0lNUE9SVF9SRVFVSVJFRBAD');
+
 @$core.Deprecated('Use alertConfigDescriptor instead')
 const AlertConfig$json = {
   '1': 'AlertConfig',
@@ -76,6 +94,44 @@ const AlertConfig$json = {
       '5': 5,
       '10': 'minIntervalMinutes'
     },
+    {
+      '1': 'source_status',
+      '3': 6,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.intelligence.v1.MonitoringSourceStatus',
+      '10': 'sourceStatus'
+    },
+    {
+      '1': 'source_status_reason',
+      '3': 7,
+      '4': 1,
+      '5': 9,
+      '10': 'sourceStatusReason'
+    },
+    {
+      '1': 'last_alert_at',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'lastAlertAt'
+    },
+    {
+      '1': 'last_alert_snapshot_id',
+      '3': 9,
+      '4': 1,
+      '5': 9,
+      '10': 'lastAlertSnapshotId'
+    },
+    {'1': 'recovery_latched', '3': 10, '4': 1, '5': 8, '10': 'recoveryLatched'},
+    {
+      '1': 'insufficient_data',
+      '3': 11,
+      '4': 1,
+      '5': 8,
+      '10': 'insufficientData'
+    },
   ],
 };
 
@@ -85,7 +141,13 @@ final $typed_data.Uint8List alertConfigDescriptor = $convert.base64Decode(
     'IoLmNyZWF0aXZhbnRhLmludGVsbGlnZW5jZS52MS5BbGVydE1ldHJpY1IGbWV0cmljEhwKCXRo'
     'cmVzaG9sZBgDIAEoAVIJdGhyZXNob2xkEkkKCWRpcmVjdGlvbhgEIAEoDjIrLmNyZWF0aXZhbn'
     'RhLmludGVsbGlnZW5jZS52MS5BbGVydERpcmVjdGlvblIJZGlyZWN0aW9uEjAKFG1pbl9pbnRl'
-    'cnZhbF9taW51dGVzGAUgASgFUhJtaW5JbnRlcnZhbE1pbnV0ZXM=');
+    'cnZhbF9taW51dGVzGAUgASgFUhJtaW5JbnRlcnZhbE1pbnV0ZXMSWAoNc291cmNlX3N0YXR1cx'
+    'gGIAEoDjIzLmNyZWF0aXZhbnRhLmludGVsbGlnZW5jZS52MS5Nb25pdG9yaW5nU291cmNlU3Rh'
+    'dHVzUgxzb3VyY2VTdGF0dXMSMAoUc291cmNlX3N0YXR1c19yZWFzb24YByABKAlSEnNvdXJjZV'
+    'N0YXR1c1JlYXNvbhI+Cg1sYXN0X2FsZXJ0X2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRp'
+    'bWVzdGFtcFILbGFzdEFsZXJ0QXQSMwoWbGFzdF9hbGVydF9zbmFwc2hvdF9pZBgJIAEoCVITbG'
+    'FzdEFsZXJ0U25hcHNob3RJZBIpChByZWNvdmVyeV9sYXRjaGVkGAogASgIUg9yZWNvdmVyeUxh'
+    'dGNoZWQSKwoRaW5zdWZmaWNpZW50X2RhdGEYCyABKAhSEGluc3VmZmljaWVudERhdGE=');
 
 @$core.Deprecated('Use competitorEntityDescriptor instead')
 const CompetitorEntity$json = {

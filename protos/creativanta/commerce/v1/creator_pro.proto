@@ -446,15 +446,35 @@ message MediaKitServiceExportResponse {
   string file_name = 2;
 }
 
+// Public rate card item for public directory profile snapshot per database_schema.md §27.2.
+message PublicRateItem {
+  string service_type = 1;
+  string amount = 2; // decimal string
+  string currency = 3;
+}
+
+// Consented public creator profile snapshot per database_schema.md §27.2.
+message PublicCreatorProfile {
+  string display_name = 1;
+  string bio = 2;
+  repeated string categories = 3;
+  repeated string languages = 4;
+  repeated string portfolio_urls = 5;
+  repeated PublicRateItem public_rates = 6;
+}
+
 message SetDirectoryProfileRequest {
   string workspace_id = 1;
   string media_kit_id = 2;
   bool directory_opt_in = 3;
   string directory_profile_json = 4;
+  PublicCreatorProfile profile = 5;
 }
 
 message SetDirectoryProfileResponse {
   MediaKit media_kit = 1;
+  string media_kit_id = 2;
+  MediaKitDirectoryStatus directory_status = 3;
 }
 
 message RateCardServiceCreateRequest {
@@ -566,6 +586,8 @@ message BrandDealServiceUpdateStatusRequest {
   BrandDealStatus target_status = 3;
   string cancellation_reason = 4;
   bool requires_financial_reversal = 5;
+  google.protobuf.Timestamp expected_updated_at = 6;
+  string idempotency_key = 7;
 }
 
 message BrandDealServiceUpdateStatusResponse {
@@ -646,10 +668,15 @@ message ContractTemplate {
   string title = 2;
   string description = 3;
   string default_terms = 4;
+  string version = 5;
+  string source_article_id = 6;
+  string body_markdown = 7;
+  string disclaimer = 8;
 }
 
 message ListContractTemplatesResponse {
   repeated ContractTemplate templates = 1;
+  string disclaimer = 2;
 }
 
 message AttachContractRequest {
@@ -731,11 +758,16 @@ message SponsorInquiryServiceSubmitRequest {
   string contact_email = 3;
   string message = 4;
   double proposed_budget = 5;
+  string media_kit_id = 6;
+  string challenge_token = 7;
+  string idempotency_key = 8;
 }
 
 message SponsorInquiryServiceSubmitResponse {
   bool accepted = 1;
   string inquiry_id = 2;
+  string submission_receipt = 3;
+  string status = 4;
 }
 
 message GetPerContentRequest {
@@ -869,6 +901,40 @@ service RevenueTrackerService {
   rpc GetRPMTrends(GetRPMTrendsRequest) returns (GetRPMTrendsResponse);
   rpc GetROI(GetROIRequest) returns (GetROIResponse);
   rpc GetTopPerformers(GetTopPerformersRequest) returns (GetTopPerformersResponse);
+}
+
+message CreatorDirectoryEntry {
+  string media_kit_id = 1;
+  PublicCreatorProfile profile = 2;
+  google.protobuf.Timestamp published_at = 3;
+}
+
+message CreatorDirectoryServiceSearchRequest {
+  string query = 1; // <= 120 chars
+  repeated string categories = 2;
+  repeated string languages = 3;
+  int32 page_size = 4; // 1-20
+  string page_token = 5;
+}
+
+message CreatorDirectoryServiceSearchResponse {
+  repeated CreatorDirectoryEntry entries = 1;
+  string next_page_token = 2;
+  bool has_more = 3;
+  int64 total_count = 4;
+}
+
+message CreatorDirectoryServiceGetRequest {
+  string media_kit_id = 1;
+}
+
+message CreatorDirectoryServiceGetResponse {
+  CreatorDirectoryEntry entry = 1;
+}
+
+service CreatorDirectoryService {
+  rpc Search(CreatorDirectoryServiceSearchRequest) returns (CreatorDirectoryServiceSearchResponse);
+  rpc Get(CreatorDirectoryServiceGetRequest) returns (CreatorDirectoryServiceGetResponse);
 }
 
 service TaxReportService {

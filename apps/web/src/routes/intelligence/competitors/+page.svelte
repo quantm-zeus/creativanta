@@ -5,9 +5,11 @@
     formatPercent,
     evaluateStaleness,
     generateBenchmarkWhyExplanation,
+    evaluateContinuousMonitoringAlert,
     type CompetitorItem,
     type CompetitorSuggestion,
-    type WhyExplanation
+    type WhyExplanation,
+    type MonitoringSourceStatus
   } from '$lib/competitor';
   import CompetitorWhyDrawer from '$lib/competitor/CompetitorWhyDrawer.svelte';
 
@@ -135,6 +137,28 @@
   let alertThreshold = $state(10);
   let alertMinInterval = $state(60);
   let alertSuccessMessage = $state('');
+
+  // P8-07 Target 1: Continuous Monitoring Source Status & Simulation
+  let alertSourceAvailable = $state(true);
+  let monitoringSourceStatus = $derived<MonitoringSourceStatus>(alertSourceAvailable ? 'ACTIVE' : 'PAUSED');
+  let simulatedDropAlert = $derived(
+    activeAlertCompetitor
+      ? evaluateContinuousMonitoringAlert(
+          {
+            competitorId: activeAlertCompetitor.id,
+            metric: alertMetric,
+            thresholdPercent: alertThreshold,
+            sourceStatus: monitoringSourceStatus,
+            recoveryLatched: false,
+            insufficientData: false
+          },
+          100, // Previous benchmark value
+          60,  // Current benchmark value (40% drop)
+          'snap-simulated-01',
+          alertSourceAvailable
+        )
+      : null
+  );
 
   // Handlers
   function openWhyDrawer(comp: CompetitorItem) {
@@ -686,6 +710,39 @@
             {alertSuccessMessage}
           </div>
         {/if}
+
+        <!-- P8-07 Target 1: Source Access Status & Paused/Import Path -->
+        <div class="p-3 rounded-lg border border-[#e7e2d7] bg-[#fbf9f5] space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-[#242924]">Trạng thái kết nối nguồn dữ liệu:</span>
+            <span class="px-2 py-0.5 rounded text-[11px] font-bold uppercase {alertSourceAvailable ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+              {monitoringSourceStatus}
+            </span>
+          </div>
+
+          <div class="flex items-center justify-between text-[11px] text-[#616c63]">
+            <span>Mô phỏng mất kết nối nguồn:</span>
+            <button
+              type="button"
+              onclick={() => (alertSourceAvailable = !alertSourceAvailable)}
+              class="px-2 py-1 rounded bg-[#e7e2d7] hover:bg-[#d5cfc2] font-semibold text-[#242924] transition"
+            >
+              {alertSourceAvailable ? 'Ngắt kết nối nguồn (Mất quyền)' : 'Khôi phục kết nối'}
+            </button>
+          </div>
+
+          {#if !alertSourceAvailable}
+            <div class="p-2 rounded bg-amber-50 border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
+              <strong>Target 1 (Không có quyền truy cập nguồn):</strong> Cảnh báo tự động tạm dừng (PAUSED). Hệ thống bảo toàn toàn bộ ảnh chụp benchmark lịch sử và chuyển sang quy trình nhập dữ liệu thủ công (Import path), không phát sinh cảnh báo tụt ảo.
+            </div>
+          {/if}
+
+          {#if simulatedDropAlert}
+            <div class="text-[10px] text-[#616c63] italic">
+              Đánh giá: {simulatedDropAlert.reason}
+            </div>
+          {/if}
+        </div>
 
         <div class="space-y-4">
           <div>

@@ -83,11 +83,17 @@ type StoredCompetitor struct {
 
 // StoredAlertConfig represents alert threshold settings per database_schema.md §27.3.
 type StoredAlertConfig struct {
-	Enabled            bool
-	Metric             string
-	Threshold          float64
-	Direction          string
-	MinIntervalMinutes int32
+	Enabled             bool
+	Metric              string
+	Threshold           float64
+	Direction           string
+	MinIntervalMinutes  int32
+	SourceStatus        string
+	SourceStatusReason  string
+	LastAlertAt         time.Time
+	LastAlertSnapshotID string
+	RecoveryLatched     bool
+	InsufficientData    bool
 }
 
 // StoredBenchmarkSnapshot represents an internal snapshot in table `benchmark_snapshots`.
@@ -670,12 +676,31 @@ func (s *Service) SetAlerts(ctx context.Context, req *connect.Request[intelligen
 		minInterval = 60
 	}
 
+	srcStatus := "active"
+	srcReason := "Kết nối trực tiếp API hoạt động bình thường"
+	if cfg.SourceStatus == intelligencev1.MonitoringSourceStatus_MONITORING_SOURCE_STATUS_PAUSED ||
+		cfg.SourceStatus == intelligencev1.MonitoringSourceStatus_MONITORING_SOURCE_STATUS_IMPORT_REQUIRED {
+		if cfg.SourceStatus == intelligencev1.MonitoringSourceStatus_MONITORING_SOURCE_STATUS_PAUSED {
+			srcStatus = "paused"
+		} else {
+			srcStatus = "import_required"
+		}
+		srcReason = cfg.SourceStatusReason
+		if srcReason == "" {
+			srcReason = "Nguồn dữ liệu không có quyền truy cập hoặc phiên kết nối đã hết hạn. Đã chuyển sang lộ trình tạm dừng và import file thủ công."
+		}
+	}
+
 	comp.AlertConfig = StoredAlertConfig{
-		Enabled:            cfg.Enabled,
-		Metric:             cfg.Metric.String(),
-		Threshold:          cfg.Threshold,
-		Direction:          cfg.Direction.String(),
-		MinIntervalMinutes: minInterval,
+		Enabled:             cfg.Enabled,
+		Metric:              cfg.Metric.String(),
+		Threshold:           cfg.Threshold,
+		Direction:           cfg.Direction.String(),
+		MinIntervalMinutes:  minInterval,
+		SourceStatus:        srcStatus,
+		SourceStatusReason:  srcReason,
+		RecoveryLatched:     cfg.RecoveryLatched,
+		InsufficientData:    cfg.InsufficientData,
 	}
 	comp.UpdatedAt = time.Now()
 
@@ -686,14 +711,95 @@ func (s *Service) SetAlerts(ctx context.Context, req *connect.Request[intelligen
 	return connect.NewResponse(&intelligencev1.SetAlertsResponse{
 		Success:      true,
 		CompetitorId: compID,
-		AlertConfig: &intelligencev1.AlertConfig{
-			Enabled:            cfg.Enabled,
-			Metric:             cfg.Metric,
-			Threshold:          cfg.Threshold,
-			Direction:          cfg.Direction,
-			MinIntervalMinutes: minInterval,
-		},
+		AlertConfig:  toPBAlertConfig(comp.AlertConfig),
 	}), nil
+}
+
+// EvaluateMonitoringAlert executes threshold detection, replay deduplication, and source access checks per M03 & §27.3.
+// Acceptance Target 1: No source access → paused/import path.
+func (s *Service) EvaluateMonitoringAlert(ctx context.Context, wsID, compID string, snap StoredBenchmarkSnapshot, hasSourceAccess bool) (*StoredAlertConfig, bool, error) {
+	comp, err := s.store.GetCompetitor(ctx, wsID, compID)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if !comp.AlertConfig.Enabled {
+		return &comp.AlertConfig, false, nil
+	}
+
+	// 1. Acceptance Target 1: No source access → paused/import path.
+	if !hasSourceAccess {
+		comp.AlertConfig.SourceStatus = "paused"
+		comp.AlertConfig.SourceStatusReason = "Nguồn dữ liệu không có quyền truy cập hoặc phiên kết nối đã hết hạn. Đã chuyển sang lộ trình tạm dừng và import file thủ công. Các bản chụp dữ liệu lịch sử được gắn nhãn bảo lưu nguyên vẹn."
+		comp.UpdatedAt = time.Now()
+		_ = s.store.SaveCompetitor(ctx, *comp)
+		return &comp.AlertConfig, false, nil
+	}
+
+	// Active connection path
+	comp.AlertConfig.SourceStatus = "active"
+	comp.AlertConfig.SourceStatusReason = "Kết nối nguồn dữ liệu được cấp quyền hoạt động bình thường"
+
+	// 2. Denominator check: missing or zero denominator data must show insufficient data rather than false performance drop.
+	if snap.Metrics.AvgViews <= 0 && snap.Metrics.FollowerCount <= 0 && snap.Metrics.ContentFrequencyPerWeek <= 0 {
+		comp.AlertConfig.InsufficientData = true
+		comp.AlertConfig.SourceStatusReason = "Không đủ dữ liệu mẫu số (views/followers/posts = 0) để tính toán chính xác; ghi nhận insufficient data, không phát cảnh báo sụt giảm giả lập."
+		comp.UpdatedAt = time.Now()
+		_ = s.store.SaveCompetitor(ctx, *comp)
+		return &comp.AlertConfig, false, nil
+	}
+	comp.AlertConfig.InsufficientData = false
+
+	// 3. Deduplication check: Given an identical snapshot replay, no duplicate alert is sent.
+	if comp.AlertConfig.LastAlertSnapshotID != "" && comp.AlertConfig.LastAlertSnapshotID == snap.SnapshotID {
+		return &comp.AlertConfig, false, nil
+	}
+
+	// 4. Threshold evaluation
+	var metricVal float64
+	switch comp.AlertConfig.Metric {
+	case "ALERT_METRIC_ENGAGEMENT_RATE", "engagement_rate":
+		metricVal = float64(snap.Metrics.EngagementRate)
+	case "ALERT_METRIC_POST_FREQUENCY", "post_frequency":
+		metricVal = float64(snap.Metrics.ContentFrequencyPerWeek)
+	case "ALERT_METRIC_OBSERVED_PRICE", "observed_price":
+		metricVal = 0
+	default:
+		metricVal = float64(snap.Metrics.EngagementRate)
+	}
+
+	isAbove := comp.AlertConfig.Direction == "ALERT_DIRECTION_ABOVE" || comp.AlertConfig.Direction == "above"
+	isBelow := comp.AlertConfig.Direction == "ALERT_DIRECTION_BELOW" || comp.AlertConfig.Direction == "below"
+
+	triggered := false
+	if isAbove && metricVal >= comp.AlertConfig.Threshold {
+		triggered = true
+	} else if isBelow && metricVal <= comp.AlertConfig.Threshold {
+		triggered = true
+	}
+
+	if triggered {
+		// If condition already latched, suppress repeat alerts
+		if comp.AlertConfig.RecoveryLatched {
+			return &comp.AlertConfig, false, nil
+		}
+		// First crossing: trigger alert and set recovery latch
+		comp.AlertConfig.LastAlertAt = time.Now()
+		comp.AlertConfig.LastAlertSnapshotID = snap.SnapshotID
+		comp.AlertConfig.RecoveryLatched = true
+		comp.UpdatedAt = time.Now()
+		_ = s.store.SaveCompetitor(ctx, *comp)
+		return &comp.AlertConfig, true, nil
+	}
+
+	// Recovered: reset latch
+	if comp.AlertConfig.RecoveryLatched {
+		comp.AlertConfig.RecoveryLatched = false
+		comp.UpdatedAt = time.Now()
+		_ = s.store.SaveCompetitor(ctx, *comp)
+	}
+
+	return &comp.AlertConfig, false, nil
 }
 
 // ValidateHandle checks if a handle exists and provides preview metadata.
@@ -1240,11 +1346,58 @@ func toPBCompetitor(c StoredCompetitor) *intelligencev1.CompetitorEntity {
 		Status:                 c.Status,
 		CreatedAt:              timestamppb.New(c.CreatedAt),
 		UpdatedAt:              timestamppb.New(c.UpdatedAt),
-		AlertConfig: &intelligencev1.AlertConfig{
-			Enabled:            c.AlertConfig.Enabled,
-			Threshold:          c.AlertConfig.Threshold,
-			MinIntervalMinutes: c.AlertConfig.MinIntervalMinutes,
-		},
+		AlertConfig:            toPBAlertConfig(c.AlertConfig),
+	}
+}
+
+func toPBAlertConfig(c StoredAlertConfig) *intelligencev1.AlertConfig {
+	var metric intelligencev1.AlertMetric
+	switch c.Metric {
+	case "ALERT_METRIC_ENGAGEMENT_RATE", "engagement_rate":
+		metric = intelligencev1.AlertMetric_ALERT_METRIC_ENGAGEMENT_RATE
+	case "ALERT_METRIC_POST_FREQUENCY", "post_frequency":
+		metric = intelligencev1.AlertMetric_ALERT_METRIC_POST_FREQUENCY
+	case "ALERT_METRIC_OBSERVED_PRICE", "observed_price":
+		metric = intelligencev1.AlertMetric_ALERT_METRIC_OBSERVED_PRICE
+	}
+
+	var dir intelligencev1.AlertDirection
+	switch c.Direction {
+	case "ALERT_DIRECTION_ABOVE", "above":
+		dir = intelligencev1.AlertDirection_ALERT_DIRECTION_ABOVE
+	case "ALERT_DIRECTION_BELOW", "below":
+		dir = intelligencev1.AlertDirection_ALERT_DIRECTION_BELOW
+	}
+
+	var srcStatus intelligencev1.MonitoringSourceStatus
+	switch c.SourceStatus {
+	case "active":
+		srcStatus = intelligencev1.MonitoringSourceStatus_MONITORING_SOURCE_STATUS_ACTIVE
+	case "paused":
+		srcStatus = intelligencev1.MonitoringSourceStatus_MONITORING_SOURCE_STATUS_PAUSED
+	case "import_required":
+		srcStatus = intelligencev1.MonitoringSourceStatus_MONITORING_SOURCE_STATUS_IMPORT_REQUIRED
+	default:
+		srcStatus = intelligencev1.MonitoringSourceStatus_MONITORING_SOURCE_STATUS_ACTIVE
+	}
+
+	var lastAlertAt *timestamppb.Timestamp
+	if !c.LastAlertAt.IsZero() {
+		lastAlertAt = timestamppb.New(c.LastAlertAt)
+	}
+
+	return &intelligencev1.AlertConfig{
+		Enabled:             c.Enabled,
+		Metric:              metric,
+		Threshold:           c.Threshold,
+		Direction:           dir,
+		MinIntervalMinutes:  c.MinIntervalMinutes,
+		SourceStatus:        srcStatus,
+		SourceStatusReason:  c.SourceStatusReason,
+		LastAlertAt:         lastAlertAt,
+		LastAlertSnapshotId: c.LastAlertSnapshotID,
+		RecoveryLatched:     c.RecoveryLatched,
+		InsufficientData:    c.InsufficientData,
 	}
 }
 

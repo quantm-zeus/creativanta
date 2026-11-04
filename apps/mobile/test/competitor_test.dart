@@ -132,6 +132,90 @@ void main() {
       expect(formatCompactNumber(1250000), equals('1.3M'));
       expect(formatCompactNumber(850), equals('850'));
     });
+
+    // ------------------------------------------------------------------------
+    // P8-07 Target 1: Continuous Monitoring Alerts & Source Status
+    // ------------------------------------------------------------------------
+    test('P8-07 Target 1: No source access routes to paused/import path without false alarms', () {
+      final res = evaluateContinuousAlert(
+        competitorId: 'comp-101',
+        thresholdPercent: 20.0,
+        previousValue: 1000.0,
+        currentValue: 500.0,
+        currentSnapshotId: 'snap-001',
+        sourceAvailable: false,
+      );
+
+      expect(res.alertTriggered, isFalse);
+      expect(res.sourceStatus, equals(MobileMonitoringSourceStatus.paused));
+      expect(res.sourceStatusReason, contains('paused until reconnected or manual export imported'));
+      expect(res.reason, contains('Monitoring paused'));
+    });
+
+    test('P8-07 Target 1: Missing or zero denominator marks insufficient data', () {
+      final resZero = evaluateContinuousAlert(
+        competitorId: 'comp-101',
+        thresholdPercent: 20.0,
+        previousValue: 0.0,
+        currentValue: 500.0,
+        currentSnapshotId: 'snap-002',
+        sourceAvailable: true,
+      );
+      expect(resZero.alertTriggered, isFalse);
+      expect(resZero.insufficientData, isTrue);
+
+      final resNull = evaluateContinuousAlert(
+        competitorId: 'comp-101',
+        thresholdPercent: 20.0,
+        previousValue: null,
+        currentValue: 500.0,
+        currentSnapshotId: 'snap-003',
+        sourceAvailable: true,
+      );
+      expect(resNull.alertTriggered, isFalse);
+      expect(resNull.insufficientData, isTrue);
+    });
+
+    test('P8-07 Target 1: Drop beyond threshold triggers alert and latches until recovery', () {
+      // 100 -> 70 (-30% drop, threshold 20%)
+      final resDrop = evaluateContinuousAlert(
+        competitorId: 'comp-101',
+        thresholdPercent: 20.0,
+        previousValue: 100.0,
+        currentValue: 70.0,
+        currentSnapshotId: 'snap-004',
+        sourceAvailable: true,
+      );
+      expect(resDrop.alertTriggered, isTrue);
+      expect(resDrop.recoveryLatched, isTrue);
+      expect(resDrop.changePercent, equals(-30.0));
+
+      // Same dropped state while latched suppresses secondary notification
+      final resLatched = evaluateContinuousAlert(
+        competitorId: 'comp-101',
+        thresholdPercent: 20.0,
+        previousValue: 100.0,
+        currentValue: 75.0,
+        currentSnapshotId: 'snap-005',
+        recoveryLatched: true,
+        sourceAvailable: true,
+      );
+      expect(resLatched.alertTriggered, isFalse);
+      expect(resLatched.recoveryLatched, isTrue);
+
+      // Recovery back above threshold resets latch
+      final resRecovered = evaluateContinuousAlert(
+        competitorId: 'comp-101',
+        thresholdPercent: 20.0,
+        previousValue: 100.0,
+        currentValue: 95.0,
+        currentSnapshotId: 'snap-006',
+        recoveryLatched: true,
+        sourceAvailable: true,
+      );
+      expect(resRecovered.alertTriggered, isFalse);
+      expect(resRecovered.recoveryLatched, isFalse);
+    });
   });
 
   group('Mobile Competitor UI Widget Tests', () {

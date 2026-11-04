@@ -442,3 +442,223 @@ var testHandleNames = []string{
 	"@creator_iota",
 	"@creator_kappa",
 }
+
+// ----------------------------------------------------------------------------
+// P8-07 Acceptance Target 1: Competitor Monitoring & Continuous Alerts
+// Invariants:
+// - No source access → paused/import path
+// - Missing/zero denominator → insufficient data caveat, no false drop
+// - Deduplication → identical snapshot replay emits no duplicate alert
+// - Latch reset on recovery
+// ----------------------------------------------------------------------------
+
+func TestAcceptanceTarget_P8_CompetitorMonitoringContinuousAlerts(t *testing.T) {
+	store := NewMemoryStore()
+	svc := NewService(ServiceConfig{Store: store})
+	ctx := testContext("usr-editor", "ws-tenant-p8", "editor")
+
+	// 1. Setup competitor
+	addResp, err := svc.Add(ctx, connect.NewRequest(&intelligencev1.CompetitorServiceAddRequest{
+		WorkspaceId:    "ws-tenant-p8",
+		Platform:       "TikTok",
+		ExternalHandle: "@p8_competitor",
+		Name:           "P8 Tracked Competitor",
+		Category:       "Commerce / Retail",
+	}))
+	if err != nil {
+		t.Fatalf("Add competitor failed: %v", err)
+	}
+	compID := addResp.Msg.Competitor.CompetitorId
+
+	// 2. Configure monitoring alert: Alert when engagement_rate drops below 5.0%
+	setResp, err := svc.SetAlerts(ctx, connect.NewRequest(&intelligencev1.SetAlertsRequest{
+		WorkspaceId:  "ws-tenant-p8",
+		CompetitorId: compID,
+		AlertConfig: &intelligencev1.AlertConfig{
+			Enabled:            true,
+			Metric:             intelligencev1.AlertMetric_ALERT_METRIC_ENGAGEMENT_RATE,
+			Threshold:          5.0,
+			Direction:          intelligencev1.AlertDirection_ALERT_DIRECTION_BELOW,
+			MinIntervalMinutes: 60,
+		},
+	}))
+	if err != nil {
+		t.Fatalf("SetAlerts failed: %v", err)
+	}
+	if !setResp.Msg.Success {
+		t.Fatal("expected SetAlerts success = true")
+	}
+
+	t.Run("Target 1: No source access switches to paused/import path and preserves snapshots", func(t *testing.T) {
+		snap := StoredBenchmarkSnapshot{
+			SnapshotID:   "snap-hist-01",
+			WorkspaceID:  "ws-tenant-p8",
+			CompetitorID: compID,
+			SnapshotType: "benchmark",
+			SourceClass:  intelligencev1.SourceClass_SOURCE_CLASS_INFERRED,
+			Confidence:   intelligencev1.ConfidenceBand_CONFIDENCE_BAND_MEDIUM,
+			CapturedAt:   time.Now().Add(-2 * time.Hour),
+			Metrics: StoredBenchmarkMetrics{
+				FollowerCount:  10000,
+				AvgViews:       5000,
+				EngagementRate: 3.2, // Below threshold
+			},
+		}
+		if err := store.SaveSnapshot(ctx, snap); err != nil {
+			t.Fatalf("SaveSnapshot failed: %v", err)
+		}
+
+		// Evaluate with hasSourceAccess = false
+		cfg, triggered, err := svc.EvaluateMonitoringAlert(ctx, "ws-tenant-p8", compID, snap, false)
+		if err != nil {
+			t.Fatalf("EvaluateMonitoringAlert failed: %v", err)
+		}
+		if triggered {
+			t.Fatal("expected no alert triggered when source access is unavailable")
+		}
+		if cfg.SourceStatus != "paused" {
+			t.Fatalf("expected SourceStatus = paused, got %s", cfg.SourceStatus)
+		}
+		if !strings.Contains(cfg.SourceStatusReason, "tạm dừng và import file thủ công") {
+			t.Fatalf("expected import guidance in SourceStatusReason, got %s", cfg.SourceStatusReason)
+		}
+
+		// Historical labeled snapshot must remain preserved
+		savedSnap, err := store.GetSnapshot(ctx, "ws-tenant-p8", "snap-hist-01")
+		if err != nil || savedSnap == nil {
+			t.Fatalf("historical snapshot was lost: %v", err)
+		}
+		if savedSnap.SourceClass != intelligencev1.SourceClass_SOURCE_CLASS_INFERRED {
+			t.Fatalf("expected labeled historical snapshot, got %v", savedSnap.SourceClass)
+		}
+	})
+
+	t.Run("Missing or zero denominator yields insufficient data without false drop", func(t *testing.T) {
+		zeroSnap := StoredBenchmarkSnapshot{
+			SnapshotID:   "snap-zero-denom",
+			WorkspaceID:  "ws-tenant-p8",
+			CompetitorID: compID,
+			SnapshotType: "benchmark",
+			SourceClass:  intelligencev1.SourceClass_SOURCE_CLASS_ESTIMATED,
+			CapturedAt:   time.Now(),
+			Metrics: StoredBenchmarkMetrics{
+				FollowerCount:  0, // Missing denominator
+				AvgViews:       0,
+				EngagementRate: 0.0,
+			},
+		}
+
+		cfg, triggered, err := svc.EvaluateMonitoringAlert(ctx, "ws-tenant-p8", compID, zeroSnap, true)
+		if err != nil {
+			t.Fatalf("EvaluateMonitoringAlert failed: %v", err)
+		}
+		if triggered {
+			t.Fatal("expected no alert triggered for missing denominator data")
+		}
+		if !cfg.InsufficientData {
+			t.Fatal("expected InsufficientData = true")
+		}
+		if !strings.Contains(cfg.SourceStatusReason, "insufficient data") {
+			t.Fatalf("expected insufficient data note, got %s", cfg.SourceStatusReason)
+		}
+	})
+
+	t.Run("Replay deduplication suppresses duplicate alert on identical snapshot", func(t *testing.T) {
+		thresholdSnap := StoredBenchmarkSnapshot{
+			SnapshotID:   "snap-drop-01",
+			WorkspaceID:  "ws-tenant-p8",
+			CompetitorID: compID,
+			SnapshotType: "benchmark",
+			SourceClass:  intelligencev1.SourceClass_SOURCE_CLASS_INFERRED,
+			CapturedAt:   time.Now(),
+			Metrics: StoredBenchmarkMetrics{
+				FollowerCount:  20000,
+				AvgViews:       8000,
+				EngagementRate: 3.5, // 3.5% is below 5.0% threshold
+			},
+		}
+
+		// First evaluation: must trigger alert
+		cfg, triggered, err := svc.EvaluateMonitoringAlert(ctx, "ws-tenant-p8", compID, thresholdSnap, true)
+		if err != nil {
+			t.Fatalf("first evaluation failed: %v", err)
+		}
+		if !triggered {
+			t.Fatal("expected alert triggered on threshold breach")
+		}
+		if !cfg.RecoveryLatched {
+			t.Fatal("expected RecoveryLatched = true after alert")
+		}
+		if cfg.LastAlertSnapshotID != "snap-drop-01" {
+			t.Fatalf("expected LastAlertSnapshotID = snap-drop-01, got %s", cfg.LastAlertSnapshotID)
+		}
+
+		// Replay identical snapshot: must be suppressed
+		cfg2, triggered2, err := svc.EvaluateMonitoringAlert(ctx, "ws-tenant-p8", compID, thresholdSnap, true)
+		if err != nil {
+			t.Fatalf("replay evaluation failed: %v", err)
+		}
+		if triggered2 {
+			t.Fatal("VIOLATION: duplicate alert sent on identical snapshot replay")
+		}
+		if cfg2.LastAlertSnapshotID != "snap-drop-01" {
+			t.Fatal("expected LastAlertSnapshotID preserved on replay")
+		}
+	})
+
+	t.Run("Recovery resets latch allowing future threshold alerts", func(t *testing.T) {
+		recoveredSnap := StoredBenchmarkSnapshot{
+			SnapshotID:   "snap-recovered-01",
+			WorkspaceID:  "ws-tenant-p8",
+			CompetitorID: compID,
+			SnapshotType: "benchmark",
+			SourceClass:  intelligencev1.SourceClass_SOURCE_CLASS_INFERRED,
+			CapturedAt:   time.Now(),
+			Metrics: StoredBenchmarkMetrics{
+				FollowerCount:  20000,
+				AvgViews:       12000,
+				EngagementRate: 6.8, // 6.8% > 5.0% threshold (recovered)
+			},
+		}
+
+		cfg, triggered, err := svc.EvaluateMonitoringAlert(ctx, "ws-tenant-p8", compID, recoveredSnap, true)
+		if err != nil {
+			t.Fatalf("recovery evaluation failed: %v", err)
+		}
+		if triggered {
+			t.Fatal("expected no alert triggered when metric is healthy")
+		}
+		if cfg.RecoveryLatched {
+			t.Fatal("expected RecoveryLatched = false after recovery")
+		}
+
+		// Subsequent drop triggers alert again
+		secondDropSnap := StoredBenchmarkSnapshot{
+			SnapshotID:   "snap-drop-02",
+			WorkspaceID:  "ws-tenant-p8",
+			CompetitorID: compID,
+			SnapshotType: "benchmark",
+			SourceClass:  intelligencev1.SourceClass_SOURCE_CLASS_INFERRED,
+			CapturedAt:   time.Now(),
+			Metrics: StoredBenchmarkMetrics{
+				FollowerCount:  20000,
+				AvgViews:       7000,
+				EngagementRate: 2.9, // Dropped again
+			},
+		}
+
+		cfg2, triggered2, err := svc.EvaluateMonitoringAlert(ctx, "ws-tenant-p8", compID, secondDropSnap, true)
+		if err != nil {
+			t.Fatalf("second drop evaluation failed: %v", err)
+		}
+		if !triggered2 {
+			t.Fatal("expected alert triggered on second threshold breach after recovery")
+		}
+		if !cfg2.RecoveryLatched {
+			t.Fatal("expected RecoveryLatched = true on second breach")
+		}
+		if cfg2.LastAlertSnapshotID != "snap-drop-02" {
+			t.Fatalf("expected LastAlertSnapshotID = snap-drop-02, got %s", cfg2.LastAlertSnapshotID)
+		}
+	})
+}

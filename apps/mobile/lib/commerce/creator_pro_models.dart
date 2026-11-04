@@ -359,3 +359,216 @@ bool isToolEntitledForMobileMode(MobileWorkspaceMode mode, MobileCreatorProTool 
   final tools = modeEntitledTools[mode];
   return tools != null && tools.contains(tool);
 }
+
+// ----------------------------------------------------------------------------
+// P8-07: Deal Kanban & Optimistic Concurrency
+// ----------------------------------------------------------------------------
+
+DealTransitionResult validateOptimisticKanbanMove({
+  required MobileBrandDealStatus currentStatus,
+  required MobileBrandDealStatus targetStatus,
+  required String currentUpdatedAt,
+  required String expectedUpdatedAt,
+  String? cancellationReason,
+  bool financialReversalConfirmed = false,
+}) {
+  if (currentUpdatedAt != expectedUpdatedAt) {
+    return const DealTransitionResult(
+      isValid: false,
+      errorMessage: 'Deal was modified concurrently; please refresh before updating status',
+    );
+  }
+  return CanonicalDealLifecycle.validateTransition(
+    currentStatus,
+    targetStatus,
+    cancellationReason: cancellationReason,
+    financialReversalConfirmed: financialReversalConfirmed,
+  );
+}
+
+// ----------------------------------------------------------------------------
+// P8-07: Immutable Contract Evidence (Acceptance Target 4)
+// ----------------------------------------------------------------------------
+
+class ContractEvidenceAttachmentResult {
+  const ContractEvidenceAttachmentResult({
+    required this.isSuccess,
+    this.updatedEvidenceIds,
+    this.errorMessage,
+  });
+
+  final bool isSuccess;
+  final List<String>? updatedEvidenceIds;
+  final String? errorMessage;
+}
+
+ContractEvidenceAttachmentResult attachContractEvidence({
+  required List<String> currentEvidenceIds,
+  required String newEvidenceId,
+}) {
+  final trimmed = newEvidenceId.trim();
+  if (trimmed.isEmpty) {
+    return const ContractEvidenceAttachmentResult(
+      isSuccess: false,
+      errorMessage: 'Evidence ID cannot be empty',
+    );
+  }
+  if (currentEvidenceIds.contains(trimmed)) {
+    return const ContractEvidenceAttachmentResult(
+      isSuccess: false,
+      errorMessage: 'Contract version evidence is immutable; cannot overwrite or re-attach identical snapshot evidence',
+    );
+  }
+  return ContractEvidenceAttachmentResult(
+    isSuccess: true,
+    updatedEvidenceIds: [...currentEvidenceIds, trimmed],
+  );
+}
+
+// ----------------------------------------------------------------------------
+// P8-07: Opt-In Creator Directory & Inquiries (Acceptance Targets 2 & 3)
+// ----------------------------------------------------------------------------
+
+class MobilePublicRateItem {
+  const MobilePublicRateItem({
+    required this.serviceType,
+    required this.priceMinMicros,
+    required this.priceMaxMicros,
+    required this.currency,
+    required this.deliveryDays,
+  });
+
+  final String serviceType;
+  final BigInt priceMinMicros;
+  final BigInt priceMaxMicros;
+  final String currency;
+  final int deliveryDays;
+}
+
+class MobileCreatorDirectoryEntry {
+  const MobileCreatorDirectoryEntry({
+    required this.mediaKitId,
+    required this.creatorName,
+    required this.headline,
+    required this.bio,
+    required this.categories,
+    required this.languages,
+    required this.publicRates,
+    required this.directoryOptIn,
+    required this.directoryStatus,
+    this.verifiedBadge = false,
+  });
+
+  final String mediaKitId;
+  final String creatorName;
+  final String headline;
+  final String bio;
+  final List<String> categories;
+  final List<String> languages;
+  final List<MobilePublicRateItem> publicRates;
+  final bool directoryOptIn;
+  final String directoryStatus; // 'published' | 'hidden'
+  final bool verifiedBadge;
+}
+
+List<MobileCreatorDirectoryEntry> filterMobileCreatorDirectory({
+  required List<MobileCreatorDirectoryEntry> entries,
+  String? query,
+  String? category,
+}) {
+  final q = (query ?? '').trim().toLowerCase();
+  final cat = (category ?? '').trim().toLowerCase();
+
+  return entries.where((entry) {
+    // Target 2: Immediately remove opted-out or hidden profiles
+    if (!entry.directoryOptIn || entry.directoryStatus != 'published') {
+      return false;
+    }
+    if (cat.isNotEmpty && cat != 'all') {
+      if (!entry.categories.any((c) => c.toLowerCase().contains(cat))) {
+        return false;
+      }
+    }
+    if (q.isNotEmpty) {
+      final matchName = entry.creatorName.toLowerCase().contains(q);
+      final matchHeadline = entry.headline.toLowerCase().contains(q);
+      final matchBio = entry.bio.toLowerCase().contains(q);
+      if (!matchName && !matchHeadline && !matchBio) {
+        return false;
+      }
+    }
+    return true;
+  }).toList();
+}
+
+MobileCreatorDirectoryEntry? getMobileCreatorDirectoryProfile({
+  required List<MobileCreatorDirectoryEntry> entries,
+  required String mediaKitId,
+}) {
+  for (final entry in entries) {
+    if (entry.mediaKitId == mediaKitId) {
+      // Target 2: Fails closed immediately if opted out
+      if (!entry.directoryOptIn || entry.directoryStatus != 'published') {
+        return null;
+      }
+      return entry;
+    }
+  }
+  return null;
+}
+
+class MobileSponsorInquiryResult {
+  const MobileSponsorInquiryResult({
+    required this.isSuccess,
+    this.receiptId,
+    this.errorMessage,
+  });
+
+  final bool isSuccess;
+  final String? receiptId;
+  final String? errorMessage;
+}
+
+MobileSponsorInquiryResult submitMobileSponsorInquiry({
+  required MobileCreatorDirectoryEntry? creator,
+  required String brandName,
+  required String contactEmail,
+  required String message,
+  required BigInt estimatedBudgetMicros,
+}) {
+  if (creator == null || !creator.directoryOptIn || creator.directoryStatus != 'published') {
+    return const MobileSponsorInquiryResult(
+      isSuccess: false,
+      errorMessage: 'Creator is currently unavailable for sponsorships or has opted out',
+    );
+  }
+  if (brandName.trim().isEmpty) {
+    return const MobileSponsorInquiryResult(
+      isSuccess: false,
+      errorMessage: 'Brand name is required',
+    );
+  }
+  if (!contactEmail.contains('@')) {
+    return const MobileSponsorInquiryResult(
+      isSuccess: false,
+      errorMessage: 'Valid contact email is required',
+    );
+  }
+  if (message.trim().length < 10) {
+    return const MobileSponsorInquiryResult(
+      isSuccess: false,
+      errorMessage: 'Message must be at least 10 characters',
+    );
+  }
+  if (estimatedBudgetMicros <= BigInt.zero) {
+    return const MobileSponsorInquiryResult(
+      isSuccess: false,
+      errorMessage: 'Estimated budget must be greater than zero',
+    );
+  }
+  final receiptId = 'rcpt-mobile-${DateTime.now().millisecondsSinceEpoch}';
+  return MobileSponsorInquiryResult(
+    isSuccess: true,
+    receiptId: receiptId,
+  );
+}

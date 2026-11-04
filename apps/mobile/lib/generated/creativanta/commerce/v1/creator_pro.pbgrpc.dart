@@ -1501,6 +1501,94 @@ abstract class RevenueTrackerServiceBase extends $grpc.Service {
       $grpc.ServiceCall call, $0.GetTopPerformersRequest request);
 }
 
+@$pb.GrpcServiceName('creativanta.commerce.v1.CreatorDirectoryService')
+class CreatorDirectoryServiceClient extends $grpc.Client {
+  /// The hostname for this service.
+  static const $core.String defaultHost = '';
+
+  /// OAuth scopes needed for the client.
+  static const $core.List<$core.String> oauthScopes = [
+    '',
+  ];
+
+  CreatorDirectoryServiceClient(super.channel,
+      {super.options, super.interceptors});
+
+  $grpc.ResponseFuture<$0.CreatorDirectoryServiceSearchResponse> search(
+    $0.CreatorDirectoryServiceSearchRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$search, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.CreatorDirectoryServiceGetResponse> get(
+    $0.CreatorDirectoryServiceGetRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$get, request, options: options);
+  }
+
+  // method descriptors
+
+  static final _$search = $grpc.ClientMethod<
+          $0.CreatorDirectoryServiceSearchRequest,
+          $0.CreatorDirectoryServiceSearchResponse>(
+      '/creativanta.commerce.v1.CreatorDirectoryService/Search',
+      ($0.CreatorDirectoryServiceSearchRequest value) => value.writeToBuffer(),
+      $0.CreatorDirectoryServiceSearchResponse.fromBuffer);
+  static final _$get = $grpc.ClientMethod<$0.CreatorDirectoryServiceGetRequest,
+          $0.CreatorDirectoryServiceGetResponse>(
+      '/creativanta.commerce.v1.CreatorDirectoryService/Get',
+      ($0.CreatorDirectoryServiceGetRequest value) => value.writeToBuffer(),
+      $0.CreatorDirectoryServiceGetResponse.fromBuffer);
+}
+
+@$pb.GrpcServiceName('creativanta.commerce.v1.CreatorDirectoryService')
+abstract class CreatorDirectoryServiceBase extends $grpc.Service {
+  $core.String get $name => 'creativanta.commerce.v1.CreatorDirectoryService';
+
+  CreatorDirectoryServiceBase() {
+    $addMethod($grpc.ServiceMethod<$0.CreatorDirectoryServiceSearchRequest,
+            $0.CreatorDirectoryServiceSearchResponse>(
+        'Search',
+        search_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.CreatorDirectoryServiceSearchRequest.fromBuffer(value),
+        ($0.CreatorDirectoryServiceSearchResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.CreatorDirectoryServiceGetRequest,
+            $0.CreatorDirectoryServiceGetResponse>(
+        'Get',
+        get_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.CreatorDirectoryServiceGetRequest.fromBuffer(value),
+        ($0.CreatorDirectoryServiceGetResponse value) =>
+            value.writeToBuffer()));
+  }
+
+  $async.Future<$0.CreatorDirectoryServiceSearchResponse> search_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.CreatorDirectoryServiceSearchRequest> $request) async {
+    return search($call, await $request);
+  }
+
+  $async.Future<$0.CreatorDirectoryServiceSearchResponse> search(
+      $grpc.ServiceCall call, $0.CreatorDirectoryServiceSearchRequest request);
+
+  $async.Future<$0.CreatorDirectoryServiceGetResponse> get_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.CreatorDirectoryServiceGetRequest> $request) async {
+    return get($call, await $request);
+  }
+
+  $async.Future<$0.CreatorDirectoryServiceGetResponse> get(
+      $grpc.ServiceCall call, $0.CreatorDirectoryServiceGetRequest request);
+}
+
 @$pb.GrpcServiceName('creativanta.commerce.v1.TaxReportService')
 class TaxReportServiceClient extends $grpc.Client {
   /// The hostname for this service.

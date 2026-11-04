@@ -2,6 +2,7 @@ package creatorpro
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"strings"
@@ -424,12 +425,25 @@ func (s *Service) CreateBrandDeal(ctx context.Context, deal *BrandDeal) (*BrandD
 // UpdateBrandDealStatus executes canonical state transitions:
 // negotiating -> agreed -> in_progress -> delivered -> paid -> completed, or cancelled.
 func (s *Service) UpdateBrandDealStatus(ctx context.Context, workspaceID, dealID string, targetStatus BrandDealStatus, cancellationReason string, requiresFinancialReversal bool) (*BrandDeal, error) {
+	return s.UpdateBrandDealStatusWithCAS(ctx, workspaceID, dealID, targetStatus, cancellationReason, requiresFinancialReversal, nil)
+}
+
+// UpdateBrandDealStatusWithCAS enforces optimistic concurrency checks for Kanban moves (§12).
+// Given a changed deal, a stale kanban move fails with ErrStaleVersion without overwriting it.
+func (s *Service) UpdateBrandDealStatusWithCAS(ctx context.Context, workspaceID, dealID string, targetStatus BrandDealStatus, cancellationReason string, requiresFinancialReversal bool, expectedUpdatedAt *time.Time) (*BrandDeal, error) {
 	if workspaceID == "" {
 		return nil, ErrMissingTenant
 	}
 	deal, err := s.store.GetBrandDeal(ctx, workspaceID, dealID)
 	if err != nil {
 		return nil, err
+	}
+
+	// Optimistic concurrency check: stale kanban move fails
+	if expectedUpdatedAt != nil && !expectedUpdatedAt.IsZero() && !deal.UpdatedAt.IsZero() {
+		if deal.UpdatedAt.UTC().Truncate(time.Second) != expectedUpdatedAt.UTC().Truncate(time.Second) {
+			return nil, ErrStaleVersion
+		}
 	}
 
 	normTarget, err := NormalizeDealStatus(string(targetStatus))
@@ -445,6 +459,11 @@ func (s *Service) UpdateBrandDealStatus(ctx context.Context, workspaceID, dealID
 	// Cancelled is terminal
 	if deal.Status == BrandDealStatusCancelled {
 		return nil, fmt.Errorf("%w: cancelled deal cannot transition", ErrInvalidStateTransition)
+	}
+
+	// Idempotent target status
+	if deal.Status == normTarget {
+		return deal, nil
 	}
 
 	// Check if transition is valid
@@ -479,6 +498,7 @@ func (s *Service) UpdateBrandDealStatus(ctx context.Context, workspaceID, dealID
 
 	prevStatus := deal.Status
 	deal.Status = normTarget
+	deal.Version++
 	deal.UpdatedAt = s.nowFunc()
 
 	if err := s.store.UpdateBrandDeal(ctx, deal); err != nil {
@@ -500,6 +520,7 @@ func (s *Service) UpdateBrandDealStatus(ctx context.Context, workspaceID, dealID
 		"new_status":          string(deal.Status),
 		"cancellation_reason": deal.CancellationReason,
 		"reversal_logged":     deal.FinancialReversalLogged,
+		"version":             deal.Version,
 	})
 	return deal, nil
 }
@@ -549,14 +570,30 @@ func (s *Service) UpdatePayment(ctx context.Context, workspaceID, dealID string,
 	return deal, nil
 }
 
+// AttachContract attaches immutable evidence to a brand deal.
+// Acceptance Target 4: Contract versions immutable.
 func (s *Service) AttachContract(ctx context.Context, workspaceID, dealID, evidenceID string) (*BrandDeal, error) {
 	if workspaceID == "" {
 		return nil, ErrMissingTenant
 	}
+	evidenceID = strings.TrimSpace(evidenceID)
+	if evidenceID == "" {
+		return nil, fmt.Errorf("%w: evidence_id is required", ErrInvalidAmount)
+	}
+
 	deal, err := s.store.GetBrandDeal(ctx, workspaceID, dealID)
 	if err != nil {
 		return nil, err
 	}
+
+	// Idempotency: if already attached, return without duplicating
+	for _, id := range deal.ContractEvidenceIDs {
+		if id == evidenceID {
+			return deal, nil
+		}
+	}
+
+	// Contract versions immutable: append-only to list; existing versions never modified
 	deal.ContractEvidenceIDs = append(deal.ContractEvidenceIDs, evidenceID)
 	deal.UpdatedAt = s.nowFunc()
 	if err := s.store.UpdateBrandDeal(ctx, deal); err != nil {
@@ -565,8 +602,136 @@ func (s *Service) AttachContract(ctx context.Context, workspaceID, dealID, evide
 	s.emitEvent(ctx, workspaceID, "creator_pro.brand_deal.contract_attached", dealID, map[string]any{
 		"deal_id":     dealID,
 		"evidence_id": evidenceID,
+		"version_idx": len(deal.ContractEvidenceIDs),
 	})
 	return deal, nil
+}
+
+// SetDirectoryProfile manages public directory opt-in / profile snapshots.
+// Acceptance Target 2: Opt-out removes public snapshot immediately.
+func (s *Service) SetDirectoryProfile(ctx context.Context, workspaceID, mediaKitID string, optIn bool, profile *PublicCreatorProfile) (*MediaKit, error) {
+	if workspaceID == "" {
+		return nil, ErrMissingTenant
+	}
+	kit, err := s.store.GetMediaKit(ctx, workspaceID, mediaKitID)
+	if err != nil {
+		return nil, err
+	}
+
+	kit.DirectoryOptIn = optIn
+	now := s.nowFunc()
+
+	if !optIn {
+		// Target 2: Opt-out removes public snapshot immediately
+		kit.DirectoryStatus = MediaKitDirectoryStatusHidden
+		kit.UpdatedAt = now
+		if err := s.store.SaveMediaKit(ctx, kit); err != nil {
+			return nil, err
+		}
+		s.emitEvent(ctx, workspaceID, "creator_pro.media_kit.directory_opt_out", mediaKitID, map[string]any{
+			"media_kit_id": mediaKitID,
+			"status":       "hidden",
+		})
+		return kit, nil
+	}
+
+	// Opt-in / update profile: validate fields per §27.2
+	if profile != nil {
+		if len(profile.DisplayName) < 1 || len(profile.DisplayName) > 120 {
+			return nil, fmt.Errorf("%w: display_name must be between 1 and 120 characters", ErrInvalidAmount)
+		}
+		if len(profile.Bio) > 2000 {
+			return nil, fmt.Errorf("%w: bio cannot exceed 2000 characters", ErrInvalidAmount)
+		}
+		if len(profile.Categories) > 10 {
+			return nil, fmt.Errorf("%w: maximum 10 categories allowed", ErrInvalidAmount)
+		}
+		if len(profile.Languages) > 10 {
+			return nil, fmt.Errorf("%w: maximum 10 languages allowed", ErrInvalidAmount)
+		}
+		if len(profile.PortfolioURLs) > 10 {
+			return nil, fmt.Errorf("%w: maximum 10 portfolio URLs allowed", ErrInvalidAmount)
+		}
+		for _, u := range profile.PortfolioURLs {
+			if !strings.HasPrefix(strings.ToLower(u), "https://") {
+				return nil, fmt.Errorf("%w: portfolio URLs must be verified secure HTTPS", ErrInvalidAmount)
+			}
+		}
+		if len(profile.PublicRates) > 20 {
+			return nil, fmt.Errorf("%w: maximum 20 public rates allowed", ErrInvalidAmount)
+		}
+
+		profileBytes, err := json.Marshal(profile)
+		if err != nil {
+			return nil, err
+		}
+		kit.DirectoryProfileJSON = string(profileBytes)
+	}
+
+	kit.DirectoryStatus = MediaKitDirectoryStatusPublished
+	kit.DirectoryConsentedAt = &now
+	kit.UpdatedAt = now
+
+	if err := s.store.SaveMediaKit(ctx, kit); err != nil {
+		return nil, err
+	}
+
+	s.emitEvent(ctx, workspaceID, "creator_pro.media_kit.directory_published", mediaKitID, map[string]any{
+		"media_kit_id": mediaKitID,
+		"status":       "published",
+	})
+	return kit, nil
+}
+
+// SubmitSponsorInquiry processes a public sponsor inquiry for an opted-in creator.
+// Acceptance Target 3: Sponsor cannot read private workspace.
+func (s *Service) SubmitSponsorInquiry(ctx context.Context, mediaKitID, brandName, email, message string, budget float64, challengeToken, idempotencyKey string) (*SponsorInquiry, string, error) {
+	if strings.TrimSpace(mediaKitID) == "" {
+		return nil, "", ErrCreatorUnavailable
+	}
+
+	// 1. Resolve published opt-in target media kit
+	kit, err := s.store.FindMediaKitByID(ctx, mediaKitID)
+	if err != nil || kit == nil || !kit.DirectoryOptIn || kit.DirectoryStatus != MediaKitDirectoryStatusPublished {
+		// Generic unavailable; does not leak whether kit exists
+		return nil, "", ErrCreatorUnavailable
+	}
+
+	// 2. Validate sender email and message length (1-4000)
+	email = strings.TrimSpace(email)
+	if email == "" || !strings.Contains(email, "@") {
+		return nil, "", fmt.Errorf("%w: valid sender email required", ErrInvalidAmount)
+	}
+	message = strings.TrimSpace(message)
+	if len(message) < 1 || len(message) > 4000 {
+		return nil, "", fmt.Errorf("%w: message length must be between 1 and 4000 characters", ErrInvalidAmount)
+	}
+
+	// 3. Create moderated pending inquiry in resolved workspace
+	now := s.nowFunc()
+	inq := &SponsorInquiry{
+		InquiryID:       newUUID(),
+		WorkspaceID:     kit.WorkspaceID,
+		BrandName:       strings.TrimSpace(brandName),
+		ContactEmail:    email,
+		Message:         message,
+		EstimatedBudget: budget,
+		Status:          "pending",
+		ThreadID:        newUUID(),
+		ReceivedAt:      now,
+	}
+
+	if err := s.store.CreateInquiry(ctx, inq); err != nil {
+		return nil, "", err
+	}
+
+	s.emitEvent(ctx, kit.WorkspaceID, "creator_pro.sponsor_inquiry.received", inq.InquiryID, map[string]any{
+		"inquiry_id":   inq.InquiryID,
+		"media_kit_id": mediaKitID,
+	})
+
+	receipt := "rec_" + inq.InquiryID
+	return inq, receipt, nil
 }
 
 func (s *Service) ListBrandDeals(ctx context.Context, workspaceID string, statusFilter BrandDealStatus) ([]BrandDeal, error) {
