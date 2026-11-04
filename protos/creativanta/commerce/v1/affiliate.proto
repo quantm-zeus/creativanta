@@ -1,0 +1,596 @@
+syntax = "proto3";
+
+package creativanta.commerce.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1;commercev1";
+
+// Canonical lifecycle state machine for affiliate links per M16.
+enum AffiliateLinkLifecycleState {
+  AFFILIATE_LINK_LIFECYCLE_STATE_UNSPECIFIED = 0;
+  AFFILIATE_LINK_LIFECYCLE_STATE_DRAFT = 1;
+  AFFILIATE_LINK_LIFECYCLE_STATE_ACTIVE = 2;
+  AFFILIATE_LINK_LIFECYCLE_STATE_PAUSED = 3;
+  AFFILIATE_LINK_LIFECYCLE_STATE_REVOKED = 4;
+  AFFILIATE_LINK_LIFECYCLE_STATE_EXPIRED = 5;
+}
+
+// Canonical health status for affiliate links (DB §10.4, §22.14).
+enum LinkHealthStatus {
+  LINK_HEALTH_STATUS_UNSPECIFIED = 0;
+  LINK_HEALTH_STATUS_HEALTHY = 1;
+  LINK_HEALTH_STATUS_WARNING = 2;
+  LINK_HEALTH_STATUS_BROKEN = 3;
+  LINK_HEALTH_STATUS_EXPIRED = 4;
+  LINK_HEALTH_STATUS_PRODUCT_UNAVAILABLE = 5;
+}
+
+// Attribution source provenance classes per RULE-M16-001 & PRD §15.1.
+enum AttributionSourceClass {
+  ATTRIBUTION_SOURCE_CLASS_UNSPECIFIED = 0;
+  ATTRIBUTION_SOURCE_CLASS_OFFICIAL = 1;
+  ATTRIBUTION_SOURCE_CLASS_IMPORTED = 2;
+  ATTRIBUTION_SOURCE_CLASS_INFERRED = 3;
+  ATTRIBUTION_SOURCE_CLASS_ESTIMATED = 4;
+  ATTRIBUTION_SOURCE_CLASS_UNRECONCILED = 5;
+}
+
+// Attribution confidence bands per RULE-M16-001 & M19.
+enum AttributionConfidence {
+  ATTRIBUTION_CONFIDENCE_UNSPECIFIED = 0;
+  ATTRIBUTION_CONFIDENCE_HIGH = 1;
+  ATTRIBUTION_CONFIDENCE_MEDIUM = 2;
+  ATTRIBUTION_CONFIDENCE_LOW = 3;
+}
+
+// Commission state machine per DB §10.4B.
+enum CommissionStatus {
+  COMMISSION_STATUS_UNSPECIFIED = 0;
+  COMMISSION_STATUS_PENDING = 1;
+  COMMISSION_STATUS_CONFIRMED = 2;
+  COMMISSION_STATUS_CLAWED_BACK = 3;
+  COMMISSION_STATUS_PAID_OUT = 4;
+}
+
+// Payout batch state.
+enum PayoutStatus {
+  PAYOUT_STATUS_UNSPECIFIED = 0;
+  PAYOUT_STATUS_PENDING = 1;
+  PAYOUT_STATUS_PROCESSING = 2;
+  PAYOUT_STATUS_COMPLETED = 3;
+  PAYOUT_STATUS_FAILED = 4;
+}
+
+// Creator assignment status.
+enum AssignmentStatus {
+  ASSIGNMENT_STATUS_UNSPECIFIED = 0;
+  ASSIGNMENT_STATUS_ACTIVE = 1;
+  ASSIGNMENT_STATUS_COMPLETED = 2;
+  ASSIGNMENT_STATUS_CANCELLED = 3;
+}
+
+// Workspace economic role distinguishing creator income vs seller expense.
+enum WorkspaceEconomicRole {
+  WORKSPACE_ECONOMIC_ROLE_UNSPECIFIED = 0;
+  WORKSPACE_ECONOMIC_ROLE_CREATOR = 1;
+  WORKSPACE_ECONOMIC_ROLE_SELLER = 2;
+}
+
+// Canonical Affiliate Link model.
+message AffiliateLink {
+  string affiliate_link_id = 1;
+  string workspace_id = 2;
+  string product_id = 3;
+  string offer_id = 4;
+  string campaign_id = 5;
+  string platform = 6;
+  string original_url = 7;
+  string tracked_url = 8;
+  string short_code = 9;
+  string commission_rate = 10; // e.g. "10.00" (10%)
+  AffiliateLinkLifecycleState lifecycle_state = 11;
+  LinkHealthStatus health_status = 12;
+  google.protobuf.Timestamp last_health_check_at = 13;
+  int32 click_count = 14;
+  int32 conversion_count = 15;
+  string revenue_attributed = 16;
+  google.protobuf.Timestamp expires_at = 17;
+  google.protobuf.Timestamp created_at = 18;
+  google.protobuf.Timestamp updated_at = 19;
+  string suggested_replacement_product_id = 20;
+}
+
+// Canonical Creator Assignment model.
+message CreatorAssignment {
+  string assignment_id = 1;
+  string workspace_id = 2;
+  string campaign_id = 3;
+  string creator_entity_id = 4;
+  string affiliate_link_id = 5;
+  string coupon_id = 6;
+  AssignmentStatus status = 7;
+  string notes = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// Canonical Attribution Record with explicit provenance.
+message AttributionRecord {
+  string attribution_id = 1;
+  string workspace_id = 2;
+  string order_id = 3;
+  string affiliate_link_id = 4;
+  string creator_entity_id = 5;
+  string click_id = 6;
+  int32 touchpoint_count = 7;
+  bool is_multi_touch = 8;
+  AttributionSourceClass source_class = 9;
+  AttributionConfidence confidence = 10;
+  string attribution_note = 11;
+  string order_amount = 12;
+  string attributed_revenue = 13;
+  string commission_amount = 14;
+  string currency = 15;
+  google.protobuf.Timestamp attributed_at = 16;
+}
+
+// Canonical Affiliate Commission model.
+message AffiliateCommission {
+  string commission_id = 1;
+  string workspace_id = 2;
+  string affiliate_link_id = 3;
+  string order_id = 4;
+  string creator_entity_id = 5;
+  string commission_amount = 6;
+  string currency = 7;
+  CommissionStatus status = 8;
+  google.protobuf.Timestamp hold_until = 9;
+  string clawback_reason = 10;
+  string clawback_amount = 11;
+  string payout_id = 12;
+  google.protobuf.Timestamp confirmed_at = 13;
+  google.protobuf.Timestamp clawed_back_at = 14;
+  google.protobuf.Timestamp paid_out_at = 15;
+  google.protobuf.Timestamp created_at = 16;
+  google.protobuf.Timestamp updated_at = 17;
+}
+
+// Canonical Affiliate Payout model.
+message AffiliatePayout {
+  string payout_id = 1;
+  string workspace_id = 2;
+  string creator_entity_id = 3;
+  repeated string commission_ids = 4;
+  string total_amount = 5;
+  string currency = 6;
+  PayoutStatus status = 7;
+  string proof_hash = 8;
+  string proof_metadata_json = 9;
+  string settlement_id = 10;
+  google.protobuf.Timestamp paid_at = 11;
+  google.protobuf.Timestamp created_at = 12;
+}
+
+// Canonical Link Health Record.
+message LinkHealthRecord {
+  string health_id = 1;
+  string workspace_id = 2;
+  string affiliate_link_id = 3;
+  int32 http_status = 4;
+  string product_status = 5;
+  string commission_status = 6;
+  LinkHealthStatus link_status = 7;
+  google.protobuf.Timestamp expiry_date = 8;
+  string suggested_action = 9;
+  google.protobuf.Timestamp checked_at = 10;
+  bool alert_sent = 11;
+  string estimated_revenue_impact = 12;
+  string suggested_replacement_product_id = 13;
+}
+
+// Canonical Affiliate Statement for imports and reconciliation.
+message AffiliateStatement {
+  string statement_id = 1;
+  string workspace_id = 2;
+  string platform = 3;
+  string external_statement_ref = 4;
+  string period_start = 5;
+  string period_end = 6;
+  string total_commission = 7;
+  string currency = 8;
+  string reconciliation_state = 9;
+  int32 item_count = 10;
+  int32 reconciled_item_count = 11;
+  google.protobuf.Timestamp imported_at = 12;
+}
+
+// Statement item.
+message AffiliateStatementItem {
+  string item_id = 1;
+  string statement_id = 2;
+  string external_order_id = 3;
+  string order_amount = 4;
+  string commission_amount = 5;
+  string matched_order_id = 6;
+  string matched_commission_id = 7;
+  string status = 8;
+}
+
+// Ledger posting result reflecting economic role.
+message LedgerAffiliatePostingResult {
+  string posting_id = 1;
+  string workspace_id = 2;
+  WorkspaceEconomicRole economic_role = 3;
+  string posting_type = 4; // "creator_income" or "seller_commission_expense"
+  string amount = 5;
+  string currency = 6;
+  bool cogs_deducted = 7;
+  string net_profit_impact = 8;
+  google.protobuf.Timestamp posted_at = 9;
+}
+
+// ----------------------------------------------------------------------------
+// Requests and Responses
+// ----------------------------------------------------------------------------
+
+message CreateAffiliateLinkRequest {
+  string workspace_id = 1;
+  string product_id = 2;
+  string offer_id = 3;
+  string campaign_id = 4;
+  string platform = 5;
+  string original_url = 6;
+  string commission_rate = 7;
+  string custom_short_code = 8;
+  google.protobuf.Timestamp expires_at = 9;
+}
+
+message CreateAffiliateLinkResponse {
+  AffiliateLink link = 1;
+}
+
+message GetAffiliateLinkRequest {
+  string workspace_id = 1;
+  string affiliate_link_id = 2;
+}
+
+message GetAffiliateLinkResponse {
+  AffiliateLink link = 1;
+  LinkHealthRecord latest_health = 2;
+}
+
+message ListAffiliateLinksRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  string platform = 3;
+  AffiliateLinkLifecycleState lifecycle_state = 4;
+  int32 page_size = 5;
+  string page_token = 6;
+}
+
+message ListAffiliateLinksResponse {
+  repeated AffiliateLink links = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+
+message UpdateAffiliateLinkRequest {
+  string workspace_id = 1;
+  string affiliate_link_id = 2;
+  string commission_rate = 3;
+  string original_url = 4;
+  google.protobuf.Timestamp expires_at = 5;
+}
+
+message UpdateAffiliateLinkResponse {
+  AffiliateLink link = 1;
+}
+
+message DeleteAffiliateLinkRequest {
+  string workspace_id = 1;
+  string affiliate_link_id = 2;
+}
+
+message DeleteAffiliateLinkResponse {
+  bool success = 1;
+}
+
+message PauseAffiliateLinkRequest {
+  string workspace_id = 1;
+  string affiliate_link_id = 2;
+}
+
+message PauseAffiliateLinkResponse {
+  AffiliateLink link = 1;
+}
+
+message ResumeAffiliateLinkRequest {
+  string workspace_id = 1;
+  string affiliate_link_id = 2;
+}
+
+message ResumeAffiliateLinkResponse {
+  AffiliateLink link = 1;
+}
+
+message GetAffiliateAnalyticsRequest {
+  string workspace_id = 1;
+  string affiliate_link_id = 2;
+}
+
+message GetAffiliateAnalyticsResponse {
+  string affiliate_link_id = 1;
+  int32 click_count = 2;
+  int32 conversion_count = 3;
+  string revenue_attributed = 4;
+  string total_commission_earned = 5;
+  string currency = 6;
+}
+
+message CreateAssignmentRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  string creator_entity_id = 3;
+  string affiliate_link_id = 4;
+  string coupon_id = 5;
+  string notes = 6;
+}
+
+message CreateAssignmentResponse {
+  CreatorAssignment assignment = 1;
+}
+
+message ListAssignmentsRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  string creator_entity_id = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+}
+
+message ListAssignmentsResponse {
+  repeated CreatorAssignment assignments = 1;
+  string next_page_token = 2;
+}
+
+message UpdateAssignmentRequest {
+  string workspace_id = 1;
+  string assignment_id = 2;
+  AssignmentStatus status = 3;
+  string notes = 4;
+}
+
+message UpdateAssignmentResponse {
+  CreatorAssignment assignment = 1;
+}
+
+message RecordAttributionRequest {
+  string workspace_id = 1;
+  string order_id = 2;
+  string affiliate_link_id = 3;
+  string creator_entity_id = 4;
+  string click_id = 5;
+  int32 touchpoint_count = 6;
+  bool is_multi_touch = 7;
+  string order_amount = 8;
+  string currency = 9;
+  bool is_official_api = 10;
+}
+
+message RecordAttributionResponse {
+  AttributionRecord attribution = 1;
+}
+
+message GetAttributionReportRequest {
+  string workspace_id = 1;
+  string affiliate_link_id = 2;
+}
+
+message GetAttributionReportResponse {
+  repeated AttributionRecord attributions = 1;
+  int32 official_count = 2;
+  int32 inferred_count = 3;
+  int32 imported_count = 4;
+  int32 unreconciled_count = 5;
+  string total_attributed_revenue = 6;
+}
+
+message CalculateCommissionRequest {
+  string workspace_id = 1;
+  string affiliate_link_id = 2;
+  string order_id = 3;
+  string creator_entity_id = 4;
+  string order_amount = 5;
+  string currency = 6;
+  int32 hold_period_days = 7;
+}
+
+message CalculateCommissionResponse {
+  AffiliateCommission commission = 1;
+}
+
+message ConfirmCommissionRequest {
+  string workspace_id = 1;
+  string commission_id = 2;
+}
+
+message ConfirmCommissionResponse {
+  AffiliateCommission commission = 1;
+}
+
+message ClawbackCommissionRequest {
+  string workspace_id = 1;
+  string commission_id = 2;
+  string reason = 3; // "refund", "partial_refund", "fraud"
+  string amount = 4;
+}
+
+message ClawbackCommissionResponse {
+  AffiliateCommission commission = 1;
+}
+
+message ListCommissionsRequest {
+  string workspace_id = 1;
+  string affiliate_link_id = 2;
+  CommissionStatus status = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+}
+
+message ListCommissionsResponse {
+  repeated AffiliateCommission commissions = 1;
+  string next_page_token = 2;
+}
+
+message PostCommissionToLedgerRequest {
+  string workspace_id = 1;
+  string commission_id = 2;
+  WorkspaceEconomicRole economic_role = 3;
+}
+
+message PostCommissionToLedgerResponse {
+  LedgerAffiliatePostingResult result = 1;
+}
+
+message CreatePayoutBatchRequest {
+  string workspace_id = 1;
+  string creator_entity_id = 2;
+  repeated string commission_ids = 3;
+}
+
+message CreatePayoutBatchResponse {
+  AffiliatePayout payout = 1;
+}
+
+message ExecutePayoutBatchRequest {
+  string workspace_id = 1;
+  string payout_id = 2;
+  string settlement_id = 3;
+}
+
+message ExecutePayoutBatchResponse {
+  AffiliatePayout payout = 1;
+}
+
+message GetPayoutProofRequest {
+  string workspace_id = 1;
+  string payout_id = 2;
+}
+
+message GetPayoutProofResponse {
+  AffiliatePayout payout = 1;
+  string proof_hash = 2;
+  string proof_url = 3;
+}
+
+message ImportStatementRequest {
+  string workspace_id = 1;
+  string platform = 2;
+  string external_statement_ref = 3;
+  string period_start = 4;
+  string period_end = 5;
+  string currency = 6;
+  repeated AffiliateStatementItem items = 7;
+}
+
+message ImportStatementResponse {
+  AffiliateStatement statement = 1;
+}
+
+message ReconcileStatementRequest {
+  string workspace_id = 1;
+  string statement_id = 2;
+}
+
+message ReconcileStatementResponse {
+  AffiliateStatement statement = 1;
+  int32 matched_count = 2;
+  int32 conflict_count = 3;
+  int32 unreconciled_count = 4;
+}
+
+message RunHealthCheckRequest {
+  string workspace_id = 1;
+  string affiliate_link_id = 2;
+  int32 simulated_http_status = 3;
+  string simulated_product_status = 4;
+  string simulated_commission_rate = 5;
+}
+
+message RunHealthCheckResponse {
+  LinkHealthRecord health = 1;
+  bool health_degraded = 2;
+}
+
+message RepairBrokenLinkRequest {
+  string workspace_id = 1;
+  string affiliate_link_id = 2;
+  string new_destination_url = 3;
+  string replacement_product_id = 4;
+}
+
+message RepairBrokenLinkResponse {
+  AffiliateLink link = 1;
+  LinkHealthRecord health = 2;
+}
+
+message GetHealthReportRequest {
+  string workspace_id = 1;
+}
+
+message GetHealthReportResponse {
+  repeated LinkHealthRecord health_records = 1;
+  int32 healthy_count = 2;
+  int32 warning_count = 3;
+  int32 broken_count = 4;
+  string total_revenue_at_risk = 5;
+}
+
+// ----------------------------------------------------------------------------
+// Services
+// ----------------------------------------------------------------------------
+
+service AffiliateService {
+  rpc CreateAffiliateLink(CreateAffiliateLinkRequest) returns (CreateAffiliateLinkResponse);
+  rpc GetAffiliateLink(GetAffiliateLinkRequest) returns (GetAffiliateLinkResponse);
+  rpc ListAffiliateLinks(ListAffiliateLinksRequest) returns (ListAffiliateLinksResponse);
+  rpc UpdateAffiliateLink(UpdateAffiliateLinkRequest) returns (UpdateAffiliateLinkResponse);
+  rpc DeleteAffiliateLink(DeleteAffiliateLinkRequest) returns (DeleteAffiliateLinkResponse);
+  rpc PauseAffiliateLink(PauseAffiliateLinkRequest) returns (PauseAffiliateLinkResponse);
+  rpc ResumeAffiliateLink(ResumeAffiliateLinkRequest) returns (ResumeAffiliateLinkResponse);
+  rpc GetAffiliateAnalytics(GetAffiliateAnalyticsRequest) returns (GetAffiliateAnalyticsResponse);
+}
+
+service CreatorAssignmentService {
+  rpc CreateAssignment(CreateAssignmentRequest) returns (CreateAssignmentResponse);
+  rpc ListAssignments(ListAssignmentsRequest) returns (ListAssignmentsResponse);
+  rpc UpdateAssignment(UpdateAssignmentRequest) returns (UpdateAssignmentResponse);
+}
+
+service AttributionService {
+  rpc RecordAttribution(RecordAttributionRequest) returns (RecordAttributionResponse);
+  rpc GetAttributionReport(GetAttributionReportRequest) returns (GetAttributionReportResponse);
+}
+
+service AffiliateCommissionService {
+  rpc CalculateCommission(CalculateCommissionRequest) returns (CalculateCommissionResponse);
+  rpc ConfirmCommission(ConfirmCommissionRequest) returns (ConfirmCommissionResponse);
+  rpc ClawbackCommission(ClawbackCommissionRequest) returns (ClawbackCommissionResponse);
+  rpc ListCommissions(ListCommissionsRequest) returns (ListCommissionsResponse);
+  rpc PostCommissionToLedger(PostCommissionToLedgerRequest) returns (PostCommissionToLedgerResponse);
+}
+
+service AffiliatePayoutService {
+  rpc CreatePayoutBatch(CreatePayoutBatchRequest) returns (CreatePayoutBatchResponse);
+  rpc ExecutePayoutBatch(ExecutePayoutBatchRequest) returns (ExecutePayoutBatchResponse);
+  rpc GetPayoutProof(GetPayoutProofRequest) returns (GetPayoutProofResponse);
+  rpc ImportStatement(ImportStatementRequest) returns (ImportStatementResponse);
+  rpc ReconcileStatement(ReconcileStatementRequest) returns (ReconcileStatementResponse);
+}
+
+service LinkHealthService {
+  rpc RunHealthCheck(RunHealthCheckRequest) returns (RunHealthCheckResponse);
+  rpc RepairBrokenLink(RepairBrokenLinkRequest) returns (RepairBrokenLinkResponse);
+  rpc GetHealthReport(GetHealthReportRequest) returns (GetHealthReportResponse);
+}

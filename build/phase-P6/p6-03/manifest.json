@@ -1,0 +1,118 @@
+{
+  "task_id": "P6-03",
+  "phase": "P6",
+  "slice": "p6-03",
+  "title": "Affiliate links, attribution và payouts",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "544d7f834a574dc05ccc18bd88b151699ab1ac7d",
+  "feature_refs": [
+    "docs/02_features/commerce/affiliate_network.md",
+    "docs/02_features/finance/operating_ledger.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/05_system/queue_retry_design.md"
+  ],
+  "requirement_ids": [
+    "M16-AFFILIATE-LINKS-001",
+    "M16-CREATOR-ASSIGNMENTS-001",
+    "M16-ATTRIBUTION-ENGINE-001",
+    "M16-COMMISSION-CLAWBACK-001",
+    "M16-PAYOUT-PROOF-001",
+    "M16-LINK-HEALTH-MONITOR-001",
+    "M16-A1-AMBIGUOUS-ATTRIBUTION",
+    "M16-A2-BROKEN-LINK-REPAIR",
+    "M16-LEDGER-CREATOR-SELLER-DISTINCTION"
+  ],
+  "source_files": {
+    "infra/migrations/00031_p6_03_affiliate_links_attributions_and_payouts.sql": "45e06785f77ff078ebe6a77215cb7a80a40c7378bba61cdf668ce5439f5083fa",
+    "protos/creativanta/commerce/v1/affiliate.proto": "382145113475195c756ac9a459531f50a805eef92c6cac0342b2930709b84a8a",
+    "apps/api/internal/affiliate/model.go": "8b9fc1e8a1f43d2529a2958f5cf7b30f0c8ba3a4eedb99b2728f98dcfdeef71d",
+    "apps/api/internal/affiliate/errors.go": "1705fc506f38c9567957e634c683e826259891c8b940796238af9d707f00d80f",
+    "apps/api/internal/affiliate/store.go": "e8ab32ee2401ef8c6805abd6bf4a1ff23e7ad02d98b02e16afe98dc7ba6122dc",
+    "apps/api/internal/affiliate/service.go": "258b1e4fc79176b3cd3cad7730d8b12a45aa46fcd3718f053515c2cc176ccf84",
+    "apps/api/internal/affiliate/handler.go": "5b0ef106f2aa066705234ea8d4420bd124d3e638d6d0a2e5ee6dcd682bddada5",
+    "apps/api/internal/affiliate/affiliate_test.go": "74e9df8f590f18342811a88ce375d94371556488fe8a8481f341f787dd458a3f",
+    "apps/api/internal/affiliate/affiliate_postgres_test.go": "ec91de299f1aa1fd6248b0ff2bed1924aeed6bf86707672c2e182ff37021c7e2",
+    "apps/api/internal/affiliate/handler_test.go": "c427ce8b1d7f3155bf619a6035a9231e7b78ed112837eb490b4a88c312725294",
+    "apps/web/src/lib/commerce/affiliate.ts": "a73783aac3ff6009309858d2e6abd03957c56c4d5274292f1623eb7bd8a323a0",
+    "apps/web/src/lib/commerce/affiliate.test.ts": "86f9c01374a6592b3e7ae530a575505aebe8656dae630e66ca209eefe43b0834",
+    "apps/web/src/routes/affiliates/+page.svelte": "028b252f5202d3573e29b8801dc652b74a64cf1d9e3e301227e97a1d20103e40",
+    "apps/web/src/routes/attribution/+page.svelte": "74eebdef369c6fb27669adc224c62940ad1843077046fe4dcf7982fef00f40c6",
+    "apps/mobile/lib/commerce/affiliate_models.dart": "1860174f8ecc966072b7d1f8c256f40fdacb073b5b503872fc4c51f45199becc",
+    "apps/mobile/lib/ui/commerce/affiliate_view.dart": "19af43a7fc63683e6799a279f55406af38b30fe00f77f309b231b95cb08d122e",
+    "apps/mobile/test/affiliate_acceptance_test.dart": "a128ba61c65f23016ad23582445ef971d9c2793ed66f51d31f6dfd2381366545"
+  },
+  "scope_items": [
+    "Database Migration 00031: Created affiliate_links, creator_assignments, affiliate_attributions, affiliate_commissions, affiliate_payouts, affiliate_statements, affiliate_statement_items, link_health_records tables with composite tenant keys (uq_*_tenant_pk), strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY), check constraints, and narrow role-based grants.",
+    "Acceptance Target 1 (Creator income distinct from seller expense): When workspace economic role is creator, affiliate commission earned is recognized as income/revenue; seller COGS is never deducted. When role is seller, affiliate commission paid is recorded as an expense deduction from gross profit.",
+    "Acceptance Target 2 (Ambiguous attribution labeled): Multi-touch conversions (direct visit after click or cross-device) are explicitly labeled with source_class = 'inferred' and confidence = 'medium' (or 'low' for >=3 touches) with explanatory note ('Multiple touch points detected — last click rule applied.'). Single connected platform click is source_class = 'official' with high confidence.",
+    "Acceptance Target 3 (Broken link repair): Health monitor flags broken/out-of-stock links with link_status = 'broken', calculates estimated_revenue_impact, suggests replacement products, and emits affiliate.link_health.broken. The repair workflow updates the destination URL and replacement product, safely restoring healthy status while strictly barring reactivation of permanently revoked links.",
+    "Creator Assignments & Link Generation: Creator assignments generate unique referral codes and tracking URLs, supporting campaign associations, tracking cookies, and commission tier overrides.",
+    "Statement Import, Commission Reconciliation & Clawbacks: External affiliate statements can be imported, matched with internal attributions, reconciled, and clawbacks handled with reversible negative ledger entries upon order cancellation or return.",
+    "Payout Batches with Cryptographic Proof: Approved commission balances are bundled into payout batches generating SHA-256 disbursement proofs before settling in the operating ledger."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestAcceptanceTarget1_CreatorIncomeDistinctFromSellerExpense (Go -race), Vitest web test suite, and Flutter test suite confirm creator commission is recognized as income without COGS deduction, while seller commission is recorded as an expense deduction.",
+    "Acceptance Target 2 Verified: TestAcceptanceTarget2_AmbiguousAttributionLabeled (Go -race), Vitest web test suite, and Flutter test suite confirm multi-touch conversions are labeled as inferred with medium/low confidence and explanation note.",
+    "Acceptance Target 3 Verified: TestAcceptanceTarget3_BrokenLinkRepair (Go -race), Vitest web test suite, and Flutter test suite confirm broken link repair restores healthy status while permanently revoked links are strictly barred from repair.",
+    "Creator Assignments, Statements, Clawbacks & Payouts Verified: TestCreatorAssignmentsAndCoupons, TestAffiliateStatementImportAndReconciliation, TestPayoutBatchAndProofGeneration, TestCommissionClawbackFlow, and TestAffiliateConnectRPCHandlers pass cleanly with Go race detector.",
+    "Migration 00031 Verified: Migrator test suite (migrator_test.go) passes all 31 migrations up, status verification, and clean down transactional reversal.",
+    "Proto Codegen & Static Invariants Verified: Buf lint passes with 0 errors; TypeScript shared types compile cleanly; Dart analyze passes with 0 issues; check_d0 static documentation invariant gate passes.",
+    "Web & Mobile Surfaces Verified: Vitest web test suite (8 tests passing), svelte-check (0 errors, 0 warnings), Vite production build (adapter-node ✔ done), and Flutter test suite (4 tests passing, flutter analyze 0 issues) all pass."
+  ],
+  "rpc_contracts": [
+    "AffiliateService/CreateLink",
+    "AffiliateService/GetLink",
+    "AffiliateService/ListLinks",
+    "AffiliateService/UpdateLink",
+    "AffiliateService/RevokeLink",
+    "CreatorAssignmentService/AssignCreator",
+    "CreatorAssignmentService/GetAssignment",
+    "CreatorAssignmentService/ListAssignments",
+    "CreatorAssignmentService/UpdateAssignment",
+    "AttributionService/RecordTouchpoint",
+    "AttributionService/AttributeConversion",
+    "AttributionService/GetAttribution",
+    "AttributionService/ListAttributions",
+    "AffiliateCommissionService/CalculateCommission",
+    "AffiliateCommissionService/ProcessClawback",
+    "AffiliateCommissionService/ListCommissions",
+    "AffiliatePayoutService/CreatePayoutBatch",
+    "AffiliatePayoutService/ProcessPayout",
+    "AffiliatePayoutService/GetPayout",
+    "AffiliatePayoutService/ListPayouts",
+    "LinkHealthService/CheckLinkHealth",
+    "LinkHealthService/RepairLink",
+    "LinkHealthService/GetLinkHealthSummary"
+  ],
+  "migration_files": [
+    "infra/migrations/00031_p6_03_affiliate_links_attributions_and_payouts.sql"
+  ],
+  "permission_keys": [
+    "commerce:manage_affiliates",
+    "commerce:view_affiliates",
+    "commerce:manage_payouts",
+    "finance:view_ledger"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "Migration 00031 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+    ],
+    [
+      "EXT-GATE-COMMERCE-AFFILIATE-NETWORKS",
+      "PENDING_EXTERNAL_PROVIDER_APPROVAL",
+      "External network statement imports (Shopee, TikTok Shop, Amazon Associates) require production API credentials and live webhook endpoints; statement ingestion and manual reconciliation verified locally."
+    ],
+    [
+      "EXT-GATE-FINANCE-BANK-PAYOUTS",
+      "PENDING_EXTERNAL_BANKING_ADAPTER",
+      "Disbursement batches generate cryptographic SHA-256 proof locally; automated wire/ACH payouts via banking partners require licensed banking rails in production."
+    ]
+  ]
+}
