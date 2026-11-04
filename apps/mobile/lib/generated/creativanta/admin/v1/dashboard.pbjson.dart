@@ -219,6 +219,13 @@ const OnboardingChecklist$json = {
       '5': 8,
       '10': 'isClosedLoopComplete'
     },
+    {
+      '1': 'is_first_value_complete',
+      '3': 5,
+      '4': 1,
+      '5': 8,
+      '10': 'isFirstValueComplete'
+    },
   ],
 };
 
@@ -227,7 +234,8 @@ final $typed_data.Uint8List onboardingChecklistDescriptor = $convert.base64Decod
     'ChNPbmJvYXJkaW5nQ2hlY2tsaXN0EkIKBXN0ZXBzGAEgAygLMiwuY3JlYXRpdmFudGEuYWRtaW'
     '4udjEuT25ib2FyZGluZ1N0ZXBQcm9ncmVzc1IFc3RlcHMSJwoPY29tcGxldGVkX2NvdW50GAIg'
     'ASgFUg5jb21wbGV0ZWRDb3VudBIfCgt0b3RhbF9zdGVwcxgDIAEoBVIKdG90YWxTdGVwcxI1Ch'
-    'dpc19jbG9zZWRfbG9vcF9jb21wbGV0ZRgEIAEoCFIUaXNDbG9zZWRMb29wQ29tcGxldGU=');
+    'dpc19jbG9zZWRfbG9vcF9jb21wbGV0ZRgEIAEoCFIUaXNDbG9zZWRMb29wQ29tcGxldGUSNQoX'
+    'aXNfZmlyc3RfdmFsdWVfY29tcGxldGUYBSABKAhSFGlzRmlyc3RWYWx1ZUNvbXBsZXRl');
 
 @$core.Deprecated('Use whyThisNumberDetailsDescriptor instead')
 const WhyThisNumberDetails$json = {

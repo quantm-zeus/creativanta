@@ -132,6 +132,7 @@ type AuthorizedImportProjection struct {
 type Service struct {
 	adminv1connect.UnimplementedDashboardServiceHandler
 	mu                sync.RWMutex
+	phase             string                                 // active build phase, defaults to "P8"
 	onboarding        map[string][]bool                      // key: workspaceID:userID -> array of 5 booleans
 	metrics           map[string][]StoredMetric              // key: workspaceID
 	configs           map[string]HomeDashboardConfig         // key: workspaceID
@@ -144,6 +145,7 @@ type Service struct {
 // NewService creates a new DashboardService instance.
 func NewService(bindings *rbac.Registry) *Service {
 	return &Service{
+		phase:           "P8",
 		onboarding:      make(map[string][]bool),
 		metrics:         make(map[string][]StoredMetric),
 		configs:         make(map[string]HomeDashboardConfig),
@@ -151,6 +153,20 @@ func NewService(bindings *rbac.Registry) *Service {
 		imports:         make(map[string]*WorkspaceImportState),
 		bindings:        bindings,
 	}
+}
+
+// SetPhase configures the active build phase on the service (e.g. "P0", "P1", "P8").
+func (s *Service) SetPhase(phase string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.phase = phase
+}
+
+func (s *Service) getPhaseLocked() string {
+	if s.phase == "" {
+		return "P8"
+	}
+	return s.phase
 }
 
 func callerUserID(ctx context.Context) string {
@@ -638,8 +654,9 @@ func (s *Service) GetWhyThisNumber(
 // CompleteOnboardingStep implements DashboardService/CompleteOnboardingStep.
 // Scoped per (workspace_id, user_id) per database_schema.md §27.1 and home_decision_engine.md:
 //   - Completing a personal checklist step never changes workspace settings or another user's progress.
-//   - Disabled future-phase steps (Step 3 M07 in P4, Step 4 M11 in P5) cannot be completed in P1
-//     and never falsely mark the 5-step closed loop complete.
+//   - In Phase P8, all 5 steps (1: connect_data, 2: select_offer, 3: create_content, 4: publish, 5: track_outcome)
+//     are available and can be completed.
+//   - First-value (step 1 / data import) and full-loop completion (5/5 steps) remain strictly distinct.
 func (s *Service) CompleteOnboardingStep(
 	ctx context.Context,
 	req *connect.Request[adminv1.CompleteOnboardingStepRequest],
@@ -648,12 +665,14 @@ func (s *Service) CompleteOnboardingStep(
 	if msg == nil || msg.WorkspaceId == nil || msg.StepNumber < 1 || msg.StepNumber > 5 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
-	if msg.StepNumber == 3 || msg.StepNumber == 4 {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrStepUnavailableInPhase)
-	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	phase := s.getPhaseLocked()
+	if (phase == "P0" || phase == "P1") && (msg.StepNumber == 3 || msg.StepNumber == 4) {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrStepUnavailableInPhase)
+	}
 
 	key := msg.WorkspaceId.Value + ":" + callerUserID(ctx)
 	steps, exists := s.onboarding[key]
@@ -674,6 +693,9 @@ func (s *Service) CompleteOnboardingStep(
 // -----------------------------------------------------------------------------
 
 func (s *Service) buildDecisionCardsForMode(mode adminv1.OperatorModeId) []*adminv1.DecisionCard {
+	phase := s.getPhaseLocked()
+	isP0OrP1 := phase == "P0" || phase == "P1"
+
 	switch mode {
 	case adminv1.OperatorModeId_OPERATOR_MODE_ID_SELLER:
 		return []*adminv1.DecisionCard{
@@ -681,13 +703,13 @@ func (s *Service) buildDecisionCardsForMode(mode adminv1.OperatorModeId) []*admi
 				CardId:            "card-seller-orders",
 				CardFamily:        "order_queue",
 				Title:             "Hàng đợi đơn hàng cần xử lý",
-				Description:       "Kiểm tra và chuẩn bị hàng cho các đơn mới phát sinh hoặc dữ liệu nhập P1.",
+				Description:       "Kiểm tra và chuẩn bị hàng cho các đơn mới phát sinh để đáp ứng SLA sàn.",
 				PrimaryCtaLabel:   "Mở danh sách đơn hàng",
 				PrimaryCtaRoute:   "/kinh-doanh",
 				IsActionAvailable: true,
 				UnavailableReason: "",
 				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_IMPORTED,
-				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_MEDIUM,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
 				WhyThisMatters:    "Giao hàng đúng SLA sàn để tránh phạt tỷ lệ trễ hạn.",
 				PriorityRank:      1,
 				ModuleRef:         "M13",
@@ -696,14 +718,14 @@ func (s *Service) buildDecisionCardsForMode(mode adminv1.OperatorModeId) []*admi
 			{
 				CardId:            "card-seller-revenue",
 				CardFamily:        "revenue_today",
-				Title:             "Doanh thu hôm nay: 0 ₫",
-				Description:       "Theo dõi số liệu doanh số bán hàng và biên lợi nhuận từ dữ liệu nhập hợp lệ hoặc gian hàng liên kết.",
+				Title:             "Doanh thu bán hàng hôm nay",
+				Description:       "Theo dõi số liệu doanh số bán hàng và biên lợi nhuận từ các kênh liên kết.",
 				PrimaryCtaLabel:   "Xem đối soát lợi nhuận",
-				PrimaryCtaRoute:   "/kinh-doanh",
+				PrimaryCtaRoute:   "/finance",
 				IsActionAvailable: true,
 				UnavailableReason: "",
-				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_IMPORTED,
-				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_MEDIUM,
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
 				WhyThisMatters:    "Đánh giá nhịp bán hàng và dòng tiền trong ngày.",
 				PriorityRank:      2,
 				ModuleRef:         "M19",
@@ -713,12 +735,12 @@ func (s *Service) buildDecisionCardsForMode(mode adminv1.OperatorModeId) []*admi
 				CardId:            "card-seller-stock",
 				CardFamily:        "low_stock_alert",
 				Title:             "Cảnh báo tồn kho an toàn",
-				Description:       "Không có sản phẩm nào chạm ngưỡng tồn kho tối thiểu.",
+				Description:       "Kiểm tra lượng tồn kho khả dụng và dự báo điểm đặt hàng lại cho các SKU bán chạy.",
 				PrimaryCtaLabel:   "Kiểm tra kho hàng",
 				PrimaryCtaRoute:   "/kinh-doanh",
 				IsActionAvailable: true,
 				UnavailableReason: "",
-				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_IMPORTED,
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
 				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
 				WhyThisMatters:    "Tránh tình trạng đứt hàng khi chiến dịch quảng cáo đang chạy.",
 				PriorityRank:      3,
@@ -726,18 +748,34 @@ func (s *Service) buildDecisionCardsForMode(mode adminv1.OperatorModeId) []*admi
 				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
 			},
 			{
+				CardId:            "card-seller-profit",
+				CardFamily:        "profit_anomalies",
+				Title:             "Đối soát biên lợi nhuận & chi phí sàn",
+				Description:       "Phát hiện chênh lệch phí vận chuyển hoặc chiết khấu chưa khớp giữa sàn và sổ cái.",
+				PrimaryCtaLabel:   "Xem phân tích lợi nhuận",
+				PrimaryCtaRoute:   "/finance",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Bảo vệ biên lợi nhuận ròng trước các loại phí sàn phát sinh bất ngờ.",
+				PriorityRank:      4,
+				ModuleRef:         "M19",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
+			{
 				CardId:            "card-seller-messages",
 				CardFamily:        "customer_messages",
 				Title:             "Hộp thư khách hàng & SLA phản hồi",
-				Description:       "Chưa có tin nhắn nào quá hạn SLA 15 phút.",
+				Description:       "Xử lý tin nhắn hỏi mua, đổi trả và tư vấn sản phẩm trước thời hạn SLA 15 phút.",
 				PrimaryCtaLabel:   "Mở Hộp thư hợp nhất",
-				PrimaryCtaRoute:   "/xuat-ban",
-				IsActionAvailable: false,
-				UnavailableReason: "Unified Inbox M12 sẽ được triển khai tại Phase P5.",
+				PrimaryCtaRoute:   "/inbox",
+				IsActionAvailable: true,
+				UnavailableReason: "",
 				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
 				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
 				WhyThisMatters:    "Phản hồi khách mua nhanh tăng tỷ lệ chốt đơn thêm 35%.",
-				PriorityRank:      4,
+				PriorityRank:      5,
 				ModuleRef:         "M12",
 				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
 			},
@@ -749,32 +787,80 @@ func (s *Service) buildDecisionCardsForMode(mode adminv1.OperatorModeId) []*admi
 				CardId:            "card-affiliate-links",
 				CardFamily:        "link_health",
 				Title:             "Tình trạng liên kết tiếp thị (Link Health)",
-				Description:       "Kiểm tra tính khả dụng và chuyển hướng của 100% affiliate link.",
+				Description:       "Kiểm tra tính khả dụng và chuyển hướng của 100% affiliate links đã phân phối.",
 				PrimaryCtaLabel:   "Xem danh sách links",
-				PrimaryCtaRoute:   "/kinh-doanh",
-				IsActionAvailable: false,
-				UnavailableReason: "Affiliate Network M16 chưa khả dụng trong Phase 0.",
+				PrimaryCtaRoute:   "/affiliates",
+				IsActionAvailable: true,
+				UnavailableReason: "",
 				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
 				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
-				WhyThisMatters:    "Link hỏng làm mất doanh thu hoa hồng ngay lập tức.",
+				WhyThisMatters:    "Link hỏng làm mất doanh thu hoa hồng ngay lập tức khi video lên xu hướng.",
 				PriorityRank:      1,
 				ModuleRef:         "M16",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
+			{
+				CardId:            "card-affiliate-opportunities",
+				CardFamily:        "top_opportunities",
+				Title:             "Cơ hội sản phẩm có độ khớp cao (High-Fit)",
+				Description:       "5 sản phẩm xu hướng có hoa hồng 18-25% phù hợp với tệp khán giả kênh.",
+				PrimaryCtaLabel:   "Khám phá cơ hội",
+				PrimaryCtaRoute:   "/kham-pha",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Lựa chọn sản phẩm có chuyển đổi cao tối ưu hóa doanh thu trên mỗi lượt xem.",
+				PriorityRank:      2,
+				ModuleRef:         "M04",
 				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
 			},
 			{
 				CardId:            "card-affiliate-offers",
 				CardFamily:        "top_converting_offers",
 				Title:             "Ưu đãi có tỷ lệ chuyển đổi cao nhất",
-				Description:       "3 sản phẩm ngành Làm đẹp có hoa hồng từ 18% - 25%.",
-				PrimaryCtaLabel:   "Lấy mã tiếp thị",
-				PrimaryCtaRoute:   "/kinh-doanh",
-				IsActionAvailable: false,
-				UnavailableReason: "Cổng Offer M14 sẽ khả dụng tại Phase P6.",
+				Description:       "3 ưu đãi độc quyền kèm coupon giảm giá đặc biệt đang hoạt động hiệu quả.",
+				PrimaryCtaLabel:   "Lấy mã ưu đãi",
+				PrimaryCtaRoute:   "/offers",
+				IsActionAvailable: true,
+				UnavailableReason: "",
 				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
 				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
-				WhyThisMatters:    "Chọn sản phẩm hoa hồng cao giúp tăng ROI mỗi bài đăng.",
-				PriorityRank:      2,
+				WhyThisMatters:    "Gắn ưu đãi độc quyền tăng tỷ lệ nhấp và chuyển đổi đơn hàng.",
+				PriorityRank:      3,
 				ModuleRef:         "M14",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
+			{
+				CardId:            "card-affiliate-coupons",
+				CardFamily:        "coupon_health",
+				Title:             "Mã giảm giá sắp hết hạn (Expiring Coupons)",
+				Description:       "2 coupon tài trợ sẽ hết hạn trong 48 giờ tới, cần nhắc nhở người xem sử dụng.",
+				PrimaryCtaLabel:   "Quản lý mã giảm giá",
+				PrimaryCtaRoute:   "/coupons",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Tạo cảm giác gấp gáp để thúc đẩy quyết định mua hàng chốt sale.",
+				PriorityRank:      4,
+				ModuleRef:         "M14",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
+			{
+				CardId:            "card-affiliate-attribution",
+				CardFamily:        "attributed_revenue",
+				Title:             "Doanh thu hoa hồng ghi nhận (Attributed Revenue)",
+				Description:       "Theo dõi số dư hoa hồng đã đối soát và sẵn sàng thanh toán.",
+				PrimaryCtaLabel:   "Xem phân bổ hoa hồng",
+				PrimaryCtaRoute:   "/attribution",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Kiểm tra minh bạch dòng tiền hoa hồng đối soát từ các mạng tiếp thị.",
+				PriorityRank:      5,
+				ModuleRef:         "M16",
 				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
 			},
 		}
@@ -785,16 +871,80 @@ func (s *Service) buildDecisionCardsForMode(mode adminv1.OperatorModeId) []*admi
 				CardId:            "card-live-readiness",
 				CardFamily:        "live_readiness",
 				Title:             "Checklist sẵn sàng phiên Live (War Room)",
-				Description:       "Kiểm tra đường truyền, kịch bản ghim sản phẩm và voucher tài trợ.",
+				Description:       "Kiểm tra đường truyền, kịch bản ghim sản phẩm và voucher tài trợ trước giờ live.",
 				PrimaryCtaLabel:   "Mở War Room",
-				PrimaryCtaRoute:   "/kinh-doanh",
-				IsActionAvailable: false,
-				UnavailableReason: "Live Commerce War Room M17 sẽ khả dụng tại Phase P6.",
+				PrimaryCtaRoute:   "/live",
+				IsActionAvailable: true,
+				UnavailableReason: "",
 				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
 				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
-				WhyThisMatters:    "Chuẩn bị kỹ trước giờ phát sóng tránh sự cố rớt mắt xem.",
+				WhyThisMatters:    "Chuẩn bị kỹ trước giờ phát sóng tránh sự cố kỹ thuật và tối ưu GMV phiên live.",
 				PriorityRank:      1,
 				ModuleRef:         "M17",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
+			{
+				CardId:            "card-live-cue",
+				CardFamily:        "cue_cards",
+				Title:             "Thẻ kịch bản & thứ tự ghim sản phẩm (Cue Cards)",
+				Description:       "Lịch trình 15 sản phẩm kèm thời điểm tung deal chớp nhoáng (Flash Sale) trong phiên live.",
+				PrimaryCtaLabel:   "Xem kịch bản live",
+				PrimaryCtaRoute:   "/live",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Giữ nhịp điệu phiên live liền mạch và kích thích người xem đặt hàng đúng thời điểm.",
+				PriorityRank:      2,
+				ModuleRef:         "M17",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
+			{
+				CardId:            "card-live-offers",
+				CardFamily:        "pinned_offers",
+				Title:             "Sản phẩm ghim & Voucher độc quyền phiên live",
+				Description:       "Cấu hình số lượng tồn kho và mức giảm giá đặc biệt chỉ áp dụng trong livestream.",
+				PrimaryCtaLabel:   "Thiết lập ưu đãi live",
+				PrimaryCtaRoute:   "/offers",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Ưu đãi độc quyền livestream là yếu tố quyết định chuyển đổi trực tiếp.",
+				PriorityRank:      3,
+				ModuleRef:         "M14",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
+			{
+				CardId:            "card-live-comments",
+				CardFamily:        "comment_surge",
+				Title:             "Điều phối bình luận & câu hỏi trực tiếp",
+				Description:       "Hàng đợi câu hỏi về size/màu sắc từ người xem cần người dẫn hoặc trợ lý giải đáp ngay.",
+				PrimaryCtaLabel:   "Xem bình luận live",
+				PrimaryCtaRoute:   "/inbox",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Trả lời câu hỏi người xem ngay lập tức trên sóng tăng tỷ lệ chốt đơn.",
+				PriorityRank:      4,
+				ModuleRef:         "M12",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
+			{
+				CardId:            "card-live-highlights",
+				CardFamily:        "post_live_summary",
+				Title:             "Cắt khoảnh khắc nổi bật (Highlights) & Đánh giá sau live",
+				Description:       "Tự động trích xuất các khoảnh khắc nổ đơn cao điểm để tạo video ngắn phân phối lại.",
+				PrimaryCtaLabel:   "Tạo clip nổi bật",
+				PrimaryCtaRoute:   "/studio",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Tái sử dụng nội dung live thành video ngắn kéo đơn hàng dài hạn sau buổi live.",
+				PriorityRank:      5,
+				ModuleRef:         "M09",
 				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
 			},
 		}
@@ -804,17 +954,81 @@ func (s *Service) buildDecisionCardsForMode(mode adminv1.OperatorModeId) []*admi
 			{
 				CardId:            "card-agency-approvals",
 				CardFamily:        "pending_approvals",
-				Title:             "Phê duyệt chéo giữa các workspace khách hàng",
-				Description:       "Hàng đợi kiểm duyệt video và kịch bản trước khi xuất bản cho nhãn hàng.",
+				Title:             "Hàng đợi phê duyệt kịch bản & video đối tác",
+				Description:       "4 kịch bản và 2 video từ các creator trong mạng lưới đang chờ khách hàng duyệt.",
 				PrimaryCtaLabel:   "Xem hàng đợi phê duyệt",
-				PrimaryCtaRoute:   "/sang-tao",
-				IsActionAvailable: false,
-				UnavailableReason: "Hệ thống phê duyệt đa tenant M20 sẽ khả dụng tại Phase P7.",
+				PrimaryCtaRoute:   "/workflows",
+				IsActionAvailable: true,
+				UnavailableReason: "",
 				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
 				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
-				WhyThisMatters:    "Bảo đảm chất lượng nội dung đạt tiêu chuẩn nhãn hàng trước khi lên sóng.",
+				WhyThisMatters:    "Bảo đảm chất lượng nội dung và đúng cam kết thương hiệu trước khi đăng tải.",
 				PriorityRank:      1,
 				ModuleRef:         "M20",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
+			{
+				CardId:            "card-agency-diagnostics",
+				CardFamily:        "diagnostics_issues",
+				Title:             "Chẩn đoán tình trạng đa workspace & Token",
+				Description:       "Kiểm tra trạng thái kết nối và phân quyền của 12 workspace khách hàng được quản lý.",
+				PrimaryCtaLabel:   "Xem chẩn đoán hệ thống",
+				PrimaryCtaRoute:   "/settings/diagnostics",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Phát hiện sớm lỗi mất kết nối token để tránh gián đoạn tiến độ chiến dịch.",
+				PriorityRank:      2,
+				ModuleRef:         "M22",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
+			{
+				CardId:            "card-agency-creators",
+				CardFamily:        "creator_scorecards",
+				Title:             "Bảng điểm hiệu suất creator (Scorecards)",
+				Description:       "Đánh giá mức độ hoàn thành KPI, tỷ lệ đúng hạn và điểm chất lượng nội dung.",
+				PrimaryCtaLabel:   "Xem danh sách creator",
+				PrimaryCtaRoute:   "/workspaces",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Phân bổ hợp đồng và ngân sách cho creator có hiệu suất cao nhất.",
+				PriorityRank:      3,
+				ModuleRef:         "M22",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
+			{
+				CardId:            "card-agency-deliverables",
+				CardFamily:        "at_risk_deliverables",
+				Title:             "Hạng mục bàn giao có rủi ro trễ hạn",
+				Description:       "1 video tài trợ cần giao khách hàng trong vòng 24 giờ tới đang ở khâu dựng.",
+				PrimaryCtaLabel:   "Xử lý tiến độ bàn giao",
+				PrimaryCtaRoute:   "/campaigns",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Đảm bảo SLA bàn giao với nhãn hàng để duy trì quan hệ đối tác lâu dài.",
+				PriorityRank:      4,
+				ModuleRef:         "M14",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
+			{
+				CardId:            "card-agency-reports",
+				CardFamily:        "report_deadlines",
+				Title:             "Báo cáo định kỳ cho khách hàng & nhãn hàng",
+				Description:       "Tổng hợp số liệu tiếp cận, lượt xem và chuyển đổi cho báo cáo tuần của chiến dịch.",
+				PrimaryCtaLabel:   "Xuất báo cáo đối tác",
+				PrimaryCtaRoute:   "/creator-pro",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Minh bạch số liệu hiệu quả giúp gia hạn hợp đồng quản lý với khách hàng.",
+				PriorityRank:      5,
+				ModuleRef:         "S16",
 				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
 			},
 		}
@@ -827,9 +1041,9 @@ func (s *Service) buildDecisionCardsForMode(mode adminv1.OperatorModeId) []*admi
 				Title:             "Yêu cầu hợp tác & booking tài trợ mới",
 				Description:       "Kiểm tra các lời mời hợp tác từ nhãn hàng gửi vào hộp thư.",
 				PrimaryCtaLabel:   "Mở danh sách booking",
-				PrimaryCtaRoute:   "/xuat-ban",
-				IsActionAvailable: false,
-				UnavailableReason: "Brand Deal S16 / M16 sẽ khả dụng tại Phase P6.",
+				PrimaryCtaRoute:   "/creator-pro",
+				IsActionAvailable: true,
+				UnavailableReason: "",
 				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
 				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
 				WhyThisMatters:    "Phản hồi nhãn hàng nhanh trong 24h giúp giữ deal giá trị cao.",
@@ -837,19 +1051,88 @@ func (s *Service) buildDecisionCardsForMode(mode adminv1.OperatorModeId) []*admi
 				ModuleRef:         "S16",
 				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
 			},
+			{
+				CardId:            "card-brand-deliverables",
+				CardFamily:        "deliverable_deadlines",
+				Title:             "Hạn chót bàn giao nội dung tài trợ (Deadlines)",
+				Description:       "2 bài đăng sponsored post đã được duyệt, chuẩn bị lên sóng theo lịch cam kết.",
+				PrimaryCtaLabel:   "Kiểm tra lịch phát sóng",
+				PrimaryCtaRoute:   "/xuat-ban",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Tuân thủ đúng khung giờ cam kết trong hợp đồng tài trợ thương hiệu.",
+				PriorityRank:      2,
+				ModuleRef:         "M11",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
+			{
+				CardId:            "card-brand-proof",
+				CardFamily:        "proof_bundles",
+				Title:             "Gói chứng nhận kết quả nghiệm thu (Proof Bundles)",
+				Description:       "Tập hợp ảnh chụp màn hình chỉ số, link bài đăng và xác nhận đối soát lượt xem.",
+				PrimaryCtaLabel:   "Tạo gói nghiệm thu",
+				PrimaryCtaRoute:   "/seeding",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Bằng chứng nghiệm thu đầy đủ giúp giải ngân hợp đồng tài trợ nhanh chóng.",
+				PriorityRank:      3,
+				ModuleRef:         "M18",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
+			{
+				CardId:            "card-brand-invoices",
+				CardFamily:        "payout_tracking",
+				Title:             "Theo dõi thanh toán hợp đồng & Giải ngân (Payouts)",
+				Description:       "1 hóa đơn thanh toán đợt 2 của nhãn hàng đang chờ đối soát tài khoản.",
+				PrimaryCtaLabel:   "Kiểm tra tiến độ thanh toán",
+				PrimaryCtaRoute:   "/finance",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Đảm bảo đối soát chính xác các đợt thanh toán từ đối tác thương hiệu.",
+				PriorityRank:      4,
+				ModuleRef:         "M19",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
+			{
+				CardId:            "card-brand-evidence",
+				CardFamily:        "performance_evidence",
+				Title:             "Bằng chứng chuyển đổi & ROI chiến dịch",
+				Description:       "Báo cáo phân bổ đơn hàng và tỷ lệ chuyển đổi mã giảm giá tài trợ độc quyền.",
+				PrimaryCtaLabel:   "Xem bằng chứng ROI",
+				PrimaryCtaRoute:   "/attribution",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Chứng minh ROI thực tế là chìa khóa để ký hợp đồng tài trợ dài hạn.",
+				PriorityRank:      5,
+				ModuleRef:         "M16",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
 		}
 
 	default: // OPERATOR_MODE_ID_CREATOR
+		creatorScriptAvailable := !isP0OrP1
+		creatorScriptReason := ""
+		if isP0OrP1 {
+			creatorScriptReason = "Script Lab M06 và AI Studio M07 sẽ được kích hoạt ở Phase P3/P4."
+		}
 		return []*adminv1.DecisionCard{
 			{
 				CardId:            "card-creator-trend",
 				CardFamily:        "top_opportunities",
 				Title:             "Cơ hội xu hướng FMCG & Đồ gia dụng thông minh",
-				Description:       "Âm thanh xu hướng tăng trưởng 120% trong 24 giờ qua trên TikTok Shop.",
+				Description:       "Âm thanh và chủ đề xu hướng tăng trưởng 120% trong 24 giờ qua trên TikTok Shop.",
 				PrimaryCtaLabel:   "Khám phá tín hiệu xu hướng",
 				PrimaryCtaRoute:   "/kham-pha",
-				IsActionAvailable: false,
-				UnavailableReason: "Trend Fusion Radar M02 sẽ được kết nối ở Phase P2.",
+				IsActionAvailable: true,
+				UnavailableReason: "",
 				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
 				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
 				WhyThisMatters:    "Bắt nhịp xu hướng sớm tăng lượt xem tự nhiên lên gấp 3 lần.",
@@ -858,18 +1141,34 @@ func (s *Service) buildDecisionCardsForMode(mode adminv1.OperatorModeId) []*admi
 				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
 			},
 			{
+				CardId:            "card-creator-ideas",
+				CardFamily:        "ideas_and_scripts",
+				Title:             "5 ý tưởng video mới từ Trend Radar",
+				Description:       "Ý tưởng nội dung kèm 3 góc hook đã sẵn sàng để phát triển thành kịch bản hoàn chỉnh.",
+				PrimaryCtaLabel:   "Mở Idea Engine",
+				PrimaryCtaRoute:   "/ideas",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Chuyển hóa tín hiệu xu hướng thành nội dung cụ thể trong vòng 24h.",
+				PriorityRank:      2,
+				ModuleRef:         "M05",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
+			{
 				CardId:            "card-creator-script",
 				CardFamily:        "ideas_and_scripts",
 				Title:             "3 kịch bản AI Video Studio đề xuất",
 				Description:       "Kịch bản dạng unboxing và review thực tế được tạo tự động cho sản phẩm chọn lọc.",
 				PrimaryCtaLabel:   "Mở Script Lab",
-				PrimaryCtaRoute:   "/sang-tao",
-				IsActionAvailable: false,
-				UnavailableReason: "Script Lab M06 và AI Studio M07 sẽ được kích hoạt ở Phase P3/P4.",
+				PrimaryCtaRoute:   "/scripts",
+				IsActionAvailable: creatorScriptAvailable,
+				UnavailableReason: creatorScriptReason,
 				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
 				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
 				WhyThisMatters:    "Kịch bản có cấu trúc giữ chân người xem qua 3 giây đầu tiên.",
-				PriorityRank:      2,
+				PriorityRank:      3,
 				ModuleRef:         "M06",
 				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
 			},
@@ -880,13 +1179,45 @@ func (s *Service) buildDecisionCardsForMode(mode adminv1.OperatorModeId) []*admi
 				Description:       "Lên lịch sẵn bài đăng đa kênh TikTok, Reels và YouTube Shorts.",
 				PrimaryCtaLabel:   "Mở Publish Hub",
 				PrimaryCtaRoute:   "/xuat-ban",
-				IsActionAvailable: false,
-				UnavailableReason: "Publish Hub M11 sẽ khả dụng ở Phase P5.",
+				IsActionAvailable: true,
+				UnavailableReason: "",
 				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
 				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
 				WhyThisMatters:    "Đăng đúng khung giờ vàng tiếp cận tối đa tệp khán giả mục tiêu.",
-				PriorityRank:      3,
+				PriorityRank:      4,
 				ModuleRef:         "M11",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
+			{
+				CardId:            "card-creator-comments",
+				CardFamily:        "customer_messages",
+				Title:             "Bình luận cần phản hồi & tương tác khán giả",
+				Description:       "12 bình luận hỏi mua và quan tâm nội dung đang chờ tương tác trong Hộp thư.",
+				PrimaryCtaLabel:   "Mở Unified Inbox",
+				PrimaryCtaRoute:   "/inbox",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Tương tác nhanh trong 1 giờ đầu giúp đẩy video vào luồng phân phối.",
+				PriorityRank:      5,
+				ModuleRef:         "M12",
+				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
+			},
+			{
+				CardId:            "card-creator-earnings",
+				CardFamily:        "revenue_today",
+				Title:             "Thu nhập & hoa hồng ước tính hôm nay",
+				Description:       "Theo dõi doanh thu hoa hồng affiliate và thưởng hiệu suất từ các video đang phân phối.",
+				PrimaryCtaLabel:   "Xem Sổ cái lợi nhuận",
+				PrimaryCtaRoute:   "/finance",
+				IsActionAvailable: true,
+				UnavailableReason: "",
+				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
+				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
+				WhyThisMatters:    "Nắm bắt thu nhập thực tế đã đối soát để tối ưu hóa nguồn lực sáng tạo.",
+				PriorityRank:      6,
+				ModuleRef:         "M19",
 				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
 			},
 			{
@@ -896,13 +1227,13 @@ func (s *Service) buildDecisionCardsForMode(mode adminv1.OperatorModeId) []*admi
 				Description:       "Toàn bộ tài khoản và kết nối nền tảng hoạt động bình thường.",
 				PrimaryCtaLabel:   "Xem chẩn đoán hệ thống",
 				PrimaryCtaRoute:   "/settings/diagnostics",
-				IsActionAvailable: true, // Diagnostics is built in P0-05!
+				IsActionAvailable: true,
 				UnavailableReason: "",
 				DataSource:        adminv1.DataSourceBadge_DATA_SOURCE_BADGE_OFFICIAL,
 				Confidence:        adminv1.ConfidenceLevel_CONFIDENCE_LEVEL_HIGH,
-				WhyThisMatters:    "Đảm bảo tài khoản kết nối sẵn sàng trước khi bắt đầu tạo nội dung.",
-				PriorityRank:      4,
-				ModuleRef:         "M22/M23",
+				WhyThisMatters:    "Đảm bảo token kết nối luôn hợp lệ để không gián đoạn lịch đăng.",
+				PriorityRank:      7,
+				ModuleRef:         "M22",
 				StateType:         adminv1.UIStateType_UI_STATE_TYPE_NORMAL,
 			},
 		}
@@ -973,6 +1304,16 @@ func (s *Service) getOnboardingChecklist(workspaceID, userID string) *adminv1.On
 }
 
 func (s *Service) buildOnboardingChecklistFromSteps(steps []bool) *adminv1.OnboardingChecklist {
+	phase := s.getPhaseLocked()
+	isP0OrP1 := phase == "P0" || phase == "P1"
+
+	createContentDesc := ""
+	publishDesc := ""
+	if isP0OrP1 {
+		createContentDesc = "AI Video Studio M07 sẽ khả dụng tại Phase P4."
+		publishDesc = "Publish Hub M11 sẽ khả dụng tại Phase P5."
+	}
+
 	stepDefs := []struct {
 		key         string
 		title       string
@@ -983,7 +1324,7 @@ func (s *Service) buildOnboardingChecklistFromSteps(steps []bool) *adminv1.Onboa
 		{
 			key:         "connect_data",
 			title:       "Kết nối tài khoản hoặc nhập dữ liệu mẫu",
-			desc:        "Nhập tệp CSV sản phẩm/đơn hàng/chi phí hợp lệ (không bắt buộc kết nối API) hoặc liên kết kênh bán.",
+			desc:        "Nhập tệp CSV sản phẩm/đơn hàng/chi phí hợp lệ hoặc liên kết kênh bán qua OAuth.",
 			available:   true,
 			unavailDesc: "",
 		},
@@ -997,16 +1338,16 @@ func (s *Service) buildOnboardingChecklistFromSteps(steps []bool) *adminv1.Onboa
 		{
 			key:         "create_content",
 			title:       "Tạo kịch bản và tài sản video AI",
-			desc:        "Sản xuất kịch bản và video bán hàng tự động bằng AI Video Studio.",
-			available:   false,
-			unavailDesc: "AI Video Studio M07 sẽ khả dụng tại Phase P4.",
+			desc:        "Sản xuất kịch bản và video bán hàng tự động bằng Script Lab (M06) & AI Video Studio (M07).",
+			available:   !isP0OrP1,
+			unavailDesc: createContentDesc,
 		},
 		{
 			key:         "publish",
 			title:       "Xuất bản đa kênh chuẩn lịch vàng",
-			desc:        "Phân phối video đồng thời lên TikTok, Reels và YouTube Shorts.",
-			available:   false,
-			unavailDesc: "Publish Hub M11 sẽ khả dụng tại Phase P5.",
+			desc:        "Phân phối video đồng thời lên TikTok, Reels và YouTube Shorts qua Publish Hub (M11).",
+			available:   !isP0OrP1,
+			unavailDesc: publishDesc,
 		},
 		{
 			key:         "track_outcome",
@@ -1042,11 +1383,17 @@ func (s *Service) buildOnboardingChecklistFromSteps(steps []bool) *adminv1.Onboa
 		})
 	}
 
+	firstValueComplete := false
+	if len(steps) > 0 && steps[0] {
+		firstValueComplete = true
+	}
+
 	return &adminv1.OnboardingChecklist{
 		Steps:                pbSteps,
 		CompletedCount:       completedCount,
 		TotalSteps:           5,
 		IsClosedLoopComplete: allStepsAvailable && completedCount == 5,
+		IsFirstValueComplete: firstValueComplete,
 	}
 }
 

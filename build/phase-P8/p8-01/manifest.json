@@ -1,0 +1,55 @@
+{
+  "task_id": "P8-01",
+  "phase": "P8",
+  "slice": "p8-01",
+  "title": "Six-mode Home, mobile parity và onboarding completion",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "feature_refs": [
+    "docs/02_features/platform/home_decision_engine.md",
+    "docs/04_contracts/api_behavior_contracts.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md"
+  ],
+  "source_files": {
+    "apps/api/gen/creativanta/admin/v1/dashboard.pb.go": "5346a3bbbb868425bf1d06dc0ae70880ab7459b295ece7bf537ec88557ddfd50",
+    "apps/api/internal/home/service.go": "86f50afd00628c865b2cdfb0a3b0043d20fe10db31553cdb7a4bf485f8f02242",
+    "apps/api/internal/home/service_test.go": "9e95b5dc99779531a0d5e335e56c106939411cec17b641be724740e244efc3fe",
+    "apps/mobile/lib/generated/creativanta/admin/v1/dashboard.pb.dart": "eb5dff50b40225416d135c4332dcc18b6db4f65c3244218956a014728669d56a",
+    "apps/mobile/lib/generated/creativanta/admin/v1/dashboard.pbjson.dart": "5b3a67b2a355dc2c62f1d470e8bc4f5ae38900259b939c5a91aadebc07475351",
+    "apps/mobile/lib/main.dart": "a9d09ce118451c8951405686379b32b71c7aa1af94538fa1281c94a288756e30",
+    "apps/mobile/lib/ui/home/home_dashboard_view.dart": "f7a313e847cd539b8d4269b441630e2bb72cbee40006e9bafdf5fed642101f85",
+    "apps/mobile/test/home_acceptance_test.dart": "3c2eb591ba71ff9efeeaa12a5b9cb04e46e1316dca685dee3c42b0cfa72eca8a",
+    "apps/web/src/lib/home/decision_engine.test.ts": "fdbdb4cdb7b27f42a048e9a1383e13ea8840e415d7b52073c1c9747ce4844ccf",
+    "apps/web/src/lib/home/decision_engine.ts": "5347aa98f461dd0aeb1962ba2b252d7da165dfa25f538a09de03f960b86c1b82",
+    "apps/web/src/routes/+page.svelte": "0b49c1246a84c1fad3a6ba04dc538ca074de9c76df25db340abbc0381b77ea13",
+    "packages/shared-types/src/creativanta/admin/v1/dashboard_pb.ts": "84f625b2d8d8b712a90a2afcad043d81ab36c629d69df9a3cb9c5b07a0cf9fa7",
+    "protos/creativanta/admin/v1/dashboard.proto": "dce111e6225803af5f0b7f28fb35a0ad1063a7c50a013bac04dcac4509ded888"
+  },
+  "scope_items": [
+    "Target 1 (All six mode priorities): Full preservation of all 6 canonical operator modes (Solo Creator with 7 cards, Seller with 5 cards, Affiliate Operator with 5 cards, Live Operator with 5 cards, Agency/MCN with 5 cards, Brand Collaboration with 5 cards). Each card has a distinct priority rank, WhyThisMatters explanation, and a non-empty actionable PrimaryCtaRoute with zero dead ends per RULE-M01-001.",
+    "Target 2 (First-value and full-loop completion distinct): The standard 5-step loop (connect_data, select_offer, create_content, publish, track_outcome) cleanly separates first-value achievement (Step 1 complete -> is_first_value_complete=true) from full closed-loop completion (all 5 steps complete -> is_closed_loop_complete=true). Both states are explicitly distinguished in protobuf contracts, Go service projections, Web UI badges, and Flutter mobile views.",
+    "Target 3 (Every shared UI state and route mapped): Shared UI states across Web and Mobile cover all 5 canonical state types (Normal, Loading, Empty, Error, Repair). Why This Number diagnostics drawers/sheets transparently display data source badges (Official/Imported/Inferred/Demo), confidence levels, missing data caveats, and actionable next steps. Role-based security checks redact private financial cards and repair gaps for Viewers."
+  ],
+  "verified_sub_slices": [
+    "Target 1 Verified: TestP801AcceptanceTarget1_AllSixModePriorities in apps/api/internal/home passes with go test -race; verifies 7 Creator cards, 5 Seller cards, 5 Affiliate Operator cards, 5 Live Operator cards, 5 Agency/MCN cards, and 5 Brand Collaboration cards with 100% route validity and module references.",
+    "Target 2 Verified: TestP801AcceptanceTarget2_FirstValueAndFullLoopCompletionDistinct in apps/api/internal/home passes with go test -race; verifies Step 1 sets is_first_value_complete=true without completing closed-loop, and only 5/5 steps sets is_closed_loop_complete=true.",
+    "Target 3 Verified: TestP801AcceptanceTarget3_SharedUIStatesAndRouteMappings in apps/api/internal/home passes with go test -race; verifies all 5 UI state types, 19 shared route mappings, and viewer role financial/repair redaction.",
+    "Web Vitest & Svelte Check: apps/web/src/lib/home/decision_engine.test.ts passes all 12 tests in apps/web; svelte-check reports 0 errors and 0 warnings; vite build succeeds cleanly; SSR smoke checks pass across web and admin surfaces.",
+    "Mobile Flutter Suite: apps/mobile/test/home_acceptance_test.dart passes all 12 acceptance tests; full suite of 311 tests passes in apps/mobile; flutter analyze passes with 0 issues.",
+    "Protobuf Verification: tooling/proto-gen.sh verify passes across Go, TS, and Dart targets with zero drift.",
+    "CI Quality Gates: check_docs.py, check_go.sh, check_flutter.sh, and check_node.sh all pass cleanly."
+  ],
+  "external_gates": [
+    {
+      "gate_id": "EXT-GATE-PLATFORM-OAUTH-CONNECTORS",
+      "status": "LOCAL_ENGINE_COMPUTATION_READY",
+      "description": "Six-mode decision engine and onboarding paths operate deterministically with imported datasets and manual routes. Live third-party OAuth connector activation requires production provider credentials."
+    }
+  ],
+  "remaining_scope": [
+    "P8-02: Full billing, reporting, retention và cost economics"
+  ]
+}

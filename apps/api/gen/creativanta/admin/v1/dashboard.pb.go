@@ -503,6 +503,7 @@ type OnboardingChecklist struct {
 	CompletedCount       int32                     `protobuf:"varint,2,opt,name=completed_count,json=completedCount,proto3" json:"completed_count,omitempty"`
 	TotalSteps           int32                     `protobuf:"varint,3,opt,name=total_steps,json=totalSteps,proto3" json:"total_steps,omitempty"`
 	IsClosedLoopComplete bool                      `protobuf:"varint,4,opt,name=is_closed_loop_complete,json=isClosedLoopComplete,proto3" json:"is_closed_loop_complete,omitempty"`
+	IsFirstValueComplete bool                      `protobuf:"varint,5,opt,name=is_first_value_complete,json=isFirstValueComplete,proto3" json:"is_first_value_complete,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -561,6 +562,13 @@ func (x *OnboardingChecklist) GetTotalSteps() int32 {
 func (x *OnboardingChecklist) GetIsClosedLoopComplete() bool {
 	if x != nil {
 		return x.IsClosedLoopComplete
+	}
+	return false
+}
+
+func (x *OnboardingChecklist) GetIsFirstValueComplete() bool {
+	if x != nil {
+		return x.IsFirstValueComplete
 	}
 	return false
 }
@@ -1317,13 +1325,14 @@ const file_creativanta_admin_v1_dashboard_proto_rawDesc = "" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x12!\n" +
 	"\fis_completed\x18\x05 \x01(\bR\visCompleted\x12!\n" +
 	"\fis_available\x18\x06 \x01(\bR\visAvailable\x12-\n" +
-	"\x12unavailable_reason\x18\a \x01(\tR\x11unavailableReason\"\xda\x01\n" +
+	"\x12unavailable_reason\x18\a \x01(\tR\x11unavailableReason\"\x91\x02\n" +
 	"\x13OnboardingChecklist\x12B\n" +
 	"\x05steps\x18\x01 \x03(\v2,.creativanta.admin.v1.OnboardingStepProgressR\x05steps\x12'\n" +
 	"\x0fcompleted_count\x18\x02 \x01(\x05R\x0ecompletedCount\x12\x1f\n" +
 	"\vtotal_steps\x18\x03 \x01(\x05R\n" +
 	"totalSteps\x125\n" +
-	"\x17is_closed_loop_complete\x18\x04 \x01(\bR\x14isClosedLoopComplete\"\x8b\x04\n" +
+	"\x17is_closed_loop_complete\x18\x04 \x01(\bR\x14isClosedLoopComplete\x125\n" +
+	"\x17is_first_value_complete\x18\x05 \x01(\bR\x14isFirstValueComplete\"\x8b\x04\n" +
 	"\x14WhyThisNumberDetails\x12\x1d\n" +
 	"\n" +
 	"metric_key\x18\x01 \x01(\tR\tmetricKey\x12!\n" +
