@@ -39,6 +39,7 @@ var allowedModules = map[string]bool{
 	"S16":     true, // Phase P5-03: Creator Pro Tools (S16)
 	"M14":     true, // Phase P6-01: Monetization OS (M14)
 	"M15":     true, // Phase P6-02: Creator Store, Bundles & Memberships (M15)
+	"M16":     true, // Phase P6-03: In-Product Affiliate Network (M16)
 }
 
 // TestNoFuturePhaseRPCExposed satisfies Acceptance Target:
