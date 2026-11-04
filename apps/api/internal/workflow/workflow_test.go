@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	automationv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/automation/v1"
@@ -1082,6 +1083,933 @@ func TestConcurrentWorkflowOperations(t *testing.T) {
 					t.Errorf("worker %d iteration %d get failed: %v", workerID, i, err)
 					return
 				}
+			}
+		}(w)
+	}
+
+	wg.Wait()
+}
+
+// ============================================================================
+// P7-02 Acceptance Tests
+// Acceptance Targets:
+//   1. Simulation has no business effects
+//   2. Changed action invalidates approval
+//   3. Resume never replays confirmed effect
+// ============================================================================
+
+func TestP702_Simulation_ZeroBusinessEffects(t *testing.T) {
+	ctx := context.Background()
+	store := workflow.NewMemoryStore()
+	dispatcher := workflow.NewMockActionDispatcher()
+	capProvider := workflow.NewDefaultCapabilityProvider()
+	svc := workflow.NewService(store, nil)
+	svc.SetActionDispatcher(dispatcher)
+	svc.SetCapabilityProvider(capProvider)
+
+	caller := workflow.CallerContext{
+		UserID:        "usr-editor-1",
+		WorkspaceID:   "ws-sim-1",
+		WorkspaceRole: "editor",
+	}
+
+	graph := buildGraphWithAll10NodeTypes()
+	sampleContext := map[string]any{
+		"amount": 2500,
+		"customer": map[string]any{
+			"is_vip": "true",
+			"name":   "Alex Creator",
+			"tier":   "gold",
+		},
+	}
+
+	// 1. Run Preflight Check
+	preflightReport, err := svc.PreflightWorkflow(ctx, caller, "", &graph)
+	if err != nil {
+		t.Fatalf("PreflightWorkflow failed: %v", err)
+	}
+	if !preflightReport.Valid {
+		t.Fatalf("expected preflight valid, got errors: %v", preflightReport.Errors)
+	}
+	if preflightReport.TotalMaxCreditQuote <= 0 {
+		t.Errorf("expected positive total credit quote, got %.2f", preflightReport.TotalMaxCreditQuote)
+	}
+	if !preflightReport.RequiresApproval {
+		t.Errorf("expected preflight to flag sensitive action requiring approval")
+	}
+
+	// 2. Run Dry Run Simulation
+	report, err := svc.TestWorkflow(ctx, caller, "", &graph, sampleContext)
+	if err != nil {
+		t.Fatalf("TestWorkflow (simulation) failed: %v", err)
+	}
+
+	if !report.Success {
+		t.Fatalf("expected simulation success, got summary: %s", report.SimulationSummary)
+	}
+	if report.TotalEstimatedCredits <= 0 {
+		t.Errorf("expected positive estimated credits in simulation, got %.2f", report.TotalEstimatedCredits)
+	}
+	if len(report.StepResults) < 5 {
+		t.Errorf("expected at least 5 simulated steps, got %d", len(report.StepResults))
+	}
+
+	// 3. Acceptance Target 1: Simulation has NO business effects!
+	// Assert 0 calls were dispatched to the underlying action dispatcher
+	dispatchedCount := dispatcher.GetDispatchedCount("")
+	if dispatchedCount != 0 {
+		t.Fatalf("ACCEPTANCE TARGET VIOLATION: Simulation made %d real action dispatches! Expected strictly 0.", dispatchedCount)
+	}
+
+	// Assert no runs, run steps, or approvals were created in the store
+	runs, totalRuns, _ := svc.ListRuns(ctx, caller, "", "", 10, 0)
+	if totalRuns != 0 || len(runs) != 0 {
+		t.Fatalf("ACCEPTANCE TARGET VIOLATION: Simulation created %d real workflow runs in storage!", totalRuns)
+	}
+	approvals, _ := svc.ListPendingApprovals(ctx, caller)
+	if len(approvals) != 0 {
+		t.Fatalf("ACCEPTANCE TARGET VIOLATION: Simulation created %d real approval requests!", len(approvals))
+	}
+}
+
+func TestP702_ChangedAction_InvalidatesApproval(t *testing.T) {
+	ctx := context.Background()
+	store := workflow.NewMemoryStore()
+	dispatcher := workflow.NewMockActionDispatcher()
+	capProvider := workflow.NewDefaultCapabilityProvider()
+	svc := workflow.NewService(store, nil)
+	svc.SetActionDispatcher(dispatcher)
+	svc.SetCapabilityProvider(capProvider)
+
+	editor := workflow.CallerContext{
+		UserID:        "usr-editor-1",
+		WorkspaceID:   "ws-appr-1",
+		WorkspaceRole: "editor",
+	}
+	manager := workflow.CallerContext{
+		UserID:        "usr-mgr-1",
+		WorkspaceID:   "ws-appr-1",
+		WorkspaceRole: "manager",
+	}
+
+	// Build workflow: Trigger -> Action1 -> Approval -> Action2 -> Terminal
+	graph := workflow.WorkflowGraph{
+		SchemaVersion: 1,
+		Nodes: []workflow.WorkflowNode{
+			{
+				NodeID:        "node-trig",
+				NodeType:      workflow.NodeTypeTrigger,
+				Title:         "Trigger",
+				TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual},
+			},
+			{
+				NodeID:   "node-act-1",
+				NodeType: workflow.NodeTypeAction,
+				Title:    "Initial Step",
+				ActionConfig: &workflow.ActionConfig{
+					RPCName:   "creativanta.commerce.v1.InventoryService/ReserveStock",
+					InputJSON: `{"sku":"sku-test-1"}`,
+				},
+			},
+			{
+				NodeID:   "node-appr",
+				NodeType: workflow.NodeTypeApproval,
+				Title:    "Publish Approval Gate",
+				ApprovalConfig: &workflow.ApprovalConfig{
+					ApproverIDs:              []string{manager.UserID},
+					RequiredApprovals:        1,
+					ExpiresAtDurationSeconds: 86400,
+				},
+			},
+			{
+				NodeID:   "node-act-2",
+				NodeType: workflow.NodeTypeAction,
+				Title:    "Sensitive Publish",
+				ActionConfig: &workflow.ActionConfig{
+					RPCName:   "creativanta.publish.v1.PublishService/Publish",
+					InputJSON: `{"platform":"tiktok","account_id":"acc-initial-123"}`,
+				},
+			},
+			{
+				NodeID:         "node-term",
+				NodeType:       workflow.NodeTypeTerminal,
+				Title:          "Done",
+				TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"},
+			},
+		},
+		Edges: []workflow.WorkflowEdge{
+			{FromNodeID: "node-trig", ToNodeID: "node-act-1"},
+			{FromNodeID: "node-act-1", ToNodeID: "node-appr"},
+			{FromNodeID: "node-appr", ToNodeID: "node-act-2", Branch: workflow.EdgeBranchSuccess},
+			{FromNodeID: "node-act-2", ToNodeID: "node-term"},
+		},
+	}
+
+	wf, err := svc.CreateWorkflow(ctx, editor, "Approval Invalidation Flow", "Test Flow", "custom", *graph.Nodes[0].TriggerConfig, graph, nil)
+	if err != nil {
+		t.Fatalf("CreateWorkflow failed: %v", err)
+	}
+
+	_, err = svc.ActivateWorkflow(ctx, manager, wf.WorkflowID)
+	if err != nil {
+		t.Fatalf("ActivateWorkflow failed: %v", err)
+	}
+
+	// 1. Run workflow -> should pause at node-appr in waiting_approval
+	run, err := svc.RunWorkflow(ctx, editor, wf.WorkflowID, map[string]any{"source": "test"})
+	if err != nil {
+		t.Fatalf("RunWorkflow failed: %v", err)
+	}
+
+	if run.Status != workflow.WorkflowRunStatusWaitingApproval {
+		t.Fatalf("expected run status waiting_approval, got %s", run.Status)
+	}
+
+	// Check approval request was created
+	pending, err := svc.ListPendingApprovals(ctx, manager)
+	if err != nil {
+		t.Fatalf("ListPendingApprovals failed: %v", err)
+	}
+	if len(pending) != 1 {
+		t.Fatalf("expected 1 pending approval, got %d", len(pending))
+	}
+	appReq := pending[0]
+	if appReq.Status != "pending_approval" {
+		t.Fatalf("expected pending_approval status, got %s", appReq.Status)
+	}
+
+	// 2. Acceptance Target 2: Changed action invalidates approval!
+	// Scenario A: Operator modifies the action target (e.g. from acc-initial-123 to acc-changed-999)
+	graph.Nodes[3].ActionConfig.InputJSON = `{"platform":"tiktok","account_id":"acc-changed-999"}`
+	_, err = svc.UpdateWorkflow(ctx, editor, wf.WorkflowID, "Approval Invalidation Flow Updated", "Updated Desc", *graph.Nodes[0].TriggerConfig, graph, nil, wf.Version)
+	if err != nil {
+		t.Fatalf("UpdateWorkflow failed: %v", err)
+	}
+
+	// The existing approval request MUST have been invalidated!
+	appAfterUpdate, err := svc.ApprovalManager().GetApprovalRequest(ctx, manager.WorkspaceID, appReq.RequestID)
+	if err != nil {
+		t.Fatalf("GetApprovalRequest failed: %v", err)
+	}
+	if appAfterUpdate.Status != "cancelled" {
+		t.Fatalf("ACCEPTANCE TARGET VIOLATION: Expected approval status 'cancelled' after workflow action update, got '%s'", appAfterUpdate.Status)
+	}
+
+	// 3. Attempting to approve the invalidated request MUST fail with ErrApprovalInvalidated
+	_, _, approveErr := svc.Approve(ctx, manager, appReq.RequestID)
+	if approveErr == nil {
+		t.Fatalf("ACCEPTANCE TARGET VIOLATION: Expected error approving invalidated approval request, but it succeeded!")
+	}
+	if !strings.Contains(approveErr.Error(), "invalid approval state transition") && !strings.Contains(approveErr.Error(), "cancelled") {
+		t.Logf("Approve returned expected rejection for invalidated request: %v", approveErr)
+	}
+
+	// Scenario B: Test action hash mismatch detection inside Approve()
+	// Trigger fresh run
+	run2, err := svc.RunWorkflow(ctx, editor, wf.WorkflowID, map[string]any{"source": "test2"})
+	if err != nil {
+		t.Fatalf("RunWorkflow 2 failed: %v", err)
+	}
+	_ = run2
+	pending2, _ := svc.ListPendingApprovals(ctx, manager)
+	if len(pending2) != 1 {
+		t.Fatalf("expected 1 pending approval for run2, got %d", len(pending2))
+	}
+	appReq2 := pending2[0]
+
+	// Simulate action input change directly on workflow store before approval is processed
+	wfCurrent, _ := svc.GetWorkflow(ctx, editor, wf.WorkflowID)
+	wfCurrent.Version++ // bump version
+	_ = store.UpdateWorkflow(ctx, wfCurrent)
+
+	_, _, staleApproveErr := svc.Approve(ctx, manager, appReq2.RequestID)
+	if staleApproveErr == nil {
+		t.Fatalf("ACCEPTANCE TARGET VIOLATION: Expected ErrApprovalInvalidated on version bump, but approval succeeded!")
+	}
+	if !strings.Contains(staleApproveErr.Error(), "changed after approval requested") {
+		t.Logf("Approve rejected with: %v", staleApproveErr)
+	}
+}
+
+func TestP702_Resume_NeverReplaysConfirmedEffect(t *testing.T) {
+	ctx := context.Background()
+	store := workflow.NewMemoryStore()
+	dispatcher := workflow.NewMockActionDispatcher()
+	capProvider := workflow.NewDefaultCapabilityProvider()
+	svc := workflow.NewService(store, nil)
+	svc.SetActionDispatcher(dispatcher)
+	svc.SetCapabilityProvider(capProvider)
+
+	editor := workflow.CallerContext{
+		UserID:        "usr-editor-1",
+		WorkspaceID:   "ws-resume-1",
+		WorkspaceRole: "editor",
+	}
+	manager := workflow.CallerContext{
+		UserID:        "usr-mgr-1",
+		WorkspaceID:   "ws-resume-1",
+		WorkspaceRole: "manager",
+	}
+
+	// Graph: Trigger -> Action1 (ReserveStock) -> ApprovalGate -> Action2 (Publish) -> Terminal
+	graph := workflow.WorkflowGraph{
+		SchemaVersion: 1,
+		Nodes: []workflow.WorkflowNode{
+			{
+				NodeID:        "node-trig",
+				NodeType:      workflow.NodeTypeTrigger,
+				Title:         "Trigger",
+				TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual},
+			},
+			{
+				NodeID:   "node-act-1",
+				NodeType: workflow.NodeTypeAction,
+				Title:    "Reserve Stock Action",
+				ActionConfig: &workflow.ActionConfig{
+					RPCName:   "creativanta.commerce.v1.InventoryService/ReserveStock",
+					InputJSON: `{"sku":"sku-vip-resume","qty":1}`,
+				},
+			},
+			{
+				NodeID:   "node-appr",
+				NodeType: workflow.NodeTypeApproval,
+				Title:    "Gate",
+				ApprovalConfig: &workflow.ApprovalConfig{
+					ApproverIDs:              []string{manager.UserID},
+					RequiredApprovals:        1,
+					ExpiresAtDurationSeconds: 86400,
+				},
+			},
+			{
+				NodeID:   "node-act-2",
+				NodeType: workflow.NodeTypeAction,
+				Title:    "Publish Content Action",
+				ActionConfig: &workflow.ActionConfig{
+					RPCName:   "creativanta.publish.v1.PublishService/Publish",
+					InputJSON: `{"platform":"tiktok","title":"VIP Drop"}`,
+				},
+			},
+			{
+				NodeID:         "node-term",
+				NodeType:       workflow.NodeTypeTerminal,
+				Title:          "Terminal",
+				TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"},
+			},
+		},
+		Edges: []workflow.WorkflowEdge{
+			{FromNodeID: "node-trig", ToNodeID: "node-act-1"},
+			{FromNodeID: "node-act-1", ToNodeID: "node-appr"},
+			{FromNodeID: "node-appr", ToNodeID: "node-act-2", Branch: workflow.EdgeBranchSuccess},
+			{FromNodeID: "node-act-2", ToNodeID: "node-term"},
+		},
+	}
+
+	wf, err := svc.CreateWorkflow(ctx, editor, "Resume Idempotency Flow", "Flow", "custom", *graph.Nodes[0].TriggerConfig, graph, nil)
+	if err != nil {
+		t.Fatalf("CreateWorkflow failed: %v", err)
+	}
+
+	_, err = svc.ActivateWorkflow(ctx, manager, wf.WorkflowID)
+	if err != nil {
+		t.Fatalf("ActivateWorkflow failed: %v", err)
+	}
+
+	// 1. Initial run: Action 1 executes, run halts at ApprovalGate
+	run, err := svc.RunWorkflow(ctx, editor, wf.WorkflowID, map[string]any{"order_id": "ord-123"})
+	if err != nil {
+		t.Fatalf("RunWorkflow failed: %v", err)
+	}
+
+	if run.Status != workflow.WorkflowRunStatusWaitingApproval {
+		t.Fatalf("expected status waiting_approval, got %s", run.Status)
+	}
+
+	// Verify Action 1 was dispatched exactly once
+	initialAction1Dispatches := dispatcher.GetDispatchedCount("creativanta.commerce.v1.InventoryService/ReserveStock")
+	if initialAction1Dispatches != 1 {
+		t.Fatalf("expected Action 1 dispatched exactly 1 time, got %d", initialAction1Dispatches)
+	}
+
+	// Action 2 must not have been dispatched yet
+	if dispatcher.GetDispatchedCount("creativanta.publish.v1.PublishService/Publish") != 0 {
+		t.Fatalf("expected Action 2 not dispatched yet, got %d", dispatcher.GetDispatchedCount("creativanta.publish.v1.PublishService/Publish"))
+	}
+
+	// Find the pending approval
+	pending, err := svc.ListPendingApprovals(ctx, manager)
+	if err != nil || len(pending) != 1 {
+		t.Fatalf("expected 1 pending approval, got %d (err: %v)", len(pending), err)
+	}
+
+	// 2. Manager approves -> Triggers ResumeRun
+	_, resumedRun, err := svc.Approve(ctx, manager, pending[0].RequestID)
+	if err != nil {
+		t.Fatalf("Approve failed: %v", err)
+	}
+
+	if resumedRun == nil {
+		t.Fatalf("expected non-nil resumed run")
+	}
+	if resumedRun.Status != workflow.WorkflowRunStatusSucceeded {
+		t.Fatalf("expected resumed run status succeeded, got %s", resumedRun.Status)
+	}
+
+	// 3. Acceptance Target 3: Resume NEVER replays confirmed effect!
+	// Assert Action 1 was NEVER re-dispatched during resume! Dispatched count MUST still be 1!
+	action1DispatchesAfterResume := dispatcher.GetDispatchedCount("creativanta.commerce.v1.InventoryService/ReserveStock")
+	if action1DispatchesAfterResume != 1 {
+		t.Fatalf("ACCEPTANCE TARGET VIOLATION: Resume replayed confirmed effect! Action 1 dispatch count went from 1 to %d", action1DispatchesAfterResume)
+	}
+
+	// Assert Action 2 was dispatched exactly once
+	action2Dispatches := dispatcher.GetDispatchedCount("creativanta.publish.v1.PublishService/Publish")
+	if action2Dispatches != 1 {
+		t.Fatalf("expected Action 2 dispatched exactly 1 time after resume, got %d", action2Dispatches)
+	}
+
+	// Verify step history shows Action 1 and Action 2 with their confirmed side effects
+	_, steps, err := svc.GetRunDetail(ctx, editor, run.RunID)
+	if err != nil {
+		t.Fatalf("GetRunDetail failed: %v", err)
+	}
+
+	var action1Steps, action2Steps int
+	for _, step := range steps {
+		if step.NodeID == "node-act-1" && step.Status == "succeeded" {
+			action1Steps++
+			if len(step.SideEffectRefs) == 0 {
+				t.Errorf("expected Action 1 step to retain side effect refs")
+			}
+		}
+		if step.NodeID == "node-act-2" && step.Status == "succeeded" {
+			action2Steps++
+		}
+	}
+	if action1Steps != 1 {
+		t.Errorf("expected exactly 1 succeeded step for Action 1, got %d", action1Steps)
+	}
+	if action2Steps != 1 {
+		t.Errorf("expected exactly 1 succeeded step for Action 2, got %d", action2Steps)
+	}
+}
+
+func TestP702_CapabilityAware_DegradedRoutingAndFallback(t *testing.T) {
+	ctx := context.Background()
+	store := workflow.NewMemoryStore()
+	dispatcher := workflow.NewMockActionDispatcher()
+	capProvider := workflow.NewDefaultCapabilityProvider()
+
+	// Set TikTok capability to DEGRADED
+	capProvider.SetStatus("tiktok", "degraded")
+
+	svc := workflow.NewService(store, nil)
+	svc.SetActionDispatcher(dispatcher)
+	svc.SetCapabilityProvider(capProvider)
+
+	caller := workflow.CallerContext{
+		UserID:        "usr-editor-1",
+		WorkspaceID:   "ws-cap-1",
+		WorkspaceRole: "editor",
+	}
+	manager := workflow.CallerContext{
+		UserID:        "usr-mgr-1",
+		WorkspaceID:   "ws-cap-1",
+		WorkspaceRole: "manager",
+	}
+
+	// Scenario A: Graph with Fallback route configured
+	graphWithFallback := workflow.WorkflowGraph{
+		SchemaVersion: 1,
+		Nodes: []workflow.WorkflowNode{
+			{
+				NodeID:        "trig-1",
+				NodeType:      workflow.NodeTypeTrigger,
+				Title:         "Trigger",
+				TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual},
+			},
+			{
+				NodeID:   "act-tiktok",
+				NodeType: workflow.NodeTypeAction,
+				Title:    "TikTok Direct Publish",
+				ActionConfig: &workflow.ActionConfig{
+					RPCName:   "creativanta.publish.v1.PublishService/Publish",
+					InputJSON: `{"platform":"tiktok","title":"Summer Promo"}`,
+				},
+			},
+			{
+				NodeID:   "fall-route",
+				NodeType: workflow.NodeTypeFallback,
+				Title:    "Degraded Fallback: Draft Notification",
+				FallbackConfig: &workflow.FallbackConfig{
+					FallbackNodeID: "term-fallback",
+					ReasonTemplate: "TikTok capability degraded; routed to fallback draft",
+				},
+			},
+			{
+				NodeID:         "term-success",
+				NodeType:       workflow.NodeTypeTerminal,
+				Title:          "Primary Done",
+				TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"},
+			},
+			{
+				NodeID:         "term-fallback",
+				NodeType:       workflow.NodeTypeTerminal,
+				Title:          "Fallback Done",
+				TerminalConfig: &workflow.TerminalConfig{Outcome: "partially_succeeded"},
+			},
+		},
+		Edges: []workflow.WorkflowEdge{
+			{FromNodeID: "trig-1", ToNodeID: "act-tiktok"},
+			{FromNodeID: "act-tiktok", ToNodeID: "term-success", Branch: workflow.EdgeBranchSuccess},
+			{FromNodeID: "act-tiktok", ToNodeID: "fall-route", Branch: workflow.EdgeBranchFailure},
+			{FromNodeID: "fall-route", ToNodeID: "term-fallback"},
+		},
+	}
+
+	wfA, err := svc.CreateWorkflow(ctx, caller, "Capability Fallback Flow", "Desc", "custom", *graphWithFallback.Nodes[0].TriggerConfig, graphWithFallback, nil)
+	if err != nil {
+		t.Fatalf("CreateWorkflow A failed: %v", err)
+	}
+	_, _ = svc.ActivateWorkflow(ctx, manager, wfA.WorkflowID)
+
+	runA, err := svc.RunWorkflow(ctx, caller, wfA.WorkflowID, map[string]any{"test": true})
+	if err != nil {
+		t.Fatalf("RunWorkflow A failed: %v", err)
+	}
+
+	// Action should NOT have been dispatched
+	if dispatcher.GetDispatchedCount("creativanta.publish.v1.PublishService/Publish") != 0 {
+		t.Fatalf("RULE-M20-002 VIOLATION: Degraded action was dispatched!")
+	}
+
+	// Run should complete on fallback path with partially_succeeded
+	if runA.Status != workflow.WorkflowRunStatusPartiallySucceeded {
+		t.Fatalf("expected run status partially_succeeded, got %s", runA.Status)
+	}
+
+	// Scenario B: Graph WITHOUT fallback route -> MUST halt with user-facing explanation (RULE-M20-003, AC-M20-003)
+	graphNoFallback := workflow.WorkflowGraph{
+		SchemaVersion: 1,
+		Nodes: []workflow.WorkflowNode{
+			{
+				NodeID:        "trig-2",
+				NodeType:      workflow.NodeTypeTrigger,
+				Title:         "Trigger",
+				TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual},
+			},
+			{
+				NodeID:   "act-tiktok-nofallback",
+				NodeType: workflow.NodeTypeAction,
+				Title:    "TikTok Direct Publish No Fallback",
+				ActionConfig: &workflow.ActionConfig{
+					RPCName:   "creativanta.publish.v1.PublishService/Publish",
+					InputJSON: `{"platform":"tiktok","title":"Summer Promo"}`,
+				},
+			},
+			{
+				NodeID:         "term-done",
+				NodeType:       workflow.NodeTypeTerminal,
+				Title:          "Done",
+				TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"},
+			},
+		},
+		Edges: []workflow.WorkflowEdge{
+			{FromNodeID: "trig-2", ToNodeID: "act-tiktok-nofallback"},
+			{FromNodeID: "act-tiktok-nofallback", ToNodeID: "term-done"},
+		},
+	}
+
+	wfB, _ := svc.CreateWorkflow(ctx, caller, "Capability No Fallback Flow", "Desc", "custom", *graphNoFallback.Nodes[0].TriggerConfig, graphNoFallback, nil)
+	_, _ = svc.ActivateWorkflow(ctx, manager, wfB.WorkflowID)
+
+	runB, err := svc.RunWorkflow(ctx, caller, wfB.WorkflowID, map[string]any{"test": true})
+	if err != nil {
+		t.Fatalf("RunWorkflow B failed: %v", err)
+	}
+
+	// Must have entered failed status with diagnostics
+	if runB.Status != workflow.WorkflowRunStatusFailed {
+		t.Fatalf("expected failed status without fallback, got %s", runB.Status)
+	}
+
+	userFacingExpl, _ := runB.ResultSummary["user_facing_explanation"].(string)
+	if !strings.Contains(userFacingExpl, "tiktok") && !strings.Contains(userFacingExpl, "issues") {
+		t.Errorf("expected user-facing explanation mentioning platform issues, got: %s", userFacingExpl)
+	}
+
+	// Dead letter item must exist
+	dlqItems, totalDLQ, err := svc.ListDLQ(ctx, caller, "pending", 10, 0)
+	if err != nil || totalDLQ == 0 {
+		t.Fatalf("expected DLQ item created for failed run, total: %d (err: %v)", totalDLQ, err)
+	}
+	if dlqItems[0].OriginalMessageID != runB.RunID {
+		t.Errorf("expected DLQ original_message_id %s, got %s", runB.RunID, dlqItems[0].OriginalMessageID)
+	}
+}
+
+func TestP702_Approval_ExpiryAutoDenyAndDiagnostics(t *testing.T) {
+	ctx := context.Background()
+	store := workflow.NewMemoryStore()
+	dispatcher := workflow.NewMockActionDispatcher()
+	svc := workflow.NewService(store, nil)
+	svc.SetActionDispatcher(dispatcher)
+
+	caller := workflow.CallerContext{
+		UserID:        "usr-editor-1",
+		WorkspaceID:   "ws-exp-1",
+		WorkspaceRole: "editor",
+	}
+	manager := workflow.CallerContext{
+		UserID:        "usr-mgr-1",
+		WorkspaceID:   "ws-exp-1",
+		WorkspaceRole: "manager",
+	}
+
+	graph := workflow.WorkflowGraph{
+		SchemaVersion: 1,
+		Nodes: []workflow.WorkflowNode{
+			{
+				NodeID:        "node-trig",
+				NodeType:      workflow.NodeTypeTrigger,
+				Title:         "Trigger",
+				TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual},
+			},
+			{
+				NodeID:   "node-appr",
+				NodeType: workflow.NodeTypeApproval,
+				Title:    "Expiring Approval Gate",
+				ApprovalConfig: &workflow.ApprovalConfig{
+					ApproverIDs:              []string{manager.UserID},
+					RequiredApprovals:        1,
+					ExpiresAtDurationSeconds: 1, // 1 second expiry
+				},
+			},
+			{
+				NodeID:   "node-act",
+				NodeType: workflow.NodeTypeAction,
+				Title:    "Post-Approval Action",
+				ActionConfig: &workflow.ActionConfig{
+					RPCName:   "creativanta.commerce.v1.InventoryService/ReserveStock",
+					InputJSON: `{"sku":"sku-exp"}`,
+				},
+			},
+			{
+				NodeID:         "node-term",
+				NodeType:       workflow.NodeTypeTerminal,
+				Title:          "Terminal",
+				TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"},
+			},
+		},
+		Edges: []workflow.WorkflowEdge{
+			{FromNodeID: "node-trig", ToNodeID: "node-appr"},
+			{FromNodeID: "node-appr", ToNodeID: "node-act", Branch: workflow.EdgeBranchSuccess},
+			{FromNodeID: "node-act", ToNodeID: "node-term"},
+		},
+	}
+
+	wf, _ := svc.CreateWorkflow(ctx, caller, "Expiring Approval Flow", "Desc", "custom", *graph.Nodes[0].TriggerConfig, graph, nil)
+	_, _ = svc.ActivateWorkflow(ctx, manager, wf.WorkflowID)
+
+	run, _ := svc.RunWorkflow(ctx, caller, wf.WorkflowID, nil)
+	if run.Status != workflow.WorkflowRunStatusWaitingApproval {
+		t.Fatalf("expected waiting_approval, got %s", run.Status)
+	}
+
+	pending, _ := svc.ListPendingApprovals(ctx, manager)
+	if len(pending) != 1 {
+		t.Fatalf("expected 1 pending approval, got %d", len(pending))
+	}
+
+	// Simulate expiry by setting expires_at to the past
+	pastTime := time.Now().UTC().Add(-10 * time.Minute)
+	pending[0].ExpiresAt = &pastTime
+	_ = store.UpdateApprovalRequest(ctx, &pending[0])
+
+	// Evaluate expiry
+	expiredList, err := svc.EvaluateApprovalExpiry(ctx, manager)
+	if err != nil {
+		t.Fatalf("EvaluateApprovalExpiry failed: %v", err)
+	}
+	if len(expiredList) != 1 {
+		t.Fatalf("expected 1 expired approval, got %d", len(expiredList))
+	}
+	if expiredList[0].Status != "expired" {
+		t.Fatalf("expected status 'expired', got %s", expiredList[0].Status)
+	}
+
+	// Verify run failed with user-facing diagnostics
+	updatedRun, _ := store.GetWorkflowRun(ctx, caller.WorkspaceID, run.RunID)
+	if updatedRun.Status != workflow.WorkflowRunStatusFailed {
+		t.Fatalf("expected run status failed after expiry, got %s", updatedRun.Status)
+	}
+	if updatedRun.ResultSummary["failure_type"] != "APPROVAL_EXPIRED" {
+		t.Errorf("expected failure_type APPROVAL_EXPIRED, got %v", updatedRun.ResultSummary["failure_type"])
+	}
+}
+
+func TestP702_DeadLetterQueue_FullLifecycle(t *testing.T) {
+	ctx := context.Background()
+	store := workflow.NewMemoryStore()
+	svc := workflow.NewService(store, nil)
+
+	caller := workflow.CallerContext{
+		UserID:        "usr-admin-1",
+		WorkspaceID:   "ws-dlq-1",
+		WorkspaceRole: "admin",
+	}
+
+	// 1. Push DLQ item
+	dlqItem := &workflow.DLQItem{
+		DLQID:             "dlq-test-1",
+		QueueName:         "workflow_runs",
+		OriginalMessageID: "run-failed-123",
+		Payload: map[string]any{
+			"param": "bad_input",
+		},
+		ErrorClass:          "ACTION_FAILED",
+		ErrorMessage:        "Parameter validation failed on third-party webhook",
+		LastErrorAt:         time.Now().UTC(),
+		AttemptCount:        3,
+		WorkspaceID:         caller.WorkspaceID,
+		Status:              "pending",
+		SuggestedRepairPath: "Provide sanitized param string.",
+		CreatedAt:           time.Now().UTC(),
+	}
+	err := svc.DLQManager().PushToDLQ(ctx, dlqItem)
+	if err != nil {
+		t.Fatalf("PushToDLQ failed: %v", err)
+	}
+
+	// Mock workflow run for DLQ operations
+	run := &workflow.WorkflowRun{
+		RunID:        "run-failed-123",
+		WorkspaceID:  caller.WorkspaceID,
+		WorkflowID:   "wf-dummy-1",
+		TriggerEvent: map[string]any{"param": "bad_input"},
+		Status:       workflow.WorkflowRunStatusFailed,
+		CreatedAt:    time.Now().UTC(),
+		UpdatedAt:    time.Now().UTC(),
+	}
+	_ = store.CreateWorkflowRun(ctx, run)
+
+	// 2. List DLQ
+	items, total, err := svc.ListDLQ(ctx, caller, "pending", 10, 0)
+	if err != nil || total != 1 {
+		t.Fatalf("ListDLQ failed: total=%d, err=%v", total, err)
+	}
+	if items[0].DLQID != "dlq-test-1" {
+		t.Errorf("expected dlq-test-1, got %s", items[0].DLQID)
+	}
+
+	// 3. Retry DLQ Item
+	retriedRun, err := svc.RetryDLQItem(ctx, caller, "dlq-test-1")
+	if err != nil {
+		t.Fatalf("RetryDLQItem failed: %v", err)
+	}
+	if retriedRun.Status != workflow.WorkflowRunStatusQueued {
+		t.Errorf("expected run queued after retry, got %s", retriedRun.Status)
+	}
+	updatedItem, _ := svc.GetDLQItem(ctx, caller, "dlq-test-1")
+	if updatedItem.Status != "retrying" {
+		t.Errorf("expected DLQ status retrying, got %s", updatedItem.Status)
+	}
+
+	// 4. Repair and Retry DLQ Item
+	repairedRun, err := svc.RepairAndRetryDLQItem(ctx, caller, "dlq-test-1", map[string]any{"param": "good_input"})
+	if err != nil {
+		t.Fatalf("RepairAndRetryDLQItem failed: %v", err)
+	}
+	if repairedRun.TriggerEvent["param"] != "good_input" {
+		t.Errorf("expected param good_input, got %v", repairedRun.TriggerEvent["param"])
+	}
+	resolvedItem, _ := svc.GetDLQItem(ctx, caller, "dlq-test-1")
+	if resolvedItem.Status != "resolved" {
+		t.Errorf("expected DLQ status resolved after repair, got %s", resolvedItem.Status)
+	}
+
+	// 5. Discard DLQ Item
+	dlqItem2 := &workflow.DLQItem{
+		DLQID:             "dlq-test-2",
+		QueueName:         "workflow_runs",
+		OriginalMessageID: "run-failed-456",
+		WorkspaceID:       caller.WorkspaceID,
+		Status:            "pending",
+		CreatedAt:         time.Now().UTC(),
+	}
+	_ = svc.DLQManager().PushToDLQ(ctx, dlqItem2)
+
+	discarded, err := svc.DiscardDLQItem(ctx, caller, "dlq-test-2", "Obsolete test error")
+	if err != nil {
+		t.Fatalf("DiscardDLQItem failed: %v", err)
+	}
+	if discarded.Status != "discarded" {
+		t.Errorf("expected discarded status, got %s", discarded.Status)
+	}
+}
+
+func TestP702_CascadeDepthLimit_EC_M20_001(t *testing.T) {
+	ctx := context.Background()
+	store := workflow.NewMemoryStore()
+	svc := workflow.NewService(store, nil)
+
+	caller := workflow.CallerContext{
+		UserID:        "usr-editor-1",
+		WorkspaceID:   "ws-casc-1",
+		WorkspaceRole: "editor",
+	}
+	manager := workflow.CallerContext{
+		UserID:        "usr-mgr-1",
+		WorkspaceID:   "ws-casc-1",
+		WorkspaceRole: "manager",
+	}
+
+	graph := workflow.WorkflowGraph{
+		SchemaVersion: 1,
+		Nodes: []workflow.WorkflowNode{
+			{
+				NodeID:        "trig-casc",
+				NodeType:      workflow.NodeTypeTrigger,
+				Title:         "Cascade Trigger",
+				TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeEvent, EventType: "cascade.event"},
+			},
+			{
+				NodeID:         "term-casc",
+				NodeType:       workflow.NodeTypeTerminal,
+				Title:          "Terminal",
+				TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"},
+			},
+		},
+		Edges: []workflow.WorkflowEdge{
+			{FromNodeID: "trig-casc", ToNodeID: "term-casc"},
+		},
+	}
+
+	wf, _ := svc.CreateWorkflow(ctx, caller, "Cascade Test Flow", "Desc", "custom", *graph.Nodes[0].TriggerConfig, graph, nil)
+	_, _ = svc.ActivateWorkflow(ctx, manager, wf.WorkflowID)
+
+	// Trigger run with cascade_depth = 6 (> 5 default limit)
+	run, err := svc.RunWorkflow(ctx, caller, wf.WorkflowID, map[string]any{"cascade_depth": 6})
+	if err != nil {
+		t.Fatalf("RunWorkflow failed: %v", err)
+	}
+
+	if run.Status != workflow.WorkflowRunStatusFailed {
+		t.Fatalf("expected run status failed when cascade depth > 5, got %s", run.Status)
+	}
+	if run.ResultSummary["failure_type"] != "CASCADE_DEPTH_EXCEEDED" {
+		t.Errorf("expected failure_type CASCADE_DEPTH_EXCEEDED, got %v", run.ResultSummary["failure_type"])
+	}
+	userMsg, _ := run.ResultSummary["user_facing_explanation"].(string)
+	if !strings.Contains(userMsg, "cascade depth limit") {
+		t.Errorf("expected user explanation mentioning cascade depth, got: %s", userMsg)
+	}
+}
+
+func TestP702_ConcurrentApprovalsAndResumeRace(t *testing.T) {
+	ctx := context.Background()
+	store := workflow.NewMemoryStore()
+	dispatcher := workflow.NewMockActionDispatcher()
+	svc := workflow.NewService(store, nil)
+	svc.SetActionDispatcher(dispatcher)
+
+	caller := workflow.CallerContext{
+		UserID:        "usr-editor-1",
+		WorkspaceID:   "ws-conc-1",
+		WorkspaceRole: "editor",
+	}
+	manager := workflow.CallerContext{
+		UserID:        "usr-mgr-1",
+		WorkspaceID:   "ws-conc-1",
+		WorkspaceRole: "manager",
+	}
+
+	workers := 10
+	var wg sync.WaitGroup
+
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+			graph := workflow.WorkflowGraph{
+				SchemaVersion: 1,
+				Nodes: []workflow.WorkflowNode{
+					{
+						NodeID:        "trig-c",
+						NodeType:      workflow.NodeTypeTrigger,
+						Title:         "Trig",
+						TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual},
+					},
+					{
+						NodeID:   "act-c1",
+						NodeType: workflow.NodeTypeAction,
+						Title:    "Act1",
+						ActionConfig: &workflow.ActionConfig{
+							RPCName:   "creativanta.commerce.v1.InventoryService/ReserveStock",
+							InputJSON: fmt.Sprintf(`{"worker":%d}`, workerID),
+						},
+					},
+					{
+						NodeID:   "appr-c",
+						NodeType: workflow.NodeTypeApproval,
+						Title:    "Appr",
+						ApprovalConfig: &workflow.ApprovalConfig{
+							ApproverIDs:              []string{manager.UserID},
+							RequiredApprovals:        1,
+							ExpiresAtDurationSeconds: 3600,
+						},
+					},
+					{
+						NodeID:   "act-c2",
+						NodeType: workflow.NodeTypeAction,
+						Title:    "Act2",
+						ActionConfig: &workflow.ActionConfig{
+							RPCName:   "creativanta.publish.v1.PublishService/Publish",
+							InputJSON: fmt.Sprintf(`{"worker":%d}`, workerID),
+						},
+					},
+					{
+						NodeID:         "term-c",
+						NodeType:       workflow.NodeTypeTerminal,
+						Title:          "Term",
+						TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"},
+					},
+				},
+				Edges: []workflow.WorkflowEdge{
+					{FromNodeID: "trig-c", ToNodeID: "act-c1"},
+					{FromNodeID: "act-c1", ToNodeID: "appr-c"},
+					{FromNodeID: "appr-c", ToNodeID: "act-c2", Branch: workflow.EdgeBranchSuccess},
+					{FromNodeID: "act-c2", ToNodeID: "term-c"},
+				},
+			}
+
+			title := fmt.Sprintf("Concurrent Flow %d", workerID)
+			wf, err := svc.CreateWorkflow(ctx, caller, title, "Desc", "custom", *graph.Nodes[0].TriggerConfig, graph, nil)
+			if err != nil {
+				t.Errorf("worker %d create failed: %v", workerID, err)
+				return
+			}
+			_, _ = svc.ActivateWorkflow(ctx, manager, wf.WorkflowID)
+
+			run, err := svc.RunWorkflow(ctx, caller, wf.WorkflowID, map[string]any{"worker": workerID})
+			if err != nil {
+				t.Errorf("worker %d run failed: %v", workerID, err)
+				return
+			}
+			if run.Status != workflow.WorkflowRunStatusWaitingApproval {
+				t.Errorf("worker %d expected waiting_approval, got %s", workerID, run.Status)
+				return
+			}
+
+			pending, err := svc.ApprovalManager().FindPendingApprovalsByRun(ctx, caller.WorkspaceID, run.RunID)
+			if err != nil || len(pending) == 0 {
+				t.Errorf("worker %d find pending failed: %v", workerID, err)
+				return
+			}
+
+			_, _, err = svc.Approve(ctx, manager, pending[0].RequestID)
+			if err != nil {
+				t.Errorf("worker %d approve failed: %v", workerID, err)
+				return
 			}
 		}(w)
 	}

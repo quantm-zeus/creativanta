@@ -122,6 +122,18 @@
 
       <div class="flex items-center gap-3">
         <a
+          href="/workflows/approvals"
+          class="inline-flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-medium text-neutral-300 bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 hover:text-white rounded-lg transition-colors"
+        >
+          <span>Pending Approvals</span>
+        </a>
+        <a
+          href="/workflows/dlq"
+          class="inline-flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-medium text-rose-300 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 rounded-lg transition-colors"
+        >
+          <span>DLQ</span>
+        </a>
+        <a
           href="/workflows/wf-auto-order-01"
           class="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors shadow-sm"
         >

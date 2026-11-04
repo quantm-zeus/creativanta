@@ -260,3 +260,135 @@ type PortableWorkflowPayload struct {
 	LicenseNotice string         `json:"license_notice"`
 	Parameters    map[string]any `json:"parameters,omitempty"`
 }
+
+// ----------------------------------------------------------------------------
+// P7-02 Models: Approvals, Preflight, Diagnostics, DLQ, Side Effects
+// ----------------------------------------------------------------------------
+
+// ApprovalRequest defines an approval gate entity per database_schema.md §18.1 and Pack 03 §6.
+type ApprovalRequest struct {
+	RequestID       string     `json:"request_id"`
+	WorkspaceID     string     `json:"workspace_id"`
+	RequestType     string     `json:"request_type"` // workflow_approval
+	ObjectType      string     `json:"object_type"`  // workflow_run
+	ObjectID        string     `json:"object_id"`    // run_id
+	RequestedBy     string     `json:"requested_by"`
+	ApprovedBy      string     `json:"approved_by,omitempty"`
+	Status          string     `json:"status"` // pending_approval, approved, rejected, expired, cancelled
+	Reason          string     `json:"reason,omitempty"`
+	RejectionReason string     `json:"rejection_reason,omitempty"`
+	ExpiresAt       *time.Time `json:"expires_at,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
+
+	// Workflow binding metadata (enforces ActionHash / Target / Version binding)
+	WorkflowID      string   `json:"workflow_id,omitempty"`
+	NodeID          string   `json:"node_id,omitempty"`
+	WorkflowVersion int32    `json:"workflow_version,omitempty"`
+	ActionHash      string   `json:"action_hash,omitempty"`
+	TargetObjects   []string `json:"target_objects,omitempty"`
+	InputSnapshot   string   `json:"input_snapshot,omitempty"`
+	MaxBudgetQuote  float64  `json:"max_budget_quote,omitempty"`
+}
+
+// ApprovalFilter provides filtering for approval queries.
+type ApprovalFilter struct {
+	Status     string
+	WorkflowID string
+	RunID      string
+	Limit      int
+	Offset     int
+}
+
+// ApprovalQueueStats provides aggregate counts for the approval queue.
+type ApprovalQueueStats struct {
+	Total     int `json:"total"`
+	Pending   int `json:"pending"`
+	Approved  int `json:"approved"`
+	Rejected  int `json:"rejected"`
+	Expired   int `json:"expired"`
+	Cancelled int `json:"cancelled"`
+}
+
+// DLQItem defines a dead-letter queue entry per database_schema.md §18.4G and Pack 03 §7.2.
+type DLQItem struct {
+	DLQID               string           `json:"dlq_id"`
+	QueueName           string           `json:"queue_name"`
+	OriginalMessageID   string           `json:"original_message_id"` // run_id
+	Payload             map[string]any   `json:"payload"`
+	ErrorClass          string           `json:"error_class"`
+	ErrorMessage        string           `json:"error_message"`
+	LastErrorAt         time.Time        `json:"last_error_at"`
+	AttemptCount        int              `json:"attempt_count"`
+	RetryHistory        []map[string]any `json:"retry_history"`
+	WorkspaceID         string           `json:"workspace_id,omitempty"`
+	Status              string           `json:"status"` // pending, retrying, resolved, discarded
+	ResolvedAt          *time.Time       `json:"resolved_at,omitempty"`
+	ResolvedBy          string           `json:"resolved_by,omitempty"`
+	ResolutionNotes     string           `json:"resolution_notes,omitempty"`
+	SuggestedRepairPath string           `json:"suggested_repair_path,omitempty"`
+	CanonicalObjectRefs []string         `json:"canonical_object_refs,omitempty"`
+	CreatedAt           time.Time        `json:"created_at"`
+}
+
+// DiagnosticsRecord defines structured failure/intervention explanations per runtime_workflow.md §8 and RULE-M20-003.
+type DiagnosticsRecord struct {
+	RecordID              string         `json:"record_id"`
+	WorkspaceID           string         `json:"workspace_id"`
+	RunID                 string         `json:"run_id"`
+	FailureType           string         `json:"failure_type"` // CAPABILITY_DEGRADED, APPROVAL_EXPIRED, APPROVAL_INVALIDATED, ACTION_FAILED, PERMISSION_DENIED, CASCADE_DEPTH_EXCEEDED
+	AffectedNodeID        string         `json:"affected_node_id"`
+	AffectedNodeType      NodeType       `json:"affected_node_type"`
+	UserFacingExplanation string         `json:"user_facing_explanation"`
+	OperatorExplanation   string         `json:"operator_explanation"`
+	RecommendedNextStep   string         `json:"recommended_next_step"`
+	FallbackAvailable     bool           `json:"fallback_available"`
+	TechnicalDetails      map[string]any `json:"technical_details,omitempty"`
+	CreatedAt             time.Time      `json:"created_at"`
+}
+
+// SideEffect defines an immutable business effect audit entry per runtime_workflow.md §10 and RULE-M20-005.
+type SideEffect struct {
+	SideEffectID    string    `json:"side_effect_id"`
+	RunID           string    `json:"run_id"`
+	StepID          string    `json:"step_id"`
+	NodeID          string    `json:"node_id"`
+	Actor           string    `json:"actor"`  // system / user_id
+	Action          string    `json:"action"` // rpc_name
+	AffectedObjects []string  `json:"affected_objects"`
+	OldStateSummary string    `json:"old_state_summary,omitempty"`
+	NewStateSummary string    `json:"new_state_summary,omitempty"`
+	Reason          string    `json:"reason,omitempty"`
+	CorrelationID   string    `json:"correlation_id"`
+	Timestamp       time.Time `json:"timestamp"`
+}
+
+// PreflightActionSummary provides preflight verification details for an action node.
+type PreflightActionSummary struct {
+	NodeID             string   `json:"node_id"`
+	RPCName            string   `json:"rpc_name"`
+	RequiredPermission string   `json:"required_permission"`
+	Platform           string   `json:"platform,omitempty"`
+	CapabilityStatus   string   `json:"capability_status,omitempty"` // supported, degraded, unsupported
+	RequiresApproval   bool     `json:"requires_approval"`
+	QuotedCredits      float64  `json:"quoted_credits"`
+	MissingInputs      []string `json:"missing_inputs,omitempty"`
+}
+
+// PreflightReport aggregates preflight check results prior to activation or execution.
+type PreflightReport struct {
+	WorkflowID          string                   `json:"workflow_id,omitempty"`
+	Valid               bool                     `json:"valid"`
+	Actions             []PreflightActionSummary `json:"actions"`
+	TotalMaxCreditQuote float64                  `json:"total_max_credit_quote"`
+	RequiresApproval    bool                     `json:"requires_approval"`
+	Warnings            []string                 `json:"warnings,omitempty"`
+	Errors              []string                 `json:"errors,omitempty"`
+}
+
+// ResumeSignal defines a wake-up signal delivered to a paused workflow run.
+type ResumeSignal struct {
+	SignalType string         `json:"signal_type"` // approval_granted, approval_rejected, wait_timer, external_condition
+	Payload    map[string]any `json:"payload,omitempty"`
+	Token      string         `json:"token,omitempty"`
+}
