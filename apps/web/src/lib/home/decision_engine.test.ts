@@ -4,6 +4,7 @@ import {
   SHARED_ROUTE_MAP,
   CANONICAL_ONBOARDING_STEPS,
   evaluateOnboardingState,
+  evaluateWebFullScopeReleaseDecision,
   type UIStateType
 } from './decision_engine';
 import { OPERATOR_MODES, type OperatorModeId } from '$lib/constants/modes';
@@ -195,5 +196,46 @@ describe('P8-01 Acceptance Target 3: Every Shared UI State & Route Mapped', () =
       expect(mapping.mobileTabOrScreen.length).toBeGreaterThan(3);
       expect(mapping.domain.length).toBeGreaterThan(2);
     }
+  });
+
+  it('enforces P8-09 Web Decision Engine: full-scope acceptance, 31 modules, 6 modes, and external gates', () => {
+    // 1. Happy path: complete audit passes local readiness
+    const verdict = evaluateWebFullScopeReleaseDecision({
+      auditedModuleCount: 31,
+      auditedModeCount: 6,
+      verifiedTaskCount: 60,
+      untrackedRemainingScopeCount: 0,
+      openExternalGatesCount: 3,
+      assertProductionLaunch: false
+    });
+    expect(verdict.isReadyLocal).toBe(true);
+    expect(verdict.releaseDecision).toBe('CONDITIONAL_READY_LOCAL');
+    expect(verdict.productionLaunchApproved).toBe(false);
+    expect(verdict.unmetExternalGatesCount).toBe(3);
+    expect(verdict.externalGates).toHaveLength(3);
+
+    // 2. Incomplete module or mode count blocks release
+    const blockedVerdict = evaluateWebFullScopeReleaseDecision({
+      auditedModuleCount: 30, // missing 1 module
+      auditedModeCount: 6,
+      verifiedTaskCount: 60,
+      untrackedRemainingScopeCount: 0,
+      openExternalGatesCount: 3,
+      assertProductionLaunch: false
+    });
+    expect(blockedVerdict.isReadyLocal).toBe(false);
+    expect(blockedVerdict.releaseDecision).toBe('RELEASE_BLOCKED');
+
+    // 3. Fake production launch assertion while external gates open fails closed
+    const fakeLaunchVerdict = evaluateWebFullScopeReleaseDecision({
+      auditedModuleCount: 31,
+      auditedModeCount: 6,
+      verifiedTaskCount: 60,
+      untrackedRemainingScopeCount: 0,
+      openExternalGatesCount: 3,
+      assertProductionLaunch: true // premature assertion
+    });
+    expect(fakeLaunchVerdict.releaseDecision).toBe('RELEASE_BLOCKED');
+    expect(fakeLaunchVerdict.productionLaunchApproved).toBe(false);
   });
 });

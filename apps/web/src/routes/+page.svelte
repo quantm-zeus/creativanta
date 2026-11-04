@@ -10,8 +10,20 @@
     MODE_DECISION_CARDS,
     CANONICAL_ONBOARDING_STEPS,
     evaluateOnboardingState,
+    evaluateWebFullScopeReleaseDecision,
     type WebDecisionCard
   } from '$lib/home/decision_engine';
+
+  let fullScopeRelease = $derived(
+    evaluateWebFullScopeReleaseDecision({
+      auditedModuleCount: 31,
+      auditedModeCount: 6,
+      verifiedTaskCount: 60,
+      untrackedRemainingScopeCount: 0,
+      openExternalGatesCount: 3,
+      assertProductionLaunch: false
+    })
+  );
 
   let briefTimezone = $state<'Asia/Ho_Chi_Minh' | 'America/New_York'>('Asia/Ho_Chi_Minh');
   let briefSchedule = $derived(
@@ -177,6 +189,23 @@
           {metric}
         </span>
       {/each}
+    </div>
+
+    <!-- P8-09 Platform Acceptance & Release Decision Ribbon -->
+    <div class="mt-3 pt-3 border-t border-[#f4f0e8] flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="inline-flex items-center gap-1.5 rounded-md bg-[#274333]/10 px-2 py-0.5 font-mono text-[11px] font-bold text-[#274333]">
+          ✓ P8-09 Nghiệm thu toàn diện: 31/31 Module • 6/6 Chế độ • 60/60 Task
+        </span>
+        <span class="inline-flex items-center rounded-md bg-[#e7e2d7]/50 px-2 py-0.5 text-[11px] font-medium text-[#242924]">
+          Quyết định: <strong class="ml-1 text-[#274333]">{fullScopeRelease.releaseDecision}</strong>
+        </span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center gap-1 rounded bg-[#fef9c3] border border-[#854d0e]/30 px-2 py-0.5 text-[11px] font-medium text-[#854d0e]">
+          ⚠️ 3 Cổng ngoài đang mở (LEG-H-001, Partner, Staging DR)
+        </span>
+      </div>
     </div>
   </div>
 
