@@ -7,7 +7,10 @@
     evaluateKillSwitchToggle,
     evaluateModerationDecision,
     evaluateOperationalHealthSeparation,
-    evaluateSupportTicketAccess
+    evaluateSupportTicketAccess,
+    evaluateBackupRestoreAndSmokeRehearsal,
+    evaluateProviderAndLicenseFreshnessGate,
+    evaluateAdminComplianceAndSecurityGuards
   } from '$lib/access';
 
   const nowMs = Date.parse('2026-11-02T09:00:00Z');
@@ -130,6 +133,61 @@
         engagementDropPct,
         connectorAuthExpiresInDays
       }
+    })
+  );
+
+  // P8-08: Restore, Smoke, Provider Freshness & Compliance Rehearsal State
+  let smokePassedState = $state(true);
+  let checksumValidState = $state(true);
+  let providerRateFresh = $state(true);
+  let auditSequenceGap = $state(false);
+  let overrides24hCount = $state(11);
+  let concurrentImpersonationTry = $state(false);
+
+  const restoreSmokeVerdict = $derived(
+    evaluateBackupRestoreAndSmokeRehearsal({
+      expectedSha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      actualSha256: checksumValidState
+        ? 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+        : '0000000000000000000000000000000000000000000000000000000000000000',
+      debitMicroUnits: 15000000000,
+      creditMicroUnits: 15000000000,
+      rpoSeconds: 0,
+      rtoSeconds: 420,
+      previousSlot: 'blue',
+      candidateSlot: 'green',
+      healthzOk: true,
+      readyzReady: true,
+      businessSmokePassed: smokePassedState,
+      auditSequenceIntact: !auditSequenceGap
+    })
+  );
+
+  const providerFreshnessVerdict = $derived(
+    evaluateProviderAndLicenseFreshnessGate({
+      nowMs,
+      rateCardVerifiedAtMs: providerRateFresh ? nowMs - 2 * 86400000 : nowMs - 45 * 86400000,
+      rateCardValidUntilMs: providerRateFresh ? nowMs + 28 * 86400000 : nowMs - 1000,
+      rateCardEnabled: true,
+      connectorClaimedState: 'native_now',
+      connectorScopeGranted: true,
+      connectorAppReviewApproved: providerRateFresh,
+      connectorValidUntilMs: nowMs + 28 * 86400000,
+      workflowRuntimeMode: 'owned_go_runtime',
+      workflowEnterpriseLicenseVerified: false,
+      legalDocsPublished: true,
+      externalLegalCounselSignoff: false
+    })
+  );
+
+  const complianceSecurityVerdict = $derived(
+    evaluateAdminComplianceAndSecurityGuards({
+      adminRole: 'ops_admin',
+      activeImpersonationExistsForTargetUser: true,
+      attemptConcurrentImpersonation: concurrentImpersonationTry,
+      overridesInLast24h: overrides24hCount,
+      auditSequenceGapDetected: auditSequenceGap,
+      breachElapsedHours: 12
     })
   );
 </script>
@@ -377,6 +435,54 @@
               </div>
             {/each}
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-[#e8e5dc] bg-white p-6 md:col-span-2" role="region" aria-labelledby="p808-rehearsal-heading">
+      <h3 id="p808-rehearsal-heading" class="text-sm font-bold text-[#242924]">
+        8. Diễn tập Khôi phục Sao lưu, Kiểm thử Khói (Smoke Rollback), Độ tươi Nhà cung cấp &amp; Tuân thủ GDPR/PDPA (P8-08)
+      </h3>
+      <div class="mt-3 grid gap-4 md:grid-cols-3 text-xs">
+        <div class="space-y-2 rounded-xl border border-[#e8e5dc] bg-[#faf9f5] p-4">
+          <h4 class="font-bold text-[#242924]">Target 1 · Khôi phục &amp; Smoke Gate</h4>
+          <label class="flex items-center gap-1.5">
+            <input type="checkbox" bind:checked={checksumValidState} />
+            <span>SHA-256 Checksum hợp lệ (.sha256)</span>
+          </label>
+          <label class="flex items-center gap-1.5">
+            <input type="checkbox" bind:checked={smokePassedState} />
+            <span>Business Smoke Probe đạt chuẩn</span>
+          </label>
+          <p class="font-semibold {restoreSmokeVerdict.allowed ? 'text-emerald-700' : 'text-[#b44833]'}" role="status">
+            [{restoreSmokeVerdict.errorCode} · Slot={restoreSmokeVerdict.activeSlot}] {restoreSmokeVerdict.reason}
+          </p>
+        </div>
+
+        <div class="space-y-2 rounded-xl border border-[#e8e5dc] bg-[#faf9f5] p-4">
+          <h4 class="font-bold text-[#242924]">Target 2 · Bằng chứng Provider &amp; Pháp lý</h4>
+          <label class="flex items-center gap-1.5">
+            <input type="checkbox" bind:checked={providerRateFresh} />
+            <span>Bảng giá AI &amp; Connector còn hạn (&lt;30 ngày)</span>
+          </label>
+          <p class="font-semibold {providerFreshnessVerdict.noStaleEvidence ? 'text-emerald-700' : 'text-[#b44833]'}" role="status">
+            [{providerFreshnessVerdict.errorCode} · Max={providerFreshnessVerdict.maxEvidenceState}] {providerFreshnessVerdict.reason}
+          </p>
+        </div>
+
+        <div class="space-y-2 rounded-xl border border-[#e8e5dc] bg-[#faf9f5] p-4">
+          <h4 class="font-bold text-[#242924]">Target 3 · Chuỗi Kiểm toán &amp; GDPR/PDPA</h4>
+          <label class="flex items-center gap-1.5">
+            <input type="checkbox" bind:checked={concurrentImpersonationTry} />
+            <span>Thử Impersonate trùng người dùng (EC-M23-003)</span>
+          </label>
+          <label class="flex items-center gap-1.5">
+            <input type="checkbox" bind:checked={auditSequenceGap} />
+            <span>Giả lập hổng chuỗi Audit (EC-M23-005)</span>
+          </label>
+          <p class="font-semibold {complianceSecurityVerdict.allowed ? 'text-emerald-700' : 'text-[#b44833]'}" role="status">
+            [{complianceSecurityVerdict.errorCode} · 72h Breach còn {complianceSecurityVerdict.breachRemainingHours}h] {complianceSecurityVerdict.reason}
+          </p>
         </div>
       </div>
     </div>

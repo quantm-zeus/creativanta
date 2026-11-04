@@ -1,0 +1,78 @@
+{
+  "task_id": "P8-08",
+  "phase": "P8",
+  "slice": "p8-08",
+  "title": "Security, accessibility, load và release rehearsal",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "modules": [
+    "M23",
+    "S26"
+  ],
+  "feature_refs": [
+    "docs/02_features/platform/reporting_admin_billing.md",
+    "docs/02_features/platform/internal_admin.md",
+    "docs/06_quality_ops/accessibility_spec.md",
+    "docs/06_quality_ops/performance_benchmarks.md",
+    "docs/06_quality_ops/security_threat_model.md",
+    "docs/06_quality_ops/runbook.md"
+  ],
+  "migration_files": [
+    "infra/migrations/00046_p8_08_security_compliance_restore_and_release_rehearsal.sql"
+  ],
+  "source_files": {
+    "infra/migrations/00046_p8_08_security_compliance_restore_and_release_rehearsal.sql": "754a496070c2d31fdf10e0f751d818907cea45b19d49b8fe7f542933b8bcf9c2",
+    "apps/api/internal/migrate/migrator.go": "e5d9b01b1345e5895fc226faa9efad4e01e9dcd6b03108bbef6c1c3e97d6622d",
+    "apps/api/internal/migrate/migrator_test.go": "2be71fc4be252a84e8ee01579e07d958c671b6ca963b38366f0f7722d8294292",
+    "apps/api/internal/internaladmin/service.go": "6e9f18f2b0b6a08ef71ea6c25f6e38daa9625af09a4a52a2ad88f47bfe2dfb5a",
+    "apps/api/internal/internaladmin/p808_rehearsal.go": "6587e8be58e718f2b3fa0c4e79a6d9b35d50d6713ccfe99ea868b896f9204b50",
+    "apps/api/internal/internaladmin/p808_rehearsal_test.go": "9c891342d02baf6d03ef72f52bcb55ec7fdb8baf32e1138a1a0bc1935ae4c359",
+    "tooling/ci/self_test_failure.sh": "15c7c6d68a147ded6e80f56696eedb0a1f29f262b5cf435fdb6e4f669f9ff8ab",
+    "apps/web/messages/vi.json": "2d3ab0ac60c057350ccab80767cb7edbb59813362092980647b690b2cc309221",
+    "apps/web/messages/en.json": "852d35a60ee2033befc6cfae197a8fee3641fc468c8ee5f11dae0a9b84e2873e",
+    "apps/web/src/lib/i18n/index.ts": "b4198be77be578b6de4c9169f135c4dac5eaf7c50e88b68ac67d369830597211",
+    "apps/web/src/lib/a11y/index.ts": "d3c6ffb65961a80cda7f2ca8962e9c01f837fba9ccfb039b9920986d9589fa1f",
+    "apps/web/src/lib/a11y/a11y_i18n.test.ts": "81930a7a923ceef547eca642bbf4fea7018fe8a8373de05a0d53f9d7f6c802aa",
+    "apps/web/src/routes/+layout.svelte": "17c3ea865af26bb5d24baa9f43c9242e1d54652e8bda21ec34422ec831e0de40",
+    "apps/admin/src/lib/access.ts": "a631440753c21dc728413df978615282c5bd47bce3be7e505d413e7955dd4fe1",
+    "apps/admin/src/lib/access.test.ts": "27f1801d2747a18235ca9bb479527ca1eb136b845a8bb433de1cd4ccf5dea318",
+    "apps/admin/src/routes/+layout.svelte": "12072d0b7e4517f988dd0ec1509c49536eeb83383732021d841848fe03b87da3",
+    "apps/admin/src/routes/+page.svelte": "085503a0140671653424101b8519ebdd3bdd43327c875e3354a5cd66560a5bc6",
+    "apps/mobile/lib/l10n/app_vi.arb": "02f86fcbaef3e65d8a96581406fd9ce7c2aa164ffe2df9a9d7d21e52a23260b5",
+    "apps/mobile/lib/l10n/app_en.arb": "374eb7e5e88696d5a1f17fb1aa476c932fca933bfbe399fe60d7e7d064a2fdbb",
+    "apps/mobile/lib/core/a11y_i18n_release.dart": "3af860d99fee15f06e0dccff414065cf4d3e36515ff63bc35e2fdc89872c92be",
+    "apps/mobile/test/p8_08_security_a11y_release_test.dart": "e1a13fbfe63714cf410a8134a268bcbf4ccb79a1bf96052619fe339a8863a119"
+  },
+  "scope_items": [
+    "Target 1 (Real restore and failing smoke): Deterministic point-in-time snapshot backup & restore rehearsal engine with SHA-256 sidecar verification, double-entry financial ledger balance (debits == credits in integer micro-units), workspace AI credit lot reconciliation, immutable evidence SHA-256 verification, audit sequence continuity (1..N), RPO=0 & RTO<=3600s verification, and Blue/Green candidate deployment smoke gate that automatically rolls back to the retained slot digest on any failing /healthz, /readyz, auth, JSON, ledger, or audit sequence check.",
+    "Target 2 (No stale provider/license evidence): Pre-release freshness & entitlement auditor across ai_provider_rates, connector ActionAccessVerification, workflow runtime licenses (Activepieces enterprise embed vs owned Go runtime), and legal compliance checklist (LEG-H-001) that rejects stale/expired/unverified evidence, auto-downgrades unverified native_now capabilities to manual, and preserves LOCAL_IMPLEMENTED status while external human/provider gates remain open.",
+    "Target 3 (Tenant/privacy tests across public and internal paths): Public creator directory projection (zero leakage of workspace_id, emails, phones, OAuth tokens, or internal notes), OWASP A10 SSRF validator blocking loopback/RFC1918/link-local/cloud-metadata IPs and non-HTTPS schemes, cross-tenant BOLA/RLS denial, PRIV-2026-02 user:self personal onboarding isolation, GDPR/PDPA export OAuth token redaction, EC-M23-003 concurrent impersonation block, EC-M23-004 override frequency alert (>10/24h alert, >50/24h Super Admin approval gate), EC-M23-005 audit sequence gap Sev1 incident + read-only lock, and AdminComplianceService.",
+    "Full-Surface A11y, i18n & Load Benchmarks: Vietnamese (vi, primary) and English (en, secondary) translation catalogs with 100% key parity across Web (messages/vi.json, messages/en.json) and Mobile (app_vi.arb, app_en.arb), region-aware VND/USD/date/number formatters, WCAG 2.1 AA contrast & non-color status badges, modal keyboard focus trap with Escape restoration, semantic landmarks & skip-to-content links across Web and Admin, Flutter >=48x48dp touch target & gesture tap-alternative contracts, and 8-scenario load/SLA benchmark evaluator."
+  ],
+  "verified_sub_slices": [
+    "Database Migration 00046: Creates data_subject_requests (with ENABLE + FORCE ROW LEVEL SECURITY and composite tenant PK), breach_notifications, data_processing_activities, backup_restore_rehearsals, and internal_audit_logs sequence integrity columns/index with narrow app_user/admin_user grants.",
+    "Go Internal Admin & Rehearsal Suite: Passes go test -race -count=1 ./internal/internaladmin/... ./internal/migrate/... ./internal/diagnostics/... ./internal/billing/... ./internal/capability/... ./internal/creatorpro/... covering Targets 1, 2, 3, and load/SLA benchmarks.",
+    "CI Smoke & Negative Self-Tests: tooling/ci/smoke_test.sh and tooling/ci/self_test_failure.sh verify real API/Admin-API process isolation, premature readyz rejection, and tampered backup SHA-256 sidecar rejection.",
+    "Web & Admin SvelteKit Checks, Tests & Production Builds: apps/admin (12 tests) and apps/web (455 tests across 48 test files) pass Vitest, svelte-check (0 errors, 0 warnings), and vite build.",
+    "Mobile Flutter Analyzer & Tests: apps/mobile passes flutter analyze and flutter test test/p8_08_security_a11y_release_test.dart."
+  ],
+  "external_gates": [
+    {
+      "gate_id": "LEG-H-001",
+      "status": "OPEN_EXTERNAL_HUMAN_GATE",
+      "description": "Qualified external legal counsel sign-off for Vietnam PDPA Decree 13/2023/ND-CP, GDPR, CCPA, DMCA agent registration, and sub-processor DPAs is required before public launch."
+    },
+    {
+      "gate_id": "EXT-GATE-LIVE-PROVIDER-AND-CONNECTOR-VERIFICATION",
+      "status": "OPEN_EXTERNAL_PARTNER_GATE",
+      "description": "Live production partner approvals, OAuth scopes, and commercial licenses for external social/commerce connectors (TikTok, Shopee, Meta, YouTube, Lazada, Shopify) and commercial AI providers are required before promoting capabilities to native_now in production."
+    },
+    {
+      "gate_id": "EXT-GATE-STAGING-LOAD-AND-DR-REHEARSAL",
+      "status": "OPEN_STAGING_INFRA_GATE",
+      "description": "Full staging/production VPS backup restore drill, multi-node k6 load execution, and automated accessibility browser audit require staging infrastructure."
+    }
+  ],
+  "remaining_scope": []
+}

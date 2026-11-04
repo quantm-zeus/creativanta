@@ -1,0 +1,15 @@
+{
+  "@@locale": "vi",
+  "shared_shell_skip_to_content": "Bỏ qua điều hướng đến nội dung chính",
+  "shared_shell_nav_primary_label": "Điều hướng chính Creativanta",
+  "home_dashboard_title_default": "Trung tâm điều hành hàng ngày",
+  "home_dashboard_cta_create_post": "Tạo bài đăng mới",
+  "production_studio_button_generate": "Tạo video AI",
+  "publish_hub_status_published": "Đã đăng",
+  "publish_hub_status_scheduled": "Đã lên lịch",
+  "publish_hub_status_failed": "Đăng thất bại",
+  "billing_credits_balance_label": "Số dư tín dụng AI",
+  "admin_rehearsal_restore_title": "Diễn tập khôi phục dữ liệu & Kiểm thử khói",
+  "admin_rehearsal_provider_title": "Kiểm toán độ tươi bằng chứng Nhà cung cấp & Pháp lý",
+  "admin_rehearsal_privacy_title": "Cách ly Đa thuê bao (RLS), SSRF & Tuân thủ GDPR/PDPA"
+}

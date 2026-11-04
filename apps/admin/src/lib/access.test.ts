@@ -11,6 +11,9 @@ import {
   evaluateOperationalHealthSeparation,
   evaluateSupportTicketAccess,
   evaluateKBAdminAccess,
+  evaluateBackupRestoreAndSmokeRehearsal,
+  evaluateProviderAndLicenseFreshnessGate,
+  evaluateAdminComplianceAndSecurityGuards,
   isArticleStale,
   type VerifiedAdminSession
 } from './access';
@@ -341,5 +344,162 @@ describe('P0-01 / P0-07 Internal Admin Isolation, Impersonation, Moderation & Ki
       '/attribution',
       '/settings/connections'
     ]);
+  });
+
+  it('enforces P8-08 Target 1: real backup/restore SHA-256 verification and automatic rollback on failing smoke', () => {
+    const validHash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+
+    // Healthy restore & smoke promotes candidate green slot
+    const passed = evaluateBackupRestoreAndSmokeRehearsal({
+      expectedSha256: validHash,
+      actualSha256: validHash,
+      debitMicroUnits: 15000000000,
+      creditMicroUnits: 15000000000,
+      rpoSeconds: 0,
+      rtoSeconds: 420,
+      previousSlot: 'blue',
+      candidateSlot: 'green',
+      healthzOk: true,
+      readyzReady: true,
+      businessSmokePassed: true,
+      auditSequenceIntact: true
+    });
+    expect(passed.allowed).toBe(true);
+    expect(passed.candidatePromoted).toBe(true);
+    expect(passed.rollbackTriggered).toBe(false);
+    expect(passed.activeSlot).toBe('green');
+
+    // Tampered SHA-256 fails closed
+    const badChecksum = evaluateBackupRestoreAndSmokeRehearsal({
+      expectedSha256: validHash,
+      actualSha256: '0000000000000000000000000000000000000000000000000000000000000000',
+      debitMicroUnits: 15000000000,
+      creditMicroUnits: 15000000000,
+      rpoSeconds: 0,
+      rtoSeconds: 420,
+      previousSlot: 'blue',
+      candidateSlot: 'green',
+      healthzOk: true,
+      readyzReady: true,
+      businessSmokePassed: true,
+      auditSequenceIntact: true
+    });
+    expect(badChecksum.allowed).toBe(false);
+    expect(badChecksum.errorCode).toBe('RESTORE_CHECKSUM_001');
+    expect(badChecksum.activeSlot).toBe('blue');
+
+    // Failing business smoke triggers automatic rollback to previousSlot
+    const failedSmoke = evaluateBackupRestoreAndSmokeRehearsal({
+      expectedSha256: validHash,
+      actualSha256: validHash,
+      debitMicroUnits: 15000000000,
+      creditMicroUnits: 15000000000,
+      rpoSeconds: 0,
+      rtoSeconds: 420,
+      previousSlot: 'blue',
+      candidateSlot: 'green',
+      healthzOk: true,
+      readyzReady: true,
+      businessSmokePassed: false,
+      auditSequenceIntact: true
+    });
+    expect(failedSmoke.allowed).toBe(false);
+    expect(failedSmoke.rollbackTriggered).toBe(true);
+    expect(failedSmoke.activeSlot).toBe('blue');
+    expect(failedSmoke.errorCode).toBe('SMOKE_FAILED_001');
+  });
+
+  it('enforces P8-08 Target 2: rejects stale provider/connector/workflow evidence and preserves LOCAL_IMPLEMENTED gate', () => {
+    const freshVerdict = evaluateProviderAndLicenseFreshnessGate({
+      nowMs,
+      rateCardVerifiedAtMs: nowMs - 2 * 24 * 60 * 60 * 1000,
+      rateCardValidUntilMs: nowMs + 28 * 24 * 60 * 60 * 1000,
+      rateCardEnabled: true,
+      connectorClaimedState: 'native_now',
+      connectorScopeGranted: true,
+      connectorAppReviewApproved: true,
+      connectorValidUntilMs: nowMs + 28 * 24 * 60 * 60 * 1000,
+      workflowRuntimeMode: 'owned_go_runtime',
+      workflowEnterpriseLicenseVerified: false,
+      legalDocsPublished: true,
+      externalLegalCounselSignoff: false // LEG-H-001 open
+    });
+    expect(freshVerdict.noStaleEvidence).toBe(true);
+    expect(freshVerdict.maxEvidenceState).toBe('LOCAL_IMPLEMENTED');
+    expect(freshVerdict.externalGatesUnmet).toHaveLength(1);
+
+    // Unverified native_now connector or expired rate card is rejected and downgraded to manual
+    const staleVerdict = evaluateProviderAndLicenseFreshnessGate({
+      nowMs,
+      rateCardVerifiedAtMs: nowMs - 45 * 24 * 60 * 60 * 1000,
+      rateCardValidUntilMs: nowMs - 1000,
+      rateCardEnabled: true,
+      connectorClaimedState: 'native_now',
+      connectorScopeGranted: true,
+      connectorAppReviewApproved: false,
+      connectorValidUntilMs: nowMs + 28 * 24 * 60 * 60 * 1000,
+      workflowRuntimeMode: 'activepieces_enterprise_embed',
+      workflowEnterpriseLicenseVerified: false,
+      legalDocsPublished: true,
+      externalLegalCounselSignoff: false
+    });
+    expect(staleVerdict.noStaleEvidence).toBe(false);
+    expect(staleVerdict.errorCode).toBe('STALE_PROVIDER_EVIDENCE');
+    expect(staleVerdict.effectiveConnectorState).toBe('manual');
+    expect(staleVerdict.effectiveWorkflowRuntime).toBe('owned_go_runtime');
+  });
+
+  it('enforces P8-08 Target 3: EC-M23-003 concurrent impersonation, EC-M23-004 override alert, EC-M23-005 audit sequence lock & 72h breach timer', () => {
+    // 1. Concurrent impersonation blocked (EC-M23-003)
+    const concurrentImp = evaluateAdminComplianceAndSecurityGuards({
+      adminRole: 'ops_admin',
+      activeImpersonationExistsForTargetUser: true,
+      attemptConcurrentImpersonation: true,
+      overridesInLast24h: 2,
+      auditSequenceGapDetected: false,
+      breachElapsedHours: 12
+    });
+    expect(concurrentImp.allowed).toBe(false);
+    expect(concurrentImp.concurrentImpersonationBlocked).toBe(true);
+    expect(concurrentImp.errorCode).toBe('ADMIN_CONFLICT_001');
+    expect(concurrentImp.breachRemainingHours).toBe(60);
+
+    // 2. >10 overrides/24h triggers Super Admin alert (EC-M23-004)
+    const alertVerdict = evaluateAdminComplianceAndSecurityGuards({
+      adminRole: 'ops_admin',
+      activeImpersonationExistsForTargetUser: false,
+      attemptConcurrentImpersonation: false,
+      overridesInLast24h: 10,
+      auditSequenceGapDetected: false,
+      breachElapsedHours: 12
+    });
+    expect(alertVerdict.allowed).toBe(true);
+    expect(alertVerdict.superAdminOverrideAlertTriggered).toBe(true);
+
+    // 3. >50 overrides/24h without Super Admin approval token is blocked (EC-M23-004)
+    const blockedOverride = evaluateAdminComplianceAndSecurityGuards({
+      adminRole: 'ops_admin',
+      activeImpersonationExistsForTargetUser: false,
+      attemptConcurrentImpersonation: false,
+      overridesInLast24h: 50,
+      auditSequenceGapDetected: false,
+      breachElapsedHours: 12
+    });
+    expect(blockedOverride.allowed).toBe(false);
+    expect(blockedOverride.errorCode).toBe('ADMIN_RATELIMIT_004');
+
+    // 4. Audit log sequence gap locks audit log read-only and creates Sev1 incident (EC-M23-005)
+    const seqGap = evaluateAdminComplianceAndSecurityGuards({
+      adminRole: 'super_admin',
+      activeImpersonationExistsForTargetUser: false,
+      attemptConcurrentImpersonation: false,
+      overridesInLast24h: 1,
+      auditSequenceGapDetected: true,
+      breachElapsedHours: 12
+    });
+    expect(seqGap.allowed).toBe(false);
+    expect(seqGap.auditLogReadOnlyLocked).toBe(true);
+    expect(seqGap.sev1IncidentCreated).toBe(true);
+    expect(seqGap.errorCode).toBe('AUDIT_LOCKED_005');
   });
 });
