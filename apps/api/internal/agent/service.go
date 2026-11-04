@@ -1,0 +1,421 @@
+package agent
+
+import (
+	"context"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
+)
+
+// Service provides high-level business logic for autonomous agent operations.
+type Service struct {
+	store        Store
+	planner      *Planner
+	runtime      *Runtime
+	capabilities map[string]bool // workspace capability map (defaults supported)
+}
+
+func NewService(store Store) *Service {
+	return &Service{
+		store:   store,
+		planner: NewPlanner(),
+		runtime: NewRuntime(store),
+		capabilities: map[string]bool{
+			"ai.nlu":            true,
+			"ai.vision":         true,
+			"media.generation":  true,
+			"media.tts":         true,
+			"media.sound":       true,
+			"media.render":      true,
+			"commerce.catalog":  true,
+			"media.image":       true,
+			"publish.channel":   true,
+			"shopee.order.sync": true,
+			"tiktok.publish":    true,
+		},
+	}
+}
+
+// SetCapability allows test suites to inject missing/unsupported platform capabilities.
+func (s *Service) SetCapability(key string, supported bool) {
+	s.capabilities[key] = supported
+}
+
+// LaunchAgent plans, preflights, and creates an agent run graph.
+func (s *Service) LaunchAgent(
+	ctx context.Context,
+	caller CallerContext,
+	agentType string,
+	taskPrompt string,
+	recipeID string,
+	workflowID string,
+	budgetCeiling string,
+	executionScopeJSON string,
+	autoExecute bool,
+	params map[string]string,
+) (*AgentRun, []string, bool, error) {
+	if caller.WorkspaceID == "" {
+		return nil, nil, false, ErrCrossTenantDenied
+	}
+	if !CheckPermission(caller.WorkspaceRole, "agent:execute") {
+		return nil, nil, false, fmt.Errorf("%w: role %q cannot launch agent", ErrPermissionDenied, caller.WorkspaceRole)
+	}
+
+	if taskPrompt == "" {
+		taskPrompt = "Execute autonomous task"
+	}
+	if agentType == "" {
+		agentType = AgentTypeGeneric
+	}
+
+	var steps []AgentStep
+	var estCredits string
+	var planSummary string
+
+	switch agentType {
+	case AgentTypeVideoAgent:
+		steps, estCredits, planSummary = s.planner.PlanVideoAgent(taskPrompt, params)
+		if budgetCeiling == "" || budgetCeiling == "0.000000" {
+			budgetCeiling = estCredits
+		}
+	case AgentTypeCopilotAction:
+		includePublish := false
+		if strings.Contains(strings.ToLower(taskPrompt), "publish") || strings.Contains(strings.ToLower(taskPrompt), "đăng") {
+			includePublish = true
+		}
+		steps, estCredits, planSummary = s.planner.PlanCopilotAction(taskPrompt, includePublish)
+		if budgetCeiling == "" || budgetCeiling == "0.000000" {
+			budgetCeiling = estCredits
+		}
+	default:
+		steps, estCredits, planSummary = s.planner.PlanGeneric(taskPrompt, budgetCeiling)
+		if budgetCeiling == "" || budgetCeiling == "0.000000" {
+			budgetCeiling = estCredits
+		}
+	}
+
+	runID := NewID()
+	for i := range steps {
+		steps[i].StepID = NewID()
+		steps[i].AgentRunID = runID
+		steps[i].WorkspaceID = caller.WorkspaceID
+	}
+
+	run := &AgentRun{
+		AgentRunID:             runID,
+		WorkspaceID:            caller.WorkspaceID,
+		AgentType:              agentType,
+		RecipeID:               recipeID,
+		WorkflowID:             workflowID,
+		PlanSummary:            planSummary,
+		ExecutionScopeJSON:     executionScopeJSON,
+		ApprovalState:          ApprovalNotRequired,
+		CurrentState:           StatePlanning,
+		SideEffectsSummaryJSON: "[]",
+		CreditsUsed:            "0.000000",
+		BudgetCeiling:          budgetCeiling,
+		Memory:                 NewBoundedMemory(DefaultMaxMemoryBytes),
+		Steps:                  steps,
+		Outputs:                make([]AgentOutput, 0),
+		CreatedBy:              caller.UserID,
+	}
+
+	// Preflight checks
+	warnings, requiresApproval, err := s.runtime.PreflightPlan(ctx, caller, run, s.capabilities)
+	if err != nil {
+		run.CurrentState = StateFailed
+		run.PlanSummary = err.Error()
+		_ = s.store.CreateRun(ctx, run)
+		return run, warnings, false, err
+	}
+
+	if requiresApproval {
+		run.ApprovalState = ApprovalAwaitingApproval
+		run.CurrentState = StateAwaitingApproval
+	} else if autoExecute {
+		run.CurrentState = StateExecuting
+		now := time.Now().UTC()
+		run.StartedAt = &now
+	}
+
+	if err := s.store.CreateRun(ctx, run); err != nil {
+		return nil, nil, false, err
+	}
+
+	s.store.PublishEvent(ctx, DomainEvent{
+		EventType:   "agent_run.started",
+		WorkspaceID: caller.WorkspaceID,
+		Payload: map[string]any{
+			"run_id":         run.AgentRunID,
+			"current_state":  run.CurrentState,
+			"plan_summary":   run.PlanSummary,
+			"budget_ceiling": run.BudgetCeiling,
+		},
+		OccurredAt: time.Now().UTC(),
+	})
+
+	if autoExecute && !requiresApproval {
+		// Run steps sequentially until paused, completed, or failed
+		_, _ = s.ExecuteRemainingSteps(ctx, caller, run.AgentRunID, 0)
+		run, _ = s.store.GetRun(ctx, caller.WorkspaceID, run.AgentRunID)
+	}
+
+	return run, warnings, requiresApproval, nil
+}
+
+// ExecuteRemainingSteps runs remaining steps in sequence.
+func (s *Service) ExecuteRemainingSteps(ctx context.Context, caller CallerContext, runID string, simStepFailureOrder int) (*AgentRun, error) {
+	run, err := s.store.GetRun(ctx, caller.WorkspaceID, runID)
+	if err != nil {
+		return nil, err
+	}
+
+	if run.CurrentState != StateExecuting {
+		if run.CurrentState == StatePlanning {
+			run.CurrentState = StateExecuting
+			now := time.Now().UTC()
+			if run.StartedAt == nil {
+				run.StartedAt = &now
+			}
+			_ = s.store.UpdateRun(ctx, run)
+		} else {
+			return run, fmt.Errorf("%w: run in state %s", ErrInvalidStateTransition, run.CurrentState)
+		}
+	}
+
+	// Keep executing next step while in executing state
+	for run.CurrentState == StateExecuting {
+		err := s.runtime.ExecuteNextStep(ctx, caller, run, s.capabilities, simStepFailureOrder)
+		// Fetch fresh run state
+		run, _ = s.store.GetRun(ctx, caller.WorkspaceID, runID)
+		if err != nil {
+			return run, err
+		}
+	}
+
+	return run, nil
+}
+
+// GetRun returns an agent run with tenant isolation.
+func (s *Service) GetRun(ctx context.Context, caller CallerContext, runID string) (*AgentRun, error) {
+	return s.store.GetRun(ctx, caller.WorkspaceID, runID)
+}
+
+// ListRuns returns agent runs matching filters.
+func (s *Service) ListRuns(ctx context.Context, caller CallerContext, agentType string, stateFilter string, pageSize int, pageToken string) ([]AgentRun, string, int, error) {
+	offset := 0
+	if pageToken != "" {
+		if parsed, err := strconv.Atoi(pageToken); err == nil && parsed >= 0 {
+			offset = parsed
+		}
+	}
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+
+	runs, total, err := s.store.ListRuns(ctx, caller.WorkspaceID, agentType, stateFilter, pageSize, offset)
+	if err != nil {
+		return nil, "", 0, err
+	}
+
+	nextPageToken := ""
+	if offset+len(runs) < total {
+		nextPageToken = strconv.Itoa(offset + len(runs))
+	}
+	return runs, nextPageToken, total, nil
+}
+
+// CancelRun aborts an in-progress agent run.
+func (s *Service) CancelRun(ctx context.Context, caller CallerContext, runID string, reason string) (*AgentRun, error) {
+	if !CheckPermission(caller.WorkspaceRole, "agent:execute") {
+		return nil, fmt.Errorf("%w: role %q cannot cancel agent run", ErrPermissionDenied, caller.WorkspaceRole)
+	}
+
+	run, err := s.store.GetRun(ctx, caller.WorkspaceID, runID)
+	if err != nil {
+		return nil, err
+	}
+
+	if run.CurrentState == StateCompleted || run.CurrentState == StateFailed || run.CurrentState == StateCancelled {
+		return nil, ErrRunAlreadyFinished
+	}
+
+	now := time.Now().UTC()
+	run.CurrentState = StateCancelled
+	run.CompletedAt = &now
+	if reason == "" {
+		reason = "Cancelled by operator"
+	}
+	run.PlanSummary = fmt.Sprintf("%s (Cancelled: %s)", run.PlanSummary, reason)
+
+	for i := range run.Steps {
+		if run.Steps[i].Status == StepStatusPlanning || run.Steps[i].Status == StepStatusExecuting || run.Steps[i].Status == StepStatusWaitingContext {
+			run.Steps[i].Status = StepStatusCancelled
+			run.Steps[i].CompletedAt = &now
+		}
+	}
+
+	if err := s.store.UpdateRun(ctx, run); err != nil {
+		return nil, err
+	}
+
+	s.store.PublishEvent(ctx, DomainEvent{
+		EventType:   "agent_run.cancelled",
+		WorkspaceID: caller.WorkspaceID,
+		Payload: map[string]any{
+			"run_id":       run.AgentRunID,
+			"cancelled_by": caller.UserID,
+			"reason":       reason,
+		},
+		OccurredAt: now,
+	})
+
+	return run, nil
+}
+
+// StreamRun provides current status and progress percentage.
+func (s *Service) StreamRun(ctx context.Context, caller CallerContext, runID string) (*AgentRun, *AgentStep, string, int32, error) {
+	run, err := s.store.GetRun(ctx, caller.WorkspaceID, runID)
+	if err != nil {
+		return nil, nil, "", 0, err
+	}
+
+	var currentStep *AgentStep
+	completedCount := 0
+	for i := range run.Steps {
+		if run.Steps[i].Status == StepStatusCompleted {
+			completedCount++
+		} else if currentStep == nil && (run.Steps[i].Status == StepStatusExecuting || run.Steps[i].Status == StepStatusWaitingContext || run.Steps[i].Status == StepStatusPlanning) {
+			currentStep = &run.Steps[i]
+		}
+	}
+
+	percent := int32(0)
+	if len(run.Steps) > 0 {
+		percent = int32((completedCount * 100) / len(run.Steps))
+	}
+	if run.CurrentState == StateCompleted {
+		percent = 100
+	}
+
+	msg := fmt.Sprintf("State: %s (%d/%d steps completed)", run.CurrentState, completedCount, len(run.Steps))
+	if currentStep != nil {
+		msg = fmt.Sprintf("Executing Step %d: %s", currentStep.StepOrder, currentStep.Title)
+	}
+
+	return run, currentStep, msg, percent, nil
+}
+
+// ProvideInput delivers input/approval to a paused or waiting agent run.
+func (s *Service) ProvideInput(
+	ctx context.Context,
+	caller CallerContext,
+	runID string,
+	inputText string,
+	inputJSON string,
+	approvePlan bool,
+	budgetCeilingIncrease string,
+	handoffTargetUserID string,
+) (*AgentRun, error) {
+	run, err := s.store.GetRun(ctx, caller.WorkspaceID, runID)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now().UTC()
+
+	// 1. Explicit Handoff Transfer
+	if handoffTargetUserID != "" {
+		run.CurrentState = StateHandedOff
+		run.HandoffTargetUserID = handoffTargetUserID
+		if inputText != "" {
+			run.HandoffContext = inputText
+		}
+		run.CompletedAt = &now
+		_ = s.store.UpdateRun(ctx, run)
+		s.store.PublishEvent(ctx, DomainEvent{
+			EventType:   "agent_run.handed_off",
+			WorkspaceID: caller.WorkspaceID,
+			Payload: map[string]any{
+				"run_id":     run.AgentRunID,
+				"handoff_to": handoffTargetUserID,
+				"reason":     run.HandoffContext,
+			},
+			OccurredAt: now,
+		})
+		return run, nil
+	}
+
+	// 2. Manager Approval Gate (Target 1 & RULE-M21-004)
+	if approvePlan {
+		if !CheckPermission(caller.WorkspaceRole, "workflow:manage") {
+			return nil, fmt.Errorf("%w: role %q lacks manager authority to approve agent plan", ErrPermissionDenied, caller.WorkspaceRole)
+		}
+		run.ApprovalState = ApprovalApproved
+		if run.CurrentState == StateAwaitingApproval {
+			run.CurrentState = StateExecuting
+			for i := range run.Steps {
+				if run.Steps[i].Status == StepStatusAwaitingApproval {
+					run.Steps[i].Status = StepStatusPlanning
+				}
+			}
+		}
+		_ = s.store.UpdateRun(ctx, run)
+		// Resume execution
+		return s.ExecuteRemainingSteps(ctx, caller, run.AgentRunID, 0)
+	}
+
+	// 3. Budget Ceiling Elevation (Target 2)
+	if budgetCeilingIncrease != "" {
+		currCeiling, err := tenantdb.ParseExactDecimal(run.BudgetCeiling)
+		if err != nil {
+			currCeiling = tenantdb.MustParseExactDecimal("0.000000")
+		}
+		inc, err := tenantdb.ParseExactDecimal(budgetCeilingIncrease)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrInvalidBudgetCeiling, err)
+		}
+		newCeiling, err := currCeiling.Add(inc)
+		if err != nil {
+			return nil, err
+		}
+		run.BudgetCeiling = newCeiling.Fixed6String()
+
+		// Resume if paused on budget
+		if run.CurrentState == StateWaitingContext {
+			run.CurrentState = StateExecuting
+			for i := range run.Steps {
+				if run.Steps[i].Status == StepStatusWaitingContext {
+					run.Steps[i].Status = StepStatusPlanning
+				}
+			}
+		}
+		_ = s.store.UpdateRun(ctx, run)
+		return s.ExecuteRemainingSteps(ctx, caller, run.AgentRunID, 0)
+	}
+
+	// 4. Human Context Injection
+	if inputText != "" || inputJSON != "" {
+		if run.Memory != nil {
+			_ = run.Memory.AddObservation("operator_input", inputText)
+		}
+		if run.CurrentState == StateWaitingContext {
+			run.CurrentState = StateExecuting
+			for i := range run.Steps {
+				if run.Steps[i].Status == StepStatusWaitingContext {
+					run.Steps[i].Status = StepStatusPlanning
+					if inputJSON != "" {
+						run.Steps[i].InputContextJSON = inputJSON
+					}
+				}
+			}
+		}
+		_ = s.store.UpdateRun(ctx, run)
+		return s.ExecuteRemainingSteps(ctx, caller, run.AgentRunID, 0)
+	}
+
+	return run, nil
+}

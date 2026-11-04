@@ -1,0 +1,68 @@
+{
+  "task_id": "P7-04",
+  "phase": "P7",
+  "slice": "p7-04",
+  "title": "Agent runtime, Video Agent và Copilot actions",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "feature_refs": [
+    "docs/02_features/automation/recipe_agent_center.md",
+    "docs/02_features/production/ai_video_studio.md",
+    "docs/02_features/platform/copilot.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/03_screens/web/screen_web_studio_video_agent.md"
+  ],
+  "source_files": {
+    "apps/api/internal/agent/agent_test.go": "ef67fcb0b4033d5bd8495ef4913add368585c97be6b1c66d4f3a3f5927aa7be4",
+    "apps/api/internal/agent/handler.go": "3c21db335c1f9739fa9eaef62d8f299e3061c292897c9799c55861ed2ba3f60b",
+    "apps/api/internal/agent/memory.go": "003922a765a6704414b1b5db48caae9d6cef0ccec0ae33dcae2d6db6767c49bc",
+    "apps/api/internal/agent/planner.go": "da543db9f4db0417047246e201cddd9210c148632b61b828115add5bd285aba8",
+    "apps/api/internal/agent/runtime.go": "ac281878be5144fb63b1a6626106699103130e28fdc893b5cb7d73eb2eef25a6",
+    "apps/api/internal/agent/service.go": "0548c7804c9b812a4a595976ea83f53c88a8068da27398d528180fbd36e745f8",
+    "apps/api/internal/agent/store.go": "bf21864c6e16d094c91b2a5b0bbcb7e5bc3ad58ea1a817da2e41a17f15441921",
+    "apps/api/internal/agent/types.go": "92a28d2d410219ee3c47cd6a7c6a55edc106bdd3b11f43602f5264f4a1bc8181",
+    "apps/api/internal/migrate/migrator_test.go": "213a9915429836be0136cd99ebcf2d5bbbc60aaded55425f99eeaf2d52098c95",
+    "infra/migrations/00038_p7_04_agent_runtime_bounded_memory_and_handoff.sql": "abf29b940cbaf830efe2dae1025490df21727cd78c65039c1858ec2b3e96565f",
+    "protos/creativanta/automation/v1/agent.proto": "fecc7b63c58c7a58158fcaa3ee02199ed1bc0a1bb3c3b1b1af5beb414c66448d",
+    "apps/web/src/lib/automation/agent.ts": "70822d0803b43d566b29d107fb77fb637a7a685b82ee1aa0956df134afddb1da",
+    "apps/web/src/lib/automation/agent.test.ts": "140641835da42b80dcae9940c0c7d065273d7f85a6ef774a3a57e161f54fb5cd",
+    "apps/web/src/routes/studio/agent/+page.svelte": "0039aa48087c02ffdf638b6b661e70084c3629f9c856ae5944480f400955b2e1",
+    "apps/mobile/lib/automation/agent_models.dart": "94c922a2d64c9dc6efd0701d07b33ed8b6890ccdc436333b6213cb71b5464d31",
+    "apps/mobile/lib/ui/automation/agent_runtime_view.dart": "daa69694ed2d40e19f5d72b294a8a7f77b21e80f92ea7d4944c337fc98d89989",
+    "apps/mobile/test/agent_runtime_test.dart": "4afbf18f5a194df234abad8e837e256de0c70fdce8f0afb0e21d35501a73f858"
+  },
+  "scope_items": [
+    "Target 1 (Every step checks delegated permissions): Invariants RULE-M21-002, EC-M21-001, and Copilot §10 RBAC enforcement are strictly applied. Each step planned or executed by an agent validates caller permissions (e.g. editor, manager, admin) and platform capabilities (e.g. media.generation) without privilege escalation. High-risk operations pause in awaiting_approval for Manager+ sign-off.",
+    "Target 2 (Budget ceiling pauses): Exact decimal credit accounting (NUMERIC(18,6) per DB-H-001). Execution automatically pauses in waiting_context when step estimated/actual cost breaches budget ceiling without overdrafting credits. Bounded memory maintains session-scoped observation history, compressing past 80% threshold and clearing upon completion.",
+    "Target 3 (Partial failure has audited handoff): When partial step execution encounters failure, successful outputs (scripts, storyboards) remain preserved and accounted. The run safely transitions to handed_off or partially_completed with structured diagnostics_ref, audit_ref, and handoff_context, emitting canonical domain events agent_run.handed_off and agent_run.partially_completed.",
+    "EF-08 AI Video Agent 1-Click Pipeline: Context-aware script generation, scene planning, visual rendering, voiceover synthesis, and packaging orchestration.",
+    "Copilot Multi-Step Action Orchestration (§5.3 & EC-COP-002): Cross-module action chaining across M06, M07, M10, and M11 with explicit plan confirmation and step-by-step progress tracking."
+  ],
+  "verified_sub_slices": [
+    "Target 1 Verified: TestAcceptanceTarget1_DelegatedPermissionCheck in internal/agent passes with go test -race; confirms caller permission denial, non-escalation, high-risk approval pauses, and capability checks.",
+    "Target 2 Verified: TestAcceptanceTarget2_BudgetCeilingPauses in internal/agent passes with go test -race; confirms zero-overdraft budget pause, waiting_context state, and resumption after budget elevation.",
+    "Target 3 Verified: TestAcceptanceTarget3_PartialFailureAuditedHandoff in internal/agent passes with go test -race; confirms preserved completed outputs, diagnostics_ref, audit_ref, and domain events.",
+    "Bounded Memory & Lifecycle: TestBoundedMemory_SummarizationAndLifecycle passes with go test -race; confirms bounded capacity, automatic compression, and complete clearing on run completion.",
+    "Video Agent (EF-08) Full Lifecycle: TestVideoAgent_FullPipelineSuccess passes with go test -race; confirms all 6 pipeline stages, credit accounting, and progress reporting.",
+    "Copilot Multi-Step Action Chain: TestCopilotAction_CrossModuleChainWithApproval passes with go test -race; confirms manager approval gate and execution resumption.",
+    "ConnectRPC Handlers: TestConnectRPCHandler_AgentService passes with go test -race; verifies LaunchAgent, ListRuns, CancelRun, and StreamRun RPCs.",
+    "Concurrency & Race Detector: TestConcurrentAgentOperations_NoRace passes with go test -race (0 data races detected).",
+    "PostgreSQL 17 Migration: Goose migration 00038 applied and verified with up/down transactional tests in migrator_test.go.",
+    "Web Vitest Suite: 7 tests pass in apps/web/src/lib/automation/agent.test.ts (total web suite: 43 files, 360 tests pass).",
+    "Mobile Flutter Suite: 5 tests pass in apps/mobile/test/agent_runtime_test.dart (flutter analyze clean with zero issues)."
+  ],
+  "external_gates": [
+    {
+      "gate_id": "EXT-GATE-AI-PROVIDER-CREDENTIALS",
+      "status": "LOCAL_ENGINE_COMPUTATION_READY",
+      "description": "Multi-step agent planning, state machines, bounded memory, and credit accounting operate deterministically. Real AI video synthesis and TTS voice cloning dispatch to external provider APIs (e.g. Gemini, Runway, ElevenLabs) when live API keys are provisioned."
+    }
+  ],
+  "remaining_scope": [
+    "P7-05: Public API, webhooks và automation acceptance (developer scopes/keys/rotation, outbound signatures/retries, quotas, and P7 acceptance)"
+  ]
+}

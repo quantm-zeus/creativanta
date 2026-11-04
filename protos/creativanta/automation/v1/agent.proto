@@ -1,0 +1,255 @@
+syntax = "proto3";
+
+package creativanta.automation.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/automation/v1;automationv1";
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+// AgentRunState defines the lifecycle of an AI agent run per database_schema.md §12.4.
+enum AgentRunState {
+  AGENT_RUN_STATE_UNSPECIFIED = 0;
+  AGENT_RUN_STATE_PLANNING = 1;
+  AGENT_RUN_STATE_AWAITING_APPROVAL = 2;
+  AGENT_RUN_STATE_EXECUTING = 3;
+  AGENT_RUN_STATE_WAITING_CONTEXT = 4;
+  AGENT_RUN_STATE_COMPLETED = 5;
+  AGENT_RUN_STATE_PARTIALLY_COMPLETED = 6;
+  AGENT_RUN_STATE_FAILED = 7;
+  AGENT_RUN_STATE_HANDED_OFF = 8;
+  AGENT_RUN_STATE_CANCELLED = 9;
+}
+
+// AgentApprovalState tracks the approval gate status for agent plans.
+enum AgentApprovalState {
+  AGENT_APPROVAL_STATE_UNSPECIFIED = 0;
+  AGENT_APPROVAL_STATE_NOT_REQUIRED = 1;
+  AGENT_APPROVAL_STATE_AWAITING_APPROVAL = 2;
+  AGENT_APPROVAL_STATE_APPROVED = 3;
+  AGENT_APPROVAL_STATE_REJECTED = 4;
+}
+
+// AgentStepStatus defines the state of an individual agent step per database_schema.md §12.4A.
+enum AgentStepStatus {
+  AGENT_STEP_STATUS_UNSPECIFIED = 0;
+  AGENT_STEP_STATUS_PLANNING = 1;
+  AGENT_STEP_STATUS_AWAITING_APPROVAL = 2;
+  AGENT_STEP_STATUS_EXECUTING = 3;
+  AGENT_STEP_STATUS_WAITING_CONTEXT = 4;
+  AGENT_STEP_STATUS_COMPLETED = 5;
+  AGENT_STEP_STATUS_FAILED = 6;
+  AGENT_STEP_STATUS_SKIPPED = 7;
+  AGENT_STEP_STATUS_CANCELLED = 8;
+}
+
+// AgentOutputType defines the category of artifact produced by an agent run per §12.4B.
+enum AgentOutputType {
+  AGENT_OUTPUT_TYPE_UNSPECIFIED = 0;
+  AGENT_OUTPUT_TYPE_TEXT = 1;
+  AGENT_OUTPUT_TYPE_ASSET = 2;
+  AGENT_OUTPUT_TYPE_DATASET = 3;
+  AGENT_OUTPUT_TYPE_WORKFLOW_PATCH = 4;
+  AGENT_OUTPUT_TYPE_RECOMMENDATION = 5;
+  AGENT_OUTPUT_TYPE_REPORT = 6;
+  AGENT_OUTPUT_TYPE_VIDEO = 7;
+}
+
+// AgentType defines the specialized operational role or pipeline of the agent.
+enum AgentType {
+  AGENT_TYPE_UNSPECIFIED = 0;
+  AGENT_TYPE_GENERIC = 1;
+  AGENT_TYPE_VIDEO_AGENT = 2;      // EF-08: 1-Click Video Pipeline
+  AGENT_TYPE_COPILOT_ACTION = 3;   // Copilot §5.3: Multi-step action orchestration
+  AGENT_TYPE_CONTENT_OPTIMIZER = 4; // Autonomous content / script / hook improver
+}
+
+// ============================================================================
+// Domain Models
+// ============================================================================
+
+// AgentStep represents a single discrete planned or executed step in an agent run.
+message AgentStep {
+  string step_id = 1;
+  string agent_run_id = 2;
+  int32 step_order = 3;
+  string phase = 4; // planning, awaiting_approval, executing, waiting_context, completed
+  string title = 5;
+  AgentStepStatus status = 6;
+  string expected_outcome = 7;
+  string observed_outcome = 8;
+  string required_permission = 9;
+  string required_capability = 10;
+  bool is_high_risk = 11;
+  string estimated_credits = 12; // exact decimal string (DB-H-001)
+  string actual_credits = 13;    // exact decimal string (DB-H-001)
+  string input_context_json = 14;
+  string output_context_json = 15;
+  string diagnostics_ref = 16;
+  google.protobuf.Timestamp started_at = 17;
+  google.protobuf.Timestamp completed_at = 18;
+}
+
+// AgentOutput represents an artifact produced by an agent run (§12.4B).
+message AgentOutput {
+  string output_id = 1;
+  string agent_run_id = 2;
+  AgentOutputType output_type = 3;
+  string title = 4;
+  string summary = 5;
+  string object_refs_json = 6;
+  string downloadable_refs_json = 7;
+  string preview_payload_json = 8;
+  string approval_state = 9;
+  google.protobuf.Timestamp created_at = 10;
+}
+
+// AgentMemoryEntry represents an ephemeral observation in working memory.
+message AgentMemoryEntry {
+  string key = 1;
+  string value = 2;
+  int32 byte_size = 3;
+  google.protobuf.Timestamp observed_at = 4;
+}
+
+// AgentMemory represents bounded session-scoped working memory (RULE-M21-003, EC-M21-003).
+message AgentMemory {
+  int64 total_bytes = 1;
+  int64 max_bytes = 2;
+  bool is_compressed = 3;
+  repeated AgentMemoryEntry entries = 4;
+  string summary = 5;
+}
+
+// AgentHandoffContext captures structured context for human escalation (§28.2).
+message AgentHandoffContext {
+  string handoff_target_user_id = 1;
+  string reason = 2;
+  string summary_of_completed_work = 3;
+  repeated string unresolved_actions = 4;
+  string diagnostics_ref = 5;
+  string audit_ref = 6;
+}
+
+// AgentRun represents an autonomous execution graph per database_schema.md §12.4.
+message AgentRun {
+  string agent_run_id = 1;
+  string workspace_id = 2;
+  AgentType agent_type = 3;
+  string recipe_id = 4;
+  string workflow_id = 5;
+  string plan_summary = 6;
+  string execution_scope_json = 7;
+  AgentApprovalState approval_state = 8;
+  AgentRunState current_state = 9;
+  string side_effects_summary_json = 10;
+  AgentHandoffContext handoff_context = 11;
+  string diagnostics_ref = 12;
+  string audit_ref = 13;
+  string credits_used = 14;   // exact decimal string (DB-H-001)
+  string budget_ceiling = 15; // exact decimal string
+  AgentMemory memory = 16;
+  repeated AgentStep steps = 17;
+  repeated AgentOutput outputs = 18;
+  string created_by = 19;
+  google.protobuf.Timestamp started_at = 20;
+  google.protobuf.Timestamp completed_at = 21;
+  google.protobuf.Timestamp created_at = 22;
+  google.protobuf.Timestamp updated_at = 23;
+}
+
+// ============================================================================
+// AgentService RPC Messages
+// ============================================================================
+
+message AgentServiceLaunchAgentRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  AgentType agent_type = 3;
+  string task_prompt = 4;
+  string recipe_id = 5;
+  string workflow_id = 6;
+  string budget_ceiling_credits = 7;
+  string execution_scope_json = 8;
+  bool auto_execute = 9;
+  map<string, string> parameters = 10;
+}
+
+message AgentServiceLaunchAgentResponse {
+  bool success = 1;
+  AgentRun run = 2;
+  repeated string permission_warnings = 3;
+  bool requires_approval = 4;
+  string rejection_reason = 5;
+}
+
+message AgentServiceListRunsRequest {
+  string workspace_id = 1;
+  AgentType agent_type = 2;
+  AgentRunState state_filter = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+}
+
+message AgentServiceListRunsResponse {
+  repeated AgentRun runs = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+
+message AgentServiceCancelRunRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string agent_run_id = 3;
+  string reason = 4;
+}
+
+message AgentServiceCancelRunResponse {
+  bool success = 1;
+  AgentRun run = 2;
+}
+
+message AgentServiceStreamRunRequest {
+  string workspace_id = 1;
+  string agent_run_id = 2;
+}
+
+message AgentServiceStreamRunResponse {
+  AgentRun run = 1;
+  AgentStep current_step = 2;
+  string progress_message = 3;
+  int32 progress_percent = 4;
+}
+
+message AgentServiceProvideInputRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string agent_run_id = 3;
+  string input_text = 4;
+  string input_json = 5;
+  bool approve_plan = 6;
+  string budget_ceiling_increase = 7;
+  string handoff_target_user_id = 8;
+}
+
+message AgentServiceProvideInputResponse {
+  bool success = 1;
+  AgentRun run = 2;
+}
+
+// ============================================================================
+// Service Definition
+// ============================================================================
+
+// AgentService provides multi-step autonomous planning, execution, bounded memory,
+// and audited handoff across the Creativanta operating graph (§17.6).
+service AgentService {
+  rpc LaunchAgent(AgentServiceLaunchAgentRequest) returns (AgentServiceLaunchAgentResponse);
+  rpc ListRuns(AgentServiceListRunsRequest) returns (AgentServiceListRunsResponse);
+  rpc CancelRun(AgentServiceCancelRunRequest) returns (AgentServiceCancelRunResponse);
+  rpc StreamRun(AgentServiceStreamRunRequest) returns (AgentServiceStreamRunResponse);
+  rpc ProvideInput(AgentServiceProvideInputRequest) returns (AgentServiceProvideInputResponse);
+}
