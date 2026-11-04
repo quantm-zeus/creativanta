@@ -1,0 +1,736 @@
+=== Go Backend Quality Gate ===
+Detected Go version: 1.27.3
+Checking Go formatting (gofmt)...
+gofmt check passed.
+Verifying Go module dependencies (go mod verify)...
+all modules verified
+Running Go static analysis (go vet ./...)...
+go vet check passed.
+Running pinned govulncheck ./...
+No vulnerabilities found.
+Running unit tests with thread race detector (go test -race -count=1 ./...)...
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/admin-api	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/api	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/migrate	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/outbox	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/transport-fixture-test	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/cmd/worker	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1/adminv1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1/commercev1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/content/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/content/v1/contentv1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/copilot/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/copilot/v1/copilotv1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/engagement/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/engagement/v1/engagementv1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/finance/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/finance/v1/financev1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/intelligence/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/intelligence/v1/intelligencev1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/production/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/production/v1/productionv1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/publish/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/publish/v1/publishv1connect	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1	[no test files]
+?   	github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/transport/test/v1/transporttestv1connect	[no test files]
+=== RUN   TestAcceptanceTarget1_CreatorIncomeDistinctFromSellerExpense
+--- PASS: TestAcceptanceTarget1_CreatorIncomeDistinctFromSellerExpense (0.00s)
+=== RUN   TestAcceptanceTarget2_AmbiguousAttributionLabeled
+--- PASS: TestAcceptanceTarget2_AmbiguousAttributionLabeled (0.00s)
+=== RUN   TestAcceptanceTarget3_BrokenLinkRepair
+--- PASS: TestAcceptanceTarget3_BrokenLinkRepair (0.00s)
+=== RUN   TestCreatorAssignmentsAndCoupons
+--- PASS: TestCreatorAssignmentsAndCoupons (0.00s)
+=== RUN   TestAffiliateStatementImportAndReconciliation
+--- PASS: TestAffiliateStatementImportAndReconciliation (0.00s)
+=== RUN   TestPayoutBatchAndProofGeneration
+--- PASS: TestPayoutBatchAndProofGeneration (0.00s)
+=== RUN   TestCommissionClawbackFlow
+--- PASS: TestCommissionClawbackFlow (0.00s)
+=== RUN   TestAffiliateConnectRPCHandlers
+--- PASS: TestAffiliateConnectRPCHandlers (0.00s)
+=== RUN   TestPostgresLiveAffiliateLinksAttributionsAndPayouts
+    affiliate_postgres_test.go:61: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL M16 affiliate suite executes in CI
+--- SKIP: TestPostgresLiveAffiliateLinksAttributionsAndPayouts (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/affiliate	1.159s
+=== RUN   TestPostgresLiveCreditLotsQuotesAndBilling
+    billing_postgres_test.go:39: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL P0-06 credit/billing suite executes in CI
+--- SKIP: TestPostgresLiveCreditLotsQuotesAndBilling (0.00s)
+=== RUN   TestConcurrentHoldsCannotOverspend
+--- PASS: TestConcurrentHoldsCannotOverspend (0.20s)
+=== RUN   TestLateResultAndCycleBoundaryPreserveLots
+--- PASS: TestLateResultAndCycleBoundaryPreserveLots (0.18s)
+=== RUN   TestPaidRetryCannotExceedConfirmedQuote
+--- PASS: TestPaidRetryCannotExceedConfirmedQuote (0.02s)
+=== RUN   TestLotConsumptionPriorityRefundAndBillingSandbox
+--- PASS: TestLotConsumptionPriorityRefundAndBillingSandbox (0.14s)
+=== RUN   TestP105PaymentReplayCannotDoubleGrant
+--- PASS: TestP105PaymentReplayCannotDoubleGrant (0.10s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/billing	1.735s
+=== RUN   TestHealthz_200
+=== RUN   TestHealthz_200/api_role
+=== RUN   TestHealthz_200/admin-api_role
+--- PASS: TestHealthz_200 (0.00s)
+    --- PASS: TestHealthz_200/api_role (0.00s)
+    --- PASS: TestHealthz_200/admin-api_role (0.00s)
+=== RUN   TestRoleValidation_FailsClosed
+--- PASS: TestRoleValidation_FailsClosed (0.00s)
+=== RUN   TestReadyz_503WhenNilOrFalse
+=== RUN   TestReadyz_503WhenNilOrFalse/nil_readiness_func
+=== RUN   TestReadyz_503WhenNilOrFalse/false_readiness_func
+--- PASS: TestReadyz_503WhenNilOrFalse (0.00s)
+    --- PASS: TestReadyz_503WhenNilOrFalse/nil_readiness_func (0.00s)
+    --- PASS: TestReadyz_503WhenNilOrFalse/false_readiness_func (0.00s)
+=== RUN   TestReadyz_200WhenTrue
+--- PASS: TestReadyz_200WhenTrue (0.00s)
+=== RUN   TestMethodRestrictions_405
+--- PASS: TestMethodRestrictions_405 (0.00s)
+=== RUN   TestUnknownPath_404
+--- PASS: TestUnknownPath_404 (0.00s)
+=== RUN   TestServe_PublicBindRefusal
+--- PASS: TestServe_PublicBindRefusal (0.00s)
+=== RUN   TestServe_CancelledContext
+--- PASS: TestServe_CancelledContext (0.04s)
+=== RUN   TestServe_PropagatesUnexpectedError
+--- PASS: TestServe_PropagatesUnexpectedError (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/bootstrap	1.132s
+=== RUN   TestUnverifiedStaleReadOnlyAndKilledRoutesCannotExecute
+--- PASS: TestUnverifiedStaleReadOnlyAndKilledRoutesCannotExecute (0.01s)
+=== RUN   TestCompositeHealthScoresProactiveCoachingTokenRedactionAndImpersonationReadOnly
+--- PASS: TestCompositeHealthScoresProactiveCoachingTokenRedactionAndImpersonationReadOnly (0.03s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/capability	1.148s
+=== RUN   TestSQLReconcilerSessionRevocationAndEndedEventsNotifyRecorder
+--- PASS: TestSQLReconcilerSessionRevocationAndEndedEventsNotifyRecorder (0.00s)
+=== RUN   TestSQLReconcilerFailsClosedOnNilDependenciesAndMissingGlobalClaimer
+--- PASS: TestSQLReconcilerFailsClosedOnNilDependenciesAndMissingGlobalClaimer (0.00s)
+=== RUN   TestPostgresClerkWebhookMembershipAndUserReconciliation
+    reconcile_sql_test.go:142: set CREATIVANTA_TEST_POSTGRES_DSN to run real PostgreSQL webhook reconciliation tests
+--- SKIP: TestPostgresClerkWebhookMembershipAndUserReconciliation (0.00s)
+=== RUN   TestKnownValidSignedFixture
+--- PASS: TestKnownValidSignedFixture (0.00s)
+=== RUN   TestMultiSignatureRotationAcceptsMatchingV1
+--- PASS: TestMultiSignatureRotationAcceptsMatchingV1 (0.00s)
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/spoofed_signing_key
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/tampered_body
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/tampered_svix_id
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/expired_replayed_timestamp
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/future_timestamp
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/duplicate_svix_signature_headers
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/duplicate_svix_id_headers
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/missing_svix_signature
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/invalid_message_id_prefix
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/non_numeric_timestamp
+=== RUN   TestInvalidSpoofedExpiredFutureAndTamperedSignatures/malformed_signature_entry
+--- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/spoofed_signing_key (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/tampered_body (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/tampered_svix_id (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/expired_replayed_timestamp (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/future_timestamp (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/duplicate_svix_signature_headers (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/duplicate_svix_id_headers (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/missing_svix_signature (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/invalid_message_id_prefix (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/non_numeric_timestamp (0.00s)
+    --- PASS: TestInvalidSpoofedExpiredFutureAndTamperedSignatures/malformed_signature_entry (0.00s)
+=== RUN   TestEventAllowlistAndUnsignedOrUnverifiedDataRejected
+=== RUN   TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/unknown_event_type
+=== RUN   TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/organization_created_disallowed_to_prevent_auto_workspace
+=== RUN   TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/unverified_primary_email_rejected
+=== RUN   TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/invalid_membership_role_rejected
+=== RUN   TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/invitation_accepted_owner_role_rejected
+--- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected (0.00s)
+    --- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/unknown_event_type (0.00s)
+    --- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/organization_created_disallowed_to_prevent_auto_workspace (0.00s)
+    --- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/unverified_primary_email_rejected (0.00s)
+    --- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/invalid_membership_role_rejected (0.00s)
+    --- PASS: TestEventAllowlistAndUnsignedOrUnverifiedDataRejected/invitation_accepted_owner_role_rejected (0.00s)
+=== RUN   TestHandlerNilDependenciesBoundedBodyAndDuplicateDelivery
+--- PASS: TestHandlerNilDependenciesBoundedBodyAndDuplicateDelivery (0.00s)
+=== RUN   TestNewVerifierRejectsWeakOrMalformedConfigs
+--- PASS: TestNewVerifierRejectsWeakOrMalformedConfigs (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/clerkwebhook	1.126s
+=== RUN   TestP609_Target1_NoFunctionLostBetweenModules
+=== PAUSE TestP609_Target1_NoFunctionLostBetweenModules
+=== RUN   TestP609_Target2_PartialAndUnreconciledOutcomesVisible
+=== PAUSE TestP609_Target2_PartialAndUnreconciledOutcomesVisible
+=== RUN   TestP609_Target2_OperationalRepairsRequireAuditReason
+=== PAUSE TestP609_Target2_OperationalRepairsRequireAuditReason
+=== RUN   TestP609_Target3_ShippingCarrierGateAndHMACVerification
+=== PAUSE TestP609_Target3_ShippingCarrierGateAndHMACVerification
+=== RUN   TestP609_Target3_ProviderAndShippingGateTruth
+=== PAUSE TestP609_Target3_ProviderAndShippingGateTruth
+=== RUN   TestP609_ConcurrencyAndRaceProtection
+=== PAUSE TestP609_ConcurrencyAndRaceProtection
+=== CONT  TestP609_ConcurrencyAndRaceProtection
+=== CONT  TestP609_Target1_NoFunctionLostBetweenModules
+=== CONT  TestP609_Target3_ProviderAndShippingGateTruth
+--- PASS: TestP609_Target3_ProviderAndShippingGateTruth (0.00s)
+--- PASS: TestP609_Target1_NoFunctionLostBetweenModules (0.00s)
+=== CONT  TestP609_Target3_ShippingCarrierGateAndHMACVerification
+--- PASS: TestP609_Target3_ShippingCarrierGateAndHMACVerification (0.00s)
+=== CONT  TestP609_Target2_OperationalRepairsRequireAuditReason
+=== CONT  TestP609_Target2_PartialAndUnreconciledOutcomesVisible
+--- PASS: TestP609_Target2_PartialAndUnreconciledOutcomesVisible (0.00s)
+--- PASS: TestP609_Target2_OperationalRepairsRequireAuditReason (0.01s)
+--- PASS: TestP609_ConcurrencyAndRaceProtection (0.03s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/commerceacceptance	1.109s
+=== RUN   TestTikTokAdapter_OrderReturnRefundSettlement
+--- PASS: TestTikTokAdapter_OrderReturnRefundSettlement (0.01s)
+=== RUN   TestShopeeAdapter_OrderAndReturn
+--- PASS: TestShopeeAdapter_OrderAndReturn (0.03s)
+=== RUN   TestLazadaAdapter_OrderAndReturn
+--- PASS: TestLazadaAdapter_OrderAndReturn (0.01s)
+=== RUN   TestStripeAdapter_PaymentIntentAndRefund
+--- PASS: TestStripeAdapter_PaymentIntentAndRefund (0.00s)
+=== RUN   TestPlatformStockSync_DeltaCalculation
+--- PASS: TestPlatformStockSync_DeltaCalculation (0.00s)
+=== RUN   TestPlatformCapability_VerifiedVsManualFallback
+--- PASS: TestPlatformCapability_VerifiedVsManualFallback (0.00s)
+=== RUN   TestTarget2_CorrectingFeesPreserveProof
+--- PASS: TestTarget2_CorrectingFeesPreserveProof (0.00s)
+=== RUN   TestTarget3_NoDoubleRefundOrRestock
+--- PASS: TestTarget3_NoDoubleRefundOrRestock (0.01s)
+=== RUN   TestPaymentRace_ExpiryRacesPaymentConfirmation
+--- PASS: TestPaymentRace_ExpiryRacesPaymentConfirmation (0.00s)
+=== RUN   TestPaymentRace_LatePaymentRecoveryStockAvailable
+--- PASS: TestPaymentRace_LatePaymentRecoveryStockAvailable (0.00s)
+=== RUN   TestPaymentRace_LatePaymentFailsWhenStockExhausted
+--- PASS: TestPaymentRace_LatePaymentFailsWhenStockExhausted (0.00s)
+=== RUN   TestPaymentRace_ConcurrentWebhooksIdempotent
+--- PASS: TestPaymentRace_ConcurrentWebhooksIdempotent (0.00s)
+=== RUN   TestPaymentRace_PaymentRacesCancellation
+--- PASS: TestPaymentRace_PaymentRacesCancellation (0.01s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/commerceadapter	1.155s
+=== RUN   TestAcceptanceTarget1_InferredInsightLabeled
+--- PASS: TestAcceptanceTarget1_InferredInsightLabeled (0.00s)
+=== RUN   TestAcceptanceTarget2_StaleSnapshotsVisible
+--- PASS: TestAcceptanceTarget2_StaleSnapshotsVisible (0.00s)
+=== RUN   TestAcceptanceTarget3_NoAssumedAccessToCompetitorFinance
+--- PASS: TestAcceptanceTarget3_NoAssumedAccessToCompetitorFinance (0.00s)
+=== RUN   TestRBACPermissions
+--- PASS: TestRBACPermissions (0.00s)
+=== RUN   TestMultiTenantIsolation
+--- PASS: TestMultiTenantIsolation (0.00s)
+=== RUN   TestEdgeCasesAndInvariants
+--- PASS: TestEdgeCasesAndInvariants (0.00s)
+=== RUN   TestConcurrentOperationsNoRace
+--- PASS: TestConcurrentOperationsNoRace (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/competitor	1.118s
+=== RUN   TestTarget1_SourceChainReachesApprovedBrief
+--- PASS: TestTarget1_SourceChainReachesApprovedBrief (0.00s)
+=== RUN   TestTarget2_ConcurrentEditsPreserveData_StaleReviewConflict
+--- PASS: TestTarget2_ConcurrentEditsPreserveData_StaleReviewConflict (0.01s)
+=== RUN   TestTarget2_ConcurrentAuthorEdits_VersionCheck
+--- PASS: TestTarget2_ConcurrentAuthorEdits_VersionCheck (0.00s)
+=== RUN   TestTarget3_NoPublishSideEffectsFromCreativeAssistant
+--- PASS: TestTarget3_NoPublishSideEffectsFromCreativeAssistant (0.00s)
+=== RUN   TestTarget3_CreativeAssistanceProducesDraftOnly
+--- PASS: TestTarget3_CreativeAssistanceProducesDraftOnly (0.00s)
+=== RUN   TestEdgeCasesAndNegativeRules
+--- PASS: TestEdgeCasesAndNegativeRules (0.00s)
+=== RUN   TestConcurrentEditsAndApprovalsRace
+--- PASS: TestConcurrentEditsAndApprovalsRace (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/content	1.297s
+=== RUN   TestAcceptanceTarget1_RevokedConsentBlocksGeneration
+--- PASS: TestAcceptanceTarget1_RevokedConsentBlocksGeneration (0.00s)
+=== RUN   TestAcceptanceTarget2_PackUpdatesRetainOldLineage
+--- PASS: TestAcceptanceTarget2_PackUpdatesRetainOldLineage (0.00s)
+=== RUN   TestAcceptanceTarget3_OnlyOneDefaultCharacter
+--- PASS: TestAcceptanceTarget3_OnlyOneDefaultCharacter (0.00s)
+=== RUN   TestCharacterSlotQuotaGating
+--- PASS: TestCharacterSlotQuotaGating (0.00s)
+=== RUN   TestWizardFlowAndValidation
+--- PASS: TestWizardFlowAndValidation (0.00s)
+=== RUN   TestCrossTenantIsolationAndRBAC
+--- PASS: TestCrossTenantIsolationAndRBAC (0.00s)
+=== RUN   TestConcurrentDefaultSetting
+--- PASS: TestConcurrentDefaultSetting (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/continuity	1.122s
+=== RUN   TestTarget1_PermissionRecheckMatrix
+=== RUN   TestTarget1_PermissionRecheckMatrix/Editor_converts_Opportunity_to_Campaign_(Allowed)
+=== RUN   TestTarget1_PermissionRecheckMatrix/Editor_converts_Opportunity_to_Brand_Deal_(Denied_by_Target_Permission)
+=== RUN   TestTarget1_PermissionRecheckMatrix/Manager_converts_Opportunity_to_Brand_Deal_(Allowed)
+=== RUN   TestTarget1_PermissionRecheckMatrix/Editor_converts_Idea_to_Offer_(Allowed)
+=== RUN   TestTarget1_PermissionRecheckMatrix/Editor_converts_Idea_to_Brand_Deal_(Denied_by_Target_Permission)
+=== RUN   TestTarget1_PermissionRecheckMatrix/Contributor_converts_Opportunity_to_Campaign_(Denied_at_Source_Check)
+=== RUN   TestTarget1_PermissionRecheckMatrix/Viewer_converts_Thread_to_Seeding_(Denied_at_Source_Check)
+=== RUN   TestTarget1_PermissionRecheckMatrix/Editor_converts_Thread_to_Seeding_(Allowed)
+=== RUN   TestTarget1_PermissionRecheckMatrix/Editor_converts_Thread_to_Brand_Deal_(Denied_by_Target_Permission)
+=== RUN   TestTarget1_PermissionRecheckMatrix/Manager_converts_Thread_to_Brand_Deal_(Allowed)
+--- PASS: TestTarget1_PermissionRecheckMatrix (0.01s)
+    --- PASS: TestTarget1_PermissionRecheckMatrix/Editor_converts_Opportunity_to_Campaign_(Allowed) (0.00s)
+    --- PASS: TestTarget1_PermissionRecheckMatrix/Editor_converts_Opportunity_to_Brand_Deal_(Denied_by_Target_Permission) (0.00s)
+    --- PASS: TestTarget1_PermissionRecheckMatrix/Manager_converts_Opportunity_to_Brand_Deal_(Allowed) (0.00s)
+    --- PASS: TestTarget1_PermissionRecheckMatrix/Editor_converts_Idea_to_Offer_(Allowed) (0.00s)
+    --- PASS: TestTarget1_PermissionRecheckMatrix/Editor_converts_Idea_to_Brand_Deal_(Denied_by_Target_Permission) (0.00s)
+    --- PASS: TestTarget1_PermissionRecheckMatrix/Contributor_converts_Opportunity_to_Campaign_(Denied_at_Source_Check) (0.00s)
+    --- PASS: TestTarget1_PermissionRecheckMatrix/Viewer_converts_Thread_to_Seeding_(Denied_at_Source_Check) (0.00s)
+    --- PASS: TestTarget1_PermissionRecheckMatrix/Editor_converts_Thread_to_Seeding_(Allowed) (0.00s)
+    --- PASS: TestTarget1_PermissionRecheckMatrix/Editor_converts_Thread_to_Brand_Deal_(Denied_by_Target_Permission) (0.00s)
+    --- PASS: TestTarget1_PermissionRecheckMatrix/Manager_converts_Thread_to_Brand_Deal_(Allowed) (0.00s)
+=== RUN   TestTarget2_FailedConversionIsAtomic
+=== RUN   TestTarget2_FailedConversionIsAtomic/Target_creation_failure_leaves_source_completely_unchanged_and_writes_no_lineage
+=== RUN   TestTarget2_FailedConversionIsAtomic/Failure_during_source_update_rolls_back_created_target_so_no_orphan_target_exists
+=== RUN   TestTarget2_FailedConversionIsAtomic/Failure_during_lineage_save_rolls_back_both_target_and_source
+--- PASS: TestTarget2_FailedConversionIsAtomic (0.00s)
+    --- PASS: TestTarget2_FailedConversionIsAtomic/Target_creation_failure_leaves_source_completely_unchanged_and_writes_no_lineage (0.00s)
+    --- PASS: TestTarget2_FailedConversionIsAtomic/Failure_during_source_update_rolls_back_created_target_so_no_orphan_target_exists (0.00s)
+    --- PASS: TestTarget2_FailedConversionIsAtomic/Failure_during_lineage_save_rolls_back_both_target_and_source (0.00s)
+=== RUN   TestTarget3_SourceSurvivesConversion
+=== RUN   TestTarget3_SourceSurvivesConversion/opportunity->live_survives
+=== RUN   TestTarget3_SourceSurvivesConversion/idea->seeding_survives
+=== RUN   TestTarget3_SourceSurvivesConversion/thread->deal_survives
+--- PASS: TestTarget3_SourceSurvivesConversion (0.00s)
+    --- PASS: TestTarget3_SourceSurvivesConversion/opportunity->live_survives (0.00s)
+    --- PASS: TestTarget3_SourceSurvivesConversion/idea->seeding_survives (0.00s)
+    --- PASS: TestTarget3_SourceSurvivesConversion/thread->deal_survives (0.00s)
+=== RUN   TestReplayAndConcurrency
+--- PASS: TestReplayAndConcurrency (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/conversion	1.148s
+=== RUN   TestAcceptanceTarget1_ContributorCannotDeleteProduct
+--- PASS: TestAcceptanceTarget1_ContributorCannotDeleteProduct (0.00s)
+=== RUN   TestAcceptanceTarget2_ReadQueryCannotExposeFinance
+--- PASS: TestAcceptanceTarget2_ReadQueryCannotExposeFinance (0.00s)
+=== RUN   TestAcceptanceTarget3_GeneratedScriptNeedsQuoteConfirmation
+--- PASS: TestAcceptanceTarget3_GeneratedScriptNeedsQuoteConfirmation (0.00s)
+=== RUN   TestMultiTenantIsolationAndAccessGuards
+--- PASS: TestMultiTenantIsolationAndAccessGuards (0.00s)
+=== RUN   TestConcurrentQueriesNoRace
+--- PASS: TestConcurrentQueriesNoRace (0.01s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/copilot	1.106s
+=== RUN   TestConnectRPCHandlers
+--- PASS: TestConnectRPCHandlers (0.00s)
+=== RUN   TestAcceptanceTarget1_CanonicalDealLifecycle
+--- PASS: TestAcceptanceTarget1_CanonicalDealLifecycle (0.00s)
+=== RUN   TestAcceptanceTarget1_CancellationAndFinancialReversal
+--- PASS: TestAcceptanceTarget1_CancellationAndFinancialReversal (0.00s)
+=== RUN   TestSponsorInquiryConversionToBrandDeal
+--- PASS: TestSponsorInquiryConversionToBrandDeal (0.00s)
+=== RUN   TestAcceptanceTarget2_PhishingCannotBeAcknowledgedAway
+--- PASS: TestAcceptanceTarget2_PhishingCannotBeAcknowledgedAway (0.00s)
+=== RUN   TestAcceptanceTarget2_DailyLinkThrottle
+--- PASS: TestAcceptanceTarget2_DailyLinkThrottle (0.01s)
+=== RUN   TestAcceptanceTarget3_ZeroViewRPMUndefined
+--- PASS: TestAcceptanceTarget3_ZeroViewRPMUndefined (0.00s)
+=== RUN   TestAcceptanceTarget3_RPMTrendAndDropAlert
+--- PASS: TestAcceptanceTarget3_RPMTrendAndDropAlert (0.00s)
+=== RUN   TestAcceptanceTarget4_AllSixModesCanReachEntitledTools
+--- PASS: TestAcceptanceTarget4_AllSixModesCanReachEntitledTools (0.00s)
+=== RUN   TestCustomDomainVerification
+--- PASS: TestCustomDomainVerification (0.00s)
+=== RUN   TestTaxReportGeneration
+--- PASS: TestTaxReportGeneration (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/creatorpro	1.174s
+=== RUN   TestDiagnosticsServiceRBACAndCrossTenantIsolation
+--- PASS: TestDiagnosticsServiceRBACAndCrossTenantIsolation (0.02s)
+=== RUN   TestRuleM23A04SanitizationAndRepairWizardReconcilesUnknownExternalEffect
+--- PASS: TestRuleM23A04SanitizationAndRepairWizardReconcilesUnknownExternalEffect (0.03s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/diagnostics	1.200s
+=== RUN   TestAcceptanceTarget1_MessagingWindowDenial
+--- PASS: TestAcceptanceTarget1_MessagingWindowDenial (0.01s)
+=== RUN   TestAcceptanceTarget2_BotLoopHandling
+--- PASS: TestAcceptanceTarget2_BotLoopHandling (0.00s)
+=== RUN   TestAcceptanceTarget2_ViralSurgeHandling
+--- PASS: TestAcceptanceTarget2_ViralSurgeHandling (0.25s)
+=== RUN   TestAcceptanceTarget3_GhostMessagesHandling
+--- PASS: TestAcceptanceTarget3_GhostMessagesHandling (0.00s)
+=== RUN   TestAcceptanceTarget3_RevokedAccountRepair
+--- PASS: TestAcceptanceTarget3_RevokedAccountRepair (0.00s)
+=== RUN   TestEngagement_CoreFlowsAndConversions
+--- PASS: TestEngagement_CoreFlowsAndConversions (0.00s)
+=== RUN   TestEngagement_EntityServiceOperations
+--- PASS: TestEngagement_EntityServiceOperations (0.00s)
+=== RUN   TestP608_CrossDomainThreadConversionsWithPermissionCheck
+--- PASS: TestP608_CrossDomainThreadConversionsWithPermissionCheck (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/engagement	1.481s
+=== RUN   TestAttribution_Target1_WorkspaceRevenueCountedOnce
+--- PASS: TestAttribution_Target1_WorkspaceRevenueCountedOnce (0.01s)
+=== RUN   TestAttribution_Target1_OrderNetCapacityExceeded
+--- PASS: TestAttribution_Target1_OrderNetCapacityExceeded (0.00s)
+=== RUN   TestAttribution_Target2_MissingDenominatorsRemainUnknown
+--- PASS: TestAttribution_Target2_MissingDenominatorsRemainUnknown (0.00s)
+=== RUN   TestAttribution_Target3_ImportedProofNotUpgradedToOfficial
+--- PASS: TestAttribution_Target3_ImportedProofNotUpgradedToOfficial (0.00s)
+=== RUN   TestAttribution_Target3_MixedConfidenceCapAtMedium
+--- PASS: TestAttribution_Target3_MixedConfidenceCapAtMedium (0.00s)
+=== RUN   TestPostgresLiveFinanceStore
+    finance_postgres_test.go:19: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL finance suite executes in CI
+--- SKIP: TestPostgresLiveFinanceStore (0.00s)
+=== RUN   TestF01_RecognizedProfit
+--- PASS: TestF01_RecognizedProfit (0.00s)
+=== RUN   TestF02_PartialRefund
+--- PASS: TestF02_PartialRefund (0.00s)
+=== RUN   TestF03_SettlementDuplication
+--- PASS: TestF03_SettlementDuplication (0.02s)
+=== RUN   TestF04_FX
+--- PASS: TestF04_FX (0.00s)
+=== RUN   TestF05_PendingOrder
+--- PASS: TestF05_PendingOrder (0.00s)
+=== RUN   TestF06_ReplayAndCorrection
+--- PASS: TestF06_ReplayAndCorrection (0.01s)
+=== RUN   TestF07_UnknownCOGS
+--- PASS: TestF07_UnknownCOGS (0.00s)
+=== RUN   TestF08_PartialSettlement
+--- PASS: TestF08_PartialSettlement (0.00s)
+=== RUN   TestF09_SourceMix
+--- PASS: TestF09_SourceMix (0.01s)
+=== RUN   TestConcurrentPartialMatchCannotOverallocate
+--- PASS: TestConcurrentPartialMatchCannotOverallocate (0.00s)
+=== RUN   TestAsymmetricMatchCapacity
+--- PASS: TestAsymmetricMatchCapacity (0.00s)
+=== RUN   TestEvidenceModificationDenied
+--- PASS: TestEvidenceModificationDenied (0.00s)
+=== RUN   TestFinanceGapsDoNotLeakToViewer
+--- PASS: TestFinanceGapsDoNotLeakToViewer (0.00s)
+=== RUN   TestProofBundleAssemblyAndConfidence
+--- PASS: TestProofBundleAssemblyAndConfidence (0.00s)
+=== RUN   TestCostServiceCRUDAndHandlers
+--- PASS: TestCostServiceCRUDAndHandlers (0.00s)
+=== RUN   TestProfitServiceHandlers
+--- PASS: TestProfitServiceHandlers (0.01s)
+=== RUN   TestSettlementServiceHandlers
+--- PASS: TestSettlementServiceHandlers (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/finance	1.241s
+=== RUN   TestSearchContextualModuleFilter
+--- PASS: TestSearchContextualModuleFilter (0.00s)
+=== RUN   TestStaleArticleDetection
+--- PASS: TestStaleArticleDetection (0.00s)
+=== RUN   TestHelpfulVotingUpdates
+--- PASS: TestHelpfulVotingUpdates (0.00s)
+=== RUN   TestKBAdminIsolation
+--- PASS: TestKBAdminIsolation (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/help	1.140s
+=== RUN   TestSixModeIdentitiesRetained
+=== RUN   TestSixModeIdentitiesRetained/Solo_Creator
+=== RUN   TestSixModeIdentitiesRetained/Seller
+=== RUN   TestSixModeIdentitiesRetained/Affiliate_Operator
+=== RUN   TestSixModeIdentitiesRetained/Live_Operator
+=== RUN   TestSixModeIdentitiesRetained/Agency_/_MCN
+=== RUN   TestSixModeIdentitiesRetained/Brand_Collaboration
+--- PASS: TestSixModeIdentitiesRetained (0.01s)
+    --- PASS: TestSixModeIdentitiesRetained/Solo_Creator (0.00s)
+    --- PASS: TestSixModeIdentitiesRetained/Seller (0.00s)
+    --- PASS: TestSixModeIdentitiesRetained/Affiliate_Operator (0.00s)
+    --- PASS: TestSixModeIdentitiesRetained/Live_Operator (0.00s)
+    --- PASS: TestSixModeIdentitiesRetained/Agency_/_MCN (0.00s)
+    --- PASS: TestSixModeIdentitiesRetained/Brand_Collaboration (0.00s)
+=== RUN   TestUnbuiltActionUnavailableWithExplanation
+--- PASS: TestUnbuiltActionUnavailableWithExplanation (0.00s)
+=== RUN   TestNoDemoDataInCustomerTotals
+--- PASS: TestNoDemoDataInCustomerTotals (0.00s)
+=== RUN   TestWhyThisNumberBreakdown
+--- PASS: TestWhyThisNumberBreakdown (0.00s)
+=== RUN   TestOnboardingChecklistProgress
+--- PASS: TestOnboardingChecklistProgress (0.00s)
+=== RUN   TestP105NoConnectorRequiredForAuthorizedImportAndDataRepair
+--- PASS: TestP105NoConnectorRequiredForAuthorizedImportAndDataRepair (0.00s)
+=== RUN   TestP105DSTAndTimezoneCannotDoubleDeliverMorningBrief
+--- PASS: TestP105DSTAndTimezoneCannotDoubleDeliverMorningBrief (0.02s)
+=== RUN   TestP105PilotMeasurementsRecordActualUnknowns
+--- PASS: TestP105PilotMeasurementsRecordActualUnknowns (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/home	1.191s
+=== RUN   TestAcceptanceTarget1_DuplicateIdeaWarnsWithoutSilentMerge
+--- PASS: TestAcceptanceTarget1_DuplicateIdeaWarnsWithoutSilentMerge (0.00s)
+=== RUN   TestAcceptanceTarget2_SourceLineageRetained
+--- PASS: TestAcceptanceTarget2_SourceLineageRetained (0.00s)
+=== RUN   TestAcceptanceTarget3_MobileTitleOnlyDraftWorks
+--- PASS: TestAcceptanceTarget3_MobileTitleOnlyDraftWorks (0.00s)
+=== RUN   TestStateMachineProgressionAndForbiddenSkips
+--- PASS: TestStateMachineProgressionAndForbiddenSkips (0.00s)
+=== RUN   TestConvertingIdeaWithoutRequiredFieldsFails
+--- PASS: TestConvertingIdeaWithoutRequiredFieldsFails (0.00s)
+=== RUN   TestAIGenerationRateLimiting
+--- PASS: TestAIGenerationRateLimiting (0.00s)
+=== RUN   TestConcurrentIdeaOperationsNoRace
+--- PASS: TestConcurrentIdeaOperationsNoRace (0.02s)
+=== RUN   TestMultiTenantIsolation
+--- PASS: TestMultiTenantIsolation (0.00s)
+=== RUN   TestRBACPermissionGating
+--- PASS: TestRBACPermissionGating (0.00s)
+=== RUN   TestP608_CrossDomainIdeaConversionsWithPermissionCheck
+--- PASS: TestP608_CrossDomainIdeaConversionsWithPermissionCheck (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/idea	1.165s
+=== RUN   TestSessionCheckerConfiguration
+--- PASS: TestSessionCheckerConfiguration (0.00s)
+=== RUN   TestFreshSessionStateAndRevocation
+=== RUN   TestFreshSessionStateAndRevocation/active
+=== RUN   TestFreshSessionStateAndRevocation/revoked
+=== RUN   TestFreshSessionStateAndRevocation/expired
+=== RUN   TestFreshSessionStateAndRevocation/foreign_user
+=== RUN   TestFreshSessionStateAndRevocation/other_session
+=== RUN   TestFreshSessionStateAndRevocation/expired_at
+=== RUN   TestFreshSessionStateAndRevocation/missing
+=== RUN   TestFreshSessionStateAndRevocation/upstream_503
+=== RUN   TestFreshSessionStateAndRevocation/broken_payload
+--- PASS: TestFreshSessionStateAndRevocation (0.09s)
+    --- PASS: TestFreshSessionStateAndRevocation/active (0.06s)
+    --- PASS: TestFreshSessionStateAndRevocation/revoked (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/expired (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/foreign_user (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/other_session (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/expired_at (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/missing (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/upstream_503 (0.00s)
+    --- PASS: TestFreshSessionStateAndRevocation/broken_payload (0.00s)
+=== RUN   TestSessionStatusRejectsInvalidIDAndCancellation
+--- PASS: TestSessionStatusRejectsInvalidIDAndCancellation (0.00s)
+=== RUN   TestUnknownKIDRefreshDoesNotBlockKnownValidToken
+--- PASS: TestUnknownKIDRefreshDoesNotBlockKnownValidToken (0.70s)
+=== RUN   TestExpiredJWKSOutageIsRateLimited
+--- PASS: TestExpiredJWKSOutageIsRateLimited (0.54s)
+=== RUN   TestClerkJWTVerifiedClaimsAndCache
+--- PASS: TestClerkJWTVerifiedClaimsAndCache (3.77s)
+=== RUN   TestClerkJWTRejectsUntrustedClaims
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_audience
+=== RUN   TestClerkJWTRejectsUntrustedClaims/wrong_azp
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_azp
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_subject
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_expiry
+=== RUN   TestClerkJWTRejectsUntrustedClaims/expired
+=== RUN   TestClerkJWTRejectsUntrustedClaims/issued_in_future
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_issued_at
+=== RUN   TestClerkJWTRejectsUntrustedClaims/not_yet_valid
+=== RUN   TestClerkJWTRejectsUntrustedClaims/bad_subject
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_session
+=== RUN   TestClerkJWTRejectsUntrustedClaims/missing_not_before
+=== RUN   TestClerkJWTRejectsUntrustedClaims/wrong_issuer
+=== RUN   TestClerkJWTRejectsUntrustedClaims/bad_session
+=== RUN   TestClerkJWTRejectsUntrustedClaims/wrong_audience
+--- PASS: TestClerkJWTRejectsUntrustedClaims (0.60s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_audience (0.08s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/wrong_azp (0.01s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_azp (0.01s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_subject (0.01s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_expiry (0.03s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/expired (0.01s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/issued_in_future (0.01s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_issued_at (0.01s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/not_yet_valid (0.01s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/bad_subject (0.01s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_session (0.01s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/missing_not_before (0.03s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/wrong_issuer (0.01s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/bad_session (0.01s)
+    --- PASS: TestClerkJWTRejectsUntrustedClaims/wrong_audience (0.01s)
+=== RUN   TestClerkJWTWrongSignatureNeverAccepted
+--- PASS: TestClerkJWTWrongSignatureNeverAccepted (1.37s)
+=== RUN   TestClerkJWTRotationAndStaleRejection
+--- PASS: TestClerkJWTRotationAndStaleRejection (1.78s)
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/missing_origins
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/http_issuer
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/missing_audience
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/ssrf_userinfo
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/arbitrary_path
+=== RUN   TestClerkJWTRejectsMalformedConfigsAndTokens/origin_http_insecure
+--- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens (0.26s)
+    --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/missing_origins (0.00s)
+    --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/http_issuer (0.00s)
+    --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/missing_audience (0.00s)
+    --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/ssrf_userinfo (0.00s)
+    --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/arbitrary_path (0.00s)
+    --- PASS: TestClerkJWTRejectsMalformedConfigsAndTokens/origin_http_insecure (0.00s)
+=== RUN   TestEndToEndJWTSessionMembershipOnConnect
+--- PASS: TestEndToEndJWTSessionMembershipOnConnect (0.30s)
+=== RUN   TestDiscoveryRequiresVerifiedSession
+--- PASS: TestDiscoveryRequiresVerifiedSession (0.00s)
+=== RUN   TestPostgresNonOwnerWorkspaceDiscovery
+    discovery_test.go:49: real PostgreSQL DSN is needed for discovery fixture
+--- SKIP: TestPostgresNonOwnerWorkspaceDiscovery (0.00s)
+=== RUN   TestPostgresMembershipUsesCurrentCanonicalState
+    membership_sql_test.go:19: set CREATIVANTA_TEST_POSTGRES_DSN to run real PostgreSQL integration
+--- SKIP: TestPostgresMembershipUsesCurrentCanonicalState (0.00s)
+=== RUN   TestMembershipMissingDBFailsClosed
+--- PASS: TestMembershipMissingDBFailsClosed (0.00s)
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/caller_supplied_user_id
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/workspace_settings_mutation
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/operator_mode_mutation
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/role_escalation
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/direct_completed_override
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/credit_reward_injection
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/unknown_field
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/step_zero
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/step_six
+=== RUN   TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/missing_idempotency_key
+--- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/caller_supplied_user_id (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/workspace_settings_mutation (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/operator_mode_mutation (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/role_escalation (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/direct_completed_override (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/credit_reward_injection (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/unknown_field (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/step_zero (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/step_six (0.00s)
+    --- PASS: TestDecodeCompleteOnboardingStrictRejectsPrivilegeAndWorkspaceMutations/missing_idempotency_key (0.00s)
+=== RUN   TestPersonalOnboardingCannotMutateWorkspaceSettingsOrOtherUsers
+--- PASS: TestPersonalOnboardingCannotMutateWorkspaceSettingsOrOtherUsers (0.00s)
+=== RUN   TestPostgresPersonalOnboardingCannotMutateWorkspaceSettings
+    onboarding_test.go:380: set CREATIVANTA_TEST_POSTGRES_DSN to run real PostgreSQL personal onboarding isolation tests
+--- SKIP: TestPostgresPersonalOnboardingCannotMutateWorkspaceSettings (0.00s)
+=== RUN   TestRecoveryRevokesAllActiveSessionsAndRejectsExpiredOrReplayedChallenge
+--- PASS: TestRecoveryRevokesAllActiveSessionsAndRejectsExpiredOrReplayedChallenge (0.00s)
+=== RUN   TestRecoveryAndLoginBruteForceLockoutAndMFATOTPPolicy
+--- PASS: TestRecoveryAndLoginBruteForceLockoutAndMFATOTPPolicy (0.00s)
+=== RUN   TestResolverFailsClosedWhenUnconfigured
+--- PASS: TestResolverFailsClosedWhenUnconfigured (0.00s)
+=== RUN   TestResolverDoesNotTrustUnverifiedToken
+--- PASS: TestResolverDoesNotTrustUnverifiedToken (0.00s)
+=== RUN   TestVerifiedTokenAloneCannotGrantWorkspaceAccess
+--- PASS: TestVerifiedTokenAloneCannotGrantWorkspaceAccess (0.00s)
+=== RUN   TestResolverRespectsCancelledContext
+--- PASS: TestResolverRespectsCancelledContext (0.00s)
+=== RUN   TestWorkspaceResolutionRequiresThreeIndependentProofs
+--- PASS: TestWorkspaceResolutionRequiresThreeIndependentProofs (0.00s)
+=== RUN   TestRevocationAndForeignWorkspaceDenied
+=== RUN   TestRevocationAndForeignWorkspaceDenied/revoked
+=== RUN   TestRevocationAndForeignWorkspaceDenied/foreign
+=== RUN   TestRevocationAndForeignWorkspaceDenied/removed
+=== RUN   TestRevocationAndForeignWorkspaceDenied/provider_down
+=== RUN   TestRevocationAndForeignWorkspaceDenied/member_down
+=== RUN   TestRevocationAndForeignWorkspaceDenied/no_sessions
+=== RUN   TestRevocationAndForeignWorkspaceDenied/no_member_db
+=== RUN   TestRevocationAndForeignWorkspaceDenied/invalid_workspace
+--- PASS: TestRevocationAndForeignWorkspaceDenied (0.01s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/revoked (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/foreign (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/removed (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/provider_down (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/member_down (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/no_sessions (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/no_member_db (0.00s)
+    --- PASS: TestRevocationAndForeignWorkspaceDenied/invalid_workspace (0.00s)
+=== RUN   TestWorkspaceResolverDoesNotProceedOnCancelledRequest
+--- PASS: TestWorkspaceResolverDoesNotProceedOnCancelledRequest (0.00s)
+=== RUN   TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles
+=== RUN   TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/verified_active_user
+=== RUN   TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/unverified_primary_email
+=== RUN   TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/banned_user
+=== RUN   TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/mismatched_user_id
+--- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles (0.02s)
+    --- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/verified_active_user (0.00s)
+    --- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/unverified_primary_email (0.00s)
+    --- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/banned_user (0.01s)
+    --- PASS: TestClerkUserDirectoryRejectsUnverifiedBannedOrMalformedProfiles/mismatched_user_id (0.00s)
+=== RUN   TestSyncVerifiedUserRequiresTokenSessionAndVerifiedProfile
+--- PASS: TestSyncVerifiedUserRequiresTokenSessionAndVerifiedProfile (0.00s)
+=== RUN   TestPostgresSynchronousUserUpsertSurvivesDelayedWebhook
+    user_sync_test.go:167: set CREATIVANTA_TEST_POSTGRES_DSN to run real PostgreSQL user sync test
+--- SKIP: TestPostgresSynchronousUserUpsertSurvivesDelayedWebhook (0.03s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/identity	10.598s
+=== RUN   TestAcceptanceTarget1_EveryLiveSourceHasAccessEvidence
+--- PASS: TestAcceptanceTarget1_EveryLiveSourceHasAccessEvidence (0.00s)
+=== RUN   TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks
+=== RUN   TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks/conversion_target_idea
+=== RUN   TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks/conversion_target_script
+=== RUN   TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks/conversion_target_campaign
+=== RUN   TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks/conversion_target_live_plan
+--- PASS: TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks (0.00s)
+    --- PASS: TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks/conversion_target_idea (0.00s)
+    --- PASS: TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks/conversion_target_script (0.00s)
+    --- PASS: TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks/conversion_target_campaign (0.00s)
+    --- PASS: TestAcceptanceTarget2_FutureConversionsRemainAssignedToLaterTasks/conversion_target_live_plan (0.00s)
+=== RUN   TestAcceptanceTarget3_EmptyDegradedAndAuditPaths
+--- PASS: TestAcceptanceTarget3_EmptyDegradedAndAuditPaths (0.00s)
+=== RUN   TestOperatingLoop_ZeroConnectorAuthorizedImportToOpportunity
+--- PASS: TestOperatingLoop_ZeroConnectorAuthorizedImportToOpportunity (0.00s)
+=== RUN   TestConcurrentIntelligenceOperationsNoRace
+--- PASS: TestConcurrentIntelligenceOperationsNoRace (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/intelligence	1.151s
+=== RUN   TestWorkspaceRoleCannotCallAdminListenerAndVPNMFAGate
+--- PASS: TestWorkspaceRoleCannotCallAdminListenerAndVPNMFAGate (0.03s)
+=== RUN   TestImpersonationIsStrictlyReadOnlyAndAutoExpiresAfter30Minutes
+--- PASS: TestImpersonationIsStrictlyReadOnlyAndAutoExpiresAfter30Minutes (0.04s)
+=== RUN   TestModerationRulesHardBlockSelfReviewGuardAndKillSwitchHaltsCapability
+--- PASS: TestModerationRulesHardBlockSelfReviewGuardAndKillSwitchHaltsCapability (0.03s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/internaladmin	1.257s
+=== RUN   TestI01_SimultaneousHoldsOneUnit
+--- PASS: TestI01_SimultaneousHoldsOneUnit (0.00s)
+=== RUN   TestI02_FulfillHeldOrderReplayIdempotency
+--- PASS: TestI02_FulfillHeldOrderReplayIdempotency (0.00s)
+=== RUN   TestI03_BundleFailedLineLeavesNoPartialHolds
+--- PASS: TestI03_BundleFailedLineLeavesNoPartialHolds (0.00s)
+=== RUN   TestI04_OpeningCountBaselineProtectsHistoricalOrder
+--- PASS: TestI04_OpeningCountBaselineProtectsHistoricalOrder (0.00s)
+=== RUN   TestI05_PhysicalReturnReplayAndRefundSeparation
+--- PASS: TestI05_PhysicalReturnReplayAndRefundSeparation (0.00s)
+=== RUN   TestI06_ExpiryRacesPaymentConfirmation
+--- PASS: TestI06_ExpiryRacesPaymentConfirmation (0.00s)
+=== RUN   TestI07_CrossTenantIsolation
+--- PASS: TestI07_CrossTenantIsolation (0.00s)
+=== RUN   TestI08_ExternalCorrectionDrivesStockBelowReservations
+--- PASS: TestI08_ExternalCorrectionDrivesStockBelowReservations (0.00s)
+=== RUN   TestI09_ReconcileLedgerAndBalanceIntegrity
+--- PASS: TestI09_ReconcileLedgerAndBalanceIntegrity (0.00s)
+=== RUN   TestI10_PolledAbsoluteCountTwiceNoOp
+--- PASS: TestI10_PolledAbsoluteCountTwiceNoOp (0.00s)
+=== RUN   TestPostgresLiveInventoryStore
+    inventory_postgres_test.go:18: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL inventory suite executes in CI
+--- SKIP: TestPostgresLiveInventoryStore (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/inventory	1.153s
+=== RUN   TestFailClosedAndProductionReadiness
+--- PASS: TestFailClosedAndProductionReadiness (0.00s)
+=== RUN   TestInviterRBACHierarchyAndNoOwnerGrant
+--- PASS: TestInviterRBACHierarchyAndNoOwnerGrant (0.04s)
+=== RUN   TestVerifiedClerkIdentityAndNewVsExistingFlows
+--- PASS: TestVerifiedClerkIdentityAndNewVsExistingFlows (0.01s)
+=== RUN   TestNoRoleSelfElevationAndInviterRevocation
+--- PASS: TestNoRoleSelfElevationAndInviterRevocation (0.00s)
+=== RUN   TestSevenDayExpiryAndInvalidRevokedDeclinedResendFlows
+--- PASS: TestSevenDayExpiryAndInvalidRevokedDeclinedResendFlows (0.01s)
+=== RUN   TestCrossTenantIsolation
+--- PASS: TestCrossTenantIsolation (0.01s)
+=== RUN   TestIdempotencyRecoveryWebhookReconciliationAndConcurrency
+--- PASS: TestIdempotencyRecoveryWebhookReconciliationAndConcurrency (0.02s)
+=== RUN   TestPartialFailureRecoveryAfterProviderAccept
+--- PASS: TestPartialFailureRecoveryAfterProviderAccept (0.01s)
+=== RUN   TestEdgeValidationUnconfiguredAdaptersAndWebhookBranches
+--- PASS: TestEdgeValidationUnconfiguredAdaptersAndWebhookBranches (0.01s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/invitations	1.207s
+=== RUN   TestLiveCommerceHandler_FullLifecycle
+--- PASS: TestLiveCommerceHandler_FullLifecycle (0.04s)
+=== RUN   TestLiveCommerceHandler_NegativePaths
+--- PASS: TestLiveCommerceHandler_NegativePaths (0.00s)
+=== RUN   TestPostgresLiveCommerceWarRoomAndHighlights
+    livecommerce_postgres_test.go:48: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL M17 livecommerce suite executes in CI
+--- SKIP: TestPostgresLiveCommerceWarRoomAndHighlights (0.00s)
+=== RUN   TestReconnectDoesNotDuplicateCommands
+--- PASS: TestReconnectDoesNotDuplicateCommands (0.01s)
+=== RUN   TestM07ExtractsAndM09RegistersClips
+--- PASS: TestM07ExtractsAndM09RegistersClips (0.01s)
+=== RUN   TestRevenueTraceableAndLabeled
+--- PASS: TestRevenueTraceableAndLabeled (0.00s)
+=== RUN   TestLifecycleTransitionsAndTenantIsolation
+--- PASS: TestLifecycleTransitionsAndTenantIsolation (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/livecommerce	1.232s

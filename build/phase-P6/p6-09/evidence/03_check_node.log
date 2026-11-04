@@ -1,0 +1,40 @@
+=== Web & Admin Frontend Quality Gate ===
+Detected Node: 24.21.0, pnpm: 10.34.9
+Installing dependencies with frozen lockfile...
+Scope: all 4 workspace projects
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 0, reused 1, downloaded 0, added 0
+Progress: resolved 0, reused 21, downloaded 0, added 0
+Packages: -71
+-----------------------------------------------------------------------
+Progress: resolved 0, reused 71, downloaded 0, added 0, done
+
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: browser-tabs-lock@1.3.0, core-js@3.47.0,            │
+│   esbuild@0.25.12.                                                           │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Done in 5.8s using pnpm v10.34.9
+
+   ╭──────────────────────────────────────────────────────────────────────╮
+   │                                                                      │
+   │                 Update available! 10.34.9 → 12.16.1.                 │
+   │                 Changelog: https://pnpm.io/v/12.16.1                 │
+   │   To update, run: curl -fsSL https://get.pnpm.io/install.sh | sh -   │
+   │                                                                      │
+   ╰──────────────────────────────────────────────────────────────────────╯
+
+--- Testing apps/web ---
+Running pnpm --dir apps/web check...
+
+> @creativanta/web@0.1.0 check /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p6-09/apps/web
+> svelte-kit sync && svelte-check --tsconfig ./tsconfig.json
+
+
+====================================
+Loading svelte-check in workspace: /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p6-09/apps/web
+Getting Svelte diagnostics...
+

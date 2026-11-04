@@ -1,0 +1,161 @@
+{
+  "task_id": "P6-09",
+  "phase": "P6",
+  "slice": "p6-09",
+  "title": "Commerce acceptance across web/mobile",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "7782d3acb849599fcf5daa3ddbf810cfad45f3d9",
+  "feature_refs": [
+    "docs/02_features/intelligence/opportunity_board.md",
+    "docs/02_features/content/idea_engine.md",
+    "docs/02_features/production/asset_derivatives.md",
+    "docs/02_features/engagement/unified_inbox.md",
+    "docs/02_features/commerce/product_hub.md",
+    "docs/02_features/commerce/monetization_os.md",
+    "docs/02_features/commerce/creator_store.md",
+    "docs/02_features/commerce/affiliate_network.md",
+    "docs/02_features/commerce/live_war_room.md",
+    "docs/02_features/commerce/seeding_crm.md",
+    "docs/02_features/commerce/creator_pro_tools.md",
+    "docs/04_contracts/financial_computation_contract.md",
+    "docs/04_contracts/inventory_computation_contract.md",
+    "docs/04_contracts/connector_specs.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md"
+  ],
+  "requirement_ids": [
+    "RULE-M13-001",
+    "RULE-M13-002",
+    "RULE-M13-003",
+    "RULE-M13-004",
+    "RULE-M13-005",
+    "RULE-M13-006",
+    "RULE-M14-001",
+    "RULE-M14-002",
+    "RULE-M14-003",
+    "RULE-M14-004",
+    "RULE-M14-005",
+    "RULE-M15-001",
+    "RULE-M15-002",
+    "RULE-M15-003",
+    "RULE-M15-005",
+    "RULE-M16-001",
+    "RULE-M16-002",
+    "RULE-M16-003",
+    "RULE-M16-004",
+    "RULE-M17-001",
+    "RULE-M17-002",
+    "RULE-M17-003",
+    "RULE-M17-004",
+    "RULE-M18-001",
+    "RULE-M18-002",
+    "RULE-M18-003",
+    "RULE-M18-004",
+    "RULE-M18-005",
+    "RULE-S16-004",
+    "RULE-S16-005",
+    "RULE-S16-008",
+    "RULE-S16-009",
+    "RULE-S16-010"
+  ],
+  "source_files": {
+    "apps/api/internal/commerceacceptance/types.go": "35a821f8562274c69db6ee563e434c6e03dc4883ba850c380032d49d2fb9b0f5",
+    "apps/api/internal/commerceacceptance/shipping.go": "65fbf86fa13dbfd29e7389fd969ed07871348fefeb30159e13972a8c15506e30",
+    "apps/api/internal/commerceacceptance/service.go": "7718bcb8b6ee3fc9fc0784297304b3693c3020a1c2f7dfaa916e0e173098236d",
+    "apps/api/internal/commerceacceptance/service_test.go": "00eabbd09f87c4f53a4fe265f3b91103638dd329ea8eb828c387863a41ce5ac5",
+    "apps/web/src/lib/commerce/commerce_acceptance.ts": "ac0c780e420bab6ce83d77f08ecb765b28549dc58acfd3d9e10d88b4ee8c279a",
+    "apps/web/src/lib/commerce/commerce_acceptance.test.ts": "b01ac8be78714c475395b6170522692ab1624c17e910cd9677c9f3f241b7797b",
+    "apps/web/src/lib/commerce/index.ts": "78153392fa6abfe7829c0138de47786006279f4310ecf833f65913944ee80434",
+    "apps/web/src/routes/kinh-doanh/+page.svelte": "070fe5d8e2937d37f6279963a3465377a67637924669b2387d20774918ea51da",
+    "apps/mobile/lib/commerce/commerce_hub_models.dart": "049b75678ac366d8661a9ecfbaec8920dd5bd15616fda3aeef8ce4a0ff66d03d",
+    "apps/mobile/lib/ui/commerce/commerce_dashboard_view.dart": "3f5057a0bfba51b2d61333642b36237d1e718f305227c85b277a8e1068f5d903",
+    "apps/mobile/test/commerce_acceptance_test.dart": "8f4b2247f5ea614f283bc98da0239ef0301629befdc13e6fefc5f1d4755f1158"
+  },
+  "scope_items": [
+    "Acceptance Target 1 (No function lost between modules): Verified bidirectional cross-domain connectivity across all 11 P6 modules (M04 Opportunity Board, M05 Idea Engine, M09 Asset Derivatives, M12 Unified Inbox, M13 Product Hub, M14 Monetization OS, M15 Creator Store, M16 Affiliate Network, M17 Live War Room, M18 Seeding CRM, S16 Creator Pro Tools) and the M19 Operating Ledger. Invariants enforced: zero orphaned targets, conversion lineage tracking, bundle multi-SKU stock checks, live highlight clip extraction into derivatives, and ledger posting reconciliation.",
+    "Acceptance Target 2 (Partial/unreconciled outcomes visible): Implemented truthful disclosure and operational repair workflows for all partial and unverified commerce states per PRD §15.1 and BIZ-010. Order partial refunds (partially_refunded) preserve captured amount bounds and independent physical return states (RULE-M13-006). Inventory stock movement discrepancies surface as unreconciled with mandatory audit reasons for adjustment (EC-M13-004). Seeding samples delivered without verified proof are tracked as pending_outcome with estimated source class (RULE-M18-002), never fake revenue. Unmatched affiliate statements and disputed brand deals remain visible until audited resolution.",
+    "Acceptance Target 3 (Actual provider/payment/shipping gate evidence): Verified payment adapters (Stripe, TikTok Shop, Shopee, Lazada) with HMAC-SHA256 signature verification, webhook replay deduplication, and late payment recovery under concurrent race conditions. Built SEA shipping carrier logistics adapter (GHN, GHTK) tracking states (created -> in_transit -> out_for_delivery -> delivered), signature verification, and ledger cost posting. Honestly recorded external gates (EXT-GATE-PAYMENT-STRIPE-LIVE, EXT-GATE-PLATFORM-TIKTOK-PARTNER, EXT-GATE-SHIPPING-CARRIER-API, EXT-GATE-POSTGRES-LIVE-RLS).",
+    "Web Commerce Hub Execution: Transformed /kinh-doanh into an interactive P6 Commerce Operating Hub with 4 tabs (Overview & 11 Modules, Unreconciled Items & Operational Repairs, Provider & Shipping Gates, and Preserved P1-05 CSV Import). All 40 web test files and 338 tests pass.",
+    "Mobile Commerce Dashboard Execution: Built CommerceDashboardView in apps/mobile with 3 tabs, interactive operational repair modal requiring audit reasons, SEA shipping tracking, and provider gates. All 274 Flutter unit and widget tests pass with zero analyzer warnings."
+  ],
+  "verified_sub_slices": [
+    "Go Backend Commerce Acceptance Suite: apps/api/internal/commerceacceptance unit tests, operational repair tests, shipping carrier HMAC tests, and concurrency race tests pass with -race (0.035s).",
+    "Go Backend Full Suite: All internal packages (internal/product, internal/inventory, internal/order, internal/monetization, internal/store, internal/affiliate, internal/livecommerce, internal/creatorpro, internal/seeding, internal/conversion, internal/commerceadapter, internal/finance) pass with -race.",
+    "Web SvelteKit Suite: svelte-check passes with 0 errors and 0 warnings. vite build completes production SSR bundle. vitest passes 40 test files and 338 tests including commerce_acceptance.test.ts. Real SSR smoke passes across all routes including /kinh-doanh.",
+    "Mobile Flutter Suite: flutter analyze reports 0 issues with --fatal-infos and --fatal-warnings. flutter test passes all 274 tests including commerce_acceptance_test.dart.",
+    "Documentation Invariants: check_d0.sh passes with 337 active markdown files, 165 tables, 140 tenant tables, 1188 rpc bindings, and 60 build tasks. check_entrypoints.sh verifies worker, outbox, and migrate fail closed."
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-PAYMENT-STRIPE-LIVE",
+      "PENDING_PRODUCTION_KEY",
+      "Live Stripe card processing and Webhook signature verification operates under local deterministic adapter. Live production requires production Stripe webhook secret."
+    ],
+    [
+      "EXT-GATE-PLATFORM-TIKTOK-PARTNER",
+      "PENDING_EXTERNAL_PROVIDER_APPROVAL",
+      "TikTok Shop Open API partner app keys require platform partner onboarding sign-off. Local HMAC-SHA256 signature verification and payload mappers verified."
+    ],
+    [
+      "EXT-GATE-SHIPPING-CARRIER-API",
+      "PENDING_CARRIER_PRODUCTION_KEY",
+      "Live carrier API calls to GHN/GHTK require production API tokens. Local webhook signature verification, state progression and cost posting verified."
+    ],
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "Multi-tenant PostgreSQL RLS policies and table grants verified via Goose migrator suite; executes in live GitHub CI cluster."
+    ]
+  ],
+  "checks": [
+    {
+      "command": "bash tooling/ci/check_d0.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P6/p6-09/evidence/01_check_d0.log",
+      "checked_at": "2026-11-04T11:10:20Z"
+    },
+    {
+      "command": "bash tooling/ci/check_go.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P6/p6-09/evidence/02_check_go.log",
+      "checked_at": "2026-11-04T11:10:35Z"
+    },
+    {
+      "command": "bash tooling/ci/check_node.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P6/p6-09/evidence/03_check_node.log",
+      "checked_at": "2026-11-04T11:10:48Z"
+    },
+    {
+      "command": "bash tooling/ci/check_flutter.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P6/p6-09/evidence/04_check_flutter.log",
+      "checked_at": "2026-11-04T11:11:02Z"
+    },
+    {
+      "command": "bash tooling/ci/check_entrypoints.sh",
+      "exit_code": 0,
+      "evidence_path": "build/phase-P6/p6-09/evidence/05_check_entrypoints.log",
+      "checked_at": "2026-11-04T11:11:10Z"
+    }
+  ],
+  "remaining_scope": [
+    {
+      "source": "docs/00_index/IMPLEMENTATION_ORDER.md",
+      "heading": "P7 Autonomous Workflows & Developer Extension",
+      "target_task": "P7-01",
+      "note": "Workflow Studio canvas model, trigger nodes, and owned workflow runtime baseline (M20)."
+    },
+    {
+      "source": "docs/02_features/commerce/creator_pro_tools.md",
+      "heading": "S16 §12 Retained Expansion - Brand Collaboration Workspace",
+      "target_task": "P8-01",
+      "note": "Kanban CRM, contract templates, and opt-in brand discovery retained for Phase P8."
+    }
+  ],
+  "notes": "P6-09 Commerce acceptance across web/mobile is fully implemented and locally verified across Go backend, SvelteKit web, and Flutter mobile. All three Acceptance Targets are satisfied: 1) Zero function lost between modules across the entire 11-module creator commerce loop; 2) Partial and unreconciled outcomes (partial refunds, returns without refunds, stock discrepancies, pending seeding proof, unmatched statements, disputed deals) are clearly visible with source_class and confidence scores, and support audited operational repair; 3) Actual provider, payment, and shipping gate evidence is verified with HMAC signatures, replay deduplication, and honest external gate disclosures."
+}
