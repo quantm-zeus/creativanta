@@ -1,0 +1,720 @@
+syntax = "proto3";
+
+package creativanta.engagement.v1;
+
+import "google/protobuf/timestamp.proto";
+import "creativanta/common/v1/types.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/engagement/v1;engagementv1";
+
+// ThreadType represents the origin kind of an engagement thread.
+enum ThreadType {
+  THREAD_TYPE_UNSPECIFIED = 0;
+  THREAD_TYPE_COMMENT = 1;
+  THREAD_TYPE_DM = 2;
+  THREAD_TYPE_INQUIRY = 3;
+  THREAD_TYPE_SPONSOR_INQUIRY = 4;
+  THREAD_TYPE_SAMPLE_REQUEST = 5;
+  THREAD_TYPE_SUPPORT = 6;
+}
+
+// ThreadStatus matches database_schema.md §9.2 chk_threads_status.
+enum ThreadStatus {
+  THREAD_STATUS_UNSPECIFIED = 0;
+  THREAD_STATUS_NEW = 1;
+  THREAD_STATUS_TRIAGED = 2;
+  THREAD_STATUS_ACTIVE = 3;
+  THREAD_STATUS_WAITING_ON_USER = 4;
+  THREAD_STATUS_WAITING_ON_TEAM = 5;
+  THREAD_STATUS_SNOOZED = 6;
+  THREAD_STATUS_STALE = 7;
+  THREAD_STATUS_CONVERTED_TO_TASK = 8;
+  THREAD_STATUS_RESOLVED = 9;
+  THREAD_STATUS_ARCHIVED = 10;
+}
+
+// ThreadPriority represents priority level.
+enum ThreadPriority {
+  THREAD_PRIORITY_UNSPECIFIED = 0;
+  THREAD_PRIORITY_LOW = 1;
+  THREAD_PRIORITY_NORMAL = 2;
+  THREAD_PRIORITY_HIGH = 3;
+  THREAD_PRIORITY_URGENT = 4;
+}
+
+// ThreadIntent matches database_schema.md §9.2 intent enum.
+enum ThreadIntent {
+  THREAD_INTENT_UNSPECIFIED = 0;
+  THREAD_INTENT_QUESTION = 1;
+  THREAD_INTENT_PURCHASE_INTEREST = 2;
+  THREAD_INTENT_SUPPORT_ISSUE = 3;
+  THREAD_INTENT_OBJECTION = 4;
+  THREAD_INTENT_SPONSOR_INTEREST = 5;
+  THREAD_INTENT_SAMPLE_REQUEST = 6;
+  THREAD_INTENT_MODERATION_RISK = 7;
+  THREAD_INTENT_UNKNOWN = 8;
+}
+
+// MessageSubtype matches database_schema.md §9.3 subtype.
+enum MessageSubtype {
+  MESSAGE_SUBTYPE_UNSPECIFIED = 0;
+  MESSAGE_SUBTYPE_COMMENT = 1;
+  MESSAGE_SUBTYPE_DM = 2;
+  MESSAGE_SUBTYPE_INQUIRY = 3;
+  MESSAGE_SUBTYPE_REPLY = 4;
+  MESSAGE_SUBTYPE_SYSTEM = 5;
+}
+
+// AuthorDirection matches database_schema.md §9.3 author_direction.
+enum AuthorDirection {
+  AUTHOR_DIRECTION_UNSPECIFIED = 0;
+  AUTHOR_DIRECTION_INBOUND = 1;
+  AUTHOR_DIRECTION_OUTBOUND = 2;
+  AUTHOR_DIRECTION_SYSTEM = 3;
+}
+
+// GhostStatus represents platform deletion/restriction state (Alternate Flow A4).
+enum GhostStatus {
+  GHOST_STATUS_UNSPECIFIED = 0;
+  GHOST_STATUS_NONE = 1;
+  GHOST_STATUS_DELETED_BY_USER = 2;
+  GHOST_STATUS_RESTRICTED_BY_PLATFORM = 3;
+  GHOST_STATUS_PERMANENTLY_REMOVED = 4;
+}
+
+// ThrottleMode represents viral surge ingestion mode (RULE-M12-007).
+enum ThrottleMode {
+  THROTTLE_MODE_UNSPECIFIED = 0;
+  THROTTLE_MODE_NORMAL = 1;
+  THROTTLE_MODE_THROTTLED = 2;
+  THROTTLE_MODE_CIRCUIT_BREAKER = 3;
+}
+
+// FollowUpTaskStatus matches database_schema.md §9.4 status.
+enum FollowUpTaskStatus {
+  FOLLOW_UP_TASK_STATUS_UNSPECIFIED = 0;
+  FOLLOW_UP_TASK_STATUS_OPEN = 1;
+  FOLLOW_UP_TASK_STATUS_IN_PROGRESS = 2;
+  FOLLOW_UP_TASK_STATUS_BLOCKED = 3;
+  FOLLOW_UP_TASK_STATUS_COMPLETED = 4;
+  FOLLOW_UP_TASK_STATUS_CANCELLED = 5;
+}
+
+// EntityType matches database_schema.md §9.1 entity_type.
+enum EntityType {
+  ENTITY_TYPE_UNSPECIFIED = 0;
+  ENTITY_TYPE_PERSON = 1;
+  ENTITY_TYPE_BRAND = 2;
+  ENTITY_TYPE_BOT = 3;
+  ENTITY_TYPE_UNKNOWN = 4;
+}
+
+// EntityRelationshipState matches database_schema.md §9.1 relationship_state.
+enum EntityRelationshipState {
+  ENTITY_RELATIONSHIP_STATE_UNSPECIFIED = 0;
+  ENTITY_RELATIONSHIP_STATE_LEAD = 1;
+  ENTITY_RELATIONSHIP_STATE_CUSTOMER = 2;
+  ENTITY_RELATIONSHIP_STATE_CREATOR = 3;
+  ENTITY_RELATIONSHIP_STATE_PARTNER = 4;
+  ENTITY_RELATIONSHIP_STATE_SPONSOR = 5;
+}
+
+// RelatedObjectRef links a thread to downstream business objects (RULE-M12-005).
+message RelatedObjectRef {
+  string type = 1;
+  string id = 2;
+  string label = 3;
+}
+
+// ReplyIdentity represents the color-coded sender badge in multi-account compose (RULE-M12-006).
+message ReplyIdentity {
+  string account_id = 1;
+  string platform = 2;
+  string account_name = 3;
+  string avatar_url = 4;
+  string badge_color = 5;
+  bool is_revoked = 6;
+}
+
+// Thread represents the canonical engagement thread operating object (database_schema.md §9.2).
+message Thread {
+  string thread_id = 1;
+  string workspace_id = 2;
+  ThreadType thread_type = 3;
+  string entity_id = 4;
+  string source_platform = 5;
+  string source_post_id = 6;
+  string owner_user_id = 7;
+  ThreadIntent intent = 8;
+  ThreadPriority priority = 9;
+  ThreadStatus status = 10;
+  string next_action = 11;
+  google.protobuf.Timestamp sla_due_at = 12;
+  repeated RelatedObjectRef related_object_refs = 13;
+  google.protobuf.Timestamp last_activity_at = 14;
+  int32 message_count = 15;
+  google.protobuf.Timestamp created_at = 16;
+  google.protobuf.Timestamp updated_at = 17;
+
+  google.protobuf.Timestamp messaging_window_expires_at = 18;
+  bool messaging_window_expired = 19;
+  bool auto_reply_paused = 20;
+  int32 auto_reply_consecutive_count = 21;
+  int32 auto_reply_hour_count = 22;
+  bool auto_reply_permanently_disabled = 23;
+  bool is_ghost = 24;
+  GhostStatus ghost_status = 25;
+  ThrottleMode throttle_state = 26;
+  string connected_account_id = 27;
+  bool account_revoked = 28;
+  ReplyIdentity reply_identity = 29;
+}
+
+// Message represents an individual comment, DM, or system note (database_schema.md §9.3).
+message Message {
+  string message_id = 1;
+  string workspace_id = 2;
+  string thread_id = 3;
+  MessageSubtype subtype = 4;
+  string source_platform = 5;
+  string body = 6;
+  AuthorDirection author_direction = 7;
+  string author_entity_id = 8;
+  string author_user_id = 9;
+  string moderation_state = 10;
+  string intent_overlay = 11;
+  repeated string attachments = 12;
+  string external_message_id = 13;
+  google.protobuf.Timestamp created_at = 14;
+}
+
+// Entity represents a contact or actor across platforms (database_schema.md §9.1).
+message Entity {
+  string entity_id = 1;
+  string workspace_id = 2;
+  EntityType entity_type = 3;
+  string display_name = 4;
+  repeated string platform_handles_json = 5;
+  EntityRelationshipState relationship_state = 6;
+  repeated string tags = 7;
+  string metadata_json = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// FollowUpTask represents a thread-linked task (database_schema.md §9.4).
+message FollowUpTask {
+  string task_id = 1;
+  string workspace_id = 2;
+  string source_thread_id = 3;
+  string source_object_type = 4;
+  string source_object_id = 5;
+  string assigned_user_id = 6;
+  string task_type = 7;
+  string title = 8;
+  string description = 9;
+  google.protobuf.Timestamp due_at = 10;
+  FollowUpTaskStatus status = 11;
+  string outcome_summary = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+}
+
+// EngagementThrottleStatus represents viral surge state (RULE-M12-007).
+message EngagementThrottleStatus {
+  string workspace_id = 1;
+  int32 current_rate_per_min = 2;
+  ThrottleMode throttle_mode = 3;
+  int32 unprocessed_raw_count = 4;
+  google.protobuf.Timestamp last_surge_at = 5;
+  string user_notice = 6;
+  bool requires_manual_batch_trigger = 7;
+}
+
+// SuggestedReply represents AI reply suggestion.
+message SuggestedReply {
+  string suggestion_id = 1;
+  string reply_text = 2;
+  double confidence = 3;
+  string tone = 4;
+}
+
+// SuggestedAction represents AI commercial or workflow suggestion.
+message SuggestedAction {
+  string action_type = 1;
+  string title = 2;
+  string description = 3;
+  string target_module = 4;
+}
+
+// ============================================================================
+// ThreadService Messages
+// ============================================================================
+
+message ThreadServiceListRequest {
+  string workspace_id = 1;
+  ThreadStatus status = 2;
+  ThreadPriority priority = 3;
+  ThreadIntent intent = 4;
+  string source_platform = 5;
+  string owner_user_id = 6;
+  bool sla_breached_only = 7;
+  creativanta.common.v1.Pagination pagination = 8;
+}
+
+message ThreadServiceListResponse {
+  repeated Thread threads = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message ThreadServiceGetRequest {
+  string workspace_id = 1;
+  string thread_id = 2;
+}
+
+message ThreadServiceGetResponse {
+  Thread thread = 1;
+  repeated Message messages = 2;
+  Entity entity = 3;
+  repeated FollowUpTask follow_up_tasks = 4;
+}
+
+message ThreadServiceTriageRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string thread_id = 3;
+  ThreadIntent intent = 4;
+  ThreadPriority priority = 5;
+  string next_action = 6;
+  string owner_user_id = 7;
+  google.protobuf.Timestamp sla_due_at = 8;
+}
+
+message ThreadServiceTriageResponse {
+  Thread thread = 1;
+}
+
+message ThreadServiceAssignRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string thread_id = 3;
+  string owner_user_id = 4;
+}
+
+message ThreadServiceAssignResponse {
+  Thread thread = 1;
+}
+
+message ThreadServiceReplyRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string thread_id = 3;
+  string body = 4;
+  repeated string attachments = 5;
+  string suggestion_id = 6;
+  string target_account_id = 7;
+  bool is_auto_reply = 8;
+}
+
+message ThreadServiceReplyResponse {
+  Message message = 1;
+  Thread thread = 2;
+}
+
+message ThreadServiceResolveRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string thread_id = 3;
+  string outcome_summary = 4;
+}
+
+message ThreadServiceResolveResponse {
+  Thread thread = 1;
+}
+
+message ThreadServiceBulkTriageRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  repeated string thread_ids = 3;
+  ThreadIntent intent = 4;
+  ThreadPriority priority = 5;
+  string owner_user_id = 6;
+  string next_action = 7;
+  ThreadStatus target_status = 8;
+}
+
+message ThreadServiceBulkTriageResponse {
+  int32 triaged_count = 1;
+  repeated Thread threads = 2;
+}
+
+message ThreadServiceGetMessagesRequest {
+  string workspace_id = 1;
+  string thread_id = 2;
+  creativanta.common.v1.Pagination pagination = 3;
+}
+
+message ThreadServiceGetMessagesResponse {
+  repeated Message messages = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message ThreadServiceGetUnreadCountRequest {
+  string workspace_id = 1;
+  string owner_user_id = 2;
+}
+
+message ThreadServiceGetUnreadCountResponse {
+  int32 unread_count = 1;
+  int32 sla_breached_count = 2;
+}
+
+message ThreadServiceMarkReadRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string thread_id = 3;
+}
+
+message ThreadServiceMarkReadResponse {
+  bool success = 1;
+}
+
+message ThreadServiceUpdateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string thread_id = 3;
+  string next_action = 4;
+  ThreadPriority priority = 5;
+  ThreadIntent intent = 6;
+}
+
+message ThreadServiceUpdateResponse {
+  Thread thread = 1;
+}
+
+message ThreadServiceAddTagRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string thread_id = 3;
+  string tag = 4;
+}
+
+message ThreadServiceAddTagResponse {
+  Thread thread = 1;
+}
+
+message ThreadServiceMuteRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string thread_id = 3;
+}
+
+message ThreadServiceMuteResponse {
+  bool muted = 1;
+}
+
+message ThreadServiceSnoozeRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string thread_id = 3;
+  google.protobuf.Timestamp wake_at = 4;
+}
+
+message ThreadServiceSnoozeResponse {
+  Thread thread = 1;
+}
+
+message ThreadServiceListMobileRequest {
+  string workspace_id = 1;
+  string owner_user_id = 2;
+  ThreadStatus status = 3;
+  creativanta.common.v1.Pagination pagination = 4;
+}
+
+message ThreadServiceListMobileResponse {
+  repeated Thread threads = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message ThreadServiceHandleGhostMessageRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string thread_id = 3;
+  int32 platform_http_code = 4;
+  string error_message = 5;
+}
+
+message ThreadServiceHandleGhostMessageResponse {
+  Thread thread = 1;
+  bool is_stale = 2;
+  bool compose_disabled = 3;
+  string user_explanation = 4;
+}
+
+message ThreadServiceResetAutoReplyLoopRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string thread_id = 3;
+}
+
+message ThreadServiceResetAutoReplyLoopResponse {
+  Thread thread = 1;
+  bool auto_reply_active = 2;
+}
+
+// ============================================================================
+// EntityService Messages
+// ============================================================================
+
+message EntityServiceListRequest {
+  string workspace_id = 1;
+  EntityType entity_type = 2;
+  EntityRelationshipState relationship_state = 3;
+  string search_query = 4;
+  creativanta.common.v1.Pagination pagination = 5;
+}
+
+message EntityServiceListResponse {
+  repeated Entity entities = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message EntityServiceGetRequest {
+  string workspace_id = 1;
+  string entity_id = 2;
+}
+
+message EntityServiceGetResponse {
+  Entity entity = 1;
+  repeated Thread threads = 2;
+}
+
+message EntityServiceCreateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  EntityType entity_type = 3;
+  string display_name = 4;
+  EntityRelationshipState relationship_state = 5;
+  repeated string platform_handles_json = 6;
+  repeated string tags = 7;
+}
+
+message EntityServiceCreateResponse {
+  Entity entity = 1;
+}
+
+message EntityServiceMergeRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string primary_entity_id = 3;
+  repeated string secondary_entity_ids = 4;
+}
+
+message EntityServiceMergeResponse {
+  Entity merged_entity = 1;
+  int32 threads_reassigned = 2;
+}
+
+message EntityServiceAddNoteRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string entity_id = 3;
+  string note = 4;
+}
+
+message EntityServiceAddNoteResponse {
+  Entity entity = 1;
+}
+
+message EntityServiceAddTagRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string entity_id = 3;
+  string tag = 4;
+}
+
+message EntityServiceAddTagResponse {
+  Entity entity = 1;
+}
+
+// ============================================================================
+// SuggestionService Messages
+// ============================================================================
+
+message SuggestionServiceGetReplyRequest {
+  string workspace_id = 1;
+  string thread_id = 2;
+  string tone = 3;
+}
+
+message SuggestionServiceGetReplyResponse {
+  repeated SuggestedReply suggestions = 1;
+}
+
+message SuggestionServiceGetActionsRequest {
+  string workspace_id = 1;
+  string thread_id = 2;
+}
+
+message SuggestionServiceGetActionsResponse {
+  repeated SuggestedAction actions = 1;
+}
+
+// ============================================================================
+// FollowUpService Messages
+// ============================================================================
+
+message FollowUpServiceCreateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string source_thread_id = 3;
+  string task_type = 4;
+  string title = 5;
+  string description = 6;
+  google.protobuf.Timestamp due_at = 7;
+  string assigned_user_id = 8;
+}
+
+message FollowUpServiceCreateResponse {
+  FollowUpTask task = 1;
+}
+
+message FollowUpServiceListRequest {
+  string workspace_id = 1;
+  string assigned_user_id = 2;
+  FollowUpTaskStatus status = 3;
+  creativanta.common.v1.Pagination pagination = 4;
+}
+
+message FollowUpServiceListResponse {
+  repeated FollowUpTask tasks = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message FollowUpServiceUpdateRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string task_id = 3;
+  FollowUpTaskStatus status = 4;
+  string outcome_summary = 5;
+}
+
+message FollowUpServiceUpdateResponse {
+  FollowUpTask task = 1;
+}
+
+message FollowUpServiceCompleteRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string task_id = 3;
+  string outcome_summary = 4;
+}
+
+message FollowUpServiceCompleteResponse {
+  FollowUpTask task = 1;
+}
+
+message FollowUpServiceRescheduleRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string task_id = 3;
+  google.protobuf.Timestamp new_due_at = 4;
+}
+
+message FollowUpServiceRescheduleResponse {
+  FollowUpTask task = 1;
+}
+
+// ============================================================================
+// EngagementProtectionService Messages
+// ============================================================================
+
+message EngagementProtectionServiceGetThrottleStatusRequest {
+  string workspace_id = 1;
+}
+
+message EngagementProtectionServiceGetThrottleStatusResponse {
+  EngagementThrottleStatus throttle_status = 1;
+}
+
+message EngagementProtectionServiceTriggerBatchAnalysisRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  int32 max_batch_size = 3;
+}
+
+message EngagementProtectionServiceTriggerBatchAnalysisResponse {
+  int32 analyzed_count = 1;
+  EngagementThrottleStatus throttle_status = 2;
+}
+
+message EngagementProtectionServiceRepairRevokedAccountRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string connected_account_id = 3;
+  string new_access_token = 4;
+}
+
+message EngagementProtectionServiceRepairRevokedAccountResponse {
+  bool repaired = 1;
+  string connected_account_id = 2;
+  int32 unblocked_threads_count = 3;
+}
+
+// ============================================================================
+// Service Definitions
+// ============================================================================
+
+// ThreadService manages engagement threads and message lifecycle (M12).
+service ThreadService {
+  rpc List(ThreadServiceListRequest) returns (ThreadServiceListResponse);
+  rpc Get(ThreadServiceGetRequest) returns (ThreadServiceGetResponse);
+  rpc Triage(ThreadServiceTriageRequest) returns (ThreadServiceTriageResponse);
+  rpc Assign(ThreadServiceAssignRequest) returns (ThreadServiceAssignResponse);
+  rpc Reply(ThreadServiceReplyRequest) returns (ThreadServiceReplyResponse);
+  rpc Resolve(ThreadServiceResolveRequest) returns (ThreadServiceResolveResponse);
+  rpc BulkTriage(ThreadServiceBulkTriageRequest) returns (ThreadServiceBulkTriageResponse);
+  rpc GetMessages(ThreadServiceGetMessagesRequest) returns (ThreadServiceGetMessagesResponse);
+  rpc GetUnreadCount(ThreadServiceGetUnreadCountRequest) returns (ThreadServiceGetUnreadCountResponse);
+  rpc MarkRead(ThreadServiceMarkReadRequest) returns (ThreadServiceMarkReadResponse);
+  rpc Update(ThreadServiceUpdateRequest) returns (ThreadServiceUpdateResponse);
+  rpc AddTag(ThreadServiceAddTagRequest) returns (ThreadServiceAddTagResponse);
+  rpc Mute(ThreadServiceMuteRequest) returns (ThreadServiceMuteResponse);
+  rpc Snooze(ThreadServiceSnoozeRequest) returns (ThreadServiceSnoozeResponse);
+  rpc ListMobile(ThreadServiceListMobileRequest) returns (ThreadServiceListMobileResponse);
+
+  rpc HandleGhostMessage(ThreadServiceHandleGhostMessageRequest) returns (ThreadServiceHandleGhostMessageResponse);
+  rpc ResetAutoReplyLoop(ThreadServiceResetAutoReplyLoopRequest) returns (ThreadServiceResetAutoReplyLoopResponse);
+}
+
+// EntityService manages contact identities and relationship CRM (M12).
+service EntityService {
+  rpc List(EntityServiceListRequest) returns (EntityServiceListResponse);
+  rpc Get(EntityServiceGetRequest) returns (EntityServiceGetResponse);
+  rpc Create(EntityServiceCreateRequest) returns (EntityServiceCreateResponse);
+  rpc Merge(EntityServiceMergeRequest) returns (EntityServiceMergeResponse);
+  rpc AddNote(EntityServiceAddNoteRequest) returns (EntityServiceAddNoteResponse);
+  rpc AddTag(EntityServiceAddTagRequest) returns (EntityServiceAddTagResponse);
+}
+
+// SuggestionService provides AI reply and commercial action recommendations (M12).
+service SuggestionService {
+  rpc GetReply(SuggestionServiceGetReplyRequest) returns (SuggestionServiceGetReplyResponse);
+  rpc GetActions(SuggestionServiceGetActionsRequest) returns (SuggestionServiceGetActionsResponse);
+}
+
+// FollowUpService tracks task assignments created from inbox threads (M12).
+service FollowUpService {
+  rpc Create(FollowUpServiceCreateRequest) returns (FollowUpServiceCreateResponse);
+  rpc List(FollowUpServiceListRequest) returns (FollowUpServiceListResponse);
+  rpc Update(FollowUpServiceUpdateRequest) returns (FollowUpServiceUpdateResponse);
+  rpc Complete(FollowUpServiceCompleteRequest) returns (FollowUpServiceCompleteResponse);
+  rpc Reschedule(FollowUpServiceRescheduleRequest) returns (FollowUpServiceRescheduleResponse);
+}
+
+// EngagementProtectionService guards against viral surges, loops, and account issues.
+service EngagementProtectionService {
+  rpc GetThrottleStatus(EngagementProtectionServiceGetThrottleStatusRequest) returns (EngagementProtectionServiceGetThrottleStatusResponse);
+  rpc TriggerBatchAnalysis(EngagementProtectionServiceTriggerBatchAnalysisRequest) returns (EngagementProtectionServiceTriggerBatchAnalysisResponse);
+  rpc RepairRevokedAccount(EngagementProtectionServiceRepairRevokedAccountRequest) returns (EngagementProtectionServiceRepairRevokedAccountResponse);
+}

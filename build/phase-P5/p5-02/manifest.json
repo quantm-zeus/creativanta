@@ -1,0 +1,113 @@
+{
+  "task_id": "P5-02",
+  "phase": "P5",
+  "slice": "p5-02",
+  "title": "Inbox, entities, reply và SLA",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "933faa183cfb8d5220776cafbf9218518a4c8ca7",
+  "feature_refs": [
+    "docs/02_features/engagement/unified_inbox.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/05_system/queue_retry_design.md",
+    "docs/05_system/connector_specs.md"
+  ],
+  "requirement_ids": [
+    "M12-b8d4e94157ea-001",
+    "M12-b8d4e94157ea-002",
+    "M12-b8d4e94157ea-003",
+    "M12-b8d4e94157ea-004",
+    "M12-b8d4e94157ea-005"
+  ],
+  "source_files": {
+    "infra/migrations/00027_p5_02_engagement_messages_followup_and_inbox_protection.sql": "99a936c26a7ebdded24072cd026091ea692707580a58ac02f4402fd4549582ae",
+    "apps/api/internal/migrate/migrator.go": "f18f47597151071a3ca51e5a3d0f459ecc30cd418cfcde10c3e1d27990e64fe9",
+    "apps/api/internal/migrate/migrator_test.go": "cff6eb6e31e000c1d66dd69eecb2842a4833116ef98c4689d27dd99c43a51be8",
+    "protos/creativanta/engagement/v1/engagement.proto": "499131c7918fadccba183839fc881eb9585fbb212229b5706e977061ad6ae3cd",
+    "apps/api/internal/engagement/types.go": "6216ee219a095ccb90ae1e9386da45f6de4fc8039fb4775cfd457ae42c9223b8",
+    "apps/api/internal/engagement/service.go": "1080761c856ec86c37c817b59c3542e606751daee957ad0278b6d230b03dd6b5",
+    "apps/api/internal/engagement/service_test.go": "12e31d6035668d323e490f901d92d31c32625f978c6cc10d06661b1d4e34f51d",
+    "apps/api/internal/rbac/phase_exposure_test.go": "9bcc00150c5e28e0bac62556a3c6ffff400e0a5f91f42d01cac99d67c6083633",
+    "apps/web/src/lib/engagement/types.ts": "913afc7877899e1709183951c8413669592a80958a1d881e76d325dd29b705b6",
+    "apps/web/src/lib/engagement/engagement_service.ts": "3bd9d9e338604159320cd6e24a0578e74fbef76fc90d533c8efe86c69fec19b7",
+    "apps/web/src/lib/engagement/engagement.test.ts": "a0e80fbb0e434f6b38733f8d8911f2cc351f32625d6400342fdea7323d1cb8e1",
+    "apps/web/src/lib/engagement/index.ts": "c20cc2118904d2457fd62ae3bd50a7feae3a927118dd9ed20763c24ee0cab488",
+    "apps/web/src/lib/index.ts": "69c8a00afc1e75ac74c9d9e6daac10818d6f96a336448f230fb1fa08c934fe1d",
+    "apps/mobile/lib/engagement/engagement_models.dart": "c1872757a61b06771536d773190bb0ff7f05a702e317610481608ad26e7f316e",
+    "apps/mobile/lib/engagement/engagement_service.dart": "9938e730748df3f347523b77485cb96491a8c7f10fc105f514d4d62bdb6ce825",
+    "apps/mobile/test/engagement_acceptance_test.dart": "95ea610f26bb9fe09a1f486eb36344885b2f065aadd5249f1218d9193d768ce0"
+  },
+  "scope_items": [
+    "Database Migration 00027: Created messages, follow_up_tasks, and engagement_throttles tables with workspace composite tenant keys, strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY), and updated threads table with messaging_window_expires_at, auto_reply_paused, auto_reply_permanently_disabled, is_ghost, ghost_status, throttle_state, and account_revoked columns. Narrow role grants (messages and engagement_throttles strictly append-only/select for app_user, full CRUD for admin_user); clean reversible down migration verified.",
+    "Acceptance Target 1 (Messaging-window denial): Enforces strict 24-hour reply window from last customer inbound message across ConnectRPC API, web client, and mobile service. Rejects outbound replies past expiration with ErrMessagingWindowExpired (CodeFailedPrecondition) while allowing customer inbound messages to refresh the window.",
+    "Acceptance Target 2 (Bot-loop / viral surge handling): Auto-reply loop protection pauses auto-reply on threads after >=3 consecutive bot replies without human response, >=5 in 5m, >80% Jaccard text similarity, or 10/hr hard cap (RULE-M12-008). Manual reset supported; permanent disable on second trigger. Ingestion throttle handles viral surges (<100 msg/min NORMAL real-time AI, 100-500 msg/min THROTTLED batch AI every 5m, >500 msg/min CIRCUIT_BREAKER raw ingest only); SLA clocks never pause during surge (RULE-M12-007).",
+    "Acceptance Target 3 (Ghost messages and revoked account repair): Handles platform 404 (deleted by user), 403 (restricted by platform), 410 (permanently removed) by marking threads stale/archived and disabling compose with canonical WHAT-WHY-NEXT copy (Pack 05 A4). Mid-sync or reply auth_revoked pauses affected threads with ErrAccountRevoked (CodeUnauthenticated); RepairRevokedAccount restores active state upon new OAuth token submission.",
+    "Downstream Conversions and Reply-As Identity: Supports thread conversions to Idea (M05 idea_sources), Brand Deal / Sponsor Inquiry (M18), Sample Request (M18), and Follow-Up Task (follow_up_tasks) with related_object_refs provenance tracking (RULE-M12-005). Enforces visible color-coded Reply-As identity badge and avatar before outbound send (RULE-M12-006)."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestAcceptanceTarget1_MessagingWindowDenial (Go -race), Vitest web test suite, and Flutter test suite confirm 24-hour window enforcement, rejection upon expiry, and window refresh on inbound interaction.",
+    "Acceptance Target 2 Verified: TestAcceptanceTarget2_BotLoopHandling and TestAcceptanceTarget2_ViralSurgeHandling (Go -race), Vitest web test suite, and Flutter test suite confirm bot loop pause, manual reset, permanent disable on second loop detection, and 3-tier surge throttling without pausing SLA clocks.",
+    "Acceptance Target 3 Verified: TestAcceptanceTarget3_GhostMessagesHandling and TestAcceptanceTarget3_RevokedAccountRepair (Go -race), Vitest web test suite, and Flutter test suite confirm 404/403/410 ghost thread compose blocking with WHAT-WHY-NEXT copy, token revocation isolation, and repair reconnection.",
+    "Migration 00027 Verified: Migrator test suite (migrator_test.go) passes all 27 migrations up, status verification, and clean down transactional reversal.",
+    "Four-Target Proto Codegen Verified: check_proto.sh passes lint, generate, drift check, buf breaking backward compatibility, Go vet/test, TypeScript vitest, and Dart test suites.",
+    "Web & Mobile Surfaces Verified: Vitest web test suite (28 files, 223 tests passing), svelte-check (0 errors, 0 warnings), Vite production build (adapter-node ✔ done), and Flutter test suite (188 tests passing, flutter analyze 0 issues) all pass.",
+    "RBAC Invariant Verified: apps/api/internal/rbac TestNoFuturePhaseRPCExposed, TestMatrixMatchesCanonicalMarkdownContractCellForCell, and TestLoadAll1188RPCPermissionBindingsAndEnforceFailClosed all pass."
+  ],
+  "rpc_contracts": [
+    "ThreadService/List",
+    "ThreadService/Get",
+    "ThreadService/Triage",
+    "ThreadService/Assign",
+    "ThreadService/Reply",
+    "ThreadService/Resolve",
+    "ThreadService/BulkTriage",
+    "ThreadService/GetMessages",
+    "ThreadService/GetUnreadCount",
+    "ThreadService/MarkRead",
+    "ThreadService/ResetAutoReplyLoop",
+    "EntityService/List",
+    "EntityService/Get",
+    "EntityService/AddTag",
+    "SuggestionService/List",
+    "FollowUpService/Create",
+    "FollowUpService/List",
+    "FollowUpService/Complete",
+    "EngagementProtectionService/SimulateSurgeRate",
+    "EngagementProtectionService/RepairRevokedAccount",
+    "EngagementProtectionService/TriggerBatchAI"
+  ],
+  "migration_files": [
+    "infra/migrations/00027_p5_02_engagement_messages_followup_and_inbox_protection.sql"
+  ],
+  "permission_keys": [
+    "engagement:read",
+    "engagement:reply",
+    "engagement:triage",
+    "engagement:assign",
+    "engagement:resolve",
+    "engagement:admin",
+    "engagement:entity_write",
+    "engagement:followup_write"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-TIKTOK-DIRECT-MESSAGING-API",
+      "PENDING_TIKTOK_PARTNER_API_ACCESS",
+      "Direct inbound webhook and reply synchronization for TikTok DMs/comments requires approved TikTok Commercial Content/Messaging Developer Application; local simulation and fixture verification completed."
+    ],
+    [
+      "EXT-GATE-META-MESSENGER-INSTAGRAM-MESSAGING",
+      "PENDING_META_APP_REVIEW",
+      "Instagram / Facebook Page direct message webhooks and reply endpoints require approved pages_messaging and instagram_manage_messages permissions; local simulation and fixture verification completed."
+    ],
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "Migration 00027 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+    ]
+  ]
+}

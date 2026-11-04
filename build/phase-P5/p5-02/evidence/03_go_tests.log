@@ -1,0 +1,52 @@
+=== RUN   TestAcceptanceTarget1_MessagingWindowDenial
+--- PASS: TestAcceptanceTarget1_MessagingWindowDenial (0.00s)
+=== RUN   TestAcceptanceTarget2_BotLoopHandling
+--- PASS: TestAcceptanceTarget2_BotLoopHandling (0.00s)
+=== RUN   TestAcceptanceTarget2_ViralSurgeHandling
+--- PASS: TestAcceptanceTarget2_ViralSurgeHandling (0.07s)
+=== RUN   TestAcceptanceTarget3_GhostMessagesHandling
+--- PASS: TestAcceptanceTarget3_GhostMessagesHandling (0.00s)
+=== RUN   TestAcceptanceTarget3_RevokedAccountRepair
+--- PASS: TestAcceptanceTarget3_RevokedAccountRepair (0.00s)
+=== RUN   TestEngagement_CoreFlowsAndConversions
+--- PASS: TestEngagement_CoreFlowsAndConversions (0.00s)
+=== RUN   TestEngagement_EntityServiceOperations
+--- PASS: TestEngagement_EntityServiceOperations (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/engagement	1.119s
+=== RUN   TestLoadAndValidateCanonicalP004Migration
+--- PASS: TestLoadAndValidateCanonicalP004Migration (0.51s)
+=== RUN   TestValidateCanonicalMigrationContractRejectsViolations
+=== RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_GRANT_ALL
+=== RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_FLOAT_or_REAL_on_money_or_credit_column_(DB-H-001)
+=== RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_FORCE_ROW_LEVEL_SECURITY_on_junction_table
+=== RUN   TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_composite_tenant_FK
+--- PASS: TestValidateCanonicalMigrationContractRejectsViolations (0.46s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_GRANT_ALL (0.03s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_FLOAT_or_REAL_on_money_or_credit_column_(DB-H-001) (0.12s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_FORCE_ROW_LEVEL_SECURITY_on_junction_table (0.13s)
+    --- PASS: TestValidateCanonicalMigrationContractRejectsViolations/rejects_missing_composite_tenant_FK (0.15s)
+=== RUN   TestUpStatusDownTransactionalBehavior
+--- PASS: TestUpStatusDownTransactionalBehavior (3.13s)
+=== RUN   TestPostgresLiveMigrationAndAppUserRLS
+    migrator_test.go:746: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL 17.10 migration & RLS suite executes in CI
+--- SKIP: TestPostgresLiveMigrationAndAppUserRLS (0.00s)
+=== RUN   TestPostgresSeedTwiceIdempotency
+    migrator_test.go:1695: CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL seed twice idempotency suite executes in CI
+--- SKIP: TestPostgresSeedTwiceIdempotency (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/migrate	5.138s
+=== RUN   TestNoFuturePhaseRPCExposed
+    phase_exposure_test.go:102: Cataloged 893 current-phase RPCs and 295 future-phase RPCs
+    phase_exposure_test.go:146: PASS: Zero future-phase RPCs defined in protos/ directory.
+    phase_exposure_test.go:171: PASS: Zero future-phase service handlers registered in production entrypoints.
+    phase_exposure_test.go:205: PASS: Live API server strictly rejects all future-phase endpoints with 404.
+--- PASS: TestNoFuturePhaseRPCExposed (0.05s)
+=== RUN   TestMatrixMatchesCanonicalMarkdownContractCellForCell
+--- PASS: TestMatrixMatchesCanonicalMarkdownContractCellForCell (0.00s)
+=== RUN   TestLoadAll1188RPCPermissionBindingsAndEnforceFailClosed
+--- PASS: TestLoadAll1188RPCPermissionBindingsAndEnforceFailClosed (0.01s)
+=== RUN   TestConstraintRulesExternalContributorApprovalAndImpersonation
+--- PASS: TestConstraintRulesExternalContributorApprovalAndImpersonation (0.01s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/rbac	1.101s
