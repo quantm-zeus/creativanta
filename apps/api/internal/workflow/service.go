@@ -17,18 +17,64 @@ type CallerContext struct {
 }
 
 type Service struct {
-	store   Store
-	adapter WorkflowEngineAdapter
+	store       Store
+	adapter     WorkflowEngineAdapter
+	engine      *ExecutionEngine
+	approvalMgr *ApprovalManager
+	dlqMgr      *DLQManager
+	preflight   *PreflightEngine
+	capProvider CapabilityStatusProvider
+	dispatcher  ActionDispatcher
 }
 
 func NewService(store Store, adapter WorkflowEngineAdapter) *Service {
 	if adapter == nil {
 		adapter = NewOwnedWorkflowEngine()
 	}
+	capProvider := NewDefaultCapabilityProvider()
+	dispatcher := NewMockActionDispatcher()
+	engine := NewExecutionEngine(store, capProvider, dispatcher)
+	preflight := NewPreflightEngine(capProvider)
+
 	return &Service{
-		store:   store,
-		adapter: adapter,
+		store:       store,
+		adapter:     adapter,
+		engine:      engine,
+		approvalMgr: engine.ApprovalManager(),
+		dlqMgr:      engine.DLQManager(),
+		preflight:   preflight,
+		capProvider: capProvider,
+		dispatcher:  dispatcher,
 	}
+}
+
+func (s *Service) SetCapabilityProvider(cp CapabilityStatusProvider) {
+	s.capProvider = cp
+	s.engine = NewExecutionEngine(s.store, cp, s.dispatcher)
+	s.approvalMgr = s.engine.ApprovalManager()
+	s.preflight = NewPreflightEngine(cp)
+}
+
+func (s *Service) SetActionDispatcher(ad ActionDispatcher) {
+	s.dispatcher = ad
+	s.engine = NewExecutionEngine(s.store, s.capProvider, ad)
+	s.approvalMgr = s.engine.ApprovalManager()
+}
+
+func (s *Service) Engine() *ExecutionEngine {
+	return s.engine
+}
+
+func (s *Service) ApprovalManager() *ApprovalManager {
+	return s.approvalMgr
+}
+
+func (s *Service) DLQManager() *DLQManager {
+	return s.dlqMgr
+}
+
+func (s *Service) PreflightEngine() *PreflightEngine {
+	return s.preflight
 }
 
 func checkPerm(caller CallerContext, perm string) error {
@@ -151,6 +197,12 @@ func (s *Service) UpdateWorkflow(
 	if err := s.store.UpdateWorkflow(ctx, existing); err != nil {
 		return nil, err
 	}
+
+	// Acceptance Target 2: Changed action / workflow invalidates pending approval
+	if s.approvalMgr != nil {
+		_ = s.approvalMgr.InvalidatePendingApprovals(ctx, caller.WorkspaceID, existing.WorkflowID, "Workflow updated to a new version")
+	}
+
 	return existing, nil
 }
 
@@ -189,6 +241,12 @@ func (s *Service) ActivateWorkflow(ctx context.Context, caller CallerContext, wo
 	if err := s.store.UpdateWorkflow(ctx, existing); err != nil {
 		return nil, err
 	}
+
+	// Invalidate any pending approvals if workflow deactivated
+	if s.approvalMgr != nil {
+		_ = s.approvalMgr.InvalidatePendingApprovals(ctx, caller.WorkspaceID, existing.WorkflowID, "Workflow paused/deactivated")
+	}
+
 	return existing, nil
 }
 
@@ -211,6 +269,12 @@ func (s *Service) DeactivateWorkflow(ctx context.Context, caller CallerContext, 
 	if err := s.store.UpdateWorkflow(ctx, existing); err != nil {
 		return nil, err
 	}
+
+	// Invalidate any pending approvals if workflow deactivated
+	if s.approvalMgr != nil {
+		_ = s.approvalMgr.InvalidatePendingApprovals(ctx, caller.WorkspaceID, existing.WorkflowID, "Workflow paused/deactivated")
+	}
+
 	return existing, nil
 }
 
@@ -286,6 +350,13 @@ func (s *Service) RunWorkflow(ctx context.Context, caller CallerContext, workflo
 
 	wf.RunCount++
 	_ = s.store.UpdateWorkflow(ctx, wf)
+
+	if s.engine != nil {
+		executedRun, err := s.engine.ExecuteRun(ctx, caller.WorkspaceID, run.RunID)
+		if err == nil && executedRun != nil {
+			return executedRun, nil
+		}
+	}
 
 	return run, nil
 }
@@ -486,6 +557,17 @@ func (s *Service) RetryRun(ctx context.Context, caller CallerContext, runID, rep
 	if err := s.store.UpdateWorkflowRun(ctx, run); err != nil {
 		return nil, err
 	}
+
+	if s.engine != nil {
+		executedRun, err := s.engine.ResumeRun(ctx, caller.WorkspaceID, run.RunID, &ResumeSignal{
+			SignalType: "run_retried",
+			Payload:    map[string]any{"repair_context": repairContext},
+		})
+		if err == nil && executedRun != nil {
+			return executedRun, nil
+		}
+	}
+
 	return run, nil
 }
 
@@ -596,4 +678,244 @@ func (s *Service) ExportRuns(ctx context.Context, caller CallerContext, workflow
 		return "", "", err
 	}
 	return "/exports/runs.json", string(data), nil
+}
+
+// ----------------------------------------------------------------------------
+// P7-02: Preflight & Simulation (Target 1)
+// ----------------------------------------------------------------------------
+
+func (s *Service) PreflightWorkflow(
+	ctx context.Context,
+	caller CallerContext,
+	workflowID string,
+	draftGraph *WorkflowGraph,
+) (*PreflightReport, error) {
+	if err := checkPerm(caller, "workflow:read"); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrUnauthorized, err)
+	}
+
+	var targetGraph *WorkflowGraph
+	if draftGraph != nil && len(draftGraph.Nodes) > 0 {
+		targetGraph = draftGraph
+	} else if workflowID != "" {
+		wf, err := s.store.GetWorkflow(ctx, caller.WorkspaceID, workflowID)
+		if err != nil {
+			return nil, err
+		}
+		targetGraph = &wf.ActionChain
+	} else {
+		return nil, fmt.Errorf("%w: must provide workflow_id or draft_graph", ErrInvalidGraphStructure)
+	}
+
+	report, err := s.preflight.PreflightWorkflow(ctx, caller.WorkspaceID, targetGraph)
+	if err != nil {
+		return nil, err
+	}
+	report.WorkflowID = workflowID
+	return report, nil
+}
+
+// ----------------------------------------------------------------------------
+// P7-02: Resume Execution (Target 3: Resume never replays confirmed effect)
+// ----------------------------------------------------------------------------
+
+func (s *Service) ResumeRun(
+	ctx context.Context,
+	caller CallerContext,
+	runID string,
+	signal *ResumeSignal,
+) (*WorkflowRun, error) {
+	if err := checkPerm(caller, "workflow:edit"); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrUnauthorized, err)
+	}
+	if s.engine == nil {
+		return nil, fmt.Errorf("runtime engine not initialized")
+	}
+	return s.engine.ResumeRun(ctx, caller.WorkspaceID, runID, signal)
+}
+
+// ----------------------------------------------------------------------------
+// P7-02: ApprovalService (8 Canonical RPCs per rpc_permission_bindings.csv)
+// ----------------------------------------------------------------------------
+
+func (s *Service) ListApprovals(
+	ctx context.Context,
+	caller CallerContext,
+	filter ApprovalFilter,
+) ([]ApprovalRequest, int, error) {
+	if err := checkPerm(caller, "workflow:read"); err != nil {
+		return nil, 0, fmt.Errorf("%w: %v", ErrUnauthorized, err)
+	}
+	return s.store.ListApprovalRequests(ctx, caller.WorkspaceID, filter)
+}
+
+func (s *Service) ListPendingApprovals(
+	ctx context.Context,
+	caller CallerContext,
+) ([]ApprovalRequest, error) {
+	if err := checkPerm(caller, "workflow:read"); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrUnauthorized, err)
+	}
+	filter := ApprovalFilter{Status: "pending_approval", Limit: 500}
+	res, _, err := s.store.ListApprovalRequests(ctx, caller.WorkspaceID, filter)
+	return res, err
+}
+
+func (s *Service) GetApprovalQueueStats(
+	ctx context.Context,
+	caller CallerContext,
+) (*ApprovalQueueStats, error) {
+	if err := checkPerm(caller, "workflow:read"); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrUnauthorized, err)
+	}
+	all, _, err := s.store.ListApprovalRequests(ctx, caller.WorkspaceID, ApprovalFilter{Limit: 2000})
+	if err != nil {
+		return nil, err
+	}
+	stats := &ApprovalQueueStats{Total: len(all)}
+	for _, a := range all {
+		switch a.Status {
+		case "pending_approval":
+			stats.Pending++
+		case "approved":
+			stats.Approved++
+		case "rejected":
+			stats.Rejected++
+		case "expired":
+			stats.Expired++
+		case "cancelled":
+			stats.Cancelled++
+		}
+	}
+	return stats, nil
+}
+
+func (s *Service) Approve(
+	ctx context.Context,
+	caller CallerContext,
+	requestID string,
+) (*ApprovalRequest, *WorkflowRun, error) {
+	if s.approvalMgr == nil {
+		return nil, nil, fmt.Errorf("approval manager not initialized")
+	}
+	return s.approvalMgr.Approve(ctx, caller, requestID)
+}
+
+func (s *Service) Reject(
+	ctx context.Context,
+	caller CallerContext,
+	requestID, reason string,
+) (*ApprovalRequest, *WorkflowRun, error) {
+	if s.approvalMgr == nil {
+		return nil, nil, fmt.Errorf("approval manager not initialized")
+	}
+	return s.approvalMgr.Reject(ctx, caller, requestID, reason)
+}
+
+func (s *Service) BatchApprove(
+	ctx context.Context,
+	caller CallerContext,
+	requestIDs []string,
+) ([]*ApprovalRequest, []error) {
+	if s.approvalMgr == nil {
+		return nil, []error{fmt.Errorf("approval manager not initialized")}
+	}
+	return s.approvalMgr.BatchApprove(ctx, caller, requestIDs)
+}
+
+func (s *Service) UndoApprove(
+	ctx context.Context,
+	caller CallerContext,
+	requestID string,
+) (*ApprovalRequest, error) {
+	if s.approvalMgr == nil {
+		return nil, fmt.Errorf("approval manager not initialized")
+	}
+	return s.approvalMgr.UndoApprove(ctx, caller, requestID)
+}
+
+func (s *Service) UndoReject(
+	ctx context.Context,
+	caller CallerContext,
+	requestID string,
+) (*ApprovalRequest, error) {
+	if s.approvalMgr == nil {
+		return nil, fmt.Errorf("approval manager not initialized")
+	}
+	return s.approvalMgr.UndoReject(ctx, caller, requestID)
+}
+
+func (s *Service) EvaluateApprovalExpiry(
+	ctx context.Context,
+	caller CallerContext,
+) ([]ApprovalRequest, error) {
+	if err := checkPerm(caller, "workflow:edit"); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrUnauthorized, err)
+	}
+	if s.approvalMgr == nil {
+		return nil, fmt.Errorf("approval manager not initialized")
+	}
+	return s.approvalMgr.EvaluateApprovalExpiry(ctx, caller.WorkspaceID)
+}
+
+// ----------------------------------------------------------------------------
+// P7-02: Dead-Letter Queue (DLQ) Management
+// ----------------------------------------------------------------------------
+
+func (s *Service) ListDLQ(
+	ctx context.Context,
+	caller CallerContext,
+	status string,
+	limit, offset int,
+) ([]DLQItem, int, error) {
+	if s.dlqMgr == nil {
+		return nil, 0, fmt.Errorf("DLQ manager not initialized")
+	}
+	return s.dlqMgr.ListDLQItems(ctx, caller, status, limit, offset)
+}
+
+func (s *Service) GetDLQItem(
+	ctx context.Context,
+	caller CallerContext,
+	dlqID string,
+) (*DLQItem, error) {
+	if s.dlqMgr == nil {
+		return nil, fmt.Errorf("DLQ manager not initialized")
+	}
+	return s.dlqMgr.GetDLQItem(ctx, caller, dlqID)
+}
+
+func (s *Service) RetryDLQItem(
+	ctx context.Context,
+	caller CallerContext,
+	dlqID string,
+) (*WorkflowRun, error) {
+	if s.dlqMgr == nil {
+		return nil, fmt.Errorf("DLQ manager not initialized")
+	}
+	return s.dlqMgr.RetryDLQItem(ctx, caller, dlqID)
+}
+
+func (s *Service) RepairAndRetryDLQItem(
+	ctx context.Context,
+	caller CallerContext,
+	dlqID string,
+	repairContext map[string]any,
+) (*WorkflowRun, error) {
+	if s.dlqMgr == nil {
+		return nil, fmt.Errorf("DLQ manager not initialized")
+	}
+	return s.dlqMgr.RepairAndRetryDLQItem(ctx, caller, dlqID, repairContext)
+}
+
+func (s *Service) DiscardDLQItem(
+	ctx context.Context,
+	caller CallerContext,
+	dlqID string,
+	reason string,
+) (*DLQItem, error) {
+	if s.dlqMgr == nil {
+		return nil, fmt.Errorf("DLQ manager not initialized")
+	}
+	return s.dlqMgr.DiscardDLQItem(ctx, caller, dlqID, reason)
 }

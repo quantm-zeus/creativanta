@@ -1,0 +1,70 @@
+{
+  "task_id": "P7-02",
+  "phase": "P7",
+  "slice": "p7-02",
+  "title": "Workflow runtime, preflight và approvals",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "feature_refs": [
+    "docs/02_features/automation/workflow_studio.md",
+    "docs/05_system/runtime_workflow.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/03_screens/web/screen_web_workflow_builder.md"
+  ],
+  "source_files": {
+    "apps/api/internal/workflow/approval.go": "3431f58e14cb5f4daf83583885b64a23af0eae3ea98759f0a83d838494bb4e21",
+    "apps/api/internal/workflow/diagnostics.go": "44525f8455a1d107e10320d7cd4d8d0fe8684b31dafd35c9e2969d4e319c3eb0",
+    "apps/api/internal/workflow/dlq.go": "ac0ef02f812a7f370aff843a0ed5db49a167ecd1c5282ea69003a2b22ec80370",
+    "apps/api/internal/workflow/errors.go": "6c23f07338b30bfd24ae4c3eeeeed0afb2db9b0b671f1cd0e4221571a7a5bf85",
+    "apps/api/internal/workflow/model.go": "38a14a92a19accf65f6505c839ecf079953ee0b9aa9f28994bc87b1f8ee9382a",
+    "apps/api/internal/workflow/preflight.go": "6844c71f1ea20af56cd88d0395ea25902cf22b32f074759dcd121ae985d5e94b",
+    "apps/api/internal/workflow/runtime.go": "158d7a9bddbb440c72705cb1946205ea92ea08c5cb3e3b90f87130e51793124f",
+    "apps/api/internal/workflow/service.go": "1babbc3ce1388c66cec292fb8dad5a658e50bed4063381f20ede3630574c0e86",
+    "apps/api/internal/workflow/store.go": "09f79e1dcf36877a239d3b7a547dbc7c73e0642298d7bcc9648dac5a8457dec9",
+    "apps/api/internal/workflow/workflow_test.go": "363fa6a95ab37c8b857e42e501a81d2f55a775b7ec6c9e19e7a25a55bd96209a",
+    "apps/web/src/lib/workflow/types.ts": "e15f0847db9ce4a9fdc18be050607cbade18a36a9e98f2bf60fc0fbd84682b36",
+    "apps/web/src/lib/workflow/runtime.ts": "2fcfd78b76a19599322e46fb3a09de4a99be436aaa5c4b18d9010a037d02b34f",
+    "apps/web/src/lib/workflow/workflow.test.ts": "be5eacc74018cb6c46c334573c4f3b53e3a6c6396f299effa6a3e4b3b8df8c36",
+    "apps/web/src/routes/workflows/+page.svelte": "bd006493bcc7492f8843a8bf502c1f6c14f6db814c52a2737af262bf64d29541",
+    "apps/web/src/routes/workflows/approvals/+page.svelte": "9653d42489b4d7c30a23157136354066a87b78510c19602d6e63ae707963ae7f",
+    "apps/web/src/routes/workflows/dlq/+page.svelte": "a6e673cff61c39093da98855630b4ffae913eef5db337e1f63f51ffb80675a63",
+    "apps/mobile/lib/automation/approval_models.dart": "cc9fedef029830ebe370210ecf9c7f7f607610a2b27b9142147fed7644f000b6",
+    "apps/mobile/test/workflow_runtime_test.dart": "2ced6db42109d7cc7b314b1297bb930fcc4e25692f6e0d0c560522b30887d217"
+  },
+  "scope_items": [
+    "Target 1 (Simulation has no business effects): Implemented PreflightEngine and dry-run execution loop verifying action readiness, credit impact estimation, and platform connector capability without invoking mutations, dispatching side effects, or debiting credit balances.",
+    "Target 2 (Changed action invalidates approval): Implemented ComputeActionHash with SHA-256 over node version, RPC name, JSON input payload, target resource objects, and budget quote. Updating workflow versions or modifying action payloads automatically invalidates pending approval requests.",
+    "Target 3 (Resume never replays confirmed effect): Implemented idempotent execution tracker in ExecutionEngine; resumed runs verify confirmed side-effect records and bypass already-executed mutation steps, executing only subsequent pending nodes.",
+    "Capability-Aware Routing & Degradation: Runtime checks platform capability snapshots before action dispatch; degraded or maintenance platform status triggers fallback node transitions or DLQ pauses.",
+    "Approval Expiry & Diagnostics: Timed approvals automatically transition to expired status when expires_at timestamp is reached; DiagnosticsBuilder generates user-facing and operator root-cause explanations.",
+    "Dead Letter Queue (DLQ): Fully managed DLQ lifecycle with push, retrieval, payload repair, retry throttling (max retries), and permanent discard.",
+    "Cascade Depth Protection (RULE-M20-001): ExecutionEngine enforces maximum trigger cascade depth <= 5, terminating loops with ErrCascadeDepthExceeded."
+  ],
+  "verified_sub_slices": [
+    "Target 1 Verified: TestP702_Simulation_ZeroBusinessEffects passes with go test -race; confirms zero dispatched side-effects during preflight.",
+    "Target 2 Verified: TestP702_ChangedAction_InvalidatesApproval passes with go test -race; confirms action mutations invalidate pending approvals.",
+    "Target 3 Verified: TestP702_Resume_NeverReplaysConfirmedEffect passes with go test -race; confirms resumed runs skip confirmed side-effects.",
+    "Capability & Fallback Verified: TestP702_CapabilityAware_DegradedRoutingAndFallback passes with go test -race.",
+    "Expiry & Diagnostics Verified: TestP702_Approval_ExpiryAutoDenyAndDiagnostics passes with go test -race.",
+    "DLQ Lifecycle Verified: TestP702_DeadLetterQueue_FullLifecycle passes with go test -race.",
+    "Cascade Limit Verified: TestP702_CascadeDepthLimit_EC_M20_001 passes with go test -race.",
+    "Concurrency Verified: TestP702_ConcurrentApprovalsAndResumeRace passes with go test -race (0 data races detected).",
+    "Web Vitest Suite: 11 tests pass in apps/web/src/lib/workflow/workflow.test.ts.",
+    "Mobile Flutter Suite: 5 tests pass in apps/mobile/test/workflow_runtime_test.dart.",
+    "Full CI Suite: check_d0.sh PASS, check_proto.sh verify PASS, check_go.sh PASS, check_node.sh PASS, check_flutter.sh PASS."
+  ],
+  "external_gates": [
+    {
+      "gate_id": "EXT-GATE-ACTIVEPIECES-COMMERCIAL-LICENSE",
+      "status": "NOT_ASSUMED_BYPASS_USING_OWNED_ENGINE",
+      "description": "Activepieces Enterprise requires external commercial licensing. Creativanta implements an owned native canvas and execution engine as first-class baseline per architecture spec, eliminating external license dependency."
+    }
+  ],
+  "remaining_scope": [
+    "Real-time websocket telemetry streaming for multi-hour long-running workflow steps (P7-03)",
+    "External developer webhook outgoing webhook queue dispatchers (P7-04)"
+  ]
+}

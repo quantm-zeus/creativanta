@@ -233,3 +233,135 @@ export interface SimulationReport {
   total_estimated_credits: number;
   simulation_summary: string;
 }
+
+// ----------------------------------------------------------------------------
+// P7-02: Approvals, Preflight, Diagnostics, DLQ, Side Effects
+// ----------------------------------------------------------------------------
+
+export interface ApprovalRequest {
+  request_id?: string;
+  approval_id?: string;
+  workspace_id: string;
+  request_type?: string;
+  object_type?: string;
+  object_id?: string;
+  requested_by?: string;
+  approved_by?: string;
+  title?: string;
+  status: 'pending_approval' | 'approved' | 'rejected' | 'expired' | 'cancelled' | 'pending' | 'invalidated';
+  reason?: string;
+  rejection_reason?: string;
+  expires_at?: string;
+  workflow_id?: string;
+  run_id?: string;
+  node_id?: string;
+  workflow_version?: number;
+  action_hash?: string;
+  action_rpc?: string;
+  target_objects?: string[];
+  input_snapshot?: string;
+  max_budget_quote?: number;
+  budget_quote_credits?: number;
+  approver_roles?: string[];
+  is_invalidated?: boolean;
+  invalidation_reason?: string;
+  decided_at?: string;
+  decided_by?: string;
+  decision_notes?: string;
+  requested_at?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ApprovalQueueStats {
+  total: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  expired: number;
+  cancelled: number;
+  pending_count?: number;
+  invalidated_count?: number;
+  expiring_soon_count?: number;
+  total_approved?: number;
+  total_rejected?: number;
+}
+
+export interface DLQItem {
+  dlq_id: string;
+  queue_name?: string;
+  original_message_id?: string;
+  payload?: Record<string, unknown>;
+  failed_payload?: Record<string, unknown>;
+  error_class?: string;
+  error_code?: string;
+  error_message: string;
+  last_error_at?: string;
+  attempt_count?: number;
+  retry_count?: number;
+  max_retries?: number;
+  retry_history?: Array<Record<string, unknown>>;
+  workspace_id?: string;
+  workflow_id?: string;
+  run_id?: string;
+  node_id?: string;
+  status: 'pending' | 'retrying' | 'resolved' | 'discarded';
+  resolved_at?: string;
+  resolved_by?: string;
+  resolution_notes?: string;
+  suggested_repair_path?: string;
+  canonical_object_refs?: string[];
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface DiagnosticsRecord {
+  record_id: string;
+  workspace_id: string;
+  run_id: string;
+  failure_type: string;
+  affected_node_id: string;
+  affected_node_type: NodeType;
+  user_facing_explanation: string;
+  operator_explanation: string;
+  recommended_next_step: string;
+  fallback_available: boolean;
+  technical_details?: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface SideEffect {
+  side_effect_id: string;
+  run_id: string;
+  step_id: string;
+  node_id: string;
+  actor: string;
+  action: string;
+  affected_objects: string[];
+  old_state_summary?: string;
+  new_state_summary?: string;
+  reason?: string;
+  correlation_id: string;
+  timestamp: string;
+}
+
+export interface PreflightActionSummary {
+  node_id: string;
+  rpc_name: string;
+  required_permission: string;
+  platform?: string;
+  capability_status?: string;
+  requires_approval: boolean;
+  quoted_credits: number;
+  missing_inputs?: string[];
+}
+
+export interface PreflightReport {
+  workflow_id?: string;
+  valid: boolean;
+  actions: PreflightActionSummary[];
+  total_max_credit_quote: number;
+  requires_approval: boolean;
+  warnings: string[];
+  errors: string[];
+}
