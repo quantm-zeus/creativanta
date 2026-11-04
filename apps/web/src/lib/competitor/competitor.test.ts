@@ -8,6 +8,7 @@ import {
   formatPercent,
   buildComparativeMetricsTable,
   filterAndSearchCompetitors,
+  evaluateContinuousMonitoringAlert,
   type CompetitorItem
 } from './index';
 
@@ -247,6 +248,119 @@ describe('Competitor Registry & Benchmark (M03) Web Unit Tests', () => {
 
       const noMatch = filterAndSearchCompetitors(list, { query: 'không_tồn_tại' });
       expect(noMatch.length).toBe(0);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // P8-07 Acceptance Target 1: Continuous Monitoring Alerts & Source Status
+  // --------------------------------------------------------------------------
+  describe('P8-07 Target 1: Continuous Monitoring Alerts', () => {
+    const baseConfig = {
+      competitorId: 'comp-101',
+      metric: 'growth_rate',
+      thresholdPercent: 20.0,
+      sourceStatus: 'ACTIVE' as const,
+      recoveryLatched: false,
+      insufficientData: false
+    };
+
+    it('Target 1: No source access routes to paused/import path without false drop alarms', () => {
+      // Source is unavailable (e.g. connector disconnected or token expired)
+      const res = evaluateContinuousMonitoringAlert(
+        baseConfig,
+        100000,
+        50000,
+        'snap-new-01',
+        false // sourceAvailable = false
+      );
+
+      expect(res.alertTriggered).toBe(false);
+      expect(res.sourceStatus).toBe('PAUSED');
+      expect(res.sourceStatusReason).toContain('paused until reconnected or manual export imported');
+      expect(res.reason).toContain('Monitoring paused');
+    });
+
+    it('Target 1: Missing or zero denominator marks insufficient data instead of false alarm', () => {
+      // Denominator is 0
+      const resZero = evaluateContinuousMonitoringAlert(
+        baseConfig,
+        0,
+        5000,
+        'snap-new-02',
+        true
+      );
+      expect(resZero.alertTriggered).toBe(false);
+      expect(resZero.insufficientData).toBe(true);
+
+      // Denominator is null/undefined
+      const resNull = evaluateContinuousMonitoringAlert(
+        baseConfig,
+        null,
+        5000,
+        'snap-new-03',
+        true
+      );
+      expect(resNull.alertTriggered).toBe(false);
+      expect(resNull.insufficientData).toBe(true);
+    });
+
+    it('Target 1: Triggers alert when metric drops beyond threshold on valid data', () => {
+      // 100 -> 70 is -30% drop (threshold is 20%)
+      const res = evaluateContinuousMonitoringAlert(
+        baseConfig,
+        100,
+        70,
+        'snap-new-04',
+        true
+      );
+      expect(res.alertTriggered).toBe(true);
+      expect(res.recoveryLatched).toBe(true);
+      expect(res.changePercent).toBe(-30);
+      expect(res.newSnapshotId).toBe('snap-new-04');
+    });
+
+    it('Target 1: Deduplicates on identical snapshot ID', () => {
+      const configWithPrevAlert = {
+        ...baseConfig,
+        lastAlertSnapshotId: 'snap-already-alerted'
+      };
+      const res = evaluateContinuousMonitoringAlert(
+        configWithPrevAlert,
+        100,
+        50,
+        'snap-already-alerted',
+        true
+      );
+      expect(res.alertTriggered).toBe(false);
+      expect(res.reason).toContain('already recorded');
+    });
+
+    it('Target 1: Latches alert until metric recovers back above threshold', () => {
+      const latchedConfig = {
+        ...baseConfig,
+        recoveryLatched: true
+      };
+      // Still dropped (-25%), latched suppresses secondary alert
+      const resLatched = evaluateContinuousMonitoringAlert(
+        latchedConfig,
+        100,
+        75,
+        'snap-new-05',
+        true
+      );
+      expect(resLatched.alertTriggered).toBe(false);
+      expect(resLatched.recoveryLatched).toBe(true);
+
+      // Metric recovers (100 -> 95 is -5%, well above -20% threshold)
+      const resRecovered = evaluateContinuousMonitoringAlert(
+        latchedConfig,
+        100,
+        95,
+        'snap-new-06',
+        true
+      );
+      expect(resRecovered.alertTriggered).toBe(false);
+      expect(resRecovered.recoveryLatched).toBe(false); // Latch reset!
     });
   });
 });

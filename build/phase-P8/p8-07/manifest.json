@@ -1,0 +1,78 @@
+{
+  "task_id": "P8-07",
+  "phase": "P8",
+  "slice": "p8-07",
+  "title": "Competitor monitoring và brand collaboration expansion",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "feature_refs": [
+    "docs/02_features/intelligence/competitor_intelligence.md",
+    "docs/02_features/commerce/creator_pro_tools.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/api_behavior_contracts.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/03_screens/web/screen_web_creator_directory.md"
+  ],
+  "source_files": {
+    "protos/creativanta/intelligence/v1/competitor.proto": "de44b568debca689a5a8c239d66404b41f4e9e188c79aace1c15f4e696c39c0c",
+    "protos/creativanta/commerce/v1/creator_pro.proto": "f235a90bb59ea7161e904dbd08782bb298d6ef47b14eb99ea190c7ab19fca223",
+    "apps/api/gen/creativanta/intelligence/v1/competitor.pb.go": "658c7fb20aab30ec3e011963df8b45c453eb716f2df7e95bdb424d781d15e6ca",
+    "apps/api/gen/creativanta/commerce/v1/creator_pro.pb.go": "f58197b6a3665aed2f932b7722160b066ae931da1056de98c831d12e962423ab",
+    "apps/api/gen/creativanta/commerce/v1/commercev1connect/creator_pro.connect.go": "492326183961d6dc9642b64ba946f10fd7f572ed556d8a34c010d6ed7968b060",
+    "packages/shared-types/src/creativanta/intelligence/v1/competitor_pb.ts": "8fe569c22016ca13de7c03b13649e756f7d80848d7d4ac7c9dfc657ab99c5e86",
+    "packages/shared-types/src/creativanta/commerce/v1/creator_pro_pb.ts": "cdec2424c71b4de27e6d5a5ef44475491b8e15e2931b7f5b6e8449bc070466c9",
+    "apps/mobile/lib/generated/creativanta/intelligence/v1/competitor.pb.dart": "704afbace9ca88bff91eb2c275f8071c8b7dc8a3288ec7f637858c12e71d276e",
+    "apps/mobile/lib/generated/creativanta/intelligence/v1/competitor.pbenum.dart": "02d8d6270bbbebfd5b4c268afc82f1f60f52a4427594fc23cadd3f959567d11a",
+    "apps/mobile/lib/generated/creativanta/intelligence/v1/competitor.pbjson.dart": "bbfe2cbebc37b7e405fcd1a5ecd8283739c4d62716e0f409710d84bf1193baa7",
+    "apps/mobile/lib/generated/creativanta/commerce/v1/creator_pro.pb.dart": "33e598ffa7b308bd3f6ced4e9db8006088f7e2e30affba404be5d451f4313766",
+    "apps/mobile/lib/generated/creativanta/commerce/v1/creator_pro.pbgrpc.dart": "6463f32b04096d32102c8717c5a6c36bd244103ce5ca29a7104d0c455d15378d",
+    "apps/mobile/lib/generated/creativanta/commerce/v1/creator_pro.pbjson.dart": "4e21285c4b8b0977ec6627a25c126f8d208ace01f8f91c3c6c4fe8f6d69ee362",
+    "infra/migrations/00045_p8_07_competitor_monitoring_and_creator_directory.sql": "6323ba9306c51a53fedfef9155030be7149bd4dabe96d317f143b7d91a3b7145",
+    "apps/api/internal/competitor/service.go": "cf0dcea6491427b33d705eef540c3333c97dc0b56004ecb24ef21df5e3465c6f",
+    "apps/api/internal/competitor/service_test.go": "df5ff89bb5626740c8ce0207bc572c37e3c7f036c31533537d91a83e2ffe2063",
+    "apps/api/internal/creatorpro/errors.go": "177b33c9c64a896c4856a02c45d1df5cbb758ee5bb466e01d845a60922d29207",
+    "apps/api/internal/creatorpro/handler.go": "05930eba556e6b6ab72ee6665ef9e5177a619d78cf8d6d70a6a1cfc55a2e209a",
+    "apps/api/internal/creatorpro/model.go": "fa1762cedb8fcaace31e0aed8e6e32743556e1092716d1c56b8f2916e6a22d54",
+    "apps/api/internal/creatorpro/service.go": "10ef43cfeee9b42b1cb0a828769f8bd1167cb320eb054d4ff2b99dcebe1ac2f5",
+    "apps/api/internal/creatorpro/store.go": "95e857e23ff34f8d7cee3dc53785722b34b7241ee132ee9c56fa46c19d28c990",
+    "apps/api/internal/creatorpro/creator_pro_p8_07_test.go": "c8564b905ea10719e54b93f3fe1030a7c810fec70d79ef855dbf76c8f6aef6a0",
+    "apps/api/internal/migrate/migrator_test.go": "0858e975c34443cccca5355cc7dfa0df8ac3ee74359272d2272b33d4338a3ff1",
+    "apps/web/src/lib/competitor/index.ts": "78100c0fb8fc21b0356e444ffb0f7d8d1016b865d8a5b70ede3b3599cb6892e8",
+    "apps/web/src/lib/competitor/competitor.test.ts": "4067a8582c4c6874a0c2b716f4e9569e6179ec5f9f1e7d8210fe2108d5135e47",
+    "apps/web/src/lib/commerce/creator_pro.ts": "adb59bdf3fe76a30aac57a5b025a367d62460b886041649a763305571664b6fd",
+    "apps/web/src/lib/commerce/creator_pro.test.ts": "895583c7c2ba6b4d2476694676cec4f4a8d0cef0e42f8f6d1031330d94d1f7f8",
+    "apps/web/src/routes/creator-pro/+page.svelte": "550f4d3f0cfc0a2ad22baaf6cb48a24e95164867d13e0c57372dccdcc59a178a",
+    "apps/web/src/routes/creators/+page.svelte": "433a10f1f1c4c21d7aae4a3e7069d44a87a56204180d2350650b7fe8a5605033",
+    "apps/web/src/routes/creators/[media_kit_id]/+page.svelte": "12765ae977133d5455e73e4cb271b5de1a77b3f9720db9d8ef920ace6850543e",
+    "apps/web/src/routes/intelligence/competitors/+page.svelte": "d7b069a9bd09dad0f296c7ae06eff74e9f538d30f1a8a4f21eca47d66daa5d79",
+    "apps/mobile/lib/competitor/competitor_models.dart": "ce676009bc4a26e8e54c32c16943c37557da2a255f6a46a7bd150c29e334bbea",
+    "apps/mobile/lib/commerce/creator_pro_models.dart": "10ea3bf04a754ed043a4f1f696ad772ca440b3abaa1242e0e33d983b12277e47",
+    "apps/mobile/test/competitor_test.dart": "61da8a00eafa7983bb1c655b425432be605f2d8b80c776bd3c05fe4801d0a491",
+    "apps/mobile/test/creator_pro_acceptance_test.dart": "51cf0a47b9572d1d52f7fdacdce61c29703d8d8c29ad47947be7cd132c7caa05"
+  },
+  "scope_items": [
+    "Target 1 (No source access -> paused/import path): Competitor monitoring alert evaluation strictly pauses alert dispatch and routes to manual import path when platform connector credentials or source access are missing, preserving historical benchmark snapshots without emitting false metric drop alarms.",
+    "Target 2 (Opt-out removes public snapshot immediately): Setting directory profile to hidden or opting out immediately withdraws the public media kit snapshot from public discovery and API search projections across Go backend, Web SvelteKit, and Flutter Mobile.",
+    "Target 3 (Sponsor cannot read private workspace; directory_reader cannot read hidden snapshots): Multi-tenant database RLS and public directory query projections strictly enforce column isolation. Even with a forged tenant session variable, directory_reader cannot query unpublished/hidden media kits or read private workspace deals, evidence, notes, or ledger balances.",
+    "Target 4 (Contract versions immutable): Contract templates and deal evidence snapshots are append-only. Modifying terms or attaching signature proofs creates a new immutable evidence snapshot without altering or overwriting past versions.",
+    "Deal Kanban & Optimistic Concurrency: Canonical brand deal lifecycle (negotiating -> agreed -> in_progress -> delivered -> paid -> completed) supported via kanban columns with CAS concurrency checks (expected_updated_at) preventing race conditions and stale overwrites.",
+    "Public Creator Directory (Screen W134): Responsive public discovery interface with category and language filters, verified badge rendering, public rate cards, and sponsor inquiry flow with delivery receipt without exposing internal thread IDs."
+  ],
+  "verified_sub_slices": [
+    "Go Backend Unit & Acceptance Tests: apps/api/internal/competitor passes with -race (TestAcceptanceTarget_P8_CompetitorMonitoringContinuousAlerts covering no-source-access paused path, missing denominator, replay deduplication, and recovery latch reset); apps/api/internal/creatorpro passes with -race (TestAcceptanceTarget2_OptOutRemovesPublicSnapshotImmediately, TestAcceptanceTarget3_SponsorCannotReadPrivateWorkspace [5 sub-cases], TestAcceptanceTarget4_ContractVersionsImmutable, TestDealKanban_OptimisticConcurrencyConflict, and full Connect-RPC test suite).",
+    "Database Migration: infra/migrations/00045_p8_07_competitor_monitoring_and_creator_directory.sql creates competitor_monitoring_alerts table with forced RLS and composite FKs, adds kanban_order and version to brand_deals, and adds partial index on media_kits. apps/api/internal/migrate passes all 45 migrations with zero contract violations.",
+    "Web Vitest & Production Build: Vitest passes all 47 test files (450 tests) in apps/web; svelte-check reports 0 errors; vite build succeeds cleanly with @sveltejs/adapter-node.",
+    "Mobile Flutter Tests & Analyzer: apps/mobile passes all 17 tests in test/creator_pro_acceptance_test.dart and test/competitor_test.dart; flutter analyze reports 0 issues.",
+    "Proto 4-Target Generation & Zero-Drift: tooling/proto-gen.sh verify reports PROTO_4_TARGETS_PASS mode=verify across Go, Connect-Go, TypeScript/shared-types, and Dart.",
+    "Documentation Invariants: tooling/check_docs.py and python3 -m unittest discover -s tooling/tests report PASS."
+  ],
+  "external_gates": [
+    {
+      "gate_id": "EXT-GATE-PLATFORM-CONNECTOR-WEBHOOKS",
+      "status": "LOCAL_ENGINE_COMPUTATION_READY",
+      "description": "Continuous monitoring and creator directory function deterministically with local adapters. Real-time external platform webhook ingestion requires staging connector credentials."
+    }
+  ],
+  "remaining_scope": []
+}

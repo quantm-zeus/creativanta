@@ -33,6 +33,8 @@ const (
 	SponsorInquiryServiceName = "creativanta.commerce.v1.SponsorInquiryService"
 	// RevenueTrackerServiceName is the fully-qualified name of the RevenueTrackerService service.
 	RevenueTrackerServiceName = "creativanta.commerce.v1.RevenueTrackerService"
+	// CreatorDirectoryServiceName is the fully-qualified name of the CreatorDirectoryService service.
+	CreatorDirectoryServiceName = "creativanta.commerce.v1.CreatorDirectoryService"
 	// TaxReportServiceName is the fully-qualified name of the TaxReportService service.
 	TaxReportServiceName = "creativanta.commerce.v1.TaxReportService"
 )
@@ -170,6 +172,12 @@ const (
 	// RevenueTrackerServiceGetTopPerformersProcedure is the fully-qualified name of the
 	// RevenueTrackerService's GetTopPerformers RPC.
 	RevenueTrackerServiceGetTopPerformersProcedure = "/creativanta.commerce.v1.RevenueTrackerService/GetTopPerformers"
+	// CreatorDirectoryServiceSearchProcedure is the fully-qualified name of the
+	// CreatorDirectoryService's Search RPC.
+	CreatorDirectoryServiceSearchProcedure = "/creativanta.commerce.v1.CreatorDirectoryService/Search"
+	// CreatorDirectoryServiceGetProcedure is the fully-qualified name of the CreatorDirectoryService's
+	// Get RPC.
+	CreatorDirectoryServiceGetProcedure = "/creativanta.commerce.v1.CreatorDirectoryService/Get"
 	// TaxReportServiceGetReportProcedure is the fully-qualified name of the TaxReportService's
 	// GetReport RPC.
 	TaxReportServiceGetReportProcedure = "/creativanta.commerce.v1.TaxReportService/GetReport"
@@ -1620,6 +1628,105 @@ func (UnimplementedRevenueTrackerServiceHandler) GetROI(context.Context, *connec
 
 func (UnimplementedRevenueTrackerServiceHandler) GetTopPerformers(context.Context, *connect.Request[v1.GetTopPerformersRequest]) (*connect.Response[v1.GetTopPerformersResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.commerce.v1.RevenueTrackerService.GetTopPerformers is not implemented"))
+}
+
+// CreatorDirectoryServiceClient is a client for the creativanta.commerce.v1.CreatorDirectoryService
+// service.
+type CreatorDirectoryServiceClient interface {
+	Search(context.Context, *connect.Request[v1.CreatorDirectoryServiceSearchRequest]) (*connect.Response[v1.CreatorDirectoryServiceSearchResponse], error)
+	Get(context.Context, *connect.Request[v1.CreatorDirectoryServiceGetRequest]) (*connect.Response[v1.CreatorDirectoryServiceGetResponse], error)
+}
+
+// NewCreatorDirectoryServiceClient constructs a client for the
+// creativanta.commerce.v1.CreatorDirectoryService service. By default, it uses the Connect protocol
+// with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To
+// use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb()
+// options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewCreatorDirectoryServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) CreatorDirectoryServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	creatorDirectoryServiceMethods := v1.File_creativanta_commerce_v1_creator_pro_proto.Services().ByName("CreatorDirectoryService").Methods()
+	return &creatorDirectoryServiceClient{
+		search: connect.NewClient[v1.CreatorDirectoryServiceSearchRequest, v1.CreatorDirectoryServiceSearchResponse](
+			httpClient,
+			baseURL+CreatorDirectoryServiceSearchProcedure,
+			connect.WithSchema(creatorDirectoryServiceMethods.ByName("Search")),
+			connect.WithClientOptions(opts...),
+		),
+		get: connect.NewClient[v1.CreatorDirectoryServiceGetRequest, v1.CreatorDirectoryServiceGetResponse](
+			httpClient,
+			baseURL+CreatorDirectoryServiceGetProcedure,
+			connect.WithSchema(creatorDirectoryServiceMethods.ByName("Get")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// creatorDirectoryServiceClient implements CreatorDirectoryServiceClient.
+type creatorDirectoryServiceClient struct {
+	search *connect.Client[v1.CreatorDirectoryServiceSearchRequest, v1.CreatorDirectoryServiceSearchResponse]
+	get    *connect.Client[v1.CreatorDirectoryServiceGetRequest, v1.CreatorDirectoryServiceGetResponse]
+}
+
+// Search calls creativanta.commerce.v1.CreatorDirectoryService.Search.
+func (c *creatorDirectoryServiceClient) Search(ctx context.Context, req *connect.Request[v1.CreatorDirectoryServiceSearchRequest]) (*connect.Response[v1.CreatorDirectoryServiceSearchResponse], error) {
+	return c.search.CallUnary(ctx, req)
+}
+
+// Get calls creativanta.commerce.v1.CreatorDirectoryService.Get.
+func (c *creatorDirectoryServiceClient) Get(ctx context.Context, req *connect.Request[v1.CreatorDirectoryServiceGetRequest]) (*connect.Response[v1.CreatorDirectoryServiceGetResponse], error) {
+	return c.get.CallUnary(ctx, req)
+}
+
+// CreatorDirectoryServiceHandler is an implementation of the
+// creativanta.commerce.v1.CreatorDirectoryService service.
+type CreatorDirectoryServiceHandler interface {
+	Search(context.Context, *connect.Request[v1.CreatorDirectoryServiceSearchRequest]) (*connect.Response[v1.CreatorDirectoryServiceSearchResponse], error)
+	Get(context.Context, *connect.Request[v1.CreatorDirectoryServiceGetRequest]) (*connect.Response[v1.CreatorDirectoryServiceGetResponse], error)
+}
+
+// NewCreatorDirectoryServiceHandler builds an HTTP handler from the service implementation. It
+// returns the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewCreatorDirectoryServiceHandler(svc CreatorDirectoryServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	creatorDirectoryServiceMethods := v1.File_creativanta_commerce_v1_creator_pro_proto.Services().ByName("CreatorDirectoryService").Methods()
+	creatorDirectoryServiceSearchHandler := connect.NewUnaryHandler(
+		CreatorDirectoryServiceSearchProcedure,
+		svc.Search,
+		connect.WithSchema(creatorDirectoryServiceMethods.ByName("Search")),
+		connect.WithHandlerOptions(opts...),
+	)
+	creatorDirectoryServiceGetHandler := connect.NewUnaryHandler(
+		CreatorDirectoryServiceGetProcedure,
+		svc.Get,
+		connect.WithSchema(creatorDirectoryServiceMethods.ByName("Get")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/creativanta.commerce.v1.CreatorDirectoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case CreatorDirectoryServiceSearchProcedure:
+			creatorDirectoryServiceSearchHandler.ServeHTTP(w, r)
+		case CreatorDirectoryServiceGetProcedure:
+			creatorDirectoryServiceGetHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedCreatorDirectoryServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedCreatorDirectoryServiceHandler struct{}
+
+func (UnimplementedCreatorDirectoryServiceHandler) Search(context.Context, *connect.Request[v1.CreatorDirectoryServiceSearchRequest]) (*connect.Response[v1.CreatorDirectoryServiceSearchResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.commerce.v1.CreatorDirectoryService.Search is not implemented"))
+}
+
+func (UnimplementedCreatorDirectoryServiceHandler) Get(context.Context, *connect.Request[v1.CreatorDirectoryServiceGetRequest]) (*connect.Response[v1.CreatorDirectoryServiceGetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.commerce.v1.CreatorDirectoryService.Get is not implemented"))
 }
 
 // TaxReportServiceClient is a client for the creativanta.commerce.v1.TaxReportService service.

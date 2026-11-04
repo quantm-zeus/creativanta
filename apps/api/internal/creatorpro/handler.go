@@ -2,6 +2,10 @@ package creatorpro
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	v1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1"
@@ -311,20 +315,52 @@ func (h *MediaKitHandler) SetDirectoryProfile(ctx context.Context, req *connect.
 	if err != nil {
 		return nil, err
 	}
-	kit, err := h.svc.store.GetMediaKit(ctx, wsID, req.Msg.MediaKitId)
+
+	var prof *PublicCreatorProfile
+	if req.Msg.Profile != nil {
+		rates := make([]PublicRateItem, len(req.Msg.Profile.PublicRates))
+		for i, r := range req.Msg.Profile.PublicRates {
+			rates[i] = PublicRateItem{
+				ServiceType: r.ServiceType,
+				Amount:      r.Amount,
+				Currency:    r.Currency,
+			}
+		}
+		prof = &PublicCreatorProfile{
+			DisplayName:   req.Msg.Profile.DisplayName,
+			Bio:           req.Msg.Profile.Bio,
+			Categories:    req.Msg.Profile.Categories,
+			Languages:     req.Msg.Profile.Languages,
+			PortfolioURLs: req.Msg.Profile.PortfolioUrls,
+			PublicRates:   rates,
+		}
+	} else if req.Msg.DirectoryProfileJson != "" {
+		var p PublicCreatorProfile
+		if err := json.Unmarshal([]byte(req.Msg.DirectoryProfileJson), &p); err == nil {
+			prof = &p
+		}
+	}
+
+	kit, err := h.svc.SetDirectoryProfile(ctx, wsID, req.Msg.MediaKitId, req.Msg.DirectoryOptIn, prof)
 	if err != nil {
 		return nil, MapErrorToConnect(err)
 	}
-	kit.DirectoryOptIn = req.Msg.DirectoryOptIn
-	kit.DirectoryProfileJSON = req.Msg.DirectoryProfileJson
-	if kit.DirectoryOptIn {
-		kit.DirectoryStatus = MediaKitDirectoryStatusPublished
-	} else {
-		kit.DirectoryStatus = MediaKitDirectoryStatusHidden
+
+	var status v1.MediaKitDirectoryStatus
+	switch kit.DirectoryStatus {
+	case MediaKitDirectoryStatusPublished:
+		status = v1.MediaKitDirectoryStatus_MEDIA_KIT_DIRECTORY_STATUS_PUBLISHED
+	case MediaKitDirectoryStatusPendingReview:
+		status = v1.MediaKitDirectoryStatus_MEDIA_KIT_DIRECTORY_STATUS_PENDING_REVIEW
+	default:
+		status = v1.MediaKitDirectoryStatus_MEDIA_KIT_DIRECTORY_STATUS_HIDDEN
 	}
-	kit.UpdatedAt = h.svc.nowFunc()
-	_ = h.svc.store.SaveMediaKit(ctx, kit)
-	return connect.NewResponse(&v1.SetDirectoryProfileResponse{MediaKit: toProtoMediaKit(kit)}), nil
+
+	return connect.NewResponse(&v1.SetDirectoryProfileResponse{
+		MediaKit:        toProtoMediaKit(kit),
+		MediaKitId:      kit.MediaKitID,
+		DirectoryStatus: status,
+	}), nil
 }
 
 // ----------------------------------------------------------------------------
@@ -557,7 +593,13 @@ func (h *BrandDealHandler) UpdateStatus(ctx context.Context, req *connect.Reques
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidStateTransition)
 	}
 
-	updated, err := h.svc.UpdateBrandDealStatus(ctx, wsID, req.Msg.DealId, targetStatus, req.Msg.CancellationReason, req.Msg.RequiresFinancialReversal)
+	var expectedUpdatedAt *time.Time
+	if req.Msg.ExpectedUpdatedAt != nil {
+		t := req.Msg.ExpectedUpdatedAt.AsTime()
+		expectedUpdatedAt = &t
+	}
+
+	updated, err := h.svc.UpdateBrandDealStatusWithCAS(ctx, wsID, req.Msg.DealId, targetStatus, req.Msg.CancellationReason, req.Msg.RequiresFinancialReversal, expectedUpdatedAt)
 	if err != nil {
 		return nil, MapErrorToConnect(err)
 	}
@@ -679,21 +721,30 @@ func (h *BrandDealHandler) UpdatePayment(ctx context.Context, req *connect.Reque
 }
 
 func (h *BrandDealHandler) ListContractTemplates(ctx context.Context, req *connect.Request[v1.ListContractTemplatesRequest]) (*connect.Response[v1.ListContractTemplatesResponse], error) {
+	_, err := resolveTenant(ctx, req.Msg.WorkspaceId)
+	if err != nil {
+		return nil, err
+	}
+	templates, err := h.svc.store.ListContractTemplates(ctx)
+	if err != nil {
+		return nil, MapErrorToConnect(err)
+	}
+	protoTemplates := make([]*v1.ContractTemplate, len(templates))
+	for i, tmpl := range templates {
+		protoTemplates[i] = &v1.ContractTemplate{
+			TemplateId:      tmpl.TemplateID,
+			Title:           tmpl.Title,
+			Description:     tmpl.Description,
+			DefaultTerms:    tmpl.DefaultTerms,
+			Version:         tmpl.Version,
+			SourceArticleId: tmpl.SourceArticleID,
+			BodyMarkdown:    tmpl.BodyMarkdown,
+			Disclaimer:      tmpl.Disclaimer,
+		}
+	}
 	return connect.NewResponse(&v1.ListContractTemplatesResponse{
-		Templates: []*v1.ContractTemplate{
-			{
-				TemplateId:   "tmpl-standard-sponsored",
-				Title:        "Standard Sponsored Video Agreement",
-				Description:  "Standard 1-video deliverable with 30-day usage rights.",
-				DefaultTerms: "50% upfront deposit, 50% upon delivery. 1 revision included.",
-			},
-			{
-				TemplateId:   "tmpl-brand-ambassador",
-				Title:        "Brand Ambassador Agreement (3-month)",
-				Description:  "Recurring deliverables with exclusivity clause.",
-				DefaultTerms: "Monthly retainer payable on 1st of month. Category exclusivity.",
-			},
-		},
+		Templates:  protoTemplates,
+		Disclaimer: "Tài liệu mẫu mang tính chất tham khảo dự thảo hợp đồng. Creativanta không cung cấp tư vấn pháp lý hay dịch vụ chữ ký số điện tử. Vui lòng tham khảo ý kiến luật sư trước khi ký kết.",
 	}), nil
 }
 
@@ -850,6 +901,21 @@ func (h *SponsorInquiryHandler) GetStats(ctx context.Context, req *connect.Reque
 }
 
 func (h *SponsorInquiryHandler) Submit(ctx context.Context, req *connect.Request[v1.SponsorInquiryServiceSubmitRequest]) (*connect.Response[v1.SponsorInquiryServiceSubmitResponse], error) {
+	// Acceptance Target 3: If media_kit_id is provided, resolve target workspace server-side
+	// without accepting public caller's workspace_id and without leaking private workspace identity.
+	if req.Msg.MediaKitId != "" {
+		inq, receipt, err := h.svc.SubmitSponsorInquiry(ctx, req.Msg.MediaKitId, req.Msg.BrandName, req.Msg.ContactEmail, req.Msg.Message, req.Msg.ProposedBudget, req.Msg.ChallengeToken, req.Msg.IdempotencyKey)
+		if err != nil {
+			return nil, MapErrorToConnect(err)
+		}
+		return connect.NewResponse(&v1.SponsorInquiryServiceSubmitResponse{
+			Accepted:          true,
+			InquiryId:         inq.InquiryID,
+			SubmissionReceipt: receipt,
+			Status:            "received",
+		}), nil
+	}
+
 	inq := &SponsorInquiry{
 		InquiryID:       newUUID(),
 		WorkspaceID:     req.Msg.WorkspaceId,
@@ -863,8 +929,10 @@ func (h *SponsorInquiryHandler) Submit(ctx context.Context, req *connect.Request
 	}
 	_ = h.svc.store.CreateInquiry(ctx, inq)
 	return connect.NewResponse(&v1.SponsorInquiryServiceSubmitResponse{
-		Accepted:  true,
-		InquiryId: inq.InquiryID,
+		Accepted:          true,
+		InquiryId:         inq.InquiryID,
+		SubmissionReceipt: "rec_" + inq.InquiryID,
+		Status:            "received",
 	}), nil
 }
 
@@ -1310,5 +1378,90 @@ func toProtoTaxReportSummary(s *TaxReportSummary) *v1.TaxReportSummary {
 		Format:               fmtType,
 		DownloadUrl:          s.DownloadURL,
 		GeneratedAt:          timestamppb.New(s.GeneratedAt),
+	}
+}
+
+// ----------------------------------------------------------------------------
+// CreatorDirectoryHandler (Public Opt-In Creator Directory per §27.2)
+// ----------------------------------------------------------------------------
+
+type CreatorDirectoryHandler struct {
+	commercev1connect.UnimplementedCreatorDirectoryServiceHandler
+	svc *Service
+}
+
+func NewCreatorDirectoryHandler(svc *Service) *CreatorDirectoryHandler {
+	return &CreatorDirectoryHandler{svc: svc}
+}
+
+func (h *CreatorDirectoryHandler) Search(ctx context.Context, req *connect.Request[v1.CreatorDirectoryServiceSearchRequest]) (*connect.Response[v1.CreatorDirectoryServiceSearchResponse], error) {
+	// Public endpoint - search only explicitly consented published snapshots
+	query := req.Msg.Query
+	if len(query) > 120 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("search query cannot exceed 120 characters"))
+	}
+
+	pageSize := req.Msg.PageSize
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	if pageSize > 20 {
+		pageSize = 20
+	}
+
+	entries, nextToken, hasMore, total, err := h.svc.store.SearchDirectory(ctx, query, req.Msg.Categories, req.Msg.Languages, int(pageSize), req.Msg.PageToken)
+	if err != nil {
+		return nil, MapErrorToConnect(err)
+	}
+
+	protoEntries := make([]*v1.CreatorDirectoryEntry, len(entries))
+	for i, e := range entries {
+		protoEntries[i] = toProtoDirectoryEntry(e)
+	}
+
+	return connect.NewResponse(&v1.CreatorDirectoryServiceSearchResponse{
+		Entries:       protoEntries,
+		NextPageToken: nextToken,
+		HasMore:       hasMore,
+		TotalCount:    total,
+	}), nil
+}
+
+func (h *CreatorDirectoryHandler) Get(ctx context.Context, req *connect.Request[v1.CreatorDirectoryServiceGetRequest]) (*connect.Response[v1.CreatorDirectoryServiceGetResponse], error) {
+	if strings.TrimSpace(req.Msg.MediaKitId) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("media_kit_id is required"))
+	}
+
+	entry, err := h.svc.store.GetDirectoryEntry(ctx, req.Msg.MediaKitId)
+	if err != nil {
+		return nil, MapErrorToConnect(err)
+	}
+
+	return connect.NewResponse(&v1.CreatorDirectoryServiceGetResponse{
+		Entry: toProtoDirectoryEntry(*entry),
+	}), nil
+}
+
+func toProtoDirectoryEntry(e CreatorDirectoryEntry) *v1.CreatorDirectoryEntry {
+	rates := make([]*v1.PublicRateItem, len(e.Profile.PublicRates))
+	for i, r := range e.Profile.PublicRates {
+		rates[i] = &v1.PublicRateItem{
+			ServiceType: r.ServiceType,
+			Amount:      r.Amount,
+			Currency:    r.Currency,
+		}
+	}
+
+	return &v1.CreatorDirectoryEntry{
+		MediaKitId: e.MediaKitID,
+		Profile: &v1.PublicCreatorProfile{
+			DisplayName:   e.Profile.DisplayName,
+			Bio:           e.Profile.Bio,
+			Categories:    e.Profile.Categories,
+			Languages:     e.Profile.Languages,
+			PortfolioUrls: e.Profile.PortfolioURLs,
+			PublicRates:   rates,
+		},
+		PublishedAt: timestamppb.New(e.PublishedAt),
 	}
 }

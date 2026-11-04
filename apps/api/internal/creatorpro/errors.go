@@ -30,6 +30,13 @@ var (
 	ErrZeroViewRPMUndefined = errors.New("creatorpro: zero-view RPM is undefined; denominator cannot be zero")
 	ErrTierLimitExceeded    = errors.New("creatorpro: tier limit exceeded; please upgrade to unlock more items or features")
 	ErrPermissionDenied     = errors.New("creatorpro: permission denied for requested operator mode and role")
+
+	// P8-07 Expansion errors
+	ErrStaleVersion        = errors.New("creatorpro: deal was modified concurrently; please refresh before updating status")
+	ErrCreatorUnavailable  = errors.New("creatorpro: creator is currently unavailable for sponsorships")
+	ErrContractImmutable   = errors.New("creatorpro: contract evidence content is immutable; cannot overwrite existing version")
+	ErrCrossTenantEvidence = errors.New("creatorpro: contract evidence must belong to the same tenant workspace")
+	ErrInquiryRateLimited  = errors.New("creatorpro: inquiry rate limit reached (max 5/hour); try again later")
 )
 
 // MapErrorToConnect translates creatorpro domain errors to standard ConnectRPC codes.
@@ -40,18 +47,22 @@ func MapErrorToConnect(err error) error {
 	switch {
 	case errors.Is(err, ErrMissingTenant):
 		return connect.NewError(connect.CodeUnauthenticated, err)
-	case errors.Is(err, ErrScopeMismatch), errors.Is(err, ErrPermissionDenied):
+	case errors.Is(err, ErrScopeMismatch), errors.Is(err, ErrPermissionDenied), errors.Is(err, ErrCrossTenantEvidence):
 		return connect.NewError(connect.CodePermissionDenied, err)
 	case errors.Is(err, ErrPageNotFound), errors.Is(err, ErrLinkItemNotFound),
 		errors.Is(err, ErrRateCardNotFound), errors.Is(err, ErrRateCardItemNotFound),
 		errors.Is(err, ErrMediaKitNotFound), errors.Is(err, ErrBrandDealNotFound),
-		errors.Is(err, ErrSponsorInquiryNotFound):
+		errors.Is(err, ErrSponsorInquiryNotFound), errors.Is(err, ErrCreatorUnavailable):
 		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, ErrDuplicatePageSlug):
 		return connect.NewError(connect.CodeAlreadyExists, err)
+	case errors.Is(err, ErrStaleVersion):
+		return connect.NewError(connect.CodeAborted, err)
+	case errors.Is(err, ErrInquiryRateLimited):
+		return connect.NewError(connect.CodeResourceExhausted, err)
 	case errors.Is(err, ErrPhishingBlocked), errors.Is(err, ErrDailyLinkLimitExceeded),
 		errors.Is(err, ErrCompletedDealImmutable), errors.Is(err, ErrCustomDomainNotConfigured),
-		errors.Is(err, ErrTierLimitExceeded):
+		errors.Is(err, ErrTierLimitExceeded), errors.Is(err, ErrContractImmutable):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, ErrInvalidAmount), errors.Is(err, ErrInvalidStateTransition),
 		errors.Is(err, ErrCancellationReasonRequired), errors.Is(err, ErrFinancialReversalRequired),

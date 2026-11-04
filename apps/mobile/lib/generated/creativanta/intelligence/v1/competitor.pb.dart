@@ -32,6 +32,12 @@ class AlertConfig extends $pb.GeneratedMessage {
     $core.double? threshold,
     AlertDirection? direction,
     $core.int? minIntervalMinutes,
+    MonitoringSourceStatus? sourceStatus,
+    $core.String? sourceStatusReason,
+    $1.Timestamp? lastAlertAt,
+    $core.String? lastAlertSnapshotId,
+    $core.bool? recoveryLatched,
+    $core.bool? insufficientData,
   }) {
     final result = AlertConfig._();
     if (enabled != null) result.enabled = enabled;
@@ -40,6 +46,14 @@ class AlertConfig extends $pb.GeneratedMessage {
     if (direction != null) result.direction = direction;
     if (minIntervalMinutes != null)
       result.minIntervalMinutes = minIntervalMinutes;
+    if (sourceStatus != null) result.sourceStatus = sourceStatus;
+    if (sourceStatusReason != null)
+      result.sourceStatusReason = sourceStatusReason;
+    if (lastAlertAt != null) result.lastAlertAt = lastAlertAt;
+    if (lastAlertSnapshotId != null)
+      result.lastAlertSnapshotId = lastAlertSnapshotId;
+    if (recoveryLatched != null) result.recoveryLatched = recoveryLatched;
+    if (insufficientData != null) result.insufficientData = insufficientData;
     return result;
   }
 
@@ -64,6 +78,14 @@ class AlertConfig extends $pb.GeneratedMessage {
     ..aE<AlertDirection>(4, _omitFieldNames ? '' : 'direction',
         enumValues: AlertDirection.values)
     ..aI(5, _omitFieldNames ? '' : 'minIntervalMinutes')
+    ..aE<MonitoringSourceStatus>(6, _omitFieldNames ? '' : 'sourceStatus',
+        enumValues: MonitoringSourceStatus.values)
+    ..aOS(7, _omitFieldNames ? '' : 'sourceStatusReason')
+    ..aOM<$1.Timestamp>(8, _omitFieldNames ? '' : 'lastAlertAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..aOS(9, _omitFieldNames ? '' : 'lastAlertSnapshotId')
+    ..aOB(10, _omitFieldNames ? '' : 'recoveryLatched')
+    ..aOB(11, _omitFieldNames ? '' : 'insufficientData')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -132,6 +154,62 @@ class AlertConfig extends $pb.GeneratedMessage {
   $core.bool hasMinIntervalMinutes() => $_has(4);
   @$pb.TagNumber(5)
   void clearMinIntervalMinutes() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  MonitoringSourceStatus get sourceStatus => $_getN(5);
+  @$pb.TagNumber(6)
+  set sourceStatus(MonitoringSourceStatus value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSourceStatus() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSourceStatus() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get sourceStatusReason => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set sourceStatusReason($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasSourceStatusReason() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearSourceStatusReason() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $1.Timestamp get lastAlertAt => $_getN(7);
+  @$pb.TagNumber(8)
+  set lastAlertAt($1.Timestamp value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasLastAlertAt() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearLastAlertAt() => $_clearField(8);
+  @$pb.TagNumber(8)
+  $1.Timestamp ensureLastAlertAt() => $_ensure(7);
+
+  @$pb.TagNumber(9)
+  $core.String get lastAlertSnapshotId => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set lastAlertSnapshotId($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasLastAlertSnapshotId() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearLastAlertSnapshotId() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.bool get recoveryLatched => $_getBF(9);
+  @$pb.TagNumber(10)
+  set recoveryLatched($core.bool value) => $_setBool(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasRecoveryLatched() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearRecoveryLatched() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.bool get insufficientData => $_getBF(10);
+  @$pb.TagNumber(11)
+  set insufficientData($core.bool value) => $_setBool(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasInsufficientData() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearInsufficientData() => $_clearField(11);
 }
 
 /// CompetitorEntity represents a tracked competitor entity per database_schema.md §5.6.

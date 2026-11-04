@@ -3780,19 +3780,166 @@ func (x *MediaKitServiceExportResponse) GetFileName() string {
 	return ""
 }
 
+// Public rate card item for public directory profile snapshot per database_schema.md §27.2.
+type PublicRateItem struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ServiceType   string                 `protobuf:"bytes,1,opt,name=service_type,json=serviceType,proto3" json:"service_type,omitempty"`
+	Amount        string                 `protobuf:"bytes,2,opt,name=amount,proto3" json:"amount,omitempty"` // decimal string
+	Currency      string                 `protobuf:"bytes,3,opt,name=currency,proto3" json:"currency,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PublicRateItem) Reset() {
+	*x = PublicRateItem{}
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PublicRateItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PublicRateItem) ProtoMessage() {}
+
+func (x *PublicRateItem) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PublicRateItem.ProtoReflect.Descriptor instead.
+func (*PublicRateItem) Descriptor() ([]byte, []int) {
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *PublicRateItem) GetServiceType() string {
+	if x != nil {
+		return x.ServiceType
+	}
+	return ""
+}
+
+func (x *PublicRateItem) GetAmount() string {
+	if x != nil {
+		return x.Amount
+	}
+	return ""
+}
+
+func (x *PublicRateItem) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+// Consented public creator profile snapshot per database_schema.md §27.2.
+type PublicCreatorProfile struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DisplayName   string                 `protobuf:"bytes,1,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	Bio           string                 `protobuf:"bytes,2,opt,name=bio,proto3" json:"bio,omitempty"`
+	Categories    []string               `protobuf:"bytes,3,rep,name=categories,proto3" json:"categories,omitempty"`
+	Languages     []string               `protobuf:"bytes,4,rep,name=languages,proto3" json:"languages,omitempty"`
+	PortfolioUrls []string               `protobuf:"bytes,5,rep,name=portfolio_urls,json=portfolioUrls,proto3" json:"portfolio_urls,omitempty"`
+	PublicRates   []*PublicRateItem      `protobuf:"bytes,6,rep,name=public_rates,json=publicRates,proto3" json:"public_rates,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PublicCreatorProfile) Reset() {
+	*x = PublicCreatorProfile{}
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PublicCreatorProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PublicCreatorProfile) ProtoMessage() {}
+
+func (x *PublicCreatorProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PublicCreatorProfile.ProtoReflect.Descriptor instead.
+func (*PublicCreatorProfile) Descriptor() ([]byte, []int) {
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *PublicCreatorProfile) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+func (x *PublicCreatorProfile) GetBio() string {
+	if x != nil {
+		return x.Bio
+	}
+	return ""
+}
+
+func (x *PublicCreatorProfile) GetCategories() []string {
+	if x != nil {
+		return x.Categories
+	}
+	return nil
+}
+
+func (x *PublicCreatorProfile) GetLanguages() []string {
+	if x != nil {
+		return x.Languages
+	}
+	return nil
+}
+
+func (x *PublicCreatorProfile) GetPortfolioUrls() []string {
+	if x != nil {
+		return x.PortfolioUrls
+	}
+	return nil
+}
+
+func (x *PublicCreatorProfile) GetPublicRates() []*PublicRateItem {
+	if x != nil {
+		return x.PublicRates
+	}
+	return nil
+}
+
 type SetDirectoryProfileRequest struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	WorkspaceId          string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
 	MediaKitId           string                 `protobuf:"bytes,2,opt,name=media_kit_id,json=mediaKitId,proto3" json:"media_kit_id,omitempty"`
 	DirectoryOptIn       bool                   `protobuf:"varint,3,opt,name=directory_opt_in,json=directoryOptIn,proto3" json:"directory_opt_in,omitempty"`
 	DirectoryProfileJson string                 `protobuf:"bytes,4,opt,name=directory_profile_json,json=directoryProfileJson,proto3" json:"directory_profile_json,omitempty"`
+	Profile              *PublicCreatorProfile  `protobuf:"bytes,5,opt,name=profile,proto3" json:"profile,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
 
 func (x *SetDirectoryProfileRequest) Reset() {
 	*x = SetDirectoryProfileRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[42]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3804,7 +3951,7 @@ func (x *SetDirectoryProfileRequest) String() string {
 func (*SetDirectoryProfileRequest) ProtoMessage() {}
 
 func (x *SetDirectoryProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[42]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3817,7 +3964,7 @@ func (x *SetDirectoryProfileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetDirectoryProfileRequest.ProtoReflect.Descriptor instead.
 func (*SetDirectoryProfileRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{42}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *SetDirectoryProfileRequest) GetWorkspaceId() string {
@@ -3848,16 +3995,25 @@ func (x *SetDirectoryProfileRequest) GetDirectoryProfileJson() string {
 	return ""
 }
 
+func (x *SetDirectoryProfileRequest) GetProfile() *PublicCreatorProfile {
+	if x != nil {
+		return x.Profile
+	}
+	return nil
+}
+
 type SetDirectoryProfileResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MediaKit      *MediaKit              `protobuf:"bytes,1,opt,name=media_kit,json=mediaKit,proto3" json:"media_kit,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState  `protogen:"open.v1"`
+	MediaKit        *MediaKit               `protobuf:"bytes,1,opt,name=media_kit,json=mediaKit,proto3" json:"media_kit,omitempty"`
+	MediaKitId      string                  `protobuf:"bytes,2,opt,name=media_kit_id,json=mediaKitId,proto3" json:"media_kit_id,omitempty"`
+	DirectoryStatus MediaKitDirectoryStatus `protobuf:"varint,3,opt,name=directory_status,json=directoryStatus,proto3,enum=creativanta.commerce.v1.MediaKitDirectoryStatus" json:"directory_status,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SetDirectoryProfileResponse) Reset() {
 	*x = SetDirectoryProfileResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[43]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3869,7 +4025,7 @@ func (x *SetDirectoryProfileResponse) String() string {
 func (*SetDirectoryProfileResponse) ProtoMessage() {}
 
 func (x *SetDirectoryProfileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[43]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3882,7 +4038,7 @@ func (x *SetDirectoryProfileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetDirectoryProfileResponse.ProtoReflect.Descriptor instead.
 func (*SetDirectoryProfileResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{43}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *SetDirectoryProfileResponse) GetMediaKit() *MediaKit {
@@ -3890,6 +4046,20 @@ func (x *SetDirectoryProfileResponse) GetMediaKit() *MediaKit {
 		return x.MediaKit
 	}
 	return nil
+}
+
+func (x *SetDirectoryProfileResponse) GetMediaKitId() string {
+	if x != nil {
+		return x.MediaKitId
+	}
+	return ""
+}
+
+func (x *SetDirectoryProfileResponse) GetDirectoryStatus() MediaKitDirectoryStatus {
+	if x != nil {
+		return x.DirectoryStatus
+	}
+	return MediaKitDirectoryStatus_MEDIA_KIT_DIRECTORY_STATUS_UNSPECIFIED
 }
 
 type RateCardServiceCreateRequest struct {
@@ -3904,7 +4074,7 @@ type RateCardServiceCreateRequest struct {
 
 func (x *RateCardServiceCreateRequest) Reset() {
 	*x = RateCardServiceCreateRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[44]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3916,7 +4086,7 @@ func (x *RateCardServiceCreateRequest) String() string {
 func (*RateCardServiceCreateRequest) ProtoMessage() {}
 
 func (x *RateCardServiceCreateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[44]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3929,7 +4099,7 @@ func (x *RateCardServiceCreateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RateCardServiceCreateRequest.ProtoReflect.Descriptor instead.
 func (*RateCardServiceCreateRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{44}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *RateCardServiceCreateRequest) GetWorkspaceId() string {
@@ -3969,7 +4139,7 @@ type RateCardServiceCreateResponse struct {
 
 func (x *RateCardServiceCreateResponse) Reset() {
 	*x = RateCardServiceCreateResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[45]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3981,7 +4151,7 @@ func (x *RateCardServiceCreateResponse) String() string {
 func (*RateCardServiceCreateResponse) ProtoMessage() {}
 
 func (x *RateCardServiceCreateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[45]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3994,7 +4164,7 @@ func (x *RateCardServiceCreateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RateCardServiceCreateResponse.ProtoReflect.Descriptor instead.
 func (*RateCardServiceCreateResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{45}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *RateCardServiceCreateResponse) GetRateCard() *RateCard {
@@ -4014,7 +4184,7 @@ type GetRateCardRequest struct {
 
 func (x *GetRateCardRequest) Reset() {
 	*x = GetRateCardRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[46]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4026,7 +4196,7 @@ func (x *GetRateCardRequest) String() string {
 func (*GetRateCardRequest) ProtoMessage() {}
 
 func (x *GetRateCardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[46]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4039,7 +4209,7 @@ func (x *GetRateCardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRateCardRequest.ProtoReflect.Descriptor instead.
 func (*GetRateCardRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{46}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *GetRateCardRequest) GetWorkspaceId() string {
@@ -4065,7 +4235,7 @@ type GetRateCardResponse struct {
 
 func (x *GetRateCardResponse) Reset() {
 	*x = GetRateCardResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[47]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4077,7 +4247,7 @@ func (x *GetRateCardResponse) String() string {
 func (*GetRateCardResponse) ProtoMessage() {}
 
 func (x *GetRateCardResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[47]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4090,7 +4260,7 @@ func (x *GetRateCardResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRateCardResponse.ProtoReflect.Descriptor instead.
 func (*GetRateCardResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{47}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *GetRateCardResponse) GetRateCard() *RateCard {
@@ -4109,7 +4279,7 @@ type RateCardServiceListRequest struct {
 
 func (x *RateCardServiceListRequest) Reset() {
 	*x = RateCardServiceListRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[48]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4121,7 +4291,7 @@ func (x *RateCardServiceListRequest) String() string {
 func (*RateCardServiceListRequest) ProtoMessage() {}
 
 func (x *RateCardServiceListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[48]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4134,7 +4304,7 @@ func (x *RateCardServiceListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RateCardServiceListRequest.ProtoReflect.Descriptor instead.
 func (*RateCardServiceListRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{48}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *RateCardServiceListRequest) GetWorkspaceId() string {
@@ -4153,7 +4323,7 @@ type RateCardServiceListResponse struct {
 
 func (x *RateCardServiceListResponse) Reset() {
 	*x = RateCardServiceListResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[49]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4165,7 +4335,7 @@ func (x *RateCardServiceListResponse) String() string {
 func (*RateCardServiceListResponse) ProtoMessage() {}
 
 func (x *RateCardServiceListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[49]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4178,7 +4348,7 @@ func (x *RateCardServiceListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RateCardServiceListResponse.ProtoReflect.Descriptor instead.
 func (*RateCardServiceListResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{49}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *RateCardServiceListResponse) GetRateCards() []*RateCard {
@@ -4201,7 +4371,7 @@ type RateCardServiceSaveRequest struct {
 
 func (x *RateCardServiceSaveRequest) Reset() {
 	*x = RateCardServiceSaveRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[50]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4213,7 +4383,7 @@ func (x *RateCardServiceSaveRequest) String() string {
 func (*RateCardServiceSaveRequest) ProtoMessage() {}
 
 func (x *RateCardServiceSaveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[50]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4226,7 +4396,7 @@ func (x *RateCardServiceSaveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RateCardServiceSaveRequest.ProtoReflect.Descriptor instead.
 func (*RateCardServiceSaveRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{50}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *RateCardServiceSaveRequest) GetWorkspaceId() string {
@@ -4273,7 +4443,7 @@ type RateCardServiceSaveResponse struct {
 
 func (x *RateCardServiceSaveResponse) Reset() {
 	*x = RateCardServiceSaveResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[51]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4285,7 +4455,7 @@ func (x *RateCardServiceSaveResponse) String() string {
 func (*RateCardServiceSaveResponse) ProtoMessage() {}
 
 func (x *RateCardServiceSaveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[51]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4298,7 +4468,7 @@ func (x *RateCardServiceSaveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RateCardServiceSaveResponse.ProtoReflect.Descriptor instead.
 func (*RateCardServiceSaveResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{51}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *RateCardServiceSaveResponse) GetRateCard() *RateCard {
@@ -4318,7 +4488,7 @@ type RateCardServiceDeleteItemRequest struct {
 
 func (x *RateCardServiceDeleteItemRequest) Reset() {
 	*x = RateCardServiceDeleteItemRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[52]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4330,7 +4500,7 @@ func (x *RateCardServiceDeleteItemRequest) String() string {
 func (*RateCardServiceDeleteItemRequest) ProtoMessage() {}
 
 func (x *RateCardServiceDeleteItemRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[52]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4343,7 +4513,7 @@ func (x *RateCardServiceDeleteItemRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RateCardServiceDeleteItemRequest.ProtoReflect.Descriptor instead.
 func (*RateCardServiceDeleteItemRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{52}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *RateCardServiceDeleteItemRequest) GetWorkspaceId() string {
@@ -4369,7 +4539,7 @@ type RateCardServiceDeleteItemResponse struct {
 
 func (x *RateCardServiceDeleteItemResponse) Reset() {
 	*x = RateCardServiceDeleteItemResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[53]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4381,7 +4551,7 @@ func (x *RateCardServiceDeleteItemResponse) String() string {
 func (*RateCardServiceDeleteItemResponse) ProtoMessage() {}
 
 func (x *RateCardServiceDeleteItemResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[53]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4394,7 +4564,7 @@ func (x *RateCardServiceDeleteItemResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use RateCardServiceDeleteItemResponse.ProtoReflect.Descriptor instead.
 func (*RateCardServiceDeleteItemResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{53}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *RateCardServiceDeleteItemResponse) GetDeleted() bool {
@@ -4415,7 +4585,7 @@ type RateCardServiceReorderRequest struct {
 
 func (x *RateCardServiceReorderRequest) Reset() {
 	*x = RateCardServiceReorderRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[54]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4427,7 +4597,7 @@ func (x *RateCardServiceReorderRequest) String() string {
 func (*RateCardServiceReorderRequest) ProtoMessage() {}
 
 func (x *RateCardServiceReorderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[54]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4440,7 +4610,7 @@ func (x *RateCardServiceReorderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RateCardServiceReorderRequest.ProtoReflect.Descriptor instead.
 func (*RateCardServiceReorderRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{54}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *RateCardServiceReorderRequest) GetWorkspaceId() string {
@@ -4473,7 +4643,7 @@ type RateCardServiceReorderResponse struct {
 
 func (x *RateCardServiceReorderResponse) Reset() {
 	*x = RateCardServiceReorderResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[55]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4485,7 +4655,7 @@ func (x *RateCardServiceReorderResponse) String() string {
 func (*RateCardServiceReorderResponse) ProtoMessage() {}
 
 func (x *RateCardServiceReorderResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[55]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4498,7 +4668,7 @@ func (x *RateCardServiceReorderResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RateCardServiceReorderResponse.ProtoReflect.Descriptor instead.
 func (*RateCardServiceReorderResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{55}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *RateCardServiceReorderResponse) GetItems() []*RateCardItem {
@@ -4518,7 +4688,7 @@ type CompareScopeRequest struct {
 
 func (x *CompareScopeRequest) Reset() {
 	*x = CompareScopeRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[56]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4530,7 +4700,7 @@ func (x *CompareScopeRequest) String() string {
 func (*CompareScopeRequest) ProtoMessage() {}
 
 func (x *CompareScopeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[56]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4543,7 +4713,7 @@ func (x *CompareScopeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompareScopeRequest.ProtoReflect.Descriptor instead.
 func (*CompareScopeRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{56}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *CompareScopeRequest) GetWorkspaceId() string {
@@ -4573,7 +4743,7 @@ type CompareScopeResponse struct {
 
 func (x *CompareScopeResponse) Reset() {
 	*x = CompareScopeResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[57]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4585,7 +4755,7 @@ func (x *CompareScopeResponse) String() string {
 func (*CompareScopeResponse) ProtoMessage() {}
 
 func (x *CompareScopeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[57]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4598,7 +4768,7 @@ func (x *CompareScopeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompareScopeResponse.ProtoReflect.Descriptor instead.
 func (*CompareScopeResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{57}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *CompareScopeResponse) GetServiceType() string {
@@ -4647,7 +4817,7 @@ type RateCardServiceAISuggestRequest struct {
 
 func (x *RateCardServiceAISuggestRequest) Reset() {
 	*x = RateCardServiceAISuggestRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[58]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4659,7 +4829,7 @@ func (x *RateCardServiceAISuggestRequest) String() string {
 func (*RateCardServiceAISuggestRequest) ProtoMessage() {}
 
 func (x *RateCardServiceAISuggestRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[58]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4672,7 +4842,7 @@ func (x *RateCardServiceAISuggestRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RateCardServiceAISuggestRequest.ProtoReflect.Descriptor instead.
 func (*RateCardServiceAISuggestRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{58}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *RateCardServiceAISuggestRequest) GetWorkspaceId() string {
@@ -4709,7 +4879,7 @@ type RateCardServiceAISuggestResponse struct {
 
 func (x *RateCardServiceAISuggestResponse) Reset() {
 	*x = RateCardServiceAISuggestResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[59]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4721,7 +4891,7 @@ func (x *RateCardServiceAISuggestResponse) String() string {
 func (*RateCardServiceAISuggestResponse) ProtoMessage() {}
 
 func (x *RateCardServiceAISuggestResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[59]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4734,7 +4904,7 @@ func (x *RateCardServiceAISuggestResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RateCardServiceAISuggestResponse.ProtoReflect.Descriptor instead.
 func (*RateCardServiceAISuggestResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{59}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *RateCardServiceAISuggestResponse) GetSuggestedPrice() float64 {
@@ -4790,7 +4960,7 @@ type BrandDealServiceCreateRequest struct {
 
 func (x *BrandDealServiceCreateRequest) Reset() {
 	*x = BrandDealServiceCreateRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[60]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4802,7 +4972,7 @@ func (x *BrandDealServiceCreateRequest) String() string {
 func (*BrandDealServiceCreateRequest) ProtoMessage() {}
 
 func (x *BrandDealServiceCreateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[60]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4815,7 +4985,7 @@ func (x *BrandDealServiceCreateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrandDealServiceCreateRequest.ProtoReflect.Descriptor instead.
 func (*BrandDealServiceCreateRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{60}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *BrandDealServiceCreateRequest) GetWorkspaceId() string {
@@ -4897,7 +5067,7 @@ type BrandDealServiceCreateResponse struct {
 
 func (x *BrandDealServiceCreateResponse) Reset() {
 	*x = BrandDealServiceCreateResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[61]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4909,7 +5079,7 @@ func (x *BrandDealServiceCreateResponse) String() string {
 func (*BrandDealServiceCreateResponse) ProtoMessage() {}
 
 func (x *BrandDealServiceCreateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[61]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4922,7 +5092,7 @@ func (x *BrandDealServiceCreateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrandDealServiceCreateResponse.ProtoReflect.Descriptor instead.
 func (*BrandDealServiceCreateResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{61}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *BrandDealServiceCreateResponse) GetDeal() *BrandDeal {
@@ -4939,13 +5109,15 @@ type BrandDealServiceUpdateStatusRequest struct {
 	TargetStatus              BrandDealStatus        `protobuf:"varint,3,opt,name=target_status,json=targetStatus,proto3,enum=creativanta.commerce.v1.BrandDealStatus" json:"target_status,omitempty"`
 	CancellationReason        string                 `protobuf:"bytes,4,opt,name=cancellation_reason,json=cancellationReason,proto3" json:"cancellation_reason,omitempty"`
 	RequiresFinancialReversal bool                   `protobuf:"varint,5,opt,name=requires_financial_reversal,json=requiresFinancialReversal,proto3" json:"requires_financial_reversal,omitempty"`
+	ExpectedUpdatedAt         *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=expected_updated_at,json=expectedUpdatedAt,proto3" json:"expected_updated_at,omitempty"`
+	IdempotencyKey            string                 `protobuf:"bytes,7,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *BrandDealServiceUpdateStatusRequest) Reset() {
 	*x = BrandDealServiceUpdateStatusRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[62]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4957,7 +5129,7 @@ func (x *BrandDealServiceUpdateStatusRequest) String() string {
 func (*BrandDealServiceUpdateStatusRequest) ProtoMessage() {}
 
 func (x *BrandDealServiceUpdateStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[62]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4970,7 +5142,7 @@ func (x *BrandDealServiceUpdateStatusRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use BrandDealServiceUpdateStatusRequest.ProtoReflect.Descriptor instead.
 func (*BrandDealServiceUpdateStatusRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{62}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *BrandDealServiceUpdateStatusRequest) GetWorkspaceId() string {
@@ -5008,6 +5180,20 @@ func (x *BrandDealServiceUpdateStatusRequest) GetRequiresFinancialReversal() boo
 	return false
 }
 
+func (x *BrandDealServiceUpdateStatusRequest) GetExpectedUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpectedUpdatedAt
+	}
+	return nil
+}
+
+func (x *BrandDealServiceUpdateStatusRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
 type BrandDealServiceUpdateStatusResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Deal          *BrandDeal             `protobuf:"bytes,1,opt,name=deal,proto3" json:"deal,omitempty"`
@@ -5017,7 +5203,7 @@ type BrandDealServiceUpdateStatusResponse struct {
 
 func (x *BrandDealServiceUpdateStatusResponse) Reset() {
 	*x = BrandDealServiceUpdateStatusResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[63]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5029,7 +5215,7 @@ func (x *BrandDealServiceUpdateStatusResponse) String() string {
 func (*BrandDealServiceUpdateStatusResponse) ProtoMessage() {}
 
 func (x *BrandDealServiceUpdateStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[63]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5042,7 +5228,7 @@ func (x *BrandDealServiceUpdateStatusResponse) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use BrandDealServiceUpdateStatusResponse.ProtoReflect.Descriptor instead.
 func (*BrandDealServiceUpdateStatusResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{63}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *BrandDealServiceUpdateStatusResponse) GetDeal() *BrandDeal {
@@ -5062,7 +5248,7 @@ type BrandDealServiceListRequest struct {
 
 func (x *BrandDealServiceListRequest) Reset() {
 	*x = BrandDealServiceListRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[64]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5074,7 +5260,7 @@ func (x *BrandDealServiceListRequest) String() string {
 func (*BrandDealServiceListRequest) ProtoMessage() {}
 
 func (x *BrandDealServiceListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[64]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5087,7 +5273,7 @@ func (x *BrandDealServiceListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrandDealServiceListRequest.ProtoReflect.Descriptor instead.
 func (*BrandDealServiceListRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{64}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *BrandDealServiceListRequest) GetWorkspaceId() string {
@@ -5113,7 +5299,7 @@ type BrandDealServiceListResponse struct {
 
 func (x *BrandDealServiceListResponse) Reset() {
 	*x = BrandDealServiceListResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[65]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5125,7 +5311,7 @@ func (x *BrandDealServiceListResponse) String() string {
 func (*BrandDealServiceListResponse) ProtoMessage() {}
 
 func (x *BrandDealServiceListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[65]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5138,7 +5324,7 @@ func (x *BrandDealServiceListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrandDealServiceListResponse.ProtoReflect.Descriptor instead.
 func (*BrandDealServiceListResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{65}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *BrandDealServiceListResponse) GetDeals() []*BrandDeal {
@@ -5158,7 +5344,7 @@ type ListDealsRequest struct {
 
 func (x *ListDealsRequest) Reset() {
 	*x = ListDealsRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[66]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5170,7 +5356,7 @@ func (x *ListDealsRequest) String() string {
 func (*ListDealsRequest) ProtoMessage() {}
 
 func (x *ListDealsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[66]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5183,7 +5369,7 @@ func (x *ListDealsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDealsRequest.ProtoReflect.Descriptor instead.
 func (*ListDealsRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{66}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *ListDealsRequest) GetWorkspaceId() string {
@@ -5209,7 +5395,7 @@ type ListDealsResponse struct {
 
 func (x *ListDealsResponse) Reset() {
 	*x = ListDealsResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[67]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5221,7 +5407,7 @@ func (x *ListDealsResponse) String() string {
 func (*ListDealsResponse) ProtoMessage() {}
 
 func (x *ListDealsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[67]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5234,7 +5420,7 @@ func (x *ListDealsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDealsResponse.ProtoReflect.Descriptor instead.
 func (*ListDealsResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{67}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *ListDealsResponse) GetDeals() []*BrandDeal {
@@ -5253,7 +5439,7 @@ type ListPartnershipsRequest struct {
 
 func (x *ListPartnershipsRequest) Reset() {
 	*x = ListPartnershipsRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[68]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5265,7 +5451,7 @@ func (x *ListPartnershipsRequest) String() string {
 func (*ListPartnershipsRequest) ProtoMessage() {}
 
 func (x *ListPartnershipsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[68]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5278,7 +5464,7 @@ func (x *ListPartnershipsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPartnershipsRequest.ProtoReflect.Descriptor instead.
 func (*ListPartnershipsRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{68}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *ListPartnershipsRequest) GetWorkspaceId() string {
@@ -5297,7 +5483,7 @@ type ListPartnershipsResponse struct {
 
 func (x *ListPartnershipsResponse) Reset() {
 	*x = ListPartnershipsResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[69]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5309,7 +5495,7 @@ func (x *ListPartnershipsResponse) String() string {
 func (*ListPartnershipsResponse) ProtoMessage() {}
 
 func (x *ListPartnershipsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[69]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5322,7 +5508,7 @@ func (x *ListPartnershipsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPartnershipsResponse.ProtoReflect.Descriptor instead.
 func (*ListPartnershipsResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{69}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *ListPartnershipsResponse) GetPartnerships() []*BrandDeal {
@@ -5341,7 +5527,7 @@ type GetPipelineStatsRequest struct {
 
 func (x *GetPipelineStatsRequest) Reset() {
 	*x = GetPipelineStatsRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[70]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5353,7 +5539,7 @@ func (x *GetPipelineStatsRequest) String() string {
 func (*GetPipelineStatsRequest) ProtoMessage() {}
 
 func (x *GetPipelineStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[70]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5366,7 +5552,7 @@ func (x *GetPipelineStatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPipelineStatsRequest.ProtoReflect.Descriptor instead.
 func (*GetPipelineStatsRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{70}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *GetPipelineStatsRequest) GetWorkspaceId() string {
@@ -5385,7 +5571,7 @@ type GetPipelineStatsResponse struct {
 
 func (x *GetPipelineStatsResponse) Reset() {
 	*x = GetPipelineStatsResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[71]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5397,7 +5583,7 @@ func (x *GetPipelineStatsResponse) String() string {
 func (*GetPipelineStatsResponse) ProtoMessage() {}
 
 func (x *GetPipelineStatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[71]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5410,7 +5596,7 @@ func (x *GetPipelineStatsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPipelineStatsResponse.ProtoReflect.Descriptor instead.
 func (*GetPipelineStatsResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{71}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *GetPipelineStatsResponse) GetStats() *BrandDealPipelineStats {
@@ -5430,7 +5616,7 @@ type BrandDealServiceGetSummaryRequest struct {
 
 func (x *BrandDealServiceGetSummaryRequest) Reset() {
 	*x = BrandDealServiceGetSummaryRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[72]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5442,7 +5628,7 @@ func (x *BrandDealServiceGetSummaryRequest) String() string {
 func (*BrandDealServiceGetSummaryRequest) ProtoMessage() {}
 
 func (x *BrandDealServiceGetSummaryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[72]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5455,7 +5641,7 @@ func (x *BrandDealServiceGetSummaryRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use BrandDealServiceGetSummaryRequest.ProtoReflect.Descriptor instead.
 func (*BrandDealServiceGetSummaryRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{72}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *BrandDealServiceGetSummaryRequest) GetWorkspaceId() string {
@@ -5481,7 +5667,7 @@ type BrandDealServiceGetSummaryResponse struct {
 
 func (x *BrandDealServiceGetSummaryResponse) Reset() {
 	*x = BrandDealServiceGetSummaryResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[73]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5493,7 +5679,7 @@ func (x *BrandDealServiceGetSummaryResponse) String() string {
 func (*BrandDealServiceGetSummaryResponse) ProtoMessage() {}
 
 func (x *BrandDealServiceGetSummaryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[73]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5506,7 +5692,7 @@ func (x *BrandDealServiceGetSummaryResponse) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use BrandDealServiceGetSummaryResponse.ProtoReflect.Descriptor instead.
 func (*BrandDealServiceGetSummaryResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{73}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *BrandDealServiceGetSummaryResponse) GetDeal() *BrandDeal {
@@ -5528,7 +5714,7 @@ type UpdateDeliverableRequest struct {
 
 func (x *UpdateDeliverableRequest) Reset() {
 	*x = UpdateDeliverableRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[74]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5540,7 +5726,7 @@ func (x *UpdateDeliverableRequest) String() string {
 func (*UpdateDeliverableRequest) ProtoMessage() {}
 
 func (x *UpdateDeliverableRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[74]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5553,7 +5739,7 @@ func (x *UpdateDeliverableRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateDeliverableRequest.ProtoReflect.Descriptor instead.
 func (*UpdateDeliverableRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{74}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *UpdateDeliverableRequest) GetWorkspaceId() string {
@@ -5593,7 +5779,7 @@ type UpdateDeliverableResponse struct {
 
 func (x *UpdateDeliverableResponse) Reset() {
 	*x = UpdateDeliverableResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[75]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5605,7 +5791,7 @@ func (x *UpdateDeliverableResponse) String() string {
 func (*UpdateDeliverableResponse) ProtoMessage() {}
 
 func (x *UpdateDeliverableResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[75]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5618,7 +5804,7 @@ func (x *UpdateDeliverableResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateDeliverableResponse.ProtoReflect.Descriptor instead.
 func (*UpdateDeliverableResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{75}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *UpdateDeliverableResponse) GetDeal() *BrandDeal {
@@ -5640,7 +5826,7 @@ type UpdatePaymentRequest struct {
 
 func (x *UpdatePaymentRequest) Reset() {
 	*x = UpdatePaymentRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[76]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5652,7 +5838,7 @@ func (x *UpdatePaymentRequest) String() string {
 func (*UpdatePaymentRequest) ProtoMessage() {}
 
 func (x *UpdatePaymentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[76]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5665,7 +5851,7 @@ func (x *UpdatePaymentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePaymentRequest.ProtoReflect.Descriptor instead.
 func (*UpdatePaymentRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{76}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *UpdatePaymentRequest) GetWorkspaceId() string {
@@ -5705,7 +5891,7 @@ type UpdatePaymentResponse struct {
 
 func (x *UpdatePaymentResponse) Reset() {
 	*x = UpdatePaymentResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[77]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5717,7 +5903,7 @@ func (x *UpdatePaymentResponse) String() string {
 func (*UpdatePaymentResponse) ProtoMessage() {}
 
 func (x *UpdatePaymentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[77]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5730,7 +5916,7 @@ func (x *UpdatePaymentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePaymentResponse.ProtoReflect.Descriptor instead.
 func (*UpdatePaymentResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{77}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *UpdatePaymentResponse) GetDeal() *BrandDeal {
@@ -5749,7 +5935,7 @@ type ListContractTemplatesRequest struct {
 
 func (x *ListContractTemplatesRequest) Reset() {
 	*x = ListContractTemplatesRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[78]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5761,7 +5947,7 @@ func (x *ListContractTemplatesRequest) String() string {
 func (*ListContractTemplatesRequest) ProtoMessage() {}
 
 func (x *ListContractTemplatesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[78]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5774,7 +5960,7 @@ func (x *ListContractTemplatesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListContractTemplatesRequest.ProtoReflect.Descriptor instead.
 func (*ListContractTemplatesRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{78}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *ListContractTemplatesRequest) GetWorkspaceId() string {
@@ -5785,18 +5971,22 @@ func (x *ListContractTemplatesRequest) GetWorkspaceId() string {
 }
 
 type ContractTemplate struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TemplateId    string                 `protobuf:"bytes,1,opt,name=template_id,json=templateId,proto3" json:"template_id,omitempty"`
-	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	DefaultTerms  string                 `protobuf:"bytes,4,opt,name=default_terms,json=defaultTerms,proto3" json:"default_terms,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	TemplateId      string                 `protobuf:"bytes,1,opt,name=template_id,json=templateId,proto3" json:"template_id,omitempty"`
+	Title           string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Description     string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	DefaultTerms    string                 `protobuf:"bytes,4,opt,name=default_terms,json=defaultTerms,proto3" json:"default_terms,omitempty"`
+	Version         string                 `protobuf:"bytes,5,opt,name=version,proto3" json:"version,omitempty"`
+	SourceArticleId string                 `protobuf:"bytes,6,opt,name=source_article_id,json=sourceArticleId,proto3" json:"source_article_id,omitempty"`
+	BodyMarkdown    string                 `protobuf:"bytes,7,opt,name=body_markdown,json=bodyMarkdown,proto3" json:"body_markdown,omitempty"`
+	Disclaimer      string                 `protobuf:"bytes,8,opt,name=disclaimer,proto3" json:"disclaimer,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ContractTemplate) Reset() {
 	*x = ContractTemplate{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[79]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5808,7 +5998,7 @@ func (x *ContractTemplate) String() string {
 func (*ContractTemplate) ProtoMessage() {}
 
 func (x *ContractTemplate) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[79]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5821,7 +6011,7 @@ func (x *ContractTemplate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContractTemplate.ProtoReflect.Descriptor instead.
 func (*ContractTemplate) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{79}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *ContractTemplate) GetTemplateId() string {
@@ -5852,16 +6042,45 @@ func (x *ContractTemplate) GetDefaultTerms() string {
 	return ""
 }
 
+func (x *ContractTemplate) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *ContractTemplate) GetSourceArticleId() string {
+	if x != nil {
+		return x.SourceArticleId
+	}
+	return ""
+}
+
+func (x *ContractTemplate) GetBodyMarkdown() string {
+	if x != nil {
+		return x.BodyMarkdown
+	}
+	return ""
+}
+
+func (x *ContractTemplate) GetDisclaimer() string {
+	if x != nil {
+		return x.Disclaimer
+	}
+	return ""
+}
+
 type ListContractTemplatesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Templates     []*ContractTemplate    `protobuf:"bytes,1,rep,name=templates,proto3" json:"templates,omitempty"`
+	Disclaimer    string                 `protobuf:"bytes,2,opt,name=disclaimer,proto3" json:"disclaimer,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListContractTemplatesResponse) Reset() {
 	*x = ListContractTemplatesResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[80]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5873,7 +6092,7 @@ func (x *ListContractTemplatesResponse) String() string {
 func (*ListContractTemplatesResponse) ProtoMessage() {}
 
 func (x *ListContractTemplatesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[80]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5886,7 +6105,7 @@ func (x *ListContractTemplatesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListContractTemplatesResponse.ProtoReflect.Descriptor instead.
 func (*ListContractTemplatesResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{80}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *ListContractTemplatesResponse) GetTemplates() []*ContractTemplate {
@@ -5894,6 +6113,13 @@ func (x *ListContractTemplatesResponse) GetTemplates() []*ContractTemplate {
 		return x.Templates
 	}
 	return nil
+}
+
+func (x *ListContractTemplatesResponse) GetDisclaimer() string {
+	if x != nil {
+		return x.Disclaimer
+	}
+	return ""
 }
 
 type AttachContractRequest struct {
@@ -5907,7 +6133,7 @@ type AttachContractRequest struct {
 
 func (x *AttachContractRequest) Reset() {
 	*x = AttachContractRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[81]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5919,7 +6145,7 @@ func (x *AttachContractRequest) String() string {
 func (*AttachContractRequest) ProtoMessage() {}
 
 func (x *AttachContractRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[81]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5932,7 +6158,7 @@ func (x *AttachContractRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttachContractRequest.ProtoReflect.Descriptor instead.
 func (*AttachContractRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{81}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *AttachContractRequest) GetWorkspaceId() string {
@@ -5965,7 +6191,7 @@ type AttachContractResponse struct {
 
 func (x *AttachContractResponse) Reset() {
 	*x = AttachContractResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[82]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5977,7 +6203,7 @@ func (x *AttachContractResponse) String() string {
 func (*AttachContractResponse) ProtoMessage() {}
 
 func (x *AttachContractResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[82]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5990,7 +6216,7 @@ func (x *AttachContractResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttachContractResponse.ProtoReflect.Descriptor instead.
 func (*AttachContractResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{82}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *AttachContractResponse) GetDeal() *BrandDeal {
@@ -6009,7 +6235,7 @@ type ListInquiriesRequest struct {
 
 func (x *ListInquiriesRequest) Reset() {
 	*x = ListInquiriesRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[83]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6021,7 +6247,7 @@ func (x *ListInquiriesRequest) String() string {
 func (*ListInquiriesRequest) ProtoMessage() {}
 
 func (x *ListInquiriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[83]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6034,7 +6260,7 @@ func (x *ListInquiriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInquiriesRequest.ProtoReflect.Descriptor instead.
 func (*ListInquiriesRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{83}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *ListInquiriesRequest) GetWorkspaceId() string {
@@ -6061,7 +6287,7 @@ type SponsorInquiry struct {
 
 func (x *SponsorInquiry) Reset() {
 	*x = SponsorInquiry{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[84]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6073,7 +6299,7 @@ func (x *SponsorInquiry) String() string {
 func (*SponsorInquiry) ProtoMessage() {}
 
 func (x *SponsorInquiry) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[84]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6086,7 +6312,7 @@ func (x *SponsorInquiry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SponsorInquiry.ProtoReflect.Descriptor instead.
 func (*SponsorInquiry) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{84}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *SponsorInquiry) GetInquiryId() string {
@@ -6161,7 +6387,7 @@ type ListInquiriesResponse struct {
 
 func (x *ListInquiriesResponse) Reset() {
 	*x = ListInquiriesResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[85]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6173,7 +6399,7 @@ func (x *ListInquiriesResponse) String() string {
 func (*ListInquiriesResponse) ProtoMessage() {}
 
 func (x *ListInquiriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[85]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6186,7 +6412,7 @@ func (x *ListInquiriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInquiriesResponse.ProtoReflect.Descriptor instead.
 func (*ListInquiriesResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{85}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *ListInquiriesResponse) GetInquiries() []*SponsorInquiry {
@@ -6208,7 +6434,7 @@ type SponsorInquiryServiceAcceptRequest struct {
 
 func (x *SponsorInquiryServiceAcceptRequest) Reset() {
 	*x = SponsorInquiryServiceAcceptRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[86]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6220,7 +6446,7 @@ func (x *SponsorInquiryServiceAcceptRequest) String() string {
 func (*SponsorInquiryServiceAcceptRequest) ProtoMessage() {}
 
 func (x *SponsorInquiryServiceAcceptRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[86]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6233,7 +6459,7 @@ func (x *SponsorInquiryServiceAcceptRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use SponsorInquiryServiceAcceptRequest.ProtoReflect.Descriptor instead.
 func (*SponsorInquiryServiceAcceptRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{86}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *SponsorInquiryServiceAcceptRequest) GetWorkspaceId() string {
@@ -6274,7 +6500,7 @@ type SponsorInquiryServiceAcceptResponse struct {
 
 func (x *SponsorInquiryServiceAcceptResponse) Reset() {
 	*x = SponsorInquiryServiceAcceptResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[87]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6286,7 +6512,7 @@ func (x *SponsorInquiryServiceAcceptResponse) String() string {
 func (*SponsorInquiryServiceAcceptResponse) ProtoMessage() {}
 
 func (x *SponsorInquiryServiceAcceptResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[87]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6299,7 +6525,7 @@ func (x *SponsorInquiryServiceAcceptResponse) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use SponsorInquiryServiceAcceptResponse.ProtoReflect.Descriptor instead.
 func (*SponsorInquiryServiceAcceptResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{87}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *SponsorInquiryServiceAcceptResponse) GetInquiry() *SponsorInquiry {
@@ -6327,7 +6553,7 @@ type SponsorInquiryServiceDeclineRequest struct {
 
 func (x *SponsorInquiryServiceDeclineRequest) Reset() {
 	*x = SponsorInquiryServiceDeclineRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[88]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6339,7 +6565,7 @@ func (x *SponsorInquiryServiceDeclineRequest) String() string {
 func (*SponsorInquiryServiceDeclineRequest) ProtoMessage() {}
 
 func (x *SponsorInquiryServiceDeclineRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[88]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6352,7 +6578,7 @@ func (x *SponsorInquiryServiceDeclineRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use SponsorInquiryServiceDeclineRequest.ProtoReflect.Descriptor instead.
 func (*SponsorInquiryServiceDeclineRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{88}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *SponsorInquiryServiceDeclineRequest) GetWorkspaceId() string {
@@ -6385,7 +6611,7 @@ type SponsorInquiryServiceDeclineResponse struct {
 
 func (x *SponsorInquiryServiceDeclineResponse) Reset() {
 	*x = SponsorInquiryServiceDeclineResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[89]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6397,7 +6623,7 @@ func (x *SponsorInquiryServiceDeclineResponse) String() string {
 func (*SponsorInquiryServiceDeclineResponse) ProtoMessage() {}
 
 func (x *SponsorInquiryServiceDeclineResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[89]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6410,7 +6636,7 @@ func (x *SponsorInquiryServiceDeclineResponse) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use SponsorInquiryServiceDeclineResponse.ProtoReflect.Descriptor instead.
 func (*SponsorInquiryServiceDeclineResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{89}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *SponsorInquiryServiceDeclineResponse) GetInquiry() *SponsorInquiry {
@@ -6431,7 +6657,7 @@ type SponsorInquiryServiceFlagRequest struct {
 
 func (x *SponsorInquiryServiceFlagRequest) Reset() {
 	*x = SponsorInquiryServiceFlagRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[90]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6443,7 +6669,7 @@ func (x *SponsorInquiryServiceFlagRequest) String() string {
 func (*SponsorInquiryServiceFlagRequest) ProtoMessage() {}
 
 func (x *SponsorInquiryServiceFlagRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[90]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6456,7 +6682,7 @@ func (x *SponsorInquiryServiceFlagRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SponsorInquiryServiceFlagRequest.ProtoReflect.Descriptor instead.
 func (*SponsorInquiryServiceFlagRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{90}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *SponsorInquiryServiceFlagRequest) GetWorkspaceId() string {
@@ -6489,7 +6715,7 @@ type SponsorInquiryServiceFlagResponse struct {
 
 func (x *SponsorInquiryServiceFlagResponse) Reset() {
 	*x = SponsorInquiryServiceFlagResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[91]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6501,7 +6727,7 @@ func (x *SponsorInquiryServiceFlagResponse) String() string {
 func (*SponsorInquiryServiceFlagResponse) ProtoMessage() {}
 
 func (x *SponsorInquiryServiceFlagResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[91]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6514,7 +6740,7 @@ func (x *SponsorInquiryServiceFlagResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use SponsorInquiryServiceFlagResponse.ProtoReflect.Descriptor instead.
 func (*SponsorInquiryServiceFlagResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{91}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *SponsorInquiryServiceFlagResponse) GetInquiry() *SponsorInquiry {
@@ -6533,7 +6759,7 @@ type SponsorInquiryServiceGetStatsRequest struct {
 
 func (x *SponsorInquiryServiceGetStatsRequest) Reset() {
 	*x = SponsorInquiryServiceGetStatsRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[92]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6545,7 +6771,7 @@ func (x *SponsorInquiryServiceGetStatsRequest) String() string {
 func (*SponsorInquiryServiceGetStatsRequest) ProtoMessage() {}
 
 func (x *SponsorInquiryServiceGetStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[92]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6558,7 +6784,7 @@ func (x *SponsorInquiryServiceGetStatsRequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use SponsorInquiryServiceGetStatsRequest.ProtoReflect.Descriptor instead.
 func (*SponsorInquiryServiceGetStatsRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{92}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *SponsorInquiryServiceGetStatsRequest) GetWorkspaceId() string {
@@ -6580,7 +6806,7 @@ type SponsorInquiryServiceGetStatsResponse struct {
 
 func (x *SponsorInquiryServiceGetStatsResponse) Reset() {
 	*x = SponsorInquiryServiceGetStatsResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[93]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6592,7 +6818,7 @@ func (x *SponsorInquiryServiceGetStatsResponse) String() string {
 func (*SponsorInquiryServiceGetStatsResponse) ProtoMessage() {}
 
 func (x *SponsorInquiryServiceGetStatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[93]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6605,7 +6831,7 @@ func (x *SponsorInquiryServiceGetStatsResponse) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use SponsorInquiryServiceGetStatsResponse.ProtoReflect.Descriptor instead.
 func (*SponsorInquiryServiceGetStatsResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{93}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{95}
 }
 
 func (x *SponsorInquiryServiceGetStatsResponse) GetTotalInquiries() int32 {
@@ -6643,13 +6869,16 @@ type SponsorInquiryServiceSubmitRequest struct {
 	ContactEmail   string                 `protobuf:"bytes,3,opt,name=contact_email,json=contactEmail,proto3" json:"contact_email,omitempty"`
 	Message        string                 `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
 	ProposedBudget float64                `protobuf:"fixed64,5,opt,name=proposed_budget,json=proposedBudget,proto3" json:"proposed_budget,omitempty"`
+	MediaKitId     string                 `protobuf:"bytes,6,opt,name=media_kit_id,json=mediaKitId,proto3" json:"media_kit_id,omitempty"`
+	ChallengeToken string                 `protobuf:"bytes,7,opt,name=challenge_token,json=challengeToken,proto3" json:"challenge_token,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,8,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SponsorInquiryServiceSubmitRequest) Reset() {
 	*x = SponsorInquiryServiceSubmitRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[94]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6661,7 +6890,7 @@ func (x *SponsorInquiryServiceSubmitRequest) String() string {
 func (*SponsorInquiryServiceSubmitRequest) ProtoMessage() {}
 
 func (x *SponsorInquiryServiceSubmitRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[94]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6674,7 +6903,7 @@ func (x *SponsorInquiryServiceSubmitRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use SponsorInquiryServiceSubmitRequest.ProtoReflect.Descriptor instead.
 func (*SponsorInquiryServiceSubmitRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{94}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *SponsorInquiryServiceSubmitRequest) GetWorkspaceId() string {
@@ -6712,17 +6941,40 @@ func (x *SponsorInquiryServiceSubmitRequest) GetProposedBudget() float64 {
 	return 0
 }
 
+func (x *SponsorInquiryServiceSubmitRequest) GetMediaKitId() string {
+	if x != nil {
+		return x.MediaKitId
+	}
+	return ""
+}
+
+func (x *SponsorInquiryServiceSubmitRequest) GetChallengeToken() string {
+	if x != nil {
+		return x.ChallengeToken
+	}
+	return ""
+}
+
+func (x *SponsorInquiryServiceSubmitRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
 type SponsorInquiryServiceSubmitResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Accepted      bool                   `protobuf:"varint,1,opt,name=accepted,proto3" json:"accepted,omitempty"`
-	InquiryId     string                 `protobuf:"bytes,2,opt,name=inquiry_id,json=inquiryId,proto3" json:"inquiry_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Accepted          bool                   `protobuf:"varint,1,opt,name=accepted,proto3" json:"accepted,omitempty"`
+	InquiryId         string                 `protobuf:"bytes,2,opt,name=inquiry_id,json=inquiryId,proto3" json:"inquiry_id,omitempty"`
+	SubmissionReceipt string                 `protobuf:"bytes,3,opt,name=submission_receipt,json=submissionReceipt,proto3" json:"submission_receipt,omitempty"`
+	Status            string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *SponsorInquiryServiceSubmitResponse) Reset() {
 	*x = SponsorInquiryServiceSubmitResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[95]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6734,7 +6986,7 @@ func (x *SponsorInquiryServiceSubmitResponse) String() string {
 func (*SponsorInquiryServiceSubmitResponse) ProtoMessage() {}
 
 func (x *SponsorInquiryServiceSubmitResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[95]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6747,7 +6999,7 @@ func (x *SponsorInquiryServiceSubmitResponse) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use SponsorInquiryServiceSubmitResponse.ProtoReflect.Descriptor instead.
 func (*SponsorInquiryServiceSubmitResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{95}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *SponsorInquiryServiceSubmitResponse) GetAccepted() bool {
@@ -6764,6 +7016,20 @@ func (x *SponsorInquiryServiceSubmitResponse) GetInquiryId() string {
 	return ""
 }
 
+func (x *SponsorInquiryServiceSubmitResponse) GetSubmissionReceipt() string {
+	if x != nil {
+		return x.SubmissionReceipt
+	}
+	return ""
+}
+
+func (x *SponsorInquiryServiceSubmitResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
 type GetPerContentRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	WorkspaceId   string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
@@ -6775,7 +7041,7 @@ type GetPerContentRequest struct {
 
 func (x *GetPerContentRequest) Reset() {
 	*x = GetPerContentRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[96]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[98]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6787,7 +7053,7 @@ func (x *GetPerContentRequest) String() string {
 func (*GetPerContentRequest) ProtoMessage() {}
 
 func (x *GetPerContentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[96]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[98]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6800,7 +7066,7 @@ func (x *GetPerContentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPerContentRequest.ProtoReflect.Descriptor instead.
 func (*GetPerContentRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{96}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{98}
 }
 
 func (x *GetPerContentRequest) GetWorkspaceId() string {
@@ -6833,7 +7099,7 @@ type GetPerContentResponse struct {
 
 func (x *GetPerContentResponse) Reset() {
 	*x = GetPerContentResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[97]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[99]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6845,7 +7111,7 @@ func (x *GetPerContentResponse) String() string {
 func (*GetPerContentResponse) ProtoMessage() {}
 
 func (x *GetPerContentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[97]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[99]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6858,7 +7124,7 @@ func (x *GetPerContentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPerContentResponse.ProtoReflect.Descriptor instead.
 func (*GetPerContentResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{97}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{99}
 }
 
 func (x *GetPerContentResponse) GetMetrics() []*ContentROIMetric {
@@ -6879,7 +7145,7 @@ type GetRPMTrendsRequest struct {
 
 func (x *GetRPMTrendsRequest) Reset() {
 	*x = GetRPMTrendsRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[98]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[100]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6891,7 +7157,7 @@ func (x *GetRPMTrendsRequest) String() string {
 func (*GetRPMTrendsRequest) ProtoMessage() {}
 
 func (x *GetRPMTrendsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[98]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[100]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6904,7 +7170,7 @@ func (x *GetRPMTrendsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRPMTrendsRequest.ProtoReflect.Descriptor instead.
 func (*GetRPMTrendsRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{98}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{100}
 }
 
 func (x *GetRPMTrendsRequest) GetWorkspaceId() string {
@@ -6939,7 +7205,7 @@ type GetRPMTrendsResponse struct {
 
 func (x *GetRPMTrendsResponse) Reset() {
 	*x = GetRPMTrendsResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[99]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[101]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6951,7 +7217,7 @@ func (x *GetRPMTrendsResponse) String() string {
 func (*GetRPMTrendsResponse) ProtoMessage() {}
 
 func (x *GetRPMTrendsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[99]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[101]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6964,7 +7230,7 @@ func (x *GetRPMTrendsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRPMTrendsResponse.ProtoReflect.Descriptor instead.
 func (*GetRPMTrendsResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{99}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{101}
 }
 
 func (x *GetRPMTrendsResponse) GetTrendPoints() []*RPMTrendPoint {
@@ -6998,7 +7264,7 @@ type GetROIRequest struct {
 
 func (x *GetROIRequest) Reset() {
 	*x = GetROIRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[100]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[102]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7010,7 +7276,7 @@ func (x *GetROIRequest) String() string {
 func (*GetROIRequest) ProtoMessage() {}
 
 func (x *GetROIRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[100]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[102]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7023,7 +7289,7 @@ func (x *GetROIRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetROIRequest.ProtoReflect.Descriptor instead.
 func (*GetROIRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{100}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{102}
 }
 
 func (x *GetROIRequest) GetWorkspaceId() string {
@@ -7049,7 +7315,7 @@ type GetROIResponse struct {
 
 func (x *GetROIResponse) Reset() {
 	*x = GetROIResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[101]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[103]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7061,7 +7327,7 @@ func (x *GetROIResponse) String() string {
 func (*GetROIResponse) ProtoMessage() {}
 
 func (x *GetROIResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[101]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[103]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7074,7 +7340,7 @@ func (x *GetROIResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetROIResponse.ProtoReflect.Descriptor instead.
 func (*GetROIResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{101}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{103}
 }
 
 func (x *GetROIResponse) GetMetric() *ContentROIMetric {
@@ -7095,7 +7361,7 @@ type GetTopPerformersRequest struct {
 
 func (x *GetTopPerformersRequest) Reset() {
 	*x = GetTopPerformersRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[102]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[104]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7107,7 +7373,7 @@ func (x *GetTopPerformersRequest) String() string {
 func (*GetTopPerformersRequest) ProtoMessage() {}
 
 func (x *GetTopPerformersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[102]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[104]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7120,7 +7386,7 @@ func (x *GetTopPerformersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTopPerformersRequest.ProtoReflect.Descriptor instead.
 func (*GetTopPerformersRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{102}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{104}
 }
 
 func (x *GetTopPerformersRequest) GetWorkspaceId() string {
@@ -7153,7 +7419,7 @@ type GetTopPerformersResponse struct {
 
 func (x *GetTopPerformersResponse) Reset() {
 	*x = GetTopPerformersResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[103]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[105]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7165,7 +7431,7 @@ func (x *GetTopPerformersResponse) String() string {
 func (*GetTopPerformersResponse) ProtoMessage() {}
 
 func (x *GetTopPerformersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[103]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[105]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7178,7 +7444,7 @@ func (x *GetTopPerformersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTopPerformersResponse.ProtoReflect.Descriptor instead.
 func (*GetTopPerformersResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{103}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{105}
 }
 
 func (x *GetTopPerformersResponse) GetTopPerformers() []*ContentROIMetric {
@@ -7200,7 +7466,7 @@ type TaxReportServiceGetReportRequest struct {
 
 func (x *TaxReportServiceGetReportRequest) Reset() {
 	*x = TaxReportServiceGetReportRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[104]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[106]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7212,7 +7478,7 @@ func (x *TaxReportServiceGetReportRequest) String() string {
 func (*TaxReportServiceGetReportRequest) ProtoMessage() {}
 
 func (x *TaxReportServiceGetReportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[104]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[106]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7225,7 +7491,7 @@ func (x *TaxReportServiceGetReportRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TaxReportServiceGetReportRequest.ProtoReflect.Descriptor instead.
 func (*TaxReportServiceGetReportRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{104}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{106}
 }
 
 func (x *TaxReportServiceGetReportRequest) GetWorkspaceId() string {
@@ -7265,7 +7531,7 @@ type TaxReportServiceGetReportResponse struct {
 
 func (x *TaxReportServiceGetReportResponse) Reset() {
 	*x = TaxReportServiceGetReportResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[105]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[107]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7277,7 +7543,7 @@ func (x *TaxReportServiceGetReportResponse) String() string {
 func (*TaxReportServiceGetReportResponse) ProtoMessage() {}
 
 func (x *TaxReportServiceGetReportResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[105]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[107]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7290,7 +7556,7 @@ func (x *TaxReportServiceGetReportResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use TaxReportServiceGetReportResponse.ProtoReflect.Descriptor instead.
 func (*TaxReportServiceGetReportResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{105}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{107}
 }
 
 func (x *TaxReportServiceGetReportResponse) GetSummary() *TaxReportSummary {
@@ -7313,7 +7579,7 @@ type ExportTaxReportRequest struct {
 
 func (x *ExportTaxReportRequest) Reset() {
 	*x = ExportTaxReportRequest{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[106]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[108]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7325,7 +7591,7 @@ func (x *ExportTaxReportRequest) String() string {
 func (*ExportTaxReportRequest) ProtoMessage() {}
 
 func (x *ExportTaxReportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[106]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[108]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7338,7 +7604,7 @@ func (x *ExportTaxReportRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExportTaxReportRequest.ProtoReflect.Descriptor instead.
 func (*ExportTaxReportRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{106}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{108}
 }
 
 func (x *ExportTaxReportRequest) GetWorkspaceId() string {
@@ -7387,7 +7653,7 @@ type ExportTaxReportResponse struct {
 
 func (x *ExportTaxReportResponse) Reset() {
 	*x = ExportTaxReportResponse{}
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[107]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[109]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7399,7 +7665,7 @@ func (x *ExportTaxReportResponse) String() string {
 func (*ExportTaxReportResponse) ProtoMessage() {}
 
 func (x *ExportTaxReportResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[107]
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[109]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7412,7 +7678,7 @@ func (x *ExportTaxReportResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExportTaxReportResponse.ProtoReflect.Descriptor instead.
 func (*ExportTaxReportResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{107}
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{109}
 }
 
 func (x *ExportTaxReportResponse) GetSummary() *TaxReportSummary {
@@ -7434,6 +7700,298 @@ func (x *ExportTaxReportResponse) GetFileName() string {
 		return x.FileName
 	}
 	return ""
+}
+
+type CreatorDirectoryEntry struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MediaKitId    string                 `protobuf:"bytes,1,opt,name=media_kit_id,json=mediaKitId,proto3" json:"media_kit_id,omitempty"`
+	Profile       *PublicCreatorProfile  `protobuf:"bytes,2,opt,name=profile,proto3" json:"profile,omitempty"`
+	PublishedAt   *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreatorDirectoryEntry) Reset() {
+	*x = CreatorDirectoryEntry{}
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[110]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreatorDirectoryEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreatorDirectoryEntry) ProtoMessage() {}
+
+func (x *CreatorDirectoryEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[110]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreatorDirectoryEntry.ProtoReflect.Descriptor instead.
+func (*CreatorDirectoryEntry) Descriptor() ([]byte, []int) {
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{110}
+}
+
+func (x *CreatorDirectoryEntry) GetMediaKitId() string {
+	if x != nil {
+		return x.MediaKitId
+	}
+	return ""
+}
+
+func (x *CreatorDirectoryEntry) GetProfile() *PublicCreatorProfile {
+	if x != nil {
+		return x.Profile
+	}
+	return nil
+}
+
+func (x *CreatorDirectoryEntry) GetPublishedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.PublishedAt
+	}
+	return nil
+}
+
+type CreatorDirectoryServiceSearchRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Query         string                 `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"` // <= 120 chars
+	Categories    []string               `protobuf:"bytes,2,rep,name=categories,proto3" json:"categories,omitempty"`
+	Languages     []string               `protobuf:"bytes,3,rep,name=languages,proto3" json:"languages,omitempty"`
+	PageSize      int32                  `protobuf:"varint,4,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"` // 1-20
+	PageToken     string                 `protobuf:"bytes,5,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreatorDirectoryServiceSearchRequest) Reset() {
+	*x = CreatorDirectoryServiceSearchRequest{}
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[111]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreatorDirectoryServiceSearchRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreatorDirectoryServiceSearchRequest) ProtoMessage() {}
+
+func (x *CreatorDirectoryServiceSearchRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[111]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreatorDirectoryServiceSearchRequest.ProtoReflect.Descriptor instead.
+func (*CreatorDirectoryServiceSearchRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{111}
+}
+
+func (x *CreatorDirectoryServiceSearchRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *CreatorDirectoryServiceSearchRequest) GetCategories() []string {
+	if x != nil {
+		return x.Categories
+	}
+	return nil
+}
+
+func (x *CreatorDirectoryServiceSearchRequest) GetLanguages() []string {
+	if x != nil {
+		return x.Languages
+	}
+	return nil
+}
+
+func (x *CreatorDirectoryServiceSearchRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *CreatorDirectoryServiceSearchRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+type CreatorDirectoryServiceSearchResponse struct {
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	Entries       []*CreatorDirectoryEntry `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	NextPageToken string                   `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	HasMore       bool                     `protobuf:"varint,3,opt,name=has_more,json=hasMore,proto3" json:"has_more,omitempty"`
+	TotalCount    int64                    `protobuf:"varint,4,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreatorDirectoryServiceSearchResponse) Reset() {
+	*x = CreatorDirectoryServiceSearchResponse{}
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[112]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreatorDirectoryServiceSearchResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreatorDirectoryServiceSearchResponse) ProtoMessage() {}
+
+func (x *CreatorDirectoryServiceSearchResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[112]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreatorDirectoryServiceSearchResponse.ProtoReflect.Descriptor instead.
+func (*CreatorDirectoryServiceSearchResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{112}
+}
+
+func (x *CreatorDirectoryServiceSearchResponse) GetEntries() []*CreatorDirectoryEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+func (x *CreatorDirectoryServiceSearchResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+func (x *CreatorDirectoryServiceSearchResponse) GetHasMore() bool {
+	if x != nil {
+		return x.HasMore
+	}
+	return false
+}
+
+func (x *CreatorDirectoryServiceSearchResponse) GetTotalCount() int64 {
+	if x != nil {
+		return x.TotalCount
+	}
+	return 0
+}
+
+type CreatorDirectoryServiceGetRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MediaKitId    string                 `protobuf:"bytes,1,opt,name=media_kit_id,json=mediaKitId,proto3" json:"media_kit_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreatorDirectoryServiceGetRequest) Reset() {
+	*x = CreatorDirectoryServiceGetRequest{}
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[113]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreatorDirectoryServiceGetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreatorDirectoryServiceGetRequest) ProtoMessage() {}
+
+func (x *CreatorDirectoryServiceGetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[113]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreatorDirectoryServiceGetRequest.ProtoReflect.Descriptor instead.
+func (*CreatorDirectoryServiceGetRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{113}
+}
+
+func (x *CreatorDirectoryServiceGetRequest) GetMediaKitId() string {
+	if x != nil {
+		return x.MediaKitId
+	}
+	return ""
+}
+
+type CreatorDirectoryServiceGetResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Entry         *CreatorDirectoryEntry `protobuf:"bytes,1,opt,name=entry,proto3" json:"entry,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreatorDirectoryServiceGetResponse) Reset() {
+	*x = CreatorDirectoryServiceGetResponse{}
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[114]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreatorDirectoryServiceGetResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreatorDirectoryServiceGetResponse) ProtoMessage() {}
+
+func (x *CreatorDirectoryServiceGetResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_commerce_v1_creator_pro_proto_msgTypes[114]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreatorDirectoryServiceGetResponse.ProtoReflect.Descriptor instead.
+func (*CreatorDirectoryServiceGetResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP(), []int{114}
+}
+
+func (x *CreatorDirectoryServiceGetResponse) GetEntry() *CreatorDirectoryEntry {
+	if x != nil {
+		return x.Entry
+	}
+	return nil
 }
 
 var File_creativanta_commerce_v1_creator_pro_proto protoreflect.FileDescriptor
@@ -7752,15 +8310,32 @@ const file_creativanta_commerce_v1_creator_pro_proto_rawDesc = "" +
 	"\x1dMediaKitServiceExportResponse\x12\x1d\n" +
 	"\n" +
 	"export_url\x18\x01 \x01(\tR\texportUrl\x12\x1b\n" +
-	"\tfile_name\x18\x02 \x01(\tR\bfileName\"\xc1\x01\n" +
+	"\tfile_name\x18\x02 \x01(\tR\bfileName\"g\n" +
+	"\x0ePublicRateItem\x12!\n" +
+	"\fservice_type\x18\x01 \x01(\tR\vserviceType\x12\x16\n" +
+	"\x06amount\x18\x02 \x01(\tR\x06amount\x12\x1a\n" +
+	"\bcurrency\x18\x03 \x01(\tR\bcurrency\"\xfc\x01\n" +
+	"\x14PublicCreatorProfile\x12!\n" +
+	"\fdisplay_name\x18\x01 \x01(\tR\vdisplayName\x12\x10\n" +
+	"\x03bio\x18\x02 \x01(\tR\x03bio\x12\x1e\n" +
+	"\n" +
+	"categories\x18\x03 \x03(\tR\n" +
+	"categories\x12\x1c\n" +
+	"\tlanguages\x18\x04 \x03(\tR\tlanguages\x12%\n" +
+	"\x0eportfolio_urls\x18\x05 \x03(\tR\rportfolioUrls\x12J\n" +
+	"\fpublic_rates\x18\x06 \x03(\v2'.creativanta.commerce.v1.PublicRateItemR\vpublicRates\"\x8a\x02\n" +
 	"\x1aSetDirectoryProfileRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12 \n" +
 	"\fmedia_kit_id\x18\x02 \x01(\tR\n" +
 	"mediaKitId\x12(\n" +
 	"\x10directory_opt_in\x18\x03 \x01(\bR\x0edirectoryOptIn\x124\n" +
-	"\x16directory_profile_json\x18\x04 \x01(\tR\x14directoryProfileJson\"]\n" +
+	"\x16directory_profile_json\x18\x04 \x01(\tR\x14directoryProfileJson\x12G\n" +
+	"\aprofile\x18\x05 \x01(\v2-.creativanta.commerce.v1.PublicCreatorProfileR\aprofile\"\xdc\x01\n" +
 	"\x1bSetDirectoryProfileResponse\x12>\n" +
-	"\tmedia_kit\x18\x01 \x01(\v2!.creativanta.commerce.v1.MediaKitR\bmediaKit\"\xbb\x01\n" +
+	"\tmedia_kit\x18\x01 \x01(\v2!.creativanta.commerce.v1.MediaKitR\bmediaKit\x12 \n" +
+	"\fmedia_kit_id\x18\x02 \x01(\tR\n" +
+	"mediaKitId\x12[\n" +
+	"\x10directory_status\x18\x03 \x01(\x0e20.creativanta.commerce.v1.MediaKitDirectoryStatusR\x0fdirectoryStatus\"\xbb\x01\n" +
 	"\x1cRateCardServiceCreateRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x1a\n" +
 	"\bcurrency\x18\x02 \x01(\tR\bcurrency\x12\x1f\n" +
@@ -7835,13 +8410,15 @@ const file_creativanta_commerce_v1_creator_pro_proto_rawDesc = "" +
 	"\x05notes\x18\n" +
 	" \x01(\tR\x05notes\"X\n" +
 	"\x1eBrandDealServiceCreateResponse\x126\n" +
-	"\x04deal\x18\x01 \x01(\v2\".creativanta.commerce.v1.BrandDealR\x04deal\"\xa1\x02\n" +
+	"\x04deal\x18\x01 \x01(\v2\".creativanta.commerce.v1.BrandDealR\x04deal\"\x96\x03\n" +
 	"#BrandDealServiceUpdateStatusRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x17\n" +
 	"\adeal_id\x18\x02 \x01(\tR\x06dealId\x12M\n" +
 	"\rtarget_status\x18\x03 \x01(\x0e2(.creativanta.commerce.v1.BrandDealStatusR\ftargetStatus\x12/\n" +
 	"\x13cancellation_reason\x18\x04 \x01(\tR\x12cancellationReason\x12>\n" +
-	"\x1brequires_financial_reversal\x18\x05 \x01(\bR\x19requiresFinancialReversal\"^\n" +
+	"\x1brequires_financial_reversal\x18\x05 \x01(\bR\x19requiresFinancialReversal\x12J\n" +
+	"\x13expected_updated_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x11expectedUpdatedAt\x12'\n" +
+	"\x0fidempotency_key\x18\a \x01(\tR\x0eidempotencyKey\"^\n" +
 	"$BrandDealServiceUpdateStatusResponse\x126\n" +
 	"\x04deal\x18\x01 \x01(\v2\".creativanta.commerce.v1.BrandDealR\x04deal\"\x8f\x01\n" +
 	"\x1bBrandDealServiceListRequest\x12!\n" +
@@ -7883,15 +8460,24 @@ const file_creativanta_commerce_v1_creator_pro_proto_rawDesc = "" +
 	"\x15UpdatePaymentResponse\x126\n" +
 	"\x04deal\x18\x01 \x01(\v2\".creativanta.commerce.v1.BrandDealR\x04deal\"A\n" +
 	"\x1cListContractTemplatesRequest\x12!\n" +
-	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\"\x90\x01\n" +
+	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\"\x9b\x02\n" +
 	"\x10ContractTemplate\x12\x1f\n" +
 	"\vtemplate_id\x18\x01 \x01(\tR\n" +
 	"templateId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12#\n" +
-	"\rdefault_terms\x18\x04 \x01(\tR\fdefaultTerms\"h\n" +
+	"\rdefault_terms\x18\x04 \x01(\tR\fdefaultTerms\x12\x18\n" +
+	"\aversion\x18\x05 \x01(\tR\aversion\x12*\n" +
+	"\x11source_article_id\x18\x06 \x01(\tR\x0fsourceArticleId\x12#\n" +
+	"\rbody_markdown\x18\a \x01(\tR\fbodyMarkdown\x12\x1e\n" +
+	"\n" +
+	"disclaimer\x18\b \x01(\tR\n" +
+	"disclaimer\"\x88\x01\n" +
 	"\x1dListContractTemplatesResponse\x12G\n" +
-	"\ttemplates\x18\x01 \x03(\v2).creativanta.commerce.v1.ContractTemplateR\ttemplates\"t\n" +
+	"\ttemplates\x18\x01 \x03(\v2).creativanta.commerce.v1.ContractTemplateR\ttemplates\x12\x1e\n" +
+	"\n" +
+	"disclaimer\x18\x02 \x01(\tR\n" +
+	"disclaimer\"t\n" +
 	"\x15AttachContractRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x17\n" +
 	"\adeal_id\x18\x02 \x01(\tR\x06dealId\x12\x1f\n" +
@@ -7946,18 +8532,24 @@ const file_creativanta_commerce_v1_creator_pro_proto_rawDesc = "" +
 	"\x0ftotal_inquiries\x18\x01 \x01(\x05R\x0etotalInquiries\x12+\n" +
 	"\x11pending_inquiries\x18\x02 \x01(\x05R\x10pendingInquiries\x12/\n" +
 	"\x13converted_inquiries\x18\x03 \x01(\x05R\x12convertedInquiries\x12-\n" +
-	"\x12declined_inquiries\x18\x04 \x01(\x05R\x11declinedInquiries\"\xce\x01\n" +
+	"\x12declined_inquiries\x18\x04 \x01(\x05R\x11declinedInquiries\"\xc2\x02\n" +
 	"\"SponsorInquiryServiceSubmitRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x1d\n" +
 	"\n" +
 	"brand_name\x18\x02 \x01(\tR\tbrandName\x12#\n" +
 	"\rcontact_email\x18\x03 \x01(\tR\fcontactEmail\x12\x18\n" +
 	"\amessage\x18\x04 \x01(\tR\amessage\x12'\n" +
-	"\x0fproposed_budget\x18\x05 \x01(\x01R\x0eproposedBudget\"`\n" +
+	"\x0fproposed_budget\x18\x05 \x01(\x01R\x0eproposedBudget\x12 \n" +
+	"\fmedia_kit_id\x18\x06 \x01(\tR\n" +
+	"mediaKitId\x12'\n" +
+	"\x0fchallenge_token\x18\a \x01(\tR\x0echallengeToken\x12'\n" +
+	"\x0fidempotency_key\x18\b \x01(\tR\x0eidempotencyKey\"\xa7\x01\n" +
 	"#SponsorInquiryServiceSubmitResponse\x12\x1a\n" +
 	"\baccepted\x18\x01 \x01(\bR\baccepted\x12\x1d\n" +
 	"\n" +
-	"inquiry_id\x18\x02 \x01(\tR\tinquiryId\"z\n" +
+	"inquiry_id\x18\x02 \x01(\tR\tinquiryId\x12-\n" +
+	"\x12submission_receipt\x18\x03 \x01(\tR\x11submissionReceipt\x12\x16\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\"z\n" +
 	"\x14GetPerContentRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x1a\n" +
 	"\bplatform\x18\x02 \x01(\tR\bplatform\x12#\n" +
@@ -8002,7 +8594,32 @@ const file_creativanta_commerce_v1_creator_pro_proto_rawDesc = "" +
 	"\asummary\x18\x01 \x01(\v2).creativanta.commerce.v1.TaxReportSummaryR\asummary\x12\x1f\n" +
 	"\vreport_data\x18\x02 \x01(\fR\n" +
 	"reportData\x12\x1b\n" +
-	"\tfile_name\x18\x03 \x01(\tR\bfileName*\x97\x02\n" +
+	"\tfile_name\x18\x03 \x01(\tR\bfileName\"\xc1\x01\n" +
+	"\x15CreatorDirectoryEntry\x12 \n" +
+	"\fmedia_kit_id\x18\x01 \x01(\tR\n" +
+	"mediaKitId\x12G\n" +
+	"\aprofile\x18\x02 \x01(\v2-.creativanta.commerce.v1.PublicCreatorProfileR\aprofile\x12=\n" +
+	"\fpublished_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\vpublishedAt\"\xb6\x01\n" +
+	"$CreatorDirectoryServiceSearchRequest\x12\x14\n" +
+	"\x05query\x18\x01 \x01(\tR\x05query\x12\x1e\n" +
+	"\n" +
+	"categories\x18\x02 \x03(\tR\n" +
+	"categories\x12\x1c\n" +
+	"\tlanguages\x18\x03 \x03(\tR\tlanguages\x12\x1b\n" +
+	"\tpage_size\x18\x04 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x05 \x01(\tR\tpageToken\"\xd5\x01\n" +
+	"%CreatorDirectoryServiceSearchResponse\x12H\n" +
+	"\aentries\x18\x01 \x03(\v2..creativanta.commerce.v1.CreatorDirectoryEntryR\aentries\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x19\n" +
+	"\bhas_more\x18\x03 \x01(\bR\ahasMore\x12\x1f\n" +
+	"\vtotal_count\x18\x04 \x01(\x03R\n" +
+	"totalCount\"E\n" +
+	"!CreatorDirectoryServiceGetRequest\x12 \n" +
+	"\fmedia_kit_id\x18\x01 \x01(\tR\n" +
+	"mediaKitId\"j\n" +
+	"\"CreatorDirectoryServiceGetResponse\x12D\n" +
+	"\x05entry\x18\x01 \x01(\v2..creativanta.commerce.v1.CreatorDirectoryEntryR\x05entry*\x97\x02\n" +
 	"\x0fBrandDealStatus\x12!\n" +
 	"\x1dBRAND_DEAL_STATUS_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dBRAND_DEAL_STATUS_NEGOTIATING\x10\x01\x12\x1c\n" +
@@ -8111,7 +8728,10 @@ const file_creativanta_commerce_v1_creator_pro_proto_rawDesc = "" +
 	"\rGetPerContent\x12-.creativanta.commerce.v1.GetPerContentRequest\x1a..creativanta.commerce.v1.GetPerContentResponse\x12k\n" +
 	"\fGetRPMTrends\x12,.creativanta.commerce.v1.GetRPMTrendsRequest\x1a-.creativanta.commerce.v1.GetRPMTrendsResponse\x12Y\n" +
 	"\x06GetROI\x12&.creativanta.commerce.v1.GetROIRequest\x1a'.creativanta.commerce.v1.GetROIResponse\x12w\n" +
-	"\x10GetTopPerformers\x120.creativanta.commerce.v1.GetTopPerformersRequest\x1a1.creativanta.commerce.v1.GetTopPerformersResponse2\x8d\x02\n" +
+	"\x10GetTopPerformers\x120.creativanta.commerce.v1.GetTopPerformersRequest\x1a1.creativanta.commerce.v1.GetTopPerformersResponse2\xa3\x02\n" +
+	"\x17CreatorDirectoryService\x12\x87\x01\n" +
+	"\x06Search\x12=.creativanta.commerce.v1.CreatorDirectoryServiceSearchRequest\x1a>.creativanta.commerce.v1.CreatorDirectoryServiceSearchResponse\x12~\n" +
+	"\x03Get\x12:.creativanta.commerce.v1.CreatorDirectoryServiceGetRequest\x1a;.creativanta.commerce.v1.CreatorDirectoryServiceGetResponse2\x8d\x02\n" +
 	"\x10TaxReportService\x12\x82\x01\n" +
 	"\tGetReport\x129.creativanta.commerce.v1.TaxReportServiceGetReportRequest\x1a:.creativanta.commerce.v1.TaxReportServiceGetReportResponse\x12t\n" +
 	"\x0fExportTaxReport\x12/.creativanta.commerce.v1.ExportTaxReportRequest\x1a0.creativanta.commerce.v1.ExportTaxReportResponseBTZRgithub.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1;commercev1b\x06proto3"
@@ -8129,7 +8749,7 @@ func file_creativanta_commerce_v1_creator_pro_proto_rawDescGZIP() []byte {
 }
 
 var file_creativanta_commerce_v1_creator_pro_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_creativanta_commerce_v1_creator_pro_proto_msgTypes = make([]protoimpl.MessageInfo, 108)
+var file_creativanta_commerce_v1_creator_pro_proto_msgTypes = make([]protoimpl.MessageInfo, 115)
 var file_creativanta_commerce_v1_creator_pro_proto_goTypes = []any{
 	(BrandDealStatus)(0),                          // 0: creativanta.commerce.v1.BrandDealStatus
 	(BrandDealType)(0),                            // 1: creativanta.commerce.v1.BrandDealType
@@ -8181,102 +8801,109 @@ var file_creativanta_commerce_v1_creator_pro_proto_goTypes = []any{
 	(*GetKitResponse)(nil),                        // 47: creativanta.commerce.v1.GetKitResponse
 	(*MediaKitServiceExportRequest)(nil),          // 48: creativanta.commerce.v1.MediaKitServiceExportRequest
 	(*MediaKitServiceExportResponse)(nil),         // 49: creativanta.commerce.v1.MediaKitServiceExportResponse
-	(*SetDirectoryProfileRequest)(nil),            // 50: creativanta.commerce.v1.SetDirectoryProfileRequest
-	(*SetDirectoryProfileResponse)(nil),           // 51: creativanta.commerce.v1.SetDirectoryProfileResponse
-	(*RateCardServiceCreateRequest)(nil),          // 52: creativanta.commerce.v1.RateCardServiceCreateRequest
-	(*RateCardServiceCreateResponse)(nil),         // 53: creativanta.commerce.v1.RateCardServiceCreateResponse
-	(*GetRateCardRequest)(nil),                    // 54: creativanta.commerce.v1.GetRateCardRequest
-	(*GetRateCardResponse)(nil),                   // 55: creativanta.commerce.v1.GetRateCardResponse
-	(*RateCardServiceListRequest)(nil),            // 56: creativanta.commerce.v1.RateCardServiceListRequest
-	(*RateCardServiceListResponse)(nil),           // 57: creativanta.commerce.v1.RateCardServiceListResponse
-	(*RateCardServiceSaveRequest)(nil),            // 58: creativanta.commerce.v1.RateCardServiceSaveRequest
-	(*RateCardServiceSaveResponse)(nil),           // 59: creativanta.commerce.v1.RateCardServiceSaveResponse
-	(*RateCardServiceDeleteItemRequest)(nil),      // 60: creativanta.commerce.v1.RateCardServiceDeleteItemRequest
-	(*RateCardServiceDeleteItemResponse)(nil),     // 61: creativanta.commerce.v1.RateCardServiceDeleteItemResponse
-	(*RateCardServiceReorderRequest)(nil),         // 62: creativanta.commerce.v1.RateCardServiceReorderRequest
-	(*RateCardServiceReorderResponse)(nil),        // 63: creativanta.commerce.v1.RateCardServiceReorderResponse
-	(*CompareScopeRequest)(nil),                   // 64: creativanta.commerce.v1.CompareScopeRequest
-	(*CompareScopeResponse)(nil),                  // 65: creativanta.commerce.v1.CompareScopeResponse
-	(*RateCardServiceAISuggestRequest)(nil),       // 66: creativanta.commerce.v1.RateCardServiceAISuggestRequest
-	(*RateCardServiceAISuggestResponse)(nil),      // 67: creativanta.commerce.v1.RateCardServiceAISuggestResponse
-	(*BrandDealServiceCreateRequest)(nil),         // 68: creativanta.commerce.v1.BrandDealServiceCreateRequest
-	(*BrandDealServiceCreateResponse)(nil),        // 69: creativanta.commerce.v1.BrandDealServiceCreateResponse
-	(*BrandDealServiceUpdateStatusRequest)(nil),   // 70: creativanta.commerce.v1.BrandDealServiceUpdateStatusRequest
-	(*BrandDealServiceUpdateStatusResponse)(nil),  // 71: creativanta.commerce.v1.BrandDealServiceUpdateStatusResponse
-	(*BrandDealServiceListRequest)(nil),           // 72: creativanta.commerce.v1.BrandDealServiceListRequest
-	(*BrandDealServiceListResponse)(nil),          // 73: creativanta.commerce.v1.BrandDealServiceListResponse
-	(*ListDealsRequest)(nil),                      // 74: creativanta.commerce.v1.ListDealsRequest
-	(*ListDealsResponse)(nil),                     // 75: creativanta.commerce.v1.ListDealsResponse
-	(*ListPartnershipsRequest)(nil),               // 76: creativanta.commerce.v1.ListPartnershipsRequest
-	(*ListPartnershipsResponse)(nil),              // 77: creativanta.commerce.v1.ListPartnershipsResponse
-	(*GetPipelineStatsRequest)(nil),               // 78: creativanta.commerce.v1.GetPipelineStatsRequest
-	(*GetPipelineStatsResponse)(nil),              // 79: creativanta.commerce.v1.GetPipelineStatsResponse
-	(*BrandDealServiceGetSummaryRequest)(nil),     // 80: creativanta.commerce.v1.BrandDealServiceGetSummaryRequest
-	(*BrandDealServiceGetSummaryResponse)(nil),    // 81: creativanta.commerce.v1.BrandDealServiceGetSummaryResponse
-	(*UpdateDeliverableRequest)(nil),              // 82: creativanta.commerce.v1.UpdateDeliverableRequest
-	(*UpdateDeliverableResponse)(nil),             // 83: creativanta.commerce.v1.UpdateDeliverableResponse
-	(*UpdatePaymentRequest)(nil),                  // 84: creativanta.commerce.v1.UpdatePaymentRequest
-	(*UpdatePaymentResponse)(nil),                 // 85: creativanta.commerce.v1.UpdatePaymentResponse
-	(*ListContractTemplatesRequest)(nil),          // 86: creativanta.commerce.v1.ListContractTemplatesRequest
-	(*ContractTemplate)(nil),                      // 87: creativanta.commerce.v1.ContractTemplate
-	(*ListContractTemplatesResponse)(nil),         // 88: creativanta.commerce.v1.ListContractTemplatesResponse
-	(*AttachContractRequest)(nil),                 // 89: creativanta.commerce.v1.AttachContractRequest
-	(*AttachContractResponse)(nil),                // 90: creativanta.commerce.v1.AttachContractResponse
-	(*ListInquiriesRequest)(nil),                  // 91: creativanta.commerce.v1.ListInquiriesRequest
-	(*SponsorInquiry)(nil),                        // 92: creativanta.commerce.v1.SponsorInquiry
-	(*ListInquiriesResponse)(nil),                 // 93: creativanta.commerce.v1.ListInquiriesResponse
-	(*SponsorInquiryServiceAcceptRequest)(nil),    // 94: creativanta.commerce.v1.SponsorInquiryServiceAcceptRequest
-	(*SponsorInquiryServiceAcceptResponse)(nil),   // 95: creativanta.commerce.v1.SponsorInquiryServiceAcceptResponse
-	(*SponsorInquiryServiceDeclineRequest)(nil),   // 96: creativanta.commerce.v1.SponsorInquiryServiceDeclineRequest
-	(*SponsorInquiryServiceDeclineResponse)(nil),  // 97: creativanta.commerce.v1.SponsorInquiryServiceDeclineResponse
-	(*SponsorInquiryServiceFlagRequest)(nil),      // 98: creativanta.commerce.v1.SponsorInquiryServiceFlagRequest
-	(*SponsorInquiryServiceFlagResponse)(nil),     // 99: creativanta.commerce.v1.SponsorInquiryServiceFlagResponse
-	(*SponsorInquiryServiceGetStatsRequest)(nil),  // 100: creativanta.commerce.v1.SponsorInquiryServiceGetStatsRequest
-	(*SponsorInquiryServiceGetStatsResponse)(nil), // 101: creativanta.commerce.v1.SponsorInquiryServiceGetStatsResponse
-	(*SponsorInquiryServiceSubmitRequest)(nil),    // 102: creativanta.commerce.v1.SponsorInquiryServiceSubmitRequest
-	(*SponsorInquiryServiceSubmitResponse)(nil),   // 103: creativanta.commerce.v1.SponsorInquiryServiceSubmitResponse
-	(*GetPerContentRequest)(nil),                  // 104: creativanta.commerce.v1.GetPerContentRequest
-	(*GetPerContentResponse)(nil),                 // 105: creativanta.commerce.v1.GetPerContentResponse
-	(*GetRPMTrendsRequest)(nil),                   // 106: creativanta.commerce.v1.GetRPMTrendsRequest
-	(*GetRPMTrendsResponse)(nil),                  // 107: creativanta.commerce.v1.GetRPMTrendsResponse
-	(*GetROIRequest)(nil),                         // 108: creativanta.commerce.v1.GetROIRequest
-	(*GetROIResponse)(nil),                        // 109: creativanta.commerce.v1.GetROIResponse
-	(*GetTopPerformersRequest)(nil),               // 110: creativanta.commerce.v1.GetTopPerformersRequest
-	(*GetTopPerformersResponse)(nil),              // 111: creativanta.commerce.v1.GetTopPerformersResponse
-	(*TaxReportServiceGetReportRequest)(nil),      // 112: creativanta.commerce.v1.TaxReportServiceGetReportRequest
-	(*TaxReportServiceGetReportResponse)(nil),     // 113: creativanta.commerce.v1.TaxReportServiceGetReportResponse
-	(*ExportTaxReportRequest)(nil),                // 114: creativanta.commerce.v1.ExportTaxReportRequest
-	(*ExportTaxReportResponse)(nil),               // 115: creativanta.commerce.v1.ExportTaxReportResponse
-	(*timestamppb.Timestamp)(nil),                 // 116: google.protobuf.Timestamp
+	(*PublicRateItem)(nil),                        // 50: creativanta.commerce.v1.PublicRateItem
+	(*PublicCreatorProfile)(nil),                  // 51: creativanta.commerce.v1.PublicCreatorProfile
+	(*SetDirectoryProfileRequest)(nil),            // 52: creativanta.commerce.v1.SetDirectoryProfileRequest
+	(*SetDirectoryProfileResponse)(nil),           // 53: creativanta.commerce.v1.SetDirectoryProfileResponse
+	(*RateCardServiceCreateRequest)(nil),          // 54: creativanta.commerce.v1.RateCardServiceCreateRequest
+	(*RateCardServiceCreateResponse)(nil),         // 55: creativanta.commerce.v1.RateCardServiceCreateResponse
+	(*GetRateCardRequest)(nil),                    // 56: creativanta.commerce.v1.GetRateCardRequest
+	(*GetRateCardResponse)(nil),                   // 57: creativanta.commerce.v1.GetRateCardResponse
+	(*RateCardServiceListRequest)(nil),            // 58: creativanta.commerce.v1.RateCardServiceListRequest
+	(*RateCardServiceListResponse)(nil),           // 59: creativanta.commerce.v1.RateCardServiceListResponse
+	(*RateCardServiceSaveRequest)(nil),            // 60: creativanta.commerce.v1.RateCardServiceSaveRequest
+	(*RateCardServiceSaveResponse)(nil),           // 61: creativanta.commerce.v1.RateCardServiceSaveResponse
+	(*RateCardServiceDeleteItemRequest)(nil),      // 62: creativanta.commerce.v1.RateCardServiceDeleteItemRequest
+	(*RateCardServiceDeleteItemResponse)(nil),     // 63: creativanta.commerce.v1.RateCardServiceDeleteItemResponse
+	(*RateCardServiceReorderRequest)(nil),         // 64: creativanta.commerce.v1.RateCardServiceReorderRequest
+	(*RateCardServiceReorderResponse)(nil),        // 65: creativanta.commerce.v1.RateCardServiceReorderResponse
+	(*CompareScopeRequest)(nil),                   // 66: creativanta.commerce.v1.CompareScopeRequest
+	(*CompareScopeResponse)(nil),                  // 67: creativanta.commerce.v1.CompareScopeResponse
+	(*RateCardServiceAISuggestRequest)(nil),       // 68: creativanta.commerce.v1.RateCardServiceAISuggestRequest
+	(*RateCardServiceAISuggestResponse)(nil),      // 69: creativanta.commerce.v1.RateCardServiceAISuggestResponse
+	(*BrandDealServiceCreateRequest)(nil),         // 70: creativanta.commerce.v1.BrandDealServiceCreateRequest
+	(*BrandDealServiceCreateResponse)(nil),        // 71: creativanta.commerce.v1.BrandDealServiceCreateResponse
+	(*BrandDealServiceUpdateStatusRequest)(nil),   // 72: creativanta.commerce.v1.BrandDealServiceUpdateStatusRequest
+	(*BrandDealServiceUpdateStatusResponse)(nil),  // 73: creativanta.commerce.v1.BrandDealServiceUpdateStatusResponse
+	(*BrandDealServiceListRequest)(nil),           // 74: creativanta.commerce.v1.BrandDealServiceListRequest
+	(*BrandDealServiceListResponse)(nil),          // 75: creativanta.commerce.v1.BrandDealServiceListResponse
+	(*ListDealsRequest)(nil),                      // 76: creativanta.commerce.v1.ListDealsRequest
+	(*ListDealsResponse)(nil),                     // 77: creativanta.commerce.v1.ListDealsResponse
+	(*ListPartnershipsRequest)(nil),               // 78: creativanta.commerce.v1.ListPartnershipsRequest
+	(*ListPartnershipsResponse)(nil),              // 79: creativanta.commerce.v1.ListPartnershipsResponse
+	(*GetPipelineStatsRequest)(nil),               // 80: creativanta.commerce.v1.GetPipelineStatsRequest
+	(*GetPipelineStatsResponse)(nil),              // 81: creativanta.commerce.v1.GetPipelineStatsResponse
+	(*BrandDealServiceGetSummaryRequest)(nil),     // 82: creativanta.commerce.v1.BrandDealServiceGetSummaryRequest
+	(*BrandDealServiceGetSummaryResponse)(nil),    // 83: creativanta.commerce.v1.BrandDealServiceGetSummaryResponse
+	(*UpdateDeliverableRequest)(nil),              // 84: creativanta.commerce.v1.UpdateDeliverableRequest
+	(*UpdateDeliverableResponse)(nil),             // 85: creativanta.commerce.v1.UpdateDeliverableResponse
+	(*UpdatePaymentRequest)(nil),                  // 86: creativanta.commerce.v1.UpdatePaymentRequest
+	(*UpdatePaymentResponse)(nil),                 // 87: creativanta.commerce.v1.UpdatePaymentResponse
+	(*ListContractTemplatesRequest)(nil),          // 88: creativanta.commerce.v1.ListContractTemplatesRequest
+	(*ContractTemplate)(nil),                      // 89: creativanta.commerce.v1.ContractTemplate
+	(*ListContractTemplatesResponse)(nil),         // 90: creativanta.commerce.v1.ListContractTemplatesResponse
+	(*AttachContractRequest)(nil),                 // 91: creativanta.commerce.v1.AttachContractRequest
+	(*AttachContractResponse)(nil),                // 92: creativanta.commerce.v1.AttachContractResponse
+	(*ListInquiriesRequest)(nil),                  // 93: creativanta.commerce.v1.ListInquiriesRequest
+	(*SponsorInquiry)(nil),                        // 94: creativanta.commerce.v1.SponsorInquiry
+	(*ListInquiriesResponse)(nil),                 // 95: creativanta.commerce.v1.ListInquiriesResponse
+	(*SponsorInquiryServiceAcceptRequest)(nil),    // 96: creativanta.commerce.v1.SponsorInquiryServiceAcceptRequest
+	(*SponsorInquiryServiceAcceptResponse)(nil),   // 97: creativanta.commerce.v1.SponsorInquiryServiceAcceptResponse
+	(*SponsorInquiryServiceDeclineRequest)(nil),   // 98: creativanta.commerce.v1.SponsorInquiryServiceDeclineRequest
+	(*SponsorInquiryServiceDeclineResponse)(nil),  // 99: creativanta.commerce.v1.SponsorInquiryServiceDeclineResponse
+	(*SponsorInquiryServiceFlagRequest)(nil),      // 100: creativanta.commerce.v1.SponsorInquiryServiceFlagRequest
+	(*SponsorInquiryServiceFlagResponse)(nil),     // 101: creativanta.commerce.v1.SponsorInquiryServiceFlagResponse
+	(*SponsorInquiryServiceGetStatsRequest)(nil),  // 102: creativanta.commerce.v1.SponsorInquiryServiceGetStatsRequest
+	(*SponsorInquiryServiceGetStatsResponse)(nil), // 103: creativanta.commerce.v1.SponsorInquiryServiceGetStatsResponse
+	(*SponsorInquiryServiceSubmitRequest)(nil),    // 104: creativanta.commerce.v1.SponsorInquiryServiceSubmitRequest
+	(*SponsorInquiryServiceSubmitResponse)(nil),   // 105: creativanta.commerce.v1.SponsorInquiryServiceSubmitResponse
+	(*GetPerContentRequest)(nil),                  // 106: creativanta.commerce.v1.GetPerContentRequest
+	(*GetPerContentResponse)(nil),                 // 107: creativanta.commerce.v1.GetPerContentResponse
+	(*GetRPMTrendsRequest)(nil),                   // 108: creativanta.commerce.v1.GetRPMTrendsRequest
+	(*GetRPMTrendsResponse)(nil),                  // 109: creativanta.commerce.v1.GetRPMTrendsResponse
+	(*GetROIRequest)(nil),                         // 110: creativanta.commerce.v1.GetROIRequest
+	(*GetROIResponse)(nil),                        // 111: creativanta.commerce.v1.GetROIResponse
+	(*GetTopPerformersRequest)(nil),               // 112: creativanta.commerce.v1.GetTopPerformersRequest
+	(*GetTopPerformersResponse)(nil),              // 113: creativanta.commerce.v1.GetTopPerformersResponse
+	(*TaxReportServiceGetReportRequest)(nil),      // 114: creativanta.commerce.v1.TaxReportServiceGetReportRequest
+	(*TaxReportServiceGetReportResponse)(nil),     // 115: creativanta.commerce.v1.TaxReportServiceGetReportResponse
+	(*ExportTaxReportRequest)(nil),                // 116: creativanta.commerce.v1.ExportTaxReportRequest
+	(*ExportTaxReportResponse)(nil),               // 117: creativanta.commerce.v1.ExportTaxReportResponse
+	(*CreatorDirectoryEntry)(nil),                 // 118: creativanta.commerce.v1.CreatorDirectoryEntry
+	(*CreatorDirectoryServiceSearchRequest)(nil),  // 119: creativanta.commerce.v1.CreatorDirectoryServiceSearchRequest
+	(*CreatorDirectoryServiceSearchResponse)(nil), // 120: creativanta.commerce.v1.CreatorDirectoryServiceSearchResponse
+	(*CreatorDirectoryServiceGetRequest)(nil),     // 121: creativanta.commerce.v1.CreatorDirectoryServiceGetRequest
+	(*CreatorDirectoryServiceGetResponse)(nil),    // 122: creativanta.commerce.v1.CreatorDirectoryServiceGetResponse
+	(*timestamppb.Timestamp)(nil),                 // 123: google.protobuf.Timestamp
 }
 var file_creativanta_commerce_v1_creator_pro_proto_depIdxs = []int32{
 	3,   // 0: creativanta.commerce.v1.LinkInBioPage.status:type_name -> creativanta.commerce.v1.LinkInBioPageStatus
-	116, // 1: creativanta.commerce.v1.LinkInBioPage.created_at:type_name -> google.protobuf.Timestamp
-	116, // 2: creativanta.commerce.v1.LinkInBioPage.updated_at:type_name -> google.protobuf.Timestamp
+	123, // 1: creativanta.commerce.v1.LinkInBioPage.created_at:type_name -> google.protobuf.Timestamp
+	123, // 2: creativanta.commerce.v1.LinkInBioPage.updated_at:type_name -> google.protobuf.Timestamp
 	9,   // 3: creativanta.commerce.v1.LinkInBioPage.items:type_name -> creativanta.commerce.v1.LinkItem
 	2,   // 4: creativanta.commerce.v1.LinkItem.link_type:type_name -> creativanta.commerce.v1.LinkType
 	4,   // 5: creativanta.commerce.v1.LinkItem.scan_status:type_name -> creativanta.commerce.v1.LinkSecurityScanStatus
-	116, // 6: creativanta.commerce.v1.LinkItem.created_at:type_name -> google.protobuf.Timestamp
+	123, // 6: creativanta.commerce.v1.LinkItem.created_at:type_name -> google.protobuf.Timestamp
 	11,  // 7: creativanta.commerce.v1.LinkInBioAnalytics.item_metrics:type_name -> creativanta.commerce.v1.LinkItemMetric
 	5,   // 8: creativanta.commerce.v1.MediaKit.directory_status:type_name -> creativanta.commerce.v1.MediaKitDirectoryStatus
-	116, // 9: creativanta.commerce.v1.MediaKit.directory_consented_at:type_name -> google.protobuf.Timestamp
-	116, // 10: creativanta.commerce.v1.MediaKit.last_generated_at:type_name -> google.protobuf.Timestamp
-	116, // 11: creativanta.commerce.v1.MediaKit.created_at:type_name -> google.protobuf.Timestamp
-	116, // 12: creativanta.commerce.v1.MediaKit.updated_at:type_name -> google.protobuf.Timestamp
-	116, // 13: creativanta.commerce.v1.RateCard.ai_suggested_at:type_name -> google.protobuf.Timestamp
+	123, // 9: creativanta.commerce.v1.MediaKit.directory_consented_at:type_name -> google.protobuf.Timestamp
+	123, // 10: creativanta.commerce.v1.MediaKit.last_generated_at:type_name -> google.protobuf.Timestamp
+	123, // 11: creativanta.commerce.v1.MediaKit.created_at:type_name -> google.protobuf.Timestamp
+	123, // 12: creativanta.commerce.v1.MediaKit.updated_at:type_name -> google.protobuf.Timestamp
+	123, // 13: creativanta.commerce.v1.RateCard.ai_suggested_at:type_name -> google.protobuf.Timestamp
 	14,  // 14: creativanta.commerce.v1.RateCard.items:type_name -> creativanta.commerce.v1.RateCardItem
-	116, // 15: creativanta.commerce.v1.RateCard.created_at:type_name -> google.protobuf.Timestamp
-	116, // 16: creativanta.commerce.v1.RateCard.updated_at:type_name -> google.protobuf.Timestamp
-	116, // 17: creativanta.commerce.v1.RateCardItem.created_at:type_name -> google.protobuf.Timestamp
-	116, // 18: creativanta.commerce.v1.RateCardItem.updated_at:type_name -> google.protobuf.Timestamp
+	123, // 15: creativanta.commerce.v1.RateCard.created_at:type_name -> google.protobuf.Timestamp
+	123, // 16: creativanta.commerce.v1.RateCard.updated_at:type_name -> google.protobuf.Timestamp
+	123, // 17: creativanta.commerce.v1.RateCardItem.created_at:type_name -> google.protobuf.Timestamp
+	123, // 18: creativanta.commerce.v1.RateCardItem.updated_at:type_name -> google.protobuf.Timestamp
 	1,   // 19: creativanta.commerce.v1.BrandDeal.deal_type:type_name -> creativanta.commerce.v1.BrandDealType
 	0,   // 20: creativanta.commerce.v1.BrandDeal.status:type_name -> creativanta.commerce.v1.BrandDealStatus
-	116, // 21: creativanta.commerce.v1.BrandDeal.created_at:type_name -> google.protobuf.Timestamp
-	116, // 22: creativanta.commerce.v1.BrandDeal.updated_at:type_name -> google.protobuf.Timestamp
-	116, // 23: creativanta.commerce.v1.ContentROIMetric.published_at:type_name -> google.protobuf.Timestamp
+	123, // 21: creativanta.commerce.v1.BrandDeal.created_at:type_name -> google.protobuf.Timestamp
+	123, // 22: creativanta.commerce.v1.BrandDeal.updated_at:type_name -> google.protobuf.Timestamp
+	123, // 23: creativanta.commerce.v1.ContentROIMetric.published_at:type_name -> google.protobuf.Timestamp
 	6,   // 24: creativanta.commerce.v1.TaxReportSummary.period:type_name -> creativanta.commerce.v1.TaxReportPeriod
 	7,   // 25: creativanta.commerce.v1.TaxReportSummary.format:type_name -> creativanta.commerce.v1.TaxReportFormat
-	116, // 26: creativanta.commerce.v1.TaxReportSummary.generated_at:type_name -> google.protobuf.Timestamp
+	123, // 26: creativanta.commerce.v1.TaxReportSummary.generated_at:type_name -> google.protobuf.Timestamp
 	8,   // 27: creativanta.commerce.v1.CreatePageResponse.page:type_name -> creativanta.commerce.v1.LinkInBioPage
 	8,   // 28: creativanta.commerce.v1.GetPageResponse.page:type_name -> creativanta.commerce.v1.LinkInBioPage
 	8,   // 29: creativanta.commerce.v1.UpdatePageResponse.page:type_name -> creativanta.commerce.v1.LinkInBioPage
@@ -8290,143 +8917,155 @@ var file_creativanta_commerce_v1_creator_pro_proto_depIdxs = []int32{
 	12,  // 37: creativanta.commerce.v1.MediaKitServiceGenerateResponse.media_kit:type_name -> creativanta.commerce.v1.MediaKit
 	12,  // 38: creativanta.commerce.v1.MediaKitServiceGetResponse.media_kit:type_name -> creativanta.commerce.v1.MediaKit
 	12,  // 39: creativanta.commerce.v1.GetKitResponse.media_kit:type_name -> creativanta.commerce.v1.MediaKit
-	12,  // 40: creativanta.commerce.v1.SetDirectoryProfileResponse.media_kit:type_name -> creativanta.commerce.v1.MediaKit
-	14,  // 41: creativanta.commerce.v1.RateCardServiceCreateRequest.items:type_name -> creativanta.commerce.v1.RateCardItem
-	13,  // 42: creativanta.commerce.v1.RateCardServiceCreateResponse.rate_card:type_name -> creativanta.commerce.v1.RateCard
-	13,  // 43: creativanta.commerce.v1.GetRateCardResponse.rate_card:type_name -> creativanta.commerce.v1.RateCard
-	13,  // 44: creativanta.commerce.v1.RateCardServiceListResponse.rate_cards:type_name -> creativanta.commerce.v1.RateCard
-	14,  // 45: creativanta.commerce.v1.RateCardServiceSaveRequest.items:type_name -> creativanta.commerce.v1.RateCardItem
-	13,  // 46: creativanta.commerce.v1.RateCardServiceSaveResponse.rate_card:type_name -> creativanta.commerce.v1.RateCard
-	14,  // 47: creativanta.commerce.v1.RateCardServiceReorderResponse.items:type_name -> creativanta.commerce.v1.RateCardItem
-	1,   // 48: creativanta.commerce.v1.BrandDealServiceCreateRequest.deal_type:type_name -> creativanta.commerce.v1.BrandDealType
-	15,  // 49: creativanta.commerce.v1.BrandDealServiceCreateResponse.deal:type_name -> creativanta.commerce.v1.BrandDeal
-	0,   // 50: creativanta.commerce.v1.BrandDealServiceUpdateStatusRequest.target_status:type_name -> creativanta.commerce.v1.BrandDealStatus
-	15,  // 51: creativanta.commerce.v1.BrandDealServiceUpdateStatusResponse.deal:type_name -> creativanta.commerce.v1.BrandDeal
-	0,   // 52: creativanta.commerce.v1.BrandDealServiceListRequest.status_filter:type_name -> creativanta.commerce.v1.BrandDealStatus
-	15,  // 53: creativanta.commerce.v1.BrandDealServiceListResponse.deals:type_name -> creativanta.commerce.v1.BrandDeal
-	0,   // 54: creativanta.commerce.v1.ListDealsRequest.status_filter:type_name -> creativanta.commerce.v1.BrandDealStatus
-	15,  // 55: creativanta.commerce.v1.ListDealsResponse.deals:type_name -> creativanta.commerce.v1.BrandDeal
-	15,  // 56: creativanta.commerce.v1.ListPartnershipsResponse.partnerships:type_name -> creativanta.commerce.v1.BrandDeal
-	16,  // 57: creativanta.commerce.v1.GetPipelineStatsResponse.stats:type_name -> creativanta.commerce.v1.BrandDealPipelineStats
-	15,  // 58: creativanta.commerce.v1.BrandDealServiceGetSummaryResponse.deal:type_name -> creativanta.commerce.v1.BrandDeal
-	15,  // 59: creativanta.commerce.v1.UpdateDeliverableResponse.deal:type_name -> creativanta.commerce.v1.BrandDeal
-	15,  // 60: creativanta.commerce.v1.UpdatePaymentResponse.deal:type_name -> creativanta.commerce.v1.BrandDeal
-	87,  // 61: creativanta.commerce.v1.ListContractTemplatesResponse.templates:type_name -> creativanta.commerce.v1.ContractTemplate
-	15,  // 62: creativanta.commerce.v1.AttachContractResponse.deal:type_name -> creativanta.commerce.v1.BrandDeal
-	116, // 63: creativanta.commerce.v1.SponsorInquiry.received_at:type_name -> google.protobuf.Timestamp
-	92,  // 64: creativanta.commerce.v1.ListInquiriesResponse.inquiries:type_name -> creativanta.commerce.v1.SponsorInquiry
-	92,  // 65: creativanta.commerce.v1.SponsorInquiryServiceAcceptResponse.inquiry:type_name -> creativanta.commerce.v1.SponsorInquiry
-	15,  // 66: creativanta.commerce.v1.SponsorInquiryServiceAcceptResponse.deal:type_name -> creativanta.commerce.v1.BrandDeal
-	92,  // 67: creativanta.commerce.v1.SponsorInquiryServiceDeclineResponse.inquiry:type_name -> creativanta.commerce.v1.SponsorInquiry
-	92,  // 68: creativanta.commerce.v1.SponsorInquiryServiceFlagResponse.inquiry:type_name -> creativanta.commerce.v1.SponsorInquiry
-	17,  // 69: creativanta.commerce.v1.GetPerContentResponse.metrics:type_name -> creativanta.commerce.v1.ContentROIMetric
-	18,  // 70: creativanta.commerce.v1.GetRPMTrendsResponse.trend_points:type_name -> creativanta.commerce.v1.RPMTrendPoint
-	17,  // 71: creativanta.commerce.v1.GetROIResponse.metric:type_name -> creativanta.commerce.v1.ContentROIMetric
-	17,  // 72: creativanta.commerce.v1.GetTopPerformersResponse.top_performers:type_name -> creativanta.commerce.v1.ContentROIMetric
-	6,   // 73: creativanta.commerce.v1.TaxReportServiceGetReportRequest.period:type_name -> creativanta.commerce.v1.TaxReportPeriod
-	19,  // 74: creativanta.commerce.v1.TaxReportServiceGetReportResponse.summary:type_name -> creativanta.commerce.v1.TaxReportSummary
-	6,   // 75: creativanta.commerce.v1.ExportTaxReportRequest.period:type_name -> creativanta.commerce.v1.TaxReportPeriod
-	7,   // 76: creativanta.commerce.v1.ExportTaxReportRequest.format:type_name -> creativanta.commerce.v1.TaxReportFormat
-	19,  // 77: creativanta.commerce.v1.ExportTaxReportResponse.summary:type_name -> creativanta.commerce.v1.TaxReportSummary
-	20,  // 78: creativanta.commerce.v1.LinkInBioService.CreatePage:input_type -> creativanta.commerce.v1.CreatePageRequest
-	22,  // 79: creativanta.commerce.v1.LinkInBioService.GetPage:input_type -> creativanta.commerce.v1.GetPageRequest
-	24,  // 80: creativanta.commerce.v1.LinkInBioService.UpdatePage:input_type -> creativanta.commerce.v1.UpdatePageRequest
-	26,  // 81: creativanta.commerce.v1.LinkInBioService.Save:input_type -> creativanta.commerce.v1.LinkInBioServiceSaveRequest
-	28,  // 82: creativanta.commerce.v1.LinkInBioService.GetAnalytics:input_type -> creativanta.commerce.v1.GetAnalyticsRequest
-	30,  // 83: creativanta.commerce.v1.LinkInBioService.Reorder:input_type -> creativanta.commerce.v1.LinkInBioServiceReorderRequest
-	32,  // 84: creativanta.commerce.v1.LinkInBioService.ToggleLink:input_type -> creativanta.commerce.v1.ToggleLinkRequest
-	34,  // 85: creativanta.commerce.v1.LinkInBioService.UpdateTheme:input_type -> creativanta.commerce.v1.UpdateThemeRequest
-	36,  // 86: creativanta.commerce.v1.LinkInBioService.ScanLink:input_type -> creativanta.commerce.v1.ScanLinkRequest
-	38,  // 87: creativanta.commerce.v1.LinkInBioService.ReportLink:input_type -> creativanta.commerce.v1.ReportLinkRequest
-	40,  // 88: creativanta.commerce.v1.LinkInBioService.VerifyCustomDomain:input_type -> creativanta.commerce.v1.VerifyCustomDomainRequest
-	42,  // 89: creativanta.commerce.v1.MediaKitService.Generate:input_type -> creativanta.commerce.v1.MediaKitServiceGenerateRequest
-	44,  // 90: creativanta.commerce.v1.MediaKitService.Get:input_type -> creativanta.commerce.v1.MediaKitServiceGetRequest
-	46,  // 91: creativanta.commerce.v1.MediaKitService.GetKit:input_type -> creativanta.commerce.v1.GetKitRequest
-	48,  // 92: creativanta.commerce.v1.MediaKitService.Export:input_type -> creativanta.commerce.v1.MediaKitServiceExportRequest
-	50,  // 93: creativanta.commerce.v1.MediaKitService.SetDirectoryProfile:input_type -> creativanta.commerce.v1.SetDirectoryProfileRequest
-	52,  // 94: creativanta.commerce.v1.RateCardService.Create:input_type -> creativanta.commerce.v1.RateCardServiceCreateRequest
-	54,  // 95: creativanta.commerce.v1.RateCardService.GetRateCard:input_type -> creativanta.commerce.v1.GetRateCardRequest
-	56,  // 96: creativanta.commerce.v1.RateCardService.List:input_type -> creativanta.commerce.v1.RateCardServiceListRequest
-	58,  // 97: creativanta.commerce.v1.RateCardService.Save:input_type -> creativanta.commerce.v1.RateCardServiceSaveRequest
-	60,  // 98: creativanta.commerce.v1.RateCardService.DeleteItem:input_type -> creativanta.commerce.v1.RateCardServiceDeleteItemRequest
-	62,  // 99: creativanta.commerce.v1.RateCardService.Reorder:input_type -> creativanta.commerce.v1.RateCardServiceReorderRequest
-	64,  // 100: creativanta.commerce.v1.RateCardService.CompareScope:input_type -> creativanta.commerce.v1.CompareScopeRequest
-	66,  // 101: creativanta.commerce.v1.RateCardService.AISuggest:input_type -> creativanta.commerce.v1.RateCardServiceAISuggestRequest
-	68,  // 102: creativanta.commerce.v1.BrandDealService.Create:input_type -> creativanta.commerce.v1.BrandDealServiceCreateRequest
-	70,  // 103: creativanta.commerce.v1.BrandDealService.UpdateStatus:input_type -> creativanta.commerce.v1.BrandDealServiceUpdateStatusRequest
-	72,  // 104: creativanta.commerce.v1.BrandDealService.List:input_type -> creativanta.commerce.v1.BrandDealServiceListRequest
-	74,  // 105: creativanta.commerce.v1.BrandDealService.ListDeals:input_type -> creativanta.commerce.v1.ListDealsRequest
-	76,  // 106: creativanta.commerce.v1.BrandDealService.ListPartnerships:input_type -> creativanta.commerce.v1.ListPartnershipsRequest
-	78,  // 107: creativanta.commerce.v1.BrandDealService.GetPipelineStats:input_type -> creativanta.commerce.v1.GetPipelineStatsRequest
-	80,  // 108: creativanta.commerce.v1.BrandDealService.GetSummary:input_type -> creativanta.commerce.v1.BrandDealServiceGetSummaryRequest
-	82,  // 109: creativanta.commerce.v1.BrandDealService.UpdateDeliverable:input_type -> creativanta.commerce.v1.UpdateDeliverableRequest
-	84,  // 110: creativanta.commerce.v1.BrandDealService.UpdatePayment:input_type -> creativanta.commerce.v1.UpdatePaymentRequest
-	86,  // 111: creativanta.commerce.v1.BrandDealService.ListContractTemplates:input_type -> creativanta.commerce.v1.ListContractTemplatesRequest
-	89,  // 112: creativanta.commerce.v1.BrandDealService.AttachContract:input_type -> creativanta.commerce.v1.AttachContractRequest
-	91,  // 113: creativanta.commerce.v1.SponsorInquiryService.ListInquiries:input_type -> creativanta.commerce.v1.ListInquiriesRequest
-	94,  // 114: creativanta.commerce.v1.SponsorInquiryService.Accept:input_type -> creativanta.commerce.v1.SponsorInquiryServiceAcceptRequest
-	96,  // 115: creativanta.commerce.v1.SponsorInquiryService.Decline:input_type -> creativanta.commerce.v1.SponsorInquiryServiceDeclineRequest
-	98,  // 116: creativanta.commerce.v1.SponsorInquiryService.Flag:input_type -> creativanta.commerce.v1.SponsorInquiryServiceFlagRequest
-	100, // 117: creativanta.commerce.v1.SponsorInquiryService.GetStats:input_type -> creativanta.commerce.v1.SponsorInquiryServiceGetStatsRequest
-	102, // 118: creativanta.commerce.v1.SponsorInquiryService.Submit:input_type -> creativanta.commerce.v1.SponsorInquiryServiceSubmitRequest
-	104, // 119: creativanta.commerce.v1.RevenueTrackerService.GetPerContent:input_type -> creativanta.commerce.v1.GetPerContentRequest
-	106, // 120: creativanta.commerce.v1.RevenueTrackerService.GetRPMTrends:input_type -> creativanta.commerce.v1.GetRPMTrendsRequest
-	108, // 121: creativanta.commerce.v1.RevenueTrackerService.GetROI:input_type -> creativanta.commerce.v1.GetROIRequest
-	110, // 122: creativanta.commerce.v1.RevenueTrackerService.GetTopPerformers:input_type -> creativanta.commerce.v1.GetTopPerformersRequest
-	112, // 123: creativanta.commerce.v1.TaxReportService.GetReport:input_type -> creativanta.commerce.v1.TaxReportServiceGetReportRequest
-	114, // 124: creativanta.commerce.v1.TaxReportService.ExportTaxReport:input_type -> creativanta.commerce.v1.ExportTaxReportRequest
-	21,  // 125: creativanta.commerce.v1.LinkInBioService.CreatePage:output_type -> creativanta.commerce.v1.CreatePageResponse
-	23,  // 126: creativanta.commerce.v1.LinkInBioService.GetPage:output_type -> creativanta.commerce.v1.GetPageResponse
-	25,  // 127: creativanta.commerce.v1.LinkInBioService.UpdatePage:output_type -> creativanta.commerce.v1.UpdatePageResponse
-	27,  // 128: creativanta.commerce.v1.LinkInBioService.Save:output_type -> creativanta.commerce.v1.LinkInBioServiceSaveResponse
-	29,  // 129: creativanta.commerce.v1.LinkInBioService.GetAnalytics:output_type -> creativanta.commerce.v1.GetAnalyticsResponse
-	31,  // 130: creativanta.commerce.v1.LinkInBioService.Reorder:output_type -> creativanta.commerce.v1.LinkInBioServiceReorderResponse
-	33,  // 131: creativanta.commerce.v1.LinkInBioService.ToggleLink:output_type -> creativanta.commerce.v1.ToggleLinkResponse
-	35,  // 132: creativanta.commerce.v1.LinkInBioService.UpdateTheme:output_type -> creativanta.commerce.v1.UpdateThemeResponse
-	37,  // 133: creativanta.commerce.v1.LinkInBioService.ScanLink:output_type -> creativanta.commerce.v1.ScanLinkResponse
-	39,  // 134: creativanta.commerce.v1.LinkInBioService.ReportLink:output_type -> creativanta.commerce.v1.ReportLinkResponse
-	41,  // 135: creativanta.commerce.v1.LinkInBioService.VerifyCustomDomain:output_type -> creativanta.commerce.v1.VerifyCustomDomainResponse
-	43,  // 136: creativanta.commerce.v1.MediaKitService.Generate:output_type -> creativanta.commerce.v1.MediaKitServiceGenerateResponse
-	45,  // 137: creativanta.commerce.v1.MediaKitService.Get:output_type -> creativanta.commerce.v1.MediaKitServiceGetResponse
-	47,  // 138: creativanta.commerce.v1.MediaKitService.GetKit:output_type -> creativanta.commerce.v1.GetKitResponse
-	49,  // 139: creativanta.commerce.v1.MediaKitService.Export:output_type -> creativanta.commerce.v1.MediaKitServiceExportResponse
-	51,  // 140: creativanta.commerce.v1.MediaKitService.SetDirectoryProfile:output_type -> creativanta.commerce.v1.SetDirectoryProfileResponse
-	53,  // 141: creativanta.commerce.v1.RateCardService.Create:output_type -> creativanta.commerce.v1.RateCardServiceCreateResponse
-	55,  // 142: creativanta.commerce.v1.RateCardService.GetRateCard:output_type -> creativanta.commerce.v1.GetRateCardResponse
-	57,  // 143: creativanta.commerce.v1.RateCardService.List:output_type -> creativanta.commerce.v1.RateCardServiceListResponse
-	59,  // 144: creativanta.commerce.v1.RateCardService.Save:output_type -> creativanta.commerce.v1.RateCardServiceSaveResponse
-	61,  // 145: creativanta.commerce.v1.RateCardService.DeleteItem:output_type -> creativanta.commerce.v1.RateCardServiceDeleteItemResponse
-	63,  // 146: creativanta.commerce.v1.RateCardService.Reorder:output_type -> creativanta.commerce.v1.RateCardServiceReorderResponse
-	65,  // 147: creativanta.commerce.v1.RateCardService.CompareScope:output_type -> creativanta.commerce.v1.CompareScopeResponse
-	67,  // 148: creativanta.commerce.v1.RateCardService.AISuggest:output_type -> creativanta.commerce.v1.RateCardServiceAISuggestResponse
-	69,  // 149: creativanta.commerce.v1.BrandDealService.Create:output_type -> creativanta.commerce.v1.BrandDealServiceCreateResponse
-	71,  // 150: creativanta.commerce.v1.BrandDealService.UpdateStatus:output_type -> creativanta.commerce.v1.BrandDealServiceUpdateStatusResponse
-	73,  // 151: creativanta.commerce.v1.BrandDealService.List:output_type -> creativanta.commerce.v1.BrandDealServiceListResponse
-	75,  // 152: creativanta.commerce.v1.BrandDealService.ListDeals:output_type -> creativanta.commerce.v1.ListDealsResponse
-	77,  // 153: creativanta.commerce.v1.BrandDealService.ListPartnerships:output_type -> creativanta.commerce.v1.ListPartnershipsResponse
-	79,  // 154: creativanta.commerce.v1.BrandDealService.GetPipelineStats:output_type -> creativanta.commerce.v1.GetPipelineStatsResponse
-	81,  // 155: creativanta.commerce.v1.BrandDealService.GetSummary:output_type -> creativanta.commerce.v1.BrandDealServiceGetSummaryResponse
-	83,  // 156: creativanta.commerce.v1.BrandDealService.UpdateDeliverable:output_type -> creativanta.commerce.v1.UpdateDeliverableResponse
-	85,  // 157: creativanta.commerce.v1.BrandDealService.UpdatePayment:output_type -> creativanta.commerce.v1.UpdatePaymentResponse
-	88,  // 158: creativanta.commerce.v1.BrandDealService.ListContractTemplates:output_type -> creativanta.commerce.v1.ListContractTemplatesResponse
-	90,  // 159: creativanta.commerce.v1.BrandDealService.AttachContract:output_type -> creativanta.commerce.v1.AttachContractResponse
-	93,  // 160: creativanta.commerce.v1.SponsorInquiryService.ListInquiries:output_type -> creativanta.commerce.v1.ListInquiriesResponse
-	95,  // 161: creativanta.commerce.v1.SponsorInquiryService.Accept:output_type -> creativanta.commerce.v1.SponsorInquiryServiceAcceptResponse
-	97,  // 162: creativanta.commerce.v1.SponsorInquiryService.Decline:output_type -> creativanta.commerce.v1.SponsorInquiryServiceDeclineResponse
-	99,  // 163: creativanta.commerce.v1.SponsorInquiryService.Flag:output_type -> creativanta.commerce.v1.SponsorInquiryServiceFlagResponse
-	101, // 164: creativanta.commerce.v1.SponsorInquiryService.GetStats:output_type -> creativanta.commerce.v1.SponsorInquiryServiceGetStatsResponse
-	103, // 165: creativanta.commerce.v1.SponsorInquiryService.Submit:output_type -> creativanta.commerce.v1.SponsorInquiryServiceSubmitResponse
-	105, // 166: creativanta.commerce.v1.RevenueTrackerService.GetPerContent:output_type -> creativanta.commerce.v1.GetPerContentResponse
-	107, // 167: creativanta.commerce.v1.RevenueTrackerService.GetRPMTrends:output_type -> creativanta.commerce.v1.GetRPMTrendsResponse
-	109, // 168: creativanta.commerce.v1.RevenueTrackerService.GetROI:output_type -> creativanta.commerce.v1.GetROIResponse
-	111, // 169: creativanta.commerce.v1.RevenueTrackerService.GetTopPerformers:output_type -> creativanta.commerce.v1.GetTopPerformersResponse
-	113, // 170: creativanta.commerce.v1.TaxReportService.GetReport:output_type -> creativanta.commerce.v1.TaxReportServiceGetReportResponse
-	115, // 171: creativanta.commerce.v1.TaxReportService.ExportTaxReport:output_type -> creativanta.commerce.v1.ExportTaxReportResponse
-	125, // [125:172] is the sub-list for method output_type
-	78,  // [78:125] is the sub-list for method input_type
-	78,  // [78:78] is the sub-list for extension type_name
-	78,  // [78:78] is the sub-list for extension extendee
-	0,   // [0:78] is the sub-list for field type_name
+	50,  // 40: creativanta.commerce.v1.PublicCreatorProfile.public_rates:type_name -> creativanta.commerce.v1.PublicRateItem
+	51,  // 41: creativanta.commerce.v1.SetDirectoryProfileRequest.profile:type_name -> creativanta.commerce.v1.PublicCreatorProfile
+	12,  // 42: creativanta.commerce.v1.SetDirectoryProfileResponse.media_kit:type_name -> creativanta.commerce.v1.MediaKit
+	5,   // 43: creativanta.commerce.v1.SetDirectoryProfileResponse.directory_status:type_name -> creativanta.commerce.v1.MediaKitDirectoryStatus
+	14,  // 44: creativanta.commerce.v1.RateCardServiceCreateRequest.items:type_name -> creativanta.commerce.v1.RateCardItem
+	13,  // 45: creativanta.commerce.v1.RateCardServiceCreateResponse.rate_card:type_name -> creativanta.commerce.v1.RateCard
+	13,  // 46: creativanta.commerce.v1.GetRateCardResponse.rate_card:type_name -> creativanta.commerce.v1.RateCard
+	13,  // 47: creativanta.commerce.v1.RateCardServiceListResponse.rate_cards:type_name -> creativanta.commerce.v1.RateCard
+	14,  // 48: creativanta.commerce.v1.RateCardServiceSaveRequest.items:type_name -> creativanta.commerce.v1.RateCardItem
+	13,  // 49: creativanta.commerce.v1.RateCardServiceSaveResponse.rate_card:type_name -> creativanta.commerce.v1.RateCard
+	14,  // 50: creativanta.commerce.v1.RateCardServiceReorderResponse.items:type_name -> creativanta.commerce.v1.RateCardItem
+	1,   // 51: creativanta.commerce.v1.BrandDealServiceCreateRequest.deal_type:type_name -> creativanta.commerce.v1.BrandDealType
+	15,  // 52: creativanta.commerce.v1.BrandDealServiceCreateResponse.deal:type_name -> creativanta.commerce.v1.BrandDeal
+	0,   // 53: creativanta.commerce.v1.BrandDealServiceUpdateStatusRequest.target_status:type_name -> creativanta.commerce.v1.BrandDealStatus
+	123, // 54: creativanta.commerce.v1.BrandDealServiceUpdateStatusRequest.expected_updated_at:type_name -> google.protobuf.Timestamp
+	15,  // 55: creativanta.commerce.v1.BrandDealServiceUpdateStatusResponse.deal:type_name -> creativanta.commerce.v1.BrandDeal
+	0,   // 56: creativanta.commerce.v1.BrandDealServiceListRequest.status_filter:type_name -> creativanta.commerce.v1.BrandDealStatus
+	15,  // 57: creativanta.commerce.v1.BrandDealServiceListResponse.deals:type_name -> creativanta.commerce.v1.BrandDeal
+	0,   // 58: creativanta.commerce.v1.ListDealsRequest.status_filter:type_name -> creativanta.commerce.v1.BrandDealStatus
+	15,  // 59: creativanta.commerce.v1.ListDealsResponse.deals:type_name -> creativanta.commerce.v1.BrandDeal
+	15,  // 60: creativanta.commerce.v1.ListPartnershipsResponse.partnerships:type_name -> creativanta.commerce.v1.BrandDeal
+	16,  // 61: creativanta.commerce.v1.GetPipelineStatsResponse.stats:type_name -> creativanta.commerce.v1.BrandDealPipelineStats
+	15,  // 62: creativanta.commerce.v1.BrandDealServiceGetSummaryResponse.deal:type_name -> creativanta.commerce.v1.BrandDeal
+	15,  // 63: creativanta.commerce.v1.UpdateDeliverableResponse.deal:type_name -> creativanta.commerce.v1.BrandDeal
+	15,  // 64: creativanta.commerce.v1.UpdatePaymentResponse.deal:type_name -> creativanta.commerce.v1.BrandDeal
+	89,  // 65: creativanta.commerce.v1.ListContractTemplatesResponse.templates:type_name -> creativanta.commerce.v1.ContractTemplate
+	15,  // 66: creativanta.commerce.v1.AttachContractResponse.deal:type_name -> creativanta.commerce.v1.BrandDeal
+	123, // 67: creativanta.commerce.v1.SponsorInquiry.received_at:type_name -> google.protobuf.Timestamp
+	94,  // 68: creativanta.commerce.v1.ListInquiriesResponse.inquiries:type_name -> creativanta.commerce.v1.SponsorInquiry
+	94,  // 69: creativanta.commerce.v1.SponsorInquiryServiceAcceptResponse.inquiry:type_name -> creativanta.commerce.v1.SponsorInquiry
+	15,  // 70: creativanta.commerce.v1.SponsorInquiryServiceAcceptResponse.deal:type_name -> creativanta.commerce.v1.BrandDeal
+	94,  // 71: creativanta.commerce.v1.SponsorInquiryServiceDeclineResponse.inquiry:type_name -> creativanta.commerce.v1.SponsorInquiry
+	94,  // 72: creativanta.commerce.v1.SponsorInquiryServiceFlagResponse.inquiry:type_name -> creativanta.commerce.v1.SponsorInquiry
+	17,  // 73: creativanta.commerce.v1.GetPerContentResponse.metrics:type_name -> creativanta.commerce.v1.ContentROIMetric
+	18,  // 74: creativanta.commerce.v1.GetRPMTrendsResponse.trend_points:type_name -> creativanta.commerce.v1.RPMTrendPoint
+	17,  // 75: creativanta.commerce.v1.GetROIResponse.metric:type_name -> creativanta.commerce.v1.ContentROIMetric
+	17,  // 76: creativanta.commerce.v1.GetTopPerformersResponse.top_performers:type_name -> creativanta.commerce.v1.ContentROIMetric
+	6,   // 77: creativanta.commerce.v1.TaxReportServiceGetReportRequest.period:type_name -> creativanta.commerce.v1.TaxReportPeriod
+	19,  // 78: creativanta.commerce.v1.TaxReportServiceGetReportResponse.summary:type_name -> creativanta.commerce.v1.TaxReportSummary
+	6,   // 79: creativanta.commerce.v1.ExportTaxReportRequest.period:type_name -> creativanta.commerce.v1.TaxReportPeriod
+	7,   // 80: creativanta.commerce.v1.ExportTaxReportRequest.format:type_name -> creativanta.commerce.v1.TaxReportFormat
+	19,  // 81: creativanta.commerce.v1.ExportTaxReportResponse.summary:type_name -> creativanta.commerce.v1.TaxReportSummary
+	51,  // 82: creativanta.commerce.v1.CreatorDirectoryEntry.profile:type_name -> creativanta.commerce.v1.PublicCreatorProfile
+	123, // 83: creativanta.commerce.v1.CreatorDirectoryEntry.published_at:type_name -> google.protobuf.Timestamp
+	118, // 84: creativanta.commerce.v1.CreatorDirectoryServiceSearchResponse.entries:type_name -> creativanta.commerce.v1.CreatorDirectoryEntry
+	118, // 85: creativanta.commerce.v1.CreatorDirectoryServiceGetResponse.entry:type_name -> creativanta.commerce.v1.CreatorDirectoryEntry
+	20,  // 86: creativanta.commerce.v1.LinkInBioService.CreatePage:input_type -> creativanta.commerce.v1.CreatePageRequest
+	22,  // 87: creativanta.commerce.v1.LinkInBioService.GetPage:input_type -> creativanta.commerce.v1.GetPageRequest
+	24,  // 88: creativanta.commerce.v1.LinkInBioService.UpdatePage:input_type -> creativanta.commerce.v1.UpdatePageRequest
+	26,  // 89: creativanta.commerce.v1.LinkInBioService.Save:input_type -> creativanta.commerce.v1.LinkInBioServiceSaveRequest
+	28,  // 90: creativanta.commerce.v1.LinkInBioService.GetAnalytics:input_type -> creativanta.commerce.v1.GetAnalyticsRequest
+	30,  // 91: creativanta.commerce.v1.LinkInBioService.Reorder:input_type -> creativanta.commerce.v1.LinkInBioServiceReorderRequest
+	32,  // 92: creativanta.commerce.v1.LinkInBioService.ToggleLink:input_type -> creativanta.commerce.v1.ToggleLinkRequest
+	34,  // 93: creativanta.commerce.v1.LinkInBioService.UpdateTheme:input_type -> creativanta.commerce.v1.UpdateThemeRequest
+	36,  // 94: creativanta.commerce.v1.LinkInBioService.ScanLink:input_type -> creativanta.commerce.v1.ScanLinkRequest
+	38,  // 95: creativanta.commerce.v1.LinkInBioService.ReportLink:input_type -> creativanta.commerce.v1.ReportLinkRequest
+	40,  // 96: creativanta.commerce.v1.LinkInBioService.VerifyCustomDomain:input_type -> creativanta.commerce.v1.VerifyCustomDomainRequest
+	42,  // 97: creativanta.commerce.v1.MediaKitService.Generate:input_type -> creativanta.commerce.v1.MediaKitServiceGenerateRequest
+	44,  // 98: creativanta.commerce.v1.MediaKitService.Get:input_type -> creativanta.commerce.v1.MediaKitServiceGetRequest
+	46,  // 99: creativanta.commerce.v1.MediaKitService.GetKit:input_type -> creativanta.commerce.v1.GetKitRequest
+	48,  // 100: creativanta.commerce.v1.MediaKitService.Export:input_type -> creativanta.commerce.v1.MediaKitServiceExportRequest
+	52,  // 101: creativanta.commerce.v1.MediaKitService.SetDirectoryProfile:input_type -> creativanta.commerce.v1.SetDirectoryProfileRequest
+	54,  // 102: creativanta.commerce.v1.RateCardService.Create:input_type -> creativanta.commerce.v1.RateCardServiceCreateRequest
+	56,  // 103: creativanta.commerce.v1.RateCardService.GetRateCard:input_type -> creativanta.commerce.v1.GetRateCardRequest
+	58,  // 104: creativanta.commerce.v1.RateCardService.List:input_type -> creativanta.commerce.v1.RateCardServiceListRequest
+	60,  // 105: creativanta.commerce.v1.RateCardService.Save:input_type -> creativanta.commerce.v1.RateCardServiceSaveRequest
+	62,  // 106: creativanta.commerce.v1.RateCardService.DeleteItem:input_type -> creativanta.commerce.v1.RateCardServiceDeleteItemRequest
+	64,  // 107: creativanta.commerce.v1.RateCardService.Reorder:input_type -> creativanta.commerce.v1.RateCardServiceReorderRequest
+	66,  // 108: creativanta.commerce.v1.RateCardService.CompareScope:input_type -> creativanta.commerce.v1.CompareScopeRequest
+	68,  // 109: creativanta.commerce.v1.RateCardService.AISuggest:input_type -> creativanta.commerce.v1.RateCardServiceAISuggestRequest
+	70,  // 110: creativanta.commerce.v1.BrandDealService.Create:input_type -> creativanta.commerce.v1.BrandDealServiceCreateRequest
+	72,  // 111: creativanta.commerce.v1.BrandDealService.UpdateStatus:input_type -> creativanta.commerce.v1.BrandDealServiceUpdateStatusRequest
+	74,  // 112: creativanta.commerce.v1.BrandDealService.List:input_type -> creativanta.commerce.v1.BrandDealServiceListRequest
+	76,  // 113: creativanta.commerce.v1.BrandDealService.ListDeals:input_type -> creativanta.commerce.v1.ListDealsRequest
+	78,  // 114: creativanta.commerce.v1.BrandDealService.ListPartnerships:input_type -> creativanta.commerce.v1.ListPartnershipsRequest
+	80,  // 115: creativanta.commerce.v1.BrandDealService.GetPipelineStats:input_type -> creativanta.commerce.v1.GetPipelineStatsRequest
+	82,  // 116: creativanta.commerce.v1.BrandDealService.GetSummary:input_type -> creativanta.commerce.v1.BrandDealServiceGetSummaryRequest
+	84,  // 117: creativanta.commerce.v1.BrandDealService.UpdateDeliverable:input_type -> creativanta.commerce.v1.UpdateDeliverableRequest
+	86,  // 118: creativanta.commerce.v1.BrandDealService.UpdatePayment:input_type -> creativanta.commerce.v1.UpdatePaymentRequest
+	88,  // 119: creativanta.commerce.v1.BrandDealService.ListContractTemplates:input_type -> creativanta.commerce.v1.ListContractTemplatesRequest
+	91,  // 120: creativanta.commerce.v1.BrandDealService.AttachContract:input_type -> creativanta.commerce.v1.AttachContractRequest
+	93,  // 121: creativanta.commerce.v1.SponsorInquiryService.ListInquiries:input_type -> creativanta.commerce.v1.ListInquiriesRequest
+	96,  // 122: creativanta.commerce.v1.SponsorInquiryService.Accept:input_type -> creativanta.commerce.v1.SponsorInquiryServiceAcceptRequest
+	98,  // 123: creativanta.commerce.v1.SponsorInquiryService.Decline:input_type -> creativanta.commerce.v1.SponsorInquiryServiceDeclineRequest
+	100, // 124: creativanta.commerce.v1.SponsorInquiryService.Flag:input_type -> creativanta.commerce.v1.SponsorInquiryServiceFlagRequest
+	102, // 125: creativanta.commerce.v1.SponsorInquiryService.GetStats:input_type -> creativanta.commerce.v1.SponsorInquiryServiceGetStatsRequest
+	104, // 126: creativanta.commerce.v1.SponsorInquiryService.Submit:input_type -> creativanta.commerce.v1.SponsorInquiryServiceSubmitRequest
+	106, // 127: creativanta.commerce.v1.RevenueTrackerService.GetPerContent:input_type -> creativanta.commerce.v1.GetPerContentRequest
+	108, // 128: creativanta.commerce.v1.RevenueTrackerService.GetRPMTrends:input_type -> creativanta.commerce.v1.GetRPMTrendsRequest
+	110, // 129: creativanta.commerce.v1.RevenueTrackerService.GetROI:input_type -> creativanta.commerce.v1.GetROIRequest
+	112, // 130: creativanta.commerce.v1.RevenueTrackerService.GetTopPerformers:input_type -> creativanta.commerce.v1.GetTopPerformersRequest
+	119, // 131: creativanta.commerce.v1.CreatorDirectoryService.Search:input_type -> creativanta.commerce.v1.CreatorDirectoryServiceSearchRequest
+	121, // 132: creativanta.commerce.v1.CreatorDirectoryService.Get:input_type -> creativanta.commerce.v1.CreatorDirectoryServiceGetRequest
+	114, // 133: creativanta.commerce.v1.TaxReportService.GetReport:input_type -> creativanta.commerce.v1.TaxReportServiceGetReportRequest
+	116, // 134: creativanta.commerce.v1.TaxReportService.ExportTaxReport:input_type -> creativanta.commerce.v1.ExportTaxReportRequest
+	21,  // 135: creativanta.commerce.v1.LinkInBioService.CreatePage:output_type -> creativanta.commerce.v1.CreatePageResponse
+	23,  // 136: creativanta.commerce.v1.LinkInBioService.GetPage:output_type -> creativanta.commerce.v1.GetPageResponse
+	25,  // 137: creativanta.commerce.v1.LinkInBioService.UpdatePage:output_type -> creativanta.commerce.v1.UpdatePageResponse
+	27,  // 138: creativanta.commerce.v1.LinkInBioService.Save:output_type -> creativanta.commerce.v1.LinkInBioServiceSaveResponse
+	29,  // 139: creativanta.commerce.v1.LinkInBioService.GetAnalytics:output_type -> creativanta.commerce.v1.GetAnalyticsResponse
+	31,  // 140: creativanta.commerce.v1.LinkInBioService.Reorder:output_type -> creativanta.commerce.v1.LinkInBioServiceReorderResponse
+	33,  // 141: creativanta.commerce.v1.LinkInBioService.ToggleLink:output_type -> creativanta.commerce.v1.ToggleLinkResponse
+	35,  // 142: creativanta.commerce.v1.LinkInBioService.UpdateTheme:output_type -> creativanta.commerce.v1.UpdateThemeResponse
+	37,  // 143: creativanta.commerce.v1.LinkInBioService.ScanLink:output_type -> creativanta.commerce.v1.ScanLinkResponse
+	39,  // 144: creativanta.commerce.v1.LinkInBioService.ReportLink:output_type -> creativanta.commerce.v1.ReportLinkResponse
+	41,  // 145: creativanta.commerce.v1.LinkInBioService.VerifyCustomDomain:output_type -> creativanta.commerce.v1.VerifyCustomDomainResponse
+	43,  // 146: creativanta.commerce.v1.MediaKitService.Generate:output_type -> creativanta.commerce.v1.MediaKitServiceGenerateResponse
+	45,  // 147: creativanta.commerce.v1.MediaKitService.Get:output_type -> creativanta.commerce.v1.MediaKitServiceGetResponse
+	47,  // 148: creativanta.commerce.v1.MediaKitService.GetKit:output_type -> creativanta.commerce.v1.GetKitResponse
+	49,  // 149: creativanta.commerce.v1.MediaKitService.Export:output_type -> creativanta.commerce.v1.MediaKitServiceExportResponse
+	53,  // 150: creativanta.commerce.v1.MediaKitService.SetDirectoryProfile:output_type -> creativanta.commerce.v1.SetDirectoryProfileResponse
+	55,  // 151: creativanta.commerce.v1.RateCardService.Create:output_type -> creativanta.commerce.v1.RateCardServiceCreateResponse
+	57,  // 152: creativanta.commerce.v1.RateCardService.GetRateCard:output_type -> creativanta.commerce.v1.GetRateCardResponse
+	59,  // 153: creativanta.commerce.v1.RateCardService.List:output_type -> creativanta.commerce.v1.RateCardServiceListResponse
+	61,  // 154: creativanta.commerce.v1.RateCardService.Save:output_type -> creativanta.commerce.v1.RateCardServiceSaveResponse
+	63,  // 155: creativanta.commerce.v1.RateCardService.DeleteItem:output_type -> creativanta.commerce.v1.RateCardServiceDeleteItemResponse
+	65,  // 156: creativanta.commerce.v1.RateCardService.Reorder:output_type -> creativanta.commerce.v1.RateCardServiceReorderResponse
+	67,  // 157: creativanta.commerce.v1.RateCardService.CompareScope:output_type -> creativanta.commerce.v1.CompareScopeResponse
+	69,  // 158: creativanta.commerce.v1.RateCardService.AISuggest:output_type -> creativanta.commerce.v1.RateCardServiceAISuggestResponse
+	71,  // 159: creativanta.commerce.v1.BrandDealService.Create:output_type -> creativanta.commerce.v1.BrandDealServiceCreateResponse
+	73,  // 160: creativanta.commerce.v1.BrandDealService.UpdateStatus:output_type -> creativanta.commerce.v1.BrandDealServiceUpdateStatusResponse
+	75,  // 161: creativanta.commerce.v1.BrandDealService.List:output_type -> creativanta.commerce.v1.BrandDealServiceListResponse
+	77,  // 162: creativanta.commerce.v1.BrandDealService.ListDeals:output_type -> creativanta.commerce.v1.ListDealsResponse
+	79,  // 163: creativanta.commerce.v1.BrandDealService.ListPartnerships:output_type -> creativanta.commerce.v1.ListPartnershipsResponse
+	81,  // 164: creativanta.commerce.v1.BrandDealService.GetPipelineStats:output_type -> creativanta.commerce.v1.GetPipelineStatsResponse
+	83,  // 165: creativanta.commerce.v1.BrandDealService.GetSummary:output_type -> creativanta.commerce.v1.BrandDealServiceGetSummaryResponse
+	85,  // 166: creativanta.commerce.v1.BrandDealService.UpdateDeliverable:output_type -> creativanta.commerce.v1.UpdateDeliverableResponse
+	87,  // 167: creativanta.commerce.v1.BrandDealService.UpdatePayment:output_type -> creativanta.commerce.v1.UpdatePaymentResponse
+	90,  // 168: creativanta.commerce.v1.BrandDealService.ListContractTemplates:output_type -> creativanta.commerce.v1.ListContractTemplatesResponse
+	92,  // 169: creativanta.commerce.v1.BrandDealService.AttachContract:output_type -> creativanta.commerce.v1.AttachContractResponse
+	95,  // 170: creativanta.commerce.v1.SponsorInquiryService.ListInquiries:output_type -> creativanta.commerce.v1.ListInquiriesResponse
+	97,  // 171: creativanta.commerce.v1.SponsorInquiryService.Accept:output_type -> creativanta.commerce.v1.SponsorInquiryServiceAcceptResponse
+	99,  // 172: creativanta.commerce.v1.SponsorInquiryService.Decline:output_type -> creativanta.commerce.v1.SponsorInquiryServiceDeclineResponse
+	101, // 173: creativanta.commerce.v1.SponsorInquiryService.Flag:output_type -> creativanta.commerce.v1.SponsorInquiryServiceFlagResponse
+	103, // 174: creativanta.commerce.v1.SponsorInquiryService.GetStats:output_type -> creativanta.commerce.v1.SponsorInquiryServiceGetStatsResponse
+	105, // 175: creativanta.commerce.v1.SponsorInquiryService.Submit:output_type -> creativanta.commerce.v1.SponsorInquiryServiceSubmitResponse
+	107, // 176: creativanta.commerce.v1.RevenueTrackerService.GetPerContent:output_type -> creativanta.commerce.v1.GetPerContentResponse
+	109, // 177: creativanta.commerce.v1.RevenueTrackerService.GetRPMTrends:output_type -> creativanta.commerce.v1.GetRPMTrendsResponse
+	111, // 178: creativanta.commerce.v1.RevenueTrackerService.GetROI:output_type -> creativanta.commerce.v1.GetROIResponse
+	113, // 179: creativanta.commerce.v1.RevenueTrackerService.GetTopPerformers:output_type -> creativanta.commerce.v1.GetTopPerformersResponse
+	120, // 180: creativanta.commerce.v1.CreatorDirectoryService.Search:output_type -> creativanta.commerce.v1.CreatorDirectoryServiceSearchResponse
+	122, // 181: creativanta.commerce.v1.CreatorDirectoryService.Get:output_type -> creativanta.commerce.v1.CreatorDirectoryServiceGetResponse
+	115, // 182: creativanta.commerce.v1.TaxReportService.GetReport:output_type -> creativanta.commerce.v1.TaxReportServiceGetReportResponse
+	117, // 183: creativanta.commerce.v1.TaxReportService.ExportTaxReport:output_type -> creativanta.commerce.v1.ExportTaxReportResponse
+	135, // [135:184] is the sub-list for method output_type
+	86,  // [86:135] is the sub-list for method input_type
+	86,  // [86:86] is the sub-list for extension type_name
+	86,  // [86:86] is the sub-list for extension extendee
+	0,   // [0:86] is the sub-list for field type_name
 }
 
 func init() { file_creativanta_commerce_v1_creator_pro_proto_init() }
@@ -8440,9 +9079,9 @@ func file_creativanta_commerce_v1_creator_pro_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_creativanta_commerce_v1_creator_pro_proto_rawDesc), len(file_creativanta_commerce_v1_creator_pro_proto_rawDesc)),
 			NumEnums:      8,
-			NumMessages:   108,
+			NumMessages:   115,
 			NumExtensions: 0,
-			NumServices:   7,
+			NumServices:   8,
 		},
 		GoTypes:           file_creativanta_commerce_v1_creator_pro_proto_goTypes,
 		DependencyIndexes: file_creativanta_commerce_v1_creator_pro_proto_depIdxs,

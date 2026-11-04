@@ -7,12 +7,17 @@
     checkRPMDropAlert,
     isToolEntitledForMode,
     MAX_DAILY_LINKS_PER_WORKSPACE,
+    organizeDealsIntoKanban,
+    validateOptimisticKanbanMove,
+    attachContractToDeal,
+    STANDARD_CONTRACT_TEMPLATES,
     type BrandDeal,
     type BrandDealStatus,
     type LinkInBioPage,
     type LinkItem,
     type WorkspaceMode,
-    type CreatorProTool
+    type CreatorProTool,
+    type ContractTemplate
   } from '$lib/commerce';
 
   const workspaceId = 'ws-creator-01';
@@ -108,6 +113,42 @@
       }
     }
     deals = [...deals];
+  }
+
+  // P8-07: Deal Kanban & Contract Templates State
+  let dealViewTab = $state<'kanban' | 'list'>('kanban');
+  let kanbanColumns = $derived(organizeDealsIntoKanban(deals));
+  let selectedDealForContract = $state<BrandDeal | null>(null);
+  let selectedTemplate = $state<ContractTemplate | null>(STANDARD_CONTRACT_TEMPLATES[0]);
+  let contractAttachSuccess = $state<string | null>(null);
+  let contractAttachError = $state<string | null>(null);
+
+  function moveDealOnKanban(deal: BrandDeal, targetStatus: BrandDealStatus) {
+    transitionError = null;
+    // Acceptance Target: Optimistic CAS check (verifying deal was not concurrently altered)
+    const check = validateOptimisticKanbanMove(deal, deal.updatedAt, targetStatus);
+    if (!check.valid) {
+      transitionError = check.error ?? 'Lỗi cập nhật trạng thái Kanban';
+      return;
+    }
+    deal.status = targetStatus;
+    deal.updatedAt = new Date().toISOString();
+    deals = [...deals];
+  }
+
+  function handleAttachContractTemplate(deal: BrandDeal, template: ContractTemplate) {
+    contractAttachSuccess = null;
+    contractAttachError = null;
+    // Generate versioned evidence snapshot identifier
+    const evidenceId = `ev-${template.templateId}-v${template.version}-${Date.now().toString(36)}`;
+    const result = attachContractToDeal(deal, evidenceId);
+    if (!result.success || !result.deal) {
+      contractAttachError = result.error ?? 'Gắn mẫu hợp đồng thất bại';
+      return;
+    }
+    // Update local state with the new append-only deal
+    deals = deals.map((d) => (d.dealId === deal.dealId ? result.deal! : d));
+    contractAttachSuccess = `Đã đính kèm phiên bản hợp đồng v${template.version} (${evidenceId}) thành công. Bằng chứng là bất biến!`;
   }
 
   // Security & Link Scanner State
@@ -261,23 +302,169 @@
 
   <!-- Grid of Acceptance Targets -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- Acceptance Target 1: Canonical Deal Lifecycle -->
-    <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-4">
-      <div class="flex items-center justify-between border-b pb-3">
-        <h2 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-          <span>🤝</span> Target 1: Brand Deals & Strict Lifecycle
+  <!-- P8-07 Deliverable: Deal Kanban Board & Contract Templates -->
+  <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-5">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-gray-200 gap-3">
+      <div>
+        <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <span>📋</span> Brand Deal Kanban & Hợp đồng Mẫu (P8-07)
         </h2>
-        <span class="text-xs bg-amber-100 text-amber-800 font-semibold px-2 py-0.5 rounded">
-          Canonical Sequential
-        </span>
+        <p class="text-xs text-gray-500 mt-0.5">
+          Quy trình quản lý tài trợ theo cột Kanban với kiểm tra xung đột đồng thời (CAS optimistic check) và hợp đồng phiên bản bất biến.
+        </p>
       </div>
 
-      {#if transitionError}
-        <div class="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs font-medium">
-          ⚠️ Transition Blocked: {transitionError}
-        </div>
-      {/if}
+      <!-- View Selector -->
+      <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+        <button
+          type="button"
+          onclick={() => (dealViewTab = 'kanban')}
+          class="px-3 py-1 text-xs font-semibold rounded-md transition {dealViewTab === 'kanban' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}"
+        >
+          Bảng Kanban
+        </button>
+        <button
+          type="button"
+          onclick={() => (dealViewTab = 'list')}
+          class="px-3 py-1 text-xs font-semibold rounded-md transition {dealViewTab === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}"
+        >
+          Danh sách chi tiết
+        </button>
+      </div>
+    </div>
 
+    {#if transitionError}
+      <div class="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs font-medium flex items-center justify-between">
+        <span>⚠️ Lỗi cập nhật trạng thái: {transitionError}</span>
+        <button type="button" onclick={() => (transitionError = null)} class="text-rose-500 hover:text-rose-700 text-xs">✕</button>
+      </div>
+    {/if}
+
+    {#if contractAttachSuccess}
+      <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-xs font-medium flex items-center justify-between">
+        <span>✓ {contractAttachSuccess}</span>
+        <button type="button" onclick={() => (contractAttachSuccess = null)} class="text-emerald-600 hover:text-emerald-800 text-xs">✕</button>
+      </div>
+    {/if}
+
+    {#if contractAttachError}
+      <div class="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs font-medium flex items-center justify-between">
+        <span>⚠️ Lỗi hợp đồng: {contractAttachError}</span>
+        <button type="button" onclick={() => (contractAttachError = null)} class="text-rose-500 hover:text-rose-700 text-xs">✕</button>
+      </div>
+    {/if}
+
+    {#if dealViewTab === 'kanban'}
+      <!-- Kanban Columns Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 overflow-x-auto pb-2">
+        {#each kanbanColumns as col}
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between min-h-[360px]">
+            <div>
+              <div class="flex items-center justify-between pb-2 border-b border-slate-200">
+                <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">{col.title.split(' ')[0]}</span>
+                <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-slate-200 text-slate-700">
+                  {col.deals.length}
+                </span>
+              </div>
+
+              <!-- Deal Cards in this column -->
+              <div class="space-y-2 mt-2.5">
+                {#if col.deals.length === 0}
+                  <div class="p-4 text-center text-slate-400 text-[11px] italic">
+                    Trống
+                  </div>
+                {:else}
+                  {#each col.deals as deal (deal.dealId)}
+                    <div class="p-3 bg-white border border-slate-200 rounded-lg shadow-xs hover:shadow-sm space-y-2 transition">
+                      <div class="flex items-start justify-between gap-1">
+                        <div class="font-bold text-xs text-slate-900 line-clamp-1">{deal.brandName}</div>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded font-mono bg-amber-50 text-amber-800">
+                          {deal.dealType.split('_')[0]}
+                        </span>
+                      </div>
+                      <div class="text-[11px] text-slate-500 font-semibold">
+                        {(deal.value / 1000000).toLocaleString('vi-VN')}M {deal.currency}
+                      </div>
+                      <div class="text-[10px] text-slate-600 line-clamp-2">
+                        {deal.deliverables || 'Chưa có mô tả'}
+                      </div>
+
+                      <!-- Attached contract evidence badges (Immutable versions) -->
+                      {#if deal.contractEvidenceIds.length > 0}
+                        <div class="pt-1 flex flex-wrap gap-1">
+                          {#each deal.contractEvidenceIds as evId}
+                            <span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-50 text-emerald-700 border border-emerald-200" title="Bằng chứng hợp đồng bất biến">
+                              📄 {evId.slice(0, 10)}...
+                            </span>
+                          {/each}
+                        </div>
+                      {/if}
+
+                      <!-- Quick Action Controls -->
+                      <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                        {#if deal.status === 'negotiating'}
+                          <button
+                            type="button"
+                            onclick={() => moveDealOnKanban(deal, 'agreed')}
+                            class="text-indigo-600 hover:text-indigo-800 font-semibold"
+                          >
+                            Đồng ý →
+                          </button>
+                        {:else if deal.status === 'agreed'}
+                          <button
+                            type="button"
+                            onclick={() => moveDealOnKanban(deal, 'in_progress')}
+                            class="text-blue-600 hover:text-blue-800 font-semibold"
+                          >
+                            Triển khai →
+                          </button>
+                        {:else if deal.status === 'in_progress'}
+                          <button
+                            type="button"
+                            onclick={() => moveDealOnKanban(deal, 'delivered')}
+                            class="text-purple-600 hover:text-purple-800 font-semibold"
+                          >
+                            Bàn giao →
+                          </button>
+                        {:else if deal.status === 'delivered'}
+                          <button
+                            type="button"
+                            onclick={() => moveDealOnKanban(deal, 'paid')}
+                            class="text-amber-600 hover:text-amber-800 font-semibold"
+                          >
+                            Đã nhận tiền →
+                          </button>
+                        {:else if deal.status === 'paid'}
+                          <button
+                            type="button"
+                            onclick={() => moveDealOnKanban(deal, 'completed')}
+                            class="text-emerald-600 hover:text-emerald-800 font-semibold"
+                          >
+                            Hoàn tất ✓
+                          </button>
+                        {:else if deal.status === 'completed'}
+                          <span class="text-[10px] text-emerald-600 font-bold">✓ Hoàn tất</span>
+                        {/if}
+
+                        <button
+                          type="button"
+                          onclick={() => (selectedDealForContract = deal)}
+                          class="text-slate-400 hover:text-slate-700"
+                          title="Gắn hợp đồng mẫu"
+                        >
+                          + Hợp đồng
+                        </button>
+                      </div>
+                    </div>
+                  {/each}
+                {/if}
+              </div>
+            </div>
+          </div>
+        {/each}
+      </div>
+    {:else}
+      <!-- Classic List View -->
       <div class="space-y-3">
         {#each deals as deal}
           <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-2">
@@ -292,14 +479,15 @@
             </div>
 
             <div class="text-xs text-gray-500 flex items-center justify-between">
-              <span>Value: {deal.value.toLocaleString()} {deal.currency}</span>
-              <span>Type: {deal.dealType}</span>
+              <span>Giá trị: {deal.value.toLocaleString()} {deal.currency}</span>
+              <span>Phiên bản: {deal.updatedAt}</span>
             </div>
 
             <!-- Lifecycle Actions -->
             <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-200">
               {#if deal.status === 'negotiating'}
                 <button
+                  type="button"
                   onclick={() => advanceDeal(deal, 'agreed')}
                   class="px-2.5 py-1 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded"
                 >
@@ -307,6 +495,7 @@
                 </button>
               {:else if deal.status === 'agreed'}
                 <button
+                  type="button"
                   onclick={() => advanceDeal(deal, 'in_progress')}
                   class="px-2.5 py-1 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded"
                 >
@@ -314,6 +503,7 @@
                 </button>
               {:else if deal.status === 'in_progress'}
                 <button
+                  type="button"
                   onclick={() => advanceDeal(deal, 'delivered')}
                   class="px-2.5 py-1 text-xs font-medium bg-purple-600 hover:bg-purple-700 text-white rounded"
                 >
@@ -321,6 +511,7 @@
                 </button>
               {:else if deal.status === 'delivered'}
                 <button
+                  type="button"
                   onclick={() => advanceDeal(deal, 'paid')}
                   class="px-2.5 py-1 text-xs font-medium bg-amber-600 hover:bg-amber-700 text-white rounded"
                 >
@@ -328,6 +519,7 @@
                 </button>
               {:else if deal.status === 'paid'}
                 <button
+                  type="button"
                   onclick={() => advanceDeal(deal, 'completed')}
                   class="px-2.5 py-1 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded"
                 >
@@ -346,6 +538,7 @@
 
               {#if deal.status !== 'completed' && deal.status !== 'cancelled'}
                 <button
+                  type="button"
                   onclick={() => {
                     if (!cancelReason) cancelReason = 'Brand client terminated partnership';
                     if (deal.status === 'paid') financialReversalConfirmed = true;
@@ -360,7 +553,67 @@
           </div>
         {/each}
       </div>
-    </div>
+    {/if}
+
+    <!-- Contract Template Attachment Modal/Drawer -->
+    {#if selectedDealForContract}
+      <div class="p-4 bg-slate-100 rounded-xl border border-slate-300 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+          <div class="text-xs font-bold text-slate-800">
+            Đính kèm Mẫu Hợp Đồng cho "{selectedDealForContract.brandName}" (Target 4: Bản ghi bất biến)
+          </div>
+          <button
+            type="button"
+            onclick={() => (selectedDealForContract = null)}
+            class="text-xs text-slate-500 hover:text-slate-800"
+          >
+            ✕ Đóng
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="template-select" class="block text-[11px] font-semibold text-slate-600 mb-1">Chọn Mẫu Hợp Đồng Chuẩn:</label>
+            <select
+              id="template-select"
+              bind:value={selectedTemplate}
+              class="w-full text-xs bg-white border border-slate-300 rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+            >
+              {#each STANDARD_CONTRACT_TEMPLATES as tmpl}
+                <option value={tmpl}>{tmpl.title} (v{tmpl.version})</option>
+              {/each}
+            </select>
+            {#if selectedTemplate}
+              <div class="mt-2 text-[10px] text-slate-500 italic bg-white p-2 rounded border border-slate-200">
+                {selectedTemplate.disclaimer}
+              </div>
+            {/if}
+          </div>
+
+          <div>
+            <div class="block text-[11px] font-semibold text-slate-600 mb-1">Quy tắc Phiên bản Bất biến (Immutability):</div>
+            <p class="text-[11px] text-slate-600 bg-white p-2 rounded border border-slate-200">
+              Mỗi hợp đồng đính kèm sẽ được lưu vào danh sách bằng chứng (evidence IDs) theo cơ chế chỉ ghi thêm (append-only). Các phiên bản cũ không thể bị ghi đè hoặc chỉnh sửa nhằm đảm bảo tính toàn vẹn pháp lý.
+            </p>
+            <div class="mt-2 flex justify-end">
+              <button
+                type="button"
+                onclick={() => {
+                  if (selectedDealForContract && selectedTemplate) {
+                    handleAttachContractTemplate(selectedDealForContract, selectedTemplate);
+                    selectedDealForContract = null;
+                  }
+                }}
+                class="px-3 py-1.5 text-xs font-bold rounded bg-amber-500 hover:bg-amber-600 text-white transition"
+              >
+                Xác nhận Đính kèm Phiên bản
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    {/if}
+  </div>
 
     <!-- Acceptance Target 2: Phishing Security & Anti-Spam Throttle -->
     <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-4">
