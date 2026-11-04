@@ -1,0 +1,316 @@
+syntax = "proto3";
+
+package creativanta.platform.v1;
+
+import "creativanta/common/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/platform/v1;platformv1";
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+// Referral status per canonical state machine (referral_growth.md §5).
+enum ReferralStatus {
+  REFERRAL_STATUS_UNSPECIFIED = 0;
+  REFERRAL_STATUS_PENDING = 1;
+  REFERRAL_STATUS_QUALIFIED = 2;
+  REFERRAL_STATUS_REWARDED = 3;
+  REFERRAL_STATUS_REVOKED = 4;
+  REFERRAL_STATUS_EXPIRED = 5;
+  REFERRAL_STATUS_FRAUD_FLAGGED = 6;
+  REFERRAL_STATUS_FORFEITED = 7;
+}
+
+// Referral reward tiers with escalating multipliers (referral_growth.md §4.2).
+enum ReferralTier {
+  REFERRAL_TIER_UNSPECIFIED = 0;
+  REFERRAL_TIER_BRONZE = 1;   // 1-5 referrals: 1.0x
+  REFERRAL_TIER_SILVER = 2;   // 6-20 referrals: 1.5x
+  REFERRAL_TIER_GOLD = 3;     // 21-50 referrals: 2.0x + 10% recurring
+  REFERRAL_TIER_PLATINUM = 4; // 51+ referrals: 2.5x + 15% recurring
+}
+
+// In-product viral and growth trigger points (referral_growth.md §3.4).
+enum GrowthTriggerType {
+  GROWTH_TRIGGER_TYPE_UNSPECIFIED = 0;
+  GROWTH_TRIGGER_TYPE_FIRST_PUBLISH = 1;
+  GROWTH_TRIGGER_TYPE_FIRST_PROFIT = 2;
+  GROWTH_TRIGGER_TYPE_FOLLOWER_MILESTONE = 3;
+  GROWTH_TRIGGER_TYPE_TEAM_INVITE = 4;
+  GROWTH_TRIGGER_TYPE_RECIPE_SUBMIT = 5;
+  GROWTH_TRIGGER_TYPE_FEATURE_UPVOTE = 6;
+}
+
+// ============================================================================
+// Core Entities
+// ============================================================================
+
+message ReferralRecord {
+  string referral_id = 1;
+  string workspace_id = 2;
+  string referee_workspace_id = 3;
+  string referrer_user_id = 4;
+  string referee_user_id = 5;
+  string referee_name = 6;
+  string referee_email_masked = 7;
+  string referral_code = 8;
+  ReferralStatus status = 9;
+  string referrer_credits_awarded = 10;
+  string referee_credits_awarded = 11;
+  string plan_tier = 12;
+  string payment_status = 13;
+  bool fraud_check_passed = 14;
+  string fraud_reason = 15;
+  string recurring_commission_rate = 16;
+  string recurring_commission_earned = 17;
+  google.protobuf.Timestamp qualified_at = 18;
+  google.protobuf.Timestamp rewarded_at = 19;
+  google.protobuf.Timestamp created_at = 20;
+  google.protobuf.Timestamp updated_at = 21;
+}
+
+message ReferralFunnel {
+  int64 total_clicks = 1;
+  int64 total_signups = 2;
+  int64 total_paid = 3;
+  double click_to_signup_rate = 4;
+  double signup_to_paid_rate = 5;
+  string credits_earned_total = 6;
+  string credits_pending_total = 7;
+}
+
+message TierProgress {
+  ReferralTier current_tier = 1;
+  ReferralTier next_tier = 2;
+  int32 qualified_referrals_count = 3;
+  int32 referrals_to_next_tier = 4;
+  double progress_percentage = 5;
+  string current_reward_multiplier = 6;
+  string recurring_commission_rate = 7;
+}
+
+message GrowthPrompt {
+  string prompt_id = 1;
+  GrowthTriggerType trigger_type = 2;
+  string title = 3;
+  string description = 4;
+  string credit_reward = 5;
+  string share_url = 6;
+  bool is_completed = 7;
+}
+
+message PromotionalCampaign {
+  string campaign_id = 1;
+  string code = 2;
+  string title = 3;
+  string description = 4;
+  string credit_bonus = 5;
+  google.protobuf.Timestamp expires_at = 6;
+  bool is_active = 7;
+}
+
+// ============================================================================
+// ReferralService Messages
+// ============================================================================
+
+message GetMyReferralCodeRequest {
+  string workspace_id = 1;
+}
+
+message GetMyReferralCodeResponse {
+  string referral_code = 1;
+  string share_url = 2;
+  string qr_code_url = 3;
+  string workspace_id = 4;
+}
+
+message GetReferralStatsRequest {
+  string workspace_id = 1;
+}
+
+message GetReferralStatsResponse {
+  ReferralFunnel funnel = 1;
+  TierProgress tier = 2;
+}
+
+message ListReferralsRequest {
+  string workspace_id = 1;
+  ReferralStatus status_filter = 2;
+  creativanta.common.v1.Pagination pagination = 3;
+}
+
+message ListReferralsResponse {
+  repeated ReferralRecord referrals = 1;
+  creativanta.common.v1.PaginatedResponse pagination = 2;
+}
+
+message ClaimRewardRequest {
+  string workspace_id = 1;
+  string referral_id = 2;
+  string idempotency_key = 3;
+}
+
+message ClaimRewardResponse {
+  bool success = 1;
+  string credits_awarded = 2;
+  string transaction_id = 3;
+  string new_balance = 4;
+}
+
+message ValidateCodeRequest {
+  string referral_code = 1;
+}
+
+message ValidateCodeResponse {
+  bool is_valid = 1;
+  string referrer_name = 2;
+  string bonus_credits = 3;
+  string error_message = 4;
+}
+
+message GetDashboardRequest {
+  string workspace_id = 1;
+}
+
+message GetDashboardResponse {
+  string referral_code = 1;
+  string share_url = 2;
+  ReferralFunnel funnel = 3;
+  TierProgress tier = 4;
+  repeated ReferralRecord recent_referrals = 5;
+  repeated GrowthPrompt prompts = 6;
+}
+
+message GetReferralLinkRequest {
+  string workspace_id = 1;
+}
+
+message GetReferralLinkResponse {
+  string referral_code = 1;
+  string share_url = 2;
+}
+
+message GetStatsRequest {
+  string workspace_id = 1;
+}
+
+message GetStatsResponse {
+  ReferralFunnel funnel = 1;
+  TierProgress tier = 2;
+}
+
+message SendReminderRequest {
+  string workspace_id = 1;
+  string referral_id = 2;
+}
+
+message SendReminderResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ProcessPaymentSettlementRequest {
+  string referral_id = 1;
+  string payment_status = 2; // "pending", "settled", "paid"
+  string plan_tier = 3;      // "starter", "pro", "business"
+  string paid_amount = 4;
+  string payment_reference_id = 5;
+  string idempotency_key = 6;
+}
+
+message ProcessPaymentSettlementResponse {
+  bool qualified = 1;
+  ReferralStatus status = 2;
+  string credits_awarded = 3;
+  string message = 4;
+}
+
+message ProcessRefundReversalRequest {
+  string referral_id = 1;
+  string refund_reason = 2;
+  string refund_reference_id = 3;
+  string idempotency_key = 4;
+}
+
+message ProcessRefundReversalResponse {
+  bool reversed = 1;
+  bool duplicate_replay = 2;
+  ReferralStatus status = 3;
+  string credits_reversed = 4;
+  string reversal_transaction_id = 5;
+}
+
+message ReviewFraudCaseRequest {
+  string referral_id = 1;
+  string admin_action = 2; // "clear_and_qualify", "confirm_and_forfeit"
+  string notes = 3;
+}
+
+message ReviewFraudCaseResponse {
+  bool success = 1;
+  ReferralStatus status = 2;
+  string resolution_action = 3;
+}
+
+// ============================================================================
+// PromotionalService Messages
+// ============================================================================
+
+message RedeemPromoCodeRequest {
+  string workspace_id = 1;
+  string promo_code = 2;
+  string idempotency_key = 3;
+}
+
+message RedeemPromoCodeResponse {
+  bool success = 1;
+  string credits_awarded = 2;
+  string new_balance = 3;
+  string transaction_id = 4;
+}
+
+message GetActivePromotionsRequest {
+  string workspace_id = 1;
+}
+
+message GetActivePromotionsResponse {
+  repeated PromotionalCampaign campaigns = 1;
+}
+
+message GetPromotionDetailRequest {
+  string campaign_id = 1;
+}
+
+message GetPromotionDetailResponse {
+  PromotionalCampaign campaign = 1;
+  bool is_eligible = 2;
+}
+
+// ============================================================================
+// Service Declarations
+// ============================================================================
+
+service ReferralService {
+  rpc GetMyReferralCode(GetMyReferralCodeRequest) returns (GetMyReferralCodeResponse);
+  rpc GetReferralStats(GetReferralStatsRequest) returns (GetReferralStatsResponse);
+  rpc ListReferrals(ListReferralsRequest) returns (ListReferralsResponse);
+  rpc ClaimReward(ClaimRewardRequest) returns (ClaimRewardResponse);
+  rpc ValidateCode(ValidateCodeRequest) returns (ValidateCodeResponse);
+  rpc GetDashboard(GetDashboardRequest) returns (GetDashboardResponse);
+  rpc GetReferralLink(GetReferralLinkRequest) returns (GetReferralLinkResponse);
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
+  rpc SendReminder(SendReminderRequest) returns (SendReminderResponse);
+
+  // Settlement, Reversal & Anti-Fraud lifecycle
+  rpc ProcessPaymentSettlement(ProcessPaymentSettlementRequest) returns (ProcessPaymentSettlementResponse);
+  rpc ProcessRefundReversal(ProcessRefundReversalRequest) returns (ProcessRefundReversalResponse);
+  rpc ReviewFraudCase(ReviewFraudCaseRequest) returns (ReviewFraudCaseResponse);
+}
+
+service PromotionalService {
+  rpc RedeemPromoCode(RedeemPromoCodeRequest) returns (RedeemPromoCodeResponse);
+  rpc GetActivePromotions(GetActivePromotionsRequest) returns (GetActivePromotionsResponse);
+  rpc GetPromotionDetail(GetPromotionDetailRequest) returns (GetPromotionDetailResponse);
+}
