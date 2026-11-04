@@ -18,7 +18,7 @@
     "protos/creativanta/platform/v1/referral.proto": "d874d55e2e698954190dedcd0c8fa31d5177441b28eff265a06c78cf03baaf69",
     "apps/api/gen/creativanta/platform/v1/referral.pb.go": "bfdeb2e158ef875d48fe43ec9a2e210948889f164b5db599afe255a0baa52ebc",
     "apps/api/gen/creativanta/platform/v1/platformv1connect/referral.connect.go": "ab13bcb97d7fb6630534e3a62c1887ebb7f412ae0b59c03aefab94295ee65266",
-    "infra/migrations/00042_p8_05_referral_commissions_and_anti_fraud.sql": "2711b2b17bfb1053c63a9c15f3b6e841d5d7c5c702add83fa4a91dab28715b8e",
+    "infra/migrations/00043_p8_05_referral_commissions_and_anti_fraud.sql": "5bb8dea4a49771eeea6663a3f24f1858268361241463487bad0c4a4a6c2bbaef",
     "apps/api/internal/migrate/migrator_test.go": "9556a7f5d6ed8a303f251083a569fa7413274251ad614203c03a2370bf1820b7",
     "apps/api/internal/rbac/phase_exposure_test.go": "dc4f7ebf7280c499abbe9f51b4266aed56c1f1914746f7e86ba1328325052202",
     "apps/api/internal/referral/model.go": "2180841d19090060a62091866320b183af502ae8b7122bffc5436c12e4f3630a",
@@ -48,7 +48,7 @@
   ],
   "verified_sub_slices": [
     "Go Backend Unit & Concurrency Tests: apps/api/internal/referral/referral_test.go passes all 9 suites with -race: TestTarget1_NoImmediateQualifiedRewardOnPendingPayment, TestTarget2_SelfReferralHeldForReview, TestTarget3_ReplayRefundReversesOnce, TestReferralTiersAndRecurringCommissions, TestGrowthFunnelAnalytics, TestPromotionalCodeRedemption, TestGrowthTriggerPrompts, TestConnectRPCDashboardRoundtrip, TestConcurrentSettlementAndReversalRaceSafety.",
-    "Migration & Schema Tests: infra/migrations/00042_p8_05_referral_commissions_and_anti_fraud.sql passes forward and rollback migration cycle; migrator_test.go updated and passed with -race; RBAC phase_exposure_test.go passes with -race.",
+    "Migration & Schema Tests: infra/migrations/00043_p8_05_referral_commissions_and_anti_fraud.sql passes forward and rollback migration cycle; migrator_test.go updated and passed with -race; RBAC phase_exposure_test.go passes with -race.",
     "Web Vitest & Svelte Check: apps/web/src/lib/referral/referral.test.ts passes all 19 tests; full web test suite (46 files, 402 tests) passes cleanly; svelte-check reports 0 errors and 0 warnings; vite build succeeds cleanly.",
     "Mobile Flutter Tests & Analyzer: apps/mobile/test/referral_test.dart passes all 6 tests; flutter analyze lib/referral lib/ui/referral test/referral_test.dart reports 0 issues.",
     "Documentation Invariants: tooling/check_docs.py reports PASS with all active markdown, tables, and RPC bindings verified."

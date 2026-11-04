@@ -66,17 +66,21 @@ type MissingCapabilityExplanation struct {
 
 // RecipeInstallation tracks an installed recipe instance in a workspace.
 type RecipeInstallation struct {
-	InstallationID   string         `json:"installation_id"`
-	WorkspaceID      string         `json:"workspace_id"`
-	RecipeID         string         `json:"recipe_id"`
-	WorkflowID       string         `json:"workflow_id"`
-	InstalledVersion int            `json:"installed_version"`
-	Status           string         `json:"status"` // installed, customized, update_available, pinned, deprecated, workflow_deleted
-	ParameterValues  map[string]any `json:"parameter_values"`
-	InstalledBy      string         `json:"installed_by,omitempty"`
-	CreatedAt        time.Time      `json:"created_at"`
-	UpdatedAt        time.Time      `json:"updated_at"`
-	DeletedAt        *time.Time     `json:"deleted_at,omitempty"`
+	InstallationID        string         `json:"installation_id"`
+	WorkspaceID           string         `json:"workspace_id"`
+	RecipeID              string         `json:"recipe_id"`
+	WorkflowID            string         `json:"workflow_id"`
+	InstalledVersion      int            `json:"installed_version"`
+	Status                string         `json:"status"` // installed, customized, update_available, pinned, deprecated, workflow_deleted
+	ParameterValues       map[string]any `json:"parameter_values"`
+	ContinuityPackID      string         `json:"continuity_pack_id,omitempty"`
+	StylePackID           string         `json:"style_pack_id,omitempty"`
+	TemplateKind          string         `json:"template_kind,omitempty"`
+	ImmutableInstallAudit map[string]any `json:"immutable_install_audit,omitempty"`
+	InstalledBy           string         `json:"installed_by,omitempty"`
+	CreatedAt             time.Time      `json:"created_at"`
+	UpdatedAt             time.Time      `json:"updated_at"`
+	DeletedAt             *time.Time     `json:"deleted_at,omitempty"`
 }
 
 // RecipeReview represents a creator or user review and 1-5 rating.

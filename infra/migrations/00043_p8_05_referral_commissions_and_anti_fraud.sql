@@ -1,6 +1,6 @@
 -- +goose Up
 -- ============================================================================
--- Migration: 00042_p8_05_referral_commissions_and_anti_fraud.sql
+-- Migration: 00043_p8_05_referral_commissions_and_anti_fraud.sql
 -- Domain: Platform / Growth / Referral (M23 / Referral)
 -- Upstream: docs/02_features/platform/referral_growth.md
 -- Contracts: docs/04_contracts/database_schema.md (§18.6, §13.2)

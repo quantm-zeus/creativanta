@@ -1,0 +1,73 @@
+{
+  "task_id": "P8-06",
+  "phase": "P8",
+  "slice": "p8-06",
+  "title": "Gamification và style-template sharing",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "feature_refs": [
+    "docs/02_features/platform/gamification.md",
+    "docs/02_features/production/ai_video_studio.md",
+    "docs/02_features/automation/recipe_agent_center.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/03_screens/web/screen_web_analytics_gamification.md",
+    "docs/03_screens/mobile/screen_mobile_gamification.md"
+  ],
+  "source_files": {
+    "protos/creativanta/platform/v1/gamification.proto": "f3eea80f8215fe0defd1ad9ae83e7c6c93edc08852a555d08db99987cb9622c2",
+    "apps/api/gen/creativanta/platform/v1/gamification.pb.go": "f7116290d2b148c934c9719a32e95f4dbc7625ba74639039222eedd119e8f130",
+    "apps/api/gen/creativanta/platform/v1/platformv1connect/gamification.connect.go": "26982752cca89d3861e3c0e582544c5b9f0838de8c2e46fd0f4a05c4eba08a3b",
+    "infra/migrations/00044_p8_06_gamification_and_style_templates.sql": "b74f9027cbb8484d3cda57a40a7b4e98740ae7e87addb71b18f7b5645ad9e45e",
+    "apps/api/internal/migrate/migrator_test.go": "8099488706e8bf1355f1b114c7eb9ffaf4725284f963badb4f08b2f39af7742a",
+    "apps/api/internal/rbac/phase_exposure_test.go": "ea9b00f37a6ec0912bd3f883ca14716289452637f31ed16442e03d83e8386abf",
+    "apps/api/internal/gamification/model.go": "be9bdf38bb4196e1965d102f2d4ddd57e54f2ad567b9d726ca30153e5d667de7",
+    "apps/api/internal/gamification/store.go": "5fa986001f206be4c7f2c098fa488077ee6dba6a22b43fe56a80525cfec57bf0",
+    "apps/api/internal/gamification/engine.go": "58b001118215595380aaeb4e4084725ad4463953c111316b733a6942063fc74d",
+    "apps/api/internal/gamification/service.go": "f87c4ebf1bf5c4c8f474214b71f353a14b7980ae0215a947604dcf4fc198bc68",
+    "apps/api/internal/gamification/gamification_test.go": "36dd6259f392d887a343de95bade459ad9e1cad1e673a730a281dcf1738dd23e",
+    "apps/api/internal/recipe/types.go": "7130ead1478ae803665de66c02d14d1972742bd4971c4e4677d7a4ad4f9e6749",
+    "apps/api/internal/recipe/style_template.go": "8c84a740ad02abe1647151a1ccd30473f2705a4d64bf350fe34e39387c8c5916",
+    "apps/api/internal/recipe/service.go": "91cd01931d76ed9842894dbf65cfbe1f6bdb969d63132c5a5f48052f3411d583",
+    "apps/api/internal/recipe/style_template_test.go": "2b782d7ce3b16958d83f336dc6be6c615c7ad54a06439e81d63efd7433948aaf",
+    "packages/shared-types/src/creativanta/platform/v1/gamification_pb.ts": "c5917c6c358c838382eb4fb3284186879f0c5d92676fd720bcfe7688b4a40a6b",
+    "apps/web/src/lib/gamification/index.ts": "eb042f59e837d80f59edaf33311a6a783cd55a6e215510505ae6ec177e73e2e8",
+    "apps/web/src/lib/gamification/gamification.test.ts": "6f6dbc62df6c2e0c8aaaa1ad83c22b59b067ba0e6be2fef55ea67f3859bb9367",
+    "apps/web/src/lib/index.ts": "ca94f077f44735618fecec271c6f33c586d70ba5a7257abd089dce8f1cfce04e",
+    "apps/web/src/routes/gamification/+page.svelte": "56e2e7d8f390004e0ed495b7c5de76b829bedca196c038e49b92c17757bb4362",
+    "apps/mobile/lib/generated/creativanta/platform/v1/gamification.pb.dart": "3cf73689b53016f201542eaef20fcc836483a59c02a2d46615545ae812b26b65",
+    "apps/mobile/lib/generated/creativanta/platform/v1/gamification.pbenum.dart": "f342eb8c9f324aef865856af6d4d43fba857be325c234bf510d399c814fbb6a8",
+    "apps/mobile/lib/generated/creativanta/platform/v1/gamification.pbgrpc.dart": "01c6259c366b30d6f9f07b9e31754ccff344911fb5df87857dd2a7182b107c39",
+    "apps/mobile/lib/generated/creativanta/platform/v1/gamification.pbjson.dart": "230b2dade9bf4b1f6fbbca4f3912532e8d9544607576ea0857399b96534dc025",
+    "apps/mobile/lib/gamification/gamification_models.dart": "c754843a65fc3237e5edca234f9cadee183449e5739aeb437cb74d2157093e2b",
+    "apps/mobile/lib/ui/gamification/gamification_screen.dart": "28bc84f805356850200b72dfed22687474e85fac6c5bb04c32e8e551a3b43f92",
+    "apps/mobile/test/gamification_test.dart": "89288be05a0fa9c2c0a59696f8ffcc0f408a104b4e2503c51851de8c809e2041"
+  },
+  "scope_items": [
+    "Target 1 (Per-user progress): Creator level progression (levels 1-50, milestones L1=0, L5=100, L10=500, L20=2,000, L50=25,000 XP), daily active streaks with UTC midnight cutoff, milestone rewards (7-day=10 credits, 30-day=50 credits, 90-day=200 credits), downtime grace period extension (EC-GAM-001), retroactive achievement backfill (EC-GAM-002), and zero-participant challenge cancellation after 24h (EC-GAM-003).",
+    "Target 2 (Reward event replay once): Idempotent reward deposit engine ensuring duplicate event delivery or webhook replays deposit credits and XP exactly once, tracking event IDs in tenant-isolated table gamification_reward_events with admin scope and RLS.",
+    "Target 3 (Licensed template install clones tenant-owned pack): Installing a style_workflow recipe clones approved style parameters into the destination workspace, creating a tenant-owned continuity style pack and inactive draft workflow, with immutable install audit recording recipe ID and template version without source-tenant internal IDs.",
+    "Target 4 (No private source media in shared style template): Style template governance validator strictly enforces schema_version >= 1, requires parametric style settings and license notice, and rejects private media URLs (file://, localhost, private S3), raw camera footage, face/voice biometric embeddings, and secret API credentials.",
+    "Connect-Go RPC & Proto Surface: Full 11-RPC surface for GamificationService with RBAC checks, fail-closed authorization, and 4-target codegen (Go, Connect-Go, TypeScript/shared-types, Dart/mobile).",
+    "SvelteKit Web Client & Flutter Mobile: Screen W079 (Web Gamification Dashboard) and Screen M038 (Mobile Gamification Screen) implementing level cards, streak flame trackers, quest progress indicators, 3x3 badge gallery, and interactive governance & replay test consoles."
+  ],
+  "verified_sub_slices": [
+    "Go Gamification Engine & Concurrency Tests: apps/api/internal/gamification/gamification_test.go passes all 8 test suites with -race (TestAcceptanceTarget1_PerUserProgress, TestAcceptanceTarget2_RewardEventReplayOnce, TestLevelProgressionThresholds, TestStreakProgressionAndMilestoneRewards, TestChallengeLifecycleAndZeroParticipantCancellation, TestRetroactiveAchievementBackfill, TestConcurrentGamificationActivityRaceSafety, TestGamificationConnectRPCRoundtrip).",
+    "Go Recipe Style Template Extension Tests: apps/api/internal/recipe/style_template_test.go passes with -race (TestAcceptanceTarget3_LicensedTemplateInstallClonesTenantOwnedPack, TestAcceptanceTarget4_NoPrivateSourceMediaInSharedStyleTemplate [9 subtests], TestTakedownStopsNewInstalls, TestStyleRecipePermissionDenial), alongside existing 8 recipe tests.",
+    "DB Migration & RBAC Exposure: infra/migrations/00044_p8_06_gamification_and_style_templates.sql verified; apps/api/internal/migrate passes all 44 migrations; apps/api/internal/rbac passes all 4 exposure tests with 0 future-phase RPCs.",
+    "Web Vitest, Svelte Check & Production Build: apps/web/src/lib/gamification/gamification.test.ts passes all 18 tests; svelte-check reports 0 errors and 0 warnings; vite build succeeds cleanly with @sveltejs/adapter-node.",
+    "Mobile Flutter Tests & Analyzer: apps/mobile/test/gamification_test.dart passes all 13 tests including widget test and protobuf serialization; flutter analyze reports 0 issues.",
+    "Proto 4-Target Generation & Zero-Drift: tooling/proto-gen.sh verify reports PROTO_4_TARGETS_PASS mode=verify with zero code drift across Go, Connect-Go, TypeScript, and Dart.",
+    "Documentation Invariants: tooling/check_docs.py and python3 -m unittest discover -s tooling/tests report PASS."
+  ],
+  "external_gates": [
+    {
+      "gate_id": "EXT-GATE-GAMIFICATION-EXTERNAL-INTEGRATIONS",
+      "status": "LOCAL_ENGINE_COMPUTATION_READY",
+      "description": "Gamification engine, level progression, streak calculator, style template governance, and replay idempotency operate deterministically in Go backend, SvelteKit, and Flutter. Live social platform engagement triggers require connector webhooks in staging."
+    }
+  ],
+  "remaining_scope": []
+}
