@@ -267,6 +267,10 @@ func (m *DerivativeManager) GetStats(ctx context.Context, caller CallerContext, 
 	}
 
 	if len(children) == 0 {
+		stats.SelectionStatus = "insufficient_data"
+		stats.IsViewsUnknown = true
+		stats.IsRPMUnknown = true
+		stats.UnknownReason = "NO_DERIVATIVES"
 		return stats, nil
 	}
 
@@ -275,13 +279,26 @@ func (m *DerivativeManager) GetStats(ctx context.Context, caller CallerContext, 
 	var sumCTR float64
 	var topScore float64
 	var topID string
+	hasUnknownViews := false
 
 	for _, d := range children {
 		sumViews += d.Views
 		sumEng += d.EngagementRate
 		sumCTR += d.CTR
 
-		// Simple scoring for top performer
+		// Target 2: Missing denominator safety for each derivative item
+		if d.Views == 0 {
+			d.IsRPMUnknown = true
+			d.UnknownReason = "MISSING_DENOMINATOR_VIEWS"
+			d.RPM = ""
+			hasUnknownViews = true
+		} else if d.Views < 100 {
+			d.IsRPMUnknown = true
+			d.UnknownReason = "LOW_EXPOSURE_INCONCLUSIVE"
+			d.RPM = ""
+		}
+
+		// Scoring candidate
 		score := float64(d.Views)*0.6 + d.EngagementRate*1000*0.4
 		if score > topScore || topID == "" {
 			topScore = score
@@ -293,7 +310,24 @@ func (m *DerivativeManager) GetStats(ctx context.Context, caller CallerContext, 
 	stats.AggregateViews = sumViews
 	stats.AverageEngagementRate = sumEng / float64(len(children))
 	stats.AverageCTR = sumCTR / float64(len(children))
-	stats.TopPerformingDerivativeID = topID
+
+	// Target 2 & OPEN_BLOCKERS EXP-2026-02:
+	// Low exposure (< 100 views) or missing denominators must prevent unconditional winner selection.
+	if sumViews < 100 || hasUnknownViews {
+		stats.SelectionStatus = "low_exposure_inconclusive"
+		stats.TopPerformingDerivativeID = "" // Inconclusive: do not pick an unconditional winner
+		stats.IsRPMUnknown = true
+		if sumViews == 0 {
+			stats.IsViewsUnknown = true
+			stats.UnknownReason = "MISSING_DENOMINATOR_VIEWS"
+		} else {
+			stats.UnknownReason = "LOW_EXPOSURE_INCONCLUSIVE"
+		}
+	} else {
+		stats.SelectionStatus = "conclusive"
+		stats.TopPerformingDerivativeID = topID
+		stats.IsRPMUnknown = false
+	}
 
 	return stats, nil
 }

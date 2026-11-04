@@ -1880,6 +1880,13 @@ message DerivativeItem {
   double ctr = 17;
   google.protobuf.Timestamp created_at = 18;
   google.protobuf.Timestamp updated_at = 19;
+  creativanta.common.v1.Money attributed_revenue = 20;
+  int64 orders_count = 21;
+  string rpm = 22;
+  bool is_rpm_unknown = 23;
+  string unknown_reason = 24;
+  creativanta.common.v1.SourceClass source_class = 25;
+  creativanta.common.v1.ConfidenceBand confidence = 26;
 }
 
 message BatchItemError {
@@ -1911,6 +1918,17 @@ message DerivativeStats {
   double average_ctr = 5;
   string top_performing_derivative_id = 6;
   repeated DerivativeItem top_derivatives = 7;
+  bool is_views_unknown = 8;
+  bool is_engagement_rate_unknown = 9;
+  bool is_ctr_unknown = 10;
+  string unknown_reason = 11;
+  string selection_status = 12; // "conclusive", "low_exposure_inconclusive", "missing_denominator_unknown"
+  creativanta.common.v1.Money aggregate_revenue = 13;
+  int64 total_orders_attributed = 14;
+  int64 unique_orders_counted = 15;
+  creativanta.common.v1.ConfidenceBand confidence = 16;
+  string average_rpm = 17;
+  bool is_rpm_unknown = 18;
 }
 
 message DerivativeServiceListRequest {

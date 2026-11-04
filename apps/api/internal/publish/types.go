@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	publishv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/publish/v1"
 )
 
 // Standard Publish Domain Errors (error_catalog.md & publish_hub.md)
@@ -159,6 +161,9 @@ type ChannelPost struct {
 	Title              string
 	ThumbnailURL       string
 	Metrics            map[string]any
+	PostMetrics        *publishv1.ChannelPostMetrics
+	SourceClass        string
+	Confidence         string
 	SyncedAt           *time.Time
 	Metadata           map[string]any
 	CreatedAt          time.Time

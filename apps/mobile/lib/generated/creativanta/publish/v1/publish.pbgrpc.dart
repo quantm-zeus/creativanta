@@ -119,6 +119,13 @@ class PublishServiceClient extends $grpc.Client {
     return $createUnaryCall(_$pauseQueue, request, options: options);
   }
 
+  $grpc.ResponseFuture<$0.SyncPostMetricsResponse> syncPostMetrics(
+    $0.SyncPostMetricsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$syncPostMetrics, request, options: options);
+  }
+
   /// Extended Publish RPCs (api_endpoint_map.md §12.1)
   $grpc.ResponseFuture<$0.GetResponse> get(
     $0.GetRequest request, {
@@ -356,6 +363,11 @@ class PublishServiceClient extends $grpc.Client {
           '/creativanta.publish.v1.PublishService/PauseQueue',
           ($0.PauseQueueRequest value) => value.writeToBuffer(),
           $0.PauseQueueResponse.fromBuffer);
+  static final _$syncPostMetrics =
+      $grpc.ClientMethod<$0.SyncPostMetricsRequest, $0.SyncPostMetricsResponse>(
+          '/creativanta.publish.v1.PublishService/SyncPostMetrics',
+          ($0.SyncPostMetricsRequest value) => value.writeToBuffer(),
+          $0.SyncPostMetricsResponse.fromBuffer);
   static final _$get = $grpc.ClientMethod<$0.GetRequest, $0.GetResponse>(
       '/creativanta.publish.v1.PublishService/Get',
       ($0.GetRequest value) => value.writeToBuffer(),
@@ -577,6 +589,15 @@ abstract class PublishServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.PauseQueueRequest.fromBuffer(value),
         ($0.PauseQueueResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SyncPostMetricsRequest,
+            $0.SyncPostMetricsResponse>(
+        'SyncPostMetrics',
+        syncPostMetrics_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.SyncPostMetricsRequest.fromBuffer(value),
+        ($0.SyncPostMetricsResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.GetRequest, $0.GetResponse>(
         'Get',
         get_Pre,
@@ -879,6 +900,15 @@ abstract class PublishServiceBase extends $grpc.Service {
 
   $async.Future<$0.PauseQueueResponse> pauseQueue(
       $grpc.ServiceCall call, $0.PauseQueueRequest request);
+
+  $async.Future<$0.SyncPostMetricsResponse> syncPostMetrics_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.SyncPostMetricsRequest> $request) async {
+    return syncPostMetrics($call, await $request);
+  }
+
+  $async.Future<$0.SyncPostMetricsResponse> syncPostMetrics(
+      $grpc.ServiceCall call, $0.SyncPostMetricsRequest request);
 
   $async.Future<$0.GetResponse> get_Pre(
       $grpc.ServiceCall $call, $async.Future<$0.GetRequest> $request) async {

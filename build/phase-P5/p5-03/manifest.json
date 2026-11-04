@@ -1,0 +1,92 @@
+{
+  "task_id": "P5-03",
+  "phase": "P5",
+  "slice": "p5-03",
+  "title": "Metrics, attribution và derivative feedback",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "b3a5df342d7650f96898863aa9a781b0f1beceb1",
+  "feature_refs": [
+    "docs/02_features/production/asset_derivatives.md",
+    "docs/02_features/finance/operating_ledger.md",
+    "docs/02_features/commerce/creator_pro_tools.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/financial_computation_contract.md",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md"
+  ],
+  "requirement_ids": [
+    "M09-DERIVATIVE-PERF-ATTRIBUTION",
+    "M19-OPERATING-LEDGER-PROOF-ATTRIBUTION",
+    "S16-REVENUE-ATTRIBUTION-CONTENT-ROI"
+  ],
+  "source_files": {
+    "infra/migrations/00028_p5_03_attribution_metrics_and_derivative_feedback.sql": "7f1ff01ebe30bc452488eb2c605c9f25b81d3e55473939c35ff65838816d8f0c",
+    "apps/api/internal/migrate/migrator.go": "c7ffe5d223f5a4dad5e0f2a46d41f8cbb3704d512a2138a87e9465338f1f4a77",
+    "apps/api/internal/migrate/migrator_test.go": "524ad65887d2121bb467358736830d961d940b17d7ccf94256f0ed42008266f5",
+    "protos/creativanta/publish/v1/publish.proto": "698224470e0d3f0f0e26d86f70672f0aef2057e31facf43a9d1f4822670434c1",
+    "protos/creativanta/finance/v1/finance.proto": "59cda3faa6c8bf5e056a5791a6bfa917fa0b22ad738fd9d5da2e49f7dbcaa42a",
+    "protos/creativanta/production/v1/production.proto": "ad9bed7e0be41f54091abe7a39f5b49d6d563573c774e748fa14d032ccf54e8d",
+    "apps/api/internal/finance/attribution.go": "4832fcceff9ba1fe2f7a9aa8363b7380e61868b36f9d2b196b06eb0ec028a507",
+    "apps/api/internal/finance/attribution_test.go": "5a48c4db48982ae22cfdf16d47499ba9a43064e1b9d287bc4f1d0c0ae5f64923",
+    "apps/api/internal/finance/handler.go": "56938df93101b9ef0f67e111aed40e85222dc6e2b51ce52e930f7de7c96c6b55",
+    "apps/api/internal/finance/service.go": "8207fa085cbb198442f6da3e356724e911303d1f5c5273604ad75d46c95faf32",
+    "apps/api/internal/publish/service.go": "a37c9b06d6d79f8081c258a468d03b7d2d3fa924e599fe465c02cc2a4d423b4a",
+    "apps/api/internal/publish/types.go": "c024a03fb006c1977fb3d94d8beb2bde5993b58c14386820dc42a24b40c1a4c1",
+    "apps/api/internal/production/derivative_manager.go": "274a804becfbb8c2cb15d3987cbf847241485fe37d185f8bb538409148217fab",
+    "apps/api/internal/production/service_derivative_packaging.go": "856d2eeabd8bd708d6d22542cddcea72da91d09b059b2e7e6f2f0489ca41578d",
+    "apps/api/internal/production/types.go": "7680ae2bde1ba0a9ed6ae29863d67fc37aaa221f3a88271167ee0ed6335dea6e",
+    "apps/web/src/lib/attribution/types.ts": "119d106d83766673d2b66ff8a3cd8f8629cb66eeb7e8378558c04e34cbf2cd3f",
+    "apps/web/src/lib/attribution/attribution_service.ts": "ec3e975f88ffeea52040eca7142e38b9167ec2dd5ec2adc13a6a1dfd45b4cb51",
+    "apps/web/src/lib/attribution/attribution.test.ts": "d42abcc1732c2971f15b340a40b1f3261fbe8155b98e61abe6248b18f9ab2b52",
+    "apps/web/src/lib/attribution/index.ts": "1ae3a8bd2035773e904383b37649e2a81c55fc0dd093c3245d293d9de08d8369",
+    "apps/web/src/lib/index.ts": "b23387bcf12b7d844936a922f1e7c974267ea83959d107b10c3bd85f50ed2f62",
+    "apps/mobile/lib/attribution/attribution_models.dart": "feaca46250f110baea1aa5a28ed969cb9b2261fb814be9d72b7750fe8a18e6aa",
+    "apps/mobile/lib/attribution/attribution_service.dart": "d2c5e4e996a5400e0fed118727be8a519d0874304fe70a4c95212159e64f6731",
+    "apps/mobile/test/attribution_acceptance_test.dart": "f8f7cde99ff5ac12e46bfb7bfae04455bbdbb917775cfc9fd973736597683bb6"
+  },
+  "scope_items": [
+    "Database Migration 00028: Added composite unique constraint on channel_posts(workspace_id, channel_post_id); created content_attribution_records table (§19.15) with NUMERIC(18,6) precision, composite foreign keys to publish_items, channel_posts, and orders(workspace_id, order_id); created channel_post_metrics table with is_views_unknown, is_clicks_unknown, unknown_reason, source_class, and confidence; strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY), narrow role grants to app_user and admin_user, and reversible transactional down migration verified.",
+    "Acceptance Target 1 (Workspace revenue counted once): Attribution rollups across multiple derivatives or channel posts sum distinct recognized orders exactly once in workspace summaries. For any individual order, sum of attributed revenue cannot exceed net recognized revenue (gross_revenue - refund_deductions), enforcing allocation capacity and returning ErrAttributionCapacityExceeded on over-allocation.",
+    "Acceptance Target 2 (Missing denominators remain unknown): Calculated metrics (RPM = (Revenue * 1000) / Views, CTR = Clicks / Views, Conversion Rate = Orders / Clicks, ROI = Net / Cost) remain explicitly UNKNOWN (not 0.00, not NaN, not Infinity) when denominators are missing, unrecorded, or in data lag; low exposure (<100 views) or missing denominators prevents unconditional winner selection (resolves OPEN_BLOCKERS EXP-2026-02).",
+    "Acceptance Target 3 (Imported proof not upgraded to official): Data from CSV import, screenshots, or manual entry retains source_class: imported (or inferred, estimated) and cannot be upgraded to official without verified live platform API session; mixed official + imported/estimated totals strictly cap confidence at medium."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestAttribution_Target1_WorkspaceRevenueCountedOnce and TestAttribution_Target1_OrderNetCapacityExceeded (Go -race), Vitest web test suite, and Flutter test suite confirm single-counting rollup and order capacity enforcement.",
+    "Acceptance Target 2 Verified: TestAttribution_Target2_MissingDenominatorsRemainUnknown (Go -race), DerivativeManager.GetStats (EXP-2026-02 low exposure protection), Vitest web test suite, and Flutter test suite confirm missing denominators remain explicitly unknown.",
+    "Acceptance Target 3 Verified: TestAttribution_Target3_ImportedProofNotUpgradedToOfficial and TestAttribution_Target3_MixedConfidenceCapAtMedium (Go -race), Vitest web test suite, and Flutter test suite confirm source class immutability and confidence capping at medium.",
+    "Database Migration 00028 Verified: Migrator test suite (migrator_test.go) passes all 28 migrations up, schema validation, and clean down transactional reversal.",
+    "Four-Target Proto Codegen Verified: buf lint, buf breaking --against .git#branch=origin/main (0 breaking changes), Go ConnectRPC, TypeScript types, and Dart generated code all verified without drift.",
+    "Web & Mobile Surfaces Verified: Web Vitest suite (29 files, 231 tests passing), svelte-check (0 errors, 0 warnings), Vite production build (adapter-node ✔ done), and Flutter test suite (192 tests passing, flutter analyze 0 issues) all pass."
+  ],
+  "rpc_contracts": [
+    "ContentRevenueService/GetAttribution",
+    "AttributionService/GetByContent",
+    "AttributionService/RecordAttribution",
+    "PublishService/SyncPostMetrics",
+    "DerivativeService/GetStats"
+  ],
+  "migration_files": [
+    "infra/migrations/00028_p5_03_attribution_metrics_and_derivative_feedback.sql"
+  ],
+  "permission_keys": [
+    "profit:read",
+    "report:read",
+    "publish:create",
+    "derivative:manage"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-PLATFORM-METRICS-API",
+      "PENDING_PLATFORM_CONNECTOR_CREDENTIALS",
+      "Live TikTok Creator / Meta Insights API metrics sync requires production client credentials and token refresh loop; simulated snapshot and manual/imported metrics flow verified locally."
+    ],
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "Migration 00028 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+    ]
+  ]
+}

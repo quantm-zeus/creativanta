@@ -143,6 +143,22 @@ message PublishLog {
   string error_message = 18;
 }
 
+// ChannelPostMetrics captures engagement and view metrics with denominator tracking.
+message ChannelPostMetrics {
+  int64 views = 1;
+  int64 likes = 2;
+  int64 comments = 3;
+  int64 shares = 4;
+  int64 saves = 5;
+  int64 clicks = 6;
+  bool is_views_unknown = 7;
+  bool is_clicks_unknown = 8;
+  string unknown_reason = 9;
+  creativanta.common.v1.SourceClass source_class = 10;
+  creativanta.common.v1.ConfidenceBand confidence = 11;
+  google.protobuf.Timestamp captured_at = 12;
+}
+
 // ChannelPost represents a post tracked on an external platform after publishing.
 message ChannelPost {
   string channel_post_id = 1;
@@ -156,6 +172,9 @@ message ChannelPost {
   google.protobuf.Timestamp synced_at = 9;
   google.protobuf.Timestamp created_at = 10;
   google.protobuf.Timestamp updated_at = 11;
+  ChannelPostMetrics metrics = 12;
+  creativanta.common.v1.SourceClass source_class = 13;
+  creativanta.common.v1.ConfidenceBand confidence = 14;
 }
 
 // PlatformCapabilitySummary provides pre-publish capability awareness (RULE-M11-001).
@@ -602,6 +621,29 @@ message UntagProductResponse {
   PublishItem item = 1;
 }
 
+message SyncPostMetricsRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string channel_post_id = 3;
+  int64 views = 4;
+  int64 likes = 5;
+  int64 comments = 6;
+  int64 shares = 7;
+  int64 saves = 8;
+  int64 clicks = 9;
+  bool is_views_unknown = 10;
+  bool is_clicks_unknown = 11;
+  string unknown_reason = 12;
+  creativanta.common.v1.SourceClass source_class = 13;
+  creativanta.common.v1.ConfidenceBand confidence = 14;
+}
+
+message SyncPostMetricsResponse {
+  ChannelPost post = 1;
+  ChannelPostMetrics metrics = 2;
+  bool updated = 3;
+}
+
 // PublishService is the multi-platform publish orchestrator (M11).
 service PublishService {
   // Core M11 RPCs (api_endpoint_map.md §2.4)
@@ -619,6 +661,7 @@ service PublishService {
   rpc ReconcilePublish(ReconcilePublishRequest) returns (ReconcilePublishResponse);
   rpc ExportManualPackage(ExportManualPackageRequest) returns (ExportManualPackageResponse);
   rpc PauseQueue(PauseQueueRequest) returns (PauseQueueResponse);
+  rpc SyncPostMetrics(SyncPostMetricsRequest) returns (SyncPostMetricsResponse);
 
   // Extended Publish RPCs (api_endpoint_map.md §12.1)
   rpc Get(GetRequest) returns (GetResponse);

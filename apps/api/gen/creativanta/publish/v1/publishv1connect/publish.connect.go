@@ -64,6 +64,9 @@ const (
 	// PublishServicePauseQueueProcedure is the fully-qualified name of the PublishService's PauseQueue
 	// RPC.
 	PublishServicePauseQueueProcedure = "/creativanta.publish.v1.PublishService/PauseQueue"
+	// PublishServiceSyncPostMetricsProcedure is the fully-qualified name of the PublishService's
+	// SyncPostMetrics RPC.
+	PublishServiceSyncPostMetricsProcedure = "/creativanta.publish.v1.PublishService/SyncPostMetrics"
 	// PublishServiceGetProcedure is the fully-qualified name of the PublishService's Get RPC.
 	PublishServiceGetProcedure = "/creativanta.publish.v1.PublishService/Get"
 	// PublishServiceListProcedure is the fully-qualified name of the PublishService's List RPC.
@@ -152,6 +155,7 @@ type PublishServiceClient interface {
 	ReconcilePublish(context.Context, *connect.Request[v1.ReconcilePublishRequest]) (*connect.Response[v1.ReconcilePublishResponse], error)
 	ExportManualPackage(context.Context, *connect.Request[v1.ExportManualPackageRequest]) (*connect.Response[v1.ExportManualPackageResponse], error)
 	PauseQueue(context.Context, *connect.Request[v1.PauseQueueRequest]) (*connect.Response[v1.PauseQueueResponse], error)
+	SyncPostMetrics(context.Context, *connect.Request[v1.SyncPostMetricsRequest]) (*connect.Response[v1.SyncPostMetricsResponse], error)
 	// Extended Publish RPCs (api_endpoint_map.md §12.1)
 	Get(context.Context, *connect.Request[v1.GetRequest]) (*connect.Response[v1.GetResponse], error)
 	List(context.Context, *connect.Request[v1.ListRequest]) (*connect.Response[v1.ListResponse], error)
@@ -261,6 +265,12 @@ func NewPublishServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			httpClient,
 			baseURL+PublishServicePauseQueueProcedure,
 			connect.WithSchema(publishServiceMethods.ByName("PauseQueue")),
+			connect.WithClientOptions(opts...),
+		),
+		syncPostMetrics: connect.NewClient[v1.SyncPostMetricsRequest, v1.SyncPostMetricsResponse](
+			httpClient,
+			baseURL+PublishServiceSyncPostMetricsProcedure,
+			connect.WithSchema(publishServiceMethods.ByName("SyncPostMetrics")),
 			connect.WithClientOptions(opts...),
 		),
 		get: connect.NewClient[v1.GetRequest, v1.GetResponse](
@@ -430,6 +440,7 @@ type publishServiceClient struct {
 	reconcilePublish     *connect.Client[v1.ReconcilePublishRequest, v1.ReconcilePublishResponse]
 	exportManualPackage  *connect.Client[v1.ExportManualPackageRequest, v1.ExportManualPackageResponse]
 	pauseQueue           *connect.Client[v1.PauseQueueRequest, v1.PauseQueueResponse]
+	syncPostMetrics      *connect.Client[v1.SyncPostMetricsRequest, v1.SyncPostMetricsResponse]
 	get                  *connect.Client[v1.GetRequest, v1.GetResponse]
 	list                 *connect.Client[v1.ListRequest, v1.ListResponse]
 	getDraft             *connect.Client[v1.GetDraftRequest, v1.GetDraftResponse]
@@ -515,6 +526,11 @@ func (c *publishServiceClient) ExportManualPackage(ctx context.Context, req *con
 // PauseQueue calls creativanta.publish.v1.PublishService.PauseQueue.
 func (c *publishServiceClient) PauseQueue(ctx context.Context, req *connect.Request[v1.PauseQueueRequest]) (*connect.Response[v1.PauseQueueResponse], error) {
 	return c.pauseQueue.CallUnary(ctx, req)
+}
+
+// SyncPostMetrics calls creativanta.publish.v1.PublishService.SyncPostMetrics.
+func (c *publishServiceClient) SyncPostMetrics(ctx context.Context, req *connect.Request[v1.SyncPostMetricsRequest]) (*connect.Response[v1.SyncPostMetricsResponse], error) {
+	return c.syncPostMetrics.CallUnary(ctx, req)
 }
 
 // Get calls creativanta.publish.v1.PublishService.Get.
@@ -658,6 +674,7 @@ type PublishServiceHandler interface {
 	ReconcilePublish(context.Context, *connect.Request[v1.ReconcilePublishRequest]) (*connect.Response[v1.ReconcilePublishResponse], error)
 	ExportManualPackage(context.Context, *connect.Request[v1.ExportManualPackageRequest]) (*connect.Response[v1.ExportManualPackageResponse], error)
 	PauseQueue(context.Context, *connect.Request[v1.PauseQueueRequest]) (*connect.Response[v1.PauseQueueResponse], error)
+	SyncPostMetrics(context.Context, *connect.Request[v1.SyncPostMetricsRequest]) (*connect.Response[v1.SyncPostMetricsResponse], error)
 	// Extended Publish RPCs (api_endpoint_map.md §12.1)
 	Get(context.Context, *connect.Request[v1.GetRequest]) (*connect.Response[v1.GetResponse], error)
 	List(context.Context, *connect.Request[v1.ListRequest]) (*connect.Response[v1.ListResponse], error)
@@ -763,6 +780,12 @@ func NewPublishServiceHandler(svc PublishServiceHandler, opts ...connect.Handler
 		PublishServicePauseQueueProcedure,
 		svc.PauseQueue,
 		connect.WithSchema(publishServiceMethods.ByName("PauseQueue")),
+		connect.WithHandlerOptions(opts...),
+	)
+	publishServiceSyncPostMetricsHandler := connect.NewUnaryHandler(
+		PublishServiceSyncPostMetricsProcedure,
+		svc.SyncPostMetrics,
+		connect.WithSchema(publishServiceMethods.ByName("SyncPostMetrics")),
 		connect.WithHandlerOptions(opts...),
 	)
 	publishServiceGetHandler := connect.NewUnaryHandler(
@@ -941,6 +964,8 @@ func NewPublishServiceHandler(svc PublishServiceHandler, opts ...connect.Handler
 			publishServiceExportManualPackageHandler.ServeHTTP(w, r)
 		case PublishServicePauseQueueProcedure:
 			publishServicePauseQueueHandler.ServeHTTP(w, r)
+		case PublishServiceSyncPostMetricsProcedure:
+			publishServiceSyncPostMetricsHandler.ServeHTTP(w, r)
 		case PublishServiceGetProcedure:
 			publishServiceGetHandler.ServeHTTP(w, r)
 		case PublishServiceListProcedure:
@@ -1046,6 +1071,10 @@ func (UnimplementedPublishServiceHandler) ExportManualPackage(context.Context, *
 
 func (UnimplementedPublishServiceHandler) PauseQueue(context.Context, *connect.Request[v1.PauseQueueRequest]) (*connect.Response[v1.PauseQueueResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.publish.v1.PublishService.PauseQueue is not implemented"))
+}
+
+func (UnimplementedPublishServiceHandler) SyncPostMetrics(context.Context, *connect.Request[v1.SyncPostMetricsRequest]) (*connect.Response[v1.SyncPostMetricsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("creativanta.publish.v1.PublishService.SyncPostMetrics is not implemented"))
 }
 
 func (UnimplementedPublishServiceHandler) Get(context.Context, *connect.Request[v1.GetRequest]) (*connect.Response[v1.GetResponse], error) {

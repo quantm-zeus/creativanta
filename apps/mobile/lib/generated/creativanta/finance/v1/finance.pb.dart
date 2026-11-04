@@ -12,6 +12,7 @@
 
 import 'dart:core' as $core;
 
+import 'package:fixnum/fixnum.dart' as $fixnum;
 import 'package:protobuf/protobuf.dart' as $pb;
 import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart'
     as $1;
@@ -8157,6 +8158,1579 @@ class ProofServiceListResponse extends $pb.GeneratedMessage {
   void clearPagination() => $_clearField(2);
   @$pb.TagNumber(2)
   $2.PaginatedResponse ensurePagination() => $_ensure(1);
+}
+
+class ContentAttributionRecord extends $pb.GeneratedMessage {
+  factory ContentAttributionRecord({
+    $core.String? attributionId,
+    $core.String? workspaceId,
+    $core.String? publishItemId,
+    $core.String? channelPostId,
+    $core.String? orderId,
+    $core.String? attributionType,
+    $2.Money? revenueAttributed,
+    $2.SourceClass? sourceClass,
+    $2.ConfidenceBand? confidence,
+    $core.String? utmSource,
+    $core.String? utmMedium,
+    $core.String? utmCampaign,
+    $1.Timestamp? createdAt,
+  }) {
+    final result = ContentAttributionRecord._();
+    if (attributionId != null) result.attributionId = attributionId;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (publishItemId != null) result.publishItemId = publishItemId;
+    if (channelPostId != null) result.channelPostId = channelPostId;
+    if (orderId != null) result.orderId = orderId;
+    if (attributionType != null) result.attributionType = attributionType;
+    if (revenueAttributed != null) result.revenueAttributed = revenueAttributed;
+    if (sourceClass != null) result.sourceClass = sourceClass;
+    if (confidence != null) result.confidence = confidence;
+    if (utmSource != null) result.utmSource = utmSource;
+    if (utmMedium != null) result.utmMedium = utmMedium;
+    if (utmCampaign != null) result.utmCampaign = utmCampaign;
+    if (createdAt != null) result.createdAt = createdAt;
+    return result;
+  }
+
+  ContentAttributionRecord._();
+
+  factory ContentAttributionRecord.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ContentAttributionRecord()..mergeFromBuffer(data, registry);
+  factory ContentAttributionRecord.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ContentAttributionRecord()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ContentAttributionRecord',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ContentAttributionRecord.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'attributionId')
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'publishItemId')
+    ..aOS(4, _omitFieldNames ? '' : 'channelPostId')
+    ..aOS(5, _omitFieldNames ? '' : 'orderId')
+    ..aOS(6, _omitFieldNames ? '' : 'attributionType')
+    ..aOM<$2.Money>(7, _omitFieldNames ? '' : 'revenueAttributed',
+        subBuilder: $2.Money.$_createMessage)
+    ..aE<$2.SourceClass>(8, _omitFieldNames ? '' : 'sourceClass',
+        enumValues: $2.SourceClass.values)
+    ..aE<$2.ConfidenceBand>(9, _omitFieldNames ? '' : 'confidence',
+        enumValues: $2.ConfidenceBand.values)
+    ..aOS(10, _omitFieldNames ? '' : 'utmSource')
+    ..aOS(11, _omitFieldNames ? '' : 'utmMedium')
+    ..aOS(12, _omitFieldNames ? '' : 'utmCampaign')
+    ..aOM<$1.Timestamp>(13, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ContentAttributionRecord clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ContentAttributionRecord copyWith(
+          void Function(ContentAttributionRecord) updates) =>
+      super.copyWith((message) => updates(message as ContentAttributionRecord))
+          as ContentAttributionRecord;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ContentAttributionRecord() / ContentAttributionRecord.new instead')
+  static ContentAttributionRecord create() => ContentAttributionRecord._();
+  static $pb.GeneratedMessage $_createMessage() => ContentAttributionRecord._();
+  @$core.override
+  ContentAttributionRecord createEmptyInstance() =>
+      ContentAttributionRecord._();
+  @$core.pragma('dart2js:noInline')
+  static ContentAttributionRecord getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ContentAttributionRecord>(
+          ContentAttributionRecord.$_createMessage);
+  static ContentAttributionRecord? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get attributionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set attributionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAttributionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAttributionId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get publishItemId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set publishItemId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPublishItemId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPublishItemId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get channelPostId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set channelPostId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasChannelPostId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearChannelPostId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get orderId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set orderId($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasOrderId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearOrderId() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get attributionType => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set attributionType($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasAttributionType() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAttributionType() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $2.Money get revenueAttributed => $_getN(6);
+  @$pb.TagNumber(7)
+  set revenueAttributed($2.Money value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasRevenueAttributed() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearRevenueAttributed() => $_clearField(7);
+  @$pb.TagNumber(7)
+  $2.Money ensureRevenueAttributed() => $_ensure(6);
+
+  @$pb.TagNumber(8)
+  $2.SourceClass get sourceClass => $_getN(7);
+  @$pb.TagNumber(8)
+  set sourceClass($2.SourceClass value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasSourceClass() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearSourceClass() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $2.ConfidenceBand get confidence => $_getN(8);
+  @$pb.TagNumber(9)
+  set confidence($2.ConfidenceBand value) => $_setField(9, value);
+  @$pb.TagNumber(9)
+  $core.bool hasConfidence() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearConfidence() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get utmSource => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set utmSource($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasUtmSource() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearUtmSource() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get utmMedium => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set utmMedium($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasUtmMedium() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearUtmMedium() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get utmCampaign => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set utmCampaign($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasUtmCampaign() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearUtmCampaign() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $1.Timestamp get createdAt => $_getN(12);
+  @$pb.TagNumber(13)
+  set createdAt($1.Timestamp value) => $_setField(13, value);
+  @$pb.TagNumber(13)
+  $core.bool hasCreatedAt() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearCreatedAt() => $_clearField(13);
+  @$pb.TagNumber(13)
+  $1.Timestamp ensureCreatedAt() => $_ensure(12);
+}
+
+class ContentRevenueAttribution extends $pb.GeneratedMessage {
+  factory ContentRevenueAttribution({
+    $core.String? contentId,
+    $core.String? publishItemId,
+    $core.String? assetId,
+    $core.String? title,
+    $fixnum.Int64? directOrderCount,
+    $2.Money? attributedRevenue,
+    $fixnum.Int64? views,
+    $fixnum.Int64? clicks,
+    $core.bool? isViewsUnknown,
+    $core.bool? isClicksUnknown,
+    $core.String? unknownReason,
+    $core.String? rpm,
+    $core.bool? isRpmUnknown,
+    $core.String? ctr,
+    $core.bool? isCtrUnknown,
+    $core.String? conversionRate,
+    $core.bool? isConversionRateUnknown,
+    $2.ConfidenceBand? confidence,
+    $core.Iterable<$core.MapEntry<$core.String, $core.double>>?
+        sourceClassPercentages,
+    $core.String? status,
+  }) {
+    final result = ContentRevenueAttribution._();
+    if (contentId != null) result.contentId = contentId;
+    if (publishItemId != null) result.publishItemId = publishItemId;
+    if (assetId != null) result.assetId = assetId;
+    if (title != null) result.title = title;
+    if (directOrderCount != null) result.directOrderCount = directOrderCount;
+    if (attributedRevenue != null) result.attributedRevenue = attributedRevenue;
+    if (views != null) result.views = views;
+    if (clicks != null) result.clicks = clicks;
+    if (isViewsUnknown != null) result.isViewsUnknown = isViewsUnknown;
+    if (isClicksUnknown != null) result.isClicksUnknown = isClicksUnknown;
+    if (unknownReason != null) result.unknownReason = unknownReason;
+    if (rpm != null) result.rpm = rpm;
+    if (isRpmUnknown != null) result.isRpmUnknown = isRpmUnknown;
+    if (ctr != null) result.ctr = ctr;
+    if (isCtrUnknown != null) result.isCtrUnknown = isCtrUnknown;
+    if (conversionRate != null) result.conversionRate = conversionRate;
+    if (isConversionRateUnknown != null)
+      result.isConversionRateUnknown = isConversionRateUnknown;
+    if (confidence != null) result.confidence = confidence;
+    if (sourceClassPercentages != null)
+      result.sourceClassPercentages.addEntries(sourceClassPercentages);
+    if (status != null) result.status = status;
+    return result;
+  }
+
+  ContentRevenueAttribution._();
+
+  factory ContentRevenueAttribution.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ContentRevenueAttribution()..mergeFromBuffer(data, registry);
+  factory ContentRevenueAttribution.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ContentRevenueAttribution()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ContentRevenueAttribution',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ContentRevenueAttribution.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'contentId')
+    ..aOS(2, _omitFieldNames ? '' : 'publishItemId')
+    ..aOS(3, _omitFieldNames ? '' : 'assetId')
+    ..aOS(4, _omitFieldNames ? '' : 'title')
+    ..aInt64(5, _omitFieldNames ? '' : 'directOrderCount')
+    ..aOM<$2.Money>(6, _omitFieldNames ? '' : 'attributedRevenue',
+        subBuilder: $2.Money.$_createMessage)
+    ..aInt64(7, _omitFieldNames ? '' : 'views')
+    ..aInt64(8, _omitFieldNames ? '' : 'clicks')
+    ..aOB(9, _omitFieldNames ? '' : 'isViewsUnknown')
+    ..aOB(10, _omitFieldNames ? '' : 'isClicksUnknown')
+    ..aOS(11, _omitFieldNames ? '' : 'unknownReason')
+    ..aOS(12, _omitFieldNames ? '' : 'rpm')
+    ..aOB(13, _omitFieldNames ? '' : 'isRpmUnknown')
+    ..aOS(14, _omitFieldNames ? '' : 'ctr')
+    ..aOB(15, _omitFieldNames ? '' : 'isCtrUnknown')
+    ..aOS(16, _omitFieldNames ? '' : 'conversionRate')
+    ..aOB(17, _omitFieldNames ? '' : 'isConversionRateUnknown')
+    ..aE<$2.ConfidenceBand>(18, _omitFieldNames ? '' : 'confidence',
+        enumValues: $2.ConfidenceBand.values)
+    ..m<$core.String, $core.double>(
+        19, _omitFieldNames ? '' : 'sourceClassPercentages',
+        entryClassName: 'ContentRevenueAttribution.SourceClassPercentagesEntry',
+        keyFieldType: $pb.PbFieldType.OS,
+        valueFieldType: $pb.PbFieldType.OD,
+        packageName: const $pb.PackageName('creativanta.finance.v1'))
+    ..aOS(20, _omitFieldNames ? '' : 'status')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ContentRevenueAttribution clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ContentRevenueAttribution copyWith(
+          void Function(ContentRevenueAttribution) updates) =>
+      super.copyWith((message) => updates(message as ContentRevenueAttribution))
+          as ContentRevenueAttribution;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ContentRevenueAttribution() / ContentRevenueAttribution.new instead')
+  static ContentRevenueAttribution create() => ContentRevenueAttribution._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ContentRevenueAttribution._();
+  @$core.override
+  ContentRevenueAttribution createEmptyInstance() =>
+      ContentRevenueAttribution._();
+  @$core.pragma('dart2js:noInline')
+  static ContentRevenueAttribution getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ContentRevenueAttribution>(
+          ContentRevenueAttribution.$_createMessage);
+  static ContentRevenueAttribution? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get contentId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set contentId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContentId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContentId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get publishItemId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set publishItemId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPublishItemId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPublishItemId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get assetId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set assetId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAssetId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAssetId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get title => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set title($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTitle() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTitle() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get directOrderCount => $_getI64(4);
+  @$pb.TagNumber(5)
+  set directOrderCount($fixnum.Int64 value) => $_setInt64(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasDirectOrderCount() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearDirectOrderCount() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $2.Money get attributedRevenue => $_getN(5);
+  @$pb.TagNumber(6)
+  set attributedRevenue($2.Money value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasAttributedRevenue() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAttributedRevenue() => $_clearField(6);
+  @$pb.TagNumber(6)
+  $2.Money ensureAttributedRevenue() => $_ensure(5);
+
+  @$pb.TagNumber(7)
+  $fixnum.Int64 get views => $_getI64(6);
+  @$pb.TagNumber(7)
+  set views($fixnum.Int64 value) => $_setInt64(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasViews() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearViews() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $fixnum.Int64 get clicks => $_getI64(7);
+  @$pb.TagNumber(8)
+  set clicks($fixnum.Int64 value) => $_setInt64(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasClicks() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearClicks() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.bool get isViewsUnknown => $_getBF(8);
+  @$pb.TagNumber(9)
+  set isViewsUnknown($core.bool value) => $_setBool(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasIsViewsUnknown() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearIsViewsUnknown() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.bool get isClicksUnknown => $_getBF(9);
+  @$pb.TagNumber(10)
+  set isClicksUnknown($core.bool value) => $_setBool(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasIsClicksUnknown() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearIsClicksUnknown() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get unknownReason => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set unknownReason($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasUnknownReason() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearUnknownReason() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get rpm => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set rpm($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasRpm() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearRpm() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.bool get isRpmUnknown => $_getBF(12);
+  @$pb.TagNumber(13)
+  set isRpmUnknown($core.bool value) => $_setBool(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasIsRpmUnknown() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearIsRpmUnknown() => $_clearField(13);
+
+  @$pb.TagNumber(14)
+  $core.String get ctr => $_getSZ(13);
+  @$pb.TagNumber(14)
+  set ctr($core.String value) => $_setString(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasCtr() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearCtr() => $_clearField(14);
+
+  @$pb.TagNumber(15)
+  $core.bool get isCtrUnknown => $_getBF(14);
+  @$pb.TagNumber(15)
+  set isCtrUnknown($core.bool value) => $_setBool(14, value);
+  @$pb.TagNumber(15)
+  $core.bool hasIsCtrUnknown() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearIsCtrUnknown() => $_clearField(15);
+
+  @$pb.TagNumber(16)
+  $core.String get conversionRate => $_getSZ(15);
+  @$pb.TagNumber(16)
+  set conversionRate($core.String value) => $_setString(15, value);
+  @$pb.TagNumber(16)
+  $core.bool hasConversionRate() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearConversionRate() => $_clearField(16);
+
+  @$pb.TagNumber(17)
+  $core.bool get isConversionRateUnknown => $_getBF(16);
+  @$pb.TagNumber(17)
+  set isConversionRateUnknown($core.bool value) => $_setBool(16, value);
+  @$pb.TagNumber(17)
+  $core.bool hasIsConversionRateUnknown() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearIsConversionRateUnknown() => $_clearField(17);
+
+  @$pb.TagNumber(18)
+  $2.ConfidenceBand get confidence => $_getN(17);
+  @$pb.TagNumber(18)
+  set confidence($2.ConfidenceBand value) => $_setField(18, value);
+  @$pb.TagNumber(18)
+  $core.bool hasConfidence() => $_has(17);
+  @$pb.TagNumber(18)
+  void clearConfidence() => $_clearField(18);
+
+  @$pb.TagNumber(19)
+  $pb.PbMap<$core.String, $core.double> get sourceClassPercentages =>
+      $_getMap(18);
+
+  @$pb.TagNumber(20)
+  $core.String get status => $_getSZ(19);
+  @$pb.TagNumber(20)
+  set status($core.String value) => $_setString(19, value);
+  @$pb.TagNumber(20)
+  $core.bool hasStatus() => $_has(19);
+  @$pb.TagNumber(20)
+  void clearStatus() => $_clearField(20);
+}
+
+class WorkspaceRevenueDeduplicationSummary extends $pb.GeneratedMessage {
+  factory WorkspaceRevenueDeduplicationSummary({
+    $core.String? workspaceId,
+    $fixnum.Int64? totalOrdersAttributed,
+    $fixnum.Int64? uniqueOrdersCounted,
+    $2.Money? canonicalWorkspaceRevenue,
+    $2.Money? sumAttributionLines,
+    $core.bool? isRevenueCountedOnce,
+    $2.ConfidenceBand? aggregateConfidence,
+    $core.bool? includesEstimatedOrImported,
+    $core.String? caveatMessage,
+  }) {
+    final result = WorkspaceRevenueDeduplicationSummary._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (totalOrdersAttributed != null)
+      result.totalOrdersAttributed = totalOrdersAttributed;
+    if (uniqueOrdersCounted != null)
+      result.uniqueOrdersCounted = uniqueOrdersCounted;
+    if (canonicalWorkspaceRevenue != null)
+      result.canonicalWorkspaceRevenue = canonicalWorkspaceRevenue;
+    if (sumAttributionLines != null)
+      result.sumAttributionLines = sumAttributionLines;
+    if (isRevenueCountedOnce != null)
+      result.isRevenueCountedOnce = isRevenueCountedOnce;
+    if (aggregateConfidence != null)
+      result.aggregateConfidence = aggregateConfidence;
+    if (includesEstimatedOrImported != null)
+      result.includesEstimatedOrImported = includesEstimatedOrImported;
+    if (caveatMessage != null) result.caveatMessage = caveatMessage;
+    return result;
+  }
+
+  WorkspaceRevenueDeduplicationSummary._();
+
+  factory WorkspaceRevenueDeduplicationSummary.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      WorkspaceRevenueDeduplicationSummary()..mergeFromBuffer(data, registry);
+  factory WorkspaceRevenueDeduplicationSummary.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      WorkspaceRevenueDeduplicationSummary()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'WorkspaceRevenueDeduplicationSummary',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: WorkspaceRevenueDeduplicationSummary.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'workspaceId')
+    ..aInt64(2, _omitFieldNames ? '' : 'totalOrdersAttributed')
+    ..aInt64(3, _omitFieldNames ? '' : 'uniqueOrdersCounted')
+    ..aOM<$2.Money>(4, _omitFieldNames ? '' : 'canonicalWorkspaceRevenue',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOM<$2.Money>(5, _omitFieldNames ? '' : 'sumAttributionLines',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOB(6, _omitFieldNames ? '' : 'isRevenueCountedOnce')
+    ..aE<$2.ConfidenceBand>(7, _omitFieldNames ? '' : 'aggregateConfidence',
+        enumValues: $2.ConfidenceBand.values)
+    ..aOB(8, _omitFieldNames ? '' : 'includesEstimatedOrImported')
+    ..aOS(9, _omitFieldNames ? '' : 'caveatMessage')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  WorkspaceRevenueDeduplicationSummary clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  WorkspaceRevenueDeduplicationSummary copyWith(
+          void Function(WorkspaceRevenueDeduplicationSummary) updates) =>
+      super.copyWith((message) =>
+              updates(message as WorkspaceRevenueDeduplicationSummary))
+          as WorkspaceRevenueDeduplicationSummary;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use WorkspaceRevenueDeduplicationSummary() / WorkspaceRevenueDeduplicationSummary.new instead')
+  static WorkspaceRevenueDeduplicationSummary create() =>
+      WorkspaceRevenueDeduplicationSummary._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      WorkspaceRevenueDeduplicationSummary._();
+  @$core.override
+  WorkspaceRevenueDeduplicationSummary createEmptyInstance() =>
+      WorkspaceRevenueDeduplicationSummary._();
+  @$core.pragma('dart2js:noInline')
+  static WorkspaceRevenueDeduplicationSummary getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              WorkspaceRevenueDeduplicationSummary>(
+          WorkspaceRevenueDeduplicationSummary.$_createMessage);
+  static WorkspaceRevenueDeduplicationSummary? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get workspaceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set workspaceId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get totalOrdersAttributed => $_getI64(1);
+  @$pb.TagNumber(2)
+  set totalOrdersAttributed($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTotalOrdersAttributed() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTotalOrdersAttributed() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get uniqueOrdersCounted => $_getI64(2);
+  @$pb.TagNumber(3)
+  set uniqueOrdersCounted($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasUniqueOrdersCounted() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearUniqueOrdersCounted() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $2.Money get canonicalWorkspaceRevenue => $_getN(3);
+  @$pb.TagNumber(4)
+  set canonicalWorkspaceRevenue($2.Money value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCanonicalWorkspaceRevenue() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCanonicalWorkspaceRevenue() => $_clearField(4);
+  @$pb.TagNumber(4)
+  $2.Money ensureCanonicalWorkspaceRevenue() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  $2.Money get sumAttributionLines => $_getN(4);
+  @$pb.TagNumber(5)
+  set sumAttributionLines($2.Money value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSumAttributionLines() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSumAttributionLines() => $_clearField(5);
+  @$pb.TagNumber(5)
+  $2.Money ensureSumAttributionLines() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  $core.bool get isRevenueCountedOnce => $_getBF(5);
+  @$pb.TagNumber(6)
+  set isRevenueCountedOnce($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasIsRevenueCountedOnce() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearIsRevenueCountedOnce() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $2.ConfidenceBand get aggregateConfidence => $_getN(6);
+  @$pb.TagNumber(7)
+  set aggregateConfidence($2.ConfidenceBand value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasAggregateConfidence() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearAggregateConfidence() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.bool get includesEstimatedOrImported => $_getBF(7);
+  @$pb.TagNumber(8)
+  set includesEstimatedOrImported($core.bool value) => $_setBool(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasIncludesEstimatedOrImported() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearIncludesEstimatedOrImported() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get caveatMessage => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set caveatMessage($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasCaveatMessage() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearCaveatMessage() => $_clearField(9);
+}
+
+class ContentRevenueServiceGetAttributionRequest extends $pb.GeneratedMessage {
+  factory ContentRevenueServiceGetAttributionRequest({
+    $core.String? workspaceId,
+    $core.String? contentId,
+    $core.String? periodStart,
+    $core.String? periodEnd,
+  }) {
+    final result = ContentRevenueServiceGetAttributionRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (contentId != null) result.contentId = contentId;
+    if (periodStart != null) result.periodStart = periodStart;
+    if (periodEnd != null) result.periodEnd = periodEnd;
+    return result;
+  }
+
+  ContentRevenueServiceGetAttributionRequest._();
+
+  factory ContentRevenueServiceGetAttributionRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ContentRevenueServiceGetAttributionRequest()
+        ..mergeFromBuffer(data, registry);
+  factory ContentRevenueServiceGetAttributionRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ContentRevenueServiceGetAttributionRequest()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ContentRevenueServiceGetAttributionRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance:
+          ContentRevenueServiceGetAttributionRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(2, _omitFieldNames ? '' : 'contentId')
+    ..aOS(3, _omitFieldNames ? '' : 'periodStart')
+    ..aOS(4, _omitFieldNames ? '' : 'periodEnd')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ContentRevenueServiceGetAttributionRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ContentRevenueServiceGetAttributionRequest copyWith(
+          void Function(ContentRevenueServiceGetAttributionRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ContentRevenueServiceGetAttributionRequest))
+          as ContentRevenueServiceGetAttributionRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ContentRevenueServiceGetAttributionRequest() / ContentRevenueServiceGetAttributionRequest.new instead')
+  static ContentRevenueServiceGetAttributionRequest create() =>
+      ContentRevenueServiceGetAttributionRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ContentRevenueServiceGetAttributionRequest._();
+  @$core.override
+  ContentRevenueServiceGetAttributionRequest createEmptyInstance() =>
+      ContentRevenueServiceGetAttributionRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ContentRevenueServiceGetAttributionRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ContentRevenueServiceGetAttributionRequest>(
+          ContentRevenueServiceGetAttributionRequest.$_createMessage);
+  static ContentRevenueServiceGetAttributionRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get workspaceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set workspaceId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get contentId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set contentId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasContentId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearContentId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get periodStart => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set periodStart($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPeriodStart() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPeriodStart() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get periodEnd => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set periodEnd($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPeriodEnd() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPeriodEnd() => $_clearField(4);
+}
+
+class ContentRevenueServiceGetAttributionResponse extends $pb.GeneratedMessage {
+  factory ContentRevenueServiceGetAttributionResponse({
+    ContentRevenueAttribution? attribution,
+    $core.Iterable<ContentAttributionRecord>? attributionRecords,
+    WorkspaceRevenueDeduplicationSummary? workspaceSummary,
+  }) {
+    final result = ContentRevenueServiceGetAttributionResponse._();
+    if (attribution != null) result.attribution = attribution;
+    if (attributionRecords != null)
+      result.attributionRecords.addAll(attributionRecords);
+    if (workspaceSummary != null) result.workspaceSummary = workspaceSummary;
+    return result;
+  }
+
+  ContentRevenueServiceGetAttributionResponse._();
+
+  factory ContentRevenueServiceGetAttributionResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ContentRevenueServiceGetAttributionResponse()
+        ..mergeFromBuffer(data, registry);
+  factory ContentRevenueServiceGetAttributionResponse.fromJson(
+          $core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ContentRevenueServiceGetAttributionResponse()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ContentRevenueServiceGetAttributionResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance:
+          ContentRevenueServiceGetAttributionResponse.$_createMessage)
+    ..aOM<ContentRevenueAttribution>(1, _omitFieldNames ? '' : 'attribution',
+        subBuilder: ContentRevenueAttribution.$_createMessage)
+    ..pPM<ContentAttributionRecord>(
+        2, _omitFieldNames ? '' : 'attributionRecords',
+        subBuilder: ContentAttributionRecord.$_createMessage)
+    ..aOM<WorkspaceRevenueDeduplicationSummary>(
+        3, _omitFieldNames ? '' : 'workspaceSummary',
+        subBuilder: WorkspaceRevenueDeduplicationSummary.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ContentRevenueServiceGetAttributionResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ContentRevenueServiceGetAttributionResponse copyWith(
+          void Function(ContentRevenueServiceGetAttributionResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ContentRevenueServiceGetAttributionResponse))
+          as ContentRevenueServiceGetAttributionResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ContentRevenueServiceGetAttributionResponse() / ContentRevenueServiceGetAttributionResponse.new instead')
+  static ContentRevenueServiceGetAttributionResponse create() =>
+      ContentRevenueServiceGetAttributionResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ContentRevenueServiceGetAttributionResponse._();
+  @$core.override
+  ContentRevenueServiceGetAttributionResponse createEmptyInstance() =>
+      ContentRevenueServiceGetAttributionResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ContentRevenueServiceGetAttributionResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ContentRevenueServiceGetAttributionResponse>(
+          ContentRevenueServiceGetAttributionResponse.$_createMessage);
+  static ContentRevenueServiceGetAttributionResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ContentRevenueAttribution get attribution => $_getN(0);
+  @$pb.TagNumber(1)
+  set attribution(ContentRevenueAttribution value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAttribution() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAttribution() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ContentRevenueAttribution ensureAttribution() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<ContentAttributionRecord> get attributionRecords => $_getList(1);
+
+  @$pb.TagNumber(3)
+  WorkspaceRevenueDeduplicationSummary get workspaceSummary => $_getN(2);
+  @$pb.TagNumber(3)
+  set workspaceSummary(WorkspaceRevenueDeduplicationSummary value) =>
+      $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasWorkspaceSummary() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearWorkspaceSummary() => $_clearField(3);
+  @$pb.TagNumber(3)
+  WorkspaceRevenueDeduplicationSummary ensureWorkspaceSummary() => $_ensure(2);
+}
+
+class AttributionServiceGetByContentRequest extends $pb.GeneratedMessage {
+  factory AttributionServiceGetByContentRequest({
+    $core.String? workspaceId,
+    $core.String? publishItemId,
+    $core.String? channelPostId,
+    $2.Pagination? pagination,
+  }) {
+    final result = AttributionServiceGetByContentRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (publishItemId != null) result.publishItemId = publishItemId;
+    if (channelPostId != null) result.channelPostId = channelPostId;
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  AttributionServiceGetByContentRequest._();
+
+  factory AttributionServiceGetByContentRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AttributionServiceGetByContentRequest()..mergeFromBuffer(data, registry);
+  factory AttributionServiceGetByContentRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AttributionServiceGetByContentRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AttributionServiceGetByContentRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance:
+          AttributionServiceGetByContentRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(2, _omitFieldNames ? '' : 'publishItemId')
+    ..aOS(3, _omitFieldNames ? '' : 'channelPostId')
+    ..aOM<$2.Pagination>(4, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.Pagination.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AttributionServiceGetByContentRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AttributionServiceGetByContentRequest copyWith(
+          void Function(AttributionServiceGetByContentRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as AttributionServiceGetByContentRequest))
+          as AttributionServiceGetByContentRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use AttributionServiceGetByContentRequest() / AttributionServiceGetByContentRequest.new instead')
+  static AttributionServiceGetByContentRequest create() =>
+      AttributionServiceGetByContentRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      AttributionServiceGetByContentRequest._();
+  @$core.override
+  AttributionServiceGetByContentRequest createEmptyInstance() =>
+      AttributionServiceGetByContentRequest._();
+  @$core.pragma('dart2js:noInline')
+  static AttributionServiceGetByContentRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              AttributionServiceGetByContentRequest>(
+          AttributionServiceGetByContentRequest.$_createMessage);
+  static AttributionServiceGetByContentRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get workspaceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set workspaceId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get publishItemId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set publishItemId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPublishItemId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPublishItemId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get channelPostId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set channelPostId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasChannelPostId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearChannelPostId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $2.Pagination get pagination => $_getN(3);
+  @$pb.TagNumber(4)
+  set pagination($2.Pagination value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPagination() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPagination() => $_clearField(4);
+  @$pb.TagNumber(4)
+  $2.Pagination ensurePagination() => $_ensure(3);
+}
+
+class ContentAttributionSummary extends $pb.GeneratedMessage {
+  factory ContentAttributionSummary({
+    $core.String? publishItemId,
+    $fixnum.Int64? totalRecords,
+    $fixnum.Int64? uniqueOrders,
+    $2.Money? totalAttributedRevenue,
+    $2.Money? canonicalOrderRevenue,
+    $2.ConfidenceBand? confidence,
+    $core.String? sourceClassMixSummary,
+  }) {
+    final result = ContentAttributionSummary._();
+    if (publishItemId != null) result.publishItemId = publishItemId;
+    if (totalRecords != null) result.totalRecords = totalRecords;
+    if (uniqueOrders != null) result.uniqueOrders = uniqueOrders;
+    if (totalAttributedRevenue != null)
+      result.totalAttributedRevenue = totalAttributedRevenue;
+    if (canonicalOrderRevenue != null)
+      result.canonicalOrderRevenue = canonicalOrderRevenue;
+    if (confidence != null) result.confidence = confidence;
+    if (sourceClassMixSummary != null)
+      result.sourceClassMixSummary = sourceClassMixSummary;
+    return result;
+  }
+
+  ContentAttributionSummary._();
+
+  factory ContentAttributionSummary.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ContentAttributionSummary()..mergeFromBuffer(data, registry);
+  factory ContentAttributionSummary.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ContentAttributionSummary()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ContentAttributionSummary',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance: ContentAttributionSummary.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'publishItemId')
+    ..aInt64(2, _omitFieldNames ? '' : 'totalRecords')
+    ..aInt64(3, _omitFieldNames ? '' : 'uniqueOrders')
+    ..aOM<$2.Money>(4, _omitFieldNames ? '' : 'totalAttributedRevenue',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOM<$2.Money>(5, _omitFieldNames ? '' : 'canonicalOrderRevenue',
+        subBuilder: $2.Money.$_createMessage)
+    ..aE<$2.ConfidenceBand>(6, _omitFieldNames ? '' : 'confidence',
+        enumValues: $2.ConfidenceBand.values)
+    ..aOS(7, _omitFieldNames ? '' : 'sourceClassMixSummary')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ContentAttributionSummary clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ContentAttributionSummary copyWith(
+          void Function(ContentAttributionSummary) updates) =>
+      super.copyWith((message) => updates(message as ContentAttributionSummary))
+          as ContentAttributionSummary;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ContentAttributionSummary() / ContentAttributionSummary.new instead')
+  static ContentAttributionSummary create() => ContentAttributionSummary._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ContentAttributionSummary._();
+  @$core.override
+  ContentAttributionSummary createEmptyInstance() =>
+      ContentAttributionSummary._();
+  @$core.pragma('dart2js:noInline')
+  static ContentAttributionSummary getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ContentAttributionSummary>(
+          ContentAttributionSummary.$_createMessage);
+  static ContentAttributionSummary? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get publishItemId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set publishItemId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPublishItemId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPublishItemId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get totalRecords => $_getI64(1);
+  @$pb.TagNumber(2)
+  set totalRecords($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTotalRecords() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTotalRecords() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get uniqueOrders => $_getI64(2);
+  @$pb.TagNumber(3)
+  set uniqueOrders($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasUniqueOrders() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearUniqueOrders() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $2.Money get totalAttributedRevenue => $_getN(3);
+  @$pb.TagNumber(4)
+  set totalAttributedRevenue($2.Money value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTotalAttributedRevenue() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTotalAttributedRevenue() => $_clearField(4);
+  @$pb.TagNumber(4)
+  $2.Money ensureTotalAttributedRevenue() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  $2.Money get canonicalOrderRevenue => $_getN(4);
+  @$pb.TagNumber(5)
+  set canonicalOrderRevenue($2.Money value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasCanonicalOrderRevenue() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearCanonicalOrderRevenue() => $_clearField(5);
+  @$pb.TagNumber(5)
+  $2.Money ensureCanonicalOrderRevenue() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  $2.ConfidenceBand get confidence => $_getN(5);
+  @$pb.TagNumber(6)
+  set confidence($2.ConfidenceBand value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasConfidence() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearConfidence() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get sourceClassMixSummary => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set sourceClassMixSummary($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasSourceClassMixSummary() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearSourceClassMixSummary() => $_clearField(7);
+}
+
+class AttributionServiceGetByContentResponse extends $pb.GeneratedMessage {
+  factory AttributionServiceGetByContentResponse({
+    $core.Iterable<ContentAttributionRecord>? records,
+    ContentAttributionSummary? summary,
+    $2.PaginatedResponse? pagination,
+  }) {
+    final result = AttributionServiceGetByContentResponse._();
+    if (records != null) result.records.addAll(records);
+    if (summary != null) result.summary = summary;
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  AttributionServiceGetByContentResponse._();
+
+  factory AttributionServiceGetByContentResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AttributionServiceGetByContentResponse()..mergeFromBuffer(data, registry);
+  factory AttributionServiceGetByContentResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AttributionServiceGetByContentResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AttributionServiceGetByContentResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance:
+          AttributionServiceGetByContentResponse.$_createMessage)
+    ..pPM<ContentAttributionRecord>(1, _omitFieldNames ? '' : 'records',
+        subBuilder: ContentAttributionRecord.$_createMessage)
+    ..aOM<ContentAttributionSummary>(2, _omitFieldNames ? '' : 'summary',
+        subBuilder: ContentAttributionSummary.$_createMessage)
+    ..aOM<$2.PaginatedResponse>(3, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $2.PaginatedResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AttributionServiceGetByContentResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AttributionServiceGetByContentResponse copyWith(
+          void Function(AttributionServiceGetByContentResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as AttributionServiceGetByContentResponse))
+          as AttributionServiceGetByContentResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use AttributionServiceGetByContentResponse() / AttributionServiceGetByContentResponse.new instead')
+  static AttributionServiceGetByContentResponse create() =>
+      AttributionServiceGetByContentResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      AttributionServiceGetByContentResponse._();
+  @$core.override
+  AttributionServiceGetByContentResponse createEmptyInstance() =>
+      AttributionServiceGetByContentResponse._();
+  @$core.pragma('dart2js:noInline')
+  static AttributionServiceGetByContentResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              AttributionServiceGetByContentResponse>(
+          AttributionServiceGetByContentResponse.$_createMessage);
+  static AttributionServiceGetByContentResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<ContentAttributionRecord> get records => $_getList(0);
+
+  @$pb.TagNumber(2)
+  ContentAttributionSummary get summary => $_getN(1);
+  @$pb.TagNumber(2)
+  set summary(ContentAttributionSummary value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSummary() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSummary() => $_clearField(2);
+  @$pb.TagNumber(2)
+  ContentAttributionSummary ensureSummary() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $2.PaginatedResponse get pagination => $_getN(2);
+  @$pb.TagNumber(3)
+  set pagination($2.PaginatedResponse value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPagination() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPagination() => $_clearField(3);
+  @$pb.TagNumber(3)
+  $2.PaginatedResponse ensurePagination() => $_ensure(2);
+}
+
+class AttributionServiceRecordAttributionRequest extends $pb.GeneratedMessage {
+  factory AttributionServiceRecordAttributionRequest({
+    $2.CommandContext? context,
+    $core.String? workspaceId,
+    $core.String? publishItemId,
+    $core.String? channelPostId,
+    $core.String? orderId,
+    $core.String? attributionType,
+    $2.Money? revenueAttributed,
+    $2.SourceClass? sourceClass,
+    $2.ConfidenceBand? confidence,
+    $core.String? utmSource,
+    $core.String? utmMedium,
+    $core.String? utmCampaign,
+  }) {
+    final result = AttributionServiceRecordAttributionRequest._();
+    if (context != null) result.context = context;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (publishItemId != null) result.publishItemId = publishItemId;
+    if (channelPostId != null) result.channelPostId = channelPostId;
+    if (orderId != null) result.orderId = orderId;
+    if (attributionType != null) result.attributionType = attributionType;
+    if (revenueAttributed != null) result.revenueAttributed = revenueAttributed;
+    if (sourceClass != null) result.sourceClass = sourceClass;
+    if (confidence != null) result.confidence = confidence;
+    if (utmSource != null) result.utmSource = utmSource;
+    if (utmMedium != null) result.utmMedium = utmMedium;
+    if (utmCampaign != null) result.utmCampaign = utmCampaign;
+    return result;
+  }
+
+  AttributionServiceRecordAttributionRequest._();
+
+  factory AttributionServiceRecordAttributionRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AttributionServiceRecordAttributionRequest()
+        ..mergeFromBuffer(data, registry);
+  factory AttributionServiceRecordAttributionRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AttributionServiceRecordAttributionRequest()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AttributionServiceRecordAttributionRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance:
+          AttributionServiceRecordAttributionRequest.$_createMessage)
+    ..aOM<$2.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $2.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'workspaceId')
+    ..aOS(3, _omitFieldNames ? '' : 'publishItemId')
+    ..aOS(4, _omitFieldNames ? '' : 'channelPostId')
+    ..aOS(5, _omitFieldNames ? '' : 'orderId')
+    ..aOS(6, _omitFieldNames ? '' : 'attributionType')
+    ..aOM<$2.Money>(7, _omitFieldNames ? '' : 'revenueAttributed',
+        subBuilder: $2.Money.$_createMessage)
+    ..aE<$2.SourceClass>(8, _omitFieldNames ? '' : 'sourceClass',
+        enumValues: $2.SourceClass.values)
+    ..aE<$2.ConfidenceBand>(9, _omitFieldNames ? '' : 'confidence',
+        enumValues: $2.ConfidenceBand.values)
+    ..aOS(10, _omitFieldNames ? '' : 'utmSource')
+    ..aOS(11, _omitFieldNames ? '' : 'utmMedium')
+    ..aOS(12, _omitFieldNames ? '' : 'utmCampaign')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AttributionServiceRecordAttributionRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AttributionServiceRecordAttributionRequest copyWith(
+          void Function(AttributionServiceRecordAttributionRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as AttributionServiceRecordAttributionRequest))
+          as AttributionServiceRecordAttributionRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use AttributionServiceRecordAttributionRequest() / AttributionServiceRecordAttributionRequest.new instead')
+  static AttributionServiceRecordAttributionRequest create() =>
+      AttributionServiceRecordAttributionRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      AttributionServiceRecordAttributionRequest._();
+  @$core.override
+  AttributionServiceRecordAttributionRequest createEmptyInstance() =>
+      AttributionServiceRecordAttributionRequest._();
+  @$core.pragma('dart2js:noInline')
+  static AttributionServiceRecordAttributionRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              AttributionServiceRecordAttributionRequest>(
+          AttributionServiceRecordAttributionRequest.$_createMessage);
+  static AttributionServiceRecordAttributionRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $2.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($2.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $2.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get workspaceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set workspaceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get publishItemId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set publishItemId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPublishItemId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPublishItemId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get channelPostId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set channelPostId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasChannelPostId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearChannelPostId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get orderId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set orderId($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasOrderId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearOrderId() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get attributionType => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set attributionType($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasAttributionType() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAttributionType() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $2.Money get revenueAttributed => $_getN(6);
+  @$pb.TagNumber(7)
+  set revenueAttributed($2.Money value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasRevenueAttributed() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearRevenueAttributed() => $_clearField(7);
+  @$pb.TagNumber(7)
+  $2.Money ensureRevenueAttributed() => $_ensure(6);
+
+  @$pb.TagNumber(8)
+  $2.SourceClass get sourceClass => $_getN(7);
+  @$pb.TagNumber(8)
+  set sourceClass($2.SourceClass value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasSourceClass() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearSourceClass() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $2.ConfidenceBand get confidence => $_getN(8);
+  @$pb.TagNumber(9)
+  set confidence($2.ConfidenceBand value) => $_setField(9, value);
+  @$pb.TagNumber(9)
+  $core.bool hasConfidence() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearConfidence() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get utmSource => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set utmSource($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasUtmSource() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearUtmSource() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get utmMedium => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set utmMedium($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasUtmMedium() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearUtmMedium() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get utmCampaign => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set utmCampaign($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasUtmCampaign() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearUtmCampaign() => $_clearField(12);
+}
+
+class AttributionServiceRecordAttributionResponse extends $pb.GeneratedMessage {
+  factory AttributionServiceRecordAttributionResponse({
+    ContentAttributionRecord? record,
+    $core.bool? orderRecognized,
+    $2.Money? orderTotalRevenue,
+    $2.Money? orderAllocatedRevenue,
+    $2.Money? orderRemainingCapacity,
+  }) {
+    final result = AttributionServiceRecordAttributionResponse._();
+    if (record != null) result.record = record;
+    if (orderRecognized != null) result.orderRecognized = orderRecognized;
+    if (orderTotalRevenue != null) result.orderTotalRevenue = orderTotalRevenue;
+    if (orderAllocatedRevenue != null)
+      result.orderAllocatedRevenue = orderAllocatedRevenue;
+    if (orderRemainingCapacity != null)
+      result.orderRemainingCapacity = orderRemainingCapacity;
+    return result;
+  }
+
+  AttributionServiceRecordAttributionResponse._();
+
+  factory AttributionServiceRecordAttributionResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AttributionServiceRecordAttributionResponse()
+        ..mergeFromBuffer(data, registry);
+  factory AttributionServiceRecordAttributionResponse.fromJson(
+          $core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AttributionServiceRecordAttributionResponse()
+        ..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AttributionServiceRecordAttributionResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.finance.v1'),
+      createEmptyInstance:
+          AttributionServiceRecordAttributionResponse.$_createMessage)
+    ..aOM<ContentAttributionRecord>(1, _omitFieldNames ? '' : 'record',
+        subBuilder: ContentAttributionRecord.$_createMessage)
+    ..aOB(2, _omitFieldNames ? '' : 'orderRecognized')
+    ..aOM<$2.Money>(3, _omitFieldNames ? '' : 'orderTotalRevenue',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOM<$2.Money>(4, _omitFieldNames ? '' : 'orderAllocatedRevenue',
+        subBuilder: $2.Money.$_createMessage)
+    ..aOM<$2.Money>(5, _omitFieldNames ? '' : 'orderRemainingCapacity',
+        subBuilder: $2.Money.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AttributionServiceRecordAttributionResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AttributionServiceRecordAttributionResponse copyWith(
+          void Function(AttributionServiceRecordAttributionResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as AttributionServiceRecordAttributionResponse))
+          as AttributionServiceRecordAttributionResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use AttributionServiceRecordAttributionResponse() / AttributionServiceRecordAttributionResponse.new instead')
+  static AttributionServiceRecordAttributionResponse create() =>
+      AttributionServiceRecordAttributionResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      AttributionServiceRecordAttributionResponse._();
+  @$core.override
+  AttributionServiceRecordAttributionResponse createEmptyInstance() =>
+      AttributionServiceRecordAttributionResponse._();
+  @$core.pragma('dart2js:noInline')
+  static AttributionServiceRecordAttributionResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              AttributionServiceRecordAttributionResponse>(
+          AttributionServiceRecordAttributionResponse.$_createMessage);
+  static AttributionServiceRecordAttributionResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ContentAttributionRecord get record => $_getN(0);
+  @$pb.TagNumber(1)
+  set record(ContentAttributionRecord value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRecord() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRecord() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ContentAttributionRecord ensureRecord() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.bool get orderRecognized => $_getBF(1);
+  @$pb.TagNumber(2)
+  set orderRecognized($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasOrderRecognized() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearOrderRecognized() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $2.Money get orderTotalRevenue => $_getN(2);
+  @$pb.TagNumber(3)
+  set orderTotalRevenue($2.Money value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasOrderTotalRevenue() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearOrderTotalRevenue() => $_clearField(3);
+  @$pb.TagNumber(3)
+  $2.Money ensureOrderTotalRevenue() => $_ensure(2);
+
+  @$pb.TagNumber(4)
+  $2.Money get orderAllocatedRevenue => $_getN(3);
+  @$pb.TagNumber(4)
+  set orderAllocatedRevenue($2.Money value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasOrderAllocatedRevenue() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearOrderAllocatedRevenue() => $_clearField(4);
+  @$pb.TagNumber(4)
+  $2.Money ensureOrderAllocatedRevenue() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  $2.Money get orderRemainingCapacity => $_getN(4);
+  @$pb.TagNumber(5)
+  set orderRemainingCapacity($2.Money value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasOrderRemainingCapacity() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearOrderRemainingCapacity() => $_clearField(5);
+  @$pb.TagNumber(5)
+  $2.Money ensureOrderRemainingCapacity() => $_ensure(4);
 }
 
 const $core.bool _omitFieldNames =

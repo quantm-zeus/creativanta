@@ -14427,28 +14427,35 @@ func (x *LinkToVideoServiceGetResponse) GetJob() *LinkToVideoJob {
 }
 
 type DerivativeItem struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	AssetId          string                 `protobuf:"bytes,1,opt,name=asset_id,json=assetId,proto3" json:"asset_id,omitempty"`
-	ParentAssetId    string                 `protobuf:"bytes,2,opt,name=parent_asset_id,json=parentAssetId,proto3" json:"parent_asset_id,omitempty"`
-	Title            string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
-	DerivativeType   string                 `protobuf:"bytes,4,opt,name=derivative_type,json=derivativeType,proto3" json:"derivative_type,omitempty"` // clip, variant, remix, repurpose, thumbnail
-	TargetChannel    string                 `protobuf:"bytes,5,opt,name=target_channel,json=targetChannel,proto3" json:"target_channel,omitempty"`    // tiktok, youtube_shorts, instagram_reels, facebook
-	AspectRatio      string                 `protobuf:"bytes,6,opt,name=aspect_ratio,json=aspectRatio,proto3" json:"aspect_ratio,omitempty"`
-	CtaVariant       string                 `protobuf:"bytes,7,opt,name=cta_variant,json=ctaVariant,proto3" json:"cta_variant,omitempty"`
-	SubtitleLanguage string                 `protobuf:"bytes,8,opt,name=subtitle_language,json=subtitleLanguage,proto3" json:"subtitle_language,omitempty"`
-	DurationSeconds  float64                `protobuf:"fixed64,9,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
-	Resolution       string                 `protobuf:"bytes,10,opt,name=resolution,proto3" json:"resolution,omitempty"`
-	FileUrl          string                 `protobuf:"bytes,11,opt,name=file_url,json=fileUrl,proto3" json:"file_url,omitempty"`
-	QualityState     string                 `protobuf:"bytes,12,opt,name=quality_state,json=qualityState,proto3" json:"quality_state,omitempty"`
-	GenerationState  string                 `protobuf:"bytes,13,opt,name=generation_state,json=generationState,proto3" json:"generation_state,omitempty"`
-	Tags             []string               `protobuf:"bytes,14,rep,name=tags,proto3" json:"tags,omitempty"`
-	Views            int64                  `protobuf:"varint,15,opt,name=views,proto3" json:"views,omitempty"`
-	EngagementRate   float64                `protobuf:"fixed64,16,opt,name=engagement_rate,json=engagementRate,proto3" json:"engagement_rate,omitempty"`
-	Ctr              float64                `protobuf:"fixed64,17,opt,name=ctr,proto3" json:"ctr,omitempty"`
-	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,18,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt        *timestamppb.Timestamp `protobuf:"bytes,19,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	AssetId           string                 `protobuf:"bytes,1,opt,name=asset_id,json=assetId,proto3" json:"asset_id,omitempty"`
+	ParentAssetId     string                 `protobuf:"bytes,2,opt,name=parent_asset_id,json=parentAssetId,proto3" json:"parent_asset_id,omitempty"`
+	Title             string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	DerivativeType    string                 `protobuf:"bytes,4,opt,name=derivative_type,json=derivativeType,proto3" json:"derivative_type,omitempty"` // clip, variant, remix, repurpose, thumbnail
+	TargetChannel     string                 `protobuf:"bytes,5,opt,name=target_channel,json=targetChannel,proto3" json:"target_channel,omitempty"`    // tiktok, youtube_shorts, instagram_reels, facebook
+	AspectRatio       string                 `protobuf:"bytes,6,opt,name=aspect_ratio,json=aspectRatio,proto3" json:"aspect_ratio,omitempty"`
+	CtaVariant        string                 `protobuf:"bytes,7,opt,name=cta_variant,json=ctaVariant,proto3" json:"cta_variant,omitempty"`
+	SubtitleLanguage  string                 `protobuf:"bytes,8,opt,name=subtitle_language,json=subtitleLanguage,proto3" json:"subtitle_language,omitempty"`
+	DurationSeconds   float64                `protobuf:"fixed64,9,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
+	Resolution        string                 `protobuf:"bytes,10,opt,name=resolution,proto3" json:"resolution,omitempty"`
+	FileUrl           string                 `protobuf:"bytes,11,opt,name=file_url,json=fileUrl,proto3" json:"file_url,omitempty"`
+	QualityState      string                 `protobuf:"bytes,12,opt,name=quality_state,json=qualityState,proto3" json:"quality_state,omitempty"`
+	GenerationState   string                 `protobuf:"bytes,13,opt,name=generation_state,json=generationState,proto3" json:"generation_state,omitempty"`
+	Tags              []string               `protobuf:"bytes,14,rep,name=tags,proto3" json:"tags,omitempty"`
+	Views             int64                  `protobuf:"varint,15,opt,name=views,proto3" json:"views,omitempty"`
+	EngagementRate    float64                `protobuf:"fixed64,16,opt,name=engagement_rate,json=engagementRate,proto3" json:"engagement_rate,omitempty"`
+	Ctr               float64                `protobuf:"fixed64,17,opt,name=ctr,proto3" json:"ctr,omitempty"`
+	CreatedAt         *timestamppb.Timestamp `protobuf:"bytes,18,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt         *timestamppb.Timestamp `protobuf:"bytes,19,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	AttributedRevenue *v1.Money              `protobuf:"bytes,20,opt,name=attributed_revenue,json=attributedRevenue,proto3" json:"attributed_revenue,omitempty"`
+	OrdersCount       int64                  `protobuf:"varint,21,opt,name=orders_count,json=ordersCount,proto3" json:"orders_count,omitempty"`
+	Rpm               string                 `protobuf:"bytes,22,opt,name=rpm,proto3" json:"rpm,omitempty"`
+	IsRpmUnknown      bool                   `protobuf:"varint,23,opt,name=is_rpm_unknown,json=isRpmUnknown,proto3" json:"is_rpm_unknown,omitempty"`
+	UnknownReason     string                 `protobuf:"bytes,24,opt,name=unknown_reason,json=unknownReason,proto3" json:"unknown_reason,omitempty"`
+	SourceClass       v1.SourceClass         `protobuf:"varint,25,opt,name=source_class,json=sourceClass,proto3,enum=creativanta.common.v1.SourceClass" json:"source_class,omitempty"`
+	Confidence        v1.ConfidenceBand      `protobuf:"varint,26,opt,name=confidence,proto3,enum=creativanta.common.v1.ConfidenceBand" json:"confidence,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *DerivativeItem) Reset() {
@@ -14612,6 +14619,55 @@ func (x *DerivativeItem) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *DerivativeItem) GetAttributedRevenue() *v1.Money {
+	if x != nil {
+		return x.AttributedRevenue
+	}
+	return nil
+}
+
+func (x *DerivativeItem) GetOrdersCount() int64 {
+	if x != nil {
+		return x.OrdersCount
+	}
+	return 0
+}
+
+func (x *DerivativeItem) GetRpm() string {
+	if x != nil {
+		return x.Rpm
+	}
+	return ""
+}
+
+func (x *DerivativeItem) GetIsRpmUnknown() bool {
+	if x != nil {
+		return x.IsRpmUnknown
+	}
+	return false
+}
+
+func (x *DerivativeItem) GetUnknownReason() string {
+	if x != nil {
+		return x.UnknownReason
+	}
+	return ""
+}
+
+func (x *DerivativeItem) GetSourceClass() v1.SourceClass {
+	if x != nil {
+		return x.SourceClass
+	}
+	return v1.SourceClass(0)
+}
+
+func (x *DerivativeItem) GetConfidence() v1.ConfidenceBand {
+	if x != nil {
+		return x.Confidence
+	}
+	return v1.ConfidenceBand(0)
 }
 
 type BatchItemError struct {
@@ -14815,6 +14871,17 @@ type DerivativeStats struct {
 	AverageCtr                float64                `protobuf:"fixed64,5,opt,name=average_ctr,json=averageCtr,proto3" json:"average_ctr,omitempty"`
 	TopPerformingDerivativeId string                 `protobuf:"bytes,6,opt,name=top_performing_derivative_id,json=topPerformingDerivativeId,proto3" json:"top_performing_derivative_id,omitempty"`
 	TopDerivatives            []*DerivativeItem      `protobuf:"bytes,7,rep,name=top_derivatives,json=topDerivatives,proto3" json:"top_derivatives,omitempty"`
+	IsViewsUnknown            bool                   `protobuf:"varint,8,opt,name=is_views_unknown,json=isViewsUnknown,proto3" json:"is_views_unknown,omitempty"`
+	IsEngagementRateUnknown   bool                   `protobuf:"varint,9,opt,name=is_engagement_rate_unknown,json=isEngagementRateUnknown,proto3" json:"is_engagement_rate_unknown,omitempty"`
+	IsCtrUnknown              bool                   `protobuf:"varint,10,opt,name=is_ctr_unknown,json=isCtrUnknown,proto3" json:"is_ctr_unknown,omitempty"`
+	UnknownReason             string                 `protobuf:"bytes,11,opt,name=unknown_reason,json=unknownReason,proto3" json:"unknown_reason,omitempty"`
+	SelectionStatus           string                 `protobuf:"bytes,12,opt,name=selection_status,json=selectionStatus,proto3" json:"selection_status,omitempty"` // "conclusive", "low_exposure_inconclusive", "missing_denominator_unknown"
+	AggregateRevenue          *v1.Money              `protobuf:"bytes,13,opt,name=aggregate_revenue,json=aggregateRevenue,proto3" json:"aggregate_revenue,omitempty"`
+	TotalOrdersAttributed     int64                  `protobuf:"varint,14,opt,name=total_orders_attributed,json=totalOrdersAttributed,proto3" json:"total_orders_attributed,omitempty"`
+	UniqueOrdersCounted       int64                  `protobuf:"varint,15,opt,name=unique_orders_counted,json=uniqueOrdersCounted,proto3" json:"unique_orders_counted,omitempty"`
+	Confidence                v1.ConfidenceBand      `protobuf:"varint,16,opt,name=confidence,proto3,enum=creativanta.common.v1.ConfidenceBand" json:"confidence,omitempty"`
+	AverageRpm                string                 `protobuf:"bytes,17,opt,name=average_rpm,json=averageRpm,proto3" json:"average_rpm,omitempty"`
+	IsRpmUnknown              bool                   `protobuf:"varint,18,opt,name=is_rpm_unknown,json=isRpmUnknown,proto3" json:"is_rpm_unknown,omitempty"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
@@ -14896,6 +14963,83 @@ func (x *DerivativeStats) GetTopDerivatives() []*DerivativeItem {
 		return x.TopDerivatives
 	}
 	return nil
+}
+
+func (x *DerivativeStats) GetIsViewsUnknown() bool {
+	if x != nil {
+		return x.IsViewsUnknown
+	}
+	return false
+}
+
+func (x *DerivativeStats) GetIsEngagementRateUnknown() bool {
+	if x != nil {
+		return x.IsEngagementRateUnknown
+	}
+	return false
+}
+
+func (x *DerivativeStats) GetIsCtrUnknown() bool {
+	if x != nil {
+		return x.IsCtrUnknown
+	}
+	return false
+}
+
+func (x *DerivativeStats) GetUnknownReason() string {
+	if x != nil {
+		return x.UnknownReason
+	}
+	return ""
+}
+
+func (x *DerivativeStats) GetSelectionStatus() string {
+	if x != nil {
+		return x.SelectionStatus
+	}
+	return ""
+}
+
+func (x *DerivativeStats) GetAggregateRevenue() *v1.Money {
+	if x != nil {
+		return x.AggregateRevenue
+	}
+	return nil
+}
+
+func (x *DerivativeStats) GetTotalOrdersAttributed() int64 {
+	if x != nil {
+		return x.TotalOrdersAttributed
+	}
+	return 0
+}
+
+func (x *DerivativeStats) GetUniqueOrdersCounted() int64 {
+	if x != nil {
+		return x.UniqueOrdersCounted
+	}
+	return 0
+}
+
+func (x *DerivativeStats) GetConfidence() v1.ConfidenceBand {
+	if x != nil {
+		return x.Confidence
+	}
+	return v1.ConfidenceBand(0)
+}
+
+func (x *DerivativeStats) GetAverageRpm() string {
+	if x != nil {
+		return x.AverageRpm
+	}
+	return ""
+}
+
+func (x *DerivativeStats) GetIsRpmUnknown() bool {
+	if x != nil {
+		return x.IsRpmUnknown
+	}
+	return false
 }
 
 type DerivativeServiceListRequest struct {
@@ -18805,7 +18949,7 @@ const file_creativanta_production_v1_production_proto_rawDesc = "" +
 	"\n" +
 	"ltv_job_id\x18\x02 \x01(\tR\bltvJobId\"\\\n" +
 	"\x1dLinkToVideoServiceGetResponse\x12;\n" +
-	"\x03job\x18\x01 \x01(\v2).creativanta.production.v1.LinkToVideoJobR\x03job\"\xbb\x05\n" +
+	"\x03job\x18\x01 \x01(\v2).creativanta.production.v1.LinkToVideoJobR\x03job\"\x98\b\n" +
 	"\x0eDerivativeItem\x12\x19\n" +
 	"\basset_id\x18\x01 \x01(\tR\aassetId\x12&\n" +
 	"\x0fparent_asset_id\x18\x02 \x01(\tR\rparentAssetId\x12\x14\n" +
@@ -18831,7 +18975,16 @@ const file_creativanta_production_v1_production_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"o\n" +
+	"updated_at\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12K\n" +
+	"\x12attributed_revenue\x18\x14 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x11attributedRevenue\x12!\n" +
+	"\forders_count\x18\x15 \x01(\x03R\vordersCount\x12\x10\n" +
+	"\x03rpm\x18\x16 \x01(\tR\x03rpm\x12$\n" +
+	"\x0eis_rpm_unknown\x18\x17 \x01(\bR\fisRpmUnknown\x12%\n" +
+	"\x0eunknown_reason\x18\x18 \x01(\tR\runknownReason\x12E\n" +
+	"\fsource_class\x18\x19 \x01(\x0e2\".creativanta.common.v1.SourceClassR\vsourceClass\x12E\n" +
+	"\n" +
+	"confidence\x18\x1a \x01(\x0e2%.creativanta.common.v1.ConfidenceBandR\n" +
+	"confidence\"o\n" +
 	"\x0eBatchItemError\x12\x19\n" +
 	"\basset_id\x18\x01 \x01(\tR\aassetId\x12\x1d\n" +
 	"\n" +
@@ -18851,7 +19004,7 @@ const file_creativanta_production_v1_production_proto_rawDesc = "" +
 	"\x03ctr\x18\n" +
 	" \x01(\x01R\x03ctr\x12*\n" +
 	"\x11is_source_deleted\x18\v \x01(\bR\x0fisSourceDeleted\x12L\n" +
-	"\bchildren\x18\f \x03(\v20.creativanta.production.v1.DerivativeLineageNodeR\bchildren\"\xfd\x02\n" +
+	"\bchildren\x18\f \x03(\v20.creativanta.production.v1.DerivativeLineageNodeR\bchildren\"\xa1\a\n" +
 	"\x0fDerivativeStats\x12&\n" +
 	"\x0fsource_asset_id\x18\x01 \x01(\tR\rsourceAssetId\x12+\n" +
 	"\x11total_derivatives\x18\x02 \x01(\x05R\x10totalDerivatives\x12'\n" +
@@ -18860,7 +19013,22 @@ const file_creativanta_production_v1_production_proto_rawDesc = "" +
 	"\vaverage_ctr\x18\x05 \x01(\x01R\n" +
 	"averageCtr\x12?\n" +
 	"\x1ctop_performing_derivative_id\x18\x06 \x01(\tR\x19topPerformingDerivativeId\x12R\n" +
-	"\x0ftop_derivatives\x18\a \x03(\v2).creativanta.production.v1.DerivativeItemR\x0etopDerivatives\"\xb1\x02\n" +
+	"\x0ftop_derivatives\x18\a \x03(\v2).creativanta.production.v1.DerivativeItemR\x0etopDerivatives\x12(\n" +
+	"\x10is_views_unknown\x18\b \x01(\bR\x0eisViewsUnknown\x12;\n" +
+	"\x1ais_engagement_rate_unknown\x18\t \x01(\bR\x17isEngagementRateUnknown\x12$\n" +
+	"\x0eis_ctr_unknown\x18\n" +
+	" \x01(\bR\fisCtrUnknown\x12%\n" +
+	"\x0eunknown_reason\x18\v \x01(\tR\runknownReason\x12)\n" +
+	"\x10selection_status\x18\f \x01(\tR\x0fselectionStatus\x12I\n" +
+	"\x11aggregate_revenue\x18\r \x01(\v2\x1c.creativanta.common.v1.MoneyR\x10aggregateRevenue\x126\n" +
+	"\x17total_orders_attributed\x18\x0e \x01(\x03R\x15totalOrdersAttributed\x122\n" +
+	"\x15unique_orders_counted\x18\x0f \x01(\x03R\x13uniqueOrdersCounted\x12E\n" +
+	"\n" +
+	"confidence\x18\x10 \x01(\x0e2%.creativanta.common.v1.ConfidenceBandR\n" +
+	"confidence\x12\x1f\n" +
+	"\vaverage_rpm\x18\x11 \x01(\tR\n" +
+	"averageRpm\x12$\n" +
+	"\x0eis_rpm_unknown\x18\x12 \x01(\bR\fisRpmUnknown\"\xb1\x02\n" +
 	"\x1cDerivativeServiceListRequest\x12>\n" +
 	"\fworkspace_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x12&\n" +
 	"\x0fsource_asset_id\x18\x02 \x01(\tR\rsourceAssetId\x12'\n" +
@@ -19551,6 +19719,9 @@ var file_creativanta_production_v1_production_proto_goTypes = []any{
 	(*v1.Pagination)(nil),                              // 229: creativanta.common.v1.Pagination
 	(*v1.PaginatedResponse)(nil),                       // 230: creativanta.common.v1.PaginatedResponse
 	(*v1.CommandContext)(nil),                          // 231: creativanta.common.v1.CommandContext
+	(*v1.Money)(nil),                                   // 232: creativanta.common.v1.Money
+	(v1.SourceClass)(0),                                // 233: creativanta.common.v1.SourceClass
+	(v1.ConfidenceBand)(0),                             // 234: creativanta.common.v1.ConfidenceBand
 }
 var file_creativanta_production_v1_production_proto_depIdxs = []int32{
 	4,   // 0: creativanta.production.v1.ProductionModeInfo.mode:type_name -> creativanta.production.v1.ProductionMode
@@ -19796,200 +19967,205 @@ var file_creativanta_production_v1_production_proto_depIdxs = []int32{
 	175, // 240: creativanta.production.v1.LinkToVideoServiceGetResponse.job:type_name -> creativanta.production.v1.LinkToVideoJob
 	227, // 241: creativanta.production.v1.DerivativeItem.created_at:type_name -> google.protobuf.Timestamp
 	227, // 242: creativanta.production.v1.DerivativeItem.updated_at:type_name -> google.protobuf.Timestamp
-	184, // 243: creativanta.production.v1.DerivativeLineageNode.children:type_name -> creativanta.production.v1.DerivativeLineageNode
-	182, // 244: creativanta.production.v1.DerivativeStats.top_derivatives:type_name -> creativanta.production.v1.DerivativeItem
-	228, // 245: creativanta.production.v1.DerivativeServiceListRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	229, // 246: creativanta.production.v1.DerivativeServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	182, // 247: creativanta.production.v1.DerivativeServiceListResponse.derivatives:type_name -> creativanta.production.v1.DerivativeItem
-	230, // 248: creativanta.production.v1.DerivativeServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	231, // 249: creativanta.production.v1.DerivativeServiceCreateRequest.context:type_name -> creativanta.common.v1.CommandContext
-	182, // 250: creativanta.production.v1.DerivativeServiceCreateResponse.derivative:type_name -> creativanta.production.v1.DerivativeItem
-	231, // 251: creativanta.production.v1.DerivativeServiceBatchTagRequest.context:type_name -> creativanta.common.v1.CommandContext
-	183, // 252: creativanta.production.v1.DerivativeServiceBatchTagResponse.failures:type_name -> creativanta.production.v1.BatchItemError
-	228, // 253: creativanta.production.v1.DerivativeServiceGetLineageRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	184, // 254: creativanta.production.v1.DerivativeServiceGetLineageResponse.root_source:type_name -> creativanta.production.v1.DerivativeLineageNode
-	184, // 255: creativanta.production.v1.DerivativeServiceGetLineageResponse.target_node:type_name -> creativanta.production.v1.DerivativeLineageNode
-	184, // 256: creativanta.production.v1.DerivativeServiceGetLineageResponse.chain:type_name -> creativanta.production.v1.DerivativeLineageNode
-	231, // 257: creativanta.production.v1.DerivativeServiceDeleteRequest.context:type_name -> creativanta.common.v1.CommandContext
-	231, // 258: creativanta.production.v1.DerivativeServicePromoteRequest.context:type_name -> creativanta.common.v1.CommandContext
-	182, // 259: creativanta.production.v1.DerivativeServicePromoteResponse.derivative:type_name -> creativanta.production.v1.DerivativeItem
-	228, // 260: creativanta.production.v1.DerivativeServiceGetStatsRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	185, // 261: creativanta.production.v1.DerivativeServiceGetStatsResponse.stats:type_name -> creativanta.production.v1.DerivativeStats
-	227, // 262: creativanta.production.v1.UploadPreset.created_at:type_name -> google.protobuf.Timestamp
-	227, // 263: creativanta.production.v1.OverrideAuditRecord.created_at:type_name -> google.protobuf.Timestamp
-	200, // 264: creativanta.production.v1.PackagingReport.components:type_name -> creativanta.production.v1.PackagingScoreComponent
-	201, // 265: creativanta.production.v1.PackagingReport.readiness_checks:type_name -> creativanta.production.v1.ReadinessCheckItem
-	202, // 266: creativanta.production.v1.PackagingReport.compliance_details:type_name -> creativanta.production.v1.ComplianceScanDetail
-	205, // 267: creativanta.production.v1.PackagingReport.applied_overrides:type_name -> creativanta.production.v1.OverrideAuditRecord
-	227, // 268: creativanta.production.v1.PackagingReport.created_at:type_name -> google.protobuf.Timestamp
-	231, // 269: creativanta.production.v1.PackagingServiceScoreRequest.context:type_name -> creativanta.common.v1.CommandContext
-	206, // 270: creativanta.production.v1.PackagingServiceScoreResponse.report:type_name -> creativanta.production.v1.PackagingReport
-	231, // 271: creativanta.production.v1.PackagingServiceScanComplianceRequest.context:type_name -> creativanta.common.v1.CommandContext
-	202, // 272: creativanta.production.v1.PackagingServiceScanComplianceResponse.details:type_name -> creativanta.production.v1.ComplianceScanDetail
-	228, // 273: creativanta.production.v1.PackagingServiceGetReportRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	206, // 274: creativanta.production.v1.PackagingServiceGetReportResponse.report:type_name -> creativanta.production.v1.PackagingReport
-	231, // 275: creativanta.production.v1.PackagingServiceBatchScoreRequest.context:type_name -> creativanta.common.v1.CommandContext
-	206, // 276: creativanta.production.v1.PackagingServiceBatchScoreResponse.reports:type_name -> creativanta.production.v1.PackagingReport
-	183, // 277: creativanta.production.v1.PackagingServiceBatchScoreResponse.failures:type_name -> creativanta.production.v1.BatchItemError
-	231, // 278: creativanta.production.v1.PackagingServiceOverrideResultRequest.context:type_name -> creativanta.common.v1.CommandContext
-	206, // 279: creativanta.production.v1.PackagingServiceOverrideResultResponse.updated_report:type_name -> creativanta.production.v1.PackagingReport
-	228, // 280: creativanta.production.v1.PackagingServiceGetHistoryRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	229, // 281: creativanta.production.v1.PackagingServiceGetHistoryRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	206, // 282: creativanta.production.v1.PackagingServiceGetHistoryResponse.reports:type_name -> creativanta.production.v1.PackagingReport
-	230, // 283: creativanta.production.v1.PackagingServiceGetHistoryResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
-	231, // 284: creativanta.production.v1.PackagingServiceRunQARequest.context:type_name -> creativanta.common.v1.CommandContext
-	206, // 285: creativanta.production.v1.PackagingServiceRunQAResponse.report:type_name -> creativanta.production.v1.PackagingReport
-	21,  // 286: creativanta.production.v1.StudioService.GetModes:input_type -> creativanta.production.v1.GetModesRequest
-	23,  // 287: creativanta.production.v1.StudioService.GetActiveJobs:input_type -> creativanta.production.v1.GetActiveJobsRequest
-	25,  // 288: creativanta.production.v1.StudioService.GetRecentAssets:input_type -> creativanta.production.v1.GetRecentAssetsRequest
-	27,  // 289: creativanta.production.v1.StudioService.Cancel:input_type -> creativanta.production.v1.CancelRequest
-	29,  // 290: creativanta.production.v1.StudioService.Retry:input_type -> creativanta.production.v1.RetryRequest
-	32,  // 291: creativanta.production.v1.AssetService.Generate:input_type -> creativanta.production.v1.GenerateRequest
-	34,  // 292: creativanta.production.v1.AssetService.GetStatus:input_type -> creativanta.production.v1.GetStatusRequest
-	36,  // 293: creativanta.production.v1.AssetService.List:input_type -> creativanta.production.v1.ListRequest
-	38,  // 294: creativanta.production.v1.AssetService.Get:input_type -> creativanta.production.v1.GetRequest
-	40,  // 295: creativanta.production.v1.AssetService.Approve:input_type -> creativanta.production.v1.ApproveRequest
-	42,  // 296: creativanta.production.v1.AssetService.PromoteCanonical:input_type -> creativanta.production.v1.PromoteCanonicalRequest
-	44,  // 297: creativanta.production.v1.AssetService.Upload:input_type -> creativanta.production.v1.UploadRequest
-	150, // 298: creativanta.production.v1.AssetService.EvaluateDrift:input_type -> creativanta.production.v1.EvaluateDriftRequest
-	152, // 299: creativanta.production.v1.AssetService.OverrideDriftViolation:input_type -> creativanta.production.v1.OverrideDriftViolationRequest
-	56,  // 300: creativanta.production.v1.QuickEditService.SaveDraft:input_type -> creativanta.production.v1.QuickEditServiceSaveDraftRequest
-	61,  // 301: creativanta.production.v1.TranslationService.Create:input_type -> creativanta.production.v1.TranslationServiceCreateRequest
-	63,  // 302: creativanta.production.v1.TranslationService.Get:input_type -> creativanta.production.v1.TranslationServiceGetRequest
-	65,  // 303: creativanta.production.v1.TranslationService.List:input_type -> creativanta.production.v1.TranslationServiceListRequest
-	68,  // 304: creativanta.production.v1.SoundStudioService.GenerateMusic:input_type -> creativanta.production.v1.SoundStudioServiceGenerateMusicRequest
-	70,  // 305: creativanta.production.v1.SoundStudioService.GenerateSFX:input_type -> creativanta.production.v1.SoundStudioServiceGenerateSFXRequest
-	72,  // 306: creativanta.production.v1.SoundStudioService.AnalyzeBeat:input_type -> creativanta.production.v1.SoundStudioServiceAnalyzeBeatRequest
-	74,  // 307: creativanta.production.v1.SoundStudioService.ListSoundLibrary:input_type -> creativanta.production.v1.SoundStudioServiceListSoundLibraryRequest
-	76,  // 308: creativanta.production.v1.SoundStudioService.GetSound:input_type -> creativanta.production.v1.SoundStudioServiceGetSoundRequest
-	78,  // 309: creativanta.production.v1.SoundStudioService.PreviewSound:input_type -> creativanta.production.v1.SoundStudioServicePreviewSoundRequest
-	81,  // 310: creativanta.production.v1.VoiceCloneService.Create:input_type -> creativanta.production.v1.VoiceCloneServiceCreateRequest
-	83,  // 311: creativanta.production.v1.VoiceCloneService.Get:input_type -> creativanta.production.v1.VoiceCloneServiceGetRequest
-	85,  // 312: creativanta.production.v1.VoiceCloneService.List:input_type -> creativanta.production.v1.VoiceCloneServiceListRequest
-	87,  // 313: creativanta.production.v1.VoiceCloneService.Delete:input_type -> creativanta.production.v1.VoiceCloneServiceDeleteRequest
-	89,  // 314: creativanta.production.v1.VoiceCloneService.GenerateVoiceover:input_type -> creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverRequest
-	91,  // 315: creativanta.production.v1.VoiceCloneService.GetConsentStatus:input_type -> creativanta.production.v1.VoiceCloneServiceGetConsentStatusRequest
-	100, // 316: creativanta.production.v1.RemixService.Analyze:input_type -> creativanta.production.v1.RemixServiceAnalyzeRequest
-	102, // 317: creativanta.production.v1.RemixService.GetBlueprint:input_type -> creativanta.production.v1.RemixServiceGetBlueprintRequest
-	104, // 318: creativanta.production.v1.RemixService.Generate:input_type -> creativanta.production.v1.RemixServiceGenerateRequest
-	106, // 319: creativanta.production.v1.RemixService.Regenerate:input_type -> creativanta.production.v1.RemixServiceRegenerateRequest
-	108, // 320: creativanta.production.v1.VideoEditJobService.Create:input_type -> creativanta.production.v1.VideoEditJobServiceCreateRequest
-	110, // 321: creativanta.production.v1.VideoEditJobService.Get:input_type -> creativanta.production.v1.VideoEditJobServiceGetRequest
-	112, // 322: creativanta.production.v1.VideoEditJobService.List:input_type -> creativanta.production.v1.VideoEditJobServiceListRequest
-	114, // 323: creativanta.production.v1.VideoEditJobService.Cancel:input_type -> creativanta.production.v1.VideoEditJobServiceCancelRequest
-	116, // 324: creativanta.production.v1.VideoEditJobService.Retry:input_type -> creativanta.production.v1.VideoEditJobServiceRetryRequest
-	123, // 325: creativanta.production.v1.ClipFactoryService.Analyze:input_type -> creativanta.production.v1.ClipFactoryServiceAnalyzeRequest
-	125, // 326: creativanta.production.v1.ClipFactoryService.GetCollection:input_type -> creativanta.production.v1.ClipFactoryServiceGetCollectionRequest
-	127, // 327: creativanta.production.v1.ClipFactoryService.ProcessClips:input_type -> creativanta.production.v1.ClipFactoryServiceProcessClipsRequest
-	131, // 328: creativanta.production.v1.StylePackService.Extract:input_type -> creativanta.production.v1.StylePackServiceExtractRequest
-	133, // 329: creativanta.production.v1.StylePackService.Create:input_type -> creativanta.production.v1.StylePackServiceCreateRequest
-	135, // 330: creativanta.production.v1.StylePackService.Get:input_type -> creativanta.production.v1.StylePackServiceGetRequest
-	137, // 331: creativanta.production.v1.StylePackService.List:input_type -> creativanta.production.v1.StylePackServiceListRequest
-	139, // 332: creativanta.production.v1.StylePackService.Apply:input_type -> creativanta.production.v1.StylePackServiceApplyRequest
-	141, // 333: creativanta.production.v1.StylePackService.Delete:input_type -> creativanta.production.v1.StylePackServiceDeleteRequest
-	143, // 334: creativanta.production.v1.AIService.GenerateCharacterPreview:input_type -> creativanta.production.v1.GenerateCharacterPreviewRequest
-	145, // 335: creativanta.production.v1.AIService.QuoteCharacterPreview:input_type -> creativanta.production.v1.QuoteCharacterPreviewRequest
-	147, // 336: creativanta.production.v1.AIService.AnalyzeStyle:input_type -> creativanta.production.v1.AnalyzeStyleRequest
-	159, // 337: creativanta.production.v1.AIService.GenerateThumbnails:input_type -> creativanta.production.v1.GenerateThumbnailsRequest
-	164, // 338: creativanta.production.v1.ProductShowcaseService.Create:input_type -> creativanta.production.v1.ProductShowcaseServiceCreateRequest
-	167, // 339: creativanta.production.v1.ProductShowcaseService.CreateBatch:input_type -> creativanta.production.v1.ProductShowcaseServiceCreateBatchRequest
-	170, // 340: creativanta.production.v1.ProductShowcaseService.Get:input_type -> creativanta.production.v1.ProductShowcaseServiceGetRequest
-	172, // 341: creativanta.production.v1.ProductShowcaseService.List:input_type -> creativanta.production.v1.ProductShowcaseServiceListRequest
-	176, // 342: creativanta.production.v1.LinkToVideoService.Scrape:input_type -> creativanta.production.v1.LinkToVideoServiceScrapeRequest
-	178, // 343: creativanta.production.v1.LinkToVideoService.Generate:input_type -> creativanta.production.v1.LinkToVideoServiceGenerateRequest
-	180, // 344: creativanta.production.v1.LinkToVideoService.Get:input_type -> creativanta.production.v1.LinkToVideoServiceGetRequest
-	186, // 345: creativanta.production.v1.DerivativeService.List:input_type -> creativanta.production.v1.DerivativeServiceListRequest
-	188, // 346: creativanta.production.v1.DerivativeService.Create:input_type -> creativanta.production.v1.DerivativeServiceCreateRequest
-	190, // 347: creativanta.production.v1.DerivativeService.BatchTag:input_type -> creativanta.production.v1.DerivativeServiceBatchTagRequest
-	192, // 348: creativanta.production.v1.DerivativeService.GetLineage:input_type -> creativanta.production.v1.DerivativeServiceGetLineageRequest
-	194, // 349: creativanta.production.v1.DerivativeService.Delete:input_type -> creativanta.production.v1.DerivativeServiceDeleteRequest
-	196, // 350: creativanta.production.v1.DerivativeService.Promote:input_type -> creativanta.production.v1.DerivativeServicePromoteRequest
-	198, // 351: creativanta.production.v1.DerivativeService.GetStats:input_type -> creativanta.production.v1.DerivativeServiceGetStatsRequest
-	207, // 352: creativanta.production.v1.PackagingService.Score:input_type -> creativanta.production.v1.PackagingServiceScoreRequest
-	209, // 353: creativanta.production.v1.PackagingService.ScanCompliance:input_type -> creativanta.production.v1.PackagingServiceScanComplianceRequest
-	211, // 354: creativanta.production.v1.PackagingService.GetReport:input_type -> creativanta.production.v1.PackagingServiceGetReportRequest
-	213, // 355: creativanta.production.v1.PackagingService.BatchScore:input_type -> creativanta.production.v1.PackagingServiceBatchScoreRequest
-	215, // 356: creativanta.production.v1.PackagingService.OverrideResult:input_type -> creativanta.production.v1.PackagingServiceOverrideResultRequest
-	217, // 357: creativanta.production.v1.PackagingService.GetHistory:input_type -> creativanta.production.v1.PackagingServiceGetHistoryRequest
-	219, // 358: creativanta.production.v1.PackagingService.RunQA:input_type -> creativanta.production.v1.PackagingServiceRunQARequest
-	22,  // 359: creativanta.production.v1.StudioService.GetModes:output_type -> creativanta.production.v1.GetModesResponse
-	24,  // 360: creativanta.production.v1.StudioService.GetActiveJobs:output_type -> creativanta.production.v1.GetActiveJobsResponse
-	26,  // 361: creativanta.production.v1.StudioService.GetRecentAssets:output_type -> creativanta.production.v1.GetRecentAssetsResponse
-	28,  // 362: creativanta.production.v1.StudioService.Cancel:output_type -> creativanta.production.v1.CancelResponse
-	30,  // 363: creativanta.production.v1.StudioService.Retry:output_type -> creativanta.production.v1.RetryResponse
-	33,  // 364: creativanta.production.v1.AssetService.Generate:output_type -> creativanta.production.v1.GenerateResponse
-	35,  // 365: creativanta.production.v1.AssetService.GetStatus:output_type -> creativanta.production.v1.GetStatusResponse
-	37,  // 366: creativanta.production.v1.AssetService.List:output_type -> creativanta.production.v1.ListResponse
-	39,  // 367: creativanta.production.v1.AssetService.Get:output_type -> creativanta.production.v1.GetResponse
-	41,  // 368: creativanta.production.v1.AssetService.Approve:output_type -> creativanta.production.v1.ApproveResponse
-	43,  // 369: creativanta.production.v1.AssetService.PromoteCanonical:output_type -> creativanta.production.v1.PromoteCanonicalResponse
-	45,  // 370: creativanta.production.v1.AssetService.Upload:output_type -> creativanta.production.v1.UploadResponse
-	151, // 371: creativanta.production.v1.AssetService.EvaluateDrift:output_type -> creativanta.production.v1.EvaluateDriftResponse
-	153, // 372: creativanta.production.v1.AssetService.OverrideDriftViolation:output_type -> creativanta.production.v1.OverrideDriftViolationResponse
-	57,  // 373: creativanta.production.v1.QuickEditService.SaveDraft:output_type -> creativanta.production.v1.QuickEditServiceSaveDraftResponse
-	62,  // 374: creativanta.production.v1.TranslationService.Create:output_type -> creativanta.production.v1.TranslationServiceCreateResponse
-	64,  // 375: creativanta.production.v1.TranslationService.Get:output_type -> creativanta.production.v1.TranslationServiceGetResponse
-	66,  // 376: creativanta.production.v1.TranslationService.List:output_type -> creativanta.production.v1.TranslationServiceListResponse
-	69,  // 377: creativanta.production.v1.SoundStudioService.GenerateMusic:output_type -> creativanta.production.v1.SoundStudioServiceGenerateMusicResponse
-	71,  // 378: creativanta.production.v1.SoundStudioService.GenerateSFX:output_type -> creativanta.production.v1.SoundStudioServiceGenerateSFXResponse
-	73,  // 379: creativanta.production.v1.SoundStudioService.AnalyzeBeat:output_type -> creativanta.production.v1.SoundStudioServiceAnalyzeBeatResponse
-	75,  // 380: creativanta.production.v1.SoundStudioService.ListSoundLibrary:output_type -> creativanta.production.v1.SoundStudioServiceListSoundLibraryResponse
-	77,  // 381: creativanta.production.v1.SoundStudioService.GetSound:output_type -> creativanta.production.v1.SoundStudioServiceGetSoundResponse
-	79,  // 382: creativanta.production.v1.SoundStudioService.PreviewSound:output_type -> creativanta.production.v1.SoundStudioServicePreviewSoundResponse
-	82,  // 383: creativanta.production.v1.VoiceCloneService.Create:output_type -> creativanta.production.v1.VoiceCloneServiceCreateResponse
-	84,  // 384: creativanta.production.v1.VoiceCloneService.Get:output_type -> creativanta.production.v1.VoiceCloneServiceGetResponse
-	86,  // 385: creativanta.production.v1.VoiceCloneService.List:output_type -> creativanta.production.v1.VoiceCloneServiceListResponse
-	88,  // 386: creativanta.production.v1.VoiceCloneService.Delete:output_type -> creativanta.production.v1.VoiceCloneServiceDeleteResponse
-	90,  // 387: creativanta.production.v1.VoiceCloneService.GenerateVoiceover:output_type -> creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverResponse
-	92,  // 388: creativanta.production.v1.VoiceCloneService.GetConsentStatus:output_type -> creativanta.production.v1.VoiceCloneServiceGetConsentStatusResponse
-	101, // 389: creativanta.production.v1.RemixService.Analyze:output_type -> creativanta.production.v1.RemixServiceAnalyzeResponse
-	103, // 390: creativanta.production.v1.RemixService.GetBlueprint:output_type -> creativanta.production.v1.RemixServiceGetBlueprintResponse
-	105, // 391: creativanta.production.v1.RemixService.Generate:output_type -> creativanta.production.v1.RemixServiceGenerateResponse
-	107, // 392: creativanta.production.v1.RemixService.Regenerate:output_type -> creativanta.production.v1.RemixServiceRegenerateResponse
-	109, // 393: creativanta.production.v1.VideoEditJobService.Create:output_type -> creativanta.production.v1.VideoEditJobServiceCreateResponse
-	111, // 394: creativanta.production.v1.VideoEditJobService.Get:output_type -> creativanta.production.v1.VideoEditJobServiceGetResponse
-	113, // 395: creativanta.production.v1.VideoEditJobService.List:output_type -> creativanta.production.v1.VideoEditJobServiceListResponse
-	115, // 396: creativanta.production.v1.VideoEditJobService.Cancel:output_type -> creativanta.production.v1.VideoEditJobServiceCancelResponse
-	117, // 397: creativanta.production.v1.VideoEditJobService.Retry:output_type -> creativanta.production.v1.VideoEditJobServiceRetryResponse
-	124, // 398: creativanta.production.v1.ClipFactoryService.Analyze:output_type -> creativanta.production.v1.ClipFactoryServiceAnalyzeResponse
-	126, // 399: creativanta.production.v1.ClipFactoryService.GetCollection:output_type -> creativanta.production.v1.ClipFactoryServiceGetCollectionResponse
-	128, // 400: creativanta.production.v1.ClipFactoryService.ProcessClips:output_type -> creativanta.production.v1.ClipFactoryServiceProcessClipsResponse
-	132, // 401: creativanta.production.v1.StylePackService.Extract:output_type -> creativanta.production.v1.StylePackServiceExtractResponse
-	134, // 402: creativanta.production.v1.StylePackService.Create:output_type -> creativanta.production.v1.StylePackServiceCreateResponse
-	136, // 403: creativanta.production.v1.StylePackService.Get:output_type -> creativanta.production.v1.StylePackServiceGetResponse
-	138, // 404: creativanta.production.v1.StylePackService.List:output_type -> creativanta.production.v1.StylePackServiceListResponse
-	140, // 405: creativanta.production.v1.StylePackService.Apply:output_type -> creativanta.production.v1.StylePackServiceApplyResponse
-	142, // 406: creativanta.production.v1.StylePackService.Delete:output_type -> creativanta.production.v1.StylePackServiceDeleteResponse
-	144, // 407: creativanta.production.v1.AIService.GenerateCharacterPreview:output_type -> creativanta.production.v1.GenerateCharacterPreviewResponse
-	146, // 408: creativanta.production.v1.AIService.QuoteCharacterPreview:output_type -> creativanta.production.v1.QuoteCharacterPreviewResponse
-	148, // 409: creativanta.production.v1.AIService.AnalyzeStyle:output_type -> creativanta.production.v1.AnalyzeStyleResponse
-	160, // 410: creativanta.production.v1.AIService.GenerateThumbnails:output_type -> creativanta.production.v1.GenerateThumbnailsResponse
-	165, // 411: creativanta.production.v1.ProductShowcaseService.Create:output_type -> creativanta.production.v1.ProductShowcaseServiceCreateResponse
-	169, // 412: creativanta.production.v1.ProductShowcaseService.CreateBatch:output_type -> creativanta.production.v1.ProductShowcaseServiceCreateBatchResponse
-	171, // 413: creativanta.production.v1.ProductShowcaseService.Get:output_type -> creativanta.production.v1.ProductShowcaseServiceGetResponse
-	173, // 414: creativanta.production.v1.ProductShowcaseService.List:output_type -> creativanta.production.v1.ProductShowcaseServiceListResponse
-	177, // 415: creativanta.production.v1.LinkToVideoService.Scrape:output_type -> creativanta.production.v1.LinkToVideoServiceScrapeResponse
-	179, // 416: creativanta.production.v1.LinkToVideoService.Generate:output_type -> creativanta.production.v1.LinkToVideoServiceGenerateResponse
-	181, // 417: creativanta.production.v1.LinkToVideoService.Get:output_type -> creativanta.production.v1.LinkToVideoServiceGetResponse
-	187, // 418: creativanta.production.v1.DerivativeService.List:output_type -> creativanta.production.v1.DerivativeServiceListResponse
-	189, // 419: creativanta.production.v1.DerivativeService.Create:output_type -> creativanta.production.v1.DerivativeServiceCreateResponse
-	191, // 420: creativanta.production.v1.DerivativeService.BatchTag:output_type -> creativanta.production.v1.DerivativeServiceBatchTagResponse
-	193, // 421: creativanta.production.v1.DerivativeService.GetLineage:output_type -> creativanta.production.v1.DerivativeServiceGetLineageResponse
-	195, // 422: creativanta.production.v1.DerivativeService.Delete:output_type -> creativanta.production.v1.DerivativeServiceDeleteResponse
-	197, // 423: creativanta.production.v1.DerivativeService.Promote:output_type -> creativanta.production.v1.DerivativeServicePromoteResponse
-	199, // 424: creativanta.production.v1.DerivativeService.GetStats:output_type -> creativanta.production.v1.DerivativeServiceGetStatsResponse
-	208, // 425: creativanta.production.v1.PackagingService.Score:output_type -> creativanta.production.v1.PackagingServiceScoreResponse
-	210, // 426: creativanta.production.v1.PackagingService.ScanCompliance:output_type -> creativanta.production.v1.PackagingServiceScanComplianceResponse
-	212, // 427: creativanta.production.v1.PackagingService.GetReport:output_type -> creativanta.production.v1.PackagingServiceGetReportResponse
-	214, // 428: creativanta.production.v1.PackagingService.BatchScore:output_type -> creativanta.production.v1.PackagingServiceBatchScoreResponse
-	216, // 429: creativanta.production.v1.PackagingService.OverrideResult:output_type -> creativanta.production.v1.PackagingServiceOverrideResultResponse
-	218, // 430: creativanta.production.v1.PackagingService.GetHistory:output_type -> creativanta.production.v1.PackagingServiceGetHistoryResponse
-	220, // 431: creativanta.production.v1.PackagingService.RunQA:output_type -> creativanta.production.v1.PackagingServiceRunQAResponse
-	359, // [359:432] is the sub-list for method output_type
-	286, // [286:359] is the sub-list for method input_type
-	286, // [286:286] is the sub-list for extension type_name
-	286, // [286:286] is the sub-list for extension extendee
-	0,   // [0:286] is the sub-list for field type_name
+	232, // 243: creativanta.production.v1.DerivativeItem.attributed_revenue:type_name -> creativanta.common.v1.Money
+	233, // 244: creativanta.production.v1.DerivativeItem.source_class:type_name -> creativanta.common.v1.SourceClass
+	234, // 245: creativanta.production.v1.DerivativeItem.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	184, // 246: creativanta.production.v1.DerivativeLineageNode.children:type_name -> creativanta.production.v1.DerivativeLineageNode
+	182, // 247: creativanta.production.v1.DerivativeStats.top_derivatives:type_name -> creativanta.production.v1.DerivativeItem
+	232, // 248: creativanta.production.v1.DerivativeStats.aggregate_revenue:type_name -> creativanta.common.v1.Money
+	234, // 249: creativanta.production.v1.DerivativeStats.confidence:type_name -> creativanta.common.v1.ConfidenceBand
+	228, // 250: creativanta.production.v1.DerivativeServiceListRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	229, // 251: creativanta.production.v1.DerivativeServiceListRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	182, // 252: creativanta.production.v1.DerivativeServiceListResponse.derivatives:type_name -> creativanta.production.v1.DerivativeItem
+	230, // 253: creativanta.production.v1.DerivativeServiceListResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	231, // 254: creativanta.production.v1.DerivativeServiceCreateRequest.context:type_name -> creativanta.common.v1.CommandContext
+	182, // 255: creativanta.production.v1.DerivativeServiceCreateResponse.derivative:type_name -> creativanta.production.v1.DerivativeItem
+	231, // 256: creativanta.production.v1.DerivativeServiceBatchTagRequest.context:type_name -> creativanta.common.v1.CommandContext
+	183, // 257: creativanta.production.v1.DerivativeServiceBatchTagResponse.failures:type_name -> creativanta.production.v1.BatchItemError
+	228, // 258: creativanta.production.v1.DerivativeServiceGetLineageRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	184, // 259: creativanta.production.v1.DerivativeServiceGetLineageResponse.root_source:type_name -> creativanta.production.v1.DerivativeLineageNode
+	184, // 260: creativanta.production.v1.DerivativeServiceGetLineageResponse.target_node:type_name -> creativanta.production.v1.DerivativeLineageNode
+	184, // 261: creativanta.production.v1.DerivativeServiceGetLineageResponse.chain:type_name -> creativanta.production.v1.DerivativeLineageNode
+	231, // 262: creativanta.production.v1.DerivativeServiceDeleteRequest.context:type_name -> creativanta.common.v1.CommandContext
+	231, // 263: creativanta.production.v1.DerivativeServicePromoteRequest.context:type_name -> creativanta.common.v1.CommandContext
+	182, // 264: creativanta.production.v1.DerivativeServicePromoteResponse.derivative:type_name -> creativanta.production.v1.DerivativeItem
+	228, // 265: creativanta.production.v1.DerivativeServiceGetStatsRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	185, // 266: creativanta.production.v1.DerivativeServiceGetStatsResponse.stats:type_name -> creativanta.production.v1.DerivativeStats
+	227, // 267: creativanta.production.v1.UploadPreset.created_at:type_name -> google.protobuf.Timestamp
+	227, // 268: creativanta.production.v1.OverrideAuditRecord.created_at:type_name -> google.protobuf.Timestamp
+	200, // 269: creativanta.production.v1.PackagingReport.components:type_name -> creativanta.production.v1.PackagingScoreComponent
+	201, // 270: creativanta.production.v1.PackagingReport.readiness_checks:type_name -> creativanta.production.v1.ReadinessCheckItem
+	202, // 271: creativanta.production.v1.PackagingReport.compliance_details:type_name -> creativanta.production.v1.ComplianceScanDetail
+	205, // 272: creativanta.production.v1.PackagingReport.applied_overrides:type_name -> creativanta.production.v1.OverrideAuditRecord
+	227, // 273: creativanta.production.v1.PackagingReport.created_at:type_name -> google.protobuf.Timestamp
+	231, // 274: creativanta.production.v1.PackagingServiceScoreRequest.context:type_name -> creativanta.common.v1.CommandContext
+	206, // 275: creativanta.production.v1.PackagingServiceScoreResponse.report:type_name -> creativanta.production.v1.PackagingReport
+	231, // 276: creativanta.production.v1.PackagingServiceScanComplianceRequest.context:type_name -> creativanta.common.v1.CommandContext
+	202, // 277: creativanta.production.v1.PackagingServiceScanComplianceResponse.details:type_name -> creativanta.production.v1.ComplianceScanDetail
+	228, // 278: creativanta.production.v1.PackagingServiceGetReportRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	206, // 279: creativanta.production.v1.PackagingServiceGetReportResponse.report:type_name -> creativanta.production.v1.PackagingReport
+	231, // 280: creativanta.production.v1.PackagingServiceBatchScoreRequest.context:type_name -> creativanta.common.v1.CommandContext
+	206, // 281: creativanta.production.v1.PackagingServiceBatchScoreResponse.reports:type_name -> creativanta.production.v1.PackagingReport
+	183, // 282: creativanta.production.v1.PackagingServiceBatchScoreResponse.failures:type_name -> creativanta.production.v1.BatchItemError
+	231, // 283: creativanta.production.v1.PackagingServiceOverrideResultRequest.context:type_name -> creativanta.common.v1.CommandContext
+	206, // 284: creativanta.production.v1.PackagingServiceOverrideResultResponse.updated_report:type_name -> creativanta.production.v1.PackagingReport
+	228, // 285: creativanta.production.v1.PackagingServiceGetHistoryRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	229, // 286: creativanta.production.v1.PackagingServiceGetHistoryRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	206, // 287: creativanta.production.v1.PackagingServiceGetHistoryResponse.reports:type_name -> creativanta.production.v1.PackagingReport
+	230, // 288: creativanta.production.v1.PackagingServiceGetHistoryResponse.pagination:type_name -> creativanta.common.v1.PaginatedResponse
+	231, // 289: creativanta.production.v1.PackagingServiceRunQARequest.context:type_name -> creativanta.common.v1.CommandContext
+	206, // 290: creativanta.production.v1.PackagingServiceRunQAResponse.report:type_name -> creativanta.production.v1.PackagingReport
+	21,  // 291: creativanta.production.v1.StudioService.GetModes:input_type -> creativanta.production.v1.GetModesRequest
+	23,  // 292: creativanta.production.v1.StudioService.GetActiveJobs:input_type -> creativanta.production.v1.GetActiveJobsRequest
+	25,  // 293: creativanta.production.v1.StudioService.GetRecentAssets:input_type -> creativanta.production.v1.GetRecentAssetsRequest
+	27,  // 294: creativanta.production.v1.StudioService.Cancel:input_type -> creativanta.production.v1.CancelRequest
+	29,  // 295: creativanta.production.v1.StudioService.Retry:input_type -> creativanta.production.v1.RetryRequest
+	32,  // 296: creativanta.production.v1.AssetService.Generate:input_type -> creativanta.production.v1.GenerateRequest
+	34,  // 297: creativanta.production.v1.AssetService.GetStatus:input_type -> creativanta.production.v1.GetStatusRequest
+	36,  // 298: creativanta.production.v1.AssetService.List:input_type -> creativanta.production.v1.ListRequest
+	38,  // 299: creativanta.production.v1.AssetService.Get:input_type -> creativanta.production.v1.GetRequest
+	40,  // 300: creativanta.production.v1.AssetService.Approve:input_type -> creativanta.production.v1.ApproveRequest
+	42,  // 301: creativanta.production.v1.AssetService.PromoteCanonical:input_type -> creativanta.production.v1.PromoteCanonicalRequest
+	44,  // 302: creativanta.production.v1.AssetService.Upload:input_type -> creativanta.production.v1.UploadRequest
+	150, // 303: creativanta.production.v1.AssetService.EvaluateDrift:input_type -> creativanta.production.v1.EvaluateDriftRequest
+	152, // 304: creativanta.production.v1.AssetService.OverrideDriftViolation:input_type -> creativanta.production.v1.OverrideDriftViolationRequest
+	56,  // 305: creativanta.production.v1.QuickEditService.SaveDraft:input_type -> creativanta.production.v1.QuickEditServiceSaveDraftRequest
+	61,  // 306: creativanta.production.v1.TranslationService.Create:input_type -> creativanta.production.v1.TranslationServiceCreateRequest
+	63,  // 307: creativanta.production.v1.TranslationService.Get:input_type -> creativanta.production.v1.TranslationServiceGetRequest
+	65,  // 308: creativanta.production.v1.TranslationService.List:input_type -> creativanta.production.v1.TranslationServiceListRequest
+	68,  // 309: creativanta.production.v1.SoundStudioService.GenerateMusic:input_type -> creativanta.production.v1.SoundStudioServiceGenerateMusicRequest
+	70,  // 310: creativanta.production.v1.SoundStudioService.GenerateSFX:input_type -> creativanta.production.v1.SoundStudioServiceGenerateSFXRequest
+	72,  // 311: creativanta.production.v1.SoundStudioService.AnalyzeBeat:input_type -> creativanta.production.v1.SoundStudioServiceAnalyzeBeatRequest
+	74,  // 312: creativanta.production.v1.SoundStudioService.ListSoundLibrary:input_type -> creativanta.production.v1.SoundStudioServiceListSoundLibraryRequest
+	76,  // 313: creativanta.production.v1.SoundStudioService.GetSound:input_type -> creativanta.production.v1.SoundStudioServiceGetSoundRequest
+	78,  // 314: creativanta.production.v1.SoundStudioService.PreviewSound:input_type -> creativanta.production.v1.SoundStudioServicePreviewSoundRequest
+	81,  // 315: creativanta.production.v1.VoiceCloneService.Create:input_type -> creativanta.production.v1.VoiceCloneServiceCreateRequest
+	83,  // 316: creativanta.production.v1.VoiceCloneService.Get:input_type -> creativanta.production.v1.VoiceCloneServiceGetRequest
+	85,  // 317: creativanta.production.v1.VoiceCloneService.List:input_type -> creativanta.production.v1.VoiceCloneServiceListRequest
+	87,  // 318: creativanta.production.v1.VoiceCloneService.Delete:input_type -> creativanta.production.v1.VoiceCloneServiceDeleteRequest
+	89,  // 319: creativanta.production.v1.VoiceCloneService.GenerateVoiceover:input_type -> creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverRequest
+	91,  // 320: creativanta.production.v1.VoiceCloneService.GetConsentStatus:input_type -> creativanta.production.v1.VoiceCloneServiceGetConsentStatusRequest
+	100, // 321: creativanta.production.v1.RemixService.Analyze:input_type -> creativanta.production.v1.RemixServiceAnalyzeRequest
+	102, // 322: creativanta.production.v1.RemixService.GetBlueprint:input_type -> creativanta.production.v1.RemixServiceGetBlueprintRequest
+	104, // 323: creativanta.production.v1.RemixService.Generate:input_type -> creativanta.production.v1.RemixServiceGenerateRequest
+	106, // 324: creativanta.production.v1.RemixService.Regenerate:input_type -> creativanta.production.v1.RemixServiceRegenerateRequest
+	108, // 325: creativanta.production.v1.VideoEditJobService.Create:input_type -> creativanta.production.v1.VideoEditJobServiceCreateRequest
+	110, // 326: creativanta.production.v1.VideoEditJobService.Get:input_type -> creativanta.production.v1.VideoEditJobServiceGetRequest
+	112, // 327: creativanta.production.v1.VideoEditJobService.List:input_type -> creativanta.production.v1.VideoEditJobServiceListRequest
+	114, // 328: creativanta.production.v1.VideoEditJobService.Cancel:input_type -> creativanta.production.v1.VideoEditJobServiceCancelRequest
+	116, // 329: creativanta.production.v1.VideoEditJobService.Retry:input_type -> creativanta.production.v1.VideoEditJobServiceRetryRequest
+	123, // 330: creativanta.production.v1.ClipFactoryService.Analyze:input_type -> creativanta.production.v1.ClipFactoryServiceAnalyzeRequest
+	125, // 331: creativanta.production.v1.ClipFactoryService.GetCollection:input_type -> creativanta.production.v1.ClipFactoryServiceGetCollectionRequest
+	127, // 332: creativanta.production.v1.ClipFactoryService.ProcessClips:input_type -> creativanta.production.v1.ClipFactoryServiceProcessClipsRequest
+	131, // 333: creativanta.production.v1.StylePackService.Extract:input_type -> creativanta.production.v1.StylePackServiceExtractRequest
+	133, // 334: creativanta.production.v1.StylePackService.Create:input_type -> creativanta.production.v1.StylePackServiceCreateRequest
+	135, // 335: creativanta.production.v1.StylePackService.Get:input_type -> creativanta.production.v1.StylePackServiceGetRequest
+	137, // 336: creativanta.production.v1.StylePackService.List:input_type -> creativanta.production.v1.StylePackServiceListRequest
+	139, // 337: creativanta.production.v1.StylePackService.Apply:input_type -> creativanta.production.v1.StylePackServiceApplyRequest
+	141, // 338: creativanta.production.v1.StylePackService.Delete:input_type -> creativanta.production.v1.StylePackServiceDeleteRequest
+	143, // 339: creativanta.production.v1.AIService.GenerateCharacterPreview:input_type -> creativanta.production.v1.GenerateCharacterPreviewRequest
+	145, // 340: creativanta.production.v1.AIService.QuoteCharacterPreview:input_type -> creativanta.production.v1.QuoteCharacterPreviewRequest
+	147, // 341: creativanta.production.v1.AIService.AnalyzeStyle:input_type -> creativanta.production.v1.AnalyzeStyleRequest
+	159, // 342: creativanta.production.v1.AIService.GenerateThumbnails:input_type -> creativanta.production.v1.GenerateThumbnailsRequest
+	164, // 343: creativanta.production.v1.ProductShowcaseService.Create:input_type -> creativanta.production.v1.ProductShowcaseServiceCreateRequest
+	167, // 344: creativanta.production.v1.ProductShowcaseService.CreateBatch:input_type -> creativanta.production.v1.ProductShowcaseServiceCreateBatchRequest
+	170, // 345: creativanta.production.v1.ProductShowcaseService.Get:input_type -> creativanta.production.v1.ProductShowcaseServiceGetRequest
+	172, // 346: creativanta.production.v1.ProductShowcaseService.List:input_type -> creativanta.production.v1.ProductShowcaseServiceListRequest
+	176, // 347: creativanta.production.v1.LinkToVideoService.Scrape:input_type -> creativanta.production.v1.LinkToVideoServiceScrapeRequest
+	178, // 348: creativanta.production.v1.LinkToVideoService.Generate:input_type -> creativanta.production.v1.LinkToVideoServiceGenerateRequest
+	180, // 349: creativanta.production.v1.LinkToVideoService.Get:input_type -> creativanta.production.v1.LinkToVideoServiceGetRequest
+	186, // 350: creativanta.production.v1.DerivativeService.List:input_type -> creativanta.production.v1.DerivativeServiceListRequest
+	188, // 351: creativanta.production.v1.DerivativeService.Create:input_type -> creativanta.production.v1.DerivativeServiceCreateRequest
+	190, // 352: creativanta.production.v1.DerivativeService.BatchTag:input_type -> creativanta.production.v1.DerivativeServiceBatchTagRequest
+	192, // 353: creativanta.production.v1.DerivativeService.GetLineage:input_type -> creativanta.production.v1.DerivativeServiceGetLineageRequest
+	194, // 354: creativanta.production.v1.DerivativeService.Delete:input_type -> creativanta.production.v1.DerivativeServiceDeleteRequest
+	196, // 355: creativanta.production.v1.DerivativeService.Promote:input_type -> creativanta.production.v1.DerivativeServicePromoteRequest
+	198, // 356: creativanta.production.v1.DerivativeService.GetStats:input_type -> creativanta.production.v1.DerivativeServiceGetStatsRequest
+	207, // 357: creativanta.production.v1.PackagingService.Score:input_type -> creativanta.production.v1.PackagingServiceScoreRequest
+	209, // 358: creativanta.production.v1.PackagingService.ScanCompliance:input_type -> creativanta.production.v1.PackagingServiceScanComplianceRequest
+	211, // 359: creativanta.production.v1.PackagingService.GetReport:input_type -> creativanta.production.v1.PackagingServiceGetReportRequest
+	213, // 360: creativanta.production.v1.PackagingService.BatchScore:input_type -> creativanta.production.v1.PackagingServiceBatchScoreRequest
+	215, // 361: creativanta.production.v1.PackagingService.OverrideResult:input_type -> creativanta.production.v1.PackagingServiceOverrideResultRequest
+	217, // 362: creativanta.production.v1.PackagingService.GetHistory:input_type -> creativanta.production.v1.PackagingServiceGetHistoryRequest
+	219, // 363: creativanta.production.v1.PackagingService.RunQA:input_type -> creativanta.production.v1.PackagingServiceRunQARequest
+	22,  // 364: creativanta.production.v1.StudioService.GetModes:output_type -> creativanta.production.v1.GetModesResponse
+	24,  // 365: creativanta.production.v1.StudioService.GetActiveJobs:output_type -> creativanta.production.v1.GetActiveJobsResponse
+	26,  // 366: creativanta.production.v1.StudioService.GetRecentAssets:output_type -> creativanta.production.v1.GetRecentAssetsResponse
+	28,  // 367: creativanta.production.v1.StudioService.Cancel:output_type -> creativanta.production.v1.CancelResponse
+	30,  // 368: creativanta.production.v1.StudioService.Retry:output_type -> creativanta.production.v1.RetryResponse
+	33,  // 369: creativanta.production.v1.AssetService.Generate:output_type -> creativanta.production.v1.GenerateResponse
+	35,  // 370: creativanta.production.v1.AssetService.GetStatus:output_type -> creativanta.production.v1.GetStatusResponse
+	37,  // 371: creativanta.production.v1.AssetService.List:output_type -> creativanta.production.v1.ListResponse
+	39,  // 372: creativanta.production.v1.AssetService.Get:output_type -> creativanta.production.v1.GetResponse
+	41,  // 373: creativanta.production.v1.AssetService.Approve:output_type -> creativanta.production.v1.ApproveResponse
+	43,  // 374: creativanta.production.v1.AssetService.PromoteCanonical:output_type -> creativanta.production.v1.PromoteCanonicalResponse
+	45,  // 375: creativanta.production.v1.AssetService.Upload:output_type -> creativanta.production.v1.UploadResponse
+	151, // 376: creativanta.production.v1.AssetService.EvaluateDrift:output_type -> creativanta.production.v1.EvaluateDriftResponse
+	153, // 377: creativanta.production.v1.AssetService.OverrideDriftViolation:output_type -> creativanta.production.v1.OverrideDriftViolationResponse
+	57,  // 378: creativanta.production.v1.QuickEditService.SaveDraft:output_type -> creativanta.production.v1.QuickEditServiceSaveDraftResponse
+	62,  // 379: creativanta.production.v1.TranslationService.Create:output_type -> creativanta.production.v1.TranslationServiceCreateResponse
+	64,  // 380: creativanta.production.v1.TranslationService.Get:output_type -> creativanta.production.v1.TranslationServiceGetResponse
+	66,  // 381: creativanta.production.v1.TranslationService.List:output_type -> creativanta.production.v1.TranslationServiceListResponse
+	69,  // 382: creativanta.production.v1.SoundStudioService.GenerateMusic:output_type -> creativanta.production.v1.SoundStudioServiceGenerateMusicResponse
+	71,  // 383: creativanta.production.v1.SoundStudioService.GenerateSFX:output_type -> creativanta.production.v1.SoundStudioServiceGenerateSFXResponse
+	73,  // 384: creativanta.production.v1.SoundStudioService.AnalyzeBeat:output_type -> creativanta.production.v1.SoundStudioServiceAnalyzeBeatResponse
+	75,  // 385: creativanta.production.v1.SoundStudioService.ListSoundLibrary:output_type -> creativanta.production.v1.SoundStudioServiceListSoundLibraryResponse
+	77,  // 386: creativanta.production.v1.SoundStudioService.GetSound:output_type -> creativanta.production.v1.SoundStudioServiceGetSoundResponse
+	79,  // 387: creativanta.production.v1.SoundStudioService.PreviewSound:output_type -> creativanta.production.v1.SoundStudioServicePreviewSoundResponse
+	82,  // 388: creativanta.production.v1.VoiceCloneService.Create:output_type -> creativanta.production.v1.VoiceCloneServiceCreateResponse
+	84,  // 389: creativanta.production.v1.VoiceCloneService.Get:output_type -> creativanta.production.v1.VoiceCloneServiceGetResponse
+	86,  // 390: creativanta.production.v1.VoiceCloneService.List:output_type -> creativanta.production.v1.VoiceCloneServiceListResponse
+	88,  // 391: creativanta.production.v1.VoiceCloneService.Delete:output_type -> creativanta.production.v1.VoiceCloneServiceDeleteResponse
+	90,  // 392: creativanta.production.v1.VoiceCloneService.GenerateVoiceover:output_type -> creativanta.production.v1.VoiceCloneServiceGenerateVoiceoverResponse
+	92,  // 393: creativanta.production.v1.VoiceCloneService.GetConsentStatus:output_type -> creativanta.production.v1.VoiceCloneServiceGetConsentStatusResponse
+	101, // 394: creativanta.production.v1.RemixService.Analyze:output_type -> creativanta.production.v1.RemixServiceAnalyzeResponse
+	103, // 395: creativanta.production.v1.RemixService.GetBlueprint:output_type -> creativanta.production.v1.RemixServiceGetBlueprintResponse
+	105, // 396: creativanta.production.v1.RemixService.Generate:output_type -> creativanta.production.v1.RemixServiceGenerateResponse
+	107, // 397: creativanta.production.v1.RemixService.Regenerate:output_type -> creativanta.production.v1.RemixServiceRegenerateResponse
+	109, // 398: creativanta.production.v1.VideoEditJobService.Create:output_type -> creativanta.production.v1.VideoEditJobServiceCreateResponse
+	111, // 399: creativanta.production.v1.VideoEditJobService.Get:output_type -> creativanta.production.v1.VideoEditJobServiceGetResponse
+	113, // 400: creativanta.production.v1.VideoEditJobService.List:output_type -> creativanta.production.v1.VideoEditJobServiceListResponse
+	115, // 401: creativanta.production.v1.VideoEditJobService.Cancel:output_type -> creativanta.production.v1.VideoEditJobServiceCancelResponse
+	117, // 402: creativanta.production.v1.VideoEditJobService.Retry:output_type -> creativanta.production.v1.VideoEditJobServiceRetryResponse
+	124, // 403: creativanta.production.v1.ClipFactoryService.Analyze:output_type -> creativanta.production.v1.ClipFactoryServiceAnalyzeResponse
+	126, // 404: creativanta.production.v1.ClipFactoryService.GetCollection:output_type -> creativanta.production.v1.ClipFactoryServiceGetCollectionResponse
+	128, // 405: creativanta.production.v1.ClipFactoryService.ProcessClips:output_type -> creativanta.production.v1.ClipFactoryServiceProcessClipsResponse
+	132, // 406: creativanta.production.v1.StylePackService.Extract:output_type -> creativanta.production.v1.StylePackServiceExtractResponse
+	134, // 407: creativanta.production.v1.StylePackService.Create:output_type -> creativanta.production.v1.StylePackServiceCreateResponse
+	136, // 408: creativanta.production.v1.StylePackService.Get:output_type -> creativanta.production.v1.StylePackServiceGetResponse
+	138, // 409: creativanta.production.v1.StylePackService.List:output_type -> creativanta.production.v1.StylePackServiceListResponse
+	140, // 410: creativanta.production.v1.StylePackService.Apply:output_type -> creativanta.production.v1.StylePackServiceApplyResponse
+	142, // 411: creativanta.production.v1.StylePackService.Delete:output_type -> creativanta.production.v1.StylePackServiceDeleteResponse
+	144, // 412: creativanta.production.v1.AIService.GenerateCharacterPreview:output_type -> creativanta.production.v1.GenerateCharacterPreviewResponse
+	146, // 413: creativanta.production.v1.AIService.QuoteCharacterPreview:output_type -> creativanta.production.v1.QuoteCharacterPreviewResponse
+	148, // 414: creativanta.production.v1.AIService.AnalyzeStyle:output_type -> creativanta.production.v1.AnalyzeStyleResponse
+	160, // 415: creativanta.production.v1.AIService.GenerateThumbnails:output_type -> creativanta.production.v1.GenerateThumbnailsResponse
+	165, // 416: creativanta.production.v1.ProductShowcaseService.Create:output_type -> creativanta.production.v1.ProductShowcaseServiceCreateResponse
+	169, // 417: creativanta.production.v1.ProductShowcaseService.CreateBatch:output_type -> creativanta.production.v1.ProductShowcaseServiceCreateBatchResponse
+	171, // 418: creativanta.production.v1.ProductShowcaseService.Get:output_type -> creativanta.production.v1.ProductShowcaseServiceGetResponse
+	173, // 419: creativanta.production.v1.ProductShowcaseService.List:output_type -> creativanta.production.v1.ProductShowcaseServiceListResponse
+	177, // 420: creativanta.production.v1.LinkToVideoService.Scrape:output_type -> creativanta.production.v1.LinkToVideoServiceScrapeResponse
+	179, // 421: creativanta.production.v1.LinkToVideoService.Generate:output_type -> creativanta.production.v1.LinkToVideoServiceGenerateResponse
+	181, // 422: creativanta.production.v1.LinkToVideoService.Get:output_type -> creativanta.production.v1.LinkToVideoServiceGetResponse
+	187, // 423: creativanta.production.v1.DerivativeService.List:output_type -> creativanta.production.v1.DerivativeServiceListResponse
+	189, // 424: creativanta.production.v1.DerivativeService.Create:output_type -> creativanta.production.v1.DerivativeServiceCreateResponse
+	191, // 425: creativanta.production.v1.DerivativeService.BatchTag:output_type -> creativanta.production.v1.DerivativeServiceBatchTagResponse
+	193, // 426: creativanta.production.v1.DerivativeService.GetLineage:output_type -> creativanta.production.v1.DerivativeServiceGetLineageResponse
+	195, // 427: creativanta.production.v1.DerivativeService.Delete:output_type -> creativanta.production.v1.DerivativeServiceDeleteResponse
+	197, // 428: creativanta.production.v1.DerivativeService.Promote:output_type -> creativanta.production.v1.DerivativeServicePromoteResponse
+	199, // 429: creativanta.production.v1.DerivativeService.GetStats:output_type -> creativanta.production.v1.DerivativeServiceGetStatsResponse
+	208, // 430: creativanta.production.v1.PackagingService.Score:output_type -> creativanta.production.v1.PackagingServiceScoreResponse
+	210, // 431: creativanta.production.v1.PackagingService.ScanCompliance:output_type -> creativanta.production.v1.PackagingServiceScanComplianceResponse
+	212, // 432: creativanta.production.v1.PackagingService.GetReport:output_type -> creativanta.production.v1.PackagingServiceGetReportResponse
+	214, // 433: creativanta.production.v1.PackagingService.BatchScore:output_type -> creativanta.production.v1.PackagingServiceBatchScoreResponse
+	216, // 434: creativanta.production.v1.PackagingService.OverrideResult:output_type -> creativanta.production.v1.PackagingServiceOverrideResultResponse
+	218, // 435: creativanta.production.v1.PackagingService.GetHistory:output_type -> creativanta.production.v1.PackagingServiceGetHistoryResponse
+	220, // 436: creativanta.production.v1.PackagingService.RunQA:output_type -> creativanta.production.v1.PackagingServiceRunQAResponse
+	364, // [364:437] is the sub-list for method output_type
+	291, // [291:364] is the sub-list for method input_type
+	291, // [291:291] is the sub-list for extension type_name
+	291, // [291:291] is the sub-list for extension extendee
+	0,   // [0:291] is the sub-list for field type_name
 }
 
 func init() { file_creativanta_production_v1_production_proto_init() }

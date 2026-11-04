@@ -18,6 +18,7 @@ export * from './continuity';
 export * from './copilot';
 export * from './publish';
 export * from './engagement';
+export * from './attribution';
 export { default as SourceChainLineage } from './content/SourceChainLineage.svelte';
 export { default as ConcurrentConflictBanner } from './content/ConcurrentConflictBanner.svelte';
 export { default as CreativeAssistantPublishGuard } from './content/CreativeAssistantPublishGuard.svelte';

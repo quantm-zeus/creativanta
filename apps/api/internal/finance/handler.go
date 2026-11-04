@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"connectrpc.com/connect"
 	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
@@ -61,6 +62,40 @@ func toProtoSourceClass(sc string) commonv1.SourceClass {
 		return commonv1.SourceClass_SOURCE_CLASS_UNRECONCILED
 	default:
 		return commonv1.SourceClass_SOURCE_CLASS_UNSPECIFIED
+	}
+}
+
+func fromProtoConfidenceBand(band commonv1.ConfidenceBand) string {
+	switch band {
+	case commonv1.ConfidenceBand_CONFIDENCE_BAND_HIGH:
+		return ConfidenceHigh
+	case commonv1.ConfidenceBand_CONFIDENCE_BAND_MEDIUM_HIGH:
+		return ConfidenceMediumHigh
+	case commonv1.ConfidenceBand_CONFIDENCE_BAND_MEDIUM:
+		return ConfidenceMedium
+	case commonv1.ConfidenceBand_CONFIDENCE_BAND_LOW_MEDIUM:
+		return ConfidenceLowMedium
+	case commonv1.ConfidenceBand_CONFIDENCE_BAND_LOW:
+		return ConfidenceLow
+	default:
+		return ConfidenceMedium
+	}
+}
+
+func fromProtoSourceClass(sc commonv1.SourceClass) string {
+	switch sc {
+	case commonv1.SourceClass_SOURCE_CLASS_OFFICIAL:
+		return SourceClassOfficial
+	case commonv1.SourceClass_SOURCE_CLASS_IMPORTED:
+		return SourceClassImported
+	case commonv1.SourceClass_SOURCE_CLASS_INFERRED:
+		return SourceClassInferred
+	case commonv1.SourceClass_SOURCE_CLASS_ESTIMATED:
+		return SourceClassEstimated
+	case commonv1.SourceClass_SOURCE_CLASS_UNRECONCILED:
+		return SourceClassUnreconciled
+	default:
+		return SourceClassImported
 	}
 }
 
@@ -1446,5 +1481,232 @@ func (h *ProofHandler) List(ctx context.Context, req *connect.Request[financev1.
 			TotalCount: &total,
 			HasMore:    int64(offset+len(bundles)) < total,
 		},
+	}), nil
+}
+
+// ============================================================================
+// ContentRevenueService Handler
+// ============================================================================
+
+type ContentRevenueHandler struct {
+	service  *Service
+	bindings *rbac.Registry
+}
+
+func NewContentRevenueHandler(service *Service, bindings ...*rbac.Registry) *ContentRevenueHandler {
+	var b *rbac.Registry
+	if len(bindings) > 0 {
+		b = bindings[0]
+	}
+	return &ContentRevenueHandler{service: service, bindings: b}
+}
+
+var _ financev1connect.ContentRevenueServiceHandler = (*ContentRevenueHandler)(nil)
+
+func (h *ContentRevenueHandler) authorize(ctx context.Context, rpcName, wsID string) error {
+	if h.bindings == nil {
+		return nil
+	}
+	pctx, ok := rbac.PolicyContextFromContext(ctx)
+	if !ok {
+		return nil
+	}
+	if pctx.WorkspaceID != "" && pctx.WorkspaceID != wsID {
+		return connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
+	}
+	pctx.WorkspaceID = wsID
+	_, err := h.bindings.Authorize(rpcName, pctx)
+	if err != nil {
+		return connect.NewError(connect.CodePermissionDenied, err)
+	}
+	return nil
+}
+
+func (h *ContentRevenueHandler) GetAttribution(ctx context.Context, req *connect.Request[financev1.ContentRevenueServiceGetAttributionRequest]) (*connect.Response[financev1.ContentRevenueServiceGetAttributionResponse], error) {
+	wsID := req.Msg.WorkspaceId
+	if wsID == "" {
+		resolved, err := resolveTenantContext(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		wsID = resolved
+	}
+	if err := h.authorize(ctx, "ContentRevenueService/GetAttribution", wsID); err != nil {
+		return nil, err
+	}
+
+	contentRev, matchingAttrs, summary, err := h.service.AttributionEngine().GetContentRevenueAttribution(ctx, wsID, req.Msg.ContentId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	var protoRecords []*financev1.ContentAttributionRecord
+	for _, a := range matchingAttrs {
+		protoRecords = append(protoRecords, ConvertEntityToProto(a))
+	}
+
+	return connect.NewResponse(&financev1.ContentRevenueServiceGetAttributionResponse{
+		Attribution:        contentRev,
+		AttributionRecords: protoRecords,
+		WorkspaceSummary:   summary,
+	}), nil
+}
+
+// ============================================================================
+// AttributionService Handler
+// ============================================================================
+
+type AttributionHandler struct {
+	service  *Service
+	bindings *rbac.Registry
+}
+
+func NewAttributionHandler(service *Service, bindings ...*rbac.Registry) *AttributionHandler {
+	var b *rbac.Registry
+	if len(bindings) > 0 {
+		b = bindings[0]
+	}
+	return &AttributionHandler{service: service, bindings: b}
+}
+
+var _ financev1connect.AttributionServiceHandler = (*AttributionHandler)(nil)
+
+func (h *AttributionHandler) authorize(ctx context.Context, rpcName, wsID string) error {
+	if h.bindings == nil {
+		return nil
+	}
+	pctx, ok := rbac.PolicyContextFromContext(ctx)
+	if !ok {
+		return nil
+	}
+	if pctx.WorkspaceID != "" && pctx.WorkspaceID != wsID {
+		return connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
+	}
+	pctx.WorkspaceID = wsID
+	_, err := h.bindings.Authorize(rpcName, pctx)
+	if err != nil {
+		return connect.NewError(connect.CodePermissionDenied, err)
+	}
+	return nil
+}
+
+func (h *AttributionHandler) GetByContent(ctx context.Context, req *connect.Request[financev1.AttributionServiceGetByContentRequest]) (*connect.Response[financev1.AttributionServiceGetByContentResponse], error) {
+	wsID := req.Msg.WorkspaceId
+	if wsID == "" {
+		resolved, err := resolveTenantContext(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		wsID = resolved
+	}
+	if err := h.authorize(ctx, "AttributionService/GetByContent", wsID); err != nil {
+		return nil, err
+	}
+
+	contentID := req.Msg.PublishItemId
+	if contentID == "" {
+		contentID = req.Msg.ChannelPostId
+	}
+
+	contentRev, matchingAttrs, _, err := h.service.AttributionEngine().GetContentRevenueAttribution(ctx, wsID, contentID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	var protoRecords []*financev1.ContentAttributionRecord
+	for _, a := range matchingAttrs {
+		protoRecords = append(protoRecords, ConvertEntityToProto(a))
+	}
+
+	var summary *financev1.ContentAttributionSummary
+	if contentRev != nil {
+		summary = &financev1.ContentAttributionSummary{
+			PublishItemId:          contentID,
+			TotalRecords:           int64(len(matchingAttrs)),
+			UniqueOrders:           contentRev.DirectOrderCount,
+			TotalAttributedRevenue: contentRev.AttributedRevenue,
+			Confidence:             contentRev.Confidence,
+			SourceClassMixSummary:  contentRev.Status,
+		}
+	}
+
+	total := int64(len(protoRecords))
+	return connect.NewResponse(&financev1.AttributionServiceGetByContentResponse{
+		Records: protoRecords,
+		Summary: summary,
+		Pagination: &commonv1.PaginatedResponse{
+			TotalCount: &total,
+			HasMore:    false,
+		},
+	}), nil
+}
+
+func (h *AttributionHandler) RecordAttribution(ctx context.Context, req *connect.Request[financev1.AttributionServiceRecordAttributionRequest]) (*connect.Response[financev1.AttributionServiceRecordAttributionResponse], error) {
+	wsID, err := resolveTenantContext(ctx, req.Msg.Context)
+	if err != nil {
+		if req.Msg.WorkspaceId != "" {
+			wsID = req.Msg.WorkspaceId
+		} else {
+			return nil, err
+		}
+	}
+	if err := h.authorize(ctx, "AttributionService/RecordAttribution", wsID); err != nil {
+		return nil, err
+	}
+
+	amount, err := tenantdb.ParseExactDecimal(req.Msg.RevenueAttributed.GetAmount())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid revenue amount: %w", err))
+	}
+
+	sourceClass := fromProtoSourceClass(req.Msg.SourceClass)
+	confidence := fromProtoConfidenceBand(req.Msg.Confidence)
+
+	// Check if live API authenticated caller
+	isLiveAPI := false
+	if sub, ok := transportauth.PrincipalFromContext(ctx); ok && sub.InternalAdmin {
+		isLiveAPI = true
+	}
+
+	entity := &ContentAttributionEntity{
+		WorkspaceID:       wsID,
+		PublishItemID:     req.Msg.PublishItemId,
+		ChannelPostID:     req.Msg.ChannelPostId,
+		OrderID:           req.Msg.OrderId,
+		AttributionType:   req.Msg.AttributionType,
+		RevenueAttributed: amount,
+		SourceClass:       sourceClass,
+		Confidence:        confidence,
+		UTMSource:         req.Msg.UtmSource,
+		UTMMedium:         req.Msg.UtmMedium,
+		UTMCampaign:       req.Msg.UtmCampaign,
+	}
+
+	recorded, err := h.service.AttributionEngine().RecordAttribution(ctx, entity, isLiveAPI)
+	if err != nil {
+		if errors.Is(err, ErrAttributionCapacityExceeded) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
+		if errors.Is(err, ErrImportedProofCannotBeOfficial) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	order, hasOrder := h.service.AttributionEngine().GetCanonicalOrder(recorded.OrderID)
+	var totalRev, allocatedRev, remCap *commonv1.Money
+	if hasOrder {
+		totalRev = &commonv1.Money{Amount: order.NetRevenue.Fixed6String(), Currency: order.Currency}
+		alloc, cap := h.service.AttributionEngine().GetOrderAllocationStatus(recorded.OrderID)
+		allocatedRev = &commonv1.Money{Amount: alloc.Fixed6String(), Currency: order.Currency}
+		remCap = &commonv1.Money{Amount: cap.Fixed6String(), Currency: order.Currency}
+	}
+
+	return connect.NewResponse(&financev1.AttributionServiceRecordAttributionResponse{
+		Record:                 ConvertEntityToProto(recorded),
+		OrderRecognized:        hasOrder,
+		OrderTotalRevenue:      totalRev,
+		OrderAllocatedRevenue:  allocatedRev,
+		OrderRemainingCapacity: remCap,
 	}), nil
 }

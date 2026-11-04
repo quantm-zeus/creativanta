@@ -721,3 +721,126 @@ service ProofService {
   rpc Get(ProofServiceGetRequest) returns (ProofServiceGetResponse);
   rpc List(ProofServiceListRequest) returns (ProofServiceListResponse);
 }
+
+// ============================================================================
+// Content Revenue & Attribution Messages & Services (M19 / S16)
+// ============================================================================
+
+message ContentAttributionRecord {
+  string attribution_id = 1;
+  string workspace_id = 2;
+  string publish_item_id = 3;
+  string channel_post_id = 4;
+  string order_id = 5;
+  string attribution_type = 6; // direct_click, utm_match, affiliate, organic
+  creativanta.common.v1.Money revenue_attributed = 7;
+  creativanta.common.v1.SourceClass source_class = 8;
+  creativanta.common.v1.ConfidenceBand confidence = 9;
+  string utm_source = 10;
+  string utm_medium = 11;
+  string utm_campaign = 12;
+  google.protobuf.Timestamp created_at = 13;
+}
+
+message ContentRevenueAttribution {
+  string content_id = 1;
+  string publish_item_id = 2;
+  string asset_id = 3;
+  string title = 4;
+  int64 direct_order_count = 5;
+  creativanta.common.v1.Money attributed_revenue = 6;
+  int64 views = 7;
+  int64 clicks = 8;
+  bool is_views_unknown = 9;
+  bool is_clicks_unknown = 10;
+  string unknown_reason = 11;
+  string rpm = 12;
+  bool is_rpm_unknown = 13;
+  string ctr = 14;
+  bool is_ctr_unknown = 15;
+  string conversion_rate = 16;
+  bool is_conversion_rate_unknown = 17;
+  creativanta.common.v1.ConfidenceBand confidence = 18;
+  map<string, double> source_class_percentages = 19;
+  string status = 20;
+}
+
+message WorkspaceRevenueDeduplicationSummary {
+  string workspace_id = 1;
+  int64 total_orders_attributed = 2;
+  int64 unique_orders_counted = 3;
+  creativanta.common.v1.Money canonical_workspace_revenue = 4;
+  creativanta.common.v1.Money sum_attribution_lines = 5;
+  bool is_revenue_counted_once = 6;
+  creativanta.common.v1.ConfidenceBand aggregate_confidence = 7;
+  bool includes_estimated_or_imported = 8;
+  string caveat_message = 9;
+}
+
+message ContentRevenueServiceGetAttributionRequest {
+  string workspace_id = 1;
+  string content_id = 2;
+  string period_start = 3;
+  string period_end = 4;
+}
+
+message ContentRevenueServiceGetAttributionResponse {
+  ContentRevenueAttribution attribution = 1;
+  repeated ContentAttributionRecord attribution_records = 2;
+  WorkspaceRevenueDeduplicationSummary workspace_summary = 3;
+}
+
+message AttributionServiceGetByContentRequest {
+  string workspace_id = 1;
+  string publish_item_id = 2;
+  string channel_post_id = 3;
+  creativanta.common.v1.Pagination pagination = 4;
+}
+
+message ContentAttributionSummary {
+  string publish_item_id = 1;
+  int64 total_records = 2;
+  int64 unique_orders = 3;
+  creativanta.common.v1.Money total_attributed_revenue = 4;
+  creativanta.common.v1.Money canonical_order_revenue = 5;
+  creativanta.common.v1.ConfidenceBand confidence = 6;
+  string source_class_mix_summary = 7;
+}
+
+message AttributionServiceGetByContentResponse {
+  repeated ContentAttributionRecord records = 1;
+  ContentAttributionSummary summary = 2;
+  creativanta.common.v1.PaginatedResponse pagination = 3;
+}
+
+message AttributionServiceRecordAttributionRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string publish_item_id = 3;
+  string channel_post_id = 4;
+  string order_id = 5;
+  string attribution_type = 6;
+  creativanta.common.v1.Money revenue_attributed = 7;
+  creativanta.common.v1.SourceClass source_class = 8;
+  creativanta.common.v1.ConfidenceBand confidence = 9;
+  string utm_source = 10;
+  string utm_medium = 11;
+  string utm_campaign = 12;
+}
+
+message AttributionServiceRecordAttributionResponse {
+  ContentAttributionRecord record = 1;
+  bool order_recognized = 2;
+  creativanta.common.v1.Money order_total_revenue = 3;
+  creativanta.common.v1.Money order_allocated_revenue = 4;
+  creativanta.common.v1.Money order_remaining_capacity = 5;
+}
+
+service ContentRevenueService {
+  rpc GetAttribution(ContentRevenueServiceGetAttributionRequest) returns (ContentRevenueServiceGetAttributionResponse);
+}
+
+service AttributionService {
+  rpc GetByContent(AttributionServiceGetByContentRequest) returns (AttributionServiceGetByContentResponse);
+  rpc RecordAttribution(AttributionServiceRecordAttributionRequest) returns (AttributionServiceRecordAttributionResponse);
+}

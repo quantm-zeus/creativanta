@@ -852,6 +852,21 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 			"publish_logs",
 			"channel_posts",
 		}
+	case 28:
+		requiredFragments = []requiredFragment{
+			{"content_attribution_records table", "CREATE TABLE IF NOT EXISTS content_attribution_records"},
+			{"channel_post_metrics table", "CREATE TABLE IF NOT EXISTS channel_post_metrics"},
+			{"composite tenant FK on content_attribution_records -> publish_items", "fk_content_attribution_records_publish_item_id_tenant"},
+			{"composite tenant FK on content_attribution_records -> channel_posts", "fk_content_attribution_records_channel_post_id_tenant"},
+			{"composite tenant FK on content_attribution_records -> orders", "fk_content_attribution_records_order_id_tenant"},
+			{"composite tenant FK on channel_post_metrics -> channel_posts", "fk_channel_post_metrics_channel_post_id_tenant"},
+			{"tenant_isolation policy on content_attribution_records", "CREATE POLICY tenant_isolation ON content_attribution_records"},
+			{"tenant_isolation policy on channel_post_metrics", "CREATE POLICY tenant_isolation ON channel_post_metrics"},
+		}
+		requiredRLSTables = []string{
+			"content_attribution_records",
+			"channel_post_metrics",
+		}
 	default:
 		return nil
 	}

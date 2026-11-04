@@ -246,6 +246,11 @@ func (s *DerivativeServiceServer) GetStats(ctx context.Context, req *connect.Req
 		topDerivs = append(topDerivs, derivativeRecordToProto(d))
 	}
 
+	var aggMoney *commonv1.Money
+	if stats.AggregateRevenue != "" {
+		aggMoney = &commonv1.Money{Amount: stats.AggregateRevenue, Currency: "VND"}
+	}
+
 	return connect.NewResponse(&productionv1.DerivativeServiceGetStatsResponse{
 		Stats: &productionv1.DerivativeStats{
 			SourceAssetId:             stats.SourceAssetID,
@@ -255,6 +260,17 @@ func (s *DerivativeServiceServer) GetStats(ctx context.Context, req *connect.Req
 			AverageCtr:                stats.AverageCTR,
 			TopPerformingDerivativeId: stats.TopPerformingDerivativeID,
 			TopDerivatives:            topDerivs,
+			IsViewsUnknown:            stats.IsViewsUnknown,
+			IsEngagementRateUnknown:   stats.IsEngagementRateUnknown,
+			IsCtrUnknown:              stats.IsCtrUnknown,
+			UnknownReason:             stats.UnknownReason,
+			SelectionStatus:           stats.SelectionStatus,
+			AggregateRevenue:          aggMoney,
+			TotalOrdersAttributed:     stats.TotalOrdersAttributed,
+			UniqueOrdersCounted:       stats.UniqueOrdersCounted,
+			Confidence:                toCommonConfidenceBand(stats.Confidence),
+			AverageRpm:                stats.AverageRPM,
+			IsRpmUnknown:              stats.IsRPMUnknown,
 		},
 	}), nil
 }
@@ -512,30 +528,75 @@ func (s *PackagingServiceServer) RunQA(ctx context.Context, req *connect.Request
 
 // Helper converters
 
+func toCommonSourceClass(sc string) commonv1.SourceClass {
+	switch sc {
+	case "official":
+		return commonv1.SourceClass_SOURCE_CLASS_OFFICIAL
+	case "imported":
+		return commonv1.SourceClass_SOURCE_CLASS_IMPORTED
+	case "inferred":
+		return commonv1.SourceClass_SOURCE_CLASS_INFERRED
+	case "estimated":
+		return commonv1.SourceClass_SOURCE_CLASS_ESTIMATED
+	case "unreconciled":
+		return commonv1.SourceClass_SOURCE_CLASS_UNRECONCILED
+	default:
+		return commonv1.SourceClass_SOURCE_CLASS_UNSPECIFIED
+	}
+}
+
+func toCommonConfidenceBand(cb string) commonv1.ConfidenceBand {
+	switch cb {
+	case "high":
+		return commonv1.ConfidenceBand_CONFIDENCE_BAND_HIGH
+	case "medium_high":
+		return commonv1.ConfidenceBand_CONFIDENCE_BAND_MEDIUM_HIGH
+	case "medium":
+		return commonv1.ConfidenceBand_CONFIDENCE_BAND_MEDIUM
+	case "low_medium":
+		return commonv1.ConfidenceBand_CONFIDENCE_BAND_LOW_MEDIUM
+	case "low":
+		return commonv1.ConfidenceBand_CONFIDENCE_BAND_LOW
+	default:
+		return commonv1.ConfidenceBand_CONFIDENCE_BAND_UNSPECIFIED
+	}
+}
+
 func derivativeRecordToProto(d *DerivativeRecord) *productionv1.DerivativeItem {
 	if d == nil {
 		return nil
 	}
+	var revMoney *commonv1.Money
+	if d.AttributedRevenue != "" {
+		revMoney = &commonv1.Money{Amount: d.AttributedRevenue, Currency: "VND"}
+	}
 	return &productionv1.DerivativeItem{
-		AssetId:          d.AssetID,
-		ParentAssetId:    d.ParentAssetID,
-		Title:            d.Title,
-		DerivativeType:   d.DerivativeType,
-		TargetChannel:    d.TargetChannel,
-		AspectRatio:      d.AspectRatio,
-		CtaVariant:       d.CTAVariant,
-		SubtitleLanguage: d.SubtitleLanguage,
-		DurationSeconds:  d.DurationSeconds,
-		Resolution:       d.Resolution,
-		FileUrl:          d.FileURL,
-		QualityState:     d.QualityState,
-		GenerationState:  d.GenerationState,
-		Tags:             d.Tags,
-		Views:            d.Views,
-		EngagementRate:   d.EngagementRate,
-		Ctr:              d.CTR,
-		CreatedAt:        timestamppb.New(d.CreatedAt),
-		UpdatedAt:        timestamppb.New(d.UpdatedAt),
+		AssetId:           d.AssetID,
+		ParentAssetId:     d.ParentAssetID,
+		Title:             d.Title,
+		DerivativeType:    d.DerivativeType,
+		TargetChannel:     d.TargetChannel,
+		AspectRatio:       d.AspectRatio,
+		CtaVariant:        d.CTAVariant,
+		SubtitleLanguage:  d.SubtitleLanguage,
+		DurationSeconds:   d.DurationSeconds,
+		Resolution:        d.Resolution,
+		FileUrl:           d.FileURL,
+		QualityState:      d.QualityState,
+		GenerationState:   d.GenerationState,
+		Tags:              d.Tags,
+		Views:             d.Views,
+		EngagementRate:    d.EngagementRate,
+		Ctr:               d.CTR,
+		AttributedRevenue: revMoney,
+		OrdersCount:       d.OrdersCount,
+		Rpm:               d.RPM,
+		IsRpmUnknown:      d.IsRPMUnknown,
+		UnknownReason:     d.UnknownReason,
+		SourceClass:       toCommonSourceClass(d.SourceClass),
+		Confidence:        toCommonConfidenceBand(d.Confidence),
+		CreatedAt:         timestamppb.New(d.CreatedAt),
+		UpdatedAt:         timestamppb.New(d.UpdatedAt),
 	}
 }
 

@@ -1504,6 +1504,99 @@ func (s *Service) GetCrossPostInsights(ctx context.Context, req *connect.Request
 	}), nil
 }
 
+// SyncPostMetrics updates post-level metrics with Target 2 (missing denominators remain unknown)
+// and Target 3 (imported proof cannot be upgraded to official without verified live platform API session).
+func (s *Service) SyncPostMetrics(ctx context.Context, req *connect.Request[publishv1.SyncPostMetricsRequest]) (*connect.Response[publishv1.SyncPostMetricsResponse], error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	postID := req.Msg.ChannelPostId
+	if postID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("channel_post_id required"))
+	}
+
+	post, exists := s.posts[postID]
+	if !exists {
+		// Auto-initialize if not pre-seeded
+		now := s.nowFn()
+		post = &ChannelPost{
+			ChannelPostID: postID,
+			WorkspaceID:   req.Msg.WorkspaceId,
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		}
+		s.posts[postID] = post
+	}
+
+	reqClass := fromCommonSourceClass(req.Msg.SourceClass)
+	reqConfidence := fromCommonConfidenceBand(req.Msg.Confidence)
+
+	// Target 3: Imported proof cannot be upgraded to official
+	if (post.SourceClass == "imported" || reqClass == "imported") && req.Msg.SourceClass == commonv1.SourceClass_SOURCE_CLASS_OFFICIAL {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("publish: imported proof cannot be upgraded to official without verified live platform API session"))
+	}
+
+	finalClass := reqClass
+	if finalClass == "" {
+		if post.SourceClass != "" {
+			finalClass = post.SourceClass
+		} else {
+			finalClass = "imported"
+		}
+	}
+
+	// Target 3: If imported, confidence cannot be High or MediumHigh (capped at Medium)
+	finalConfidence := reqConfidence
+	if finalClass == "imported" {
+		if finalConfidence == "high" || finalConfidence == "medium_high" {
+			finalConfidence = "medium"
+		}
+	}
+
+	// Target 2: Missing denominator safety
+	isViewsUnknown := req.Msg.IsViewsUnknown
+	unknownReason := req.Msg.UnknownReason
+	if req.Msg.Views == 0 && unknownReason == "" {
+		isViewsUnknown = true
+		unknownReason = "DATA_LAG_COLLECTING"
+	}
+
+	isClicksUnknown := req.Msg.IsClicksUnknown
+	if req.Msg.Clicks == 0 && isClicksUnknown {
+		if unknownReason == "" {
+			unknownReason = "UNRECORDED_OR_LAG"
+		}
+	}
+
+	now := s.nowFn()
+	metrics := &publishv1.ChannelPostMetrics{
+		Views:           req.Msg.Views,
+		Likes:           req.Msg.Likes,
+		Comments:        req.Msg.Comments,
+		Shares:          req.Msg.Shares,
+		Saves:           req.Msg.Saves,
+		Clicks:          req.Msg.Clicks,
+		IsViewsUnknown:  isViewsUnknown,
+		IsClicksUnknown: isClicksUnknown,
+		UnknownReason:   unknownReason,
+		SourceClass:     toCommonSourceClass(finalClass),
+		Confidence:      toCommonConfidenceBand(finalConfidence),
+		CapturedAt:      timestamppb.New(now),
+	}
+
+	post.PostMetrics = metrics
+	post.SourceClass = finalClass
+	post.Confidence = finalConfidence
+	post.SyncedAt = &now
+	post.UpdatedAt = now
+
+	return connect.NewResponse(&publishv1.SyncPostMetricsResponse{
+		Post:    ChannelPostToProto(post),
+		Metrics: metrics,
+		Updated: true,
+	}), nil
+}
+
 func (s *Service) PublishVariants(ctx context.Context, req *connect.Request[publishv1.PublishVariantsRequest]) (*connect.Response[publishv1.PublishVariantsResponse], error) {
 	items := make([]*publishv1.PublishItem, 0)
 	jobs := make([]*publishv1.PublishJob, 0)
@@ -1683,6 +1776,74 @@ func LogToProto(log *PublishLog) *publishv1.PublishLog {
 	return pLog
 }
 
+func toCommonSourceClass(sc string) commonv1.SourceClass {
+	switch sc {
+	case "official":
+		return commonv1.SourceClass_SOURCE_CLASS_OFFICIAL
+	case "imported":
+		return commonv1.SourceClass_SOURCE_CLASS_IMPORTED
+	case "inferred":
+		return commonv1.SourceClass_SOURCE_CLASS_INFERRED
+	case "estimated":
+		return commonv1.SourceClass_SOURCE_CLASS_ESTIMATED
+	case "unreconciled":
+		return commonv1.SourceClass_SOURCE_CLASS_UNRECONCILED
+	default:
+		return commonv1.SourceClass_SOURCE_CLASS_UNSPECIFIED
+	}
+}
+
+func fromCommonSourceClass(sc commonv1.SourceClass) string {
+	switch sc {
+	case commonv1.SourceClass_SOURCE_CLASS_OFFICIAL:
+		return "official"
+	case commonv1.SourceClass_SOURCE_CLASS_IMPORTED:
+		return "imported"
+	case commonv1.SourceClass_SOURCE_CLASS_INFERRED:
+		return "inferred"
+	case commonv1.SourceClass_SOURCE_CLASS_ESTIMATED:
+		return "estimated"
+	case commonv1.SourceClass_SOURCE_CLASS_UNRECONCILED:
+		return "unreconciled"
+	default:
+		return "imported"
+	}
+}
+
+func toCommonConfidenceBand(cb string) commonv1.ConfidenceBand {
+	switch cb {
+	case "high":
+		return commonv1.ConfidenceBand_CONFIDENCE_BAND_HIGH
+	case "medium_high":
+		return commonv1.ConfidenceBand_CONFIDENCE_BAND_MEDIUM_HIGH
+	case "medium":
+		return commonv1.ConfidenceBand_CONFIDENCE_BAND_MEDIUM
+	case "low_medium":
+		return commonv1.ConfidenceBand_CONFIDENCE_BAND_LOW_MEDIUM
+	case "low":
+		return commonv1.ConfidenceBand_CONFIDENCE_BAND_LOW
+	default:
+		return commonv1.ConfidenceBand_CONFIDENCE_BAND_UNSPECIFIED
+	}
+}
+
+func fromCommonConfidenceBand(cb commonv1.ConfidenceBand) string {
+	switch cb {
+	case commonv1.ConfidenceBand_CONFIDENCE_BAND_HIGH:
+		return "high"
+	case commonv1.ConfidenceBand_CONFIDENCE_BAND_MEDIUM_HIGH:
+		return "medium_high"
+	case commonv1.ConfidenceBand_CONFIDENCE_BAND_MEDIUM:
+		return "medium"
+	case commonv1.ConfidenceBand_CONFIDENCE_BAND_LOW_MEDIUM:
+		return "low_medium"
+	case commonv1.ConfidenceBand_CONFIDENCE_BAND_LOW:
+		return "low"
+	default:
+		return "medium"
+	}
+}
+
 func ChannelPostToProto(post *ChannelPost) *publishv1.ChannelPost {
 	if post == nil {
 		return nil
@@ -1696,6 +1857,9 @@ func ChannelPostToProto(post *ChannelPost) *publishv1.ChannelPost {
 		ExternalPermalink:  post.ExternalPermalink,
 		Title:              post.Title,
 		ThumbnailUrl:       post.ThumbnailURL,
+		Metrics:            post.PostMetrics,
+		SourceClass:        toCommonSourceClass(post.SourceClass),
+		Confidence:         toCommonConfidenceBand(post.Confidence),
 		CreatedAt:          timestamppb.New(post.CreatedAt),
 		UpdatedAt:          timestamppb.New(post.UpdatedAt),
 	}

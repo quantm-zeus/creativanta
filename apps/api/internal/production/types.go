@@ -797,6 +797,13 @@ type DerivativeRecord struct {
 	Views            int64      `json:"views"`
 	EngagementRate   float64    `json:"engagement_rate"`
 	CTR              float64    `json:"ctr"`
+	AttributedRevenue string    `json:"attributed_revenue,omitempty"`
+	OrdersCount       int64     `json:"orders_count"`
+	RPM               string    `json:"rpm,omitempty"`
+	IsRPMUnknown      bool      `json:"is_rpm_unknown"`
+	UnknownReason     string    `json:"unknown_reason,omitempty"`
+	SourceClass       string    `json:"source_class,omitempty"`
+	Confidence        string    `json:"confidence,omitempty"`
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
 	DeletedAt        *time.Time `json:"deleted_at,omitempty"`
@@ -844,6 +851,17 @@ type DerivativeStats struct {
 	AverageCTR                float64             `json:"average_ctr"`
 	TopPerformingDerivativeID string              `json:"top_performing_derivative_id"`
 	TopDerivatives            []*DerivativeRecord `json:"top_derivatives"`
+	IsViewsUnknown            bool                `json:"is_views_unknown"`
+	IsEngagementRateUnknown   bool                `json:"is_engagement_rate_unknown"`
+	IsCtrUnknown              bool                `json:"is_ctr_unknown"`
+	UnknownReason             string              `json:"unknown_reason,omitempty"`
+	SelectionStatus           string              `json:"selection_status"` // "conclusive", "low_exposure_inconclusive", "missing_denominator_unknown"
+	AggregateRevenue          string              `json:"aggregate_revenue,omitempty"`
+	TotalOrdersAttributed     int64               `json:"total_orders_attributed"`
+	UniqueOrdersCounted       int64               `json:"unique_orders_counted"`
+	Confidence                string              `json:"confidence,omitempty"`
+	AverageRPM                string              `json:"average_rpm,omitempty"`
+	IsRPMUnknown              bool                `json:"is_rpm_unknown"`
 }
 
 // PackagingScoreComponent represents a weighted QA component (§3 RULE-M10-003).
