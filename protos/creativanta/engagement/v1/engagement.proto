@@ -124,6 +124,10 @@ message RelatedObjectRef {
   string type = 1;
   string id = 2;
   string label = 3;
+  string task_ref = 4;
+  string phase = 5;
+  bool is_p6_deferred = 6;
+  string status = 7;
 }
 
 // ReplyIdentity represents the color-coded sender badge in multi-account compose (RULE-M12-006).
@@ -216,8 +220,11 @@ message FollowUpTask {
   google.protobuf.Timestamp due_at = 10;
   FollowUpTaskStatus status = 11;
   string outcome_summary = 12;
-  google.protobuf.Timestamp created_at = 13;
-  google.protobuf.Timestamp updated_at = 14;
+  string task_ref = 13;
+  string phase = 14;
+  bool is_p6_deferred = 15;
+  google.protobuf.Timestamp created_at = 16;
+  google.protobuf.Timestamp updated_at = 17;
 }
 
 // EngagementThrottleStatus represents viral surge state (RULE-M12-007).

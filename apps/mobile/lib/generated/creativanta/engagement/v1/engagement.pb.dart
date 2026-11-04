@@ -29,11 +29,19 @@ class RelatedObjectRef extends $pb.GeneratedMessage {
     $core.String? type,
     $core.String? id,
     $core.String? label,
+    $core.String? taskRef,
+    $core.String? phase,
+    $core.bool? isP6Deferred,
+    $core.String? status,
   }) {
     final result = RelatedObjectRef._();
     if (type != null) result.type = type;
     if (id != null) result.id = id;
     if (label != null) result.label = label;
+    if (taskRef != null) result.taskRef = taskRef;
+    if (phase != null) result.phase = phase;
+    if (isP6Deferred != null) result.isP6Deferred = isP6Deferred;
+    if (status != null) result.status = status;
     return result;
   }
 
@@ -54,6 +62,10 @@ class RelatedObjectRef extends $pb.GeneratedMessage {
     ..aOS(1, _omitFieldNames ? '' : 'type')
     ..aOS(2, _omitFieldNames ? '' : 'id')
     ..aOS(3, _omitFieldNames ? '' : 'label')
+    ..aOS(4, _omitFieldNames ? '' : 'taskRef')
+    ..aOS(5, _omitFieldNames ? '' : 'phase')
+    ..aOB(6, _omitFieldNames ? '' : 'isP6Deferred')
+    ..aOS(7, _omitFieldNames ? '' : 'status')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -104,6 +116,42 @@ class RelatedObjectRef extends $pb.GeneratedMessage {
   $core.bool hasLabel() => $_has(2);
   @$pb.TagNumber(3)
   void clearLabel() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get taskRef => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set taskRef($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTaskRef() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTaskRef() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get phase => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set phase($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPhase() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPhase() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.bool get isP6Deferred => $_getBF(5);
+  @$pb.TagNumber(6)
+  set isP6Deferred($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasIsP6Deferred() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearIsP6Deferred() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get status => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set status($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasStatus() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearStatus() => $_clearField(7);
 }
 
 /// ReplyIdentity represents the color-coded sender badge in multi-account compose (RULE-M12-006).
@@ -1033,6 +1081,9 @@ class FollowUpTask extends $pb.GeneratedMessage {
     $1.Timestamp? dueAt,
     FollowUpTaskStatus? status,
     $core.String? outcomeSummary,
+    $core.String? taskRef,
+    $core.String? phase,
+    $core.bool? isP6Deferred,
     $1.Timestamp? createdAt,
     $1.Timestamp? updatedAt,
   }) {
@@ -1049,6 +1100,9 @@ class FollowUpTask extends $pb.GeneratedMessage {
     if (dueAt != null) result.dueAt = dueAt;
     if (status != null) result.status = status;
     if (outcomeSummary != null) result.outcomeSummary = outcomeSummary;
+    if (taskRef != null) result.taskRef = taskRef;
+    if (phase != null) result.phase = phase;
+    if (isP6Deferred != null) result.isP6Deferred = isP6Deferred;
     if (createdAt != null) result.createdAt = createdAt;
     if (updatedAt != null) result.updatedAt = updatedAt;
     return result;
@@ -1082,9 +1136,12 @@ class FollowUpTask extends $pb.GeneratedMessage {
     ..aE<FollowUpTaskStatus>(11, _omitFieldNames ? '' : 'status',
         enumValues: FollowUpTaskStatus.values)
     ..aOS(12, _omitFieldNames ? '' : 'outcomeSummary')
-    ..aOM<$1.Timestamp>(13, _omitFieldNames ? '' : 'createdAt',
+    ..aOS(13, _omitFieldNames ? '' : 'taskRef')
+    ..aOS(14, _omitFieldNames ? '' : 'phase')
+    ..aOB(15, _omitFieldNames ? '' : 'isP6Deferred')
+    ..aOM<$1.Timestamp>(16, _omitFieldNames ? '' : 'createdAt',
         subBuilder: $1.Timestamp.$_createMessage)
-    ..aOM<$1.Timestamp>(14, _omitFieldNames ? '' : 'updatedAt',
+    ..aOM<$1.Timestamp>(17, _omitFieldNames ? '' : 'updatedAt',
         subBuilder: $1.Timestamp.$_createMessage)
     ..hasRequiredFields = false;
 
@@ -1221,26 +1278,53 @@ class FollowUpTask extends $pb.GeneratedMessage {
   void clearOutcomeSummary() => $_clearField(12);
 
   @$pb.TagNumber(13)
-  $1.Timestamp get createdAt => $_getN(12);
+  $core.String get taskRef => $_getSZ(12);
   @$pb.TagNumber(13)
-  set createdAt($1.Timestamp value) => $_setField(13, value);
+  set taskRef($core.String value) => $_setString(12, value);
   @$pb.TagNumber(13)
-  $core.bool hasCreatedAt() => $_has(12);
+  $core.bool hasTaskRef() => $_has(12);
   @$pb.TagNumber(13)
-  void clearCreatedAt() => $_clearField(13);
-  @$pb.TagNumber(13)
-  $1.Timestamp ensureCreatedAt() => $_ensure(12);
+  void clearTaskRef() => $_clearField(13);
 
   @$pb.TagNumber(14)
-  $1.Timestamp get updatedAt => $_getN(13);
+  $core.String get phase => $_getSZ(13);
   @$pb.TagNumber(14)
-  set updatedAt($1.Timestamp value) => $_setField(14, value);
+  set phase($core.String value) => $_setString(13, value);
   @$pb.TagNumber(14)
-  $core.bool hasUpdatedAt() => $_has(13);
+  $core.bool hasPhase() => $_has(13);
   @$pb.TagNumber(14)
-  void clearUpdatedAt() => $_clearField(14);
-  @$pb.TagNumber(14)
-  $1.Timestamp ensureUpdatedAt() => $_ensure(13);
+  void clearPhase() => $_clearField(14);
+
+  @$pb.TagNumber(15)
+  $core.bool get isP6Deferred => $_getBF(14);
+  @$pb.TagNumber(15)
+  set isP6Deferred($core.bool value) => $_setBool(14, value);
+  @$pb.TagNumber(15)
+  $core.bool hasIsP6Deferred() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearIsP6Deferred() => $_clearField(15);
+
+  @$pb.TagNumber(16)
+  $1.Timestamp get createdAt => $_getN(15);
+  @$pb.TagNumber(16)
+  set createdAt($1.Timestamp value) => $_setField(16, value);
+  @$pb.TagNumber(16)
+  $core.bool hasCreatedAt() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearCreatedAt() => $_clearField(16);
+  @$pb.TagNumber(16)
+  $1.Timestamp ensureCreatedAt() => $_ensure(15);
+
+  @$pb.TagNumber(17)
+  $1.Timestamp get updatedAt => $_getN(16);
+  @$pb.TagNumber(17)
+  set updatedAt($1.Timestamp value) => $_setField(17, value);
+  @$pb.TagNumber(17)
+  $core.bool hasUpdatedAt() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearUpdatedAt() => $_clearField(17);
+  @$pb.TagNumber(17)
+  $1.Timestamp ensureUpdatedAt() => $_ensure(16);
 }
 
 /// EngagementThrottleStatus represents viral surge state (RULE-M12-007).

@@ -247,13 +247,19 @@ const RelatedObjectRef$json = {
     {'1': 'type', '3': 1, '4': 1, '5': 9, '10': 'type'},
     {'1': 'id', '3': 2, '4': 1, '5': 9, '10': 'id'},
     {'1': 'label', '3': 3, '4': 1, '5': 9, '10': 'label'},
+    {'1': 'task_ref', '3': 4, '4': 1, '5': 9, '10': 'taskRef'},
+    {'1': 'phase', '3': 5, '4': 1, '5': 9, '10': 'phase'},
+    {'1': 'is_p6_deferred', '3': 6, '4': 1, '5': 8, '10': 'isP6Deferred'},
+    {'1': 'status', '3': 7, '4': 1, '5': 9, '10': 'status'},
   ],
 };
 
 /// Descriptor for `RelatedObjectRef`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List relatedObjectRefDescriptor = $convert.base64Decode(
     'ChBSZWxhdGVkT2JqZWN0UmVmEhIKBHR5cGUYASABKAlSBHR5cGUSDgoCaWQYAiABKAlSAmlkEh'
-    'QKBWxhYmVsGAMgASgJUgVsYWJlbA==');
+    'QKBWxhYmVsGAMgASgJUgVsYWJlbBIZCgh0YXNrX3JlZhgEIAEoCVIHdGFza1JlZhIUCgVwaGFz'
+    'ZRgFIAEoCVIFcGhhc2USJAoOaXNfcDZfZGVmZXJyZWQYBiABKAhSDGlzUDZEZWZlcnJlZBIWCg'
+    'ZzdGF0dXMYByABKAlSBnN0YXR1cw==');
 
 @$core.Deprecated('Use replyIdentityDescriptor instead')
 const ReplyIdentity$json = {
@@ -634,9 +640,12 @@ const FollowUpTask$json = {
       '10': 'status'
     },
     {'1': 'outcome_summary', '3': 12, '4': 1, '5': 9, '10': 'outcomeSummary'},
+    {'1': 'task_ref', '3': 13, '4': 1, '5': 9, '10': 'taskRef'},
+    {'1': 'phase', '3': 14, '4': 1, '5': 9, '10': 'phase'},
+    {'1': 'is_p6_deferred', '3': 15, '4': 1, '5': 8, '10': 'isP6Deferred'},
     {
       '1': 'created_at',
-      '3': 13,
+      '3': 16,
       '4': 1,
       '5': 11,
       '6': '.google.protobuf.Timestamp',
@@ -644,7 +653,7 @@ const FollowUpTask$json = {
     },
     {
       '1': 'updated_at',
-      '3': 14,
+      '3': 17,
       '4': 1,
       '5': 11,
       '6': '.google.protobuf.Timestamp',
@@ -663,10 +672,11 @@ final $typed_data.Uint8List followUpTaskDescriptor = $convert.base64Decode(
     'oFdGl0bGUYCCABKAlSBXRpdGxlEiAKC2Rlc2NyaXB0aW9uGAkgASgJUgtkZXNjcmlwdGlvbhIx'
     'CgZkdWVfYXQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgVkdWVBdBJFCgZzdG'
     'F0dXMYCyABKA4yLS5jcmVhdGl2YW50YS5lbmdhZ2VtZW50LnYxLkZvbGxvd1VwVGFza1N0YXR1'
-    'c1IGc3RhdHVzEicKD291dGNvbWVfc3VtbWFyeRgMIAEoCVIOb3V0Y29tZVN1bW1hcnkSOQoKY3'
-    'JlYXRlZF9hdBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSCWNyZWF0ZWRBdBI5'
-    'Cgp1cGRhdGVkX2F0GA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcFIJdXBkYXRlZE'
-    'F0');
+    'c1IGc3RhdHVzEicKD291dGNvbWVfc3VtbWFyeRgMIAEoCVIOb3V0Y29tZVN1bW1hcnkSGQoIdG'
+    'Fza19yZWYYDSABKAlSB3Rhc2tSZWYSFAoFcGhhc2UYDiABKAlSBXBoYXNlEiQKDmlzX3A2X2Rl'
+    'ZmVycmVkGA8gASgIUgxpc1A2RGVmZXJyZWQSOQoKY3JlYXRlZF9hdBgQIAEoCzIaLmdvb2dsZS'
+    '5wcm90b2J1Zi5UaW1lc3RhbXBSCWNyZWF0ZWRBdBI5Cgp1cGRhdGVkX2F0GBEgASgLMhouZ29v'
+    'Z2xlLnByb3RvYnVmLlRpbWVzdGFtcFIJdXBkYXRlZEF0');
 
 @$core.Deprecated('Use engagementThrottleStatusDescriptor instead')
 const EngagementThrottleStatus$json = {

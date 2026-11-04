@@ -357,6 +357,44 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 
 	now := s.nowFn()
 
+	// REPLAY PROTECTION (Acceptance Target: Replay with one external result)
+	// If already published, return existing result without duplicate submission or log creation
+	if item.LifecycleState == StatePublished {
+		var successLog *PublishLog
+		for i := len(s.logs) - 1; i >= 0; i-- {
+			if s.logs[i].PublishItemID == item.PublishItemID && s.logs[i].ResultStatus == ResultSuccess {
+				successLog = s.logs[i]
+				break
+			}
+		}
+		var channelPost *ChannelPost
+		for _, cp := range s.posts {
+			if cp.PublishItemID == item.PublishItemID {
+				channelPost = cp
+				break
+			}
+		}
+		var job *PublishJob
+		if req.Msg.PublishJobId != "" {
+			job = s.jobs[req.Msg.PublishJobId]
+		}
+		if job == nil {
+			for _, j := range s.jobs {
+				if j.PublishItemID == item.PublishItemID {
+					job = j
+					break
+				}
+			}
+		}
+		s.mu.Unlock()
+		return connect.NewResponse(&publishv1.ExecuteResponse{
+			Item:        ItemToProto(item),
+			Job:         JobToProto(job),
+			Log:         LogToProto(successLog),
+			ChannelPost: ChannelPostToProto(channelPost),
+		}), nil
+	}
+
 	// Check if this account is currently paused due to token revocation
 	if s.pausedAccounts[item.TargetAccountID] {
 		item.DiagnosticsState = DiagnosticsBlocked
@@ -443,7 +481,104 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 	})
 
 	// Prepare external_effects record (queue_retry_design.md §5.3)
-	opKey := fmt.Sprintf("pub_%s_%s_%d", item.WorkspaceID, job.PublishJobID, job.AttemptCount)
+	var opKey string
+	if req.Msg.Context != nil && req.Msg.Context.IdempotencyKey != "" {
+		opKey = fmt.Sprintf("pub_idem_%s_%s", item.WorkspaceID, req.Msg.Context.IdempotencyKey)
+	} else if req.Msg.PublishJobId != "" {
+		opKey = fmt.Sprintf("pub_job_%s_%s", item.WorkspaceID, req.Msg.PublishJobId)
+	} else {
+		opKey = fmt.Sprintf("pub_%s_%s_%d", item.WorkspaceID, job.PublishJobID, job.AttemptCount)
+	}
+
+	// Check if this operation has already succeeded or was already submitted
+	if existingEffect, exists := s.effects[opKey]; exists {
+		if existingEffect.Status == "succeeded" {
+			var successLog *PublishLog
+			for i := len(s.logs) - 1; i >= 0; i-- {
+				if s.logs[i].PublishItemID == item.PublishItemID && s.logs[i].ResultStatus == ResultSuccess {
+					successLog = s.logs[i]
+					break
+				}
+			}
+			var channelPost *ChannelPost
+			for _, cp := range s.posts {
+				if cp.PublishItemID == item.PublishItemID {
+					channelPost = cp
+					break
+				}
+			}
+			s.mu.Unlock()
+			return connect.NewResponse(&publishv1.ExecuteResponse{
+				Item:        ItemToProto(item),
+				Job:         JobToProto(job),
+				Log:         LogToProto(successLog),
+				ChannelPost: ChannelPostToProto(channelPost),
+			}), nil
+		}
+		if (existingEffect.Status == "submitted" || existingEffect.Status == "unknown") && existingEffect.ProviderRequestID != "" {
+			connector := s.connectors[item.TargetPlatform]
+			if connector != nil {
+				s.mu.Unlock()
+				statusRes, probeErr := connector.CheckPostStatus(ctx, item.TargetAccountID, existingEffect.ProviderRequestID)
+				s.mu.Lock()
+				if probeErr == nil && statusRes != nil && statusRes.Found && statusRes.Status == "confirmed_published" {
+					existingEffect.Status = "succeeded"
+					existingEffect.UpdatedAt = s.nowFn()
+					completedAt := s.nowFn()
+					if statusRes.PublishedAt != nil {
+						completedAt = *statusRes.PublishedAt
+					}
+					item.LifecycleState = StatePublished
+					item.DiagnosticsState = DiagnosticsHealthy
+					item.UpdatedAt = completedAt
+					job.LifecycleState = JobStateSucceeded
+					job.UpdatedAt = completedAt
+
+					log := &PublishLog{
+						PublishLogID:    NewID(),
+						WorkspaceID:     item.WorkspaceID,
+						PublishJobID:    job.PublishJobID,
+						PublishItemID:   item.PublishItemID,
+						AttemptedAt:     now,
+						CompletedAt:     &completedAt,
+						ExecutionPath:   PathNativeAPI,
+						ResultStatus:    ResultSuccess,
+						ExternalPostID:  statusRes.ExternalPostID,
+						ExternalPostURL: statusRes.ExternalPostURL,
+					}
+					s.logs = append(s.logs, log)
+
+					channelPost := &ChannelPost{
+						ChannelPostID:      NewID(),
+						WorkspaceID:        item.WorkspaceID,
+						PublishItemID:      item.PublishItemID,
+						ConnectedAccountID: item.TargetAccountID,
+						ExternalPostID:     statusRes.ExternalPostID,
+						ExternalPermalink:  statusRes.ExternalPostURL,
+						Title:              item.Title,
+						SyncedAt:           &completedAt,
+						CreatedAt:          completedAt,
+						UpdatedAt:          completedAt,
+					}
+					s.posts[channelPost.ChannelPostID] = channelPost
+
+					s.recordEventLocked(item.WorkspaceID, EventPublishSucceeded, "publish_item", item.PublishItemID, map[string]any{
+						"external_id": statusRes.ExternalPostID,
+						"url":         statusRes.ExternalPostURL,
+						"reconciled":  true,
+					})
+					s.mu.Unlock()
+					return connect.NewResponse(&publishv1.ExecuteResponse{
+						Item:        ItemToProto(item),
+						Job:         JobToProto(job),
+						Log:         LogToProto(log),
+						ChannelPost: ChannelPostToProto(channelPost),
+					}), nil
+				}
+			}
+		}
+	}
+
 	effect := &ExternalEffect{
 		EffectID:           NewID(),
 		WorkspaceID:        item.WorkspaceID,

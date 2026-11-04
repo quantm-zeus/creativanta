@@ -188,4 +188,136 @@ class EngagementService {
       updatedAt: now,
     );
   }
+
+  /// Target 3: Converts a thread intent into a Sample Request task linked to P6 Seeding CRM (P6-09).
+  Map<String, dynamic> convertToSampleRequest({
+    required ThreadModel thread,
+    required String sampleRequestId,
+    required DateTime now,
+  }) {
+    final updatedThread = thread.copyWith(
+      status: 'converted_to_task',
+      relatedObjectRefs: [
+        ...thread.relatedObjectRefs,
+        RelatedObjectRefModel(
+          type: 'sample_request',
+          id: sampleRequestId,
+          taskRef: 'P6-09',
+          phase: 'P6',
+          isP6Deferred: true,
+          status: 'pending_p6_delivery',
+        ),
+      ],
+      updatedAt: now,
+    );
+
+    final task = FollowUpTaskModel(
+      id: 'task_${now.millisecondsSinceEpoch}',
+      workspaceId: thread.workspaceId,
+      sourceThreadId: thread.id,
+      sourceObjectType: 'sample_request',
+      sourceObjectId: sampleRequestId,
+      assignedUserId: thread.ownerUserId,
+      taskType: 'sample_request',
+      title: 'Fulfill sample request for thread ${thread.id}',
+      description:
+          'Sample request converted from inbound thread ${thread.id}. Awaiting P6 delivery execution.',
+      status: 'pending',
+      taskRef: 'P6-09',
+      phase: 'P6',
+      isP6Deferred: true,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    return {'thread': updatedThread, 'task': task};
+  }
+
+  /// Target 3: Converts a thread intent into a Brand Deal task linked to P6 Brand Deals (P6-09).
+  Map<String, dynamic> convertToBrandDeal({
+    required ThreadModel thread,
+    required String brandDealId,
+    required DateTime now,
+  }) {
+    final updatedThread = thread.copyWith(
+      status: 'converted_to_task',
+      relatedObjectRefs: [
+        ...thread.relatedObjectRefs,
+        RelatedObjectRefModel(
+          type: 'brand_deal',
+          id: brandDealId,
+          taskRef: 'P6-09',
+          phase: 'P6',
+          isP6Deferred: true,
+          status: 'pending_p6_delivery',
+        ),
+      ],
+      updatedAt: now,
+    );
+
+    final task = FollowUpTaskModel(
+      id: 'task_${now.millisecondsSinceEpoch}',
+      workspaceId: thread.workspaceId,
+      sourceThreadId: thread.id,
+      sourceObjectType: 'brand_deal',
+      sourceObjectId: brandDealId,
+      assignedUserId: thread.ownerUserId,
+      taskType: 'brand_deal',
+      title: 'Follow up brand collaboration deal for thread ${thread.id}',
+      description:
+          'Brand collaboration converted from inbound thread ${thread.id}. Awaiting P6 delivery execution.',
+      status: 'pending',
+      taskRef: 'P6-09',
+      phase: 'P6',
+      isP6Deferred: true,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    return {'thread': updatedThread, 'task': task};
+  }
+
+  /// Target 3: Converts a thread intent into an Offer task linked to P6 Monetization OS (P6-01).
+  Map<String, dynamic> convertToOffer({
+    required ThreadModel thread,
+    required String offerId,
+    required DateTime now,
+  }) {
+    final updatedThread = thread.copyWith(
+      status: 'converted_to_task',
+      relatedObjectRefs: [
+        ...thread.relatedObjectRefs,
+        RelatedObjectRefModel(
+          type: 'offer',
+          id: offerId,
+          taskRef: 'P6-01',
+          phase: 'P6',
+          isP6Deferred: true,
+          status: 'pending_p6_delivery',
+        ),
+      ],
+      updatedAt: now,
+    );
+
+    final task = FollowUpTaskModel(
+      id: 'task_${now.millisecondsSinceEpoch}',
+      workspaceId: thread.workspaceId,
+      sourceThreadId: thread.id,
+      sourceObjectType: 'offer',
+      sourceObjectId: offerId,
+      assignedUserId: thread.ownerUserId,
+      taskType: 'offer',
+      title: 'Provide exclusive offer for thread ${thread.id}',
+      description:
+          'Offer/coupon converted from inbound thread ${thread.id}. Awaiting P6 delivery execution.',
+      status: 'pending',
+      taskRef: 'P6-01',
+      phase: 'P6',
+      isP6Deferred: true,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    return {'thread': updatedThread, 'task': task};
+  }
 }

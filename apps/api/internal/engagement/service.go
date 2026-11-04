@@ -108,8 +108,22 @@ func (s *Service) RegisterConnectedAccount(acc *ConnectedAccount) {
 // IngestInboundMessage ingests an incoming message (comment, DM, inquiry) from a platform.
 // Applies viral surge rate monitoring (RULE-M12-007) and refreshes 24h messaging window.
 func (s *Service) IngestInboundMessage(ctx context.Context, workspaceID, threadID, subtype, platform, body, authorEntityID string) (*Thread, *Message, error) {
+	return s.IngestInboundMessageWithExternalID(ctx, workspaceID, threadID, subtype, platform, body, authorEntityID, "")
+}
+
+// IngestInboundMessageWithExternalID ingests an incoming message with external message ID deduplication (webhook replay protection).
+func (s *Service) IngestInboundMessageWithExternalID(ctx context.Context, workspaceID, threadID, subtype, platform, body, authorEntityID, externalMessageID string) (*Thread, *Message, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// Webhook replay deduplication: if externalMessageID is set and already processed, return existing message idempotently
+	if externalMessageID != "" {
+		for _, m := range s.messages[threadID] {
+			if m.ExternalMessageID == externalMessageID {
+				return s.threads[threadID], m, nil
+			}
+		}
+	}
 
 	now := s.clock()
 
@@ -250,16 +264,17 @@ func (s *Service) IngestInboundMessage(ctx context.Context, workspaceID, threadI
 
 	// 3. Create inbound message
 	msg := &Message{
-		MessageID:       NewUUID(),
-		WorkspaceID:     workspaceID,
-		ThreadID:        threadID,
-		Subtype:         subtype,
-		SourcePlatform:  platform,
-		Body:            body,
-		AuthorDirection: DirectionInbound,
-		AuthorEntityID:  authorEntityID,
-		ModerationState: "visible",
-		CreatedAt:       now,
+		MessageID:         NewUUID(),
+		WorkspaceID:       workspaceID,
+		ThreadID:          threadID,
+		Subtype:           subtype,
+		SourcePlatform:    platform,
+		Body:              body,
+		AuthorDirection:   DirectionInbound,
+		AuthorEntityID:    authorEntityID,
+		ModerationState:   "visible",
+		ExternalMessageID: externalMessageID,
+		CreatedAt:         now,
 	}
 	s.messages[threadID] = append(s.messages[threadID], msg)
 
@@ -270,6 +285,20 @@ func (s *Service) IngestInboundMessage(ctx context.Context, workspaceID, threadI
 	})
 
 	return thread, msg, nil
+}
+
+// IngestChannelPostInteraction ingests an interaction linked to a published channel post (linking M11 and M12).
+func (s *Service) IngestChannelPostInteraction(ctx context.Context, workspaceID, threadID, channelPostID, platform, body, authorEntityID, externalMessageID string) (*Thread, *Message, error) {
+	th, msg, err := s.IngestInboundMessageWithExternalID(ctx, workspaceID, threadID, SubtypeComment, platform, body, authorEntityID, externalMessageID)
+	if err != nil {
+		return nil, nil, err
+	}
+	s.mu.Lock()
+	if th != nil && th.SourcePostID == "" {
+		th.SourcePostID = channelPostID
+	}
+	s.mu.Unlock()
+	return th, msg, nil
 }
 
 // classifyIntent performs heuristic intent extraction.
@@ -1260,15 +1289,28 @@ func (s *Service) CreateFollowUpTask(ctx context.Context, req *connect.Request[e
 		CreatedAt:        now,
 		UpdatedAt:        now,
 	}
+	if req.Msg.TaskType == "sample_request" || req.Msg.TaskType == "sponsor_followup" || req.Msg.TaskType == "brand_deal" {
+		task.TaskRef = "P6-09"
+		task.Phase = "P6"
+		task.IsP6Deferred = true
+	} else if req.Msg.TaskType == "offer_creation" || req.Msg.TaskType == "coupon_creation" {
+		task.TaskRef = "P6-01"
+		task.Phase = "P6"
+		task.IsP6Deferred = true
+	}
 	s.tasks[task.TaskID] = task
 
 	// Link back to thread's related_object_refs (RULE-M12-005)
 	if req.Msg.SourceThreadId != "" {
 		if t, ok := s.threads[req.Msg.SourceThreadId]; ok {
 			t.RelatedObjectRefs = append(t.RelatedObjectRefs, RelatedObjectRef{
-				Type:  "follow_up_task",
-				ID:    task.TaskID,
-				Label: task.Title,
+				Type:         "follow_up_task",
+				ID:           task.TaskID,
+				Label:        task.Title,
+				TaskRef:      task.TaskRef,
+				Phase:        task.Phase,
+				IsP6Deferred: task.IsP6Deferred,
+				Status:       task.Status,
 			})
 			t.UpdatedAt = now
 		}
@@ -1519,7 +1561,7 @@ func (s *Service) ConvertToIdea(ctx context.Context, workspaceID, threadID, idea
 	return nil
 }
 
-// ConvertToBrandDeal converts a sponsor inquiry thread to Brand Collaboration (S16 link).
+// ConvertToBrandDeal converts a sponsor inquiry thread to Brand Collaboration (S16 link, Phase P6).
 func (s *Service) ConvertToBrandDeal(ctx context.Context, workspaceID, threadID, dealID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -1530,15 +1572,31 @@ func (s *Service) ConvertToBrandDeal(ctx context.Context, workspaceID, threadID,
 	}
 
 	t.RelatedObjectRefs = append(t.RelatedObjectRefs, RelatedObjectRef{
-		Type:  "brand_deal",
-		ID:    dealID,
-		Label: "Hợp tác Nhãn hàng (S16)",
+		Type:         "brand_deal",
+		ID:           dealID,
+		Label:        "Hợp tác Nhãn hàng (S16)",
+		TaskRef:      "P6-09",
+		Phase:        "P6",
+		IsP6Deferred: true,
+		Status:       "pending_p6_delivery",
 	})
+	if ValidateStatusTransition(t.Status, StatusConvertedToTask) {
+		t.Status = StatusConvertedToTask
+	}
 	t.UpdatedAt = s.clock()
+
+	s.recordEventLocked(EventSponsorInquiryDetected, "thread", threadID, workspaceID, map[string]interface{}{
+		"thread_id":   threadID,
+		"deal_id":     dealID,
+		"task_ref":    "P6-09",
+		"phase":       "P6",
+		"is_deferred": true,
+	})
+
 	return nil
 }
 
-// ConvertToSampleRequest converts a thread to Seeding CRM (M18 link).
+// ConvertToSampleRequest converts a thread to Seeding CRM (M18 link, Phase P6).
 func (s *Service) ConvertToSampleRequest(ctx context.Context, workspaceID, threadID, sampleID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -1549,11 +1607,62 @@ func (s *Service) ConvertToSampleRequest(ctx context.Context, workspaceID, threa
 	}
 
 	t.RelatedObjectRefs = append(t.RelatedObjectRefs, RelatedObjectRef{
-		Type:  "sample_request",
-		ID:    sampleID,
-		Label: "Gửi mẫu thử (M18)",
+		Type:         "sample_request",
+		ID:           sampleID,
+		Label:        "Gửi mẫu thử (M18)",
+		TaskRef:      "P6-09",
+		Phase:        "P6",
+		IsP6Deferred: true,
+		Status:       "pending_p6_delivery",
 	})
+	if ValidateStatusTransition(t.Status, StatusConvertedToTask) {
+		t.Status = StatusConvertedToTask
+	}
 	t.UpdatedAt = s.clock()
+
+	s.recordEventLocked(EventSampleRequestCreated, "thread", threadID, workspaceID, map[string]interface{}{
+		"thread_id":   threadID,
+		"sample_id":   sampleID,
+		"task_ref":    "P6-09",
+		"phase":       "P6",
+		"is_deferred": true,
+	})
+
+	return nil
+}
+
+// ConvertToOffer converts a thread to a Commerce Offer / Coupon action (M14 link, Phase P6).
+func (s *Service) ConvertToOffer(ctx context.Context, workspaceID, threadID, offerID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	t, ok := s.threads[threadID]
+	if !ok || t.WorkspaceID != workspaceID {
+		return ErrThreadNotFound
+	}
+
+	t.RelatedObjectRefs = append(t.RelatedObjectRefs, RelatedObjectRef{
+		Type:         "offer",
+		ID:           offerID,
+		Label:        "Tạo ưu đãi / mã giảm giá (M14)",
+		TaskRef:      "P6-01",
+		Phase:        "P6",
+		IsP6Deferred: true,
+		Status:       "pending_p6_delivery",
+	})
+	if ValidateStatusTransition(t.Status, StatusConvertedToTask) {
+		t.Status = StatusConvertedToTask
+	}
+	t.UpdatedAt = s.clock()
+
+	s.recordEventLocked("offer.created", "thread", threadID, workspaceID, map[string]interface{}{
+		"thread_id":   threadID,
+		"offer_id":    offerID,
+		"task_ref":    "P6-01",
+		"phase":       "P6",
+		"is_deferred": true,
+	})
+
 	return nil
 }
 
@@ -1652,9 +1761,13 @@ func (s *Service) toProtoThread(t *Thread) *engagementv1.Thread {
 	var refs []*engagementv1.RelatedObjectRef
 	for _, r := range t.RelatedObjectRefs {
 		refs = append(refs, &engagementv1.RelatedObjectRef{
-			Type:  r.Type,
-			Id:    r.ID,
-			Label: r.Label,
+			Type:         r.Type,
+			Id:           r.ID,
+			Label:        r.Label,
+			TaskRef:      r.TaskRef,
+			Phase:        r.Phase,
+			IsP6Deferred: r.IsP6Deferred,
+			Status:       r.Status,
 		})
 	}
 
@@ -1763,6 +1876,9 @@ func (s *Service) toProtoTask(t *FollowUpTask) *engagementv1.FollowUpTask {
 		DueAt:            due,
 		Status:           s.protoTaskStatus(t.Status),
 		OutcomeSummary:   t.OutcomeSummary,
+		TaskRef:          t.TaskRef,
+		Phase:            t.Phase,
+		IsP6Deferred:     t.IsP6Deferred,
 		CreatedAt:        timestamppb.New(t.CreatedAt),
 		UpdatedAt:        timestamppb.New(t.UpdatedAt),
 	}

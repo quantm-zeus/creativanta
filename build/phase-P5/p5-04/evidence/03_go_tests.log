@@ -1,0 +1,16 @@
+=== RUN   TestPublishInboxLoop_Path1_HappyPath
+--- PASS: TestPublishInboxLoop_Path1_HappyPath (0.00s)
+=== RUN   TestPublishInboxLoop_Path2_DegradedPath
+--- PASS: TestPublishInboxLoop_Path2_DegradedPath (0.00s)
+=== RUN   TestPublishInboxLoop_Path3_MissingDataPath
+--- PASS: TestPublishInboxLoop_Path3_MissingDataPath (0.00s)
+=== RUN   TestPublishInboxLoop_Path4_BrokenPath
+--- PASS: TestPublishInboxLoop_Path4_BrokenPath (0.00s)
+=== RUN   TestPublishInboxLoop_Path5_AuditPath
+--- PASS: TestPublishInboxLoop_Path5_AuditPath (0.00s)
+=== RUN   TestPublishInboxLoop_Target2_ReplayWithOneExternalResult
+--- PASS: TestPublishInboxLoop_Target2_ReplayWithOneExternalResult (0.00s)
+=== RUN   TestPublishInboxLoop_Target3_CommerceSeedingRetainP6TaskLinks
+--- PASS: TestPublishInboxLoop_Target3_CommerceSeedingRetainP6TaskLinks (0.00s)
+PASS
+ok  	github.com/quantm-zeus/creativanta/apps/api/internal/publish	(cached)
