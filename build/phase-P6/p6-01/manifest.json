@@ -1,0 +1,123 @@
+{
+  "task_id": "P6-01",
+  "phase": "P6",
+  "slice": "p6-01",
+  "title": "Offers, coupons, campaigns và experiments",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "a95db1909843b4b406ba02df222adc697abe334b",
+  "feature_refs": [
+    "docs/02_features/commerce/monetization_os.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/05_system/queue_retry_design.md"
+  ],
+  "requirement_ids": [
+    "M14-6d3cf345ca3e-001",
+    "M14-063ea59c0e6a-001",
+    "M14-063ea59c0e6a-002",
+    "M14-063ea59c0e6a-003",
+    "M14-fb48cf791698-001",
+    "M14-fb48cf791698-002",
+    "M14-fb48cf791698-003",
+    "M14-fb48cf791698-004",
+    "M14-fb48cf791698-005",
+    "M14-fb48cf791698-006",
+    "M14-fb48cf791698-007",
+    "M14-fd48b02a4a45-001",
+    "M14-fd48b02a4a45-002",
+    "M14-fd48b02a4a45-003",
+    "M14-fd48b02a4a45-004",
+    "M14-fd48b02a4a45-005",
+    "M14-fd48b02a4a45-006",
+    "M14-731e10f7b3c5-001",
+    "M14-deeaa3f5ec38-001",
+    "M14-803874bb422a-001"
+  ],
+  "source_files": {
+    "infra/migrations/00029_p6_01_campaigns_coupons_and_monetization.sql": "e9f16d290b5e1729cbe4802bdfc32df26bf5e2de0a9be8848b980abcd29f7e0b",
+    "protos/creativanta/commerce/v1/monetization.proto": "f9af85257d2870b96253560364d5c8bf1d1941d191ca34ddaf389038ad555307",
+    "apps/api/internal/monetization/model.go": "71b931ecff6f109b662ab42329a6278ce6404f2f662c0fa26227ea7445ef4650",
+    "apps/api/internal/monetization/errors.go": "68adc5798ad2c7a4a15cc234e16411991a30c605d7ad86b0296904a341a1b8f2",
+    "apps/api/internal/monetization/store.go": "9fe79c321f1af595761957536f62607c9ea028dc53a2e307dff3e977fa7f46a3",
+    "apps/api/internal/monetization/service.go": "efc4e52281f94c63bd6f37e91395937e7b856d234e7dbd6dcb46e573223108df",
+    "apps/api/internal/monetization/handler.go": "4abc9af2704debe97242efac6ff209cbff292a78d3a2071ae3ff960ee4a32d41",
+    "apps/api/internal/monetization/monetization_test.go": "e64d7c02b753d3e639cd86bddc80e8d825a2a5066ef1b900c2a01821d2535157",
+    "apps/api/internal/monetization/monetization_postgres_test.go": "a190cb141f028e318a8f3d8384f9af715662c21367862cac85a056b6d9bce408",
+    "apps/api/internal/monetization/handler_test.go": "eadf9d99f1fba0e98a3322a4a7f7832f6d432b47682a13ff54a9668d6f9469f7",
+    "apps/web/src/lib/commerce/monetization.ts": "3ed70a8940f6066483046cc4675842c6c3c04c7459bd89437174e7fe3dc84ee2",
+    "apps/web/src/lib/commerce/monetization.test.ts": "4d58eebb04f5548f922702d952dc83a4f87307799037d43e32b1d7481316e152",
+    "apps/mobile/lib/commerce/monetization_models.dart": "7b0ddc1fec23c5d33db66a1378a30d0ab3ad95e0d6772ddf1e11660a0e791e3e",
+    "apps/mobile/lib/ui/commerce/monetization_view.dart": "370b2f72ba0425f925aa45e29d8bfdb750c1a90e709d42931ec065555f618762",
+    "apps/mobile/test/monetization_acceptance_test.dart": "fee68c82e865bfb4749304b500f75bb478206ec09c596bc1f32eb563c706200b"
+  },
+  "scope_items": [
+    "Database Migration 00029: Created campaigns (§10.5), coupons (§19.2), coupon_redemptions tables with workspace composite tenant keys, strict tenant RLS isolation (ENABLE + FORCE ROW LEVEL SECURITY), check constraints, and narrow role-based grants. Added valid_from/valid_until columns to offers table.",
+    "Acceptance Target 1 (Expired offer rejected at checkout): Offers enforce strict lifecycle windows (valid_from .. valid_until) and state transitions. Any checkout referencing an expired offer or outside its validity window is rejected with ERR_OFFER_EXPIRED.",
+    "Acceptance Target 2 (Coupon races do not exceed limits): Concurrent redemptions for a coupon are serialized atomically. Redemptions strictly ceil at max_uses, returning ERR_COUPON_LIMIT_EXCEEDED / ERR_COUPON_EXPIRED on any excess redemption attempt, and transitions the coupon lifecycle state to expired.",
+    "Acceptance Target 3 (Financial impact reaches ledger): Evaluated and approved checkouts produce double-entry FinancialPosting records with exact NUMERIC(18,6) amounts (DB-H-001) linked to order_id, offer_id, and coupon_id in M19 operating ledger.",
+    "Edge Case EC-M14-001: Offer activation requires either an associated product_id or an explicit product-less declaration; otherwise activation is rejected.",
+    "Edge Case EC-M14-003: Campaign budget utilization thresholds trigger proactive warnings when spend >= 80% and over-budget manager alerts when spend >= 100%."
+  ],
+  "verified_sub_slices": [
+    "Acceptance Target 1 Verified: TestAcceptanceTarget1_ExpiredOfferRejectedAtCheckout (Go -race), Vitest web test suite, and Flutter test suite confirm rejection with ERR_OFFER_EXPIRED.",
+    "Acceptance Target 2 Verified: TestAcceptanceTarget2_CouponRacesDoNotExceedLimits (Go 50-goroutine concurrent race test with -race), Vitest concurrency test, and Flutter test suite confirm strict max_uses ceiling.",
+    "Acceptance Target 3 Verified: TestAcceptanceTarget3_FinancialImpactReachesLedger (Go -race), Vitest web test suite, and Flutter test suite confirm FinancialPosting creation with exact non-float amounts.",
+    "EC-M14-001 & EC-M14-003 Verified: TestECM14_001_OfferActivationRequiresProduct and TestECM14_003_CampaignBudgetThresholds pass across Go, Vitest, and Flutter.",
+    "Migration 00029 Verified: Migrator test suite (migrator_test.go) passes all 29 migrations up, status verification, and clean down transactional reversal.",
+    "Four-Target Proto Codegen Verified: check_proto.sh passes lint, generate, drift check, buf breaking backward compatibility, Go vet/test, TypeScript vitest, and Dart test suites.",
+    "Web & Mobile Surfaces Verified: Vitest web test suite (32 files, 256 tests passing), svelte-check (0 errors, 0 warnings), Vite production build (adapter-node ✔ done), and Flutter test suite (219 tests passing, flutter analyze 0 issues) all pass."
+  ],
+  "rpc_contracts": [
+    "OfferService/Create",
+    "OfferService/Get",
+    "OfferService/List",
+    "OfferService/Update",
+    "OfferService/Activate",
+    "OfferService/Pause",
+    "OfferService/Resume",
+    "OfferService/Expire",
+    "OfferService/Delete",
+    "CouponService/Create",
+    "CouponService/Get",
+    "CouponService/List",
+    "CouponService/ValidateCoupon",
+    "CouponService/Update",
+    "CouponService/Activate",
+    "CouponService/Pause",
+    "CouponService/Resume",
+    "CouponService/Delete",
+    "CampaignService/Create",
+    "CampaignService/Get",
+    "CampaignService/List",
+    "CampaignService/AddCost",
+    "CampaignService/GetCosts",
+    "CampaignService/GetFunnel",
+    "CampaignService/GetMetrics",
+    "MonetizationService/EvaluateCheckout"
+  ],
+  "migration_files": [
+    "infra/migrations/00029_p6_01_campaigns_coupons_and_monetization.sql"
+  ],
+  "permission_keys": [
+    "commerce:manage_offers",
+    "commerce:manage_coupons",
+    "commerce:manage_campaigns",
+    "commerce:evaluate_checkout"
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "Migration 00029 schema, composite foreign keys, RLS policies (FORCE ROW LEVEL SECURITY), and narrow grants verified via dry-run and local migrator test; live multi-tenant PostgreSQL RLS suite runs in CI harness."
+    ],
+    [
+      "EXT-GATE-COMMERCE-PAYMENT-GATEWAYS",
+      "PENDING_EXTERNAL_PROVIDER_APPROVAL",
+      "Production checkout capture integrates with external payment gateways; monetization evaluation and ledger posting verified locally."
+    ]
+  ]
+}

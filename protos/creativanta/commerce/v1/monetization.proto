@@ -1,0 +1,929 @@
+syntax = "proto3";
+
+package creativanta.commerce.v1;
+
+import "creativanta/common/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1;commercev1";
+
+// Offer classifications per PRD §23.14 & DB Schema §10.2.
+enum OfferType {
+  OFFER_TYPE_UNSPECIFIED = 0;
+  OFFER_TYPE_PRODUCT_OFFER = 1;
+  OFFER_TYPE_DIGITAL_OFFER = 2;
+  OFFER_TYPE_MEMBERSHIP_OFFER = 3;
+  OFFER_TYPE_BUNDLE_OFFER = 4;
+  OFFER_TYPE_AFFILIATE_OFFER = 5;
+  OFFER_TYPE_SPONSOR_OFFER = 6;
+}
+
+// Canonical offer lifecycle state machine per RULE-M14-002.
+enum OfferLifecycleState {
+  OFFER_LIFECYCLE_STATE_UNSPECIFIED = 0;
+  OFFER_LIFECYCLE_STATE_DRAFT = 1;
+  OFFER_LIFECYCLE_STATE_REVIEW_REQUIRED = 2;
+  OFFER_LIFECYCLE_STATE_ACTIVE = 3;
+  OFFER_LIFECYCLE_STATE_PAUSED = 4;
+  OFFER_LIFECYCLE_STATE_EXPIRED = 5;
+  OFFER_LIFECYCLE_STATE_RETIRED = 6;
+}
+
+// Coupon classification per DB Schema §19.2.
+enum CouponType {
+  COUPON_TYPE_UNSPECIFIED = 0;
+  COUPON_TYPE_PERCENTAGE = 1;
+  COUPON_TYPE_FIXED_AMOUNT = 2;
+  COUPON_TYPE_FREE_SHIPPING = 3;
+}
+
+// Canonical coupon lifecycle state machine per RULE-M14-003.
+enum CouponLifecycleState {
+  COUPON_LIFECYCLE_STATE_UNSPECIFIED = 0;
+  COUPON_LIFECYCLE_STATE_DRAFT = 1;
+  COUPON_LIFECYCLE_STATE_ACTIVE = 2;
+  COUPON_LIFECYCLE_STATE_PAUSED = 3;
+  COUPON_LIFECYCLE_STATE_EXPIRED = 4;
+  COUPON_LIFECYCLE_STATE_RETIRED = 5;
+  COUPON_LIFECYCLE_STATE_REVOKED = 6;
+}
+
+// Campaign classifications per DB Schema §10.5.
+enum CampaignType {
+  CAMPAIGN_TYPE_UNSPECIFIED = 0;
+  CAMPAIGN_TYPE_CONTENT = 1;
+  CAMPAIGN_TYPE_AFFILIATE = 2;
+  CAMPAIGN_TYPE_SEEDING = 3;
+  CAMPAIGN_TYPE_LIVE = 4;
+  CAMPAIGN_TYPE_BRAND_COLLAB = 5;
+}
+
+// Canonical campaign lifecycle status per RULE-M14-004.
+enum CampaignStatus {
+  CAMPAIGN_STATUS_UNSPECIFIED = 0;
+  CAMPAIGN_STATUS_PLANNED = 1;
+  CAMPAIGN_STATUS_READY = 2;
+  CAMPAIGN_STATUS_LIVE = 3;
+  CAMPAIGN_STATUS_PAUSED = 4;
+  CAMPAIGN_STATUS_COMPLETED = 5;
+  CAMPAIGN_STATUS_CANCELLED = 6;
+}
+
+// Channel availability setting for an offer.
+message ChannelAvailability {
+  string platform = 1;
+  bool enabled = 2;
+}
+
+// Canonical Offer model.
+message Offer {
+  string offer_id = 1;
+  string workspace_id = 2;
+  OfferType offer_type = 3;
+  string product_id = 4;
+  string product_less_declaration = 5;
+  string title = 6;
+  string pricing_value = 7;
+  string pricing_currency = 8;
+  string pricing_logic_json = 9;
+  string cta_text = 10;
+  string cta_url = 11;
+  repeated ChannelAvailability channel_availability = 12;
+  OfferLifecycleState lifecycle_state = 13;
+  repeated string campaign_ids = 14;
+  string metadata_json = 15;
+  google.protobuf.Timestamp valid_from = 16;
+  google.protobuf.Timestamp valid_until = 17;
+  google.protobuf.Timestamp created_at = 18;
+  google.protobuf.Timestamp updated_at = 19;
+}
+
+// Canonical Coupon model.
+message Coupon {
+  string coupon_id = 1;
+  string workspace_id = 2;
+  string code = 3;
+  CouponType coupon_type = 4;
+  string discount_value = 5;
+  string min_order_amount = 6;
+  int32 max_uses = 7;
+  int32 current_uses = 8;
+  CouponLifecycleState lifecycle_state = 9;
+  repeated string related_offer_ids = 10;
+  repeated string related_campaign_ids = 11;
+  google.protobuf.Timestamp valid_from = 12;
+  google.protobuf.Timestamp valid_until = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+}
+
+// Canonical Campaign model.
+message Campaign {
+  string campaign_id = 1;
+  string workspace_id = 2;
+  CampaignType campaign_type = 3;
+  string title = 4;
+  string objective = 5;
+  CampaignStatus status = 6;
+  string start_date = 7; // YYYY-MM-DD
+  string end_date = 8;   // YYYY-MM-DD
+  string budget = 9;
+  string budget_currency = 10;
+  repeated string related_product_ids = 11;
+  repeated string related_offer_ids = 12;
+  string metadata_json = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+}
+
+// Coupon redemption record for ledger linkage.
+message CouponRedemption {
+  string redemption_id = 1;
+  string workspace_id = 2;
+  string coupon_id = 3;
+  string order_id = 4;
+  string discount_amount = 5;
+  string currency = 6;
+  google.protobuf.Timestamp redeemed_at = 7;
+  string metadata_json = 8;
+}
+
+// Offer Service Requests/Responses
+message OfferServiceCreateRequest {
+  string workspace_id = 1;
+  OfferType offer_type = 2;
+  string product_id = 3;
+  string product_less_declaration = 4;
+  string title = 5;
+  string pricing_value = 6;
+  string pricing_currency = 7;
+  string pricing_logic_json = 8;
+  string cta_text = 9;
+  string cta_url = 10;
+  repeated ChannelAvailability channel_availability = 11;
+  repeated string campaign_ids = 12;
+  string metadata_json = 13;
+  google.protobuf.Timestamp valid_from = 14;
+  google.protobuf.Timestamp valid_until = 15;
+  creativanta.common.v1.CommandContext command_context = 16;
+}
+
+message OfferServiceCreateResponse {
+  Offer offer = 1;
+}
+
+message OfferServiceGetRequest {
+  string workspace_id = 1;
+  string offer_id = 2;
+}
+
+message OfferServiceGetResponse {
+  Offer offer = 1;
+}
+
+message OfferServiceListRequest {
+  string workspace_id = 1;
+  OfferLifecycleState status = 2;
+  string product_id = 3;
+  string query = 4;
+  string sort = 5;
+  int32 page_size = 6;
+  string page_token = 7;
+}
+
+message OfferServiceListResponse {
+  repeated Offer offers = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+
+message OfferServiceUpdateRequest {
+  string workspace_id = 1;
+  string offer_id = 2;
+  string title = 3;
+  string pricing_value = 4;
+  string pricing_logic_json = 5;
+  string cta_text = 6;
+  string cta_url = 7;
+  repeated ChannelAvailability channel_availability = 8;
+  repeated string campaign_ids = 9;
+  string metadata_json = 10;
+  google.protobuf.Timestamp valid_from = 11;
+  google.protobuf.Timestamp valid_until = 12;
+  creativanta.common.v1.CommandContext command_context = 13;
+}
+
+message OfferServiceUpdateResponse {
+  Offer offer = 1;
+}
+
+message OfferServiceActivateRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string offer_id = 3;
+  creativanta.common.v1.CommandContext command_context = 4;
+}
+
+message OfferServiceActivateResponse {
+  string id = 1;
+  string lifecycle_state = 2;
+  google.protobuf.Timestamp activated_at = 3;
+  string activated_by = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  Offer offer = 6;
+}
+
+message OfferServicePauseRequest {
+  string workspace_id = 1;
+  string offer_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message OfferServicePauseResponse {
+  Offer offer = 1;
+}
+
+message OfferServiceResumeRequest {
+  string workspace_id = 1;
+  string offer_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message OfferServiceResumeResponse {
+  Offer offer = 1;
+}
+
+message OfferServiceExpireRequest {
+  string workspace_id = 1;
+  string offer_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message OfferServiceExpireResponse {
+  Offer offer = 1;
+}
+
+message OfferServiceRetireRequest {
+  string workspace_id = 1;
+  string offer_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message OfferServiceRetireResponse {
+  Offer offer = 1;
+}
+
+message OfferServiceDuplicateRequest {
+  string workspace_id = 1;
+  string offer_id = 2;
+  string new_title = 3;
+  creativanta.common.v1.CommandContext command_context = 4;
+}
+
+message OfferServiceDuplicateResponse {
+  Offer offer = 1;
+}
+
+message OfferServiceDeleteRequest {
+  string workspace_id = 1;
+  string offer_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message OfferServiceDeleteResponse {
+  bool success = 1;
+}
+
+message OfferServiceBulkPauseRequest {
+  string workspace_id = 1;
+  repeated string offer_ids = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message OfferServiceBulkPauseResponse {
+  int32 paused_count = 1;
+}
+
+message OfferServiceGetPerformanceRequest {
+  string workspace_id = 1;
+  string offer_id = 2;
+}
+
+message OfferServiceGetPerformanceResponse {
+  string offer_id = 1;
+  int64 impressions = 2;
+  int64 clicks = 3;
+  int64 conversions = 4;
+  string conversion_rate = 5;
+  string gross_revenue = 6;
+  string currency = 7;
+}
+
+message OfferServiceGetRedemptionStatsRequest {
+  string workspace_id = 1;
+  string offer_id = 2;
+}
+
+message OfferServiceGetRedemptionStatsResponse {
+  string offer_id = 1;
+  int64 total_redemptions = 2;
+  string total_discount_amount = 3;
+  string currency = 4;
+}
+
+message OfferServiceGetStatusCountsRequest {
+  string workspace_id = 1;
+}
+
+message OfferServiceGetStatusCountsResponse {
+  int32 draft_count = 1;
+  int32 review_required_count = 2;
+  int32 active_count = 3;
+  int32 paused_count = 4;
+  int32 expired_count = 5;
+  int32 retired_count = 6;
+}
+
+message OfferServiceGetTabSummaryRequest {
+  string workspace_id = 1;
+}
+
+message OfferServiceGetTabSummaryResponse {
+  int32 active_offers = 1;
+  int32 pending_review = 2;
+  int32 expiring_soon = 3;
+}
+
+// Coupon Service Requests/Responses
+message CouponServiceCreateRequest {
+  string workspace_id = 1;
+  string code = 2;
+  CouponType coupon_type = 3;
+  string discount_value = 4;
+  string min_order_amount = 5;
+  int32 max_uses = 6;
+  repeated string related_offer_ids = 7;
+  repeated string related_campaign_ids = 8;
+  google.protobuf.Timestamp valid_from = 9;
+  google.protobuf.Timestamp valid_until = 10;
+  creativanta.common.v1.CommandContext command_context = 11;
+}
+
+message CouponServiceCreateResponse {
+  Coupon coupon = 1;
+}
+
+message CouponServiceGetRequest {
+  string workspace_id = 1;
+  string coupon_id = 2;
+}
+
+message CouponServiceGetResponse {
+  Coupon coupon = 1;
+}
+
+message CouponServiceListRequest {
+  string workspace_id = 1;
+  CouponLifecycleState status = 2;
+  string query = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+}
+
+message CouponServiceListResponse {
+  repeated Coupon coupons = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+
+message OrderContext {
+  repeated string product_ids = 1;
+  string subtotal = 2;
+  string currency = 3;
+}
+
+message CouponServiceValidateCouponRequest {
+  string workspace_id = 1;
+  string code = 2;
+  OrderContext order_context = 3;
+}
+
+message CouponServiceValidateCouponResponse {
+  bool valid = 1;
+  string coupon_id = 2;
+  string discount_type = 3;
+  string discount_value = 4;
+  string max_discount_amount = 5;
+  string calculated_discount = 6;
+  bool stackable = 7;
+  google.protobuf.Timestamp expires_at = 8;
+  int32 remaining_uses = 9;
+  string failure_reason = 10;
+}
+
+message CouponServiceUpdateRequest {
+  string workspace_id = 1;
+  string coupon_id = 2;
+  string discount_value = 3;
+  string min_order_amount = 4;
+  int32 max_uses = 5;
+  google.protobuf.Timestamp valid_from = 6;
+  google.protobuf.Timestamp valid_until = 7;
+  creativanta.common.v1.CommandContext command_context = 8;
+}
+
+message CouponServiceUpdateResponse {
+  Coupon coupon = 1;
+}
+
+message CouponServiceActivateRequest {
+  string workspace_id = 1;
+  string coupon_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message CouponServiceActivateResponse {
+  Coupon coupon = 1;
+}
+
+message CouponServicePauseRequest {
+  string workspace_id = 1;
+  string coupon_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message CouponServicePauseResponse {
+  Coupon coupon = 1;
+}
+
+message CouponServiceResumeRequest {
+  string workspace_id = 1;
+  string coupon_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message CouponServiceResumeResponse {
+  Coupon coupon = 1;
+}
+
+message CouponServiceDeactivateRequest {
+  string workspace_id = 1;
+  string coupon_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message CouponServiceDeactivateResponse {
+  Coupon coupon = 1;
+}
+
+message CouponServiceRevokeRequest {
+  string workspace_id = 1;
+  string coupon_id = 2;
+  string reason = 3;
+  creativanta.common.v1.CommandContext command_context = 4;
+}
+
+message CouponServiceRevokeResponse {
+  Coupon coupon = 1;
+}
+
+message CouponServiceDeleteRequest {
+  string workspace_id = 1;
+  string coupon_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message CouponServiceDeleteResponse {
+  bool success = 1;
+}
+
+message CouponServiceCheckAvailabilityRequest {
+  string workspace_id = 1;
+  string code = 2;
+}
+
+message CouponServiceCheckAvailabilityResponse {
+  bool available = 1;
+  int32 remaining_uses = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+// Campaign Service Requests/Responses
+message CampaignServiceCreateRequest {
+  string workspace_id = 1;
+  CampaignType campaign_type = 2;
+  string title = 3;
+  string objective = 4;
+  string start_date = 5;
+  string end_date = 6;
+  string budget = 7;
+  string budget_currency = 8;
+  repeated string related_product_ids = 9;
+  repeated string related_offer_ids = 10;
+  string metadata_json = 11;
+  creativanta.common.v1.CommandContext command_context = 12;
+}
+
+message CampaignServiceCreateResponse {
+  Campaign campaign = 1;
+}
+
+message CampaignServiceGetRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+}
+
+message CampaignServiceGetResponse {
+  Campaign campaign = 1;
+}
+
+message CampaignServiceListRequest {
+  string workspace_id = 1;
+  CampaignStatus status = 2;
+  CampaignType campaign_type = 3;
+  string query = 4;
+  int32 page_size = 5;
+  string page_token = 6;
+}
+
+message CampaignServiceListResponse {
+  repeated Campaign campaigns = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+
+message CampaignServiceUpdateRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  string title = 3;
+  string objective = 4;
+  string start_date = 5;
+  string end_date = 6;
+  string budget = 7;
+  string budget_currency = 8;
+  repeated string related_product_ids = 9;
+  repeated string related_offer_ids = 10;
+  string metadata_json = 11;
+  creativanta.common.v1.CommandContext command_context = 12;
+}
+
+message CampaignServiceUpdateResponse {
+  Campaign campaign = 1;
+}
+
+message CampaignServiceActivateRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message CampaignServiceActivateResponse {
+  Campaign campaign = 1;
+}
+
+message CampaignServicePauseRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message CampaignServicePauseResponse {
+  Campaign campaign = 1;
+}
+
+message CampaignServiceResumeRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message CampaignServiceResumeResponse {
+  Campaign campaign = 1;
+}
+
+message CampaignServiceEndRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message CampaignServiceEndResponse {
+  Campaign campaign = 1;
+}
+
+message CampaignServiceDeleteRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  creativanta.common.v1.CommandContext command_context = 3;
+}
+
+message CampaignServiceDeleteResponse {
+  bool success = 1;
+}
+
+message CampaignServiceDuplicateRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  string new_title = 3;
+  creativanta.common.v1.CommandContext command_context = 4;
+}
+
+message CampaignServiceDuplicateResponse {
+  Campaign campaign = 1;
+}
+
+message CampaignServiceExportReportRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  string format = 3; // csv, pdf, xlsx
+}
+
+message CampaignServiceExportReportResponse {
+  string download_url = 1;
+  string export_id = 2;
+}
+
+message CampaignServiceAddCostRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  string cost_type = 3; // ads_spend, creator_payout, shipping, production, other
+  string amount = 4;
+  string currency = 5;
+  string description = 6;
+  string effective_date = 7;
+  creativanta.common.v1.CommandContext command_context = 8;
+}
+
+message CampaignServiceAddCostResponse {
+  string cost_item_id = 1;
+  string campaign_id = 2;
+  string total_spend = 3;
+  string budget = 4;
+  string budget_utilization_pct = 5;
+  bool warning_emitted = 6;
+  bool alert_emitted = 7;
+}
+
+message CampaignServiceGetCostsRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+}
+
+message CampaignCostItem {
+  string cost_item_id = 1;
+  string cost_type = 2;
+  string amount = 3;
+  string currency = 4;
+  string description = 5;
+  string effective_date = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message CampaignServiceGetCostsResponse {
+  string campaign_id = 1;
+  string total_spend = 2;
+  string budget = 3;
+  string remaining_budget = 4;
+  string budget_currency = 5;
+  repeated CampaignCostItem items = 6;
+}
+
+message CampaignServiceGetFunnelRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+}
+
+message CampaignServiceGetFunnelResponse {
+  string campaign_id = 1;
+  int64 impressions = 2;
+  int64 clicks = 3;
+  int64 cart_adds = 4;
+  int64 checkouts = 5;
+  int64 completed_orders = 6;
+  string dropoff_rate = 7;
+}
+
+message CampaignServiceGetMetricsRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+}
+
+message CampaignServiceGetMetricsResponse {
+  string campaign_id = 1;
+  string gross_revenue = 2;
+  string total_costs = 3;
+  string net_profit = 4;
+  string roas = 5;
+  string currency = 6;
+  int32 orders_count = 7;
+}
+
+message CampaignServiceGetLinkedContentRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+}
+
+message LinkedContentItem {
+  string post_id = 1;
+  string platform = 2;
+  string title = 3;
+  string url = 4;
+  int64 views = 5;
+  int64 engagements = 6;
+}
+
+message CampaignServiceGetLinkedContentResponse {
+  string campaign_id = 1;
+  repeated LinkedContentItem items = 2;
+}
+
+message CampaignServiceGetLinkedOffersRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+}
+
+message CampaignServiceGetLinkedOffersResponse {
+  string campaign_id = 1;
+  repeated Offer offers = 2;
+}
+
+message CampaignServiceGetPlatformBreakdownRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+}
+
+message PlatformBreakdownItem {
+  string platform = 1;
+  string revenue = 2;
+  string spend = 3;
+  int32 orders_count = 4;
+}
+
+message CampaignServiceGetPlatformBreakdownResponse {
+  string campaign_id = 1;
+  repeated PlatformBreakdownItem items = 2;
+}
+
+message CampaignServiceGetRevenueTimelineRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  string granularity = 3; // day, week, month
+}
+
+message RevenueTimelinePoint {
+  string date = 1;
+  string revenue = 2;
+  string spend = 3;
+  int32 orders_count = 4;
+}
+
+message CampaignServiceGetRevenueTimelineResponse {
+  string campaign_id = 1;
+  repeated RevenueTimelinePoint points = 2;
+}
+
+message CampaignServiceGetTopProductsRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  int32 limit = 3;
+}
+
+message TopProductItem {
+  string product_id = 1;
+  string title = 2;
+  int32 units_sold = 3;
+  string revenue = 4;
+  string currency = 5;
+}
+
+message CampaignServiceGetTopProductsResponse {
+  string campaign_id = 1;
+  repeated TopProductItem products = 2;
+}
+
+message CampaignServiceLinkContentRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  string post_id = 3;
+  creativanta.common.v1.CommandContext command_context = 4;
+}
+
+message CampaignServiceLinkContentResponse {
+  bool success = 1;
+}
+
+message CampaignServiceLinkOfferRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  string offer_id = 3;
+  creativanta.common.v1.CommandContext command_context = 4;
+}
+
+message CampaignServiceLinkOfferResponse {
+  bool success = 1;
+}
+
+message CampaignServiceUnlinkContentRequest {
+  string workspace_id = 1;
+  string campaign_id = 2;
+  string post_id = 3;
+  creativanta.common.v1.CommandContext command_context = 4;
+}
+
+message CampaignServiceUnlinkContentResponse {
+  bool success = 1;
+}
+
+// Checkout evaluation request/response connecting Offer, Coupon, Order and Ledger
+message MonetizationServiceEvaluateCheckoutRequest {
+  string workspace_id = 1;
+  string offer_id = 2;
+  string coupon_code = 3;
+  string customer_entity_id = 4;
+  repeated string product_ids = 5;
+  string order_amount = 6;
+  string currency = 7;
+  creativanta.common.v1.CommandContext command_context = 8;
+}
+
+message MonetizationServiceEvaluateCheckoutResponse {
+  bool accepted = 1;
+  string error_code = 2; // e.g. ERR_OFFER_EXPIRED, ERR_COUPON_LIMIT_EXCEEDED, ERR_COUPON_EXPIRED
+  string error_message = 3;
+  string original_amount = 4;
+  string discount_amount = 5;
+  string net_payable_amount = 6;
+  string currency = 7;
+  string order_id = 8;
+  string posting_id = 9;
+  string coupon_id = 10;
+  int32 coupon_remaining_uses = 11;
+}
+
+// Canonical Offer Service.
+service OfferService {
+  rpc Create(OfferServiceCreateRequest) returns (OfferServiceCreateResponse);
+  rpc Get(OfferServiceGetRequest) returns (OfferServiceGetResponse);
+  rpc List(OfferServiceListRequest) returns (OfferServiceListResponse);
+  rpc Update(OfferServiceUpdateRequest) returns (OfferServiceUpdateResponse);
+  rpc Activate(OfferServiceActivateRequest) returns (OfferServiceActivateResponse);
+  rpc Pause(OfferServicePauseRequest) returns (OfferServicePauseResponse);
+  rpc Resume(OfferServiceResumeRequest) returns (OfferServiceResumeResponse);
+  rpc Expire(OfferServiceExpireRequest) returns (OfferServiceExpireResponse);
+  rpc Retire(OfferServiceRetireRequest) returns (OfferServiceRetireResponse);
+  rpc Duplicate(OfferServiceDuplicateRequest) returns (OfferServiceDuplicateResponse);
+  rpc Delete(OfferServiceDeleteRequest) returns (OfferServiceDeleteResponse);
+  rpc BulkPause(OfferServiceBulkPauseRequest) returns (OfferServiceBulkPauseResponse);
+  rpc GetPerformance(OfferServiceGetPerformanceRequest) returns (OfferServiceGetPerformanceResponse);
+  rpc GetRedemptionStats(OfferServiceGetRedemptionStatsRequest) returns (OfferServiceGetRedemptionStatsResponse);
+  rpc GetStatusCounts(OfferServiceGetStatusCountsRequest) returns (OfferServiceGetStatusCountsResponse);
+  rpc GetTabSummary(OfferServiceGetTabSummaryRequest) returns (OfferServiceGetTabSummaryResponse);
+}
+
+// Canonical Coupon Service.
+service CouponService {
+  rpc Create(CouponServiceCreateRequest) returns (CouponServiceCreateResponse);
+  rpc Get(CouponServiceGetRequest) returns (CouponServiceGetResponse);
+  rpc List(CouponServiceListRequest) returns (CouponServiceListResponse);
+  rpc ValidateCoupon(CouponServiceValidateCouponRequest) returns (CouponServiceValidateCouponResponse);
+  rpc Update(CouponServiceUpdateRequest) returns (CouponServiceUpdateResponse);
+  rpc Activate(CouponServiceActivateRequest) returns (CouponServiceActivateResponse);
+  rpc Pause(CouponServicePauseRequest) returns (CouponServicePauseResponse);
+  rpc Resume(CouponServiceResumeRequest) returns (CouponServiceResumeResponse);
+  rpc Deactivate(CouponServiceDeactivateRequest) returns (CouponServiceDeactivateResponse);
+  rpc Delete(CouponServiceDeleteRequest) returns (CouponServiceDeleteResponse);
+  rpc Revoke(CouponServiceRevokeRequest) returns (CouponServiceRevokeResponse);
+  rpc CheckAvailability(CouponServiceCheckAvailabilityRequest) returns (CouponServiceCheckAvailabilityResponse);
+}
+
+// Canonical Campaign Service.
+service CampaignService {
+  rpc Create(CampaignServiceCreateRequest) returns (CampaignServiceCreateResponse);
+  rpc Get(CampaignServiceGetRequest) returns (CampaignServiceGetResponse);
+  rpc List(CampaignServiceListRequest) returns (CampaignServiceListResponse);
+  rpc Update(CampaignServiceUpdateRequest) returns (CampaignServiceUpdateResponse);
+  rpc Activate(CampaignServiceActivateRequest) returns (CampaignServiceActivateResponse);
+  rpc Pause(CampaignServicePauseRequest) returns (CampaignServicePauseResponse);
+  rpc Resume(CampaignServiceResumeRequest) returns (CampaignServiceResumeResponse);
+  rpc End(CampaignServiceEndRequest) returns (CampaignServiceEndResponse);
+  rpc Delete(CampaignServiceDeleteRequest) returns (CampaignServiceDeleteResponse);
+  rpc Duplicate(CampaignServiceDuplicateRequest) returns (CampaignServiceDuplicateResponse);
+  rpc ExportReport(CampaignServiceExportReportRequest) returns (CampaignServiceExportReportResponse);
+  rpc AddCost(CampaignServiceAddCostRequest) returns (CampaignServiceAddCostResponse);
+  rpc GetCosts(CampaignServiceGetCostsRequest) returns (CampaignServiceGetCostsResponse);
+  rpc GetFunnel(CampaignServiceGetFunnelRequest) returns (CampaignServiceGetFunnelResponse);
+  rpc GetMetrics(CampaignServiceGetMetricsRequest) returns (CampaignServiceGetMetricsResponse);
+  rpc GetLinkedContent(CampaignServiceGetLinkedContentRequest) returns (CampaignServiceGetLinkedContentResponse);
+  rpc GetLinkedOffers(CampaignServiceGetLinkedOffersRequest) returns (CampaignServiceGetLinkedOffersResponse);
+  rpc GetPlatformBreakdown(CampaignServiceGetPlatformBreakdownRequest) returns (CampaignServiceGetPlatformBreakdownResponse);
+  rpc GetRevenueTimeline(CampaignServiceGetRevenueTimelineRequest) returns (CampaignServiceGetRevenueTimelineResponse);
+  rpc GetTopProducts(CampaignServiceGetTopProductsRequest) returns (CampaignServiceGetTopProductsResponse);
+  rpc LinkContent(CampaignServiceLinkContentRequest) returns (CampaignServiceLinkContentResponse);
+  rpc LinkOffer(CampaignServiceLinkOfferRequest) returns (CampaignServiceLinkOfferResponse);
+  rpc UnlinkContent(CampaignServiceUnlinkContentRequest) returns (CampaignServiceUnlinkContentResponse);
+}
+
+// Canonical Monetization Service coordinating checkout and ledger integration.
+service MonetizationService {
+  rpc EvaluateCheckout(MonetizationServiceEvaluateCheckoutRequest) returns (MonetizationServiceEvaluateCheckoutResponse);
+}
