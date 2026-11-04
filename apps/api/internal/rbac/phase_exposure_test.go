@@ -43,6 +43,7 @@ var allowedModules = map[string]bool{
 	"M17":     true, // Phase P6-05: Live Commerce War Room (M17)
 	"M18":     true, // Phase P6-06: Seeding CRM (M18)
 	"M20":     true, // Phase P7-01: Workflow Studio (M20)
+	"M21":     true, // Phase P7-03: Recipe Marketplace & Governance (M21)
 }
 
 // TestNoFuturePhaseRPCExposed satisfies Acceptance Target:

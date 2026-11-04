@@ -24,7 +24,7 @@ func TestTarget3_NoDoubleRefundOrRestock(t *testing.T) {
 	const orderID = "order-no-double-01"
 
 	// Opening baseline: 10 units
-	_ = invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 10, time.Now().Add(-1*time.Hour))
+	_ = invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 10, baseHarnessTime.Add(-1*time.Hour))
 
 	// Ingest order for 2 units @ 500,000 each = 1,000,000 total
 	ord, _, err := orderSvc.IngestOrder(ctx, &order.Order{

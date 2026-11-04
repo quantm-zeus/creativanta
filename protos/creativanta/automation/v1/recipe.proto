@@ -1,0 +1,379 @@
+syntax = "proto3";
+
+package creativanta.automation.v1;
+
+import "creativanta/automation/v1/workflow.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/automation/v1;automationv1";
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+// RecipeStatus defines the lifecycle of a recipe template per database_schema.md §12.3B.
+enum RecipeStatus {
+  RECIPE_STATUS_UNSPECIFIED = 0;
+  RECIPE_STATUS_DRAFT = 1;
+  RECIPE_STATUS_REVIEW_REQUIRED = 2;
+  RECIPE_STATUS_PUBLISHED = 3;
+  RECIPE_STATUS_DEPRECATED = 4;
+  RECIPE_STATUS_RETIRED = 5;
+  RECIPE_STATUS_TAKEN_DOWN = 6;
+}
+
+// TemplateKind defines the variant of the template snapshot per database_schema.md §12.3B.
+enum TemplateKind {
+  TEMPLATE_KIND_UNSPECIFIED = 0;
+  TEMPLATE_KIND_WORKFLOW = 1;
+  TEMPLATE_KIND_STYLE_WORKFLOW = 2;
+}
+
+// RecipeInstallationStatus defines per-workspace install state per recipe_agent_center.md.
+enum RecipeInstallationStatus {
+  RECIPE_INSTALLATION_STATUS_UNSPECIFIED = 0;
+  RECIPE_INSTALLATION_STATUS_INSTALLED = 1;
+  RECIPE_INSTALLATION_STATUS_CUSTOMIZED = 2;
+  RECIPE_INSTALLATION_STATUS_UPDATE_AVAILABLE = 3;
+  RECIPE_INSTALLATION_STATUS_PINNED = 4;
+  RECIPE_INSTALLATION_STATUS_DEPRECATED = 5;
+  RECIPE_INSTALLATION_STATUS_WORKFLOW_DELETED = 6;
+}
+
+// SubmissionStatus defines creator recipe review status per Pack 06 S22.
+enum SubmissionStatus {
+  SUBMISSION_STATUS_UNSPECIFIED = 0;
+  SUBMISSION_STATUS_PENDING = 1;
+  SUBMISSION_STATUS_APPROVED = 2;
+  SUBMISSION_STATUS_REJECTED = 3;
+  SUBMISSION_STATUS_CHANGES_REQUESTED = 4;
+  SUBMISSION_STATUS_TAKEN_DOWN = 5;
+}
+
+// RevenueShareStatus defines marketplace 70/30 split settlement state.
+enum RevenueShareStatus {
+  REVENUE_SHARE_STATUS_UNSPECIFIED = 0;
+  REVENUE_SHARE_STATUS_SETTLED = 1;
+  REVENUE_SHARE_STATUS_REFUNDED = 2;
+  REVENUE_SHARE_STATUS_DISPUTED = 3;
+}
+
+// ============================================================================
+// Domain Models
+// ============================================================================
+
+// RecipeParameter defines a user-configurable parameter in a recipe template.
+message RecipeParameter {
+  string name = 1;
+  string type = 2; // string, number, boolean, select, channel, credential_ref
+  string default_value = 3;
+  bool required = 4;
+  string description = 5;
+}
+
+// MissingCapabilityExplanation provides structured user-facing diagnostic for missing requirements.
+message MissingCapabilityExplanation {
+  string capability_key = 1;
+  string platform = 2;
+  string reason = 3;
+  string resolution_guidance = 4;
+  string connect_url = 5;
+}
+
+// RecipeTemplate represents a reusable workflow template in the marketplace.
+message RecipeTemplate {
+  string recipe_id = 1;
+  string workspace_id = 2; // empty for system global recipes
+  string author_workspace_id = 3;
+  string title = 4;
+  string description = 5;
+  string category = 6;
+  string activepieces_template_id = 7;
+  TemplateKind template_kind = 8;
+  int32 template_version = 9;
+  string template_payload_json = 10; // canonical portable snapshot (§27.4)
+  repeated RecipeParameter parameters = 11;
+  repeated string required_capabilities = 12;
+  int32 install_count = 13;
+  float rating_avg = 14; // 0-5 non-financial rating
+  int32 review_count = 15;
+  string price_usd = 16; // exact decimal string per DB-H-001
+  RecipeStatus status = 17;
+  google.protobuf.Timestamp created_at = 18;
+  google.protobuf.Timestamp updated_at = 19;
+}
+
+// RecipeInstallation tracks an installed recipe instance in a destination workspace.
+message RecipeInstallation {
+  string installation_id = 1;
+  string workspace_id = 2;
+  string recipe_id = 3;
+  string workflow_id = 4;
+  int32 installed_version = 5;
+  RecipeInstallationStatus status = 6;
+  string parameter_values_json = 7;
+  string installed_by = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// RecipeReview represents a creator/user review and rating.
+message RecipeReview {
+  string review_id = 1;
+  string recipe_id = 2;
+  string workspace_id = 3;
+  string user_id = 4;
+  int32 rating = 5; // 1-5 stars
+  string review_text = 6;
+  string author_name = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+// RecipeSubmission represents a recipe submitted for marketplace governance review.
+message RecipeSubmission {
+  string submission_id = 1;
+  string recipe_id = 2;
+  string author_workspace_id = 3;
+  int32 submitted_version = 4;
+  SubmissionStatus status = 5;
+  string review_notes = 6;
+  string reviewed_by = 7;
+  google.protobuf.Timestamp reviewed_at = 8;
+  string takedown_reason = 9;
+  string takedown_ticket_ref = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// RecipeRevenueShare represents a 70/30 creator/platform split for paid recipes.
+message RecipeRevenueShare {
+  string revenue_share_id = 1;
+  string recipe_id = 2;
+  string author_workspace_id = 3;
+  string purchaser_workspace_id = 4;
+  string gross_amount = 5;    // exact decimal string (DB-H-001)
+  string creator_amount = 6;  // 70% exact decimal string
+  string platform_amount = 7; // 30% exact decimal string
+  string currency = 8;
+  RevenueShareStatus status = 9;
+  google.protobuf.Timestamp refund_eligible_until = 10; // 7-day refund window (S22)
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// ============================================================================
+// RecipeService RPC Messages
+// ============================================================================
+
+message RecipeServiceInstallRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string recipe_id = 3;
+  string parameter_values_json = 4;
+  string title_override = 5;
+}
+
+message RecipeServiceInstallResponse {
+  bool success = 1;
+  RecipeInstallation installation = 2;
+  Workflow created_workflow = 3;
+  repeated MissingCapabilityExplanation missing_capabilities = 4;
+}
+
+message RecipeServiceUninstallRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string installation_id = 3;
+  bool delete_workflow = 4;
+}
+
+message RecipeServiceUninstallResponse {
+  bool success = 1;
+}
+
+message RecipeServiceListRequest {
+  string workspace_id = 1;
+  string category = 2;
+  string status_filter = 3;
+  bool include_system = 4;
+  int32 page_size = 5;
+  string page_token = 6;
+}
+
+message RecipeServiceListResponse {
+  repeated RecipeTemplate recipes = 1;
+  repeated RecipeInstallation installations = 2;
+  string next_page_token = 3;
+  int32 total_count = 4;
+}
+
+message RecipeServiceGetRequest {
+  string workspace_id = 1;
+  string recipe_id = 2;
+}
+
+message RecipeServiceGetResponse {
+  RecipeTemplate recipe = 1;
+  repeated MissingCapabilityExplanation missing_capabilities = 2;
+  RecipeInstallation active_installation = 3;
+}
+
+message RecipeServiceRunRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string recipe_id = 3;
+  string parameter_overrides_json = 4;
+}
+
+message RecipeServiceRunResponse {
+  string workflow_run_id = 1;
+  WorkflowRunStatus status = 2;
+}
+
+message RecipeServiceGetRunStatusRequest {
+  string workspace_id = 1;
+  string run_id = 2;
+}
+
+message RecipeServiceGetRunStatusResponse {
+  string run_id = 1;
+  WorkflowRunStatus status = 2;
+  string current_node = 3;
+  google.protobuf.Timestamp completed_at = 4;
+  string error_message = 5;
+}
+
+message RecipeServiceListRunsRequest {
+  string workspace_id = 1;
+  string recipe_id = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message RecipeServiceListRunsResponse {
+  repeated WorkflowRun runs = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+
+message RecipeServiceConfigureRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string installation_id = 3;
+  string parameter_values_json = 4;
+  int32 pinned_version = 5;
+  bool auto_update = 6;
+}
+
+message RecipeServiceConfigureResponse {
+  RecipeInstallation installation = 1;
+}
+
+// ============================================================================
+// TemplateService RPC Messages
+// ============================================================================
+
+message TemplateServiceListTemplatesRequest {
+  string workspace_id = 1;
+  string category = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message TemplateServiceListTemplatesResponse {
+  repeated RecipeTemplate templates = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+
+message TemplateServiceGetTemplateRequest {
+  string workspace_id = 1;
+  string template_id = 2;
+}
+
+message TemplateServiceGetTemplateResponse {
+  RecipeTemplate template = 1;
+  repeated MissingCapabilityExplanation missing_capabilities = 2;
+}
+
+message TemplateServiceSearchTemplatesRequest {
+  string workspace_id = 1;
+  string query = 2;
+  string category = 3;
+  repeated string tags = 4;
+  int32 page_size = 5;
+  string page_token = 6;
+}
+
+message TemplateServiceSearchTemplatesResponse {
+  repeated RecipeTemplate templates = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+
+message TemplateServiceGetFeaturedRequest {
+  string workspace_id = 1;
+  string category = 2;
+}
+
+message TemplateServiceGetFeaturedResponse {
+  repeated RecipeTemplate featured_templates = 1;
+  RecipeTemplate weekly_highlight = 2;
+}
+
+message TemplateServiceGetReviewsRequest {
+  string workspace_id = 1;
+  string template_id = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message TemplateServiceGetReviewsResponse {
+  repeated RecipeReview reviews = 1;
+  float rating_avg = 2;
+  int32 review_count = 3;
+  string next_page_token = 4;
+}
+
+message TemplateServiceDeployRequest {
+  string idempotency_key = 1;
+  string workspace_id = 2;
+  string template_id = 3;
+  string parameter_values_json = 4;
+  string title_override = 5;
+}
+
+message TemplateServiceDeployResponse {
+  bool success = 1;
+  string workflow_id = 2;
+  Workflow created_workflow = 3;
+  string installation_id = 4;
+  repeated MissingCapabilityExplanation missing_capabilities = 5;
+}
+
+// ============================================================================
+// Services
+// ============================================================================
+
+// RecipeService provides workspace recipe installation, configuration, and execution.
+service RecipeService {
+  rpc Install(RecipeServiceInstallRequest) returns (RecipeServiceInstallResponse);
+  rpc Uninstall(RecipeServiceUninstallRequest) returns (RecipeServiceUninstallResponse);
+  rpc List(RecipeServiceListRequest) returns (RecipeServiceListResponse);
+  rpc Get(RecipeServiceGetRequest) returns (RecipeServiceGetResponse);
+  rpc Run(RecipeServiceRunRequest) returns (RecipeServiceRunResponse);
+  rpc GetRunStatus(RecipeServiceGetRunStatusRequest) returns (RecipeServiceGetRunStatusResponse);
+  rpc ListRuns(RecipeServiceListRunsRequest) returns (RecipeServiceListRunsResponse);
+  rpc Configure(RecipeServiceConfigureRequest) returns (RecipeServiceConfigureResponse);
+}
+
+// TemplateService provides public and tenant template marketplace discovery and deployment.
+service TemplateService {
+  rpc ListTemplates(TemplateServiceListTemplatesRequest) returns (TemplateServiceListTemplatesResponse);
+  rpc GetTemplate(TemplateServiceGetTemplateRequest) returns (TemplateServiceGetTemplateResponse);
+  rpc SearchTemplates(TemplateServiceSearchTemplatesRequest) returns (TemplateServiceSearchTemplatesResponse);
+  rpc GetFeatured(TemplateServiceGetFeaturedRequest) returns (TemplateServiceGetFeaturedResponse);
+  rpc GetReviews(TemplateServiceGetReviewsRequest) returns (TemplateServiceGetReviewsResponse);
+  rpc Deploy(TemplateServiceDeployRequest) returns (TemplateServiceDeployResponse);
+}

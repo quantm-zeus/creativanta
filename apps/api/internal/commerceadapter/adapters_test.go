@@ -53,7 +53,7 @@ func TestTikTokAdapter_OrderReturnRefundSettlement(t *testing.T) {
 	const skuID = "sku-tt-item-1"
 
 	// Prepare location and opening inventory of 10 units
-	_ = invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 10, time.Now().Add(-1*time.Hour))
+	_ = invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 10, baseHarnessTime.Add(-1*time.Hour))
 
 	// 1. TikTok Order Webhook Ingestion
 	orderPayload := []byte(`{
@@ -159,7 +159,7 @@ func TestShopeeAdapter_OrderAndReturn(t *testing.T) {
 	const locID = "loc-warehouse-01"
 	const skuID = "sku-sp-item-1"
 
-	_ = invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 20, time.Now().Add(-1*time.Hour))
+	_ = invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 20, baseHarnessTime.Add(-1*time.Hour))
 
 	orderPayload := []byte(`{
 		"shop_id": 1234567,
@@ -216,7 +216,7 @@ func TestLazadaAdapter_OrderAndReturn(t *testing.T) {
 	const locID = "loc-warehouse-01"
 	const skuID = "sku-lz-item-1"
 
-	_ = invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 15, time.Now().Add(-1*time.Hour))
+	_ = invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 15, baseHarnessTime.Add(-1*time.Hour))
 
 	orderPayload := []byte(`{
 		"seller_id": "seller_lz_99",
@@ -312,7 +312,7 @@ func TestPlatformStockSync_DeltaCalculation(t *testing.T) {
 	const skuID = "sku-sync-01"
 
 	// Baseline of 10
-	_ = invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 10, time.Now().Add(-1*time.Hour))
+	_ = invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 10, baseHarnessTime.Add(-1*time.Hour))
 
 	// 1. First sync reports 10 (same as on-hand): must be no-op!
 	res1, err := adapterSvc.SyncPlatformStock(ctx, wsID, commerceadapter.PlatformTikTok, locID, skuID, 10, "sync-01")

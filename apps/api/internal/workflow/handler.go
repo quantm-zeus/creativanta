@@ -537,6 +537,15 @@ func graphFromProto(pb *automationv1.WorkflowGraph) WorkflowGraph {
 	}
 }
 
+// Exported helpers for cross-package conversions (e.g., recipe package)
+func WorkflowToProto(w *Workflow) *automationv1.Workflow {
+	return workflowToProto(w)
+}
+
+func RunToProto(r *WorkflowRun) *automationv1.WorkflowRun {
+	return runToProto(r)
+}
+
 func workflowToProto(w *Workflow) *automationv1.Workflow {
 	if w == nil {
 		return nil
