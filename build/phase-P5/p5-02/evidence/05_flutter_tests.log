@@ -1,0 +1,34 @@
+=== Flutter Analyze ===
+Resolving dependencies...
+Downloading packages...
+  cupertino_icons 1.0.9 (2.0.0 available)
+  http2 2.3.1 (3.1.0 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.3 (1.19.0 available)
+  test_api 0.7.12 (0.7.15 available)
+  vector_math 2.4.0 (2.4.4 available)
+Got dependencies!
+6 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Analyzing 2 items...
+No issues found! (ran in 6.1s)
+=== Flutter Test ===
+Resolving dependencies...
+Downloading packages...
+  cupertino_icons 1.0.9 (2.0.0 available)
+  http2 2.3.1 (3.1.0 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.3 (1.19.0 available)
+  test_api 0.7.12 (0.7.15 available)
+  vector_math 2.4.0 (2.4.4 available)
+Got dependencies!
+6 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+00:00 +0: loading /home/whaleorcale/evergreen/worktrees/creativanta-autonomous/p5-02/apps/mobile/test/engagement_acceptance_test.dart
+00:00 +0: P5-02 Unified Inbox & Engagement Center Acceptance Targets (Mobile) Target 1: Enforce 24-hour reply window from customer inbound
+00:00 +1: P5-02 Unified Inbox & Engagement Center Acceptance Targets (Mobile) Target 2: Bot-loop circuit breaker blocks auto-reply but allows human reply
+00:00 +2: P5-02 Unified Inbox & Engagement Center Acceptance Targets (Mobile) Target 2: Viral surge throttle levels without pausing SLA
+00:00 +3: P5-02 Unified Inbox & Engagement Center Acceptance Targets (Mobile) Target 3: Ghost message disabled compose with WHAT-WHY-NEXT copy
+00:00 +4: P5-02 Unified Inbox & Engagement Center Acceptance Targets (Mobile) Target 3: Revoked account blocks reply and provides reconnect notice
+00:00 +5: P5-02 Unified Inbox & Engagement Center Acceptance Targets (Mobile) Mobile swipe actions: archive and snooze transitions
+00:00 +6: All tests passed!
