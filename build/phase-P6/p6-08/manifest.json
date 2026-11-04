@@ -1,0 +1,76 @@
+{
+  "task_id": "P6-08",
+  "phase": "P6",
+  "slice": "p6-08",
+  "title": "Cross-domain commerce conversions",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "baseline_commit": "061d73a4fd1f5a8ce261c3c8c9326b64faa80653",
+  "feature_refs": [
+    "docs/02_features/intelligence/opportunity_board.md",
+    "docs/02_features/content/idea_engine.md",
+    "docs/02_features/engagement/unified_inbox.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md"
+  ],
+  "requirement_ids": [
+    "RULE-M04-001",
+    "RULE-M05-001",
+    "RULE-M12-001",
+    "OPP-CONV-001",
+    "IDEA-CONV-001",
+    "THREAD-CONV-001"
+  ],
+  "source_files": {
+    "apps/api/internal/conversion/types.go": "bd763ec8613d887adaf6b653a561a139e6ad142dbaa7d97a9be5092394475183",
+    "apps/api/internal/conversion/store.go": "3be524c40a4ac240612d742791203fed21d4a084619b66be8a6143a50e748eca",
+    "apps/api/internal/conversion/service.go": "4fc07650409d408088d41f2d904cf531760fe9b377a37e28e34edee68f92e483",
+    "apps/api/internal/conversion/adapters.go": "c6365207c52588e524e00fa44872e33359222bdb66427b09c7c155b56a52145a",
+    "apps/api/internal/conversion/conversion_test.go": "8c8e7e22be87a104e239cea8ccc430b86648aafe7785a4321662fb4e1f44b292",
+    "apps/api/internal/opportunity/service.go": "2ca354431f972a80b38ba9b85e110a1ddcee780111ecd9f1c9e5b5a53fcd8745",
+    "apps/api/internal/idea/service.go": "ab510ac8a76b3ef5912c63eb2ef9684edad949b444c73809f0ea33623dfbe264",
+    "apps/api/internal/idea/service_test.go": "e626f361203f6d8348c48d85696b36cdc28bfd58c5bc06dc8956258464bfcac1",
+    "apps/api/internal/engagement/service.go": "7506305ab7d42cc2761a34e56690ab59bd3781063ed715c4d13d3c64d99760e9",
+    "apps/api/internal/engagement/service_test.go": "97aede8618250b512754888b288c3fd6422aee1e316b9e860cfc222848ca8eda",
+    "apps/api/internal/engagement/types.go": "5e16c559551dd03523a372e847bbab2e3cad45a3dca4a7a21417d2fbca07fcfc",
+    "apps/api/internal/migrate/migrator_test.go": "4ffd2293fad56b54782b74fdfabb60437d1456b907b86053cbbe2363901d35d6",
+    "infra/migrations/00035_p6_08_cross_domain_commerce_conversions.sql": "86b045f3f7fbe8d1446dd14fa7597195f833f85c6b042ecf73118b3aaeb9d3c6",
+    "apps/web/src/lib/commerce/conversion_lineage.ts": "96f13b0d3fe7e0955b1dffc3773a1a6b8533e325b79703cd5326bf7df0ecbcc4",
+    "apps/web/src/lib/commerce/conversion_lineage.test.ts": "b52e0989e029a56965ec4995bb87ad5e5f54a6244b26149d5ed2536d81269d0f",
+    "apps/web/src/lib/commerce/index.ts": "9e853240bf4b8444f275aac8aee8d0111916df56123a93c0f89e9ceceded7634",
+    "apps/mobile/lib/commerce/conversion_lineage_models.dart": "c59793e0a32606b2e729df75bb8819c58d22afe920f9dbd7bb712948f3f6fca9",
+    "apps/mobile/lib/ui/commerce/conversion_lineage_sheet.dart": "2cc3231307bbec566742aea3426a6b7196eb61609377837beaee19f1702484d9",
+    "apps/mobile/test/cross_domain_conversions_acceptance_test.dart": "c96bb19a4a88fc51619655cb878979da9f517be4e72bf49a71574e71655ed3a6"
+  },
+  "scope_items": [
+    "Acceptance Target 1 (Each target permission rechecked): Conversion coordinator rechecks specific downstream target permissions (campaign:manage, live:manage, offer:manage, sample:manage, brand_deal:manage) in addition to caller source permissions (opportunity:convert, idea:convert, thread:triage). In particular, Editor possesses source convert permissions but lacks brand_deal:manage (which is Manager+ only per rbac_permission_matrix.md), so converting to Brand Deal fails closed with ErrTargetPermissionDenied.",
+    "Acceptance Target 2 (Failed conversion atomic): Conversion coordinator enforces multi-stage transactional consistency with automated compensation. If downstream target creation fails, the source remains completely untouched. If source update fails, the created target is immediately rolled back. If lineage persistence fails, both source status and created target are rolled back, leaving zero orphaned targets or corrupted source states.",
+    "Acceptance Target 3 (Source survives conversion): The originating object (Opportunity, Idea, or Thread) is never deleted. Its status transitions to converted (or converted_to_task for threads) with converted_to_type and converted_to_id referencing the new target. The source remains queryable in its native domain and replay-protected against multiple conversions.",
+    "Cross-Domain Lineage Store & Migration: Created cross_domain_conversions table with tenant RLS, indexes, and app_user permissions in infra/migrations/00035_p6_08_cross_domain_commerce_conversions.sql, with in-memory and PostgreSQL lineage store implementations.",
+    "Web & Mobile Client Parity: Implemented TypeScript conversion runner, permission evaluators, and vitest suite in apps/web, as well as Dart conversion models, ConversionLineageSheet UI modal, and Flutter acceptance test suite in apps/mobile."
+  ],
+  "verified_sub_slices": [
+    "Conversion Coordinator & Test Suite Verified: 16 tests in apps/api/internal/conversion (Target 1 permissions, Target 2 atomic rollback, Target 3 source survival, Path 5 concurrency/replay) pass with -race.",
+    "Opportunity, Idea, and Engagement Domain Suites Verified: Extended Convert methods in internal/opportunity, internal/idea, and internal/engagement with target permission checks and lineage wiring. All tests pass with -race.",
+    "Go Code Quality: gofmt -w and go vet ./internal/... executed cleanly with 0 errors. All unit and race detector tests pass across all packages in apps/api.",
+    "Web Client Suite Verified: Vitest web test suite passes with conversion_lineage.test.ts (16 tests). svelte-check passes with 0 errors, 0 warnings. vite build passes cleanly.",
+    "Mobile Client Suite Verified: flutter test passes test/cross_domain_conversions_acceptance_test.dart (12 tests) and full mobile suite (262 tests). flutter analyze reports 0 issues.",
+    "Documentation Invariants: python3 tooling/check_docs.py reports PASS across all 337 active markdown files, 165 tables, 140 tenant tables, 1188 rpc bindings, and 60 build tasks."
+  ],
+  "external_gates": [
+    [
+      "EXT-GATE-POSTGRES-LIVE-RLS",
+      "PENDING_CI_LIVE_POSTGRES",
+      "PostgreSQL cross_domain_conversions RLS suite executes in GitHub CI against live multi-tenant cluster."
+    ],
+    [
+      "EXT-GATE-DOWNSTREAM-COMMERCE-SERVICES",
+      "PENDING_INTEGRATION_STAGING",
+      "Live cross-service coordination between Opportunity/Idea/Inbox and downstream Campaign/Live/Offer/Seeding/Deal services."
+    ]
+  ],
+  "notes": "P6-08 Cross-domain commerce conversions implemented and locally verified across Go backend, Web TypeScript, and Flutter Dart layers. All 3 acceptance targets (target permission recheck, atomic rollback on failure, and source survival) verified with automated test suites."
+}

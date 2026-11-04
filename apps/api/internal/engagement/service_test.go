@@ -2,6 +2,7 @@ package engagement
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	engagementv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/engagement/v1"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/conversion"
 )
 
 // setupTestService initializes a Service with a mockable clock and test account.
@@ -679,5 +681,96 @@ func TestEngagement_EntityServiceOperations(t *testing.T) {
 	}
 	if len(getEnt.Msg.Threads) != 1 {
 		t.Fatalf("expected merged thread to belong to primary entity, got %d threads", len(getEnt.Msg.Threads))
+	}
+}
+
+// ----------------------------------------------------------------------------
+// P6-08: Cross-Domain Commerce Conversions Acceptance Targets
+// ----------------------------------------------------------------------------
+
+func TestP608_CrossDomainThreadConversionsWithPermissionCheck(t *testing.T) {
+	ctx := context.Background()
+	wsID := "ws-thread-p608"
+
+	lineageStore := conversion.NewMemoryLineageStore()
+	svc := NewService(nil)
+	svc.SetLineageStore(lineageStore)
+
+	// Create test thread and triage to active
+	threadID := "thread-conv-001"
+	_, _, err := svc.IngestInboundMessage(ctx, wsID, threadID, "comment", "tiktok", "Em muốn xin làm affiliate hoặc nhận mẫu thử review", "creator-ent-1")
+	if err != nil {
+		t.Fatalf("IngestInboundMessage failed: %v", err)
+	}
+	_, err = svc.Triage(ctx, connect.NewRequest(&engagementv1.ThreadServiceTriageRequest{
+		WorkspaceId: wsID,
+		ThreadId:    threadID,
+		Intent:      engagementv1.ThreadIntent_THREAD_INTENT_SAMPLE_REQUEST,
+		Priority:    engagementv1.ThreadPriority_THREAD_PRIORITY_HIGH,
+	}))
+	if err != nil {
+		t.Fatalf("Triage failed: %v", err)
+	}
+
+	// 1. Target Permission Recheck: Editor lacks brand_deal:manage -> converting to deal must be DENIED!
+	editorCaller := conversion.CallerContext{
+		UserID:        "user-editor",
+		WorkspaceID:   wsID,
+		WorkspaceRole: "editor",
+	}
+
+	errDealEditor := svc.ConvertThreadWithPermissionCheck(ctx, editorCaller, threadID, conversion.TargetTypeDeal, "deal-fail-001")
+	if errDealEditor == nil {
+		t.Fatalf("expected editor conversion to brand_deal to be denied by target permission check")
+	}
+	if !errors.Is(errDealEditor, conversion.ErrTargetPermissionDenied) {
+		t.Errorf("expected ErrTargetPermissionDenied, got: %v", errDealEditor)
+	}
+
+	// 2. Editor converting to seeding (sample:manage) -> SUCCEEDS
+	sampleID := "sample-succ-001"
+	errSampleEditor := svc.ConvertThreadWithPermissionCheck(ctx, editorCaller, threadID, conversion.TargetTypeSeeding, sampleID)
+	if errSampleEditor != nil {
+		t.Fatalf("expected editor conversion to seeding to succeed, got: %v", errSampleEditor)
+	}
+
+	// Verify Shared Lineage was persisted in LineageStore
+	lineageRecs, err := lineageStore.ListLineageBySource(ctx, wsID, conversion.SourceTypeThread, threadID)
+	if err != nil || len(lineageRecs) == 0 {
+		t.Fatalf("expected shared lineage record for thread conversion, got len=%d err=%v", len(lineageRecs), err)
+	}
+	if lineageRecs[0].TargetID != sampleID {
+		t.Errorf("lineage record target_id mismatch: %s vs %s", lineageRecs[0].TargetID, sampleID)
+	}
+
+	// 3. Manager converting to brand deal (brand_deal:manage) -> SUCCEEDS
+	mgrCaller := conversion.CallerContext{
+		UserID:        "user-manager",
+		WorkspaceID:   wsID,
+		WorkspaceRole: "manager",
+	}
+	dealID := "deal-succ-001"
+	errDealMgr := svc.ConvertThreadWithPermissionCheck(ctx, mgrCaller, threadID, conversion.TargetTypeDeal, dealID)
+	if errDealMgr != nil {
+		t.Fatalf("expected manager conversion to brand_deal to succeed, got: %v", errDealMgr)
+	}
+
+	// 4. Acceptance Target 3: Thread Survives Conversion!
+	threadResp, err := svc.Get(ctx, connect.NewRequest(&engagementv1.ThreadServiceGetRequest{
+		WorkspaceId: wsID,
+		ThreadId:    threadID,
+	}))
+	if err != nil {
+		t.Fatalf("expected thread to survive and be retrievable, got: %v", err)
+	}
+	th := threadResp.Msg.Thread
+	if th.ThreadId != threadID {
+		t.Errorf("expected thread_id %s, got %s", threadID, th.ThreadId)
+	}
+	if th.Status != engagementv1.ThreadStatus_THREAD_STATUS_CONVERTED_TO_TASK {
+		t.Errorf("expected thread status THREAD_STATUS_CONVERTED_TO_TASK, got %v", th.Status)
+	}
+	if len(th.RelatedObjectRefs) < 2 {
+		t.Errorf("expected at least 2 related object refs on survived thread, got %d", len(th.RelatedObjectRefs))
 	}
 }

@@ -18,6 +18,7 @@ import (
 	"connectrpc.com/connect"
 	intelligencev1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/intelligence/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/intelligence/v1/intelligencev1connect"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/conversion"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -335,12 +336,14 @@ func (m *MemoryStore) GetEvents() []DomainEvent {
 
 // ServiceConfig defines dependencies for OpportunityService.
 type ServiceConfig struct {
-	Store Store
+	Store        Store
+	LineageStore conversion.LineageStore
 }
 
 // Service implements intelligencev1connect.OpportunityServiceHandler.
 type Service struct {
-	store Store
+	store        Store
+	lineageStore conversion.LineageStore
 }
 
 // NewService creates a new Service instance.
@@ -348,7 +351,15 @@ func NewService(cfg ServiceConfig) *Service {
 	if cfg.Store == nil {
 		cfg.Store = NewMemoryStore()
 	}
-	return &Service{store: cfg.Store}
+	return &Service{
+		store:        cfg.Store,
+		lineageStore: cfg.LineageStore,
+	}
+}
+
+// SetLineageStore sets or updates the shared conversion lineage store.
+func (s *Service) SetLineageStore(ls conversion.LineageStore) {
+	s.lineageStore = ls
 }
 
 // Ensure interface adherence.
@@ -929,10 +940,29 @@ func (s *Service) Convert(ctx context.Context, req *connect.Request[intelligence
 	}
 
 	targetType := strings.ToLower(strings.TrimSpace(req.Msg.ConversionType))
+	var targetPerm string
 	switch targetType {
-	case "idea", "script", "campaign", "live_plan":
+	case "idea":
+		targetPerm = "idea:create"
+	case "script":
+		targetPerm = "script:create"
+	case "campaign":
+		targetPerm = "campaign:manage"
+	case "live", "live_plan", "live_session":
+		targetPerm = "live:manage"
+	case "offer":
+		targetPerm = "offer:manage"
+	case "seeding", "sample_request":
+		targetPerm = "sample:manage"
+	case "deal", "brand_deal":
+		targetPerm = "brand_deal:manage"
 	default:
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid conversion_type %q; supported: idea, script, campaign, live_plan", targetType))
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid conversion_type %q; supported: idea, script, campaign, live_plan, offer, seeding, deal", targetType))
+	}
+
+	// ACCEPTANCE TARGET 1: Each target permission rechecked!
+	if err := checkPerm(caller, targetPerm); err != nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("conversion to %s requires target permission %s (caller role: %s): %w", targetType, targetPerm, caller.WorkspaceRole, err))
 	}
 
 	opp, err := s.store.GetOpportunity(ctx, caller.WorkspaceID, req.Msg.OpportunityId)
@@ -963,6 +993,28 @@ func (s *Service) Convert(ctx context.Context, req *connect.Request[intelligence
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
+	// Record shared lineage if lineage store is configured
+	if s.lineageStore != nil {
+		_ = s.lineageStore.SaveLineage(ctx, conversion.LineageRecord{
+			ConversionID:   targetID,
+			WorkspaceID:    caller.WorkspaceID,
+			SourceType:     conversion.SourceTypeOpportunity,
+			SourceID:       opp.OpportunityID,
+			TargetType:     conversion.TargetType(targetType),
+			TargetID:       targetID,
+			ConvertedBy:    caller.UserID,
+			Status:         "completed",
+			LineageDepth:   1,
+			RootSourceType: "opportunity",
+			RootSourceID:   opp.OpportunityID,
+			Metadata: map[string]any{
+				"title": opp.Title,
+			},
+			CreatedAt: now,
+			UpdatedAt: now,
+		})
+	}
+
 	// RULE-M04-006: emit opportunity.converted with payload containing {opportunity_id, to_type, to_id}
 	if mem, ok := s.store.(*MemoryStore); ok {
 		mem.RecordEvent(DomainEvent{
@@ -978,8 +1030,15 @@ func (s *Service) Convert(ctx context.Context, req *connect.Request[intelligence
 	}
 
 	targetRoute := fmt.Sprintf("/%ss/%s", targetType, targetID)
-	if targetType == "live_plan" {
+	switch targetType {
+	case "live_plan":
 		targetRoute = fmt.Sprintf("/live/plans/%s", targetID)
+	case "live", "live_session":
+		targetRoute = fmt.Sprintf("/live/sessions/%s", targetID)
+	case "seeding", "sample_request":
+		targetRoute = fmt.Sprintf("/seeding/samples/%s", targetID)
+	case "deal", "brand_deal":
+		targetRoute = fmt.Sprintf("/brand-deals/%s", targetID)
 	}
 
 	return connect.NewResponse(&intelligencev1.OpportunityServiceConvertResponse{

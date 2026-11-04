@@ -11,6 +11,7 @@ import (
 
 	"connectrpc.com/connect"
 	contentv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/content/v1"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/conversion"
 )
 
 const (
@@ -571,5 +572,98 @@ func TestRBACPermissionGating(t *testing.T) {
 	}))
 	if errViewerRead != nil {
 		t.Fatalf("viewer should have idea:read permission, got %v", errViewerRead)
+	}
+}
+
+func TestP608_CrossDomainIdeaConversionsWithPermissionCheck(t *testing.T) {
+	ctx := context.Background()
+	svc := newTestService()
+	lineageStore := conversion.NewMemoryLineageStore()
+	svc.SetLineageStore(lineageStore)
+
+	ctxEditor := WithCallerContext(ctx, CallerContext{
+		UserID:        testUserEditor,
+		WorkspaceID:   testWorkspaceA,
+		WorkspaceRole: "editor",
+	})
+	ctxManager := WithCallerContext(ctx, CallerContext{
+		UserID:        testUserOwner,
+		WorkspaceID:   testWorkspaceA,
+		WorkspaceRole: "manager",
+	})
+
+	// Create test idea
+	createResp, err := svc.Create(ctxEditor, connect.NewRequest(&contentv1.IdeaServiceCreateRequest{
+		WorkspaceId:     testWorkspaceA,
+		Title:           "Sữa rửa mặt dịu nhẹ cho da mụn",
+		Description:     "Đánh giá thành phần và trải nghiệm thực tế",
+		SuggestedFormat: "short_form_review",
+	}))
+	if err != nil {
+		t.Fatalf("Create idea failed: %v", err)
+	}
+	ideaID := createResp.Msg.Idea.IdeaId
+
+	// 1. Target Permission Recheck: Editor converting to deal must be DENIED (brand_deal:manage is Manager+)
+	_, errDealEditor := svc.Convert(ctxEditor, connect.NewRequest(&contentv1.IdeaServiceConvertRequest{
+		WorkspaceId:    testWorkspaceA,
+		IdeaId:         ideaID,
+		ConversionType: "deal",
+	}))
+	if errDealEditor == nil {
+		t.Fatalf("expected editor conversion to deal to fail target permission recheck")
+	}
+
+	// 2. Editor converting to campaign (campaign:manage) -> SUCCEEDS
+	convResp, err := svc.Convert(ctxEditor, connect.NewRequest(&contentv1.IdeaServiceConvertRequest{
+		WorkspaceId:    testWorkspaceA,
+		IdeaId:         ideaID,
+		ConversionType: "campaign",
+	}))
+	if err != nil {
+		t.Fatalf("expected editor conversion to campaign to succeed, got: %v", err)
+	}
+	if convResp.Msg.ConvertedToType != "campaign" {
+		t.Errorf("expected converted_to_type campaign, got %s", convResp.Msg.ConvertedToType)
+	}
+
+	// 3. Verify shared lineage recorded in LineageStore
+	lineageRecs, err := lineageStore.ListLineageBySource(ctx, testWorkspaceA, conversion.SourceTypeIdea, ideaID)
+	if err != nil || len(lineageRecs) == 0 {
+		t.Fatalf("expected shared lineage record for idea conversion, got len=%d err=%v", len(lineageRecs), err)
+	}
+	if lineageRecs[0].TargetType != conversion.TargetTypeCampaign {
+		t.Errorf("expected lineage target_type campaign, got %s", lineageRecs[0].TargetType)
+	}
+
+	// 4. Source Survives Conversion: querying idea confirms it is intact and queryable
+	getResp, err := svc.Get(ctxEditor, connect.NewRequest(&contentv1.IdeaServiceGetRequest{
+		WorkspaceId: testWorkspaceA,
+		IdeaId:      ideaID,
+	}))
+	if err != nil {
+		t.Fatalf("expected idea to survive and be retrievable, got: %v", err)
+	}
+	if getResp.Msg.Idea.Status != contentv1.IdeaStatus_IDEA_STATUS_CONVERTED {
+		t.Errorf("expected idea status CONVERTED, got %v", getResp.Msg.Idea.Status)
+	}
+	if getResp.Msg.Idea.ConvertedToType != "campaign" {
+		t.Errorf("expected idea ConvertedToType campaign, got %s", getResp.Msg.Idea.ConvertedToType)
+	}
+
+	// 5. Manager converting to brand deal succeeds
+	createResp2, _ := svc.Create(ctxManager, connect.NewRequest(&contentv1.IdeaServiceCreateRequest{
+		WorkspaceId:     testWorkspaceA,
+		Title:           "Ý tưởng hợp tác thương hiệu thời trang",
+		Description:     "Bộ phối đồ phong cách thu đông",
+		SuggestedFormat: "carousel",
+	}))
+	_, errMgrDeal := svc.Convert(ctxManager, connect.NewRequest(&contentv1.IdeaServiceConvertRequest{
+		WorkspaceId:    testWorkspaceA,
+		IdeaId:         createResp2.Msg.Idea.IdeaId,
+		ConversionType: "deal",
+	}))
+	if errMgrDeal != nil {
+		t.Fatalf("manager converting idea to deal should succeed, got: %v", errMgrDeal)
 	}
 }

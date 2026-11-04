@@ -322,7 +322,7 @@ func ValidateStatusTransition(from, to string) bool {
 	case StatusNew:
 		return to == StatusTriaged || to == StatusActive || to == StatusArchived || to == StatusSnoozed
 	case StatusTriaged:
-		return to == StatusActive || to == StatusArchived || to == StatusSnoozed
+		return to == StatusActive || to == StatusArchived || to == StatusSnoozed || to == StatusConvertedToTask
 	case StatusActive:
 		return to == StatusWaitingOnUser || to == StatusWaitingOnTeam || to == StatusSnoozed ||
 			to == StatusStale || to == StatusConvertedToTask || to == StatusResolved || to == StatusArchived
