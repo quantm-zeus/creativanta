@@ -1005,6 +1005,8 @@ type AddonCatalogEntry struct {
 	MonthlyPriceUsd *v1.Money              `protobuf:"bytes,3,opt,name=monthly_price_usd,json=monthlyPriceUsd,proto3" json:"monthly_price_usd,omitempty"`
 	MonthlyPriceVnd *v1.Money              `protobuf:"bytes,4,opt,name=monthly_price_vnd,json=monthlyPriceVnd,proto3" json:"monthly_price_vnd,omitempty"`
 	EligibleTiers   []string               `protobuf:"bytes,5,rep,name=eligible_tiers,json=eligibleTiers,proto3" json:"eligible_tiers,omitempty"`
+	AnnualPriceUsd  *v1.Money              `protobuf:"bytes,6,opt,name=annual_price_usd,json=annualPriceUsd,proto3" json:"annual_price_usd,omitempty"`
+	AnnualPriceVnd  *v1.Money              `protobuf:"bytes,7,opt,name=annual_price_vnd,json=annualPriceVnd,proto3" json:"annual_price_vnd,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1074,27 +1076,156 @@ func (x *AddonCatalogEntry) GetEligibleTiers() []string {
 	return nil
 }
 
-// Subscription summary projection (§19.1).
+func (x *AddonCatalogEntry) GetAnnualPriceUsd() *v1.Money {
+	if x != nil {
+		return x.AnnualPriceUsd
+	}
+	return nil
+}
+
+func (x *AddonCatalogEntry) GetAnnualPriceVnd() *v1.Money {
+	if x != nil {
+		return x.AnnualPriceVnd
+	}
+	return nil
+}
+
+// Payment method access gate descriptor (P8-02 all payment methods behind access gates).
+type PaymentMethodAccessGate struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	MethodType          string                 `protobuf:"bytes,1,opt,name=method_type,json=methodType,proto3" json:"method_type,omitempty"` // card, bank_transfer, momo, zalopay, vnpay, paypal
+	DisplayName         string                 `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	ProviderCode        string                 `protobuf:"bytes,3,opt,name=provider_code,json=providerCode,proto3" json:"provider_code,omitempty"`          // stripe, manual_bank_transfer, momo_gateway, zalopay_gateway, vnpay_gateway, paypal_gateway
+	CapabilityState     string                 `protobuf:"bytes,4,opt,name=capability_state,json=capabilityState,proto3" json:"capability_state,omitempty"` // EXECUTABLE, READ_ONLY_PARTIAL, SETUP_REQUIRED, COMING_SOON
+	AccessGranted       bool                   `protobuf:"varint,5,opt,name=access_granted,json=accessGranted,proto3" json:"access_granted,omitempty"`
+	EligibleTiers       []string               `protobuf:"bytes,6,rep,name=eligible_tiers,json=eligibleTiers,proto3" json:"eligible_tiers,omitempty"`
+	SupportedCurrencies []string               `protobuf:"bytes,7,rep,name=supported_currencies,json=supportedCurrencies,proto3" json:"supported_currencies,omitempty"`
+	GateReason          string                 `protobuf:"bytes,8,opt,name=gate_reason,json=gateReason,proto3" json:"gate_reason,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *PaymentMethodAccessGate) Reset() {
+	*x = PaymentMethodAccessGate{}
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PaymentMethodAccessGate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PaymentMethodAccessGate) ProtoMessage() {}
+
+func (x *PaymentMethodAccessGate) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PaymentMethodAccessGate.ProtoReflect.Descriptor instead.
+func (*PaymentMethodAccessGate) Descriptor() ([]byte, []int) {
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *PaymentMethodAccessGate) GetMethodType() string {
+	if x != nil {
+		return x.MethodType
+	}
+	return ""
+}
+
+func (x *PaymentMethodAccessGate) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+func (x *PaymentMethodAccessGate) GetProviderCode() string {
+	if x != nil {
+		return x.ProviderCode
+	}
+	return ""
+}
+
+func (x *PaymentMethodAccessGate) GetCapabilityState() string {
+	if x != nil {
+		return x.CapabilityState
+	}
+	return ""
+}
+
+func (x *PaymentMethodAccessGate) GetAccessGranted() bool {
+	if x != nil {
+		return x.AccessGranted
+	}
+	return false
+}
+
+func (x *PaymentMethodAccessGate) GetEligibleTiers() []string {
+	if x != nil {
+		return x.EligibleTiers
+	}
+	return nil
+}
+
+func (x *PaymentMethodAccessGate) GetSupportedCurrencies() []string {
+	if x != nil {
+		return x.SupportedCurrencies
+	}
+	return nil
+}
+
+func (x *PaymentMethodAccessGate) GetGateReason() string {
+	if x != nil {
+		return x.GateReason
+	}
+	return ""
+}
+
+// Subscription summary projection (§19.1 & P8-02 trial/dunning/pause/cancellation retention).
 type SubscriptionSummary struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	SubscriptionId     *v1.UUID               `protobuf:"bytes,1,opt,name=subscription_id,json=subscriptionId,proto3" json:"subscription_id,omitempty"`
-	WorkspaceId        *v1.UUID               `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
-	Plan               string                 `protobuf:"bytes,3,opt,name=plan,proto3" json:"plan,omitempty"`
-	BillingInterval    string                 `protobuf:"bytes,4,opt,name=billing_interval,json=billingInterval,proto3" json:"billing_interval,omitempty"`
-	Status             SubscriptionStatus     `protobuf:"varint,5,opt,name=status,proto3,enum=creativanta.admin.v1.SubscriptionStatus" json:"status,omitempty"`
-	Amount             *v1.Money              `protobuf:"bytes,6,opt,name=amount,proto3" json:"amount,omitempty"`
-	CurrentPeriodStart *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=current_period_start,json=currentPeriodStart,proto3" json:"current_period_start,omitempty"`
-	CurrentPeriodEnd   *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=current_period_end,json=currentPeriodEnd,proto3" json:"current_period_end,omitempty"`
-	CancelAtPeriodEnd  bool                   `protobuf:"varint,9,opt,name=cancel_at_period_end,json=cancelAtPeriodEnd,proto3" json:"cancel_at_period_end,omitempty"`
-	CanceledAt         *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=canceled_at,json=canceledAt,proto3" json:"canceled_at,omitempty"`
-	Addons             []string               `protobuf:"bytes,11,rep,name=addons,proto3" json:"addons,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state                     protoimpl.MessageState `protogen:"open.v1"`
+	SubscriptionId            *v1.UUID               `protobuf:"bytes,1,opt,name=subscription_id,json=subscriptionId,proto3" json:"subscription_id,omitempty"`
+	WorkspaceId               *v1.UUID               `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	Plan                      string                 `protobuf:"bytes,3,opt,name=plan,proto3" json:"plan,omitempty"`
+	BillingInterval           string                 `protobuf:"bytes,4,opt,name=billing_interval,json=billingInterval,proto3" json:"billing_interval,omitempty"`
+	Status                    SubscriptionStatus     `protobuf:"varint,5,opt,name=status,proto3,enum=creativanta.admin.v1.SubscriptionStatus" json:"status,omitempty"`
+	Amount                    *v1.Money              `protobuf:"bytes,6,opt,name=amount,proto3" json:"amount,omitempty"`
+	CurrentPeriodStart        *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=current_period_start,json=currentPeriodStart,proto3" json:"current_period_start,omitempty"`
+	CurrentPeriodEnd          *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=current_period_end,json=currentPeriodEnd,proto3" json:"current_period_end,omitempty"`
+	CancelAtPeriodEnd         bool                   `protobuf:"varint,9,opt,name=cancel_at_period_end,json=cancelAtPeriodEnd,proto3" json:"cancel_at_period_end,omitempty"`
+	CanceledAt                *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=canceled_at,json=canceledAt,proto3" json:"canceled_at,omitempty"`
+	Addons                    []string               `protobuf:"bytes,11,rep,name=addons,proto3" json:"addons,omitempty"`
+	ScheduledAddonRemovals    []string               `protobuf:"bytes,12,rep,name=scheduled_addon_removals,json=scheduledAddonRemovals,proto3" json:"scheduled_addon_removals,omitempty"`
+	TrialEndsAt               *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=trial_ends_at,json=trialEndsAt,proto3" json:"trial_ends_at,omitempty"`
+	DunningDay                int32                  `protobuf:"varint,14,opt,name=dunning_day,json=dunningDay,proto3" json:"dunning_day,omitempty"`
+	DunningAttempt            int32                  `protobuf:"varint,15,opt,name=dunning_attempt,json=dunningAttempt,proto3" json:"dunning_attempt,omitempty"`
+	GracePeriodEndsAt         *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=grace_period_ends_at,json=gracePeriodEndsAt,proto3" json:"grace_period_ends_at,omitempty"`
+	ReadOnlyMode              bool                   `protobuf:"varint,17,opt,name=read_only_mode,json=readOnlyMode,proto3" json:"read_only_mode,omitempty"`
+	ReadOnlyReason            string                 `protobuf:"bytes,18,opt,name=read_only_reason,json=readOnlyReason,proto3" json:"read_only_reason,omitempty"`
+	RetentionPhase            string                 `protobuf:"bytes,19,opt,name=retention_phase,json=retentionPhase,proto3" json:"retention_phase,omitempty"` // active, trialing, dunning_retry, dunning_grace_read_only, dunning_downgraded_free, paused_read_only, cancel_scheduled, phase_1_read_only_quarantine, phase_2_soft_delete, phase_3_hard_deleted
+	RetentionOfferApplied     bool                   `protobuf:"varint,20,opt,name=retention_offer_applied,json=retentionOfferApplied,proto3" json:"retention_offer_applied,omitempty"`
+	PausedAt                  *timestamppb.Timestamp `protobuf:"bytes,21,opt,name=paused_at,json=pausedAt,proto3" json:"paused_at,omitempty"`
+	PauseAutoResumesAt        *timestamppb.Timestamp `protobuf:"bytes,22,opt,name=pause_auto_resumes_at,json=pauseAutoResumesAt,proto3" json:"pause_auto_resumes_at,omitempty"`
+	OverageTermsAccepted      bool                   `protobuf:"varint,23,opt,name=overage_terms_accepted,json=overageTermsAccepted,proto3" json:"overage_terms_accepted,omitempty"`
+	OverageUsedCredits        string                 `protobuf:"bytes,24,opt,name=overage_used_credits,json=overageUsedCredits,proto3" json:"overage_used_credits,omitempty"`
+	PreservedPurchasedCredits string                 `protobuf:"bytes,25,opt,name=preserved_purchased_credits,json=preservedPurchasedCredits,proto3" json:"preserved_purchased_credits,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *SubscriptionSummary) Reset() {
 	*x = SubscriptionSummary{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[7]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1106,7 +1237,7 @@ func (x *SubscriptionSummary) String() string {
 func (*SubscriptionSummary) ProtoMessage() {}
 
 func (x *SubscriptionSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[7]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1119,7 +1250,7 @@ func (x *SubscriptionSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscriptionSummary.ProtoReflect.Descriptor instead.
 func (*SubscriptionSummary) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{7}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *SubscriptionSummary) GetSubscriptionId() *v1.UUID {
@@ -1199,6 +1330,104 @@ func (x *SubscriptionSummary) GetAddons() []string {
 	return nil
 }
 
+func (x *SubscriptionSummary) GetScheduledAddonRemovals() []string {
+	if x != nil {
+		return x.ScheduledAddonRemovals
+	}
+	return nil
+}
+
+func (x *SubscriptionSummary) GetTrialEndsAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.TrialEndsAt
+	}
+	return nil
+}
+
+func (x *SubscriptionSummary) GetDunningDay() int32 {
+	if x != nil {
+		return x.DunningDay
+	}
+	return 0
+}
+
+func (x *SubscriptionSummary) GetDunningAttempt() int32 {
+	if x != nil {
+		return x.DunningAttempt
+	}
+	return 0
+}
+
+func (x *SubscriptionSummary) GetGracePeriodEndsAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.GracePeriodEndsAt
+	}
+	return nil
+}
+
+func (x *SubscriptionSummary) GetReadOnlyMode() bool {
+	if x != nil {
+		return x.ReadOnlyMode
+	}
+	return false
+}
+
+func (x *SubscriptionSummary) GetReadOnlyReason() string {
+	if x != nil {
+		return x.ReadOnlyReason
+	}
+	return ""
+}
+
+func (x *SubscriptionSummary) GetRetentionPhase() string {
+	if x != nil {
+		return x.RetentionPhase
+	}
+	return ""
+}
+
+func (x *SubscriptionSummary) GetRetentionOfferApplied() bool {
+	if x != nil {
+		return x.RetentionOfferApplied
+	}
+	return false
+}
+
+func (x *SubscriptionSummary) GetPausedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.PausedAt
+	}
+	return nil
+}
+
+func (x *SubscriptionSummary) GetPauseAutoResumesAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.PauseAutoResumesAt
+	}
+	return nil
+}
+
+func (x *SubscriptionSummary) GetOverageTermsAccepted() bool {
+	if x != nil {
+		return x.OverageTermsAccepted
+	}
+	return false
+}
+
+func (x *SubscriptionSummary) GetOverageUsedCredits() string {
+	if x != nil {
+		return x.OverageUsedCredits
+	}
+	return ""
+}
+
+func (x *SubscriptionSummary) GetPreservedPurchasedCredits() string {
+	if x != nil {
+		return x.PreservedPurchasedCredits
+	}
+	return ""
+}
+
 // Payment method summary projection (§19.1C).
 type PaymentMethodSummary struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
@@ -1210,13 +1439,16 @@ type PaymentMethodSummary struct {
 	CardExpMonth          int32                  `protobuf:"varint,6,opt,name=card_exp_month,json=cardExpMonth,proto3" json:"card_exp_month,omitempty"`
 	CardExpYear           int32                  `protobuf:"varint,7,opt,name=card_exp_year,json=cardExpYear,proto3" json:"card_exp_year,omitempty"`
 	IsDefault             bool                   `protobuf:"varint,8,opt,name=is_default,json=isDefault,proto3" json:"is_default,omitempty"`
+	AccessGateStatus      string                 `protobuf:"bytes,9,opt,name=access_gate_status,json=accessGateStatus,proto3" json:"access_gate_status,omitempty"`
+	BillingName           string                 `protobuf:"bytes,10,opt,name=billing_name,json=billingName,proto3" json:"billing_name,omitempty"`
+	BillingEmail          string                 `protobuf:"bytes,11,opt,name=billing_email,json=billingEmail,proto3" json:"billing_email,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
 
 func (x *PaymentMethodSummary) Reset() {
 	*x = PaymentMethodSummary{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[8]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1228,7 +1460,7 @@ func (x *PaymentMethodSummary) String() string {
 func (*PaymentMethodSummary) ProtoMessage() {}
 
 func (x *PaymentMethodSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[8]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1241,7 +1473,7 @@ func (x *PaymentMethodSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PaymentMethodSummary.ProtoReflect.Descriptor instead.
 func (*PaymentMethodSummary) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{8}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *PaymentMethodSummary) GetPaymentMethodId() *v1.UUID {
@@ -1300,6 +1532,27 @@ func (x *PaymentMethodSummary) GetIsDefault() bool {
 	return false
 }
 
+func (x *PaymentMethodSummary) GetAccessGateStatus() string {
+	if x != nil {
+		return x.AccessGateStatus
+	}
+	return ""
+}
+
+func (x *PaymentMethodSummary) GetBillingName() string {
+	if x != nil {
+		return x.BillingName
+	}
+	return ""
+}
+
+func (x *PaymentMethodSummary) GetBillingEmail() string {
+	if x != nil {
+		return x.BillingEmail
+	}
+	return ""
+}
+
 // Invoice summary projection (§19.1B).
 type InvoiceSummary struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
@@ -1324,7 +1577,7 @@ type InvoiceSummary struct {
 
 func (x *InvoiceSummary) Reset() {
 	*x = InvoiceSummary{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[9]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1336,7 +1589,7 @@ func (x *InvoiceSummary) String() string {
 func (*InvoiceSummary) ProtoMessage() {}
 
 func (x *InvoiceSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[9]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1349,7 +1602,7 @@ func (x *InvoiceSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InvoiceSummary.ProtoReflect.Descriptor instead.
 func (*InvoiceSummary) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{9}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *InvoiceSummary) GetInvoiceId() *v1.UUID {
@@ -1469,7 +1722,7 @@ type AutoRefillConfig struct {
 
 func (x *AutoRefillConfig) Reset() {
 	*x = AutoRefillConfig{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[10]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1481,7 +1734,7 @@ func (x *AutoRefillConfig) String() string {
 func (*AutoRefillConfig) ProtoMessage() {}
 
 func (x *AutoRefillConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[10]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1494,7 +1747,7 @@ func (x *AutoRefillConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AutoRefillConfig.ProtoReflect.Descriptor instead.
 func (*AutoRefillConfig) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{10}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *AutoRefillConfig) GetEnabled() bool {
@@ -1530,7 +1783,7 @@ type OperationUsageBreakdown struct {
 
 func (x *OperationUsageBreakdown) Reset() {
 	*x = OperationUsageBreakdown{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[11]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1542,7 +1795,7 @@ func (x *OperationUsageBreakdown) String() string {
 func (*OperationUsageBreakdown) ProtoMessage() {}
 
 func (x *OperationUsageBreakdown) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[11]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1555,7 +1808,7 @@ func (x *OperationUsageBreakdown) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OperationUsageBreakdown.ProtoReflect.Descriptor instead.
 func (*OperationUsageBreakdown) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{11}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *OperationUsageBreakdown) GetOperationType() string {
@@ -1588,7 +1841,7 @@ type GetBillingSummaryRequest struct {
 
 func (x *GetBillingSummaryRequest) Reset() {
 	*x = GetBillingSummaryRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[12]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1600,7 +1853,7 @@ func (x *GetBillingSummaryRequest) String() string {
 func (*GetBillingSummaryRequest) ProtoMessage() {}
 
 func (x *GetBillingSummaryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[12]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1613,7 +1866,7 @@ func (x *GetBillingSummaryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBillingSummaryRequest.ProtoReflect.Descriptor instead.
 func (*GetBillingSummaryRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{12}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetBillingSummaryRequest) GetWorkspaceId() *v1.UUID {
@@ -1636,7 +1889,7 @@ type GetBillingSummaryResponse struct {
 
 func (x *GetBillingSummaryResponse) Reset() {
 	*x = GetBillingSummaryResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[13]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1648,7 +1901,7 @@ func (x *GetBillingSummaryResponse) String() string {
 func (*GetBillingSummaryResponse) ProtoMessage() {}
 
 func (x *GetBillingSummaryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[13]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1661,7 +1914,7 @@ func (x *GetBillingSummaryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBillingSummaryResponse.ProtoReflect.Descriptor instead.
 func (*GetBillingSummaryResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{13}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetBillingSummaryResponse) GetSubscription() *SubscriptionSummary {
@@ -1708,7 +1961,7 @@ type GetCreditBalanceRequest struct {
 
 func (x *GetCreditBalanceRequest) Reset() {
 	*x = GetCreditBalanceRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[14]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1720,7 +1973,7 @@ func (x *GetCreditBalanceRequest) String() string {
 func (*GetCreditBalanceRequest) ProtoMessage() {}
 
 func (x *GetCreditBalanceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[14]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1733,7 +1986,7 @@ func (x *GetCreditBalanceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCreditBalanceRequest.ProtoReflect.Descriptor instead.
 func (*GetCreditBalanceRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{14}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GetCreditBalanceRequest) GetWorkspaceId() *v1.UUID {
@@ -1752,7 +2005,7 @@ type GetCreditBalanceResponse struct {
 
 func (x *GetCreditBalanceResponse) Reset() {
 	*x = GetCreditBalanceResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[15]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1764,7 +2017,7 @@ func (x *GetCreditBalanceResponse) String() string {
 func (*GetCreditBalanceResponse) ProtoMessage() {}
 
 func (x *GetCreditBalanceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[15]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1777,7 +2030,7 @@ func (x *GetCreditBalanceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCreditBalanceResponse.ProtoReflect.Descriptor instead.
 func (*GetCreditBalanceResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{15}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetCreditBalanceResponse) GetBalance() *CreditBalance {
@@ -1799,7 +2052,7 @@ type GetCreditLedgerRequest struct {
 
 func (x *GetCreditLedgerRequest) Reset() {
 	*x = GetCreditLedgerRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[16]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1811,7 +2064,7 @@ func (x *GetCreditLedgerRequest) String() string {
 func (*GetCreditLedgerRequest) ProtoMessage() {}
 
 func (x *GetCreditLedgerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[16]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1824,7 +2077,7 @@ func (x *GetCreditLedgerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCreditLedgerRequest.ProtoReflect.Descriptor instead.
 func (*GetCreditLedgerRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{16}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetCreditLedgerRequest) GetWorkspaceId() *v1.UUID {
@@ -1865,7 +2118,7 @@ type GetCreditLedgerResponse struct {
 
 func (x *GetCreditLedgerResponse) Reset() {
 	*x = GetCreditLedgerResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[17]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1877,7 +2130,7 @@ func (x *GetCreditLedgerResponse) String() string {
 func (*GetCreditLedgerResponse) ProtoMessage() {}
 
 func (x *GetCreditLedgerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[17]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1890,7 +2143,7 @@ func (x *GetCreditLedgerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCreditLedgerResponse.ProtoReflect.Descriptor instead.
 func (*GetCreditLedgerResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{17}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GetCreditLedgerResponse) GetEntries() []*CreditTransactionEntry {
@@ -1920,7 +2173,7 @@ type PurchaseCreditsRequest struct {
 
 func (x *PurchaseCreditsRequest) Reset() {
 	*x = PurchaseCreditsRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[18]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1932,7 +2185,7 @@ func (x *PurchaseCreditsRequest) String() string {
 func (*PurchaseCreditsRequest) ProtoMessage() {}
 
 func (x *PurchaseCreditsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[18]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1945,7 +2198,7 @@ func (x *PurchaseCreditsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PurchaseCreditsRequest.ProtoReflect.Descriptor instead.
 func (*PurchaseCreditsRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{18}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *PurchaseCreditsRequest) GetContext() *v1.CommandContext {
@@ -1995,7 +2248,7 @@ type PurchaseCreditsResponse struct {
 
 func (x *PurchaseCreditsResponse) Reset() {
 	*x = PurchaseCreditsResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[19]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2007,7 +2260,7 @@ func (x *PurchaseCreditsResponse) String() string {
 func (*PurchaseCreditsResponse) ProtoMessage() {}
 
 func (x *PurchaseCreditsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[19]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2020,7 +2273,7 @@ func (x *PurchaseCreditsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PurchaseCreditsResponse.ProtoReflect.Descriptor instead.
 func (*PurchaseCreditsResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{19}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *PurchaseCreditsResponse) GetCheckoutSessionId() string {
@@ -2052,19 +2305,22 @@ func (x *PurchaseCreditsResponse) GetPack() *CreditPackEntry {
 }
 
 type ChangePlanRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Context         *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	TargetPlan      string                 `protobuf:"bytes,2,opt,name=target_plan,json=targetPlan,proto3" json:"target_plan,omitempty"`
-	BillingInterval string                 `protobuf:"bytes,3,opt,name=billing_interval,json=billingInterval,proto3" json:"billing_interval,omitempty"`
-	Currency        string                 `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
-	Addons          []string               `protobuf:"bytes,5,rep,name=addons,proto3" json:"addons,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Context            *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	TargetPlan         string                 `protobuf:"bytes,2,opt,name=target_plan,json=targetPlan,proto3" json:"target_plan,omitempty"`
+	BillingInterval    string                 `protobuf:"bytes,3,opt,name=billing_interval,json=billingInterval,proto3" json:"billing_interval,omitempty"`
+	Currency           string                 `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
+	Addons             []string               `protobuf:"bytes,5,rep,name=addons,proto3" json:"addons,omitempty"`
+	RemoveAddons       []string               `protobuf:"bytes,6,rep,name=remove_addons,json=removeAddons,proto3" json:"remove_addons,omitempty"`
+	AcceptOverageTerms bool                   `protobuf:"varint,7,opt,name=accept_overage_terms,json=acceptOverageTerms,proto3" json:"accept_overage_terms,omitempty"`
+	StartTrial         bool                   `protobuf:"varint,8,opt,name=start_trial,json=startTrial,proto3" json:"start_trial,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ChangePlanRequest) Reset() {
 	*x = ChangePlanRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[20]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2076,7 +2332,7 @@ func (x *ChangePlanRequest) String() string {
 func (*ChangePlanRequest) ProtoMessage() {}
 
 func (x *ChangePlanRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[20]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2089,7 +2345,7 @@ func (x *ChangePlanRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChangePlanRequest.ProtoReflect.Descriptor instead.
 func (*ChangePlanRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{20}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ChangePlanRequest) GetContext() *v1.CommandContext {
@@ -2127,19 +2383,42 @@ func (x *ChangePlanRequest) GetAddons() []string {
 	return nil
 }
 
+func (x *ChangePlanRequest) GetRemoveAddons() []string {
+	if x != nil {
+		return x.RemoveAddons
+	}
+	return nil
+}
+
+func (x *ChangePlanRequest) GetAcceptOverageTerms() bool {
+	if x != nil {
+		return x.AcceptOverageTerms
+	}
+	return false
+}
+
+func (x *ChangePlanRequest) GetStartTrial() bool {
+	if x != nil {
+		return x.StartTrial
+	}
+	return false
+}
+
 type ChangePlanResponse struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Subscription      *SubscriptionSummary   `protobuf:"bytes,1,opt,name=subscription,proto3" json:"subscription,omitempty"`
-	EffectiveMode     string                 `protobuf:"bytes,2,opt,name=effective_mode,json=effectiveMode,proto3" json:"effective_mode,omitempty"`
-	CheckoutSessionId string                 `protobuf:"bytes,3,opt,name=checkout_session_id,json=checkoutSessionId,proto3" json:"checkout_session_id,omitempty"`
-	CheckoutUrl       string                 `protobuf:"bytes,4,opt,name=checkout_url,json=checkoutUrl,proto3" json:"checkout_url,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	Subscription           *SubscriptionSummary   `protobuf:"bytes,1,opt,name=subscription,proto3" json:"subscription,omitempty"`
+	EffectiveMode          string                 `protobuf:"bytes,2,opt,name=effective_mode,json=effectiveMode,proto3" json:"effective_mode,omitempty"`
+	CheckoutSessionId      string                 `protobuf:"bytes,3,opt,name=checkout_session_id,json=checkoutSessionId,proto3" json:"checkout_session_id,omitempty"`
+	CheckoutUrl            string                 `protobuf:"bytes,4,opt,name=checkout_url,json=checkoutUrl,proto3" json:"checkout_url,omitempty"`
+	ProratedAddonCharge    *v1.Money              `protobuf:"bytes,5,opt,name=prorated_addon_charge,json=proratedAddonCharge,proto3" json:"prorated_addon_charge,omitempty"`
+	ScheduledAddonRemovals []string               `protobuf:"bytes,6,rep,name=scheduled_addon_removals,json=scheduledAddonRemovals,proto3" json:"scheduled_addon_removals,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *ChangePlanResponse) Reset() {
 	*x = ChangePlanResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[21]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2151,7 +2430,7 @@ func (x *ChangePlanResponse) String() string {
 func (*ChangePlanResponse) ProtoMessage() {}
 
 func (x *ChangePlanResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[21]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2164,7 +2443,7 @@ func (x *ChangePlanResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChangePlanResponse.ProtoReflect.Descriptor instead.
 func (*ChangePlanResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{21}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ChangePlanResponse) GetSubscription() *SubscriptionSummary {
@@ -2195,19 +2474,35 @@ func (x *ChangePlanResponse) GetCheckoutUrl() string {
 	return ""
 }
 
+func (x *ChangePlanResponse) GetProratedAddonCharge() *v1.Money {
+	if x != nil {
+		return x.ProratedAddonCharge
+	}
+	return nil
+}
+
+func (x *ChangePlanResponse) GetScheduledAddonRemovals() []string {
+	if x != nil {
+		return x.ScheduledAddonRemovals
+	}
+	return nil
+}
+
 type CancelSubscriptionRequest struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	Context            *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	CancellationReason string                 `protobuf:"bytes,2,opt,name=cancellation_reason,json=cancellationReason,proto3" json:"cancellation_reason,omitempty"`
-	PauseInstead       bool                   `protobuf:"varint,3,opt,name=pause_instead,json=pauseInstead,proto3" json:"pause_instead,omitempty"`
-	PauseMonths        int32                  `protobuf:"varint,4,opt,name=pause_months,json=pauseMonths,proto3" json:"pause_months,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	Context              *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	CancellationReason   string                 `protobuf:"bytes,2,opt,name=cancellation_reason,json=cancellationReason,proto3" json:"cancellation_reason,omitempty"`
+	PauseInstead         bool                   `protobuf:"varint,3,opt,name=pause_instead,json=pauseInstead,proto3" json:"pause_instead,omitempty"`
+	PauseMonths          int32                  `protobuf:"varint,4,opt,name=pause_months,json=pauseMonths,proto3" json:"pause_months,omitempty"`
+	AcceptRetentionOffer bool                   `protobuf:"varint,5,opt,name=accept_retention_offer,json=acceptRetentionOffer,proto3" json:"accept_retention_offer,omitempty"`
+	PauseDays            int32                  `protobuf:"varint,6,opt,name=pause_days,json=pauseDays,proto3" json:"pause_days,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *CancelSubscriptionRequest) Reset() {
 	*x = CancelSubscriptionRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[22]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2219,7 +2514,7 @@ func (x *CancelSubscriptionRequest) String() string {
 func (*CancelSubscriptionRequest) ProtoMessage() {}
 
 func (x *CancelSubscriptionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[22]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2232,7 +2527,7 @@ func (x *CancelSubscriptionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelSubscriptionRequest.ProtoReflect.Descriptor instead.
 func (*CancelSubscriptionRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{22}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *CancelSubscriptionRequest) GetContext() *v1.CommandContext {
@@ -2263,16 +2558,34 @@ func (x *CancelSubscriptionRequest) GetPauseMonths() int32 {
 	return 0
 }
 
+func (x *CancelSubscriptionRequest) GetAcceptRetentionOffer() bool {
+	if x != nil {
+		return x.AcceptRetentionOffer
+	}
+	return false
+}
+
+func (x *CancelSubscriptionRequest) GetPauseDays() int32 {
+	if x != nil {
+		return x.PauseDays
+	}
+	return 0
+}
+
 type CancelSubscriptionResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Subscription  *SubscriptionSummary   `protobuf:"bytes,1,opt,name=subscription,proto3" json:"subscription,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	Subscription            *SubscriptionSummary   `protobuf:"bytes,1,opt,name=subscription,proto3" json:"subscription,omitempty"`
+	RetentionOfferApplied   bool                   `protobuf:"varint,2,opt,name=retention_offer_applied,json=retentionOfferApplied,proto3" json:"retention_offer_applied,omitempty"`
+	RetentionDiscountPct    string                 `protobuf:"bytes,3,opt,name=retention_discount_pct,json=retentionDiscountPct,proto3" json:"retention_discount_pct,omitempty"`
+	RetentionDiscountMonths int32                  `protobuf:"varint,4,opt,name=retention_discount_months,json=retentionDiscountMonths,proto3" json:"retention_discount_months,omitempty"`
+	RetentionPhase          string                 `protobuf:"bytes,5,opt,name=retention_phase,json=retentionPhase,proto3" json:"retention_phase,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *CancelSubscriptionResponse) Reset() {
 	*x = CancelSubscriptionResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[23]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2284,7 +2597,7 @@ func (x *CancelSubscriptionResponse) String() string {
 func (*CancelSubscriptionResponse) ProtoMessage() {}
 
 func (x *CancelSubscriptionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[23]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2297,7 +2610,7 @@ func (x *CancelSubscriptionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelSubscriptionResponse.ProtoReflect.Descriptor instead.
 func (*CancelSubscriptionResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{23}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *CancelSubscriptionResponse) GetSubscription() *SubscriptionSummary {
@@ -2307,19 +2620,50 @@ func (x *CancelSubscriptionResponse) GetSubscription() *SubscriptionSummary {
 	return nil
 }
 
+func (x *CancelSubscriptionResponse) GetRetentionOfferApplied() bool {
+	if x != nil {
+		return x.RetentionOfferApplied
+	}
+	return false
+}
+
+func (x *CancelSubscriptionResponse) GetRetentionDiscountPct() string {
+	if x != nil {
+		return x.RetentionDiscountPct
+	}
+	return ""
+}
+
+func (x *CancelSubscriptionResponse) GetRetentionDiscountMonths() int32 {
+	if x != nil {
+		return x.RetentionDiscountMonths
+	}
+	return 0
+}
+
+func (x *CancelSubscriptionResponse) GetRetentionPhase() string {
+	if x != nil {
+		return x.RetentionPhase
+	}
+	return ""
+}
+
 type UpdatePaymentMethodRequest struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
 	Context               *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
 	StripePaymentMethodId string                 `protobuf:"bytes,2,opt,name=stripe_payment_method_id,json=stripePaymentMethodId,proto3" json:"stripe_payment_method_id,omitempty"`
 	SetDefault            bool                   `protobuf:"varint,3,opt,name=set_default,json=setDefault,proto3" json:"set_default,omitempty"`
 	Remove                bool                   `protobuf:"varint,4,opt,name=remove,proto3" json:"remove,omitempty"`
+	MethodType            string                 `protobuf:"bytes,5,opt,name=method_type,json=methodType,proto3" json:"method_type,omitempty"`
+	BillingName           string                 `protobuf:"bytes,6,opt,name=billing_name,json=billingName,proto3" json:"billing_name,omitempty"`
+	BillingEmail          string                 `protobuf:"bytes,7,opt,name=billing_email,json=billingEmail,proto3" json:"billing_email,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
 
 func (x *UpdatePaymentMethodRequest) Reset() {
 	*x = UpdatePaymentMethodRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[24]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2331,7 +2675,7 @@ func (x *UpdatePaymentMethodRequest) String() string {
 func (*UpdatePaymentMethodRequest) ProtoMessage() {}
 
 func (x *UpdatePaymentMethodRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[24]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2344,7 +2688,7 @@ func (x *UpdatePaymentMethodRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePaymentMethodRequest.ProtoReflect.Descriptor instead.
 func (*UpdatePaymentMethodRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{24}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *UpdatePaymentMethodRequest) GetContext() *v1.CommandContext {
@@ -2375,17 +2719,39 @@ func (x *UpdatePaymentMethodRequest) GetRemove() bool {
 	return false
 }
 
+func (x *UpdatePaymentMethodRequest) GetMethodType() string {
+	if x != nil {
+		return x.MethodType
+	}
+	return ""
+}
+
+func (x *UpdatePaymentMethodRequest) GetBillingName() string {
+	if x != nil {
+		return x.BillingName
+	}
+	return ""
+}
+
+func (x *UpdatePaymentMethodRequest) GetBillingEmail() string {
+	if x != nil {
+		return x.BillingEmail
+	}
+	return ""
+}
+
 type UpdatePaymentMethodResponse struct {
-	state          protoimpl.MessageState  `protogen:"open.v1"`
-	PaymentMethod  *PaymentMethodSummary   `protobuf:"bytes,1,opt,name=payment_method,json=paymentMethod,proto3" json:"payment_method,omitempty"`
-	PaymentMethods []*PaymentMethodSummary `protobuf:"bytes,2,rep,name=payment_methods,json=paymentMethods,proto3" json:"payment_methods,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state             protoimpl.MessageState     `protogen:"open.v1"`
+	PaymentMethod     *PaymentMethodSummary      `protobuf:"bytes,1,opt,name=payment_method,json=paymentMethod,proto3" json:"payment_method,omitempty"`
+	PaymentMethods    []*PaymentMethodSummary    `protobuf:"bytes,2,rep,name=payment_methods,json=paymentMethods,proto3" json:"payment_methods,omitempty"`
+	MethodAccessGates []*PaymentMethodAccessGate `protobuf:"bytes,3,rep,name=method_access_gates,json=methodAccessGates,proto3" json:"method_access_gates,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *UpdatePaymentMethodResponse) Reset() {
 	*x = UpdatePaymentMethodResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[25]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2397,7 +2763,7 @@ func (x *UpdatePaymentMethodResponse) String() string {
 func (*UpdatePaymentMethodResponse) ProtoMessage() {}
 
 func (x *UpdatePaymentMethodResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[25]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2410,7 +2776,7 @@ func (x *UpdatePaymentMethodResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePaymentMethodResponse.ProtoReflect.Descriptor instead.
 func (*UpdatePaymentMethodResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{25}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *UpdatePaymentMethodResponse) GetPaymentMethod() *PaymentMethodSummary {
@@ -2427,6 +2793,13 @@ func (x *UpdatePaymentMethodResponse) GetPaymentMethods() []*PaymentMethodSummar
 	return nil
 }
 
+func (x *UpdatePaymentMethodResponse) GetMethodAccessGates() []*PaymentMethodAccessGate {
+	if x != nil {
+		return x.MethodAccessGates
+	}
+	return nil
+}
+
 type GetPaymentMethodRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	WorkspaceId   *v1.UUID               `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
@@ -2436,7 +2809,7 @@ type GetPaymentMethodRequest struct {
 
 func (x *GetPaymentMethodRequest) Reset() {
 	*x = GetPaymentMethodRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[26]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2448,7 +2821,7 @@ func (x *GetPaymentMethodRequest) String() string {
 func (*GetPaymentMethodRequest) ProtoMessage() {}
 
 func (x *GetPaymentMethodRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[26]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2461,7 +2834,7 @@ func (x *GetPaymentMethodRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPaymentMethodRequest.ProtoReflect.Descriptor instead.
 func (*GetPaymentMethodRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{26}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *GetPaymentMethodRequest) GetWorkspaceId() *v1.UUID {
@@ -2472,16 +2845,17 @@ func (x *GetPaymentMethodRequest) GetWorkspaceId() *v1.UUID {
 }
 
 type GetPaymentMethodResponse struct {
-	state                protoimpl.MessageState  `protogen:"open.v1"`
-	DefaultPaymentMethod *PaymentMethodSummary   `protobuf:"bytes,1,opt,name=default_payment_method,json=defaultPaymentMethod,proto3" json:"default_payment_method,omitempty"`
-	PaymentMethods       []*PaymentMethodSummary `protobuf:"bytes,2,rep,name=payment_methods,json=paymentMethods,proto3" json:"payment_methods,omitempty"`
+	state                protoimpl.MessageState     `protogen:"open.v1"`
+	DefaultPaymentMethod *PaymentMethodSummary      `protobuf:"bytes,1,opt,name=default_payment_method,json=defaultPaymentMethod,proto3" json:"default_payment_method,omitempty"`
+	PaymentMethods       []*PaymentMethodSummary    `protobuf:"bytes,2,rep,name=payment_methods,json=paymentMethods,proto3" json:"payment_methods,omitempty"`
+	MethodAccessGates    []*PaymentMethodAccessGate `protobuf:"bytes,3,rep,name=method_access_gates,json=methodAccessGates,proto3" json:"method_access_gates,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
 
 func (x *GetPaymentMethodResponse) Reset() {
 	*x = GetPaymentMethodResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[27]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2493,7 +2867,7 @@ func (x *GetPaymentMethodResponse) String() string {
 func (*GetPaymentMethodResponse) ProtoMessage() {}
 
 func (x *GetPaymentMethodResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[27]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2506,7 +2880,7 @@ func (x *GetPaymentMethodResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPaymentMethodResponse.ProtoReflect.Descriptor instead.
 func (*GetPaymentMethodResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{27}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *GetPaymentMethodResponse) GetDefaultPaymentMethod() *PaymentMethodSummary {
@@ -2521,6 +2895,1054 @@ func (x *GetPaymentMethodResponse) GetPaymentMethods() []*PaymentMethodSummary {
 		return x.PaymentMethods
 	}
 	return nil
+}
+
+func (x *GetPaymentMethodResponse) GetMethodAccessGates() []*PaymentMethodAccessGate {
+	if x != nil {
+		return x.MethodAccessGates
+	}
+	return nil
+}
+
+type ListSubscriptionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId   *v1.UUID               `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	Pagination    *v1.Pagination         `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSubscriptionsRequest) Reset() {
+	*x = ListSubscriptionsRequest{}
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSubscriptionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSubscriptionsRequest) ProtoMessage() {}
+
+func (x *ListSubscriptionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSubscriptionsRequest.ProtoReflect.Descriptor instead.
+func (*ListSubscriptionsRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *ListSubscriptionsRequest) GetWorkspaceId() *v1.UUID {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *ListSubscriptionsRequest) GetPagination() *v1.Pagination {
+	if x != nil {
+		return x.Pagination
+	}
+	return nil
+}
+
+type ListSubscriptionsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Subscriptions []*SubscriptionSummary `protobuf:"bytes,1,rep,name=subscriptions,proto3" json:"subscriptions,omitempty"`
+	PageInfo      *v1.PaginatedResponse  `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSubscriptionsResponse) Reset() {
+	*x = ListSubscriptionsResponse{}
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSubscriptionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSubscriptionsResponse) ProtoMessage() {}
+
+func (x *ListSubscriptionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSubscriptionsResponse.ProtoReflect.Descriptor instead.
+func (*ListSubscriptionsResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *ListSubscriptionsResponse) GetSubscriptions() []*SubscriptionSummary {
+	if x != nil {
+		return x.Subscriptions
+	}
+	return nil
+}
+
+func (x *ListSubscriptionsResponse) GetPageInfo() *v1.PaginatedResponse {
+	if x != nil {
+		return x.PageInfo
+	}
+	return nil
+}
+
+type BillingEventEntry struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	BillingEventId   *v1.UUID               `protobuf:"bytes,1,opt,name=billing_event_id,json=billingEventId,proto3" json:"billing_event_id,omitempty"`
+	WorkspaceId      *v1.UUID               `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	EventType        string                 `protobuf:"bytes,3,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`
+	StripeEventId    string                 `protobuf:"bytes,4,opt,name=stripe_event_id,json=stripeEventId,proto3" json:"stripe_event_id,omitempty"`
+	Amount           *v1.Money              `protobuf:"bytes,5,opt,name=amount,proto3" json:"amount,omitempty"`
+	SubscriptionTier string                 `protobuf:"bytes,6,opt,name=subscription_tier,json=subscriptionTier,proto3" json:"subscription_tier,omitempty"`
+	CreditsChange    string                 `protobuf:"bytes,7,opt,name=credits_change,json=creditsChange,proto3" json:"credits_change,omitempty"`
+	Description      string                 `protobuf:"bytes,8,opt,name=description,proto3" json:"description,omitempty"`
+	MetadataJson     string                 `protobuf:"bytes,9,opt,name=metadata_json,json=metadataJson,proto3" json:"metadata_json,omitempty"`
+	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *BillingEventEntry) Reset() {
+	*x = BillingEventEntry{}
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BillingEventEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BillingEventEntry) ProtoMessage() {}
+
+func (x *BillingEventEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BillingEventEntry.ProtoReflect.Descriptor instead.
+func (*BillingEventEntry) Descriptor() ([]byte, []int) {
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *BillingEventEntry) GetBillingEventId() *v1.UUID {
+	if x != nil {
+		return x.BillingEventId
+	}
+	return nil
+}
+
+func (x *BillingEventEntry) GetWorkspaceId() *v1.UUID {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *BillingEventEntry) GetEventType() string {
+	if x != nil {
+		return x.EventType
+	}
+	return ""
+}
+
+func (x *BillingEventEntry) GetStripeEventId() string {
+	if x != nil {
+		return x.StripeEventId
+	}
+	return ""
+}
+
+func (x *BillingEventEntry) GetAmount() *v1.Money {
+	if x != nil {
+		return x.Amount
+	}
+	return nil
+}
+
+func (x *BillingEventEntry) GetSubscriptionTier() string {
+	if x != nil {
+		return x.SubscriptionTier
+	}
+	return ""
+}
+
+func (x *BillingEventEntry) GetCreditsChange() string {
+	if x != nil {
+		return x.CreditsChange
+	}
+	return ""
+}
+
+func (x *BillingEventEntry) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *BillingEventEntry) GetMetadataJson() string {
+	if x != nil {
+		return x.MetadataJson
+	}
+	return ""
+}
+
+func (x *BillingEventEntry) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+type ListBillingEventsRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId     *v1.UUID               `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	Pagination      *v1.Pagination         `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	EventTypeFilter string                 `protobuf:"bytes,3,opt,name=event_type_filter,json=eventTypeFilter,proto3" json:"event_type_filter,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ListBillingEventsRequest) Reset() {
+	*x = ListBillingEventsRequest{}
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListBillingEventsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListBillingEventsRequest) ProtoMessage() {}
+
+func (x *ListBillingEventsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListBillingEventsRequest.ProtoReflect.Descriptor instead.
+func (*ListBillingEventsRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *ListBillingEventsRequest) GetWorkspaceId() *v1.UUID {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *ListBillingEventsRequest) GetPagination() *v1.Pagination {
+	if x != nil {
+		return x.Pagination
+	}
+	return nil
+}
+
+func (x *ListBillingEventsRequest) GetEventTypeFilter() string {
+	if x != nil {
+		return x.EventTypeFilter
+	}
+	return ""
+}
+
+type ListBillingEventsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Events        []*BillingEventEntry   `protobuf:"bytes,1,rep,name=events,proto3" json:"events,omitempty"`
+	PageInfo      *v1.PaginatedResponse  `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListBillingEventsResponse) Reset() {
+	*x = ListBillingEventsResponse{}
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListBillingEventsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListBillingEventsResponse) ProtoMessage() {}
+
+func (x *ListBillingEventsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListBillingEventsResponse.ProtoReflect.Descriptor instead.
+func (*ListBillingEventsResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *ListBillingEventsResponse) GetEvents() []*BillingEventEntry {
+	if x != nil {
+		return x.Events
+	}
+	return nil
+}
+
+func (x *ListBillingEventsResponse) GetPageInfo() *v1.PaginatedResponse {
+	if x != nil {
+		return x.PageInfo
+	}
+	return nil
+}
+
+type GetInvoiceHistoryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId   *v1.UUID               `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	Pagination    *v1.Pagination         `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetInvoiceHistoryRequest) Reset() {
+	*x = GetInvoiceHistoryRequest{}
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInvoiceHistoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInvoiceHistoryRequest) ProtoMessage() {}
+
+func (x *GetInvoiceHistoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInvoiceHistoryRequest.ProtoReflect.Descriptor instead.
+func (*GetInvoiceHistoryRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *GetInvoiceHistoryRequest) GetWorkspaceId() *v1.UUID {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *GetInvoiceHistoryRequest) GetPagination() *v1.Pagination {
+	if x != nil {
+		return x.Pagination
+	}
+	return nil
+}
+
+type GetInvoiceHistoryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invoices      []*InvoiceSummary      `protobuf:"bytes,1,rep,name=invoices,proto3" json:"invoices,omitempty"`
+	PageInfo      *v1.PaginatedResponse  `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetInvoiceHistoryResponse) Reset() {
+	*x = GetInvoiceHistoryResponse{}
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInvoiceHistoryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInvoiceHistoryResponse) ProtoMessage() {}
+
+func (x *GetInvoiceHistoryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInvoiceHistoryResponse.ProtoReflect.Descriptor instead.
+func (*GetInvoiceHistoryResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *GetInvoiceHistoryResponse) GetInvoices() []*InvoiceSummary {
+	if x != nil {
+		return x.Invoices
+	}
+	return nil
+}
+
+func (x *GetInvoiceHistoryResponse) GetPageInfo() *v1.PaginatedResponse {
+	if x != nil {
+		return x.PageInfo
+	}
+	return nil
+}
+
+type DownloadInvoiceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	InvoiceId     *v1.UUID               `protobuf:"bytes,2,opt,name=invoice_id,json=invoiceId,proto3" json:"invoice_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DownloadInvoiceRequest) Reset() {
+	*x = DownloadInvoiceRequest{}
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DownloadInvoiceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DownloadInvoiceRequest) ProtoMessage() {}
+
+func (x *DownloadInvoiceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DownloadInvoiceRequest.ProtoReflect.Descriptor instead.
+func (*DownloadInvoiceRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *DownloadInvoiceRequest) GetContext() *v1.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *DownloadInvoiceRequest) GetInvoiceId() *v1.UUID {
+	if x != nil {
+		return x.InvoiceId
+	}
+	return nil
+}
+
+type DownloadInvoiceResponse struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	InvoicePdfUrl    string                 `protobuf:"bytes,1,opt,name=invoice_pdf_url,json=invoicePdfUrl,proto3" json:"invoice_pdf_url,omitempty"`
+	HostedInvoiceUrl string                 `protobuf:"bytes,2,opt,name=hosted_invoice_url,json=hostedInvoiceUrl,proto3" json:"hosted_invoice_url,omitempty"`
+	Invoice          *InvoiceSummary        `protobuf:"bytes,3,opt,name=invoice,proto3" json:"invoice,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *DownloadInvoiceResponse) Reset() {
+	*x = DownloadInvoiceResponse{}
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DownloadInvoiceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DownloadInvoiceResponse) ProtoMessage() {}
+
+func (x *DownloadInvoiceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DownloadInvoiceResponse.ProtoReflect.Descriptor instead.
+func (*DownloadInvoiceResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *DownloadInvoiceResponse) GetInvoicePdfUrl() string {
+	if x != nil {
+		return x.InvoicePdfUrl
+	}
+	return ""
+}
+
+func (x *DownloadInvoiceResponse) GetHostedInvoiceUrl() string {
+	if x != nil {
+		return x.HostedInvoiceUrl
+	}
+	return ""
+}
+
+func (x *DownloadInvoiceResponse) GetInvoice() *InvoiceSummary {
+	if x != nil {
+		return x.Invoice
+	}
+	return nil
+}
+
+type GetUsageReportRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId   *v1.UUID               `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	PeriodStart   string                 `protobuf:"bytes,2,opt,name=period_start,json=periodStart,proto3" json:"period_start,omitempty"`
+	PeriodEnd     string                 `protobuf:"bytes,3,opt,name=period_end,json=periodEnd,proto3" json:"period_end,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUsageReportRequest) Reset() {
+	*x = GetUsageReportRequest{}
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUsageReportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUsageReportRequest) ProtoMessage() {}
+
+func (x *GetUsageReportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUsageReportRequest.ProtoReflect.Descriptor instead.
+func (*GetUsageReportRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *GetUsageReportRequest) GetWorkspaceId() *v1.UUID {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *GetUsageReportRequest) GetPeriodStart() string {
+	if x != nil {
+		return x.PeriodStart
+	}
+	return ""
+}
+
+func (x *GetUsageReportRequest) GetPeriodEnd() string {
+	if x != nil {
+		return x.PeriodEnd
+	}
+	return ""
+}
+
+type GetUsageReportResponse struct {
+	state                    protoimpl.MessageState     `protogen:"open.v1"`
+	Balance                  *CreditBalance             `protobuf:"bytes,1,opt,name=balance,proto3" json:"balance,omitempty"`
+	Breakdown                []*OperationUsageBreakdown `protobuf:"bytes,2,rep,name=breakdown,proto3" json:"breakdown,omitempty"`
+	OverageCreditsUsed       string                     `protobuf:"bytes,3,opt,name=overage_credits_used,json=overageCreditsUsed,proto3" json:"overage_credits_used,omitempty"`
+	OverageLimitCredits      string                     `protobuf:"bytes,4,opt,name=overage_limit_credits,json=overageLimitCredits,proto3" json:"overage_limit_credits,omitempty"`
+	OverageChargeUsd         *v1.Money                  `protobuf:"bytes,5,opt,name=overage_charge_usd,json=overageChargeUsd,proto3" json:"overage_charge_usd,omitempty"`
+	TriggeredThresholdAlerts []string                   `protobuf:"bytes,6,rep,name=triggered_threshold_alerts,json=triggeredThresholdAlerts,proto3" json:"triggered_threshold_alerts,omitempty"` // "80_pct", "95_pct", "100_pct", "110_pct_hard_cap"
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
+}
+
+func (x *GetUsageReportResponse) Reset() {
+	*x = GetUsageReportResponse{}
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUsageReportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUsageReportResponse) ProtoMessage() {}
+
+func (x *GetUsageReportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUsageReportResponse.ProtoReflect.Descriptor instead.
+func (*GetUsageReportResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *GetUsageReportResponse) GetBalance() *CreditBalance {
+	if x != nil {
+		return x.Balance
+	}
+	return nil
+}
+
+func (x *GetUsageReportResponse) GetBreakdown() []*OperationUsageBreakdown {
+	if x != nil {
+		return x.Breakdown
+	}
+	return nil
+}
+
+func (x *GetUsageReportResponse) GetOverageCreditsUsed() string {
+	if x != nil {
+		return x.OverageCreditsUsed
+	}
+	return ""
+}
+
+func (x *GetUsageReportResponse) GetOverageLimitCredits() string {
+	if x != nil {
+		return x.OverageLimitCredits
+	}
+	return ""
+}
+
+func (x *GetUsageReportResponse) GetOverageChargeUsd() *v1.Money {
+	if x != nil {
+		return x.OverageChargeUsd
+	}
+	return nil
+}
+
+func (x *GetUsageReportResponse) GetTriggeredThresholdAlerts() []string {
+	if x != nil {
+		return x.TriggeredThresholdAlerts
+	}
+	return nil
+}
+
+// Data Export & Retention Evidence Messages (P8-02 Acceptance Target #3)
+type DataExportJobSummary struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	ExportId          *v1.UUID               `protobuf:"bytes,1,opt,name=export_id,json=exportId,proto3" json:"export_id,omitempty"`
+	WorkspaceId       *v1.UUID               `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	UserId            *v1.UUID               `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	ExportType        string                 `protobuf:"bytes,4,opt,name=export_type,json=exportType,proto3" json:"export_type,omitempty"` // gdpr_export, data_export, tax_report, analytics_export
+	Format            string                 `protobuf:"bytes,5,opt,name=format,proto3" json:"format,omitempty"`                           // json, csv, zip, pdf, xlsx
+	Status            string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`                           // queued, processing, completed, failed, expired
+	ProgressPct       int32                  `protobuf:"varint,7,opt,name=progress_pct,json=progressPct,proto3" json:"progress_pct,omitempty"`
+	FileUrl           string                 `protobuf:"bytes,8,opt,name=file_url,json=fileUrl,proto3" json:"file_url,omitempty"`
+	FileSizeBytes     int64                  `protobuf:"varint,9,opt,name=file_size_bytes,json=fileSizeBytes,proto3" json:"file_size_bytes,omitempty"`
+	ContentHashSha512 string                 `protobuf:"bytes,10,opt,name=content_hash_sha512,json=contentHashSha512,proto3" json:"content_hash_sha512,omitempty"`
+	ExpiresAt         *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	CompletedAt       *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
+	CreatedAt         *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *DataExportJobSummary) Reset() {
+	*x = DataExportJobSummary{}
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DataExportJobSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DataExportJobSummary) ProtoMessage() {}
+
+func (x *DataExportJobSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DataExportJobSummary.ProtoReflect.Descriptor instead.
+func (*DataExportJobSummary) Descriptor() ([]byte, []int) {
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *DataExportJobSummary) GetExportId() *v1.UUID {
+	if x != nil {
+		return x.ExportId
+	}
+	return nil
+}
+
+func (x *DataExportJobSummary) GetWorkspaceId() *v1.UUID {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *DataExportJobSummary) GetUserId() *v1.UUID {
+	if x != nil {
+		return x.UserId
+	}
+	return nil
+}
+
+func (x *DataExportJobSummary) GetExportType() string {
+	if x != nil {
+		return x.ExportType
+	}
+	return ""
+}
+
+func (x *DataExportJobSummary) GetFormat() string {
+	if x != nil {
+		return x.Format
+	}
+	return ""
+}
+
+func (x *DataExportJobSummary) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *DataExportJobSummary) GetProgressPct() int32 {
+	if x != nil {
+		return x.ProgressPct
+	}
+	return 0
+}
+
+func (x *DataExportJobSummary) GetFileUrl() string {
+	if x != nil {
+		return x.FileUrl
+	}
+	return ""
+}
+
+func (x *DataExportJobSummary) GetFileSizeBytes() int64 {
+	if x != nil {
+		return x.FileSizeBytes
+	}
+	return 0
+}
+
+func (x *DataExportJobSummary) GetContentHashSha512() string {
+	if x != nil {
+		return x.ContentHashSha512
+	}
+	return ""
+}
+
+func (x *DataExportJobSummary) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+func (x *DataExportJobSummary) GetCompletedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CompletedAt
+	}
+	return nil
+}
+
+func (x *DataExportJobSummary) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+type RequestExportRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	ExportType    string                 `protobuf:"bytes,2,opt,name=export_type,json=exportType,proto3" json:"export_type,omitempty"`
+	Format        string                 `protobuf:"bytes,3,opt,name=format,proto3" json:"format,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequestExportRequest) Reset() {
+	*x = RequestExportRequest{}
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestExportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestExportRequest) ProtoMessage() {}
+
+func (x *RequestExportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestExportRequest.ProtoReflect.Descriptor instead.
+func (*RequestExportRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *RequestExportRequest) GetContext() *v1.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *RequestExportRequest) GetExportType() string {
+	if x != nil {
+		return x.ExportType
+	}
+	return ""
+}
+
+func (x *RequestExportRequest) GetFormat() string {
+	if x != nil {
+		return x.Format
+	}
+	return ""
+}
+
+type RequestExportResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ExportJob     *DataExportJobSummary  `protobuf:"bytes,1,opt,name=export_job,json=exportJob,proto3" json:"export_job,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequestExportResponse) Reset() {
+	*x = RequestExportResponse{}
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestExportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestExportResponse) ProtoMessage() {}
+
+func (x *RequestExportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestExportResponse.ProtoReflect.Descriptor instead.
+func (*RequestExportResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *RequestExportResponse) GetExportJob() *DataExportJobSummary {
+	if x != nil {
+		return x.ExportJob
+	}
+	return nil
+}
+
+type GetExportUrlRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId   *v1.UUID               `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	ExportId      *v1.UUID               `protobuf:"bytes,2,opt,name=export_id,json=exportId,proto3" json:"export_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetExportUrlRequest) Reset() {
+	*x = GetExportUrlRequest{}
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetExportUrlRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetExportUrlRequest) ProtoMessage() {}
+
+func (x *GetExportUrlRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetExportUrlRequest.ProtoReflect.Descriptor instead.
+func (*GetExportUrlRequest) Descriptor() ([]byte, []int) {
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *GetExportUrlRequest) GetWorkspaceId() *v1.UUID {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *GetExportUrlRequest) GetExportId() *v1.UUID {
+	if x != nil {
+		return x.ExportId
+	}
+	return nil
+}
+
+type GetExportUrlResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ExportJob     *DataExportJobSummary  `protobuf:"bytes,1,opt,name=export_job,json=exportJob,proto3" json:"export_job,omitempty"`
+	DownloadUrl   string                 `protobuf:"bytes,2,opt,name=download_url,json=downloadUrl,proto3" json:"download_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetExportUrlResponse) Reset() {
+	*x = GetExportUrlResponse{}
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetExportUrlResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetExportUrlResponse) ProtoMessage() {}
+
+func (x *GetExportUrlResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetExportUrlResponse.ProtoReflect.Descriptor instead.
+func (*GetExportUrlResponse) Descriptor() ([]byte, []int) {
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *GetExportUrlResponse) GetExportJob() *DataExportJobSummary {
+	if x != nil {
+		return x.ExportJob
+	}
+	return nil
+}
+
+func (x *GetExportUrlResponse) GetDownloadUrl() string {
+	if x != nil {
+		return x.DownloadUrl
+	}
+	return ""
 }
 
 type EstimateCostRequest struct {
@@ -2539,7 +3961,7 @@ type EstimateCostRequest struct {
 
 func (x *EstimateCostRequest) Reset() {
 	*x = EstimateCostRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[28]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2551,7 +3973,7 @@ func (x *EstimateCostRequest) String() string {
 func (*EstimateCostRequest) ProtoMessage() {}
 
 func (x *EstimateCostRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[28]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2564,7 +3986,7 @@ func (x *EstimateCostRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EstimateCostRequest.ProtoReflect.Descriptor instead.
 func (*EstimateCostRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{28}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *EstimateCostRequest) GetContext() *v1.CommandContext {
@@ -2634,7 +4056,7 @@ type EstimateCostResponse struct {
 
 func (x *EstimateCostResponse) Reset() {
 	*x = EstimateCostResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[29]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2646,7 +4068,7 @@ func (x *EstimateCostResponse) String() string {
 func (*EstimateCostResponse) ProtoMessage() {}
 
 func (x *EstimateCostResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[29]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2659,7 +4081,7 @@ func (x *EstimateCostResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EstimateCostResponse.ProtoReflect.Descriptor instead.
 func (*EstimateCostResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{29}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *EstimateCostResponse) GetQuote() *CreditQuote {
@@ -2692,7 +4114,7 @@ type GetBalanceRequest struct {
 
 func (x *GetBalanceRequest) Reset() {
 	*x = GetBalanceRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[30]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2704,7 +4126,7 @@ func (x *GetBalanceRequest) String() string {
 func (*GetBalanceRequest) ProtoMessage() {}
 
 func (x *GetBalanceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[30]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2717,7 +4139,7 @@ func (x *GetBalanceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBalanceRequest.ProtoReflect.Descriptor instead.
 func (*GetBalanceRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{30}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *GetBalanceRequest) GetWorkspaceId() *v1.UUID {
@@ -2736,7 +4158,7 @@ type GetBalanceResponse struct {
 
 func (x *GetBalanceResponse) Reset() {
 	*x = GetBalanceResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[31]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2748,7 +4170,7 @@ func (x *GetBalanceResponse) String() string {
 func (*GetBalanceResponse) ProtoMessage() {}
 
 func (x *GetBalanceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[31]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2761,7 +4183,7 @@ func (x *GetBalanceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBalanceResponse.ProtoReflect.Descriptor instead.
 func (*GetBalanceResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{31}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *GetBalanceResponse) GetBalance() *CreditBalance {
@@ -2780,7 +4202,7 @@ type GetUsageStatsRequest struct {
 
 func (x *GetUsageStatsRequest) Reset() {
 	*x = GetUsageStatsRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[32]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2792,7 +4214,7 @@ func (x *GetUsageStatsRequest) String() string {
 func (*GetUsageStatsRequest) ProtoMessage() {}
 
 func (x *GetUsageStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[32]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2805,7 +4227,7 @@ func (x *GetUsageStatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUsageStatsRequest.ProtoReflect.Descriptor instead.
 func (*GetUsageStatsRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{32}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *GetUsageStatsRequest) GetWorkspaceId() *v1.UUID {
@@ -2826,7 +4248,7 @@ type GetUsageStatsResponse struct {
 
 func (x *GetUsageStatsResponse) Reset() {
 	*x = GetUsageStatsResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[33]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2838,7 +4260,7 @@ func (x *GetUsageStatsResponse) String() string {
 func (*GetUsageStatsResponse) ProtoMessage() {}
 
 func (x *GetUsageStatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[33]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2851,7 +4273,7 @@ func (x *GetUsageStatsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUsageStatsResponse.ProtoReflect.Descriptor instead.
 func (*GetUsageStatsResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{33}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *GetUsageStatsResponse) GetCreditsUsedThisPeriod() string {
@@ -2885,7 +4307,7 @@ type GetMonthlyUsageRequest struct {
 
 func (x *GetMonthlyUsageRequest) Reset() {
 	*x = GetMonthlyUsageRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[34]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2897,7 +4319,7 @@ func (x *GetMonthlyUsageRequest) String() string {
 func (*GetMonthlyUsageRequest) ProtoMessage() {}
 
 func (x *GetMonthlyUsageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[34]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2910,7 +4332,7 @@ func (x *GetMonthlyUsageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMonthlyUsageRequest.ProtoReflect.Descriptor instead.
 func (*GetMonthlyUsageRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{34}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *GetMonthlyUsageRequest) GetWorkspaceId() *v1.UUID {
@@ -2938,7 +4360,7 @@ type GetMonthlyUsageResponse struct {
 
 func (x *GetMonthlyUsageResponse) Reset() {
 	*x = GetMonthlyUsageResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[35]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2950,7 +4372,7 @@ func (x *GetMonthlyUsageResponse) String() string {
 func (*GetMonthlyUsageResponse) ProtoMessage() {}
 
 func (x *GetMonthlyUsageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[35]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2963,7 +4385,7 @@ func (x *GetMonthlyUsageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMonthlyUsageResponse.ProtoReflect.Descriptor instead.
 func (*GetMonthlyUsageResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{35}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *GetMonthlyUsageResponse) GetYearMonth() string {
@@ -2997,7 +4419,7 @@ type ListTransactionsRequest struct {
 
 func (x *ListTransactionsRequest) Reset() {
 	*x = ListTransactionsRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[36]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3009,7 +4431,7 @@ func (x *ListTransactionsRequest) String() string {
 func (*ListTransactionsRequest) ProtoMessage() {}
 
 func (x *ListTransactionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[36]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3022,7 +4444,7 @@ func (x *ListTransactionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTransactionsRequest.ProtoReflect.Descriptor instead.
 func (*ListTransactionsRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{36}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *ListTransactionsRequest) GetWorkspaceId() *v1.UUID {
@@ -3049,7 +4471,7 @@ type ListTransactionsResponse struct {
 
 func (x *ListTransactionsResponse) Reset() {
 	*x = ListTransactionsResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[37]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3061,7 +4483,7 @@ func (x *ListTransactionsResponse) String() string {
 func (*ListTransactionsResponse) ProtoMessage() {}
 
 func (x *ListTransactionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[37]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3074,7 +4496,7 @@ func (x *ListTransactionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTransactionsResponse.ProtoReflect.Descriptor instead.
 func (*ListTransactionsResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{37}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *ListTransactionsResponse) GetTransactions() []*CreditTransactionEntry {
@@ -3101,7 +4523,7 @@ type ListRecentUsageRequest struct {
 
 func (x *ListRecentUsageRequest) Reset() {
 	*x = ListRecentUsageRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[38]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3113,7 +4535,7 @@ func (x *ListRecentUsageRequest) String() string {
 func (*ListRecentUsageRequest) ProtoMessage() {}
 
 func (x *ListRecentUsageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[38]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3126,7 +4548,7 @@ func (x *ListRecentUsageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRecentUsageRequest.ProtoReflect.Descriptor instead.
 func (*ListRecentUsageRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{38}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *ListRecentUsageRequest) GetWorkspaceId() *v1.UUID {
@@ -3152,7 +4574,7 @@ type ListRecentUsageResponse struct {
 
 func (x *ListRecentUsageResponse) Reset() {
 	*x = ListRecentUsageResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[39]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3164,7 +4586,7 @@ func (x *ListRecentUsageResponse) String() string {
 func (*ListRecentUsageResponse) ProtoMessage() {}
 
 func (x *ListRecentUsageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[39]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3177,7 +4599,7 @@ func (x *ListRecentUsageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRecentUsageResponse.ProtoReflect.Descriptor instead.
 func (*ListRecentUsageResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{39}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *ListRecentUsageResponse) GetUsageEntries() []*CreditTransactionEntry {
@@ -3196,7 +4618,7 @@ type ListPackagesRequest struct {
 
 func (x *ListPackagesRequest) Reset() {
 	*x = ListPackagesRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[40]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3208,7 +4630,7 @@ func (x *ListPackagesRequest) String() string {
 func (*ListPackagesRequest) ProtoMessage() {}
 
 func (x *ListPackagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[40]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3221,7 +4643,7 @@ func (x *ListPackagesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPackagesRequest.ProtoReflect.Descriptor instead.
 func (*ListPackagesRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{40}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *ListPackagesRequest) GetCurrency() string {
@@ -3241,7 +4663,7 @@ type ListPackagesResponse struct {
 
 func (x *ListPackagesResponse) Reset() {
 	*x = ListPackagesResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[41]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3253,7 +4675,7 @@ func (x *ListPackagesResponse) String() string {
 func (*ListPackagesResponse) ProtoMessage() {}
 
 func (x *ListPackagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[41]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3266,7 +4688,7 @@ func (x *ListPackagesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPackagesResponse.ProtoReflect.Descriptor instead.
 func (*ListPackagesResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{41}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *ListPackagesResponse) GetPackages() []*CreditPackEntry {
@@ -3296,7 +4718,7 @@ type PurchaseRequest struct {
 
 func (x *PurchaseRequest) Reset() {
 	*x = PurchaseRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[42]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3308,7 +4730,7 @@ func (x *PurchaseRequest) String() string {
 func (*PurchaseRequest) ProtoMessage() {}
 
 func (x *PurchaseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[42]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3321,7 +4743,7 @@ func (x *PurchaseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PurchaseRequest.ProtoReflect.Descriptor instead.
 func (*PurchaseRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{42}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *PurchaseRequest) GetContext() *v1.CommandContext {
@@ -3371,7 +4793,7 @@ type PurchaseResponse struct {
 
 func (x *PurchaseResponse) Reset() {
 	*x = PurchaseResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[43]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3383,7 +4805,7 @@ func (x *PurchaseResponse) String() string {
 func (*PurchaseResponse) ProtoMessage() {}
 
 func (x *PurchaseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[43]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3396,7 +4818,7 @@ func (x *PurchaseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PurchaseResponse.ProtoReflect.Descriptor instead.
 func (*PurchaseResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{43}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *PurchaseResponse) GetCheckoutSessionId() string {
@@ -3436,7 +4858,7 @@ type GetAutoRefillConfigRequest struct {
 
 func (x *GetAutoRefillConfigRequest) Reset() {
 	*x = GetAutoRefillConfigRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[44]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3448,7 +4870,7 @@ func (x *GetAutoRefillConfigRequest) String() string {
 func (*GetAutoRefillConfigRequest) ProtoMessage() {}
 
 func (x *GetAutoRefillConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[44]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3461,7 +4883,7 @@ func (x *GetAutoRefillConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAutoRefillConfigRequest.ProtoReflect.Descriptor instead.
 func (*GetAutoRefillConfigRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{44}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *GetAutoRefillConfigRequest) GetWorkspaceId() *v1.UUID {
@@ -3480,7 +4902,7 @@ type GetAutoRefillConfigResponse struct {
 
 func (x *GetAutoRefillConfigResponse) Reset() {
 	*x = GetAutoRefillConfigResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[45]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3492,7 +4914,7 @@ func (x *GetAutoRefillConfigResponse) String() string {
 func (*GetAutoRefillConfigResponse) ProtoMessage() {}
 
 func (x *GetAutoRefillConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[45]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3505,7 +4927,7 @@ func (x *GetAutoRefillConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAutoRefillConfigResponse.ProtoReflect.Descriptor instead.
 func (*GetAutoRefillConfigResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{45}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *GetAutoRefillConfigResponse) GetConfig() *AutoRefillConfig {
@@ -3525,7 +4947,7 @@ type UpdateAutoRefillRequest struct {
 
 func (x *UpdateAutoRefillRequest) Reset() {
 	*x = UpdateAutoRefillRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[46]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3537,7 +4959,7 @@ func (x *UpdateAutoRefillRequest) String() string {
 func (*UpdateAutoRefillRequest) ProtoMessage() {}
 
 func (x *UpdateAutoRefillRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[46]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3550,7 +4972,7 @@ func (x *UpdateAutoRefillRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateAutoRefillRequest.ProtoReflect.Descriptor instead.
 func (*UpdateAutoRefillRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{46}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *UpdateAutoRefillRequest) GetContext() *v1.CommandContext {
@@ -3576,7 +4998,7 @@ type UpdateAutoRefillResponse struct {
 
 func (x *UpdateAutoRefillResponse) Reset() {
 	*x = UpdateAutoRefillResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[47]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3588,7 +5010,7 @@ func (x *UpdateAutoRefillResponse) String() string {
 func (*UpdateAutoRefillResponse) ProtoMessage() {}
 
 func (x *UpdateAutoRefillResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[47]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3601,7 +5023,7 @@ func (x *UpdateAutoRefillResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateAutoRefillResponse.ProtoReflect.Descriptor instead.
 func (*UpdateAutoRefillResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{47}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *UpdateAutoRefillResponse) GetConfig() *AutoRefillConfig {
@@ -3620,7 +5042,7 @@ type GetCurrentPlanRequest struct {
 
 func (x *GetCurrentPlanRequest) Reset() {
 	*x = GetCurrentPlanRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[48]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3632,7 +5054,7 @@ func (x *GetCurrentPlanRequest) String() string {
 func (*GetCurrentPlanRequest) ProtoMessage() {}
 
 func (x *GetCurrentPlanRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[48]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3645,7 +5067,7 @@ func (x *GetCurrentPlanRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCurrentPlanRequest.ProtoReflect.Descriptor instead.
 func (*GetCurrentPlanRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{48}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *GetCurrentPlanRequest) GetWorkspaceId() *v1.UUID {
@@ -3665,7 +5087,7 @@ type GetCurrentPlanResponse struct {
 
 func (x *GetCurrentPlanResponse) Reset() {
 	*x = GetCurrentPlanResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[49]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3677,7 +5099,7 @@ func (x *GetCurrentPlanResponse) String() string {
 func (*GetCurrentPlanResponse) ProtoMessage() {}
 
 func (x *GetCurrentPlanResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[49]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3690,7 +5112,7 @@ func (x *GetCurrentPlanResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCurrentPlanResponse.ProtoReflect.Descriptor instead.
 func (*GetCurrentPlanResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{49}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *GetCurrentPlanResponse) GetCurrentPlan() *PlanCatalogEntry {
@@ -3716,7 +5138,7 @@ type ListPlansRequest struct {
 
 func (x *ListPlansRequest) Reset() {
 	*x = ListPlansRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[50]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3728,7 +5150,7 @@ func (x *ListPlansRequest) String() string {
 func (*ListPlansRequest) ProtoMessage() {}
 
 func (x *ListPlansRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[50]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3741,7 +5163,7 @@ func (x *ListPlansRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPlansRequest.ProtoReflect.Descriptor instead.
 func (*ListPlansRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{50}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *ListPlansRequest) GetCurrency() string {
@@ -3762,7 +5184,7 @@ type ListPlansResponse struct {
 
 func (x *ListPlansResponse) Reset() {
 	*x = ListPlansResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[51]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3774,7 +5196,7 @@ func (x *ListPlansResponse) String() string {
 func (*ListPlansResponse) ProtoMessage() {}
 
 func (x *ListPlansResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[51]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3787,7 +5209,7 @@ func (x *ListPlansResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPlansResponse.ProtoReflect.Descriptor instead.
 func (*ListPlansResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{51}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *ListPlansResponse) GetPlans() []*PlanCatalogEntry {
@@ -3820,7 +5242,7 @@ type GetSubscriptionRequest struct {
 
 func (x *GetSubscriptionRequest) Reset() {
 	*x = GetSubscriptionRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[52]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3832,7 +5254,7 @@ func (x *GetSubscriptionRequest) String() string {
 func (*GetSubscriptionRequest) ProtoMessage() {}
 
 func (x *GetSubscriptionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[52]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3845,7 +5267,7 @@ func (x *GetSubscriptionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSubscriptionRequest.ProtoReflect.Descriptor instead.
 func (*GetSubscriptionRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{52}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *GetSubscriptionRequest) GetWorkspaceId() *v1.UUID {
@@ -3864,7 +5286,7 @@ type GetSubscriptionResponse struct {
 
 func (x *GetSubscriptionResponse) Reset() {
 	*x = GetSubscriptionResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[53]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3876,7 +5298,7 @@ func (x *GetSubscriptionResponse) String() string {
 func (*GetSubscriptionResponse) ProtoMessage() {}
 
 func (x *GetSubscriptionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[53]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3889,7 +5311,7 @@ func (x *GetSubscriptionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSubscriptionResponse.ProtoReflect.Descriptor instead.
 func (*GetSubscriptionResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{53}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *GetSubscriptionResponse) GetSubscription() *SubscriptionSummary {
@@ -3908,7 +5330,7 @@ type GetPaymentMethodsRequest struct {
 
 func (x *GetPaymentMethodsRequest) Reset() {
 	*x = GetPaymentMethodsRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[54]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3920,7 +5342,7 @@ func (x *GetPaymentMethodsRequest) String() string {
 func (*GetPaymentMethodsRequest) ProtoMessage() {}
 
 func (x *GetPaymentMethodsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[54]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3933,7 +5355,7 @@ func (x *GetPaymentMethodsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPaymentMethodsRequest.ProtoReflect.Descriptor instead.
 func (*GetPaymentMethodsRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{54}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *GetPaymentMethodsRequest) GetWorkspaceId() *v1.UUID {
@@ -3952,7 +5374,7 @@ type GetPaymentMethodsResponse struct {
 
 func (x *GetPaymentMethodsResponse) Reset() {
 	*x = GetPaymentMethodsResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[55]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3964,7 +5386,7 @@ func (x *GetPaymentMethodsResponse) String() string {
 func (*GetPaymentMethodsResponse) ProtoMessage() {}
 
 func (x *GetPaymentMethodsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[55]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3977,7 +5399,7 @@ func (x *GetPaymentMethodsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPaymentMethodsResponse.ProtoReflect.Descriptor instead.
 func (*GetPaymentMethodsResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{55}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *GetPaymentMethodsResponse) GetPaymentMethods() []*PaymentMethodSummary {
@@ -3999,7 +5421,7 @@ type CancelPlanRequest struct {
 
 func (x *CancelPlanRequest) Reset() {
 	*x = CancelPlanRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[56]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4011,7 +5433,7 @@ func (x *CancelPlanRequest) String() string {
 func (*CancelPlanRequest) ProtoMessage() {}
 
 func (x *CancelPlanRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[56]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4024,7 +5446,7 @@ func (x *CancelPlanRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelPlanRequest.ProtoReflect.Descriptor instead.
 func (*CancelPlanRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{56}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *CancelPlanRequest) GetContext() *v1.CommandContext {
@@ -4064,7 +5486,7 @@ type CancelPlanResponse struct {
 
 func (x *CancelPlanResponse) Reset() {
 	*x = CancelPlanResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[57]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4076,7 +5498,7 @@ func (x *CancelPlanResponse) String() string {
 func (*CancelPlanResponse) ProtoMessage() {}
 
 func (x *CancelPlanResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[57]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4089,7 +5511,7 @@ func (x *CancelPlanResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelPlanResponse.ProtoReflect.Descriptor instead.
 func (*CancelPlanResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{57}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *CancelPlanResponse) GetSubscription() *SubscriptionSummary {
@@ -4109,7 +5531,7 @@ type ListInvoicesRequest struct {
 
 func (x *ListInvoicesRequest) Reset() {
 	*x = ListInvoicesRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[58]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4121,7 +5543,7 @@ func (x *ListInvoicesRequest) String() string {
 func (*ListInvoicesRequest) ProtoMessage() {}
 
 func (x *ListInvoicesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[58]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4134,7 +5556,7 @@ func (x *ListInvoicesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInvoicesRequest.ProtoReflect.Descriptor instead.
 func (*ListInvoicesRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{58}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *ListInvoicesRequest) GetWorkspaceId() *v1.UUID {
@@ -4161,7 +5583,7 @@ type ListInvoicesResponse struct {
 
 func (x *ListInvoicesResponse) Reset() {
 	*x = ListInvoicesResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[59]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4173,7 +5595,7 @@ func (x *ListInvoicesResponse) String() string {
 func (*ListInvoicesResponse) ProtoMessage() {}
 
 func (x *ListInvoicesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[59]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4186,7 +5608,7 @@ func (x *ListInvoicesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInvoicesResponse.ProtoReflect.Descriptor instead.
 func (*ListInvoicesResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{59}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *ListInvoicesResponse) GetInvoices() []*InvoiceSummary {
@@ -4213,7 +5635,7 @@ type GetInvoiceUrlRequest struct {
 
 func (x *GetInvoiceUrlRequest) Reset() {
 	*x = GetInvoiceUrlRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[60]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4225,7 +5647,7 @@ func (x *GetInvoiceUrlRequest) String() string {
 func (*GetInvoiceUrlRequest) ProtoMessage() {}
 
 func (x *GetInvoiceUrlRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[60]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4238,7 +5660,7 @@ func (x *GetInvoiceUrlRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetInvoiceUrlRequest.ProtoReflect.Descriptor instead.
 func (*GetInvoiceUrlRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{60}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *GetInvoiceUrlRequest) GetWorkspaceId() *v1.UUID {
@@ -4265,7 +5687,7 @@ type GetInvoiceUrlResponse struct {
 
 func (x *GetInvoiceUrlResponse) Reset() {
 	*x = GetInvoiceUrlResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[61]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4277,7 +5699,7 @@ func (x *GetInvoiceUrlResponse) String() string {
 func (*GetInvoiceUrlResponse) ProtoMessage() {}
 
 func (x *GetInvoiceUrlResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[61]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4290,7 +5712,7 @@ func (x *GetInvoiceUrlResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetInvoiceUrlResponse.ProtoReflect.Descriptor instead.
 func (*GetInvoiceUrlResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{61}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *GetInvoiceUrlResponse) GetInvoicePdfUrl() string {
@@ -4317,7 +5739,7 @@ type GetCheckoutStatusRequest struct {
 
 func (x *GetCheckoutStatusRequest) Reset() {
 	*x = GetCheckoutStatusRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[62]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4329,7 +5751,7 @@ func (x *GetCheckoutStatusRequest) String() string {
 func (*GetCheckoutStatusRequest) ProtoMessage() {}
 
 func (x *GetCheckoutStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[62]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4342,7 +5764,7 @@ func (x *GetCheckoutStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCheckoutStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetCheckoutStatusRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{62}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *GetCheckoutStatusRequest) GetWorkspaceId() *v1.UUID {
@@ -4371,7 +5793,7 @@ type GetCheckoutStatusResponse struct {
 
 func (x *GetCheckoutStatusResponse) Reset() {
 	*x = GetCheckoutStatusResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[63]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4383,7 +5805,7 @@ func (x *GetCheckoutStatusResponse) String() string {
 func (*GetCheckoutStatusResponse) ProtoMessage() {}
 
 func (x *GetCheckoutStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[63]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4396,7 +5818,7 @@ func (x *GetCheckoutStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCheckoutStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetCheckoutStatusResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{63}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *GetCheckoutStatusResponse) GetCheckoutSessionId() string {
@@ -4436,7 +5858,7 @@ type ListCreditPackagesRequest struct {
 
 func (x *ListCreditPackagesRequest) Reset() {
 	*x = ListCreditPackagesRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[64]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4448,7 +5870,7 @@ func (x *ListCreditPackagesRequest) String() string {
 func (*ListCreditPackagesRequest) ProtoMessage() {}
 
 func (x *ListCreditPackagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[64]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4461,7 +5883,7 @@ func (x *ListCreditPackagesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCreditPackagesRequest.ProtoReflect.Descriptor instead.
 func (*ListCreditPackagesRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{64}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *ListCreditPackagesRequest) GetCurrency() string {
@@ -4481,7 +5903,7 @@ type ListCreditPackagesResponse struct {
 
 func (x *ListCreditPackagesResponse) Reset() {
 	*x = ListCreditPackagesResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[65]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4493,7 +5915,7 @@ func (x *ListCreditPackagesResponse) String() string {
 func (*ListCreditPackagesResponse) ProtoMessage() {}
 
 func (x *ListCreditPackagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[65]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4506,7 +5928,7 @@ func (x *ListCreditPackagesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCreditPackagesResponse.ProtoReflect.Descriptor instead.
 func (*ListCreditPackagesResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{65}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *ListCreditPackagesResponse) GetPackages() []*CreditPackEntry {
@@ -4533,7 +5955,7 @@ type ListCreditPurchasesRequest struct {
 
 func (x *ListCreditPurchasesRequest) Reset() {
 	*x = ListCreditPurchasesRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[66]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4545,7 +5967,7 @@ func (x *ListCreditPurchasesRequest) String() string {
 func (*ListCreditPurchasesRequest) ProtoMessage() {}
 
 func (x *ListCreditPurchasesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[66]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4558,7 +5980,7 @@ func (x *ListCreditPurchasesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCreditPurchasesRequest.ProtoReflect.Descriptor instead.
 func (*ListCreditPurchasesRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{66}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *ListCreditPurchasesRequest) GetWorkspaceId() *v1.UUID {
@@ -4585,7 +6007,7 @@ type ListCreditPurchasesResponse struct {
 
 func (x *ListCreditPurchasesResponse) Reset() {
 	*x = ListCreditPurchasesResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[67]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4597,7 +6019,7 @@ func (x *ListCreditPurchasesResponse) String() string {
 func (*ListCreditPurchasesResponse) ProtoMessage() {}
 
 func (x *ListCreditPurchasesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[67]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4610,7 +6032,7 @@ func (x *ListCreditPurchasesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCreditPurchasesResponse.ProtoReflect.Descriptor instead.
 func (*ListCreditPurchasesResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{67}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *ListCreditPurchasesResponse) GetPurchases() []*CreditTransactionEntry {
@@ -4637,7 +6059,7 @@ type ApplyRetentionDiscountRequest struct {
 
 func (x *ApplyRetentionDiscountRequest) Reset() {
 	*x = ApplyRetentionDiscountRequest{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[68]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4649,7 +6071,7 @@ func (x *ApplyRetentionDiscountRequest) String() string {
 func (*ApplyRetentionDiscountRequest) ProtoMessage() {}
 
 func (x *ApplyRetentionDiscountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[68]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4662,7 +6084,7 @@ func (x *ApplyRetentionDiscountRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyRetentionDiscountRequest.ProtoReflect.Descriptor instead.
 func (*ApplyRetentionDiscountRequest) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{68}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *ApplyRetentionDiscountRequest) GetContext() *v1.CommandContext {
@@ -4690,7 +6112,7 @@ type ApplyRetentionDiscountResponse struct {
 
 func (x *ApplyRetentionDiscountResponse) Reset() {
 	*x = ApplyRetentionDiscountResponse{}
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[69]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4702,7 +6124,7 @@ func (x *ApplyRetentionDiscountResponse) String() string {
 func (*ApplyRetentionDiscountResponse) ProtoMessage() {}
 
 func (x *ApplyRetentionDiscountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[69]
+	mi := &file_creativanta_admin_v1_billing_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4715,7 +6137,7 @@ func (x *ApplyRetentionDiscountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyRetentionDiscountResponse.ProtoReflect.Descriptor instead.
 func (*ApplyRetentionDiscountResponse) Descriptor() ([]byte, []int) {
-	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{69}
+	return file_creativanta_admin_v1_billing_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *ApplyRetentionDiscountResponse) GetSubscription() *SubscriptionSummary {
@@ -4823,14 +6245,28 @@ const file_creativanta_admin_v1_billing_proto_rawDesc = "" +
 	"\acredits\x18\x03 \x01(\tR\acredits\x129\n" +
 	"\tprice_usd\x18\x04 \x01(\v2\x1c.creativanta.common.v1.MoneyR\bpriceUsd\x129\n" +
 	"\tprice_vnd\x18\x05 \x01(\v2\x1c.creativanta.common.v1.MoneyR\bpriceVnd\x12#\n" +
-	"\rnever_expires\x18\x06 \x01(\bR\fneverExpires\"\x90\x02\n" +
+	"\rnever_expires\x18\x06 \x01(\bR\fneverExpires\"\xa0\x03\n" +
 	"\x11AddonCatalogEntry\x12\x1d\n" +
 	"\n" +
 	"addon_code\x18\x01 \x01(\tR\taddonCode\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12H\n" +
 	"\x11monthly_price_usd\x18\x03 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x0fmonthlyPriceUsd\x12H\n" +
 	"\x11monthly_price_vnd\x18\x04 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x0fmonthlyPriceVnd\x12%\n" +
-	"\x0eeligible_tiers\x18\x05 \x03(\tR\religibleTiers\"\xf0\x04\n" +
+	"\x0eeligible_tiers\x18\x05 \x03(\tR\religibleTiers\x12F\n" +
+	"\x10annual_price_usd\x18\x06 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x0eannualPriceUsd\x12F\n" +
+	"\x10annual_price_vnd\x18\a \x01(\v2\x1c.creativanta.common.v1.MoneyR\x0eannualPriceVnd\"\xcf\x02\n" +
+	"\x17PaymentMethodAccessGate\x12\x1f\n" +
+	"\vmethod_type\x18\x01 \x01(\tR\n" +
+	"methodType\x12!\n" +
+	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12#\n" +
+	"\rprovider_code\x18\x03 \x01(\tR\fproviderCode\x12)\n" +
+	"\x10capability_state\x18\x04 \x01(\tR\x0fcapabilityState\x12%\n" +
+	"\x0eaccess_granted\x18\x05 \x01(\bR\raccessGranted\x12%\n" +
+	"\x0eeligible_tiers\x18\x06 \x03(\tR\religibleTiers\x121\n" +
+	"\x14supported_currencies\x18\a \x03(\tR\x13supportedCurrencies\x12\x1f\n" +
+	"\vgate_reason\x18\b \x01(\tR\n" +
+	"gateReason\"\xe2\n" +
+	"\n" +
 	"\x13SubscriptionSummary\x12D\n" +
 	"\x0fsubscription_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\x0esubscriptionId\x12>\n" +
 	"\fworkspace_id\x18\x02 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x12\x12\n" +
@@ -4844,7 +6280,22 @@ const file_creativanta_admin_v1_billing_proto_rawDesc = "" +
 	"\vcanceled_at\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"canceledAt\x12\x16\n" +
-	"\x06addons\x18\v \x03(\tR\x06addons\"\xd3\x02\n" +
+	"\x06addons\x18\v \x03(\tR\x06addons\x128\n" +
+	"\x18scheduled_addon_removals\x18\f \x03(\tR\x16scheduledAddonRemovals\x12>\n" +
+	"\rtrial_ends_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\vtrialEndsAt\x12\x1f\n" +
+	"\vdunning_day\x18\x0e \x01(\x05R\n" +
+	"dunningDay\x12'\n" +
+	"\x0fdunning_attempt\x18\x0f \x01(\x05R\x0edunningAttempt\x12K\n" +
+	"\x14grace_period_ends_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\x11gracePeriodEndsAt\x12$\n" +
+	"\x0eread_only_mode\x18\x11 \x01(\bR\freadOnlyMode\x12(\n" +
+	"\x10read_only_reason\x18\x12 \x01(\tR\x0ereadOnlyReason\x12'\n" +
+	"\x0fretention_phase\x18\x13 \x01(\tR\x0eretentionPhase\x126\n" +
+	"\x17retention_offer_applied\x18\x14 \x01(\bR\x15retentionOfferApplied\x127\n" +
+	"\tpaused_at\x18\x15 \x01(\v2\x1a.google.protobuf.TimestampR\bpausedAt\x12M\n" +
+	"\x15pause_auto_resumes_at\x18\x16 \x01(\v2\x1a.google.protobuf.TimestampR\x12pauseAutoResumesAt\x124\n" +
+	"\x16overage_terms_accepted\x18\x17 \x01(\bR\x14overageTermsAccepted\x120\n" +
+	"\x14overage_used_credits\x18\x18 \x01(\tR\x12overageUsedCredits\x12>\n" +
+	"\x1bpreserved_purchased_credits\x18\x19 \x01(\tR\x19preservedPurchasedCredits\"\xc9\x03\n" +
 	"\x14PaymentMethodSummary\x12G\n" +
 	"\x11payment_method_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\x0fpaymentMethodId\x127\n" +
 	"\x18stripe_payment_method_id\x18\x02 \x01(\tR\x15stripePaymentMethodId\x12\x12\n" +
@@ -4856,7 +6307,11 @@ const file_creativanta_admin_v1_billing_proto_rawDesc = "" +
 	"\x0ecard_exp_month\x18\x06 \x01(\x05R\fcardExpMonth\x12\"\n" +
 	"\rcard_exp_year\x18\a \x01(\x05R\vcardExpYear\x12\x1d\n" +
 	"\n" +
-	"is_default\x18\b \x01(\bR\tisDefault\"\xde\x06\n" +
+	"is_default\x18\b \x01(\bR\tisDefault\x12,\n" +
+	"\x12access_gate_status\x18\t \x01(\tR\x10accessGateStatus\x12!\n" +
+	"\fbilling_name\x18\n" +
+	" \x01(\tR\vbillingName\x12#\n" +
+	"\rbilling_email\x18\v \x01(\tR\fbillingEmail\"\xde\x06\n" +
 	"\x0eInvoiceSummary\x12:\n" +
 	"\n" +
 	"invoice_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\tinvoiceId\x12%\n" +
@@ -4922,40 +6377,151 @@ const file_creativanta_admin_v1_billing_proto_rawDesc = "" +
 	"\x13checkout_session_id\x18\x01 \x01(\tR\x11checkoutSessionId\x12!\n" +
 	"\fcheckout_url\x18\x02 \x01(\tR\vcheckoutUrl\x12\x16\n" +
 	"\x06status\x18\x03 \x01(\tR\x06status\x129\n" +
-	"\x04pack\x18\x04 \x01(\v2%.creativanta.admin.v1.CreditPackEntryR\x04pack\"\xd4\x01\n" +
+	"\x04pack\x18\x04 \x01(\v2%.creativanta.admin.v1.CreditPackEntryR\x04pack\"\xcc\x02\n" +
 	"\x11ChangePlanRequest\x12?\n" +
 	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12\x1f\n" +
 	"\vtarget_plan\x18\x02 \x01(\tR\n" +
 	"targetPlan\x12)\n" +
 	"\x10billing_interval\x18\x03 \x01(\tR\x0fbillingInterval\x12\x1a\n" +
 	"\bcurrency\x18\x04 \x01(\tR\bcurrency\x12\x16\n" +
-	"\x06addons\x18\x05 \x03(\tR\x06addons\"\xdd\x01\n" +
+	"\x06addons\x18\x05 \x03(\tR\x06addons\x12#\n" +
+	"\rremove_addons\x18\x06 \x03(\tR\fremoveAddons\x120\n" +
+	"\x14accept_overage_terms\x18\a \x01(\bR\x12acceptOverageTerms\x12\x1f\n" +
+	"\vstart_trial\x18\b \x01(\bR\n" +
+	"startTrial\"\xe9\x02\n" +
 	"\x12ChangePlanResponse\x12M\n" +
 	"\fsubscription\x18\x01 \x01(\v2).creativanta.admin.v1.SubscriptionSummaryR\fsubscription\x12%\n" +
 	"\x0eeffective_mode\x18\x02 \x01(\tR\reffectiveMode\x12.\n" +
 	"\x13checkout_session_id\x18\x03 \x01(\tR\x11checkoutSessionId\x12!\n" +
-	"\fcheckout_url\x18\x04 \x01(\tR\vcheckoutUrl\"\xd5\x01\n" +
+	"\fcheckout_url\x18\x04 \x01(\tR\vcheckoutUrl\x12P\n" +
+	"\x15prorated_addon_charge\x18\x05 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x13proratedAddonCharge\x128\n" +
+	"\x18scheduled_addon_removals\x18\x06 \x03(\tR\x16scheduledAddonRemovals\"\xaa\x02\n" +
 	"\x19CancelSubscriptionRequest\x12?\n" +
 	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12/\n" +
 	"\x13cancellation_reason\x18\x02 \x01(\tR\x12cancellationReason\x12#\n" +
 	"\rpause_instead\x18\x03 \x01(\bR\fpauseInstead\x12!\n" +
-	"\fpause_months\x18\x04 \x01(\x05R\vpauseMonths\"k\n" +
+	"\fpause_months\x18\x04 \x01(\x05R\vpauseMonths\x124\n" +
+	"\x16accept_retention_offer\x18\x05 \x01(\bR\x14acceptRetentionOffer\x12\x1d\n" +
+	"\n" +
+	"pause_days\x18\x06 \x01(\x05R\tpauseDays\"\xbe\x02\n" +
 	"\x1aCancelSubscriptionResponse\x12M\n" +
-	"\fsubscription\x18\x01 \x01(\v2).creativanta.admin.v1.SubscriptionSummaryR\fsubscription\"\xcf\x01\n" +
+	"\fsubscription\x18\x01 \x01(\v2).creativanta.admin.v1.SubscriptionSummaryR\fsubscription\x126\n" +
+	"\x17retention_offer_applied\x18\x02 \x01(\bR\x15retentionOfferApplied\x124\n" +
+	"\x16retention_discount_pct\x18\x03 \x01(\tR\x14retentionDiscountPct\x12:\n" +
+	"\x19retention_discount_months\x18\x04 \x01(\x05R\x17retentionDiscountMonths\x12'\n" +
+	"\x0fretention_phase\x18\x05 \x01(\tR\x0eretentionPhase\"\xb8\x02\n" +
 	"\x1aUpdatePaymentMethodRequest\x12?\n" +
 	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x127\n" +
 	"\x18stripe_payment_method_id\x18\x02 \x01(\tR\x15stripePaymentMethodId\x12\x1f\n" +
 	"\vset_default\x18\x03 \x01(\bR\n" +
 	"setDefault\x12\x16\n" +
-	"\x06remove\x18\x04 \x01(\bR\x06remove\"\xc5\x01\n" +
+	"\x06remove\x18\x04 \x01(\bR\x06remove\x12\x1f\n" +
+	"\vmethod_type\x18\x05 \x01(\tR\n" +
+	"methodType\x12!\n" +
+	"\fbilling_name\x18\x06 \x01(\tR\vbillingName\x12#\n" +
+	"\rbilling_email\x18\a \x01(\tR\fbillingEmail\"\xa4\x02\n" +
 	"\x1bUpdatePaymentMethodResponse\x12Q\n" +
 	"\x0epayment_method\x18\x01 \x01(\v2*.creativanta.admin.v1.PaymentMethodSummaryR\rpaymentMethod\x12S\n" +
-	"\x0fpayment_methods\x18\x02 \x03(\v2*.creativanta.admin.v1.PaymentMethodSummaryR\x0epaymentMethods\"Y\n" +
+	"\x0fpayment_methods\x18\x02 \x03(\v2*.creativanta.admin.v1.PaymentMethodSummaryR\x0epaymentMethods\x12]\n" +
+	"\x13method_access_gates\x18\x03 \x03(\v2-.creativanta.admin.v1.PaymentMethodAccessGateR\x11methodAccessGates\"Y\n" +
 	"\x17GetPaymentMethodRequest\x12>\n" +
-	"\fworkspace_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\"\xd1\x01\n" +
+	"\fworkspace_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\"\xb0\x02\n" +
 	"\x18GetPaymentMethodResponse\x12`\n" +
 	"\x16default_payment_method\x18\x01 \x01(\v2*.creativanta.admin.v1.PaymentMethodSummaryR\x14defaultPaymentMethod\x12S\n" +
-	"\x0fpayment_methods\x18\x02 \x03(\v2*.creativanta.admin.v1.PaymentMethodSummaryR\x0epaymentMethods\"\xe8\x03\n" +
+	"\x0fpayment_methods\x18\x02 \x03(\v2*.creativanta.admin.v1.PaymentMethodSummaryR\x0epaymentMethods\x12]\n" +
+	"\x13method_access_gates\x18\x03 \x03(\v2-.creativanta.admin.v1.PaymentMethodAccessGateR\x11methodAccessGates\"\x9d\x01\n" +
+	"\x18ListSubscriptionsRequest\x12>\n" +
+	"\fworkspace_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x12A\n" +
+	"\n" +
+	"pagination\x18\x02 \x01(\v2!.creativanta.common.v1.PaginationR\n" +
+	"pagination\"\xb3\x01\n" +
+	"\x19ListSubscriptionsResponse\x12O\n" +
+	"\rsubscriptions\x18\x01 \x03(\v2).creativanta.admin.v1.SubscriptionSummaryR\rsubscriptions\x12E\n" +
+	"\tpage_info\x18\x02 \x01(\v2(.creativanta.common.v1.PaginatedResponseR\bpageInfo\"\xed\x03\n" +
+	"\x11BillingEventEntry\x12E\n" +
+	"\x10billing_event_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\x0ebillingEventId\x12>\n" +
+	"\fworkspace_id\x18\x02 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x12\x1d\n" +
+	"\n" +
+	"event_type\x18\x03 \x01(\tR\teventType\x12&\n" +
+	"\x0fstripe_event_id\x18\x04 \x01(\tR\rstripeEventId\x124\n" +
+	"\x06amount\x18\x05 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x06amount\x12+\n" +
+	"\x11subscription_tier\x18\x06 \x01(\tR\x10subscriptionTier\x12%\n" +
+	"\x0ecredits_change\x18\a \x01(\tR\rcreditsChange\x12 \n" +
+	"\vdescription\x18\b \x01(\tR\vdescription\x12#\n" +
+	"\rmetadata_json\x18\t \x01(\tR\fmetadataJson\x129\n" +
+	"\n" +
+	"created_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xc9\x01\n" +
+	"\x18ListBillingEventsRequest\x12>\n" +
+	"\fworkspace_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x12A\n" +
+	"\n" +
+	"pagination\x18\x02 \x01(\v2!.creativanta.common.v1.PaginationR\n" +
+	"pagination\x12*\n" +
+	"\x11event_type_filter\x18\x03 \x01(\tR\x0feventTypeFilter\"\xa3\x01\n" +
+	"\x19ListBillingEventsResponse\x12?\n" +
+	"\x06events\x18\x01 \x03(\v2'.creativanta.admin.v1.BillingEventEntryR\x06events\x12E\n" +
+	"\tpage_info\x18\x02 \x01(\v2(.creativanta.common.v1.PaginatedResponseR\bpageInfo\"\x9d\x01\n" +
+	"\x18GetInvoiceHistoryRequest\x12>\n" +
+	"\fworkspace_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x12A\n" +
+	"\n" +
+	"pagination\x18\x02 \x01(\v2!.creativanta.common.v1.PaginationR\n" +
+	"pagination\"\xa4\x01\n" +
+	"\x19GetInvoiceHistoryResponse\x12@\n" +
+	"\binvoices\x18\x01 \x03(\v2$.creativanta.admin.v1.InvoiceSummaryR\binvoices\x12E\n" +
+	"\tpage_info\x18\x02 \x01(\v2(.creativanta.common.v1.PaginatedResponseR\bpageInfo\"\x95\x01\n" +
+	"\x16DownloadInvoiceRequest\x12?\n" +
+	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12:\n" +
+	"\n" +
+	"invoice_id\x18\x02 \x01(\v2\x1b.creativanta.common.v1.UUIDR\tinvoiceId\"\xaf\x01\n" +
+	"\x17DownloadInvoiceResponse\x12&\n" +
+	"\x0finvoice_pdf_url\x18\x01 \x01(\tR\rinvoicePdfUrl\x12,\n" +
+	"\x12hosted_invoice_url\x18\x02 \x01(\tR\x10hostedInvoiceUrl\x12>\n" +
+	"\ainvoice\x18\x03 \x01(\v2$.creativanta.admin.v1.InvoiceSummaryR\ainvoice\"\x99\x01\n" +
+	"\x15GetUsageReportRequest\x12>\n" +
+	"\fworkspace_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x12!\n" +
+	"\fperiod_start\x18\x02 \x01(\tR\vperiodStart\x12\x1d\n" +
+	"\n" +
+	"period_end\x18\x03 \x01(\tR\tperiodEnd\"\x94\x03\n" +
+	"\x16GetUsageReportResponse\x12=\n" +
+	"\abalance\x18\x01 \x01(\v2#.creativanta.admin.v1.CreditBalanceR\abalance\x12K\n" +
+	"\tbreakdown\x18\x02 \x03(\v2-.creativanta.admin.v1.OperationUsageBreakdownR\tbreakdown\x120\n" +
+	"\x14overage_credits_used\x18\x03 \x01(\tR\x12overageCreditsUsed\x122\n" +
+	"\x15overage_limit_credits\x18\x04 \x01(\tR\x13overageLimitCredits\x12J\n" +
+	"\x12overage_charge_usd\x18\x05 \x01(\v2\x1c.creativanta.common.v1.MoneyR\x10overageChargeUsd\x12<\n" +
+	"\x1atriggered_threshold_alerts\x18\x06 \x03(\tR\x18triggeredThresholdAlerts\"\xe2\x04\n" +
+	"\x14DataExportJobSummary\x128\n" +
+	"\texport_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\bexportId\x12>\n" +
+	"\fworkspace_id\x18\x02 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x124\n" +
+	"\auser_id\x18\x03 \x01(\v2\x1b.creativanta.common.v1.UUIDR\x06userId\x12\x1f\n" +
+	"\vexport_type\x18\x04 \x01(\tR\n" +
+	"exportType\x12\x16\n" +
+	"\x06format\x18\x05 \x01(\tR\x06format\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x12!\n" +
+	"\fprogress_pct\x18\a \x01(\x05R\vprogressPct\x12\x19\n" +
+	"\bfile_url\x18\b \x01(\tR\afileUrl\x12&\n" +
+	"\x0ffile_size_bytes\x18\t \x01(\x03R\rfileSizeBytes\x12.\n" +
+	"\x13content_hash_sha512\x18\n" +
+	" \x01(\tR\x11contentHashSha512\x129\n" +
+	"\n" +
+	"expires_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12=\n" +
+	"\fcompleted_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\x129\n" +
+	"\n" +
+	"created_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x90\x01\n" +
+	"\x14RequestExportRequest\x12?\n" +
+	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12\x1f\n" +
+	"\vexport_type\x18\x02 \x01(\tR\n" +
+	"exportType\x12\x16\n" +
+	"\x06format\x18\x03 \x01(\tR\x06format\"b\n" +
+	"\x15RequestExportResponse\x12I\n" +
+	"\n" +
+	"export_job\x18\x01 \x01(\v2*.creativanta.admin.v1.DataExportJobSummaryR\texportJob\"\x8f\x01\n" +
+	"\x13GetExportUrlRequest\x12>\n" +
+	"\fworkspace_id\x18\x01 \x01(\v2\x1b.creativanta.common.v1.UUIDR\vworkspaceId\x128\n" +
+	"\texport_id\x18\x02 \x01(\v2\x1b.creativanta.common.v1.UUIDR\bexportId\"\x84\x01\n" +
+	"\x14GetExportUrlResponse\x12I\n" +
+	"\n" +
+	"export_job\x18\x01 \x01(\v2*.creativanta.admin.v1.DataExportJobSummaryR\texportJob\x12!\n" +
+	"\fdownload_url\x18\x02 \x01(\tR\vdownloadUrl\"\xe8\x03\n" +
 	"\x13EstimateCostRequest\x12?\n" +
 	"\acontext\x18\x01 \x01(\v2%.creativanta.common.v1.CommandContextR\acontext\x12%\n" +
 	"\x0eoperation_type\x18\x02 \x01(\tR\roperationType\x12\x1a\n" +
@@ -5129,18 +6695,26 @@ const file_creativanta_admin_v1_billing_proto_rawDesc = "" +
 	"\x13INVOICE_STATUS_OPEN\x10\x02\x12\x17\n" +
 	"\x13INVOICE_STATUS_PAID\x10\x03\x12\x17\n" +
 	"\x13INVOICE_STATUS_VOID\x10\x04\x12 \n" +
-	"\x1cINVOICE_STATUS_UNCOLLECTIBLE\x10\x052\x8e\b\n" +
+	"\x1cINVOICE_STATUS_UNCOLLECTIBLE\x10\x052\xcd\f\n" +
 	"\x13AdminBillingService\x12t\n" +
-	"\x11GetBillingSummary\x12..creativanta.admin.v1.GetBillingSummaryRequest\x1a/.creativanta.admin.v1.GetBillingSummaryResponse\x12q\n" +
+	"\x11GetBillingSummary\x12..creativanta.admin.v1.GetBillingSummaryRequest\x1a/.creativanta.admin.v1.GetBillingSummaryResponse\x12t\n" +
+	"\x11ListSubscriptions\x12..creativanta.admin.v1.ListSubscriptionsRequest\x1a/.creativanta.admin.v1.ListSubscriptionsResponse\x12q\n" +
 	"\x10GetCreditBalance\x12-.creativanta.admin.v1.GetCreditBalanceRequest\x1a..creativanta.admin.v1.GetCreditBalanceResponse\x12n\n" +
 	"\x0fGetCreditLedger\x12,.creativanta.admin.v1.GetCreditLedgerRequest\x1a-.creativanta.admin.v1.GetCreditLedgerResponse\x12n\n" +
 	"\x0fPurchaseCredits\x12,.creativanta.admin.v1.PurchaseCreditsRequest\x1a-.creativanta.admin.v1.PurchaseCreditsResponse\x12_\n" +
 	"\n" +
 	"ChangePlan\x12'.creativanta.admin.v1.ChangePlanRequest\x1a(.creativanta.admin.v1.ChangePlanResponse\x12w\n" +
-	"\x12CancelSubscription\x12/.creativanta.admin.v1.CancelSubscriptionRequest\x1a0.creativanta.admin.v1.CancelSubscriptionResponse\x12z\n" +
+	"\x12CancelSubscription\x12/.creativanta.admin.v1.CancelSubscriptionRequest\x1a0.creativanta.admin.v1.CancelSubscriptionResponse\x12k\n" +
+	"\x0eGetUsageReport\x12+.creativanta.admin.v1.GetUsageReportRequest\x1a,.creativanta.admin.v1.GetUsageReportResponse\x12t\n" +
+	"\x11GetInvoiceHistory\x12..creativanta.admin.v1.GetInvoiceHistoryRequest\x1a/.creativanta.admin.v1.GetInvoiceHistoryResponse\x12n\n" +
+	"\x0fDownloadInvoice\x12,.creativanta.admin.v1.DownloadInvoiceRequest\x1a-.creativanta.admin.v1.DownloadInvoiceResponse\x12z\n" +
 	"\x13UpdatePaymentMethod\x120.creativanta.admin.v1.UpdatePaymentMethodRequest\x1a1.creativanta.admin.v1.UpdatePaymentMethodResponse\x12q\n" +
-	"\x10GetPaymentMethod\x12-.creativanta.admin.v1.GetPaymentMethodRequest\x1a..creativanta.admin.v1.GetPaymentMethodResponse\x12e\n" +
-	"\fEstimateCost\x12).creativanta.admin.v1.EstimateCostRequest\x1a*.creativanta.admin.v1.EstimateCostResponse2\xde\a\n" +
+	"\x10GetPaymentMethod\x12-.creativanta.admin.v1.GetPaymentMethodRequest\x1a..creativanta.admin.v1.GetPaymentMethodResponse\x12t\n" +
+	"\x11ListBillingEvents\x12..creativanta.admin.v1.ListBillingEventsRequest\x1a/.creativanta.admin.v1.ListBillingEventsResponse\x12e\n" +
+	"\fEstimateCost\x12).creativanta.admin.v1.EstimateCostRequest\x1a*.creativanta.admin.v1.EstimateCostResponse2\xde\x01\n" +
+	"\vDataService\x12h\n" +
+	"\rRequestExport\x12*.creativanta.admin.v1.RequestExportRequest\x1a+.creativanta.admin.v1.RequestExportResponse\x12e\n" +
+	"\fGetExportUrl\x12).creativanta.admin.v1.GetExportUrlRequest\x1a*.creativanta.admin.v1.GetExportUrlResponse2\xde\a\n" +
 	"\rCreditService\x12_\n" +
 	"\n" +
 	"GetBalance\x12'.creativanta.admin.v1.GetBalanceRequest\x1a(.creativanta.admin.v1.GetBalanceResponse\x12h\n" +
@@ -5179,7 +6753,7 @@ func file_creativanta_admin_v1_billing_proto_rawDescGZIP() []byte {
 }
 
 var file_creativanta_admin_v1_billing_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_creativanta_admin_v1_billing_proto_msgTypes = make([]protoimpl.MessageInfo, 71)
+var file_creativanta_admin_v1_billing_proto_msgTypes = make([]protoimpl.MessageInfo, 88)
 var file_creativanta_admin_v1_billing_proto_goTypes = []any{
 	(CreditSourceType)(0),                  // 0: creativanta.admin.v1.CreditSourceType
 	(CreditReservationStatus)(0),           // 1: creativanta.admin.v1.CreditReservationStatus
@@ -5192,259 +6766,333 @@ var file_creativanta_admin_v1_billing_proto_goTypes = []any{
 	(*PlanCatalogEntry)(nil),               // 8: creativanta.admin.v1.PlanCatalogEntry
 	(*CreditPackEntry)(nil),                // 9: creativanta.admin.v1.CreditPackEntry
 	(*AddonCatalogEntry)(nil),              // 10: creativanta.admin.v1.AddonCatalogEntry
-	(*SubscriptionSummary)(nil),            // 11: creativanta.admin.v1.SubscriptionSummary
-	(*PaymentMethodSummary)(nil),           // 12: creativanta.admin.v1.PaymentMethodSummary
-	(*InvoiceSummary)(nil),                 // 13: creativanta.admin.v1.InvoiceSummary
-	(*AutoRefillConfig)(nil),               // 14: creativanta.admin.v1.AutoRefillConfig
-	(*OperationUsageBreakdown)(nil),        // 15: creativanta.admin.v1.OperationUsageBreakdown
-	(*GetBillingSummaryRequest)(nil),       // 16: creativanta.admin.v1.GetBillingSummaryRequest
-	(*GetBillingSummaryResponse)(nil),      // 17: creativanta.admin.v1.GetBillingSummaryResponse
-	(*GetCreditBalanceRequest)(nil),        // 18: creativanta.admin.v1.GetCreditBalanceRequest
-	(*GetCreditBalanceResponse)(nil),       // 19: creativanta.admin.v1.GetCreditBalanceResponse
-	(*GetCreditLedgerRequest)(nil),         // 20: creativanta.admin.v1.GetCreditLedgerRequest
-	(*GetCreditLedgerResponse)(nil),        // 21: creativanta.admin.v1.GetCreditLedgerResponse
-	(*PurchaseCreditsRequest)(nil),         // 22: creativanta.admin.v1.PurchaseCreditsRequest
-	(*PurchaseCreditsResponse)(nil),        // 23: creativanta.admin.v1.PurchaseCreditsResponse
-	(*ChangePlanRequest)(nil),              // 24: creativanta.admin.v1.ChangePlanRequest
-	(*ChangePlanResponse)(nil),             // 25: creativanta.admin.v1.ChangePlanResponse
-	(*CancelSubscriptionRequest)(nil),      // 26: creativanta.admin.v1.CancelSubscriptionRequest
-	(*CancelSubscriptionResponse)(nil),     // 27: creativanta.admin.v1.CancelSubscriptionResponse
-	(*UpdatePaymentMethodRequest)(nil),     // 28: creativanta.admin.v1.UpdatePaymentMethodRequest
-	(*UpdatePaymentMethodResponse)(nil),    // 29: creativanta.admin.v1.UpdatePaymentMethodResponse
-	(*GetPaymentMethodRequest)(nil),        // 30: creativanta.admin.v1.GetPaymentMethodRequest
-	(*GetPaymentMethodResponse)(nil),       // 31: creativanta.admin.v1.GetPaymentMethodResponse
-	(*EstimateCostRequest)(nil),            // 32: creativanta.admin.v1.EstimateCostRequest
-	(*EstimateCostResponse)(nil),           // 33: creativanta.admin.v1.EstimateCostResponse
-	(*GetBalanceRequest)(nil),              // 34: creativanta.admin.v1.GetBalanceRequest
-	(*GetBalanceResponse)(nil),             // 35: creativanta.admin.v1.GetBalanceResponse
-	(*GetUsageStatsRequest)(nil),           // 36: creativanta.admin.v1.GetUsageStatsRequest
-	(*GetUsageStatsResponse)(nil),          // 37: creativanta.admin.v1.GetUsageStatsResponse
-	(*GetMonthlyUsageRequest)(nil),         // 38: creativanta.admin.v1.GetMonthlyUsageRequest
-	(*GetMonthlyUsageResponse)(nil),        // 39: creativanta.admin.v1.GetMonthlyUsageResponse
-	(*ListTransactionsRequest)(nil),        // 40: creativanta.admin.v1.ListTransactionsRequest
-	(*ListTransactionsResponse)(nil),       // 41: creativanta.admin.v1.ListTransactionsResponse
-	(*ListRecentUsageRequest)(nil),         // 42: creativanta.admin.v1.ListRecentUsageRequest
-	(*ListRecentUsageResponse)(nil),        // 43: creativanta.admin.v1.ListRecentUsageResponse
-	(*ListPackagesRequest)(nil),            // 44: creativanta.admin.v1.ListPackagesRequest
-	(*ListPackagesResponse)(nil),           // 45: creativanta.admin.v1.ListPackagesResponse
-	(*PurchaseRequest)(nil),                // 46: creativanta.admin.v1.PurchaseRequest
-	(*PurchaseResponse)(nil),               // 47: creativanta.admin.v1.PurchaseResponse
-	(*GetAutoRefillConfigRequest)(nil),     // 48: creativanta.admin.v1.GetAutoRefillConfigRequest
-	(*GetAutoRefillConfigResponse)(nil),    // 49: creativanta.admin.v1.GetAutoRefillConfigResponse
-	(*UpdateAutoRefillRequest)(nil),        // 50: creativanta.admin.v1.UpdateAutoRefillRequest
-	(*UpdateAutoRefillResponse)(nil),       // 51: creativanta.admin.v1.UpdateAutoRefillResponse
-	(*GetCurrentPlanRequest)(nil),          // 52: creativanta.admin.v1.GetCurrentPlanRequest
-	(*GetCurrentPlanResponse)(nil),         // 53: creativanta.admin.v1.GetCurrentPlanResponse
-	(*ListPlansRequest)(nil),               // 54: creativanta.admin.v1.ListPlansRequest
-	(*ListPlansResponse)(nil),              // 55: creativanta.admin.v1.ListPlansResponse
-	(*GetSubscriptionRequest)(nil),         // 56: creativanta.admin.v1.GetSubscriptionRequest
-	(*GetSubscriptionResponse)(nil),        // 57: creativanta.admin.v1.GetSubscriptionResponse
-	(*GetPaymentMethodsRequest)(nil),       // 58: creativanta.admin.v1.GetPaymentMethodsRequest
-	(*GetPaymentMethodsResponse)(nil),      // 59: creativanta.admin.v1.GetPaymentMethodsResponse
-	(*CancelPlanRequest)(nil),              // 60: creativanta.admin.v1.CancelPlanRequest
-	(*CancelPlanResponse)(nil),             // 61: creativanta.admin.v1.CancelPlanResponse
-	(*ListInvoicesRequest)(nil),            // 62: creativanta.admin.v1.ListInvoicesRequest
-	(*ListInvoicesResponse)(nil),           // 63: creativanta.admin.v1.ListInvoicesResponse
-	(*GetInvoiceUrlRequest)(nil),           // 64: creativanta.admin.v1.GetInvoiceUrlRequest
-	(*GetInvoiceUrlResponse)(nil),          // 65: creativanta.admin.v1.GetInvoiceUrlResponse
-	(*GetCheckoutStatusRequest)(nil),       // 66: creativanta.admin.v1.GetCheckoutStatusRequest
-	(*GetCheckoutStatusResponse)(nil),      // 67: creativanta.admin.v1.GetCheckoutStatusResponse
-	(*ListCreditPackagesRequest)(nil),      // 68: creativanta.admin.v1.ListCreditPackagesRequest
-	(*ListCreditPackagesResponse)(nil),     // 69: creativanta.admin.v1.ListCreditPackagesResponse
-	(*ListCreditPurchasesRequest)(nil),     // 70: creativanta.admin.v1.ListCreditPurchasesRequest
-	(*ListCreditPurchasesResponse)(nil),    // 71: creativanta.admin.v1.ListCreditPurchasesResponse
-	(*ApplyRetentionDiscountRequest)(nil),  // 72: creativanta.admin.v1.ApplyRetentionDiscountRequest
-	(*ApplyRetentionDiscountResponse)(nil), // 73: creativanta.admin.v1.ApplyRetentionDiscountResponse
-	nil,                                    // 74: creativanta.admin.v1.EstimateCostRequest.MeasuredUnitsEntry
-	(*v1.UUID)(nil),                        // 75: creativanta.common.v1.UUID
-	(*timestamppb.Timestamp)(nil),          // 76: google.protobuf.Timestamp
-	(*v1.Money)(nil),                       // 77: creativanta.common.v1.Money
-	(*v1.Pagination)(nil),                  // 78: creativanta.common.v1.Pagination
-	(*v1.PaginatedResponse)(nil),           // 79: creativanta.common.v1.PaginatedResponse
-	(*v1.CommandContext)(nil),              // 80: creativanta.common.v1.CommandContext
+	(*PaymentMethodAccessGate)(nil),        // 11: creativanta.admin.v1.PaymentMethodAccessGate
+	(*SubscriptionSummary)(nil),            // 12: creativanta.admin.v1.SubscriptionSummary
+	(*PaymentMethodSummary)(nil),           // 13: creativanta.admin.v1.PaymentMethodSummary
+	(*InvoiceSummary)(nil),                 // 14: creativanta.admin.v1.InvoiceSummary
+	(*AutoRefillConfig)(nil),               // 15: creativanta.admin.v1.AutoRefillConfig
+	(*OperationUsageBreakdown)(nil),        // 16: creativanta.admin.v1.OperationUsageBreakdown
+	(*GetBillingSummaryRequest)(nil),       // 17: creativanta.admin.v1.GetBillingSummaryRequest
+	(*GetBillingSummaryResponse)(nil),      // 18: creativanta.admin.v1.GetBillingSummaryResponse
+	(*GetCreditBalanceRequest)(nil),        // 19: creativanta.admin.v1.GetCreditBalanceRequest
+	(*GetCreditBalanceResponse)(nil),       // 20: creativanta.admin.v1.GetCreditBalanceResponse
+	(*GetCreditLedgerRequest)(nil),         // 21: creativanta.admin.v1.GetCreditLedgerRequest
+	(*GetCreditLedgerResponse)(nil),        // 22: creativanta.admin.v1.GetCreditLedgerResponse
+	(*PurchaseCreditsRequest)(nil),         // 23: creativanta.admin.v1.PurchaseCreditsRequest
+	(*PurchaseCreditsResponse)(nil),        // 24: creativanta.admin.v1.PurchaseCreditsResponse
+	(*ChangePlanRequest)(nil),              // 25: creativanta.admin.v1.ChangePlanRequest
+	(*ChangePlanResponse)(nil),             // 26: creativanta.admin.v1.ChangePlanResponse
+	(*CancelSubscriptionRequest)(nil),      // 27: creativanta.admin.v1.CancelSubscriptionRequest
+	(*CancelSubscriptionResponse)(nil),     // 28: creativanta.admin.v1.CancelSubscriptionResponse
+	(*UpdatePaymentMethodRequest)(nil),     // 29: creativanta.admin.v1.UpdatePaymentMethodRequest
+	(*UpdatePaymentMethodResponse)(nil),    // 30: creativanta.admin.v1.UpdatePaymentMethodResponse
+	(*GetPaymentMethodRequest)(nil),        // 31: creativanta.admin.v1.GetPaymentMethodRequest
+	(*GetPaymentMethodResponse)(nil),       // 32: creativanta.admin.v1.GetPaymentMethodResponse
+	(*ListSubscriptionsRequest)(nil),       // 33: creativanta.admin.v1.ListSubscriptionsRequest
+	(*ListSubscriptionsResponse)(nil),      // 34: creativanta.admin.v1.ListSubscriptionsResponse
+	(*BillingEventEntry)(nil),              // 35: creativanta.admin.v1.BillingEventEntry
+	(*ListBillingEventsRequest)(nil),       // 36: creativanta.admin.v1.ListBillingEventsRequest
+	(*ListBillingEventsResponse)(nil),      // 37: creativanta.admin.v1.ListBillingEventsResponse
+	(*GetInvoiceHistoryRequest)(nil),       // 38: creativanta.admin.v1.GetInvoiceHistoryRequest
+	(*GetInvoiceHistoryResponse)(nil),      // 39: creativanta.admin.v1.GetInvoiceHistoryResponse
+	(*DownloadInvoiceRequest)(nil),         // 40: creativanta.admin.v1.DownloadInvoiceRequest
+	(*DownloadInvoiceResponse)(nil),        // 41: creativanta.admin.v1.DownloadInvoiceResponse
+	(*GetUsageReportRequest)(nil),          // 42: creativanta.admin.v1.GetUsageReportRequest
+	(*GetUsageReportResponse)(nil),         // 43: creativanta.admin.v1.GetUsageReportResponse
+	(*DataExportJobSummary)(nil),           // 44: creativanta.admin.v1.DataExportJobSummary
+	(*RequestExportRequest)(nil),           // 45: creativanta.admin.v1.RequestExportRequest
+	(*RequestExportResponse)(nil),          // 46: creativanta.admin.v1.RequestExportResponse
+	(*GetExportUrlRequest)(nil),            // 47: creativanta.admin.v1.GetExportUrlRequest
+	(*GetExportUrlResponse)(nil),           // 48: creativanta.admin.v1.GetExportUrlResponse
+	(*EstimateCostRequest)(nil),            // 49: creativanta.admin.v1.EstimateCostRequest
+	(*EstimateCostResponse)(nil),           // 50: creativanta.admin.v1.EstimateCostResponse
+	(*GetBalanceRequest)(nil),              // 51: creativanta.admin.v1.GetBalanceRequest
+	(*GetBalanceResponse)(nil),             // 52: creativanta.admin.v1.GetBalanceResponse
+	(*GetUsageStatsRequest)(nil),           // 53: creativanta.admin.v1.GetUsageStatsRequest
+	(*GetUsageStatsResponse)(nil),          // 54: creativanta.admin.v1.GetUsageStatsResponse
+	(*GetMonthlyUsageRequest)(nil),         // 55: creativanta.admin.v1.GetMonthlyUsageRequest
+	(*GetMonthlyUsageResponse)(nil),        // 56: creativanta.admin.v1.GetMonthlyUsageResponse
+	(*ListTransactionsRequest)(nil),        // 57: creativanta.admin.v1.ListTransactionsRequest
+	(*ListTransactionsResponse)(nil),       // 58: creativanta.admin.v1.ListTransactionsResponse
+	(*ListRecentUsageRequest)(nil),         // 59: creativanta.admin.v1.ListRecentUsageRequest
+	(*ListRecentUsageResponse)(nil),        // 60: creativanta.admin.v1.ListRecentUsageResponse
+	(*ListPackagesRequest)(nil),            // 61: creativanta.admin.v1.ListPackagesRequest
+	(*ListPackagesResponse)(nil),           // 62: creativanta.admin.v1.ListPackagesResponse
+	(*PurchaseRequest)(nil),                // 63: creativanta.admin.v1.PurchaseRequest
+	(*PurchaseResponse)(nil),               // 64: creativanta.admin.v1.PurchaseResponse
+	(*GetAutoRefillConfigRequest)(nil),     // 65: creativanta.admin.v1.GetAutoRefillConfigRequest
+	(*GetAutoRefillConfigResponse)(nil),    // 66: creativanta.admin.v1.GetAutoRefillConfigResponse
+	(*UpdateAutoRefillRequest)(nil),        // 67: creativanta.admin.v1.UpdateAutoRefillRequest
+	(*UpdateAutoRefillResponse)(nil),       // 68: creativanta.admin.v1.UpdateAutoRefillResponse
+	(*GetCurrentPlanRequest)(nil),          // 69: creativanta.admin.v1.GetCurrentPlanRequest
+	(*GetCurrentPlanResponse)(nil),         // 70: creativanta.admin.v1.GetCurrentPlanResponse
+	(*ListPlansRequest)(nil),               // 71: creativanta.admin.v1.ListPlansRequest
+	(*ListPlansResponse)(nil),              // 72: creativanta.admin.v1.ListPlansResponse
+	(*GetSubscriptionRequest)(nil),         // 73: creativanta.admin.v1.GetSubscriptionRequest
+	(*GetSubscriptionResponse)(nil),        // 74: creativanta.admin.v1.GetSubscriptionResponse
+	(*GetPaymentMethodsRequest)(nil),       // 75: creativanta.admin.v1.GetPaymentMethodsRequest
+	(*GetPaymentMethodsResponse)(nil),      // 76: creativanta.admin.v1.GetPaymentMethodsResponse
+	(*CancelPlanRequest)(nil),              // 77: creativanta.admin.v1.CancelPlanRequest
+	(*CancelPlanResponse)(nil),             // 78: creativanta.admin.v1.CancelPlanResponse
+	(*ListInvoicesRequest)(nil),            // 79: creativanta.admin.v1.ListInvoicesRequest
+	(*ListInvoicesResponse)(nil),           // 80: creativanta.admin.v1.ListInvoicesResponse
+	(*GetInvoiceUrlRequest)(nil),           // 81: creativanta.admin.v1.GetInvoiceUrlRequest
+	(*GetInvoiceUrlResponse)(nil),          // 82: creativanta.admin.v1.GetInvoiceUrlResponse
+	(*GetCheckoutStatusRequest)(nil),       // 83: creativanta.admin.v1.GetCheckoutStatusRequest
+	(*GetCheckoutStatusResponse)(nil),      // 84: creativanta.admin.v1.GetCheckoutStatusResponse
+	(*ListCreditPackagesRequest)(nil),      // 85: creativanta.admin.v1.ListCreditPackagesRequest
+	(*ListCreditPackagesResponse)(nil),     // 86: creativanta.admin.v1.ListCreditPackagesResponse
+	(*ListCreditPurchasesRequest)(nil),     // 87: creativanta.admin.v1.ListCreditPurchasesRequest
+	(*ListCreditPurchasesResponse)(nil),    // 88: creativanta.admin.v1.ListCreditPurchasesResponse
+	(*ApplyRetentionDiscountRequest)(nil),  // 89: creativanta.admin.v1.ApplyRetentionDiscountRequest
+	(*ApplyRetentionDiscountResponse)(nil), // 90: creativanta.admin.v1.ApplyRetentionDiscountResponse
+	nil,                                    // 91: creativanta.admin.v1.EstimateCostRequest.MeasuredUnitsEntry
+	(*v1.UUID)(nil),                        // 92: creativanta.common.v1.UUID
+	(*timestamppb.Timestamp)(nil),          // 93: google.protobuf.Timestamp
+	(*v1.Money)(nil),                       // 94: creativanta.common.v1.Money
+	(*v1.Pagination)(nil),                  // 95: creativanta.common.v1.Pagination
+	(*v1.PaginatedResponse)(nil),           // 96: creativanta.common.v1.PaginatedResponse
+	(*v1.CommandContext)(nil),              // 97: creativanta.common.v1.CommandContext
 }
 var file_creativanta_admin_v1_billing_proto_depIdxs = []int32{
-	75,  // 0: creativanta.admin.v1.CreditQuote.quote_id:type_name -> creativanta.common.v1.UUID
-	76,  // 1: creativanta.admin.v1.CreditQuote.expires_at:type_name -> google.protobuf.Timestamp
-	75,  // 2: creativanta.admin.v1.CreditLotSummary.lot_id:type_name -> creativanta.common.v1.UUID
+	92,  // 0: creativanta.admin.v1.CreditQuote.quote_id:type_name -> creativanta.common.v1.UUID
+	93,  // 1: creativanta.admin.v1.CreditQuote.expires_at:type_name -> google.protobuf.Timestamp
+	92,  // 2: creativanta.admin.v1.CreditLotSummary.lot_id:type_name -> creativanta.common.v1.UUID
 	0,   // 3: creativanta.admin.v1.CreditLotSummary.source_type:type_name -> creativanta.admin.v1.CreditSourceType
-	76,  // 4: creativanta.admin.v1.CreditLotSummary.expires_at:type_name -> google.protobuf.Timestamp
-	76,  // 5: creativanta.admin.v1.CreditLotSummary.created_at:type_name -> google.protobuf.Timestamp
-	76,  // 6: creativanta.admin.v1.CreditBalance.next_allocation_at:type_name -> google.protobuf.Timestamp
+	93,  // 4: creativanta.admin.v1.CreditLotSummary.expires_at:type_name -> google.protobuf.Timestamp
+	93,  // 5: creativanta.admin.v1.CreditLotSummary.created_at:type_name -> google.protobuf.Timestamp
+	93,  // 6: creativanta.admin.v1.CreditBalance.next_allocation_at:type_name -> google.protobuf.Timestamp
 	5,   // 7: creativanta.admin.v1.CreditBalance.active_lots:type_name -> creativanta.admin.v1.CreditLotSummary
-	75,  // 8: creativanta.admin.v1.CreditTransactionEntry.transaction_id:type_name -> creativanta.common.v1.UUID
-	75,  // 9: creativanta.admin.v1.CreditTransactionEntry.workspace_id:type_name -> creativanta.common.v1.UUID
-	75,  // 10: creativanta.admin.v1.CreditTransactionEntry.user_id:type_name -> creativanta.common.v1.UUID
-	75,  // 11: creativanta.admin.v1.CreditTransactionEntry.reference_id:type_name -> creativanta.common.v1.UUID
-	75,  // 12: creativanta.admin.v1.CreditTransactionEntry.reservation_id:type_name -> creativanta.common.v1.UUID
-	75,  // 13: creativanta.admin.v1.CreditTransactionEntry.lot_id:type_name -> creativanta.common.v1.UUID
-	75,  // 14: creativanta.admin.v1.CreditTransactionEntry.quote_id:type_name -> creativanta.common.v1.UUID
-	75,  // 15: creativanta.admin.v1.CreditTransactionEntry.reference_transaction_id:type_name -> creativanta.common.v1.UUID
-	76,  // 16: creativanta.admin.v1.CreditTransactionEntry.created_at:type_name -> google.protobuf.Timestamp
-	77,  // 17: creativanta.admin.v1.PlanCatalogEntry.monthly_price_usd:type_name -> creativanta.common.v1.Money
-	77,  // 18: creativanta.admin.v1.PlanCatalogEntry.annual_price_usd:type_name -> creativanta.common.v1.Money
-	77,  // 19: creativanta.admin.v1.PlanCatalogEntry.monthly_price_vnd:type_name -> creativanta.common.v1.Money
-	77,  // 20: creativanta.admin.v1.PlanCatalogEntry.annual_price_vnd:type_name -> creativanta.common.v1.Money
-	77,  // 21: creativanta.admin.v1.CreditPackEntry.price_usd:type_name -> creativanta.common.v1.Money
-	77,  // 22: creativanta.admin.v1.CreditPackEntry.price_vnd:type_name -> creativanta.common.v1.Money
-	77,  // 23: creativanta.admin.v1.AddonCatalogEntry.monthly_price_usd:type_name -> creativanta.common.v1.Money
-	77,  // 24: creativanta.admin.v1.AddonCatalogEntry.monthly_price_vnd:type_name -> creativanta.common.v1.Money
-	75,  // 25: creativanta.admin.v1.SubscriptionSummary.subscription_id:type_name -> creativanta.common.v1.UUID
-	75,  // 26: creativanta.admin.v1.SubscriptionSummary.workspace_id:type_name -> creativanta.common.v1.UUID
-	2,   // 27: creativanta.admin.v1.SubscriptionSummary.status:type_name -> creativanta.admin.v1.SubscriptionStatus
-	77,  // 28: creativanta.admin.v1.SubscriptionSummary.amount:type_name -> creativanta.common.v1.Money
-	76,  // 29: creativanta.admin.v1.SubscriptionSummary.current_period_start:type_name -> google.protobuf.Timestamp
-	76,  // 30: creativanta.admin.v1.SubscriptionSummary.current_period_end:type_name -> google.protobuf.Timestamp
-	76,  // 31: creativanta.admin.v1.SubscriptionSummary.canceled_at:type_name -> google.protobuf.Timestamp
-	75,  // 32: creativanta.admin.v1.PaymentMethodSummary.payment_method_id:type_name -> creativanta.common.v1.UUID
-	75,  // 33: creativanta.admin.v1.InvoiceSummary.invoice_id:type_name -> creativanta.common.v1.UUID
-	3,   // 34: creativanta.admin.v1.InvoiceSummary.status:type_name -> creativanta.admin.v1.InvoiceStatus
-	77,  // 35: creativanta.admin.v1.InvoiceSummary.subtotal:type_name -> creativanta.common.v1.Money
-	77,  // 36: creativanta.admin.v1.InvoiceSummary.discount_amount:type_name -> creativanta.common.v1.Money
-	77,  // 37: creativanta.admin.v1.InvoiceSummary.tax_amount:type_name -> creativanta.common.v1.Money
-	77,  // 38: creativanta.admin.v1.InvoiceSummary.total:type_name -> creativanta.common.v1.Money
-	77,  // 39: creativanta.admin.v1.InvoiceSummary.amount_paid:type_name -> creativanta.common.v1.Money
-	77,  // 40: creativanta.admin.v1.InvoiceSummary.amount_due:type_name -> creativanta.common.v1.Money
-	76,  // 41: creativanta.admin.v1.InvoiceSummary.period_start:type_name -> google.protobuf.Timestamp
-	76,  // 42: creativanta.admin.v1.InvoiceSummary.period_end:type_name -> google.protobuf.Timestamp
-	76,  // 43: creativanta.admin.v1.InvoiceSummary.paid_at:type_name -> google.protobuf.Timestamp
-	76,  // 44: creativanta.admin.v1.InvoiceSummary.created_at:type_name -> google.protobuf.Timestamp
-	75,  // 45: creativanta.admin.v1.GetBillingSummaryRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	11,  // 46: creativanta.admin.v1.GetBillingSummaryResponse.subscription:type_name -> creativanta.admin.v1.SubscriptionSummary
-	6,   // 47: creativanta.admin.v1.GetBillingSummaryResponse.credit_balance:type_name -> creativanta.admin.v1.CreditBalance
-	12,  // 48: creativanta.admin.v1.GetBillingSummaryResponse.default_payment_method:type_name -> creativanta.admin.v1.PaymentMethodSummary
-	13,  // 49: creativanta.admin.v1.GetBillingSummaryResponse.recent_invoices:type_name -> creativanta.admin.v1.InvoiceSummary
-	75,  // 50: creativanta.admin.v1.GetCreditBalanceRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	6,   // 51: creativanta.admin.v1.GetCreditBalanceResponse.balance:type_name -> creativanta.admin.v1.CreditBalance
-	75,  // 52: creativanta.admin.v1.GetCreditLedgerRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	78,  // 53: creativanta.admin.v1.GetCreditLedgerRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	7,   // 54: creativanta.admin.v1.GetCreditLedgerResponse.entries:type_name -> creativanta.admin.v1.CreditTransactionEntry
-	79,  // 55: creativanta.admin.v1.GetCreditLedgerResponse.page_info:type_name -> creativanta.common.v1.PaginatedResponse
-	80,  // 56: creativanta.admin.v1.PurchaseCreditsRequest.context:type_name -> creativanta.common.v1.CommandContext
-	9,   // 57: creativanta.admin.v1.PurchaseCreditsResponse.pack:type_name -> creativanta.admin.v1.CreditPackEntry
-	80,  // 58: creativanta.admin.v1.ChangePlanRequest.context:type_name -> creativanta.common.v1.CommandContext
-	11,  // 59: creativanta.admin.v1.ChangePlanResponse.subscription:type_name -> creativanta.admin.v1.SubscriptionSummary
-	80,  // 60: creativanta.admin.v1.CancelSubscriptionRequest.context:type_name -> creativanta.common.v1.CommandContext
-	11,  // 61: creativanta.admin.v1.CancelSubscriptionResponse.subscription:type_name -> creativanta.admin.v1.SubscriptionSummary
-	80,  // 62: creativanta.admin.v1.UpdatePaymentMethodRequest.context:type_name -> creativanta.common.v1.CommandContext
-	12,  // 63: creativanta.admin.v1.UpdatePaymentMethodResponse.payment_method:type_name -> creativanta.admin.v1.PaymentMethodSummary
-	12,  // 64: creativanta.admin.v1.UpdatePaymentMethodResponse.payment_methods:type_name -> creativanta.admin.v1.PaymentMethodSummary
-	75,  // 65: creativanta.admin.v1.GetPaymentMethodRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	12,  // 66: creativanta.admin.v1.GetPaymentMethodResponse.default_payment_method:type_name -> creativanta.admin.v1.PaymentMethodSummary
-	12,  // 67: creativanta.admin.v1.GetPaymentMethodResponse.payment_methods:type_name -> creativanta.admin.v1.PaymentMethodSummary
-	80,  // 68: creativanta.admin.v1.EstimateCostRequest.context:type_name -> creativanta.common.v1.CommandContext
-	74,  // 69: creativanta.admin.v1.EstimateCostRequest.measured_units:type_name -> creativanta.admin.v1.EstimateCostRequest.MeasuredUnitsEntry
-	4,   // 70: creativanta.admin.v1.EstimateCostResponse.quote:type_name -> creativanta.admin.v1.CreditQuote
-	6,   // 71: creativanta.admin.v1.EstimateCostResponse.current_balance:type_name -> creativanta.admin.v1.CreditBalance
-	75,  // 72: creativanta.admin.v1.GetBalanceRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	6,   // 73: creativanta.admin.v1.GetBalanceResponse.balance:type_name -> creativanta.admin.v1.CreditBalance
-	75,  // 74: creativanta.admin.v1.GetUsageStatsRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	15,  // 75: creativanta.admin.v1.GetUsageStatsResponse.breakdown:type_name -> creativanta.admin.v1.OperationUsageBreakdown
-	75,  // 76: creativanta.admin.v1.GetMonthlyUsageRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	15,  // 77: creativanta.admin.v1.GetMonthlyUsageResponse.breakdown:type_name -> creativanta.admin.v1.OperationUsageBreakdown
-	75,  // 78: creativanta.admin.v1.ListTransactionsRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	78,  // 79: creativanta.admin.v1.ListTransactionsRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	7,   // 80: creativanta.admin.v1.ListTransactionsResponse.transactions:type_name -> creativanta.admin.v1.CreditTransactionEntry
-	79,  // 81: creativanta.admin.v1.ListTransactionsResponse.page_info:type_name -> creativanta.common.v1.PaginatedResponse
-	75,  // 82: creativanta.admin.v1.ListRecentUsageRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	7,   // 83: creativanta.admin.v1.ListRecentUsageResponse.usage_entries:type_name -> creativanta.admin.v1.CreditTransactionEntry
-	9,   // 84: creativanta.admin.v1.ListPackagesResponse.packages:type_name -> creativanta.admin.v1.CreditPackEntry
-	80,  // 85: creativanta.admin.v1.PurchaseRequest.context:type_name -> creativanta.common.v1.CommandContext
-	9,   // 86: creativanta.admin.v1.PurchaseResponse.pack:type_name -> creativanta.admin.v1.CreditPackEntry
-	75,  // 87: creativanta.admin.v1.GetAutoRefillConfigRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	14,  // 88: creativanta.admin.v1.GetAutoRefillConfigResponse.config:type_name -> creativanta.admin.v1.AutoRefillConfig
-	80,  // 89: creativanta.admin.v1.UpdateAutoRefillRequest.context:type_name -> creativanta.common.v1.CommandContext
-	14,  // 90: creativanta.admin.v1.UpdateAutoRefillRequest.config:type_name -> creativanta.admin.v1.AutoRefillConfig
-	14,  // 91: creativanta.admin.v1.UpdateAutoRefillResponse.config:type_name -> creativanta.admin.v1.AutoRefillConfig
-	75,  // 92: creativanta.admin.v1.GetCurrentPlanRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	8,   // 93: creativanta.admin.v1.GetCurrentPlanResponse.current_plan:type_name -> creativanta.admin.v1.PlanCatalogEntry
-	11,  // 94: creativanta.admin.v1.GetCurrentPlanResponse.subscription:type_name -> creativanta.admin.v1.SubscriptionSummary
-	8,   // 95: creativanta.admin.v1.ListPlansResponse.plans:type_name -> creativanta.admin.v1.PlanCatalogEntry
-	10,  // 96: creativanta.admin.v1.ListPlansResponse.addons:type_name -> creativanta.admin.v1.AddonCatalogEntry
-	75,  // 97: creativanta.admin.v1.GetSubscriptionRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	11,  // 98: creativanta.admin.v1.GetSubscriptionResponse.subscription:type_name -> creativanta.admin.v1.SubscriptionSummary
-	75,  // 99: creativanta.admin.v1.GetPaymentMethodsRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	12,  // 100: creativanta.admin.v1.GetPaymentMethodsResponse.payment_methods:type_name -> creativanta.admin.v1.PaymentMethodSummary
-	80,  // 101: creativanta.admin.v1.CancelPlanRequest.context:type_name -> creativanta.common.v1.CommandContext
-	11,  // 102: creativanta.admin.v1.CancelPlanResponse.subscription:type_name -> creativanta.admin.v1.SubscriptionSummary
-	75,  // 103: creativanta.admin.v1.ListInvoicesRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	78,  // 104: creativanta.admin.v1.ListInvoicesRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	13,  // 105: creativanta.admin.v1.ListInvoicesResponse.invoices:type_name -> creativanta.admin.v1.InvoiceSummary
-	79,  // 106: creativanta.admin.v1.ListInvoicesResponse.page_info:type_name -> creativanta.common.v1.PaginatedResponse
-	75,  // 107: creativanta.admin.v1.GetInvoiceUrlRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	75,  // 108: creativanta.admin.v1.GetInvoiceUrlRequest.invoice_id:type_name -> creativanta.common.v1.UUID
-	75,  // 109: creativanta.admin.v1.GetCheckoutStatusRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	6,   // 110: creativanta.admin.v1.GetCheckoutStatusResponse.balance:type_name -> creativanta.admin.v1.CreditBalance
-	9,   // 111: creativanta.admin.v1.ListCreditPackagesResponse.packages:type_name -> creativanta.admin.v1.CreditPackEntry
-	75,  // 112: creativanta.admin.v1.ListCreditPurchasesRequest.workspace_id:type_name -> creativanta.common.v1.UUID
-	78,  // 113: creativanta.admin.v1.ListCreditPurchasesRequest.pagination:type_name -> creativanta.common.v1.Pagination
-	7,   // 114: creativanta.admin.v1.ListCreditPurchasesResponse.purchases:type_name -> creativanta.admin.v1.CreditTransactionEntry
-	79,  // 115: creativanta.admin.v1.ListCreditPurchasesResponse.page_info:type_name -> creativanta.common.v1.PaginatedResponse
-	80,  // 116: creativanta.admin.v1.ApplyRetentionDiscountRequest.context:type_name -> creativanta.common.v1.CommandContext
-	11,  // 117: creativanta.admin.v1.ApplyRetentionDiscountResponse.subscription:type_name -> creativanta.admin.v1.SubscriptionSummary
-	16,  // 118: creativanta.admin.v1.AdminBillingService.GetBillingSummary:input_type -> creativanta.admin.v1.GetBillingSummaryRequest
-	18,  // 119: creativanta.admin.v1.AdminBillingService.GetCreditBalance:input_type -> creativanta.admin.v1.GetCreditBalanceRequest
-	20,  // 120: creativanta.admin.v1.AdminBillingService.GetCreditLedger:input_type -> creativanta.admin.v1.GetCreditLedgerRequest
-	22,  // 121: creativanta.admin.v1.AdminBillingService.PurchaseCredits:input_type -> creativanta.admin.v1.PurchaseCreditsRequest
-	24,  // 122: creativanta.admin.v1.AdminBillingService.ChangePlan:input_type -> creativanta.admin.v1.ChangePlanRequest
-	26,  // 123: creativanta.admin.v1.AdminBillingService.CancelSubscription:input_type -> creativanta.admin.v1.CancelSubscriptionRequest
-	28,  // 124: creativanta.admin.v1.AdminBillingService.UpdatePaymentMethod:input_type -> creativanta.admin.v1.UpdatePaymentMethodRequest
-	30,  // 125: creativanta.admin.v1.AdminBillingService.GetPaymentMethod:input_type -> creativanta.admin.v1.GetPaymentMethodRequest
-	32,  // 126: creativanta.admin.v1.AdminBillingService.EstimateCost:input_type -> creativanta.admin.v1.EstimateCostRequest
-	34,  // 127: creativanta.admin.v1.CreditService.GetBalance:input_type -> creativanta.admin.v1.GetBalanceRequest
-	36,  // 128: creativanta.admin.v1.CreditService.GetUsageStats:input_type -> creativanta.admin.v1.GetUsageStatsRequest
-	38,  // 129: creativanta.admin.v1.CreditService.GetMonthlyUsage:input_type -> creativanta.admin.v1.GetMonthlyUsageRequest
-	40,  // 130: creativanta.admin.v1.CreditService.ListTransactions:input_type -> creativanta.admin.v1.ListTransactionsRequest
-	42,  // 131: creativanta.admin.v1.CreditService.ListRecentUsage:input_type -> creativanta.admin.v1.ListRecentUsageRequest
-	44,  // 132: creativanta.admin.v1.CreditService.ListPackages:input_type -> creativanta.admin.v1.ListPackagesRequest
-	46,  // 133: creativanta.admin.v1.CreditService.Purchase:input_type -> creativanta.admin.v1.PurchaseRequest
-	48,  // 134: creativanta.admin.v1.CreditService.GetAutoRefillConfig:input_type -> creativanta.admin.v1.GetAutoRefillConfigRequest
-	50,  // 135: creativanta.admin.v1.CreditService.UpdateAutoRefill:input_type -> creativanta.admin.v1.UpdateAutoRefillRequest
-	52,  // 136: creativanta.admin.v1.BillingService.GetCurrentPlan:input_type -> creativanta.admin.v1.GetCurrentPlanRequest
-	54,  // 137: creativanta.admin.v1.BillingService.ListPlans:input_type -> creativanta.admin.v1.ListPlansRequest
-	56,  // 138: creativanta.admin.v1.BillingService.GetSubscription:input_type -> creativanta.admin.v1.GetSubscriptionRequest
-	58,  // 139: creativanta.admin.v1.BillingService.GetPaymentMethods:input_type -> creativanta.admin.v1.GetPaymentMethodsRequest
-	60,  // 140: creativanta.admin.v1.BillingService.CancelPlan:input_type -> creativanta.admin.v1.CancelPlanRequest
-	62,  // 141: creativanta.admin.v1.BillingService.ListInvoices:input_type -> creativanta.admin.v1.ListInvoicesRequest
-	64,  // 142: creativanta.admin.v1.BillingService.GetInvoiceUrl:input_type -> creativanta.admin.v1.GetInvoiceUrlRequest
-	66,  // 143: creativanta.admin.v1.BillingService.GetCheckoutStatus:input_type -> creativanta.admin.v1.GetCheckoutStatusRequest
-	68,  // 144: creativanta.admin.v1.BillingService.ListCreditPackages:input_type -> creativanta.admin.v1.ListCreditPackagesRequest
-	70,  // 145: creativanta.admin.v1.BillingService.ListCreditPurchases:input_type -> creativanta.admin.v1.ListCreditPurchasesRequest
-	72,  // 146: creativanta.admin.v1.BillingService.ApplyRetentionDiscount:input_type -> creativanta.admin.v1.ApplyRetentionDiscountRequest
-	17,  // 147: creativanta.admin.v1.AdminBillingService.GetBillingSummary:output_type -> creativanta.admin.v1.GetBillingSummaryResponse
-	19,  // 148: creativanta.admin.v1.AdminBillingService.GetCreditBalance:output_type -> creativanta.admin.v1.GetCreditBalanceResponse
-	21,  // 149: creativanta.admin.v1.AdminBillingService.GetCreditLedger:output_type -> creativanta.admin.v1.GetCreditLedgerResponse
-	23,  // 150: creativanta.admin.v1.AdminBillingService.PurchaseCredits:output_type -> creativanta.admin.v1.PurchaseCreditsResponse
-	25,  // 151: creativanta.admin.v1.AdminBillingService.ChangePlan:output_type -> creativanta.admin.v1.ChangePlanResponse
-	27,  // 152: creativanta.admin.v1.AdminBillingService.CancelSubscription:output_type -> creativanta.admin.v1.CancelSubscriptionResponse
-	29,  // 153: creativanta.admin.v1.AdminBillingService.UpdatePaymentMethod:output_type -> creativanta.admin.v1.UpdatePaymentMethodResponse
-	31,  // 154: creativanta.admin.v1.AdminBillingService.GetPaymentMethod:output_type -> creativanta.admin.v1.GetPaymentMethodResponse
-	33,  // 155: creativanta.admin.v1.AdminBillingService.EstimateCost:output_type -> creativanta.admin.v1.EstimateCostResponse
-	35,  // 156: creativanta.admin.v1.CreditService.GetBalance:output_type -> creativanta.admin.v1.GetBalanceResponse
-	37,  // 157: creativanta.admin.v1.CreditService.GetUsageStats:output_type -> creativanta.admin.v1.GetUsageStatsResponse
-	39,  // 158: creativanta.admin.v1.CreditService.GetMonthlyUsage:output_type -> creativanta.admin.v1.GetMonthlyUsageResponse
-	41,  // 159: creativanta.admin.v1.CreditService.ListTransactions:output_type -> creativanta.admin.v1.ListTransactionsResponse
-	43,  // 160: creativanta.admin.v1.CreditService.ListRecentUsage:output_type -> creativanta.admin.v1.ListRecentUsageResponse
-	45,  // 161: creativanta.admin.v1.CreditService.ListPackages:output_type -> creativanta.admin.v1.ListPackagesResponse
-	47,  // 162: creativanta.admin.v1.CreditService.Purchase:output_type -> creativanta.admin.v1.PurchaseResponse
-	49,  // 163: creativanta.admin.v1.CreditService.GetAutoRefillConfig:output_type -> creativanta.admin.v1.GetAutoRefillConfigResponse
-	51,  // 164: creativanta.admin.v1.CreditService.UpdateAutoRefill:output_type -> creativanta.admin.v1.UpdateAutoRefillResponse
-	53,  // 165: creativanta.admin.v1.BillingService.GetCurrentPlan:output_type -> creativanta.admin.v1.GetCurrentPlanResponse
-	55,  // 166: creativanta.admin.v1.BillingService.ListPlans:output_type -> creativanta.admin.v1.ListPlansResponse
-	57,  // 167: creativanta.admin.v1.BillingService.GetSubscription:output_type -> creativanta.admin.v1.GetSubscriptionResponse
-	59,  // 168: creativanta.admin.v1.BillingService.GetPaymentMethods:output_type -> creativanta.admin.v1.GetPaymentMethodsResponse
-	61,  // 169: creativanta.admin.v1.BillingService.CancelPlan:output_type -> creativanta.admin.v1.CancelPlanResponse
-	63,  // 170: creativanta.admin.v1.BillingService.ListInvoices:output_type -> creativanta.admin.v1.ListInvoicesResponse
-	65,  // 171: creativanta.admin.v1.BillingService.GetInvoiceUrl:output_type -> creativanta.admin.v1.GetInvoiceUrlResponse
-	67,  // 172: creativanta.admin.v1.BillingService.GetCheckoutStatus:output_type -> creativanta.admin.v1.GetCheckoutStatusResponse
-	69,  // 173: creativanta.admin.v1.BillingService.ListCreditPackages:output_type -> creativanta.admin.v1.ListCreditPackagesResponse
-	71,  // 174: creativanta.admin.v1.BillingService.ListCreditPurchases:output_type -> creativanta.admin.v1.ListCreditPurchasesResponse
-	73,  // 175: creativanta.admin.v1.BillingService.ApplyRetentionDiscount:output_type -> creativanta.admin.v1.ApplyRetentionDiscountResponse
-	147, // [147:176] is the sub-list for method output_type
-	118, // [118:147] is the sub-list for method input_type
-	118, // [118:118] is the sub-list for extension type_name
-	118, // [118:118] is the sub-list for extension extendee
-	0,   // [0:118] is the sub-list for field type_name
+	92,  // 8: creativanta.admin.v1.CreditTransactionEntry.transaction_id:type_name -> creativanta.common.v1.UUID
+	92,  // 9: creativanta.admin.v1.CreditTransactionEntry.workspace_id:type_name -> creativanta.common.v1.UUID
+	92,  // 10: creativanta.admin.v1.CreditTransactionEntry.user_id:type_name -> creativanta.common.v1.UUID
+	92,  // 11: creativanta.admin.v1.CreditTransactionEntry.reference_id:type_name -> creativanta.common.v1.UUID
+	92,  // 12: creativanta.admin.v1.CreditTransactionEntry.reservation_id:type_name -> creativanta.common.v1.UUID
+	92,  // 13: creativanta.admin.v1.CreditTransactionEntry.lot_id:type_name -> creativanta.common.v1.UUID
+	92,  // 14: creativanta.admin.v1.CreditTransactionEntry.quote_id:type_name -> creativanta.common.v1.UUID
+	92,  // 15: creativanta.admin.v1.CreditTransactionEntry.reference_transaction_id:type_name -> creativanta.common.v1.UUID
+	93,  // 16: creativanta.admin.v1.CreditTransactionEntry.created_at:type_name -> google.protobuf.Timestamp
+	94,  // 17: creativanta.admin.v1.PlanCatalogEntry.monthly_price_usd:type_name -> creativanta.common.v1.Money
+	94,  // 18: creativanta.admin.v1.PlanCatalogEntry.annual_price_usd:type_name -> creativanta.common.v1.Money
+	94,  // 19: creativanta.admin.v1.PlanCatalogEntry.monthly_price_vnd:type_name -> creativanta.common.v1.Money
+	94,  // 20: creativanta.admin.v1.PlanCatalogEntry.annual_price_vnd:type_name -> creativanta.common.v1.Money
+	94,  // 21: creativanta.admin.v1.CreditPackEntry.price_usd:type_name -> creativanta.common.v1.Money
+	94,  // 22: creativanta.admin.v1.CreditPackEntry.price_vnd:type_name -> creativanta.common.v1.Money
+	94,  // 23: creativanta.admin.v1.AddonCatalogEntry.monthly_price_usd:type_name -> creativanta.common.v1.Money
+	94,  // 24: creativanta.admin.v1.AddonCatalogEntry.monthly_price_vnd:type_name -> creativanta.common.v1.Money
+	94,  // 25: creativanta.admin.v1.AddonCatalogEntry.annual_price_usd:type_name -> creativanta.common.v1.Money
+	94,  // 26: creativanta.admin.v1.AddonCatalogEntry.annual_price_vnd:type_name -> creativanta.common.v1.Money
+	92,  // 27: creativanta.admin.v1.SubscriptionSummary.subscription_id:type_name -> creativanta.common.v1.UUID
+	92,  // 28: creativanta.admin.v1.SubscriptionSummary.workspace_id:type_name -> creativanta.common.v1.UUID
+	2,   // 29: creativanta.admin.v1.SubscriptionSummary.status:type_name -> creativanta.admin.v1.SubscriptionStatus
+	94,  // 30: creativanta.admin.v1.SubscriptionSummary.amount:type_name -> creativanta.common.v1.Money
+	93,  // 31: creativanta.admin.v1.SubscriptionSummary.current_period_start:type_name -> google.protobuf.Timestamp
+	93,  // 32: creativanta.admin.v1.SubscriptionSummary.current_period_end:type_name -> google.protobuf.Timestamp
+	93,  // 33: creativanta.admin.v1.SubscriptionSummary.canceled_at:type_name -> google.protobuf.Timestamp
+	93,  // 34: creativanta.admin.v1.SubscriptionSummary.trial_ends_at:type_name -> google.protobuf.Timestamp
+	93,  // 35: creativanta.admin.v1.SubscriptionSummary.grace_period_ends_at:type_name -> google.protobuf.Timestamp
+	93,  // 36: creativanta.admin.v1.SubscriptionSummary.paused_at:type_name -> google.protobuf.Timestamp
+	93,  // 37: creativanta.admin.v1.SubscriptionSummary.pause_auto_resumes_at:type_name -> google.protobuf.Timestamp
+	92,  // 38: creativanta.admin.v1.PaymentMethodSummary.payment_method_id:type_name -> creativanta.common.v1.UUID
+	92,  // 39: creativanta.admin.v1.InvoiceSummary.invoice_id:type_name -> creativanta.common.v1.UUID
+	3,   // 40: creativanta.admin.v1.InvoiceSummary.status:type_name -> creativanta.admin.v1.InvoiceStatus
+	94,  // 41: creativanta.admin.v1.InvoiceSummary.subtotal:type_name -> creativanta.common.v1.Money
+	94,  // 42: creativanta.admin.v1.InvoiceSummary.discount_amount:type_name -> creativanta.common.v1.Money
+	94,  // 43: creativanta.admin.v1.InvoiceSummary.tax_amount:type_name -> creativanta.common.v1.Money
+	94,  // 44: creativanta.admin.v1.InvoiceSummary.total:type_name -> creativanta.common.v1.Money
+	94,  // 45: creativanta.admin.v1.InvoiceSummary.amount_paid:type_name -> creativanta.common.v1.Money
+	94,  // 46: creativanta.admin.v1.InvoiceSummary.amount_due:type_name -> creativanta.common.v1.Money
+	93,  // 47: creativanta.admin.v1.InvoiceSummary.period_start:type_name -> google.protobuf.Timestamp
+	93,  // 48: creativanta.admin.v1.InvoiceSummary.period_end:type_name -> google.protobuf.Timestamp
+	93,  // 49: creativanta.admin.v1.InvoiceSummary.paid_at:type_name -> google.protobuf.Timestamp
+	93,  // 50: creativanta.admin.v1.InvoiceSummary.created_at:type_name -> google.protobuf.Timestamp
+	92,  // 51: creativanta.admin.v1.GetBillingSummaryRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	12,  // 52: creativanta.admin.v1.GetBillingSummaryResponse.subscription:type_name -> creativanta.admin.v1.SubscriptionSummary
+	6,   // 53: creativanta.admin.v1.GetBillingSummaryResponse.credit_balance:type_name -> creativanta.admin.v1.CreditBalance
+	13,  // 54: creativanta.admin.v1.GetBillingSummaryResponse.default_payment_method:type_name -> creativanta.admin.v1.PaymentMethodSummary
+	14,  // 55: creativanta.admin.v1.GetBillingSummaryResponse.recent_invoices:type_name -> creativanta.admin.v1.InvoiceSummary
+	92,  // 56: creativanta.admin.v1.GetCreditBalanceRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	6,   // 57: creativanta.admin.v1.GetCreditBalanceResponse.balance:type_name -> creativanta.admin.v1.CreditBalance
+	92,  // 58: creativanta.admin.v1.GetCreditLedgerRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	95,  // 59: creativanta.admin.v1.GetCreditLedgerRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	7,   // 60: creativanta.admin.v1.GetCreditLedgerResponse.entries:type_name -> creativanta.admin.v1.CreditTransactionEntry
+	96,  // 61: creativanta.admin.v1.GetCreditLedgerResponse.page_info:type_name -> creativanta.common.v1.PaginatedResponse
+	97,  // 62: creativanta.admin.v1.PurchaseCreditsRequest.context:type_name -> creativanta.common.v1.CommandContext
+	9,   // 63: creativanta.admin.v1.PurchaseCreditsResponse.pack:type_name -> creativanta.admin.v1.CreditPackEntry
+	97,  // 64: creativanta.admin.v1.ChangePlanRequest.context:type_name -> creativanta.common.v1.CommandContext
+	12,  // 65: creativanta.admin.v1.ChangePlanResponse.subscription:type_name -> creativanta.admin.v1.SubscriptionSummary
+	94,  // 66: creativanta.admin.v1.ChangePlanResponse.prorated_addon_charge:type_name -> creativanta.common.v1.Money
+	97,  // 67: creativanta.admin.v1.CancelSubscriptionRequest.context:type_name -> creativanta.common.v1.CommandContext
+	12,  // 68: creativanta.admin.v1.CancelSubscriptionResponse.subscription:type_name -> creativanta.admin.v1.SubscriptionSummary
+	97,  // 69: creativanta.admin.v1.UpdatePaymentMethodRequest.context:type_name -> creativanta.common.v1.CommandContext
+	13,  // 70: creativanta.admin.v1.UpdatePaymentMethodResponse.payment_method:type_name -> creativanta.admin.v1.PaymentMethodSummary
+	13,  // 71: creativanta.admin.v1.UpdatePaymentMethodResponse.payment_methods:type_name -> creativanta.admin.v1.PaymentMethodSummary
+	11,  // 72: creativanta.admin.v1.UpdatePaymentMethodResponse.method_access_gates:type_name -> creativanta.admin.v1.PaymentMethodAccessGate
+	92,  // 73: creativanta.admin.v1.GetPaymentMethodRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	13,  // 74: creativanta.admin.v1.GetPaymentMethodResponse.default_payment_method:type_name -> creativanta.admin.v1.PaymentMethodSummary
+	13,  // 75: creativanta.admin.v1.GetPaymentMethodResponse.payment_methods:type_name -> creativanta.admin.v1.PaymentMethodSummary
+	11,  // 76: creativanta.admin.v1.GetPaymentMethodResponse.method_access_gates:type_name -> creativanta.admin.v1.PaymentMethodAccessGate
+	92,  // 77: creativanta.admin.v1.ListSubscriptionsRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	95,  // 78: creativanta.admin.v1.ListSubscriptionsRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	12,  // 79: creativanta.admin.v1.ListSubscriptionsResponse.subscriptions:type_name -> creativanta.admin.v1.SubscriptionSummary
+	96,  // 80: creativanta.admin.v1.ListSubscriptionsResponse.page_info:type_name -> creativanta.common.v1.PaginatedResponse
+	92,  // 81: creativanta.admin.v1.BillingEventEntry.billing_event_id:type_name -> creativanta.common.v1.UUID
+	92,  // 82: creativanta.admin.v1.BillingEventEntry.workspace_id:type_name -> creativanta.common.v1.UUID
+	94,  // 83: creativanta.admin.v1.BillingEventEntry.amount:type_name -> creativanta.common.v1.Money
+	93,  // 84: creativanta.admin.v1.BillingEventEntry.created_at:type_name -> google.protobuf.Timestamp
+	92,  // 85: creativanta.admin.v1.ListBillingEventsRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	95,  // 86: creativanta.admin.v1.ListBillingEventsRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	35,  // 87: creativanta.admin.v1.ListBillingEventsResponse.events:type_name -> creativanta.admin.v1.BillingEventEntry
+	96,  // 88: creativanta.admin.v1.ListBillingEventsResponse.page_info:type_name -> creativanta.common.v1.PaginatedResponse
+	92,  // 89: creativanta.admin.v1.GetInvoiceHistoryRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	95,  // 90: creativanta.admin.v1.GetInvoiceHistoryRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	14,  // 91: creativanta.admin.v1.GetInvoiceHistoryResponse.invoices:type_name -> creativanta.admin.v1.InvoiceSummary
+	96,  // 92: creativanta.admin.v1.GetInvoiceHistoryResponse.page_info:type_name -> creativanta.common.v1.PaginatedResponse
+	97,  // 93: creativanta.admin.v1.DownloadInvoiceRequest.context:type_name -> creativanta.common.v1.CommandContext
+	92,  // 94: creativanta.admin.v1.DownloadInvoiceRequest.invoice_id:type_name -> creativanta.common.v1.UUID
+	14,  // 95: creativanta.admin.v1.DownloadInvoiceResponse.invoice:type_name -> creativanta.admin.v1.InvoiceSummary
+	92,  // 96: creativanta.admin.v1.GetUsageReportRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	6,   // 97: creativanta.admin.v1.GetUsageReportResponse.balance:type_name -> creativanta.admin.v1.CreditBalance
+	16,  // 98: creativanta.admin.v1.GetUsageReportResponse.breakdown:type_name -> creativanta.admin.v1.OperationUsageBreakdown
+	94,  // 99: creativanta.admin.v1.GetUsageReportResponse.overage_charge_usd:type_name -> creativanta.common.v1.Money
+	92,  // 100: creativanta.admin.v1.DataExportJobSummary.export_id:type_name -> creativanta.common.v1.UUID
+	92,  // 101: creativanta.admin.v1.DataExportJobSummary.workspace_id:type_name -> creativanta.common.v1.UUID
+	92,  // 102: creativanta.admin.v1.DataExportJobSummary.user_id:type_name -> creativanta.common.v1.UUID
+	93,  // 103: creativanta.admin.v1.DataExportJobSummary.expires_at:type_name -> google.protobuf.Timestamp
+	93,  // 104: creativanta.admin.v1.DataExportJobSummary.completed_at:type_name -> google.protobuf.Timestamp
+	93,  // 105: creativanta.admin.v1.DataExportJobSummary.created_at:type_name -> google.protobuf.Timestamp
+	97,  // 106: creativanta.admin.v1.RequestExportRequest.context:type_name -> creativanta.common.v1.CommandContext
+	44,  // 107: creativanta.admin.v1.RequestExportResponse.export_job:type_name -> creativanta.admin.v1.DataExportJobSummary
+	92,  // 108: creativanta.admin.v1.GetExportUrlRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	92,  // 109: creativanta.admin.v1.GetExportUrlRequest.export_id:type_name -> creativanta.common.v1.UUID
+	44,  // 110: creativanta.admin.v1.GetExportUrlResponse.export_job:type_name -> creativanta.admin.v1.DataExportJobSummary
+	97,  // 111: creativanta.admin.v1.EstimateCostRequest.context:type_name -> creativanta.common.v1.CommandContext
+	91,  // 112: creativanta.admin.v1.EstimateCostRequest.measured_units:type_name -> creativanta.admin.v1.EstimateCostRequest.MeasuredUnitsEntry
+	4,   // 113: creativanta.admin.v1.EstimateCostResponse.quote:type_name -> creativanta.admin.v1.CreditQuote
+	6,   // 114: creativanta.admin.v1.EstimateCostResponse.current_balance:type_name -> creativanta.admin.v1.CreditBalance
+	92,  // 115: creativanta.admin.v1.GetBalanceRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	6,   // 116: creativanta.admin.v1.GetBalanceResponse.balance:type_name -> creativanta.admin.v1.CreditBalance
+	92,  // 117: creativanta.admin.v1.GetUsageStatsRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	16,  // 118: creativanta.admin.v1.GetUsageStatsResponse.breakdown:type_name -> creativanta.admin.v1.OperationUsageBreakdown
+	92,  // 119: creativanta.admin.v1.GetMonthlyUsageRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	16,  // 120: creativanta.admin.v1.GetMonthlyUsageResponse.breakdown:type_name -> creativanta.admin.v1.OperationUsageBreakdown
+	92,  // 121: creativanta.admin.v1.ListTransactionsRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	95,  // 122: creativanta.admin.v1.ListTransactionsRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	7,   // 123: creativanta.admin.v1.ListTransactionsResponse.transactions:type_name -> creativanta.admin.v1.CreditTransactionEntry
+	96,  // 124: creativanta.admin.v1.ListTransactionsResponse.page_info:type_name -> creativanta.common.v1.PaginatedResponse
+	92,  // 125: creativanta.admin.v1.ListRecentUsageRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	7,   // 126: creativanta.admin.v1.ListRecentUsageResponse.usage_entries:type_name -> creativanta.admin.v1.CreditTransactionEntry
+	9,   // 127: creativanta.admin.v1.ListPackagesResponse.packages:type_name -> creativanta.admin.v1.CreditPackEntry
+	97,  // 128: creativanta.admin.v1.PurchaseRequest.context:type_name -> creativanta.common.v1.CommandContext
+	9,   // 129: creativanta.admin.v1.PurchaseResponse.pack:type_name -> creativanta.admin.v1.CreditPackEntry
+	92,  // 130: creativanta.admin.v1.GetAutoRefillConfigRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	15,  // 131: creativanta.admin.v1.GetAutoRefillConfigResponse.config:type_name -> creativanta.admin.v1.AutoRefillConfig
+	97,  // 132: creativanta.admin.v1.UpdateAutoRefillRequest.context:type_name -> creativanta.common.v1.CommandContext
+	15,  // 133: creativanta.admin.v1.UpdateAutoRefillRequest.config:type_name -> creativanta.admin.v1.AutoRefillConfig
+	15,  // 134: creativanta.admin.v1.UpdateAutoRefillResponse.config:type_name -> creativanta.admin.v1.AutoRefillConfig
+	92,  // 135: creativanta.admin.v1.GetCurrentPlanRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	8,   // 136: creativanta.admin.v1.GetCurrentPlanResponse.current_plan:type_name -> creativanta.admin.v1.PlanCatalogEntry
+	12,  // 137: creativanta.admin.v1.GetCurrentPlanResponse.subscription:type_name -> creativanta.admin.v1.SubscriptionSummary
+	8,   // 138: creativanta.admin.v1.ListPlansResponse.plans:type_name -> creativanta.admin.v1.PlanCatalogEntry
+	10,  // 139: creativanta.admin.v1.ListPlansResponse.addons:type_name -> creativanta.admin.v1.AddonCatalogEntry
+	92,  // 140: creativanta.admin.v1.GetSubscriptionRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	12,  // 141: creativanta.admin.v1.GetSubscriptionResponse.subscription:type_name -> creativanta.admin.v1.SubscriptionSummary
+	92,  // 142: creativanta.admin.v1.GetPaymentMethodsRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	13,  // 143: creativanta.admin.v1.GetPaymentMethodsResponse.payment_methods:type_name -> creativanta.admin.v1.PaymentMethodSummary
+	97,  // 144: creativanta.admin.v1.CancelPlanRequest.context:type_name -> creativanta.common.v1.CommandContext
+	12,  // 145: creativanta.admin.v1.CancelPlanResponse.subscription:type_name -> creativanta.admin.v1.SubscriptionSummary
+	92,  // 146: creativanta.admin.v1.ListInvoicesRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	95,  // 147: creativanta.admin.v1.ListInvoicesRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	14,  // 148: creativanta.admin.v1.ListInvoicesResponse.invoices:type_name -> creativanta.admin.v1.InvoiceSummary
+	96,  // 149: creativanta.admin.v1.ListInvoicesResponse.page_info:type_name -> creativanta.common.v1.PaginatedResponse
+	92,  // 150: creativanta.admin.v1.GetInvoiceUrlRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	92,  // 151: creativanta.admin.v1.GetInvoiceUrlRequest.invoice_id:type_name -> creativanta.common.v1.UUID
+	92,  // 152: creativanta.admin.v1.GetCheckoutStatusRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	6,   // 153: creativanta.admin.v1.GetCheckoutStatusResponse.balance:type_name -> creativanta.admin.v1.CreditBalance
+	9,   // 154: creativanta.admin.v1.ListCreditPackagesResponse.packages:type_name -> creativanta.admin.v1.CreditPackEntry
+	92,  // 155: creativanta.admin.v1.ListCreditPurchasesRequest.workspace_id:type_name -> creativanta.common.v1.UUID
+	95,  // 156: creativanta.admin.v1.ListCreditPurchasesRequest.pagination:type_name -> creativanta.common.v1.Pagination
+	7,   // 157: creativanta.admin.v1.ListCreditPurchasesResponse.purchases:type_name -> creativanta.admin.v1.CreditTransactionEntry
+	96,  // 158: creativanta.admin.v1.ListCreditPurchasesResponse.page_info:type_name -> creativanta.common.v1.PaginatedResponse
+	97,  // 159: creativanta.admin.v1.ApplyRetentionDiscountRequest.context:type_name -> creativanta.common.v1.CommandContext
+	12,  // 160: creativanta.admin.v1.ApplyRetentionDiscountResponse.subscription:type_name -> creativanta.admin.v1.SubscriptionSummary
+	17,  // 161: creativanta.admin.v1.AdminBillingService.GetBillingSummary:input_type -> creativanta.admin.v1.GetBillingSummaryRequest
+	33,  // 162: creativanta.admin.v1.AdminBillingService.ListSubscriptions:input_type -> creativanta.admin.v1.ListSubscriptionsRequest
+	19,  // 163: creativanta.admin.v1.AdminBillingService.GetCreditBalance:input_type -> creativanta.admin.v1.GetCreditBalanceRequest
+	21,  // 164: creativanta.admin.v1.AdminBillingService.GetCreditLedger:input_type -> creativanta.admin.v1.GetCreditLedgerRequest
+	23,  // 165: creativanta.admin.v1.AdminBillingService.PurchaseCredits:input_type -> creativanta.admin.v1.PurchaseCreditsRequest
+	25,  // 166: creativanta.admin.v1.AdminBillingService.ChangePlan:input_type -> creativanta.admin.v1.ChangePlanRequest
+	27,  // 167: creativanta.admin.v1.AdminBillingService.CancelSubscription:input_type -> creativanta.admin.v1.CancelSubscriptionRequest
+	42,  // 168: creativanta.admin.v1.AdminBillingService.GetUsageReport:input_type -> creativanta.admin.v1.GetUsageReportRequest
+	38,  // 169: creativanta.admin.v1.AdminBillingService.GetInvoiceHistory:input_type -> creativanta.admin.v1.GetInvoiceHistoryRequest
+	40,  // 170: creativanta.admin.v1.AdminBillingService.DownloadInvoice:input_type -> creativanta.admin.v1.DownloadInvoiceRequest
+	29,  // 171: creativanta.admin.v1.AdminBillingService.UpdatePaymentMethod:input_type -> creativanta.admin.v1.UpdatePaymentMethodRequest
+	31,  // 172: creativanta.admin.v1.AdminBillingService.GetPaymentMethod:input_type -> creativanta.admin.v1.GetPaymentMethodRequest
+	36,  // 173: creativanta.admin.v1.AdminBillingService.ListBillingEvents:input_type -> creativanta.admin.v1.ListBillingEventsRequest
+	49,  // 174: creativanta.admin.v1.AdminBillingService.EstimateCost:input_type -> creativanta.admin.v1.EstimateCostRequest
+	45,  // 175: creativanta.admin.v1.DataService.RequestExport:input_type -> creativanta.admin.v1.RequestExportRequest
+	47,  // 176: creativanta.admin.v1.DataService.GetExportUrl:input_type -> creativanta.admin.v1.GetExportUrlRequest
+	51,  // 177: creativanta.admin.v1.CreditService.GetBalance:input_type -> creativanta.admin.v1.GetBalanceRequest
+	53,  // 178: creativanta.admin.v1.CreditService.GetUsageStats:input_type -> creativanta.admin.v1.GetUsageStatsRequest
+	55,  // 179: creativanta.admin.v1.CreditService.GetMonthlyUsage:input_type -> creativanta.admin.v1.GetMonthlyUsageRequest
+	57,  // 180: creativanta.admin.v1.CreditService.ListTransactions:input_type -> creativanta.admin.v1.ListTransactionsRequest
+	59,  // 181: creativanta.admin.v1.CreditService.ListRecentUsage:input_type -> creativanta.admin.v1.ListRecentUsageRequest
+	61,  // 182: creativanta.admin.v1.CreditService.ListPackages:input_type -> creativanta.admin.v1.ListPackagesRequest
+	63,  // 183: creativanta.admin.v1.CreditService.Purchase:input_type -> creativanta.admin.v1.PurchaseRequest
+	65,  // 184: creativanta.admin.v1.CreditService.GetAutoRefillConfig:input_type -> creativanta.admin.v1.GetAutoRefillConfigRequest
+	67,  // 185: creativanta.admin.v1.CreditService.UpdateAutoRefill:input_type -> creativanta.admin.v1.UpdateAutoRefillRequest
+	69,  // 186: creativanta.admin.v1.BillingService.GetCurrentPlan:input_type -> creativanta.admin.v1.GetCurrentPlanRequest
+	71,  // 187: creativanta.admin.v1.BillingService.ListPlans:input_type -> creativanta.admin.v1.ListPlansRequest
+	73,  // 188: creativanta.admin.v1.BillingService.GetSubscription:input_type -> creativanta.admin.v1.GetSubscriptionRequest
+	75,  // 189: creativanta.admin.v1.BillingService.GetPaymentMethods:input_type -> creativanta.admin.v1.GetPaymentMethodsRequest
+	77,  // 190: creativanta.admin.v1.BillingService.CancelPlan:input_type -> creativanta.admin.v1.CancelPlanRequest
+	79,  // 191: creativanta.admin.v1.BillingService.ListInvoices:input_type -> creativanta.admin.v1.ListInvoicesRequest
+	81,  // 192: creativanta.admin.v1.BillingService.GetInvoiceUrl:input_type -> creativanta.admin.v1.GetInvoiceUrlRequest
+	83,  // 193: creativanta.admin.v1.BillingService.GetCheckoutStatus:input_type -> creativanta.admin.v1.GetCheckoutStatusRequest
+	85,  // 194: creativanta.admin.v1.BillingService.ListCreditPackages:input_type -> creativanta.admin.v1.ListCreditPackagesRequest
+	87,  // 195: creativanta.admin.v1.BillingService.ListCreditPurchases:input_type -> creativanta.admin.v1.ListCreditPurchasesRequest
+	89,  // 196: creativanta.admin.v1.BillingService.ApplyRetentionDiscount:input_type -> creativanta.admin.v1.ApplyRetentionDiscountRequest
+	18,  // 197: creativanta.admin.v1.AdminBillingService.GetBillingSummary:output_type -> creativanta.admin.v1.GetBillingSummaryResponse
+	34,  // 198: creativanta.admin.v1.AdminBillingService.ListSubscriptions:output_type -> creativanta.admin.v1.ListSubscriptionsResponse
+	20,  // 199: creativanta.admin.v1.AdminBillingService.GetCreditBalance:output_type -> creativanta.admin.v1.GetCreditBalanceResponse
+	22,  // 200: creativanta.admin.v1.AdminBillingService.GetCreditLedger:output_type -> creativanta.admin.v1.GetCreditLedgerResponse
+	24,  // 201: creativanta.admin.v1.AdminBillingService.PurchaseCredits:output_type -> creativanta.admin.v1.PurchaseCreditsResponse
+	26,  // 202: creativanta.admin.v1.AdminBillingService.ChangePlan:output_type -> creativanta.admin.v1.ChangePlanResponse
+	28,  // 203: creativanta.admin.v1.AdminBillingService.CancelSubscription:output_type -> creativanta.admin.v1.CancelSubscriptionResponse
+	43,  // 204: creativanta.admin.v1.AdminBillingService.GetUsageReport:output_type -> creativanta.admin.v1.GetUsageReportResponse
+	39,  // 205: creativanta.admin.v1.AdminBillingService.GetInvoiceHistory:output_type -> creativanta.admin.v1.GetInvoiceHistoryResponse
+	41,  // 206: creativanta.admin.v1.AdminBillingService.DownloadInvoice:output_type -> creativanta.admin.v1.DownloadInvoiceResponse
+	30,  // 207: creativanta.admin.v1.AdminBillingService.UpdatePaymentMethod:output_type -> creativanta.admin.v1.UpdatePaymentMethodResponse
+	32,  // 208: creativanta.admin.v1.AdminBillingService.GetPaymentMethod:output_type -> creativanta.admin.v1.GetPaymentMethodResponse
+	37,  // 209: creativanta.admin.v1.AdminBillingService.ListBillingEvents:output_type -> creativanta.admin.v1.ListBillingEventsResponse
+	50,  // 210: creativanta.admin.v1.AdminBillingService.EstimateCost:output_type -> creativanta.admin.v1.EstimateCostResponse
+	46,  // 211: creativanta.admin.v1.DataService.RequestExport:output_type -> creativanta.admin.v1.RequestExportResponse
+	48,  // 212: creativanta.admin.v1.DataService.GetExportUrl:output_type -> creativanta.admin.v1.GetExportUrlResponse
+	52,  // 213: creativanta.admin.v1.CreditService.GetBalance:output_type -> creativanta.admin.v1.GetBalanceResponse
+	54,  // 214: creativanta.admin.v1.CreditService.GetUsageStats:output_type -> creativanta.admin.v1.GetUsageStatsResponse
+	56,  // 215: creativanta.admin.v1.CreditService.GetMonthlyUsage:output_type -> creativanta.admin.v1.GetMonthlyUsageResponse
+	58,  // 216: creativanta.admin.v1.CreditService.ListTransactions:output_type -> creativanta.admin.v1.ListTransactionsResponse
+	60,  // 217: creativanta.admin.v1.CreditService.ListRecentUsage:output_type -> creativanta.admin.v1.ListRecentUsageResponse
+	62,  // 218: creativanta.admin.v1.CreditService.ListPackages:output_type -> creativanta.admin.v1.ListPackagesResponse
+	64,  // 219: creativanta.admin.v1.CreditService.Purchase:output_type -> creativanta.admin.v1.PurchaseResponse
+	66,  // 220: creativanta.admin.v1.CreditService.GetAutoRefillConfig:output_type -> creativanta.admin.v1.GetAutoRefillConfigResponse
+	68,  // 221: creativanta.admin.v1.CreditService.UpdateAutoRefill:output_type -> creativanta.admin.v1.UpdateAutoRefillResponse
+	70,  // 222: creativanta.admin.v1.BillingService.GetCurrentPlan:output_type -> creativanta.admin.v1.GetCurrentPlanResponse
+	72,  // 223: creativanta.admin.v1.BillingService.ListPlans:output_type -> creativanta.admin.v1.ListPlansResponse
+	74,  // 224: creativanta.admin.v1.BillingService.GetSubscription:output_type -> creativanta.admin.v1.GetSubscriptionResponse
+	76,  // 225: creativanta.admin.v1.BillingService.GetPaymentMethods:output_type -> creativanta.admin.v1.GetPaymentMethodsResponse
+	78,  // 226: creativanta.admin.v1.BillingService.CancelPlan:output_type -> creativanta.admin.v1.CancelPlanResponse
+	80,  // 227: creativanta.admin.v1.BillingService.ListInvoices:output_type -> creativanta.admin.v1.ListInvoicesResponse
+	82,  // 228: creativanta.admin.v1.BillingService.GetInvoiceUrl:output_type -> creativanta.admin.v1.GetInvoiceUrlResponse
+	84,  // 229: creativanta.admin.v1.BillingService.GetCheckoutStatus:output_type -> creativanta.admin.v1.GetCheckoutStatusResponse
+	86,  // 230: creativanta.admin.v1.BillingService.ListCreditPackages:output_type -> creativanta.admin.v1.ListCreditPackagesResponse
+	88,  // 231: creativanta.admin.v1.BillingService.ListCreditPurchases:output_type -> creativanta.admin.v1.ListCreditPurchasesResponse
+	90,  // 232: creativanta.admin.v1.BillingService.ApplyRetentionDiscount:output_type -> creativanta.admin.v1.ApplyRetentionDiscountResponse
+	197, // [197:233] is the sub-list for method output_type
+	161, // [161:197] is the sub-list for method input_type
+	161, // [161:161] is the sub-list for extension type_name
+	161, // [161:161] is the sub-list for extension extendee
+	0,   // [0:161] is the sub-list for field type_name
 }
 
 func init() { file_creativanta_admin_v1_billing_proto_init() }
@@ -5458,9 +7106,9 @@ func file_creativanta_admin_v1_billing_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_creativanta_admin_v1_billing_proto_rawDesc), len(file_creativanta_admin_v1_billing_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   71,
+			NumMessages:   88,
 			NumExtensions: 0,
-			NumServices:   3,
+			NumServices:   4,
 		},
 		GoTypes:           file_creativanta_admin_v1_billing_proto_goTypes,
 		DependencyIndexes: file_creativanta_admin_v1_billing_proto_depIdxs,

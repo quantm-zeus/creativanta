@@ -39,6 +39,13 @@ class AdminBillingServiceClient extends $grpc.Client {
     return $createUnaryCall(_$getBillingSummary, request, options: options);
   }
 
+  $grpc.ResponseFuture<$0.ListSubscriptionsResponse> listSubscriptions(
+    $0.ListSubscriptionsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$listSubscriptions, request, options: options);
+  }
+
   $grpc.ResponseFuture<$0.GetCreditBalanceResponse> getCreditBalance(
     $0.GetCreditBalanceRequest request, {
     $grpc.CallOptions? options,
@@ -74,6 +81,27 @@ class AdminBillingServiceClient extends $grpc.Client {
     return $createUnaryCall(_$cancelSubscription, request, options: options);
   }
 
+  $grpc.ResponseFuture<$0.GetUsageReportResponse> getUsageReport(
+    $0.GetUsageReportRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getUsageReport, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.GetInvoiceHistoryResponse> getInvoiceHistory(
+    $0.GetInvoiceHistoryRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getInvoiceHistory, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.DownloadInvoiceResponse> downloadInvoice(
+    $0.DownloadInvoiceRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$downloadInvoice, request, options: options);
+  }
+
   $grpc.ResponseFuture<$0.UpdatePaymentMethodResponse> updatePaymentMethod(
     $0.UpdatePaymentMethodRequest request, {
     $grpc.CallOptions? options,
@@ -86,6 +114,13 @@ class AdminBillingServiceClient extends $grpc.Client {
     $grpc.CallOptions? options,
   }) {
     return $createUnaryCall(_$getPaymentMethod, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ListBillingEventsResponse> listBillingEvents(
+    $0.ListBillingEventsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$listBillingEvents, request, options: options);
   }
 
   $grpc.ResponseFuture<$0.EstimateCostResponse> estimateCost(
@@ -102,6 +137,11 @@ class AdminBillingServiceClient extends $grpc.Client {
       '/creativanta.admin.v1.AdminBillingService/GetBillingSummary',
       ($0.GetBillingSummaryRequest value) => value.writeToBuffer(),
       $0.GetBillingSummaryResponse.fromBuffer);
+  static final _$listSubscriptions = $grpc.ClientMethod<
+          $0.ListSubscriptionsRequest, $0.ListSubscriptionsResponse>(
+      '/creativanta.admin.v1.AdminBillingService/ListSubscriptions',
+      ($0.ListSubscriptionsRequest value) => value.writeToBuffer(),
+      $0.ListSubscriptionsResponse.fromBuffer);
   static final _$getCreditBalance = $grpc.ClientMethod<
           $0.GetCreditBalanceRequest, $0.GetCreditBalanceResponse>(
       '/creativanta.admin.v1.AdminBillingService/GetCreditBalance',
@@ -127,6 +167,21 @@ class AdminBillingServiceClient extends $grpc.Client {
       '/creativanta.admin.v1.AdminBillingService/CancelSubscription',
       ($0.CancelSubscriptionRequest value) => value.writeToBuffer(),
       $0.CancelSubscriptionResponse.fromBuffer);
+  static final _$getUsageReport =
+      $grpc.ClientMethod<$0.GetUsageReportRequest, $0.GetUsageReportResponse>(
+          '/creativanta.admin.v1.AdminBillingService/GetUsageReport',
+          ($0.GetUsageReportRequest value) => value.writeToBuffer(),
+          $0.GetUsageReportResponse.fromBuffer);
+  static final _$getInvoiceHistory = $grpc.ClientMethod<
+          $0.GetInvoiceHistoryRequest, $0.GetInvoiceHistoryResponse>(
+      '/creativanta.admin.v1.AdminBillingService/GetInvoiceHistory',
+      ($0.GetInvoiceHistoryRequest value) => value.writeToBuffer(),
+      $0.GetInvoiceHistoryResponse.fromBuffer);
+  static final _$downloadInvoice =
+      $grpc.ClientMethod<$0.DownloadInvoiceRequest, $0.DownloadInvoiceResponse>(
+          '/creativanta.admin.v1.AdminBillingService/DownloadInvoice',
+          ($0.DownloadInvoiceRequest value) => value.writeToBuffer(),
+          $0.DownloadInvoiceResponse.fromBuffer);
   static final _$updatePaymentMethod = $grpc.ClientMethod<
           $0.UpdatePaymentMethodRequest, $0.UpdatePaymentMethodResponse>(
       '/creativanta.admin.v1.AdminBillingService/UpdatePaymentMethod',
@@ -137,6 +192,11 @@ class AdminBillingServiceClient extends $grpc.Client {
       '/creativanta.admin.v1.AdminBillingService/GetPaymentMethod',
       ($0.GetPaymentMethodRequest value) => value.writeToBuffer(),
       $0.GetPaymentMethodResponse.fromBuffer);
+  static final _$listBillingEvents = $grpc.ClientMethod<
+          $0.ListBillingEventsRequest, $0.ListBillingEventsResponse>(
+      '/creativanta.admin.v1.AdminBillingService/ListBillingEvents',
+      ($0.ListBillingEventsRequest value) => value.writeToBuffer(),
+      $0.ListBillingEventsResponse.fromBuffer);
   static final _$estimateCost =
       $grpc.ClientMethod<$0.EstimateCostRequest, $0.EstimateCostResponse>(
           '/creativanta.admin.v1.AdminBillingService/EstimateCost',
@@ -158,6 +218,15 @@ abstract class AdminBillingServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.GetBillingSummaryRequest.fromBuffer(value),
         ($0.GetBillingSummaryResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ListSubscriptionsRequest,
+            $0.ListSubscriptionsResponse>(
+        'ListSubscriptions',
+        listSubscriptions_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ListSubscriptionsRequest.fromBuffer(value),
+        ($0.ListSubscriptionsResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.GetCreditBalanceRequest,
             $0.GetCreditBalanceResponse>(
         'GetCreditBalance',
@@ -201,6 +270,33 @@ abstract class AdminBillingServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.CancelSubscriptionRequest.fromBuffer(value),
         ($0.CancelSubscriptionResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetUsageReportRequest,
+            $0.GetUsageReportResponse>(
+        'GetUsageReport',
+        getUsageReport_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GetUsageReportRequest.fromBuffer(value),
+        ($0.GetUsageReportResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetInvoiceHistoryRequest,
+            $0.GetInvoiceHistoryResponse>(
+        'GetInvoiceHistory',
+        getInvoiceHistory_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GetInvoiceHistoryRequest.fromBuffer(value),
+        ($0.GetInvoiceHistoryResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.DownloadInvoiceRequest,
+            $0.DownloadInvoiceResponse>(
+        'DownloadInvoice',
+        downloadInvoice_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.DownloadInvoiceRequest.fromBuffer(value),
+        ($0.DownloadInvoiceResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.UpdatePaymentMethodRequest,
             $0.UpdatePaymentMethodResponse>(
         'UpdatePaymentMethod',
@@ -219,6 +315,15 @@ abstract class AdminBillingServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.GetPaymentMethodRequest.fromBuffer(value),
         ($0.GetPaymentMethodResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ListBillingEventsRequest,
+            $0.ListBillingEventsResponse>(
+        'ListBillingEvents',
+        listBillingEvents_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ListBillingEventsRequest.fromBuffer(value),
+        ($0.ListBillingEventsResponse value) => value.writeToBuffer()));
     $addMethod(
         $grpc.ServiceMethod<$0.EstimateCostRequest, $0.EstimateCostResponse>(
             'EstimateCost',
@@ -238,6 +343,15 @@ abstract class AdminBillingServiceBase extends $grpc.Service {
 
   $async.Future<$0.GetBillingSummaryResponse> getBillingSummary(
       $grpc.ServiceCall call, $0.GetBillingSummaryRequest request);
+
+  $async.Future<$0.ListSubscriptionsResponse> listSubscriptions_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ListSubscriptionsRequest> $request) async {
+    return listSubscriptions($call, await $request);
+  }
+
+  $async.Future<$0.ListSubscriptionsResponse> listSubscriptions(
+      $grpc.ServiceCall call, $0.ListSubscriptionsRequest request);
 
   $async.Future<$0.GetCreditBalanceResponse> getCreditBalance_Pre(
       $grpc.ServiceCall $call,
@@ -283,6 +397,33 @@ abstract class AdminBillingServiceBase extends $grpc.Service {
   $async.Future<$0.CancelSubscriptionResponse> cancelSubscription(
       $grpc.ServiceCall call, $0.CancelSubscriptionRequest request);
 
+  $async.Future<$0.GetUsageReportResponse> getUsageReport_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetUsageReportRequest> $request) async {
+    return getUsageReport($call, await $request);
+  }
+
+  $async.Future<$0.GetUsageReportResponse> getUsageReport(
+      $grpc.ServiceCall call, $0.GetUsageReportRequest request);
+
+  $async.Future<$0.GetInvoiceHistoryResponse> getInvoiceHistory_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetInvoiceHistoryRequest> $request) async {
+    return getInvoiceHistory($call, await $request);
+  }
+
+  $async.Future<$0.GetInvoiceHistoryResponse> getInvoiceHistory(
+      $grpc.ServiceCall call, $0.GetInvoiceHistoryRequest request);
+
+  $async.Future<$0.DownloadInvoiceResponse> downloadInvoice_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.DownloadInvoiceRequest> $request) async {
+    return downloadInvoice($call, await $request);
+  }
+
+  $async.Future<$0.DownloadInvoiceResponse> downloadInvoice(
+      $grpc.ServiceCall call, $0.DownloadInvoiceRequest request);
+
   $async.Future<$0.UpdatePaymentMethodResponse> updatePaymentMethod_Pre(
       $grpc.ServiceCall $call,
       $async.Future<$0.UpdatePaymentMethodRequest> $request) async {
@@ -301,6 +442,15 @@ abstract class AdminBillingServiceBase extends $grpc.Service {
   $async.Future<$0.GetPaymentMethodResponse> getPaymentMethod(
       $grpc.ServiceCall call, $0.GetPaymentMethodRequest request);
 
+  $async.Future<$0.ListBillingEventsResponse> listBillingEvents_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ListBillingEventsRequest> $request) async {
+    return listBillingEvents($call, await $request);
+  }
+
+  $async.Future<$0.ListBillingEventsResponse> listBillingEvents(
+      $grpc.ServiceCall call, $0.ListBillingEventsRequest request);
+
   $async.Future<$0.EstimateCostResponse> estimateCost_Pre(
       $grpc.ServiceCall $call,
       $async.Future<$0.EstimateCostRequest> $request) async {
@@ -309,6 +459,90 @@ abstract class AdminBillingServiceBase extends $grpc.Service {
 
   $async.Future<$0.EstimateCostResponse> estimateCost(
       $grpc.ServiceCall call, $0.EstimateCostRequest request);
+}
+
+@$pb.GrpcServiceName('creativanta.admin.v1.DataService')
+class DataServiceClient extends $grpc.Client {
+  /// The hostname for this service.
+  static const $core.String defaultHost = '';
+
+  /// OAuth scopes needed for the client.
+  static const $core.List<$core.String> oauthScopes = [
+    '',
+  ];
+
+  DataServiceClient(super.channel, {super.options, super.interceptors});
+
+  $grpc.ResponseFuture<$0.RequestExportResponse> requestExport(
+    $0.RequestExportRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$requestExport, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.GetExportUrlResponse> getExportUrl(
+    $0.GetExportUrlRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getExportUrl, request, options: options);
+  }
+
+  // method descriptors
+
+  static final _$requestExport =
+      $grpc.ClientMethod<$0.RequestExportRequest, $0.RequestExportResponse>(
+          '/creativanta.admin.v1.DataService/RequestExport',
+          ($0.RequestExportRequest value) => value.writeToBuffer(),
+          $0.RequestExportResponse.fromBuffer);
+  static final _$getExportUrl =
+      $grpc.ClientMethod<$0.GetExportUrlRequest, $0.GetExportUrlResponse>(
+          '/creativanta.admin.v1.DataService/GetExportUrl',
+          ($0.GetExportUrlRequest value) => value.writeToBuffer(),
+          $0.GetExportUrlResponse.fromBuffer);
+}
+
+@$pb.GrpcServiceName('creativanta.admin.v1.DataService')
+abstract class DataServiceBase extends $grpc.Service {
+  $core.String get $name => 'creativanta.admin.v1.DataService';
+
+  DataServiceBase() {
+    $addMethod(
+        $grpc.ServiceMethod<$0.RequestExportRequest, $0.RequestExportResponse>(
+            'RequestExport',
+            requestExport_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.RequestExportRequest.fromBuffer(value),
+            ($0.RequestExportResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.GetExportUrlRequest, $0.GetExportUrlResponse>(
+            'GetExportUrl',
+            getExportUrl_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.GetExportUrlRequest.fromBuffer(value),
+            ($0.GetExportUrlResponse value) => value.writeToBuffer()));
+  }
+
+  $async.Future<$0.RequestExportResponse> requestExport_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.RequestExportRequest> $request) async {
+    return requestExport($call, await $request);
+  }
+
+  $async.Future<$0.RequestExportResponse> requestExport(
+      $grpc.ServiceCall call, $0.RequestExportRequest request);
+
+  $async.Future<$0.GetExportUrlResponse> getExportUrl_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetExportUrlRequest> $request) async {
+    return getExportUrl($call, await $request);
+  }
+
+  $async.Future<$0.GetExportUrlResponse> getExportUrl(
+      $grpc.ServiceCall call, $0.GetExportUrlRequest request);
 }
 
 @$pb.GrpcServiceName('creativanta.admin.v1.CreditService')

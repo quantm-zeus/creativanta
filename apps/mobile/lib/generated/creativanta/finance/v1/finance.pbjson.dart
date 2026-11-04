@@ -1476,6 +1476,697 @@ final $typed_data.Uint8List profitServiceRefreshSnapshotResponseDescriptor =
         'CiRQcm9maXRTZXJ2aWNlUmVmcmVzaFNuYXBzaG90UmVzcG9uc2USQgoIc25hcHNob3QYASABKA'
         'syJi5jcmVhdGl2YW50YS5maW5hbmNlLnYxLlByb2ZpdFNuYXBzaG90UghzbmFwc2hvdA==');
 
+@$core.Deprecated('Use financialReportLineItemDescriptor instead')
+const FinancialReportLineItem$json = {
+  '1': 'FinancialReportLineItem',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
+    {'1': 'label', '3': 2, '4': 1, '5': 9, '10': 'label'},
+    {
+      '1': 'amount',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'amount'
+    },
+    {'1': 'pct_of_revenue', '3': 4, '4': 1, '5': 9, '10': 'pctOfRevenue'},
+    {
+      '1': 'source_class',
+      '3': 5,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.common.v1.SourceClass',
+      '10': 'sourceClass'
+    },
+    {
+      '1': 'confidence',
+      '3': 6,
+      '4': 1,
+      '5': 14,
+      '6': '.creativanta.common.v1.ConfidenceBand',
+      '10': 'confidence'
+    },
+    {'1': 'is_subtotal', '3': 7, '4': 1, '5': 8, '10': 'isSubtotal'},
+  ],
+};
+
+/// Descriptor for `FinancialReportLineItem`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List financialReportLineItemDescriptor = $convert.base64Decode(
+    'ChdGaW5hbmNpYWxSZXBvcnRMaW5lSXRlbRIQCgNrZXkYASABKAlSA2tleRIUCgVsYWJlbBgCIA'
+    'EoCVIFbGFiZWwSNAoGYW1vdW50GAMgASgLMhwuY3JlYXRpdmFudGEuY29tbW9uLnYxLk1vbmV5'
+    'UgZhbW91bnQSJAoOcGN0X29mX3JldmVudWUYBCABKAlSDHBjdE9mUmV2ZW51ZRJFCgxzb3VyY2'
+    'VfY2xhc3MYBSABKA4yIi5jcmVhdGl2YW50YS5jb21tb24udjEuU291cmNlQ2xhc3NSC3NvdXJj'
+    'ZUNsYXNzEkUKCmNvbmZpZGVuY2UYBiABKA4yJS5jcmVhdGl2YW50YS5jb21tb24udjEuQ29uZm'
+    'lkZW5jZUJhbmRSCmNvbmZpZGVuY2USHwoLaXNfc3VidG90YWwYByABKAhSCmlzU3VidG90YWw=');
+
+@$core.Deprecated('Use cohortEconomicsSummaryDescriptor instead')
+const CohortEconomicsSummary$json = {
+  '1': 'CohortEconomicsSummary',
+  '2': [
+    {'1': 'cohort_id', '3': 1, '4': 1, '5': 9, '10': 'cohortId'},
+    {
+      '1': 'observation_window',
+      '3': 2,
+      '4': 1,
+      '5': 9,
+      '10': 'observationWindow'
+    },
+    {
+      '1': 'eligible_workspaces_count',
+      '3': 3,
+      '4': 1,
+      '5': 3,
+      '10': 'eligibleWorkspacesCount'
+    },
+    {
+      '1': 'censored_workspaces_count',
+      '3': 4,
+      '4': 1,
+      '5': 3,
+      '10': 'censoredWorkspacesCount'
+    },
+    {
+      '1': 'excluded_demo_test_internal_count',
+      '3': 5,
+      '4': 1,
+      '5': 3,
+      '10': 'excludedDemoTestInternalCount'
+    },
+    {
+      '1': 'median_first_value_seconds',
+      '3': 6,
+      '4': 1,
+      '5': 9,
+      '10': 'medianFirstValueSeconds'
+    },
+    {
+      '1': 'weekly_proofed_operating_loops',
+      '3': 7,
+      '4': 1,
+      '5': 3,
+      '10': 'weeklyProofedOperatingLoops'
+    },
+    {
+      '1': 'weekly_operator_retention_pct',
+      '3': 8,
+      '4': 1,
+      '5': 9,
+      '10': 'weeklyOperatorRetentionPct'
+    },
+    {
+      '1': 'median_repair_burden_seconds',
+      '3': 9,
+      '4': 1,
+      '5': 9,
+      '10': 'medianRepairBurdenSeconds'
+    },
+    {
+      '1': 'is_repair_time_unknown',
+      '3': 10,
+      '4': 1,
+      '5': 8,
+      '10': 'isRepairTimeUnknown'
+    },
+    {
+      '1': 'unresolved_required_components_count',
+      '3': 11,
+      '4': 1,
+      '5': 3,
+      '10': 'unresolvedRequiredComponentsCount'
+    },
+    {
+      '1': 'usable_production_yield_pct',
+      '3': 12,
+      '4': 1,
+      '5': 9,
+      '10': 'usableProductionYieldPct'
+    },
+    {
+      '1': 'accepted_outputs_count',
+      '3': 13,
+      '4': 1,
+      '5': 3,
+      '10': 'acceptedOutputsCount'
+    },
+    {
+      '1': 'terminal_generation_attempts_count',
+      '3': 14,
+      '4': 1,
+      '5': 3,
+      '10': 'terminalGenerationAttemptsCount'
+    },
+    {
+      '1': 'cost_per_accepted_output',
+      '3': 15,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'costPerAcceptedOutput'
+    },
+    {
+      '1': 'is_cost_per_accepted_output_undefined',
+      '3': 16,
+      '4': 1,
+      '5': 8,
+      '10': 'isCostPerAcceptedOutputUndefined'
+    },
+    {
+      '1': 'recognized_revenue',
+      '3': 17,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'recognizedRevenue'
+    },
+    {
+      '1': 'allocated_provider_cost',
+      '3': 18,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'allocatedProviderCost'
+    },
+    {
+      '1': 'allocated_compute_storage_cost',
+      '3': 19,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'allocatedComputeStorageCost'
+    },
+    {
+      '1': 'allocated_payment_refund_support_cost',
+      '3': 20,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'allocatedPaymentRefundSupportCost'
+    },
+    {
+      '1': 'net_unit_economics',
+      '3': 21,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.Money',
+      '10': 'netUnitEconomics'
+    },
+    {
+      '1': 'allocation_method',
+      '3': 22,
+      '4': 1,
+      '5': 9,
+      '10': 'allocationMethod'
+    },
+    {
+      '1': 'unknown_cost_items_count',
+      '3': 23,
+      '4': 1,
+      '5': 3,
+      '10': 'unknownCostItemsCount'
+    },
+  ],
+};
+
+/// Descriptor for `CohortEconomicsSummary`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List cohortEconomicsSummaryDescriptor = $convert.base64Decode(
+    'ChZDb2hvcnRFY29ub21pY3NTdW1tYXJ5EhsKCWNvaG9ydF9pZBgBIAEoCVIIY29ob3J0SWQSLQ'
+    'oSb2JzZXJ2YXRpb25fd2luZG93GAIgASgJUhFvYnNlcnZhdGlvbldpbmRvdxI6ChllbGlnaWJs'
+    'ZV93b3Jrc3BhY2VzX2NvdW50GAMgASgDUhdlbGlnaWJsZVdvcmtzcGFjZXNDb3VudBI6ChljZW'
+    '5zb3JlZF93b3Jrc3BhY2VzX2NvdW50GAQgASgDUhdjZW5zb3JlZFdvcmtzcGFjZXNDb3VudBJI'
+    'CiFleGNsdWRlZF9kZW1vX3Rlc3RfaW50ZXJuYWxfY291bnQYBSABKANSHWV4Y2x1ZGVkRGVtb1'
+    'Rlc3RJbnRlcm5hbENvdW50EjsKGm1lZGlhbl9maXJzdF92YWx1ZV9zZWNvbmRzGAYgASgJUhdt'
+    'ZWRpYW5GaXJzdFZhbHVlU2Vjb25kcxJDCh53ZWVrbHlfcHJvb2ZlZF9vcGVyYXRpbmdfbG9vcH'
+    'MYByABKANSG3dlZWtseVByb29mZWRPcGVyYXRpbmdMb29wcxJBCh13ZWVrbHlfb3BlcmF0b3Jf'
+    'cmV0ZW50aW9uX3BjdBgIIAEoCVIad2Vla2x5T3BlcmF0b3JSZXRlbnRpb25QY3QSPwocbWVkaW'
+    'FuX3JlcGFpcl9idXJkZW5fc2Vjb25kcxgJIAEoCVIZbWVkaWFuUmVwYWlyQnVyZGVuU2Vjb25k'
+    'cxIzChZpc19yZXBhaXJfdGltZV91bmtub3duGAogASgIUhNpc1JlcGFpclRpbWVVbmtub3duEk'
+    '8KJHVucmVzb2x2ZWRfcmVxdWlyZWRfY29tcG9uZW50c19jb3VudBgLIAEoA1IhdW5yZXNvbHZl'
+    'ZFJlcXVpcmVkQ29tcG9uZW50c0NvdW50Ej0KG3VzYWJsZV9wcm9kdWN0aW9uX3lpZWxkX3BjdB'
+    'gMIAEoCVIYdXNhYmxlUHJvZHVjdGlvbllpZWxkUGN0EjQKFmFjY2VwdGVkX291dHB1dHNfY291'
+    'bnQYDSABKANSFGFjY2VwdGVkT3V0cHV0c0NvdW50EksKInRlcm1pbmFsX2dlbmVyYXRpb25fYX'
+    'R0ZW1wdHNfY291bnQYDiABKANSH3Rlcm1pbmFsR2VuZXJhdGlvbkF0dGVtcHRzQ291bnQSVQoY'
+    'Y29zdF9wZXJfYWNjZXB0ZWRfb3V0cHV0GA8gASgLMhwuY3JlYXRpdmFudGEuY29tbW9uLnYxLk'
+    '1vbmV5UhVjb3N0UGVyQWNjZXB0ZWRPdXRwdXQSTwolaXNfY29zdF9wZXJfYWNjZXB0ZWRfb3V0'
+    'cHV0X3VuZGVmaW5lZBgQIAEoCFIgaXNDb3N0UGVyQWNjZXB0ZWRPdXRwdXRVbmRlZmluZWQSSw'
+    'oScmVjb2duaXplZF9yZXZlbnVlGBEgASgLMhwuY3JlYXRpdmFudGEuY29tbW9uLnYxLk1vbmV5'
+    'UhFyZWNvZ25pemVkUmV2ZW51ZRJUChdhbGxvY2F0ZWRfcHJvdmlkZXJfY29zdBgSIAEoCzIcLm'
+    'NyZWF0aXZhbnRhLmNvbW1vbi52MS5Nb25leVIVYWxsb2NhdGVkUHJvdmlkZXJDb3N0EmEKHmFs'
+    'bG9jYXRlZF9jb21wdXRlX3N0b3JhZ2VfY29zdBgTIAEoCzIcLmNyZWF0aXZhbnRhLmNvbW1vbi'
+    '52MS5Nb25leVIbYWxsb2NhdGVkQ29tcHV0ZVN0b3JhZ2VDb3N0Em4KJWFsbG9jYXRlZF9wYXlt'
+    'ZW50X3JlZnVuZF9zdXBwb3J0X2Nvc3QYFCABKAsyHC5jcmVhdGl2YW50YS5jb21tb24udjEuTW'
+    '9uZXlSIWFsbG9jYXRlZFBheW1lbnRSZWZ1bmRTdXBwb3J0Q29zdBJKChJuZXRfdW5pdF9lY29u'
+    'b21pY3MYFSABKAsyHC5jcmVhdGl2YW50YS5jb21tb24udjEuTW9uZXlSEG5ldFVuaXRFY29ub2'
+    '1pY3MSKwoRYWxsb2NhdGlvbl9tZXRob2QYFiABKAlSEGFsbG9jYXRpb25NZXRob2QSNwoYdW5r'
+    'bm93bl9jb3N0X2l0ZW1zX2NvdW50GBcgASgDUhV1bmtub3duQ29zdEl0ZW1zQ291bnQ=');
+
+@$core.Deprecated('Use financialReportDescriptor instead')
+const FinancialReport$json = {
+  '1': 'FinancialReport',
+  '2': [
+    {'1': 'report_id', '3': 1, '4': 1, '5': 9, '10': 'reportId'},
+    {'1': 'workspace_id', '3': 2, '4': 1, '5': 9, '10': 'workspaceId'},
+    {'1': 'report_type', '3': 3, '4': 1, '5': 9, '10': 'reportType'},
+    {'1': 'period_start', '3': 4, '4': 1, '5': 9, '10': 'periodStart'},
+    {'1': 'period_end', '3': 5, '4': 1, '5': 9, '10': 'periodEnd'},
+    {'1': 'group_by', '3': 6, '4': 1, '5': 9, '10': 'groupBy'},
+    {'1': 'currency', '3': 7, '4': 1, '5': 9, '10': 'currency'},
+    {
+      '1': 'line_items',
+      '3': 8,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.finance.v1.FinancialReportLineItem',
+      '10': 'lineItems'
+    },
+    {
+      '1': 'snapshot',
+      '3': 9,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.finance.v1.ProfitSnapshot',
+      '10': 'snapshot'
+    },
+    {
+      '1': 'reconciled_coverage_pct',
+      '3': 10,
+      '4': 1,
+      '5': 9,
+      '10': 'reconciledCoveragePct'
+    },
+    {
+      '1': 'low_trust_warning',
+      '3': 11,
+      '4': 1,
+      '5': 8,
+      '10': 'lowTrustWarning'
+    },
+    {'1': 'tax_disclaimer', '3': 12, '4': 1, '5': 9, '10': 'taxDisclaimer'},
+    {
+      '1': 'cohort_economics',
+      '3': 13,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.finance.v1.CohortEconomicsSummary',
+      '10': 'cohortEconomics'
+    },
+    {
+      '1': 'generated_at',
+      '3': 14,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'generatedAt'
+    },
+  ],
+};
+
+/// Descriptor for `FinancialReport`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List financialReportDescriptor = $convert.base64Decode(
+    'Cg9GaW5hbmNpYWxSZXBvcnQSGwoJcmVwb3J0X2lkGAEgASgJUghyZXBvcnRJZBIhCgx3b3Jrc3'
+    'BhY2VfaWQYAiABKAlSC3dvcmtzcGFjZUlkEh8KC3JlcG9ydF90eXBlGAMgASgJUgpyZXBvcnRU'
+    'eXBlEiEKDHBlcmlvZF9zdGFydBgEIAEoCVILcGVyaW9kU3RhcnQSHQoKcGVyaW9kX2VuZBgFIA'
+    'EoCVIJcGVyaW9kRW5kEhkKCGdyb3VwX2J5GAYgASgJUgdncm91cEJ5EhoKCGN1cnJlbmN5GAcg'
+    'ASgJUghjdXJyZW5jeRJOCgpsaW5lX2l0ZW1zGAggAygLMi8uY3JlYXRpdmFudGEuZmluYW5jZS'
+    '52MS5GaW5hbmNpYWxSZXBvcnRMaW5lSXRlbVIJbGluZUl0ZW1zEkIKCHNuYXBzaG90GAkgASgL'
+    'MiYuY3JlYXRpdmFudGEuZmluYW5jZS52MS5Qcm9maXRTbmFwc2hvdFIIc25hcHNob3QSNgoXcm'
+    'Vjb25jaWxlZF9jb3ZlcmFnZV9wY3QYCiABKAlSFXJlY29uY2lsZWRDb3ZlcmFnZVBjdBIqChFs'
+    'b3dfdHJ1c3Rfd2FybmluZxgLIAEoCFIPbG93VHJ1c3RXYXJuaW5nEiUKDnRheF9kaXNjbGFpbW'
+    'VyGAwgASgJUg10YXhEaXNjbGFpbWVyElkKEGNvaG9ydF9lY29ub21pY3MYDSABKAsyLi5jcmVh'
+    'dGl2YW50YS5maW5hbmNlLnYxLkNvaG9ydEVjb25vbWljc1N1bW1hcnlSD2NvaG9ydEVjb25vbW'
+    'ljcxI9CgxnZW5lcmF0ZWRfYXQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgtn'
+    'ZW5lcmF0ZWRBdA==');
+
+@$core.Deprecated('Use reportTemplateSummaryDescriptor instead')
+const ReportTemplateSummary$json = {
+  '1': 'ReportTemplateSummary',
+  '2': [
+    {'1': 'template_code', '3': 1, '4': 1, '5': 9, '10': 'templateCode'},
+    {'1': 'title', '3': 2, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'description', '3': 3, '4': 1, '5': 9, '10': 'description'},
+  ],
+};
+
+/// Descriptor for `ReportTemplateSummary`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List reportTemplateSummaryDescriptor = $convert.base64Decode(
+    'ChVSZXBvcnRUZW1wbGF0ZVN1bW1hcnkSIwoNdGVtcGxhdGVfY29kZRgBIAEoCVIMdGVtcGxhdG'
+    'VDb2RlEhQKBXRpdGxlGAIgASgJUgV0aXRsZRIgCgtkZXNjcmlwdGlvbhgDIAEoCVILZGVzY3Jp'
+    'cHRpb24=');
+
+@$core.Deprecated('Use profitServiceGenerateReportRequestDescriptor instead')
+const ProfitServiceGenerateReportRequest$json = {
+  '1': 'ProfitServiceGenerateReportRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'workspace_id', '3': 2, '4': 1, '5': 9, '10': 'workspaceId'},
+    {'1': 'report_type', '3': 3, '4': 1, '5': 9, '10': 'reportType'},
+    {'1': 'period_start', '3': 4, '4': 1, '5': 9, '10': 'periodStart'},
+    {'1': 'period_end', '3': 5, '4': 1, '5': 9, '10': 'periodEnd'},
+    {'1': 'group_by', '3': 6, '4': 1, '5': 9, '10': 'groupBy'},
+    {'1': 'platform_filter', '3': 7, '4': 1, '5': 9, '10': 'platformFilter'},
+    {'1': 'product_id_filter', '3': 8, '4': 1, '5': 9, '10': 'productIdFilter'},
+    {
+      '1': 'included_source_classes',
+      '3': 9,
+      '4': 3,
+      '5': 9,
+      '10': 'includedSourceClasses'
+    },
+  ],
+};
+
+/// Descriptor for `ProfitServiceGenerateReportRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List profitServiceGenerateReportRequestDescriptor = $convert.base64Decode(
+    'CiJQcm9maXRTZXJ2aWNlR2VuZXJhdGVSZXBvcnRSZXF1ZXN0Ej8KB2NvbnRleHQYASABKAsyJS'
+    '5jcmVhdGl2YW50YS5jb21tb24udjEuQ29tbWFuZENvbnRleHRSB2NvbnRleHQSIQoMd29ya3Nw'
+    'YWNlX2lkGAIgASgJUgt3b3Jrc3BhY2VJZBIfCgtyZXBvcnRfdHlwZRgDIAEoCVIKcmVwb3J0VH'
+    'lwZRIhCgxwZXJpb2Rfc3RhcnQYBCABKAlSC3BlcmlvZFN0YXJ0Eh0KCnBlcmlvZF9lbmQYBSAB'
+    'KAlSCXBlcmlvZEVuZBIZCghncm91cF9ieRgGIAEoCVIHZ3JvdXBCeRInCg9wbGF0Zm9ybV9maW'
+    'x0ZXIYByABKAlSDnBsYXRmb3JtRmlsdGVyEioKEXByb2R1Y3RfaWRfZmlsdGVyGAggASgJUg9w'
+    'cm9kdWN0SWRGaWx0ZXISNgoXaW5jbHVkZWRfc291cmNlX2NsYXNzZXMYCSADKAlSFWluY2x1ZG'
+    'VkU291cmNlQ2xhc3Nlcw==');
+
+@$core.Deprecated('Use profitServiceGenerateReportResponseDescriptor instead')
+const ProfitServiceGenerateReportResponse$json = {
+  '1': 'ProfitServiceGenerateReportResponse',
+  '2': [
+    {
+      '1': 'report',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.finance.v1.FinancialReport',
+      '10': 'report'
+    },
+  ],
+};
+
+/// Descriptor for `ProfitServiceGenerateReportResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List profitServiceGenerateReportResponseDescriptor =
+    $convert.base64Decode(
+        'CiNQcm9maXRTZXJ2aWNlR2VuZXJhdGVSZXBvcnRSZXNwb25zZRI/CgZyZXBvcnQYASABKAsyJy'
+        '5jcmVhdGl2YW50YS5maW5hbmNlLnYxLkZpbmFuY2lhbFJlcG9ydFIGcmVwb3J0');
+
+@$core.Deprecated('Use profitServiceExportReportRequestDescriptor instead')
+const ProfitServiceExportReportRequest$json = {
+  '1': 'ProfitServiceExportReportRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'workspace_id', '3': 2, '4': 1, '5': 9, '10': 'workspaceId'},
+    {'1': 'report_id', '3': 3, '4': 1, '5': 9, '10': 'reportId'},
+    {'1': 'report_type', '3': 4, '4': 1, '5': 9, '10': 'reportType'},
+    {'1': 'format', '3': 5, '4': 1, '5': 9, '10': 'format'},
+    {'1': 'period_start', '3': 6, '4': 1, '5': 9, '10': 'periodStart'},
+    {'1': 'period_end', '3': 7, '4': 1, '5': 9, '10': 'periodEnd'},
+    {
+      '1': 'subscription_tier',
+      '3': 8,
+      '4': 1,
+      '5': 9,
+      '10': 'subscriptionTier'
+    },
+  ],
+};
+
+/// Descriptor for `ProfitServiceExportReportRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List profitServiceExportReportRequestDescriptor = $convert.base64Decode(
+    'CiBQcm9maXRTZXJ2aWNlRXhwb3J0UmVwb3J0UmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMiUuY3'
+    'JlYXRpdmFudGEuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EiEKDHdvcmtzcGFj'
+    'ZV9pZBgCIAEoCVILd29ya3NwYWNlSWQSGwoJcmVwb3J0X2lkGAMgASgJUghyZXBvcnRJZBIfCg'
+    'tyZXBvcnRfdHlwZRgEIAEoCVIKcmVwb3J0VHlwZRIWCgZmb3JtYXQYBSABKAlSBmZvcm1hdBIh'
+    'CgxwZXJpb2Rfc3RhcnQYBiABKAlSC3BlcmlvZFN0YXJ0Eh0KCnBlcmlvZF9lbmQYByABKAlSCX'
+    'BlcmlvZEVuZBIrChFzdWJzY3JpcHRpb25fdGllchgIIAEoCVIQc3Vic2NyaXB0aW9uVGllcg==');
+
+@$core.Deprecated('Use profitServiceExportReportResponseDescriptor instead')
+const ProfitServiceExportReportResponse$json = {
+  '1': 'ProfitServiceExportReportResponse',
+  '2': [
+    {'1': 'export_id', '3': 1, '4': 1, '5': 9, '10': 'exportId'},
+    {'1': 'format', '3': 2, '4': 1, '5': 9, '10': 'format'},
+    {'1': 'file_url', '3': 3, '4': 1, '5': 9, '10': 'fileUrl'},
+    {
+      '1': 'content_hash_sha512',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '10': 'contentHashSha512'
+    },
+    {
+      '1': 'monthly_exports_used',
+      '3': 5,
+      '4': 1,
+      '5': 5,
+      '10': 'monthlyExportsUsed'
+    },
+    {
+      '1': 'monthly_exports_limit',
+      '3': 6,
+      '4': 1,
+      '5': 5,
+      '10': 'monthlyExportsLimit'
+    },
+    {
+      '1': 'report',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.finance.v1.FinancialReport',
+      '10': 'report'
+    },
+  ],
+};
+
+/// Descriptor for `ProfitServiceExportReportResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List profitServiceExportReportResponseDescriptor = $convert.base64Decode(
+    'CiFQcm9maXRTZXJ2aWNlRXhwb3J0UmVwb3J0UmVzcG9uc2USGwoJZXhwb3J0X2lkGAEgASgJUg'
+    'hleHBvcnRJZBIWCgZmb3JtYXQYAiABKAlSBmZvcm1hdBIZCghmaWxlX3VybBgDIAEoCVIHZmls'
+    'ZVVybBIuChNjb250ZW50X2hhc2hfc2hhNTEyGAQgASgJUhFjb250ZW50SGFzaFNoYTUxMhIwCh'
+    'Rtb250aGx5X2V4cG9ydHNfdXNlZBgFIAEoBVISbW9udGhseUV4cG9ydHNVc2VkEjIKFW1vbnRo'
+    'bHlfZXhwb3J0c19saW1pdBgGIAEoBVITbW9udGhseUV4cG9ydHNMaW1pdBI/CgZyZXBvcnQYBy'
+    'ABKAsyJy5jcmVhdGl2YW50YS5maW5hbmNlLnYxLkZpbmFuY2lhbFJlcG9ydFIGcmVwb3J0');
+
+@$core.Deprecated('Use profitServiceExportTaxReportRequestDescriptor instead')
+const ProfitServiceExportTaxReportRequest$json = {
+  '1': 'ProfitServiceExportTaxReportRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'workspace_id', '3': 2, '4': 1, '5': 9, '10': 'workspaceId'},
+    {'1': 'period_start', '3': 3, '4': 1, '5': 9, '10': 'periodStart'},
+    {'1': 'period_end', '3': 4, '4': 1, '5': 9, '10': 'periodEnd'},
+    {'1': 'format', '3': 5, '4': 1, '5': 9, '10': 'format'},
+    {'1': 'tax_region', '3': 6, '4': 1, '5': 9, '10': 'taxRegion'},
+    {
+      '1': 'subscription_tier',
+      '3': 7,
+      '4': 1,
+      '5': 9,
+      '10': 'subscriptionTier'
+    },
+  ],
+};
+
+/// Descriptor for `ProfitServiceExportTaxReportRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List profitServiceExportTaxReportRequestDescriptor = $convert.base64Decode(
+    'CiNQcm9maXRTZXJ2aWNlRXhwb3J0VGF4UmVwb3J0UmVxdWVzdBI/Cgdjb250ZXh0GAEgASgLMi'
+    'UuY3JlYXRpdmFudGEuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ugdjb250ZXh0EiEKDHdvcmtz'
+    'cGFjZV9pZBgCIAEoCVILd29ya3NwYWNlSWQSIQoMcGVyaW9kX3N0YXJ0GAMgASgJUgtwZXJpb2'
+    'RTdGFydBIdCgpwZXJpb2RfZW5kGAQgASgJUglwZXJpb2RFbmQSFgoGZm9ybWF0GAUgASgJUgZm'
+    'b3JtYXQSHQoKdGF4X3JlZ2lvbhgGIAEoCVIJdGF4UmVnaW9uEisKEXN1YnNjcmlwdGlvbl90aW'
+    'VyGAcgASgJUhBzdWJzY3JpcHRpb25UaWVy');
+
+@$core.Deprecated('Use profitServiceExportTaxReportResponseDescriptor instead')
+const ProfitServiceExportTaxReportResponse$json = {
+  '1': 'ProfitServiceExportTaxReportResponse',
+  '2': [
+    {'1': 'export_id', '3': 1, '4': 1, '5': 9, '10': 'exportId'},
+    {'1': 'format', '3': 2, '4': 1, '5': 9, '10': 'format'},
+    {'1': 'file_url', '3': 3, '4': 1, '5': 9, '10': 'fileUrl'},
+    {
+      '1': 'tax_responsibility_mode',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '10': 'taxResponsibilityMode'
+    },
+    {'1': 'tax_disclaimer', '3': 5, '4': 1, '5': 9, '10': 'taxDisclaimer'},
+    {
+      '1': 'content_hash_sha512',
+      '3': 6,
+      '4': 1,
+      '5': 9,
+      '10': 'contentHashSha512'
+    },
+    {
+      '1': 'report',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.finance.v1.FinancialReport',
+      '10': 'report'
+    },
+  ],
+};
+
+/// Descriptor for `ProfitServiceExportTaxReportResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List profitServiceExportTaxReportResponseDescriptor = $convert.base64Decode(
+    'CiRQcm9maXRTZXJ2aWNlRXhwb3J0VGF4UmVwb3J0UmVzcG9uc2USGwoJZXhwb3J0X2lkGAEgAS'
+    'gJUghleHBvcnRJZBIWCgZmb3JtYXQYAiABKAlSBmZvcm1hdBIZCghmaWxlX3VybBgDIAEoCVIH'
+    'ZmlsZVVybBI2Chd0YXhfcmVzcG9uc2liaWxpdHlfbW9kZRgEIAEoCVIVdGF4UmVzcG9uc2liaW'
+    'xpdHlNb2RlEiUKDnRheF9kaXNjbGFpbWVyGAUgASgJUg10YXhEaXNjbGFpbWVyEi4KE2NvbnRl'
+    'bnRfaGFzaF9zaGE1MTIYBiABKAlSEWNvbnRlbnRIYXNoU2hhNTEyEj8KBnJlcG9ydBgHIAEoCz'
+    'InLmNyZWF0aXZhbnRhLmZpbmFuY2UudjEuRmluYW5jaWFsUmVwb3J0UgZyZXBvcnQ=');
+
+@$core.Deprecated('Use profitServiceExportToSheetsRequestDescriptor instead')
+const ProfitServiceExportToSheetsRequest$json = {
+  '1': 'ProfitServiceExportToSheetsRequest',
+  '2': [
+    {
+      '1': 'context',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.creativanta.common.v1.CommandContext',
+      '10': 'context'
+    },
+    {'1': 'workspace_id', '3': 2, '4': 1, '5': 9, '10': 'workspaceId'},
+    {'1': 'report_id', '3': 3, '4': 1, '5': 9, '10': 'reportId'},
+    {
+      '1': 'spreadsheet_title',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '10': 'spreadsheetTitle'
+    },
+    {
+      '1': 'subscription_tier',
+      '3': 5,
+      '4': 1,
+      '5': 9,
+      '10': 'subscriptionTier'
+    },
+  ],
+};
+
+/// Descriptor for `ProfitServiceExportToSheetsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List profitServiceExportToSheetsRequestDescriptor =
+    $convert.base64Decode(
+        'CiJQcm9maXRTZXJ2aWNlRXhwb3J0VG9TaGVldHNSZXF1ZXN0Ej8KB2NvbnRleHQYASABKAsyJS'
+        '5jcmVhdGl2YW50YS5jb21tb24udjEuQ29tbWFuZENvbnRleHRSB2NvbnRleHQSIQoMd29ya3Nw'
+        'YWNlX2lkGAIgASgJUgt3b3Jrc3BhY2VJZBIbCglyZXBvcnRfaWQYAyABKAlSCHJlcG9ydElkEi'
+        'sKEXNwcmVhZHNoZWV0X3RpdGxlGAQgASgJUhBzcHJlYWRzaGVldFRpdGxlEisKEXN1YnNjcmlw'
+        'dGlvbl90aWVyGAUgASgJUhBzdWJzY3JpcHRpb25UaWVy');
+
+@$core.Deprecated('Use profitServiceExportToSheetsResponseDescriptor instead')
+const ProfitServiceExportToSheetsResponse$json = {
+  '1': 'ProfitServiceExportToSheetsResponse',
+  '2': [
+    {'1': 'export_id', '3': 1, '4': 1, '5': 9, '10': 'exportId'},
+    {'1': 'spreadsheet_url', '3': 2, '4': 1, '5': 9, '10': 'spreadsheetUrl'},
+    {'1': 'status', '3': 3, '4': 1, '5': 9, '10': 'status'},
+  ],
+};
+
+/// Descriptor for `ProfitServiceExportToSheetsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List profitServiceExportToSheetsResponseDescriptor =
+    $convert.base64Decode(
+        'CiNQcm9maXRTZXJ2aWNlRXhwb3J0VG9TaGVldHNSZXNwb25zZRIbCglleHBvcnRfaWQYASABKA'
+        'lSCGV4cG9ydElkEicKD3NwcmVhZHNoZWV0X3VybBgCIAEoCVIOc3ByZWFkc2hlZXRVcmwSFgoG'
+        'c3RhdHVzGAMgASgJUgZzdGF0dXM=');
+
+@$core
+    .Deprecated('Use profitServiceGetReportTemplatesRequestDescriptor instead')
+const ProfitServiceGetReportTemplatesRequest$json = {
+  '1': 'ProfitServiceGetReportTemplatesRequest',
+  '2': [
+    {'1': 'workspace_id', '3': 1, '4': 1, '5': 9, '10': 'workspaceId'},
+  ],
+};
+
+/// Descriptor for `ProfitServiceGetReportTemplatesRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List profitServiceGetReportTemplatesRequestDescriptor =
+    $convert.base64Decode(
+        'CiZQcm9maXRTZXJ2aWNlR2V0UmVwb3J0VGVtcGxhdGVzUmVxdWVzdBIhCgx3b3Jrc3BhY2VfaW'
+        'QYASABKAlSC3dvcmtzcGFjZUlk');
+
+@$core
+    .Deprecated('Use profitServiceGetReportTemplatesResponseDescriptor instead')
+const ProfitServiceGetReportTemplatesResponse$json = {
+  '1': 'ProfitServiceGetReportTemplatesResponse',
+  '2': [
+    {
+      '1': 'templates',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.finance.v1.ReportTemplateSummary',
+      '10': 'templates'
+    },
+  ],
+};
+
+/// Descriptor for `ProfitServiceGetReportTemplatesResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List profitServiceGetReportTemplatesResponseDescriptor =
+    $convert.base64Decode(
+        'CidQcm9maXRTZXJ2aWNlR2V0UmVwb3J0VGVtcGxhdGVzUmVzcG9uc2USSwoJdGVtcGxhdGVzGA'
+        'EgAygLMi0uY3JlYXRpdmFudGEuZmluYW5jZS52MS5SZXBvcnRUZW1wbGF0ZVN1bW1hcnlSCXRl'
+        'bXBsYXRlcw==');
+
+@$core.Deprecated('Use profitServiceGetSavedReportsRequestDescriptor instead')
+const ProfitServiceGetSavedReportsRequest$json = {
+  '1': 'ProfitServiceGetSavedReportsRequest',
+  '2': [
+    {'1': 'workspace_id', '3': 1, '4': 1, '5': 9, '10': 'workspaceId'},
+  ],
+};
+
+/// Descriptor for `ProfitServiceGetSavedReportsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List profitServiceGetSavedReportsRequestDescriptor =
+    $convert.base64Decode(
+        'CiNQcm9maXRTZXJ2aWNlR2V0U2F2ZWRSZXBvcnRzUmVxdWVzdBIhCgx3b3Jrc3BhY2VfaWQYAS'
+        'ABKAlSC3dvcmtzcGFjZUlk');
+
+@$core.Deprecated('Use profitServiceGetSavedReportsResponseDescriptor instead')
+const ProfitServiceGetSavedReportsResponse$json = {
+  '1': 'ProfitServiceGetSavedReportsResponse',
+  '2': [
+    {
+      '1': 'reports',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.creativanta.finance.v1.FinancialReport',
+      '10': 'reports'
+    },
+  ],
+};
+
+/// Descriptor for `ProfitServiceGetSavedReportsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List profitServiceGetSavedReportsResponseDescriptor =
+    $convert.base64Decode(
+        'CiRQcm9maXRTZXJ2aWNlR2V0U2F2ZWRSZXBvcnRzUmVzcG9uc2USQQoHcmVwb3J0cxgBIAMoCz'
+        'InLmNyZWF0aXZhbnRhLmZpbmFuY2UudjEuRmluYW5jaWFsUmVwb3J0UgdyZXBvcnRz');
+
 @$core.Deprecated('Use settlementLineInputDescriptor instead')
 const SettlementLineInput$json = {
   '1': 'SettlementLineInput',

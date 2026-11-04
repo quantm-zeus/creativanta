@@ -365,6 +365,155 @@ message ProfitServiceRefreshSnapshotResponse {
   ProfitSnapshot snapshot = 1;
 }
 
+// Financial Report Line Item (W087 & P8-02 Complete Financial Reports)
+message FinancialReportLineItem {
+  string key = 1;
+  string label = 2;
+  creativanta.common.v1.Money amount = 3;
+  string pct_of_revenue = 4;
+  creativanta.common.v1.SourceClass source_class = 5;
+  creativanta.common.v1.ConfidenceBand confidence = 6;
+  bool is_subtotal = 7;
+}
+
+// Measured Cohort & Unit Economics (analytics_event_taxonomy.md §6 & product_strategy_validation.md §5)
+message CohortEconomicsSummary {
+  string cohort_id = 1;
+  string observation_window = 2;
+  int64 eligible_workspaces_count = 3;
+  int64 censored_workspaces_count = 4;
+  int64 excluded_demo_test_internal_count = 5;
+  string median_first_value_seconds = 6;
+  int64 weekly_proofed_operating_loops = 7;
+  string weekly_operator_retention_pct = 8;
+  string median_repair_burden_seconds = 9;
+  bool is_repair_time_unknown = 10;
+  int64 unresolved_required_components_count = 11;
+  string usable_production_yield_pct = 12;
+  int64 accepted_outputs_count = 13;
+  int64 terminal_generation_attempts_count = 14;
+  creativanta.common.v1.Money cost_per_accepted_output = 15;
+  bool is_cost_per_accepted_output_undefined = 16;
+  creativanta.common.v1.Money recognized_revenue = 17;
+  creativanta.common.v1.Money allocated_provider_cost = 18;
+  creativanta.common.v1.Money allocated_compute_storage_cost = 19;
+  creativanta.common.v1.Money allocated_payment_refund_support_cost = 20;
+  creativanta.common.v1.Money net_unit_economics = 21;
+  string allocation_method = 22;
+  int64 unknown_cost_items_count = 23;
+}
+
+// Generated Financial Report (W087 & P8-02)
+message FinancialReport {
+  string report_id = 1;
+  string workspace_id = 2;
+  string report_type = 3; // pnl_statement, revenue_by_channel, cost_analysis, margin_trend, tax_summary, product_pnl
+  string period_start = 4;
+  string period_end = 5;
+  string group_by = 6; // daily, weekly, monthly, quarterly
+  string currency = 7;
+  repeated FinancialReportLineItem line_items = 8;
+  ProfitSnapshot snapshot = 9;
+  string reconciled_coverage_pct = 10;
+  bool low_trust_warning = 11;
+  string tax_disclaimer = 12; // BIZ-007 creator_responsible disclaimer
+  CohortEconomicsSummary cohort_economics = 13;
+  google.protobuf.Timestamp generated_at = 14;
+}
+
+message ReportTemplateSummary {
+  string template_code = 1;
+  string title = 2;
+  string description = 3;
+}
+
+message ProfitServiceGenerateReportRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string report_type = 3;
+  string period_start = 4;
+  string period_end = 5;
+  string group_by = 6;
+  string platform_filter = 7;
+  string product_id_filter = 8;
+  repeated string included_source_classes = 9;
+}
+
+message ProfitServiceGenerateReportResponse {
+  FinancialReport report = 1;
+}
+
+message ProfitServiceExportReportRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string report_id = 3;
+  string report_type = 4;
+  string format = 5; // csv, pdf, xlsx, json
+  string period_start = 6;
+  string period_end = 7;
+  string subscription_tier = 8;
+}
+
+message ProfitServiceExportReportResponse {
+  string export_id = 1;
+  string format = 2;
+  string file_url = 3;
+  string content_hash_sha512 = 4;
+  int32 monthly_exports_used = 5;
+  int32 monthly_exports_limit = 6; // -1 for unlimited
+  FinancialReport report = 7;
+}
+
+message ProfitServiceExportTaxReportRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string period_start = 3;
+  string period_end = 4;
+  string format = 5;
+  string tax_region = 6;
+  string subscription_tier = 7;
+}
+
+message ProfitServiceExportTaxReportResponse {
+  string export_id = 1;
+  string format = 2;
+  string file_url = 3;
+  string tax_responsibility_mode = 4; // creator_responsible (BIZ-007)
+  string tax_disclaimer = 5;
+  string content_hash_sha512 = 6;
+  FinancialReport report = 7;
+}
+
+message ProfitServiceExportToSheetsRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string workspace_id = 2;
+  string report_id = 3;
+  string spreadsheet_title = 4;
+  string subscription_tier = 5;
+}
+
+message ProfitServiceExportToSheetsResponse {
+  string export_id = 1;
+  string spreadsheet_url = 2;
+  string status = 3;
+}
+
+message ProfitServiceGetReportTemplatesRequest {
+  string workspace_id = 1;
+}
+
+message ProfitServiceGetReportTemplatesResponse {
+  repeated ReportTemplateSummary templates = 1;
+}
+
+message ProfitServiceGetSavedReportsRequest {
+  string workspace_id = 1;
+}
+
+message ProfitServiceGetSavedReportsResponse {
+  repeated FinancialReport reports = 1;
+}
+
 // SettlementService/Import
 message SettlementLineInput {
   string external_line_id = 1;
@@ -685,6 +834,12 @@ service ProfitService {
   rpc GetAnomalies(ProfitServiceGetAnomaliesRequest) returns (ProfitServiceGetAnomaliesResponse);
   rpc GetSnapshot(ProfitServiceGetSnapshotRequest) returns (ProfitServiceGetSnapshotResponse);
   rpc RefreshSnapshot(ProfitServiceRefreshSnapshotRequest) returns (ProfitServiceRefreshSnapshotResponse);
+  rpc GenerateReport(ProfitServiceGenerateReportRequest) returns (ProfitServiceGenerateReportResponse);
+  rpc ExportReport(ProfitServiceExportReportRequest) returns (ProfitServiceExportReportResponse);
+  rpc ExportTaxReport(ProfitServiceExportTaxReportRequest) returns (ProfitServiceExportTaxReportResponse);
+  rpc ExportToSheets(ProfitServiceExportToSheetsRequest) returns (ProfitServiceExportToSheetsResponse);
+  rpc GetReportTemplates(ProfitServiceGetReportTemplatesRequest) returns (ProfitServiceGetReportTemplatesResponse);
+  rpc GetSavedReports(ProfitServiceGetSavedReportsRequest) returns (ProfitServiceGetSavedReportsResponse);
 }
 
 service SettlementService {

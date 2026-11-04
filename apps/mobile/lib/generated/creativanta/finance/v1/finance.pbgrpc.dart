@@ -67,6 +67,49 @@ class ProfitServiceClient extends $grpc.Client {
     return $createUnaryCall(_$refreshSnapshot, request, options: options);
   }
 
+  $grpc.ResponseFuture<$0.ProfitServiceGenerateReportResponse> generateReport(
+    $0.ProfitServiceGenerateReportRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$generateReport, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ProfitServiceExportReportResponse> exportReport(
+    $0.ProfitServiceExportReportRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$exportReport, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ProfitServiceExportTaxReportResponse> exportTaxReport(
+    $0.ProfitServiceExportTaxReportRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$exportTaxReport, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ProfitServiceExportToSheetsResponse> exportToSheets(
+    $0.ProfitServiceExportToSheetsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$exportToSheets, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ProfitServiceGetReportTemplatesResponse>
+      getReportTemplates(
+    $0.ProfitServiceGetReportTemplatesRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getReportTemplates, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ProfitServiceGetSavedReportsResponse> getSavedReports(
+    $0.ProfitServiceGetSavedReportsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getSavedReports, request, options: options);
+  }
+
   // method descriptors
 
   static final _$getSummary = $grpc.ClientMethod<
@@ -98,6 +141,43 @@ class ProfitServiceClient extends $grpc.Client {
       '/creativanta.finance.v1.ProfitService/RefreshSnapshot',
       ($0.ProfitServiceRefreshSnapshotRequest value) => value.writeToBuffer(),
       $0.ProfitServiceRefreshSnapshotResponse.fromBuffer);
+  static final _$generateReport = $grpc.ClientMethod<
+          $0.ProfitServiceGenerateReportRequest,
+          $0.ProfitServiceGenerateReportResponse>(
+      '/creativanta.finance.v1.ProfitService/GenerateReport',
+      ($0.ProfitServiceGenerateReportRequest value) => value.writeToBuffer(),
+      $0.ProfitServiceGenerateReportResponse.fromBuffer);
+  static final _$exportReport = $grpc.ClientMethod<
+          $0.ProfitServiceExportReportRequest,
+          $0.ProfitServiceExportReportResponse>(
+      '/creativanta.finance.v1.ProfitService/ExportReport',
+      ($0.ProfitServiceExportReportRequest value) => value.writeToBuffer(),
+      $0.ProfitServiceExportReportResponse.fromBuffer);
+  static final _$exportTaxReport = $grpc.ClientMethod<
+          $0.ProfitServiceExportTaxReportRequest,
+          $0.ProfitServiceExportTaxReportResponse>(
+      '/creativanta.finance.v1.ProfitService/ExportTaxReport',
+      ($0.ProfitServiceExportTaxReportRequest value) => value.writeToBuffer(),
+      $0.ProfitServiceExportTaxReportResponse.fromBuffer);
+  static final _$exportToSheets = $grpc.ClientMethod<
+          $0.ProfitServiceExportToSheetsRequest,
+          $0.ProfitServiceExportToSheetsResponse>(
+      '/creativanta.finance.v1.ProfitService/ExportToSheets',
+      ($0.ProfitServiceExportToSheetsRequest value) => value.writeToBuffer(),
+      $0.ProfitServiceExportToSheetsResponse.fromBuffer);
+  static final _$getReportTemplates = $grpc.ClientMethod<
+          $0.ProfitServiceGetReportTemplatesRequest,
+          $0.ProfitServiceGetReportTemplatesResponse>(
+      '/creativanta.finance.v1.ProfitService/GetReportTemplates',
+      ($0.ProfitServiceGetReportTemplatesRequest value) =>
+          value.writeToBuffer(),
+      $0.ProfitServiceGetReportTemplatesResponse.fromBuffer);
+  static final _$getSavedReports = $grpc.ClientMethod<
+          $0.ProfitServiceGetSavedReportsRequest,
+          $0.ProfitServiceGetSavedReportsResponse>(
+      '/creativanta.finance.v1.ProfitService/GetSavedReports',
+      ($0.ProfitServiceGetSavedReportsRequest value) => value.writeToBuffer(),
+      $0.ProfitServiceGetSavedReportsResponse.fromBuffer);
 }
 
 @$pb.GrpcServiceName('creativanta.finance.v1.ProfitService')
@@ -151,6 +231,65 @@ abstract class ProfitServiceBase extends $grpc.Service {
             $0.ProfitServiceRefreshSnapshotRequest.fromBuffer(value),
         ($0.ProfitServiceRefreshSnapshotResponse value) =>
             value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ProfitServiceGenerateReportRequest,
+            $0.ProfitServiceGenerateReportResponse>(
+        'GenerateReport',
+        generateReport_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ProfitServiceGenerateReportRequest.fromBuffer(value),
+        ($0.ProfitServiceGenerateReportResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ProfitServiceExportReportRequest,
+            $0.ProfitServiceExportReportResponse>(
+        'ExportReport',
+        exportReport_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ProfitServiceExportReportRequest.fromBuffer(value),
+        ($0.ProfitServiceExportReportResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ProfitServiceExportTaxReportRequest,
+            $0.ProfitServiceExportTaxReportResponse>(
+        'ExportTaxReport',
+        exportTaxReport_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ProfitServiceExportTaxReportRequest.fromBuffer(value),
+        ($0.ProfitServiceExportTaxReportResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ProfitServiceExportToSheetsRequest,
+            $0.ProfitServiceExportToSheetsResponse>(
+        'ExportToSheets',
+        exportToSheets_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ProfitServiceExportToSheetsRequest.fromBuffer(value),
+        ($0.ProfitServiceExportToSheetsResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ProfitServiceGetReportTemplatesRequest,
+            $0.ProfitServiceGetReportTemplatesResponse>(
+        'GetReportTemplates',
+        getReportTemplates_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ProfitServiceGetReportTemplatesRequest.fromBuffer(value),
+        ($0.ProfitServiceGetReportTemplatesResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ProfitServiceGetSavedReportsRequest,
+            $0.ProfitServiceGetSavedReportsResponse>(
+        'GetSavedReports',
+        getSavedReports_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ProfitServiceGetSavedReportsRequest.fromBuffer(value),
+        ($0.ProfitServiceGetSavedReportsResponse value) =>
+            value.writeToBuffer()));
   }
 
   $async.Future<$0.ProfitServiceGetSummaryResponse> getSummary_Pre(
@@ -197,6 +336,63 @@ abstract class ProfitServiceBase extends $grpc.Service {
 
   $async.Future<$0.ProfitServiceRefreshSnapshotResponse> refreshSnapshot(
       $grpc.ServiceCall call, $0.ProfitServiceRefreshSnapshotRequest request);
+
+  $async.Future<$0.ProfitServiceGenerateReportResponse> generateReport_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ProfitServiceGenerateReportRequest> $request) async {
+    return generateReport($call, await $request);
+  }
+
+  $async.Future<$0.ProfitServiceGenerateReportResponse> generateReport(
+      $grpc.ServiceCall call, $0.ProfitServiceGenerateReportRequest request);
+
+  $async.Future<$0.ProfitServiceExportReportResponse> exportReport_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ProfitServiceExportReportRequest> $request) async {
+    return exportReport($call, await $request);
+  }
+
+  $async.Future<$0.ProfitServiceExportReportResponse> exportReport(
+      $grpc.ServiceCall call, $0.ProfitServiceExportReportRequest request);
+
+  $async.Future<$0.ProfitServiceExportTaxReportResponse> exportTaxReport_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ProfitServiceExportTaxReportRequest> $request) async {
+    return exportTaxReport($call, await $request);
+  }
+
+  $async.Future<$0.ProfitServiceExportTaxReportResponse> exportTaxReport(
+      $grpc.ServiceCall call, $0.ProfitServiceExportTaxReportRequest request);
+
+  $async.Future<$0.ProfitServiceExportToSheetsResponse> exportToSheets_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ProfitServiceExportToSheetsRequest> $request) async {
+    return exportToSheets($call, await $request);
+  }
+
+  $async.Future<$0.ProfitServiceExportToSheetsResponse> exportToSheets(
+      $grpc.ServiceCall call, $0.ProfitServiceExportToSheetsRequest request);
+
+  $async.Future<$0.ProfitServiceGetReportTemplatesResponse>
+      getReportTemplates_Pre(
+          $grpc.ServiceCall $call,
+          $async.Future<$0.ProfitServiceGetReportTemplatesRequest>
+              $request) async {
+    return getReportTemplates($call, await $request);
+  }
+
+  $async.Future<$0.ProfitServiceGetReportTemplatesResponse> getReportTemplates(
+      $grpc.ServiceCall call,
+      $0.ProfitServiceGetReportTemplatesRequest request);
+
+  $async.Future<$0.ProfitServiceGetSavedReportsResponse> getSavedReports_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ProfitServiceGetSavedReportsRequest> $request) async {
+    return getSavedReports($call, await $request);
+  }
+
+  $async.Future<$0.ProfitServiceGetSavedReportsResponse> getSavedReports(
+      $grpc.ServiceCall call, $0.ProfitServiceGetSavedReportsRequest request);
 }
 
 @$pb.GrpcServiceName('creativanta.finance.v1.SettlementService')

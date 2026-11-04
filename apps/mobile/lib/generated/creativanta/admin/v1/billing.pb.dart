@@ -1148,6 +1148,8 @@ class AddonCatalogEntry extends $pb.GeneratedMessage {
     $1.Money? monthlyPriceUsd,
     $1.Money? monthlyPriceVnd,
     $core.Iterable<$core.String>? eligibleTiers,
+    $1.Money? annualPriceUsd,
+    $1.Money? annualPriceVnd,
   }) {
     final result = AddonCatalogEntry._();
     if (addonCode != null) result.addonCode = addonCode;
@@ -1155,6 +1157,8 @@ class AddonCatalogEntry extends $pb.GeneratedMessage {
     if (monthlyPriceUsd != null) result.monthlyPriceUsd = monthlyPriceUsd;
     if (monthlyPriceVnd != null) result.monthlyPriceVnd = monthlyPriceVnd;
     if (eligibleTiers != null) result.eligibleTiers.addAll(eligibleTiers);
+    if (annualPriceUsd != null) result.annualPriceUsd = annualPriceUsd;
+    if (annualPriceVnd != null) result.annualPriceVnd = annualPriceVnd;
     return result;
   }
 
@@ -1179,6 +1183,10 @@ class AddonCatalogEntry extends $pb.GeneratedMessage {
     ..aOM<$1.Money>(4, _omitFieldNames ? '' : 'monthlyPriceVnd',
         subBuilder: $1.Money.$_createMessage)
     ..pPS(5, _omitFieldNames ? '' : 'eligibleTiers')
+    ..aOM<$1.Money>(6, _omitFieldNames ? '' : 'annualPriceUsd',
+        subBuilder: $1.Money.$_createMessage)
+    ..aOM<$1.Money>(7, _omitFieldNames ? '' : 'annualPriceVnd',
+        subBuilder: $1.Money.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1245,9 +1253,165 @@ class AddonCatalogEntry extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(5)
   $pb.PbList<$core.String> get eligibleTiers => $_getList(4);
+
+  @$pb.TagNumber(6)
+  $1.Money get annualPriceUsd => $_getN(5);
+  @$pb.TagNumber(6)
+  set annualPriceUsd($1.Money value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasAnnualPriceUsd() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAnnualPriceUsd() => $_clearField(6);
+  @$pb.TagNumber(6)
+  $1.Money ensureAnnualPriceUsd() => $_ensure(5);
+
+  @$pb.TagNumber(7)
+  $1.Money get annualPriceVnd => $_getN(6);
+  @$pb.TagNumber(7)
+  set annualPriceVnd($1.Money value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasAnnualPriceVnd() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearAnnualPriceVnd() => $_clearField(7);
+  @$pb.TagNumber(7)
+  $1.Money ensureAnnualPriceVnd() => $_ensure(6);
 }
 
-/// Subscription summary projection (§19.1).
+/// Payment method access gate descriptor (P8-02 all payment methods behind access gates).
+class PaymentMethodAccessGate extends $pb.GeneratedMessage {
+  factory PaymentMethodAccessGate({
+    $core.String? methodType,
+    $core.String? displayName,
+    $core.String? providerCode,
+    $core.String? capabilityState,
+    $core.bool? accessGranted,
+    $core.Iterable<$core.String>? eligibleTiers,
+    $core.Iterable<$core.String>? supportedCurrencies,
+    $core.String? gateReason,
+  }) {
+    final result = PaymentMethodAccessGate._();
+    if (methodType != null) result.methodType = methodType;
+    if (displayName != null) result.displayName = displayName;
+    if (providerCode != null) result.providerCode = providerCode;
+    if (capabilityState != null) result.capabilityState = capabilityState;
+    if (accessGranted != null) result.accessGranted = accessGranted;
+    if (eligibleTiers != null) result.eligibleTiers.addAll(eligibleTiers);
+    if (supportedCurrencies != null)
+      result.supportedCurrencies.addAll(supportedCurrencies);
+    if (gateReason != null) result.gateReason = gateReason;
+    return result;
+  }
+
+  PaymentMethodAccessGate._();
+
+  factory PaymentMethodAccessGate.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PaymentMethodAccessGate()..mergeFromBuffer(data, registry);
+  factory PaymentMethodAccessGate.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PaymentMethodAccessGate()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PaymentMethodAccessGate',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.admin.v1'),
+      createEmptyInstance: PaymentMethodAccessGate.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'methodType')
+    ..aOS(2, _omitFieldNames ? '' : 'displayName')
+    ..aOS(3, _omitFieldNames ? '' : 'providerCode')
+    ..aOS(4, _omitFieldNames ? '' : 'capabilityState')
+    ..aOB(5, _omitFieldNames ? '' : 'accessGranted')
+    ..pPS(6, _omitFieldNames ? '' : 'eligibleTiers')
+    ..pPS(7, _omitFieldNames ? '' : 'supportedCurrencies')
+    ..aOS(8, _omitFieldNames ? '' : 'gateReason')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PaymentMethodAccessGate clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PaymentMethodAccessGate copyWith(
+          void Function(PaymentMethodAccessGate) updates) =>
+      super.copyWith((message) => updates(message as PaymentMethodAccessGate))
+          as PaymentMethodAccessGate;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PaymentMethodAccessGate() / PaymentMethodAccessGate.new instead')
+  static PaymentMethodAccessGate create() => PaymentMethodAccessGate._();
+  static $pb.GeneratedMessage $_createMessage() => PaymentMethodAccessGate._();
+  @$core.override
+  PaymentMethodAccessGate createEmptyInstance() => PaymentMethodAccessGate._();
+  @$core.pragma('dart2js:noInline')
+  static PaymentMethodAccessGate getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PaymentMethodAccessGate>(
+          PaymentMethodAccessGate.$_createMessage);
+  static PaymentMethodAccessGate? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get methodType => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set methodType($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasMethodType() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearMethodType() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get displayName => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set displayName($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasDisplayName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearDisplayName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get providerCode => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set providerCode($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasProviderCode() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearProviderCode() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get capabilityState => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set capabilityState($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCapabilityState() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCapabilityState() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get accessGranted => $_getBF(4);
+  @$pb.TagNumber(5)
+  set accessGranted($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasAccessGranted() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearAccessGranted() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.String> get eligibleTiers => $_getList(5);
+
+  @$pb.TagNumber(7)
+  $pb.PbList<$core.String> get supportedCurrencies => $_getList(6);
+
+  @$pb.TagNumber(8)
+  $core.String get gateReason => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set gateReason($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasGateReason() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearGateReason() => $_clearField(8);
+}
+
+/// Subscription summary projection (§19.1 & P8-02 trial/dunning/pause/cancellation retention).
 class SubscriptionSummary extends $pb.GeneratedMessage {
   factory SubscriptionSummary({
     $1.UUID? subscriptionId,
@@ -1261,6 +1425,20 @@ class SubscriptionSummary extends $pb.GeneratedMessage {
     $core.bool? cancelAtPeriodEnd,
     $2.Timestamp? canceledAt,
     $core.Iterable<$core.String>? addons,
+    $core.Iterable<$core.String>? scheduledAddonRemovals,
+    $2.Timestamp? trialEndsAt,
+    $core.int? dunningDay,
+    $core.int? dunningAttempt,
+    $2.Timestamp? gracePeriodEndsAt,
+    $core.bool? readOnlyMode,
+    $core.String? readOnlyReason,
+    $core.String? retentionPhase,
+    $core.bool? retentionOfferApplied,
+    $2.Timestamp? pausedAt,
+    $2.Timestamp? pauseAutoResumesAt,
+    $core.bool? overageTermsAccepted,
+    $core.String? overageUsedCredits,
+    $core.String? preservedPurchasedCredits,
   }) {
     final result = SubscriptionSummary._();
     if (subscriptionId != null) result.subscriptionId = subscriptionId;
@@ -1275,6 +1453,26 @@ class SubscriptionSummary extends $pb.GeneratedMessage {
     if (cancelAtPeriodEnd != null) result.cancelAtPeriodEnd = cancelAtPeriodEnd;
     if (canceledAt != null) result.canceledAt = canceledAt;
     if (addons != null) result.addons.addAll(addons);
+    if (scheduledAddonRemovals != null)
+      result.scheduledAddonRemovals.addAll(scheduledAddonRemovals);
+    if (trialEndsAt != null) result.trialEndsAt = trialEndsAt;
+    if (dunningDay != null) result.dunningDay = dunningDay;
+    if (dunningAttempt != null) result.dunningAttempt = dunningAttempt;
+    if (gracePeriodEndsAt != null) result.gracePeriodEndsAt = gracePeriodEndsAt;
+    if (readOnlyMode != null) result.readOnlyMode = readOnlyMode;
+    if (readOnlyReason != null) result.readOnlyReason = readOnlyReason;
+    if (retentionPhase != null) result.retentionPhase = retentionPhase;
+    if (retentionOfferApplied != null)
+      result.retentionOfferApplied = retentionOfferApplied;
+    if (pausedAt != null) result.pausedAt = pausedAt;
+    if (pauseAutoResumesAt != null)
+      result.pauseAutoResumesAt = pauseAutoResumesAt;
+    if (overageTermsAccepted != null)
+      result.overageTermsAccepted = overageTermsAccepted;
+    if (overageUsedCredits != null)
+      result.overageUsedCredits = overageUsedCredits;
+    if (preservedPurchasedCredits != null)
+      result.preservedPurchasedCredits = preservedPurchasedCredits;
     return result;
   }
 
@@ -1310,6 +1508,24 @@ class SubscriptionSummary extends $pb.GeneratedMessage {
     ..aOM<$2.Timestamp>(10, _omitFieldNames ? '' : 'canceledAt',
         subBuilder: $2.Timestamp.$_createMessage)
     ..pPS(11, _omitFieldNames ? '' : 'addons')
+    ..pPS(12, _omitFieldNames ? '' : 'scheduledAddonRemovals')
+    ..aOM<$2.Timestamp>(13, _omitFieldNames ? '' : 'trialEndsAt',
+        subBuilder: $2.Timestamp.$_createMessage)
+    ..aI(14, _omitFieldNames ? '' : 'dunningDay')
+    ..aI(15, _omitFieldNames ? '' : 'dunningAttempt')
+    ..aOM<$2.Timestamp>(16, _omitFieldNames ? '' : 'gracePeriodEndsAt',
+        subBuilder: $2.Timestamp.$_createMessage)
+    ..aOB(17, _omitFieldNames ? '' : 'readOnlyMode')
+    ..aOS(18, _omitFieldNames ? '' : 'readOnlyReason')
+    ..aOS(19, _omitFieldNames ? '' : 'retentionPhase')
+    ..aOB(20, _omitFieldNames ? '' : 'retentionOfferApplied')
+    ..aOM<$2.Timestamp>(21, _omitFieldNames ? '' : 'pausedAt',
+        subBuilder: $2.Timestamp.$_createMessage)
+    ..aOM<$2.Timestamp>(22, _omitFieldNames ? '' : 'pauseAutoResumesAt',
+        subBuilder: $2.Timestamp.$_createMessage)
+    ..aOB(23, _omitFieldNames ? '' : 'overageTermsAccepted')
+    ..aOS(24, _omitFieldNames ? '' : 'overageUsedCredits')
+    ..aOS(25, _omitFieldNames ? '' : 'preservedPurchasedCredits')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1439,6 +1655,134 @@ class SubscriptionSummary extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(11)
   $pb.PbList<$core.String> get addons => $_getList(10);
+
+  @$pb.TagNumber(12)
+  $pb.PbList<$core.String> get scheduledAddonRemovals => $_getList(11);
+
+  @$pb.TagNumber(13)
+  $2.Timestamp get trialEndsAt => $_getN(12);
+  @$pb.TagNumber(13)
+  set trialEndsAt($2.Timestamp value) => $_setField(13, value);
+  @$pb.TagNumber(13)
+  $core.bool hasTrialEndsAt() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearTrialEndsAt() => $_clearField(13);
+  @$pb.TagNumber(13)
+  $2.Timestamp ensureTrialEndsAt() => $_ensure(12);
+
+  @$pb.TagNumber(14)
+  $core.int get dunningDay => $_getIZ(13);
+  @$pb.TagNumber(14)
+  set dunningDay($core.int value) => $_setSignedInt32(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasDunningDay() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearDunningDay() => $_clearField(14);
+
+  @$pb.TagNumber(15)
+  $core.int get dunningAttempt => $_getIZ(14);
+  @$pb.TagNumber(15)
+  set dunningAttempt($core.int value) => $_setSignedInt32(14, value);
+  @$pb.TagNumber(15)
+  $core.bool hasDunningAttempt() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearDunningAttempt() => $_clearField(15);
+
+  @$pb.TagNumber(16)
+  $2.Timestamp get gracePeriodEndsAt => $_getN(15);
+  @$pb.TagNumber(16)
+  set gracePeriodEndsAt($2.Timestamp value) => $_setField(16, value);
+  @$pb.TagNumber(16)
+  $core.bool hasGracePeriodEndsAt() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearGracePeriodEndsAt() => $_clearField(16);
+  @$pb.TagNumber(16)
+  $2.Timestamp ensureGracePeriodEndsAt() => $_ensure(15);
+
+  @$pb.TagNumber(17)
+  $core.bool get readOnlyMode => $_getBF(16);
+  @$pb.TagNumber(17)
+  set readOnlyMode($core.bool value) => $_setBool(16, value);
+  @$pb.TagNumber(17)
+  $core.bool hasReadOnlyMode() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearReadOnlyMode() => $_clearField(17);
+
+  @$pb.TagNumber(18)
+  $core.String get readOnlyReason => $_getSZ(17);
+  @$pb.TagNumber(18)
+  set readOnlyReason($core.String value) => $_setString(17, value);
+  @$pb.TagNumber(18)
+  $core.bool hasReadOnlyReason() => $_has(17);
+  @$pb.TagNumber(18)
+  void clearReadOnlyReason() => $_clearField(18);
+
+  @$pb.TagNumber(19)
+  $core.String get retentionPhase => $_getSZ(18);
+  @$pb.TagNumber(19)
+  set retentionPhase($core.String value) => $_setString(18, value);
+  @$pb.TagNumber(19)
+  $core.bool hasRetentionPhase() => $_has(18);
+  @$pb.TagNumber(19)
+  void clearRetentionPhase() => $_clearField(19);
+
+  @$pb.TagNumber(20)
+  $core.bool get retentionOfferApplied => $_getBF(19);
+  @$pb.TagNumber(20)
+  set retentionOfferApplied($core.bool value) => $_setBool(19, value);
+  @$pb.TagNumber(20)
+  $core.bool hasRetentionOfferApplied() => $_has(19);
+  @$pb.TagNumber(20)
+  void clearRetentionOfferApplied() => $_clearField(20);
+
+  @$pb.TagNumber(21)
+  $2.Timestamp get pausedAt => $_getN(20);
+  @$pb.TagNumber(21)
+  set pausedAt($2.Timestamp value) => $_setField(21, value);
+  @$pb.TagNumber(21)
+  $core.bool hasPausedAt() => $_has(20);
+  @$pb.TagNumber(21)
+  void clearPausedAt() => $_clearField(21);
+  @$pb.TagNumber(21)
+  $2.Timestamp ensurePausedAt() => $_ensure(20);
+
+  @$pb.TagNumber(22)
+  $2.Timestamp get pauseAutoResumesAt => $_getN(21);
+  @$pb.TagNumber(22)
+  set pauseAutoResumesAt($2.Timestamp value) => $_setField(22, value);
+  @$pb.TagNumber(22)
+  $core.bool hasPauseAutoResumesAt() => $_has(21);
+  @$pb.TagNumber(22)
+  void clearPauseAutoResumesAt() => $_clearField(22);
+  @$pb.TagNumber(22)
+  $2.Timestamp ensurePauseAutoResumesAt() => $_ensure(21);
+
+  @$pb.TagNumber(23)
+  $core.bool get overageTermsAccepted => $_getBF(22);
+  @$pb.TagNumber(23)
+  set overageTermsAccepted($core.bool value) => $_setBool(22, value);
+  @$pb.TagNumber(23)
+  $core.bool hasOverageTermsAccepted() => $_has(22);
+  @$pb.TagNumber(23)
+  void clearOverageTermsAccepted() => $_clearField(23);
+
+  @$pb.TagNumber(24)
+  $core.String get overageUsedCredits => $_getSZ(23);
+  @$pb.TagNumber(24)
+  set overageUsedCredits($core.String value) => $_setString(23, value);
+  @$pb.TagNumber(24)
+  $core.bool hasOverageUsedCredits() => $_has(23);
+  @$pb.TagNumber(24)
+  void clearOverageUsedCredits() => $_clearField(24);
+
+  @$pb.TagNumber(25)
+  $core.String get preservedPurchasedCredits => $_getSZ(24);
+  @$pb.TagNumber(25)
+  set preservedPurchasedCredits($core.String value) => $_setString(24, value);
+  @$pb.TagNumber(25)
+  $core.bool hasPreservedPurchasedCredits() => $_has(24);
+  @$pb.TagNumber(25)
+  void clearPreservedPurchasedCredits() => $_clearField(25);
 }
 
 /// Payment method summary projection (§19.1C).
@@ -1452,6 +1796,9 @@ class PaymentMethodSummary extends $pb.GeneratedMessage {
     $core.int? cardExpMonth,
     $core.int? cardExpYear,
     $core.bool? isDefault,
+    $core.String? accessGateStatus,
+    $core.String? billingName,
+    $core.String? billingEmail,
   }) {
     final result = PaymentMethodSummary._();
     if (paymentMethodId != null) result.paymentMethodId = paymentMethodId;
@@ -1463,6 +1810,9 @@ class PaymentMethodSummary extends $pb.GeneratedMessage {
     if (cardExpMonth != null) result.cardExpMonth = cardExpMonth;
     if (cardExpYear != null) result.cardExpYear = cardExpYear;
     if (isDefault != null) result.isDefault = isDefault;
+    if (accessGateStatus != null) result.accessGateStatus = accessGateStatus;
+    if (billingName != null) result.billingName = billingName;
+    if (billingEmail != null) result.billingEmail = billingEmail;
     return result;
   }
 
@@ -1489,6 +1839,9 @@ class PaymentMethodSummary extends $pb.GeneratedMessage {
     ..aI(6, _omitFieldNames ? '' : 'cardExpMonth')
     ..aI(7, _omitFieldNames ? '' : 'cardExpYear')
     ..aOB(8, _omitFieldNames ? '' : 'isDefault')
+    ..aOS(9, _omitFieldNames ? '' : 'accessGateStatus')
+    ..aOS(10, _omitFieldNames ? '' : 'billingName')
+    ..aOS(11, _omitFieldNames ? '' : 'billingEmail')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1587,6 +1940,33 @@ class PaymentMethodSummary extends $pb.GeneratedMessage {
   $core.bool hasIsDefault() => $_has(7);
   @$pb.TagNumber(8)
   void clearIsDefault() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get accessGateStatus => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set accessGateStatus($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasAccessGateStatus() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearAccessGateStatus() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get billingName => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set billingName($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasBillingName() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearBillingName() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get billingEmail => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set billingEmail($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasBillingEmail() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearBillingEmail() => $_clearField(11);
 }
 
 /// Invoice summary projection (§19.1B).
@@ -2715,6 +3095,9 @@ class ChangePlanRequest extends $pb.GeneratedMessage {
     $core.String? billingInterval,
     $core.String? currency,
     $core.Iterable<$core.String>? addons,
+    $core.Iterable<$core.String>? removeAddons,
+    $core.bool? acceptOverageTerms,
+    $core.bool? startTrial,
   }) {
     final result = ChangePlanRequest._();
     if (context != null) result.context = context;
@@ -2722,6 +3105,10 @@ class ChangePlanRequest extends $pb.GeneratedMessage {
     if (billingInterval != null) result.billingInterval = billingInterval;
     if (currency != null) result.currency = currency;
     if (addons != null) result.addons.addAll(addons);
+    if (removeAddons != null) result.removeAddons.addAll(removeAddons);
+    if (acceptOverageTerms != null)
+      result.acceptOverageTerms = acceptOverageTerms;
+    if (startTrial != null) result.startTrial = startTrial;
     return result;
   }
 
@@ -2745,6 +3132,9 @@ class ChangePlanRequest extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'billingInterval')
     ..aOS(4, _omitFieldNames ? '' : 'currency')
     ..pPS(5, _omitFieldNames ? '' : 'addons')
+    ..pPS(6, _omitFieldNames ? '' : 'removeAddons')
+    ..aOB(7, _omitFieldNames ? '' : 'acceptOverageTerms')
+    ..aOB(8, _omitFieldNames ? '' : 'startTrial')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2809,6 +3199,27 @@ class ChangePlanRequest extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(5)
   $pb.PbList<$core.String> get addons => $_getList(4);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.String> get removeAddons => $_getList(5);
+
+  @$pb.TagNumber(7)
+  $core.bool get acceptOverageTerms => $_getBF(6);
+  @$pb.TagNumber(7)
+  set acceptOverageTerms($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasAcceptOverageTerms() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearAcceptOverageTerms() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.bool get startTrial => $_getBF(7);
+  @$pb.TagNumber(8)
+  set startTrial($core.bool value) => $_setBool(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasStartTrial() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearStartTrial() => $_clearField(8);
 }
 
 class ChangePlanResponse extends $pb.GeneratedMessage {
@@ -2817,12 +3228,18 @@ class ChangePlanResponse extends $pb.GeneratedMessage {
     $core.String? effectiveMode,
     $core.String? checkoutSessionId,
     $core.String? checkoutUrl,
+    $1.Money? proratedAddonCharge,
+    $core.Iterable<$core.String>? scheduledAddonRemovals,
   }) {
     final result = ChangePlanResponse._();
     if (subscription != null) result.subscription = subscription;
     if (effectiveMode != null) result.effectiveMode = effectiveMode;
     if (checkoutSessionId != null) result.checkoutSessionId = checkoutSessionId;
     if (checkoutUrl != null) result.checkoutUrl = checkoutUrl;
+    if (proratedAddonCharge != null)
+      result.proratedAddonCharge = proratedAddonCharge;
+    if (scheduledAddonRemovals != null)
+      result.scheduledAddonRemovals.addAll(scheduledAddonRemovals);
     return result;
   }
 
@@ -2845,6 +3262,9 @@ class ChangePlanResponse extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'effectiveMode')
     ..aOS(3, _omitFieldNames ? '' : 'checkoutSessionId')
     ..aOS(4, _omitFieldNames ? '' : 'checkoutUrl')
+    ..aOM<$1.Money>(5, _omitFieldNames ? '' : 'proratedAddonCharge',
+        subBuilder: $1.Money.$_createMessage)
+    ..pPS(6, _omitFieldNames ? '' : 'scheduledAddonRemovals')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2906,6 +3326,20 @@ class ChangePlanResponse extends $pb.GeneratedMessage {
   $core.bool hasCheckoutUrl() => $_has(3);
   @$pb.TagNumber(4)
   void clearCheckoutUrl() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $1.Money get proratedAddonCharge => $_getN(4);
+  @$pb.TagNumber(5)
+  set proratedAddonCharge($1.Money value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasProratedAddonCharge() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearProratedAddonCharge() => $_clearField(5);
+  @$pb.TagNumber(5)
+  $1.Money ensureProratedAddonCharge() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.String> get scheduledAddonRemovals => $_getList(5);
 }
 
 class CancelSubscriptionRequest extends $pb.GeneratedMessage {
@@ -2914,6 +3348,8 @@ class CancelSubscriptionRequest extends $pb.GeneratedMessage {
     $core.String? cancellationReason,
     $core.bool? pauseInstead,
     $core.int? pauseMonths,
+    $core.bool? acceptRetentionOffer,
+    $core.int? pauseDays,
   }) {
     final result = CancelSubscriptionRequest._();
     if (context != null) result.context = context;
@@ -2921,6 +3357,9 @@ class CancelSubscriptionRequest extends $pb.GeneratedMessage {
       result.cancellationReason = cancellationReason;
     if (pauseInstead != null) result.pauseInstead = pauseInstead;
     if (pauseMonths != null) result.pauseMonths = pauseMonths;
+    if (acceptRetentionOffer != null)
+      result.acceptRetentionOffer = acceptRetentionOffer;
+    if (pauseDays != null) result.pauseDays = pauseDays;
     return result;
   }
 
@@ -2943,6 +3382,8 @@ class CancelSubscriptionRequest extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'cancellationReason')
     ..aOB(3, _omitFieldNames ? '' : 'pauseInstead')
     ..aI(4, _omitFieldNames ? '' : 'pauseMonths')
+    ..aOB(5, _omitFieldNames ? '' : 'acceptRetentionOffer')
+    ..aI(6, _omitFieldNames ? '' : 'pauseDays')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3008,14 +3449,43 @@ class CancelSubscriptionRequest extends $pb.GeneratedMessage {
   $core.bool hasPauseMonths() => $_has(3);
   @$pb.TagNumber(4)
   void clearPauseMonths() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get acceptRetentionOffer => $_getBF(4);
+  @$pb.TagNumber(5)
+  set acceptRetentionOffer($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasAcceptRetentionOffer() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearAcceptRetentionOffer() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.int get pauseDays => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set pauseDays($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasPauseDays() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearPauseDays() => $_clearField(6);
 }
 
 class CancelSubscriptionResponse extends $pb.GeneratedMessage {
   factory CancelSubscriptionResponse({
     SubscriptionSummary? subscription,
+    $core.bool? retentionOfferApplied,
+    $core.String? retentionDiscountPct,
+    $core.int? retentionDiscountMonths,
+    $core.String? retentionPhase,
   }) {
     final result = CancelSubscriptionResponse._();
     if (subscription != null) result.subscription = subscription;
+    if (retentionOfferApplied != null)
+      result.retentionOfferApplied = retentionOfferApplied;
+    if (retentionDiscountPct != null)
+      result.retentionDiscountPct = retentionDiscountPct;
+    if (retentionDiscountMonths != null)
+      result.retentionDiscountMonths = retentionDiscountMonths;
+    if (retentionPhase != null) result.retentionPhase = retentionPhase;
     return result;
   }
 
@@ -3035,6 +3505,10 @@ class CancelSubscriptionResponse extends $pb.GeneratedMessage {
       createEmptyInstance: CancelSubscriptionResponse.$_createMessage)
     ..aOM<SubscriptionSummary>(1, _omitFieldNames ? '' : 'subscription',
         subBuilder: SubscriptionSummary.$_createMessage)
+    ..aOB(2, _omitFieldNames ? '' : 'retentionOfferApplied')
+    ..aOS(3, _omitFieldNames ? '' : 'retentionDiscountPct')
+    ..aI(4, _omitFieldNames ? '' : 'retentionDiscountMonths')
+    ..aOS(5, _omitFieldNames ? '' : 'retentionPhase')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3074,6 +3548,42 @@ class CancelSubscriptionResponse extends $pb.GeneratedMessage {
   void clearSubscription() => $_clearField(1);
   @$pb.TagNumber(1)
   SubscriptionSummary ensureSubscription() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.bool get retentionOfferApplied => $_getBF(1);
+  @$pb.TagNumber(2)
+  set retentionOfferApplied($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasRetentionOfferApplied() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearRetentionOfferApplied() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get retentionDiscountPct => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set retentionDiscountPct($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasRetentionDiscountPct() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRetentionDiscountPct() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get retentionDiscountMonths => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set retentionDiscountMonths($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasRetentionDiscountMonths() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearRetentionDiscountMonths() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get retentionPhase => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set retentionPhase($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasRetentionPhase() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearRetentionPhase() => $_clearField(5);
 }
 
 class UpdatePaymentMethodRequest extends $pb.GeneratedMessage {
@@ -3082,6 +3592,9 @@ class UpdatePaymentMethodRequest extends $pb.GeneratedMessage {
     $core.String? stripePaymentMethodId,
     $core.bool? setDefault,
     $core.bool? remove,
+    $core.String? methodType,
+    $core.String? billingName,
+    $core.String? billingEmail,
   }) {
     final result = UpdatePaymentMethodRequest._();
     if (context != null) result.context = context;
@@ -3089,6 +3602,9 @@ class UpdatePaymentMethodRequest extends $pb.GeneratedMessage {
       result.stripePaymentMethodId = stripePaymentMethodId;
     if (setDefault != null) result.setDefault = setDefault;
     if (remove != null) result.remove = remove;
+    if (methodType != null) result.methodType = methodType;
+    if (billingName != null) result.billingName = billingName;
+    if (billingEmail != null) result.billingEmail = billingEmail;
     return result;
   }
 
@@ -3111,6 +3627,9 @@ class UpdatePaymentMethodRequest extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'stripePaymentMethodId')
     ..aOB(3, _omitFieldNames ? '' : 'setDefault')
     ..aOB(4, _omitFieldNames ? '' : 'remove')
+    ..aOS(5, _omitFieldNames ? '' : 'methodType')
+    ..aOS(6, _omitFieldNames ? '' : 'billingName')
+    ..aOS(7, _omitFieldNames ? '' : 'billingEmail')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3177,16 +3696,46 @@ class UpdatePaymentMethodRequest extends $pb.GeneratedMessage {
   $core.bool hasRemove() => $_has(3);
   @$pb.TagNumber(4)
   void clearRemove() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get methodType => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set methodType($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasMethodType() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearMethodType() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get billingName => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set billingName($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasBillingName() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearBillingName() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get billingEmail => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set billingEmail($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasBillingEmail() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearBillingEmail() => $_clearField(7);
 }
 
 class UpdatePaymentMethodResponse extends $pb.GeneratedMessage {
   factory UpdatePaymentMethodResponse({
     PaymentMethodSummary? paymentMethod,
     $core.Iterable<PaymentMethodSummary>? paymentMethods,
+    $core.Iterable<PaymentMethodAccessGate>? methodAccessGates,
   }) {
     final result = UpdatePaymentMethodResponse._();
     if (paymentMethod != null) result.paymentMethod = paymentMethod;
     if (paymentMethods != null) result.paymentMethods.addAll(paymentMethods);
+    if (methodAccessGates != null)
+      result.methodAccessGates.addAll(methodAccessGates);
     return result;
   }
 
@@ -3208,6 +3757,9 @@ class UpdatePaymentMethodResponse extends $pb.GeneratedMessage {
         subBuilder: PaymentMethodSummary.$_createMessage)
     ..pPM<PaymentMethodSummary>(2, _omitFieldNames ? '' : 'paymentMethods',
         subBuilder: PaymentMethodSummary.$_createMessage)
+    ..pPM<PaymentMethodAccessGate>(
+        3, _omitFieldNames ? '' : 'methodAccessGates',
+        subBuilder: PaymentMethodAccessGate.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3251,6 +3803,9 @@ class UpdatePaymentMethodResponse extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(2)
   $pb.PbList<PaymentMethodSummary> get paymentMethods => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<PaymentMethodAccessGate> get methodAccessGates => $_getList(2);
 }
 
 class GetPaymentMethodRequest extends $pb.GeneratedMessage {
@@ -3320,11 +3875,14 @@ class GetPaymentMethodResponse extends $pb.GeneratedMessage {
   factory GetPaymentMethodResponse({
     PaymentMethodSummary? defaultPaymentMethod,
     $core.Iterable<PaymentMethodSummary>? paymentMethods,
+    $core.Iterable<PaymentMethodAccessGate>? methodAccessGates,
   }) {
     final result = GetPaymentMethodResponse._();
     if (defaultPaymentMethod != null)
       result.defaultPaymentMethod = defaultPaymentMethod;
     if (paymentMethods != null) result.paymentMethods.addAll(paymentMethods);
+    if (methodAccessGates != null)
+      result.methodAccessGates.addAll(methodAccessGates);
     return result;
   }
 
@@ -3347,6 +3905,9 @@ class GetPaymentMethodResponse extends $pb.GeneratedMessage {
         subBuilder: PaymentMethodSummary.$_createMessage)
     ..pPM<PaymentMethodSummary>(2, _omitFieldNames ? '' : 'paymentMethods',
         subBuilder: PaymentMethodSummary.$_createMessage)
+    ..pPM<PaymentMethodAccessGate>(
+        3, _omitFieldNames ? '' : 'methodAccessGates',
+        subBuilder: PaymentMethodAccessGate.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3387,6 +3948,1544 @@ class GetPaymentMethodResponse extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(2)
   $pb.PbList<PaymentMethodSummary> get paymentMethods => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<PaymentMethodAccessGate> get methodAccessGates => $_getList(2);
+}
+
+class ListSubscriptionsRequest extends $pb.GeneratedMessage {
+  factory ListSubscriptionsRequest({
+    $1.UUID? workspaceId,
+    $1.Pagination? pagination,
+  }) {
+    final result = ListSubscriptionsRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  ListSubscriptionsRequest._();
+
+  factory ListSubscriptionsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListSubscriptionsRequest()..mergeFromBuffer(data, registry);
+  factory ListSubscriptionsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListSubscriptionsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListSubscriptionsRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.admin.v1'),
+      createEmptyInstance: ListSubscriptionsRequest.$_createMessage)
+    ..aOM<$1.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $1.UUID.$_createMessage)
+    ..aOM<$1.Pagination>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $1.Pagination.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListSubscriptionsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListSubscriptionsRequest copyWith(
+          void Function(ListSubscriptionsRequest) updates) =>
+      super.copyWith((message) => updates(message as ListSubscriptionsRequest))
+          as ListSubscriptionsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ListSubscriptionsRequest() / ListSubscriptionsRequest.new instead')
+  static ListSubscriptionsRequest create() => ListSubscriptionsRequest._();
+  static $pb.GeneratedMessage $_createMessage() => ListSubscriptionsRequest._();
+  @$core.override
+  ListSubscriptionsRequest createEmptyInstance() =>
+      ListSubscriptionsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ListSubscriptionsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListSubscriptionsRequest>(
+          ListSubscriptionsRequest.$_createMessage);
+  static ListSubscriptionsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $1.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($1.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $1.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.Pagination get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($1.Pagination value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.Pagination ensurePagination() => $_ensure(1);
+}
+
+class ListSubscriptionsResponse extends $pb.GeneratedMessage {
+  factory ListSubscriptionsResponse({
+    $core.Iterable<SubscriptionSummary>? subscriptions,
+    $1.PaginatedResponse? pageInfo,
+  }) {
+    final result = ListSubscriptionsResponse._();
+    if (subscriptions != null) result.subscriptions.addAll(subscriptions);
+    if (pageInfo != null) result.pageInfo = pageInfo;
+    return result;
+  }
+
+  ListSubscriptionsResponse._();
+
+  factory ListSubscriptionsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListSubscriptionsResponse()..mergeFromBuffer(data, registry);
+  factory ListSubscriptionsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListSubscriptionsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListSubscriptionsResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.admin.v1'),
+      createEmptyInstance: ListSubscriptionsResponse.$_createMessage)
+    ..pPM<SubscriptionSummary>(1, _omitFieldNames ? '' : 'subscriptions',
+        subBuilder: SubscriptionSummary.$_createMessage)
+    ..aOM<$1.PaginatedResponse>(2, _omitFieldNames ? '' : 'pageInfo',
+        subBuilder: $1.PaginatedResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListSubscriptionsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListSubscriptionsResponse copyWith(
+          void Function(ListSubscriptionsResponse) updates) =>
+      super.copyWith((message) => updates(message as ListSubscriptionsResponse))
+          as ListSubscriptionsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ListSubscriptionsResponse() / ListSubscriptionsResponse.new instead')
+  static ListSubscriptionsResponse create() => ListSubscriptionsResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ListSubscriptionsResponse._();
+  @$core.override
+  ListSubscriptionsResponse createEmptyInstance() =>
+      ListSubscriptionsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ListSubscriptionsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListSubscriptionsResponse>(
+          ListSubscriptionsResponse.$_createMessage);
+  static ListSubscriptionsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<SubscriptionSummary> get subscriptions => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $1.PaginatedResponse get pageInfo => $_getN(1);
+  @$pb.TagNumber(2)
+  set pageInfo($1.PaginatedResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPageInfo() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPageInfo() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.PaginatedResponse ensurePageInfo() => $_ensure(1);
+}
+
+class BillingEventEntry extends $pb.GeneratedMessage {
+  factory BillingEventEntry({
+    $1.UUID? billingEventId,
+    $1.UUID? workspaceId,
+    $core.String? eventType,
+    $core.String? stripeEventId,
+    $1.Money? amount,
+    $core.String? subscriptionTier,
+    $core.String? creditsChange,
+    $core.String? description,
+    $core.String? metadataJson,
+    $2.Timestamp? createdAt,
+  }) {
+    final result = BillingEventEntry._();
+    if (billingEventId != null) result.billingEventId = billingEventId;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (eventType != null) result.eventType = eventType;
+    if (stripeEventId != null) result.stripeEventId = stripeEventId;
+    if (amount != null) result.amount = amount;
+    if (subscriptionTier != null) result.subscriptionTier = subscriptionTier;
+    if (creditsChange != null) result.creditsChange = creditsChange;
+    if (description != null) result.description = description;
+    if (metadataJson != null) result.metadataJson = metadataJson;
+    if (createdAt != null) result.createdAt = createdAt;
+    return result;
+  }
+
+  BillingEventEntry._();
+
+  factory BillingEventEntry.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BillingEventEntry()..mergeFromBuffer(data, registry);
+  factory BillingEventEntry.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BillingEventEntry()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'BillingEventEntry',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.admin.v1'),
+      createEmptyInstance: BillingEventEntry.$_createMessage)
+    ..aOM<$1.UUID>(1, _omitFieldNames ? '' : 'billingEventId',
+        subBuilder: $1.UUID.$_createMessage)
+    ..aOM<$1.UUID>(2, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $1.UUID.$_createMessage)
+    ..aOS(3, _omitFieldNames ? '' : 'eventType')
+    ..aOS(4, _omitFieldNames ? '' : 'stripeEventId')
+    ..aOM<$1.Money>(5, _omitFieldNames ? '' : 'amount',
+        subBuilder: $1.Money.$_createMessage)
+    ..aOS(6, _omitFieldNames ? '' : 'subscriptionTier')
+    ..aOS(7, _omitFieldNames ? '' : 'creditsChange')
+    ..aOS(8, _omitFieldNames ? '' : 'description')
+    ..aOS(9, _omitFieldNames ? '' : 'metadataJson')
+    ..aOM<$2.Timestamp>(10, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $2.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BillingEventEntry clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BillingEventEntry copyWith(void Function(BillingEventEntry) updates) =>
+      super.copyWith((message) => updates(message as BillingEventEntry))
+          as BillingEventEntry;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use BillingEventEntry() / BillingEventEntry.new instead')
+  static BillingEventEntry create() => BillingEventEntry._();
+  static $pb.GeneratedMessage $_createMessage() => BillingEventEntry._();
+  @$core.override
+  BillingEventEntry createEmptyInstance() => BillingEventEntry._();
+  @$core.pragma('dart2js:noInline')
+  static BillingEventEntry getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<BillingEventEntry>(
+          BillingEventEntry.$_createMessage);
+  static BillingEventEntry? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $1.UUID get billingEventId => $_getN(0);
+  @$pb.TagNumber(1)
+  set billingEventId($1.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasBillingEventId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearBillingEventId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $1.UUID ensureBillingEventId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.UUID get workspaceId => $_getN(1);
+  @$pb.TagNumber(2)
+  set workspaceId($1.UUID value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.UUID ensureWorkspaceId() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $core.String get eventType => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set eventType($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasEventType() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearEventType() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get stripeEventId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set stripeEventId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasStripeEventId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearStripeEventId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $1.Money get amount => $_getN(4);
+  @$pb.TagNumber(5)
+  set amount($1.Money value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasAmount() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearAmount() => $_clearField(5);
+  @$pb.TagNumber(5)
+  $1.Money ensureAmount() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  $core.String get subscriptionTier => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set subscriptionTier($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSubscriptionTier() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSubscriptionTier() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get creditsChange => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set creditsChange($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasCreditsChange() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearCreditsChange() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get description => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set description($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasDescription() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearDescription() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get metadataJson => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set metadataJson($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasMetadataJson() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearMetadataJson() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $2.Timestamp get createdAt => $_getN(9);
+  @$pb.TagNumber(10)
+  set createdAt($2.Timestamp value) => $_setField(10, value);
+  @$pb.TagNumber(10)
+  $core.bool hasCreatedAt() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearCreatedAt() => $_clearField(10);
+  @$pb.TagNumber(10)
+  $2.Timestamp ensureCreatedAt() => $_ensure(9);
+}
+
+class ListBillingEventsRequest extends $pb.GeneratedMessage {
+  factory ListBillingEventsRequest({
+    $1.UUID? workspaceId,
+    $1.Pagination? pagination,
+    $core.String? eventTypeFilter,
+  }) {
+    final result = ListBillingEventsRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (pagination != null) result.pagination = pagination;
+    if (eventTypeFilter != null) result.eventTypeFilter = eventTypeFilter;
+    return result;
+  }
+
+  ListBillingEventsRequest._();
+
+  factory ListBillingEventsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListBillingEventsRequest()..mergeFromBuffer(data, registry);
+  factory ListBillingEventsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListBillingEventsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListBillingEventsRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.admin.v1'),
+      createEmptyInstance: ListBillingEventsRequest.$_createMessage)
+    ..aOM<$1.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $1.UUID.$_createMessage)
+    ..aOM<$1.Pagination>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $1.Pagination.$_createMessage)
+    ..aOS(3, _omitFieldNames ? '' : 'eventTypeFilter')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListBillingEventsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListBillingEventsRequest copyWith(
+          void Function(ListBillingEventsRequest) updates) =>
+      super.copyWith((message) => updates(message as ListBillingEventsRequest))
+          as ListBillingEventsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ListBillingEventsRequest() / ListBillingEventsRequest.new instead')
+  static ListBillingEventsRequest create() => ListBillingEventsRequest._();
+  static $pb.GeneratedMessage $_createMessage() => ListBillingEventsRequest._();
+  @$core.override
+  ListBillingEventsRequest createEmptyInstance() =>
+      ListBillingEventsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ListBillingEventsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListBillingEventsRequest>(
+          ListBillingEventsRequest.$_createMessage);
+  static ListBillingEventsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $1.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($1.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $1.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.Pagination get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($1.Pagination value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.Pagination ensurePagination() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $core.String get eventTypeFilter => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set eventTypeFilter($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasEventTypeFilter() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearEventTypeFilter() => $_clearField(3);
+}
+
+class ListBillingEventsResponse extends $pb.GeneratedMessage {
+  factory ListBillingEventsResponse({
+    $core.Iterable<BillingEventEntry>? events,
+    $1.PaginatedResponse? pageInfo,
+  }) {
+    final result = ListBillingEventsResponse._();
+    if (events != null) result.events.addAll(events);
+    if (pageInfo != null) result.pageInfo = pageInfo;
+    return result;
+  }
+
+  ListBillingEventsResponse._();
+
+  factory ListBillingEventsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListBillingEventsResponse()..mergeFromBuffer(data, registry);
+  factory ListBillingEventsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListBillingEventsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListBillingEventsResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.admin.v1'),
+      createEmptyInstance: ListBillingEventsResponse.$_createMessage)
+    ..pPM<BillingEventEntry>(1, _omitFieldNames ? '' : 'events',
+        subBuilder: BillingEventEntry.$_createMessage)
+    ..aOM<$1.PaginatedResponse>(2, _omitFieldNames ? '' : 'pageInfo',
+        subBuilder: $1.PaginatedResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListBillingEventsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListBillingEventsResponse copyWith(
+          void Function(ListBillingEventsResponse) updates) =>
+      super.copyWith((message) => updates(message as ListBillingEventsResponse))
+          as ListBillingEventsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ListBillingEventsResponse() / ListBillingEventsResponse.new instead')
+  static ListBillingEventsResponse create() => ListBillingEventsResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ListBillingEventsResponse._();
+  @$core.override
+  ListBillingEventsResponse createEmptyInstance() =>
+      ListBillingEventsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ListBillingEventsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListBillingEventsResponse>(
+          ListBillingEventsResponse.$_createMessage);
+  static ListBillingEventsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<BillingEventEntry> get events => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $1.PaginatedResponse get pageInfo => $_getN(1);
+  @$pb.TagNumber(2)
+  set pageInfo($1.PaginatedResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPageInfo() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPageInfo() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.PaginatedResponse ensurePageInfo() => $_ensure(1);
+}
+
+class GetInvoiceHistoryRequest extends $pb.GeneratedMessage {
+  factory GetInvoiceHistoryRequest({
+    $1.UUID? workspaceId,
+    $1.Pagination? pagination,
+  }) {
+    final result = GetInvoiceHistoryRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (pagination != null) result.pagination = pagination;
+    return result;
+  }
+
+  GetInvoiceHistoryRequest._();
+
+  factory GetInvoiceHistoryRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetInvoiceHistoryRequest()..mergeFromBuffer(data, registry);
+  factory GetInvoiceHistoryRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetInvoiceHistoryRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetInvoiceHistoryRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.admin.v1'),
+      createEmptyInstance: GetInvoiceHistoryRequest.$_createMessage)
+    ..aOM<$1.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $1.UUID.$_createMessage)
+    ..aOM<$1.Pagination>(2, _omitFieldNames ? '' : 'pagination',
+        subBuilder: $1.Pagination.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetInvoiceHistoryRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetInvoiceHistoryRequest copyWith(
+          void Function(GetInvoiceHistoryRequest) updates) =>
+      super.copyWith((message) => updates(message as GetInvoiceHistoryRequest))
+          as GetInvoiceHistoryRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetInvoiceHistoryRequest() / GetInvoiceHistoryRequest.new instead')
+  static GetInvoiceHistoryRequest create() => GetInvoiceHistoryRequest._();
+  static $pb.GeneratedMessage $_createMessage() => GetInvoiceHistoryRequest._();
+  @$core.override
+  GetInvoiceHistoryRequest createEmptyInstance() =>
+      GetInvoiceHistoryRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GetInvoiceHistoryRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetInvoiceHistoryRequest>(
+          GetInvoiceHistoryRequest.$_createMessage);
+  static GetInvoiceHistoryRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $1.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($1.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $1.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.Pagination get pagination => $_getN(1);
+  @$pb.TagNumber(2)
+  set pagination($1.Pagination value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPagination() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPagination() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.Pagination ensurePagination() => $_ensure(1);
+}
+
+class GetInvoiceHistoryResponse extends $pb.GeneratedMessage {
+  factory GetInvoiceHistoryResponse({
+    $core.Iterable<InvoiceSummary>? invoices,
+    $1.PaginatedResponse? pageInfo,
+  }) {
+    final result = GetInvoiceHistoryResponse._();
+    if (invoices != null) result.invoices.addAll(invoices);
+    if (pageInfo != null) result.pageInfo = pageInfo;
+    return result;
+  }
+
+  GetInvoiceHistoryResponse._();
+
+  factory GetInvoiceHistoryResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetInvoiceHistoryResponse()..mergeFromBuffer(data, registry);
+  factory GetInvoiceHistoryResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetInvoiceHistoryResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetInvoiceHistoryResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.admin.v1'),
+      createEmptyInstance: GetInvoiceHistoryResponse.$_createMessage)
+    ..pPM<InvoiceSummary>(1, _omitFieldNames ? '' : 'invoices',
+        subBuilder: InvoiceSummary.$_createMessage)
+    ..aOM<$1.PaginatedResponse>(2, _omitFieldNames ? '' : 'pageInfo',
+        subBuilder: $1.PaginatedResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetInvoiceHistoryResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetInvoiceHistoryResponse copyWith(
+          void Function(GetInvoiceHistoryResponse) updates) =>
+      super.copyWith((message) => updates(message as GetInvoiceHistoryResponse))
+          as GetInvoiceHistoryResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetInvoiceHistoryResponse() / GetInvoiceHistoryResponse.new instead')
+  static GetInvoiceHistoryResponse create() => GetInvoiceHistoryResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      GetInvoiceHistoryResponse._();
+  @$core.override
+  GetInvoiceHistoryResponse createEmptyInstance() =>
+      GetInvoiceHistoryResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GetInvoiceHistoryResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetInvoiceHistoryResponse>(
+          GetInvoiceHistoryResponse.$_createMessage);
+  static GetInvoiceHistoryResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<InvoiceSummary> get invoices => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $1.PaginatedResponse get pageInfo => $_getN(1);
+  @$pb.TagNumber(2)
+  set pageInfo($1.PaginatedResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPageInfo() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPageInfo() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.PaginatedResponse ensurePageInfo() => $_ensure(1);
+}
+
+class DownloadInvoiceRequest extends $pb.GeneratedMessage {
+  factory DownloadInvoiceRequest({
+    $1.CommandContext? context,
+    $1.UUID? invoiceId,
+  }) {
+    final result = DownloadInvoiceRequest._();
+    if (context != null) result.context = context;
+    if (invoiceId != null) result.invoiceId = invoiceId;
+    return result;
+  }
+
+  DownloadInvoiceRequest._();
+
+  factory DownloadInvoiceRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DownloadInvoiceRequest()..mergeFromBuffer(data, registry);
+  factory DownloadInvoiceRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DownloadInvoiceRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DownloadInvoiceRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.admin.v1'),
+      createEmptyInstance: DownloadInvoiceRequest.$_createMessage)
+    ..aOM<$1.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $1.CommandContext.$_createMessage)
+    ..aOM<$1.UUID>(2, _omitFieldNames ? '' : 'invoiceId',
+        subBuilder: $1.UUID.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DownloadInvoiceRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DownloadInvoiceRequest copyWith(
+          void Function(DownloadInvoiceRequest) updates) =>
+      super.copyWith((message) => updates(message as DownloadInvoiceRequest))
+          as DownloadInvoiceRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DownloadInvoiceRequest() / DownloadInvoiceRequest.new instead')
+  static DownloadInvoiceRequest create() => DownloadInvoiceRequest._();
+  static $pb.GeneratedMessage $_createMessage() => DownloadInvoiceRequest._();
+  @$core.override
+  DownloadInvoiceRequest createEmptyInstance() => DownloadInvoiceRequest._();
+  @$core.pragma('dart2js:noInline')
+  static DownloadInvoiceRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DownloadInvoiceRequest>(
+          DownloadInvoiceRequest.$_createMessage);
+  static DownloadInvoiceRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $1.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($1.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $1.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.UUID get invoiceId => $_getN(1);
+  @$pb.TagNumber(2)
+  set invoiceId($1.UUID value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasInvoiceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearInvoiceId() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.UUID ensureInvoiceId() => $_ensure(1);
+}
+
+class DownloadInvoiceResponse extends $pb.GeneratedMessage {
+  factory DownloadInvoiceResponse({
+    $core.String? invoicePdfUrl,
+    $core.String? hostedInvoiceUrl,
+    InvoiceSummary? invoice,
+  }) {
+    final result = DownloadInvoiceResponse._();
+    if (invoicePdfUrl != null) result.invoicePdfUrl = invoicePdfUrl;
+    if (hostedInvoiceUrl != null) result.hostedInvoiceUrl = hostedInvoiceUrl;
+    if (invoice != null) result.invoice = invoice;
+    return result;
+  }
+
+  DownloadInvoiceResponse._();
+
+  factory DownloadInvoiceResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DownloadInvoiceResponse()..mergeFromBuffer(data, registry);
+  factory DownloadInvoiceResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DownloadInvoiceResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DownloadInvoiceResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.admin.v1'),
+      createEmptyInstance: DownloadInvoiceResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'invoicePdfUrl')
+    ..aOS(2, _omitFieldNames ? '' : 'hostedInvoiceUrl')
+    ..aOM<InvoiceSummary>(3, _omitFieldNames ? '' : 'invoice',
+        subBuilder: InvoiceSummary.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DownloadInvoiceResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DownloadInvoiceResponse copyWith(
+          void Function(DownloadInvoiceResponse) updates) =>
+      super.copyWith((message) => updates(message as DownloadInvoiceResponse))
+          as DownloadInvoiceResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DownloadInvoiceResponse() / DownloadInvoiceResponse.new instead')
+  static DownloadInvoiceResponse create() => DownloadInvoiceResponse._();
+  static $pb.GeneratedMessage $_createMessage() => DownloadInvoiceResponse._();
+  @$core.override
+  DownloadInvoiceResponse createEmptyInstance() => DownloadInvoiceResponse._();
+  @$core.pragma('dart2js:noInline')
+  static DownloadInvoiceResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DownloadInvoiceResponse>(
+          DownloadInvoiceResponse.$_createMessage);
+  static DownloadInvoiceResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get invoicePdfUrl => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set invoicePdfUrl($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasInvoicePdfUrl() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearInvoicePdfUrl() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get hostedInvoiceUrl => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set hostedInvoiceUrl($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasHostedInvoiceUrl() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearHostedInvoiceUrl() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  InvoiceSummary get invoice => $_getN(2);
+  @$pb.TagNumber(3)
+  set invoice(InvoiceSummary value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasInvoice() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearInvoice() => $_clearField(3);
+  @$pb.TagNumber(3)
+  InvoiceSummary ensureInvoice() => $_ensure(2);
+}
+
+class GetUsageReportRequest extends $pb.GeneratedMessage {
+  factory GetUsageReportRequest({
+    $1.UUID? workspaceId,
+    $core.String? periodStart,
+    $core.String? periodEnd,
+  }) {
+    final result = GetUsageReportRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (periodStart != null) result.periodStart = periodStart;
+    if (periodEnd != null) result.periodEnd = periodEnd;
+    return result;
+  }
+
+  GetUsageReportRequest._();
+
+  factory GetUsageReportRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetUsageReportRequest()..mergeFromBuffer(data, registry);
+  factory GetUsageReportRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetUsageReportRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetUsageReportRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.admin.v1'),
+      createEmptyInstance: GetUsageReportRequest.$_createMessage)
+    ..aOM<$1.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $1.UUID.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'periodStart')
+    ..aOS(3, _omitFieldNames ? '' : 'periodEnd')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetUsageReportRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetUsageReportRequest copyWith(
+          void Function(GetUsageReportRequest) updates) =>
+      super.copyWith((message) => updates(message as GetUsageReportRequest))
+          as GetUsageReportRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetUsageReportRequest() / GetUsageReportRequest.new instead')
+  static GetUsageReportRequest create() => GetUsageReportRequest._();
+  static $pb.GeneratedMessage $_createMessage() => GetUsageReportRequest._();
+  @$core.override
+  GetUsageReportRequest createEmptyInstance() => GetUsageReportRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GetUsageReportRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetUsageReportRequest>(
+          GetUsageReportRequest.$_createMessage);
+  static GetUsageReportRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $1.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($1.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $1.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get periodStart => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set periodStart($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPeriodStart() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPeriodStart() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get periodEnd => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set periodEnd($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPeriodEnd() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPeriodEnd() => $_clearField(3);
+}
+
+class GetUsageReportResponse extends $pb.GeneratedMessage {
+  factory GetUsageReportResponse({
+    CreditBalance? balance,
+    $core.Iterable<OperationUsageBreakdown>? breakdown,
+    $core.String? overageCreditsUsed,
+    $core.String? overageLimitCredits,
+    $1.Money? overageChargeUsd,
+    $core.Iterable<$core.String>? triggeredThresholdAlerts,
+  }) {
+    final result = GetUsageReportResponse._();
+    if (balance != null) result.balance = balance;
+    if (breakdown != null) result.breakdown.addAll(breakdown);
+    if (overageCreditsUsed != null)
+      result.overageCreditsUsed = overageCreditsUsed;
+    if (overageLimitCredits != null)
+      result.overageLimitCredits = overageLimitCredits;
+    if (overageChargeUsd != null) result.overageChargeUsd = overageChargeUsd;
+    if (triggeredThresholdAlerts != null)
+      result.triggeredThresholdAlerts.addAll(triggeredThresholdAlerts);
+    return result;
+  }
+
+  GetUsageReportResponse._();
+
+  factory GetUsageReportResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetUsageReportResponse()..mergeFromBuffer(data, registry);
+  factory GetUsageReportResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetUsageReportResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetUsageReportResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.admin.v1'),
+      createEmptyInstance: GetUsageReportResponse.$_createMessage)
+    ..aOM<CreditBalance>(1, _omitFieldNames ? '' : 'balance',
+        subBuilder: CreditBalance.$_createMessage)
+    ..pPM<OperationUsageBreakdown>(2, _omitFieldNames ? '' : 'breakdown',
+        subBuilder: OperationUsageBreakdown.$_createMessage)
+    ..aOS(3, _omitFieldNames ? '' : 'overageCreditsUsed')
+    ..aOS(4, _omitFieldNames ? '' : 'overageLimitCredits')
+    ..aOM<$1.Money>(5, _omitFieldNames ? '' : 'overageChargeUsd',
+        subBuilder: $1.Money.$_createMessage)
+    ..pPS(6, _omitFieldNames ? '' : 'triggeredThresholdAlerts')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetUsageReportResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetUsageReportResponse copyWith(
+          void Function(GetUsageReportResponse) updates) =>
+      super.copyWith((message) => updates(message as GetUsageReportResponse))
+          as GetUsageReportResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetUsageReportResponse() / GetUsageReportResponse.new instead')
+  static GetUsageReportResponse create() => GetUsageReportResponse._();
+  static $pb.GeneratedMessage $_createMessage() => GetUsageReportResponse._();
+  @$core.override
+  GetUsageReportResponse createEmptyInstance() => GetUsageReportResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GetUsageReportResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetUsageReportResponse>(
+          GetUsageReportResponse.$_createMessage);
+  static GetUsageReportResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  CreditBalance get balance => $_getN(0);
+  @$pb.TagNumber(1)
+  set balance(CreditBalance value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasBalance() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearBalance() => $_clearField(1);
+  @$pb.TagNumber(1)
+  CreditBalance ensureBalance() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<OperationUsageBreakdown> get breakdown => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $core.String get overageCreditsUsed => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set overageCreditsUsed($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasOverageCreditsUsed() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearOverageCreditsUsed() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get overageLimitCredits => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set overageLimitCredits($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasOverageLimitCredits() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearOverageLimitCredits() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $1.Money get overageChargeUsd => $_getN(4);
+  @$pb.TagNumber(5)
+  set overageChargeUsd($1.Money value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasOverageChargeUsd() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearOverageChargeUsd() => $_clearField(5);
+  @$pb.TagNumber(5)
+  $1.Money ensureOverageChargeUsd() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.String> get triggeredThresholdAlerts => $_getList(5);
+}
+
+/// Data Export & Retention Evidence Messages (P8-02 Acceptance Target #3)
+class DataExportJobSummary extends $pb.GeneratedMessage {
+  factory DataExportJobSummary({
+    $1.UUID? exportId,
+    $1.UUID? workspaceId,
+    $1.UUID? userId,
+    $core.String? exportType,
+    $core.String? format,
+    $core.String? status,
+    $core.int? progressPct,
+    $core.String? fileUrl,
+    $fixnum.Int64? fileSizeBytes,
+    $core.String? contentHashSha512,
+    $2.Timestamp? expiresAt,
+    $2.Timestamp? completedAt,
+    $2.Timestamp? createdAt,
+  }) {
+    final result = DataExportJobSummary._();
+    if (exportId != null) result.exportId = exportId;
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (userId != null) result.userId = userId;
+    if (exportType != null) result.exportType = exportType;
+    if (format != null) result.format = format;
+    if (status != null) result.status = status;
+    if (progressPct != null) result.progressPct = progressPct;
+    if (fileUrl != null) result.fileUrl = fileUrl;
+    if (fileSizeBytes != null) result.fileSizeBytes = fileSizeBytes;
+    if (contentHashSha512 != null) result.contentHashSha512 = contentHashSha512;
+    if (expiresAt != null) result.expiresAt = expiresAt;
+    if (completedAt != null) result.completedAt = completedAt;
+    if (createdAt != null) result.createdAt = createdAt;
+    return result;
+  }
+
+  DataExportJobSummary._();
+
+  factory DataExportJobSummary.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DataExportJobSummary()..mergeFromBuffer(data, registry);
+  factory DataExportJobSummary.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DataExportJobSummary()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DataExportJobSummary',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.admin.v1'),
+      createEmptyInstance: DataExportJobSummary.$_createMessage)
+    ..aOM<$1.UUID>(1, _omitFieldNames ? '' : 'exportId',
+        subBuilder: $1.UUID.$_createMessage)
+    ..aOM<$1.UUID>(2, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $1.UUID.$_createMessage)
+    ..aOM<$1.UUID>(3, _omitFieldNames ? '' : 'userId',
+        subBuilder: $1.UUID.$_createMessage)
+    ..aOS(4, _omitFieldNames ? '' : 'exportType')
+    ..aOS(5, _omitFieldNames ? '' : 'format')
+    ..aOS(6, _omitFieldNames ? '' : 'status')
+    ..aI(7, _omitFieldNames ? '' : 'progressPct')
+    ..aOS(8, _omitFieldNames ? '' : 'fileUrl')
+    ..aInt64(9, _omitFieldNames ? '' : 'fileSizeBytes')
+    ..aOS(10, _omitFieldNames ? '' : 'contentHashSha512')
+    ..aOM<$2.Timestamp>(11, _omitFieldNames ? '' : 'expiresAt',
+        subBuilder: $2.Timestamp.$_createMessage)
+    ..aOM<$2.Timestamp>(12, _omitFieldNames ? '' : 'completedAt',
+        subBuilder: $2.Timestamp.$_createMessage)
+    ..aOM<$2.Timestamp>(13, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $2.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DataExportJobSummary clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DataExportJobSummary copyWith(void Function(DataExportJobSummary) updates) =>
+      super.copyWith((message) => updates(message as DataExportJobSummary))
+          as DataExportJobSummary;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DataExportJobSummary() / DataExportJobSummary.new instead')
+  static DataExportJobSummary create() => DataExportJobSummary._();
+  static $pb.GeneratedMessage $_createMessage() => DataExportJobSummary._();
+  @$core.override
+  DataExportJobSummary createEmptyInstance() => DataExportJobSummary._();
+  @$core.pragma('dart2js:noInline')
+  static DataExportJobSummary getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DataExportJobSummary>(
+          DataExportJobSummary.$_createMessage);
+  static DataExportJobSummary? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $1.UUID get exportId => $_getN(0);
+  @$pb.TagNumber(1)
+  set exportId($1.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasExportId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearExportId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $1.UUID ensureExportId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.UUID get workspaceId => $_getN(1);
+  @$pb.TagNumber(2)
+  set workspaceId($1.UUID value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorkspaceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorkspaceId() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.UUID ensureWorkspaceId() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $1.UUID get userId => $_getN(2);
+  @$pb.TagNumber(3)
+  set userId($1.UUID value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasUserId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearUserId() => $_clearField(3);
+  @$pb.TagNumber(3)
+  $1.UUID ensureUserId() => $_ensure(2);
+
+  @$pb.TagNumber(4)
+  $core.String get exportType => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set exportType($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasExportType() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearExportType() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get format => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set format($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasFormat() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearFormat() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get status => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set status($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasStatus() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearStatus() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.int get progressPct => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set progressPct($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasProgressPct() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearProgressPct() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get fileUrl => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set fileUrl($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasFileUrl() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearFileUrl() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $fixnum.Int64 get fileSizeBytes => $_getI64(8);
+  @$pb.TagNumber(9)
+  set fileSizeBytes($fixnum.Int64 value) => $_setInt64(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasFileSizeBytes() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearFileSizeBytes() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get contentHashSha512 => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set contentHashSha512($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasContentHashSha512() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearContentHashSha512() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $2.Timestamp get expiresAt => $_getN(10);
+  @$pb.TagNumber(11)
+  set expiresAt($2.Timestamp value) => $_setField(11, value);
+  @$pb.TagNumber(11)
+  $core.bool hasExpiresAt() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearExpiresAt() => $_clearField(11);
+  @$pb.TagNumber(11)
+  $2.Timestamp ensureExpiresAt() => $_ensure(10);
+
+  @$pb.TagNumber(12)
+  $2.Timestamp get completedAt => $_getN(11);
+  @$pb.TagNumber(12)
+  set completedAt($2.Timestamp value) => $_setField(12, value);
+  @$pb.TagNumber(12)
+  $core.bool hasCompletedAt() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearCompletedAt() => $_clearField(12);
+  @$pb.TagNumber(12)
+  $2.Timestamp ensureCompletedAt() => $_ensure(11);
+
+  @$pb.TagNumber(13)
+  $2.Timestamp get createdAt => $_getN(12);
+  @$pb.TagNumber(13)
+  set createdAt($2.Timestamp value) => $_setField(13, value);
+  @$pb.TagNumber(13)
+  $core.bool hasCreatedAt() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearCreatedAt() => $_clearField(13);
+  @$pb.TagNumber(13)
+  $2.Timestamp ensureCreatedAt() => $_ensure(12);
+}
+
+class RequestExportRequest extends $pb.GeneratedMessage {
+  factory RequestExportRequest({
+    $1.CommandContext? context,
+    $core.String? exportType,
+    $core.String? format,
+  }) {
+    final result = RequestExportRequest._();
+    if (context != null) result.context = context;
+    if (exportType != null) result.exportType = exportType;
+    if (format != null) result.format = format;
+    return result;
+  }
+
+  RequestExportRequest._();
+
+  factory RequestExportRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RequestExportRequest()..mergeFromBuffer(data, registry);
+  factory RequestExportRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RequestExportRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RequestExportRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.admin.v1'),
+      createEmptyInstance: RequestExportRequest.$_createMessage)
+    ..aOM<$1.CommandContext>(1, _omitFieldNames ? '' : 'context',
+        subBuilder: $1.CommandContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'exportType')
+    ..aOS(3, _omitFieldNames ? '' : 'format')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RequestExportRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RequestExportRequest copyWith(void Function(RequestExportRequest) updates) =>
+      super.copyWith((message) => updates(message as RequestExportRequest))
+          as RequestExportRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use RequestExportRequest() / RequestExportRequest.new instead')
+  static RequestExportRequest create() => RequestExportRequest._();
+  static $pb.GeneratedMessage $_createMessage() => RequestExportRequest._();
+  @$core.override
+  RequestExportRequest createEmptyInstance() => RequestExportRequest._();
+  @$core.pragma('dart2js:noInline')
+  static RequestExportRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RequestExportRequest>(
+          RequestExportRequest.$_createMessage);
+  static RequestExportRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $1.CommandContext get context => $_getN(0);
+  @$pb.TagNumber(1)
+  set context($1.CommandContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContext() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $1.CommandContext ensureContext() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get exportType => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set exportType($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasExportType() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearExportType() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get format => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set format($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasFormat() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearFormat() => $_clearField(3);
+}
+
+class RequestExportResponse extends $pb.GeneratedMessage {
+  factory RequestExportResponse({
+    DataExportJobSummary? exportJob,
+  }) {
+    final result = RequestExportResponse._();
+    if (exportJob != null) result.exportJob = exportJob;
+    return result;
+  }
+
+  RequestExportResponse._();
+
+  factory RequestExportResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RequestExportResponse()..mergeFromBuffer(data, registry);
+  factory RequestExportResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RequestExportResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RequestExportResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.admin.v1'),
+      createEmptyInstance: RequestExportResponse.$_createMessage)
+    ..aOM<DataExportJobSummary>(1, _omitFieldNames ? '' : 'exportJob',
+        subBuilder: DataExportJobSummary.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RequestExportResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RequestExportResponse copyWith(
+          void Function(RequestExportResponse) updates) =>
+      super.copyWith((message) => updates(message as RequestExportResponse))
+          as RequestExportResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use RequestExportResponse() / RequestExportResponse.new instead')
+  static RequestExportResponse create() => RequestExportResponse._();
+  static $pb.GeneratedMessage $_createMessage() => RequestExportResponse._();
+  @$core.override
+  RequestExportResponse createEmptyInstance() => RequestExportResponse._();
+  @$core.pragma('dart2js:noInline')
+  static RequestExportResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RequestExportResponse>(
+          RequestExportResponse.$_createMessage);
+  static RequestExportResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  DataExportJobSummary get exportJob => $_getN(0);
+  @$pb.TagNumber(1)
+  set exportJob(DataExportJobSummary value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasExportJob() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearExportJob() => $_clearField(1);
+  @$pb.TagNumber(1)
+  DataExportJobSummary ensureExportJob() => $_ensure(0);
+}
+
+class GetExportUrlRequest extends $pb.GeneratedMessage {
+  factory GetExportUrlRequest({
+    $1.UUID? workspaceId,
+    $1.UUID? exportId,
+  }) {
+    final result = GetExportUrlRequest._();
+    if (workspaceId != null) result.workspaceId = workspaceId;
+    if (exportId != null) result.exportId = exportId;
+    return result;
+  }
+
+  GetExportUrlRequest._();
+
+  factory GetExportUrlRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetExportUrlRequest()..mergeFromBuffer(data, registry);
+  factory GetExportUrlRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetExportUrlRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetExportUrlRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.admin.v1'),
+      createEmptyInstance: GetExportUrlRequest.$_createMessage)
+    ..aOM<$1.UUID>(1, _omitFieldNames ? '' : 'workspaceId',
+        subBuilder: $1.UUID.$_createMessage)
+    ..aOM<$1.UUID>(2, _omitFieldNames ? '' : 'exportId',
+        subBuilder: $1.UUID.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetExportUrlRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetExportUrlRequest copyWith(void Function(GetExportUrlRequest) updates) =>
+      super.copyWith((message) => updates(message as GetExportUrlRequest))
+          as GetExportUrlRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use GetExportUrlRequest() / GetExportUrlRequest.new instead')
+  static GetExportUrlRequest create() => GetExportUrlRequest._();
+  static $pb.GeneratedMessage $_createMessage() => GetExportUrlRequest._();
+  @$core.override
+  GetExportUrlRequest createEmptyInstance() => GetExportUrlRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GetExportUrlRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetExportUrlRequest>(
+          GetExportUrlRequest.$_createMessage);
+  static GetExportUrlRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $1.UUID get workspaceId => $_getN(0);
+  @$pb.TagNumber(1)
+  set workspaceId($1.UUID value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWorkspaceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWorkspaceId() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $1.UUID ensureWorkspaceId() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.UUID get exportId => $_getN(1);
+  @$pb.TagNumber(2)
+  set exportId($1.UUID value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasExportId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearExportId() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.UUID ensureExportId() => $_ensure(1);
+}
+
+class GetExportUrlResponse extends $pb.GeneratedMessage {
+  factory GetExportUrlResponse({
+    DataExportJobSummary? exportJob,
+    $core.String? downloadUrl,
+  }) {
+    final result = GetExportUrlResponse._();
+    if (exportJob != null) result.exportJob = exportJob;
+    if (downloadUrl != null) result.downloadUrl = downloadUrl;
+    return result;
+  }
+
+  GetExportUrlResponse._();
+
+  factory GetExportUrlResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetExportUrlResponse()..mergeFromBuffer(data, registry);
+  factory GetExportUrlResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetExportUrlResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetExportUrlResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'creativanta.admin.v1'),
+      createEmptyInstance: GetExportUrlResponse.$_createMessage)
+    ..aOM<DataExportJobSummary>(1, _omitFieldNames ? '' : 'exportJob',
+        subBuilder: DataExportJobSummary.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'downloadUrl')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetExportUrlResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetExportUrlResponse copyWith(void Function(GetExportUrlResponse) updates) =>
+      super.copyWith((message) => updates(message as GetExportUrlResponse))
+          as GetExportUrlResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetExportUrlResponse() / GetExportUrlResponse.new instead')
+  static GetExportUrlResponse create() => GetExportUrlResponse._();
+  static $pb.GeneratedMessage $_createMessage() => GetExportUrlResponse._();
+  @$core.override
+  GetExportUrlResponse createEmptyInstance() => GetExportUrlResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GetExportUrlResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetExportUrlResponse>(
+          GetExportUrlResponse.$_createMessage);
+  static GetExportUrlResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  DataExportJobSummary get exportJob => $_getN(0);
+  @$pb.TagNumber(1)
+  set exportJob(DataExportJobSummary value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasExportJob() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearExportJob() => $_clearField(1);
+  @$pb.TagNumber(1)
+  DataExportJobSummary ensureExportJob() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get downloadUrl => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set downloadUrl($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasDownloadUrl() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearDownloadUrl() => $_clearField(2);
 }
 
 class EstimateCostRequest extends $pb.GeneratedMessage {
