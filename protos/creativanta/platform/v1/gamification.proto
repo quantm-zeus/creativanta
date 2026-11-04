@@ -1,0 +1,286 @@
+syntax = "proto3";
+
+package creativanta.platform.v1;
+
+import "creativanta/common/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/platform/v1;platformv1";
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+enum ChallengeStatus {
+  CHALLENGE_STATUS_UNSPECIFIED = 0;
+  CHALLENGE_STATUS_DRAFT = 1;
+  CHALLENGE_STATUS_ENROLLING = 2;
+  CHALLENGE_STATUS_ACTIVE = 3;
+  CHALLENGE_STATUS_COMPLETED = 4;
+  CHALLENGE_STATUS_REWARDED = 5;
+  CHALLENGE_STATUS_CANCELLED = 6;
+}
+
+enum ChallengeType {
+  CHALLENGE_TYPE_UNSPECIFIED = 0;
+  CHALLENGE_TYPE_PUBLISH_COUNT = 1;
+  CHALLENGE_TYPE_REVENUE_TARGET = 2;
+  CHALLENGE_TYPE_ENGAGEMENT_TARGET = 3;
+  CHALLENGE_TYPE_STREAK = 4;
+  CHALLENGE_TYPE_CUSTOM = 5;
+}
+
+// ============================================================================
+// Core Entities
+// ============================================================================
+
+// CreatorProgress mirrors database_schema.md §14.1.
+message CreatorProgress {
+  string progress_id = 1;
+  creativanta.common.v1.UUID workspace_id = 2;
+  string user_id = 3;
+  int32 level = 4;
+  int32 xp = 5;
+  int32 xp_to_next_level = 6;
+  int32 streak_days = 7;
+  string streak_last_activity_date = 8;
+  float creator_score = 9;
+  int32 total_achievements = 10;
+  string season_id = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+// AchievementDefinition mirrors database_schema.md §14.2.
+message AchievementDefinition {
+  string achievement_id = 1;
+  string code = 2;
+  string title = 3;
+  string description = 4;
+  string trigger_condition_json = 5;
+  int32 reward_credits = 6;
+  string badge_image_url = 7;
+  string category = 8;
+  int32 sort_order = 9;
+  bool active = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// AchievementRecord mirrors database_schema.md §14.2.
+message AchievementRecord {
+  string record_id = 1;
+  creativanta.common.v1.UUID workspace_id = 2;
+  string user_id = 3;
+  string achievement_id = 4;
+  string achievement_code = 5;
+  google.protobuf.Timestamp earned_at = 6;
+  string credits_awarded = 7;
+}
+
+// AchievementItem presents unified definition + user unlock status.
+message AchievementItem {
+  AchievementDefinition definition = 1;
+  bool unlocked = 2;
+  google.protobuf.Timestamp earned_at = 3;
+  string credits_awarded = 4;
+  int32 current_progress = 5;
+  int32 target_progress = 6;
+}
+
+// ChallengeDefinition mirrors database_schema.md §22.10.
+message ChallengeDefinition {
+  string challenge_id = 1;
+  string title = 2;
+  string description = 3;
+  ChallengeType challenge_type = 4;
+  int32 target_value = 5;
+  int32 reward_credits = 6;
+  string start_date = 7;
+  string end_date = 8;
+  ChallengeStatus status = 9;
+  bool is_active = 10;
+  int32 sort_order = 11;
+  google.protobuf.Timestamp created_at = 12;
+}
+
+// ChallengeProgress mirrors database_schema.md §22.11.
+message ChallengeProgress {
+  string progress_id = 1;
+  creativanta.common.v1.UUID workspace_id = 2;
+  string user_id = 3;
+  string challenge_id = 4;
+  int32 current_value = 5;
+  int32 target_value = 6;
+  bool completed = 7;
+  google.protobuf.Timestamp completed_at = 8;
+  bool reward_credited = 9;
+  string reward_transaction_id = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// ChallengeItem presents challenge definition combined with user progress.
+message ChallengeItem {
+  ChallengeDefinition challenge = 1;
+  ChallengeProgress progress = 2;
+  bool enrolled = 3;
+}
+
+// LeaderboardEntry presents creator ranking for a workspace or global challenge.
+message LeaderboardEntry {
+  int32 rank = 1;
+  string user_id = 2;
+  string user_name = 3;
+  string avatar_url = 4;
+  int32 score = 5;
+  int32 level = 6;
+  int32 streak_days = 7;
+}
+
+// ============================================================================
+// Service RPC Messages
+// ============================================================================
+
+message GetProgressRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string user_id = 2;
+}
+
+message GetProgressResponse {
+  CreatorProgress progress = 1;
+}
+
+message ListAchievementsRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string user_id = 2;
+  string category = 3;
+}
+
+message ListAchievementsResponse {
+  repeated AchievementItem achievements = 1;
+  int32 total_unlocked = 2;
+  int32 total_available = 3;
+}
+
+message ListChallengesRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string user_id = 2;
+  ChallengeStatus status_filter = 3;
+}
+
+message ListChallengesResponse {
+  repeated ChallengeItem challenges = 1;
+}
+
+message GetChallengeProgressRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string user_id = 2;
+  string challenge_id = 3;
+}
+
+message GetChallengeProgressResponse {
+  ChallengeDefinition challenge = 1;
+  ChallengeProgress progress = 2;
+}
+
+message ShareAchievementRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string achievement_code = 2;
+  string target_channel = 3;
+}
+
+message ShareAchievementResponse {
+  bool success = 1;
+  string share_url = 2;
+  string share_card_url = 3;
+  string message = 4;
+}
+
+message GamificationServiceGetDashboardRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string user_id = 2;
+}
+
+message GamificationServiceGetDashboardResponse {
+  CreatorProgress progress = 1;
+  repeated AchievementItem recent_achievements = 2;
+  repeated ChallengeItem active_challenges = 3;
+  repeated LeaderboardEntry top_creators = 4;
+  int32 current_streak_days = 5;
+  string streak_milestone_target = 6;
+  int32 streak_milestone_reward_credits = 7;
+}
+
+message GetAchievementsRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string user_id = 2;
+}
+
+message GetAchievementsResponse {
+  repeated AchievementItem achievements = 1;
+}
+
+message GetActiveQuestsRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string user_id = 2;
+}
+
+message GetActiveQuestsResponse {
+  repeated ChallengeItem quests = 1;
+}
+
+message GetLeaderboardRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string timeframe = 2; // weekly, monthly, all_time
+  int32 limit = 3;
+}
+
+message GetLeaderboardResponse {
+  repeated LeaderboardEntry entries = 1;
+  LeaderboardEntry user_entry = 2;
+}
+
+message GetStreakRequest {
+  creativanta.common.v1.UUID workspace_id = 1;
+  string user_id = 2;
+}
+
+message GetStreakResponse {
+  int32 streak_days = 1;
+  string last_activity_date = 2;
+  bool is_active_today = 3;
+  int32 next_milestone_days = 4;
+  int32 next_milestone_reward_credits = 5;
+}
+
+message AdminRestoreStreakRequest {
+  creativanta.common.v1.CommandContext context = 1;
+  string target_user_id = 2;
+  int32 restored_streak_days = 3;
+  string reason = 4;
+}
+
+message AdminRestoreStreakResponse {
+  bool success = 1;
+  CreatorProgress progress = 2;
+  string message = 3;
+}
+
+// ============================================================================
+// Service Definitions
+// ============================================================================
+
+service GamificationService {
+  rpc GetProgress(GetProgressRequest) returns (GetProgressResponse);
+  rpc ListAchievements(ListAchievementsRequest) returns (ListAchievementsResponse);
+  rpc ListChallenges(ListChallengesRequest) returns (ListChallengesResponse);
+  rpc GetChallengeProgress(GetChallengeProgressRequest) returns (GetChallengeProgressResponse);
+  rpc ShareAchievement(ShareAchievementRequest) returns (ShareAchievementResponse);
+  rpc GetDashboard(GamificationServiceGetDashboardRequest) returns (GamificationServiceGetDashboardResponse);
+  rpc GetAchievements(GetAchievementsRequest) returns (GetAchievementsResponse);
+  rpc GetActiveQuests(GetActiveQuestsRequest) returns (GetActiveQuestsResponse);
+  rpc GetLeaderboard(GetLeaderboardRequest) returns (GetLeaderboardResponse);
+  rpc GetStreak(GetStreakRequest) returns (GetStreakResponse);
+  rpc AdminRestoreStreak(AdminRestoreStreakRequest) returns (AdminRestoreStreakResponse);
+}

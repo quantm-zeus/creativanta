@@ -29,6 +29,7 @@ type Service struct {
 	store         Store
 	workflowStore workflow.Store
 	capChecker    CapabilityChecker
+	styleCloner   ContinuityStylePackCloner
 	emitter       EventEmitter
 }
 
@@ -40,10 +41,21 @@ func NewService(store Store, workflowStore workflow.Store, capChecker Capability
 		store:         store,
 		workflowStore: workflowStore,
 		capChecker:    capChecker,
+		styleCloner:   NewInMemoryStylePackCloner(),
 		emitter: func(ctx context.Context, eventType string, payload any) error {
 			return nil
 		},
 	}
+}
+
+func (s *Service) SetStylePackCloner(cloner ContinuityStylePackCloner) {
+	if cloner != nil {
+		s.styleCloner = cloner
+	}
+}
+
+func (s *Service) StylePackCloner() ContinuityStylePackCloner {
+	return s.styleCloner
 }
 
 func (s *Service) SetEventEmitter(emitter EventEmitter) {
@@ -78,6 +90,37 @@ func (s *Service) InstallRecipe(ctx context.Context, caller CallerContext, recip
 	recipe, err := s.store.GetRecipe(ctx, recipeID)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("lookup recipe: %w", err)
+	}
+
+	// For style_workflow templates (EF-07A & M21 style extension):
+	// Requires workflow:create and continuity:pack_manage permissions.
+	if recipe.TemplateKind == "style_workflow" {
+		if err := checkPermission(caller, "workflow:create"); err != nil {
+			return nil, nil, nil, fmt.Errorf("style recipe install: %w", err)
+		}
+		if err := checkPermission(caller, "continuity:pack_manage"); err != nil {
+			return nil, nil, nil, fmt.Errorf("style recipe install: %w", err)
+		}
+	}
+
+	// Takedown stops new installs (EF-07A & recipe governance)
+	if recipe.Status == "taken_down" || recipe.Status == "retired" || recipe.Status == "deprecated" {
+		return nil, nil, nil, ErrRecipeUnavailableForInstall
+	}
+
+	// Repeat install idempotency: cannot double-charge or duplicate installation (EF-07A)
+	existingInst, err := s.store.GetInstallationByRecipe(ctx, caller.WorkspaceID, recipeID)
+	if err == nil && existingInst != nil {
+		var existingWf *workflow.Workflow
+		if s.workflowStore != nil {
+			existingWf, _ = s.workflowStore.GetWorkflow(ctx, caller.WorkspaceID, existingInst.WorkflowID)
+		}
+		return existingInst, existingWf, nil, nil
+	}
+
+	// Validate template payload (Acceptance Target 4: No private source media in shared template)
+	if err := ValidateStyleTemplatePayload(recipe.TemplateKind, &recipe.TemplatePayload); err != nil {
+		return nil, nil, nil, err
 	}
 
 	// Tenant/system template isolation check (Target 3):
@@ -158,18 +201,43 @@ func (s *Service) InstallRecipe(ctx context.Context, caller CallerContext, recip
 		}
 	}
 
+	// Target 3: Clone tenant-owned continuity pack for style_workflow templates (EF-07A & §27.4)
+	var clonedContinuityPackID, clonedStylePackID string
+	if recipe.TemplateKind == "style_workflow" && s.styleCloner != nil {
+		cID, sID, err := s.styleCloner.CloneStylePack(ctx, caller.WorkspaceID, recipe.Title, recipe.TemplatePayload.LicenseNotice, recipe.TemplatePayload.StyleSettings)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("clone continuity style pack: %w", err)
+		}
+		clonedContinuityPackID = cID
+		clonedStylePackID = sID
+	}
+
+	installAudit := map[string]any{
+		"recipe_id":                 recipe.RecipeID,
+		"template_version":          recipe.TemplateVersion,
+		"template_kind":             recipe.TemplateKind,
+		"license_notice":            recipe.TemplatePayload.LicenseNotice,
+		"installed_at":              now.Format(time.RFC3339),
+		"cloned_continuity_pack_id": clonedContinuityPackID,
+		"cloned_style_pack_id":      clonedStylePackID,
+	}
+
 	// Create RecipeInstallation record
 	inst := &RecipeInstallation{
-		InstallationID:   newUUID(),
-		WorkspaceID:      caller.WorkspaceID,
-		RecipeID:         recipe.RecipeID,
-		WorkflowID:       wf.WorkflowID,
-		InstalledVersion: recipe.TemplateVersion,
-		Status:           "installed",
-		ParameterValues:  paramValues,
-		InstalledBy:      caller.UserID,
-		CreatedAt:        now,
-		UpdatedAt:        now,
+		InstallationID:        newUUID(),
+		WorkspaceID:           caller.WorkspaceID,
+		RecipeID:              recipe.RecipeID,
+		WorkflowID:            wf.WorkflowID,
+		InstalledVersion:      recipe.TemplateVersion,
+		Status:                "installed",
+		ParameterValues:       paramValues,
+		ContinuityPackID:      clonedContinuityPackID,
+		StylePackID:           clonedStylePackID,
+		TemplateKind:          recipe.TemplateKind,
+		ImmutableInstallAudit: installAudit,
+		InstalledBy:           caller.UserID,
+		CreatedAt:             now,
+		UpdatedAt:             now,
 	}
 
 	createdInst, err := s.store.CreateInstallation(ctx, inst)
@@ -193,6 +261,13 @@ func (s *Service) InstallRecipe(ctx context.Context, caller CallerContext, recip
 			"installation_id": createdInst.InstallationID,
 			"workspace_id":    caller.WorkspaceID,
 		})
+		if recipe.TemplateKind == "style_workflow" {
+			_ = s.emitter(ctx, "production.style_pack.extracted", map[string]any{
+				"style_pack_id":      clonedStylePackID,
+				"continuity_pack_id": clonedContinuityPackID,
+				"workspace_id":       caller.WorkspaceID,
+			})
+		}
 	}
 
 	return createdInst, wf, nil, nil
