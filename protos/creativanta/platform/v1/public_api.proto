@@ -1,0 +1,260 @@
+syntax = "proto3";
+
+package creativanta.platform.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/platform/v1;platformv1";
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+enum APIKeyStatus {
+  API_KEY_STATUS_UNSPECIFIED = 0;
+  API_KEY_STATUS_ACTIVE = 1;
+  API_KEY_STATUS_ROTATING = 2;
+  API_KEY_STATUS_SUSPENDED = 3;
+  API_KEY_STATUS_REVOKED = 4;
+  API_KEY_STATUS_EXPIRED = 5;
+}
+
+enum WebhookSubscriptionStatus {
+  WEBHOOK_SUBSCRIPTION_STATUS_UNSPECIFIED = 0;
+  WEBHOOK_SUBSCRIPTION_STATUS_ACTIVE = 1;
+  WEBHOOK_SUBSCRIPTION_STATUS_SUSPENDED = 2;
+  WEBHOOK_SUBSCRIPTION_STATUS_REVOKED = 3;
+}
+
+// ============================================================================
+// Messages - API Key
+// ============================================================================
+
+message APIKey {
+  string api_key_id = 1;
+  string workspace_id = 2;
+  string key_prefix = 3;
+  string name = 4;
+  repeated string scopes = 5;
+  APIKeyStatus status = 6;
+  string logical_key_id = 7;
+  string replaced_by_key_id = 8;
+  google.protobuf.Timestamp rotation_grace_ends_at = 9;
+  google.protobuf.Timestamp last_used_at = 10;
+  int64 request_count = 11;
+  int32 rate_limit_override = 12;
+  google.protobuf.Timestamp expires_at = 13;
+  string created_by = 14;
+  string suspended_reason = 15;
+  google.protobuf.Timestamp created_at = 16;
+  google.protobuf.Timestamp updated_at = 17;
+  string secret_key = 18; // Only returned on creation or rotation
+}
+
+message CreateRequest {
+  string workspace_id = 1;
+  string name = 2;
+  repeated string scopes = 3;
+  int32 rate_limit_override = 4;
+  int32 expiry_days = 5;
+}
+
+message CreateResponse {
+  APIKey api_key = 1;
+  string secret_key = 2;
+}
+
+message ListRequest {
+  string workspace_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+  string status_filter = 4;
+}
+
+message ListResponse {
+  repeated APIKey api_keys = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+
+message RevokeRequest {
+  string workspace_id = 1;
+  string api_key_id = 2;
+  string reason = 3;
+}
+
+message RevokeResponse {
+  APIKey api_key = 1;
+}
+
+message RotateRequest {
+  string workspace_id = 1;
+  string api_key_id = 2;
+}
+
+message RotateResponse {
+  APIKey old_key = 1;
+  APIKey new_key = 2;
+  string new_secret_key = 3;
+  google.protobuf.Timestamp grace_ends_at = 4;
+}
+
+message GetUsageRequest {
+  string workspace_id = 1;
+  string api_key_id = 2;
+}
+
+message GetUsageResponse {
+  string workspace_id = 1;
+  string api_key_id = 2;
+  int64 current_month_requests = 3;
+  int64 monthly_quota = 4;
+  int32 read_rate_limit_rpm = 5;
+  int32 write_rate_limit_rpm = 6;
+  double billable_ai_credits_used = 7;
+}
+
+message APIUsageDaily {
+  string usage_id = 1;
+  string workspace_id = 2;
+  string api_key_id = 3;
+  string usage_date = 4;
+  int32 read_requests = 5;
+  int32 write_requests = 6;
+  int32 error_4xx_count = 7;
+  int32 error_5xx_count = 8;
+  int32 outbound_webhook_deliveries = 9;
+  double billable_ai_credits = 10;
+}
+
+message GetUsageStatsRequest {
+  string workspace_id = 1;
+  string api_key_id = 2;
+  string start_date = 3;
+  string end_date = 4;
+}
+
+message GetUsageStatsResponse {
+  repeated APIUsageDaily daily_stats = 1;
+  int64 total_requests = 2;
+  double total_billable_ai_credits = 3;
+}
+
+message UpdateScopesRequest {
+  string workspace_id = 1;
+  string api_key_id = 2;
+  repeated string scopes = 3;
+}
+
+message UpdateScopesResponse {
+  APIKey api_key = 1;
+}
+
+// ============================================================================
+// Messages - Webhook Subscription
+// ============================================================================
+
+message WebhookSubscription {
+  string webhook_subscription_id = 1;
+  string workspace_id = 2;
+  string api_key_id = 3;
+  string target_url = 4;
+  repeated string event_types = 5;
+  WebhookSubscriptionStatus status = 6;
+  int32 consecutive_failure_count = 7;
+  google.protobuf.Timestamp last_delivery_at = 8;
+  string last_error = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+  string signing_secret = 12; // Only populated on creation
+}
+
+message WebhookDeliveryRecord {
+  string webhook_event_id = 1;
+  string workspace_id = 2;
+  string subscription_id = 3;
+  string event_type = 4;
+  string target_url = 5;
+  int32 status_code = 6;
+  int32 attempt_count = 7;
+  string delivery_status = 8;
+  string error_message = 9;
+  google.protobuf.Timestamp delivered_at = 10;
+  bool is_replay = 11;
+}
+
+message CreateWebhookSubscriptionRequest {
+  string workspace_id = 1;
+  string api_key_id = 2;
+  string target_url = 3;
+  repeated string event_types = 4;
+}
+
+message CreateWebhookSubscriptionResponse {
+  WebhookSubscription subscription = 1;
+  string signing_secret = 2;
+}
+
+message ListWebhookSubscriptionsRequest {
+  string workspace_id = 1;
+}
+
+message ListWebhookSubscriptionsResponse {
+  repeated WebhookSubscription subscriptions = 1;
+}
+
+message DeleteWebhookSubscriptionRequest {
+  string workspace_id = 1;
+  string webhook_subscription_id = 2;
+}
+
+message DeleteWebhookSubscriptionResponse {
+  bool success = 1;
+}
+
+message TestWebhookSubscriptionRequest {
+  string workspace_id = 1;
+  string webhook_subscription_id = 2;
+  string event_type = 3;
+}
+
+message TestWebhookSubscriptionResponse {
+  bool success = 1;
+  int32 status_code = 2;
+  string response_body = 3;
+  string signature_header = 4;
+}
+
+message ReplayWebhookDeliveryRequest {
+  string workspace_id = 1;
+  string webhook_event_id = 2;
+}
+
+message ReplayWebhookDeliveryResponse {
+  bool success = 1;
+  WebhookDeliveryRecord delivery_record = 2;
+}
+
+// ============================================================================
+// Services
+// ============================================================================
+
+// APIKeyService manages developer API keys, scoping, rate limits and rotation per S24.
+service APIKeyService {
+  rpc Create(CreateRequest) returns (CreateResponse);
+  rpc List(ListRequest) returns (ListResponse);
+  rpc Revoke(RevokeRequest) returns (RevokeResponse);
+  rpc Rotate(RotateRequest) returns (RotateResponse);
+  rpc GetUsage(GetUsageRequest) returns (GetUsageResponse);
+  rpc GetUsageStats(GetUsageStatsRequest) returns (GetUsageStatsResponse);
+  rpc UpdateScopes(UpdateScopesRequest) returns (UpdateScopesResponse);
+}
+
+// WebhookSubscriptionService manages outbound webhook registrations and deliveries.
+service WebhookSubscriptionService {
+  rpc CreateWebhookSubscription(CreateWebhookSubscriptionRequest) returns (CreateWebhookSubscriptionResponse);
+  rpc ListWebhookSubscriptions(ListWebhookSubscriptionsRequest) returns (ListWebhookSubscriptionsResponse);
+  rpc DeleteWebhookSubscription(DeleteWebhookSubscriptionRequest) returns (DeleteWebhookSubscriptionResponse);
+  rpc TestWebhookSubscription(TestWebhookSubscriptionRequest) returns (TestWebhookSubscriptionResponse);
+  rpc ReplayWebhookDelivery(ReplayWebhookDeliveryRequest) returns (ReplayWebhookDeliveryResponse);
+}

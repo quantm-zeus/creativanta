@@ -1,0 +1,71 @@
+{
+  "task_id": "P7-05",
+  "phase": "P7",
+  "slice": "p7-05",
+  "title": "Public API, webhooks và automation acceptance",
+  "status": "LOCAL_IMPLEMENTED",
+  "subslice_status": "IMPLEMENTED_LOCAL_TESTED",
+  "acceptance_status": "PENDING",
+  "feature_refs": [
+    "docs/02_features/platform/public_api.md",
+    "docs/02_features/automation/workflow_studio.md",
+    "docs/02_features/automation/recipe_agent_center.md",
+    "docs/04_contracts/database_schema.md",
+    "docs/04_contracts/rpc_permission_bindings.csv",
+    "docs/04_contracts/rbac_permission_matrix.md",
+    "docs/04_contracts/domain_event_catalog.md",
+    "docs/03_screens/web/screen_web_workflow_runs.md"
+  ],
+  "source_files": {
+    "apps/api/gen/creativanta/platform/v1/platformv1connect/public_api.connect.go": "3e4666e617aeb57e331c7c7ca80b3f9e56485f0c1f0d06f12f7ea49833b2ff1b",
+    "apps/api/gen/creativanta/platform/v1/public_api.pb.go": "f3e60b5f6291a51c8a285b2b462d2eb8d482d3711ec762b2da34b0de80b41ca2",
+    "apps/api/internal/migrate/migrator_test.go": "13b5485f50e9214badaf6e31ed5cbe6a3c915addd5a866b23a677fc060bb97b0",
+    "apps/api/internal/publicapi/automation_acceptance_test.go": "c2852ac5689317027f478ac495c88e48e2390ac9823582736b3057ba1e1023fe",
+    "apps/api/internal/publicapi/handler.go": "132529c3739c9e351ba7a49bd8c7b3f1de7ff0ae72bddd63c7bd9d6302d65e93",
+    "apps/api/internal/publicapi/middleware.go": "5d6677f59f11a956f117495ed37ef47a732a65c121f8188cefe7585064be99c9",
+    "apps/api/internal/publicapi/outbound_dispatcher.go": "29dd6f600862f3ceef61d6f451d8bd6b785f556174acf355cf6785c0ba7a1379",
+    "apps/api/internal/publicapi/publicapi_test.go": "595ae5971bc94f92eb33506dacf22b3fd6160dd98f76dd351ec88039c550aabc",
+    "apps/api/internal/publicapi/service.go": "a7c21537a8cfed8969b6eb17159b4b0d89ba5817d3ccad6b72cef70f36c059fd",
+    "apps/api/internal/publicapi/store.go": "bd2304820fc0610ee08dbb88e2dbd6daf6395ae8b47f876af35d4dae4dedfd0e",
+    "apps/api/internal/publicapi/types.go": "53587e7358d0763c99e77e90cdd4e8ef52c904f43ecb759d6a0b6621098c8986",
+    "apps/mobile/lib/developer/api_key_models.dart": "b8259e7612dad521307eccfa98ed2f82efe0b3d4182a3566ffbcdace75310698",
+    "apps/mobile/lib/generated/creativanta/platform/v1/public_api.pb.dart": "df3654376ff556bbee261ec4f342a59635a6741862eefddce2fdd7047b5a6401",
+    "apps/mobile/lib/generated/creativanta/platform/v1/public_api.pbenum.dart": "18d7563b571970e7098834736ab29d0bc2377bab8be2c9344cdf5572a181aabf",
+    "apps/mobile/lib/generated/creativanta/platform/v1/public_api.pbgrpc.dart": "8e9a346074894d73a8121e12c37d9a87ed30208cc2c09ef060b73b91a28f82dc",
+    "apps/mobile/lib/generated/creativanta/platform/v1/public_api.pbjson.dart": "956c8cb1131301f465b07ceb0c70cf3382109d1dd137e0cbecfc2302d43f5585",
+    "apps/mobile/lib/ui/developer/developer_api_keys_view.dart": "ac82003dcbe440627bbcfc5a0f7a9823f677d0806d7333043555771527818b2e",
+    "apps/mobile/test/public_api_test.dart": "b3cfe5a3cb6678415e8f0b2b5f6597c8d3732737b75d40ba9ceac4be66ebe08d",
+    "apps/web/src/lib/developer/public_api.test.ts": "4f694c83e4ff8dc5db11a9c980cb410f7632d3e5a71da848d1edd9b4aac11f1b",
+    "apps/web/src/lib/developer/public_api.ts": "e3c3ee1d8a1845dbabfae1ba124e65c74d41443110f02ff78df8604fd679def7",
+    "apps/web/src/routes/settings/developer/+page.svelte": "0e7df1fc6d7a50380c3924b949a562fb35c95ea05527d06eefe854d526341578",
+    "infra/migrations/00039_p7_05_public_api_quotas_and_webhooks.sql": "036a9068904afb759b5552f3f2d181c4fecf8f9c7c221ca2f1d90d72eb16a537",
+    "packages/shared-types/src/creativanta/platform/v1/public_api_pb.ts": "22293ff1a615c0089d16916de0d0969f5215c33a2b58bff4a47fb12969acbc22",
+    "protos/creativanta/platform/v1/public_api.proto": "3b207e87ac61ed00d2fd3088adf210e8fa37bcf27c4a95fe1537ea64b7b402b0"
+  },
+  "scope_items": [
+    "Target 1 (Read-only key cannot mutate): Invariants RULE-S24-002, RULE-S24-003, and EC-S24-001/002 are strictly enforced. Keys with read-only scopes or belonging to Starter tier workspaces cannot execute mutating operations (POST, PATCH, DELETE, RPC command procedures), returning HTTP 403 / connect.CodePermissionDenied. Sliding window rate limiting enforces 100 req/min read and 30 req/min write per key with standard X-RateLimit-* and Retry-After headers.",
+    "Target 2 (Replay-safe outbound webhook): S24 §5.1 / §21.2 outbound webhook delivery with HMAC-SHA256 signatures, stripping confidential cost/margin details, exponential backoff retries (1s/10s/60s), auto-suspension after 100 consecutive failures (RULE-S24-006), and replay safety with durable delivery tracking in api_webhook_deliveries.",
+    "Target 3 (All automation node/agent outcomes pass): Full end-to-end integration across M20 Workflow Studio (10 canonical node types: trigger, condition, transform, action, approval, wait, diagnostics, fallback, handoff, terminal), M21 Agent Center (delegated RBAC, budget ceiling pauses, bounded memory compression/cleanup, and audited handoff), and S24 outbound event delivery (workflow.completed webhook with HMAC signature)."
+  ],
+  "verified_sub_slices": [
+    "Target 1 Verified: TestAcceptanceTarget1_ReadOnlyKeyCannotMutate in internal/publicapi passes with go test -race; confirms read allowed, mutating rejected with 403 PermissionDenied, and Starter tier read-only mode enforced.",
+    "Target 2 Verified: TestAcceptanceTarget2_ReplaySafeOutboundWebhook in internal/publicapi passes with go test -race; confirms HMAC-SHA256 signature, sanitization of sensitive cost/margin fields, replay safety, and auto-suspension after 100 failures.",
+    "Target 3 Verified: TestAcceptanceTarget3_AllAutomationNodeAndAgentOutcomes in internal/publicapi passes with go test -race; confirms all 10 workflow node types, agent runtime memory/budget outcomes, and outbound webhook delivery.",
+    "Tier Caps & Rotation Grace Window: TestAPIKey_TierCapsAndAccessMode and TestAPIKey_RotationWith24HourGracePeriod pass; confirm Starter=3, Pro=10 caps, 24h grace window where both keys authenticate, and 401 after grace expiry.",
+    "PostgreSQL 17 Migration: Goose migration 00039 applied and verified with up/down transactional tests in migrator_test.go.",
+    "Protobuf Verification: tooling/proto-gen.sh verify passed across Go, TS, and Dart targets with zero drift.",
+    "Web Vitest & Build: 44 files, 369 tests pass in apps/web; vite build succeeds cleanly including settings/developer view.",
+    "Mobile Flutter Suite: 7 tests pass in apps/mobile/test/public_api_test.dart; flutter analyze passes with 0 issues; full suite of 299 mobile tests passes.",
+    "CI Quality Gates: check_go.sh, check_flutter.sh, and check_node.sh all pass."
+  ],
+  "external_gates": [
+    {
+      "gate_id": "EXT-GATE-THIRD-PARTY-WEBHOOK-ENDPOINTS",
+      "status": "LOCAL_ENGINE_COMPUTATION_READY",
+      "description": "Outbound webhook signing, retry backoff, sanitization, and replay operate deterministically against customer HTTP endpoints. Real outbound HTTP delivery dispatches when customer webhook endpoints are configured."
+    }
+  ],
+  "remaining_scope": [
+    "P8-01: Six-mode Home, mobile parity và onboarding completion"
+  ]
+}
