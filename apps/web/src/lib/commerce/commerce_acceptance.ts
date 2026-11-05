@@ -366,6 +366,140 @@ export function applyOperationalRepair(
   return { updatedOutcomes, result };
 }
 
+import { callCanonicalRpc, generateIdempotencyKey, type CanonicalRpcOptions } from '$lib/api/client';
+
+/**
+ * Submits an operational financial repair to canonical backend
+ * `creativanta.finance.v1.ReconciliationService/ApplyRepair` (R04).
+ * Never fabricates `official` provenance, `1.0` confidence, or `post-rep-${Date.now()}`
+ * ledger posting IDs in browser memory when unauthenticated or when backend fails.
+ */
+export async function applyOperationalRepairRemote(
+  outcomes: UnreconciledOutcome[],
+  req: OperationalRepairRequest,
+  options: CanonicalRpcOptions = {}
+): Promise<{
+  ok: boolean;
+  updatedOutcomes: UnreconciledOutcome[];
+  result?: OperationalRepairResult;
+  error?: string;
+}> {
+  if (!req.auditReason || req.auditReason.trim() === '') {
+    return {
+      ok: false,
+      updatedOutcomes: outcomes,
+      error: 'Lý do kiểm toán (audit_reason) là bắt buộc cho mọi thao tác sửa chữa vận hành'
+    };
+  }
+
+  const targetIdx = outcomes.findIndex((o) => o.id === req.unreconciledId);
+  if (targetIdx === -1) {
+    return {
+      ok: false,
+      updatedOutcomes: outcomes,
+      error: `Không tìm thấy mục chưa đối soát có mã: ${req.unreconciledId}`
+    };
+  }
+
+  const item = outcomes[targetIdx];
+  if (item.resolved) {
+    return {
+      ok: false,
+      updatedOutcomes: outcomes,
+      error: 'Mục chưa đối soát này đã được xử lý trước đó'
+    };
+  }
+
+  if (req.actorRole === 'viewer' || req.actorRole === 'contributor') {
+    return {
+      ok: false,
+      updatedOutcomes: outcomes,
+      error: `Vai trò '${req.actorRole}' không có quyền ghi bút toán đối soát Sổ cái (finance:reconcile).`
+    };
+  }
+
+  const rpcRes = await callCanonicalRpc<
+    Record<string, unknown>,
+    {
+      ledger_posting_id?: string;
+      audit_log_entry_id?: string;
+      status?: UnreconciledOutcome['status'];
+      source_class?: SourceClass;
+      confidence_score?: number;
+      repaired_at?: string;
+      action_taken?: string;
+    }
+  >(
+    'creativanta.finance.v1.ReconciliationService/ApplyRepair',
+    {
+      idempotency_key: options.idempotencyKey || generateIdempotencyKey(`repair-${req.unreconciledId}`),
+      workspace_id: req.workspaceId,
+      unreconciled_id: req.unreconciledId,
+      entity_id: item.entityId,
+      domain: item.domain,
+      repair_type: req.repairType,
+      audit_reason: req.auditReason.trim(),
+      financial_impact_exact: item.financialImpactExact,
+      actor_id: req.actorId,
+      actor_role: req.actorRole
+    },
+    {
+      ...options,
+      workspaceId: options.workspaceId ?? req.workspaceId
+    }
+  );
+
+  if (!rpcRes.ok) {
+    return {
+      ok: false,
+      updatedOutcomes: outcomes,
+      error: rpcRes.error.message
+    };
+  }
+
+  const ledgerPostingId = rpcRes.data?.ledger_posting_id;
+  const auditLogEntryId = rpcRes.data?.audit_log_entry_id;
+  if (!ledgerPostingId || !auditLogEntryId) {
+    return {
+      ok: false,
+      updatedOutcomes: outcomes,
+      error:
+        'Phản hồi từ máy chủ thiếu mã chứng từ Sổ cái (ledger_posting_id/audit_log_entry_id). Không giả mạo bút toán đối soát.'
+    };
+  }
+
+  const repairedAt = rpcRes.data?.repaired_at || new Date().toISOString();
+  const updatedItem: UnreconciledOutcome = {
+    ...item,
+    status: rpcRes.data?.status || 'reconciled',
+    sourceClass: rpcRes.data?.source_class || item.sourceClass,
+    confidenceScore:
+      typeof rpcRes.data?.confidence_score === 'number'
+        ? rpcRes.data.confidence_score
+        : item.confidenceScore,
+    resolved: true,
+    resolvedAt: repairedAt,
+    auditReason: req.auditReason.trim()
+  };
+
+  const updatedOutcomes = [...outcomes];
+  updatedOutcomes[targetIdx] = updatedItem;
+
+  return {
+    ok: true,
+    updatedOutcomes,
+    result: {
+      success: true,
+      unreconciledId: item.id,
+      actionTaken:
+        rpcRes.data?.action_taken || `Đã đối soát có kiểm toán: ${req.auditReason.trim()}`,
+      repairedAt,
+      ledgerPostingId,
+      auditLogEntryId
+    }
+  };
+}
+
 export function getProviderAndShippingGateSummary(workspaceId: string): ProviderAndShippingGateSummary {
   const now = new Date().toISOString();
   return {

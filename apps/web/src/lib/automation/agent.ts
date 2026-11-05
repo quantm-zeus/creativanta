@@ -665,3 +665,155 @@ export function approvePendingStep(
   currentRun.updatedAt = new Date().toISOString();
   return { success: true, run: currentRun };
 }
+
+import { callCanonicalRpc, generateIdempotencyKey, type CanonicalRpcOptions } from '$lib/api/client';
+
+/**
+ * Executes a single Video Agent step against canonical backend
+ * `creativanta.automation.v1.AgentService/ExecuteStep` (AI-02).
+ * Enforces delegated RBAC permission, high-risk approval pause, and budget ceiling pause
+ * before dispatching, and fails closed without deducting credits or fabricating video URLs
+ * when unauthenticated or when backend runtime is unavailable.
+ */
+export async function executeVideoAgentStepRemote(
+  run: AgentRun,
+  stepIndex: number,
+  callerRole: string,
+  availableBalance: number,
+  options: CanonicalRpcOptions = {}
+): Promise<StepExecutionResult> {
+  const currentRun = { ...run, steps: [...run.steps], outputs: [...run.outputs] };
+  const step = currentRun.steps[stepIndex] ? { ...currentRun.steps[stepIndex] } : null;
+
+  if (!step) {
+    return { success: false, run: currentRun, error: 'Chỉ mục bước không hợp lệ' };
+  }
+
+  // 1. Delegated permission check per step
+  if (!hasPermission(callerRole, step.requiredPermission)) {
+    const errorMsg = `Từ chối ủy quyền: Quyền '${callerRole}' không có permission '${step.requiredPermission}' để thực hiện bước ${step.stepOrder}`;
+    step.status = 'failed';
+    step.observedOutcome = errorMsg;
+    currentRun.steps[stepIndex] = step;
+    currentRun.currentState = 'failed';
+    currentRun.diagnosticsRef = `diag-${step.stepId}-perm-denied`;
+    return {
+      success: false,
+      run: currentRun,
+      error: errorMsg
+    };
+  }
+
+  // 2. High-risk approval gate
+  if (step.isHighRisk && currentRun.approvalState !== 'approved') {
+    step.status = 'awaiting_approval';
+    currentRun.steps[stepIndex] = step;
+    currentRun.currentState = 'awaiting_approval';
+    currentRun.approvalState = 'awaiting_approval';
+    return {
+      success: false,
+      run: currentRun,
+      pausedReason: `Bước ${step.stepOrder} (${step.title}) là thao tác rủi ro cao và cần phê duyệt trước khi kích hoạt.`
+    };
+  }
+
+  // 3. Budget ceiling gate without overdraft
+  const projectedTotal = currentRun.creditsUsed + step.estimatedCredits;
+  if (projectedTotal > currentRun.budgetCeiling || projectedTotal > availableBalance) {
+    step.status = 'waiting_context';
+    currentRun.steps[stepIndex] = step;
+    currentRun.currentState = 'waiting_context';
+    const pauseMsg = `Tạm dừng vì chạm hạn mức tín dụng: Dự kiến ${projectedTotal} cr > Hạn mức ${currentRun.budgetCeiling} cr (Số dư: ${availableBalance} cr). Không trừ credits dư thừa.`;
+    return {
+      success: false,
+      run: currentRun,
+      pausedReason: pauseMsg
+    };
+  }
+
+  // 4. Dispatch to backend AgentService/ExecuteStep
+  const rpcRes = await callCanonicalRpc<
+    Record<string, unknown>,
+    {
+      step?: {
+        step_id?: string;
+        status?: AgentStepStatus;
+        actual_credits?: number;
+        observed_outcome?: string;
+        completed_at?: string;
+      };
+      output?: AgentOutput;
+      credits_used?: number;
+      current_state?: AgentRunState;
+    }
+  >(
+    'creativanta.automation.v1.AgentService/ExecuteStep',
+    {
+      idempotency_key: options.idempotencyKey || generateIdempotencyKey(`agent-step-${step.stepId}`),
+      workspace_id: currentRun.workspaceId,
+      agent_run_id: currentRun.agentRunId,
+      step_id: step.stepId,
+      step_order: step.stepOrder,
+      phase: step.phase,
+      caller_role: callerRole,
+      estimated_credits: step.estimatedCredits,
+      budget_ceiling: currentRun.budgetCeiling
+    },
+    {
+      ...options,
+      workspaceId: options.workspaceId ?? currentRun.workspaceId
+    }
+  );
+
+  if (!rpcRes.ok) {
+    return {
+      success: false,
+      run: currentRun,
+      error: rpcRes.error.message
+    };
+  }
+
+  const remoteStep = rpcRes.data?.step;
+  if (!remoteStep || remoteStep.status !== 'completed') {
+    return {
+      success: false,
+      run: currentRun,
+      error:
+        'Máy chủ AgentService chưa xác nhận hoàn thành bước thực thi (fail-closed). Không trừ credits.'
+    };
+  }
+
+  const actualCredits =
+    typeof remoteStep.actual_credits === 'number' ? remoteStep.actual_credits : step.estimatedCredits;
+
+  step.status = 'completed';
+  step.actualCredits = actualCredits;
+  step.observedOutcome =
+    remoteStep.observed_outcome || `Hoàn thành bước ${step.stepOrder}: ${step.title}`;
+  step.completedAt = remoteStep.completed_at || new Date().toISOString();
+  currentRun.steps[stepIndex] = step;
+  currentRun.creditsUsed =
+    typeof rpcRes.data?.credits_used === 'number'
+      ? rpcRes.data.credits_used
+      : currentRun.creditsUsed + actualCredits;
+
+  currentRun.memory = appendBoundedMemory(
+    currentRun.memory,
+    `step_${step.stepOrder}_output`,
+    step.observedOutcome
+  );
+
+  if (rpcRes.data?.output) {
+    currentRun.outputs.push(rpcRes.data.output);
+  }
+
+  const allCompleted = currentRun.steps.every((s) => s.status === 'completed');
+  currentRun.currentState =
+    rpcRes.data?.current_state || (allCompleted ? 'completed' : 'executing');
+  currentRun.updatedAt = new Date().toISOString();
+
+  return {
+    success: true,
+    run: currentRun
+  };
+}

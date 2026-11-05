@@ -7,9 +7,14 @@
     ELIGIBLE_WEBHOOK_EVENTS,
     isReadOnlyScopes,
     canMutate,
+    issueApiKeyRemote,
+    rotateApiKeyRemote,
+    revokeApiKeyRemote,
+    registerWebhookRemote,
     type APIKey,
     type WebhookSubscription
   } from '$lib/developer/public_api';
+  import { authStore } from '$lib/auth';
 
   let selectedTier = 'pro';
   let newKeyName = '';
@@ -23,6 +28,7 @@
   let newWebhookSecret = '';
 
   let actionFeedback = '';
+  let isProcessing = false;
 
   $: state = $developerStore;
   $: activeKeysCount = state.keys.filter(
@@ -36,14 +42,6 @@
 
   onMount(() => {
     developerStore.setTier(selectedTier);
-    if (state.keys.length === 0) {
-      // Seed initial demo key for view demonstration
-      const { rawSecret } = developerStore.createKey('Default Production Key', [
-        'read:content',
-        'write:content'
-      ]);
-      newKeySecret = rawSecret;
-    }
   });
 
   function handleTierChange(e: Event) {
@@ -52,45 +50,86 @@
     developerStore.setTier(selectedTier);
   }
 
-  function handleCreateKey() {
+  async function handleCreateKey() {
+    actionFeedback = '';
+    isProcessing = true;
     try {
-      actionFeedback = '';
-      const { rawSecret } = developerStore.createKey(newKeyName || 'New API Key', selectedScopes);
-      newKeySecret = rawSecret;
+      const res = await issueApiKeyRemote({
+        workspaceId: $authStore.activeWorkspace?.id,
+        tier: state.tier,
+        activeKeysCount,
+        name: newKeyName || 'New API Key',
+        scopes: selectedScopes
+      });
+      if (!res.ok || !res.rawSecret) {
+        actionFeedback = res.error || 'Không thể cấp phát khóa API từ máy chủ (APIKeyService/Create).';
+        return;
+      }
+      newKeySecret = res.rawSecret;
       newKeyName = '';
       showCreateKeyModal = false;
-    } catch (err: any) {
-      actionFeedback = err.message;
+    } finally {
+      isProcessing = false;
     }
   }
 
-  function handleRotate(keyId: string) {
+  async function handleRotate(keyId: string) {
+    actionFeedback = '';
+    isProcessing = true;
     try {
-      actionFeedback = '';
-      const rot = developerStore.rotateKey(keyId);
+      const rot = await rotateApiKeyRemote({
+        workspaceId: $authStore.activeWorkspace?.id,
+        apiKeyId: keyId
+      });
+      if (!rot.ok || !rot.newSecret || !rot.graceEndsAt) {
+        actionFeedback = rot.error || 'Không thể xoay vòng khóa API trên máy chủ (APIKeyService/Rotate).';
+        return;
+      }
       newKeySecret = rot.newSecret;
       actionFeedback = `Key rotated successfully! Both keys active during 24h grace window until ${new Date(
         rot.graceEndsAt
       ).toLocaleTimeString()}`;
-    } catch (err: any) {
-      actionFeedback = err.message;
+    } finally {
+      isProcessing = false;
     }
   }
 
-  function handleRevoke(keyId: string) {
-    developerStore.revokeKey(keyId);
-    actionFeedback = 'API key revoked immediately.';
+  async function handleRevoke(keyId: string) {
+    actionFeedback = '';
+    isProcessing = true;
+    try {
+      const res = await revokeApiKeyRemote({
+        workspaceId: $authStore.activeWorkspace?.id,
+        apiKeyId: keyId
+      });
+      if (!res.ok) {
+        actionFeedback = res.error || 'Không thể thu hồi khóa API trên máy chủ (APIKeyService/Revoke).';
+        return;
+      }
+      actionFeedback = 'API key revoked immediately.';
+    } finally {
+      isProcessing = false;
+    }
   }
 
-  function handleCreateWebhook() {
+  async function handleCreateWebhook() {
+    actionFeedback = '';
+    isProcessing = true;
     try {
-      actionFeedback = '';
-      const { secret } = developerStore.createWebhook(webhookUrl, webhookEvents);
-      newWebhookSecret = secret;
+      const res = await registerWebhookRemote({
+        workspaceId: $authStore.activeWorkspace?.id,
+        targetUrl: webhookUrl,
+        eventTypes: webhookEvents
+      });
+      if (!res.ok || !res.secret) {
+        actionFeedback = res.error || 'Không thể đăng ký Webhook trên máy chủ (WebhookService/Create).';
+        return;
+      }
+      newWebhookSecret = res.secret;
       webhookUrl = '';
       showCreateWebhookModal = false;
-    } catch (err: any) {
-      actionFeedback = err.message;
+    } finally {
+      isProcessing = false;
     }
   }
 

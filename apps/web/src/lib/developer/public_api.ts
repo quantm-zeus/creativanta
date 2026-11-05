@@ -429,8 +429,316 @@ function createDeveloperStore(initialTier: string = 'pro') {
         })
       }));
     },
-    reset: () => set(initialState)
+    reset: () => set(initialState),
+    upsertRemoteKey: (key: APIKey) => {
+      update((s) => {
+        const exists = s.keys.some((k) => k.apiKeyId === key.apiKeyId);
+        return {
+          ...s,
+          keys: exists
+            ? s.keys.map((k) => (k.apiKeyId === key.apiKeyId ? key : k))
+            : [...s.keys, key]
+        };
+      });
+    },
+    upsertRemoteWebhook: (sub: WebhookSubscription) => {
+      update((s) => {
+        const exists = s.webhooks.some((w) => w.subscriptionId === sub.subscriptionId);
+        return {
+          ...s,
+          webhooks: exists
+            ? s.webhooks.map((w) => (w.subscriptionId === sub.subscriptionId ? sub : w))
+            : [...s.webhooks, sub]
+        };
+      });
+    }
   };
 }
 
 export const developerStore = createDeveloperStore();
+
+import { callCanonicalRpc, generateIdempotencyKey, type CanonicalRpcOptions } from '$lib/api/client';
+
+export interface IssueApiKeyRemoteResult {
+  ok: boolean;
+  key?: APIKey;
+  rawSecret?: string;
+  error?: string;
+}
+
+export async function issueApiKeyRemote(
+  params: {
+    workspaceId?: string;
+    tier: string;
+    activeKeysCount: number;
+    name: string;
+    scopes: string[];
+  },
+  options: CanonicalRpcOptions = {}
+): Promise<IssueApiKeyRemoteResult> {
+  const cap = TIER_KEY_CAPS[params.tier] || 3;
+  if (params.activeKeysCount >= cap) {
+    return {
+      ok: false,
+      error: `Workspace tier ${params.tier} allows a maximum of ${cap} active keys`
+    };
+  }
+
+  if (params.tier === 'starter' && !isReadOnlyScopes(params.scopes)) {
+    return {
+      ok: false,
+      error: 'Starter tier is restricted to read-only API access mode'
+    };
+  }
+
+  const rpcRes = await callCanonicalRpc<
+    Record<string, unknown>,
+    {
+      api_key?: {
+        api_key_id?: string;
+        workspace_id?: string;
+        key_prefix?: string;
+        name?: string;
+        scopes?: string[];
+        status?: APIKeyStatus;
+        logical_key_id?: string;
+        expires_at?: string;
+        created_by?: string;
+      };
+      raw_secret?: string;
+    }
+  >(
+    'creativanta.workspace.v1.APIKeyService/Create',
+    {
+      idempotency_key: options.idempotencyKey || generateIdempotencyKey('apikey-create'),
+      workspace_id: params.workspaceId,
+      name: (params.name || '').trim() || 'API Key',
+      scopes: params.scopes
+    },
+    {
+      ...options,
+      workspaceId: options.workspaceId ?? params.workspaceId
+    }
+  );
+
+  if (!rpcRes.ok) {
+    return {
+      ok: false,
+      error: rpcRes.error.message
+    };
+  }
+
+  const remoteKey = rpcRes.data?.api_key;
+  const rawSecret = rpcRes.data?.raw_secret;
+  if (!remoteKey?.api_key_id || !rawSecret) {
+    return {
+      ok: false,
+      error: 'Phản hồi từ máy chủ thiếu thông tin khóa API (api_key_id/raw_secret). Không tạo khóa giả lập.'
+    };
+  }
+
+  const key: APIKey = {
+    apiKeyId: remoteKey.api_key_id,
+    workspaceId: remoteKey.workspace_id || params.workspaceId || '',
+    keyPrefix: remoteKey.key_prefix || rawSecret.slice(0, 10),
+    name: remoteKey.name || params.name,
+    scopes: remoteKey.scopes || params.scopes,
+    status: remoteKey.status || 'active',
+    logicalKeyId: remoteKey.logical_key_id || remoteKey.api_key_id,
+    requestCount: 0,
+    expiresAt:
+      remoteKey.expires_at ||
+      new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+    createdBy: remoteKey.created_by || 'authenticated_user'
+  };
+
+  developerStore.upsertRemoteKey(key);
+  return { ok: true, key, rawSecret };
+}
+
+export async function rotateApiKeyRemote(
+  params: { workspaceId?: string; apiKeyId: string },
+  options: CanonicalRpcOptions = {}
+): Promise<{
+  ok: boolean;
+  newKey?: APIKey;
+  newSecret?: string;
+  graceEndsAt?: string;
+  error?: string;
+}> {
+  const rpcRes = await callCanonicalRpc<
+    Record<string, unknown>,
+    {
+      new_key?: {
+        api_key_id?: string;
+        workspace_id?: string;
+        key_prefix?: string;
+        name?: string;
+        scopes?: string[];
+        logical_key_id?: string;
+        expires_at?: string;
+      };
+      new_secret?: string;
+      grace_ends_at?: string;
+    }
+  >(
+    'creativanta.workspace.v1.APIKeyService/Rotate',
+    {
+      idempotency_key: options.idempotencyKey || generateIdempotencyKey('apikey-rotate'),
+      workspace_id: params.workspaceId,
+      api_key_id: params.apiKeyId
+    },
+    {
+      ...options,
+      workspaceId: options.workspaceId ?? params.workspaceId
+    }
+  );
+
+  if (!rpcRes.ok) {
+    return {
+      ok: false,
+      error: rpcRes.error.message
+    };
+  }
+
+  const newKeyData = rpcRes.data?.new_key;
+  const newSecret = rpcRes.data?.new_secret;
+  if (!newKeyData?.api_key_id || !newSecret) {
+    return {
+      ok: false,
+      error: 'Phản hồi từ máy chủ thiếu khóa xoay vòng mới (fail-closed).'
+    };
+  }
+
+  const graceEndsAt =
+    rpcRes.data?.grace_ends_at || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+  const newKey: APIKey = {
+    apiKeyId: newKeyData.api_key_id,
+    workspaceId: newKeyData.workspace_id || params.workspaceId || '',
+    keyPrefix: newKeyData.key_prefix || newSecret.slice(0, 10),
+    name: newKeyData.name || 'Rotated API Key',
+    scopes: newKeyData.scopes || ['read:content'],
+    status: 'active',
+    logicalKeyId: newKeyData.logical_key_id || params.apiKeyId,
+    requestCount: 0,
+    expiresAt:
+      newKeyData.expires_at ||
+      new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+    createdBy: 'authenticated_user'
+  };
+
+  developerStore.upsertRemoteKey(newKey);
+  return {
+    ok: true,
+    newKey,
+    newSecret,
+    graceEndsAt
+  };
+}
+
+export async function revokeApiKeyRemote(
+  params: { workspaceId?: string; apiKeyId: string },
+  options: CanonicalRpcOptions = {}
+): Promise<{ ok: boolean; error?: string }> {
+  const rpcRes = await callCanonicalRpc<
+    Record<string, unknown>,
+    { revoked?: boolean; status?: string }
+  >(
+    'creativanta.workspace.v1.APIKeyService/Revoke',
+    {
+      idempotency_key: options.idempotencyKey || generateIdempotencyKey('apikey-revoke'),
+      workspace_id: params.workspaceId,
+      api_key_id: params.apiKeyId
+    },
+    {
+      ...options,
+      workspaceId: options.workspaceId ?? params.workspaceId
+    }
+  );
+
+  if (!rpcRes.ok) {
+    return {
+      ok: false,
+      error: rpcRes.error.message
+    };
+  }
+
+  developerStore.revokeKey(params.apiKeyId);
+  return { ok: true };
+}
+
+export async function registerWebhookRemote(
+  params: {
+    workspaceId?: string;
+    targetUrl: string;
+    eventTypes: string[];
+  },
+  options: CanonicalRpcOptions = {}
+): Promise<{
+  ok: boolean;
+  subscription?: WebhookSubscription;
+  secret?: string;
+  error?: string;
+}> {
+  if (!params.targetUrl || !params.targetUrl.trim().startsWith('https://')) {
+    return {
+      ok: false,
+      error: 'Webhook endpoint URL phải bắt đầu bằng https://'
+    };
+  }
+
+  const rpcRes = await callCanonicalRpc<
+    Record<string, unknown>,
+    {
+      subscription?: {
+        subscription_id?: string;
+        workspace_id?: string;
+        target_url?: string;
+        event_types?: string[];
+        status?: WebhookStatus;
+      };
+      signing_secret?: string;
+    }
+  >(
+    'creativanta.workspace.v1.WebhookService/Create',
+    {
+      idempotency_key: options.idempotencyKey || generateIdempotencyKey('webhook-create'),
+      workspace_id: params.workspaceId,
+      target_url: params.targetUrl.trim(),
+      event_types: params.eventTypes
+    },
+    {
+      ...options,
+      workspaceId: options.workspaceId ?? params.workspaceId
+    }
+  );
+
+  if (!rpcRes.ok) {
+    return {
+      ok: false,
+      error: rpcRes.error.message
+    };
+  }
+
+  const remoteSub = rpcRes.data?.subscription;
+  const secret = rpcRes.data?.signing_secret;
+  if (!remoteSub?.subscription_id || !secret) {
+    return {
+      ok: false,
+      error: 'Phản hồi từ máy chủ thiếu subscription_id hoặc signing_secret (fail-closed).'
+    };
+  }
+
+  const sub: WebhookSubscription = {
+    subscriptionId: remoteSub.subscription_id,
+    workspaceId: remoteSub.workspace_id || params.workspaceId || '',
+    targetUrl: remoteSub.target_url || params.targetUrl.trim(),
+    eventTypes: remoteSub.event_types || params.eventTypes,
+    status: remoteSub.status || 'active',
+    consecutiveFailureCount: 0
+  };
+
+  developerStore.upsertRemoteWebhook(sub);
+  return { ok: true, subscription: sub, secret };
+}

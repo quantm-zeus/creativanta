@@ -1,10 +1,11 @@
 <script lang="ts">
   import type { WorkspaceRole } from '$lib/auth';
+  import { authStore } from '$lib/auth';
   import {
     getModuleIntegritySummaries,
     getCrossModuleLinks,
     getInitialUnreconciledOutcomes,
-    applyOperationalRepair,
+    applyOperationalRepairRemote,
     getProviderAndShippingGateSummary,
     type UnreconciledOutcome,
     type OperationalRepairRequest
@@ -16,6 +17,7 @@
     type AuthorizedImportInput,
     type LabeledProfitAndRepairProjection
   } from '$lib/p1_first_value';
+  import { callCanonicalRpc } from '$lib/api/client';
 
   const workspaceId = 'ws-p6-commerce';
   let selectedRole = $state<WorkspaceRole>('owner');
@@ -33,6 +35,8 @@
   let repairError = $state<string | null>(null);
   let repairSuccessMessage = $state<string | null>(null);
 
+  let isSubmittingRepair = $state(false);
+
   function openRepairDialog(item: UnreconciledOutcome) {
     selectedUnrecItem = item;
     auditReasonInput = '';
@@ -40,24 +44,33 @@
     repairSuccessMessage = null;
   }
 
-  function handleExecuteRepair() {
+  async function handleExecuteRepair() {
     if (!selectedUnrecItem) return;
     repairError = null;
+    isSubmittingRepair = true;
     try {
       const req: OperationalRepairRequest = {
-        workspaceId,
+        workspaceId: $authStore.activeWorkspace?.id || workspaceId,
         unreconciledId: selectedUnrecItem.id,
         repairType: selectedUnrecItem.repairActionSuggested as any,
         auditReason: auditReasonInput,
-        actorId: 'user-operator-current',
+        actorId: $authStore.user?.id || 'user-operator-current',
         actorRole: selectedRole
       };
-      const { updatedOutcomes, result } = applyOperationalRepair(unreconciledItems, req);
-      unreconciledItems = updatedOutcomes;
-      repairSuccessMessage = `Đã đối soát thành công! Mã chứng từ: ${result.ledgerPostingId}`;
+      const res = await applyOperationalRepairRemote(unreconciledItems, req);
+      if (!res.ok || !res.result) {
+        repairError =
+          res.error ||
+          'Không thể ghi bút toán đối soát lên Sổ cái máy chủ (ReconciliationService/ApplyRepair). Lý do kiểm toán của bạn đã được giữ nguyên.';
+        return;
+      }
+      unreconciledItems = res.updatedOutcomes;
+      repairSuccessMessage = `Đã đối soát thành công! Mã chứng từ: ${res.result.ledgerPostingId}`;
       selectedUnrecItem = null;
     } catch (err: any) {
       repairError = err.message || 'Lỗi khi thực hiện đối soát';
+    } finally {
+      isSubmittingRepair = false;
     }
   }
 
@@ -105,8 +118,24 @@
     filterRepairCardsForRole(projection.activeRepairCards, selectedRole)
   );
 
-  function handleResolveGap(gapId: string, addedCostVnd: string) {
+  let p1RepairError = $state<string | null>(null);
+
+  async function handleResolveGap(gapId: string, addedCostVnd: string) {
     if (selectedRole === 'viewer') return;
+    p1RepairError = null;
+    const rpcRes = await callCanonicalRpc(
+      'creativanta.finance.v1.CostService/RecordCostEntry',
+      {
+        workspace_id: $authStore.activeWorkspace?.id || projection.workspaceId,
+        gap_id: gapId,
+        amount_vnd_exact: addedCostVnd,
+        actor_role: selectedRole
+      }
+    );
+    if (!rpcRes.ok) {
+      p1RepairError = rpcRes.error.message;
+      return;
+    }
     projection = resolveUnderlyingRepairGap(projection, gapId, addedCostVnd, selectedRole);
   }
 
@@ -522,6 +551,11 @@
         <!-- Repair Gaps -->
         <div class="space-y-3">
           <h3 class="text-sm font-bold text-[#242924]">Chứng từ Cần Bổ sung Đối soát</h3>
+          {#if p1RepairError}
+            <div class="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-800" role="alert">
+              {p1RepairError}
+            </div>
+          {/if}
           {#if visibleRepairCards.length === 0}
             <div class="rounded-xl border border-green-200 bg-green-50 p-4 text-xs font-semibold text-green-800">
               &#10003; Tất cả khoảng trống chứng từ đã được hoàn tất đối soát!

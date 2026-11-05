@@ -7,8 +7,10 @@
     urgentCount,
     type ScopedNotification
   } from '$lib/notification/store';
+  import { activateModalFocusSession, handleModalKeydown } from '$lib/a11y';
 
   let filterTab: 'all' | 'unread' | 'urgent' = $state('all');
+  let dialogElement: HTMLElement | null = $state(null);
 
   let notifs = $derived($activeNotifications);
 
@@ -20,11 +22,20 @@
     })
   );
 
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
-      isNotificationDrawerOpen.set(false);
-    }
+  function closeDrawer() {
+    isNotificationDrawerOpen.set(false);
   }
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (!$isNotificationDrawerOpen) return;
+    handleModalKeydown(event, dialogElement, closeDrawer);
+  }
+
+  $effect(() => {
+    if ($isNotificationDrawerOpen && dialogElement) {
+      return activateModalFocusSession(dialogElement);
+    }
+  });
 
   function formatTime(iso: string) {
     try {
@@ -54,22 +65,22 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if $isNotificationDrawerOpen}
-  <!-- Backdrop -->
+  <!-- Backdrop (exclude from keyboard Tab cycle so focus stays trapped inside dialog) -->
   <div
     class="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs transition-opacity"
-    onclick={() => isNotificationDrawerOpen.set(false)}
-    onkeydown={(e) => e.key === 'Escape' && isNotificationDrawerOpen.set(false)}
-    role="button"
-    tabindex="0"
-    aria-label="Đóng thông báo"
+    onclick={closeDrawer}
+    role="presentation"
+    aria-hidden="true"
   ></div>
 
   <!-- Slide-over Drawer Panel -->
   <div
+    bind:this={dialogElement}
     class="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col bg-[#fbf9f5] border-l border-[#e7e2d7] shadow-2xl transition-transform"
     role="dialog"
     aria-modal="true"
     aria-labelledby="notification-drawer-title"
+    tabindex="-1"
   >
     <!-- Drawer Header -->
     <div class="flex items-center justify-between border-b border-[#e7e2d7] px-5 py-4 bg-[#ffffff]">
