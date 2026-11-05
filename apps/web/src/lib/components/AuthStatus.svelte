@@ -15,7 +15,7 @@
 
 <div class="flex items-center gap-2.5">
   <!-- Mode Selector Badge -->
-  <div class="relative">
+  <div class="relative hidden sm:block">
     <button
       type="button"
       onclick={() => (showModeMenu = !showModeMenu)}
