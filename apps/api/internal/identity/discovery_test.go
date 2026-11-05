@@ -21,7 +21,7 @@ func (d *discoveredFixture) Discover(_ context.Context, subject string) ([]Works
 	if subject != "user_verified" {
 		return nil, ErrUnauthorized
 	}
-	return []WorkspaceSummary{{ID: testWorkspace, Name: "Team Alpha", Role: "editor"}}, nil
+	return []WorkspaceSummary{{ID: testWorkspace, Name: "Team Alpha", Role: "editor", DefaultMode: "seller"}}, nil
 }
 func TestDiscoveryRequiresVerifiedSession(t *testing.T) {
 	called := 0
@@ -31,6 +31,12 @@ func TestDiscoveryRequiresVerifiedSession(t *testing.T) {
 	list, err := r.DiscoverWorkspaces(context.Background(), "valid")
 	if err != nil || len(list) != 1 || list[0].Role != "editor" || members.calls != 1 {
 		t.Fatalf("non-owner discovery denied: %#v %v", list, err)
+	}
+	if list[0].DisplayName != "Team Alpha" || list[0].Name != "Team Alpha" {
+		t.Fatalf("expected canonical DisplayName and Name populated, got %+v", list[0])
+	}
+	if list[0].DefaultOperatorMode != "seller" || list[0].DefaultMode != "seller" {
+		t.Fatalf("expected canonical DefaultOperatorMode and DefaultMode populated, got %+v", list[0])
 	}
 	sessions.active = false
 	list, err = r.DiscoverWorkspaces(context.Background(), "valid")
@@ -62,10 +68,10 @@ func TestPostgresNonOwnerWorkspaceDiscovery(t *testing.T) {
 	defer tx.Rollback()
 	for _, stmt := range []string{
 		"CREATE TEMP TABLE users(user_id uuid, clerk_id text, status text) ON COMMIT DROP",
-		"CREATE TEMP TABLE workspaces(workspace_id uuid, status text, deleted_at timestamptz, display_name text) ON COMMIT DROP",
+		"CREATE TEMP TABLE workspaces(workspace_id uuid, status text, deleted_at timestamptz, name text, display_name text, default_mode text, default_operator_mode text) ON COMMIT DROP",
 		"CREATE TEMP TABLE workspace_members(workspace_id uuid,user_id uuid,status text,role text) ON COMMIT DROP",
 		"INSERT INTO users VALUES ('019a3a6c-2fa4-7c5e-9de3-66f4ad9a3f1a','user_member','active')",
-		"INSERT INTO workspaces VALUES ('019a3a6c-2fa4-76d5-8ccd-d6f3a2f2a2f1','active',NULL,'Alpha'),('019a3a6c-2fa4-75db-bcdf-66eac7dbcb03','active',NULL,'Beta')",
+		"INSERT INTO workspaces VALUES ('019a3a6c-2fa4-76d5-8ccd-d6f3a2f2a2f1','active',NULL,'Alpha',NULL,'seller',NULL),('019a3a6c-2fa4-75db-bcdf-66eac7dbcb03','active',NULL,'Beta','Beta','creator','creator')",
 		"INSERT INTO workspace_members VALUES ('019a3a6c-2fa4-76d5-8ccd-d6f3a2f2a2f1','019a3a6c-2fa4-7c5e-9de3-66f4ad9a3f1a','active','editor'),('019a3a6c-2fa4-75db-bcdf-66eac7dbcb03','019a3a6c-2fa4-7c5e-9de3-66f4ad9a3f1a','removed','owner')",
 	} {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
@@ -74,7 +80,7 @@ func TestPostgresNonOwnerWorkspaceDiscovery(t *testing.T) {
 	}
 	lookup := SQLMembershipLookup{Queries: tx}
 	items, err := lookup.Discover(ctx, "user_member")
-	if err != nil || len(items) != 1 || items[0].Name != "Alpha" || items[0].Role != "editor" {
+	if err != nil || len(items) != 1 || items[0].Name != "Alpha" || items[0].DisplayName != "Alpha" || items[0].DefaultMode != "seller" || items[0].DefaultOperatorMode != "seller" || items[0].Role != "editor" {
 		t.Fatalf("non-owner discovery broken: %#v %v", items, err)
 	}
 	if _, err := tx.ExecContext(ctx, "UPDATE workspace_members SET status='removed' WHERE workspace_id=$1", testWorkspace); err != nil {

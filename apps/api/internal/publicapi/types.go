@@ -54,6 +54,9 @@ var (
 	ErrSubscriptionSuspended     = errors.New("publicapi: webhook subscription is suspended")
 	ErrIneligibleWebhookEvent    = errors.New("publicapi: event type is not eligible for S24 outbound delivery")
 	ErrInvalidWebhookSignature   = errors.New("publicapi: invalid webhook signature")
+	ErrInvalidScope              = errors.New("publicapi: invalid or unrecognized API key scope")
+	ErrWebhookTargetSSRFBlocked  = errors.New("publicapi: webhook target URL blocked by SSRF policy")
+	ErrWebhookRedirectBlocked    = errors.New("publicapi: outbound webhook redirects are forbidden")
 )
 
 // TierCaps returns the maximum allowed active/rotating keys for a tier.
@@ -265,16 +268,113 @@ func stripPayload(v any) any {
 	}
 }
 
+var canonicalScopeNormalization = map[string]string{
+	"read:orders":      "read:orders",
+	"orders:read":      "read:orders",
+	"order:read":       "read:orders",
+	"refund:read":      "read:orders",
+	"write:orders":     "write:orders",
+	"orders:write":     "write:orders",
+	"orders:manage":    "write:orders",
+	"order:manage":     "write:orders",
+	"refund:manage":    "write:orders",
+	"read:products":    "read:products",
+	"products:read":    "read:products",
+	"product:read":     "read:products",
+	"write:products":   "write:products",
+	"products:write":   "write:products",
+	"products:manage":  "write:products",
+	"product:manage":   "write:products",
+	"read:inventory":   "read:inventory",
+	"inventory:read":   "read:inventory",
+	"write:inventory":  "write:inventory",
+	"inventory:write":  "write:inventory",
+	"inventory:manage": "write:inventory",
+	"read:content":     "read:content",
+	"content:read":     "read:content",
+	"script:read":      "read:content",
+	"write:content":    "write:content",
+	"content:write":    "write:content",
+	"content:manage":   "write:content",
+	"script:edit":      "write:content",
+	"read:publish":     "read:publish",
+	"publish:read":     "read:publish",
+	"write:publish":    "write:publish",
+	"publish:write":    "write:publish",
+	"publish:execute":  "write:publish",
+	"publish:schedule": "write:publish",
+	"read:analytics":   "read:analytics",
+	"analytics:read":   "read:analytics",
+	"read:workflows":   "read:workflows",
+	"workflows:read":   "read:workflows",
+	"workflow:read":    "read:workflows",
+	"write:workflows":  "write:workflows",
+	"workflows:write":  "write:workflows",
+	"workflow:manage":  "write:workflows",
+	"workflow:execute": "write:workflows",
+	"read:agents":      "read:agents",
+	"agents:read":      "read:agents",
+	"agent:read":       "read:agents",
+	"write:agents":     "write:agents",
+	"agents:write":     "write:agents",
+	"agent:manage":     "write:agents",
+	"agent:execute":    "write:agents",
+	"read:webhooks":    "read:webhooks",
+	"webhooks:read":    "read:webhooks",
+	"write:webhooks":   "write:webhooks",
+	"webhooks:write":   "write:webhooks",
+	"read:all":         "read:all",
+	"all:read":         "read:all",
+	"write:all":        "write:all",
+	"all:write":        "write:all",
+	"*:*":              "*:*",
+	"*":                "*:*",
+}
+
+// NormalizeScope maps a scope token to its canonical representation.
+func NormalizeScope(scope string) (string, bool) {
+	norm := strings.ToLower(strings.TrimSpace(scope))
+	if norm == "" {
+		return "", false
+	}
+	canonical, ok := canonicalScopeNormalization[norm]
+	return canonical, ok
+}
+
+// ValidateScopes verifies that a scope list is non-empty and every scope is a recognized canonical scope.
+func ValidateScopes(scopes []string) error {
+	if len(scopes) == 0 {
+		return fmt.Errorf("%w: at least one scope is required", ErrInvalidScope)
+	}
+	for _, s := range scopes {
+		if _, ok := NormalizeScope(s); !ok {
+			return fmt.Errorf("%w: %q", ErrInvalidScope, s)
+		}
+	}
+	return nil
+}
+
 // HasScope checks if a scope list satisfies a required scope (supports wildcard `write:all`, `read:all`).
 func HasScope(scopes []string, requiredScope string) bool {
+	reqCanonical, reqOK := NormalizeScope(requiredScope)
+	if !reqOK {
+		reqCanonical = strings.ToLower(strings.TrimSpace(requiredScope))
+	}
+	if reqCanonical == "" {
+		return false
+	}
 	for _, s := range scopes {
-		if s == requiredScope || s == "*:*" || s == "*" {
+		canon, ok := NormalizeScope(s)
+		if !ok {
+			continue
+		}
+		if canon == reqCanonical || canon == "*:*" {
 			return true
 		}
-		if strings.HasPrefix(requiredScope, "read:") && (s == "read:all" || s == "all:read") {
+		if strings.HasPrefix(reqCanonical, "read:") && canon == "read:all" {
 			return true
 		}
-		if strings.HasPrefix(requiredScope, "write:") && (s == "write:all" || s == "all:write") {
+		if strings.HasPrefix(reqCanonical, "write:") && canon == "write:all" {
 			return true
 		}
 	}
@@ -283,8 +383,21 @@ func HasScope(scopes []string, requiredScope string) bool {
 
 // IsReadOnlyScopes returns true if the scope list contains no mutating write permissions.
 func IsReadOnlyScopes(scopes []string) bool {
+	if len(scopes) == 0 {
+		return false
+	}
 	for _, s := range scopes {
-		if strings.HasPrefix(s, "write:") || strings.Contains(s, "manage") || strings.Contains(s, "delete") || s == "*:*" || s == "*" || s == "write:all" {
+		canon, ok := NormalizeScope(s)
+		if !ok {
+			lower := strings.ToLower(strings.TrimSpace(s))
+			if strings.HasPrefix(lower, "write:") || strings.Contains(lower, "manage") ||
+				strings.Contains(lower, "delete") || strings.Contains(lower, "edit") ||
+				strings.Contains(lower, "execute") || lower == "*:*" || lower == "*" {
+				return false
+			}
+			continue
+		}
+		if strings.HasPrefix(canon, "write:") || canon == "*:*" {
 			return false
 		}
 	}

@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -14,6 +16,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	platformv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/platform/v1"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
 )
 
 // MockHTTPClient simulates downstream webhook receiving endpoints.
@@ -527,5 +531,284 @@ func TestWebhook_AutoSuspensionAfter100Failures(t *testing.T) {
 	}
 	if updatedSub.Status != "suspended" {
 		t.Fatalf("expected subscription status 'suspended' after 100 failures, got: %s", updatedSub.Status)
+	}
+}
+
+// =============================================================================
+// Security Remediation Regression Tests (AUTH-01, AUTH-02, AUTH-03, WEBHOOK-02)
+// =============================================================================
+
+type stubHostResolver struct {
+	mu      sync.Mutex
+	lookups [][]net.IPAddr
+	err     error
+	calls   int
+}
+
+func (r *stubHostResolver) LookupIPAddr(_ context.Context, _ string) ([]net.IPAddr, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	idx := r.calls
+	r.calls++
+	if r.err != nil {
+		return nil, r.err
+	}
+	if len(r.lookups) == 0 {
+		return nil, errors.New("no lookups configured")
+	}
+	if idx >= len(r.lookups) {
+		idx = len(r.lookups) - 1
+	}
+	return r.lookups[idx], nil
+}
+
+func TestAUTH01_APIKeyManagementRequiresPrincipalMembershipAndAdminRole(t *testing.T) {
+	store := NewMemoryStore()
+	tierProvider := NewFixedTierProvider()
+	wsA := "22222222-2222-2222-2222-222222222210"
+	wsB := "22222222-2222-2222-2222-222222222211"
+	tierProvider.SetTier(wsA, "pro")
+	tierProvider.SetTier(wsB, "pro")
+
+	svc := NewService(store, tierProvider)
+	dispatcher := NewOutboundDispatcher(store, &MockHTTPClient{})
+	handler := NewHandler(svc, dispatcher)
+
+	// 1. Unauthenticated request (even with WorkspaceId supplied) must fail with CodeUnauthenticated (no synthetic 0000...0001 workspace).
+	_, err := handler.Create(context.Background(), connect.NewRequest(&platformv1.CreateRequest{
+		WorkspaceId: wsA,
+		Name:        "Anon Key",
+		Scopes:      []string{"read:orders"},
+	}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("expected CodeUnauthenticated for anonymous caller, got %v", err)
+	}
+
+	// 2. Viewer, Editor, and Manager roles must be denied api_key:manage with CodePermissionDenied.
+	for _, role := range []string{"viewer", "contributor", "editor", "manager"} {
+		callerCtx := transportauth.WithPrincipal(context.Background(), transportauth.Session{
+			UserID:      "11111111-1111-1111-1111-111111111111",
+			WorkspaceID: wsA,
+			Role:        role,
+		})
+		_, err := handler.Create(callerCtx, connect.NewRequest(&platformv1.CreateRequest{
+			WorkspaceId: wsA,
+			Name:        "Non-Admin Key",
+			Scopes:      []string{"read:orders"},
+		}))
+		if connect.CodeOf(err) != connect.CodePermissionDenied {
+			t.Fatalf("expected CodePermissionDenied for role %q on Create, got %v", role, err)
+		}
+		_, err = handler.List(callerCtx, connect.NewRequest(&platformv1.ListRequest{
+			WorkspaceId: wsA,
+		}))
+		if connect.CodeOf(err) != connect.CodePermissionDenied {
+			t.Fatalf("expected CodePermissionDenied for role %q on List, got %v", role, err)
+		}
+	}
+
+	// 3. Admin in Workspace A cannot manage keys in Workspace B.
+	adminCtxA := transportauth.WithPrincipal(context.Background(), transportauth.Session{
+		UserID:      "11111111-1111-1111-1111-111111111112",
+		WorkspaceID: wsA,
+		Role:        "admin",
+	})
+	_, err = handler.Create(adminCtxA, connect.NewRequest(&platformv1.CreateRequest{
+		WorkspaceId: wsB,
+		Name:        "Cross-Tenant Key",
+		Scopes:      []string{"read:orders"},
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied for cross-workspace Create, got %v", err)
+	}
+
+	// 4. Admin in Workspace A succeeds for Workspace A, and invalid scopes are rejected on Create & UpdateScopes.
+	createResp, err := handler.Create(adminCtxA, connect.NewRequest(&platformv1.CreateRequest{
+		WorkspaceId: wsA,
+		Name:        "Valid Admin Key",
+		Scopes:      []string{"read:orders"},
+	}))
+	if err != nil {
+		t.Fatalf("expected Admin Create to succeed, got %v", err)
+	}
+
+	_, err = handler.UpdateScopes(adminCtxA, connect.NewRequest(&platformv1.UpdateScopesRequest{
+		WorkspaceId: wsA,
+		ApiKeyId:    createResp.Msg.ApiKey.ApiKeyId,
+		Scopes:      []string{"invalid:root"},
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("expected CodeInvalidArgument for unknown scope on UpdateScopes, got %v", err)
+	}
+
+	// 5. MembershipRoleResolver rejecting revoked member blocks access even if session carries Role="admin".
+	handlerWithResolver := NewHandler(svc, dispatcher).WithMembershipRoleResolver(func(ctx context.Context, wsID, userID string) (string, bool, error) {
+		return "admin", false, nil
+	})
+	_, err = handlerWithResolver.List(adminCtxA, connect.NewRequest(&platformv1.ListRequest{
+		WorkspaceId: wsA,
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied when membership is inactive, got %v", err)
+	}
+}
+
+func TestAUTH02_AUTH03_ExactOperationScopeMappingAndTenantBinding(t *testing.T) {
+	ctx := context.Background()
+	store := NewMemoryStore()
+	tierProvider := NewFixedTierProvider()
+	wsA := "22222222-2222-2222-2222-222222222212"
+	wsB := "22222222-2222-2222-2222-222222222213"
+	tierProvider.SetTier(wsA, "pro")
+
+	svc := NewService(store, tierProvider)
+	interceptor := NewAPIKeyInterceptor(svc)
+
+	// Key 1: read:orders only
+	_, readOrdersRaw, err := svc.CreateKey(ctx, wsA, "Orders Reader", []string{"read:orders"}, 0, 90, "admin_1")
+	if err != nil {
+		t.Fatalf("CreateKey read:orders failed: %v", err)
+	}
+	// Key 2: write:orders only
+	writeKeyEntity, writeOrdersRaw, err := svc.CreateKey(ctx, wsA, "Orders Writer", []string{"write:orders"}, 0, 90, "admin_1")
+	if err != nil {
+		t.Fatalf("CreateKey write:orders failed: %v", err)
+	}
+
+	var capturedSession transportauth.Session
+	var capturedOK bool
+	wrapped := interceptor.WrapUnary(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		capturedSession, capturedOK = transportauth.PrincipalFromContext(ctx)
+		return connect.NewResponse(&struct{}{}), nil
+	})
+
+	callProc := func(rawKey, proc, headerWsID string) error {
+		req := connect.NewRequest(&struct{}{})
+		req.Header().Set("Authorization", "Bearer "+rawKey)
+		req.Header().Set("X-Procedure", proc)
+		if headerWsID != "" {
+			req.Header().Set("X-Workspace-ID", headerWsID)
+		}
+		_, err := wrapped(ctx, req)
+		return err
+	}
+
+	// 1. read:orders key succeeds on OrderService/GetOrder, fails on ScriptService/GetScript (requires read:content).
+	if err := callProc(readOrdersRaw, "/creativanta.commerce.v1.OrderService/GetOrder", ""); err != nil {
+		t.Fatalf("expected read:orders key to succeed on OrderService/GetOrder, got %v", err)
+	}
+	if err := callProc(readOrdersRaw, "/creativanta.content.v1.ScriptService/GetScript", ""); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied when read:orders key calls ScriptService/GetScript, got %v", err)
+	}
+
+	// 2. OrderService/Confirm and OrderService/Fulfill are mutating (write:orders), NOT read!
+	if err := callProc(readOrdersRaw, "/creativanta.commerce.v1.OrderService/Confirm", ""); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied when read:orders key calls OrderService/Confirm, got %v", err)
+	}
+	if err := callProc(writeOrdersRaw, "/creativanta.commerce.v1.OrderService/Confirm", ""); err != nil {
+		t.Fatalf("expected write:orders key to succeed on OrderService/Confirm, got %v", err)
+	}
+	if !capturedOK || capturedSession.WorkspaceID != wsA || capturedSession.ServiceKeyID != writeKeyEntity.APIKeyID {
+		t.Fatalf("expected transportauth.Principal bound to key workspace %s and key ID %s, got %+v", wsA, writeKeyEntity.APIKeyID, capturedSession)
+	}
+
+	// 3. Mismatched X-Workspace-ID header is rejected with CodePermissionDenied.
+	if err := callProc(writeOrdersRaw, "/creativanta.commerce.v1.OrderService/Confirm", wsB); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied on mismatched X-Workspace-ID header, got %v", err)
+	}
+
+	// 4. Unmapped internal management procedure is denied even with write:all key.
+	_, writeAllRaw, err := svc.CreateKey(ctx, wsA, "Write All Key", []string{"read:all", "write:all"}, 0, 90, "admin_1")
+	if err != nil {
+		t.Fatalf("CreateKey write:all failed: %v", err)
+	}
+	if err := callProc(writeAllRaw, "/creativanta.platform.v1.APIKeyService/Create", ""); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied on unmapped internal APIKeyService/Create procedure, got %v", err)
+	}
+}
+
+func TestWEBHOOK02_SSRFBlockedOnPrivateIPsRedirectsAndDNSRebinding(t *testing.T) {
+	ctx := context.Background()
+	store := NewMemoryStore()
+	tierProvider := NewFixedTierProvider()
+	wsID := "22222222-2222-2222-2222-222222222214"
+	tierProvider.SetTier(wsID, "pro")
+	svc := NewService(store, tierProvider)
+
+	// 1. Disallowed target URLs rejected at subscription creation time.
+	disallowedURLs := []string{
+		"http://example.com/webhook",
+		"https://localhost/webhook",
+		"https://sub.localhost/webhook",
+		"https://internal.service.local/webhook",
+		"https://db.internal/webhook",
+		"https://metadata.google.internal/computeMetadata/v1/",
+		"https://127.0.0.1:8443/webhook",
+		"https://[::1]/webhook",
+		"https://10.0.0.1/webhook",
+		"https://172.16.0.10/webhook",
+		"https://192.168.1.50/webhook",
+		"https://169.254.169.254/latest/meta-data/",
+		"https://100.64.0.10/webhook",
+		"https://0.0.0.0/webhook",
+	}
+	for _, badURL := range disallowedURLs {
+		_, _, err := svc.CreateWebhookSubscription(ctx, wsID, "", badURL, []string{"order.created"}, "admin_1")
+		if !errors.Is(err, ErrWebhookTargetSSRFBlocked) {
+			t.Fatalf("expected ErrWebhookTargetSSRFBlocked for target_url %q, got %v", badURL, err)
+		}
+	}
+
+	// 2. DNS Rebinding: Lookup #1 returns public IP 93.184.216.34 (subscription creation succeeds),
+	// Lookup #2 at dispatch time returns 127.0.0.1 (dispatch must fail closed without sending HTTP request).
+	rebindResolver := &stubHostResolver{
+		lookups: [][]net.IPAddr{
+			{{IP: net.ParseIP("93.184.216.34")}},
+			{{IP: net.ParseIP("127.0.0.1")}},
+		},
+	}
+	svc.WithHostIPResolver(rebindResolver)
+
+	_, _, err := svc.CreateWebhookSubscription(ctx, wsID, "", "https://rebind.customer.example/hook", []string{"order.created"}, "admin_1")
+	if err != nil {
+		t.Fatalf("expected subscription creation to succeed when initial DNS resolves to public IP, got %v", err)
+	}
+
+	mockClient := &MockHTTPClient{}
+	dispatcher := NewOutboundDispatcher(store, mockClient).WithHostIPResolver(rebindResolver)
+	shortCtx, cancel := context.WithTimeout(ctx, 20*time.Millisecond)
+	defer cancel()
+
+	res, err := dispatcher.DispatchEvent(shortCtx, OutboundEventDeliveryRequest{
+		WorkspaceID: wsID,
+		EventType:   "order.created",
+		EventID:     "ev_rebind_1",
+		RawPayload:  json.RawMessage(`{"order_id":"ord_1"}`),
+	})
+	if err != nil {
+		t.Fatalf("DispatchEvent returned unexpected error: %v", err)
+	}
+	if res.DeliveredCount != 0 || res.FailedCount != 1 {
+		t.Fatalf("expected DNS-rebound webhook delivery to fail closed (delivered=0, failed=1), got %+v", res)
+	}
+	if atomic.LoadInt32(&mockClient.requestCount) != 0 {
+		t.Fatalf("SECURITY VIOLATION: HTTP request was sent despite DNS rebinding to 127.0.0.1!")
+	}
+
+	// 3. HTTP Redirects: Verify NewOutboundDispatcher / NewSafeWebhookHTTPClient blocks 302 redirects.
+	redirectSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "http://169.254.169.254/latest/meta-data/", http.StatusFound)
+	}))
+	defer redirectSrv.Close()
+
+	safeClient := NewSafeWebhookHTTPClient(&stubHostResolver{
+		lookups: [][]net.IPAddr{{{IP: net.ParseIP("93.184.216.34")}}},
+	})
+	if safeClient.CheckRedirect == nil {
+		t.Fatalf("expected safeClient.CheckRedirect to be configured")
+	}
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "https://example.com/hook", nil)
+	if redirErr := safeClient.CheckRedirect(req, []*http.Request{req}); !errors.Is(redirErr, ErrWebhookRedirectBlocked) {
+		t.Fatalf("expected ErrWebhookRedirectBlocked from CheckRedirect, got %v", redirErr)
 	}
 }
