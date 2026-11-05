@@ -286,7 +286,7 @@ func (w *ConsumerWorker) processSingleMessage(
 		EventID:       msg.EventID,
 	}
 
-	if w.AuthVerifier != nil && (msg.ActorID != "" || msg.ApprovalID != "") {
+	if w.AuthVerifier != nil && (msg.WorkspaceID != "" || msg.ActorID != "" || msg.ApprovalID != "") {
 		if authErr := w.AuthVerifier.VerifyActorAndApproval(ctx, msg.WorkspaceID, msg.ActorID, msg.RequiredPerm, msg.ApprovalID, now); authErr != nil {
 			_ = w.InboxEngine.RecordAbortedAudit(ctx, msg, authErr.Error(), now)
 			if ackErr := w.Broker.XAck(ctx, w.Stream, w.GroupName, msg.StreamEntryID); ackErr != nil {
