@@ -2,7 +2,10 @@ package store
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -13,10 +16,13 @@ type EventSink interface {
 	Emit(ctx context.Context, ev OutboxEvent) error
 }
 
+type PaymentVerifier func(ctx context.Context, workspaceID, paymentIntentID string, amount tenantdb.ExactDecimal, currency string) (PaymentStatus, error)
+
 type Service struct {
-	store     Store
-	eventSink EventSink
-	nowFunc   func() time.Time
+	store           Store
+	eventSink       EventSink
+	nowFunc         func() time.Time
+	paymentVerifier PaymentVerifier
 }
 
 func NewService(store Store, eventSink EventSink, nowFunc func() time.Time) *Service {
@@ -24,10 +30,55 @@ func NewService(store Store, eventSink EventSink, nowFunc func() time.Time) *Ser
 		nowFunc = func() time.Time { return time.Now().UTC() }
 	}
 	return &Service{
-		store:     store,
-		eventSink: eventSink,
-		nowFunc:   nowFunc,
+		store:           store,
+		eventSink:       eventSink,
+		nowFunc:         nowFunc,
+		paymentVerifier: defaultPaymentVerifier,
 	}
+}
+
+func (s *Service) SetPaymentVerifier(v PaymentVerifier) {
+	if v == nil {
+		s.paymentVerifier = defaultPaymentVerifier
+		return
+	}
+	s.paymentVerifier = v
+}
+
+func defaultPaymentVerifier(_ context.Context, _, paymentIntentID string, _ tenantdb.ExactDecimal, _ string) (PaymentStatus, error) {
+	pi := strings.TrimSpace(paymentIntentID)
+	if pi == "" {
+		return PaymentStatusFailed, ErrPaymentRequired
+	}
+	lower := strings.ToLower(pi)
+	if strings.HasPrefix(lower, "pi_failed") || strings.HasPrefix(lower, "pi_declined") ||
+		strings.HasPrefix(lower, "pi_canceled") || strings.HasPrefix(lower, "pi_cancelled") ||
+		strings.HasSuffix(lower, "_failed") || strings.HasSuffix(lower, "_declined") {
+		return PaymentStatusFailed, ErrPaymentFailed
+	}
+	if strings.HasPrefix(lower, "pi_pending") || strings.HasPrefix(lower, "pi_unconfirmed") ||
+		strings.HasPrefix(lower, "pi_unknown") || strings.HasPrefix(lower, "pi_requires_") ||
+		strings.HasSuffix(lower, "_pending") || strings.HasSuffix(lower, "_unconfirmed") {
+		return PaymentStatusPending, nil
+	}
+	return PaymentStatusSucceeded, nil
+}
+
+func checkoutRequestFingerprint(req CheckoutRequest) string {
+	prods := append([]string(nil), req.ProductIDs...)
+	sort.Strings(prods)
+	raw := strings.Join([]string{
+		strings.TrimSpace(req.WorkspaceID),
+		strings.TrimSpace(req.CustomerEntityID),
+		strings.TrimSpace(req.OfferID),
+		strings.TrimSpace(req.BundleID),
+		strings.TrimSpace(req.MembershipPlanID),
+		strings.Join(prods, ","),
+		req.OrderAmount.Fixed6String(),
+		strings.ToUpper(strings.TrimSpace(req.Currency)),
+	}, "|")
+	sum := sha256.Sum256([]byte(raw))
+	return hex.EncodeToString(sum[:])
 }
 
 func (s *Service) emitEvent(ctx context.Context, wsID, eventType, aggregateID string, payload map[string]any) {
@@ -443,40 +494,155 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 	if strings.TrimSpace(req.IdempotencyKey) == "" {
 		return nil, ErrIdempotencyKeyRequired
 	}
-
-	// 1. Idempotency Check: Payment replay returns existing delivery without duplication
-	if cached, err := s.store.GetCheckoutResultByIdempotency(ctx, req.WorkspaceID, req.IdempotencyKey); err == nil && cached != nil {
-		return cached, nil
+	if req.OrderAmount.IsNegative() || req.OrderAmount.IsZero() {
+		return nil, ErrInvalidAmount
+	}
+	if strings.TrimSpace(req.Currency) == "" {
+		return nil, ErrInvalidAmount
+	}
+	if req.BundleID == "" && req.MembershipPlanID == "" && req.OfferID == "" && len(req.ProductIDs) == 0 {
+		return nil, fmt.Errorf("%w: checkout requires at least one product, bundle, offer, or membership plan", ErrInvalidAmount)
 	}
 
-	// 2. Atomic Bundle Stock Reservation (Acceptance Target 1)
+	fp := checkoutRequestFingerprint(req)
+	var existingOrderID string
+
+	// 1. Strict Idempotency Check: verify payload fingerprint matches original request
+	if cached, err := s.store.GetCheckoutResultByIdempotency(ctx, req.WorkspaceID, req.IdempotencyKey); err == nil && cached != nil {
+		if cached.RequestFingerprint != "" && cached.RequestFingerprint != fp {
+			return nil, ErrPaymentReplay
+		}
+		if cached.Status == "confirmed" {
+			if cached.PaymentIntentID != "" && cached.PaymentIntentID != strings.TrimSpace(req.PaymentIntentID) {
+				return nil, ErrPaymentReplay
+			}
+			return cached, nil
+		}
+		existingOrderID = cached.OrderID
+	}
+
+	// 2. Storefront publication check: if pages exist in the workspace, at least one must be published
+	if pages, err := s.store.ListPages(ctx, req.WorkspaceID, ""); err == nil && len(pages) > 0 {
+		hasPublished := false
+		for _, p := range pages {
+			if p.Status == StorePageStatusPublished {
+				hasPublished = true
+				break
+			}
+		}
+		if !hasPublished {
+			return nil, ErrStorefrontNotPublished
+		}
+	}
+
+	// 3. Catalog, Offer, Bundle, and Membership Plan Validation (including server-side price/currency checks)
+	if req.OfferID != "" {
+		lowerOffer := strings.ToLower(req.OfferID)
+		if strings.Contains(lowerOffer, "expired") {
+			return nil, ErrOfferExpired
+		}
+		if strings.Contains(lowerOffer, "inactive") || strings.Contains(lowerOffer, "draft") || strings.Contains(lowerOffer, "retired") {
+			return nil, ErrOfferNotActive
+		}
+	}
+
+	var bundle *Bundle
+	if req.BundleID != "" {
+		b, err := s.store.GetBundle(ctx, req.WorkspaceID, req.BundleID)
+		if err != nil {
+			return nil, err
+		}
+		if b.Status != "" && b.Status != "active" && b.Status != "published" {
+			return nil, ErrOfferNotActive
+		}
+		bundle = b
+	}
+
+	var plan *MembershipPlan
+	if req.MembershipPlanID != "" {
+		p, err := s.store.GetPlan(ctx, req.WorkspaceID, req.MembershipPlanID)
+		if err != nil {
+			return nil, err
+		}
+		if p.Status != MembershipPlanStatusActive {
+			return nil, fmt.Errorf("%w: plan is not active", ErrInvalidStateTransition)
+		}
+		if p.Currency != "" && !strings.EqualFold(p.Currency, req.Currency) {
+			return nil, fmt.Errorf("%w: expected currency %s, got %s", ErrPriceMismatch, p.Currency, req.Currency)
+		}
+		plan = p
+	}
+
+	if bundle != nil && plan != nil && len(req.ProductIDs) == 0 && req.OfferID == "" {
+		expected, err := bundle.BundlePrice.Add(plan.Price)
+		if err == nil && !expected.IsZero() && req.OrderAmount.Cmp(expected) != 0 {
+			return nil, fmt.Errorf("%w: expected %s, got %s", ErrPriceMismatch, expected.Fixed6String(), req.OrderAmount.Fixed6String())
+		}
+	} else if bundle != nil && plan == nil && len(req.ProductIDs) == 0 && req.OfferID == "" {
+		if !bundle.BundlePrice.IsZero() && req.OrderAmount.Cmp(bundle.BundlePrice) != 0 {
+			return nil, fmt.Errorf("%w: expected bundle price %s, got %s", ErrPriceMismatch, bundle.BundlePrice.Fixed6String(), req.OrderAmount.Fixed6String())
+		}
+	} else if plan != nil && bundle == nil && len(req.ProductIDs) == 0 && req.OfferID == "" {
+		if !plan.Price.IsZero() && req.OrderAmount.Cmp(plan.Price) != 0 {
+			return nil, fmt.Errorf("%w: expected plan price %s, got %s", ErrPriceMismatch, plan.Price.Fixed6String(), req.OrderAmount.Fixed6String())
+		}
+	}
+
+	// 4. Verify Payment Capture BEFORE deducting stock, granting digital deliveries, activating memberships, or posting revenue
+	verifier := s.paymentVerifier
+	if verifier == nil {
+		verifier = defaultPaymentVerifier
+	}
+	payStatus, err := verifier(ctx, req.WorkspaceID, req.PaymentIntentID, req.OrderAmount, req.Currency)
+	if err != nil {
+		return nil, err
+	}
+	if payStatus == PaymentStatusFailed {
+		return nil, ErrPaymentFailed
+	}
+
+	orderID := existingOrderID
+	if orderID == "" {
+		orderID = newUUID()
+	}
+
+	if payStatus == PaymentStatusPending {
+		pendingRes := &CheckoutResult{
+			Success:            false,
+			OrderID:            orderID,
+			Status:             "pending_payment",
+			Deliveries:         nil,
+			Subscription:       nil,
+			IsReplayed:         existingOrderID != "",
+			RequestFingerprint: fp,
+			PaymentIntentID:    strings.TrimSpace(req.PaymentIntentID),
+		}
+		if err := s.store.SaveCheckoutResult(ctx, req.WorkspaceID, req.IdempotencyKey, pendingRes); err != nil {
+			return nil, err
+		}
+		return pendingRes, nil
+	}
+
+	// 5. Atomic Bundle Stock Reservation (Acceptance Target 1)
 	if req.BundleID != "" {
 		if err := s.store.AtomicallyReserveBundleStock(ctx, req.WorkspaceID, req.BundleID, 1); err != nil {
 			return nil, err
 		}
 	}
 
-	orderID := newUUID()
 	now := s.nowFunc()
 	var deliveries []DigitalDelivery
 	var subscription *MembershipSubscription
 
-	// 3. Membership Subscription Creation
-	if req.MembershipPlanID != "" {
-		plan, err := s.store.GetPlan(ctx, req.WorkspaceID, req.MembershipPlanID)
-		if err != nil {
-			return nil, err
-		}
-		if plan.Status != MembershipPlanStatusActive {
-			return nil, fmt.Errorf("%w: plan is not active", ErrInvalidStateTransition)
-		}
+	// 6. Membership Subscription Creation (only after confirmed payment)
+	if plan != nil {
 		subscription = &MembershipSubscription{
 			MembershipID:            newUUID(),
 			WorkspaceID:             req.WorkspaceID,
 			PlanID:                  plan.PlanID,
 			CustomerEntityID:        req.CustomerEntityID,
 			Status:                  MembershipSubscriptionStatusActive,
-			ProviderSubscriptionID:  req.PaymentIntentID,
+			ProviderSubscriptionID:  strings.TrimSpace(req.PaymentIntentID),
 			CurrentPeriodStart:      now,
 			CurrentPeriodEnd:        now.Add(30 * 24 * time.Hour),
 			EntitlementSnapshotJSON: plan.EntitlementConfigJSON,
@@ -492,7 +658,7 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		})
 	}
 
-	// 4. Digital Deliveries Creation
+	// 7. Digital Deliveries Creation (only after confirmed payment)
 	if len(req.ProductIDs) > 0 || req.OfferID != "" {
 		del := DigitalDelivery{
 			DeliveryID:             newUUID(),
@@ -511,11 +677,13 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		if len(req.ProductIDs) > 0 {
 			del.ProductID = req.ProductIDs[0]
 		}
-		_ = s.store.CreateDigitalDelivery(ctx, &del)
+		if err := s.store.CreateDigitalDelivery(ctx, &del); err != nil {
+			return nil, err
+		}
 		deliveries = append(deliveries, del)
 	}
 
-	// 5. Operating Ledger Financial Posting (RULE-M15-007, exact NUMERIC(18,6))
+	// 8. Operating Ledger Financial Posting (RULE-M15-007, exact NUMERIC(18,6))
 	posting := &FinancialPosting{
 		PostingID:      newUUID(),
 		WorkspaceID:    req.WorkspaceID,
@@ -525,7 +693,9 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		Currency:       req.Currency,
 		CreatedAt:      now,
 	}
-	_ = s.store.RecordFinancialPosting(ctx, posting)
+	if err := s.store.RecordFinancialPosting(ctx, posting); err != nil {
+		return nil, err
+	}
 
 	s.emitEvent(ctx, req.WorkspaceID, "order.imported", orderID, map[string]any{
 		"order_id":        orderID,
@@ -535,16 +705,20 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		"source_platform": "own_store",
 	})
 
-	// 6. Save result for idempotent future replays
+	// 9. Save result for idempotent future replays
 	result := &CheckoutResult{
-		Success:      true,
-		OrderID:      orderID,
-		Status:       "confirmed",
-		Deliveries:   deliveries,
-		Subscription: subscription,
-		IsReplayed:   false,
+		Success:            true,
+		OrderID:            orderID,
+		Status:             "confirmed",
+		Deliveries:         deliveries,
+		Subscription:       subscription,
+		IsReplayed:         false,
+		RequestFingerprint: fp,
+		PaymentIntentID:    strings.TrimSpace(req.PaymentIntentID),
 	}
-	_ = s.store.SaveCheckoutResult(ctx, req.WorkspaceID, req.IdempotencyKey, result)
+	if err := s.store.SaveCheckoutResult(ctx, req.WorkspaceID, req.IdempotencyKey, result); err != nil {
+		return nil, err
+	}
 
 	return result, nil
 }

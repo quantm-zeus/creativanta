@@ -1,7 +1,10 @@
 package creatorpro
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -584,22 +587,128 @@ func TestTaxReportGeneration(t *testing.T) {
 	ctx := context.Background()
 	store := NewMemoryStore()
 	sink := &mockEventSink{}
-	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	now := time.Date(2026, 8, 15, 12, 0, 0, 0, time.UTC) // Q3 2026
 	svc := NewService(store, sink, nil, func() time.Time { return now })
 
 	wsID := "019086a1-7c3e-7000-8000-000000000010"
 
-	report, fileData, fileName, err := svc.GenerateTaxReport(ctx, wsID, TaxReportPeriodQuarterly, 2026, 3, TaxReportFormatCSV)
+	// 1. CREATOR-01: Empty workspace must report 0 revenue and 0 net income (no fabricated constants)
+	emptyRep, _, _, err := svc.GenerateTaxReport(ctx, wsID, TaxReportPeriodQuarterly, 2026, 3, TaxReportFormatCSV)
+	if err != nil {
+		t.Fatalf("failed to generate empty tax report: %v", err)
+	}
+	if emptyRep.TotalRevenue != 0 || emptyRep.NetIncomeBeforeTax != 0 {
+		t.Fatalf("expected 0 revenue and 0 net income for empty workspace, got rev=%f net=%f",
+			emptyRep.TotalRevenue, emptyRep.NetIncomeBeforeTax)
+	}
+
+	// 2. Seed persisted Q3 2026 deals and content metrics, plus an unconfirmed (negotiating) deal and an out-of-period Q1 deal
+	_ = store.CreateBrandDeal(ctx, &BrandDeal{
+		DealID:      newUUID(),
+		WorkspaceID: wsID,
+		BrandName:   "Paid Q3 Sponsor",
+		DealType:    BrandDealTypeSponsoredPost,
+		Value:       12000000.0,
+		Currency:    "VND",
+		Status:      BrandDealStatusPaid,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	})
+	_ = store.CreateBrandDeal(ctx, &BrandDeal{
+		DealID:      newUUID(),
+		WorkspaceID: wsID,
+		BrandName:   "Completed Q3 Affiliate Deal",
+		DealType:    BrandDealTypeAffiliate,
+		Value:       3000000.0,
+		Currency:    "VND",
+		Status:      BrandDealStatusCompleted,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	})
+	_ = store.CreateBrandDeal(ctx, &BrandDeal{
+		DealID:      newUUID(),
+		WorkspaceID: wsID,
+		BrandName:   "Negotiating Deal (Excluded)",
+		DealType:    BrandDealTypeSponsoredPost,
+		Value:       99000000.0,
+		Currency:    "VND",
+		Status:      BrandDealStatusNegotiating,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	})
+	q1Time := time.Date(2026, 2, 10, 12, 0, 0, 0, time.UTC)
+	_ = store.CreateBrandDeal(ctx, &BrandDeal{
+		DealID:      newUUID(),
+		WorkspaceID: wsID,
+		BrandName:   "Q1 Deal (Out of Q3 Window)",
+		DealType:    BrandDealTypeSponsoredPost,
+		Value:       50000000.0,
+		Currency:    "VND",
+		Status:      BrandDealStatusPaid,
+		CreatedAt:   q1Time,
+		UpdatedAt:   q1Time,
+	})
+
+	_ = svc.RecordContentMetric(ctx, wsID, &ContentROIMetric{
+		ContentID:         "vid-q3-01",
+		Title:             "Q3 Product Launch",
+		Platform:          "tiktok",
+		Views:             50000,
+		RevenueAttributed: 5000000.0,
+		CostToProduce:     500000.0,
+		ProductionMode:    "ai_video",
+		PublishedAt:       now,
+	})
+
+	// Expected Q3 2026 totals:
+	// SponsorshipRevenue = 12,000,000
+	// AffiliateRevenue   =  3,000,000
+	// ProductSalesRev    =  5,000,000
+	// TotalRevenue       = 20,000,000
+	// AICreditExpenses   =    500,000
+	// NetIncomeBeforeTax = 19,500,000
+	report, csvData, fileName, err := svc.GenerateTaxReport(ctx, wsID, TaxReportPeriodQuarterly, 2026, 3, TaxReportFormatCSV)
 	if err != nil {
 		t.Fatalf("failed to generate tax report: %v", err)
 	}
 	if report.Period != TaxReportPeriodQuarterly || report.TaxYear != 2026 || report.PeriodNumber != 3 {
 		t.Fatalf("tax report fields mismatch")
 	}
-	if report.NetIncomeBeforeTax <= 0 || report.DownloadURL == "" || len(fileData) == 0 || fileName == "" {
-		t.Fatalf("expected positive net income, non-empty data and valid download URL")
+	if report.TotalRevenue != 20000000.0 || report.NetIncomeBeforeTax != 19500000.0 {
+		t.Fatalf("expected TotalRevenue=20000000 and NetIncomeBeforeTax=19500000, got rev=%f net=%f",
+			report.TotalRevenue, report.NetIncomeBeforeTax)
 	}
-	if sink.CountType("creator_pro.tax_report.generated") != 1 {
+	if report.DownloadURL == "" || len(csvData) == 0 || fileName == "" || !strings.Contains(string(csvData), "20000000.000000") {
+		t.Fatalf("expected CSV payload containing exact aggregated total, got %q", string(csvData))
+	}
+
+	// 3. Verify PDF format produces valid PDF-1.4 bytes
+	_, pdfData, pdfName, err := svc.GenerateTaxReport(ctx, wsID, TaxReportPeriodQuarterly, 2026, 3, TaxReportFormatPDF)
+	if err != nil {
+		t.Fatalf("PDF tax report generation failed: %v", err)
+	}
+	if !strings.HasSuffix(pdfName, ".pdf") || !bytes.HasPrefix(pdfData, []byte("%PDF-1.4\n")) || !bytes.Contains(pdfData, []byte("%%EOF")) {
+		t.Fatalf("expected valid PDF-1.4 payload, got name=%s prefix=%q", pdfName, string(pdfData[:16]))
+	}
+
+	// 4. Verify XLSX format produces valid OpenXML ZIP archive (PK\x03\x04)
+	_, xlsxData, xlsxName, err := svc.GenerateTaxReport(ctx, wsID, TaxReportPeriodQuarterly, 2026, 3, TaxReportFormatXLSX)
+	if err != nil {
+		t.Fatalf("XLSX tax report generation failed: %v", err)
+	}
+	if !strings.HasSuffix(xlsxName, ".xlsx") || !bytes.HasPrefix(xlsxData, []byte("PK\x03\x04")) {
+		t.Fatalf("expected valid XLSX ZIP payload starting with PK\\x03\\x04, got name=%s", xlsxName)
+	}
+
+	// 5. Invalid period number and unsupported format must fail explicitly
+	if _, _, _, err := svc.GenerateTaxReport(ctx, wsID, TaxReportPeriodQuarterly, 2026, 9, TaxReportFormatCSV); !errors.Is(err, ErrInvalidTaxReportPeriod) {
+		t.Fatalf("expected ErrInvalidTaxReportPeriod for quarter 9, got %v", err)
+	}
+	if _, _, _, err := svc.GenerateTaxReport(ctx, wsID, TaxReportPeriodQuarterly, 2026, 3, TaxReportFormat("xml")); !errors.Is(err, ErrUnsupportedTaxReportFormat) {
+		t.Fatalf("expected ErrUnsupportedTaxReportFormat for xml, got %v", err)
+	}
+
+	if sink.CountType("creator_pro.tax_report.generated") < 1 {
 		t.Fatalf("expected tax report event to be emitted")
 	}
 }

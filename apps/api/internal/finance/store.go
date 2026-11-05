@@ -1155,12 +1155,116 @@ func (m *MemoryStore) ListDataGaps(_ context.Context, workspaceID string, filter
 // PostgresStore Implementation
 // ============================================================================
 
+const defaultServiceUserID = "00000000-0000-4000-8000-000000000001"
+
+const setLocalTenantContextSQL = `
+SELECT
+  set_config('app.current_tenant_id', $1, true),
+  set_config('app.current_user_id', $2, true)
+`
+
+type activeTxContextKey struct{}
+
+type activeTenantTx struct {
+	tx          pgx.Tx
+	workspaceID string
+}
+
 type PostgresStore struct {
-	pool *pgxpool.Pool
+	pool     *pgxpool.Pool
+	beginner tenantdb.TxBeginner
 }
 
 func NewPostgresStore(pool *pgxpool.Pool) *PostgresStore {
-	return &PostgresStore{pool: pool}
+	var b tenantdb.TxBeginner
+	if pool != nil {
+		b = pool
+	}
+	return &PostgresStore{pool: pool, beginner: b}
+}
+
+func NewPostgresStoreWithBeginner(beginner tenantdb.TxBeginner) *PostgresStore {
+	return &PostgresStore{beginner: beginner}
+}
+
+func (p *PostgresStore) txBeginner() tenantdb.TxBeginner {
+	if p.beginner != nil {
+		return p.beginner
+	}
+	if p.pool != nil {
+		return p.pool
+	}
+	return nil
+}
+
+func (p *PostgresStore) withTenantTx(ctx context.Context, workspaceID string, fn func(ctx context.Context, tx pgx.Tx) error) (retErr error) {
+	if ctx == nil {
+		return tenantdb.ErrNilContext
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	wsID := strings.TrimSpace(workspaceID)
+	if wsID == "" {
+		return ErrMissingTenant
+	}
+	userID := defaultServiceUserID
+	if sc, ok := tenantdb.ScopeFromContext(ctx); ok {
+		if sc.WorkspaceID != "" && sc.WorkspaceID != wsID {
+			return tenantdb.ErrScopeMismatch
+		}
+		if sc.UserID != "" {
+			userID = sc.UserID
+		}
+	}
+	if active, ok := ctx.Value(activeTxContextKey{}).(activeTenantTx); ok && active.tx != nil {
+		if active.workspaceID != wsID {
+			return tenantdb.ErrScopeMismatch
+		}
+		return fn(ctx, active.tx)
+	}
+	b := p.txBeginner()
+	if b == nil {
+		return tenantdb.ErrNilBeginner
+	}
+	tx, err := b.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("finance: begin tenant transaction: %w", err)
+	}
+	committed := false
+	defer func() {
+		if rec := recover(); rec != nil {
+			_ = tx.Rollback(context.Background())
+			panic(rec)
+		}
+		if !committed {
+			_ = tx.Rollback(context.Background())
+		}
+	}()
+
+	var configuredTenant, configuredUser string
+	if err := tx.QueryRow(ctx, setLocalTenantContextSQL, wsID, userID).Scan(&configuredTenant, &configuredUser); err != nil {
+		return fmt.Errorf("finance: set local tenant context: %w", err)
+	}
+	if configuredTenant != wsID || configuredUser != userID {
+		return fmt.Errorf("%w: set_config verification mismatch", tenantdb.ErrInvalidTenantScope)
+	}
+
+	txCtx := context.WithValue(ctx, activeTxContextKey{}, activeTenantTx{
+		tx:          tx,
+		workspaceID: wsID,
+	})
+	if err := fn(txCtx, tx); err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("finance: commit tenant transaction: %w", err)
+	}
+	committed = true
+	return nil
 }
 
 func (p *PostgresStore) CreatePosting(ctx context.Context, post *FinancialPosting) error {
@@ -1187,18 +1291,20 @@ func (p *PostgresStore) CreatePosting(ctx context.Context, post *FinancialPostin
 			$11, $12, $13, $14
 		)
 	`
-	_, err = p.pool.Exec(ctx, query,
-		post.PostingID, post.WorkspaceID, post.OriginType, post.OriginID, post.OriginVersion,
-		post.Component, post.Amount.ToPgNumeric(), post.Currency, post.SourceClass, post.Confidence,
-		fxJSON, post.ReversalOf, post.EffectiveAt, post.CreatedAt,
-	)
-	if err != nil {
-		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique constraint") {
-			return ErrDuplicatePosting
+	return p.withTenantTx(ctx, post.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, query,
+			post.PostingID, post.WorkspaceID, post.OriginType, post.OriginID, post.OriginVersion,
+			post.Component, post.Amount.ToPgNumeric(), post.Currency, post.SourceClass, post.Confidence,
+			fxJSON, post.ReversalOf, post.EffectiveAt, post.CreatedAt,
+		)
+		if err != nil {
+			if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique constraint") {
+				return ErrDuplicatePosting
+			}
+			return fmt.Errorf("create financial posting: %w", err)
 		}
-		return fmt.Errorf("create financial posting: %w", err)
-	}
-	return nil
+		return nil
+	})
 }
 
 func (p *PostgresStore) GetPosting(ctx context.Context, workspaceID, postingID string) (*FinancialPosting, error) {
@@ -1209,8 +1315,13 @@ func (p *PostgresStore) GetPosting(ctx context.Context, workspaceID, postingID s
 		FROM financial_postings
 		WHERE workspace_id = $1 AND posting_id = $2
 	`
-	row := p.pool.QueryRow(ctx, query, workspaceID, postingID)
-	return scanPosting(row)
+	var post *FinancialPosting
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		var scanErr error
+		post, scanErr = scanPosting(tx.QueryRow(txCtx, query, workspaceID, postingID))
+		return scanErr
+	})
+	return post, err
 }
 
 func (p *PostgresStore) ListPostings(ctx context.Context, workspaceID string, filter PostingFilter) ([]FinancialPosting, error) {
@@ -1251,19 +1362,25 @@ func (p *PostgresStore) ListPostings(ctx context.Context, workspaceID string, fi
 	}
 	query += " ORDER BY effective_at ASC, created_at ASC"
 
-	rows, err := p.pool.Query(ctx, query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("list postings: %w", err)
-	}
-	defer rows.Close()
-
 	var result []FinancialPosting
-	for rows.Next() {
-		item, err := scanPostingRow(rows)
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		rows, err := tx.Query(txCtx, query, args...)
 		if err != nil {
-			return nil, err
+			return fmt.Errorf("list postings: %w", err)
 		}
-		result = append(result, *item)
+		defer rows.Close()
+
+		for rows.Next() {
+			item, err := scanPostingRow(rows)
+			if err != nil {
+				return err
+			}
+			result = append(result, *item)
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		return nil, err
 	}
 	return result, nil
 }
@@ -1278,8 +1395,13 @@ func (p *PostgresStore) FindPostingByOrigin(ctx context.Context, workspaceID, or
 		ORDER BY created_at DESC
 		LIMIT 1
 	`
-	row := p.pool.QueryRow(ctx, query, workspaceID, originType, originID, component)
-	return scanPosting(row)
+	var post *FinancialPosting
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		var scanErr error
+		post, scanErr = scanPosting(tx.QueryRow(txCtx, query, workspaceID, originType, originID, component))
+		return scanErr
+	})
+	return post, err
 }
 
 func scanPosting(row pgx.Row) (*FinancialPosting, error) {
@@ -1355,13 +1477,15 @@ func (p *PostgresStore) CreateCostItem(ctx context.Context, item *CostItem) erro
 			$14, $15
 		)
 	`
-	_, err := p.pool.Exec(ctx, query,
-		item.CostItemID, item.WorkspaceID, item.CostType, item.Amount.ToPgNumeric(), item.Currency,
-		item.Description, item.RelatedScopeType, item.RelatedScopeID, item.SourceClass,
-		item.EvidenceID, item.ConfidenceReason, item.CostState, item.EffectiveDate,
-		item.CreatedAt, item.UpdatedAt,
-	)
-	return err
+	return p.withTenantTx(ctx, item.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, query,
+			item.CostItemID, item.WorkspaceID, item.CostType, item.Amount.ToPgNumeric(), item.Currency,
+			item.Description, item.RelatedScopeType, item.RelatedScopeID, item.SourceClass,
+			item.EvidenceID, item.ConfidenceReason, item.CostState, item.EffectiveDate,
+			item.CreatedAt, item.UpdatedAt,
+		)
+		return err
+	})
 }
 
 func (p *PostgresStore) GetCostItem(ctx context.Context, workspaceID, costItemID string) (*CostItem, error) {
@@ -1375,16 +1499,22 @@ func (p *PostgresStore) GetCostItem(ctx context.Context, workspaceID, costItemID
 	`
 	var item CostItem
 	var num pgtype.Numeric
-	err := p.pool.QueryRow(ctx, query, workspaceID, costItemID).Scan(
-		&item.CostItemID, &item.WorkspaceID, &item.CostType, &num, &item.Currency,
-		&item.Description, &item.RelatedScopeType, &item.RelatedScopeID, &item.SourceClass,
-		&item.EvidenceID, &item.ConfidenceReason, &item.CostState, &item.EffectiveDate,
-		&item.CreatedAt, &item.UpdatedAt,
-	)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrCostItemNotFound
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		err := tx.QueryRow(txCtx, query, workspaceID, costItemID).Scan(
+			&item.CostItemID, &item.WorkspaceID, &item.CostType, &num, &item.Currency,
+			&item.Description, &item.RelatedScopeType, &item.RelatedScopeID, &item.SourceClass,
+			&item.EvidenceID, &item.ConfidenceReason, &item.CostState, &item.EffectiveDate,
+			&item.CreatedAt, &item.UpdatedAt,
+		)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrCostItemNotFound
+			}
+			return err
 		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	item.Amount, err = tenantdb.FromPgNumeric(num)
@@ -1423,41 +1553,46 @@ func (p *PostgresStore) ListCostItems(ctx context.Context, workspaceID string, f
 	}
 
 	countQuery := "SELECT count(*) " + baseQuery
-	var total int64
-	if err := p.pool.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-
 	dataQuery := `
 		SELECT cost_item_id, workspace_id, cost_type, amount, currency,
 		       description, related_scope_type, related_scope_id, source_class,
 		       evidence_id, confidence_reason, cost_state, effective_date,
 		       created_at, updated_at ` + baseQuery + fmt.Sprintf(" ORDER BY effective_date DESC, created_at DESC LIMIT $%d OFFSET $%d", idx, idx+1)
-	args = append(args, limit, offset)
+	dataArgs := append(append([]any{}, args...), limit, offset)
 
-	rows, err := p.pool.Query(ctx, dataQuery, args...)
+	var total int64
+	var result []CostItem
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		if err := tx.QueryRow(txCtx, countQuery, args...).Scan(&total); err != nil {
+			return err
+		}
+		rows, err := tx.Query(txCtx, dataQuery, dataArgs...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var item CostItem
+			var num pgtype.Numeric
+			if err := rows.Scan(
+				&item.CostItemID, &item.WorkspaceID, &item.CostType, &num, &item.Currency,
+				&item.Description, &item.RelatedScopeType, &item.RelatedScopeID, &item.SourceClass,
+				&item.EvidenceID, &item.ConfidenceReason, &item.CostState, &item.EffectiveDate,
+				&item.CreatedAt, &item.UpdatedAt,
+			); err != nil {
+				return err
+			}
+			item.Amount, err = tenantdb.FromPgNumeric(num)
+			if err != nil {
+				return err
+			}
+			result = append(result, item)
+		}
+		return rows.Err()
+	})
 	if err != nil {
 		return nil, 0, err
-	}
-	defer rows.Close()
-
-	var result []CostItem
-	for rows.Next() {
-		var item CostItem
-		var num pgtype.Numeric
-		if err := rows.Scan(
-			&item.CostItemID, &item.WorkspaceID, &item.CostType, &num, &item.Currency,
-			&item.Description, &item.RelatedScopeType, &item.RelatedScopeID, &item.SourceClass,
-			&item.EvidenceID, &item.ConfidenceReason, &item.CostState, &item.EffectiveDate,
-			&item.CreatedAt, &item.UpdatedAt,
-		); err != nil {
-			return nil, 0, err
-		}
-		item.Amount, err = tenantdb.FromPgNumeric(num)
-		if err != nil {
-			return nil, 0, err
-		}
-		result = append(result, item)
 	}
 	return result, total, nil
 }
@@ -1470,17 +1605,19 @@ func (p *PostgresStore) UpdateCostItem(ctx context.Context, item *CostItem) erro
 		    cost_state = $5, updated_at = $6
 		WHERE workspace_id = $7 AND cost_item_id = $8 AND deleted_at IS NULL
 	`
-	cmd, err := p.pool.Exec(ctx, query,
-		item.Amount.ToPgNumeric(), item.Description, item.CostType, item.SourceClass,
-		item.CostState, item.UpdatedAt, item.WorkspaceID, item.CostItemID,
-	)
-	if err != nil {
-		return err
-	}
-	if cmd.RowsAffected() == 0 {
-		return ErrCostItemNotFound
-	}
-	return nil
+	return p.withTenantTx(ctx, item.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		cmd, err := tx.Exec(txCtx, query,
+			item.Amount.ToPgNumeric(), item.Description, item.CostType, item.SourceClass,
+			item.CostState, item.UpdatedAt, item.WorkspaceID, item.CostItemID,
+		)
+		if err != nil {
+			return err
+		}
+		if cmd.RowsAffected() == 0 {
+			return ErrCostItemNotFound
+		}
+		return nil
+	})
 }
 
 func (p *PostgresStore) DeleteCostItem(ctx context.Context, workspaceID, costItemID string) error {
@@ -1489,14 +1626,16 @@ func (p *PostgresStore) DeleteCostItem(ctx context.Context, workspaceID, costIte
 		SET deleted_at = NOW(), updated_at = NOW()
 		WHERE workspace_id = $1 AND cost_item_id = $2 AND deleted_at IS NULL
 	`
-	cmd, err := p.pool.Exec(ctx, query, workspaceID, costItemID)
-	if err != nil {
-		return err
-	}
-	if cmd.RowsAffected() == 0 {
-		return ErrCostItemNotFound
-	}
-	return nil
+	return p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		cmd, err := tx.Exec(txCtx, query, workspaceID, costItemID)
+		if err != nil {
+			return err
+		}
+		if cmd.RowsAffected() == 0 {
+			return ErrCostItemNotFound
+		}
+		return nil
+	})
 }
 
 func (p *PostgresStore) CreateSettlement(ctx context.Context, s *Settlement) error {
@@ -1528,20 +1667,22 @@ func (p *PostgresStore) CreateSettlement(ctx context.Context, s *Settlement) err
 			$17, $18, $19
 		)
 	`
-	_, err := p.pool.Exec(ctx, query,
-		s.SettlementID, s.WorkspaceID, s.SourceClass, s.SourcePlatform,
-		s.ExternalSettlementID, s.ConnectedAccountID, fxJSON,
-		s.ImportFingerprint, s.GrossAmount.ToPgNumeric(), s.NetAmount.ToPgNumeric(), feesJSON, dedJSON,
-		s.Currency, s.SettlementState, s.ReconciliationState, s.RelatedOrderIDs,
-		s.EffectiveDate, s.CreatedAt, s.UpdatedAt,
-	)
-	if err != nil {
-		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique constraint") {
-			return ErrDuplicateSettlement
+	return p.withTenantTx(ctx, s.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, query,
+			s.SettlementID, s.WorkspaceID, s.SourceClass, s.SourcePlatform,
+			s.ExternalSettlementID, s.ConnectedAccountID, fxJSON,
+			s.ImportFingerprint, s.GrossAmount.ToPgNumeric(), s.NetAmount.ToPgNumeric(), feesJSON, dedJSON,
+			s.Currency, s.SettlementState, s.ReconciliationState, s.RelatedOrderIDs,
+			s.EffectiveDate, s.CreatedAt, s.UpdatedAt,
+		)
+		if err != nil {
+			if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique constraint") {
+				return ErrDuplicateSettlement
+			}
+			return err
 		}
-		return err
-	}
-	return nil
+		return nil
+	})
 }
 
 func (p *PostgresStore) GetSettlement(ctx context.Context, workspaceID, settlementID string) (*Settlement, error) {
@@ -1558,28 +1699,34 @@ func (p *PostgresStore) GetSettlement(ctx context.Context, workspaceID, settleme
 	var grossNum, netNum pgtype.Numeric
 	var fxBytes, feesBytes, dedBytes []byte
 
-	err := p.pool.QueryRow(ctx, query, workspaceID, settlementID).Scan(
-		&s.SettlementID, &s.WorkspaceID, &s.SourceClass, &s.SourcePlatform,
-		&s.ExternalSettlementID, &s.ConnectedAccountID, &fxBytes,
-		&s.ImportFingerprint, &grossNum, &netNum, &feesBytes, &dedBytes,
-		&s.Currency, &s.SettlementState, &s.ReconciliationState, &s.RelatedOrderIDs,
-		&s.EffectiveDate, &s.CreatedAt, &s.UpdatedAt,
-	)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrSettlementNotFound
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		err := tx.QueryRow(txCtx, query, workspaceID, settlementID).Scan(
+			&s.SettlementID, &s.WorkspaceID, &s.SourceClass, &s.SourcePlatform,
+			&s.ExternalSettlementID, &s.ConnectedAccountID, &fxBytes,
+			&s.ImportFingerprint, &grossNum, &netNum, &feesBytes, &dedBytes,
+			&s.Currency, &s.SettlementState, &s.ReconciliationState, &s.RelatedOrderIDs,
+			&s.EffectiveDate, &s.CreatedAt, &s.UpdatedAt,
+		)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrSettlementNotFound
+			}
+			return err
 		}
-		return nil, err
-	}
-	s.GrossAmount, _ = tenantdb.FromPgNumeric(grossNum)
-	s.NetAmount, _ = tenantdb.FromPgNumeric(netNum)
-	_ = json.Unmarshal(fxBytes, &s.ExchangeRateSnapshot)
-	_ = json.Unmarshal(feesBytes, &s.Fees)
-	_ = json.Unmarshal(dedBytes, &s.Deductions)
+		s.GrossAmount, _ = tenantdb.FromPgNumeric(grossNum)
+		s.NetAmount, _ = tenantdb.FromPgNumeric(netNum)
+		_ = json.Unmarshal(fxBytes, &s.ExchangeRateSnapshot)
+		_ = json.Unmarshal(feesBytes, &s.Fees)
+		_ = json.Unmarshal(dedBytes, &s.Deductions)
 
-	lines, err := p.ListSettlementLines(ctx, workspaceID, settlementID)
-	if err == nil {
-		s.Lines = lines
+		lines, err := p.ListSettlementLines(txCtx, workspaceID, settlementID)
+		if err == nil {
+			s.Lines = lines
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return &s, nil
 }
@@ -1606,45 +1753,50 @@ func (p *PostgresStore) ListSettlements(ctx context.Context, workspaceID string,
 	}
 
 	countQuery := "SELECT count(*) " + baseQuery
-	var total int64
-	if err := p.pool.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-
 	dataQuery := `
 		SELECT settlement_id, workspace_id, source_class, source_platform,
 		       external_settlement_id, connected_account_id, exchange_rate_snapshot,
 		       import_fingerprint, gross_amount, net_amount, fees, deductions,
 		       currency, settlement_state, reconciliation_state, related_order_ids,
 		       effective_date, created_at, updated_at ` + baseQuery + fmt.Sprintf(" ORDER BY effective_date DESC, created_at DESC LIMIT $%d OFFSET $%d", idx, idx+1)
-	args = append(args, limit, offset)
+	dataArgs := append(append([]any{}, args...), limit, offset)
 
-	rows, err := p.pool.Query(ctx, dataQuery, args...)
+	var total int64
+	var result []Settlement
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		if err := tx.QueryRow(txCtx, countQuery, args...).Scan(&total); err != nil {
+			return err
+		}
+		rows, err := tx.Query(txCtx, dataQuery, dataArgs...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var s Settlement
+			var grossNum, netNum pgtype.Numeric
+			var fxBytes, feesBytes, dedBytes []byte
+			if err := rows.Scan(
+				&s.SettlementID, &s.WorkspaceID, &s.SourceClass, &s.SourcePlatform,
+				&s.ExternalSettlementID, &s.ConnectedAccountID, &fxBytes,
+				&s.ImportFingerprint, &grossNum, &netNum, &feesBytes, &dedBytes,
+				&s.Currency, &s.SettlementState, &s.ReconciliationState, &s.RelatedOrderIDs,
+				&s.EffectiveDate, &s.CreatedAt, &s.UpdatedAt,
+			); err != nil {
+				return err
+			}
+			s.GrossAmount, _ = tenantdb.FromPgNumeric(grossNum)
+			s.NetAmount, _ = tenantdb.FromPgNumeric(netNum)
+			_ = json.Unmarshal(fxBytes, &s.ExchangeRateSnapshot)
+			_ = json.Unmarshal(feesBytes, &s.Fees)
+			_ = json.Unmarshal(dedBytes, &s.Deductions)
+			result = append(result, s)
+		}
+		return rows.Err()
+	})
 	if err != nil {
 		return nil, 0, err
-	}
-	defer rows.Close()
-
-	var result []Settlement
-	for rows.Next() {
-		var s Settlement
-		var grossNum, netNum pgtype.Numeric
-		var fxBytes, feesBytes, dedBytes []byte
-		if err := rows.Scan(
-			&s.SettlementID, &s.WorkspaceID, &s.SourceClass, &s.SourcePlatform,
-			&s.ExternalSettlementID, &s.ConnectedAccountID, &fxBytes,
-			&s.ImportFingerprint, &grossNum, &netNum, &feesBytes, &dedBytes,
-			&s.Currency, &s.SettlementState, &s.ReconciliationState, &s.RelatedOrderIDs,
-			&s.EffectiveDate, &s.CreatedAt, &s.UpdatedAt,
-		); err != nil {
-			return nil, 0, err
-		}
-		s.GrossAmount, _ = tenantdb.FromPgNumeric(grossNum)
-		s.NetAmount, _ = tenantdb.FromPgNumeric(netNum)
-		_ = json.Unmarshal(fxBytes, &s.ExchangeRateSnapshot)
-		_ = json.Unmarshal(feesBytes, &s.Fees)
-		_ = json.Unmarshal(dedBytes, &s.Deductions)
-		result = append(result, s)
 	}
 	return result, total, nil
 }
@@ -1663,17 +1815,23 @@ func (p *PostgresStore) FindSettlementByExternalID(ctx context.Context, workspac
 	var grossNum, netNum pgtype.Numeric
 	var fxBytes, feesBytes, dedBytes []byte
 
-	err := p.pool.QueryRow(ctx, query, workspaceID, accountID, externalID).Scan(
-		&s.SettlementID, &s.WorkspaceID, &s.SourceClass, &s.SourcePlatform,
-		&s.ExternalSettlementID, &s.ConnectedAccountID, &fxBytes,
-		&s.ImportFingerprint, &grossNum, &netNum, &feesBytes, &dedBytes,
-		&s.Currency, &s.SettlementState, &s.ReconciliationState, &s.RelatedOrderIDs,
-		&s.EffectiveDate, &s.CreatedAt, &s.UpdatedAt,
-	)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrSettlementNotFound
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		err := tx.QueryRow(txCtx, query, workspaceID, accountID, externalID).Scan(
+			&s.SettlementID, &s.WorkspaceID, &s.SourceClass, &s.SourcePlatform,
+			&s.ExternalSettlementID, &s.ConnectedAccountID, &fxBytes,
+			&s.ImportFingerprint, &grossNum, &netNum, &feesBytes, &dedBytes,
+			&s.Currency, &s.SettlementState, &s.ReconciliationState, &s.RelatedOrderIDs,
+			&s.EffectiveDate, &s.CreatedAt, &s.UpdatedAt,
+		)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrSettlementNotFound
+			}
+			return err
 		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	s.GrossAmount, _ = tenantdb.FromPgNumeric(grossNum)
@@ -1698,17 +1856,23 @@ func (p *PostgresStore) FindSettlementByFingerprint(ctx context.Context, workspa
 	var grossNum, netNum pgtype.Numeric
 	var fxBytes, feesBytes, dedBytes []byte
 
-	err := p.pool.QueryRow(ctx, query, workspaceID, fingerprint).Scan(
-		&s.SettlementID, &s.WorkspaceID, &s.SourceClass, &s.SourcePlatform,
-		&s.ExternalSettlementID, &s.ConnectedAccountID, &fxBytes,
-		&s.ImportFingerprint, &grossNum, &netNum, &feesBytes, &dedBytes,
-		&s.Currency, &s.SettlementState, &s.ReconciliationState, &s.RelatedOrderIDs,
-		&s.EffectiveDate, &s.CreatedAt, &s.UpdatedAt,
-	)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrSettlementNotFound
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		err := tx.QueryRow(txCtx, query, workspaceID, fingerprint).Scan(
+			&s.SettlementID, &s.WorkspaceID, &s.SourceClass, &s.SourcePlatform,
+			&s.ExternalSettlementID, &s.ConnectedAccountID, &fxBytes,
+			&s.ImportFingerprint, &grossNum, &netNum, &feesBytes, &dedBytes,
+			&s.Currency, &s.SettlementState, &s.ReconciliationState, &s.RelatedOrderIDs,
+			&s.EffectiveDate, &s.CreatedAt, &s.UpdatedAt,
+		)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrSettlementNotFound
+			}
+			return err
 		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	s.GrossAmount, _ = tenantdb.FromPgNumeric(grossNum)
@@ -1740,13 +1904,15 @@ func (p *PostgresStore) CreateSettlementLine(ctx context.Context, line *Settleme
 			$13, $14
 		)
 	`
-	_, err := p.pool.Exec(ctx, query,
-		line.LineID, line.WorkspaceID, line.SettlementID, line.ExternalLineID,
-		line.ExternalOrderID, line.OrderID, line.GrossAmount.ToPgNumeric(), line.FeeAmount.ToPgNumeric(),
-		line.RefundAmount.ToPgNumeric(), line.NetAmount.ToPgNumeric(), line.MatchedAmount.ToPgNumeric(), line.Currency,
-		line.ReconciliationState, line.CreatedAt,
-	)
-	return err
+	return p.withTenantTx(ctx, line.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, query,
+			line.LineID, line.WorkspaceID, line.SettlementID, line.ExternalLineID,
+			line.ExternalOrderID, line.OrderID, line.GrossAmount.ToPgNumeric(), line.FeeAmount.ToPgNumeric(),
+			line.RefundAmount.ToPgNumeric(), line.NetAmount.ToPgNumeric(), line.MatchedAmount.ToPgNumeric(), line.Currency,
+			line.ReconciliationState, line.CreatedAt,
+		)
+		return err
+	})
 }
 
 func (p *PostgresStore) ListSettlementLines(ctx context.Context, workspaceID, settlementID string) ([]SettlementLine, error) {
@@ -1759,38 +1925,44 @@ func (p *PostgresStore) ListSettlementLines(ctx context.Context, workspaceID, se
 		WHERE workspace_id = $1 AND settlement_id = $2
 		ORDER BY created_at ASC
 	`
-	rows, err := p.pool.Query(ctx, query, workspaceID, settlementID)
+	var result []SettlementLine
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		rows, err := tx.Query(txCtx, query, workspaceID, settlementID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var l SettlementLine
+			var grossNum, feeNum, refNum, netNum, matchNum pgtype.Numeric
+			var extOrder, orderID *string
+
+			if err := rows.Scan(
+				&l.LineID, &l.WorkspaceID, &l.SettlementID, &l.ExternalLineID,
+				&extOrder, &orderID, &grossNum, &feeNum,
+				&refNum, &netNum, &matchNum, &l.Currency,
+				&l.ReconciliationState, &l.CreatedAt,
+			); err != nil {
+				return err
+			}
+			if extOrder != nil {
+				l.ExternalOrderID = *extOrder
+			}
+			if orderID != nil {
+				l.OrderID = *orderID
+			}
+			l.GrossAmount, _ = tenantdb.FromPgNumeric(grossNum)
+			l.FeeAmount, _ = tenantdb.FromPgNumeric(feeNum)
+			l.RefundAmount, _ = tenantdb.FromPgNumeric(refNum)
+			l.NetAmount, _ = tenantdb.FromPgNumeric(netNum)
+			l.MatchedAmount, _ = tenantdb.FromPgNumeric(matchNum)
+			result = append(result, l)
+		}
+		return rows.Err()
+	})
 	if err != nil {
 		return nil, err
-	}
-	defer rows.Close()
-
-	var result []SettlementLine
-	for rows.Next() {
-		var l SettlementLine
-		var grossNum, feeNum, refNum, netNum, matchNum pgtype.Numeric
-		var extOrder, orderID *string
-
-		if err := rows.Scan(
-			&l.LineID, &l.WorkspaceID, &l.SettlementID, &l.ExternalLineID,
-			&extOrder, &orderID, &grossNum, &feeNum,
-			&refNum, &netNum, &matchNum, &l.Currency,
-			&l.ReconciliationState, &l.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		if extOrder != nil {
-			l.ExternalOrderID = *extOrder
-		}
-		if orderID != nil {
-			l.OrderID = *orderID
-		}
-		l.GrossAmount, _ = tenantdb.FromPgNumeric(grossNum)
-		l.FeeAmount, _ = tenantdb.FromPgNumeric(feeNum)
-		l.RefundAmount, _ = tenantdb.FromPgNumeric(refNum)
-		l.NetAmount, _ = tenantdb.FromPgNumeric(netNum)
-		l.MatchedAmount, _ = tenantdb.FromPgNumeric(matchNum)
-		result = append(result, l)
 	}
 	return result, nil
 }
@@ -1808,12 +1980,14 @@ func (p *PostgresStore) GetSettlementLine(ctx context.Context, workspaceID, sett
 	var grossNum, feeNum, refNum, netNum, matchNum pgtype.Numeric
 	var extOrder, orderID *string
 
-	err := p.pool.QueryRow(ctx, query, workspaceID, settlementID, lineID).Scan(
-		&l.LineID, &l.WorkspaceID, &l.SettlementID, &l.ExternalLineID,
-		&extOrder, &orderID, &grossNum, &feeNum,
-		&refNum, &netNum, &matchNum, &l.Currency,
-		&l.ReconciliationState, &l.CreatedAt,
-	)
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		return tx.QueryRow(txCtx, query, workspaceID, settlementID, lineID).Scan(
+			&l.LineID, &l.WorkspaceID, &l.SettlementID, &l.ExternalLineID,
+			&extOrder, &orderID, &grossNum, &feeNum,
+			&refNum, &netNum, &matchNum, &l.Currency,
+			&l.ReconciliationState, &l.CreatedAt,
+		)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -1837,8 +2011,10 @@ func (p *PostgresStore) UpdateSettlementLineMatched(ctx context.Context, workspa
 		SET matched_amount = $1, reconciliation_state = $2
 		WHERE workspace_id = $3 AND line_id = $4
 	`
-	_, err := p.pool.Exec(ctx, query, matchedAmount.ToPgNumeric(), newState, workspaceID, lineID)
-	return err
+	return p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, query, matchedAmount.ToPgNumeric(), newState, workspaceID, lineID)
+		return err
+	})
 }
 
 func (p *PostgresStore) CreateSnapshot(ctx context.Context, s *ProfitSnapshot) error {
@@ -1874,16 +2050,18 @@ func (p *PostgresStore) CreateSnapshot(ctx context.Context, s *ProfitSnapshot) e
 			$22, $23
 		)
 	`
-	_, err := p.pool.Exec(ctx, query,
-		s.SnapshotID, s.WorkspaceID, s.ScopeType, s.ScopeID, s.PeriodStart, s.PeriodEnd,
-		s.GrossRevenue.ToPgNumeric(), s.PlatformFees.ToPgNumeric(), s.ShippingCosts.ToPgNumeric(),
-		s.AffiliateCommissions.ToPgNumeric(), s.RefundDeductions.ToPgNumeric(),
-		s.COGS.ToPgNumeric(), s.AdsSpend.ToPgNumeric(), s.AICreditCosts.ToPgNumeric(),
-		s.SeedingCosts.ToPgNumeric(), s.OtherCosts.ToPgNumeric(),
-		s.NetProfit.ToPgNumeric(), marginNum, mixJSON, s.Confidence, s.FreshnessAt,
-		s.Currency, s.CreatedAt,
-	)
-	return err
+	return p.withTenantTx(ctx, s.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, query,
+			s.SnapshotID, s.WorkspaceID, s.ScopeType, s.ScopeID, s.PeriodStart, s.PeriodEnd,
+			s.GrossRevenue.ToPgNumeric(), s.PlatformFees.ToPgNumeric(), s.ShippingCosts.ToPgNumeric(),
+			s.AffiliateCommissions.ToPgNumeric(), s.RefundDeductions.ToPgNumeric(),
+			s.COGS.ToPgNumeric(), s.AdsSpend.ToPgNumeric(), s.AICreditCosts.ToPgNumeric(),
+			s.SeedingCosts.ToPgNumeric(), s.OtherCosts.ToPgNumeric(),
+			s.NetProfit.ToPgNumeric(), marginNum, mixJSON, s.Confidence, s.FreshnessAt,
+			s.Currency, s.CreatedAt,
+		)
+		return err
+	})
 }
 
 func (p *PostgresStore) GetSnapshot(ctx context.Context, workspaceID, snapshotID string) (*ProfitSnapshot, error) {
@@ -1896,8 +2074,13 @@ func (p *PostgresStore) GetSnapshot(ctx context.Context, workspaceID, snapshotID
 		FROM profit_snapshots
 		WHERE workspace_id = $1 AND snapshot_id = $2
 	`
-	row := p.pool.QueryRow(ctx, query, workspaceID, snapshotID)
-	return scanSnapshot(row)
+	var snap *ProfitSnapshot
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		var scanErr error
+		snap, scanErr = scanSnapshot(tx.QueryRow(txCtx, query, workspaceID, snapshotID))
+		return scanErr
+	})
+	return snap, err
 }
 
 func (p *PostgresStore) GetLatestSnapshot(ctx context.Context, workspaceID, scopeType, scopeID, periodStart, periodEnd string) (*ProfitSnapshot, error) {
@@ -1935,8 +2118,13 @@ func (p *PostgresStore) GetLatestSnapshot(ctx context.Context, workspaceID, scop
 	}
 	query += " ORDER BY freshness_at DESC LIMIT 1"
 
-	row := p.pool.QueryRow(ctx, query, args...)
-	return scanSnapshot(row)
+	var snap *ProfitSnapshot
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		var scanErr error
+		snap, scanErr = scanSnapshot(tx.QueryRow(txCtx, query, args...))
+		return scanErr
+	})
+	return snap, err
 }
 
 func (p *PostgresStore) ListSnapshots(ctx context.Context, workspaceID, scopeType string, limit int) ([]ProfitSnapshot, error) {
@@ -1959,19 +2147,25 @@ func (p *PostgresStore) ListSnapshots(ctx context.Context, workspaceID, scopeTyp
 		query += fmt.Sprintf(" LIMIT %d", limit)
 	}
 
-	rows, err := p.pool.Query(ctx, query, args...)
+	var result []ProfitSnapshot
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		rows, err := tx.Query(txCtx, query, args...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			s, err := scanSnapshotRow(rows)
+			if err != nil {
+				return err
+			}
+			result = append(result, *s)
+		}
+		return rows.Err()
+	})
 	if err != nil {
 		return nil, err
-	}
-	defer rows.Close()
-
-	var result []ProfitSnapshot
-	for rows.Next() {
-		s, err := scanSnapshotRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, *s)
 	}
 	return result, nil
 }
@@ -2079,11 +2273,13 @@ func (p *PostgresStore) CreateOrder(ctx context.Context, o *Order) error {
 			$6, $7, $8, NOW(), NOW()
 		)
 	`
-	_, err := p.pool.Exec(ctx, query,
-		o.OrderID, o.WorkspaceID, o.Amount.ToPgNumeric(), o.MatchedAmount.ToPgNumeric(),
-		o.Currency, o.LifecycleState, o.ReconciliationState, o.OrderedAt,
-	)
-	return err
+	return p.withTenantTx(ctx, o.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, query,
+			o.OrderID, o.WorkspaceID, o.Amount.ToPgNumeric(), o.MatchedAmount.ToPgNumeric(),
+			o.Currency, o.LifecycleState, o.ReconciliationState, o.OrderedAt,
+		)
+		return err
+	})
 }
 
 func (p *PostgresStore) GetOrder(ctx context.Context, workspaceID, orderID string) (*Order, error) {
@@ -2095,14 +2291,20 @@ func (p *PostgresStore) GetOrder(ctx context.Context, workspaceID, orderID strin
 	`
 	var o Order
 	var amtNum, matchNum pgtype.Numeric
-	err := p.pool.QueryRow(ctx, query, workspaceID, orderID).Scan(
-		&o.OrderID, &o.WorkspaceID, &amtNum, &matchNum, &o.Currency,
-		&o.LifecycleState, &o.ReconciliationState, &o.OrderedAt,
-	)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrOrderNotFound
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		err := tx.QueryRow(txCtx, query, workspaceID, orderID).Scan(
+			&o.OrderID, &o.WorkspaceID, &amtNum, &matchNum, &o.Currency,
+			&o.LifecycleState, &o.ReconciliationState, &o.OrderedAt,
+		)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrOrderNotFound
+			}
+			return err
 		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	o.Amount, _ = tenantdb.FromPgNumeric(amtNum)
@@ -2116,8 +2318,10 @@ func (p *PostgresStore) UpdateOrderMatched(ctx context.Context, workspaceID, ord
 		SET matched_amount = $1, reconciliation_state = $2, updated_at = NOW()
 		WHERE workspace_id = $3 AND order_id = $4
 	`
-	_, err := p.pool.Exec(ctx, query, matchedAmount.ToPgNumeric(), newState, workspaceID, orderID)
-	return err
+	return p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, query, matchedAmount.ToPgNumeric(), newState, workspaceID, orderID)
+		return err
+	})
 }
 
 func (p *PostgresStore) CreateReconciliationRecord(ctx context.Context, r *ReconciliationRecord) error {
@@ -2162,14 +2366,16 @@ func (p *PostgresStore) CreateReconciliationRecord(ctx context.Context, r *Recon
 		overrideBy = &r.OverrideBy
 	}
 
-	_, err := p.pool.Exec(ctx, query,
-		r.RecordID, r.WorkspaceID, r.ScopeType, r.ScopeDescription,
-		r.RelatedOrderIDs, r.RelatedSettlementIDs, r.MatchedAmount.ToPgNumeric(),
-		r.DiscrepancyAmount.ToPgNumeric(), r.DiscrepancyReason, r.ReconciliationState,
-		r.Currency, []byte(mismatchesJSON), r.OverrideReason, overrideBy, r.OverrideAt,
-		pStart, pEnd, r.CreatedAt, r.UpdatedAt,
-	)
-	return err
+	return p.withTenantTx(ctx, r.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, query,
+			r.RecordID, r.WorkspaceID, r.ScopeType, r.ScopeDescription,
+			r.RelatedOrderIDs, r.RelatedSettlementIDs, r.MatchedAmount.ToPgNumeric(),
+			r.DiscrepancyAmount.ToPgNumeric(), r.DiscrepancyReason, r.ReconciliationState,
+			r.Currency, []byte(mismatchesJSON), r.OverrideReason, overrideBy, r.OverrideAt,
+			pStart, pEnd, r.CreatedAt, r.UpdatedAt,
+		)
+		return err
+	})
 }
 
 func (p *PostgresStore) GetReconciliationRecord(ctx context.Context, workspaceID, recordID string) (*ReconciliationRecord, error) {
@@ -2182,8 +2388,13 @@ func (p *PostgresStore) GetReconciliationRecord(ctx context.Context, workspaceID
 		FROM reconciliation_records
 		WHERE workspace_id = $1 AND record_id = $2
 	`
-	row := p.pool.QueryRow(ctx, query, workspaceID, recordID)
-	return scanReconciliationRecord(row)
+	var rec *ReconciliationRecord
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		var scanErr error
+		rec, scanErr = scanReconciliationRecord(tx.QueryRow(txCtx, query, workspaceID, recordID))
+		return scanErr
+	})
+	return rec, err
 }
 
 func (p *PostgresStore) ListReconciliationRecords(ctx context.Context, workspaceID string, filter ReconciliationFilter, limit, offset int) ([]ReconciliationRecord, int64, error) {
@@ -2208,11 +2419,6 @@ func (p *PostgresStore) ListReconciliationRecords(ctx context.Context, workspace
 	}
 
 	countQuery := "SELECT COUNT(*) FROM reconciliation_records " + where
-	var total int64
-	if err := p.pool.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-
 	query := fmt.Sprintf(`
 		SELECT record_id, workspace_id, scope_type, scope_description,
 		       related_order_ids, related_settlement_ids, matched_amount,
@@ -2231,19 +2437,29 @@ func (p *PostgresStore) ListReconciliationRecords(ctx context.Context, workspace
 		query += fmt.Sprintf(" OFFSET %d", offset)
 	}
 
-	rows, err := p.pool.Query(ctx, query, args...)
+	var total int64
+	var records []ReconciliationRecord
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		if err := tx.QueryRow(txCtx, countQuery, args...).Scan(&total); err != nil {
+			return err
+		}
+		rows, err := tx.Query(txCtx, query, args...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			r, err := scanReconciliationRecordRow(rows)
+			if err != nil {
+				return err
+			}
+			records = append(records, *r)
+		}
+		return rows.Err()
+	})
 	if err != nil {
 		return nil, 0, err
-	}
-	defer rows.Close()
-
-	var records []ReconciliationRecord
-	for rows.Next() {
-		r, err := scanReconciliationRecordRow(rows)
-		if err != nil {
-			return nil, 0, err
-		}
-		records = append(records, *r)
 	}
 	return records, total, nil
 }
@@ -2266,14 +2482,16 @@ func (p *PostgresStore) UpdateReconciliationRecord(ctx context.Context, r *Recon
 		    override_reason = $10, override_by = $11, override_at = $12, updated_at = NOW()
 		WHERE workspace_id = $13 AND record_id = $14
 	`
-	_, err := p.pool.Exec(ctx, query,
-		r.ScopeType, r.ScopeDescription, r.RelatedOrderIDs,
-		r.RelatedSettlementIDs, r.MatchedAmount.ToPgNumeric(), r.DiscrepancyAmount.ToPgNumeric(),
-		r.DiscrepancyReason, r.ReconciliationState, []byte(mismatchesJSON),
-		r.OverrideReason, overrideBy, r.OverrideAt,
-		r.WorkspaceID, r.RecordID,
-	)
-	return err
+	return p.withTenantTx(ctx, r.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, query,
+			r.ScopeType, r.ScopeDescription, r.RelatedOrderIDs,
+			r.RelatedSettlementIDs, r.MatchedAmount.ToPgNumeric(), r.DiscrepancyAmount.ToPgNumeric(),
+			r.DiscrepancyReason, r.ReconciliationState, []byte(mismatchesJSON),
+			r.OverrideReason, overrideBy, r.OverrideAt,
+			r.WorkspaceID, r.RecordID,
+		)
+		return err
+	})
 }
 
 func (p *PostgresStore) CreateReconciliationMatch(ctx context.Context, m *ReconciliationMatch) error {
@@ -2297,11 +2515,13 @@ func (p *PostgresStore) CreateReconciliationMatch(ctx context.Context, m *Reconc
 			$5, $6, $7, $8, $9
 		)
 	`
-	_, err := p.pool.Exec(ctx, query,
-		m.MatchID, m.WorkspaceID, recordID, m.SettlementID,
-		m.LineID, m.OrderID, m.AllocatedAmount.ToPgNumeric(), m.Currency, m.CreatedAt,
-	)
-	return err
+	return p.withTenantTx(ctx, m.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, query,
+			m.MatchID, m.WorkspaceID, recordID, m.SettlementID,
+			m.LineID, m.OrderID, m.AllocatedAmount.ToPgNumeric(), m.Currency, m.CreatedAt,
+		)
+		return err
+	})
 }
 
 func (p *PostgresStore) ListReconciliationMatches(ctx context.Context, workspaceID, recordID string) ([]ReconciliationMatch, error) {
@@ -2318,28 +2538,34 @@ func (p *PostgresStore) ListReconciliationMatches(ctx context.Context, workspace
 	}
 	query += " ORDER BY created_at ASC"
 
-	rows, err := p.pool.Query(ctx, query, args...)
+	var matches []ReconciliationMatch
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		rows, err := tx.Query(txCtx, query, args...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var m ReconciliationMatch
+			var allocNum pgtype.Numeric
+			var recID *string
+			if err := rows.Scan(
+				&m.MatchID, &m.WorkspaceID, &recID, &m.SettlementID,
+				&m.LineID, &m.OrderID, &allocNum, &m.Currency, &m.CreatedAt,
+			); err != nil {
+				return err
+			}
+			if recID != nil {
+				m.RecordID = *recID
+			}
+			m.AllocatedAmount, _ = tenantdb.FromPgNumeric(allocNum)
+			matches = append(matches, m)
+		}
+		return rows.Err()
+	})
 	if err != nil {
 		return nil, err
-	}
-	defer rows.Close()
-
-	var matches []ReconciliationMatch
-	for rows.Next() {
-		var m ReconciliationMatch
-		var allocNum pgtype.Numeric
-		var recID *string
-		if err := rows.Scan(
-			&m.MatchID, &m.WorkspaceID, &recID, &m.SettlementID,
-			&m.LineID, &m.OrderID, &allocNum, &m.Currency, &m.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		if recID != nil {
-			m.RecordID = *recID
-		}
-		m.AllocatedAmount, _ = tenantdb.FromPgNumeric(allocNum)
-		matches = append(matches, m)
 	}
 	return matches, nil
 }
@@ -2349,160 +2575,158 @@ func (p *PostgresStore) AtomicMatch(
 	workspaceID, settlementID, lineID, orderID, recordID string,
 	allocAmount tenantdb.ExactDecimal,
 ) (*SettlementLine, *Order, *ReconciliationMatch, error) {
-	tx, err := p.pool.Begin(ctx)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	defer tx.Rollback(ctx)
-
-	// 1. Lock and read settlement line
-	lineQuery := `
-		SELECT line_id, workspace_id, settlement_id, external_line_id,
-		       external_order_id, order_id, gross_amount, fee_amount,
-		       refund_amount, net_amount, matched_amount, currency,
-		       reconciliation_state, created_at
-		FROM settlement_lines
-		WHERE workspace_id = $1 AND settlement_id = $2 AND line_id = $3
-		FOR UPDATE
-	`
 	var l SettlementLine
-	var grossNum, feeNum, refNum, netNum, matchNum pgtype.Numeric
-	var extOrder, ordID *string
-
-	err = tx.QueryRow(ctx, lineQuery, workspaceID, settlementID, lineID).Scan(
-		&l.LineID, &l.WorkspaceID, &l.SettlementID, &l.ExternalLineID,
-		&extOrder, &ordID, &grossNum, &feeNum,
-		&refNum, &netNum, &matchNum, &l.Currency,
-		&l.ReconciliationState, &l.CreatedAt,
-	)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("lock settlement line: %w", err)
-	}
-	if extOrder != nil {
-		l.ExternalOrderID = *extOrder
-	}
-	if ordID != nil {
-		l.OrderID = *ordID
-	}
-	l.GrossAmount, _ = tenantdb.FromPgNumeric(grossNum)
-	l.FeeAmount, _ = tenantdb.FromPgNumeric(feeNum)
-	l.RefundAmount, _ = tenantdb.FromPgNumeric(refNum)
-	l.NetAmount, _ = tenantdb.FromPgNumeric(netNum)
-	l.MatchedAmount, _ = tenantdb.FromPgNumeric(matchNum)
-
-	newLineMatched, err := l.MatchedAmount.Add(allocAmount)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	if newLineMatched.Cmp(l.NetAmount) > 0 {
-		return nil, nil, nil, ErrCapacityExceeded
-	}
-
-	// 2. Lock and read order
-	orderQuery := `
-		SELECT order_id, workspace_id, amount, matched_amount, currency,
-		       lifecycle_state, reconciliation_state, ordered_at
-		FROM orders
-		WHERE workspace_id = $1 AND order_id = $2
-		FOR UPDATE
-	`
 	var o Order
-	var oAmtNum, oMatchNum pgtype.Numeric
-	err = tx.QueryRow(ctx, orderQuery, workspaceID, orderID).Scan(
-		&o.OrderID, &o.WorkspaceID, &oAmtNum, &oMatchNum, &o.Currency,
-		&o.LifecycleState, &o.ReconciliationState, &o.OrderedAt,
-	)
-	if err != nil {
-		return nil, nil, nil, ErrOrderNotFound
-	}
-	o.Amount, _ = tenantdb.FromPgNumeric(oAmtNum)
-	o.MatchedAmount, _ = tenantdb.FromPgNumeric(oMatchNum)
+	var match *ReconciliationMatch
 
-	newOrderMatched, err := o.MatchedAmount.Add(allocAmount)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	if newOrderMatched.Cmp(o.Amount) > 0 {
-		return nil, nil, nil, ErrOrderCapacityExceeded
-	}
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		// 1. Lock and read settlement line
+		lineQuery := `
+			SELECT line_id, workspace_id, settlement_id, external_line_id,
+			       external_order_id, order_id, gross_amount, fee_amount,
+			       refund_amount, net_amount, matched_amount, currency,
+			       reconciliation_state, created_at
+			FROM settlement_lines
+			WHERE workspace_id = $1 AND settlement_id = $2 AND line_id = $3
+			FOR UPDATE
+		`
+		var grossNum, feeNum, refNum, netNum, matchNum pgtype.Numeric
+		var extOrder, ordID *string
 
-	// 3. Update line
-	l.MatchedAmount = newLineMatched
-	if newLineMatched.Cmp(l.NetAmount) == 0 {
-		l.ReconciliationState = ReconciliationFullyReconciled
-	} else {
-		l.ReconciliationState = ReconciliationPartiallyReconciled
-	}
-	_, err = tx.Exec(ctx, `
-		UPDATE settlement_lines
-		SET matched_amount = $1, reconciliation_state = $2
-		WHERE workspace_id = $3 AND line_id = $4
-	`, l.MatchedAmount.ToPgNumeric(), l.ReconciliationState, workspaceID, lineID)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	// 4. Update order
-	o.MatchedAmount = newOrderMatched
-	if newOrderMatched.Cmp(o.Amount) == 0 {
-		o.ReconciliationState = ReconciliationFullyReconciled
-	} else {
-		o.ReconciliationState = ReconciliationPartiallyReconciled
-	}
-	_, err = tx.Exec(ctx, `
-		UPDATE orders
-		SET matched_amount = $1, reconciliation_state = $2, updated_at = NOW()
-		WHERE workspace_id = $3 AND order_id = $4
-	`, o.MatchedAmount.ToPgNumeric(), o.ReconciliationState, workspaceID, orderID)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	// 5. Create match
-	match := &ReconciliationMatch{
-		MatchID:         newUUID(),
-		WorkspaceID:     workspaceID,
-		RecordID:        recordID,
-		SettlementID:    settlementID,
-		LineID:          lineID,
-		OrderID:         orderID,
-		AllocatedAmount: allocAmount,
-		Currency:        l.Currency,
-		CreatedAt:       time.Now().UTC(),
-	}
-	var recIDParam *string
-	if recordID != "" {
-		recIDParam = &recordID
-	}
-	_, err = tx.Exec(ctx, `
-		INSERT INTO reconciliation_matches (
-			match_id, workspace_id, record_id, settlement_id,
-			line_id, order_id, allocated_amount, currency, created_at
-		) VALUES (
-			$1, $2, $3, $4,
-			$5, $6, $7, $8, $9
+		err := tx.QueryRow(txCtx, lineQuery, workspaceID, settlementID, lineID).Scan(
+			&l.LineID, &l.WorkspaceID, &l.SettlementID, &l.ExternalLineID,
+			&extOrder, &ordID, &grossNum, &feeNum,
+			&refNum, &netNum, &matchNum, &l.Currency,
+			&l.ReconciliationState, &l.CreatedAt,
 		)
-	`, match.MatchID, workspaceID, recIDParam, settlementID, lineID, orderID, allocAmount.ToPgNumeric(), match.Currency, match.CreatedAt)
+		if err != nil {
+			return fmt.Errorf("lock settlement line: %w", err)
+		}
+		if extOrder != nil {
+			l.ExternalOrderID = *extOrder
+		}
+		if ordID != nil {
+			l.OrderID = *ordID
+		}
+		l.GrossAmount, _ = tenantdb.FromPgNumeric(grossNum)
+		l.FeeAmount, _ = tenantdb.FromPgNumeric(feeNum)
+		l.RefundAmount, _ = tenantdb.FromPgNumeric(refNum)
+		l.NetAmount, _ = tenantdb.FromPgNumeric(netNum)
+		l.MatchedAmount, _ = tenantdb.FromPgNumeric(matchNum)
+
+		newLineMatched, err := l.MatchedAmount.Add(allocAmount)
+		if err != nil {
+			return err
+		}
+		if newLineMatched.Cmp(l.NetAmount) > 0 {
+			return ErrCapacityExceeded
+		}
+
+		// 2. Lock and read order
+		orderQuery := `
+			SELECT order_id, workspace_id, amount, matched_amount, currency,
+			       lifecycle_state, reconciliation_state, ordered_at
+			FROM orders
+			WHERE workspace_id = $1 AND order_id = $2
+			FOR UPDATE
+		`
+		var oAmtNum, oMatchNum pgtype.Numeric
+		err = tx.QueryRow(txCtx, orderQuery, workspaceID, orderID).Scan(
+			&o.OrderID, &o.WorkspaceID, &oAmtNum, &oMatchNum, &o.Currency,
+			&o.LifecycleState, &o.ReconciliationState, &o.OrderedAt,
+		)
+		if err != nil {
+			return ErrOrderNotFound
+		}
+		o.Amount, _ = tenantdb.FromPgNumeric(oAmtNum)
+		o.MatchedAmount, _ = tenantdb.FromPgNumeric(oMatchNum)
+
+		newOrderMatched, err := o.MatchedAmount.Add(allocAmount)
+		if err != nil {
+			return err
+		}
+		if newOrderMatched.Cmp(o.Amount) > 0 {
+			return ErrOrderCapacityExceeded
+		}
+
+		// 3. Update line
+		l.MatchedAmount = newLineMatched
+		if newLineMatched.Cmp(l.NetAmount) == 0 {
+			l.ReconciliationState = ReconciliationFullyReconciled
+		} else {
+			l.ReconciliationState = ReconciliationPartiallyReconciled
+		}
+		_, err = tx.Exec(txCtx, `
+			UPDATE settlement_lines
+			SET matched_amount = $1, reconciliation_state = $2
+			WHERE workspace_id = $3 AND line_id = $4
+		`, l.MatchedAmount.ToPgNumeric(), l.ReconciliationState, workspaceID, lineID)
+		if err != nil {
+			return err
+		}
+
+		// 4. Update order
+		o.MatchedAmount = newOrderMatched
+		if newOrderMatched.Cmp(o.Amount) == 0 {
+			o.ReconciliationState = ReconciliationFullyReconciled
+		} else {
+			o.ReconciliationState = ReconciliationPartiallyReconciled
+		}
+		_, err = tx.Exec(txCtx, `
+			UPDATE orders
+			SET matched_amount = $1, reconciliation_state = $2, updated_at = NOW()
+			WHERE workspace_id = $3 AND order_id = $4
+		`, o.MatchedAmount.ToPgNumeric(), o.ReconciliationState, workspaceID, orderID)
+		if err != nil {
+			return err
+		}
+
+		// 5. Create match
+		match = &ReconciliationMatch{
+			MatchID:         newUUID(),
+			WorkspaceID:     workspaceID,
+			RecordID:        recordID,
+			SettlementID:    settlementID,
+			LineID:          lineID,
+			OrderID:         orderID,
+			AllocatedAmount: allocAmount,
+			Currency:        l.Currency,
+			CreatedAt:       time.Now().UTC(),
+		}
+		var recIDParam *string
+		if recordID != "" {
+			recIDParam = &recordID
+		}
+		_, err = tx.Exec(txCtx, `
+			INSERT INTO reconciliation_matches (
+				match_id, workspace_id, record_id, settlement_id,
+				line_id, order_id, allocated_amount, currency, created_at
+			) VALUES (
+				$1, $2, $3, $4,
+				$5, $6, $7, $8, $9
+			)
+		`, match.MatchID, workspaceID, recIDParam, settlementID, lineID, orderID, allocAmount.ToPgNumeric(), match.Currency, match.CreatedAt)
+		if err != nil {
+			return err
+		}
+
+		// 6. Update batch record if supplied
+		if recordID != "" {
+			_, err = tx.Exec(txCtx, `
+				UPDATE reconciliation_records
+				SET matched_amount = matched_amount + $1, updated_at = NOW()
+				WHERE workspace_id = $2 AND record_id = $3
+			`, allocAmount.ToPgNumeric(), workspaceID, recordID)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
-	// 6. Update batch record if supplied
-	if recordID != "" {
-		_, err = tx.Exec(ctx, `
-			UPDATE reconciliation_records
-			SET matched_amount = matched_amount + $1, updated_at = NOW()
-			WHERE workspace_id = $2 AND record_id = $3
-		`, allocAmount.ToPgNumeric(), workspaceID, recordID)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, nil, nil, err
-	}
-
 	return &l, &o, match, nil
 }
 
@@ -2537,12 +2761,14 @@ func (p *PostgresStore) CreateEvidence(ctx context.Context, e *EvidenceObject) e
 			$9, $10, $11
 		)
 	`
-	_, err := p.pool.Exec(ctx, query,
-		e.EvidenceID, e.WorkspaceID, e.EvidenceType, e.SourceProvenance,
-		e.ContentHash, e.FileURL, payloadBytes, e.CollectedAt,
-		e.VerificationStatus, refsBytes, e.CreatedAt,
-	)
-	return err
+	return p.withTenantTx(ctx, e.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, query,
+			e.EvidenceID, e.WorkspaceID, e.EvidenceType, e.SourceProvenance,
+			e.ContentHash, e.FileURL, payloadBytes, e.CollectedAt,
+			e.VerificationStatus, refsBytes, e.CreatedAt,
+		)
+		return err
+	})
 }
 
 func (p *PostgresStore) GetEvidence(ctx context.Context, workspaceID, evidenceID string) (*EvidenceObject, error) {
@@ -2553,8 +2779,13 @@ func (p *PostgresStore) GetEvidence(ctx context.Context, workspaceID, evidenceID
 		FROM evidence_objects
 		WHERE workspace_id = $1 AND evidence_id = $2
 	`
-	row := p.pool.QueryRow(ctx, query, workspaceID, evidenceID)
-	return scanEvidence(row)
+	var ev *EvidenceObject
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		var scanErr error
+		ev, scanErr = scanEvidence(tx.QueryRow(txCtx, query, workspaceID, evidenceID))
+		return scanErr
+	})
+	return ev, err
 }
 
 func (p *PostgresStore) ListEvidence(ctx context.Context, workspaceID string, filter EvidenceFilter, limit, offset int) ([]EvidenceObject, int64, error) {
@@ -2574,11 +2805,6 @@ func (p *PostgresStore) ListEvidence(ctx context.Context, workspaceID string, fi
 	}
 
 	countQuery := "SELECT COUNT(*) FROM evidence_objects " + where
-	var total int64
-	if err := p.pool.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-
 	query := fmt.Sprintf(`
 		SELECT evidence_id, workspace_id, evidence_type, source_provenance,
 		       content_hash, file_url, payload, collected_at,
@@ -2595,44 +2821,56 @@ func (p *PostgresStore) ListEvidence(ctx context.Context, workspaceID string, fi
 		query += fmt.Sprintf(" OFFSET %d", offset)
 	}
 
-	rows, err := p.pool.Query(ctx, query, args...)
+	var total int64
+	var items []EvidenceObject
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		if err := tx.QueryRow(txCtx, countQuery, args...).Scan(&total); err != nil {
+			return err
+		}
+		rows, err := tx.Query(txCtx, query, args...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			e, err := scanEvidenceRow(rows)
+			if err != nil {
+				return err
+			}
+			items = append(items, *e)
+		}
+		return rows.Err()
+	})
 	if err != nil {
 		return nil, 0, err
-	}
-	defer rows.Close()
-
-	var items []EvidenceObject
-	for rows.Next() {
-		e, err := scanEvidenceRow(rows)
-		if err != nil {
-			return nil, 0, err
-		}
-		items = append(items, *e)
 	}
 	return items, total, nil
 }
 
 func (p *PostgresStore) UpdateEvidence(ctx context.Context, e *EvidenceObject) error {
-	existing, err := p.GetEvidence(ctx, e.WorkspaceID, e.EvidenceID)
-	if err != nil {
+	return p.withTenantTx(ctx, e.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		existing, err := p.GetEvidence(txCtx, e.WorkspaceID, e.EvidenceID)
+		if err != nil {
+			return err
+		}
+		// RULE-M19-005 Immutability check
+		if existing.WorkspaceID != e.WorkspaceID ||
+			existing.EvidenceType != e.EvidenceType ||
+			existing.SourceProvenance != e.SourceProvenance ||
+			existing.ContentHash != e.ContentHash ||
+			existing.FileURL != e.FileURL ||
+			existing.PayloadJSON != e.PayloadJSON {
+			return ErrEvidenceImmutable
+		}
+		query := `
+			UPDATE evidence_objects
+			SET verification_status = $1
+			WHERE workspace_id = $2 AND evidence_id = $3
+		`
+		_, err = tx.Exec(txCtx, query, e.VerificationStatus, e.WorkspaceID, e.EvidenceID)
 		return err
-	}
-	// RULE-M19-005 Immutability check
-	if existing.WorkspaceID != e.WorkspaceID ||
-		existing.EvidenceType != e.EvidenceType ||
-		existing.SourceProvenance != e.SourceProvenance ||
-		existing.ContentHash != e.ContentHash ||
-		existing.FileURL != e.FileURL ||
-		existing.PayloadJSON != e.PayloadJSON {
-		return ErrEvidenceImmutable
-	}
-	query := `
-		UPDATE evidence_objects
-		SET verification_status = $1
-		WHERE workspace_id = $2 AND evidence_id = $3
-	`
-	_, err = p.pool.Exec(ctx, query, e.VerificationStatus, e.WorkspaceID, e.EvidenceID)
-	return err
+	})
 }
 
 func (p *PostgresStore) DeleteEvidence(_ context.Context, _, _ string) error {
@@ -2667,12 +2905,14 @@ func (p *PostgresStore) CreateProofBundle(ctx context.Context, pb *ProofBundle) 
 			$8, $9, $10, $11
 		)
 	`
-	_, err := p.pool.Exec(ctx, query,
-		pb.ProofBundleID, pb.WorkspaceID, pb.ClaimScope, pb.ClaimSummary,
-		pb.SupportingEvidenceIDs, ctxJSON, pb.Confidence,
-		pb.CoverageSummary, pb.UnresolvedGaps, pb.CreatedAt, pb.UpdatedAt,
-	)
-	return err
+	return p.withTenantTx(ctx, pb.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, query,
+			pb.ProofBundleID, pb.WorkspaceID, pb.ClaimScope, pb.ClaimSummary,
+			pb.SupportingEvidenceIDs, ctxJSON, pb.Confidence,
+			pb.CoverageSummary, pb.UnresolvedGaps, pb.CreatedAt, pb.UpdatedAt,
+		)
+		return err
+	})
 }
 
 func (p *PostgresStore) GetProofBundle(ctx context.Context, workspaceID, bundleID string) (*ProofBundle, error) {
@@ -2683,8 +2923,13 @@ func (p *PostgresStore) GetProofBundle(ctx context.Context, workspaceID, bundleI
 		FROM proof_bundles
 		WHERE workspace_id = $1 AND proof_bundle_id = $2 AND deleted_at IS NULL
 	`
-	row := p.pool.QueryRow(ctx, query, workspaceID, bundleID)
-	return scanProofBundle(row)
+	var pb *ProofBundle
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		var scanErr error
+		pb, scanErr = scanProofBundle(tx.QueryRow(txCtx, query, workspaceID, bundleID))
+		return scanErr
+	})
+	return pb, err
 }
 
 func (p *PostgresStore) ListProofBundles(ctx context.Context, workspaceID string, filter ProofBundleFilter, limit, offset int) ([]ProofBundle, int64, error) {
@@ -2699,11 +2944,6 @@ func (p *PostgresStore) ListProofBundles(ctx context.Context, workspaceID string
 	}
 
 	countQuery := "SELECT COUNT(*) FROM proof_bundles " + where
-	var total int64
-	if err := p.pool.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-
 	query := fmt.Sprintf(`
 		SELECT proof_bundle_id, workspace_id, claim_scope, claim_summary,
 		       supporting_evidence_ids, source_class_context, confidence,
@@ -2720,19 +2960,29 @@ func (p *PostgresStore) ListProofBundles(ctx context.Context, workspaceID string
 		query += fmt.Sprintf(" OFFSET %d", offset)
 	}
 
-	rows, err := p.pool.Query(ctx, query, args...)
+	var total int64
+	var bundles []ProofBundle
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		if err := tx.QueryRow(txCtx, countQuery, args...).Scan(&total); err != nil {
+			return err
+		}
+		rows, err := tx.Query(txCtx, query, args...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			b, err := scanProofBundleRow(rows)
+			if err != nil {
+				return err
+			}
+			bundles = append(bundles, *b)
+		}
+		return rows.Err()
+	})
 	if err != nil {
 		return nil, 0, err
-	}
-	defer rows.Close()
-
-	var bundles []ProofBundle
-	for rows.Next() {
-		b, err := scanProofBundleRow(rows)
-		if err != nil {
-			return nil, 0, err
-		}
-		bundles = append(bundles, *b)
 	}
 	return bundles, total, nil
 }
@@ -2740,103 +2990,109 @@ func (p *PostgresStore) ListProofBundles(ctx context.Context, workspaceID string
 func (p *PostgresStore) ListDataGaps(ctx context.Context, workspaceID string, filter DataGapFilter, limit, offset int) ([]DataGapItem, int64, error) {
 	var items []DataGapItem
 
-	// 1. Missing COGS on completed orders
-	orderRows, err := p.pool.Query(ctx, `
-		SELECT order_id, amount, ordered_at
-		FROM orders
-		WHERE workspace_id = $1 AND lifecycle_state = 'completed'
-		  AND (NOT (fee_breakdown ? 'cogs') OR (fee_breakdown->>'cogs')::numeric = 0)
-	`, workspaceID)
-	if err == nil {
-		defer orderRows.Close()
-		for orderRows.Next() {
-			var oID string
-			var amtNum pgtype.Numeric
-			var ordAt time.Time
-			if err := orderRows.Scan(&oID, &amtNum, &ordAt); err == nil {
-				amt, _ := tenantdb.FromPgNumeric(amtNum)
-				items = append(items, DataGapItem{
-					GapID:              "gap-cogs-" + oID,
-					GapType:            "missing_cogs",
-					Severity:           "critical",
-					Title:              "Đơn hàng thiếu giá vốn (COGS)",
-					Description:        "Đơn hàng hoàn tất nhưng chưa có bản ghi giá vốn thực tế.",
-					RelatedObjectType:  "order",
-					RelatedObjectID:    oID,
-					MonetaryAmount:     amt,
-					UnresolvedSince:    ordAt,
-					RepairCTALabel:     "Nhập giá vốn",
-					RepairCTARoute:     "/finance/costs?order_id=" + oID,
-					RequiredPermission: "cost:manage",
-				})
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		// 1. Missing COGS on completed orders
+		orderRows, err := tx.Query(txCtx, `
+			SELECT order_id, amount, ordered_at
+			FROM orders
+			WHERE workspace_id = $1 AND lifecycle_state = 'completed'
+			  AND (NOT (fee_breakdown ? 'cogs') OR (fee_breakdown->>'cogs')::numeric = 0)
+		`, workspaceID)
+		if err == nil {
+			for orderRows.Next() {
+				var oID string
+				var amtNum pgtype.Numeric
+				var ordAt time.Time
+				if err := orderRows.Scan(&oID, &amtNum, &ordAt); err == nil {
+					amt, _ := tenantdb.FromPgNumeric(amtNum)
+					items = append(items, DataGapItem{
+						GapID:              "gap-cogs-" + oID,
+						GapType:            "missing_cogs",
+						Severity:           "critical",
+						Title:              "Đơn hàng thiếu giá vốn (COGS)",
+						Description:        "Đơn hàng hoàn tất nhưng chưa có bản ghi giá vốn thực tế.",
+						RelatedObjectType:  "order",
+						RelatedObjectID:    oID,
+						MonetaryAmount:     amt,
+						UnresolvedSince:    ordAt,
+						RepairCTALabel:     "Nhập giá vốn",
+						RepairCTARoute:     "/finance/costs?order_id=" + oID,
+						RequiredPermission: "cost:manage",
+					})
+				}
 			}
+			orderRows.Close()
 		}
-	}
 
-	// 2. Unreconciled settlement lines
-	lineRows, err := p.pool.Query(ctx, `
-		SELECT line_id, (net_amount - matched_amount) AS rem_amount, created_at
-		FROM settlement_lines
-		WHERE workspace_id = $1
-		  AND reconciliation_state IN ('imported_only', 'partially_reconciled')
-		  AND net_amount > matched_amount
-	`, workspaceID)
-	if err == nil {
-		defer lineRows.Close()
-		for lineRows.Next() {
-			var lID string
-			var remNum pgtype.Numeric
-			var cAt time.Time
-			if err := lineRows.Scan(&lID, &remNum, &cAt); err == nil {
-				rem, _ := tenantdb.FromPgNumeric(remNum)
-				items = append(items, DataGapItem{
-					GapID:              "gap-sment-" + lID,
-					GapType:            "unreconciled_settlement",
-					Severity:           "warning",
-					Title:              "Khoản thanh toán chưa đối soát",
-					Description:        "Khoản tiền sàn đã giải ngân nhưng chưa khớp với đơn hàng tương ứng.",
-					RelatedObjectType:  "settlement_line",
-					RelatedObjectID:    lID,
-					MonetaryAmount:     rem,
-					UnresolvedSince:    cAt,
-					RepairCTALabel:     "Khớp đối soát",
-					RepairCTARoute:     "/finance/reconciliation?line_id=" + lID,
-					RequiredPermission: "reconciliation:manage",
-				})
+		// 2. Unreconciled settlement lines
+		lineRows, err := tx.Query(txCtx, `
+			SELECT line_id, (net_amount - matched_amount) AS rem_amount, created_at
+			FROM settlement_lines
+			WHERE workspace_id = $1
+			  AND reconciliation_state IN ('imported_only', 'partially_reconciled')
+			  AND net_amount > matched_amount
+		`, workspaceID)
+		if err == nil {
+			for lineRows.Next() {
+				var lID string
+				var remNum pgtype.Numeric
+				var cAt time.Time
+				if err := lineRows.Scan(&lID, &remNum, &cAt); err == nil {
+					rem, _ := tenantdb.FromPgNumeric(remNum)
+					items = append(items, DataGapItem{
+						GapID:              "gap-sment-" + lID,
+						GapType:            "unreconciled_settlement",
+						Severity:           "warning",
+						Title:              "Khoản thanh toán chưa đối soát",
+						Description:        "Khoản tiền sàn đã giải ngân nhưng chưa khớp với đơn hàng tương ứng.",
+						RelatedObjectType:  "settlement_line",
+						RelatedObjectID:    lID,
+						MonetaryAmount:     rem,
+						UnresolvedSince:    cAt,
+						RepairCTALabel:     "Khớp đối soát",
+						RepairCTARoute:     "/finance/reconciliation?line_id=" + lID,
+						RequiredPermission: "reconciliation:manage",
+					})
+				}
 			}
+			lineRows.Close()
 		}
-	}
 
-	// 3. Cost items pending evidence
-	costRows, err := p.pool.Query(ctx, `
-		SELECT cost_item_id, amount, created_at
-		FROM cost_items
-		WHERE workspace_id = $1 AND cost_state = 'pending_evidence'
-	`, workspaceID)
-	if err == nil {
-		defer costRows.Close()
-		for costRows.Next() {
-			var cID string
-			var amtNum pgtype.Numeric
-			var cAt time.Time
-			if err := costRows.Scan(&cID, &amtNum, &cAt); err == nil {
-				amt, _ := tenantdb.FromPgNumeric(amtNum)
-				items = append(items, DataGapItem{
-					GapID:              "gap-cost-" + cID,
-					GapType:            "missing_evidence",
-					Severity:           "warning",
-					Title:              "Chi phí chưa có chứng từ hợp lệ",
-					Description:        "Chi phí được ghi nhận ước tính nhưng chưa đính kèm chứng từ.",
-					RelatedObjectType:  "cost_item",
-					RelatedObjectID:    cID,
-					MonetaryAmount:     amt,
-					UnresolvedSince:    cAt,
-					RepairCTALabel:     "Tải lên chứng từ",
-					RepairCTARoute:     "/finance/evidence?cost_id=" + cID,
-					RequiredPermission: "evidence:submit",
-				})
+		// 3. Cost items pending evidence
+		costRows, err := tx.Query(txCtx, `
+			SELECT cost_item_id, amount, created_at
+			FROM cost_items
+			WHERE workspace_id = $1 AND cost_state = 'pending_evidence'
+		`, workspaceID)
+		if err == nil {
+			for costRows.Next() {
+				var cID string
+				var amtNum pgtype.Numeric
+				var cAt time.Time
+				if err := costRows.Scan(&cID, &amtNum, &cAt); err == nil {
+					amt, _ := tenantdb.FromPgNumeric(amtNum)
+					items = append(items, DataGapItem{
+						GapID:              "gap-cost-" + cID,
+						GapType:            "missing_evidence",
+						Severity:           "warning",
+						Title:              "Chi phí chưa có chứng từ hợp lệ",
+						Description:        "Chi phí được ghi nhận ước tính nhưng chưa đính kèm chứng từ.",
+						RelatedObjectType:  "cost_item",
+						RelatedObjectID:    cID,
+						MonetaryAmount:     amt,
+						UnresolvedSince:    cAt,
+						RepairCTALabel:     "Tải lên chứng từ",
+						RepairCTARoute:     "/finance/evidence?cost_id=" + cID,
+						RequiredPermission: "evidence:submit",
+					})
+				}
 			}
+			costRows.Close()
 		}
+		return nil
+	})
+	if err != nil {
+		return nil, 0, err
 	}
 
 	severityRank := func(s string) int {

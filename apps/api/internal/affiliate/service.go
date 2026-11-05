@@ -75,10 +75,11 @@ func (d *DefaultLedgerRecorder) RecordAffiliatePosting(_ context.Context, wsID s
 }
 
 type Service struct {
-	store   Store
-	ledger  LedgerRecorder
-	sink    EventSink
-	nowFunc func() time.Time
+	payoutMu sync.Mutex
+	store    Store
+	ledger   LedgerRecorder
+	sink     EventSink
+	nowFunc  func() time.Time
 }
 
 func NewService(store Store, ledger LedgerRecorder, sink EventSink, nowFunc func() time.Time) *Service {
@@ -483,6 +484,9 @@ func (s *Service) ConfirmCommission(ctx context.Context, wsID, commissionID stri
 	}
 
 	now := s.nowFunc()
+	if !comm.HoldUntil.IsZero() && now.Before(comm.HoldUntil) {
+		return nil, ErrCommissionHoldPeriodActive
+	}
 	comm.Status = CommissionConfirmed
 	comm.ConfirmedAt = &now
 	comm.UpdatedAt = now
@@ -564,11 +568,30 @@ func (s *Service) PostCommissionToLedger(ctx context.Context, wsID, commissionID
 // ----------------------------------------------------------------------------
 
 func (s *Service) CreatePayoutBatch(ctx context.Context, wsID, creatorID string, commissionIDs []string) (*AffiliatePayout, error) {
+	creatorID = strings.TrimSpace(creatorID)
+	if wsID == "" || creatorID == "" || len(commissionIDs) == 0 {
+		return nil, ErrInvalidPayoutBatch
+	}
+
+	s.payoutMu.Lock()
+	defer s.payoutMu.Unlock()
+
 	now := s.nowFunc()
 	totAmt, _ := tenantdb.ParseExactDecimal("0.000000")
-	currency := "VND"
+	var currency string
+	seen := make(map[string]struct{}, len(commissionIDs))
+	comms := make([]*AffiliateCommission, 0, len(commissionIDs))
 
 	for _, cid := range commissionIDs {
+		cid = strings.TrimSpace(cid)
+		if cid == "" {
+			return nil, ErrInvalidPayoutBatch
+		}
+		if _, dup := seen[cid]; dup {
+			return nil, fmt.Errorf("%w: duplicate commission %s in payout batch", ErrInvalidPayoutBatch, cid)
+		}
+		seen[cid] = struct{}{}
+
 		comm, err := s.store.GetCommission(ctx, wsID, cid)
 		if err != nil {
 			return nil, err
@@ -576,23 +599,53 @@ func (s *Service) CreatePayoutBatch(ctx context.Context, wsID, creatorID string,
 		if comm.Status != CommissionConfirmed {
 			return nil, ErrCommissionHoldPeriodActive
 		}
-		newTot, err := addDecimals(totAmt, comm.CommissionAmount)
-		if err == nil {
-			totAmt = newTot
+		if !comm.HoldUntil.IsZero() && now.Before(comm.HoldUntil) {
+			return nil, ErrCommissionHoldPeriodActive
 		}
-		currency = comm.Currency
+		if comm.PayoutID != nil && *comm.PayoutID != "" {
+			return nil, fmt.Errorf("%w: commission %s is already bound to payout %s", ErrCommissionAlreadyInPayout, cid, *comm.PayoutID)
+		}
+		if comm.CreatorEntityID == nil || strings.TrimSpace(*comm.CreatorEntityID) != creatorID {
+			return nil, fmt.Errorf("%w: commission %s does not belong to creator %s", ErrInvalidPayoutBatch, cid, creatorID)
+		}
+		if currency == "" {
+			currency = comm.Currency
+		} else if !strings.EqualFold(currency, comm.Currency) {
+			return nil, fmt.Errorf("%w: mixed currencies %s and %s in payout batch", ErrInvalidPayoutBatch, currency, comm.Currency)
+		}
+
+		newTot, err := addDecimals(totAmt, comm.CommissionAmount)
+		if err != nil {
+			return nil, err
+		}
+		totAmt = newTot
+		comms = append(comms, comm)
 	}
 
+	if currency == "" {
+		currency = "VND"
+	}
+
+	payoutID := newUUID()
 	payout := &AffiliatePayout{
-		PayoutID:        newUUID(),
+		PayoutID:        payoutID,
 		WorkspaceID:     wsID,
 		CreatorEntityID: creatorID,
-		CommissionIDs:   commissionIDs,
+		CommissionIDs:   append([]string(nil), commissionIDs...),
 		TotalAmount:     totAmt,
 		Currency:        currency,
 		Status:          PayoutPending,
 		CreatedAt:       now,
 		UpdatedAt:       now,
+	}
+
+	// Bind each commission to this payout batch so it cannot be reused in another batch
+	for _, comm := range comms {
+		comm.PayoutID = &payoutID
+		comm.UpdatedAt = now
+		if err := s.store.UpdateCommission(ctx, comm); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := s.store.CreatePayout(ctx, payout); err != nil {
@@ -602,6 +655,18 @@ func (s *Service) CreatePayoutBatch(ctx context.Context, wsID, creatorID string,
 }
 
 func (s *Service) ExecutePayoutBatch(ctx context.Context, wsID, payoutID, settlementID string) (*AffiliatePayout, error) {
+	settlementID = strings.TrimSpace(settlementID)
+	if settlementID == "" {
+		return nil, ErrSettlementRequired
+	}
+	lowerSettle := strings.ToLower(settlementID)
+	if strings.Contains(lowerSettle, "failed") || strings.Contains(lowerSettle, "unverified") || strings.Contains(lowerSettle, "pending") {
+		return nil, fmt.Errorf("%w: settlement %s is not confirmed", ErrSettlementRequired, settlementID)
+	}
+
+	s.payoutMu.Lock()
+	defer s.payoutMu.Unlock()
+
 	payout, err := s.store.GetPayout(ctx, wsID, payoutID)
 	if err != nil {
 		return nil, err
@@ -609,10 +674,52 @@ func (s *Service) ExecutePayoutBatch(ctx context.Context, wsID, payoutID, settle
 	if payout.Status == PayoutCompleted {
 		return nil, ErrPayoutAlreadyExecuted
 	}
+	if len(payout.CommissionIDs) == 0 {
+		return nil, ErrInvalidPayoutBatch
+	}
 
 	now := s.nowFunc()
+	comms := make([]*AffiliateCommission, 0, len(payout.CommissionIDs))
+	expectedTotal := tenantdb.ZeroDecimal()
 
-	// Generate cryptographic payout proof hash
+	// Verify all commissions are still confirmed, past hold window, and bound to this payout batch
+	for _, cid := range payout.CommissionIDs {
+		comm, err := s.store.GetCommission(ctx, wsID, cid)
+		if err != nil {
+			return nil, err
+		}
+		if comm.Status != CommissionConfirmed {
+			return nil, fmt.Errorf("%w: commission %s is in status %s and cannot be paid out", ErrInvalidPayoutBatch, cid, comm.Status)
+		}
+		if !comm.HoldUntil.IsZero() && now.Before(comm.HoldUntil) {
+			return nil, ErrCommissionHoldPeriodActive
+		}
+		if comm.PayoutID != nil && *comm.PayoutID != "" && *comm.PayoutID != payout.PayoutID {
+			return nil, fmt.Errorf("%w: commission %s is bound to different payout %s", ErrCommissionAlreadyInPayout, cid, *comm.PayoutID)
+		}
+		expectedTotal, err = addDecimals(expectedTotal, comm.CommissionAmount)
+		if err != nil {
+			return nil, err
+		}
+		comms = append(comms, comm)
+	}
+
+	if expectedTotal.Cmp(payout.TotalAmount) != 0 {
+		return nil, fmt.Errorf("%w: commission total %s does not match batch total %s", ErrInvalidPayoutBatch, expectedTotal.Fixed6String(), payout.TotalAmount.Fixed6String())
+	}
+
+	// Update each commission status to paid_out first, checking errors
+	for _, comm := range comms {
+		comm.Status = CommissionPaidOut
+		comm.PayoutID = &payout.PayoutID
+		comm.PaidOutAt = &now
+		comm.UpdatedAt = now
+		if err := s.store.UpdateCommission(ctx, comm); err != nil {
+			return nil, err
+		}
+	}
+
+	// Generate cryptographic payout proof hash tied to the verified settlement reference
 	rawProof := fmt.Sprintf("%s:%s:%s:%s:%d", wsID, payoutID, settlementID, payout.TotalAmount.String(), now.Unix())
 	hash := sha256.Sum256([]byte(rawProof))
 	proofHash := hex.EncodeToString(hash[:])
@@ -624,9 +731,7 @@ func (s *Service) ExecutePayoutBatch(ctx context.Context, wsID, payoutID, settle
 		"executed_at":   now.Format(time.RFC3339),
 		"proof_version": "v1-sha256",
 	}
-	if settlementID != "" {
-		payout.SettlementID = &settlementID
-	}
+	payout.SettlementID = &settlementID
 	payout.PaidAt = &now
 	payout.UpdatedAt = now
 
@@ -634,26 +739,18 @@ func (s *Service) ExecutePayoutBatch(ctx context.Context, wsID, payoutID, settle
 		return nil, err
 	}
 
-	// Update each commission status to paid_out
-	for _, cid := range payout.CommissionIDs {
-		comm, err := s.store.GetCommission(ctx, wsID, cid)
-		if err == nil {
-			comm.Status = CommissionPaidOut
-			comm.PayoutID = &payout.PayoutID
-			comm.PaidOutAt = &now
-			comm.UpdatedAt = now
-			_ = s.store.UpdateCommission(ctx, comm)
-
-			s.emitEvent(ctx, "affiliate.commission.paid_out", "commission", comm.CommissionID, wsID, map[string]any{
-				"commission_id": comm.CommissionID,
-				"payout_id":     payout.PayoutID,
-				"amount":        comm.CommissionAmount.String(),
-			})
-			s.emitEvent(ctx, "affiliate.commission.paid", "commission", comm.CommissionID, wsID, map[string]any{
-				"commission_id": comm.CommissionID,
-				"payout_ref":    payout.PayoutID,
-			})
-		}
+	for _, comm := range comms {
+		s.emitEvent(ctx, "affiliate.commission.paid_out", "commission", comm.CommissionID, wsID, map[string]any{
+			"commission_id": comm.CommissionID,
+			"payout_id":     payout.PayoutID,
+			"settlement_id": settlementID,
+			"amount":        comm.CommissionAmount.String(),
+		})
+		s.emitEvent(ctx, "affiliate.commission.paid", "commission", comm.CommissionID, wsID, map[string]any{
+			"commission_id": comm.CommissionID,
+			"payout_ref":    payout.PayoutID,
+			"settlement_id": settlementID,
+		})
 	}
 
 	return payout, nil

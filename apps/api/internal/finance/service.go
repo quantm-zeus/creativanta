@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
@@ -46,6 +47,7 @@ type OrderPostingInput struct {
 }
 
 type Service struct {
+	mu        sync.RWMutex
 	store     Store
 	eventSink EventSink
 	clock     func() time.Time
@@ -99,12 +101,16 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 
 	// If order is not completed (e.g. created, confirmed, fulfilled), keep in pending pool
 	if input.LifecycleState != "completed" {
+		s.mu.Lock()
 		s.pendingOrders[input.OrderID] = input
+		s.mu.Unlock()
 		return nil
 	}
 
 	// Order is completed: remove from pending pool if present
+	s.mu.Lock()
 	delete(s.pendingOrders, input.OrderID)
+	s.mu.Unlock()
 
 	// FX Conversion to base currency
 	baseRevenue, err := ComputeBaseAmount(input.GrossAmount, input.ExchangeRateSnapshot)
@@ -199,9 +205,13 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 
 	// 4. Post COGS (negative) if present, or flag missing
 	if input.COGSAmount == nil {
+		s.mu.Lock()
 		s.missingCOGSOrders[input.OrderID] = true
+		s.mu.Unlock()
 	} else {
+		s.mu.Lock()
 		delete(s.missingCOGSOrders, input.OrderID)
+		s.mu.Unlock()
 		if !input.COGSAmount.IsZero() {
 			baseCOGS, err := ComputeBaseAmount(*input.COGSAmount, input.ExchangeRateSnapshot)
 			if err != nil {
@@ -266,32 +276,41 @@ func (s *Service) RecordOrderCorrection(
 	sourceClass, confidence string,
 	fx ExchangeRateSnapshot,
 ) error {
+	now := s.clock()
+	effectiveAt := now
+	currency := fx.QuoteCurrency
+	if currency == "" {
+		currency = fx.BaseCurrency
+	}
+
 	existing, err := s.store.FindPostingByOrigin(ctx, workspaceID, "order", orderID, component)
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrPostingNotFound) {
 		return err
 	}
 
-	now := s.clock()
-
-	// 1. Create reversal posting
-	reversalAmount, _ := tenantdb.ZeroDecimal().Sub(existing.Amount)
-	reversal := &FinancialPosting{
-		WorkspaceID:          workspaceID,
-		OriginType:           "order",
-		OriginID:             orderID,
-		OriginVersion:        existing.OriginVersion + "-reversal",
-		Component:            component,
-		Amount:               reversalAmount,
-		Currency:             existing.Currency,
-		SourceClass:          sourceClass,
-		Confidence:           confidence,
-		ExchangeRateSnapshot: fx,
-		ReversalOf:           &existing.PostingID,
-		EffectiveAt:          existing.EffectiveAt,
-		CreatedAt:            now,
-	}
-	if err := s.store.CreatePosting(ctx, reversal); err != nil {
-		return fmt.Errorf("create reversal: %w", err)
+	if existing != nil {
+		effectiveAt = existing.EffectiveAt
+		currency = existing.Currency
+		// 1. Create reversal posting
+		reversalAmount, _ := tenantdb.ZeroDecimal().Sub(existing.Amount)
+		reversal := &FinancialPosting{
+			WorkspaceID:          workspaceID,
+			OriginType:           "order",
+			OriginID:             orderID,
+			OriginVersion:        existing.OriginVersion + "-reversal",
+			Component:            component,
+			Amount:               reversalAmount,
+			Currency:             existing.Currency,
+			SourceClass:          sourceClass,
+			Confidence:           confidence,
+			ExchangeRateSnapshot: fx,
+			ReversalOf:           &existing.PostingID,
+			EffectiveAt:          existing.EffectiveAt,
+			CreatedAt:            now,
+		}
+		if err := s.store.CreatePosting(ctx, reversal); err != nil && !errors.Is(err, ErrDuplicatePosting) {
+			return fmt.Errorf("create reversal: %w", err)
+		}
 	}
 
 	// 2. Append new corrected posting
@@ -302,14 +321,17 @@ func (s *Service) RecordOrderCorrection(
 		OriginVersion:        newVersion,
 		Component:            component,
 		Amount:               newAmount,
-		Currency:             existing.Currency,
+		Currency:             currency,
 		SourceClass:          sourceClass,
 		Confidence:           confidence,
 		ExchangeRateSnapshot: fx,
-		EffectiveAt:          existing.EffectiveAt,
+		EffectiveAt:          effectiveAt,
 		CreatedAt:            now,
 	}
-	return s.store.CreatePosting(ctx, corrected)
+	if err := s.store.CreatePosting(ctx, corrected); err != nil && !errors.Is(err, ErrDuplicatePosting) {
+		return err
+	}
+	return nil
 }
 
 // RecordRefundPosting creates a negative refund posting without netting original revenue (F02).
@@ -585,7 +607,17 @@ func (s *Service) GetOrComputeProfitSnapshot(
 		return nil, err
 	}
 
-	hasMissingCOGS := len(s.missingCOGSOrders) > 0
+	s.mu.RLock()
+	missingCOGSCount := len(s.missingCOGSOrders)
+	hasMissingCOGS := missingCOGSCount > 0
+	var wsPending []OrderPostingInput
+	for _, p := range s.pendingOrders {
+		if p.WorkspaceID == workspaceID {
+			wsPending = append(wsPending, p)
+		}
+	}
+	s.mu.RUnlock()
+
 	summary, err := SummarizePostings(postings, hasMissingCOGS)
 	if err != nil {
 		return nil, err
@@ -593,11 +625,9 @@ func (s *Service) GetOrComputeProfitSnapshot(
 
 	// Calculate pending revenue from pending orders
 	pendingRevenue := tenantdb.ZeroDecimal()
-	for _, p := range s.pendingOrders {
-		if p.WorkspaceID == workspaceID {
-			baseP, _ := ComputeBaseAmount(p.GrossAmount, p.ExchangeRateSnapshot)
-			pendingRevenue, _ = pendingRevenue.Add(baseP)
-		}
+	for _, p := range wsPending {
+		baseP, _ := ComputeBaseAmount(p.GrossAmount, p.ExchangeRateSnapshot)
+		pendingRevenue, _ = pendingRevenue.Add(baseP)
 	}
 
 	// Calculate unreconciled bucket from settlements
@@ -645,7 +675,7 @@ func (s *Service) GetOrComputeProfitSnapshot(
 		Currency:                       currency,
 		CreatedAt:                      s.clock(),
 		IsIncomplete:                   hasMissingCOGS,
-		UnknownRequiredComponentsCount: len(s.missingCOGSOrders),
+		UnknownRequiredComponentsCount: missingCOGSCount,
 		PendingRevenue:                 pendingRevenue,
 		UnreconciledAmount:             unreconciledAmount,
 		UnreconciledCount:              unreconciledCount,
@@ -890,7 +920,11 @@ func (s *Service) ListPendingGaps(
 		}
 	}
 
-	return items, total, int32(len(s.missingCOGSOrders)), unreconciledAmount, int32(unreconciledCount), nil
+	s.mu.RLock()
+	missingCOGS := int32(len(s.missingCOGSOrders))
+	s.mu.RUnlock()
+
+	return items, total, missingCOGS, unreconciledAmount, int32(unreconciledCount), nil
 }
 
 // ----------------------------------------------------------------------------

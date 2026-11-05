@@ -80,19 +80,22 @@ func TestAffiliateConnectRPCHandlers(t *testing.T) {
 		t.Fatalf("expected inferred source class")
 	}
 
-	// 5. Calculate & Confirm Commission
+	// 5. Calculate & Confirm Commission (after 15-day hold period elapses)
 	calcResp, err := commHandler.CalculateCommission(ctx, connect.NewRequest(&commercev1.CalculateCommissionRequest{
 		WorkspaceId:     wsID,
 		AffiliateLinkId: linkID,
 		OrderId:         "ord-rpc-01",
+		CreatorEntityId: "creator-uuid-1",
 		OrderAmount:     "400000.000000",
 		Currency:        "VND",
+		HoldPeriodDays:  15,
 	}))
 	if err != nil {
 		t.Fatalf("CalculateCommission failed: %v", err)
 	}
 	commID := calcResp.Msg.Commission.CommissionId
 
+	now = now.Add(16 * 24 * time.Hour)
 	confirmResp, err := commHandler.ConfirmCommission(ctx, connect.NewRequest(&commercev1.ConfirmCommissionRequest{
 		WorkspaceId:  wsID,
 		CommissionId: commID,

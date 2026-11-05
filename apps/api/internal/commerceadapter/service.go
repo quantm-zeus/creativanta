@@ -3,15 +3,18 @@ package commerceadapter
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/quantm-zeus/creativanta/apps/api/internal/finance"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/inventory"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/order"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 )
 
 // Service orchestrates commerce platform adapters with order, inventory, and finance domains.
 type Service struct {
+	refundMu sync.Mutex
 	orderSvc *order.Service
 	invSvc   *inventory.Service
 	finSvc   *finance.Service
@@ -266,16 +269,67 @@ func (s *Service) ProcessRefundWebhook(
 		targetOrderID = parsed.ExternalOrderID
 	}
 
+	s.refundMu.Lock()
+	defer s.refundMu.Unlock()
+
+	refundAmount := parsed.Amount
+	externalRefundID := parsed.ExternalRefundID
+
+	existingRefunds, err := s.orderSvc.Store().ListRefundsByOrder(ctx, workspaceID, targetOrderID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if parsed.IsCumulative {
+		bookedTotal := tenantdb.ZeroDecimal()
+		var latestRef *order.Refund
+		for _, r := range existingRefunds {
+			if r.LifecycleState == order.RefundRejected {
+				continue
+			}
+			bookedTotal, err = bookedTotal.Add(r.Amount)
+			if err != nil {
+				return nil, nil, err
+			}
+			latestRef = r
+		}
+
+		delta, err := parsed.Amount.Sub(bookedTotal)
+		if err != nil {
+			return nil, nil, err
+		}
+		if delta.IsNegative() || delta.IsZero() {
+			ord, err := s.orderSvc.GetOrder(ctx, workspaceID, targetOrderID)
+			if err != nil {
+				return nil, nil, err
+			}
+			return latestRef, ord, nil
+		}
+
+		refundAmount = delta
+		externalRefundID = fmt.Sprintf("%s:cum:%s", parsed.ExternalRefundID, parsed.Amount.Fixed6String())
+	} else if externalRefundID != "" {
+		for _, r := range existingRefunds {
+			if r.SourcePlatform == platform && r.ExternalRefundID == externalRefundID {
+				if r.LifecycleState == order.RefundApproved || r.LifecycleState == order.RefundCompleted {
+					ord, err := s.orderSvc.GetOrder(ctx, workspaceID, targetOrderID)
+					return r, ord, err
+				}
+				return s.orderSvc.ApproveRefund(ctx, workspaceID, r.RefundID)
+			}
+		}
+	}
+
 	ref := &order.Refund{
 		WorkspaceID:      workspaceID,
 		OrderID:          targetOrderID,
 		RefundType:       "partial",
-		Amount:           parsed.Amount,
+		Amount:           refundAmount,
 		Currency:         parsed.Currency,
 		Reason:           parsed.Reason,
 		SourceClass:      order.SourceClassOfficial,
 		SourcePlatform:   platform,
-		ExternalRefundID: parsed.ExternalRefundID,
+		ExternalRefundID: externalRefundID,
 	}
 
 	createdRef, _, err := s.orderSvc.RequestRefund(ctx, ref)

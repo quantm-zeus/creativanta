@@ -3,9 +3,11 @@ package commerceadapter_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/quantm-zeus/creativanta/apps/api/internal/commerceadapter"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/finance"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/inventory"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/order"
@@ -233,5 +235,105 @@ func TestTarget3_NoDoubleRefundOrRestock(t *testing.T) {
 	}
 	if oFinal.RefundedAmount.String() != "1000000" {
 		t.Fatalf("expected refunded amount 1,000,000, got %s", oFinal.RefundedAmount.String())
+	}
+}
+
+// COM-02: Stripe charge.refunded carries cumulative amount_refunded; ProcessRefundWebhook must
+// book only the incremental delta, ignore duplicate or out-of-order lower cumulative snapshots,
+// and deduplicate non-cumulative platform refund webhooks by ExternalRefundID.
+func TestStripeCumulativeRefundCallbacksAndWebhookReplayDedup(t *testing.T) {
+	ctx := context.Background()
+	adapterSvc, orderSvc, _, finSvc := setupAdapterHarness()
+	const wsID = "ws-stripe-cum-01"
+	const orderID = "ord-stripe-cum-01"
+
+	_, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		OrderID:         orderID,
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  commerceadapter.PlatformStripe,
+		ExternalOrderID: "pi_cum_test_01",
+		LifecycleState:  order.StateCompleted,
+		Amount:          tenantdb.MustParseExactDecimal("1000000.000000"),
+		Currency:        "VND",
+	}, "")
+	if err != nil {
+		t.Fatalf("ingest order failed: %v", err)
+	}
+
+	makeStripeRefundPayload := func(eventID string, amountRefunded int64) []byte {
+		return []byte(fmt.Sprintf(`{
+			"id": %q,
+			"type": "charge.refunded",
+			"created": 1762000000,
+			"data": {
+				"object": {
+					"id": "ch_cum_test_01",
+					"payment_intent": "pi_cum_test_01",
+					"amount_refunded": %d,
+					"currency": "vnd",
+					"metadata": {"order_id": %q}
+				}
+			}
+		}`, eventID, amountRefunded, orderID))
+	}
+
+	// 1. First partial refund of 300,000 VND (cumulative amount_refunded = 300,000)
+	payload1 := makeStripeRefundPayload("evt_ref_1", 300000)
+	ref1, ord1, err := adapterSvc.ProcessRefundWebhook(ctx, commerceadapter.PlatformStripe, wsID, orderID, payload1, "", "")
+	if err != nil {
+		t.Fatalf("first Stripe refund webhook failed: %v", err)
+	}
+	if ref1.Amount.String() != "300000" || ord1.RefundedAmount.String() != "300000" {
+		t.Fatalf("expected ref=300000 and ord.RefundedAmount=300000, got ref=%s ord=%s", ref1.Amount.String(), ord1.RefundedAmount.String())
+	}
+
+	// 2. Exact replay of first webhook -> must NOT create a second 300,000 refund
+	ref1Replay, ord1Replay, err := adapterSvc.ProcessRefundWebhook(ctx, commerceadapter.PlatformStripe, wsID, orderID, payload1, "", "")
+	if err != nil {
+		t.Fatalf("replay of first Stripe refund webhook failed: %v", err)
+	}
+	if ref1Replay.RefundID != ref1.RefundID || ord1Replay.RefundedAmount.String() != "300000" {
+		t.Fatalf("expected idempotent replay to keep RefundedAmount=300000, got %s", ord1Replay.RefundedAmount.String())
+	}
+
+	// 3. Second partial refund of +200,000 VND (Stripe sends cumulative amount_refunded = 500,000)
+	payload2 := makeStripeRefundPayload("evt_ref_2", 500000)
+	ref2, ord2, err := adapterSvc.ProcessRefundWebhook(ctx, commerceadapter.PlatformStripe, wsID, orderID, payload2, "", "")
+	if err != nil {
+		t.Fatalf("second Stripe cumulative refund webhook failed: %v", err)
+	}
+	if ref2.Amount.String() != "200000" {
+		t.Fatalf("expected incremental refund delta of 200000, got %s", ref2.Amount.String())
+	}
+	if ord2.RefundedAmount.String() != "500000" || ord2.LifecycleState != order.StatePartiallyRefunded {
+		t.Fatalf("expected cumulative RefundedAmount=500000 and StatePartiallyRefunded, got %s (%s)", ord2.RefundedAmount.String(), ord2.LifecycleState)
+	}
+
+	// 4. Out-of-order arrival of earlier snapshot (amount_refunded = 300,000 < 500,000) -> no-op
+	_, ordStale, err := adapterSvc.ProcessRefundWebhook(ctx, commerceadapter.PlatformStripe, wsID, orderID, payload1, "", "")
+	if err != nil {
+		t.Fatalf("stale snapshot webhook failed: %v", err)
+	}
+	if ordStale.RefundedAmount.String() != "500000" {
+		t.Fatalf("expected stale snapshot to leave RefundedAmount=500000, got %s", ordStale.RefundedAmount.String())
+	}
+
+	// 5. Final partial refund of +500,000 VND (cumulative amount_refunded = 1,000,000) -> full refund
+	payload3 := makeStripeRefundPayload("evt_ref_3", 1000000)
+	ref3, ord3, err := adapterSvc.ProcessRefundWebhook(ctx, commerceadapter.PlatformStripe, wsID, orderID, payload3, "", "")
+	if err != nil {
+		t.Fatalf("third Stripe cumulative refund webhook failed: %v", err)
+	}
+	if ref3.Amount.String() != "500000" || ord3.RefundedAmount.String() != "1000000" || ord3.LifecycleState != order.StateRefunded {
+		t.Fatalf("expected delta=500000, RefundedAmount=1000000, StateRefunded, got delta=%s total=%s state=%s",
+			ref3.Amount.String(), ord3.RefundedAmount.String(), ord3.LifecycleState)
+	}
+
+	postings, err := finSvc.Store().ListPostings(ctx, wsID, finance.PostingFilter{
+		Component: finance.ComponentRefund,
+	})
+	if err != nil || len(postings) != 3 {
+		t.Fatalf("expected 3 incremental refund postings (-300k, -200k, -500k), got %d (err=%v)", len(postings), err)
 	}
 }
