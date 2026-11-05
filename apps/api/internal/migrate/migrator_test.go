@@ -2141,10 +2141,10 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	if _, err := tx.Exec(ctx, `
 		SET LOCAL app.current_tenant_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 		SET LOCAL app.current_user_id = '11111111-1111-4111-8111-111111111111';
-		INSERT INTO affiliate_statements (statement_id, workspace_id, platform, statement_period, currency, gross_commission_minor, net_payout_minor, status)
-		VALUES ('ffffffff-ffff-4fff-8fff-fffffffffff1'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid, 'tiktok_shop', '2026-10', 'VND', 100000, 95000, 'reconciled');
-		INSERT INTO affiliate_statement_items (item_id, statement_id, external_order_id, commission_minor, status)
-		VALUES ('ffffffff-ffff-4fff-8fff-fffffffffff2'::uuid, 'ffffffff-ffff-4fff-8fff-fffffffffff1'::uuid, 'ext_ord_1', 100000, 'matched');
+		INSERT INTO affiliate_statements (statement_id, workspace_id, platform, external_statement_ref, period_start, period_end, total_commission, currency, reconciliation_state)
+		VALUES ('ffffffff-ffff-4fff-8fff-fffffffffff1'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid, 'tiktok_shop', 'stmt-2026-10', '2026-10-01', '2026-10-31', 100000, 'VND', 'fully_reconciled');
+		INSERT INTO affiliate_statement_items (item_id, statement_id, external_order_id, order_amount, commission_amount, status)
+		VALUES ('ffffffff-ffff-4fff-8fff-fffffffffff2'::uuid, 'ffffffff-ffff-4fff-8fff-fffffffffff1'::uuid, 'ext_ord_1', 100000, 100000, 'matched');
 	`); err != nil {
 		t.Fatalf("failed to insert Tenant A affiliate_statement_items fixture: %v", err)
 	}

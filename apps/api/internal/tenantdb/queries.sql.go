@@ -68,7 +68,7 @@ INSERT INTO workspaces (
 )
 RETURNING
   workspace_id::text, COALESCE(NULLIF(display_name, ''), name), slug, owner_user_id::text, subscription_tier,
-  COALESCE(NULLIF(default_operator_mode, ''), default_mode::text), enabled_modes::text[], ai_credits_remaining, ai_credits_monthly_limit,
+  default_operator_mode::text, enabled_modes::text[], ai_credits_remaining, ai_credits_monthly_limit,
   storage_used_bytes, storage_limit_bytes, settings, locale, timezone, status,
   created_at, updated_at
 `
@@ -168,7 +168,7 @@ func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams
 const getWorkspaceSQL = `
 SELECT
   workspace_id::text, COALESCE(NULLIF(display_name, ''), name), slug, owner_user_id::text, subscription_tier,
-  COALESCE(NULLIF(default_operator_mode, ''), default_mode::text), enabled_modes::text[], ai_credits_remaining, ai_credits_monthly_limit,
+  default_operator_mode::text, enabled_modes::text[], ai_credits_remaining, ai_credits_monthly_limit,
   storage_used_bytes, storage_limit_bytes, settings, locale, timezone, status,
   created_at, updated_at
 FROM workspaces
@@ -241,7 +241,7 @@ SET
 WHERE workspace_id = $1::uuid
 RETURNING
   workspace_id::text, COALESCE(NULLIF(display_name, ''), name), slug, owner_user_id::text, subscription_tier,
-  COALESCE(NULLIF(default_operator_mode, ''), default_mode::text), enabled_modes::text[], ai_credits_remaining, ai_credits_monthly_limit,
+  default_operator_mode::text, enabled_modes::text[], ai_credits_remaining, ai_credits_monthly_limit,
   storage_used_bytes, storage_limit_bytes, settings, locale, timezone, status,
   created_at, updated_at
 `
