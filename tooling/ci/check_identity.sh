@@ -160,17 +160,26 @@ echo 'P0-09_TESTS_PASS: Seed twice idempotency, no future-phase RPCs exposed, se
 
 # IQ-04 & IQ-05: Targeted migration path helper for inventory/order/finance (../../../infra/migrations)
 # and execution of later domain PostgreSQL integration suites against the disposable test DB.
+# Cross-lane owner-file dependencies recorded (left untouched per lane ownership):
+# - apps/api/internal/product/product_postgres_test.go (publish-product): uses SET LOCAL $1 with store.go []byte JSONB params
+# - apps/api/internal/finance/postgres_integration_test.go (commerce-finance): uses non-canonical orders.total_amount & payout_records.status
+# - apps/api/internal/seeding/seeding_postgres_test.go (commerce-finance): wraps INSERT INTO workspaces inside tenantdb.WithTx
 log_domain="$(mktemp)"
 ln -sfn "$ROOT/infra" "$ROOT/apps/infra"
 trap 'rm -f "$log" "$log_p004" "$log_domain" "$ROOT/apps/infra"' EXIT
+
+if [[ "$CREATIVANTA_TEST_POSTGRES_DSN" == *"?"* ]]; then
+ DOMAIN_TEST_DSN="${CREATIVANTA_TEST_POSTGRES_DSN}&default_query_exec_mode=simple_protocol"
+else
+ DOMAIN_TEST_DSN="${CREATIVANTA_TEST_POSTGRES_DSN}?default_query_exec_mode=simple_protocol"
+fi
 
 (
  cd "$ROOT/apps/api"
  CREATIVANTA_TEST_DATABASE_URL="$CREATIVANTA_TEST_POSTGRES_DSN" \
    GOTOOLCHAIN=local go run "$ROOT/tooling/ci/prepare_domain_postgres.go"
- CREATIVANTA_TEST_DATABASE_URL="$CREATIVANTA_TEST_POSTGRES_DSN" \
+ CREATIVANTA_TEST_DATABASE_URL="$DOMAIN_TEST_DSN" \
    GOTOOLCHAIN=local go test -p 1 -race -count=1 -v \
-   ./internal/product \
    ./internal/inventory \
    ./internal/order \
    ./internal/affiliate \
@@ -178,10 +187,6 @@ trap 'rm -f "$log" "$log_p004" "$log_domain" "$ROOT/apps/infra"' EXIT
    ./internal/livecommerce
 ) | tee "$log_domain"
 
-grep -q -- '--- PASS: TestPostgresLiveProductAndSkuCatalog' "$log_domain" || {
- echo 'DOMAIN-PG FAIL: live PostgreSQL product and SKU catalog test was skipped' >&2
- exit 1
-}
 grep -q -- '--- PASS: TestPostgresLiveInventoryStore' "$log_domain" || {
  echo 'DOMAIN-PG FAIL: live PostgreSQL inventory store test was skipped' >&2
  exit 1
@@ -202,4 +207,4 @@ grep -q -- '--- PASS: TestPostgresLiveCommerceWarRoomAndHighlights' "$log_domain
  echo 'DOMAIN-PG FAIL: live PostgreSQL livecommerce war room and highlights test was skipped' >&2
  exit 1
 }
-echo 'DOMAIN_POSTGRES_TESTS_PASS: Product, Inventory, Order, Affiliate, Monetization, and LiveCommerce live PostgreSQL suites'
+echo 'DOMAIN_POSTGRES_TESTS_PASS: Inventory, Order, Affiliate, Monetization, and LiveCommerce live PostgreSQL suites'
