@@ -10,7 +10,7 @@ import {
   developerStore
 } from '../developer/public_api';
 import { submitSupportTicketRemote } from '../help/store';
-import { saveWorkflowRemote, setWorkflowStatusRemote, type Workflow } from '../workflow/runtime';
+import { saveWorkflowRemote, setWorkflowStatusRemote } from '../workflow/runtime';
 import { executeVideoAgentStepRemote, planVideoAgent } from '../automation/agent';
 import {
   applyOperationalRepairRemote,
@@ -294,25 +294,19 @@ describe('Remediation Canonical RPC Flows (UF-04..UF-08, AI-02, R04)', () => {
   });
 
   it('UF-08 saveWorkflowRemote & setWorkflowStatusRemote do not bump version or activate locally on failure', async () => {
-    const wf: Workflow = {
+    const wf = {
       workflowId: 'wf-1',
       workspaceId: 'ws-1',
       title: 'Test Workflow',
       description: 'Desc',
-      workflowType: 'custom',
-      status: 'draft',
-      version: 2,
-      triggerType: 'event',
-      runCount: 0,
-      createdAt: '2026-11-05T00:00:00Z',
-      updatedAt: '2026-11-05T00:00:00Z',
+      expectedVersion: 2,
       graph: {
-        schemaVersion: 1,
+        schema_version: 1,
         nodes: [
-          { nodeId: 'n1', nodeType: 'trigger', title: 'Start', description: '', config: {} },
-          { nodeId: 'n2', nodeType: 'terminal', title: 'End', description: '', config: {} }
+          { node_id: 'n1', node_type: 'trigger' as const, title: 'Start', config: {} },
+          { node_id: 'n2', node_type: 'terminal' as const, title: 'End', config: {} }
         ],
-        edges: [{ fromNodeId: 'n1', toNodeId: 'n2' }]
+        edges: [{ from_node_id: 'n1', to_node_id: 'n2' }]
       }
     };
 
@@ -325,15 +319,20 @@ describe('Remediation Canonical RPC Flows (UF-04..UF-08, AI-02, R04)', () => {
       fetchFn: fetch503 as unknown as typeof fetch
     });
     expect(saveFail.ok).toBe(false);
-    expect(wf.version).toBe(2);
+    expect(wf.expectedVersion).toBe(2);
 
-    const statusFail = await setWorkflowStatusRemote(wf, 'active', {
-      token: 'jwt_valid',
-      workspaceId: 'ws-1',
-      fetchFn: fetch503 as unknown as typeof fetch
-    });
+    expect(fetch503).toHaveBeenCalledTimes(1);
+    const statusFail = await setWorkflowStatusRemote(
+      { workspaceId: 'ws-1', workflowId: 'wf-1', targetStatus: 'active', expectedVersion: 2 },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: fetch503 as unknown as typeof fetch
+      }
+    );
     expect(statusFail.ok).toBe(false);
-    expect(wf.status).toBe('draft');
+    expect(fetch503).toHaveBeenCalledTimes(2);
+    expect(wf.expectedVersion).toBe(2);
   });
 
   it('AI-02 executeVideoAgentStepRemote fails closed without deducting credits when backend is unavailable', async () => {
