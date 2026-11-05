@@ -35,6 +35,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"sort"
 	"strings"
 	"sync"
@@ -515,6 +516,70 @@ func AdminActorFromContext(ctx context.Context) (AdminActorContext, bool) {
 	return a, ok
 }
 
+// VPNTransportEvidence represents server-side transport-boundary proof that a connection
+// arrived over the isolated Tailscale/WireGuard VPN mesh or loopback admin tunnel (AUTH-05).
+// Client-supplied request body fields (such as LoginRequest.vpn_verified) are never trusted on their own.
+type VPNTransportEvidence struct {
+	PeerIP   string
+	NodeID   string
+	Verified bool
+}
+
+type vpnTransportContextKey struct{}
+
+// IsTailscaleOrLoopbackVPNPeerIP validates that an IP address belongs to the Tailscale CGNAT
+// range (100.64.0.0/10), Tailscale ULA range (fd7a:115c:a1e0::/48), or loopback admin tunnel.
+func IsTailscaleOrLoopbackVPNPeerIP(rawIP string) bool {
+	trimmed := strings.TrimSpace(rawIP)
+	if trimmed == "" {
+		return false
+	}
+	if host, _, err := net.SplitHostPort(trimmed); err == nil {
+		trimmed = host
+	}
+	ip := net.ParseIP(trimmed)
+	if ip == nil {
+		return false
+	}
+	if ip.IsLoopback() {
+		return true
+	}
+	if ip4 := ip.To4(); ip4 != nil {
+		// 100.64.0.0/10 (Tailscale / WireGuard CGNAT)
+		return ip4[0] == 100 && ip4[1] >= 64 && ip4[1] <= 127
+	}
+	ip16 := ip.To16()
+	if ip16 != nil && len(ip16) == 16 {
+		// fd7a:115c:a1e0::/48 (Tailscale IPv6 ULA)
+		if ip16[0] == 0xfd && ip16[1] == 0x7a && ip16[2] == 0x11 && ip16[3] == 0x5c && ip16[4] == 0xa1 && ip16[5] == 0xe0 {
+			return true
+		}
+	}
+	return false
+}
+
+// WithVPNTransportEvidence attaches server-verified VPN transport evidence to ctx.
+func WithVPNTransportEvidence(ctx context.Context, evidence VPNTransportEvidence) context.Context {
+	return context.WithValue(ctx, vpnTransportContextKey{}, evidence)
+}
+
+// WithTrustedVPNTransport attaches verified VPN transport evidence for peerIP to ctx.
+func WithTrustedVPNTransport(ctx context.Context, peerIP string) context.Context {
+	return WithVPNTransportEvidence(ctx, VPNTransportEvidence{
+		PeerIP:   strings.TrimSpace(peerIP),
+		Verified: IsTailscaleOrLoopbackVPNPeerIP(peerIP),
+	})
+}
+
+// VPNTransportEvidenceFromContext extracts server-verified VPN transport evidence from ctx.
+func VPNTransportEvidenceFromContext(ctx context.Context) (VPNTransportEvidence, bool) {
+	if ctx == nil {
+		return VPNTransportEvidence{}, false
+	}
+	ev, ok := ctx.Value(vpnTransportContextKey{}).(VPNTransportEvidence)
+	return ev, ok
+}
+
 type cachedAdminCommand struct {
 	requestHash string
 	response    proto.Message
@@ -859,10 +924,13 @@ func (s *Service) authorizeAdminRPC(ctx context.Context, rpcName, auditReason st
 	if !sessOK || sess.RevokedAt != nil || !now.Before(sess.ExpiresAt) {
 		return AdminActorContext{}, nil, ErrAdminSessionExpired
 	}
-	if !sess.VPNVerified {
+	if !sess.VPNVerified || !actor.VPNVerified {
 		return AdminActorContext{}, nil, ErrVPNRequired
 	}
-	if !sess.MFAVerified {
+	if ev, hasEv := VPNTransportEvidenceFromContext(ctx); hasEv && (!ev.Verified || !IsTailscaleOrLoopbackVPNPeerIP(ev.PeerIP)) {
+		return AdminActorContext{}, nil, ErrVPNRequired
+	}
+	if !sess.MFAVerified || !actor.MFAVerified {
 		return AdminActorContext{}, nil, ErrMFARequired
 	}
 	if admin == nil || admin.Status != "active" {
@@ -884,7 +952,8 @@ func (s *Service) authorizeAdminRPC(ctx context.Context, rpcName, auditReason st
 }
 
 // Login implements AdminAuthService/Login (bound to PUBLIC in rpc_permission_bindings.csv on admin surface).
-// Requires VPN mesh verification + valid active admin password + valid 6-digit RFC 6238 TOTP code.
+// Requires trusted transport-boundary VPN mesh verification (never trusting client req.Msg.GetVpnVerified() alone)
+// + valid active admin password + valid 6-digit RFC 6238 TOTP code.
 func (s *Service) Login(
 	ctx context.Context,
 	req *connect.Request[adminv1.LoginRequest],
@@ -898,7 +967,16 @@ func (s *Service) Login(
 		}
 	}
 
+	// Enforce server-side transport VPN proof (AUTH-05):
+	// Client-supplied req.Msg.GetVpnVerified() is never sufficient to prove VPN presence.
+	vpnEvidence, hasTransportProof := VPNTransportEvidenceFromContext(ctx)
+	if !hasTransportProof || !vpnEvidence.Verified || !IsTailscaleOrLoopbackVPNPeerIP(vpnEvidence.PeerIP) {
+		return nil, toAdminConnectError(ErrVPNRequired)
+	}
 	if !req.Msg.GetVpnVerified() {
+		return nil, toAdminConnectError(ErrVPNRequired)
+	}
+	if claimedIP := strings.TrimSpace(req.Msg.GetIpAddress()); claimedIP != "" && !IsTailscaleOrLoopbackVPNPeerIP(claimedIP) {
 		return nil, toAdminConnectError(ErrVPNRequired)
 	}
 	email := strings.ToLower(strings.TrimSpace(req.Msg.GetEmail()))
@@ -937,7 +1015,7 @@ func (s *Service) Login(
 		AdminID:     admin.AdminID,
 		AdminRole:   admin.AdminRole,
 		TokenHash:   hashToken(rawToken),
-		IPAddress:   strings.TrimSpace(req.Msg.GetIpAddress()),
+		IPAddress:   vpnEvidence.PeerIP,
 		UserAgent:   strings.TrimSpace(req.Msg.GetUserAgent()),
 		VPNVerified: true,
 		MFAVerified: true,

@@ -38,6 +38,7 @@ func (p *FixedTierProvider) GetWorkspaceTier(_ context.Context, workspaceID stri
 type Service struct {
 	store        Store
 	tierProvider WorkspaceTierProvider
+	resolver     HostIPResolver
 }
 
 // NewService creates a Public API Service.
@@ -49,6 +50,12 @@ func NewService(store Store, tierProvider WorkspaceTierProvider) *Service {
 		store:        store,
 		tierProvider: tierProvider,
 	}
+}
+
+// WithHostIPResolver configures a custom HostIPResolver for webhook subscription URL validation.
+func (s *Service) WithHostIPResolver(resolver HostIPResolver) *Service {
+	s.resolver = resolver
+	return s
 }
 
 // generateSecureKey generates a high-entropy API key with a 10-char prefix (e.g. "ca_live_9f...").
@@ -75,6 +82,9 @@ func generateSigningSecret() (string, error) {
 
 // CreateKey creates a new API key scoped to a workspace.
 func (s *Service) CreateKey(ctx context.Context, workspaceID, name string, scopes []string, rateLimitOverride int, expiryDays int, createdBy string) (APIKeyEntity, string, error) {
+	if err := ValidateScopes(scopes); err != nil {
+		return APIKeyEntity{}, "", err
+	}
 	tier, err := s.tierProvider.GetWorkspaceTier(ctx, workspaceID)
 	if err != nil {
 		return APIKeyEntity{}, "", err
@@ -245,6 +255,9 @@ func (s *Service) AuthenticateKey(ctx context.Context, rawKey string) (APIKeyEnt
 
 // UpdateScopes modifies scopes for an existing key within tier constraints.
 func (s *Service) UpdateScopes(ctx context.Context, workspaceID, apiKeyID string, newScopes []string) (APIKeyEntity, error) {
+	if err := ValidateScopes(newScopes); err != nil {
+		return APIKeyEntity{}, err
+	}
 	key, err := s.store.GetAPIKey(ctx, workspaceID, apiKeyID)
 	if err != nil {
 		return APIKeyEntity{}, err
@@ -302,6 +315,9 @@ func (s *Service) GetUsageStats(ctx context.Context, workspaceID, apiKeyID, star
 func (s *Service) CreateWebhookSubscription(ctx context.Context, workspaceID, apiKeyID, targetURL string, eventTypes []string, createdBy string) (WebhookSubscriptionEntity, string, error) {
 	if strings.TrimSpace(targetURL) == "" {
 		return WebhookSubscriptionEntity{}, "", fmt.Errorf("%w: target_url is required", ErrInvalidSubscription)
+	}
+	if _, err := ValidateWebhookTargetURL(ctx, targetURL, s.resolver); err != nil {
+		return WebhookSubscriptionEntity{}, "", fmt.Errorf("%w: %w", ErrInvalidSubscription, err)
 	}
 	if len(eventTypes) == 0 {
 		return WebhookSubscriptionEntity{}, "", fmt.Errorf("%w: at least one event type is required", ErrInvalidSubscription)

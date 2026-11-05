@@ -10,14 +10,19 @@ import (
 	"connectrpc.com/connect"
 	automationv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/automation/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/automation/v1/automationv1connect"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// MembershipRoleResolver looks up a user's active workspace membership role.
+type MembershipRoleResolver func(ctx context.Context, workspaceID, userID string) (role string, active bool, err error)
+
 // Handler implements the ConnectRPC automationv1connect.WorkflowServiceHandler.
 type Handler struct {
-	service *Service
+	service      *Service
+	roleResolver MembershipRoleResolver
 }
 
 // NewHandler creates a new WorkflowService ConnectRPC handler.
@@ -25,31 +30,56 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
+// WithMembershipRoleResolver configures a workspace membership role resolver for Handler.
+func (h *Handler) WithMembershipRoleResolver(resolver MembershipRoleResolver) *Handler {
+	h.roleResolver = resolver
+	return h
+}
+
 var _ automationv1connect.WorkflowServiceHandler = (*Handler)(nil)
 
-func resolveCaller(ctx context.Context, explicitWorkspaceID string) (CallerContext, error) {
-	if session, ok := transportauth.PrincipalFromContext(ctx); ok && session.WorkspaceID != "" {
-		if explicitWorkspaceID != "" && explicitWorkspaceID != session.WorkspaceID && !session.InternalAdmin {
-			return CallerContext{}, connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
-		}
-		role := "owner"
-		if session.InternalAdmin {
-			role = "admin"
-		}
-		return CallerContext{
-			UserID:        session.UserID,
-			WorkspaceID:   session.WorkspaceID,
-			WorkspaceRole: role,
-		}, nil
+func (h *Handler) resolveCaller(ctx context.Context, explicitWorkspaceID string, requiredPerm string) (CallerContext, error) {
+	session, ok := transportauth.PrincipalFromContext(ctx)
+	if !ok || strings.TrimSpace(session.UserID) == "" || strings.TrimSpace(session.WorkspaceID) == "" {
+		return CallerContext{}, connect.NewError(connect.CodeUnauthenticated, errors.New("authenticated workspace principal required"))
 	}
-	if explicitWorkspaceID != "" {
-		return CallerContext{
-			UserID:        "00000000-0000-0000-0000-000000000001",
-			WorkspaceID:   explicitWorkspaceID,
-			WorkspaceRole: "owner",
-		}, nil
+	if session.InternalAdmin || session.ServiceKeyID != "" {
+		return CallerContext{}, connect.NewError(connect.CodePermissionDenied, errors.New("workspace user principal required"))
 	}
-	return CallerContext{}, connect.NewError(connect.CodeUnauthenticated, errors.New("missing workspace or tenant context"))
+	if explicitWorkspaceID != "" && explicitWorkspaceID != session.WorkspaceID {
+		return CallerContext{}, connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
+	}
+
+	role := strings.TrimSpace(session.Role)
+	if h.roleResolver != nil {
+		resolvedRole, active, err := h.roleResolver(ctx, session.WorkspaceID, session.UserID)
+		if err != nil {
+			return CallerContext{}, connect.NewError(connect.CodePermissionDenied, err)
+		}
+		if !active {
+			return CallerContext{}, connect.NewError(connect.CodePermissionDenied, errors.New("active workspace membership required"))
+		}
+		role = strings.TrimSpace(resolvedRole)
+	}
+	if role == "" || !rbac.IsValidWorkspaceRole(role) {
+		return CallerContext{}, connect.NewError(connect.CodePermissionDenied, errors.New("verified workspace membership role required"))
+	}
+
+	if requiredPerm != "" {
+		if err := rbac.CheckWorkspacePermission(requiredPerm, rbac.PolicyContext{
+			ActorUserID: session.UserID,
+			WorkspaceID: session.WorkspaceID,
+			Role:        role,
+		}); err != nil {
+			return CallerContext{}, connect.NewError(connect.CodePermissionDenied, err)
+		}
+	}
+
+	return CallerContext{
+		UserID:        session.UserID,
+		WorkspaceID:   session.WorkspaceID,
+		WorkspaceRole: role,
+	}, nil
 }
 
 func toConnectError(err error) error {
@@ -702,7 +732,7 @@ func (h *Handler) Create(ctx context.Context, req *connect.Request[automationv1.
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:create")
 	if err != nil {
 		return nil, err
 	}
@@ -743,7 +773,7 @@ func (h *Handler) Get(ctx context.Context, req *connect.Request[automationv1.Wor
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:read")
 	if err != nil {
 		return nil, err
 	}
@@ -763,7 +793,7 @@ func (h *Handler) List(ctx context.Context, req *connect.Request[automationv1.Wo
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:read")
 	if err != nil {
 		return nil, err
 	}
@@ -795,7 +825,7 @@ func (h *Handler) Update(ctx context.Context, req *connect.Request[automationv1.
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:edit")
 	if err != nil {
 		return nil, err
 	}
@@ -830,7 +860,7 @@ func (h *Handler) Activate(ctx context.Context, req *connect.Request[automationv
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:activate")
 	if err != nil {
 		return nil, err
 	}
@@ -850,7 +880,7 @@ func (h *Handler) Deactivate(ctx context.Context, req *connect.Request[automatio
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:activate")
 	if err != nil {
 		return nil, err
 	}
@@ -870,7 +900,7 @@ func (h *Handler) Run(ctx context.Context, req *connect.Request[automationv1.Wor
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:edit")
 	if err != nil {
 		return nil, err
 	}
@@ -903,7 +933,7 @@ func (h *Handler) GetRunDetail(ctx context.Context, req *connect.Request[automat
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:read")
 	if err != nil {
 		return nil, err
 	}
@@ -929,7 +959,7 @@ func (h *Handler) GetRunLogs(ctx context.Context, req *connect.Request[automatio
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:read")
 	if err != nil {
 		return nil, err
 	}
@@ -956,7 +986,7 @@ func (h *Handler) ListRuns(ctx context.Context, req *connect.Request[automationv
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:read")
 	if err != nil {
 		return nil, err
 	}
@@ -988,7 +1018,7 @@ func (h *Handler) Clone(ctx context.Context, req *connect.Request[automationv1.W
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:edit")
 	if err != nil {
 		return nil, err
 	}
@@ -1008,7 +1038,7 @@ func (h *Handler) Export(ctx context.Context, req *connect.Request[automationv1.
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:edit")
 	if err != nil {
 		return nil, err
 	}
@@ -1031,7 +1061,7 @@ func (h *Handler) Import(ctx context.Context, req *connect.Request[automationv1.
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:edit")
 	if err != nil {
 		return nil, err
 	}
@@ -1063,7 +1093,7 @@ func (h *Handler) Test(ctx context.Context, req *connect.Request[automationv1.Wo
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:edit")
 	if err != nil {
 		return nil, err
 	}
@@ -1112,7 +1142,7 @@ func (h *Handler) GetRunStats(ctx context.Context, req *connect.Request[automati
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:read")
 	if err != nil {
 		return nil, err
 	}
@@ -1136,7 +1166,7 @@ func (h *Handler) CancelRun(ctx context.Context, req *connect.Request[automation
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:edit")
 	if err != nil {
 		return nil, err
 	}
@@ -1156,7 +1186,7 @@ func (h *Handler) RetryRun(ctx context.Context, req *connect.Request[automationv
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:edit")
 	if err != nil {
 		return nil, err
 	}
@@ -1176,7 +1206,7 @@ func (h *Handler) DismissRun(ctx context.Context, req *connect.Request[automatio
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:edit")
 	if err != nil {
 		return nil, err
 	}
@@ -1195,7 +1225,7 @@ func (h *Handler) SkipStep(ctx context.Context, req *connect.Request[automationv
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:edit")
 	if err != nil {
 		return nil, err
 	}
@@ -1215,7 +1245,7 @@ func (h *Handler) ProvideInput(ctx context.Context, req *connect.Request[automat
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:edit")
 	if err != nil {
 		return nil, err
 	}
@@ -1235,7 +1265,7 @@ func (h *Handler) ExportRuns(ctx context.Context, req *connect.Request[automatio
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty request message"))
 	}
-	caller, err := resolveCaller(ctx, msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, msg.WorkspaceId, "workflow:edit")
 	if err != nil {
 		return nil, err
 	}

@@ -482,13 +482,16 @@ func TestCopilotAction_CrossModuleChainWithApproval(t *testing.T) {
 // ============================================================================
 
 func TestConnectRPCHandler_AgentService(t *testing.T) {
-	ctx := context.Background()
+	workspaceID := "11111111-1111-1111-1111-111111111101"
+	ctx := transportauth.WithPrincipal(context.Background(), transportauth.Session{
+		UserID:      "11111111-1111-1111-1111-111111111199",
+		WorkspaceID: workspaceID,
+		Role:        "editor",
+	})
 	store := NewMemStore()
 	svc := NewService(store)
 	svc.SetStepExecutor(NewSimulatedStepExecutor())
 	h := NewAgentHandler(svc)
-
-	workspaceID := "11111111-1111-1111-1111-111111111101"
 
 	// 1. LaunchAgent RPC
 	launchReq := connect.NewRequest(&automationv1.AgentServiceLaunchAgentRequest{
@@ -553,6 +556,75 @@ func TestConnectRPCHandler_AgentService(t *testing.T) {
 	}
 	if cancelResp.Msg.Run.CurrentState != automationv1.AgentRunState_AGENT_RUN_STATE_CANCELLED {
 		t.Errorf("expected cancelled state, got %v", cancelResp.Msg.Run.CurrentState)
+	}
+}
+
+func TestConnectRPCHandler_AgentService_AuthAndRBACHardening(t *testing.T) {
+	store := NewMemStore()
+	svc := NewService(store)
+	h := NewAgentHandler(svc)
+
+	workspaceA := "11111111-1111-1111-1111-111111111101"
+	workspaceB := "22222222-2222-2222-2222-222222222202"
+
+	// 1. Unauthenticated request with caller-supplied WorkspaceId must fail with CodeUnauthenticated (no synthetic owner).
+	_, err := h.LaunchAgent(context.Background(), connect.NewRequest(&automationv1.AgentServiceLaunchAgentRequest{
+		WorkspaceId: workspaceA,
+		AgentType:   automationv1.AgentType_AGENT_TYPE_GENERIC,
+		TaskPrompt:  "Unauthenticated attempt",
+	}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("expected CodeUnauthenticated for missing principal, got %v", err)
+	}
+
+	// 2. Principal for Workspace A attempting to target Workspace B must fail with CodePermissionDenied.
+	editorCtxA := transportauth.WithPrincipal(context.Background(), transportauth.Session{
+		UserID:      "11111111-1111-1111-1111-111111111110",
+		WorkspaceID: workspaceA,
+		Role:        "editor",
+	})
+	_, err = h.LaunchAgent(editorCtxA, connect.NewRequest(&automationv1.AgentServiceLaunchAgentRequest{
+		WorkspaceId: workspaceB,
+		AgentType:   automationv1.AgentType_AGENT_TYPE_GENERIC,
+		TaskPrompt:  "Cross-workspace attempt",
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied for cross-workspace request, got %v", err)
+	}
+
+	// 3. Viewer role must NOT be escalated to owner; LaunchAgent and CancelRun must fail with CodePermissionDenied.
+	viewerCtxA := transportauth.WithPrincipal(context.Background(), transportauth.Session{
+		UserID:      "11111111-1111-1111-1111-111111111111",
+		WorkspaceID: workspaceA,
+		Role:        "viewer",
+	})
+	_, err = h.LaunchAgent(viewerCtxA, connect.NewRequest(&automationv1.AgentServiceLaunchAgentRequest{
+		WorkspaceId: workspaceA,
+		AgentType:   automationv1.AgentType_AGENT_TYPE_GENERIC,
+		TaskPrompt:  "Viewer launch attempt",
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied when viewer calls LaunchAgent, got %v", err)
+	}
+
+	// Viewer CAN call ListRuns (workflow:read).
+	if _, err := h.ListRuns(viewerCtxA, connect.NewRequest(&automationv1.AgentServiceListRunsRequest{
+		WorkspaceId: workspaceA,
+	})); err != nil {
+		t.Fatalf("expected viewer ListRuns to succeed, got %v", err)
+	}
+
+	// 4. MembershipRoleResolver rejecting revoked/inactive membership must fail with CodePermissionDenied.
+	hWithResolver := NewAgentHandler(svc).WithMembershipRoleResolver(func(ctx context.Context, wsID, userID string) (string, bool, error) {
+		return "owner", false, nil
+	})
+	_, err = hWithResolver.LaunchAgent(editorCtxA, connect.NewRequest(&automationv1.AgentServiceLaunchAgentRequest{
+		WorkspaceId: workspaceA,
+		AgentType:   automationv1.AgentType_AGENT_TYPE_GENERIC,
+		TaskPrompt:  "Revoked member attempt",
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied for inactive membership, got %v", err)
 	}
 }
 

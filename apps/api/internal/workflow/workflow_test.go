@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	automationv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/automation/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/workflow"
 )
 
@@ -915,12 +916,15 @@ func TestRBACPermissionChecks(t *testing.T) {
 }
 
 func TestConnectRPCHandler(t *testing.T) {
-	ctx := context.Background()
+	wsID := "11111111-1111-1111-1111-111111111111"
+	ctx := transportauth.WithPrincipal(context.Background(), transportauth.Session{
+		UserID:      "11111111-1111-1111-1111-111111111199",
+		WorkspaceID: wsID,
+		Role:        "manager",
+	})
 	store := workflow.NewMemoryStore()
 	svc := workflow.NewService(store, workflow.NewOwnedWorkflowEngine())
 	handler := workflow.NewHandler(svc)
-
-	wsID := "11111111-1111-1111-1111-111111111111"
 
 	// 1. Handler Create
 	createReq := connect.NewRequest(&automationv1.WorkflowServiceCreateRequest{
@@ -1047,6 +1051,78 @@ func TestConnectRPCHandler(t *testing.T) {
 	}
 	if !testResp.Msg.Success {
 		t.Fatal("expected test execution to succeed")
+	}
+}
+
+func TestConnectRPCHandler_AuthAndRBACHardening(t *testing.T) {
+	store := workflow.NewMemoryStore()
+	svc := workflow.NewService(store, workflow.NewOwnedWorkflowEngine())
+	handler := workflow.NewHandler(svc)
+
+	wsA := "11111111-1111-1111-1111-111111111111"
+	wsB := "22222222-2222-2222-2222-222222222222"
+
+	// 1. Unauthenticated caller supplying WorkspaceId must be rejected with CodeUnauthenticated (no synthetic owner).
+	_, err := handler.Create(context.Background(), connect.NewRequest(&automationv1.WorkflowServiceCreateRequest{
+		WorkspaceId: wsA,
+		Title:       "Unauthenticated Flow",
+	}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("expected CodeUnauthenticated for missing principal, got %v", err)
+	}
+
+	// 2. Principal for Workspace A targeting Workspace B must be rejected with CodePermissionDenied.
+	editorCtxA := transportauth.WithPrincipal(context.Background(), transportauth.Session{
+		UserID:      "11111111-1111-1111-1111-111111111110",
+		WorkspaceID: wsA,
+		Role:        "editor",
+	})
+	_, err = handler.List(editorCtxA, connect.NewRequest(&automationv1.WorkflowServiceListRequest{
+		WorkspaceId: wsB,
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied for cross-workspace request, got %v", err)
+	}
+
+	// 3. Viewer role must NOT be escalated to owner; Create and Activate must fail with CodePermissionDenied.
+	viewerCtxA := transportauth.WithPrincipal(context.Background(), transportauth.Session{
+		UserID:      "11111111-1111-1111-1111-111111111112",
+		WorkspaceID: wsA,
+		Role:        "viewer",
+	})
+	_, err = handler.Create(viewerCtxA, connect.NewRequest(&automationv1.WorkflowServiceCreateRequest{
+		WorkspaceId: wsA,
+		Title:       "Viewer Flow",
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied when viewer calls Create, got %v", err)
+	}
+
+	// Editor cannot Activate (requires workflow:activate / Manager+).
+	_, err = handler.Activate(editorCtxA, connect.NewRequest(&automationv1.WorkflowServiceActivateRequest{
+		WorkspaceId: wsA,
+		WorkflowId:  "wf-1",
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied when editor calls Activate, got %v", err)
+	}
+
+	// Viewer CAN call List (workflow:read).
+	if _, err := handler.List(viewerCtxA, connect.NewRequest(&automationv1.WorkflowServiceListRequest{
+		WorkspaceId: wsA,
+	})); err != nil {
+		t.Fatalf("expected viewer List to succeed, got %v", err)
+	}
+
+	// 4. MembershipRoleResolver rejecting inactive membership must fail with CodePermissionDenied.
+	handlerWithResolver := workflow.NewHandler(svc).WithMembershipRoleResolver(func(ctx context.Context, wsID, userID string) (string, bool, error) {
+		return "owner", false, nil
+	})
+	_, err = handlerWithResolver.List(editorCtxA, connect.NewRequest(&automationv1.WorkflowServiceListRequest{
+		WorkspaceId: wsA,
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied for inactive membership, got %v", err)
 	}
 }
 

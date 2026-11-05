@@ -670,6 +670,34 @@ func TestPrivateNotesAndSecretsNeverSerialized(t *testing.T) {
 			t.Fatalf("expected ErrForbiddenFieldSerialized on payload %s, got %v", bp, err)
 		}
 	}
+
+	// 7. WorkspaceProjection (R05) populates both canonical and legacy name/mode fields.
+	wsProj := ProjectWorkspace(tenantdb.WorkspaceRow{
+		WorkspaceID:           wsTestID,
+		Name:                  "Studio Alpha",
+		Slug:                  "studio-alpha",
+		OwnerUserID:           ownerUserID,
+		SubscriptionTier:      "pro",
+		Status:                "active",
+		DefaultMode:           "seller",
+		EnabledModes:          []string{"creator", "seller"},
+		AICreditsRemaining:    tenantdb.MustParseExactDecimal("30"),
+		AICreditsMonthlyLimit: tenantdb.MustParseExactDecimal("30"),
+	})
+	if wsProj.Name != "Studio Alpha" || wsProj.DisplayName != "Studio Alpha" {
+		t.Fatalf("expected both Name and DisplayName populated, got %+v", wsProj)
+	}
+	if wsProj.DefaultMode != "seller" || wsProj.DefaultOperatorMode != "seller" {
+		t.Fatalf("expected both DefaultMode and DefaultOperatorMode populated, got %+v", wsProj)
+	}
+	wsJSON, err := MarshalSafeJSON(wsProj)
+	if err != nil {
+		t.Fatalf("MarshalSafeJSON(WorkspaceProjection) failed: %v", err)
+	}
+	if !bytes.Contains(wsJSON, []byte(`"display_name":"Studio Alpha"`)) ||
+		!bytes.Contains(wsJSON, []byte(`"default_operator_mode":"seller"`)) {
+		t.Fatalf("expected display_name and default_operator_mode in WorkspaceProjection JSON: %s", string(wsJSON))
+	}
 }
 
 func TestPostgresLiveWorkspaceOwnerProtectionRevocationAndProjections(t *testing.T) {

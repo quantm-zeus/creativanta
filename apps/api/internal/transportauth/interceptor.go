@@ -39,8 +39,38 @@ var (
 type Session struct {
 	UserID        string
 	WorkspaceID   string
+	Role          string
+	ScopesCSV     string
+	ServiceKeyID  string
 	InternalAdmin bool
 }
+
+// JoinScopes serializes a slice of API key scopes into Session.ScopesCSV while keeping Session comparable.
+func JoinScopes(scopes []string) string {
+	var cleaned []string
+	for _, sc := range scopes {
+		if trimmed := strings.TrimSpace(sc); trimmed != "" {
+			cleaned = append(cleaned, trimmed)
+		}
+	}
+	return strings.Join(cleaned, ",")
+}
+
+// ScopeList returns the parsed API key scopes from Session.ScopesCSV.
+func (s Session) ScopeList() []string {
+	if strings.TrimSpace(s.ScopesCSV) == "" {
+		return nil
+	}
+	parts := strings.Split(s.ScopesCSV, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if trimmed := strings.TrimSpace(p); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
+}
+
 type Verifier interface {
 	Verify(ctx context.Context, bearerToken string) (Session, error)
 }
@@ -58,7 +88,15 @@ type Options struct {
 type principalContextKey struct{}
 type correlationContextKey struct{}
 
+// WithPrincipal binds a verified Session principal into ctx for downstream handlers.
+func WithPrincipal(ctx context.Context, principal Session) context.Context {
+	return context.WithValue(ctx, principalContextKey{}, principal)
+}
+
 func PrincipalFromContext(ctx context.Context) (Session, bool) {
+	if ctx == nil {
+		return Session{}, false
+	}
 	p, ok := ctx.Value(principalContextKey{}).(Session)
 	return p, ok
 }
