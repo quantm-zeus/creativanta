@@ -22,6 +22,10 @@ var (
 	ErrInvalidAmount                    = errors.New("store: invalid numeric amount")
 	ErrInvalidStateTransition           = errors.New("store: invalid lifecycle state transition")
 	ErrIdempotencyKeyRequired           = errors.New("store: idempotency key is required for payment and checkout")
+	ErrPaymentRequired                  = errors.New("store: confirmed payment intent is required before fulfillment")
+	ErrPaymentFailed                    = errors.New("store: payment capture failed or was declined")
+	ErrPriceMismatch                    = errors.New("store: checkout order amount or currency does not match catalog price")
+	ErrStorefrontNotPublished           = errors.New("store: storefront has no published pages available for checkout")
 )
 
 // MapErrorToConnect translates store domain errors to standard ConnectRPC codes.
@@ -38,9 +42,11 @@ func MapErrorToConnect(err error) error {
 		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, ErrDuplicatePageSlug):
 		return connect.NewError(connect.CodeAlreadyExists, err)
-	case errors.Is(err, ErrBundleComponentOutOfStock), errors.Is(err, ErrOfferExpired), errors.Is(err, ErrOfferNotActive):
+	case errors.Is(err, ErrBundleComponentOutOfStock), errors.Is(err, ErrOfferExpired), errors.Is(err, ErrOfferNotActive),
+		errors.Is(err, ErrPaymentRequired), errors.Is(err, ErrPaymentFailed), errors.Is(err, ErrStorefrontNotPublished):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
-	case errors.Is(err, ErrInvalidAmount), errors.Is(err, ErrInvalidStateTransition), errors.Is(err, ErrIdempotencyKeyRequired), errors.Is(err, ErrPaymentReplay):
+	case errors.Is(err, ErrInvalidAmount), errors.Is(err, ErrInvalidStateTransition), errors.Is(err, ErrIdempotencyKeyRequired),
+		errors.Is(err, ErrPaymentReplay), errors.Is(err, ErrPriceMismatch):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	default:
 		return connect.NewError(connect.CodeInternal, err)

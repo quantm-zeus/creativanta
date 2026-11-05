@@ -2,6 +2,7 @@ package affiliate
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -79,7 +80,11 @@ func TestAcceptanceTarget1_CreatorIncomeDistinctFromSellerExpense(t *testing.T) 
 		t.Fatalf("expected commission 100,000 VND, got %s", comm.CommissionAmount.String())
 	}
 
-	// 3. Confirm commission
+	// 3. Confirm commission: must fail before 15-day hold window elapses, then succeed after
+	if _, err := svc.ConfirmCommission(ctx, wsID, comm.CommissionID); !errors.Is(err, ErrCommissionHoldPeriodActive) {
+		t.Fatalf("expected ErrCommissionHoldPeriodActive before hold period elapses, got %v", err)
+	}
+	now = now.Add(16 * 24 * time.Hour)
 	comm, err = svc.ConfirmCommission(ctx, wsID, comm.CommissionID)
 	if err != nil {
 		t.Fatalf("failed to confirm commission: %v", err)
@@ -575,5 +580,90 @@ func TestCommissionClawbackFlow(t *testing.T) {
 	_, err = svc.ConfirmCommission(ctx, wsID, comm.CommissionID)
 	if err != ErrCommissionAlreadyConfirmed {
 		t.Fatalf("expected ErrCommissionAlreadyConfirmed on clawed back commission, got %v", err)
+	}
+}
+
+// AFF-01: Payout batches must reject duplicate commission IDs, commissions already assigned to
+// another payout batch, creator/currency mismatches, clawed-back commissions, and unverified settlements.
+func TestPayoutBatchCommissionDedupHoldPeriodAndSettlementVerification(t *testing.T) {
+	ctx := context.Background()
+	store := NewMemoryStore()
+	sink := &mockSink{}
+	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	svc := NewService(store, nil, sink, func() time.Time { return now })
+
+	wsID := "019086a1-7c3e-7000-8000-000000000010"
+	creatorA := newUUID()
+	creatorB := newUUID()
+
+	commA := &AffiliateCommission{
+		CommissionID:     newUUID(),
+		WorkspaceID:      wsID,
+		AffiliateLinkID:  newUUID(),
+		OrderID:          "ord-aff01-1",
+		CreatorEntityID:  &creatorA,
+		CommissionAmount: mustDecimal(t, "250000.000000"),
+		Currency:         "VND",
+		Status:           CommissionConfirmed,
+		HoldUntil:        now.Add(-24 * time.Hour),
+	}
+	_ = store.CreateCommission(ctx, commA)
+
+	commB := &AffiliateCommission{
+		CommissionID:     newUUID(),
+		WorkspaceID:      wsID,
+		AffiliateLinkID:  newUUID(),
+		OrderID:          "ord-aff01-2",
+		CreatorEntityID:  &creatorB,
+		CommissionAmount: mustDecimal(t, "150000.000000"),
+		Currency:         "VND",
+		Status:           CommissionConfirmed,
+		HoldUntil:        now.Add(-24 * time.Hour),
+	}
+	_ = store.CreateCommission(ctx, commB)
+
+	// 1. Duplicate commission IDs in the same request must fail
+	if _, err := svc.CreatePayoutBatch(ctx, wsID, creatorA, []string{commA.CommissionID, commA.CommissionID}); !errors.Is(err, ErrInvalidPayoutBatch) {
+		t.Fatalf("expected ErrInvalidPayoutBatch on duplicate commission IDs, got %v", err)
+	}
+
+	// 2. Commission belonging to another creator must fail
+	if _, err := svc.CreatePayoutBatch(ctx, wsID, creatorA, []string{commB.CommissionID}); !errors.Is(err, ErrInvalidPayoutBatch) {
+		t.Fatalf("expected ErrInvalidPayoutBatch on creator mismatch, got %v", err)
+	}
+
+	// 3. Valid payout batch binds commA so a second batch cannot reuse commA
+	batch1, err := svc.CreatePayoutBatch(ctx, wsID, creatorA, []string{commA.CommissionID})
+	if err != nil {
+		t.Fatalf("CreatePayoutBatch failed: %v", err)
+	}
+	if _, err := svc.CreatePayoutBatch(ctx, wsID, creatorA, []string{commA.CommissionID}); !errors.Is(err, ErrCommissionAlreadyInPayout) {
+		t.Fatalf("expected ErrCommissionAlreadyInPayout when reusing commission in second batch, got %v", err)
+	}
+
+	// 4. ExecutePayoutBatch without verified settlement ID must fail closed
+	if _, err := svc.ExecutePayoutBatch(ctx, wsID, batch1.PayoutID, ""); !errors.Is(err, ErrSettlementRequired) {
+		t.Fatalf("expected ErrSettlementRequired when settlementID is empty, got %v", err)
+	}
+	if _, err := svc.ExecutePayoutBatch(ctx, wsID, batch1.PayoutID, "settle_unverified_01"); !errors.Is(err, ErrSettlementRequired) {
+		t.Fatalf("expected ErrSettlementRequired on unverified settlement ID, got %v", err)
+	}
+
+	// 5. If a commission in a pending batch is clawed back before execution, ExecutePayoutBatch must fail
+	batchB, err := svc.CreatePayoutBatch(ctx, wsID, creatorB, []string{commB.CommissionID})
+	if err != nil {
+		t.Fatalf("CreatePayoutBatch for creatorB failed: %v", err)
+	}
+	if _, err := svc.ClawbackCommission(ctx, wsID, commB.CommissionID, "order_refunded", "150000.000000"); err != nil {
+		t.Fatalf("ClawbackCommission failed: %v", err)
+	}
+	if _, err := svc.ExecutePayoutBatch(ctx, wsID, batchB.PayoutID, "settle-verified-b"); !errors.Is(err, ErrInvalidPayoutBatch) {
+		t.Fatalf("expected ErrInvalidPayoutBatch when executing payout with clawed-back commission, got %v", err)
+	}
+
+	// 6. ExecutePayoutBatch on valid batch1 with verified settlement succeeds
+	execBatch1, err := svc.ExecutePayoutBatch(ctx, wsID, batch1.PayoutID, "settle-verified-a")
+	if err != nil || execBatch1.Status != PayoutCompleted {
+		t.Fatalf("expected PayoutCompleted for batch1, got status=%v err=%v", execBatch1, err)
 	}
 }

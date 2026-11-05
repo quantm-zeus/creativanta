@@ -223,11 +223,21 @@ type CheckoutRequest struct {
 	Currency         string                `json:"currency"`
 }
 
+type PaymentStatus string
+
+const (
+	PaymentStatusSucceeded PaymentStatus = "succeeded"
+	PaymentStatusPending   PaymentStatus = "pending"
+	PaymentStatusFailed    PaymentStatus = "failed"
+)
+
 type CheckoutResult struct {
-	Success      bool                    `json:"success"`
-	OrderID      string                  `json:"order_id"`
-	Status       string                  `json:"status"`
-	Deliveries   []DigitalDelivery       `json:"deliveries"`
-	Subscription *MembershipSubscription `json:"subscription,omitempty"`
-	IsReplayed   bool                    `json:"is_replayed"`
+	Success            bool                    `json:"success"`
+	OrderID            string                  `json:"order_id"`
+	Status             string                  `json:"status"`
+	Deliveries         []DigitalDelivery       `json:"deliveries"`
+	Subscription       *MembershipSubscription `json:"subscription,omitempty"`
+	IsReplayed         bool                    `json:"is_replayed"`
+	RequestFingerprint string                  `json:"-"`
+	PaymentIntentID    string                  `json:"-"`
 }

@@ -6,11 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 )
 
 type SkuLocPair struct {
@@ -289,6 +291,14 @@ func (m *MemoryStore) CreateReservation(_ context.Context, res *Reservation) err
 		if existing.Quantity == res.Quantity && existing.Status == res.Status {
 			return nil
 		}
+		if existing.Status == ResExpired || existing.Status == ResReleased {
+			existing.Quantity = res.Quantity
+			existing.Status = res.Status
+			existing.ExpiresAt = res.ExpiresAt
+			existing.UpdatedAt = time.Now().UTC()
+			*res = *existing
+			return nil
+		}
 		return ErrReservationConflict
 	}
 
@@ -426,12 +436,116 @@ func (m *MemoryStore) AtomicExecute(ctx context.Context, workspaceID string, pai
 // PostgreSQL 17 Store Implementation
 // ----------------------------------------------------------------------------
 
+const defaultServiceUserID = "00000000-0000-4000-8000-000000000001"
+
+const setLocalTenantContextSQL = `
+SELECT
+  set_config('app.current_tenant_id', $1, true),
+  set_config('app.current_user_id', $2, true)
+`
+
+type activeTxContextKey struct{}
+
+type activeTenantTx struct {
+	tx          pgx.Tx
+	workspaceID string
+}
+
 type PostgresStore struct {
-	pool *pgxpool.Pool
+	pool     *pgxpool.Pool
+	beginner tenantdb.TxBeginner
 }
 
 func NewPostgresStore(pool *pgxpool.Pool) *PostgresStore {
-	return &PostgresStore{pool: pool}
+	var b tenantdb.TxBeginner
+	if pool != nil {
+		b = pool
+	}
+	return &PostgresStore{pool: pool, beginner: b}
+}
+
+func NewPostgresStoreWithBeginner(beginner tenantdb.TxBeginner) *PostgresStore {
+	return &PostgresStore{beginner: beginner}
+}
+
+func (s *PostgresStore) txBeginner() tenantdb.TxBeginner {
+	if s.beginner != nil {
+		return s.beginner
+	}
+	if s.pool != nil {
+		return s.pool
+	}
+	return nil
+}
+
+func (s *PostgresStore) withTenantTx(ctx context.Context, workspaceID string, fn func(ctx context.Context, tx pgx.Tx) error) (retErr error) {
+	if ctx == nil {
+		return tenantdb.ErrNilContext
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	wsID := strings.TrimSpace(workspaceID)
+	if wsID == "" {
+		return ErrMissingTenant
+	}
+	userID := defaultServiceUserID
+	if sc, ok := tenantdb.ScopeFromContext(ctx); ok {
+		if sc.WorkspaceID != "" && sc.WorkspaceID != wsID {
+			return tenantdb.ErrScopeMismatch
+		}
+		if sc.UserID != "" {
+			userID = sc.UserID
+		}
+	}
+	if active, ok := ctx.Value(activeTxContextKey{}).(activeTenantTx); ok && active.tx != nil {
+		if active.workspaceID != wsID {
+			return tenantdb.ErrScopeMismatch
+		}
+		return fn(ctx, active.tx)
+	}
+	b := s.txBeginner()
+	if b == nil {
+		return tenantdb.ErrNilBeginner
+	}
+	tx, err := b.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("inventory: begin tenant transaction: %w", err)
+	}
+	committed := false
+	defer func() {
+		if p := recover(); p != nil {
+			_ = tx.Rollback(context.Background())
+			panic(p)
+		}
+		if !committed {
+			_ = tx.Rollback(context.Background())
+		}
+	}()
+
+	var configuredTenant, configuredUser string
+	if err := tx.QueryRow(ctx, setLocalTenantContextSQL, wsID, userID).Scan(&configuredTenant, &configuredUser); err != nil {
+		return fmt.Errorf("inventory: set local tenant context: %w", err)
+	}
+	if configuredTenant != wsID || configuredUser != userID {
+		return fmt.Errorf("%w: set_config verification mismatch", tenantdb.ErrInvalidTenantScope)
+	}
+
+	txCtx := context.WithValue(ctx, activeTxContextKey{}, activeTenantTx{
+		tx:          tx,
+		workspaceID: wsID,
+	})
+	if err := fn(txCtx, tx); err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("inventory: commit tenant transaction: %w", err)
+	}
+	committed = true
+	return nil
 }
 
 func (s *PostgresStore) CreateLocation(ctx context.Context, loc *Location) error {
@@ -454,8 +568,10 @@ func (s *PostgresStore) CreateLocation(ctx context.Context, loc *Location) error
 			is_default = EXCLUDED.is_default,
 			status = EXCLUDED.status;
 	`
-	_, err = s.pool.Exec(ctx, q, loc.LocationID, loc.WorkspaceID, loc.Name, loc.LocationType, addrJSON, loc.IsDefault, loc.Status)
-	return err
+	return s.withTenantTx(ctx, loc.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, q, loc.LocationID, loc.WorkspaceID, loc.Name, loc.LocationType, addrJSON, loc.IsDefault, loc.Status)
+		return err
+	})
 }
 
 func (s *PostgresStore) GetLocation(ctx context.Context, workspaceID, locationID string) (*Location, error) {
@@ -467,12 +583,18 @@ func (s *PostgresStore) GetLocation(ctx context.Context, workspaceID, locationID
 		FROM inventory_locations
 		WHERE workspace_id = $1 AND location_id = $2;
 	`
-	row := s.pool.QueryRow(ctx, q, workspaceID, locationID)
-	err := row.Scan(&loc.LocationID, &loc.WorkspaceID, &loc.Name, &loc.LocationType, &addrBytes, &loc.IsDefault, &loc.Status, &loc.CreatedAt)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrLocationNotFound
+	err := s.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		row := tx.QueryRow(txCtx, q, workspaceID, locationID)
+		err := row.Scan(&loc.LocationID, &loc.WorkspaceID, &loc.Name, &loc.LocationType, &addrBytes, &loc.IsDefault, &loc.Status, &loc.CreatedAt)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrLocationNotFound
+			}
+			return err
 		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	if len(addrBytes) > 0 {
@@ -488,25 +610,31 @@ func (s *PostgresStore) ListLocations(ctx context.Context, workspaceID string) (
 		WHERE workspace_id = $1
 		ORDER BY name ASC;
 	`
-	rows, err := s.pool.Query(ctx, q, workspaceID)
+	var results []*Location
+	err := s.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		rows, err := tx.Query(txCtx, q, workspaceID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var loc Location
+			var addrBytes []byte
+			if err := rows.Scan(&loc.LocationID, &loc.WorkspaceID, &loc.Name, &loc.LocationType, &addrBytes, &loc.IsDefault, &loc.Status, &loc.CreatedAt); err != nil {
+				return err
+			}
+			if len(addrBytes) > 0 {
+				_ = json.Unmarshal(addrBytes, &loc.Address)
+			}
+			results = append(results, &loc)
+		}
+		return rows.Err()
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
-	var results []*Location
-	for rows.Next() {
-		var loc Location
-		var addrBytes []byte
-		if err := rows.Scan(&loc.LocationID, &loc.WorkspaceID, &loc.Name, &loc.LocationType, &addrBytes, &loc.IsDefault, &loc.Status, &loc.CreatedAt); err != nil {
-			return nil, err
-		}
-		if len(addrBytes) > 0 {
-			_ = json.Unmarshal(addrBytes, &loc.Address)
-		}
-		results = append(results, &loc)
-	}
-	return results, rows.Err()
+	return results, nil
 }
 
 func (s *PostgresStore) GetDefaultLocation(ctx context.Context, workspaceID string) (*Location, error) {
@@ -519,22 +647,27 @@ func (s *PostgresStore) GetDefaultLocation(ctx context.Context, workspaceID stri
 		WHERE workspace_id = $1 AND is_default = true
 		LIMIT 1;
 	`
-	row := s.pool.QueryRow(ctx, q, workspaceID)
-	err := row.Scan(&loc.LocationID, &loc.WorkspaceID, &loc.Name, &loc.LocationType, &addrBytes, &loc.IsDefault, &loc.Status, &loc.CreatedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
-		const fallbackQ = `
-			SELECT location_id, workspace_id, name, location_type, address, is_default, status, created_at
-			FROM inventory_locations
-			WHERE workspace_id = $1 AND status = 'active'
-			LIMIT 1;
-		`
-		err = s.pool.QueryRow(ctx, fallbackQ, workspaceID).Scan(
-			&loc.LocationID, &loc.WorkspaceID, &loc.Name, &loc.LocationType, &addrBytes, &loc.IsDefault, &loc.Status, &loc.CreatedAt)
-	}
-	if err != nil {
+	const fallbackQ = `
+		SELECT location_id, workspace_id, name, location_type, address, is_default, status, created_at
+		FROM inventory_locations
+		WHERE workspace_id = $1 AND status = 'active'
+		LIMIT 1;
+	`
+	err := s.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		err := tx.QueryRow(txCtx, q, workspaceID).Scan(&loc.LocationID, &loc.WorkspaceID, &loc.Name, &loc.LocationType, &addrBytes, &loc.IsDefault, &loc.Status, &loc.CreatedAt)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrLocationNotFound
+			err = tx.QueryRow(txCtx, fallbackQ, workspaceID).Scan(
+				&loc.LocationID, &loc.WorkspaceID, &loc.Name, &loc.LocationType, &addrBytes, &loc.IsDefault, &loc.Status, &loc.CreatedAt)
 		}
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrLocationNotFound
+			}
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	if len(addrBytes) > 0 {
@@ -550,12 +683,18 @@ func (s *PostgresStore) GetBalance(ctx context.Context, workspaceID, skuID, loca
 		FROM inventory_balances
 		WHERE workspace_id = $1 AND sku_id = $2 AND location_id = $3;
 	`
-	err := s.pool.QueryRow(ctx, q, workspaceID, skuID, locationID).Scan(
-		&b.BalanceID, &b.WorkspaceID, &b.SkuID, &b.LocationID, &b.OnHand, &b.Reserved, &b.OpeningAt, &b.UpdatedAt)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrSkuNotInitialized
+	err := s.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		err := tx.QueryRow(txCtx, q, workspaceID, skuID, locationID).Scan(
+			&b.BalanceID, &b.WorkspaceID, &b.SkuID, &b.LocationID, &b.OnHand, &b.Reserved, &b.OpeningAt, &b.UpdatedAt)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrSkuNotInitialized
+			}
+			return err
 		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	return &b, nil
@@ -563,14 +702,11 @@ func (s *PostgresStore) GetBalance(ctx context.Context, workspaceID, skuID, loca
 
 func (s *PostgresStore) ListBalances(ctx context.Context, workspaceID, locationID string, limit, offset int) ([]*Balance, int64, error) {
 	var total int64
+	var results []*Balance
 	countQ := `
 		SELECT COUNT(*) FROM inventory_balances
 		WHERE workspace_id = $1 AND ($2 = '' OR location_id = $2::uuid);
 	`
-	if err := s.pool.QueryRow(ctx, countQ, workspaceID, locationID).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-
 	const q = `
 		SELECT balance_id, workspace_id, sku_id, location_id, on_hand, reserved, opening_at, updated_at
 		FROM inventory_balances
@@ -578,21 +714,29 @@ func (s *PostgresStore) ListBalances(ctx context.Context, workspaceID, locationI
 		ORDER BY sku_id ASC
 		LIMIT $3 OFFSET $4;
 	`
-	rows, err := s.pool.Query(ctx, q, workspaceID, locationID, limit, offset)
+	err := s.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		if err := tx.QueryRow(txCtx, countQ, workspaceID, locationID).Scan(&total); err != nil {
+			return err
+		}
+		rows, err := tx.Query(txCtx, q, workspaceID, locationID, limit, offset)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var b Balance
+			if err := rows.Scan(&b.BalanceID, &b.WorkspaceID, &b.SkuID, &b.LocationID, &b.OnHand, &b.Reserved, &b.OpeningAt, &b.UpdatedAt); err != nil {
+				return err
+			}
+			results = append(results, &b)
+		}
+		return rows.Err()
+	})
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
-
-	var results []*Balance
-	for rows.Next() {
-		var b Balance
-		if err := rows.Scan(&b.BalanceID, &b.WorkspaceID, &b.SkuID, &b.LocationID, &b.OnHand, &b.Reserved, &b.OpeningAt, &b.UpdatedAt); err != nil {
-			return nil, 0, err
-		}
-		results = append(results, &b)
-	}
-	return results, total, rows.Err()
+	return results, total, nil
 }
 
 func (s *PostgresStore) UpsertBalance(ctx context.Context, bal *Balance) error {
@@ -609,8 +753,10 @@ func (s *PostgresStore) UpsertBalance(ctx context.Context, bal *Balance) error {
 			opening_at = COALESCE(EXCLUDED.opening_at, inventory_balances.opening_at),
 			updated_at = NOW();
 	`
-	_, err := s.pool.Exec(ctx, q, bal.BalanceID, bal.WorkspaceID, bal.SkuID, bal.LocationID, bal.OnHand, bal.Reserved, bal.OpeningAt)
-	return err
+	return s.withTenantTx(ctx, bal.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, q, bal.BalanceID, bal.WorkspaceID, bal.SkuID, bal.LocationID, bal.OnHand, bal.Reserved, bal.OpeningAt)
+		return err
+	})
 }
 
 func (s *PostgresStore) AppendMovement(ctx context.Context, mov *Movement) error {
@@ -629,23 +775,22 @@ func (s *PostgresStore) AppendMovement(ctx context.Context, mov *Movement) error
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, '')::uuid, $10, $11, $12, NOW())
 		ON CONFLICT (workspace_id, movement_key) DO NOTHING;
 	`
-	_, err = s.pool.Exec(ctx, q, mov.MovementID, mov.WorkspaceID, mov.SkuID, mov.LocationID, mov.MovementType, mov.MovementKey,
-		mov.Quantity, mov.ReferenceType, mov.ReferenceID, mov.SourceCreatedAt, mov.Reason, metaJSON)
-	return err
+	return s.withTenantTx(ctx, mov.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, q, mov.MovementID, mov.WorkspaceID, mov.SkuID, mov.LocationID, mov.MovementType, mov.MovementKey,
+			mov.Quantity, mov.ReferenceType, mov.ReferenceID, mov.SourceCreatedAt, mov.Reason, metaJSON)
+		return err
+	})
 }
 
 func (s *PostgresStore) ListMovements(ctx context.Context, workspaceID, skuID, locationID string, limit, offset int) ([]*Movement, int64, error) {
 	var total int64
+	var results []*Movement
 	countQ := `
 		SELECT COUNT(*) FROM stock_movements
 		WHERE workspace_id = $1
 		  AND ($2 = '' OR sku_id = $2::uuid)
 		  AND ($3 = '' OR location_id = $3::uuid);
 	`
-	if err := s.pool.QueryRow(ctx, countQ, workspaceID, skuID, locationID).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-
 	const q = `
 		SELECT movement_id, workspace_id, sku_id, location_id, movement_type, movement_key,
 		       quantity, reference_type, COALESCE(reference_id::text, ''), source_created_at, reason, metadata, created_at
@@ -656,31 +801,40 @@ func (s *PostgresStore) ListMovements(ctx context.Context, workspaceID, skuID, l
 		ORDER BY created_at DESC
 		LIMIT $4 OFFSET $5;
 	`
-	rows, err := s.pool.Query(ctx, q, workspaceID, skuID, locationID, limit, offset)
+	err := s.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		if err := tx.QueryRow(txCtx, countQ, workspaceID, skuID, locationID).Scan(&total); err != nil {
+			return err
+		}
+		rows, err := tx.Query(txCtx, q, workspaceID, skuID, locationID, limit, offset)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var m Movement
+			var metaBytes []byte
+			if err := rows.Scan(&m.MovementID, &m.WorkspaceID, &m.SkuID, &m.LocationID, &m.MovementType, &m.MovementKey,
+				&m.Quantity, &m.ReferenceType, &m.ReferenceID, &m.SourceCreatedAt, &m.Reason, &metaBytes, &m.CreatedAt); err != nil {
+				return err
+			}
+			if len(metaBytes) > 0 {
+				_ = json.Unmarshal(metaBytes, &m.Metadata)
+			}
+			results = append(results, &m)
+		}
+		return rows.Err()
+	})
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
-
-	var results []*Movement
-	for rows.Next() {
-		var m Movement
-		var metaBytes []byte
-		if err := rows.Scan(&m.MovementID, &m.WorkspaceID, &m.SkuID, &m.LocationID, &m.MovementType, &m.MovementKey,
-			&m.Quantity, &m.ReferenceType, &m.ReferenceID, &m.SourceCreatedAt, &m.Reason, &metaBytes, &m.CreatedAt); err != nil {
-			return nil, 0, err
-		}
-		if len(metaBytes) > 0 {
-			_ = json.Unmarshal(metaBytes, &m.Metadata)
-		}
-		results = append(results, &m)
-	}
-	return results, total, rows.Err()
+	return results, total, nil
 }
 
 func (s *PostgresStore) FindMovementByKey(ctx context.Context, workspaceID, movementKey string) (*Movement, error) {
 	var m Movement
 	var metaBytes []byte
+	var found bool
 
 	const q = `
 		SELECT movement_id, workspace_id, sku_id, location_id, movement_type, movement_key,
@@ -688,13 +842,20 @@ func (s *PostgresStore) FindMovementByKey(ctx context.Context, workspaceID, move
 		FROM stock_movements
 		WHERE workspace_id = $1 AND movement_key = $2;
 	`
-	err := s.pool.QueryRow(ctx, q, workspaceID, movementKey).Scan(
-		&m.MovementID, &m.WorkspaceID, &m.SkuID, &m.LocationID, &m.MovementType, &m.MovementKey,
-		&m.Quantity, &m.ReferenceType, &m.ReferenceID, &m.SourceCreatedAt, &m.Reason, &metaBytes, &m.CreatedAt)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+	err := s.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		err := tx.QueryRow(txCtx, q, workspaceID, movementKey).Scan(
+			&m.MovementID, &m.WorkspaceID, &m.SkuID, &m.LocationID, &m.MovementType, &m.MovementKey,
+			&m.Quantity, &m.ReferenceType, &m.ReferenceID, &m.SourceCreatedAt, &m.Reason, &metaBytes, &m.CreatedAt)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil
+			}
+			return err
 		}
+		found = true
+		return nil
+	})
+	if err != nil || !found {
 		return nil, err
 	}
 	if len(metaBytes) > 0 {
@@ -711,11 +872,18 @@ func (s *PostgresStore) CreateReservation(ctx context.Context, res *Reservation)
 		INSERT INTO stock_reservations (
 			reservation_id, workspace_id, order_id, sku_id, location_id, reservation_key, quantity, status, expires_at, created_at, updated_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
-		ON CONFLICT (workspace_id, reservation_key) DO NOTHING;
+		ON CONFLICT (workspace_id, reservation_key) DO UPDATE SET
+			quantity = EXCLUDED.quantity,
+			status = EXCLUDED.status,
+			expires_at = EXCLUDED.expires_at,
+			updated_at = NOW()
+		WHERE stock_reservations.status IN ('expired', 'released');
 	`
-	_, err := s.pool.Exec(ctx, q, res.ReservationID, res.WorkspaceID, res.OrderID, res.SkuID, res.LocationID,
-		res.ReservationKey, res.Quantity, res.Status, res.ExpiresAt)
-	return err
+	return s.withTenantTx(ctx, res.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, q, res.ReservationID, res.WorkspaceID, res.OrderID, res.SkuID, res.LocationID,
+			res.ReservationKey, res.Quantity, res.Status, res.ExpiresAt)
+		return err
+	})
 }
 
 func (s *PostgresStore) GetReservation(ctx context.Context, workspaceID, resKey string) (*Reservation, error) {
@@ -725,13 +893,19 @@ func (s *PostgresStore) GetReservation(ctx context.Context, workspaceID, resKey 
 		FROM stock_reservations
 		WHERE workspace_id = $1 AND reservation_key = $2;
 	`
-	err := s.pool.QueryRow(ctx, q, workspaceID, resKey).Scan(
-		&r.ReservationID, &r.WorkspaceID, &r.OrderID, &r.SkuID, &r.LocationID, &r.ReservationKey,
-		&r.Quantity, &r.Status, &r.ExpiresAt, &r.CreatedAt, &r.UpdatedAt)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrReservationNotFound
+	err := s.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		err := tx.QueryRow(txCtx, q, workspaceID, resKey).Scan(
+			&r.ReservationID, &r.WorkspaceID, &r.OrderID, &r.SkuID, &r.LocationID, &r.ReservationKey,
+			&r.Quantity, &r.Status, &r.ExpiresAt, &r.CreatedAt, &r.UpdatedAt)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrReservationNotFound
+			}
+			return err
 		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	return &r, nil
@@ -743,22 +917,28 @@ func (s *PostgresStore) ListReservationsByOrder(ctx context.Context, workspaceID
 		FROM stock_reservations
 		WHERE workspace_id = $1 AND order_id = $2;
 	`
-	rows, err := s.pool.Query(ctx, q, workspaceID, orderID)
+	var results []*Reservation
+	err := s.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		rows, err := tx.Query(txCtx, q, workspaceID, orderID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var r Reservation
+			if err := rows.Scan(&r.ReservationID, &r.WorkspaceID, &r.OrderID, &r.SkuID, &r.LocationID, &r.ReservationKey,
+				&r.Quantity, &r.Status, &r.ExpiresAt, &r.CreatedAt, &r.UpdatedAt); err != nil {
+				return err
+			}
+			results = append(results, &r)
+		}
+		return rows.Err()
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
-	var results []*Reservation
-	for rows.Next() {
-		var r Reservation
-		if err := rows.Scan(&r.ReservationID, &r.WorkspaceID, &r.OrderID, &r.SkuID, &r.LocationID, &r.ReservationKey,
-			&r.Quantity, &r.Status, &r.ExpiresAt, &r.CreatedAt, &r.UpdatedAt); err != nil {
-			return nil, err
-		}
-		results = append(results, &r)
-	}
-	return results, rows.Err()
+	return results, nil
 }
 
 func (s *PostgresStore) UpdateReservationStatus(ctx context.Context, workspaceID, resID, newStatus string) error {
@@ -767,39 +947,66 @@ func (s *PostgresStore) UpdateReservationStatus(ctx context.Context, workspaceID
 		SET status = $1, updated_at = NOW()
 		WHERE workspace_id = $2 AND reservation_id = $3;
 	`
-	tag, err := s.pool.Exec(ctx, q, newStatus, workspaceID, resID)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrReservationNotFound
-	}
-	return nil
+	return s.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		tag, err := tx.Exec(txCtx, q, newStatus, workspaceID, resID)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return ErrReservationNotFound
+		}
+		return nil
+	})
 }
 
 func (s *PostgresStore) ListExpiredReservations(ctx context.Context, now time.Time) ([]*Reservation, error) {
 	var results []*Reservation
-	// Global admin/worker query across workspaces
 	const q = `
 		SELECT reservation_id, workspace_id, order_id, sku_id, location_id, reservation_key, quantity, status, expires_at, created_at, updated_at
 		FROM stock_reservations
 		WHERE status = 'held' AND expires_at IS NOT NULL AND expires_at < $1;
 	`
-	rows, err := s.pool.Query(ctx, q, now)
+	scanRows := func(txCtx context.Context, tx pgx.Tx) error {
+		rows, err := tx.Query(txCtx, q, now)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var r Reservation
+			if err := rows.Scan(&r.ReservationID, &r.WorkspaceID, &r.OrderID, &r.SkuID, &r.LocationID, &r.ReservationKey,
+				&r.Quantity, &r.Status, &r.ExpiresAt, &r.CreatedAt, &r.UpdatedAt); err != nil {
+				return err
+			}
+			results = append(results, &r)
+		}
+		return rows.Err()
+	}
+
+	if sc, ok := tenantdb.ScopeFromContext(ctx); ok && sc.WorkspaceID != "" {
+		if err := s.withTenantTx(ctx, sc.WorkspaceID, scanRows); err != nil {
+			return nil, err
+		}
+		return results, nil
+	}
+
+	b := s.txBeginner()
+	if b == nil {
+		return nil, tenantdb.ErrNilBeginner
+	}
+	tx, err := b.Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var r Reservation
-		if err := rows.Scan(&r.ReservationID, &r.WorkspaceID, &r.OrderID, &r.SkuID, &r.LocationID, &r.ReservationKey,
-			&r.Quantity, &r.Status, &r.ExpiresAt, &r.CreatedAt, &r.UpdatedAt); err != nil {
-			return nil, err
-		}
-		results = append(results, &r)
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	if err := scanRows(ctx, tx); err != nil {
+		return nil, err
 	}
-	return results, rows.Err()
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return results, nil
 }
 
 type postgresTx struct {
@@ -865,7 +1072,12 @@ func (ptx *postgresTx) CreateReservation(ctx context.Context, res *Reservation) 
 		INSERT INTO stock_reservations (
 			reservation_id, workspace_id, order_id, sku_id, location_id, reservation_key, quantity, status, expires_at, created_at, updated_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
-		ON CONFLICT (workspace_id, reservation_key) DO NOTHING;
+		ON CONFLICT (workspace_id, reservation_key) DO UPDATE SET
+			quantity = EXCLUDED.quantity,
+			status = EXCLUDED.status,
+			expires_at = EXCLUDED.expires_at,
+			updated_at = NOW()
+		WHERE stock_reservations.status IN ('expired', 'released');
 	`
 	_, err := ptx.tx.Exec(ctx, q, res.ReservationID, res.WorkspaceID, res.OrderID, res.SkuID, res.LocationID,
 		res.ReservationKey, res.Quantity, res.Status, res.ExpiresAt)
@@ -950,26 +1162,19 @@ func (s *PostgresStore) AtomicExecute(ctx context.Context, workspaceID string, p
 		return sortedPairs[i].LocationID < sortedPairs[j].LocationID
 	})
 
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
+	return s.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		// Lock affected rows in deterministic sorted order
+		for _, p := range sortedPairs {
+			const lockQ = `
+				SELECT 1 FROM inventory_balances
+				WHERE workspace_id = $1 AND sku_id = $2 AND location_id = $3
+				FOR UPDATE;
+			`
+			var dummy int
+			_ = tx.QueryRow(txCtx, lockQ, workspaceID, p.SkuID, p.LocationID).Scan(&dummy)
+		}
 
-	// Lock affected rows in deterministic sorted order
-	for _, p := range sortedPairs {
-		const lockQ = `
-			SELECT 1 FROM inventory_balances
-			WHERE workspace_id = $1 AND sku_id = $2 AND location_id = $3
-			FOR UPDATE;
-		`
-		var dummy int
-		_ = tx.QueryRow(ctx, lockQ, workspaceID, p.SkuID, p.LocationID).Scan(&dummy)
-	}
-
-	ptx := &postgresTx{tx: tx, workspaceID: workspaceID}
-	if err := fn(ptx); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
+		ptx := &postgresTx{tx: tx, workspaceID: workspaceID}
+		return fn(ptx)
+	})
 }

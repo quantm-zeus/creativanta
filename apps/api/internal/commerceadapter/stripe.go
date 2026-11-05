@@ -172,8 +172,10 @@ func (a *StripeAdapter) ParseWebhook(payload []byte) (eventType string, ord *Ing
 		return ev.Type, nil, &IngestedRefund{
 			ExternalRefundID: cr.ID,
 			ExternalOrderID:  orderID,
+			EventID:          ev.ID,
 			Platform:         PlatformStripe,
 			Amount:           amt,
+			IsCumulative:     true,
 			Currency:         currency,
 			Reason:           "Stripe charge.refunded webhook",
 			RawPayload:       payload,

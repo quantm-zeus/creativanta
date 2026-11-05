@@ -23,6 +23,7 @@ var (
 	ErrOrderAlreadyExists         = errors.New("order already exists")
 	ErrInvalidInput               = errors.New("invalid input data")
 	ErrMissingTenant              = errors.New("missing tenant workspace context")
+	ErrCurrencyMismatch           = errors.New("currency mismatch")
 )
 
 type SourceClass string

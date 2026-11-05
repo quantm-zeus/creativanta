@@ -2,10 +2,14 @@ package order_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/quantm-zeus/creativanta/apps/api/internal/finance"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/inventory"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/order"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
@@ -499,5 +503,353 @@ func TestPhysicalReturnRestocksInventoryWhileRefundDoesNot(t *testing.T) {
 	balPostReturn, _ := invStore.GetBalance(ctx, wsID, skuID, locID)
 	if balPostReturn.OnHand != 10 {
 		t.Fatalf("physical return failed to restock: expected on_hand=10, got %d", balPostReturn.OnHand)
+	}
+}
+
+type fkCheckingInventoryService struct {
+	inner      order.InventoryService
+	orderStore order.Store
+	lastOrder  string
+}
+
+func (f *fkCheckingInventoryService) ReserveStock(ctx context.Context, workspaceID, orderID string, items []inventory.ReservationItem, ttl time.Duration) ([]*inventory.Reservation, error) {
+	f.lastOrder = orderID
+	if strings.HasSuffix(orderID, "-late") {
+		return nil, fmt.Errorf("invalid non-UUID order_id %s passed to ReserveStock", orderID)
+	}
+	if _, err := f.orderStore.GetOrder(ctx, workspaceID, orderID); err != nil {
+		return nil, fmt.Errorf("FK violation: parent order %s does not exist before ReserveStock: %w", orderID, err)
+	}
+	return f.inner.ReserveStock(ctx, workspaceID, orderID, items, ttl)
+}
+
+func (f *fkCheckingInventoryService) FulfillReservation(ctx context.Context, workspaceID, orderID string) ([]*inventory.Movement, error) {
+	if strings.HasSuffix(orderID, "-late") {
+		return nil, fmt.Errorf("invalid non-UUID order_id %s passed to FulfillReservation", orderID)
+	}
+	if _, err := f.orderStore.GetOrder(ctx, workspaceID, orderID); err != nil {
+		return nil, fmt.Errorf("FK violation: parent order %s does not exist before FulfillReservation: %w", orderID, err)
+	}
+	return f.inner.FulfillReservation(ctx, workspaceID, orderID)
+}
+
+func (f *fkCheckingInventoryService) ReleaseReservation(ctx context.Context, workspaceID, orderID, reason string) error {
+	return f.inner.ReleaseReservation(ctx, workspaceID, orderID, reason)
+}
+
+func (f *fkCheckingInventoryService) ShouldDeductStockForImportedOrder(ctx context.Context, workspaceID, skuID, locationID string, orderOrderedAt time.Time) (bool, error) {
+	return f.inner.ShouldDeductStockForImportedOrder(ctx, workspaceID, skuID, locationID, orderOrderedAt)
+}
+
+func (f *fkCheckingInventoryService) RecordPhysicalReturn(ctx context.Context, workspaceID, orderID, returnID, skuID, locationID string, quantity int32, reason string) (*inventory.Movement, error) {
+	return f.inner.RecordPhysicalReturn(ctx, workspaceID, orderID, returnID, skuID, locationID, quantity, reason)
+}
+
+// INV-01: Parent order must exist before ReserveStock, rollback deletes order if reservation fails,
+// and late payment recovery re-reserves on canonical UUID order_id rather than orderID+"-late".
+func TestParentOrderExistsBeforeReservationAndLatePaymentRecoveryUsesCanonicalOrderID(t *testing.T) {
+	ctx := context.Background()
+	orderStore := order.NewMemoryStore()
+	invStore := inventory.NewMemoryStore()
+
+	now := time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)
+	clock := func() time.Time { return now }
+
+	invSvc := inventory.NewService(invStore, nil, clock)
+	fkInv := &fkCheckingInventoryService{inner: invSvc, orderStore: orderStore}
+	orderSvc := order.NewService(orderStore, fkInv, nil, clock)
+
+	wsID := "00000000-0000-0000-0000-000000000001"
+	skuID := "11111111-1111-1111-1111-111111111111"
+	locID := "22222222-2222-2222-2222-222222222222"
+
+	_ = invStore.UpsertBalance(ctx, &inventory.Balance{
+		WorkspaceID: wsID,
+		SkuID:       skuID,
+		LocationID:  locID,
+		OnHand:      5,
+		Reserved:    0,
+	})
+
+	// 1. Order requesting 10 units (> 5 on hand) must fail ReserveStock AND roll back the parent order row
+	excessOrder := &order.Order{
+		OrderID:        "33333333-3333-4333-8333-333333333301",
+		WorkspaceID:    wsID,
+		SourceClass:    order.SourceClassOfficial,
+		Amount:         tenantdb.MustParseExactDecimal("500000.000000"),
+		Currency:       "VND",
+		LifecycleState: order.StateCreated,
+		Items: []order.OrderItem{
+			{Sku: skuID, Quantity: 10, UnitPrice: tenantdb.MustParseExactDecimal("50000.000000"), Total: tenantdb.MustParseExactDecimal("500000.000000")},
+		},
+	}
+	if _, _, err := orderSvc.IngestOrder(ctx, excessOrder, locID); err == nil {
+		t.Fatalf("expected insufficient stock error during IngestOrder")
+	}
+	if _, err := orderStore.GetOrder(ctx, wsID, excessOrder.OrderID); !errors.Is(err, order.ErrOrderNotFound) {
+		t.Fatalf("expected parent order to be rolled back after ReserveStock failure, got err=%v", err)
+	}
+
+	// 2. Valid order of 3 units succeeds because parent order exists before ReserveStock is called
+	validOrder := &order.Order{
+		OrderID:        "33333333-3333-4333-8333-333333333302",
+		WorkspaceID:    wsID,
+		SourceClass:    order.SourceClassOfficial,
+		Amount:         tenantdb.MustParseExactDecimal("150000.000000"),
+		Currency:       "VND",
+		LifecycleState: order.StateCreated,
+		Items: []order.OrderItem{
+			{Sku: skuID, Quantity: 3, UnitPrice: tenantdb.MustParseExactDecimal("50000.000000"), Total: tenantdb.MustParseExactDecimal("150000.000000")},
+		},
+	}
+	createdOrd, created, err := orderSvc.IngestOrder(ctx, validOrder, locID)
+	if err != nil || !created {
+		t.Fatalf("expected valid order ingestion to succeed with FK check enabled, got err=%v", err)
+	}
+
+	// 3. Advance clock past reservation TTL (30m) and expire reservations
+	now = now.Add(45 * time.Minute)
+	if _, err := invSvc.ExpireReservations(ctx, now); err != nil {
+		t.Fatalf("ExpireReservations failed: %v", err)
+	}
+	balAfterExpiry, _ := invStore.GetBalance(ctx, wsID, skuID, locID)
+	if balAfterExpiry.Reserved != 0 || balAfterExpiry.OnHand != 5 {
+		t.Fatalf("expected reserved=0 on_hand=5 after expiry, got reserved=%d on_hand=%d", balAfterExpiry.Reserved, balAfterExpiry.OnHand)
+	}
+
+	// 4. Late payment confirmation recovers using canonical orderID (no "-late" suffix)
+	confirmedOrd, err := orderSvc.HandlePaymentConfirmation(ctx, wsID, createdOrd.OrderID, locID)
+	if err != nil {
+		t.Fatalf("HandlePaymentConfirmation late recovery failed: %v", err)
+	}
+	if confirmedOrd.LifecycleState != order.StateConfirmed {
+		t.Fatalf("expected StateConfirmed, got %s", confirmedOrd.LifecycleState)
+	}
+	if fkInv.lastOrder != createdOrd.OrderID {
+		t.Fatalf("expected canonical orderID %s used for late reservation, got %s", createdOrd.OrderID, fkInv.lastOrder)
+	}
+	balAfterConfirm, _ := invStore.GetBalance(ctx, wsID, skuID, locID)
+	if balAfterConfirm.OnHand != 2 || balAfterConfirm.Reserved != 0 {
+		t.Fatalf("expected on_hand=2 reserved=0 after late payment fulfillment, got on_hand=%d reserved=%d", balAfterConfirm.OnHand, balAfterConfirm.Reserved)
+	}
+}
+
+type failingFinanceService struct {
+	failOrderPosting  bool
+	failRefundPosting bool
+	failCorrection    bool
+}
+
+func (f *failingFinanceService) RecordOrderPosting(ctx context.Context, input finance.OrderPostingInput) error {
+	if f.failOrderPosting {
+		return errors.New("simulated finance order posting failure")
+	}
+	return nil
+}
+
+func (f *failingFinanceService) RecordRefundPosting(ctx context.Context, workspaceID, refundID, orderID string, refundAmount tenantdb.ExactDecimal, currency string, sourceClass, confidence string, fx finance.ExchangeRateSnapshot) error {
+	if f.failRefundPosting {
+		return errors.New("simulated finance refund posting failure")
+	}
+	return nil
+}
+
+func (f *failingFinanceService) RecordOrderCorrection(ctx context.Context, workspaceID, orderID, component string, newAmount tenantdb.ExactDecimal, newVersion, sourceClass, confidence string, fx finance.ExchangeRateSnapshot) error {
+	if f.failCorrection {
+		return errors.New("simulated finance correction failure")
+	}
+	return nil
+}
+
+// FIN-02: Completed orders always record finance postings and roll back state if finance posting fails.
+func TestCompletedOrdersRecordFinancePostingsAndRollbackOnFinanceError(t *testing.T) {
+	ctx := context.Background()
+	orderSvc, _, orderStore, _, _ := setupTestHarness()
+	finStore := finance.NewMemoryStore()
+	finSvc := finance.NewService(finStore, nil, nil)
+	orderSvc.SetFinance(finSvc)
+
+	wsID := "00000000-0000-0000-0000-000000000001"
+
+	// 1. Order ingested directly in StateCompleted posts revenue immediately
+	completedImport := &order.Order{
+		WorkspaceID:    wsID,
+		SourceClass:    order.SourceClassOfficial,
+		Amount:         tenantdb.MustParseExactDecimal("400000.000000"),
+		Currency:       "VND",
+		LifecycleState: order.StateCompleted,
+	}
+	completedImport, _, err := orderSvc.IngestOrder(ctx, completedImport, "")
+	if err != nil {
+		t.Fatalf("IngestOrder StateCompleted failed: %v", err)
+	}
+	postings, err := finStore.ListPostings(ctx, wsID, finance.PostingFilter{})
+	if err != nil || len(postings) == 0 {
+		t.Fatalf("expected revenue posting for order ingested in StateCompleted, got %d postings (err=%v)", len(postings), err)
+	}
+
+	// 2. Order transitioning Fulfilled -> Completed rolls back to StateFulfilled if FinanceService fails
+	failFin := &failingFinanceService{failOrderPosting: true}
+	orderSvc.SetFinance(failFin)
+
+	ord := &order.Order{
+		WorkspaceID:    wsID,
+		SourceClass:    order.SourceClassOfficial,
+		Amount:         tenantdb.MustParseExactDecimal("250000.000000"),
+		Currency:       "VND",
+		LifecycleState: order.StateFulfilled,
+	}
+	ord, _, err = orderSvc.IngestOrder(ctx, ord, "")
+	if err != nil {
+		t.Fatalf("IngestOrder StateFulfilled failed: %v", err)
+	}
+
+	if _, err := orderSvc.CompleteOrder(ctx, wsID, ord.OrderID); err == nil {
+		t.Fatalf("expected CompleteOrder to return error when finance posting fails")
+	}
+	persisted, err := orderStore.GetOrder(ctx, wsID, ord.OrderID)
+	if err != nil {
+		t.Fatalf("GetOrder failed: %v", err)
+	}
+	if persisted.LifecycleState != order.StateFulfilled {
+		t.Fatalf("expected order state rolled back to %s after finance failure, got %s", order.StateFulfilled, persisted.LifecycleState)
+	}
+
+	// 3. When finance succeeds, CompleteOrder transitions to StateCompleted and posts revenue
+	orderSvc.SetFinance(finSvc)
+	if _, err := orderSvc.CompleteOrder(ctx, wsID, ord.OrderID); err != nil {
+		t.Fatalf("CompleteOrder failed after restoring finance service: %v", err)
+	}
+
+	// 4. UpdateFeeBreakdown rolls back FeeBreakdown if RecordOrderCorrection fails
+	orderSvc.SetFinance(&failingFinanceService{failCorrection: true})
+	_, err = orderSvc.UpdateFeeBreakdown(ctx, wsID, ord.OrderID, order.FeeBreakdown{
+		PlatformFee: tenantdb.MustParseExactDecimal("15000.000000"),
+	}, "v2", "ev-1", "settlement fee update")
+	if err == nil {
+		t.Fatalf("expected UpdateFeeBreakdown to fail when finance correction fails")
+	}
+	persistedAfterFeeFail, _ := orderStore.GetOrder(ctx, wsID, ord.OrderID)
+	if !persistedAfterFeeFail.FeeBreakdown.PlatformFee.IsZero() {
+		t.Fatalf("expected PlatformFee rolled back to 0 on correction failure, got %s", persistedAfterFeeFail.FeeBreakdown.PlatformFee.String())
+	}
+}
+
+// FIN-03: Concurrent refund approvals never exceed order total, currency mismatch is rejected,
+// and failed finance refund posting reverts refund approval.
+func TestConcurrentRefundApprovalsCannotExceedCapturedTotal(t *testing.T) {
+	ctx := context.Background()
+	orderSvc, _, orderStore, _, _ := setupTestHarness()
+	finStore := finance.NewMemoryStore()
+	finSvc := finance.NewService(finStore, nil, nil)
+	orderSvc.SetFinance(finSvc)
+
+	wsID := "00000000-0000-0000-0000-000000000001"
+	ord := &order.Order{
+		WorkspaceID:    wsID,
+		SourceClass:    order.SourceClassOfficial,
+		Amount:         tenantdb.MustParseExactDecimal("1000000.000000"),
+		Currency:       "VND",
+		LifecycleState: order.StateCompleted,
+	}
+	ord, _, err := orderSvc.IngestOrder(ctx, ord, "")
+	if err != nil {
+		t.Fatalf("IngestOrder failed: %v", err)
+	}
+
+	// 1. Currency mismatch must fail closed
+	_, _, err = orderSvc.RequestRefund(ctx, &order.Refund{
+		WorkspaceID: wsID,
+		OrderID:     ord.OrderID,
+		RefundType:  "partial",
+		Amount:      tenantdb.MustParseExactDecimal("100000.000000"),
+		Currency:    "USD",
+	})
+	if !errors.Is(err, order.ErrCurrencyMismatch) {
+		t.Fatalf("expected ErrCurrencyMismatch on USD refund against VND order, got %v", err)
+	}
+
+	// 2. Request 10 partial refunds of 300,000 VND each (each <= 1,000,000 VND remaining at request time)
+	const workers = 10
+	refundIDs := make([]string, workers)
+	for i := 0; i < workers; i++ {
+		ref, _, err := orderSvc.RequestRefund(ctx, &order.Refund{
+			WorkspaceID: wsID,
+			OrderID:     ord.OrderID,
+			RefundType:  "partial",
+			Amount:      tenantdb.MustParseExactDecimal("300000.000000"),
+			Currency:    "VND",
+			Reason:      fmt.Sprintf("concurrent partial refund %d", i),
+		})
+		if err != nil {
+			t.Fatalf("RequestRefund %d failed: %v", i, err)
+		}
+		refundIDs[i] = ref.RefundID
+	}
+
+	// 3. Approve all 10 concurrently: at most 3 can succeed (900,000 VND <= 1,000,000 VND)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	successCount := 0
+	rejectCount := 0
+
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(refID string) {
+			defer wg.Done()
+			_, _, err := orderSvc.ApproveRefund(ctx, wsID, refID)
+			mu.Lock()
+			defer mu.Unlock()
+			if err == nil {
+				successCount++
+			} else if errors.Is(err, order.ErrRefundExceedsOrderTotal) {
+				rejectCount++
+			} else {
+				t.Errorf("unexpected ApproveRefund error: %v", err)
+			}
+		}(refundIDs[i])
+	}
+	wg.Wait()
+
+	if successCount != 3 || rejectCount != 7 {
+		t.Fatalf("expected exactly 3 approvals and 7 rejections, got success=%d reject=%d", successCount, rejectCount)
+	}
+
+	finalOrd, err := orderStore.GetOrder(ctx, wsID, ord.OrderID)
+	if err != nil {
+		t.Fatalf("GetOrder failed: %v", err)
+	}
+	if finalOrd.RefundedAmount.String() != "900000" {
+		t.Fatalf("expected RefundedAmount=900000 after 3 concurrent 300k approvals, got %s", finalOrd.RefundedAmount.String())
+	}
+	if finalOrd.LifecycleState != order.StatePartiallyRefunded {
+		t.Fatalf("expected StatePartiallyRefunded, got %s", finalOrd.LifecycleState)
+	}
+
+	// 4. If finance posting fails during ApproveRefund, refund approval and order RefundedAmount are reverted
+	remRef, _, err := orderSvc.RequestRefund(ctx, &order.Refund{
+		WorkspaceID: wsID,
+		OrderID:     ord.OrderID,
+		RefundType:  "partial",
+		Amount:      tenantdb.MustParseExactDecimal("100000.000000"),
+		Currency:    "VND",
+	})
+	if err != nil {
+		t.Fatalf("RequestRefund for remaining 100k failed: %v", err)
+	}
+
+	orderSvc.SetFinance(&failingFinanceService{failRefundPosting: true})
+	if _, _, err := orderSvc.ApproveRefund(ctx, wsID, remRef.RefundID); err == nil {
+		t.Fatalf("expected ApproveRefund to fail when finance refund posting fails")
+	}
+
+	revertedOrd, _ := orderStore.GetOrder(ctx, wsID, ord.OrderID)
+	if revertedOrd.RefundedAmount.String() != "900000" || revertedOrd.LifecycleState != order.StatePartiallyRefunded {
+		t.Fatalf("expected order RefundedAmount=900000 and StatePartiallyRefunded after revert, got %s (%s)",
+			revertedOrd.RefundedAmount.String(), revertedOrd.LifecycleState)
+	}
+	revertedRef, _ := orderStore.GetRefund(ctx, wsID, remRef.RefundID)
+	if revertedRef.LifecycleState != order.RefundRequested {
+		t.Fatalf("expected refund reverted to RefundRequested, got %s", revertedRef.LifecycleState)
 	}
 }
