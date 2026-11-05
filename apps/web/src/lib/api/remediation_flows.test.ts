@@ -163,7 +163,7 @@ describe('Remediation Canonical RPC Flows (UF-04..UF-08, AI-02, R04)', () => {
       {
         workspaceId: 'ws-1',
         tier: 'pro',
-        activeKeyCount: 0,
+        activeKeysCount: 0,
         name: 'CI Key',
         scopes: ['read:trends']
       },
@@ -194,7 +194,7 @@ describe('Remediation Canonical RPC Flows (UF-04..UF-08, AI-02, R04)', () => {
       {
         workspaceId: 'ws-1',
         tier: 'pro',
-        activeKeyCount: 0,
+        activeKeysCount: 0,
         name: 'CI Key',
         scopes: ['read:trends']
       },
