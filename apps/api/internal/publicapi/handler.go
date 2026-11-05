@@ -13,14 +13,19 @@ import (
 
 	v1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/platform/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/platform/v1/platformv1connect"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
 )
 
+// MembershipRoleResolver looks up a user's active membership role in a workspace.
+type MembershipRoleResolver func(ctx context.Context, workspaceID, userID string) (role string, active bool, err error)
+
 // Handler implements platformv1connect.APIKeyServiceHandler and WebhookSubscriptionServiceHandler.
 type Handler struct {
-	service    *Service
-	dispatcher *OutboundDispatcher
+	service      *Service
+	dispatcher   *OutboundDispatcher
+	roleResolver MembershipRoleResolver
 }
 
 func NewHandler(service *Service, dispatcher *OutboundDispatcher) *Handler {
@@ -30,22 +35,48 @@ func NewHandler(service *Service, dispatcher *OutboundDispatcher) *Handler {
 	}
 }
 
+// WithMembershipRoleResolver configures server-side active membership role resolution for API key management.
+func (h *Handler) WithMembershipRoleResolver(resolver MembershipRoleResolver) *Handler {
+	h.roleResolver = resolver
+	return h
+}
+
 var _ platformv1connect.APIKeyServiceHandler = (*Handler)(nil)
 var _ platformv1connect.WebhookSubscriptionServiceHandler = (*Handler)(nil)
 
-// resolveAdminCaller checks caller is Admin or Owner and extracts workspace and user ID.
-func resolveAdminCaller(ctx context.Context, explicitWorkspaceID string) (userID, workspaceID string, err error) {
-	if session, ok := transportauth.PrincipalFromContext(ctx); ok && session.WorkspaceID != "" {
-		if explicitWorkspaceID != "" && explicitWorkspaceID != session.WorkspaceID && !session.InternalAdmin {
-			return "", "", connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
+// resolveAdminCaller checks caller is an authenticated workspace member with api_key:manage (Owner or Admin)
+// and never accepts unauthenticated/synthetic workspace fallbacks or service keys (AUTH-01).
+func (h *Handler) resolveAdminCaller(ctx context.Context, explicitWorkspaceID string) (userID, workspaceID string, err error) {
+	session, ok := transportauth.PrincipalFromContext(ctx)
+	if !ok || !tenantdb.IsValidNonZeroUUID(session.UserID) || !tenantdb.IsValidNonZeroUUID(session.WorkspaceID) {
+		return "", "", connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated: verified user principal required"))
+	}
+	if session.ServiceKeyID != "" || session.InternalAdmin {
+		return "", "", connect.NewError(connect.CodePermissionDenied, rbac.ErrPermissionDenied)
+	}
+	if explicitWorkspaceID != "" && explicitWorkspaceID != session.WorkspaceID {
+		return "", "", connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
+	}
+
+	role := strings.ToLower(strings.TrimSpace(session.Role))
+	if h != nil && h.roleResolver != nil {
+		resolvedRole, active, err := h.roleResolver(ctx, session.WorkspaceID, session.UserID)
+		if err != nil || !active {
+			return "", "", connect.NewError(connect.CodePermissionDenied, rbac.ErrPermissionDenied)
 		}
-		return session.UserID, session.WorkspaceID, nil
+		role = strings.ToLower(strings.TrimSpace(resolvedRole))
 	}
-	if explicitWorkspaceID != "" {
-		// Test or server-to-server fallback
-		return "00000000-0000-0000-0000-000000000001", explicitWorkspaceID, nil
+	if role == "" {
+		return "", "", connect.NewError(connect.CodePermissionDenied, rbac.ErrPermissionDenied)
 	}
-	return "", "", connect.NewError(connect.CodeUnauthenticated, errors.New("missing workspace or tenant context"))
+	if err := rbac.CheckWorkspacePermission("api_key:manage", rbac.PolicyContext{
+		Role:        role,
+		ActorUserID: session.UserID,
+	}); err != nil {
+		return "", "", connect.NewError(connect.CodePermissionDenied, err)
+	}
+
+	return session.UserID, session.WorkspaceID, nil
 }
 
 // =============================================================================
@@ -53,7 +84,7 @@ func resolveAdminCaller(ctx context.Context, explicitWorkspaceID string) (userID
 // =============================================================================
 
 func (h *Handler) Create(ctx context.Context, req *connect.Request[v1.CreateRequest]) (*connect.Response[v1.CreateResponse], error) {
-	userID, wsID, err := resolveAdminCaller(ctx, req.Msg.WorkspaceId)
+	userID, wsID, err := h.resolveAdminCaller(ctx, req.Msg.WorkspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +110,7 @@ func (h *Handler) Create(ctx context.Context, req *connect.Request[v1.CreateRequ
 }
 
 func (h *Handler) List(ctx context.Context, req *connect.Request[v1.ListRequest]) (*connect.Response[v1.ListResponse], error) {
-	_, wsID, err := resolveAdminCaller(ctx, req.Msg.WorkspaceId)
+	_, wsID, err := h.resolveAdminCaller(ctx, req.Msg.WorkspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +132,7 @@ func (h *Handler) List(ctx context.Context, req *connect.Request[v1.ListRequest]
 }
 
 func (h *Handler) Revoke(ctx context.Context, req *connect.Request[v1.RevokeRequest]) (*connect.Response[v1.RevokeResponse], error) {
-	_, wsID, err := resolveAdminCaller(ctx, req.Msg.WorkspaceId)
+	_, wsID, err := h.resolveAdminCaller(ctx, req.Msg.WorkspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +151,7 @@ func (h *Handler) Revoke(ctx context.Context, req *connect.Request[v1.RevokeRequ
 }
 
 func (h *Handler) Rotate(ctx context.Context, req *connect.Request[v1.RotateRequest]) (*connect.Response[v1.RotateResponse], error) {
-	_, wsID, err := resolveAdminCaller(ctx, req.Msg.WorkspaceId)
+	_, wsID, err := h.resolveAdminCaller(ctx, req.Msg.WorkspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +179,7 @@ func (h *Handler) Rotate(ctx context.Context, req *connect.Request[v1.RotateRequ
 }
 
 func (h *Handler) GetUsage(ctx context.Context, req *connect.Request[v1.GetUsageRequest]) (*connect.Response[v1.GetUsageResponse], error) {
-	_, wsID, err := resolveAdminCaller(ctx, req.Msg.WorkspaceId)
+	_, wsID, err := h.resolveAdminCaller(ctx, req.Msg.WorkspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +204,7 @@ func (h *Handler) GetUsage(ctx context.Context, req *connect.Request[v1.GetUsage
 }
 
 func (h *Handler) GetUsageStats(ctx context.Context, req *connect.Request[v1.GetUsageStatsRequest]) (*connect.Response[v1.GetUsageStatsResponse], error) {
-	_, wsID, err := resolveAdminCaller(ctx, req.Msg.WorkspaceId)
+	_, wsID, err := h.resolveAdminCaller(ctx, req.Msg.WorkspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +243,7 @@ func (h *Handler) GetUsageStats(ctx context.Context, req *connect.Request[v1.Get
 }
 
 func (h *Handler) UpdateScopes(ctx context.Context, req *connect.Request[v1.UpdateScopesRequest]) (*connect.Response[v1.UpdateScopesResponse], error) {
-	_, wsID, err := resolveAdminCaller(ctx, req.Msg.WorkspaceId)
+	_, wsID, err := h.resolveAdminCaller(ctx, req.Msg.WorkspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +269,7 @@ func (h *Handler) UpdateScopes(ctx context.Context, req *connect.Request[v1.Upda
 // =============================================================================
 
 func (h *Handler) CreateWebhookSubscription(ctx context.Context, req *connect.Request[v1.CreateWebhookSubscriptionRequest]) (*connect.Response[v1.CreateWebhookSubscriptionResponse], error) {
-	userID, wsID, err := resolveAdminCaller(ctx, req.Msg.WorkspaceId)
+	userID, wsID, err := h.resolveAdminCaller(ctx, req.Msg.WorkspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +289,7 @@ func (h *Handler) CreateWebhookSubscription(ctx context.Context, req *connect.Re
 }
 
 func (h *Handler) ListWebhookSubscriptions(ctx context.Context, req *connect.Request[v1.ListWebhookSubscriptionsRequest]) (*connect.Response[v1.ListWebhookSubscriptionsResponse], error) {
-	_, wsID, err := resolveAdminCaller(ctx, req.Msg.WorkspaceId)
+	_, wsID, err := h.resolveAdminCaller(ctx, req.Msg.WorkspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +310,7 @@ func (h *Handler) ListWebhookSubscriptions(ctx context.Context, req *connect.Req
 }
 
 func (h *Handler) DeleteWebhookSubscription(ctx context.Context, req *connect.Request[v1.DeleteWebhookSubscriptionRequest]) (*connect.Response[v1.DeleteWebhookSubscriptionResponse], error) {
-	_, wsID, err := resolveAdminCaller(ctx, req.Msg.WorkspaceId)
+	_, wsID, err := h.resolveAdminCaller(ctx, req.Msg.WorkspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +327,7 @@ func (h *Handler) DeleteWebhookSubscription(ctx context.Context, req *connect.Re
 }
 
 func (h *Handler) TestWebhookSubscription(ctx context.Context, req *connect.Request[v1.TestWebhookSubscriptionRequest]) (*connect.Response[v1.TestWebhookSubscriptionResponse], error) {
-	_, wsID, err := resolveAdminCaller(ctx, req.Msg.WorkspaceId)
+	_, wsID, err := h.resolveAdminCaller(ctx, req.Msg.WorkspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +365,7 @@ func (h *Handler) TestWebhookSubscription(ctx context.Context, req *connect.Requ
 }
 
 func (h *Handler) ReplayWebhookDelivery(ctx context.Context, req *connect.Request[v1.ReplayWebhookDeliveryRequest]) (*connect.Response[v1.ReplayWebhookDeliveryResponse], error) {
-	_, wsID, err := resolveAdminCaller(ctx, req.Msg.WorkspaceId)
+	_, wsID, err := h.resolveAdminCaller(ctx, req.Msg.WorkspaceId)
 	if err != nil {
 		return nil, err
 	}

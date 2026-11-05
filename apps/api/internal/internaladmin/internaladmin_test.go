@@ -100,7 +100,7 @@ func TestWorkspaceRoleCannotCallAdminListenerAndVPNMFAGate(t *testing.T) {
 		t.Fatalf("expected admin RPC on workspace listener to fail with ErrAdminRPCOnWorkspaceListener, got %v", err)
 	}
 
-	// 3. Admin Login without VPN mesh verification must fail closed.
+	// 3. Admin Login without VPN mesh verification must fail closed, even if client claims VpnVerified=true.
 	totp, err := internaladmin.GenerateTOTPCode(mfaSecret, now)
 	if err != nil {
 		t.Fatalf("GenerateTOTPCode: %v", err)
@@ -114,9 +114,32 @@ func TestWorkspaceRoleCannotCallAdminListenerAndVPNMFAGate(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("expected PermissionDenied when VPN is not verified, got %v", err)
 	}
+	// Spoofed client-supplied VpnVerified=true without trusted transport VPN evidence must also fail closed (AUTH-05).
+	_, err = svc.Login(context.Background(), connect.NewRequest(&adminv1.LoginRequest{
+		Email:       "super@internal.creativanta.vn",
+		Password:    password,
+		TotpCode:    totp,
+		VpnVerified: true,
+		IpAddress:   "100.64.0.10",
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected PermissionDenied when client spoofs VpnVerified=true without transport VPN evidence, got %v", err)
+	}
+	// Non-Tailscale public peer IP in transport evidence must also fail closed.
+	_, err = svc.Login(internaladmin.WithTrustedVPNTransport(context.Background(), "203.0.113.5"), connect.NewRequest(&adminv1.LoginRequest{
+		Email:       "super@internal.creativanta.vn",
+		Password:    password,
+		TotpCode:    totp,
+		VpnVerified: true,
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected PermissionDenied when transport peer IP is not in Tailscale/VPN range, got %v", err)
+	}
+
+	vpnCtx := internaladmin.WithTrustedVPNTransport(context.Background(), "100.64.0.10")
 
 	// 4. Admin Login with invalid TOTP MFA code must fail closed.
-	_, err = svc.Login(context.Background(), connect.NewRequest(&adminv1.LoginRequest{
+	_, err = svc.Login(vpnCtx, connect.NewRequest(&adminv1.LoginRequest{
 		Email:       "super@internal.creativanta.vn",
 		Password:    password,
 		TotpCode:    "000000",
@@ -127,7 +150,7 @@ func TestWorkspaceRoleCannotCallAdminListenerAndVPNMFAGate(t *testing.T) {
 	}
 
 	// 5. Valid VPN + password + TOTP MFA succeeds and issues an 8-hour admin session.
-	loginResp, err := svc.Login(context.Background(), connect.NewRequest(&adminv1.LoginRequest{
+	loginResp, err := svc.Login(vpnCtx, connect.NewRequest(&adminv1.LoginRequest{
 		Email:       "super@internal.creativanta.vn",
 		Password:    password,
 		TotpCode:    totp,
@@ -147,7 +170,7 @@ func TestWorkspaceRoleCannotCallAdminListenerAndVPNMFAGate(t *testing.T) {
 	}
 
 	// 6. Analyst (read-only admin role) can call GetDashboard, but cannot call ToggleFlag.
-	analystLogin, err := svc.Login(context.Background(), connect.NewRequest(&adminv1.LoginRequest{
+	analystLogin, err := svc.Login(vpnCtx, connect.NewRequest(&adminv1.LoginRequest{
 		Email:       "analyst@internal.creativanta.vn",
 		Password:    password,
 		TotpCode:    totp,
@@ -237,7 +260,8 @@ func TestImpersonationIsStrictlyReadOnlyAndAutoExpiresAfter30Minutes(t *testing.
 	}
 
 	totp, _ := internaladmin.GenerateTOTPCode(mfaSecret, now)
-	supportLogin, err := svc.Login(context.Background(), connect.NewRequest(&adminv1.LoginRequest{
+	vpnCtx := internaladmin.WithTrustedVPNTransport(context.Background(), "100.64.0.10")
+	supportLogin, err := svc.Login(vpnCtx, connect.NewRequest(&adminv1.LoginRequest{
 		Email:       "support@internal.creativanta.vn",
 		Password:    password,
 		TotpCode:    totp,
@@ -448,7 +472,8 @@ func TestModerationRulesHardBlockSelfReviewGuardAndKillSwitchHaltsCapability(t *
 
 	// 3. Content Admin login & moderation actions.
 	totp, _ := internaladmin.GenerateTOTPCode(mfaSecret, now)
-	contentLogin, err := svc.Login(context.Background(), connect.NewRequest(&adminv1.LoginRequest{
+	vpnCtx := internaladmin.WithTrustedVPNTransport(context.Background(), "100.64.0.10")
+	contentLogin, err := svc.Login(vpnCtx, connect.NewRequest(&adminv1.LoginRequest{
 		Email:       "content@internal.creativanta.vn",
 		Password:    password,
 		TotpCode:    totp,
@@ -532,7 +557,7 @@ func TestModerationRulesHardBlockSelfReviewGuardAndKillSwitchHaltsCapability(t *
 		t.Fatalf("expected verified tiktok publish_post to be executable before kill switch, got %v", err)
 	}
 
-	techLogin, err := svc.Login(context.Background(), connect.NewRequest(&adminv1.LoginRequest{
+	techLogin, err := svc.Login(vpnCtx, connect.NewRequest(&adminv1.LoginRequest{
 		Email:       "tech@internal.creativanta.vn",
 		Password:    password,
 		TotpCode:    totp,

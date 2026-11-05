@@ -477,4 +477,81 @@ func TestPostgresLiveWithTxIsolationAndRollback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("WithTx GetWorkspace failed: %v", err)
 	}
+
+	// Verify TENANT-01 on live PostgreSQL under app_user:
+	// testUserA can SELECT own membership across workspaces, but CANNOT self-INSERT into wsLiveB (owned by testUserB).
+	const wsLiveB = "bbbb1111-1111-4111-8111-111111111111"
+	const memLiveB = "bbbb2222-2222-4222-8222-222222222222"
+	err = WithUserBootstrapTx(ctx, pool, testUserB, func(txCtx context.Context, q *Queries) error {
+		_, err := q.CreateWorkspace(txCtx, CreateWorkspaceParams{
+			WorkspaceID:    wsLiveB,
+			Name:           "Live WithTx Workspace B",
+			Slug:           "live-withtx-ws-b",
+			OwnerUserID:    testUserB,
+			DefaultMode:    "seller",
+			EnabledModes:   []string{"seller"},
+			InitialCredits: credits30,
+			MonthlyLimit:   credits30,
+			OwnerMemberID:  memLiveB,
+		})
+		return err
+	})
+	if err != nil && !strings.Contains(err.Error(), "duplicate key") {
+		t.Fatalf("WithUserBootstrapTx CreateWorkspace B failed: %v", err)
+	}
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("pool.Begin: %v", err)
+	}
+	defer tx.Rollback(ctx)
+	if _, err := tx.Exec(ctx, "SET LOCAL ROLE app_user"); err != nil {
+		t.Fatalf("SET LOCAL ROLE app_user: %v", err)
+	}
+	if _, err := tx.Exec(ctx, "SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_user_id', $2, true)", wsLiveA, testUserA); err != nil {
+		t.Fatalf("set_config: %v", err)
+	}
+	// Attempting to self-insert testUserA as owner into foreign workspace wsLiveB must fail RLS WITH CHECK!
+	_, err = tx.Exec(ctx, `
+		INSERT INTO workspace_members (member_id, workspace_id, user_id, role, status)
+		VALUES ('cccc3333-3333-4333-8333-333333333333'::uuid, $1::uuid, $2::uuid, 'owner', 'active')
+	`, wsLiveB, testUserA)
+	if err == nil {
+		t.Fatalf("SECURITY VIOLATION (TENANT-01): app_user self-inserted membership into foreign workspace wsLiveB!")
+	}
+}
+
+func TestTENANT01_TENANT02_Migration00048EnforcesStrictMembershipAndAffiliateStatementItemsRLS(t *testing.T) {
+	migPath := filepath.Join("..", "..", "..", "..", "infra", "migrations", "00048_remediate_security_rls_and_affiliate_statement_items.sql")
+	raw, err := os.ReadFile(migPath)
+	if err != nil {
+		t.Fatalf("read migration 00048: %v", err)
+	}
+	sqlText := string(raw)
+
+	requiredClauses := []string{
+		// TENANT-01: Drop permissive FOR ALL self policy and replace with read-only self-discovery + owner bootstrap + tenant_isolation
+		"DROP POLICY IF EXISTS tenant_isolation ON workspace_members;",
+		"CREATE POLICY tenant_isolation ON workspace_members",
+		"CREATE POLICY workspace_members_self_discovery ON workspace_members\n  FOR SELECT TO app_user",
+		"CREATE POLICY workspace_members_owner_bootstrap ON workspace_members\n  FOR INSERT TO app_user",
+		"w.owner_user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid",
+		// TENANT-02: affiliate_statement_items workspace_id, composite tenant FKs, non-SECURITY DEFINER trigger, and forced RLS
+		"ALTER TABLE affiliate_statement_items\n  ADD COLUMN IF NOT EXISTS workspace_id UUID;",
+		"ALTER TABLE affiliate_statement_items\n  ALTER COLUMN workspace_id SET DEFAULT NULLIF(current_setting('app.current_tenant_id', true), '')::uuid,\n  ALTER COLUMN workspace_id SET NOT NULL;",
+		"CONSTRAINT fk_affiliate_statement_items_statement_tenant",
+		"CONSTRAINT fk_affiliate_statement_items_order_tenant",
+		"CONSTRAINT fk_affiliate_statement_items_commission_tenant",
+		"ALTER TABLE affiliate_statement_items ENABLE ROW LEVEL SECURITY;",
+		"ALTER TABLE affiliate_statement_items FORCE ROW LEVEL SECURITY;",
+		"CREATE POLICY tenant_isolation ON affiliate_statement_items\n  FOR ALL TO app_user",
+	}
+	for _, clause := range requiredClauses {
+		if !strings.Contains(sqlText, clause) {
+			t.Fatalf("migration 00048 missing required security clause:\n%s", clause)
+		}
+	}
+	if strings.Contains(strings.ToUpper(sqlText), "SECURITY DEFINER") {
+		t.Fatalf("migration 00048 must not introduce SECURITY DEFINER functions that bypass RLS")
+	}
 }

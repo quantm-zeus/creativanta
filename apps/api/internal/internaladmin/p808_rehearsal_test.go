@@ -556,7 +556,8 @@ func TestP808AcceptanceTarget3_TenantAndPrivacyAcrossPublicAndInternalPaths(t *t
 
 	// --- C. INTERNAL ADMIN PATH TESTS: EC-M23-003, EC-M23-004, EC-M23-005 & AdminComplianceService ---
 	totp, _ := internaladmin.GenerateTOTPCode(mfaSecret, now)
-	supportLogin, err := svc.Login(context.Background(), connect.NewRequest(&adminv1.LoginRequest{
+	vpnCtx := internaladmin.WithTrustedVPNTransport(context.Background(), "100.64.0.10")
+	supportLogin, err := svc.Login(vpnCtx, connect.NewRequest(&adminv1.LoginRequest{
 		Email:       "support@internal.creativanta.vn",
 		Password:    password,
 		TotpCode:    totp,
@@ -565,7 +566,7 @@ func TestP808AcceptanceTarget3_TenantAndPrivacyAcrossPublicAndInternalPaths(t *t
 	if err != nil {
 		t.Fatalf("support Login: %v", err)
 	}
-	opsLogin, err := svc.Login(context.Background(), connect.NewRequest(&adminv1.LoginRequest{
+	opsLogin, err := svc.Login(vpnCtx, connect.NewRequest(&adminv1.LoginRequest{
 		Email:       "ops@internal.creativanta.vn",
 		Password:    password,
 		TotpCode:    totp,

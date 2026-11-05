@@ -22,10 +22,12 @@ var (
 type WorkspaceRow struct {
 	WorkspaceID           string
 	Name                  string
+	DisplayName           string
 	Slug                  string
 	OwnerUserID           string
 	SubscriptionTier      string
 	DefaultMode           string
+	DefaultOperatorMode   string
 	EnabledModes          []string
 	AICreditsRemaining    ExactDecimal
 	AICreditsMonthlyLimit ExactDecimal
@@ -56,17 +58,17 @@ type CreateWorkspaceParams struct {
 
 const createWorkspaceSQL = `
 INSERT INTO workspaces (
-  workspace_id, name, slug, owner_user_id, subscription_tier,
-  default_mode, enabled_modes, ai_credits_remaining, ai_credits_monthly_limit,
+  workspace_id, name, display_name, slug, owner_user_id, subscription_tier,
+  default_mode, default_operator_mode, enabled_modes, ai_credits_remaining, ai_credits_monthly_limit,
   locale, timezone, status
 ) VALUES (
-  $1::uuid, $2, $3, $4::uuid, 'free',
-  $5::operator_mode, $6::operator_mode[], $7, $8,
+  $1::uuid, $2, $2, $3, $4::uuid, 'free',
+  $5::operator_mode, $5, $6::operator_mode[], $7, $8,
   $9, $10, 'active'
 )
 RETURNING
-  workspace_id::text, name, slug, owner_user_id::text, subscription_tier,
-  default_mode::text, enabled_modes::text[], ai_credits_remaining, ai_credits_monthly_limit,
+  workspace_id::text, COALESCE(NULLIF(display_name, ''), name), slug, owner_user_id::text, subscription_tier,
+  default_operator_mode::text, enabled_modes::text[], ai_credits_remaining, ai_credits_monthly_limit,
   storage_used_bytes, storage_limit_bytes, settings, locale, timezone, status,
   created_at, updated_at
 `
@@ -146,6 +148,8 @@ func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams
 	if err != nil {
 		return WorkspaceRow{}, err
 	}
+	row.DisplayName = row.Name
+	row.DefaultOperatorMode = row.DefaultMode
 	row.AICreditsRemaining, err = FromPgNumeric(remNum)
 	if err != nil {
 		return WorkspaceRow{}, err
@@ -163,8 +167,8 @@ func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams
 
 const getWorkspaceSQL = `
 SELECT
-  workspace_id::text, name, slug, owner_user_id::text, subscription_tier,
-  default_mode::text, enabled_modes::text[], ai_credits_remaining, ai_credits_monthly_limit,
+  workspace_id::text, COALESCE(NULLIF(display_name, ''), name), slug, owner_user_id::text, subscription_tier,
+  default_operator_mode::text, enabled_modes::text[], ai_credits_remaining, ai_credits_monthly_limit,
   storage_used_bytes, storage_limit_bytes, settings, locale, timezone, status,
   created_at, updated_at
 FROM workspaces
@@ -200,6 +204,8 @@ func (q *Queries) GetWorkspace(ctx context.Context, workspaceID string) (Workspa
 	if err != nil {
 		return WorkspaceRow{}, err
 	}
+	row.DisplayName = row.Name
+	row.DefaultOperatorMode = row.DefaultMode
 	row.AICreditsRemaining, err = FromPgNumeric(remNum)
 	if err != nil {
 		return WorkspaceRow{}, err
@@ -225,15 +231,17 @@ const updateWorkspaceSQL = `
 UPDATE workspaces
 SET
   name = $2,
+  display_name = $2,
   default_mode = $3::operator_mode,
+  default_operator_mode = $3,
   locale = $4,
   timezone = $5,
   settings = $6::jsonb,
   updated_at = NOW()
 WHERE workspace_id = $1::uuid
 RETURNING
-  workspace_id::text, name, slug, owner_user_id::text, subscription_tier,
-  default_mode::text, enabled_modes::text[], ai_credits_remaining, ai_credits_monthly_limit,
+  workspace_id::text, COALESCE(NULLIF(display_name, ''), name), slug, owner_user_id::text, subscription_tier,
+  default_operator_mode::text, enabled_modes::text[], ai_credits_remaining, ai_credits_monthly_limit,
   storage_used_bytes, storage_limit_bytes, settings, locale, timezone, status,
   created_at, updated_at
 `
@@ -280,6 +288,8 @@ func (q *Queries) UpdateWorkspace(ctx context.Context, arg UpdateWorkspaceParams
 	if err != nil {
 		return WorkspaceRow{}, err
 	}
+	row.DisplayName = row.Name
+	row.DefaultOperatorMode = row.DefaultMode
 	row.AICreditsRemaining, err = FromPgNumeric(remNum)
 	if err != nil {
 		return WorkspaceRow{}, err
@@ -412,7 +422,9 @@ func (q *Queries) CountActiveWorkspaceOwners(ctx context.Context, workspaceID st
 
 const updateWorkspaceMemberRoleSQL = `
 UPDATE workspace_members
-SET role = $3, updated_at = NOW()
+SET role = $3,
+    source_updated_at = GREATEST(COALESCE(source_updated_at, NOW()), NOW()),
+    updated_at = NOW()
 WHERE workspace_id = $1::uuid
   AND member_id = $2::uuid
   AND status = 'active'
@@ -484,7 +496,9 @@ func (q *Queries) TransferWorkspaceOwnership(ctx context.Context, workspaceID, c
 	// Step 1: Demote current owner first so idx_one_active_workspace_owner is satisfied when promoting target.
 	tag, err := q.db.Exec(ctx, `
 		UPDATE workspace_members
-		SET role = $3, updated_at = NOW()
+		SET role = $3,
+		    source_updated_at = GREATEST(COALESCE(source_updated_at, NOW()), NOW()),
+		    updated_at = NOW()
 		WHERE workspace_id = $1::uuid
 		  AND user_id = $2::uuid
 		  AND role = 'owner'
@@ -528,7 +542,9 @@ func (q *Queries) TransferWorkspaceOwnership(ctx context.Context, workspaceID, c
 
 const revokeWorkspaceMemberSQL = `
 UPDATE workspace_members
-SET status = 'revoked', updated_at = NOW()
+SET status = 'revoked',
+    source_updated_at = GREATEST(COALESCE(source_updated_at, NOW()), NOW()),
+    updated_at = NOW()
 WHERE workspace_id = $1::uuid
   AND member_id = $2::uuid
   AND status <> 'revoked'

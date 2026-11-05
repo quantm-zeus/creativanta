@@ -546,6 +546,17 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if err := ValidateCanonicalMigrationContract(m47); err != nil {
 		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v47: %v", err)
 	}
+
+	m48 := migrations[47]
+	if m48.Version != 48 {
+		t.Fatalf("expected version 48, got %d", m48.Version)
+	}
+	if len(m48.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v48, got %q", m48.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m48); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v48: %v", err)
+	}
 }
 
 func TestValidateCanonicalMigrationContractRejectsViolations(t *testing.T) {
@@ -705,8 +716,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 47 {
-		t.Fatalf("expected 47 applied migrations, got %d", len(applied))
+	if len(applied) != 48 {
+		t.Fatalf("expected 48 applied migrations, got %d", len(applied))
 	}
 	for i, v := range applied {
 		if v != int64(i+1) {
@@ -726,13 +737,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for all 47 migrations.
+	// Status reports Applied = true for all 48 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 47 {
-		t.Fatalf("expected status for 47 migrations, got %d", len(statuses))
+	if len(statuses) != 48 {
+		t.Fatalf("expected status for 48 migrations, got %d", len(statuses))
 	}
 	for i, s := range statuses {
 		if !s.Applied {
@@ -745,7 +756,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 47, then 46, then 45, then 44, then 43...
+	// Down with allowLocalRollback=true rolls back version 48, then 47, then 46, then 45...
+	rolled48, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v48 failed: %v", err)
+	}
+	if rolled48 != 48 {
+		t.Fatalf("expected rolled back version 48, got %d", rolled48)
+	}
 	rolled47, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v47 failed: %v", err)
@@ -1123,8 +1141,11 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 47 {
-		t.Fatalf("expected 47 applied migrations, got %v", applied)
+	if len(applied) != 48 {
+		t.Fatalf("expected 48 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v48 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v47 failed: %v", err)
@@ -2099,6 +2120,57 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("expected composite tenant FK to reject cross-tenant publish_item_id on publish_jobs")
 	}
 	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_pub_job_fk`)
+
+	// TENANT-01: User B in Tenant B context must not self-insert as owner into Tenant A's workspace_members:
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_member_self_insert`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO workspace_members (workspace_id, user_id, role, status)
+		VALUES ($1::uuid, $2::uuid, 'owner', 'active')
+	`, tenantA, userB); err == nil {
+		t.Fatalf("TENANT-01 RLS breach: User B self-inserted into foreign workspace A")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_member_self_insert`)
+
+	// TENANT-02: affiliate_statement_items must enforce tenant isolation for app_user:
+	const (
+		affStmtA = "ffffffff-ffff-4fff-8fff-fffffffffff1"
+		affItemA = "ffffffff-ffff-4fff-8fff-fffffffffff2"
+	)
+	if _, err := tx.Exec(ctx, `
+		SET LOCAL app.current_tenant_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+		SET LOCAL app.current_user_id = '11111111-1111-4111-8111-111111111111';
+		INSERT INTO affiliate_statements (statement_id, workspace_id, platform, external_statement_ref, period_start, period_end, total_commission, currency, reconciliation_state)
+		VALUES ('ffffffff-ffff-4fff-8fff-fffffffffff1'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid, 'tiktok_shop', 'stmt-2026-10', '2026-10-01', '2026-10-31', 100000, 'VND', 'fully_reconciled');
+		INSERT INTO affiliate_statement_items (item_id, statement_id, external_order_id, order_amount, commission_amount, status)
+		VALUES ('ffffffff-ffff-4fff-8fff-fffffffffff2'::uuid, 'ffffffff-ffff-4fff-8fff-fffffffffff1'::uuid, 'ext_ord_1', 100000, 100000, 'matched');
+	`); err != nil {
+		t.Fatalf("failed to insert Tenant A affiliate_statement_items fixture: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		SET LOCAL app.current_tenant_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+		SET LOCAL app.current_user_id = '22222222-2222-4222-8222-222222222222';
+	`); err != nil {
+		t.Fatal(err)
+	}
+	var affItemCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM affiliate_statement_items WHERE item_id = $1::uuid`, affItemA).Scan(&affItemCount); err != nil {
+		t.Fatal(err)
+	}
+	if affItemCount != 0 {
+		t.Fatalf("TENANT-02 RLS breach: Tenant B saw %d affiliate_statement_items from Tenant A", affItemCount)
+	}
+	if _, err := tx.Exec(ctx, `SAVEPOINT sp_cross_aff_stmt_item_fk`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO affiliate_statement_items (workspace_id, statement_id, external_order_id, commission_minor, status)
+		VALUES ($1::uuid, $2::uuid, 'ext_ord_cross', 50000, 'matched')
+	`, tenantB, affStmtA); err == nil {
+		t.Fatalf("TENANT-02 FK/RLS breach: Tenant B linked affiliate_statement_items to Tenant A statement")
+	}
+	_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT sp_cross_aff_stmt_item_fk`)
 }
 
 // TestPostgresSeedTwiceIdempotency satisfies Acceptance Target 1:

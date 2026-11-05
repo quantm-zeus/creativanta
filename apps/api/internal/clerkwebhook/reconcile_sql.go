@@ -55,6 +55,18 @@ type GlobalDeliveryClaimer interface {
 	ClaimGlobalDelivery(ctx context.Context, db SQLRunner, evt VerifiedEvent) (claimed bool, err error)
 }
 
+// GlobalDeliveryReleaser optionally releases a previously claimed global delivery
+// when downstream event processing fails so the delivery remains retryable.
+type GlobalDeliveryReleaser interface {
+	ReleaseGlobalDelivery(ctx context.Context, db SQLRunner, evt VerifiedEvent) error
+}
+
+// SQLTxBeginner is implemented by *sql.DB to wrap webhook deduplication and
+// state reconciliation in an atomic database transaction.
+type SQLTxBeginner interface {
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
+}
+
 // SessionRevocationRecorder records provider session termination events
 // (session.ended, session.revoked) so active session verifiers immediately
 // reject terminated sessions even before short-lived JWT expiry.
@@ -105,6 +117,12 @@ INSERT INTO webhook_events (
 ON CONFLICT (provider, idempotency_key) DO NOTHING
 RETURNING webhook_event_id::text`
 
+	unclaimWorkspaceWebhookDeliveryQuery = `
+DELETE FROM webhook_events
+WHERE workspace_id = $1::uuid
+  AND provider = 'clerk'
+  AND idempotency_key = $2`
+
 	resolveActiveUserByClerkIDQuery = `
 SELECT user_id::text
 FROM users
@@ -153,7 +171,9 @@ ON CONFLICT (workspace_id, user_id) DO UPDATE SET
   role = EXCLUDED.role,
   status = 'active',
   source_updated_at = EXCLUDED.source_updated_at,
-  updated_at = NOW()`
+  updated_at = NOW()
+WHERE workspace_members.status NOT IN ('revoked', 'suspended')
+  AND (workspace_members.source_updated_at IS NULL OR workspace_members.source_updated_at <= EXCLUDED.source_updated_at)`
 
 	markWorkspaceMemberRemovedQuery = `
 UPDATE workspace_members
@@ -163,6 +183,7 @@ SET status = 'removed',
     updated_at = NOW()
 WHERE workspace_id = $1::uuid
   AND user_id = $2::uuid
+  AND status NOT IN ('revoked', 'suspended')
   AND (source_updated_at IS NULL OR source_updated_at <= $4)`
 
 	upsertCanonicalUserQuery = `
@@ -252,6 +273,35 @@ func (r *SQLReconciler) ProcessVerifiedEvent(ctx context.Context, evt VerifiedEv
 		return ProcessResult{}, ErrInvalidPayload
 	}
 
+	if beginner, ok := r.DB.(SQLTxBeginner); ok {
+		tx, err := beginner.BeginTx(ctx, nil)
+		if err != nil {
+			return ProcessResult{}, err
+		}
+		committed := false
+		defer func() {
+			if !committed {
+				_ = tx.Rollback()
+			}
+		}()
+
+		txReconciler := *r
+		txReconciler.DB = tx
+		res, err := txReconciler.processVerifiedEventWithRunner(ctx, evt)
+		if err != nil {
+			return ProcessResult{}, err
+		}
+		if err := tx.Commit(); err != nil {
+			return ProcessResult{}, err
+		}
+		committed = true
+		return res, nil
+	}
+
+	return r.processVerifiedEventWithRunner(ctx, evt)
+}
+
+func (r *SQLReconciler) processVerifiedEventWithRunner(ctx context.Context, evt VerifiedEvent) (ProcessResult, error) {
 	switch evt.Type {
 	case EventOrgMembershipCreated, EventOrgMembershipUpdated, EventOrgMembershipDeleted:
 		if evt.Membership == nil {
@@ -294,10 +344,12 @@ func (r *SQLReconciler) processMembershipEvent(ctx context.Context, evt Verified
 
 	userID, err := r.resolveActiveUserByClerkID(ctx, mem.ClerkUserID)
 	if err != nil {
+		_ = r.unclaimWorkspaceDelivery(ctx, workspaceID, evt.DeliveryID)
 		return ProcessResult{}, err
 	}
 
 	if err := r.reconcileMembershipRow(ctx, evt.Type, workspaceID, ownerUserID, userID, mem); err != nil {
+		_ = r.unclaimWorkspaceDelivery(ctx, workspaceID, evt.DeliveryID)
 		return ProcessResult{}, err
 	}
 	return ProcessResult{}, nil
@@ -320,9 +372,11 @@ func (r *SQLReconciler) processInvitationAcceptedEvent(ctx context.Context, evt 
 	var userID, clerkUserID string
 	err = r.DB.QueryRowContext(ctx, resolveActiveUserByEmailQuery, inv.Email).Scan(&userID, &clerkUserID)
 	if errors.Is(err, sql.ErrNoRows) {
+		_ = r.unclaimWorkspaceDelivery(ctx, workspaceID, evt.DeliveryID)
 		return ProcessResult{}, ErrUnknownUser
 	}
 	if err != nil {
+		_ = r.unclaimWorkspaceDelivery(ctx, workspaceID, evt.DeliveryID)
 		return ProcessResult{}, err
 	}
 
@@ -334,6 +388,7 @@ func (r *SQLReconciler) processInvitationAcceptedEvent(ctx context.Context, evt 
 		SourceUpdatedAt:     inv.SourceUpdatedAt,
 	}
 	if err := r.reconcileMembershipRow(ctx, EventOrgMembershipCreated, workspaceID, ownerUserID, userID, mem); err != nil {
+		_ = r.unclaimWorkspaceDelivery(ctx, workspaceID, evt.DeliveryID)
 		return ProcessResult{}, err
 	}
 	return ProcessResult{}, nil
@@ -357,6 +412,31 @@ func (r *SQLReconciler) reconcileMembershipRow(
 		return err
 	}
 
+	return r.reconcileMembershipRowState(ctx, evtType, workspaceID, ownerUserID, userID, hasExisting, existingStatus, existingRole, existingUpdated, mem)
+}
+
+func (r *SQLReconciler) reconcileMembershipRowState(
+	ctx context.Context,
+	evtType EventType,
+	workspaceID, ownerUserID, userID string,
+	hasExisting bool,
+	existingStatus, existingRole string,
+	existingUpdated sql.NullTime,
+	mem MembershipEventData,
+) error {
+	// Locally revoked or suspended memberships are authoritative local security controls
+	// and must never be reactivated by delayed or subsequent Clerk webhooks (AUTH-04).
+	if hasExisting && (existingStatus == "revoked" || existingStatus == "suspended") {
+		if evtType == EventOrgMembershipDeleted && (userID == ownerUserID || existingRole == "owner") {
+			return ErrOwnerProtected
+		}
+		return nil
+	}
+
+	if hasExisting && existingStatus == "removed" && evtType == EventOrgMembershipUpdated {
+		return nil
+	}
+
 	// Out-of-order / ambiguous timestamp handling (docs/02_features/platform/auth.md):
 	// 1. Strictly older events are ignored as stale and never overwrite newer state.
 	// 2. Removed members are never resurrected by older events or by update events.
@@ -366,9 +446,6 @@ func (r *SQLReconciler) reconcileMembershipRow(
 			return nil
 		}
 		if existingStatus == "removed" && evtType != EventOrgMembershipDeleted {
-			if evtType == EventOrgMembershipUpdated {
-				return nil
-			}
 			// Equal timestamp between delete and create is ambiguous; require
 			// strictly newer create timestamp AND authoritative provider check if configured.
 			if !mem.SourceUpdatedAt.After(existingUpdated.Time) {
@@ -417,7 +494,7 @@ func (r *SQLReconciler) reconcileMembershipRow(
 		return ErrOwnerProtected
 	}
 
-	_, err = r.DB.ExecContext(ctx, insertWorkspaceMemberQuery, mem.ClerkMembershipID, mem.SourceUpdatedAt, workspaceID, userID, mem.Role)
+	_, err := r.DB.ExecContext(ctx, insertWorkspaceMemberQuery, mem.ClerkMembershipID, mem.SourceUpdatedAt, workspaceID, userID, mem.Role)
 	return err
 }
 
@@ -433,14 +510,20 @@ func (r *SQLReconciler) processUserEvent(ctx context.Context, evt VerifiedEvent,
 		return ProcessResult{Duplicate: true}, nil
 	}
 
+	var procErr error
 	switch evt.Type {
 	case EventUserCreated, EventUserUpdated:
-		return ProcessResult{}, ReconcileCanonicalUserUpsert(ctx, r.DB, u)
+		procErr = ReconcileCanonicalUserUpsert(ctx, r.DB, u)
 	case EventUserDeleted:
-		return ProcessResult{}, ReconcileCanonicalUserDeleted(ctx, r.DB, u)
+		procErr = ReconcileCanonicalUserDeleted(ctx, r.DB, u)
 	default:
-		return ProcessResult{}, ErrUnsupportedEventType
+		procErr = ErrUnsupportedEventType
 	}
+	if procErr != nil {
+		r.releaseGlobalDelivery(ctx, evt)
+		return ProcessResult{}, procErr
+	}
+	return ProcessResult{}, nil
 }
 
 func (r *SQLReconciler) processSessionEvent(ctx context.Context, evt VerifiedEvent, sess SessionEventData) (ProcessResult, error) {
@@ -456,8 +539,11 @@ func (r *SQLReconciler) processSessionEvent(ctx context.Context, evt VerifiedEve
 	}
 
 	if evt.Type == EventSessionCreated {
-		_, err := r.DB.ExecContext(ctx, updateUserLastLoginQuery, sess.ClerkUserID, sess.SourceUpdatedAt)
-		return ProcessResult{}, err
+		if _, err := r.DB.ExecContext(ctx, updateUserLastLoginQuery, sess.ClerkUserID, sess.SourceUpdatedAt); err != nil {
+			r.releaseGlobalDelivery(ctx, evt)
+			return ProcessResult{}, err
+		}
+		return ProcessResult{}, nil
 	}
 	if (evt.Type == EventSessionEnded || evt.Type == EventSessionRevoked) && r.SessionRevocations != nil {
 		r.SessionRevocations.RevokeSession(sess.ClerkUserID, sess.SessionID)
@@ -560,4 +646,15 @@ func (r *SQLReconciler) claimWorkspaceDelivery(ctx context.Context, workspaceID 
 		return false, err
 	}
 	return webhookEventID != "", nil
+}
+
+func (r *SQLReconciler) unclaimWorkspaceDelivery(ctx context.Context, workspaceID, deliveryID string) error {
+	_, err := r.DB.ExecContext(ctx, unclaimWorkspaceWebhookDeliveryQuery, workspaceID, deliveryID)
+	return err
+}
+
+func (r *SQLReconciler) releaseGlobalDelivery(ctx context.Context, evt VerifiedEvent) {
+	if releaser, ok := r.GlobalDeliveries.(GlobalDeliveryReleaser); ok {
+		_ = releaser.ReleaseGlobalDelivery(ctx, r.DB, evt)
+	}
 }
