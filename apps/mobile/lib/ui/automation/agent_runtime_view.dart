@@ -9,6 +9,13 @@ class AgentRuntimeView extends StatefulWidget {
   final String callerRole;
   final double initialBalance;
   final void Function(MobileAgentRun updatedRun)? onRunUpdated;
+  final bool isLiveExecutionMode;
+  final Future<MobileStepExecutionResult> Function(
+    MobileAgentRun run,
+    int stepIndex,
+    String callerRole,
+    double availableBalance,
+  )? onExecuteStepRemote;
 
   const AgentRuntimeView({
     super.key,
@@ -16,6 +23,8 @@ class AgentRuntimeView extends StatefulWidget {
     this.callerRole = 'editor',
     this.initialBalance = 150.0,
     this.onRunUpdated,
+    this.isLiveExecutionMode = false,
+    this.onExecuteStepRemote,
   });
 
   @override
@@ -37,13 +46,33 @@ class _AgentRuntimeViewState extends State<AgentRuntimeView> {
     _role = widget.callerRole;
   }
 
-  void _executeStep(int index) {
-    final res = _run.executeStep(
-      stepIndex: index,
-      callerRole: _role,
-      availableBalance: _balance,
-    );
+  Future<void> _executeStep(int index) async {
+    if (widget.isLiveExecutionMode && widget.onExecuteStepRemote == null) {
+      setState(() {
+        _isAutoRunning = false;
+        _statusMessage =
+            'Dịch vụ AI Agent Runtime chưa được kết nối (fail-closed). Hệ thống không tự động trừ credits hoặc tạo kết quả giả lập.';
+      });
+      return;
+    }
 
+    final MobileStepExecutionResult res;
+    if (widget.onExecuteStepRemote != null) {
+      res = await widget.onExecuteStepRemote!(
+        _run,
+        index,
+        _role,
+        _balance,
+      );
+    } else {
+      res = _run.executeStep(
+        stepIndex: index,
+        callerRole: _role,
+        availableBalance: _balance,
+      );
+    }
+
+    if (!mounted) return;
     setState(() {
       _run = res.run;
       if (res.success) {
@@ -65,7 +94,7 @@ class _AgentRuntimeViewState extends State<AgentRuntimeView> {
     _runNextStepRecursive();
   }
 
-  void _runNextStepRecursive() {
+  Future<void> _runNextStepRecursive() async {
     if (!_isAutoRunning) return;
 
     final nextIndex = _run.steps.indexWhere(
@@ -82,9 +111,10 @@ class _AgentRuntimeViewState extends State<AgentRuntimeView> {
       return;
     }
 
-    _executeStep(nextIndex);
+    await _executeStep(nextIndex);
+    if (!mounted) return;
 
-    if (_run.currentState == MobileAgentRunState.executing) {
+    if (_run.currentState == MobileAgentRunState.executing && _isAutoRunning) {
       Future.delayed(const Duration(milliseconds: 300), () {
         if (mounted && _isAutoRunning) {
           _runNextStepRecursive();

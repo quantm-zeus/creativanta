@@ -1,10 +1,11 @@
 /**
  * Reactive Auth & Session Store for Creativanta Web (P0-03)
  * Implements client fail-closed behavior, workspace discovery,
- * operator modes, and token lifecycle without trusting client claims.
+ * first-workspace onboarding, unified 6-mode synchronization,
+ * safe internal redirect validation, and token lifecycle without trusting client claims.
  */
 
-import { writable, type Readable } from 'svelte/store';
+import { writable, get, type Readable } from 'svelte/store';
 import {
   type AuthState,
   type AuthUser,
@@ -21,9 +22,74 @@ import {
   resetClerkInstance,
   type ClerkBrowserInstance
 } from './clerk';
+import {
+  modeStore,
+  readPersistedOperatorMode,
+  persistOperatorMode
+} from '$lib/constants/modes';
 
 const ACTIVE_WORKSPACE_STORAGE_KEY = 'creativanta_active_workspace_id';
-const ACTIVE_MODE_STORAGE_KEY = 'creativanta_active_mode';
+
+/**
+ * Validates and sanitizes post-login redirect targets (UF-10).
+ * Rejects external origins, protocol-relative URLs (`//`), backslash paths (`/\`),
+ * javascript:/data: schemes, and control characters. Allows only internal `/...` paths.
+ */
+export function sanitizeRedirectTarget(
+  raw: string | null | undefined,
+  fallback = '/workspaces'
+): string {
+  if (!raw || typeof raw !== 'string') {
+    return fallback;
+  }
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith('/')) {
+    return fallback;
+  }
+  if (trimmed.startsWith('//') || trimmed.startsWith('/\\')) {
+    return fallback;
+  }
+  if (/\\|%5c/i.test(trimmed) || /^\/%2f/i.test(trimmed)) {
+    return fallback;
+  }
+  try {
+    const decoded = decodeURIComponent(trimmed);
+    if (decoded.startsWith('//') || decoded.startsWith('/\\') || decoded.includes('\\')) {
+      return fallback;
+    }
+  } catch {
+    return fallback;
+  }
+  if (/[\u0000-\u001F\u007F]/.test(trimmed)) {
+    return fallback;
+  }
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) {
+    return fallback;
+  }
+  try {
+    const parsed = new URL(trimmed, 'https://creativanta.internal');
+    if (parsed.origin !== 'https://creativanta.internal') {
+      return fallback;
+    }
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return fallback;
+  }
+}
+
+export interface CreateWorkspaceInput {
+  displayName: string;
+  slug?: string;
+  defaultOperatorMode?: OperatorMode;
+  timezone?: string;
+  locale?: string;
+}
+
+export interface CreateWorkspaceResult {
+  ok: boolean;
+  workspace?: WorkspaceSummary;
+  error?: string;
+}
 
 const initialState: SessionContext = {
   state: 'loading',
@@ -44,10 +110,15 @@ export interface AuthStore extends Readable<SessionContext> {
     discoveryFetcher?: DiscoveryFetcher;
   }) => Promise<void>;
   selectWorkspace: (workspaceId: string) => Promise<WorkspaceSummary>;
+  createWorkspace: (
+    input: CreateWorkspaceInput,
+    customFetch?: typeof fetch
+  ) => Promise<CreateWorkspaceResult>;
   setOperatorMode: (mode: OperatorMode) => void;
   refreshSession: () => Promise<string | null>;
   signOut: () => Promise<void>;
   discoverWorkspaces: () => Promise<WorkspaceSummary[]>;
+  getSnapshot: () => SessionContext;
   reset: () => void;
 }
 
@@ -96,30 +167,40 @@ export const defaultDiscoveryFetcher: DiscoveryFetcher = async (token: string) =
       status: item.status || 'active'
     }));
   } catch (err: any) {
-    // If running in development/disconnected shell and network fails:
     const msg = err?.message || 'Không thể kết nối dịch vụ khám phá Workspace (P0-03)';
     throw new Error(msg);
   }
 };
 
+export function slugifyWorkspaceName(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48);
+}
+
 export function createAuthStore(): AuthStore {
-  const { subscribe, set, update } = writable<SessionContext>({ ...initialState });
+  const store = writable<SessionContext>({
+    ...initialState,
+    activeMode: readPersistedOperatorMode()
+  });
+  const { subscribe, set, update } = store;
 
   let activeClerk: ClerkBrowserInstance | null = null;
   let customDiscoveryFetcher: DiscoveryFetcher = defaultDiscoveryFetcher;
   let unsubscribeClerkListener: (() => void) | null = null;
 
+  // Keep authStore.activeMode synchronized whenever modeStore changes (UF-09)
+  modeStore.subscribe((mode) => {
+    update((s) => (s.activeMode === mode ? s : { ...s, activeMode: mode }));
+  });
+
   function loadPersistedMode(): OperatorMode {
-    if (typeof localStorage === 'undefined') return 'creator';
-    try {
-      const saved = localStorage.getItem(ACTIVE_MODE_STORAGE_KEY) as OperatorMode | null;
-      if (saved && CANONICAL_OPERATOR_MODES.some((m) => m.id === saved)) {
-        return saved;
-      }
-    } catch {
-      // ignore storage errors
-    }
-    return 'creator';
+    return modeStore.syncFromStorage();
   }
 
   function getPersistedWorkspaceId(): string | null {
@@ -188,6 +269,10 @@ export function createAuthStore(): AuthStore {
 
   return {
     subscribe,
+
+    getSnapshot(): SessionContext {
+      return get(store);
+    },
 
     async init(options) {
       if (options?.discoveryFetcher) {
@@ -328,7 +413,6 @@ export function createAuthStore(): AuthStore {
 
           const target = s.workspaces.find((w) => w.id === workspaceId);
           if (!target) {
-            // Principle: never trust client claims; cannot select non-member workspace
             reject(new Error(`Không tìm thấy quyền thành viên cho workspace ${workspaceId} (fail-closed)`));
             return s;
           }
@@ -343,25 +427,151 @@ export function createAuthStore(): AuthStore {
       });
     },
 
+    async createWorkspace(
+      input: CreateWorkspaceInput,
+      customFetch?: typeof fetch
+    ): Promise<CreateWorkspaceResult> {
+      const snapshot = get(store);
+      if (snapshot.state !== 'authenticated' || !snapshot.token) {
+        return {
+          ok: false,
+          error: 'Yêu cầu đăng nhập hợp lệ trước khi tạo Workspace mới (fail-closed).'
+        };
+      }
+
+      const displayName = (input.displayName || '').trim();
+      if (displayName.length < 2) {
+        return {
+          ok: false,
+          error: 'Tên Workspace phải có ít nhất 2 ký tự.'
+        };
+      }
+
+      const slug = (input.slug?.trim() || slugifyWorkspaceName(displayName));
+      if (!slug || slug.length < 2) {
+        return {
+          ok: false,
+          error: 'Định danh slug không hợp lệ (chỉ dùng chữ thường, số và dấu gạch ngang).'
+        };
+      }
+
+      const chosenMode: OperatorMode =
+        input.defaultOperatorMode &&
+        CANONICAL_OPERATOR_MODES.some((m) => m.id === input.defaultOperatorMode)
+          ? input.defaultOperatorMode
+          : snapshot.activeMode;
+
+      const fetchImpl = customFetch ?? (typeof fetch !== 'undefined' ? fetch : undefined);
+      if (!fetchImpl) {
+        return {
+          ok: false,
+          error: 'Không có kết nối mạng để tạo Workspace.'
+        };
+      }
+
+      const apiOrigin = (import.meta.env.VITE_API_ORIGIN || '').replace(/\/+$/, '');
+      const endpoint = `${apiOrigin}/creativanta.workspace.v1.WorkspaceService/Create`;
+      const idempotencyKey = `ws-create-${slug}-${Date.now()}`;
+
+      try {
+        const res = await fetchImpl(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'Connect-Protocol-Version': '1',
+            Authorization: `Bearer ${snapshot.token}`,
+            'X-Idempotency-Key': idempotencyKey
+          },
+          body: JSON.stringify({
+            idempotency_key: idempotencyKey,
+            display_name: displayName,
+            slug,
+            default_operator_mode: chosenMode,
+            timezone: input.timezone || 'Asia/Ho_Chi_Minh',
+            locale: input.locale || 'vi-VN'
+          })
+        });
+
+        let payload: any = null;
+        try {
+          payload = await res.json();
+        } catch {
+          payload = null;
+        }
+
+        if (!res.ok) {
+          const serverMessage =
+            (payload && typeof payload.message === 'string' && payload.message) ||
+            (res.status === 404
+              ? 'Dịch vụ WorkspaceService/Create chưa được gắn kết trên máy chủ hiện tại. Thông tin bạn nhập đã được giữ nguyên.'
+              : `Không thể tạo Workspace (${res.status}). Thông tin bạn nhập đã được giữ nguyên.`);
+          return {
+            ok: false,
+            error: serverMessage
+          };
+        }
+
+        const wsObj = payload?.workspace || payload;
+        const createdId = String(wsObj?.workspace_id || wsObj?.id || '');
+        if (!createdId) {
+          return {
+            ok: false,
+            error: 'Phản hồi máy chủ thiếu mã định danh workspace_id (fail-closed).'
+          };
+        }
+
+        const createdSummary: WorkspaceSummary = {
+          id: createdId,
+          name: String(wsObj?.display_name || wsObj?.name || displayName),
+          role: 'owner',
+          plan: String(wsObj?.plan_tier || wsObj?.plan || 'Starter'),
+          status: 'active'
+        };
+
+        setPersistedWorkspaceId(createdSummary.id);
+        persistOperatorMode(chosenMode);
+        modeStore.setMode(chosenMode);
+
+        update((s) => {
+          const exists = s.workspaces.some((w) => w.id === createdSummary.id);
+          const nextWorkspaces = exists ? s.workspaces : [...s.workspaces, createdSummary];
+          return {
+            ...s,
+            workspaces: nextWorkspaces,
+            activeWorkspace: createdSummary,
+            activeMode: chosenMode,
+            discoveryError: null
+          };
+        });
+
+        return {
+          ok: true,
+          workspace: createdSummary
+        };
+      } catch (err: any) {
+        return {
+          ok: false,
+          error:
+            err?.message ||
+            'Không thể kết nối tới dịch vụ tạo Workspace. Thông tin bạn nhập đã được giữ nguyên.'
+        };
+      }
+    },
+
     setOperatorMode(mode: OperatorMode) {
       if (!CANONICAL_OPERATOR_MODES.some((m) => m.id === mode)) {
         console.warn(`[AUTH] Invalid operator mode: ${mode}`);
         return;
       }
 
-      if (typeof localStorage !== 'undefined') {
-        try {
-          localStorage.setItem(ACTIVE_MODE_STORAGE_KEY, mode);
-        } catch {
-          // ignore
-        }
-      }
-
+      persistOperatorMode(mode);
+      modeStore.setMode(mode);
       update((s) => ({ ...s, activeMode: mode }));
     },
 
     async refreshSession() {
-      let currentSession = activeClerk?.session;
+      const currentSession = activeClerk?.session;
       if (!currentSession) {
         update((s) => ({
           ...s,
@@ -427,10 +637,7 @@ export function createAuthStore(): AuthStore {
     },
 
     async discoverWorkspaces() {
-      let currentToken: string | null = null;
-      subscribe((s) => {
-        currentToken = s.token;
-      })();
+      const currentToken = get(store).token;
 
       if (!currentToken) {
         throw new Error('Chưa đăng nhập — không thể khám phá workspace');
@@ -447,7 +654,8 @@ export function createAuthStore(): AuthStore {
       setPersistedWorkspaceId(null);
       resetClerkInstance();
       activeClerk = null;
-      set({ ...initialState });
+      const persistedMode = readPersistedOperatorMode();
+      set({ ...initialState, activeMode: persistedMode });
     }
   };
 }

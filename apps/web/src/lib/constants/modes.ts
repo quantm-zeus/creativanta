@@ -3,6 +3,8 @@
  * Per docs/02_features/platform/home_decision_engine.md and Pack 01 §S05.1.
  */
 
+import { writable } from 'svelte/store';
+
 export type OperatorModeId =
   | 'creator'
   | 'seller'
@@ -94,28 +96,62 @@ export const OPERATOR_MODES: readonly OperatorModeDef[] = [
 
 export const DEFAULT_OPERATOR_MODE: OperatorModeId = 'creator';
 
-import { writable } from 'svelte/store';
+export const OPERATOR_MODE_STORAGE_KEY = 'creativanta_operator_mode';
+export const LEGACY_ACTIVE_MODE_STORAGE_KEY = 'creativanta_active_mode';
 
-const STORAGE_KEY = 'creativanta_operator_mode';
+export function isValidOperatorModeId(value: unknown): value is OperatorModeId {
+  return typeof value === 'string' && OPERATOR_MODES.some((m) => m.id === value);
+}
+
+export function readPersistedOperatorMode(): OperatorModeId {
+  if (typeof localStorage === 'undefined') {
+    return DEFAULT_OPERATOR_MODE;
+  }
+  try {
+    const primary = localStorage.getItem(OPERATOR_MODE_STORAGE_KEY);
+    if (isValidOperatorModeId(primary)) {
+      return primary;
+    }
+    const secondary = localStorage.getItem(LEGACY_ACTIVE_MODE_STORAGE_KEY);
+    if (isValidOperatorModeId(secondary)) {
+      return secondary;
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return DEFAULT_OPERATOR_MODE;
+}
+
+export function persistOperatorMode(mode: OperatorModeId): void {
+  if (typeof localStorage === 'undefined') {
+    return;
+  }
+  try {
+    localStorage.setItem(OPERATOR_MODE_STORAGE_KEY, mode);
+    localStorage.setItem(LEGACY_ACTIVE_MODE_STORAGE_KEY, mode);
+  } catch {
+    // ignore storage errors
+  }
+}
 
 function createModeStore() {
-  let initial: OperatorModeId = DEFAULT_OPERATOR_MODE;
-  if (typeof window !== 'undefined' && window.localStorage) {
-    const saved = window.localStorage.getItem(STORAGE_KEY) as OperatorModeId;
-    if (saved && OPERATOR_MODES.some((m) => m.id === saved)) {
-      initial = saved;
-    }
-  }
-
+  const initial: OperatorModeId = readPersistedOperatorMode();
   const { subscribe, set } = writable<OperatorModeId>(initial);
 
   return {
     subscribe,
     setMode: (mode: OperatorModeId) => {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem(STORAGE_KEY, mode);
+      if (!isValidOperatorModeId(mode)) {
+        return;
       }
+      persistOperatorMode(mode);
       set(mode);
+    },
+    syncFromStorage: (): OperatorModeId => {
+      const mode = readPersistedOperatorMode();
+      persistOperatorMode(mode);
+      set(mode);
+      return mode;
     },
     getModeDef: (modeId: OperatorModeId): OperatorModeDef => {
       return OPERATOR_MODES.find((m) => m.id === modeId) || OPERATOR_MODES[0];

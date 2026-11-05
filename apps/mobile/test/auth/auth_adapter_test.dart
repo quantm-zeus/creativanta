@@ -2,6 +2,26 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:creativanta_mobile/auth/auth_models.dart';
 import 'package:creativanta_mobile/auth/auth_provider_adapter.dart';
 
+class _MockAuthHttpTransport implements AuthHttpTransport {
+  final Map<String, AuthHttpResponse Function(Map<String, String>? headers, Map<String, dynamic>? body)> routes;
+
+  _MockAuthHttpTransport(this.routes);
+
+  @override
+  Future<AuthHttpResponse> postJson(
+    Uri uri, {
+    Map<String, String>? headers,
+    Map<String, dynamic>? body,
+  }) async {
+    final key = 'POST ${uri.path}';
+    final handler = routes[key];
+    if (handler == null) {
+      return const AuthHttpResponse(statusCode: 404, body: '{"message":"Not Found"}');
+    }
+    return handler(headers, body);
+  }
+}
+
 void main() {
   group('ClerkAuthProviderAdapter unconfigured fail-closed contract', () {
     late ClerkAuthProviderAdapter adapter;
@@ -195,6 +215,86 @@ void main() {
       expect(str.contains('super-sensitive-jwt-token-string'), isFalse,
           reason: 'AuthSession toString must never expose cleartext JWT token');
       expect(str.contains('[REDACTED]'), isTrue);
+    });
+  });
+
+  group('UF-03 & IQ-09 ClerkAuthProviderAdapter configured transport lifecycle', () {
+    test('signInWithEmailPassword, workspace discovery, and refreshToken succeed with live HTTP transport', () async {
+      final transport = _MockAuthHttpTransport({
+        'POST /api/auth/clerk/sign-in': (headers, body) {
+          if (body?['password'] != 'valid-pass') {
+            return const AuthHttpResponse(
+              statusCode: 401,
+              body: '{"message":"Sai mật khẩu"}',
+            );
+          }
+          return const AuthHttpResponse(
+            statusCode: 200,
+            body: '''
+            {
+              "session_token": "jwt_live_token_001",
+              "session_id": "sess_live_001",
+              "user": {
+                "id": "usr_clerk_live_01",
+                "email": "live@creativanta.vn",
+                "display_name": "Live Operator"
+              },
+              "workspaces": [
+                {
+                  "workspace_id": "ws-live-01",
+                  "display_name": "Live Brand Studio",
+                  "role": "owner",
+                  "plan_tier": "Pro",
+                  "status": "active"
+                }
+              ]
+            }
+            ''',
+          );
+        },
+        'POST /api/auth/clerk/refresh': (headers, body) {
+          return const AuthHttpResponse(
+            statusCode: 200,
+            body: '{"session_token":"jwt_live_token_002_refreshed"}',
+          );
+        },
+      });
+
+      final adapter = ClerkAuthProviderAdapter(
+        publishableKey: 'pk_live_configured_key',
+        apiBaseUrl: 'https://api.creativanta.vn',
+        httpTransport: transport,
+      );
+
+      await adapter.initialize();
+      expect(adapter.isConfigured, isTrue);
+      expect(adapter.currentStatus, equals(AuthStatus.unauthenticated));
+
+      // Negative: invalid credentials fail closed with AUTH_UNAUTHORIZED_001
+      final badLogin = await adapter.signInWithEmailPassword(
+        email: 'live@creativanta.vn',
+        password: 'wrong',
+      );
+      expect(badLogin.isSuccess, isFalse);
+      expect(badLogin.failure?.code, equals('AUTH_UNAUTHORIZED_001'));
+
+      // Positive: valid credentials establish non-test-double session
+      final okLogin = await adapter.signInWithEmailPassword(
+        email: 'live@creativanta.vn',
+        password: 'valid-pass',
+      );
+      expect(okLogin.isSuccess, isTrue);
+      expect(adapter.currentStatus, equals(AuthStatus.authenticated));
+      expect(adapter.currentSession?.isTestDouble, isFalse);
+      expect(adapter.currentSession?.activeWorkspace.id, equals('ws-live-01'));
+
+      // Refresh token updates sessionToken and keeps activeWorkspace
+      final refreshed = await adapter.refreshToken();
+      expect(refreshed.isSuccess, isTrue);
+      expect(adapter.currentSession?.sessionToken, equals('jwt_live_token_002_refreshed'));
+      expect(adapter.currentSession?.activeWorkspace.id, equals('ws-live-01'));
+
+      adapter.dispose();
     });
   });
 }

@@ -7,9 +7,12 @@ import {
   verifyTranslationCatalogParity
 } from '../i18n';
 import {
+  activateModalFocusSession,
   buildAccessibleStatusBadge,
   CANONICAL_LEGAL_LINKS,
   evaluateColorContrast,
+  getFocusableElements,
+  handleModalKeydown,
   stepDialogFocusTrap
 } from './index';
 
@@ -111,5 +114,95 @@ describe('P8-08 Web Full-Surface i18n, WCAG 2.1 AA Accessibility & Legal Complia
       'dmca',
       'ai-disclaimer'
     ]);
+  });
+
+  it('UF-12 traps Tab/Shift+Tab inside modal container and restores focus on close', () => {
+    const firstBtn = {
+      focus: () => {
+        activeEl = firstBtn;
+      },
+      hasAttribute: () => false,
+      getAttribute: () => null
+    } as unknown as HTMLElement;
+    const lastBtn = {
+      focus: () => {
+        activeEl = lastBtn;
+      },
+      hasAttribute: () => false,
+      getAttribute: () => null
+    } as unknown as HTMLElement;
+    const triggerBtn = {
+      focus: () => {
+        activeEl = triggerBtn;
+      }
+    } as unknown as HTMLElement;
+
+    let activeEl: HTMLElement | null = triggerBtn;
+    const container = {
+      querySelectorAll: () => [firstBtn, lastBtn],
+      contains: (node: Node | null) => node === (firstBtn as unknown as Node) || node === (lastBtn as unknown as Node),
+      focus: () => {
+        activeEl = container;
+      }
+    } as unknown as HTMLElement;
+
+    const origDocument = globalThis.document;
+    Object.defineProperty(globalThis, 'document', {
+      configurable: true,
+      value: {
+        get activeElement() {
+          return activeEl;
+        },
+        querySelectorAll: () => []
+      }
+    });
+
+    try {
+      expect(getFocusableElements(container)).toHaveLength(2);
+      const cleanup = activateModalFocusSession(container, triggerBtn);
+      expect(activeEl).toBe(firstBtn);
+
+      // Tab on last element wraps to first element
+      activeEl = lastBtn;
+      let prevented = false;
+      handleModalKeydown(
+        {
+          key: 'Tab',
+          shiftKey: false,
+          preventDefault: () => {
+            prevented = true;
+          }
+        } as unknown as KeyboardEvent,
+        container,
+        () => {}
+      );
+      expect(prevented).toBe(true);
+      expect(activeEl).toBe(firstBtn);
+
+      // Shift+Tab on first element wraps to last element
+      let shiftPrevented = false;
+      handleModalKeydown(
+        {
+          key: 'Tab',
+          shiftKey: true,
+          preventDefault: () => {
+            shiftPrevented = true;
+          }
+        } as unknown as KeyboardEvent,
+        container,
+        () => {}
+      );
+      expect(shiftPrevented).toBe(true);
+      expect(activeEl).toBe(lastBtn);
+
+      // Cleanup restores focus to triggerBtn
+      cleanup();
+      expect(activeEl).toBe(triggerBtn);
+    } finally {
+      Object.defineProperty(globalThis, 'document', {
+        configurable: true,
+        value: origDocument
+      });
+    }
   });
 });

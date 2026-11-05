@@ -3,9 +3,11 @@
 		MOTION_STYLES,
 		MOTION_PRESETS,
 		estimateImageToVideoCredits,
+		requestImageToVideoGenerationRemote,
 		type MotionStyleOption,
 		type MotionPresetOption
 	} from '$lib/production';
+	import { authStore } from '$lib/auth';
 
 	interface StudioImage {
 		id: string;
@@ -97,7 +99,7 @@
 		images = images.filter((img) => img.id !== id);
 	}
 
-	function generateVideo() {
+	async function generateVideo() {
 		if (images.length === 0) {
 			validationError = 'Vui lòng thêm ít nhất 1 ảnh';
 			return;
@@ -109,11 +111,32 @@
 
 		isGenerating = true;
 		validationError = '';
-		setTimeout(() => {
+		successMessage = '';
+		try {
+			const res = await requestImageToVideoGenerationRemote({
+				workspaceId: $authStore.activeWorkspace?.id,
+				images,
+				selectedMotionStyleId,
+				motionIntensity,
+				aspectRatio: '9:16',
+				selectedTransitionId: transitionType,
+				customPrompt: `${selectedPresetId} (${qualityTier}, ${durationSeconds}s, loop=${isLoop}, bgm=${attachBgm})`,
+				quoteCredits,
+				availableBalance: userBalance
+			});
+
+			if (!res.ok || !res.jobId) {
+				validationError =
+					res.error ||
+					'Không thể khởi tạo tác vụ Image-to-Video trên máy chủ. Số dư credits và cấu hình ảnh được giữ nguyên.';
+				return;
+			}
+
+			userBalance = res.remainingBalance ?? userBalance;
+			successMessage = `Đã gửi tác vụ Image-to-Video thành công! Mã tác vụ: ${res.jobId}. Đã tạm giữ ${res.reservedCredits ?? quoteCredits} credits.`;
+		} finally {
 			isGenerating = false;
-			userBalance -= quoteCredits;
-			successMessage = `Đã gửi tác vụ Image-to-Video thành công! Mã tác vụ: job-i2v-${Date.now().toString().slice(-6)}. Trừ ${quoteCredits} credits.`;
-		}, 600);
+		}
 	}
 </script>
 

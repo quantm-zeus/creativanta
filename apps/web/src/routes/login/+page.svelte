@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { authStore, getOrInitClerk } from '$lib/auth';
+  import { authStore, getOrInitClerk, sanitizeRedirectTarget } from '$lib/auth';
   import UnavailableNotice from '$lib/components/UnavailableNotice.svelte';
 
   let email = $state('');
@@ -13,7 +13,7 @@
   let isSubmitting = $state(false);
   let clerkContainer = $state<HTMLDivElement | null>(null);
 
-  let redirectTarget = $derived($page.url.searchParams.get('redirect') || '/workspaces');
+  let redirectTarget = $derived(sanitizeRedirectTarget($page.url.searchParams.get('redirect'), '/workspaces'));
 
   onMount(async () => {
     // If Clerk is configured and mounted component is available

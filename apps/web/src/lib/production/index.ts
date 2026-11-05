@@ -580,3 +580,127 @@ export function calculateStyleExtractionQuote(videoCount: number): {
 		isValid: true
 	};
 }
+
+import { callCanonicalRpc, generateIdempotencyKey, type CanonicalRpcOptions } from '$lib/api/client';
+
+export interface ImageToVideoGenerationInput {
+	workspaceId?: string;
+	images: Array<{
+		id: string;
+		url: string;
+		name: string;
+		durationSeconds: number;
+		customMotionStyle?: string;
+	}>;
+	selectedMotionStyleId: string;
+	motionIntensity: number;
+	aspectRatio: '9:16' | '16:9' | '1:1';
+	selectedTransitionId: string;
+	customPrompt?: string;
+	quoteCredits: number;
+	availableBalance: number;
+}
+
+export interface ImageToVideoGenerationResult {
+	ok: boolean;
+	jobId?: string;
+	reservedCredits?: number;
+	remainingBalance?: number;
+	error?: string;
+}
+
+/**
+ * Dispatches an Image-to-Video generation request to canonical
+ * `creativanta.production.v1.AssetService/Generate` (UF-05).
+ * Never subtracts credits locally or invents a fake job ID when unauthenticated
+ * or when backend reservation/dispatch fails.
+ */
+export async function requestImageToVideoGenerationRemote(
+	input: ImageToVideoGenerationInput,
+	options: CanonicalRpcOptions = {}
+): Promise<ImageToVideoGenerationResult> {
+	if (!input.images || input.images.length === 0) {
+		return {
+			ok: false,
+			error: 'Vui lòng thêm ít nhất 1 ảnh'
+		};
+	}
+
+	if (input.images.length > 10) {
+		return {
+			ok: false,
+			error: 'Tối đa 10 ảnh cho mỗi lần tạo Image-to-Video (Screen W035)'
+		};
+	}
+
+	if (input.availableBalance < input.quoteCredits) {
+		return {
+			ok: false,
+			error: 'Số dư credits không đủ'
+		};
+	}
+
+	const rpcRes = await callCanonicalRpc<
+		Record<string, unknown>,
+		{
+			job_id?: string;
+			job?: { job_id?: string; reserved_credits?: number };
+			reserved_credits?: number;
+			remaining_balance?: number;
+		}
+	>(
+		'creativanta.production.v1.AssetService/Generate',
+		{
+			idempotency_key: options.idempotencyKey || generateIdempotencyKey('i2v-gen'),
+			workspace_id: input.workspaceId,
+			generation_type: 'image_to_video',
+			images: input.images.map((img) => ({
+				image_id: img.id,
+				source_url: img.url,
+				duration_seconds: img.durationSeconds,
+				motion_style: img.customMotionStyle || input.selectedMotionStyleId
+			})),
+			motion_style: input.selectedMotionStyleId,
+			motion_intensity: input.motionIntensity,
+			aspect_ratio: input.aspectRatio,
+			transition_style: input.selectedTransitionId,
+			prompt: input.customPrompt || '',
+			quoted_credits: String(input.quoteCredits)
+		},
+		{
+			...options,
+			workspaceId: options.workspaceId ?? input.workspaceId
+		}
+	);
+
+	if (!rpcRes.ok) {
+		return {
+			ok: false,
+			error: rpcRes.error.message
+		};
+	}
+
+	const jobId = rpcRes.data?.job_id || rpcRes.data?.job?.job_id;
+	if (!jobId) {
+		return {
+			ok: false,
+			error: 'Phản hồi từ máy chủ thiếu mã tác vụ job_id (fail-closed). Không trừ credits.'
+		};
+	}
+
+	const reserved =
+		rpcRes.data?.reserved_credits ??
+		rpcRes.data?.job?.reserved_credits ??
+		input.quoteCredits;
+	const remaining =
+		typeof rpcRes.data?.remaining_balance === 'number'
+			? rpcRes.data.remaining_balance
+			: Math.max(0, input.availableBalance - reserved);
+
+	return {
+		ok: true,
+		jobId,
+		reservedCredits: reserved,
+		remainingBalance: remaining
+	};
+}
