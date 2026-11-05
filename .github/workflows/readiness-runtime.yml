@@ -1,0 +1,59 @@
+name: readiness-runtime
+
+on:
+  push:
+    branches:
+      - feat/readiness-runtime-e2e
+  pull_request:
+    branches:
+      - staging
+      - main
+    paths:
+      - "apps/api/**"
+      - "infra/migrations/**"
+      - "tooling/readiness/runtime/**"
+      - "build/readiness/2026-11-05/runtime*"
+      - ".github/workflows/readiness-runtime.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: readiness-runtime-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  runtime-e2e:
+    name: Runtime/DB/API Security & Real Integration E2E (STAGING/LOCAL)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres@sha256:7958605b474b3d264a969cb3a123d6aa00ad1e1fe9da8a69984dabb704d93317
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci_ephemeral_test_only_not_for_dev_or_prod
+          POSTGRES_DB: creativanta_readiness_e2e
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d creativanta_readiness_e2e"
+          --health-interval=2s
+          --health-timeout=2s
+          --health-retries=15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Setup Go 1.27.3
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417
+        with:
+          go-version: "1.27.3"
+          cache-dependency-path: apps/api/go.sum
+
+      - name: Run POST-P8 runtime readiness E2E gate
+        env:
+          CREATIVANTA_TEST_DATABASE_URL: postgres://postgres:ci_ephemeral_test_only_not_for_dev_or_prod@127.0.0.1:5432/creativanta_readiness_e2e?sslmode=disable
+          CREATIVANTA_TEST_POSTGRES_DSN: postgres://postgres:ci_ephemeral_test_only_not_for_dev_or_prod@127.0.0.1:5432/creativanta_readiness_e2e?sslmode=disable
+        run: ./tooling/readiness/runtime/check_runtime_e2e.sh
