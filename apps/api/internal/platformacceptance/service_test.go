@@ -2,7 +2,11 @@ package platformacceptance
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -256,12 +260,13 @@ func TestWorkspaceAcceptanceSignoff(t *testing.T) {
 		WorkspaceRole: "owner",
 	})
 
-	// 1. Valid signoff across canonical modes
+	// 1. Valid signoff across canonical modes when onboarding steps are completed
 	for _, mode := range CanonicalOperatorModes {
 		signoff, err := svc.EvaluateWorkspaceSignoff(ctxOwner, WorkspaceSignoffRequest{
-			WorkspaceID:  "ws-acme",
-			OperatorMode: mode.ModeID,
-			Notes:        "Ready for operator mode rehearsal",
+			WorkspaceID:                "ws-acme",
+			OperatorMode:               mode.ModeID,
+			CompletedOnboardingStepIDs: []string{"select_operator_mode", "complete_first_value"},
+			Notes:                      "Ready for operator mode rehearsal",
 		})
 		if err != nil {
 			t.Fatalf("failed signoff for mode %s: %v", mode.ModeID, err)
@@ -269,13 +274,32 @@ func TestWorkspaceAcceptanceSignoff(t *testing.T) {
 		if !signoff.SixModesVerified {
 			t.Errorf("expected SixModesVerified=true")
 		}
+		if !signoff.OnboardingLoopCompleted {
+			t.Errorf("expected OnboardingLoopCompleted=true when onboarding steps provided")
+		}
 		if len(signoff.SignoffDigest) != 64 {
 			t.Errorf("expected 64-char signoff digest, got %q", signoff.SignoffDigest)
 		}
 	}
 
+	// 1b. Incomplete onboarding steps must NOT claim OnboardingLoopCompleted=true
+	incompleteSignoff, err := svc.EvaluateWorkspaceSignoff(ctxOwner, WorkspaceSignoffRequest{
+		WorkspaceID:  "ws-acme",
+		OperatorMode: "creator",
+		Notes:        "Onboarding skipped",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error on incomplete onboarding signoff: %v", err)
+	}
+	if incompleteSignoff.OnboardingLoopCompleted {
+		t.Errorf("expected OnboardingLoopCompleted=false when CompletedOnboardingStepIDs is empty")
+	}
+	if incompleteSignoff.Status != "onboarding_incomplete" {
+		t.Errorf("expected status=onboarding_incomplete, got %q", incompleteSignoff.Status)
+	}
+
 	// 2. Non-canonical mode rejected (RULE-M01-006: never collapse to fewer than 6)
-	_, err := svc.EvaluateWorkspaceSignoff(ctxOwner, WorkspaceSignoffRequest{
+	_, err = svc.EvaluateWorkspaceSignoff(ctxOwner, WorkspaceSignoffRequest{
 		WorkspaceID:  "ws-acme",
 		OperatorMode: "generic_creator",
 	})
@@ -361,6 +385,11 @@ func TestFivePathAcceptance(t *testing.T) {
 	if missingReport.ReleaseDecision != DecisionReleaseBlocked {
 		t.Errorf("Missing Path expected RELEASE_BLOCKED, got %s", missingReport.ReleaseDecision)
 	}
+	for _, mod := range missingReport.Modules {
+		if mod.Verified {
+			t.Errorf("Missing Path module %s must not be marked Verified when manifests are missing", mod.ModuleID)
+		}
+	}
 
 	// Path 4: Broken Path (caller claims production launch without clearing gates)
 	_, err = svc.ReconcileFullScope(ctxAdmin, ReconcileFullScopeRequest{
@@ -386,5 +415,184 @@ func TestFivePathAcceptance(t *testing.T) {
 	}
 	if auditReport.IntegritySha256 != lastRun.IntegritySha256 {
 		t.Errorf("expected audit report integrity sha256 to match last run")
+	}
+}
+
+func buildSyntheticRepoWith60Manifests(t *testing.T) (string, map[string]string) {
+	t.Helper()
+	repoRoot := t.TempDir()
+	buildRoot := filepath.Join(repoRoot, "build")
+	manifestPaths := make(map[string]string, len(Canonical60Tasks))
+
+	for taskID, spec := range Canonical60Tasks {
+		sliceDir := filepath.Join(buildRoot, "phase-"+spec.Phase, taskID)
+		evidDir := filepath.Join(sliceDir, "evidence")
+		if err := os.MkdirAll(evidDir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", evidDir, err)
+		}
+		evidRel := filepath.ToSlash(filepath.Join("build", "phase-"+spec.Phase, taskID, "evidence", "test.log"))
+		if err := os.WriteFile(filepath.Join(repoRoot, filepath.FromSlash(evidRel)), []byte("PASS\n"), 0o644); err != nil {
+			t.Fatalf("write evidence: %v", err)
+		}
+
+		srcRel := filepath.ToSlash(filepath.Join("src", spec.Phase, taskID+".go"))
+		srcFull := filepath.Join(repoRoot, filepath.FromSlash(srcRel))
+		if err := os.MkdirAll(filepath.Dir(srcFull), 0o755); err != nil {
+			t.Fatalf("mkdir src: %v", err)
+		}
+		srcContent := []byte(fmt.Sprintf("package %s // task %s\n", spec.Phase, taskID))
+		if err := os.WriteFile(srcFull, srcContent, 0o644); err != nil {
+			t.Fatalf("write src: %v", err)
+		}
+		sum := sha256.Sum256(srcContent)
+		srcHash := hex.EncodeToString(sum[:])
+
+		pkt := map[string]any{
+			"task_id":           taskID,
+			"phase":             spec.Phase,
+			"slice":             taskID,
+			"title":             "Synthetic task " + taskID,
+			"status":            "LOCAL_IMPLEMENTED",
+			"subslice_status":   "IMPLEMENTED_LOCAL_TESTED",
+			"acceptance_status": "PENDING",
+			"remaining_scope":   []any{},
+			"source_files": map[string]string{
+				srcRel: srcHash,
+			},
+			"checks": []map[string]any{
+				{
+					"command":       "go test ./...",
+					"exit_code":     0,
+					"evidence_path": evidRel,
+				},
+			},
+		}
+		if taskID == "P8-09" {
+			pkt["external_gates"] = []map[string]any{
+				{
+					"gate_id": "LEG-H-001",
+					"status":  "OPEN_EXTERNAL_HUMAN_GATE",
+				},
+			}
+		}
+
+		raw, err := json.MarshalIndent(pkt, "", "  ")
+		if err != nil {
+			t.Fatalf("marshal manifest %s: %v", taskID, err)
+		}
+		mPath := filepath.Join(sliceDir, "manifest.json")
+		if err := os.WriteFile(mPath, raw, 0o644); err != nil {
+			t.Fatalf("write manifest %s: %v", taskID, err)
+		}
+		manifestPaths[taskID] = mPath
+	}
+	return buildRoot, manifestPaths
+}
+
+func TestReconcileFullScope_NegativeIntegrityAndGateChecks(t *testing.T) {
+	ctxAdmin := WithCallerContext(context.Background(), CallerContext{
+		UserID:    "super-1",
+		IsAdmin:   true,
+		AdminRole: "super_admin",
+	})
+
+	// 1. Baseline synthetic 60-task repo passes
+	buildRoot, _ := buildSyntheticRepoWith60Manifests(t)
+	svc := NewService(buildRoot)
+	rep, err := svc.ReconcileFullScope(ctxAdmin, ReconcileFullScopeRequest{})
+	if err != nil {
+		t.Fatalf("baseline synthetic repo failed: %v", err)
+	}
+	if !rep.AllManifestsVerified || rep.AcceptanceStatus != "PENDING" {
+		t.Fatalf("unexpected baseline report state: verified=%v acceptance=%s", rep.AllManifestsVerified, rep.AcceptanceStatus)
+	}
+
+	// 2. Duplicate task_id (60 manifest files on disk, but P4-03 claims task_id P4-02) must fail closed
+	buildRootDup, pathsDup := buildSyntheticRepoWith60Manifests(t)
+	p402Bytes, _ := os.ReadFile(pathsDup["P4-02"])
+	if err := os.WriteFile(pathsDup["P4-03"], p402Bytes, 0o644); err != nil {
+		t.Fatalf("overwrite P4-03 with duplicate P4-02: %v", err)
+	}
+	_, err = NewService(buildRootDup).ReconcileFullScope(ctxAdmin, ReconcileFullScopeRequest{})
+	if !errors.Is(err, ErrTamperedManifestChecksum) {
+		t.Fatalf("expected ErrTamperedManifestChecksum for duplicate task_id, got: %v", err)
+	}
+
+	// 3. Missing canonical task manifest (59 manifests) must fail closed with ErrManifestNotFound
+	buildRootMissingTask, pathsMissing := buildSyntheticRepoWith60Manifests(t)
+	if err := os.Remove(pathsMissing["P6-04"]); err != nil {
+		t.Fatalf("remove P6-04: %v", err)
+	}
+	_, err = NewService(buildRootMissingTask).ReconcileFullScope(ctxAdmin, ReconcileFullScopeRequest{})
+	if !errors.Is(err, ErrManifestNotFound) {
+		t.Fatalf("expected ErrManifestNotFound when P6-04 is missing, got: %v", err)
+	}
+
+	// 4. Tampered source file on disk (hash mismatch against manifest) must fail closed
+	buildRootTamperedSrc, _ := buildSyntheticRepoWith60Manifests(t)
+	tamperedSrcFile := filepath.Join(filepath.Dir(buildRootTamperedSrc), "src", "P2", "P2-01.go")
+	if err := os.WriteFile(tamperedSrcFile, []byte("package P2 // TAMPERED\n"), 0o644); err != nil {
+		t.Fatalf("tamper source file: %v", err)
+	}
+	_, err = NewService(buildRootTamperedSrc).ReconcileFullScope(ctxAdmin, ReconcileFullScopeRequest{})
+	if !errors.Is(err, ErrTamperedManifestChecksum) {
+		t.Fatalf("expected ErrTamperedManifestChecksum when source file content drifts from manifest hash, got: %v", err)
+	}
+
+	// 5. Unverified task status ("PENDING") must fail closed
+	buildRootPending, pathsPending := buildSyntheticRepoWith60Manifests(t)
+	var mP301 map[string]any
+	rawP301, _ := os.ReadFile(pathsPending["P3-01"])
+	_ = json.Unmarshal(rawP301, &mP301)
+	mP301["status"] = "PENDING"
+	updatedP301, _ := json.Marshal(mP301)
+	_ = os.WriteFile(pathsPending["P3-01"], updatedP301, 0o644)
+	_, err = NewService(buildRootPending).ReconcileFullScope(ctxAdmin, ReconcileFullScopeRequest{})
+	if !errors.Is(err, ErrTamperedManifestChecksum) {
+		t.Fatalf("expected ErrTamperedManifestChecksum for status=PENDING on P3-01, got: %v", err)
+	}
+
+	// 6. P8-09 falsely claiming acceptance_status="ACCEPTED" while external gates are open must fail closed
+	buildRootFakeAcc, pathsFakeAcc := buildSyntheticRepoWith60Manifests(t)
+	var mP809 map[string]any
+	rawP809, _ := os.ReadFile(pathsFakeAcc["P8-09"])
+	_ = json.Unmarshal(rawP809, &mP809)
+	mP809["acceptance_status"] = "ACCEPTED"
+	updatedP809, _ := json.Marshal(mP809)
+	_ = os.WriteFile(pathsFakeAcc["P8-09"], updatedP809, 0o644)
+	_, err = NewService(buildRootFakeAcc).ReconcileFullScope(ctxAdmin, ReconcileFullScopeRequest{})
+	if !errors.Is(err, ErrExternalGatesUnsatisfied) {
+		t.Fatalf("expected ErrExternalGatesUnsatisfied when P8-09 claims acceptance_status=ACCEPTED, got: %v", err)
+	}
+
+	// 7. Non-empty remaining_scope in P8-08 blocks release decision
+	buildRootRemScope, pathsRemScope := buildSyntheticRepoWith60Manifests(t)
+	var mP808 map[string]any
+	rawP808, _ := os.ReadFile(pathsRemScope["P8-08"])
+	_ = json.Unmarshal(rawP808, &mP808)
+	mP808["remaining_scope"] = []any{"Unfinished DR item"}
+	updatedP808, _ := json.Marshal(mP808)
+	_ = os.WriteFile(pathsRemScope["P8-08"], updatedP808, 0o644)
+	repBlocked, err := NewService(buildRootRemScope).ReconcileFullScope(ctxAdmin, ReconcileFullScopeRequest{})
+	if err != nil {
+		t.Fatalf("unexpected error on P8-08 remaining_scope check: %v", err)
+	}
+	if repBlocked.ZeroUntrackedScope || repBlocked.ReleaseDecision != DecisionReleaseBlocked {
+		t.Fatalf("expected ZeroUntrackedScope=false and RELEASE_BLOCKED when P8-08 has remaining_scope, got %+v", repBlocked.ReleaseDecision)
+	}
+
+	// 8. Check with non-zero exit_code must fail closed
+	buildRootFailedCheck, pathsFailedCheck := buildSyntheticRepoWith60Manifests(t)
+	var mP101 map[string]any
+	rawP101, _ := os.ReadFile(pathsFailedCheck["P1-01"])
+	_ = json.Unmarshal(rawP101, &mP101)
+	mP101["checks"] = []map[string]any{
+		{"command": "go test ./...", "exit_code": 1},
+	}
+	updatedP101, _ := json.Marshal(mP101)
+	_ = os.WriteFile(pathsFailedCheck["P1-01"], updatedP101, 0o644)
+	_, err = NewService(buildRootFailedCheck).ReconcileFullScope(ctxAdmin, ReconcileFullScopeRequest{})
+	if !errors.Is(err, ErrTamperedManifestChecksum) {
+		t.Fatalf("expected ErrTamperedManifestChecksum for non-zero check exit_code, got: %v", err)
 	}
 }

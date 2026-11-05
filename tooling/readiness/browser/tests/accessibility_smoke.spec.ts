@@ -77,5 +77,18 @@ test.describe('Accessibility & Keyboard Navigation Smoke (WCAG 2.1 AA)', () => {
       const mobileModeSelect = page.locator('header select[aria-label="Chọn chế độ vận hành trên di động"]');
       await expect(mobileModeSelect).toBeVisible();
     }
+
+    // Notification and Help drawers render ARIA-labeled dialogs and dismiss via Escape
+    await bell.click();
+    const notifDialog = page.locator('div[role="dialog"][aria-labelledby="notification-drawer-title"]');
+    await expect(notifDialog).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(notifDialog).toBeHidden();
+
+    await help.click();
+    const helpTitle = page.locator('#help-drawer-title');
+    await expect(helpTitle).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(helpTitle).toBeHidden();
   });
 });

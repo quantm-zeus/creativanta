@@ -65,4 +65,14 @@ test.describe('Auth & Fail-Closed Security Smoke', () => {
     // Must still show unconfigured Clerk badge
     await expect(page.locator('text=Clerk: Chưa cấu hình')).toBeVisible();
   });
+
+  test('/login with external or protocol-relative redirectTo stays fail-closed on origin', async ({ page }) => {
+    for (const candidate of ['https://evil.example/phish', '//evil.example/path', 'javascript:alert(1)']) {
+      await page.goto(`${WEB_BASE_URL}/login?redirectTo=${encodeURIComponent(candidate)}`);
+      await page.waitForLoadState('networkidle');
+
+      expect(page.url().startsWith(`${WEB_BASE_URL}/login`)).toBe(true);
+      await expect(page.locator('button:has-text("Đăng nhập (Đã vô hiệu hóa)")')).toBeDisabled();
+    }
+  });
 });

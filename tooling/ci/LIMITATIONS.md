@@ -58,5 +58,17 @@ Per the Build Execution Contract and Agent Task Catalog, early slices must not g
 | Unit & Race Tests | ACTIVE | `go test -race`, `pnpm test`, `flutter test` |
 | Fail-Closed Smoke | ACTIVE | `/healthz` (200) vs `/readyz` (503 prior to dependencies) must be verified against actual Go process |
 | Failure Propagation | ACTIVE | `self_test_failure.sh` proves non-zero exit on test failures |
-| Multi-tenant RLS | DEFERRED | P0-04 required gate |
+| Multi-tenant RLS | ACTIVE | `tooling/ci/check_identity.sh` runs against PostgreSQL 17.10 in CI |
+| Browser Responsive & WCAG | ACTIVE | `.github/workflows/readiness-browser.yml` pinned on `ubuntu-24.04` with zero skipped gates |
 | Mobile Emulator E2E | DEFERRED | P8 release hardening gate |
+
+---
+
+## 3. P8 Readiness PostgreSQL Domain Suite Coverage (`IQ-04` / `IQ-05`)
+
+- `tooling/ci/check_identity.sh` executes both the P0 foundation PostgreSQL suites and the later domain PostgreSQL integration suites (`product`, `inventory`, `order`, `affiliate`, `monetization`, `livecommerce`) against the live PostgreSQL 17.10 service container.
+- A targeted symlink helper (`$ROOT/apps/infra -> $ROOT/infra`, cleaned up on exit) resolves `filepath.Join("..", "..", "..", "infra", "migrations")` for `inventory`, `order`, and `finance` without modifying unowned domain test files.
+- **Cross-Lane Owner Dependencies**:
+  - `apps/api/internal/finance/store.go` (`CreateCostItem` / `CreateSettlement` empty-string UUID parameter casts and `DATE` scan into `string`) and `apps/api/internal/seeding/seeding_postgres_test.go` (`sample_request_id` vs canonical PK `request_id` in migration `00034`) are owned by the **commerce-finance** lane.
+  - `apps/api/internal/product/service.go` (`ListProducts` cursor pagination `R12`) is owned by the **publish-product** lane.
+  - `apps/mobile/android/app/src/main/AndroidManifest.xml` (`INTERNET` permission `IQ-08`) and `apps/web` UI components (`UF-01..UF-12`) are owned by the **frontend** lane.

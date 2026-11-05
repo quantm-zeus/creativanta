@@ -39,10 +39,18 @@ fi
 
 # 3. Check Chromium Headless Shell
 LOCAL_SHELL="/home/whaleorcale/.cache/ms-playwright/chromium_headless_shell-1155/chrome-linux/headless_shell"
+PW_CACHE_DIR="${PLAYWRIGHT_BROWSERS_PATH:-${HOME}/.cache/ms-playwright}"
+DISCOVERED_SHELL=""
+if [ -d "${PW_CACHE_DIR}" ]; then
+  DISCOVERED_SHELL="$(find "${PW_CACHE_DIR}" -maxdepth 3 -name headless_shell -type f -executable 2>/dev/null | head -n 1 || true)"
+fi
+
 if [ -n "${CHROMIUM_EXECUTABLE_PATH:-}" ]; then
   SHELL_BIN="${CHROMIUM_EXECUTABLE_PATH}"
 elif [ -f "${LOCAL_SHELL}" ]; then
   SHELL_BIN="${LOCAL_SHELL}"
+elif [ -n "${DISCOVERED_SHELL}" ] && [ -x "${DISCOVERED_SHELL}" ]; then
+  SHELL_BIN="${DISCOVERED_SHELL}"
 else
   # Check if playwright provides browser
   SHELL_BIN=""
@@ -79,5 +87,24 @@ mkdir -p build/readiness/2026-11-05
 # 6. Execute Playwright Test Suite across Desktop (1440px), Tablet (768px), and Mobile (390px)
 echo "Executing Playwright Chromium Headless Test Suite..."
 pnpm exec playwright test --config tooling/readiness/browser/playwright.config.ts "$@"
+
+# 7. Verify Real Browser Execution & Zero Skipped Gates
+python3 - <<'PY'
+import json, pathlib, sys
+report_path = pathlib.Path("build/readiness/2026-11-05/browser_results.json")
+if not report_path.is_file():
+    print("FATAL: build/readiness/2026-11-05/browser_results.json was not generated!", file=sys.stderr)
+    sys.exit(1)
+data = json.load(report_path.open())
+stats = data.get("stats", {})
+expected = int(stats.get("expected", 0))
+unexpected = int(stats.get("unexpected", 0))
+flaky = int(stats.get("flaky", 0))
+skipped = int(stats.get("skipped", 0))
+print(f"Verified Playwright results: expected={expected}, unexpected={unexpected}, flaky={flaky}, skipped={skipped}")
+if expected <= 0 or unexpected != 0 or flaky != 0 or skipped != 0:
+    print("FATAL: Browser QA requires expected > 0 and zero unexpected/flaky/skipped tests!", file=sys.stderr)
+    sys.exit(1)
+PY
 
 echo "=== Browser Responsive UX & Accessibility QA Gate Passed Successfully ==="

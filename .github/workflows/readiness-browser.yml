@@ -51,7 +51,7 @@ concurrency:
 jobs:
   browser-responsive-a11y-qa:
     name: "Browser QA: Responsive Viewports & WCAG 2.1 AA (Chromium Headless Shell)"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: Checkout repository
@@ -88,6 +88,27 @@ jobs:
         run: |
           set -euo pipefail
           pnpm test:browser
+
+      - name: Verify Real Browser Execution and Zero Skipped Tests
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, pathlib, sys
+          report_path = pathlib.Path("build/readiness/2026-11-05/browser_results.json")
+          if not report_path.is_file():
+              print("ERROR: browser_results.json missing", file=sys.stderr)
+              sys.exit(1)
+          data = json.load(report_path.open())
+          stats = data.get("stats", {})
+          expected = int(stats.get("expected", 0))
+          unexpected = int(stats.get("unexpected", 0))
+          flaky = int(stats.get("flaky", 0))
+          skipped = int(stats.get("skipped", 0))
+          print(f"Playwright stats: expected={expected} unexpected={unexpected} flaky={flaky} skipped={skipped}")
+          if expected <= 0 or unexpected != 0 or flaky != 0 or skipped != 0:
+              print("ERROR: Browser QA gate requires expected > 0 and zero unexpected/flaky/skipped tests", file=sys.stderr)
+              sys.exit(1)
+          PY
 
       - name: Upload Browser QA Results Artifact
         if: always()
