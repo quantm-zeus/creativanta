@@ -178,10 +178,12 @@ fi
  cd "$ROOT/apps/api"
  CREATIVANTA_TEST_DATABASE_URL="$CREATIVANTA_TEST_POSTGRES_DSN" \
    GOTOOLCHAIN=local go run "$ROOT/tooling/ci/prepare_domain_postgres.go"
- CREATIVANTA_TEST_DATABASE_URL="$DOMAIN_TEST_DSN" \
+ CREATIVANTA_TEST_DATABASE_URL="$CREATIVANTA_TEST_POSTGRES_DSN" \
    GOTOOLCHAIN=local go test -p 1 -race -count=1 -v \
    ./internal/inventory \
-   ./internal/order \
+   ./internal/order
+ CREATIVANTA_TEST_DATABASE_URL="$DOMAIN_TEST_DSN" \
+   GOTOOLCHAIN=local go test -p 1 -race -count=1 -v \
    ./internal/affiliate \
    ./internal/monetization \
    ./internal/livecommerce
