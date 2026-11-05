@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -52,6 +53,7 @@ func ComputeActionHash(
 
 // ApprovalManager manages approval gates, validation, invalidation, and expiry.
 type ApprovalManager struct {
+	mu     sync.Mutex
 	store  Store
 	engine WorkflowExecutor
 }
@@ -100,43 +102,161 @@ func (am *ApprovalManager) CreateApprovalRequest(
 
 	actionHash := ComputeActionHash(wf.Version, node.NodeID, rpcName, inputJSON, targetObjects, budgetQuote)
 
+	appCfg := node.ApprovalConfig
+	if appCfg == nil {
+		appCfg = parseApprovalConfigFromMap(node.Config)
+	}
+	var approverIDs []string
+	requiredApprovals := 1
+	if appCfg != nil {
+		for _, id := range appCfg.ApproverIDs {
+			if trimmed := strings.TrimSpace(id); trimmed != "" {
+				approverIDs = append(approverIDs, trimmed)
+			}
+		}
+		if appCfg.RequiredApprovals > 0 {
+			requiredApprovals = appCfg.RequiredApprovals
+		}
+	}
+
 	reasonMeta := map[string]any{
-		"workflow_id":      wf.WorkflowID,
-		"node_id":          node.NodeID,
-		"workflow_version": wf.Version,
-		"action_hash":      actionHash,
-		"target_objects":   targetObjects,
-		"input_snapshot":   inputJSON,
-		"budget_quote":     budgetQuote,
-		"node_title":       node.Title,
+		"workflow_id":        wf.WorkflowID,
+		"node_id":            node.NodeID,
+		"workflow_version":   wf.Version,
+		"action_hash":        actionHash,
+		"target_objects":     targetObjects,
+		"input_snapshot":     inputJSON,
+		"budget_quote":       budgetQuote,
+		"node_title":         node.Title,
+		"approver_ids":       approverIDs,
+		"required_approvals": requiredApprovals,
+		"approved_by_ids":    []string{},
 	}
 	reasonBytes, _ := json.Marshal(reasonMeta)
 
 	req := &ApprovalRequest{
-		RequestID:       newUUID(),
-		WorkspaceID:     caller.WorkspaceID,
-		RequestType:     "workflow_approval",
-		ObjectType:      "workflow_run",
-		ObjectID:        run.RunID,
-		RequestedBy:     caller.UserID,
-		Status:          "pending_approval",
-		Reason:          string(reasonBytes),
-		ExpiresAt:       &expiresAt,
-		WorkflowID:      wf.WorkflowID,
-		NodeID:          node.NodeID,
-		WorkflowVersion: wf.Version,
-		ActionHash:      actionHash,
-		TargetObjects:   targetObjects,
-		InputSnapshot:   inputJSON,
-		MaxBudgetQuote:  budgetQuote,
-		CreatedAt:       now,
-		UpdatedAt:       now,
+		RequestID:         newUUID(),
+		WorkspaceID:       caller.WorkspaceID,
+		RequestType:       "workflow_approval",
+		ObjectType:        "workflow_run",
+		ObjectID:          run.RunID,
+		RequestedBy:       caller.UserID,
+		Status:            "pending_approval",
+		Reason:            string(reasonBytes),
+		ExpiresAt:         &expiresAt,
+		WorkflowID:        wf.WorkflowID,
+		NodeID:            node.NodeID,
+		WorkflowVersion:   wf.Version,
+		ActionHash:        actionHash,
+		TargetObjects:     targetObjects,
+		InputSnapshot:     inputJSON,
+		MaxBudgetQuote:    budgetQuote,
+		ApproverIDs:       approverIDs,
+		RequiredApprovals: requiredApprovals,
+		ApprovedByIDs:     []string{},
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}
 
 	if err := am.store.CreateApprovalRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	return req, nil
+}
+
+func hydrateApprovalMetadata(req *ApprovalRequest) {
+	if req == nil || req.Reason == "" {
+		return
+	}
+	var meta map[string]any
+	if err := json.Unmarshal([]byte(req.Reason), &meta); err != nil {
+		return
+	}
+	if req.WorkflowID == "" {
+		if v, ok := meta["workflow_id"].(string); ok {
+			req.WorkflowID = v
+		}
+	}
+	if req.NodeID == "" {
+		if v, ok := meta["node_id"].(string); ok {
+			req.NodeID = v
+		}
+	}
+	if req.WorkflowVersion == 0 {
+		if v, ok := meta["workflow_version"].(float64); ok {
+			req.WorkflowVersion = int32(v)
+		}
+	}
+	if req.ActionHash == "" {
+		if v, ok := meta["action_hash"].(string); ok {
+			req.ActionHash = v
+		}
+	}
+	if req.InputSnapshot == "" {
+		if v, ok := meta["input_snapshot"].(string); ok {
+			req.InputSnapshot = v
+		}
+	}
+	if req.MaxBudgetQuote == 0 {
+		if v, ok := meta["budget_quote"].(float64); ok {
+			req.MaxBudgetQuote = v
+		}
+	}
+	if len(req.TargetObjects) == 0 {
+		if arr, ok := meta["target_objects"].([]any); ok {
+			for _, item := range arr {
+				if s, ok := item.(string); ok {
+					req.TargetObjects = append(req.TargetObjects, s)
+				}
+			}
+		}
+	}
+	if len(req.ApproverIDs) == 0 {
+		if arr, ok := meta["approver_ids"].([]any); ok {
+			for _, item := range arr {
+				if s, ok := item.(string); ok && strings.TrimSpace(s) != "" {
+					req.ApproverIDs = append(req.ApproverIDs, strings.TrimSpace(s))
+				}
+			}
+		}
+	}
+	if req.RequiredApprovals <= 0 {
+		if v, ok := meta["required_approvals"].(float64); ok && int(v) > 0 {
+			req.RequiredApprovals = int(v)
+		}
+	}
+	if len(req.ApprovedByIDs) == 0 {
+		if arr, ok := meta["approved_by_ids"].([]any); ok {
+			for _, item := range arr {
+				if s, ok := item.(string); ok && strings.TrimSpace(s) != "" {
+					req.ApprovedByIDs = append(req.ApprovedByIDs, strings.TrimSpace(s))
+				}
+			}
+		}
+	}
+}
+
+func syncApprovalMetadataToReason(req *ApprovalRequest) {
+	if req == nil {
+		return
+	}
+	meta := make(map[string]any)
+	if req.Reason != "" {
+		_ = json.Unmarshal([]byte(req.Reason), &meta)
+	}
+	meta["workflow_id"] = req.WorkflowID
+	meta["node_id"] = req.NodeID
+	meta["workflow_version"] = req.WorkflowVersion
+	meta["action_hash"] = req.ActionHash
+	meta["target_objects"] = req.TargetObjects
+	meta["input_snapshot"] = req.InputSnapshot
+	meta["budget_quote"] = req.MaxBudgetQuote
+	meta["approver_ids"] = req.ApproverIDs
+	meta["required_approvals"] = req.RequiredApprovals
+	meta["approved_by_ids"] = req.ApprovedByIDs
+	if b, err := json.Marshal(meta); err == nil {
+		req.Reason = string(b)
+	}
 }
 
 func (am *ApprovalManager) GetApprovalRequest(ctx context.Context, workspaceID, requestID string) (*ApprovalRequest, error) {
@@ -181,10 +301,19 @@ func (am *ApprovalManager) Approve(
 		return nil, nil, fmt.Errorf("%w: %v", ErrApprovalUnauthorized, err)
 	}
 
+	am.mu.Lock()
+	locked := true
+	defer func() {
+		if locked {
+			am.mu.Unlock()
+		}
+	}()
+
 	req, err := am.store.GetApprovalRequest(ctx, caller.WorkspaceID, requestID)
 	if err != nil {
 		return nil, nil, err
 	}
+	hydrateApprovalMetadata(req)
 
 	if req.Status != "pending_approval" {
 		return nil, nil, fmt.Errorf("%w: current status is %s", ErrInvalidApprovalState, req.Status)
@@ -230,6 +359,45 @@ func (am *ApprovalManager) Approve(
 		return nil, nil, ErrApprovalInvalidated
 	}
 
+	// Hydrate approver configuration from targetNode if not already populated on req
+	appCfg := targetNode.ApprovalConfig
+	if appCfg == nil {
+		appCfg = parseApprovalConfigFromMap(targetNode.Config)
+	}
+	if appCfg != nil {
+		if len(req.ApproverIDs) == 0 && len(appCfg.ApproverIDs) > 0 {
+			for _, id := range appCfg.ApproverIDs {
+				if trimmed := strings.TrimSpace(id); trimmed != "" {
+					req.ApproverIDs = append(req.ApproverIDs, trimmed)
+				}
+			}
+		}
+		if req.RequiredApprovals <= 0 && appCfg.RequiredApprovals > 0 {
+			req.RequiredApprovals = appCfg.RequiredApprovals
+		}
+	}
+
+	// Enforce ApproverIDs allowlist (AI-11)
+	if len(req.ApproverIDs) > 0 {
+		allowed := false
+		for _, id := range req.ApproverIDs {
+			if id == caller.UserID {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return nil, nil, fmt.Errorf("%w: user %q is not in configured approver_ids", ErrApprovalUnauthorized, caller.UserID)
+		}
+	}
+
+	// Enforce duplicate vote prevention (AI-11)
+	for _, votedID := range req.ApprovedByIDs {
+		if votedID == caller.UserID {
+			return nil, nil, fmt.Errorf("%w: user %q has already approved request %s", ErrDuplicateApprovalVote, caller.UserID, req.RequestID)
+		}
+	}
+
 	// Check if the next action node configuration or target objects changed
 	currentActionHash := req.ActionHash
 	for _, edge := range wf.ActionChain.Edges {
@@ -262,13 +430,34 @@ func (am *ApprovalManager) Approve(
 		return nil, nil, ErrApprovalInvalidated
 	}
 
-	// Mark approved
-	req.Status = "approved"
+	req.ApprovedByIDs = append(req.ApprovedByIDs, caller.UserID)
 	req.ApprovedBy = caller.UserID
 	req.UpdatedAt = now
+
+	requiredQuorum := req.RequiredApprovals
+	if requiredQuorum <= 0 {
+		requiredQuorum = 1
+	}
+
+	// If multi-approver quorum is not yet reached, keep request pending_approval and do NOT resume run (AI-11).
+	if len(req.ApprovedByIDs) < requiredQuorum {
+		req.Status = "pending_approval"
+		syncApprovalMetadataToReason(req)
+		if err := am.store.UpdateApprovalRequest(ctx, req); err != nil {
+			return nil, nil, err
+		}
+		return req, nil, nil
+	}
+
+	// Quorum reached -> Mark approved
+	req.Status = "approved"
+	syncApprovalMetadataToReason(req)
 	if err := am.store.UpdateApprovalRequest(ctx, req); err != nil {
 		return nil, nil, err
 	}
+
+	locked = false
+	am.mu.Unlock()
 
 	// Resume workflow execution!
 	var resumedRun *WorkflowRun
@@ -278,6 +467,7 @@ func (am *ApprovalManager) Approve(
 			Payload: map[string]any{
 				"approval_request_id": req.RequestID,
 				"approved_by":         caller.UserID,
+				"approved_by_ids":     req.ApprovedByIDs,
 				"approved_at":         now.Format(time.RFC3339),
 			},
 		})
@@ -433,7 +623,9 @@ func (am *ApprovalManager) UndoApprove(
 	now := time.Now().UTC()
 	req.Status = "pending_approval"
 	req.ApprovedBy = ""
+	req.ApprovedByIDs = nil
 	req.UpdatedAt = now
+	syncApprovalMetadataToReason(req)
 	if err := am.store.UpdateApprovalRequest(ctx, req); err != nil {
 		return nil, err
 	}

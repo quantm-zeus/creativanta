@@ -25,6 +25,7 @@ type Service struct {
 	preflight   *PreflightEngine
 	capProvider CapabilityStatusProvider
 	dispatcher  ActionDispatcher
+	tierChecker TierLimitChecker
 }
 
 func NewService(store Store, adapter WorkflowEngineAdapter) *Service {
@@ -32,7 +33,8 @@ func NewService(store Store, adapter WorkflowEngineAdapter) *Service {
 		adapter = NewOwnedWorkflowEngine()
 	}
 	capProvider := NewDefaultCapabilityProvider()
-	dispatcher := NewMockActionDispatcher()
+	// Do NOT default dispatcher to NewMockActionDispatcher() (AI-04 / R07 fail-closed contract).
+	var dispatcher ActionDispatcher
 	engine := NewExecutionEngine(store, capProvider, dispatcher)
 	preflight := NewPreflightEngine(capProvider)
 
@@ -51,6 +53,7 @@ func NewService(store Store, adapter WorkflowEngineAdapter) *Service {
 func (s *Service) SetCapabilityProvider(cp CapabilityStatusProvider) {
 	s.capProvider = cp
 	s.engine = NewExecutionEngine(s.store, cp, s.dispatcher)
+	s.engine.SetTierLimitChecker(s.tierChecker)
 	s.approvalMgr = s.engine.ApprovalManager()
 	s.preflight = NewPreflightEngine(cp)
 }
@@ -58,7 +61,15 @@ func (s *Service) SetCapabilityProvider(cp CapabilityStatusProvider) {
 func (s *Service) SetActionDispatcher(ad ActionDispatcher) {
 	s.dispatcher = ad
 	s.engine = NewExecutionEngine(s.store, s.capProvider, ad)
+	s.engine.SetTierLimitChecker(s.tierChecker)
 	s.approvalMgr = s.engine.ApprovalManager()
+}
+
+func (s *Service) SetTierLimitChecker(tc TierLimitChecker) {
+	s.tierChecker = tc
+	if s.engine != nil {
+		s.engine.SetTierLimitChecker(tc)
+	}
 }
 
 func (s *Service) Engine() *ExecutionEngine {
@@ -286,13 +297,19 @@ func (s *Service) RunWorkflow(ctx context.Context, caller CallerContext, workflo
 	if err := checkPerm(caller, "workflow:edit"); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUnauthorized, err)
 	}
+	ctx = WithStoreActorUserID(ctx, caller.UserID)
 
 	wf, err := s.store.GetWorkflow(ctx, caller.WorkspaceID, workflowID)
 	if err != nil {
 		return nil, err
 	}
-	if wf.Status == WorkflowStatusArchived {
-		return nil, fmt.Errorf("%w: cannot run archived workflow", ErrInvalidWorkflowState)
+	if wf.Status != WorkflowStatusActive {
+		return nil, fmt.Errorf("%w: cannot run workflow in status %s (must be active)", ErrInvalidWorkflowState, wf.Status)
+	}
+	if wf.TierLimitCheck && s.tierChecker != nil {
+		if err := s.tierChecker.CheckTierLimit(ctx, caller.WorkspaceID, wf); err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrTierLimitExceeded, err)
+		}
 	}
 
 	now := time.Now().UTC()
@@ -311,11 +328,20 @@ func (s *Service) RunWorkflow(ctx context.Context, caller CallerContext, workflo
 		rootNodeType = wf.ActionChain.Nodes[0].NodeType
 	}
 
+	triggerCopy := make(map[string]any, len(triggerContext)+2)
+	for k, v := range triggerContext {
+		triggerCopy[k] = v
+	}
+	triggerCopy["_actor_user_id"] = caller.UserID
+	triggerCopy["_actor_role"] = caller.WorkspaceRole
+
 	run := &WorkflowRun{
 		RunID:              runID,
 		WorkspaceID:        caller.WorkspaceID,
 		WorkflowID:         workflowID,
-		TriggerEvent:       triggerContext,
+		TriggerEvent:       triggerCopy,
+		InitiatedByUserID:  caller.UserID,
+		InitiatedByRole:    caller.WorkspaceRole,
 		Status:             WorkflowRunStatusQueued,
 		CurrentNode:        rootNodeID,
 		ExecutionLog:       []any{},
@@ -329,7 +355,7 @@ func (s *Service) RunWorkflow(ctx context.Context, caller CallerContext, workflo
 		return nil, err
 	}
 
-	if rootNodeID != "" {
+	if s.engine == nil && rootNodeID != "" {
 		inputJSON, _ := json.Marshal(triggerContext)
 		step := &WorkflowRunStep{
 			StepID:        newUUID(),
@@ -345,15 +371,22 @@ func (s *Service) RunWorkflow(ctx context.Context, caller CallerContext, workflo
 			CreatedAt:     now,
 			UpdatedAt:     now,
 		}
-		_ = s.store.CreateWorkflowRunStep(ctx, step)
+		if err := s.store.CreateWorkflowRunStep(ctx, step); err != nil {
+			return nil, err
+		}
 	}
 
 	wf.RunCount++
-	_ = s.store.UpdateWorkflow(ctx, wf)
+	if err := s.store.UpdateWorkflow(ctx, wf); err != nil {
+		return nil, err
+	}
 
 	if s.engine != nil {
 		executedRun, err := s.engine.ExecuteRun(ctx, caller.WorkspaceID, run.RunID)
-		if err == nil && executedRun != nil {
+		if err != nil {
+			return executedRun, err
+		}
+		if executedRun != nil {
 			return executedRun, nil
 		}
 	}

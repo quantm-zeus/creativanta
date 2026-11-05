@@ -12,11 +12,68 @@ import (
 // Runtime orchestrates multi-step agent planning, execution, delegated permission
 // checks, budget ceiling pauses, bounded memory, and audited partial-failure handoff.
 type Runtime struct {
-	store Store
+	store    Store
+	executor StepExecutor
 }
 
 func NewRuntime(store Store) *Runtime {
 	return &Runtime{store: store}
+}
+
+func NewRuntimeWithExecutor(store Store, executor StepExecutor) *Runtime {
+	return &Runtime{store: store, executor: executor}
+}
+
+// SetStepExecutor configures the concrete step executor for the runtime.
+// When nil, step execution fails closed with ErrExecutorNotConfigured.
+func (r *Runtime) SetStepExecutor(executor StepExecutor) {
+	r.executor = executor
+}
+
+type simulatedStepExecutor struct{}
+
+// NewSimulatedStepExecutor returns an explicit test-only StepExecutor that
+// produces deterministic step outputs for unit tests. Production services do
+// NOT wire this by default (AI-04 / R07 fail-closed contract).
+func NewSimulatedStepExecutor() StepExecutor {
+	return &simulatedStepExecutor{}
+}
+
+func (s *simulatedStepExecutor) ExecuteStep(_ context.Context, req StepExecutionRequest) (*StepExecutionResult, error) {
+	now := time.Now().UTC()
+	var outType string
+	lowerTitle := strings.ToLower(req.Step.Title)
+	switch {
+	case strings.Contains(lowerTitle, "script"):
+		outType = OutputTypeText
+	case strings.Contains(lowerTitle, "visual") || strings.Contains(lowerTitle, "video"):
+		outType = OutputTypeVideo
+	case strings.Contains(lowerTitle, "thumbnail"):
+		outType = OutputTypeAsset
+	case strings.Contains(lowerTitle, "product"):
+		outType = OutputTypeDataset
+	default:
+		outType = OutputTypeReport
+	}
+	outcome := fmt.Sprintf("Successfully executed %s", req.Step.Title)
+	return &StepExecutionResult{
+		ObservedOutcome: outcome,
+		ActualCredits:   req.Step.EstimatedCredits,
+		Outputs: []AgentOutput{
+			{
+				OutputID:           NewID(),
+				WorkspaceID:        req.WorkspaceID,
+				AgentRunID:         req.AgentRunID,
+				OutputType:         outType,
+				Title:              req.Step.Title + " Output",
+				Summary:            outcome,
+				ApprovalState:      ApprovalNotRequired,
+				PreviewPayloadJSON: fmt.Sprintf(`{"step_order":%d,"title":%q}`, req.Step.StepOrder, req.Step.Title),
+				CreatedAt:          now,
+				UpdatedAt:          now,
+			},
+		},
+	}, nil
 }
 
 // CheckPermission checks if a workspace role possesses the delegated permission.
@@ -223,11 +280,93 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 		return r.HandlePartialFailure(ctx, caller, run, stepIndex, fmt.Errorf("downstream fault at step %d", currentStep.StepOrder), caller.UserID)
 	}
 
+	// Fail closed when no concrete StepExecutor is configured (AI-04 / R07).
+	if r.executor == nil {
+		currentStep.Status = StepStatusFailed
+		currentStep.CompletedAt = &now
+		currentStep.ObservedOutcome = ErrExecutorNotConfigured.Error()
+		return r.HandlePartialFailure(ctx, caller, run, stepIndex, ErrExecutorNotConfigured, caller.UserID)
+	}
+
+	execRes, err := r.executor.ExecuteStep(ctx, StepExecutionRequest{
+		WorkspaceID: run.WorkspaceID,
+		AgentRunID:  run.AgentRunID,
+		AgentType:   run.AgentType,
+		Caller:      caller,
+		Step:        *currentStep,
+	})
+	if err != nil {
+		currentStep.Status = StepStatusFailed
+		currentStep.CompletedAt = &now
+		currentStep.ObservedOutcome = err.Error()
+		return r.HandlePartialFailure(ctx, caller, run, stepIndex, err, caller.UserID)
+	}
+	if execRes == nil || strings.TrimSpace(execRes.ObservedOutcome) == "" {
+		currentStep.Status = StepStatusFailed
+		currentStep.CompletedAt = &now
+		currentStep.ObservedOutcome = ErrInvalidStepOutput.Error()
+		return r.HandlePartialFailure(ctx, caller, run, stepIndex, ErrInvalidStepOutput, caller.UserID)
+	}
+
+	actualStepCostDec := stepCostDec
+	if strings.TrimSpace(execRes.ActualCredits) != "" {
+		parsedActual, err := tenantdb.ParseExactDecimal(execRes.ActualCredits)
+		if err != nil || parsedActual.IsNegative() {
+			invalidErr := fmt.Errorf("%w: invalid actual credits %q", ErrInvalidStepOutput, execRes.ActualCredits)
+			currentStep.Status = StepStatusFailed
+			currentStep.CompletedAt = &now
+			currentStep.ObservedOutcome = invalidErr.Error()
+			return r.HandlePartialFailure(ctx, caller, run, stepIndex, invalidErr, caller.UserID)
+		}
+		actualStepCostDec = parsedActual
+		newTotalDec, err = usedDec.Add(actualStepCostDec)
+		if err != nil {
+			return fmt.Errorf("credit addition overflow: %w", err)
+		}
+		if !ceilingDec.IsZero() && newTotalDec.Cmp(ceilingDec) > 0 {
+			run.CurrentState = StateWaitingContext
+			currentStep.Status = StepStatusWaitingContext
+			currentStep.ObservedOutcome = fmt.Sprintf("Budget ceiling reached: step requires %s credits, cumulative %s exceeds ceiling %s. Pausing execution.",
+				actualStepCostDec.Fixed6String(), newTotalDec.Fixed6String(), ceilingDec.Fixed6String())
+			_ = r.store.UpdateRun(ctx, run)
+			return ErrBudgetCeilingExceeded
+		}
+	}
+
+	for i := range execRes.Outputs {
+		out := execRes.Outputs[i]
+		if strings.TrimSpace(out.OutputType) == "" || strings.TrimSpace(out.Title) == "" {
+			invalidErr := fmt.Errorf("%w: output missing required type or title", ErrInvalidStepOutput)
+			currentStep.Status = StepStatusFailed
+			currentStep.CompletedAt = &now
+			currentStep.ObservedOutcome = invalidErr.Error()
+			return r.HandlePartialFailure(ctx, caller, run, stepIndex, invalidErr, caller.UserID)
+		}
+		if out.OutputID == "" {
+			out.OutputID = NewID()
+		}
+		out.WorkspaceID = run.WorkspaceID
+		out.AgentRunID = run.AgentRunID
+		if out.ApprovalState == "" {
+			out.ApprovalState = ApprovalNotRequired
+		}
+		if out.CreatedAt.IsZero() {
+			out.CreatedAt = now
+		}
+		if out.UpdatedAt.IsZero() {
+			out.UpdatedAt = now
+		}
+		if err := r.store.CreateOutput(ctx, out); err != nil {
+			return err
+		}
+		run.Outputs = append(run.Outputs, out)
+	}
+
 	// Success execution of the step
 	currentStep.Status = StepStatusCompleted
 	currentStep.CompletedAt = &now
-	currentStep.ActualCredits = currentStep.EstimatedCredits
-	currentStep.ObservedOutcome = fmt.Sprintf("Successfully executed %s", currentStep.Title)
+	currentStep.ActualCredits = actualStepCostDec.Fixed6String()
+	currentStep.ObservedOutcome = execRes.ObservedOutcome
 
 	run.CreditsUsed = newTotalDec.Fixed6String()
 
@@ -236,10 +375,9 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 		_ = run.Memory.AddObservation(currentStep.Title, currentStep.ObservedOutcome)
 	}
 
-	// Produce artifact output if appropriate for step
-	r.attachStepOutput(run, currentStep)
-
-	_ = r.store.UpdateRun(ctx, run)
+	if err := r.store.UpdateRun(ctx, run); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -357,37 +495,4 @@ func (r *Runtime) HandlePartialFailure(ctx context.Context, caller CallerContext
 	})
 
 	return fmt.Errorf("step %d failed: %w (handed off with audit ref %s)", failedStep.StepOrder, stepErr, auditID)
-}
-
-// attachStepOutput synthesizes output objects per step
-func (r *Runtime) attachStepOutput(run *AgentRun, step *AgentStep) {
-	now := time.Now().UTC()
-	var outType string
-	switch {
-	case strings.Contains(strings.ToLower(step.Title), "script"):
-		outType = OutputTypeText
-	case strings.Contains(strings.ToLower(step.Title), "visual") || strings.Contains(strings.ToLower(step.Title), "video"):
-		outType = OutputTypeVideo
-	case strings.Contains(strings.ToLower(step.Title), "thumbnail"):
-		outType = OutputTypeAsset
-	case strings.Contains(strings.ToLower(step.Title), "product"):
-		outType = OutputTypeDataset
-	default:
-		outType = OutputTypeReport
-	}
-
-	output := AgentOutput{
-		OutputID:           NewID(),
-		WorkspaceID:        run.WorkspaceID,
-		AgentRunID:         run.AgentRunID,
-		OutputType:         outType,
-		Title:              step.Title + " Output",
-		Summary:            step.ObservedOutcome,
-		ApprovalState:      ApprovalNotRequired,
-		PreviewPayloadJSON: fmt.Sprintf(`{"step_order":%d,"title":%q}`, step.StepOrder, step.Title),
-		CreatedAt:          now,
-		UpdatedAt:          now,
-	}
-	run.Outputs = append(run.Outputs, output)
-	_ = r.store.CreateOutput(nil, output)
 }

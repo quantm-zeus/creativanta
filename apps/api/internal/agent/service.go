@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
 )
 
 // Service provides high-level business logic for autonomous agent operations.
@@ -44,6 +45,35 @@ func (s *Service) SetCapability(key string, supported bool) {
 	s.capabilities[key] = supported
 }
 
+// SetStepExecutor configures the concrete StepExecutor for autonomous step execution.
+// When not set, step execution fails closed with ErrExecutorNotConfigured (AI-04 / R07).
+func (s *Service) SetStepExecutor(executor StepExecutor) {
+	s.runtime.SetStepExecutor(executor)
+}
+
+func verifyCallerPrincipal(ctx context.Context, caller CallerContext) error {
+	if strings.TrimSpace(caller.WorkspaceID) == "" {
+		return ErrCrossTenantDenied
+	}
+	if p, ok := transportauth.PrincipalFromContext(ctx); ok {
+		if p.WorkspaceID != caller.WorkspaceID {
+			return ErrCrossTenantDenied
+		}
+		if p.UserID != "" && caller.UserID != "" && p.UserID != caller.UserID {
+			return ErrCrossTenantDenied
+		}
+	}
+	if scope, ok := tenantdb.ScopeFromContext(ctx); ok {
+		if scope.WorkspaceID != "" && scope.WorkspaceID != caller.WorkspaceID {
+			return ErrCrossTenantDenied
+		}
+		if scope.UserID != "" && caller.UserID != "" && scope.UserID != caller.UserID {
+			return ErrCrossTenantDenied
+		}
+	}
+	return nil
+}
+
 // LaunchAgent plans, preflights, and creates an agent run graph.
 func (s *Service) LaunchAgent(
 	ctx context.Context,
@@ -57,8 +87,8 @@ func (s *Service) LaunchAgent(
 	autoExecute bool,
 	params map[string]string,
 ) (*AgentRun, []string, bool, error) {
-	if caller.WorkspaceID == "" {
-		return nil, nil, false, ErrCrossTenantDenied
+	if err := verifyCallerPrincipal(ctx, caller); err != nil {
+		return nil, nil, false, err
 	}
 	if !CheckPermission(caller.WorkspaceRole, "agent:execute") {
 		return nil, nil, false, fmt.Errorf("%w: role %q cannot launch agent", ErrPermissionDenied, caller.WorkspaceRole)
@@ -159,8 +189,11 @@ func (s *Service) LaunchAgent(
 
 	if autoExecute && !requiresApproval {
 		// Run steps sequentially until paused, completed, or failed
-		_, _ = s.ExecuteRemainingSteps(ctx, caller, run.AgentRunID, 0)
+		_, execErr := s.ExecuteRemainingSteps(ctx, caller, run.AgentRunID, 0)
 		run, _ = s.store.GetRun(ctx, caller.WorkspaceID, run.AgentRunID)
+		if execErr != nil {
+			return run, warnings, false, execErr
+		}
 	}
 
 	return run, warnings, requiresApproval, nil
@@ -168,6 +201,9 @@ func (s *Service) LaunchAgent(
 
 // ExecuteRemainingSteps runs remaining steps in sequence.
 func (s *Service) ExecuteRemainingSteps(ctx context.Context, caller CallerContext, runID string, simStepFailureOrder int) (*AgentRun, error) {
+	if err := verifyCallerPrincipal(ctx, caller); err != nil {
+		return nil, err
+	}
 	run, err := s.store.GetRun(ctx, caller.WorkspaceID, runID)
 	if err != nil {
 		return nil, err
@@ -201,11 +237,17 @@ func (s *Service) ExecuteRemainingSteps(ctx context.Context, caller CallerContex
 
 // GetRun returns an agent run with tenant isolation.
 func (s *Service) GetRun(ctx context.Context, caller CallerContext, runID string) (*AgentRun, error) {
+	if err := verifyCallerPrincipal(ctx, caller); err != nil {
+		return nil, err
+	}
 	return s.store.GetRun(ctx, caller.WorkspaceID, runID)
 }
 
 // ListRuns returns agent runs matching filters.
 func (s *Service) ListRuns(ctx context.Context, caller CallerContext, agentType string, stateFilter string, pageSize int, pageToken string) ([]AgentRun, string, int, error) {
+	if err := verifyCallerPrincipal(ctx, caller); err != nil {
+		return nil, "", 0, err
+	}
 	offset := 0
 	if pageToken != "" {
 		if parsed, err := strconv.Atoi(pageToken); err == nil && parsed >= 0 {
@@ -230,6 +272,9 @@ func (s *Service) ListRuns(ctx context.Context, caller CallerContext, agentType 
 
 // CancelRun aborts an in-progress agent run.
 func (s *Service) CancelRun(ctx context.Context, caller CallerContext, runID string, reason string) (*AgentRun, error) {
+	if err := verifyCallerPrincipal(ctx, caller); err != nil {
+		return nil, err
+	}
 	if !CheckPermission(caller.WorkspaceRole, "agent:execute") {
 		return nil, fmt.Errorf("%w: role %q cannot cancel agent run", ErrPermissionDenied, caller.WorkspaceRole)
 	}
@@ -278,6 +323,9 @@ func (s *Service) CancelRun(ctx context.Context, caller CallerContext, runID str
 
 // StreamRun provides current status and progress percentage.
 func (s *Service) StreamRun(ctx context.Context, caller CallerContext, runID string) (*AgentRun, *AgentStep, string, int32, error) {
+	if err := verifyCallerPrincipal(ctx, caller); err != nil {
+		return nil, nil, "", 0, err
+	}
 	run, err := s.store.GetRun(ctx, caller.WorkspaceID, runID)
 	if err != nil {
 		return nil, nil, "", 0, err
@@ -320,6 +368,9 @@ func (s *Service) ProvideInput(
 	budgetCeilingIncrease string,
 	handoffTargetUserID string,
 ) (*AgentRun, error) {
+	if err := verifyCallerPrincipal(ctx, caller); err != nil {
+		return nil, err
+	}
 	run, err := s.store.GetRun(ctx, caller.WorkspaceID, runID)
 	if err != nil {
 		return nil, err

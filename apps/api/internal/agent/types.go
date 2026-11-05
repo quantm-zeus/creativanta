@@ -23,7 +23,34 @@ var (
 	ErrApprovalRequired       = errors.New("agent: action requires manager approval before execution")
 	ErrRunAlreadyFinished     = errors.New("agent: agent run is already in terminal state")
 	ErrInvalidBudgetCeiling   = errors.New("agent: budget ceiling must be non-negative decimal")
+	ErrExecutorNotConfigured  = errors.New("agent: step executor or provider is not configured (fail-closed)")
+	ErrInvalidStepOutput      = errors.New("agent: step execution returned invalid or missing canonical output")
 )
+
+// StepExecutionRequest describes the parameters passed to a StepExecutor for a single step.
+type StepExecutionRequest struct {
+	WorkspaceID  string
+	AgentRunID   string
+	AgentType    string
+	Goal         string
+	Step         AgentStep
+	InputPayload map[string]any
+	Caller       CallerContext
+}
+
+// StepExecutionResult contains the verified outcome of executing a step.
+type StepExecutionResult struct {
+	ObservedOutcome string
+	ActualCredits   string
+	ResultSummary   string
+	OutputSnapshot  map[string]any
+	Outputs         []AgentOutput
+}
+
+// StepExecutor executes an agent step against real domain services or an explicitly injected test executor.
+type StepExecutor interface {
+	ExecuteStep(ctx context.Context, req StepExecutionRequest) (*StepExecutionResult, error)
+}
 
 // NewID generates an RFC 4122 v4 UUID using crypto/rand.
 func NewID() string {

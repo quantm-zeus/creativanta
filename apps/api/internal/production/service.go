@@ -5,8 +5,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,44 +19,60 @@ import (
 	productionv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/production/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/production/v1/productionv1connect"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
 )
 
 // ServiceConfig holds store and engine dependencies for the production service.
 type ServiceConfig struct {
-	Store            Store
-	PrimaryProvider  VideoProvider
-	FallbackProvider VideoProvider
-	PostProdExecutor *PostProductionExecutor
-	InitialBalances  map[string]tenantdb.ExactDecimal // workspaceID -> credit balance
+	Store                 Store
+	PrimaryProvider       VideoProvider
+	FallbackProvider      VideoProvider
+	PostProdExecutor      *PostProductionExecutor
+	InitialBalances       map[string]tenantdb.ExactDecimal // workspaceID -> credit balance
+	RequireConfirmedQuote bool
+}
+
+type idempotencyEntry struct {
+	WorkspaceID    string
+	IdempotencyKey string
+	RequestHash    string
+	JobID          string
+	AssetID        string
+	ReservationID  string
 }
 
 // Service implements StudioService and AssetService ConnectRPC handlers.
 type Service struct {
-	mu              sync.RWMutex
-	store           Store
-	router          *PipelineRouter
-	budgetCalc      *BudgetCalculator
-	postProd        *PostProductionExecutor
-	asrEngine       *ASREngine
-	cutEngine       *CutEngine
-	enhancer        *EnhancerEngine
-	balances        map[string]tenantdb.ExactDecimal // workspaceID -> available credits
-	mockRefunds     map[string]tenantdb.ExactDecimal // jobID -> refunded credits
-	clipFactory     *ClipFactoryEngine
-	events          []DomainEvent
-	VoiceClone      *VoiceCloneManager
-	SoundStudio     *SoundStudioManager
-	Translation     *TranslationManager
-	StylePack       *StylePackManager
-	AIService       *AIOpsManager
-	DriftQA         *DriftQAManager
-	ProductShowcase *ProductShowcaseManager
-	LinkToVideo     *LinkToVideoManager
-	DerivativeMgr   *DerivativeManager
-	PackagingQAMgr  *PackagingQAManager
-	ABTestMgr       *ABTestManager
-	CoachMgr        *PerformanceCoachManager
-	Gamification    *GamificationHook
+	mu                    sync.RWMutex
+	store                 Store
+	router                *PipelineRouter
+	budgetCalc            *BudgetCalculator
+	postProd              *PostProductionExecutor
+	asrEngine             *ASREngine
+	cutEngine             *CutEngine
+	enhancer              *EnhancerEngine
+	balances              map[string]tenantdb.ExactDecimal // workspaceID -> available credits
+	mockRefunds           map[string]tenantdb.ExactDecimal // jobID -> refunded credits
+	quotes                map[string]*CreditQuote
+	reservations          map[string]*CreditReservationRecord
+	reservationsByJob     map[string]string
+	idempotencyRecords    map[string]*idempotencyEntry
+	requireConfirmedQuote bool
+	clipFactory           *ClipFactoryEngine
+	events                []DomainEvent
+	VoiceClone            *VoiceCloneManager
+	SoundStudio           *SoundStudioManager
+	Translation           *TranslationManager
+	StylePack             *StylePackManager
+	AIService             *AIOpsManager
+	DriftQA               *DriftQAManager
+	ProductShowcase       *ProductShowcaseManager
+	LinkToVideo           *LinkToVideoManager
+	DerivativeMgr         *DerivativeManager
+	PackagingQAMgr        *PackagingQAManager
+	ABTestMgr             *ABTestManager
+	CoachMgr              *PerformanceCoachManager
+	Gamification          *GamificationHook
 }
 
 var _ productionv1connect.StudioServiceHandler = (*Service)(nil)
@@ -125,19 +143,15 @@ func (s *Service) LinkToVideoService() productionv1connect.LinkToVideoServiceHan
 }
 
 // NewService creates a new Production service.
+// Default NewService does NOT wire mock providers; callers or tests must explicitly configure
+// real or mock providers in ServiceConfig, otherwise generation fails closed with ErrProviderNotConfigured.
 func NewService(cfg ServiceConfig) *Service {
 	st := cfg.Store
 	if st == nil {
 		st = NewMemoryStore()
 	}
 	prim := cfg.PrimaryProvider
-	if prim == nil {
-		prim = NewMockVeoProvider()
-	}
 	fall := cfg.FallbackProvider
-	if fall == nil {
-		fall = NewMockKlingProvider()
-	}
 	pp := cfg.PostProdExecutor
 	if pp == nil {
 		pp = NewPostProductionExecutor(DefaultWorkerLimits())
@@ -149,16 +163,21 @@ func NewService(cfg ServiceConfig) *Service {
 	}
 
 	svc := &Service{
-		store:       st,
-		router:      NewPipelineRouter(prim, fall),
-		budgetCalc:  NewBudgetCalculator(),
-		postProd:    pp,
-		asrEngine:   NewASREngine(),
-		cutEngine:   NewCutEngine(80),
-		enhancer:    NewEnhancerEngine(st),
-		clipFactory: NewClipFactoryEngine(NewASREngine(), pp),
-		balances:    bal,
-		mockRefunds: make(map[string]tenantdb.ExactDecimal),
+		store:                 st,
+		router:                NewPipelineRouter(prim, fall),
+		budgetCalc:            NewBudgetCalculator(),
+		postProd:              pp,
+		asrEngine:             NewASREngine(),
+		cutEngine:             NewCutEngine(80),
+		enhancer:              NewEnhancerEngine(st),
+		clipFactory:           NewClipFactoryEngine(NewASREngine(), pp),
+		balances:              bal,
+		mockRefunds:           make(map[string]tenantdb.ExactDecimal),
+		quotes:                make(map[string]*CreditQuote),
+		reservations:          make(map[string]*CreditReservationRecord),
+		reservationsByJob:     make(map[string]string),
+		idempotencyRecords:    make(map[string]*idempotencyEntry),
+		requireConfirmedQuote: cfg.RequireConfirmedQuote,
 	}
 	svc.VoiceClone = NewVoiceCloneManager(st, svc)
 	svc.SoundStudio = NewSoundStudioManager(st, svc)
@@ -174,6 +193,143 @@ func NewService(cfg ServiceConfig) *Service {
 	svc.CoachMgr = NewPerformanceCoachManager(st)
 	svc.Gamification = NewGamificationHook(svc)
 	return svc
+}
+
+// RegisterQuote registers or overrides a credit quote for testing and preflight verification.
+func (s *Service) RegisterQuote(q CreditQuote) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cp := q
+	s.quotes[q.QuoteID] = &cp
+}
+
+// GetQuote returns a copy of a stored CreditQuote by ID.
+func (s *Service) GetQuote(quoteID string) (*CreditQuote, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	q, ok := s.quotes[quoteID]
+	if !ok || q == nil {
+		return nil, false
+	}
+	cp := *q
+	return &cp, true
+}
+
+// GetReservationByJob returns the credit reservation record associated with a job ID.
+func (s *Service) GetReservationByJob(jobID string) (*CreditReservationRecord, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	resID, ok := s.reservationsByJob[jobID]
+	if !ok {
+		return nil, false
+	}
+	rec, ok := s.reservations[resID]
+	if !ok || rec == nil {
+		return nil, false
+	}
+	cp := *rec
+	return &cp, true
+}
+
+func computeGenerateRequestHash(msg *productionv1.GenerateRequest) string {
+	type hashBatchItem struct {
+		ItemID       string   `json:"item_id"`
+		ItemName     string   `json:"item_name"`
+		Prompt       string   `json:"prompt"`
+		ReferenceURL string   `json:"reference_url"`
+		ImageURLs    []string `json:"image_urls"`
+	}
+	type hashPayload struct {
+		Mode              int32           `json:"mode"`
+		Title             string          `json:"title"`
+		Prompt            string          `json:"prompt"`
+		ScriptID          string          `json:"script_id"`
+		AssetBriefID      string          `json:"asset_brief_id"`
+		ContinuityPackIDs []string        `json:"continuity_pack_ids"`
+		PipelineStrategy  int32           `json:"pipeline_strategy"`
+		PreferredProvider string          `json:"preferred_provider"`
+		PreferredModel    string          `json:"preferred_model"`
+		AspectRatio       string          `json:"aspect_ratio"`
+		BatchItems        []hashBatchItem `json:"batch_items,omitempty"`
+	}
+	aspect := ""
+	if msg.GetPostProduction() != nil {
+		aspect = msg.GetPostProduction().GetAspectRatio()
+	}
+	var items []hashBatchItem
+	for _, it := range msg.GetBatchItems() {
+		items = append(items, hashBatchItem{
+			ItemID:       it.GetItemId(),
+			ItemName:     it.GetItemName(),
+			Prompt:       it.GetPrompt(),
+			ReferenceURL: it.GetReferenceUrl(),
+			ImageURLs:    it.GetImageUrls(),
+		})
+	}
+	payload := hashPayload{
+		Mode:              int32(msg.GetMode()),
+		Title:             strings.TrimSpace(msg.GetTitle()),
+		Prompt:            strings.TrimSpace(msg.GetPrompt()),
+		ScriptID:          strings.TrimSpace(msg.GetScriptId()),
+		AssetBriefID:      strings.TrimSpace(msg.GetAssetBriefId()),
+		ContinuityPackIDs: msg.GetContinuityPackIds(),
+		PipelineStrategy:  int32(msg.GetPipelineStrategy()),
+		PreferredProvider: strings.TrimSpace(msg.GetPreferredProvider()),
+		PreferredModel:    strings.TrimSpace(msg.GetPreferredModel()),
+		AspectRatio:       strings.TrimSpace(aspect),
+		BatchItems:        items,
+	}
+	b, _ := json.Marshal(payload)
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
+}
+
+func (s *Service) setReservationStatus(jobID, status string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if resID, ok := s.reservationsByJob[jobID]; ok {
+		if rec, ok := s.reservations[resID]; ok && rec != nil {
+			rec.Status = status
+			rec.UpdatedAt = time.Now().UTC()
+		}
+	}
+}
+
+func (s *Service) releaseReservation(workspaceID, jobID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	resID, ok := s.reservationsByJob[jobID]
+	if !ok {
+		return
+	}
+	rec, ok := s.reservations[resID]
+	if !ok || rec == nil || rec.Status == "released" || rec.Status == "committed" {
+		return
+	}
+	curr, exists := s.balances[workspaceID]
+	if !exists {
+		curr = tenantdb.MustParseExactDecimal("100")
+	}
+	if updated, err := curr.Add(rec.ReservedCredits); err == nil {
+		s.balances[workspaceID] = updated
+	}
+	rec.Status = "released"
+	rec.UpdatedAt = time.Now().UTC()
+}
+
+func (s *Service) commitReservation(workspaceID, jobID string, _ tenantdb.ExactDecimal) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	resID, ok := s.reservationsByJob[jobID]
+	if !ok {
+		return
+	}
+	rec, ok := s.reservations[resID]
+	if !ok || rec == nil || rec.Status == "released" || rec.Status == "committed" {
+		return
+	}
+	rec.Status = "committed"
+	rec.UpdatedAt = time.Now().UTC()
 }
 
 // ASREngine returns the configured ASREngine.
@@ -282,8 +438,77 @@ func (s *Service) refundCredits(workspaceID string, amount tenantdb.ExactDecimal
 }
 
 func extractCallerContext(ctx context.Context, wsID string) CallerContext {
-	// In production, extracted from authenticated JWT/session context.
-	// For testing and harness, defaults to Editor role if not set.
+	// 1. Prefer verified transportauth principal when present on context.
+	if principal, ok := transportauth.PrincipalFromContext(ctx); ok {
+		if wsID != "" && principal.WorkspaceID != "" && principal.WorkspaceID != wsID && !principal.InternalAdmin {
+			return CallerContext{
+				UserID:        principal.UserID,
+				WorkspaceID:   wsID,
+				WorkspaceRole: "Denied",
+			}
+		}
+		if scope, hasScope := tenantdb.ScopeFromContext(ctx); hasScope {
+			if wsID != "" && scope.WorkspaceID != "" && scope.WorkspaceID != wsID && !principal.InternalAdmin {
+				return CallerContext{
+					UserID:        principal.UserID,
+					WorkspaceID:   wsID,
+					WorkspaceRole: "Denied",
+				}
+			}
+			if scope.Role != "" {
+				return CallerContext{
+					UserID:        principal.UserID,
+					WorkspaceID:   wsID,
+					WorkspaceRole: scope.Role,
+				}
+			}
+		}
+		role := "Editor"
+		if principal.InternalAdmin {
+			role = "Owner"
+		} else if r, ok := ctx.Value("caller_role").(string); ok && r != "" {
+			role = r
+		}
+		return CallerContext{
+			UserID:        principal.UserID,
+			WorkspaceID:   wsID,
+			WorkspaceRole: role,
+		}
+	}
+
+	// 2. Check verified tenantdb active scope when present on context.
+	if scope, ok := tenantdb.ScopeFromContext(ctx); ok {
+		if wsID != "" && scope.WorkspaceID != "" && scope.WorkspaceID != wsID {
+			return CallerContext{
+				UserID:        scope.UserID,
+				WorkspaceID:   wsID,
+				WorkspaceRole: "Denied",
+			}
+		}
+		role := scope.Role
+		if role == "" {
+			if r, ok := ctx.Value("caller_role").(string); ok && r != "" {
+				role = r
+			} else {
+				role = "Editor"
+			}
+		}
+		userID := scope.UserID
+		if userID == "" {
+			if u, ok := ctx.Value("caller_user_id").(string); ok && u != "" {
+				userID = u
+			} else {
+				userID = "usr-default-001"
+			}
+		}
+		return CallerContext{
+			UserID:        userID,
+			WorkspaceID:   wsID,
+			WorkspaceRole: role,
+		}
+	}
+
+	// 3. Fallback for direct in-process unit tests.
 	role := "Editor"
 	userID := "usr-default-001"
 	if r, ok := ctx.Value("caller_role").(string); ok && r != "" {
@@ -463,10 +688,14 @@ func (s *Service) Cancel(ctx context.Context, req *connect.Request[productionv1.
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// Refund credits
+	// Refund credits (release reservation if tracked, otherwise direct refund)
 	refundAmount := job.EstimatedCredits
 	if refundAmount.IsPositive() {
-		s.refundCredits(wsID, refundAmount)
+		if _, hasRes := s.GetReservationByJob(jobID); hasRes {
+			s.releaseReservation(wsID, jobID)
+		} else {
+			s.refundCredits(wsID, refundAmount)
+		}
 		s.mu.Lock()
 		s.mockRefunds[jobID] = refundAmount
 		s.mu.Unlock()
@@ -501,25 +730,179 @@ func (s *Service) Retry(ctx context.Context, req *connect.Request[productionv1.R
 		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("job %s is %s; only failed or cancelled jobs can be retried", jobID, job.Status))
 	}
 
+	maxRetries := job.MaxRetries
+	if maxRetries <= 0 {
+		maxRetries = 3
+	}
+	if job.RetryCount >= maxRetries {
+		return nil, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("%w: job %s has reached max_retries (%d/%d)", ErrRetryLimitExceeded, jobID, job.RetryCount, maxRetries))
+	}
+
+	if !s.router.HasConfiguredProvider() {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrProviderNotConfigured)
+	}
+
+	// Resolve original immutable prompt, duration, and aspect ratio
+	origPrompt := strings.TrimSpace(job.Prompt)
+	origAspect := strings.TrimSpace(job.AspectRatio)
+	origDur := job.DurationSeconds
+	if job.AssetID != "" {
+		if asset, aErr := s.store.GetAsset(ctx, wsID, job.AssetID); aErr == nil && asset != nil {
+			if origPrompt == "" && strings.TrimSpace(asset.GenerationPrompt) != "" {
+				origPrompt = strings.TrimSpace(asset.GenerationPrompt)
+			}
+			if origAspect == "" && strings.TrimSpace(asset.AspectRatio) != "" {
+				origAspect = strings.TrimSpace(asset.AspectRatio)
+			}
+		}
+	}
+	if origPrompt == "" && strings.TrimSpace(job.PromptPackageJSON) != "" {
+		origPrompt = strings.TrimSpace(job.PromptPackageJSON)
+	}
+	if origPrompt == "" {
+		origPrompt = job.JobID
+	}
+	if origDur <= 0 {
+		origDur = 15
+	}
+	if origAspect == "" {
+		origAspect = "9:16"
+	}
+
+	// Acquire a fresh atomic credit reservation for the retry attempt
+	neededCredits := job.EstimatedCredits
+	now := time.Now().UTC()
+	var reservationID string
+	if neededCredits.IsPositive() {
+		s.mu.Lock()
+		currBal, ok := s.balances[wsID]
+		if !ok {
+			currBal = tenantdb.MustParseExactDecimal("100")
+		}
+		if currBal.Cmp(neededCredits) < 0 {
+			s.mu.Unlock()
+			return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: balance is %s credits, retry requires %s credits", ErrInsufficientCredits, currBal.String(), neededCredits.String()))
+		}
+		newBal, subErr := currBal.Sub(neededCredits)
+		if subErr != nil {
+			s.mu.Unlock()
+			return nil, connect.NewError(connect.CodeInternal, subErr)
+		}
+		s.balances[wsID] = newBal
+		reservationID = fmt.Sprintf("res-retry-%s-%d", jobID, job.RetryCount+1)
+		s.reservations[reservationID] = &CreditReservationRecord{
+			ReservationID:   reservationID,
+			WorkspaceID:     wsID,
+			JobID:           jobID,
+			QuoteID:         job.QuoteID,
+			ReservedCredits: neededCredits,
+			Status:          "reserved",
+			CreatedAt:       now,
+			UpdatedAt:       now,
+		}
+		s.reservationsByJob[jobID] = reservationID
+		s.mu.Unlock()
+	}
+
 	job.Status = "processing"
 	job.RetryCount++
+	job.MaxRetries = maxRetries
 	job.ErrorMessage = ""
-	_ = s.store.UpdateJob(ctx, job)
-
-	// Re-run execution through router
-	reqInput := ProviderGenRequest{
-		Prompt:          job.JobID,
-		DurationSeconds: 15,
-		AspectRatio:     "9:16",
+	job.ErrorCode = ""
+	if reservationID != "" {
+		job.ReservationID = reservationID
 	}
-	result, err := s.router.ExecuteRoutedJob(ctx, reqInput, job.EstimatedCredits)
+	if err := s.store.UpdateJob(ctx, job); err != nil {
+		if reservationID != "" {
+			s.releaseReservation(wsID, jobID)
+		}
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to persist retry job update before provider dispatch: %w", err))
+	}
+	if err := s.store.SyncJobAndAsset(ctx, wsID, jobID, "processing", "generating", "", "", "0", "0"); err != nil {
+		if reservationID != "" {
+			s.releaseReservation(wsID, jobID)
+		}
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to sync retry job and asset state before provider dispatch: %w", err))
+	}
+	if reservationID != "" {
+		s.setReservationStatus(jobID, "in_flight")
+	}
+
+	// Re-run execution through router with original prompt and options
+	reqInput := ProviderGenRequest{
+		Prompt:          origPrompt,
+		DurationSeconds: origDur,
+		AspectRatio:     origAspect,
+		IdempotencyKey:  fmt.Sprintf("%s:retry:%d", jobID, job.RetryCount),
+	}
+	result, err := s.router.ExecuteRoutedJob(ctx, reqInput, neededCredits)
 	if err != nil {
-		_ = s.store.SyncJobAndAsset(ctx, wsID, jobID, "failed", "failed", err.Error(), "", "0", "0")
+		if errors.Is(err, ErrOutcomeUnknown) || (result != nil && result.OutcomeUnknown) {
+			s.setReservationStatus(jobID, "reconciling")
+			job.Status = "processing"
+			job.CurrentStep = "reconciling_provider_outcome"
+			job.ErrorCode = "PROVIDER_OUTCOME_UNKNOWN"
+			job.ErrorMessage = err.Error()
+			if result != nil && result.ProviderJobID != "" {
+				job.ProviderJobID = result.ProviderJobID
+			}
+			_ = s.store.UpdateJob(ctx, job)
+			return nil, connect.NewError(connect.CodeDeadlineExceeded, fmt.Errorf("%w: retry outcome unknown; credits held pending reconciliation", ErrOutcomeUnknown))
+		}
+		syncErr := s.store.SyncJobAndAsset(ctx, wsID, jobID, "failed", "failed", err.Error(), "", "0", "0")
+		if reservationID != "" {
+			s.releaseReservation(wsID, jobID)
+		}
+		if syncErr != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("retry failed (%v) and state sync failed: %w", err, syncErr))
+		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	_ = s.store.SyncJobAndAsset(ctx, wsID, jobID, "completed", "generated", "", result.ResultURL, result.CreditsDeducted.String(), result.CostUSD.String())
-	finalJob, _ := s.store.GetJob(ctx, wsID, jobID)
+	if result.Status == "queued" || result.Status == "processing" {
+		job.Provider = result.ActualProvider
+		job.Model = result.ActualModel
+		job.ProviderJobID = result.ProviderJobID
+		job.Status = "processing"
+		job.CurrentStep = "Provider rendering in progress"
+		if err := s.store.UpdateJob(ctx, job); err != nil {
+			s.setReservationStatus(jobID, "reconciling")
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		if err := s.store.SyncJobAndAsset(ctx, wsID, jobID, "processing", "generating", "", "", "0", "0"); err != nil {
+			s.setReservationStatus(jobID, "reconciling")
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		finalJob, getErr := s.store.GetJob(ctx, wsID, jobID)
+		if getErr != nil {
+			return nil, connect.NewError(connect.CodeInternal, getErr)
+		}
+		return connect.NewResponse(&productionv1.RetryResponse{
+			Job:     toProtoGenerationJob(finalJob),
+			Message: "Job retry accepted and processing asynchronously",
+		}), nil
+	}
+
+	job.Provider = result.ActualProvider
+	job.Model = result.ActualModel
+	job.ProviderJobID = result.ProviderJobID
+	job.ActualCredits = result.CreditsDeducted
+	job.ActualCostUSD = result.CostUSD
+	if err := s.store.UpdateJob(ctx, job); err != nil {
+		s.setReservationStatus(jobID, "reconciling")
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to persist completed retry job metadata: %w", err))
+	}
+	if err := s.store.SyncJobAndAsset(ctx, wsID, jobID, "completed", "generated", "", result.ResultURL, result.CreditsDeducted.String(), result.CostUSD.String()); err != nil {
+		s.setReservationStatus(jobID, "reconciling")
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to sync completed retry job and asset: %w", err))
+	}
+	if reservationID != "" {
+		s.commitReservation(wsID, jobID, result.CreditsDeducted)
+	}
+	finalJob, getErr := s.store.GetJob(ctx, wsID, jobID)
+	if getErr != nil {
+		return nil, connect.NewError(connect.CodeInternal, getErr)
+	}
 
 	return connect.NewResponse(&productionv1.RetryResponse{
 		Job:     toProtoGenerationJob(finalJob),
@@ -544,6 +927,7 @@ func (s *Service) Generate(ctx context.Context, req *connect.Request[productionv
 		return nil, connect.NewError(connect.CodePermissionDenied, ErrPermissionDenied)
 	}
 
+	requestHash := computeGenerateRequestHash(req.Msg)
 	balance := s.GetWorkspaceBalance(wsID)
 
 	// ------------------------------------------------------------------------
@@ -565,6 +949,15 @@ func (s *Service) Generate(ctx context.Context, req *connect.Request[productionv
 				})
 			}
 			preview := s.budgetCalc.PreviewBatchBudget(ctx, batchRows, rateUSD, balance)
+			s.RegisterQuote(CreditQuote{
+				QuoteID:        preview.QuoteID,
+				WorkspaceID:    wsID,
+				RequestHash:    requestHash,
+				QuotedCredits:  preview.TotalEstimatedCredits,
+				CostCeilingUSD: preview.TotalCostCeilingUSD,
+				ExpiresAt:      preview.QuoteExpiresAt,
+				CreatedAt:      time.Now().UTC(),
+			})
 			return connect.NewResponse(&productionv1.GenerateResponse{
 				IsDryRun:      true,
 				BudgetPreview: toProtoBatchBudgetPreview(preview),
@@ -572,7 +965,11 @@ func (s *Service) Generate(ctx context.Context, req *connect.Request[productionv
 		}
 
 		// Single item preview
-		valid, reason := s.budgetCalc.ValidateSingleInput(req.Msg.GetTitle(), req.Msg.GetPrompt(), "")
+		aspectRatio := ""
+		if req.Msg.GetPostProduction() != nil {
+			aspectRatio = req.Msg.GetPostProduction().GetAspectRatio()
+		}
+		valid, reason := s.budgetCalc.ValidateSingleInput(req.Msg.GetTitle(), req.Msg.GetPrompt(), aspectRatio)
 		costUSD := tenantdb.MustParseExactDecimal("0.600000") // 15s * $0.04
 		quotedCredits, _ := s.budgetCalc.ComputeQuotedCredits(costUSD)
 		rowRes := BatchRowValidationResult{
@@ -608,6 +1005,18 @@ func (s *Service) Generate(ctx context.Context, req *connect.Request[productionv
 			singlePreview.TotalCostCeilingUSD = tenantdb.ZeroDecimal()
 		}
 
+		if valid {
+			s.RegisterQuote(CreditQuote{
+				QuoteID:        singlePreview.QuoteID,
+				WorkspaceID:    wsID,
+				RequestHash:    requestHash,
+				QuotedCredits:  singlePreview.TotalEstimatedCredits,
+				CostCeilingUSD: singlePreview.TotalCostCeilingUSD,
+				ExpiresAt:      singlePreview.QuoteExpiresAt,
+				CreatedAt:      time.Now().UTC(),
+			})
+		}
+
 		return connect.NewResponse(&productionv1.GenerateResponse{
 			IsDryRun:      true,
 			BudgetPreview: toProtoBatchBudgetPreview(singlePreview),
@@ -617,7 +1026,11 @@ func (s *Service) Generate(ctx context.Context, req *connect.Request[productionv
 	// ------------------------------------------------------------------------
 	// LIVE RUN: Durable Job Creation and Routing
 	// ------------------------------------------------------------------------
-	valid, reason := s.budgetCalc.ValidateSingleInput(req.Msg.GetTitle(), req.Msg.GetPrompt(), "")
+	aspectRatio := "9:16"
+	if req.Msg.GetPostProduction() != nil && strings.TrimSpace(req.Msg.GetPostProduction().GetAspectRatio()) != "" {
+		aspectRatio = strings.TrimSpace(req.Msg.GetPostProduction().GetAspectRatio())
+	}
+	valid, reason := s.budgetCalc.ValidateSingleInput(req.Msg.GetTitle(), req.Msg.GetPrompt(), aspectRatio)
 	if !valid {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid generation input: %s", reason))
 	}
@@ -627,17 +1040,127 @@ func (s *Service) Generate(ctx context.Context, req *connect.Request[productionv
 	costCeilingUSD, _ := durSecs.MulFloor(rateUSD)
 	neededCredits, _ := s.budgetCalc.ComputeQuotedCredits(costCeilingUSD)
 
-	// Balance verification (EC-M07-002)
-	if balance.Cmp(neededCredits) < 0 {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: balance is %s credits, estimated cost is %s credits", ErrInsufficientCredits, balance.String(), neededCredits.String()))
+	idemKey := ""
+	if req.Msg.GetContext() != nil {
+		idemKey = strings.TrimSpace(req.Msg.GetContext().GetIdempotencyKey())
+	}
+	quoteID := strings.TrimSpace(req.Msg.GetQuoteId())
+	confirmedStr := strings.TrimSpace(req.Msg.GetConfirmedCredits())
+	now := time.Now().UTC()
+
+	// Atomic critical section for idempotency check, quote verification, provider check, and credit reservation
+	s.mu.Lock()
+	if idemKey != "" {
+		idemMapKey := wsID + ":" + idemKey
+		if existingEntry, exists := s.idempotencyRecords[idemMapKey]; exists && existingEntry != nil {
+			if existingEntry.RequestHash != requestHash {
+				s.mu.Unlock()
+				return nil, connect.NewError(connect.CodeAlreadyExists, ErrDuplicateIdempotencyKeyConflict)
+			}
+			existingJobID := existingEntry.JobID
+			existingAssetID := existingEntry.AssetID
+			s.mu.Unlock()
+			existingJob, jErr := s.store.GetJob(ctx, wsID, existingJobID)
+			if jErr != nil {
+				return nil, connect.NewError(connect.CodeInternal, jErr)
+			}
+			existingAsset, _ := s.store.GetAsset(ctx, wsID, existingAssetID)
+			return connect.NewResponse(&productionv1.GenerateResponse{
+				IsDryRun: false,
+				Job:      toProtoGenerationJob(existingJob),
+				Asset:    toProtoAsset(existingAsset),
+			}), nil
+		}
 	}
 
-	// Deduct / reserve credits
-	s.deductCredits(wsID, neededCredits)
+	if s.requireConfirmedQuote && quoteID == "" {
+		s.mu.Unlock()
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: quote_id is required", ErrQuoteExpiredOrInvalid))
+	}
 
-	now := time.Now().UTC()
+	if quoteID != "" {
+		q, ok := s.quotes[quoteID]
+		if !ok || q == nil {
+			s.mu.Unlock()
+			return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: unknown quote_id %q", ErrQuoteExpiredOrInvalid, quoteID))
+		}
+		if q.WorkspaceID != wsID {
+			s.mu.Unlock()
+			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("%w: quote %q belongs to a different workspace", ErrCrossTenantDenied, quoteID))
+		}
+		if now.After(q.ExpiresAt) {
+			s.mu.Unlock()
+			return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: quote %q expired at %s", ErrQuoteExpiredOrInvalid, quoteID, q.ExpiresAt.Format(time.RFC3339)))
+		}
+		if q.RequestHash != "" && q.RequestHash != requestHash {
+			s.mu.Unlock()
+			return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: quote %q request hash mismatch", ErrQuoteExpiredOrInvalid, quoteID))
+		}
+		if !q.QuotedCredits.IsZero() {
+			neededCredits = q.QuotedCredits
+			costCeilingUSD = q.CostCeilingUSD
+		}
+	}
+
+	if confirmedStr != "" {
+		confirmedDec, parseErr := tenantdb.ParseExactDecimal(confirmedStr)
+		if parseErr != nil || confirmedDec.Cmp(neededCredits) != 0 {
+			s.mu.Unlock()
+			return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: confirmed_credits %q does not match required quote %s", ErrQuoteExpiredOrInvalid, confirmedStr, neededCredits.String()))
+		}
+	}
+
+	// Verify provider is configured BEFORE reserving/charging any credits (AI-04 / R07)
+	if !s.router.HasConfiguredProvider() {
+		s.mu.Unlock()
+		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrProviderNotConfigured)
+	}
+
+	// Atomic balance verification & reservation deduction under s.mu.Lock() (AI-05 / R08, EC-M07-002)
+	currBal, hasBal := s.balances[wsID]
+	if !hasBal {
+		currBal = tenantdb.MustParseExactDecimal("100")
+	}
+	if currBal.Cmp(neededCredits) < 0 {
+		s.mu.Unlock()
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: balance is %s credits, estimated cost is %s credits", ErrInsufficientCredits, currBal.String(), neededCredits.String()))
+	}
+	newBal, subErr := currBal.Sub(neededCredits)
+	if subErr != nil {
+		s.mu.Unlock()
+		return nil, connect.NewError(connect.CodeInternal, subErr)
+	}
+	s.balances[wsID] = newBal
+
 	assetID := fmt.Sprintf("asset-%d", time.Now().UnixNano())
 	jobID := fmt.Sprintf("job-%d", time.Now().UnixNano())
+	reservationID := fmt.Sprintf("res-%d", time.Now().UnixNano())
+
+	s.reservations[reservationID] = &CreditReservationRecord{
+		ReservationID:   reservationID,
+		WorkspaceID:     wsID,
+		JobID:           jobID,
+		QuoteID:         quoteID,
+		IdempotencyKey:  idemKey,
+		RequestHash:     requestHash,
+		ReservedCredits: neededCredits,
+		Status:          "reserved",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	s.reservationsByJob[jobID] = reservationID
+
+	if idemKey != "" {
+		s.idempotencyRecords[wsID+":"+idemKey] = &idempotencyEntry{
+			WorkspaceID:    wsID,
+			IdempotencyKey: idemKey,
+			RequestHash:    requestHash,
+			JobID:          jobID,
+			AssetID:        assetID,
+			ReservationID:  reservationID,
+		}
+	}
+	s.mu.Unlock()
 
 	asset := &Asset{
 		AssetID:               assetID,
@@ -648,7 +1171,9 @@ func (s *Service) Generate(ctx context.Context, req *connect.Request[productionv
 		AssetBriefID:          req.Msg.GetAssetBriefId(),
 		SourceGenerationMode:  "ai_generated",
 		SourceProvider:        "veo",
-		GenerationState:       "queued",
+		AspectRatio:           aspectRatio,
+		DurationSeconds:       durSecs,
+		GenerationState:       "generating",
 		QualityState:          "draft",
 		GenerationCostCredits: neededCredits,
 		GenerationCostUSD:     costCeilingUSD,
@@ -658,39 +1183,113 @@ func (s *Service) Generate(ctx context.Context, req *connect.Request[productionv
 		CreatedAt:             now,
 		UpdatedAt:             now,
 	}
-	_ = s.store.CreateAsset(ctx, asset)
+	if err := s.store.CreateAsset(ctx, asset); err != nil {
+		s.releaseReservation(wsID, jobID)
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to persist asset before provider dispatch: %w", err))
+	}
 
 	job := &GenerationJob{
-		JobID:            jobID,
-		WorkspaceID:      wsID,
-		AssetID:          assetID,
-		JobType:          "video_gen",
-		Provider:         "veo",
-		Status:           "processing",
-		ProgressPct:      10,
-		CurrentStep:      "Submitting to provider",
-		EstimatedCredits: neededCredits,
-		QuoteID:          req.Msg.GetQuoteId(),
-		BYOKUsed:         req.Msg.GetByokApiKey() != "",
-		CreatedAt:        now,
-		UpdatedAt:        now,
+		JobID:             jobID,
+		WorkspaceID:       wsID,
+		AssetID:           assetID,
+		JobType:           "video_gen",
+		Provider:          "veo",
+		Prompt:            req.Msg.GetPrompt(),
+		DurationSeconds:   15,
+		AspectRatio:       aspectRatio,
+		Mode:              req.Msg.GetMode().String(),
+		ContinuityPackIDs: req.Msg.GetContinuityPackIds(),
+		IdempotencyKey:    idemKey,
+		Status:            "processing",
+		ProgressPct:       10,
+		CurrentStep:       "Submitting to provider",
+		EstimatedCredits:  neededCredits,
+		MaxRetries:        3,
+		QuoteID:           quoteID,
+		ReservationID:     reservationID,
+		BYOKUsed:          req.Msg.GetByokApiKey() != "",
+		StartedAt:         &now,
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}
-	_ = s.store.CreateJob(ctx, job)
+	if err := s.store.CreateJob(ctx, job); err != nil {
+		s.releaseReservation(wsID, jobID)
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to persist generation job before provider dispatch: %w", err))
+	}
+
+	s.setReservationStatus(jobID, "in_flight")
 
 	// Execute through Smart Pipeline Router
 	providerReq := ProviderGenRequest{
 		Prompt:          req.Msg.GetPrompt(),
 		DurationSeconds: 15,
-		AspectRatio:     "9:16",
+		AspectRatio:     aspectRatio,
 		BYOKApiKey:      req.Msg.GetByokApiKey(),
+		IdempotencyKey:  jobID,
 	}
 
 	execResult, err := s.router.ExecuteRoutedJob(ctx, providerReq, neededCredits)
 	if err != nil {
-		_ = s.store.SyncJobAndAsset(ctx, wsID, jobID, "failed", "failed", err.Error(), "", "0", "0")
-		// Refund on failure
-		s.refundCredits(wsID, neededCredits)
+		// AI-06 & AI-07: If submission or status outcome is unknown (e.g. timeout),
+		// DO NOT refund credits as if definitively failed and DO NOT mark completed!
+		if errors.Is(err, ErrOutcomeUnknown) || (execResult != nil && execResult.OutcomeUnknown) {
+			s.setReservationStatus(jobID, "reconciling")
+			job.Status = "processing"
+			job.CurrentStep = "reconciling_provider_outcome"
+			job.ErrorCode = "PROVIDER_OUTCOME_UNKNOWN"
+			job.ErrorMessage = err.Error()
+			if execResult != nil {
+				if execResult.ActualProvider != "" {
+					job.Provider = execResult.ActualProvider
+				}
+				if execResult.ActualModel != "" {
+					job.Model = execResult.ActualModel
+				}
+				if execResult.ProviderJobID != "" {
+					job.ProviderJobID = execResult.ProviderJobID
+				}
+			}
+			_ = s.store.UpdateJob(ctx, job)
+			return nil, connect.NewError(connect.CodeDeadlineExceeded, fmt.Errorf("%w: credits held pending reconciliation", ErrOutcomeUnknown))
+		}
+
+		syncErr := s.store.SyncJobAndAsset(ctx, wsID, jobID, "failed", "failed", err.Error(), "", "0", "0")
+		s.releaseReservation(wsID, jobID)
+		if syncErr != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("generation failed (%v) and state sync failed: %w", err, syncErr))
+		}
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("generation failed: %w", err))
+	}
+
+	// AI-07: If provider returned queued/processing (async execution), keep job in processing
+	// and asset in generating without fabricating a completed asset!
+	if execResult.Status == "queued" || execResult.Status == "processing" {
+		job.Provider = execResult.ActualProvider
+		job.Model = execResult.ActualModel
+		job.ProviderJobID = execResult.ProviderJobID
+		job.Status = "processing"
+		job.CurrentStep = "Provider rendering in progress"
+		if err := s.store.UpdateJob(ctx, job); err != nil {
+			s.setReservationStatus(jobID, "reconciling")
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to update in-flight generation job: %w", err))
+		}
+		if err := s.store.SyncJobAndAsset(ctx, wsID, jobID, "processing", "generating", "", "", "0", "0"); err != nil {
+			s.setReservationStatus(jobID, "reconciling")
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to sync in-flight job and asset: %w", err))
+		}
+		finalJob, jErr := s.store.GetJob(ctx, wsID, jobID)
+		if jErr != nil {
+			return nil, connect.NewError(connect.CodeInternal, jErr)
+		}
+		finalAsset, aErr := s.store.GetAsset(ctx, wsID, assetID)
+		if aErr != nil {
+			return nil, connect.NewError(connect.CodeInternal, aErr)
+		}
+		return connect.NewResponse(&productionv1.GenerateResponse{
+			IsDryRun: false,
+			Job:      toProtoGenerationJob(finalJob),
+			Asset:    toProtoAsset(finalAsset),
+		}), nil
 	}
 
 	// RULE-M07-001: Record full lineage in asset
@@ -706,29 +1305,62 @@ func (s *Service) Generate(ctx context.Context, req *connect.Request[productionv
 	asset.LineageRefs = append(asset.LineageRefs, lineage)
 	asset.SourceProvider = execResult.ActualProvider
 	asset.SourceModel = execResult.ActualModel
-	_ = s.store.UpdateAsset(ctx, asset)
+	if err := s.store.UpdateAsset(ctx, asset); err != nil {
+		s.setReservationStatus(jobID, "reconciling")
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to update asset lineage after provider completion: %w", err))
+	}
 
 	// Post-production mix validation (Acceptance Target 4 & RULE-M07-005)
+	width, height := 1080, 1920
+	switch aspectRatio {
+	case "16:9":
+		width, height = 1920, 1080
+	case "1:1":
+		width, height = 1080, 1080
+	case "4:5":
+		width, height = 1080, 1350
+	}
 	outputMeta := OutputMediaMetadata{
-		Width:             1080,
-		Height:            1920,
+		Width:             width,
+		Height:            height,
 		DurationSecs:      15.0,
 		HasVideoStream:    true,
 		HasAudioStream:    true,
 		AudioLoudnessLUFS: -14.0, // Normalization target satisfied
 		FileSizeBytes:     1024 * 1024 * 12,
 	}
-	if err := s.postProd.ValidateOutputMedia(outputMeta, "9:16", true); err != nil {
+	if err := s.postProd.ValidateOutputMedia(outputMeta, aspectRatio, true); err != nil {
 		_ = s.store.SyncJobAndAsset(ctx, wsID, jobID, "failed", "failed", err.Error(), "", "0", "0")
-		s.refundCredits(wsID, neededCredits)
+		s.releaseReservation(wsID, jobID)
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// Atomically mark completed (RULE-M07-007)
-	_ = s.store.SyncJobAndAsset(ctx, wsID, jobID, "completed", "generated", "", execResult.ResultURL, execResult.CreditsDeducted.String(), execResult.CostUSD.String())
+	job.Provider = execResult.ActualProvider
+	job.Model = execResult.ActualModel
+	job.ProviderJobID = execResult.ProviderJobID
+	job.ActualCredits = execResult.CreditsDeducted
+	job.ActualCostUSD = execResult.CostUSD
+	if err := s.store.UpdateJob(ctx, job); err != nil {
+		s.setReservationStatus(jobID, "reconciling")
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to update completed job metadata: %w", err))
+	}
 
-	finalJob, _ := s.store.GetJob(ctx, wsID, jobID)
-	finalAsset, _ := s.store.GetAsset(ctx, wsID, assetID)
+	// Atomically mark completed (RULE-M07-007)
+	if err := s.store.SyncJobAndAsset(ctx, wsID, jobID, "completed", "generated", "", execResult.ResultURL, execResult.CreditsDeducted.String(), execResult.CostUSD.String()); err != nil {
+		s.setReservationStatus(jobID, "reconciling")
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to sync completed job and asset: %w", err))
+	}
+
+	s.commitReservation(wsID, jobID, execResult.CreditsDeducted)
+
+	finalJob, jErr := s.store.GetJob(ctx, wsID, jobID)
+	if jErr != nil {
+		return nil, connect.NewError(connect.CodeInternal, jErr)
+	}
+	finalAsset, aErr := s.store.GetAsset(ctx, wsID, assetID)
+	if aErr != nil {
+		return nil, connect.NewError(connect.CodeInternal, aErr)
+	}
 
 	return connect.NewResponse(&productionv1.GenerateResponse{
 		IsDryRun: false,

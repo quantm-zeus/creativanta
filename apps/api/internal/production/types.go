@@ -5,67 +5,72 @@ package production
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 )
 
 var (
-	ErrUnauthenticated             = errors.New("production: unauthenticated request")
-	ErrCrossTenantDenied           = errors.New("production: cross-tenant access strictly forbidden")
-	ErrPermissionDenied            = errors.New("production: caller role is not authorized for this operation")
-	ErrJobNotFound                 = errors.New("production: generation job not found")
-	ErrAssetNotFound               = errors.New("production: asset not found")
-	ErrCannotCancelCompletedJob    = errors.New("production: cannot cancel already completed or failed job")
-	ErrInsufficientCredits         = errors.New("production: insufficient credit balance for estimated generation cost (EC-M07-002)")
-	ErrQuoteExpiredOrInvalid       = errors.New("production: credit quote is expired, stale, or does not match parameters (BILLING_CONFLICT_002)")
-	ErrPaidRetryExceedsQuote       = errors.New("production: paid retry/fallback exceeds confirmed bounded quote plan; new quote required (BILLING_CONFLICT_002)")
-	ErrDisallowedFFmpegArg         = errors.New("production: FFmpeg argument is not in security allowlist")
-	ErrOutputValidationFailed      = errors.New("production: post-production output validation failed (audio normalization/resolution/streams)")
-	ErrExecutionTimeout            = errors.New("production: worker execution exceeded time limit")
-	ErrProcessTerminated           = errors.New("production: process group was terminated")
-	ErrFileTooLarge                = errors.New("production: uploaded file exceeds size limit")
-	ErrDisallowedMimeType          = errors.New("production: mime type is not supported")
-	ErrInfectedFile                = errors.New("production: virus scan detected infected payload")
-	ErrScriptSimilarityExceeded    = errors.New("production: remix script similarity exceeds 30% threshold (RULE-M07-003)")
-	ErrCircuitBreakerOpen          = errors.New("production: provider circuit breaker open due to consecutive failures")
-	ErrInvalidBatchRow             = errors.New("production: invalid batch input row")
-	ErrTranscriptNotFound          = errors.New("production: transcript not found")
-	ErrDraftNotFound               = errors.New("production: quick edit draft not found")
-	ErrSoundNotFound               = errors.New("production: sound track not found")
-	ErrAlignmentFailed             = errors.New("production: auto-alignment failed. [Try segment mode] or [Manual cut]")
-	ErrCopyrightViolation          = errors.New("production: music detected as copyrighted without commercial license clearance (EC-M07-M01)")
-	ErrConsentRequired             = errors.New("production: consent verification required before voice clone can be created or used (RULE-M08-002)")
-	ErrConsentRevoked              = errors.New("production: consent for voice likeness was revoked; cannot generate voiceover")
-	ErrTierGateBlocked             = errors.New("production: voice clone requires Pro tier or above (TIER_GATE_BLOCKED)")
-	ErrLicensedInputRequired       = errors.New("production: valid commercial license or verified copyright ownership required (SAFE-2026-02)")
-	ErrQualityRepairRequired       = errors.New("production: audio clarity or translation quality below acceptable threshold; repair required")
-	ErrDRMProtected                = errors.New("production: cannot access video at this URL: content is DRM protected (EC-M07-R01)")
-	ErrGeoBlocked                  = errors.New("production: cannot access video at this URL: content is geo-blocked (EC-M07-R01)")
-	ErrUnlicensedMediaBlocked      = errors.New("production: unlicensed copyrighted media detected; bypass not permitted (RULE-M07-008, SAFE-2026-02)")
-	ErrInvalidReferenceURL         = errors.New("production: invalid reference video URL or SSRF attempt detected")
-	ErrMultiMergeLimitExceeded     = errors.New("production: media input count exceeds workspace tier limit")
-	ErrSingleMediaNotAllowed       = errors.New("production: multi-merge requires at least 2 media files")
-	ErrBlueprintNotFound           = errors.New("production: remix blueprint not found")
-	ErrVideoEditJobNotFound        = errors.New("production: video edit job not found")
-	ErrClipCollectionNotFound      = errors.New("production: clip collection not found")
-	ErrConcurrentJobLimitExceeded  = errors.New("production: processing queue full for workspace tier (EC-M07-004)")
-	ErrSSRFBlocked                 = errors.New("production: cannot access URL: host is private, loopback, or cloud metadata service (SSRF_BLOCKED)")
-	ErrInvalidURL                  = errors.New("production: invalid URL format: HTTP or HTTPS scheme required")
-	ErrShowcaseStyleInvalid        = errors.New("production: invalid showcase style")
-	ErrShowcaseImagesRequired      = errors.New("production: 360 spin style requires at least 8 product images")
-	ErrShowcaseJobNotFound         = errors.New("production: product showcase job not found")
-	ErrLinkToVideoJobNotFound      = errors.New("production: link to video job not found")
-	ErrScriptTemplateInvalid       = errors.New("production: invalid script template")
-	ErrMotionStyleInvalid          = errors.New("production: invalid motion style")
-	ErrMissingLineage              = errors.New("production: missing source lineage. Cannot proceed to packaging/publish without source attribution (RULE-M09-001)")
-	ErrHardBlockCannotBeOverridden = errors.New("production: hard blocks cannot be workspace-overridden; requires correction or authorized false-positive clearance (RULE-M10-002, SAFE-2026-02)")
-	ErrOverrideReasonTooShort      = errors.New("production: override reason must be at least 10 characters (RULE-M10-002)")
-	ErrDerivativeNotFound          = errors.New("production: derivative asset not found")
-	ErrPackagingReportNotFound     = errors.New("production: packaging QA report not found")
-	ErrPresetNotFound              = errors.New("production: upload preset not found")
-	ErrExperimentNotFound          = errors.New("production: A/B experiment not found")
-	ErrBatchEmpty                  = errors.New("production: batch asset_ids cannot be empty")
+	ErrUnauthenticated                 = errors.New("production: unauthenticated request")
+	ErrCrossTenantDenied               = errors.New("production: cross-tenant access strictly forbidden")
+	ErrPermissionDenied                = errors.New("production: caller role is not authorized for this operation")
+	ErrJobNotFound                     = errors.New("production: generation job not found")
+	ErrAssetNotFound                   = errors.New("production: asset not found")
+	ErrCannotCancelCompletedJob        = errors.New("production: cannot cancel already completed or failed job")
+	ErrInsufficientCredits             = errors.New("production: insufficient credit balance for estimated generation cost (EC-M07-002)")
+	ErrQuoteExpiredOrInvalid           = errors.New("production: credit quote is expired, stale, or does not match parameters (BILLING_CONFLICT_002)")
+	ErrPaidRetryExceedsQuote           = errors.New("production: paid retry/fallback exceeds confirmed bounded quote plan; new quote required (BILLING_CONFLICT_002)")
+	ErrDisallowedFFmpegArg             = errors.New("production: FFmpeg argument is not in security allowlist")
+	ErrOutputValidationFailed          = errors.New("production: post-production output validation failed (audio normalization/resolution/streams)")
+	ErrExecutionTimeout                = errors.New("production: worker execution exceeded time limit")
+	ErrProcessTerminated               = errors.New("production: process group was terminated")
+	ErrFileTooLarge                    = errors.New("production: uploaded file exceeds size limit")
+	ErrDisallowedMimeType              = errors.New("production: mime type is not supported")
+	ErrInfectedFile                    = errors.New("production: virus scan detected infected payload")
+	ErrScriptSimilarityExceeded        = errors.New("production: remix script similarity exceeds 30% threshold (RULE-M07-003)")
+	ErrCircuitBreakerOpen              = errors.New("production: provider circuit breaker open due to consecutive failures")
+	ErrInvalidBatchRow                 = errors.New("production: invalid batch input row")
+	ErrTranscriptNotFound              = errors.New("production: transcript not found")
+	ErrDraftNotFound                   = errors.New("production: quick edit draft not found")
+	ErrSoundNotFound                   = errors.New("production: sound track not found")
+	ErrAlignmentFailed                 = errors.New("production: auto-alignment failed. [Try segment mode] or [Manual cut]")
+	ErrCopyrightViolation              = errors.New("production: music detected as copyrighted without commercial license clearance (EC-M07-M01)")
+	ErrConsentRequired                 = errors.New("production: consent verification required before voice clone can be created or used (RULE-M08-002)")
+	ErrConsentRevoked                  = errors.New("production: consent for voice likeness was revoked; cannot generate voiceover")
+	ErrTierGateBlocked                 = errors.New("production: voice clone requires Pro tier or above (TIER_GATE_BLOCKED)")
+	ErrLicensedInputRequired           = errors.New("production: valid commercial license or verified copyright ownership required (SAFE-2026-02)")
+	ErrQualityRepairRequired           = errors.New("production: audio clarity or translation quality below acceptable threshold; repair required")
+	ErrDRMProtected                    = errors.New("production: cannot access video at this URL: content is DRM protected (EC-M07-R01)")
+	ErrGeoBlocked                      = errors.New("production: cannot access video at this URL: content is geo-blocked (EC-M07-R01)")
+	ErrUnlicensedMediaBlocked          = errors.New("production: unlicensed copyrighted media detected; bypass not permitted (RULE-M07-008, SAFE-2026-02)")
+	ErrInvalidReferenceURL             = errors.New("production: invalid reference video URL or SSRF attempt detected")
+	ErrMultiMergeLimitExceeded         = errors.New("production: media input count exceeds workspace tier limit")
+	ErrSingleMediaNotAllowed           = errors.New("production: multi-merge requires at least 2 media files")
+	ErrBlueprintNotFound               = errors.New("production: remix blueprint not found")
+	ErrVideoEditJobNotFound            = errors.New("production: video edit job not found")
+	ErrClipCollectionNotFound          = errors.New("production: clip collection not found")
+	ErrConcurrentJobLimitExceeded      = errors.New("production: processing queue full for workspace tier (EC-M07-004)")
+	ErrSSRFBlocked                     = errors.New("production: cannot access URL: host is private, loopback, or cloud metadata service (SSRF_BLOCKED)")
+	ErrInvalidURL                      = errors.New("production: invalid URL format: HTTP or HTTPS scheme required")
+	ErrShowcaseStyleInvalid            = errors.New("production: invalid showcase style")
+	ErrShowcaseImagesRequired          = errors.New("production: 360 spin style requires at least 8 product images")
+	ErrShowcaseJobNotFound             = errors.New("production: product showcase job not found")
+	ErrLinkToVideoJobNotFound          = errors.New("production: link to video job not found")
+	ErrScriptTemplateInvalid           = errors.New("production: invalid script template")
+	ErrMotionStyleInvalid              = errors.New("production: invalid motion style")
+	ErrMissingLineage                  = errors.New("production: missing source lineage. Cannot proceed to packaging/publish without source attribution (RULE-M09-001)")
+	ErrHardBlockCannotBeOverridden     = errors.New("production: hard blocks cannot be workspace-overridden; requires correction or authorized false-positive clearance (RULE-M10-002, SAFE-2026-02)")
+	ErrOverrideReasonTooShort          = errors.New("production: override reason must be at least 10 characters (RULE-M10-002)")
+	ErrDerivativeNotFound              = errors.New("production: derivative asset not found")
+	ErrPackagingReportNotFound         = errors.New("production: packaging QA report not found")
+	ErrPresetNotFound                  = errors.New("production: upload preset not found")
+	ErrExperimentNotFound              = errors.New("production: A/B experiment not found")
+	ErrBatchEmpty                      = errors.New("production: batch asset_ids cannot be empty")
+	ErrProviderNotConfigured           = errors.New("production: video provider is not configured (PENDING_PRODUCTION_KEY)")
+	ErrOutcomeUnknown                  = errors.New("production: provider submission or status outcome is unknown; reconciliation required")
+	ErrRetryLimitExceeded              = errors.New("production: job retry limit exceeded")
+	ErrDuplicateIdempotencyKeyConflict = errors.New("production: idempotency key reused with different request parameters (BILLING_CONFLICT_002)")
 )
 
 // CallerContext models authenticated caller context across production operations.
@@ -78,17 +83,42 @@ type CallerContext struct {
 // HasRole checks whether caller has minimum role requirement.
 func (c CallerContext) HasRole(minRole string) bool {
 	roles := map[string]int{
-		"Viewer":      1,
-		"Member":      2,
-		"Contributor": 3,
-		"Editor":      4,
-		"Manager":     5,
-		"Admin":       6,
-		"Owner":       7,
+		"viewer":      1,
+		"member":      2,
+		"contributor": 3,
+		"editor":      4,
+		"manager":     5,
+		"admin":       6,
+		"owner":       7,
 	}
-	callerRank := roles[c.WorkspaceRole]
-	minRank := roles[minRole]
+	callerRank := roles[strings.ToLower(strings.TrimSpace(c.WorkspaceRole))]
+	minRank := roles[strings.ToLower(strings.TrimSpace(minRole))]
 	return callerRank >= minRank && callerRank > 0
+}
+
+// CreditQuote represents a preflight credit quote bound to workspace, request hash, and expiry.
+type CreditQuote struct {
+	QuoteID        string                `json:"quote_id"`
+	WorkspaceID    string                `json:"workspace_id"`
+	RequestHash    string                `json:"request_hash"`
+	QuotedCredits  tenantdb.ExactDecimal `json:"quoted_credits"`
+	CostCeilingUSD tenantdb.ExactDecimal `json:"cost_ceiling_usd"`
+	ExpiresAt      time.Time             `json:"expires_at"`
+	CreatedAt      time.Time             `json:"created_at"`
+}
+
+// CreditReservationRecord tracks an atomic credit reservation hold for a generation job.
+type CreditReservationRecord struct {
+	ReservationID   string                `json:"reservation_id"`
+	WorkspaceID     string                `json:"workspace_id"`
+	JobID           string                `json:"job_id"`
+	QuoteID         string                `json:"quote_id"`
+	IdempotencyKey  string                `json:"idempotency_key"`
+	RequestHash     string                `json:"request_hash"`
+	ReservedCredits tenantdb.ExactDecimal `json:"reserved_credits"`
+	Status          string                `json:"status"` // reserved, in_flight, reconciling, committed, released
+	CreatedAt       time.Time             `json:"created_at"`
+	UpdatedAt       time.Time             `json:"updated_at"`
 }
 
 // LineageRecord holds provenance info for assets per RULE-M07-001.
@@ -115,6 +145,12 @@ type GenerationJob struct {
 	PipelineStrategy  string                `json:"pipeline_strategy"` // native_audio, audio_first, post_prod_lip_sync, simple_voice_over
 	InputParamsJSON   string                `json:"input_params_json"`
 	PromptPackageJSON string                `json:"prompt_package_json"`
+	Prompt            string                `json:"prompt,omitempty"`
+	DurationSeconds   int                   `json:"duration_seconds,omitempty"`
+	AspectRatio       string                `json:"aspect_ratio,omitempty"`
+	Mode              string                `json:"mode,omitempty"`
+	ContinuityPackIDs []string              `json:"continuity_pack_ids,omitempty"`
+	IdempotencyKey    string                `json:"idempotency_key,omitempty"`
 	Status            string                `json:"status"` // queued, processing, completed, failed, cancelled
 	ProgressPct       int                   `json:"progress_pct"`
 	CurrentStep       string                `json:"current_step"`

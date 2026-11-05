@@ -2,7 +2,9 @@ package production
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -30,6 +32,34 @@ func NewPipelineRouter(primary, fallback VideoProvider) *PipelineRouter {
 	}
 }
 
+// HasConfiguredProvider reports whether at least one real or test provider is configured.
+func (r *PipelineRouter) HasConfiguredProvider() bool {
+	if r == nil {
+		return false
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if r.primaryProvider != nil {
+		if cve, ok := r.primaryProvider.(*VideoEngineProvider); ok {
+			if cve.IsConfigured() {
+				return true
+			}
+		} else {
+			return true
+		}
+	}
+	if r.fallbackProvider != nil {
+		if cve, ok := r.fallbackProvider.(*VideoEngineProvider); ok {
+			if cve.IsConfigured() {
+				return true
+			}
+		} else {
+			return true
+		}
+	}
+	return false
+}
+
 // SelectStrategy auto-selects pipeline strategy based on parameters per ai_video_studio.md.
 func (r *PipelineRouter) SelectStrategy(hasVoiceClone, isMultiLanguage, isBRollOnly bool) string {
 	if hasVoiceClone {
@@ -49,6 +79,8 @@ type ExecutionResult struct {
 	ProviderJobID    string
 	ActualProvider   string
 	ActualModel      string
+	Status           string // "queued", "processing", "completed", "unknown"
+	OutcomeUnknown   bool
 	ResultURL        string
 	DurationSecs     tenantdb.ExactDecimal
 	Resolution       string
@@ -60,12 +92,27 @@ type ExecutionResult struct {
 	Lineage          LineageRecord
 }
 
+func isUnknownSubmissionOutcomeError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return errors.Is(err, context.DeadlineExceeded) ||
+		errors.Is(err, context.Canceled) ||
+		errors.Is(err, ErrExecutionTimeout) ||
+		errors.Is(err, ErrOutcomeUnknown)
+}
+
 // ExecuteRoutedJob satisfies Acceptance Target 2:
 // "Fallback no double charge"
 // Executes primary provider first; on definitive failure, auto-falls back to secondary provider
 // within the confirmed quote and consent ceiling, preserving attempt history and recording actual lineage,
 // with zero double debit.
+// When submission or status check times out or has an unknown outcome, it MUST NOT fail over to
+// a second provider (preventing double external submission) and returns OutcomeUnknown=true.
 func (r *PipelineRouter) ExecuteRoutedJob(ctx context.Context, req ProviderGenRequest, confirmedQuoteCredits tenantdb.ExactDecimal) (*ExecutionResult, error) {
+	if !r.HasConfiguredProvider() {
+		return nil, ErrProviderNotConfigured
+	}
 	now := time.Now().UTC()
 	var (
 		activeProvider   VideoProvider
@@ -73,30 +120,65 @@ func (r *PipelineRouter) ExecuteRoutedJob(ctx context.Context, req ProviderGenRe
 		fallbackAttempts = 0
 	)
 
-	// 1. Try primary provider if circuit breaker allows
-	if r.primaryCB.AllowExecution(now) {
+	// 1. Try primary provider if configured and circuit breaker allows
+	if r.primaryProvider != nil && r.primaryCB.AllowExecution(now) {
 		activeProvider = r.primaryProvider
 	} else if r.fallbackProvider != nil && r.fallbackCB.AllowExecution(now) {
-		// Primary circuit breaker is OPEN -> directly route to fallback
+		// Primary is nil or circuit breaker is OPEN -> route to fallback
 		activeProvider = r.fallbackProvider
-		usedFallback = true
-		fallbackAttempts = 1
+		usedFallback = r.primaryProvider != nil
+		if usedFallback {
+			fallbackAttempts = 1
+		}
 	} else {
 		return nil, ErrCircuitBreakerOpen
 	}
 
 	resp, err := activeProvider.Generate(ctx, req)
 	if err != nil {
-		// Record failure on primary
+		if errors.Is(err, ErrProviderNotConfigured) {
+			return nil, ErrProviderNotConfigured
+		}
+		// AI-06: If primary submission timed out or returned unknown outcome, DO NOT trigger
+		// fallback provider (which would submit a second external job) and DO NOT treat as definitive failure!
+		if isUnknownSubmissionOutcomeError(err) {
+			if activeProvider == r.primaryProvider {
+				r.primaryCB.RecordFailure(now)
+			} else if activeProvider == r.fallbackProvider {
+				r.fallbackCB.RecordFailure(now)
+			}
+			return &ExecutionResult{
+				ActualProvider:   activeProvider.Name(),
+				ActualModel:      activeProvider.Name() + "-v1",
+				Status:           "unknown",
+				OutcomeUnknown:   true,
+				UsedFallback:     usedFallback,
+				FallbackAttempts: fallbackAttempts,
+				BYOKUsed:         req.BYOKApiKey != "",
+			}, fmt.Errorf("%w: provider %s submission outcome unknown: %v", ErrOutcomeUnknown, activeProvider.Name(), err)
+		}
+
+		// Definitive failure on primary -> record failure and try fallback if available
 		if activeProvider == r.primaryProvider {
 			r.primaryCB.RecordFailure(now)
 
-			// Try secondary fallback if available
 			if r.fallbackProvider != nil && r.fallbackCB.AllowExecution(now) {
 				usedFallback = true
 				fallbackAttempts = 1
 				activeProvider = r.fallbackProvider
 				resp, err = activeProvider.Generate(ctx, req)
+				if err != nil && isUnknownSubmissionOutcomeError(err) {
+					r.fallbackCB.RecordFailure(now)
+					return &ExecutionResult{
+						ActualProvider:   activeProvider.Name(),
+						ActualModel:      activeProvider.Name() + "-v1",
+						Status:           "unknown",
+						OutcomeUnknown:   true,
+						UsedFallback:     usedFallback,
+						FallbackAttempts: fallbackAttempts,
+						BYOKUsed:         req.BYOKApiKey != "",
+					}, fmt.Errorf("%w: fallback provider %s submission outcome unknown: %v", ErrOutcomeUnknown, activeProvider.Name(), err)
+				}
 			}
 		}
 	}
@@ -111,7 +193,68 @@ func (r *PipelineRouter) ExecuteRoutedJob(ctx context.Context, req ProviderGenRe
 	// Poll or retrieve status
 	status, err := activeProvider.CheckStatus(ctx, resp.ProviderJobID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check provider status for %s: %w", resp.ProviderJobID, err)
+		// Job was already accepted (resp.ProviderJobID exists); status check error means outcome is unknown!
+		return &ExecutionResult{
+			ProviderJobID:    resp.ProviderJobID,
+			ActualProvider:   activeProvider.Name(),
+			ActualModel:      activeProvider.Name() + "-v1",
+			Status:           "unknown",
+			OutcomeUnknown:   true,
+			UsedFallback:     usedFallback,
+			FallbackAttempts: fallbackAttempts,
+			BYOKUsed:         req.BYOKApiKey != "",
+		}, fmt.Errorf("%w: failed to check provider status for %s: %v", ErrOutcomeUnknown, resp.ProviderJobID, err)
+	}
+
+	normalizedStatus := strings.ToLower(strings.TrimSpace(status.Status))
+	switch normalizedStatus {
+	case "failed", "cancelled", "canceled":
+		if activeProvider == r.primaryProvider {
+			r.primaryCB.RecordFailure(now)
+		} else {
+			r.fallbackCB.RecordFailure(now)
+		}
+		errMsg := strings.TrimSpace(status.ErrorMessage)
+		if errMsg == "" {
+			errMsg = fmt.Sprintf("provider %s reported terminal status %s", activeProvider.Name(), normalizedStatus)
+		}
+		return nil, fmt.Errorf("provider %s job %s %s: %s", activeProvider.Name(), resp.ProviderJobID, normalizedStatus, errMsg)
+
+	case "queued", "processing":
+		if activeProvider == r.primaryProvider {
+			r.primaryCB.RecordSuccess()
+		} else {
+			r.fallbackCB.RecordSuccess()
+		}
+		return &ExecutionResult{
+			ProviderJobID:    resp.ProviderJobID,
+			ActualProvider:   activeProvider.Name(),
+			ActualModel:      activeProvider.Name() + "-v1",
+			Status:           normalizedStatus,
+			DurationSecs:     status.DurationSecs,
+			Resolution:       status.Resolution,
+			UsedFallback:     usedFallback,
+			FallbackAttempts: fallbackAttempts,
+			BYOKUsed:         req.BYOKApiKey != "",
+		}, nil
+
+	case "completed", "succeeded":
+		if strings.TrimSpace(status.ResultURL) == "" {
+			return nil, fmt.Errorf("provider %s job %s reported completed status with empty result_url", activeProvider.Name(), resp.ProviderJobID)
+		}
+
+	default:
+		// "unknown" or unrecognized status must never be treated as completed!
+		return &ExecutionResult{
+			ProviderJobID:    resp.ProviderJobID,
+			ActualProvider:   activeProvider.Name(),
+			ActualModel:      activeProvider.Name() + "-v1",
+			Status:           "unknown",
+			OutcomeUnknown:   true,
+			UsedFallback:     usedFallback,
+			FallbackAttempts: fallbackAttempts,
+			BYOKUsed:         req.BYOKApiKey != "",
+		}, fmt.Errorf("%w: provider %s job %s returned non-terminal status %q", ErrOutcomeUnknown, activeProvider.Name(), resp.ProviderJobID, status.Status)
 	}
 
 	// Record success on circuit breaker
@@ -141,6 +284,7 @@ func (r *PipelineRouter) ExecuteRoutedJob(ctx context.Context, req ProviderGenRe
 		ProviderJobID:    resp.ProviderJobID,
 		ActualProvider:   activeProvider.Name(),
 		ActualModel:      activeProvider.Name() + "-v1",
+		Status:           "completed",
 		ResultURL:        status.ResultURL,
 		DurationSecs:     status.DurationSecs,
 		Resolution:       status.Resolution,
