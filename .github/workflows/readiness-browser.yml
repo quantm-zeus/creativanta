@@ -1,0 +1,100 @@
+name: Browser Responsive UX & Accessibility QA Gate
+
+# ==============================================================================
+# Creativanta — Post-P8 Browser-Based Responsive UX & Accessibility E2E Gate
+# Canonical Sources:
+# - docs/00_index/BUILD_EXECUTION_CONTRACT.md (Hard Gate D4/D5)
+# - docs/06_quality_ops/accessibility_spec.md (WCAG 2.1 AA)
+# - docs/06_quality_ops/ci_cd_pipeline.md
+# - docs/05_system/tech_stack_adr.md (Node 24, pnpm 10.34.9)
+#
+# Pinned Toolchain:
+# - Node: 24
+# - pnpm: 10.34.9
+# - Playwright: @playwright/test 1.50.1
+# - Browser: Chromium Headless Shell
+#
+# Zero Greenwashing:
+# - No skip on missing browser; if browser installation fails, job fails immediately.
+# - Fails closed on horizontal overflow, broken routes, or unhandled errors.
+# ==============================================================================
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "apps/admin/**"
+      - "tooling/readiness/browser/**"
+      - ".github/workflows/readiness-browser.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+  push:
+    branches:
+      - "feat/readiness-browser-e2e"
+      - "staging"
+    paths:
+      - "apps/web/**"
+      - "apps/admin/**"
+      - "tooling/readiness/browser/**"
+      - ".github/workflows/readiness-browser.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser-responsive-a11y-qa:
+    name: "Browser QA: Responsive Viewports & WCAG 2.1 AA (Chromium Headless Shell)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Set up Pinned pnpm 10.34.9
+        uses: pnpm/action-setup@v4
+        with:
+          version: "10.34.9"
+          run_install: false
+
+      - name: Install dependencies with frozen lockfile
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+
+      - name: Install Pinned Chromium Headless Shell and System Dependencies
+        run: |
+          set -euo pipefail
+          pnpm exec playwright install --with-deps chromium-headless-shell
+
+      - name: Build Web and Admin SvelteKit Artifacts
+        run: |
+          set -euo pipefail
+          pnpm build:web
+          pnpm build:admin
+
+      - name: Execute Headless Browser QA Suite (Desktop, Tablet, Mobile)
+        run: |
+          set -euo pipefail
+          pnpm test:browser
+
+      - name: Upload Browser QA Results Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-qa-results
+          path: |
+            build/readiness/2026-11-05/browser_results.json
+            test-results/
+          retention-days: 7
