@@ -33,7 +33,7 @@
   });
 </script>
 
-<div class="min-h-screen flex flex-col bg-[#fbf9f5] text-[#242924]">
+<div class="min-h-screen flex flex-col bg-[#fbf9f5] text-[#242924] overflow-x-hidden">
   <!-- WCAG 2.1 AA Skip-to-Content Link -->
   <a
     href="#main-content"
@@ -80,7 +80,7 @@
   <!-- Legal Compliance & Localization Footer (legal_compliance.md §1, §8.1 & i18n_guide.md) -->
   <footer
     aria-label={t('shared_legal_footer_label', locale)}
-    class="border-t border-[#e5e0d8] bg-[#f5f2eb] px-4 py-4 sm:px-6 md:px-8 text-xs text-[#4b5563]"
+    class="border-t border-[#e5e0d8] bg-[#f5f2eb] px-4 py-4 pb-20 md:pb-4 sm:px-6 md:px-8 text-xs text-[#4b5563]"
   >
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
       <nav aria-label={t('shared_legal_footer_label', locale)} class="flex flex-wrap gap-x-4 gap-y-1">

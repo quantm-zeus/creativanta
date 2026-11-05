@@ -36,12 +36,21 @@ const (
 	DecisionLaunchApproved        ReleaseDecisionStatus = "LAUNCH_APPROVED"
 )
 
-// Canonical 31 Module definitions per docs/00_index/BUILD_INDEX.md.
+// Canonical 31 Module definitions per docs/00_index/BUILD_INDEX.md and docs/00_index/agent_task_catalog.json.
 type ModuleInfo struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Domain    string `json:"domain"`
-	TargetDoc string `json:"target_doc"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Domain         string `json:"domain"`
+	TargetDoc      string `json:"target_doc"`
+	DefaultTask    string `json:"default_task"`
+	CompletionTask string `json:"completion_task"`
+}
+
+// CanonicalTaskSpec defines a task entry in the 60-task DAG per docs/00_index/agent_task_catalog.json.
+type CanonicalTaskSpec struct {
+	TaskID  string   `json:"task_id"`
+	Phase   string   `json:"phase"`
+	Modules []string `json:"modules"`
 }
 
 // Canonical 6 Operator Modes per docs/01_business/user_segments_and_modes.md and PRD §8.2.
@@ -117,19 +126,27 @@ type OperatorModeReconciliationResult struct {
 
 // TaskManifestSummary captures the verified state of a build task manifest.
 type TaskManifestSummary struct {
-	TaskID              string   `json:"task_id"`
-	Phase               string   `json:"phase"`
-	Title               string   `json:"title"`
-	Status              string   `json:"status"`
-	RemainingScopeCount int      `json:"remaining_scope_count"`
-	RemainingScopeItems []string `json:"remaining_scope_items"`
-	SourceFileCount     int      `json:"source_file_count"`
+	TaskID               string   `json:"task_id"`
+	Phase                string   `json:"phase"`
+	Title                string   `json:"title"`
+	Status               string   `json:"status"`
+	SubsliceStatus       string   `json:"subslice_status,omitempty"`
+	AcceptanceStatus     string   `json:"acceptance_status,omitempty"`
+	RemainingScopeCount  int      `json:"remaining_scope_count"`
+	RemainingScopeItems  []string `json:"remaining_scope_items"`
+	SourceFileCount      int      `json:"source_file_count"`
+	VerifiedSourceHashes int      `json:"verified_source_hashes"`
+	EvidenceCount        int      `json:"evidence_count"`
+	ExternalGatesPending bool     `json:"external_gates_pending"`
+	Verified             bool     `json:"verified"`
+	ManifestSha256       string   `json:"manifest_sha256"`
 }
 
 // FullScopeReconciliationReport contains the complete evidence-backed audit across all dimensions.
 type FullScopeReconciliationReport struct {
 	Environment              string                             `json:"environment"`
 	ReleaseCandidateVersion  string                             `json:"release_candidate_version"`
+	AcceptanceStatus         string                             `json:"acceptance_status"`
 	TotalModules             int                                `json:"total_modules"`
 	TotalOperatorModes       int                                `json:"total_operator_modes"`
 	TotalBuildTasks          int                                `json:"total_build_tasks"`
@@ -154,9 +171,10 @@ type FullScopeReconciliationReport struct {
 
 // WorkspaceSignoffRequest allows a workspace owner to verify their workspace readiness.
 type WorkspaceSignoffRequest struct {
-	WorkspaceID  string `json:"workspace_id"`
-	OperatorMode string `json:"operator_mode"`
-	Notes        string `json:"notes"`
+	WorkspaceID                string   `json:"workspace_id"`
+	OperatorMode               string   `json:"operator_mode"`
+	CompletedOnboardingStepIDs []string `json:"completed_onboarding_step_ids,omitempty"`
+	Notes                      string   `json:"notes"`
 }
 
 // WorkspaceSignoffRecord stores a tenant-level acceptance verification.

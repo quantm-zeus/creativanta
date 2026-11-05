@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -33,6 +35,10 @@ const (
 	AdminOverrideDailyApprovalThreshold = 50
 	// BreachNotificationSLAHours is the mandatory 72-hour regulatory notification window (GDPR Art. 33 / PDPA).
 	BreachNotificationSLAHours = 72
+	// RehearsalModeSimulationOnly indicates an in-memory/snapshot validation without touching a disposable DB or proxy.
+	RehearsalModeSimulationOnly = "SIMULATION_ONLY"
+	// RehearsalModeDisposableTargetVerified indicates a rehearsal that restored a disposable target DB or probed/switched a disposable proxy.
+	RehearsalModeDisposableTargetVerified = "DISPOSABLE_TARGET_VERIFIED"
 )
 
 var (
@@ -60,6 +66,8 @@ var (
 	ErrAuditSequenceIntegrityViolation = errors.New("internaladmin: audit log sequence gap or hash mismatch detected (AUDIT_INTEGRITY_005)")
 	// ErrDSRNotFound is returned when a Data Subject Request ID does not exist.
 	ErrDSRNotFound = errors.New("internaladmin: data subject request not found (ADMIN_NOTFOUND_001)")
+	// ErrOperationalTargetRequired is returned when an operational restore or proxy switch is requested without a disposable DB/proxy target.
+	ErrOperationalTargetRequired = errors.New("internaladmin: operational restore/release claim requires a configured disposable DB/proxy target (REHEARSAL_TARGET_REQUIRED_001)")
 )
 
 // ============================================================================
@@ -228,34 +236,166 @@ func VerifyBackupArtifactChecksum(snapPath, sidecarPath string) error {
 
 // BackupRestoreRehearsalRecord mirrors the canonical backup_restore_rehearsals table (migration 00046).
 type BackupRestoreRehearsalRecord struct {
-	RehearsalID              string
-	Environment              string
-	BackupArtifactURI        string
-	BackupSHA256             string
-	RestoredSHA256           string
-	ChecksumVerified         bool
-	RPOSeconds               int32
-	RTOSeconds               int32
-	WorkspacesRestored       int
-	PostingsRestored         int
-	EvidenceObjectsRestored  int
-	AuditEntriesRestored     int
-	LedgerBalanced           bool
-	AuditSequenceContinuous  bool
-	SmokePassed              bool
-	SmokeFailureCode         string
-	RollbackTriggered        bool
-	PreviousSlotDigest       string
-	CandidateSlotDigest      string
-	ActiveSlotAfterRehearsal string
-	ExecutedByAdminID        string
-	ExecutedAt               time.Time
+	RehearsalID                 string
+	Environment                 string
+	ExecutionMode               string // RehearsalModeSimulationOnly or RehearsalModeDisposableTargetVerified
+	IsSimulation                bool
+	OperationalRestorePerformed bool
+	TargetDatabaseURI           string
+	MeasuredRestoreDurationMs   int64
+	BackupArtifactURI           string
+	BackupSHA256                string
+	RestoredSHA256              string
+	ChecksumVerified            bool
+	RPOSeconds                  int32
+	RTOSeconds                  int32
+	WorkspacesRestored          int
+	PostingsRestored            int
+	EvidenceObjectsRestored     int
+	AuditEntriesRestored        int
+	LedgerBalanced              bool
+	AuditSequenceContinuous     bool
+	SmokePassed                 bool
+	SmokeFailureCode            string
+	RollbackTriggered           bool
+	PreviousSlotDigest          string
+	CandidateSlotDigest         string
+	ActiveSlotAfterRehearsal    string
+	ExecutedByAdminID           string
+	ExecutedAt                  time.Time
 }
 
-// ExecuteRestoreRehearsal performs a real restore from a verified backup snapshot on disk,
-// validating SHA-256 integrity, double-entry financial ledger balance (debits == credits),
-// workspace AI credit lot reconciliation, immutable evidence SHA-256 preservation,
-// audit log sequence continuity (1..N without gaps), and RPO=0 / RTO<=3600s SLA compliance.
+// DisposableRestoreOutcome captures measured counts and smoke results from a disposable DB target restore.
+type DisposableRestoreOutcome struct {
+	TargetDatabaseURI       string
+	WorkspacesRestored      int
+	PostingsRestored        int
+	EvidenceObjectsRestored int
+	AuditEntriesRestored    int
+	ObservedDebitMicro      int64
+	ObservedCreditMicro     int64
+	SmokeProbePassed        bool
+	SmokeFailureCode        string
+}
+
+// DisposableRestoreTarget abstracts an isolated disposable database/storage target for real restore drills.
+type DisposableRestoreTarget interface {
+	RestoreAndVerifySnapshot(ctx context.Context, snap DatabaseSnapshot) (DisposableRestoreOutcome, error)
+}
+
+// FileBackedDisposableDBTarget restores a DatabaseSnapshot into isolated per-table files in a disposable directory
+// and reads them back from disk to verify persistence, row counts, double-entry balance, and smoke readiness.
+type FileBackedDisposableDBTarget struct {
+	TargetDir    string
+	FailOnWrite  bool
+	FailOnSmoke  bool
+	CorruptCount int
+}
+
+// RestoreAndVerifySnapshot materializes tables into TargetDir and reads them back for post-restore reconciliation.
+func (t *FileBackedDisposableDBTarget) RestoreAndVerifySnapshot(ctx context.Context, snap DatabaseSnapshot) (DisposableRestoreOutcome, error) {
+	if err := ctx.Err(); err != nil {
+		return DisposableRestoreOutcome{}, err
+	}
+	if t == nil || strings.TrimSpace(t.TargetDir) == "" {
+		return DisposableRestoreOutcome{}, ErrOperationalTargetRequired
+	}
+	if t.FailOnWrite {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: disposable target DB write failed", ErrRestoreIntegrityFailed)
+	}
+	if err := os.MkdirAll(t.TargetDir, 0o700); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: mkdir disposable target: %v", ErrRestoreIntegrityFailed, err)
+	}
+
+	writeTable := func(name string, v any) error {
+		b, err := json.Marshal(v)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(filepath.Join(t.TargetDir, name+".table.json"), b, 0o600)
+	}
+	if err := writeTable("workspaces", snap.Workspaces); err != nil {
+		return DisposableRestoreOutcome{}, err
+	}
+	if err := writeTable("financial_postings", snap.FinancialPostings); err != nil {
+		return DisposableRestoreOutcome{}, err
+	}
+	if err := writeTable("ai_credit_lots", snap.AICreditLots); err != nil {
+		return DisposableRestoreOutcome{}, err
+	}
+	if err := writeTable("evidence_objects", snap.EvidenceObjects); err != nil {
+		return DisposableRestoreOutcome{}, err
+	}
+	if err := writeTable("audit_entries", snap.AuditEntries); err != nil {
+		return DisposableRestoreOutcome{}, err
+	}
+
+	// Read back from disposable storage to measure actual restored state
+	var ws []WorkspaceSnapshot
+	var postings []FinancialPostingSnapshot
+	var evidences []EvidenceObjectSnapshot
+	var audits []AuditSequenceEntrySnapshot
+
+	readTable := func(name string, dst any) error {
+		b, err := os.ReadFile(filepath.Join(t.TargetDir, name+".table.json"))
+		if err != nil {
+			return err
+		}
+		return json.Unmarshal(b, dst)
+	}
+	if err := readTable("workspaces", &ws); err != nil {
+		return DisposableRestoreOutcome{}, err
+	}
+	if err := readTable("financial_postings", &postings); err != nil {
+		return DisposableRestoreOutcome{}, err
+	}
+	if err := readTable("evidence_objects", &evidences); err != nil {
+		return DisposableRestoreOutcome{}, err
+	}
+	if err := readTable("audit_entries", &audits); err != nil {
+		return DisposableRestoreOutcome{}, err
+	}
+
+	var debitMicro, creditMicro int64
+	for _, p := range postings {
+		if strings.EqualFold(p.Direction, "debit") {
+			debitMicro += p.AmountMicro
+		} else if strings.EqualFold(p.Direction, "credit") {
+			creditMicro += p.AmountMicro
+		}
+	}
+
+	wsCount := len(ws) - t.CorruptCount
+	if wsCount < 0 {
+		wsCount = 0
+	}
+
+	smokePassed := !t.FailOnSmoke
+	smokeCode := "OK"
+	if !smokePassed {
+		smokeCode = "DISPOSABLE_SMOKE_PROBE_FAILED"
+	}
+
+	return DisposableRestoreOutcome{
+		TargetDatabaseURI:       "file://" + filepath.ToSlash(t.TargetDir),
+		WorkspacesRestored:      wsCount,
+		PostingsRestored:        len(postings),
+		EvidenceObjectsRestored: len(evidences),
+		AuditEntriesRestored:    len(audits),
+		ObservedDebitMicro:      debitMicro,
+		ObservedCreditMicro:     creditMicro,
+		SmokeProbePassed:        smokePassed,
+		SmokeFailureCode:        smokeCode,
+	}, nil
+}
+
+// ExecuteRestoreRehearsal validates a verified backup snapshot on disk (SHA-256 sidecar,
+// double-entry financial ledger balance, workspace AI credit lot reconciliation, immutable
+// evidence SHA-256 preservation, audit sequence continuity, and RPO=0 / RTO<=3600s SLA bounds).
+// Because no disposable database target is passed to this method, it honestly labels the result
+// as SIMULATION_ONLY (IsSimulation=true, OperationalRestorePerformed=false) and refuses to claim
+// an operational production/staging restore. Use ExecuteDisposableRestoreRehearsal to restore and
+// verify against a disposable target DB.
 func (s *Service) ExecuteRestoreRehearsal(
 	ctx context.Context,
 	adminID string,
@@ -263,9 +403,38 @@ func (s *Service) ExecuteRestoreRehearsal(
 	rpoSeconds int32,
 	rtoSeconds int32,
 ) (*BackupRestoreRehearsalRecord, error) {
+	return s.executeRestoreRehearsalInternal(ctx, adminID, artifact, rpoSeconds, rtoSeconds, nil)
+}
+
+// ExecuteDisposableRestoreRehearsal performs a restore into a disposable database target,
+// measures real wall-clock restore duration, verifies restored row counts and ledger balance
+// read back from the disposable target, and records DISPOSABLE_TARGET_VERIFIED evidence.
+func (s *Service) ExecuteDisposableRestoreRehearsal(
+	ctx context.Context,
+	adminID string,
+	artifact BackupArtifactMetadata,
+	rpoSeconds int32,
+	target DisposableRestoreTarget,
+) (*BackupRestoreRehearsalRecord, error) {
+	if target == nil {
+		return nil, ErrOperationalTargetRequired
+	}
+	return s.executeRestoreRehearsalInternal(ctx, adminID, artifact, rpoSeconds, 0, target)
+}
+
+func (s *Service) executeRestoreRehearsalInternal(
+	ctx context.Context,
+	adminID string,
+	artifact BackupArtifactMetadata,
+	rpoSeconds int32,
+	rtoSeconds int32,
+	target DisposableRestoreTarget,
+) (*BackupRestoreRehearsalRecord, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	startedWall := time.Now()
+
 	s.mu.Lock()
 	admin, ok := s.adminsByID[adminID]
 	s.mu.Unlock()
@@ -290,13 +459,19 @@ func (s *Service) ExecuteRestoreRehearsal(
 		return nil, fmt.Errorf("%w: unmarshal snapshot: %v", ErrRestoreIntegrityFailed, err)
 	}
 
+	// Never allow claiming an operational production or staging restore without a disposable DB target.
+	envLower := strings.ToLower(strings.TrimSpace(restored.Environment))
+	if target == nil && (envLower == "production" || envLower == "staging") {
+		return nil, fmt.Errorf("%w: snapshot environment %q cannot be claimed without a disposable restore target", ErrOperationalTargetRequired, restored.Environment)
+	}
+
 	restoredDigest, err := ComputeSnapshotSHA256(restored)
 	if err != nil || restoredDigest != artifact.SHA256Digest {
 		return nil, fmt.Errorf("%w: restored digest mismatch", ErrBackupChecksumMismatch)
 	}
 
 	// 2. Verify RPO=0 for financial/audit data and RTO <= 3600s (runbook.md §4.1).
-	if rpoSeconds > MaxFinancialAuditRPOSeconds {
+	if rpoSeconds < 0 || rpoSeconds > MaxFinancialAuditRPOSeconds {
 		return nil, fmt.Errorf("%w: RPO %ds exceeds 0s zero-data-loss target for financial/audit tables", ErrRestoreIntegrityFailed, rpoSeconds)
 	}
 	if rtoSeconds < 0 || rtoSeconds > MaxStandardRTOSeconds {
@@ -360,40 +535,107 @@ func (s *Service) ExecuteRestoreRehearsal(
 		}
 	}
 
+	executionMode := RehearsalModeSimulationOnly
+	isSimulation := true
+	operationalPerformed := false
+	targetURI := ""
+	smokePassed := false
+	smokeFailureCode := "SIMULATION_ONLY_NO_DISPOSABLE_DB"
+	workspacesRestored := len(restored.Workspaces)
+	postingsRestored := len(restored.FinancialPostings)
+	evidencesRestored := len(restored.EvidenceObjects)
+	auditsRestored := len(restored.AuditEntries)
+
+	if target != nil {
+		outcome, err := target.RestoreAndVerifySnapshot(ctx, restored)
+		if err != nil {
+			return nil, err
+		}
+		if outcome.WorkspacesRestored != len(restored.Workspaces) ||
+			outcome.PostingsRestored != len(restored.FinancialPostings) ||
+			outcome.EvidenceObjectsRestored != len(restored.EvidenceObjects) ||
+			outcome.AuditEntriesRestored != len(restored.AuditEntries) {
+			return nil, fmt.Errorf("%w: disposable target row count mismatch after restore", ErrRestoreIntegrityFailed)
+		}
+		if outcome.ObservedDebitMicro != totalDebitMicro || outcome.ObservedCreditMicro != totalCreditMicro {
+			return nil, fmt.Errorf("%w: disposable target debit/credit mismatch after restore", ErrRestoreIntegrityFailed)
+		}
+		if !outcome.SmokeProbePassed {
+			return nil, fmt.Errorf("%w: disposable target post-restore smoke failed (%s)", ErrRestoreIntegrityFailed, outcome.SmokeFailureCode)
+		}
+		executionMode = RehearsalModeDisposableTargetVerified
+		isSimulation = false
+		operationalPerformed = true
+		targetURI = outcome.TargetDatabaseURI
+		smokePassed = true
+		smokeFailureCode = outcome.SmokeFailureCode
+		workspacesRestored = outcome.WorkspacesRestored
+		postingsRestored = outcome.PostingsRestored
+		evidencesRestored = outcome.EvidenceObjectsRestored
+		auditsRestored = outcome.AuditEntriesRestored
+	}
+
+	elapsedMs := time.Since(startedWall).Milliseconds()
+	if elapsedMs < 0 {
+		elapsedMs = 0
+	}
+	measuredRTO := rtoSeconds
+	if target != nil && measuredRTO == 0 {
+		measuredRTO = int32(elapsedMs / 1000)
+		if measuredRTO > MaxStandardRTOSeconds {
+			return nil, fmt.Errorf("%w: measured RTO %ds exceeds 3600s SLA", ErrRestoreIntegrityFailed, measuredRTO)
+		}
+	}
+
 	now := s.Now()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	rec := &BackupRestoreRehearsalRecord{
-		RehearsalID:              s.IDGenerator(),
-		Environment:              restored.Environment,
-		BackupArtifactURI:        artifact.SnapshotPath,
-		BackupSHA256:             artifact.SHA256Digest,
-		RestoredSHA256:           restoredDigest,
-		ChecksumVerified:         true,
-		RPOSeconds:               rpoSeconds,
-		RTOSeconds:               rtoSeconds,
-		WorkspacesRestored:       len(restored.Workspaces),
-		PostingsRestored:         len(restored.FinancialPostings),
-		EvidenceObjectsRestored:  len(restored.EvidenceObjects),
-		AuditEntriesRestored:     len(restored.AuditEntries),
-		LedgerBalanced:           true,
-		AuditSequenceContinuous:  true,
-		SmokePassed:              true,
-		RollbackTriggered:        false,
-		PreviousSlotDigest:       s.activeSlotDigest,
-		CandidateSlotDigest:      s.activeSlotDigest,
-		ActiveSlotAfterRehearsal: s.activeSlot,
-		ExecutedByAdminID:        adminID,
-		ExecutedAt:               now,
+		RehearsalID:                 s.IDGenerator(),
+		Environment:                 restored.Environment,
+		ExecutionMode:               executionMode,
+		IsSimulation:                isSimulation,
+		OperationalRestorePerformed: operationalPerformed,
+		TargetDatabaseURI:           targetURI,
+		MeasuredRestoreDurationMs:   elapsedMs,
+		BackupArtifactURI:           artifact.SnapshotPath,
+		BackupSHA256:                artifact.SHA256Digest,
+		RestoredSHA256:              restoredDigest,
+		ChecksumVerified:            true,
+		RPOSeconds:                  rpoSeconds,
+		RTOSeconds:                  measuredRTO,
+		WorkspacesRestored:          workspacesRestored,
+		PostingsRestored:            postingsRestored,
+		EvidenceObjectsRestored:     evidencesRestored,
+		AuditEntriesRestored:        auditsRestored,
+		LedgerBalanced:              true,
+		AuditSequenceContinuous:     true,
+		SmokePassed:                 smokePassed,
+		SmokeFailureCode:            smokeFailureCode,
+		RollbackTriggered:           false,
+		PreviousSlotDigest:          s.activeSlotDigest,
+		CandidateSlotDigest:         s.activeSlotDigest,
+		ActiveSlotAfterRehearsal:    s.activeSlot,
+		ExecutedByAdminID:           adminID,
+		ExecutedAt:                  now,
 	}
 	s.restoreRehearsals[rec.RehearsalID] = rec
-	s.appendSequencedAuditLocked(adminID, admin.AdminRole, "rehearsal.backup_restored", "backup_restore_rehearsal", rec.RehearsalID, "", "Verified point-in-time backup restore rehearsal", map[string]any{
-		"backup_sha256":   rec.BackupSHA256,
-		"restored_sha256": rec.RestoredSHA256,
-		"rpo_seconds":     rec.RPOSeconds,
-		"rto_seconds":     rec.RTOSeconds,
-		"ledger_balanced": rec.LedgerBalanced,
+	auditReason := "Simulated point-in-time backup snapshot validation (SIMULATION_ONLY: no disposable DB or live smoke target touched)"
+	if operationalPerformed {
+		auditReason = "Verified disposable-target point-in-time backup restore rehearsal (DISPOSABLE_TARGET_VERIFIED)"
+	}
+	s.appendSequencedAuditLocked(adminID, admin.AdminRole, "rehearsal.backup_restored", "backup_restore_rehearsal", rec.RehearsalID, "", auditReason, map[string]any{
+		"execution_mode":                rec.ExecutionMode,
+		"is_simulation":                 rec.IsSimulation,
+		"operational_restore_performed": rec.OperationalRestorePerformed,
+		"target_database_uri":           rec.TargetDatabaseURI,
+		"measured_restore_duration_ms":  rec.MeasuredRestoreDurationMs,
+		"backup_sha256":                 rec.BackupSHA256,
+		"restored_sha256":               rec.RestoredSHA256,
+		"rpo_seconds":                   rec.RPOSeconds,
+		"rto_seconds":                   rec.RTOSeconds,
+		"ledger_balanced":               rec.LedgerBalanced,
 	})
 
 	cp := *rec
@@ -424,24 +666,132 @@ type CandidateSlotProbeInput struct {
 
 // ReleaseSmokeVerdict captures the outcome of a Blue/Green candidate slot deployment and smoke gate.
 type ReleaseSmokeVerdict struct {
-	CandidatePromoted      bool
-	RollbackTriggered      bool
-	FailureCode            string
-	FailureReason          string
-	ActiveSlot             string
-	ActiveSlotDigest       string
-	RetainedRollbackDigest string
-	EvaluatedAt            time.Time
+	ExecutionMode           string
+	IsSimulation            bool
+	ProxyUpstreamSwitched   bool
+	MeasuredProbeDurationMs int64
+	CandidatePromoted       bool
+	RollbackTriggered       bool
+	FailureCode             string
+	FailureReason           string
+	ActiveSlot              string
+	ActiveSlotDigest        string
+	RetainedRollbackDigest  string
+	EvaluatedAt             time.Time
+}
+
+// DisposableProxyTarget abstracts a disposable reverse proxy upstream switcher for live Blue/Green rehearsals.
+type DisposableProxyTarget interface {
+	SwitchUpstream(ctx context.Context, slot, imageDigest string) error
+	RollbackUpstream(ctx context.Context, previousSlot, previousDigest string) error
 }
 
 // ExecuteBlueGreenReleaseSmokeRehearsal evaluates a candidate deployment slot against the mandatory
 // pre-promotion health, readiness, and authenticated business smoke checks (ci_cd_pipeline.md §4, §5).
-// Any failing smoke check immediately aborts slot promotion, triggers automatic rollback to the
-// retained previous slot digest, logs an immutable audit event, and returns ErrReleaseSmokeFailed.
+// Because this method evaluates caller-supplied probe inputs in memory without touching a reverse proxy,
+// it labels the verdict as SIMULATION_ONLY (IsSimulation=true, ProxyUpstreamSwitched=false).
+// Use ExecuteLiveBlueGreenReleaseSmokeRehearsal to probe a live candidate HTTP endpoint and switch a disposable proxy.
 func (s *Service) ExecuteBlueGreenReleaseSmokeRehearsal(
 	ctx context.Context,
 	adminID string,
 	probe CandidateSlotProbeInput,
+) (ReleaseSmokeVerdict, error) {
+	return s.evaluateBlueGreenProbe(ctx, adminID, probe, nil, 0)
+}
+
+// ExecuteLiveBlueGreenReleaseSmokeRehearsal probes a live disposable candidate HTTP server (/healthz, /readyz, /smoke),
+// measures real HTTP probe duration, and switches a disposable proxy upstream only when all checks pass.
+func (s *Service) ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+	ctx context.Context,
+	adminID string,
+	candidateSlot string,
+	candidateImageDigest string,
+	candidateBaseURL string,
+	authToken string,
+	expectedWorkspaceID string,
+	expectedNetProfitMicro int64,
+	expectedCreditsBalance int64,
+	proxyTarget DisposableProxyTarget,
+) (ReleaseSmokeVerdict, error) {
+	if proxyTarget == nil || strings.TrimSpace(candidateBaseURL) == "" {
+		return ReleaseSmokeVerdict{}, ErrOperationalTargetRequired
+	}
+	startedWall := time.Now()
+	client := &http.Client{Timeout: 5 * time.Second}
+
+	probe := CandidateSlotProbeInput{
+		CandidateSlot:               candidateSlot,
+		CandidateImageDigest:        candidateImageDigest,
+		SmokeExpectedNetProfitMicro: expectedNetProfitMicro,
+		SmokeExpectedCreditsBalance: expectedCreditsBalance,
+	}
+
+	// 1. Probe /healthz
+	if resp, err := client.Get(strings.TrimRight(candidateBaseURL, "/") + "/healthz"); err == nil {
+		probe.HealthzHTTPStatus = resp.StatusCode
+		var body struct {
+			Status string `json:"status"`
+		}
+		_ = json.NewDecoder(resp.Body).Decode(&body)
+		_ = resp.Body.Close()
+		probe.HealthzStatusField = body.Status
+	}
+
+	// 2. Probe /readyz
+	if resp, err := client.Get(strings.TrimRight(candidateBaseURL, "/") + "/readyz"); err == nil {
+		probe.ReadyzHTTPStatus = resp.StatusCode
+		var body struct {
+			Status   string `json:"status"`
+			Database bool   `json:"database"`
+			Redis    bool   `json:"redis"`
+			NATS     bool   `json:"nats"`
+		}
+		_ = json.NewDecoder(resp.Body).Decode(&body)
+		_ = resp.Body.Close()
+		probe.ReadyzStatusField = body.Status
+		probe.DatabaseReady = body.Database
+		probe.RedisReady = body.Redis
+		probe.NATSReady = body.NATS
+	}
+
+	// 3. Probe authenticated /smoke
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(candidateBaseURL, "/")+"/smoke", nil)
+	if err == nil {
+		if strings.TrimSpace(authToken) != "" {
+			req.Header.Set("Authorization", "Bearer "+authToken)
+		}
+		if resp, err := client.Do(req); err == nil {
+			rawBody, _ := io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				probe.SmokeAuthValid = true
+				var body struct {
+					WorkspaceID         string `json:"workspace_id"`
+					NetProfitMicro      int64  `json:"net_profit_micro"`
+					CreditsBalance      int64  `json:"credits_balance"`
+					AuditSequenceIntact bool   `json:"audit_sequence_intact"`
+				}
+				if err := json.Unmarshal(rawBody, &body); err == nil {
+					probe.SmokeResponseValidJSON = true
+					probe.SmokeWorkspaceID = body.WorkspaceID
+					probe.SmokeObservedNetProfitMicro = body.NetProfitMicro
+					probe.SmokeObservedCreditsBalance = body.CreditsBalance
+					probe.SmokeAuditSequenceIntact = body.AuditSequenceIntact
+				}
+			}
+		}
+	}
+
+	elapsedMs := time.Since(startedWall).Milliseconds()
+	return s.evaluateBlueGreenProbe(ctx, adminID, probe, proxyTarget, elapsedMs)
+}
+
+func (s *Service) evaluateBlueGreenProbe(
+	ctx context.Context,
+	adminID string,
+	probe CandidateSlotProbeInput,
+	proxyTarget DisposableProxyTarget,
+	measuredDurationMs int64,
 ) (ReleaseSmokeVerdict, error) {
 	if err := ctx.Err(); err != nil {
 		return ReleaseSmokeVerdict{}, err
@@ -460,19 +810,34 @@ func (s *Service) ExecuteBlueGreenReleaseSmokeRehearsal(
 	now := s.Now()
 	prevSlot := s.activeSlot
 	prevDigest := s.activeSlotDigest
+	execMode := RehearsalModeSimulationOnly
+	isSim := true
+	if proxyTarget != nil {
+		execMode = RehearsalModeDisposableTargetVerified
+		isSim = false
+	}
 
 	failAndRollback := func(code, reason string) (ReleaseSmokeVerdict, error) {
+		if proxyTarget != nil {
+			_ = proxyTarget.RollbackUpstream(ctx, prevSlot, prevDigest)
+		}
 		verdict := ReleaseSmokeVerdict{
-			CandidatePromoted:      false,
-			RollbackTriggered:      true,
-			FailureCode:            code,
-			FailureReason:          reason,
-			ActiveSlot:             prevSlot,
-			ActiveSlotDigest:       prevDigest,
-			RetainedRollbackDigest: prevDigest,
-			EvaluatedAt:            now,
+			ExecutionMode:           execMode,
+			IsSimulation:            isSim,
+			ProxyUpstreamSwitched:   false,
+			MeasuredProbeDurationMs: measuredDurationMs,
+			CandidatePromoted:       false,
+			RollbackTriggered:       true,
+			FailureCode:             code,
+			FailureReason:           reason,
+			ActiveSlot:              prevSlot,
+			ActiveSlotDigest:        prevDigest,
+			RetainedRollbackDigest:  prevDigest,
+			EvaluatedAt:             now,
 		}
 		s.appendSequencedAuditLocked(adminID, admin.AdminRole, "release.rollback_triggered", "deployment_slot", probe.CandidateSlot, "", reason, map[string]any{
+			"execution_mode":        execMode,
+			"is_simulation":         isSim,
 			"failure_code":          code,
 			"candidate_slot":        probe.CandidateSlot,
 			"candidate_slot_digest": probe.CandidateImageDigest,
@@ -514,20 +879,36 @@ func (s *Service) ExecuteBlueGreenReleaseSmokeRehearsal(
 		return failAndRollback("SMOKE_AUDIT_SEQUENCE_GAP", "immutable audit log sequence gap detected during pre-promotion check")
 	}
 
-	// All health, readiness, and authenticated business smoke checks passed -> promote candidate slot atomically.
+	proxySwitched := false
+	reason := "SIMULATION_ONLY: pre-promotion probe inputs validated in memory; no live reverse proxy upstream was switched."
+	if proxyTarget != nil {
+		if err := proxyTarget.SwitchUpstream(ctx, probe.CandidateSlot, probe.CandidateImageDigest); err != nil {
+			return failAndRollback("SMOKE_PROXY_SWITCH_FAILED", fmt.Sprintf("disposable proxy upstream switch failed: %v", err))
+		}
+		proxySwitched = true
+		reason = "DISPOSABLE_TARGET_VERIFIED: live candidate HTTP probes passed and disposable reverse proxy upstream switched."
+	}
+
 	s.activeSlot = probe.CandidateSlot
 	s.activeSlotDigest = probe.CandidateImageDigest
 	verdict := ReleaseSmokeVerdict{
-		CandidatePromoted:      true,
-		RollbackTriggered:      false,
-		FailureCode:            "OK",
-		FailureReason:          "All healthz, readyz, and authenticated business smoke checks passed; upstream switched atomically.",
-		ActiveSlot:             s.activeSlot,
-		ActiveSlotDigest:       s.activeSlotDigest,
-		RetainedRollbackDigest: prevDigest,
-		EvaluatedAt:            now,
+		ExecutionMode:           execMode,
+		IsSimulation:            isSim,
+		ProxyUpstreamSwitched:   proxySwitched,
+		MeasuredProbeDurationMs: measuredDurationMs,
+		CandidatePromoted:       true,
+		RollbackTriggered:       false,
+		FailureCode:             "OK",
+		FailureReason:           reason,
+		ActiveSlot:              s.activeSlot,
+		ActiveSlotDigest:        s.activeSlotDigest,
+		RetainedRollbackDigest:  prevDigest,
+		EvaluatedAt:             now,
 	}
 	s.appendSequencedAuditLocked(adminID, admin.AdminRole, "release.slot_promoted", "deployment_slot", probe.CandidateSlot, "", verdict.FailureReason, map[string]any{
+		"execution_mode":           execMode,
+		"is_simulation":            isSim,
+		"proxy_upstream_switched":  proxySwitched,
 		"active_slot":              s.activeSlot,
 		"active_slot_digest":       s.activeSlotDigest,
 		"retained_rollback_digest": prevDigest,

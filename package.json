@@ -18,6 +18,10 @@
     "check:web": "pnpm --filter @creativanta/web check",
     "check:admin": "pnpm --filter @creativanta/admin check",
     "test:web": "pnpm --filter @creativanta/web test",
-    "test:admin": "pnpm --filter @creativanta/admin test"
+    "test:admin": "pnpm --filter @creativanta/admin test",
+    "test:browser": "bash tooling/readiness/browser/run_browser_qa.sh"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.50.1"
   }
 }

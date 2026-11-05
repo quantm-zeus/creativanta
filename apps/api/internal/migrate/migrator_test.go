@@ -1181,6 +1181,9 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 		t.Fatalf("Down rollback v37 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v36 failed: %v", err)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v35 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
@@ -1285,8 +1288,12 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v1 failed: %v", err)
 	}
-	if _, err := Up(ctx, adminPool, dir); err != nil {
+	reApplied, err := Up(ctx, adminPool, dir)
+	if err != nil {
 		t.Fatalf("re-apply Up after Down failed: %v", err)
+	}
+	if len(reApplied) != 47 {
+		t.Fatalf("expected all 47 migrations to re-apply after full Down rollback, got %d (%v)", len(reApplied), reApplied)
 	}
 
 	const (
