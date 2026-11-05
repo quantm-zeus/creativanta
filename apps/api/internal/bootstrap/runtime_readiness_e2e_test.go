@@ -350,7 +350,7 @@ func (a adminOnlyVerifier) Verify(_ context.Context, token string) (transportaut
 // JWKS verifier, real SQLMembershipLookup, real transportauth Connect
 // interceptors (ModeAPI and ModeAdminAPI) on loopback TCP listeners, and
 // tenantdb.WithTx + app_user RLS against an isolated live PostgreSQL 17
-// database with all 47 canonical migrations applied.
+// database with the complete canonical migration set applied.
 func TestRuntimeReadinessLivePostgresAuthAndTenantRLS(t *testing.T) {
 	dsn := os.Getenv("CREATIVANTA_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -375,7 +375,7 @@ func TestRuntimeReadinessLivePostgresAuthAndTenantRLS(t *testing.T) {
 	}
 	defer sqlDB.Close()
 
-	// 1. Clean public schema and apply all 47 canonical migrations.
+	// 1. Clean public schema and apply the current canonical migration set.
 	if _, err := adminPool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`); err != nil {
 		t.Fatalf("reset public schema: %v", err)
 	}
@@ -384,8 +384,12 @@ func TestRuntimeReadinessLivePostgresAuthAndTenantRLS(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migrate.Up failed: %v", err)
 	}
-	if len(applied) != 47 {
-		t.Fatalf("expected 47 applied migrations, got %d", len(applied))
+	migrationFiles, err := filepath.Glob(filepath.Join(migrationsDir, "[0-9]*_*.sql"))
+	if err != nil || len(migrationFiles) < 47 {
+		t.Fatalf("cannot resolve canonical migrations: count=%d err=%v", len(migrationFiles), err)
+	}
+	if len(applied) != len(migrationFiles) {
+		t.Fatalf("expected %d applied migrations, got %d", len(migrationFiles), len(applied))
 	}
 	statuses, err := migrate.Status(ctx, adminPool, migrationsDir)
 	if err != nil {

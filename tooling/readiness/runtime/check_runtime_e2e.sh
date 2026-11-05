@@ -306,8 +306,10 @@ CREATIVANTA_MIGRATE_DATABASE_URL="$TEST_DSN" CREATIVANTA_MIGRATIONS_DIR="$ROOT/i
   fail "cmd/migrate status failed against isolated PostgreSQL 17.10"
 }
 applied_count="$(grep -c 'applied=true' "$TMP_DIR/migrate_status.log" || true)"
-[[ "$applied_count" -eq 47 ]] || fail "expected 47 applied migrations in cmd/migrate status, got $applied_count"
-info "PASS: cmd/migrate CLI applied and verified all 47 canonical SQL migrations."
+expected_migrations="$(find "$ROOT/infra/migrations" -maxdepth 1 -type f -name '[0-9]*_*.sql' | wc -l | tr -d '[:space:]')"
+[[ "$expected_migrations" -ge 47 ]] || fail "migration source unexpectedly missing canonical files (found $expected_migrations)"
+[[ "$applied_count" -eq "$expected_migrations" ]] || fail "expected $expected_migrations applied migrations in cmd/migrate status, got $applied_count"
+info "PASS: cmd/migrate CLI applied and verified all $expected_migrations canonical SQL migrations."
 
 # Step 6: Execute real Go integration, RLS, negative auth, replay, and race suites
 info "Step 6/6: Running live PostgreSQL 17.10 & Go -race security/RLS/replay test suites..."
