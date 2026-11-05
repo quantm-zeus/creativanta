@@ -24,6 +24,9 @@ var (
 	ErrInvalidState           = errors.New("publish: invalid lifecycle state transition")
 	ErrProofRequired          = errors.New("publish: evidence ref or screenshot URL required for manual proof")
 	ErrRateLimitExceeded      = errors.New("publish: platform rate limit exceeded")
+	ErrStoreNotConfigured     = errors.New("publish: durable store is not configured (fail-closed)")
+	ErrUnauthenticated        = errors.New("publish: unauthenticated caller principal")
+	ErrPermissionDenied       = errors.New("publish: permission denied or workspace scope mismatch")
 )
 
 // Lifecycle State Constants (database_schema.md §8.1, §8.2)

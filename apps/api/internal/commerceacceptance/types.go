@@ -174,23 +174,26 @@ type ShippingParcel struct {
 
 // PaymentGateHealth reports payment provider status.
 type PaymentGateHealth struct {
-	Provider            string    `json:"provider"`
-	Configured          bool      `json:"configured"`
-	WebhookHMACVerified bool      `json:"webhook_hmac_verified"`
-	ReplayDeduplicated  bool      `json:"replay_deduplicated"`
-	LatePaymentRecovery bool      `json:"late_payment_recovery"`
-	ExternalGateID      string    `json:"external_gate_id"`
-	GateStatus          string    `json:"gate_status"` // "VERIFIED_LOCAL_ADAPTER", "PENDING_PRODUCTION_KEY"
-	LastCheckedAt       time.Time `json:"last_checked_at"`
+	Provider             string    `json:"provider"`
+	Configured           bool      `json:"configured"`
+	WebhookHMACVerified  bool      `json:"webhook_hmac_verified"`
+	ReplayDeduplicated   bool      `json:"replay_deduplicated"`
+	LatePaymentRecovery  bool      `json:"late_payment_recovery"`
+	LiveEntitlementReady bool      `json:"live_entitlement_ready"`
+	ExternalGateID       string    `json:"external_gate_id"`
+	GateStatus           string    `json:"gate_status"` // "LOCAL_ADAPTER_ONLY", "PENDING_PRODUCTION_KEY"
+	LastCheckedAt        time.Time `json:"last_checked_at"`
 }
 
 // ProviderAndShippingGateSummary reports actual provider/shipping status.
 type ProviderAndShippingGateSummary struct {
-	WorkspaceID   string              `json:"workspace_id"`
-	CheckedAt     time.Time           `json:"checked_at"`
-	PaymentGates  []PaymentGateHealth `json:"payment_gates"`
-	ShippingGates []ShippingParcel    `json:"shipping_gates"`
-	ExternalGates []ExternalGateInfo  `json:"external_gates"`
+	WorkspaceID                 string              `json:"workspace_id"`
+	CheckedAt                   time.Time           `json:"checked_at"`
+	ProductionEntitlementsReady bool                `json:"production_entitlements_ready"`
+	LiveProviderStatus          string              `json:"live_provider_status"`
+	PaymentGates                []PaymentGateHealth `json:"payment_gates"`
+	ShippingGates               []ShippingParcel    `json:"shipping_gates"`
+	ExternalGates               []ExternalGateInfo  `json:"external_gates"`
 }
 
 // ExternalGateInfo accurately records external dependency state.

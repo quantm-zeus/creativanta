@@ -73,8 +73,8 @@ func (m *loopMockAccountLookup) GetAccount(workspaceID, accountID string) (*capa
 // ============================================================================
 
 func TestPublishInboxLoop_Path1_HappyPath(t *testing.T) {
-	ctx := context.Background()
 	wsID := "ws-loop-happy"
+	ctx := WithCaller(context.Background(), wsID, "user-loop-1", "owner")
 	now := time.Date(2026, 11, 4, 10, 0, 0, 0, time.UTC)
 	clock := func() time.Time { return now }
 
@@ -202,8 +202,8 @@ func TestPublishInboxLoop_Path1_HappyPath(t *testing.T) {
 }
 
 func TestPublishInboxLoop_Path2_DegradedPath(t *testing.T) {
-	ctx := context.Background()
 	wsID := "ws-loop-degraded"
+	ctx := WithCaller(context.Background(), wsID, "user-loop-2", "owner")
 	now := time.Date(2026, 11, 4, 10, 0, 0, 0, time.UTC)
 	clock := func() time.Time { return now }
 
@@ -291,8 +291,8 @@ func TestPublishInboxLoop_Path2_DegradedPath(t *testing.T) {
 }
 
 func TestPublishInboxLoop_Path3_MissingDataPath(t *testing.T) {
-	ctx := context.Background()
 	wsID := "ws-loop-empty"
+	ctx := WithCaller(context.Background(), wsID, "user-loop-3", "owner")
 	pubSvc := NewService(ServiceConfig{})
 	engSvc := engagement.NewService(&engagement.ServiceConfig{})
 
@@ -336,8 +336,8 @@ func TestPublishInboxLoop_Path3_MissingDataPath(t *testing.T) {
 }
 
 func TestPublishInboxLoop_Path4_BrokenPath(t *testing.T) {
-	ctx := context.Background()
 	wsID := "ws-loop-broken"
+	ctx := WithCaller(context.Background(), wsID, "user-loop-4", "owner")
 	now := time.Date(2026, 11, 4, 10, 0, 0, 0, time.UTC)
 	clock := func() time.Time { return now }
 
@@ -455,8 +455,8 @@ func TestPublishInboxLoop_Path4_BrokenPath(t *testing.T) {
 }
 
 func TestPublishInboxLoop_Path5_AuditPath(t *testing.T) {
-	ctx := context.Background()
 	wsID := "ws-loop-audit"
+	ctx := WithCaller(context.Background(), wsID, "user-loop-5", "owner")
 	now := time.Date(2026, 11, 4, 10, 0, 0, 0, time.UTC)
 	clock := func() time.Time { return now }
 
@@ -544,8 +544,8 @@ func TestPublishInboxLoop_Path5_AuditPath(t *testing.T) {
 // ============================================================================
 
 func TestPublishInboxLoop_Target2_ReplayWithOneExternalResult(t *testing.T) {
-	ctx := context.Background()
 	wsID := "ws-replay-test"
+	ctx := WithCaller(context.Background(), wsID, "user-loop-6", "owner")
 	now := time.Date(2026, 11, 4, 10, 0, 0, 0, time.UTC)
 	clock := func() time.Time { return now }
 
