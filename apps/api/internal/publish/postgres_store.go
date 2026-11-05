@@ -298,24 +298,24 @@ func (s *PostgresStore) SaveItem(ctx context.Context, item *PublishItem) error {
 
 func scanPublishItemRow(scanner interface{ Scan(dest ...any) error }) (*PublishItem, error) {
 	var (
-		item          PublishItem
-		assetID       sql.NullString
-		targetAccID   sql.NullString
-		targetFormat  sql.NullString
-		title         sql.NullString
-		description   sql.NullString
-		hashtagsRaw   []byte
-		scheduleAt    sql.NullTime
-		capSnapID     sql.NullString
-		diagState     sql.NullString
-		offerRaw      sql.NullString
-		campRaw       sql.NullString
-		packScore     sql.NullFloat64
-		compResult    sql.NullString
-		compDetRaw    []byte
-		metaRaw       []byte
-		createdBy     sql.NullString
-		deletedAt     sql.NullTime
+		item         PublishItem
+		assetID      sql.NullString
+		targetAccID  sql.NullString
+		targetFormat sql.NullString
+		title        sql.NullString
+		description  sql.NullString
+		hashtagsRaw  []byte
+		scheduleAt   sql.NullTime
+		capSnapID    sql.NullString
+		diagState    sql.NullString
+		offerRaw     sql.NullString
+		campRaw      sql.NullString
+		packScore    sql.NullFloat64
+		compResult   sql.NullString
+		compDetRaw   []byte
+		metaRaw      []byte
+		createdBy    sql.NullString
+		deletedAt    sql.NullTime
 	)
 	err := scanner.Scan(
 		&item.PublishItemID,
@@ -836,20 +836,20 @@ func (s *PostgresStore) ListLogsByItemID(ctx context.Context, workspaceID, publi
 	var out []*PublishLog
 	for rows.Next() {
 		var (
-			l              PublishLog
-			completedAt    sql.NullTime
-			failedAt       sql.NullTime
-			actorUserID    sql.NullString
-			actingMode     sql.NullString
-			execPath       sql.NullString
-			capSnapID      sql.NullString
-			extPostID      sql.NullString
-			extPostURL     sql.NullString
-			diagRef        sql.NullString
-			evidRef        sql.NullString
-			errCode        sql.NullString
-			errMsg         sql.NullString
-			metaRaw        []byte
+			l           PublishLog
+			completedAt sql.NullTime
+			failedAt    sql.NullTime
+			actorUserID sql.NullString
+			actingMode  sql.NullString
+			execPath    sql.NullString
+			capSnapID   sql.NullString
+			extPostID   sql.NullString
+			extPostURL  sql.NullString
+			diagRef     sql.NullString
+			evidRef     sql.NullString
+			errCode     sql.NullString
+			errMsg      sql.NullString
+			metaRaw     []byte
 		)
 		if err := rows.Scan(
 			&l.PublishLogID,
