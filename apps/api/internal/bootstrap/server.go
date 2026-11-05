@@ -64,18 +64,27 @@ func ValidateRole(role string) error {
 type handler struct {
 	role      string
 	readiness func(context.Context) bool
+	routes    http.Handler
 }
 
 // NewHandler constructs the bootstrap HTTP handler for the given role and readiness probe.
 // Role validation fails closed: any role other than "api" or "admin-api" returns ErrInvalidRole.
 // A nil readiness function is treated as not ready (HTTP 503).
 func NewHandler(role string, readiness func(context.Context) bool) (http.Handler, error) {
+	return NewHandlerWithRoutes(role, readiness, nil)
+}
+
+// NewHandlerWithRoutes constructs the bootstrap HTTP handler for the given role, readiness probe,
+// and composed route handler. /healthz and /readyz are always served by the bootstrap layer;
+// all other paths are delegated to routes when non-nil, or return 404 JSON fail-closed when nil.
+func NewHandlerWithRoutes(role string, readiness func(context.Context) bool, routes http.Handler) (http.Handler, error) {
 	if err := ValidateRole(role); err != nil {
 		return nil, err
 	}
 	return &handler{
 		role:      role,
 		readiness: readiness,
+		routes:    routes,
 	}, nil
 }
 
@@ -108,6 +117,10 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusOK, readyResponse{Status: "ready"})
 	default:
+		if h.routes != nil {
+			h.routes.ServeHTTP(w, r)
+			return
+		}
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
 	}
 }
