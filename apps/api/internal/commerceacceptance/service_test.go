@@ -18,12 +18,23 @@ func TestP609_Target1_NoFunctionLostBetweenModules(t *testing.T) {
 	svc := NewService(nil)
 	wsID := "ws-p6-acceptance-01"
 
+	// Without registered evidence, VerifyCrossModuleIntegrity must NEVER fabricate ready flags.
+	unseeded, err := svc.VerifyCrossModuleIntegrity(ctx, wsID)
+	require.NoError(t, err)
+	require.NotNil(t, unseeded)
+	assert.False(t, unseeded.AllModulesConnected)
+	assert.False(t, unseeded.ZeroFunctionLost)
+	assert.False(t, unseeded.LineageIntegrityPass)
+
+	// Register full canonical P6 loop evidence for this workspace and re-evaluate.
+	svc.RegisterCanonicalP6LoopEvidence(wsID)
+
 	res, err := svc.VerifyCrossModuleIntegrity(ctx, wsID)
 	require.NoError(t, err)
 	require.NotNil(t, res)
 
 	assert.Equal(t, wsID, res.WorkspaceID)
-	assert.True(t, res.AllModulesConnected, "All 11 P6 modules must be connected")
+	assert.True(t, res.AllModulesConnected, "All 12 P6 modules must be connected once evidence is registered")
 	assert.True(t, res.ZeroFunctionLost, "Acceptance Target 1: No function lost between modules")
 	assert.True(t, res.LineageIntegrityPass, "Lineage integrity must pass")
 	assert.Empty(t, res.BrokenLinks, "No broken links allowed")
@@ -265,6 +276,76 @@ func TestP609_Target3_ProviderAndShippingGateTruth(t *testing.T) {
 	assert.Equal(t, "PENDING_EXTERNAL_PROVIDER_APPROVAL", gatesMap["EXT-GATE-PLATFORM-TIKTOK-PARTNER"])
 	assert.Equal(t, "PENDING_CARRIER_PRODUCTION_KEY", gatesMap["EXT-GATE-SHIPPING-CARRIER-API"])
 	assert.Equal(t, "PENDING_CI_LIVE_POSTGRES", gatesMap["EXT-GATE-POSTGRES-LIVE-RLS"])
+	assert.False(t, summary.ProductionEntitlementsReady, "Production provider entitlements must remain PENDING")
+	assert.Equal(t, "PENDING", summary.LiveProviderStatus)
+}
+
+func TestRemediation_REL01_NoFabricatedReadyFlagsOrUnauthorizedRepairs(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	svc := NewService(nil)
+
+	// 1. Fresh workspace without evidence must fail closed (never claim verified/ready)
+	resEmpty, err := svc.VerifyCrossModuleIntegrity(ctx, "ws-unverified-fresh")
+	require.NoError(t, err)
+	assert.False(t, resEmpty.AllModulesConnected)
+	assert.False(t, resEmpty.ZeroFunctionLost)
+	assert.False(t, resEmpty.LineageIntegrityPass)
+	assert.Empty(t, resEmpty.VerifiedLinks)
+	for _, mod := range resEmpty.ModuleSummaries {
+		assert.Equal(t, "PENDING_EVIDENCE", mod.Status, "Module %s must not claim HEALTHY without evidence", mod.ModuleID)
+	}
+
+	// 2. Evidence in Workspace A does not leak to Workspace B, and broken link invalidates lineage integrity
+	svc.RegisterCanonicalP6LoopEvidence("ws-tenant-a")
+	resB, err := svc.VerifyCrossModuleIntegrity(ctx, "ws-tenant-b")
+	require.NoError(t, err)
+	assert.False(t, resB.AllModulesConnected)
+	assert.False(t, resB.ZeroFunctionLost)
+	assert.False(t, resB.LineageIntegrityPass)
+
+	// Inject an unverified/broken link in Workspace A -> must flip ZeroFunctionLost and LineageIntegrityPass to false
+	svc.RegisterCrossModuleLink("ws-tenant-a", CrossModuleLink{
+		FromModule:  ModuleM13,
+		ToModule:    ModuleM14,
+		LinkType:    "reference",
+		SourceID:    "prod-broken",
+		TargetID:    "", // Missing target
+		Verified:    false,
+		Description: "Broken SKU reference",
+	})
+	resABroken, err := svc.VerifyCrossModuleIntegrity(ctx, "ws-tenant-a")
+	require.NoError(t, err)
+	assert.False(t, resABroken.LineageIntegrityPass)
+	assert.False(t, resABroken.ZeroFunctionLost)
+	assert.False(t, resABroken.AllModulesConnected)
+	assert.Len(t, resABroken.BrokenLinks, 1)
+
+	// 3. Provider and shipping gates never claim production entitlement readiness
+	gates, err := svc.VerifyProviderAndShippingGates(ctx, "ws-tenant-a")
+	require.NoError(t, err)
+	assert.False(t, gates.ProductionEntitlementsReady)
+	assert.Equal(t, "PENDING", gates.LiveProviderStatus)
+	for _, pg := range gates.PaymentGates {
+		assert.False(t, pg.LiveEntitlementReady, "Provider %s must not claim live entitlement ready", pg.Provider)
+		assert.Equal(t, "LOCAL_ADAPTER_ONLY", pg.GateStatus)
+	}
+	for _, sg := range gates.ShippingGates {
+		assert.Equal(t, "LOCAL_ADAPTER_ONLY", sg.GateStatus)
+	}
+
+	// 4. Operational repairs enforce ActorRole (only manager/admin/owner allowed)
+	for _, unauthorizedRole := range []string{"", "viewer", "contributor", "editor", "guest"} {
+		_, err := svc.ApplyOperationalRepair(ctx, OperationalRepairRequest{
+			WorkspaceID:    "ws-p6-commerce",
+			UnreconciledID: "unrec-refund-001",
+			RepairType:     "settle_partial_refund",
+			AuditReason:    "Attempted repair by unauthorized role",
+			ActorID:        "user-unauth",
+			ActorRole:      unauthorizedRole,
+		})
+		assert.ErrorIs(t, err, ErrPermissionDenied, "Role %q must be denied operational repair", unauthorizedRole)
+	}
 }
 
 func TestP609_ConcurrencyAndRaceProtection(t *testing.T) {

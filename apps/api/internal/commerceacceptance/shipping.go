@@ -55,7 +55,7 @@ func (a *ShippingAdapter) RegisterParcel(carrier ShippingCarrier, orderID string
 		LastStatusUpdate:    time.Now().UTC(),
 		SignatureVerified:   true,
 		ExternalGateID:      "EXT-GATE-SHIPPING-CARRIER-API",
-		GateStatus:          "VERIFIED_LOCAL_ADAPTER",
+		GateStatus:          "LOCAL_ADAPTER_ONLY",
 	}
 
 	a.parcels[trackingNumber] = parcel
@@ -103,7 +103,7 @@ func (a *ShippingAdapter) IngestCarrierWebhook(carrier ShippingCarrier, tracking
 			LastStatusUpdate:  time.Now().UTC(),
 			SignatureVerified: true,
 			ExternalGateID:    "EXT-GATE-SHIPPING-CARRIER-API",
-			GateStatus:        "VERIFIED_LOCAL_ADAPTER",
+			GateStatus:        "LOCAL_ADAPTER_ONLY",
 		}
 		a.parcels[trackingNumber] = parcel
 		return parcel, nil
