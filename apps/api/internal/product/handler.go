@@ -2,14 +2,20 @@ package product
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	"connectrpc.com/connect"
 	commercev1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1/commercev1connect"
 	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -25,19 +31,210 @@ func NewHandler(service *Service) *Handler {
 
 var _ commercev1connect.ProductServiceHandler = (*Handler)(nil)
 
-func resolveTenantContext(ctx context.Context, cmdCtx *commonv1.CommandContext) (string, error) {
-	if session, ok := transportauth.PrincipalFromContext(ctx); ok && session.WorkspaceID != "" {
-		if cmdCtx != nil && cmdCtx.WorkspaceId != nil && cmdCtx.WorkspaceId.Value != "" {
-			if cmdCtx.WorkspaceId.Value != session.WorkspaceID && !session.InternalAdmin {
-				return "", connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
+type productRPCBinding struct {
+	permissionKey string
+	roleEnvelope  string
+}
+
+var productRPCBindings = map[string]productRPCBinding{
+	"ProductService/Create":            {permissionKey: "product:manage", roleEnvelope: "Editor+"},
+	"ProductService/Get":               {permissionKey: "product:read", roleEnvelope: "Member"},
+	"ProductService/List":              {permissionKey: "product:read", roleEnvelope: "Member"},
+	"ProductService/Update":            {permissionKey: "product:manage", roleEnvelope: "Editor+"},
+	"ProductService/Delete":            {permissionKey: "product:delete", roleEnvelope: "Admin+"},
+	"ProductService/Archive":           {permissionKey: "product:manage", roleEnvelope: "Editor+"},
+	"ProductService/BatchTag":          {permissionKey: "product:manage", roleEnvelope: "Editor+"},
+	"ProductService/Import":            {permissionKey: "product:import", roleEnvelope: "Admin+"},
+	"ProductService/Search":            {permissionKey: "product:read", roleEnvelope: "Member"},
+	"ProductService/GetStats":          {permissionKey: "product:read", roleEnvelope: "Member"},
+	"ProductService/GetSalesStats":     {permissionKey: "product:read", roleEnvelope: "Member"},
+	"ProductService/GetSalesChart":     {permissionKey: "product:read", roleEnvelope: "Member"},
+	"ProductService/GetReviews":        {permissionKey: "product:read", roleEnvelope: "Member"},
+	"ProductService/GetRank":           {permissionKey: "product:read", roleEnvelope: "Member"},
+	"ProductService/GetLinkedContent":  {permissionKey: "product:read", roleEnvelope: "Member"},
+	"ProductService/LinkContent":       {permissionKey: "product:manage", roleEnvelope: "Editor+"},
+	"ProductService/UpdateStock":       {permissionKey: "product:manage", roleEnvelope: "Editor+"},
+	"ProductService/SetAlertThreshold": {permissionKey: "product:manage", roleEnvelope: "Editor+"},
+	"ProductService/BulkArchive":       {permissionKey: "product:manage", roleEnvelope: "Manager+"},
+}
+
+var productRoleRank = map[string]int{
+	rbac.RoleOwner:       7,
+	rbac.RoleAdmin:       6,
+	rbac.RoleManager:     5,
+	rbac.RoleEditor:      4,
+	rbac.RoleContributor: 3,
+	rbac.RoleViewer:      2,
+	rbac.RoleExternal:    1,
+}
+
+func checkProductRoleEnvelope(role, envelope string) error {
+	rank, ok := productRoleRank[role]
+	if !ok {
+		return ErrUnauthorizedAction
+	}
+	switch envelope {
+	case "Owner":
+		if rank < productRoleRank[rbac.RoleOwner] {
+			return ErrUnauthorizedAction
+		}
+	case "Admin+":
+		if rank < productRoleRank[rbac.RoleAdmin] {
+			return ErrUnauthorizedAction
+		}
+	case "Manager+":
+		if rank < productRoleRank[rbac.RoleManager] {
+			return ErrUnauthorizedAction
+		}
+	case "Editor+":
+		if rank < productRoleRank[rbac.RoleEditor] {
+			return ErrUnauthorizedAction
+		}
+	case "Contributor+":
+		if rank < productRoleRank[rbac.RoleContributor] {
+			return ErrUnauthorizedAction
+		}
+	case "Viewer+", "Member":
+		if rank < productRoleRank[rbac.RoleViewer] {
+			return ErrUnauthorizedAction
+		}
+	}
+	return nil
+}
+
+// WithCaller injects an authenticated workspace caller into ctx for direct handler tests.
+func WithCaller(ctx context.Context, workspaceID, userID, role string) context.Context {
+	if role == "" {
+		role = rbac.RoleOwner
+	}
+	if userID == "" {
+		userID = "user-product-default"
+	}
+	return rbac.WithPolicyContext(ctx, rbac.PolicyContext{
+		ActorUserID: userID,
+		WorkspaceID: workspaceID,
+		Role:        role,
+	})
+}
+
+func checkProductAccess(rpcMethod string, pctx rbac.PolicyContext) error {
+	binding, ok := productRPCBindings[rpcMethod]
+	if !ok {
+		return ErrUnauthorizedAction
+	}
+	if err := rbac.CheckWorkspacePermission(binding.permissionKey, pctx); err != nil {
+		return ErrUnauthorizedAction
+	}
+	return checkProductRoleEnvelope(pctx.Role, binding.roleEnvelope)
+}
+
+func authorizeProductRPC(ctx context.Context, rpcMethod string, cmdCtx *commonv1.CommandContext) (string, error) {
+	var cmdWS string
+	if cmdCtx != nil && cmdCtx.WorkspaceId != nil {
+		cmdWS = strings.TrimSpace(cmdCtx.WorkspaceId.Value)
+	}
+
+	if session, ok := transportauth.PrincipalFromContext(ctx); ok && strings.TrimSpace(session.WorkspaceID) != "" {
+		wsID := strings.TrimSpace(session.WorkspaceID)
+		if cmdWS != "" && cmdWS != wsID && !session.InternalAdmin {
+			return "", connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
+		}
+		if !session.InternalAdmin {
+			pctx, hasPolicy := rbac.PolicyContextFromContext(ctx)
+			if !hasPolicy {
+				pctx = rbac.PolicyContext{
+					ActorUserID: session.UserID,
+					WorkspaceID: wsID,
+					Role:        rbac.RoleOwner,
+				}
+			}
+			if err := checkProductAccess(rpcMethod, pctx); err != nil {
+				return "", connect.NewError(connect.CodePermissionDenied, ErrUnauthorizedAction)
 			}
 		}
-		return session.WorkspaceID, nil
+		return wsID, nil
 	}
-	if cmdCtx != nil && cmdCtx.WorkspaceId != nil && cmdCtx.WorkspaceId.Value != "" {
-		return cmdCtx.WorkspaceId.Value, nil
+
+	if pctx, ok := rbac.PolicyContextFromContext(ctx); ok && strings.TrimSpace(pctx.WorkspaceID) != "" {
+		wsID := strings.TrimSpace(pctx.WorkspaceID)
+		if cmdWS != "" && cmdWS != wsID {
+			return "", connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
+		}
+		if err := checkProductAccess(rpcMethod, pctx); err != nil {
+			return "", connect.NewError(connect.CodePermissionDenied, ErrUnauthorizedAction)
+		}
+		return wsID, nil
+	}
+
+	if cmdWS != "" {
+		return cmdWS, nil
 	}
 	return "", connect.NewError(connect.CodeUnauthenticated, ErrMissingTenant)
+}
+
+var productPageCursorHMACKey = []byte("creativanta-product-page-cursor-hmac-v1")
+
+type productPageCursor struct {
+	WorkspaceID string `json:"ws"`
+	RPC         string `json:"rpc"`
+	Status      string `json:"st,omitempty"`
+	Type        string `json:"tp,omitempty"`
+	Category    string `json:"cat,omitempty"`
+	SearchQuery string `json:"q,omitempty"`
+	Offset      int    `json:"off"`
+}
+
+func encodeProductPageToken(c productPageCursor) (string, error) {
+	raw, err := json.Marshal(c)
+	if err != nil {
+		return "", err
+	}
+	payloadB64 := base64.RawURLEncoding.EncodeToString(raw)
+	mac := hmac.New(sha256.New, productPageCursorHMACKey)
+	mac.Write([]byte(payloadB64))
+	sig := hex.EncodeToString(mac.Sum(nil))
+	return payloadB64 + "." + sig, nil
+}
+
+func decodeProductPageToken(token string, expected productPageCursor) (int, error) {
+	if token == "" {
+		return 0, nil
+	}
+	if len(token) > 512 || strings.TrimSpace(token) != token {
+		return 0, fmt.Errorf("%w: malformed page_token", ErrInvalidInput)
+	}
+	parts := strings.Split(token, ".")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return 0, fmt.Errorf("%w: invalid page_token format", ErrInvalidInput)
+	}
+	mac := hmac.New(sha256.New, productPageCursorHMACKey)
+	mac.Write([]byte(parts[0]))
+	expectedSig := hex.EncodeToString(mac.Sum(nil))
+	if !hmac.Equal([]byte(parts[1]), []byte(expectedSig)) {
+		return 0, fmt.Errorf("%w: invalid page_token signature", ErrInvalidInput)
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(parts[0])
+	if err != nil {
+		return 0, fmt.Errorf("%w: invalid page_token encoding", ErrInvalidInput)
+	}
+	var decoded productPageCursor
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		return 0, fmt.Errorf("%w: invalid page_token payload", ErrInvalidInput)
+	}
+	if decoded.Offset <= 0 {
+		return 0, fmt.Errorf("%w: invalid page_token offset", ErrInvalidInput)
+	}
+	if decoded.WorkspaceID != expected.WorkspaceID {
+		return 0, fmt.Errorf("%w: page_token tenant mismatch", ErrInvalidInput)
+	}
+	if decoded.RPC != expected.RPC ||
+		!strings.EqualFold(decoded.Status, expected.Status) ||
+		!strings.EqualFold(decoded.Type, expected.Type) ||
+		!strings.EqualFold(decoded.Category, expected.Category) ||
+		decoded.SearchQuery != expected.SearchQuery {
+		return 0, fmt.Errorf("%w: page_token filter mismatch", ErrInvalidInput)
+	}
+	return decoded.Offset, nil
 }
 
 func (h *Handler) Create(
@@ -48,7 +245,7 @@ func (h *Handler) Create(
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
-	wsID, err := resolveTenantContext(ctx, msg.Context)
+	wsID, err := authorizeProductRPC(ctx, "ProductService/Create", msg.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +332,7 @@ func (h *Handler) Get(
 	if msg == nil || msg.ProductId == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
-	wsID, err := resolveTenantContext(ctx, nil)
+	wsID, err := authorizeProductRPC(ctx, "ProductService/Get", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +354,7 @@ func (h *Handler) List(
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
-	wsID, err := resolveTenantContext(ctx, nil)
+	wsID, err := authorizeProductRPC(ctx, "ProductService/List", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -170,9 +367,30 @@ func (h *Handler) List(
 	}
 	limit := 20
 	offset := 0
+	expectedCursor := productPageCursor{
+		WorkspaceID: wsID,
+		RPC:         "List",
+		Status:      filter.Status,
+		Type:        filter.Type,
+		Category:    filter.Category,
+		SearchQuery: filter.SearchQuery,
+	}
 	if msg.Pagination != nil {
+		if msg.Pagination.PageSize < 0 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: page_size cannot be negative", ErrInvalidInput))
+		}
 		if msg.Pagination.PageSize > 0 {
 			limit = int(msg.Pagination.PageSize)
+			if limit > 100 {
+				limit = 100
+			}
+		}
+		if msg.Pagination.PageToken != "" {
+			decodedOffset, err := decodeProductPageToken(msg.Pagination.PageToken, expectedCursor)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			}
+			offset = decodedOffset
 		}
 	}
 
@@ -186,11 +404,23 @@ func (h *Handler) List(
 		protoList = append(protoList, toProtoProduct(p))
 	}
 
+	hasMore := len(products) > 0 && int64(offset+len(products)) < total
+	var nextPageToken string
+	if hasMore {
+		expectedCursor.Offset = offset + len(products)
+		tok, err := encodeProductPageToken(expectedCursor)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		nextPageToken = tok
+	}
+
 	return connect.NewResponse(&commercev1.ListResponse{
 		Products: protoList,
 		Pagination: &commonv1.PaginatedResponse{
-			TotalCount: &total,
-			HasMore:    int64(offset+limit) < total,
+			NextPageToken: nextPageToken,
+			TotalCount:    &total,
+			HasMore:       hasMore,
 		},
 	}), nil
 }
@@ -203,7 +433,7 @@ func (h *Handler) Update(
 	if msg == nil || msg.ProductId == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
-	wsID, err := resolveTenantContext(ctx, msg.Context)
+	wsID, err := authorizeProductRPC(ctx, "ProductService/Update", msg.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +504,7 @@ func (h *Handler) Delete(
 	if msg == nil || msg.ProductId == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
-	wsID, err := resolveTenantContext(ctx, msg.Context)
+	wsID, err := authorizeProductRPC(ctx, "ProductService/Delete", msg.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +522,7 @@ func (h *Handler) Archive(
 	if msg == nil || msg.ProductId == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
-	wsID, err := resolveTenantContext(ctx, msg.Context)
+	wsID, err := authorizeProductRPC(ctx, "ProductService/Archive", msg.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -313,7 +543,7 @@ func (h *Handler) BatchTag(
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
-	wsID, err := resolveTenantContext(ctx, msg.Context)
+	wsID, err := authorizeProductRPC(ctx, "ProductService/BatchTag", msg.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -332,7 +562,7 @@ func (h *Handler) Import(
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
-	wsID, err := resolveTenantContext(ctx, msg.Context)
+	wsID, err := authorizeProductRPC(ctx, "ProductService/Import", msg.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -404,14 +634,34 @@ func (h *Handler) Search(
 	if msg == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
-	wsID, err := resolveTenantContext(ctx, nil)
+	wsID, err := authorizeProductRPC(ctx, "ProductService/Search", nil)
 	if err != nil {
 		return nil, err
 	}
 	limit := 20
 	offset := 0
-	if msg.Pagination != nil && msg.Pagination.PageSize > 0 {
-		limit = int(msg.Pagination.PageSize)
+	expectedCursor := productPageCursor{
+		WorkspaceID: wsID,
+		RPC:         "Search",
+		SearchQuery: msg.Query,
+	}
+	if msg.Pagination != nil {
+		if msg.Pagination.PageSize < 0 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: page_size cannot be negative", ErrInvalidInput))
+		}
+		if msg.Pagination.PageSize > 0 {
+			limit = int(msg.Pagination.PageSize)
+			if limit > 100 {
+				limit = 100
+			}
+		}
+		if msg.Pagination.PageToken != "" {
+			decodedOffset, err := decodeProductPageToken(msg.Pagination.PageToken, expectedCursor)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			}
+			offset = decodedOffset
+		}
 	}
 	products, total, err := h.service.SearchProducts(ctx, wsID, msg.Query, limit, offset)
 	if err != nil {
@@ -421,11 +671,22 @@ func (h *Handler) Search(
 	for _, p := range products {
 		protoList = append(protoList, toProtoProduct(p))
 	}
+	hasMore := len(products) > 0 && int64(offset+len(products)) < total
+	var nextPageToken string
+	if hasMore {
+		expectedCursor.Offset = offset + len(products)
+		tok, err := encodeProductPageToken(expectedCursor)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		nextPageToken = tok
+	}
 	return connect.NewResponse(&commercev1.SearchResponse{
 		Products: protoList,
 		Pagination: &commonv1.PaginatedResponse{
-			TotalCount: &total,
-			HasMore:    int64(offset+limit) < total,
+			NextPageToken: nextPageToken,
+			TotalCount:    &total,
+			HasMore:       hasMore,
 		},
 	}), nil
 }
@@ -438,7 +699,7 @@ func (h *Handler) GetStats(
 	if msg == nil || msg.ProductId == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
-	wsID, err := resolveTenantContext(ctx, nil)
+	wsID, err := authorizeProductRPC(ctx, "ProductService/GetStats", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -457,10 +718,20 @@ func (h *Handler) GetStats(
 }
 
 func (h *Handler) GetSalesStats(
-	_ context.Context,
+	ctx context.Context,
 	req *connect.Request[commercev1.GetSalesStatsRequest],
 ) (*connect.Response[commercev1.GetSalesStatsResponse], error) {
 	msg := req.Msg
+	if msg == nil || msg.ProductId == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
+	}
+	wsID, err := authorizeProductRPC(ctx, "ProductService/GetSalesStats", nil)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := h.service.GetProduct(ctx, wsID, msg.ProductId); err != nil {
+		return nil, mapError(err)
+	}
 	return connect.NewResponse(&commercev1.GetSalesStatsResponse{
 		ProductId:   msg.ProductId,
 		GrossSales:  &commonv1.Money{Amount: "0.000000", Currency: "VND"},
@@ -471,10 +742,20 @@ func (h *Handler) GetSalesStats(
 }
 
 func (h *Handler) GetSalesChart(
-	_ context.Context,
+	ctx context.Context,
 	req *connect.Request[commercev1.GetSalesChartRequest],
 ) (*connect.Response[commercev1.GetSalesChartResponse], error) {
 	msg := req.Msg
+	if msg == nil || msg.ProductId == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
+	}
+	wsID, err := authorizeProductRPC(ctx, "ProductService/GetSalesChart", nil)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := h.service.GetProduct(ctx, wsID, msg.ProductId); err != nil {
+		return nil, mapError(err)
+	}
 	return connect.NewResponse(&commercev1.GetSalesChartResponse{
 		ProductId:  msg.ProductId,
 		DataPoints: []*commercev1.SalesChartPoint{},
@@ -482,20 +763,56 @@ func (h *Handler) GetSalesChart(
 }
 
 func (h *Handler) GetReviews(
-	_ context.Context,
+	ctx context.Context,
 	req *connect.Request[commercev1.GetReviewsRequest],
 ) (*connect.Response[commercev1.GetReviewsResponse], error) {
+	msg := req.Msg
+	if msg == nil || msg.ProductId == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
+	}
+	wsID, err := authorizeProductRPC(ctx, "ProductService/GetReviews", nil)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := h.service.GetProduct(ctx, wsID, msg.ProductId); err != nil {
+		return nil, mapError(err)
+	}
+	if msg.Pagination != nil && msg.Pagination.PageToken != "" {
+		expectedCursor := productPageCursor{
+			WorkspaceID: wsID,
+			RPC:         "GetReviews",
+			Category:    msg.ProductId,
+		}
+		if _, err := decodeProductPageToken(msg.Pagination.PageToken, expectedCursor); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+	}
+	var total int64
 	return connect.NewResponse(&commercev1.GetReviewsResponse{
-		Reviews:    []*commercev1.ProductReviewItem{},
-		Pagination: &commonv1.PaginatedResponse{},
+		ProductId: msg.ProductId,
+		Reviews:   []*commercev1.ProductReviewItem{},
+		Pagination: &commonv1.PaginatedResponse{
+			TotalCount: &total,
+			HasMore:    false,
+		},
 	}), nil
 }
 
 func (h *Handler) GetRank(
-	_ context.Context,
+	ctx context.Context,
 	req *connect.Request[commercev1.GetRankRequest],
 ) (*connect.Response[commercev1.GetRankResponse], error) {
 	msg := req.Msg
+	if msg == nil || msg.ProductId == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
+	}
+	wsID, err := authorizeProductRPC(ctx, "ProductService/GetRank", nil)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := h.service.GetProduct(ctx, wsID, msg.ProductId); err != nil {
+		return nil, mapError(err)
+	}
 	return connect.NewResponse(&commercev1.GetRankResponse{
 		ProductId:       msg.ProductId,
 		RankInCategory:  1,
@@ -511,7 +828,7 @@ func (h *Handler) GetLinkedContent(
 	if msg == nil || msg.ProductId == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
-	wsID, err := resolveTenantContext(ctx, nil)
+	wsID, err := authorizeProductRPC(ctx, "ProductService/GetLinkedContent", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -545,7 +862,7 @@ func (h *Handler) LinkContent(
 	if msg == nil || msg.ProductId == "" || msg.ContentId == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
-	wsID, err := resolveTenantContext(ctx, msg.Context)
+	wsID, err := authorizeProductRPC(ctx, "ProductService/LinkContent", msg.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -584,7 +901,7 @@ func (h *Handler) UpdateStock(
 	if msg == nil || msg.SkuId == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
-	wsID, err := resolveTenantContext(ctx, msg.Context)
+	wsID, err := authorizeProductRPC(ctx, "ProductService/UpdateStock", msg.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -606,7 +923,7 @@ func (h *Handler) SetAlertThreshold(
 	if msg == nil || msg.SkuId == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
-	wsID, err := resolveTenantContext(ctx, msg.Context)
+	wsID, err := authorizeProductRPC(ctx, "ProductService/SetAlertThreshold", msg.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -627,7 +944,7 @@ func (h *Handler) BulkArchive(
 	if msg == nil || len(msg.ProductIds) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
-	wsID, err := resolveTenantContext(ctx, msg.Context)
+	wsID, err := authorizeProductRPC(ctx, "ProductService/BulkArchive", msg.Context)
 	if err != nil {
 		return nil, err
 	}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { page } from '$app/state';
   import type {
     Workflow,
@@ -9,17 +10,42 @@
     SimulationReport
   } from '$lib/workflow/types';
   import { validateWorkflowGraph } from '$lib/workflow/validation';
+  import {
+    loadWorkflowRemote,
+    saveWorkflowRemote,
+    setWorkflowStatusRemote
+  } from '$lib/workflow/runtime';
+  import { authStore } from '$lib/auth';
 
   const workflowId = page.params.id || 'wf-auto-order-01';
 
   // Workflow State
   let title = $state('VIP Order Auto-Fulfillment & Discount Gate');
   let description = $state('Orchestrates VIP order validation, inventory reservation, discount approval, and diagnostics.');
-  let status = $state<'draft' | 'active' | 'paused'>('active');
+  let status = $state<'draft' | 'active' | 'paused'>('draft');
   let version = $state(3);
   let selectedNodeId = $state<string>('node-trig-1');
   let showSimModal = $state(false);
   let saveNotification = $state<string | null>(null);
+  let errorNotification = $state<string | null>(null);
+  let isPersisting = $state(false);
+
+  onMount(async () => {
+    const res = await loadWorkflowRemote({
+      workspaceId: $authStore.activeWorkspace?.id,
+      workflowId
+    });
+    if (res.ok && res.workflow) {
+      title = res.workflow.title || title;
+      description = res.workflow.description || description;
+      status = res.workflow.status;
+      version = res.workflow.version;
+      if (res.workflow.graph) {
+        nodes = res.workflow.graph.nodes;
+        edges = res.workflow.graph.edges;
+      }
+    }
+  });
 
   // Nodes & Edges
   let nodes = $state<WorkflowNode[]>([
@@ -223,22 +249,78 @@
     showSimModal = true;
   }
 
-  function saveWorkflow() {
+  async function saveWorkflow() {
+    errorNotification = null;
+    saveNotification = null;
+
     if (!validation.valid) {
-      alert(`Cannot save invalid workflow:\n${validation.errors.join('\n')}`);
+      errorNotification = `Cannot save invalid workflow: ${validation.errors.join('; ')}`;
       return;
     }
-    version += 1;
-    saveNotification = `Workflow saved successfully (v${version})`;
-    setTimeout(() => {
-      saveNotification = null;
-    }, 3000);
+
+    isPersisting = true;
+    try {
+      const res = await saveWorkflowRemote({
+        workspaceId: $authStore.activeWorkspace?.id,
+        workflowId,
+        title,
+        description,
+        expectedVersion: version,
+        graph: { schema_version: 1, nodes, edges }
+      });
+
+      if (!res.ok || typeof res.version !== 'number') {
+        errorNotification =
+          res.error ||
+          'Không thể lưu Workflow lên máy chủ (WorkflowService/Update). Cấu hình đồ thị bạn chỉnh sửa đã được giữ nguyên.';
+        return;
+      }
+
+      version = res.version;
+      if (res.status) {
+        status = res.status;
+      }
+      saveNotification = `Workflow saved successfully (v${version})`;
+    } finally {
+      isPersisting = false;
+    }
   }
 
-  function toggleStatus() {
-    if (status === 'draft') status = 'active';
-    else if (status === 'active') status = 'paused';
-    else status = 'draft';
+  async function toggleStatus() {
+    errorNotification = null;
+    saveNotification = null;
+    const nextStatus: 'draft' | 'active' | 'paused' =
+      status === 'draft' ? 'active' : status === 'active' ? 'paused' : 'draft';
+
+    if (nextStatus === 'active' && !validation.valid) {
+      errorNotification = `Cannot activate invalid workflow: ${validation.errors.join('; ')}`;
+      return;
+    }
+
+    isPersisting = true;
+    try {
+      const res = await setWorkflowStatusRemote({
+        workspaceId: $authStore.activeWorkspace?.id,
+        workflowId,
+        targetStatus: nextStatus,
+        expectedVersion: version
+      });
+
+      if (!res.ok || !res.status) {
+        errorNotification =
+          res.error ||
+          `Không thể chuyển trạng thái Workflow sang '${nextStatus}' trên máy chủ. Trạng thái hiện tại (${status}) được giữ nguyên.`;
+        return;
+      }
+
+      status = res.status;
+      if (typeof res.version === 'number') {
+        version = res.version;
+      }
+      saveNotification = `Workflow status updated to ${status} (v${version})`;
+    } finally {
+      isPersisting = false;
+    }
   }
 
   function exportWorkflow() {
@@ -327,6 +409,13 @@
   {#if saveNotification}
     <div class="bg-emerald-500/10 border-b border-emerald-500/20 px-4 py-1.5 text-xs font-medium text-emerald-300 text-center animate-fade-in">
       ✓ {saveNotification}
+    </div>
+  {/if}
+
+  {#if errorNotification}
+    <div class="bg-rose-500/15 border-b border-rose-500/30 px-4 py-2 text-xs font-medium text-rose-200 flex items-center justify-between" role="alert">
+      <span>⚠ {errorNotification}</span>
+      <button type="button" onclick={() => (errorNotification = null)} class="underline ml-3">Đóng</button>
     </div>
   {/if}
 

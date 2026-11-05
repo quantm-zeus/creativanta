@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -106,6 +107,7 @@ func TestAcceptanceTarget1_BundleStockAtomic(t *testing.T) {
 		WorkspaceID:      wsID,
 		CustomerEntityID: newUUID(),
 		IdempotencyKey:   "checkout_bundle_failed_01",
+		PaymentIntentID:  "pi_bundle_out_of_stock_01",
 		BundleID:         createdBundle.BundleID,
 		OrderAmount:      mustDecimal(t, "450000.000000"),
 		Currency:         "VND",
@@ -140,6 +142,7 @@ func TestAcceptanceTarget1_BundleStockAtomic(t *testing.T) {
 				WorkspaceID:      wsID,
 				CustomerEntityID: newUUID(),
 				IdempotencyKey:   fmt.Sprintf("concurrent_bundle_race_%d", workerID),
+				PaymentIntentID:  fmt.Sprintf("pi_concurrent_bundle_%d", workerID),
 				BundleID:         createdBundle.BundleID,
 				OrderAmount:      mustDecimal(t, "450000.000000"),
 				Currency:         "VND",
@@ -497,4 +500,154 @@ func searchSubstring(s, sub string) bool {
 		}
 	}
 	return false
+}
+
+// STORE-01: Checkout must never grant digital delivery, activate membership, deduct stock,
+// or post revenue without confirmed payment, and must enforce strict idempotency payload matching.
+func TestCheckoutRequiresConfirmedPaymentAndEnforcesStrictIdempotency(t *testing.T) {
+	ctx := context.Background()
+	mem := NewMemoryStore()
+	sink := &mockSink{}
+	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	svc := NewService(mem, sink, func() time.Time { return now })
+
+	wsID := "019086a1-7c3e-7000-8000-000000000099"
+	customerID := newUUID()
+	prodID := newUUID()
+	_ = mem.SetProductStock(ctx, wsID, prodID, 5)
+
+	plan, err := svc.CreatePlan(ctx, &MembershipPlan{
+		WorkspaceID: wsID,
+		Title:       "Creator Plus",
+		Price:       mustDecimal(t, "150000.000000"),
+		Currency:    "VND",
+	})
+	if err != nil {
+		t.Fatalf("CreatePlan failed: %v", err)
+	}
+	_, _ = svc.PublishPlan(ctx, wsID, plan.PlanID)
+
+	// 1. Missing PaymentIntentID must fail with ErrPaymentRequired and grant nothing
+	_, err = svc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: customerID,
+		IdempotencyKey:   "idem_no_pi",
+		PaymentIntentID:  "",
+		ProductIDs:       []string{prodID},
+		MembershipPlanID: plan.PlanID,
+		OrderAmount:      mustDecimal(t, "150000.000000"),
+		Currency:         "VND",
+	})
+	if !errors.Is(err, ErrPaymentRequired) {
+		t.Fatalf("expected ErrPaymentRequired when PaymentIntentID is empty, got %v", err)
+	}
+
+	// 2. Failed/declined PaymentIntentID must fail with ErrPaymentFailed and grant nothing
+	_, err = svc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: customerID,
+		IdempotencyKey:   "idem_failed_pi",
+		PaymentIntentID:  "pi_failed_card_declined",
+		ProductIDs:       []string{prodID},
+		MembershipPlanID: plan.PlanID,
+		OrderAmount:      mustDecimal(t, "150000.000000"),
+		Currency:         "VND",
+	})
+	if !errors.Is(err, ErrPaymentFailed) {
+		t.Fatalf("expected ErrPaymentFailed on declined payment intent, got %v", err)
+	}
+
+	// 3. Pending/unconfirmed PaymentIntentID returns pending_payment with zero deliveries, memberships, or postings
+	pendingRes, err := svc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: customerID,
+		IdempotencyKey:   "idem_pending_then_paid",
+		PaymentIntentID:  "pi_pending_3ds_challenge",
+		ProductIDs:       []string{prodID},
+		MembershipPlanID: plan.PlanID,
+		OrderAmount:      mustDecimal(t, "150000.000000"),
+		Currency:         "VND",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error on pending payment intent: %v", err)
+	}
+	if pendingRes.Success || pendingRes.Status != "pending_payment" || len(pendingRes.Deliveries) != 0 || pendingRes.Subscription != nil {
+		t.Fatalf("expected pending_payment with no deliveries or subscription, got %+v", pendingRes)
+	}
+	deliveries, _ := mem.ListDeliveriesByCustomer(ctx, wsID, customerID)
+	subs, _ := mem.ListSubscriptionsByCustomer(ctx, wsID, customerID)
+	postings, _ := mem.ListFinancialPostings(ctx, wsID)
+	if len(deliveries) != 0 || len(subs) != 0 || len(postings) != 0 {
+		t.Fatalf("expected 0 deliveries, 0 subscriptions, 0 postings before payment confirmation, got deliv=%d subs=%d post=%d",
+			len(deliveries), len(subs), len(postings))
+	}
+
+	// 4. Price tampering on membership plan must fail with ErrPriceMismatch
+	_, err = svc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: customerID,
+		IdempotencyKey:   "idem_tampered_price",
+		PaymentIntentID:  "pi_succeeded_tampered",
+		MembershipPlanID: plan.PlanID,
+		OrderAmount:      mustDecimal(t, "1000.000000"),
+		Currency:         "VND",
+	})
+	if !errors.Is(err, ErrPriceMismatch) {
+		t.Fatalf("expected ErrPriceMismatch on tampered plan price, got %v", err)
+	}
+
+	// 5. Confirmed payment succeeds and grants delivery + active membership
+	confirmedRes, err := svc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: customerID,
+		IdempotencyKey:   "idem_pending_then_paid",
+		PaymentIntentID:  "pi_succeeded_confirmed_01",
+		ProductIDs:       []string{prodID},
+		MembershipPlanID: plan.PlanID,
+		OrderAmount:      mustDecimal(t, "150000.000000"),
+		Currency:         "VND",
+	})
+	if err != nil || !confirmedRes.Success || confirmedRes.Status != "confirmed" {
+		t.Fatalf("expected confirmed checkout after payment capture, got res=%+v err=%v", confirmedRes, err)
+	}
+	if confirmedRes.OrderID != pendingRes.OrderID {
+		t.Fatalf("expected pending order ID %s to be preserved on confirmation, got %s", pendingRes.OrderID, confirmedRes.OrderID)
+	}
+
+	// 6. Replaying the same IdempotencyKey with a modified payload (e.g. different amount or customer) must return ErrPaymentReplay
+	_, err = svc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: customerID,
+		IdempotencyKey:   "idem_pending_then_paid",
+		PaymentIntentID:  "pi_succeeded_confirmed_01",
+		ProductIDs:       []string{prodID},
+		MembershipPlanID: plan.PlanID,
+		OrderAmount:      mustDecimal(t, "999999.000000"),
+		Currency:         "VND",
+	})
+	if !errors.Is(err, ErrPaymentReplay) {
+		t.Fatalf("expected ErrPaymentReplay when replaying idempotency key with altered amount, got %v", err)
+	}
+
+	// 7. Unpublished storefront check: if workspace has only draft pages, checkout must fail with ErrStorefrontNotPublished
+	_, err = svc.CreatePage(ctx, &StorePage{
+		WorkspaceID: wsID,
+		Title:       "Draft Storefront",
+		Slug:        "draft-storefront",
+	})
+	if err != nil {
+		t.Fatalf("CreatePage failed: %v", err)
+	}
+	_, err = svc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: customerID,
+		IdempotencyKey:   "idem_unpublished_store",
+		PaymentIntentID:  "pi_succeeded_02",
+		MembershipPlanID: plan.PlanID,
+		OrderAmount:      mustDecimal(t, "150000.000000"),
+		Currency:         "VND",
+	})
+	if !errors.Is(err, ErrStorefrontNotPublished) {
+		t.Fatalf("expected ErrStorefrontNotPublished when storefront has only draft pages, got %v", err)
+	}
 }

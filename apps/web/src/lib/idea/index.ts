@@ -259,3 +259,144 @@ export function formatSourceLabel(source: IdeaSourceRef): {
       : undefined
   };
 }
+
+import { callCanonicalRpc, generateIdempotencyKey, type CanonicalRpcOptions } from '$lib/api/client';
+
+export interface CreateIdeaRemoteInput {
+  workspaceId?: string;
+  title: string;
+  description?: string;
+  audienceIntent?: string;
+  creatorIntent?: string;
+  suggestedFormat?: string;
+  angle?: string;
+  hookText?: string;
+  confirmDuplicate?: boolean;
+  existingIdeas?: Idea[];
+}
+
+export interface CreateIdeaRemoteResult {
+  ok: boolean;
+  idea?: Idea;
+  duplicateWarning?: DuplicateWarning;
+  error?: string;
+}
+
+/**
+ * Submits a new idea to canonical `creativanta.content.v1.IdeaService/Create` (UF-04).
+ * Enforces duplicate warning confirmation and fails closed when unauthenticated or when
+ * backend is unavailable, never fabricating a persisted idea in browser memory.
+ */
+export async function createIdeaRemote(
+  input: CreateIdeaRemoteInput,
+  options: CanonicalRpcOptions = {}
+): Promise<CreateIdeaRemoteResult> {
+  const trimmedTitle = (input.title || '').trim();
+  if (!trimmedTitle) {
+    return {
+      ok: false,
+      error: 'Vui lòng nhập tiêu đề ý tưởng.'
+    };
+  }
+
+  if (input.existingIdeas && input.existingIdeas.length > 0 && !input.confirmDuplicate) {
+    const dup = checkDuplicateIdea(trimmedTitle, input.existingIdeas, 0.85);
+    if (dup) {
+      return {
+        ok: false,
+        duplicateWarning: dup,
+        error: dup.warningMessage
+      };
+    }
+  }
+
+  const rpcRes = await callCanonicalRpc<
+    Record<string, unknown>,
+    {
+      idea?: {
+        idea_id?: string;
+        workspace_id?: string;
+        title?: string;
+        description?: string;
+        audience_intent?: string;
+        creator_intent?: string;
+        suggested_format?: string;
+        suggested_direction?: string;
+        status?: string;
+        idea_score?: number;
+        created_by?: string;
+        created_at?: string;
+        updated_at?: string;
+      };
+    }
+  >(
+    'creativanta.content.v1.IdeaService/Create',
+    {
+      idempotency_key: options.idempotencyKey || generateIdempotencyKey('idea-create'),
+      workspace_id: input.workspaceId,
+      title: trimmedTitle,
+      description: input.description || '',
+      audience_intent: input.audienceIntent || '',
+      creator_intent: input.creatorIntent || '',
+      suggested_format: input.suggestedFormat || 'short_form',
+      suggested_direction: input.angle || '',
+      initial_hook_text: input.hookText || '',
+      confirm_duplicate: Boolean(input.confirmDuplicate)
+    },
+    {
+      ...options,
+      workspaceId: options.workspaceId ?? input.workspaceId
+    }
+  );
+
+  if (!rpcRes.ok) {
+    return {
+      ok: false,
+      error: rpcRes.error.message
+    };
+  }
+
+  const remoteIdea = rpcRes.data?.idea;
+  if (!remoteIdea?.idea_id) {
+    return {
+      ok: false,
+      error: 'Phản hồi từ máy chủ thiếu mã định danh idea_id (fail-closed).'
+    };
+  }
+
+  const now = new Date().toISOString();
+  return {
+    ok: true,
+    idea: {
+      ideaId: remoteIdea.idea_id,
+      workspaceId: remoteIdea.workspace_id || input.workspaceId || '',
+      title: remoteIdea.title || trimmedTitle,
+      description: remoteIdea.description || input.description || '',
+      audienceIntent: remoteIdea.audience_intent || input.audienceIntent || '',
+      creatorIntent: remoteIdea.creator_intent || input.creatorIntent || '',
+      suggestedFormat: remoteIdea.suggested_format || input.suggestedFormat || 'short_form',
+      suggestedDirection: remoteIdea.suggested_direction || input.angle || '',
+      status: (remoteIdea.status as Idea['status']) || 'new',
+      ideaScore: remoteIdea.idea_score ?? 0,
+      createdBy: remoteIdea.created_by || 'authenticated_user',
+      sources: [],
+      hooks: input.hookText
+        ? [
+            {
+              hookId: `hook-${remoteIdea.idea_id}-1`,
+              workspaceId: remoteIdea.workspace_id || input.workspaceId || '',
+              ideaId: remoteIdea.idea_id,
+              hookText: input.hookText,
+              hookType: 'question',
+              effectivenessScore: 0.75,
+              usageCount: 0,
+              source: 'manual',
+              createdAt: remoteIdea.created_at || now
+            }
+          ]
+        : [],
+      createdAt: remoteIdea.created_at || now,
+      updatedAt: remoteIdea.updated_at || now
+    }
+  };
+}

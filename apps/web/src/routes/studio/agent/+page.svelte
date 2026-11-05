@@ -1,13 +1,14 @@
 <script lang="ts">
   import {
     planVideoAgent,
-    executeAgentStep,
+    executeVideoAgentStepRemote,
     recordPartialFailureHandoff,
     increaseBudgetCeiling,
     approvePendingStep,
     type AgentRun,
     type VideoAgentOptions
   } from '$lib/automation/agent';
+  import { authStore } from '$lib/auth';
 
   // User & Workspace context
   let userRole: 'owner' | 'admin' | 'manager' | 'editor' | 'contributor' | 'viewer' = 'editor';
@@ -82,13 +83,13 @@
     activeNotification = 'Đã khởi tạo pipeline sản xuất video!';
   }
 
-  function handleRunAll() {
+  async function handleRunAll() {
     if (!currentRun) return;
     isExecuting = true;
-    runNextStep();
+    await runNextStep();
   }
 
-  function runNextStep() {
+  async function runNextStep() {
     if (!currentRun || !isExecuting) return;
 
     const nextPendingIndex = currentRun.steps.findIndex(
@@ -101,7 +102,13 @@
     }
 
     const step = currentRun.steps[nextPendingIndex];
-    const res = executeAgentStep(currentRun, nextPendingIndex, userRole, userBalance);
+    const res = await executeVideoAgentStepRemote(
+      currentRun,
+      nextPendingIndex,
+      userRole,
+      userBalance,
+      { workspaceId: $authStore.activeWorkspace?.id || workspaceId }
+    );
     currentRun = res.run;
 
     if (!res.success) {
@@ -116,26 +123,31 @@
       return;
     }
 
-    userBalance -= step.estimatedCredits;
+    const debited = currentRun.steps[nextPendingIndex].actualCredits || step.estimatedCredits;
+    userBalance -= debited;
     executionLog = [
       ...executionLog,
-      `✅ [Bước ${step.stepOrder}/6] ${step.title} hoàn thành (-${step.estimatedCredits} cr).`
+      `✅ [Bước ${step.stepOrder}/6] ${step.title} hoàn thành (-${debited} cr).`
     ];
 
     if (currentRun.currentState === 'completed') {
       isExecuting = false;
       activeNotification = '🎉 Video đã sản xuất thành công và sẵn sàng xuất bản!';
-    } else {
-      setTimeout(() => {
-        if (isExecuting) runNextStep();
-      }, 500);
+    } else if (isExecuting) {
+      await runNextStep();
     }
   }
 
-  function handleExecuteSingleStep(index: number) {
+  async function handleExecuteSingleStep(index: number) {
     if (!currentRun) return;
     const step = currentRun.steps[index];
-    const res = executeAgentStep(currentRun, index, userRole, userBalance);
+    const res = await executeVideoAgentStepRemote(
+      currentRun,
+      index,
+      userRole,
+      userBalance,
+      { workspaceId: $authStore.activeWorkspace?.id || workspaceId }
+    );
     currentRun = res.run;
 
     if (!res.success) {
@@ -149,10 +161,11 @@
       return;
     }
 
-    userBalance -= step.estimatedCredits;
+    const debited = currentRun.steps[index].actualCredits || step.estimatedCredits;
+    userBalance -= debited;
     executionLog = [
       ...executionLog,
-      `✅ [Bước ${step.stepOrder}/6] ${step.title} hoàn tất thủ công (-${step.estimatedCredits} cr).`
+      `✅ [Bước ${step.stepOrder}/6] ${step.title} hoàn tất thủ công (-${debited} cr).`
     ];
   }
 

@@ -5,9 +5,11 @@
     KB_CATEGORIES,
     supportStore,
     calculateSupportSLA,
+    submitSupportTicketRemote,
     type KBArticle,
     type SupportTicketItem
   } from '$lib/help/store';
+  import { authStore } from '$lib/auth';
 
   const tickets = supportStore.tickets;
 
@@ -21,6 +23,8 @@
   let ticketMessage = '';
   let userPlanTier = 'pro'; // Default active workspace tier
   let createdTicketNotice: string | null = null;
+  let ticketErrorNotice: string | null = null;
+  let isSubmittingTicket = false;
   let csatScore = 5;
 
   $: helpStore.searchQuery.set(searchQuery);
@@ -28,13 +32,35 @@
 
   $: sla = calculateSupportSLA(userPlanTier);
 
-  function handleCreateTicket() {
+  async function handleCreateTicket() {
     if (!ticketSubject.trim() || !ticketMessage.trim()) return;
-    const ticket = supportStore.createTicket(userPlanTier, ticketSubject, ticketPriority, ticketMessage);
-    createdTicketNotice = `Đã tạo yêu cầu hỗ trợ #${ticket.ticketNumber}. Phản hồi đầu tiên cam kết trong ${sla.responseHours} giờ.`;
-    ticketSubject = '';
-    ticketMessage = '';
-    currentTab = 'tickets';
+    createdTicketNotice = null;
+    ticketErrorNotice = null;
+    isSubmittingTicket = true;
+
+    try {
+      const res = await submitSupportTicketRemote({
+        workspaceId: $authStore.activeWorkspace?.id,
+        planTier: userPlanTier,
+        subject: ticketSubject,
+        priority: ticketPriority,
+        initialMessage: ticketMessage
+      });
+
+      if (!res.ok || !res.ticket) {
+        ticketErrorNotice =
+          res.error ||
+          'Không thể gửi yêu cầu hỗ trợ tới máy chủ (SupportService/CreateTicket). Nội dung bạn nhập đã được giữ nguyên.';
+        return;
+      }
+
+      createdTicketNotice = `Đã tạo yêu cầu hỗ trợ #${res.ticket.ticketNumber}. Phản hồi đầu tiên cam kết trong ${sla.responseHours} giờ.`;
+      ticketSubject = '';
+      ticketMessage = '';
+      currentTab = 'tickets';
+    } finally {
+      isSubmittingTicket = false;
+    }
   }
 
   function handleRateArticle(artId: string, helpful: boolean) {
@@ -89,6 +115,13 @@
     <div class="p-4 rounded-xl bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-300 flex items-center justify-between">
       <span>{createdTicketNotice}</span>
       <button on:click={() => (createdTicketNotice = null)} class="text-sm font-bold underline">Đóng</button>
+    </div>
+  {/if}
+
+  {#if ticketErrorNotice}
+    <div class="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 flex items-center justify-between" role="alert">
+      <span>{ticketErrorNotice}</span>
+      <button on:click={() => (ticketErrorNotice = null)} class="text-sm font-bold underline">Đóng</button>
     </div>
   {/if}
 

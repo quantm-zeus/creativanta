@@ -10,11 +10,146 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
+
+// HostIPResolver resolves a hostname to its IP addresses for SSRF validation.
+type HostIPResolver interface {
+	LookupIPAddr(ctx context.Context, host string) ([]net.IPAddr, error)
+}
+
+// IsDisallowedWebhookIP reports whether ip falls in loopback, RFC1918 private,
+// link-local/cloud metadata (169.254.0.0/16, fe80::/10), CGNAT/Tailscale (100.64.0.0/10),
+// ULA (fc00::/7), multicast, broadcast, benchmarking, or unspecified ranges.
+func IsDisallowedWebhookIP(ip net.IP) bool {
+	if len(ip) == 0 {
+		return true
+	}
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
+		return true
+	}
+	if ip4 := ip.To4(); ip4 != nil {
+		// 0.0.0.0/8 ("this" network)
+		if ip4[0] == 0 {
+			return true
+		}
+		// 100.64.0.0/10 (Carrier-Grade NAT / Tailscale mesh)
+		if ip4[0] == 100 && ip4[1] >= 64 && ip4[1] <= 127 {
+			return true
+		}
+		// 169.254.0.0/16 (Link-local / cloud instance metadata 169.254.169.254)
+		if ip4[0] == 169 && ip4[1] == 254 {
+			return true
+		}
+		// 192.0.0.0/24 (IETF Protocol Assignments) and 192.0.2.0/24 (TEST-NET-1)
+		if ip4[0] == 192 && ip4[1] == 0 && (ip4[2] == 0 || ip4[2] == 2) {
+			return true
+		}
+		// 198.18.0.0/15 (Benchmarking)
+		if ip4[0] == 198 && (ip4[1] == 18 || ip4[1] == 19) {
+			return true
+		}
+		// 198.51.100.0/24 (TEST-NET-2)
+		if ip4[0] == 198 && ip4[1] == 51 && ip4[2] == 100 {
+			return true
+		}
+		// 203.0.113.0/24 (TEST-NET-3)
+		if ip4[0] == 203 && ip4[1] == 0 && ip4[2] == 113 {
+			return true
+		}
+		// 240.0.0.0/4 (Reserved / Broadcast 255.255.255.255)
+		if ip4[0] >= 240 {
+			return true
+		}
+	}
+	return false
+}
+
+func isForbiddenWebhookHostname(host string) bool {
+	h := strings.TrimSuffix(strings.ToLower(strings.TrimSpace(host)), ".")
+	if h == "" {
+		return true
+	}
+	if h == "localhost" || strings.HasSuffix(h, ".localhost") ||
+		strings.HasSuffix(h, ".local") || strings.HasSuffix(h, ".internal") ||
+		h == "metadata" || h == "metadata.google.internal" || h == "instance-data" {
+		return true
+	}
+	return false
+}
+
+// ValidateWebhookTargetURL validates an outbound webhook target URL against SSRF rules:
+//   - Requires https:// scheme and no userinfo credentials
+//   - Rejects localhost, .local, .internal, and cloud metadata hostnames
+//   - Rejects literal private/loopback/link-local/CGNAT/unspecified IPs
+//   - When resolver is non-nil, resolves DNS and verifies every returned IP is public
+func ValidateWebhookTargetURL(ctx context.Context, rawURL string, resolver HostIPResolver) ([]net.IP, error) {
+	trimmed := strings.TrimSpace(rawURL)
+	if trimmed == "" {
+		return nil, fmt.Errorf("%w: empty target_url", ErrWebhookTargetSSRFBlocked)
+	}
+	u, err := url.Parse(trimmed)
+	if err != nil {
+		return nil, fmt.Errorf("%w: malformed URL: %v", ErrWebhookTargetSSRFBlocked, err)
+	}
+	if strings.ToLower(u.Scheme) != "https" {
+		return nil, fmt.Errorf("%w: scheme must be https", ErrWebhookTargetSSRFBlocked)
+	}
+	if u.User != nil {
+		return nil, fmt.Errorf("%w: userinfo credentials are not permitted in webhook URL", ErrWebhookTargetSSRFBlocked)
+	}
+	host := strings.TrimSpace(u.Hostname())
+	if isForbiddenWebhookHostname(host) {
+		return nil, fmt.Errorf("%w: forbidden internal hostname %q", ErrWebhookTargetSSRFBlocked, host)
+	}
+	if portStr := u.Port(); portStr != "" {
+		port, err := strconv.Atoi(portStr)
+		if err != nil || port <= 0 || port > 65535 {
+			return nil, fmt.Errorf("%w: invalid port %q", ErrWebhookTargetSSRFBlocked, portStr)
+		}
+	}
+
+	if ip := net.ParseIP(host); ip != nil {
+		if IsDisallowedWebhookIP(ip) {
+			return nil, fmt.Errorf("%w: disallowed IP address %s", ErrWebhookTargetSSRFBlocked, ip.String())
+		}
+		return []net.IP{ip}, nil
+	}
+
+	if resolver != nil {
+		addrs, err := resolver.LookupIPAddr(ctx, host)
+		if err != nil || len(addrs) == 0 {
+			return nil, fmt.Errorf("%w: failed to resolve host %q: %v", ErrWebhookTargetSSRFBlocked, host, err)
+		}
+		verified := make([]net.IP, 0, len(addrs))
+		for _, addr := range addrs {
+			if IsDisallowedWebhookIP(addr.IP) {
+				return nil, fmt.Errorf("%w: host %q resolved to disallowed IP %s", ErrWebhookTargetSSRFBlocked, host, addr.IP.String())
+			}
+			verified = append(verified, addr.IP)
+		}
+		return verified, nil
+	}
+
+	if addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host); err == nil && len(addrs) > 0 {
+		verified := make([]net.IP, 0, len(addrs))
+		for _, addr := range addrs {
+			if IsDisallowedWebhookIP(addr.IP) {
+				return nil, fmt.Errorf("%w: host %q resolved to disallowed IP %s", ErrWebhookTargetSSRFBlocked, host, addr.IP.String())
+			}
+			verified = append(verified, addr.IP)
+		}
+		return verified, nil
+	}
+
+	return nil, nil
+}
 
 // HTTPClient defines the interface for making outbound HTTP calls.
 type HTTPClient interface {
@@ -25,20 +160,73 @@ type HTTPClient interface {
 type OutboundDispatcher struct {
 	store      Store
 	httpClient HTTPClient
+	resolver   HostIPResolver
 	mu         sync.Mutex
 	retryPlans map[string][]time.Duration // event_id -> delays
 }
 
+// NewSafeWebhookHTTPClient constructs an *http.Client that blocks all HTTP redirects
+// and validates + pins resolved public IPs at dial time to prevent DNS rebinding SSRF.
+func NewSafeWebhookHTTPClient(resolver HostIPResolver) *http.Client {
+	if resolver == nil {
+		resolver = net.DefaultResolver
+	}
+	dialer := &net.Dialer{
+		Timeout:   5 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	transport := &http.Transport{
+		Proxy: nil, // Never use environment proxy to pivot into internal networks
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, fmt.Errorf("%w: invalid dial address %q: %v", ErrWebhookTargetSSRFBlocked, addr, err)
+			}
+			verifiedIPs, err := ValidateWebhookTargetURL(ctx, "https://"+net.JoinHostPort(host, port), resolver)
+			if err != nil {
+				return nil, err
+			}
+			if len(verifiedIPs) == 0 {
+				return nil, fmt.Errorf("%w: no verified public IP for %q", ErrWebhookTargetSSRFBlocked, host)
+			}
+			return dialer.DialContext(ctx, network, net.JoinHostPort(verifiedIPs[0].String(), port))
+		},
+		TLSHandshakeTimeout:   5 * time.Second,
+		ResponseHeaderTimeout: 10 * time.Second,
+	}
+	return &http.Client{
+		Timeout:   10 * time.Second,
+		Transport: transport,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return ErrWebhookRedirectBlocked
+		},
+	}
+}
+
 // NewOutboundDispatcher creates a new OutboundDispatcher.
 func NewOutboundDispatcher(store Store, httpClient HTTPClient) *OutboundDispatcher {
-	if httpClient == nil {
-		httpClient = &http.Client{Timeout: 10 * time.Second}
-	}
-	return &OutboundDispatcher{
+	d := &OutboundDispatcher{
 		store:      store,
-		httpClient: httpClient,
 		retryPlans: make(map[string][]time.Duration),
 	}
+	if httpClient == nil {
+		d.httpClient = NewSafeWebhookHTTPClient(net.DefaultResolver)
+	} else if stdClient, ok := httpClient.(*http.Client); ok {
+		cloned := *stdClient
+		cloned.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return ErrWebhookRedirectBlocked
+		}
+		d.httpClient = &cloned
+	} else {
+		d.httpClient = httpClient
+	}
+	return d
+}
+
+// WithHostIPResolver configures a custom HostIPResolver for pre-dispatch and dial-time SSRF checks.
+func (d *OutboundDispatcher) WithHostIPResolver(resolver HostIPResolver) *OutboundDispatcher {
+	d.resolver = resolver
+	return d
 }
 
 // ComputeSignature calculates the canonical HMAC-SHA256 signature per S24 §5.1.
@@ -138,7 +326,18 @@ func (d *OutboundDispatcher) deliverToSubscription(
 	var responseBody string
 	maxAttempts := 3
 
+	if _, err := ValidateWebhookTargetURL(ctx, sub.TargetURL, d.resolver); err != nil {
+		lastErr = err
+		maxAttempts = 0
+	}
+
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		if d.resolver != nil {
+			if _, err := ValidateWebhookTargetURL(ctx, sub.TargetURL, d.resolver); err != nil {
+				lastErr = err
+				break
+			}
+		}
 		httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, sub.TargetURL, bytes.NewReader(payload))
 		if err != nil {
 			lastErr = err
@@ -159,11 +358,19 @@ func (d *OutboundDispatcher) deliverToSubscription(
 		if err != nil {
 			lastErr = err
 			lastStatusCode = 0
+			if errors.Is(err, ErrWebhookRedirectBlocked) || errors.Is(err, ErrWebhookTargetSSRFBlocked) {
+				break
+			}
 		} else {
 			lastStatusCode = resp.StatusCode
 			bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 			_ = resp.Body.Close()
 			responseBody = string(bodyBytes)
+
+			if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+				lastErr = fmt.Errorf("%w: status %d", ErrWebhookRedirectBlocked, resp.StatusCode)
+				break
+			}
 
 			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 				// Succeeded! Reset consecutive failure count

@@ -3,11 +3,51 @@ package commerceacceptance
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 )
+
+type canonicalModuleSpec struct {
+	ID   ModuleID
+	Name string
+}
+
+var canonicalP6Modules = []canonicalModuleSpec{
+	{ID: ModuleM04, Name: "Opportunity Board"},
+	{ID: ModuleM05, Name: "Idea Engine"},
+	{ID: ModuleM09, Name: "Asset Derivatives"},
+	{ID: ModuleM12, Name: "Unified Inbox"},
+	{ID: ModuleM13, Name: "Product Hub & Inventory"},
+	{ID: ModuleM14, Name: "Monetization OS"},
+	{ID: ModuleM15, Name: "Creator Store"},
+	{ID: ModuleM16, Name: "Affiliate Network"},
+	{ID: ModuleM17, Name: "Live War Room"},
+	{ID: ModuleM18, Name: "Seeding CRM"},
+	{ID: ModuleS16, Name: "Creator Pro Tools"},
+	{ID: ModuleM19, Name: "Operating Ledger"},
+}
+
+type canonicalLinkSpec struct {
+	From     ModuleID
+	To       ModuleID
+	LinkType string
+}
+
+var canonicalP6LineagePairs = []canonicalLinkSpec{
+	{From: ModuleM04, To: ModuleM14, LinkType: "conversion"},
+	{From: ModuleM04, To: ModuleM17, LinkType: "conversion"},
+	{From: ModuleM05, To: ModuleM14, LinkType: "conversion"},
+	{From: ModuleM12, To: ModuleM18, LinkType: "conversion"},
+	{From: ModuleM13, To: ModuleM14, LinkType: "reference"},
+	{From: ModuleM13, To: ModuleM15, LinkType: "inventory_guard"},
+	{From: ModuleM17, To: ModuleM09, LinkType: "clip_extraction"},
+	{From: ModuleM18, To: ModuleM19, LinkType: "ledger_cost"},
+	{From: ModuleM16, To: ModuleM19, LinkType: "commission_proof"},
+	{From: ModuleS16, To: ModuleM19, LinkType: "content_roi"},
+}
 
 // Service provides commerce acceptance evaluation, operational repairs, and provider gate tracking.
 type Service struct {
@@ -15,6 +55,8 @@ type Service struct {
 	shippingAdapter *ShippingAdapter
 	unreconciled    map[string]*UnreconciledOutcome
 	repairLogs      map[string]*OperationalRepairResult
+	moduleEvidence  map[string]map[ModuleID]ModuleIntegritySummary
+	moduleLinks     map[string][]CrossModuleLink
 }
 
 // NewService constructs a new CommerceAcceptance service.
@@ -26,9 +68,77 @@ func NewService(shipping *ShippingAdapter) *Service {
 		shippingAdapter: shipping,
 		unreconciled:    make(map[string]*UnreconciledOutcome),
 		repairLogs:      make(map[string]*OperationalRepairResult),
+		moduleEvidence:  make(map[string]map[ModuleID]ModuleIntegritySummary),
+		moduleLinks:     make(map[string][]CrossModuleLink),
 	}
 	s.seedDefaultUnreconciledOutcomes("ws-p6-commerce")
 	return s
+}
+
+// RegisterModuleEvidence records observed runtime health evidence for a specific workspace and module.
+func (s *Service) RegisterModuleEvidence(workspaceID string, summary ModuleIntegritySummary) {
+	wsID := strings.TrimSpace(workspaceID)
+	if wsID == "" || summary.ModuleID == "" {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.moduleEvidence[wsID] == nil {
+		s.moduleEvidence[wsID] = make(map[ModuleID]ModuleIntegritySummary)
+	}
+	s.moduleEvidence[wsID][summary.ModuleID] = summary
+}
+
+// RegisterCrossModuleLink records an observed cross-module lineage link for a workspace.
+func (s *Service) RegisterCrossModuleLink(workspaceID string, link CrossModuleLink) {
+	wsID := strings.TrimSpace(workspaceID)
+	if wsID == "" {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.moduleLinks[wsID] = append(s.moduleLinks[wsID], link)
+}
+
+// RegisterCanonicalP6LoopEvidence registers verified module and lineage evidence for a test workspace.
+func (s *Service) RegisterCanonicalP6LoopEvidence(workspaceID string) {
+	wsID := strings.TrimSpace(workspaceID)
+	if wsID == "" {
+		return
+	}
+	summaries := []ModuleIntegritySummary{
+		{ModuleID: ModuleM04, Name: "Opportunity Board", ConnectedLinks: 4, ActiveEntities: 18, Status: "HEALTHY"},
+		{ModuleID: ModuleM05, Name: "Idea Engine", ConnectedLinks: 3, ActiveEntities: 24, Status: "HEALTHY"},
+		{ModuleID: ModuleM09, Name: "Asset Derivatives", ConnectedLinks: 2, ActiveEntities: 12, Status: "HEALTHY"},
+		{ModuleID: ModuleM12, Name: "Unified Inbox", ConnectedLinks: 3, ActiveEntities: 45, Status: "HEALTHY"},
+		{ModuleID: ModuleM13, Name: "Product Hub & Inventory", ConnectedLinks: 6, ActiveEntities: 30, Status: "HEALTHY"},
+		{ModuleID: ModuleM14, Name: "Monetization OS", ConnectedLinks: 5, ActiveEntities: 15, Status: "HEALTHY"},
+		{ModuleID: ModuleM15, Name: "Creator Store", ConnectedLinks: 4, ActiveEntities: 8, Status: "HEALTHY"},
+		{ModuleID: ModuleM16, Name: "Affiliate Network", ConnectedLinks: 4, ActiveEntities: 22, Status: "HEALTHY"},
+		{ModuleID: ModuleM17, Name: "Live War Room", ConnectedLinks: 4, ActiveEntities: 6, Status: "HEALTHY"},
+		{ModuleID: ModuleM18, Name: "Seeding CRM", ConnectedLinks: 4, ActiveEntities: 14, Status: "HEALTHY"},
+		{ModuleID: ModuleS16, Name: "Creator Pro Tools", ConnectedLinks: 5, ActiveEntities: 10, Status: "HEALTHY"},
+		{ModuleID: ModuleM19, Name: "Operating Ledger", ConnectedLinks: 8, ActiveEntities: 140, Status: "HEALTHY"},
+	}
+	for _, mod := range summaries {
+		s.RegisterModuleEvidence(wsID, mod)
+	}
+
+	links := []CrossModuleLink{
+		{FromModule: ModuleM04, ToModule: ModuleM14, LinkType: "conversion", SourceID: "opp-01", TargetID: "cmp-01", Verified: true, Description: "Opportunity converted to Campaign with target permission recheck"},
+		{FromModule: ModuleM04, ToModule: ModuleM17, LinkType: "conversion", SourceID: "opp-02", TargetID: "live-01", Verified: true, Description: "Opportunity converted to Live Commerce Session"},
+		{FromModule: ModuleM05, ToModule: ModuleM14, LinkType: "conversion", SourceID: "idea-01", TargetID: "ofr-01", Verified: true, Description: "Idea converted to Offer with pricing logic"},
+		{FromModule: ModuleM12, ToModule: ModuleM18, LinkType: "conversion", SourceID: "th-01", TargetID: "smp-01", Verified: true, Description: "Customer inbox thread converted to Seeding sample request"},
+		{FromModule: ModuleM13, ToModule: ModuleM14, LinkType: "reference", SourceID: "prod-01", TargetID: "ofr-01", Verified: true, Description: "Offer references Product Hub SKU hierarchy"},
+		{FromModule: ModuleM13, ToModule: ModuleM15, LinkType: "inventory_guard", SourceID: "prod-01", TargetID: "bndl-01", Verified: true, Description: "Store bundle validates component inventory before sale"},
+		{FromModule: ModuleM17, ToModule: ModuleM09, LinkType: "clip_extraction", SourceID: "live-01", TargetID: "deriv-01", Verified: true, Description: "Live highlights extracted into Asset Derivatives"},
+		{FromModule: ModuleM18, ToModule: ModuleM19, LinkType: "ledger_cost", SourceID: "smp-01", TargetID: "cost-01", Verified: true, Description: "Sample shipping cost posted to Operating Ledger"},
+		{FromModule: ModuleM16, ToModule: ModuleM19, LinkType: "commission_proof", SourceID: "aff-01", TargetID: "payout-01", Verified: true, Description: "Affiliate payout linked to Ledger settlement"},
+		{FromModule: ModuleS16, ToModule: ModuleM19, LinkType: "content_roi", SourceID: "deal-01", TargetID: "post-01", Verified: true, Description: "Brand deal payout reconciles with Operating Ledger"},
+	}
+	for _, link := range links {
+		s.RegisterCrossModuleLink(wsID, link)
+	}
 }
 
 // Seed fixture items demonstrating partial/unreconciled states per PRD §15.1 and BIZ-010.
@@ -150,55 +260,131 @@ func (s *Service) seedDefaultUnreconciledOutcomes(workspaceID string) {
 	}
 }
 
-// VerifyCrossModuleIntegrity inspects all P6 modules and verifies connections.
+func mapDomainToModule(domain string) ModuleID {
+	switch domain {
+	case "order_refund", "stock_movement":
+		return ModuleM13
+	case "seeding_crm":
+		return ModuleM18
+	case "affiliate_statement", "affiliate_attribution":
+		return ModuleM16
+	case "creator_pro_deal":
+		return ModuleS16
+	default:
+		return ModuleM19
+	}
+}
+
+func isAuthorizedRepairRole(role string) bool {
+	switch strings.ToLower(strings.TrimSpace(role)) {
+	case "owner", "admin", "manager":
+		return true
+	default:
+		return false
+	}
+}
+
+// VerifyCrossModuleIntegrity inspects registered workspace module and lineage evidence without fabricating readiness.
 func (s *Service) VerifyCrossModuleIntegrity(ctx context.Context, workspaceID string) (*CrossModuleVerificationResult, error) {
-	if workspaceID == "" {
+	wsID := strings.TrimSpace(workspaceID)
+	if wsID == "" {
 		return nil, ErrUnauthenticated
 	}
 
-	summaries := []ModuleIntegritySummary{
-		{ModuleID: ModuleM04, Name: "Opportunity Board", ConnectedLinks: 4, ActiveEntities: 18, Status: "HEALTHY"},
-		{ModuleID: ModuleM05, Name: "Idea Engine", ConnectedLinks: 3, ActiveEntities: 24, Status: "HEALTHY"},
-		{ModuleID: ModuleM09, Name: "Asset Derivatives", ConnectedLinks: 2, ActiveEntities: 12, Status: "HEALTHY"},
-		{ModuleID: ModuleM12, Name: "Unified Inbox", ConnectedLinks: 3, ActiveEntities: 45, Status: "HEALTHY"},
-		{ModuleID: ModuleM13, Name: "Product Hub & Inventory", ConnectedLinks: 6, ActiveEntities: 30, Status: "HEALTHY"},
-		{ModuleID: ModuleM14, Name: "Monetization OS", ConnectedLinks: 5, ActiveEntities: 15, Status: "HEALTHY"},
-		{ModuleID: ModuleM15, Name: "Creator Store", ConnectedLinks: 4, ActiveEntities: 8, Status: "HEALTHY"},
-		{ModuleID: ModuleM16, Name: "Affiliate Network", ConnectedLinks: 4, ActiveEntities: 22, Status: "HEALTHY"},
-		{ModuleID: ModuleM17, Name: "Live War Room", ConnectedLinks: 4, ActiveEntities: 6, Status: "HEALTHY"},
-		{ModuleID: ModuleM18, Name: "Seeding CRM", ConnectedLinks: 4, ActiveEntities: 14, Status: "HEALTHY"},
-		{ModuleID: ModuleS16, Name: "Creator Pro Tools", ConnectedLinks: 5, ActiveEntities: 10, Status: "HEALTHY"},
-		{ModuleID: ModuleM19, Name: "Operating Ledger", ConnectedLinks: 8, ActiveEntities: 140, Status: "HEALTHY"},
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	wsModules := s.moduleEvidence[wsID]
+	wsLinks := s.moduleLinks[wsID]
+
+	verifiedLinks := make([]CrossModuleLink, 0)
+	brokenLinks := make([]CrossModuleLink, 0)
+	connectedCounts := make(map[ModuleID]int)
+	brokenByModule := make(map[ModuleID]bool)
+	verifiedPairs := make(map[string]bool)
+
+	for _, link := range wsLinks {
+		cp := link
+		if cp.Verified && strings.TrimSpace(cp.SourceID) != "" && strings.TrimSpace(cp.TargetID) != "" && cp.FromModule != "" && cp.ToModule != "" {
+			verifiedLinks = append(verifiedLinks, cp)
+			connectedCounts[cp.FromModule]++
+			connectedCounts[cp.ToModule]++
+			verifiedPairs[string(cp.FromModule)+"->"+string(cp.ToModule)] = true
+		} else {
+			cp.Verified = false
+			brokenLinks = append(brokenLinks, cp)
+			brokenByModule[cp.FromModule] = true
+			brokenByModule[cp.ToModule] = true
+		}
 	}
 
-	links := []CrossModuleLink{
-		{FromModule: ModuleM04, ToModule: ModuleM14, LinkType: "conversion", SourceID: "opp-01", TargetID: "cmp-01", Verified: true, Description: "Opportunity converted to Campaign with target permission recheck"},
-		{FromModule: ModuleM04, ToModule: ModuleM17, LinkType: "conversion", SourceID: "opp-02", TargetID: "live-01", Verified: true, Description: "Opportunity converted to Live Commerce Session"},
-		{FromModule: ModuleM05, ToModule: ModuleM14, LinkType: "conversion", SourceID: "idea-01", TargetID: "ofr-01", Verified: true, Description: "Idea converted to Offer with pricing logic"},
-		{FromModule: ModuleM12, ToModule: ModuleM18, LinkType: "conversion", SourceID: "th-01", TargetID: "smp-01", Verified: true, Description: "Customer inbox thread converted to Seeding sample request"},
-		{FromModule: ModuleM13, ToModule: ModuleM14, LinkType: "reference", SourceID: "prod-01", TargetID: "ofr-01", Verified: true, Description: "Offer references Product Hub SKU hierarchy"},
-		{FromModule: ModuleM13, ToModule: ModuleM15, LinkType: "inventory_guard", SourceID: "prod-01", TargetID: "bndl-01", Verified: true, Description: "Store bundle validates component inventory before sale"},
-		{FromModule: ModuleM17, ToModule: ModuleM09, LinkType: "clip_extraction", SourceID: "live-01", TargetID: "deriv-01", Verified: true, Description: "Live highlights extracted into Asset Derivatives"},
-		{FromModule: ModuleM18, ToModule: ModuleM19, LinkType: "ledger_cost", SourceID: "smp-01", TargetID: "cost-01", Verified: true, Description: "Sample shipping cost posted to Operating Ledger"},
-		{FromModule: ModuleM16, ToModule: ModuleM19, LinkType: "commission_proof", SourceID: "aff-01", TargetID: "payout-01", Verified: true, Description: "Affiliate payout linked to Ledger settlement"},
-		{FromModule: ModuleS16, ToModule: ModuleM19, LinkType: "content_roi", SourceID: "deal-01", TargetID: "post-01", Verified: true, Description: "Brand deal payout reconciles with Operating Ledger"},
+	pendingByModule := make(map[ModuleID]int)
+	for _, item := range s.unreconciled {
+		if item.WorkspaceID == wsID && !item.Resolved {
+			pendingByModule[mapDomainToModule(item.Domain)]++
+		}
 	}
+
+	summaries := make([]ModuleIntegritySummary, 0, len(canonicalP6Modules))
+	allModulesConnected := len(canonicalP6Modules) > 0
+
+	for _, spec := range canonicalP6Modules {
+		observed, hasObserved := wsModules[spec.ID]
+		if !hasObserved {
+			allModulesConnected = false
+			summaries = append(summaries, ModuleIntegritySummary{
+				ModuleID:        spec.ID,
+				Name:            spec.Name,
+				ConnectedLinks:  connectedCounts[spec.ID],
+				ActiveEntities:  0,
+				PendingOutcomes: pendingByModule[spec.ID],
+				Status:          "PENDING_EVIDENCE",
+			})
+			continue
+		}
+		if observed.Name == "" {
+			observed.Name = spec.Name
+		}
+		if connectedCounts[spec.ID] > observed.ConnectedLinks {
+			observed.ConnectedLinks = connectedCounts[spec.ID]
+		}
+		if pendingByModule[spec.ID] > observed.PendingOutcomes {
+			observed.PendingOutcomes = pendingByModule[spec.ID]
+		}
+		if brokenByModule[spec.ID] && observed.Status == "HEALTHY" {
+			observed.Status = "DEGRADED"
+		}
+		if observed.Status != "HEALTHY" || observed.ConnectedLinks < 1 || observed.ActiveEntities < 1 {
+			allModulesConnected = false
+		}
+		summaries = append(summaries, observed)
+	}
+
+	lineageIntegrityPass := len(canonicalP6LineagePairs) > 0 && len(brokenLinks) == 0
+	for _, pair := range canonicalP6LineagePairs {
+		if !verifiedPairs[string(pair.From)+"->"+string(pair.To)] {
+			lineageIntegrityPass = false
+			break
+		}
+	}
+
+	zeroFunctionLost := allModulesConnected && lineageIntegrityPass && len(brokenLinks) == 0
 
 	return &CrossModuleVerificationResult{
-		WorkspaceID:          workspaceID,
+		WorkspaceID:          wsID,
 		VerifiedAt:           time.Now().UTC(),
-		AllModulesConnected:  true,
-		ZeroFunctionLost:     true,
+		AllModulesConnected:  allModulesConnected,
+		ZeroFunctionLost:     zeroFunctionLost,
 		ModuleSummaries:      summaries,
-		VerifiedLinks:        links,
-		BrokenLinks:          []CrossModuleLink{},
-		LineageIntegrityPass: true,
+		VerifiedLinks:        verifiedLinks,
+		BrokenLinks:          brokenLinks,
+		LineageIntegrityPass: lineageIntegrityPass,
 	}, nil
 }
 
 // GetPartialAndUnreconciledOutcomes retrieves all partial/unreconciled items.
 func (s *Service) GetPartialAndUnreconciledOutcomes(ctx context.Context, workspaceID string, domainFilter string) ([]UnreconciledOutcome, error) {
-	if workspaceID == "" {
+	if strings.TrimSpace(workspaceID) == "" {
 		return nil, ErrUnauthenticated
 	}
 
@@ -221,10 +407,13 @@ func (s *Service) GetPartialAndUnreconciledOutcomes(ctx context.Context, workspa
 
 // ApplyOperationalRepair executes an audited repair on an unreconciled outcome.
 func (s *Service) ApplyOperationalRepair(ctx context.Context, req OperationalRepairRequest) (*OperationalRepairResult, error) {
-	if req.WorkspaceID == "" || req.ActorID == "" {
+	if strings.TrimSpace(req.WorkspaceID) == "" || strings.TrimSpace(req.ActorID) == "" {
 		return nil, ErrUnauthenticated
 	}
-	if req.AuditReason == "" {
+	if !isAuthorizedRepairRole(req.ActorRole) {
+		return nil, ErrPermissionDenied
+	}
+	if strings.TrimSpace(req.AuditReason) == "" {
 		return nil, ErrAuditReasonRequired
 	}
 
@@ -305,8 +494,9 @@ func (s *Service) ApplyOperationalRepair(ctx context.Context, req OperationalRep
 }
 
 // VerifyProviderAndShippingGates returns live/local status for all external commerce gates.
+// Live external provider entitlements remain PENDING until production keys/approvals are provisioned.
 func (s *Service) VerifyProviderAndShippingGates(ctx context.Context, workspaceID string) (*ProviderAndShippingGateSummary, error) {
-	if workspaceID == "" {
+	if strings.TrimSpace(workspaceID) == "" {
 		return nil, ErrUnauthenticated
 	}
 
@@ -314,50 +504,54 @@ func (s *Service) VerifyProviderAndShippingGates(ctx context.Context, workspaceI
 
 	paymentGates := []PaymentGateHealth{
 		{
-			Provider:            "stripe",
-			Configured:          true,
-			WebhookHMACVerified: true,
-			ReplayDeduplicated:  true,
-			LatePaymentRecovery: true,
-			ExternalGateID:      "EXT-GATE-PAYMENT-STRIPE-LIVE",
-			GateStatus:          "VERIFIED_LOCAL_ADAPTER",
-			LastCheckedAt:       now,
+			Provider:             "stripe",
+			Configured:           true,
+			WebhookHMACVerified:  true,
+			ReplayDeduplicated:   true,
+			LatePaymentRecovery:  true,
+			LiveEntitlementReady: false,
+			ExternalGateID:       "EXT-GATE-PAYMENT-STRIPE-LIVE",
+			GateStatus:           "LOCAL_ADAPTER_ONLY",
+			LastCheckedAt:        now,
 		},
 		{
-			Provider:            "tiktok_shop",
-			Configured:          true,
-			WebhookHMACVerified: true,
-			ReplayDeduplicated:  true,
-			LatePaymentRecovery: true,
-			ExternalGateID:      "EXT-GATE-PLATFORM-TIKTOK-PARTNER",
-			GateStatus:          "VERIFIED_LOCAL_ADAPTER",
-			LastCheckedAt:       now,
+			Provider:             "tiktok_shop",
+			Configured:           true,
+			WebhookHMACVerified:  true,
+			ReplayDeduplicated:   true,
+			LatePaymentRecovery:  true,
+			LiveEntitlementReady: false,
+			ExternalGateID:       "EXT-GATE-PLATFORM-TIKTOK-PARTNER",
+			GateStatus:           "LOCAL_ADAPTER_ONLY",
+			LastCheckedAt:        now,
 		},
 		{
-			Provider:            "shopee",
-			Configured:          true,
-			WebhookHMACVerified: true,
-			ReplayDeduplicated:  true,
-			LatePaymentRecovery: true,
-			ExternalGateID:      "EXT-GATE-PLATFORM-SHOPEE-PARTNER",
-			GateStatus:          "VERIFIED_LOCAL_ADAPTER",
-			LastCheckedAt:       now,
+			Provider:             "shopee",
+			Configured:           true,
+			WebhookHMACVerified:  true,
+			ReplayDeduplicated:   true,
+			LatePaymentRecovery:  true,
+			LiveEntitlementReady: false,
+			ExternalGateID:       "EXT-GATE-PLATFORM-SHOPEE-PARTNER",
+			GateStatus:           "LOCAL_ADAPTER_ONLY",
+			LastCheckedAt:        now,
 		},
 		{
-			Provider:            "lazada",
-			Configured:          true,
-			WebhookHMACVerified: true,
-			ReplayDeduplicated:  true,
-			LatePaymentRecovery: true,
-			ExternalGateID:      "EXT-GATE-PLATFORM-LAZADA-PARTNER",
-			GateStatus:          "VERIFIED_LOCAL_ADAPTER",
-			LastCheckedAt:       now,
+			Provider:             "lazada",
+			Configured:           true,
+			WebhookHMACVerified:  true,
+			ReplayDeduplicated:   true,
+			LatePaymentRecovery:  true,
+			LiveEntitlementReady: false,
+			ExternalGateID:       "EXT-GATE-PLATFORM-LAZADA-PARTNER",
+			GateStatus:           "LOCAL_ADAPTER_ONLY",
+			LastCheckedAt:        now,
 		},
 	}
 
 	parcels := s.shippingAdapter.ListParcels()
 	if len(parcels) == 0 {
-		// Register default demonstration parcels
+		// Register local adapter demonstration parcels (live carrier API gate remains PENDING)
 		p1, _ := s.shippingAdapter.RegisterParcel(CarrierGHN, "order-demo-01", "", 500, "Ho Chi Minh", tenantdb.MustParseExactDecimal("32000.000000"))
 		p2, _ := s.shippingAdapter.RegisterParcel(CarrierGHTK, "order-demo-02", "smp-demo-01", 300, "Ha Noi", tenantdb.MustParseExactDecimal("28000.000000"))
 		parcels = []ShippingParcel{*p1, *p2}
@@ -387,11 +581,13 @@ func (s *Service) VerifyProviderAndShippingGates(ctx context.Context, workspaceI
 	}
 
 	return &ProviderAndShippingGateSummary{
-		WorkspaceID:   workspaceID,
-		CheckedAt:     now,
-		PaymentGates:  paymentGates,
-		ShippingGates: parcels,
-		ExternalGates: externalGates,
+		WorkspaceID:                 workspaceID,
+		CheckedAt:                   now,
+		ProductionEntitlementsReady: false,
+		LiveProviderStatus:          "PENDING",
+		PaymentGates:                paymentGates,
+		ShippingGates:               parcels,
+		ExternalGates:               externalGates,
 	}, nil
 }
 

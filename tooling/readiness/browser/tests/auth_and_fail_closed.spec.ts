@@ -38,7 +38,7 @@ test.describe('Auth & Fail-Closed Security Smoke', () => {
     await assertNoHorizontalOverflow(page, 'Login page');
   });
 
-  test('/workspaces renders selection ribbon and keeps unmounted create button disabled', async ({ page }) => {
+  test('/workspaces fails closed for unauthenticated visitors while retaining mode selection ribbon', async ({ page }) => {
     await page.goto(`${WEB_BASE_URL}/workspaces`);
     await page.waitForLoadState('networkidle');
 
@@ -46,10 +46,11 @@ test.describe('Auth & Fail-Closed Security Smoke', () => {
     const title = page.locator('h1:has-text("Chọn Workspace")');
     await expect(title).toBeVisible();
 
-    // "+ Tạo mới" button must be disabled with "(Unmounted)" indicator
+    // A visitor without a verified Clerk session must never be allowed to create a workspace.
     const createBtn = page.locator('button:has-text("+ Tạo mới")');
     await expect(createBtn).toBeDisabled();
-    await expect(page.locator('text=(Unmounted)')).toBeVisible();
+    await expect(page.getByText('Bạn chưa đăng nhập hoặc khóa Clerk chưa cấu hình.')).toBeVisible();
+    await expect(page.locator('form:has-text("Tạo Workspace mới (Onboarding)")')).toHaveCount(0);
 
     // Verify 6 operator modes are presented in the ribbon
     await expect(page.locator('text=Chế độ vận hành hiện tại (6 Operator Modes)')).toBeVisible();

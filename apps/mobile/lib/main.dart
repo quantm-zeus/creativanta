@@ -2,14 +2,28 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:creativanta_mobile/auth/auth_models.dart';
 import 'package:creativanta_mobile/auth/auth_provider_adapter.dart';
+import 'package:creativanta_mobile/automation/agent_models.dart';
+import 'package:creativanta_mobile/automation/workflow_models.dart';
+import 'package:creativanta_mobile/developer/api_key_models.dart';
 import 'package:creativanta_mobile/ui/auth/operator_mode_sheet.dart';
 import 'package:creativanta_mobile/ui/auth/session_expired_dialog.dart';
 import 'package:creativanta_mobile/ui/auth/sign_in_screen.dart';
 import 'package:creativanta_mobile/ui/auth/workspace_switcher_sheet.dart';
+import 'package:creativanta_mobile/ui/automation/agent_runtime_view.dart';
+import 'package:creativanta_mobile/ui/automation/workflow_builder_view.dart';
+import 'package:creativanta_mobile/ui/billing/billing_screen.dart';
+import 'package:creativanta_mobile/ui/capability/connections_screen.dart';
+import 'package:creativanta_mobile/ui/commerce/commerce_dashboard_view.dart';
+import 'package:creativanta_mobile/ui/content/idea_board_view.dart';
+import 'package:creativanta_mobile/ui/copilot/copilot_view.dart';
+import 'package:creativanta_mobile/ui/developer/developer_api_keys_view.dart';
+import 'package:creativanta_mobile/ui/diagnostics/diagnostics_screen.dart';
 import 'package:creativanta_mobile/ui/notification/notification_sheet.dart';
 import 'package:creativanta_mobile/ui/help/help_sheet.dart';
 import 'package:creativanta_mobile/ui/home/home_dashboard_view.dart';
 import 'package:creativanta_mobile/ui/home/why_number_sheet.dart';
+import 'package:creativanta_mobile/ui/opportunity/opportunity_board_view.dart';
+import 'package:creativanta_mobile/ui/production/studio_launcher_view.dart';
 import 'package:creativanta_mobile/ui/trend/trend_radar_view.dart';
 
 void main() {
@@ -61,7 +75,7 @@ class _CreativantaAppState extends State<CreativantaApp> {
       );
       _ownedAdapter = true;
     } else {
-      _adapter = ClerkAuthProviderAdapter();
+      _adapter = ClerkAuthProviderAdapter.fromEnvironment();
       _ownedAdapter = true;
     }
 
@@ -290,6 +304,140 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
 
   void _openHelpSheet() {
     HelpSheet.show(context);
+  }
+
+  MobileWorkflow _buildDefaultWorkflow(String workspaceId) {
+    final now = DateTime.utc(2026, 11, 5, 6, 0);
+    return MobileWorkflow(
+      workflowId: 'wf-mob-default-01',
+      workspaceId: workspaceId,
+      title: 'Tự động cảnh báo tồn kho & phê duyệt nội dung',
+      description: 'Quy trình chuẩn kiểm tra điều kiện và gửi phê duyệt.',
+      status: WorkflowStatus.draft,
+      version: 1,
+      triggerType: WorkflowTriggerType.event,
+      createdAt: now,
+      updatedAt: now,
+      graph: const MobileWorkflowGraph(
+        schemaVersion: 1,
+        nodes: [
+          MobileWorkflowNode(
+            nodeId: 'n_trigger',
+            nodeType: WorkflowNodeType.trigger,
+            title: 'Khi có tín hiệu đơn hàng / nội dung mới',
+          ),
+          MobileWorkflowNode(
+            nodeId: 'n_approval',
+            nodeType: WorkflowNodeType.approval,
+            title: 'Phê duyệt quản lý trước khi thực thi',
+          ),
+          MobileWorkflowNode(
+            nodeId: 'n_terminal',
+            nodeType: WorkflowNodeType.terminal,
+            title: 'Hoàn tất quy trình',
+          ),
+        ],
+        edges: [
+          MobileWorkflowEdge(fromNodeId: 'n_trigger', toNodeId: 'n_approval'),
+          MobileWorkflowEdge(fromNodeId: 'n_approval', toNodeId: 'n_terminal'),
+        ],
+      ),
+    );
+  }
+
+  void _pushScreen(Widget screen, {String? title}) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (ctx) => title == null
+            ? screen
+            : Scaffold(
+                appBar: AppBar(title: Text(title)),
+                body: screen,
+              ),
+      ),
+    );
+  }
+
+  void _navigateToFeatureRoute(
+    String route, {
+    required String workspaceId,
+    required String userId,
+    required String role,
+  }) {
+    switch (route) {
+      case '/kham-pha':
+        setState(() => selectedIndex = 1);
+        return;
+      case '/ideas':
+      case '/scripts':
+        _pushScreen(
+          IdeaBoardView(workspaceId: workspaceId, userId: userId),
+          title: 'Idea Engine (M05)',
+        );
+        return;
+      case '/studio':
+        _pushScreen(const StudioLauncherView());
+        return;
+      case '/xuat-ban':
+      case '/connections':
+        _pushScreen(const ConnectionsScreen());
+        return;
+      case '/inbox':
+        _pushScreen(
+          CopilotView(workspaceId: workspaceId, userId: userId),
+        );
+        return;
+      case '/kinh-doanh':
+      case '/finance':
+      case '/offers':
+      case '/affiliates':
+      case '/coupons':
+      case '/attribution':
+      case '/live':
+        _pushScreen(
+          CommerceDashboardView(
+            workspaceId: workspaceId,
+            initialRole: role,
+          ),
+        );
+        return;
+      case '/workflows':
+        _pushScreen(
+          WorkflowBuilderView(workflow: _buildDefaultWorkflow(workspaceId)),
+        );
+        return;
+      case '/agent':
+        _pushScreen(
+          AgentRuntimeView(
+            initialRun: MobileAgentRun.createVideoAgentPlan(
+              workspaceId: workspaceId,
+              userId: userId,
+              prompt: 'Tạo video ngắn giới thiệu sản phẩm chủ lực',
+            ),
+            callerRole: role,
+            isLiveExecutionMode: true,
+          ),
+        );
+        return;
+      case '/billing':
+        _pushScreen(MobileBillingScreen(role: role));
+        return;
+      case '/developer':
+        _pushScreen(
+          DeveloperApiKeysView(
+            notifier: DeveloperStateNotifier(workspaceId: workspaceId),
+          ),
+        );
+        return;
+      case '/diagnostics':
+        _pushScreen(const MobileDiagnosticsScreen());
+        return;
+      default:
+        _pushScreen(
+          OpportunityBoardView(workspaceId: workspaceId),
+          title: 'Cơ hội tăng trưởng (M04)',
+        );
+    }
   }
 
   void _openWhyNumberSheet() {
@@ -898,6 +1046,212 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                   currentUserId: session?.user.id ?? 'usr_default',
                 ),
               ],
+              if (selectedIndex == 2) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFEFA),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE8E5DC)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'STUDIO & NỘI DUNG SÁNG TẠO',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.1,
+                          color: CreativantaApp.forest,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          FilledButton.tonalIcon(
+                            key: const Key('nav_open_studio_launcher'),
+                            onPressed: () => _navigateToFeatureRoute(
+                              '/studio',
+                              workspaceId: activeWorkspaceId,
+                              userId: session?.user.id ?? 'usr_default',
+                              role: activeRole,
+                            ),
+                            icon: const Icon(Icons.movie_creation_outlined, size: 16),
+                            label: const Text('Mở Studio Launcher (M07)'),
+                          ),
+                          FilledButton.tonalIcon(
+                            key: const Key('nav_open_idea_board'),
+                            onPressed: () => _navigateToFeatureRoute(
+                              '/ideas',
+                              workspaceId: activeWorkspaceId,
+                              userId: session?.user.id ?? 'usr_default',
+                              role: activeRole,
+                            ),
+                            icon: const Icon(Icons.lightbulb_outline, size: 16),
+                            label: const Text('Mở Idea Board (M05)'),
+                          ),
+                          FilledButton.tonalIcon(
+                            key: const Key('nav_open_video_agent'),
+                            onPressed: () => _navigateToFeatureRoute(
+                              '/agent',
+                              workspaceId: activeWorkspaceId,
+                              userId: session?.user.id ?? 'usr_default',
+                              role: activeRole,
+                            ),
+                            icon: const Icon(Icons.smart_toy_outlined, size: 16),
+                            label: const Text('Mở AI Video Agent'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              if (selectedIndex == 3) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFEFA),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE8E5DC)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'HỘP THƯ, TRỢ LÝ COPILOT & KẾT NỐI KÊNH',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.1,
+                          color: CreativantaApp.forest,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          FilledButton.tonalIcon(
+                            key: const Key('nav_open_copilot_inbox'),
+                            onPressed: () => _navigateToFeatureRoute(
+                              '/inbox',
+                              workspaceId: activeWorkspaceId,
+                              userId: session?.user.id ?? 'usr_default',
+                              role: activeRole,
+                            ),
+                            icon: const Icon(Icons.support_agent_outlined, size: 16),
+                            label: const Text('Mở Copilot & Hộp thư (M23)'),
+                          ),
+                          FilledButton.tonalIcon(
+                            key: const Key('nav_open_connections'),
+                            onPressed: () => _navigateToFeatureRoute(
+                              '/connections',
+                              workspaceId: activeWorkspaceId,
+                              userId: session?.user.id ?? 'usr_default',
+                              role: activeRole,
+                            ),
+                            icon: const Icon(Icons.link_rounded, size: 16),
+                            label: const Text('Kết nối kênh & OAuth (M22)'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              if (selectedIndex == 4) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFEFA),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE8E5DC)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'PHÂN HỆ NGHIỆP VỤ & QUẢN TRỊ WORKSPACE',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.1,
+                          color: CreativantaApp.forest,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          FilledButton.tonalIcon(
+                            key: const Key('nav_open_commerce_hub'),
+                            onPressed: () => _navigateToFeatureRoute(
+                              '/kinh-doanh',
+                              workspaceId: activeWorkspaceId,
+                              userId: session?.user.id ?? 'usr_default',
+                              role: activeRole,
+                            ),
+                            icon: const Icon(Icons.storefront_outlined, size: 16),
+                            label: const Text('Kinh doanh & Đối soát (M13/M19)'),
+                          ),
+                          FilledButton.tonalIcon(
+                            key: const Key('nav_open_workflow_builder'),
+                            onPressed: () => _navigateToFeatureRoute(
+                              '/workflows',
+                              workspaceId: activeWorkspaceId,
+                              userId: session?.user.id ?? 'usr_default',
+                              role: activeRole,
+                            ),
+                            icon: const Icon(Icons.account_tree_outlined, size: 16),
+                            label: const Text('Workflow Studio (M20)'),
+                          ),
+                          FilledButton.tonalIcon(
+                            key: const Key('nav_open_billing_screen'),
+                            onPressed: () => _navigateToFeatureRoute(
+                              '/billing',
+                              workspaceId: activeWorkspaceId,
+                              userId: session?.user.id ?? 'usr_default',
+                              role: activeRole,
+                            ),
+                            icon: const Icon(Icons.credit_card_outlined, size: 16),
+                            label: const Text('Billing & Credits (M21)'),
+                          ),
+                          FilledButton.tonalIcon(
+                            key: const Key('nav_open_developer_keys'),
+                            onPressed: () => _navigateToFeatureRoute(
+                              '/developer',
+                              workspaceId: activeWorkspaceId,
+                              userId: session?.user.id ?? 'usr_default',
+                              role: activeRole,
+                            ),
+                            icon: const Icon(Icons.vpn_key_outlined, size: 16),
+                            label: const Text('Developer API & Webhooks (S24)'),
+                          ),
+                          FilledButton.tonalIcon(
+                            key: const Key('nav_open_diagnostics'),
+                            onPressed: () => _navigateToFeatureRoute(
+                              '/diagnostics',
+                              workspaceId: activeWorkspaceId,
+                              userId: session?.user.id ?? 'usr_default',
+                              role: activeRole,
+                            ),
+                            icon: const Icon(Icons.monitor_heart_outlined, size: 16),
+                            label: const Text('Chẩn đoán hệ thống (M059)'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               if (selectedIndex != 1) ...[
                 const SizedBox(height: 20),
                 Container(
@@ -1000,12 +1354,11 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                     if (mounted) setState(() {});
                   },
                   onNavigateToRoute: (route) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Chuyển hướng đến $route'),
-                        behavior: SnackBarBehavior.floating,
-                        duration: const Duration(seconds: 1),
-                      ),
+                    _navigateToFeatureRoute(
+                      route,
+                      workspaceId: activeWorkspaceId,
+                      userId: session?.user.id ?? 'usr_default',
+                      role: activeRole,
                     );
                   },
                   initialUiState: _uiState,

@@ -96,11 +96,59 @@ func (s *Service) emitEvent(ctx context.Context, eventType, aggregateType, aggre
 	})
 }
 
+func (s *Service) recordOrderPosting(ctx context.Context, o *Order) error {
+	if s.finance == nil {
+		return nil
+	}
+	cogsTotal := tenantdb.ZeroDecimal()
+	hasCogs := false
+	for _, it := range o.Items {
+		if !it.UnitCogs.IsZero() {
+			qtyDec := tenantdb.MustParseExactDecimal(fmt.Sprintf("%d", it.Quantity))
+			lineCogs, err := it.UnitCogs.MulFloor(qtyDec)
+			if err != nil {
+				return err
+			}
+			cogsTotal, err = cogsTotal.Add(lineCogs)
+			if err != nil {
+				return err
+			}
+			hasCogs = true
+		}
+	}
+	var cogsPtr *tenantdb.ExactDecimal
+	if hasCogs {
+		cogsPtr = &cogsTotal
+	}
+
+	return s.finance.RecordOrderPosting(ctx, finance.OrderPostingInput{
+		WorkspaceID:      o.WorkspaceID,
+		OrderID:          o.OrderID,
+		OrderVersion:     "v1",
+		LifecycleState:   string(o.LifecycleState),
+		GrossAmount:      o.Amount,
+		FeeAmount:        o.FeeBreakdown.PlatformFee,
+		ShippingAmount:   o.FeeBreakdown.ShippingCost,
+		COGSAmount:       cogsPtr,
+		CommissionAmount: o.FeeBreakdown.AffiliateCommission,
+		Currency:         o.Currency,
+		SourceClass:      string(o.SourceClass),
+		Confidence:       string(finance.ConfidenceHigh),
+		ExchangeRateSnapshot: finance.ExchangeRateSnapshot{
+			BaseCurrency:  o.Currency,
+			QuoteCurrency: o.Currency,
+			RateToBase:    "1",
+			SourceClass:   string(o.SourceClass),
+		},
+		EffectiveAt: s.clock().UTC(),
+	})
+}
+
 // IngestOrder handles order creation and ingestion from external platforms or native channels.
 // Enforces:
 // 1. Idempotency on (platform, external_id, connected_account) and import_fingerprint
 // 2. Historical order stock protection (I04 / Acceptance Target 2)
-// 3. State initialization and reservation
+// 3. State initialization and reservation AFTER parent order row exists
 func (s *Service) IngestOrder(ctx context.Context, o *Order, defaultLocationID string) (*Order, bool, error) {
 	if o.WorkspaceID == "" {
 		return nil, false, ErrMissingTenant
@@ -167,31 +215,43 @@ func (s *Service) IngestOrder(ctx context.Context, o *Order, defaultLocationID s
 		}
 	}
 
-	// If stock deduction is required and order is created, reserve stock
+	// 3. Persist Parent Order FIRST so inventory_reservations FK to orders(id) is always satisfied
+	if err := s.store.CreateOrder(ctx, o); err != nil {
+		return nil, false, err
+	}
+
+	// 4. Reserve/fulfill stock after parent order exists; roll back order creation on failure
 	if len(reservationItems) > 0 && s.inventory != nil {
 		if o.LifecycleState == StateCreated {
 			const holdTTL = 30 * time.Minute
 			_, err := s.inventory.ReserveStock(ctx, o.WorkspaceID, o.OrderID, reservationItems, holdTTL)
 			if err != nil {
+				_ = s.store.DeleteOrder(ctx, o.WorkspaceID, o.OrderID)
 				return nil, false, fmt.Errorf("reserve stock: %w", err)
 			}
-		} else if o.LifecycleState == StateConfirmed || o.LifecycleState == StateFulfilled {
-			// Pre-confirmed order (e.g. historical paid order after baseline): reserve then fulfill immediately
+		} else if o.LifecycleState == StateConfirmed || o.LifecycleState == StateFulfilled || o.LifecycleState == StateCompleted {
+			// Pre-confirmed/completed order (e.g. historical paid order after baseline): reserve then fulfill immediately
 			const holdTTL = 5 * time.Minute
 			_, err := s.inventory.ReserveStock(ctx, o.WorkspaceID, o.OrderID, reservationItems, holdTTL)
 			if err != nil {
+				_ = s.store.DeleteOrder(ctx, o.WorkspaceID, o.OrderID)
 				return nil, false, fmt.Errorf("reserve stock for confirmed order: %w", err)
 			}
 			_, err = s.inventory.FulfillReservation(ctx, o.WorkspaceID, o.OrderID)
 			if err != nil {
+				_ = s.inventory.ReleaseReservation(ctx, o.WorkspaceID, o.OrderID, "fulfill_failed_rollback")
+				_ = s.store.DeleteOrder(ctx, o.WorkspaceID, o.OrderID)
 				return nil, false, fmt.Errorf("fulfill stock for confirmed order: %w", err)
 			}
 		}
 	}
 
-	// 3. Persist Order
-	if err := s.store.CreateOrder(ctx, o); err != nil {
-		return nil, false, err
+	// 5. If order is ingested directly in StateCompleted, post to finance ledger atomically or roll back
+	if o.LifecycleState == StateCompleted && s.finance != nil {
+		if err := s.recordOrderPosting(ctx, o); err != nil {
+			_ = s.store.DeleteOrder(ctx, o.WorkspaceID, o.OrderID)
+			return nil, false, fmt.Errorf("record completed order finance posting: %w", err)
+		}
 	}
 
 	s.emitEvent(ctx, "commerce.order.created", "order", o.OrderID, o.WorkspaceID, map[string]any{
@@ -265,63 +325,33 @@ func (s *Service) FulfillOrder(ctx context.Context, workspaceID, orderID string)
 	return o, nil
 }
 
-// CompleteOrder marks an order completed.
+// CompleteOrder marks an order completed and ensures its revenue/cost postings exist in Finance.
 func (s *Service) CompleteOrder(ctx context.Context, workspaceID, orderID string) (*Order, error) {
 	o, err := s.store.GetOrder(ctx, workspaceID, orderID)
 	if err != nil {
 		return nil, err
 	}
 	if o.LifecycleState == StateCompleted {
+		if err := s.recordOrderPosting(ctx, o); err != nil {
+			return nil, fmt.Errorf("record completed order finance posting: %w", err)
+		}
 		return o, nil
 	}
 	if !CanTransitionOrder(o.LifecycleState, StateCompleted) {
 		return nil, fmt.Errorf("%w: cannot transition from %s to %s", ErrInvalidOrderTransition, o.LifecycleState, StateCompleted)
 	}
 
+	prevState := o.LifecycleState
 	if err := s.store.UpdateOrderStatus(ctx, workspaceID, orderID, StateCompleted, nil); err != nil {
 		return nil, err
 	}
 	o.LifecycleState = StateCompleted
 	o.UpdatedAt = s.clock().UTC()
 
-	// Post revenue and known costs to Finance Operating Ledger
-	if s.finance != nil {
-		cogsTotal := tenantdb.ZeroDecimal()
-		hasCogs := false
-		for _, it := range o.Items {
-			if !it.UnitCogs.IsZero() {
-				qtyDec := tenantdb.MustParseExactDecimal(fmt.Sprintf("%d", it.Quantity))
-				lineCogs, _ := it.UnitCogs.MulFloor(qtyDec)
-				cogsTotal, _ = cogsTotal.Add(lineCogs)
-				hasCogs = true
-			}
-		}
-		var cogsPtr *tenantdb.ExactDecimal
-		if hasCogs {
-			cogsPtr = &cogsTotal
-		}
-
-		_ = s.finance.RecordOrderPosting(ctx, finance.OrderPostingInput{
-			WorkspaceID:      workspaceID,
-			OrderID:          orderID,
-			OrderVersion:     "v1",
-			LifecycleState:   "completed",
-			GrossAmount:      o.Amount,
-			FeeAmount:        o.FeeBreakdown.PlatformFee,
-			ShippingAmount:   o.FeeBreakdown.ShippingCost,
-			COGSAmount:       cogsPtr,
-			CommissionAmount: o.FeeBreakdown.AffiliateCommission,
-			Currency:         o.Currency,
-			SourceClass:      string(o.SourceClass),
-			Confidence:       string(finance.ConfidenceHigh),
-			ExchangeRateSnapshot: finance.ExchangeRateSnapshot{
-				BaseCurrency:  o.Currency,
-				QuoteCurrency: o.Currency,
-				RateToBase:    "1",
-				SourceClass:   string(o.SourceClass),
-			},
-			EffectiveAt: s.clock().UTC(),
-		})
+	// Post revenue and known costs to Finance Operating Ledger; roll back order status if posting fails
+	if err := s.recordOrderPosting(ctx, o); err != nil {
+		_ = s.store.UpdateOrderStatus(ctx, workspaceID, orderID, prevState, nil)
+		return nil, fmt.Errorf("record completed order finance posting: %w", err)
 	}
 
 	s.emitEvent(ctx, "commerce.order.completed", "order", orderID, workspaceID, map[string]any{
@@ -364,7 +394,7 @@ func (s *Service) CancelOrder(ctx context.Context, workspaceID, orderID, reason 
 }
 
 // RequestRefund creates a financial refund request.
-// Verifies that requested refund amount <= order refundable remaining balance.
+// Verifies currency match, external refund deduplication, and that requested refund amount <= order refundable remaining balance.
 func (s *Service) RequestRefund(ctx context.Context, r *Refund) (*Refund, *Order, error) {
 	if r.WorkspaceID == "" {
 		return nil, nil, ErrMissingTenant
@@ -376,6 +406,27 @@ func (s *Service) RequestRefund(ctx context.Context, r *Refund) (*Refund, *Order
 	o, err := s.store.GetOrder(ctx, r.WorkspaceID, r.OrderID)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if r.Currency != "" && o.Currency != "" && r.Currency != o.Currency {
+		return nil, nil, fmt.Errorf("%w: refund currency %s does not match order currency %s", ErrCurrencyMismatch, r.Currency, o.Currency)
+	}
+
+	// Idempotent deduplication by external refund ID
+	if r.ExternalRefundID != "" {
+		existing, err := s.store.FindRefundByExternalID(ctx, r.WorkspaceID, r.OrderID, r.SourcePlatform, r.ExternalRefundID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if existing != nil {
+			return existing, o, nil
+		}
+	}
+	if r.RefundID != "" {
+		existing, err := s.store.GetRefund(ctx, r.WorkspaceID, r.RefundID)
+		if err == nil && existing != nil {
+			return existing, o, nil
+		}
 	}
 
 	rem, err := o.RefundableRemaining()
@@ -407,61 +458,18 @@ func (s *Service) RequestRefund(ctx context.Context, r *Refund) (*Refund, *Order
 	return r, o, nil
 }
 
-// ApproveRefund approves and completes a refund.
+// ApproveRefund approves and completes a refund atomically.
 // Enforces Acceptance Target 3:
 // - Partial refund transitions order to partially_refunded.
 // - Followed by full refund transitions order to refunded.
-// - Over-refunding is strictly rejected.
+// - Over-refunding (including concurrent approvals) is strictly rejected.
 func (s *Service) ApproveRefund(ctx context.Context, workspaceID, refundID string) (*Refund, *Order, error) {
-	r, err := s.store.GetRefund(ctx, workspaceID, refundID)
-	if err != nil {
-		return nil, nil, err
-	}
-	if r.LifecycleState == RefundApproved || r.LifecycleState == RefundCompleted {
-		// Idempotent
-		o, err := s.store.GetOrder(ctx, workspaceID, r.OrderID)
-		return r, o, err
-	}
-
-	o, err := s.store.GetOrder(ctx, workspaceID, r.OrderID)
+	r, o, prevState, prevRefunded, newlyApproved, err := s.store.ApproveRefundAtomic(ctx, workspaceID, refundID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	rem, err := o.RefundableRemaining()
-	if err != nil {
-		return nil, nil, err
-	}
-	if r.Amount.Cmp(rem) > 0 {
-		return nil, nil, fmt.Errorf("%w: refund amount %s exceeds remaining refundable %s", ErrRefundExceedsOrderTotal, r.Amount.Fixed6String(), rem.Fixed6String())
-	}
-
-	newRefunded, err := o.RefundedAmount.Add(r.Amount)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var newOrderState LifecycleState
-	if newRefunded.Cmp(o.Amount) == 0 {
-		newOrderState = StateRefunded
-	} else {
-		newOrderState = StatePartiallyRefunded
-	}
-
-	if err := s.store.UpdateOrderStatus(ctx, workspaceID, o.OrderID, newOrderState, &newRefunded); err != nil {
-		return nil, nil, err
-	}
-	if err := s.store.UpdateRefundStatus(ctx, workspaceID, refundID, RefundCompleted); err != nil {
-		return nil, nil, err
-	}
-
-	r.LifecycleState = RefundCompleted
-	r.UpdatedAt = s.clock().UTC()
-	o.LifecycleState = newOrderState
-	o.RefundedAmount = newRefunded
-	o.UpdatedAt = s.clock().UTC()
-
-	// Post negative refund deduction to Finance Operating Ledger
+	// Post negative refund deduction to Finance Operating Ledger; revert approval if posting fails
 	if s.finance != nil {
 		fx := finance.ExchangeRateSnapshot{
 			BaseCurrency:  o.Currency,
@@ -469,19 +477,26 @@ func (s *Service) ApproveRefund(ctx context.Context, workspaceID, refundID strin
 			RateToBase:    "1",
 			SourceClass:   string(o.SourceClass),
 		}
-		_ = s.finance.RecordRefundPosting(ctx, workspaceID, refundID, o.OrderID, r.Amount, r.Currency, string(o.SourceClass), string(finance.ConfidenceHigh), fx)
+		if err := s.finance.RecordRefundPosting(ctx, workspaceID, refundID, o.OrderID, r.Amount, r.Currency, string(o.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
+			if newlyApproved {
+				_ = s.store.RevertRefundApproval(ctx, workspaceID, refundID, o.OrderID, prevState, prevRefunded)
+			}
+			return nil, nil, fmt.Errorf("record refund finance posting: %w", err)
+		}
 	}
 
-	s.emitEvent(ctx, "commerce.refund.completed", "refund", refundID, workspaceID, map[string]any{
-		"refund_id": refundID,
-		"order_id":  o.OrderID,
-		"amount":    r.Amount.Fixed6String(),
-	})
-	s.emitEvent(ctx, "commerce.order.refunded", "order", o.OrderID, workspaceID, map[string]any{
-		"order_id":        o.OrderID,
-		"lifecycle_state": newOrderState,
-		"refunded_total":  newRefunded.Fixed6String(),
-	})
+	if newlyApproved {
+		s.emitEvent(ctx, "commerce.refund.completed", "refund", refundID, workspaceID, map[string]any{
+			"refund_id": refundID,
+			"order_id":  o.OrderID,
+			"amount":    r.Amount.Fixed6String(),
+		})
+		s.emitEvent(ctx, "commerce.order.refunded", "order", o.OrderID, workspaceID, map[string]any{
+			"order_id":        o.OrderID,
+			"lifecycle_state": o.LifecycleState,
+			"refunded_total":  o.RefundedAmount.Fixed6String(),
+		})
+	}
 
 	return r, o, nil
 }
@@ -727,7 +742,7 @@ func (s *Service) UpdateFeeBreakdown(ctx context.Context, workspaceID, orderID s
 	}
 
 	// If finance service is wired and order is completed, correct postings
-	if s.finance != nil && o.LifecycleState == StateCompleted {
+	if s.finance != nil && (o.LifecycleState == StateCompleted || o.LifecycleState == StatePartiallyRefunded || o.LifecycleState == StateRefunded) {
 		fx := finance.ExchangeRateSnapshot{
 			BaseCurrency:  o.Currency,
 			QuoteCurrency: o.Currency,
@@ -735,20 +750,34 @@ func (s *Service) UpdateFeeBreakdown(ctx context.Context, workspaceID, orderID s
 			SourceClass:   string(o.SourceClass),
 		}
 
+		rollbackFees := func() {
+			o.FeeBreakdown = oldFees
+			_ = s.store.UpdateOrder(ctx, o)
+		}
+
 		// Platform fee correction
 		if newFees.PlatformFee.Cmp(oldFees.PlatformFee) != 0 {
 			negFee, _ := tenantdb.ZeroDecimal().Sub(newFees.PlatformFee)
-			_ = s.finance.RecordOrderCorrection(ctx, workspaceID, orderID, finance.ComponentPlatformFee, negFee, version, string(o.SourceClass), string(finance.ConfidenceHigh), fx)
+			if err := s.finance.RecordOrderCorrection(ctx, workspaceID, orderID, finance.ComponentPlatformFee, negFee, version, string(o.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
+				rollbackFees()
+				return nil, fmt.Errorf("record platform fee correction: %w", err)
+			}
 		}
 		// Shipping cost correction
 		if newFees.ShippingCost.Cmp(oldFees.ShippingCost) != 0 {
 			negShip, _ := tenantdb.ZeroDecimal().Sub(newFees.ShippingCost)
-			_ = s.finance.RecordOrderCorrection(ctx, workspaceID, orderID, finance.ComponentShipping, negShip, version, string(o.SourceClass), string(finance.ConfidenceHigh), fx)
+			if err := s.finance.RecordOrderCorrection(ctx, workspaceID, orderID, finance.ComponentShipping, negShip, version, string(o.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
+				rollbackFees()
+				return nil, fmt.Errorf("record shipping cost correction: %w", err)
+			}
 		}
 		// Affiliate commission correction
 		if newFees.AffiliateCommission.Cmp(oldFees.AffiliateCommission) != 0 {
 			negComm, _ := tenantdb.ZeroDecimal().Sub(newFees.AffiliateCommission)
-			_ = s.finance.RecordOrderCorrection(ctx, workspaceID, orderID, finance.ComponentCommission, negComm, version, string(o.SourceClass), string(finance.ConfidenceHigh), fx)
+			if err := s.finance.RecordOrderCorrection(ctx, workspaceID, orderID, finance.ComponentCommission, negComm, version, string(o.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
+				rollbackFees()
+				return nil, fmt.Errorf("record affiliate commission correction: %w", err)
+			}
 		}
 	}
 
@@ -764,7 +793,7 @@ func (s *Service) UpdateFeeBreakdown(ctx context.Context, workspaceID, orderID s
 
 // HandlePaymentConfirmation processes payment confirmation for an order, handling races against reservation expiry.
 // If reservation expired or is missing:
-// - If stock is still sellable, re-reserves and fulfills immediately.
+// - If stock is still sellable, re-reserves and fulfills immediately on the canonical order ID.
 // - If stock is exhausted, flags order as payment anomaly (stock exhausted), blocking fulfillment and preserving sellable >= 0.
 func (s *Service) HandlePaymentConfirmation(ctx context.Context, workspaceID, orderID, defaultLocationID string) (*Order, error) {
 	o, err := s.store.GetOrder(ctx, workspaceID, orderID)
@@ -799,8 +828,8 @@ func (s *Service) HandlePaymentConfirmation(ctx context.Context, workspaceID, or
 					}
 				}
 				if len(items) > 0 {
-					// Attempt fresh reservation with short TTL
-					_, resErr := s.inventory.ReserveStock(ctx, workspaceID, orderID+"-late", items, 5*time.Minute)
+					// Attempt fresh reservation on the canonical orderID with short TTL
+					_, resErr := s.inventory.ReserveStock(ctx, workspaceID, orderID, items, 5*time.Minute)
 					if resErr != nil {
 						// Stock is exhausted! Fulfill must fail closed to prevent oversell!
 						s.emitEvent(ctx, "commerce.order.payment_anomaly", "order", orderID, workspaceID, map[string]any{
@@ -810,8 +839,11 @@ func (s *Service) HandlePaymentConfirmation(ctx context.Context, workspaceID, or
 						})
 						return nil, fmt.Errorf("late payment recovery failed: stock exhausted: %w", resErr)
 					}
-					// Successfully re-reserved: fulfill the late reservation
-					_, _ = s.inventory.FulfillReservation(ctx, workspaceID, orderID+"-late")
+					// Successfully re-reserved: fulfill the reservation on the canonical orderID
+					if _, fulfillErr := s.inventory.FulfillReservation(ctx, workspaceID, orderID); fulfillErr != nil {
+						_ = s.inventory.ReleaseReservation(ctx, workspaceID, orderID, "late_fulfill_failed_rollback")
+						return nil, fmt.Errorf("late payment fulfill reservation failed: %w", fulfillErr)
+					}
 				}
 			} else {
 				return nil, fmt.Errorf("fulfill reservation: %w", err)

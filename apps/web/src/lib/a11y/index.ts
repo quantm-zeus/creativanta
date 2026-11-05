@@ -134,6 +134,125 @@ export function stepDialogFocusTrap(
   };
 }
 
+export const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])'
+].join(', ');
+
+/**
+ * Returns all visible, enabled focusable elements inside a container element.
+ */
+export function getFocusableElements(container: HTMLElement | null | undefined): HTMLElement[] {
+  if (!container) return [];
+  const nodes = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+  return nodes.filter(
+    (el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true'
+  );
+}
+
+/**
+ * Traps Tab / Shift+Tab inside `dialogEl` and closes on Escape (UF-12).
+ */
+export function handleModalKeydown(
+  event: KeyboardEvent,
+  dialogEl: HTMLElement | null | undefined,
+  onClose: () => void
+): void {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    onClose();
+    return;
+  }
+
+  if (event.key !== 'Tab' || !dialogEl) {
+    return;
+  }
+
+  const focusables = getFocusableElements(dialogEl);
+  if (focusables.length === 0) {
+    event.preventDefault();
+    dialogEl.focus();
+    return;
+  }
+
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  const active = (typeof document !== 'undefined' ? document.activeElement : null) as HTMLElement | null;
+
+  if (event.shiftKey) {
+    if (!active || active === first || !dialogEl.contains(active)) {
+      event.preventDefault();
+      last.focus();
+    }
+  } else {
+    if (!active || active === last || !dialogEl.contains(active)) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+}
+
+/**
+ * Activates a modal focus session: records the trigger element, sets background landmarks
+ * (`header`, `main`, `footer`) inert/aria-hidden, focuses the first focusable inside `dialogEl`,
+ * and returns a cleanup function that restores background landmarks and returns focus to the trigger.
+ */
+export function activateModalFocusSession(
+  dialogEl: HTMLElement | null | undefined,
+  explicitTrigger?: HTMLElement | null
+): () => void {
+  if (typeof document === 'undefined' || !dialogEl) {
+    return () => {};
+  }
+
+  const triggerEl =
+    explicitTrigger ??
+    (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+
+  const backgroundTargets = Array.from(
+    document.querySelectorAll<HTMLElement>('header, main, footer, nav')
+  ).filter((el) => !dialogEl.contains(el) && !el.contains(dialogEl));
+
+  const previousStates = backgroundTargets.map((el) => ({
+    el,
+    ariaHidden: el.getAttribute('aria-hidden'),
+    inert: el.hasAttribute('inert')
+  }));
+
+  for (const { el } of previousStates) {
+    el.setAttribute('aria-hidden', 'true');
+    el.setAttribute('inert', '');
+  }
+
+  const focusables = getFocusableElements(dialogEl);
+  if (focusables.length > 0) {
+    focusables[0].focus();
+  } else {
+    dialogEl.focus();
+  }
+
+  return () => {
+    for (const { el, ariaHidden, inert } of previousStates) {
+      if (ariaHidden === null) {
+        el.removeAttribute('aria-hidden');
+      } else {
+        el.setAttribute('aria-hidden', ariaHidden);
+      }
+      if (!inert) {
+        el.removeAttribute('inert');
+      }
+    }
+
+    if (triggerEl && typeof triggerEl.focus === 'function') {
+      triggerEl.focus();
+    }
+  };
+}
+
 export interface LegalComplianceLink {
   id: string;
   href: string;

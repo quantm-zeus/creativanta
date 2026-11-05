@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
 )
 
 type contextKey string
@@ -131,14 +133,25 @@ func (in *APIKeyInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc
 			return nil, connect.NewError(connect.CodeUnauthenticated, err)
 		}
 
-		// Determine operation type
+		// Determine canonical operation scope & mutating classification (fail-closed if unmapped)
 		proc := req.Spec().Procedure
 		if proc == "" {
 			proc = req.Header().Get("X-Procedure")
 		}
-		isMutating := isMutatingProcedure(proc)
-
+		spec, mapped := LookupPublicAPIProcedureSpec(proc)
 		now := time.Now().UTC()
+		if !mapped {
+			_ = in.service.store.RecordUsage(ctx, apiKey.WorkspaceID, apiKey.LogicalKeyID, false, http.StatusForbidden, 0, now)
+			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("%w: procedure %q is not exposed to Public API keys", ErrScopeUnauthorized, proc))
+		}
+		isMutating := spec.IsMutating
+
+		// Reject mismatched workspace header against the API key's tenant scope (AUTH-03)
+		if wsHeader := strings.TrimSpace(req.Header().Get("X-Workspace-ID")); wsHeader != "" && wsHeader != apiKey.WorkspaceID {
+			_ = in.service.store.RecordUsage(ctx, apiKey.WorkspaceID, apiKey.LogicalKeyID, isMutating, http.StatusForbidden, 0, now)
+			return nil, connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
+		}
+
 		// Target 1: Read-only key cannot mutate!
 		if isMutating {
 			tier, _ := in.service.tierProvider.GetWorkspaceTier(ctx, apiKey.WorkspaceID)
@@ -150,6 +163,12 @@ func (in *APIKeyInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc
 				_ = in.service.store.RecordUsage(ctx, apiKey.WorkspaceID, apiKey.LogicalKeyID, isMutating, http.StatusForbidden, 0, now)
 				return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("%w: key has read-only scopes", ErrReadOnlyMutationForbidden))
 			}
+		}
+
+		// Enforce exact operation-scope requirement (AUTH-02)
+		if !HasScope(apiKey.Scopes, spec.RequiredScope) {
+			_ = in.service.store.RecordUsage(ctx, apiKey.WorkspaceID, apiKey.LogicalKeyID, isMutating, http.StatusForbidden, 0, now)
+			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("%w: procedure %s requires scope %s", ErrScopeUnauthorized, spec.CanonicalProcedure, spec.RequiredScope))
 		}
 
 		// Rate Limiting (Sliding Window)
@@ -164,8 +183,14 @@ func (in *APIKeyInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc
 			return nil, err
 		}
 
-		// Inject key into context
+		// Inject both APIKeyEntity and tenant-bound transportauth.Session principal into context (AUTH-03)
 		ctxWithKey := WithAuthenticatedKey(ctx, apiKey)
+		ctxWithKey = transportauth.WithPrincipal(ctxWithKey, transportauth.Session{
+			UserID:       apiKey.APIKeyID,
+			WorkspaceID:  apiKey.WorkspaceID,
+			ScopesCSV:    transportauth.JoinScopes(apiKey.Scopes),
+			ServiceKeyID: apiKey.APIKeyID,
+		})
 		res, execErr := next(ctxWithKey, req)
 
 		statusCode := http.StatusOK
@@ -189,16 +214,125 @@ func (in *APIKeyInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc
 	}
 }
 
-func isMutatingProcedure(proc string) bool {
-	lower := strings.ToLower(proc)
-	if strings.Contains(lower, "create") || strings.Contains(lower, "update") ||
-		strings.Contains(lower, "delete") || strings.Contains(lower, "revoke") ||
-		strings.Contains(lower, "rotate") || strings.Contains(lower, "execute") ||
-		strings.Contains(lower, "launch") || strings.Contains(lower, "publish") ||
-		strings.Contains(lower, "cancel") || strings.Contains(lower, "mutate") {
-		return true
+// ProcedureScopeSpec defines the exact required scope and mutation classification for a Public API RPC.
+type ProcedureScopeSpec struct {
+	CanonicalProcedure string
+	RequiredScope      string
+	IsMutating         bool
+}
+
+var publicAPIProcedureSpecs = map[string]ProcedureScopeSpec{
+	// OrderService
+	"OrderService/GetOrder":      {CanonicalProcedure: "OrderService/GetOrder", RequiredScope: "read:orders", IsMutating: false},
+	"OrderService/ListOrders":    {CanonicalProcedure: "OrderService/ListOrders", RequiredScope: "read:orders", IsMutating: false},
+	"OrderService/GetSummary":    {CanonicalProcedure: "OrderService/GetSummary", RequiredScope: "read:orders", IsMutating: false},
+	"OrderService/CreateOrder":   {CanonicalProcedure: "OrderService/CreateOrder", RequiredScope: "write:orders", IsMutating: true},
+	"OrderService/Confirm":       {CanonicalProcedure: "OrderService/Confirm", RequiredScope: "write:orders", IsMutating: true},
+	"OrderService/Fulfill":       {CanonicalProcedure: "OrderService/Fulfill", RequiredScope: "write:orders", IsMutating: true},
+	"OrderService/Complete":      {CanonicalProcedure: "OrderService/Complete", RequiredScope: "write:orders", IsMutating: true},
+	"OrderService/Cancel":        {CanonicalProcedure: "OrderService/Cancel", RequiredScope: "write:orders", IsMutating: true},
+	"OrderService/Return":        {CanonicalProcedure: "OrderService/Return", RequiredScope: "write:orders", IsMutating: true},
+	"OrderService/RequestRefund": {CanonicalProcedure: "OrderService/RequestRefund", RequiredScope: "write:orders", IsMutating: true},
+	"OrderService/ApproveRefund": {CanonicalProcedure: "OrderService/ApproveRefund", RequiredScope: "write:orders", IsMutating: true},
+	"OrderService/RejectRefund":  {CanonicalProcedure: "OrderService/RejectRefund", RequiredScope: "write:orders", IsMutating: true},
+
+	// ProductService
+	"ProductService/Get":            {CanonicalProcedure: "ProductService/Get", RequiredScope: "read:products", IsMutating: false},
+	"ProductService/List":           {CanonicalProcedure: "ProductService/List", RequiredScope: "read:products", IsMutating: false},
+	"ProductService/GetCostHistory": {CanonicalProcedure: "ProductService/GetCostHistory", RequiredScope: "read:products", IsMutating: false},
+	"ProductService/Create":         {CanonicalProcedure: "ProductService/Create", RequiredScope: "write:products", IsMutating: true},
+	"ProductService/Update":         {CanonicalProcedure: "ProductService/Update", RequiredScope: "write:products", IsMutating: true},
+	"ProductService/Archive":        {CanonicalProcedure: "ProductService/Archive", RequiredScope: "write:products", IsMutating: true},
+	"ProductService/CreateSKU":      {CanonicalProcedure: "ProductService/CreateSKU", RequiredScope: "write:products", IsMutating: true},
+	"ProductService/UpdateSKU":      {CanonicalProcedure: "ProductService/UpdateSKU", RequiredScope: "write:products", IsMutating: true},
+
+	// InventoryService
+	"InventoryService/GetStock":           {CanonicalProcedure: "InventoryService/GetStock", RequiredScope: "read:inventory", IsMutating: false},
+	"InventoryService/ListMovements":      {CanonicalProcedure: "InventoryService/ListMovements", RequiredScope: "read:inventory", IsMutating: false},
+	"InventoryService/ListAlerts":         {CanonicalProcedure: "InventoryService/ListAlerts", RequiredScope: "read:inventory", IsMutating: false},
+	"InventoryService/AdjustStock":        {CanonicalProcedure: "InventoryService/AdjustStock", RequiredScope: "write:inventory", IsMutating: true},
+	"InventoryService/ReserveStock":       {CanonicalProcedure: "InventoryService/ReserveStock", RequiredScope: "write:inventory", IsMutating: true},
+	"InventoryService/ConfirmReservation": {CanonicalProcedure: "InventoryService/ConfirmReservation", RequiredScope: "write:inventory", IsMutating: true},
+	"InventoryService/ReleaseReservation": {CanonicalProcedure: "InventoryService/ReleaseReservation", RequiredScope: "write:inventory", IsMutating: true},
+
+	// ScriptService / Content
+	"ScriptService/GetScript":    {CanonicalProcedure: "ScriptService/GetScript", RequiredScope: "read:content", IsMutating: false},
+	"ScriptService/ListScripts":  {CanonicalProcedure: "ScriptService/ListScripts", RequiredScope: "read:content", IsMutating: false},
+	"ScriptService/CreateScript": {CanonicalProcedure: "ScriptService/CreateScript", RequiredScope: "write:content", IsMutating: true},
+	"ScriptService/UpdateScript": {CanonicalProcedure: "ScriptService/UpdateScript", RequiredScope: "write:content", IsMutating: true},
+	"ScriptService/DeleteScript": {CanonicalProcedure: "ScriptService/DeleteScript", RequiredScope: "write:content", IsMutating: true},
+
+	// PublishService
+	"PublishService/GetItem":    {CanonicalProcedure: "PublishService/GetItem", RequiredScope: "read:publish", IsMutating: false},
+	"PublishService/ListItems":  {CanonicalProcedure: "PublishService/ListItems", RequiredScope: "read:publish", IsMutating: false},
+	"PublishService/Schedule":   {CanonicalProcedure: "PublishService/Schedule", RequiredScope: "write:publish", IsMutating: true},
+	"PublishService/PublishNow": {CanonicalProcedure: "PublishService/PublishNow", RequiredScope: "write:publish", IsMutating: true},
+	"PublishService/Cancel":     {CanonicalProcedure: "PublishService/Cancel", RequiredScope: "write:publish", IsMutating: true},
+
+	// AnalyticsService
+	"AnalyticsService/GetOverview": {CanonicalProcedure: "AnalyticsService/GetOverview", RequiredScope: "read:analytics", IsMutating: false},
+	"AnalyticsService/GetMetrics":  {CanonicalProcedure: "AnalyticsService/GetMetrics", RequiredScope: "read:analytics", IsMutating: false},
+
+	// WorkflowService
+	"WorkflowService/Get":        {CanonicalProcedure: "WorkflowService/Get", RequiredScope: "read:workflows", IsMutating: false},
+	"WorkflowService/List":       {CanonicalProcedure: "WorkflowService/List", RequiredScope: "read:workflows", IsMutating: false},
+	"WorkflowService/GetRun":     {CanonicalProcedure: "WorkflowService/GetRun", RequiredScope: "read:workflows", IsMutating: false},
+	"WorkflowService/ListRuns":   {CanonicalProcedure: "WorkflowService/ListRuns", RequiredScope: "read:workflows", IsMutating: false},
+	"WorkflowService/Validate":   {CanonicalProcedure: "WorkflowService/Validate", RequiredScope: "read:workflows", IsMutating: false},
+	"WorkflowService/Create":     {CanonicalProcedure: "WorkflowService/Create", RequiredScope: "write:workflows", IsMutating: true},
+	"WorkflowService/Update":     {CanonicalProcedure: "WorkflowService/Update", RequiredScope: "write:workflows", IsMutating: true},
+	"WorkflowService/Activate":   {CanonicalProcedure: "WorkflowService/Activate", RequiredScope: "write:workflows", IsMutating: true},
+	"WorkflowService/Pause":      {CanonicalProcedure: "WorkflowService/Pause", RequiredScope: "write:workflows", IsMutating: true},
+	"WorkflowService/TriggerRun": {CanonicalProcedure: "WorkflowService/TriggerRun", RequiredScope: "write:workflows", IsMutating: true},
+	"WorkflowService/CancelRun":  {CanonicalProcedure: "WorkflowService/CancelRun", RequiredScope: "write:workflows", IsMutating: true},
+
+	// AgentService
+	"AgentService/GetAgent":      {CanonicalProcedure: "AgentService/GetAgent", RequiredScope: "read:agents", IsMutating: false},
+	"AgentService/ListAgents":    {CanonicalProcedure: "AgentService/ListAgents", RequiredScope: "read:agents", IsMutating: false},
+	"AgentService/GetRun":        {CanonicalProcedure: "AgentService/GetRun", RequiredScope: "read:agents", IsMutating: false},
+	"AgentService/ListRuns":      {CanonicalProcedure: "AgentService/ListRuns", RequiredScope: "read:agents", IsMutating: false},
+	"AgentService/ListMemory":    {CanonicalProcedure: "AgentService/ListMemory", RequiredScope: "read:agents", IsMutating: false},
+	"AgentService/CreateAgent":   {CanonicalProcedure: "AgentService/CreateAgent", RequiredScope: "write:agents", IsMutating: true},
+	"AgentService/LaunchRun":     {CanonicalProcedure: "AgentService/LaunchRun", RequiredScope: "write:agents", IsMutating: true},
+	"AgentService/ResumeHandoff": {CanonicalProcedure: "AgentService/ResumeHandoff", RequiredScope: "write:agents", IsMutating: true},
+	"AgentService/CancelRun":     {CanonicalProcedure: "AgentService/CancelRun", RequiredScope: "write:agents", IsMutating: true},
+	"AgentService/DeleteMemory":  {CanonicalProcedure: "AgentService/DeleteMemory", RequiredScope: "write:agents", IsMutating: true},
+	"AgentService/ClearMemory":   {CanonicalProcedure: "AgentService/ClearMemory", RequiredScope: "write:agents", IsMutating: true},
+}
+
+// NormalizeProcedureName strips package prefixes from a ConnectRPC procedure path
+// (e.g., "/creativanta.commerce.v1.OrderService/GetOrder" -> "OrderService/GetOrder").
+func NormalizeProcedureName(proc string) string {
+	trimmed := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(proc), "/"))
+	if trimmed == "" {
+		return ""
 	}
-	return false
+	slashIdx := strings.IndexByte(trimmed, '/')
+	if slashIdx <= 0 || slashIdx == len(trimmed)-1 {
+		return ""
+	}
+	servicePart := trimmed[:slashIdx]
+	methodPart := trimmed[slashIdx+1:]
+	if strings.Contains(methodPart, "/") {
+		return ""
+	}
+	if dotIdx := strings.LastIndexByte(servicePart, '.'); dotIdx >= 0 {
+		servicePart = servicePart[dotIdx+1:]
+	}
+	if servicePart == "" || methodPart == "" {
+		return ""
+	}
+	return servicePart + "/" + methodPart
+}
+
+// LookupPublicAPIProcedureSpec resolves a ConnectRPC procedure against the canonical Public API scope map.
+func LookupPublicAPIProcedureSpec(proc string) (ProcedureScopeSpec, bool) {
+	norm := NormalizeProcedureName(proc)
+	if norm == "" {
+		return ProcedureScopeSpec{}, false
+	}
+	spec, ok := publicAPIProcedureSpecs[norm]
+	return spec, ok
 }
 
 func connectCodeToHTTPStatus(c connect.Code) int {

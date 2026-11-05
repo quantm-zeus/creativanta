@@ -10,11 +10,13 @@
     KB_CATEGORIES,
     type KBArticle
   } from '$lib/help/store';
+  import { activateModalFocusSession, handleModalKeydown } from '$lib/a11y';
 
   let currentArticleId = $derived($selectedArticleId);
   let allArticles = $derived($kbArticles);
   let searchQueryInput = $state('');
   let activeCategory = $state<string | null>(null);
+  let dialogElement: HTMLElement | null = $state(null);
 
   let activeArticle = $derived(
     currentArticleId ? allArticles.find((a) => a.id === currentArticleId) : null
@@ -35,15 +37,24 @@
     helpStore.searchQuery.set(val);
   }
 
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
-      if (currentArticleId) {
-        selectedArticleId.set(null);
-      } else {
-        isHelpDrawerOpen.set(false);
-      }
+  function handleEscapeOrClose() {
+    if (currentArticleId) {
+      selectedArticleId.set(null);
+    } else {
+      isHelpDrawerOpen.set(false);
     }
   }
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (!$isHelpDrawerOpen) return;
+    handleModalKeydown(event, dialogElement, handleEscapeOrClose);
+  }
+
+  $effect(() => {
+    if ($isHelpDrawerOpen && dialogElement) {
+      return activateModalFocusSession(dialogElement);
+    }
+  });
 
   function selectArticle(article: KBArticle) {
     selectedArticleId.set(article.id);
@@ -61,22 +72,22 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if $isHelpDrawerOpen}
-  <!-- Backdrop -->
+  <!-- Backdrop (exclude from keyboard Tab cycle so focus stays trapped inside dialog) -->
   <div
     class="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs transition-opacity"
     onclick={() => isHelpDrawerOpen.set(false)}
-    onkeydown={(e) => e.key === 'Escape' && isHelpDrawerOpen.set(false)}
-    role="button"
-    tabindex="0"
-    aria-label="Đóng trung tâm trợ giúp"
+    role="presentation"
+    aria-hidden="true"
   ></div>
 
   <!-- Slide-over Drawer Panel -->
   <div
+    bind:this={dialogElement}
     class="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col bg-[#fbf9f5] border-l border-[#e7e2d7] shadow-2xl transition-transform"
     role="dialog"
     aria-modal="true"
     aria-labelledby="help-drawer-title"
+    tabindex="-1"
   >
     <!-- Drawer Header -->
     <div class="flex items-center justify-between border-b border-[#e7e2d7] px-5 py-4 bg-[#ffffff]">

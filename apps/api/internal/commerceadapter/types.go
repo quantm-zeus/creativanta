@@ -57,8 +57,10 @@ type IngestedReturn struct {
 type IngestedRefund struct {
 	ExternalRefundID string
 	ExternalOrderID  string
+	EventID          string
 	Platform         string
 	Amount           tenantdb.ExactDecimal
+	IsCumulative     bool
 	Currency         string
 	Reason           string
 	RawPayload       []byte

@@ -37,6 +37,10 @@ var (
 	ErrContractImmutable   = errors.New("creatorpro: contract evidence content is immutable; cannot overwrite existing version")
 	ErrCrossTenantEvidence = errors.New("creatorpro: contract evidence must belong to the same tenant workspace")
 	ErrInquiryRateLimited  = errors.New("creatorpro: inquiry rate limit reached (max 5/hour); try again later")
+
+	// CREATOR-01 Tax Report validation errors
+	ErrInvalidTaxReportPeriod     = errors.New("creatorpro: invalid tax report period, year, or period number")
+	ErrUnsupportedTaxReportFormat = errors.New("creatorpro: unsupported tax report export format")
 )
 
 // MapErrorToConnect translates creatorpro domain errors to standard ConnectRPC codes.
@@ -66,7 +70,8 @@ func MapErrorToConnect(err error) error {
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, ErrInvalidAmount), errors.Is(err, ErrInvalidStateTransition),
 		errors.Is(err, ErrCancellationReasonRequired), errors.Is(err, ErrFinancialReversalRequired),
-		errors.Is(err, ErrZeroViewRPMUndefined):
+		errors.Is(err, ErrZeroViewRPMUndefined), errors.Is(err, ErrInvalidTaxReportPeriod),
+		errors.Is(err, ErrUnsupportedTaxReportFormat):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	default:
 		return connect.NewError(connect.CodeInternal, err)

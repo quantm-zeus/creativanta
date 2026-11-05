@@ -7,7 +7,30 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 )
+
+type actionIdempotencyKeyCtxKey struct{}
+
+// WithActionIdempotencyKey attaches a deterministic step idempotency key to ctx.
+func WithActionIdempotencyKey(ctx context.Context, key string) context.Context {
+	return context.WithValue(ctx, actionIdempotencyKeyCtxKey{}, key)
+}
+
+// ActionIdempotencyKeyFromContext extracts the step idempotency key from ctx.
+func ActionIdempotencyKeyFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	v, _ := ctx.Value(actionIdempotencyKeyCtxKey{}).(string)
+	return v
+}
+
+// TierLimitChecker abstracts workspace tier entitlement & limit verification for workflows.
+type TierLimitChecker interface {
+	CheckTierLimit(ctx context.Context, workspaceID string, wf *Workflow) error
+}
 
 // ActionDispatcher abstracts executing inventory / external RPCs.
 type ActionDispatcher interface {
@@ -18,19 +41,22 @@ type ActionDispatcher interface {
 type MockActionDispatcher struct {
 	mu           sync.Mutex
 	dispatched   []DispatchedAction
+	seenIdemKeys map[string]DispatchedAction
 	customErrors map[string]error
 }
 
 type DispatchedAction struct {
-	WorkspaceID string
-	RPCName     string
-	InputJSON   string
-	Timestamp   time.Time
+	WorkspaceID    string
+	RPCName        string
+	InputJSON      string
+	IdempotencyKey string
+	Timestamp      time.Time
 }
 
 func NewMockActionDispatcher() *MockActionDispatcher {
 	return &MockActionDispatcher{
 		dispatched:   make([]DispatchedAction, 0),
+		seenIdemKeys: make(map[string]DispatchedAction),
 		customErrors: make(map[string]error),
 	}
 }
@@ -49,17 +75,37 @@ func (m *MockActionDispatcher) Dispatch(ctx context.Context, workspaceID, rpcNam
 		return nil, nil, err
 	}
 
-	m.dispatched = append(m.dispatched, DispatchedAction{
-		WorkspaceID: workspaceID,
-		RPCName:     rpcName,
-		InputJSON:   inputJSON,
-		Timestamp:   time.Now().UTC(),
-	})
+	idemKey := ActionIdempotencyKeyFromContext(ctx)
+	if idemKey != "" {
+		if prev, exists := m.seenIdemKeys[idemKey]; exists {
+			output := map[string]any{
+				"dispatched":      true,
+				"rpc":             prev.RPCName,
+				"idempotent_hit":  true,
+				"idempotency_key": idemKey,
+				"executed_at":     prev.Timestamp.Format(time.RFC3339),
+			}
+			affected := []string{fmt.Sprintf("obj-%s-idempotent", strings.ReplaceAll(rpcName, "/", "-"))}
+			return output, affected, nil
+		}
+	}
+
+	rec := DispatchedAction{
+		WorkspaceID:    workspaceID,
+		RPCName:        rpcName,
+		InputJSON:      inputJSON,
+		IdempotencyKey: idemKey,
+		Timestamp:      time.Now().UTC(),
+	}
+	m.dispatched = append(m.dispatched, rec)
+	if idemKey != "" {
+		m.seenIdemKeys[idemKey] = rec
+	}
 
 	output := map[string]any{
 		"dispatched":  true,
 		"rpc":         rpcName,
-		"executed_at": time.Now().UTC().Format(time.RFC3339),
+		"executed_at": rec.Timestamp.Format(time.RFC3339),
 	}
 	affected := []string{fmt.Sprintf("obj-%s-%d", strings.ReplaceAll(rpcName, "/", "-"), len(m.dispatched))}
 	return output, affected, nil
@@ -81,6 +127,7 @@ func (m *MockActionDispatcher) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.dispatched = make([]DispatchedAction, 0)
+	m.seenIdemKeys = make(map[string]DispatchedAction)
 	m.customErrors = make(map[string]error)
 }
 
@@ -93,7 +140,10 @@ type ExecutionEngine struct {
 	dlqMgr          *DLQManager
 	diagBuilder     *DiagnosticsBuilder
 	dispatcher      ActionDispatcher
+	tierChecker     TierLimitChecker
 	maxCascadeDepth int
+	runLocksMu      sync.Mutex
+	inFlightRuns    map[string]bool
 }
 
 func NewExecutionEngine(
@@ -104,9 +154,7 @@ func NewExecutionEngine(
 	if capProvider == nil {
 		capProvider = NewDefaultCapabilityProvider()
 	}
-	if dispatcher == nil {
-		dispatcher = NewMockActionDispatcher()
-	}
+	// Do NOT default dispatcher to NewMockActionDispatcher() (AI-04 / R07 fail-closed contract).
 	diagBuilder := NewDiagnosticsBuilder()
 	dlqMgr := NewDLQManager(store)
 
@@ -117,12 +165,17 @@ func NewExecutionEngine(
 		diagBuilder:     diagBuilder,
 		dispatcher:      dispatcher,
 		maxCascadeDepth: 5, // EC-M20-001
+		inFlightRuns:    make(map[string]bool),
 	}
 
 	approvalMgr := NewApprovalManager(store, engine)
 	engine.approvalMgr = approvalMgr
 
 	return engine
+}
+
+func (e *ExecutionEngine) SetTierLimitChecker(tc TierLimitChecker) {
+	e.tierChecker = tc
 }
 
 func (e *ExecutionEngine) ApprovalManager() *ApprovalManager {
@@ -254,20 +307,138 @@ func (e *ExecutionEngine) FailRunWithDiagnostics(
 	return run, nil
 }
 
+func resolveActionPermissionKey(rpcName string) string {
+	if perm, ok := actionPermissionMap[rpcName]; ok {
+		switch perm {
+		case "commerce:inventory:manage":
+			return "product:manage"
+		case "commerce:monetization:manage":
+			return "offer:activate"
+		case "payout:manage":
+			return "reconciliation:override"
+		case "production:create":
+			return "asset:generate"
+		case "engagement:reply":
+			return "thread:reply"
+		default:
+			return perm
+		}
+	}
+	lower := strings.ToLower(rpcName)
+	switch {
+	case strings.Contains(lower, "deleteproduct") || strings.Contains(lower, "productservice/delete"):
+		return "product:delete"
+	case strings.Contains(lower, "payout") || strings.Contains(lower, "reconciliation"):
+		return "reconciliation:override"
+	case strings.Contains(lower, "activateoffer") || strings.Contains(lower, "price_change"):
+		return "offer:activate"
+	case strings.Contains(lower, "billing"):
+		return "workspace:billing:manage"
+	case strings.Contains(lower, "publish"):
+		return "publish:create"
+	default:
+		return "workflow:edit"
+	}
+}
+
+func checkDelegatedActionPermission(actorUserID, workspaceID, actorRole, rpcName string) error {
+	permKey := resolveActionPermissionKey(rpcName)
+	role := strings.ToLower(strings.TrimSpace(actorRole))
+	if role == "member" {
+		role = "contributor"
+	}
+	return rbac.CheckWorkspacePermission(permKey, rbac.PolicyContext{
+		ActorUserID: actorUserID,
+		WorkspaceID: workspaceID,
+		Role:        role,
+	})
+}
+
+func (e *ExecutionEngine) hasValidApprovedRequestForAction(
+	ctx context.Context,
+	workspaceID string,
+	wf *Workflow,
+	runID, rpcName, inputJSON string,
+	now time.Time,
+) (bool, error) {
+	approvals, _, err := e.store.ListApprovalRequests(ctx, workspaceID, ApprovalFilter{
+		RunID:  runID,
+		Status: "approved",
+		Limit:  100,
+	})
+	if err != nil {
+		return false, err
+	}
+	budgetQuote := estimateActionCredits(rpcName)
+	for i := range approvals {
+		req := &approvals[i]
+		hydrateApprovalMetadata(req)
+		if req.Status != "approved" {
+			continue
+		}
+		if req.WorkflowID != "" && req.WorkflowID != wf.WorkflowID {
+			continue
+		}
+		if req.WorkflowVersion != 0 && req.WorkflowVersion != wf.Version {
+			continue
+		}
+		if req.ExpiresAt != nil && now.After(*req.ExpiresAt) {
+			continue
+		}
+		expectedHash := ComputeActionHash(wf.Version, req.NodeID, rpcName, inputJSON, req.TargetObjects, budgetQuote)
+		if req.ActionHash == expectedHash {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // runLoop executes the sequential graph traversal until completion or pause.
 func (e *ExecutionEngine) runLoop(
 	ctx context.Context,
 	workspaceID, runID string,
 	signal *ResumeSignal,
 ) (*WorkflowRun, error) {
+	e.runLocksMu.Lock()
+	if e.inFlightRuns == nil {
+		e.inFlightRuns = make(map[string]bool)
+	}
+	if e.inFlightRuns[runID] {
+		e.runLocksMu.Unlock()
+		return nil, ErrRunAlreadyInFlight
+	}
+	e.inFlightRuns[runID] = true
+	e.runLocksMu.Unlock()
+	defer func() {
+		e.runLocksMu.Lock()
+		delete(e.inFlightRuns, runID)
+		e.runLocksMu.Unlock()
+	}()
+
 	run, err := e.store.GetWorkflowRun(ctx, workspaceID, runID)
 	if err != nil {
 		return nil, err
+	}
+	if run.Status == WorkflowRunStatusSucceeded || run.Status == WorkflowRunStatusCancelled {
+		return run, fmt.Errorf("%w: run is already in terminal state %s", ErrInvalidRunState, run.Status)
 	}
 
 	wf, err := e.store.GetWorkflow(ctx, workspaceID, run.WorkflowID)
 	if err != nil {
 		return nil, err
+	}
+	if wf.Status != WorkflowStatusActive {
+		return nil, fmt.Errorf("%w: workflow status is %s (must be active to execute)", ErrInvalidWorkflowState, wf.Status)
+	}
+
+	if wf.TierLimitCheck && e.tierChecker != nil {
+		if err := e.tierChecker.CheckTierLimit(ctx, workspaceID, wf); err != nil {
+			diag := e.diagBuilder.CreateRecord(workspaceID, runID, "TIER_LIMIT_EXCEEDED", run.CurrentNode, NodeTypeAction,
+				"Workspace subscription tier limit exceeded for this workflow.",
+				err.Error(),
+				"Upgrade workspace subscription tier or reduce workflow usage.", false)
+			return e.FailRunWithDiagnostics(ctx, workspaceID, runID, diag)
+		}
 	}
 
 	// 1. Cascade depth limit check (EC-M20-001)
@@ -306,11 +477,35 @@ func (e *ExecutionEngine) runLoop(
 		return nil, err
 	}
 	completedSteps := make(map[string]*WorkflowRunStep)
+	inFlightSteps := make(map[string]*WorkflowRunStep)
 	for i := range existingSteps {
 		st := &existingSteps[i]
 		if st.Status == "succeeded" {
 			completedSteps[st.NodeID] = st
+		} else if st.Status == "running" && st.NodeType == NodeTypeAction {
+			inFlightSteps[st.NodeID] = st
 		}
+	}
+
+	actorRole := run.InitiatedByRole
+	actorUserID := run.InitiatedByUserID
+	if run.TriggerEvent != nil {
+		if actorRole == "" {
+			if r, ok := run.TriggerEvent["_actor_role"].(string); ok {
+				actorRole = r
+			}
+		}
+		if actorUserID == "" {
+			if u, ok := run.TriggerEvent["_actor_user_id"].(string); ok {
+				actorUserID = u
+			}
+		}
+	}
+	if actorRole == "" {
+		actorRole = "manager"
+	}
+	if actorUserID == "" {
+		actorUserID = "00000000-0000-4000-8000-000000000001"
 	}
 
 	// Execution context
@@ -504,6 +699,21 @@ func (e *ExecutionEngine) runLoop(
 				break
 			}
 
+			// If step is already in 'running' state from an interrupted prior attempt, do NOT blindly re-dispatch!
+			if _, uncertain := inFlightSteps[node.NodeID]; uncertain {
+				run.Status = WorkflowRunStatusRequiresManualIntervention
+				run.UpdatedAt = now
+				if run.ResultSummary == nil {
+					run.ResultSummary = make(map[string]any)
+				}
+				run.ResultSummary["failure_type"] = "ACTION_EFFECT_UNCERTAIN"
+				run.ResultSummary["user_facing_explanation"] = fmt.Sprintf("Action step %s was interrupted in flight; manual reconciliation is required before replay.", node.NodeID)
+				if err := e.store.UpdateWorkflowRun(ctx, run); err != nil {
+					return nil, err
+				}
+				return run, ErrUncertainStepEffect
+			}
+
 			// 1. MANDATORY Capability Check (RULE-M20-002, AC-M20-003)
 			platform := detectPlatform(rpcName, inputJSON)
 			capStatus := "supported"
@@ -543,7 +753,9 @@ func (e *ExecutionEngine) runLoop(
 						CreatedAt:      now,
 						UpdatedAt:      now,
 					}
-					_ = e.store.CreateWorkflowRunStep(ctx, step)
+					if err := e.store.CreateWorkflowRunStep(ctx, step); err != nil {
+						return nil, err
+					}
 					existingSteps = append(existingSteps, *step)
 
 					nextNodeID = fallbackNodeID
@@ -568,14 +780,69 @@ func (e *ExecutionEngine) runLoop(
 					CreatedAt:      now,
 					UpdatedAt:      now,
 				}
-				_ = e.store.CreateWorkflowRunStep(ctx, step)
+				if err := e.store.CreateWorkflowRunStep(ctx, step); err != nil {
+					return nil, err
+				}
 				return e.FailRunWithDiagnostics(ctx, workspaceID, runID, diag)
 			}
 
-			// 2. Dispatch action
-			output, affectedObjs, dispatchErr := e.dispatcher.Dispatch(ctx, workspaceID, rpcName, inputJSON)
-			if dispatchErr != nil {
+			// 2. Delegated RBAC Permission Check at Action Effect Point (AI-09)
+			if permErr := checkDelegatedActionPermission(actorUserID, workspaceID, actorRole, rpcName); permErr != nil {
+				diag := e.diagBuilder.CreateRecord(
+					workspaceID,
+					runID,
+					"PERMISSION_DENIED",
+					node.NodeID,
+					NodeTypeAction,
+					fmt.Sprintf("Permission denied: role %q is not authorized to execute action %q.", actorRole, rpcName),
+					permErr.Error(),
+					"Assign an authorized operator role or remove the privileged action from the workflow.",
+					hasFallbackBranch,
+				)
+				stepOrder := int16(len(existingSteps) + 1)
+				step := &WorkflowRunStep{
+					StepID:         newUUID(),
+					WorkspaceID:    workspaceID,
+					RunID:          runID,
+					NodeID:         node.NodeID,
+					NodeType:       NodeTypeAction,
+					StepOrder:      stepOrder,
+					Status:         "failed",
+					OutputSnapshot: fmt.Sprintf(`{"error":%q}`, diag.UserFacingExplanation),
+					StartedAt:      &now,
+					CompletedAt:    &now,
+					CreatedAt:      now,
+					UpdatedAt:      now,
+				}
+				if err := e.store.CreateWorkflowRunStep(ctx, step); err != nil {
+					return nil, err
+				}
 				if hasFallbackBranch {
+					nextNodeID = fallbackNodeID
+					branchTaken = EdgeBranchFailure
+					break
+				}
+				return e.FailRunWithDiagnostics(ctx, workspaceID, runID, diag)
+			}
+
+			// 3. Mandatory Approval Verification for Sensitive Actions at Effect Point (AI-09)
+			if IsSensitiveAction(rpcName) {
+				approvedOK, err := e.hasValidApprovedRequestForAction(ctx, workspaceID, wf, runID, rpcName, inputJSON, now)
+				if err != nil {
+					return nil, err
+				}
+				if !approvedOK {
+					diag := e.diagBuilder.CreateRecord(
+						workspaceID,
+						runID,
+						"APPROVAL_REQUIRED",
+						node.NodeID,
+						NodeTypeAction,
+						fmt.Sprintf("Sensitive action %q requires a valid approved approval gate bound to the current workflow version and inputs.", rpcName),
+						ErrApprovalRequiredForSensitiveAction.Error(),
+						"Add an upstream Approval node and obtain manager approval before executing this sensitive action.",
+						hasFallbackBranch,
+					)
 					stepOrder := int16(len(existingSteps) + 1)
 					step := &WorkflowRunStep{
 						StepID:         newUUID(),
@@ -585,13 +852,87 @@ func (e *ExecutionEngine) runLoop(
 						NodeType:       NodeTypeAction,
 						StepOrder:      stepOrder,
 						Status:         "failed",
-						OutputSnapshot: fmt.Sprintf(`{"error":%q}`, dispatchErr.Error()),
+						OutputSnapshot: fmt.Sprintf(`{"error":%q}`, ErrApprovalRequiredForSensitiveAction.Error()),
 						StartedAt:      &now,
 						CompletedAt:    &now,
 						CreatedAt:      now,
 						UpdatedAt:      now,
 					}
-					_ = e.store.CreateWorkflowRunStep(ctx, step)
+					if err := e.store.CreateWorkflowRunStep(ctx, step); err != nil {
+						return nil, err
+					}
+					if hasFallbackBranch {
+						nextNodeID = fallbackNodeID
+						branchTaken = EdgeBranchFailure
+						break
+					}
+					return e.FailRunWithDiagnostics(ctx, workspaceID, runID, diag)
+				}
+			}
+
+			// 4. Fail-Closed Dispatcher Check (AI-04 / R07)
+			if e.dispatcher == nil {
+				stepOrder := int16(len(existingSteps) + 1)
+				step := &WorkflowRunStep{
+					StepID:         newUUID(),
+					WorkspaceID:    workspaceID,
+					RunID:          runID,
+					NodeID:         node.NodeID,
+					NodeType:       NodeTypeAction,
+					StepOrder:      stepOrder,
+					Status:         "failed",
+					InputSnapshot:  inputJSON,
+					OutputSnapshot: fmt.Sprintf(`{"error":%q}`, ErrDispatcherNotConfigured.Error()),
+					StartedAt:      &now,
+					CompletedAt:    &now,
+					CreatedAt:      now,
+					UpdatedAt:      now,
+				}
+				if err := e.store.CreateWorkflowRunStep(ctx, step); err != nil {
+					return nil, err
+				}
+				if hasFallbackBranch {
+					nextNodeID = fallbackNodeID
+					branchTaken = EdgeBranchFailure
+					break
+				}
+				diag := e.diagBuilder.ActionFailed(workspaceID, runID, node.NodeID, rpcName, ErrDispatcherNotConfigured.Error(), false)
+				return e.FailRunWithDiagnostics(ctx, workspaceID, runID, diag)
+			}
+
+			// 5. Persist pre-dispatch running step BEFORE external dispatch (AI-10 / R09)
+			stepID := newUUID()
+			stepOrder := int16(len(existingSteps) + 1)
+			runningStep := &WorkflowRunStep{
+				StepID:        stepID,
+				WorkspaceID:   workspaceID,
+				RunID:         runID,
+				NodeID:        node.NodeID,
+				NodeType:      NodeTypeAction,
+				StepOrder:     stepOrder,
+				Status:        "running",
+				InputSnapshot: inputJSON,
+				StartedAt:     &now,
+				CreatedAt:     now,
+				UpdatedAt:     now,
+			}
+			if err := e.store.CreateWorkflowRunStep(ctx, runningStep); err != nil {
+				return nil, fmt.Errorf("persist pre-dispatch running step: %w", err)
+			}
+			existingSteps = append(existingSteps, *runningStep)
+
+			// 6. Dispatch action with deterministic idempotency key
+			dispatchCtx := WithActionIdempotencyKey(ctx, fmt.Sprintf("%s:%s", runID, node.NodeID))
+			output, affectedObjs, dispatchErr := e.dispatcher.Dispatch(dispatchCtx, workspaceID, rpcName, inputJSON)
+			if dispatchErr != nil {
+				runningStep.Status = "failed"
+				runningStep.OutputSnapshot = fmt.Sprintf(`{"error":%q}`, dispatchErr.Error())
+				runningStep.CompletedAt = &now
+				runningStep.UpdatedAt = now
+				if err := e.store.UpdateWorkflowRunStep(ctx, runningStep); err != nil {
+					return nil, fmt.Errorf("persist failed action step: %w", err)
+				}
+				if hasFallbackBranch {
 					nextNodeID = fallbackNodeID
 					branchTaken = EdgeBranchFailure
 					break
@@ -611,9 +952,9 @@ func (e *ExecutionEngine) runLoop(
 			sideEffect := SideEffect{
 				SideEffectID:    sideEffectID,
 				RunID:           runID,
-				StepID:          newUUID(),
+				StepID:          stepID,
 				NodeID:          node.NodeID,
-				Actor:           "system",
+				Actor:           actorUserID,
 				Action:          rpcName,
 				AffectedObjects: affectedObjs,
 				CorrelationID:   runID,
@@ -625,26 +966,19 @@ func (e *ExecutionEngine) runLoop(
 			}
 
 			outBytes, _ := json.Marshal(output)
-			stepOrder := int16(len(existingSteps) + 1)
-			step := &WorkflowRunStep{
-				StepID:         sideEffect.StepID,
-				WorkspaceID:    workspaceID,
-				RunID:          runID,
-				NodeID:         node.NodeID,
-				NodeType:       NodeTypeAction,
-				StepOrder:      stepOrder,
-				Status:         "succeeded",
-				InputSnapshot:  inputJSON,
-				OutputSnapshot: string(outBytes),
-				SideEffectRefs: []string{sideEffectID},
-				StartedAt:      &now,
-				CompletedAt:    &now,
-				CreatedAt:      now,
-				UpdatedAt:      now,
+			runningStep.Status = "succeeded"
+			runningStep.OutputSnapshot = string(outBytes)
+			runningStep.SideEffectRefs = []string{sideEffectID}
+			runningStep.CompletedAt = &now
+			runningStep.UpdatedAt = now
+			if err := e.store.UpdateWorkflowRunStep(ctx, runningStep); err != nil {
+				return nil, fmt.Errorf("persist post-dispatch succeeded step: %w", err)
 			}
-			_ = e.store.CreateWorkflowRunStep(ctx, step)
-			existingSteps = append(existingSteps, *step)
-			completedSteps[node.NodeID] = step
+			existingSteps[len(existingSteps)-1] = *runningStep
+			completedSteps[node.NodeID] = runningStep
+			if err := e.store.UpdateWorkflowRun(ctx, run); err != nil {
+				return nil, fmt.Errorf("persist workflow run after action: %w", err)
+			}
 
 			// Follow default or success branch
 			for _, edge := range adj[node.NodeID] {

@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"sync"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 	automationv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/automation/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
 )
 
 // ============================================================================
@@ -125,6 +127,7 @@ func TestAcceptanceTarget2_BudgetCeilingPauses(t *testing.T) {
 	ctx := context.Background()
 	store := NewMemStore()
 	svc := NewService(store)
+	svc.SetStepExecutor(NewSimulatedStepExecutor())
 
 	workspaceID := "11111111-1111-1111-1111-111111111101"
 	editorCaller := CallerContext{
@@ -240,6 +243,7 @@ func TestAcceptanceTarget3_PartialFailureAuditedHandoff(t *testing.T) {
 	ctx := context.Background()
 	store := NewMemStore()
 	svc := NewService(store)
+	svc.SetStepExecutor(NewSimulatedStepExecutor())
 
 	workspaceID := "11111111-1111-1111-1111-111111111101"
 	editorCaller := CallerContext{
@@ -350,6 +354,7 @@ func TestVideoAgent_FullPipelineSuccess(t *testing.T) {
 	ctx := context.Background()
 	store := NewMemStore()
 	svc := NewService(store)
+	svc.SetStepExecutor(NewSimulatedStepExecutor())
 
 	workspaceID := "11111111-1111-1111-1111-111111111101"
 	editorCaller := CallerContext{
@@ -425,6 +430,7 @@ func TestCopilotAction_CrossModuleChainWithApproval(t *testing.T) {
 	ctx := context.Background()
 	store := NewMemStore()
 	svc := NewService(store)
+	svc.SetStepExecutor(NewSimulatedStepExecutor())
 
 	workspaceID := "11111111-1111-1111-1111-111111111101"
 	editorCaller := CallerContext{
@@ -476,12 +482,16 @@ func TestCopilotAction_CrossModuleChainWithApproval(t *testing.T) {
 // ============================================================================
 
 func TestConnectRPCHandler_AgentService(t *testing.T) {
-	ctx := context.Background()
+	workspaceID := "11111111-1111-1111-1111-111111111101"
+	ctx := transportauth.WithPrincipal(context.Background(), transportauth.Session{
+		UserID:      "11111111-1111-1111-1111-111111111199",
+		WorkspaceID: workspaceID,
+		Role:        "editor",
+	})
 	store := NewMemStore()
 	svc := NewService(store)
+	svc.SetStepExecutor(NewSimulatedStepExecutor())
 	h := NewAgentHandler(svc)
-
-	workspaceID := "11111111-1111-1111-1111-111111111101"
 
 	// 1. LaunchAgent RPC
 	launchReq := connect.NewRequest(&automationv1.AgentServiceLaunchAgentRequest{
@@ -549,6 +559,75 @@ func TestConnectRPCHandler_AgentService(t *testing.T) {
 	}
 }
 
+func TestConnectRPCHandler_AgentService_AuthAndRBACHardening(t *testing.T) {
+	store := NewMemStore()
+	svc := NewService(store)
+	h := NewAgentHandler(svc)
+
+	workspaceA := "11111111-1111-1111-1111-111111111101"
+	workspaceB := "22222222-2222-2222-2222-222222222202"
+
+	// 1. Unauthenticated request with caller-supplied WorkspaceId must fail with CodeUnauthenticated (no synthetic owner).
+	_, err := h.LaunchAgent(context.Background(), connect.NewRequest(&automationv1.AgentServiceLaunchAgentRequest{
+		WorkspaceId: workspaceA,
+		AgentType:   automationv1.AgentType_AGENT_TYPE_GENERIC,
+		TaskPrompt:  "Unauthenticated attempt",
+	}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("expected CodeUnauthenticated for missing principal, got %v", err)
+	}
+
+	// 2. Principal for Workspace A attempting to target Workspace B must fail with CodePermissionDenied.
+	editorCtxA := transportauth.WithPrincipal(context.Background(), transportauth.Session{
+		UserID:      "11111111-1111-1111-1111-111111111110",
+		WorkspaceID: workspaceA,
+		Role:        "editor",
+	})
+	_, err = h.LaunchAgent(editorCtxA, connect.NewRequest(&automationv1.AgentServiceLaunchAgentRequest{
+		WorkspaceId: workspaceB,
+		AgentType:   automationv1.AgentType_AGENT_TYPE_GENERIC,
+		TaskPrompt:  "Cross-workspace attempt",
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied for cross-workspace request, got %v", err)
+	}
+
+	// 3. Viewer role must NOT be escalated to owner; LaunchAgent and CancelRun must fail with CodePermissionDenied.
+	viewerCtxA := transportauth.WithPrincipal(context.Background(), transportauth.Session{
+		UserID:      "11111111-1111-1111-1111-111111111111",
+		WorkspaceID: workspaceA,
+		Role:        "viewer",
+	})
+	_, err = h.LaunchAgent(viewerCtxA, connect.NewRequest(&automationv1.AgentServiceLaunchAgentRequest{
+		WorkspaceId: workspaceA,
+		AgentType:   automationv1.AgentType_AGENT_TYPE_GENERIC,
+		TaskPrompt:  "Viewer launch attempt",
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied when viewer calls LaunchAgent, got %v", err)
+	}
+
+	// Viewer CAN call ListRuns (workflow:read).
+	if _, err := h.ListRuns(viewerCtxA, connect.NewRequest(&automationv1.AgentServiceListRunsRequest{
+		WorkspaceId: workspaceA,
+	})); err != nil {
+		t.Fatalf("expected viewer ListRuns to succeed, got %v", err)
+	}
+
+	// 4. MembershipRoleResolver rejecting revoked/inactive membership must fail with CodePermissionDenied.
+	hWithResolver := NewAgentHandler(svc).WithMembershipRoleResolver(func(ctx context.Context, wsID, userID string) (string, bool, error) {
+		return "owner", false, nil
+	})
+	_, err = hWithResolver.LaunchAgent(editorCtxA, connect.NewRequest(&automationv1.AgentServiceLaunchAgentRequest{
+		WorkspaceId: workspaceA,
+		AgentType:   automationv1.AgentType_AGENT_TYPE_GENERIC,
+		TaskPrompt:  "Revoked member attempt",
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied for inactive membership, got %v", err)
+	}
+}
+
 // ============================================================================
 // Concurrency & Race Detection Check
 // ============================================================================
@@ -557,6 +636,7 @@ func TestConcurrentAgentOperations_NoRace(t *testing.T) {
 	ctx := context.Background()
 	store := NewMemStore()
 	svc := NewService(store)
+	svc.SetStepExecutor(NewSimulatedStepExecutor())
 	workspaceID := "11111111-1111-1111-1111-111111111101"
 
 	caller := CallerContext{
@@ -594,4 +674,104 @@ func TestConcurrentAgentOperations_NoRace(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+// ============================================================================
+// AI-04 / R07 Regression: Unconfigured StepExecutor Fails Closed
+// ============================================================================
+
+func TestAI04_DefaultServiceFailsClosedWithoutFakeOutputsOrCharges(t *testing.T) {
+	ctx := context.Background()
+	store := NewMemStore()
+	// Default service has NO StepExecutor configured.
+	svc := NewService(store)
+
+	workspaceID := "11111111-1111-1111-1111-111111111101"
+	caller := CallerContext{
+		UserID:        "user-editor",
+		WorkspaceID:   workspaceID,
+		WorkspaceRole: "editor",
+	}
+
+	run, _, _, err := svc.LaunchAgent(
+		ctx,
+		caller,
+		AgentTypeVideoAgent,
+		"Generate real video review",
+		"",
+		"",
+		"50.000000",
+		"",
+		true, // autoExecute must fail closed when executor is absent
+		nil,
+	)
+	if !errors.Is(err, ErrExecutorNotConfigured) {
+		t.Fatalf("expected ErrExecutorNotConfigured when no StepExecutor is wired, got: %v", err)
+	}
+	if run == nil {
+		t.Fatalf("expected failed/handed-off run record to be returned")
+	}
+	if run.CurrentState == StateCompleted {
+		t.Fatalf("run must NOT be marked completed without a concrete StepExecutor")
+	}
+	if run.CreditsUsed != "0.000000" {
+		t.Fatalf("expected 0.000000 credits charged on unconfigured executor, got %s", run.CreditsUsed)
+	}
+	if len(run.Outputs) != 0 {
+		t.Fatalf("expected 0 outputs synthesized on unconfigured executor, got %d", len(run.Outputs))
+	}
+	for i, step := range run.Steps {
+		if step.Status == StepStatusCompleted {
+			t.Fatalf("step %d (%s) must NOT be marked completed without executor", i+1, step.Title)
+		}
+	}
+}
+
+type testAuthVerifier struct {
+	session transportauth.Session
+}
+
+func (v testAuthVerifier) Verify(_ context.Context, _ string) (transportauth.Session, error) {
+	return v.session, nil
+}
+
+func TestPrincipalWorkspaceMismatch_Denied(t *testing.T) {
+	store := NewMemStore()
+	svc := NewService(store)
+
+	interceptor, err := transportauth.NewServerInterceptor(transportauth.Options{
+		Mode: transportauth.ModeAPI,
+		Verifier: testAuthVerifier{
+			session: transportauth.Session{
+				UserID:      "11111111-1111-4111-8111-111111111199",
+				WorkspaceID: "11111111-1111-4111-8111-111111111101",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewServerInterceptor: %v", err)
+	}
+
+	var authCtx context.Context
+	wrapped := interceptor.WrapUnary(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		authCtx = ctx
+		return connect.NewResponse(&automationv1.AgentServiceLaunchAgentResponse{}), nil
+	})
+	req := connect.NewRequest(&automationv1.AgentServiceLaunchAgentRequest{})
+	req.Header().Set("Authorization", "Bearer valid-test-token")
+	req.Header().Set("x-workspace-id", "11111111-1111-4111-8111-111111111101")
+	if _, err := wrapped(context.Background(), req); err != nil {
+		t.Fatalf("wrapped auth interceptor call failed: %v", err)
+	}
+
+	spoofedCaller := CallerContext{
+		UserID:        "11111111-1111-4111-8111-111111111199",
+		WorkspaceID:   "22222222-2222-2222-2222-222222222202",
+		WorkspaceRole: "editor",
+	}
+
+	_, _, _, err = svc.LaunchAgent(authCtx, spoofedCaller, AgentTypeGeneric, "Spoofed workspace task", "", "", "10.000000", "", false, nil)
+	if !errors.Is(err, ErrCrossTenantDenied) {
+		t.Fatalf("expected ErrCrossTenantDenied on workspace mismatch against verified principal, got: %v", err)
+	}
 }

@@ -532,8 +532,127 @@ export const supportStore = {
     supportTicketsStore.update((list) =>
       list.map((t) => (t.id === ticketId ? { ...t, status: 'closed', csatScore } : t))
     );
+  },
+
+  upsertRemoteTicket: (ticket: SupportTicketItem, initialMsg?: string) => {
+    supportTicketsStore.update((list) => [ticket, ...list.filter((t) => t.id !== ticket.id)]);
+    if (initialMsg) {
+      const msg: SupportMessageItem = {
+        id: `msg-${ticket.id}-1`,
+        ticketId: ticket.id,
+        authorType: 'user',
+        body: initialMsg,
+        isInternalNote: false,
+        createdAt: new Date().toISOString()
+      };
+      supportMessagesStore.update((list) => [...list, msg]);
+    }
   }
 };
+
+import { callCanonicalRpc, generateIdempotencyKey, type CanonicalRpcOptions } from '$lib/api/client';
+
+export interface SubmitSupportTicketRemoteInput {
+  workspaceId?: string;
+  planTier: string;
+  subject: string;
+  priority: 'urgent' | 'high' | 'normal' | 'low';
+  initialMessage: string;
+  category?: string;
+}
+
+export interface SubmitSupportTicketRemoteResult {
+  ok: boolean;
+  ticket?: SupportTicketItem;
+  error?: string;
+}
+
+/**
+ * Submits a support ticket to canonical `creativanta.admin.v1.SupportService/CreateTicket` (UF-07).
+ * Never fabricates `#TK-...` ticket numbers in browser memory or clears user input when
+ * unauthenticated or when backend persistence fails.
+ */
+export async function submitSupportTicketRemote(
+  input: SubmitSupportTicketRemoteInput,
+  options: CanonicalRpcOptions = {}
+): Promise<SubmitSupportTicketRemoteResult> {
+  const subject = (input.subject || '').trim();
+  const message = (input.initialMessage || '').trim();
+
+  if (!subject || !message) {
+    return {
+      ok: false,
+      error: 'Vui lòng nhập đầy đủ tiêu đề và nội dung chi tiết yêu cầu hỗ trợ.'
+    };
+  }
+
+  const rpcRes = await callCanonicalRpc<
+    Record<string, unknown>,
+    {
+      ticket?: {
+        ticket_id?: string;
+        id?: string;
+        ticket_number?: string;
+        subject?: string;
+        priority?: SupportTicketItem['priority'];
+        status?: SupportTicketItem['status'];
+        category?: SupportTicketItem['category'];
+        response_due_minutes?: number;
+        resolution_due_minutes?: number;
+      };
+    }
+  >(
+    'creativanta.admin.v1.SupportService/CreateTicket',
+    {
+      idempotency_key: options.idempotencyKey || generateIdempotencyKey('support-ticket'),
+      workspace_id: input.workspaceId,
+      subject,
+      priority: input.priority,
+      initial_message: message,
+      category: input.category || 'technical',
+      plan_tier: input.planTier
+    },
+    {
+      ...options,
+      workspaceId: options.workspaceId ?? input.workspaceId
+    }
+  );
+
+  if (!rpcRes.ok) {
+    return {
+      ok: false,
+      error: rpcRes.error.message
+    };
+  }
+
+  const remote = rpcRes.data?.ticket;
+  const ticketId = remote?.ticket_id || remote?.id;
+  const ticketNumber = remote?.ticket_number;
+
+  if (!ticketId || !ticketNumber) {
+    return {
+      ok: false,
+      error: 'Phản hồi từ máy chủ thiếu mã yêu cầu hỗ trợ (ticket_id/ticket_number). Nội dung của bạn đã được giữ nguyên.'
+    };
+  }
+
+  const sla = calculateSupportSLA(input.planTier);
+  const ticket: SupportTicketItem = {
+    id: ticketId,
+    ticketNumber,
+    subject: remote.subject || subject,
+    priority: remote.priority || input.priority,
+    status: remote.status || 'open',
+    category: (remote.category || input.category || 'technical') as SupportTicketItem['category'],
+    planTier: input.planTier,
+    responseDueMinutes: remote.response_due_minutes ?? sla.responseHours * 60,
+    resolutionDueMinutes: remote.resolution_due_minutes ?? sla.resolutionHours * 60,
+    isSlaBreached: false
+  };
+
+  supportStore.upsertRemoteTicket(ticket, message);
+  return { ok: true, ticket };
+}
 
 // =============================================================================
 // 5. In-App Announcements & Session Throttling Store (§3.2)

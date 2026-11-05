@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -87,10 +88,19 @@ func (m *MemoryStore) getSkusForProductLocked(workspaceID, productID string) []P
 			list = append(list, *cloneSku(s))
 		}
 	}
+	sort.Slice(list, func(i, j int) bool {
+		if !list[i].CreatedAt.Equal(list[j].CreatedAt) {
+			return list[i].CreatedAt.Before(list[j].CreatedAt)
+		}
+		return list[i].SkuID < list[j].SkuID
+	})
 	return list
 }
 
 func (m *MemoryStore) ListProducts(_ context.Context, workspaceID string, filter ListFilter, limit, offset int) ([]*Product, int64, error) {
+	if offset < 0 {
+		return nil, 0, fmt.Errorf("%w: offset cannot be negative", ErrInvalidInput)
+	}
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -117,8 +127,15 @@ func (m *MemoryStore) ListProducts(_ context.Context, workspaceID string, filter
 		matched = append(matched, cloneProduct(p))
 	}
 
+	sort.Slice(matched, func(i, j int) bool {
+		if !matched[i].CreatedAt.Equal(matched[j].CreatedAt) {
+			return matched[i].CreatedAt.After(matched[j].CreatedAt)
+		}
+		return matched[i].ProductID > matched[j].ProductID
+	})
+
 	total := int64(len(matched))
-	if offset > len(matched) {
+	if offset >= len(matched) {
 		return []*Product{}, total, nil
 	}
 	end := offset + limit
@@ -586,7 +603,7 @@ func (s *PostgresStore) ListProducts(ctx context.Context, workspaceID string, fi
 		       category, base_price, currency, cogs, catalog_status,
 		       inventory_enabled, external_refs, images, metadata, created_at, updated_at, deleted_at
 		%s
-		ORDER BY created_at DESC
+		ORDER BY created_at DESC, product_id DESC
 		LIMIT $%d OFFSET $%d
 	`, baseQuery, argIdx, argIdx+1)
 	args = append(args, limit, offset)

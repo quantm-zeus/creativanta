@@ -220,9 +220,10 @@ func (p *OutboxPoller) PollOnce(ctx context.Context, now time.Time) (PollBatchRe
 			AggregateID:   row.AggregateID,
 			WorkspaceID:   row.WorkspaceID,
 			Payload:       row.Payload,
-			Metadata:      row.Metadata,
+			Metadata:      stripBrokerMetadata(row.Metadata),
 			PublishedAt:   now,
 		}
+		populateEnvelopeAuthFields(&msg, row.Metadata, row.Payload)
 		entryID, pubErr := p.Broker.XAdd(ctx, row.TargetStream, msg)
 		if pubErr != nil {
 			backoff := time.Duration(1<<minInt(row.AttemptCount, 5)) * time.Second

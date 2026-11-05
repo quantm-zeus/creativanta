@@ -9,6 +9,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
 )
 
 type Store interface {
@@ -388,12 +390,79 @@ func (s *MemoryStore) UpdateDLQItem(ctx context.Context, item *DLQItem) error {
 // PostgresStore (PostgreSQL persistence using tenantdb and RLS)
 // ----------------------------------------------------------------------------
 
+const defaultSystemActorUUID = "00000000-0000-4000-8000-000000000001"
+
+type storeActorUserIDKey struct{}
+
+// WithStoreActorUserID attaches a caller UserID hint to ctx for PostgresStore tenantdb.WithTx transactions.
+func WithStoreActorUserID(ctx context.Context, userID string) context.Context {
+	if ctx == nil || userID == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, storeActorUserIDKey{}, userID)
+}
+
+func resolveStoreActorUserID(ctx context.Context, fallbackUserID string) string {
+	if sc, ok := tenantdb.ScopeFromContext(ctx); ok && tenantdb.IsValidNonZeroUUID(sc.UserID) {
+		return sc.UserID
+	}
+	if session, ok := transportauth.PrincipalFromContext(ctx); ok && tenantdb.IsValidNonZeroUUID(session.UserID) {
+		return session.UserID
+	}
+	if ctx != nil {
+		if uid, ok := ctx.Value(storeActorUserIDKey{}).(string); ok && tenantdb.IsValidNonZeroUUID(uid) {
+			return uid
+		}
+	}
+	if tenantdb.IsValidNonZeroUUID(fallbackUserID) {
+		return fallbackUserID
+	}
+	return defaultSystemActorUUID
+}
+
+type txCaptureBeginner struct {
+	inner tenantdb.TxBeginner
+	tx    pgx.Tx
+}
+
+func (b *txCaptureBeginner) Begin(ctx context.Context) (pgx.Tx, error) {
+	tx, err := b.inner.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	b.tx = tx
+	return tx, nil
+}
+
 type PostgresStore struct {
-	pool *pgxpool.Pool
+	pool     *pgxpool.Pool
+	beginner tenantdb.TxBeginner
 }
 
 func NewPostgresStore(pool *pgxpool.Pool) *PostgresStore {
-	return &PostgresStore{pool: pool}
+	var beginner tenantdb.TxBeginner
+	if pool != nil {
+		beginner = pool
+	}
+	return &PostgresStore{pool: pool, beginner: beginner}
+}
+
+func NewPostgresStoreWithBeginner(beginner tenantdb.TxBeginner) *PostgresStore {
+	return &PostgresStore{beginner: beginner}
+}
+
+func (p *PostgresStore) withTenantTx(ctx context.Context, workspaceID, actorHint string, fn func(txCtx context.Context, tx pgx.Tx) error) error {
+	if p == nil || p.beginner == nil {
+		return tenantdb.ErrNilBeginner
+	}
+	cap := &txCaptureBeginner{inner: p.beginner}
+	scope := tenantdb.Scope{
+		WorkspaceID: workspaceID,
+		UserID:      resolveStoreActorUserID(ctx, actorHint),
+	}
+	return tenantdb.WithTx(ctx, cap, scope, func(txCtx context.Context, _ *tenantdb.Queries) error {
+		return fn(txCtx, cap.tx)
+	})
 }
 
 var _ Store = (*PostgresStore)(nil)
@@ -425,13 +494,15 @@ func (p *PostgresStore) CreateWorkflow(ctx context.Context, w *Workflow) error {
 			$12, NULLIF($13, '')::uuid, $14, $15
 		)
 	`
-	_, err = p.pool.Exec(ctx, query,
-		w.WorkflowID, w.WorkspaceID, w.Title, w.WorkflowType,
-		triggerJSON, actionJSON, approvalsJSON,
-		w.Status, w.Version, w.ActivepiecesFlowID, w.TierLimitCheck,
-		w.RunCount, w.CreatedBy, w.CreatedAt, w.UpdatedAt,
-	)
-	return err
+	return p.withTenantTx(ctx, w.WorkspaceID, w.CreatedBy, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, query,
+			w.WorkflowID, w.WorkspaceID, w.Title, w.WorkflowType,
+			triggerJSON, actionJSON, approvalsJSON,
+			w.Status, w.Version, w.ActivepiecesFlowID, w.TierLimitCheck,
+			w.RunCount, w.CreatedBy, w.CreatedAt, w.UpdatedAt,
+		)
+		return err
+	})
 }
 
 func (p *PostgresStore) GetWorkflow(ctx context.Context, workspaceID, workflowID string) (*Workflow, error) {
@@ -445,88 +516,97 @@ func (p *PostgresStore) GetWorkflow(ctx context.Context, workspaceID, workflowID
 		FROM workflows
 		WHERE workspace_id = $1 AND workflow_id = $2 AND deleted_at IS NULL
 	`
-	row := p.pool.QueryRow(ctx, query, workspaceID, workflowID)
 	var w Workflow
-	var triggerRaw, actionRaw, approvalsRaw []byte
-	var deletedAt *time.Time
-
-	err := row.Scan(
-		&w.WorkflowID, &w.WorkspaceID, &w.Title, &w.WorkflowType,
-		&triggerRaw, &actionRaw, &approvalsRaw,
-		&w.Status, &w.Version, &w.ActivepiecesFlowID,
-		&w.TierLimitCheck, &w.RunCount, &w.CreatedBy,
-		&w.CreatedAt, &w.UpdatedAt, &deletedAt,
-	)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, ErrWorkflowNotFound
-		}
-		return nil, err
-	}
-	w.DeletedAt = deletedAt
-	_ = json.Unmarshal(triggerRaw, &w.TriggerConfig)
-	_ = json.Unmarshal(actionRaw, &w.ActionChain)
-	_ = json.Unmarshal(approvalsRaw, &w.ApprovalRequirements)
-	return &w, nil
-}
-
-func (p *PostgresStore) ListWorkflows(ctx context.Context, workspaceID string, status string, limit, offset int) ([]Workflow, int, error) {
-	countQuery := `SELECT COUNT(*) FROM workflows WHERE workspace_id = $1 AND deleted_at IS NULL`
-	args := []any{workspaceID}
-	if status != "" {
-		countQuery += ` AND status = $2`
-		args = append(args, status)
-	}
-	var total int
-	if err := p.pool.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-
-	query := `
-		SELECT
-			workflow_id, workspace_id, title, workflow_type,
-			trigger_config, action_chain, approval_requirements,
-			status, version, COALESCE(activepieces_flow_id, ''),
-			tier_limit_check, run_count, COALESCE(created_by::text, ''),
-			created_at, updated_at
-		FROM workflows
-		WHERE workspace_id = $1 AND deleted_at IS NULL
-	`
-	queryArgs := []any{workspaceID}
-	if status != "" {
-		query += ` AND status = $2`
-		queryArgs = append(queryArgs, status)
-	}
-	query += ` ORDER BY created_at DESC`
-	if limit > 0 {
-		query += fmt.Sprintf(` LIMIT %d OFFSET %d`, limit, offset)
-	}
-
-	rows, err := p.pool.Query(ctx, query, queryArgs...)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
-
-	var result []Workflow
-	for rows.Next() {
-		var w Workflow
+	err := p.withTenantTx(ctx, workspaceID, "", func(txCtx context.Context, tx pgx.Tx) error {
+		row := tx.QueryRow(txCtx, query, workspaceID, workflowID)
 		var triggerRaw, actionRaw, approvalsRaw []byte
-		if err := rows.Scan(
+		var deletedAt *time.Time
+
+		err := row.Scan(
 			&w.WorkflowID, &w.WorkspaceID, &w.Title, &w.WorkflowType,
 			&triggerRaw, &actionRaw, &approvalsRaw,
 			&w.Status, &w.Version, &w.ActivepiecesFlowID,
 			&w.TierLimitCheck, &w.RunCount, &w.CreatedBy,
-			&w.CreatedAt, &w.UpdatedAt,
-		); err != nil {
-			return nil, 0, err
+			&w.CreatedAt, &w.UpdatedAt, &deletedAt,
+		)
+		if err != nil {
+			if err == pgx.ErrNoRows {
+				return ErrWorkflowNotFound
+			}
+			return err
 		}
+		w.DeletedAt = deletedAt
 		_ = json.Unmarshal(triggerRaw, &w.TriggerConfig)
 		_ = json.Unmarshal(actionRaw, &w.ActionChain)
 		_ = json.Unmarshal(approvalsRaw, &w.ApprovalRequirements)
-		result = append(result, w)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	return result, total, rows.Err()
+	return &w, nil
+}
+
+func (p *PostgresStore) ListWorkflows(ctx context.Context, workspaceID string, status string, limit, offset int) ([]Workflow, int, error) {
+	var result []Workflow
+	var total int
+	err := p.withTenantTx(ctx, workspaceID, "", func(txCtx context.Context, tx pgx.Tx) error {
+		countQuery := `SELECT COUNT(*) FROM workflows WHERE workspace_id = $1 AND deleted_at IS NULL`
+		args := []any{workspaceID}
+		if status != "" {
+			countQuery += ` AND status = $2`
+			args = append(args, status)
+		}
+		if err := tx.QueryRow(txCtx, countQuery, args...).Scan(&total); err != nil {
+			return err
+		}
+
+		query := `
+			SELECT
+				workflow_id, workspace_id, title, workflow_type,
+				trigger_config, action_chain, approval_requirements,
+				status, version, COALESCE(activepieces_flow_id, ''),
+				tier_limit_check, run_count, COALESCE(created_by::text, ''),
+				created_at, updated_at
+			FROM workflows
+			WHERE workspace_id = $1 AND deleted_at IS NULL
+		`
+		queryArgs := []any{workspaceID}
+		if status != "" {
+			query += ` AND status = $2`
+			queryArgs = append(queryArgs, status)
+		}
+		query += ` ORDER BY created_at DESC`
+		if limit > 0 {
+			query += fmt.Sprintf(` LIMIT %d OFFSET %d`, limit, offset)
+		}
+
+		rows, err := tx.Query(txCtx, query, queryArgs...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var w Workflow
+			var triggerRaw, actionRaw, approvalsRaw []byte
+			if err := rows.Scan(
+				&w.WorkflowID, &w.WorkspaceID, &w.Title, &w.WorkflowType,
+				&triggerRaw, &actionRaw, &approvalsRaw,
+				&w.Status, &w.Version, &w.ActivepiecesFlowID,
+				&w.TierLimitCheck, &w.RunCount, &w.CreatedBy,
+				&w.CreatedAt, &w.UpdatedAt,
+			); err != nil {
+				return err
+			}
+			_ = json.Unmarshal(triggerRaw, &w.TriggerConfig)
+			_ = json.Unmarshal(actionRaw, &w.ActionChain)
+			_ = json.Unmarshal(approvalsRaw, &w.ApprovalRequirements)
+			result = append(result, w)
+		}
+		return rows.Err()
+	})
+	return result, total, err
 }
 
 func (p *PostgresStore) UpdateWorkflow(ctx context.Context, w *Workflow) error {
@@ -557,18 +637,20 @@ func (p *PostgresStore) UpdateWorkflow(ctx context.Context, w *Workflow) error {
 			updated_at = $10
 		WHERE workspace_id = $11 AND workflow_id = $12 AND deleted_at IS NULL
 	`
-	cmd, err := p.pool.Exec(ctx, query,
-		w.Title, triggerJSON, actionJSON, approvalsJSON,
-		w.Status, w.Version, w.ActivepiecesFlowID, w.TierLimitCheck,
-		w.RunCount, w.UpdatedAt, w.WorkspaceID, w.WorkflowID,
-	)
-	if err != nil {
-		return err
-	}
-	if cmd.RowsAffected() == 0 {
-		return ErrWorkflowNotFound
-	}
-	return nil
+	return p.withTenantTx(ctx, w.WorkspaceID, w.CreatedBy, func(txCtx context.Context, tx pgx.Tx) error {
+		cmd, err := tx.Exec(txCtx, query,
+			w.Title, triggerJSON, actionJSON, approvalsJSON,
+			w.Status, w.Version, w.ActivepiecesFlowID, w.TierLimitCheck,
+			w.RunCount, w.UpdatedAt, w.WorkspaceID, w.WorkflowID,
+		)
+		if err != nil {
+			return err
+		}
+		if cmd.RowsAffected() == 0 {
+			return ErrWorkflowNotFound
+		}
+		return nil
+	})
 }
 
 func (p *PostgresStore) DeleteWorkflow(ctx context.Context, workspaceID, workflowID string) error {
@@ -578,14 +660,16 @@ func (p *PostgresStore) DeleteWorkflow(ctx context.Context, workspaceID, workflo
 			status = 'archived'
 		WHERE workspace_id = $1 AND workflow_id = $2 AND deleted_at IS NULL
 	`
-	cmd, err := p.pool.Exec(ctx, query, workspaceID, workflowID)
-	if err != nil {
-		return err
-	}
-	if cmd.RowsAffected() == 0 {
-		return ErrWorkflowNotFound
-	}
-	return nil
+	return p.withTenantTx(ctx, workspaceID, "", func(txCtx context.Context, tx pgx.Tx) error {
+		cmd, err := tx.Exec(txCtx, query, workspaceID, workflowID)
+		if err != nil {
+			return err
+		}
+		if cmd.RowsAffected() == 0 {
+			return ErrWorkflowNotFound
+		}
+		return nil
+	})
 }
 
 func (p *PostgresStore) CreateWorkflowRun(ctx context.Context, run *WorkflowRun) error {
@@ -608,13 +692,15 @@ func (p *PostgresStore) CreateWorkflowRun(ctx context.Context, run *WorkflowRun)
 			$12, $13, $14, $15
 		)
 	`
-	_, err := p.pool.Exec(ctx, query,
-		run.RunID, run.WorkspaceID, run.WorkflowID, triggerJSON,
-		run.Status, run.CurrentNode, resultJSON, logJSON,
-		affectedJSON, sideEffectsJSON, run.ActivepiecesRunID,
-		run.StartedAt, run.CompletedAt, run.CreatedAt, run.UpdatedAt,
-	)
-	return err
+	return p.withTenantTx(ctx, run.WorkspaceID, run.InitiatedByUserID, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, query,
+			run.RunID, run.WorkspaceID, run.WorkflowID, triggerJSON,
+			run.Status, run.CurrentNode, resultJSON, logJSON,
+			affectedJSON, sideEffectsJSON, run.ActivepiecesRunID,
+			run.StartedAt, run.CompletedAt, run.CreatedAt, run.UpdatedAt,
+		)
+		return err
+	})
 }
 
 func (p *PostgresStore) GetWorkflowRun(ctx context.Context, workspaceID, runID string) (*WorkflowRun, error) {
@@ -627,103 +713,128 @@ func (p *PostgresStore) GetWorkflowRun(ctx context.Context, workspaceID, runID s
 		FROM workflow_runs
 		WHERE workspace_id = $1 AND run_id = $2 AND deleted_at IS NULL
 	`
-	row := p.pool.QueryRow(ctx, query, workspaceID, runID)
 	var r WorkflowRun
-	var trigRaw, resRaw, logRaw, affRaw, sideRaw []byte
-	var deletedAt *time.Time
-
-	err := row.Scan(
-		&r.RunID, &r.WorkspaceID, &r.WorkflowID, &trigRaw,
-		&r.Status, &r.CurrentNode, &resRaw, &logRaw,
-		&affRaw, &sideRaw, &r.ActivepiecesRunID,
-		&r.StartedAt, &r.CompletedAt, &r.CreatedAt, &r.UpdatedAt, &deletedAt,
-	)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, ErrWorkflowRunNotFound
-		}
-		return nil, err
-	}
-	r.DeletedAt = deletedAt
-	_ = json.Unmarshal(trigRaw, &r.TriggerEvent)
-	_ = json.Unmarshal(resRaw, &r.ResultSummary)
-	_ = json.Unmarshal(logRaw, &r.ExecutionLog)
-	_ = json.Unmarshal(affRaw, &r.AffectedObjectRefs)
-	_ = json.Unmarshal(sideRaw, &r.SideEffectsSummary)
-	return &r, nil
-}
-
-func (p *PostgresStore) ListWorkflowRuns(ctx context.Context, workspaceID, workflowID, status string, limit, offset int) ([]WorkflowRun, int, error) {
-	countQuery := `SELECT COUNT(*) FROM workflow_runs WHERE workspace_id = $1 AND deleted_at IS NULL`
-	queryArgs := []any{workspaceID}
-	idx := 2
-	if workflowID != "" {
-		countQuery += fmt.Sprintf(` AND workflow_id = $%d`, idx)
-		queryArgs = append(queryArgs, workflowID)
-		idx++
-	}
-	if status != "" {
-		countQuery += fmt.Sprintf(` AND status = $%d`, idx)
-		queryArgs = append(queryArgs, status)
-		idx++
-	}
-	var total int
-	if err := p.pool.QueryRow(ctx, countQuery, queryArgs...).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-
-	query := `
-		SELECT
-			run_id, workspace_id, workflow_id, trigger_event,
-			status, COALESCE(current_node, ''), result_summary, execution_log,
-			affected_object_refs, side_effects_summary, COALESCE(activepieces_run_id, ''),
-			started_at, completed_at, created_at, updated_at
-		FROM workflow_runs
-		WHERE workspace_id = $1 AND deleted_at IS NULL
-	`
-	selectArgs := []any{workspaceID}
-	sIdx := 2
-	if workflowID != "" {
-		query += fmt.Sprintf(` AND workflow_id = $%d`, sIdx)
-		selectArgs = append(selectArgs, workflowID)
-		sIdx++
-	}
-	if status != "" {
-		query += fmt.Sprintf(` AND status = $%d`, sIdx)
-		selectArgs = append(selectArgs, status)
-		sIdx++
-	}
-	query += ` ORDER BY created_at DESC`
-	if limit > 0 {
-		query += fmt.Sprintf(` LIMIT %d OFFSET %d`, limit, offset)
-	}
-
-	rows, err := p.pool.Query(ctx, query, selectArgs...)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
-
-	var result []WorkflowRun
-	for rows.Next() {
-		var r WorkflowRun
+	err := p.withTenantTx(ctx, workspaceID, "", func(txCtx context.Context, tx pgx.Tx) error {
+		row := tx.QueryRow(txCtx, query, workspaceID, runID)
 		var trigRaw, resRaw, logRaw, affRaw, sideRaw []byte
-		if err := rows.Scan(
+		var deletedAt *time.Time
+
+		err := row.Scan(
 			&r.RunID, &r.WorkspaceID, &r.WorkflowID, &trigRaw,
 			&r.Status, &r.CurrentNode, &resRaw, &logRaw,
 			&affRaw, &sideRaw, &r.ActivepiecesRunID,
-			&r.StartedAt, &r.CompletedAt, &r.CreatedAt, &r.UpdatedAt,
-		); err != nil {
-			return nil, 0, err
+			&r.StartedAt, &r.CompletedAt, &r.CreatedAt, &r.UpdatedAt, &deletedAt,
+		)
+		if err != nil {
+			if err == pgx.ErrNoRows {
+				return ErrWorkflowRunNotFound
+			}
+			return err
 		}
+		r.DeletedAt = deletedAt
 		_ = json.Unmarshal(trigRaw, &r.TriggerEvent)
 		_ = json.Unmarshal(resRaw, &r.ResultSummary)
 		_ = json.Unmarshal(logRaw, &r.ExecutionLog)
 		_ = json.Unmarshal(affRaw, &r.AffectedObjectRefs)
 		_ = json.Unmarshal(sideRaw, &r.SideEffectsSummary)
-		result = append(result, r)
+		if r.TriggerEvent != nil {
+			if uid, ok := r.TriggerEvent["_actor_user_id"].(string); ok {
+				r.InitiatedByUserID = uid
+			}
+			if role, ok := r.TriggerEvent["_actor_role"].(string); ok {
+				r.InitiatedByRole = role
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	return result, total, rows.Err()
+	return &r, nil
+}
+
+func (p *PostgresStore) ListWorkflowRuns(ctx context.Context, workspaceID, workflowID, status string, limit, offset int) ([]WorkflowRun, int, error) {
+	var result []WorkflowRun
+	var total int
+	err := p.withTenantTx(ctx, workspaceID, "", func(txCtx context.Context, tx pgx.Tx) error {
+		countQuery := `SELECT COUNT(*) FROM workflow_runs WHERE workspace_id = $1 AND deleted_at IS NULL`
+		queryArgs := []any{workspaceID}
+		idx := 2
+		if workflowID != "" {
+			countQuery += fmt.Sprintf(` AND workflow_id = $%d`, idx)
+			queryArgs = append(queryArgs, workflowID)
+			idx++
+		}
+		if status != "" {
+			countQuery += fmt.Sprintf(` AND status = $%d`, idx)
+			queryArgs = append(queryArgs, status)
+			idx++
+		}
+		if err := tx.QueryRow(txCtx, countQuery, queryArgs...).Scan(&total); err != nil {
+			return err
+		}
+
+		query := `
+			SELECT
+				run_id, workspace_id, workflow_id, trigger_event,
+				status, COALESCE(current_node, ''), result_summary, execution_log,
+				affected_object_refs, side_effects_summary, COALESCE(activepieces_run_id, ''),
+				started_at, completed_at, created_at, updated_at
+			FROM workflow_runs
+			WHERE workspace_id = $1 AND deleted_at IS NULL
+		`
+		selectArgs := []any{workspaceID}
+		sIdx := 2
+		if workflowID != "" {
+			query += fmt.Sprintf(` AND workflow_id = $%d`, sIdx)
+			selectArgs = append(selectArgs, workflowID)
+			sIdx++
+		}
+		if status != "" {
+			query += fmt.Sprintf(` AND status = $%d`, sIdx)
+			selectArgs = append(selectArgs, status)
+			sIdx++
+		}
+		query += ` ORDER BY created_at DESC`
+		if limit > 0 {
+			query += fmt.Sprintf(` LIMIT %d OFFSET %d`, limit, offset)
+		}
+
+		rows, err := tx.Query(txCtx, query, selectArgs...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var r WorkflowRun
+			var trigRaw, resRaw, logRaw, affRaw, sideRaw []byte
+			if err := rows.Scan(
+				&r.RunID, &r.WorkspaceID, &r.WorkflowID, &trigRaw,
+				&r.Status, &r.CurrentNode, &resRaw, &logRaw,
+				&affRaw, &sideRaw, &r.ActivepiecesRunID,
+				&r.StartedAt, &r.CompletedAt, &r.CreatedAt, &r.UpdatedAt,
+			); err != nil {
+				return err
+			}
+			_ = json.Unmarshal(trigRaw, &r.TriggerEvent)
+			_ = json.Unmarshal(resRaw, &r.ResultSummary)
+			_ = json.Unmarshal(logRaw, &r.ExecutionLog)
+			_ = json.Unmarshal(affRaw, &r.AffectedObjectRefs)
+			_ = json.Unmarshal(sideRaw, &r.SideEffectsSummary)
+			if r.TriggerEvent != nil {
+				if uid, ok := r.TriggerEvent["_actor_user_id"].(string); ok {
+					r.InitiatedByUserID = uid
+				}
+				if role, ok := r.TriggerEvent["_actor_role"].(string); ok {
+					r.InitiatedByRole = role
+				}
+			}
+			result = append(result, r)
+		}
+		return rows.Err()
+	})
+	return result, total, err
 }
 
 func (p *PostgresStore) UpdateWorkflowRun(ctx context.Context, run *WorkflowRun) error {
@@ -745,18 +856,20 @@ func (p *PostgresStore) UpdateWorkflowRun(ctx context.Context, run *WorkflowRun)
 			updated_at = $9
 		WHERE workspace_id = $10 AND run_id = $11 AND deleted_at IS NULL
 	`
-	cmd, err := p.pool.Exec(ctx, query,
-		run.Status, run.CurrentNode, resultJSON, logJSON,
-		affJSON, sideJSON, run.StartedAt, run.CompletedAt, run.UpdatedAt,
-		run.WorkspaceID, run.RunID,
-	)
-	if err != nil {
-		return err
-	}
-	if cmd.RowsAffected() == 0 {
-		return ErrWorkflowRunNotFound
-	}
-	return nil
+	return p.withTenantTx(ctx, run.WorkspaceID, run.InitiatedByUserID, func(txCtx context.Context, tx pgx.Tx) error {
+		cmd, err := tx.Exec(txCtx, query,
+			run.Status, run.CurrentNode, resultJSON, logJSON,
+			affJSON, sideJSON, run.StartedAt, run.CompletedAt, run.UpdatedAt,
+			run.WorkspaceID, run.RunID,
+		)
+		if err != nil {
+			return err
+		}
+		if cmd.RowsAffected() == 0 {
+			return ErrWorkflowRunNotFound
+		}
+		return nil
+	})
 }
 
 func (p *PostgresStore) CreateWorkflowRunStep(ctx context.Context, step *WorkflowRunStep) error {
@@ -774,13 +887,15 @@ func (p *PostgresStore) CreateWorkflowRunStep(ctx context.Context, step *Workflo
 			$14, $15
 		)
 	`
-	_, err := p.pool.Exec(ctx, query,
-		step.StepID, step.WorkspaceID, step.RunID, step.NodeID, step.NodeType,
-		step.StepOrder, step.Status, step.InputSnapshot, step.OutputSnapshot,
-		step.DiagnosticsRef, sideEffectsJSON, step.StartedAt, step.CompletedAt,
-		step.CreatedAt, step.UpdatedAt,
-	)
-	return err
+	return p.withTenantTx(ctx, step.WorkspaceID, "", func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, query,
+			step.StepID, step.WorkspaceID, step.RunID, step.NodeID, step.NodeType,
+			step.StepOrder, step.Status, step.InputSnapshot, step.OutputSnapshot,
+			step.DiagnosticsRef, sideEffectsJSON, step.StartedAt, step.CompletedAt,
+			step.CreatedAt, step.UpdatedAt,
+		)
+		return err
+	})
 }
 
 func (p *PostgresStore) ListWorkflowRunSteps(ctx context.Context, workspaceID, runID string) ([]WorkflowRunStep, error) {
@@ -794,28 +909,31 @@ func (p *PostgresStore) ListWorkflowRunSteps(ctx context.Context, workspaceID, r
 		WHERE workspace_id = $1 AND run_id = $2 AND deleted_at IS NULL
 		ORDER BY step_order ASC
 	`
-	rows, err := p.pool.Query(ctx, query, workspaceID, runID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
 	var result []WorkflowRunStep
-	for rows.Next() {
-		var s WorkflowRunStep
-		var sideEffectsRaw []byte
-		if err := rows.Scan(
-			&s.StepID, &s.WorkspaceID, &s.RunID, &s.NodeID, &s.NodeType,
-			&s.StepOrder, &s.Status, &s.InputSnapshot, &s.OutputSnapshot,
-			&s.DiagnosticsRef, &sideEffectsRaw,
-			&s.StartedAt, &s.CompletedAt, &s.CreatedAt, &s.UpdatedAt,
-		); err != nil {
-			return nil, err
+	err := p.withTenantTx(ctx, workspaceID, "", func(txCtx context.Context, tx pgx.Tx) error {
+		rows, err := tx.Query(txCtx, query, workspaceID, runID)
+		if err != nil {
+			return err
 		}
-		_ = json.Unmarshal(sideEffectsRaw, &s.SideEffectRefs)
-		result = append(result, s)
-	}
-	return result, rows.Err()
+		defer rows.Close()
+
+		for rows.Next() {
+			var s WorkflowRunStep
+			var sideEffectsRaw []byte
+			if err := rows.Scan(
+				&s.StepID, &s.WorkspaceID, &s.RunID, &s.NodeID, &s.NodeType,
+				&s.StepOrder, &s.Status, &s.InputSnapshot, &s.OutputSnapshot,
+				&s.DiagnosticsRef, &sideEffectsRaw,
+				&s.StartedAt, &s.CompletedAt, &s.CreatedAt, &s.UpdatedAt,
+			); err != nil {
+				return err
+			}
+			_ = json.Unmarshal(sideEffectsRaw, &s.SideEffectRefs)
+			result = append(result, s)
+		}
+		return rows.Err()
+	})
+	return result, err
 }
 
 func (p *PostgresStore) UpdateWorkflowRunStep(ctx context.Context, step *WorkflowRunStep) error {
@@ -831,18 +949,20 @@ func (p *PostgresStore) UpdateWorkflowRunStep(ctx context.Context, step *Workflo
 			updated_at = $7
 		WHERE workspace_id = $8 AND step_id = $9 AND deleted_at IS NULL
 	`
-	cmd, err := p.pool.Exec(ctx, query,
-		step.Status, step.OutputSnapshot, step.DiagnosticsRef, sideEffectsJSON,
-		step.StartedAt, step.CompletedAt, step.UpdatedAt,
-		step.WorkspaceID, step.StepID,
-	)
-	if err != nil {
-		return err
-	}
-	if cmd.RowsAffected() == 0 {
-		return fmt.Errorf("step not found")
-	}
-	return nil
+	return p.withTenantTx(ctx, step.WorkspaceID, "", func(txCtx context.Context, tx pgx.Tx) error {
+		cmd, err := tx.Exec(txCtx, query,
+			step.Status, step.OutputSnapshot, step.DiagnosticsRef, sideEffectsJSON,
+			step.StartedAt, step.CompletedAt, step.UpdatedAt,
+			step.WorkspaceID, step.StepID,
+		)
+		if err != nil {
+			return err
+		}
+		if cmd.RowsAffected() == 0 {
+			return fmt.Errorf("step not found")
+		}
+		return nil
+	})
 }
 
 // ----------------------------------------------------------------------------
@@ -861,12 +981,14 @@ func (p *PostgresStore) CreateApprovalRequest(ctx context.Context, req *Approval
 			$11, $12, $13
 		)
 	`
-	_, err := p.pool.Exec(ctx, query,
-		req.RequestID, req.WorkspaceID, req.RequestType, req.ObjectType, req.ObjectID,
-		req.RequestedBy, req.ApprovedBy, req.Status, req.Reason, req.RejectionReason,
-		req.ExpiresAt, req.CreatedAt, req.UpdatedAt,
-	)
-	return err
+	return p.withTenantTx(ctx, req.WorkspaceID, req.RequestedBy, func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, query,
+			req.RequestID, req.WorkspaceID, req.RequestType, req.ObjectType, req.ObjectID,
+			req.RequestedBy, req.ApprovedBy, req.Status, req.Reason, req.RejectionReason,
+			req.ExpiresAt, req.CreatedAt, req.UpdatedAt,
+		)
+		return err
+	})
 }
 
 func (p *PostgresStore) GetApprovalRequest(ctx context.Context, workspaceID, requestID string) (*ApprovalRequest, error) {
@@ -880,119 +1002,89 @@ func (p *PostgresStore) GetApprovalRequest(ctx context.Context, workspaceID, req
 		WHERE workspace_id = $1 AND request_id = $2
 	`
 	var req ApprovalRequest
-	if err := p.pool.QueryRow(ctx, query, workspaceID, requestID).Scan(
-		&req.RequestID, &req.WorkspaceID, &req.RequestType, &req.ObjectType, &req.ObjectID,
-		&req.RequestedBy, &req.ApprovedBy, &req.Status, &req.Reason, &req.RejectionReason,
-		&req.ExpiresAt, &req.CreatedAt, &req.UpdatedAt,
-	); err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, ErrApprovalNotFound
-		}
-		return nil, err
-	}
-	// Unmarshal metadata from reason JSON if present
-	if req.Reason != "" {
-		var meta map[string]any
-		if err := json.Unmarshal([]byte(req.Reason), &meta); err == nil {
-			if v, ok := meta["workflow_id"].(string); ok {
-				req.WorkflowID = v
-			}
-			if v, ok := meta["node_id"].(string); ok {
-				req.NodeID = v
-			}
-			if v, ok := meta["workflow_version"].(float64); ok {
-				req.WorkflowVersion = int32(v)
-			}
-			if v, ok := meta["action_hash"].(string); ok {
-				req.ActionHash = v
-			}
-			if v, ok := meta["input_snapshot"].(string); ok {
-				req.InputSnapshot = v
-			}
-		}
-	}
-	return &req, nil
-}
-
-func (p *PostgresStore) ListApprovalRequests(ctx context.Context, workspaceID string, filter ApprovalFilter) ([]ApprovalRequest, int, error) {
-	countQuery := `SELECT COUNT(*) FROM approval_requests WHERE workspace_id = $1`
-	args := []any{workspaceID}
-	if filter.Status != "" {
-		countQuery += ` AND status = $2`
-		args = append(args, filter.Status)
-	}
-	if filter.RunID != "" {
-		countQuery += fmt.Sprintf(` AND object_id = $%d`, len(args)+1)
-		args = append(args, filter.RunID)
-	}
-
-	var total int
-	if err := p.pool.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-
-	query := `
-		SELECT
-			request_id, workspace_id, request_type, object_type, object_id,
-			COALESCE(requested_by::text, ''), COALESCE(approved_by::text, ''),
-			status, COALESCE(reason, ''), COALESCE(rejection_reason, ''),
-			expires_at, created_at, updated_at
-		FROM approval_requests
-		WHERE workspace_id = $1
-	`
-	queryArgs := []any{workspaceID}
-	if filter.Status != "" {
-		query += ` AND status = $2`
-		queryArgs = append(queryArgs, filter.Status)
-	}
-	if filter.RunID != "" {
-		query += fmt.Sprintf(` AND object_id = $%d`, len(queryArgs)+1)
-		queryArgs = append(queryArgs, filter.RunID)
-	}
-	query += ` ORDER BY created_at DESC`
-	if filter.Limit > 0 {
-		query += fmt.Sprintf(` LIMIT %d OFFSET %d`, filter.Limit, filter.Offset)
-	}
-
-	rows, err := p.pool.Query(ctx, query, queryArgs...)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
-
-	var result []ApprovalRequest
-	for rows.Next() {
-		var req ApprovalRequest
-		if err := rows.Scan(
+	err := p.withTenantTx(ctx, workspaceID, "", func(txCtx context.Context, tx pgx.Tx) error {
+		if err := tx.QueryRow(txCtx, query, workspaceID, requestID).Scan(
 			&req.RequestID, &req.WorkspaceID, &req.RequestType, &req.ObjectType, &req.ObjectID,
 			&req.RequestedBy, &req.ApprovedBy, &req.Status, &req.Reason, &req.RejectionReason,
 			&req.ExpiresAt, &req.CreatedAt, &req.UpdatedAt,
 		); err != nil {
-			return nil, 0, err
-		}
-		if req.Reason != "" {
-			var meta map[string]any
-			if err := json.Unmarshal([]byte(req.Reason), &meta); err == nil {
-				if v, ok := meta["workflow_id"].(string); ok {
-					req.WorkflowID = v
-				}
-				if v, ok := meta["node_id"].(string); ok {
-					req.NodeID = v
-				}
-				if v, ok := meta["workflow_version"].(float64); ok {
-					req.WorkflowVersion = int32(v)
-				}
-				if v, ok := meta["action_hash"].(string); ok {
-					req.ActionHash = v
-				}
-				if v, ok := meta["input_snapshot"].(string); ok {
-					req.InputSnapshot = v
-				}
+			if err == pgx.ErrNoRows {
+				return ErrApprovalNotFound
 			}
+			return err
 		}
-		result = append(result, req)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	return result, total, rows.Err()
+	hydrateApprovalMetadata(&req)
+	return &req, nil
+}
+
+func (p *PostgresStore) ListApprovalRequests(ctx context.Context, workspaceID string, filter ApprovalFilter) ([]ApprovalRequest, int, error) {
+	var result []ApprovalRequest
+	var total int
+	err := p.withTenantTx(ctx, workspaceID, "", func(txCtx context.Context, tx pgx.Tx) error {
+		countQuery := `SELECT COUNT(*) FROM approval_requests WHERE workspace_id = $1`
+		args := []any{workspaceID}
+		if filter.Status != "" {
+			countQuery += ` AND status = $2`
+			args = append(args, filter.Status)
+		}
+		if filter.RunID != "" {
+			countQuery += fmt.Sprintf(` AND object_id = $%d`, len(args)+1)
+			args = append(args, filter.RunID)
+		}
+
+		if err := tx.QueryRow(txCtx, countQuery, args...).Scan(&total); err != nil {
+			return err
+		}
+
+		query := `
+			SELECT
+				request_id, workspace_id, request_type, object_type, object_id,
+				COALESCE(requested_by::text, ''), COALESCE(approved_by::text, ''),
+				status, COALESCE(reason, ''), COALESCE(rejection_reason, ''),
+				expires_at, created_at, updated_at
+			FROM approval_requests
+			WHERE workspace_id = $1
+		`
+		queryArgs := []any{workspaceID}
+		if filter.Status != "" {
+			query += ` AND status = $2`
+			queryArgs = append(queryArgs, filter.Status)
+		}
+		if filter.RunID != "" {
+			query += fmt.Sprintf(` AND object_id = $%d`, len(queryArgs)+1)
+			queryArgs = append(queryArgs, filter.RunID)
+		}
+		query += ` ORDER BY created_at DESC`
+		if filter.Limit > 0 {
+			query += fmt.Sprintf(` LIMIT %d OFFSET %d`, filter.Limit, filter.Offset)
+		}
+
+		rows, err := tx.Query(txCtx, query, queryArgs...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var req ApprovalRequest
+			if err := rows.Scan(
+				&req.RequestID, &req.WorkspaceID, &req.RequestType, &req.ObjectType, &req.ObjectID,
+				&req.RequestedBy, &req.ApprovedBy, &req.Status, &req.Reason, &req.RejectionReason,
+				&req.ExpiresAt, &req.CreatedAt, &req.UpdatedAt,
+			); err != nil {
+				return err
+			}
+			hydrateApprovalMetadata(&req)
+			result = append(result, req)
+		}
+		return rows.Err()
+	})
+	return result, total, err
 }
 
 func (p *PostgresStore) UpdateApprovalRequest(ctx context.Context, req *ApprovalRequest) error {
@@ -1005,17 +1097,19 @@ func (p *PostgresStore) UpdateApprovalRequest(ctx context.Context, req *Approval
 			updated_at = $5
 		WHERE workspace_id = $6 AND request_id = $7
 	`
-	cmd, err := p.pool.Exec(ctx, query,
-		req.Status, req.ApprovedBy, req.RejectionReason, req.Reason,
-		req.UpdatedAt, req.WorkspaceID, req.RequestID,
-	)
-	if err != nil {
-		return err
-	}
-	if cmd.RowsAffected() == 0 {
-		return ErrApprovalNotFound
-	}
-	return nil
+	return p.withTenantTx(ctx, req.WorkspaceID, req.ApprovedBy, func(txCtx context.Context, tx pgx.Tx) error {
+		cmd, err := tx.Exec(txCtx, query,
+			req.Status, req.ApprovedBy, req.RejectionReason, req.Reason,
+			req.UpdatedAt, req.WorkspaceID, req.RequestID,
+		)
+		if err != nil {
+			return err
+		}
+		if cmd.RowsAffected() == 0 {
+			return ErrApprovalNotFound
+		}
+		return nil
+	})
 }
 
 func (p *PostgresStore) FindPendingApprovalsByWorkflow(ctx context.Context, workspaceID, workflowID string) ([]ApprovalRequest, error) {
@@ -1061,13 +1155,15 @@ func (p *PostgresStore) CreateDLQItem(ctx context.Context, item *DLQItem) error 
 			$13
 		)
 	`
-	_, err := p.pool.Exec(ctx, query,
-		item.DLQID, item.QueueName, item.OriginalMessageID, payloadJSON,
-		item.ErrorClass, item.ErrorMessage, item.LastErrorAt, item.AttemptCount,
-		historyJSON, item.WorkspaceID, item.Status, item.ResolutionNotes,
-		item.CreatedAt,
-	)
-	return err
+	return p.withTenantTx(ctx, item.WorkspaceID, "", func(txCtx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(txCtx, query,
+			item.DLQID, item.QueueName, item.OriginalMessageID, payloadJSON,
+			item.ErrorClass, item.ErrorMessage, item.LastErrorAt, item.AttemptCount,
+			historyJSON, item.WorkspaceID, item.Status, item.ResolutionNotes,
+			item.CreatedAt,
+		)
+		return err
+	})
 }
 
 func (p *PostgresStore) GetDLQItem(ctx context.Context, workspaceID, dlqID string) (*DLQItem, error) {
@@ -1082,80 +1178,89 @@ func (p *PostgresStore) GetDLQItem(ctx context.Context, workspaceID, dlqID strin
 		WHERE workspace_id = $1 AND dlq_id = $2
 	`
 	var item DLQItem
-	var payloadRaw, historyRaw string
-	if err := p.pool.QueryRow(ctx, query, workspaceID, dlqID).Scan(
-		&item.DLQID, &item.QueueName, &item.OriginalMessageID, &payloadRaw,
-		&item.ErrorClass, &item.ErrorMessage, &item.LastErrorAt, &item.AttemptCount,
-		&historyRaw, &item.WorkspaceID, &item.Status,
-		&item.ResolvedAt, &item.ResolvedBy, &item.ResolutionNotes,
-		&item.CreatedAt,
-	); err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, ErrDLQNotFound
-		}
-		return nil, err
-	}
-	_ = json.Unmarshal([]byte(payloadRaw), &item.Payload)
-	_ = json.Unmarshal([]byte(historyRaw), &item.RetryHistory)
-	return &item, nil
-}
-
-func (p *PostgresStore) ListDLQItems(ctx context.Context, workspaceID string, status string, limit, offset int) ([]DLQItem, int, error) {
-	countQuery := `SELECT COUNT(*) FROM dead_letter_queue WHERE workspace_id = $1`
-	args := []any{workspaceID}
-	if status != "" {
-		countQuery += ` AND status = $2`
-		args = append(args, status)
-	}
-	var total int
-	if err := p.pool.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-
-	query := `
-		SELECT
-			dlq_id, queue_name, original_message_id, payload::text,
-			error_class, COALESCE(error_message, ''), last_error_at, attempt_count,
-			retry_history::text, COALESCE(workspace_id::text, ''), status,
-			resolved_at, COALESCE(resolved_by::text, ''), COALESCE(resolution_notes, ''),
-			created_at
-		FROM dead_letter_queue
-		WHERE workspace_id = $1
-	`
-	queryArgs := []any{workspaceID}
-	if status != "" {
-		query += ` AND status = $2`
-		queryArgs = append(queryArgs, status)
-	}
-	query += ` ORDER BY last_error_at DESC`
-	if limit > 0 {
-		query += fmt.Sprintf(` LIMIT %d OFFSET %d`, limit, offset)
-	}
-
-	rows, err := p.pool.Query(ctx, query, queryArgs...)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
-
-	var result []DLQItem
-	for rows.Next() {
-		var item DLQItem
+	err := p.withTenantTx(ctx, workspaceID, "", func(txCtx context.Context, tx pgx.Tx) error {
 		var payloadRaw, historyRaw string
-		if err := rows.Scan(
+		if err := tx.QueryRow(txCtx, query, workspaceID, dlqID).Scan(
 			&item.DLQID, &item.QueueName, &item.OriginalMessageID, &payloadRaw,
 			&item.ErrorClass, &item.ErrorMessage, &item.LastErrorAt, &item.AttemptCount,
 			&historyRaw, &item.WorkspaceID, &item.Status,
 			&item.ResolvedAt, &item.ResolvedBy, &item.ResolutionNotes,
 			&item.CreatedAt,
 		); err != nil {
-			return nil, 0, err
+			if err == pgx.ErrNoRows {
+				return ErrDLQNotFound
+			}
+			return err
 		}
 		_ = json.Unmarshal([]byte(payloadRaw), &item.Payload)
 		_ = json.Unmarshal([]byte(historyRaw), &item.RetryHistory)
-		result = append(result, item)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	return result, total, rows.Err()
+	return &item, nil
+}
+
+func (p *PostgresStore) ListDLQItems(ctx context.Context, workspaceID string, status string, limit, offset int) ([]DLQItem, int, error) {
+	var result []DLQItem
+	var total int
+	err := p.withTenantTx(ctx, workspaceID, "", func(txCtx context.Context, tx pgx.Tx) error {
+		countQuery := `SELECT COUNT(*) FROM dead_letter_queue WHERE workspace_id = $1`
+		args := []any{workspaceID}
+		if status != "" {
+			countQuery += ` AND status = $2`
+			args = append(args, status)
+		}
+		if err := tx.QueryRow(txCtx, countQuery, args...).Scan(&total); err != nil {
+			return err
+		}
+
+		query := `
+			SELECT
+				dlq_id, queue_name, original_message_id, payload::text,
+				error_class, COALESCE(error_message, ''), last_error_at, attempt_count,
+				retry_history::text, COALESCE(workspace_id::text, ''), status,
+				resolved_at, COALESCE(resolved_by::text, ''), COALESCE(resolution_notes, ''),
+				created_at
+			FROM dead_letter_queue
+			WHERE workspace_id = $1
+		`
+		queryArgs := []any{workspaceID}
+		if status != "" {
+			query += ` AND status = $2`
+			queryArgs = append(queryArgs, status)
+		}
+		query += ` ORDER BY last_error_at DESC`
+		if limit > 0 {
+			query += fmt.Sprintf(` LIMIT %d OFFSET %d`, limit, offset)
+		}
+
+		rows, err := tx.Query(txCtx, query, queryArgs...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var item DLQItem
+			var payloadRaw, historyRaw string
+			if err := rows.Scan(
+				&item.DLQID, &item.QueueName, &item.OriginalMessageID, &payloadRaw,
+				&item.ErrorClass, &item.ErrorMessage, &item.LastErrorAt, &item.AttemptCount,
+				&historyRaw, &item.WorkspaceID, &item.Status,
+				&item.ResolvedAt, &item.ResolvedBy, &item.ResolutionNotes,
+				&item.CreatedAt,
+			); err != nil {
+				return err
+			}
+			_ = json.Unmarshal([]byte(payloadRaw), &item.Payload)
+			_ = json.Unmarshal([]byte(historyRaw), &item.RetryHistory)
+			result = append(result, item)
+		}
+		return rows.Err()
+	})
+	return result, total, err
 }
 
 func (p *PostgresStore) UpdateDLQItem(ctx context.Context, item *DLQItem) error {
@@ -1170,16 +1275,18 @@ func (p *PostgresStore) UpdateDLQItem(ctx context.Context, item *DLQItem) error 
 			resolution_notes = $6
 		WHERE workspace_id = $7 AND dlq_id = $8
 	`
-	cmd, err := p.pool.Exec(ctx, query,
-		item.Status, item.AttemptCount, historyJSON,
-		item.ResolvedAt, item.ResolvedBy, item.ResolutionNotes,
-		item.WorkspaceID, item.DLQID,
-	)
-	if err != nil {
-		return err
-	}
-	if cmd.RowsAffected() == 0 {
-		return ErrDLQNotFound
-	}
-	return nil
+	return p.withTenantTx(ctx, item.WorkspaceID, item.ResolvedBy, func(txCtx context.Context, tx pgx.Tx) error {
+		cmd, err := tx.Exec(txCtx, query,
+			item.Status, item.AttemptCount, historyJSON,
+			item.ResolvedAt, item.ResolvedBy, item.ResolutionNotes,
+			item.WorkspaceID, item.DLQID,
+		)
+		if err != nil {
+			return err
+		}
+		if cmd.RowsAffected() == 0 {
+			return ErrDLQNotFound
+		}
+		return nil
+	})
 }

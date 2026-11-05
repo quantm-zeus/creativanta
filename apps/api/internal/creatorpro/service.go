@@ -1,12 +1,17 @@
 package creatorpro
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 )
 
 type EventSink interface {
@@ -1052,44 +1057,312 @@ func (s *Service) GenerateMediaKit(ctx context.Context, workspaceID, template, b
 // Tax Report Export (S16 §6)
 // ----------------------------------------------------------------------------
 
+func resolveTaxPeriodBounds(period TaxReportPeriod, year, periodNumber int32) (time.Time, time.Time, string, error) {
+	if year < 2000 || year > 2100 {
+		return time.Time{}, time.Time{}, "", fmt.Errorf("%w: year %d out of range", ErrInvalidTaxReportPeriod, year)
+	}
+	switch period {
+	case TaxReportPeriodMonthly:
+		if periodNumber < 1 || periodNumber > 12 {
+			return time.Time{}, time.Time{}, "", fmt.Errorf("%w: monthly period_number must be 1..12, got %d", ErrInvalidTaxReportPeriod, periodNumber)
+		}
+		start := time.Date(int(year), time.Month(periodNumber), 1, 0, 0, 0, 0, time.UTC)
+		end := start.AddDate(0, 1, 0)
+		return start, end, fmt.Sprintf("M%02d", periodNumber), nil
+	case TaxReportPeriodQuarterly:
+		if periodNumber < 1 || periodNumber > 4 {
+			return time.Time{}, time.Time{}, "", fmt.Errorf("%w: quarterly period_number must be 1..4, got %d", ErrInvalidTaxReportPeriod, periodNumber)
+		}
+		startMonth := time.Month((periodNumber-1)*3 + 1)
+		start := time.Date(int(year), startMonth, 1, 0, 0, 0, 0, time.UTC)
+		end := start.AddDate(0, 3, 0)
+		return start, end, fmt.Sprintf("Q%d", periodNumber), nil
+	case TaxReportPeriodYearly:
+		if periodNumber < 0 || periodNumber > 1 {
+			return time.Time{}, time.Time{}, "", fmt.Errorf("%w: yearly period_number must be 0 or 1, got %d", ErrInvalidTaxReportPeriod, periodNumber)
+		}
+		start := time.Date(int(year), time.January, 1, 0, 0, 0, 0, time.UTC)
+		end := start.AddDate(1, 0, 0)
+		return start, end, "ANNUAL", nil
+	default:
+		return time.Time{}, time.Time{}, "", fmt.Errorf("%w: unknown period %q", ErrInvalidTaxReportPeriod, period)
+	}
+}
+
+func decimalFromFloat64(v float64) (tenantdb.ExactDecimal, error) {
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		return tenantdb.ZeroDecimal(), ErrInvalidAmount
+	}
+	return tenantdb.ParseExactDecimal(fmt.Sprintf("%.6f", v))
+}
+
+func float64FromDecimal(d tenantdb.ExactDecimal) float64 {
+	f, _ := strconv.ParseFloat(d.Fixed6String(), 64)
+	return f
+}
+
+func buildPDFTaxReport(summary *TaxReportSummary, affiliateStr, sponsorStr, productStr, totalRevStr, aiExpStr, subExpStr, netIncomeStr string) []byte {
+	stream := fmt.Sprintf(
+		"BT /F1 12 Tf 50 750 Td (Creativanta Tax Report %s) Tj 0 -20 Td (Workspace: %s) Tj 0 -20 Td (Period: %s %d #%d) Tj 0 -20 Td (Affiliate Revenue: %s %s) Tj 0 -20 Td (Sponsorship Revenue: %s %s) Tj 0 -20 Td (Product Sales Revenue: %s %s) Tj 0 -20 Td (Total Revenue: %s %s) Tj 0 -20 Td (AI Credit Expenses: %s %s) Tj 0 -20 Td (Subscription Expenses: %s %s) Tj 0 -20 Td (Net Income Before Tax: %s %s) Tj ET",
+		summary.ReportID, summary.WorkspaceID, summary.Period, summary.TaxYear, summary.PeriodNumber,
+		affiliateStr, summary.Currency,
+		sponsorStr, summary.Currency,
+		productStr, summary.Currency,
+		totalRevStr, summary.Currency,
+		aiExpStr, summary.Currency,
+		subExpStr, summary.Currency,
+		netIncomeStr, summary.Currency,
+	)
+
+	var buf bytes.Buffer
+	buf.WriteString("%PDF-1.4\n")
+	obj1Off := buf.Len()
+	buf.WriteString("1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n")
+	obj2Off := buf.Len()
+	buf.WriteString("2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n")
+	obj3Off := buf.Len()
+	buf.WriteString("3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj\n")
+	obj4Off := buf.Len()
+	fmt.Fprintf(&buf, "4 0 obj << /Length %d >> stream\n%s\nendstream endobj\n", len(stream), stream)
+	obj5Off := buf.Len()
+	buf.WriteString("5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n")
+	xrefOff := buf.Len()
+	buf.WriteString("xref\n0 6\n0000000000 65535 f \n")
+	fmt.Fprintf(&buf, "%010d 00000 n \n", obj1Off)
+	fmt.Fprintf(&buf, "%010d 00000 n \n", obj2Off)
+	fmt.Fprintf(&buf, "%010d 00000 n \n", obj3Off)
+	fmt.Fprintf(&buf, "%010d 00000 n \n", obj4Off)
+	fmt.Fprintf(&buf, "%010d 00000 n \n", obj5Off)
+	fmt.Fprintf(&buf, "trailer << /Size 6 /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", xrefOff)
+	return buf.Bytes()
+}
+
+func buildXLSXTaxReport(summary *TaxReportSummary, affiliateStr, sponsorStr, productStr, totalRevStr, aiExpStr, subExpStr, netIncomeStr string) ([]byte, error) {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+
+	files := map[string]string{
+		"[Content_Types].xml": `<?xml version="1.0" encoding="UTF-8"?>` +
+			`<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
+			`<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
+			`<Default Extension="xml" ContentType="application/xml"/>` +
+			`<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>` +
+			`<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>` +
+			`</Types>`,
+		"_rels/.rels": `<?xml version="1.0" encoding="UTF-8"?>` +
+			`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+			`<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>` +
+			`</Relationships>`,
+		"xl/workbook.xml": `<?xml version="1.0" encoding="UTF-8"?>` +
+			`<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
+			`<sheets><sheet name="TaxReport" sheetId="1" r:id="rId1"/></sheets>` +
+			`</workbook>`,
+		"xl/_rels/workbook.xml.rels": `<?xml version="1.0" encoding="UTF-8"?>` +
+			`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+			`<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>` +
+			`</Relationships>`,
+		"xl/worksheets/sheet1.xml": fmt.Sprintf(
+			`<?xml version="1.0" encoding="UTF-8"?>`+
+				`<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>`+
+				`<row r="1"><c r="A1" t="inlineStr"><is><t>ReportID</t></is></c><c r="B1" t="inlineStr"><is><t>Year</t></is></c><c r="C1" t="inlineStr"><is><t>Period</t></is></c><c r="D1" t="inlineStr"><is><t>AffiliateRevenue</t></is></c><c r="E1" t="inlineStr"><is><t>SponsorshipRevenue</t></is></c><c r="F1" t="inlineStr"><is><t>ProductSalesRevenue</t></is></c><c r="G1" t="inlineStr"><is><t>TotalRevenue</t></is></c><c r="H1" t="inlineStr"><is><t>AICreditExpenses</t></is></c><c r="I1" t="inlineStr"><is><t>SubscriptionExpenses</t></is></c><c r="J1" t="inlineStr"><is><t>NetIncomeBeforeTax</t></is></c><c r="K1" t="inlineStr"><is><t>Currency</t></is></c></row>`+
+				`<row r="2"><c r="A2" t="inlineStr"><is><t>%s</t></is></c><c r="B2"><v>%d</v></c><c r="C2" t="inlineStr"><is><t>%s</t></is></c><c r="D2"><v>%s</v></c><c r="E2"><v>%s</v></c><c r="F2"><v>%s</v></c><c r="G2"><v>%s</v></c><c r="H2"><v>%s</v></c><c r="I2"><v>%s</v></c><c r="J2"><v>%s</v></c><c r="K2" t="inlineStr"><is><t>%s</t></is></c></row>`+
+				`</sheetData></worksheet>`,
+			summary.ReportID, summary.TaxYear, summary.Period,
+			affiliateStr, sponsorStr, productStr, totalRevStr, aiExpStr, subExpStr, netIncomeStr, summary.Currency,
+		),
+	}
+
+	for name, content := range files {
+		w, err := zw.Create(name)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := w.Write([]byte(content)); err != nil {
+			return nil, err
+		}
+	}
+	if err := zw.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 func (s *Service) GenerateTaxReport(ctx context.Context, workspaceID string, period TaxReportPeriod, year, periodNumber int32, format TaxReportFormat) (*TaxReportSummary, []byte, string, error) {
 	if workspaceID == "" {
 		return nil, nil, "", ErrMissingTenant
 	}
-	// Aggregate financial items
+
+	periodStart, periodEnd, periodCode, err := resolveTaxPeriodBounds(period, year, periodNumber)
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	if format != TaxReportFormatCSV && format != TaxReportFormatPDF && format != TaxReportFormatXLSX {
+		return nil, nil, "", fmt.Errorf("%w: %q", ErrUnsupportedTaxReportFormat, format)
+	}
+
+	deals, err := s.store.ListBrandDeals(ctx, workspaceID, "")
+	if err != nil {
+		return nil, nil, "", err
+	}
+	metrics, err := s.store.GetContentMetrics(ctx, workspaceID, "")
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	affiliateRev := tenantdb.ZeroDecimal()
+	sponsorshipRev := tenantdb.ZeroDecimal()
+	productSalesRev := tenantdb.ZeroDecimal()
+	aiCreditExp := tenantdb.ZeroDecimal()
+	subscriptionExp := tenantdb.ZeroDecimal()
+	currency := "VND"
+
+	for _, d := range deals {
+		if d.Status != BrandDealStatusPaid && d.Status != BrandDealStatusCompleted {
+			continue
+		}
+		if d.Value <= 0 {
+			continue
+		}
+		dealTime := d.UpdatedAt
+		if dealTime.IsZero() {
+			dealTime = d.CreatedAt
+		}
+		if !dealTime.IsZero() && (dealTime.Before(periodStart) || !dealTime.Before(periodEnd)) {
+			continue
+		}
+		valDec, err := decimalFromFloat64(d.Value)
+		if err != nil {
+			return nil, nil, "", err
+		}
+		if d.Currency != "" {
+			currency = d.Currency
+		}
+		if d.DealType == BrandDealTypeAffiliate {
+			affiliateRev, err = affiliateRev.Add(valDec)
+		} else {
+			sponsorshipRev, err = sponsorshipRev.Add(valDec)
+		}
+		if err != nil {
+			return nil, nil, "", err
+		}
+	}
+
+	for _, m := range metrics {
+		if !m.PublishedAt.IsZero() && (m.PublishedAt.Before(periodStart) || !m.PublishedAt.Before(periodEnd)) {
+			continue
+		}
+		if m.RevenueAttributed > 0 {
+			revDec, err := decimalFromFloat64(m.RevenueAttributed)
+			if err != nil {
+				return nil, nil, "", err
+			}
+			if strings.EqualFold(m.Platform, "affiliate") {
+				affiliateRev, err = affiliateRev.Add(revDec)
+			} else {
+				productSalesRev, err = productSalesRev.Add(revDec)
+			}
+			if err != nil {
+				return nil, nil, "", err
+			}
+		}
+		if m.CostToProduce > 0 {
+			costDec, err := decimalFromFloat64(m.CostToProduce)
+			if err != nil {
+				return nil, nil, "", err
+			}
+			if strings.Contains(strings.ToLower(m.ProductionMode), "ai") {
+				aiCreditExp, err = aiCreditExp.Add(costDec)
+			} else {
+				subscriptionExp, err = subscriptionExp.Add(costDec)
+			}
+			if err != nil {
+				return nil, nil, "", err
+			}
+		}
+	}
+
+	totalRev, err := affiliateRev.Add(sponsorshipRev)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	totalRev, err = totalRev.Add(productSalesRev)
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	totalExp, err := aiCreditExp.Add(subscriptionExp)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	netIncome, err := totalRev.Sub(totalExp)
+	if err != nil {
+		return nil, nil, "", err
+	}
+
 	summary := &TaxReportSummary{
 		ReportID:             newUUID(),
 		WorkspaceID:          workspaceID,
 		Period:               period,
 		TaxYear:              year,
 		PeriodNumber:         periodNumber,
-		TotalRevenue:         125000000.0,
-		AffiliateRevenue:     45000000.0,
-		SponsorshipRevenue:   60000000.0,
-		ProductSalesRevenue:  20000000.0,
-		AICreditExpenses:     3500000.0,
-		SubscriptionExpenses: 4200000.0,
-		NetIncomeBeforeTax:   117300000.0,
-		Currency:             "VND",
+		TotalRevenue:         float64FromDecimal(totalRev),
+		AffiliateRevenue:     float64FromDecimal(affiliateRev),
+		SponsorshipRevenue:   float64FromDecimal(sponsorshipRev),
+		ProductSalesRevenue:  float64FromDecimal(productSalesRev),
+		AICreditExpenses:     float64FromDecimal(aiCreditExp),
+		SubscriptionExpenses: float64FromDecimal(subscriptionExp),
+		NetIncomeBeforeTax:   float64FromDecimal(netIncome),
+		Currency:             currency,
 		Format:               format,
 		GeneratedAt:          s.nowFunc(),
 	}
-	fileName := fmt.Sprintf("tax_report_%s_%d_Q%d.%s", workspaceID[:8], year, periodNumber, strings.ToLower(string(format)))
+
+	wsPrefix := workspaceID
+	if len(wsPrefix) > 8 {
+		wsPrefix = wsPrefix[:8]
+	}
+	fileName := fmt.Sprintf("tax_report_%s_%d_%s.%s", wsPrefix, year, periodCode, strings.ToLower(string(format)))
 	summary.DownloadURL = fmt.Sprintf("https://api.creativanta.com/v1/tax-reports/%s/download", summary.ReportID)
 
-	// Generate deterministic export payload
-	csvData := fmt.Sprintf("ReportID,Year,Period,TotalRevenue,NetIncome,Currency\n%s,%d,%s,%.2f,%.2f,%s\n",
-		summary.ReportID, year, period, summary.TotalRevenue, summary.NetIncomeBeforeTax, summary.Currency)
+	affStr := affiliateRev.Fixed6String()
+	sponStr := sponsorshipRev.Fixed6String()
+	prodStr := productSalesRev.Fixed6String()
+	totRevStr := totalRev.Fixed6String()
+	aiExpStr := aiCreditExp.Fixed6String()
+	subExpStr := subscriptionExp.Fixed6String()
+	netStr := netIncome.Fixed6String()
+
+	var payload []byte
+	switch format {
+	case TaxReportFormatCSV:
+		csvData := fmt.Sprintf(
+			"ReportID,WorkspaceID,Year,Period,PeriodNumber,AffiliateRevenue,SponsorshipRevenue,ProductSalesRevenue,TotalRevenue,AICreditExpenses,SubscriptionExpenses,NetIncomeBeforeTax,Currency\n%s,%s,%d,%s,%d,%s,%s,%s,%s,%s,%s,%s,%s\n",
+			summary.ReportID, workspaceID, year, period, periodNumber,
+			affStr, sponStr, prodStr, totRevStr, aiExpStr, subExpStr, netStr, summary.Currency,
+		)
+		payload = []byte(csvData)
+	case TaxReportFormatPDF:
+		payload = buildPDFTaxReport(summary, affStr, sponStr, prodStr, totRevStr, aiExpStr, subExpStr, netStr)
+	case TaxReportFormatXLSX:
+		payload, err = buildXLSXTaxReport(summary, affStr, sponStr, prodStr, totRevStr, aiExpStr, subExpStr, netStr)
+		if err != nil {
+			return nil, nil, "", err
+		}
+	}
 
 	if err := s.store.SaveTaxReport(ctx, summary); err != nil {
 		return nil, nil, "", err
 	}
 	s.emitEvent(ctx, workspaceID, "creator_pro.tax_report.generated", summary.ReportID, map[string]any{
-		"report_id": summary.ReportID,
-		"year":      year,
-		"period":    string(period),
+		"report_id":    summary.ReportID,
+		"year":         year,
+		"period":       string(period),
+		"total_rev":    totRevStr,
+		"net_income":   netStr,
+		"export_bytes": len(payload),
 	})
-	return summary, []byte(csvData), fileName, nil
+	return summary, payload, fileName, nil
 }
 
 // ----------------------------------------------------------------------------

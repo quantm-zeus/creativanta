@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import {
     authStore,
     CANONICAL_OPERATOR_MODES,
+    slugifyWorkspaceName,
     type WorkspaceSummary,
     type OperatorMode
   } from '$lib/auth';
@@ -12,13 +12,59 @@
   let selectionError = $state<string | null>(null);
   let isSelecting = $state(false);
 
+  // First-Workspace Creation / New Workspace Onboarding State (UF-02)
+  let showCreateForm = $state(false);
+  let newWorkspaceName = $state('');
+  let newWorkspaceSlug = $state('');
+  let slugManuallyEdited = $state(false);
+  let newWorkspaceMode = $state<OperatorMode>($authStore.activeMode || 'creator');
+  let isCreatingWorkspace = $state(false);
+  let createWorkspaceError = $state<string | null>(null);
+  let createWorkspaceSuccess = $state<string | null>(null);
+
+  function handleNameInput(value: string) {
+    newWorkspaceName = value;
+    if (!slugManuallyEdited) {
+      newWorkspaceSlug = slugifyWorkspaceName(value);
+    }
+  }
+
+  async function handleCreateWorkspace(e: SubmitEvent) {
+    e.preventDefault();
+    createWorkspaceError = null;
+    createWorkspaceSuccess = null;
+    isCreatingWorkspace = true;
+
+    try {
+      const res = await authStore.createWorkspace({
+        displayName: newWorkspaceName,
+        slug: newWorkspaceSlug,
+        defaultOperatorMode: newWorkspaceMode
+      });
+
+      if (!res.ok || !res.workspace) {
+        createWorkspaceError =
+          res.error || 'Không thể khởi tạo Workspace mới. Thông tin bạn nhập đã được giữ nguyên.';
+        return;
+      }
+
+      createWorkspaceSuccess = `Đã tạo Workspace "${res.workspace.name}" thành công!`;
+      showCreateForm = false;
+      newWorkspaceName = '';
+      newWorkspaceSlug = '';
+      slugManuallyEdited = false;
+      await goto('/');
+    } finally {
+      isCreatingWorkspace = false;
+    }
+  }
+
   async function handleSelectWorkspace(workspace: WorkspaceSummary) {
     selectionError = null;
     isSelecting = true;
 
     try {
       await authStore.selectWorkspace(workspace.id);
-      // Navigate to Home Dashboard after successful selection
       await goto('/');
     } catch (err: any) {
       selectionError = err?.message || 'Không thể chọn không gian làm việc này';
@@ -29,6 +75,7 @@
 
   function handleSwitchMode(mode: OperatorMode) {
     authStore.setOperatorMode(mode);
+    newWorkspaceMode = mode;
   }
 
   function getRoleBadgeClass(role: string): string {
@@ -77,12 +124,11 @@
       </a>
       <button
         type="button"
-        disabled
-        title="Endpoint WorkspaceService/Create chưa được gắn kết (unmounted)"
-        class="inline-flex items-center gap-1.5 rounded-lg border border-[#e7e2d7] bg-[#f4f0e8] px-3 py-2 text-xs font-semibold text-[#8a968c] cursor-not-allowed"
+        disabled={$authStore.state !== 'authenticated'}
+        onclick={() => (showCreateForm = !showCreateForm)}
+        class="inline-flex items-center gap-1.5 rounded-lg border border-[#274333] bg-[#274333] px-3 py-2 text-xs font-semibold text-[#fbf9f5] hover:bg-[#1e3528] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <span>+ Tạo mới</span>
-        <span class="text-[10px] font-mono">(Unmounted)</span>
+        <span>+ Tạo mới Workspace</span>
       </button>
     </div>
   </div>
@@ -118,6 +164,108 @@
       {/each}
     </div>
   </div>
+
+  {#if createWorkspaceSuccess}
+    <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-semibold text-emerald-900" role="status">
+      {createWorkspaceSuccess}
+    </div>
+  {/if}
+
+  {#if createWorkspaceError}
+    <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-800" role="alert">
+      {createWorkspaceError}
+    </div>
+  {/if}
+
+  {#if showCreateForm && $authStore.state === 'authenticated'}
+    <form
+      onsubmit={handleCreateWorkspace}
+      class="rounded-2xl border border-[#274333]/30 bg-[#ffffff] p-6 shadow-sm space-y-4"
+    >
+      <div class="flex items-center justify-between border-b border-[#e7e2d7] pb-3">
+        <div>
+          <h2 class="text-base font-bold text-[#242924]">Tạo Workspace mới (Onboarding)</h2>
+          <p class="text-xs text-[#616c63]">
+            Khởi tạo không gian làm việc qua <code>WorkspaceService/Create</code> với vai trò Owner.
+          </p>
+        </div>
+        <button
+          type="button"
+          onclick={() => (showCreateForm = false)}
+          class="text-xs font-semibold text-[#616c63] hover:text-[#242924]"
+        >
+          Đóng ✕
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="ws-display-name" class="block text-xs font-semibold text-[#242924] mb-1">
+            Tên hiển thị Workspace
+          </label>
+          <input
+            id="ws-display-name"
+            type="text"
+            value={newWorkspaceName}
+            oninput={(e) => handleNameInput(e.currentTarget.value)}
+            required
+            placeholder="Ví dụ: Viet Cosmetics Studio"
+            class="w-full rounded-lg border border-[#e7e2d7] bg-[#fbf9f5] px-3 py-2 text-xs text-[#242924] focus:border-[#274333] focus:outline-none"
+          />
+        </div>
+
+        <div>
+          <label for="ws-slug" class="block text-xs font-semibold text-[#242924] mb-1">
+            Slug định danh
+          </label>
+          <input
+            id="ws-slug"
+            type="text"
+            value={newWorkspaceSlug}
+            oninput={(e) => {
+              slugManuallyEdited = true;
+              newWorkspaceSlug = e.currentTarget.value;
+            }}
+            required
+            placeholder="viet-cosmetics-studio"
+            class="w-full rounded-lg border border-[#e7e2d7] bg-[#fbf9f5] px-3 py-2 text-xs font-mono text-[#242924] focus:border-[#274333] focus:outline-none"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label for="ws-default-mode" class="block text-xs font-semibold text-[#242924] mb-1">
+          Chế độ vận hành mặc định (Default Operator Mode)
+        </label>
+        <select
+          id="ws-default-mode"
+          bind:value={newWorkspaceMode}
+          class="w-full rounded-lg border border-[#e7e2d7] bg-[#fbf9f5] px-3 py-2 text-xs text-[#242924] focus:border-[#274333] focus:outline-none"
+        >
+          {#each CANONICAL_OPERATOR_MODES as mode (mode.id)}
+            <option value={mode.id}>{mode.vietnameseLabel} ({mode.label})</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button
+          type="button"
+          onclick={() => (showCreateForm = false)}
+          class="rounded-lg border border-[#e7e2d7] px-4 py-2 text-xs font-semibold text-[#616c63] hover:bg-[#f4f0e8]"
+        >
+          Hủy
+        </button>
+        <button
+          type="submit"
+          disabled={isCreatingWorkspace}
+          class="rounded-lg bg-[#274333] px-4 py-2 text-xs font-semibold text-[#fbf9f5] hover:bg-[#1e3528] disabled:opacity-50"
+        >
+          {isCreatingWorkspace ? 'Đang tạo Workspace...' : 'Khởi tạo Workspace'}
+        </button>
+      </div>
+    </form>
+  {/if}
 
   <!-- State 1: Unauthenticated Guard -->
   {#if $authStore.state === 'unauthenticated' || $authStore.state === 'unconfigured'}
@@ -234,13 +382,27 @@
       {/each}
     </div>
 
-  <!-- State 5: No Workspaces Found -->
+  <!-- State 5: No Workspaces Found -> First-Workspace Onboarding -->
   {:else}
-    <div class="rounded-xl border border-[#e7e2d7] bg-[#ffffff] p-8 text-center space-y-3">
-      <p class="text-sm font-medium text-[#242924]">Chưa tìm thấy workspace nào</p>
-      <p class="text-xs text-[#616c63] max-w-md mx-auto">
-        Tài khoản của bạn chưa tham gia hoặc chưa được mời vào không gian làm việc nào. Vui lòng liên hệ quản trị viên để nhận lời mời.
-      </p>
+    <div class="rounded-2xl border border-[#e7e2d7] bg-[#ffffff] p-8 space-y-4">
+      <div class="text-center space-y-2">
+        <p class="text-base font-bold text-[#242924]">Chưa tìm thấy workspace nào — Khởi tạo Workspace đầu tiên</p>
+        <p class="text-xs text-[#616c63] max-w-md mx-auto">
+          Tài khoản của bạn chưa có không gian làm việc. Bạn có thể tạo Workspace đầu tiên ngay bên dưới hoặc liên hệ quản trị viên để nhận lời mời.
+        </p>
+      </div>
+
+      {#if !showCreateForm}
+        <div class="text-center pt-2">
+          <button
+            type="button"
+            onclick={() => (showCreateForm = true)}
+            class="inline-flex items-center gap-2 rounded-xl bg-[#274333] px-5 py-2.5 text-xs font-semibold text-[#fbf9f5] hover:bg-[#1e3528] transition-colors"
+          >
+            <span>+ Tạo Workspace đầu tiên của bạn</span>
+          </button>
+        </div>
+      {/if}
     </div>
   {/if}
 </div>

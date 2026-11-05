@@ -1,12 +1,14 @@
 <script lang="ts">
   import {
     checkDuplicateIdea,
+    createIdeaRemote,
     type DuplicateWarning,
     type Idea,
   } from '$lib/idea';
+  import { authStore } from '$lib/auth';
   import DuplicateWarningBanner from '$lib/idea/DuplicateWarningBanner.svelte';
 
-  const currentWorkspaceId = 'ws-current-tenant';
+  let currentWorkspaceId = $derived($authStore.activeWorkspace?.id || '');
 
   let title = $state('');
   let description = $state('');
@@ -18,12 +20,13 @@
 
   let activeWarning = $state<DuplicateWarning | null>(null);
   let statusMessage = $state<{ type: 'success' | 'error'; text: string } | null>(null);
+  let isSaving = $state(false);
 
   // Existing mock ideas to check against
   const existingIdeas: Idea[] = [
     {
       ideaId: 'idea-001',
-      workspaceId: currentWorkspaceId,
+      workspaceId: 'ws-current-tenant',
       title: 'Hướng dẫn skincare mùa hè cho da dầu',
       description: 'Quy trình tối giản 3 bước',
       audienceIntent: '',
@@ -44,7 +47,7 @@
     activeWarning = checkDuplicateIdea(title, existingIdeas, 0.85);
   }
 
-  function handleSave(force = false) {
+  async function handleSave(force = false) {
     if (!title.trim()) {
       statusMessage = { type: 'error', text: 'Vui lòng nhập tiêu đề ý tưởng.' };
       return;
@@ -58,13 +61,46 @@
       }
     }
 
-    statusMessage = {
-      type: 'success',
-      text: force
-        ? '✅ Đã lưu ý tưởng mới độc lập (không gộp tự động với ý tưởng tương tự).'
-        : '✅ Đã tạo ý tưởng mới thành công!'
-    };
-    activeWarning = null;
+    isSaving = true;
+    statusMessage = null;
+    try {
+      const res = await createIdeaRemote({
+        workspaceId: currentWorkspaceId,
+        title,
+        description,
+        audienceIntent,
+        creatorIntent,
+        suggestedFormat,
+        angle,
+        hookText,
+        confirmDuplicate: force,
+        existingIdeas
+      });
+
+      if (!res.ok || !res.idea) {
+        if (res.duplicateWarning) {
+          activeWarning = res.duplicateWarning;
+          return;
+        }
+        statusMessage = {
+          type: 'error',
+          text:
+            res.error ||
+            'Không thể lưu ý tưởng lên máy chủ (IdeaService/Create). Nội dung bạn nhập đã được giữ nguyên.'
+        };
+        return;
+      }
+
+      statusMessage = {
+        type: 'success',
+        text: force
+          ? `✅ Đã lưu ý tưởng mới độc lập (#${res.idea.ideaId}) vào cơ sở dữ liệu.`
+          : `✅ Đã tạo ý tưởng mới thành công (#${res.idea.ideaId})!`
+      };
+      activeWarning = null;
+    } finally {
+      isSaving = false;
+    }
   }
 </script>
 

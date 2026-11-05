@@ -1,7 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createAuthStore } from './store';
+import { createAuthStore, sanitizeRedirectTarget, slugifyWorkspaceName } from './store';
 import { CANONICAL_OPERATOR_MODES, type WorkspaceSummary } from './types';
-import { resetClerkInstance, type ClerkBrowserInstance } from './clerk';
+import {
+  resetClerkInstance,
+  startClerkEmailSignUp,
+  verifyClerkEmailSignUpCode,
+  requestClerkPasswordResetCode,
+  confirmClerkPasswordResetCode,
+  type ClerkBrowserInstance
+} from './clerk';
+import { modeStore } from '../constants/modes';
 import {
   CANONICAL_WORKSPACE_ROLES,
   canModifyMemberInUI,
@@ -386,6 +394,199 @@ describe('P0-03 Web User-Facing Identity & Auth Store', () => {
           is_internal_note: true
         })
       ).toThrow(/Forbidden internal support note/);
+    });
+  });
+
+  describe('7. UF-10 Open Redirect Sanitization', () => {
+    it('allows safe internal paths and preserves query/hash', () => {
+      expect(sanitizeRedirectTarget('/studio/agent?tab=plan#step-1')).toBe(
+        '/studio/agent?tab=plan#step-1'
+      );
+      expect(sanitizeRedirectTarget('/kinh-doanh')).toBe('/kinh-doanh');
+    });
+
+    it('rejects absolute URLs, protocol-relative URLs, javascript/data schemes, and backslashes', () => {
+      expect(sanitizeRedirectTarget('https://evil.example/phish')).toBe('/workspaces');
+      expect(sanitizeRedirectTarget('http://evil.example/phish')).toBe('/workspaces');
+      expect(sanitizeRedirectTarget('//evil.example/phish')).toBe('/workspaces');
+      expect(sanitizeRedirectTarget('/\\evil.example')).toBe('/workspaces');
+      expect(sanitizeRedirectTarget('/%5cevil.example')).toBe('/workspaces');
+      expect(sanitizeRedirectTarget('/%2f/evil.example')).toBe('/workspaces');
+      expect(sanitizeRedirectTarget('javascript:alert(1)')).toBe('/workspaces');
+      expect(sanitizeRedirectTarget('data:text/html,<script>alert(1)</script>')).toBe('/workspaces');
+      expect(sanitizeRedirectTarget(null)).toBe('/workspaces');
+      expect(sanitizeRedirectTarget('https://evil.example/phish', '/')).toBe('/');
+    });
+  });
+
+  describe('8. UF-09 Six-Mode Bidirectional Synchronization', () => {
+    it('synchronizes operator mode changes between authStore and modeStore', async () => {
+      const store = createAuthStore();
+      await store.init({ publishableKey: '' });
+
+      let authMode = 'creator';
+      let globalMode = 'creator';
+      const unsubAuth = store.subscribe((s) => (authMode = s.activeMode));
+      const unsubGlobal = modeStore.subscribe((m) => (globalMode = m));
+
+      // Change via authStore -> reflects in modeStore
+      store.setOperatorMode('seller');
+      expect(authMode).toBe('seller');
+      expect(globalMode).toBe('seller');
+
+      // Change via modeStore -> reflects in authStore
+      modeStore.setMode('brand_collaboration');
+      expect(globalMode).toBe('brand_collaboration');
+      expect(authMode).toBe('brand_collaboration');
+
+      // Reset
+      modeStore.setMode('creator');
+      unsubAuth();
+      unsubGlobal();
+    });
+  });
+
+  describe('9. UF-02 Clerk Registration, Password Reset & First Workspace Creation', () => {
+    it('fails closed when Clerk sign-up or password reset is invoked without Clerk configured', async () => {
+      const signUpFail = await startClerkEmailSignUp({
+        fullName: 'Người Dùng Mới',
+        email: 'new@creativanta.vn',
+        password: 'Password123!'
+      });
+      expect(signUpFail.ok).toBe(false);
+      expect(signUpFail.step).toBe('failed');
+      expect(signUpFail.error).toMatch(/fail-closed/);
+
+      const resetFail = await requestClerkPasswordResetCode({
+        email: 'user@creativanta.vn'
+      });
+      expect(resetFail.ok).toBe(false);
+      expect(resetFail.step).toBe('failed');
+      expect(resetFail.error).toMatch(/fail-closed/);
+    });
+
+    it('completes Clerk email sign-up and password reset when Clerk client is provided', async () => {
+      const setActive = vi.fn().mockResolvedValue(undefined);
+      const clerkWithClient: ClerkBrowserInstance = {
+        ...mockClerk,
+        setActive,
+        client: {
+          signUp: {
+            create: vi.fn().mockResolvedValue({ status: 'missing_requirements' }),
+            prepareEmailAddressVerification: vi.fn().mockResolvedValue(undefined),
+            attemptEmailAddressVerification: vi.fn().mockResolvedValue({
+              status: 'complete',
+              createdSessionId: 'sess_new_signup_1'
+            })
+          },
+          signIn: {
+            create: vi.fn().mockResolvedValue({ status: 'needs_first_factor' }),
+            attemptFirstFactor: vi.fn().mockResolvedValue({
+              status: 'complete',
+              createdSessionId: 'sess_recovered_1'
+            })
+          }
+        }
+      };
+
+      const startRes = await startClerkEmailSignUp({
+        fullName: 'Trần Thị B',
+        email: 'new@creativanta.vn',
+        password: 'Password123!',
+        clerk: clerkWithClient
+      });
+      expect(startRes.ok).toBe(true);
+      expect(startRes.step).toBe('verification_required');
+
+      const verifyRes = await verifyClerkEmailSignUpCode({
+        code: '123456',
+        clerk: clerkWithClient
+      });
+      expect(verifyRes.ok).toBe(true);
+      expect(verifyRes.step).toBe('complete');
+      expect(setActive).toHaveBeenCalledWith({ session: 'sess_new_signup_1' });
+
+      const reqReset = await requestClerkPasswordResetCode({
+        email: 'new@creativanta.vn',
+        clerk: clerkWithClient
+      });
+      expect(reqReset.ok).toBe(true);
+      expect(reqReset.step).toBe('code_sent');
+
+      const resetRes = await confirmClerkPasswordResetCode({
+        code: '654321',
+        newPassword: 'NewStrongPass123!',
+        clerk: clerkWithClient
+      });
+      expect(resetRes.ok).toBe(true);
+      expect(resetRes.step).toBe('complete');
+      expect(setActive).toHaveBeenCalledWith({ session: 'sess_recovered_1' });
+    });
+
+    it('creates first workspace via canonical WorkspaceService/Create RPC and fails closed on backend error', async () => {
+      const store = createAuthStore();
+      await store.init({
+        publishableKey: 'pk_test_valid_dummy_key',
+        clerkInstance: mockClerk,
+        discoveryFetcher: vi.fn().mockResolvedValue([])
+      });
+
+      expect(slugifyWorkspaceName('Creativanta Việt Nam Studio!')).toBe(
+        'creativanta-viet-nam-studio'
+      );
+
+      // 1. Negative test: backend returns 503 -> fails closed without fabricating workspace
+      const failingFetch = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ message: 'Database unavailable' }), {
+          status: 503,
+          headers: { 'content-type': 'application/json' }
+        })
+      );
+
+      const failCreate = await store.createWorkspace(
+        {
+          displayName: 'New Studio',
+          defaultOperatorMode: 'seller'
+        },
+        failingFetch as unknown as typeof fetch
+      );
+      expect(failCreate.ok).toBe(false);
+      expect(failCreate.error).toContain('Database unavailable');
+      expect(store.getSnapshot().workspaces).toHaveLength(0);
+
+      // 2. Positive test: backend returns created workspace -> updates activeWorkspace & mode
+      const successFetch = vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            workspace: {
+              workspace_id: 'ws-created-001',
+              display_name: 'New Studio',
+              slug: 'new-studio',
+              plan_tier: 'Starter',
+              status: 'active',
+              default_operator_mode: 'seller'
+            }
+          }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          }
+        )
+      );
+
+      const okCreate = await store.createWorkspace(
+        {
+          displayName: 'New Studio',
+          defaultOperatorMode: 'seller'
+        },
+        successFetch as unknown as typeof fetch
+      );
+
+      expect(okCreate.ok).toBe(true);
+      expect(okCreate.workspace?.id).toBe('ws-created-001');
+      expect(okCreate.workspace?.role).toBe('owner');
+      expect(store.getSnapshot().activeWorkspace?.id).toBe('ws-created-001');
+      expect(store.getSnapshot().activeMode).toBe('seller');
     });
   });
 });

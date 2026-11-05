@@ -135,3 +135,223 @@ export function formatDiagnostics(diag: DiagnosticsRecord): {
     hasFallback: diag.fallback_available
   };
 }
+
+import { callCanonicalRpc, generateIdempotencyKey, type CanonicalRpcOptions } from '$lib/api/client';
+import { validateWorkflowGraph } from './validation';
+
+export interface SaveWorkflowRemoteInput {
+  workspaceId?: string;
+  workflowId: string;
+  title: string;
+  description: string;
+  expectedVersion: number;
+  graph: WorkflowGraph;
+}
+
+export interface SaveWorkflowRemoteResult {
+  ok: boolean;
+  version?: number;
+  status?: 'draft' | 'active' | 'paused';
+  error?: string;
+}
+
+/**
+ * Loads a workflow definition from `creativanta.automation.v1.WorkflowService/Get` (UF-08).
+ */
+export async function loadWorkflowRemote(
+  params: { workspaceId?: string; workflowId: string },
+  options: CanonicalRpcOptions = {}
+): Promise<{
+  ok: boolean;
+  workflow?: {
+    workflowId: string;
+    title: string;
+    description: string;
+    status: 'draft' | 'active' | 'paused';
+    version: number;
+    graph?: WorkflowGraph;
+  };
+  error?: string;
+}> {
+  const rpcRes = await callCanonicalRpc<
+    Record<string, unknown>,
+    {
+      workflow?: {
+        workflow_id?: string;
+        title?: string;
+        description?: string;
+        status?: 'draft' | 'active' | 'paused';
+        version?: number;
+        graph?: WorkflowGraph;
+      };
+    }
+  >(
+    'creativanta.automation.v1.WorkflowService/Get',
+    {
+      workspace_id: params.workspaceId,
+      workflow_id: params.workflowId
+    },
+    {
+      ...options,
+      workspaceId: options.workspaceId ?? params.workspaceId
+    }
+  );
+
+  if (!rpcRes.ok) {
+    return {
+      ok: false,
+      error: rpcRes.error.message
+    };
+  }
+
+  const wf = rpcRes.data?.workflow;
+  if (!wf?.workflow_id) {
+    return {
+      ok: false,
+      error: 'Phản hồi từ máy chủ thiếu thông tin workflow_id (fail-closed).'
+    };
+  }
+
+  return {
+    ok: true,
+    workflow: {
+      workflowId: wf.workflow_id,
+      title: wf.title || '',
+      description: wf.description || '',
+      status: wf.status || 'draft',
+      version: wf.version ?? 1,
+      graph: wf.graph
+    }
+  };
+}
+
+/**
+ * Persists workflow graph edits via `creativanta.automation.v1.WorkflowService/Update`
+ * with optimistic concurrency (`expected_version`) (UF-08).
+ * Never increments version locally when the backend call fails.
+ */
+export async function saveWorkflowRemote(
+  input: SaveWorkflowRemoteInput,
+  options: CanonicalRpcOptions = {}
+): Promise<SaveWorkflowRemoteResult> {
+  const validation = validateWorkflowGraph(input.graph);
+  if (!validation.valid) {
+    return {
+      ok: false,
+      error: `Cannot save invalid workflow: ${validation.errors.join('; ')}`
+    };
+  }
+
+  const rpcRes = await callCanonicalRpc<
+    Record<string, unknown>,
+    {
+      workflow?: {
+        workflow_id?: string;
+        version?: number;
+        status?: 'draft' | 'active' | 'paused';
+      };
+      version?: number;
+    }
+  >(
+    'creativanta.automation.v1.WorkflowService/Update',
+    {
+      idempotency_key: options.idempotencyKey || generateIdempotencyKey('wf-save'),
+      workspace_id: input.workspaceId,
+      workflow_id: input.workflowId,
+      title: input.title,
+      description: input.description,
+      expected_version: input.expectedVersion,
+      graph: input.graph
+    },
+    {
+      ...options,
+      workspaceId: options.workspaceId ?? input.workspaceId
+    }
+  );
+
+  if (!rpcRes.ok) {
+    return {
+      ok: false,
+      error: rpcRes.error.message
+    };
+  }
+
+  const remoteVersion = rpcRes.data?.workflow?.version ?? rpcRes.data?.version;
+  if (typeof remoteVersion !== 'number') {
+    return {
+      ok: false,
+      error: 'Phản hồi từ máy chủ thiếu số phiên bản workflow mới (version). Không tăng version giả lập.'
+    };
+  }
+
+  return {
+    ok: true,
+    version: remoteVersion,
+    status: rpcRes.data?.workflow?.status
+  };
+}
+
+/**
+ * Activates or pauses a workflow via `creativanta.automation.v1.WorkflowService/Activate`
+ * or `Pause` (UF-08). Never mutates workflow status locally when the backend call fails.
+ */
+export async function setWorkflowStatusRemote(
+  params: {
+    workspaceId?: string;
+    workflowId: string;
+    targetStatus: 'draft' | 'active' | 'paused';
+    expectedVersion: number;
+  },
+  options: CanonicalRpcOptions = {}
+): Promise<SaveWorkflowRemoteResult> {
+  const procedure =
+    params.targetStatus === 'active'
+      ? 'creativanta.automation.v1.WorkflowService/Activate'
+      : 'creativanta.automation.v1.WorkflowService/Update';
+
+  const rpcRes = await callCanonicalRpc<
+    Record<string, unknown>,
+    {
+      workflow?: {
+        workflow_id?: string;
+        status?: 'draft' | 'active' | 'paused';
+        version?: number;
+      };
+      status?: 'draft' | 'active' | 'paused';
+    }
+  >(
+    procedure,
+    {
+      idempotency_key: options.idempotencyKey || generateIdempotencyKey('wf-status'),
+      workspace_id: params.workspaceId,
+      workflow_id: params.workflowId,
+      status: params.targetStatus,
+      expected_version: params.expectedVersion
+    },
+    {
+      ...options,
+      workspaceId: options.workspaceId ?? params.workspaceId
+    }
+  );
+
+  if (!rpcRes.ok) {
+    return {
+      ok: false,
+      error: rpcRes.error.message
+    };
+  }
+
+  const confirmedStatus = rpcRes.data?.workflow?.status || rpcRes.data?.status;
+  if (!confirmedStatus) {
+    return {
+      ok: false,
+      error: 'Phản hồi từ máy chủ không xác nhận trạng thái workflow mới (fail-closed).'
+    };
+  }
+
+  return {
+    ok: true,
+    status: confirmedStatus,
+    version: rpcRes.data?.workflow?.version ?? params.expectedVersion
+  };
+}

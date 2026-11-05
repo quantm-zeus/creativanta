@@ -98,8 +98,25 @@ func (s *Service) ReserveStock(
 	var createdReservations []*Reservation
 
 	err := s.store.AtomicExecute(ctx, workspaceID, pairs, func(tx StoreTx) error {
-		// 1. Verify sellable inventory for all items
+		existingByKey := make(map[string]*Reservation, len(items))
+		// 1. Verify existing reservation state and sellable inventory for all items
 		for _, item := range items {
+			resKey := fmt.Sprintf("res_%s_%s_%s", orderID, item.SkuID, item.LocationID)
+			existing, err := tx.GetReservation(ctx, workspaceID, resKey)
+			if err != nil && !errors.Is(err, ErrReservationNotFound) {
+				return err
+			}
+			if existing != nil {
+				if existing.Status == ResHeld && existing.Quantity == item.Quantity {
+					existingByKey[resKey] = existing
+					continue
+				}
+				if existing.Status != ResExpired && existing.Status != ResReleased {
+					return fmt.Errorf("%w: reservation %s already in status %s", ErrReservationConflict, existing.ReservationID, existing.Status)
+				}
+				existingByKey[resKey] = existing
+			}
+
 			bal, err := tx.GetBalanceForUpdate(ctx, workspaceID, item.SkuID, item.LocationID)
 			if err != nil {
 				return err
@@ -110,11 +127,20 @@ func (s *Service) ReserveStock(
 			}
 		}
 
-		// 2. All items verified: insert held reservations and increment reserved counts
+		// 2. All items verified: insert/reactivate held reservations and increment reserved counts
 		for _, item := range items {
 			resKey := fmt.Sprintf("res_%s_%s_%s", orderID, item.SkuID, item.LocationID)
+			if existing, ok := existingByKey[resKey]; ok && existing.Status == ResHeld && existing.Quantity == item.Quantity {
+				createdReservations = append(createdReservations, existing)
+				continue
+			}
+
+			resID := newUUID()
+			if existing, ok := existingByKey[resKey]; ok {
+				resID = existing.ReservationID
+			}
 			res := &Reservation{
-				ReservationID:  newUUID(),
+				ReservationID:  resID,
 				WorkspaceID:    workspaceID,
 				OrderID:        orderID,
 				SkuID:          item.SkuID,
