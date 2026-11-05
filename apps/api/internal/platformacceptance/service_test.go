@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -594,5 +595,43 @@ func TestReconcileFullScope_NegativeIntegrityAndGateChecks(t *testing.T) {
 	_, err = NewService(buildRootFailedCheck).ReconcileFullScope(ctxAdmin, ReconcileFullScopeRequest{})
 	if !errors.Is(err, ErrTamperedManifestChecksum) {
 		t.Fatalf("expected ErrTamperedManifestChecksum for non-zero check exit_code, got: %v", err)
+	}
+}
+
+// TestPostP8CommittedSourceChangesRequireExactGitHEAD proves that historical
+// manifests remain valid across reviewed commits but cannot hide local tampering.
+// It does not close the live-provider and human approval release gates.
+func TestPostP8CommittedSourceChangesRequireExactGitHEAD(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is required for historical source attestations")
+	}
+	buildRoot, _ := buildSyntheticRepoWith60Manifests(t)
+	repoRoot := filepath.Dir(buildRoot)
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", repoRoot}, args...)...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %s: %v", args, out, err)
+		}
+	}
+	git("init", "-q")
+	git("add", "-A")
+	git("-c", "user.name=CI Reviewer", "-c", "user.email=ci@example.invalid", "commit", "-q", "-m", "seal historical manifests")
+	src := filepath.Join(repoRoot, "src", "P2", "P2-01.go")
+	if err := os.WriteFile(src, []byte("package P2 // approved follow-up change\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ctx := WithCallerContext(context.Background(), CallerContext{UserID: "reviewer", IsAdmin: true, AdminRole: "super_admin"})
+	if _, err := NewService(buildRoot).ReconcileFullScope(ctx, ReconcileFullScopeRequest{}); !errors.Is(err, ErrTamperedManifestChecksum) {
+		t.Fatalf("uncommitted source tampering should fail closed: %v", err)
+	}
+	git("add", "src/P2/P2-01.go")
+	git("-c", "user.name=CI Reviewer", "-c", "user.email=ci@example.invalid", "commit", "-q", "-m", "post-P8 audited change")
+	report, err := NewService(buildRoot).ReconcileFullScope(ctx, ReconcileFullScopeRequest{})
+	if err != nil {
+		t.Fatalf("committed revision of historical source should preserve sealed manifest evidence: %v", err)
+	}
+	if report.AcceptanceStatus != "PENDING" || report.ReleaseDecision != DecisionConditionalReadyLocal {
+		t.Fatalf("post-P8 source commit must not imply production acceptance: acceptance=%s release=%s", report.AcceptanceStatus, report.ReleaseDecision)
 	}
 }
