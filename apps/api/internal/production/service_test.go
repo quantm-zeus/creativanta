@@ -2,7 +2,17 @@ package production
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -11,6 +21,7 @@ import (
 	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
 	productionv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/production/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
 )
 
 func setupTestService(t *testing.T) (*Service, Store, *MockVeoProvider, *MockKlingProvider) {
@@ -483,5 +494,683 @@ func TestUploadSafety(t *testing.T) {
 	_, err = svc.Upload(ctx, eicarReq)
 	if err == nil {
 		t.Errorf("expected EICAR virus signature to be detected and rejected")
+	}
+}
+
+// ============================================================================
+// Remediation Regression Tests: AI-03, AI-04, AI-05, AI-06, AI-07, AI-08
+// ============================================================================
+
+type testProductionAuthVerifier struct {
+	session transportauth.Session
+}
+
+func (v testProductionAuthVerifier) Verify(_ context.Context, _ string) (transportauth.Session, error) {
+	return v.session, nil
+}
+
+func contextWithVerifiedSession(t *testing.T, session transportauth.Session) context.Context {
+	t.Helper()
+	interceptor, err := transportauth.NewServerInterceptor(transportauth.Options{
+		Mode:     transportauth.ModeAPI,
+		Verifier: testProductionAuthVerifier{session: session},
+	})
+	if err != nil {
+		t.Fatalf("NewServerInterceptor: %v", err)
+	}
+	var capturedCtx context.Context
+	wrapped := interceptor.WrapUnary(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		capturedCtx = ctx
+		return connect.NewResponse(&productionv1.GetModesResponse{}), nil
+	})
+	req := connect.NewRequest(&productionv1.GetModesRequest{})
+	req.Header().Set("Authorization", "Bearer valid-test-token")
+	req.Header().Set("x-workspace-id", session.WorkspaceID)
+	if _, err := wrapped(context.Background(), req); err != nil {
+		t.Fatalf("wrapped auth interceptor call failed: %v", err)
+	}
+	return capturedCtx
+}
+
+func TestAI03_ProductionService_EnforcesTransportAuthAndTenantScope(t *testing.T) {
+	svc, _, _, _ := setupTestService(t)
+	wsID := "11111111-1111-4111-8111-111111111101"
+	svc.SetWorkspaceBalance(wsID, tenantdb.MustParseExactDecimal("100"))
+
+	genReq := connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId: &commonv1.UUID{Value: wsID},
+		},
+		Title:  "Auth Check Video",
+		Prompt: "Verify principal and tenant scope enforcement",
+	})
+
+	// 1. Cross-tenant transportauth.Session must be denied
+	crossTenantPrincipalCtx := contextWithVerifiedSession(t, transportauth.Session{
+		UserID:      "11111111-1111-4111-8111-111111111199",
+		WorkspaceID: "22222222-2222-4222-8222-222222222202",
+	})
+	if _, err := svc.Generate(crossTenantPrincipalCtx, genReq); err == nil || connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected cross-tenant transportauth principal to be rejected with PermissionDenied, got: %v", err)
+	}
+
+	// 2. Viewer role with verified session must be denied on Generate (requires Editor+)
+	viewerPrincipalCtx := context.WithValue(
+		contextWithVerifiedSession(t, transportauth.Session{
+			UserID:      "11111111-1111-4111-8111-111111111198",
+			WorkspaceID: wsID,
+		}),
+		"caller_role",
+		"viewer",
+	)
+	if _, err := svc.Generate(viewerPrincipalCtx, genReq); err == nil || connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected viewer transportauth principal to be rejected with PermissionDenied, got: %v", err)
+	}
+
+	// 3. Matching Editor transportauth.Session succeeds
+	editorPrincipalCtx := contextWithVerifiedSession(t, transportauth.Session{
+		UserID:      "11111111-1111-4111-8111-111111111197",
+		WorkspaceID: wsID,
+	})
+	resp, err := svc.Generate(editorPrincipalCtx, genReq)
+	if err != nil {
+		t.Fatalf("expected matching editor principal to succeed, got: %v", err)
+	}
+	if resp.Msg.GetJob().GetStatus() != productionv1.GenerationJobStatus_GENERATION_JOB_STATUS_COMPLETED {
+		t.Fatalf("expected job completed, got %v", resp.Msg.GetJob().GetStatus())
+	}
+}
+
+func TestAI04_DefaultProductionService_FailsClosedWithoutProviders(t *testing.T) {
+	store := NewMemoryStore()
+	// Default NewService with no providers configured must NOT wire mock providers
+	svc := NewService(ServiceConfig{
+		Store: store,
+		InitialBalances: map[string]tenantdb.ExactDecimal{
+			"ws-unconf": tenantdb.MustParseExactDecimal("100"),
+		},
+	})
+	ctx := contextWithRole("Editor", "user-1")
+
+	genReq := connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId: &commonv1.UUID{Value: "ws-unconf"},
+		},
+		Title:  "Unconfigured Provider Video",
+		Prompt: "Must fail closed without charging credits",
+	})
+
+	_, err := svc.Generate(ctx, genReq)
+	if err == nil || connect.CodeOf(err) != connect.CodeFailedPrecondition || !errors.Is(err, ErrProviderNotConfigured) {
+		t.Fatalf("expected ErrProviderNotConfigured with FailedPrecondition, got: %v", err)
+	}
+
+	// Verify 0 credits charged and 0 assets created
+	bal := svc.GetWorkspaceBalance("ws-unconf")
+	if bal.Cmp(tenantdb.MustParseExactDecimal("100")) != 0 {
+		t.Fatalf("expected balance to remain 100 when provider is unconfigured, got %s", bal.String())
+	}
+	assets, total, _ := store.ListAssets(ctx, "ws-unconf", "", "", "", 10, 0)
+	if total != 0 || len(assets) != 0 {
+		t.Fatalf("expected 0 assets created when provider is unconfigured, got %d", total)
+	}
+}
+
+func TestAI05_QuoteVerification_IdempotencyConflict_And_ConcurrentSingleBalanceSafety(t *testing.T) {
+	svc, _, veo, _ := setupTestService(t)
+	ctx := contextWithRole("Editor", "user-1")
+	wsID := "ws-test-01"
+	svc.SetWorkspaceBalance(wsID, tenantdb.MustParseExactDecimal("200"))
+
+	// 1. Dry-run generates a quote bound to workspace, request hash, and expiry
+	dryReq := connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId: &commonv1.UUID{Value: wsID},
+		},
+		Title:  "Quoted Video",
+		Prompt: "A cinematic drone shot over emerald mountains",
+		Mode:   productionv1.ProductionMode_PRODUCTION_MODE_PRODUCT_SHOWCASE,
+		DryRun: true,
+	})
+	dryResp, err := svc.Generate(ctx, dryReq)
+	if err != nil {
+		t.Fatalf("dry-run Generate failed: %v", err)
+	}
+	quoteID := dryResp.Msg.GetBudgetPreview().GetQuoteId()
+	quotedCredits := dryResp.Msg.GetBudgetPreview().GetTotalEstimatedCredits()
+	if quoteID == "" || quotedCredits != "80" {
+		t.Fatalf("unexpected quote %q or credits %s", quoteID, quotedCredits)
+	}
+
+	// 2. Quote from another workspace must be rejected with PermissionDenied
+	otherWsReq := connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId: &commonv1.UUID{Value: "ws-test-02"},
+		},
+		Title:            "Quoted Video",
+		Prompt:           "A cinematic drone shot over emerald mountains",
+		Mode:             productionv1.ProductionMode_PRODUCTION_MODE_PRODUCT_SHOWCASE,
+		QuoteId:          quoteID,
+		ConfirmedCredits: quotedCredits,
+	})
+	if _, err := svc.Generate(ctx, otherWsReq); err == nil || connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected cross-workspace quote reuse to fail with PermissionDenied, got: %v", err)
+	}
+
+	// 3. Mismatched prompt (request hash mismatch) against quote must be rejected
+	tamperedReq := connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId: &commonv1.UUID{Value: wsID},
+		},
+		Title:            "Quoted Video",
+		Prompt:           "Tampered prompt different from quoted request",
+		Mode:             productionv1.ProductionMode_PRODUCTION_MODE_PRODUCT_SHOWCASE,
+		QuoteId:          quoteID,
+		ConfirmedCredits: quotedCredits,
+	})
+	if _, err := svc.Generate(ctx, tamperedReq); err == nil || connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("expected tampered prompt against quote to fail with FailedPrecondition, got: %v", err)
+	}
+
+	// 4. ConfirmedCredits = "0" or mismatch must be rejected
+	zeroConfirmedReq := connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId: &commonv1.UUID{Value: wsID},
+		},
+		Title:            "Quoted Video",
+		Prompt:           "A cinematic drone shot over emerald mountains",
+		Mode:             productionv1.ProductionMode_PRODUCTION_MODE_PRODUCT_SHOWCASE,
+		QuoteId:          quoteID,
+		ConfirmedCredits: "0",
+	})
+	if _, err := svc.Generate(ctx, zeroConfirmedReq); err == nil || connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("expected ConfirmedCredits=0 to fail with FailedPrecondition, got: %v", err)
+	}
+
+	// 5. Expired quote must be rejected
+	svc.RegisterQuote(CreditQuote{
+		QuoteID:        "quote-expired-1",
+		WorkspaceID:    wsID,
+		RequestHash:    computeGenerateRequestHash(zeroConfirmedReq.Msg),
+		QuotedCredits:  tenantdb.MustParseExactDecimal("80"),
+		CostCeilingUSD: tenantdb.MustParseExactDecimal("0.600000"),
+		ExpiresAt:      time.Now().Add(-1 * time.Minute).UTC(),
+		CreatedAt:      time.Now().Add(-6 * time.Minute).UTC(),
+	})
+	expiredReq := connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId: &commonv1.UUID{Value: wsID},
+		},
+		Title:            "Quoted Video",
+		Prompt:           "A cinematic drone shot over emerald mountains",
+		Mode:             productionv1.ProductionMode_PRODUCTION_MODE_PRODUCT_SHOWCASE,
+		QuoteId:          "quote-expired-1",
+		ConfirmedCredits: "80",
+	})
+	if _, err := svc.Generate(ctx, expiredReq); err == nil || connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("expected expired quote to fail with FailedPrecondition, got: %v", err)
+	}
+
+	// 6. Valid quote + Idempotency-Key succeeds once; replay returns same job without double debit;
+	// reusing Idempotency-Key with different payload fails with AlreadyExists
+	validLiveReq := connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: wsID},
+			IdempotencyKey: "idem-gen-001",
+		},
+		Title:            "Quoted Video",
+		Prompt:           "A cinematic drone shot over emerald mountains",
+		Mode:             productionv1.ProductionMode_PRODUCTION_MODE_PRODUCT_SHOWCASE,
+		QuoteId:          quoteID,
+		ConfirmedCredits: quotedCredits,
+	})
+	liveResp1, err := svc.Generate(ctx, validLiveReq)
+	if err != nil {
+		t.Fatalf("valid Generate failed: %v", err)
+	}
+	balAfterFirst := svc.GetWorkspaceBalance(wsID)
+	if balAfterFirst.Cmp(tenantdb.MustParseExactDecimal("120")) != 0 {
+		t.Fatalf("expected balance 120 after 1st job (200 - 80), got %s", balAfterFirst.String())
+	}
+
+	// Replay with identical Idempotency-Key and payload
+	liveResp2, err := svc.Generate(ctx, validLiveReq)
+	if err != nil {
+		t.Fatalf("idempotent replay failed: %v", err)
+	}
+	if liveResp2.Msg.GetJob().GetJobId() != liveResp1.Msg.GetJob().GetJobId() {
+		t.Fatalf("expected idempotent replay to return same job ID %s, got %s",
+			liveResp1.Msg.GetJob().GetJobId(), liveResp2.Msg.GetJob().GetJobId())
+	}
+	if svc.GetWorkspaceBalance(wsID).Cmp(tenantdb.MustParseExactDecimal("120")) != 0 {
+		t.Fatalf("idempotent replay double-charged credits! balance=%s", svc.GetWorkspaceBalance(wsID).String())
+	}
+	if veo.GetGenerateCount() != 1 {
+		t.Fatalf("expected provider Generate called once across idempotent replay, got %d", veo.GetGenerateCount())
+	}
+
+	// Reuse same Idempotency-Key with different prompt -> Must fail with AlreadyExists
+	conflictIdemReq := connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: wsID},
+			IdempotencyKey: "idem-gen-001",
+		},
+		Title:  "Quoted Video",
+		Prompt: "Different prompt reusing the same idempotency key",
+		Mode:   productionv1.ProductionMode_PRODUCTION_MODE_PRODUCT_SHOWCASE,
+	})
+	if _, err := svc.Generate(ctx, conflictIdemReq); err == nil || connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("expected idempotency key conflict to fail with AlreadyExists, got: %v", err)
+	}
+
+	// 7. Concurrent single-request balance safety:
+	// Set balance to 80 (enough for exactly 1 job of 80 credits) and launch 10 concurrent goroutines.
+	wsConcurrent := "ws-concurrent-80"
+	svc.SetWorkspaceBalance(wsConcurrent, tenantdb.MustParseExactDecimal("80"))
+	var (
+		wg           sync.WaitGroup
+		successCount int32
+		failCount    int32
+	)
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			req := connect.NewRequest(&productionv1.GenerateRequest{
+				Context: &commonv1.CommandContext{
+					WorkspaceId: &commonv1.UUID{Value: wsConcurrent},
+				},
+				Title:  fmt.Sprintf("Concurrent Job %d", idx),
+				Prompt: fmt.Sprintf("Concurrent generation request number %d", idx),
+				Mode:   productionv1.ProductionMode_PRODUCTION_MODE_PRODUCT_SHOWCASE,
+			})
+			if _, gErr := svc.Generate(ctx, req); gErr == nil {
+				atomic.AddInt32(&successCount, 1)
+			} else {
+				atomic.AddInt32(&failCount, 1)
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	if successCount != 1 || failCount != 9 {
+		t.Fatalf("expected exactly 1 success and 9 insufficient-credit failures, got success=%d fail=%d", successCount, failCount)
+	}
+	finalConcurrentBal := svc.GetWorkspaceBalance(wsConcurrent)
+	if finalConcurrentBal.Cmp(tenantdb.ZeroDecimal()) != 0 {
+		t.Fatalf("expected final balance 0 after single allowed job, got %s", finalConcurrentBal.String())
+	}
+}
+
+func TestAI06_PrimaryTimeout_DoesNotTriggerFallback_And_DoesNotRefundUncertainCredits(t *testing.T) {
+	svc, store, veo, kling := setupTestService(t)
+	ctx := contextWithRole("Editor", "user-1")
+	wsID := "ws-test-01"
+	svc.SetWorkspaceBalance(wsID, tenantdb.MustParseExactDecimal("100"))
+
+	// Primary provider times out on submission (unknown outcome)
+	veo.TimeoutOnCall = true
+
+	genReq := connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId: &commonv1.UUID{Value: wsID},
+		},
+		Title:  "Timeout Uncertainty Video",
+		Prompt: "Test primary provider timeout handling",
+		Mode:   productionv1.ProductionMode_PRODUCTION_MODE_PRODUCT_SHOWCASE,
+	})
+
+	_, err := svc.Generate(ctx, genReq)
+	if err == nil || connect.CodeOf(err) != connect.CodeDeadlineExceeded || !errors.Is(err, ErrOutcomeUnknown) {
+		t.Fatalf("expected DeadlineExceeded with ErrOutcomeUnknown on primary timeout, got: %v", err)
+	}
+
+	// 1. Secondary fallback provider MUST NOT have been called when primary timed out!
+	if kling.GetGenerateCount() != 0 {
+		t.Fatalf("expected fallback provider NOT to be called on primary submission timeout, got %d calls", kling.GetGenerateCount())
+	}
+
+	// 2. Credits MUST remain held (100 - 80 = 20) pending reconciliation, NOT refunded as if definitively failed!
+	bal := svc.GetWorkspaceBalance(wsID)
+	if bal.Cmp(tenantdb.MustParseExactDecimal("20")) != 0 {
+		t.Fatalf("expected 80 credits to remain held (balance 20) during unknown outcome reconciliation, got %s", bal.String())
+	}
+
+	// 3. Job must remain in 'processing' with PROVIDER_OUTCOME_UNKNOWN and reservation in 'reconciling'
+	activeJobs, _ := store.ListActiveJobs(ctx, wsID)
+	if len(activeJobs) != 1 {
+		t.Fatalf("expected 1 active job in processing state for reconciliation, got %d", len(activeJobs))
+	}
+	if activeJobs[0].ErrorCode != "PROVIDER_OUTCOME_UNKNOWN" {
+		t.Fatalf("expected ErrorCode PROVIDER_OUTCOME_UNKNOWN, got %q", activeJobs[0].ErrorCode)
+	}
+	resRec, ok := svc.GetReservationByJob(activeJobs[0].JobID)
+	if !ok || resRec.Status != "reconciling" {
+		t.Fatalf("expected reservation status 'reconciling', got %+v", resRec)
+	}
+}
+
+func TestAI07_ProviderNonCompletedStatuses_NeverCreateCompletedAssets(t *testing.T) {
+	svc, store, veo, _ := setupTestService(t)
+	ctx := contextWithRole("Editor", "user-1")
+	wsID := "ws-test-01"
+	svc.SetWorkspaceBalance(wsID, tenantdb.MustParseExactDecimal("300"))
+
+	// Case 1: Provider returns "processing" (async execution) -> Job stays processing, Asset stays generating
+	veo.CustomStatus = &ProviderGenStatus{
+		Status:      "processing",
+		ProgressPct: 45,
+		ResultURL:   "",
+	}
+	procResp, err := svc.Generate(ctx, connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		Title:   "Async Processing Video",
+		Prompt:  "Async provider still rendering video",
+	}))
+	if err != nil {
+		t.Fatalf("expected processing status to return in-flight job without error, got: %v", err)
+	}
+	if procResp.Msg.GetJob().GetStatus() != productionv1.GenerationJobStatus_GENERATION_JOB_STATUS_PROCESSING {
+		t.Fatalf("expected job status PROCESSING, got %v", procResp.Msg.GetJob().GetStatus())
+	}
+	if procResp.Msg.GetAsset().GetGenerationState() != productionv1.AssetGenerationState_ASSET_GENERATION_STATE_GENERATING {
+		t.Fatalf("expected asset state GENERATING, got %v", procResp.Msg.GetAsset().GetGenerationState())
+	}
+	if procResp.Msg.GetAsset().GetFileUrl() != "" {
+		t.Fatalf("expected empty FileUrl while processing, got %q", procResp.Msg.GetAsset().GetFileUrl())
+	}
+
+	// Case 2: Provider returns "failed" -> Job and Asset become failed, credits refunded
+	balBeforeFail := svc.GetWorkspaceBalance(wsID)
+	veo.CustomStatus = &ProviderGenStatus{
+		Status:       "failed",
+		ErrorCode:    "CONTENT_POLICY",
+		ErrorMessage: "generation failed content safety filter",
+	}
+	_, err = svc.Generate(ctx, connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		Title:   "Failed Provider Status Video",
+		Prompt:  "Provider status check returns failed",
+	}))
+	if err == nil {
+		t.Fatalf("expected error when provider status is failed")
+	}
+	if svc.GetWorkspaceBalance(wsID).Cmp(balBeforeFail) != 0 {
+		t.Fatalf("expected credits refunded on definitive provider failed status, got %s vs %s",
+			svc.GetWorkspaceBalance(wsID).String(), balBeforeFail.String())
+	}
+
+	// Case 3: Provider returns "unknown" -> ErrOutcomeUnknown, credits held in reconciling, asset stays generating
+	balBeforeUnknown := svc.GetWorkspaceBalance(wsID)
+	veo.CustomStatus = &ProviderGenStatus{
+		Status: "unknown",
+	}
+	_, err = svc.Generate(ctx, connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		Title:   "Unknown Provider Status Video",
+		Prompt:  "Provider status check returns unknown",
+	}))
+	if err == nil || !errors.Is(err, ErrOutcomeUnknown) {
+		t.Fatalf("expected ErrOutcomeUnknown when provider status is unknown, got: %v", err)
+	}
+	expectedHeldBal, _ := balBeforeUnknown.Sub(tenantdb.MustParseExactDecimal("80"))
+	if svc.GetWorkspaceBalance(wsID).Cmp(expectedHeldBal) != 0 {
+		t.Fatalf("expected credits held during unknown status, got %s", svc.GetWorkspaceBalance(wsID).String())
+	}
+	assets, _, _ := store.ListAssets(ctx, wsID, "", "generated", "", 10, 0)
+	if len(assets) != 0 {
+		t.Fatalf("expected 0 generated/completed assets across processing/failed/unknown statuses, got %d", len(assets))
+	}
+}
+
+type failingProductionStore struct {
+	*MemoryStore
+	failCreateJob bool
+	failSync      bool
+}
+
+func (f *failingProductionStore) CreateJob(ctx context.Context, job *GenerationJob) error {
+	if f.failCreateJob {
+		return fmt.Errorf("simulated DB error creating generation_job")
+	}
+	return f.MemoryStore.CreateJob(ctx, job)
+}
+
+func (f *failingProductionStore) SyncJobAndAsset(ctx context.Context, workspaceID, jobID, jobStatus, assetState, errorMsg, resultURL, actualCredits, actualCostUSD string) error {
+	if f.failSync && jobStatus == "completed" {
+		return fmt.Errorf("simulated DB error syncing completed job and asset")
+	}
+	return f.MemoryStore.SyncJobAndAsset(ctx, workspaceID, jobID, jobStatus, assetState, errorMsg, resultURL, actualCredits, actualCostUSD)
+}
+
+func TestAI08_StoreErrorPropagation_And_BoundedRetryWithPreservedPrompt(t *testing.T) {
+	ctx := contextWithRole("Editor", "user-1")
+	wsID := "ws-test-01"
+
+	fStore := &failingProductionStore{MemoryStore: NewMemoryStore(), failCreateJob: true}
+	veo := NewMockVeoProvider()
+	kling := NewMockKlingProvider()
+	svc := NewService(ServiceConfig{
+		Store:            fStore,
+		PrimaryProvider:  veo,
+		FallbackProvider: kling,
+		InitialBalances: map[string]tenantdb.ExactDecimal{
+			wsID: tenantdb.MustParseExactDecimal("200"),
+		},
+	})
+
+	// 1. Pre-dispatch CreateJob error must propagate and release reserved credits without calling provider
+	_, err := svc.Generate(ctx, connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		Title:   "Store Failure Video",
+		Prompt:  "Original cinematic coffee commercial",
+		PostProduction: &productionv1.PostProductionConfig{
+			AspectRatio: "16:9",
+		},
+	}))
+	if err == nil || !strings.Contains(err.Error(), "persist generation job") {
+		t.Fatalf("expected CreateJob store error to propagate, got: %v", err)
+	}
+	if veo.GetGenerateCount() != 0 {
+		t.Fatalf("expected provider NOT to be called when pre-dispatch CreateJob fails")
+	}
+	if svc.GetWorkspaceBalance(wsID).Cmp(tenantdb.MustParseExactDecimal("200")) != 0 {
+		t.Fatalf("expected reservation released when pre-dispatch CreateJob fails, got %s", svc.GetWorkspaceBalance(wsID).String())
+	}
+
+	// 2. Post-dispatch SyncJobAndAsset error must propagate and mark reservation reconciling
+	fStore.failCreateJob = false
+	fStore.failSync = true
+	_, err = svc.Generate(ctx, connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		Title:   "Sync Failure Video",
+		Prompt:  "Original cinematic coffee commercial",
+	}))
+	if err == nil || !strings.Contains(err.Error(), "sync completed job") {
+		t.Fatalf("expected post-dispatch SyncJobAndAsset error to propagate, got: %v", err)
+	}
+	fStore.failSync = false
+
+	// 3. Create a failed job with original prompt & 16:9 aspect ratio, then test bounded Retry & prompt preservation
+	veo.FailGeneration = true
+	kling.FailGeneration = true
+	_, _ = svc.Generate(ctx, connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		Title:   "Retry Target Video",
+		Prompt:  "Original cinematic coffee commercial",
+		PostProduction: &productionv1.PostProductionConfig{
+			AspectRatio: "16:9",
+		},
+	}))
+
+	// Find the failed job
+	var failedJobID string
+	for id, j := range fStore.jobs[wsID] {
+		if j.Status == "failed" {
+			failedJobID = id
+			break
+		}
+	}
+	if failedJobID == "" {
+		t.Fatalf("expected a failed job in store")
+	}
+
+	// Exhaust 3 retry attempts while providers fail -> attempt #4 must be rejected with ErrRetryLimitExceeded
+	for attempt := 1; attempt <= 3; attempt++ {
+		_, rErr := svc.Retry(ctx, connect.NewRequest(&productionv1.RetryRequest{
+			Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+			JobId:   failedJobID,
+		}))
+		if rErr == nil {
+			t.Fatalf("expected retry attempt %d to fail while providers are failing", attempt)
+		}
+	}
+	_, err = svc.Retry(ctx, connect.NewRequest(&productionv1.RetryRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		JobId:   failedJobID,
+	}))
+	if err == nil || connect.CodeOf(err) != connect.CodeResourceExhausted || !errors.Is(err, ErrRetryLimitExceeded) {
+		t.Fatalf("expected retry attempt 4 to fail with ResourceExhausted / ErrRetryLimitExceeded, got: %v", err)
+	}
+
+	// Reset RetryCount to 2 and restore provider + circuit breaker health to verify Retry preserves original Prompt & AspectRatio
+	job, _ := fStore.GetJob(ctx, wsID, failedJobID)
+	job.RetryCount = 2
+	_ = fStore.UpdateJob(ctx, job)
+	veo.FailGeneration = false
+	svc.router.primaryCB.RecordSuccess()
+
+	balBeforeRetry := svc.GetWorkspaceBalance(wsID)
+	retryResp, err := svc.Retry(ctx, connect.NewRequest(&productionv1.RetryRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		JobId:   failedJobID,
+	}))
+	if err != nil {
+		t.Fatalf("expected retry attempt 3 to succeed when provider recovers, got: %v", err)
+	}
+	if retryResp.Msg.GetJob().GetStatus() != productionv1.GenerationJobStatus_GENERATION_JOB_STATUS_COMPLETED {
+		t.Fatalf("expected retried job status COMPLETED, got %v", retryResp.Msg.GetJob().GetStatus())
+	}
+
+	// Verify provider received original Prompt and AspectRatio (NOT jobID and hardcoded "9:16")!
+	lastReq := veo.GetLastRequest()
+	if lastReq.Prompt != "Original cinematic coffee commercial" {
+		t.Fatalf("expected Retry to preserve original prompt %q, got %q", "Original cinematic coffee commercial", lastReq.Prompt)
+	}
+	if lastReq.AspectRatio != "16:9" {
+		t.Fatalf("expected Retry to preserve original aspect ratio '16:9', got %q", lastReq.AspectRatio)
+	}
+
+	// Verify fresh credit reservation was deducted on retry
+	expectedAfterRetry, _ := balBeforeRetry.Sub(tenantdb.MustParseExactDecimal("80"))
+	if svc.GetWorkspaceBalance(wsID).Cmp(expectedAfterRetry) != 0 {
+		t.Fatalf("expected fresh credit deduction on retry (balance %s), got %s",
+			expectedAfterRetry.String(), svc.GetWorkspaceBalance(wsID).String())
+	}
+}
+
+func TestVideoEngineProvider_AsyncRenderLifecycle_And_WebhookVerification(t *testing.T) {
+	var pollCount int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-API-Key") != "cve-test-key" {
+			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+			return
+		}
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/compositions":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id":     "comp-001",
+				"status": "ready",
+			})
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/render-jobs":
+			if r.Header.Get("Idempotency-Key") == "" {
+				http.Error(w, `{"error":"missing Idempotency-Key"}`, http.StatusBadRequest)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusAccepted)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id":     "cve-job-001",
+				"status": "queued",
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/v1/jobs/cve-job-001":
+			cnt := atomic.AddInt32(&pollCount, 1)
+			w.Header().Set("Content-Type", "application/json")
+			if cnt == 1 {
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"id":           "cve-job-001",
+					"status":       "processing",
+					"progress_pct": 50,
+				})
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id":               "cve-job-001",
+				"status":           "completed",
+				"progress_pct":     100,
+				"output_url":       "https://cdn.creativanta.test/cve/cve-job-001.mp4",
+				"duration_seconds": 15.0,
+				"resolution":       "1080x1920",
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	cveProvider := NewVideoEngineProvider(VideoEngineConfig{
+		BaseURL:       server.URL,
+		APIKey:        "cve-test-key",
+		WebhookSecret: "whsec-test-secret",
+	})
+
+	store := NewMemoryStore()
+	svc := NewService(ServiceConfig{
+		Store:           store,
+		PrimaryProvider: cveProvider,
+		InitialBalances: map[string]tenantdb.ExactDecimal{
+			"ws-cve": tenantdb.MustParseExactDecimal("100"),
+		},
+	})
+	ctx := contextWithRole("Editor", "user-cve")
+
+	// 1. Generate submits composition + render job; first status poll returns "processing",
+	// so Generate returns an honest PROCESSING job and GENERATING asset (no fake immediate completion!)
+	resp, err := svc.Generate(ctx, connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: "ws-cve"}},
+		Title:   "CVE Async Render",
+		Prompt:  "Render product showcase via Creativanta Video Engine",
+	}))
+	if err != nil {
+		t.Fatalf("Generate with VideoEngineProvider failed: %v", err)
+	}
+	if resp.Msg.GetJob().GetStatus() != productionv1.GenerationJobStatus_GENERATION_JOB_STATUS_PROCESSING {
+		t.Fatalf("expected async render job status PROCESSING, got %v", resp.Msg.GetJob().GetStatus())
+	}
+	if resp.Msg.GetAsset().GetGenerationState() != productionv1.AssetGenerationState_ASSET_GENERATION_STATE_GENERATING {
+		t.Fatalf("expected async asset state GENERATING, got %v", resp.Msg.GetAsset().GetGenerationState())
+	}
+
+	// 2. Subsequent CheckStatus on provider observes "completed" with output URL
+	st, err := cveProvider.CheckStatus(ctx, resp.Msg.GetJob().GetProviderJobId())
+	if err != nil {
+		t.Fatalf("CheckStatus failed: %v", err)
+	}
+	if st.Status != "completed" || st.ResultURL != "https://cdn.creativanta.test/cve/cve-job-001.mp4" {
+		t.Fatalf("expected completed status with output URL on 2nd poll, got %+v", st)
+	}
+
+	// 3. Verify X-CVE-Signature webhook HMAC verification
+	payload := []byte(`{"event":"job.completed","job_id":"cve-job-001"}`)
+	mac := hmac.New(sha256.New, []byte("whsec-test-secret"))
+	mac.Write(payload)
+	validSig := "sha256=" + hex.EncodeToString(mac.Sum(nil))
+	if !cveProvider.VerifyWebhookSignature(payload, validSig) {
+		t.Fatalf("expected valid X-CVE-Signature to pass verification")
+	}
+	if cveProvider.VerifyWebhookSignature(payload, "sha256=deadbeef") {
+		t.Fatalf("expected invalid X-CVE-Signature to fail verification")
 	}
 }

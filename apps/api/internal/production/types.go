@@ -5,6 +5,7 @@ package production
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
@@ -63,9 +64,13 @@ var (
 	ErrOverrideReasonTooShort      = errors.New("production: override reason must be at least 10 characters (RULE-M10-002)")
 	ErrDerivativeNotFound          = errors.New("production: derivative asset not found")
 	ErrPackagingReportNotFound     = errors.New("production: packaging QA report not found")
-	ErrPresetNotFound              = errors.New("production: upload preset not found")
-	ErrExperimentNotFound          = errors.New("production: A/B experiment not found")
-	ErrBatchEmpty                  = errors.New("production: batch asset_ids cannot be empty")
+	ErrPresetNotFound                  = errors.New("production: upload preset not found")
+	ErrExperimentNotFound              = errors.New("production: A/B experiment not found")
+	ErrBatchEmpty                      = errors.New("production: batch asset_ids cannot be empty")
+	ErrProviderNotConfigured           = errors.New("production: video provider is not configured (PENDING_PRODUCTION_KEY)")
+	ErrOutcomeUnknown                  = errors.New("production: provider submission or status outcome is unknown; reconciliation required")
+	ErrRetryLimitExceeded              = errors.New("production: job retry limit exceeded")
+	ErrDuplicateIdempotencyKeyConflict = errors.New("production: idempotency key reused with different request parameters (BILLING_CONFLICT_002)")
 )
 
 // CallerContext models authenticated caller context across production operations.
@@ -78,17 +83,42 @@ type CallerContext struct {
 // HasRole checks whether caller has minimum role requirement.
 func (c CallerContext) HasRole(minRole string) bool {
 	roles := map[string]int{
-		"Viewer":      1,
-		"Member":      2,
-		"Contributor": 3,
-		"Editor":      4,
-		"Manager":     5,
-		"Admin":       6,
-		"Owner":       7,
+		"viewer":      1,
+		"member":      2,
+		"contributor": 3,
+		"editor":      4,
+		"manager":     5,
+		"admin":       6,
+		"owner":       7,
 	}
-	callerRank := roles[c.WorkspaceRole]
-	minRank := roles[minRole]
+	callerRank := roles[strings.ToLower(strings.TrimSpace(c.WorkspaceRole))]
+	minRank := roles[strings.ToLower(strings.TrimSpace(minRole))]
 	return callerRank >= minRank && callerRank > 0
+}
+
+// CreditQuote represents a preflight credit quote bound to workspace, request hash, and expiry.
+type CreditQuote struct {
+	QuoteID        string                `json:"quote_id"`
+	WorkspaceID    string                `json:"workspace_id"`
+	RequestHash    string                `json:"request_hash"`
+	QuotedCredits  tenantdb.ExactDecimal `json:"quoted_credits"`
+	CostCeilingUSD tenantdb.ExactDecimal `json:"cost_ceiling_usd"`
+	ExpiresAt      time.Time             `json:"expires_at"`
+	CreatedAt      time.Time             `json:"created_at"`
+}
+
+// CreditReservationRecord tracks an atomic credit reservation hold for a generation job.
+type CreditReservationRecord struct {
+	ReservationID   string                `json:"reservation_id"`
+	WorkspaceID     string                `json:"workspace_id"`
+	JobID           string                `json:"job_id"`
+	QuoteID         string                `json:"quote_id"`
+	IdempotencyKey  string                `json:"idempotency_key"`
+	RequestHash     string                `json:"request_hash"`
+	ReservedCredits tenantdb.ExactDecimal `json:"reserved_credits"`
+	Status          string                `json:"status"` // reserved, in_flight, reconciling, committed, released
+	CreatedAt       time.Time             `json:"created_at"`
+	UpdatedAt       time.Time             `json:"updated_at"`
 }
 
 // LineageRecord holds provenance info for assets per RULE-M07-001.
@@ -115,6 +145,12 @@ type GenerationJob struct {
 	PipelineStrategy  string                `json:"pipeline_strategy"` // native_audio, audio_first, post_prod_lip_sync, simple_voice_over
 	InputParamsJSON   string                `json:"input_params_json"`
 	PromptPackageJSON string                `json:"prompt_package_json"`
+	Prompt            string                `json:"prompt,omitempty"`
+	DurationSeconds   int                   `json:"duration_seconds,omitempty"`
+	AspectRatio       string                `json:"aspect_ratio,omitempty"`
+	Mode              string                `json:"mode,omitempty"`
+	ContinuityPackIDs []string              `json:"continuity_pack_ids,omitempty"`
+	IdempotencyKey    string                `json:"idempotency_key,omitempty"`
 	Status            string                `json:"status"` // queued, processing, completed, failed, cancelled
 	ProgressPct       int                   `json:"progress_pct"`
 	CurrentStep       string                `json:"current_step"`

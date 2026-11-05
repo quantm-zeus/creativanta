@@ -222,6 +222,8 @@ type WorkflowRun struct {
 	AffectedObjectRefs []any             `json:"affected_object_refs"`
 	SideEffectsSummary []any             `json:"side_effects_summary"`
 	ActivepiecesRunID  string            `json:"activepieces_run_id,omitempty"`
+	InitiatedByUserID  string            `json:"initiated_by_user_id,omitempty"`
+	InitiatedByRole    string            `json:"initiated_by_role,omitempty"`
 	StartedAt          *time.Time        `json:"started_at,omitempty"`
 	CompletedAt        *time.Time        `json:"completed_at,omitempty"`
 	CreatedAt          time.Time         `json:"created_at"`
@@ -282,13 +284,16 @@ type ApprovalRequest struct {
 	UpdatedAt       time.Time  `json:"updated_at"`
 
 	// Workflow binding metadata (enforces ActionHash / Target / Version binding)
-	WorkflowID      string   `json:"workflow_id,omitempty"`
-	NodeID          string   `json:"node_id,omitempty"`
-	WorkflowVersion int32    `json:"workflow_version,omitempty"`
-	ActionHash      string   `json:"action_hash,omitempty"`
-	TargetObjects   []string `json:"target_objects,omitempty"`
-	InputSnapshot   string   `json:"input_snapshot,omitempty"`
-	MaxBudgetQuote  float64  `json:"max_budget_quote,omitempty"`
+	WorkflowID        string   `json:"workflow_id,omitempty"`
+	NodeID            string   `json:"node_id,omitempty"`
+	WorkflowVersion   int32    `json:"workflow_version,omitempty"`
+	ActionHash        string   `json:"action_hash,omitempty"`
+	TargetObjects     []string `json:"target_objects,omitempty"`
+	InputSnapshot     string   `json:"input_snapshot,omitempty"`
+	MaxBudgetQuote    float64  `json:"max_budget_quote,omitempty"`
+	ApproverIDs       []string `json:"approver_ids,omitempty"`
+	RequiredApprovals int      `json:"required_approvals,omitempty"`
+	ApprovedByIDs     []string `json:"approved_by_ids,omitempty"`
 }
 
 // ApprovalFilter provides filtering for approval queries.

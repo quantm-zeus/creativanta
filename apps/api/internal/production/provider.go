@@ -18,6 +18,7 @@ type ProviderGenRequest struct {
 	BYOKApiKey       string // User's own key if provided
 	ReferenceURL     string
 	ImageURLs        []string
+	IdempotencyKey   string
 }
 
 // ProviderGenResponse is the initial submission acknowledgement from the provider.
@@ -117,6 +118,10 @@ type MockVeoProvider struct {
 	jobs           map[string]*ProviderGenStatus
 	FailGeneration bool
 	TimeoutOnCall  bool
+	CheckStatusErr error
+	CustomStatus   *ProviderGenStatus
+	GenerateCount  int
+	LastRequest    ProviderGenRequest
 	RateUSDPerSec  tenantdb.ExactDecimal
 }
 
@@ -135,9 +140,24 @@ func (p *MockVeoProvider) CostRatePerSecondUSD() tenantdb.ExactDecimal {
 	return p.RateUSDPerSec
 }
 
+func (p *MockVeoProvider) GetGenerateCount() int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.GenerateCount
+}
+
+func (p *MockVeoProvider) GetLastRequest() ProviderGenRequest {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.LastRequest
+}
+
 func (p *MockVeoProvider) Generate(ctx context.Context, req ProviderGenRequest) (*ProviderGenResponse, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
+	p.GenerateCount++
+	p.LastRequest = req
 
 	if p.TimeoutOnCall {
 		return nil, context.DeadlineExceeded
@@ -155,7 +175,7 @@ func (p *MockVeoProvider) Generate(ctx context.Context, req ProviderGenRequest) 
 	durDec, _ := tenantdb.ParseExactDecimal(fmt.Sprintf("%d.000000", dur))
 	cost, _ := durDec.MulFloor(p.RateUSDPerSec)
 
-	p.jobs[jobID] = &ProviderGenStatus{
+	st := &ProviderGenStatus{
 		ProviderJobID: jobID,
 		Status:        "completed",
 		ProgressPct:   100,
@@ -164,6 +184,18 @@ func (p *MockVeoProvider) Generate(ctx context.Context, req ProviderGenRequest) 
 		Resolution:    "1080x1920",
 		CostUSD:       cost,
 	}
+	if p.CustomStatus != nil {
+		cp := *p.CustomStatus
+		cp.ProviderJobID = jobID
+		if cp.DurationSecs.IsZero() {
+			cp.DurationSecs = durDec
+		}
+		if cp.CostUSD.IsZero() {
+			cp.CostUSD = cost
+		}
+		st = &cp
+	}
+	p.jobs[jobID] = st
 
 	return &ProviderGenResponse{
 		ProviderJobID: jobID,
@@ -175,6 +207,10 @@ func (p *MockVeoProvider) Generate(ctx context.Context, req ProviderGenRequest) 
 func (p *MockVeoProvider) CheckStatus(ctx context.Context, providerJobID string) (*ProviderGenStatus, error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
+
+	if p.CheckStatusErr != nil {
+		return nil, p.CheckStatusErr
+	}
 
 	st, ok := p.jobs[providerJobID]
 	if !ok {
@@ -199,6 +235,8 @@ type MockKlingProvider struct {
 	mu             sync.RWMutex
 	jobs           map[string]*ProviderGenStatus
 	FailGeneration bool
+	GenerateCount  int
+	LastRequest    ProviderGenRequest
 	RateUSDPerSec  tenantdb.ExactDecimal
 }
 
@@ -217,9 +255,18 @@ func (p *MockKlingProvider) CostRatePerSecondUSD() tenantdb.ExactDecimal {
 	return p.RateUSDPerSec
 }
 
+func (p *MockKlingProvider) GetGenerateCount() int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.GenerateCount
+}
+
 func (p *MockKlingProvider) Generate(ctx context.Context, req ProviderGenRequest) (*ProviderGenResponse, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
+	p.GenerateCount++
+	p.LastRequest = req
 
 	if p.FailGeneration {
 		return nil, fmt.Errorf("kling: provider capacity error: 500 Internal Error")

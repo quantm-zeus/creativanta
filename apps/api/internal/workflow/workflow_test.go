@@ -10,7 +10,10 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	automationv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/automation/v1"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/workflow"
 )
 
@@ -942,6 +945,16 @@ func TestConnectRPCHandler(t *testing.T) {
 					},
 				},
 				{
+					NodeId:   "n_act",
+					NodeType: automationv1.NodeType_NODE_TYPE_ACTION,
+					Config: &automationv1.WorkflowNode_ActionConfig{
+						ActionConfig: &automationv1.ActionNodeConfig{
+							RpcName:   "creativanta.commerce.v1.InventoryService/ReserveStock",
+							InputJson: `{"sku":"sku-1"}`,
+						},
+					},
+				},
+				{
 					NodeId:   "n2",
 					NodeType: automationv1.NodeType_NODE_TYPE_TERMINAL,
 					Config: &automationv1.WorkflowNode_TerminalConfig{
@@ -950,7 +963,8 @@ func TestConnectRPCHandler(t *testing.T) {
 				},
 			},
 			Edges: []*automationv1.WorkflowEdge{
-				{FromNodeId: "n1", ToNodeId: "n2"},
+				{FromNodeId: "n1", ToNodeId: "n_act"},
+				{FromNodeId: "n_act", ToNodeId: "n2"},
 			},
 		},
 	})
@@ -989,7 +1003,14 @@ func TestConnectRPCHandler(t *testing.T) {
 		t.Fatalf("expected total_count 1, got %d", listResp.Msg.TotalCount)
 	}
 
-	// 4. Handler Run
+	// 4. Handler Activate + Run
+	actReq := connect.NewRequest(&automationv1.WorkflowServiceActivateRequest{
+		WorkspaceId: wsID,
+		WorkflowId:  wfID,
+	})
+	if _, err := handler.Activate(ctx, actReq); err != nil {
+		t.Fatalf("handler Activate failed: %v", err)
+	}
 	runReq := connect.NewRequest(&automationv1.WorkflowServiceRunRequest{
 		WorkspaceId: wsID,
 		WorkflowId:  wfID,
@@ -1067,6 +1088,11 @@ func TestConcurrentWorkflowOperations(t *testing.T) {
 				)
 				if err != nil {
 					t.Errorf("worker %d iteration %d create failed: %v", workerID, i, err)
+					return
+				}
+
+				if _, err := svc.ActivateWorkflow(ctx, caller, wf.WorkflowID); err != nil {
+					t.Errorf("worker %d iteration %d activate failed: %v", workerID, i, err)
 					return
 				}
 
@@ -1873,6 +1899,12 @@ func TestP702_CascadeDepthLimit_EC_M20_001(t *testing.T) {
 				TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeEvent, EventType: "cascade.event"},
 			},
 			{
+				NodeID:       "act-casc",
+				NodeType:     workflow.NodeTypeAction,
+				Title:        "Cascade Action",
+				ActionConfig: &workflow.ActionConfig{RPCName: "creativanta.commerce.v1.InventoryService/ReserveStock", InputJSON: `{"sku":"sku-1"}`},
+			},
+			{
 				NodeID:         "term-casc",
 				NodeType:       workflow.NodeTypeTerminal,
 				Title:          "Terminal",
@@ -1880,12 +1912,15 @@ func TestP702_CascadeDepthLimit_EC_M20_001(t *testing.T) {
 			},
 		},
 		Edges: []workflow.WorkflowEdge{
-			{FromNodeID: "trig-casc", ToNodeID: "term-casc"},
+			{FromNodeID: "trig-casc", ToNodeID: "act-casc"},
+			{FromNodeID: "act-casc", ToNodeID: "term-casc"},
 		},
 	}
 
 	wf, _ := svc.CreateWorkflow(ctx, caller, "Cascade Test Flow", "Desc", "custom", *graph.Nodes[0].TriggerConfig, graph, nil)
-	_, _ = svc.ActivateWorkflow(ctx, manager, wf.WorkflowID)
+	if _, err := svc.ActivateWorkflow(ctx, manager, wf.WorkflowID); err != nil {
+		t.Fatalf("ActivateWorkflow failed: %v", err)
+	}
 
 	// Trigger run with cascade_depth = 6 (> 5 default limit)
 	run, err := svc.RunWorkflow(ctx, caller, wf.WorkflowID, map[string]any{"cascade_depth": 6})
@@ -2015,4 +2050,427 @@ func TestP702_ConcurrentApprovalsAndResumeRace(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+// ============================================================================
+// Remediation Regression Tests: AI-04, AI-09, AI-10, AI-11, AI-12 (R06, R07, R09)
+// ============================================================================
+
+func TestAI04_DefaultServiceFailsClosedWithoutActionDispatcher(t *testing.T) {
+	ctx := context.Background()
+	store := workflow.NewMemoryStore()
+	// Default NewService must NOT wire NewMockActionDispatcher.
+	svc := workflow.NewService(store, nil)
+
+	owner := workflow.CallerContext{
+		UserID:        "11111111-1111-4111-8111-111111111101",
+		WorkspaceID:   "22222222-2222-4222-8222-222222222201",
+		WorkspaceRole: "owner",
+	}
+
+	graph := workflow.WorkflowGraph{
+		SchemaVersion: 1,
+		Nodes: []workflow.WorkflowNode{
+			{NodeID: "trig", NodeType: workflow.NodeTypeTrigger, TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual}},
+			{NodeID: "act", NodeType: workflow.NodeTypeAction, ActionConfig: &workflow.ActionConfig{RPCName: "creativanta.commerce.v1.InventoryService/ReserveStock", InputJSON: `{"sku":"sku-1"}`}},
+			{NodeID: "term", NodeType: workflow.NodeTypeTerminal, TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"}},
+		},
+		Edges: []workflow.WorkflowEdge{
+			{FromNodeID: "trig", ToNodeID: "act"},
+			{FromNodeID: "act", ToNodeID: "term"},
+		},
+	}
+
+	wf, err := svc.CreateWorkflow(ctx, owner, "Unconfigured Dispatcher Flow", "Desc", "custom", *graph.Nodes[0].TriggerConfig, graph, nil)
+	if err != nil {
+		t.Fatalf("CreateWorkflow: %v", err)
+	}
+	if _, err := svc.ActivateWorkflow(ctx, owner, wf.WorkflowID); err != nil {
+		t.Fatalf("ActivateWorkflow: %v", err)
+	}
+
+	run, err := svc.RunWorkflow(ctx, owner, wf.WorkflowID, map[string]any{})
+	if err != nil {
+		t.Fatalf("RunWorkflow: %v", err)
+	}
+	if run.Status != workflow.WorkflowRunStatusFailed {
+		t.Fatalf("expected run status failed when dispatcher is unconfigured, got %s", run.Status)
+	}
+	if len(run.SideEffectsSummary) != 0 {
+		t.Fatalf("expected 0 side effects when dispatcher is unconfigured, got %d", len(run.SideEffectsSummary))
+	}
+}
+
+func TestAI09_LifecycleEnforcement_DelegatedRBAC_And_MandatoryApproval(t *testing.T) {
+	ctx := context.Background()
+	store := workflow.NewMemoryStore()
+	dispatcher := workflow.NewMockActionDispatcher()
+	svc := workflow.NewService(store, nil)
+	svc.SetActionDispatcher(dispatcher)
+
+	wsID := "22222222-2222-4222-8222-222222222202"
+	editor := workflow.CallerContext{UserID: "usr-editor", WorkspaceID: wsID, WorkspaceRole: "editor"}
+	manager := workflow.CallerContext{UserID: "usr-manager", WorkspaceID: wsID, WorkspaceRole: "manager"}
+
+	// 1. Draft and Paused workflows MUST NOT be runnable via RunWorkflow
+	graph := workflow.WorkflowGraph{
+		SchemaVersion: 1,
+		Nodes: []workflow.WorkflowNode{
+			{NodeID: "trig", NodeType: workflow.NodeTypeTrigger, TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual}},
+			{NodeID: "act", NodeType: workflow.NodeTypeAction, ActionConfig: &workflow.ActionConfig{RPCName: "creativanta.commerce.v1.ProductService/DeleteProduct", InputJSON: `{"id":"prod-1"}`}},
+			{NodeID: "term", NodeType: workflow.NodeTypeTerminal, TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"}},
+		},
+		Edges: []workflow.WorkflowEdge{
+			{FromNodeID: "trig", ToNodeID: "act"},
+			{FromNodeID: "act", ToNodeID: "term"},
+		},
+	}
+
+	wf, err := svc.CreateWorkflow(ctx, editor, "Delegated Check Flow", "Desc", "custom", *graph.Nodes[0].TriggerConfig, graph, nil)
+	if err != nil {
+		t.Fatalf("CreateWorkflow: %v", err)
+	}
+	if _, err := svc.RunWorkflow(ctx, editor, wf.WorkflowID, nil); err == nil {
+		t.Fatalf("expected RunWorkflow on draft workflow to fail with ErrInvalidWorkflowState")
+	}
+
+	_, _ = svc.ActivateWorkflow(ctx, manager, wf.WorkflowID)
+	_, _ = svc.DeactivateWorkflow(ctx, manager, wf.WorkflowID)
+	if _, err := svc.RunWorkflow(ctx, editor, wf.WorkflowID, nil); err == nil {
+		t.Fatalf("expected RunWorkflow on paused workflow to fail with ErrInvalidWorkflowState")
+	}
+
+	// 2. Delegated RBAC permission check at action effect point:
+	// Editor cannot execute DeleteProduct (requires product:delete, which is Admin/Owner only)
+	_, _ = svc.ActivateWorkflow(ctx, manager, wf.WorkflowID)
+	run, err := svc.RunWorkflow(ctx, editor, wf.WorkflowID, nil)
+	if err != nil {
+		t.Fatalf("RunWorkflow: %v", err)
+	}
+	if run.Status != workflow.WorkflowRunStatusFailed {
+		t.Fatalf("expected run to fail due to delegated permission denial, got %s", run.Status)
+	}
+	if run.ResultSummary["failure_type"] != "PERMISSION_DENIED" {
+		t.Fatalf("expected failure_type PERMISSION_DENIED, got %v", run.ResultSummary["failure_type"])
+	}
+	if dispatcher.GetDispatchedCount("") != 0 {
+		t.Fatalf("expected 0 dispatches on delegated permission denial, got %d", dispatcher.GetDispatchedCount(""))
+	}
+
+	// 3. Mandatory Approval check at action effect point for sensitive action without upstream Approval node
+	sensGraph := workflow.WorkflowGraph{
+		SchemaVersion: 1,
+		Nodes: []workflow.WorkflowNode{
+			{NodeID: "trig", NodeType: workflow.NodeTypeTrigger, TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual}},
+			{NodeID: "act_pub", NodeType: workflow.NodeTypeAction, ActionConfig: &workflow.ActionConfig{RPCName: "creativanta.publish.v1.PublishService/Publish", InputJSON: `{"platform":"tiktok"}`}},
+			{NodeID: "term", NodeType: workflow.NodeTypeTerminal, TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"}},
+		},
+		Edges: []workflow.WorkflowEdge{
+			{FromNodeID: "trig", ToNodeID: "act_pub"},
+			{FromNodeID: "act_pub", ToNodeID: "term"},
+		},
+	}
+	sensWf, err := svc.CreateWorkflow(ctx, manager, "Unapproved Sensitive Flow", "Desc", "custom", *sensGraph.Nodes[0].TriggerConfig, sensGraph, nil)
+	if err != nil {
+		t.Fatalf("CreateWorkflow: %v", err)
+	}
+	_, _ = svc.ActivateWorkflow(ctx, manager, sensWf.WorkflowID)
+	sensRun, err := svc.RunWorkflow(ctx, manager, sensWf.WorkflowID, nil)
+	if err != nil {
+		t.Fatalf("RunWorkflow: %v", err)
+	}
+	if sensRun.Status != workflow.WorkflowRunStatusFailed {
+		t.Fatalf("expected sensitive action without approval gate to fail closed, got %s", sensRun.Status)
+	}
+	if sensRun.ResultSummary["failure_type"] != "APPROVAL_REQUIRED" {
+		t.Fatalf("expected failure_type APPROVAL_REQUIRED, got %v", sensRun.ResultSummary["failure_type"])
+	}
+	if dispatcher.GetDispatchedCount("creativanta.publish.v1.PublishService/Publish") != 0 {
+		t.Fatalf("expected 0 dispatches for unapproved sensitive action")
+	}
+}
+
+func TestAI11_ApproverAllowlist_Quorum_And_DuplicateVotePrevention(t *testing.T) {
+	ctx := context.Background()
+	store := workflow.NewMemoryStore()
+	dispatcher := workflow.NewMockActionDispatcher()
+	svc := workflow.NewService(store, nil)
+	svc.SetActionDispatcher(dispatcher)
+
+	wsID := "22222222-2222-4222-8222-222222222203"
+	editor := workflow.CallerContext{UserID: "usr-editor", WorkspaceID: wsID, WorkspaceRole: "editor"}
+	mgr1 := workflow.CallerContext{UserID: "usr-mgr-1", WorkspaceID: wsID, WorkspaceRole: "manager"}
+	mgr2 := workflow.CallerContext{UserID: "usr-mgr-2", WorkspaceID: wsID, WorkspaceRole: "manager"}
+	mgrOutsider := workflow.CallerContext{UserID: "usr-mgr-outsider", WorkspaceID: wsID, WorkspaceRole: "manager"}
+
+	graph := workflow.WorkflowGraph{
+		SchemaVersion: 1,
+		Nodes: []workflow.WorkflowNode{
+			{NodeID: "trig", NodeType: workflow.NodeTypeTrigger, TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual}},
+			{
+				NodeID:   "appr",
+				NodeType: workflow.NodeTypeApproval,
+				ApprovalConfig: &workflow.ApprovalConfig{
+					ApproverIDs:              []string{mgr1.UserID, mgr2.UserID},
+					RequiredApprovals:        2,
+					ExpiresAtDurationSeconds: 3600,
+				},
+			},
+			{
+				NodeID:   "act_pub",
+				NodeType: workflow.NodeTypeAction,
+				ActionConfig: &workflow.ActionConfig{
+					RPCName:   "creativanta.publish.v1.PublishService/Publish",
+					InputJSON: `{"platform":"tiktok","title":"Quorum Approved"}`,
+				},
+			},
+			{NodeID: "term", NodeType: workflow.NodeTypeTerminal, TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"}},
+		},
+		Edges: []workflow.WorkflowEdge{
+			{FromNodeID: "trig", ToNodeID: "appr"},
+			{FromNodeID: "appr", ToNodeID: "act_pub", Branch: workflow.EdgeBranchSuccess},
+			{FromNodeID: "act_pub", ToNodeID: "term"},
+		},
+	}
+
+	wf, err := svc.CreateWorkflow(ctx, editor, "Quorum Approval Flow", "Desc", "custom", *graph.Nodes[0].TriggerConfig, graph, nil)
+	if err != nil {
+		t.Fatalf("CreateWorkflow: %v", err)
+	}
+	_, _ = svc.ActivateWorkflow(ctx, mgr1, wf.WorkflowID)
+
+	run, err := svc.RunWorkflow(ctx, editor, wf.WorkflowID, nil)
+	if err != nil {
+		t.Fatalf("RunWorkflow: %v", err)
+	}
+	if run.Status != workflow.WorkflowRunStatusWaitingApproval {
+		t.Fatalf("expected waiting_approval, got %s", run.Status)
+	}
+
+	pending, _ := svc.ListPendingApprovals(ctx, mgr1)
+	if len(pending) != 1 {
+		t.Fatalf("expected 1 pending approval, got %d", len(pending))
+	}
+	reqID := pending[0].RequestID
+
+	// 1. Manager NOT in ApproverIDs must be rejected
+	if _, _, err := svc.Approve(ctx, mgrOutsider, reqID); err == nil || !strings.Contains(err.Error(), "not in configured approver_ids") {
+		t.Fatalf("expected outsider manager to be rejected with approver_ids error, got: %v", err)
+	}
+
+	// 2. First authorized approver (mgr1) votes -> 1 of 2 required approvals -> stays pending_approval, does NOT resume run!
+	reqAfter1, resumedAfter1, err := svc.Approve(ctx, mgr1, reqID)
+	if err != nil {
+		t.Fatalf("mgr1 Approve failed: %v", err)
+	}
+	if reqAfter1.Status != "pending_approval" {
+		t.Fatalf("expected status pending_approval after 1 of 2 votes, got %s", reqAfter1.Status)
+	}
+	if resumedAfter1 != nil {
+		t.Fatalf("expected run NOT to resume after 1 of 2 votes")
+	}
+	if dispatcher.GetDispatchedCount("") != 0 {
+		t.Fatalf("expected 0 dispatches before quorum is met")
+	}
+
+	// 3. Duplicate vote by mgr1 must be rejected!
+	if _, _, err := svc.Approve(ctx, mgr1, reqID); err == nil || !strings.Contains(err.Error(), "already approved") {
+		t.Fatalf("expected duplicate vote by mgr1 to be rejected, got: %v", err)
+	}
+
+	// 4. Second authorized approver (mgr2) votes -> 2 of 2 quorum met -> approved and run resumes to succeeded!
+	reqAfter2, resumedAfter2, err := svc.Approve(ctx, mgr2, reqID)
+	if err != nil {
+		t.Fatalf("mgr2 Approve failed: %v", err)
+	}
+	if reqAfter2.Status != "approved" {
+		t.Fatalf("expected status approved after quorum met, got %s", reqAfter2.Status)
+	}
+	if resumedAfter2 == nil || resumedAfter2.Status != workflow.WorkflowRunStatusSucceeded {
+		t.Fatalf("expected resumed run succeeded after quorum met, got %+v", resumedAfter2)
+	}
+	if dispatcher.GetDispatchedCount("creativanta.publish.v1.PublishService/Publish") != 1 {
+		t.Fatalf("expected exactly 1 dispatch after quorum met, got %d", dispatcher.GetDispatchedCount("creativanta.publish.v1.PublishService/Publish"))
+	}
+}
+
+type failingStepStore struct {
+	*workflow.MemoryStore
+	failUpdateActionStep bool
+}
+
+func (f *failingStepStore) UpdateWorkflowRunStep(ctx context.Context, step *workflow.WorkflowRunStep) error {
+	if f.failUpdateActionStep && step.NodeType == workflow.NodeTypeAction && step.Status == "succeeded" {
+		return fmt.Errorf("simulated DB failure persisting post-dispatch step completion")
+	}
+	return f.MemoryStore.UpdateWorkflowRunStep(ctx, step)
+}
+
+func TestAI10_UncertainStepReconciliation_And_ConcurrentResumeFencing(t *testing.T) {
+	ctx := context.Background()
+	fStore := &failingStepStore{MemoryStore: workflow.NewMemoryStore(), failUpdateActionStep: true}
+	dispatcher := workflow.NewMockActionDispatcher()
+	svc := workflow.NewService(fStore, nil)
+	svc.SetActionDispatcher(dispatcher)
+
+	wsID := "22222222-2222-4222-8222-222222222204"
+	manager := workflow.CallerContext{UserID: "usr-mgr-1", WorkspaceID: wsID, WorkspaceRole: "manager"}
+
+	graph := workflow.WorkflowGraph{
+		SchemaVersion: 1,
+		Nodes: []workflow.WorkflowNode{
+			{NodeID: "trig", NodeType: workflow.NodeTypeTrigger, TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual}},
+			{NodeID: "act", NodeType: workflow.NodeTypeAction, ActionConfig: &workflow.ActionConfig{RPCName: "creativanta.commerce.v1.InventoryService/ReserveStock", InputJSON: `{"sku":"sku-1"}`}},
+			{NodeID: "term", NodeType: workflow.NodeTypeTerminal, TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"}},
+		},
+		Edges: []workflow.WorkflowEdge{
+			{FromNodeID: "trig", ToNodeID: "act"},
+			{FromNodeID: "act", ToNodeID: "term"},
+		},
+	}
+
+	wf, _ := svc.CreateWorkflow(ctx, manager, "Uncertain Effect Flow", "Desc", "custom", *graph.Nodes[0].TriggerConfig, graph, nil)
+	_, _ = svc.ActivateWorkflow(ctx, manager, wf.WorkflowID)
+
+	// 1. Run fails when UpdateWorkflowRunStep fails after dispatch
+	_, err := svc.RunWorkflow(ctx, manager, wf.WorkflowID, nil)
+	if err == nil || !strings.Contains(err.Error(), "persist post-dispatch succeeded step") {
+		t.Fatalf("expected post-dispatch step persistence error to propagate, got: %v", err)
+	}
+	if dispatcher.GetDispatchedCount("") != 1 {
+		t.Fatalf("expected 1 dispatch before store failure, got %d", dispatcher.GetDispatchedCount(""))
+	}
+
+	// Restore store health and attempt ResumeRun: because the action step was persisted as 'running' before dispatch,
+	// ResumeRun MUST NOT re-dispatch the uncertain action; it must enter requires_manual_intervention!
+	fStore.failUpdateActionStep = false
+	runs, _, _ := svc.ListRuns(ctx, manager, wf.WorkflowID, "", 10, 0)
+	if len(runs) != 1 {
+		t.Fatalf("expected 1 run in store, got %d", len(runs))
+	}
+	resumed, resumeErr := svc.ResumeRun(ctx, manager, runs[0].RunID, &workflow.ResumeSignal{SignalType: "manual_resume"})
+	if resumeErr == nil || !strings.Contains(resumeErr.Error(), "uncertain running state") {
+		t.Fatalf("expected ErrUncertainStepEffect on resuming interrupted running step, got: %v", resumeErr)
+	}
+	if resumed == nil || resumed.Status != workflow.WorkflowRunStatusRequiresManualIntervention {
+		t.Fatalf("expected run status requires_manual_intervention, got %+v", resumed)
+	}
+	if dispatcher.GetDispatchedCount("") != 1 {
+		t.Fatalf("expected uncertain step NOT to be re-dispatched! Dispatch count=%d", dispatcher.GetDispatchedCount(""))
+	}
+}
+
+type mockTx struct {
+	mu          *sync.Mutex
+	queries     *[]string
+	tenantIDSet string
+	userIDSet   string
+}
+
+func (m *mockTx) Begin(ctx context.Context) (pgx.Tx, error) { return m, nil }
+func (m *mockTx) Commit(ctx context.Context) error          { return nil }
+func (m *mockTx) Rollback(ctx context.Context) error        { return nil }
+func (m *mockTx) CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error) {
+	return 0, nil
+}
+func (m *mockTx) SendBatch(ctx context.Context, b *pgx.Batch) pgx.BatchResults { return nil }
+func (m *mockTx) LargeObjects() pgx.LargeObjects                               { return pgx.LargeObjects{} }
+func (m *mockTx) Prepare(ctx context.Context, name, sql string) (*pgconn.StatementDescription, error) {
+	return nil, nil
+}
+func (m *mockTx) Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error) {
+	m.mu.Lock()
+	*m.queries = append(*m.queries, strings.TrimSpace(sql))
+	m.mu.Unlock()
+	return pgconn.NewCommandTag("INSERT 0 1"), nil
+}
+func (m *mockTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	return nil, nil
+}
+func (m *mockTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	m.mu.Lock()
+	*m.queries = append(*m.queries, strings.TrimSpace(sql))
+	if strings.Contains(sql, "set_config('app.current_tenant_id'") && len(args) >= 2 {
+		m.tenantIDSet, _ = args[0].(string)
+		m.userIDSet, _ = args[1].(string)
+	}
+	m.mu.Unlock()
+	return &mockRow{tenantID: m.tenantIDSet, userID: m.userIDSet}
+}
+func (m *mockTx) Conn() *pgx.Conn { return nil }
+
+type mockRow struct {
+	tenantID string
+	userID   string
+}
+
+func (r *mockRow) Scan(dest ...any) error {
+	if len(dest) == 2 {
+		if p0, ok := dest[0].(*string); ok {
+			*p0 = r.tenantID
+		}
+		if p1, ok := dest[1].(*string); ok {
+			*p1 = r.userID
+		}
+	}
+	return nil
+}
+
+type mockBeginner struct {
+	mu      sync.Mutex
+	queries []string
+	lastTx  *mockTx
+}
+
+func (b *mockBeginner) Begin(ctx context.Context) (pgx.Tx, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	tx := &mockTx{mu: &b.mu, queries: &b.queries}
+	b.lastTx = tx
+	return tx, nil
+}
+
+func TestAI12_PostgresStore_UsesTenantDBWithTxScope(t *testing.T) {
+	ctx := context.Background()
+	beginner := &mockBeginner{}
+	pgStore := workflow.NewPostgresStoreWithBeginner(beginner)
+
+	validWorkspaceID := "11111111-1111-4111-8111-111111111111"
+	validUserID := "22222222-2222-4222-8222-222222222222"
+
+	// 1. Invalid / non-UUID workspaceID must fail closed via tenantdb.WithTx validation
+	err := pgStore.CreateWorkflow(ctx, &workflow.Workflow{
+		WorkflowID:  "33333333-3333-4333-8333-333333333333",
+		WorkspaceID: "not-a-valid-uuid",
+		Title:       "Bad Tenant",
+	})
+	if err == nil || !strings.Contains(err.Error(), tenantdb.ErrInvalidTenantScope.Error()) {
+		t.Fatalf("expected ErrInvalidTenantScope for invalid workspace_id, got: %v", err)
+	}
+
+	// 2. Valid workspaceID executes inside tenantdb.WithTx with set_config('app.current_tenant_id', ...) first
+	err = pgStore.CreateWorkflow(ctx, &workflow.Workflow{
+		WorkflowID:  "33333333-3333-4333-8333-333333333333",
+		WorkspaceID: validWorkspaceID,
+		CreatedBy:   validUserID,
+		Title:       "RLS Scoped Workflow",
+		Status:      workflow.WorkflowStatusDraft,
+		Version:     1,
+	})
+	if err != nil {
+		t.Fatalf("CreateWorkflow with valid tenant scope failed: %v", err)
+	}
+	if len(beginner.queries) < 2 {
+		t.Fatalf("expected set_config query followed by INSERT query, got %d queries", len(beginner.queries))
+	}
+	if !strings.Contains(beginner.queries[0], "set_config('app.current_tenant_id'") {
+		t.Fatalf("expected first query in transaction to be set_config, got: %s", beginner.queries[0])
+	}
+	if !strings.Contains(beginner.queries[1], "INSERT INTO workflows") {
+		t.Fatalf("expected second query in transaction to be INSERT INTO workflows, got: %s", beginner.queries[1])
+	}
+	if beginner.lastTx.tenantIDSet != validWorkspaceID || beginner.lastTx.userIDSet != validUserID {
+		t.Fatalf("expected tenant=%s user=%s set in tx, got tenant=%s user=%s",
+			validWorkspaceID, validUserID, beginner.lastTx.tenantIDSet, beginner.lastTx.userIDSet)
+	}
 }
