@@ -187,14 +187,14 @@ func enqueueTenantOutboxEvent(
 }
 
 // TestMultiProcessOutboxPollerToWorkerDurableHandoff verifies IQ-02, IQ-03, ASYNC-01, and R11:
-// 1. OS Process 1 (`cmd/outbox poll-once`) claims an unpublished event_outbox row from PostgreSQL,
-//    publishes it to the shared durable broker, marks it published, and terminates.
-// 2. The event survives Process 1 termination without in-memory loss.
-// 3. OS Process 2 (`cmd/worker run-once`) starts in a separate process, reads the event from the
-//    shared durable broker, verifies live RBAC & tenant membership in PostgreSQL, records
-//    consumer_inbox + external_effects + diagnostics_records + audit_events atomically inside
-//    tenantdb.WithTx, and XAck's the broker entry.
-// 4. OS Process 3 (`cmd/worker run-once`) finds 0 pending messages and causes zero duplicate effects.
+//  1. OS Process 1 (`cmd/outbox poll-once`) claims an unpublished event_outbox row from PostgreSQL,
+//     publishes it to the shared durable broker, marks it published, and terminates.
+//  2. The event survives Process 1 termination without in-memory loss.
+//  3. OS Process 2 (`cmd/worker run-once`) starts in a separate process, reads the event from the
+//     shared durable broker, verifies live RBAC & tenant membership in PostgreSQL, records
+//     consumer_inbox + external_effects + diagnostics_records + audit_events atomically inside
+//     tenantdb.WithTx, and XAck's the broker entry.
+//  4. OS Process 3 (`cmd/worker run-once`) finds 0 pending messages and causes zero duplicate effects.
 func TestMultiProcessOutboxPollerToWorkerDurableHandoff(t *testing.T) {
 	pool, dsn := setupDisposableOutboxDB(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
@@ -508,9 +508,9 @@ func TestLiveAuthRevocationAbortsQueuedJobInPostgres(t *testing.T) {
 }
 
 // TestUnknownExternalEffectBlocksBlindRetryAndUnreachableBrokerFailsClosed verifies:
-// 1. An external_effects row in 'unknown' state blocks blind retry with ErrExternalOutcomeUnresolved
-//    and leaves the message un-ACKed for reconciliation rather than duplicating external mutations.
-// 2. When the shared broker is unreachable, OutboxPoller never marks event_outbox rows published.
+//  1. An external_effects row in 'unknown' state blocks blind retry with ErrExternalOutcomeUnresolved
+//     and leaves the message un-ACKed for reconciliation rather than duplicating external mutations.
+//  2. When the shared broker is unreachable, OutboxPoller never marks event_outbox rows published.
 func TestUnknownExternalEffectBlocksBlindRetryAndUnreachableBrokerFailsClosed(t *testing.T) {
 	pool, dsn := setupDisposableOutboxDB(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
