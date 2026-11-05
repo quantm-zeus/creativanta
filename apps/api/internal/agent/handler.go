@@ -3,48 +3,79 @@ package agent
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"connectrpc.com/connect"
 	automationv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/automation/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/automation/v1/automationv1connect"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
 )
 
+// MembershipRoleResolver looks up a user's active workspace membership role.
+type MembershipRoleResolver func(ctx context.Context, workspaceID, userID string) (role string, active bool, err error)
+
 // AgentHandler implements automationv1connect.AgentServiceHandler.
 type AgentHandler struct {
-	service *Service
+	service      *Service
+	roleResolver MembershipRoleResolver
 }
 
 func NewAgentHandler(service *Service) *AgentHandler {
 	return &AgentHandler{service: service}
 }
 
+// WithMembershipRoleResolver configures a workspace membership role resolver for AgentHandler.
+func (h *AgentHandler) WithMembershipRoleResolver(resolver MembershipRoleResolver) *AgentHandler {
+	h.roleResolver = resolver
+	return h
+}
+
 var _ automationv1connect.AgentServiceHandler = (*AgentHandler)(nil)
 
-func resolveCaller(ctx context.Context, explicitWorkspaceID string) (CallerContext, error) {
-	if session, ok := transportauth.PrincipalFromContext(ctx); ok && session.WorkspaceID != "" {
-		if explicitWorkspaceID != "" && explicitWorkspaceID != session.WorkspaceID && !session.InternalAdmin {
-			return CallerContext{}, connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
-		}
-		role := "owner"
-		if session.InternalAdmin {
-			role = "admin"
-		}
-		return CallerContext{
-			UserID:        session.UserID,
-			WorkspaceID:   session.WorkspaceID,
-			WorkspaceRole: role,
-		}, nil
+func (h *AgentHandler) resolveCaller(ctx context.Context, explicitWorkspaceID string, requiredPerm string) (CallerContext, error) {
+	session, ok := transportauth.PrincipalFromContext(ctx)
+	if !ok || strings.TrimSpace(session.UserID) == "" || strings.TrimSpace(session.WorkspaceID) == "" {
+		return CallerContext{}, connect.NewError(connect.CodeUnauthenticated, errors.New("authenticated workspace principal required"))
 	}
-	if explicitWorkspaceID != "" {
-		return CallerContext{
-			UserID:        "00000000-0000-0000-0000-000000000001",
-			WorkspaceID:   explicitWorkspaceID,
-			WorkspaceRole: "owner",
-		}, nil
+	if session.InternalAdmin || session.ServiceKeyID != "" {
+		return CallerContext{}, connect.NewError(connect.CodePermissionDenied, errors.New("workspace user principal required"))
 	}
-	return CallerContext{}, connect.NewError(connect.CodeUnauthenticated, errors.New("missing workspace or tenant context"))
+	if explicitWorkspaceID != "" && explicitWorkspaceID != session.WorkspaceID {
+		return CallerContext{}, connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
+	}
+
+	role := strings.TrimSpace(session.Role)
+	if h.roleResolver != nil {
+		resolvedRole, active, err := h.roleResolver(ctx, session.WorkspaceID, session.UserID)
+		if err != nil {
+			return CallerContext{}, connect.NewError(connect.CodePermissionDenied, err)
+		}
+		if !active {
+			return CallerContext{}, connect.NewError(connect.CodePermissionDenied, errors.New("active workspace membership required"))
+		}
+		role = strings.TrimSpace(resolvedRole)
+	}
+	if role == "" || !rbac.IsValidWorkspaceRole(role) {
+		return CallerContext{}, connect.NewError(connect.CodePermissionDenied, errors.New("verified workspace membership role required"))
+	}
+
+	if requiredPerm != "" {
+		if err := rbac.CheckWorkspacePermission(requiredPerm, rbac.PolicyContext{
+			ActorUserID: session.UserID,
+			WorkspaceID: session.WorkspaceID,
+			Role:        role,
+		}); err != nil {
+			return CallerContext{}, connect.NewError(connect.CodePermissionDenied, err)
+		}
+	}
+
+	return CallerContext{
+		UserID:        session.UserID,
+		WorkspaceID:   session.WorkspaceID,
+		WorkspaceRole: role,
+	}, nil
 }
 
 func toConnectError(err error) error {
@@ -73,7 +104,7 @@ func (h *AgentHandler) LaunchAgent(
 	ctx context.Context,
 	req *connect.Request[automationv1.AgentServiceLaunchAgentRequest],
 ) (*connect.Response[automationv1.AgentServiceLaunchAgentResponse], error) {
-	caller, err := resolveCaller(ctx, req.Msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, req.Msg.WorkspaceId, "agent:execute")
 	if err != nil {
 		return nil, err
 	}
@@ -91,6 +122,9 @@ func (h *AgentHandler) LaunchAgent(
 		req.Msg.Parameters,
 	)
 	if err != nil {
+		if errors.Is(err, ErrPermissionDenied) || errors.Is(err, ErrCrossTenantDenied) {
+			return nil, toConnectError(err)
+		}
 		rejection := err.Error()
 		return connect.NewResponse(&automationv1.AgentServiceLaunchAgentResponse{
 			Success:            false,
@@ -113,7 +147,7 @@ func (h *AgentHandler) ListRuns(
 	ctx context.Context,
 	req *connect.Request[automationv1.AgentServiceListRunsRequest],
 ) (*connect.Response[automationv1.AgentServiceListRunsResponse], error) {
-	caller, err := resolveCaller(ctx, req.Msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, req.Msg.WorkspaceId, "workflow:read")
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +189,7 @@ func (h *AgentHandler) CancelRun(
 	ctx context.Context,
 	req *connect.Request[automationv1.AgentServiceCancelRunRequest],
 ) (*connect.Response[automationv1.AgentServiceCancelRunResponse], error) {
-	caller, err := resolveCaller(ctx, req.Msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, req.Msg.WorkspaceId, "agent:execute")
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +209,7 @@ func (h *AgentHandler) StreamRun(
 	ctx context.Context,
 	req *connect.Request[automationv1.AgentServiceStreamRunRequest],
 ) (*connect.Response[automationv1.AgentServiceStreamRunResponse], error) {
-	caller, err := resolveCaller(ctx, req.Msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, req.Msg.WorkspaceId, "workflow:read")
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +231,7 @@ func (h *AgentHandler) ProvideInput(
 	ctx context.Context,
 	req *connect.Request[automationv1.AgentServiceProvideInputRequest],
 ) (*connect.Response[automationv1.AgentServiceProvideInputResponse], error) {
-	caller, err := resolveCaller(ctx, req.Msg.WorkspaceId)
+	caller, err := h.resolveCaller(ctx, req.Msg.WorkspaceId, "agent:execute")
 	if err != nil {
 		return nil, err
 	}

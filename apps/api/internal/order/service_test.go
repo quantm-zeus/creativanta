@@ -6,9 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
+	commercev1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1"
+	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/inventory"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/order"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
 )
 
 type mockSink struct {
@@ -499,5 +503,109 @@ func TestPhysicalReturnRestocksInventoryWhileRefundDoesNot(t *testing.T) {
 	balPostReturn, _ := invStore.GetBalance(ctx, wsID, skuID, locID)
 	if balPostReturn.OnHand != 10 {
 		t.Fatalf("physical return failed to restock: expected on_hand=10, got %d", balPostReturn.OnHand)
+	}
+}
+
+func TestAUTH03_OrderAndRefundHandlersEnforceTenantScopeAndPermissions(t *testing.T) {
+	ctx := context.Background()
+	orderSvc, _, _, _, _ := setupTestHarness()
+	orderHandler := order.NewOrderHandler(orderSvc)
+	refundHandler := order.NewRefundHandler(orderSvc)
+
+	wsA := "11111111-1111-4111-8111-111111111110"
+	wsB := "22222222-2222-4222-8222-222222222220"
+
+	ordB, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		WorkspaceID:    wsB,
+		SourceClass:    order.SourceClassOfficial,
+		Amount:         tenantdb.MustParseExactDecimal("500000.000000"),
+		Currency:       "VND",
+		LifecycleState: order.StateCreated,
+	}, "")
+	if err != nil {
+		t.Fatalf("ingest order in wsB failed: %v", err)
+	}
+
+	// 1. Unauthenticated caller supplying CommandContext.WorkspaceId must fail with CodeUnauthenticated.
+	_, err = orderHandler.Confirm(ctx, connect.NewRequest(&commercev1.OrderServiceConfirmRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsB}},
+		OrderId: ordB.OrderID,
+	}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("expected CodeUnauthenticated for unauthenticated OrderHandler.Confirm, got %v", err)
+	}
+
+	// 2. API key bound to Workspace A attempting to pass CommandContext.WorkspaceId = Workspace B must fail with CodePermissionDenied.
+	apiKeyCtxA := transportauth.WithPrincipal(ctx, transportauth.Session{
+		WorkspaceID:  wsA,
+		ServiceKeyID: "key_ws_a",
+		ScopesCSV:    transportauth.JoinScopes([]string{"read:orders", "write:orders"}),
+	})
+	_, err = orderHandler.Confirm(apiKeyCtxA, connect.NewRequest(&commercev1.OrderServiceConfirmRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsB}},
+		OrderId: ordB.OrderID,
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied when API key for wsA requests wsB in CommandContext, got %v", err)
+	}
+
+	// 3. API key bound to Workspace A calling Get uses wsA and cannot read ordB (CodeNotFound).
+	_, err = orderHandler.Get(apiKeyCtxA, connect.NewRequest(&commercev1.OrderServiceGetRequest{
+		OrderId: ordB.OrderID,
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("expected CodeNotFound when API key for wsA queries order belonging to wsB, got %v", err)
+	}
+
+	// 4. API key with read:orders only cannot call OrderHandler.Confirm or RefundHandler.Create (requires write:orders).
+	readOnlyKeyCtxB := transportauth.WithPrincipal(ctx, transportauth.Session{
+		WorkspaceID:  wsB,
+		ServiceKeyID: "key_ws_b_ro",
+		ScopesCSV:    transportauth.JoinScopes([]string{"read:orders"}),
+	})
+	_, err = orderHandler.Confirm(readOnlyKeyCtxB, connect.NewRequest(&commercev1.OrderServiceConfirmRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsB}},
+		OrderId: ordB.OrderID,
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied when read:orders key calls Confirm, got %v", err)
+	}
+	_, err = refundHandler.Create(readOnlyKeyCtxB, connect.NewRequest(&commercev1.RefundServiceCreateRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsB}},
+		OrderId: ordB.OrderID,
+		Amount:  &commonv1.Money{Amount: "100000", Currency: "VND"},
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied when read:orders key calls RefundHandler.Create, got %v", err)
+	}
+
+	// 5. User principal with editor role can read orders (order:read, Editor+) while viewer is denied (CodePermissionDenied).
+	viewerCtxB := transportauth.WithPrincipal(ctx, transportauth.Session{
+		UserID:      "33333333-3333-4333-8333-333333333330",
+		WorkspaceID: wsB,
+		Role:        "viewer",
+	})
+	if _, err := orderHandler.Get(viewerCtxB, connect.NewRequest(&commercev1.OrderServiceGetRequest{
+		OrderId: ordB.OrderID,
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied when viewer calls OrderHandler.Get (requires order:read / Editor+), got %v", err)
+	}
+	editorCtxB := transportauth.WithPrincipal(ctx, transportauth.Session{
+		UserID:      "33333333-3333-4333-8333-333333333331",
+		WorkspaceID: wsB,
+		Role:        "editor",
+	})
+	if _, err := orderHandler.Get(editorCtxB, connect.NewRequest(&commercev1.OrderServiceGetRequest{
+		OrderId: ordB.OrderID,
+	})); err != nil {
+		t.Fatalf("expected editor OrderHandler.Get to succeed, got %v", err)
+	}
+	_, err = refundHandler.Create(editorCtxB, connect.NewRequest(&commercev1.RefundServiceCreateRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsB}},
+		OrderId: ordB.OrderID,
+		Amount:  &commonv1.Money{Amount: "100000", Currency: "VND"},
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied when editor calls RefundHandler.Create (requires refund:manage / Manager+), got %v", err)
 	}
 }

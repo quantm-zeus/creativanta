@@ -4,30 +4,93 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
 	commercev1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1/commercev1connect"
 	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/publicapi"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func resolveTenantContext(ctx context.Context, cmdCtx *commonv1.CommandContext) (string, error) {
-	if session, ok := transportauth.PrincipalFromContext(ctx); ok && session.WorkspaceID != "" {
-		if cmdCtx != nil && cmdCtx.WorkspaceId != nil && cmdCtx.WorkspaceId.Value != "" {
-			if cmdCtx.WorkspaceId.Value != session.WorkspaceID && !session.InternalAdmin {
-				return "", connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
-			}
+// MembershipRoleResolver looks up a user's active membership role in a workspace.
+type MembershipRoleResolver func(ctx context.Context, workspaceID, userID string) (role string, active bool, err error)
+
+func authorizeTenantOrderOperation(
+	ctx context.Context,
+	cmdCtx *commonv1.CommandContext,
+	roleResolver MembershipRoleResolver,
+	requiredPermission string,
+	requiredAPIScope string,
+) (string, error) {
+	session, ok := transportauth.PrincipalFromContext(ctx)
+	apiKey, hasAPIKey := publicapi.AuthenticatedKeyFromContext(ctx)
+	if !ok && hasAPIKey {
+		session = transportauth.Session{
+			UserID:       apiKey.APIKeyID,
+			WorkspaceID:  apiKey.WorkspaceID,
+			ScopesCSV:    transportauth.JoinScopes(apiKey.Scopes),
+			ServiceKeyID: apiKey.APIKeyID,
+		}
+		ok = true
+	}
+	if !ok || !tenantdb.IsValidNonZeroUUID(session.WorkspaceID) {
+		return "", connect.NewError(connect.CodeUnauthenticated, ErrMissingTenant)
+	}
+	if hasAPIKey && apiKey.WorkspaceID != session.WorkspaceID {
+		return "", connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
+	}
+	if cmdCtx != nil && cmdCtx.WorkspaceId != nil && cmdCtx.WorkspaceId.Value != "" {
+		if cmdCtx.WorkspaceId.Value != session.WorkspaceID {
+			return "", connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
+		}
+	}
+
+	// Service / Public API key caller: enforce exact scope and read-only rules
+	if session.ServiceKeyID != "" || hasAPIKey {
+		scopes := session.ScopeList()
+		if len(scopes) == 0 && hasAPIKey {
+			scopes = apiKey.Scopes
+		}
+		if strings.HasPrefix(requiredAPIScope, "write:") && publicapi.IsReadOnlyScopes(scopes) {
+			return "", connect.NewError(connect.CodePermissionDenied, publicapi.ErrReadOnlyMutationForbidden)
+		}
+		if !publicapi.HasScope(scopes, requiredAPIScope) {
+			return "", connect.NewError(connect.CodePermissionDenied, publicapi.ErrScopeUnauthorized)
 		}
 		return session.WorkspaceID, nil
 	}
-	if cmdCtx != nil && cmdCtx.WorkspaceId != nil && cmdCtx.WorkspaceId.Value != "" {
-		return cmdCtx.WorkspaceId.Value, nil
+
+	if session.InternalAdmin {
+		return "", connect.NewError(connect.CodePermissionDenied, rbac.ErrPermissionDenied)
 	}
-	return "", connect.NewError(connect.CodeUnauthenticated, ErrMissingTenant)
+	if !tenantdb.IsValidNonZeroUUID(session.UserID) {
+		return "", connect.NewError(connect.CodeUnauthenticated, ErrMissingTenant)
+	}
+
+	role := strings.ToLower(strings.TrimSpace(session.Role))
+	if roleResolver != nil {
+		resolvedRole, active, err := roleResolver(ctx, session.WorkspaceID, session.UserID)
+		if err != nil || !active {
+			return "", connect.NewError(connect.CodePermissionDenied, rbac.ErrPermissionDenied)
+		}
+		role = strings.ToLower(strings.TrimSpace(resolvedRole))
+	}
+	if role == "" {
+		return "", connect.NewError(connect.CodePermissionDenied, rbac.ErrPermissionDenied)
+	}
+	if err := rbac.CheckWorkspacePermission(requiredPermission, rbac.PolicyContext{
+		Role:        role,
+		ActorUserID: session.UserID,
+	}); err != nil {
+		return "", connect.NewError(connect.CodePermissionDenied, err)
+	}
+	return session.WorkspaceID, nil
 }
 
 func toProtoLifecycleState(s LifecycleState) commercev1.OrderLifecycleState {
@@ -231,17 +294,23 @@ func toProtoRefund(r *Refund) *commercev1.Refund {
 // ----------------------------------------------------------------------------
 
 type OrderHandler struct {
-	service *Service
+	service      *Service
+	roleResolver MembershipRoleResolver
 }
 
 func NewOrderHandler(service *Service) *OrderHandler {
 	return &OrderHandler{service: service}
 }
 
+func (h *OrderHandler) WithMembershipRoleResolver(resolver MembershipRoleResolver) *OrderHandler {
+	h.roleResolver = resolver
+	return h
+}
+
 var _ commercev1connect.OrderServiceHandler = (*OrderHandler)(nil)
 
 func (h *OrderHandler) List(ctx context.Context, req *connect.Request[commercev1.OrderServiceListRequest]) (*connect.Response[commercev1.OrderServiceListResponse], error) {
-	wsID, err := resolveTenantContext(ctx, nil)
+	wsID, err := authorizeTenantOrderOperation(ctx, nil, h.roleResolver, "order:read", "read:orders")
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +355,7 @@ func (h *OrderHandler) List(ctx context.Context, req *connect.Request[commercev1
 }
 
 func (h *OrderHandler) Get(ctx context.Context, req *connect.Request[commercev1.OrderServiceGetRequest]) (*connect.Response[commercev1.OrderServiceGetResponse], error) {
-	wsID, err := resolveTenantContext(ctx, nil)
+	wsID, err := authorizeTenantOrderOperation(ctx, nil, h.roleResolver, "order:read", "read:orders")
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +380,7 @@ func (h *OrderHandler) Get(ctx context.Context, req *connect.Request[commercev1.
 }
 
 func (h *OrderHandler) Import(ctx context.Context, req *connect.Request[commercev1.OrderServiceImportRequest]) (*connect.Response[commercev1.OrderServiceImportResponse], error) {
-	wsID, err := resolveTenantContext(ctx, req.Msg.Context)
+	wsID, err := authorizeTenantOrderOperation(ctx, req.Msg.Context, h.roleResolver, "order:manage", "write:orders")
 	if err != nil {
 		return nil, err
 	}
@@ -325,6 +394,9 @@ func (h *OrderHandler) Import(ctx context.Context, req *connect.Request[commerce
 }
 
 func (h *OrderHandler) Export(ctx context.Context, req *connect.Request[commercev1.OrderServiceExportRequest]) (*connect.Response[commercev1.OrderServiceExportResponse], error) {
+	if _, err := authorizeTenantOrderOperation(ctx, nil, h.roleResolver, "order:export", "read:orders"); err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&commercev1.OrderServiceExportResponse{
 		DownloadUrl: "/exports/orders.csv",
 		RowCount:    0,
@@ -332,7 +404,7 @@ func (h *OrderHandler) Export(ctx context.Context, req *connect.Request[commerce
 }
 
 func (h *OrderHandler) UpdateStatus(ctx context.Context, req *connect.Request[commercev1.OrderServiceUpdateStatusRequest]) (*connect.Response[commercev1.OrderServiceUpdateStatusResponse], error) {
-	wsID, err := resolveTenantContext(ctx, req.Msg.Context)
+	wsID, err := authorizeTenantOrderOperation(ctx, req.Msg.Context, h.roleResolver, "order:manage", "write:orders")
 	if err != nil {
 		return nil, err
 	}
@@ -359,11 +431,14 @@ func (h *OrderHandler) UpdateStatus(ctx context.Context, req *connect.Request[co
 }
 
 func (h *OrderHandler) Search(ctx context.Context, req *connect.Request[commercev1.OrderServiceSearchRequest]) (*connect.Response[commercev1.OrderServiceSearchResponse], error) {
+	if _, err := authorizeTenantOrderOperation(ctx, nil, h.roleResolver, "order:read", "read:orders"); err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&commercev1.OrderServiceSearchResponse{}), nil
 }
 
 func (h *OrderHandler) Confirm(ctx context.Context, req *connect.Request[commercev1.OrderServiceConfirmRequest]) (*connect.Response[commercev1.OrderServiceConfirmResponse], error) {
-	wsID, err := resolveTenantContext(ctx, req.Msg.Context)
+	wsID, err := authorizeTenantOrderOperation(ctx, req.Msg.Context, h.roleResolver, "order:manage", "write:orders")
 	if err != nil {
 		return nil, err
 	}
@@ -377,23 +452,35 @@ func (h *OrderHandler) Confirm(ctx context.Context, req *connect.Request[commerc
 }
 
 func (h *OrderHandler) GetTodayStats(ctx context.Context, req *connect.Request[commercev1.OrderServiceGetTodayStatsRequest]) (*connect.Response[commercev1.OrderServiceGetTodayStatsResponse], error) {
+	if _, err := authorizeTenantOrderOperation(ctx, nil, h.roleResolver, "order:read", "read:orders"); err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&commercev1.OrderServiceGetTodayStatsResponse{}), nil
 }
 
 func (h *OrderHandler) GetDailyStats(ctx context.Context, req *connect.Request[commercev1.OrderServiceGetDailyStatsRequest]) (*connect.Response[commercev1.OrderServiceGetDailyStatsResponse], error) {
+	if _, err := authorizeTenantOrderOperation(ctx, nil, h.roleResolver, "order:read", "read:orders"); err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&commercev1.OrderServiceGetDailyStatsResponse{}), nil
 }
 
 func (h *OrderHandler) GetLabel(ctx context.Context, req *connect.Request[commercev1.OrderServiceGetLabelRequest]) (*connect.Response[commercev1.OrderServiceGetLabelResponse], error) {
+	if _, err := authorizeTenantOrderOperation(ctx, nil, h.roleResolver, "order:read", "read:orders"); err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&commercev1.OrderServiceGetLabelResponse{}), nil
 }
 
 func (h *OrderHandler) ListRecent(ctx context.Context, req *connect.Request[commercev1.OrderServiceListRecentRequest]) (*connect.Response[commercev1.OrderServiceListRecentResponse], error) {
+	if _, err := authorizeTenantOrderOperation(ctx, nil, h.roleResolver, "order:read", "read:orders"); err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&commercev1.OrderServiceListRecentResponse{}), nil
 }
 
 func (h *OrderHandler) BulkCancel(ctx context.Context, req *connect.Request[commercev1.OrderServiceBulkCancelRequest]) (*connect.Response[commercev1.OrderServiceBulkCancelResponse], error) {
-	wsID, err := resolveTenantContext(ctx, req.Msg.Context)
+	wsID, err := authorizeTenantOrderOperation(ctx, req.Msg.Context, h.roleResolver, "order:manage", "write:orders")
 	if err != nil {
 		return nil, err
 	}
@@ -409,6 +496,9 @@ func (h *OrderHandler) BulkCancel(ctx context.Context, req *connect.Request[comm
 }
 
 func (h *OrderHandler) BulkUpdateStatus(ctx context.Context, req *connect.Request[commercev1.OrderServiceBulkUpdateStatusRequest]) (*connect.Response[commercev1.OrderServiceBulkUpdateStatusResponse], error) {
+	if _, err := authorizeTenantOrderOperation(ctx, req.Msg.Context, h.roleResolver, "order:manage", "write:orders"); err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&commercev1.OrderServiceBulkUpdateStatusResponse{}), nil
 }
 
@@ -417,17 +507,23 @@ func (h *OrderHandler) BulkUpdateStatus(ctx context.Context, req *connect.Reques
 // ----------------------------------------------------------------------------
 
 type RefundHandler struct {
-	service *Service
+	service      *Service
+	roleResolver MembershipRoleResolver
 }
 
 func NewRefundHandler(service *Service) *RefundHandler {
 	return &RefundHandler{service: service}
 }
 
+func (h *RefundHandler) WithMembershipRoleResolver(resolver MembershipRoleResolver) *RefundHandler {
+	h.roleResolver = resolver
+	return h
+}
+
 var _ commercev1connect.RefundServiceHandler = (*RefundHandler)(nil)
 
 func (h *RefundHandler) Create(ctx context.Context, req *connect.Request[commercev1.RefundServiceCreateRequest]) (*connect.Response[commercev1.RefundServiceCreateResponse], error) {
-	wsID, err := resolveTenantContext(ctx, req.Msg.Context)
+	wsID, err := authorizeTenantOrderOperation(ctx, req.Msg.Context, h.roleResolver, "refund:manage", "write:orders")
 	if err != nil {
 		return nil, err
 	}
@@ -461,7 +557,7 @@ func (h *RefundHandler) Create(ctx context.Context, req *connect.Request[commerc
 }
 
 func (h *RefundHandler) Get(ctx context.Context, req *connect.Request[commercev1.RefundServiceGetRequest]) (*connect.Response[commercev1.RefundServiceGetResponse], error) {
-	wsID, err := resolveTenantContext(ctx, nil)
+	wsID, err := authorizeTenantOrderOperation(ctx, nil, h.roleResolver, "refund:read", "read:orders")
 	if err != nil {
 		return nil, err
 	}
@@ -478,7 +574,7 @@ func (h *RefundHandler) Get(ctx context.Context, req *connect.Request[commercev1
 }
 
 func (h *RefundHandler) List(ctx context.Context, req *connect.Request[commercev1.RefundServiceListRequest]) (*connect.Response[commercev1.RefundServiceListResponse], error) {
-	wsID, err := resolveTenantContext(ctx, nil)
+	wsID, err := authorizeTenantOrderOperation(ctx, nil, h.roleResolver, "refund:read", "read:orders")
 	if err != nil {
 		return nil, err
 	}
@@ -501,7 +597,7 @@ func (h *RefundHandler) List(ctx context.Context, req *connect.Request[commercev
 }
 
 func (h *RefundHandler) Approve(ctx context.Context, req *connect.Request[commercev1.RefundServiceApproveRequest]) (*connect.Response[commercev1.RefundServiceApproveResponse], error) {
-	wsID, err := resolveTenantContext(ctx, req.Msg.Context)
+	wsID, err := authorizeTenantOrderOperation(ctx, req.Msg.Context, h.roleResolver, "refund:manage", "write:orders")
 	if err != nil {
 		return nil, err
 	}
@@ -516,7 +612,7 @@ func (h *RefundHandler) Approve(ctx context.Context, req *connect.Request[commer
 }
 
 func (h *RefundHandler) Reject(ctx context.Context, req *connect.Request[commercev1.RefundServiceRejectRequest]) (*connect.Response[commercev1.RefundServiceRejectResponse], error) {
-	wsID, err := resolveTenantContext(ctx, req.Msg.Context)
+	wsID, err := authorizeTenantOrderOperation(ctx, req.Msg.Context, h.roleResolver, "refund:manage", "write:orders")
 	if err != nil {
 		return nil, err
 	}
@@ -533,5 +629,8 @@ func (h *RefundHandler) Reject(ctx context.Context, req *connect.Request[commerc
 }
 
 func (h *RefundHandler) GetStats(ctx context.Context, req *connect.Request[commercev1.RefundServiceGetStatsRequest]) (*connect.Response[commercev1.RefundServiceGetStatsResponse], error) {
+	if _, err := authorizeTenantOrderOperation(ctx, nil, h.roleResolver, "refund:read", "read:orders"); err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&commercev1.RefundServiceGetStatsResponse{}), nil
 }

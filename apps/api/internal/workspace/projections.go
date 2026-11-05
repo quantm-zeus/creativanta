@@ -52,10 +52,12 @@ var forbiddenSerializedKeys = map[string]bool{
 type WorkspaceProjection struct {
 	WorkspaceID           string   `json:"workspace_id"`
 	Name                  string   `json:"name"`
+	DisplayName           string   `json:"display_name"`
 	Slug                  string   `json:"slug"`
 	OwnerUserID           string   `json:"owner_user_id"`
 	SubscriptionTier      string   `json:"subscription_tier"`
 	DefaultMode           string   `json:"default_mode"`
+	DefaultOperatorMode   string   `json:"default_operator_mode"`
 	EnabledModes          []string `json:"enabled_modes"`
 	AICreditsRemaining    string   `json:"ai_credits_remaining"`
 	AICreditsMonthlyLimit string   `json:"ai_credits_monthly_limit"`
@@ -72,13 +74,31 @@ type WorkspaceProjection struct {
 func ProjectWorkspace(row tenantdb.WorkspaceRow) WorkspaceProjection {
 	modes := make([]string, len(row.EnabledModes))
 	copy(modes, row.EnabledModes)
+	displayName := row.DisplayName
+	if displayName == "" {
+		displayName = row.Name
+	}
+	name := row.Name
+	if name == "" {
+		name = displayName
+	}
+	defaultOperatorMode := row.DefaultOperatorMode
+	if defaultOperatorMode == "" {
+		defaultOperatorMode = row.DefaultMode
+	}
+	defaultMode := row.DefaultMode
+	if defaultMode == "" {
+		defaultMode = defaultOperatorMode
+	}
 	return WorkspaceProjection{
 		WorkspaceID:           row.WorkspaceID,
-		Name:                  row.Name,
+		Name:                  name,
+		DisplayName:           displayName,
 		Slug:                  row.Slug,
 		OwnerUserID:           row.OwnerUserID,
 		SubscriptionTier:      row.SubscriptionTier,
-		DefaultMode:           row.DefaultMode,
+		DefaultMode:           defaultMode,
+		DefaultOperatorMode:   defaultOperatorMode,
 		EnabledModes:          modes,
 		AICreditsRemaining:    row.AICreditsRemaining.String(),
 		AICreditsMonthlyLimit: row.AICreditsMonthlyLimit.String(),

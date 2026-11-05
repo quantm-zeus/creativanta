@@ -136,6 +136,173 @@ func TestSQLReconcilerFailsClosedOnNilDependenciesAndMissingGlobalClaimer(t *tes
 	}
 }
 
+type retryableMemoryGlobalClaimer struct {
+	seen       map[string]bool
+	unclaimed  int
+	claimCalls int
+}
+
+func (m *retryableMemoryGlobalClaimer) ClaimGlobalDelivery(_ context.Context, _ SQLRunner, evt VerifiedEvent) (bool, error) {
+	m.claimCalls++
+	if m.seen == nil {
+		m.seen = make(map[string]bool)
+	}
+	if m.seen[evt.DeliveryID] {
+		return false, nil
+	}
+	m.seen[evt.DeliveryID] = true
+	return true, nil
+}
+
+func (m *retryableMemoryGlobalClaimer) ReleaseGlobalDelivery(_ context.Context, _ SQLRunner, evt VerifiedEvent) error {
+	if m.seen != nil {
+		delete(m.seen, evt.DeliveryID)
+	}
+	m.unclaimed++
+	return nil
+}
+
+type flakeyUserDBRunner struct {
+	failNextExec bool
+	execCalls    int
+}
+
+func (f *flakeyUserDBRunner) ExecContext(_ context.Context, _ string, _ ...any) (sql.Result, error) {
+	f.execCalls++
+	if f.failNextExec {
+		f.failNextExec = false
+		return nil, errors.New("simulated transient database failure during reconciliation")
+	}
+	return nil, nil
+}
+
+func (f *flakeyUserDBRunner) QueryRowContext(_ context.Context, _ string, _ ...any) *sql.Row {
+	return nil
+}
+
+func TestAUTH04_RevokedAndSuspendedMembershipsNeverReactivatedByDelayedWebhook(t *testing.T) {
+	ctx := context.Background()
+	tRevoked := fixedFixtureTime
+	tDelayedWebhook := fixedFixtureTime.Add(10 * time.Minute)
+
+	// Even if Clerk authoritative checker claims the membership is still active remotely,
+	// a locally 'revoked' or 'suspended' workspace_members row must never be reactivated.
+	execTracker := &flakeyUserDBRunner{}
+	reconciler := &SQLReconciler{
+		DB: execTracker,
+		AuthoritativeMembership: &fixedAuthMembershipChecker{
+			state: AuthoritativeMembershipState{
+				Active:          true,
+				Role:            "admin",
+				SourceUpdatedAt: tDelayedWebhook,
+			},
+		},
+	}
+
+	for _, terminalLocalStatus := range []string{"revoked", "suspended"} {
+		// Case 1: source_updated_at was NULL on the local row (legacy local revocation) and a newer Clerk update arrives.
+		err := reconciler.reconcileMembershipRowState(
+			ctx,
+			EventOrgMembershipUpdated,
+			"019a3a6c-2fa4-76d5-8ccd-d6f3a2f2a2f1",
+			"019a3a6c-2fa4-7c5e-9de3-66f4ad9a3f1a",
+			"019a3a6c-2fa4-7c5e-9de3-66f4ad9a3f1b",
+			true,
+			terminalLocalStatus,
+			"editor",
+			sql.NullTime{Valid: false},
+			MembershipEventData{
+				ClerkMembershipID:   "orgmem_collab1",
+				ClerkOrganizationID: "org_alpha123",
+				ClerkUserID:         "user_collab2",
+				Role:                "admin",
+				SourceUpdatedAt:     tDelayedWebhook,
+			},
+		)
+		if err != nil {
+			t.Fatalf("unexpected error for status=%s (null source_updated_at): %v", terminalLocalStatus, err)
+		}
+
+		// Case 2: source_updated_at was stamped at tRevoked and a delayed Clerk create/update with newer timestamp arrives.
+		for _, evtType := range []EventType{EventOrgMembershipUpdated, EventOrgMembershipCreated} {
+			err := reconciler.reconcileMembershipRowState(
+				ctx,
+				evtType,
+				"019a3a6c-2fa4-76d5-8ccd-d6f3a2f2a2f1",
+				"019a3a6c-2fa4-7c5e-9de3-66f4ad9a3f1a",
+				"019a3a6c-2fa4-7c5e-9de3-66f4ad9a3f1b",
+				true,
+				terminalLocalStatus,
+				"editor",
+				sql.NullTime{Time: tRevoked, Valid: true},
+				MembershipEventData{
+					ClerkMembershipID:   "orgmem_collab1",
+					ClerkOrganizationID: "org_alpha123",
+					ClerkUserID:         "user_collab2",
+					Role:                "admin",
+					SourceUpdatedAt:     tDelayedWebhook,
+				},
+			)
+			if err != nil {
+				t.Fatalf("unexpected error for status=%s evtType=%s: %v", terminalLocalStatus, evtType, err)
+			}
+		}
+	}
+	if execTracker.execCalls != 0 {
+		t.Fatalf("SECURITY VIOLATION (AUTH-04): reconcileMembershipRowState executed %d DB mutations on locally %q/suspended membership", execTracker.execCalls, "revoked")
+	}
+}
+
+func TestWEBHOOK01_FailedWebhookDeliveryRemainsRetryableAndAtomic(t *testing.T) {
+	ctx := context.Background()
+	claimer := &retryableMemoryGlobalClaimer{}
+	flakeyDB := &flakeyUserDBRunner{failNextExec: true}
+	reconciler := &SQLReconciler{
+		DB:               flakeyDB,
+		GlobalDeliveries: claimer,
+	}
+
+	evt := VerifiedEvent{
+		DeliveryID:       "msg_retry_atomic_01",
+		WebhookTimestamp: fixedFixtureTime,
+		SourceUpdatedAt:  fixedFixtureTime,
+		Type:             EventUserUpdated,
+		RawPayload:       []byte(knownValidUserCreatedBody),
+		User: &UserEventData{
+			ClerkUserID:     "user_retry_01",
+			Email:           "retry@example.com",
+			EmailVerified:   true,
+			Banned:          true,
+			DisplayName:     "Retry User",
+			SourceUpdatedAt: fixedFixtureTime,
+		},
+	}
+
+	// Attempt 1: Downstream reconciliation fails -> error returned AND delivery claim released.
+	_, err := reconciler.ProcessVerifiedEvent(ctx, evt)
+	if err == nil {
+		t.Fatalf("expected error on first attempt when DB exec fails")
+	}
+	if claimer.unclaimed != 1 {
+		t.Fatalf("expected failed delivery claim to be released (unclaimed=1), got %d", claimer.unclaimed)
+	}
+
+	// Attempt 2 (Retry): Must NOT be treated as a duplicate; must re-run and succeed.
+	res, err := reconciler.ProcessVerifiedEvent(ctx, evt)
+	if err != nil {
+		t.Fatalf("expected retry attempt to succeed, got %v", err)
+	}
+	if res.Duplicate {
+		t.Fatalf("SECURITY/RELIABILITY BUG: retry after failed webhook was skipped as Duplicate=true")
+	}
+
+	// Attempt 3: Subsequent replay after successful processing is deduplicated.
+	res3, err := reconciler.ProcessVerifiedEvent(ctx, evt)
+	if err != nil || !res3.Duplicate {
+		t.Fatalf("expected third delivery after success to return Duplicate=true, got res=%+v err=%v", res3, err)
+	}
+}
+
 func TestPostgresClerkWebhookMembershipAndUserReconciliation(t *testing.T) {
 	dsn := os.Getenv("CREATIVANTA_TEST_POSTGRES_DSN")
 	if dsn == "" {

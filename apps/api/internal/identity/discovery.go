@@ -8,9 +8,12 @@ import (
 
 // WorkspaceSummary contains only minimally needed workspace picker fields.
 type WorkspaceSummary struct {
-	ID   string
-	Name string
-	Role string
+	ID                  string `json:"workspace_id"`
+	Name                string `json:"name"`
+	DisplayName         string `json:"display_name"`
+	Role                string `json:"role"`
+	DefaultMode         string `json:"default_mode,omitempty"`
+	DefaultOperatorMode string `json:"default_operator_mode,omitempty"`
 }
 
 type SQLRowsQueryer interface {
@@ -24,13 +27,17 @@ type WorkspaceDiscovery interface {
 // Preselection discovery requires P0-04 to provide the restricted role/grants;
 // this method never claims such a role already exists.
 const activeDiscoveryQuery = `
-SELECT w.workspace_id::text,w.display_name,m.role
+SELECT
+  w.workspace_id::text,
+  COALESCE(NULLIF(w.display_name, ''), NULLIF(to_jsonb(w)->>'name', ''), '') AS display_name,
+  m.role,
+  COALESCE(NULLIF(to_jsonb(w)->>'default_operator_mode', ''), NULLIF(to_jsonb(w)->>'default_mode', ''), 'creator') AS default_operator_mode
 FROM users AS u
 JOIN workspace_members AS m ON m.user_id=u.user_id
 JOIN workspaces AS w ON w.workspace_id=m.workspace_id
 WHERE u.clerk_id=$1 AND u.status='active'
  AND m.status='active' AND w.status='active' AND w.deleted_at IS NULL
-ORDER BY w.display_name,w.workspace_id
+ORDER BY COALESCE(NULLIF(w.display_name, ''), NULLIF(to_jsonb(w)->>'name', ''), ''), w.workspace_id
 LIMIT 100`
 
 func (m SQLMembershipLookup) Discover(ctx context.Context, subject string) ([]WorkspaceSummary, error) {
@@ -52,9 +59,11 @@ func (m SQLMembershipLookup) Discover(ctx context.Context, subject string) ([]Wo
 	result := make([]WorkspaceSummary, 0)
 	for rows.Next() {
 		var item WorkspaceSummary
-		if err := rows.Scan(&item.ID, &item.Name, &item.Role); err != nil {
+		if err := rows.Scan(&item.ID, &item.Name, &item.Role, &item.DefaultOperatorMode); err != nil {
 			return nil, err
 		}
+		item.DisplayName = item.Name
+		item.DefaultMode = item.DefaultOperatorMode
 		if !workspaceIDPattern.MatchString(item.ID) || item.ID == zeroUUID {
 			return nil, ErrNoMembership
 		}
@@ -102,6 +111,20 @@ func (r Resolver) DiscoverWorkspaces(ctx context.Context, token string) ([]Works
 	items, err := discovery.Discover(ctx, identity.Subject)
 	if err != nil {
 		return nil, err
+	}
+	for i := range items {
+		if items[i].DisplayName == "" {
+			items[i].DisplayName = items[i].Name
+		}
+		if items[i].Name == "" {
+			items[i].Name = items[i].DisplayName
+		}
+		if items[i].DefaultOperatorMode == "" && items[i].DefaultMode != "" {
+			items[i].DefaultOperatorMode = items[i].DefaultMode
+		}
+		if items[i].DefaultMode == "" && items[i].DefaultOperatorMode != "" {
+			items[i].DefaultMode = items[i].DefaultOperatorMode
+		}
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
