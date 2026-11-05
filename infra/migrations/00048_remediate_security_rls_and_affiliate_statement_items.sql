@@ -137,9 +137,8 @@ WHERE (display_name IS NULL OR display_name = '')
   AND name <> '';
 
 UPDATE workspaces
-SET default_operator_mode = default_mode::text
-WHERE (default_operator_mode IS NULL OR default_operator_mode = '')
-  AND default_mode IS NOT NULL;
+SET default_operator_mode = default_mode
+WHERE default_operator_mode IS DISTINCT FROM default_mode;
 
 -- +goose Down
 DROP POLICY IF EXISTS admin_ops_scope ON affiliate_statement_items;
