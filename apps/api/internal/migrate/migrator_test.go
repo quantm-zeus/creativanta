@@ -1292,8 +1292,8 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	if err != nil {
 		t.Fatalf("re-apply Up after Down failed: %v", err)
 	}
-	if len(reApplied) != 47 {
-		t.Fatalf("expected all 47 migrations to re-apply after full Down rollback, got %d (%v)", len(reApplied), reApplied)
+	if len(reApplied) != len(applied) {
+		t.Fatalf("expected all %d migrations to re-apply after full Down rollback, got %d (%v)", len(applied), len(reApplied), reApplied)
 	}
 
 	const (
