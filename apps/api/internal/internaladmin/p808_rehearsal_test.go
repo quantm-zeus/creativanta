@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -149,7 +151,7 @@ func TestP808AcceptanceTarget1_RealRestoreAndFailingSmoke(t *testing.T) {
 		t.Fatalf("expected 64-char sha256 digest, got %q", artifact.SHA256Digest)
 	}
 
-	// 1. Real restore rehearsal succeeds when SHA-256 sidecar, double-entry ledger, credit lots, evidence, audit sequence, and RPO=0/RTO<=3600s match.
+	// 1. In-memory restore rehearsal without a disposable DB target must honestly report SIMULATION_ONLY.
 	restoreRec, err := svc.ExecuteRestoreRehearsal(context.Background(), superAdminID, artifact, 0, 420)
 	if err != nil {
 		t.Fatalf("ExecuteRestoreRehearsal: %v", err)
@@ -159,6 +161,55 @@ func TestP808AcceptanceTarget1_RealRestoreAndFailingSmoke(t *testing.T) {
 	}
 	if restoreRec.WorkspacesRestored != 2 || restoreRec.PostingsRestored != 2 || restoreRec.AuditEntriesRestored != 2 {
 		t.Fatalf("unexpected restored counts: %+v", restoreRec)
+	}
+	if restoreRec.ExecutionMode != internaladmin.RehearsalModeSimulationOnly || !restoreRec.IsSimulation || restoreRec.OperationalRestorePerformed || restoreRec.SmokePassed {
+		t.Fatalf("expected honest SIMULATION_ONLY label when no disposable DB was touched, got %+v", restoreRec)
+	}
+
+	// 1b. Attempting to claim an operational production/staging restore without a disposable DB target must fail closed.
+	prodSnap := snap
+	prodSnap.Environment = "production"
+	prodArtifact, err := internaladmin.CreateVerifiedBackupSnapshot(t.TempDir(), prodSnap)
+	if err != nil {
+		t.Fatalf("CreateVerifiedBackupSnapshot prod: %v", err)
+	}
+	if _, err := svc.ExecuteRestoreRehearsal(context.Background(), superAdminID, prodArtifact, 0, 120); !errors.Is(err, internaladmin.ErrOperationalTargetRequired) {
+		t.Fatalf("expected ErrOperationalTargetRequired when claiming production restore without disposable target, got %v", err)
+	}
+
+	// 1c. Real disposable DB target restore materializes tables on disk, reads back row counts & ledger balance, and records DISPOSABLE_TARGET_VERIFIED.
+	disposableTarget := &internaladmin.FileBackedDisposableDBTarget{
+		TargetDir: t.TempDir(),
+	}
+	dispRec, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, prodArtifact, 0, disposableTarget)
+	if err != nil {
+		t.Fatalf("ExecuteDisposableRestoreRehearsal: %v", err)
+	}
+	if dispRec.ExecutionMode != internaladmin.RehearsalModeDisposableTargetVerified || dispRec.IsSimulation || !dispRec.OperationalRestorePerformed || !dispRec.SmokePassed {
+		t.Fatalf("expected DISPOSABLE_TARGET_VERIFIED record, got %+v", dispRec)
+	}
+	if !strings.HasPrefix(dispRec.TargetDatabaseURI, "file://") {
+		t.Fatalf("expected disposable target URI, got %q", dispRec.TargetDatabaseURI)
+	}
+
+	// 1d. Disposable target failures (write failure, row count mismatch, smoke failure) must fail closed.
+	if _, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, prodArtifact, 0, &internaladmin.FileBackedDisposableDBTarget{
+		TargetDir:   t.TempDir(),
+		FailOnWrite: true,
+	}); !errors.Is(err, internaladmin.ErrRestoreIntegrityFailed) {
+		t.Fatalf("expected ErrRestoreIntegrityFailed on disposable target write failure, got %v", err)
+	}
+	if _, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, prodArtifact, 0, &internaladmin.FileBackedDisposableDBTarget{
+		TargetDir:    t.TempDir(),
+		CorruptCount: 1,
+	}); !errors.Is(err, internaladmin.ErrRestoreIntegrityFailed) {
+		t.Fatalf("expected ErrRestoreIntegrityFailed on disposable target row count mismatch, got %v", err)
+	}
+	if _, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, prodArtifact, 0, &internaladmin.FileBackedDisposableDBTarget{
+		TargetDir:   t.TempDir(),
+		FailOnSmoke: true,
+	}); !errors.Is(err, internaladmin.ErrRestoreIntegrityFailed) {
+		t.Fatalf("expected ErrRestoreIntegrityFailed on disposable target smoke failure, got %v", err)
 	}
 
 	// 2. Corrupting the backup file on disk must fail closed with ErrBackupChecksumMismatch.
@@ -209,6 +260,78 @@ func TestP808AcceptanceTarget1_RealRestoreAndFailingSmoke(t *testing.T) {
 	}
 	if !promoteVerdict.CandidatePromoted || promoteVerdict.RollbackTriggered || promoteVerdict.ActiveSlot != "green" || promoteVerdict.ActiveSlotDigest != greenDigest {
 		t.Fatalf("expected green slot promotion, got %+v", promoteVerdict)
+	}
+	if promoteVerdict.ExecutionMode != internaladmin.RehearsalModeSimulationOnly || !promoteVerdict.IsSimulation || promoteVerdict.ProxyUpstreamSwitched {
+		t.Fatalf("expected SIMULATION_ONLY and ProxyUpstreamSwitched=false when no live proxy target is provided, got %+v", promoteVerdict)
+	}
+	if strings.Contains(promoteVerdict.FailureReason, "upstream switched atomically") {
+		t.Fatalf("in-memory simulation must not claim upstream switched atomically, got %q", promoteVerdict.FailureReason)
+	}
+
+	// 4b. Live disposable HTTP server + disposable proxy target performs real HTTP probes and switches proxy upstream.
+	proxy := &mockDisposableProxyTarget{}
+	candidateSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/healthz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ok"}`))
+		case "/readyz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ready","database":true,"redis":true,"nats":true}`))
+		case "/smoke":
+			if r.Header.Get("Authorization") != "Bearer valid-smoke-token" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"workspace_id":"` + wsA + `","net_profit_micro":15000000000,"credits_balance":2420,"audit_sequence_intact":true}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer candidateSrv.Close()
+
+	liveBlueDigest := "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+	liveVerdict, err := svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"blue",
+		liveBlueDigest,
+		candidateSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		proxy,
+	)
+	if err != nil {
+		t.Fatalf("ExecuteLiveBlueGreenReleaseSmokeRehearsal healthy: %v", err)
+	}
+	if liveVerdict.ExecutionMode != internaladmin.RehearsalModeDisposableTargetVerified || liveVerdict.IsSimulation || !liveVerdict.ProxyUpstreamSwitched || proxy.switchedSlot != "blue" {
+		t.Fatalf("expected DISPOSABLE_TARGET_VERIFIED and ProxyUpstreamSwitched=true, got %+v (proxy=%+v)", liveVerdict, proxy)
+	}
+
+	// Proxy switch failure must fail closed and trigger rollback on the proxy target.
+	proxy.failSwitch = true
+	failedSwitchVerdict, err := svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"green",
+		greenDigest,
+		candidateSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		proxy,
+	)
+	if !errors.Is(err, internaladmin.ErrReleaseSmokeFailed) || failedSwitchVerdict.ProxyUpstreamSwitched || !failedSwitchVerdict.RollbackTriggered || proxy.rolledBackSlot != "blue" {
+		t.Fatalf("expected proxy switch failure to roll back to blue, got verdict=%+v err=%v proxy=%+v", failedSwitchVerdict, err, proxy)
+	}
+
+	// Restore activeSlot to green for subsequent table-driven negative tests.
+	if _, err := svc.ExecuteBlueGreenReleaseSmokeRehearsal(context.Background(), superAdminID, healthyProbe); err != nil {
+		t.Fatalf("restore green slot: %v", err)
 	}
 
 	// 5. Failing smoke rehearsals (/healthz fail, /readyz fail, auth fail, invalid JSON, profit ledger mismatch, credits mismatch)
@@ -790,4 +913,25 @@ func TestP808LoadAndPerformanceSLABenchmarks(t *testing.T) {
 
 func publishedKitProjectionJSON(p internaladmin.PublicCreatorDirectoryProjection) ([]byte, error) {
 	return json.Marshal(p)
+}
+
+type mockDisposableProxyTarget struct {
+	switchedSlot   string
+	switchedDigest string
+	rolledBackSlot string
+	failSwitch     bool
+}
+
+func (m *mockDisposableProxyTarget) SwitchUpstream(_ context.Context, slot, imageDigest string) error {
+	if m.failSwitch {
+		return errors.New("proxy upstream reload failed")
+	}
+	m.switchedSlot = slot
+	m.switchedDigest = imageDigest
+	return nil
+}
+
+func (m *mockDisposableProxyTarget) RollbackUpstream(_ context.Context, previousSlot, _ string) error {
+	m.rolledBackSlot = previousSlot
+	return nil
 }

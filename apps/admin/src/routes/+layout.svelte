@@ -3,7 +3,7 @@
   import type { Snippet } from 'svelte';
   let { children }: { children?: Snippet } = $props();
 </script>
-<div class="min-h-screen bg-[#fbf9f5] text-[#242924]">
+<div class="min-h-screen bg-[#fbf9f5] text-[#242924] overflow-x-hidden">
   <a
     href="#admin-main-content"
     class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[#242924] focus:text-white"
