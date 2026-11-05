@@ -444,9 +444,9 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 	}
 	var discBody struct {
 		Workspaces []struct {
-			ID   string `json:"ID"`
-			Name string `json:"Name"`
-			Role string `json:"Role"`
+			ID   string `json:"workspace_id"`
+			Name string `json:"name"`
+			Role string `json:"role"`
 		} `json:"workspaces"`
 	}
 	if err := json.NewDecoder(discResp.Body).Decode(&discBody); err != nil {
