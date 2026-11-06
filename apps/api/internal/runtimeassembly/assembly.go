@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -23,6 +24,7 @@ import (
 	"github.com/quantm-zeus/creativanta/apps/api/internal/capability"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/diagnostics"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/identity"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/internaladmin"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/outbox"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/product"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
@@ -39,6 +41,7 @@ type Config struct {
 	ClerkAudiences       []string
 	ClerkAuthorizedParty []string
 	ClerkSecretKey       string
+	ClerkSessionURL      string
 	SessionMode          string
 	InsecureJWKSTLS      bool
 	RBACBindingsCSVPath  string
@@ -69,6 +72,7 @@ func ConfigFromEnv(role string) Config {
 		ClerkAudiences:       splitCSV(os.Getenv("CREATIVANTA_CLERK_AUDIENCE")),
 		ClerkAuthorizedParty: splitCSV(os.Getenv("CREATIVANTA_CLERK_AUTHORIZED_PARTIES")),
 		ClerkSecretKey:       strings.TrimSpace(os.Getenv("CREATIVANTA_CLERK_SECRET_KEY")),
+		ClerkSessionURL:      strings.TrimSpace(os.Getenv("CREATIVANTA_CLERK_SESSION_URL")),
 		SessionMode:          strings.TrimSpace(os.Getenv("CREATIVANTA_SESSION_MODE")),
 		InsecureJWKSTLS:      strings.EqualFold(strings.TrimSpace(os.Getenv("CREATIVANTA_CLERK_JWKS_INSECURE_TLS")), "true"),
 		RBACBindingsCSVPath:  strings.TrimSpace(os.Getenv("CREATIVANTA_RBAC_BINDINGS_CSV")),
@@ -107,6 +111,10 @@ func NewHandlerFromConfig(ctx context.Context, cfg Config) (http.Handler, func()
 		return h, func() {}, nil
 	}
 
+	if trimmedMode := strings.TrimSpace(cfg.SessionMode); trimmedMode != "" && !strings.EqualFold(trimmedMode, "clerk_live") {
+		return nil, nil, fmt.Errorf("runtimeassembly: insecure session mode %q is forbidden; live Clerk session verification required", trimmedMode)
+	}
+
 	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return nil, nil, fmt.Errorf("runtimeassembly: connect database: %w", err)
@@ -115,17 +123,23 @@ func NewHandlerFromConfig(ctx context.Context, cfg Config) (http.Handler, func()
 		pool.Close()
 	}
 
+	ensureUserClerkBootstrapRLSPolicy(ctx, pool)
+
+	var clerkHTTPClient *http.Client
+	if cfg.InsecureJWKSTLS {
+		clerkHTTPClient = &http.Client{
+			Timeout: 5 * time.Second,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // local test JWKS/session server only when explicitly enabled
+			},
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return errors.New("session/jwks lookup redirect forbidden")
+			},
+		}
+	}
+
 	tokenVerifier := cfg.TokenVerifier
 	if tokenVerifier == nil && cfg.ClerkIssuer != "" {
-		var httpClient *http.Client
-		if cfg.InsecureJWKSTLS {
-			httpClient = &http.Client{
-				Timeout: 5 * time.Second,
-				Transport: &http.Transport{
-					TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // local test JWKS server only when explicitly enabled
-				},
-			}
-		}
 		var audience string
 		if len(cfg.ClerkAudiences) > 0 {
 			audience = cfg.ClerkAudiences[0]
@@ -134,7 +148,7 @@ func NewHandlerFromConfig(ctx context.Context, cfg Config) (http.Handler, func()
 			Issuer:            cfg.ClerkIssuer,
 			Audience:          audience,
 			AuthorizedParties: cfg.ClerkAuthorizedParty,
-			HTTPClient:        httpClient,
+			HTTPClient:        clerkHTTPClient,
 		})
 		if err != nil {
 			cleanup()
@@ -144,18 +158,13 @@ func NewHandlerFromConfig(ctx context.Context, cfg Config) (http.Handler, func()
 	}
 
 	sessionChecker := cfg.SessionStatus
-	if sessionChecker == nil {
-		switch {
-		case strings.EqualFold(cfg.SessionMode, "db_active"):
-			sessionChecker = &pgSessionStatusChecker{pool: pool}
-		case cfg.ClerkSecretKey != "":
-			sc, err := identity.NewClerkSessionStatus(cfg.ClerkSecretKey)
-			if err != nil {
-				cleanup()
-				return nil, nil, fmt.Errorf("runtimeassembly: configure session status checker: %w", err)
-			}
-			sessionChecker = sc
+	if sessionChecker == nil && cfg.ClerkSecretKey != "" {
+		sc, err := identity.NewClerkSessionStatusWithEndpoint(cfg.ClerkSecretKey, cfg.ClerkSessionURL, clerkHTTPClient)
+		if err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("runtimeassembly: configure session status checker: %w", err)
 		}
+		sessionChecker = sc
 	}
 
 	rbacRegistry, err := loadCanonicalRBACRegistry(cfg.RBACBindingsCSVPath)
@@ -171,7 +180,7 @@ func NewHandlerFromConfig(ctx context.Context, cfg Config) (http.Handler, func()
 	}
 
 	readiness := func(rCtx context.Context) bool {
-		if tokenVerifier == nil || sessionChecker == nil {
+		if cfg.Role == bootstrap.RoleAPI && (tokenVerifier == nil || sessionChecker == nil) {
 			return false
 		}
 		return checkDatabaseReadiness(rCtx, pool)
@@ -310,10 +319,52 @@ func mountAPIRoutes(mux *http.ServeMux, pool *pgxpool.Pool, idStore *pgIdentityS
 	return nil
 }
 
+func ensureUserClerkBootstrapRLSPolicy(ctx context.Context, pool *pgxpool.Pool) {
+	if pool == nil {
+		return
+	}
+	pCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	_, _ = pool.Exec(pCtx, `
+		DO $$ BEGIN
+		  IF EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'users')
+		     AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'users' AND policyname = 'user_self_clerk_bootstrap') THEN
+		    CREATE POLICY user_self_clerk_bootstrap ON users
+		      FOR SELECT TO app_user
+		      USING (
+		        NULLIF(current_setting('app.current_clerk_id', true), '') IS NOT NULL
+		        AND (
+		          clerk_id = NULLIF(current_setting('app.current_clerk_id', true), '')
+		          OR external_auth_id = NULLIF(current_setting('app.current_clerk_id', true), '')
+		        )
+		      );
+		  END IF;
+		END $$;
+	`)
+}
+
+func extractServerPeerIP(r *http.Request) string {
+	if r == nil {
+		return ""
+	}
+	if ev, ok := internaladmin.VPNTransportEvidenceFromContext(r.Context()); ok && strings.TrimSpace(ev.PeerIP) != "" {
+		return strings.TrimSpace(ev.PeerIP)
+	}
+	raw := strings.TrimSpace(r.RemoteAddr)
+	if raw == "" {
+		return ""
+	}
+	if host, _, err := net.SplitHostPort(raw); err == nil {
+		return strings.TrimSpace(host)
+	}
+	return raw
+}
+
 func mountAdminAPIRoutes(mux *http.ServeMux, idStore *pgIdentityStore) {
 	// Isolated admin API listener (ModeAdminAPI):
 	// - Rejects any request carrying x-workspace-id header (403 Forbidden)
-	// - Rejects any caller without users.is_internal_admin = true (403 Forbidden)
+	// - Requires verified VPN/Tailscale or loopback transport peer IP (403 Forbidden)
+	// - Rejects workspace/user Clerk JWT tokens; requires an isolated MFA+VPN verified admin_sessions token
 	// - Does NOT mount tenant services or unguarded AdminAuthService/Login (AUTH-05)
 	mux.HandleFunc("/admin/v1/whoami", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodPost {
@@ -324,29 +375,43 @@ func mountAdminAPIRoutes(mux *http.ServeMux, idStore *pgIdentityStore) {
 			writeJSONError(w, http.StatusForbidden, "permission_denied", "admin API forbids x-workspace-id")
 			return
 		}
+		peerIP := extractServerPeerIP(r)
+		if !internaladmin.IsTailscaleOrLoopbackVPNPeerIP(peerIP) {
+			writeJSONError(w, http.StatusForbidden, "permission_denied", "admin API requires verified VPN or loopback transport")
+			return
+		}
 		token, err := extractBearerToken(r.Header.Get("Authorization"))
 		if err != nil {
 			writeJSONError(w, http.StatusUnauthorized, "unauthenticated", err.Error())
 			return
 		}
-		sess, err := idStore.VerifyWorkspace(r.Context(), token, "")
-		if err != nil {
-			status := http.StatusUnauthorized
-			if errors.Is(err, identity.ErrNotConfigured) {
-				status = http.StatusServiceUnavailable
-			}
-			writeJSONError(w, status, "unauthenticated", "invalid admin session")
+		// Reject workspace/user JWT tokens on the isolated internal admin plane.
+		if strings.Count(token, ".") == 2 {
+			writeJSONError(w, http.StatusForbidden, "permission_denied", "workspace/user JWT tokens are forbidden on isolated admin API; MFA+VPN admin session required")
 			return
 		}
-		if !sess.InternalAdmin {
-			writeJSONError(w, http.StatusForbidden, "permission_denied", "internal admin role required")
+		adminSess, err := idStore.VerifyAdminSession(r.Context(), token)
+		if err != nil {
+			switch {
+			case errors.Is(err, identity.ErrNotConfigured):
+				writeJSONError(w, http.StatusServiceUnavailable, "unavailable", "admin session store not configured")
+			case errors.Is(err, internaladmin.ErrPrivilegedRoleBoundaryViolation):
+				writeJSONError(w, http.StatusForbidden, "permission_denied", "internal admin role required")
+			default:
+				writeJSONError(w, http.StatusUnauthorized, "unauthenticated", "invalid, revoked, or unverified admin session")
+			}
 			return
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"user_id":        sess.UserID,
-			"internal_admin": sess.InternalAdmin,
+			"user_id":        adminSess.AdminID,
+			"admin_id":       adminSess.AdminID,
+			"session_id":     adminSess.SessionID,
+			"admin_role":     adminSess.AdminRole,
+			"internal_admin": true,
+			"vpn_verified":   true,
+			"mfa_verified":   true,
 			"role":           bootstrap.RoleAdminAPI,
 		})
 	})
@@ -404,13 +469,20 @@ type pgIdentityStore struct {
 	sessionChecker identity.SessionStatus
 }
 
+type verifiedAdminSession struct {
+	AdminID   string
+	SessionID string
+	AdminRole string
+}
+
 // ResolveActive implements identity.MembershipLookup using live PostgreSQL state
-// while satisfying FORCE ROW LEVEL SECURITY on workspaces, workspace_members, and users.
+// under app_user while satisfying FORCE ROW LEVEL SECURITY on workspaces, workspace_members, and users.
 func (s *pgIdentityStore) ResolveActive(ctx context.Context, clerkSubject, workspaceID string) (string, bool, error) {
 	if s.pool == nil {
 		return "", false, identity.ErrNotConfigured
 	}
-	if strings.TrimSpace(clerkSubject) == "" || !tenantdb.IsValidNonZeroUUID(workspaceID) {
+	trimmedSubject := strings.TrimSpace(clerkSubject)
+	if trimmedSubject == "" || !tenantdb.IsValidNonZeroUUID(workspaceID) {
 		return "", false, nil
 	}
 
@@ -420,122 +492,179 @@ func (s *pgIdentityStore) ResolveActive(ctx context.Context, clerkSubject, works
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	if _, err := tx.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true)`, workspaceID); err != nil {
+	if _, err := tx.Exec(ctx, `SET LOCAL ROLE app_user`); err != nil {
 		return "", false, err
 	}
 
-	var wsStatus string
-	var wsDeletedAt *time.Time
-	if err := tx.QueryRow(ctx, `
-		SELECT status, deleted_at
-		FROM workspaces
-		WHERE workspace_id = $1::uuid
-	`, workspaceID).Scan(&wsStatus, &wsDeletedAt); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return "", false, nil
-		}
+	candidateUserUUID := ""
+	if tenantdb.IsValidNonZeroUUID(trimmedSubject) {
+		candidateUserUUID = trimmedSubject
+	}
+	if _, err := tx.Exec(ctx, `
+		SELECT
+			set_config('app.current_clerk_id', $1, true),
+			set_config('app.current_user_id', $2, true),
+			set_config('app.current_tenant_id', $3, true)
+	`, trimmedSubject, candidateUserUUID, workspaceID); err != nil {
 		return "", false, err
 	}
-	if wsStatus != "active" || wsDeletedAt != nil {
+
+	var resolvedUID string
+	err = tx.QueryRow(ctx, `
+		SELECT u.user_id::text
+		FROM users u
+		WHERE (u.clerk_id = $1 OR u.external_auth_id = $1 OR u.user_id::text = $1)
+		  AND u.status = 'active'
+		LIMIT 1
+	`, trimmedSubject).Scan(&resolvedUID)
+	if errors.Is(err, pgx.ErrNoRows) {
 		return "", false, nil
 	}
-
-	rows, err := tx.Query(ctx, `
-		SELECT user_id::text
-		FROM workspace_members
-		WHERE workspace_id = $1::uuid
-		  AND status = 'active'
-	`, workspaceID)
 	if err != nil {
 		return "", false, err
 	}
-	var candidateUserIDs []string
-	for rows.Next() {
-		var uid string
-		if err := rows.Scan(&uid); err != nil {
-			rows.Close()
-			return "", false, err
-		}
-		candidateUserIDs = append(candidateUserIDs, uid)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
+
+	if _, err := tx.Exec(ctx, `
+		SELECT
+			set_config('app.current_user_id', $1, true),
+			set_config('app.current_tenant_id', $2, true)
+	`, resolvedUID, workspaceID); err != nil {
 		return "", false, err
 	}
 
-	for _, uid := range candidateUserIDs {
-		if _, err := tx.Exec(ctx, `SELECT set_config('app.current_user_id', $1, true)`, uid); err != nil {
-			return "", false, err
-		}
-		var resolvedUID string
-		err := tx.QueryRow(ctx, `
-			SELECT user_id::text
-			FROM users
-			WHERE user_id = $1::uuid
-			  AND (clerk_id = $2 OR user_id::text = $2)
-			  AND status = 'active'
-		`, uid, clerkSubject).Scan(&resolvedUID)
-		if err == nil && resolvedUID != "" {
-			return resolvedUID, true, nil
-		}
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return "", false, err
-		}
+	var activeUID string
+	err = tx.QueryRow(ctx, `
+		SELECT wm.user_id::text
+		FROM workspace_members wm
+		JOIN workspaces w ON w.workspace_id = wm.workspace_id
+		WHERE wm.workspace_id = $1::uuid
+		  AND wm.user_id = $2::uuid
+		  AND wm.status = 'active'
+		  AND w.status = 'active'
+		  AND w.deleted_at IS NULL
+		LIMIT 1
+	`, workspaceID, resolvedUID).Scan(&activeUID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
 	}
-
-	return "", false, nil
+	if err != nil {
+		return "", false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return "", false, err
+	}
+	return activeUID, true, nil
 }
 
-// Discover implements identity.WorkspaceDiscovery against PostgreSQL.
+// Discover implements identity.WorkspaceDiscovery against PostgreSQL under app_user RLS.
 func (s *pgIdentityStore) Discover(ctx context.Context, clerkSubject string) ([]identity.WorkspaceSummary, error) {
 	if s.pool == nil {
 		return nil, identity.ErrNotConfigured
 	}
-	if strings.TrimSpace(clerkSubject) == "" {
+	trimmedSubject := strings.TrimSpace(clerkSubject)
+	if trimmedSubject == "" {
 		return nil, identity.ErrUnauthorized
 	}
 
-	rows, err := s.pool.Query(ctx, `
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx, `SET LOCAL ROLE app_user`); err != nil {
+		return nil, err
+	}
+
+	candidateUserUUID := ""
+	if tenantdb.IsValidNonZeroUUID(trimmedSubject) {
+		candidateUserUUID = trimmedSubject
+	}
+	if _, err := tx.Exec(ctx, `
+		SELECT
+			set_config('app.current_clerk_id', $1, true),
+			set_config('app.current_user_id', $2, true),
+			set_config('app.current_tenant_id', '', true)
+	`, trimmedSubject, candidateUserUUID); err != nil {
+		return nil, err
+	}
+
+	var resolvedUID string
+	err = tx.QueryRow(ctx, `
+		SELECT u.user_id::text
+		FROM users u
+		WHERE (u.clerk_id = $1 OR u.external_auth_id = $1 OR u.user_id::text = $1)
+		  AND u.status = 'active'
+		LIMIT 1
+	`, trimmedSubject).Scan(&resolvedUID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return []identity.WorkspaceSummary{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := tx.Exec(ctx, `
+		SELECT
+			set_config('app.current_user_id', $1, true),
+			set_config('app.current_tenant_id', '', true)
+	`, resolvedUID); err != nil {
+		return nil, err
+	}
+
+	rows, err := tx.Query(ctx, `
 		SELECT
 			w.workspace_id::text,
 			w.name,
-			wm.role
+			COALESCE(NULLIF(w.display_name, ''), w.name) AS display_name,
+			wm.role,
+			CASE
+				WHEN w.default_mode::text <> 'creator' THEN w.default_mode::text
+				ELSE COALESCE(NULLIF(w.default_operator_mode::text, ''), NULLIF(w.default_mode::text, ''), 'creator')
+			END AS effective_mode
 		FROM workspace_members wm
-		JOIN users u ON u.user_id = wm.user_id
 		JOIN workspaces w ON w.workspace_id = wm.workspace_id
-		WHERE (u.clerk_id = $1 OR u.user_id::text = $1)
-		  AND u.status = 'active'
+		WHERE wm.user_id = $1::uuid
 		  AND wm.status = 'active'
 		  AND w.status = 'active'
 		  AND w.deleted_at IS NULL
-		ORDER BY w.workspace_id::text ASC
-	`, clerkSubject)
+		ORDER BY COALESCE(NULLIF(w.display_name, ''), w.name) ASC, w.workspace_id::text ASC
+	`, resolvedUID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var out []identity.WorkspaceSummary
+	out := make([]identity.WorkspaceSummary, 0)
 	for rows.Next() {
 		var item identity.WorkspaceSummary
-		if err := rows.Scan(&item.ID, &item.Name, &item.Role); err != nil {
+		if err := rows.Scan(&item.ID, &item.Name, &item.DisplayName, &item.Role, &item.DefaultMode); err != nil {
 			return nil, err
 		}
+		item.DefaultOperatorMode = item.DefaultMode
 		out = append(out, item)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	rows.Close()
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
-// ResolveMemberRole returns the live role string for (workspaceID, userID) from PostgreSQL.
+// ResolveMemberRole returns the live role string for (workspaceID, userID) from PostgreSQL under app_user RLS.
 func (s *pgIdentityStore) ResolveMemberRole(ctx context.Context, workspaceID, userID string) (string, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return "", err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx, `SET LOCAL ROLE app_user`); err != nil {
+		return "", err
+	}
 
 	if _, err := tx.Exec(ctx, `
 		SELECT
@@ -563,78 +692,86 @@ func (s *pgIdentityStore) ResolveMemberRole(ctx context.Context, workspaceID, us
 	return roleStr, nil
 }
 
-// VerifyWorkspace implements transportauth.WorkspaceVerifier for ModeAdminAPI.
-func (s *pgIdentityStore) VerifyWorkspace(ctx context.Context, bearerToken, requestedWorkspaceID string) (transportauth.Session, error) {
-	if s.pool == nil || s.tokenVerifier == nil || s.sessionChecker == nil {
-		return transportauth.Session{}, identity.ErrNotConfigured
+// VerifyAdminSession validates an isolated internal admin session token against admin_sessions
+// and internal_admins under the admin_user database role, requiring VPN + MFA verification.
+func (s *pgIdentityStore) VerifyAdminSession(ctx context.Context, sessionToken string) (verifiedAdminSession, error) {
+	if s.pool == nil {
+		return verifiedAdminSession{}, identity.ErrNotConfigured
 	}
-	if strings.TrimSpace(requestedWorkspaceID) != "" {
-		return transportauth.Session{}, identity.ErrNoMembership
+	trimmed := strings.TrimSpace(sessionToken)
+	if len(trimmed) < 16 || strings.Count(trimmed, ".") == 2 {
+		return verifiedAdminSession{}, identity.ErrUnauthorized
 	}
 
-	verified, err := s.tokenVerifier.VerifyToken(ctx, bearerToken)
+	tokenHash := internaladmin.HashSessionToken(trimmed)
+
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return transportauth.Session{}, err
+		return verifiedAdminSession{}, err
 	}
-	if strings.TrimSpace(verified.Subject) == "" || strings.TrimSpace(verified.SessionID) == "" {
-		return transportauth.Session{}, identity.ErrUnauthorized
-	}
-	active, err := s.sessionChecker.Active(ctx, verified.Subject, verified.SessionID)
-	if err != nil || !active {
-		return transportauth.Session{}, identity.ErrUnauthorized
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx, `SET LOCAL ROLE admin_user`); err != nil {
+		return verifiedAdminSession{}, err
 	}
 
-	var adminID string
-	err = s.pool.QueryRow(ctx, `
-		SELECT ia.admin_id::text
-		FROM internal_admins ia
-		LEFT JOIN users u ON (u.user_id = ia.admin_id OR LOWER(u.email) = LOWER(ia.email))
-		WHERE (ia.admin_id::text = $1 OR ia.email = $1 OR (u.clerk_id = $1 AND u.status = 'active'))
-		  AND ia.status = 'active'
-		  AND ia.mfa_enabled = true
+	var (
+		adminID     string
+		adminRole   string
+		sessionID   string
+		vpnVerified bool
+		mfaVerified bool
+		isRevoked   bool
+		isExpired   bool
+		adminStatus string
+		mfaEnabled  bool
+	)
+	err = tx.QueryRow(ctx, `
+		SELECT
+			ia.admin_id::text,
+			ia.role,
+			s.session_id::text,
+			s.vpn_verified,
+			s.mfa_verified,
+			(s.revoked_at IS NOT NULL) AS is_revoked,
+			(s.expired_at IS NOT NULL AND s.expired_at <= NOW()) AS is_expired,
+			ia.status,
+			ia.mfa_enabled
+		FROM admin_sessions s
+		JOIN internal_admins ia ON ia.admin_id = s.admin_id
+		WHERE s.session_token_hash = $1
 		LIMIT 1
-	`, verified.Subject).Scan(&adminID)
-	if err == nil && adminID != "" {
-		return transportauth.Session{
-			UserID:        adminID,
-			InternalAdmin: true,
-		}, nil
+	`, tokenHash).Scan(
+		&adminID,
+		&adminRole,
+		&sessionID,
+		&vpnVerified,
+		&mfaVerified,
+		&isRevoked,
+		&isExpired,
+		&adminStatus,
+		&mfaEnabled,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return verifiedAdminSession{}, identity.ErrUnauthorized
 	}
-
-	var userID string
-	err = s.pool.QueryRow(ctx, `
-		SELECT user_id::text
-		FROM users
-		WHERE (clerk_id = $1 OR user_id::text = $1)
-		  AND status = 'active'
-		LIMIT 1
-	`, verified.Subject).Scan(&userID)
 	if err != nil {
-		return transportauth.Session{}, identity.ErrNoMembership
+		return verifiedAdminSession{}, err
 	}
-
-	return transportauth.Session{
-		UserID:        userID,
-		InternalAdmin: false,
+	if isRevoked || isExpired || !vpnVerified || !mfaVerified {
+		return verifiedAdminSession{}, identity.ErrUnauthorized
+	}
+	if adminStatus != "active" || !mfaEnabled || !rbac.IsValidAdminRole(adminRole) {
+		return verifiedAdminSession{}, internaladmin.ErrPrivilegedRoleBoundaryViolation
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return verifiedAdminSession{}, err
+	}
+	return verifiedAdminSession{
+		AdminID:   adminID,
+		SessionID: sessionID,
+		AdminRole: adminRole,
 	}, nil
-}
-
-type pgSessionStatusChecker struct {
-	pool *pgxpool.Pool
-}
-
-func (c *pgSessionStatusChecker) Active(_ context.Context, subject, sessionID string) (bool, error) {
-	if c.pool == nil {
-		return false, identity.ErrNotConfigured
-	}
-	if strings.TrimSpace(subject) == "" {
-		return false, nil
-	}
-	trimmed := strings.TrimSpace(sessionID)
-	if trimmed == "" || strings.Contains(strings.ToLower(trimmed), "revoked") {
-		return false, nil
-	}
-	return true, nil
 }
 
 // =============================================================================

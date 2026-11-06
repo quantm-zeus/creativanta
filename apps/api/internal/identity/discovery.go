@@ -20,9 +20,26 @@ type SQLRowsQueryer interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
+type sqlTxBeginner interface {
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
+}
+
+type sqlExecRowQueryer interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+}
+
 type WorkspaceDiscovery interface {
 	Discover(ctx context.Context, providerSubject string) ([]WorkspaceSummary, error)
 }
+
+const resolveActiveUserByClerkIDQuery = `
+SELECT u.user_id::text
+FROM users AS u
+WHERE u.clerk_id = $1
+  AND u.status = 'active'
+LIMIT 1`
 
 // Preselection discovery requires P0-04 to provide the restricted role/grants;
 // this method never claims such a role already exists.
@@ -40,6 +57,35 @@ WHERE u.clerk_id=$1 AND u.status='active'
 ORDER BY COALESCE(NULLIF(w.display_name, ''), NULLIF(to_jsonb(w)->>'name', ''), ''), w.workspace_id
 LIMIT 100`
 
+func bootstrapDiscoveryRLSScope(ctx context.Context, execDB sqlExecRowQueryer, subject string) (bool, error) {
+	if _, err := execDB.ExecContext(
+		ctx,
+		"SELECT set_config('app.current_clerk_id', $1, true), set_config('app.current_user_id', '', true), set_config('app.current_tenant_id', '', true)",
+		subject,
+	); err != nil {
+		return false, err
+	}
+	var resolvedUserID string
+	err := execDB.QueryRowContext(ctx, resolveActiveUserByClerkIDQuery, subject).Scan(&resolvedUserID)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if !workspaceIDPattern.MatchString(resolvedUserID) || resolvedUserID == zeroUUID {
+		return false, nil
+	}
+	if _, err := execDB.ExecContext(
+		ctx,
+		"SELECT set_config('app.current_user_id', $1, true), set_config('app.current_tenant_id', '', true)",
+		resolvedUserID,
+	); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (m SQLMembershipLookup) Discover(ctx context.Context, subject string) ([]WorkspaceSummary, error) {
 	if m.Queries == nil {
 		return nil, ErrNotConfigured
@@ -51,7 +97,38 @@ func (m SQLMembershipLookup) Discover(ctx context.Context, subject string) ([]Wo
 	if subject == "" || len(subject) > 255 || strings.TrimSpace(subject) != subject {
 		return nil, ErrUnauthorized
 	}
-	rows, err := db.QueryContext(ctx, activeDiscoveryQuery, subject)
+
+	var rows *sql.Rows
+	var err error
+	var txToCommit *sql.Tx
+
+	if txBeginner, ok := m.Queries.(sqlTxBeginner); ok {
+		tx, beginErr := txBeginner.BeginTx(ctx, nil)
+		if beginErr != nil {
+			return nil, beginErr
+		}
+		defer func() { _ = tx.Rollback() }()
+		foundUser, bootErr := bootstrapDiscoveryRLSScope(ctx, tx, subject)
+		if bootErr != nil {
+			return nil, bootErr
+		}
+		if !foundUser {
+			return []WorkspaceSummary{}, nil
+		}
+		txToCommit = tx
+		rows, err = tx.QueryContext(ctx, activeDiscoveryQuery, subject)
+	} else if execDB, ok := m.Queries.(sqlExecRowQueryer); ok {
+		foundUser, bootErr := bootstrapDiscoveryRLSScope(ctx, execDB, subject)
+		if bootErr != nil {
+			return nil, bootErr
+		}
+		if !foundUser {
+			return []WorkspaceSummary{}, nil
+		}
+		rows, err = execDB.QueryContext(ctx, activeDiscoveryQuery, subject)
+	} else {
+		rows, err = db.QueryContext(ctx, activeDiscoveryQuery, subject)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -71,6 +148,12 @@ func (m SQLMembershipLookup) Discover(ctx context.Context, subject string) ([]Wo
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
+	}
+	rows.Close()
+	if txToCommit != nil {
+		if err := txToCommit.Commit(); err != nil {
+			return nil, err
+		}
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err

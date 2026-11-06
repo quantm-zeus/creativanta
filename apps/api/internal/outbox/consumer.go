@@ -288,7 +288,14 @@ func (w *ConsumerWorker) processSingleMessage(
 
 	if w.AuthVerifier != nil && (msg.WorkspaceID != "" || msg.ActorID != "" || msg.ApprovalID != "") {
 		if authErr := w.AuthVerifier.VerifyActorAndApproval(ctx, msg.WorkspaceID, msg.ActorID, msg.RequiredPerm, msg.ApprovalID, now); authErr != nil {
-			_ = w.InboxEngine.RecordAbortedAudit(ctx, msg, authErr.Error(), now)
+			if !errors.Is(authErr, ErrLiveActorAuthorizationRevoked) && !errors.Is(authErr, ErrApprovalExpiredBeforeExecution) {
+				return outcome, authErr
+			}
+			if w.InboxEngine != nil {
+				if auditErr := w.InboxEngine.RecordAbortedAudit(ctx, msg, authErr.Error(), now); auditErr != nil {
+					return outcome, auditErr
+				}
+			}
 			if ackErr := w.Broker.XAck(ctx, w.Stream, w.GroupName, msg.StreamEntryID); ackErr != nil {
 				return outcome, ackErr
 			}

@@ -707,6 +707,11 @@ func hashToken(rawToken string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// HashSessionToken computes the canonical SHA-256 hex digest for an internal admin session token.
+func HashSessionToken(rawToken string) string {
+	return hashToken(rawToken)
+}
+
 // RegisterAdmin registers an internal admin account in the isolated admin store.
 func (s *Service) RegisterAdmin(admin InternalAdminRecord) error {
 	if !tenantdb.IsValidNonZeroUUID(admin.AdminID) {
