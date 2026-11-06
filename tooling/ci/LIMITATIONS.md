@@ -72,3 +72,22 @@ Per the Build Execution Contract and Agent Task Catalog, early slices must not g
   - `apps/api/internal/finance/store.go` (`CreateCostItem` / `CreateSettlement` empty-string UUID parameter casts and `DATE` scan into `string`) and `apps/api/internal/seeding/seeding_postgres_test.go` (`sample_request_id` vs canonical PK `request_id` in migration `00034`) are owned by the **commerce-finance** lane.
   - `apps/api/internal/product/service.go` (`ListProducts` cursor pagination `R12`) is owned by the **publish-product** lane.
   - `apps/mobile/android/app/src/main/AndroidManifest.xml` (`INTERNET` permission `IQ-08`) and `apps/web` UI components (`UF-01..UF-12`) are owned by the **frontend** lane.
+
+---
+
+## 4. Truthful Distinction Between Local/CI Container E2E and External Launch Gates
+
+Per `docs/00_index/BUILD_EXECUTION_CONTRACT.md` §5 and `docs/00_index/OPEN_BLOCKERS.md`:
+
+### A. Verified in Local & GitHub Actions Container Gates (`STAGING/LOCAL` & `CI_CONTAINER_GATE`)
+- **Least-Privilege DB Role Boundary Enforcement**: `cmd/api` and `cmd/admin-api` enforce `ValidateDatabaseRoleBoundary` at startup and `/readyz`, failing closed (`503 Service Unavailable`) if connected as a superuser (`rolsuper`), `BYPASSRLS` (`rolbypassrls`), migrator/schema owner (`CREATE ON SCHEMA public`), `outbox_poller`, or cross-plane role (`admin_user` on `cmd/api` or `app_user` on `cmd/admin-api`). `CREATIVANTA_ADMIN_DATABASE_URL` never falls back to `CREATIVANTA_API_DATABASE_URL`.
+- **Multi-Process Runtime & Durable Diagnostics/Outbox**: `tooling/readiness/runtime/check_runtime_e2e.sh` and `internal/runtimeassembly` verify compiled `cmd/api`, `cmd/admin-api`, `cmd/outbox`, and `cmd/worker` processes against PostgreSQL 17.10 with `ENABLE + FORCE ROW LEVEL SECURITY`, canonical `product.created` (`type`) and `product.catalog_status_changed` outbox events, and PostgreSQL-backed `DiagnosticsService`.
+- **Restore Rehearsal & Blue/Green Release Smoke Honesty**: File-backed JSON snapshot targets (`FileBackedDisposableDBTarget`) are strictly classified as `SIMULATION_ONLY` (`IsSimulation=true`, `OperationalRestorePerformed=false`) and rejected for `production`/`staging` snapshots. Only `PostgresDisposableDBTarget` (populating and querying disposable PostgreSQL tables and SQL double-entry ledger balances) earns `DISPOSABLE_TARGET_VERIFIED`. `ExecuteLiveBlueGreenReleaseSmokeRehearsal` probes real `cmd/api` endpoints (`/healthz`, `/readyz`, `/api/workspaces/discovery`, and `DiagnosticsService/GetOverview`).
+
+### B. Open External Launch Gates (Never Claimed as `ACCEPTED` by Local/CI Tests)
+- `LEG-H-001` (`OPEN_EXTERNAL_HUMAN_GATE`): Qualified external legal counsel sign-off for Vietnam PDPA Decree 13/2023/ND-CP, GDPR, CCPA, DMCA, and sub-processor DPAs.
+- `EXT-GATE-LIVE-PROVIDER-AND-CONNECTOR-VERIFICATION` (`OPEN_EXTERNAL_PARTNER_GATE`): Live production partner approvals, OAuth scopes, and commercial rate cards for TikTok, Shopee, Meta, YouTube, Lazada, Shopify, and commercial AI providers.
+- `EXT-GATE-STAGING-LOAD-AND-DR-REHEARSAL` (`OPEN_STAGING_INFRA_GATE`): Full staging/production VPS backup restore drill and multi-node k6 load execution on external staging infrastructure.
+- `EXT-GATE-CLERK-PRODUCTION` (`PRODUCTION_PROVISIONING_GATE`): Production Clerk tenant JWKS keys, domain verification, and webhook secrets.
+- `EXT-GATE-PAYMENT-STRIPE-LIVE` (`PRODUCTION_MERCHANT_GATE`): Live Stripe merchant keys and production webhook signing secrets.
+- `EXT-GATE-ACTIVEPIECES-ENTERPRISE-LICENSE` (`COMMERCIAL_LICENSE_GATE`): Commercial embedding license for white-label Activepieces canvas (owned Go runtime is active baseline).

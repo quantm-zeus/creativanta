@@ -55,9 +55,6 @@ func ConfigFromEnv(role string) Config {
 	switch role {
 	case bootstrap.RoleAdminAPI:
 		dbURL = strings.TrimSpace(os.Getenv("CREATIVANTA_ADMIN_DATABASE_URL"))
-		if dbURL == "" {
-			dbURL = strings.TrimSpace(os.Getenv("CREATIVANTA_API_DATABASE_URL"))
-		}
 	default:
 		dbURL = strings.TrimSpace(os.Getenv("CREATIVANTA_API_DATABASE_URL"))
 		if dbURL == "" {
@@ -117,13 +114,16 @@ func NewHandlerFromConfig(ctx context.Context, cfg Config) (http.Handler, func()
 
 	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
-		return nil, nil, fmt.Errorf("runtimeassembly: connect database: %w", err)
+		return nil, nil, errors.New("runtimeassembly: invalid database configuration")
 	}
 	cleanup := func() {
 		pool.Close()
 	}
 
-	ensureUserClerkBootstrapRLSPolicy(ctx, pool)
+	if err := ValidateDatabaseRoleBoundary(ctx, pool, cfg.Role); err != nil {
+		cleanup()
+		return nil, nil, err
+	}
 
 	var clerkHTTPClient *http.Client
 	if cfg.InsecureJWKSTLS {
@@ -183,7 +183,7 @@ func NewHandlerFromConfig(ctx context.Context, cfg Config) (http.Handler, func()
 		if cfg.Role == bootstrap.RoleAPI && (tokenVerifier == nil || sessionChecker == nil) {
 			return false
 		}
-		return checkDatabaseReadiness(rCtx, pool)
+		return CheckDatabaseReadiness(rCtx, pool, cfg.Role)
 	}
 
 	routes := http.NewServeMux()
@@ -219,7 +219,122 @@ var requiredCanonicalTables = []string{
 	"diagnostics_records",
 }
 
-func checkDatabaseReadiness(ctx context.Context, pool *pgxpool.Pool) bool {
+// ValidateDatabaseRoleBoundary verifies that pool is connected using a narrow, least-privilege
+// database login role appropriate for serviceRole ("api" or "admin-api").
+// It rejects superusers, BYPASSRLS roles, CREATEDB/CREATEROLE roles, schema owners/migrators
+// (CREATE privilege on schema public or ownership of tables in public), outbox_poller members,
+// and cross-plane credentials (api must assume app_user only; admin-api must assume admin_user only).
+func ValidateDatabaseRoleBoundary(ctx context.Context, pool *pgxpool.Pool, serviceRole string) error {
+	if pool == nil {
+		return errors.New("runtimeassembly: nil database pool")
+	}
+	switch serviceRole {
+	case bootstrap.RoleAPI, bootstrap.RoleAdminAPI:
+	default:
+		return fmt.Errorf("runtimeassembly: unsupported service role %q", serviceRole)
+	}
+
+	checkCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	var (
+		rolName               string
+		rolSuper              bool
+		rolBypassRLS          bool
+		rolCreateDB           bool
+		rolCreateRole         bool
+		canCreateInPublic     bool
+		ownsPublicTables      bool
+		canAssumeAppUser      bool
+		canAssumeAdminUser    bool
+		canAssumeOutboxPoller bool
+	)
+	err := pool.QueryRow(checkCtx, `
+		SELECT
+			r.rolname,
+			r.rolsuper,
+			r.rolbypassrls,
+			r.rolcreatedb,
+			r.rolcreaterole,
+			has_schema_privilege(current_user, 'public', 'CREATE') AS can_create_in_public,
+			EXISTS (
+				SELECT 1
+				FROM pg_class c
+				JOIN pg_namespace n ON n.oid = c.relnamespace
+				WHERE n.nspname = 'public'
+				  AND c.relkind = 'r'
+				  AND pg_has_role(current_user, c.relowner, 'USAGE')
+			) AS owns_public_tables,
+			CASE
+				WHEN EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_user')
+				THEN pg_has_role(current_user, 'app_user', 'MEMBER')
+				ELSE false
+			END AS can_assume_app_user,
+			CASE
+				WHEN EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'admin_user')
+				THEN pg_has_role(current_user, 'admin_user', 'MEMBER')
+				ELSE false
+			END AS can_assume_admin_user,
+			CASE
+				WHEN EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'outbox_poller')
+				THEN pg_has_role(current_user, 'outbox_poller', 'MEMBER')
+				ELSE false
+			END AS can_assume_outbox_poller
+		FROM pg_roles r
+		WHERE r.rolname = current_user
+	`).Scan(
+		&rolName,
+		&rolSuper,
+		&rolBypassRLS,
+		&rolCreateDB,
+		&rolCreateRole,
+		&canCreateInPublic,
+		&ownsPublicTables,
+		&canAssumeAppUser,
+		&canAssumeAdminUser,
+		&canAssumeOutboxPoller,
+	)
+	if err != nil {
+		return fmt.Errorf("runtimeassembly: inspect database role boundary: %w", err)
+	}
+	if rolSuper {
+		return fmt.Errorf("runtimeassembly: privileged superuser DB role %q is forbidden for runtime service %q", rolName, serviceRole)
+	}
+	if rolBypassRLS {
+		return fmt.Errorf("runtimeassembly: BYPASSRLS DB role %q is forbidden for runtime service %q", rolName, serviceRole)
+	}
+	if rolCreateDB || rolCreateRole {
+		return fmt.Errorf("runtimeassembly: elevated CREATEDB/CREATEROLE DB role %q is forbidden for runtime service %q", rolName, serviceRole)
+	}
+	if canCreateInPublic || ownsPublicTables {
+		return fmt.Errorf("runtimeassembly: schema-owner/migrator DB role %q (CREATE on public or table ownership) is forbidden for runtime service %q", rolName, serviceRole)
+	}
+	if canAssumeOutboxPoller {
+		return fmt.Errorf("runtimeassembly: outbox_poller membership on DB role %q is forbidden for HTTP service %q", rolName, serviceRole)
+	}
+
+	switch serviceRole {
+	case bootstrap.RoleAPI:
+		if !canAssumeAppUser {
+			return fmt.Errorf("runtimeassembly: API DB role %q must be a member of app_user", rolName)
+		}
+		if canAssumeAdminUser {
+			return fmt.Errorf("runtimeassembly: API DB role %q must not be a member of privileged admin_user", rolName)
+		}
+	case bootstrap.RoleAdminAPI:
+		if !canAssumeAdminUser {
+			return fmt.Errorf("runtimeassembly: admin-api DB role %q must be a member of admin_user", rolName)
+		}
+		if canAssumeAppUser {
+			return fmt.Errorf("runtimeassembly: admin-api DB role %q must not share tenant app_user membership", rolName)
+		}
+	}
+	return nil
+}
+
+// CheckDatabaseReadiness verifies database connectivity, least-privilege role separation,
+// and ENABLE + FORCE ROW LEVEL SECURITY on canonical tenant tables.
+func CheckDatabaseReadiness(ctx context.Context, pool *pgxpool.Pool, serviceRole string) bool {
 	if pool == nil {
 		return false
 	}
@@ -227,6 +342,9 @@ func checkDatabaseReadiness(ctx context.Context, pool *pgxpool.Pool) bool {
 	defer cancel()
 
 	if err := pool.Ping(checkCtx); err != nil {
+		return false
+	}
+	if err := ValidateDatabaseRoleBoundary(checkCtx, pool, serviceRole); err != nil {
 		return false
 	}
 
@@ -317,30 +435,6 @@ func mountAPIRoutes(mux *http.ServeMux, pool *pgxpool.Pool, idStore *pgIdentityS
 	capPath, capHandler := adminv1connect.NewCapabilityServiceHandler(capSvc, interceptors)
 	mux.Handle(capPath, capHandler)
 	return nil
-}
-
-func ensureUserClerkBootstrapRLSPolicy(ctx context.Context, pool *pgxpool.Pool) {
-	if pool == nil {
-		return
-	}
-	pCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-	_, _ = pool.Exec(pCtx, `
-		DO $$ BEGIN
-		  IF EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'users')
-		     AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'users' AND policyname = 'user_self_clerk_bootstrap') THEN
-		    CREATE POLICY user_self_clerk_bootstrap ON users
-		      FOR SELECT TO app_user
-		      USING (
-		        NULLIF(current_setting('app.current_clerk_id', true), '') IS NOT NULL
-		        AND (
-		          clerk_id = NULLIF(current_setting('app.current_clerk_id', true), '')
-		          OR external_auth_id = NULLIF(current_setting('app.current_clerk_id', true), '')
-		        )
-		      );
-		  END IF;
-		END $$;
-	`)
 }
 
 func extractServerPeerIP(r *http.Request) string {
@@ -834,6 +928,7 @@ func (s *tenantProductStore) CreateProduct(ctx context.Context, p *product.Produ
 		payloadBytes, err := json.Marshal(map[string]any{
 			"product_id":     p.ProductID,
 			"workspace_id":   p.WorkspaceID,
+			"type":           string(p.ProductType),
 			"title":          p.Title,
 			"catalog_status": string(p.CatalogStatus),
 			"sku_count":      len(p.SKUs),
@@ -990,10 +1085,60 @@ func (s *tenantProductStore) ArchiveProduct(ctx context.Context, workspaceID, pr
 
 func (s *tenantProductStore) BulkArchiveProducts(ctx context.Context, workspaceID string, productIDs []string) (int, error) {
 	var count int
-	err := s.runInTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx, _ *tenantdb.Queries, _ transportauth.Session) error {
+	err := s.runInTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx, q *tenantdb.Queries, principal transportauth.Session) error {
+		store := product.NewPostgresStoreTx(tx)
+		type priorProductState struct {
+			productID string
+			status    string
+		}
+		var priorStates []priorProductState
+		seen := make(map[string]struct{}, len(productIDs))
+		for _, pid := range productIDs {
+			if _, dup := seen[pid]; dup {
+				continue
+			}
+			seen[pid] = struct{}{}
+			if existing, err := store.GetProduct(txCtx, workspaceID, pid); err == nil && existing != nil && existing.CatalogStatus != product.StatusArchived {
+				priorStates = append(priorStates, priorProductState{
+					productID: existing.ProductID,
+					status:    string(existing.CatalogStatus),
+				})
+			}
+		}
+
 		var err error
-		count, err = product.NewPostgresStoreTx(tx).BulkArchiveProducts(txCtx, workspaceID, productIDs)
-		return err
+		count, err = store.BulkArchiveProducts(txCtx, workspaceID, productIDs)
+		if err != nil {
+			return err
+		}
+
+		for _, prior := range priorStates {
+			payloadBytes, _ := json.Marshal(map[string]any{
+				"product_id":     prior.productID,
+				"workspace_id":   workspaceID,
+				"from":           prior.status,
+				"to":             product.StatusArchived,
+				"catalog_status": product.StatusArchived,
+			})
+			metaBytes, _ := json.Marshal(map[string]any{
+				"actor_id":      principal.UserID,
+				"actor_type":    "user",
+				"required_perm": "product:manage",
+			})
+			if err := q.InsertOutboxEvent(txCtx, tenantdb.OutboxEventParams{
+				EventID:       newUUIDv4(),
+				EventType:     "product.catalog_status_changed",
+				TargetStream:  string(outbox.QueueSearchIndexing),
+				AggregateType: "product",
+				AggregateID:   prior.productID,
+				WorkspaceID:   workspaceID,
+				PayloadJSON:   payloadBytes,
+				MetadataJSON:  metaBytes,
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	return count, err
 }

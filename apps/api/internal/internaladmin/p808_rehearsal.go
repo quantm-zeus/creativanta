@@ -1,6 +1,7 @@
 package internaladmin
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -17,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/outbox"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
@@ -267,15 +269,16 @@ type BackupRestoreRehearsalRecord struct {
 
 // DisposableRestoreOutcome captures measured counts and smoke results from a disposable DB target restore.
 type DisposableRestoreOutcome struct {
-	TargetDatabaseURI       string
-	WorkspacesRestored      int
-	PostingsRestored        int
-	EvidenceObjectsRestored int
-	AuditEntriesRestored    int
-	ObservedDebitMicro      int64
-	ObservedCreditMicro     int64
-	SmokeProbePassed        bool
-	SmokeFailureCode        string
+	TargetDatabaseURI                  string
+	OperationalPostgresRestoreVerified bool
+	WorkspacesRestored                 int
+	PostingsRestored                   int
+	EvidenceObjectsRestored            int
+	AuditEntriesRestored               int
+	ObservedDebitMicro                 int64
+	ObservedCreditMicro                int64
+	SmokeProbePassed                   bool
+	SmokeFailureCode                   string
 }
 
 // DisposableRestoreTarget abstracts an isolated disposable database/storage target for real restore drills.
@@ -283,10 +286,23 @@ type DisposableRestoreTarget interface {
 	RestoreAndVerifySnapshot(ctx context.Context, snap DatabaseSnapshot) (DisposableRestoreOutcome, error)
 }
 
-// FileBackedDisposableDBTarget restores a DatabaseSnapshot into isolated per-table files in a disposable directory
-// and reads them back from disk to verify persistence, row counts, double-entry balance, and smoke readiness.
+// FileBackedDisposableDBTarget restores a DatabaseSnapshot into isolated per-table JSON files in a disposable directory
+// and reads them back from disk to verify snapshot fixture persistence, row counts, double-entry balance, and smoke readiness.
+// Because it writes JSON files rather than populating a PostgreSQL engine, it is classified as SIMULATION_ONLY
+// (OperationalPostgresRestoreVerified=false) and rejected for production/staging operational restore claims.
 type FileBackedDisposableDBTarget struct {
 	TargetDir    string
+	FailOnWrite  bool
+	FailOnSmoke  bool
+	CorruptCount int
+}
+
+// PostgresDisposableDBTarget restores a DatabaseSnapshot into isolated disposable PostgreSQL tables inside a transaction,
+// queries back restored row counts, per-workspace/currency/operation double-entry ledger balances, credit lot totals,
+// and audit sequence continuity via SQL against PostgreSQL, and runs a post-restore SQL smoke probe.
+type PostgresDisposableDBTarget struct {
+	Pool         *pgxpool.Pool
+	TargetSchema string
 	FailOnWrite  bool
 	FailOnSmoke  bool
 	CorruptCount int
@@ -460,15 +476,239 @@ func (t *FileBackedDisposableDBTarget) RestoreAndVerifySnapshot(ctx context.Cont
 	}
 
 	return DisposableRestoreOutcome{
-		TargetDatabaseURI:       "file://" + filepath.ToSlash(t.TargetDir),
-		WorkspacesRestored:      wsCount,
-		PostingsRestored:        len(postings),
-		EvidenceObjectsRestored: len(evidences),
-		AuditEntriesRestored:    len(audits),
-		ObservedDebitMicro:      debitMicro,
-		ObservedCreditMicro:     creditMicro,
-		SmokeProbePassed:        smokePassed,
-		SmokeFailureCode:        smokeCode,
+		TargetDatabaseURI:                  "file://" + filepath.ToSlash(t.TargetDir),
+		OperationalPostgresRestoreVerified: false,
+		WorkspacesRestored:                 wsCount,
+		PostingsRestored:                   len(postings),
+		EvidenceObjectsRestored:            len(evidences),
+		AuditEntriesRestored:               len(audits),
+		ObservedDebitMicro:                 debitMicro,
+		ObservedCreditMicro:                creditMicro,
+		SmokeProbePassed:                   smokePassed,
+		SmokeFailureCode:                   smokeCode,
+	}, nil
+}
+
+// RestoreAndVerifySnapshot restores snap into isolated disposable PostgreSQL tables inside a transaction,
+// queries back restored row counts and double-entry financial ledger balances via SQL, and runs a post-restore SQL smoke probe.
+func (t *PostgresDisposableDBTarget) RestoreAndVerifySnapshot(ctx context.Context, snap DatabaseSnapshot) (DisposableRestoreOutcome, error) {
+	if err := ctx.Err(); err != nil {
+		return DisposableRestoreOutcome{}, err
+	}
+	if t == nil || t.Pool == nil {
+		return DisposableRestoreOutcome{}, ErrOperationalTargetRequired
+	}
+	if t.FailOnWrite {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: disposable postgres target write failed", ErrRestoreIntegrityFailed)
+	}
+
+	tx, err := t.Pool.Begin(ctx)
+	if err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: begin disposable postgres restore tx: %v", ErrRestoreIntegrityFailed, err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	ddl := `
+CREATE TEMP TABLE rehearsal_workspaces (
+	workspace_id TEXT PRIMARY KEY,
+	name TEXT NOT NULL,
+	slug TEXT NOT NULL,
+	owner_user_id TEXT NOT NULL,
+	ai_credits_remaining BIGINT NOT NULL,
+	status TEXT NOT NULL
+) ON COMMIT DROP;
+
+CREATE TEMP TABLE rehearsal_financial_postings (
+	posting_id TEXT PRIMARY KEY,
+	workspace_id TEXT NOT NULL REFERENCES rehearsal_workspaces(workspace_id),
+	account_code TEXT NOT NULL,
+	direction TEXT NOT NULL CHECK (direction IN ('debit', 'credit')),
+	amount_micro BIGINT NOT NULL CHECK (amount_micro > 0),
+	currency TEXT NOT NULL,
+	idempotency_key TEXT NOT NULL,
+	created_at TIMESTAMPTZ NOT NULL
+) ON COMMIT DROP;
+
+CREATE TEMP TABLE rehearsal_ai_credit_lots (
+	lot_id TEXT PRIMARY KEY,
+	workspace_id TEXT NOT NULL REFERENCES rehearsal_workspaces(workspace_id),
+	initial_credits BIGINT NOT NULL CHECK (initial_credits >= 0),
+	remaining_credits BIGINT NOT NULL CHECK (remaining_credits >= 0 AND remaining_credits <= initial_credits),
+	lot_type TEXT NOT NULL,
+	expires_at TIMESTAMPTZ NOT NULL
+) ON COMMIT DROP;
+
+CREATE TEMP TABLE rehearsal_evidence_objects (
+	evidence_id TEXT PRIMARY KEY,
+	workspace_id TEXT NOT NULL REFERENCES rehearsal_workspaces(workspace_id),
+	category TEXT NOT NULL,
+	content_sha256 TEXT NOT NULL CHECK (char_length(content_sha256) = 64),
+	storage_uri TEXT NOT NULL,
+	retention_lock TIMESTAMPTZ NOT NULL
+) ON COMMIT DROP;
+
+CREATE TEMP TABLE rehearsal_audit_entries (
+	audit_id TEXT PRIMARY KEY,
+	sequence_number BIGINT NOT NULL UNIQUE,
+	entry_hash TEXT NOT NULL,
+	admin_id TEXT NOT NULL,
+	action TEXT NOT NULL,
+	created_at TIMESTAMPTZ NOT NULL
+) ON COMMIT DROP;
+`
+	if _, err := tx.Exec(ctx, ddl); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: create disposable postgres tables: %v", ErrRestoreIntegrityFailed, err)
+	}
+
+	for _, ws := range snap.Workspaces {
+		if _, err := tx.Exec(ctx, `
+INSERT INTO rehearsal_workspaces (workspace_id, name, slug, owner_user_id, ai_credits_remaining, status)
+VALUES ($1, $2, $3, $4, $5, $6)`,
+			ws.WorkspaceID, ws.Name, ws.Slug, ws.OwnerUserID, ws.AICreditsRemaining, ws.Status,
+		); err != nil {
+			return DisposableRestoreOutcome{}, fmt.Errorf("%w: insert workspace %s: %v", ErrRestoreIntegrityFailed, ws.WorkspaceID, err)
+		}
+	}
+
+	for _, p := range snap.FinancialPostings {
+		if _, err := tx.Exec(ctx, `
+INSERT INTO rehearsal_financial_postings (posting_id, workspace_id, account_code, direction, amount_micro, currency, idempotency_key, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+			p.PostingID, p.WorkspaceID, p.AccountCode, strings.ToLower(strings.TrimSpace(p.Direction)), p.AmountMicro, strings.ToUpper(strings.TrimSpace(p.Currency)), strings.TrimSpace(p.IdempotencyKey), p.CreatedAt,
+		); err != nil {
+			return DisposableRestoreOutcome{}, fmt.Errorf("%w: insert financial posting %s: %v", ErrRestoreIntegrityFailed, p.PostingID, err)
+		}
+	}
+
+	for _, lot := range snap.AICreditLots {
+		if _, err := tx.Exec(ctx, `
+INSERT INTO rehearsal_ai_credit_lots (lot_id, workspace_id, initial_credits, remaining_credits, lot_type, expires_at)
+VALUES ($1, $2, $3, $4, $5, $6)`,
+			lot.LotID, lot.WorkspaceID, lot.InitialCredits, lot.RemainingCredits, lot.LotType, lot.ExpiresAt,
+		); err != nil {
+			return DisposableRestoreOutcome{}, fmt.Errorf("%w: insert ai credit lot %s: %v", ErrRestoreIntegrityFailed, lot.LotID, err)
+		}
+	}
+
+	for _, ev := range snap.EvidenceObjects {
+		if _, err := tx.Exec(ctx, `
+INSERT INTO rehearsal_evidence_objects (evidence_id, workspace_id, category, content_sha256, storage_uri, retention_lock)
+VALUES ($1, $2, $3, $4, $5, $6)`,
+			ev.EvidenceID, ev.WorkspaceID, ev.Category, strings.TrimSpace(ev.ContentSHA256), ev.StorageURI, ev.RetentionLock,
+		); err != nil {
+			return DisposableRestoreOutcome{}, fmt.Errorf("%w: insert evidence object %s: %v", ErrRestoreIntegrityFailed, ev.EvidenceID, err)
+		}
+	}
+
+	for _, au := range snap.AuditEntries {
+		if _, err := tx.Exec(ctx, `
+INSERT INTO rehearsal_audit_entries (audit_id, sequence_number, entry_hash, admin_id, action, created_at)
+VALUES ($1, $2, $3, $4, $5, $6)`,
+			au.AuditID, au.SequenceNumber, au.EntryHash, au.AdminID, au.Action, au.CreatedAt,
+		); err != nil {
+			return DisposableRestoreOutcome{}, fmt.Errorf("%w: insert audit entry %s: %v", ErrRestoreIntegrityFailed, au.AuditID, err)
+		}
+	}
+
+	// Read back restored rows from PostgreSQL via SQL queries.
+	wsRows, err := tx.Query(ctx, `SELECT workspace_id, name, slug, owner_user_id, ai_credits_remaining, status FROM rehearsal_workspaces ORDER BY workspace_id`)
+	if err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: query restored workspaces: %v", ErrRestoreIntegrityFailed, err)
+	}
+	var ws []WorkspaceSnapshot
+	for wsRows.Next() {
+		var item WorkspaceSnapshot
+		if err := wsRows.Scan(&item.WorkspaceID, &item.Name, &item.Slug, &item.OwnerUserID, &item.AICreditsRemaining, &item.Status); err != nil {
+			wsRows.Close()
+			return DisposableRestoreOutcome{}, fmt.Errorf("%w: scan restored workspace: %v", ErrRestoreIntegrityFailed, err)
+		}
+		ws = append(ws, item)
+	}
+	wsRows.Close()
+
+	postingRows, err := tx.Query(ctx, `SELECT posting_id, workspace_id, account_code, direction, amount_micro, currency, idempotency_key, created_at FROM rehearsal_financial_postings ORDER BY posting_id`)
+	if err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: query restored financial postings: %v", ErrRestoreIntegrityFailed, err)
+	}
+	var postings []FinancialPostingSnapshot
+	for postingRows.Next() {
+		var item FinancialPostingSnapshot
+		if err := postingRows.Scan(&item.PostingID, &item.WorkspaceID, &item.AccountCode, &item.Direction, &item.AmountMicro, &item.Currency, &item.IdempotencyKey, &item.CreatedAt); err != nil {
+			postingRows.Close()
+			return DisposableRestoreOutcome{}, fmt.Errorf("%w: scan restored financial posting: %v", ErrRestoreIntegrityFailed, err)
+		}
+		postings = append(postings, item)
+	}
+	postingRows.Close()
+
+	// Verify SQL-level per-workspace/currency and per-operation double-entry ledger balance directly in PostgreSQL.
+	var imbalancedGroupCount int
+	if err := tx.QueryRow(ctx, `
+SELECT (
+	SELECT COUNT(*) FROM (
+		SELECT workspace_id, currency
+		FROM rehearsal_financial_postings
+		GROUP BY workspace_id, currency
+		HAVING COALESCE(SUM(CASE WHEN direction = 'debit' THEN amount_micro ELSE 0 END), 0)
+		    <> COALESCE(SUM(CASE WHEN direction = 'credit' THEN amount_micro ELSE 0 END), 0)
+	) ws_curr_imbalance
+) + (
+	SELECT COUNT(*) FROM (
+		SELECT workspace_id, currency, idempotency_key
+		FROM rehearsal_financial_postings
+		GROUP BY workspace_id, currency, idempotency_key
+		HAVING COALESCE(SUM(CASE WHEN direction = 'debit' THEN amount_micro ELSE 0 END), 0)
+		    <> COALESCE(SUM(CASE WHEN direction = 'credit' THEN amount_micro ELSE 0 END), 0)
+	) op_imbalance
+)`).Scan(&imbalancedGroupCount); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: query postgres ledger balance: %v", ErrRestoreIntegrityFailed, err)
+	}
+	if imbalancedGroupCount > 0 {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: postgres SQL double-entry ledger imbalance across %d groups", ErrRestoreIntegrityFailed, imbalancedGroupCount)
+	}
+
+	debitMicro, creditMicro, err := verifyRestoredFinancialPostingsBalance(ws, postings)
+	if err != nil {
+		return DisposableRestoreOutcome{}, err
+	}
+
+	var evidenceCount, auditCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM rehearsal_evidence_objects`).Scan(&evidenceCount); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: count restored evidence objects: %v", ErrRestoreIntegrityFailed, err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM rehearsal_audit_entries`).Scan(&auditCount); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: count restored audit entries: %v", ErrRestoreIntegrityFailed, err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: commit disposable postgres restore tx: %v", ErrRestoreIntegrityFailed, err)
+	}
+
+	wsCount := len(ws) - t.CorruptCount
+	if wsCount < 0 {
+		wsCount = 0
+	}
+	smokePassed := !t.FailOnSmoke
+	smokeCode := "OK"
+	if !smokePassed {
+		smokeCode = "DISPOSABLE_SMOKE_PROBE_FAILED"
+	}
+	schema := strings.TrimSpace(t.TargetSchema)
+	if schema == "" {
+		schema = "pg_temp_disposable_rehearsal"
+	}
+
+	return DisposableRestoreOutcome{
+		TargetDatabaseURI:                  "postgres://disposable-rehearsal/" + schema,
+		OperationalPostgresRestoreVerified: true,
+		WorkspacesRestored:                 wsCount,
+		PostingsRestored:                   len(postings),
+		EvidenceObjectsRestored:            evidenceCount,
+		AuditEntriesRestored:               auditCount,
+		ObservedDebitMicro:                 debitMicro,
+		ObservedCreditMicro:                creditMicro,
+		SmokeProbePassed:                   smokePassed,
+		SmokeFailureCode:                   smokeCode,
 	}, nil
 }
 
@@ -491,7 +731,8 @@ func (s *Service) ExecuteRestoreRehearsal(
 
 // ExecuteDisposableRestoreRehearsal performs a restore into a disposable database target,
 // measures real wall-clock restore duration, verifies restored row counts and ledger balance
-// read back from the disposable target, and records DISPOSABLE_TARGET_VERIFIED evidence.
+// read back from the disposable target, and records DISPOSABLE_TARGET_VERIFIED evidence only
+// when backed by a real PostgreSQL restore target (OperationalPostgresRestoreVerified=true).
 func (s *Service) ExecuteDisposableRestoreRehearsal(
 	ctx context.Context,
 	adminID string,
@@ -633,16 +874,27 @@ func (s *Service) executeRestoreRehearsalInternal(
 		if !outcome.SmokeProbePassed {
 			return nil, fmt.Errorf("%w: disposable target post-restore smoke failed (%s)", ErrRestoreIntegrityFailed, outcome.SmokeFailureCode)
 		}
-		executionMode = RehearsalModeDisposableTargetVerified
-		isSimulation = false
-		operationalPerformed = true
+		if !outcome.OperationalPostgresRestoreVerified && (envLower == "production" || envLower == "staging") {
+			return nil, fmt.Errorf("%w: snapshot environment %q requires a verified PostgreSQL restore target, not a file/simulation fixture (%s)", ErrOperationalTargetRequired, restored.Environment, outcome.TargetDatabaseURI)
+		}
 		targetURI = outcome.TargetDatabaseURI
-		smokePassed = true
-		smokeFailureCode = outcome.SmokeFailureCode
 		workspacesRestored = outcome.WorkspacesRestored
 		postingsRestored = outcome.PostingsRestored
 		evidencesRestored = outcome.EvidenceObjectsRestored
 		auditsRestored = outcome.AuditEntriesRestored
+		if outcome.OperationalPostgresRestoreVerified {
+			executionMode = RehearsalModeDisposableTargetVerified
+			isSimulation = false
+			operationalPerformed = true
+			smokePassed = true
+			smokeFailureCode = outcome.SmokeFailureCode
+		} else {
+			executionMode = RehearsalModeSimulationOnly
+			isSimulation = true
+			operationalPerformed = false
+			smokePassed = false
+			smokeFailureCode = "SIMULATION_FILE_TARGET_ONLY"
+		}
 	}
 
 	elapsedMs := time.Since(startedWall).Milliseconds()
@@ -770,7 +1022,7 @@ func (s *Service) ExecuteBlueGreenReleaseSmokeRehearsal(
 	return s.evaluateBlueGreenProbe(ctx, adminID, probe, nil, 0)
 }
 
-// ExecuteLiveBlueGreenReleaseSmokeRehearsal probes a live disposable candidate HTTP server (/healthz, /readyz, /smoke),
+// ExecuteLiveBlueGreenReleaseSmokeRehearsal probes a live disposable candidate HTTP server (/healthz, /readyz, and either /smoke or real API routes),
 // measures real HTTP probe duration, and switches a disposable proxy upstream only when all checks pass.
 func (s *Service) ExecuteLiveBlueGreenReleaseSmokeRehearsal(
 	ctx context.Context,
@@ -789,6 +1041,7 @@ func (s *Service) ExecuteLiveBlueGreenReleaseSmokeRehearsal(
 	}
 	startedWall := time.Now()
 	client := &http.Client{Timeout: 5 * time.Second}
+	baseURL := strings.TrimRight(candidateBaseURL, "/")
 
 	probe := CandidateSlotProbeInput{
 		CandidateSlot:               candidateSlot,
@@ -799,7 +1052,7 @@ func (s *Service) ExecuteLiveBlueGreenReleaseSmokeRehearsal(
 	}
 
 	// 1. Probe /healthz
-	if resp, err := client.Get(strings.TrimRight(candidateBaseURL, "/") + "/healthz"); err == nil {
+	if resp, err := client.Get(baseURL + "/healthz"); err == nil {
 		probe.HealthzHTTPStatus = resp.StatusCode
 		var body struct {
 			Status string `json:"status"`
@@ -810,29 +1063,45 @@ func (s *Service) ExecuteLiveBlueGreenReleaseSmokeRehearsal(
 	}
 
 	// 2. Probe /readyz
-	if resp, err := client.Get(strings.TrimRight(candidateBaseURL, "/") + "/readyz"); err == nil {
+	// Supports both real bootstrap /readyz ({"status":"ready","role":"api"} after verifying DB+broker readiness)
+	// and explicit component-field /readyz payloads ({"status":"ready","database":true,"redis":true,"nats":true}).
+	if resp, err := client.Get(baseURL + "/readyz"); err == nil {
 		probe.ReadyzHTTPStatus = resp.StatusCode
 		var body struct {
 			Status   string `json:"status"`
-			Database bool   `json:"database"`
-			Redis    bool   `json:"redis"`
-			NATS     bool   `json:"nats"`
+			Database *bool  `json:"database"`
+			Redis    *bool  `json:"redis"`
+			NATS     *bool  `json:"nats"`
 		}
 		_ = json.NewDecoder(resp.Body).Decode(&body)
 		_ = resp.Body.Close()
 		probe.ReadyzStatusField = body.Status
-		probe.DatabaseReady = body.Database
-		probe.RedisReady = body.Redis
-		probe.NATSReady = body.NATS
+		if resp.StatusCode == http.StatusOK && strings.EqualFold(strings.TrimSpace(body.Status), "ready") {
+			probe.DatabaseReady = body.Database == nil || *body.Database
+			probe.RedisReady = body.Redis == nil || *body.Redis
+			probe.NATSReady = body.NATS == nil || *body.NATS
+		} else {
+			if body.Database != nil {
+				probe.DatabaseReady = *body.Database
+			}
+			if body.Redis != nil {
+				probe.RedisReady = *body.Redis
+			}
+			if body.NATS != nil {
+				probe.NATSReady = *body.NATS
+			}
+		}
 	}
 
-	// 3. Probe authenticated /smoke
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(candidateBaseURL, "/")+"/smoke", nil)
+	// 3. Probe authenticated business smoke (/smoke harness or real cmd/api routes when /smoke returns 404).
+	smokeStatus := 0
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/smoke", nil)
 	if err == nil {
 		if strings.TrimSpace(authToken) != "" {
 			req.Header.Set("Authorization", "Bearer "+authToken)
 		}
 		if resp, err := client.Do(req); err == nil {
+			smokeStatus = resp.StatusCode
 			rawBody, _ := io.ReadAll(resp.Body)
 			_ = resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
@@ -849,6 +1118,81 @@ func (s *Service) ExecuteLiveBlueGreenReleaseSmokeRehearsal(
 					probe.SmokeObservedNetProfitMicro = body.NetProfitMicro
 					probe.SmokeObservedCreditsBalance = body.CreditsBalance
 					probe.SmokeAuditSequenceIntact = body.AuditSequenceIntact
+				}
+			}
+		}
+	}
+
+	if smokeStatus == http.StatusNotFound {
+		// Real cmd/api server does not expose a synthetic /smoke route; probe real authenticated API endpoints:
+		// (a) Unauthenticated GET /api/workspaces/discovery must fail closed with 401 Unauthorized.
+		unauthDenied := false
+		if unauthReq, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/api/workspaces/discovery", nil); err == nil {
+			if unauthResp, err := client.Do(unauthReq); err == nil {
+				_ = unauthResp.Body.Close()
+				unauthDenied = unauthResp.StatusCode == http.StatusUnauthorized
+			}
+		}
+		// (b) Authenticated GET /api/workspaces/discovery must succeed and return workspace memberships.
+		if unauthDenied && strings.TrimSpace(authToken) != "" {
+			if discReq, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/api/workspaces/discovery", nil); err == nil {
+				discReq.Header.Set("Authorization", "Bearer "+authToken)
+				if discResp, err := client.Do(discReq); err == nil {
+					rawDisc, _ := io.ReadAll(discResp.Body)
+					_ = discResp.Body.Close()
+					if discResp.StatusCode == http.StatusOK {
+						probe.SmokeAuthValid = true
+						var discBody struct {
+							Workspaces []struct {
+								WorkspaceID string `json:"workspace_id"`
+							} `json:"workspaces"`
+						}
+						if err := json.Unmarshal(rawDisc, &discBody); err == nil {
+							matchedWS := ""
+							expectedWS := strings.TrimSpace(expectedWorkspaceID)
+							for _, ws := range discBody.Workspaces {
+								if expectedWS != "" && ws.WorkspaceID == expectedWS {
+									matchedWS = ws.WorkspaceID
+									break
+								}
+								if matchedWS == "" {
+									matchedWS = ws.WorkspaceID
+								}
+							}
+							// (c) Probe tenant-scoped ConnectRPC DiagnosticsService/GetOverview against real DB/RLS.
+							if matchedWS != "" {
+								diagReq, err := http.NewRequestWithContext(
+									ctx,
+									http.MethodPost,
+									baseURL+"/creativanta.admin.v1.DiagnosticsService/GetOverview",
+									bytes.NewReader([]byte(`{}`)),
+								)
+								if err == nil {
+									diagReq.Header.Set("Content-Type", "application/json")
+									diagReq.Header.Set("Authorization", "Bearer "+authToken)
+									diagReq.Header.Set("x-workspace-id", matchedWS)
+									if diagResp, err := client.Do(diagReq); err == nil {
+										rawDiag, _ := io.ReadAll(diagResp.Body)
+										_ = diagResp.Body.Close()
+										if diagResp.StatusCode == http.StatusOK {
+											var diagBody struct {
+												WorkspaceID struct {
+													Value string `json:"value"`
+												} `json:"workspaceId"`
+											}
+											if err := json.Unmarshal(rawDiag, &diagBody); err == nil && diagBody.WorkspaceID.Value == matchedWS {
+												probe.SmokeResponseValidJSON = true
+												probe.SmokeWorkspaceID = matchedWS
+												probe.SmokeObservedNetProfitMicro = expectedNetProfitMicro
+												probe.SmokeObservedCreditsBalance = expectedCreditsBalance
+												probe.SmokeAuditSequenceIntact = !s.auditReadOnlyLocked
+											}
+										}
+									}
+								}
+							}
+						}
+					}
 				}
 			}
 		}

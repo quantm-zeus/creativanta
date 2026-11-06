@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5/pgxpool"
 	adminv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1"
 	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/internaladmin"
@@ -177,39 +178,80 @@ func TestP808AcceptanceTarget1_RealRestoreAndFailingSmoke(t *testing.T) {
 		t.Fatalf("expected ErrOperationalTargetRequired when claiming production restore without disposable target, got %v", err)
 	}
 
-	// 1c. Real disposable DB target restore materializes tables on disk, reads back row counts & ledger balance, and records DISPOSABLE_TARGET_VERIFIED.
+	// 1c. File-backed JSON fixture target is strictly SIMULATION_ONLY (IsSimulation=true, OperationalRestorePerformed=false)
+	// and MUST fail closed with ErrOperationalTargetRequired when given a production or staging snapshot.
 	disposableTarget := &internaladmin.FileBackedDisposableDBTarget{
 		TargetDir: t.TempDir(),
 	}
-	dispRec, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, prodArtifact, 0, disposableTarget)
-	if err != nil {
-		t.Fatalf("ExecuteDisposableRestoreRehearsal: %v", err)
+	if _, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, prodArtifact, 0, disposableTarget); !errors.Is(err, internaladmin.ErrOperationalTargetRequired) {
+		t.Fatalf("expected ErrOperationalTargetRequired when using JSON file fixture target for production snapshot, got %v", err)
 	}
-	if dispRec.ExecutionMode != internaladmin.RehearsalModeDisposableTargetVerified || dispRec.IsSimulation || !dispRec.OperationalRestorePerformed || !dispRec.SmokePassed {
-		t.Fatalf("expected DISPOSABLE_TARGET_VERIFIED record, got %+v", dispRec)
+	dispRec, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, artifact, 0, disposableTarget)
+	if err != nil {
+		t.Fatalf("ExecuteDisposableRestoreRehearsal rehearsal fixture: %v", err)
+	}
+	if dispRec.ExecutionMode != internaladmin.RehearsalModeSimulationOnly || !dispRec.IsSimulation || dispRec.OperationalRestorePerformed || dispRec.SmokePassed {
+		t.Fatalf("expected SIMULATION_ONLY record for file-backed JSON fixture target, got %+v", dispRec)
 	}
 	if !strings.HasPrefix(dispRec.TargetDatabaseURI, "file://") {
-		t.Fatalf("expected disposable target URI, got %q", dispRec.TargetDatabaseURI)
+		t.Fatalf("expected file:// target URI, got %q", dispRec.TargetDatabaseURI)
 	}
 
 	// 1d. Disposable target failures (write failure, row count mismatch, smoke failure) must fail closed.
-	if _, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, prodArtifact, 0, &internaladmin.FileBackedDisposableDBTarget{
+	if _, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, artifact, 0, &internaladmin.FileBackedDisposableDBTarget{
 		TargetDir:   t.TempDir(),
 		FailOnWrite: true,
 	}); !errors.Is(err, internaladmin.ErrRestoreIntegrityFailed) {
 		t.Fatalf("expected ErrRestoreIntegrityFailed on disposable target write failure, got %v", err)
 	}
-	if _, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, prodArtifact, 0, &internaladmin.FileBackedDisposableDBTarget{
+	if _, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, artifact, 0, &internaladmin.FileBackedDisposableDBTarget{
 		TargetDir:    t.TempDir(),
 		CorruptCount: 1,
 	}); !errors.Is(err, internaladmin.ErrRestoreIntegrityFailed) {
 		t.Fatalf("expected ErrRestoreIntegrityFailed on disposable target row count mismatch, got %v", err)
 	}
-	if _, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, prodArtifact, 0, &internaladmin.FileBackedDisposableDBTarget{
+	if _, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, artifact, 0, &internaladmin.FileBackedDisposableDBTarget{
 		TargetDir:   t.TempDir(),
 		FailOnSmoke: true,
 	}); !errors.Is(err, internaladmin.ErrRestoreIntegrityFailed) {
 		t.Fatalf("expected ErrRestoreIntegrityFailed on disposable target smoke failure, got %v", err)
+	}
+
+	// 1e. Real PostgreSQL disposable target materializes tables in PostgreSQL, queries back row counts & SQL ledger balance,
+	// and legitimately earns DISPOSABLE_TARGET_VERIFIED (IsSimulation=false, OperationalRestorePerformed=true).
+	if pgPool := openOptionalPostgresForRehearsalTest(t); pgPool != nil {
+		pgTarget := &internaladmin.PostgresDisposableDBTarget{
+			Pool:         pgPool,
+			TargetSchema: "rehearsal_p808",
+		}
+		pgRec, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, prodArtifact, 0, pgTarget)
+		if err != nil {
+			t.Fatalf("ExecuteDisposableRestoreRehearsal with PostgresDisposableDBTarget: %v", err)
+		}
+		if pgRec.ExecutionMode != internaladmin.RehearsalModeDisposableTargetVerified || pgRec.IsSimulation || !pgRec.OperationalRestorePerformed || !pgRec.SmokePassed {
+			t.Fatalf("expected DISPOSABLE_TARGET_VERIFIED record for PostgresDisposableDBTarget, got %+v", pgRec)
+		}
+		if !strings.HasPrefix(pgRec.TargetDatabaseURI, "postgres://") {
+			t.Fatalf("expected postgres:// target URI, got %q", pgRec.TargetDatabaseURI)
+		}
+		if _, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, prodArtifact, 0, &internaladmin.PostgresDisposableDBTarget{
+			Pool:        pgPool,
+			FailOnWrite: true,
+		}); !errors.Is(err, internaladmin.ErrRestoreIntegrityFailed) {
+			t.Fatalf("expected ErrRestoreIntegrityFailed on postgres target write failure, got %v", err)
+		}
+		if _, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, prodArtifact, 0, &internaladmin.PostgresDisposableDBTarget{
+			Pool:         pgPool,
+			CorruptCount: 1,
+		}); !errors.Is(err, internaladmin.ErrRestoreIntegrityFailed) {
+			t.Fatalf("expected ErrRestoreIntegrityFailed on postgres target row count mismatch, got %v", err)
+		}
+		if _, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, prodArtifact, 0, &internaladmin.PostgresDisposableDBTarget{
+			Pool:        pgPool,
+			FailOnSmoke: true,
+		}); !errors.Is(err, internaladmin.ErrRestoreIntegrityFailed) {
+			t.Fatalf("expected ErrRestoreIntegrityFailed on postgres target smoke failure, got %v", err)
+		}
 	}
 
 	// 2. Corrupting the backup file on disk must fail closed with ErrBackupChecksumMismatch.
@@ -434,6 +476,78 @@ func TestP808AcceptanceTarget1_RealRestoreAndFailingSmoke(t *testing.T) {
 	)
 	if !errors.Is(err, internaladmin.ErrReleaseSmokeFailed) || failedSwitchVerdict.ProxyUpstreamSwitched || !failedSwitchVerdict.RollbackTriggered || proxy.rolledBackSlot != "blue" {
 		t.Fatalf("expected proxy switch failure to roll back to blue, got verdict=%+v err=%v proxy=%+v", failedSwitchVerdict, err, proxy)
+	}
+
+	// 4c. Live Blue/Green smoke rehearsal against real cmd/api endpoint shapes:
+	// - /healthz -> {"status":"alive","role":"api"}
+	// - /readyz -> {"status":"ready","role":"api"} (without synthetic database/redis/nats boolean fields)
+	// - /smoke -> 404 Not Found
+	// - GET /api/workspaces/discovery (401 unauthenticated; 200 with Bearer token)
+	// - POST /creativanta.admin.v1.DiagnosticsService/GetOverview (200 with Bearer token + x-workspace-id)
+	realAPISrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/healthz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"alive","role":"api"}`))
+		case "/readyz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ready","role":"api"}`))
+		case "/api/workspaces/discovery":
+			if r.Header.Get("Authorization") != "Bearer valid-real-api-token" {
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte(`{"error":"unauthenticated"}`))
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"workspaces":[{"workspace_id":"` + wsA + `","name":"Creator Studio Alpha","role":"owner"}]}`))
+		case "/creativanta.admin.v1.DiagnosticsService/GetOverview":
+			if r.Header.Get("Authorization") != "Bearer valid-real-api-token" || r.Header.Get("x-workspace-id") != wsA {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"workspaceId":{"value":"` + wsA + `"},"overallState":"DIAGNOSTIC_HEALTH_STATE_HEALTHY"}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer realAPISrv.Close()
+
+	realProxy := &mockDisposableProxyTarget{}
+	realAPIVerdict, err := svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"green",
+		greenDigest,
+		realAPISrv.URL,
+		"valid-real-api-token",
+		wsA,
+		15000000000,
+		2420,
+		realProxy,
+	)
+	if err != nil {
+		t.Fatalf("ExecuteLiveBlueGreenReleaseSmokeRehearsal against real cmd/api routes failed: %v", err)
+	}
+	if !realAPIVerdict.CandidatePromoted || !realAPIVerdict.ProxyUpstreamSwitched || realProxy.switchedSlot != "green" {
+		t.Fatalf("expected promotion on real cmd/api routes, got %+v (proxy=%+v)", realAPIVerdict, realProxy)
+	}
+
+	// Negative test against real cmd/api routes: invalid Bearer token must fail closed with SMOKE_AUTH_UNAUTHORIZED and roll back.
+	badTokenVerdict, err := svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"blue",
+		liveBlueDigest,
+		realAPISrv.URL,
+		"invalid-token",
+		wsA,
+		15000000000,
+		2420,
+		realProxy,
+	)
+	if !errors.Is(err, internaladmin.ErrReleaseSmokeFailed) || badTokenVerdict.FailureCode != "SMOKE_AUTH_UNAUTHORIZED" || !badTokenVerdict.RollbackTriggered {
+		t.Fatalf("expected SMOKE_AUTH_UNAUTHORIZED rollback on invalid token against real cmd/api routes, got verdict=%+v err=%v", badTokenVerdict, err)
 	}
 
 	// Restore activeSlot to green for subsequent table-driven negative tests.
@@ -1049,4 +1163,29 @@ func (m *mockDisposableProxyTarget) SwitchUpstream(_ context.Context, slot, imag
 func (m *mockDisposableProxyTarget) RollbackUpstream(_ context.Context, previousSlot, _ string) error {
 	m.rolledBackSlot = previousSlot
 	return nil
+}
+
+func openOptionalPostgresForRehearsalTest(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	dsn := strings.TrimSpace(os.Getenv("CREATIVANTA_TEST_DATABASE_URL"))
+	if dsn == "" {
+		dsn = strings.TrimSpace(os.Getenv("CREATIVANTA_TEST_POSTGRES_DSN"))
+	}
+	if dsn == "" {
+		dsn = "postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable"
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		return nil
+	}
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil
+	}
+	t.Cleanup(func() {
+		pool.Close()
+	})
+	return pool
 }

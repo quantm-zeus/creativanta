@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 	adminv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1/adminv1connect"
 	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
@@ -230,12 +231,14 @@ func (s *Service) SeedIssue(ctx context.Context, row tenantdb.DiagnosticRecordRo
 
 	if s.Beginner != nil {
 		if actor, ok := ActorFromContext(ctx); ok && actor.WorkspaceID == row.WorkspaceID {
-			_ = tenantdb.WithTx(ctx, s.Beginner, tenantdb.Scope{
+			var persisted tenantdb.DiagnosticRecordRow
+			err := tenantdb.WithTx(ctx, s.Beginner, tenantdb.Scope{
 				WorkspaceID:             actor.WorkspaceID,
 				UserID:                  actor.UserID,
 				RequireActiveMembership: true,
 			}, func(txCtx context.Context, q *tenantdb.Queries) error {
-				_, err := q.InsertDiagnosticRecord(txCtx, tenantdb.InsertDiagnosticRecordParams{
+				var txErr error
+				persisted, txErr = q.InsertDiagnosticRecord(txCtx, tenantdb.InsertDiagnosticRecordParams{
 					DiagnosticsID:         row.DiagnosticsID,
 					WorkspaceID:           row.WorkspaceID,
 					ScopeType:             row.ScopeType,
@@ -249,11 +252,55 @@ func (s *Service) SeedIssue(ctx context.Context, row tenantdb.DiagnosticRecordRo
 					RepairPath:            row.RepairPath,
 					Status:                row.Status,
 				})
-				return err
+				return txErr
 			})
+			if err != nil {
+				return tenantdb.DiagnosticRecordRow{}, err
+			}
+			return persisted, nil
 		}
 	}
 	return cp, nil
+}
+
+func (s *Service) loadWorkspaceDiagnosticsState(ctx context.Context, actor ActorContext) ([]tenantdb.DiagnosticRecordRow, int32, int32, error) {
+	if s.Beginner != nil {
+		var records []tenantdb.DiagnosticRecordRow
+		var unknownCount, dlqCount int32
+		err := tenantdb.WithTx(ctx, s.Beginner, tenantdb.Scope{
+			WorkspaceID:             actor.WorkspaceID,
+			UserID:                  actor.UserID,
+			RequireActiveMembership: true,
+		}, func(txCtx context.Context, q *tenantdb.Queries) error {
+			var txErr error
+			records, txErr = q.ListDiagnosticRecords(txCtx, actor.WorkspaceID)
+			if txErr != nil {
+				return txErr
+			}
+			unknownCount, txErr = q.CountUnknownExternalEffects(txCtx, actor.WorkspaceID)
+			if txErr != nil {
+				return txErr
+			}
+			dlqCount, txErr = q.CountPendingDLQEntries(txCtx, actor.WorkspaceID)
+			return txErr
+		})
+		if err != nil {
+			return nil, 0, 0, err
+		}
+		return records, unknownCount, dlqCount, nil
+	}
+
+	s.mu.Lock()
+	wsIssues := s.issues[actor.WorkspaceID]
+	records := make([]tenantdb.DiagnosticRecordRow, 0, len(wsIssues))
+	for _, iss := range wsIssues {
+		records = append(records, *iss)
+	}
+	s.mu.Unlock()
+
+	unknownCount := int32(s.EffectGuard.CountUnknownEffects(actor.WorkspaceID))
+	dlqCount := int32(s.DLQ.CountPendingByWorkspace(actor.WorkspaceID))
+	return records, unknownCount, dlqCount, nil
 }
 
 // GetOverview implements DiagnosticsService/GetOverview (requires diagnostics:read).
@@ -270,11 +317,14 @@ func (s *Service) GetOverview(
 		return nil, toConnectError(err)
 	}
 
-	s.mu.Lock()
-	wsIssues := s.issues[actor.WorkspaceID]
+	records, unknownCount, dlqCount, err := s.loadWorkspaceDiagnosticsState(ctx, actor)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+
 	var activeCount, criticalCount, warningCount int32
 	affectedCategories := make(map[string]struct{})
-	for _, iss := range wsIssues {
+	for _, iss := range records {
 		if iss.Status == "resolved" || iss.Status == "closed" {
 			continue
 		}
@@ -287,13 +337,10 @@ func (s *Service) GetOverview(
 			warningCount++
 		}
 	}
-	s.mu.Unlock()
 
-	unknownCount := int32(s.EffectGuard.CountUnknownEffects(actor.WorkspaceID))
 	if unknownCount > 0 {
 		affectedCategories["outbox_external_effects"] = struct{}{}
 	}
-	dlqCount := int32(s.DLQ.CountPendingByWorkspace(actor.WorkspaceID))
 	if dlqCount > 0 {
 		affectedCategories["outbox_external_effects"] = struct{}{}
 	}
@@ -340,8 +387,13 @@ func (s *Service) GetHealthGrid(
 		return nil, toConnectError(err)
 	}
 
+	records, unknownCount, dlqCount, err := s.loadWorkspaceDiagnosticsState(ctx, actor)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+
 	now := s.Now()
-	cards := s.buildHealthCategoryCards(actor.WorkspaceID, now)
+	cards := buildCategoryCardsFromState(records, unknownCount, dlqCount, now)
 	return connect.NewResponse(&adminv1.GetHealthGridResponse{
 		WorkspaceId: &commonv1.UUID{Value: actor.WorkspaceID},
 		Categories:  cards,
@@ -363,11 +415,14 @@ func (s *Service) ListIssues(
 		return nil, toConnectError(err)
 	}
 
-	s.mu.Lock()
-	wsIssues := s.issues[actor.WorkspaceID]
+	records, _, _, err := s.loadWorkspaceDiagnosticsState(ctx, actor)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+
 	var out []*adminv1.DiagnosticIssue
-	for _, iss := range wsIssues {
-		protoIss := toProtoIssue(*iss)
+	for _, iss := range records {
+		protoIss := toProtoIssue(iss)
 		if req.Msg != nil {
 			if req.Msg.GetSeverityFilter() != adminv1.DiagnosticSeverity_DIAGNOSTIC_SEVERITY_UNSPECIFIED &&
 				protoIss.GetSeverity() != req.Msg.GetSeverityFilter() {
@@ -383,7 +438,6 @@ func (s *Service) ListIssues(
 		}
 		out = append(out, protoIss)
 	}
-	s.mu.Unlock()
 
 	total := int64(len(out))
 	return connect.NewResponse(&adminv1.ListIssuesResponse{
@@ -432,9 +486,13 @@ func (s *Service) RunFullCheck(
 	}
 	s.mu.Unlock()
 
+	records, unknownEffects, dlqCount, err := s.loadWorkspaceDiagnosticsState(ctx, actor)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+
 	now := s.Now()
-	unknownEffects := int32(s.EffectGuard.CountUnknownEffects(actor.WorkspaceID))
-	cards := s.buildHealthCategoryCards(actor.WorkspaceID, now)
+	cards := buildCategoryCardsFromState(records, unknownEffects, dlqCount, now)
 
 	var openIssues int32
 	overall := adminv1.DiagnosticHealthStatus_DIAGNOSTIC_HEALTH_STATUS_HEALTHY
@@ -449,6 +507,27 @@ func (s *Service) RunFullCheck(
 	}
 
 	checkID := s.IDGenerator()
+	if s.Beginner != nil {
+		if err := tenantdb.WithTx(ctx, s.Beginner, tenantdb.Scope{
+			WorkspaceID:             actor.WorkspaceID,
+			UserID:                  actor.UserID,
+			RequireActiveMembership: true,
+		}, func(txCtx context.Context, q *tenantdb.Queries) error {
+			return q.InsertAuditEvent(txCtx, tenantdb.AuditEventParams{
+				AuditEventID: checkID,
+				WorkspaceID:  actor.WorkspaceID,
+				ActorUserID:  actor.UserID,
+				ActorType:    "user",
+				Action:       "diagnostics.full_check_completed",
+				ResourceType: "workspace",
+				ResourceID:   actor.WorkspaceID,
+				Reason:       cmdCtx.GetReason(),
+			})
+		}); err != nil {
+			return nil, toConnectError(err)
+		}
+	}
+
 	resp := &adminv1.RunFullCheckResponse{
 		CheckRunId:             &commonv1.UUID{Value: checkID},
 		OverallStatus:          overall,
@@ -527,15 +606,36 @@ func (s *Service) ExecuteRepairStep(
 		cloned.Replayed = true
 		return connect.NewResponse(cloned), nil
 	}
-
-	wsIssues := s.issues[actor.WorkspaceID]
-	issue, exists := wsIssues[diagID]
-	if !exists {
-		s.mu.Unlock()
-		return nil, toConnectError(ErrIssueNotFound)
-	}
-	issueCopy := *issue
 	s.mu.Unlock()
+
+	var issueCopy tenantdb.DiagnosticRecordRow
+	if s.Beginner != nil {
+		err := tenantdb.WithTx(ctx, s.Beginner, tenantdb.Scope{
+			WorkspaceID:             actor.WorkspaceID,
+			UserID:                  actor.UserID,
+			RequireActiveMembership: true,
+		}, func(txCtx context.Context, q *tenantdb.Queries) error {
+			var txErr error
+			issueCopy, txErr = q.GetDiagnosticRecord(txCtx, actor.WorkspaceID, diagID)
+			if errors.Is(txErr, pgx.ErrNoRows) {
+				return ErrIssueNotFound
+			}
+			return txErr
+		})
+		if err != nil {
+			return nil, toConnectError(err)
+		}
+	} else {
+		s.mu.Lock()
+		wsIssues := s.issues[actor.WorkspaceID]
+		issue, exists := wsIssues[diagID]
+		if !exists {
+			s.mu.Unlock()
+			return nil, toConnectError(ErrIssueNotFound)
+		}
+		issueCopy = *issue
+		s.mu.Unlock()
+	}
 
 	now := s.Now()
 	var nextStep adminv1.RepairWizardStep
@@ -545,6 +645,10 @@ func (s *Service) ExecuteRepairStep(
 
 	requiresManualReconcile := strings.HasPrefix(issueCopy.RepairPath, "reconcile_external_effect:") ||
 		issueCopy.ErrorType == "external_effect_outcome_unknown"
+
+	var reconcileOpKey string
+	var reconcileTargetStatus string
+	var reconcileVerRef string
 
 	switch step {
 	case adminv1.RepairWizardStep_REPAIR_WIZARD_STEP_VERIFY:
@@ -565,21 +669,36 @@ func (s *Service) ExecuteRepairStep(
 			if verRef == "" {
 				return nil, toConnectError(ErrRepairVerificationRequired)
 			}
+			reconcileVerRef = verRef
 			opKey := strings.TrimPrefix(issueCopy.RepairPath, "reconcile_external_effect:")
 			if opKey != "" && opKey != issueCopy.RepairPath {
+				reconcileOpKey = opKey
+				reconcileTargetStatus = "succeeded"
 				mode := outbox.ReconcileConfirmedSucceeded
 				if req.Msg.GetActionKey() == "confirm_not_executed" {
+					reconcileTargetStatus = "failed"
 					mode = outbox.ReconcileConfirmedNotExecuted
 				}
-				if _, err := s.EffectGuard.ReconcileUnknownEffect(ctx, outbox.ReconcileRequest{
-					WorkspaceID:           actor.WorkspaceID,
-					OperationKey:          opKey,
-					ActorID:               actor.UserID,
-					Mode:                  mode,
-					VerificationReference: verRef,
-					Now:                   now,
-				}); err != nil {
-					return nil, toConnectError(err)
+				if s.Beginner == nil {
+					if _, err := s.EffectGuard.ReconcileUnknownEffect(ctx, outbox.ReconcileRequest{
+						WorkspaceID:           actor.WorkspaceID,
+						OperationKey:          opKey,
+						ActorID:               actor.UserID,
+						Mode:                  mode,
+						VerificationReference: verRef,
+						Now:                   now,
+					}); err != nil {
+						return nil, toConnectError(err)
+					}
+				} else if s.EffectGuard != nil {
+					_, _ = s.EffectGuard.ReconcileUnknownEffect(ctx, outbox.ReconcileRequest{
+						WorkspaceID:           actor.WorkspaceID,
+						OperationKey:          opKey,
+						ActorID:               actor.UserID,
+						Mode:                  mode,
+						VerificationReference: verRef,
+						Now:                   now,
+					})
 				}
 			}
 		}
@@ -598,11 +717,46 @@ func (s *Service) ExecuteRepairStep(
 		return nil, toConnectError(ErrInvalidInput)
 	}
 
+	auditID := s.IDGenerator()
+	if s.Beginner != nil {
+		err := tenantdb.WithTx(ctx, s.Beginner, tenantdb.Scope{
+			WorkspaceID:             actor.WorkspaceID,
+			UserID:                  actor.UserID,
+			RequireActiveMembership: true,
+		}, func(txCtx context.Context, q *tenantdb.Queries) error {
+			if reconcileOpKey != "" {
+				if _, err := q.ReconcileUnknownExternalEffect(txCtx, actor.WorkspaceID, reconcileOpKey, reconcileTargetStatus, reconcileVerRef); err != nil {
+					return err
+				}
+			}
+			if _, err := q.UpdateDiagnosticRecordStatus(txCtx, actor.WorkspaceID, diagID, newStatus); err != nil {
+				return err
+			}
+			return q.InsertAuditEvent(txCtx, tenantdb.AuditEventParams{
+				AuditEventID: auditID,
+				WorkspaceID:  actor.WorkspaceID,
+				ActorUserID:  actor.UserID,
+				ActorType:    "user",
+				Action:       "diagnostics.repair_step:" + step.String(),
+				ResourceType: "diagnostics_record",
+				ResourceID:   diagID,
+				Reason:       req.Msg.GetVerificationReference(),
+			})
+		})
+		if err != nil {
+			return nil, toConnectError(err)
+		}
+	}
+
 	s.mu.Lock()
-	issue.Status = newStatus
-	issue.UpdatedAt = now
-	if resolved {
-		issue.ResolvedAt = &now
+	if wsIssues, ok := s.issues[actor.WorkspaceID]; ok {
+		if issue, exists := wsIssues[diagID]; exists {
+			issue.Status = newStatus
+			issue.UpdatedAt = now
+			if resolved {
+				issue.ResolvedAt = &now
+			}
+		}
 	}
 	resp := &adminv1.ExecuteRepairStepResponse{
 		DiagnosticsId:    &commonv1.UUID{Value: diagID},
@@ -619,7 +773,7 @@ func (s *Service) ExecuteRepairStep(
 		response:    resp,
 	}
 	s.audits = append(s.audits, outbox.AuditLogEntry{
-		AuditEventID: s.IDGenerator(),
+		AuditEventID: auditID,
 		WorkspaceID:  actor.WorkspaceID,
 		ActorID:      actor.UserID,
 		ActorType:    "user",
@@ -631,27 +785,14 @@ func (s *Service) ExecuteRepairStep(
 	})
 	s.mu.Unlock()
 
-	if s.Beginner != nil {
-		_ = tenantdb.WithTx(ctx, s.Beginner, tenantdb.Scope{
-			WorkspaceID:             actor.WorkspaceID,
-			UserID:                  actor.UserID,
-			RequireActiveMembership: true,
-		}, func(txCtx context.Context, q *tenantdb.Queries) error {
-			_, err := q.UpdateDiagnosticRecordStatus(txCtx, actor.WorkspaceID, diagID, newStatus)
-			return err
-		})
-	}
-
 	return connect.NewResponse(resp), nil
 }
 
-func (s *Service) buildHealthCategoryCards(workspaceID string, now time.Time) []*adminv1.HealthCategoryCard {
-	s.mu.Lock()
-	wsIssues := s.issues[workspaceID]
+func buildCategoryCardsFromState(records []tenantdb.DiagnosticRecordRow, unk, dlq int32, now time.Time) []*adminv1.HealthCategoryCard {
 	countsByCat := make(map[string]int32)
 	worstByCat := make(map[string]adminv1.DiagnosticHealthStatus)
 
-	for _, iss := range wsIssues {
+	for _, iss := range records {
 		if iss.Status == "resolved" || iss.Status == "closed" {
 			continue
 		}
@@ -662,10 +803,7 @@ func (s *Service) buildHealthCategoryCards(workspaceID string, now time.Time) []
 			worstByCat[cat] = st
 		}
 	}
-	s.mu.Unlock()
 
-	unk := int32(s.EffectGuard.CountUnknownEffects(workspaceID))
-	dlq := int32(s.DLQ.CountPendingByWorkspace(workspaceID))
 	if unk+dlq > 0 {
 		countsByCat["outbox_external_effects"] += unk + dlq
 		if worstByCat["outbox_external_effects"] < adminv1.DiagnosticHealthStatus_DIAGNOSTIC_HEALTH_STATUS_WARNING {
@@ -694,6 +832,19 @@ func (s *Service) buildHealthCategoryCards(workspaceID string, now time.Time) []
 		})
 	}
 	return cards
+}
+
+func (s *Service) buildHealthCategoryCards(workspaceID string, now time.Time) []*adminv1.HealthCategoryCard {
+	s.mu.Lock()
+	wsIssues := s.issues[workspaceID]
+	records := make([]tenantdb.DiagnosticRecordRow, 0, len(wsIssues))
+	for _, iss := range wsIssues {
+		records = append(records, *iss)
+	}
+	s.mu.Unlock()
+	unk := int32(s.EffectGuard.CountUnknownEffects(workspaceID))
+	dlq := int32(s.DLQ.CountPendingByWorkspace(workspaceID))
+	return buildCategoryCardsFromState(records, unk, dlq, now)
 }
 
 func mapScopeToCategory(scopeType string) string {
@@ -790,7 +941,7 @@ func toConnectError(err error) error {
 	switch {
 	case errors.Is(err, ErrUnauthenticated):
 		return connect.NewError(connect.CodeUnauthenticated, err)
-	case errors.Is(err, rbac.ErrPermissionDenied), errors.Is(err, tenantdb.ErrScopeMismatch):
+	case errors.Is(err, rbac.ErrPermissionDenied), errors.Is(err, tenantdb.ErrScopeMismatch), errors.Is(err, tenantdb.ErrMembershipRevokedOrMissing):
 		return connect.NewError(connect.CodePermissionDenied, err)
 	case errors.Is(err, ErrIssueNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
@@ -801,7 +952,7 @@ func toConnectError(err error) error {
 	case errors.Is(err, ErrInvalidInput), errors.Is(err, tenantdb.ErrInvalidTenantScope):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	default:
-		return connect.NewError(connect.CodeInternal, err)
+		return connect.NewError(connect.CodeUnavailable, err)
 	}
 }
 
