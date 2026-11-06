@@ -213,16 +213,31 @@ func (m *MemoryStore) FindPostingByOrigin(_ context.Context, workspaceID, origin
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
+	reversedIDs := make(map[string]bool)
+	for _, p := range m.postings {
+		if p.WorkspaceID == workspaceID && p.ReversalOf != nil && *p.ReversalOf != "" {
+			reversedIDs[*p.ReversalOf] = true
+		}
+	}
+
+	var best *FinancialPosting
 	for _, p := range m.postings {
 		if p.WorkspaceID == workspaceID &&
 			p.OriginType == originType &&
 			p.OriginID == originID &&
-			p.Component == component {
-			cp := *p
-			return &cp, nil
+			(component == "" || p.Component == component) &&
+			p.ReversalOf == nil &&
+			!reversedIDs[p.PostingID] {
+			if best == nil || p.CreatedAt.After(best.CreatedAt) || (p.CreatedAt.Equal(best.CreatedAt) && p.PostingID > best.PostingID) {
+				cp := *p
+				best = &cp
+			}
 		}
 	}
-	return nil, ErrPostingNotFound
+	if best == nil {
+		return nil, ErrPostingNotFound
+	}
+	return best, nil
 }
 
 func (m *MemoryStore) CreateCostItem(_ context.Context, item *CostItem) error {
@@ -596,6 +611,23 @@ func (m *MemoryStore) ListSnapshots(_ context.Context, workspaceID, scopeType st
 // MemoryStore: Orders
 // ----------------------------------------------------------------------------
 
+func orderStoreKey(workspaceID, orderID string) string {
+	if workspaceID == "" {
+		return orderID
+	}
+	return workspaceID + ":" + orderID
+}
+
+func (m *MemoryStore) findOrderUnlocked(workspaceID, orderID string) *Order {
+	if o, ok := m.orders[orderStoreKey(workspaceID, orderID)]; ok && o.WorkspaceID == workspaceID {
+		return o
+	}
+	if o, ok := m.orders[orderID]; ok && o.WorkspaceID == workspaceID {
+		return o
+	}
+	return nil
+}
+
 func (m *MemoryStore) CreateOrder(_ context.Context, o *Order) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -607,7 +639,20 @@ func (m *MemoryStore) CreateOrder(_ context.Context, o *Order) error {
 		o.OrderedAt = time.Now().UTC()
 	}
 	cp := *o
-	m.orders[o.OrderID] = &cp
+	if o.COGSAmount != nil {
+		cogsCopy := *o.COGSAmount
+		cp.COGSAmount = &cogsCopy
+	}
+	if existing := m.findOrderUnlocked(o.WorkspaceID, o.OrderID); existing != nil {
+		if cp.MatchedAmount.IsZero() && !existing.MatchedAmount.IsZero() {
+			cp.MatchedAmount = existing.MatchedAmount
+		}
+		if (cp.ReconciliationState == "" || cp.ReconciliationState == ReconciliationImportedOnly) &&
+			existing.ReconciliationState != "" && existing.ReconciliationState != ReconciliationImportedOnly {
+			cp.ReconciliationState = existing.ReconciliationState
+		}
+	}
+	m.orders[orderStoreKey(o.WorkspaceID, o.OrderID)] = &cp
 	return nil
 }
 
@@ -615,20 +660,42 @@ func (m *MemoryStore) GetOrder(_ context.Context, workspaceID, orderID string) (
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	o, ok := m.orders[orderID]
-	if !ok || o.WorkspaceID != workspaceID {
+	o := m.findOrderUnlocked(workspaceID, orderID)
+	if o == nil {
 		return nil, ErrOrderNotFound
 	}
 	cp := *o
+	if o.COGSAmount != nil {
+		cogsCopy := *o.COGSAmount
+		cp.COGSAmount = &cogsCopy
+	}
 	return &cp, nil
+}
+
+func (m *MemoryStore) ListOrders(_ context.Context, workspaceID string) ([]Order, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var result []Order
+	for _, o := range m.orders {
+		if o.WorkspaceID == workspaceID {
+			cp := *o
+			if o.COGSAmount != nil {
+				cogsCopy := *o.COGSAmount
+				cp.COGSAmount = &cogsCopy
+			}
+			result = append(result, cp)
+		}
+	}
+	return result, nil
 }
 
 func (m *MemoryStore) UpdateOrderMatched(_ context.Context, workspaceID, orderID string, matchedAmount tenantdb.ExactDecimal, newState string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	o, ok := m.orders[orderID]
-	if !ok || o.WorkspaceID != workspaceID {
+	o := m.findOrderUnlocked(workspaceID, orderID)
+	if o == nil {
 		return ErrOrderNotFound
 	}
 	if matchedAmount.Cmp(o.Amount) > 0 {
@@ -776,8 +843,8 @@ func (m *MemoryStore) AtomicMatch(
 		return nil, nil, nil, errors.New("finance: settlement line not found")
 	}
 
-	order, ok := m.orders[orderID]
-	if !ok || order.WorkspaceID != workspaceID {
+	order := m.findOrderUnlocked(workspaceID, orderID)
+	if order == nil {
 		return nil, nil, nil, ErrOrderNotFound
 	}
 
@@ -1025,18 +1092,51 @@ func (m *MemoryStore) ListProofBundles(_ context.Context, workspaceID string, fi
 // MemoryStore: Data Gaps & Repair Queue (M19 / M01)
 // ----------------------------------------------------------------------------
 
+func (m *MemoryStore) orderHasActiveCOGSUnlocked(workspaceID, orderID string, reversedIDs map[string]bool) bool {
+	if o := m.findOrderUnlocked(workspaceID, orderID); o != nil && o.COGSAmount != nil && !o.COGSAmount.IsZero() {
+		return true
+	}
+	for _, p := range m.postings {
+		if p.WorkspaceID != workspaceID || p.ReversalOf != nil || reversedIDs[p.PostingID] || p.Component != ComponentCOGS {
+			continue
+		}
+		if p.OriginType == "order" && p.OriginID == orderID && !p.Amount.IsZero() {
+			return true
+		}
+		if p.OriginType == "cost_item" && !p.Amount.IsZero() {
+			if ci, ok := m.costItems[p.OriginID]; ok &&
+				ci.WorkspaceID == workspaceID &&
+				ci.CostState != CostStateSuperseded &&
+				ci.RelatedScopeType == "order" &&
+				ci.RelatedScopeID == orderID {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (m *MemoryStore) ListDataGaps(_ context.Context, workspaceID string, filter DataGapFilter, limit, offset int) ([]DataGapItem, int64, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	var items []DataGapItem
 
-	// 1. Missing COGS on completed orders
+	reversedIDs := make(map[string]bool)
+	for _, p := range m.postings {
+		if p.WorkspaceID == workspaceID && p.ReversalOf != nil && *p.ReversalOf != "" {
+			reversedIDs[*p.ReversalOf] = true
+		}
+	}
+
+	// 1. Missing COGS on completed orders (both stored orders and recognized order revenue postings)
+	seenMissingCOGSOrders := make(map[string]bool)
 	for _, order := range m.orders {
 		if order.WorkspaceID != workspaceID {
 			continue
 		}
-		if order.LifecycleState == "completed" && (order.COGSAmount == nil || order.COGSAmount.IsZero()) {
+		if order.LifecycleState == "completed" && !m.orderHasActiveCOGSUnlocked(workspaceID, order.OrderID, reversedIDs) {
+			seenMissingCOGSOrders[order.OrderID] = true
 			items = append(items, DataGapItem{
 				GapID:              "gap-cogs-" + order.OrderID,
 				GapType:            "missing_cogs",
@@ -1051,6 +1151,30 @@ func (m *MemoryStore) ListDataGaps(_ context.Context, workspaceID string, filter
 				RepairCTARoute:     "/finance/costs?order_id=" + order.OrderID,
 				RequiredPermission: "cost:manage",
 			})
+		}
+	}
+	for _, p := range m.postings {
+		if p.WorkspaceID != workspaceID || p.ReversalOf != nil || reversedIDs[p.PostingID] {
+			continue
+		}
+		if p.OriginType == "order" && p.Component == ComponentRevenue && !seenMissingCOGSOrders[p.OriginID] {
+			if !m.orderHasActiveCOGSUnlocked(workspaceID, p.OriginID, reversedIDs) {
+				seenMissingCOGSOrders[p.OriginID] = true
+				items = append(items, DataGapItem{
+					GapID:              "gap-cogs-" + p.OriginID,
+					GapType:            "missing_cogs",
+					Severity:           "critical",
+					Title:              "Đơn hàng thiếu giá vốn (COGS)",
+					Description:        "Đơn hàng hoàn tất nhưng chưa có bản ghi giá vốn thực tế.",
+					RelatedObjectType:  "order",
+					RelatedObjectID:    p.OriginID,
+					MonetaryAmount:     p.Amount,
+					UnresolvedSince:    p.EffectiveAt,
+					RepairCTALabel:     "Nhập giá vốn",
+					RepairCTARoute:     "/finance/costs?order_id=" + p.OriginID,
+					RequiredPermission: "cost:manage",
+				})
+			}
 		}
 	}
 
@@ -1392,6 +1516,12 @@ func (p *PostgresStore) FindPostingByOrigin(ctx context.Context, workspaceID, or
 		       exchange_rate_snapshot, reversal_of, effective_at, created_at
 		FROM financial_postings
 		WHERE workspace_id = $1 AND origin_type = $2 AND origin_id = $3 AND component = $4
+		  AND reversal_of IS NULL
+		  AND NOT EXISTS (
+		      SELECT 1 FROM financial_postings r
+		      WHERE r.workspace_id = financial_postings.workspace_id
+		        AND r.reversal_of = financial_postings.posting_id
+		  )
 		ORDER BY created_at DESC
 		LIMIT 1
 	`

@@ -180,6 +180,7 @@ func ComputeNetProfit(
 // ActivePostingSummary aggregates postings after taking into account reversals.
 type ActivePostingSummary struct {
 	ActivePostings   []FinancialPosting
+	Currency         string
 	GrossRevenue     tenantdb.ExactDecimal
 	PlatformFees     tenantdb.ExactDecimal
 	ShippingCosts    tenantdb.ExactDecimal
@@ -195,6 +196,13 @@ type ActivePostingSummary struct {
 	Confidence       string
 }
 
+func postingEffectiveBaseCurrency(p FinancialPosting) string {
+	if base := strings.ToUpper(strings.TrimSpace(p.ExchangeRateSnapshot.BaseCurrency)); base != "" {
+		return base
+	}
+	return strings.ToUpper(strings.TrimSpace(p.Currency))
+}
+
 // SummarizePostings filters out reversed postings and computes aggregated totals and confidence.
 func SummarizePostings(postings []FinancialPosting, hasMissingCOGS bool) (*ActivePostingSummary, error) {
 	// First identify all reversed posting IDs
@@ -207,6 +215,7 @@ func SummarizePostings(postings []FinancialPosting, hasMissingCOGS bool) (*Activ
 
 	// Active postings are those not reversed and not reversals themselves
 	var active []FinancialPosting
+	resolvedCurrency := ""
 	for _, p := range postings {
 		if p.ReversalOf != nil && *p.ReversalOf != "" {
 			continue // Skip the reversal entry itself when computing net component sums
@@ -214,11 +223,23 @@ func SummarizePostings(postings []FinancialPosting, hasMissingCOGS bool) (*Activ
 		if reversedIDs[p.PostingID] {
 			continue // Reversed entry is excluded
 		}
+		effCurr := postingEffectiveBaseCurrency(p)
+		if effCurr != "" {
+			if resolvedCurrency == "" {
+				resolvedCurrency = effCurr
+			} else if effCurr != resolvedCurrency {
+				return nil, fmt.Errorf("%w: cannot aggregate mixed base currencies %s and %s without conversion", ErrCurrencyMismatch, resolvedCurrency, effCurr)
+			}
+		}
 		active = append(active, p)
+	}
+	if resolvedCurrency == "" {
+		resolvedCurrency = "VND"
 	}
 
 	summary := &ActivePostingSummary{
 		ActivePostings:   active,
+		Currency:         resolvedCurrency,
 		GrossRevenue:     tenantdb.ZeroDecimal(),
 		PlatformFees:     tenantdb.ZeroDecimal(),
 		ShippingCosts:    tenantdb.ZeroDecimal(),

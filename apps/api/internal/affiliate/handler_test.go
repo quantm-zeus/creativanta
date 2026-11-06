@@ -81,6 +81,31 @@ func TestAffiliateConnectRPCHandlers(t *testing.T) {
 	}
 
 	// 5. Calculate & Confirm Commission (after 15-day hold period elapses)
+	// Calling CalculateCommission via RPC before order is verified must fail closed (F16)
+	if _, err := commHandler.CalculateCommission(ctx, connect.NewRequest(&commercev1.CalculateCommissionRequest{
+		WorkspaceId:     wsID,
+		AffiliateLinkId: linkID,
+		OrderId:         "ord-rpc-unverified",
+		CreatorEntityId: "creator-uuid-1",
+		OrderAmount:     "9999999.000000",
+		Currency:        "VND",
+		HoldPeriodDays:  15,
+	})); err == nil {
+		t.Fatalf("expected CalculateCommission RPC on unverified order to fail closed")
+	}
+
+	ordAmtDec, _ := tenantdb.ParseExactDecimal("400000.000000")
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-rpc-01",
+		WorkspaceID:    wsID,
+		GrossAmount:    ordAmtDec,
+		RefundedAmount: tenantdb.ZeroDecimal(),
+		Currency:       "VND",
+		LifecycleState: "completed",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder failed: %v", err)
+	}
+
 	calcResp, err := commHandler.CalculateCommission(ctx, connect.NewRequest(&commercev1.CalculateCommissionRequest{
 		WorkspaceId:     wsID,
 		AffiliateLinkId: linkID,
@@ -130,6 +155,27 @@ func TestAffiliateConnectRPCHandlers(t *testing.T) {
 		t.Fatalf("CreatePayoutBatch failed: %v", err)
 	}
 	payoutID := payoutResp.Msg.Payout.PayoutId
+
+	// Executing with fabricated settlement reference must fail closed via RPC (F17)
+	if _, err := payoutHandler.ExecutePayoutBatch(ctx, connect.NewRequest(&commercev1.ExecutePayoutBatchRequest{
+		WorkspaceId:  wsID,
+		PayoutId:     payoutID,
+		SettlementId: "settle-fabricated-999",
+	})); err == nil {
+		t.Fatalf("expected ExecutePayoutBatch RPC with fabricated settlement to fail closed")
+	}
+
+	payoutTotalDec, _ := tenantdb.ParseExactDecimal("50000.000000")
+	if err := svc.RegisterVerifiedSettlement(ctx, &VerifiedSettlement{
+		SettlementID:       "settle-123",
+		WorkspaceID:        wsID,
+		CreatorEntityID:    "creator-uuid-1",
+		NetAmount:          payoutTotalDec,
+		Currency:           "VND",
+		VerificationStatus: "verified",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedSettlement failed: %v", err)
+	}
 
 	execResp, err := payoutHandler.ExecutePayoutBatch(ctx, connect.NewRequest(&commercev1.ExecutePayoutBatchRequest{
 		WorkspaceId:  wsID,

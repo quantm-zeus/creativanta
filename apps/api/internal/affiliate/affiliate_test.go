@@ -71,6 +71,16 @@ func TestAcceptanceTarget1_CreatorIncomeDistinctFromSellerExpense(t *testing.T) 
 
 	// 2. Calculate commission for an order of 1,000,000 VND -> 100,000 VND commission
 	orderAmount := mustDecimal(t, "1000000.000000")
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-101",
+		WorkspaceID:    wsID,
+		GrossAmount:    orderAmount,
+		RefundedAmount: tenantdb.ZeroDecimal(),
+		Currency:       "VND",
+		LifecycleState: "completed",
+	}); err != nil {
+		t.Fatalf("failed to register verified order: %v", err)
+	}
 	comm, err := svc.CalculateCommission(ctx, wsID, link.AffiliateLinkID, "ord-101", nil, orderAmount, "VND", 15)
 	if err != nil {
 		t.Fatalf("failed to calculate commission: %v", err)
@@ -512,6 +522,16 @@ func TestPayoutBatchAndProofGeneration(t *testing.T) {
 
 	// 3. Execute Payout Batch with Settlement ID
 	settlementID := newUUID()
+	if err := svc.RegisterVerifiedSettlement(ctx, &VerifiedSettlement{
+		SettlementID:       settlementID,
+		WorkspaceID:        wsID,
+		CreatorEntityID:    creatorID,
+		NetAmount:          expectedTotal,
+		Currency:           "VND",
+		VerificationStatus: "verified",
+	}); err != nil {
+		t.Fatalf("failed to register verified settlement: %v", err)
+	}
 	executed, err := svc.ExecutePayoutBatch(ctx, wsID, payout.PayoutID, settlementID)
 	if err != nil {
 		t.Fatalf("failed to execute payout: %v", err)
@@ -654,6 +674,16 @@ func TestPayoutBatchCommissionDedupHoldPeriodAndSettlementVerification(t *testin
 	if err != nil {
 		t.Fatalf("CreatePayoutBatch for creatorB failed: %v", err)
 	}
+	if err := svc.RegisterVerifiedSettlement(ctx, &VerifiedSettlement{
+		SettlementID:       "settle-verified-b",
+		WorkspaceID:        wsID,
+		CreatorEntityID:    creatorB,
+		NetAmount:          mustDecimal(t, "150000.000000"),
+		Currency:           "VND",
+		VerificationStatus: "verified",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedSettlement b: %v", err)
+	}
 	if _, err := svc.ClawbackCommission(ctx, wsID, commB.CommissionID, "order_refunded", "150000.000000"); err != nil {
 		t.Fatalf("ClawbackCommission failed: %v", err)
 	}
@@ -662,8 +692,293 @@ func TestPayoutBatchCommissionDedupHoldPeriodAndSettlementVerification(t *testin
 	}
 
 	// 6. ExecutePayoutBatch on valid batch1 with verified settlement succeeds
+	if err := svc.RegisterVerifiedSettlement(ctx, &VerifiedSettlement{
+		SettlementID:       "settle-verified-a",
+		WorkspaceID:        wsID,
+		CreatorEntityID:    creatorA,
+		NetAmount:          mustDecimal(t, "250000.000000"),
+		Currency:           "VND",
+		VerificationStatus: "verified",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedSettlement a: %v", err)
+	}
 	execBatch1, err := svc.ExecutePayoutBatch(ctx, wsID, batch1.PayoutID, "settle-verified-a")
 	if err != nil || execBatch1.Status != PayoutCompleted {
 		t.Fatalf("expected PayoutCompleted for batch1, got status=%v err=%v", execBatch1, err)
+	}
+}
+
+func TestF16_UnverifiedOrderAndReplayCommissionRejected(t *testing.T) {
+	ctx := context.Background()
+	store := NewMemoryStore()
+	sink := &mockSink{}
+	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	svc := NewService(store, nil, sink, func() time.Time { return now })
+
+	wsID := "019086a1-7c3e-7000-8000-000000000010"
+	otherWS := "019086a1-7c3e-7000-8000-000000000099"
+	prodID := newUUID()
+
+	linkA, err := svc.CreateLink(ctx, &AffiliateLink{
+		WorkspaceID:    wsID,
+		ProductID:      &prodID,
+		Platform:       "shopee",
+		OriginalURL:    "https://shopee.vn/product/f16-a",
+		CommissionRate: mustDecimal(t, "10.00"),
+	})
+	if err != nil {
+		t.Fatalf("CreateLink A: %v", err)
+	}
+	linkB, err := svc.CreateLink(ctx, &AffiliateLink{
+		WorkspaceID:    wsID,
+		ProductID:      &prodID,
+		Platform:       "shopee",
+		OriginalURL:    "https://shopee.vn/product/f16-b",
+		CommissionRate: mustDecimal(t, "15.00"),
+	})
+	if err != nil {
+		t.Fatalf("CreateLink B: %v", err)
+	}
+
+	// 1. Unverified / non-existent order must fail closed
+	if _, err := svc.CalculateCommission(ctx, wsID, linkA.AffiliateLinkID, "ord-fabricated-999", nil, mustDecimal(t, "9999999.000000"), "VND", 15); !errors.Is(err, ErrOrderNotVerified) {
+		t.Fatalf("expected ErrOrderNotVerified for non-existent order, got %v", err)
+	}
+
+	// 2. Order belonging to another tenant (otherWS) must fail closed when queried from wsID
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-other-tenant",
+		WorkspaceID:    otherWS,
+		GrossAmount:    mustDecimal(t, "1000000.000000"),
+		Currency:       "VND",
+		LifecycleState: "completed",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder otherWS: %v", err)
+	}
+	if _, err := svc.CalculateCommission(ctx, wsID, linkA.AffiliateLinkID, "ord-other-tenant", nil, mustDecimal(t, "1000000.000000"), "VND", 15); !errors.Is(err, ErrOrderNotVerified) {
+		t.Fatalf("expected ErrOrderNotVerified for cross-tenant order, got %v", err)
+	}
+
+	// 3. Unpaid order ("unpaid" / "pending_payment" / "created") must fail closed
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-unpaid",
+		WorkspaceID:    wsID,
+		GrossAmount:    mustDecimal(t, "500000.000000"),
+		Currency:       "VND",
+		LifecycleState: "unpaid",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder unpaid: %v", err)
+	}
+	if _, err := svc.CalculateCommission(ctx, wsID, linkA.AffiliateLinkID, "ord-unpaid", nil, mustDecimal(t, "500000.000000"), "VND", 15); !errors.Is(err, ErrOrderIneligible) {
+		t.Fatalf("expected ErrOrderIneligible for unpaid order, got %v", err)
+	}
+
+	// 4. Fully refunded or cancelled order must fail closed
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-refunded",
+		WorkspaceID:    wsID,
+		GrossAmount:    mustDecimal(t, "500000.000000"),
+		RefundedAmount: mustDecimal(t, "500000.000000"),
+		Currency:       "VND",
+		LifecycleState: "refunded",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder refunded: %v", err)
+	}
+	if _, err := svc.CalculateCommission(ctx, wsID, linkA.AffiliateLinkID, "ord-refunded", nil, mustDecimal(t, "500000.000000"), "VND", 15); !errors.Is(err, ErrOrderIneligible) {
+		t.Fatalf("expected ErrOrderIneligible for refunded order, got %v", err)
+	}
+
+	// 5. Partially refunded order (1,000,000 gross - 300,000 refunded = 700,000 eligible):
+	//    - Forged/inflated client amount (1,000,000 or 5,000,000) must fail closed with ErrOrderAmountMismatch
+	//    - Wrong currency (USD instead of VND) must fail closed with ErrOrderCurrencyMismatch
+	//    - Valid call computes 10% of 700,000 = 70,000 VND
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-partial-ref",
+		WorkspaceID:    wsID,
+		GrossAmount:    mustDecimal(t, "1000000.000000"),
+		RefundedAmount: mustDecimal(t, "300000.000000"),
+		Currency:       "VND",
+		LifecycleState: "partially_refunded",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder partial: %v", err)
+	}
+	if _, err := svc.CalculateCommission(ctx, wsID, linkA.AffiliateLinkID, "ord-partial-ref", nil, mustDecimal(t, "1000000.000000"), "VND", 15); !errors.Is(err, ErrOrderAmountMismatch) {
+		t.Fatalf("expected ErrOrderAmountMismatch when claiming full gross amount on partially refunded order, got %v", err)
+	}
+	if _, err := svc.CalculateCommission(ctx, wsID, linkA.AffiliateLinkID, "ord-partial-ref", nil, mustDecimal(t, "700000.000000"), "USD", 15); !errors.Is(err, ErrOrderCurrencyMismatch) {
+		t.Fatalf("expected ErrOrderCurrencyMismatch on wrong currency, got %v", err)
+	}
+
+	// 6. Concurrent replay on the same order/link must produce a single unique commission
+	const workers = 10
+	var wg sync.WaitGroup
+	results := make([]*AffiliateCommission, workers)
+	errs := make([]error, workers)
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			results[idx], errs[idx] = svc.CalculateCommission(ctx, wsID, linkA.AffiliateLinkID, "ord-partial-ref", nil, mustDecimal(t, "700000.000000"), "VND", 15)
+		}(i)
+	}
+	wg.Wait()
+
+	var firstID string
+	for i := 0; i < workers; i++ {
+		if errs[i] != nil {
+			t.Fatalf("worker %d unexpected error: %v", i, errs[i])
+		}
+		if results[i].CommissionAmount.Cmp(mustDecimal(t, "70000.000000")) != 0 {
+			t.Fatalf("worker %d expected commission 70,000, got %s", i, results[i].CommissionAmount.String())
+		}
+		if firstID == "" {
+			firstID = results[i].CommissionID
+		} else if results[i].CommissionID != firstID {
+			t.Fatalf("duplicate CommissionID created on replay: %s vs %s", firstID, results[i].CommissionID)
+		}
+	}
+
+	allComms, err := store.ListCommissions(ctx, wsID, nil, nil, 100, 0)
+	if err != nil || len(allComms) != 1 {
+		t.Fatalf("expected exactly 1 commission in store after 10 replays, got %d (err=%v)", len(allComms), err)
+	}
+
+	// 7. Attempting to calculate a second commission for the same order under a different link must fail closed
+	if _, err := svc.CalculateCommission(ctx, wsID, linkB.AffiliateLinkID, "ord-partial-ref", nil, mustDecimal(t, "700000.000000"), "VND", 15); !errors.Is(err, ErrDuplicateCommission) {
+		t.Fatalf("expected ErrDuplicateCommission when another link claims same order, got %v", err)
+	}
+}
+
+func TestF17_FabricatedSettlementReferenceRejected(t *testing.T) {
+	ctx := context.Background()
+	store := NewMemoryStore()
+	sink := &mockSink{}
+	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	svc := NewService(store, nil, sink, func() time.Time { return now })
+
+	wsID := "019086a1-7c3e-7000-8000-000000000010"
+	otherWS := "019086a1-7c3e-7000-8000-000000000099"
+	creatorA := newUUID()
+	creatorB := newUUID()
+
+	comm1 := &AffiliateCommission{
+		CommissionID:     newUUID(),
+		WorkspaceID:      wsID,
+		AffiliateLinkID:  newUUID(),
+		OrderID:          "ord-f17-1",
+		CreatorEntityID:  &creatorA,
+		CommissionAmount: mustDecimal(t, "100000.000000"),
+		Currency:         "VND",
+		Status:           CommissionConfirmed,
+		HoldUntil:        now.Add(-24 * time.Hour),
+	}
+	comm2 := &AffiliateCommission{
+		CommissionID:     newUUID(),
+		WorkspaceID:      wsID,
+		AffiliateLinkID:  newUUID(),
+		OrderID:          "ord-f17-2",
+		CreatorEntityID:  &creatorA,
+		CommissionAmount: mustDecimal(t, "100000.000000"),
+		Currency:         "VND",
+		Status:           CommissionConfirmed,
+		HoldUntil:        now.Add(-24 * time.Hour),
+	}
+	_ = store.CreateCommission(ctx, comm1)
+	_ = store.CreateCommission(ctx, comm2)
+
+	batch1, err := svc.CreatePayoutBatch(ctx, wsID, creatorA, []string{comm1.CommissionID})
+	if err != nil {
+		t.Fatalf("CreatePayoutBatch 1: %v", err)
+	}
+	batch2, err := svc.CreatePayoutBatch(ctx, wsID, creatorA, []string{comm2.CommissionID})
+	if err != nil {
+		t.Fatalf("CreatePayoutBatch 2: %v", err)
+	}
+
+	// 1. Fabricated settlement reference not in store must fail closed
+	if _, err := svc.ExecutePayoutBatch(ctx, wsID, batch1.PayoutID, "settle-fake-123"); !errors.Is(err, ErrSettlementRequired) {
+		t.Fatalf("expected ErrSettlementRequired for fabricated settlement_id, got %v", err)
+	}
+
+	// 2. Settlement from another tenant must fail closed
+	_ = svc.RegisterVerifiedSettlement(ctx, &VerifiedSettlement{
+		SettlementID:       "settle-other-ws",
+		WorkspaceID:        otherWS,
+		CreatorEntityID:    creatorA,
+		NetAmount:          mustDecimal(t, "100000.000000"),
+		Currency:           "VND",
+		VerificationStatus: "verified",
+	})
+	if _, err := svc.ExecutePayoutBatch(ctx, wsID, batch1.PayoutID, "settle-other-ws"); !errors.Is(err, ErrSettlementRequired) {
+		t.Fatalf("expected ErrSettlementRequired for cross-tenant settlement, got %v", err)
+	}
+
+	// 3. Settlement with unverified status ("imported_only") must fail closed
+	_ = svc.RegisterVerifiedSettlement(ctx, &VerifiedSettlement{
+		SettlementID:       "settle-imported-only",
+		WorkspaceID:        wsID,
+		CreatorEntityID:    creatorA,
+		NetAmount:          mustDecimal(t, "100000.000000"),
+		Currency:           "VND",
+		VerificationStatus: "imported_only",
+	})
+	if _, err := svc.ExecutePayoutBatch(ctx, wsID, batch1.PayoutID, "settle-imported-only"); !errors.Is(err, ErrSettlementRequired) {
+		t.Fatalf("expected ErrSettlementRequired for unverified settlement status, got %v", err)
+	}
+
+	// 4. Settlement for wrong beneficiary must fail closed
+	_ = svc.RegisterVerifiedSettlement(ctx, &VerifiedSettlement{
+		SettlementID:       "settle-wrong-creator",
+		WorkspaceID:        wsID,
+		CreatorEntityID:    creatorB,
+		NetAmount:          mustDecimal(t, "100000.000000"),
+		Currency:           "VND",
+		VerificationStatus: "verified",
+	})
+	if _, err := svc.ExecutePayoutBatch(ctx, wsID, batch1.PayoutID, "settle-wrong-creator"); !errors.Is(err, ErrSettlementBeneficiaryMismatch) {
+		t.Fatalf("expected ErrSettlementBeneficiaryMismatch for wrong creator, got %v", err)
+	}
+
+	// 5. Settlement with wrong currency must fail closed
+	_ = svc.RegisterVerifiedSettlement(ctx, &VerifiedSettlement{
+		SettlementID:       "settle-wrong-currency",
+		WorkspaceID:        wsID,
+		CreatorEntityID:    creatorA,
+		NetAmount:          mustDecimal(t, "100000.000000"),
+		Currency:           "USD",
+		VerificationStatus: "verified",
+	})
+	if _, err := svc.ExecutePayoutBatch(ctx, wsID, batch1.PayoutID, "settle-wrong-currency"); !errors.Is(err, ErrSettlementCurrencyMismatch) {
+		t.Fatalf("expected ErrSettlementCurrencyMismatch for wrong currency, got %v", err)
+	}
+
+	// 6. Settlement with wrong amount must fail closed
+	_ = svc.RegisterVerifiedSettlement(ctx, &VerifiedSettlement{
+		SettlementID:       "settle-wrong-amount",
+		WorkspaceID:        wsID,
+		CreatorEntityID:    creatorA,
+		NetAmount:          mustDecimal(t, "50000.000000"),
+		Currency:           "VND",
+		VerificationStatus: "verified",
+	})
+	if _, err := svc.ExecutePayoutBatch(ctx, wsID, batch1.PayoutID, "settle-wrong-amount"); !errors.Is(err, ErrSettlementAmountMismatch) {
+		t.Fatalf("expected ErrSettlementAmountMismatch for wrong amount, got %v", err)
+	}
+
+	// 7. Valid verified settlement succeeds for batch1, and reusing the same settlement for batch2 fails closed!
+	_ = svc.RegisterVerifiedSettlement(ctx, &VerifiedSettlement{
+		SettlementID:       "settle-valid-100k",
+		WorkspaceID:        wsID,
+		CreatorEntityID:    creatorA,
+		NetAmount:          mustDecimal(t, "100000.000000"),
+		Currency:           "VND",
+		VerificationStatus: "verified",
+	})
+	exec1, err := svc.ExecutePayoutBatch(ctx, wsID, batch1.PayoutID, "settle-valid-100k")
+	if err != nil || exec1.Status != PayoutCompleted {
+		t.Fatalf("expected batch1 execution to succeed, got %v, err=%v", exec1, err)
+	}
+	if _, err := svc.ExecutePayoutBatch(ctx, wsID, batch2.PayoutID, "settle-valid-100k"); !errors.Is(err, ErrSettlementAlreadyUsed) {
+		t.Fatalf("expected ErrSettlementAlreadyUsed when reusing settlement across payout batches, got %v", err)
 	}
 }

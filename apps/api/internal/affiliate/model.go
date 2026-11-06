@@ -156,6 +156,7 @@ type AffiliateCommission struct {
 	AffiliateLinkID  string                 `json:"affiliate_link_id"`
 	OrderID          string                 `json:"order_id"`
 	CreatorEntityID  *string                `json:"creator_entity_id,omitempty"`
+	OrderAmount      tenantdb.ExactDecimal  `json:"order_amount"`
 	CommissionAmount tenantdb.ExactDecimal  `json:"commission_amount"`
 	Currency         string                 `json:"currency"`
 	Status           CommissionState        `json:"status"`
@@ -168,6 +169,34 @@ type AffiliateCommission struct {
 	PaidOutAt        *time.Time             `json:"paid_out_at,omitempty"`
 	CreatedAt        time.Time              `json:"created_at"`
 	UpdatedAt        time.Time              `json:"updated_at"`
+}
+
+// VerifiedOrder represents an authoritative, tenant-scoped order snapshot
+// eligible for affiliate attribution and commission calculation.
+type VerifiedOrder struct {
+	OrderID        string                `json:"order_id"`
+	WorkspaceID    string                `json:"workspace_id"`
+	GrossAmount    tenantdb.ExactDecimal `json:"gross_amount"`
+	RefundedAmount tenantdb.ExactDecimal `json:"refunded_amount"`
+	Currency       string                `json:"currency"`
+	LifecycleState string                `json:"lifecycle_state"`
+	CreatedAt      time.Time             `json:"created_at"`
+	UpdatedAt      time.Time             `json:"updated_at"`
+}
+
+// VerifiedSettlement represents an authoritative, tenant-scoped settlement record
+// verified to back an affiliate payout batch.
+type VerifiedSettlement struct {
+	SettlementID       string                `json:"settlement_id"`
+	WorkspaceID        string                `json:"workspace_id"`
+	CreatorEntityID    string                `json:"creator_entity_id"`
+	NetAmount          tenantdb.ExactDecimal `json:"net_amount"`
+	AllocatedAmount    tenantdb.ExactDecimal `json:"allocated_amount"`
+	Currency           string                `json:"currency"`
+	VerificationStatus string                `json:"verification_status"`
+	BoundPayoutID      *string               `json:"bound_payout_id,omitempty"`
+	CreatedAt          time.Time             `json:"created_at"`
+	UpdatedAt          time.Time             `json:"updated_at"`
 }
 
 // AffiliatePayout models affiliate_payouts batch.

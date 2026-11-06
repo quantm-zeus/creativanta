@@ -24,11 +24,19 @@ type Store interface {
 
 	// Attribution operations
 	CreateAttribution(ctx context.Context, attr *AttributionRecord) error
+	GetAttributionByOrder(ctx context.Context, workspaceID, orderID string) (*AttributionRecord, error)
 	ListAttributions(ctx context.Context, workspaceID string, linkID *string) ([]*AttributionRecord, error)
+
+	// Authoritative Order & Settlement verification
+	UpsertVerifiedOrder(ctx context.Context, ord *VerifiedOrder) error
+	GetVerifiedOrder(ctx context.Context, workspaceID, orderID string) (*VerifiedOrder, error)
+	UpsertVerifiedSettlement(ctx context.Context, settle *VerifiedSettlement) error
+	GetVerifiedSettlement(ctx context.Context, workspaceID, settlementID string) (*VerifiedSettlement, error)
 
 	// Commission operations
 	CreateCommission(ctx context.Context, comm *AffiliateCommission) error
 	GetCommission(ctx context.Context, workspaceID, commissionID string) (*AffiliateCommission, error)
+	GetCommissionByOrder(ctx context.Context, workspaceID, orderID string) (*AffiliateCommission, error)
 	ListCommissions(ctx context.Context, workspaceID string, linkID *string, status *CommissionState, limit, offset int) ([]*AffiliateCommission, error)
 	UpdateCommission(ctx context.Context, comm *AffiliateCommission) error
 
@@ -50,27 +58,31 @@ type Store interface {
 }
 
 type MemoryStore struct {
-	mu             sync.RWMutex
-	links          map[string]*AffiliateLink
-	assignments    map[string]*CreatorAssignment
-	attributions   map[string]*AttributionRecord
-	commissions    map[string]*AffiliateCommission
-	payouts        map[string]*AffiliatePayout
-	statements     map[string]*AffiliateStatement
-	statementItems map[string][]*AffiliateStatementItem
-	healthRecords  map[string][]*LinkHealthRecord // link_id -> records (sorted newest first)
+	mu                  sync.RWMutex
+	links               map[string]*AffiliateLink
+	assignments         map[string]*CreatorAssignment
+	attributions        map[string]*AttributionRecord
+	verifiedOrders      map[string]*VerifiedOrder
+	verifiedSettlements map[string]*VerifiedSettlement
+	commissions         map[string]*AffiliateCommission
+	payouts             map[string]*AffiliatePayout
+	statements          map[string]*AffiliateStatement
+	statementItems      map[string][]*AffiliateStatementItem
+	healthRecords       map[string][]*LinkHealthRecord // link_id -> records (sorted newest first)
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		links:          make(map[string]*AffiliateLink),
-		assignments:    make(map[string]*CreatorAssignment),
-		attributions:   make(map[string]*AttributionRecord),
-		commissions:    make(map[string]*AffiliateCommission),
-		payouts:        make(map[string]*AffiliatePayout),
-		statements:     make(map[string]*AffiliateStatement),
-		statementItems: make(map[string][]*AffiliateStatementItem),
-		healthRecords:  make(map[string][]*LinkHealthRecord),
+		links:               make(map[string]*AffiliateLink),
+		assignments:         make(map[string]*CreatorAssignment),
+		attributions:        make(map[string]*AttributionRecord),
+		verifiedOrders:      make(map[string]*VerifiedOrder),
+		verifiedSettlements: make(map[string]*VerifiedSettlement),
+		commissions:         make(map[string]*AffiliateCommission),
+		payouts:             make(map[string]*AffiliatePayout),
+		statements:          make(map[string]*AffiliateStatement),
+		statementItems:      make(map[string][]*AffiliateStatementItem),
+		healthRecords:       make(map[string][]*LinkHealthRecord),
 	}
 }
 
@@ -252,6 +264,79 @@ func (s *MemoryStore) CreateAttribution(_ context.Context, attr *AttributionReco
 	return nil
 }
 
+func (s *MemoryStore) GetAttributionByOrder(_ context.Context, workspaceID, orderID string) (*AttributionRecord, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var latest *AttributionRecord
+	for _, a := range s.attributions {
+		if a.WorkspaceID == workspaceID && a.OrderID == orderID {
+			if latest == nil || a.CreatedAt.After(latest.CreatedAt) {
+				latest = a
+			}
+		}
+	}
+	if latest == nil {
+		return nil, ErrOrderNotVerified
+	}
+	cp := *latest
+	return &cp, nil
+}
+
+func (s *MemoryStore) UpsertVerifiedOrder(_ context.Context, ord *VerifiedOrder) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	key := ord.WorkspaceID + ":" + ord.OrderID
+	cp := *ord
+	s.verifiedOrders[key] = &cp
+	return nil
+}
+
+func (s *MemoryStore) GetVerifiedOrder(_ context.Context, workspaceID, orderID string) (*VerifiedOrder, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	key := workspaceID + ":" + orderID
+	ord, ok := s.verifiedOrders[key]
+	if !ok {
+		return nil, ErrOrderNotVerified
+	}
+	cp := *ord
+	return &cp, nil
+}
+
+func (s *MemoryStore) UpsertVerifiedSettlement(_ context.Context, settle *VerifiedSettlement) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	key := settle.WorkspaceID + ":" + settle.SettlementID
+	cp := *settle
+	if settle.BoundPayoutID != nil {
+		b := *settle.BoundPayoutID
+		cp.BoundPayoutID = &b
+	}
+	s.verifiedSettlements[key] = &cp
+	return nil
+}
+
+func (s *MemoryStore) GetVerifiedSettlement(_ context.Context, workspaceID, settlementID string) (*VerifiedSettlement, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	key := workspaceID + ":" + settlementID
+	st, ok := s.verifiedSettlements[key]
+	if !ok {
+		return nil, ErrSettlementRequired
+	}
+	cp := *st
+	if st.BoundPayoutID != nil {
+		b := *st.BoundPayoutID
+		cp.BoundPayoutID = &b
+	}
+	return &cp, nil
+}
+
 func (s *MemoryStore) ListAttributions(_ context.Context, workspaceID string, linkID *string) ([]*AttributionRecord, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -282,10 +367,31 @@ func (s *MemoryStore) CreateCommission(_ context.Context, comm *AffiliateCommiss
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if comm.OrderID != "" {
+		for _, existing := range s.commissions {
+			if existing.WorkspaceID == comm.WorkspaceID && existing.OrderID == comm.OrderID && existing.CommissionID != comm.CommissionID {
+				return ErrDuplicateCommission
+			}
+		}
+	}
+
 	key := comm.WorkspaceID + ":" + comm.CommissionID
 	cp := *comm
 	s.commissions[key] = &cp
 	return nil
+}
+
+func (s *MemoryStore) GetCommissionByOrder(_ context.Context, workspaceID, orderID string) (*AffiliateCommission, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for _, c := range s.commissions {
+		if c.WorkspaceID == workspaceID && c.OrderID == orderID {
+			cp := *c
+			return &cp, nil
+		}
+	}
+	return nil, ErrCommissionNotFound
 }
 
 func (s *MemoryStore) GetCommission(_ context.Context, workspaceID, commissionID string) (*AffiliateCommission, error) {
