@@ -44,7 +44,7 @@ func main() {
 
 	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
-		slog.Error("outbox: database pool configuration failed", "error", err)
+		slog.Error("outbox: invalid database pool configuration")
 		os.Exit(1)
 	}
 	defer pool.Close()

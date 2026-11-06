@@ -615,7 +615,10 @@ func NewRedisStreamBroker(redisURL, keyPrefix string) (*RedisStreamBroker, error
 	}
 	scheme := strings.ToLower(strings.TrimSpace(u.Scheme))
 	if scheme != "redis" && scheme != "rediss" {
-		return nil, fmt.Errorf("outbox: unsupported redis URL scheme %q (expected redis or rediss)", scheme)
+		return nil, errors.New("outbox: unsupported redis URL scheme (expected redis or rediss)")
+	}
+	if u.Opaque != "" {
+		return nil, errors.New("outbox: invalid redis URL")
 	}
 	host := strings.TrimSpace(u.Hostname())
 	if host == "" {
@@ -707,10 +710,10 @@ func (r *RedisStreamBroker) execCmd(ctx context.Context, args ...string) (any, e
 	br := bufio.NewReader(conn)
 	if r.password != "" {
 		if err := writeRESPArray(conn, []string{"AUTH", r.password}); err != nil {
-			return nil, err
+			return nil, errors.New("outbox: redis authentication write failed")
 		}
 		if _, err := readRESPValue(br); err != nil {
-			return nil, err
+			return nil, errors.New("outbox: redis authentication failed")
 		}
 	}
 	if r.dbIndex > 0 {
@@ -980,8 +983,27 @@ type PgConsumerInboxEngine struct {
 	db tenantdb.TxBeginner
 }
 
+type appUserRoleBeginner struct {
+	db tenantdb.TxBeginner
+}
+
+func (b appUserRoleBeginner) Begin(ctx context.Context) (pgx.Tx, error) {
+	tx, err := b.db.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := tx.Exec(ctx, `SET LOCAL ROLE app_user`); err != nil {
+		_ = tx.Rollback(ctx)
+		return nil, fmt.Errorf("outbox: SET LOCAL ROLE app_user: %w", err)
+	}
+	return tx, nil
+}
+
 // NewPgConsumerInboxEngine constructs a PgConsumerInboxEngine.
 func NewPgConsumerInboxEngine(db tenantdb.TxBeginner) *PgConsumerInboxEngine {
+	if db != nil {
+		db = appUserRoleBeginner{db: db}
+	}
 	return &PgConsumerInboxEngine{db: db}
 }
 
@@ -1142,6 +1164,9 @@ type PgLiveAuthVerifier struct {
 
 // NewPgLiveAuthVerifier creates a PgLiveAuthVerifier.
 func NewPgLiveAuthVerifier(db tenantdb.TxBeginner) *PgLiveAuthVerifier {
+	if db != nil {
+		db = appUserRoleBeginner{db: db}
+	}
 	return &PgLiveAuthVerifier{db: db}
 }
 

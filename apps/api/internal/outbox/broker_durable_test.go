@@ -246,6 +246,31 @@ func TestMultiProcessOutboxPollerToWorkerDurableHandoff(t *testing.T) {
 		t.Fatalf("build cmd/worker failed: %v\n%s", err, string(out))
 	}
 
+	// Verify malformed CREATIVANTA_REDIS_URL fails closed in both cmd/outbox and cmd/worker
+	// without leaking credentials to stdout/stderr.
+	const redisSecret = "redis_cli_stderr_secret_token_778899"
+	for _, bin := range []struct {
+		path   string
+		subcmd string
+		dbEnv  string
+	}{
+		{outboxBin, "poll-once", "CREATIVANTA_OUTBOX_DATABASE_URL=" + dsn},
+		{workerBin, "run-once", "CREATIVANTA_WORKER_DATABASE_URL=" + dsn},
+	} {
+		badRedisCmd := exec.CommandContext(ctx, bin.path, bin.subcmd)
+		badRedisCmd.Env = append(os.Environ(),
+			bin.dbEnv,
+			"CREATIVANTA_REDIS_URL=redis://default:"+redisSecret+"@127.0.0.1:6379/\x7f",
+		)
+		badOut, badErr := badRedisCmd.CombinedOutput()
+		if badErr == nil {
+			t.Fatalf("expected %s %s with malformed CREATIVANTA_REDIS_URL to fail closed", bin.path, bin.subcmd)
+		}
+		if strings.Contains(string(badOut), redisSecret) {
+			t.Fatalf("CRITICAL: %s %s leaked Redis password to stderr/stdout: %s", bin.path, bin.subcmd, string(badOut))
+		}
+	}
+
 	// Process 1: outbox poll-once
 	pollCmd := exec.CommandContext(ctx, outboxBin, "poll-once")
 	pollCmd.Env = append(os.Environ(),
@@ -904,6 +929,8 @@ func TestRedisStreamBrokerTLSHandshakeAndCredentialSafeErrors(t *testing.T) {
 		"redis://default:" + secretPassword + "@127.0.0.1:99999/0",
 		"redis://default:" + secretPassword + "@127.0.0.1:6379/notanumber",
 		"rediss://default:" + secretPassword + "@127.0.0.1:6379/0 extra",
+		"redis://default:" + secretPassword + "@127.0.0.1:6379/\x7f",
+		secretPassword + ":1234@127.0.0.1:6379/0",
 	}
 	for _, rawURL := range badURLs {
 		_, err := outbox.NewRedisStreamBroker(rawURL, "")
@@ -912,6 +939,13 @@ func TestRedisStreamBrokerTLSHandshakeAndCredentialSafeErrors(t *testing.T) {
 		}
 		if strings.Contains(err.Error(), secretPassword) {
 			t.Fatalf("CRITICAL: NewRedisStreamBroker leaked secret password in error: %v", err)
+		}
+		_, sharedErr := outbox.OpenSharedStreamBroker(ctx, nil, false, rawURL)
+		if sharedErr == nil {
+			t.Fatalf("expected error from OpenSharedStreamBroker for invalid redis URL, got nil")
+		}
+		if strings.Contains(sharedErr.Error(), secretPassword) {
+			t.Fatalf("CRITICAL: OpenSharedStreamBroker leaked secret password in error: %v", sharedErr)
 		}
 	}
 

@@ -324,7 +324,9 @@ info "Step 6/6: Running live PostgreSQL 17.10 & Go -race security/RLS/replay tes
     ./internal/tenantdb/... \
     ./internal/migrate/... \
     ./internal/outbox/... \
+    ./internal/diagnostics/... \
     ./internal/internaladmin/... \
+    ./internal/runtimeassembly/... \
     ./internal/platformacceptance/...
 )
 
@@ -335,10 +337,11 @@ CREATIVANTA RUNTIME/DB/API E2E READINESS SUMMARY
 ================================================================================
 Verification Classification : STAGING/LOCAL (Real OS Processes + Ephemeral PG 17.10)
 API / Admin-API Loopback    : VERIFIED (ephemeral 127.0.0.1 ports, non-loopback refused)
-Readiness Fail-Closed       : VERIFIED (/readyz -> 503 when dependencies unwired)
+Readiness & Role Boundary   : VERIFIED (/readyz -> 503 when unwired or privileged/cross-plane DB role used)
 Negative Auth & RBAC        : VERIFIED (401/404/405, zero default privileged routes)
 PostgreSQL 17.10 Migrations : VERIFIED (47 Up / 47 Down / 47 Up + seed idempotency)
 Tenant RLS & Composite FKs  : VERIFIED (app_user isolation, internal notes hidden)
+Outbox, Worker & Diagnostics: VERIFIED (least-privilege roles, durable PG diagnostics & product events)
 Replay & Money Exactness    : VERIFIED (23505 dedup guards, zero float money columns)
 
 EXTERNAL PRODUCTION GATES (TRUTHFUL STATUS — NOT CLAIMED BY LOCAL E2E):

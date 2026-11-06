@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -1283,6 +1284,143 @@ func (q *Queries) InsertDiagnosticRecord(ctx context.Context, arg InsertDiagnost
 	return row, nil
 }
 
+const getDiagnosticRecordSQL = `
+SELECT
+  diagnostics_id::text, workspace_id::text, scope_type, COALESCE(scope_id::text, ''),
+  error_type, severity, user_facing_explanation, COALESCE(operator_explanation, ''),
+  COALESCE(likely_causes, '[]'::jsonb), COALESCE(suggested_actions, '[]'::jsonb),
+  COALESCE(repair_path, ''), status, detected_at, resolved_at, created_at, updated_at
+FROM diagnostics_records
+WHERE workspace_id = $1::uuid
+  AND diagnostics_id = $2::uuid
+`
+
+// GetDiagnosticRecord fetches a single diagnostics_records row by ID inside WithTx.
+func (q *Queries) GetDiagnosticRecord(ctx context.Context, workspaceID, diagnosticsID string) (DiagnosticRecordRow, error) {
+	if _, err := q.requireTenantTx(ctx, workspaceID); err != nil {
+		return DiagnosticRecordRow{}, err
+	}
+	var row DiagnosticRecordRow
+	var rawCauses, rawActions []byte
+	err := q.db.QueryRow(ctx, getDiagnosticRecordSQL, workspaceID, diagnosticsID).Scan(
+		&row.DiagnosticsID,
+		&row.WorkspaceID,
+		&row.ScopeType,
+		&row.ScopeID,
+		&row.ErrorType,
+		&row.Severity,
+		&row.UserFacingExplanation,
+		&row.OperatorExplanation,
+		&rawCauses,
+		&rawActions,
+		&row.RepairPath,
+		&row.Status,
+		&row.DetectedAt,
+		&row.ResolvedAt,
+		&row.CreatedAt,
+		&row.UpdatedAt,
+	)
+	if err != nil {
+		return DiagnosticRecordRow{}, err
+	}
+	_ = json.Unmarshal(rawCauses, &row.LikelyCauses)
+	_ = json.Unmarshal(rawActions, &row.SuggestedActions)
+	return row, nil
+}
+
+// CountUnknownExternalEffects returns the number of external_effects rows in 'unknown' status for workspaceID inside WithTx.
+func (q *Queries) CountUnknownExternalEffects(ctx context.Context, workspaceID string) (int32, error) {
+	if _, err := q.requireTenantTx(ctx, workspaceID); err != nil {
+		return 0, err
+	}
+	var cnt int32
+	if err := q.db.QueryRow(ctx, `
+		SELECT COUNT(*)::int
+		FROM external_effects
+		WHERE workspace_id = $1::uuid
+		  AND status = 'unknown'
+	`, workspaceID).Scan(&cnt); err != nil {
+		return 0, err
+	}
+	return cnt, nil
+}
+
+// CountPendingDLQEntries returns the number of dead_letter_queue rows in 'pending' status for workspaceID inside WithTx.
+func (q *Queries) CountPendingDLQEntries(ctx context.Context, workspaceID string) (int32, error) {
+	if _, err := q.requireTenantTx(ctx, workspaceID); err != nil {
+		return 0, err
+	}
+	var cnt int32
+	if err := q.db.QueryRow(ctx, `
+		SELECT COUNT(*)::int
+		FROM dead_letter_queue
+		WHERE workspace_id = $1::uuid
+		  AND status = 'pending'
+	`, workspaceID).Scan(&cnt); err != nil {
+		return 0, err
+	}
+	return cnt, nil
+}
+
+const reconcileUnknownExternalEffectSQL = `
+UPDATE external_effects
+SET
+  status = $3::text,
+  provider_request_id = COALESCE(NULLIF($4::text, ''), provider_request_id),
+  result_payload = COALESCE(result_payload, '{}'::jsonb) || jsonb_build_object(
+    'reconciled_by_verification_reference', $4::text,
+    'reconciled_status', $3::text
+  ),
+  last_checked_at = NOW(),
+  updated_at = NOW()
+WHERE workspace_id = $1::uuid
+  AND operation_key = $2::text
+  AND status = 'unknown'
+RETURNING
+  effect_id::text, workspace_id::text, operation_key, provider,
+  COALESCE(connected_account_id::text, ''), aggregate_type, aggregate_id::text,
+  COALESCE(provider_request_id, ''), status, COALESCE(result_payload, '{}'::jsonb),
+  last_checked_at, created_at, updated_at
+`
+
+// ReconcileUnknownExternalEffect transitions an 'unknown' external_effects row to 'succeeded' or 'failed'
+// using an operator verification reference inside WithTx.
+func (q *Queries) ReconcileUnknownExternalEffect(ctx context.Context, workspaceID, operationKey, targetStatus, verificationRef string) (ExternalEffectRow, error) {
+	if _, err := q.requireTenantTx(ctx, workspaceID); err != nil {
+		return ExternalEffectRow{}, err
+	}
+	if strings.TrimSpace(verificationRef) == "" {
+		return ExternalEffectRow{}, errors.New("tenantdb: verification reference is required to reconcile unknown external effect")
+	}
+	if targetStatus != "succeeded" && targetStatus != "failed" {
+		return ExternalEffectRow{}, fmt.Errorf("tenantdb: invalid reconciled external effect status %q", targetStatus)
+	}
+	var row ExternalEffectRow
+	err := q.db.QueryRow(
+		ctx,
+		reconcileUnknownExternalEffectSQL,
+		workspaceID,
+		operationKey,
+		targetStatus,
+		verificationRef,
+	).Scan(
+		&row.EffectID,
+		&row.WorkspaceID,
+		&row.OperationKey,
+		&row.Provider,
+		&row.ConnectedAccountID,
+		&row.AggregateType,
+		&row.AggregateID,
+		&row.ProviderRequestID,
+		&row.Status,
+		&row.ResultPayload,
+		&row.LastCheckedAt,
+		&row.CreatedAt,
+		&row.UpdatedAt,
+	)
+	return row, err
+}
+
 const listDiagnosticRecordsSQL = `
 SELECT
   diagnostics_id::text, workspace_id::text, scope_type, COALESCE(scope_id::text, ''),
@@ -1339,8 +1477,8 @@ func (q *Queries) ListDiagnosticRecords(ctx context.Context, workspaceID string)
 const updateDiagnosticRecordStatusSQL = `
 UPDATE diagnostics_records
 SET
-  status = $3,
-  resolved_at = CASE WHEN $3 IN ('resolved', 'closed') THEN NOW() ELSE resolved_at END,
+  status = $3::text,
+  resolved_at = CASE WHEN $3::text IN ('resolved', 'closed') THEN NOW() ELSE resolved_at END,
   updated_at = NOW()
 WHERE workspace_id = $1::uuid
   AND diagnostics_id = $2::uuid

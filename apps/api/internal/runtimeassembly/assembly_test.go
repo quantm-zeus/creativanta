@@ -34,6 +34,7 @@ import (
 	"github.com/quantm-zeus/creativanta/apps/api/internal/bootstrap"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/internaladmin"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/migrate"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/runtimeassembly"
 )
 
@@ -179,7 +180,28 @@ func (p *testJWKSProvider) signToken(t *testing.T, subject, sessionID string) st
 	return unsigned + "." + base64.RawURLEncoding.EncodeToString(sig)
 }
 
-func setupDisposableRuntimeDB(t *testing.T) (*pgxpool.Pool, string) {
+type disposableRuntimeDB struct {
+	Pool            *pgxpool.Pool
+	MigratorDSN     string
+	SchemaCreateDSN string
+	BypassRLSDSN    string
+	APIDSN          string
+	AdminAPIDSN     string
+	OutboxDSN       string
+	WorkerDSN       string
+	APILoginRole    string
+}
+
+func dsnWithUserPass(baseDSN, user, pass string) string {
+	u, err := url.Parse(baseDSN)
+	if err != nil {
+		return baseDSN
+	}
+	u.User = url.UserPassword(user, pass)
+	return u.String()
+}
+
+func setupDisposableRuntimeDB(t *testing.T) disposableRuntimeDB {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -190,6 +212,12 @@ func setupDisposableRuntimeDB(t *testing.T) (*pgxpool.Pool, string) {
 	suffix := fmt.Sprintf("%d_%s", time.Now().UnixNano(), hex.EncodeToString(randBytes[:]))
 	dbName := "creativanta_runtime_test_" + suffix
 	roleName := "creativanta_runtime_role_" + suffix
+	apiLoginRole := "creativanta_api_role_" + suffix
+	adminLoginRole := "creativanta_admin_role_" + suffix
+	outboxLoginRole := "creativanta_outbox_role_" + suffix
+	workerLoginRole := "creativanta_worker_role_" + suffix
+	schemaCreateRole := "creativanta_migrator_role_" + suffix
+	bypassRLSRole := "creativanta_bypass_role_" + suffix
 	rolePass := "tmp_pw_" + hex.EncodeToString(randBytes[:])
 
 	var disposableDSN string
@@ -215,6 +243,9 @@ func setupDisposableRuntimeDB(t *testing.T) (*pgxpool.Pool, string) {
 			cleanCtx, cleanCancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cleanCancel()
 			_, _ = adminPool.Exec(cleanCtx, fmt.Sprintf("DROP DATABASE IF EXISTS %s WITH (FORCE)", dbName))
+			for _, r := range []string{apiLoginRole, adminLoginRole, outboxLoginRole, workerLoginRole, schemaCreateRole, bypassRLSRole} {
+				_, _ = adminPool.Exec(cleanCtx, fmt.Sprintf("DROP ROLE IF EXISTS %s", r))
+			}
 			adminPool.Close()
 		}
 	} else {
@@ -239,7 +270,7 @@ func setupDisposableRuntimeDB(t *testing.T) (*pgxpool.Pool, string) {
 			_ = exec.CommandContext(cleanCtx, "docker", "exec", "creativanta-p0-postgres-1",
 				"psql", "-U", "creativanta_dev", "-d", "creativanta_dev",
 				"-c", fmt.Sprintf("DROP DATABASE IF EXISTS %s WITH (FORCE);", dbName),
-				"-c", fmt.Sprintf("DROP ROLE IF EXISTS %s;", roleName),
+				"-c", fmt.Sprintf("DROP ROLE IF EXISTS %s, %s, %s, %s, %s, %s, %s;", roleName, apiLoginRole, adminLoginRole, outboxLoginRole, workerLoginRole, schemaCreateRole, bypassRLSRole),
 			).Run()
 		}
 	}
@@ -258,6 +289,37 @@ func setupDisposableRuntimeDB(t *testing.T) (*pgxpool.Pool, string) {
 	migrationsDir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 	if _, err := migrate.Up(ctx, pool, migrationsDir); err != nil {
 		t.Fatalf("migrate.Up on disposable DB failed: %v", err)
+	}
+
+	rolesSQL := fmt.Sprintf(`
+		CREATE ROLE %s WITH LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION INHERIT PASSWORD '%s';
+		GRANT app_user TO %s;
+
+		CREATE ROLE %s WITH LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION INHERIT PASSWORD '%s';
+		GRANT admin_user TO %s;
+
+		CREATE ROLE %s WITH LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION INHERIT PASSWORD '%s';
+		GRANT outbox_poller TO %s;
+
+		CREATE ROLE %s WITH LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION INHERIT PASSWORD '%s';
+		GRANT app_user, outbox_poller TO %s;
+
+		CREATE ROLE %s WITH LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION INHERIT PASSWORD '%s';
+		GRANT app_user, admin_user TO %s;
+		GRANT CREATE ON SCHEMA public TO %s;
+
+		CREATE ROLE %s WITH LOGIN NOSUPERUSER BYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION INHERIT PASSWORD '%s';
+		GRANT app_user TO %s;
+	`,
+		apiLoginRole, rolePass, apiLoginRole,
+		adminLoginRole, rolePass, adminLoginRole,
+		outboxLoginRole, rolePass, outboxLoginRole,
+		workerLoginRole, rolePass, workerLoginRole,
+		schemaCreateRole, rolePass, schemaCreateRole, schemaCreateRole,
+		bypassRLSRole, rolePass, bypassRLSRole,
+	)
+	if _, err := pool.Exec(ctx, rolesSQL); err != nil {
+		t.Fatalf("provision least-privilege runtime DB roles failed: %v", err)
 	}
 
 	seedSQL := fmt.Sprintf(`
@@ -317,7 +379,17 @@ func setupDisposableRuntimeDB(t *testing.T) (*pgxpool.Pool, string) {
 		t.Fatalf("seed disposable DB failed: %v", err)
 	}
 
-	return pool, disposableDSN
+	return disposableRuntimeDB{
+		Pool:            pool,
+		MigratorDSN:     disposableDSN,
+		SchemaCreateDSN: dsnWithUserPass(disposableDSN, schemaCreateRole, rolePass),
+		BypassRLSDSN:    dsnWithUserPass(disposableDSN, bypassRLSRole, rolePass),
+		APIDSN:          dsnWithUserPass(disposableDSN, apiLoginRole, rolePass),
+		AdminAPIDSN:     dsnWithUserPass(disposableDSN, adminLoginRole, rolePass),
+		OutboxDSN:       dsnWithUserPass(disposableDSN, outboxLoginRole, rolePass),
+		WorkerDSN:       dsnWithUserPass(disposableDSN, workerLoginRole, rolePass),
+		APILoginRole:    apiLoginRole,
+	}
 }
 
 func allocateFreeLoopbackAddr(t *testing.T) string {
@@ -380,6 +452,14 @@ func newAuthHTTPClient(bearerToken, workspaceID string) *http.Client {
 }
 
 func TestUnconfiguredAPIAndAdminAPIFailClosed(t *testing.T) {
+	// Verify ConfigFromEnv(RoleAdminAPI) does NOT fall back to CREATIVANTA_API_DATABASE_URL.
+	t.Setenv("CREATIVANTA_API_DATABASE_URL", "postgres://app_user:pw@127.0.0.1:5432/creativanta?sslmode=disable")
+	t.Setenv("CREATIVANTA_ADMIN_DATABASE_URL", "")
+	adminCfg := runtimeassembly.ConfigFromEnv(bootstrap.RoleAdminAPI)
+	if adminCfg.DatabaseURL != "" {
+		t.Fatalf("expected ConfigFromEnv(RoleAdminAPI) not to fall back to CREATIVANTA_API_DATABASE_URL, got %q", adminCfg.DatabaseURL)
+	}
+
 	ctx := context.Background()
 	for _, role := range []string{bootstrap.RoleAPI, bootstrap.RoleAdminAPI} {
 		handler, cleanup, err := runtimeassembly.NewHandlerFromConfig(ctx, runtimeassembly.Config{
@@ -417,7 +497,8 @@ func TestUnconfiguredAPIAndAdminAPIFailClosed(t *testing.T) {
 // RUNTIME-01, ASYNC-01, AI-01, R01, and R11 across real OS processes (`cmd/api`, `cmd/admin-api`,
 // `cmd/outbox`, and `cmd/worker`) backed by a disposable PostgreSQL database with RLS enforced.
 func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
-	pool, dsn := setupDisposableRuntimeDB(t)
+	rtDB := setupDisposableRuntimeDB(t)
+	pool := rtDB.Pool
 	jwks := newTestJWKSProvider(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
@@ -451,17 +532,44 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 	// 0. Verify db_active session mode is strictly forbidden and fails closed at startup.
 	if _, _, err := runtimeassembly.NewHandlerFromConfig(ctx, runtimeassembly.Config{
 		Role:        bootstrap.RoleAPI,
-		DatabaseURL: dsn,
+		DatabaseURL: rtDB.APIDSN,
 		SessionMode: "db_active",
 	}); err == nil {
 		t.Fatalf("expected SessionMode=db_active to be rejected at startup")
 	}
 
+	// 0b. Verify least-privilege DB role boundary enforcement at startup and /readyz:
+	// Superuser, BYPASSRLS, migrator (CREATE ON SCHEMA public), outbox_poller, and cross-plane
+	// credentials (admin_user on RoleAPI, app_user on RoleAdminAPI) MUST fail closed!
+	for _, badCfg := range []struct {
+		name string
+		role string
+		dsn  string
+	}{
+		{"api with superuser/owner DSN", bootstrap.RoleAPI, rtDB.MigratorDSN},
+		{"api with BYPASSRLS DSN", bootstrap.RoleAPI, rtDB.BypassRLSDSN},
+		{"api with schema CREATE (migrator) DSN", bootstrap.RoleAPI, rtDB.SchemaCreateDSN},
+		{"api with outbox_poller DSN", bootstrap.RoleAPI, rtDB.OutboxDSN},
+		{"api with worker (app_user+outbox_poller) DSN", bootstrap.RoleAPI, rtDB.WorkerDSN},
+		{"api with cross-plane admin_user DSN", bootstrap.RoleAPI, rtDB.AdminAPIDSN},
+		{"admin-api with superuser/owner DSN", bootstrap.RoleAdminAPI, rtDB.MigratorDSN},
+		{"admin-api with BYPASSRLS DSN", bootstrap.RoleAdminAPI, rtDB.BypassRLSDSN},
+		{"admin-api with schema CREATE (migrator) DSN", bootstrap.RoleAdminAPI, rtDB.SchemaCreateDSN},
+		{"admin-api with cross-plane app_user DSN", bootstrap.RoleAdminAPI, rtDB.APIDSN},
+	} {
+		if _, _, err := runtimeassembly.NewHandlerFromConfig(ctx, runtimeassembly.Config{
+			Role:        badCfg.role,
+			DatabaseURL: badCfg.dsn,
+		}); err == nil {
+			t.Fatalf("expected NewHandlerFromConfig(%s) to reject privileged/cross-plane DB credential", badCfg.name)
+		}
+	}
+
 	commonEnv := append(os.Environ(),
-		"CREATIVANTA_API_DATABASE_URL="+dsn,
-		"CREATIVANTA_ADMIN_DATABASE_URL="+dsn,
-		"CREATIVANTA_OUTBOX_DATABASE_URL="+dsn,
-		"CREATIVANTA_WORKER_DATABASE_URL="+dsn,
+		"CREATIVANTA_API_DATABASE_URL="+rtDB.APIDSN,
+		"CREATIVANTA_ADMIN_DATABASE_URL="+rtDB.AdminAPIDSN,
+		"CREATIVANTA_OUTBOX_DATABASE_URL="+rtDB.OutboxDSN,
+		"CREATIVANTA_WORKER_DATABASE_URL="+rtDB.WorkerDSN,
 		"CREATIVANTA_REDIS_URL=",
 		"CREATIVANTA_CLERK_ISSUER="+jwks.issuer,
 		"CREATIVANTA_CLERK_AUDIENCE=creativanta-api",
@@ -505,6 +613,17 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 	waitForHTTPStatus(t, apiBaseURL+"/readyz", http.StatusOK, 10*time.Second)
 	waitForHTTPStatus(t, adminBaseURL+"/healthz", http.StatusOK, 10*time.Second)
 	waitForHTTPStatus(t, adminBaseURL+"/readyz", http.StatusOK, 10*time.Second)
+
+	// 1b. Verify live /readyz fails closed with HTTP 503 if the API DB role is granted privileged CREATE ON SCHEMA public,
+	// and recovers to HTTP 200 once revoked!
+	if _, err := pool.Exec(ctx, fmt.Sprintf("GRANT CREATE ON SCHEMA public TO %s", rtDB.APILoginRole)); err != nil {
+		t.Fatalf("grant CREATE ON SCHEMA public to %s: %v", rtDB.APILoginRole, err)
+	}
+	waitForHTTPStatus(t, apiBaseURL+"/readyz", http.StatusServiceUnavailable, 5*time.Second)
+	if _, err := pool.Exec(ctx, fmt.Sprintf("REVOKE CREATE ON SCHEMA public FROM %s", rtDB.APILoginRole)); err != nil {
+		t.Fatalf("revoke CREATE ON SCHEMA public from %s: %v", rtDB.APILoginRole, err)
+	}
+	waitForHTTPStatus(t, apiBaseURL+"/readyz", http.StatusOK, 5*time.Second)
 
 	ownerAToken := jwks.signToken(t, "user_api_owner_a", "sess_owner_a")
 	viewerAToken := jwks.signToken(t, "user_api_viewer_a", "sess_viewer_a")
@@ -644,7 +763,7 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 		t.Fatalf("ProductService/List mismatch: %+v", listResp.Msg.GetProducts())
 	}
 
-	// Verify direct PostgreSQL state for products, product_skus, event_outbox, and audit_events:
+	// Verify direct PostgreSQL state for products, product_skus, event_outbox (including canonical "type" field), and audit_events:
 	var dbProdCount, dbOutboxCount, dbAuditCount int
 	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM products WHERE workspace_id = $1::uuid AND product_id = $2::uuid`, testWsA, createdProductID).Scan(&dbProdCount); err != nil {
 		t.Fatalf("query products: %v", err)
@@ -652,11 +771,16 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 	if dbProdCount != 1 {
 		t.Fatalf("expected 1 persisted row in products, got %d", dbProdCount)
 	}
-	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM event_outbox WHERE workspace_id = $1::uuid AND aggregate_id = $2::uuid AND event_type = 'product.created' AND published = false`, testWsA, createdProductID).Scan(&dbOutboxCount); err != nil {
+	var createdOutboxPayload []byte
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*), MAX(payload::text)::bytea FROM event_outbox WHERE workspace_id = $1::uuid AND aggregate_id = $2::uuid AND event_type = 'product.created' AND published = false`, testWsA, createdProductID).Scan(&dbOutboxCount, &createdOutboxPayload); err != nil {
 		t.Fatalf("query event_outbox: %v", err)
 	}
 	if dbOutboxCount != 1 {
 		t.Fatalf("expected 1 unpublished event_outbox row from ProductService/Create, got %d", dbOutboxCount)
+	}
+	var createdEventMap map[string]any
+	if err := json.Unmarshal(createdOutboxPayload, &createdEventMap); err != nil || createdEventMap["type"] != "physical" || createdEventMap["product_id"] != createdProductID {
+		t.Fatalf("expected canonical product.created outbox payload with type=physical, got %s (err=%v)", string(createdOutboxPayload), err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM audit_events WHERE workspace_id = $1::uuid AND resource_id = $2::uuid AND action = 'product.created'`, testWsA, createdProductID).Scan(&dbAuditCount); err != nil {
 		t.Fatalf("query audit_events: %v", err)
@@ -696,6 +820,117 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 	}))
 	if err != nil || diagOverviewResp.Msg.GetTotalCategoriesCount() == 0 {
 		t.Fatalf("DiagnosticsService/GetOverview failed: resp=%+v err=%v", diagOverviewResp, err)
+	}
+
+	// Verify DiagnosticsService/ListIssues on cmd/api returns the durable PostgreSQL diagnostics_records row written by cmd/worker!
+	diagListResp, err := diagClient.ListIssues(ctx, connect.NewRequest(&adminv1.ListIssuesRequest{
+		WorkspaceId: &commonv1.UUID{Value: testWsA},
+	}))
+	if err != nil {
+		t.Fatalf("DiagnosticsService/ListIssues failed: %v", err)
+	}
+	foundWorkerDiag := false
+	for _, iss := range diagListResp.Msg.GetIssues() {
+		if iss.GetScopeId().GetValue() == createdProductID && iss.GetStatus() == adminv1.DiagnosticIssueStatus_DIAGNOSTIC_ISSUE_STATUS_RESOLVED {
+			foundWorkerDiag = true
+			break
+		}
+	}
+	if !foundWorkerDiag {
+		t.Fatalf("expected DiagnosticsService/ListIssues to return durable worker diagnostics_records row for product %s, got %+v", createdProductID, diagListResp.Msg.GetIssues())
+	}
+
+	// 4b. Verify ProductService/Update and BulkArchive canonical event_outbox behavior:
+	// Updating only Title (keeping status ACTIVE) must NOT emit product.catalog_status_changed.
+	updatedTitle := "Bộ Đèn Livestream Studio Pro 65W V2"
+	statusActive := commercev1.CatalogStatus_CATALOG_STATUS_ACTIVE
+	statusDraft := commercev1.CatalogStatus_CATALOG_STATUS_DRAFT
+	if _, err := ownerAProductClient.Update(ctx, connect.NewRequest(&commercev1.UpdateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: testWsA},
+			IdempotencyKey: "idem-prod-update-title-001",
+		},
+		ProductId:     createdProductID,
+		Title:         &updatedTitle,
+		CatalogStatus: &statusActive,
+	})); err != nil {
+		t.Fatalf("ProductService/Update title-only failed: %v", err)
+	}
+	var statusChangedCount int
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM event_outbox WHERE workspace_id = $1::uuid AND aggregate_id = $2::uuid AND event_type = 'product.catalog_status_changed'`, testWsA, createdProductID).Scan(&statusChangedCount); err != nil {
+		t.Fatalf("query event_outbox for status_changed after title update: %v", err)
+	}
+	if statusChangedCount != 0 {
+		t.Fatalf("expected 0 product.catalog_status_changed events when status did not change, got %d", statusChangedCount)
+	}
+
+	// Updating CatalogStatus from ACTIVE -> DRAFT must emit product.catalog_status_changed (from=active, to=draft).
+	if _, err := ownerAProductClient.Update(ctx, connect.NewRequest(&commercev1.UpdateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: testWsA},
+			IdempotencyKey: "idem-prod-update-status-001",
+		},
+		ProductId:     createdProductID,
+		Title:         &updatedTitle,
+		CatalogStatus: &statusDraft,
+	})); err != nil {
+		t.Fatalf("ProductService/Update status change failed: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM event_outbox WHERE workspace_id = $1::uuid AND aggregate_id = $2::uuid AND event_type = 'product.catalog_status_changed'`, testWsA, createdProductID).Scan(&statusChangedCount); err != nil {
+		t.Fatalf("query event_outbox for status_changed after status update: %v", err)
+	}
+	if statusChangedCount != 1 {
+		t.Fatalf("expected 1 product.catalog_status_changed event after ACTIVE->DRAFT update, got %d", statusChangedCount)
+	}
+
+	// BulkArchive from DRAFT -> ARCHIVED must emit product.catalog_status_changed (from=draft, to=archived).
+	if _, err := ownerAProductClient.BulkArchive(ctx, connect.NewRequest(&commercev1.BulkArchiveRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: testWsA},
+			IdempotencyKey: "idem-prod-bulk-archive-001",
+		},
+		ProductIds: []string{createdProductID},
+	})); err != nil {
+		t.Fatalf("ProductService/BulkArchive failed: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM event_outbox WHERE workspace_id = $1::uuid AND aggregate_id = $2::uuid AND event_type = 'product.catalog_status_changed'`, testWsA, createdProductID).Scan(&statusChangedCount); err != nil {
+		t.Fatalf("query event_outbox for status_changed after BulkArchive: %v", err)
+	}
+	if statusChangedCount != 2 {
+		t.Fatalf("expected 2 product.catalog_status_changed events after BulkArchive, got %d", statusChangedCount)
+	}
+
+	// 4c. Verify ExecuteLiveBlueGreenReleaseSmokeRehearsal against the live cmd/api process!
+	reg, err := rbac.LoadCanonicalBindings(filepath.Join("..", "..", "..", ".."))
+	if err != nil {
+		t.Fatalf("LoadCanonicalBindings: %v", err)
+	}
+	rehearsalSvc := internaladmin.NewService(reg)
+	_ = rehearsalSvc.RegisterAdmin(internaladmin.InternalAdminRecord{
+		AdminID:      testSysAdmin,
+		Email:        "sysadmin@creativanta.test",
+		FullName:     "Internal Admin",
+		PasswordHash: internaladmin.HashAdminPassword("Admin-Pass-2026!"),
+		AdminRole:    rbac.AdminRoleSuper,
+		MFASecret:    "JBSWY3DPEHPK3PXP",
+		MFAEnabled:   true,
+		Status:       "active",
+	})
+	liveProxy := &runtimeSmokeProxyTarget{}
+	smokeVerdict, err := rehearsalSvc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		ctx,
+		testSysAdmin,
+		"green",
+		"sha256:4444444444444444444444444444444444444444444444444444444444444444",
+		apiBaseURL,
+		ownerAToken,
+		testWsA,
+		15000000000,
+		2420,
+		liveProxy,
+	)
+	if err != nil || !smokeVerdict.CandidatePromoted || !smokeVerdict.ProxyUpstreamSwitched || liveProxy.switchedSlot != "green" {
+		t.Fatalf("expected ExecuteLiveBlueGreenReleaseSmokeRehearsal to succeed against live cmd/api process, got verdict=%+v err=%v", smokeVerdict, err)
 	}
 
 	capClient := adminv1connect.NewCapabilityServiceClient(
@@ -827,7 +1062,7 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 	// 6b-3. Rejects non-VPN / non-loopback peer IP on admin-api handler with 403 Forbidden
 	adminHandler, adminCleanup, err := runtimeassembly.NewHandlerFromConfig(ctx, runtimeassembly.Config{
 		Role:        bootstrap.RoleAdminAPI,
-		DatabaseURL: dsn,
+		DatabaseURL: rtDB.AdminAPIDSN,
 	})
 	if err != nil {
 		t.Fatalf("NewHandlerFromConfig(admin-api): %v", err)
@@ -882,4 +1117,21 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 			t.Fatalf("expected %s on admin-api to return 404, got %d", unmountedAdminPath, resp.StatusCode)
 		}
 	}
+}
+
+type runtimeSmokeProxyTarget struct {
+	switchedSlot   string
+	switchedDigest string
+	rolledBackSlot string
+}
+
+func (p *runtimeSmokeProxyTarget) SwitchUpstream(_ context.Context, slot, imageDigest string) error {
+	p.switchedSlot = slot
+	p.switchedDigest = imageDigest
+	return nil
+}
+
+func (p *runtimeSmokeProxyTarget) RollbackUpstream(_ context.Context, previousSlot, _ string) error {
+	p.rolledBackSlot = previousSlot
+	return nil
 }
