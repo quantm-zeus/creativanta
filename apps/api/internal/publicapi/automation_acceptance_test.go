@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -263,12 +264,14 @@ func TestAcceptanceTarget3_AllAutomationNodeAndAgentOutcomes(t *testing.T) {
 	var webhookDelivered atomic.Bool
 	var receivedPayload map[string]any
 	var receivedSig string
+	var receivedTs string
 
 	mockHTTP := &MockHTTPClient{
 		handler: func(req *http.Request) (*http.Response, error) {
 			webhookDelivered.Store(true)
 			body, _ := io.ReadAll(req.Body)
 			receivedSig = req.Header.Get("X-Creativanta-Signature")
+			receivedTs = req.Header.Get("X-Creativanta-Timestamp")
 			_ = json.Unmarshal(body, &receivedPayload)
 			return &http.Response{
 				StatusCode: http.StatusOK,
@@ -314,7 +317,11 @@ func TestAcceptanceTarget3_AllAutomationNodeAndAgentOutcomes(t *testing.T) {
 	}
 
 	// Verify HMAC signature and sanitized payload
-	if !VerifySignature(subSecret, receivedSig, time.Now().Unix(), mockHTTP.lastBody) {
+	var tsInt int64
+	if _, scanErr := fmt.Sscanf(receivedTs, "%d", &tsInt); scanErr != nil || tsInt == 0 {
+		tsInt = time.Now().Unix()
+	}
+	if !VerifySignature(subSecret, receivedSig, tsInt, mockHTTP.lastBody) {
 		t.Fatalf("signature verification failed on delivered workflow.completed webhook")
 	}
 	if _, exists := receivedPayload["actual_cost_usd"]; exists {
