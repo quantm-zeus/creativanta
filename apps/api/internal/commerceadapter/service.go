@@ -3,6 +3,7 @@ package commerceadapter
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -84,28 +85,36 @@ func (s *Service) ProcessOrderWebhook(
 	if workspaceID == "" {
 		return nil, false, order.ErrMissingTenant
 	}
+	secret = strings.TrimSpace(secret)
+	signature = strings.TrimSpace(signature)
+	if secret == "" {
+		return nil, false, fmt.Errorf("%w: webhook secret is required", ErrMissingCredentials)
+	}
+	if signature == "" {
+		return nil, false, ErrInvalidSignature
+	}
 
 	var parsed *IngestedOrder
 	var err error
 
 	switch platform {
 	case PlatformTikTok:
-		if secret != "" && !s.tiktok.VerifySignature(rawPayload, signature, secret) {
+		if !s.tiktok.VerifySignature(rawPayload, signature, secret) {
 			return nil, false, ErrInvalidSignature
 		}
 		parsed, err = s.tiktok.ParseOrderWebhook(rawPayload)
 	case PlatformShopee:
-		if secret != "" && !s.shopee.VerifySignature("https://api.creativanta.local/webhooks/shopee", rawPayload, signature, secret) {
+		if !s.shopee.VerifySignature("https://api.creativanta.local/webhooks/shopee", rawPayload, signature, secret) {
 			return nil, false, ErrInvalidSignature
 		}
 		parsed, err = s.shopee.ParseOrderWebhook(rawPayload)
 	case PlatformLazada:
-		if secret != "" && !s.lazada.VerifySignature(rawPayload, signature, secret) {
+		if !s.lazada.VerifySignature(rawPayload, signature, secret) {
 			return nil, false, ErrInvalidSignature
 		}
 		parsed, err = s.lazada.ParseOrderWebhook(rawPayload)
 	case PlatformStripe:
-		if secret != "" && !s.stripe.VerifySignature(rawPayload, signature, secret, 10*time.Minute) {
+		if !s.stripe.VerifySignature(rawPayload, signature, secret, 10*time.Minute) {
 			return nil, false, ErrInvalidSignature
 		}
 		_, parsed, _, err = s.stripe.ParseWebhook(rawPayload)
@@ -162,23 +171,31 @@ func (s *Service) ProcessReturnWebhook(
 	if workspaceID == "" {
 		return nil, order.ErrMissingTenant
 	}
+	secret = strings.TrimSpace(secret)
+	signature = strings.TrimSpace(signature)
+	if secret == "" {
+		return nil, fmt.Errorf("%w: webhook secret is required", ErrMissingCredentials)
+	}
+	if signature == "" {
+		return nil, ErrInvalidSignature
+	}
 
 	var parsed *IngestedReturn
 	var err error
 
 	switch platform {
 	case PlatformTikTok:
-		if secret != "" && !s.tiktok.VerifySignature(rawPayload, signature, secret) {
+		if !s.tiktok.VerifySignature(rawPayload, signature, secret) {
 			return nil, ErrInvalidSignature
 		}
 		parsed, err = s.tiktok.ParseReturnWebhook(rawPayload)
 	case PlatformShopee:
-		if secret != "" && !s.shopee.VerifySignature("https://api.creativanta.local/webhooks/shopee", rawPayload, signature, secret) {
+		if !s.shopee.VerifySignature("https://api.creativanta.local/webhooks/shopee", rawPayload, signature, secret) {
 			return nil, ErrInvalidSignature
 		}
 		parsed, err = s.shopee.ParseReturnWebhook(rawPayload)
 	case PlatformLazada:
-		if secret != "" && !s.lazada.VerifySignature(rawPayload, signature, secret) {
+		if !s.lazada.VerifySignature(rawPayload, signature, secret) {
 			return nil, ErrInvalidSignature
 		}
 		parsed, err = s.lazada.ParseReturnWebhook(rawPayload)
@@ -228,28 +245,36 @@ func (s *Service) ProcessRefundWebhook(
 	if workspaceID == "" {
 		return nil, nil, order.ErrMissingTenant
 	}
+	secret = strings.TrimSpace(secret)
+	signature = strings.TrimSpace(signature)
+	if secret == "" {
+		return nil, nil, fmt.Errorf("%w: webhook secret is required", ErrMissingCredentials)
+	}
+	if signature == "" {
+		return nil, nil, ErrInvalidSignature
+	}
 
 	var parsed *IngestedRefund
 	var err error
 
 	switch platform {
 	case PlatformTikTok:
-		if secret != "" && !s.tiktok.VerifySignature(rawPayload, signature, secret) {
+		if !s.tiktok.VerifySignature(rawPayload, signature, secret) {
 			return nil, nil, ErrInvalidSignature
 		}
 		parsed, err = s.tiktok.ParseRefundWebhook(rawPayload)
 	case PlatformShopee:
-		if secret != "" && !s.shopee.VerifySignature("https://api.creativanta.local/webhooks/shopee", rawPayload, signature, secret) {
+		if !s.shopee.VerifySignature("https://api.creativanta.local/webhooks/shopee", rawPayload, signature, secret) {
 			return nil, nil, ErrInvalidSignature
 		}
 		parsed, err = s.shopee.ParseRefundWebhook(rawPayload)
 	case PlatformLazada:
-		if secret != "" && !s.lazada.VerifySignature(rawPayload, signature, secret) {
+		if !s.lazada.VerifySignature(rawPayload, signature, secret) {
 			return nil, nil, ErrInvalidSignature
 		}
 		parsed, err = s.lazada.ParseRefundWebhook(rawPayload)
 	case PlatformStripe:
-		if secret != "" && !s.stripe.VerifySignature(rawPayload, signature, secret, 10*time.Minute) {
+		if !s.stripe.VerifySignature(rawPayload, signature, secret, 10*time.Minute) {
 			return nil, nil, ErrInvalidSignature
 		}
 		_, _, parsed, err = s.stripe.ParseWebhook(rawPayload)

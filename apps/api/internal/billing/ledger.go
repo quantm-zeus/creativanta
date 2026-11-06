@@ -281,6 +281,7 @@ type WorkspaceBillingState struct {
 	OutboxEvents              []EmittedEvent
 	LateResultReports         []LateResultReport
 	ProcessedWebhooks         map[string]time.Time
+	ProcessedCycleClosures    map[string]CycleBoundaryResult
 	CheckoutSessions          map[string]*CheckoutSessionRecord
 	ReadOnlyMode              bool
 	ReadOnlyReason            string
@@ -309,18 +310,22 @@ type WorkspaceBillingState struct {
 // CheckoutSessionRecord tracks a billing or credit pack checkout session.
 // Credits or plan activations are NEVER granted at session creation; they settle only via verified webhook.
 type CheckoutSessionRecord struct {
-	SessionID   string
-	WorkspaceID string
-	UserID      string
-	Kind        string // "credit_pack" or "subscription_plan"
-	PackCode    string
-	TargetPlan  string
-	Interval    string
-	Currency    string
-	Amount      tenantdb.ExactDecimal
-	Status      string // "pending", "settled", "expired"
-	CreatedAt   time.Time
-	SettledAt   *time.Time
+	SessionID           string
+	WorkspaceID         string
+	UserID              string
+	Kind                string // "credit_pack" or "subscription_plan"
+	PackCode            string
+	TargetPlan          string
+	Interval            string
+	Currency            string
+	BaseAmount          tenantdb.ExactDecimal
+	ProratedAddonCharge tenantdb.ExactDecimal
+	Amount              tenantdb.ExactDecimal
+	Addons              []string
+	AcceptOverageTerms  bool
+	Status              string // "pending", "settled", "expired"
+	CreatedAt           time.Time
+	SettledAt           *time.Time
 }
 
 // MemoryStore provides a deterministic, concurrency-safe (per-workspace mutex with
@@ -417,6 +422,9 @@ func cloneWorkspaceState(src *WorkspaceBillingState) *WorkspaceBillingState {
 	if dst.ProcessedWebhooks == nil {
 		dst.ProcessedWebhooks = make(map[string]time.Time)
 	}
+	if dst.ProcessedCycleClosures == nil {
+		dst.ProcessedCycleClosures = make(map[string]CycleBoundaryResult)
+	}
 	if dst.CheckoutSessions == nil {
 		dst.CheckoutSessions = make(map[string]*CheckoutSessionRecord)
 	}
@@ -437,16 +445,17 @@ func (s *MemoryStore) WithWorkspaceTx(workspaceID string, fn func(state *Workspa
 	current, exists := s.workspaces[workspaceID]
 	if !exists {
 		current = &WorkspaceBillingState{
-			WorkspaceID:       workspaceID,
-			SubscriptionTier:  "free",
-			SeatsUsed:         1,
-			ChannelsUsed:      1,
-			StorageUsedGB:     1,
-			Quotes:            make(map[string]tenantdb.CreditQuoteRow),
-			Reservations:      make(map[string]tenantdb.CreditReservationRow),
-			Allocations:       make(map[string][]tenantdb.CreditReservationAllocationRow),
-			ProcessedWebhooks: make(map[string]time.Time),
-			CheckoutSessions:  make(map[string]*CheckoutSessionRecord),
+			WorkspaceID:            workspaceID,
+			SubscriptionTier:       "free",
+			SeatsUsed:              1,
+			ChannelsUsed:           1,
+			StorageUsedGB:          1,
+			Quotes:                 make(map[string]tenantdb.CreditQuoteRow),
+			Reservations:           make(map[string]tenantdb.CreditReservationRow),
+			Allocations:            make(map[string][]tenantdb.CreditReservationAllocationRow),
+			ProcessedWebhooks:      make(map[string]time.Time),
+			ProcessedCycleClosures: make(map[string]CycleBoundaryResult),
+			CheckoutSessions:       make(map[string]*CheckoutSessionRecord),
 		}
 		s.workspaces[workspaceID] = current
 	}
@@ -1425,50 +1434,120 @@ func (e *Engine) RunCycleBoundary(req CycleBoundaryRequest) (CycleBoundaryResult
 	}
 	var out CycleBoundaryResult
 	err := e.store.WithWorkspaceTx(req.WorkspaceID, func(st *WorkspaceBillingState) error {
-		tierSpec, ok := LookupTier(st.SubscriptionTier)
-		if !ok {
-			tierSpec, _ = LookupTier("free")
+		res, _, _, err := processCycleBoundaryOnState(e.store, st, req.WorkspaceID, req.SubscriptionID, req.PeriodKey, req.NextPeriodEnd, now)
+		if err != nil {
+			return err
 		}
-		subID := req.SubscriptionID
-		if strings.TrimSpace(subID) == "" {
-			subID = "default_sub"
-		}
-		allocGrantKey := fmt.Sprintf("sub_alloc:%s:%s", subID, req.PeriodKey)
-		rolloverGrantKey := fmt.Sprintf("rollover:%s:%s", subID, req.PeriodKey)
+		out = res
+		return nil
+	})
+	return out, err
+}
 
-		// Check if this period's boundary was already processed (idempotent replay guard).
-		for _, lot := range st.Lots {
-			if lot.ExternalGrantKey == allocGrantKey {
-				out.AlreadyProcessedPeriod = true
-				out.NewMonthlyAllocation = lot.GrantedCredits
-				for _, l := range st.Lots {
-					if l.SourceType == SourcePurchased {
-						avail, _ := l.RemainingCredits.Sub(l.ReservedCredits)
-						out.PreservedPurchasedTotal, _ = out.PreservedPurchasedTotal.Add(avail)
-					}
-					out.PreservedInFlightHeld, _ = out.PreservedInFlightHeld.Add(l.ReservedCredits)
-				}
-				return nil
+func processCycleBoundaryOnState(
+	store *MemoryStore,
+	st *WorkspaceBillingState,
+	workspaceID, subID, periodKey string,
+	nextPeriodEnd, now time.Time,
+) (CycleBoundaryResult, *tenantdb.CreditLotRow, bool, error) {
+	tierCode := st.SubscriptionTier
+	if st.Subscription != nil && st.Subscription.Plan != "" && st.Subscription.Status == "active" {
+		tierCode = st.Subscription.Plan
+	}
+	tierSpec, ok := LookupTier(tierCode)
+	if !ok {
+		tierSpec, _ = LookupTier("free")
+	}
+	subID = strings.TrimSpace(subID)
+	if subID == "" && st.Subscription != nil && st.Subscription.SubscriptionID != "" {
+		subID = st.Subscription.SubscriptionID
+	}
+	if subID == "" {
+		subID = "default_sub"
+	}
+	cycleKey := fmt.Sprintf("%s:%s", subID, periodKey)
+	allocGrantKey := fmt.Sprintf("sub_alloc:%s:%s", subID, periodKey)
+	rolloverGrantKey := fmt.Sprintf("rollover:%s:%s", subID, periodKey)
+
+	nextExp := nextPeriodEnd.UTC()
+	if nextExp.IsZero() {
+		nextExp = now.UTC().Add(30 * 24 * time.Hour)
+	}
+
+	findLotByKey := func(grantKey string) *tenantdb.CreditLotRow {
+		for i := range st.Lots {
+			if st.Lots[i].ExternalGrantKey == grantKey {
+				cp := st.Lots[i]
+				return &cp
 			}
 		}
+		return nil
+	}
+
+	hasTxByKey := func(idempKey string) bool {
+		for i := range st.Transactions {
+			if st.Transactions[i].IdempotencyKey == idempKey {
+				return true
+			}
+		}
+		return false
+	}
+
+	if st.ProcessedCycleClosures == nil {
+		st.ProcessedCycleClosures = make(map[string]CycleBoundaryResult)
+	}
+	prevClosure, cycleAlreadyClosed := st.ProcessedCycleClosures[cycleKey]
+	existingAllocLot := findLotByKey(allocGrantKey)
+
+	if cycleAlreadyClosed && existingAllocLot != nil {
+		purchasedPreserved := tenantdb.ZeroDecimal()
+		inFlightHeld := tenantdb.ZeroDecimal()
+		for _, l := range st.Lots {
+			if l.SourceType == SourcePurchased {
+				avail, _ := l.RemainingCredits.Sub(l.ReservedCredits)
+				purchasedPreserved, _ = purchasedPreserved.Add(avail)
+			}
+			inFlightHeld, _ = inFlightHeld.Add(l.ReservedCredits)
+		}
+		res := CycleBoundaryResult{
+			ExpiredCreditsTotal:     prevClosure.ExpiredCreditsTotal,
+			RolloverCreditsGranted:  prevClosure.RolloverCreditsGranted,
+			NewMonthlyAllocation:    existingAllocLot.GrantedCredits,
+			PreservedPurchasedTotal: purchasedPreserved,
+			PreservedInFlightHeld:   inFlightHeld,
+			ExpiredHeldReservations: prevClosure.ExpiredHeldReservations,
+			AlreadyProcessedPeriod:  true,
+		}
+		return res, existingAllocLot, true, nil
+	}
+
+	var expiredTotal tenantdb.ExactDecimal
+	var rolloverTotal tenantdb.ExactDecimal
+	var expiredHeldCount int
+
+	if cycleAlreadyClosed {
+		expiredTotal = prevClosure.ExpiredCreditsTotal
+		rolloverTotal = prevClosure.RolloverCreditsGranted
+		expiredHeldCount = prevClosure.ExpiredHeldReservations
+	} else {
+		expiredTotal = tenantdb.ZeroDecimal()
+		rolloverTotal = tenantdb.ZeroDecimal()
 
 		// 1. Sweep expired held (unsubmitted) reservations first.
 		for id, res := range st.Reservations {
 			if res.Status == ReservationHeld && !res.ExpiresAt.After(now) {
 				if err := releaseAllocationsOnState(st, res, "cycle_sweep", now); err != nil {
-					return err
+					return CycleBoundaryResult{}, nil, false, err
 				}
 				res.Status = ReservationExpired
 				res.TerminalReason = "expired_at_cycle_boundary"
 				res.UpdatedAt = now.UTC()
 				st.Reservations[id] = res
-				out.ExpiredHeldReservations++
+				expiredHeldCount++
 			}
 		}
 
 		// 2. Process expired subscription/promotional lots while preserving purchased lots and in-flight holds.
-		expiredTotal := tenantdb.ZeroDecimal()
-		rolloverTotal := tenantdb.ZeroDecimal()
 		maxRolloverCap, _ := tierSpec.MonthlyCredits.MulFloor(tierSpec.RolloverFraction)
 		maxRolloverCap, _ = maxRolloverCap.CeilWhole()
 
@@ -1476,6 +1555,9 @@ func (e *Engine) RunCycleBoundary(req CycleBoundaryRequest) (CycleBoundaryResult
 			lot := &st.Lots[idx]
 			if lot.SourceType == SourcePurchased {
 				continue // Purchased credits NEVER expire!
+			}
+			if lot.ExternalGrantKey == allocGrantKey || lot.ExternalGrantKey == rolloverGrantKey {
+				continue
 			}
 			if lot.ExpiresAt == nil || lot.ExpiresAt.After(now) {
 				continue
@@ -1504,29 +1586,31 @@ func (e *Engine) RunCycleBoundary(req CycleBoundaryRequest) (CycleBoundaryResult
 			lot.RemainingCredits = lot.ReservedCredits
 			expiredTotal, _ = expiredTotal.Add(unheldRem)
 
-			negExp, _ := tenantdb.ZeroDecimal().Sub(unheldRem)
-			balAfter := computeBalanceFromState(st, now).Available
-			expTx := tenantdb.CreditTransactionRow{
-				TransactionID:  e.store.nextUUID("81000000"),
-				WorkspaceID:    req.WorkspaceID,
-				OperationType:  "credit_expiration",
-				CreditsDelta:   negExp,
-				BalanceAfter:   balAfter,
-				Source:         lot.SourceType,
-				LotID:          lot.LotID,
-				IdempotencyKey: fmt.Sprintf("expire:%s:%s", lot.LotID, req.PeriodKey),
-				Description:    fmt.Sprintf("Expired %s unspent %s credits at cycle boundary %s", unheldRem.String(), lot.SourceType, req.PeriodKey),
-				CreatedAt:      now.UTC(),
+			expKey := fmt.Sprintf("expire:%s:%s", lot.LotID, periodKey)
+			if !hasTxByKey(expKey) {
+				negExp, _ := tenantdb.ZeroDecimal().Sub(unheldRem)
+				balAfter := computeBalanceFromState(st, now).Available
+				expTx := tenantdb.CreditTransactionRow{
+					TransactionID:  store.nextUUID("81000000"),
+					WorkspaceID:    workspaceID,
+					OperationType:  "credit_expiration",
+					CreditsDelta:   negExp,
+					BalanceAfter:   balAfter,
+					Source:         lot.SourceType,
+					LotID:          lot.LotID,
+					IdempotencyKey: expKey,
+					Description:    fmt.Sprintf("Expired %s unspent %s credits at cycle boundary %s", unheldRem.String(), lot.SourceType, periodKey),
+					CreatedAt:      now.UTC(),
+				}
+				st.Transactions = append([]tenantdb.CreditTransactionRow{expTx}, st.Transactions...)
 			}
-			st.Transactions = append([]tenantdb.CreditTransactionRow{expTx}, st.Transactions...)
 		}
 
-		nextExp := req.NextPeriodEnd.UTC()
 		// 3. Grant one-cycle rollover lot if rolloverTotal > 0.
-		if !rolloverTotal.IsZero() {
+		if !rolloverTotal.IsZero() && findLotByKey(rolloverGrantKey) == nil {
 			rollLot := tenantdb.CreditLotRow{
-				LotID:            e.store.nextUUID("82000000"),
-				WorkspaceID:      req.WorkspaceID,
+				LotID:            store.nextUUID("82000000"),
+				WorkspaceID:      workspaceID,
 				SourceType:       SourceSubscription,
 				GrantedCredits:   rolloverTotal,
 				RemainingCredits: rolloverTotal,
@@ -1536,26 +1620,32 @@ func (e *Engine) RunCycleBoundary(req CycleBoundaryRequest) (CycleBoundaryResult
 				CreatedAt:        now.UTC(),
 			}
 			st.Lots = append(st.Lots, rollLot)
-			balAfter := computeBalanceFromState(st, now).Available
-			rollTx := tenantdb.CreditTransactionRow{
-				TransactionID:  e.store.nextUUID("83000000"),
-				WorkspaceID:    req.WorkspaceID,
-				OperationType:  "subscription_rollover",
-				CreditsDelta:   rolloverTotal,
-				BalanceAfter:   balAfter,
-				Source:         SourceSubscription,
-				LotID:          rollLot.LotID,
-				IdempotencyKey: "grant:" + rolloverGrantKey,
-				Description:    fmt.Sprintf("20%% rollover grant for period %s", req.PeriodKey),
-				CreatedAt:      now.UTC(),
+			sortLotsInConsumptionOrder(st.Lots)
+			if !hasTxByKey("grant:" + rolloverGrantKey) {
+				balAfter := computeBalanceFromState(st, now).Available
+				rollTx := tenantdb.CreditTransactionRow{
+					TransactionID:  store.nextUUID("83000000"),
+					WorkspaceID:    workspaceID,
+					OperationType:  "subscription_rollover",
+					CreditsDelta:   rolloverTotal,
+					BalanceAfter:   balAfter,
+					Source:         SourceSubscription,
+					LotID:          rollLot.LotID,
+					IdempotencyKey: "grant:" + rolloverGrantKey,
+					Description:    fmt.Sprintf("20%% rollover grant for period %s", periodKey),
+					CreatedAt:      now.UTC(),
+				}
+				st.Transactions = append([]tenantdb.CreditTransactionRow{rollTx}, st.Transactions...)
 			}
-			st.Transactions = append([]tenantdb.CreditTransactionRow{rollTx}, st.Transactions...)
 		}
+	}
 
-		// 4. Grant new period monthly subscription allocation idempotently.
+	// 4. Grant new period monthly subscription allocation idempotently.
+	allocLot := existingAllocLot
+	if allocLot == nil {
 		newLot := tenantdb.CreditLotRow{
-			LotID:            e.store.nextUUID("84000000"),
-			WorkspaceID:      req.WorkspaceID,
+			LotID:            store.nextUUID("84000000"),
+			WorkspaceID:      workspaceID,
 			SourceType:       SourceSubscription,
 			GrantedCredits:   tierSpec.MonthlyCredits,
 			RemainingCredits: tierSpec.MonthlyCredits,
@@ -1566,78 +1656,94 @@ func (e *Engine) RunCycleBoundary(req CycleBoundaryRequest) (CycleBoundaryResult
 		}
 		st.Lots = append(st.Lots, newLot)
 		sortLotsInConsumptionOrder(st.Lots)
+		allocLot = &newLot
 
-		balAfter := computeBalanceFromState(st, now).Available
-		allocTx := tenantdb.CreditTransactionRow{
-			TransactionID:  e.store.nextUUID("85000000"),
-			WorkspaceID:    req.WorkspaceID,
-			OperationType:  "subscription_allocation",
-			CreditsDelta:   tierSpec.MonthlyCredits,
-			BalanceAfter:   balAfter,
-			Source:         SourceSubscription,
-			LotID:          newLot.LotID,
-			IdempotencyKey: "grant:" + allocGrantKey,
-			Description:    fmt.Sprintf("Monthly subscription credit allocation for period %s (%s tier)", req.PeriodKey, tierSpec.TierCode),
-			CreatedAt:      now.UTC(),
-		}
-		st.Transactions = append([]tenantdb.CreditTransactionRow{allocTx}, st.Transactions...)
-
-		if st.Subscription != nil {
-			st.Subscription.CurrentPeriodStart = now.UTC()
-			st.Subscription.CurrentPeriodEnd = nextExp
-			if len(st.ScheduledAddonRemovals) > 0 {
-				removeSet := make(map[string]bool, len(st.ScheduledAddonRemovals))
-				for _, r := range st.ScheduledAddonRemovals {
-					removeSet[r] = true
-				}
-				var kept []string
-				for _, a := range st.Subscription.Addons {
-					if !removeSet[a] {
-						kept = append(kept, a)
-					}
-				}
-				st.Subscription.Addons = kept
-				st.ScheduledAddonRemovals = nil
+		if !hasTxByKey("grant:" + allocGrantKey) {
+			balAfter := computeBalanceFromState(st, now).Available
+			allocTx := tenantdb.CreditTransactionRow{
+				TransactionID:  store.nextUUID("85000000"),
+				WorkspaceID:    workspaceID,
+				OperationType:  "subscription_allocation",
+				CreditsDelta:   tierSpec.MonthlyCredits,
+				BalanceAfter:   balAfter,
+				Source:         SourceSubscription,
+				LotID:          newLot.LotID,
+				IdempotencyKey: "grant:" + allocGrantKey,
+				Description:    fmt.Sprintf("Monthly subscription credit allocation for period %s (%s tier)", periodKey, tierSpec.TierCode),
+				CreatedAt:      now.UTC(),
 			}
+			st.Transactions = append([]tenantdb.CreditTransactionRow{allocTx}, st.Transactions...)
 		}
-		st.OverageUsedCredits = tenantdb.ZeroDecimal()
+	} else {
+		sortLotsInConsumptionOrder(st.Lots)
+	}
 
+	if st.Subscription != nil {
+		st.Subscription.CurrentPeriodStart = now.UTC()
+		st.Subscription.CurrentPeriodEnd = nextExp
+		if len(st.ScheduledAddonRemovals) > 0 {
+			removeSet := make(map[string]bool, len(st.ScheduledAddonRemovals))
+			for _, r := range st.ScheduledAddonRemovals {
+				removeSet[r] = true
+			}
+			var kept []string
+			for _, a := range st.Subscription.Addons {
+				if !removeSet[a] {
+					kept = append(kept, a)
+				}
+			}
+			st.Subscription.Addons = kept
+			st.ScheduledAddonRemovals = nil
+		}
+	}
+	st.OverageUsedCredits = tenantdb.ZeroDecimal()
+
+	resetEventKey := "evt:monthly_reset:" + allocGrantKey
+	hasResetEvent := false
+	for _, ev := range st.OutboxEvents {
+		if ev.IdempotencyKey == resetEventKey {
+			hasResetEvent = true
+			break
+		}
+	}
+	if !hasResetEvent {
 		st.OutboxEvents = append(st.OutboxEvents, EmittedEvent{
 			EventType:      EventCreditsMonthlyReset,
-			WorkspaceID:    req.WorkspaceID,
+			WorkspaceID:    workspaceID,
 			AggregateType:  "workspace",
-			AggregateID:    req.WorkspaceID,
-			IdempotencyKey: "evt:monthly_reset:" + allocGrantKey,
+			AggregateID:    workspaceID,
+			IdempotencyKey: resetEventKey,
 			Payload: map[string]any{
-				"period_key":        req.PeriodKey,
+				"period_key":        periodKey,
 				"expired_credits":   expiredTotal.String(),
 				"rollover_credits":  rolloverTotal.String(),
-				"allocated_credits": tierSpec.MonthlyCredits.String(),
+				"allocated_credits": allocLot.GrantedCredits.String(),
 			},
 			CreatedAt: now.UTC(),
 		})
+	}
 
-		purchasedPreserved := tenantdb.ZeroDecimal()
-		inFlightHeld := tenantdb.ZeroDecimal()
-		for _, l := range st.Lots {
-			if l.SourceType == SourcePurchased {
-				avail, _ := l.RemainingCredits.Sub(l.ReservedCredits)
-				purchasedPreserved, _ = purchasedPreserved.Add(avail)
-			}
-			inFlightHeld, _ = inFlightHeld.Add(l.ReservedCredits)
+	purchasedPreserved := tenantdb.ZeroDecimal()
+	inFlightHeld := tenantdb.ZeroDecimal()
+	for _, l := range st.Lots {
+		if l.SourceType == SourcePurchased {
+			avail, _ := l.RemainingCredits.Sub(l.ReservedCredits)
+			purchasedPreserved, _ = purchasedPreserved.Add(avail)
 		}
+		inFlightHeld, _ = inFlightHeld.Add(l.ReservedCredits)
+	}
 
-		out = CycleBoundaryResult{
-			ExpiredCreditsTotal:     expiredTotal,
-			RolloverCreditsGranted:  rolloverTotal,
-			NewMonthlyAllocation:    tierSpec.MonthlyCredits,
-			PreservedPurchasedTotal: purchasedPreserved,
-			PreservedInFlightHeld:   inFlightHeld,
-			AlreadyProcessedPeriod:  false,
-		}
-		return nil
-	})
-	return out, err
+	out := CycleBoundaryResult{
+		ExpiredCreditsTotal:     expiredTotal,
+		RolloverCreditsGranted:  rolloverTotal,
+		NewMonthlyAllocation:    allocLot.GrantedCredits,
+		PreservedPurchasedTotal: purchasedPreserved,
+		PreservedInFlightHeld:   inFlightHeld,
+		ExpiredHeldReservations: expiredHeldCount,
+		AlreadyProcessedPeriod:  cycleAlreadyClosed && existingAllocLot != nil,
+	}
+	st.ProcessedCycleClosures[cycleKey] = out
+	return out, allocLot, false, nil
 }
 
 // Ensure context import is used by Postgres-backed helpers.

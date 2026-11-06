@@ -404,6 +404,21 @@ func (s *Service) ExpireTrialWithoutPayment(workspaceID string, now time.Time) (
 			}
 			st.Lots = append(st.Lots, lot)
 			sortLotsInConsumptionOrder(st.Lots)
+
+			balAfter := computeBalanceFromState(st, now).Available
+			allocTx := tenantdb.CreditTransactionRow{
+				TransactionID:  s.engine.store.nextUUID("85000000"),
+				WorkspaceID:    workspaceID,
+				OperationType:  "subscription_allocation",
+				CreditsDelta:   freeTier.MonthlyCredits,
+				BalanceAfter:   balAfter,
+				Source:         SourceSubscription,
+				LotID:          lotID,
+				IdempotencyKey: "grant:" + grantKey,
+				Description:    "Free tier monthly subscription credit allocation after trial expiry",
+				CreatedAt:      now.UTC(),
+			}
+			st.Transactions = append([]tenantdb.CreditTransactionRow{allocTx}, st.Transactions...)
 		}
 
 		subSummary = subscriptionStateToProto(st)
@@ -549,6 +564,21 @@ func (s *Service) AdvanceDunning(workspaceID string, day int32, now time.Time) (
 				}
 				st.Lots = append(st.Lots, lot)
 				sortLotsInConsumptionOrder(st.Lots)
+
+				balAfter := computeBalanceFromState(st, now).Available
+				allocTx := tenantdb.CreditTransactionRow{
+					TransactionID:  s.engine.store.nextUUID("85000000"),
+					WorkspaceID:    workspaceID,
+					OperationType:  "subscription_allocation",
+					CreditsDelta:   freeTier.MonthlyCredits,
+					BalanceAfter:   balAfter,
+					Source:         SourceSubscription,
+					LotID:          lotID,
+					IdempotencyKey: "grant:" + grantKey,
+					Description:    "Free tier monthly subscription credit allocation after Day 14 dunning downgrade",
+					CreatedAt:      now.UTC(),
+				}
+				st.Transactions = append([]tenantdb.CreditTransactionRow{allocTx}, st.Transactions...)
 			}
 		}
 

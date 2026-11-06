@@ -450,10 +450,12 @@ func (s *Service) ChangePlan(ctx context.Context, req *adminv1.ChangePlanRequest
 		}
 		proratedAddonTotal := tenantdb.ZeroDecimal()
 		mergedAddons := append([]string{}, existingAddons...)
+		newlyAddedAddonCount := 0
 		for _, addonCode := range req.GetAddons() {
 			if !existingAddonSet[addonCode] {
 				mergedAddons = append(mergedAddons, addonCode)
 				existingAddonSet[addonCode] = true
+				newlyAddedAddonCount++
 				if addonSpec, aOK := LookupAddon(addonCode); aOK {
 					prorated, pErr := ComputeAddonProration(addonSpec, interval, curr, remainingDays, totalDays)
 					if pErr == nil {
@@ -476,6 +478,56 @@ func (s *Service) ChangePlan(ctx context.Context, req *adminv1.ChangePlanRequest
 					schedSet[rem] = true
 				}
 			}
+		}
+
+		requiresPaidSettlement := (targetTier.Rank > currentTier.Rank && targetTier.TierCode != "free") || newlyAddedAddonCount > 0
+		sessID := "cs_plan_" + strings.TrimSpace(req.GetContext().GetIdempotencyKey())
+
+		if requiresPaidSettlement {
+			// F06: Paid tier upgrades and paid add-on additions NEVER activate immediately in ChangePlan.
+			// Record a pending CheckoutSessionRecord; activation occurs only upon verified webhook settlement.
+			checkoutTotal := proratedAddonTotal
+			if targetTier.Rank > currentTier.Rank && targetTier.TierCode != "free" {
+				checkoutTotal, _ = amount.Add(proratedAddonTotal)
+			}
+			st.CheckoutSessions[sessID] = &CheckoutSessionRecord{
+				SessionID:           sessID,
+				WorkspaceID:         pctx.WorkspaceID,
+				UserID:              pctx.ActorUserID,
+				Kind:                "subscription_plan",
+				TargetPlan:          targetTier.TierCode,
+				Interval:            interval,
+				Currency:            curr,
+				BaseAmount:          amount,
+				ProratedAddonCharge: proratedAddonTotal,
+				Amount:              checkoutTotal,
+				Addons:              mergedAddons,
+				AcceptOverageTerms:  req.GetAcceptOverageTerms(),
+				Status:              "pending",
+				CreatedAt:           now,
+			}
+
+			pendingSummary := subscriptionStateToProto(st)
+			if pendingSummary == nil {
+				pendingSummary = &adminv1.SubscriptionSummary{
+					SubscriptionId:  &commonv1.UUID{Value: subID},
+					WorkspaceId:     &commonv1.UUID{Value: pctx.WorkspaceID},
+					Plan:            currentTier.TierCode,
+					Status:          adminv1.SubscriptionStatus_SUBSCRIPTION_STATUS_INCOMPLETE,
+					BillingInterval: interval,
+					Amount:          &commonv1.Money{Amount: amount.String(), Currency: curr},
+				}
+			}
+
+			resp = &adminv1.ChangePlanResponse{
+				Subscription:           pendingSummary,
+				EffectiveMode:          "pending_payment",
+				CheckoutSessionId:      sessID,
+				CheckoutUrl:            "https://checkout.stripe.com/c/pay/" + sessID,
+				ProratedAddonCharge:    &commonv1.Money{Amount: proratedAddonTotal.String(), Currency: curr},
+				ScheduledAddonRemovals: append([]string{}, st.ScheduledAddonRemovals...),
+			}
+			return nil
 		}
 
 		if effectiveMode == "immediate_prorated" {
@@ -515,7 +567,7 @@ func (s *Service) ChangePlan(ctx context.Context, req *adminv1.ChangePlanRequest
 		resp = &adminv1.ChangePlanResponse{
 			Subscription:           subscriptionStateToProto(st),
 			EffectiveMode:          effectiveMode,
-			CheckoutSessionId:      "cs_plan_" + req.GetContext().GetIdempotencyKey(),
+			CheckoutSessionId:      sessID,
 			ProratedAddonCharge:    &commonv1.Money{Amount: proratedAddonTotal.String(), Currency: curr},
 			ScheduledAddonRemovals: append([]string{}, st.ScheduledAddonRemovals...),
 		}
@@ -978,6 +1030,155 @@ func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlement
 		}, nil
 	}
 
+	settleSubscriptionPlanSession := func(st *WorkspaceBillingState, sess *CheckoutSessionRecord) (WebhookSettlementResult, error) {
+		if sess.Status == "expired" || sess.Status == "failed" {
+			return WebhookSettlementResult{}, fmt.Errorf("%w: checkout session %q is %s and cannot be settled", ErrInvalidBillingInput, sess.SessionID, sess.Status)
+		}
+		stripeInvID := strings.TrimSpace(evt.StripeInvoiceID)
+		if stripeInvID == "" {
+			stripeInvID = "in_" + sess.SessionID
+		}
+		existingInv := findInvoiceByStripeID(st, stripeInvID)
+		if existingInv == nil {
+			existingInv = findInvoiceByStripeID(st, "in_"+sess.SessionID)
+		}
+		if sess.Status == "settled" || existingInv != nil {
+			st.ProcessedWebhooks[evt.EventID] = now
+			return WebhookSettlementResult{
+				EventID:   evt.EventID,
+				Duplicate: true,
+				Status:    "session_already_settled",
+				Invoice:   existingInv,
+			}, nil
+		}
+
+		targetTier, ok := LookupTier(sess.TargetPlan)
+		if !ok {
+			return WebhookSettlementResult{}, fmt.Errorf("%w: invalid target_plan %q on session", ErrInvalidBillingInput, sess.TargetPlan)
+		}
+		prevTier := st.SubscriptionTier
+		st.SubscriptionTier = targetTier.TierCode
+		if sess.AcceptOverageTerms {
+			st.OverageTermsAccepted = true
+		}
+
+		subID := strings.TrimSpace(evt.SubscriptionID)
+		if subID == "" && st.Subscription != nil && st.Subscription.SubscriptionID != "" {
+			subID = st.Subscription.SubscriptionID
+		}
+		if subID == "" {
+			subID = "90000000-0000-4000-8000-000000000001"
+		}
+		periodStart := now.UTC()
+		periodEnd := now.UTC().Add(30 * 24 * time.Hour)
+		if sess.Interval == "annual" {
+			periodEnd = now.UTC().Add(365 * 24 * time.Hour)
+		}
+		if st.Subscription != nil && st.Subscription.Status == "active" && !st.Subscription.CurrentPeriodStart.IsZero() && st.Subscription.CurrentPeriodEnd.After(now) {
+			periodStart = st.Subscription.CurrentPeriodStart
+			periodEnd = st.Subscription.CurrentPeriodEnd
+		}
+		baseAmt := sess.BaseAmount
+		if baseAmt.IsZero() {
+			baseAmt = sess.Amount
+		}
+		st.Subscription = &tenantdb.SubscriptionRow{
+			SubscriptionID:     subID,
+			WorkspaceID:        evt.WorkspaceID,
+			Plan:               targetTier.TierCode,
+			BillingInterval:    sess.Interval,
+			Status:             "active",
+			Amount:             baseAmt,
+			Currency:           sess.Currency,
+			CurrentPeriodStart: periodStart,
+			CurrentPeriodEnd:   periodEnd,
+			CancelAtPeriodEnd:  false,
+			Addons:             append([]string{}, sess.Addons...),
+			CreatedAt:          now.UTC(),
+			UpdatedAt:          now.UTC(),
+		}
+
+		inv := tenantdb.InvoiceRow{
+			InvoiceID:        s.engine.store.nextUUID("92000000"),
+			WorkspaceID:      evt.WorkspaceID,
+			SubscriptionID:   subID,
+			StripeInvoiceID:  stripeInvID,
+			InvoiceNumber:    fmt.Sprintf("INV-%d", len(st.Invoices)+1001),
+			Status:           "paid",
+			Currency:         sess.Currency,
+			Subtotal:         sess.Amount,
+			DiscountAmount:   tenantdb.ZeroDecimal(),
+			TaxAmount:        tenantdb.ZeroDecimal(),
+			Total:            sess.Amount,
+			AmountPaid:       sess.Amount,
+			AmountDue:        tenantdb.ZeroDecimal(),
+			InvoicePDFURL:    "https://pay.stripe.com/invoice/" + sess.SessionID + "/pdf",
+			HostedInvoiceURL: "https://invoice.stripe.com/i/" + sess.SessionID,
+			PaidAt:           &now,
+			CreatedAt:        now,
+			UpdatedAt:        now,
+		}
+		st.Invoices = append([]tenantdb.InvoiceRow{inv}, st.Invoices...)
+
+		sess.Status = "settled"
+		sess.SettledAt = &now
+		st.ProcessedWebhooks[evt.EventID] = now
+
+		recordBillingEventOnce(st, BillingEventRecord{
+			BillingEventID:   s.engine.store.nextUUID("93000000"),
+			WorkspaceID:      evt.WorkspaceID,
+			EventType:        evt.EventType,
+			StripeEventID:    evt.EventID,
+			Amount:           sess.Amount,
+			Currency:         sess.Currency,
+			SubscriptionTier: st.SubscriptionTier,
+			CreditsChange:    tenantdb.ZeroDecimal(),
+			Description:      fmt.Sprintf("Activated %s subscription plan via verified checkout session %s", targetTier.TierCode, sess.SessionID),
+			Metadata: map[string]any{
+				"checkout_session_id": sess.SessionID,
+				"previous_plan":       prevTier,
+				"target_plan":         targetTier.TierCode,
+			},
+			CreatedAt: now,
+		})
+
+		st.OutboxEvents = append(st.OutboxEvents,
+			EmittedEvent{
+				EventType:      EventBillingPlanChanged,
+				WorkspaceID:    evt.WorkspaceID,
+				AggregateType:  "subscription",
+				AggregateID:    subID,
+				IdempotencyKey: "evt:plan_change:" + sess.SessionID,
+				Payload: map[string]any{
+					"previous_plan":         prevTier,
+					"target_plan":           targetTier.TierCode,
+					"effective_mode":        "immediate_prorated",
+					"prorated_addon_charge": sess.ProratedAddonCharge.String(),
+				},
+				CreatedAt: now,
+			},
+			EmittedEvent{
+				EventType:      EventBillingPaymentSucceeded,
+				WorkspaceID:    evt.WorkspaceID,
+				AggregateType:  "invoice",
+				AggregateID:    inv.InvoiceID,
+				IdempotencyKey: "evt:payment_ok:" + sess.SessionID,
+				Payload: map[string]any{
+					"invoice_id": inv.InvoiceID,
+					"amount":     sess.Amount.String(),
+					"currency":   sess.Currency,
+				},
+				CreatedAt: now,
+			},
+		)
+		return WebhookSettlementResult{
+			EventID:   evt.EventID,
+			Duplicate: false,
+			Status:    "settled_subscription_plan",
+			Invoice:   &inv,
+		}, nil
+	}
+
 	var out WebhookSettlementResult
 	err := s.engine.store.WithWorkspaceTx(evt.WorkspaceID, func(st *WorkspaceBillingState) error {
 		if _, already := st.ProcessedWebhooks[evt.EventID]; already {
@@ -1002,6 +1203,14 @@ func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlement
 			if !ok {
 				return fmt.Errorf("%w: unknown checkout_session_id %q", ErrInvalidBillingInput, evt.CheckoutSessionID)
 			}
+			if sess.Kind == "subscription_plan" {
+				res, err := settleSubscriptionPlanSession(st, sess)
+				if err != nil {
+					return err
+				}
+				out = res
+				return nil
+			}
 			res, err := settleCreditPackSession(st, sess)
 			if err != nil {
 				return err
@@ -1009,17 +1218,92 @@ func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlement
 			out = res
 			return nil
 
+		case "checkout.session.expired":
+			if sess, ok := st.CheckoutSessions[evt.CheckoutSessionID]; ok && sess.Status == "pending" {
+				sess.Status = "expired"
+			}
+			st.ProcessedWebhooks[evt.EventID] = now
+			out = WebhookSettlementResult{
+				EventID:   evt.EventID,
+				Duplicate: false,
+				Status:    "checkout_session_expired",
+			}
+			return nil
+
 		case "invoice.paid":
-			// If this invoice corresponds to a credit pack checkout session, use the exact same session grant key
-			// so checkout.session.completed + invoice.paid cannot double-grant.
+			// If this invoice corresponds to a checkout session, settle via the session handler.
 			if strings.TrimSpace(evt.CheckoutSessionID) != "" {
-				if sess, ok := st.CheckoutSessions[evt.CheckoutSessionID]; ok && (sess.Kind == "" || sess.Kind == "credit_pack") {
+				if sess, ok := st.CheckoutSessions[evt.CheckoutSessionID]; ok {
+					if sess.Kind == "subscription_plan" {
+						res, err := settleSubscriptionPlanSession(st, sess)
+						if err != nil {
+							return err
+						}
+						out = res
+						return nil
+					}
 					res, err := settleCreditPackSession(st, sess)
 					if err != nil {
 						return err
 					}
 					out = res
 					return nil
+				}
+			}
+
+			// If there is a pending subscription_plan session on this workspace when invoice.paid arrives for the subscription,
+			// activate the pending plan change now as part of verified subscription invoice settlement.
+			for _, sess := range st.CheckoutSessions {
+				if sess != nil && sess.Kind == "subscription_plan" && sess.Status == "pending" {
+					if targetTier, tOK := LookupTier(sess.TargetPlan); tOK {
+						prevTier := st.SubscriptionTier
+						st.SubscriptionTier = targetTier.TierCode
+						if sess.AcceptOverageTerms {
+							st.OverageTermsAccepted = true
+						}
+						subIDForPlan := strings.TrimSpace(evt.SubscriptionID)
+						if subIDForPlan == "" && st.Subscription != nil && st.Subscription.SubscriptionID != "" {
+							subIDForPlan = st.Subscription.SubscriptionID
+						}
+						if subIDForPlan == "" {
+							subIDForPlan = "90000000-0000-4000-8000-000000000001"
+						}
+						baseAmt := sess.BaseAmount
+						if baseAmt.IsZero() {
+							baseAmt = sess.Amount
+						}
+						st.Subscription = &tenantdb.SubscriptionRow{
+							SubscriptionID:     subIDForPlan,
+							WorkspaceID:        evt.WorkspaceID,
+							Plan:               targetTier.TierCode,
+							BillingInterval:    sess.Interval,
+							Status:             "active",
+							Amount:             baseAmt,
+							Currency:           sess.Currency,
+							CurrentPeriodStart: now.UTC(),
+							CurrentPeriodEnd:   now.UTC().Add(30 * 24 * time.Hour),
+							CancelAtPeriodEnd:  false,
+							Addons:             append([]string{}, sess.Addons...),
+							CreatedAt:          now.UTC(),
+							UpdatedAt:          now.UTC(),
+						}
+						sess.Status = "settled"
+						sess.SettledAt = &now
+						st.OutboxEvents = append(st.OutboxEvents, EmittedEvent{
+							EventType:      EventBillingPlanChanged,
+							WorkspaceID:    evt.WorkspaceID,
+							AggregateType:  "subscription",
+							AggregateID:    subIDForPlan,
+							IdempotencyKey: "evt:plan_change:" + sess.SessionID,
+							Payload: map[string]any{
+								"previous_plan":         prevTier,
+								"target_plan":           targetTier.TierCode,
+								"effective_mode":        "immediate_prorated",
+								"prorated_addon_charge": sess.ProratedAddonCharge.String(),
+							},
+							CreatedAt: now,
+						})
+					}
 				}
 			}
 
@@ -1046,7 +1330,7 @@ func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlement
 
 			existingLot := findLotByGrantKey(st, grantKey)
 			existingInv := findInvoiceByStripeID(st, stripeInvID)
-			if existingLot != nil || hasTxWithIdempotencyKey(st, "grant:"+grantKey) || existingInv != nil {
+			if existingInv != nil || (existingLot != nil && strings.TrimSpace(evt.StripeInvoiceID) == "") {
 				st.ProcessedWebhooks[evt.EventID] = now
 				out = WebhookSettlementResult{
 					EventID:    evt.EventID,
@@ -1072,35 +1356,12 @@ func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlement
 				nextExp = now.UTC().Add(30 * 24 * time.Hour)
 			}
 
-			lotID := s.engine.store.nextUUID("84000000")
-			lot := tenantdb.CreditLotRow{
-				LotID:            lotID,
-				WorkspaceID:      evt.WorkspaceID,
-				SourceType:       SourceSubscription,
-				GrantedCredits:   tierSpec.MonthlyCredits,
-				RemainingCredits: tierSpec.MonthlyCredits,
-				ReservedCredits:  tenantdb.ZeroDecimal(),
-				ExpiresAt:        &nextExp,
-				ExternalGrantKey: grantKey,
-				CreatedAt:        now.UTC(),
+			// F21: Execute cycle boundary close (reservation sweep, prior-lot expiration, 20% rollover grant)
+			// and monthly allocation idempotently so invoice.paid arriving before RunCycleBoundary never drops rollover.
+			_, allocLot, _, err := processCycleBoundaryOnState(s.engine.store, st, evt.WorkspaceID, subID, periodKey, nextExp, now)
+			if err != nil {
+				return err
 			}
-			st.Lots = append(st.Lots, lot)
-			sortLotsInConsumptionOrder(st.Lots)
-
-			balAfter := computeBalanceFromState(st, now).Available
-			allocTx := tenantdb.CreditTransactionRow{
-				TransactionID:  s.engine.store.nextUUID("85000000"),
-				WorkspaceID:    evt.WorkspaceID,
-				OperationType:  "subscription_allocation",
-				CreditsDelta:   tierSpec.MonthlyCredits,
-				BalanceAfter:   balAfter,
-				Source:         SourceSubscription,
-				LotID:          lotID,
-				IdempotencyKey: "grant:" + grantKey,
-				Description:    fmt.Sprintf("Monthly subscription credit allocation for period %s (%s tier)", periodKey, tierSpec.TierCode),
-				CreatedAt:      now.UTC(),
-			}
-			st.Transactions = append([]tenantdb.CreditTransactionRow{allocTx}, st.Transactions...)
 
 			invAmount := tierSpec.MonthlyPriceUSD
 			invCurrency := "USD"
@@ -1149,7 +1410,7 @@ func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlement
 				Currency:         invCurrency,
 				SubscriptionTier: tierSpec.TierCode,
 				CreditsChange:    tierSpec.MonthlyCredits,
-				Description:      allocTx.Description,
+				Description:      fmt.Sprintf("Monthly subscription credit allocation for period %s (%s tier)", periodKey, tierSpec.TierCode),
 				Metadata: map[string]any{
 					"subscription_id":   subID,
 					"period_key":        periodKey,
@@ -1179,14 +1440,19 @@ func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlement
 				EventID:    evt.EventID,
 				Duplicate:  false,
 				Status:     "settled_subscription_invoice",
-				GrantedLot: &lot,
+				GrantedLot: allocLot,
 				Invoice:    &inv,
 			}
 			return nil
 
 		case "invoice.payment_failed":
+			if strings.TrimSpace(evt.CheckoutSessionID) != "" {
+				if sess, ok := st.CheckoutSessions[evt.CheckoutSessionID]; ok && sess.Status == "pending" {
+					sess.Status = "failed"
+				}
+			}
 			st.ProcessedWebhooks[evt.EventID] = now
-			if st.Subscription != nil {
+			if st.Subscription != nil && st.Subscription.Status == "active" {
 				st.Subscription.Status = "past_due"
 				st.Subscription.UpdatedAt = now
 			}
